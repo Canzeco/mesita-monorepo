@@ -1,8 +1,11 @@
 import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
+  LayoutAnimation,
+  Platform,
   Pressable,
   Text,
+  UIManager,
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -15,7 +18,10 @@ import {
   IdleCatalogRail,
 } from '@/components/search/SearchCatalogRail';
 import { SearchMap } from '@/components/search/SearchMap';
-import { SearchResultsPanel } from '@/components/search/SearchResultsPanel';
+import {
+  SearchResultsPanel,
+  type SearchFailureKind,
+} from '@/components/search/SearchResultsPanel';
 import type { AddState } from '@/components/memo/types';
 import { SHADOW_ELEV } from '@/constants/brand';
 import {
@@ -30,17 +36,56 @@ import {
   deriveCategoryOptions,
   discoveryFiltersAreActive,
 } from '@/lib/discovery-filters-engine';
+import { EFError } from '@/lib/ef';
 import { matchPredictionToPlace } from '@/lib/match-prediction';
 import { newSessionToken, withDistances } from '@/lib/search-utils';
 import { supabase } from '@/lib/supabase';
-import { useDiscoveryFilters } from '@/lib/use-discovery-filters';
-import { TAB_OVERLAY_BOTTOM } from '@/lib/tab-layout';
+import {
+  resetDiscoveryFilters,
+  useDiscoveryFilters,
+} from '@/lib/use-discovery-filters';
 import { errMsg } from '@/lib/utils';
 
 const SUGGEST_DEBOUNCE_MS = 300;
 const GMP_KEY = process.env.EXPO_PUBLIC_GMP_KEY ?? '';
 
 type Coords = { lat: number; lng: number };
+
+if (
+  Platform.OS === 'android' &&
+  UIManager.setLayoutAnimationEnabledExperimental
+) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
+
+function classifySearchFailure(err: unknown): SearchFailureKind {
+  const message = errMsg(err, '').toLowerCase();
+  if (
+    message.includes('timeout') ||
+    message.includes('timed out') ||
+    message.includes('aborted')
+  ) {
+    return 'timeout';
+  }
+  if (
+    err instanceof EFError &&
+    err.status == null &&
+    (message.includes('network') ||
+      message.includes('fetch') ||
+      message.includes('failed to fetch') ||
+      message.length === 0)
+  ) {
+    return 'network';
+  }
+  if (
+    message.includes('network') ||
+    message.includes('failed to fetch') ||
+    message.includes('offline')
+  ) {
+    return 'network';
+  }
+  return 'server';
+}
 
 export function SearchClient() {
   const router = useRouter();
@@ -50,6 +95,7 @@ export function SearchClient() {
   const [places, setPlaces] = useState<Place[]>([]);
   const [catalogLoading, setCatalogLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
+  const [catalogNonce, setCatalogNonce] = useState(0);
   const [coords, setCoords] = useState<Coords | null>(null);
 
   const [query, setQuery] = useState('');
@@ -57,6 +103,8 @@ export function SearchClient() {
   const [predictions, setPredictions] = useState<PlacePrediction[]>([]);
   const [searching, setSearching] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
+  const [failureKind, setFailureKind] = useState<SearchFailureKind>(null);
+  const [suggestNonce, setSuggestNonce] = useState(0);
   const [addStates, setAddStates] = useState<Record<string, AddState>>({});
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [preview, setPreview] = useState<PlacePrediction | null>(null);
@@ -89,7 +137,7 @@ export function SearchClient() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [catalogNonce]);
 
   useEffect(() => {
     if (typeof navigator === 'undefined' || !navigator.geolocation) return;
@@ -102,8 +150,6 @@ export function SearchClient() {
     );
   }, []);
 
-  // Distances ride on the chosen zone center or the device fix; filters then
-  // facet the SAME array the map pins and rail render (web SearchClient parity).
   const catalog = useMemo(
     () => withDistances(places, filters.zone ?? coords),
     [places, filters.zone, coords],
@@ -134,6 +180,7 @@ export function SearchClient() {
       setPredictions([]);
       setSearching(false);
       setSearchError(null);
+      setFailureKind(null);
     } else if (nextTrimmed !== trimmed) {
       setSearching(true);
     }
@@ -151,12 +198,17 @@ export function SearchClient() {
             sessionTokenRef.current,
           );
           if (!cancelled) {
+            LayoutAnimation.configureNext(
+              LayoutAnimation.Presets.easeInEaseOut,
+            );
             setPredictions(rows);
             setSearchError(null);
+            setFailureKind(null);
           }
         } catch (err) {
           if (!cancelled) {
             setPredictions([]);
+            setFailureKind(classifySearchFailure(err));
             setSearchError(errMsg(err, 'Search failed — try again.'));
           }
         } finally {
@@ -168,25 +220,31 @@ export function SearchClient() {
       cancelled = true;
       clearTimeout(handle);
     };
-  }, [trimmed]);
+  }, [trimmed, suggestNonce]);
+
+  const dismissSearch = () => {
+    updateQuery('');
+    setSearchOpen(false);
+  };
 
   const handlePickMesita = (prediction: PlacePrediction) => {
-    const id = prediction.mesitaId ?? prediction.mesitaSlug;
     const match =
       (prediction.mesitaId
         ? catalog.find((p) => p.id === prediction.mesitaId)
         : null) ?? matchPredictionToPlace(prediction, catalog);
-    updateQuery('');
-    setSearchOpen(false);
-    resetSearchSession();
     if (match) {
-      setSelectedId(match.id);
+      // Web parity: select on map + rail; detail is a second tap.
+      updateQuery('');
+      setSearchOpen(false);
       setRailCollapsed(false);
-      // No interactive map selection on web/placeholder — open detail.
-      router.push(placePath(match.id));
+      setSelectedId(match.id);
       return;
     }
-    if (id) router.push(placePath(id));
+    resetSearchSession();
+    const direct = prediction.mesitaSlug ?? prediction.mesitaId;
+    if (direct) {
+      router.push(placePath(direct));
+    }
   };
 
   const handlePickGoogle = (prediction: PlacePrediction) => {
@@ -197,6 +255,7 @@ export function SearchClient() {
 
   const handleAdd = (prediction: PlacePrediction) => {
     if (addStates[prediction.placeId]) return;
+    resetSearchSession();
     setAddStates((s) => ({ ...s, [prediction.placeId]: 'adding' }));
     void (async () => {
       try {
@@ -208,9 +267,29 @@ export function SearchClient() {
           delete next[prediction.placeId];
           return next;
         });
+        setFailureKind(classifySearchFailure(err));
         setSearchError(errMsg(err, "Couldn't add that place right now."));
       }
     })();
+  };
+
+  const handleSelectPlace = (place: Place) => {
+    setRailCollapsed(false);
+    setSelectedId(place.id);
+    if (searchOpen || trimmed.length > 0) dismissSearch();
+  };
+
+  const handleOpenPlace = (place: Place) => {
+    router.push(placePath(place.id));
+  };
+
+  const handleMapPress = () => {
+    // Bare map tap toggles search: open when idle, close when overlay is up.
+    if (searchOpen || trimmed.length > 0) {
+      dismissSearch();
+      return;
+    }
+    setSearchOpen(true);
   };
 
   const selectedPlace = selectedId
@@ -218,38 +297,27 @@ export function SearchClient() {
     : null;
 
   return (
-    <View className="flex-1">
+    <View className="flex-1 bg-background">
       <View className="absolute inset-0">
         <SearchMap
           places={visible}
           selectedId={selectedId}
           userLocation={coords}
           apiKey={GMP_KEY}
-          onSelect={(id) => {
-            setSelectedId(id);
-            setRailCollapsed(false);
-            setSearchOpen(false);
-            updateQuery('');
-          }}
-          onMapPress={() => {
-            if (searchOpen) {
-              setSearchOpen(false);
-              updateQuery('');
-            }
-          }}
+          onSelectPlace={handleSelectPlace}
+          onOpenPlace={handleOpenPlace}
+          onMapPress={handleMapPress}
         />
       </View>
 
       <SearchBar
         query={query}
         top={insets.top + 8}
+        showClear={Boolean(query || searchOpen)}
         filtersActive={filtersActive}
         onChangeQuery={updateQuery}
         onFocus={() => setSearchOpen(true)}
-        onClear={() => {
-          updateQuery('');
-          setSearchOpen(false);
-        }}
+        onClear={dismissSearch}
         onOpenFilters={() => setFiltersOpen(true)}
       />
 
@@ -263,15 +331,23 @@ export function SearchClient() {
             maxHeight: '70%',
             ...SHADOW_ELEV,
           }}
+          accessibilityViewIsModal
         >
           <SearchResultsPanel
             query={trimmed}
             searching={searching}
             searchError={searchError}
+            failureKind={failureKind}
             predictions={predictions}
             addStates={addStates}
             onPickMesita={handlePickMesita}
             onPickGoogle={handlePickGoogle}
+            onRetry={() => {
+              setSearching(true);
+              setSearchError(null);
+              setFailureKind(null);
+              setSuggestNonce((n) => n + 1);
+            }}
           />
         </View>
       ) : null}
@@ -284,21 +360,36 @@ export function SearchClient() {
         loading={catalogLoading}
         fetchError={fetchError}
         places={visible}
+        catalogCount={catalog.length}
         selectedId={selectedId}
-        bottomInset={TAB_OVERLAY_BOTTOM}
+        bottomInset={insets.bottom}
         onCollapse={() => setRailCollapsed(true)}
         onExpand={() => setRailCollapsed(false)}
-        onSelectPlace={setSelectedId}
+        onClearFilters={() => {
+          resetDiscoveryFilters();
+          setRailCollapsed(false);
+        }}
+        onRetryCatalog={() => {
+          setCatalogLoading(true);
+          setFetchError(null);
+          setCatalogNonce((n) => n + 1);
+        }}
+        onSelectPlace={(id) => {
+          const place = catalog.find((p) => p.id === id);
+          if (place) handleSelectPlace(place);
+          else setSelectedId(id);
+        }}
         onOpenPlace={(id) => router.push(placePath(id))}
       />
 
-      {/* Selected chip when rail collapsed */}
       {selectedPlace && railCollapsed ? (
         <Pressable
           onPress={() => router.push(placePath(selectedPlace.id))}
+          accessibilityRole="button"
+          accessibilityLabel={`Open ${selectedPlace.name}`}
           className="absolute z-20 mx-4 rounded-2xl border border-border bg-card px-4 py-3"
           style={{
-            bottom: TAB_OVERLAY_BOTTOM + 52,
+            bottom: Math.max(insets.bottom, 8) + 52,
             left: 0,
             right: 0,
             ...SHADOW_ELEV,

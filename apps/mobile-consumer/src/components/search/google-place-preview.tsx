@@ -1,9 +1,10 @@
-import { LinearGradient } from 'expo-linear-gradient';
-import { ExternalLink, MapPinPlus, Wand2 } from 'lucide-react-native';
-import { Image, Linking, Pressable, Text, View } from 'react-native';
+import { Image } from 'expo-image';
+import { ExternalLink, MapPinPlus } from 'lucide-react-native';
+import { Linking, Pressable, Text, View } from 'react-native';
 
-import { GRADIENT_DIAGONAL, GRADIENTS } from '@/constants/brand';
+import { COLORS } from '@/constants/brand';
 
+/** Body chrome for GooglePlaceSheet — mirrors web GooglePlaceSheet layout. */
 export function GooglePlacePreview({
   mainText,
   photoUrl,
@@ -17,82 +18,55 @@ export function GooglePlacePreview({
 }) {
   return (
     <>
-      <View
-        className="overflow-hidden rounded-2xl border border-border bg-card"
-        style={{
-          shadowColor: '#260409',
-          shadowOpacity: 0.08,
-          shadowRadius: 12,
-          shadowOffset: { width: 0, height: 4 },
-          elevation: 2,
-        }}
-      >
-        {photoUrl ? (
-          <Image
-            source={{ uri: photoUrl }}
-            style={{ width: '100%', height: 180 }}
-            resizeMode="cover"
-            accessibilityLabel={`${mainText} photo`}
-          />
-        ) : (
-          <LinearGradient
-            colors={[...GRADIENTS.pink]}
-            start={GRADIENT_DIAGONAL.start}
-            end={GRADIENT_DIAGONAL.end}
-            style={{
-              height: 140,
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            <MapPinPlus color="#fff" size={36} />
-          </LinearGradient>
-        )}
-        <View style={{ padding: 16, gap: 4 }}>
-          <Text
-            className="font-bold text-foreground"
-            style={{ fontSize: 20 }}
-          >
+      <View className="flex-row items-start gap-3">
+        <View className="h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary/10">
+          <MapPinPlus color={COLORS.primary} size={20} />
+        </View>
+        <View className="min-w-0 flex-1">
+          <Text className="font-display text-lg font-semibold leading-tight text-foreground">
             {mainText}
           </Text>
           {address ? (
-            <Text className="text-muted-foreground" style={{ fontSize: 14 }}>
+            <Text className="mt-0.5 text-xs leading-snug text-muted-foreground">
               {address}
             </Text>
           ) : null}
           <Pressable
             onPress={() => void Linking.openURL(mapsUrl)}
             accessibilityRole="link"
-            accessibilityLabel="Open in Google Maps"
-            className="min-h-[44px] flex-row items-center gap-1.5 self-start py-2"
+            accessibilityLabel="View on Google Maps"
+            className="mt-1.5 min-h-[44px] flex-row items-center gap-1 self-start"
           >
-            <ExternalLink color="#fb2b7b" size={14} />
-            <Text
-              className="font-semibold text-primary"
-              style={{ fontSize: 13 }}
-            >
-              Open in Google Maps
+            <Text className="text-xs font-semibold text-primary">
+              View on Google Maps
             </Text>
+            <ExternalLink color={COLORS.primary} size={12} />
           </Pressable>
         </View>
       </View>
 
-      <View className="mt-4 rounded-2xl border border-border bg-card p-4">
-        <View className="flex-row items-center gap-2">
-          <Wand2 color="#fb2b7b" size={18} />
-          <Text
-            className="font-semibold text-foreground"
-            style={{ fontSize: 15 }}
-          >
-            We’ll build its profile
-          </Text>
-        </View>
-        <Text
-          className="mt-2 text-muted-foreground"
-          style={{ fontSize: 14, lineHeight: 20 }}
-        >
-          Adding creates a Mesita listing right away. Our AI enriches the
-          profile in about five minutes.
+      {photoUrl ? (
+        <Image
+          source={{ uri: photoUrl }}
+          style={{
+            marginTop: 16,
+            width: '100%',
+            aspectRatio: 5 / 2,
+            borderRadius: 16,
+          }}
+          contentFit="cover"
+          accessibilityLabel={`${mainText} — photo from Google`}
+        />
+      ) : null}
+
+      <View className="mt-4 rounded-2xl bg-muted/60 px-4 py-3">
+        <Text className="text-sm font-semibold text-foreground">
+          This place isn’t on Mesita yet.
+        </Text>
+        <Text className="mt-1 text-xs leading-relaxed text-muted-foreground">
+          Google knows it, but its Mesita profile hasn’t been built. Add it and
+          our AI will generate the full page — photos, ratings, and details —
+          in about 5 minutes.
         </Text>
       </View>
     </>
