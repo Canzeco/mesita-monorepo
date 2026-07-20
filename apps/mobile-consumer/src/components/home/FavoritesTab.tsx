@@ -11,6 +11,7 @@ import {
 
 import { useHomeDeck } from '@/hooks/use-home-deck';
 import type { Place } from '@/lib/api/places';
+import { enrichPlaceOverview } from '@/lib/place-overview';
 import {
   readSavedPlacePreviews,
   removeSavedPlacePreview,
@@ -54,7 +55,8 @@ export function FavoritesTab() {
     () =>
       [...savedIds]
         .map((id) => catalog.get(id))
-        .filter((v): v is Place => v != null),
+        .filter((v): v is Place => v != null)
+        .map((v) => enrichPlaceOverview(v)),
     [savedIds, catalog],
   );
 
