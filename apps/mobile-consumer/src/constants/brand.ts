@@ -1,6 +1,26 @@
-// Brand gradients + shadows, copied from apps/web-consumer globals.css
-// (CSS gradients don't exist in RN — surfaces render these with
-// expo-linear-gradient; shadows use the style objects below).
+// Brand tokens + gradients, re-synced 2026-07-20 from
+// apps/web-consumer/src/app/globals.css (oklch → sRGB hex for NativeWind 4 /
+// Tailwind 3). Light theme only — no dark-mode / purple SaaS drift.
+// If web tokens change, re-copy VALUES here in the same PR.
+
+/** Semantic palette — must stay string-equal with tailwind.config.js colors. */
+export const COLORS = {
+  background: '#fff7f8',
+  foreground: '#260409',
+  card: '#ffffff',
+  primary: '#fb2b7b',
+  primaryForeground: '#fffafb',
+  secondary: '#cf0360',
+  muted: '#faeff0',
+  mutedForeground: '#775254',
+  accent: '#ff6eb4',
+  destructive: '#e6000c',
+  border: '#ebd9db',
+  input: '#f5e7e9',
+  ring: '#fb2b7b',
+  swipepanel: '#116bb5',
+  swipepanelForeground: '#f9fcff',
+} as const;
 
 export const GRADIENTS = {
   // --gradient-pink · the primary CTA/brand surface (web class bg-pink-gradient)
@@ -11,7 +31,7 @@ export const GRADIENTS = {
   // radial-blob approximation (two soft pink blobs + this wash).
   hero: ['#fff9fa', '#f5e6e8'] as const,
   // Soft shell wash (web `from-background to-muted/30`)
-  shell: ['#fff7f8', '#faeff0'] as const,
+  shell: [COLORS.background, COLORS.muted] as const,
   peacock: ['#ff3a84', '#ed1c80', '#ed4096'] as const,
   // Instagram brand gradient (social verify + IG-connected chrome)
   instagram: ['#f58529', '#dd2a7b', '#8134af'] as const,
@@ -27,7 +47,7 @@ export const GRADIENT_DIAGONAL = {
 
 // --shadow-glow: pink brand glow (CTAs, active tabs)
 export const SHADOW_GLOW = {
-  shadowColor: '#fb2b7b',
+  shadowColor: COLORS.primary,
   shadowOpacity: 0.4,
   shadowRadius: 24,
   shadowOffset: { width: 0, height: 12 },
@@ -36,7 +56,7 @@ export const SHADOW_GLOW = {
 
 // --shadow-elev: soft dark-rose elevation (cards)
 export const SHADOW_ELEV = {
-  shadowColor: '#260409',
+  shadowColor: COLORS.foreground,
   shadowOpacity: 0.18,
   shadowRadius: 20,
   shadowOffset: { width: 0, height: 10 },

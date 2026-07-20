@@ -6,6 +6,7 @@ import { Modal, Pressable, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { GRADIENT_DIAGONAL, GRADIENTS } from '@/constants/brand';
+import { CONSUMER_ROUTES } from '@/lib/consumer-route-contract';
 import { useAuth } from '@/providers/auth';
 
 const ORIGIN_LABEL: Record<string, string> = {
@@ -28,7 +29,7 @@ export function RewardsTopCards() {
     <>
       <View className="flex-row items-stretch gap-2.5">
         <Pressable
-          onPress={() => router.push('/(tabs)/me')}
+          onPress={() => router.push(CONSUMER_ROUTES.me)}
           accessibilityRole="button"
           className="flex-1 flex-row items-center gap-2.5 rounded-2xl border border-border bg-card p-3 active:opacity-95"
         >

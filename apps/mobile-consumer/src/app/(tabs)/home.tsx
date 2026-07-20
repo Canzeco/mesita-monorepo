@@ -10,9 +10,14 @@ import { SwipeDeck } from '@/components/swipe/SwipeDeck';
 import { ShellWash } from '@/components/ui/HeroBackdrop';
 import { ComingSoonModal } from '@/components/ui/ComingSoonModal';
 import { SegmentNav, type SegmentItem } from '@/components/ui/SegmentNav';
+import {
+  isHomeModeParked,
+  PARKED,
+  type ParkedHomeModeKey,
+} from '@/lib/parked-flags';
 
 // Mirrors web HomeModeNav: Swipe + Memo + Favorites live; Social parked.
-// The parked mode stays tappable and opens a coming-soon modal (MESITA-601).
+// Parked flags/copy live in parked-flags.ts (flip `soon` to unpark).
 // SocialTab stays in tree for a one-flag unpark.
 type Mode = 'swipe' | 'ai' | 'favorites';
 type NavMode = Mode | 'social';
@@ -23,27 +28,24 @@ const MODES: (SegmentItem & {
 })[] = [
   { key: 'swipe', title: 'Swipe', Icon: Flame },
   { key: 'ai', title: 'Memo', Icon: Sparkles },
-  { key: 'social', title: 'Social', Icon: Users, soon: true },
+  {
+    key: 'social',
+    title: 'Social',
+    Icon: Users,
+    soon: PARKED.homeModes.social.soon,
+  },
   { key: 'favorites', title: 'Favorites', Icon: Heart },
 ];
 
-type SoonMode = 'social';
-
-const SOON_META = {
-  social: {
-    title: 'Social',
-    body: 'See where your friends are going and share the places you love. Landing here soon.',
-    Icon: Users,
-  },
-} satisfies Record<
-  SoonMode,
-  { title: string; body: string; Icon: typeof Sparkles }
->;
+const SOON_ICONS: Record<ParkedHomeModeKey, typeof Users> = {
+  social: Users,
+};
 
 export default function HomeScreen() {
   const [mode, setMode] = useState<Mode>('swipe');
-  const [soonMode, setSoonMode] = useState<SoonMode | null>(null);
-  const soon = soonMode ? SOON_META[soonMode] : null;
+  const [soonMode, setSoonMode] = useState<ParkedHomeModeKey | null>(null);
+  const soon = soonMode ? PARKED.homeModes[soonMode] : null;
+  const SoonIcon = soonMode ? SOON_ICONS[soonMode] : undefined;
 
   return (
     <ShellWash>
@@ -60,7 +62,7 @@ export default function HomeScreen() {
                 setMode(v);
                 return;
               }
-              if (v === 'social') setSoonMode(v);
+              if (isHomeModeParked(v)) setSoonMode(v);
             }}
           />
         </View>
@@ -80,7 +82,7 @@ export default function HomeScreen() {
           onClose={() => setSoonMode(null)}
           title={soon?.title ?? 'Coming soon'}
           body={soon?.body}
-          icon={soon?.Icon}
+          icon={SoonIcon}
         />
       </SafeAreaView>
     </ShellWash>

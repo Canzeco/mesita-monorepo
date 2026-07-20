@@ -1,6 +1,8 @@
 import { Redirect } from 'expo-router';
 import { ActivityIndicator, View } from 'react-native';
 
+import { COLORS } from '@/constants/brand';
+import { CONSUMER_ROUTES } from '@/lib/consumer-route-contract';
 import { useAuth } from '@/providers/auth';
 
 // Entry gate — the RN equivalent of the web middleware + (shell) layout:
@@ -11,7 +13,7 @@ export default function Index() {
   if (loading) {
     return (
       <View className="flex-1 items-center justify-center bg-background">
-        <ActivityIndicator color="#fb2b7b" />
+        <ActivityIndicator color={COLORS.primary} />
       </View>
     );
   }
@@ -20,7 +22,7 @@ export default function Index() {
     return <Redirect href="/sign-in" />;
   }
   if (!onboarded) {
-    return <Redirect href="/onboard" />;
+    return <Redirect href={CONSUMER_ROUTES.onboard} />;
   }
-  return <Redirect href="/(tabs)/home" />;
+  return <Redirect href={CONSUMER_ROUTES.homeDefault} />;
 }

@@ -12,6 +12,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Button } from '@/components/ui/Button';
 import { TextField } from '@/components/ui/TextField';
 import { apiUpdateConsumerProfile } from '@/lib/api/auth';
+import { CONSUMER_ROUTES } from '@/lib/consumer-route-contract';
 import { useAuth } from '@/providers/auth';
 
 const SEX_OPTIONS = [
@@ -35,7 +36,7 @@ export default function Onboard() {
   const canSubmit = firstName.trim().length > 0 && sex !== null && validBirthday;
 
   if (onboarded) {
-    return <Redirect href="/(tabs)/home" />;
+    return <Redirect href={CONSUMER_ROUTES.homeDefault} />;
   }
 
   const submit = async () => {

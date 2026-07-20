@@ -6,6 +6,7 @@ import { Pressable, Text, View } from 'react-native';
 
 import { GRADIENTS, GRADIENT_DIAGONAL } from '@/constants/brand';
 import type { Place } from '@/lib/api/places';
+import { placePath } from '@/lib/consumer-route-contract';
 import { getOpeningStatusLabel } from '@/lib/place-status';
 import { resolvePromoRateFromPlaceRow } from '@/lib/promo-rates';
 import { firstInitial } from '@/lib/utils';
@@ -39,7 +40,7 @@ export function FavoriteRow({
     <View className="flex-row items-center gap-3 rounded-2xl border border-border bg-card p-3">
       <Pressable
         className="min-w-0 flex-1 flex-row items-center gap-3"
-        onPress={() => router.push(`/place/${place.id}`)}
+        onPress={() => router.push(placePath(place.id))}
       >
         <View className="size-16 overflow-hidden rounded-xl bg-muted">
           {photo ? (

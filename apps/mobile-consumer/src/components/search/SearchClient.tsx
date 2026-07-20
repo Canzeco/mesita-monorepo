@@ -24,6 +24,7 @@ import {
   type PlacePrediction,
 } from '@/lib/api/place-search';
 import { apiFetchPublicPlaces, type Place } from '@/lib/api/places';
+import { placePath } from '@/lib/consumer-route-contract';
 import { matchPredictionToPlace } from '@/lib/match-prediction';
 import { newSessionToken, withDistances } from '@/lib/search-utils';
 import { supabase } from '@/lib/supabase';
@@ -165,10 +166,10 @@ export function SearchClient() {
       setSelectedId(match.id);
       setRailCollapsed(false);
       // No interactive map selection on web/placeholder — open detail.
-      router.push(`/place/${match.id}`);
+      router.push(placePath(match.id));
       return;
     }
-    if (id) router.push(`/place/${id}`);
+    if (id) router.push(placePath(id));
   };
 
   const handlePickGoogle = (prediction: PlacePrediction) => {
@@ -270,13 +271,13 @@ export function SearchClient() {
         onCollapse={() => setRailCollapsed(true)}
         onExpand={() => setRailCollapsed(false)}
         onSelectPlace={setSelectedId}
-        onOpenPlace={(id) => router.push(`/place/${id}`)}
+        onOpenPlace={(id) => router.push(placePath(id))}
       />
 
       {/* Selected chip when rail collapsed */}
       {selectedPlace && railCollapsed ? (
         <Pressable
-          onPress={() => router.push(`/place/${selectedPlace.id}`)}
+          onPress={() => router.push(placePath(selectedPlace.id))}
           className="absolute z-20 mx-4 rounded-2xl border border-border bg-card px-4 py-3"
           style={{
             bottom: Math.max(insets.bottom, 8) + 52,
