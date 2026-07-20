@@ -10,13 +10,13 @@ import { SCORING_SUBROUTES } from "./nav";
 // this header and the engine label all read Lineup. Only the route and the
 // backend scoring_config identifiers stay "scoring" (see nav.ts).
 const SUBPAGE_DESCRIPTION: Record<string, string> = {
-  "/scoring-config/subscores":
+  "/lineup-config/subscores":
     "Tune the five subscores — every knob is a belief, not a fitted value.",
-  "/scoring-config/scores":
+  "/lineup-config/scores":
     "How the five subscores multiply into the three lane scores — read-mostly; tune on Subscores.",
-  "/scoring-config/lanes":
+  "/lineup-config/lanes":
     "Compose the deck: how many cards each lane contributes, how they merge, and who calls Lineup.",
-  "/scoring-config/playground":
+  "/lineup-config/playground":
     "Both simulators, running the CURRENT form values — nothing on this page writes config.",
 };
 
@@ -26,7 +26,7 @@ export function ScoringLayoutShell({ children }: { children: React.ReactNode }) 
     (r) => pathname === r.href || pathname.startsWith(`${r.href}/`),
   );
   const description =
-    (match && SUBPAGE_DESCRIPTION[match.href]) ?? SUBPAGE_DESCRIPTION["/scoring-config/subscores"];
+    (match && SUBPAGE_DESCRIPTION[match.href]) ?? SUBPAGE_DESCRIPTION["/lineup-config/subscores"];
 
   return (
     <>

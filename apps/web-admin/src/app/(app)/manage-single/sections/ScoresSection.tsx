@@ -107,7 +107,7 @@ export function ScoresSection({ place }: { place: AdminPlace }) {
           <p className="mt-0.5 text-xs text-amber-900/80">
             GP and RP are real data — Google star mass and the live promo rates; EM and SM&apos;s
             inputs are operator sliders, XX is pinned to 1 (off). Global knobs live in{" "}
-            <Link href="/scoring-config" className="font-semibold underline-offset-2 hover:underline">
+            <Link href="/lineup-config" className="font-semibold underline-offset-2 hover:underline">
               Lineup Config
             </Link>
             .
