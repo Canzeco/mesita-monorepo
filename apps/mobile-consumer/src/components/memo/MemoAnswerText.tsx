@@ -102,6 +102,8 @@ export function MemoAnswerText({
     return (
       <Text
         onPress={() => open(prediction)}
+        accessibilityRole="link"
+        accessibilityLabel={`Open ${prediction.mainText}`}
         className={`font-medium text-foreground underline ${adding ? 'opacity-60' : ''}`}
         style={{ textDecorationColor: 'rgba(251,43,123,0.5)' }}
       >

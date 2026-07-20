@@ -19,6 +19,8 @@ export const PARKED = {
   },
   homeModes: {
     social: {
+      // Flip to false to unpark — Home SegmentNav + keep-alive SocialTab
+      // show the feed; no other file changes required (MESITA-693 #36).
       soon: true,
       // Web ComingSoon dialog title = the mode label ("Social").
       title: 'Social',

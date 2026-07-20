@@ -19,6 +19,9 @@ export function msgId(): string {
   return `ai-msg-${nextId}`;
 }
 
+// Thread persistence — Home keep-alive usually keeps AskAiTab mounted; the
+// module cache covers remounts within the session (web parity). Not
+// AsyncStorage: a full reload starts fresh.
 export type StoredThread = { messages: AiMessage[]; related: string[] };
 
 let threadCache: StoredThread | null = null;
@@ -43,10 +46,12 @@ export function greetingThread(): AiMessage[] {
 }
 
 export function buildMemoHistory(messages: AiMessage[]): MemoTurn[] {
-  return messages.map((m) => ({
-    role: m.role === 'user' ? 'user' : 'assistant',
-    content: m.text,
-  }));
+  return messages
+    .filter((m): m is Extract<AiMessage, { kind: 'text' }> => m.kind === 'text')
+    .map((m) => ({
+      role: m.role === 'user' ? 'user' : 'assistant',
+      content: m.text,
+    }));
 }
 
 export function buildAiReply(reply: MemoAnswer | null): {
