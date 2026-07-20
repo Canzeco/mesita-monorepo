@@ -51,3 +51,13 @@ jobs:
         env:
           EXPO_PUBLIC_SUPABASE_URL: https://yjalywfzdelacdzccpgb.supabase.co
           EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY: sb_publishable_bQPhz9pZSTnVAW1aOZ6Q6g_imiiwTJd
+
+      # #50 — upload web-export artifact so chrome regressions can be
+      # inspected without a device. Device visual QA remains needs-human.
+      - uses: actions/upload-artifact@v4
+        if: success()
+        with:
+          name: mobile-consumer-web-export
+          path: apps/mobile-consumer/dist
+          if-no-files-found: warn
+          retention-days: 14

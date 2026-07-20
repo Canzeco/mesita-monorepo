@@ -22,7 +22,8 @@ import {
 } from '@/lib/countries';
 import { supabase } from '@/lib/supabase';
 
-// Phone OTP with country dial picker — web PhoneInputWithCountry parity.
+// Phone OTP with country dial picker — web PhoneOtpForm parity (#47).
+// No guest entry. Post-verify EF then gate routes onboard vs home.
 
 export default function SignIn() {
   const router = useRouter();
@@ -33,6 +34,7 @@ export default function SignIn() {
   const [token, setToken] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [info, setInfo] = useState<string | null>(null);
 
   const country: Country = COUNTRY_BY_CODE[countryCode] ?? COUNTRY_BY_CODE.MX;
   const e164 = useMemo(
@@ -44,6 +46,15 @@ export default function SignIn() {
 
   const sendCode = async () => {
     setError(null);
+    setInfo(null);
+    if (!localNumber.trim()) {
+      setError('Enter your phone number.');
+      return;
+    }
+    if (!phoneOk) {
+      setError('Enter a valid phone number.');
+      return;
+    }
     setBusy(true);
     const { error: err } = await supabase.auth.signInWithOtp({ phone: e164 });
     setBusy(false);
@@ -52,14 +63,21 @@ export default function SignIn() {
       return;
     }
     setStep('code');
+    setInfo('We just sent you a 6-digit code.');
   };
 
   const verifyCode = async () => {
     setError(null);
+    setInfo(null);
+    const cleaned = token.replace(/\D/g, '');
+    if (cleaned.length !== 6) {
+      setError('Enter the 6-digit code we sent you.');
+      return;
+    }
     setBusy(true);
     const { error: err } = await supabase.auth.verifyOtp({
       phone: e164,
-      token: token.trim(),
+      token: cleaned,
       type: 'sms',
     });
     if (err) {
@@ -77,88 +95,42 @@ export default function SignIn() {
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: '#fff7f8' }}>
+    <View className="flex-1 bg-background">
       <HeroBackdrop />
-      <SafeAreaView style={{ flex: 1 }}>
+      <SafeAreaView className="flex-1">
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-          style={{ flex: 1, justifyContent: 'center', paddingHorizontal: 24 }}
+          className="flex-1 justify-center px-6"
         >
-          <View style={{ marginBottom: 40, alignItems: 'center' }}>
-            <Text
-              className="font-display text-foreground"
-              style={{ fontSize: 36, letterSpacing: -0.54 }}
-            >
+          <View className="mb-10 items-center">
+            <Text className="font-display text-[36px] tracking-tight text-foreground">
               Mesita
             </Text>
-            <Text
-              className="text-muted-foreground"
-              style={{ marginTop: 12, textAlign: 'center', color: '#775254' }}
-            >
-              Tu mesa favorita te está esperando
+            <Text className="mt-3 text-center text-muted-foreground">
+              Sign in with your phone
             </Text>
           </View>
 
-          <View
-            className="rounded-2xl border border-border bg-card"
-            style={{
-              padding: 24,
-              shadowColor: '#260409',
-              shadowOpacity: 0.08,
-              shadowRadius: 12,
-              shadowOffset: { width: 0, height: 4 },
-              elevation: 2,
-            }}
-          >
+          <View className="rounded-2xl border border-border bg-card p-6 shadow-sm">
             {step === 'phone' ? (
               <>
-                <Text
-                  className="font-semibold text-muted-foreground"
-                  style={{
-                    marginBottom: 8,
-                    color: '#775254',
-                    letterSpacing: 1.2,
-                  }}
-                >
-                  PHONE NUMBER
+                <Text className="mb-1.5 text-xs font-medium text-muted-foreground">
+                  Phone number
                 </Text>
-                <View
-                  style={{
-                    flexDirection: 'row',
-                    alignItems: 'stretch',
-                    borderWidth: 1,
-                    borderColor: '#ebd9db',
-                    borderRadius: 12,
-                    overflow: 'hidden',
-                    backgroundColor: '#ffffff',
-                  }}
-                >
+                <View className="flex-row items-stretch overflow-hidden rounded-xl border border-border bg-card">
                   <Pressable
                     onPress={() => setPickerOpen(true)}
                     accessibilityLabel="Country dial code"
-                    style={{
-                      flexDirection: 'row',
-                      alignItems: 'center',
-                      gap: 6,
-                      paddingHorizontal: 12,
-                      borderRightWidth: 1,
-                      borderRightColor: '#ebd9db',
-                    }}
+                    className="flex-row items-center gap-1.5 border-r border-border px-3"
                   >
-                    <Text style={{ fontSize: 16 }}>{country.flag}</Text>
+                    <Text className="text-base">{country.flag}</Text>
                     <Text className="font-semibold text-foreground">
                       +{country.dial}
                     </Text>
                     <ChevronDown color="#775254" size={12} />
                   </Pressable>
                   <TextInput
-                    style={{
-                      flex: 1,
-                      backgroundColor: '#ffffff',
-                      color: '#260409',
-                      paddingHorizontal: 12,
-                      fontSize: 15,
-                    }}
+                    className="flex-1 px-3 text-[15px] text-foreground"
                     placeholderTextColor="#77525499"
                     keyboardType="phone-pad"
                     autoComplete="tel"
@@ -167,11 +139,20 @@ export default function SignIn() {
                     onChangeText={setLocalNumber}
                   />
                 </View>
-                <View style={{ marginTop: 16 }}>
+                <Text className="mt-2 text-[11px] text-muted-foreground">
+                  We&apos;ll text you a 6-digit code. Standard SMS rates may
+                  apply.
+                </Text>
+                {error ? (
+                  <View className="mt-2 rounded-xl border border-destructive/30 bg-destructive/10 px-3 py-2">
+                    <Text className="text-xs text-destructive">{error}</Text>
+                  </View>
+                ) : null}
+                <View className="mt-4">
                   <Button
                     onPress={() => void sendCode()}
                     loading={busy}
-                    disabled={!phoneOk || busy}
+                    disabled={!localNumber.trim() || busy}
                   >
                     Send code
                   </Button>
@@ -179,33 +160,48 @@ export default function SignIn() {
               </>
             ) : (
               <>
-                <Text
-                  className="font-semibold text-muted-foreground"
-                  style={{
-                    marginBottom: 8,
-                    color: '#775254',
-                    letterSpacing: 1.2,
-                  }}
-                >
-                  CODE SENT TO {e164}
+                <View className="mb-3 flex-row items-center justify-between">
+                  <Pressable
+                    onPress={() => {
+                      setStep('phone');
+                      setToken('');
+                      setError(null);
+                      setInfo(null);
+                    }}
+                    accessibilityRole="button"
+                    accessibilityLabel="Change number"
+                  >
+                    <Text className="text-xs font-semibold text-muted-foreground">
+                      ← Change number
+                    </Text>
+                  </Pressable>
+                  <Text className="text-xs text-muted-foreground">{e164}</Text>
+                </View>
+                <Text className="mb-1.5 text-xs font-medium text-muted-foreground">
+                  6-digit code
                 </Text>
                 <TextInput
-                  className="rounded-2xl border border-border bg-card px-3.5 py-3.5 text-foreground"
-                  style={{
-                    textAlign: 'center',
-                    letterSpacing: 8,
-                    fontSize: 24,
-                  }}
+                  className="rounded-2xl border border-border bg-card px-3.5 py-3.5 text-center text-lg tracking-[0.5em] text-foreground"
                   placeholderTextColor="#77525499"
                   keyboardType="number-pad"
                   textContentType="oneTimeCode"
                   autoComplete="sms-otp"
                   maxLength={6}
-                  placeholder="••••••"
+                  placeholder="123456"
                   value={token}
-                  onChangeText={setToken}
+                  onChangeText={(t) => setToken(t.replace(/\D/g, ''))}
                 />
-                <View style={{ marginTop: 16 }}>
+                {info ? (
+                  <View className="mt-2 rounded-xl border border-sky-400/30 bg-sky-50 px-3 py-2">
+                    <Text className="text-xs text-sky-900">{info}</Text>
+                  </View>
+                ) : null}
+                {error ? (
+                  <View className="mt-2 rounded-xl border border-destructive/30 bg-destructive/10 px-3 py-2">
+                    <Text className="text-xs text-destructive">{error}</Text>
+                  </View>
+                ) : null}
+                <View className="mt-4">
                   <Button
                     onPress={() => void verifyCode()}
                     loading={busy}
@@ -214,16 +210,8 @@ export default function SignIn() {
                     Verify
                   </Button>
                 </View>
-                <Button variant="ghost" onPress={() => setStep('phone')}>
-                  Change number
-                </Button>
               </>
             )}
-            {error ? (
-              <Text className="mt-2 text-destructive" style={{ fontSize: 12 }}>
-                {error}
-              </Text>
-            ) : null}
           </View>
         </KeyboardAvoidingView>
       </SafeAreaView>

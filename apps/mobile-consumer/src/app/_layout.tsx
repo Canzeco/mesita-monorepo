@@ -18,6 +18,7 @@ import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
+import { View } from 'react-native';
 import { PortalHost } from '@rn-primitives/portal';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
@@ -35,6 +36,13 @@ const queryClient = new QueryClient({
     },
   },
 });
+
+const MODAL_SCREEN = {
+  presentation: 'modal' as const,
+  animation: 'slide_from_bottom' as const,
+  gestureEnabled: true,
+  contentStyle: { backgroundColor: '#fff7f8' },
+};
 
 function RootLayout() {
   const [fontsLoaded] = useFonts({
@@ -54,8 +62,9 @@ function RootLayout() {
     }
   }, [fontsLoaded]);
 
+  // Branded wash while fonts load — avoids blank flash before splash hide (#50).
   if (!fontsLoaded) {
-    return null;
+    return <View style={{ flex: 1, backgroundColor: '#fff7f8' }} />;
   }
 
   return (
@@ -69,15 +78,12 @@ function RootLayout() {
               contentStyle: { backgroundColor: '#fff7f8' },
             }}
           >
-            {/* Place opens as modal sheet — web @modal / SlideOver peer (#32). */}
+            {/* Place / coupon / reservation — web @modal / SlideOver peers. */}
+            <Stack.Screen name="place/[id]" options={MODAL_SCREEN} />
+            <Stack.Screen name="coupon/[id]" options={MODAL_SCREEN} />
             <Stack.Screen
-              name="place/[id]"
-              options={{
-                presentation: 'modal',
-                animation: 'slide_from_bottom',
-                gestureEnabled: true,
-                contentStyle: { backgroundColor: '#fff7f8' },
-              }}
+              name="saved/reservation/[id]"
+              options={MODAL_SCREEN}
             />
           </Stack>
           <Toaster />
