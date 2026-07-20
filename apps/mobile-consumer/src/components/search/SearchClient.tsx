@@ -34,6 +34,7 @@ import { matchPredictionToPlace } from '@/lib/match-prediction';
 import { newSessionToken, withDistances } from '@/lib/search-utils';
 import { supabase } from '@/lib/supabase';
 import { useDiscoveryFilters } from '@/lib/use-discovery-filters';
+import { TAB_OVERLAY_BOTTOM } from '@/lib/tab-layout';
 import { errMsg } from '@/lib/utils';
 
 const SUGGEST_DEBOUNCE_MS = 300;
@@ -217,7 +218,7 @@ export function SearchClient() {
     : null;
 
   return (
-    <View className="flex-1 bg-background">
+    <View className="flex-1">
       <View className="absolute inset-0">
         <SearchMap
           places={visible}
@@ -284,7 +285,7 @@ export function SearchClient() {
         fetchError={fetchError}
         places={visible}
         selectedId={selectedId}
-        bottomInset={insets.bottom}
+        bottomInset={TAB_OVERLAY_BOTTOM}
         onCollapse={() => setRailCollapsed(true)}
         onExpand={() => setRailCollapsed(false)}
         onSelectPlace={setSelectedId}
@@ -297,7 +298,7 @@ export function SearchClient() {
           onPress={() => router.push(placePath(selectedPlace.id))}
           className="absolute z-20 mx-4 rounded-2xl border border-border bg-card px-4 py-3"
           style={{
-            bottom: Math.max(insets.bottom, 8) + 52,
+            bottom: TAB_OVERLAY_BOTTOM + 52,
             left: 0,
             right: 0,
             ...SHADOW_ELEV,

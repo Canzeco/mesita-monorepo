@@ -8,6 +8,7 @@ import {
   computeRewardStats,
   useConsumerPayTickets,
 } from '@/lib/hooks/useConsumerPayTickets';
+import { TAB_SCROLL_PADDING_BOTTOM } from '@/lib/tab-layout';
 
 // Rewards scroll: top cards → coral passport → tickets (web PayClient).
 export function PayClient({
@@ -33,7 +34,7 @@ export function PayClient({
       contentContainerStyle={{
         paddingHorizontal: 16,
         paddingTop: 16,
-        paddingBottom: 28,
+        paddingBottom: TAB_SCROLL_PADDING_BOTTOM,
         gap: 16,
       }}
       showsVerticalScrollIndicator={false}

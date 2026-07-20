@@ -26,6 +26,7 @@ import { MockControls } from '@/components/me/MockControls';
 import { ShareModal } from '@/components/me/ShareModal';
 import { VerifySocialSheet } from '@/components/me/VerifySocialSheet';
 import { ShellWash } from '@/components/ui/HeroBackdrop';
+import { TAB_SCROLL_PADDING_BOTTOM } from '@/lib/tab-layout';
 import { BoxRow } from '@/components/ui/BoxRow';
 import { Button } from '@/components/ui/Button';
 import { inboxPath } from '@/lib/consumer-route-contract';
@@ -85,7 +86,7 @@ export default function MeScreen() {
     <SafeAreaView className="flex-1" edges={['top']}>
       <ScrollView
         className="flex-1"
-        contentContainerStyle={{ padding: 16, paddingBottom: 40, gap: 12 }}
+        contentContainerStyle={{ padding: 16, paddingBottom: TAB_SCROLL_PADDING_BOTTOM, gap: 12 }}
         showsVerticalScrollIndicator={false}
       >
         <IdentityHero

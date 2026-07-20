@@ -30,8 +30,8 @@ export const GRADIENTS = {
   // --gradient-hero vertical wash; use <HeroBackdrop /> for the full
   // radial-blob approximation (two soft pink blobs + this wash).
   hero: ['#fff9fa', '#f5e6e8'] as const,
-  // Soft shell wash (web `from-background to-muted/30`)
-  shell: [COLORS.background, COLORS.muted] as const,
+  // Soft shell wash (web `from-background to-muted/30`) — end ≈ muted @ 30%.
+  shell: [COLORS.background, '#fcf3f4'] as const,
   peacock: ['#ff3a84', '#ed1c80', '#ed4096'] as const,
   // Instagram brand gradient (social verify + IG-connected chrome)
   instagram: ['#f58529', '#dd2a7b', '#8134af'] as const,

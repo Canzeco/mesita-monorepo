@@ -358,7 +358,7 @@ function DeckBody({
   const saved = isSaved(v.id);
 
   return (
-    <View className="flex-1 px-3 pb-3 pt-2">
+    <View className="flex-1 px-3 pb-4 pt-2">
       <View className="relative flex-1 overflow-hidden rounded-2xl">
         {next ? (
           <Animated.View
