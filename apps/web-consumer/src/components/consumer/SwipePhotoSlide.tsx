@@ -115,22 +115,39 @@ function WitcPhotoSlide({
     Math.min(fieldsHeight, SWIPE_CARD_WITC_FIELDS_TARGET_H),
     1,
   );
-  const reflectStyle: CSSProperties = {
-    WebkitBoxReflect:
-      "below 0px linear-gradient(to bottom, rgba(0,0,0,0.58), rgba(0,0,0,0.9))",
-  };
 
   return (
     <div
-      className={cn("flex h-full w-full flex-col overflow-hidden", className)}
+      className={cn(
+        "relative flex h-full w-full flex-col overflow-hidden",
+        className,
+      )}
     >
-      <div className={SWIPE_CARD_WITC_PHOTO_BAND} style={reflectStyle}>
+      <div className={SWIPE_CARD_WITC_PHOTO_BAND}>
         <CoverImage
           src={src}
           alt={alt}
           onNaturalSize={onNaturalSize}
           className="h-full w-full object-bottom"
         />
+      </div>
+      {/*
+        Reflection = a vertically flipped copy of the same cover image, NOT
+        `-webkit-box-reflect` (that non-standard property silently fails on iOS
+        Safari inside the card's composited/transformed layer, and never
+        rendered on Firefox — the reflection was desktop-only). This box is the
+        band rectangle (top:0 → bottom:stripHeight, so its height auto-matches
+        the band with no measurement → identical object-cover scale), flipped
+        about its bottom edge (the seam) so it mirrors into the strip region;
+        the card's overflow-hidden clips the part below the card. It sits before
+        the strip in DOM, so the blur + darkening overlays paint on top of it.
+      */}
+      <div
+        className="pointer-events-none absolute inset-x-0 top-0 origin-bottom overflow-hidden [transform:scaleY(-1)]"
+        style={{ bottom: stripHeight }}
+        aria-hidden
+      >
+        <CoverImage src={src} alt="" className="h-full w-full object-bottom" />
       </div>
       <div
         className={SWIPE_CARD_FIELDS_STRIP}
