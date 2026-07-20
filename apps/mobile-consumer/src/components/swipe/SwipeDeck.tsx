@@ -1,12 +1,12 @@
 import { useQuery } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
-import {
-  RotateCcw,
-} from 'lucide-react-native';
+import { RotateCcw, SlidersHorizontal } from 'lucide-react-native';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Dimensions,
+  Pressable,
+  Text,
   View,
 } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
@@ -24,6 +24,7 @@ import Animated, {
 // Compiler immutability rule does not understand that contract.
 /* eslint-disable react-hooks/immutability */
 
+import { FilterSheet } from '@/components/discovery/FilterSheet';
 import { PlaceSwipeCard } from '@/components/swipe/PlaceSwipeCard';
 import { SwipeActionRow } from '@/components/swipe/SwipeActionRow';
 import { SwipeDecisionBadge } from '@/components/swipe/SwipeDecisionBadge';
@@ -38,17 +39,28 @@ import {
   SwipeExitStamp,
   SwipeTutorialOverlay,
 } from '@/components/swipe/SwipeDeckOverlays';
-import { FiltersComingSoonSheet } from '@/components/ui/FiltersComingSoon';
+import { requestHomeMode } from '@/components/swipe/home-mode-intent';
 import {
   apiFetchPublicPlaces,
   apiRecommendDeck,
   type Place,
 } from '@/lib/api/places';
 import {
+  applyDiscoveryFilters,
+  deriveCategoryOptions,
+  discoveryFiltersAreActive,
+  orderByRandomness,
+} from '@/lib/discovery-filters-engine';
+import {
   upsertSavedPlacePreview,
   useSavedPlaces,
 } from '@/lib/saved-places';
 import { supabase } from '@/lib/supabase';
+import { toast } from '@/lib/toast';
+import {
+  resetDiscoveryFilters,
+  useDiscoveryFilters,
+} from '@/lib/use-discovery-filters';
 import { errMsg } from '@/lib/utils';
 import { useSwipeTutorial } from './useSwipeTutorial';
 
@@ -73,8 +85,16 @@ export function SwipeDeck() {
   const [overridePlaces, setOverridePlaces] = useState<Place[] | null>(null);
   const [restarting, setRestarting] = useState(false);
   const [coords, setCoords] = useState<Coords | null>(null);
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const { isSaved, setSaved } = useSavedPlaces();
   const { showTutorial, dismissTutorial } = useSwipeTutorial();
+
+  // Shared discovery filters (MESITA-646/672): the deck below narrows LIVE, the
+  // 0–5 randomness level reorders it, and the red Filter dot lights on any
+  // deviation from defaults. ONE global store — Search reads the exact same
+  // state, so filters carry across surfaces.
+  const filters = useDiscoveryFilters();
+  const filtersActive = discoveryFiltersAreActive(filters);
 
   const deckQuery = useQuery({
     queryKey: ['swipe-deck'],
@@ -102,9 +122,28 @@ export function SwipeDeck() {
     );
   }, []);
 
+  // Distances measure from the chosen zone center (a searched location) or, with
+  // none, the device fix — the SAME center the distance filter rings.
+  const center: Coords | null = filters.zone ?? coords;
   const located = useMemo(
-    () => places.map((p) => withUserDistance(p, coords)),
-    [places, coords],
+    () => places.map((p) => withUserDistance(p, center)),
+    [places, center],
+  );
+
+  // The deck the user actually swipes: the shared filters narrow `located` live
+  // and the randomness level reorders it. Category options derive from the RAW
+  // snapshot so the sheet always offers everything this deck actually has.
+  const deck = useMemo(
+    () =>
+      orderByRandomness(
+        applyDiscoveryFilters(located, filters),
+        filters.randomness,
+      ),
+    [located, filters],
+  );
+  const categoryOptions = useMemo(
+    () => deriveCategoryOptions(places),
+    [places],
   );
 
   const restart = useCallback(async () => {
@@ -144,6 +183,8 @@ export function SwipeDeck() {
     );
   }
 
+  // Genuinely empty catalog — no places at all, no predicates to blame. Existing
+  // copy, no reset (MESITA-670).
   if (places.length === 0) {
     return (
       <EmptyState
@@ -153,29 +194,111 @@ export function SwipeDeck() {
     );
   }
 
-  if (idx >= located.length) {
+  // The sheet rides along in EVERY branch below — narrowing to zero results
+  // while it's open must not unmount it mid-interaction.
+  const sheet = (
+    <FilterSheet
+      open={filtersOpen}
+      onClose={() => setFiltersOpen(false)}
+      categoryOptions={categoryOptions}
+      count={deck.length}
+      hasLocation={filters.zone != null || coords != null}
+    />
+  );
+
+  // Filters excluded EVERYTHING — the catalog isn't empty, the user's predicates
+  // did it. A distinct state from "caught up": offer a way out, not a restart.
+  if (deck.length === 0) {
     return (
-      <EmptyState
-        title="You're caught up"
-        body="You've seen every place in this deck. Start over from the top."
-        actionLabel={restarting ? 'Loading...' : 'Start over'}
-        onAction={restart}
-        actionDisabled={restarting}
-        actionIcon={restarting ? undefined : RotateCcw}
-      />
+      <View className="flex-1">
+        <FilterEmptyState
+          onAdjust={() => setFiltersOpen(true)}
+          onReset={resetDiscoveryFilters}
+        />
+        {sheet}
+      </View>
+    );
+  }
+
+  // Past the last card in the (filtered) deck — caught up. Existing copy +
+  // Start over; no reset (MESITA-670).
+  if (idx >= deck.length) {
+    return (
+      <View className="flex-1">
+        <EmptyState
+          title="You're caught up"
+          body="You've seen every place in this deck. Start over from the top."
+          actionLabel={restarting ? 'Loading...' : 'Start over'}
+          onAction={restart}
+          actionDisabled={restarting}
+          actionIcon={restarting ? undefined : RotateCcw}
+        />
+        {sheet}
+      </View>
     );
   }
 
   return (
-    <DeckBody
-      places={located}
-      idx={idx}
-      setIdx={setIdx}
-      isSaved={isSaved}
-      setSaved={setSaved}
-      showTutorial={showTutorial}
-      dismissTutorial={dismissTutorial}
-    />
+    <View className="flex-1">
+      <DeckBody
+        places={deck}
+        idx={idx}
+        setIdx={setIdx}
+        isSaved={isSaved}
+        setSaved={setSaved}
+        showTutorial={showTutorial}
+        dismissTutorial={dismissTutorial}
+        filtersActive={filtersActive}
+        onOpenFilters={() => setFiltersOpen(true)}
+      />
+      {sheet}
+    </View>
+  );
+}
+
+// Two-branch empty state, filtered branch: predicates excluded everything.
+function FilterEmptyState({
+  onAdjust,
+  onReset,
+}: {
+  onAdjust: () => void;
+  onReset: () => void;
+}) {
+  return (
+    <View className="flex-1 items-center justify-center gap-4 px-8">
+      <View className="size-14 items-center justify-center rounded-2xl bg-muted">
+        <SlidersHorizontal color="#775254" size={24} />
+      </View>
+      <Text className="text-center font-display text-2xl font-semibold text-foreground">
+        Nothing matches your filters
+      </Text>
+      <Text className="max-w-xs text-center text-sm text-muted-foreground">
+        Loosen or clear your filters to see more places.
+      </Text>
+      <View className="mt-2 flex-row items-center gap-2.5">
+        <Pressable
+          onPress={onAdjust}
+          accessibilityRole="button"
+          accessibilityLabel="Adjust filters"
+          className="rounded-lg border border-border bg-card px-5 py-2.5 active:bg-muted"
+        >
+          <Text className="text-sm font-semibold text-foreground">
+            Adjust filters
+          </Text>
+        </Pressable>
+        <Pressable
+          onPress={onReset}
+          accessibilityRole="button"
+          accessibilityLabel="Reset filters"
+          className="flex-row items-center gap-2 rounded-lg bg-foreground px-5 py-2.5 active:opacity-90"
+        >
+          <RotateCcw color="#fff7f8" size={16} />
+          <Text className="text-sm font-semibold text-background">
+            Reset filters
+          </Text>
+        </Pressable>
+      </View>
+    </View>
   );
 }
 
@@ -187,6 +310,8 @@ function DeckBody({
   setSaved,
   showTutorial,
   dismissTutorial,
+  filtersActive,
+  onOpenFilters,
 }: {
   places: Place[];
   idx: number;
@@ -195,12 +320,13 @@ function DeckBody({
   setSaved: (id: string, saved: boolean) => void;
   showTutorial: boolean;
   dismissTutorial: () => void;
+  filtersActive: boolean;
+  onOpenFilters: () => void;
 }) {
   const router = useRouter();
   const v = places[idx]!;
   const next = idx + 1 < places.length ? places[idx + 1]! : null;
   const [stamp, setStamp] = useState<null | 'left' | 'right'>(null);
-  const [filtersOpen, setFiltersOpen] = useState(false);
 
   const translateX = useSharedValue(0);
   const exiting = useSharedValue(0); // 0 idle, -1 left, 1 right
@@ -217,8 +343,18 @@ function DeckBody({
       if (exiting.value !== 0) return;
       dismissTutorial();
       if (dir === 'right') {
+        // Save + a "Saved · View" toast, only on a fresh save (web parity).
+        // "View" asks the Home hub to switch to Favorites (see home-mode-intent).
+        const already = isSaved(v.id);
         upsertSavedPlacePreview(v);
         setSaved(v.id, true);
+        if (!already) {
+          toast.action(
+            `Saved ${v.name}`,
+            { label: 'View', onClick: () => requestHomeMode('favorites') },
+            { tone: 'success' },
+          );
+        }
       }
       setStamp(dir);
       exiting.value = dir === 'right' ? 1 : -1;
@@ -230,7 +366,7 @@ function DeckBody({
         },
       );
     },
-    [advance, dismissTutorial, exiting, setSaved, translateX, v],
+    [advance, dismissTutorial, exiting, isSaved, setSaved, translateX, v],
   );
 
   const pan = Gesture.Pan()
@@ -306,13 +442,13 @@ function DeckBody({
             ]}
             pointerEvents="none"
           >
-            <PlaceSwipeCard place={next} />
+            <PlaceSwipeCard key={next.id} place={next} />
           </Animated.View>
         ) : null}
 
         <GestureDetector gesture={pan}>
           <Animated.View style={[{ flex: 1 }, frontStyle]}>
-            <PlaceSwipeCard place={v} />
+            <PlaceSwipeCard key={v.id} place={v} />
 
             <SwipeDecisionBadge side="left" translateX={translateX} />
             <SwipeDecisionBadge side="right" translateX={translateX} />
@@ -327,17 +463,13 @@ function DeckBody({
       <View className="mt-3 flex-row items-center gap-1.5">
         <SwipeActionRow
           saved={saved}
-          onOpenFilters={() => setFiltersOpen(true)}
+          filtersActive={filtersActive}
+          onOpenFilters={onOpenFilters}
           onSkip={() => beginExit('left')}
           onOpenInfo={() => router.push(`/place/${v.id}`)}
           onSave={() => beginExit('right')}
         />
       </View>
-
-      <FiltersComingSoonSheet
-        open={filtersOpen}
-        onClose={() => setFiltersOpen(false)}
-      />
     </View>
   );
 }

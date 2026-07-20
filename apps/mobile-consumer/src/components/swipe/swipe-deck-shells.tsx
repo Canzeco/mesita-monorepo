@@ -57,6 +57,7 @@ export function ActionBtn({
   disabled,
   primary,
   filled,
+  showDot,
 }: {
   label: string;
   Icon: typeof X;
@@ -64,6 +65,8 @@ export function ActionBtn({
   disabled?: boolean;
   primary?: boolean;
   filled?: boolean;
+  /** Red status dot (top-right) — used for the "filters active" Filter button. */
+  showDot?: boolean;
 }) {
   if (primary) {
     return (
@@ -92,6 +95,7 @@ export function ActionBtn({
           <Icon color="#fff" size={16} fill={filled ? '#fff' : 'transparent'} />
           <Text className="text-xs font-semibold text-white">{label}</Text>
         </LinearGradient>
+        {showDot ? <ActionDot /> : null}
       </Pressable>
     );
   }
@@ -114,7 +118,18 @@ export function ActionBtn({
       >
         {label}
       </Text>
+      {showDot ? <ActionDot /> : null}
     </Pressable>
+  );
+}
+
+// Filters-active indicator — the red dot on the Filter button (MESITA-633).
+function ActionDot() {
+  return (
+    <View
+      className="absolute top-1 right-1 size-2 rounded-full border border-card bg-primary"
+      pointerEvents="none"
+    />
   );
 }
 

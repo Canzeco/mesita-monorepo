@@ -1,12 +1,13 @@
 import { Flame, Heart, Sparkles, Users } from 'lucide-react-native';
 import type { ComponentType } from 'react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { FavoritesTab } from '@/components/home/FavoritesTab';
 import { AskAiTab } from '@/components/memo/AskAiTab';
 import { SwipeDeck } from '@/components/swipe/SwipeDeck';
+import { subscribeHomeMode } from '@/components/swipe/home-mode-intent';
 import { ShellWash } from '@/components/ui/HeroBackdrop';
 import { ComingSoonModal } from '@/components/ui/ComingSoonModal';
 import { SegmentNav, type SegmentItem } from '@/components/ui/SegmentNav';
@@ -43,6 +44,10 @@ export default function HomeScreen() {
   const [mode, setMode] = useState<Mode>('swipe');
   const [soonMode, setSoonMode] = useState<SoonMode | null>(null);
   const soon = soonMode ? SOON_META[soonMode] : null;
+
+  // A Swipe "Saved · View" toast requests the Favorites segment (the deck lives
+  // outside this screen and can't flip the parent segment directly).
+  useEffect(() => subscribeHomeMode((m) => setMode(m)), []);
 
   return (
     <ShellWash>
