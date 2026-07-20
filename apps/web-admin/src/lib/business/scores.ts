@@ -707,7 +707,7 @@ export const DEFAULT_CONTEXT_CONFIG: ContextConfig = {
 // saves an override. Reset-to-defaults loads these values into the form;
 // Save writes the blob.
 //
-// RANGE TABLE (mirrored VERBATIM in admin-web-update-scoring-config).
+// RANGE TABLE (mirrored VERBATIM in admin-web-update-lineup-config).
 // The encoder (EM_ENCODER — small @ 1536) is a FIXED constant, deliberately
 // absent: fixed decisions never enter the blob.
 //   laneN.{organic,inorganic,hybrid}  0–50 int each, sum ≥ 1 (0 = lane off;

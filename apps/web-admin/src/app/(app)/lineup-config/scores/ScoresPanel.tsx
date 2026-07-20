@@ -38,7 +38,7 @@ export function ScoresPanel() {
                 {l.parts.map((p, i) => (
                   <span key={p} className="flex items-center gap-1.5">
                     <Link
-                      href={`/scoring-config/subscores#${p}`}
+                      href={`/lineup-config/subscores#${p}`}
                       title={`${SUBSCORE_BY_ID[p].name} — tune it on Subscores`}
                       className="border-border/70 bg-card hover:border-primary/50 hover:bg-primary/10 rounded-md border px-2 py-0.5 font-mono text-[12px] font-semibold transition"
                     >

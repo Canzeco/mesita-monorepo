@@ -13,7 +13,7 @@ import { ATLAS_PARENT } from "@/app/(app)/atlas-config/nav";
 import { ENRICHER_PARENT } from "@/app/(app)/enricher-config/nav";
 import { MEMO_PARENT } from "@/app/(app)/memo-config/nav";
 import { RESERVATIONS_PARENT } from "@/app/(app)/reservations-config/nav";
-import { SCORING_PARENT } from "@/app/(app)/scoring-config/nav";
+import { SCORING_PARENT } from "@/app/(app)/lineup-config/nav";
 import { SOURCING_PARENT } from "@/app/(app)/sourcing-config/nav";
 import {
   parseUnitId,

@@ -8,25 +8,27 @@ import { FlaskConical, Gauge, Layers, Sigma, SlidersHorizontal } from "lucide-re
 //   Playground SIMULATE    both simulators at the CURRENT form values
 // One job per page (2026-07-20 restructure; plan: lineup-config-replan).
 //
-// The sidebar and the page header both read "Lineup Config" — Lineup is the
-// candidate-generation engine (consumer + intent → scored candidates → the
-// deck). The route, the scoring_config column and the admin-web-*-scoring-config
-// EF names stay "scoring" on purpose: an internal-identifier rename is a
-// separate DB + EF migration, not a UI relabel.
+// The sidebar, the page header, the ROUTE (/lineup-config, since 2026-07-20;
+// /scoring-config/* permanently redirects) and the EF slugs
+// (admin-web-get/update-lineup-config — the old *-scoring-config pair stays
+// deployed as a compat alias until old admin builds drain) all read Lineup.
+// Only the app_settings.scoring_config COLUMN keeps the old name — renaming
+// the singleton's column buys nothing user-visible and is deferred to the
+// recommender-*→lineup-* backend batch.
 //
 // Memo is NOT a tab here: it's a product agent (a RAG concierge) that calls
 // Lineup as a tool, with its own section at /memo-config.
 export const SCORING_PARENT = {
-  href: "/scoring-config",
+  href: "/lineup-config",
   label: "Lineup Config",
   Icon: Gauge,
 } as const;
 
 export const SCORING_SUBROUTES = [
-  { href: "/scoring-config/subscores", label: "Subscores", Icon: SlidersHorizontal },
-  { href: "/scoring-config/scores", label: "Scores", Icon: Sigma },
-  { href: "/scoring-config/lanes", label: "Lanes", Icon: Layers },
-  { href: "/scoring-config/playground", label: "Playground", Icon: FlaskConical },
+  { href: "/lineup-config/subscores", label: "Subscores", Icon: SlidersHorizontal },
+  { href: "/lineup-config/scores", label: "Scores", Icon: Sigma },
+  { href: "/lineup-config/lanes", label: "Lanes", Icon: Layers },
+  { href: "/lineup-config/playground", label: "Playground", Icon: FlaskConical },
 ] as const satisfies ReadonlyArray<{
   href: string;
   label: string;
