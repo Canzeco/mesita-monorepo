@@ -1,12 +1,12 @@
 import type { LucideIcon } from "lucide-react";
-import { Gauge, Layers, SlidersHorizontal } from "lucide-react";
+import { FlaskConical, Gauge, Layers, Sigma, SlidersHorizontal } from "lucide-react";
 
-// One sidebar entry with TWO tabs (v10, MESITA-644): Subscores defines and
-// configures each of the five subscores (EM · SM · GP · RP · XX) — knobs +
-// data-access — and carries its own Subscore playground (one consumer ×
-// intent × place, internals visible). Scores & Lanes holds how subscores
-// combine into a score per lane and how the three lanes merge into the final
-// deck — and carries its own Deck playground (full end-to-end run).
+// One sidebar entry with FOUR tabs — the operator's pipeline, in order:
+//   Subscores  TUNE        the five subscores' knobs + data access
+//   Scores     UNDERSTAND  how the five multiply into the three lane scores
+//   Lanes      COMPOSE     per-lane deck counts · the merge · Lineup's callers
+//   Playground SIMULATE    both simulators at the CURRENT form values
+// One job per page (2026-07-20 restructure; plan: lineup-config-replan).
 //
 // The sidebar and the page header both read "Lineup Config" — Lineup is the
 // candidate-generation engine (consumer + intent → scored candidates → the
@@ -24,7 +24,9 @@ export const SCORING_PARENT = {
 
 export const SCORING_SUBROUTES = [
   { href: "/scoring-config/subscores", label: "Subscores", Icon: SlidersHorizontal },
-  { href: "/scoring-config/lanes", label: "Scores & Lanes", Icon: Layers },
+  { href: "/scoring-config/scores", label: "Scores", Icon: Sigma },
+  { href: "/scoring-config/lanes", label: "Lanes", Icon: Layers },
+  { href: "/scoring-config/playground", label: "Playground", Icon: FlaskConical },
 ] as const satisfies ReadonlyArray<{
   href: string;
   label: string;

@@ -1,7 +1,7 @@
-import { redirect } from "next/navigation";
+import { PlaygroundShell } from "./PlaygroundShell";
 
-// v10 (MESITA-644): each tab carries its own playground now — the Subscore
-// playground on Subscores, the Deck playground on Scores & Lanes.
-export default function ScoringPlaygroundRedirect() {
-  redirect("/scoring-config/subscores");
+// Playground — both simulators (Subscore n = 1 · Deck full run) at the
+// CURRENT form values, under one shared specimen bar. Writes nothing.
+export default function ScoringPlaygroundPage() {
+  return <PlaygroundShell />;
 }
