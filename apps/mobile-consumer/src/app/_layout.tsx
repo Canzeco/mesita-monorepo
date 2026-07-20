@@ -68,7 +68,18 @@ function RootLayout() {
               headerShown: false,
               contentStyle: { backgroundColor: '#fff7f8' },
             }}
-          />
+          >
+            {/* Place opens as modal sheet — web @modal / SlideOver peer (#32). */}
+            <Stack.Screen
+              name="place/[id]"
+              options={{
+                presentation: 'modal',
+                animation: 'slide_from_bottom',
+                gestureEnabled: true,
+                contentStyle: { backgroundColor: '#fff7f8' },
+              }}
+            />
+          </Stack>
           <Toaster />
           {/* PortalHost for @rn-primitives; sheets use RN Modal. */}
           <PortalHost />

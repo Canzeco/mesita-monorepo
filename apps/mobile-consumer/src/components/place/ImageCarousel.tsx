@@ -3,17 +3,25 @@ import { useState } from 'react';
 import {
   NativeScrollEvent,
   NativeSyntheticEvent,
+  Pressable,
   ScrollView,
   View,
   useWindowDimensions,
 } from 'react-native';
 
+import {
+  CarouselPillDots,
+  CarouselSlideCounter,
+} from '@/components/place/image-carousel-chrome';
+
 export function ImageCarousel({
   photos,
   alt,
+  onIdxChange,
 }: {
   photos: string[];
   alt: string;
+  onIdxChange?: (idx: number) => void;
 }) {
   const { width: windowWidth } = useWindowDimensions();
   // Screen width minus outer px-4 (16*2) — bare Box has no inner padding.
@@ -22,44 +30,70 @@ export function ImageCarousel({
 
   if (photos.length === 0) return null;
 
+  const setIndex = (next: number) => {
+    if (next === idx || next < 0 || next >= photos.length) return;
+    setIdx(next);
+    onIdxChange?.(next);
+  };
+
   const onScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
     const x = e.nativeEvent.contentOffset.x;
     const next = Math.round(x / width);
-    if (next !== idx && next >= 0 && next < photos.length) setIdx(next);
+    setIndex(next);
   };
 
   return (
     <View className="overflow-hidden rounded-2xl bg-muted">
-      <ScrollView
-        horizontal
-        pagingEnabled
-        showsHorizontalScrollIndicator={false}
-        onScroll={onScroll}
-        scrollEventThrottle={16}
-        style={{ width, aspectRatio: 1 }}
-      >
-        {photos.map((uri, i) => (
-          <Image
-            key={`${uri}-${i}`}
-            source={{ uri }}
-            accessibilityLabel={`${alt} photo ${i + 1}`}
-            style={{ width, height: width }}
-            contentFit="cover"
-          />
-        ))}
-      </ScrollView>
-      {photos.length > 1 ? (
-        <View className="absolute bottom-3 left-0 right-0 flex-row items-center justify-center gap-1.5">
-          {photos.map((_, i) => (
-            <View
-              key={i}
-              className={`h-1.5 rounded-full ${
-                i === idx ? 'w-4 bg-white' : 'w-1.5 bg-white/50'
-              }`}
+      <View style={{ width, aspectRatio: 1 }}>
+        <ScrollView
+          horizontal
+          pagingEnabled
+          showsHorizontalScrollIndicator={false}
+          onScroll={onScroll}
+          scrollEventThrottle={16}
+          style={{ width, aspectRatio: 1 }}
+        >
+          {photos.map((uri, i) => (
+            <Image
+              key={`${uri}-${i}`}
+              source={{ uri }}
+              accessibilityLabel={`${alt} photo ${i + 1}`}
+              style={{ width, height: width }}
+              contentFit="cover"
             />
           ))}
-        </View>
-      ) : null}
+        </ScrollView>
+        {photos.length > 1 ? (
+          <>
+            <CarouselPillDots count={photos.length} activeIdx={idx} />
+            <CarouselSlideCounter idx={idx} count={photos.length} />
+            <Pressable
+              accessibilityLabel="Previous photo"
+              onPress={() => setIndex(idx - 1)}
+              style={{
+                position: 'absolute',
+                top: 0,
+                bottom: 0,
+                left: 0,
+                width: '33%',
+                zIndex: 10,
+              }}
+            />
+            <Pressable
+              accessibilityLabel="Next photo"
+              onPress={() => setIndex(idx + 1)}
+              style={{
+                position: 'absolute',
+                top: 0,
+                bottom: 0,
+                right: 0,
+                width: '33%',
+                zIndex: 10,
+              }}
+            />
+          </>
+        ) : null}
+      </View>
     </View>
   );
 }

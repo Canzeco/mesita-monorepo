@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
 import { RotateCcw } from 'lucide-react-native';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Dimensions, View } from 'react-native';
+import { Dimensions, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   Extrapolation,
@@ -19,6 +19,7 @@ import Animated, {
 /* eslint-disable react-hooks/immutability */
 
 import { FilterSheet } from '@/components/discovery/FilterSheet';
+import { DeckSkeleton } from '@/components/swipe/DeckSkeleton';
 import { PlaceSwipeCard } from '@/components/swipe/PlaceSwipeCard';
 import { SwipeActionRow } from '@/components/swipe/SwipeActionRow';
 import { SwipeDecisionBadge } from '@/components/swipe/SwipeDecisionBadge';
@@ -162,8 +163,8 @@ export function SwipeDeck() {
 
   if (deckQuery.isLoading && !overridePlaces) {
     return (
-      <View className="flex-1 items-center justify-center">
-        <ActivityIndicator color="#fb2b7b" size="large" />
+      <View className="flex-1">
+        <DeckSkeleton />
         {sheet}
       </View>
     );
@@ -215,7 +216,7 @@ export function SwipeDeck() {
       <View className="relative flex-1">
         <EmptyState
           title="You're caught up"
-          body="You've seen every place in this deck. Start over from the top."
+          body="You've seen every place in this filter. Check the catalog or map, widen your filters, or start over from the top."
           actionLabel={restarting ? 'Loading...' : 'Start over'}
           onAction={restart}
           actionDisabled={restarting}
@@ -358,8 +359,8 @@ function DeckBody({
   const saved = isSaved(v.id);
 
   return (
-    <View className="flex-1 px-3 pb-4 pt-2">
-      <View className="relative flex-1 overflow-hidden rounded-2xl">
+    <View className="flex-1 px-3 pb-3 pt-2">
+      <View className="relative min-h-0 flex-1 overflow-hidden rounded-3xl">
         {next ? (
           <Animated.View
             style={[
@@ -374,13 +375,13 @@ function DeckBody({
             ]}
             pointerEvents="none"
           >
-            <PlaceSwipeCard place={next} />
+            <PlaceSwipeCard place={next} carousel={false} />
           </Animated.View>
         ) : null}
 
         <GestureDetector gesture={pan}>
           <Animated.View style={[{ flex: 1 }, frontStyle]}>
-            <PlaceSwipeCard place={v} />
+            <PlaceSwipeCard place={v} carousel />
 
             <SwipeDecisionBadge side="left" translateX={translateX} />
             <SwipeDecisionBadge side="right" translateX={translateX} />
