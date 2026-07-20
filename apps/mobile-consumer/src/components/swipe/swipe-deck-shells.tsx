@@ -1,5 +1,5 @@
 import { LinearGradient } from 'expo-linear-gradient';
-import { Compass, RotateCcw, X } from 'lucide-react-native';
+import { Compass, RotateCcw, SlidersHorizontal, X } from 'lucide-react-native';
 import { Pressable, Text, View } from 'react-native';
 
 import { GRADIENTS, GRADIENT_DIAGONAL, SHADOW_GLOW } from '@/constants/brand';
@@ -50,6 +50,44 @@ export function EmptyState({
   );
 }
 
+/** Filters narrowed the deck to zero — distinct from catalog-empty / exhausted. */
+export function FilterEmptyDeck({
+  onAdjustFilters,
+  onResetFilters,
+}: {
+  onAdjustFilters: () => void;
+  onResetFilters: () => void;
+}) {
+  return (
+    <View className="flex-1 items-center justify-center gap-4 px-8">
+      <View className="size-14 items-center justify-center rounded-2xl bg-muted">
+        <SlidersHorizontal color="#775254" size={24} />
+      </View>
+      <Text className="text-center font-display text-2xl font-semibold tracking-tight text-foreground">
+        Nothing matches your filters
+      </Text>
+      <Text className="max-w-xs text-center text-sm text-muted-foreground">
+        Every place in the deck is filtered out right now. Loosen a filter, or
+        reset to see the full deck again.
+      </Text>
+      <Pressable
+        onPress={onAdjustFilters}
+        className="mt-2 flex-row items-center gap-2 rounded-lg bg-foreground px-5 py-2.5 active:opacity-90"
+      >
+        <SlidersHorizontal color="#fff7f8" size={16} />
+        <Text className="text-sm font-semibold text-background">
+          Adjust filters
+        </Text>
+      </Pressable>
+      <Pressable onPress={onResetFilters} hitSlop={8}>
+        <Text className="text-sm font-medium text-muted-foreground">
+          Reset filters
+        </Text>
+      </Pressable>
+    </View>
+  );
+}
+
 export function ActionBtn({
   label,
   Icon,
@@ -57,6 +95,8 @@ export function ActionBtn({
   disabled,
   primary,
   filled,
+  badge,
+  accessibilityLabel,
 }: {
   label: string;
   Icon: typeof X;
@@ -64,12 +104,16 @@ export function ActionBtn({
   disabled?: boolean;
   primary?: boolean;
   filled?: boolean;
+  /** Red active-dot (MESITA-633) for the Filter control. */
+  badge?: boolean;
+  accessibilityLabel?: string;
 }) {
   if (primary) {
     return (
       <Pressable
         onPress={onPress}
         disabled={disabled}
+        accessibilityLabel={accessibilityLabel ?? label}
         className="h-12 flex-1 active:opacity-90"
         style={{ borderRadius: 8, overflow: 'hidden' }}
       >
@@ -100,15 +144,26 @@ export function ActionBtn({
     <Pressable
       onPress={onPress}
       disabled={disabled}
+      accessibilityLabel={accessibilityLabel ?? label}
       className={`h-12 flex-1 flex-row items-center justify-center gap-1 rounded-lg border border-border ${
         disabled ? 'bg-muted/40' : 'bg-card active:bg-muted'
       }`}
     >
-      <Icon
-        color={disabled ? '#77525499' : '#775254'}
-        size={16}
-        fill={filled ? '#fb2b7b' : 'transparent'}
-      />
+      <View className="relative">
+        <Icon
+          color={disabled ? '#77525499' : '#775254'}
+          size={16}
+          fill={filled ? '#fb2b7b' : 'transparent'}
+        />
+        {badge ? (
+          <View
+            accessibilityElementsHidden
+            importantForAccessibility="no"
+            className="absolute -right-1 -top-1 h-2 w-2 rounded-full bg-red-500"
+            style={{ borderWidth: 2, borderColor: '#fff' }}
+          />
+        ) : null}
+      </View>
       <Text
         className={`text-xs font-medium ${disabled ? 'text-muted-foreground/70' : 'text-foreground/70'}`}
       >

@@ -1,3 +1,5 @@
+import type { Href } from 'expo-router';
+
 // Consumer route contract — port of apps/web-consumer/src/lib/consumer-route-contract.ts.
 // Canonical surface paths for agents + deep links. Expo Router file paths differ
 // from web hrefs where noted; helpers below return Expo-navigable hrefs.
@@ -84,30 +86,40 @@ export const CONSUMER_RESERVATION_SURFACE_PREFIX = '/saved/reservation';
 
 export type PlaceSurface = 'place' | 'saved';
 
+/** Cast dynamic Expo paths for typed router.push (typed routes regenerate lag). */
+function asHref(path: string): Href {
+  return path as Href;
+}
+
+/** Inbox routes exist on disk; typed-routes lag until expo export regenerates. */
+export function inboxPath(which: 'mine' | 'global' = 'mine'): Href {
+  return asHref(CONSUMER_ROUTES.inbox[which]);
+}
+
 export function placePath(
   idOrSlug: string,
   _surface: PlaceSurface = 'place',
-): string {
+): Href {
   // Mobile has a single place detail route (no /saved/place duplicate).
   void _surface;
-  return `${CONSUMER_ROUTES.place.prefix}${idOrSlug}`;
+  return asHref(`${CONSUMER_ROUTES.place.prefix}${idOrSlug}`);
 }
 
-export function reservationPath(id: string): string {
-  return `${CONSUMER_ROUTES.saved.reservationPrefix}${id}`;
+export function reservationPath(id: string): Href {
+  return asHref(`${CONSUMER_ROUTES.saved.reservationPrefix}${id}`);
 }
 
 export const COUPON_PATH_PREFIX = '/coupon/';
 
-export function couponPath(id: string): string {
-  return `${COUPON_PATH_PREFIX}${id}`;
+export function couponPath(id: string): Href {
+  return asHref(`${COUPON_PATH_PREFIX}${id}`);
 }
 
-export function rewardsTicketPath(id: string): string {
-  return `${CONSUMER_ROUTES.rewards.ticketPrefix}${id}`;
+export function rewardsTicketPath(id: string): Href {
+  return asHref(`${CONSUMER_ROUTES.rewards.ticketPrefix}${id}`);
 }
 
-export function ticketPath(id: string): string {
+export function ticketPath(id: string): Href {
   return rewardsTicketPath(id);
 }
 

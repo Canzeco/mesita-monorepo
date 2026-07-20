@@ -1,14 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
-import {
-  RotateCcw,
-} from 'lucide-react-native';
+import { RotateCcw } from 'lucide-react-native';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import {
-  ActivityIndicator,
-  Dimensions,
-  View,
-} from 'react-native';
+import { ActivityIndicator, Dimensions, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   Extrapolation,
@@ -24,11 +18,13 @@ import Animated, {
 // Compiler immutability rule does not understand that contract.
 /* eslint-disable react-hooks/immutability */
 
+import { FilterSheet } from '@/components/discovery/FilterSheet';
 import { PlaceSwipeCard } from '@/components/swipe/PlaceSwipeCard';
 import { SwipeActionRow } from '@/components/swipe/SwipeActionRow';
 import { SwipeDecisionBadge } from '@/components/swipe/SwipeDecisionBadge';
 import {
   EmptyState,
+  FilterEmptyDeck,
   shuffleDeck,
   sortPartnersFirst,
   withUserDistance,
@@ -38,7 +34,6 @@ import {
   SwipeExitStamp,
   SwipeTutorialOverlay,
 } from '@/components/swipe/SwipeDeckOverlays';
-import { FiltersComingSoonSheet } from '@/components/ui/FiltersComingSoon';
 import {
   apiFetchPublicPlaces,
   apiRecommendDeck,
@@ -46,10 +41,21 @@ import {
 } from '@/lib/api/places';
 import { placePath } from '@/lib/consumer-route-contract';
 import {
+  applyDiscoveryFilters,
+  createSeededRandom,
+  deriveCategoryOptions,
+  discoveryFiltersAreActive,
+  orderByRandomness,
+} from '@/lib/discovery-filters-engine';
+import {
   upsertSavedPlacePreview,
   useSavedPlaces,
 } from '@/lib/saved-places';
 import { supabase } from '@/lib/supabase';
+import {
+  resetDiscoveryFilters,
+  useDiscoveryFilters,
+} from '@/lib/use-discovery-filters';
 import { errMsg } from '@/lib/utils';
 import { useSwipeTutorial } from './useSwipeTutorial';
 
@@ -74,8 +80,12 @@ export function SwipeDeck() {
   const [overridePlaces, setOverridePlaces] = useState<Place[] | null>(null);
   const [restarting, setRestarting] = useState(false);
   const [coords, setCoords] = useState<Coords | null>(null);
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const { isSaved, setSaved } = useSavedPlaces();
   const { showTutorial, dismissTutorial } = useSwipeTutorial();
+  const filters = useDiscoveryFilters();
+  const filtersActive = discoveryFiltersAreActive(filters);
+  const [orderSeed] = useState(() => Math.floor(Math.random() * 0x7fffffff));
 
   const deckQuery = useQuery({
     queryKey: ['swipe-deck'],
@@ -103,9 +113,25 @@ export function SwipeDeck() {
     );
   }, []);
 
+  // Distances measure from the chosen zone center or the device fix.
+  const center = filters.zone ?? coords;
   const located = useMemo(
-    () => places.map((p) => withUserDistance(p, coords)),
-    [places, coords],
+    () => places.map((p) => withUserDistance(p, center)),
+    [places, center],
+  );
+
+  const deck = useMemo(
+    () =>
+      orderByRandomness(
+        applyDiscoveryFilters(located, filters),
+        filters.randomness,
+        createSeededRandom(orderSeed),
+      ),
+    [located, filters, orderSeed],
+  );
+  const categoryOptions = useMemo(
+    () => deriveCategoryOptions(places),
+    [places],
   );
 
   const restart = useCallback(async () => {
@@ -124,59 +150,97 @@ export function SwipeDeck() {
     }
   }, [deckQuery, restarting]);
 
+  const sheet = (
+    <FilterSheet
+      open={filtersOpen}
+      onClose={() => setFiltersOpen(false)}
+      categoryOptions={categoryOptions}
+      count={deck.length}
+      hasLocation={coords != null}
+    />
+  );
+
   if (deckQuery.isLoading && !overridePlaces) {
     return (
       <View className="flex-1 items-center justify-center">
         <ActivityIndicator color="#fb2b7b" size="large" />
+        {sheet}
       </View>
     );
   }
 
   if (fetchError) {
     return (
-      <EmptyState
-        title="Couldn't load places"
-        body={fetchError}
-        actionLabel="Try again"
-        onAction={() => {
-          void deckQuery.refetch();
-        }}
-      />
+      <>
+        <EmptyState
+          title="Couldn't load places"
+          body={fetchError}
+          actionLabel="Try again"
+          onAction={() => {
+            void deckQuery.refetch();
+          }}
+        />
+        {sheet}
+      </>
     );
   }
 
   if (places.length === 0) {
     return (
-      <EmptyState
-        title="No places yet"
-        body="The catalog is empty. As partners onboard, their places will show up here."
-      />
+      <>
+        <EmptyState
+          title="No places yet"
+          body="The catalog is empty. As partners onboard, their places will show up here."
+        />
+        {sheet}
+      </>
     );
   }
 
-  if (idx >= located.length) {
+  const filterEmptied = deck.length === 0 && located.length > 0;
+  if (filterEmptied) {
     return (
-      <EmptyState
-        title="You're caught up"
-        body="You've seen every place in this deck. Start over from the top."
-        actionLabel={restarting ? 'Loading...' : 'Start over'}
-        onAction={restart}
-        actionDisabled={restarting}
-        actionIcon={restarting ? undefined : RotateCcw}
-      />
+      <View className="relative flex-1">
+        <FilterEmptyDeck
+          onAdjustFilters={() => setFiltersOpen(true)}
+          onResetFilters={resetDiscoveryFilters}
+        />
+        {sheet}
+      </View>
+    );
+  }
+
+  if (idx >= deck.length) {
+    return (
+      <View className="relative flex-1">
+        <EmptyState
+          title="You're caught up"
+          body="You've seen every place in this deck. Start over from the top."
+          actionLabel={restarting ? 'Loading...' : 'Start over'}
+          onAction={restart}
+          actionDisabled={restarting}
+          actionIcon={restarting ? undefined : RotateCcw}
+        />
+        {sheet}
+      </View>
     );
   }
 
   return (
-    <DeckBody
-      places={located}
-      idx={idx}
-      setIdx={setIdx}
-      isSaved={isSaved}
-      setSaved={setSaved}
-      showTutorial={showTutorial}
-      dismissTutorial={dismissTutorial}
-    />
+    <>
+      <DeckBody
+        places={deck}
+        idx={idx}
+        setIdx={setIdx}
+        isSaved={isSaved}
+        setSaved={setSaved}
+        showTutorial={showTutorial}
+        dismissTutorial={dismissTutorial}
+        filtersActive={filtersActive}
+        onOpenFilters={() => setFiltersOpen(true)}
+      />
+      {sheet}
+    </>
   );
 }
 
@@ -188,6 +252,8 @@ function DeckBody({
   setSaved,
   showTutorial,
   dismissTutorial,
+  filtersActive,
+  onOpenFilters,
 }: {
   places: Place[];
   idx: number;
@@ -196,12 +262,13 @@ function DeckBody({
   setSaved: (id: string, saved: boolean) => void;
   showTutorial: boolean;
   dismissTutorial: () => void;
+  filtersActive: boolean;
+  onOpenFilters: () => void;
 }) {
   const router = useRouter();
   const v = places[idx]!;
   const next = idx + 1 < places.length ? places[idx + 1]! : null;
   const [stamp, setStamp] = useState<null | 'left' | 'right'>(null);
-  const [filtersOpen, setFiltersOpen] = useState(false);
 
   const translateX = useSharedValue(0);
   const exiting = useSharedValue(0); // 0 idle, -1 left, 1 right
@@ -291,7 +358,7 @@ function DeckBody({
   const saved = isSaved(v.id);
 
   return (
-    <View className="flex-1 px-3 pt-2 pb-3">
+    <View className="flex-1 px-3 pb-3 pt-2">
       <View className="relative flex-1 overflow-hidden rounded-2xl">
         {next ? (
           <Animated.View
@@ -327,18 +394,14 @@ function DeckBody({
 
       <View className="mt-3 flex-row items-center gap-1.5">
         <SwipeActionRow
+          filtersActive={filtersActive}
           saved={saved}
-          onOpenFilters={() => setFiltersOpen(true)}
+          onOpenFilters={onOpenFilters}
           onSkip={() => beginExit('left')}
           onOpenInfo={() => router.push(placePath(v.id))}
           onSave={() => beginExit('right')}
         />
       </View>
-
-      <FiltersComingSoonSheet
-        open={filtersOpen}
-        onClose={() => setFiltersOpen(false)}
-      />
     </View>
   );
 }
