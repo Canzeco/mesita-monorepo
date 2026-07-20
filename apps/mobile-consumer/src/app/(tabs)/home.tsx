@@ -1,11 +1,12 @@
 import { BlurView } from 'expo-blur';
 import { Flame, Heart, Sparkles, Users } from 'lucide-react-native';
-import type { ComponentType } from 'react';
+import type { ComponentType, ReactNode } from 'react';
 import { useState } from 'react';
 import { Platform, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { FavoritesTab } from '@/components/home/FavoritesTab';
+import { SocialTab } from '@/components/home/SocialTab';
 import { AskAiTab } from '@/components/memo/AskAiTab';
 import { SwipeDeck } from '@/components/swipe/SwipeDeck';
 import { ShellWash } from '@/components/ui/HeroBackdrop';
@@ -18,13 +19,13 @@ import {
 } from '@/lib/parked-flags';
 
 // Mirrors web HomeModeNav: Swipe + Memo + Favorites live; Social parked.
-// Parked flags/copy live in parked-flags.ts (flip `soon` to unpark).
-// SocialTab stays in tree for a one-flag unpark.
-type Mode = 'swipe' | 'ai' | 'favorites';
-type NavMode = Mode | 'social';
+// Unpark Social = flip PARKED.homeModes.social.soon (one-flag drill).
+// All mode panels stay mounted (keep-alive) so Memo thread + Social sort
+// survive mode switches without remount flicker.
+type Mode = 'swipe' | 'ai' | 'social' | 'favorites';
 
 const MODES: (SegmentItem & {
-  key: NavMode;
+  key: Mode;
   Icon: ComponentType<{ color?: string; size?: number; strokeWidth?: number }>;
 })[] = [
   { key: 'swipe', title: 'Swipe', Icon: Flame },
@@ -41,6 +42,28 @@ const MODES: (SegmentItem & {
 const SOON_ICONS: Record<ParkedHomeModeKey, typeof Users> = {
   social: Users,
 };
+
+function KeepAlivePane({
+  active,
+  children,
+}: {
+  active: boolean;
+  children: ReactNode;
+}) {
+  return (
+    <View
+      collapsable={false}
+      pointerEvents={active ? 'auto' : 'none'}
+      style={{
+        flex: 1,
+        minHeight: 0,
+        display: active ? 'flex' : 'none',
+      }}
+    >
+      {children}
+    </View>
+  );
+}
 
 export default function HomeScreen() {
   const [mode, setMode] = useState<Mode>('swipe');
@@ -82,24 +105,36 @@ export default function HomeScreen() {
               items={MODES}
               value={mode}
               onChange={(v) => {
-                if (v === 'swipe' || v === 'ai' || v === 'favorites') {
-                  setMode(v);
+                if (isHomeModeParked(v)) {
+                  setSoonMode(v);
                   return;
                 }
-                if (isHomeModeParked(v)) setSoonMode(v);
+                if (
+                  v === 'swipe' ||
+                  v === 'ai' ||
+                  v === 'social' ||
+                  v === 'favorites'
+                ) {
+                  setMode(v);
+                }
               }}
             />
           </View>
         </View>
 
         <View style={{ flex: 1, minHeight: 0 }}>
-          {mode === 'swipe' ? (
+          <KeepAlivePane active={mode === 'swipe'}>
             <SwipeDeck />
-          ) : mode === 'ai' ? (
+          </KeepAlivePane>
+          <KeepAlivePane active={mode === 'ai'}>
             <AskAiTab />
-          ) : (
+          </KeepAlivePane>
+          <KeepAlivePane active={mode === 'social'}>
+            <SocialTab />
+          </KeepAlivePane>
+          <KeepAlivePane active={mode === 'favorites'}>
             <FavoritesTab />
-          )}
+          </KeepAlivePane>
         </View>
 
         <ComingSoonModal
