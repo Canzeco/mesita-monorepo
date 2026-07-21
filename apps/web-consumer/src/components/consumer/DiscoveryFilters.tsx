@@ -16,6 +16,7 @@ import {
 } from "@/lib/discovery-filters-engine";
 import {
   resetDiscoveryFilters,
+  setDiscoveryAsk,
   setDiscoveryMaxKm,
   setDiscoveryRandomness,
   setDiscoveryWhen,
@@ -34,9 +35,12 @@ import { Pill, RangeSlider, SectionLabel } from "./discovery-filter-controls";
 //   When       — Now (open right now) · Anytime · a specific weekday + hour
 //   What       — six families + concrete categories from the catalog, multi;
 //                OR across the two tiers
+//   That       — the free-text ask (the intent's 4th axis — Where · When ·
+//                What · THAT, MESITA-699): EM's query once Lineup reads
+//                intent. Stored per query; honest — narrows nothing today.
 //   Randomness — a 0–5 level (Ranked → Surprise). Drives the Swipe deck order
-//                (and becomes XX's per-query input once the Standard Engine
-//                wires); the map's pin set is unaffected client-side.
+//                (and becomes XX's per-query input once Lineup wires); the
+//                map's pin set is unaffected client-side.
 // State lives in the ONE shared store (use-discovery-filters): both surfaces
 // and both trigger dots read the same filters. Live-apply — every change
 // narrows immediately; the footer CTA is feedback (real count) + close, and
@@ -238,7 +242,23 @@ export function DiscoveryFilters({
           </>
         )}
 
-        {/* ── Module 5 · Randomness ────────────────────────────────── */}
+        {/* ── Module 5 · That — the ask ────────────────────────────── */}
+        <SectionLabel className="mt-5">That · the ask</SectionLabel>
+        <input
+          type="text"
+          value={filters.ask}
+          maxLength={200}
+          onChange={(e) => setDiscoveryAsk(e.target.value)}
+          placeholder='what are you craving? — "mezcal cocktails for a date"'
+          aria-label="The ask — free text, shapes your lineup"
+          className="border-border/70 bg-muted/40 placeholder:text-muted-foreground/60 focus:border-primary/50 w-full rounded-xl border px-3.5 py-2.5 text-sm outline-none transition"
+        />
+        <p className="text-muted-foreground/70 mt-1.5 text-[11px]">
+          Shapes your lineup once the engine reads it — doesn&apos;t narrow the
+          list yet.
+        </p>
+
+        {/* ── Module 6 · Randomness ────────────────────────────────── */}
         <SectionLabel className="mt-5">Randomness</SectionLabel>
         <div className="text-muted-foreground mb-1 flex items-center justify-between text-[11px] font-medium">
           <span>{RANDOMNESS_ENDPOINTS.min}</span>

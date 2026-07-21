@@ -128,6 +128,10 @@ export type DiscoveryFilters = {
   maxKm: number | null;
   /** When to go — now / anytime / a specific weekday + hour. */
   when: DiscoveryWhen;
+  /** That — the intent's 4th axis (Where · When · What · THAT, MESITA-699):
+   * the free-text ask, EM's query once Lineup reads intent. Stored per
+   * query; NOT a predicate — it never narrows client-side. */
+  ask: string;
   /** Deck ordering level, 0 ranked → 5 full shuffle. */
   randomness: RandomnessLevel;
 };
@@ -140,6 +144,7 @@ export const DISCOVERY_FILTER_DEFAULTS: DiscoveryFilters = {
   // Anytime = neutral: the sheet opens on the full catalog. Now / At are opt-in
   // narrowings, so a fresh sheet never hides everything behind a time filter.
   when: { mode: "anytime" },
+  ask: "",
   randomness: 0,
 };
 
@@ -162,7 +167,12 @@ export function hasDiscoveryPredicates(f: DiscoveryFilters): boolean {
 
 /** Any deviation from defaults — drives the red trigger dot (MESITA-633). */
 export function discoveryFiltersAreActive(f: DiscoveryFilters): boolean {
-  return hasDiscoveryPredicates(f) || f.zone !== null || f.randomness !== 0;
+  return (
+    hasDiscoveryPredicates(f) ||
+    f.zone !== null ||
+    f.ask.trim() !== "" ||
+    f.randomness !== 0
+  );
 }
 
 export function matchesDiscoveryFilters(
