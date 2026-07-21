@@ -109,7 +109,7 @@ export function DeckPlayground({ specimen }: { specimen: PlaygroundSpecimen }) {
   return (
     <PanelCard
       title="Deck playground · the full run"
-      subtitle="Every sampled place scored in all three lanes at the CURRENT knobs → each lane's top-N → round-robin merge with dedupe (first occurrence wins) and no backfill. Struck-through cards were merged away — the place already arrived via an earlier lane."
+      subtitle="For the specimen above — every sampled place, three lanes, top-N each, round-robin merge; struck-through = merged away."
       pill={`deck ≤ ${laneCountsTotal(laneN)} of ${places.length} places`}
     >
       {run ? (

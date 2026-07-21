@@ -28,11 +28,8 @@ export function EmptyCatalog({ title, subtitle }: { title: string; subtitle: str
       >
         <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" aria-hidden />
         <div className="min-w-0">
-          <p className="font-semibold">n = 0 — no places to score.</p>
-          <p className="mt-0.5 text-xs text-amber-900/80">
-            The playgrounds draw a random sample of up to {SAMPLE_MAX} places from the
-            catalog, and the catalog came back empty. The model still stands; there is
-            simply nothing to run it on.
+          <p className="font-semibold">
+            n = 0 — the catalog came back empty (sample ≤ {SAMPLE_MAX}); nothing to score.
           </p>
         </div>
       </div>

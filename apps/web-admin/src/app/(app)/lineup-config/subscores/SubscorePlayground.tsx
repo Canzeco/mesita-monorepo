@@ -31,7 +31,6 @@ import { useScoring } from "../ScoringProvider";
 import { PanelCard, SubHead } from "../panel-ui";
 import {
   EmptyCatalog,
-  FactChip,
   FactorRow,
   LaneBadge,
   LedgerRow,
@@ -130,26 +129,11 @@ export function SubscorePlayground({ specimen }: { specimen: PlaygroundSpecimen 
   return (
     <PanelCard
       title="Subscore playground · n = 1"
-      subtitle="One consumer × intent × place (the shared bar above), every subscore's internal process at the CURRENT knobs — edit a knob on Subscores and the numbers here move. The intent is synthetic by design; consumers and places are real DB rows."
+      subtitle="Every subscore's internal process on the specimen above, at the CURRENT knobs."
       pill={`n = 1 of ${places.length}`}
     >
       {run ? (
         <>
-          <div className="border-border/60 bg-muted/40 mt-3 flex flex-wrap items-center gap-1.5 rounded-xl border px-3 py-2">
-            <MessageSquareText className="text-muted-foreground h-3.5 w-3.5" aria-hidden />
-            <span className="font-mono text-[11px]">{run.intent.text}</span>
-            {run.intent.zoneName ? (
-              <FactChip label="zone" value={run.intent.zoneName} strong />
-            ) : (
-              <FactChip label="mode" value="point (GPS)" />
-            )}
-            {run.intent.cats.length > 0 ? (
-              <FactChip label="asks" value={run.intent.cats.join(", ")} />
-            ) : (
-              <FactChip label="asks" value="no category" />
-            )}
-          </div>
-
           {/* Focus chips */}
           <div className="mt-3 flex flex-wrap items-center gap-1.5">
             <button

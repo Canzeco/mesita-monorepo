@@ -70,7 +70,7 @@ export function Slider({
 }: {
   label: string;
   value: string;
-  hint: string;
+  hint?: string;
   min: number;
   max: number;
   step: number;
@@ -107,7 +107,9 @@ export function Slider({
         aria-label={label + (consumer ? " (consumer-overridable default)" : "")}
         className={(consumer ? "accent-emerald-600" : "accent-primary") + " mt-2 w-full"}
       />
-      <p className="text-muted-foreground mt-1 font-mono text-[10px] leading-snug">{hint}</p>
+      {hint ? (
+        <p className="text-muted-foreground mt-1 font-mono text-[10px] leading-snug">{hint}</p>
+      ) : null}
     </div>
   );
 }
@@ -186,8 +188,10 @@ export function BoxSection({
   );
 }
 
-/** The fixed input fields of one subscore — three or four columns of
- * plain chips (interaction = the consumer × place EDGE, SM-only). */
+/** The fixed input fields of one subscore — plain chip columns. A source
+ * whose fields are ALL "—" placeholders is not rendered (GP/RP read only the
+ * place, XX only its own draw — an em-dash column says nothing); interaction
+ * = the consumer × place EDGE, SM-only. */
 export function ContextCols({
   ctx,
 }: {
@@ -202,7 +206,7 @@ export function ContextCols({
     label: string,
     fields: { field: string; status: "live" | "planned" | "spec"; note?: string }[],
   ) => (
-    <div>
+    <div key={label}>
       <p className="text-muted-foreground text-[10px] font-bold tracking-[0.12em] uppercase">
         {label}
       </p>
@@ -229,12 +233,20 @@ export function ContextCols({
       </div>
     </div>
   );
+  const real = (fields: { field: string }[]) =>
+    fields.some((f) => !f.field.startsWith("—"));
+  const entries = [
+    { label: "Consumer-data", fields: ctx.consumer },
+    { label: "Intent-data", fields: ctx.intent },
+    { label: "Place-data", fields: ctx.place },
+    ...(ctx.interaction ? [{ label: "Interaction-data", fields: ctx.interaction }] : []),
+  ].filter((e) => real(e.fields));
+  const GRID: Record<number, string> = {
+    1: "", 2: "lg:grid-cols-2", 3: "lg:grid-cols-3", 4: "lg:grid-cols-4",
+  };
   return (
-    <div className={`mt-4 grid gap-4 ${ctx.interaction ? "lg:grid-cols-4" : "lg:grid-cols-3"}`}>
-      {col("Consumer-data", ctx.consumer)}
-      {col("Intent-data", ctx.intent)}
-      {col("Place-data", ctx.place)}
-      {ctx.interaction ? col("Interaction-data", ctx.interaction) : null}
+    <div className={`mt-4 grid gap-4 ${GRID[entries.length] ?? ""}`}>
+      {entries.map((e) => col(e.label, e.fields))}
     </div>
   );
 }
@@ -302,11 +314,12 @@ export function EmContextCols() {
 
 /**
  * Per-box Save / Reset / Cancel footer (Pato: every box owns its three
- * buttons, never the whole page). Always rendered so Reset-to-defaults is
- * reachable even on a clean box; Save/Cancel enable only when the box is
- * dirty. Save merges this section over the last-saved blob (the EF's
- * whole-blob contract holds), Cancel reverts only this section, Reset loads
- * this box's code defaults into the form (dirty until Saved).
+ * buttons, never the whole page). QUIET at rest: only the Reset link renders
+ * (still reachable on a clean box); Cancel/Save appear when there is
+ * something to act on (dirty · saving · error — NOT savedOk, which would
+ * flash disabled pills next to "Saved ✓"). min-h keeps the row layout-stable
+ * either way. Save merges this section over the last-saved blob, Cancel
+ * reverts only this section, Reset loads this box's code defaults.
  */
 export function BoxSaveBar({
   dirty,
@@ -326,7 +339,7 @@ export function BoxSaveBar({
   onReset?: () => void;
 }) {
   return (
-    <div className="border-border/60 mt-4 flex flex-wrap items-center justify-between gap-2 border-t pt-3">
+    <div className="border-border/60 mt-4 flex min-h-8 flex-wrap items-center justify-between gap-2 border-t pt-3">
       <span className="flex items-center gap-3 text-xs" aria-live="polite">
         {onReset ? (
           <button
@@ -341,7 +354,7 @@ export function BoxSaveBar({
         {dirty && !saving ? (
           <span className="text-muted-foreground inline-flex items-center gap-1.5">
             <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-amber-500" aria-hidden />
-            Unsaved changes in this box
+            Unsaved
           </span>
         ) : savedOk && !saving ? (
           <span className="text-muted-foreground">Saved ✓</span>
@@ -350,6 +363,7 @@ export function BoxSaveBar({
         ) : null}
         {error ? <span className="font-medium text-red-600">{error}</span> : null}
       </span>
+      {dirty || saving || error ? (
       <div className="flex shrink-0 items-center gap-2">
         <button
           type="button"
@@ -373,6 +387,7 @@ export function BoxSaveBar({
           {saving ? "Saving…" : "Save changes"}
         </button>
       </div>
+      ) : null}
     </div>
   );
 }

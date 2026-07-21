@@ -1,6 +1,5 @@
 "use client";
 
-import { GroupHead } from "../panel-ui";
 import { EmBox } from "./EmBox";
 import { SmBox } from "./SmBox";
 import { GpBox } from "./GpBox";
@@ -24,9 +23,6 @@ export function SubscoresPanel() {
       <GpBox />
       <RpBox />
       <XxBox />
-      <GroupHead>
-        Every knob is a belief, not a fitted value — judge changes by break-even, not spread.
-      </GroupHead>
     </div>
   );
 }
