@@ -41,6 +41,32 @@ export function Chip({ label, value, hint }: { label: string; value: string; hin
   );
 }
 
+/** The ONE tile primitive for in-box mini-grids — worked examples, Lineup's
+ * callers, the consumer-filters map. The box grammar allows exactly three
+ * atoms: <Slider> (editable) · <Chip> (derived) · <MiniTile> (illustrative);
+ * bespoke tile styles are banned. */
+export function MiniTile({
+  label,
+  value,
+  hint,
+  children,
+}: {
+  label: string;
+  value?: string;
+  hint?: string;
+  children?: React.ReactNode;
+}) {
+  return (
+    <div className="bg-muted/60 border-border/60 rounded-xl border px-2.5 py-2" title={hint}>
+      <p className="text-muted-foreground text-[10px] font-semibold tracking-[0.04em] uppercase">
+        {label}
+      </p>
+      {value ? <p className="mt-0.5 font-mono text-[11px]">{value}</p> : null}
+      {children}
+    </div>
+  );
+}
+
 export function Slider({
   label,
   value,

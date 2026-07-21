@@ -9,7 +9,7 @@ import {
   LINEUP_ENGINE,
 } from "@/lib/business/scores";
 import { useScoring } from "../ScoringProvider";
-import { BoxSaveBar, GroupHead, PanelCard, Slider, SubHead } from "../panel-ui";
+import { BoxSaveBar, GroupHead, MiniTile, PanelCard, Slider, SubHead } from "../panel-ui";
 import { LaneBadge } from "../playground-ui";
 
 // Lanes — COMPOSE the deck (4-subpage restructure 2026-07-20): per-lane
@@ -120,35 +120,34 @@ export function LanesPanel() {
         </div>
         <div className="mt-3 grid gap-2 sm:grid-cols-3">
           {LINEUP_ENGINE.callers.map((s) => (
-            <div key={s.caller} className="border-border/60 rounded-xl border px-3 py-2">
-              <p className="text-[12px] font-semibold">{s.caller}</p>
+            <MiniTile key={s.caller} label={s.caller}>
               <p className="text-muted-foreground mt-0.5 text-[11px] leading-snug">
                 intent: {s.intent}
               </p>
-            </div>
+            </MiniTile>
           ))}
         </div>
       </PanelCard>
 
-      {/* ══ Filters ══════════════════════════════════════════════════ */}
+      {/* ══ The consumer's inputs ════════════════════════════════════ */}
       <PanelCard
-        title="Filters · Where · When · What · Randomness"
-        subtitle="The consumer-facing filter row and where each filter lands in the model. Where/When/What are SM's intent-side inputs — the filters ARE the structured ask; Randomness sets XX's control per query. These are the CONSUMER's knobs — the admin configures only their no-filter defaults; none of them is a separate scoring stage."
+        title="Consumer inputs · Where · When · What · That · Randomness"
+        subtitle="The intent's FOUR axes plus the luck knob, and where each lands. Where/When/What are the structured asks → SM; That is the free-text ask → EM; Randomness sets XX's control. All five are the CONSUMER's — the admin configures only their no-input defaults."
       >
-        <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
           {[
             { name: "Where", owner: "SM · where", detail: "zone / anchor set + tolerated distance (the consumer slider, point mode only)" },
             { name: "When", owner: "SM · when", detail: "target time vs the place's open windows — wait × fit" },
             { name: "What", owner: "SM · what", detail: "category / mega-category set — the ladder 1 / 0.6 / 0.2" },
-            { name: "Randomness", owner: "XX · control", detail: "the CONSUMER's luck knob, 0 (off) … 5 (chaos) — the admin only sets the no-filter default (XX box)" },
+            { name: "That", owner: "EM · the ask", detail: "free-text ask on Swipe & Map — the TEXT half of the intent; EM embeds it, SM never sees it" },
+            { name: "Randomness", owner: "XX · control", detail: "the luck knob, 0 (off) … 5 (chaos) — the admin only sets the no-filter default (XX box)" },
           ].map((f) => (
-            <div key={f.name} className="border-border/60 bg-muted/40 rounded-xl border px-3 py-2.5">
-              <p className="text-[12px] font-semibold">{f.name}</p>
-              <p className="mt-0.5 font-mono text-[10px] font-bold text-muted-foreground">
+            <MiniTile key={f.name} label={f.name}>
+              <p className="text-muted-foreground mt-0.5 font-mono text-[10px] font-bold">
                 → {f.owner}
               </p>
               <p className="text-muted-foreground mt-1 text-[11px] leading-snug">{f.detail}</p>
-            </div>
+            </MiniTile>
           ))}
         </div>
       </PanelCard>

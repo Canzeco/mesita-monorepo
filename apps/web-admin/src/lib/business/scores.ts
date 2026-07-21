@@ -82,6 +82,13 @@
 //     (MISMATCH_RUNG — never 0: SM gets no veto over semantics) · nothing
 //     asked → 1.
 //
+// THE INTENT HAS FOUR AXES — Where · When · What · THAT. The first three are
+// the STRUCTURED asks (SM's inputs, above). THAT is the free-text ask — the
+// TEXT half of the intent, EM's query (CONTEXT_FIELDS key intent.query) —
+// and it NEVER reaches SM. Swipe and Map carry a That input alongside the
+// structured filters; Memo synthesizes all four from the question.
+// (Randomness is NOT an intent axis — it's XX's per-query control.)
+//
 // EVERY KNOB IS A BELIEF, NOT AN ESTIMATE — nothing here is fitted. Judge a
 // change by its break-even, never by how far apart numbers land. Tune here;
 // the Lineup Config page and the per-place Scores tab derive from this
@@ -650,8 +657,9 @@ export type ContextFieldDef = {
 // The lists ARE the spec (Notion Scoring, data taxonomy, 2026-07-16):
 //   Consumer → EM: sex · age · name · country · class+why. Ignored: taste ·
 //     history. (IG-origin lives inside class+why, not as its own field.)
-//   Intent → EM (text): query · near-zone · time. Ignored: party · budget ·
-//     day-of-week. (The NUMERIC where/when/what go to SM, never EM.)
+//   Intent → EM (text): that (the ask) · near-zone · time. Ignored: party ·
+//     budget · day-of-week. (The NUMERIC where/when/what go to SM, never EM;
+//     THAT — the fourth intent axis — is EM's, never SM's.)
 //   Place → EM: name · category · tags · description · zone & city ·
 //     reviews summary (G·IG·FB, planned) · price (planned). Rating & review
 //     count are GP's; hours and lat/lng are SM's — ROUTED, so they are not
@@ -667,7 +675,7 @@ export const CONTEXT_FIELDS: readonly ContextFieldDef[] = [
   { key: "consumer.history", side: "consumer", label: "history",                     status: "ignored", note: "ignored for now (spec)" },
   // Intent — the per-query half. Where/when appear as TEXT here by design;
   // their NUMERIC versions are SM's inputs, never EM's.
-  { key: "intent.query",     side: "intent",   label: "what / occasion (question text)", status: "live" },
+  { key: "intent.query",     side: "intent",   label: "that · the ask (free text)",  status: "live", note: "the intent's 4th axis — storage key stays intent.query for blob compat" },
   { key: "intent.zone",      side: "intent",   label: "near-zone (as text)",         status: "live" },
   { key: "intent.time",      side: "intent",   label: "day + time (as text)",        status: "live" },
   { key: "intent.party",     side: "intent",   label: "party size",                  status: "ignored", note: "ignored for now (spec) — a filter's job" },
