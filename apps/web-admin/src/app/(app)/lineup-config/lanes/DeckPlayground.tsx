@@ -36,14 +36,14 @@ import { EmptyCatalog, FactChip, LaneBadge, type PlaygroundSpecimen } from "../p
 // sampled place in all three lanes at the CURRENT knobs, fill each lane's
 // top-N, merge round-robin O → I → H with dedupe-on-insert and no backfill,
 // and show the final deck. The whole pipeline (subscores × lane composition
-// × merge), end to end. The specimen (consumer × intent × roll) comes from
-// the Playground page's SHARED bar; the bar's place picker is n = 1-only and
-// ignored here.
+// × merge), end to end. The specimen (consumer × intent) comes from the
+// Playground page's SHARED bar; the bar's place picker is n = 1-only and
+// ignored here. XX draws are pinned to one seeded roll.
 
 export function DeckPlayground({ specimen }: { specimen: PlaygroundSpecimen }) {
   const { consumers, places, laneN, sm, gp, rp, xx, dataAccess, context } = useScoring();
 
-  const { consumerIdx, roll, intent } = specimen;
+  const { consumerIdx, intent } = specimen;
 
   const consumer = consumers[consumerIdx] ?? null;
 
@@ -109,7 +109,7 @@ export function DeckPlayground({ specimen }: { specimen: PlaygroundSpecimen }) {
             sm: smVal,
             gp: gpVal,
             rp: rpVal,
-            xx: xxScore(unitDraw(p.id, l.id, roll), xx.control),
+            xx: xxScore(unitDraw(p.id, l.id, 1), xx.control),
           }),
         ]),
       ) as Record<LaneId, number>;
@@ -118,7 +118,7 @@ export function DeckPlayground({ specimen }: { specimen: PlaygroundSpecimen }) {
 
     const deck = composeFinalDeck(candidates, laneN);
     return { intent, deck, byId };
-  }, [consumer, places, intent, roll, context.em, sm, gp, rp, xx, dataAccess, laneN]);
+  }, [consumer, places, intent, context.em, sm, gp, rp, xx, dataAccess, laneN]);
 
   if (places.length === 0) {
     return (

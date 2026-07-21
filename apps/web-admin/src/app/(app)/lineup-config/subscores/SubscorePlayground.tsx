@@ -55,7 +55,7 @@ const pct = (v: number) => v.toFixed(2);
 export function SubscorePlayground({ specimen }: { specimen: PlaygroundSpecimen }) {
   const { consumers, places, sm, gp, rp, xx, dataAccess, context } = useScoring();
 
-  const { consumerIdx, placeIdx, roll, intent } = specimen;
+  const { consumerIdx, placeIdx, intent } = specimen;
   const [focus, setFocus] = useState<SubscoreId | "all">("all");
 
   const consumer = consumers[consumerIdx] ?? null;
@@ -121,8 +121,9 @@ export function SubscorePlayground({ specimen }: { specimen: PlaygroundSpecimen 
       : null;
     const rpVal = rpScore(posture, rp);
 
+    // XX draws pinned to one seeded roll — deterministic per (card, lane).
     const draws = Object.fromEntries(
-      LANES.map((l) => [l.id, unitDraw(place.id, l.id, roll)]),
+      LANES.map((l) => [l.id, unitDraw(place.id, l.id, 1)]),
     ) as Record<LaneId, number>;
     const xxVals = Object.fromEntries(
       LANES.map((l) => [l.id, xxScore(draws[l.id], xx.control)]),
@@ -136,7 +137,7 @@ export function SubscorePlayground({ specimen }: { specimen: PlaygroundSpecimen 
     ) as Record<LaneId, number>;
 
     return { profile, intent, ciDoc, placeDoc, ciVec, placeVec, emVal, w, win, rel, smP, gpP, posture, rpVal, draws, xxVals, laneScores };
-  }, [consumer, place, intent, roll, context.em, sm, gp, rp, xx, dataAccess]);
+  }, [consumer, place, intent, context.em, sm, gp, rp, xx, dataAccess]);
 
   if (places.length === 0) {
     return (
@@ -338,7 +339,7 @@ export function SubscorePlayground({ specimen }: { specimen: PlaygroundSpecimen 
                 icon={Dices}
                 tint="violet"
                 title="XX · Random Number"
-                note={`U^${xx.control.toFixed(1)} · per card per lane · roll #${roll}`}
+                note={`U^${xx.control.toFixed(1)} · per card per lane · seeded`}
                 result={xx.control === 0 ? "1.00 (off)" : undefined}
               >
                 {LANES.map((l) => (
