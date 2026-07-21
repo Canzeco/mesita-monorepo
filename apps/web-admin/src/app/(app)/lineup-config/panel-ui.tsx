@@ -76,6 +76,7 @@ export function Slider({
   step,
   v,
   onChange,
+  consumer = false,
 }: {
   label: string;
   value: string;
@@ -85,11 +86,25 @@ export function Slider({
   step: number;
   v: number;
   onChange: (v: number) => void;
+  /** GREEN class — a CONSUMER-OVERRIDABLE DEFAULT (the where tolerance,
+   * XX's control): the admin sets the fallback here, the consumer's own
+   * filter overrides it per query. Plain (pink) sliders are pure
+   * hyperparameters the consumer never touches. */
+  consumer?: boolean;
 }) {
   return (
     <div>
       <div className="flex items-baseline justify-between gap-2">
-        <span className="text-foreground/80 text-[13px] font-medium">{label}</span>
+        <span className="text-foreground/80 flex items-center gap-1.5 text-[13px] font-medium">
+          {consumer ? (
+            <span
+              className="h-2 w-2 shrink-0 rounded-full bg-emerald-500"
+              title="consumer-overridable default — their filter wins per query"
+              aria-hidden
+            />
+          ) : null}
+          {label}
+        </span>
         <span className="font-mono text-[13px] font-semibold tabular-nums">{value}</span>
       </div>
       <input
@@ -99,8 +114,8 @@ export function Slider({
         step={step}
         value={v}
         onChange={(e) => onChange(Number(e.target.value))}
-        aria-label={label}
-        className="accent-primary mt-2 w-full"
+        aria-label={label + (consumer ? " (consumer-overridable default)" : "")}
+        className={(consumer ? "accent-emerald-600" : "accent-primary") + " mt-2 w-full"}
       />
       <p className="text-muted-foreground mt-1 font-mono text-[10px] leading-snug">{hint}</p>
     </div>
