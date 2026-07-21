@@ -23,7 +23,6 @@ import {
   buildPlaceDoc,
   embedText,
   emFromVectors,
-  generateIntent,
   openWindow,
   resolveWhere,
   whatRelation,
@@ -44,14 +43,13 @@ import { EmptyCatalog, FactChip, LaneBadge, type PlaygroundSpecimen } from "../p
 export function DeckPlayground({ specimen }: { specimen: PlaygroundSpecimen }) {
   const { consumers, places, laneN, sm, gp, rp, xx, dataAccess, context } = useScoring();
 
-  const { consumerIdx, style, roll } = specimen;
+  const { consumerIdx, roll, intent } = specimen;
 
   const consumer = consumers[consumerIdx] ?? null;
 
   const run = useMemo(() => {
     if (places.length === 0) return null;
     const profile = buildConsumerProfile(consumer);
-    const intent = generateIntent(style, profile, places, consumerIdx * 7 + roll);
     const enabled = new Set(context.em);
     // The data-access matrix, enforced across the whole pool.
     const emSrc = {
@@ -120,7 +118,7 @@ export function DeckPlayground({ specimen }: { specimen: PlaygroundSpecimen }) {
 
     const deck = composeFinalDeck(candidates, laneN);
     return { intent, deck, byId };
-  }, [consumer, consumerIdx, places, style, roll, context.em, sm, gp, rp, xx, dataAccess, laneN]);
+  }, [consumer, places, intent, roll, context.em, sm, gp, rp, xx, dataAccess, laneN]);
 
   if (places.length === 0) {
     return (

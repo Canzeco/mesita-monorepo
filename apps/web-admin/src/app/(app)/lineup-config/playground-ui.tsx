@@ -1,35 +1,22 @@
 "use client";
 
-import {
-  AlertTriangle,
-  GalleryHorizontalEnd,
-  Map as MapIcon,
-  MessagesSquare,
-  type LucideIcon,
-} from "lucide-react";
+import { AlertTriangle, type LucideIcon } from "lucide-react";
 import type { LaneId } from "@/lib/business/scores";
-import { SAMPLE_MAX, type IntentStyle } from "@/lib/business/cip";
+import { SAMPLE_MAX, type Intent } from "@/lib/business/cip";
 import { PanelCard } from "./panel-ui";
 
 // Presentational bits shared by both playgrounds. Pure UI — all scoring
 // math stays in @/lib/business.
 
-/** The shared specimen — ONE consumer × intent × roll drives BOTH playground
- * sections (decision D3); placeIdx is read only by the n = 1 Subscore
- * section (the Deck section scores the whole pool). */
+/** The shared specimen — ONE consumer + ONE operator-composed intent drive
+ * BOTH playground sections (decision D3); placeIdx is read only by the
+ * n = 1 Subscore section (the Deck section scores the whole pool); roll
+ * re-rolls only XX's draws (the intent is authored, not sampled). */
 export type PlaygroundSpecimen = {
   consumerIdx: number;
-  style: IntentStyle;
-  roll: number;
   placeIdx: number;
-};
-
-/** Synthetic-intent style icons — there is only ONE engine (Lineup); these
- * are the intent SHAPES its callers feed it, fabricated by the playground. */
-export const INTENT_STYLE_ICONS: Record<IntentStyle, LucideIcon> = {
-  browse: GalleryHorizontalEnd,
-  viewport: MapIcon,
-  question: MessagesSquare,
+  roll: number;
+  intent: Intent;
 };
 
 /** The n = 0 state both playgrounds share — nothing in the catalog to score. */
