@@ -3,6 +3,7 @@ import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 
 import {
+  FilterGroupLabel,
   Pill,
   PillText,
   RangeSlider,
@@ -34,8 +35,10 @@ import {
   useDiscoveryFilters,
 } from '@/lib/use-discovery-filters';
 
-// Shared body of the discovery FilterSheet (Home Swipe + Search map) — FIVE
-// PARAMETERS, IN PATO'S ORDER (MESITA-672). RN port of web DiscoveryFilters.tsx.
+// Shared body of the discovery FilterSheet (Home Swipe + Search map) — the
+// options panel configures TWO subscore inputs: the INTENT (Where incl. its
+// distance tolerance · When · What · That) and RANDOMNESS (XX's luck knob).
+// RN port of web DiscoveryFilters.tsx.
 
 export function DiscoveryFilters({
   onClose,
@@ -98,10 +101,14 @@ export function DiscoveryFilters({
         keyboardShouldPersistTaps="handled"
         nestedScrollEnabled
       >
+        <FilterGroupLabel>Intent · where when what that</FilterGroupLabel>
+
         <SectionLabel>Where</SectionLabel>
         <DiscoveryZoneField zone={filters.zone} hasLocation={hasLocation} />
 
-        <SectionLabel className="mt-5">Distance</SectionLabel>
+        <SectionLabel className="mt-3" sub>
+          Distance tolerance
+        </SectionLabel>
         {hasCenter ? (
           <>
             <View className="mb-1 flex-row items-center gap-3">
@@ -233,6 +240,7 @@ export function DiscoveryFilters({
         ) : null}
 
         <SectionLabel className="mt-5">That · the ask</SectionLabel>
+        {/* (the intent's 4th axis; Randomness below is its own group) */}
         <TextInput
           value={filters.ask}
           maxLength={200}
@@ -247,7 +255,9 @@ export function DiscoveryFilters({
           list yet.
         </Text>
 
-        <SectionLabel className="mt-5">Randomness</SectionLabel>
+        <FilterGroupLabel className="mt-6">
+          Randomness · the luck knob
+        </FilterGroupLabel>
         <View className="mb-1 flex-row items-center justify-between">
           <Text className="text-[11px] font-medium text-muted-foreground">
             {RANDOMNESS_ENDPOINTS.min}
