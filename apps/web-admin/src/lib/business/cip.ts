@@ -1,5 +1,5 @@
 // CIP — Consumer · Intent · Place. The playground's data plumbing for the
-// scoring model (v10): build the consumer side, synthesize intents, and
+// scoring model (v10): build the consumer side, compose intents, and
 // emulate the EM subscore until the real encoder (OpenAI embeddings) is wired.
 //
 // THREE DATA OBJECTS, TWO SIDES. Consumer-data and intent-data are the SAME
@@ -18,8 +18,9 @@
 //   XX  a seeded unit draw per card per lane (scores.unitDraw), U^control.
 //
 // HONESTY RULES. Consumers and places come from the DB (via
-// admin-web-get-scoring-sample) — never invented here. Intent is synthetic BY
-// DESIGN (that's what an intent generator is). Consumer taste uses real
+// admin-web-get-scoring-sample) — never invented here. Intent is
+// OPERATOR-AUTHORED (composeIntent — the Playground's Where · When · What ·
+// That composer; nothing about it is sampled). Consumer taste uses real
 // saves/visits when they exist; an empty history gets a deterministic
 // synthetic taste and is LABELED synthetic. EM here runs a feature-hash
 // encoder — a deterministic stand-in for the real embedding model; the
@@ -31,14 +32,31 @@
 import type { WhatRelation } from "./scores";
 
 /**
- * Synthetic intent STYLES — how the playground fabricates the query side.
- * There is only ONE engine (Lineup); its callers differ only
- * in where intent-data comes from, and these styles emulate that:
- *   browse   — open-ended feed browsing (Swipe-shaped intent)
- *   viewport — spatial browsing around a viewport (Map-shaped intent)
- *   question — a concrete ask with category set (Memo-shaped intent)
+ * The operator's intent, decomposed along its REAL axes — exactly what a
+ * Lineup caller supplies. Where/When/What feed SM's structured checks; That
+ * (the free-text ask) is the TEXT half, EM's query.
  */
-export type IntentStyle = "browse" | "viewport" | "question";
+export type IntentSpec = {
+  /** That — the free-text ask. Empty = open-ended browse. */
+  ask: string;
+  /** Where — a NAMED zone (SM zone mode) or null = point mode near an anchor. */
+  zoneName: string | null;
+  /** When — full weekday name + hour on the 30-min grid. */
+  day: string;
+  hour: number;
+  /** What — the category ask, a SET; empty = nothing asked (what → 1). */
+  cats: string[];
+};
+
+export const WEEKDAYS = [
+  "monday",
+  "tuesday",
+  "wednesday",
+  "thursday",
+  "friday",
+  "saturday",
+  "sunday",
+] as const;
 
 /** Max consumers/places the playground samples. Beyond ~10 the lists stop being readable. */
 export const SAMPLE_MAX = 10;
@@ -120,8 +138,7 @@ export function buildConsumerProfile(c: SampleConsumer | null): ConsumerProfile 
 // ── Intent side ─────────────────────────────────────────────────────────
 
 export type Intent = {
-  style: IntentStyle;
-  /** The rendered prompt. Fixed structure for browse/viewport; flexible for question. */
+  /** The rendered prompt — the ask · the where · the when, joined. */
   text: string;
   /**
    * The prompt decomposed by context key, so the configurable pipeline can
@@ -139,102 +156,42 @@ export type Intent = {
   timeLabel: string;
 };
 
-const DAYS = ["wednesday", "friday", "saturday", "sunday"] as const;
-const HOURS = [13, 18.5, 20.5, 22.5] as const;
-
-// The question style's flexible bank — occasion templates with their own
-// natural time and category set. Browse/viewport never touch these: their
-// prompt structure is fixed and only the data changes.
-const QUESTION_BANK = [
-  { text: "Where do I take a first date tonight?", hour: 20.5, day: "friday", cats: ["cocktail_bar", "wine_bar", "fine_dining"] },
-  { text: "Best brunch for Sunday with my parents?", hour: 11, day: "sunday", cats: ["brunch"] },
-  { text: "Where can we dance until late on Saturday?", hour: 23, day: "saturday", cats: ["night_club"] },
-  { text: "Quiet spot to work over coffee this afternoon?", hour: 16, day: "wednesday", cats: ["specialty_coffee"] },
-  { text: "Big group birthday dinner — where?", hour: 21, day: "saturday", cats: ["fine_dining", "casual"] },
-  { text: "Rooftop drinks with a view before dinner?", hour: 19, day: "friday", cats: ["rooftop", "cocktail_bar"] },
-] as const;
-
 function fmtHour(h: number): string {
   const hh = Math.floor(h);
   const mm = Math.round((h - hh) * 60);
   return `${String(hh).padStart(2, "0")}:${String(mm).padStart(2, "0")}`;
 }
 
-/** Anchor the synthetic user near a real place: same city, walkable jitter. */
-function anchor(places: SamplePlace[], seed: number): {
-  lat: number | null;
-  lng: number | null;
-  near: string;
-  zoneName: string | null;
-} {
+/**
+ * The operator's spec → a full Intent. W resolution: a NAMED zone centers on
+ * a sample place in that zone (its places string-match to km 0; others
+ * measure spillover from that center); point mode anchors near the first
+ * geo place with a small fixed offset (~0.8 km) so no place sits exactly on
+ * W. Taste/history/party never enter — same spec rules as production.
+ */
+export function composeIntent(spec: IntentSpec, places: SamplePlace[]): Intent {
   const geo = places.filter((p) => p.lat != null && p.lng != null);
-  if (geo.length === 0) return { lat: null, lng: null, near: "unknown", zoneName: null };
-  const p = geo[seed % geo.length];
-  const jitter = ((seed % 17) - 8) / 8; // −1..1
-  return {
-    lat: Number(p.lat) + jitter * 0.012, // ≈ ±1.3 km
-    lng: Number(p.lng) + jitter * 0.01,
-    near: p.zone ?? p.city ?? p.name,
-    // The intent NAMES a zone only when the anchor place carries one — SM's
-    // zone mode; otherwise the intent is a pure point (GPS mode).
-    zoneName: p.zone ?? null,
-  };
-}
-
-export function generateIntent(
-  style: IntentStyle,
-  profile: ConsumerProfile,
-  places: SamplePlace[],
-  seed: number,
-): Intent {
-  const a = anchor(places, seed);
-  if (style === "question") {
-    const t = QUESTION_BANK[seed % QUESTION_BANK.length];
-    const parts = {
-      query: t.text,
-      zone: `near ${a.near}`,
-      time: `${t.day} ${fmtHour(t.hour)}`,
-      party: null,
-    };
-    return {
-      style,
-      text: t.text,
-      parts,
-      zoneName: a.zoneName,
-      cats: [...t.cats],
-      lat: a.lat,
-      lng: a.lng,
-      day: t.day,
-      hour: t.hour,
-      timeLabel: `${t.day} ${fmtHour(t.hour)}`,
-    };
-  }
-  // Browse/viewport — FIXED prompt structure; only the data slots change.
-  // No taste tokens here: taste/history are the spec's "ignored for now",
-  // and party size is a filter's job — neither leaks into the embedded
-  // intent.
-  const day = DAYS[seed % DAYS.length];
-  const hour = HOURS[seed % HOURS.length];
-  const daypart = hour < 15 ? "lunch" : hour < 20 ? "evening" : "night";
+  const zonePlace = spec.zoneName ? (geo.find((p) => p.zone === spec.zoneName) ?? null) : null;
+  const anchorPlace = zonePlace ?? geo[0] ?? null;
+  const near =
+    spec.zoneName ?? anchorPlace?.zone ?? anchorPlace?.city ?? anchorPlace?.name ?? "unknown";
+  const ask = spec.ask.trim();
   const parts = {
-    query: `${style === "viewport" ? "viewport browse" : "feed browse"} · ${daypart} plans`,
-    zone: style === "viewport" ? `viewport ≈2 km around ${a.near}` : `near ${a.near}`,
-    time: `${day} ${fmtHour(hour)}`,
+    query: ask || "open-ended browse",
+    zone: `near ${near}`,
+    time: `${spec.day} ${fmtHour(spec.hour)}`,
     party: null,
   };
   return {
-    style,
-    text: [parts.query, parts.zone, parts.time].filter(Boolean).join(" · "),
+    text: [parts.query, parts.zone, parts.time].join(" · "),
     parts,
-    zoneName: a.zoneName,
-    // Browse intents ask no category — the deck is open-ended (what → 1 for
-    // every place); questions carry category sets.
-    cats: [],
-    lat: a.lat,
-    lng: a.lng,
-    day,
-    hour,
-    timeLabel: `${day} ${fmtHour(hour)}`,
+    zoneName: spec.zoneName,
+    cats: [...spec.cats],
+    lat: anchorPlace?.lat != null ? Number(anchorPlace.lat) + 0.006 : null,
+    lng: anchorPlace?.lng != null ? Number(anchorPlace.lng) + 0.005 : null,
+    day: spec.day,
+    hour: spec.hour,
+    timeLabel: `${spec.day} ${fmtHour(spec.hour)}`,
   };
 }
 

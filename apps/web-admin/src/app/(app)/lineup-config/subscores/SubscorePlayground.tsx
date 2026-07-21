@@ -23,7 +23,6 @@ import {
   buildPlaceDoc,
   embedText,
   emFromVectors,
-  generateIntent,
   openWindow,
   resolveWhere,
   whatRelation,
@@ -56,7 +55,7 @@ const pct = (v: number) => v.toFixed(2);
 export function SubscorePlayground({ specimen }: { specimen: PlaygroundSpecimen }) {
   const { consumers, places, sm, gp, rp, xx, dataAccess, context } = useScoring();
 
-  const { consumerIdx, placeIdx, style, roll } = specimen;
+  const { consumerIdx, placeIdx, roll, intent } = specimen;
   const [focus, setFocus] = useState<SubscoreId | "all">("all");
 
   const consumer = consumers[consumerIdx] ?? null;
@@ -65,7 +64,6 @@ export function SubscorePlayground({ specimen }: { specimen: PlaygroundSpecimen 
   const run = useMemo(() => {
     if (!place) return null;
     const profile = buildConsumerProfile(consumer);
-    const intent = generateIntent(style, profile, places, consumerIdx * 7 + roll);
     const enabled = new Set(context.em);
     // The data-access matrix, enforced: a revoked source is withheld from
     // the subscore's inputs and its missing-data rule applies.
@@ -138,7 +136,7 @@ export function SubscorePlayground({ specimen }: { specimen: PlaygroundSpecimen 
     ) as Record<LaneId, number>;
 
     return { profile, intent, ciDoc, placeDoc, ciVec, placeVec, emVal, w, win, rel, smP, gpP, posture, rpVal, draws, xxVals, laneScores };
-  }, [consumer, place, places, style, roll, consumerIdx, context.em, sm, gp, rp, xx, dataAccess]);
+  }, [consumer, place, intent, roll, context.em, sm, gp, rp, xx, dataAccess]);
 
   if (places.length === 0) {
     return (
