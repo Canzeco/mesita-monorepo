@@ -17,7 +17,7 @@ const SUBPAGE_DESCRIPTION: Record<string, string> = {
   "/lineup-config/lanes":
     "Compose the deck: how many cards each lane contributes, how they merge, and who calls Lineup.",
   "/lineup-config/playground":
-    "Both simulators, running the CURRENT form values — nothing on this page writes config.",
+    "One Lineup call — consumer + intent in, the sorted deck out; nothing on this page writes config.",
 };
 
 export function ScoringLayoutShell({ children }: { children: React.ReactNode }) {

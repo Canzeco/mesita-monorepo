@@ -2,21 +2,11 @@
 
 import { AlertTriangle, type LucideIcon } from "lucide-react";
 import type { LaneId } from "@/lib/business/scores";
-import { SAMPLE_MAX, type Intent } from "@/lib/business/cip";
+import { SAMPLE_MAX } from "@/lib/business/cip";
 import { PanelCard } from "./panel-ui";
 
 // Presentational bits shared by both playgrounds. Pure UI — all scoring
 // math stays in @/lib/business.
-
-/** The shared specimen — ONE consumer + ONE operator-composed intent drive
- * BOTH playground sections (decision D3); placeIdx is read only by the
- * n = 1 Subscore section (the Deck section scores the whole pool). XX draws
- * are pinned to one seeded roll — no re-roll (Pato 2026-07-21). */
-export type PlaygroundSpecimen = {
-  consumerIdx: number;
-  placeIdx: number;
-  intent: Intent;
-};
 
 /** The n = 0 state both playgrounds share — nothing in the catalog to score. */
 export function EmptyCatalog({ title, subtitle }: { title: string; subtitle: string }) {
@@ -111,43 +101,6 @@ export function ScoreBox({
   );
 }
 
-/** A small labeled fact (consumer trait, intent slot). */
-export function FactChip({
-  label,
-  value,
-  warn,
-  strong,
-}: {
-  label?: string;
-  value: string;
-  warn?: boolean;
-  strong?: boolean;
-}) {
-  return (
-    <span
-      className={
-        "inline-flex items-baseline gap-1 rounded-md border px-1.5 py-0.5 " +
-        (warn ? "border-amber-300/80 bg-amber-50 text-amber-900" : "border-border/60 bg-muted/50")
-      }
-    >
-      {label ? <span className="text-muted-foreground font-mono text-[8.5px] font-bold uppercase">{label}</span> : null}
-      <span className={"font-mono text-[10.5px]" + (strong ? " font-semibold" : "")}>{value}</span>
-    </span>
-  );
-}
-
-/** One Subscore, its own labeled cell — ES · GP · RP · IC read as four boxes. */
-export function ScoreCell({ label, value, hint }: { label: string; value: string; hint: string }) {
-  return (
-    <div title={hint} className="border-border/50 bg-muted/50 rounded-md border px-1 py-1 text-center">
-      <p className="text-muted-foreground font-mono text-[8.5px] font-bold tracking-[0.08em] uppercase">
-        {label}
-      </p>
-      <p className="mt-0.5 font-mono text-[12px] font-semibold tabular-nums">{value}</p>
-    </div>
-  );
-}
-
 /** Lane badge — Organic sky · Inorganic (paid) pink · Hybrid violet. */
 const LANE_BADGE_TONES: Record<LaneId, string> = {
   organic: "border-sky-300/80 bg-sky-50 text-sky-700",
@@ -230,19 +183,6 @@ export function ResultLine({ children }: { children: React.ReactNode }) {
   );
 }
 
-/** A centered "→ result" connector between two blocks. */
-export function ConnectorPill({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="flex items-center gap-2">
-      <span className="border-border/60 flex-1 border-t border-dashed" aria-hidden />
-      <span className="border-border/70 bg-muted rounded-full border px-2.5 py-0.5 font-mono text-[10px] font-semibold">
-        {children}
-      </span>
-      <span className="border-border/60 flex-1 border-t border-dashed" aria-hidden />
-    </div>
-  );
-}
-
 /** One factor row (WW's where/when, GP's volume/quality): inputs · math · value. */
 export function FactorRow({
   name,
@@ -265,18 +205,6 @@ export function FactorRow({
         <span className="text-muted-foreground block truncate font-mono text-[9.5px]" title={math}>{math}</span>
       </span>
       <span className="shrink-0 font-mono text-[13px] font-semibold tabular-nums">{value.toFixed(2)}</span>
-    </div>
-  );
-}
-
-/** One promo rate, labeled. */
-export function RateCell({ label, value }: { label: string; value: number | null }) {
-  return (
-    <div className="border-border/50 bg-muted/50 rounded-md border px-1 py-1 text-center">
-      <p className="text-muted-foreground font-mono text-[8px] font-bold tracking-[0.04em] uppercase">{label}</p>
-      <p className="mt-0.5 font-mono text-[12px] font-semibold tabular-nums">
-        {value != null ? `${value}%` : "—"}
-      </p>
     </div>
   );
 }
