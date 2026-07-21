@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { CalendarClock, Dices, MapPin, MessageSquareText, Store, Tags, UserRound } from "lucide-react";
+import { CalendarClock, MapPin, MessageSquareText, Store, Tags, UserRound } from "lucide-react";
 import { composeIntent, WEEKDAYS, type IntentSpec } from "@/lib/business/cip";
 import { useScoring } from "../ScoringProvider";
 import { GroupHead } from "../panel-ui";
@@ -13,9 +13,9 @@ import { DeckPlayground } from "../lanes/DeckPlayground";
 // and the intent is AUTHORED, not sampled: Consumer and Place are fixed
 // selects over real DB rows; the intent is composed by the operator along
 // its real axes — Where (zone / point) · When (day + hour) · What (category)
-// · That (the free-text ask, EM's query). Re-roll re-rolls only XX's seeded
-// draws. Both sections read the CURRENT form values from the shared
-// provider — nothing on this page writes config.
+// · That (the free-text ask, EM's query). XX draws are pinned to one seeded
+// roll (no re-roll — Pato 2026-07-21). Both sections read the CURRENT form
+// values from the shared provider — nothing on this page writes config.
 
 const HOUR_OPTIONS = Array.from({ length: 48 }, (_, i) => i / 2);
 
@@ -30,7 +30,6 @@ export function PlaygroundShell() {
 
   const [consumerIdx, setConsumerIdx] = useState(0);
   const [placeIdx, setPlaceIdx] = useState(0);
-  const [roll, setRoll] = useState(1);
 
   // The intent spec — the operator's four axes.
   const [ask, setAsk] = useState("");
@@ -53,7 +52,7 @@ export function PlaygroundShell() {
     return composeIntent(spec, places);
   }, [ask, zoneName, day, hour, catAsk, places]);
 
-  const specimen: PlaygroundSpecimen = { consumerIdx, placeIdx, roll, intent };
+  const specimen: PlaygroundSpecimen = { consumerIdx, placeIdx, intent };
 
   // Width-free base — the When row sizes its two selects itself; everything
   // else appends w-full (appending a width to a w-full class loses: Tailwind's
@@ -65,7 +64,7 @@ export function PlaygroundShell() {
   return (
     <div className="flex flex-col gap-4 sm:gap-5">
       {/* Fixed specimens — real DB rows */}
-      <div className="grid gap-2.5 sm:grid-cols-3">
+      <div className="grid gap-2.5 sm:grid-cols-2">
         <SpecimenCell icon={UserRound} tone="bg-violet-600 text-white" label="Consumer">
           <select
             aria-label="Consumer"
@@ -95,15 +94,6 @@ export function PlaygroundShell() {
               </option>
             ))}
           </select>
-        </SpecimenCell>
-        <SpecimenCell icon={Dices} tone="bg-amber-600 text-white" label="Roll">
-          <button
-            type="button"
-            onClick={() => setRoll((r) => r + 1)}
-            className="border-border/70 hover:bg-muted inline-flex w-full items-center justify-center gap-1.5 rounded-lg border px-2 py-1.5 text-[12px] font-semibold transition active:scale-[0.98]"
-          >
-            <Dices className="h-3.5 w-3.5" aria-hidden /> Re-roll XX · #{roll}
-          </button>
         </SpecimenCell>
       </div>
 

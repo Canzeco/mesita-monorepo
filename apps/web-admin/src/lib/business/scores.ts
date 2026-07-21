@@ -582,19 +582,14 @@ export const LINEUP_ENGINE = {
   ],
 } as const;
 
-/**
- * Retrieval knob — how wide EM recall casts. Recall is filtered by the
- * consumer's METRO (city set — an identity fact, not a distance gate; the
- * curve does all demotion within a metro). Revisit with a wide bounding-box
- * prefilter only if catalog-per-metro passes ~400.
- *
- * decision (Pato 2026-07-17): recallTopK STAYS a config param — a good knob,
- * unlike embedDims which became a fixed constant. Do not "fix" it.
- */
-export const DEFAULT_RETRIEVAL = {
-  /** How many places pgvector recall returns for scoring. */
-  recallTopK: 50,
-};
+// NO RECALL CAP IN LINEUP (Pato 2026-07-21, REVERSING the 2026-07-17
+// "recallTopK stays" decision): EM compares the query against ALL vectors —
+// Lineup scores the whole catalog, filtered only by the consumer's METRO
+// (city set — an identity fact, not a distance gate; the curve does all
+// demotion within a metro). The deck is capped later by the per-lane counts.
+// Retrieval-capping is MEMO's business (its own config at /memo-config) —
+// and even Memo simply calls Lineup, takes the deck, and analyzes the cards.
+// The old retrieval.recallTopK blob key is ignored on read.
 
 // ── DATA-ACCESS CONFIGURATION — the core config ─────────────────────────
 // (Notion Scoring spec: "Each subscore can be configured to select which
@@ -729,7 +724,8 @@ export const DEFAULT_CONTEXT_CONFIG: ContextConfig = {
 // absent: fixed decisions never enter the blob.
 //   laneN.{organic,inorganic,hybrid}  0–50 int each, sum ≥ 1 (0 = lane off;
 //                                     legacy flat number expands to all three)
-//   retrieval.recallTopK  10–200
+//   (retrieval.recallTopK is GONE — v9: Lineup scores the whole metro
+//    catalog, no recall cap; a stray retrieval key is ignored)
 //   sm.where.defaultTolKm 0.5–20 (GREEN — the CONSUMER DEFAULT: the admin's
 //                                fallback; the consumer's Where slider
 //                                overrides it per query)
@@ -745,11 +741,10 @@ export const DEFAULT_CONTEXT_CONFIG: ContextConfig = {
 //   dataAccess.<subscore> ⊂ APPLICABLE_SOURCES (structural, per subscore)
 
 export type ScoringSettings = {
-  v: 8;
+  v: 9;
   /** Per-lane deck counts (MESITA-659) — how many cards each lane may
    * contribute to the merged deck; 0 turns the lane off. */
   laneN: LaneCounts;
-  retrieval: { recallTopK: number };
   sm: SmParams;
   gp: GpParams;
   rp: RpRungs;
@@ -760,9 +755,8 @@ export type ScoringSettings = {
 };
 
 export const DEFAULT_SCORING_SETTINGS: ScoringSettings = {
-  v: 8,
+  v: 9,
   laneN: DEFAULT_LANE_COUNTS,
-  retrieval: DEFAULT_RETRIEVAL,
   sm: DEFAULT_SM_PARAMS,
   gp: DEFAULT_GP_PARAMS,
   rp: DEFAULT_RP_RUNGS,
@@ -842,9 +836,9 @@ export function coerceScoringSettings(raw: unknown): ScoringSettings {
   if (!raw || typeof raw !== "object") return d;
   const r = raw as Record<string, unknown>;
 
-  const ret = (r.retrieval ?? {}) as Record<string, unknown>;
-  // Note: a stray `em` key from an older blob is silently dropped — the
-  // encoder is EM_ENCODER, a fixed constant, never config.
+  // Note: stray `em` (old encoder config) and `retrieval` (v8's recall cap —
+  // gone in v9: Lineup scores the whole metro catalog) keys are silently
+  // dropped on read.
   const sm = (r.sm ?? {}) as Record<string, unknown>;
   const smWhere = (sm.where ?? {}) as Record<string, unknown>;
   const smWhen = (sm.when ?? {}) as Record<string, unknown>;
@@ -855,11 +849,8 @@ export function coerceScoringSettings(raw: unknown): ScoringSettings {
   const ctx = (r.context ?? {}) as Record<string, unknown>;
 
   return {
-    v: 8,
+    v: 9,
     laneN: coerceLaneCounts(r.laneN, d.laneN),
-    retrieval: {
-      recallTopK: num(ret.recallTopK, d.retrieval.recallTopK, 10, 200),
-    },
     sm: {
       // v8: defaultTolKm (the green consumer default) joins where — a v7
       // blob lacking it falls back to the code default. Leftover v5/v6 keys

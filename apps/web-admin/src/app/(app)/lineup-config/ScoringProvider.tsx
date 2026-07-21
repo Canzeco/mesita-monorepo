@@ -37,7 +37,7 @@ import { updateScoringSettings } from "./settings-actions";
 // in 2026-07-17 — the standalone data-access matrix box is gone). No separate
 // "dataAccess" section any more.
 export type SettingsSection =
-  | "em" // recall top-K + EM's field context + EM's data-access row
+  | "em" // EM's field context + EM's data-access row
   | "sm"
   | "gp"
   | "rp"
@@ -46,7 +46,6 @@ export type SettingsSection =
 
 function fromSettings(s: ScoringSettings): {
   laneN: LaneCounts;
-  recallTopK: number;
   sm: SmParams;
   gp: GpParams;
   rp: RpRungs;
@@ -56,7 +55,6 @@ function fromSettings(s: ScoringSettings): {
 } {
   return {
     laneN: { ...s.laneN },
-    recallTopK: s.retrieval.recallTopK,
     sm: { where: { ...s.sm.where }, when: { ...s.sm.when }, what: { ...s.sm.what } },
     gp: { ...s.gp },
     rp: { ...s.rp },
@@ -74,8 +72,6 @@ type ScoringCtx = {
   /** Per-lane deck counts — how many cards each lane may contribute. */
   laneN: LaneCounts;
   setLaneN: (lane: LaneId, n: number) => void;
-  recallTopK: number;
-  setRecallTopK: (n: number) => void;
   sm: SmParams;
   setSm: React.Dispatch<React.SetStateAction<SmParams>>;
   gp: GpParams;
@@ -128,7 +124,6 @@ export function ScoringProvider({
   );
   const seed = useMemo(() => fromSettings(saved), [saved]);
   const [laneN, setLaneNRaw] = useState<LaneCounts>(seed.laneN);
-  const [recallTopK, setRecallTopKRaw] = useState<number>(seed.recallTopK);
   const [sm, setSm] = useState<SmParams>(seed.sm);
   const [gp, setGp] = useState<GpParams>(seed.gp);
   const [rp, setRp] = useState<RpRungs>(seed.rp);
@@ -142,9 +137,6 @@ export function ScoringProvider({
       ...c,
       [lane]: Math.max(0, Math.min(LANE_N_MAX, Math.round(Number.isFinite(n) ? n : 0))),
     }));
-  const setRecallTopK = (n: number) =>
-    setRecallTopKRaw(Math.max(10, Math.min(200, Math.round(Number.isFinite(n) ? n : 10))));
-
   const toggleContext = (key: string) =>
     setContext((c) => ({
       em: c.em.includes(key) ? c.em.filter((k) => k !== key) : [...c.em, key],
@@ -171,7 +163,7 @@ export function ScoringProvider({
   // dirty diffs are JSON.stringify equality per section.
   const current: ScoringSettings = useMemo(
     () => ({
-      v: 8,
+      v: 9,
       // Same key order as coerceLaneCounts' output — the dirty diff is
       // JSON.stringify equality.
       laneN: {
@@ -179,7 +171,6 @@ export function ScoringProvider({
         inorganic: laneN.inorganic,
         hybrid: laneN.hybrid,
       },
-      retrieval: { recallTopK },
       sm: {
         where: { defaultTolKm: sm.where.defaultTolKm, distExp: sm.where.distExp },
         when: { waitFloor: sm.when.waitFloor, sessionH: sm.when.sessionH },
@@ -199,7 +190,7 @@ export function ScoringProvider({
       ) as DataAccess,
       context: { em: [...context.em].sort() },
     }),
-    [laneN, recallTopK, sm, gp, rp, xx, dataAccess, context],
+    [laneN, sm, gp, rp, xx, dataAccess, context],
   );
 
   // A section's slice of a blob — the unit of dirty/save/revert. Each subscore
@@ -208,7 +199,7 @@ export function ScoringProvider({
   const slice = (s: ScoringSettings, section: SettingsSection): unknown => {
     switch (section) {
       case "em":
-        return { recallTopK: s.retrieval.recallTopK, em: s.context.em, da: s.dataAccess.em };
+        return { em: s.context.em, da: s.dataAccess.em };
       case "sm":
         return { sm: s.sm, da: s.dataAccess.sm };
       case "gp":
@@ -246,12 +237,7 @@ export function ScoringProvider({
   const blobFor = (section: SettingsSection): ScoringSettings => {
     switch (section) {
       case "em":
-        return {
-          ...saved,
-          retrieval: current.retrieval,
-          context: current.context,
-          dataAccess: withDa("em"),
-        };
+        return { ...saved, context: current.context, dataAccess: withDa("em") };
       case "sm":
         return { ...saved, sm: current.sm, dataAccess: withDa("sm") };
       case "gp":
@@ -273,7 +259,6 @@ export function ScoringProvider({
     const f = fromSettings(s);
     switch (section) {
       case "em":
-        setRecallTopKRaw(f.recallTopK);
         setContext(f.context);
         setDaCell(f.dataAccess, "em");
         return;
@@ -333,8 +318,6 @@ export function ScoringProvider({
         places,
         laneN,
         setLaneN,
-        recallTopK,
-        setRecallTopK,
         sm,
         setSm,
         gp,

@@ -11,14 +11,15 @@
 // — the Subscores tab always saves its full form, so partial patches would
 // only invite drift.
 //
-// v8 blob (scoring v10, MESITA-644 · per-lane counts MESITA-659 · SM 1·2·1
-// hyperparameters + the GREEN consumer default defaultTolKm, MESITA-702) —
-// keys follow the subscore names (EM · SM · GP · RP ·
+// v9 blob (scoring v10, MESITA-644 · per-lane counts MESITA-659 · SM 1·2·1
+// hyperparameters + the GREEN consumer default defaultTolKm MESITA-702 ·
+// NO RECALL CAP, MESITA-706: Lineup scores the whole metro catalog, so
+// retrieval.recallTopK is GONE — a stray retrieval key from a v8 client is
+// ignored, like `em`) — keys follow the subscore names (EM · SM · GP · RP ·
 // XX, all [0,1]; three lanes; merge O → I → H). The EM encoder
 // (text-embedding-3-small @ its native 1536 dims) is a FIXED decision,
-// deliberately NOT in the blob — a stray `em` key from an older client is
-// ignored:
-//   { v: 8, laneN, retrieval, sm, gp, rp, xx, dataAccess, context }
+// deliberately NOT in the blob:
+//   { v: 9, laneN, sm, gp, rp, xx, dataAccess, context }
 //   laneN     PER-LANE deck counts { organic, inorganic, hybrid }, each
 //             0–50 int (0 = lane off), sum ≥ 1; the merged deck (dedupe,
 //             no backfill) is ≤ their sum. A legacy v4 flat number expands
@@ -111,10 +112,6 @@ function validate(raw: unknown): { ok: true; config: unknown } | { ok: false; er
   if (laneN.organic + laneN.inorganic + laneN.hybrid < 1) {
     return { ok: false, error: "laneN: at least one lane must be > 0" };
   }
-
-  const ret = r.retrieval as Record<string, unknown> | undefined;
-  const recallTopK = num(ret?.recallTopK, 10, 200);
-  if (recallTopK == null) return { ok: false, error: "retrieval.recallTopK out of range" };
 
   // SM — where × when × what (v8: 1 · 2 · 1 hyperparameters + the green
   // consumer default defaultTolKm; stray v5/v6 keys — pointTolKm ·
@@ -218,13 +215,12 @@ function validate(raw: unknown): { ok: true; config: unknown } | { ok: false; er
   return {
     ok: true,
     config: {
-      v: 8,
+      v: 9,
       laneN: {
         organic: laneN.organic,
         inorganic: laneN.inorganic,
         hybrid: laneN.hybrid,
       },
-      retrieval: { recallTopK },
       sm: {
         where: { defaultTolKm, distExp },
         when: { waitFloor, sessionH },

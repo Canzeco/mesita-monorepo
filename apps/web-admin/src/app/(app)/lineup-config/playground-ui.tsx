@@ -10,12 +10,11 @@ import { PanelCard } from "./panel-ui";
 
 /** The shared specimen — ONE consumer + ONE operator-composed intent drive
  * BOTH playground sections (decision D3); placeIdx is read only by the
- * n = 1 Subscore section (the Deck section scores the whole pool); roll
- * re-rolls only XX's draws (the intent is authored, not sampled). */
+ * n = 1 Subscore section (the Deck section scores the whole pool). XX draws
+ * are pinned to one seeded roll — no re-roll (Pato 2026-07-21). */
 export type PlaygroundSpecimen = {
   consumerIdx: number;
   placeIdx: number;
-  roll: number;
   intent: Intent;
 };
 
