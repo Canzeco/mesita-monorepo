@@ -1,5 +1,5 @@
 import { Clock, SlidersHorizontal, X } from 'lucide-react-native';
-import { Pressable, ScrollView, Text, View } from 'react-native';
+import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 
 import {
@@ -25,6 +25,7 @@ import {
 import { PLACE_FAMILIES } from '@/lib/place-families';
 import {
   resetDiscoveryFilters,
+  setDiscoveryAsk,
   setDiscoveryMaxKm,
   setDiscoveryRandomness,
   setDiscoveryWhen,
@@ -230,6 +231,21 @@ export function DiscoveryFilters({
             </View>
           </>
         ) : null}
+
+        <SectionLabel className="mt-5">That · the ask</SectionLabel>
+        <TextInput
+          value={filters.ask}
+          maxLength={200}
+          onChangeText={setDiscoveryAsk}
+          placeholder='what are you craving? — "mezcal cocktails for a date"'
+          placeholderTextColor="#77525466"
+          accessibilityLabel="The ask — free text, shapes your lineup"
+          className="w-full rounded-xl border border-border/70 bg-muted/40 px-3.5 py-2.5 text-sm text-foreground"
+        />
+        <Text className="mt-1.5 text-[11px] text-muted-foreground/70">
+          Shapes your lineup once the engine reads it — doesn&apos;t narrow the
+          list yet.
+        </Text>
 
         <SectionLabel className="mt-5">Randomness</SectionLabel>
         <View className="mb-1 flex-row items-center justify-between">

@@ -20,10 +20,10 @@ import {
 } from "@/lib/discovery-filters-engine";
 import { PLACE_FAMILIES, type FamilyKey } from "@/lib/place-families";
 
-// v3: the MESITA-672 shape (searched zone center + km radius, when union, 0–5
-// randomness). Old v1/v2 keys are simply ignored — session-scoped state needs
-// no migration.
-const STORAGE_KEY = "mesita_discovery_filters_v3";
+// v4: the v3 shape (MESITA-672 — searched zone center + km radius, when
+// union, 0–5 randomness) + `ask`, the intent's That axis (MESITA-699). Old
+// keys are simply ignored — session-scoped state needs no migration.
+const STORAGE_KEY = "mesita_discovery_filters_v4";
 
 const KNOWN_FAMILY_KEYS = new Set<string>(PLACE_FAMILIES.map((f) => f.key));
 const ZONE_LEVELS = new Set<string>([
@@ -99,6 +99,7 @@ function readPersisted(): DiscoveryFilters {
       zone: readZone(parsed.zone),
       maxKm,
       when: readWhen(parsed.when),
+      ask: typeof parsed.ask === "string" ? parsed.ask.slice(0, 200) : "",
       randomness,
     };
   } catch {
@@ -181,6 +182,11 @@ export function setDiscoveryWhen(when: DiscoveryWhen) {
 
 export function setDiscoveryMaxKm(maxKm: number | null) {
   patchDiscoveryFilters({ maxKm });
+}
+
+/** That — the free-text ask (the intent's 4th axis). Capped at 200 chars. */
+export function setDiscoveryAsk(ask: string) {
+  patchDiscoveryFilters({ ask: ask.slice(0, 200) });
 }
 
 export function setDiscoveryRandomness(randomness: RandomnessLevel) {
