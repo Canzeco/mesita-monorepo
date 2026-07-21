@@ -1,11 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import {
-  DEFAULT_POINT_TOL_KM,
-  LANES,
-  SUBSCORE_BY_ID,
-} from "@/lib/business/scores";
+import { LANES, SUBSCORE_BY_ID } from "@/lib/business/scores";
 import { useScoring } from "../ScoringProvider";
 import { PanelCard } from "../panel-ui";
 import { LaneBadge } from "../playground-ui";
@@ -73,7 +69,7 @@ export function ScoresPanel() {
           <p>EM = max(0, cos(A, B)) · A = place doc · B = consumer + intent doc · [0,1]</p>
           <p>
             SM = where × when × what · where = 1/(1+(km/tol)^{sm.where.distExp.toFixed(1)}) · tol
-            = consumer slider (default {DEFAULT_POINT_TOL_KM} km) · wait ={" "}
+            = consumer slider (green default {sm.where.defaultTolKm.toFixed(1)} km) · wait ={" "}
             {sm.when.waitFloor.toFixed(2)} + {(1 - sm.when.waitFloor).toFixed(2)}/(1+(h/2)^4) · fit
             = min(1, h/{sm.when.sessionH.toFixed(1)}) · 30-min blocks
           </p>

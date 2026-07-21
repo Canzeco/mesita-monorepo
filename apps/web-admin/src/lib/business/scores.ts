@@ -62,8 +62,10 @@
 //     km measured to the consumer's W: a REGION SET if zones/anchors were
 //     named (inside any → 0; outside → distance from the nearest border),
 //     else a POINT at GPS. tol is the CONSUMER'S distance-tolerance input
-//     (the Where filter slider) — NOT admin config; unset → the frozen
-//     default 5 km (DEFAULT_POINT_TOL_KM). A named zone reuses 30% of it
+//     (the Where filter slider); unset → the admin's defaultTolKm knob —
+//     a CONSUMER-OVERRIDABLE DEFAULT (GREEN in the console, like XX's
+//     control: the admin sets the fallback, the user overrides per query;
+//     when/what knobs have no consumer override). A named zone reuses 30%
 //     (ZONE_SPILL_FRAC — a typed zone is a constraint, not a vibe). The
 //     admin's ONE where knob is the exponent: exp = 3 → doubling distance
 //     beyond tolerance costs 8× — the tail is honestly a soft gate. Zones
@@ -189,15 +191,20 @@ export function emScore(cos: number): number {
 
 // ── SM — Structured Match ──────────────────────────────────────────────
 
-// SM's knob count is a deliberate diet (Pato 2026-07-17, twice): first to
-// two knobs per factor, then to 1 · 2 · 1 — where and what keep ONE knob
-// each (the consumer owns the where tolerance; the mismatch rung froze),
-// when keeps its two. Everything less tunable is a fixed constant below.
+// SM's knob count is a deliberate diet (Pato 2026-07-17, twice): 1 · 2 · 1
+// HYPERPARAMETERS (falloff · floor+session · sibling — the consumer never
+// touches these). Alongside them sits ONE knob of a DIFFERENT CLASS
+// (Pato 2026-07-21): defaultTolKm, a CONSUMER-OVERRIDABLE DEFAULT — green
+// in the console, same class as XX's control: the admin configures the
+// fallback, the consumer's Where slider overrides it per query. Everything
+// less tunable is a fixed constant below.
 export type SmWhereParams = {
-  /** Distance falloff — the ONE where knob: how hard distance bites.
-   * 3 = doubling distance beyond tolerance costs 8×. The tolerance itself
-   * is the CONSUMER'S runtime input (Where filter slider;
-   * DEFAULT_POINT_TOL_KM when unset), never admin config. */
+  /** Default distance tolerance, km — the CONSUMER DEFAULT (green): what
+   * the where curve uses when the consumer's Where slider is unset. The
+   * consumer's own tolerance always wins (SmInputs.tolKm). */
+  defaultTolKm: number;
+  /** Distance falloff — the where HYPERPARAMETER: how hard distance bites.
+   * 3 = doubling distance beyond tolerance costs 8×. No consumer override. */
   distExp: number;
 };
 
@@ -227,20 +234,21 @@ export type SmParams = {
 //                        tolerance is 30% of the consumer's tolerance.
 //   WAIT_TRANSITION_H    hours-until-open where the two wait plateaus cross.
 //   WAIT_STEEP           wait steepness — 4 = two plateaus, thin middle.
-//   DEFAULT_POINT_TOL_KM the consumer's tolerance when no Where filter is
-//                        set (car metros — the Friday span survives).
 //   MISMATCH_RUNG        what's no-overlap rung — never 0 (SM gets no veto
 //                        over semantics), low enough to bury a true miss.
 export const ZONE_SPILL_FRAC = 0.3;
 export const WAIT_TRANSITION_H = 2;
 export const WAIT_STEEP = 4;
+/** The CODE default for sm.where.defaultTolKm (a knob since 2026-07-21 —
+ * it was a frozen constant while "configure the default" wasn't possible).
+ * 5 km = car metros; the Friday span survives. */
 export const DEFAULT_POINT_TOL_KM = 5;
 export const MISMATCH_RUNG = 0.2;
 
 // Defaults, argued from what Mesita IS (car metros, dinner-anchored,
 // nightlife-heavy — see the header):
 export const DEFAULT_SM_PARAMS: SmParams = {
-  where: { distExp: 3 },
+  where: { defaultTolKm: DEFAULT_POINT_TOL_KM, distExp: 3 },
   when: { waitFloor: 0.3, sessionH: 1.5 },
   what: { sibling: 0.6 },
 };
@@ -311,7 +319,8 @@ export type SmInputs = {
   /** km to W (0 inside a named region) · null = unknown → where 1. */
   km: number | null;
   /** The consumer's distance tolerance (their Where filter slider), km ·
-   * null = unset → DEFAULT_POINT_TOL_KM. Runtime input, never config. */
+   * null = unset → the admin's defaultTolKm knob (the green consumer
+   * default). Runtime input always wins over the default. */
   tolKm: number | null;
   /** True when W is a named region (zone mode) — picks the derived zone
    * tolerance (tolerance × ZONE_SPILL_FRAC). */
@@ -338,9 +347,9 @@ export type SmParts = {
 };
 
 export function smParts(i: SmInputs, p: SmParams = DEFAULT_SM_PARAMS): SmParts {
-  // The consumer owns the tolerance (unset → the frozen default); a named
-  // zone is a constraint, not a vibe — it gets a fixed fraction of it.
-  const baseTol = i.tolKm ?? DEFAULT_POINT_TOL_KM;
+  // The consumer owns the tolerance (unset → the admin's green default
+  // knob); a named zone is a constraint, not a vibe — a fixed fraction.
+  const baseTol = i.tolKm ?? p.where.defaultTolKm;
   const tolKm = i.zoneMode ? baseTol * ZONE_SPILL_FRAC : baseTol;
   const where = whereScore(i.km, tolKm, p.where.distExp);
   const wait = i.hoursUnknown ? 1 : waitScore(i.opensInH, p.when);
@@ -721,21 +730,22 @@ export const DEFAULT_CONTEXT_CONFIG: ContextConfig = {
 //   laneN.{organic,inorganic,hybrid}  0–50 int each, sum ≥ 1 (0 = lane off;
 //                                     legacy flat number expands to all three)
 //   retrieval.recallTopK  10–200
-//   sm.where.distExp      1–5   (the ONE where knob — the tolerance is the
-//                                consumer's input, default frozen at 5 km)
+//   sm.where.defaultTolKm 0.5–20 (GREEN — the CONSUMER DEFAULT: the admin's
+//                                fallback; the consumer's Where slider
+//                                overrides it per query)
+//   sm.where.distExp      1–5   (the where HYPERPARAMETER — no override)
 //   sm.when.waitFloor     0–1           sm.when.sessionH   0.5–4
 //   sm.what.sibling       0–1   (the ONE what knob — mismatch frozen at 0.2)
-//   (zone spillover, default tolerance, mismatch rung, wait transition/
-//    steepness and the 30-min grid are frozen constants — ZONE_SPILL_FRAC ·
-//    DEFAULT_POINT_TOL_KM · MISMATCH_RUNG · WAIT_TRANSITION_H · WAIT_STEEP ·
-//    TIME_BLOCK_H)
+//   (zone spillover, mismatch rung, wait transition/steepness and the
+//    30-min grid are frozen constants — ZONE_SPILL_FRAC · MISMATCH_RUNG ·
+//    WAIT_TRANSITION_H · WAIT_STEEP · TIME_BLOCK_H)
 //   gp.lnCeiling          5–15
 //   rp.*                  0–1
 //   xx.control            0–5
 //   dataAccess.<subscore> ⊂ APPLICABLE_SOURCES (structural, per subscore)
 
 export type ScoringSettings = {
-  v: 7;
+  v: 8;
   /** Per-lane deck counts (MESITA-659) — how many cards each lane may
    * contribute to the merged deck; 0 turns the lane off. */
   laneN: LaneCounts;
@@ -750,7 +760,7 @@ export type ScoringSettings = {
 };
 
 export const DEFAULT_SCORING_SETTINGS: ScoringSettings = {
-  v: 7,
+  v: 8,
   laneN: DEFAULT_LANE_COUNTS,
   retrieval: DEFAULT_RETRIEVAL,
   sm: DEFAULT_SM_PARAMS,
@@ -845,17 +855,18 @@ export function coerceScoringSettings(raw: unknown): ScoringSettings {
   const ctx = (r.context ?? {}) as Record<string, unknown>;
 
   return {
-    v: 7,
+    v: 8,
     laneN: coerceLaneCounts(r.laneN, d.laneN),
     retrieval: {
       recallTopK: num(ret.recallTopK, d.retrieval.recallTopK, 10, 200),
     },
     sm: {
-      // v7: 1 · 2 · 1 knobs. Leftover v5/v6 keys (pointTolKm — the consumer
-      // owns the tolerance now — mismatch, zoneSpillKm, waitTransitionH,
-      // waitSteep, timeBlockH) are simply not read; the surviving knobs
-      // migrate straight over.
+      // v8: defaultTolKm (the green consumer default) joins where — a v7
+      // blob lacking it falls back to the code default. Leftover v5/v6 keys
+      // (pointTolKm, mismatch, zoneSpillKm, waitTransitionH, waitSteep,
+      // timeBlockH) are simply not read.
       where: {
+        defaultTolKm: num(smWhere.defaultTolKm, d.sm.where.defaultTolKm, 0.5, 20),
         distExp: num(smWhere.distExp, d.sm.where.distExp, 1, 5),
       },
       when: {

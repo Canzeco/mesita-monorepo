@@ -1,7 +1,6 @@
 "use client";
 
 import {
-  DEFAULT_POINT_TOL_KM,
   EM_ENCODER,
   gpParts,
   MISMATCH_RUNG,
@@ -133,12 +132,23 @@ export function SubscoresPanel() {
       <section id="sm" className="scroll-mt-24">
       <PanelCard
         title="SM Subscore · Structured Match — where × when × what"
-        subtitle="The intent's structured asks against place facts — where/when are continuous curves, what is the categorical ladder; 1 · 2 · 1 knobs, and the consumer owns the where tolerance."
+        subtitle="The intent's structured asks against place facts — where/when are continuous curves, what is the categorical ladder; 1 · 2 · 1 hyperparameters, plus the GREEN consumer default (distance tolerance) the user's Where slider overrides per query."
       >
         <div className="mt-4 grid gap-x-8 gap-y-5 lg:grid-cols-3">
           <div>
-            <SubHead>where · one knob — how hard distance bites</SubHead>
+            <SubHead>where · a green default + one hyperparameter</SubHead>
             <div className="mt-3 grid grid-cols-2 gap-x-6 gap-y-4">
+              <Slider
+                consumer
+                label="Default tolerance"
+                value={`${sm.where.defaultTolKm.toFixed(1)} km`}
+                min={0.5}
+                max={20}
+                step={0.5}
+                v={sm.where.defaultTolKm}
+                onChange={(v) => setWhere("defaultTolKm", v)}
+                hint="GREEN = consumer-overridable: this is only the no-filter fallback — the consumer's own Where slider sets the real tolerance per query (when/what knobs have no such override)"
+              />
               <Slider
                 label="Distance falloff"
                 value={sm.where.distExp.toFixed(1)}
@@ -147,12 +157,12 @@ export function SubscoresPanel() {
                 step={0.5}
                 v={sm.where.distExp}
                 onChange={(v) => setWhere("distExp", v)}
-                hint={`the exponent — doubling distance beyond tolerance costs ${Math.pow(2, sm.where.distExp).toFixed(0)}×; at the default ${DEFAULT_POINT_TOL_KM} km tolerance, 8 km → ${whereScore(8, DEFAULT_POINT_TOL_KM, sm.where.distExp).toFixed(2)}`}
+                hint={`the exponent — doubling distance beyond tolerance costs ${Math.pow(2, sm.where.distExp).toFixed(0)}×; at ${sm.where.defaultTolKm.toFixed(1)} km tolerance, 8 km → ${whereScore(8, sm.where.defaultTolKm, sm.where.distExp).toFixed(2)}`}
               />
             </div>
             <p className="text-muted-foreground mt-3 font-mono text-[10px] leading-relaxed">
-              tolerance = the consumer&apos;s Where slider (default {DEFAULT_POINT_TOL_KM} km,
-              frozen) · a named zone uses 30% of it · continuous, never a bucket
+              tolerance = the consumer&apos;s Where slider; unset → the green default · a named
+              zone uses 30% of it · continuous, never a bucket
             </p>
           </div>
           <div>
@@ -298,6 +308,7 @@ export function SubscoresPanel() {
       >
         <div className="mt-4 grid grid-cols-2 gap-x-6 gap-y-4 sm:max-w-2xl sm:grid-cols-3">
           <Slider
+            consumer
             label="Default control · no-filter value"
             value={xx.control.toFixed(1)}
             min={0}

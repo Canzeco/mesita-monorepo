@@ -11,24 +11,26 @@
 // — the Subscores tab always saves its full form, so partial patches would
 // only invite drift.
 //
-// v7 blob (scoring v10, MESITA-644 · per-lane counts MESITA-659 · SM cut to
-// 1 · 2 · 1 knobs — the consumer owns the where tolerance, the mismatch rung
-// froze) — keys follow the subscore names (EM · SM · GP · RP ·
+// v8 blob (scoring v10, MESITA-644 · per-lane counts MESITA-659 · SM 1·2·1
+// hyperparameters + the GREEN consumer default defaultTolKm, MESITA-702) —
+// keys follow the subscore names (EM · SM · GP · RP ·
 // XX, all [0,1]; three lanes; merge O → I → H). The EM encoder
 // (text-embedding-3-small @ its native 1536 dims) is a FIXED decision,
 // deliberately NOT in the blob — a stray `em` key from an older client is
 // ignored:
-//   { v: 7, laneN, retrieval, sm, gp, rp, xx, dataAccess, context }
+//   { v: 8, laneN, retrieval, sm, gp, rp, xx, dataAccess, context }
 //   laneN     PER-LANE deck counts { organic, inorganic, hybrid }, each
 //             0–50 int (0 = lane off), sum ≥ 1; the merged deck (dedupe,
 //             no backfill) is ≤ their sum. A legacy v4 flat number expands
 //             to all three lanes.
-//   sm        Structured Match knobs — where (distExp only: the consumer
-//             owns the tolerance, default frozen at 5 km) · when (waitFloor ·
-//             sessionH) · what (sibling only: mismatch frozen at 0.2). Zone
-//             spillover, wait transition/steepness and the 30-min grid are
-//             frozen constants in the model — not config; leftover v5/v6
-//             keys (pointTolKm · mismatch) are ignored.
+//   sm        Structured Match knobs — where (defaultTolKm: the CONSUMER
+//             DEFAULT the user's Where slider overrides per query — LENIENT:
+//             a v7 client omitting it gets the code default 5, so both
+//             client generations save · distExp: the hyperparameter) · when
+//             (waitFloor · sessionH) · what (sibling only: mismatch frozen
+//             at 0.2). Zone spillover, wait transition/steepness and the
+//             30-min grid are frozen constants in the model — not config;
+//             leftover v5/v6 keys (pointTolKm · mismatch) are ignored.
 //   gp        Google Popularity — lnCeiling (ln(1 + ★·n) that reads GP 1)
 //   rp        Rewards Promotions rungs per posture, [0,1]
 //   xx        Random Number — control ∈ [0,5] (0 = off, pure merit)
@@ -114,11 +116,15 @@ function validate(raw: unknown): { ok: true; config: unknown } | { ok: false; er
   const recallTopK = num(ret?.recallTopK, 10, 200);
   if (recallTopK == null) return { ok: false, error: "retrieval.recallTopK out of range" };
 
-  // SM — where × when × what (v7: 1 · 2 · 1 knobs; the consumer owns the
-  // where tolerance and the mismatch rung is frozen, so stray v5/v6 keys —
-  // pointTolKm · mismatch — are ignored like the other frozen constants).
+  // SM — where × when × what (v8: 1 · 2 · 1 hyperparameters + the green
+  // consumer default defaultTolKm; stray v5/v6 keys — pointTolKm ·
+  // mismatch — are ignored like the other frozen constants).
   const smIn = r.sm as Record<string, unknown> | undefined;
   const whereIn = smIn?.where as Record<string, unknown> | undefined;
+  // LENIENT on purpose: the deployed v7 admin build omits defaultTolKm —
+  // fall back to the code default (5 km) instead of rejecting, so both
+  // client generations keep saving across the deploy window.
+  const defaultTolKm = num(whereIn?.defaultTolKm, 0.5, 20) ?? 5;
   const distExp = num(whereIn?.distExp, 1, 5);
   if (distExp == null) {
     return { ok: false, error: "sm.where knobs out of range" };
@@ -212,7 +218,7 @@ function validate(raw: unknown): { ok: true; config: unknown } | { ok: false; er
   return {
     ok: true,
     config: {
-      v: 7,
+      v: 8,
       laneN: {
         organic: laneN.organic,
         inorganic: laneN.inorganic,
@@ -220,7 +226,7 @@ function validate(raw: unknown): { ok: true; config: unknown } | { ok: false; er
       },
       retrieval: { recallTopK },
       sm: {
-        where: { distExp },
+        where: { defaultTolKm, distExp },
         when: { waitFloor, sessionH },
         what: { sibling },
       },
