@@ -1,0 +1,63 @@
+"use client";
+
+import { PIPELINE_CONTEXT } from "@/lib/business/scores";
+import { STRATEGIES } from "@/lib/business/strategies";
+import { useScoring } from "../ScoringProvider";
+import { ContextCols, Slider, SubscoreDataAccess } from "../panel-ui";
+import { KnobGrid, ProcessSteps, Prose, SubscoreBox } from "./SubscoreBox";
+
+// RP · Rewards Promotions — bought merit (rose).
+
+export function RpBox() {
+  const { rp, setRp, dataAccess, toggleSource } = useScoring();
+
+  return (
+    <SubscoreBox
+      id="rp"
+      tint="rose"
+      title="RP Subscore · Rewards Promotions"
+      overview={
+        <Prose>
+          BOUGHT merit — the place&apos;s live promo rates resolve to a posture, the posture to
+          a rung. Rates never reach the consumer; RP reads them server-side only.
+        </Prose>
+      }
+      hyperparams={
+        <KnobGrid cols={4}>
+          {STRATEGIES.map((s) => (
+            <Slider
+              key={s.id}
+              label={s.name}
+              value={rp[s.id].toFixed(2)}
+              min={0}
+              max={1}
+              step={0.05}
+              v={rp[s.id]}
+              onChange={(v) => setRp((p) => ({ ...p, [s.id]: Math.max(0, Math.min(1, v)) }))}
+              hint={`the ${s.name.toLowerCase()} posture's rung`}
+            />
+          ))}
+        </KnobGrid>
+      }
+      inputs={
+        <>
+          <ContextCols ctx={PIPELINE_CONTEXT.rp} />
+          <SubscoreDataAccess subscore="rp" access={dataAccess} onToggle={toggleSource} />
+        </>
+      }
+      process={
+        <ProcessSteps>
+          <p>live rates (welcome/returning × free/premium) → posture (Zero · Conservative · Aggressive · Dominant)</p>
+          <p>posture → its rung above · custom/legacy rates that match no preset → the zero rung</p>
+        </ProcessSteps>
+      }
+      outputs={
+        <Prose>
+          <b className="text-foreground/80">RP ∈ [0,1]</b> — multiplies Inorganic + Hybrid.
+          Non-members never ENTER the paid lanes at all (a lane filter, not a score); the
+          zero-posture member keeps the whisper.
+        </Prose>
+      }
+    />
+  );
+}
