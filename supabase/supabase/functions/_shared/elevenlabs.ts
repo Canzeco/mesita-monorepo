@@ -15,7 +15,9 @@ export const DEFAULT_AGENT_ID = "agent_2201kxsktw0me9rb2kdtqerrgzha";
 export const DEFAULT_FROM_NUMBER = "+16282960710";
 
 export function elevenLabsKey(): string | null {
-  const k = Deno.env.get("ELEVENLABS_KEY");
+  // Canonical name ELEVENLABS_KEY; ELEVEN_KEY accepted (the name the secret was
+  // first created under in the dashboard).
+  const k = Deno.env.get("ELEVENLABS_KEY") ?? Deno.env.get("ELEVEN_KEY");
   return k && k.trim() ? k.trim() : null;
 }
 
