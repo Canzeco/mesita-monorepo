@@ -20,6 +20,7 @@ import {
   ContextCols,
   ContextConfigCols,
   GroupHead,
+  MiniTile,
   PanelCard,
   Slider,
   SubHead,
@@ -105,7 +106,7 @@ export function SubscoresPanel() {
         subtitle="max(0, cos(place vector, consumer + intent vector)) → [0,1] — EM reads TEXT only; click a field below to include or exclude it from the embedded documents."
         pill={`${context.em.length} fields in context`}
       >
-        <div className="mt-4 grid grid-cols-2 gap-x-6 gap-y-4 sm:max-w-md">
+        <div className="mt-4 grid grid-cols-2 gap-x-6 gap-y-4 sm:max-w-2xl sm:grid-cols-3">
           <Slider
             label="Recall top-K"
             value={String(recallTopK)}
@@ -215,7 +216,7 @@ export function SubscoresPanel() {
         title="GP Subscore · Google Popularity"
         subtitle="min(1, ln(1 + rating × reviews) / ceiling) — earned popularity, log-squashed; no Google presence → 0 (out of the organic lanes)."
       >
-        <div className="mt-4 grid grid-cols-2 gap-x-6 gap-y-4 sm:max-w-xl sm:grid-cols-3">
+        <div className="mt-4 grid grid-cols-2 gap-x-6 gap-y-4 sm:max-w-2xl sm:grid-cols-3">
           <Slider
             label="ln ceiling"
             value={gp.lnCeiling.toFixed(1)}
@@ -236,18 +237,20 @@ export function SubscoresPanel() {
           <SubHead>Worked examples · live at this ceiling</SubHead>
           <div className="mt-2 grid grid-cols-2 gap-2 lg:grid-cols-4">
             {gpArchetypes.map((a) => (
-              <div key={a.label} className="bg-muted/60 border-border/60 rounded-xl border px-2.5 py-2">
-                <p className="text-muted-foreground text-[10px] font-semibold tracking-[0.04em] uppercase">
-                  {a.label}
-                </p>
-                <p className="mt-0.5 font-mono text-[11px]">
-                  {a.stars != null ? `${a.stars.toFixed(1)}★ × ${a.reviews.toLocaleString("en-US")}` : "—"}
-                </p>
+              <MiniTile
+                key={a.label}
+                label={a.label}
+                value={
+                  a.stars != null
+                    ? `${a.stars.toFixed(1)}★ × ${a.reviews.toLocaleString("en-US")}`
+                    : "—"
+                }
+              >
                 <p className="text-muted-foreground mt-0.5 font-mono text-[10px] leading-snug">
                   raw {a.parts.raw.toLocaleString("en-US", { maximumFractionDigits: 0 })} →{" "}
                   <b className="text-foreground">GP {a.parts.gp.toFixed(2)}</b>
                 </p>
-              </div>
+              </MiniTile>
             ))}
           </div>
         </div>
@@ -263,29 +266,21 @@ export function SubscoresPanel() {
         title="RP Subscore · Rewards Promotions"
         subtitle="The place's live promo rates → posture → a rung in [0,1] — bought merit; rates never reach the consumer."
       >
-        <div className="mt-4 grid max-w-2xl grid-cols-2 gap-3 sm:grid-cols-4">
+        <div className="mt-4 grid grid-cols-2 gap-x-6 gap-y-4 sm:max-w-2xl sm:grid-cols-4">
           {STRATEGIES.map((s) => (
-            <div key={s.id} className="bg-muted/60 border-border/60 rounded-xl border px-2.5 py-2.5">
-              <p className="text-muted-foreground text-center text-[11px]">{s.name}</p>
-              <p className="font-display mt-0.5 text-center text-lg font-semibold tabular-nums">
-                {rp[s.id].toFixed(2)}
-              </p>
-              <input
-                type="range"
-                min={0}
-                max={1}
-                step={0.05}
-                value={rp[s.id]}
-                onChange={(e) =>
-                  setRp((p) => ({
-                    ...p,
-                    [s.id]: Math.max(0, Math.min(1, Number(e.target.value))),
-                  }))
-                }
-                aria-label={`RP rung for ${s.name}`}
-                className="accent-primary mt-1 w-full"
-              />
-            </div>
+            <Slider
+              key={s.id}
+              label={s.name}
+              value={rp[s.id].toFixed(2)}
+              min={0}
+              max={1}
+              step={0.05}
+              v={rp[s.id]}
+              onChange={(v) =>
+                setRp((p) => ({ ...p, [s.id]: Math.max(0, Math.min(1, v)) }))
+              }
+              hint={`the ${s.name.toLowerCase()} posture's rung`}
+            />
           ))}
         </div>
         <ContextCols ctx={PIPELINE_CONTEXT.rp} />
@@ -320,9 +315,8 @@ export function SubscoresPanel() {
           <Chip
             label="Ladder"
             value={`U¹ ${xxScore(0.5, 1).toFixed(2)} · U³ ${xxScore(0.5, 3).toFixed(2)} · U⁵ ${xxScore(0.5, 5).toFixed(3)}`}
-            hint="the median card at control 1 / 3 / 5 — frozen → boiling"
+            hint="the median card at control 1 / 3 / 5 — seeded per (card, lane, roll); live decks draw fresh"
           />
-          <Chip label="Determinism" value="seeded per (card, lane, roll)" hint="the playgrounds re-roll on demand; live decks draw fresh" />
         </div>
         <ContextCols ctx={PIPELINE_CONTEXT.xx} />
         <SubscoreDataAccess subscore="xx" access={dataAccess} onToggle={toggleSource} />
