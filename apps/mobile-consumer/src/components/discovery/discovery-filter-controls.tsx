@@ -11,6 +11,25 @@ import { COLORS, GRADIENTS, GRADIENT_DIAGONAL } from '@/constants/brand';
 // Pill + SectionLabel + brand-filled RangeSlider. RN port of web
 // discovery-filter-controls.tsx.
 
+/** Group tier ABOVE SectionLabel — the sheet has exactly TWO groups: INTENT
+ * (Where incl. its distance tolerance · When · What · That) and RANDOMNESS
+ * (XX's luck knob). The panel configures both subscore inputs. */
+export function FilterGroupLabel({
+  children,
+  className,
+}: {
+  children: ReactNode;
+  className?: string;
+}) {
+  return (
+    <Text
+      className={`mb-3 text-[10px] font-bold uppercase tracking-[0.16em] text-primary/70 ${className ?? ''}`}
+    >
+      {children}
+    </Text>
+  );
+}
+
 export function SectionLabel({
   children,
   className,
