@@ -306,59 +306,37 @@ export function openWindow(
 // ── CONTEXT DOCUMENTS — the wide embedding contexts, assembled for real ──
 // These are the documents the real pipeline will embed for EM: everything is
 // TEXT — hours and zones appear as words; numeric distance/time live only in
-// SM, numeric proof only in GP. WHICH fields go in is CONFIG
-// (scores.CONTEXT_FIELDS + the saved ContextConfig): every builder takes an
-// `enabled` key set and assembles from exactly that — so a toggle on the
-// Subscores tab changes the embedding, the cosine, and the ranking. `enabled`
-// omitted = all on.
-
-type Enabled = ReadonlySet<string> | null | undefined;
-const on = (enabled: Enabled, key: string) => !enabled || enabled.has(key);
+// SM, numeric proof only in GP. The field set is FIXED (scores.CONTEXT_FIELDS
+// is documentation, not config — v10 retired the per-field toggles): every
+// builder always assembles from every live field with data.
 
 /**
  * The consumer half of the CI document — barely-mutable side. Spec fields
  * ONLY: name · sex · age · country · class+why. Taste and history are the
- * spec's "ignored for now" — never embedded, whatever the toggles say.
- * `sourceOn` = the data-access matrix's em×consumer cell.
+ * spec's "ignored for now" — never embedded.
  */
-export function buildConsumerDoc(
-  profile: ConsumerProfile,
-  enabled?: Enabled,
-  sourceOn = true,
-): string {
-  if (!sourceOn) return "";
+export function buildConsumerDoc(profile: ConsumerProfile): string {
   const c = profile.consumer;
   const igWhy =
     c?.instagram_followers != null && c.instagram_followers > 0 ? "IG-invited" : "subscribed";
   return [
-    on(enabled, "consumer.name") ? (c?.label ?? "Anonymous consumer") : "Consumer",
-    on(enabled, "consumer.sex") ? (c?.sex ?? null) : null,
-    on(enabled, "consumer.age") && c?.age != null ? `${c.age} years old` : null,
-    on(enabled, "consumer.country") ? (c?.country ?? null) : null,
-    on(enabled, "consumer.class") ? `${c?.class_key ?? "free"} class (${igWhy})` : null,
+    c?.label ?? "Anonymous consumer",
+    c?.sex ?? null,
+    c?.age != null ? `${c.age} years old` : null,
+    c?.country ?? null,
+    `${c?.class_key ?? "free"} class (${igWhy})`,
   ]
     .filter(Boolean)
     .join(" · ");
 }
 
-/** The full CI document — consumer (stable) + intent (per-query), merged.
- * `sources` gates whole sides per the data-access matrix (default all on). */
-export function buildCiDoc(
-  profile: ConsumerProfile,
-  intent: Intent,
-  enabled?: Enabled,
-  sources?: { consumer?: boolean; intent?: boolean },
-): string {
-  const intentBits =
-    sources?.intent === false
-      ? []
-      : [
-          on(enabled, "intent.query") ? intent.parts.query : null,
-          on(enabled, "intent.zone") ? intent.parts.zone : null,
-          on(enabled, "intent.time") ? intent.parts.time : null,
-        ].filter(Boolean);
-  const consumerDoc = buildConsumerDoc(profile, enabled, sources?.consumer !== false);
-  return [consumerDoc, intentBits.length > 0 ? `Intent: ${intentBits.join(" · ")}` : ""]
+/** The full CI document — consumer (stable) + intent (per-query), merged. */
+export function buildCiDoc(profile: ConsumerProfile, intent: Intent): string {
+  const intentBits = [intent.parts.query, intent.parts.zone, intent.parts.time].filter(Boolean);
+  return [
+    buildConsumerDoc(profile),
+    intentBits.length > 0 ? `Intent: ${intentBits.join(" · ")}` : "",
+  ]
     .filter(Boolean)
     .join("\n");
 }
@@ -367,20 +345,17 @@ export function buildCiDoc(
  * ONLY: name · category · tags · description · zone & city (+ reviews
  * summary and price when the data exists). Rating/hours are ROUTED to
  * GP/SM — numeric, never embedded here. */
-export function buildPlaceDoc(p: SamplePlace, enabled?: Enabled, sourceOn = true): string {
-  if (!sourceOn) return "";
+export function buildPlaceDoc(p: SamplePlace): string {
   const head = [
-    on(enabled, "place.name") ? p.name : null,
-    on(enabled, "place.category") && p.category ? `a ${p.category.replace(/_/g, " ")}` : null,
-    on(enabled, "place.zone_city") ? [p.zone, p.city].filter(Boolean).join(", ") || null : null,
+    p.name,
+    p.category ? `a ${p.category.replace(/_/g, " ")}` : null,
+    [p.zone, p.city].filter(Boolean).join(", ") || null,
   ]
     .filter(Boolean)
     .join(" — ");
   const tags =
-    on(enabled, "place.tags") && Array.isArray(p.tags) && p.tags.length > 0
-      ? `Tags: ${p.tags.join(", ")}.`
-      : "";
-  const desc = on(enabled, "place.description") && p.description ? p.description : "";
+    Array.isArray(p.tags) && p.tags.length > 0 ? `Tags: ${p.tags.join(", ")}.` : "";
+  const desc = p.description ? p.description : "";
   return [head, tags, desc].filter(Boolean).join("\n");
 }
 

@@ -11,15 +11,15 @@
 // — the Subscores tab always saves its full form, so partial patches would
 // only invite drift.
 //
-// v9 blob (scoring v10, MESITA-644 · per-lane counts MESITA-659 · SM 1·2·1
+// v10 blob (scoring v10, MESITA-644 · per-lane counts MESITA-659 · SM 1·2·1
 // hyperparameters + the GREEN consumer default defaultTolKm MESITA-702 ·
-// NO RECALL CAP, MESITA-706: Lineup scores the whole metro catalog, so
-// retrieval.recallTopK is GONE — a stray retrieval key from a v8 client is
-// ignored, like `em`) — keys follow the subscore names (EM · SM · GP · RP ·
-// XX, all [0,1]; three lanes; merge O → I → H). The EM encoder
-// (text-embedding-3-small @ its native 1536 dims) is a FIXED decision,
-// deliberately NOT in the blob:
-//   { v: 9, laneN, sm, gp, rp, xx, dataAccess, context }
+// NO RECALL CAP MESITA-706 · INPUTS FIXED, MESITA-707: each subscore's data
+// fields are documentation, not config, so `dataAccess` and `context` are
+// GONE — stray keys from a v9 client are ignored, like `em` and `retrieval`)
+// — keys follow the subscore names (EM · SM · GP · RP · XX, all [0,1]; three
+// lanes; merge O → I → H). The EM encoder (text-embedding-3-small @ its
+// native 1536 dims) is a FIXED decision, deliberately NOT in the blob:
+//   { v: 10, laneN, sm, gp, rp, xx }
 //   laneN     PER-LANE deck counts { organic, inorganic, hybrid }, each
 //             0–50 int (0 = lane off), sum ≥ 1; the merged deck (dedupe,
 //             no backfill) is ≤ their sum. A legacy v4 flat number expands
@@ -35,10 +35,6 @@
 //   gp        Google Popularity — lnCeiling (ln(1 + ★·n) that reads GP 1)
 //   rp        Rewards Promotions rungs per posture, [0,1]
 //   xx        Random Number — control ∈ [0,5] (0 = off, pure merit)
-//   dataAccess the core config — per-subscore data-source toggles
-//             (consumer · place · intent · interaction), ⊂ each subscore's
-//             applicable set; default all ON
-//   context   which TEXT fields EM reads (EM is the only field-configurable one)
 // See web-admin lib/business/scores.ts — the RANGE TABLE there is mirrored
 // VERBATIM here; a value the UI allows but this EF clamps would silently
 // move the form on save.
@@ -61,17 +57,6 @@ type Body = { config?: unknown };
 
 const POSTURES = ["zero", "conservative", "aggressive", "dominant"] as const;
 const LANE_N_MAX = 50;
-
-// Mirrors APPLICABLE_SOURCES in web-admin lib/business/scores.ts — a source
-// a subscore structurally cannot read is rejected, not silently dropped.
-const APPLICABLE_SOURCES: Record<string, readonly string[]> = {
-  em: ["consumer", "place", "intent"],
-  sm: ["place", "intent", "interaction"],
-  gp: ["place"],
-  rp: ["place"],
-  xx: [],
-};
-const SUBSCORE_IDS = ["em", "sm", "gp", "rp", "xx"] as const;
 
 function num(v: unknown, lo: number, hi: number): number | null {
   if (typeof v !== "number" || !Number.isFinite(v)) return null;
@@ -157,65 +142,14 @@ function validate(raw: unknown): { ok: true; config: unknown } | { ok: false; er
   const control = num(xxIn?.control, 0, 5);
   if (control == null) return { ok: false, error: "xx.control must be a number 0–5" };
 
-  // dataAccess — the core config: per-subscore source toggles. Optional
-  // (older clients omit it; the frontend coercer default-fills all-ON).
-  // Each present cell must be an array ⊂ that subscore's applicable set;
-  // empty arrays are VALID (that subscore reads nothing — degenerate on
-  // purpose).
-  const daIn = r.dataAccess as Record<string, unknown> | undefined;
-  let dataAccess: Record<string, string[]> | null = null;
-  if (daIn !== undefined) {
-    if (!daIn || typeof daIn !== "object") {
-      return { ok: false, error: "config.dataAccess must be an object" };
-    }
-    dataAccess = {};
-    for (const sub of SUBSCORE_IDS) {
-      const cell = daIn[sub];
-      if (cell === undefined) continue; // missing cell → client defaults
-      if (!Array.isArray(cell)) {
-        return { ok: false, error: `dataAccess.${sub} must be an array` };
-      }
-      const applicable = APPLICABLE_SOURCES[sub];
-      const clean = [...new Set(cell)];
-      for (const src of clean) {
-        if (typeof src !== "string" || !applicable.includes(src)) {
-          return { ok: false, error: `dataAccess.${sub} has an inapplicable source` };
-        }
-      }
-      dataAccess[sub] = (clean as string[]).sort();
-    }
-  }
-
-  // Context — which TEXT fields EM reads. Validation is STRUCTURAL only
-  // ("side.name" strings, deduped, capped) — the exact key list lives in the
-  // frontend registry and its coercer drops unknowns on read, so this EF
-  // never has to chase it. Missing/absent → omitted; the client coerces to
-  // its defaults. Empty arrays are VALID (everything off — degenerate on
-  // purpose).
-  const KEY_RE = /^(consumer|intent|place)\.[a-z_]{1,32}$/;
-  const contextIn = r.context as Record<string, unknown> | undefined;
-  let context: Record<string, string[]> | null = null;
-  if (contextIn !== undefined) {
-    if (!contextIn || typeof contextIn !== "object") {
-      return { ok: false, error: "config.context must be an object" };
-    }
-    context = {};
-    for (const tier of ["em"] as const) {
-      const v = contextIn[tier];
-      if (!Array.isArray(v)) return { ok: false, error: `context.${tier} must be an array` };
-      const clean = [...new Set(v.filter((k) => typeof k === "string" && KEY_RE.test(k)))];
-      if (clean.length !== v.length) {
-        return { ok: false, error: `context.${tier} has invalid or duplicate keys` };
-      }
-      if (clean.length > 64) return { ok: false, error: `context.${tier} too large` };
-      context[tier] = (clean as string[]).sort();
-    }
-  }
+  // v10: `dataAccess` and `context` are NOT read and NOT written — inputs
+  // are fixed documentation now. A v9 client still sending them just has
+  // the keys dropped here (lenient — both client generations keep saving).
 
   return {
     ok: true,
     config: {
-      v: 9,
+      v: 10,
       laneN: {
         organic: laneN.organic,
         inorganic: laneN.inorganic,
@@ -229,8 +163,6 @@ function validate(raw: unknown): { ok: true; config: unknown } | { ok: false; er
       gp: { lnCeiling },
       rp,
       xx: { control },
-      ...(dataAccess ? { dataAccess } : {}),
-      ...(context ? { context } : {}),
     },
   };
 }

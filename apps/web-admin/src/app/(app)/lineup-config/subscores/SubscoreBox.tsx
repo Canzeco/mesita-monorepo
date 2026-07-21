@@ -1,18 +1,20 @@
 "use client";
 
 import type { SubscoreId } from "@/lib/business/scores";
-import { useScoring } from "../ScoringProvider";
+import { useScoring, type SettingsSection } from "../ScoringProvider";
 import { BoxSaveBar, BoxSection, PanelCard, type CardTint } from "../panel-ui";
 
 // The ONE shell every subscore box renders through (Pato 2026-07-21): the
 // FIVE parts are required props, so a box literally cannot ship without
 // Overview · Hyperparams · Inputs · Process · Outputs, in that order. The
 // shell also owns the anchor id (the Scores tab's factor chips deep-link
-// here), the per-subscore tint, and the per-box save bar (wired to the
-// provider by section id) — a *Box file supplies only its five contents.
+// here), the per-subscore tint, and — when the box HAS a blob section — the
+// per-box save bar. EM passes no `save`: everything in it is fixed (v10), so
+// it renders no bar at all.
 
 export function SubscoreBox({
   id,
+  save,
   tint,
   title,
   pill,
@@ -23,6 +25,8 @@ export function SubscoreBox({
   outputs,
 }: {
   id: SubscoreId;
+  /** The blob section this box saves — omit for a box with nothing to save. */
+  save?: Exclude<SettingsSection, "lanes">;
   tint: CardTint;
   title: string;
   pill?: string;
@@ -50,15 +54,17 @@ export function SubscoreBox({
         <BoxSection label="Inputs">{inputs}</BoxSection>
         <BoxSection label="Process">{process}</BoxSection>
         <BoxSection label="Outputs">{outputs}</BoxSection>
-        <BoxSaveBar
-          dirty={sectionDirty[id]}
-          saving={savingSection === id}
-          savedOk={savedSection === id}
-          error={savingSection === id || sectionDirty[id] ? saveError : null}
-          onSave={() => saveSection(id)}
-          onCancel={() => revertSection(id)}
-          onReset={() => resetSection(id)}
-        />
+        {save ? (
+          <BoxSaveBar
+            dirty={sectionDirty[save]}
+            saving={savingSection === save}
+            savedOk={savedSection === save}
+            error={savingSection === save || sectionDirty[save] ? saveError : null}
+            onSave={() => saveSection(save)}
+            onCancel={() => revertSection(save)}
+            onReset={() => resetSection(save)}
+          />
+        ) : null}
       </PanelCard>
     </section>
   );

@@ -2,13 +2,13 @@
 
 import { PIPELINE_CONTEXT, gpParts } from "@/lib/business/scores";
 import { useScoring } from "../ScoringProvider";
-import { Chip, ContextCols, MiniTile, Slider, SubscoreDataAccess } from "../panel-ui";
+import { Chip, ContextCols, MiniTile, Slider } from "../panel-ui";
 import { KnobGrid, ProcessSteps, Prose, SubscoreBox } from "./SubscoreBox";
 
 // GP · Google Popularity — earned merit (amber).
 
 export function GpBox() {
-  const { gp, setGp, dataAccess, toggleSource } = useScoring();
+  const { gp, setGp } = useScoring();
 
   // Worked examples — live at the current ceiling; the regression strip for
   // knob edits (drag the knob, watch the archetypes move).
@@ -22,6 +22,7 @@ export function GpBox() {
   return (
     <SubscoreBox
       id="gp"
+      save="gp"
       tint="amber"
       title="GP Subscore · Google Popularity"
       overview={
@@ -49,12 +50,7 @@ export function GpBox() {
           />
         </KnobGrid>
       }
-      inputs={
-        <>
-          <ContextCols ctx={PIPELINE_CONTEXT.gp} />
-          <SubscoreDataAccess subscore="gp" access={dataAccess} onToggle={toggleSource} />
-        </>
-      }
+      inputs={<ContextCols ctx={PIPELINE_CONTEXT.gp} />}
       process={
         <>
           <ProcessSteps>

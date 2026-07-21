@@ -1,16 +1,6 @@
 "use client";
 
-import {
-  APPLICABLE_SOURCES,
-  CONTEXT_FIELDS,
-  DATA_SOURCES,
-  LANES,
-  type ContextSide,
-  type DataAccess,
-  type DataSourceId,
-  type LaneId,
-  type SubscoreId,
-} from "@/lib/business/scores";
+import { CONTEXT_FIELDS, LANES, type ContextSide, type LaneId } from "@/lib/business/scores";
 
 // Tiny presentational bits shared by the Subscores and Scores & Lanes panels.
 
@@ -177,7 +167,8 @@ export function PanelCard({
  * 2026-07-21): Overview · Hyperparams · Inputs · Process · Outputs.
  * Overview/Process/Outputs are explanations, not config; Hyperparams is the
  * knob grid (pink hyperparameters + green consumer defaults); Inputs is the
- * data-access contract (sources + fields). */
+ * fixed listing of the data fields the subscore reads — documentation, never
+ * config (Pato 2026-07-21). */
 export function BoxSection({
   label,
   children,
@@ -195,8 +186,8 @@ export function BoxSection({
   );
 }
 
-/** The data-access contract of one fixed subscore — three or four columns
- * of fields (interaction = the consumer × place EDGE, SM-only). */
+/** The fixed input fields of one subscore — three or four columns of
+ * plain chips (interaction = the consumer × place EDGE, SM-only). */
 export function ContextCols({
   ctx,
 }: {
@@ -249,20 +240,14 @@ export function ContextCols({
 }
 
 /**
- * EM's CONFIGURABLE data-access detail: every registry field as a toggle.
- * Enabled fields go into the embedded documents — both playgrounds
- * assemble, embed and score from exactly this set, so a toggle here moves
- * the numbers there. "ignored" fields (the spec's "ignored for now") are not
- * toggles, so they collapse into one muted footnote line per column instead
- * of chips — less noise, same information.
+ * EM's Inputs listing — every registry field as a plain chip, grouped by
+ * source column. PURE DOCUMENTATION (Pato 2026-07-21: "just mention the data
+ * fields — it's not configurable"): live fields render solid, "planned"
+ * fields dashed, and the spec's "ignored for now" fields collapse into one
+ * muted footnote line per column. Nothing here is clickable; the doc
+ * builders always embed every live field.
  */
-export function ContextConfigCols({
-  enabled,
-  onToggle,
-}: {
-  enabled: ReadonlySet<string>;
-  onToggle: (key: string) => void;
-}) {
+export function EmContextCols() {
   const col = (label: string, side: ContextSide) => {
     const fields = CONTEXT_FIELDS.filter((f) => f.side === side);
     const ignored = fields.filter((f) => f.status === "ignored");
@@ -274,38 +259,31 @@ export function ContextConfigCols({
         <div className="mt-1.5 flex flex-wrap gap-1.5">
           {fields
             .filter((f) => f.status !== "ignored")
-            .map((f) => {
-              const isOn = enabled.has(f.key);
-              return (
-                <button
-                  key={f.key}
-                  type="button"
-                  onClick={() => onToggle(f.key)}
-                  aria-pressed={isOn}
-                  title={
-                    (f.note ? `${f.note} · ` : "") +
-                    (f.status === "planned" ? "planned — no data yet · " : "") +
-                    (isOn ? "in the context — click to exclude" : "excluded — click to include")
-                  }
-                  className={
-                    "rounded-md border px-2 py-0.5 font-mono text-[10.5px] transition active:scale-[0.97] " +
-                    (isOn
-                      ? "border-primary/50 bg-primary/10 text-foreground"
-                      : "border-border/50 text-muted-foreground border-dashed opacity-70 hover:opacity-100")
-                  }
-                >
-                  {f.label}
-                  {f.status === "planned" ? (
-                    <span className="text-muted-foreground/80"> · planned</span>
-                  ) : null}
-                </button>
-              );
-            })}
+            .map((f) => (
+              <span
+                key={f.key}
+                title={
+                  (f.note ? `${f.note} · ` : "") +
+                  (f.status === "planned" ? "planned — no data yet" : "in the embedded context")
+                }
+                className={
+                  "rounded-md border px-2 py-0.5 font-mono text-[10.5px] " +
+                  (f.status === "planned"
+                    ? "border-border/50 text-muted-foreground border-dashed opacity-70"
+                    : "border-primary/40 bg-primary/5 text-foreground/90")
+                }
+              >
+                {f.label}
+                {f.status === "planned" ? (
+                  <span className="text-muted-foreground/80"> · planned</span>
+                ) : null}
+              </span>
+            ))}
         </div>
         {ignored.length > 0 ? (
           <p
             className="text-muted-foreground/70 mt-1.5 font-mono text-[9.5px]"
-            title="ignored for now (spec) — never embedded, not toggleable"
+            title="ignored for now (spec) — never embedded"
           >
             ignored (spec): {ignored.map((f) => f.label).join(" · ")}
           </p>
@@ -318,81 +296,6 @@ export function ContextConfigCols({
       {col("Consumer-data", "consumer")}
       {col("Intent-data", "intent")}
       {col("Place-data", "place")}
-    </div>
-  );
-}
-
-/**
- * ONE subscore's data-access row (Notion spec, "the core config") — lives
- * INSIDE that subscore's box (2026-07-17: the standalone matrix is gone). The
- * subscore's applicable sources toggle ON/off (default all ON); a source it
- * structurally cannot read shows a muted "—". XX reads nothing but its own
- * draw, so it gets a note instead of toggles. Both playgrounds enforce it live.
- */
-export function SubscoreDataAccess({
-  subscore,
-  access,
-  onToggle,
-}: {
-  subscore: SubscoreId;
-  access: DataAccess;
-  onToggle: (subscore: SubscoreId, source: DataSourceId) => void;
-}) {
-  const applicable = APPLICABLE_SOURCES[subscore];
-  // No heading of its own beyond a column-style sub-label: this row lives
-  // INSIDE the box's Inputs section — data access IS the Inputs section
-  // (Pato 2026-07-21), so a second "data access" title would say it twice.
-  return (
-    <div className="mt-4">
-      <p className="text-muted-foreground text-[10px] font-bold tracking-[0.12em] uppercase">
-        Sources this subscore may read
-      </p>
-      {applicable.length === 0 ? (
-        <p className="text-muted-foreground mt-1.5 font-mono text-[10.5px]">
-          reads nothing but its own draw — no data sources
-        </p>
-      ) : (
-        <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
-          {DATA_SOURCES.map((src) => {
-            if (!(applicable as readonly DataSourceId[]).includes(src.id)) {
-              return (
-                <span
-                  key={src.id}
-                  title={`structurally cannot read ${src.label} data`}
-                  className="border-border/40 text-muted-foreground/50 inline-flex items-center gap-1 rounded-full border border-dashed px-2.5 py-0.5 font-mono text-[10.5px]"
-                >
-                  {src.label} <span aria-hidden>—</span>
-                </span>
-              );
-            }
-            const isOn = access[subscore].includes(src.id);
-            return (
-              <button
-                key={src.id}
-                type="button"
-                onClick={() => onToggle(subscore, src.id)}
-                aria-pressed={isOn}
-                aria-label={`${subscore.toUpperCase()} reads ${src.label} data`}
-                title={
-                  (src.blurb ? `${src.blurb} · ` : "") +
-                  (isOn ? "reading — click to revoke" : "revoked — click to allow")
-                }
-                className={
-                  "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 font-mono text-[10.5px] font-semibold transition active:scale-[0.97] " +
-                  (isOn
-                    ? "border-primary/50 bg-primary/10 text-foreground"
-                    : "border-border/50 text-muted-foreground border-dashed opacity-60 hover:opacity-100")
-                }
-              >
-                {src.label}
-                <span className={isOn ? "text-primary font-bold" : "font-bold"}>
-                  {isOn ? "ON" : "off"}
-                </span>
-              </button>
-            );
-          })}
-        </div>
-      )}
     </div>
   );
 }

@@ -53,7 +53,7 @@ import {
 const pct = (v: number) => v.toFixed(2);
 
 export function SubscorePlayground({ specimen }: { specimen: PlaygroundSpecimen }) {
-  const { consumers, places, sm, gp, rp, xx, dataAccess, context } = useScoring();
+  const { consumers, places, sm, gp, rp, xx } = useScoring();
 
   const { consumerIdx, placeIdx, intent } = specimen;
   const [focus, setFocus] = useState<SubscoreId | "all">("all");
@@ -64,34 +64,17 @@ export function SubscorePlayground({ specimen }: { specimen: PlaygroundSpecimen 
   const run = useMemo(() => {
     if (!place) return null;
     const profile = buildConsumerProfile(consumer);
-    const enabled = new Set(context.em);
-    // The data-access matrix, enforced: a revoked source is withheld from
-    // the subscore's inputs and its missing-data rule applies.
-    const emSrc = {
-      consumer: dataAccess.em.includes("consumer"),
-      intent: dataAccess.em.includes("intent"),
-      place: dataAccess.em.includes("place"),
-    };
-    const smPlaceOn = dataAccess.sm.includes("place");
-    const smIntentOn = dataAccess.sm.includes("intent");
-    const gpOn = dataAccess.gp.includes("place");
-    const rpOn = dataAccess.rp.includes("place");
 
-    const ciDoc = buildCiDoc(profile, intent, enabled, {
-      consumer: emSrc.consumer,
-      intent: emSrc.intent,
-    });
-    const placeDoc = buildPlaceDoc(place, enabled, emSrc.place);
+    // Inputs are FIXED (v10): the builders always assemble every live field.
+    const ciDoc = buildCiDoc(profile, intent);
+    const placeDoc = buildPlaceDoc(place);
     const ciVec = embedText(ciDoc, EM_ENCODER.dims);
     const placeVec = embedText(placeDoc, EM_ENCODER.dims);
     const emVal = emFromVectors(ciVec, placeVec);
 
-    const smLive = smPlaceOn && smIntentOn;
-    const w = smLive ? resolveWhere(intent, place) : { km: null, zoneMode: false };
-    const win = smLive
-      ? openWindow(place.hours, intent.day, intent.hour)
-      : { opensInH: 0, openForH: 0, unknown: true };
-    const rel = smLive ? whatRelation(intent, place) : ("none" as const);
+    const w = resolveWhere(intent, place);
+    const win = openWindow(place.hours, intent.day, intent.hour);
+    const rel = whatRelation(intent, place);
     const smP = smParts(
       {
         km: w.km,
@@ -105,20 +88,14 @@ export function SubscorePlayground({ specimen }: { specimen: PlaygroundSpecimen 
       sm,
     );
 
-    const gpP = gpParts(
-      gpOn ? place.google_review_count : null,
-      gpOn ? place.google_stars_overall : null,
-      gp,
-    );
+    const gpP = gpParts(place.google_review_count, place.google_stars_overall, gp);
 
-    const posture = rpOn
-      ? strategyForPlace({
-          welcome_free_rate: place.welcome_free_rate,
-          welcome_premium_rate: place.welcome_premium_rate,
-          free_rate: place.free_rate,
-          premium_rate: place.premium_rate,
-        })
-      : null;
+    const posture = strategyForPlace({
+      welcome_free_rate: place.welcome_free_rate,
+      welcome_premium_rate: place.welcome_premium_rate,
+      free_rate: place.free_rate,
+      premium_rate: place.premium_rate,
+    });
     const rpVal = rpScore(posture, rp);
 
     // XX draws pinned to one seeded roll — deterministic per (card, lane).
@@ -137,7 +114,7 @@ export function SubscorePlayground({ specimen }: { specimen: PlaygroundSpecimen 
     ) as Record<LaneId, number>;
 
     return { profile, intent, ciDoc, placeDoc, ciVec, placeVec, emVal, w, win, rel, smP, gpP, posture, rpVal, draws, xxVals, laneScores };
-  }, [consumer, place, intent, context.em, sm, gp, rp, xx, dataAccess]);
+  }, [consumer, place, intent, sm, gp, rp, xx]);
 
   if (places.length === 0) {
     return (
@@ -212,7 +189,7 @@ export function SubscorePlayground({ specimen }: { specimen: PlaygroundSpecimen 
                 icon={MessageSquareText}
                 tint="sky"
                 title="EM · Embeddings Match"
-                note={`${EM_ENCODER.dims}d emulated encoder · ${context.em.length} fields enabled`}
+                note={`${EM_ENCODER.dims}d emulated encoder · fixed context`}
                 result={pct(run.emVal)}
                 className="lg:col-span-2"
               >
@@ -220,14 +197,14 @@ export function SubscorePlayground({ specimen }: { specimen: PlaygroundSpecimen 
                   <SemanticProfile
                     entity="B · Consumer + Intent entity"
                     doc={run.ciDoc}
-                    empty="(every field toggled off)"
+                    empty="(no text fields with data)"
                     vec={run.ciVec}
                     tone="violet"
                   />
                   <SemanticProfile
                     entity="A · Place entity"
                     doc={run.placeDoc}
-                    empty="(every field toggled off)"
+                    empty="(no text fields with data)"
                     vec={run.placeVec}
                     tone="emerald"
                   />

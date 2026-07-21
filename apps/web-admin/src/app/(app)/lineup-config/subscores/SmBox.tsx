@@ -9,13 +9,13 @@ import {
   type SmParams,
 } from "@/lib/business/scores";
 import { useScoring } from "../ScoringProvider";
-import { ContextCols, Slider, SubHead, SubscoreDataAccess } from "../panel-ui";
+import { ContextCols, Slider, SubHead } from "../panel-ui";
 import { ProcessSteps, Prose, SubscoreBox } from "./SubscoreBox";
 
 // SM · Structured Match — where × when × what (emerald).
 
 export function SmBox() {
-  const { sm, setSm, dataAccess, toggleSource } = useScoring();
+  const { sm, setSm } = useScoring();
 
   const setWhere = <K extends keyof SmParams["where"]>(k: K, v: number) =>
     setSm((s) => ({ ...s, where: { ...s.where, [k]: v } }));
@@ -27,6 +27,7 @@ export function SmBox() {
   return (
     <SubscoreBox
       id="sm"
+      save="sm"
       tint="emerald"
       title="SM Subscore · Structured Match — where × when × what"
       overview={
@@ -106,12 +107,7 @@ export function SmBox() {
           </div>
         </div>
       }
-      inputs={
-        <>
-          <ContextCols ctx={PIPELINE_CONTEXT.sm} />
-          <SubscoreDataAccess subscore="sm" access={dataAccess} onToggle={toggleSource} />
-        </>
-      }
+      inputs={<ContextCols ctx={PIPELINE_CONTEXT.sm} />}
       process={
         <ProcessSteps>
           <p>

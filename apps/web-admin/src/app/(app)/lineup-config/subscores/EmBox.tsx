@@ -1,26 +1,26 @@
 "use client";
 
-import { EM_ENCODER } from "@/lib/business/scores";
-import { useScoring } from "../ScoringProvider";
-import { Chip, ContextConfigCols, SubscoreDataAccess } from "../panel-ui";
+import { EM_ENCODER, LIVE_CONTEXT_COUNT } from "@/lib/business/scores";
+import { Chip, EmContextCols } from "../panel-ui";
 import { KnobGrid, ProcessSteps, Prose, SubscoreBox } from "./SubscoreBox";
 
-// EM · Embeddings Match — the semantic gate (sky).
+// EM · Embeddings Match — the semantic gate (sky). Fully FIXED (v10): the
+// encoder is a decision, recall doesn't exist, inputs are documentation — so
+// this box has no `save` and renders no save bar.
 
 export function EmBox() {
-  const { dataAccess, toggleSource, context, toggleContext } = useScoring();
-  const emSet = new Set(context.em);
-
   return (
     <SubscoreBox
       id="em"
       tint="sky"
       title="EM Subscore · Embeddings Match"
-      pill={`${context.em.length} fields in context`}
+      pill={`${LIVE_CONTEXT_COUNT} fields in context`}
       overview={
         <Prose>
           The semantic gate every lane shares — how well this place matches who the consumer is
           and what they&apos;re asking (That), by MEANING, never by tags. Reads TEXT only.
+          Nothing here is configurable: the fields are fixed, the encoder is fixed, and there is
+          no recall cap.
         </Prose>
       }
       hyperparams={
@@ -37,15 +37,10 @@ export function EmBox() {
           />
         </KnobGrid>
       }
-      inputs={
-        <>
-          <ContextConfigCols enabled={emSet} onToggle={toggleContext} />
-          <SubscoreDataAccess subscore="em" access={dataAccess} onToggle={toggleSource} />
-        </>
-      }
+      inputs={<EmContextCols />}
       process={
         <ProcessSteps>
-          <p>1 · both sides become TEXT documents from exactly the enabled fields above</p>
+          <p>1 · both sides become TEXT documents from the fields above — every live field, always</p>
           <p>2 · the encoder embeds each into a {EM_ENCODER.dims}-d UNIT vector</p>
           <p>3 · EM = max(0, cos(A, B)) against EVERY place in the consumer&apos;s metro — no recall cap; unit vectors, so cos is a plain dot product</p>
           <p>the playground emulates the encoder with a deterministic feature hash</p>

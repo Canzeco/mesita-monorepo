@@ -41,7 +41,7 @@ import { EmptyCatalog, FactChip, LaneBadge, type PlaygroundSpecimen } from "../p
 // ignored here. XX draws are pinned to one seeded roll.
 
 export function DeckPlayground({ specimen }: { specimen: PlaygroundSpecimen }) {
-  const { consumers, places, laneN, sm, gp, rp, xx, dataAccess, context } = useScoring();
+  const { consumers, places, laneN, sm, gp, rp, xx } = useScoring();
 
   const { consumerIdx, intent } = specimen;
 
@@ -50,31 +50,14 @@ export function DeckPlayground({ specimen }: { specimen: PlaygroundSpecimen }) {
   const run = useMemo(() => {
     if (places.length === 0) return null;
     const profile = buildConsumerProfile(consumer);
-    const enabled = new Set(context.em);
-    // The data-access matrix, enforced across the whole pool.
-    const emSrc = {
-      consumer: dataAccess.em.includes("consumer"),
-      intent: dataAccess.em.includes("intent"),
-      place: dataAccess.em.includes("place"),
-    };
-    const smLive = dataAccess.sm.includes("place") && dataAccess.sm.includes("intent");
-    const gpOn = dataAccess.gp.includes("place");
-    const rpOn = dataAccess.rp.includes("place");
-    const ciVec = embedText(
-      buildCiDoc(profile, intent, enabled, { consumer: emSrc.consumer, intent: emSrc.intent }),
-      EM_ENCODER.dims,
-    );
+    // Inputs are FIXED (v10): the builders always assemble every live field.
+    const ciVec = embedText(buildCiDoc(profile, intent), EM_ENCODER.dims);
 
     const byId = new Map<string, SamplePlace>(places.map((p) => [p.id, p]));
     const candidates: DeckCandidate[] = places.map((p) => {
-      const emVal = emFromVectors(
-        ciVec,
-        embedText(buildPlaceDoc(p, enabled, emSrc.place), EM_ENCODER.dims),
-      );
-      const w = smLive ? resolveWhere(intent, p) : { km: null, zoneMode: false };
-      const win = smLive
-        ? openWindow(p.hours, intent.day, intent.hour)
-        : { opensInH: 0, openForH: 0, unknown: true };
+      const emVal = emFromVectors(ciVec, embedText(buildPlaceDoc(p), EM_ENCODER.dims));
+      const w = resolveWhere(intent, p);
+      const win = openWindow(p.hours, intent.day, intent.hour);
       const smVal = smScore(
         {
           km: w.km,
@@ -83,23 +66,17 @@ export function DeckPlayground({ specimen }: { specimen: PlaygroundSpecimen }) {
           opensInH: win.opensInH,
           openForH: win.openForH,
           hoursUnknown: win.unknown,
-          whatRel: smLive ? whatRelation(intent, p) : "none",
+          whatRel: whatRelation(intent, p),
         },
         sm,
       );
-      const gpVal = gpParts(
-        gpOn ? p.google_review_count : null,
-        gpOn ? p.google_stars_overall : null,
-        gp,
-      ).gp;
-      const posture = rpOn
-        ? strategyForPlace({
-            welcome_free_rate: p.welcome_free_rate,
-            welcome_premium_rate: p.welcome_premium_rate,
-            free_rate: p.free_rate,
-            premium_rate: p.premium_rate,
-          })
-        : null;
+      const gpVal = gpParts(p.google_review_count, p.google_stars_overall, gp).gp;
+      const posture = strategyForPlace({
+        welcome_free_rate: p.welcome_free_rate,
+        welcome_premium_rate: p.welcome_premium_rate,
+        free_rate: p.free_rate,
+        premium_rate: p.premium_rate,
+      });
       const rpVal = rpScore(posture, rp);
       const scores = Object.fromEntries(
         LANES.map((l) => [
@@ -118,7 +95,7 @@ export function DeckPlayground({ specimen }: { specimen: PlaygroundSpecimen }) {
 
     const deck = composeFinalDeck(candidates, laneN);
     return { intent, deck, byId };
-  }, [consumer, places, intent, context.em, sm, gp, rp, xx, dataAccess, laneN]);
+  }, [consumer, places, intent, sm, gp, rp, xx, laneN]);
 
   if (places.length === 0) {
     return (
