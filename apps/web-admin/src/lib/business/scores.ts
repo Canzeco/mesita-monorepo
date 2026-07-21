@@ -124,12 +124,10 @@ export const SUBSCORE_BY_ID = Object.fromEntries(SUBSCORES.map((s) => [s.id, s])
   SubscoreDef
 >;
 
-/** EM — the one field-configurable subscore (its context is CONFIG). */
-export type ConfigurableSubscoreId = Extract<SubscoreId, "em">;
-
-/** SM · GP · RP · XX — inputs are structural (the numeric fields ARE the
- * function), so these are tuned by knobs, never by field selection. */
-export type FixedSubscoreId = Exclude<SubscoreId, ConfigurableSubscoreId>;
+/** SM · GP · RP · XX — the subscores whose input contract PIPELINE_CONTEXT
+ * documents; EM's fields live in the richer CONTEXT_FIELDS registry. Every
+ * subscore's inputs are FIXED — tuned by knobs, never by field selection. */
+export type FixedSubscoreId = Exclude<SubscoreId, "em">;
 
 // ── THE THREE LANES ────────────────────────────────────────────────────
 
@@ -591,63 +589,22 @@ export const LINEUP_ENGINE = {
 // and even Memo simply calls Lineup, takes the deck, and analyzes the cards.
 // The old retrieval.recallTopK blob key is ignored on read.
 
-// ── DATA-ACCESS CONFIGURATION — the core config ─────────────────────────
-// (Notion Scoring spec: "Each subscore can be configured to select which
-// data it is allowed to access. The default is all data ON; any individual
-// data source can be toggled OFF per subscore. This is the main knob of the
-// Subscores page.")
-//
-// FOUR data sources. Each subscore has an APPLICABLE subset (a source a
-// subscore structurally cannot read isn't a toggle — it's a "—"): EM can
-// never see interaction (it compares two independently-built vectors,
-// neither of which knows the pair); GP and RP read only the place; XX reads
-// nothing but its own draw.
-
-export type DataSourceId = "consumer" | "place" | "intent" | "interaction";
-
-export type DataSourceDef = {
-  id: DataSourceId;
-  label: string;
-  blurb: string;
-};
-
-export const DATA_SOURCES: readonly DataSourceDef[] = [
-  { id: "consumer",    label: "Consumer",    blurb: "per consumer — constant" },
-  { id: "place",       label: "Place",       blurb: "per place — constant" },
-  { id: "intent",      label: "Intent",      blurb: "per query — Where · When · What" },
-  { id: "interaction", label: "Interaction", blurb: "per consumer × place — the edge" },
-];
-
-/** Which sources each subscore CAN read — the matrix's toggleable cells. */
-export const APPLICABLE_SOURCES: Record<SubscoreId, readonly DataSourceId[]> = {
-  em: ["consumer", "place", "intent"],
-  sm: ["place", "intent", "interaction"],
-  gp: ["place"],
-  rp: ["place"],
-  xx: [],
-};
-
-/** The saved matrix — per subscore, which applicable sources are ON. */
-export type DataAccess = Record<SubscoreId, DataSourceId[]>;
-
-// Default: ALL data ON (the spec's default) — every applicable cell enabled.
-export const DEFAULT_DATA_ACCESS: DataAccess = Object.fromEntries(
-  SUBSCORES.map((s) => [s.id, [...APPLICABLE_SOURCES[s.id]]]),
-) as DataAccess;
-
-// ── CONTEXT FIELD REGISTRY — EM's per-field detail ──────────────────────
-// Every TEXT field EM could read, with a stable key. Which of these EM
-// actually receives is CONFIG (ContextConfig, persisted in the blob): the
-// admin toggles fields and the playground assembles its documents from
-// exactly the enabled set — a toggle visibly changes the embedding, the
-// cosine, and the ranking. "ignored" fields are the spec's "ignored for
-// now" list — shown greyed, never toggleable, never embedded. SM/GP/RP/XX
-// are the FixedSubscoreIds — not field-configurable; their knobs live above.
+// ── CONTEXT FIELD REGISTRY — EM's inputs, FIXED ─────────────────────────
+// Every TEXT field EM reads, with a stable key. Inputs are NOT configurable
+// (Pato 2026-07-21: "just mention the data fields — it's not configurable"),
+// which retired v9's data-access matrix AND EM's per-field toggles in one
+// stroke: each subscore's Inputs section is pure documentation of the fields
+// it reads, the doc builders always assemble from every live field, and the
+// blob carries no dataAccess/context keys (v10). "ignored" fields are the
+// spec's "ignored for now" list — shown greyed, never embedded. Which
+// SOURCES a subscore reads is structural and lives in the docs too: EM never
+// sees interaction (two independently-built vectors, neither knows the
+// pair); GP and RP read only the place; XX reads nothing but its own draw.
 
 export type ContextSide = "consumer" | "intent" | "place";
 
 export type ContextFieldDef = {
-  /** Stable key, "side.name" — what ContextConfig stores. */
+  /** Stable key, "side.name" — how the doc builders name the field. */
   key: string;
   side: ContextSide;
   label: string;
@@ -695,23 +652,10 @@ export const CONTEXT_FIELDS: readonly ContextFieldDef[] = [
   { key: "place.price",       side: "place",   label: "price",                       status: "planned" },
 ];
 
-export const CONTEXT_KEYS: ReadonlySet<string> = new Set(CONTEXT_FIELDS.map((f) => f.key));
-
-/** Keys an operator may actually toggle — "ignored" is out of bounds. */
-export const TOGGLEABLE_CONTEXT_KEYS: ReadonlySet<string> = new Set(
-  CONTEXT_FIELDS.filter((f) => f.status !== "ignored").map((f) => f.key),
-);
-
-/** Which fields EM reads — the configurable half of the pipeline. */
-export type ContextConfig = Record<ConfigurableSubscoreId, string[]>;
-
-// Arrays kept SORTED — the canonical order everywhere (form state sorts
-// too), so key order can never fake an unsaved-changes diff. Default = all
-// LIVE fields on (planned contribute nothing until data exists; ignored are
-// not selectable at all).
-export const DEFAULT_CONTEXT_CONFIG: ContextConfig = {
-  em: CONTEXT_FIELDS.filter((f) => f.status === "live").map((f) => f.key).sort(),
-};
+/** The fields EM actually embeds — every live key; display counts read this. */
+export const LIVE_CONTEXT_COUNT: number = CONTEXT_FIELDS.filter(
+  (f) => f.status === "live",
+).length;
 
 // ── Persisted settings (app_settings.scoring_config) ───────────────────
 // The Subscores tab saves ONE versioned blob. NULL in the DB means
@@ -738,10 +682,11 @@ export const DEFAULT_CONTEXT_CONFIG: ContextConfig = {
 //   gp.lnCeiling          5–15
 //   rp.*                  0–1
 //   xx.control            0–5
-//   dataAccess.<subscore> ⊂ APPLICABLE_SOURCES (structural, per subscore)
+//   (dataAccess + context are GONE — v10: inputs are FIXED documentation,
+//    not config; stray keys from v9-and-older blobs are ignored)
 
 export type ScoringSettings = {
-  v: 9;
+  v: 10;
   /** Per-lane deck counts (MESITA-659) — how many cards each lane may
    * contribute to the merged deck; 0 turns the lane off. */
   laneN: LaneCounts;
@@ -749,58 +694,16 @@ export type ScoringSettings = {
   gp: GpParams;
   rp: RpRungs;
   xx: XxParams;
-  /** The core config — per-subscore source toggles. */
-  dataAccess: DataAccess;
-  context: ContextConfig;
 };
 
 export const DEFAULT_SCORING_SETTINGS: ScoringSettings = {
-  v: 9,
+  v: 10,
   laneN: DEFAULT_LANE_COUNTS,
   sm: DEFAULT_SM_PARAMS,
   gp: DEFAULT_GP_PARAMS,
   rp: DEFAULT_RP_RUNGS,
   xx: DEFAULT_XX_PARAMS,
-  dataAccess: DEFAULT_DATA_ACCESS,
-  context: DEFAULT_CONTEXT_CONFIG,
 };
-
-// Sorted + deduped so key order can never fake a settings diff. An empty
-// array is a VALID (degenerate) config — everything off; only a non-array
-// falls back to defaults. Only TOGGLEABLE keys survive — "ignored" fields
-// can never enter the blob.
-function coerceContextKeys(v: unknown, fallback: string[]): string[] {
-  if (!Array.isArray(v)) return [...fallback].sort();
-  return [
-    ...new Set(
-      v.filter((k): k is string => typeof k === "string" && TOGGLEABLE_CONTEXT_KEYS.has(k)),
-    ),
-  ].sort();
-}
-
-// Per-subscore source list — unknown/inapplicable sources dropped, sorted.
-// A missing/non-array cell falls back to the default (all applicable ON);
-// an empty array is VALID (that subscore reads nothing — degenerate on
-// purpose, visible in the playgrounds).
-function coerceDataAccess(v: unknown, fallback: DataAccess): DataAccess {
-  const raw = (v && typeof v === "object" ? v : {}) as Record<string, unknown>;
-  return Object.fromEntries(
-    SUBSCORES.map((s) => {
-      const cell = raw[s.id];
-      const applicable = APPLICABLE_SOURCES[s.id];
-      if (!Array.isArray(cell)) return [s.id, [...fallback[s.id]].sort()];
-      const clean = [
-        ...new Set(
-          cell.filter(
-            (x): x is DataSourceId =>
-              typeof x === "string" && (applicable as readonly string[]).includes(x),
-          ),
-        ),
-      ].sort();
-      return [s.id, clean];
-    }),
-  ) as DataAccess;
-}
 
 function num(v: unknown, fallback: number, lo: number, hi: number): number {
   return typeof v === "number" && Number.isFinite(v) ? Math.min(hi, Math.max(lo, v)) : fallback;
@@ -836,9 +739,9 @@ export function coerceScoringSettings(raw: unknown): ScoringSettings {
   if (!raw || typeof raw !== "object") return d;
   const r = raw as Record<string, unknown>;
 
-  // Note: stray `em` (old encoder config) and `retrieval` (v8's recall cap —
-  // gone in v9: Lineup scores the whole metro catalog) keys are silently
-  // dropped on read.
+  // Note: stray `em` (old encoder config), `retrieval` (v8's recall cap) and
+  // `dataAccess`/`context` (v9's input toggles — gone in v10: inputs are
+  // fixed documentation) keys are silently dropped on read.
   const sm = (r.sm ?? {}) as Record<string, unknown>;
   const smWhere = (sm.where ?? {}) as Record<string, unknown>;
   const smWhen = (sm.when ?? {}) as Record<string, unknown>;
@@ -846,10 +749,9 @@ export function coerceScoringSettings(raw: unknown): ScoringSettings {
   const gp = (r.gp ?? {}) as Record<string, unknown>;
   const rp = (r.rp ?? {}) as Record<string, unknown>;
   const xx = (r.xx ?? {}) as Record<string, unknown>;
-  const ctx = (r.context ?? {}) as Record<string, unknown>;
 
   return {
-    v: 9,
+    v: 10,
     laneN: coerceLaneCounts(r.laneN, d.laneN),
     sm: {
       // v8: defaultTolKm (the green consumer default) joins where — a v7
@@ -880,19 +782,16 @@ export function coerceScoringSettings(raw: unknown): ScoringSettings {
     xx: {
       control: num(xx.control, d.xx.control, 0, 5),
     },
-    dataAccess: coerceDataAccess(r.dataAccess, d.dataAccess),
-    context: {
-      em: coerceContextKeys(ctx.em, d.context.em),
-    },
   };
 }
 
-// ── PIPELINE CONTEXT — the FIXED data-access contracts ─────────────────
-// EM's contract is CONFIG (CONTEXT_FIELDS + ContextConfig above). The fixed
-// subscores keep fixed contracts: their inputs are structural. FOUR data
-// sources — consumer · intent · place · interaction (the consumer × place
-// EDGE, which only SM can read: EM compares two independently-built vectors,
-// neither of which knows the pair).
+// ── PIPELINE CONTEXT — the fixed input contracts, per subscore ──────────
+// EM's contract is CONTEXT_FIELDS above (same fixed nature, richer
+// statuses); the other subscores document theirs here. All of it is
+// DOCUMENTATION, never config. FOUR data sources — consumer · intent ·
+// place · interaction (the consumer × place EDGE, which only SM can read:
+// EM compares two independently-built vectors, neither of which knows the
+// pair).
 
 export type ContextField = {
   field: string;

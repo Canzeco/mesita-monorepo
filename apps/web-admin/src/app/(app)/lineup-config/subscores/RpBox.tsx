@@ -3,17 +3,18 @@
 import { PIPELINE_CONTEXT } from "@/lib/business/scores";
 import { STRATEGIES } from "@/lib/business/strategies";
 import { useScoring } from "../ScoringProvider";
-import { ContextCols, Slider, SubscoreDataAccess } from "../panel-ui";
+import { ContextCols, Slider } from "../panel-ui";
 import { KnobGrid, ProcessSteps, Prose, SubscoreBox } from "./SubscoreBox";
 
 // RP · Rewards Promotions — bought merit (rose).
 
 export function RpBox() {
-  const { rp, setRp, dataAccess, toggleSource } = useScoring();
+  const { rp, setRp } = useScoring();
 
   return (
     <SubscoreBox
       id="rp"
+      save="rp"
       tint="rose"
       title="RP Subscore · Rewards Promotions"
       overview={
@@ -39,12 +40,7 @@ export function RpBox() {
           ))}
         </KnobGrid>
       }
-      inputs={
-        <>
-          <ContextCols ctx={PIPELINE_CONTEXT.rp} />
-          <SubscoreDataAccess subscore="rp" access={dataAccess} onToggle={toggleSource} />
-        </>
-      }
+      inputs={<ContextCols ctx={PIPELINE_CONTEXT.rp} />}
       process={
         <ProcessSteps>
           <p>live rates (welcome/returning × free/premium) → posture (Zero · Conservative · Aggressive · Dominant)</p>

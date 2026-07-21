@@ -2,13 +2,13 @@
 
 import { PIPELINE_CONTEXT, xxScore } from "@/lib/business/scores";
 import { useScoring } from "../ScoringProvider";
-import { Chip, ContextCols, Slider, SubscoreDataAccess } from "../panel-ui";
+import { Chip, ContextCols, Slider } from "../panel-ui";
 import { KnobGrid, ProcessSteps, Prose, SubscoreBox } from "./SubscoreBox";
 
 // XX · Random Number — the luck knob (violet).
 
 export function XxBox() {
-  const { xx, setXx, dataAccess, toggleSource } = useScoring();
+  const { xx, setXx } = useScoring();
 
   // XX's feel at the current control — median and the buried share.
   const median = Math.pow(0.5, xx.control);
@@ -17,6 +17,7 @@ export function XxBox() {
   return (
     <SubscoreBox
       id="xx"
+      save="xx"
       tint="violet"
       title="XX Subscore · Random Number"
       pill={xx.control === 0 ? "default: off — pure merit" : `default control ${xx.control.toFixed(1)}`}
@@ -52,12 +53,7 @@ export function XxBox() {
           />
         </KnobGrid>
       }
-      inputs={
-        <>
-          <ContextCols ctx={PIPELINE_CONTEXT.xx} />
-          <SubscoreDataAccess subscore="xx" access={dataAccess} onToggle={toggleSource} />
-        </>
-      }
+      inputs={<ContextCols ctx={PIPELINE_CONTEXT.xx} />}
       process={
         <ProcessSteps>
           <p>U ~ Uniform[0,1) drawn fresh per card PER LANE — three independent draws</p>
