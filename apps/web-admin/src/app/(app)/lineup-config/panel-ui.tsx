@@ -122,24 +122,45 @@ export function Slider({
   );
 }
 
+/** Per-subscore card washes — every subscore box carries its own tint
+ * (EM sky · SM emerald · GP amber · RP rose · XX violet, matching the
+ * playground's ScoreBox colors). Untinted cards keep the neutral shell. */
+const CARD_TINTS = {
+  sky: "border-sky-500/25 bg-sky-500/[0.04]",
+  emerald: "border-emerald-500/25 bg-emerald-500/[0.04]",
+  amber: "border-amber-500/25 bg-amber-500/[0.04]",
+  rose: "border-rose-500/25 bg-rose-500/[0.04]",
+  violet: "border-violet-500/25 bg-violet-500/[0.04]",
+} as const;
+export type CardTint = keyof typeof CARD_TINTS;
+
 /** The shared card shell every scoring tab wraps its panel in. */
 export function PanelCard({
   title,
   subtitle,
   pill,
+  tint,
   children,
 }: {
   title: string;
-  subtitle: string;
+  subtitle?: string;
   pill?: string;
+  tint?: CardTint;
   children: React.ReactNode;
 }) {
   return (
-    <section className="border-border bg-card shadow-card rounded-2xl border p-5 sm:p-6">
+    <section
+      className={
+        "shadow-card rounded-2xl border p-5 sm:p-6 " +
+        (tint ? CARD_TINTS[tint] : "border-border bg-card")
+      }
+    >
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
           <h2 className="font-display text-base font-semibold tracking-tight">{title}</h2>
-          <p className="text-muted-foreground mt-0.5 max-w-2xl text-xs leading-relaxed">{subtitle}</p>
+          {subtitle ? (
+            <p className="text-muted-foreground mt-0.5 max-w-2xl text-xs leading-relaxed">{subtitle}</p>
+          ) : null}
         </div>
         {pill ? (
           <span className="bg-muted text-muted-foreground shrink-0 rounded-full px-3 py-1.5 text-[11px] font-semibold">
@@ -149,6 +170,28 @@ export function PanelCard({
       </div>
       {children}
     </section>
+  );
+}
+
+/** One of the FIVE parts every subscore box renders, in FIXED order (Pato
+ * 2026-07-21): Overview · Hyperparams · Inputs · Process · Outputs.
+ * Overview/Process/Outputs are explanations, not config; Hyperparams is the
+ * knob grid (pink hyperparameters + green consumer defaults); Inputs is the
+ * data-access contract (sources + fields). */
+export function BoxSection({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="border-border/40 mt-4 border-t pt-3">
+      <p className="text-muted-foreground text-[10px] font-bold tracking-[0.14em] uppercase">
+        {label}
+      </p>
+      <div className="mt-2">{children}</div>
+    </div>
   );
 }
 
