@@ -5,7 +5,7 @@ import { FlaskConical, Gauge, Layers, Sigma, SlidersHorizontal } from "lucide-re
 //   Subscores  TUNE        the five subscores' knobs + data access
 //   Scores     UNDERSTAND  how the five multiply into the three lane scores
 //   Lanes      COMPOSE     per-lane deck counts · the merge · Lineup's callers
-//   Playground SIMULATE    both simulators at the CURRENT form values
+//   Playground SIMULATE    one call (consumer + intent) → the sorted deck
 // One job per page (2026-07-20 restructure; plan: lineup-config-replan).
 //
 // The sidebar, the page header, the ROUTE (/lineup-config, since 2026-07-20;
