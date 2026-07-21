@@ -9,14 +9,12 @@ import {
   LINEUP_ENGINE,
 } from "@/lib/business/scores";
 import { useScoring } from "../ScoringProvider";
-import { BoxSaveBar, GroupHead, MiniTile, PanelCard, Slider, SubHead } from "../panel-ui";
+import { BoxSaveBar, MiniTile, PanelCard, Slider, SubHead } from "../panel-ui";
 import { LaneBadge } from "../playground-ui";
 
-// Lanes — COMPOSE the deck (4-subpage restructure 2026-07-20): per-lane
-// counts + the merge (the one knob here, per-lane N, MESITA-659), Lineup's
-// callers, and the consumer-filters mapping. The lane FORMULAS live on the
-// Scores tab; the subscores' own knobs on Subscores; the simulators on
-// Playground (shared provider, so every tab always agrees).
+// Lanes — COMPOSE the deck: per-lane counts + the merge (the one knob here),
+// then ONE reference card (Engine · Callers · Consumer inputs). Lane FORMULAS
+// live on Scores; subscore knobs on Subscores; simulators on Playground.
 
 export function LanesPanel() {
   const {
@@ -37,7 +35,7 @@ export function LanesPanel() {
       {/* ══ Merge ════════════════════════════════════════════════════ */}
       <PanelCard
         title="Per-lane deck counts · the merge"
-        subtitle="Each lane ranks the pool by its own score and takes its OWN top-N (0 turns a lane off) — round-robin O → I → H, dedupe on insert, no backfill: the deck is ≤ the counts' sum and shrinks as lanes agree. Shrinkage is signal, not defect."
+        subtitle="Each lane takes its own top-N; round-robin merge, dedupe, no backfill — a short deck means the lanes agree."
         pill={`deck ≤ ${total}`}
       >
         <div className="mt-4 grid gap-x-8 gap-y-4 lg:grid-cols-2">
@@ -56,22 +54,14 @@ export function LanesPanel() {
                     step={1}
                     v={laneN[l.id]}
                     onChange={(n) => setLaneN(l.id, n)}
-                    hint={
-                      laneN[l.id] === 0
-                        ? "0 — lane off, contributes nothing"
-                        : `up to ${laneN[l.id]} cards`
-                    }
+                    hint={laneN[l.id] === 0 ? "0 — lane off, contributes nothing" : undefined}
                   />
                 </div>
               </div>
             ))}
-            <p className="text-muted-foreground font-mono text-[10.5px]">
-              final deck ≤ {laneN.organic} + {laneN.inorganic} + {laneN.hybrid} ={" "}
-              {total} cards
-            </p>
           </div>
           <div>
-            <SubHead>Rotation · locked 2026-07-16</SubHead>
+            <SubHead>Rotation</SubHead>
             <div className="mt-2 flex items-center gap-2">
               {MERGE_ROTATION.map((id, i) => (
                 <span key={id} className="flex items-center gap-2">
@@ -98,63 +88,60 @@ export function LanesPanel() {
         />
       </PanelCard>
 
-      {/* ══ Lineup — the one engine ══════════════════════════════════ */}
+      {/* ══ Lineup — engine · callers · consumer inputs ══════════════ */}
       <PanelCard
         title="Lineup · the one engine"
-        subtitle="Lineup is the candidate-generation engine — consumer + intent → scored candidates → the deck. There is exactly ONE engine: the three lanes — Organic · Inorganic · Hybrid — merged as above. It has three callers — Swipe and Map (the consumer hits Lineup directly) and Memo (the RAG concierge calls Lineup as a tool) — differing only in where their intent-data comes from."
-        pill="1 engine · 3 lanes"
+        subtitle="One engine, three lanes, three callers — Swipe and Map call it directly, Memo calls it as a tool."
       >
-        <div className="border-border/60 bg-muted/40 mt-4 flex flex-wrap items-center gap-3 rounded-xl border px-3 py-3">
-          <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-sky-600 text-white">
-            <Cog className="h-4 w-4" aria-hidden />
-          </span>
-          <span className="text-[13px] font-semibold">{LINEUP_ENGINE.name}</span>
-          <span className="flex items-center gap-1.5">
-            {LANES.map((l) => (
-              <LaneBadge key={l.id} laneId={l.id} />
+        <div className="mt-4">
+          <SubHead>Engine</SubHead>
+          <div className="border-border/60 bg-muted/40 mt-2 flex flex-wrap items-center gap-3 rounded-xl border px-3 py-3">
+            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-sky-600 text-white">
+              <Cog className="h-4 w-4" aria-hidden />
+            </span>
+            <span className="text-[13px] font-semibold">{LINEUP_ENGINE.name}</span>
+            <span className="flex items-center gap-1.5">
+              {LANES.map((l) => (
+                <LaneBadge key={l.id} laneId={l.id} />
+              ))}
+            </span>
+            <span className="text-foreground/80 min-w-0 flex-1 text-[12px]">
+              {LINEUP_ENGINE.composition}
+            </span>
+          </div>
+        </div>
+        <div className="border-border/40 mt-4 border-t pt-3">
+          <SubHead>Callers</SubHead>
+          <div className="mt-2 grid gap-2 sm:grid-cols-3">
+            {LINEUP_ENGINE.callers.map((s) => (
+              <MiniTile key={s.caller} label={s.caller}>
+                <p className="text-muted-foreground mt-0.5 text-[11px] leading-snug">
+                  intent: {s.intent}
+                </p>
+              </MiniTile>
             ))}
-          </span>
-          <span className="text-foreground/80 min-w-0 flex-1 text-[12px]">
-            {LINEUP_ENGINE.composition}
-          </span>
+          </div>
         </div>
-        <div className="mt-3 grid gap-2 sm:grid-cols-3">
-          {LINEUP_ENGINE.callers.map((s) => (
-            <MiniTile key={s.caller} label={s.caller}>
-              <p className="text-muted-foreground mt-0.5 text-[11px] leading-snug">
-                intent: {s.intent}
-              </p>
-            </MiniTile>
-          ))}
-        </div>
-      </PanelCard>
-
-      {/* ══ The consumer's inputs ════════════════════════════════════ */}
-      <PanelCard
-        title="Consumer inputs · Where · When · What · That · Randomness"
-        subtitle="The intent's FOUR axes plus the luck knob, and where each lands. Where/When/What are the structured asks → SM; That is the free-text ask → EM; Randomness sets XX's control. All five are the CONSUMER's — the admin configures only their no-input defaults."
-      >
-        <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
-          {[
-            { name: "Where", owner: "SM · where", detail: "zone / anchor set + tolerated distance (the consumer slider, point mode only)" },
-            { name: "When", owner: "SM · when", detail: "target time vs the place's open windows — wait × fit" },
-            { name: "What", owner: "SM · what", detail: "category / mega-category set — the ladder 1 / 0.6 / 0.2" },
-            { name: "That", owner: "EM · the ask", detail: "free-text ask on Swipe & Map — the TEXT half of the intent; EM embeds it, SM never sees it" },
-            { name: "Randomness", owner: "XX · control", detail: "the luck knob, 0 (off) … 5 (chaos) — the admin only sets the no-filter default (XX box)" },
-          ].map((f) => (
-            <MiniTile key={f.name} label={f.name}>
-              <p className="text-muted-foreground mt-0.5 font-mono text-[10px] font-bold">
-                → {f.owner}
-              </p>
-              <p className="text-muted-foreground mt-1 text-[11px] leading-snug">{f.detail}</p>
-            </MiniTile>
-          ))}
+        <div className="border-border/40 mt-4 border-t pt-3">
+          <SubHead>Consumer inputs · Where · When · What · That · Randomness</SubHead>
+          <div className="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
+            {[
+              { name: "Where", owner: "SM · where", detail: "zone or point + tolerance" },
+              { name: "When", owner: "SM · when", detail: "target time vs open windows" },
+              { name: "What", owner: "SM · what", detail: "category set — the ladder" },
+              { name: "That", owner: "EM · the ask", detail: "free text — EM embeds it" },
+              { name: "Randomness", owner: "XX · control", detail: "luck 0–5 — no-filter default" },
+            ].map((f) => (
+              <MiniTile key={f.name} label={f.name}>
+                <p className="text-muted-foreground mt-0.5 font-mono text-[10px] font-bold">
+                  → {f.owner}
+                </p>
+                <p className="text-muted-foreground mt-1 text-[11px] leading-snug">{f.detail}</p>
+              </MiniTile>
+            ))}
+          </div>
         </div>
       </PanelCard>
-
-      <GroupHead>
-        Lanes never compete on score — cross-lane deck order is composition, never comparison.
-      </GroupHead>
     </div>
   );
 }

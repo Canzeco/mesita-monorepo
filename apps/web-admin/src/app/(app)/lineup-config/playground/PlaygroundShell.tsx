@@ -4,7 +4,6 @@ import { useMemo, useState } from "react";
 import { CalendarClock, MapPin, MessageSquareText, Store, Tags, UserRound } from "lucide-react";
 import { composeIntent, WEEKDAYS, type IntentSpec } from "@/lib/business/cip";
 import { useScoring } from "../ScoringProvider";
-import { GroupHead } from "../panel-ui";
 import { SpecimenCell, type PlaygroundSpecimen } from "../playground-ui";
 import { SubscorePlayground } from "../subscores/SubscorePlayground";
 import { DeckPlayground } from "../lanes/DeckPlayground";
@@ -170,8 +169,6 @@ export function PlaygroundShell() {
       </div>
 
       <SubscorePlayground specimen={specimen} />
-
-      <GroupHead>Same specimen, whole pool — the full Lineup run below.</GroupHead>
 
       <DeckPlayground specimen={specimen} />
     </div>

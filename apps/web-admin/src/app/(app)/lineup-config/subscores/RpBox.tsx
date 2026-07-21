@@ -19,8 +19,8 @@ export function RpBox() {
       title="RP Subscore · Rewards Promotions"
       overview={
         <Prose>
-          BOUGHT merit — the place&apos;s live promo rates resolve to a posture, the posture to
-          a rung. Rates never reach the consumer; RP reads them server-side only.
+          BOUGHT merit — the place&apos;s live promo rates (never shown to consumers) resolve to
+          a posture, the posture to a rung.
         </Prose>
       }
       hyperparams={
@@ -49,8 +49,8 @@ export function RpBox() {
       }
       outputs={
         <Prose>
-          <b className="text-foreground/80">RP ∈ [0,1]</b> — multiplies Inorganic + Hybrid.
-          Non-members never ENTER the paid lanes at all (a lane filter, not a score); the
+          <b className="text-foreground/80">RP ∈ [0,1]</b> — multiplies Inorganic + Hybrid;
+          non-members never enter the paid lanes at all (a lane filter, not a score), and the
           zero-posture member keeps the whisper.
         </Prose>
       }

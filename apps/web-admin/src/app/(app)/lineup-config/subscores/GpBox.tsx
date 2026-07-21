@@ -2,7 +2,7 @@
 
 import { PIPELINE_CONTEXT, gpParts } from "@/lib/business/scores";
 import { useScoring } from "../ScoringProvider";
-import { Chip, ContextCols, MiniTile, Slider } from "../panel-ui";
+import { ContextCols, MiniTile, Slider } from "../panel-ui";
 import { KnobGrid, ProcessSteps, Prose, SubscoreBox } from "./SubscoreBox";
 
 // GP · Google Popularity — earned merit (amber).
@@ -41,12 +41,7 @@ export function GpBox() {
             step={0.5}
             v={gp.lnCeiling}
             onChange={(v) => setGp({ lnCeiling: v })}
-            hint={`GP hits 1 at e^${gp.lnCeiling.toFixed(1)} ≈ ${Math.round(Math.exp(gp.lnCeiling)).toLocaleString("en-US")} star mass — each ×e adds ${(1 / gp.lnCeiling).toFixed(2)}`}
-          />
-          <Chip
-            label="Reading"
-            value={`${gp.lnCeiling.toFixed(0)} e-folds span 0→1`}
-            hint="≈ 4.5★ × ~4,900 reviews reads fully popular at the default 10"
+            hint={`GP hits 1 at e^${gp.lnCeiling.toFixed(1)} ≈ ${Math.round(Math.exp(gp.lnCeiling)).toLocaleString("en-US")} star mass`}
           />
         </KnobGrid>
       }
@@ -82,8 +77,8 @@ export function GpBox() {
       }
       outputs={
         <Prose>
-          <b className="text-foreground/80">GP ∈ [0,1]</b> — multiplies Organic + Hybrid. No
-          Google presence → 0: the place exits the organic lanes (a member still rides
+          <b className="text-foreground/80">GP ∈ [0,1]</b> — multiplies Organic + Hybrid; no
+          Google presence → 0 and the place exits the organic lanes (a member still rides
           Inorganic).
         </Prose>
       }

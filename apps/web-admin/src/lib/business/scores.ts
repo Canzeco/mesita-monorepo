@@ -831,7 +831,6 @@ export const PIPELINE_CONTEXT: Record<FixedSubscoreId, SubscoreContext> = {
     place: [
       { field: "google_review_count (NUMERIC)", status: "live" },
       { field: "google_stars_overall (NUMERIC)", status: "live" },
-      { field: "→ ln(1 + r·n) / ceiling", status: "live" },
     ],
   },
   rp: {
@@ -839,7 +838,6 @@ export const PIPELINE_CONTEXT: Record<FixedSubscoreId, SubscoreContext> = {
     intent: [{ field: "—", status: "live" }],
     place: [
       { field: "welcome/returning × free/premium rates (projects)", status: "live" },
-      { field: "→ posture → rung 0.1–1.0", status: "live" },
     ],
   },
   xx: {

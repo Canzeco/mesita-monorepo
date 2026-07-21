@@ -1,8 +1,8 @@
 "use client";
 
-import { PIPELINE_CONTEXT, xxScore } from "@/lib/business/scores";
+import { PIPELINE_CONTEXT } from "@/lib/business/scores";
 import { useScoring } from "../ScoringProvider";
-import { Chip, ContextCols, Slider } from "../panel-ui";
+import { ContextCols, Slider } from "../panel-ui";
 import { KnobGrid, ProcessSteps, Prose, SubscoreBox } from "./SubscoreBox";
 
 // XX · Random Number — the luck knob (violet).
@@ -23,9 +23,8 @@ export function XxBox() {
       pill={xx.control === 0 ? "default: off — pure merit" : `default control ${xx.control.toFixed(1)}`}
       overview={
         <Prose>
-          The luck knob — how much randomness beats merit in the deck. The CONSUMER&apos;s
-          Randomness filter is the real control; the admin sets only the green no-filter
-          default.
+          The luck knob — how much randomness beats merit; the CONSUMER&apos;s Randomness filter
+          is the real control, this green knob only its no-filter default.
         </Prose>
       }
       hyperparams={
@@ -43,13 +42,8 @@ export function XxBox() {
               (xx.control === 0
                 ? "off — every card draws XX = 1"
                 : `median XX ${median.toFixed(3)} · ~${buriedPct}% of cards land below 0.1`) +
-              " · GREEN = the consumer's Randomness filter overrides this per query"
+              " · the consumer's Randomness filter overrides this per query"
             }
-          />
-          <Chip
-            label="Ladder"
-            value={`U¹ ${xxScore(0.5, 1).toFixed(2)} · U³ ${xxScore(0.5, 3).toFixed(2)} · U⁵ ${xxScore(0.5, 5).toFixed(3)}`}
-            hint="the median card at control 1 / 3 / 5 — seeded per (card, lane, roll); live decks draw fresh"
           />
         </KnobGrid>
       }
@@ -64,7 +58,7 @@ export function XxBox() {
       outputs={
         <Prose>
           <b className="text-foreground/80">XX ∈ [0,1]</b> — multiplies every lane with its OWN
-          draw. Higher control never changes WHO is luckiest, only how much luck beats merit.
+          draw; higher control never changes WHO is luckiest, only how much luck beats merit.
         </Prose>
       }
     />

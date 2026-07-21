@@ -32,9 +32,8 @@ export function SmBox() {
       title="SM Subscore · Structured Match — where × when × what"
       overview={
         <Prose>
-          The intent&apos;s STRUCTURED asks — Where · When · What — checked against place
-          facts. where/when are continuous curves, what is the categorical ladder; the consumer
-          owns the where tolerance.
+          The intent&apos;s STRUCTURED asks — Where · When · What — checked against place facts:
+          where/when are continuous curves, what is the categorical ladder.
         </Prose>
       }
       hyperparams={
@@ -51,7 +50,7 @@ export function SmBox() {
                 step={0.5}
                 v={sm.where.defaultTolKm}
                 onChange={(v) => setWhere("defaultTolKm", v)}
-                hint="GREEN = consumer-overridable: only the no-filter fallback — the consumer's own Where slider sets the real tolerance per query"
+                hint="the consumer's own Where slider overrides this per query"
               />
               <Slider
                 label="Distance falloff"
@@ -61,7 +60,7 @@ export function SmBox() {
                 step={0.5}
                 v={sm.where.distExp}
                 onChange={(v) => setWhere("distExp", v)}
-                hint={`the exponent — doubling distance beyond tolerance costs ${Math.pow(2, sm.where.distExp).toFixed(0)}×; at ${sm.where.defaultTolKm.toFixed(1)} km tolerance, 8 km → ${whereScore(8, sm.where.defaultTolKm, sm.where.distExp).toFixed(2)}`}
+                hint={`at ${sm.where.defaultTolKm.toFixed(1)} km tolerance, 8 km → ${whereScore(8, sm.where.defaultTolKm, sm.where.distExp).toFixed(2)}`}
               />
             </div>
           </div>
@@ -76,7 +75,7 @@ export function SmBox() {
                 step={0.05}
                 v={sm.when.waitFloor}
                 onChange={(v) => setWhen("waitFloor", v)}
-                hint={`a place shut at the intent time floors here — a 2 h wait lands at ${waitScore(2, sm.when).toFixed(2)}; never 0`}
+                hint={`a 2 h wait lands at ${waitScore(2, sm.when).toFixed(2)} — never 0`}
               />
               <Slider
                 label="Session length"
@@ -124,7 +123,6 @@ export function SmBox() {
             what ladder: same category → 1 · same super category → {sm.what.sibling.toFixed(2)}{" "}
             · none → {MISMATCH_RUNG.toFixed(2)} (frozen, never 0) · nothing asked → 1
           </p>
-          <p>transition (2 h) · steepness (4) · zone spillover (30%) are frozen constants</p>
         </ProcessSteps>
       }
       outputs={
