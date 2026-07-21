@@ -339,10 +339,13 @@ export function SubscoreDataAccess({
   onToggle: (subscore: SubscoreId, source: DataSourceId) => void;
 }) {
   const applicable = APPLICABLE_SOURCES[subscore];
+  // No heading of its own beyond a column-style sub-label: this row lives
+  // INSIDE the box's Inputs section — data access IS the Inputs section
+  // (Pato 2026-07-21), so a second "data access" title would say it twice.
   return (
-    <div className="border-border/50 mt-4 border-t pt-3">
+    <div className="mt-4">
       <p className="text-muted-foreground text-[10px] font-bold tracking-[0.12em] uppercase">
-        Data access · sources this subscore may read
+        Sources this subscore may read
       </p>
       {applicable.length === 0 ? (
         <p className="text-muted-foreground mt-1.5 font-mono text-[10.5px]">
