@@ -55,8 +55,12 @@ export function PlaygroundShell() {
 
   const specimen: PlaygroundSpecimen = { consumerIdx, placeIdx, roll, intent };
 
-  const selectCls =
-    "border-border/70 bg-card w-full rounded-lg border px-2 py-1.5 text-[12px] font-medium";
+  // Width-free base — the When row sizes its two selects itself; everything
+  // else appends w-full (appending a width to a w-full class loses: Tailwind's
+  // cascade order decides, not class-string order).
+  const selectBase =
+    "border-border/70 bg-card rounded-lg border px-2 py-1.5 text-[12px] font-medium";
+  const selectCls = selectBase + " w-full";
 
   return (
     <div className="flex flex-col gap-4 sm:gap-5">
@@ -124,7 +128,7 @@ export function PlaygroundShell() {
           <div className="flex items-center gap-1.5">
             <select
               aria-label="Day of week"
-              className={selectCls + " flex-1 capitalize"}
+              className={selectBase + " min-w-0 flex-1 capitalize"}
               value={day}
               onChange={(e) => setDay(e.target.value)}
             >
@@ -136,7 +140,7 @@ export function PlaygroundShell() {
             </select>
             <select
               aria-label="Hour"
-              className={selectCls + " w-24 shrink-0"}
+              className={selectBase + " w-[5.5rem] shrink-0"}
               value={hour}
               onChange={(e) => setHour(Number(e.target.value))}
             >
