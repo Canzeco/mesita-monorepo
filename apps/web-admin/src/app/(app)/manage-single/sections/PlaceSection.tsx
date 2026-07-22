@@ -113,12 +113,15 @@ const RESERVATION_CHANNELS: {
   /** Graphical mark for the segmented picker: brand SVG or a lucide icon. */
   logo?: string;
   Icon?: LucideIcon;
+  /** Held for a later launch — shown in the picker but never selectable. Today
+   *  only phone is a real reservation channel; WhatsApp + Instagram read "Soon". */
+  comingSoon?: boolean;
   // Default priority order — phone > whatsapp > instagram (MESITA-596). The
   // Enricher fills the channel following the same order; admin can override.
 }[] = [
   { key: "phone", label: "Phone", profileKey: "phone", Icon: Phone },
-  { key: "whatsapp", label: "WhatsApp", profileKey: "whatsapp_url", logo: "/channels/whatsapp.svg" },
-  { key: "instagram", label: "Instagram", profileKey: "instagram_url", logo: "/channels/instagram.svg" },
+  { key: "whatsapp", label: "WhatsApp", profileKey: "whatsapp_url", logo: "/channels/whatsapp.svg", comingSoon: true },
+  { key: "instagram", label: "Instagram", profileKey: "instagram_url", logo: "/channels/instagram.svg", comingSoon: true },
 ];
 
 /** Reservation channel — single-choice now: a 0-or-1-element list. Kept as an
@@ -955,7 +958,11 @@ export function PlaceSection({
               className="grid grid-cols-3 gap-2"
             >
               {RESERVATION_CHANNELS.map((c) => {
-                const active = reservationChannel === c.key;
+                // Only phone is a real reservation channel today. WhatsApp +
+                // Instagram are shown but held for a later launch — always
+                // blocked, labelled "Soon", never active.
+                const comingSoon = c.comingSoon === true;
+                const active = !comingSoon && reservationChannel === c.key;
                 // A channel is only selectable once the place actually has
                 // that contact on the profile (MESITA-596) — you can't point
                 // the agent at a WhatsApp that doesn't exist. The stored
@@ -967,13 +974,15 @@ export function PlaceSection({
                   <button
                     key={c.key}
                     type="button"
-                    onClick={() => setReservationChannel(c.key)}
-                    disabled={anyPending || unavailable}
+                    onClick={() => !comingSoon && setReservationChannel(c.key)}
+                    disabled={anyPending || comingSoon || unavailable}
                     aria-pressed={active}
                     title={
-                      unavailable
-                        ? `Add a ${c.label} contact under Channels to use it`
-                        : undefined
+                      comingSoon
+                        ? `${c.label} reservations are coming soon`
+                        : unavailable
+                          ? `Add a ${c.label} contact under Channels to use it`
+                          : undefined
                     }
                     className={
                       "flex h-[4.5rem] flex-col items-center justify-center gap-1 rounded-xl border text-[12px] font-semibold transition disabled:cursor-not-allowed disabled:opacity-45 " +
@@ -988,11 +997,15 @@ export function PlaceSection({
                       active={active}
                     />
                     {c.label}
-                    {unavailable && (
+                    {comingSoon ? (
+                      <span className="text-muted-foreground/70 text-[9px] font-medium">
+                        Soon
+                      </span>
+                    ) : unavailable ? (
                       <span className="text-muted-foreground/70 text-[9px] font-medium">
                         not set
                       </span>
-                    )}
+                    ) : null}
                   </button>
                 );
               })}
