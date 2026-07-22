@@ -95,7 +95,7 @@
 // these ids, so a subscore can never be renamed on screen without its
 // storage following.
 
-export type SubscoreId = "em" | "sm" | "gp" | "rp" | "xx";
+export type SubscoreId = "em" | "sm" | "gp" | "rp" | "xx" | "mp";
 
 export type SubscoreDef = {
   id: SubscoreId;
@@ -111,7 +111,12 @@ const SUBSCORES: readonly SubscoreDef[] = [
   { id: "gp", short: "GP", name: "Google Popularity",  basis: "ln(1 + rating × reviews) / ceiling", range: "0–1" },
   { id: "rp", short: "RP", name: "Rewards Promotions", basis: "membership posture → rung", range: "0–1" },
   { id: "xx", short: "XX", name: "Random Number",      basis: "U^control · per card per lane", range: "0–1" },
+  { id: "mp", short: "MP", name: "Manual Priority",    basis: "the place's operator priority — per-place, default 0.1", range: "0–1" },
 ];
+
+/** The MP baseline for a place the operator hasn't touched (DB column default
+ * mirrors this). Every place starts here; the super-admin bumps specific ones. */
+export const DEFAULT_MANUAL_PRIORITY = 0.1;
 
 export const SUBSCORE_BY_ID = Object.fromEntries(SUBSCORES.map((s) => [s.id, s])) as Record<
   SubscoreId,
@@ -136,10 +141,12 @@ export type Lane = {
   merit: string;
 };
 
+// MP multiplies EVERY lane (Pato 2026-07-22) — it trails each formula so the
+// operator override reads as the last gate applied to earned/bought merit.
 export const LANES: readonly Lane[] = [
-  { id: "organic",   label: "Organic",   parts: ["em", "sm", "gp", "xx"],       merit: "earned — Google" },
-  { id: "inorganic", label: "Inorganic", parts: ["em", "sm", "rp", "xx"],       merit: "bought — Rewards" },
-  { id: "hybrid",    label: "Hybrid",    parts: ["em", "sm", "gp", "rp", "xx"], merit: "both" },
+  { id: "organic",   label: "Organic",   parts: ["em", "sm", "gp", "xx", "mp"],       merit: "earned — Google" },
+  { id: "inorganic", label: "Inorganic", parts: ["em", "sm", "rp", "xx", "mp"],       merit: "bought — Rewards" },
+  { id: "hybrid",    label: "Hybrid",    parts: ["em", "sm", "gp", "rp", "xx", "mp"], merit: "both" },
 ];
 
 
@@ -172,6 +179,30 @@ export function laneScore(lane: Lane, subs: Record<SubscoreId, number>): number 
 export const EM_ENCODER = {
   model: "text-embedding-3-small",
   dims: 1536,
+} as const;
+
+// How the PLACE side of EM is built — the blurb synthesis that runs on-create
+// AND on-update (Notion Enricher On-Create S4 / On-Update S2). MIRRORS the
+// runtime source of truth in supabase _shared/place-embeddings.ts (keep in
+// lockstep). Surfaced in the EM box so the operator sees exactly what text is
+// embedded and the prompt that writes it — the prompt is load-bearing.
+export const EMBEDDING_SYNTHESIS = {
+  /** The LLM that writes the blurb (temp 0, ~1–3 sentences). */
+  synthModel: "gpt-4o-mini",
+  /** The place FACTS block fed to the synthesizer — tags & reviews excluded. */
+  fields: [
+    "name",
+    "category",
+    "location (zone · city)",
+    "address",
+    "price level",
+    "About (description, ≤900 chars)",
+  ],
+  excluded: ["tags", "reviews"],
+  /** The exact system prompt. Re-embeds only when these FACTS change (hash),
+   * never on LLM wording drift. */
+  prompt:
+    "You write a short place blurb for semantic search embeddings. Output 1–3 sentences, plain text only — no labels, no bullets, no tags. Capture what the place IS (cuisine/format), where it is, and the vibe from About. Never invent facts not present in the input. Never list amenity tags.",
 } as const;
 
 /** EM from a raw cosine — clamp negatives (opposite/unrelated → 0). Revisit
@@ -906,5 +937,10 @@ export const PIPELINE_CONTEXT: Record<FixedSubscoreId, SubscoreContext> = {
     consumer: [{ field: "—", status: "live" }],
     intent: [{ field: "—", status: "live" }],
     place: [{ field: "U ~ Uniform[0,1) per card per lane (seeded)", status: "live" }],
+  },
+  mp: {
+    consumer: [{ field: "—", status: "live" }],
+    intent: [{ field: "—", status: "live" }],
+    place: [{ field: "manual_priority (0–1 · default 0.1 · operator-set)", status: "live" }],
   },
 };

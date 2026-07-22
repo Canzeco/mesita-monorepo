@@ -123,6 +123,7 @@ const CARD_TINTS = {
   amber: "border-amber-500/25 bg-amber-500/[0.04]",
   rose: "border-rose-500/25 bg-rose-500/[0.04]",
   violet: "border-violet-500/25 bg-violet-500/[0.04]",
+  teal: "border-teal-500/25 bg-teal-500/[0.04]",
 } as const;
 export type CardTint = keyof typeof CARD_TINTS;
 

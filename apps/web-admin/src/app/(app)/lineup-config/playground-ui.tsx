@@ -62,6 +62,7 @@ const SCORE_TINTS = {
   emerald: { box: "border-emerald-200/70", head: "bg-emerald-50 text-emerald-950", circle: "bg-emerald-600" },
   amber: { box: "border-amber-200/70", head: "bg-amber-50 text-amber-950", circle: "bg-amber-600" },
   rose: { box: "border-rose-200/70", head: "bg-rose-50 text-rose-950", circle: "bg-rose-600" },
+  teal: { box: "border-teal-200/70", head: "bg-teal-50 text-teal-950", circle: "bg-teal-600" },
 } as const;
 
 export function ScoreBox({

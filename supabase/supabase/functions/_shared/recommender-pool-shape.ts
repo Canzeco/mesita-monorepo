@@ -38,6 +38,9 @@ export type PlaceRow = {
   zone: string | null;
   city: string | null;
   photos: string[] | null;
+  // MP subscore — operator priority [0,1] (default 0.1). Ranker-internal:
+  // read by scoring, stripped before the row returns to the client.
+  manual_priority: number | null;
   [key: string]: unknown;
   embedding: unknown | null;
   embedding_source_hash: string | null;
@@ -65,11 +68,12 @@ export function clampPositive(v: unknown, def: number, max: number): number {
 // client. The leading-underscore rest-omit destructuring discards them.
 export function stripInternal(
   v: PlaceRow,
-): Omit<PlaceRow, "embedding" | "embedding_source_hash" | "embedding_source_text"> {
+): Omit<PlaceRow, "embedding" | "embedding_source_hash" | "embedding_source_text" | "manual_priority"> {
   const {
     embedding: _e,
     embedding_source_hash: _h,
     embedding_source_text: _t,
+    manual_priority: _mp,
     ...rest
   } = v;
   return rest;

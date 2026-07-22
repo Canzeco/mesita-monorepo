@@ -5,6 +5,7 @@ import { SmBox } from "./SmBox";
 import { GpBox } from "./GpBox";
 import { RpBox } from "./RpBox";
 import { XxBox } from "./XxBox";
+import { MpBox } from "./MpBox";
 
 // Subscores — TUNE, nothing else: composition ONLY. One file per subscore
 // (EmBox · SmBox · GpBox · RpBox · XxBox), every box rendered through the
@@ -23,6 +24,7 @@ export function SubscoresPanel() {
       <GpBox />
       <RpBox />
       <XxBox />
+      <MpBox />
     </div>
   );
 }

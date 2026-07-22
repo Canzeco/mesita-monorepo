@@ -1,6 +1,6 @@
 "use client";
 
-import { EM_ENCODER } from "@/lib/business/scores";
+import { EMBEDDING_SYNTHESIS, EM_ENCODER } from "@/lib/business/scores";
 import { Chip, EmContextCols } from "../panel-ui";
 import { CurvePlot } from "../plots";
 import { KnobGrid, ProcessSteps, Prose, SubscoreBox } from "./SubscoreBox";
@@ -47,6 +47,33 @@ export function EmBox() {
             xLabel="cos(A, B) → EM"
             caption="negative similarity clamps to 0"
           />
+
+          {/* How the PLACE vector is built — the on-create/on-update blurb
+              synthesis. The prompt is load-bearing, so it's shown verbatim. */}
+          <div className="border-border/40 mt-4 border-t pt-3">
+            <p className="text-foreground/70 font-mono text-[10px] font-semibold">
+              Place vector · synthesized on create + on update
+            </p>
+            <ProcessSteps>
+              <p>
+                facts in → {EMBEDDING_SYNTHESIS.fields.join(" · ")} — NEVER{" "}
+                {EMBEDDING_SYNTHESIS.excluded.join(" / ")}
+              </p>
+              <p>
+                {EMBEDDING_SYNTHESIS.synthModel} writes a 1–3 sentence plain-text blurb, then{" "}
+                {EM_ENCODER.model} embeds THAT blurb into the {EM_ENCODER.dims}-d vector
+              </p>
+              <p>re-embed only when the FACTS change (source hash) — never on LLM wording drift</p>
+            </ProcessSteps>
+            <div className="border-sky-200/70 bg-sky-50/60 mt-2 rounded-lg border px-3 py-2">
+              <p className="text-muted-foreground text-[9px] font-bold tracking-[0.1em] uppercase">
+                Synthesis prompt · {EMBEDDING_SYNTHESIS.synthModel} · temp 0
+              </p>
+              <p className="text-foreground/80 mt-1 font-mono text-[10px] leading-relaxed">
+                &ldquo;{EMBEDDING_SYNTHESIS.prompt}&rdquo;
+              </p>
+            </div>
+          </div>
         </>
       }
       outputs={

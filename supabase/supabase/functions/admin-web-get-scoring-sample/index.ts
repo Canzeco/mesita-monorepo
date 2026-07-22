@@ -64,7 +64,7 @@ Deno.serve(async (req) => {
   const { data: placeRows, error: pErr } = await admin
     .from("places")
     .select(
-      "id, name, category, tags, zone, city, description, lat, lng, timezone, hours, google_stars_overall, google_review_count",
+      "id, name, category, tags, zone, city, description, lat, lng, timezone, hours, google_stars_overall, google_review_count, manual_priority",
     )
     .limit(200);
   if (pErr) return json({ ok: false, error: `places_failed: ${pErr.message}` }, 500);
