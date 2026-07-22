@@ -104,6 +104,23 @@ function cancelReservation(id: string): void {
   writeToStorage(cache);
 }
 
+// Companion to clearSavedPlacesLocal (saved-places.ts): drop the
+// localStorage-backed bookings + in-memory cache when the signed-in consumer
+// changes. Draft reservations carry a projectId + placeName from the old
+// data, so a reset + fresh account would otherwise inherit them once the
+// /reservations page reads from this store instead of the static mock.
+export function clearReservationsLocal(): void {
+  if (typeof window !== "undefined") {
+    try {
+      window.localStorage.removeItem(STORAGE_KEY);
+    } catch {
+      /* private mode — nothing to clear */
+    }
+  }
+  cache = [];
+  hydrated = false;
+}
+
 export function useReservationActions() {
   const add = useCallback(
     (input: Parameters<typeof addReservation>[0]) => addReservation(input),
