@@ -665,7 +665,7 @@ export function PlaceSection({
     // (SectionCard) and gets the gutter margin + break-inside-avoid via
     // [&>section]; the fixed photo dialog is a <div>, exempt and out of flow.
     // lg (not xl): admin content + sidebar rarely reaches 1280px of free width.
-    <div className="columns-1 gap-4 [&>section]:mb-4 [&>section]:break-inside-avoid [&>details]:mb-4 [&>details]:break-inside-avoid lg:columns-2 lg:gap-5 lg:[&>section]:mb-5 lg:[&>details]:mb-5">
+    <div className="columns-1 gap-4 pb-8 [&>section]:mb-4 [&>section]:break-inside-avoid [&>details]:mb-4 [&>details]:break-inside-avoid lg:columns-2 lg:gap-5 lg:pb-10 lg:[&>section]:mb-5 lg:[&>details]:mb-5">
       {/* Box order (MESITA-547 / MESITA-720): edit-first — Basics → Hours →
           Channels → Reservations → Photos → Products/Reviews → Location →
           Ownership → Promos → Metadata → Embeddings. Manual Priority (MP
@@ -1277,8 +1277,11 @@ function parseEmbeddingVector(raw: AdminPlace["embedding"]): number[] | null {
   return nums.every((n) => Number.isFinite(n)) ? nums : null;
 }
 
-// Embeddings — On-Update human blurb + vector (MESITA-720). Tags are never
-// part of the source text. Open by default; collapsible like Metadata.
+// Embeddings — the Place Synthesis text + the vector it embeds to (MESITA-720).
+// NOTE: the Place Synthesis is NOT the About/description. About is the
+// human-readable profile copy; the synthesis is a separate, super-concise text
+// purpose-built for semantic search. Written on create + on profile update.
+// Open by default; collapsible like Metadata.
 function EmbeddingsCard({ place }: { place: AdminPlace }) {
   const text = (place.embedding_source_text ?? "").trim();
   const vector = parseEmbeddingVector(place.embedding);
@@ -1298,7 +1301,8 @@ function EmbeddingsCard({ place }: { place: AdminPlace }) {
             Embeddings
           </h2>
           <p className="text-muted-foreground mt-0.5 text-xs leading-relaxed">
-            On-update blurb (no tags) and the vector OpenAI embeds from it.
+            The Place Synthesis — a super-concise text built FOR semantic search (not the
+            human About), and the vector OpenAI embeds it into.
           </p>
         </div>
         <ChevronDown
@@ -1306,17 +1310,17 @@ function EmbeddingsCard({ place }: { place: AdminPlace }) {
           aria-hidden
         />
       </summary>
-      <div className="border-border/60 flex flex-col gap-4 border-t px-5 pb-5 sm:px-6 sm:pb-6">
-        <ReadField label="Human text" boxed>
+      <div className="border-border/60 flex flex-col gap-4 border-t px-5 pb-6 sm:px-6 sm:pb-8">
+        <ReadField label="Place Synthesis as Text" boxed>
           {text ? (
             <span className="text-sm leading-relaxed whitespace-pre-wrap">{text}</span>
           ) : (
             <span className="text-muted-foreground text-xs italic">
-              Not synthesized yet — saves and Enricher On-Update write this blurb.
+              Not synthesized yet — written on create and when the profile changes.
             </span>
           )}
         </ReadField>
-        <ReadField label="Vector" boxed>
+        <ReadField label="Place Synthesis as Embedding" boxed>
           {vector && preview ? (
             <span className="flex min-w-0 flex-col gap-1.5 py-0.5">
               <code className="text-muted-foreground break-all font-mono text-[10px] leading-snug">
@@ -1332,7 +1336,7 @@ function EmbeddingsCard({ place }: { place: AdminPlace }) {
             </span>
           ) : (
             <span className="text-muted-foreground text-xs italic">
-              No vector yet — produced on-update with the human text above.
+              No vector yet — produced from the synthesis text above.
             </span>
           )}
         </ReadField>
