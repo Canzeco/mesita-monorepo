@@ -18,7 +18,12 @@ export type UpdateProfileBody = {
   profile_show_visits?: boolean;
 };
 
-const SEX_VALUES = new Set(["male", "female", "other"]);
+// Male/Female only — "other" was dropped from the product (MESITA-727).
+const SEX_VALUES = new Set(["male", "female"]);
+
+// Minimum signup age. Pato: "13 or below restricted" → require >= 14
+// (MESITA-727). Enforced here as the backstop for both web + mobile forms.
+export const MIN_AGE = 14;
 
 export type ParseSexResult =
   | { ok: true; sex: string | null }
@@ -29,10 +34,21 @@ export function parseSex(sexRaw: string | null): ParseSexResult {
   if (sexRaw && !sex) {
     return {
       ok: false,
-      response: json({ ok: false, error: "sex must be male, female, or other" }, 400),
+      response: json({ ok: false, error: "sex must be male or female" }, 400),
     };
   }
   return { ok: true, sex };
+}
+
+// Whole years between `birthday` (validated YYYY-MM-DD) and today, from
+// calendar parts in UTC so the result is timezone-stable.
+function ageInYears(birthday: string): number {
+  const [y, m, d] = birthday.split("-").map(Number);
+  const now = new Date();
+  let age = now.getUTCFullYear() - y;
+  const monthDelta = now.getUTCMonth() + 1 - m;
+  if (monthDelta < 0 || (monthDelta === 0 && now.getUTCDate() < d)) age -= 1;
+  return age;
 }
 
 export type ParseBirthdayResult =
@@ -59,6 +75,16 @@ export function parseBirthday(birthdayRaw: string | null): ParseBirthdayResult {
     return {
       ok: false,
       response: json({ ok: false, error: "birthday can't be in the future" }, 400),
+    };
+  }
+  // Age gate — anyone 13 or below is restricted (MESITA-727).
+  if (ageInYears(birthdayRaw) < MIN_AGE) {
+    return {
+      ok: false,
+      response: json(
+        { ok: false, error: `You must be at least ${MIN_AGE} years old to use Mesita.` },
+        400,
+      ),
     };
   }
   return { ok: true, birthday: birthdayRaw };

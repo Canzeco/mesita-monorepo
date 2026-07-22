@@ -13,12 +13,13 @@ import { BirthdayPicker } from '@/components/ui/BirthdayPicker';
 import { Button } from '@/components/ui/Button';
 import { TextField } from '@/components/ui/TextField';
 import { apiUpdateConsumerProfile } from '@/lib/api/auth';
+import { ageFromBirthday, MIN_SIGNUP_AGE } from '@/lib/utils';
 import { useAuth } from '@/providers/auth';
 
+// Male/Female only (MESITA-727).
 const SEX_OPTIONS = [
   { value: 'male', label: 'Male' },
   { value: 'female', label: 'Female' },
-  { value: 'other', label: 'Other' },
 ] as const;
 
 export default function Onboard() {
@@ -33,7 +34,11 @@ export default function Onboard() {
   const [error, setError] = useState<string | null>(null);
 
   const validBirthday = /^\d{4}-\d{2}-\d{2}$/.test(birthday.trim());
-  const canSubmit = firstName.trim().length > 0 && sex !== null && validBirthday;
+  // Age gate — 13 or below is restricted (MESITA-727).
+  const age = ageFromBirthday(birthday.trim());
+  const underage = age !== null && age < MIN_SIGNUP_AGE;
+  const canSubmit =
+    firstName.trim().length > 0 && sex !== null && validBirthday && !underage;
 
   const phoneLabel = session?.user.phone ? `+${session.user.phone}` : null;
 
@@ -173,6 +178,15 @@ export default function Onboard() {
             BIRTHDAY
           </Text>
           <BirthdayPicker value={birthday} onChange={setBirthday} />
+
+          {underage ? (
+            <Text
+              className="mt-2 text-destructive"
+              style={{ fontSize: 12 }}
+            >
+              You must be at least {MIN_SIGNUP_AGE} to use Mesita.
+            </Text>
+          ) : null}
 
           <View style={{ marginTop: 24 }}>
             <Button

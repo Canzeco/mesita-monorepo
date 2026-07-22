@@ -23,7 +23,12 @@ import { GRADIENT_DIAGONAL, GRADIENTS } from '@/constants/brand';
 import { apiUpdateConsumerProfile } from '@/lib/api/auth';
 import { PREF_KEYS, useStoredFlag, useStoredString } from '@/lib/local-store';
 import { toast } from '@/lib/toast';
-import { errMsg, firstInitial } from '@/lib/utils';
+import {
+  ageFromBirthday,
+  errMsg,
+  firstInitial,
+  MIN_SIGNUP_AGE,
+} from '@/lib/utils';
 import { useAuth } from '@/providers/auth';
 
 const TERMS_URL = 'https://www.mesita.ai/terms';
@@ -68,12 +73,20 @@ export function PersonalDetailsSheet({
       setError('First name required');
       return;
     }
+    // Age gate — 13 or below is restricted (MESITA-727).
+    const age = ageFromBirthday(birthday);
+    if (age !== null && age < MIN_SIGNUP_AGE) {
+      setError(`You must be at least ${MIN_SIGNUP_AGE} to use Mesita.`);
+      return;
+    }
     setSaving(true);
     setError(null);
     try {
+      // Sex isn't edited here and is never re-sent — the EF patches only the
+      // keys present, so omitting it leaves the stored value untouched (and
+      // avoids resurrecting the dropped "other" value).
       await apiUpdateConsumerProfile({
         first_name: firstName.trim(),
-        sex: (profile?.sex as 'male' | 'female' | 'other') ?? 'other',
         birthday: birthday || '',
       });
       onSaved();

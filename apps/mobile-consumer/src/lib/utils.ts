@@ -18,6 +18,12 @@ export function firstInitials(name: string, fallback = 'M'): string {
   return first + last || fallback;
 }
 
+/**
+ * Minimum age to sign up / use Mesita. Pato: "13 or below restricted"
+ * (MESITA-727) → require >= 14. The backend EF enforces the same floor.
+ */
+export const MIN_SIGNUP_AGE = 14;
+
 /** Whole years since `birthday` (YYYY-MM-DD). Null for missing/unparseable. */
 export function ageFromBirthday(
   birthday: string | null | undefined,
@@ -32,7 +38,7 @@ export function ageFromBirthday(
   return age >= 0 && age < 130 ? age : null;
 }
 
-/** Title-case the stored sex enum (male/female/other) for display; null-safe. */
+/** Title-case the stored sex value (male/female) for display; null-safe. */
 export function formatSex(sex: string | null | undefined): string | null {
   if (!sex) return null;
   return sex.charAt(0).toUpperCase() + sex.slice(1);

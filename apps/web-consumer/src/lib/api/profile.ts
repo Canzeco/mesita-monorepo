@@ -63,7 +63,9 @@ export type ConsumerClass = {
 
 type ConsumerOnboardingInput = {
   first_name: string;
-  sex: "male" | "female" | "other";
+  // Male/Female only (MESITA-727). Optional so callers that don't edit sex
+  // (e.g. the Edit-profile sheet) omit it — the EF patches only present keys.
+  sex?: "male" | "female";
   birthday: string; // YYYY-MM-DD
   // Optional — legacy field; neither onboarding nor Edit profile collects it.
   // The EF only patches keys that are present.

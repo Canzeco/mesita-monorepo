@@ -4,7 +4,13 @@ import { useState } from "react";
 import Image from "next/image";
 import { Camera } from "lucide-react";
 import { toast } from "@/lib/toast";
-import { cn, errMsg, firstInitial } from "@/lib/utils";
+import {
+  ageFromBirthday,
+  cn,
+  errMsg,
+  firstInitial,
+  MIN_SIGNUP_AGE,
+} from "@/lib/utils";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
 import { Spinner } from "@/components/shared/Spinner";
@@ -60,14 +66,20 @@ export function EditProfileSheet({
       toast("First name is required.");
       return;
     }
+    // Age gate — 13 or below is restricted (MESITA-727).
+    const age = ageFromBirthday(birthday);
+    if (age !== null && age < MIN_SIGNUP_AGE) {
+      toast(`You must be at least ${MIN_SIGNUP_AGE} to use Mesita.`);
+      return;
+    }
     setSaving(true);
     try {
-      // Preserve sex (not edited here) so the required-field EF contract
-      // stays satisfied. Country is no longer collected anywhere — it's
-      // inferred from the phone's dial code, so we don't touch it.
+      // Sex isn't edited here and is never re-sent — the EF patches only the
+      // keys present, so omitting it leaves the stored value untouched (and
+      // avoids resurrecting the dropped "other" value). Country is no longer
+      // collected anywhere — it's inferred from the phone's dial code.
       const updated = await apiUpdateConsumerProfile(supabase, {
         first_name: firstName.trim(),
-        sex: (profile.sex as "male" | "female" | "other") ?? "other",
         birthday: birthday || "",
       });
       toast("Profile updated.");
