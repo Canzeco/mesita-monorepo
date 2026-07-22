@@ -3,6 +3,7 @@
 import { PIPELINE_CONTEXT } from "@/lib/business/scores";
 import { useScoring } from "../ScoringProvider";
 import { ContextCols, Slider } from "../panel-ui";
+import { CurvePlot } from "../plots";
 import { KnobGrid, ProcessSteps, Prose, SubscoreBox } from "./SubscoreBox";
 
 // XX · Random Number — the luck knob (violet).
@@ -35,7 +36,7 @@ export function XxBox() {
             value={xx.control.toFixed(1)}
             min={0}
             max={5}
-            step={0.5}
+            step={0.1}
             v={xx.control}
             onChange={(v) => setXx({ control: v })}
             hint={
@@ -49,11 +50,27 @@ export function XxBox() {
       }
       inputs={<ContextCols ctx={PIPELINE_CONTEXT.xx} />}
       process={
-        <ProcessSteps>
-          <p>U ~ Uniform[0,1) drawn fresh per card PER LANE — three independent draws</p>
-          <p>XX = U^control · control 0 → XX ≡ 1 (off, pure merit) … 5 → near-total chaos</p>
-          <p>seeded per (card, lane, roll) in the playgrounds; live decks draw fresh</p>
-        </ProcessSteps>
+        <>
+          <ProcessSteps>
+            <p>U ~ Uniform[0,1) drawn fresh per card PER LANE — three independent draws</p>
+            <p>XX = U^control · control 0 → XX ≡ 1 (off, pure merit) … 5 → near-total chaos</p>
+            <p>seeded per (card, lane, roll) in the playgrounds; live decks draw fresh</p>
+          </ProcessSteps>
+          <CurvePlot
+            tone="violet"
+            title="XX = U^control"
+            f={(u) => Math.pow(Math.max(0, Math.min(1, u)), xx.control)}
+            x0={0}
+            x1={1}
+            markers={[{ x: 0.5 }]}
+            xLabel="U ∈ [0,1] → XX"
+            caption={
+              xx.control === 0
+                ? "control 0 — flat at 1 (off)"
+                : `control ${xx.control.toFixed(1)} · median ${median.toFixed(2)}`
+            }
+          />
+        </>
       }
       outputs={
         <Prose>

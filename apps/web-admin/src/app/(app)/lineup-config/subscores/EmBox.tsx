@@ -2,6 +2,7 @@
 
 import { EM_ENCODER } from "@/lib/business/scores";
 import { Chip, EmContextCols } from "../panel-ui";
+import { CurvePlot } from "../plots";
 import { KnobGrid, ProcessSteps, Prose, SubscoreBox } from "./SubscoreBox";
 
 // EM · Embeddings Match — the semantic gate (sky). Fully FIXED (v10): one
@@ -30,11 +31,23 @@ export function EmBox() {
       }
       inputs={<EmContextCols />}
       process={
-        <ProcessSteps>
-          <p>1 · both sides become TEXT documents from the fields above — every live field, always</p>
-          <p>2 · the encoder embeds each into a {EM_ENCODER.dims}-d UNIT vector</p>
-          <p>3 · EM = max(0, cos(A, B)) against EVERY place in the consumer&apos;s metro — no recall cap; retrieval caps are Memo&apos;s config, never Lineup&apos;s</p>
-        </ProcessSteps>
+        <>
+          <ProcessSteps>
+            <p>1 · both sides become TEXT documents from the fields above — every live field, always</p>
+            <p>2 · the encoder embeds each into a {EM_ENCODER.dims}-d UNIT vector</p>
+            <p>3 · EM = max(0, cos(A, B)) against EVERY place in the consumer&apos;s metro — no recall cap; retrieval caps are Memo&apos;s config, never Lineup&apos;s</p>
+          </ProcessSteps>
+          <CurvePlot
+            tone="sky"
+            title="EM = max(0, cos)"
+            f={(cos) => Math.max(0, cos)}
+            x0={-1}
+            x1={1}
+            markers={[{ x: 0 }]}
+            xLabel="cos(A, B) → EM"
+            caption="negative similarity clamps to 0"
+          />
+        </>
       }
       outputs={
         <Prose>

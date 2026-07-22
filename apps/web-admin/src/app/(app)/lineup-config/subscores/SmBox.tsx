@@ -10,6 +10,7 @@ import {
 } from "@/lib/business/scores";
 import { useScoring } from "../ScoringProvider";
 import { ContextCols, Slider, SubHead } from "../panel-ui";
+import { CurvePlot, LadderPlot } from "../plots";
 import { ProcessSteps, Prose, SubscoreBox } from "./SubscoreBox";
 
 // SM · Structured Match — where × when × what (emerald).
@@ -108,22 +109,56 @@ export function SmBox() {
       }
       inputs={<ContextCols ctx={PIPELINE_CONTEXT.sm} />}
       process={
-        <ProcessSteps>
-          <p>
-            where = 1/(1+(km/tol)^{sm.where.distExp.toFixed(1)}) · tol = the consumer&apos;s
-            Where slider (unset → the green default {sm.where.defaultTolKm.toFixed(1)} km) · a
-            named zone uses 30% of it · continuous, never a bucket
-          </p>
-          <p>
-            when = wait × fit · wait = {sm.when.waitFloor.toFixed(2)} +{" "}
-            {(1 - sm.when.waitFloor).toFixed(2)}/(1+(h/2)^4) · fit = min(1, open/
-            {sm.when.sessionH.toFixed(1)}) · times snap to the 30-min grid
-          </p>
-          <p>
-            what ladder: same category → 1 · same super category → {sm.what.sibling.toFixed(2)}{" "}
-            · none → {MISMATCH_RUNG.toFixed(2)} (frozen, never 0) · nothing asked → 1
-          </p>
-        </ProcessSteps>
+        <>
+          <ProcessSteps>
+            <p>
+              where = 1/(1+(km/tol)^{sm.where.distExp.toFixed(1)}) · tol = the consumer&apos;s
+              Where slider (unset → the green default {sm.where.defaultTolKm.toFixed(1)} km) · a
+              named zone uses 30% of it · continuous, never a bucket
+            </p>
+            <p>
+              when = wait × fit · wait = {sm.when.waitFloor.toFixed(2)} +{" "}
+              {(1 - sm.when.waitFloor).toFixed(2)}/(1+(h/2)^4) · fit = min(1, open/
+              {sm.when.sessionH.toFixed(1)}) · times snap to the 30-min grid
+            </p>
+            <p>
+              what ladder: same category → 1 · same super category → {sm.what.sibling.toFixed(2)}{" "}
+              · none → {MISMATCH_RUNG.toFixed(2)} (frozen, never 0) · nothing asked → 1
+            </p>
+          </ProcessSteps>
+          <div className="mt-3 grid gap-4 sm:grid-cols-3">
+            <CurvePlot
+              tone="emerald"
+              title="where · distance decay"
+              f={(km) => whereScore(km, sm.where.defaultTolKm, sm.where.distExp)}
+              x0={0}
+              x1={20}
+              markers={[{ x: sm.where.defaultTolKm }]}
+              xLabel="km → where"
+              caption={`tol ${sm.where.defaultTolKm.toFixed(1)} · exp ${sm.where.distExp.toFixed(1)}`}
+            />
+            <CurvePlot
+              tone="emerald"
+              title="when · wait (two plateaus)"
+              f={(h) => waitScore(h, sm.when)}
+              x0={0}
+              x1={8}
+              markers={[{ x: 2 }]}
+              xLabel="h until open → wait"
+              caption={`floor ${sm.when.waitFloor.toFixed(2)}`}
+            />
+            <LadderPlot
+              tone="emerald"
+              title="what · the ladder"
+              bars={[
+                { label: "same", value: 1 },
+                { label: "super", value: sm.what.sibling },
+                { label: "none", value: MISMATCH_RUNG },
+              ]}
+              caption="category rungs"
+            />
+          </div>
+        </>
       }
       outputs={
         <Prose>
