@@ -1,35 +1,49 @@
 // Pure embedding + ranking helpers (no HTTP / DB).
-// Orchestration and OpenAI calls stay in embeddings.ts.
+// Orchestration and OpenAI calls stay in embeddings.ts / place-embeddings.ts.
 
 // Structural type satisfied by every EF's PlaceRow definition. Only the
 // fields used for source-text + persistence are required; readers may carry
 // arbitrary extra columns.
+//
+// MESITA-720: embedding source text is a short synthesized blurb (no tags).
+// Inputs that feed synthesis: name · category · About · zone/city · address ·
+// price_level. Tags are deliberately excluded — too noisy for EM.
 export type EmbeddablePlace = {
   id: string;
   name: string;
   category: string | null;
-  vibe: string | null;
-  pitch: string | null;
-  story: string | null;
+  description: string | null;
+  zone: string | null;
+  city: string | null;
   address: string | null;
   price_level: number | null;
   embedding: unknown | null;
   embedding_source_hash: string | null;
+  embedding_source_text?: string | null;
 };
 
-// Stable source text we feed to the embedder. Order matters — name first so
-// the model anchors on identity, then the soft descriptors. Story is hard-
-// capped so a freakishly long story can't dominate the embedding budget.
-export function placeSourceText(v: EmbeddablePlace): string {
+// Deterministic fallback / facts block used when the LLM synthesizer is
+// unavailable. NEVER includes tags. Order is stable so the digest is stable.
+export function placeEmbeddingFacts(v: EmbeddablePlace): string {
   const lines: string[] = [];
   lines.push(`Name: ${v.name}`);
-  if (v.category) lines.push(`Category: ${v.category}`);
-  if (v.vibe) lines.push(`Vibe: ${v.vibe}`);
-  if (v.pitch) lines.push(`Pitch: ${v.pitch}`);
-  if (v.story) lines.push(`Story: ${v.story.slice(0, 700)}`);
+  if (v.category) lines.push(`Category: ${v.category.replace(/_/g, " ")}`);
+  const where = [v.zone, v.city].filter(Boolean).join(", ");
+  if (where) lines.push(`Location: ${where}`);
   if (v.address) lines.push(`Address: ${v.address}`);
   if (v.price_level != null) lines.push(`Price level: ${v.price_level}/4`);
+  if (v.description?.trim()) {
+    lines.push(`About: ${v.description.trim().slice(0, 900)}`);
+  }
   return lines.join("\n");
+}
+
+// Prefer the persisted on-update blurb; fall back to the facts block so a
+// cold place can still be embedded by the recommender lazy path.
+export function placeSourceText(v: EmbeddablePlace): string {
+  const stored = v.embedding_source_text?.trim();
+  if (stored) return stored;
+  return placeEmbeddingFacts(v);
 }
 
 // Cheap stable hash of the source text so we can detect "this place's text
@@ -45,7 +59,11 @@ export async function digest(text: string): Promise<string> {
 
 export function shouldEmbed(v: EmbeddablePlace): boolean {
   if (!v.embedding) return true;
-  return v.embedding_source_hash == null;
+  if (v.embedding_source_hash == null) return true;
+  // Missing human text means the On-Update synthesizer hasn't landed yet —
+  // re-run so admin + EM share the same stored blurb.
+  if (!v.embedding_source_text?.trim()) return true;
+  return false;
 }
 
 // pgvector accepts vectors as text literals like "[0.01,0.02,...]". We build

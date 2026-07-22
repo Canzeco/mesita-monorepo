@@ -71,7 +71,7 @@ type BuiltCategory = {
   label: string;
   description: string;
   emoji: string;
-  places: Omit<PlaceRow, "embedding" | "embedding_source_hash">[];
+  places: Omit<PlaceRow, "embedding" | "embedding_source_hash" | "embedding_source_text">[];
 };
 
 export type RankMapResult =
@@ -125,6 +125,7 @@ export async function rankMapCatalog(
       if (p) {
         c.embedding = p.embedding;
         c.embedding_source_hash = p.hash;
+        c.embedding_source_text = p.text;
       }
     }
   }

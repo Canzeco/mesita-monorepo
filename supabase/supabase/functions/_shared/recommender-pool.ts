@@ -26,7 +26,8 @@ export {
 // columns appended. Both columns are stripped by the ranker before the row
 // crosses back over the wire to the client.
 const RECOMMENDER_PLACE_COLUMNS =
-  PLACE_PUBLIC_COLUMNS + ", embedding, embedding_source_hash";
+  PLACE_PUBLIC_COLUMNS +
+  ", embedding, embedding_source_hash, embedding_source_text";
 
 type CandidatePoolOptions = {
   lat: number | null;
