@@ -335,7 +335,7 @@ export function PlaygroundShell() {
       ) : (
         <PanelCard
           title="The decks · three lanes + the final"
-          subtitle="Each lane ranks the WHOLE pool by its own score and takes its top-N; round-robin merge O → I → H (dedupe on insert, no backfill) makes the final. Click any card for its subscore anatomy."
+          subtitle="Each lane ranks the WHOLE pool by its own score and takes its top-N; round-robin O → I → H — on a duplicate, keep pulling from the same lane until a new card lands, then rotate. Click any card for its subscore anatomy."
           pill={`final ${run.deck.slots.length} ≤ ${run.snap.total}`}
         >
           {stale ? (

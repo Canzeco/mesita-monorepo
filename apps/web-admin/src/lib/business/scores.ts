@@ -46,9 +46,10 @@
 // each rank the pool by their own score and take their own top-N — laneN is
 // PER LANE ({ organic, inorganic, hybrid }; a lane at 0 is off). Round-robin
 // O → I → H — identical for Swipe and Map — dedupe ON INSERT (keep the FIRST
-// occurrence, drop later duplicates), NO backfill: the final deck is
-// ≤ N_O + N_I + N_H and shrinks as lanes agree. Shrinkage is signal, not
-// defect.
+// occurrence). On a duplicate, stay on the CURRENT lane and pull its next
+// card before rotating (MESITA-717 — skipping the turn starved Inorganic
+// when its top cards already landed from Organic). NO backfill: the final
+// deck is ≤ N_O + N_I + N_H and shrinks as lanes agree.
 //
 // ENGINES ARE CONTAINERS, not formulas: Swipe and Map compose the three
 // lanes exactly as above and differ only in intent source (taste embedding;
@@ -582,12 +583,13 @@ export type FinalDeck = {
 export type DeckCandidate = { id: string; scores: Record<LaneId, number> };
 
 /**
- * The locked merge, per-lane counts (MESITA-659): each lane ranks the pool
- * by its own score (ties by id — deterministic), drops score ≤ 0, takes its
- * OWN top-N (a lane at 0 contributes nothing). Round-robin O → I → H one
- * card at a time, skipping lanes past their count; a place already in the
- * deck is SKIPPED (first occurrence wins — organic, since O leads the
- * rotation). NO backfill.
+ * The locked merge, per-lane counts (MESITA-659 · MESITA-717): each lane
+ * ranks the pool by its own score (ties by id — deterministic), drops
+ * score ≤ 0, takes its OWN top-N (a lane at 0 contributes nothing).
+ * Round-robin O → I → H. On a lane's turn: walk its ranked list from a
+ * cursor; if the next card is already in the final deck, SKIP it and keep
+ * pulling from the SAME lane until a non-duplicate lands (or the lane is
+ * exhausted) — then rotate. First occurrence wins. NO backfill.
  */
 export function composeFinalDeck(
   candidates: readonly DeckCandidate[],
@@ -616,20 +618,28 @@ export function composeFinalDeck(
     };
   }
 
-  const rounds = Math.max(n.organic, n.inorganic, n.hybrid);
+  // Per-lane cursor into that lane's top-N. Rotate O→I→H; on each turn keep
+  // pulling from the current lane until a unique card lands (or it's empty).
+  const cursor: Record<LaneId, number> = { organic: 0, inorganic: 0, hybrid: 0 };
   const seen = new Set<string>();
   const slots: DeckSlot[] = [];
-  for (let i = 0; i < rounds; i++) {
+  let progress = true;
+  while (progress) {
+    progress = false;
     for (const laneId of MERGE_ROTATION) {
-      const slot = lanes[laneId][i];
-      if (!slot) continue;
-      if (seen.has(slot.id)) {
-        fills[laneId].mergedAway++;
-        continue;
+      const lane = lanes[laneId];
+      while (cursor[laneId] < lane.length) {
+        progress = true;
+        const slot = lane[cursor[laneId]++];
+        if (seen.has(slot.id)) {
+          fills[laneId].mergedAway++;
+          continue; // stay on this lane — grab the next card
+        }
+        seen.add(slot.id);
+        slots.push(slot);
+        fills[laneId].contributed++;
+        break; // placed → rotate to the next lane
       }
-      seen.add(slot.id);
-      slots.push(slot);
-      fills[laneId].contributed++;
     }
   }
 
@@ -648,7 +658,7 @@ export function composeFinalDeck(
 
 export const LINEUP_ENGINE = {
   name: "Lineup",
-  composition: "Organic + Inorganic + Hybrid, merged O → I → H · dedupe on insert · no backfill",
+  composition: "Organic + Inorganic + Hybrid, merged O → I → H · on dupe keep pulling same lane · no backfill",
   callers: [
     { caller: "Swipe", intent: "prebuilt taste embedding" },
     { caller: "Map",   intent: "taste embedding + viewport" },

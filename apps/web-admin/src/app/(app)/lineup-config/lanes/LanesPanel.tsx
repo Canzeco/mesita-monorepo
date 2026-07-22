@@ -35,7 +35,7 @@ export function LanesPanel() {
       {/* ══ Merge ════════════════════════════════════════════════════ */}
       <PanelCard
         title="Per-lane deck counts · the merge"
-        subtitle="Each lane takes its own top-N; round-robin merge, dedupe, no backfill — a short deck means the lanes agree."
+        subtitle="Each lane takes its own top-N; round-robin O → I → H — on a duplicate keep pulling from the same lane, then rotate. A short deck means the lanes agree."
         pill={`deck ≤ ${total}`}
       >
         <div className="mt-4 grid gap-x-8 gap-y-4 lg:grid-cols-2">
