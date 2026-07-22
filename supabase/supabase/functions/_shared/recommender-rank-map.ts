@@ -12,15 +12,15 @@
 // proposed per request from the place mix in the user's area plus user
 // context (location, time, profile).
 //
-// Pipeline:
+// Pipeline (MESITA-718 — live Lineup v11):
 //   1. Pull a wider candidate pool (default 300) by bounding-box radius.
 //   2. Lazily embed any candidates missing an embedding (batched, capped).
 //   3. Ask an LLM to propose category buckets that would resonate with
 //      THIS user given THIS pool — each bucket carries a label, a short
 //      description, an emoji icon, and a semantic-search intent_query.
 //   4. Embed each intent_query in one batched OpenAI call.
-//   5. For each category, cosine-rank the candidate pool against its
-//      intent vec and slice off the top N.
+//   5. For each category, Lineup-score the pool (EM=that intent's cosine)
+//      with the live scoring_config blob; take the merged deck slice.
 //   6. Cross-category dedupe so a place appears in at most 2 buckets
 //      (lets a really good place repeat once but not seven times).
 
@@ -29,7 +29,6 @@ import {
   EMBEDDING_DIMS,
   embedAndPersistPlaces,
   embedBatch,
-  rankByCosine,
   shouldEmbed,
 } from "./embeddings.ts";
 import {
@@ -45,7 +44,9 @@ import {
   type ProposedCategory,
   slug,
 } from "./recommender-rank-map-fallback.ts";
-import { demoteClosed, localClock } from "./local-time.ts";
+import { localClock } from "./local-time.ts";
+import { loadScoringSettings } from "./lineup-config.ts";
+import { cosineById, lineupReorder } from "./lineup-rank.ts";
 
 const CANDIDATE_POOL = 300;
 const DEFAULT_MAX_CATEGORIES = 10;
@@ -165,7 +166,9 @@ export async function rankMapCatalog(
     intentVecs = [];
   }
 
-  // ── 5. Rank candidates per category + 6. cross-category dedupe ─────
+  // ── 5. Lineup per category + 6. cross-category dedupe ─────────────
+  const settings = await loadScoringSettings(admin);
+  const xxSeedBase = `${callerName}:${lat?.toFixed(3) ?? "x"}:${lng?.toFixed(3) ?? "x"}`;
   const usage = new Map<string, number>();
   const categories: BuiltCategory[] = [];
   for (let i = 0; i < proposed.length; i += 1) {
@@ -173,7 +176,12 @@ export async function rankMapCatalog(
     const vec = intentVecs[i];
     let ranked: PlaceRow[];
     if (vec && vec.length === EMBEDDING_DIMS) {
-      ranked = rankByCosine(candidates, vec);
+      const cosine = cosineById(candidates, vec);
+      ranked = lineupReorder(candidates, cosine, settings, {
+        lat,
+        lng,
+        xxSeed: `${xxSeedBase}:${p.key}`,
+      });
     } else {
       // No vec → simple text-match fallback so the row still shows up.
       ranked = candidates.filter((v) =>
@@ -181,10 +189,6 @@ export async function rankMapCatalog(
         (v.vibe ?? "").toLowerCase().includes(p.label.toLowerCase().split(" ")[0])
       );
     }
-    // "Demote, don't hide" (same product call as Memo): within each bucket
-    // float open places above closed ones by their stored hours + local time,
-    // preserving the cosine order inside each open/unknown/closed group.
-    ranked = demoteClosed(ranked, (r) => r.hours, (r) => r.lng);
 
     const picked: PlaceRow[] = [];
     for (const r of ranked) {

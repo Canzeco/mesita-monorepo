@@ -25,7 +25,7 @@
 // Stray pre-v11 keys (distExp · sessionH · sibling · dataAccess · context ·
 // retrieval · em) are ignored. See web-admin lib/business/scores.ts RANGE TABLE.
 //
-// The model is still a frontend draft: nothing in Swipe/Map/Memo reads this
+// Swipe + Map read this blob live (MESITA-718). Memo airlock still cosine-only.
 // yet. When the engines go live, this blob is their config source.
 //
 // Auth: caller's JWT email must be in public.super_admins.
