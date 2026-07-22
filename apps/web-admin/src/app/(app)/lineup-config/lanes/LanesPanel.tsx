@@ -60,20 +60,32 @@ export function LanesPanel() {
               </div>
             ))}
           </div>
-          <div>
-            <SubHead>Rotation</SubHead>
-            <div className="mt-2 flex items-center gap-2">
-              {MERGE_ROTATION.map((id, i) => (
-                <span key={id} className="flex items-center gap-2">
-                  <LaneBadge laneId={id} />
-                  {i < MERGE_ROTATION.length - 1 ? (
-                    <ArrowRight className="text-muted-foreground h-3.5 w-3.5" aria-hidden />
-                  ) : null}
+          <div className="flex flex-col gap-3">
+            <div>
+              <SubHead>Rotation</SubHead>
+              <div className="mt-2 flex items-center gap-2">
+                {MERGE_ROTATION.map((id, i) => (
+                  <span key={id} className="flex items-center gap-2">
+                    <LaneBadge laneId={id} />
+                    {i < MERGE_ROTATION.length - 1 ? (
+                      <ArrowRight className="text-muted-foreground h-3.5 w-3.5" aria-hidden />
+                    ) : null}
+                  </span>
+                ))}
+                <span className="text-muted-foreground ml-2 text-[11px]">
+                  repeat · the deck leads with pure merit
                 </span>
-              ))}
-              <span className="text-muted-foreground ml-2 text-[11px]">
-                repeat · the deck leads with pure merit
-              </span>
+              </div>
+            </div>
+            <div>
+              <SubHead>On duplicate</SubHead>
+              <p className="text-muted-foreground mt-1.5 text-[12px] leading-snug">
+                Card already in the final deck → skip it and keep pulling from{" "}
+                <span className="text-foreground font-medium">this lane</span> until
+                a new card lands (or the lane is empty), then rotate. Never skip
+                the turn to the next lane — that starves Inorganic when its tops
+                already arrived from Organic.
+              </p>
             </div>
           </div>
         </div>
