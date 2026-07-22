@@ -4,6 +4,7 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { MobileFrame } from "@/components/consumer/MobileFrame";
 import { BottomNav } from "@/components/consumer/BottomNav";
+import { ConsumerLocalDataGuard } from "@/components/consumer/ConsumerLocalDataGuard";
 import { ShellChildrenSlot } from "@/components/consumer/ShellChildrenSlot";
 import { Toaster } from "@/components/consumer/Toaster";
 import { createServerSupabase } from "@/lib/supabase/server";
@@ -79,6 +80,10 @@ export default async function ConsumerShellLayout({
   // cover BOTH top bar and bottom nav while preserving the underlying shell.
   return (
     <MobileFrame>
+      {/* Runs before the children subtree hydrates the saved set, so a fresh
+          consumer never inherits the previous account's localStorage-backed
+          favorites / reservations (survives sign-out + DB reset). */}
+      <ConsumerLocalDataGuard consumerId={user.id} />
       <ClassProvider consumerClass={consumerClass}>
         <div className="relative flex flex-1 flex-col overflow-hidden">
           <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">

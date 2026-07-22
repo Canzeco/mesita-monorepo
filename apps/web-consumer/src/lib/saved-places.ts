@@ -142,6 +142,29 @@ function setPlaceSaved(placeId: string, saved: boolean): void {
   emit();
 }
 
+// Wipe the localStorage-backed saved set + previews and reset the in-memory
+// cache, then notify subscribers. Called when the signed-in consumer changes
+// (see consumer-local-reset.ts): these saves live only in the browser, so
+// they outlive both a sign-out and a server-side `admin-web-reset-database`
+// wipe. Without this, a fresh consumer signing in on the same browser — or
+// the same operator re-creating an account after a DB reset — inherits the
+// previous consumer's favorites (stale places from the old data). Setting
+// hydrated = true keeps a later ensureHydrated() from re-reading the (now
+// cleared) storage.
+export function clearSavedPlacesLocal(): void {
+  if (typeof window !== "undefined") {
+    try {
+      window.localStorage.removeItem(STORAGE_KEY);
+      window.localStorage.removeItem(PREVIEW_STORAGE_KEY);
+    } catch {
+      /* private mode — nothing to clear */
+    }
+  }
+  cache = new Set();
+  hydrated = true;
+  emit();
+}
+
 export function upsertSavedPlacePreview<T extends { id: string }>(
   place: T,
 ): void {
