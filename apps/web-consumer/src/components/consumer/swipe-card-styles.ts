@@ -5,13 +5,6 @@ export const SWIPE_CARD_CLIP = "overflow-hidden rounded-3xl" as const;
 export const SWIPE_CARD_FACE =
   "border-border bg-card shadow-elev relative isolate flex flex-col overflow-hidden rounded-3xl border [transform:translateZ(0)]" as const;
 
-export const SWIPE_CARD_PHOTO_SIZES =
-  "(max-width: 768px) 100vw, 420px" as const;
-
-/** TIWC — photo covers the entire card (absolute inset-0, object-cover). */
-export const SWIPE_CARD_FULL_BLEED_PHOTO =
-  "absolute inset-0 overflow-hidden" as const;
-
 /** TIWC — cover over the full card. */
 export const SWIPE_CARD_COVER_PHOTO = "object-cover object-center" as const;
 

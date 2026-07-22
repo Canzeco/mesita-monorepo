@@ -1,7 +1,7 @@
 const CONSUMER_AFTER_AUTH = "/auth/post-signin";
 
 /** Safe in-app path for ?next= (no open redirects). */
-export function safeAppPath(raw: string | undefined): string | null {
+function safeAppPath(raw: string | undefined): string | null {
   if (!raw?.startsWith("/") || raw.startsWith("//")) return null;
   return raw;
 }

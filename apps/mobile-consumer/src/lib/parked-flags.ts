@@ -30,14 +30,7 @@ export const PARKED = {
 } as const;
 
 export type ParkedTabKey = keyof typeof PARKED.tabs;
-export type ParkedHomeModeKey = keyof typeof PARKED.homeModes;
 
 export function isTabParked(key: string): key is ParkedTabKey {
   return key in PARKED.tabs && PARKED.tabs[key as ParkedTabKey].soon;
-}
-
-export function isHomeModeParked(key: string): key is ParkedHomeModeKey {
-  return (
-    key in PARKED.homeModes && PARKED.homeModes[key as ParkedHomeModeKey].soon
-  );
 }

@@ -103,7 +103,7 @@ export type SamplePlace = {
 
 // ── Consumer side ───────────────────────────────────────────────────────
 
-export type ConsumerProfile = {
+type ConsumerProfile = {
   consumer: SampleConsumer | null;
   /** The stable, barely-mutable side of the query. */
   tasteTokens: string[];
@@ -241,7 +241,7 @@ export function whatRelation(intent: Intent, place: SamplePlace): WhatRelation {
 
 // ── when's inputs from real geo + real hours ────────────────────────────
 
-export function haversineKm(aLat: number, aLng: number, bLat: number, bLng: number): number {
+function haversineKm(aLat: number, aLng: number, bLat: number, bLng: number): number {
   const R = 6371;
   const dLat = ((bLat - aLat) * Math.PI) / 180;
   const dLng = ((bLng - aLng) * Math.PI) / 180;
@@ -259,14 +259,14 @@ function parseHM(s: string): number | null {
   return Number(m[1]) + Number(m[2]) / 60;
 }
 
-export type OpenWindow = {
+type OpenWindow = {
   opensInH: number;
   openForH: number;
   /** True when the place has no usable hours data (≠ closed). */
   unknown: boolean;
 };
 
-export type OpennessResult = OpenWindow & {
+type OpennessResult = OpenWindow & {
   /** Binary 2×24×7 half-hour openness from intent time — when's PARAM. null when unknown. */
   bits: boolean[] | null;
 };
@@ -340,18 +340,6 @@ export function buildOpennessArray(
   };
 }
 
-/**
- * Convenience — same as buildOpennessArray but without the bits (legacy call
- * sites that only need opensIn / openFor for display).
- */
-export function openWindow(
-  hours: SamplePlace["hours"],
-  day: string,
-  hour: number,
-): OpenWindow {
-  const { opensInH, openForH, unknown } = buildOpennessArray(hours, day, hour);
-  return { opensInH, openForH, unknown };
-}
 
 // ── CONTEXT DOCUMENTS — the wide embedding contexts, assembled for real ──
 // These are the documents the real pipeline will embed for EM: everything is
@@ -365,7 +353,7 @@ export function openWindow(
  * ONLY: name · sex · age · country · class+why. Taste and history are the
  * spec's "ignored for now" — never embedded.
  */
-export function buildConsumerDoc(profile: ConsumerProfile): string {
+function buildConsumerDoc(profile: ConsumerProfile): string {
   const c = profile.consumer;
   const igWhy =
     c?.instagram_followers != null && c.instagram_followers > 0 ? "IG-invited" : "subscribed";
@@ -414,7 +402,7 @@ export function buildPlaceDoc(p: SamplePlace): string {
 // thing (document → unit vector → dot product), so EM IS the cosine of two
 // generated vectors — just from a toy encoder.
 
-export const EMBED_DIMS = 64;
+const EMBED_DIMS = 64;
 
 const STOP = new Set([
   "the", "and", "for", "with", "near", "around", "from", "this", "that",
@@ -441,7 +429,7 @@ export function embedText(text: string, dims = EMBED_DIMS): number[] {
   return norm > 0 ? v.map((x) => x / norm) : v;
 }
 
-export function cosineSim(a: number[], b: number[]): number {
+function cosineSim(a: number[], b: number[]): number {
   let dot = 0;
   for (let i = 0; i < Math.min(a.length, b.length); i++) dot += a[i] * b[i];
   return dot;

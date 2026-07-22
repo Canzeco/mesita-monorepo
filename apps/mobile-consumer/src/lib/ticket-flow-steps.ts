@@ -6,8 +6,8 @@ export type TicketStepCopyContext = {
 
 // Local mirrors of public.Enums — mobile has no database.types.ts copy;
 // keep in sync with apps/web-consumer/src/lib/supabase/database.types.ts.
-export type TicketKind = "reservation" | "coupon";
-export type TicketStatus =
+type TicketKind = "reservation" | "coupon";
+type TicketStatus =
   | "open"
   | "pending_payment"
   | "paid"
@@ -15,7 +15,7 @@ export type TicketStatus =
   | "revealed"
   | "awaiting_story"
   | "awaiting_payment_confirm";
-export type StoryStatus =
+type StoryStatus =
   | "not_required"
   | "pending"
   | "submitted"
@@ -24,7 +24,7 @@ export type StoryStatus =
   | "staff_verified"
   | "staff_rejected";
 
-export type TicketFlowType = "A" | "B";
+type TicketFlowType = "A" | "B";
 
 /**
  * Consumer-visible milestones. Mesita is discounts-only; the discount is
@@ -37,7 +37,7 @@ export type TicketFlowType = "A" | "B";
  */
 export type TicketFlowStepId = "scan" | "bill" | "story" | "pay" | "review";
 
-export type TicketFlowStepState = "done" | "active" | "upcoming";
+type TicketFlowStepState = "done" | "active" | "upcoming";
 
 export type TicketFlowStepView = {
   id: TicketFlowStepId;
@@ -64,26 +64,17 @@ export function ticketFlowTypeFromKind(kind: string): TicketFlowType {
   return STORY_KINDS.has(kind) ? "B" : "A";
 }
 
-export const FLOW_STEPS_BY_TYPE: Record<TicketFlowType, TicketFlowStepId[]> = {
+const FLOW_STEPS_BY_TYPE: Record<TicketFlowType, TicketFlowStepId[]> = {
   A: ["scan", "bill", "pay", "review"],
   B: ["scan", "bill", "story", "pay", "review"],
 };
 
-export const STEP_LABELS: Record<TicketFlowStepId, string> = {
+const STEP_LABELS: Record<TicketFlowStepId, string> = {
   scan: "Scan",
   bill: "Bill",
   story: "Story",
   pay: "Pay",
   review: "Review",
-};
-
-/** One-line hint under each step in the ticket menu. */
-export const STEP_MENU_HINT: Record<TicketFlowStepId, string> = {
-  scan: "Show QR to waiter",
-  bill: "Staff adds your total",
-  story: "Instagram story + tags",
-  pay: "Pay table; staff confirms",
-  review: "Tap stars, then send",
 };
 
 /** Big headline on the ticket card — plain language. */
@@ -109,7 +100,7 @@ export function ticketStepDummyInstructions(
 }
 
 /** Short numbered steps shown under the headline (active step only). */
-export function ticketStepNowInstructions(
+function ticketStepNowInstructions(
   stepId: TicketFlowStepId,
   _progress: TicketProgressInput,
   ctx?: TicketStepCopyContext,
@@ -158,94 +149,12 @@ export const STEP_DONE_LINE: Record<TicketFlowStepId, string> = {
   review: "Review sent",
 };
 
-export type StepSequenceLine = string | { text: string; struck?: boolean };
-
-export const STEP_SEQUENCE_DETAILS: Record<
-  TicketFlowStepId,
-  StepSequenceLine[]
-> = {
-  scan: [
-    "Show your Mesita QR at the table.",
-    "Staff scans your code — the bot validates it and starts your visit.",
-  ],
-  bill: [
-    "Staff enter your food & drink subtotal.",
-    "Your bill is calculated with your Mesita discount applied.",
-    "Pay the discounted total at the table — Mesita never touches the money.",
-  ],
-  story: [
-    "Post an Instagram story tagging Mesita and this place.",
-    {
-      text: "Upload a screenshot in the Mesita app.",
-      struck: true,
-    },
-    "We detect the tag automatically and update your ticket.",
-    "Staff confirms your story when the bot asks.",
-  ],
-  pay: [
-    "Pay the discounted total at the table — Mesita never touches the money.",
-    "Staff tap Paid received to close your visit. You don't confirm anything.",
-  ],
-  review: [
-    "Rate food, service, ambiance, value, and overall.",
-    "Add optional comments about your visit.",
-  ],
-};
-
-export const STEP_SEQUENCE_SUMMARY: Record<
-  TicketFlowStepId,
-  { done: string; upcoming: string }
-> = {
-  scan: {
-    done: "Your code was scanned — visit started.",
-    upcoming: "Show your Mesita QR so staff can scan you in.",
-  },
-  bill: {
-    done: "Your bill with reward is ready.",
-    upcoming: "Staff will enter your subtotal next.",
-  },
-  story: {
-    done: "Your story was verified.",
-    upcoming: "Post an IG story tagging Mesita and the place.",
-  },
-  pay: {
-    done: "Staff confirmed your payment.",
-    upcoming: "Pay at the table; staff confirm to close it.",
-  },
-  review: {
-    done: "Thanks — your review was submitted.",
-    upcoming: "Rate your visit when you're ready.",
-  },
-};
-
-export function ticketFlowStepAnchorId(stepId: TicketFlowStepId): string {
-  return `ticket-flow-step-${stepId}`;
-}
-
-export function ticketFlowStepStatusLabel(step: TicketFlowStepView): string {
-  if (step.state === "done") return "Done";
-  if (step.state === "active") return "Now";
-  return "Pending";
-}
-
 function hasBill(input: TicketProgressInput): boolean {
   return input.total_cents != null && input.total_cents > 0;
 }
 
 function storyVerified(story_status: string): boolean {
   return STORY_VERIFIED.has(story_status as StoryStatus);
-}
-
-/** One-line fallback under the step label in the checklist. */
-export function ticketStepActiveInstruction(
-  stepId: TicketFlowStepId,
-  progress: TicketProgressInput,
-  ctx?: TicketStepCopyContext,
-): string {
-  const lines = ticketStepNowInstructions(stepId, progress, ctx);
-  if (lines.length === 0) return "";
-  if (lines.length === 1) return lines[0];
-  return lines.join(" ");
 }
 
 function reviewDone(input: TicketProgressInput): boolean {

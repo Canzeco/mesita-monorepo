@@ -1,11 +1,11 @@
 import type { ConsumerClass } from "@/lib/mock/place";
 
-export type PromoTierRates = {
+type PromoTierRates = {
   free: number | null;
   premium: number | null;
 };
 
-export type PromoMatrix = {
+type PromoMatrix = {
   welcome: PromoTierRates;
   default: PromoTierRates;
   is_first_visit: boolean;
@@ -46,7 +46,7 @@ export function buildPromoMatrixFromRow(
   };
 }
 
-export function promoMatrixHasAnyRate(matrix: PromoMatrix): boolean {
+function promoMatrixHasAnyRate(matrix: PromoMatrix): boolean {
   return (
     matrix.welcome.free != null ||
     matrix.welcome.premium != null ||

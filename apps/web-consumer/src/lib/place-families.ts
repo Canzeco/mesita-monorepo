@@ -36,10 +36,6 @@ export const PLACE_FAMILIES: PlaceFamily[] = [
   { key: "culture_arts", label: "Culture & Arts", emoji: "🎭" },
 ];
 
-export function placeFamilyByKey(key: FamilyKey): PlaceFamily | undefined {
-  return PLACE_FAMILIES.find((f) => f.key === key);
-}
-
 // Mirror of _shared/sourcing.ts FAMILY_GOOGLE_TYPES (see header). places.category
 // holds Google-primaryType-style slugs (e.g. "night_club", "cocktail_bar"), so
 // family membership is containment in the family's type expansion. A type can

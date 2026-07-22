@@ -37,7 +37,7 @@ export function formatInstagramHandle(
   return h ? `@${h}` : null;
 }
 
-export function instagramHandleFromUrl(
+function instagramHandleFromUrl(
   url: string | null | undefined,
 ): string | null {
   if (!url) return null;
@@ -115,7 +115,7 @@ export function formatTicketVisitDate(
   return `${day}/${month}/${year}`;
 }
 
-export type TicketBillPromoExplanation = {
+type TicketBillPromoExplanation = {
   ratePercent: number | null;
   /** Promo from ticket snapshot (discount_cents). */
   promoCents: number;
@@ -179,33 +179,6 @@ export function explainTicketBillPromo(
   };
 }
 
-/** Natural-language billing summary for ticket detail — one paragraph. */
-export function formatTicketBillSummaryText(
-  p: TicketBillPayload,
-  ticketKind?: string | null,
-  opts?: { capMxn?: number | null },
-): string | null {
-  const promo = explainTicketBillPromo(p, ticketKind, opts);
-  if (!promo) return null;
-
-  const fmt = (cents: number) => formatPayMx(cents, p.currency);
-  const parts: string[] = [];
-
-  parts.push(`Your subtotal is ${fmt(promo.subtotalCents)}.`);
-  if (promo.ratePercent != null && promo.ratePercent > 0) {
-    const capPhrase =
-      promo.capMxn != null && promo.capMxn > 0
-        ? ` on the first MX$${promo.capMxn.toLocaleString("en-US")} of food & drinks`
-        : "";
-    parts.push(
-      `You get ${promo.ratePercent}% off the subtotal${capPhrase} — you save ${fmt(promo.computedPromoCents)}.`,
-    );
-  }
-  if (promo.amountDueCents != null) {
-    parts.push(`You pay ${fmt(promo.amountDueCents)} at the table.`);
-  }
-  return parts.join(" ");
-}
 
 export type TicketTransactionSummary = {
   promoPercent: number | null;

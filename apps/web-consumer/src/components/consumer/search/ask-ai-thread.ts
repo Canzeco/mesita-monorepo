@@ -12,17 +12,17 @@ export type AiMessage = {
   predictions?: PlacePrediction[];
 };
 
-export const GREETING =
+const GREETING =
   "Hello 👋 I'm Memo, the AI of Mesita. Tell me what you're craving — try “rooftop date tonight” or just “tacos al pastor”.";
 
-export const AI_ERROR =
+const AI_ERROR =
   "Hmm, my line dropped for a second — give it another try in a moment.";
 
 // Cap how many cards one reply drops into the thread — a tight, curated
 // shortlist reads like a recommendation, not search results.
-export const MAX_CARDS = 3;
+const MAX_CARDS = 3;
 // Cap the follow-up chips Memo suggests under a reply.
-export const MAX_RELATED = 3;
+const MAX_RELATED = 3;
 
 let nextId = 0;
 export function msgId(): string {
@@ -38,7 +38,7 @@ export function msgId(): string {
 // and no set-state-in-effect. Intentionally NOT localStorage: a full reload
 // starts fresh, which keeps this clean and avoids a client-only initial read.
 export type StoredThread = { messages: AiMessage[]; related: string[] };
-export const THREAD_CAP = 40; // bound the retained history
+const THREAD_CAP = 40; // bound the retained history
 
 let threadCache: StoredThread | null = null;
 

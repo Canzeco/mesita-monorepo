@@ -9,7 +9,7 @@
  */
 export type SwipeCardLayoutMode = "tiwc" | "witc";
 
-export type SwipeCardLayoutInput = {
+type SwipeCardLayoutInput = {
   /** Photo file width in px (HTMLImageElement.naturalWidth). */
   photoNaturalWidth: number;
   /** Photo file height in px (HTMLImageElement.naturalHeight). */
@@ -47,7 +47,7 @@ export type SwipeCardLayoutResult = {
  * 1.32 keeps portrait + 4:5 on full bleed; split kicks in for square and wider.
  * Lower → more WITC splits; raise → more TIWC full bleed.
  */
-export const WITC_THRESHOLD = 1.32;
+const WITC_THRESHOLD = 1.32;
 
 /**
  *   imageRatio     = photoNaturalW ÷ photoNaturalH
@@ -73,16 +73,12 @@ export function resolveSwipeCardLayout({
   return { mode, imageRatio, cardRatio, imageCardRatio };
 }
 
-export function isFullBleedLayout(mode: SwipeCardLayoutMode): boolean {
-  return mode === "tiwc";
-}
-
 export function isSplitLayout(mode: SwipeCardLayoutMode): boolean {
   return mode === "witc";
 }
 
 /** Bottom-center object-cover placement for the WITC shared photo plane. */
-export type WitcCoverPlacement = {
+type WitcCoverPlacement = {
   /** Scaled image width in px (may exceed card width). */
   width: number;
   /** Scaled image height in px (may exceed plane height). */
@@ -99,12 +95,12 @@ export type WitcCoverPlacement = {
   heightLimited: boolean;
 };
 
-export type WitcImageRegionOffsets = {
+type WitcImageRegionOffsets = {
   left: number;
   top: number;
 };
 
-export type WitcCoverLayout = {
+type WitcCoverLayout = {
   placement: WitcCoverPlacement;
   /** Full-card plane height (same as measured card height). */
   planeHeight: number;

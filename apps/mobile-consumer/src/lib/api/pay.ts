@@ -62,7 +62,7 @@ export function formatInstagramHandle(
   return h ? `@${h}` : null;
 }
 
-export function instagramHandleFromUrl(
+function instagramHandleFromUrl(
   url: string | null | undefined,
 ): string | null {
   if (!url) return null;
@@ -138,7 +138,7 @@ export function formatTicketVisitDate(
   return `${day}/${month}/${year}`;
 }
 
-export type TicketBillPromoExplanation = {
+type TicketBillPromoExplanation = {
   ratePercent: number | null;
   promoCents: number;
   computedPromoCents: number;

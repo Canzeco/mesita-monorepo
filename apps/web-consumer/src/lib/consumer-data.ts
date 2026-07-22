@@ -8,15 +8,6 @@ type Class = (typeof CLASS_ORDER)[number];
 // `@/lib/mock/place`. This module no longer carries a Place type; the
 // SAVED_PLACES export below is typed against the public api Place.
 
-export const AI_SUGGESTIONS = [
-  "Rooftop with a sunset view",
-  "Romantic dinner in Polanco",
-  "Sunday family brunch",
-  "Mezcal and vinyl after midnight",
-  "Most fashionable club in San Pedro",
-  "Famous Luis Miguel spot in Acapulco",
-];
-
 // Country list — used by the phone-input dial-code picker (the residence
 // dropdown was retired; country is inferred from the phone's dial code).
 // Ordered roughly by hospitality relevance:
