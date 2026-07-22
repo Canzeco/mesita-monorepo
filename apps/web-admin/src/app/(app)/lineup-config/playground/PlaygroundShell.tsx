@@ -23,6 +23,7 @@ import {
   unitDraw,
   xxScore,
   type DeckCandidate,
+  type DeckSlot,
   type FinalDeck,
   type GpParams,
   type LaneId,
@@ -320,11 +321,11 @@ export function PlaygroundShell() {
         </div>
       </PanelCard>
 
-      {/* ══ The result — the sorted deck ═════════════════════════════ */}
+      {/* ══ The result — four decks: the three lanes + the final ═════ */}
       {run == null ? (
         <PanelCard
-          title="The deck"
-          subtitle="The result of the call — the sorted, merged deck a caller receives."
+          title="The decks"
+          subtitle="The result of the call — each lane's own deck plus the merged final deck a caller receives."
         >
           <p className="text-muted-foreground mt-4 text-[12px]">
             No call yet — compose the consumer + intent above and Run Lineup.
@@ -332,80 +333,162 @@ export function PlaygroundShell() {
         </PanelCard>
       ) : (
         <PanelCard
-          title="The deck · the sorted result"
-          subtitle="Round-robin O → I → H, dedupe on insert, no backfill — click a card for its full subscore anatomy."
-          pill={`${run.deck.slots.length} cards ≤ ${run.snap.total}`}
+          title="The decks · three lanes + the final"
+          subtitle="Each lane ranks the WHOLE pool by its own score and takes its top-N; round-robin merge O → I → H (dedupe on insert, no backfill) makes the final. Click any card for its subscore anatomy."
+          pill={`final ${run.deck.slots.length} ≤ ${run.snap.total}`}
         >
-          <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1">
-            <span className="text-muted-foreground font-mono text-[10px]">
-              {LANES.map(
-                (l) => `${l.label[0]} ${run.deck.fills[l.id].contributed}`,
-              ).join(" · ")}{" "}
-              · {LANES.reduce((s, l) => s + run.deck.fills[l.id].mergedAway, 0)} merged away
-            </span>
-            {stale ? (
-              <span className="text-[11px] font-medium text-amber-600">
-                stale — inputs or knobs changed; run again
-              </span>
-            ) : null}
-          </div>
-
-          <div className="mt-3 flex flex-col gap-2">
-            {run.deck.slots.map((slot, i) => {
-              const place = run.byId.get(slot.id);
-              const parts = run.parts.get(slot.id);
-              const isOpen = open === slot.id;
-              return (
-                <div key={slot.id} className="border-border/60 overflow-hidden rounded-xl border">
-                  <button
-                    type="button"
-                    onClick={() => setOpen(isOpen ? null : slot.id)}
-                    aria-expanded={isOpen}
-                    className="hover:bg-muted/40 flex w-full items-center gap-2.5 px-3 py-2 text-left transition"
-                  >
-                    <span className="text-muted-foreground w-5 shrink-0 text-right font-mono text-[10px]">
-                      {i + 1}
-                    </span>
-                    <LaneBadge laneId={slot.laneId} />
-                    <span className="min-w-0 flex-1 truncate text-[12.5px] font-medium">
-                      {place?.name ?? slot.id}
-                    </span>
-                    <span className="shrink-0 font-mono text-[11.5px] font-semibold tabular-nums">
-                      {slot.score.toFixed(3)}
-                    </span>
-                    <ChevronDown
-                      className={
-                        "text-muted-foreground h-3.5 w-3.5 shrink-0 transition-transform " +
-                        (isOpen ? "rotate-180" : "")
-                      }
-                      aria-hidden
-                    />
-                  </button>
-                  {isOpen && place && parts ? (
-                    <CardAnatomy
-                      intent={run.intent}
-                      ciDoc={run.ciDoc}
-                      ciVec={run.ciVec}
-                      parts={parts}
-                      placeName={place.name}
-                      placeCategory={place.category}
-                      sm={run.snap.sm}
-                      gp={run.snap.gp}
-                      xxControl={run.snap.xxControl}
-                      provenance={slot.laneId}
-                    />
-                  ) : null}
-                </div>
-              );
-            })}
-            {run.deck.slots.length === 0 ? (
-              <p className="text-muted-foreground py-1 text-[11px]">
-                empty deck — every lane came up empty at these knobs
-              </p>
-            ) : null}
+          {stale ? (
+            <p className="mt-3 text-[11px] font-medium text-amber-600">
+              stale — inputs or knobs changed since this call; Run Lineup again
+            </p>
+          ) : null}
+          <div className="mt-4 flex flex-col gap-4">
+            {LANES.map((l) => (
+              <DeckBlock
+                key={l.id}
+                deckId={l.id}
+                title={`${l.label} deck`}
+                laneId={l.id}
+                cards={run.deck.lanes[l.id]}
+                run={run}
+                open={open}
+                setOpen={setOpen}
+              />
+            ))}
+            <DeckBlock
+              deckId="final"
+              title="Final deck · the merged result"
+              laneId={null}
+              cards={run.deck.slots}
+              run={run}
+              open={open}
+              setOpen={setOpen}
+            />
           </div>
         </PanelCard>
       )}
+    </div>
+  );
+}
+
+// One deck's rows — a lane's own top-N (laneId set) or the merged final
+// (laneId null). Every card expands into its full subscore anatomy. In a lane
+// deck, a card the final took via an EARLIER lane is struck through (merged
+// away); the final deck shows each card's provenance-lane badge instead.
+function DeckBlock({
+  deckId,
+  title,
+  laneId,
+  cards,
+  run,
+  open,
+  setOpen,
+}: {
+  deckId: string;
+  title: string;
+  laneId: LaneId | null;
+  cards: DeckSlot[];
+  run: Run;
+  open: string | null;
+  setOpen: (k: string | null) => void;
+}) {
+  const isFinal = laneId == null;
+  const fill = laneId ? run.deck.fills[laneId] : null;
+
+  return (
+    <div className="border-border/60 overflow-hidden rounded-2xl border">
+      <div
+        className={
+          "border-border/60 flex flex-wrap items-center gap-2 border-b px-3 py-2 " +
+          (isFinal ? "bg-muted/60" : "bg-muted/25")
+        }
+      >
+        {laneId ? <LaneBadge laneId={laneId} /> : null}
+        <span className={"text-[12.5px] " + (isFinal ? "font-bold" : "font-semibold")}>
+          {title}
+        </span>
+        <span className="text-muted-foreground ml-auto font-mono text-[10px]">
+          {fill
+            ? `top ${fill.taken} of ${fill.eligible} eligible · ${fill.contributed} in final · ${fill.mergedAway} merged`
+            : `${cards.length} cards · ${LANES.map((l) => `${l.label[0]} ${run.deck.fills[l.id].contributed}`).join(" · ")}`}
+        </span>
+      </div>
+      <div className="divide-border/40 flex flex-col divide-y">
+        {cards.length === 0 ? (
+          <p className="text-muted-foreground px-3 py-2 text-[11px]">
+            {isFinal
+              ? "empty deck — every lane came up empty at these knobs"
+              : "empty — no place scores > 0 in this lane"}
+          </p>
+        ) : (
+          cards.map((slot, i) => {
+            const place = run.byId.get(slot.id);
+            const parts = run.parts.get(slot.id);
+            const key = `${deckId}:${slot.id}`;
+            const isOpen = open === key;
+            // Struck through only in a lane deck when the final took this place
+            // via a different (earlier) lane.
+            const merged =
+              !isFinal &&
+              !run.deck.slots.some((s) => s.id === slot.id && s.laneId === laneId);
+            return (
+              <div key={key}>
+                <button
+                  type="button"
+                  onClick={() => setOpen(isOpen ? null : key)}
+                  aria-expanded={isOpen}
+                  className={
+                    "hover:bg-muted/40 flex w-full items-center gap-2.5 px-3 py-2 text-left transition " +
+                    (merged ? "opacity-50" : "")
+                  }
+                >
+                  <span className="text-muted-foreground w-5 shrink-0 text-right font-mono text-[10px]">
+                    {i + 1}
+                  </span>
+                  {isFinal ? <LaneBadge laneId={slot.laneId} /> : null}
+                  <span
+                    className={
+                      "min-w-0 flex-1 truncate text-[12.5px] font-medium " +
+                      (merged ? "line-through" : "")
+                    }
+                    title={
+                      merged
+                        ? "merged away — already in the final deck via an earlier lane"
+                        : undefined
+                    }
+                  >
+                    {place?.name ?? slot.id}
+                  </span>
+                  <span className="shrink-0 font-mono text-[11.5px] font-semibold tabular-nums">
+                    {slot.score.toFixed(3)}
+                  </span>
+                  <ChevronDown
+                    className={
+                      "text-muted-foreground h-3.5 w-3.5 shrink-0 transition-transform " +
+                      (isOpen ? "rotate-180" : "")
+                    }
+                    aria-hidden
+                  />
+                </button>
+                {isOpen && place && parts ? (
+                  <CardAnatomy
+                    intent={run.intent}
+                    ciDoc={run.ciDoc}
+                    ciVec={run.ciVec}
+                    parts={parts}
+                    placeName={place.name}
+                    placeCategory={place.category}
+                    sm={run.snap.sm}
+                    gp={run.snap.gp}
+                    xxControl={run.snap.xxControl}
+                    provenance={laneId ?? slot.laneId}
+                  />
+                ) : null}
+              </div>
+            );
+          })
+        )}
+      </div>
     </div>
   );
 }
