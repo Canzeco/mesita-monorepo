@@ -130,6 +130,12 @@ verify_jwt = true
 [functions.supabase-edgefunc-store-place-images]
 verify_jwt = true
 
+# Reservationist "attempt 1": places the outbound reservation call via ElevenLabs
+# Convai. Internal-only; invoked by consumer-web-create-reservation right after it
+# inserts the pending reservation row.
+[functions.supabase-edgefunc-reservation-call]
+verify_jwt = true
+
 # --- Enricher v2 pipeline (the Enricher is a PROCESS: cron-driven stages) ---
 #
 # Three stage EFs walk a place_research row research → analysis → contents.

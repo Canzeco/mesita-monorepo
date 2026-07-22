@@ -1,19 +1,47 @@
 "use client";
 
 import { useEffect, useMemo, useState, useTransition } from "react";
-import { ArrowDown, ArrowUp, CalendarCheck, ShieldCheck } from "lucide-react";
+import {
+  Bot,
+  CalendarCheck,
+  Clock,
+  FlaskConical,
+  Lock,
+  Phone,
+  RotateCcw,
+  ShieldCheck,
+} from "lucide-react";
 import {
   ErrorNote,
+  NumberField,
   SaveRow,
   SectionCard,
   Switch,
 } from "../enricher-config/atlas-ui";
 import { getReservationsConfig, updateReservationsConfig } from "./actions";
 import {
-  channelMeta,
-  type ReservationChannel,
+  ATTEMPTS_MAX,
+  ATTEMPTS_MIN,
+  CHANNELS,
+  looksLikePhone,
   type ReservationsConfig,
 } from "./catalog";
+
+// While only phone is bookable, the stored channel shape is fixed: phone ranked,
+// WhatsApp + Instagram parked. Kept out of the UI (nothing to reorder with one
+// live channel) but written on every save so the Enricher never seeds a channel
+// the agent can't yet call.
+const PHONE_ONLY_CHANNELS = {
+  priority: ["phone", "whatsapp", "instagram"] as ReservationsConfig["priority"],
+  disabled: ["whatsapp", "instagram"] as ReservationsConfig["disabled"],
+};
+
+const STEPS = [
+  "A guest taps Reserve in the app and sets the details — date & time, party size, occasion, a note.",
+  "A Supabase function takes the request and briefs the Reservationist, an ElevenLabs voice agent, with the venue and the guest's parameters.",
+  "The agent phones the place over Twilio and books the table, speaking naturally.",
+  "It retries on the schedule below until it holds a table or runs out of attempts — then the guest's reservation flips from Pending to Confirmed.",
+];
 
 export function ReservationsConfigClient({
   initialConfig,
@@ -48,37 +76,33 @@ export function ReservationsConfigClient({
     };
   }, []);
 
+  const testInvalid =
+    cfg.testCall.enabled && !looksLikePhone(cfg.testCall.number);
+
   const dirty = useMemo(
     () => JSON.stringify(cfg) !== JSON.stringify(saved),
     [cfg, saved],
   );
 
-  const move = (index: number, delta: number) => {
-    setCfg((c) => {
-      const next = [...c.priority];
-      const to = index + delta;
-      if (to < 0 || to >= next.length) return c;
-      [next[index], next[to]] = [next[to], next[index]];
-      return { ...c, priority: next };
-    });
-    setOk(false);
-  };
-
-  const toggleChannel = (key: ReservationChannel) => {
-    setCfg((c) => {
-      const off = c.disabled.includes(key);
-      return {
-        ...c,
-        disabled: off ? c.disabled.filter((k) => k !== key) : [...c.disabled, key],
-      };
-    });
+  const patch = (next: Partial<ReservationsConfig>) => {
+    setCfg((c) => ({ ...c, ...next }));
     setOk(false);
   };
 
   const save = () => {
     setError(null);
+    // Force the phone-only channel shape — the section above is read-only, but the
+    // stored blob must stay a valid, phone-first policy for the Enricher.
+    const payload: ReservationsConfig = {
+      ...cfg,
+      ...PHONE_ONLY_CHANNELS,
+      testCall: {
+        enabled: cfg.testCall.enabled,
+        number: cfg.testCall.number.trim(),
+      },
+    };
     startTransition(async () => {
-      const r = await updateReservationsConfig(cfg);
+      const r = await updateReservationsConfig(payload);
       if (r.ok) {
         setSaved(r.config);
         setCfg(r.config);
@@ -90,15 +114,13 @@ export function ReservationsConfigClient({
     });
   };
 
-  const live = cfg.priority.filter((k) => !cfg.disabled.includes(k));
-  const allParked = live.length === 0;
-
   return (
     <div className="space-y-6">
+      {/* How it works — the shape of the agent, so the knobs below have context. */}
       <SectionCard
-        icon={<CalendarCheck className="text-secondary h-4 w-4" />}
-        title="Channel priority"
-        subtitle="The Enricher takes the first channel from the top that the place has a contact for, and writes it to products.reservations. Parked channels never win, even as a place's only contact."
+        icon={<Bot className="text-secondary h-4 w-4" />}
+        title="How a reservation happens"
+        subtitle="The Reservationist is a voice agent, not a form. A Supabase function briefs it and it calls the venue on the guest's behalf."
         status={
           updatedAt ? (
             <span className="text-muted-foreground text-xs">
@@ -107,148 +129,213 @@ export function ReservationsConfigClient({
           ) : null
         }
       >
+        <ol className="mt-5 space-y-3">
+          {STEPS.map((step, i) => (
+            <li key={i} className="flex gap-3">
+              <span className="bg-secondary/10 text-secondary flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-semibold tabular-nums">
+                {i + 1}
+              </span>
+              <p className="text-foreground/90 text-sm leading-relaxed">{step}</p>
+            </li>
+          ))}
+        </ol>
+        <p className="text-muted-foreground mt-4 border-t border-border/60 pt-3 text-xs">
+          A reservation is its own ticket — booking only, no discount. It’s tracked
+          separately from a guest’s reward coupons; the two never share a record.
+        </p>
+      </SectionCard>
+
+      {/* Test mode — while we're not ringing real venues, the agent calls one
+          fixed test number for every reservation. */}
+      <SectionCard
+        icon={<FlaskConical className="text-secondary h-4 w-4" />}
+        title="Test mode"
+        subtitle="While test mode is on, every reservation call dials the test number below instead of the place's real line — whichever venue the guest booked. So we can run the whole flow end to end without ringing a single business."
+      >
+        <div className="mt-5 flex items-start justify-between gap-4">
+          <div className="min-w-0">
+            <p className="text-sm font-semibold">Test mode</p>
+            <p className="text-muted-foreground mt-0.5 text-xs">
+              {cfg.testCall.enabled
+                ? "On — the agent ignores each place's real phone and dials the test number below. Keep this on until we're ready to call real venues."
+                : "Off — the agent calls each place's actual reservation line. Only turn test mode off when you mean to reach real businesses."}
+            </p>
+          </div>
+          <Switch
+            on={cfg.testCall.enabled}
+            pending={pending}
+            label="Test mode"
+            onClick={() =>
+              patch({
+                testCall: { ...cfg.testCall, enabled: !cfg.testCall.enabled },
+              })
+            }
+          />
+        </div>
+
+        <label className="mt-4 flex flex-col gap-2">
+          <span className="flex items-center gap-2 text-sm font-medium">
+            <Phone className="text-muted-foreground h-4 w-4" />
+            Test number
+          </span>
+          <input
+            type="tel"
+            inputMode="tel"
+            placeholder="+52 444 549 9597"
+            value={cfg.testCall.number}
+            disabled={pending || !cfg.testCall.enabled}
+            onChange={(e) =>
+              patch({ testCall: { ...cfg.testCall, number: e.target.value } })
+            }
+            className="border-border bg-card focus:border-foreground h-9 w-full max-w-sm rounded-lg border px-3 text-sm tabular-nums outline-none disabled:opacity-50"
+          />
+          {testInvalid ? (
+            <span className="text-xs text-amber-600">
+              Enter an E.164 number — a leading + and country code, e.g.
+              +5215512345678.
+            </span>
+          ) : (
+            <span className="text-muted-foreground text-xs">
+              E.164 format (leading +, country code). This is the only line the
+              agent will dial while test mode is on.
+            </span>
+          )}
+        </label>
+      </SectionCard>
+
+      {/* Call attempts — how hard the agent tries. */}
+      <SectionCard
+        icon={<RotateCcw className="text-secondary h-4 w-4" />}
+        title="Call attempts"
+        subtitle="How many times the Reservationist tries a place before it gives up and the guest is told the venue couldn't be reached."
+      >
+        <div className="mt-5 max-w-xs">
+          <NumberField
+            icon={<RotateCcw className="text-muted-foreground mt-0.5 h-4 w-4" />}
+            label="Attempts per reservation"
+            value={cfg.attempts}
+            min={ATTEMPTS_MIN}
+            max={ATTEMPTS_MAX}
+            onChange={(n) => patch({ attempts: n })}
+            disabled={pending}
+          />
+        </div>
+        <div className="mt-4 space-y-2 rounded-xl border border-border/60 bg-muted/30 p-4">
+          <p className="flex items-start gap-2 text-xs">
+            <Clock className="text-secondary mt-0.5 h-3.5 w-3.5 shrink-0" />
+            <span>
+              <span className="text-foreground font-medium">Attempt 1 is immediate</span>{" "}
+              — the moment a guest taps Reserve, whatever the hour. Plenty of venues
+              run a 24/7 AI receptionist, so a 3 a.m. call can still land a table.
+            </span>
+          </p>
+          <p className="flex items-start gap-2 text-xs">
+            <Clock className="text-secondary mt-0.5 h-3.5 w-3.5 shrink-0" />
+            <span>
+              <span className="text-foreground font-medium">
+                Attempts 2–{cfg.attempts} wait for opening hours
+              </span>{" "}
+              — if the first call goes unanswered, the agent holds until the venue’s
+              next opening window and tries again, spacing the remaining tries across
+              it rather than redialing blindly. It waits on the venue’s hours, never
+              the guest.
+            </span>
+          </p>
+        </div>
+      </SectionCard>
+
+      {/* Channels — phone live, the rest held for verified partners. */}
+      <SectionCard
+        icon={<CalendarCheck className="text-secondary h-4 w-4" />}
+        title="Booking channels"
+        subtitle="The contact the agent books through. Today that's the phone, for every place. WhatsApp and Instagram are held for verified partners."
+      >
         <ul className="mt-5 space-y-2">
-          {cfg.priority.map((key, idx) => {
-            const meta = channelMeta(key);
-            const parked = cfg.disabled.includes(key);
-            // Rank is the position among channels still in the running — a parked
-            // channel has no rank, so numbering never implies it could win.
-            const rank = parked ? null : live.indexOf(key) + 1;
+          {CHANNELS.map((ch) => {
+            const live = ch.status === "live";
             return (
               <li
-                key={key}
+                key={ch.key}
                 className={
                   "border-border bg-card flex items-center gap-3 rounded-2xl border p-3 " +
-                  (parked ? "opacity-50" : "")
+                  (live ? "" : "opacity-60")
                 }
               >
-                <div className="flex flex-col gap-0.5">
-                  <button
-                    type="button"
-                    disabled={idx === 0 || pending}
-                    onClick={() => move(idx, -1)}
-                    aria-label={`Move ${meta.label} up`}
-                    className="text-muted-foreground hover:bg-muted hover:text-foreground rounded-md p-0.5 transition disabled:cursor-not-allowed disabled:opacity-30"
-                  >
-                    <ArrowUp className="h-3.5 w-3.5" />
-                  </button>
-                  <button
-                    type="button"
-                    disabled={idx === cfg.priority.length - 1 || pending}
-                    onClick={() => move(idx, 1)}
-                    aria-label={`Move ${meta.label} down`}
-                    className="text-muted-foreground hover:bg-muted hover:text-foreground rounded-md p-0.5 transition disabled:cursor-not-allowed disabled:opacity-30"
-                  >
-                    <ArrowDown className="h-3.5 w-3.5" />
-                  </button>
-                </div>
-
-                <span
-                  className={
-                    "flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-semibold tabular-nums " +
-                    (rank === 1
-                      ? "bg-secondary/10 text-secondary"
-                      : "bg-muted text-muted-foreground")
-                  }
-                >
-                  {rank ?? "—"}
-                </span>
-
                 <span className="text-lg" aria-hidden>
-                  {meta.emoji}
+                  {ch.emoji}
                 </span>
-
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
-                    <span className="text-sm font-semibold">{meta.label}</span>
-                    {rank === 1 && (
+                    <span className="text-sm font-semibold">{ch.label}</span>
+                    {live ? (
                       <span className="bg-secondary/10 text-secondary rounded-full px-1.5 py-0.5 text-[10px] font-medium">
-                        first choice
+                        live
                       </span>
-                    )}
-                    {parked && (
-                      <span className="text-muted-foreground bg-muted rounded-full px-1.5 py-0.5 text-[10px] font-medium">
-                        parked
+                    ) : (
+                      <span className="text-muted-foreground bg-muted inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-medium">
+                        <Lock className="h-2.5 w-2.5" />
+                        coming soon
                       </span>
                     )}
                   </div>
-                  <p className="text-muted-foreground mt-0.5 text-xs">
-                    {meta.blurb}
-                  </p>
+                  <p className="text-muted-foreground mt-0.5 text-xs">{ch.blurb}</p>
                   <p className="text-muted-foreground/70 mt-0.5 font-mono text-[10px]">
-                    {meta.source}
+                    {ch.source}
                   </p>
                 </div>
-
-                <Switch
-                  on={!parked}
-                  pending={pending}
-                  label={`Enable ${meta.label}`}
-                  onClick={() => toggleChannel(key)}
-                />
               </li>
             );
           })}
         </ul>
-
-        {allParked ? (
-          <p className="mt-3 text-xs text-amber-600">
-            Every channel is parked — no place could be given an endpoint. Leave at
-            least one in the running.
-          </p>
-        ) : (
-          <p className="text-muted-foreground mt-3 text-xs">
-            Resolution order:{" "}
-            <span className="text-foreground font-medium">
-              {live.map((k) => channelMeta(k).label).join(" → ")}
-            </span>
-            . A place with none of these contacts gets no endpoint and stays
-            un-bookable until one is found.
-          </p>
-        )}
+        <p className="text-muted-foreground mt-3 text-xs">
+          99% of places are booked by phone. WhatsApp and Instagram unlock per-venue
+          for verified partners from the business console — they don’t switch on
+          here, and the agent never falls back to them on its own.
+        </p>
       </SectionCard>
 
+      {/* Operator overrides — kept from the endpoint-selection era; still governs
+          re-enrich of a hand-picked phone. */}
       <SectionCard
         icon={<ShieldCheck className="text-secondary h-4 w-4" />}
         title="Operator overrides"
-        subtitle="What happens on re-enrich to a channel a human picked by hand on the place's Products tab."
+        subtitle="What happens on re-enrich to a reservation contact a human picked by hand on the place's Products tab."
       >
         <div className="mt-5 flex items-start justify-between gap-4">
           <div className="min-w-0">
-            <p className="text-sm font-semibold">Keep hand-picked channels</p>
+            <p className="text-sm font-semibold">Keep hand-picked contacts</p>
             <p className="text-muted-foreground mt-0.5 text-xs">
               {cfg.respectAdminOverride
-                ? "On — a place whose channel an operator set is left alone by every re-enrich. The operator outranks the pipeline."
-                : "Off — every re-enrich re-applies the priority above, overwriting channels operators picked by hand. Only useful for a deliberate backfill."}
+                ? "On — a place whose reservation contact an operator set is left alone by every re-enrich. The operator outranks the pipeline."
+                : "Off — every re-enrich re-applies the default, overwriting contacts operators picked by hand. Only useful for a deliberate backfill."}
             </p>
           </div>
           <Switch
             on={cfg.respectAdminOverride}
             pending={pending}
-            label="Keep hand-picked channels"
-            onClick={() => {
-              setCfg((c) => ({ ...c, respectAdminOverride: !c.respectAdminOverride }));
-              setOk(false);
-            }}
+            label="Keep hand-picked contacts"
+            onClick={() =>
+              patch({ respectAdminOverride: !cfg.respectAdminOverride })
+            }
           />
         </div>
         {!cfg.respectAdminOverride && (
           <p className="mt-3 text-xs text-amber-600">
             With this off, the next enrich of any place clobbers its operator-chosen
-            channel. Turn it back on once the backfill is done.
+            contact. Turn it back on once the backfill is done.
           </p>
         )}
       </SectionCard>
 
       <div>
         <p className="text-muted-foreground text-xs">
-          Enforced live by the Enricher contents stage
-          (supabase-cron-enrich-place-contents) on every run — existing places keep
-          their current endpoint until they are re-enriched.
+          Channel selection is enforced live by the Enricher contents stage
+          (supabase-cron-enrich-place-contents). The test number and attempt count
+          are read by the reservation agent when it places a call.
         </p>
         <SaveRow
           pending={pending}
-          dirty={dirty && !allParked}
+          dirty={dirty && !testInvalid}
           ok={ok}
           onClick={save}
         />
