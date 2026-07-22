@@ -1,5 +1,5 @@
 // CIP — Consumer · Intent · Place. The playground's data plumbing for the
-// scoring model (v10): build the consumer side, compose intents, and
+// scoring model (v11): build the consumer side, compose intents, and
 // emulate the EM subscore until the real encoder (OpenAI embeddings) is wired.
 //
 // THREE DATA OBJECTS, TWO SIDES. Consumer-data and intent-data are the SAME
@@ -11,9 +11,10 @@
 //   EM  over (consumer + intent) doc × place doc — real consumer, synthetic
 //       intent, real place; documents → vectors → cosine, max(0, cos).
 //   SM  computed from (intent × place): haversine to the intent's W (zone
-//       string match → km 0), the place's real hours vs the intent's query
-//       time, and the category ladder — where × when × what.
-//   GP  from the real place — ln(1 + rating × reviews) / ceiling.
+//       string match → km 0), the place's real hours as a binary 2×24×7
+//       openness array from intent time (when's PARAM), and the category
+//       ladder — where × when × what.
+//   GP  from the real place — ln(1 + rating^pow × reviews) / ceiling.
 //   RP  from the real place — posture derived from its live promo rates.
 //   XX  a seeded unit draw per card per lane (scores.unitDraw), U^control.
 //
@@ -29,7 +30,12 @@
 // registry / edge-distance geometry is the backend build), and the category
 // ladder proxies mega-category siblings through tag overlap.
 
-import type { WhatRelation } from "./scores";
+import {
+  OPENNESS_DAYS,
+  OPENNESS_SLOTS,
+  TIME_BLOCK_H,
+  type WhatRelation,
+} from "./scores";
 
 /**
  * The operator's intent, decomposed along its REAL axes — exactly what a
@@ -260,47 +266,91 @@ export type OpenWindow = {
   unknown: boolean;
 };
 
+export type OpennessResult = OpenWindow & {
+  /** Binary 2×24×7 half-hour openness from intent time — when's PARAM. null when unknown. */
+  bits: boolean[] | null;
+};
+
 /**
- * The place's real hours vs the intent's query time → SM's when-inputs.
- * Scans today + tomorrow (overnight closes roll past midnight), 12 h horizon.
- * No hours at all → unknown (the caller decides; unknown is not closed).
+ * Build the when PARAM: a binary openness array of OPENNESS_SLOTS (2×24×7)
+ * half-hour blocks starting at the intent's day+hour. Each bit is whether the
+ * place is open in that slot. Derived opensInH / openForH stay for anatomy.
+ * No hours at all → unknown (bits null; the caller treats when as 1).
+ */
+export function buildOpennessArray(
+  hours: SamplePlace["hours"],
+  day: string,
+  hour: number,
+): OpennessResult {
+  if (!hours || typeof hours !== "object" || Object.keys(hours).length === 0) {
+    return { bits: null, opensInH: 0, openForH: 0, unknown: true };
+  }
+  const di = DAY_ORDER.indexOf(day);
+  if (di < 0) return { bits: null, opensInH: 0, openForH: 0, unknown: true };
+
+  // Ranges in hours from the start of the intent day, covering the full
+  // week horizon. Overnight closes (close ≤ open) spill +24 into the next day.
+  type Range = { start: number; end: number };
+  const ranges: Range[] = [];
+  for (let offset = 0; offset < OPENNESS_DAYS; offset++) {
+    const d = DAY_ORDER[(di + offset) % 7];
+    for (const r of hours[d] ?? []) {
+      const open = parseHM(r.open);
+      let close = parseHM(r.close);
+      if (open == null || close == null) continue;
+      if (close <= open) close += 24;
+      ranges.push({ start: open + offset * 24, end: close + offset * 24 });
+    }
+  }
+
+  const t0 = hour;
+  const bits = new Array<boolean>(OPENNESS_SLOTS).fill(false);
+  for (let i = 0; i < OPENNESS_SLOTS; i++) {
+    const slotMid = t0 + i * TIME_BLOCK_H + TIME_BLOCK_H / 2;
+    for (const r of ranges) {
+      if (slotMid >= r.start && slotMid < r.end) {
+        bits[i] = true;
+        break;
+      }
+    }
+  }
+
+  let opensInSlots: number | null = null;
+  for (let i = 0; i < bits.length; i++) {
+    if (bits[i]) {
+      opensInSlots = i;
+      break;
+    }
+  }
+  if (opensInSlots == null) {
+    return {
+      bits,
+      unknown: false,
+      opensInH: OPENNESS_DAYS * 24,
+      openForH: 0,
+    };
+  }
+  let run = 0;
+  for (let i = opensInSlots; i < bits.length && bits[i]; i++) run++;
+  return {
+    bits,
+    unknown: false,
+    opensInH: opensInSlots * TIME_BLOCK_H,
+    openForH: run * TIME_BLOCK_H,
+  };
+}
+
+/**
+ * Convenience — same as buildOpennessArray but without the bits (legacy call
+ * sites that only need opensIn / openFor for display).
  */
 export function openWindow(
   hours: SamplePlace["hours"],
   day: string,
   hour: number,
 ): OpenWindow {
-  if (!hours || typeof hours !== "object" || Object.keys(hours).length === 0) {
-    return { opensInH: 0, openForH: 0, unknown: true };
-  }
-  const di = DAY_ORDER.indexOf(day);
-  const dayAt = (offset: number) => DAY_ORDER[(di + offset + 7) % 7];
-
-  type Range = { start: number; end: number };
-  const ranges: Range[] = [];
-  for (const offset of [0, 1]) {
-    for (const r of hours[dayAt(offset)] ?? []) {
-      const open = parseHM(r.open);
-      let close = parseHM(r.close);
-      if (open == null || close == null) continue;
-      if (close <= open) close += 24; // overnight
-      ranges.push({ start: open + offset * 24, end: close + offset * 24 });
-    }
-  }
-  const t = hour;
-  const HORIZON = 12;
-  let best: OpenWindow | null = null;
-  for (const r of ranges) {
-    if (t >= r.start && t < r.end) {
-      return { opensInH: 0, openForH: r.end - t, unknown: false };
-    }
-    if (r.start > t && r.start - t <= HORIZON) {
-      const cand = { opensInH: r.start - t, openForH: r.end - r.start, unknown: false };
-      if (!best || cand.opensInH < best.opensInH) best = cand;
-    }
-  }
-  // Closed for the whole horizon.
-  return best ?? { opensInH: HORIZON, openForH: 0, unknown: false };
+  const { opensInH, openForH, unknown } = buildOpennessArray(hours, day, hour);
+  return { opensInH, openForH, unknown };
 }
 
 // ── CONTEXT DOCUMENTS — the wide embedding contexts, assembled for real ──
