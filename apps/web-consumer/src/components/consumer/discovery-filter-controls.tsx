@@ -6,6 +6,28 @@ import { cn } from "@/lib/utils";
 // (hour), Distance (km) and Randomness (0–5) modules. One copy, both the sheet
 // body and the Where search field read from here.
 
+/** Group tier ABOVE SectionLabel — the sheet has exactly TWO groups: INTENT
+ * (Where incl. its distance tolerance · When · What · That) and RANDOMNESS
+ * (XX's luck knob). The panel configures both subscore inputs. */
+export function FilterGroupLabel({
+  children,
+  className,
+}: {
+  children: ReactNode;
+  className?: string;
+}) {
+  return (
+    <p
+      className={cn(
+        "text-primary/70 mb-3 text-[10px] font-bold tracking-[0.16em] uppercase",
+        className,
+      )}
+    >
+      {children}
+    </p>
+  );
+}
+
 export function SectionLabel({
   children,
   className,

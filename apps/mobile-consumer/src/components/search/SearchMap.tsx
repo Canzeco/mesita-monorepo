@@ -17,7 +17,9 @@ export type SearchMapProps = {
    */
   center?: Coords | null;
   apiKey: string;
-  onSelect: (placeId: string) => void;
+  /** First tap selects; already-selected tap opens (web SearchMap parity). */
+  onSelectPlace: (place: Place) => void;
+  onOpenPlace: (place: Place) => void;
   onMapPress?: () => void;
 };
 

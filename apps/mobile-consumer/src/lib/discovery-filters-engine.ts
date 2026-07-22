@@ -1,7 +1,6 @@
 // Discovery filter engine — the ONE place consumer surfaces narrow places.
-// RN port of apps/web-consumer/src/lib/discovery-filters-engine.ts (near-
-// verbatim; pure TS). v3 (MESITA-672) — FIVE parameters, Pato's order (Where ·
-// Distance · When · What · Randomness):
+// v3 (MESITA-672) — FIVE parameters, Pato's order (Where · Distance · When ·
+// What · Randomness):
 //
 //   · zone       — a resolved CENTER the user searched for at ANY hierarchy
 //                  level (address → street → neighborhood → city → county →
@@ -30,15 +29,9 @@
 // The category option list still derives from the catalog the host is showing,
 // so no category pick is a dead end. The zone, by contrast, is a free location
 // search (any level), not catalog-derived.
-//
-// PORT DELTA: web imports `computeOpenState` from place-to-detail-helpers, whose
-// mobile twin is still the pre-MESITA-650/672 two-arg version (no atMinutes /
-// atDayIdx overrides) and lives outside this slice's allowlist. The When math is
-// therefore inlined below as `isOpenAt` — a faithful copy of web
-// computeOpenState's open_now branch WITH the hour/weekday overrides — so the
-// "Pick a time" filter narrows correctly without editing the shared helper.
 
 import type { Place } from "@/lib/api/places";
+import { computeOpenState } from "@/lib/adapters/place-to-detail-helpers";
 import { resolvePlaceCategoryName } from "@/lib/place-category";
 import { familyKeysOfCategory, type FamilyKey } from "@/lib/place-families";
 
@@ -123,107 +116,6 @@ export function formatHourLabel(hour: number): string {
   return `${base}:00 ${suffix}`;
 }
 
-// ── Open-state (inlined; see PORT DELTA in the header) ───────────────────────
-// Sunday-first day keys, matching the hours payload shape + web WEEK_KEYS.
-const WEEK_KEYS = [
-  "sunday",
-  "monday",
-  "tuesday",
-  "wednesday",
-  "thursday",
-  "friday",
-  "saturday",
-] as const;
-
-function toRecord(v: unknown): Record<string, unknown> {
-  return v && typeof v === "object" && !Array.isArray(v)
-    ? (v as Record<string, unknown>)
-    : {};
-}
-
-function toArray<T = unknown>(v: unknown): T[] {
-  return Array.isArray(v) ? (v as T[]) : [];
-}
-
-function parseMinutes(t: unknown): number | null {
-  if (typeof t !== "string") return null;
-  const m = /^(\d{1,2}):(\d{2})/.exec(t.trim());
-  if (!m) return null;
-  return Number(m[1]) * 60 + Number(m[2]);
-}
-
-/**
- * Is a place open at a place-local moment? Mirror of web computeOpenState's
- * open_now branch, split-shift + overnight aware. `atMinutes` (minutes since
- * place-local midnight) and `atDayIdx` (0=Sun..6=Sat) override the current
- * moment for the "Pick a time" filter; omit both to evaluate "now". Empty /
- * missing hours → false (can't confirm open = excluded).
- */
-function isOpenAt(
-  hours: unknown,
-  tz: string | undefined,
-  atMinutes?: number,
-  atDayIdx?: number,
-): boolean {
-  const h = toRecord(hours);
-  if (Object.keys(h).length === 0) return false;
-  let dayIdx: number;
-  let nowMin: number;
-  try {
-    const parts = new Intl.DateTimeFormat("en-US", {
-      timeZone: tz || "UTC",
-      weekday: "short",
-      hour: "2-digit",
-      minute: "2-digit",
-      hourCycle: "h23",
-    }).formatToParts(new Date());
-    const wd = parts.find((p) => p.type === "weekday")?.value ?? "";
-    const hr = Number(parts.find((p) => p.type === "hour")?.value ?? "0");
-    const mn = Number(parts.find((p) => p.type === "minute")?.value ?? "0");
-    const wdMap: Record<string, number> = {
-      Sun: 0,
-      Mon: 1,
-      Tue: 2,
-      Wed: 3,
-      Thu: 4,
-      Fri: 5,
-      Sat: 6,
-    };
-    dayIdx = wdMap[wd] ?? 0;
-    nowMin = hr * 60 + mn;
-  } catch {
-    return false;
-  }
-  if (atMinutes != null && Number.isFinite(atMinutes)) {
-    nowMin = Math.min(Math.max(Math.round(atMinutes), 0), 24 * 60 - 1);
-  }
-  if (atDayIdx != null && Number.isFinite(atDayIdx)) {
-    dayIdx = ((Math.round(atDayIdx) % 7) + 7) % 7;
-  }
-
-  const todayKey = WEEK_KEYS[dayIdx];
-  const yKey = WEEK_KEYS[(dayIdx + 6) % 7];
-
-  // Yesterday's overnight range still in progress this morning.
-  for (const r of toArray<{ open?: string; close?: string }>(h[yKey])) {
-    const o = parseMinutes(r.open);
-    const c = parseMinutes(r.close);
-    if (o == null || c == null) continue;
-    if (c <= o && nowMin < c) return true;
-  }
-
-  // Today's ranges (overnight = close <= open, still counts once past open).
-  for (const r of toArray<{ open?: string; close?: string }>(h[todayKey])) {
-    const o = parseMinutes(r.open);
-    const c = parseMinutes(r.close);
-    if (o == null || c == null) continue;
-    const within = c > o ? nowMin >= o && nowMin < c : nowMin >= o;
-    if (within) return true;
-  }
-
-  return false;
-}
-
 // ── Filter state ────────────────────────────────────────────────────────────
 export type DiscoveryFilters = {
   /** Super-categories: multi-select place families; empty = no constraint. */
@@ -236,6 +128,10 @@ export type DiscoveryFilters = {
   maxKm: number | null;
   /** When to go — now / anytime / a specific weekday + hour. */
   when: DiscoveryWhen;
+  /** That — the intent's 4th axis (Where · When · What · THAT, MESITA-699):
+   * the free-text ask, EM's query once Lineup reads intent. Stored per
+   * query; NOT a predicate — it never narrows client-side. */
+  ask: string;
   /** Deck ordering level, 0 ranked → 5 full shuffle. */
   randomness: RandomnessLevel;
 };
@@ -248,6 +144,7 @@ export const DISCOVERY_FILTER_DEFAULTS: DiscoveryFilters = {
   // Anytime = neutral: the sheet opens on the full catalog. Now / At are opt-in
   // narrowings, so a fresh sheet never hides everything behind a time filter.
   when: { mode: "anytime" },
+  ask: "",
   randomness: 0,
 };
 
@@ -270,7 +167,12 @@ export function hasDiscoveryPredicates(f: DiscoveryFilters): boolean {
 
 /** Any deviation from defaults — drives the red trigger dot (MESITA-633). */
 export function discoveryFiltersAreActive(f: DiscoveryFilters): boolean {
-  return hasDiscoveryPredicates(f) || f.zone !== null || f.randomness !== 0;
+  return (
+    hasDiscoveryPredicates(f) ||
+    f.zone !== null ||
+    f.ask.trim() !== "" ||
+    f.randomness !== 0
+  );
 }
 
 export function matchesDiscoveryFilters(
@@ -315,8 +217,8 @@ export function matchesDiscoveryFilters(
     const tz = typeof row.timezone === "string" ? row.timezone : undefined;
     const open =
       f.when.mode === "at"
-        ? isOpenAt(hours, tz, f.when.hour * 60, f.when.day)
-        : isOpenAt(hours, tz);
+        ? computeOpenState(hours, tz, f.when.hour * 60, f.when.day).open_now
+        : computeOpenState(hours, tz).open_now;
     if (!open) return false;
   }
 
@@ -364,27 +266,47 @@ export function deriveCategoryOptions(
 
 // ── Randomness ordering ─────────────────────────────────────────────────────
 /**
+ * Deterministic PRNG (mulberry32) for `orderByRandomness`. Hosts derive the
+ * deck order inside a memo that re-runs on unrelated changes (the geolocation
+ * fix arriving, a zone recenter), so the randomness source must replay the
+ * same sequence per seed or the deck visibly reshuffles under the user.
+ */
+export function createSeededRandom(seed: number): () => number {
+  let a = seed >>> 0;
+  return () => {
+    a = (a + 0x6d2b79f5) >>> 0;
+    let t = a;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+/**
  * Deck ordering for the 0..5 randomness level: 0 keeps the ranked order, 5 is a
  * full shuffle, 1–4 jitter each card around its rank (drift ~k positions, k
  * scaling with the level), so exploration scales smoothly without discarding
- * ranking outright.
+ * ranking outright. Pass a seeded `rand` (createSeededRandom) when the call
+ * site re-derives the order across renders — the permutation must only change
+ * when the level or the membership does.
  */
 export function orderByRandomness(
   places: Place[],
   level: RandomnessLevel,
+  rand: () => number = Math.random,
 ): Place[] {
   if (level <= 0 || places.length < 2) return places;
   if (level >= 5) {
     const out = [...places];
     for (let i = out.length - 1; i > 0; i -= 1) {
-      const j = Math.floor(Math.random() * (i + 1));
+      const j = Math.floor(rand() * (i + 1));
       [out[i], out[j]] = [out[j], out[i]];
     }
     return out;
   }
   const k = level * 4; // 1→4, 2→8, 3→12, 4→16 positions of drift
   return places
-    .map((place, i) => ({ place, key: i + Math.random() * k }))
+    .map((place, i) => ({ place, key: i + rand() * k }))
     .sort((a, b) => a.key - b.key)
     .map(({ place }) => place);
 }

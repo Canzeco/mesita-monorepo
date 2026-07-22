@@ -12,16 +12,7 @@ export function InboxSegmentTabs({
   globalCount: number;
 }) {
   return (
-    <View
-      style={{
-        flexDirection: 'row',
-        borderRadius: 8,
-        borderWidth: 1,
-        borderColor: '#ebd9db',
-        backgroundColor: '#ffffff',
-        padding: 4,
-      }}
-    >
+    <View className="flex-row rounded-lg border border-border bg-card p-1">
       <InboxTabButton
         active={active === 'mine'}
         onPress={() => onChange('mine')}
@@ -55,54 +46,37 @@ function InboxTabButton({
   return (
     <Pressable
       onPress={onPress}
-      style={{
-        flex: 1,
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: 6,
-        borderRadius: 6,
-        paddingHorizontal: 8,
-        paddingVertical: 8,
-        backgroundColor: active ? '#260409' : 'transparent',
-      }}
+      accessibilityRole="tab"
+      accessibilityState={{ selected: active }}
+      accessibilityLabel={`${label}, ${count}`}
+      className={`flex-1 flex-row items-center justify-center gap-1.5 rounded-md px-2 py-2 ${
+        active ? 'bg-foreground' : 'bg-transparent'
+      }`}
     >
       {dot ? (
         <View
-          style={{
-            height: 6,
-            width: 6,
-            borderRadius: 999,
-            backgroundColor: active ? '#6ee7b7' : '#10b981',
-          }}
+          className={`h-1.5 w-1.5 rounded-full ${
+            active ? 'bg-emerald-300' : 'bg-emerald-500'
+          }`}
         />
       ) : null}
       <Text
         numberOfLines={1}
-        style={{
-          fontSize: 12,
-          fontFamily: 'Inter_500Medium',
-          color: active ? '#ffffff' : '#775254',
-        }}
+        className={`text-xs font-medium ${
+          active ? 'text-white' : 'text-muted-foreground'
+        }`}
       >
         {label}
       </Text>
       <View
-        style={{
-          borderRadius: 999,
-          paddingHorizontal: 6,
-          paddingVertical: 2,
-          backgroundColor: active
-            ? 'rgba(255,255,255,0.20)'
-            : 'rgba(235,217,219,0.8)',
-        }}
+        className={`rounded-full px-1.5 py-0.5 ${
+          active ? 'bg-white/20' : 'bg-border/80'
+        }`}
       >
         <Text
-          style={{
-            fontSize: 10,
-            fontFamily: 'Inter_700Bold',
-            color: active ? '#ffffff' : '#775254',
-          }}
+          className={`text-[10px] font-bold ${
+            active ? 'text-white' : 'text-muted-foreground'
+          }`}
         >
           {count}
         </Text>

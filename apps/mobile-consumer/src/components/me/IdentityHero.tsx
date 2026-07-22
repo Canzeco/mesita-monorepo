@@ -1,3 +1,4 @@
+import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { AtSign, BadgeCheck, Crown } from 'lucide-react-native';
 import { Text, View } from 'react-native';
@@ -5,11 +6,37 @@ import { Text, View } from 'react-native';
 import { GRADIENT_DIAGONAL, GRADIENTS, SHADOW_ELEV } from '@/constants/brand';
 import { firstInitials } from '@/lib/utils';
 
+export function IdentityHeroSkeleton() {
+  return (
+    <View className="overflow-hidden rounded-3xl border border-border bg-muted/50 p-4">
+      <View className="flex-row items-center gap-4">
+        <View className="h-[76px] w-[76px] rounded-full bg-muted" />
+        <View className="min-w-0 flex-1 gap-2">
+          <View className="h-5 w-40 rounded bg-muted" />
+          <View className="h-3.5 w-28 rounded bg-muted" />
+          <View className="h-3.5 w-20 rounded bg-muted" />
+        </View>
+      </View>
+      <View className="mt-4 gap-2.5 border-t border-border/60 pt-3.5">
+        <View className="flex-row items-center gap-2.5">
+          <View className="h-7 w-7 rounded-lg bg-muted" />
+          <View className="h-4 w-40 rounded bg-muted" />
+        </View>
+        <View className="flex-row items-center gap-2.5">
+          <View className="h-7 w-7 rounded-lg bg-muted" />
+          <View className="h-4 w-40 rounded bg-muted" />
+        </View>
+      </View>
+    </View>
+  );
+}
+
 export function IdentityHero({
   isPremium,
   name,
   phone,
   meta,
+  avatarUrl,
   igConnected,
   handle,
   followers,
@@ -20,6 +47,7 @@ export function IdentityHero({
   name: string;
   phone: string;
   meta: string;
+  avatarUrl?: string | null;
   igConnected: boolean;
   handle: string | null;
   followers: number;
@@ -27,7 +55,7 @@ export function IdentityHero({
   classVia: string | null;
 }) {
   return (
-    // Identity hero -- web ProfileSummaryCard DNA (no "Me" H1, no Chip).
+    // Identity hero — web ProfileSummaryCard DNA (no "Me" H1, no Chip).
     <View
       className="overflow-hidden rounded-3xl border border-border p-4"
       style={SHADOW_ELEV}
@@ -49,24 +77,36 @@ export function IdentityHero({
         }}
       />
       <View className="flex-row items-center gap-4">
+        {/* Double story-ring: gradient → card → avatar (web parity). */}
         <LinearGradient
           colors={isPremium ? [...GRADIENTS.premium] : [...GRADIENTS.pink]}
           start={GRADIENT_DIAGONAL.start}
           end={GRADIENT_DIAGONAL.end}
           style={{ borderRadius: 999, padding: 2.5 }}
         >
-          <View className="h-[66px] w-[66px] items-center justify-center rounded-full bg-card">
-            <Text
-              className="font-display font-bold text-foreground/70"
-              style={{ fontSize: 24 }}
-            >
-              {firstInitials(name)}
-            </Text>
+          <View className="rounded-full bg-card p-[2.5px]">
+            <View className="relative h-[66px] w-[66px] items-center justify-center overflow-hidden rounded-full bg-muted">
+              {avatarUrl ? (
+                <Image
+                  source={{ uri: avatarUrl }}
+                  style={{ width: '100%', height: '100%' }}
+                  contentFit="cover"
+                  accessibilityLabel={name}
+                />
+              ) : (
+                <Text
+                  className="font-display font-bold tracking-tight text-foreground/70"
+                  style={{ fontSize: 24 }}
+                >
+                  {firstInitials(name)}
+                </Text>
+              )}
+            </View>
           </View>
         </LinearGradient>
         <View className="min-w-0 flex-1">
           <Text
-            className="font-display font-bold text-foreground"
+            className="font-display font-bold tracking-tight text-foreground"
             style={{ fontSize: 20 }}
             numberOfLines={1}
           >
@@ -107,14 +147,19 @@ export function IdentityHero({
               borderRadius: 8,
               alignItems: 'center',
               justifyContent: 'center',
+              shadowColor: '#000',
+              shadowOpacity: 0.08,
+              shadowRadius: 2,
+              shadowOffset: { width: 0, height: 1 },
             }}
           >
+            {/* lucide-react-native has no Instagram glyph — AtSign + IG gradient. */}
             <AtSign color="#ffffff" size={15} />
           </LinearGradient>
           {igConnected ? (
             <>
               <Text
-                className="font-semibold text-foreground"
+                className="font-semibold tracking-tight text-foreground"
                 style={{ fontSize: 13 }}
                 numberOfLines={1}
               >
@@ -122,7 +167,7 @@ export function IdentityHero({
               </Text>
               {followers > 0 ? (
                 <Text
-                  className="text-muted-foreground"
+                  className="shrink-0 text-muted-foreground"
                   style={{ fontSize: 12 }}
                 >
                   {followers.toLocaleString('en-US')} followers
@@ -155,6 +200,10 @@ export function IdentityHero({
                 borderRadius: 8,
                 alignItems: 'center',
                 justifyContent: 'center',
+                shadowColor: '#000',
+                shadowOpacity: 0.08,
+                shadowRadius: 2,
+                shadowOffset: { width: 0, height: 1 },
               }}
             >
               <Crown color="#ffffff" size={15} />
@@ -165,7 +214,7 @@ export function IdentityHero({
             </View>
           )}
           <Text
-            className="font-semibold text-foreground"
+            className="font-semibold tracking-tight text-foreground"
             style={{ fontSize: 13 }}
           >
             Mesita {classLabel}

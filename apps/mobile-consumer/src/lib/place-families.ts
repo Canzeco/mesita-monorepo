@@ -1,6 +1,4 @@
 // Place families — the six "super categories" every Mesita place rolls up to.
-// RN port of apps/web-consumer/src/lib/place-families.ts (verbatim — pure TS,
-// no imports to fix).
 //
 // NOT mock data: the family KEYS are a live product contract, mirrored in
 //   · apps/web-admin/src/app/(app)/sourcing-config/catalog.ts  (FAMILIES — authoring UI)

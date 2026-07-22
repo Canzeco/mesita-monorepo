@@ -1,3 +1,4 @@
+import { Crown } from 'lucide-react-native';
 import { Text, View } from 'react-native';
 
 const COMPARE_ROWS = [
@@ -8,89 +9,74 @@ const COMPARE_ROWS = [
 
 export function FreeVsPremium() {
   return (
-    <View
-      style={{
-        borderRadius: 16,
-        borderWidth: 1,
-        borderColor: '#ebd9db',
-        backgroundColor: '#ffffff',
-        overflow: 'hidden',
-        paddingVertical: 6,
-      }}
-    >
-      <View
-        style={{
-          flexDirection: 'row',
-          paddingHorizontal: 12,
-          paddingTop: 8,
-          gap: 4,
-        }}
-      >
+    <View className="overflow-hidden rounded-2xl border border-border bg-card px-2 py-1.5">
+      <View className="flex-row items-end gap-1 px-2 pt-2">
         <View style={{ flex: 1.3 }} />
-        <Text
-          style={{ flex: 0.8, textAlign: 'center', fontWeight: '700' }}
-        >
-          Free
-        </Text>
-        <View
-          style={{
-            flex: 1,
-            backgroundColor: 'rgba(139,108,232,0.07)',
-            borderTopLeftRadius: 8,
-            borderTopRightRadius: 8,
-            paddingVertical: 4,
-          }}
-        >
-          <Text
-            style={{
-              textAlign: 'center',
-              fontWeight: '700',
-              color: '#6d4fd8',
-            }}
-          >
-            ★ Premium
-          </Text>
-        </View>
+        <CompareHead label="Free" style={{ flex: 0.8 }} />
+        <CompareHead label="Premium" accent style={{ flex: 1 }} />
       </View>
-      {COMPARE_ROWS.map((row, i) => (
-        <View
-          key={row.label}
-          style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            paddingHorizontal: 12,
-            paddingVertical: 14,
-            gap: 4,
-            borderTopWidth: i > 0 ? 1 : 0,
-            borderTopColor: 'rgba(235,217,219,0.5)',
-          }}
+      <View className="mt-1">
+        {COMPARE_ROWS.map((row, i) => (
+          <View
+            key={row.label}
+            className={`flex-row items-center gap-1 px-2 py-3.5 ${
+              i > 0 ? 'border-t border-border/50' : ''
+            }`}
+          >
+            <Text
+              className="font-medium leading-tight text-foreground/80"
+              style={{ flex: 1.3, fontSize: 12.5 }}
+            >
+              {row.label}
+            </Text>
+            <Text
+              className="text-center font-semibold text-foreground/70"
+              style={{ flex: 0.8, fontSize: 12.5 }}
+            >
+              {row.free}
+            </Text>
+            <Text
+              className="rounded-lg bg-violet-500/[0.07] py-1.5 text-center font-semibold text-violet-600"
+              style={{ flex: 1, fontSize: 12.5, overflow: 'hidden' }}
+            >
+              {row.premium}
+            </Text>
+          </View>
+        ))}
+      </View>
+    </View>
+  );
+}
+
+function CompareHead({
+  label,
+  accent,
+  style,
+}: {
+  label: string;
+  accent?: boolean;
+  style?: object;
+}) {
+  return (
+    <View
+      className={`items-center rounded-t-lg px-1 py-1.5 ${
+        accent ? 'bg-violet-500/[0.07]' : ''
+      }`}
+      style={style}
+    >
+      <View className="flex-row items-center gap-1">
+        {accent ? (
+          <Crown color="#6d4fd8" size={12} fill="#6d4fd8" />
+        ) : null}
+        <Text
+          className={`font-display font-bold tracking-tight ${
+            accent ? 'text-violet-600' : 'text-foreground'
+          }`}
+          style={{ fontSize: 13 }}
         >
-          <Text
-            style={{ flex: 1.3, color: 'rgba(38,4,9,0.8)', fontWeight: '500' }}
-          >
-            {row.label}
-          </Text>
-          <Text
-            style={{ flex: 0.8, textAlign: 'center', fontWeight: '600' }}
-          >
-            {row.free}
-          </Text>
-          <Text
-            style={{
-              flex: 1,
-              textAlign: 'center',
-              fontWeight: '600',
-              color: '#6d4fd8',
-              backgroundColor: 'rgba(139,108,232,0.07)',
-              overflow: 'hidden',
-              borderRadius: 8,
-              paddingVertical: 6,
-            }}
-          >
-            {row.premium}
-          </Text>
-        </View>
-      ))}
+          {label}
+        </Text>
+      </View>
     </View>
   );
 }

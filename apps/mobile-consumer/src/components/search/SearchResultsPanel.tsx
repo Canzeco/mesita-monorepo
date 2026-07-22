@@ -1,44 +1,69 @@
 import { SearchX } from 'lucide-react-native';
 import {
   ActivityIndicator,
+  LayoutAnimation,
+  Platform,
+  Pressable,
   ScrollView,
   Text,
+  UIManager,
   View,
 } from 'react-native';
+import { useEffect } from 'react';
 
 import type { AddState } from '@/components/memo/types';
-import type { PlacePrediction } from '@/lib/api/places';
+import { COLORS } from '@/constants/brand';
+import type { PlacePrediction } from '@/lib/api/place-search';
 
 import { SuggestionLine } from './SuggestionLine';
+
+if (
+  Platform.OS === 'android' &&
+  UIManager.setLayoutAnimationEnabledExperimental
+) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
+
+export type SearchFailureKind = 'timeout' | 'network' | 'server' | null;
 
 export function SearchResultsPanel({
   query,
   searching,
   searchError,
+  failureKind,
   predictions,
   addStates,
   onPickMesita,
   onPickGoogle,
+  onRetry,
 }: {
   query: string;
   searching: boolean;
   searchError: string | null;
+  failureKind: SearchFailureKind;
   predictions: PlacePrediction[];
   addStates: Record<string, AddState>;
   onPickMesita: (prediction: PlacePrediction) => void;
   onPickGoogle: (prediction: PlacePrediction) => void;
+  onRetry: () => void;
 }) {
   const onMesita = predictions.filter((p) => p.status !== 'not_in_mesita');
   const fromGoogle = predictions.filter((p) => p.status === 'not_in_mesita');
   const settled = !searching && query.trim().length >= 2;
+  const rowCount = predictions.length;
 
+  useEffect(() => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+  }, [rowCount, searching, searchError]);
+
+  // No fixed height — panel grows/shrinks with rows; parent caps at max-h 70%.
   return (
     <ScrollView
-      style={{ maxHeight: '100%' }}
-      contentContainerStyle={{ padding: 12, gap: 8 }}
+      contentContainerStyle={{ padding: 12, gap: 8, flexGrow: 0 }}
       keyboardShouldPersistTaps="handled"
       nestedScrollEnabled
       accessibilityRole="list"
+      accessibilityLabel="Search results"
     >
       {query.trim().length < 2 ? (
         <Text
@@ -61,7 +86,7 @@ export function SearchResultsPanel({
             paddingVertical: 32,
           }}
         >
-          <ActivityIndicator color="#fb2b7b" size="small" />
+          <ActivityIndicator color={COLORS.primary} size="small" />
           <Text className="text-muted-foreground" style={{ fontSize: 13 }}>
             Searching Mesita and Google…
           </Text>
@@ -69,28 +94,51 @@ export function SearchResultsPanel({
       ) : null}
 
       {searchError ? (
-        <Text
+        <View
           accessibilityRole="alert"
-          className="rounded-2xl bg-destructive/10 px-3 py-3 text-destructive"
-          style={{ fontSize: 13 }}
+          className="gap-2 rounded-xl bg-destructive/10 px-3 py-3"
         >
-          {searchError}
-        </Text>
+          <Text className="font-semibold text-destructive" style={{ fontSize: 13 }}>
+            {failureKind === 'timeout'
+              ? 'Search timed out'
+              : failureKind === 'network'
+                ? 'Network problem'
+                : 'Search failed'}
+          </Text>
+          <Text className="text-destructive" style={{ fontSize: 13 }}>
+            {failureKind === 'timeout'
+              ? 'Mesita took too long to respond. Check your connection and try again.'
+              : failureKind === 'network'
+                ? "We couldn't reach Mesita. Check your connection and try again."
+                : searchError}
+          </Text>
+          <Pressable
+            onPress={onRetry}
+            accessibilityRole="button"
+            accessibilityLabel="Retry search"
+            className="self-start rounded-lg bg-primary/10 px-3 py-2"
+          >
+            <Text className="text-sm font-semibold text-primary">Retry</Text>
+          </Pressable>
+        </View>
       ) : null}
 
       {settled && !searchError && predictions.length === 0 ? (
-        <View style={{ alignItems: 'center', paddingVertical: 32 }}>
+        <View
+          style={{ alignItems: 'center', paddingVertical: 32 }}
+          accessibilityLabel="No matches found"
+        >
           <View
             style={{
               width: 48,
               height: 48,
               borderRadius: 14,
-              backgroundColor: '#faeff0',
+              backgroundColor: COLORS.muted,
               alignItems: 'center',
               justifyContent: 'center',
             }}
           >
-            <SearchX color="#775254" size={20} />
+            <SearchX color={COLORS.mutedForeground} size={20} />
           </View>
           <Text
             className="mt-3 font-semibold text-foreground"
@@ -112,18 +160,21 @@ export function SearchResultsPanel({
           <Text
             className="px-1 font-semibold uppercase text-muted-foreground"
             style={{ fontSize: 11, letterSpacing: 1 }}
+            accessibilityRole="header"
           >
             On Mesita
           </Text>
-          {onMesita.map((p) => (
-            <SuggestionLine
-              key={p.placeId}
-              prediction={p}
-              source="mesita"
-              addState={addStates[p.placeId]}
-              onPick={onPickMesita}
-            />
-          ))}
+          <View className="divide-y divide-border/60">
+            {onMesita.map((p) => (
+              <SuggestionLine
+                key={p.placeId}
+                prediction={p}
+                source="mesita"
+                addState={addStates[p.placeId]}
+                onPick={onPickMesita}
+              />
+            ))}
+          </View>
         </View>
       ) : null}
 
@@ -132,13 +183,14 @@ export function SearchResultsPanel({
           <Text
             className="px-1 font-semibold uppercase text-muted-foreground"
             style={{ fontSize: 11, letterSpacing: 1 }}
+            accessibilityRole="header"
           >
             From Google
           </Text>
           {onMesita.length === 0 && settled ? (
             <Text
               className="px-1 pt-1 text-muted-foreground"
-              style={{ fontSize: 13 }}
+              style={{ fontSize: 11 }}
             >
               Not on Mesita yet? Tap a place and we’ll build its profile for
               everyone.

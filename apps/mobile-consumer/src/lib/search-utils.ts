@@ -25,6 +25,9 @@ export function withDistances(
       place.lat,
       place.lng,
     );
-    return { ...place, distance_km: Math.round(km * 10) / 10 };
+    // Floor at 0.1 — matches swipe withUserDistance + discovery filter engine
+    // (distance_km 0 is the "couldn't calculate" placeholder).
+    const rounded = Math.max(Math.round(km * 10) / 10, 0.1);
+    return { ...place, distance_km: rounded };
   });
 }

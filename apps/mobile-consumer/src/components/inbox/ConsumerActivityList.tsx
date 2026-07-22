@@ -14,65 +14,32 @@ export function ConsumerActivityList({
   anonymisedNote?: boolean;
 }) {
   return (
-    <View style={{ gap: 8 }}>
+    <View className="gap-2">
       {items.map((a) => {
         const meta = ACTIVITY_KIND_META[a.kind];
         const Icon = meta.Icon;
         return (
           <View
             key={a.id}
-            style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              gap: 12,
-              borderRadius: 12,
-              borderWidth: 1,
-              borderColor: '#ebd9db',
-              backgroundColor: '#ffffff',
-              padding: 12,
-            }}
+            className="flex-row items-center gap-3 rounded-xl border border-border bg-card p-3"
           >
             <View
-              style={{
-                height: 36,
-                width: 36,
-                borderRadius: 12,
-                alignItems: 'center',
-                justifyContent: 'center',
-                backgroundColor: meta.bg,
-              }}
+              className="h-9 w-9 items-center justify-center rounded-xl"
+              style={{ backgroundColor: meta.bg }}
             >
               <Icon color={meta.color} size={16} strokeWidth={2.25} />
             </View>
-            <View style={{ flex: 1, minWidth: 0 }}>
-              <Text
-                style={{
-                  fontSize: 13,
-                  lineHeight: 18,
-                  color: '#260409',
-                  fontFamily: 'Inter_400Regular',
-                }}
-              >
+            <View className="min-w-0 flex-1">
+              <Text className="text-[13px] leading-[18px] text-foreground">
                 {a.handle ? (
-                  <Text style={{ fontFamily: 'Inter_600SemiBold' }}>
-                    {a.handle}{' '}
-                  </Text>
+                  <Text className="font-semibold">{a.handle} </Text>
                 ) : null}
                 {a.verb}{' '}
                 {a.place ? (
-                  <Text style={{ fontFamily: 'Inter_600SemiBold' }}>
-                    {a.place}
-                  </Text>
+                  <Text className="font-semibold">{a.place}</Text>
                 ) : null}
               </Text>
-              <Text
-                style={{
-                  marginTop: 2,
-                  fontSize: 11,
-                  color: '#775254',
-                  fontFamily: 'Inter_400Regular',
-                }}
-              >
+              <Text className="mt-0.5 text-[11px] text-muted-foreground">
                 {a.when}
               </Text>
             </View>
@@ -80,23 +47,9 @@ export function ConsumerActivityList({
         );
       })}
       {anonymisedNote ? (
-        <View
-          style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: 6,
-            paddingTop: 4,
-          }}
-        >
+        <View className="flex-row items-center justify-center gap-1.5 pt-1">
           <Sparkles color="#775254" size={12} />
-          <Text
-            style={{
-              fontSize: 11,
-              color: '#775254',
-              fontFamily: 'Inter_400Regular',
-            }}
-          >
+          <Text className="text-[11px] text-muted-foreground">
             Anonymised — handles, places, and amounts are shuffled.
           </Text>
         </View>

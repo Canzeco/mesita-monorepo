@@ -16,6 +16,7 @@ import {
 } from "@/lib/discovery-filters-engine";
 import {
   resetDiscoveryFilters,
+  setDiscoveryAsk,
   setDiscoveryMaxKm,
   setDiscoveryRandomness,
   setDiscoveryWhen,
@@ -24,19 +25,32 @@ import {
   useDiscoveryFilters,
 } from "@/lib/use-discovery-filters";
 import { DiscoveryZoneField } from "./discovery-zone-field";
-import { Pill, RangeSlider, SectionLabel } from "./discovery-filter-controls";
+import {
+  FilterGroupLabel,
+  Pill,
+  RangeSlider,
+  SectionLabel,
+} from "./discovery-filter-controls";
 
-// Shared body of the discovery FilterSheet (Home Swipe + Search map) — FIVE
-// PARAMETERS, IN PATO'S ORDER (MESITA-672):
-//   Where      — 📍 search any location (address → neighbourhood → city →
-//                state → country) OR current location → a CENTER
-//   Distance   — a km radius around that center (the distance tolerance)
+// Shared body of the discovery FilterSheet (Home Swipe + Search map) — the
+// options panel configures TWO subscore inputs (Pato, 2026-07-21):
+//
+// INTENT — the four axes (Where · When · What · That):
+//   Where      — 📍 a CENTER (searched location or current) PLUS the distance
+//                tolerance around it — the tolerance is PART of the Where
+//                axis (the consumer owns it, scoring v7); today a client-side
+//                radius predicate, it becomes SM-where's tolKm curve input
+//                once Lineup reads intent.
 //   When       — Now (open right now) · Anytime · a specific weekday + hour
 //   What       — six families + concrete categories from the catalog, multi;
 //                OR across the two tiers
-//   Randomness — a 0–5 level (Ranked → Surprise). Drives the Swipe deck order
-//                (and becomes XX's per-query input once the Standard Engine
-//                wires); the map's pin set is unaffected client-side.
+//   That       — the free-text ask (MESITA-699): EM's query once Lineup
+//                reads intent. Stored per query; honest — narrows nothing
+//                today.
+// RANDOMNESS — XX's luck knob:
+//   a 0–5 level (Ranked → Surprise). Drives the Swipe deck order (and
+//   becomes XX's per-query control once Lineup wires); the map's pin set is
+//   unaffected client-side.
 // State lives in the ONE shared store (use-discovery-filters): both surfaces
 // and both trigger dots read the same filters. Live-apply — every change
 // narrows immediately; the footer CTA is feedback (real count) + close, and
@@ -104,12 +118,16 @@ export function DiscoveryFilters({
       </div>
 
       <div className="scrollbar-hide min-h-0 flex-1 overflow-y-auto px-4 pb-4">
-        {/* ── Module 1 · Where ─────────────────────────────────────── */}
+        {/* ══ Group 1 · INTENT — Where · When · What · That ════════ */}
+        <FilterGroupLabel>Intent · where when what that</FilterGroupLabel>
+
+        {/* Where — a center + the distance tolerance around it */}
         <SectionLabel>Where</SectionLabel>
         <DiscoveryZoneField zone={filters.zone} hasLocation={hasLocation} />
 
-        {/* ── Module 2 · Distance ──────────────────────────────────── */}
-        <SectionLabel className="mt-5">Distance</SectionLabel>
+        <SectionLabel className="mt-3" sub>
+          Distance tolerance
+        </SectionLabel>
         {hasCenter ? (
           <>
             <div className="mb-1 flex items-center gap-3">
@@ -142,7 +160,7 @@ export function DiscoveryFilters({
           </p>
         )}
 
-        {/* ── Module 3 · When ──────────────────────────────────────── */}
+        {/* When */}
         <SectionLabel className="mt-5">When</SectionLabel>
         <div className="flex flex-wrap gap-1.5">
           <Pill
@@ -197,7 +215,7 @@ export function DiscoveryFilters({
           </div>
         )}
 
-        {/* ── Module 4 · What ──────────────────────────────────────── */}
+        {/* What */}
         <SectionLabel className="mt-5">What</SectionLabel>
         <div className="flex flex-wrap gap-1.5">
           {PLACE_FAMILIES.map((family) => (
@@ -238,8 +256,26 @@ export function DiscoveryFilters({
           </>
         )}
 
-        {/* ── Module 5 · Randomness ────────────────────────────────── */}
-        <SectionLabel className="mt-5">Randomness</SectionLabel>
+        {/* That — the ask */}
+        <SectionLabel className="mt-5">That · the ask</SectionLabel>
+        <input
+          type="text"
+          value={filters.ask}
+          maxLength={200}
+          onChange={(e) => setDiscoveryAsk(e.target.value)}
+          placeholder='what are you craving? — "mezcal cocktails for a date"'
+          aria-label="The ask — free text, shapes your lineup"
+          className="border-border/70 bg-muted/40 placeholder:text-muted-foreground/60 focus:border-primary/50 w-full rounded-xl border px-3.5 py-2.5 text-sm outline-none transition"
+        />
+        <p className="text-muted-foreground/70 mt-1.5 text-[11px]">
+          Shapes your lineup once the engine reads it — doesn&apos;t narrow the
+          list yet.
+        </p>
+
+        {/* ══ Group 2 · RANDOMNESS — XX's luck knob ════════════════ */}
+        <FilterGroupLabel className="mt-6">
+          Randomness · the luck knob
+        </FilterGroupLabel>
         <div className="text-muted-foreground mb-1 flex items-center justify-between text-[11px] font-medium">
           <span>{RANDOMNESS_ENDPOINTS.min}</span>
           <span className="text-foreground font-display text-base font-semibold tabular-nums">

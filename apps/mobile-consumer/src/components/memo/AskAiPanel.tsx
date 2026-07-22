@@ -16,6 +16,7 @@ import { AskAiComposer } from '@/components/memo/ask-ai-composer';
 import { MemoAnswerText } from '@/components/memo/MemoAnswerText';
 import type { AddState } from '@/components/memo/types';
 import {
+  AI_ERROR,
   buildAiReply,
   buildMemoHistory,
   clearThreadCache,
@@ -28,6 +29,7 @@ import {
 import { GRADIENTS, GRADIENT_DIAGONAL } from '@/constants/brand';
 import type { MemoAnswer, MemoTurn } from '@/lib/api/memo';
 import type { Place, PlacePrediction } from '@/lib/api/places';
+import { toast } from '@/lib/toast';
 
 const DRAFT_KEY = 'mesita:memo-draft';
 
@@ -113,12 +115,10 @@ export function AskAiPanel({
         reply = await ask(text, history);
       } catch {
         reply = null;
+        toast.error(AI_ERROR);
       }
       const aiReply = buildAiReply(reply);
-      setMessages((m) => [
-        ...m,
-        aiReply.message,
-      ]);
+      setMessages((m) => [...m, aiReply.message]);
       setRelated(aiReply.related);
       setThinking(false);
     })();

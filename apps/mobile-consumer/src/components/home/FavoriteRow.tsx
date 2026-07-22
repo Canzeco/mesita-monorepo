@@ -1,13 +1,14 @@
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import { Gift, Heart, Navigation } from 'lucide-react-native';
+import { Heart, Navigation } from 'lucide-react-native';
 import { Pressable, Text, View } from 'react-native';
 
+import { PromoChip } from '@/components/swipe/PromoChip';
 import { GRADIENTS, GRADIENT_DIAGONAL } from '@/constants/brand';
 import type { Place } from '@/lib/api/places';
+import { placePath } from '@/lib/consumer-route-contract';
 import { getOpeningStatusLabel } from '@/lib/place-status';
-import { resolvePromoRateFromPlaceRow } from '@/lib/promo-rates';
 import { firstInitial } from '@/lib/utils';
 
 export function FavoriteRow({
@@ -19,6 +20,8 @@ export function FavoriteRow({
 }) {
   const router = useRouter();
   const photo = place.photos[0];
+  // distance_km === 0 is the SwipeDeck's "couldn't calculate" placeholder —
+  // treat it as unknown here so the row never claims a fake 0 km.
   const distanceLabel =
     place.distance_km != null && place.distance_km > 0
       ? `${place.distance_km} km`
@@ -26,20 +29,13 @@ export function FavoriteRow({
   const subtitle = [place.zone, distanceLabel].filter(Boolean).join(' · ');
   const openingLabel = getOpeningStatusLabel(place);
   const isOpen = place.open_now === true;
-  const isPartner = place.listing_type === 'partner';
-  const promoPercent = isPartner
-    ? resolvePromoRateFromPlaceRow(
-        place as unknown as Record<string, unknown>,
-        place.is_first_visit !== false,
-        false,
-      )
-    : null;
 
   return (
     <View className="flex-row items-center gap-3 rounded-2xl border border-border bg-card p-3">
       <Pressable
-        className="min-w-0 flex-1 flex-row items-center gap-3"
-        onPress={() => router.push(`/place/${place.id}`)}
+        className="min-w-0 flex-1 flex-row items-center gap-3 active:opacity-90"
+        onPress={() => router.push(placePath(place.slug || place.id))}
+        accessibilityLabel={`Open ${place.name}`}
       >
         <View className="size-16 overflow-hidden rounded-xl bg-muted">
           {photo ? (
@@ -68,7 +64,7 @@ export function FavoriteRow({
 
         <View className="min-w-0 flex-1">
           <Text
-            className="font-display text-[15px] font-semibold text-foreground"
+            className="font-display text-[15px] font-semibold tracking-tight text-foreground"
             numberOfLines={1}
           >
             {place.name}
@@ -97,14 +93,7 @@ export function FavoriteRow({
                 </Text>
               </View>
             ) : null}
-            {promoPercent != null ? (
-              <View className="flex-row items-center gap-1 rounded-md bg-primary/10 px-2 py-0.5">
-                <Gift color="#fb2b7b" size={10} />
-                <Text className="text-[10.5px] font-semibold text-primary">
-                  {promoPercent}% OFF
-                </Text>
-              </View>
-            ) : null}
+            <PromoChip place={place} size="sm" />
           </View>
         </View>
       </Pressable>

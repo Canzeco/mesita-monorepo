@@ -1,7 +1,8 @@
 /** @type {import('tailwindcss').Config} */
-// Token values are copied from mesita-web-consumer src/app/globals.css
-// (Tailwind v4 oklch vars, converted to sRGB hex — NativeWind runs Tailwind 3,
-// which can't read the web app's CSS-first config). Light theme only.
+// Token values re-synced 2026-07-20 from apps/web-consumer/src/app/globals.css
+// (Tailwind v4 oklch vars → sRGB hex — NativeWind runs Tailwind 3, which can't
+// read the web app's CSS-first config). Keep in lockstep with
+// src/constants/brand.ts `COLORS`. Light theme only.
 module.exports = {
   content: ['./src/**/*.{ts,tsx}'],
   presets: [require('nativewind/preset')],
@@ -11,6 +12,7 @@ module.exports = {
   theme: {
     extend: {
       colors: {
+        // Brand pink #fb2b7b · muted #775254 · shell wash #fff7f8 → #faeff0
         background: '#fff7f8',
         foreground: '#260409',
         card: { DEFAULT: '#ffffff', foreground: '#260409' },

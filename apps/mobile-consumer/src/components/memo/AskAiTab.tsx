@@ -1,7 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Alert } from 'react-native';
 
 import { AskAiPanel } from '@/components/memo/AskAiPanel';
 import type { AddState } from '@/components/memo/types';
@@ -12,8 +11,10 @@ import {
   apiRecommendDeck,
   type Place,
 } from '@/lib/api/places';
+import { placePath } from '@/lib/consumer-route-contract';
 import { matchPredictionToPlace } from '@/lib/match-prediction';
 import { supabase } from '@/lib/supabase';
+import { toast } from '@/lib/toast';
 import { errMsg } from '@/lib/utils';
 
 type Coords = { lat: number; lng: number };
@@ -65,17 +66,22 @@ export function AskAiTab() {
 
   const handleInfo = useCallback(
     (prediction: PlacePrediction) => {
-      const id = prediction.mesitaId ?? prediction.mesitaSlug;
-      if (!id) {
-        Alert.alert(
-          prediction.mainText,
-          'This place isn’t on Mesita yet — add it first.',
-        );
+      // Prefer the EF-provided Mesita identity; fall back to a catalog match.
+      const direct = prediction.mesitaSlug ?? prediction.mesitaId;
+      if (direct) {
+        router.push(placePath(direct));
         return;
       }
-      router.push(`/place/${id}`);
+      const match = matchPredictionToPlace(prediction, places);
+      if (match) {
+        router.push(placePath(match.slug || match.id));
+        return;
+      }
+      toast(
+        "This place is on Mesita but isn't in the catalog snapshot yet — opening it from here is coming soon.",
+      );
     },
-    [router],
+    [places, router],
   );
 
   const handleAdd = useCallback(
@@ -86,8 +92,7 @@ export function AskAiTab() {
         try {
           await apiCreateProject(supabase, { placeId: prediction.placeId });
           setAddStates((s) => ({ ...s, [prediction.placeId]: 'added' }));
-          Alert.alert(
-            'Added to Mesita',
+          toast.success(
             `${prediction.mainText} is on Mesita — our AI generates its profile in about 5 minutes.`,
           );
         } catch (err) {
@@ -96,10 +101,7 @@ export function AskAiTab() {
             delete next[prediction.placeId];
             return next;
           });
-          Alert.alert(
-            "Couldn't add",
-            errMsg(err, "Couldn't add that place right now."),
-          );
+          toast.error(errMsg(err, "Couldn't add that place right now."));
         }
       })();
     },

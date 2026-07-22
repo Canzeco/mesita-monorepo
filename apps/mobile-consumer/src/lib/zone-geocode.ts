@@ -1,12 +1,11 @@
 // Resolve a Google Places prediction (place_id) → a discovery ZONE center,
-// client-side (MESITA-672). RN port of apps/web-consumer/src/lib/zone-geocode.ts.
-// Follows the same Pato-directed exception the GooglePlaceSheet uses: a direct
-// Google Places (New) Details call with the public EXPO_PUBLIC_GMP_KEY —
-// Google's API, not our DB, nothing persisted, display-only — so the Where
-// filter can center distances on a searched area (any level: address →
-// neighborhood → city → state → country) without a new Edge Function. The
-// autocomplete itself still runs through the EF (consumer-web-suggest-places);
-// only the chosen prediction is geocoded here.
+// client-side (MESITA-672). Follows the same Pato-directed exception the
+// GooglePlaceSheet uses: a direct Google Places (New) Details call with the
+// public NEXT_PUBLIC_GMP_KEY — Google's API, not our DB, nothing persisted,
+// display-only — so the Where filter can center distances on a searched area
+// (any level: address → neighborhood → city → state → country) without a new
+// Edge Function. The autocomplete itself still runs through the EF
+// (consumer-web-suggest-places); only the chosen prediction is geocoded here.
 
 import type {
   DiscoveryZone,

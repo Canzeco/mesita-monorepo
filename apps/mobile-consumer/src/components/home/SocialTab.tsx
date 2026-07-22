@@ -1,16 +1,20 @@
-import { Image } from 'expo-image';
-import { Crown, RefreshCw } from 'lucide-react-native';
+import { RefreshCw } from 'lucide-react-native';
 import { useMemo, useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 
+import { SocialActivityRow } from '@/components/home/social-activity-row';
 import { SocialProfileSheet } from '@/components/home/SocialProfileSheet';
 import { useHomeDeck } from '@/hooks/use-home-deck';
 import {
-  SOCIAL_ACTION_META,
   SOCIAL_PEOPLE,
   socialRelevance,
   type SocialPerson,
 } from '@/lib/social-feed-data';
+
+// Social mode — live activity feed (mock people + real deck places).
+// Kept mounted from Home keep-alive; unpark = flip PARKED.homeModes.social.soon.
+//
+// TODO(EF): social feed — people + events are mock (see social-feed-data.ts).
 
 type SocialSort = 'recent' | 'relevance';
 const SORT_MODES: { key: SocialSort; label: string }[] = [
@@ -91,6 +95,7 @@ export function SocialTab() {
               <Pressable
                 key={mode.key}
                 onPress={() => setSort(mode.key)}
+                accessibilityState={{ selected: active }}
                 className={`flex-1 rounded-lg py-1.5 ${active ? 'bg-card' : ''}`}
               >
                 <Text
@@ -109,64 +114,13 @@ export function SocialTab() {
           {people.map((p) => {
             const place =
               places.length > 0 ? places[p.placeSlot % places.length] : null;
-            const meta = SOCIAL_ACTION_META[p.action];
-            const ActionIcon = meta.Icon;
             return (
-              <View
+              <SocialActivityRow
                 key={p.id}
-                className="flex-row items-center gap-2 rounded-2xl border border-border bg-card p-2.5"
-              >
-                <Pressable
-                  onPress={() => setProfile(p)}
-                  className="min-w-0 flex-1 flex-row items-center gap-3 active:opacity-90"
-                >
-                  <View className="relative">
-                    <Image
-                      source={{ uri: p.avatarUrl }}
-                      style={{ width: 44, height: 44, borderRadius: 22 }}
-                      contentFit="cover"
-                    />
-                    {p.plan === 'premium' ? (
-                      <View className="absolute -top-0.5 -right-0.5 size-4 items-center justify-center rounded-full bg-amber-400">
-                        <Crown color="#fff" size={9} fill="#fff" />
-                      </View>
-                    ) : null}
-                  </View>
-                  <View className="min-w-0 flex-1">
-                    <View className="flex-row flex-wrap items-center gap-1.5">
-                      <Text
-                        className="text-sm font-semibold text-foreground"
-                        numberOfLines={1}
-                      >
-                        {p.name}
-                      </Text>
-                      <View
-                        className={`flex-row items-center gap-1 rounded-md px-1.5 py-0.5 ${meta.bg}`}
-                      >
-                        <ActionIcon color={meta.color} size={10} />
-                        <Text
-                          className="text-[10px] font-semibold"
-                          style={{ color: meta.color }}
-                        >
-                          {meta.label}
-                        </Text>
-                      </View>
-                    </View>
-                    <Text className="mt-0.5 text-[11px] text-muted-foreground">
-                      {p.igHandle} · {p.time}
-                    </Text>
-                  </View>
-                </Pressable>
-
-                <View className="max-w-[36%] rounded-xl border border-border bg-muted/40 px-2 py-1.5">
-                  <Text
-                    className="text-[11px] font-semibold text-foreground"
-                    numberOfLines={2}
-                  >
-                    {place?.name ?? p.fallbackPlaceName}
-                  </Text>
-                </View>
-              </View>
+                person={p}
+                place={place ?? null}
+                onPersonClick={setProfile}
+              />
             );
           })}
         </View>

@@ -1,9 +1,11 @@
 import { BadgeCheck } from 'lucide-react-native';
-import { Pressable, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 
 import type { AddState } from '@/components/memo/types';
-import type { PlacePrediction } from '@/lib/api/places';
+import { COLORS } from '@/constants/brand';
+import type { PlacePrediction } from '@/lib/api/place-search';
 
+/** Plain one-line suggestion — mirrors web SearchResultsPanel SuggestionLine. */
 export function SuggestionLine({
   prediction,
   source,
@@ -18,12 +20,13 @@ export function SuggestionLine({
   const verified =
     prediction.status === 'verified_partner_other' ||
     prediction.status === 'verified_partner_self';
+  const added = addState === 'added';
   const label = [
     prediction.mainText,
     prediction.secondaryText,
     source === 'mesita' ? 'On Mesita' : 'From Google',
     verified ? 'Verified partner' : null,
-    addState === 'added' ? 'Enriching' : null,
+    added ? 'Enriching' : null,
   ]
     .filter(Boolean)
     .join(', ');
@@ -33,48 +36,41 @@ export function SuggestionLine({
       onPress={() => onPick(prediction)}
       accessibilityRole="button"
       accessibilityLabel={label}
-      className="min-h-[48px] flex-row items-center gap-3 rounded-xl px-1 py-2.5 active:bg-muted"
+      className="min-h-[44px] w-full flex-row items-center gap-2 rounded-lg px-1 py-2.5 active:bg-muted/50"
     >
       <View
-        style={{
-          width: 8,
-          height: 8,
-          borderRadius: 4,
-          marginLeft: 8,
-          backgroundColor: source === 'mesita' ? '#fb2b7b' : '#0ea5e9',
-        }}
+        accessibilityElementsHidden
+        importantForAccessibility="no"
+        className={`h-2 w-2 shrink-0 rounded-full ${
+          source === 'mesita' ? 'bg-pink-500' : 'bg-blue-500'
+        }`}
       />
-      <View className="min-w-0 flex-1">
-        <Text
-          className="font-semibold text-foreground"
-          style={{ fontSize: 15 }}
-          numberOfLines={1}
-        >
+      <Text className="min-w-0 flex-1 text-sm" numberOfLines={1}>
+        <Text className="font-medium text-foreground">
           {prediction.mainText}
         </Text>
         {prediction.secondaryText ? (
-          <Text
-            className="text-muted-foreground"
-            style={{ fontSize: 12 }}
-            numberOfLines={1}
-          >
-            {prediction.secondaryText}
+          <Text className="text-muted-foreground">
+            {' '}
+            · {prediction.secondaryText}
           </Text>
         ) : null}
-      </View>
-      <View className="flex-row items-center gap-1.5">
-        {verified ? <BadgeCheck color="#fb2b7b" size={16} /> : null}
-        {addState === 'added' ? (
-          <View className="rounded-full bg-primary/15 px-2 py-1">
-            <Text
-              className="font-semibold text-primary"
-              style={{ fontSize: 11 }}
-            >
-              Enriching
-            </Text>
-          </View>
-        ) : null}
-      </View>
+      </Text>
+      {verified ? (
+        <BadgeCheck
+          color={COLORS.primary}
+          size={14}
+          accessibilityLabel="Verified Partner"
+        />
+      ) : null}
+      {added ? (
+        <View className="flex-row items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5">
+          <ActivityIndicator color="#047857" size="small" />
+          <Text className="text-[10px] font-semibold text-emerald-700">
+            Enriching
+          </Text>
+        </View>
+      ) : null}
     </Pressable>
   );
 }

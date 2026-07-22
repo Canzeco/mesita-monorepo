@@ -1,5 +1,5 @@
 // CIP — Consumer · Intent · Place. The playground's data plumbing for the
-// scoring model (v10): build the consumer side, synthesize intents, and
+// scoring model (v11): build the consumer side, compose intents, and
 // emulate the EM subscore until the real encoder (OpenAI embeddings) is wired.
 //
 // THREE DATA OBJECTS, TWO SIDES. Consumer-data and intent-data are the SAME
@@ -11,15 +11,17 @@
 //   EM  over (consumer + intent) doc × place doc — real consumer, synthetic
 //       intent, real place; documents → vectors → cosine, max(0, cos).
 //   SM  computed from (intent × place): haversine to the intent's W (zone
-//       string match → km 0), the place's real hours vs the intent's query
-//       time, and the category ladder — where × when × what.
-//   GP  from the real place — ln(1 + rating × reviews) / ceiling.
+//       string match → km 0), the place's real hours as a binary 2×24×7
+//       openness array from intent time (when's PARAM), and the category
+//       ladder — where × when × what.
+//   GP  from the real place — ln(1 + rating^pow × reviews) / ceiling.
 //   RP  from the real place — posture derived from its live promo rates.
 //   XX  a seeded unit draw per card per lane (scores.unitDraw), U^control.
 //
 // HONESTY RULES. Consumers and places come from the DB (via
-// admin-web-get-scoring-sample) — never invented here. Intent is synthetic BY
-// DESIGN (that's what an intent generator is). Consumer taste uses real
+// admin-web-get-scoring-sample) — never invented here. Intent is
+// OPERATOR-AUTHORED (composeIntent — the Playground's Where · When · What ·
+// That composer; nothing about it is sampled). Consumer taste uses real
 // saves/visits when they exist; an empty history gets a deterministic
 // synthetic taste and is LABELED synthetic. EM here runs a feature-hash
 // encoder — a deterministic stand-in for the real embedding model; the
@@ -28,17 +30,39 @@
 // registry / edge-distance geometry is the backend build), and the category
 // ladder proxies mega-category siblings through tag overlap.
 
-import type { WhatRelation } from "./scores";
+import {
+  OPENNESS_DAYS,
+  OPENNESS_SLOTS,
+  TIME_BLOCK_H,
+  type WhatRelation,
+} from "./scores";
 
 /**
- * Synthetic intent STYLES — how the playground fabricates the query side.
- * There is only ONE engine (Lineup); its callers differ only
- * in where intent-data comes from, and these styles emulate that:
- *   browse   — open-ended feed browsing (Swipe-shaped intent)
- *   viewport — spatial browsing around a viewport (Map-shaped intent)
- *   question — a concrete ask with category set (Memo-shaped intent)
+ * The operator's intent, decomposed along its REAL axes — exactly what a
+ * Lineup caller supplies. Where/When/What feed SM's structured checks; That
+ * (the free-text ask) is the TEXT half, EM's query.
  */
-export type IntentStyle = "browse" | "viewport" | "question";
+export type IntentSpec = {
+  /** That — the free-text ask. Empty = open-ended browse. */
+  ask: string;
+  /** Where — a NAMED zone (SM zone mode) or null = point mode near an anchor. */
+  zoneName: string | null;
+  /** When — full weekday name + hour on the 30-min grid. */
+  day: string;
+  hour: number;
+  /** What — the category ask, a SET; empty = nothing asked (what → 1). */
+  cats: string[];
+};
+
+export const WEEKDAYS = [
+  "monday",
+  "tuesday",
+  "wednesday",
+  "thursday",
+  "friday",
+  "saturday",
+  "sunday",
+] as const;
 
 /** Max consumers/places the playground samples. Beyond ~10 the lists stop being readable. */
 export const SAMPLE_MAX = 10;
@@ -120,8 +144,7 @@ export function buildConsumerProfile(c: SampleConsumer | null): ConsumerProfile 
 // ── Intent side ─────────────────────────────────────────────────────────
 
 export type Intent = {
-  style: IntentStyle;
-  /** The rendered prompt. Fixed structure for browse/viewport; flexible for question. */
+  /** The rendered prompt — the ask · the where · the when, joined. */
   text: string;
   /**
    * The prompt decomposed by context key, so the configurable pipeline can
@@ -139,102 +162,42 @@ export type Intent = {
   timeLabel: string;
 };
 
-const DAYS = ["wednesday", "friday", "saturday", "sunday"] as const;
-const HOURS = [13, 18.5, 20.5, 22.5] as const;
-
-// The question style's flexible bank — occasion templates with their own
-// natural time and category set. Browse/viewport never touch these: their
-// prompt structure is fixed and only the data changes.
-const QUESTION_BANK = [
-  { text: "Where do I take a first date tonight?", hour: 20.5, day: "friday", cats: ["cocktail_bar", "wine_bar", "fine_dining"] },
-  { text: "Best brunch for Sunday with my parents?", hour: 11, day: "sunday", cats: ["brunch"] },
-  { text: "Where can we dance until late on Saturday?", hour: 23, day: "saturday", cats: ["night_club"] },
-  { text: "Quiet spot to work over coffee this afternoon?", hour: 16, day: "wednesday", cats: ["specialty_coffee"] },
-  { text: "Big group birthday dinner — where?", hour: 21, day: "saturday", cats: ["fine_dining", "casual"] },
-  { text: "Rooftop drinks with a view before dinner?", hour: 19, day: "friday", cats: ["rooftop", "cocktail_bar"] },
-] as const;
-
 function fmtHour(h: number): string {
   const hh = Math.floor(h);
   const mm = Math.round((h - hh) * 60);
   return `${String(hh).padStart(2, "0")}:${String(mm).padStart(2, "0")}`;
 }
 
-/** Anchor the synthetic user near a real place: same city, walkable jitter. */
-function anchor(places: SamplePlace[], seed: number): {
-  lat: number | null;
-  lng: number | null;
-  near: string;
-  zoneName: string | null;
-} {
+/**
+ * The operator's spec → a full Intent. W resolution: a NAMED zone centers on
+ * a sample place in that zone (its places string-match to km 0; others
+ * measure spillover from that center); point mode anchors near the first
+ * geo place with a small fixed offset (~0.8 km) so no place sits exactly on
+ * W. Taste/history/party never enter — same spec rules as production.
+ */
+export function composeIntent(spec: IntentSpec, places: SamplePlace[]): Intent {
   const geo = places.filter((p) => p.lat != null && p.lng != null);
-  if (geo.length === 0) return { lat: null, lng: null, near: "unknown", zoneName: null };
-  const p = geo[seed % geo.length];
-  const jitter = ((seed % 17) - 8) / 8; // −1..1
-  return {
-    lat: Number(p.lat) + jitter * 0.012, // ≈ ±1.3 km
-    lng: Number(p.lng) + jitter * 0.01,
-    near: p.zone ?? p.city ?? p.name,
-    // The intent NAMES a zone only when the anchor place carries one — SM's
-    // zone mode; otherwise the intent is a pure point (GPS mode).
-    zoneName: p.zone ?? null,
-  };
-}
-
-export function generateIntent(
-  style: IntentStyle,
-  profile: ConsumerProfile,
-  places: SamplePlace[],
-  seed: number,
-): Intent {
-  const a = anchor(places, seed);
-  if (style === "question") {
-    const t = QUESTION_BANK[seed % QUESTION_BANK.length];
-    const parts = {
-      query: t.text,
-      zone: `near ${a.near}`,
-      time: `${t.day} ${fmtHour(t.hour)}`,
-      party: null,
-    };
-    return {
-      style,
-      text: t.text,
-      parts,
-      zoneName: a.zoneName,
-      cats: [...t.cats],
-      lat: a.lat,
-      lng: a.lng,
-      day: t.day,
-      hour: t.hour,
-      timeLabel: `${t.day} ${fmtHour(t.hour)}`,
-    };
-  }
-  // Browse/viewport — FIXED prompt structure; only the data slots change.
-  // No taste tokens here: taste/history are the spec's "ignored for now",
-  // and party size is a filter's job — neither leaks into the embedded
-  // intent.
-  const day = DAYS[seed % DAYS.length];
-  const hour = HOURS[seed % HOURS.length];
-  const daypart = hour < 15 ? "lunch" : hour < 20 ? "evening" : "night";
+  const zonePlace = spec.zoneName ? (geo.find((p) => p.zone === spec.zoneName) ?? null) : null;
+  const anchorPlace = zonePlace ?? geo[0] ?? null;
+  const near =
+    spec.zoneName ?? anchorPlace?.zone ?? anchorPlace?.city ?? anchorPlace?.name ?? "unknown";
+  const ask = spec.ask.trim();
   const parts = {
-    query: `${style === "viewport" ? "viewport browse" : "feed browse"} · ${daypart} plans`,
-    zone: style === "viewport" ? `viewport ≈2 km around ${a.near}` : `near ${a.near}`,
-    time: `${day} ${fmtHour(hour)}`,
+    query: ask || "open-ended browse",
+    zone: `near ${near}`,
+    time: `${spec.day} ${fmtHour(spec.hour)}`,
     party: null,
   };
   return {
-    style,
-    text: [parts.query, parts.zone, parts.time].filter(Boolean).join(" · "),
+    text: [parts.query, parts.zone, parts.time].join(" · "),
     parts,
-    zoneName: a.zoneName,
-    // Browse intents ask no category — the deck is open-ended (what → 1 for
-    // every place); questions carry category sets.
-    cats: [],
-    lat: a.lat,
-    lng: a.lng,
-    day,
-    hour,
-    timeLabel: `${day} ${fmtHour(hour)}`,
+    zoneName: spec.zoneName,
+    cats: [...spec.cats],
+    lat: anchorPlace?.lat != null ? Number(anchorPlace.lat) + 0.006 : null,
+    lng: anchorPlace?.lng != null ? Number(anchorPlace.lng) + 0.005 : null,
+    day: spec.day,
+    hour: spec.hour,
+    timeLabel: `${spec.day} ${fmtHour(spec.hour)}`,
   };
 }
 
@@ -303,105 +266,127 @@ export type OpenWindow = {
   unknown: boolean;
 };
 
+export type OpennessResult = OpenWindow & {
+  /** Binary 2×24×7 half-hour openness from intent time — when's PARAM. null when unknown. */
+  bits: boolean[] | null;
+};
+
 /**
- * The place's real hours vs the intent's query time → SM's when-inputs.
- * Scans today + tomorrow (overnight closes roll past midnight), 12 h horizon.
- * No hours at all → unknown (the caller decides; unknown is not closed).
+ * Build the when PARAM: a binary openness array of OPENNESS_SLOTS (2×24×7)
+ * half-hour blocks starting at the intent's day+hour. Each bit is whether the
+ * place is open in that slot. Derived opensInH / openForH stay for anatomy.
+ * No hours at all → unknown (bits null; the caller treats when as 1).
+ */
+export function buildOpennessArray(
+  hours: SamplePlace["hours"],
+  day: string,
+  hour: number,
+): OpennessResult {
+  if (!hours || typeof hours !== "object" || Object.keys(hours).length === 0) {
+    return { bits: null, opensInH: 0, openForH: 0, unknown: true };
+  }
+  const di = DAY_ORDER.indexOf(day);
+  if (di < 0) return { bits: null, opensInH: 0, openForH: 0, unknown: true };
+
+  // Ranges in hours from the start of the intent day, covering the full
+  // week horizon. Overnight closes (close ≤ open) spill +24 into the next day.
+  type Range = { start: number; end: number };
+  const ranges: Range[] = [];
+  for (let offset = 0; offset < OPENNESS_DAYS; offset++) {
+    const d = DAY_ORDER[(di + offset) % 7];
+    for (const r of hours[d] ?? []) {
+      const open = parseHM(r.open);
+      let close = parseHM(r.close);
+      if (open == null || close == null) continue;
+      if (close <= open) close += 24;
+      ranges.push({ start: open + offset * 24, end: close + offset * 24 });
+    }
+  }
+
+  const t0 = hour;
+  const bits = new Array<boolean>(OPENNESS_SLOTS).fill(false);
+  for (let i = 0; i < OPENNESS_SLOTS; i++) {
+    const slotMid = t0 + i * TIME_BLOCK_H + TIME_BLOCK_H / 2;
+    for (const r of ranges) {
+      if (slotMid >= r.start && slotMid < r.end) {
+        bits[i] = true;
+        break;
+      }
+    }
+  }
+
+  let opensInSlots: number | null = null;
+  for (let i = 0; i < bits.length; i++) {
+    if (bits[i]) {
+      opensInSlots = i;
+      break;
+    }
+  }
+  if (opensInSlots == null) {
+    return {
+      bits,
+      unknown: false,
+      opensInH: OPENNESS_DAYS * 24,
+      openForH: 0,
+    };
+  }
+  let run = 0;
+  for (let i = opensInSlots; i < bits.length && bits[i]; i++) run++;
+  return {
+    bits,
+    unknown: false,
+    opensInH: opensInSlots * TIME_BLOCK_H,
+    openForH: run * TIME_BLOCK_H,
+  };
+}
+
+/**
+ * Convenience — same as buildOpennessArray but without the bits (legacy call
+ * sites that only need opensIn / openFor for display).
  */
 export function openWindow(
   hours: SamplePlace["hours"],
   day: string,
   hour: number,
 ): OpenWindow {
-  if (!hours || typeof hours !== "object" || Object.keys(hours).length === 0) {
-    return { opensInH: 0, openForH: 0, unknown: true };
-  }
-  const di = DAY_ORDER.indexOf(day);
-  const dayAt = (offset: number) => DAY_ORDER[(di + offset + 7) % 7];
-
-  type Range = { start: number; end: number };
-  const ranges: Range[] = [];
-  for (const offset of [0, 1]) {
-    for (const r of hours[dayAt(offset)] ?? []) {
-      const open = parseHM(r.open);
-      let close = parseHM(r.close);
-      if (open == null || close == null) continue;
-      if (close <= open) close += 24; // overnight
-      ranges.push({ start: open + offset * 24, end: close + offset * 24 });
-    }
-  }
-  const t = hour;
-  const HORIZON = 12;
-  let best: OpenWindow | null = null;
-  for (const r of ranges) {
-    if (t >= r.start && t < r.end) {
-      return { opensInH: 0, openForH: r.end - t, unknown: false };
-    }
-    if (r.start > t && r.start - t <= HORIZON) {
-      const cand = { opensInH: r.start - t, openForH: r.end - r.start, unknown: false };
-      if (!best || cand.opensInH < best.opensInH) best = cand;
-    }
-  }
-  // Closed for the whole horizon.
-  return best ?? { opensInH: HORIZON, openForH: 0, unknown: false };
+  const { opensInH, openForH, unknown } = buildOpennessArray(hours, day, hour);
+  return { opensInH, openForH, unknown };
 }
 
 // ── CONTEXT DOCUMENTS — the wide embedding contexts, assembled for real ──
 // These are the documents the real pipeline will embed for EM: everything is
 // TEXT — hours and zones appear as words; numeric distance/time live only in
-// SM, numeric proof only in GP. WHICH fields go in is CONFIG
-// (scores.CONTEXT_FIELDS + the saved ContextConfig): every builder takes an
-// `enabled` key set and assembles from exactly that — so a toggle on the
-// Subscores tab changes the embedding, the cosine, and the ranking. `enabled`
-// omitted = all on.
-
-type Enabled = ReadonlySet<string> | null | undefined;
-const on = (enabled: Enabled, key: string) => !enabled || enabled.has(key);
+// SM, numeric proof only in GP. The field set is FIXED (scores.CONTEXT_FIELDS
+// is documentation, not config — v10 retired the per-field toggles): every
+// builder always assembles from every live field with data.
 
 /**
  * The consumer half of the CI document — barely-mutable side. Spec fields
  * ONLY: name · sex · age · country · class+why. Taste and history are the
- * spec's "ignored for now" — never embedded, whatever the toggles say.
- * `sourceOn` = the data-access matrix's em×consumer cell.
+ * spec's "ignored for now" — never embedded.
  */
-export function buildConsumerDoc(
-  profile: ConsumerProfile,
-  enabled?: Enabled,
-  sourceOn = true,
-): string {
-  if (!sourceOn) return "";
+export function buildConsumerDoc(profile: ConsumerProfile): string {
   const c = profile.consumer;
   const igWhy =
     c?.instagram_followers != null && c.instagram_followers > 0 ? "IG-invited" : "subscribed";
   return [
-    on(enabled, "consumer.name") ? (c?.label ?? "Anonymous consumer") : "Consumer",
-    on(enabled, "consumer.sex") ? (c?.sex ?? null) : null,
-    on(enabled, "consumer.age") && c?.age != null ? `${c.age} years old` : null,
-    on(enabled, "consumer.country") ? (c?.country ?? null) : null,
-    on(enabled, "consumer.class") ? `${c?.class_key ?? "free"} class (${igWhy})` : null,
+    c?.label ?? "Anonymous consumer",
+    c?.sex ?? null,
+    c?.age != null ? `${c.age} years old` : null,
+    c?.country ?? null,
+    `${c?.class_key ?? "free"} class (${igWhy})`,
   ]
     .filter(Boolean)
     .join(" · ");
 }
 
-/** The full CI document — consumer (stable) + intent (per-query), merged.
- * `sources` gates whole sides per the data-access matrix (default all on). */
-export function buildCiDoc(
-  profile: ConsumerProfile,
-  intent: Intent,
-  enabled?: Enabled,
-  sources?: { consumer?: boolean; intent?: boolean },
-): string {
-  const intentBits =
-    sources?.intent === false
-      ? []
-      : [
-          on(enabled, "intent.query") ? intent.parts.query : null,
-          on(enabled, "intent.zone") ? intent.parts.zone : null,
-          on(enabled, "intent.time") ? intent.parts.time : null,
-        ].filter(Boolean);
-  const consumerDoc = buildConsumerDoc(profile, enabled, sources?.consumer !== false);
-  return [consumerDoc, intentBits.length > 0 ? `Intent: ${intentBits.join(" · ")}` : ""]
+/** The full CI document — consumer (stable) + intent (per-query), merged. */
+export function buildCiDoc(profile: ConsumerProfile, intent: Intent): string {
+  const intentBits = [intent.parts.query, intent.parts.zone, intent.parts.time].filter(Boolean);
+  return [
+    buildConsumerDoc(profile),
+    intentBits.length > 0 ? `Intent: ${intentBits.join(" · ")}` : "",
+  ]
     .filter(Boolean)
     .join("\n");
 }
@@ -410,20 +395,17 @@ export function buildCiDoc(
  * ONLY: name · category · tags · description · zone & city (+ reviews
  * summary and price when the data exists). Rating/hours are ROUTED to
  * GP/SM — numeric, never embedded here. */
-export function buildPlaceDoc(p: SamplePlace, enabled?: Enabled, sourceOn = true): string {
-  if (!sourceOn) return "";
+export function buildPlaceDoc(p: SamplePlace): string {
   const head = [
-    on(enabled, "place.name") ? p.name : null,
-    on(enabled, "place.category") && p.category ? `a ${p.category.replace(/_/g, " ")}` : null,
-    on(enabled, "place.zone_city") ? [p.zone, p.city].filter(Boolean).join(", ") || null : null,
+    p.name,
+    p.category ? `a ${p.category.replace(/_/g, " ")}` : null,
+    [p.zone, p.city].filter(Boolean).join(", ") || null,
   ]
     .filter(Boolean)
     .join(" — ");
   const tags =
-    on(enabled, "place.tags") && Array.isArray(p.tags) && p.tags.length > 0
-      ? `Tags: ${p.tags.join(", ")}.`
-      : "";
-  const desc = on(enabled, "place.description") && p.description ? p.description : "";
+    Array.isArray(p.tags) && p.tags.length > 0 ? `Tags: ${p.tags.join(", ")}.` : "";
+  const desc = p.description ? p.description : "";
   return [head, tags, desc].filter(Boolean).join("\n");
 }
 

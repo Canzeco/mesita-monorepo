@@ -47,7 +47,7 @@ export function HeroBackdrop() {
   );
 }
 
-// Soft vertical wash used on Home / Me shells (web `from-background to-muted/30`).
+// Soft vertical wash used on Home / Search / Me shells (web `from-background to-muted/30`).
 export function ShellWash({ children }: { children: ReactNode }) {
   return (
     <View style={{ flex: 1 }}>

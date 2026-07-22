@@ -4,6 +4,7 @@ import { Camera, Crown, Gift, QrCode, Sparkles } from 'lucide-react-native';
 import { Pressable, Text, View } from 'react-native';
 
 import { GRADIENT_DIAGONAL, GRADIENTS, SHADOW_GLOW } from '@/constants/brand';
+import { CONSUMER_ROUTES } from '@/lib/consumer-route-contract';
 import { placeOffersMesitaRewards, resolveActivePromoRate } from '@/lib/promo-rates';
 import type { ConsumerClassKey, PlaceDetail } from '@/lib/types/place-detail';
 import { useAuth } from '@/providers/auth';
@@ -118,7 +119,7 @@ export function RewardsBox({ place }: { place: PlaceDetail }) {
         {isFree ? (
           <View className="flex-row gap-2">
             <Pressable
-              onPress={() => router.push('/(tabs)/rewards')}
+              onPress={() => router.push(CONSUMER_ROUTES.rewards.root)}
               className="flex-1 overflow-hidden rounded-lg"
             >
               <LinearGradient
@@ -141,7 +142,7 @@ export function RewardsBox({ place }: { place: PlaceDetail }) {
               </LinearGradient>
             </Pressable>
             <Pressable
-              onPress={() => router.push('/(tabs)/me')}
+              onPress={() => router.push(CONSUMER_ROUTES.me)}
               className="flex-1 flex-row items-center justify-center gap-2 rounded-lg border border-border bg-card px-4 py-3"
             >
               <Crown color="#260409" size={16} />
@@ -152,7 +153,7 @@ export function RewardsBox({ place }: { place: PlaceDetail }) {
           </View>
         ) : (
           <Pressable
-            onPress={() => router.push('/(tabs)/rewards')}
+            onPress={() => router.push(CONSUMER_ROUTES.rewards.root)}
             className="overflow-hidden rounded-lg"
           >
             <LinearGradient

@@ -1,7 +1,8 @@
 import { ConfigPageLayout } from "@/components/ConfigPageLayout";
 
-// Reservations Config — a single flat page (no sub-tabs). Governs how the
-// Enricher picks each place's one reservation endpoint (products.reservations).
+// Reservations Config — a single flat page (no sub-tabs). Tunes the Reservationist
+// agent: the number it calls (test override), how hard it retries, and which
+// contact channel it books through (products.reservations).
 export default function ReservationsConfigLayout({
   children,
 }: {
@@ -11,7 +12,7 @@ export default function ReservationsConfigLayout({
     <ConfigPageLayout
       eyebrow="Operations · Reservations"
       title="Reservations Config"
-      description="Every place gets exactly one reservation endpoint — the address the Reservationist books through. This page is how it's chosen. The Enricher walks the priority below top to bottom and takes the first channel the place actually has a contact for, so the order is the product rule: rank the channel you most want a booking to arrive on first. Parking a channel drops it from the running entirely — a place whose only contact is parked ends up with no endpoint at all."
+      description="Mesita books tables with the Reservationist — a voice agent a Supabase function briefs and sends to phone the venue on a guest's behalf. This page tunes it: a test number to dial instead of real businesses while we're testing, how many times it retries, and the channel it books through. Today every place is booked by phone; WhatsApp and Instagram are held for verified partners and switched on from the business console."
     >
       {children}
     </ConfigPageLayout>

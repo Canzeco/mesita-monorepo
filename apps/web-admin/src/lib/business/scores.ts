@@ -1,5 +1,5 @@
-// Recommendation Scores v10 — the model behind Swipe · Map · Memo.
-// Master spec: Notion 🥇 Scoring (2026-07-16, eng-reviewed same day).
+// Recommendation Scores v11 — the model behind Swipe · Map · Memo.
+// Master spec: Notion 🎲 Lineup (blob v11, 2026-07-21).
 //
 // FIVE SUBSCORES → THREE LANES → ONE FINAL DECK.
 //
@@ -7,17 +7,15 @@
 //                                   vector), clamped max(0, cos). Encoder:
 //                                   OpenAI text-embedding-3-small @ 1536
 //                                   (emulated feature-hash in the playground).
-//   SM  Structured Match     [0,1]  where × when × what — deterministic
-//                                   checks of the intent's structured asks
-//                                   against place facts. (Renamed from
-//                                   "Natural Match": "natural" implies
-//                                   natural language, which is EM's job.)
-//   GP  Google Popularity    [0,1]  min(1, ln(1 + r·n) / lnCeiling) — total
-//                                   star mass, log-squashed. A simple log,
-//                                   NOT a sigmoid: a sigmoid needs a "typical
-//                                   popularity" center (a fitted-looking
-//                                   scale assumption); the log needs one
-//                                   ceiling knob. e¹⁰ ≈ 22,026 star-mass = 1.
+//                                   That (the free-text ask) is EM's only.
+//   SM  Structured Match     [0,1]  where × when × what — ONE hyperparam
+//                                   per intent axis (v11): where = distance
+//                                   tolerance · when = patience over a binary
+//                                   2×24×7 openness array · what = one tol
+//                                   (super = t, none = t²).
+//   GP  Google Popularity    [0,1]  min(1, ln(1 + r^ratingPow · n) / lnCeiling)
+//                                   — star mass with a rating exponent
+//                                   (default 1, max 2), log-squashed.
 //   RP  Rewards Promotions   [0,1]  the membership posture as a rung —
 //                                   0.1 · 0.4 · 0.7 · 1.0. No literal 0:
 //                                   non-members never ENTER the paid lanes
@@ -62,25 +60,29 @@
 //     km measured to the consumer's W: a REGION SET if zones/anchors were
 //     named (inside any → 0; outside → distance from the nearest border),
 //     else a POINT at GPS. tol is the CONSUMER'S distance-tolerance input
-//     (the Where filter slider) — NOT admin config; unset → the frozen
-//     default 5 km (DEFAULT_POINT_TOL_KM). A named zone reuses 30% of it
+//     (the Where filter slider); unset → the admin's defaultTolKm knob —
+//     a CONSUMER-OVERRIDABLE DEFAULT (GREEN in the console, like XX's
+//     control: the admin sets the fallback, the user overrides per query;
+//     when/what knobs have no consumer override). A named zone reuses 30%
 //     (ZONE_SPILL_FRAC — a typed zone is a constraint, not a vibe). The
 //     admin's ONE where knob is the exponent: exp = 3 → doubling distance
 //     beyond tolerance costs 8× — the tail is honestly a soft gate. Zones
 //     registry / metro sets are the backend build (MESITA-644 review,
 //     D2–D11); the playground emulates W as the anchor point + zone match.
-//   when = wait × fit, times snapped to the 30-min grid first.
-//     wait = floor + (1 − floor) / (1 + (opensIn / h)⁴) — TWO PLATEAUS,
-//     thin middle: ≈1 open-now-ish, floor if not, never 0 (the weekend-only
-//     gem browsed on a Monday keeps 0.3). h = 2: browsing at 21:00 for a
-//     club that opens at 23:00 → 0.65, not buried.
-//     fit = min(1, openFor / session) — sufficiency, not decay.
-//   what — CATEGORICAL on purpose (the one discrete factor): the ladder
-//     over the intent's SET of categories and/or mega categories. listed
-//     (or mega listed) → 1 · shares a mega/super category → the sibling
-//     rung (the ONE what knob, default 0.6) · no overlap → 0.2 frozen
-//     (MISMATCH_RUNG — never 0: SM gets no veto over semantics) · nothing
-//     asked → 1.
+//   when = wait × fit over a binary OPENNESS ARRAY (2×24×7 half-hour slots
+//     from intent time). ONE patience knob shapes both extremes: 0 = only
+//     tolerant of open-now-for-a-while · 1 = tolerant of future opens and
+//     short windows.
+//   what — CATEGORICAL ladder over the intent's SET of categories / megas.
+//     listed (or mega listed) → 1 · super → t · none → t² · nothing asked → 1.
+//     ONE tolerance t generates both demotion rungs.
+//
+// THE INTENT HAS FOUR AXES — Where · When · What · THAT. The first three are
+// the STRUCTURED asks (SM's inputs, above). THAT is the free-text ask — the
+// TEXT half of the intent, EM's query (CONTEXT_FIELDS key intent.query) —
+// and it NEVER reaches SM. Swipe and Map carry a That input alongside the
+// structured filters; Memo synthesizes all four from the question.
+// (Randomness is NOT an intent axis — it's XX's per-query control.)
 //
 // EVERY KNOB IS A BELIEF, NOT AN ESTIMATE — nothing here is fitted. Judge a
 // change by its break-even, never by how far apart numbers land. Tune here;
@@ -115,12 +117,10 @@ export const SUBSCORE_BY_ID = Object.fromEntries(SUBSCORES.map((s) => [s.id, s])
   SubscoreDef
 >;
 
-/** EM — the one field-configurable subscore (its context is CONFIG). */
-export type ConfigurableSubscoreId = Extract<SubscoreId, "em">;
-
-/** SM · GP · RP · XX — inputs are structural (the numeric fields ARE the
- * function), so these are tuned by knobs, never by field selection. */
-export type FixedSubscoreId = Exclude<SubscoreId, ConfigurableSubscoreId>;
+/** SM · GP · RP · XX — the subscores whose input contract PIPELINE_CONTEXT
+ * documents; EM's fields live in the richer CONTEXT_FIELDS registry. Every
+ * subscore's inputs are FIXED — tuned by knobs, never by field selection. */
+export type FixedSubscoreId = Exclude<SubscoreId, "em">;
 
 // ── THE THREE LANES ────────────────────────────────────────────────────
 
@@ -181,31 +181,30 @@ export function emScore(cos: number): number {
 }
 
 // ── SM — Structured Match ──────────────────────────────────────────────
+//
+// ONE hyperparam per intent axis (Pato 2026-07-21, blob v11):
+//   where → defaultTolKm (green consumer default; falloff DIST_EXP freezes)
+//   when  → patience (one shape knob over a binary 2×24×7 openness array)
+//   what  → tol (super = t, none = t²)
+// That is EM's; Randomness is XX's green default only.
 
-// SM's knob count is a deliberate diet (Pato 2026-07-17, twice): first to
-// two knobs per factor, then to 1 · 2 · 1 — where and what keep ONE knob
-// each (the consumer owns the where tolerance; the mismatch rung froze),
-// when keeps its two. Everything less tunable is a fixed constant below.
 export type SmWhereParams = {
-  /** Distance falloff — the ONE where knob: how hard distance bites.
-   * 3 = doubling distance beyond tolerance costs 8×. The tolerance itself
-   * is the CONSUMER'S runtime input (Where filter slider;
-   * DEFAULT_POINT_TOL_KM when unset), never admin config. */
-  distExp: number;
+  /** Default distance tolerance, km — the CONSUMER DEFAULT (green): what
+   * the where curve uses when the consumer's Where slider is unset. The
+   * consumer's own tolerance always wins (SmInputs.tolKm). */
+  defaultTolKm: number;
 };
 
 export type SmWhenParams = {
-  /** Closed-now floor — a place not open at the intent time never drops below
-   * this (the weekend-only gem browsed Monday keeps it; never 0). */
-  waitFloor: number;
-  /** Session length, hours — how long the visit needs (drives fit). */
-  sessionH: number;
+  /** Patience / shape ∈ [0,1]. 0 = only tolerant of open-now-for-a-while;
+   * 1 = tolerant of places that open later and/or stay open only briefly. */
+  patience: number;
 };
 
 export type SmWhatParams = {
-  /** The ONE what knob — the rung for sharing a mega/super category with a
-   * listed category. (No-overlap is MISMATCH_RUNG, frozen.) */
-  sibling: number;
+  /** ONE tolerance t ∈ [0,1]: super-category rung = t, none rung = t².
+   * Exact category (or mega listed) → 1; nothing asked → 1. */
+  tol: number;
 };
 
 export type SmParams = {
@@ -214,32 +213,30 @@ export type SmParams = {
   what: SmWhatParams;
 };
 
-// The frozen SM beliefs — argued from the product, rarely worth a knob, so
-// they're constants rather than config (kept out of the blob):
-//   ZONE_SPILL_FRAC      a named zone is a constraint, not a vibe — its
-//                        tolerance is 30% of the consumer's tolerance.
-//   WAIT_TRANSITION_H    hours-until-open where the two wait plateaus cross.
-//   WAIT_STEEP           wait steepness — 4 = two plateaus, thin middle.
-//   DEFAULT_POINT_TOL_KM the consumer's tolerance when no Where filter is
-//                        set (car metros — the Friday span survives).
-//   MISMATCH_RUNG        what's no-overlap rung — never 0 (SM gets no veto
-//                        over semantics), low enough to bury a true miss.
+// Frozen SM beliefs (out of the blob):
+//   DIST_EXP            where falloff — was a knob; frozen at 3 (v11).
+//   ZONE_SPILL_FRAC     named zone tolerance = 30% of the consumer's.
+//   TIME_BLOCK_H        half-hour grid.
+//   OPENNESS_*          when's binary horizon: 2 slots/h × 24 h × 7 d.
+export const DIST_EXP = 3;
 export const ZONE_SPILL_FRAC = 0.3;
-export const WAIT_TRANSITION_H = 2;
-export const WAIT_STEEP = 4;
+/** The CODE default for sm.where.defaultTolKm. 5 km = car metros. */
 export const DEFAULT_POINT_TOL_KM = 5;
-export const MISMATCH_RUNG = 0.2;
-
-// Defaults, argued from what Mesita IS (car metros, dinner-anchored,
-// nightlife-heavy — see the header):
-export const DEFAULT_SM_PARAMS: SmParams = {
-  where: { distExp: 3 },
-  when: { waitFloor: 0.3, sessionH: 1.5 },
-  what: { sibling: 0.6 },
-};
 
 /** Time resolves to half-hour blocks. */
 export const TIME_BLOCK_H = 0.5;
+export const OPENNESS_SLOTS_PER_HOUR = 2;
+export const OPENNESS_HOURS = 24;
+export const OPENNESS_DAYS = 7;
+/** Full when horizon: 2 × 24 × 7 = 336 half-hour slots from the intent time. */
+export const OPENNESS_SLOTS =
+  OPENNESS_SLOTS_PER_HOUR * OPENNESS_HOURS * OPENNESS_DAYS;
+
+export const DEFAULT_SM_PARAMS: SmParams = {
+  where: { defaultTolKm: DEFAULT_POINT_TOL_KM },
+  when: { patience: 0.35 },
+  what: { tol: 0.5 },
+};
 
 /** Snap hours to the time grid. Everything time-shaped goes through this. */
 export function quantizeH(hours: number, blockH: number = TIME_BLOCK_H): number {
@@ -254,47 +251,114 @@ export function quantizeH(hours: number, blockH: number = TIME_BLOCK_H): number 
  * point, its derived zone tolerance (× ZONE_SPILL_FRAC) when km measures
  * spillover past a named region's border (inside the region km = 0 → 1).
  * Unknown distance → 1 (a geo-less place is a data bug, not a scoring case).
+ * Falloff is the frozen DIST_EXP.
  */
-export function whereScore(km: number | null, tolKm: number, distExp: number): number {
+export function whereScore(km: number | null, tolKm: number): number {
   if (km == null) return 1;
   const tol = Math.max(0.5, tolKm); // NaN/zero guard — the range table's floor
   if (km <= 0) return 1;
-  return 1 / (1 + Math.pow(km / tol, distExp));
+  return 1 / (1 + Math.pow(km / tol, DIST_EXP));
 }
 
-/** wait — two plateaus: ≈1 open-now-ish, the floor if not, never 0. Transition
- * point and steepness are frozen beliefs (WAIT_TRANSITION_H · WAIT_STEEP); the
- * floor is the one knob. */
-export function waitScore(opensInH: number, p: SmWhenParams): number {
-  const q = quantizeH(opensInH);
-  if (q <= 0) return 1;
-  const f = clamp01(p.waitFloor);
-  return f + (1 - f) / (1 + Math.pow(q / WAIT_TRANSITION_H, WAIT_STEEP));
+/** First-open index + consecutive open run from a binary openness array. */
+export function opennessStats(bits: readonly boolean[]): {
+  opensInSlots: number | null;
+  openRunSlots: number;
+} {
+  let opensIn: number | null = null;
+  for (let i = 0; i < bits.length; i++) {
+    if (bits[i]) {
+      opensIn = i;
+      break;
+    }
+  }
+  if (opensIn == null) return { opensInSlots: null, openRunSlots: 0 };
+  let run = 0;
+  for (let i = opensIn; i < bits.length && bits[i]; i++) run++;
+  return { opensInSlots: opensIn, openRunSlots: run };
 }
 
-/** fit — is there time to complete the visit, 0–1. Caps at 1: enough is enough. */
-export function fitScore(openForH: number, p: SmWhenParams): number {
-  if (p.sessionH <= 0) return 1;
-  return clamp01(quantizeH(openForH) / p.sessionH);
+/**
+ * Synthesize a week-horizon openness bitstring from opens-in / open-for
+ * (hours) — used by operator controls and plots that don't have a full
+ * hours calendar. Real callers should prefer a hours→bits builder.
+ */
+export function synthesizeOpenness(opensInH: number, openForH: number): boolean[] {
+  const bits = new Array<boolean>(OPENNESS_SLOTS).fill(false);
+  const start = Math.max(0, Math.round(quantizeH(Math.max(0, opensInH)) / TIME_BLOCK_H));
+  const run = Math.max(0, Math.round(quantizeH(Math.max(0, openForH)) / TIME_BLOCK_H));
+  for (let i = 0; i < run && start + i < OPENNESS_SLOTS; i++) bits[start + i] = true;
+  return bits;
 }
 
-/** when — wait × fit, 0–1. No hours data → the caller passes unknown and uses 1. */
+export type WhenParts = {
+  opensInSlots: number | null;
+  openRunSlots: number;
+  wait: number;
+  fit: number;
+  when: number;
+};
+
+/**
+ * when — process the binary openness array with ONE patience knob.
+ *   patience 0 → only tolerant of open-now-for-a-while (waitTol=0, need ~3 h)
+ *   patience 1 → tolerant of future opens and short windows (waitTol=24 h, need 0.5 h)
+ * Never-open in the horizon → 0. No hours data is the caller's job (→ when 1).
+ */
+export function whenParts(bits: readonly boolean[], patience: number): WhenParts {
+  const p = clamp01(patience);
+  const { opensInSlots, openRunSlots } = opennessStats(bits);
+  if (opensInSlots == null) {
+    return { opensInSlots: null, openRunSlots: 0, wait: 0, fit: 0, when: 0 };
+  }
+  // waitTol in slots: p=0 → 0 (must be open now); p=1 → 48 slots (24 h).
+  const waitTol = p * 48;
+  // needRun in slots: p=0 → 6 (3 h); p=1 → 1 (0.5 h).
+  const needRun = 1 + (1 - p) * 5;
+  const wait =
+    opensInSlots === 0
+      ? 1
+      : waitTol <= 0
+        ? 0
+        : 1 / (1 + Math.pow(opensInSlots / waitTol, 4));
+  const fit = Math.min(1, openRunSlots / needRun);
+  return {
+    opensInSlots,
+    openRunSlots,
+    wait: clamp01(wait),
+    fit: clamp01(fit),
+    when: clamp01(wait * fit),
+  };
+}
+
+/** when as one number from openness bits + patience. */
+export function whenFromOpenness(bits: readonly boolean[], patience: number): number {
+  return whenParts(bits, patience).when;
+}
+
+/** Convenience: when from opens-in / open-for hours (synthesizes the array). */
 export function whenScore(opensInH: number, openForH: number, p: SmWhenParams): number {
-  return waitScore(opensInH, p) * fitScore(openForH, p);
+  return whenFromOpenness(synthesizeOpenness(opensInH, openForH), p.patience);
 }
 
 /** The category ladder's rungs — how the place's one category sits against
  * the intent's SET of categories and/or mega categories. */
 export type WhatRelation = "exact" | "sibling" | "mismatch" | "none";
 
+/** none rung = t² — derived from the single what tolerance. */
+export function noneRung(tol: number): number {
+  const t = clamp01(tol);
+  return t * t;
+}
+
 export function whatScore(rel: WhatRelation, p: SmWhatParams): number {
   switch (rel) {
     case "exact":
       return 1;
     case "sibling":
-      return clamp01(p.sibling);
+      return clamp01(p.tol);
     case "mismatch":
-      return MISMATCH_RUNG;
+      return noneRung(p.tol);
     case "none":
       return 1;
   }
@@ -304,15 +368,19 @@ export type SmInputs = {
   /** km to W (0 inside a named region) · null = unknown → where 1. */
   km: number | null;
   /** The consumer's distance tolerance (their Where filter slider), km ·
-   * null = unset → DEFAULT_POINT_TOL_KM. Runtime input, never config. */
+   * null = unset → the admin's defaultTolKm knob (the green consumer
+   * default). Runtime input always wins over the default. */
   tolKm: number | null;
   /** True when W is a named region (zone mode) — picks the derived zone
    * tolerance (tolerance × ZONE_SPILL_FRAC). */
   zoneMode: boolean;
-  /** Hours until the place opens at the intent time (0 = open now). */
+  /** Hours until the place opens at the intent time (0 = open now).
+   * Used when `openness` is omitted — synthesizes the binary array. */
   opensInH: number;
-  /** Hours it stays open from then. */
+  /** Hours it stays open from then. Used when `openness` is omitted. */
   openForH: number;
+  /** Preferred: the binary 2×24×7 openness array starting at intent time. */
+  openness?: readonly boolean[];
   /** True when the place has no usable hours (≠ closed) → when 1. */
   hoursUnknown: boolean;
   /** The category ladder's resolution for this intent × place. */
@@ -328,19 +396,37 @@ export type SmParts = {
   when: number;
   what: number;
   sm: number;
+  opensInSlots: number | null;
+  openRunSlots: number;
 };
 
 export function smParts(i: SmInputs, p: SmParams = DEFAULT_SM_PARAMS): SmParts {
-  // The consumer owns the tolerance (unset → the frozen default); a named
-  // zone is a constraint, not a vibe — it gets a fixed fraction of it.
-  const baseTol = i.tolKm ?? DEFAULT_POINT_TOL_KM;
+  // The consumer owns the tolerance (unset → the admin's green default
+  // knob); a named zone is a constraint, not a vibe — a fixed fraction.
+  const baseTol = i.tolKm ?? p.where.defaultTolKm;
   const tolKm = i.zoneMode ? baseTol * ZONE_SPILL_FRAC : baseTol;
-  const where = whereScore(i.km, tolKm, p.where.distExp);
-  const wait = i.hoursUnknown ? 1 : waitScore(i.opensInH, p.when);
-  const fit = i.hoursUnknown ? 1 : fitScore(i.openForH, p.when);
-  const when = wait * fit;
+  const where = whereScore(i.km, tolKm);
+  const wp = i.hoursUnknown
+    ? {
+        opensInSlots: null as number | null,
+        openRunSlots: 0,
+        wait: 1,
+        fit: 1,
+        when: 1,
+      }
+    : whenParts(i.openness ?? synthesizeOpenness(i.opensInH, i.openForH), p.when.patience);
   const what = whatScore(i.whatRel, p.what);
-  return { tolKm, where, wait, fit, when, what, sm: where * when * what };
+  return {
+    tolKm,
+    where,
+    wait: wp.wait,
+    fit: wp.fit,
+    when: wp.when,
+    what,
+    sm: where * wp.when * what,
+    opensInSlots: wp.opensInSlots,
+    openRunSlots: wp.openRunSlots,
+  };
 }
 
 /** SM as one number, 0–1. */
@@ -354,15 +440,18 @@ export type GpParams = {
   /** ln(1 + starMass) that reads as fully popular — GP 1. 10 → e¹⁰ ≈ 22,026
    * star mass (≈ 4.5★ × ~4,900 reviews); each ×e more adds 0.1. */
   lnCeiling: number;
+  /** Exponent on the star average before × review count. Default 1 (linear);
+   * max 2 — amplifies rating differences (4.8★ pulls away from 4.0★). */
+  ratingPow: number;
 };
 
-export const DEFAULT_GP_PARAMS: GpParams = { lnCeiling: 10 };
+export const DEFAULT_GP_PARAMS: GpParams = { lnCeiling: 10, ratingPow: 1 };
 
 /** GP itemized — the ledger's rows. */
 export type GpParts = {
   reviews: number;
   rating: number | null;
-  /** rating × reviews — total star mass. */
+  /** r^ratingPow · n — weighted star mass. */
   raw: number;
   /** The subscore, 0–1. n = 0 → 0 (no Google presence = out of organic). */
   gp: number;
@@ -378,7 +467,8 @@ export function gpParts(
     Math.round(typeof reviews === "number" && Number.isFinite(reviews) ? reviews : 0),
   );
   const r = typeof rating === "number" && Number.isFinite(rating) ? rating : null;
-  const raw = r == null ? 0 : r * n;
+  const pow = Math.min(2, Math.max(1, p.ratingPow));
+  const raw = r == null ? 0 : Math.pow(Math.max(0, r), pow) * n;
   const gp = clamp01(Math.log(1 + raw) / Math.max(1, p.lnCeiling));
   return { reviews: n, rating: r, raw, gp };
 }
@@ -566,77 +656,31 @@ export const LINEUP_ENGINE = {
   ],
 } as const;
 
-/**
- * Retrieval knob — how wide EM recall casts. Recall is filtered by the
- * consumer's METRO (city set — an identity fact, not a distance gate; the
- * curve does all demotion within a metro). Revisit with a wide bounding-box
- * prefilter only if catalog-per-metro passes ~400.
- *
- * decision (Pato 2026-07-17): recallTopK STAYS a config param — a good knob,
- * unlike embedDims which became a fixed constant. Do not "fix" it.
- */
-export const DEFAULT_RETRIEVAL = {
-  /** How many places pgvector recall returns for scoring. */
-  recallTopK: 50,
-};
+// NO RECALL CAP IN LINEUP (Pato 2026-07-21, REVERSING the 2026-07-17
+// "recallTopK stays" decision): EM compares the query against ALL vectors —
+// Lineup scores the whole catalog, filtered only by the consumer's METRO
+// (city set — an identity fact, not a distance gate; the curve does all
+// demotion within a metro). The deck is capped later by the per-lane counts.
+// Retrieval-capping is MEMO's business (its own config at /memo-config) —
+// and even Memo simply calls Lineup, takes the deck, and analyzes the cards.
+// The old retrieval.recallTopK blob key is ignored on read.
 
-// ── DATA-ACCESS CONFIGURATION — the core config ─────────────────────────
-// (Notion Scoring spec: "Each subscore can be configured to select which
-// data it is allowed to access. The default is all data ON; any individual
-// data source can be toggled OFF per subscore. This is the main knob of the
-// Subscores page.")
-//
-// FOUR data sources. Each subscore has an APPLICABLE subset (a source a
-// subscore structurally cannot read isn't a toggle — it's a "—"): EM can
-// never see interaction (it compares two independently-built vectors,
-// neither of which knows the pair); GP and RP read only the place; XX reads
-// nothing but its own draw.
-
-export type DataSourceId = "consumer" | "place" | "intent" | "interaction";
-
-export type DataSourceDef = {
-  id: DataSourceId;
-  label: string;
-  blurb: string;
-};
-
-export const DATA_SOURCES: readonly DataSourceDef[] = [
-  { id: "consumer",    label: "Consumer",    blurb: "per consumer — constant" },
-  { id: "place",       label: "Place",       blurb: "per place — constant" },
-  { id: "intent",      label: "Intent",      blurb: "per query — Where · When · What" },
-  { id: "interaction", label: "Interaction", blurb: "per consumer × place — the edge" },
-];
-
-/** Which sources each subscore CAN read — the matrix's toggleable cells. */
-export const APPLICABLE_SOURCES: Record<SubscoreId, readonly DataSourceId[]> = {
-  em: ["consumer", "place", "intent"],
-  sm: ["place", "intent", "interaction"],
-  gp: ["place"],
-  rp: ["place"],
-  xx: [],
-};
-
-/** The saved matrix — per subscore, which applicable sources are ON. */
-export type DataAccess = Record<SubscoreId, DataSourceId[]>;
-
-// Default: ALL data ON (the spec's default) — every applicable cell enabled.
-export const DEFAULT_DATA_ACCESS: DataAccess = Object.fromEntries(
-  SUBSCORES.map((s) => [s.id, [...APPLICABLE_SOURCES[s.id]]]),
-) as DataAccess;
-
-// ── CONTEXT FIELD REGISTRY — EM's per-field detail ──────────────────────
-// Every TEXT field EM could read, with a stable key. Which of these EM
-// actually receives is CONFIG (ContextConfig, persisted in the blob): the
-// admin toggles fields and the playground assembles its documents from
-// exactly the enabled set — a toggle visibly changes the embedding, the
-// cosine, and the ranking. "ignored" fields are the spec's "ignored for
-// now" list — shown greyed, never toggleable, never embedded. SM/GP/RP/XX
-// are the FixedSubscoreIds — not field-configurable; their knobs live above.
+// ── CONTEXT FIELD REGISTRY — EM's inputs, FIXED ─────────────────────────
+// Every TEXT field EM reads, with a stable key. Inputs are NOT configurable
+// (Pato 2026-07-21: "just mention the data fields — it's not configurable"),
+// which retired v9's data-access matrix AND EM's per-field toggles in one
+// stroke: each subscore's Inputs section is pure documentation of the fields
+// it reads, the doc builders always assemble from every live field, and the
+// blob carries no dataAccess/context keys (v10). "ignored" fields are the
+// spec's "ignored for now" list — shown greyed, never embedded. Which
+// SOURCES a subscore reads is structural and lives in the docs too: EM never
+// sees interaction (two independently-built vectors, neither knows the
+// pair); GP and RP read only the place; XX reads nothing but its own draw.
 
 export type ContextSide = "consumer" | "intent" | "place";
 
 export type ContextFieldDef = {
-  /** Stable key, "side.name" — what ContextConfig stores. */
+  /** Stable key, "side.name" — how the doc builders name the field. */
   key: string;
   side: ContextSide;
   label: string;
@@ -650,8 +694,9 @@ export type ContextFieldDef = {
 // The lists ARE the spec (Notion Scoring, data taxonomy, 2026-07-16):
 //   Consumer → EM: sex · age · name · country · class+why. Ignored: taste ·
 //     history. (IG-origin lives inside class+why, not as its own field.)
-//   Intent → EM (text): query · near-zone · time. Ignored: party · budget ·
-//     day-of-week. (The NUMERIC where/when/what go to SM, never EM.)
+//   Intent → EM (text): that (the ask) · near-zone · time. Ignored: party ·
+//     budget · day-of-week. (The NUMERIC where/when/what go to SM, never EM;
+//     THAT — the fourth intent axis — is EM's, never SM's.)
 //   Place → EM: name · category · tags · description · zone & city ·
 //     reviews summary (G·IG·FB, planned) · price (planned). Rating & review
 //     count are GP's; hours and lat/lng are SM's — ROUTED, so they are not
@@ -667,7 +712,7 @@ export const CONTEXT_FIELDS: readonly ContextFieldDef[] = [
   { key: "consumer.history", side: "consumer", label: "history",                     status: "ignored", note: "ignored for now (spec)" },
   // Intent — the per-query half. Where/when appear as TEXT here by design;
   // their NUMERIC versions are SM's inputs, never EM's.
-  { key: "intent.query",     side: "intent",   label: "what / occasion (question text)", status: "live" },
+  { key: "intent.query",     side: "intent",   label: "that · the ask (free text)",  status: "live", note: "the intent's 4th axis — storage key stays intent.query for blob compat" },
   { key: "intent.zone",      side: "intent",   label: "near-zone (as text)",         status: "live" },
   { key: "intent.time",      side: "intent",   label: "day + time (as text)",        status: "live" },
   { key: "intent.party",     side: "intent",   label: "party size",                  status: "ignored", note: "ignored for now (spec) — a filter's job" },
@@ -683,23 +728,10 @@ export const CONTEXT_FIELDS: readonly ContextFieldDef[] = [
   { key: "place.price",       side: "place",   label: "price",                       status: "planned" },
 ];
 
-export const CONTEXT_KEYS: ReadonlySet<string> = new Set(CONTEXT_FIELDS.map((f) => f.key));
-
-/** Keys an operator may actually toggle — "ignored" is out of bounds. */
-export const TOGGLEABLE_CONTEXT_KEYS: ReadonlySet<string> = new Set(
-  CONTEXT_FIELDS.filter((f) => f.status !== "ignored").map((f) => f.key),
-);
-
-/** Which fields EM reads — the configurable half of the pipeline. */
-export type ContextConfig = Record<ConfigurableSubscoreId, string[]>;
-
-// Arrays kept SORTED — the canonical order everywhere (form state sorts
-// too), so key order can never fake an unsaved-changes diff. Default = all
-// LIVE fields on (planned contribute nothing until data exists; ignored are
-// not selectable at all).
-export const DEFAULT_CONTEXT_CONFIG: ContextConfig = {
-  em: CONTEXT_FIELDS.filter((f) => f.status === "live").map((f) => f.key).sort(),
-};
+/** The fields EM actually embeds — every live key; display counts read this. */
+export const LIVE_CONTEXT_COUNT: number = CONTEXT_FIELDS.filter(
+  (f) => f.status === "live",
+).length;
 
 // ── Persisted settings (app_settings.scoring_config) ───────────────────
 // The Subscores tab saves ONE versioned blob. NULL in the DB means
@@ -707,88 +739,43 @@ export const DEFAULT_CONTEXT_CONFIG: ContextConfig = {
 // saves an override. Reset-to-defaults loads these values into the form;
 // Save writes the blob.
 //
-// RANGE TABLE (mirrored VERBATIM in admin-web-update-scoring-config).
+// RANGE TABLE (mirrored VERBATIM in admin-web-update-lineup-config).
 // The encoder (EM_ENCODER — small @ 1536) is a FIXED constant, deliberately
 // absent: fixed decisions never enter the blob.
 //   laneN.{organic,inorganic,hybrid}  0–50 int each, sum ≥ 1 (0 = lane off;
 //                                     legacy flat number expands to all three)
-//   retrieval.recallTopK  10–200
-//   sm.where.distExp      1–5   (the ONE where knob — the tolerance is the
-//                                consumer's input, default frozen at 5 km)
-//   sm.when.waitFloor     0–1           sm.when.sessionH   0.5–4
-//   sm.what.sibling       0–1   (the ONE what knob — mismatch frozen at 0.2)
-//   (zone spillover, default tolerance, mismatch rung, wait transition/
-//    steepness and the 30-min grid are frozen constants — ZONE_SPILL_FRAC ·
-//    DEFAULT_POINT_TOL_KM · MISMATCH_RUNG · WAIT_TRANSITION_H · WAIT_STEEP ·
-//    TIME_BLOCK_H)
+//   (retrieval.recallTopK is GONE — v9: Lineup scores the whole metro
+//    catalog, no recall cap; a stray retrieval key is ignored)
+//   sm.where.defaultTolKm 0.5–20 (GREEN — where's ONE param / consumer default)
+//   sm.when.patience      0–1   (when's ONE shape knob over the openness array)
+//   sm.what.tol           0–1   (what's ONE tol — super = t, none = t²)
+//   (distExp · waitFloor · sessionH · sibling are GONE — v11; stray keys
+//    ignored. DIST_EXP · ZONE_SPILL_FRAC · TIME_BLOCK_H · OPENNESS_* freeze)
 //   gp.lnCeiling          5–15
+//   gp.ratingPow          1–2   (0.1 steps; default 1)
 //   rp.*                  0–1
-//   xx.control            0–5
-//   dataAccess.<subscore> ⊂ APPLICABLE_SOURCES (structural, per subscore)
+//   xx.control            0–5   (GREEN default only — not a hyperparam)
+//   (dataAccess + context are GONE — v10: inputs are FIXED documentation)
 
 export type ScoringSettings = {
-  v: 7;
+  v: 11;
   /** Per-lane deck counts (MESITA-659) — how many cards each lane may
    * contribute to the merged deck; 0 turns the lane off. */
   laneN: LaneCounts;
-  retrieval: { recallTopK: number };
   sm: SmParams;
   gp: GpParams;
   rp: RpRungs;
   xx: XxParams;
-  /** The core config — per-subscore source toggles. */
-  dataAccess: DataAccess;
-  context: ContextConfig;
 };
 
 export const DEFAULT_SCORING_SETTINGS: ScoringSettings = {
-  v: 7,
+  v: 11,
   laneN: DEFAULT_LANE_COUNTS,
-  retrieval: DEFAULT_RETRIEVAL,
   sm: DEFAULT_SM_PARAMS,
   gp: DEFAULT_GP_PARAMS,
   rp: DEFAULT_RP_RUNGS,
   xx: DEFAULT_XX_PARAMS,
-  dataAccess: DEFAULT_DATA_ACCESS,
-  context: DEFAULT_CONTEXT_CONFIG,
 };
-
-// Sorted + deduped so key order can never fake a settings diff. An empty
-// array is a VALID (degenerate) config — everything off; only a non-array
-// falls back to defaults. Only TOGGLEABLE keys survive — "ignored" fields
-// can never enter the blob.
-function coerceContextKeys(v: unknown, fallback: string[]): string[] {
-  if (!Array.isArray(v)) return [...fallback].sort();
-  return [
-    ...new Set(
-      v.filter((k): k is string => typeof k === "string" && TOGGLEABLE_CONTEXT_KEYS.has(k)),
-    ),
-  ].sort();
-}
-
-// Per-subscore source list — unknown/inapplicable sources dropped, sorted.
-// A missing/non-array cell falls back to the default (all applicable ON);
-// an empty array is VALID (that subscore reads nothing — degenerate on
-// purpose, visible in the playgrounds).
-function coerceDataAccess(v: unknown, fallback: DataAccess): DataAccess {
-  const raw = (v && typeof v === "object" ? v : {}) as Record<string, unknown>;
-  return Object.fromEntries(
-    SUBSCORES.map((s) => {
-      const cell = raw[s.id];
-      const applicable = APPLICABLE_SOURCES[s.id];
-      if (!Array.isArray(cell)) return [s.id, [...fallback[s.id]].sort()];
-      const clean = [
-        ...new Set(
-          cell.filter(
-            (x): x is DataSourceId =>
-              typeof x === "string" && (applicable as readonly string[]).includes(x),
-          ),
-        ),
-      ].sort();
-      return [s.id, clean];
-    }),
-  ) as DataAccess;
-}
 
 function num(v: unknown, fallback: number, lo: number, hi: number): number {
   return typeof v === "number" && Number.isFinite(v) ? Math.min(hi, Math.max(lo, v)) : fallback;
@@ -824,9 +811,9 @@ export function coerceScoringSettings(raw: unknown): ScoringSettings {
   if (!raw || typeof raw !== "object") return d;
   const r = raw as Record<string, unknown>;
 
-  const ret = (r.retrieval ?? {}) as Record<string, unknown>;
-  // Note: a stray `em` key from an older blob is silently dropped — the
-  // encoder is EM_ENCODER, a fixed constant, never config.
+  // Note: stray `em`, `retrieval`, `dataAccess`/`context`, and pre-v11 SM
+  // keys (`distExp` · `waitFloor` · `sessionH` · `sibling`) are dropped on
+  // read — with soft migration for when/what below.
   const sm = (r.sm ?? {}) as Record<string, unknown>;
   const smWhere = (sm.where ?? {}) as Record<string, unknown>;
   const smWhen = (sm.when ?? {}) as Record<string, unknown>;
@@ -834,32 +821,29 @@ export function coerceScoringSettings(raw: unknown): ScoringSettings {
   const gp = (r.gp ?? {}) as Record<string, unknown>;
   const rp = (r.rp ?? {}) as Record<string, unknown>;
   const xx = (r.xx ?? {}) as Record<string, unknown>;
-  const ctx = (r.context ?? {}) as Record<string, unknown>;
+
+  // Soft-migrate v10 blobs: patience ← waitFloor; tol ← sibling.
+  const patience = num(
+    smWhen.patience ?? smWhen.waitFloor,
+    d.sm.when.patience,
+    0,
+    1,
+  );
+  const whatTol = num(smWhat.tol ?? smWhat.sibling, d.sm.what.tol, 0, 1);
 
   return {
-    v: 7,
+    v: 11,
     laneN: coerceLaneCounts(r.laneN, d.laneN),
-    retrieval: {
-      recallTopK: num(ret.recallTopK, d.retrieval.recallTopK, 10, 200),
-    },
     sm: {
-      // v7: 1 · 2 · 1 knobs. Leftover v5/v6 keys (pointTolKm — the consumer
-      // owns the tolerance now — mismatch, zoneSpillKm, waitTransitionH,
-      // waitSteep, timeBlockH) are simply not read; the surviving knobs
-      // migrate straight over.
       where: {
-        distExp: num(smWhere.distExp, d.sm.where.distExp, 1, 5),
+        defaultTolKm: num(smWhere.defaultTolKm, d.sm.where.defaultTolKm, 0.5, 20),
       },
-      when: {
-        waitFloor: num(smWhen.waitFloor, d.sm.when.waitFloor, 0, 1),
-        sessionH: num(smWhen.sessionH, d.sm.when.sessionH, 0.5, 4),
-      },
-      what: {
-        sibling: num(smWhat.sibling, d.sm.what.sibling, 0, 1),
-      },
+      when: { patience },
+      what: { tol: whatTol },
     },
     gp: {
       lnCeiling: num(gp.lnCeiling, d.gp.lnCeiling, 5, 15),
+      ratingPow: num(gp.ratingPow, d.gp.ratingPow, 1, 2),
     },
     rp: {
       zero: num(rp.zero, d.rp.zero, 0, 1),
@@ -870,19 +854,16 @@ export function coerceScoringSettings(raw: unknown): ScoringSettings {
     xx: {
       control: num(xx.control, d.xx.control, 0, 5),
     },
-    dataAccess: coerceDataAccess(r.dataAccess, d.dataAccess),
-    context: {
-      em: coerceContextKeys(ctx.em, d.context.em),
-    },
   };
 }
 
-// ── PIPELINE CONTEXT — the FIXED data-access contracts ─────────────────
-// EM's contract is CONFIG (CONTEXT_FIELDS + ContextConfig above). The fixed
-// subscores keep fixed contracts: their inputs are structural. FOUR data
-// sources — consumer · intent · place · interaction (the consumer × place
-// EDGE, which only SM can read: EM compares two independently-built vectors,
-// neither of which knows the pair).
+// ── PIPELINE CONTEXT — the fixed input contracts, per subscore ──────────
+// EM's contract is CONTEXT_FIELDS above (same fixed nature, richer
+// statuses); the other subscores document theirs here. All of it is
+// DOCUMENTATION, never config. FOUR data sources — consumer · intent ·
+// place · interaction (the consumer × place EDGE, which only SM can read:
+// EM compares two independently-built vectors, neither of which knows the
+// pair).
 
 export type ContextField = {
   field: string;
@@ -903,13 +884,13 @@ export const PIPELINE_CONTEXT: Record<FixedSubscoreId, SubscoreContext> = {
     intent: [
       { field: "zone / anchor set (→ W)", status: "live" },
       { field: "tolerated distance (slider, point mode)", status: "live" },
-      { field: "target time (NUMERIC)", status: "live" },
+      { field: "target time → openness cursor (start of 2×24×7 array)", status: "live" },
       { field: "category set (categories · mega categories)", status: "live" },
     ],
     place: [
       { field: "lat/lng (NUMERIC)", status: "live" },
       { field: "zone (string, fuzzy-matched)", status: "live" },
-      { field: "hours → open windows (NUMERIC)", status: "live" },
+      { field: "hours → binary openness array (2×24×7 half-hour blocks)", status: "live" },
       { field: "category", status: "live" },
     ],
     interaction: [
@@ -922,7 +903,6 @@ export const PIPELINE_CONTEXT: Record<FixedSubscoreId, SubscoreContext> = {
     place: [
       { field: "google_review_count (NUMERIC)", status: "live" },
       { field: "google_stars_overall (NUMERIC)", status: "live" },
-      { field: "→ ln(1 + r·n) / ceiling", status: "live" },
     ],
   },
   rp: {
@@ -930,7 +910,6 @@ export const PIPELINE_CONTEXT: Record<FixedSubscoreId, SubscoreContext> = {
     intent: [{ field: "—", status: "live" }],
     place: [
       { field: "welcome/returning × free/premium rates (projects)", status: "live" },
-      { field: "→ posture → rung 0.1–1.0", status: "live" },
     ],
   },
   xx: {

@@ -4,9 +4,9 @@ import { ActivityIndicator, View } from 'react-native';
 import { ConsumerTabBar } from '@/components/ui/ConsumerTabBar';
 import { useAuth } from '@/providers/auth';
 
-// Custom tab bar ports web BottomNav (MESITA-581). Rewards stays parked
-// behind ComingSoonModal; Reservations navigates to Upcoming/History empty
-// states (MESITA-569 — web parked page content).
+// Custom tab bar ports web BottomNav (MESITA-581). Rewards + Reservations
+// stay parked behind ComingSoonModal (web BottomNav parity); route screens
+// remain for deep links / unpark (MESITA-569 page shells).
 export default function TabsLayout() {
   const { loading, session, onboarded } = useAuth();
 

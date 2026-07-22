@@ -1,11 +1,11 @@
-import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Crown, Info, Percent, Sparkles } from 'lucide-react-native';
 import { useState } from 'react';
-import { Modal, Pressable, Text, View } from 'react-native';
+import { Linking, Modal, Pressable, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { GRADIENT_DIAGONAL, GRADIENTS } from '@/constants/brand';
+import { PREMIUM_SUBSCRIBE_URL } from '@/lib/consumer-classes';
 import { useAuth } from '@/providers/auth';
 
 const ORIGIN_LABEL: Record<string, string> = {
@@ -15,10 +15,9 @@ const ORIGIN_LABEL: Record<string, string> = {
 };
 
 // Two top cards above the passport — web RewardsTopCards port (MESITA-580).
-// decision: Unlock Premium routes to Me (status only) — no Stripe in iOS binary.
+// decision: Unlock Premium opens consumer.mesita.ai/me (no Stripe in binary).
 export function RewardsTopCards() {
   const { consumerClass } = useAuth();
-  const router = useRouter();
   const insets = useSafeAreaInsets();
   const isPremium = consumerClass?.class === 'premium';
   const origin = consumerClass?.origin ?? 'default';
@@ -28,8 +27,14 @@ export function RewardsTopCards() {
     <>
       <View className="flex-row items-stretch gap-2.5">
         <Pressable
-          onPress={() => router.push('/(tabs)/me')}
+          onPress={() => {
+            if (isPremium) return;
+            void Linking.openURL(PREMIUM_SUBSCRIBE_URL);
+          }}
           accessibilityRole="button"
+          accessibilityLabel={
+            isPremium ? 'Premium active' : 'Subscribe on web'
+          }
           className="flex-1 flex-row items-center gap-2.5 rounded-2xl border border-border bg-card p-3 active:opacity-95"
         >
           <LinearGradient
@@ -65,7 +70,7 @@ export function RewardsTopCards() {
             >
               {isPremium
                 ? `via ${ORIGIN_LABEL[origin] ?? 'Mesita'}`
-                : 'Bigger discounts · Me'}
+                : 'Subscribe on web'}
             </Text>
           </View>
         </Pressable>
@@ -175,7 +180,7 @@ export function RewardsTopCards() {
                 Premium boosts them.{' '}
               </Text>
               Free gets the base discount; Premium unlocks bigger ones — free
-              with Instagram. Manage Premium on the web.
+              with Instagram.
             </Text>
           </View>
         </View>

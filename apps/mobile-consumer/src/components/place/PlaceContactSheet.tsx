@@ -112,12 +112,26 @@ export function PlaceContactSheet({
           onPress={(e) => e.stopPropagation()}
           className="rounded-[20px] border border-border bg-card py-2"
         >
-          <Text
-            className="px-4 pb-2 pt-3 font-bold text-foreground"
-            style={{ fontSize: 17 }}
-          >
-            Contact
-          </Text>
+          <View className="flex-row items-center gap-3 px-4 pb-2 pt-3">
+            <View className="size-12 items-center justify-center rounded-full bg-emerald-500/10">
+              <MessageCircle color="#059669" size={20} />
+            </View>
+            <View className="min-w-0 flex-1">
+              <Text
+                className="font-bold text-foreground"
+                style={{ fontSize: 17 }}
+              >
+                Contact
+              </Text>
+              <Text
+                className="text-muted-foreground"
+                style={{ fontSize: 12 }}
+                numberOfLines={1}
+              >
+                {place.name}
+              </Text>
+            </View>
+          </View>
           {rows.length === 0 ? (
             <Text
               className="px-4 py-4 text-muted-foreground"
