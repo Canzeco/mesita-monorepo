@@ -28,12 +28,12 @@ export const UNIVERSAL_CAP_MXN = 500;
 export type StrategyId = "zero" | "conservative" | "aggressive" | "dominant";
 
 // Four rungs, distinct from the three-step plan visibility of the old model.
-export type StrategyVisibility = "Low" | "Mid" | "High" | "Max";
+type StrategyVisibility = "Low" | "Mid" | "High" | "Max";
 
 // The four discount cells, keyed by the exact places column each maps to.
 //   welcome_* → first visit at the place · unprefixed → every visit after.
 //   *_free_*  → Free guests             · *_premium_* → Premium guests.
-export type StrategyRates = {
+type StrategyRates = {
   welcome_free_rate: number | null; // FW — Free · Welcome (first visit)
   welcome_premium_rate: number | null; // PW — Premium · Welcome
   free_rate: number | null; // FR — Free · Returning
@@ -172,11 +172,3 @@ export const RP_BY_STRATEGY: Record<StrategyId, number> = {
   dominant: 1.0,
 };
 
-/** RP — the Rewards Promotions subscore for a place's posture. The saved
- * blob's rungs override these code defaults on the Lineup Config page. */
-export function rpForStrategy(
-  id: StrategyId | null,
-  rungs: Record<StrategyId, number> = RP_BY_STRATEGY,
-): number {
-  return rungs[id ?? "zero"];
-}

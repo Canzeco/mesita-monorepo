@@ -16,7 +16,7 @@ export type ImageNaturalSize = { width: number; height: number };
 
 // Keep fields chrome identical between TIWC and WITC and avoid
 // post-render seam drift when webfonts finish loading.
-export const SWIPE_CARD_FALLBACK_FIELDS_H = 200;
+const SWIPE_CARD_FALLBACK_FIELDS_H = 200;
 
 const imageSizeCache = new Map<string, ImageNaturalSize>();
 
@@ -24,7 +24,7 @@ const MIN_PHOTO_DIMENSION = 8;
 const MAX_IMAGE_RATIO = 20;
 
 /** Stable cache key — strip query/hash so preload and onLoad share one entry. */
-export function normalizePhotoSrc(src: string): string {
+function normalizePhotoSrc(src: string): string {
   try {
     const url = new URL(src);
     url.search = "";
@@ -52,7 +52,7 @@ export function readPhotoNaturalSize(
   return { width, height };
 }
 
-export function cacheImageNaturalSize(
+function cacheImageNaturalSize(
   src: string,
   size: ImageNaturalSize,
 ): ImageNaturalSize | null {
@@ -62,13 +62,13 @@ export function cacheImageNaturalSize(
   return size;
 }
 
-export function getCachedImageNaturalSize(
+function getCachedImageNaturalSize(
   src: string,
 ): ImageNaturalSize | undefined {
   return imageSizeCache.get(normalizePhotoSrc(src));
 }
 
-export function loadImageNaturalSize(src: string): Promise<ImageNaturalSize> {
+function loadImageNaturalSize(src: string): Promise<ImageNaturalSize> {
   const key = normalizePhotoSrc(src);
   const cached = imageSizeCache.get(key);
   if (cached) return Promise.resolve(cached);
@@ -121,7 +121,7 @@ function loadImageNaturalSizeViaElement(
 type ElementSize = { width: number; height: number };
 
 /** Observes an element's layout box via ResizeObserver — not the viewport. */
-export function useObservedSize<T extends HTMLElement>(
+function useObservedSize<T extends HTMLElement>(
   ref: RefObject<T | null>,
 ): ElementSize | null {
   const [size, setSize] = useState<ElementSize | null>(null);
@@ -150,7 +150,7 @@ export function useObservedSize<T extends HTMLElement>(
   return size;
 }
 
-export function resolvePhotoLayoutMode(
+function resolvePhotoLayoutMode(
   imageSize: ImageNaturalSize | null | undefined,
   cardWidth: number,
   cardHeight: number,

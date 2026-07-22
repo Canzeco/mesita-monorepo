@@ -105,7 +105,7 @@ export type SubscoreDef = {
   range: string;
 };
 
-export const SUBSCORES: readonly SubscoreDef[] = [
+const SUBSCORES: readonly SubscoreDef[] = [
   { id: "em", short: "EM", name: "Embeddings Match",   basis: "cosine(place vector, consumer+intent vector)", range: "0–1" },
   { id: "sm", short: "SM", name: "Structured Match",   basis: "where × when × what — structured asks vs place facts", range: "0–1" },
   { id: "gp", short: "GP", name: "Google Popularity",  basis: "ln(1 + rating × reviews) / ceiling", range: "0–1" },
@@ -121,7 +121,7 @@ export const SUBSCORE_BY_ID = Object.fromEntries(SUBSCORES.map((s) => [s.id, s])
 /** SM · GP · RP · XX — the subscores whose input contract PIPELINE_CONTEXT
  * documents; EM's fields live in the richer CONTEXT_FIELDS registry. Every
  * subscore's inputs are FIXED — tuned by knobs, never by field selection. */
-export type FixedSubscoreId = Exclude<SubscoreId, "em">;
+type FixedSubscoreId = Exclude<SubscoreId, "em">;
 
 // ── THE THREE LANES ────────────────────────────────────────────────────
 
@@ -142,7 +142,6 @@ export const LANES: readonly Lane[] = [
   { id: "hybrid",    label: "Hybrid",    parts: ["em", "sm", "gp", "rp", "xx"], merit: "both" },
 ];
 
-export const LANE_BY_ID = Object.fromEntries(LANES.map((l) => [l.id, l])) as Record<LaneId, Lane>;
 
 /** The locked merge rotation — identical for Swipe and Map. */
 export const MERGE_ROTATION: readonly LaneId[] = ["organic", "inorganic", "hybrid"];
@@ -177,9 +176,6 @@ export const EM_ENCODER = {
 
 /** EM from a raw cosine — clamp negatives (opposite/unrelated → 0). Revisit
  * (percentile calibration) only if real cosines cluster too tight. */
-export function emScore(cos: number): number {
-  return clamp01(Math.max(0, cos));
-}
 
 // ── SM — Structured Match ──────────────────────────────────────────────
 //
@@ -189,20 +185,20 @@ export function emScore(cos: number): number {
 //   what  → tol (super = t, none = t²)
 // That is EM's; Randomness is XX's green default only.
 
-export type SmWhereParams = {
+type SmWhereParams = {
   /** Default distance tolerance, km — the CONSUMER DEFAULT (green): what
    * the where curve uses when the consumer's Where slider is unset. The
    * consumer's own tolerance always wins (SmInputs.tolKm). */
   defaultTolKm: number;
 };
 
-export type SmWhenParams = {
+type SmWhenParams = {
   /** Patience / shape ∈ [0,1]. 0 = only tolerant of open-now-for-a-while;
    * 1 = tolerant of places that open later and/or stay open only briefly. */
   patience: number;
 };
 
-export type SmWhatParams = {
+type SmWhatParams = {
   /** ONE tolerance t ∈ [0,1]: super-category rung = t, none rung = t².
    * Exact category (or mega listed) → 1; nothing asked → 1. */
   tol: number;
@@ -220,14 +216,14 @@ export type SmParams = {
 //   TIME_BLOCK_H        half-hour grid.
 //   OPENNESS_*          when's binary horizon: 2 slots/h × 24 h × 7 d.
 export const DIST_EXP = 3;
-export const ZONE_SPILL_FRAC = 0.3;
+const ZONE_SPILL_FRAC = 0.3;
 /** The CODE default for sm.where.defaultTolKm. 5 km = car metros. */
 export const DEFAULT_POINT_TOL_KM = 5;
 
 /** Time resolves to half-hour blocks. */
 export const TIME_BLOCK_H = 0.5;
-export const OPENNESS_SLOTS_PER_HOUR = 2;
-export const OPENNESS_HOURS = 24;
+const OPENNESS_SLOTS_PER_HOUR = 2;
+const OPENNESS_HOURS = 24;
 export const OPENNESS_DAYS = 7;
 /** Full when horizon: 2 × 24 × 7 = 336 half-hour slots from the intent time. */
 export const OPENNESS_SLOTS =
@@ -262,7 +258,7 @@ export function whereScore(km: number | null, tolKm: number): number {
 }
 
 /** First-open index + consecutive open run from a binary openness array. */
-export function opennessStats(bits: readonly boolean[]): {
+function opennessStats(bits: readonly boolean[]): {
   opensInSlots: number | null;
   openRunSlots: number;
 } {
@@ -292,7 +288,7 @@ export function synthesizeOpenness(opensInH: number, openForH: number): boolean[
   return bits;
 }
 
-export type WhenParts = {
+type WhenParts = {
   opensInSlots: number | null;
   openRunSlots: number;
   wait: number;
@@ -338,9 +334,6 @@ export function whenFromOpenness(bits: readonly boolean[], patience: number): nu
 }
 
 /** Convenience: when from opens-in / open-for hours (synthesizes the array). */
-export function whenScore(opensInH: number, openForH: number, p: SmWhenParams): number {
-  return whenFromOpenness(synthesizeOpenness(opensInH, openForH), p.patience);
-}
 
 /** The category ladder's rungs — how the place's one category sits against
  * the intent's SET of categories and/or mega categories. */
@@ -352,7 +345,7 @@ export function noneRung(tol: number): number {
   return t * t;
 }
 
-export function whatScore(rel: WhatRelation, p: SmWhatParams): number {
+function whatScore(rel: WhatRelation, p: SmWhatParams): number {
   switch (rel) {
     case "exact":
       return 1;
@@ -431,9 +424,6 @@ export function smParts(i: SmInputs, p: SmParams = DEFAULT_SM_PARAMS): SmParts {
 }
 
 /** SM as one number, 0–1. */
-export function smScore(i: SmInputs, p: SmParams = DEFAULT_SM_PARAMS): number {
-  return smParts(i, p).sm;
-}
 
 // ── GP — Google Popularity ─────────────────────────────────────────────
 
@@ -446,10 +436,10 @@ export type GpParams = {
   ratingPow: number;
 };
 
-export const DEFAULT_GP_PARAMS: GpParams = { lnCeiling: 10, ratingPow: 1 };
+const DEFAULT_GP_PARAMS: GpParams = { lnCeiling: 10, ratingPow: 1 };
 
 /** GP itemized — the ledger's rows. */
-export type GpParts = {
+type GpParts = {
   reviews: number;
   rating: number | null;
   /** r^ratingPow · n — weighted star mass. */
@@ -475,13 +465,6 @@ export function gpParts(
 }
 
 /** GP as one number, 0–1. */
-export function gpScore(
-  reviews: number | null | undefined,
-  rating: number | null | undefined,
-  p: GpParams = DEFAULT_GP_PARAMS,
-): number {
-  return gpParts(reviews, rating, p).gp;
-}
 
 // ── RP — Rewards Promotions ────────────────────────────────────────────
 // Postures come from ./strategies (the four promo presets). The rung each
@@ -489,11 +472,11 @@ export function gpScore(
 // never enter the paid lanes at all (lane filter); custom/legacy rates that
 // match no preset land on the zero rung.
 
-export type RpPosture = "zero" | "conservative" | "aggressive" | "dominant";
+type RpPosture = "zero" | "conservative" | "aggressive" | "dominant";
 
 export type RpRungs = Record<RpPosture, number>;
 
-export const DEFAULT_RP_RUNGS: RpRungs = {
+const DEFAULT_RP_RUNGS: RpRungs = {
   zero: 0.1,
   conservative: 0.4,
   aggressive: 0.7,
@@ -512,7 +495,7 @@ export type XxParams = {
   control: number;
 };
 
-export const DEFAULT_XX_PARAMS: XxParams = { control: 1 };
+const DEFAULT_XX_PARAMS: XxParams = { control: 1 };
 
 /** XX from a unit draw — U^control. control 0 → 1 for every card. */
 export function xxScore(u: number, control: number): number {
@@ -540,7 +523,7 @@ export function unitDraw(placeId: string, laneId: LaneId, roll: number): number 
  * (MESITA-659). 0 turns a lane off (e.g. no paid cards). */
 export type LaneCounts = Record<LaneId, number>;
 
-export const DEFAULT_LANE_COUNTS: LaneCounts = {
+const DEFAULT_LANE_COUNTS: LaneCounts = {
   organic: 8,
   inorganic: 8,
   hybrid: 8,
@@ -689,7 +672,7 @@ export const LINEUP_ENGINE = {
 
 export type ContextSide = "consumer" | "intent" | "place";
 
-export type ContextFieldDef = {
+type ContextFieldDef = {
   /** Stable key, "side.name" — how the doc builders name the field. */
   key: string;
   side: ContextSide;
@@ -739,9 +722,6 @@ export const CONTEXT_FIELDS: readonly ContextFieldDef[] = [
 ];
 
 /** The fields EM actually embeds — every live key; display counts read this. */
-export const LIVE_CONTEXT_COUNT: number = CONTEXT_FIELDS.filter(
-  (f) => f.status === "live",
-).length;
 
 // ── Persisted settings (app_settings.scoring_config) ───────────────────
 // The Subscores tab saves ONE versioned blob. NULL in the DB means
@@ -881,7 +861,7 @@ export type ContextField = {
   note?: string;
 };
 
-export type SubscoreContext = {
+type SubscoreContext = {
   consumer: ContextField[];
   intent: ContextField[];
   place: ContextField[];

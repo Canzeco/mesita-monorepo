@@ -5,7 +5,7 @@ export type MenuKind = "image" | "pdf" | "drive";
 const IMAGE_EXT = /\.(jpe?g|png|webp|avif|gif)(\?|#|$)/i;
 const PDF_EXT = /\.pdf(\?|#|$)/i;
 
-export function isDriveMenuUrl(url: string): boolean {
+function isDriveMenuUrl(url: string): boolean {
   const trimmed = url.trim();
   if (!trimmed) return false;
   try {

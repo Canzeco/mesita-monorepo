@@ -3,7 +3,7 @@ import type { Database } from "@/lib/supabase/database.types";
 import { invokeEF } from "./_invoke";
 import { payloadFromNotification, type TicketBillPayload } from "@/lib/api/pay";
 
-export type ConsumerNotificationRow =
+type ConsumerNotificationRow =
   Database["public"]["Tables"]["consumer_pay_notifications"]["Row"];
 
 export type ConsumerNotification = ConsumerNotificationRow & {
@@ -27,7 +27,7 @@ type ListPayNotificationsResult = {
   placeInstagramUrl?: string | null;
 };
 
-export function enrichNotification(
+function enrichNotification(
   row: ConsumerNotificationRow,
 ): ConsumerNotification {
   return {

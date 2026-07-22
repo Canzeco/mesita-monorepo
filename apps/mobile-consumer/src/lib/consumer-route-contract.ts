@@ -69,22 +69,9 @@ export const CONSUMER_ROUTES = {
   },
 } as const;
 
-export const CONSUMER_ROUTE_PREFIX = {
-  home: '/(tabs)/home',
-  search: '/(tabs)/search',
-  place: '/place',
-  saved: '/saved',
-  rewards: '/(tabs)/rewards',
-  inbox: '/inbox',
-  me: '/(tabs)/me',
-} as const;
 
-// Web uses /saved/reservation as the Reservations surface matcher; Expo tab is
-// /(tabs)/reservations. Keep the web-shaped constant for string-diff parity
-// when comparing docs / agent notes.
-export const CONSUMER_RESERVATION_SURFACE_PREFIX = '/saved/reservation';
 
-export type PlaceSurface = 'place' | 'saved';
+type PlaceSurface = 'place' | 'saved';
 
 /** Cast dynamic Expo paths for typed router.push (typed routes regenerate lag). */
 function asHref(path: string): Href {
@@ -109,7 +96,7 @@ export function reservationPath(id: string): Href {
   return asHref(`${CONSUMER_ROUTES.saved.reservationPrefix}${id}`);
 }
 
-export const COUPON_PATH_PREFIX = '/coupon/';
+const COUPON_PATH_PREFIX = '/coupon/';
 
 export function couponPath(id: string): Href {
   return asHref(`${COUPON_PATH_PREFIX}${id}`);
@@ -119,16 +106,4 @@ export function rewardsTicketPath(id: string): Href {
   return asHref(`${CONSUMER_ROUTES.rewards.ticketPrefix}${id}`);
 }
 
-export function ticketPath(id: string): Href {
-  return rewardsTicketPath(id);
-}
 
-export function isModalContractPath(pathname: string): boolean {
-  return (
-    pathname.startsWith(CONSUMER_ROUTES.place.prefix) ||
-    pathname.startsWith(CONSUMER_ROUTES.saved.placePrefix) ||
-    pathname.startsWith(CONSUMER_ROUTES.saved.reservationPrefix) ||
-    pathname.startsWith(CONSUMER_ROUTES.rewards.ticketPrefix) ||
-    pathname.startsWith(COUPON_PATH_PREFIX)
-  );
-}
