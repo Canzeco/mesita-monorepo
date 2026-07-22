@@ -41,9 +41,22 @@ type SidebarProps = {
   onNavigate?: () => void;
 };
 
-const SIDEBAR_NAV = [
+type NavItem = {
+  href: string;
+  label: string;
+  Icon: React.ComponentType<{ className?: string }>;
+};
+
+const ACCOUNT_NAV: NavItem[] = [
+  { href: "/account", label: "Account", Icon: UserRound },
+];
+
+const ALERTS_NAV: NavItem[] = [
   { href: "/global-performance", label: "Global Monitor", Icon: Radar },
   { href: "/verifications", label: "Verification Queue", Icon: BadgeCheck },
+];
+
+const CONFIGS_NAV: NavItem[] = [
   { href: "/admin-config", label: "Admin Config", Icon: ShieldCheck },
   {
     href: ATLAS_PARENT.href,
@@ -75,8 +88,18 @@ const SIDEBAR_NAV = [
     label: RESERVATIONS_PARENT.label,
     Icon: RESERVATIONS_PARENT.Icon,
   },
+];
+
+const MANAGE_NAV: NavItem[] = [
   { href: "/manage-multiple", label: "Manage Multiple Units", Icon: Building2 },
   ...TOOL_ROUTES,
+];
+
+const SIDEBAR_SECTIONS = [
+  { label: "Account", items: ACCOUNT_NAV },
+  { label: "Alerts", items: ALERTS_NAV },
+  { label: "Configs", items: CONFIGS_NAV },
+  { label: "Manage", items: MANAGE_NAV },
 ] as const;
 
 function NavLink({
@@ -110,8 +133,14 @@ function NavLink({
   );
 }
 
-function SidebarDivider() {
-  return <div className="border-background/10 border-t" role="separator" />;
+function SectionLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="px-2.5 pt-3 pb-1.5 lg:px-3">
+      <span className="text-background/35 text-[10px] font-medium tracking-[0.14em] uppercase">
+        {children}
+      </span>
+    </div>
+  );
 }
 
 function SectionGap() {
@@ -124,27 +153,23 @@ export function SidebarNav({ onNavigate }: SidebarProps) {
 
   return (
     <nav className="flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto">
-      <NavLink
-        href="/account"
-        label="Account"
-        Icon={UserRound}
-        active={pathname === "/account" || pathname.startsWith("/account/")}
-        onNavigate={onNavigate}
-      />
-
-      <SectionGap />
-      <SidebarDivider />
-      <SectionGap />
-
-      {SIDEBAR_NAV.map(({ href, label, Icon }) => (
-        <NavLink
-          key={href}
-          href={href}
-          label={label}
-          Icon={Icon}
-          active={isNavActive(pathname, href, projectId)}
-          onNavigate={onNavigate}
-        />
+      {SIDEBAR_SECTIONS.map((section, index) => (
+        <div key={section.label}>
+          {index > 0 ? <SectionGap /> : null}
+          <SectionLabel>{section.label}</SectionLabel>
+          <div className="flex flex-col gap-0.5">
+            {section.items.map(({ href, label, Icon }) => (
+              <NavLink
+                key={href}
+                href={href}
+                label={label}
+                Icon={Icon}
+                active={isNavActive(pathname, href, projectId)}
+                onNavigate={onNavigate}
+              />
+            ))}
+          </div>
+        </div>
       ))}
     </nav>
   );
@@ -171,8 +196,6 @@ export function Sidebar({ onNavigate }: SidebarProps) {
         </span>
       </Link>
 
-      <SectionGap />
-      <SidebarDivider />
       <SectionGap />
 
       <SidebarNav onNavigate={onNavigate} />
