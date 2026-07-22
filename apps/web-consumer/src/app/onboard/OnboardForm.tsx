@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { ArrowRight } from "lucide-react";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { apiUpdateConsumerProfile } from "@/lib/api/profile";
-import { errMsg } from "@/lib/utils";
+import { ageFromBirthday, errMsg, MIN_SIGNUP_AGE } from "@/lib/utils";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import { BirthdayPicker, Field, Spinner } from "@/components/shared";
 import {
@@ -39,8 +39,14 @@ export function OnboardForm() {
       setError("Please complete all required fields");
       return;
     }
-    if (sex !== "male" && sex !== "female" && sex !== "other") {
+    if (sex !== "male" && sex !== "female") {
       setError("Pick a sex from the list.");
+      return;
+    }
+    // Age gate — 13 or below is restricted (MESITA-727).
+    const age = ageFromBirthday(birthday);
+    if (age === null || age < MIN_SIGNUP_AGE) {
+      setError(`You must be at least ${MIN_SIGNUP_AGE} to use Mesita.`);
       return;
     }
 
@@ -87,7 +93,6 @@ export function OnboardForm() {
             <option value="">Select</option>
             <option value="female">Female</option>
             <option value="male">Male</option>
-            <option value="other">Other</option>
           </select>
         </Field>
       </div>

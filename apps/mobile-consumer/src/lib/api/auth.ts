@@ -72,7 +72,7 @@ export function apiFetchConsumerProfile(): Promise<ProfileResult> {
 
 export function apiUpdateConsumerProfile(patch: {
   first_name?: string;
-  sex?: 'male' | 'female' | 'other';
+  sex?: 'male' | 'female'; // Male/Female only (MESITA-727)
   birthday?: string; // YYYY-MM-DD
 }): Promise<ProfileResult> {
   return invokeEF<ProfileResult>(supabase, 'consumer-web-update-profile', patch);
