@@ -3,6 +3,7 @@
 import { PIPELINE_CONTEXT, gpParts } from "@/lib/business/scores";
 import { useScoring } from "../ScoringProvider";
 import { ContextCols, MiniTile, Slider } from "../panel-ui";
+import { CurvePlot } from "../plots";
 import { KnobGrid, ProcessSteps, Prose, SubscoreBox } from "./SubscoreBox";
 
 // GP · Google Popularity — earned merit (amber).
@@ -55,6 +56,17 @@ export function GpBox() {
               sigmoid: no &quot;typical popularity&quot; assumption, one ceiling knob
             </p>
           </ProcessSteps>
+          <CurvePlot
+            tone="amber"
+            title="GP = min(1, ln(1 + raw) / ceiling)"
+            f={(raw) => Math.min(1, Math.log(1 + raw) / gp.lnCeiling)}
+            x0={10}
+            x1={Math.max(1e6, Math.exp(gp.lnCeiling) * 2)}
+            logX
+            markers={[{ x: Math.exp(gp.lnCeiling) }]}
+            xLabel="star mass ★·n (log) → GP"
+            caption={`ceiling ${gp.lnCeiling.toFixed(1)} · GP 1 at e^${gp.lnCeiling.toFixed(1)}`}
+          />
           <div className="mt-3 grid grid-cols-2 gap-2 lg:grid-cols-4">
             {archetypes.map((a) => (
               <MiniTile

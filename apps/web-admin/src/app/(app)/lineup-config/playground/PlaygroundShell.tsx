@@ -58,7 +58,8 @@ import { CardAnatomy, type CardParts } from "./CardAnatomy";
 // afterwards marks the result stale instead of silently recomputing.
 
 const HOUR_OPTIONS = Array.from({ length: 48 }, (_, i) => i / 2);
-const RANDOMNESS_OPTIONS = Array.from({ length: 11 }, (_, i) => i / 2);
+// 0.1 steps (0.0 … 5.0) — decimal-by-decimal randomness, matching the XX knob.
+const RANDOMNESS_OPTIONS = Array.from({ length: 51 }, (_, i) => i / 10);
 
 function fmtHour(h: number): string {
   const hh = Math.floor(h);
