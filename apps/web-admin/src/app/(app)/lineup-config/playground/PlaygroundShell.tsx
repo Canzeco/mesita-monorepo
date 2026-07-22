@@ -33,11 +33,11 @@ import { strategyForPlace } from "@/lib/business/strategies";
 import {
   buildCiDoc,
   buildConsumerProfile,
+  buildOpennessArray,
   buildPlaceDoc,
   composeIntent,
   embedText,
   emFromVectors,
-  openWindow,
   resolveWhere,
   WEEKDAYS,
   whatRelation,
@@ -130,7 +130,7 @@ export function PlaygroundShell() {
       const placeVec = embedText(placeDoc, EM_ENCODER.dims);
       const em = emFromVectors(ciVec, placeVec);
       const w = resolveWhere(intent, p);
-      const win = openWindow(p.hours, intent.day, intent.hour);
+      const win = buildOpennessArray(p.hours, intent.day, intent.hour);
       const rel = whatRelation(intent, p);
       const smP = smParts(
         {
@@ -139,6 +139,7 @@ export function PlaygroundShell() {
           zoneMode: w.zoneMode,
           opensInH: win.opensInH,
           openForH: win.openForH,
+          openness: win.bits ?? undefined,
           hoursUnknown: win.unknown,
           whatRel: rel,
         },
