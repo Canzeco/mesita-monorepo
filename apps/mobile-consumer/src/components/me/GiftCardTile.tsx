@@ -1,23 +1,13 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { Check, Mail, Share2, type LucideIcon } from 'lucide-react-native';
 import { useState } from 'react';
-import {
-  Linking,
-  Pressable,
-  Share,
-  Text,
-  useWindowDimensions,
-  View,
-} from 'react-native';
+import { Linking, Pressable, Share, Text, View } from 'react-native';
 
 import { GRADIENT_DIAGONAL, SHADOW_GLOW } from '@/constants/brand';
 import { copyText } from '@/lib/clipboard';
 
 const MESITA_CONTACT_EMAIL = 'support@mesita.ai';
 export const DEFAULT_SHARE_URL = 'https://www.mesita.ai';
-
-/** ISO/IEC 7810 ID-1 credit-card aspect (web GiftCardDeck parity). */
-const CARD_ASPECT = 85.6 / 53.98;
 
 export type GiftCard = {
   id: string;
@@ -33,9 +23,6 @@ export function GiftCardTile({ card }: { card: GiftCard }) {
   const [flash, setFlash] = useState<null | 'shared' | 'copied'>(null);
   const Emblem = card.Icon;
   const contact = card.contact;
-  const { width } = useWindowDimensions();
-  const cardWidth = Math.min(width - 32, 390);
-  const cardHeight = cardWidth / CARD_ASPECT;
 
   const onShare = async () => {
     const url = card.share.url ?? DEFAULT_SHARE_URL;
@@ -71,29 +58,24 @@ export function GiftCardTile({ card }: { card: GiftCard }) {
       style={{
         borderRadius: 16,
         padding: 20,
-        width: '100%',
-        height: cardHeight,
+        // Credit-card proportions (ISO/IEC 7810 ID-1, 85.6×53.98) — web parity.
+        aspectRatio: 85.6 / 53.98,
         overflow: 'hidden',
         ...SHADOW_GLOW,
       }}
     >
-      {/* Gloss sheen — web GiftCardDeck overlay peer. */}
+      {/* Gift-card gloss: a soft diagonal sheen across the gradient, bottom-left
+          → top-right (web `bg-gradient-to-tr from-transparent via-white/5
+          to-white/20`). Sits above the gradient, below emblem + content. */}
       <LinearGradient
-        colors={['rgba(255,255,255,0.22)', 'rgba(255,255,255,0)']}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 0.6, y: 0.9 }}
-        style={{
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          right: 0,
-          height: '55%',
-        }}
         pointerEvents="none"
+        colors={['transparent', 'rgba(255,255,255,0.05)', 'rgba(255,255,255,0.2)']}
+        start={{ x: 0, y: 1 }}
+        end={{ x: 1, y: 0 }}
+        style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
       />
-
       <Emblem
-        color="rgba(255,255,255,0.12)"
+        color="rgba(255,255,255,0.1)"
         size={112}
         strokeWidth={1.5}
         style={{ position: 'absolute', right: -12, bottom: -16 }}
@@ -113,7 +95,6 @@ export function GiftCardTile({ card }: { card: GiftCard }) {
             fontWeight: '800',
             letterSpacing: 2,
             textTransform: 'uppercase',
-            fontSize: 11,
           }}
         >
           Mesita · Gift card
@@ -154,17 +135,12 @@ export function GiftCardTile({ card }: { card: GiftCard }) {
 
       <View style={{ marginTop: 'auto', paddingTop: 24 }}>
         <Text
-          className="font-display"
-          style={{ color: '#fff', fontWeight: '700', fontSize: 22 }}
+          style={{ color: '#fff', fontWeight: '700' }}
         >
           {card.audience}
         </Text>
         <Text
-          style={{
-            color: 'rgba(255,255,255,0.85)',
-            marginTop: 6,
-            fontSize: 14,
-          }}
+          style={{ color: 'rgba(255,255,255,0.85)', marginTop: 6 }}
         >
           {card.line}
         </Text>
@@ -196,7 +172,9 @@ function PillButton({
       }}
     >
       {icon}
-      <Text style={{ color: '#fff', fontWeight: '700', fontSize: 12 }}>
+      <Text
+        style={{ color: '#fff', fontWeight: '700' }}
+      >
         {label}
       </Text>
     </Pressable>

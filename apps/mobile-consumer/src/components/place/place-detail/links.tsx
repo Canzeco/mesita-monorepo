@@ -1,6 +1,7 @@
 import { Link2, MapPin, Phone, SquareArrowOutUpRight, type LucideIcon } from 'lucide-react-native';
 import { Linking, Pressable, Text, View } from 'react-native';
 
+import { ChannelMark, channelKeyForField } from '@/components/brand/channel-marks';
 import type { PlaceDetail } from '@/lib/types/place-detail';
 import { CHANNEL_CLAY, CHANNEL_DEFS, RESERVATION_DEFS } from '../place-detail-links';
 import { Box } from './shared';
@@ -48,17 +49,29 @@ export function LinksBox({ place }: { place: PlaceDetail }) {
             border: '#faeff0',
           };
           const leavesApp = !url.startsWith('tel:');
+          // Real brand mark when the field maps to one (whatsapp / instagram /
+          // facebook / x / threads / reddit / opentable / ubereats / googlemaps
+          // / website) — brand colour baked in, mirroring web's per-channel
+          // SVG chips. Fields without a mark (phone / resy / didi) fall back to
+          // the neutral lucide glyph in the chip's clay text colour.
+          const brandKey = channelKeyForField(key);
           return (
             <Pressable
               key={key}
               onPress={() => void Linking.openURL(url)}
+              accessibilityRole="link"
+              accessibilityLabel={leavesApp ? `${label} (opens externally)` : label}
               className="flex-row items-center gap-1.5 rounded-full border px-3 py-2"
               style={{
                 backgroundColor: clay.bg,
                 borderColor: clay.border,
               }}
             >
-              <Icon color={clay.text} size={14} />
+              {brandKey ? (
+                <ChannelMark channel={brandKey} size={14} />
+              ) : (
+                <Icon color={clay.text} size={14} />
+              )}
               <Text className="text-xs font-semibold" style={{ color: clay.text }}>
                 {label}
               </Text>

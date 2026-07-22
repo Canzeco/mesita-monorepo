@@ -1,9 +1,9 @@
+import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import {
   Camera,
   Download,
   Trash2,
-  Users,
 } from 'lucide-react-native';
 import { useState } from 'react';
 import { Linking, Pressable, Text, View } from 'react-native';
@@ -14,18 +14,16 @@ import {
   SectionLabel,
   SelectRow,
 } from '@/components/me/me-settings-rows';
+import { BirthdayPicker } from '@/components/ui/BirthdayPicker';
 import { BoxRow } from '@/components/ui/BoxRow';
 import { Button } from '@/components/ui/Button';
 import { FullScreenSheet } from '@/components/ui/FullScreenSheet';
 import { TextField } from '@/components/ui/TextField';
 import { GRADIENT_DIAGONAL, GRADIENTS } from '@/constants/brand';
-import {
-  apiUpdateConsumerProfile,
-  type ConsumerProfile,
-} from '@/lib/api/auth';
+import { apiUpdateConsumerProfile } from '@/lib/api/auth';
 import { PREF_KEYS, useStoredFlag, useStoredString } from '@/lib/local-store';
 import { toast } from '@/lib/toast';
-import { errMsg, firstInitials } from '@/lib/utils';
+import { errMsg, firstInitial } from '@/lib/utils';
 import { useAuth } from '@/providers/auth';
 
 const TERMS_URL = 'https://www.mesita.ai/terms';
@@ -57,57 +55,15 @@ export function PersonalDetailsSheet({
   onSaved: () => void;
 }) {
   const { profile, session } = useAuth();
-  // Remount form when opened so draft state re-seeds from profile (no effect).
-  const formKey = visible
-    ? `${profile?.first_name ?? ''}|${profile?.birthday ?? ''}|open`
-    : 'closed';
-
-  return (
-    <FullScreenSheet
-      visible={visible}
-      onClose={onClose}
-      title="Personal details"
-      subtitle="How you appear across Mesita"
-    >
-      {profile ? (
-        <PersonalDetailsForm
-          key={formKey}
-          profile={profile}
-          phone={profile.phone ?? session?.user.phone ?? '—'}
-          onClose={onClose}
-          onSaved={onSaved}
-        />
-      ) : null}
-    </FullScreenSheet>
-  );
-}
-
-function PersonalDetailsForm({
-  profile,
-  phone,
-  onClose,
-  onSaved,
-}: {
-  profile: ConsumerProfile;
-  phone: string;
-  onClose: () => void;
-  onSaved: () => void;
-}) {
-  const [firstName, setFirstName] = useState(profile.first_name ?? '');
-  const [birthday, setBirthday] = useState(profile.birthday ?? '');
+  const [firstName, setFirstName] = useState(profile?.first_name ?? '');
+  const [birthday, setBirthday] = useState(profile?.birthday ?? '');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const dirty =
-    firstName.trim() !== (profile.first_name ?? '') ||
-    birthday !== (profile.birthday ?? '');
-
-  const initials = firstInitials(
-    firstName.trim() || profile.full_name || 'Mesita member',
-  );
+  const avatarUrl = profile?.avatar_url ?? null;
+  const initials = firstInitial(firstName, 'M');
 
   const save = async () => {
-    if (!dirty || saving) return;
     if (!firstName.trim()) {
       setError('First name required');
       return;
@@ -117,10 +73,9 @@ function PersonalDetailsForm({
     try {
       await apiUpdateConsumerProfile({
         first_name: firstName.trim(),
-        sex: (profile.sex as 'male' | 'female' | 'other') ?? 'other',
+        sex: (profile?.sex as 'male' | 'female' | 'other') ?? 'other',
         birthday: birthday || '',
       });
-      toast.success('Profile updated.');
       onSaved();
       onClose();
     } catch (e) {
@@ -131,13 +86,21 @@ function PersonalDetailsForm({
   };
 
   return (
-    <>
-      <View className="items-center">
+    <FullScreenSheet
+      visible={visible}
+      onClose={onClose}
+      title="Personal details"
+      subtitle="How you appear across Mesita"
+    >
+      {/* Tappable avatar — photo upload isn't wired to storage yet, so it
+          surfaces a coming-soon toast rather than a dead control (web parity). */}
+      <View style={{ alignItems: 'center' }}>
         <Pressable
           onPress={() => toast('Photo uploads are coming soon.')}
           accessibilityRole="button"
           accessibilityLabel="Change profile photo"
-          className="relative"
+          hitSlop={8}
+          style={{ position: 'relative' }}
         >
           <LinearGradient
             colors={[...GRADIENTS.pink]}
@@ -152,14 +115,37 @@ function PersonalDetailsForm({
               overflow: 'hidden',
             }}
           >
-            <Text
-              className="font-display font-bold text-white"
-              style={{ fontSize: 28 }}
-            >
-              {initials}
-            </Text>
+            {avatarUrl ? (
+              <Image
+                source={{ uri: avatarUrl }}
+                style={{ width: '100%', height: '100%' }}
+                contentFit="cover"
+                accessibilityLabel="Profile photo"
+              />
+            ) : (
+              <Text
+                className="font-display font-bold"
+                style={{ fontSize: 28, color: '#ffffff' }}
+              >
+                {initials}
+              </Text>
+            )}
           </LinearGradient>
-          <View className="absolute -bottom-0.5 -right-0.5 h-7 w-7 items-center justify-center rounded-full border-2 border-background bg-foreground">
+          <View
+            style={{
+              position: 'absolute',
+              right: -2,
+              bottom: -2,
+              width: 28,
+              height: 28,
+              borderRadius: 999,
+              backgroundColor: '#260409',
+              borderWidth: 2,
+              borderColor: '#fff7f8',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
             <Camera color="#fff7f8" size={14} />
           </View>
         </Pressable>
@@ -174,39 +160,25 @@ function PersonalDetailsForm({
       />
       <TextField
         label="Phone"
-        value={phone}
+        value={profile?.phone ?? session?.user.phone ?? '—'}
         editable={false}
         helper="Phone is your sign-in identity and can’t be edited here."
       />
-      <TextField
-        label="Birthday (YYYY-MM-DD)"
-        value={birthday}
-        onChangeText={setBirthday}
-        placeholder="1990-01-15"
-        autoCapitalize="none"
-      />
+      <View className="gap-1.5">
+        <Text className="font-semibold text-foreground" style={{ fontSize: 13 }}>
+          Birthday
+        </Text>
+        <BirthdayPicker value={birthday} onChange={setBirthday} />
+      </View>
       {error && firstName.trim() ? (
         <Text className="text-destructive" style={{ fontSize: 13 }}>
           {error}
         </Text>
       ) : null}
-      <View className="flex-row gap-2">
-        <View className="flex-1">
-          <Button variant="outline" onPress={onClose}>
-            Cancel
-          </Button>
-        </View>
-        <View className="flex-1">
-          <Button
-            loading={saving}
-            disabled={!dirty || saving}
-            onPress={() => void save()}
-          >
-            Save
-          </Button>
-        </View>
-      </View>
-    </>
+      <Button loading={saving} disabled={saving} onPress={() => void save()}>
+        Save
+      </Button>
+    </FullScreenSheet>
   );
 }
 
@@ -220,7 +192,7 @@ export function SettingsSheet({
   onDeleteAccount: () => void;
 }) {
   const [push, setPush] = useStoredFlag(PREF_KEYS.push, true);
-  const [location, setLocation] = useStoredFlag(PREF_KEYS.location, false);
+  const [location, setLocation] = useStoredFlag(PREF_KEYS.location, true);
   const [contacts, setContacts] = useStoredFlag(PREF_KEYS.contacts, false);
   const [language, setLanguage] = useStoredString(PREF_KEYS.language, 'es');
   const [city, setCity] = useStoredString(PREF_KEYS.defaultCity, 'cdmx');
@@ -235,35 +207,23 @@ export function SettingsSheet({
       <SectionLabel>Notifications</SectionLabel>
       <PrefRow
         title="Push notifications"
-        summary="Ticket updates and rewards"
+        summary="Offers and reservation updates"
         value={push}
         onValueChange={setPush}
       />
-
-      <SectionLabel>Community</SectionLabel>
-      <BoxRow
-        Icon={Users}
-        tint="violet"
-        title="Communities"
-        summary="Connect with your community"
-        onPress={() => {}}
-        soon
-      />
-
       <SectionLabel>Permissions</SectionLabel>
       <PrefRow
         title="Location"
-        summary="Recommend places near you"
+        summary="Better nearby recommendations"
         value={location}
         onValueChange={setLocation}
       />
       <PrefRow
         title="Contacts"
-        summary="Find friends already on Mesita"
+        summary="Find friends on Mesita"
         value={contacts}
         onValueChange={setContacts}
       />
-
       <SectionLabel>Preferences</SectionLabel>
       <SelectRow
         label="Language"
@@ -272,22 +232,20 @@ export function SettingsSheet({
         onChange={setLanguage}
       />
       <SelectRow
-        label="Default location"
+        label="Default city"
         value={city}
         options={CITY_OPTIONS}
         onChange={setCity}
       />
-
       <SectionLabel>Legal</SectionLabel>
       <LinkRow
-        title="Terms of use"
+        title="Terms of service"
         onPress={() => void Linking.openURL(TERMS_URL)}
       />
       <LinkRow
         title="Privacy policy"
         onPress={() => void Linking.openURL(PRIVACY_URL)}
       />
-
       <SectionLabel>Privacy & data</SectionLabel>
       <BoxRow
         Icon={Download}
@@ -304,21 +262,15 @@ export function SettingsSheet({
       />
       <BoxRow
         Icon={Trash2}
-        tint="destructive"
+        tint="muted"
         title="Delete account"
         summary="Permanently delete your account"
         onPress={() => {
           onClose();
+          // Defer so Settings sheet unmounts before Delete mounts.
           setTimeout(onDeleteAccount, 50);
         }}
       />
-
-      <Text
-        className="mt-2 text-center text-muted-foreground"
-        style={{ fontSize: 11 }}
-      >
-        Mesita · v2.4.1
-      </Text>
     </FullScreenSheet>
   );
 }

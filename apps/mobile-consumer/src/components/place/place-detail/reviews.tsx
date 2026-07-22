@@ -2,13 +2,16 @@ import { MessageCircle, Star } from 'lucide-react-native';
 import { useMemo, useState } from 'react';
 import { ScrollView, Text, View } from 'react-native';
 
-import { MesitaMark } from '@/components/brand/MesitaMark';
 import { ReviewCard } from '@/components/place/ReviewCard';
 import type { PlaceDetail } from '@/lib/types/place-detail';
 import { formatCompactCount, formatRating } from '@/lib/utils';
 import {
   ExternalCard,
+  FacebookBadge,
+  GoogleBadge,
+  InstagramBadge,
   mesitaOverall,
+  MesitaBadge,
   RatingBar,
   type ReviewSort,
   ReviewSortChips,
@@ -29,7 +32,7 @@ export function ReviewsSummaryBox({ place }: { place: PlaceDetail }) {
     <Box title="Reviews summary" icon={Star} iconColor="#a78bfa">
       <View className="gap-4 rounded-xl bg-background p-4">
         <View className="flex-row items-center gap-2">
-          <MesitaMark size={18} />
+          <MesitaBadge variant="sm" />
           <Text className="text-sm font-semibold text-foreground">Mesita</Text>
           <Text className="ml-auto text-[11px] text-muted-foreground">
             {place.mesita_reviews.total} reviews
@@ -56,19 +59,19 @@ export function ReviewsSummaryBox({ place }: { place: PlaceDetail }) {
       </View>
       <View className="flex-row gap-2">
         <ExternalCard
-          label="Google"
+          logo={<GoogleBadge />}
           icon="star"
           value={formatRating(place.google.rating) ?? '—'}
           meta={`${formatCompactCount(place.google.count, true)} reviews`}
         />
         <ExternalCard
-          label="IG"
+          logo={<InstagramBadge />}
           icon="users"
           value={formatCompactCount(place.instagram.followers, false)}
           meta="followers"
         />
         <ExternalCard
-          label="FB"
+          logo={<FacebookBadge />}
           icon="users"
           value={formatCompactCount(place.facebook.followers, false)}
           meta="followers"

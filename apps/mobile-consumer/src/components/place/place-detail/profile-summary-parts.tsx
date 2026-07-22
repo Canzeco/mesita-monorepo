@@ -1,9 +1,10 @@
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Camera, Gift, Star } from 'lucide-react-native';
+import { Gift, Star } from 'lucide-react-native';
 import { type ReactNode } from 'react';
 import { Text, View } from 'react-native';
 
+import { ChannelMark } from '@/components/brand/channel-marks';
 import { GRADIENT_DIAGONAL, GRADIENTS } from '@/constants/brand';
 import { resolvePromoRateFromPlaceRow } from '@/lib/promo-rates';
 import type { PlaceDetail } from '@/lib/types/place-detail';
@@ -56,7 +57,7 @@ export function ProfileStat({
     <View className="min-w-0 flex-1 items-center px-0.5">
       <View className="flex-row items-center gap-0.5">
         {star ? <Star color="#f59e0b" fill="#f59e0b" size={12} /> : null}
-        {ig ? <Camera color="#ec4899" size={12} /> : null}
+        {ig ? <ChannelMark channel="instagram" size={12} color="#ec4899" /> : null}
         {gift ? <Gift color="#0ea5e9" size={12} /> : null}
         <Text className="text-[17px] font-bold tabular-nums text-foreground">
           {value}

@@ -1,20 +1,25 @@
-import {
-  ChevronUp,
-  MapPin,
-  Search,
-  X,
-} from 'lucide-react-native';
+import { ChevronUp, MapPin, X } from 'lucide-react-native';
+import { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
+  type NativeScrollEvent,
+  type NativeSyntheticEvent,
   Pressable,
   Text,
   View,
 } from 'react-native';
 
 import { RailCard } from '@/components/search/SearchRailCard';
-import { COLORS, SHADOW_ELEV } from '@/constants/brand';
+import { SHADOW_ELEV } from '@/constants/brand';
 import type { Place } from '@/lib/api/places';
+
+// Rail card geometry (w-56 = 224px) + the flex gap between cards. The pager
+// index and the pin→card scroll sync both stride by this.
+const CARD_WIDTH = 224;
+const CARD_GAP = 10;
+const RAIL_LEADING = 12;
+const RAIL_STRIDE = CARD_WIDTH + CARD_GAP;
 
 export function IdleCatalogRail({
   idle,
@@ -22,13 +27,12 @@ export function IdleCatalogRail({
   loading,
   fetchError,
   places,
-  catalogCount,
   selectedId,
+  catalogCount,
   bottomInset,
   onCollapse,
   onExpand,
   onClearFilters,
-  onRetryCatalog,
   onSelectPlace,
   onOpenPlace,
 }: {
@@ -37,50 +41,75 @@ export function IdleCatalogRail({
   loading: boolean;
   fetchError: string | null;
   places: Place[];
-  catalogCount: number;
   selectedId: string | null;
+  /** Rows before filtering — powers the "no matches, clear filters" escape. */
+  catalogCount: number;
   bottomInset: number;
   onCollapse: () => void;
   onExpand: () => void;
   onClearFilters: () => void;
-  onRetryCatalog: () => void;
   onSelectPlace: (id: string) => void;
   onOpenPlace: (id: string) => void;
 }) {
+  const listRef = useRef<FlatList<Place>>(null);
+  // 0-based position of the card nearest the rail's scroll start → the
+  // "N / M places" pager (web SearchRailOverlay parity).
+  const [railIndex, setRailIndex] = useState(0);
+
+  // Pin tap → highlight + scroll the matching rail card into the centre. An
+  // effect (not the pin handler) because a search pick mounts the rail on the
+  // SAME commit that sets the selection — the list only exists after that
+  // render; it also re-centres when a dismissed rail reopens. Mirrors the web
+  // scrollIntoView effect.
+  useEffect(() => {
+    if (!idle || collapsed || !selectedId) return;
+    const index = places.findIndex((p) => p.id === selectedId);
+    if (index < 0) return;
+    const handle = requestAnimationFrame(() => {
+      listRef.current?.scrollToIndex({
+        index,
+        viewPosition: 0.5,
+        animated: true,
+      });
+    });
+    return () => cancelAnimationFrame(handle);
+  }, [idle, collapsed, selectedId, places]);
+
   if (!idle) return null;
 
-  if (collapsed) {
+  const bottom = Math.max(bottomInset, 8);
+
+  if (loading) {
     return (
-      <View
-        className="absolute inset-x-0 z-20 items-center"
-        style={{ bottom: Math.max(bottomInset, 8) + 8 }}
-      >
-        <Pressable
-          onPress={onExpand}
-          accessibilityRole="button"
-          accessibilityLabel={`Show ${places.length} ${
-            places.length === 1 ? 'place' : 'places'
-          }`}
-          className="flex-row items-center gap-1.5 rounded-full border border-border bg-card/95 px-3.5 py-2"
-          style={SHADOW_ELEV}
-        >
-          <ChevronUp color={COLORS.primary} size={16} />
-          <Text className="text-xs font-semibold text-foreground">
-            Show {places.length} {places.length === 1 ? 'place' : 'places'}
-          </Text>
-        </Pressable>
+      <View className="absolute inset-x-0 z-20" style={{ bottom: bottom + 4 }}>
+        <View className="h-28 items-center justify-center">
+          <ActivityIndicator color="#fb2b7b" />
+        </View>
       </View>
     );
   }
 
-  if (!loading && !fetchError && places.length === 0 && catalogCount > 0) {
+  if (fetchError) {
+    return (
+      <View className="absolute inset-x-0 z-20" style={{ bottom: bottom + 4 }}>
+        <View className="mx-4 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2">
+          <Text className="text-xs text-rose-700">{fetchError}</Text>
+        </View>
+      </View>
+    );
+  }
+
+  // Nothing survives the filters → the reset escape (only when there ARE rows
+  // to reset toward); a genuinely empty catalog shows nothing.
+  if (places.length === 0) {
+    if (catalogCount === 0) return null;
     return (
       <View
-        className="absolute inset-x-0 z-20 items-center px-4"
-        style={{ bottom: Math.max(bottomInset, 8) + 8 }}
+        className="absolute inset-x-0 z-20 items-center"
+        style={{ bottom: bottom + 4 }}
       >
         <View
-          className="flex-row items-center gap-3 rounded-2xl border border-border bg-card/95 px-4 py-3"
+          className="flex-row items-center gap-3 rounded-2xl border border-border bg-card px-4 py-3"
           style={SHADOW_ELEV}
         >
           <Text className="text-xs text-muted-foreground">
@@ -90,6 +119,7 @@ export function IdleCatalogRail({
             onPress={onClearFilters}
             accessibilityRole="button"
             accessibilityLabel="Clear filters"
+            hitSlop={8}
           >
             <Text className="text-xs font-semibold text-primary">
               Clear filters
@@ -100,26 +130,66 @@ export function IdleCatalogRail({
     );
   }
 
-  const selectedIndex = selectedId
-    ? places.findIndex((p) => p.id === selectedId)
-    : -1;
-  const pagerLabel =
-    places.length > 1 && selectedIndex >= 0
-      ? `${selectedIndex + 1} / ${places.length}`
-      : String(places.length);
+  // Dismissed → a single pill reopens the rail (tapping any pin reopens it too).
+  if (collapsed) {
+    return (
+      <View
+        className="absolute inset-x-0 z-20 items-center"
+        style={{ bottom: bottom + 8 }}
+      >
+        <Pressable
+          onPress={onExpand}
+          accessibilityRole="button"
+          accessibilityLabel={`Show ${places.length} ${places.length === 1 ? 'place' : 'places'}`}
+          className="min-h-[44px] flex-row items-center gap-1.5 rounded-full border border-border bg-card px-3.5 py-2"
+          style={SHADOW_ELEV}
+        >
+          <ChevronUp color="#fb2b7b" size={16} />
+          <Text
+            className="text-xs font-semibold text-foreground"
+            style={{ fontVariant: ['tabular-nums'] }}
+          >
+            Show {places.length} {places.length === 1 ? 'place' : 'places'}
+          </Text>
+        </Pressable>
+      </View>
+    );
+  }
+
+  const handleScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+    if (places.length === 0) return;
+    const { contentOffset, layoutMeasurement, contentSize } = e.nativeEvent;
+    // At the far-right end the last card is fully visible but the offset never
+    // reaches (n-1)·stride, so Math.round caps one short — snap to the last
+    // index once the list is scrolled to its end (web parity).
+    const overflowing = contentSize.width > layoutMeasurement.width;
+    const atEnd =
+      overflowing &&
+      contentOffset.x + layoutMeasurement.width >= contentSize.width - 4;
+    const idx = atEnd
+      ? places.length - 1
+      : Math.round(contentOffset.x / RAIL_STRIDE);
+    setRailIndex(Math.max(0, Math.min(idx, places.length - 1)));
+  };
 
   return (
-    <View
-      className="absolute inset-x-0 z-20"
-      style={{ bottom: Math.max(bottomInset, 8) + 4 }}
-    >
+    <View className="absolute inset-x-0 z-20" style={{ bottom: bottom + 4 }}>
+      {/* "N / M places" pager pill — reads as browsable, with an X to dismiss. */}
       <View className="mb-2 items-center">
-        <View className="flex-row items-center gap-1 rounded-full border border-border bg-card/95 py-1 pl-2.5 pr-1">
-          <MapPin color={COLORS.primary} size={12} />
-          <Text className="text-[11px] font-semibold tabular-nums text-muted-foreground">
-            {loading ? '…' : pagerLabel}
+        <View
+          className="flex-row items-center gap-1 rounded-full border border-border bg-card py-1 pl-2.5 pr-1"
+          style={SHADOW_ELEV}
+        >
+          <MapPin color="#fb2b7b" size={12} />
+          <Text
+            className="text-[11px] font-semibold text-muted-foreground"
+            style={{ fontVariant: ['tabular-nums'] }}
+          >
+            {places.length > 1
+              ? `${Math.min(railIndex + 1, places.length)} / ${places.length}`
+              : `${places.length}`}
           </Text>
-          <Text className="text-[11px] font-normal text-muted-foreground/70">
+          <Text className="text-[11px] text-muted-foreground/70">
             {places.length === 1 ? 'place' : 'places'}
           </Text>
           <View className="ml-0.5 h-3.5 w-px bg-border" />
@@ -127,79 +197,59 @@ export function IdleCatalogRail({
             onPress={onCollapse}
             accessibilityRole="button"
             accessibilityLabel="Hide places"
-            className="h-5 w-5 items-center justify-center rounded-full"
             hitSlop={8}
+            className="h-5 w-5 items-center justify-center rounded-full"
           >
-            <X color={COLORS.mutedForeground} size={14} />
+            <X color="#775254" size={14} />
           </Pressable>
         </View>
       </View>
-
-      {loading ? (
-        <View
-          className="h-28 items-center justify-center"
-          accessibilityRole="progressbar"
-          accessibilityLabel="Loading places"
-        >
-          <ActivityIndicator color={COLORS.primary} />
-        </View>
-      ) : fetchError ? (
-        <View className="mx-4 gap-2 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2">
-          <Text
-            accessibilityRole="alert"
-            className="text-xs text-rose-700"
-          >
-            {fetchError}
-          </Text>
-          <Pressable
-            onPress={onRetryCatalog}
-            accessibilityRole="button"
-            accessibilityLabel="Retry loading places"
-          >
-            <Text className="text-xs font-semibold text-primary">Retry</Text>
-          </Pressable>
-        </View>
-      ) : (
-        <FlatList
-          horizontal
-          data={places}
-          keyExtractor={(p) => p.id}
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={{ paddingHorizontal: 12, gap: 8 }}
-          accessibilityRole="list"
-          accessibilityLabel="Nearby places"
-          renderItem={({ item }) => (
-            <RailCard
-              place={item}
-              selected={item.id === selectedId}
-              onSelect={() => onSelectPlace(item.id)}
-              onOpen={() => onOpenPlace(item.id)}
-            />
-          )}
-        />
-      )}
+      <FlatList
+        ref={listRef}
+        horizontal
+        data={places}
+        keyExtractor={(p) => p.id}
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={{ paddingHorizontal: RAIL_LEADING, gap: CARD_GAP }}
+        onScroll={handleScroll}
+        scrollEventThrottle={16}
+        getItemLayout={(_, index) => ({
+          length: CARD_WIDTH,
+          offset: RAIL_LEADING + index * RAIL_STRIDE,
+          index,
+        })}
+        onScrollToIndexFailed={(info) => {
+          listRef.current?.scrollToOffset({
+            offset: RAIL_LEADING + info.index * RAIL_STRIDE,
+            animated: true,
+          });
+        }}
+        renderItem={({ item }) => (
+          <RailCard
+            place={item}
+            selected={item.id === selectedId}
+            onPress={() => {
+              if (selectedId === item.id) {
+                onOpenPlace(item.id);
+              } else {
+                onSelectPlace(item.id);
+              }
+            }}
+          />
+        )}
+      />
     </View>
   );
 }
 
-/** Focused but empty — solid prompt over the top ~70% so the map stays
- *  visible below (web EmptySearchPrompt parity). */
 export function EmptySearchPrompt() {
   return (
-    <View
-      className="absolute inset-x-0 top-0 z-20 items-center justify-center rounded-b-3xl border-b border-border bg-background px-8"
-      style={{ height: '70%', ...SHADOW_ELEV }}
-      accessibilityRole="text"
-      accessibilityLabel="Where to today? Find the perfect place by name or category."
-    >
-      <View className="h-14 w-14 items-center justify-center rounded-full bg-primary/10">
-        <Search color={COLORS.primary} size={24} strokeWidth={1.75} />
-      </View>
-      <Text className="mt-4 font-display text-lg font-semibold text-foreground">
+    <View className="items-center px-6 py-10">
+      <Text className="font-display text-xl font-semibold text-foreground">
         Where to today?
       </Text>
-      <Text className="mt-1.5 max-w-[260px] text-center text-sm text-muted-foreground">
-        Find the perfect place by name or category.
+      <Text className="mt-1 text-center text-sm text-muted-foreground">
+        Search Mesita partners and Google places.
       </Text>
     </View>
   );

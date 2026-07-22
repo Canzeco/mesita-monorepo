@@ -1,6 +1,6 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { Crown } from 'lucide-react-native';
-import { Text, View } from 'react-native';
+import { View } from 'react-native';
 
 import { FullScreenSheet } from '@/components/ui/FullScreenSheet';
 import { GRADIENT_DIAGONAL, GRADIENTS } from '@/constants/brand';
@@ -28,34 +28,29 @@ export function ClassModal({
       title="Your class"
       subtitle="Free or Premium — and how to climb"
     >
-      <View className="mb-1 flex-row items-center gap-3">
+      {/* Branded crown-icon tile (web ClassModal DNA). The sheet header already
+          carries the title, so the body leads with the mark only. */}
+      <View
+        style={{
+          width: 48,
+          height: 48,
+          borderRadius: 999,
+          overflow: 'hidden',
+        }}
+      >
         <LinearGradient
           colors={[...GRADIENTS.pink]}
           start={GRADIENT_DIAGONAL.start}
           end={GRADIENT_DIAGONAL.end}
           style={{
-            width: 48,
-            height: 48,
-            borderRadius: 999,
+            flex: 1,
             alignItems: 'center',
             justifyContent: 'center',
           }}
         >
-          <Crown color="#fff" size={20} />
+          <Crown color="#fff" size={22} />
         </LinearGradient>
-        <View className="min-w-0 flex-1">
-          <Text
-            className="font-display font-bold text-foreground"
-            style={{ fontSize: 18 }}
-          >
-            Climb your class
-          </Text>
-          <Text className="text-muted-foreground" style={{ fontSize: 12 }}>
-            Status here · subscribe on web
-          </Text>
-        </View>
       </View>
-
       <ClassPreviewToggle />
       <SectionEyebrow>Current class</SectionEyebrow>
       <CurrentClassCard />

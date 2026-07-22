@@ -3,7 +3,7 @@ import { Star } from 'lucide-react-native';
 import { useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 
-import { MesitaMark } from '@/components/brand/MesitaMark';
+import { GoogleBadge, MesitaBadge } from '@/components/place/place-detail/review-ui';
 import type { PlaceDetail } from '@/lib/types/place-detail';
 import { firstInitial } from '@/lib/utils';
 
@@ -75,7 +75,7 @@ export function ReviewCard(props: MesitaPayload | GooglePayload) {
       <Header
         initial={firstInitial(g.author)}
         name={g.author}
-        sub={g.date}
+        sub={formatReviewDate(g.date)}
         google
       />
       <StarRow rating={g.rating} />
@@ -133,12 +133,44 @@ function Header({
           {sub}
         </Text>
       </View>
-      {mesita ? <MesitaMark size={18} /> : null}
-      {google ? (
-        <Text className="text-[10px] font-bold text-muted-foreground">G</Text>
-      ) : null}
+      {mesita ? <MesitaBadge variant="md" /> : null}
+      {google ? <GoogleBadge size={32} /> : null}
     </View>
   );
+}
+
+// Enricher stores ISO `published`; mocks use relative strings — render either
+// cleanly (mirrors web ReviewCard.formatReviewDate). Non-parseable strings
+// (already-relative) pass through untouched.
+function formatReviewDate(raw: string): string {
+  if (!raw) return '';
+  const t = Date.parse(raw);
+  if (!Number.isFinite(t)) return raw;
+  const diffMs = Date.now() - t;
+  if (diffMs < 0) {
+    return new Date(t).toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+    });
+  }
+  const day = 86_400_000;
+  if (diffMs < day) return 'Today';
+  if (diffMs < 2 * day) return 'Yesterday';
+  if (diffMs < 7 * day) {
+    const n = Math.floor(diffMs / day);
+    return `${n} day${n === 1 ? '' : 's'} ago`;
+  }
+  if (diffMs < 30 * day) {
+    const n = Math.floor(diffMs / (7 * day));
+    return `${n} week${n === 1 ? '' : 's'} ago`;
+  }
+  if (diffMs < 365 * day) {
+    const n = Math.floor(diffMs / (30 * day));
+    return `${n} month${n === 1 ? '' : 's'} ago`;
+  }
+  const n = Math.floor(diffMs / (365 * day));
+  return `${n} year${n === 1 ? '' : 's'} ago`;
 }
 
 function StarRow({ rating }: { rating: number }) {

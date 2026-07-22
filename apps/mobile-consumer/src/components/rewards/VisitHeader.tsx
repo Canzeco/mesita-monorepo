@@ -1,13 +1,11 @@
 import { Image } from 'expo-image';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { MapPin } from 'lucide-react-native';
 import { Pressable, Text, View } from 'react-native';
 
 import { TicketFlowStepper } from '@/components/rewards/TicketFlowStepper';
 import { VisitHeaderStatus } from '@/components/rewards/visit-header-status';
-import { GRADIENT_DIAGONAL, SHADOW_ELEV } from '@/constants/brand';
-import type { Href } from 'expo-router';
+import { SHADOW_ELEV } from '@/constants/brand';
 import type { TicketFlowStepId, TicketFlowStepView } from '@/lib/ticket-flow-steps';
 
 export function VisitHeader({
@@ -23,7 +21,7 @@ export function VisitHeader({
   statusLine,
 }: {
   placeName: string;
-  placeHref?: Href | null;
+  placeHref?: string | null;
   placePhotoUrl?: string | null;
   rewardLabel: string;
   visitDateLabel?: string | null;
@@ -42,32 +40,13 @@ export function VisitHeader({
     borderWidth: 1,
   };
 
-  const nameEl = placeHref ? (
-    <Pressable
-      onPress={() => router.push(placeHref)}
-      accessibilityRole="link"
-      accessibilityLabel={`Open ${placeName}`}
-    >
-      <Text
-        numberOfLines={1}
-        style={{ fontSize: 14, fontWeight: '600', color: '#260409' }}
-      >
-        {placeName}
-      </Text>
-    </Pressable>
-  ) : (
-    <Text numberOfLines={1} style={{ fontSize: 14, fontWeight: '600' }}>
-      {placeName}
-    </Text>
-  );
-
   return (
     <View
       style={{
         borderRadius: 16,
         backgroundColor: '#ffffff',
         borderWidth: 1,
-        borderColor: 'rgba(207,3,96,0.15)',
+        borderColor: 'rgba(16,185,129,0.15)',
         overflow: 'hidden',
         ...SHADOW_ELEV,
       }}
@@ -98,31 +77,56 @@ export function VisitHeader({
             )}
           </View>
           <View style={{ flex: 1, gap: 8 }}>
+            {placeHref ? (
+              <Pressable
+                onPress={() => router.push(`/place/${placeHref}`)}
+                hitSlop={{ top: 8, bottom: 8 }}
+                accessibilityRole="link"
+                accessibilityLabel={`View ${placeName}`}
+                style={({ pressed }) => ({
+                  ...pill,
+                  backgroundColor: 'rgba(255,247,248,0.7)',
+                  borderColor: 'rgba(235,217,219,0.5)',
+                  opacity: pressed ? 0.7 : 1,
+                })}
+              >
+                <Text
+                  numberOfLines={1}
+                  style={{ fontSize: 14, fontWeight: '600' }}
+                >
+                  {placeName}
+                </Text>
+              </Pressable>
+            ) : (
+              <View
+                style={{
+                  ...pill,
+                  backgroundColor: 'rgba(255,247,248,0.7)',
+                  borderColor: 'rgba(235,217,219,0.5)',
+                }}
+              >
+                <Text
+                  numberOfLines={1}
+                  style={{ fontSize: 14, fontWeight: '600' }}
+                >
+                  {placeName}
+                </Text>
+              </View>
+            )}
             <View
               style={{
                 ...pill,
-                backgroundColor: 'rgba(255,247,248,0.7)',
-                borderColor: 'rgba(235,217,219,0.5)',
-              }}
-            >
-              {nameEl}
-            </View>
-            <LinearGradient
-              colors={['rgba(207,3,96,0.12)', 'rgba(251,43,123,0.10)']}
-              start={GRADIENT_DIAGONAL.start}
-              end={GRADIENT_DIAGONAL.end}
-              style={{
-                ...pill,
-                borderColor: 'rgba(207,3,96,0.2)',
+                backgroundColor: 'rgba(16,185,129,0.1)',
+                borderColor: 'rgba(16,185,129,0.2)',
               }}
             >
               <Text
                 numberOfLines={1}
-                style={{ fontSize: 14, fontWeight: '600', color: '#cf0360' }}
+                style={{ fontSize: 14, fontWeight: '600', color: '#059669' }}
               >
                 {rewardLabel}
               </Text>
-            </LinearGradient>
+            </View>
             <View
               style={{
                 ...pill,

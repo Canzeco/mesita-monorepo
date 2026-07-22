@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ArrowLeft, Store } from 'lucide-react-native';
-import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { PlaceDetailBody } from '@/components/place/PlaceDetailBody';
@@ -62,19 +62,15 @@ export default function PlaceDetailScreen() {
           </Pressable>
         </View>
       ) : (
-        <ScrollView
-          className="flex-1"
-          contentContainerClassName="pb-10"
-          showsVerticalScrollIndicator={false}
-        >
-          <PlaceDetailBody
-            place={place}
-            onSaveToggle={(next) => {
-              if (next) upsertSavedPlacePreview(placeDetailToPreview(place));
-              else removeSavedPlacePreview(place.id);
-            }}
-          />
-        </ScrollView>
+        // PlaceDetailBody owns its own scroll container so the tab strip can
+        // pin (stickyHeaderIndices). flex-1 fills the space under the header.
+        <PlaceDetailBody
+          place={place}
+          onSaveToggle={(next) => {
+            if (next) upsertSavedPlacePreview(placeDetailToPreview(place));
+            else removeSavedPlacePreview(place.id);
+          }}
+        />
       )}
     </SafeAreaView>
   );

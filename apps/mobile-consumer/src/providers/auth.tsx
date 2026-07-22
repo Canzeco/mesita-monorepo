@@ -1,4 +1,5 @@
 import type { Session } from '@supabase/supabase-js';
+import { router } from 'expo-router';
 import { createContext, useContext, useEffect, useState } from 'react';
 
 import {
@@ -54,11 +55,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setProfile(result.consumer);
         setConsumerClass(normalizeClass(result.class));
       } catch {
-        // Same behavior as the web onboard page: EF failure falls through to
-        // the onboard form rather than crashing the gate.
+        // Keep the last-known-good profile on a transient EF/network failure.
+        // Nulling it here would flip `onboarded` to false and, via the (tabs)
+        // guard, eject an already-onboarded user to /onboard on a routine
+        // TOKEN_REFRESHED refetch (app foreground after token expiry). A
+        // genuine "no profile" arrives on the SUCCESS path above
+        // (result.consumer === null), never through this catch.
         if (!active) return;
-        setProfile(null);
-        setConsumerClass(null);
       }
     };
 
@@ -97,7 +100,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const signOut = async () => {
-    await supabase.auth.signOut();
+    // Sign-out must land the user on the auth surface — clearing the session
+    // alone left them stranded on whatever authed screen they were on. The
+    // (tabs) guard also redirects once `session` clears, but navigating here
+    // makes the transition immediate and covers non-tab callers.
+    try {
+      await supabase.auth.signOut();
+    } finally {
+      router.replace('/sign-in');
+    }
   };
 
   return (

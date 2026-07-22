@@ -5,6 +5,7 @@ import { Text, View } from 'react-native';
 
 import { LockedBanner, TipRows } from '@/components/rewards/action-card-tips';
 import { TicketBillReceipt } from '@/components/rewards/TicketBillReceipt';
+import { TicketStoryFrame } from '@/components/rewards/TicketStoryFrame';
 import { Button } from '@/components/ui/Button';
 import { GRADIENT_DIAGONAL, GRADIENTS, SHADOW_ELEV } from '@/constants/brand';
 import type { TicketBillPayload } from '@/lib/api/pay';
@@ -119,6 +120,14 @@ export function ActionCard({
         {isLocked ? <LockedBanner /> : null}
 
         {isActive && tips.length > 0 ? <TipRows tips={tips} /> : null}
+
+        {step.id === 'story' && !isLocked ? (
+          <TicketStoryFrame
+            placePhotoUrl={payload.place_photo_url}
+            placeName={payload.place_name}
+            placeInstagramHandle={placeInstagramHandle}
+          />
+        ) : null}
 
         {showBillReceipt ? (
           <TicketBillReceipt

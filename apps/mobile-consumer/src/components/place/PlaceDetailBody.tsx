@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { Pressable, ScrollView, Text, View } from 'react-native';
 
 import { AboutBox } from '@/components/place/AboutBox';
 import { ProductsTab } from '@/components/place/ProductsTab';
@@ -20,6 +20,11 @@ const PLACE_TABS: { key: PlaceTab; label: string }[] = [
   { key: 'rewards', label: 'Rewards' },
 ];
 
+// Owns the scroll container so the tab strip can pin. The three direct
+// children below map to fixed stickyHeaderIndices — [1] is the tab strip —
+// mirroring web's `sticky top-0` PlaceTabBar (see web PlaceDetailBody /
+// tabs.tsx). Keep them as three literal children (no fragments) so the
+// index math stays deterministic.
 export function PlaceDetailBody({
   place,
   onSaveToggle,
@@ -29,10 +34,20 @@ export function PlaceDetailBody({
 }) {
   const [tab, setTab] = useState<PlaceTab>('place');
   return (
-    <View className="pb-4">
+    <ScrollView
+      className="flex-1"
+      contentContainerClassName="pb-10"
+      stickyHeaderIndices={[1]}
+      showsVerticalScrollIndicator={false}
+    >
+      {/* 0 — profile summary band (scrolls away under the strip) */}
       <ProfileSummary place={place} onSaveToggle={onSaveToggle} />
-      <View className="gap-3 px-4">
-        <PlaceTabBar tab={tab} onChange={setTab} />
+
+      {/* 1 — sticky tab strip: stays reachable while deep in a tab */}
+      <PlaceTabBar tab={tab} onChange={setTab} />
+
+      {/* 2 — active tab content */}
+      <View className="gap-3 px-4 pt-3">
         {tab === 'place' ? (
           <>
             <MediaBox place={place} />
@@ -55,7 +70,7 @@ export function PlaceDetailBody({
         {tab === 'products' ? <ProductsTab menus={place.menus} /> : null}
         {tab === 'rewards' ? <RewardsBox place={place} /> : null}
       </View>
-    </View>
+    </ScrollView>
   );
 }
 
@@ -67,13 +82,18 @@ function PlaceTabBar({
   onChange: (t: PlaceTab) => void;
 }) {
   return (
-    <View className="-mx-4 flex-row border-b border-border bg-background px-2">
+    // Solid bg-background (opaque) so scrolled-out content can't bleed
+    // through while the strip is pinned to the top of the scroll area.
+    <View className="flex-row border-b border-border bg-background px-2">
       {PLACE_TABS.map((t) => {
         const active = t.key === tab;
         return (
           <Pressable
             key={t.key}
             onPress={() => onChange(t.key)}
+            accessibilityRole="tab"
+            accessibilityState={{ selected: active }}
+            accessibilityLabel={t.label}
             className={`flex-1 items-center border-b-2 py-3 ${
               active ? 'border-pink-500' : 'border-transparent'
             }`}

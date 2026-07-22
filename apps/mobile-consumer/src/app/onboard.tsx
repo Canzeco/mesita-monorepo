@@ -9,15 +9,15 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { BirthdayPicker } from '@/components/ui/BirthdayPicker';
 import { Button } from '@/components/ui/Button';
 import { TextField } from '@/components/ui/TextField';
 import { apiUpdateConsumerProfile } from '@/lib/api/auth';
-import { CONSUMER_ROUTES } from '@/lib/consumer-route-contract';
 import { useAuth } from '@/providers/auth';
 
 const SEX_OPTIONS = [
-  { value: 'female', label: 'Female' },
   { value: 'male', label: 'Male' },
+  { value: 'female', label: 'Female' },
   { value: 'other', label: 'Other' },
 ] as const;
 
@@ -33,22 +33,16 @@ export default function Onboard() {
   const [error, setError] = useState<string | null>(null);
 
   const validBirthday = /^\d{4}-\d{2}-\d{2}$/.test(birthday.trim());
-  const canSubmit =
-    firstName.trim().length > 0 && sex !== null && validBirthday;
+  const canSubmit = firstName.trim().length > 0 && sex !== null && validBirthday;
+
+  const phoneLabel = session?.user.phone ? `+${session.user.phone}` : null;
 
   if (onboarded) {
-    return <Redirect href={CONSUMER_ROUTES.homeDefault} />;
+    return <Redirect href="/(tabs)/home" />;
   }
 
   const submit = async () => {
-    if (!sex) {
-      setError('Pick a sex from the list.');
-      return;
-    }
-    if (!firstName.trim() || !validBirthday) {
-      setError('Please complete all required fields');
-      return;
-    }
+    if (!sex) return;
     setError(null);
     setBusy(true);
     try {
@@ -60,58 +54,87 @@ export default function Onboard() {
       await refreshProfile();
       router.replace('/');
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Couldn't save. Try again.");
+      setError(e instanceof Error ? e.message : 'Could not save your profile');
     } finally {
       setBusy(false);
     }
   };
 
-  const phone = session?.user.phone ?? '';
-
   return (
-    <SafeAreaView className="flex-1 bg-background">
+    <SafeAreaView style={{ flex: 1, backgroundColor: '#fff7f8' }}>
+      {/* Identity header — the signed-in phone is already on auth.user from the
+          OTP step. "Not you?" signs out and returns to /sign-in. */}
+      <View
+        style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          paddingHorizontal: 24,
+          paddingTop: 8,
+          paddingBottom: 4,
+        }}
+      >
+        <Text
+          className="text-muted-foreground"
+          style={{ fontSize: 13 }}
+          numberOfLines={1}
+        >
+          {phoneLabel ? `Signed in as ${phoneLabel}` : 'Signed in'}
+        </Text>
+        <Pressable
+          onPress={() => void signOut()}
+          accessibilityRole="button"
+          accessibilityLabel="Not you? Sign out"
+          hitSlop={8}
+          style={{ minHeight: 44, justifyContent: 'center' }}
+        >
+          <Text className="font-semibold text-primary" style={{ fontSize: 13 }}>
+            Not you?
+          </Text>
+        </Pressable>
+      </View>
+
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        className="flex-1 justify-center px-6"
+        style={{ flex: 1, justifyContent: 'center', paddingHorizontal: 24 }}
       >
-        <Text className="font-display text-[28px] font-semibold tracking-tight text-foreground">
-          Tell us about you
+        <Text
+          className="font-display font-semibold text-foreground"
+          style={{ fontSize: 28, letterSpacing: -0.42 }}
+        >
+          Welcome to Mesita
         </Text>
-        <Text className="mt-2 text-sm text-muted-foreground">
+        <Text
+          className="mt-2 text-muted-foreground"
+          style={{ fontSize: 14 }}
+        >
           A few details and your table is ready.
         </Text>
 
-        {phone ? (
-          <View className="mt-4 flex-row flex-wrap items-center gap-2">
-            <View className="rounded-full border border-border bg-card px-3 py-1.5">
-              <Text className="text-xs text-muted-foreground">
-                Signed in as{' '}
-                <Text className="font-semibold text-foreground">{phone}</Text>
-              </Text>
-            </View>
-            <Pressable
-              onPress={() => void signOut()}
-              accessibilityRole="button"
-              accessibilityLabel="Not you? Sign out"
-            >
-              <Text className="text-xs font-semibold text-primary">
-                Not you?
-              </Text>
-            </Pressable>
-          </View>
-        ) : null}
-
-        <View className="mt-8 rounded-2xl border border-border bg-card p-6 shadow-sm">
+        <View
+          className="rounded-2xl border border-border bg-card"
+          style={{
+            marginTop: 32,
+            padding: 24,
+            shadowColor: '#260409',
+            shadowOpacity: 0.08,
+            shadowRadius: 12,
+            shadowOffset: { width: 0, height: 4 },
+            elevation: 2,
+          }}
+        >
           <TextField
             label="First name"
             autoComplete="given-name"
             value={firstName}
             onChangeText={setFirstName}
-            placeholder="First name"
           />
 
-          <Text className="mb-2 mt-5 text-xs font-medium text-muted-foreground">
-            Sex
+          <Text
+            className="font-semibold text-muted-foreground"
+            style={{ marginTop: 20, marginBottom: 8, color: '#775254' }}
+          >
+            SEX
           </Text>
           <View className="flex-row rounded-2xl border border-border bg-muted p-1">
             {SEX_OPTIONS.map((option) => {
@@ -131,9 +154,10 @@ export default function Onboard() {
                   <Text
                     className={
                       active
-                        ? 'text-[13px] font-semibold text-foreground'
-                        : 'text-[13px] font-semibold text-muted-foreground'
+                        ? 'font-semibold text-foreground'
+                        : 'font-semibold text-muted-foreground'
                     }
+                    style={{ fontSize: 13 }}
                   >
                     {option.label}
                   </Text>
@@ -142,33 +166,34 @@ export default function Onboard() {
             })}
           </View>
 
-          <View className="mt-5">
-            <TextField
-              label="Birthday"
-              keyboardType="numbers-and-punctuation"
-              placeholder="YYYY-MM-DD"
-              value={birthday}
-              onChangeText={setBirthday}
-            />
-          </View>
+          <Text
+            className="font-semibold text-muted-foreground"
+            style={{ marginTop: 20, marginBottom: 8, color: '#775254' }}
+          >
+            BIRTHDAY
+          </Text>
+          <BirthdayPicker value={birthday} onChange={setBirthday} />
 
-          {error ? (
-            <View className="mt-3 rounded-xl border border-destructive/30 bg-destructive/10 px-3 py-2">
-              <Text className="text-xs text-destructive">{error}</Text>
-            </View>
-          ) : null}
-
-          <View className="mt-6">
+          <View style={{ marginTop: 24 }}>
             <Button
               onPress={() => void submit()}
               loading={busy}
               disabled={!canSubmit || busy}
             >
-              Continue
+              Let&apos;s go
             </Button>
           </View>
 
-          <Text className="mt-3 text-center text-[11px] text-muted-foreground">
+          {error ? (
+            <Text className="mt-2 text-destructive" style={{ fontSize: 12 }}>
+              {error}
+            </Text>
+          ) : null}
+
+          <Text
+            className="text-muted-foreground"
+            style={{ marginTop: 12, textAlign: 'center', fontSize: 11, lineHeight: 15 }}
+          >
             We use these to personalize recommendations. Your details are never
             shared with places.
           </Text>
