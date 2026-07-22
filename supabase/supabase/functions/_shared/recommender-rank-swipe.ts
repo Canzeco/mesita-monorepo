@@ -53,7 +53,7 @@ export type RankSwipeInput = {
 export type RankSwipeResult =
   | {
     ok: true;
-    deck: Omit<PlaceRow, "embedding" | "embedding_source_hash">[];
+    deck: Omit<PlaceRow, "embedding" | "embedding_source_hash" | "embedding_source_text">[];
     summary: {
       candidates: number;
       embedded: number;
@@ -102,6 +102,7 @@ export async function rankSwipeDeck(
       if (p) {
         c.embedding = p.embedding;
         c.embedding_source_hash = p.hash;
+        c.embedding_source_text = p.text;
       }
     }
   }

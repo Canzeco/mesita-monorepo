@@ -391,10 +391,10 @@ export function buildCiDoc(profile: ConsumerProfile, intent: Intent): string {
     .join("\n");
 }
 
-/** The place document — what the Enricher's profile embeds. Spec fields
- * ONLY: name · category · tags · description · zone & city (+ reviews
- * summary and price when the data exists). Rating/hours are ROUTED to
- * GP/SM — numeric, never embedded here. */
+/** The place document — what EM embeds. Spec fields ONLY: name · category ·
+ * description · zone & city (+ price when present). Tags are ignored
+ * (MESITA-720 — too noisy). Rating/hours are ROUTED to GP/SM — numeric,
+ * never embedded here. */
 export function buildPlaceDoc(p: SamplePlace): string {
   const head = [
     p.name,
@@ -403,10 +403,8 @@ export function buildPlaceDoc(p: SamplePlace): string {
   ]
     .filter(Boolean)
     .join(" — ");
-  const tags =
-    Array.isArray(p.tags) && p.tags.length > 0 ? `Tags: ${p.tags.join(", ")}.` : "";
   const desc = p.description ? p.description : "";
-  return [head, tags, desc].filter(Boolean).join("\n");
+  return [head, desc].filter(Boolean).join("\n");
 }
 
 // ── EMULATED EMBEDDINGS — feature-hashed bag-of-tokens ──────────────────

@@ -170,6 +170,11 @@ export type AdminPlace = {
   // Stamped by the Enricher's final write — lets the Meta box attribute
   // updated_at to the AI (≈ same instant) vs a human edit (later).
   enriched_at: string | null;
+  // On-Update embeddings (MESITA-720) — human blurb + vector; super-admin
+  // overview only. Tags are never part of the source text.
+  embedding?: string | number[] | null;
+  embedding_source_hash?: string | null;
+  embedding_source_text?: string | null;
   [k: string]: unknown;
 };
 

@@ -27,7 +27,7 @@ import {
   type LaneId,
 } from "@/lib/business/scores";
 import type { AdminPlace } from "../actions";
-import { GroupLabel, SectionCard, TINT_CHIP } from "../ui";
+import { GroupLabel, SectionCard } from "../ui";
 
 // ════════════════════════════════════════════════════════════════════════
 // Scores — this place's potency in the recommendation engines (Swipe · Map ·
@@ -274,32 +274,24 @@ export function ScoresSection({ place }: { place: AdminPlace }) {
         icon={<Braces className="h-4.5 w-4.5" />}
         tint="indigo"
         title="Semantic"
-        subtitle="EM is never binary tags — the place is queried by meaning: its profile embedded as a vector, matched by cosine. Tags only enrich the text."
-        action={<Pill>Mock — no vectors yet</Pill>}
+        subtitle="EM matches meaning via a short on-update blurb (no tags) embedded as a vector. See the Place tab Embeddings card for the live source text + vector."
+        action={<Pill>See Place → Embeddings</Pill>}
       >
         <div className="mt-5 grid gap-5 md:grid-cols-2">
           <div>
-            {place.description ? (
+            {place.embedding_source_text ? (
+              <p className="bg-muted/60 border-border/60 rounded-xl border px-4 py-3 text-sm leading-relaxed">
+                {place.embedding_source_text}
+              </p>
+            ) : place.description ? (
               <p className="bg-muted/60 border-border/60 rounded-xl border px-4 py-3 text-sm leading-relaxed">
                 {place.description}
               </p>
             ) : (
               <p className="text-muted-foreground bg-muted/60 border-border/60 rounded-xl border px-4 py-3 text-sm italic">
-                No description yet — the Enricher writes this; until then there
-                is nothing to embed.
+                No embedding blurb yet — On-Update synthesizes it when the
+                place profile changes.
               </p>
-            )}
-            {(place.tags?.length ?? 0) > 0 && (
-              <div className="mt-3 flex flex-wrap gap-1.5">
-                {(place.tags ?? []).slice(0, 12).map((t) => (
-                  <span
-                    key={t}
-                    className={"rounded-full px-2.5 py-1 text-[11px] font-medium " + TINT_CHIP.indigo}
-                  >
-                    {t.replace(/_/g, " ")}
-                  </span>
-                ))}
-              </div>
             )}
           </div>
 
@@ -314,8 +306,8 @@ export function ScoresSection({ place }: { place: AdminPlace }) {
               ))}
             </div>
             <p className="text-muted-foreground mt-2 text-xs leading-relaxed">
-              48 of 1,536 dims, mocked from the place id — the real vector comes from OpenAI
-              text-embedding-3-small over the text on the left.
+              Preview strip only — the live 1,536-d vector from OpenAI
+              text-embedding-3-small is on the Place tab Embeddings card.
             </p>
           </div>
         </div>

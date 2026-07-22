@@ -26,6 +26,7 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { invokeArtificialCaller } from "../_shared/internal.ts";
 import { applyProfileToUpdate, synthesisModelFor, synthesizeProfile } from "../_shared/enrich-synthesis.ts";
 import { loadEnrichConfig } from "../_shared/enrich-config.ts";
+import { runPlaceEmbeddingsOnUpdate } from "../_shared/place-embeddings.ts";
 import { fetchPlaceCategories, inferPlaceCategory } from "../_shared/categories.ts";
 import { fetchPlaceTags, inferPlaceTags } from "../_shared/tags.ts";
 import {
@@ -216,6 +217,17 @@ serveEnrichStage("contents", async (admin, env, row) => {
     await releaseResearchRow(admin, projectId, `content_status: ${projErr.message}`);
     return;
   }
+
+  // On-Update S2/S3 — synthesize short embedding blurb (no tags) + vector.
+  // Best-effort: profile is already ready; a failed embed leaves lazy
+  // recommender backfill as the safety net.
+  const openaiKey = Deno.env.get("OPENAI_KEY")?.trim();
+  await runPlaceEmbeddingsOnUpdate(
+    admin,
+    projectId,
+    openaiKey,
+    "enrich-contents/on-update",
+  );
 
   // ━━━ S9 — store images (own EF: storage mirroring gets its own wall clock) ━━━
   // Profile is already persisted (ready); image mirroring is best-effort — a

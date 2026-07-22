@@ -19,6 +19,11 @@ import {
 } from "../_shared/auth.ts";
 import { PLACE_BUSINESS_COLUMNS as PLACE_COLUMNS } from "../_shared/place-columns.ts";
 
+// Super-admin manage-single Embeddings card (MESITA-720) — keep vectors off
+// the business overview payload; only elevate when the caller is a super-admin.
+const PLACE_ADMIN_EMBEDDING_COLUMNS =
+  ", embedding, embedding_source_hash, embedding_source_text";
+
 // `placeId` is the canonical place-row id key (MESITA-26); `activeUnitId`
 // is this EF's legacy alias, kept working during the client migration window.
 type Body = { placeId?: string; activeUnitId?: string; ticketsLimit?: number };
@@ -59,7 +64,7 @@ Deno.serve(async (req) => {
     }
     const placeRow = await admin
       .from("projects_view")
-      .select(PLACE_COLUMNS)
+      .select(PLACE_COLUMNS + PLACE_ADMIN_EMBEDDING_COLUMNS)
       .eq("id", requestedUnitId)
       .maybeSingle();
     if (placeRow.error) {

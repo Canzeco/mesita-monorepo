@@ -42,6 +42,10 @@ import {
   loadPreviousSocialUrlsForRefresh,
   queueSocialFollowersRefresh,
 } from "./project-social-refresh.ts";
+import {
+  queuePlaceEmbeddingsOnUpdate,
+  updateTouchesEmbeddingInputs,
+} from "../_shared/place-embeddings.ts";
 
 const MAX_PHOTOS = ENRICH_FIELD_LIMITS.photos.max;
 const MAX_TAGS = ENRICH_FIELD_LIMITS.tagsPerPlace.max;
@@ -527,6 +531,18 @@ Deno.serve(async (req) => {
     update,
     prevSocial,
   });
+
+  // On-Update embeddings (MESITA-720): when profile fields that feed the
+  // blurb change, re-synthesize human text + vector in the background.
+  // Tags alone never trigger a re-embed.
+  if (updateTouchesEmbeddingInputs(update)) {
+    queuePlaceEmbeddingsOnUpdate({
+      admin,
+      placeId: projectId,
+      apiKey: Deno.env.get("OPENAI_KEY")?.trim(),
+      logPrefix: "business-web-update-project/on-update",
+    });
+  }
 
   return json({ ok: true, place });
 });

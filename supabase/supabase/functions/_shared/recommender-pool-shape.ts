@@ -7,9 +7,9 @@ import type { WeeklyHours } from "./local-time.ts";
 
 // Shape of a candidate place row as projected by RECOMMENDER_PLACE_COLUMNS.
 // Both rankers (recommender-rank-swipe.ts, recommender-rank-map.ts) cast the
-// candidate pool to this type. The trailing `embedding` /
-// `embedding_source_hash` are ranker-internal and get stripped by
-// stripInternal before the row crosses back over the wire to the client.
+// candidate pool to this type. The trailing embedding* columns are
+// ranker-internal and get stripped by stripInternal before the row crosses
+// back over the wire to the client.
 export type PlaceRow = {
   id: string;
   slug: string;
@@ -34,10 +34,14 @@ export type PlaceRow = {
   phone: string | null;
   pitch: string | null;
   story: string | null;
+  description: string | null;
+  zone: string | null;
+  city: string | null;
   photos: string[] | null;
   [key: string]: unknown;
   embedding: unknown | null;
   embedding_source_hash: string | null;
+  embedding_source_text: string | null;
 };
 
 // Minimal consumer-context the rankers thread into intent composition /
@@ -57,11 +61,16 @@ export function clampPositive(v: unknown, def: number, max: number): number {
   return Math.min(n, max);
 }
 
-// Drops the two ranker-internal columns so the row is safe to return to the
+// Drops ranker-internal embedding columns so the row is safe to return to the
 // client. The leading-underscore rest-omit destructuring discards them.
 export function stripInternal(
   v: PlaceRow,
-): Omit<PlaceRow, "embedding" | "embedding_source_hash"> {
-  const { embedding: _e, embedding_source_hash: _h, ...rest } = v;
+): Omit<PlaceRow, "embedding" | "embedding_source_hash" | "embedding_source_text"> {
+  const {
+    embedding: _e,
+    embedding_source_hash: _h,
+    embedding_source_text: _t,
+    ...rest
+  } = v;
   return rest;
 }

@@ -13,6 +13,7 @@ import {
   Copy,
   ExternalLink,
   Fingerprint,
+  Braces,
   Globe,
   ImagePlus,
   Images,
@@ -664,9 +665,9 @@ export function PlaceSection({
     // [&>section]; the fixed photo dialog is a <div>, exempt and out of flow.
     // lg (not xl): admin content + sidebar rarely reaches 1280px of free width.
     <div className="columns-1 gap-4 [&>section]:mb-4 [&>section]:break-inside-avoid [&>details]:mb-4 [&>details]:break-inside-avoid lg:columns-2 lg:gap-5 lg:[&>section]:mb-5 lg:[&>details]:mb-5">
-      {/* Box order (MESITA-547): edit-first — Basics → Hours → Channels →
-          Reservations → Photos → Products/Reviews → Location → Ownership →
-          Promos → Metadata (collapsed). */}
+      {/* Box order (MESITA-547 / MESITA-720): edit-first — Basics → Hours →
+          Channels → Reservations → Photos → Products/Reviews → Location →
+          Ownership → Promos → Metadata → Embeddings. */}
 {/* Basics — editable identity. Price stays Enricher/Google-derived
           read-only; category is Enricher + Admin + Business (MESITA-469). */}
       <SectionCard
@@ -1107,6 +1108,8 @@ export function PlaceSection({
 
       <MetaCard place={place} enrichStatus={enrichStatus} />
 
+      <EmbeddingsCard place={place} />
+
       {metaFor !== null && (
         <MediaMetaDialog
           url={metaFor}
@@ -1257,6 +1260,82 @@ function enrichmentBadge(
     default:
       return { text: "Not enriched", cls: "bg-muted text-muted-foreground", spinning: false };
   }
+}
+
+function parseEmbeddingVector(raw: AdminPlace["embedding"]): number[] | null {
+  if (Array.isArray(raw)) {
+    const nums = raw.map((n) => Number(n));
+    return nums.every((n) => Number.isFinite(n)) ? nums : null;
+  }
+  if (typeof raw !== "string" || !raw.trim()) return null;
+  const inner = raw.trim().replace(/^\[/, "").replace(/\]$/, "");
+  if (!inner) return null;
+  const nums = inner.split(",").map((s) => Number(s.trim()));
+  return nums.every((n) => Number.isFinite(n)) ? nums : null;
+}
+
+// Embeddings — On-Update human blurb + vector (MESITA-720). Tags are never
+// part of the source text. Open by default; collapsible like Metadata.
+function EmbeddingsCard({ place }: { place: AdminPlace }) {
+  const text = (place.embedding_source_text ?? "").trim();
+  const vector = parseEmbeddingVector(place.embedding);
+  const preview = vector?.slice(0, 24) ?? null;
+  const dims = vector?.length ?? 0;
+  return (
+    <details
+      className="border-border bg-card shadow-card group rounded-2xl border"
+      open
+    >
+      <summary className="flex cursor-pointer list-none items-center gap-3 p-5 sm:p-6 [&::-webkit-details-marker]:hidden">
+        <span className="bg-muted text-muted-foreground inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl">
+          <Braces className="h-4 w-4" />
+        </span>
+        <div className="min-w-0 flex-1">
+          <h2 className="font-display text-base font-semibold tracking-tight">
+            Embeddings
+          </h2>
+          <p className="text-muted-foreground mt-0.5 text-xs leading-relaxed">
+            On-update blurb (no tags) and the vector OpenAI embeds from it.
+          </p>
+        </div>
+        <ChevronDown
+          className="text-muted-foreground h-4 w-4 shrink-0 transition-transform group-open:rotate-180"
+          aria-hidden
+        />
+      </summary>
+      <div className="border-border/60 flex flex-col gap-4 border-t px-5 pb-5 sm:px-6 sm:pb-6">
+        <ReadField label="Human text" boxed>
+          {text ? (
+            <span className="text-sm leading-relaxed whitespace-pre-wrap">{text}</span>
+          ) : (
+            <span className="text-muted-foreground text-xs italic">
+              Not synthesized yet — saves and Enricher On-Update write this blurb.
+            </span>
+          )}
+        </ReadField>
+        <ReadField label="Vector" boxed>
+          {vector && preview ? (
+            <span className="flex min-w-0 flex-col gap-1.5 py-0.5">
+              <code className="text-muted-foreground break-all font-mono text-[10px] leading-snug">
+                [{preview.map((n) => n.toFixed(4)).join(", ")}
+                {dims > preview.length ? `, … +${dims - preview.length} dims` : ""}]
+              </code>
+              <span className="text-muted-foreground text-[11px] tabular-nums">
+                {dims}d · text-embedding-3-small
+                {place.embedding_source_hash
+                  ? ` · hash ${place.embedding_source_hash.slice(0, 8)}…`
+                  : ""}
+              </span>
+            </span>
+          ) : (
+            <span className="text-muted-foreground text-xs italic">
+              No vector yet — produced on-update with the human text above.
+            </span>
+          )}
+        </ReadField>
+      </div>
+    </details>
+  );
 }
 
 // Metadata — UID + audit trail + enriching status. Open by default

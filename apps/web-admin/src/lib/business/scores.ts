@@ -707,10 +707,10 @@ export type ContextFieldDef = {
 //   Intent → EM (text): that (the ask) · near-zone · time. Ignored: party ·
 //     budget · day-of-week. (The NUMERIC where/when/what go to SM, never EM;
 //     THAT — the fourth intent axis — is EM's, never SM's.)
-//   Place → EM: name · category · tags · description · zone & city ·
-//     reviews summary (G·IG·FB, planned) · price (planned). Rating & review
-//     count are GP's; hours and lat/lng are SM's — ROUTED, so they are not
-//     EM chips at all.
+//   Place → EM: name · category · description · zone & city · reviews
+//     summary (G·IG·FB, planned) · price (planned). Tags are ignored
+//     (MESITA-720). Rating & review count are GP's; hours and lat/lng are
+//     SM's — ROUTED, so they are not EM chips at all.
 export const CONTEXT_FIELDS: readonly ContextFieldDef[] = [
   // Consumer.
   { key: "consumer.name",    side: "consumer", label: "name (first)",                status: "live", note: "cultural/cuisine priors — textualized, never the id" },
@@ -728,11 +728,11 @@ export const CONTEXT_FIELDS: readonly ContextFieldDef[] = [
   { key: "intent.party",     side: "intent",   label: "party size",                  status: "ignored", note: "ignored for now (spec) — a filter's job" },
   { key: "intent.budget",    side: "intent",   label: "budget",                      status: "ignored", note: "ignored for now (spec)" },
   { key: "intent.dow",       side: "intent",   label: "day-of-week",                 status: "ignored", note: "ignored for now (spec)" },
-  // Place — the Enricher-built profile.
+  // Place — On-Update synthesized blurb (no tags).
   { key: "place.name",        side: "place",   label: "name",                        status: "live", note: "info-dense — cuisine, format and register live in the string" },
   { key: "place.category",    side: "place",   label: "category",                    status: "live" },
-  { key: "place.tags",        side: "place",   label: "tags",                        status: "live" },
-  { key: "place.description", side: "place",   label: "description",                 status: "live" },
+  { key: "place.tags",        side: "place",   label: "tags",                        status: "ignored", note: "MESITA-720 — too noisy for EM; never in embedding source text" },
+  { key: "place.description", side: "place",   label: "description (synthesized blurb)", status: "live" },
   { key: "place.zone_city",   side: "place",   label: "zone & city",                 status: "live" },
   { key: "place.reviews",     side: "place",   label: "reviews summary (Google · Instagram · Facebook)", status: "planned" },
   { key: "place.price",       side: "place",   label: "price",                       status: "planned" },
