@@ -6,6 +6,7 @@ import { CalendarCheck, Heart, Phone, Share2 } from "lucide-react";
 
 import { ComingSoonModal } from "@/components/consumer/ComingSoonModal";
 import { PlaceContactSheet } from "@/components/consumer/PlaceContactSheet";
+import { ReservationSheet } from "@/components/consumer/place-detail/ReservationSheet";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import type { PlaceDetail } from "@/lib/mock/place";
 import { useSavedPlaces } from "@/lib/saved-places";
@@ -26,7 +27,8 @@ export function ProfileActions({
   const router = useRouter();
   const { isSaved, toggle } = useSavedPlaces();
   const [contactOpen, setContactOpen] = useState(false);
-  const [soonKind, setSoonKind] = useState<"reserve" | "share" | null>(null);
+  const [reserveOpen, setReserveOpen] = useState(false);
+  const [soonKind, setSoonKind] = useState<"share" | null>(null);
   const hasWhatsApp = Boolean(place.channels.whatsapp_url);
   const saved = isSaved(place.id);
 
@@ -95,7 +97,7 @@ export function ProfileActions({
         </button>
         <button
           type="button"
-          onClick={() => setSoonKind("reserve")}
+          onClick={() => setReserveOpen(true)}
           className={outlineBtn}
         >
           <CalendarCheck className="h-4 w-4 shrink-0" strokeWidth={2.25} />
@@ -115,12 +117,10 @@ export function ProfileActions({
         open={contactOpen}
         onClose={() => setContactOpen(false)}
       />
-      <ComingSoonModal
-        open={soonKind === "reserve"}
-        onClose={() => setSoonKind(null)}
-        title="Reservations coming soon"
-        body="Book a table from Mesita shortly — for now, use Contact to reach the place."
-        icon={CalendarCheck}
+      <ReservationSheet
+        place={place}
+        open={reserveOpen}
+        onClose={() => setReserveOpen(false)}
       />
       <ComingSoonModal
         open={soonKind === "share"}
