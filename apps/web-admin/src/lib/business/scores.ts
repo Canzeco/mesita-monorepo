@@ -1,5 +1,5 @@
-// Recommendation Scores v10 — the model behind Swipe · Map · Memo.
-// Master spec: Notion 🥇 Scoring (2026-07-16, eng-reviewed same day).
+// Recommendation Scores v11 — the model behind Swipe · Map · Memo.
+// Master spec: Notion 🎲 Lineup (blob v11, 2026-07-21).
 //
 // FIVE SUBSCORES → THREE LANES → ONE FINAL DECK.
 //
@@ -7,17 +7,15 @@
 //                                   vector), clamped max(0, cos). Encoder:
 //                                   OpenAI text-embedding-3-small @ 1536
 //                                   (emulated feature-hash in the playground).
-//   SM  Structured Match     [0,1]  where × when × what — deterministic
-//                                   checks of the intent's structured asks
-//                                   against place facts. (Renamed from
-//                                   "Natural Match": "natural" implies
-//                                   natural language, which is EM's job.)
-//   GP  Google Popularity    [0,1]  min(1, ln(1 + r·n) / lnCeiling) — total
-//                                   star mass, log-squashed. A simple log,
-//                                   NOT a sigmoid: a sigmoid needs a "typical
-//                                   popularity" center (a fitted-looking
-//                                   scale assumption); the log needs one
-//                                   ceiling knob. e¹⁰ ≈ 22,026 star-mass = 1.
+//                                   That (the free-text ask) is EM's only.
+//   SM  Structured Match     [0,1]  where × when × what — ONE hyperparam
+//                                   per intent axis (v11): where = distance
+//                                   tolerance · when = patience over a binary
+//                                   2×24×7 openness array · what = one tol
+//                                   (super = t, none = t²).
+//   GP  Google Popularity    [0,1]  min(1, ln(1 + r^ratingPow · n) / lnCeiling)
+//                                   — star mass with a rating exponent
+//                                   (default 1, max 2), log-squashed.
 //   RP  Rewards Promotions   [0,1]  the membership posture as a rung —
 //                                   0.1 · 0.4 · 0.7 · 1.0. No literal 0:
 //                                   non-members never ENTER the paid lanes
@@ -71,18 +69,13 @@
 //     beyond tolerance costs 8× — the tail is honestly a soft gate. Zones
 //     registry / metro sets are the backend build (MESITA-644 review,
 //     D2–D11); the playground emulates W as the anchor point + zone match.
-//   when = wait × fit, times snapped to the 30-min grid first.
-//     wait = floor + (1 − floor) / (1 + (opensIn / h)⁴) — TWO PLATEAUS,
-//     thin middle: ≈1 open-now-ish, floor if not, never 0 (the weekend-only
-//     gem browsed on a Monday keeps 0.3). h = 2: browsing at 21:00 for a
-//     club that opens at 23:00 → 0.65, not buried.
-//     fit = min(1, openFor / session) — sufficiency, not decay.
-//   what — CATEGORICAL on purpose (the one discrete factor): the ladder
-//     over the intent's SET of categories and/or mega categories. listed
-//     (or mega listed) → 1 · shares a mega/super category → the sibling
-//     rung (the ONE what knob, default 0.6) · no overlap → 0.2 frozen
-//     (MISMATCH_RUNG — never 0: SM gets no veto over semantics) · nothing
-//     asked → 1.
+//   when = wait × fit over a binary OPENNESS ARRAY (2×24×7 half-hour slots
+//     from intent time). ONE patience knob shapes both extremes: 0 = only
+//     tolerant of open-now-for-a-while · 1 = tolerant of future opens and
+//     short windows.
+//   what — CATEGORICAL ladder over the intent's SET of categories / megas.
+//     listed (or mega listed) → 1 · super → t · none → t² · nothing asked → 1.
+//     ONE tolerance t generates both demotion rungs.
 //
 // THE INTENT HAS FOUR AXES — Where · When · What · THAT. The first three are
 // the STRUCTURED asks (SM's inputs, above). THAT is the free-text ask — the
@@ -188,36 +181,30 @@ export function emScore(cos: number): number {
 }
 
 // ── SM — Structured Match ──────────────────────────────────────────────
+//
+// ONE hyperparam per intent axis (Pato 2026-07-21, blob v11):
+//   where → defaultTolKm (green consumer default; falloff DIST_EXP freezes)
+//   when  → patience (one shape knob over a binary 2×24×7 openness array)
+//   what  → tol (super = t, none = t²)
+// That is EM's; Randomness is XX's green default only.
 
-// SM's knob count is a deliberate diet (Pato 2026-07-17, twice): 1 · 2 · 1
-// HYPERPARAMETERS (falloff · floor+session · sibling — the consumer never
-// touches these). Alongside them sits ONE knob of a DIFFERENT CLASS
-// (Pato 2026-07-21): defaultTolKm, a CONSUMER-OVERRIDABLE DEFAULT — green
-// in the console, same class as XX's control: the admin configures the
-// fallback, the consumer's Where slider overrides it per query. Everything
-// less tunable is a fixed constant below.
 export type SmWhereParams = {
   /** Default distance tolerance, km — the CONSUMER DEFAULT (green): what
    * the where curve uses when the consumer's Where slider is unset. The
    * consumer's own tolerance always wins (SmInputs.tolKm). */
   defaultTolKm: number;
-  /** Distance falloff — the where HYPERPARAMETER: how hard distance bites.
-   * 3 = doubling distance beyond tolerance costs 8×. No consumer override. */
-  distExp: number;
 };
 
 export type SmWhenParams = {
-  /** Closed-now floor — a place not open at the intent time never drops below
-   * this (the weekend-only gem browsed Monday keeps it; never 0). */
-  waitFloor: number;
-  /** Session length, hours — how long the visit needs (drives fit). */
-  sessionH: number;
+  /** Patience / shape ∈ [0,1]. 0 = only tolerant of open-now-for-a-while;
+   * 1 = tolerant of places that open later and/or stay open only briefly. */
+  patience: number;
 };
 
 export type SmWhatParams = {
-  /** The ONE what knob — the rung for sharing a mega/super category with a
-   * listed category. (No-overlap is MISMATCH_RUNG, frozen.) */
-  sibling: number;
+  /** ONE tolerance t ∈ [0,1]: super-category rung = t, none rung = t².
+   * Exact category (or mega listed) → 1; nothing asked → 1. */
+  tol: number;
 };
 
 export type SmParams = {
@@ -226,33 +213,30 @@ export type SmParams = {
   what: SmWhatParams;
 };
 
-// The frozen SM beliefs — argued from the product, rarely worth a knob, so
-// they're constants rather than config (kept out of the blob):
-//   ZONE_SPILL_FRAC      a named zone is a constraint, not a vibe — its
-//                        tolerance is 30% of the consumer's tolerance.
-//   WAIT_TRANSITION_H    hours-until-open where the two wait plateaus cross.
-//   WAIT_STEEP           wait steepness — 4 = two plateaus, thin middle.
-//   MISMATCH_RUNG        what's no-overlap rung — never 0 (SM gets no veto
-//                        over semantics), low enough to bury a true miss.
+// Frozen SM beliefs (out of the blob):
+//   DIST_EXP            where falloff — was a knob; frozen at 3 (v11).
+//   ZONE_SPILL_FRAC     named zone tolerance = 30% of the consumer's.
+//   TIME_BLOCK_H        half-hour grid.
+//   OPENNESS_*          when's binary horizon: 2 slots/h × 24 h × 7 d.
+export const DIST_EXP = 3;
 export const ZONE_SPILL_FRAC = 0.3;
-export const WAIT_TRANSITION_H = 2;
-export const WAIT_STEEP = 4;
-/** The CODE default for sm.where.defaultTolKm (a knob since 2026-07-21 —
- * it was a frozen constant while "configure the default" wasn't possible).
- * 5 km = car metros; the Friday span survives. */
+/** The CODE default for sm.where.defaultTolKm. 5 km = car metros. */
 export const DEFAULT_POINT_TOL_KM = 5;
-export const MISMATCH_RUNG = 0.2;
-
-// Defaults, argued from what Mesita IS (car metros, dinner-anchored,
-// nightlife-heavy — see the header):
-export const DEFAULT_SM_PARAMS: SmParams = {
-  where: { defaultTolKm: DEFAULT_POINT_TOL_KM, distExp: 3 },
-  when: { waitFloor: 0.3, sessionH: 1.5 },
-  what: { sibling: 0.6 },
-};
 
 /** Time resolves to half-hour blocks. */
 export const TIME_BLOCK_H = 0.5;
+export const OPENNESS_SLOTS_PER_HOUR = 2;
+export const OPENNESS_HOURS = 24;
+export const OPENNESS_DAYS = 7;
+/** Full when horizon: 2 × 24 × 7 = 336 half-hour slots from the intent time. */
+export const OPENNESS_SLOTS =
+  OPENNESS_SLOTS_PER_HOUR * OPENNESS_HOURS * OPENNESS_DAYS;
+
+export const DEFAULT_SM_PARAMS: SmParams = {
+  where: { defaultTolKm: DEFAULT_POINT_TOL_KM },
+  when: { patience: 0.35 },
+  what: { tol: 0.5 },
+};
 
 /** Snap hours to the time grid. Everything time-shaped goes through this. */
 export function quantizeH(hours: number, blockH: number = TIME_BLOCK_H): number {
@@ -267,47 +251,114 @@ export function quantizeH(hours: number, blockH: number = TIME_BLOCK_H): number 
  * point, its derived zone tolerance (× ZONE_SPILL_FRAC) when km measures
  * spillover past a named region's border (inside the region km = 0 → 1).
  * Unknown distance → 1 (a geo-less place is a data bug, not a scoring case).
+ * Falloff is the frozen DIST_EXP.
  */
-export function whereScore(km: number | null, tolKm: number, distExp: number): number {
+export function whereScore(km: number | null, tolKm: number): number {
   if (km == null) return 1;
   const tol = Math.max(0.5, tolKm); // NaN/zero guard — the range table's floor
   if (km <= 0) return 1;
-  return 1 / (1 + Math.pow(km / tol, distExp));
+  return 1 / (1 + Math.pow(km / tol, DIST_EXP));
 }
 
-/** wait — two plateaus: ≈1 open-now-ish, the floor if not, never 0. Transition
- * point and steepness are frozen beliefs (WAIT_TRANSITION_H · WAIT_STEEP); the
- * floor is the one knob. */
-export function waitScore(opensInH: number, p: SmWhenParams): number {
-  const q = quantizeH(opensInH);
-  if (q <= 0) return 1;
-  const f = clamp01(p.waitFloor);
-  return f + (1 - f) / (1 + Math.pow(q / WAIT_TRANSITION_H, WAIT_STEEP));
+/** First-open index + consecutive open run from a binary openness array. */
+export function opennessStats(bits: readonly boolean[]): {
+  opensInSlots: number | null;
+  openRunSlots: number;
+} {
+  let opensIn: number | null = null;
+  for (let i = 0; i < bits.length; i++) {
+    if (bits[i]) {
+      opensIn = i;
+      break;
+    }
+  }
+  if (opensIn == null) return { opensInSlots: null, openRunSlots: 0 };
+  let run = 0;
+  for (let i = opensIn; i < bits.length && bits[i]; i++) run++;
+  return { opensInSlots: opensIn, openRunSlots: run };
 }
 
-/** fit — is there time to complete the visit, 0–1. Caps at 1: enough is enough. */
-export function fitScore(openForH: number, p: SmWhenParams): number {
-  if (p.sessionH <= 0) return 1;
-  return clamp01(quantizeH(openForH) / p.sessionH);
+/**
+ * Synthesize a week-horizon openness bitstring from opens-in / open-for
+ * (hours) — used by operator controls and plots that don't have a full
+ * hours calendar. Real callers should prefer a hours→bits builder.
+ */
+export function synthesizeOpenness(opensInH: number, openForH: number): boolean[] {
+  const bits = new Array<boolean>(OPENNESS_SLOTS).fill(false);
+  const start = Math.max(0, Math.round(quantizeH(Math.max(0, opensInH)) / TIME_BLOCK_H));
+  const run = Math.max(0, Math.round(quantizeH(Math.max(0, openForH)) / TIME_BLOCK_H));
+  for (let i = 0; i < run && start + i < OPENNESS_SLOTS; i++) bits[start + i] = true;
+  return bits;
 }
 
-/** when — wait × fit, 0–1. No hours data → the caller passes unknown and uses 1. */
+export type WhenParts = {
+  opensInSlots: number | null;
+  openRunSlots: number;
+  wait: number;
+  fit: number;
+  when: number;
+};
+
+/**
+ * when — process the binary openness array with ONE patience knob.
+ *   patience 0 → only tolerant of open-now-for-a-while (waitTol=0, need ~3 h)
+ *   patience 1 → tolerant of future opens and short windows (waitTol=24 h, need 0.5 h)
+ * Never-open in the horizon → 0. No hours data is the caller's job (→ when 1).
+ */
+export function whenParts(bits: readonly boolean[], patience: number): WhenParts {
+  const p = clamp01(patience);
+  const { opensInSlots, openRunSlots } = opennessStats(bits);
+  if (opensInSlots == null) {
+    return { opensInSlots: null, openRunSlots: 0, wait: 0, fit: 0, when: 0 };
+  }
+  // waitTol in slots: p=0 → 0 (must be open now); p=1 → 48 slots (24 h).
+  const waitTol = p * 48;
+  // needRun in slots: p=0 → 6 (3 h); p=1 → 1 (0.5 h).
+  const needRun = 1 + (1 - p) * 5;
+  const wait =
+    opensInSlots === 0
+      ? 1
+      : waitTol <= 0
+        ? 0
+        : 1 / (1 + Math.pow(opensInSlots / waitTol, 4));
+  const fit = Math.min(1, openRunSlots / needRun);
+  return {
+    opensInSlots,
+    openRunSlots,
+    wait: clamp01(wait),
+    fit: clamp01(fit),
+    when: clamp01(wait * fit),
+  };
+}
+
+/** when as one number from openness bits + patience. */
+export function whenFromOpenness(bits: readonly boolean[], patience: number): number {
+  return whenParts(bits, patience).when;
+}
+
+/** Convenience: when from opens-in / open-for hours (synthesizes the array). */
 export function whenScore(opensInH: number, openForH: number, p: SmWhenParams): number {
-  return waitScore(opensInH, p) * fitScore(openForH, p);
+  return whenFromOpenness(synthesizeOpenness(opensInH, openForH), p.patience);
 }
 
 /** The category ladder's rungs — how the place's one category sits against
  * the intent's SET of categories and/or mega categories. */
 export type WhatRelation = "exact" | "sibling" | "mismatch" | "none";
 
+/** none rung = t² — derived from the single what tolerance. */
+export function noneRung(tol: number): number {
+  const t = clamp01(tol);
+  return t * t;
+}
+
 export function whatScore(rel: WhatRelation, p: SmWhatParams): number {
   switch (rel) {
     case "exact":
       return 1;
     case "sibling":
-      return clamp01(p.sibling);
+      return clamp01(p.tol);
     case "mismatch":
-      return MISMATCH_RUNG;
+      return noneRung(p.tol);
     case "none":
       return 1;
   }
@@ -323,10 +374,13 @@ export type SmInputs = {
   /** True when W is a named region (zone mode) — picks the derived zone
    * tolerance (tolerance × ZONE_SPILL_FRAC). */
   zoneMode: boolean;
-  /** Hours until the place opens at the intent time (0 = open now). */
+  /** Hours until the place opens at the intent time (0 = open now).
+   * Used when `openness` is omitted — synthesizes the binary array. */
   opensInH: number;
-  /** Hours it stays open from then. */
+  /** Hours it stays open from then. Used when `openness` is omitted. */
   openForH: number;
+  /** Preferred: the binary 2×24×7 openness array starting at intent time. */
+  openness?: readonly boolean[];
   /** True when the place has no usable hours (≠ closed) → when 1. */
   hoursUnknown: boolean;
   /** The category ladder's resolution for this intent × place. */
@@ -342,6 +396,8 @@ export type SmParts = {
   when: number;
   what: number;
   sm: number;
+  opensInSlots: number | null;
+  openRunSlots: number;
 };
 
 export function smParts(i: SmInputs, p: SmParams = DEFAULT_SM_PARAMS): SmParts {
@@ -349,12 +405,28 @@ export function smParts(i: SmInputs, p: SmParams = DEFAULT_SM_PARAMS): SmParts {
   // knob); a named zone is a constraint, not a vibe — a fixed fraction.
   const baseTol = i.tolKm ?? p.where.defaultTolKm;
   const tolKm = i.zoneMode ? baseTol * ZONE_SPILL_FRAC : baseTol;
-  const where = whereScore(i.km, tolKm, p.where.distExp);
-  const wait = i.hoursUnknown ? 1 : waitScore(i.opensInH, p.when);
-  const fit = i.hoursUnknown ? 1 : fitScore(i.openForH, p.when);
-  const when = wait * fit;
+  const where = whereScore(i.km, tolKm);
+  const wp = i.hoursUnknown
+    ? {
+        opensInSlots: null as number | null,
+        openRunSlots: 0,
+        wait: 1,
+        fit: 1,
+        when: 1,
+      }
+    : whenParts(i.openness ?? synthesizeOpenness(i.opensInH, i.openForH), p.when.patience);
   const what = whatScore(i.whatRel, p.what);
-  return { tolKm, where, wait, fit, when, what, sm: where * when * what };
+  return {
+    tolKm,
+    where,
+    wait: wp.wait,
+    fit: wp.fit,
+    when: wp.when,
+    what,
+    sm: where * wp.when * what,
+    opensInSlots: wp.opensInSlots,
+    openRunSlots: wp.openRunSlots,
+  };
 }
 
 /** SM as one number, 0–1. */
@@ -368,15 +440,18 @@ export type GpParams = {
   /** ln(1 + starMass) that reads as fully popular — GP 1. 10 → e¹⁰ ≈ 22,026
    * star mass (≈ 4.5★ × ~4,900 reviews); each ×e more adds 0.1. */
   lnCeiling: number;
+  /** Exponent on the star average before × review count. Default 1 (linear);
+   * max 2 — amplifies rating differences (4.8★ pulls away from 4.0★). */
+  ratingPow: number;
 };
 
-export const DEFAULT_GP_PARAMS: GpParams = { lnCeiling: 10 };
+export const DEFAULT_GP_PARAMS: GpParams = { lnCeiling: 10, ratingPow: 1 };
 
 /** GP itemized — the ledger's rows. */
 export type GpParts = {
   reviews: number;
   rating: number | null;
-  /** rating × reviews — total star mass. */
+  /** r^ratingPow · n — weighted star mass. */
   raw: number;
   /** The subscore, 0–1. n = 0 → 0 (no Google presence = out of organic). */
   gp: number;
@@ -392,7 +467,8 @@ export function gpParts(
     Math.round(typeof reviews === "number" && Number.isFinite(reviews) ? reviews : 0),
   );
   const r = typeof rating === "number" && Number.isFinite(rating) ? rating : null;
-  const raw = r == null ? 0 : r * n;
+  const pow = Math.min(2, Math.max(1, p.ratingPow));
+  const raw = r == null ? 0 : Math.pow(Math.max(0, r), pow) * n;
   const gp = clamp01(Math.log(1 + raw) / Math.max(1, p.lnCeiling));
   return { reviews: n, rating: r, raw, gp };
 }
@@ -670,23 +746,19 @@ export const LIVE_CONTEXT_COUNT: number = CONTEXT_FIELDS.filter(
 //                                     legacy flat number expands to all three)
 //   (retrieval.recallTopK is GONE — v9: Lineup scores the whole metro
 //    catalog, no recall cap; a stray retrieval key is ignored)
-//   sm.where.defaultTolKm 0.5–20 (GREEN — the CONSUMER DEFAULT: the admin's
-//                                fallback; the consumer's Where slider
-//                                overrides it per query)
-//   sm.where.distExp      1–5   (the where HYPERPARAMETER — no override)
-//   sm.when.waitFloor     0–1           sm.when.sessionH   0.5–4
-//   sm.what.sibling       0–1   (the ONE what knob — mismatch frozen at 0.2)
-//   (zone spillover, mismatch rung, wait transition/steepness and the
-//    30-min grid are frozen constants — ZONE_SPILL_FRAC · MISMATCH_RUNG ·
-//    WAIT_TRANSITION_H · WAIT_STEEP · TIME_BLOCK_H)
+//   sm.where.defaultTolKm 0.5–20 (GREEN — where's ONE param / consumer default)
+//   sm.when.patience      0–1   (when's ONE shape knob over the openness array)
+//   sm.what.tol           0–1   (what's ONE tol — super = t, none = t²)
+//   (distExp · waitFloor · sessionH · sibling are GONE — v11; stray keys
+//    ignored. DIST_EXP · ZONE_SPILL_FRAC · TIME_BLOCK_H · OPENNESS_* freeze)
 //   gp.lnCeiling          5–15
+//   gp.ratingPow          1–2   (0.1 steps; default 1)
 //   rp.*                  0–1
-//   xx.control            0–5
-//   (dataAccess + context are GONE — v10: inputs are FIXED documentation,
-//    not config; stray keys from v9-and-older blobs are ignored)
+//   xx.control            0–5   (GREEN default only — not a hyperparam)
+//   (dataAccess + context are GONE — v10: inputs are FIXED documentation)
 
 export type ScoringSettings = {
-  v: 10;
+  v: 11;
   /** Per-lane deck counts (MESITA-659) — how many cards each lane may
    * contribute to the merged deck; 0 turns the lane off. */
   laneN: LaneCounts;
@@ -697,7 +769,7 @@ export type ScoringSettings = {
 };
 
 export const DEFAULT_SCORING_SETTINGS: ScoringSettings = {
-  v: 10,
+  v: 11,
   laneN: DEFAULT_LANE_COUNTS,
   sm: DEFAULT_SM_PARAMS,
   gp: DEFAULT_GP_PARAMS,
@@ -739,9 +811,9 @@ export function coerceScoringSettings(raw: unknown): ScoringSettings {
   if (!raw || typeof raw !== "object") return d;
   const r = raw as Record<string, unknown>;
 
-  // Note: stray `em` (old encoder config), `retrieval` (v8's recall cap) and
-  // `dataAccess`/`context` (v9's input toggles — gone in v10: inputs are
-  // fixed documentation) keys are silently dropped on read.
+  // Note: stray `em`, `retrieval`, `dataAccess`/`context`, and pre-v11 SM
+  // keys (`distExp` · `waitFloor` · `sessionH` · `sibling`) are dropped on
+  // read — with soft migration for when/what below.
   const sm = (r.sm ?? {}) as Record<string, unknown>;
   const smWhere = (sm.where ?? {}) as Record<string, unknown>;
   const smWhen = (sm.when ?? {}) as Record<string, unknown>;
@@ -750,28 +822,28 @@ export function coerceScoringSettings(raw: unknown): ScoringSettings {
   const rp = (r.rp ?? {}) as Record<string, unknown>;
   const xx = (r.xx ?? {}) as Record<string, unknown>;
 
+  // Soft-migrate v10 blobs: patience ← waitFloor; tol ← sibling.
+  const patience = num(
+    smWhen.patience ?? smWhen.waitFloor,
+    d.sm.when.patience,
+    0,
+    1,
+  );
+  const whatTol = num(smWhat.tol ?? smWhat.sibling, d.sm.what.tol, 0, 1);
+
   return {
-    v: 10,
+    v: 11,
     laneN: coerceLaneCounts(r.laneN, d.laneN),
     sm: {
-      // v8: defaultTolKm (the green consumer default) joins where — a v7
-      // blob lacking it falls back to the code default. Leftover v5/v6 keys
-      // (pointTolKm, mismatch, zoneSpillKm, waitTransitionH, waitSteep,
-      // timeBlockH) are simply not read.
       where: {
         defaultTolKm: num(smWhere.defaultTolKm, d.sm.where.defaultTolKm, 0.5, 20),
-        distExp: num(smWhere.distExp, d.sm.where.distExp, 1, 5),
       },
-      when: {
-        waitFloor: num(smWhen.waitFloor, d.sm.when.waitFloor, 0, 1),
-        sessionH: num(smWhen.sessionH, d.sm.when.sessionH, 0.5, 4),
-      },
-      what: {
-        sibling: num(smWhat.sibling, d.sm.what.sibling, 0, 1),
-      },
+      when: { patience },
+      what: { tol: whatTol },
     },
     gp: {
       lnCeiling: num(gp.lnCeiling, d.gp.lnCeiling, 5, 15),
+      ratingPow: num(gp.ratingPow, d.gp.ratingPow, 1, 2),
     },
     rp: {
       zero: num(rp.zero, d.rp.zero, 0, 1),
@@ -812,13 +884,13 @@ export const PIPELINE_CONTEXT: Record<FixedSubscoreId, SubscoreContext> = {
     intent: [
       { field: "zone / anchor set (→ W)", status: "live" },
       { field: "tolerated distance (slider, point mode)", status: "live" },
-      { field: "target time (NUMERIC)", status: "live" },
+      { field: "target time → openness cursor (start of 2×24×7 array)", status: "live" },
       { field: "category set (categories · mega categories)", status: "live" },
     ],
     place: [
       { field: "lat/lng (NUMERIC)", status: "live" },
       { field: "zone (string, fuzzy-matched)", status: "live" },
-      { field: "hours → open windows (NUMERIC)", status: "live" },
+      { field: "hours → binary openness array (2×24×7 half-hour blocks)", status: "live" },
       { field: "category", status: "live" },
     ],
     interaction: [

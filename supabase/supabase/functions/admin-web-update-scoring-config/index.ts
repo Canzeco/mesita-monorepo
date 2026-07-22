@@ -1,38 +1,29 @@
 // Supabase Edge Function — admin-web-update-scoring-config
 //
+// COMPAT ALIAS of admin-web-update-lineup-config (byte-equivalent validate +
+// write). Kept deployed until old admin builds drain, then deleted. Canonical
+// slug is admin-web-update-lineup-config. The BLOB COLUMN deliberately keeps
+// its old name (app_settings.scoring_config) — deferred to the recommender-*
+// batch.
+//
 // Writes the scoring model's hyperparameters as ONE versioned jsonb blob on
 // the public.app_settings singleton (scoring_config). Whole-blob writes only
 // — the Subscores tab always saves its full form, so partial patches would
 // only invite drift.
 //
-// v7 blob (scoring v10, MESITA-644 · per-lane counts MESITA-659 · SM cut to
-// 1 · 2 · 1 knobs — the consumer owns the where tolerance, the mismatch rung
-// froze) — keys follow the subscore names (EM · SM · GP · RP ·
-// XX, all [0,1]; three lanes; merge O → I → H). The EM encoder
-// (text-embedding-3-small @ its native 1536 dims) is a FIXED decision,
-// deliberately NOT in the blob — a stray `em` key from an older client is
-// ignored:
-//   { v: 7, laneN, retrieval, sm, gp, rp, xx, dataAccess, context }
+// v11 blob (MESITA-714): ONE hyperparam per intent axis + GP ratingPow.
+//   { v: 11, laneN, sm, gp, rp, xx }
 //   laneN     PER-LANE deck counts { organic, inorganic, hybrid }, each
-//             0–50 int (0 = lane off), sum ≥ 1; the merged deck (dedupe,
-//             no backfill) is ≤ their sum. A legacy v4 flat number expands
-//             to all three lanes.
-//   sm        Structured Match knobs — where (distExp only: the consumer
-//             owns the tolerance, default frozen at 5 km) · when (waitFloor ·
-//             sessionH) · what (sibling only: mismatch frozen at 0.2). Zone
-//             spillover, wait transition/steepness and the 30-min grid are
-//             frozen constants in the model — not config; leftover v5/v6
-//             keys (pointTolKm · mismatch) are ignored.
-//   gp        Google Popularity — lnCeiling (ln(1 + ★·n) that reads GP 1)
+//             0–50 int (0 = lane off), sum ≥ 1
+//   sm        where: { defaultTolKm } — GREEN consumer default (falloff frozen)
+//             when:  { patience } — ONE shape knob over 2×24×7 openness array
+//             what:  { tol } — super = t, none = t²
+//   gp        { lnCeiling, ratingPow } — ratingPow ∈ [1,2], default 1
 //   rp        Rewards Promotions rungs per posture, [0,1]
-//   xx        Random Number — control ∈ [0,5] (0 = off, pure merit)
-//   dataAccess the core config — per-subscore data-source toggles
-//             (consumer · place · intent · interaction), ⊂ each subscore's
-//             applicable set; default all ON
-//   context   which TEXT fields EM reads (EM is the only field-configurable one)
-// See web-admin lib/business/scores.ts — the RANGE TABLE there is mirrored
-// VERBATIM here; a value the UI allows but this EF clamps would silently
-// move the form on save.
+//   xx        { control } ∈ [0,5] — GREEN default only
+// Soft-migrate: patience ← waitFloor · tol ← sibling · ratingPow defaults to 1.
+// Stray pre-v11 keys (distExp · sessionH · sibling · dataAccess · context ·
+// retrieval · em) are ignored. See web-admin lib/business/scores.ts RANGE TABLE.
 //
 // The model is still a frontend draft: nothing in Swipe/Map/Memo reads this
 // yet. When the engines go live, this blob is their config source.
@@ -53,17 +44,6 @@ type Body = { config?: unknown };
 const POSTURES = ["zero", "conservative", "aggressive", "dominant"] as const;
 const LANE_N_MAX = 50;
 
-// Mirrors APPLICABLE_SOURCES in web-admin lib/business/scores.ts — a source
-// a subscore structurally cannot read is rejected, not silently dropped.
-const APPLICABLE_SOURCES: Record<string, readonly string[]> = {
-  em: ["consumer", "place", "intent"],
-  sm: ["place", "intent", "interaction"],
-  gp: ["place"],
-  rp: ["place"],
-  xx: [],
-};
-const SUBSCORE_IDS = ["em", "sm", "gp", "rp", "xx"] as const;
-
 function num(v: unknown, lo: number, hi: number): number | null {
   if (typeof v !== "number" || !Number.isFinite(v)) return null;
   return Math.min(hi, Math.max(lo, v));
@@ -74,9 +54,6 @@ function validate(raw: unknown): { ok: true; config: unknown } | { ok: false; er
   if (!raw || typeof raw !== "object") return { ok: false, error: "config must be an object" };
   const r = raw as Record<string, unknown>;
 
-  // Per-lane deck counts (v5). A legacy flat number expands to all three;
-  // each lane 0–LANE_N_MAX (0 = lane off); an all-zero config would empty
-  // every deck, so the sum must be ≥ 1.
   const LANE_IDS = ["organic", "inorganic", "hybrid"] as const;
   const laneN: Record<string, number> = {};
   if (typeof r.laneN === "number") {
@@ -104,35 +81,28 @@ function validate(raw: unknown): { ok: true; config: unknown } | { ok: false; er
     return { ok: false, error: "laneN: at least one lane must be > 0" };
   }
 
-  const ret = r.retrieval as Record<string, unknown> | undefined;
-  const recallTopK = num(ret?.recallTopK, 10, 200);
-  if (recallTopK == null) return { ok: false, error: "retrieval.recallTopK out of range" };
-
-  // SM — where × when × what (v7: 1 · 2 · 1 knobs; the consumer owns the
-  // where tolerance and the mismatch rung is frozen, so stray v5/v6 keys —
-  // pointTolKm · mismatch — are ignored like the other frozen constants).
+  // SM — one hyperparam per intent axis (v11). Soft-migrate v10 keys.
   const smIn = r.sm as Record<string, unknown> | undefined;
   const whereIn = smIn?.where as Record<string, unknown> | undefined;
-  const distExp = num(whereIn?.distExp, 1, 5);
-  if (distExp == null) {
-    return { ok: false, error: "sm.where knobs out of range" };
-  }
-  const whenIn = smIn?.when as Record<string, unknown> | undefined;
-  const waitFloor = num(whenIn?.waitFloor, 0, 1);
-  const sessionH = num(whenIn?.sessionH, 0.5, 4);
-  if (waitFloor == null || sessionH == null) {
-    return { ok: false, error: "sm.when knobs out of range" };
-  }
-  const whatIn = smIn?.what as Record<string, unknown> | undefined;
-  const sibling = num(whatIn?.sibling, 0, 1);
-  if (sibling == null) {
-    return { ok: false, error: "sm.what knobs out of range" };
-  }
+  const defaultTolKm = num(whereIn?.defaultTolKm, 0.5, 20) ?? 5;
 
-  // GP — the log squash's ceiling.
+  const whenIn = smIn?.when as Record<string, unknown> | undefined;
+  const patience =
+    num(whenIn?.patience, 0, 1) ??
+    num(whenIn?.waitFloor, 0, 1) ??
+    0.35;
+
+  const whatIn = smIn?.what as Record<string, unknown> | undefined;
+  const tol =
+    num(whatIn?.tol, 0, 1) ??
+    num(whatIn?.sibling, 0, 1) ??
+    0.5;
+
+  // GP — ln ceiling + rating exponent (v11).
   const gpIn = r.gp as Record<string, unknown> | undefined;
   const lnCeiling = num(gpIn?.lnCeiling, 5, 15);
   if (lnCeiling == null) return { ok: false, error: "gp.lnCeiling out of range" };
+  const ratingPow = num(gpIn?.ratingPow, 1, 2) ?? 1;
 
   // RP — the posture rungs, [0,1].
   const rpIn = r.rp as Record<string, unknown> | undefined;
@@ -143,86 +113,28 @@ function validate(raw: unknown): { ok: true; config: unknown } | { ok: false; er
     rp[p] = v;
   }
 
-  // XX — the deck-wide randomness control.
+  // XX — the deck-wide randomness control (green default only).
   const xxIn = r.xx as Record<string, unknown> | undefined;
   const control = num(xxIn?.control, 0, 5);
   if (control == null) return { ok: false, error: "xx.control must be a number 0–5" };
 
-  // dataAccess — the core config: per-subscore source toggles. Optional
-  // (older clients omit it; the frontend coercer default-fills all-ON).
-  // Each present cell must be an array ⊂ that subscore's applicable set;
-  // empty arrays are VALID (that subscore reads nothing — degenerate on
-  // purpose).
-  const daIn = r.dataAccess as Record<string, unknown> | undefined;
-  let dataAccess: Record<string, string[]> | null = null;
-  if (daIn !== undefined) {
-    if (!daIn || typeof daIn !== "object") {
-      return { ok: false, error: "config.dataAccess must be an object" };
-    }
-    dataAccess = {};
-    for (const sub of SUBSCORE_IDS) {
-      const cell = daIn[sub];
-      if (cell === undefined) continue; // missing cell → client defaults
-      if (!Array.isArray(cell)) {
-        return { ok: false, error: `dataAccess.${sub} must be an array` };
-      }
-      const applicable = APPLICABLE_SOURCES[sub];
-      const clean = [...new Set(cell)];
-      for (const src of clean) {
-        if (typeof src !== "string" || !applicable.includes(src)) {
-          return { ok: false, error: `dataAccess.${sub} has an inapplicable source` };
-        }
-      }
-      dataAccess[sub] = (clean as string[]).sort();
-    }
-  }
-
-  // Context — which TEXT fields EM reads. Validation is STRUCTURAL only
-  // ("side.name" strings, deduped, capped) — the exact key list lives in the
-  // frontend registry and its coercer drops unknowns on read, so this EF
-  // never has to chase it. Missing/absent → omitted; the client coerces to
-  // its defaults. Empty arrays are VALID (everything off — degenerate on
-  // purpose).
-  const KEY_RE = /^(consumer|intent|place)\.[a-z_]{1,32}$/;
-  const contextIn = r.context as Record<string, unknown> | undefined;
-  let context: Record<string, string[]> | null = null;
-  if (contextIn !== undefined) {
-    if (!contextIn || typeof contextIn !== "object") {
-      return { ok: false, error: "config.context must be an object" };
-    }
-    context = {};
-    for (const tier of ["em"] as const) {
-      const v = contextIn[tier];
-      if (!Array.isArray(v)) return { ok: false, error: `context.${tier} must be an array` };
-      const clean = [...new Set(v.filter((k) => typeof k === "string" && KEY_RE.test(k)))];
-      if (clean.length !== v.length) {
-        return { ok: false, error: `context.${tier} has invalid or duplicate keys` };
-      }
-      if (clean.length > 64) return { ok: false, error: `context.${tier} too large` };
-      context[tier] = (clean as string[]).sort();
-    }
-  }
-
   return {
     ok: true,
     config: {
-      v: 7,
+      v: 11,
       laneN: {
         organic: laneN.organic,
         inorganic: laneN.inorganic,
         hybrid: laneN.hybrid,
       },
-      retrieval: { recallTopK },
       sm: {
-        where: { distExp },
-        when: { waitFloor, sessionH },
-        what: { sibling },
+        where: { defaultTolKm },
+        when: { patience },
+        what: { tol },
       },
-      gp: { lnCeiling },
+      gp: { lnCeiling, ratingPow },
       rp,
       xx: { control },
-      ...(dataAccess ? { dataAccess } : {}),
-      ...(context ? { context } : {}),
     },
   };
 }

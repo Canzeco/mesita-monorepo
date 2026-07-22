@@ -1,10 +1,12 @@
 "use client";
 
 import {
-  MISMATCH_RUNG,
+  DIST_EXP,
+  OPENNESS_SLOTS,
   PIPELINE_CONTEXT,
-  fitScore,
-  waitScore,
+  noneRung,
+  synthesizeOpenness,
+  whenFromOpenness,
   whereScore,
   type SmParams,
 } from "@/lib/business/scores";
@@ -14,6 +16,7 @@ import { CurvePlot, LadderPlot } from "../plots";
 import { ProcessSteps, Prose, SubscoreBox } from "./SubscoreBox";
 
 // SM · Structured Match — where × when × what (emerald).
+// ONE hyperparam per intent axis (blob v11).
 
 export function SmBox() {
   const { sm, setSm } = useScoring();
@@ -25,6 +28,11 @@ export function SmBox() {
   const setWhat = <K extends keyof SmParams["what"]>(k: K, v: number) =>
     setSm((s) => ({ ...s, what: { ...s.what, [k]: v } }));
 
+  const none = noneRung(sm.what.tol);
+  // Live when curve: open-for fixed at 3 h, vary opens-in — shows patience's wait side.
+  const whenAt = (opensInH: number) =>
+    whenFromOpenness(synthesizeOpenness(opensInH, 3), sm.when.patience);
+
   return (
     <SubscoreBox
       id="sm"
@@ -33,15 +41,15 @@ export function SmBox() {
       title="SM Subscore · Structured Match — where × when × what"
       overview={
         <Prose>
-          The intent&apos;s STRUCTURED asks — Where · When · What — checked against place facts:
-          where/when are continuous curves, what is the categorical ladder.
+          The intent&apos;s STRUCTURED asks — Where · When · What — one hyperparam each. That
+          (the free-text ask) is EM&apos;s, not SM&apos;s.
         </Prose>
       }
       hyperparams={
         <div className="grid gap-x-8 gap-y-5 lg:grid-cols-3">
           <div>
-            <SubHead>where · a green default + one hyperparameter</SubHead>
-            <div className="mt-3 grid grid-cols-2 gap-x-6 gap-y-4">
+            <SubHead>where · distance tolerance</SubHead>
+            <div className="mt-3">
               <Slider
                 consumer
                 label="Default tolerance"
@@ -51,57 +59,43 @@ export function SmBox() {
                 step={0.5}
                 v={sm.where.defaultTolKm}
                 onChange={(v) => setWhere("defaultTolKm", v)}
-                hint="the consumer's own Where slider overrides this per query"
-              />
-              <Slider
-                label="Distance falloff"
-                value={sm.where.distExp.toFixed(1)}
-                min={1}
-                max={5}
-                step={0.5}
-                v={sm.where.distExp}
-                onChange={(v) => setWhere("distExp", v)}
-                hint={`at ${sm.where.defaultTolKm.toFixed(1)} km tolerance, 8 km → ${whereScore(8, sm.where.defaultTolKm, sm.where.distExp).toFixed(2)}`}
+                hint={`the consumer's Where slider overrides this · falloff frozen at ${DIST_EXP} · 8 km → ${whereScore(8, sm.where.defaultTolKm).toFixed(2)}`}
               />
             </div>
           </div>
           <div>
-            <SubHead>when · two knobs — closed-now, visit length</SubHead>
-            <div className="mt-3 grid grid-cols-2 gap-x-6 gap-y-4">
+            <SubHead>when · patience over openness</SubHead>
+            <div className="mt-3">
               <Slider
-                label="Closed-now floor"
-                value={sm.when.waitFloor.toFixed(2)}
+                label="Patience"
+                value={sm.when.patience.toFixed(2)}
                 min={0}
                 max={1}
                 step={0.05}
-                v={sm.when.waitFloor}
-                onChange={(v) => setWhen("waitFloor", v)}
-                hint={`a 2 h wait lands at ${waitScore(2, sm.when).toFixed(2)} — never 0`}
-              />
-              <Slider
-                label="Session length"
-                value={`${sm.when.sessionH.toFixed(1)} h`}
-                min={0.5}
-                max={4}
-                step={0.25}
-                v={sm.when.sessionH}
-                onChange={(v) => setWhen("sessionH", v)}
-                hint={`hours the visit needs — 30 min left → fit ${fitScore(0.5, sm.when).toFixed(2)}`}
+                v={sm.when.patience}
+                onChange={(v) => setWhen("patience", v)}
+                hint={
+                  sm.when.patience < 0.25
+                    ? "strict — only open-now-for-a-while"
+                    : sm.when.patience > 0.75
+                      ? "lenient — future opens + short windows ok"
+                      : `mid — a 2 h wait → when ${whenAt(2).toFixed(2)}`
+                }
               />
             </div>
           </div>
           <div>
-            <SubHead>what · one knob — the category ladder</SubHead>
-            <div className="mt-3 grid grid-cols-2 gap-x-6 gap-y-4">
+            <SubHead>what · one category tolerance</SubHead>
+            <div className="mt-3">
               <Slider
-                label="Super-category rung"
-                value={sm.what.sibling.toFixed(2)}
+                label="Tolerance t"
+                value={sm.what.tol.toFixed(2)}
                 min={0}
                 max={1}
                 step={0.05}
-                v={sm.what.sibling}
-                onChange={(v) => setWhat("sibling", v)}
-                hint="same super category, different category — asked cocktail bar, got a mezcalería"
+                v={sm.what.tol}
+                onChange={(v) => setWhat("tol", v)}
+                hint={`super = t (${sm.what.tol.toFixed(2)}) · none = t² (${none.toFixed(2)}) · exact = 1`}
               />
             </div>
           </div>
@@ -112,50 +106,49 @@ export function SmBox() {
         <>
           <ProcessSteps>
             <p>
-              where = 1/(1+(km/tol)^{sm.where.distExp.toFixed(1)}) · tol = the consumer&apos;s
-              Where slider (unset → the green default {sm.where.defaultTolKm.toFixed(1)} km) · a
-              named zone uses 30% of it · continuous, never a bucket
+              where = 1/(1+(km/tol)^{DIST_EXP}) · tol = the consumer&apos;s Where slider (unset →
+              green default {sm.where.defaultTolKm.toFixed(1)} km) · falloff frozen
             </p>
             <p>
-              when = wait × fit · wait = {sm.when.waitFloor.toFixed(2)} +{" "}
-              {(1 - sm.when.waitFloor).toFixed(2)}/(1+(h/2)^4) · fit = min(1, open/
-              {sm.when.sessionH.toFixed(1)}) · times snap to the 30-min grid
+              when = wait × fit over a binary openness array ({OPENNESS_SLOTS} half-hour slots =
+              2×24×7 from intent time) · patience {sm.when.patience.toFixed(2)} shapes both
+              extremes
             </p>
             <p>
-              what ladder: same category → 1 · same super category → {sm.what.sibling.toFixed(2)}{" "}
-              · none → {MISMATCH_RUNG.toFixed(2)} (frozen, never 0) · nothing asked → 1
+              what ladder: same → 1 · super → {sm.what.tol.toFixed(2)} · none → {none.toFixed(2)}{" "}
+              (= t²) · nothing asked → 1
             </p>
           </ProcessSteps>
           <div className="mt-3 grid gap-4 sm:grid-cols-3">
             <CurvePlot
               tone="emerald"
               title="where · distance decay"
-              f={(km) => whereScore(km, sm.where.defaultTolKm, sm.where.distExp)}
+              f={(km) => whereScore(km, sm.where.defaultTolKm)}
               x0={0}
               x1={20}
               markers={[{ x: sm.where.defaultTolKm }]}
               xLabel="km → where"
-              caption={`tol ${sm.where.defaultTolKm.toFixed(1)} · exp ${sm.where.distExp.toFixed(1)}`}
+              caption={`tol ${sm.where.defaultTolKm.toFixed(1)} · exp ${DIST_EXP}`}
             />
             <CurvePlot
               tone="emerald"
-              title="when · wait (two plateaus)"
-              f={(h) => waitScore(h, sm.when)}
+              title="when · wait (3 h open run)"
+              f={(h) => whenAt(h)}
               x0={0}
-              x1={8}
+              x1={12}
               markers={[{ x: 2 }]}
-              xLabel="h until open → wait"
-              caption={`floor ${sm.when.waitFloor.toFixed(2)}`}
+              xLabel="h until open → when"
+              caption={`patience ${sm.when.patience.toFixed(2)}`}
             />
             <LadderPlot
               tone="emerald"
               title="what · the ladder"
               bars={[
                 { label: "same", value: 1 },
-                { label: "super", value: sm.what.sibling },
-                { label: "none", value: MISMATCH_RUNG },
+                { label: "super", value: sm.what.tol },
+                { label: "none", value: none },
               ]}
-              caption="category rungs"
+              caption="t · t²"
             />
           </div>
         </>
@@ -163,8 +156,8 @@ export function SmBox() {
       outputs={
         <Prose>
           <b className="text-foreground/80">SM = where × when × what ∈ [0,1]</b> — multiplies
-          EVERY lane. Structurally infeasible (closed now, cross-town) → the card dies; the
-          what ladder alone never vetoes (floor {MISMATCH_RUNG.toFixed(2)}).
+          EVERY lane. Structurally infeasible (closed, cross-town) → the card dies; the what
+          ladder alone never vetoes (none floor = t²).
         </Prose>
       }
     />
