@@ -126,7 +126,7 @@ export function ScoringProvider({
   // dirty diffs are JSON.stringify equality per section.
   const current: ScoringSettings = useMemo(
     () => ({
-      v: 10,
+      v: 11,
       // Same key order as coerceLaneCounts' output — the dirty diff is
       // JSON.stringify equality.
       laneN: {
@@ -135,11 +135,11 @@ export function ScoringProvider({
         hybrid: laneN.hybrid,
       },
       sm: {
-        where: { defaultTolKm: sm.where.defaultTolKm, distExp: sm.where.distExp },
-        when: { waitFloor: sm.when.waitFloor, sessionH: sm.when.sessionH },
-        what: { sibling: sm.what.sibling },
+        where: { defaultTolKm: sm.where.defaultTolKm },
+        when: { patience: sm.when.patience },
+        what: { tol: sm.what.tol },
       },
-      gp: { lnCeiling: gp.lnCeiling },
+      gp: { lnCeiling: gp.lnCeiling, ratingPow: gp.ratingPow },
       rp: {
         zero: rp.zero,
         conservative: rp.conservative,

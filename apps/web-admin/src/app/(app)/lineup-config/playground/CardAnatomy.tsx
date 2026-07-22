@@ -2,9 +2,10 @@
 
 import { Dices, MapPin, MessageSquareText, Store } from "lucide-react";
 import {
+  DIST_EXP,
   EM_ENCODER,
   LANES,
-  MISMATCH_RUNG,
+  noneRung,
   type GpParams,
   type LaneId,
   type SmParams,
@@ -119,7 +120,7 @@ export function CardAnatomy({
                   ? `inside W (zone “${intent.zoneName}” matched)`
                   : `${parts.w.km.toFixed(1)} km to W · ${parts.w.zoneMode ? "zone spillover" : "point mode"} · tol ${parts.smP.tolKm.toFixed(1)} km`
             }
-            math={`1/(1+(km/${parts.smP.tolKm.toFixed(1)})^${sm.where.distExp.toFixed(1)})`}
+            math={`1/(1+(km/${parts.smP.tolKm.toFixed(1)})^${DIST_EXP})`}
             value={parts.smP.where}
           />
           <FactorRow
@@ -128,10 +129,10 @@ export function CardAnatomy({
               parts.win.unknown
                 ? "hours unknown — neutral 1"
                 : parts.win.opensInH === 0
-                  ? `open now · ${parts.win.openForH.toFixed(1)} h left`
-                  : `opens in ${parts.win.opensInH.toFixed(1)} h · then ${parts.win.openForH.toFixed(1)} h`
+                  ? `open now · ${parts.win.openForH.toFixed(1)} h left · patience ${sm.when.patience.toFixed(2)}`
+                  : `opens in ${parts.win.opensInH.toFixed(1)} h · then ${parts.win.openForH.toFixed(1)} h · patience ${sm.when.patience.toFixed(2)}`
             }
-            math={`wait ${pct(parts.smP.wait)} × fit ${pct(parts.smP.fit)}`}
+            math={`wait ${pct(parts.smP.wait)} × fit ${pct(parts.smP.fit)} · openness array`}
             value={parts.smP.when}
           />
           <FactorRow
@@ -141,7 +142,7 @@ export function CardAnatomy({
                 ? "nothing asked → 1"
                 : `${parts.rel} · place is ${placeCategory ?? "uncategorized"}`
             }
-            math={`ladder 1 / ${sm.what.sibling.toFixed(2)} / ${MISMATCH_RUNG.toFixed(2)}`}
+            math={`ladder 1 / ${sm.what.tol.toFixed(2)} / ${noneRung(sm.what.tol).toFixed(2)}`}
             value={parts.smP.what}
           />
           <ResultLine>
@@ -154,7 +155,7 @@ export function CardAnatomy({
           icon={Store}
           tint="amber"
           title="GP · Google Popularity"
-          note={`ln(1 + ★·n) / ${gp.lnCeiling.toFixed(1)}`}
+          note={`ln(1 + ★^${gp.ratingPow.toFixed(1)}·n) / ${gp.lnCeiling.toFixed(1)}`}
           result={pct(parts.gpP.gp)}
         >
           <LedgerRow label="reviews · n" value={parts.gpP.reviews.toLocaleString("en-US")} />

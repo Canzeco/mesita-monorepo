@@ -13,14 +13,15 @@ import {
 import {
   DEFAULT_POINT_TOL_KM,
   DEFAULT_SM_PARAMS as SM,
-  fitScore,
+  DIST_EXP,
   gpParts,
   laneFormula,
   laneScore,
   LANES,
   quantizeH,
   rpScore,
-  waitScore,
+  whenParts,
+  synthesizeOpenness,
   whereScore,
   type Lane,
   type LaneId,
@@ -85,10 +86,11 @@ export function ScoresSection({ place }: { place: AdminPlace }) {
   const gp = gpParts(place.google_review_count, place.google_stars_overall);
 
   // SM — where × when at the operator's inputs; what = 1 (nothing asked).
-  const where = whereScore(km, DEFAULT_POINT_TOL_KM, SM.where.distExp);
-  const wait = waitScore(opensIn, SM.when);
-  const fit = fitScore(openFor, SM.when);
-  const when = wait * fit;
+  const where = whereScore(km, DEFAULT_POINT_TOL_KM);
+  const wp = whenParts(synthesizeOpenness(opensIn, openFor), SM.when.patience);
+  const wait = wp.wait;
+  const fit = wp.fit;
+  const when = wp.when;
   const sm = where * when;
 
   const subs = { em, sm, gp: gp.gp, rp, xx: 1 };
@@ -198,8 +200,8 @@ export function ScoresSection({ place }: { place: AdminPlace }) {
           </div>
           <p className="text-muted-foreground mt-1 text-[11px] leading-snug">
             The intent&apos;s structured asks against this place&apos;s facts. The consumer owns
-            the tolerance (default {DEFAULT_POINT_TOL_KM} km) · doubling distance beyond it costs{" "}
-            {Math.pow(2, SM.where.distExp).toFixed(0)}×. Time resolves to 30-minute blocks.
+            the tolerance (default {DEFAULT_POINT_TOL_KM} km) · falloff frozen at {DIST_EXP} ·
+            when uses patience {SM.when.patience.toFixed(2)} over a 2×24×7 openness array.
           </p>
           <div className="mt-3 grid gap-4 sm:grid-cols-3">
             <Ctl
@@ -222,7 +224,7 @@ export function ScoresSection({ place }: { place: AdminPlace }) {
               step={0.5}
               v={opensIn}
               onChange={setOpensIn}
-              note={`Two plateaus — floor ${SM.when.waitFloor}, never 0.`}
+              note={`Patience ${SM.when.patience.toFixed(2)} — open-now vs future.`}
               warn={opensIn > 0}
             />
             <Ctl
@@ -234,7 +236,7 @@ export function ScoresSection({ place }: { place: AdminPlace }) {
               step={0.5}
               v={openFor}
               onChange={setOpenFor}
-              note={`The visit needs ${SM.when.sessionH} h.`}
+              note="Open-run length against patience's need."
               warn={fit < 1}
             />
           </div>

@@ -58,15 +58,16 @@ export function ScoresPanel() {
         <div className="mt-2 flex flex-col gap-1 font-mono text-[11px]">
           <p>EM = max(0, cos(A, B)) · A = place doc · B = consumer + intent doc · [0,1]</p>
           <p>
-            SM = where × when × what · where = 1/(1+(km/tol)^{sm.where.distExp.toFixed(1)}) · tol
-            = consumer slider (green default {sm.where.defaultTolKm.toFixed(1)} km) · wait ={" "}
-            {sm.when.waitFloor.toFixed(2)} + {(1 - sm.when.waitFloor).toFixed(2)}/(1+(h/2)^4) · fit
-            = min(1, h/{sm.when.sessionH.toFixed(1)}) · 30-min blocks
+            SM = where × when × what · where = 1/(1+(km/tol)^3) · tol = consumer slider (green
+            default {sm.where.defaultTolKm.toFixed(1)} km) · when = patience{" "}
+            {sm.when.patience.toFixed(2)} over 2×24×7 openness · what tol {sm.what.tol.toFixed(2)}{" "}
+            (super = t · none = t²)
           </p>
           <p>
-            GP = min(1, ln(1 + ★·n)/{gp.lnCeiling.toFixed(1)}) · RP rungs {rp.zero.toFixed(2)} /{" "}
-            {rp.conservative.toFixed(2)} / {rp.aggressive.toFixed(2)} / {rp.dominant.toFixed(2)} ·
-            XX = U^{xx.control.toFixed(1)}
+            GP = min(1, ln(1 + ★^{gp.ratingPow.toFixed(1)}·n)/{gp.lnCeiling.toFixed(1)}) · RP
+            rungs {rp.zero.toFixed(2)} / {rp.conservative.toFixed(2)} /{" "}
+            {rp.aggressive.toFixed(2)} / {rp.dominant.toFixed(2)} · XX = U^
+            {xx.control.toFixed(1)}
           </p>
         </div>
       </div>

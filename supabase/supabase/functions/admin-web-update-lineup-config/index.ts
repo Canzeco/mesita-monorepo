@@ -11,33 +11,19 @@
 // — the Subscores tab always saves its full form, so partial patches would
 // only invite drift.
 //
-// v10 blob (scoring v10, MESITA-644 · per-lane counts MESITA-659 · SM 1·2·1
-// hyperparameters + the GREEN consumer default defaultTolKm MESITA-702 ·
-// NO RECALL CAP MESITA-706 · INPUTS FIXED, MESITA-707: each subscore's data
-// fields are documentation, not config, so `dataAccess` and `context` are
-// GONE — stray keys from a v9 client are ignored, like `em` and `retrieval`)
-// — keys follow the subscore names (EM · SM · GP · RP · XX, all [0,1]; three
-// lanes; merge O → I → H). The EM encoder (text-embedding-3-small @ its
-// native 1536 dims) is a FIXED decision, deliberately NOT in the blob:
-//   { v: 10, laneN, sm, gp, rp, xx }
+// v11 blob (MESITA-714): ONE hyperparam per intent axis + GP ratingPow.
+//   { v: 11, laneN, sm, gp, rp, xx }
 //   laneN     PER-LANE deck counts { organic, inorganic, hybrid }, each
-//             0–50 int (0 = lane off), sum ≥ 1; the merged deck (dedupe,
-//             no backfill) is ≤ their sum. A legacy v4 flat number expands
-//             to all three lanes.
-//   sm        Structured Match knobs — where (defaultTolKm: the CONSUMER
-//             DEFAULT the user's Where slider overrides per query — LENIENT:
-//             a v7 client omitting it gets the code default 5, so both
-//             client generations save · distExp: the hyperparameter) · when
-//             (waitFloor · sessionH) · what (sibling only: mismatch frozen
-//             at 0.2). Zone spillover, wait transition/steepness and the
-//             30-min grid are frozen constants in the model — not config;
-//             leftover v5/v6 keys (pointTolKm · mismatch) are ignored.
-//   gp        Google Popularity — lnCeiling (ln(1 + ★·n) that reads GP 1)
+//             0–50 int (0 = lane off), sum ≥ 1
+//   sm        where: { defaultTolKm } — GREEN consumer default (falloff frozen)
+//             when:  { patience } — ONE shape knob over 2×24×7 openness array
+//             what:  { tol } — super = t, none = t²
+//   gp        { lnCeiling, ratingPow } — ratingPow ∈ [1,2], default 1
 //   rp        Rewards Promotions rungs per posture, [0,1]
-//   xx        Random Number — control ∈ [0,5] (0 = off, pure merit)
-// See web-admin lib/business/scores.ts — the RANGE TABLE there is mirrored
-// VERBATIM here; a value the UI allows but this EF clamps would silently
-// move the form on save.
+//   xx        { control } ∈ [0,5] — GREEN default only
+// Soft-migrate: patience ← waitFloor · tol ← sibling · ratingPow defaults to 1.
+// Stray pre-v11 keys (distExp · sessionH · sibling · dataAccess · context ·
+// retrieval · em) are ignored. See web-admin lib/business/scores.ts RANGE TABLE.
 //
 // The model is still a frontend draft: nothing in Swipe/Map/Memo reads this
 // yet. When the engines go live, this blob is their config source.
@@ -68,9 +54,6 @@ function validate(raw: unknown): { ok: true; config: unknown } | { ok: false; er
   if (!raw || typeof raw !== "object") return { ok: false, error: "config must be an object" };
   const r = raw as Record<string, unknown>;
 
-  // Per-lane deck counts (v5). A legacy flat number expands to all three;
-  // each lane 0–LANE_N_MAX (0 = lane off); an all-zero config would empty
-  // every deck, so the sum must be ≥ 1.
   const LANE_IDS = ["organic", "inorganic", "hybrid"] as const;
   const laneN: Record<string, number> = {};
   if (typeof r.laneN === "number") {
@@ -98,35 +81,28 @@ function validate(raw: unknown): { ok: true; config: unknown } | { ok: false; er
     return { ok: false, error: "laneN: at least one lane must be > 0" };
   }
 
-  // SM — where × when × what (v8: 1 · 2 · 1 hyperparameters + the green
-  // consumer default defaultTolKm; stray v5/v6 keys — pointTolKm ·
-  // mismatch — are ignored like the other frozen constants).
+  // SM — one hyperparam per intent axis (v11). Soft-migrate v10 keys.
   const smIn = r.sm as Record<string, unknown> | undefined;
   const whereIn = smIn?.where as Record<string, unknown> | undefined;
-  // LENIENT on purpose: the deployed v7 admin build omits defaultTolKm —
-  // fall back to the code default (5 km) instead of rejecting, so both
-  // client generations keep saving across the deploy window.
   const defaultTolKm = num(whereIn?.defaultTolKm, 0.5, 20) ?? 5;
-  const distExp = num(whereIn?.distExp, 1, 5);
-  if (distExp == null) {
-    return { ok: false, error: "sm.where knobs out of range" };
-  }
-  const whenIn = smIn?.when as Record<string, unknown> | undefined;
-  const waitFloor = num(whenIn?.waitFloor, 0, 1);
-  const sessionH = num(whenIn?.sessionH, 0.5, 4);
-  if (waitFloor == null || sessionH == null) {
-    return { ok: false, error: "sm.when knobs out of range" };
-  }
-  const whatIn = smIn?.what as Record<string, unknown> | undefined;
-  const sibling = num(whatIn?.sibling, 0, 1);
-  if (sibling == null) {
-    return { ok: false, error: "sm.what knobs out of range" };
-  }
 
-  // GP — the log squash's ceiling.
+  const whenIn = smIn?.when as Record<string, unknown> | undefined;
+  const patience =
+    num(whenIn?.patience, 0, 1) ??
+    num(whenIn?.waitFloor, 0, 1) ??
+    0.35;
+
+  const whatIn = smIn?.what as Record<string, unknown> | undefined;
+  const tol =
+    num(whatIn?.tol, 0, 1) ??
+    num(whatIn?.sibling, 0, 1) ??
+    0.5;
+
+  // GP — ln ceiling + rating exponent (v11).
   const gpIn = r.gp as Record<string, unknown> | undefined;
   const lnCeiling = num(gpIn?.lnCeiling, 5, 15);
   if (lnCeiling == null) return { ok: false, error: "gp.lnCeiling out of range" };
+  const ratingPow = num(gpIn?.ratingPow, 1, 2) ?? 1;
 
   // RP — the posture rungs, [0,1].
   const rpIn = r.rp as Record<string, unknown> | undefined;
@@ -137,30 +113,26 @@ function validate(raw: unknown): { ok: true; config: unknown } | { ok: false; er
     rp[p] = v;
   }
 
-  // XX — the deck-wide randomness control.
+  // XX — the deck-wide randomness control (green default only).
   const xxIn = r.xx as Record<string, unknown> | undefined;
   const control = num(xxIn?.control, 0, 5);
   if (control == null) return { ok: false, error: "xx.control must be a number 0–5" };
 
-  // v10: `dataAccess` and `context` are NOT read and NOT written — inputs
-  // are fixed documentation now. A v9 client still sending them just has
-  // the keys dropped here (lenient — both client generations keep saving).
-
   return {
     ok: true,
     config: {
-      v: 10,
+      v: 11,
       laneN: {
         organic: laneN.organic,
         inorganic: laneN.inorganic,
         hybrid: laneN.hybrid,
       },
       sm: {
-        where: { defaultTolKm, distExp },
-        when: { waitFloor, sessionH },
-        what: { sibling },
+        where: { defaultTolKm },
+        when: { patience },
+        what: { tol },
       },
-      gp: { lnCeiling },
+      gp: { lnCeiling, ratingPow },
       rp,
       xx: { control },
     },
