@@ -109,10 +109,13 @@ Deno.serve(async (req) => {
 
   const admin = adminClient(envRes.env);
 
+  // Fetch place by project_id directly — reservations.project_id has no PostgREST
+  // FK hint to places (only to projects historically), so `place:places(...)` embeds
+  // 500 with "Could not find a relationship". places.id == project_id in this schema.
   const { data: r, error: rErr } = await admin
     .from("reservations")
     .select(
-      "id, reserved_at, party_size, notes, status, consumer:consumers(full_name, first_name, last_name), place:places(name, phone, products)",
+      "id, reserved_at, party_size, notes, status, project_id, consumer:consumers(full_name, first_name, last_name)",
     )
     .eq("id", reservationId)
     .maybeSingle();
@@ -130,7 +133,12 @@ Deno.serve(async (req) => {
     .maybeSingle();
   const cfg = coerceReservationsCallConfig(settings?.reservations_config);
 
-  const place = (r.place ?? null) as Place | null;
+  const { data: placeRow } = await admin
+    .from("places")
+    .select("name, phone, products")
+    .eq("id", r.project_id)
+    .maybeSingle();
+  const place = (placeRow ?? null) as Place | null;
   let toNumber: string | null;
   let via: string;
   if (cfg.testCall.enabled) {
