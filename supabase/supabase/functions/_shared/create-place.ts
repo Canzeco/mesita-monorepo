@@ -14,6 +14,7 @@ import { type SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { seedPlaceResearch } from "./enrich-pipeline.ts";
 import { fetchGoogleBasics } from "./enrich-google-basics.ts";
 import { savePlaceData } from "./save-place.ts";
+import { queuePlaceEmbeddingsOnUpdate } from "./place-embeddings.ts";
 import {
   type ChannelKey,
   evaluatePlaceForChannel,
@@ -157,6 +158,19 @@ export async function createMinimalPlace(opts: {
     return { ok: false, status: saveRes.status, body: saveRes.body };
   }
   const saved = saveRes.saved;
+
+  // ── On-Create embeddings (Notion On-Create S4 "Compute Place Synthesis and
+  // Embedding"): synthesize the first blurb + vector for the new place right
+  // away, so it's semantically searchable before the Enricher fills the deep
+  // profile. Background (waitUntil) — never blocks or fails the create; the
+  // On-Update path re-embeds when the Enricher later changes profile fields.
+  // Tags never feed the source text. ──
+  queuePlaceEmbeddingsOnUpdate({
+    admin,
+    placeId: saved.project_id,
+    apiKey: Deno.env.get("OPENAI_KEY")?.trim(),
+    logPrefix: `${callerName}/on-create`,
+  });
 
   // ── 3) Queue deep enrichment (async): seed the place_research row at
   // stage='research'; the pg_cron poller picks it up

@@ -8,6 +8,7 @@ import { buildOpennessArray } from "./lineup-openness.ts";
 import { postureForRates, ratesFromPlace } from "./lineup-posture.ts";
 import {
   composeFinalDeck,
+  DEFAULT_MANUAL_PRIORITY,
   emScore,
   gpScore,
   LANES,
@@ -30,6 +31,8 @@ export type LineupPlace = {
   embedding: unknown;
   google_review_count?: number | null;
   google_stars_overall?: number | null;
+  /** MP subscore — operator priority [0,1]; unset → DEFAULT_MANUAL_PRIORITY. */
+  manual_priority?: number | null;
   [key: string]: unknown;
 };
 
@@ -101,11 +104,14 @@ export function lineupOrderIds(
     const posture = isPartner ? postureForRates(ratesFromPlace(p)) : null;
     // Non-members never enter paid lanes (lane filter, not a whisper score).
     const rp = isPartner ? rpScore(posture, settings.rp) : 0;
+    // MP — the operator's per-place priority; unset → the 0.1 baseline.
+    const mpRaw = Number(p.manual_priority);
+    const mp = Number.isFinite(mpRaw) ? mpRaw : DEFAULT_MANUAL_PRIORITY;
 
     const scores = {} as Record<LaneId, number>;
     for (const lane of LANES) {
       const xx = xxScore(unitDraw(ctx.xxSeed, p.id, lane.id), settings.xx.control);
-      const subs = { em, sm, gp, rp, xx };
+      const subs = { em, sm, gp, rp, xx, mp };
       // Paid lanes: force 0 for non-partners even if RP whisper would be >0.
       if ((lane.id === "inorganic" || lane.id === "hybrid") && !isPartner) {
         scores[lane.id] = 0;

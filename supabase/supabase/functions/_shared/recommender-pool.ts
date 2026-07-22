@@ -27,7 +27,7 @@ export {
 // crosses back over the wire to the client.
 const RECOMMENDER_PLACE_COLUMNS =
   PLACE_PUBLIC_COLUMNS +
-  ", embedding, embedding_source_hash, embedding_source_text";
+  ", embedding, embedding_source_hash, embedding_source_text, manual_priority";
 
 type CandidatePoolOptions = {
   lat: number | null;

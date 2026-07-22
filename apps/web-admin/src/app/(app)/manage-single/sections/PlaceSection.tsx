@@ -43,6 +43,7 @@ import {
 } from "../actions";
 import { PlaceTagsPicker } from "../PlaceTagsPicker";
 import { PlaceCategorySelect } from "../PlaceCategorySelect";
+import { ManualPriorityCard } from "./ManualPriorityCard";
 import { GroupLabel, PhoneField, SaveBar, SectionCard, TextArea, TextField } from "../ui";
 import { unitSectionHref } from "../nav";
 import {
@@ -667,7 +668,9 @@ export function PlaceSection({
     <div className="columns-1 gap-4 [&>section]:mb-4 [&>section]:break-inside-avoid [&>details]:mb-4 [&>details]:break-inside-avoid lg:columns-2 lg:gap-5 lg:[&>section]:mb-5 lg:[&>details]:mb-5">
       {/* Box order (MESITA-547 / MESITA-720): edit-first — Basics → Hours →
           Channels → Reservations → Photos → Products/Reviews → Location →
-          Ownership → Promos → Metadata → Embeddings. */}
+          Ownership → Promos → Metadata → Embeddings. Manual Priority (MP
+          subscore) leads — the one live, editable per-place score. */}
+      <ManualPriorityCard place={place} />
 {/* Basics — editable identity. Price stays Enricher/Google-derived
           read-only; category is Enricher + Admin + Business (MESITA-469). */}
       <SectionCard

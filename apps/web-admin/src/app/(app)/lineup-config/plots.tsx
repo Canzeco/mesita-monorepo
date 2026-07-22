@@ -13,6 +13,7 @@ const TONE_TEXT: Record<CardTint, string> = {
   amber: "text-amber-500",
   rose: "text-rose-500",
   violet: "text-violet-500",
+  teal: "text-teal-500",
 };
 const TONE_BAR: Record<CardTint, string> = {
   sky: "bg-sky-500",
@@ -20,6 +21,7 @@ const TONE_BAR: Record<CardTint, string> = {
   amber: "bg-amber-500",
   rose: "bg-rose-500",
   violet: "bg-violet-500",
+  teal: "bg-teal-500",
 };
 
 function PlotTitle({ children }: { children: React.ReactNode }) {

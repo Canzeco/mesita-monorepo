@@ -69,6 +69,7 @@ export function ScoresPanel() {
             {rp.aggressive.toFixed(2)} / {rp.dominant.toFixed(2)} · XX = U^
             {xx.control.toFixed(1)}
           </p>
+          <p>MP = the place&apos;s manual_priority · per place · default 0.1 · not a global knob</p>
         </div>
       </div>
     </PanelCard>

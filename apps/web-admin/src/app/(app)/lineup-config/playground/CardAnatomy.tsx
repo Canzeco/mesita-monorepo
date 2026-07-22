@@ -1,6 +1,6 @@
 "use client";
 
-import { Dices, MapPin, MessageSquareText, Store } from "lucide-react";
+import { Dices, MapPin, MessageSquareText, Star, Store } from "lucide-react";
 import {
   DIST_EXP,
   EM_ENCODER,
@@ -40,6 +40,8 @@ export type CardParts = {
   gpP: { reviews: number; rating: number | null; raw: number; gp: number };
   posture: StrategyId | null;
   rpVal: number;
+  /** MP — the place's operator priority [0,1] (default 0.1). */
+  mp: number;
   draws: Record<LaneId, number>;
   xxVals: Record<LaneId, number>;
   laneScores: Record<LaneId, number>;
@@ -209,6 +211,22 @@ export function CardAnatomy({
             />
           ))}
         </ScoreBox>
+
+        <ScoreBox
+          icon={Star}
+          tint="teal"
+          title="MP · Manual Priority"
+          note="the place's operator priority · per place"
+          result={pct(parts.mp)}
+          className="lg:col-span-2"
+        >
+          <LedgerRow label="manual_priority (on the place)" value={pct(parts.mp)} />
+          <ResultLine>
+            MP = <b>{pct(parts.mp)}</b>
+            {parts.mp === 0.1 ? " · baseline (untouched)" : " · operator-set"} · multiplies every
+            lane
+          </ResultLine>
+        </ScoreBox>
       </div>
 
       {/* The card's three lane scores — its deck lane bolded */}
@@ -231,7 +249,9 @@ export function CardAnatomy({
                           ? pct(parts.gpP.gp)
                           : p === "rp"
                             ? pct(parts.rpVal)
-                            : pct(parts.xxVals[l.id]),
+                            : p === "mp"
+                              ? pct(parts.mp)
+                              : pct(parts.xxVals[l.id]),
                   )
                   .join(" × ")}
               </span>

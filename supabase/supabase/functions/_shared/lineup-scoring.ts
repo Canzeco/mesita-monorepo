@@ -2,7 +2,7 @@
 // Mirrors apps/web-admin/src/lib/business/scores.ts (MESITA-714/717/718).
 // Keep in lockstep when the console model changes.
 
-export type SubscoreId = "em" | "sm" | "gp" | "rp" | "xx";
+export type SubscoreId = "em" | "sm" | "gp" | "rp" | "xx" | "mp";
 export type LaneId = "organic" | "inorganic" | "hybrid";
 
 export type Lane = {
@@ -10,11 +10,16 @@ export type Lane = {
   parts: readonly SubscoreId[];
 };
 
+// MP (Manual Priority) multiplies EVERY lane — the operator's per-place
+// override, trailing each formula (MESITA / Pato 2026-07-22).
 export const LANES: readonly Lane[] = [
-  { id: "organic", parts: ["em", "sm", "gp", "xx"] },
-  { id: "inorganic", parts: ["em", "sm", "rp", "xx"] },
-  { id: "hybrid", parts: ["em", "sm", "gp", "rp", "xx"] },
+  { id: "organic", parts: ["em", "sm", "gp", "xx", "mp"] },
+  { id: "inorganic", parts: ["em", "sm", "rp", "xx", "mp"] },
+  { id: "hybrid", parts: ["em", "sm", "gp", "rp", "xx", "mp"] },
 ];
+
+/** MP baseline for an untouched place (mirrors the DB column default). */
+export const DEFAULT_MANUAL_PRIORITY = 0.1;
 
 export const MERGE_ROTATION: readonly LaneId[] = ["organic", "inorganic", "hybrid"];
 

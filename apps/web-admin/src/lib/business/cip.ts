@@ -99,6 +99,8 @@ export type SamplePlace = {
   welcome_premium_rate: number | null;
   free_rate: number | null;
   premium_rate: number | null;
+  /** MP subscore — operator priority [0,1]; null → DEFAULT_MANUAL_PRIORITY. */
+  manual_priority: number | null;
 };
 
 // ── Consumer side ───────────────────────────────────────────────────────

@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import {
   composeFinalDeck,
+  DEFAULT_MANUAL_PRIORITY,
   EM_ENCODER,
   gpParts,
   laneCountsTotal,
@@ -153,6 +154,7 @@ export function PlaygroundShell() {
         premium_rate: p.premium_rate,
       });
       const rpVal = rpScore(posture, current.rp);
+      const mp = p.manual_priority ?? DEFAULT_MANUAL_PRIORITY;
       const draws = Object.fromEntries(
         LANES.map((l) => [l.id, unitDraw(p.id, l.id, 1)]),
       ) as Record<LaneId, number>;
@@ -162,10 +164,10 @@ export function PlaygroundShell() {
       const laneScores = Object.fromEntries(
         LANES.map((l) => [
           l.id,
-          laneScore(l, { em, sm: smP.sm, gp: gpP.gp, rp: rpVal, xx: xxVals[l.id] }),
+          laneScore(l, { em, sm: smP.sm, gp: gpP.gp, rp: rpVal, xx: xxVals[l.id], mp }),
         ]),
       ) as Record<LaneId, number>;
-      parts.set(p.id, { em, placeDoc, placeVec, w, win, rel, smP, gpP, posture, rpVal, draws, xxVals, laneScores });
+      parts.set(p.id, { em, placeDoc, placeVec, w, win, rel, smP, gpP, posture, rpVal, mp, draws, xxVals, laneScores });
       return { id: p.id, scores: laneScores };
     });
 
