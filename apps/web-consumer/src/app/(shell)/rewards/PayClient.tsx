@@ -3,6 +3,7 @@
 import { useMemo } from "react";
 import { MyQrCard } from "@/components/consumer/MyQrCard";
 import { PayTickets } from "@/components/consumer/PayTickets";
+import { RewardProgramCard } from "@/components/consumer/RewardProgramCard";
 import { RewardsTopCards } from "@/components/consumer/RewardsTopCards";
 import {
   computeRewardStats,
@@ -32,6 +33,8 @@ export function PayClient({
 
   return (
     <div className="scrollbar-hide flex h-full min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-4 pt-4 pb-6">
+      <RewardProgramCard />
+
       <RewardsTopCards />
 
       <MyQrCard

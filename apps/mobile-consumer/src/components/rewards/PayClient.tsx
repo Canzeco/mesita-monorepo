@@ -3,6 +3,7 @@ import { ScrollView, View } from 'react-native';
 
 import { MyQrCard } from '@/components/rewards/MyQrCard';
 import { PayTickets } from '@/components/rewards/PayTickets';
+import { RewardProgramCard } from '@/components/rewards/RewardProgramCard';
 import { RewardsTopCards } from '@/components/rewards/RewardsTopCards';
 import {
   computeRewardStats,
@@ -39,6 +40,7 @@ export function PayClient({
       }}
       showsVerticalScrollIndicator={false}
     >
+      <RewardProgramCard />
       <RewardsTopCards />
       <MyQrCard
         code={code}

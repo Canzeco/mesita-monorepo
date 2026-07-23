@@ -25,10 +25,11 @@
 // (computeTicketBill → promoEligibleSubtotalCents reads it), and always shown.
 export const UNIVERSAL_CAP_MXN = 500;
 
-export type StrategyId = "zero" | "conservative" | "aggressive" | "dominant";
+export type StrategyId = "zero" | "conservative" | "aggressive";
 
-// Four rungs, distinct from the three-step plan visibility of the old model.
-type StrategyVisibility = "Low" | "Mid" | "High" | "Max";
+// Three rungs (Dominant retired in v5, MESITA-723), distinct from the plan
+// visibility of the old model.
+type StrategyVisibility = "Low" | "Mid" | "High";
 
 // The four discount cells, keyed by the exact places column each maps to.
 //   welcome_* → first visit at the place · unprefixed → every visit after.
@@ -52,17 +53,16 @@ export type Strategy = {
   cap: number | null;
 };
 
-// Ordered ascending in generosity so the picker reads Zero → Dominant.
-// The rate tuples are the canonical Promos v4 table:
+// Ordered ascending in generosity so the picker reads Zero → Aggressive.
+// The rate tuples are the canonical Promos table (Dominant retired in v5,
+// MESITA-723 — three postures only):
 //
 //   Level          FR  PR  FW  PW   Cap   Visibility
 //   ⭕ Zero        off off off off   —     Low
 //   🌿 Conservative 10  20  20  30   500   Mid
 //   ⚡ Aggressive   10  30  30  50   500   High
-//   👑 Dominant     20  30  40  50   500   Max
 //
-// Aggressive is Conservative stretched ×2 on the Premium/Welcome side;
-// Dominant raises the floor (FR/FW), not the ceiling (PW stays 50).
+// Aggressive is Conservative stretched ×2 on the Premium/Welcome side.
 export const STRATEGIES: readonly Strategy[] = [
   {
     id: "zero",
@@ -109,21 +109,6 @@ export const STRATEGIES: readonly Strategy[] = [
     },
     cap: UNIVERSAL_CAP_MXN,
   },
-  {
-    id: "dominant",
-    name: "Dominant",
-    nameEs: "Dominante",
-    emoji: "👑",
-    tagline: "Raise the floor — every guest walks in to a strong deal.",
-    visibility: "Max",
-    rates: {
-      welcome_free_rate: 40,
-      welcome_premium_rate: 50,
-      free_rate: 20,
-      premium_rate: 30,
-    },
-    cap: UNIVERSAL_CAP_MXN,
-  },
 ];
 
 export const STRATEGY_BY_ID = Object.fromEntries(
@@ -135,7 +120,6 @@ export const STRATEGY_VISIBILITY_LADDER: readonly StrategyVisibility[] = [
   "Low",
   "Mid",
   "High",
-  "Max",
 ];
 
 // Which strategy a place's stored rates currently reflect. Matched on the four
@@ -165,10 +149,14 @@ export function strategyForPlace(rates: StrategyRates): StrategyId | null {
 // keeps a 0.1 whisper (membership buys a whisper of paid presence;
 // generosity buys placement — promos v4.1). Custom/legacy rates that match
 // no preset (null) land on the zero rung too.
+//
+// Dominant retired in v5 (MESITA-723): the Lineup RP subscore in ./scores
+// still defines its own 4-rung RpPosture + scoring_config.rp blob (a live
+// scoring-engine shape) — that vestigial `dominant` rung is left for the
+// Lineup follow-up, out of scope here.
 export const RP_BY_STRATEGY: Record<StrategyId, number> = {
   zero: 0.1,
   conservative: 0.4,
   aggressive: 0.7,
-  dominant: 1.0,
 };
 

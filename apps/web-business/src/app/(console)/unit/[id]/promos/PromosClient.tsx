@@ -23,7 +23,7 @@ import { StatusPill } from "./promoShared";
 import { SubscriptionBox } from "./SubscriptionBox";
 
 // Promos — v4.1 pricing cards + product modal (mirrors admin MESITA-584).
-//   1. Subscription — FOUR pricing cards with generated art bands. The whole
+//   1. Subscription — THREE pricing cards with generated art bands. The whole
 //      card is the click target: it opens a product modal with the full
 //      detail (what you give / what you get back / the commitment) and the
 //      action footer — the modal IS the confirm-and-pay step. Three products
@@ -174,10 +174,10 @@ export function PromosClient({ place }: { place: MyPlace }) {
         </p>
       </header>
 
-      {/* ── Box 1 · Subscription (four pricing cards) ─────────────────── */}
+      {/* ── Box 1 · Subscription (three pricing cards) ────────────────── */}
       <Section
         title="Mesita Membership"
-        description={`${formatMoney(PRODUCT_PRICE_MXN, place.currency)}/year each for the paid three — tap a card for the full detail. Every discount applies to the first ${formatMoney(UNIVERSAL_CAP_MXN, place.currency)} of the bill.`}
+        description={`${formatMoney(PRODUCT_PRICE_MXN, place.currency)}/year each for the paid two — tap a card for the full detail. Every discount applies to the first ${formatMoney(UNIVERSAL_CAP_MXN, place.currency)} of the bill.`}
         right={<StatusPill subscribed={subscribed} />}
       >
         <div className="grid grid-cols-1 gap-3 min-[480px]:grid-cols-2">
