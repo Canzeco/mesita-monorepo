@@ -26,10 +26,10 @@ import { setPlacePlan, updatePlace, type AdminPlace } from "../actions";
 import { SectionCard, ErrorNote } from "../ui";
 
 // Admin Promos — Mesita Membership (MESITA-585, card shape MESITA-590).
-//   1. Mesita Membership — FOUR pricing cards, each a plain give/receive
+//   1. Mesita Membership — THREE pricing cards, each a plain give/receive
 //      pitch: YOU GIVE the MX$1,000/year membership + the discounts as a 2×2
 //      matrix (Welcome/Returning × Free/Premium, capped per bill) → YOU
-//      RECEIVE {Low/Mid/High/Max} algorithm placement → Join. The whole card
+//      RECEIVE {Low/Mid/High} algorithm placement → Join. The whole card
 //      opens the product modal (full detail + the action); switching is a
 //      NEW membership (the lock-in). One tap in the modal writes rates +
 //      cap + paying plan flags atomically.
@@ -85,15 +85,6 @@ const CARD_ART: Record<
     recvText: "text-orange-600",
     recvBg: "bg-orange-500/[0.07]",
     recvBorder: "border-orange-500/25",
-  },
-  dominant: {
-    src: "/promos/strategy-dominant.jpg",
-    fallback: "from-purple-950 to-amber-500",
-    cta: "from-purple-700 via-fuchsia-600 to-amber-500",
-    meter: "bg-purple-500",
-    recvText: "text-purple-600",
-    recvBg: "bg-purple-500/[0.07]",
-    recvBorder: "border-purple-500/25",
   },
 };
 
@@ -182,12 +173,12 @@ export function PromosSection({
 
   return (
     <div className="flex flex-col gap-5">
-      {/* ── Box 1 · Mesita Membership (four cards) ───────────────────────── */}
+      {/* ── Box 1 · Mesita Membership (three cards) ──────────────────────── */}
       <SectionCard
         icon={<Percent className="h-4 w-4" />}
         tint="pink"
         title="Mesita Membership"
-        subtitle={`Four postures, one price for the paid three — ${formatMoney(MEMBERSHIP_PRICE_MXN, v.currency)}/year each. Tap a card for the full detail.`}
+        subtitle={`Three postures, one price for the paid two — ${formatMoney(MEMBERSHIP_PRICE_MXN, v.currency)}/year each. Tap a card for the full detail.`}
         action={
           <span className="flex items-center gap-2">
             {pending && (
@@ -197,7 +188,7 @@ export function PromosSection({
           </span>
         }
       >
-        <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
           {STRATEGIES.map((s) => (
             <PricingCard
               key={s.id}
@@ -733,7 +724,7 @@ function FaqsBox({
         <Faq q="Why do all three memberships cost the same?">
           <p>
             Because rank is never for sale. The {price}/year is identical on
-            Conservative, Aggressive and Dominant — what you buy is a
+            Conservative and Aggressive — what you buy is a
             commitment to give, not placement. The only thing that changes
             between postures is the discount schedule you promise your guests,
             and the visibility that generosity earns back.
@@ -753,8 +744,8 @@ function FaqsBox({
         <Faq q="How does visibility work?">
           <p>
             The ranking algorithm reads a stronger discount as a stronger
-            card: Zero sits at Low, Conservative at Mid, Aggressive at High
-            and Dominant at Max. Visibility is never a separate knob you can
+            card: Zero sits at Low, Conservative at Mid, and Aggressive at
+            High. Visibility is never a separate knob you can
             buy — it rises with what you give.
           </p>
         </Faq>

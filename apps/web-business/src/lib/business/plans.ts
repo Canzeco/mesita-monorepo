@@ -3,10 +3,10 @@ import type { PlacePlan } from "@/lib/api/places";
 // Subscription catalog used by place summaries (label lookup).
 //
 // Promos v4 (MESITA-541): a place is either Free or Verified (MX$1,000/year).
-// Strategy postures (Zero / Conservative / Aggressive / Dominant) live on
-// the Promos page and are NOT separate Stripe products — paid postures all
-// grant the same Verified membership (`plan=pro`). Legacy `ultra` folds onto
-// Verified for display.
+// Strategy postures (Zero / Conservative / Aggressive — Dominant retired in
+// v5, MESITA-723) live on the Promos page and are NOT separate Stripe
+// products — paid postures all grant the same Verified membership
+// (`plan=pro`). Legacy `ultra` folds onto Verified for display.
 
 /** Catalog id — Free or the single Verified membership. */
 export type SubscriptionId = "free" | "verified";
