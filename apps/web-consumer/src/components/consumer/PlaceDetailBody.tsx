@@ -9,11 +9,10 @@ import { LocationBox, HoursBox } from "./place-detail/location-hours";
 import { MediaBox } from "./place-detail/media";
 import { ProductsBox } from "./place-detail/products";
 import { ProfileSummary } from "./place-detail/profile-summary";
-import {
-  GoogleReviewsBox,
-  MesitaReviewsBox,
-  ReviewsSummaryBox,
-} from "./place-detail/reviews";
+// Promos v5 (MESITA-723): Mesita reviews are removed for MVP — the Reviews tab
+// shows Google only. ReviewsSummaryBox / MesitaReviewsBox stay on disk (parked)
+// but are no longer rendered.
+import { GoogleReviewsBox } from "./place-detail/reviews";
 import { RewardsBox } from "./place-detail/rewards";
 import { PlaceTabBar, type PlaceTab } from "./place-detail/tabs";
 import {
@@ -57,13 +56,7 @@ export function PlaceDetailBody({ place }: { place: PlaceDetail }) {
             <LastUpdatedBox place={place} />
           </>
         )}
-        {tab === "reviews" && (
-          <>
-            <ReviewsSummaryBox place={place} />
-            <GoogleReviewsBox place={place} />
-            <MesitaReviewsBox place={place} />
-          </>
-        )}
+        {tab === "reviews" && <GoogleReviewsBox place={place} />}
         {tab === "products" && <ProductsBox place={place} />}
         {/* Reward always renders on its tab. Web listings and rate-less
             partners get a "doesn't offer rewards" state inside RewardsBox

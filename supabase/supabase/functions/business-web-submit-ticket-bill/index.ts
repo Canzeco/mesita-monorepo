@@ -16,7 +16,13 @@ import {
   requireMembership,
 } from "../_shared/auth.ts";
 import { computeTicketBill } from "../_shared/business-ticket-billing.ts";
-import { isConsumerFirstVisit, selectprojectRate } from "../_shared/membership.ts";
+import { isConsumerFirstVisit } from "../_shared/membership.ts";
+import {
+  isActionVerified,
+  loadRewardsGrid,
+  placePosture,
+  resolveTicketRate,
+} from "../_shared/rewards-config.ts";
 import {
   assessPromoLane,
   loadMembershipRow,
@@ -60,7 +66,7 @@ Deno.serve(async (req) => {
   const ticketRow = await admin
     .from("tickets")
     .select(
-      "id, project_id, consumer_id, kind, story_status, status, check_subtotal_cents, total_cents, currency",
+      "id, project_id, consumer_id, kind, story_status, review_status, status, check_subtotal_cents, total_cents, currency",
     )
     .eq("id", ticketId)
     .maybeSingle();
@@ -129,9 +135,25 @@ Deno.serve(async (req) => {
     return json({ ok: false, error: "Consumer not found" }, 404);
   }
 
-  const firstVisit = await isConsumerFirstVisit(admin, ticket.consumer_id, ticket.project_id);
-  const ratePercent = selectprojectRate(place, consumerRow.data.class_key, firstVisit);
-  const capPesos = place.monthly_promo_cap;
+  // Promos v5 best-of (MESITA-723): the place's posture (from its v4 rate
+  // columns) × the operator grid on app_settings. The ticket already exists
+  // (scan step), so exclude it from the first-visit count — otherwise Welcome
+  // never fires on the scan → bill path. Actions verified before billing join
+  // the qualifying set here; ones verified after billing bump via reprice.
+  const grid = await loadRewardsGrid(admin);
+  const firstVisit = await isConsumerFirstVisit(
+    admin,
+    ticket.consumer_id,
+    ticket.project_id,
+    ticketId,
+  );
+  const ratePercent = resolveTicketRate(placePosture(place), grid, {
+    classKey: consumerRow.data.class_key,
+    isFirstVisit: firstVisit,
+    storyVerified: isActionVerified(ticket.story_status),
+    reviewVerified: isActionVerified(ticket.review_status),
+  });
+  const capPesos = grid.cap;
 
   const billRes = computeTicketBill({ subtotal, ratePercent, capPesos });
   if (!billRes.ok) {

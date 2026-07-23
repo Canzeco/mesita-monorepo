@@ -27,29 +27,10 @@ export type TierConfig = {
   recommendation_weight: number;
 };
 
-// Resolves the promo rate for a guest at a place. Premium guests get the
-// premium column; everyone else the free column. The "welcome" variant fires
-// on a guest's first visit at this place, the default variant afterwards.
-// Falls back to the lower tier's rate, then 0.
-// Returns a clamped integer percent — and ONLY that, never the tier.
-export function selectprojectRate(
-  place: PlaceRates,
-  tier: string | null | undefined,
-  isFirstVisit: boolean,
-): number {
-  const isPremium = tier === "premium";
-  let rate: number | null = null;
-  if (isFirstVisit) {
-    rate = isPremium
-      ? place.welcome_premium_rate ?? place.welcome_free_rate
-      : place.welcome_free_rate;
-  } else {
-    rate = isPremium
-      ? place.premium_rate ?? place.free_rate
-      : place.free_rate;
-  }
-  return Math.max(0, Math.min(100, rate ?? 0));
-}
+// Promos v5 (MESITA-723): the promo rate resolver moved to the grid-authoritative
+// engine in ./rewards-config.ts (resolveTicketRate over the app_settings grid ×
+// the place's posture, best-of). selectprojectRate (v4, per-place columns) is
+// retired; the helpers below feed the new resolver's rate context.
 
 // Loads a tier's config row. Returns null if the key isn't in the lookup.
 export async function getTierConfig(
@@ -66,18 +47,37 @@ export async function getTierConfig(
   return (data as TierConfig | null) ?? null;
 }
 
-// True when this consumer has never had a completed/opened ticket at this
-// place. Used to pick the "welcome" rate. Counting tickets (not reservations)
-// matches the rewards mechanic: a visit is a ticket.
+// True when this consumer has never had a ticket at this place — drives the
+// Welcome rung. Pass excludeTicketId when the current ticket already exists
+// (the scan → bill path) so the ticket being billed doesn't count itself and
+// suppress its own Welcome rate.
 export async function isConsumerFirstVisit(
+  admin: SupabaseClient,
+  consumerId: string,
+  projectId: string,
+  excludeTicketId?: string,
+): Promise<boolean> {
+  let query = admin
+    .from("tickets")
+    .select("id", { count: "exact", head: true })
+    .eq("consumer_id", consumerId)
+    .eq("project_id", projectId);
+  if (excludeTicketId) query = query.neq("id", excludeTicketId);
+  const { count } = await query;
+  return (count ?? 0) === 0;
+}
+
+// True when this consumer already claimed the Google Review discount at this
+// place (once per consumer × place — Google allows one review per account).
+export async function hasClaimedReview(
   admin: SupabaseClient,
   consumerId: string,
   projectId: string,
 ): Promise<boolean> {
   const { count } = await admin
-    .from("tickets")
-    .select("id", { count: "exact", head: true })
+    .from("consumer_review_claims")
+    .select("consumer_id", { count: "exact", head: true })
     .eq("consumer_id", consumerId)
     .eq("project_id", projectId);
-  return (count ?? 0) === 0;
+  return (count ?? 0) > 0;
 }

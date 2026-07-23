@@ -3,7 +3,12 @@
 // is no redeem/ledger step — the discount is applied straight to the bill.
 
 import { type SupabaseClient } from "jsr:@supabase/supabase-js@2";
-import { isConsumerFirstVisit, selectprojectRate } from "./membership.ts";
+import { isConsumerFirstVisit } from "./membership.ts";
+import {
+  loadRewardsGrid,
+  placePosture,
+  resolveTicketRate,
+} from "./rewards-config.ts";
 import { recordFirstTicketHonored } from "./membership-enforcement.ts";
 import {
   buildConsumerBillPayload,
@@ -78,10 +83,16 @@ export async function computeInformalBill(
   _tip: number,
 ): Promise<InformalBillCalc> {
   const total = subtotal;
+  // Promos v5 best-of (MESITA-723): posture (from the place's v4 rate columns)
+  // × the operator grid. Type-A WhatsApp tickets carry no action rungs.
+  const grid = await loadRewardsGrid(admin);
   const firstVisit = await isConsumerFirstVisit(admin, consumer.id, place.id);
-  const ratePercent = selectprojectRate(place, consumer.class_key, firstVisit);
+  const ratePercent = resolveTicketRate(placePosture(place), grid, {
+    classKey: consumer.class_key,
+    isFirstVisit: firstVisit,
+  });
 
-  const capPesos = place.monthly_promo_cap;
+  const capPesos = grid.cap;
   const eligibleCents = promoEligibleSubtotalCents(subtotal, capPesos);
 
   const discountPercent = ratePercent;

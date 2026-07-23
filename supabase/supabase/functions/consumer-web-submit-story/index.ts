@@ -24,6 +24,11 @@ import {
   getAuthedUser,
   readEFEnv,
 } from "../_shared/auth.ts";
+import {
+  loadRewardsGrid,
+  offersSegment,
+  placePosture,
+} from "../_shared/rewards-config.ts";
 
 type Body = { ticketId?: string; screenshotUrl?: string };
 
@@ -64,7 +69,7 @@ Deno.serve(async (req) => {
 
   const ticketRow = await admin
     .from("tickets")
-    .select("id, consumer_id, kind, story_status")
+    .select("id, project_id, consumer_id, kind, story_status")
     .eq("id", ticketId)
     .maybeSingle();
   if (ticketRow.error) {
@@ -82,16 +87,28 @@ Deno.serve(async (req) => {
       403,
     );
   }
-  // Story is orthogonal to `kind` (enum is reservation|coupon) — presence of a
-  // story step is carried by story_status.
+  // Promos v5 (MESITA-723): the Story rung is UNIVERSAL — any consumer may opt
+  // in from 'not_required' as long as the place's program runs the Instagram
+  // Story rung at its posture (grid.story[posture] > 0). Legacy kind-seeded
+  // story-required tickets already sit in 'pending' and skip this gate.
   if (ticket.story_status == null || ticket.story_status === "not_required") {
-    return json(
-      {
-        ok: false,
-        error: "This ticket doesn't require a story.",
-      },
-      409,
-    );
+    const placeRow = await admin
+      .from("projects_view")
+      .select(
+        "id, welcome_free_rate, welcome_premium_rate, free_rate, premium_rate",
+      )
+      .eq("id", ticket.project_id)
+      .maybeSingle();
+    if (placeRow.error || !placeRow.data) {
+      return json({ ok: false, error: "Place not found" }, 404);
+    }
+    const grid = await loadRewardsGrid(admin);
+    if (!offersSegment(placePosture(placeRow.data), grid, "story")) {
+      return json(
+        { ok: false, error: "This place doesn't run the Instagram Story reward." },
+        409,
+      );
+    }
   }
   if (
     ticket.story_status === "staff_verified" ||
@@ -114,8 +131,9 @@ Deno.serve(async (req) => {
     );
   }
 
-  // Allowed inbound states: pending, submitted (re-upload), ai_rejected.
-  const allowed = new Set(["pending", "submitted", "ai_rejected"]);
+  // Allowed inbound states: not_required (v5 universal opt-in — the place gate
+  // above already passed), pending, submitted (re-upload), ai_rejected.
+  const allowed = new Set(["not_required", "pending", "submitted", "ai_rejected"]);
   if (!allowed.has(ticket.story_status)) {
     return json(
       {
