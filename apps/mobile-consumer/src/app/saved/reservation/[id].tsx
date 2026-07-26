@@ -1,18 +1,68 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Calendar } from 'lucide-react-native';
-import { Pressable, ScrollView, Text, View } from 'react-native';
+import { useEffect, useState } from 'react';
+import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
 
 import { ReservationDetailBody } from '@/components/reservations/ReservationDetailBody';
 import { ReservationDetailModalShell } from '@/components/reservations/ReservationDetailModalShell';
-import { getMockReservationById } from '@/lib/mock/reservations-mock';
+import { apiListReservations } from '@/lib/api/reservations';
+import type { ReservationItem } from '@/lib/mock/reservations-mock';
+import { toReservationItem } from '@/lib/reservations-adapter';
 
+type State =
+  | { status: 'loading' }
+  | { status: 'found'; r: ReservationItem }
+  | { status: 'missing' };
+
+// consumer-web-list-reservations has no get-by-id, so the detail screen pulls
+// the caller's full list once (scope "all") and finds the row. Web parity:
+// apps/web-consumer/src/components/consumer/reservation-detail-fetch.tsx.
 export default function ReservationDetailScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ id: string }>();
-  const id = typeof params.id === 'string' ? params.id : params.id?.[0] ?? '';
-  const reservation = id ? getMockReservationById(id) : null;
+  const id = typeof params.id === 'string' ? params.id : (params.id?.[0] ?? '');
+  const [state, setState] = useState<State>({ status: 'loading' });
 
-  if (!reservation) {
+  useEffect(() => {
+    if (!id) {
+      setState({ status: 'missing' });
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const { reservations } = await apiListReservations({
+          scope: 'all',
+          limit: 200,
+        });
+        const match = reservations.find((row) => row.id === id);
+        if (!cancelled) {
+          setState(
+            match
+              ? { status: 'found', r: toReservationItem(match) }
+              : { status: 'missing' },
+          );
+        }
+      } catch {
+        if (!cancelled) setState({ status: 'missing' });
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [id]);
+
+  if (state.status === 'loading') {
+    return (
+      <ReservationDetailModalShell placeName="Reservation">
+        <View className="flex-1 items-center justify-center">
+          <ActivityIndicator color="#ec006c" />
+        </View>
+      </ReservationDetailModalShell>
+    );
+  }
+
+  if (state.status === 'missing') {
     return (
       <ReservationDetailModalShell placeName="Reservation">
         <View className="flex-1 items-center justify-center gap-3 px-8">
@@ -35,15 +85,15 @@ export default function ReservationDetailScreen() {
 
   return (
     <ReservationDetailModalShell
-      placeName={reservation.placeName}
-      shareUrl={`https://consumer.mesita.ai/saved/reservation/${reservation.id}`}
+      placeName={state.r.placeName}
+      shareUrl={`https://consumer.mesita.ai/saved/reservation/${state.r.id}`}
     >
       <ScrollView
         className="flex-1"
         contentContainerClassName="pb-10"
         showsVerticalScrollIndicator={false}
       >
-        <ReservationDetailBody r={reservation} />
+        <ReservationDetailBody r={state.r} />
       </ScrollView>
     </ReservationDetailModalShell>
   );

@@ -11,6 +11,7 @@ import { Pressable, Text, View } from 'react-native';
 
 import { ComingSoonModal } from '@/components/ui/ComingSoonModal';
 import { PlaceContactSheet } from '@/components/place/PlaceContactSheet';
+import { ReservationSheet } from '@/components/place/place-detail/ReservationSheet';
 import { useSavedPlaces } from '@/lib/saved-places';
 import type { PlaceDetail } from '@/lib/types/place-detail';
 
@@ -23,7 +24,8 @@ export function ProfileActions({
 }) {
   const { isSaved, setSaved } = useSavedPlaces();
   const [contactOpen, setContactOpen] = useState(false);
-  const [soonKind, setSoonKind] = useState<'reserve' | 'share' | null>(null);
+  const [reserveOpen, setReserveOpen] = useState(false);
+  const [soonKind, setSoonKind] = useState<'share' | null>(null);
   const hasWhatsApp = Boolean(place.channels.whatsapp_url);
   const saved = isSaved(place.id);
 
@@ -50,7 +52,7 @@ export function ProfileActions({
         />
         <ActionBtn
           label="Reserve"
-          onPress={() => setSoonKind('reserve')}
+          onPress={() => setReserveOpen(true)}
           Icon={CalendarCheck}
         />
         <ActionBtn
@@ -64,12 +66,10 @@ export function ProfileActions({
         open={contactOpen}
         onClose={() => setContactOpen(false)}
       />
-      <ComingSoonModal
-        open={soonKind === 'reserve'}
-        onClose={() => setSoonKind(null)}
-        title="Reservations coming soon"
-        body="Book a table from Mesita shortly — for now, use Contact to reach the place."
-        icon={CalendarCheck}
+      <ReservationSheet
+        place={place}
+        visible={reserveOpen}
+        onClose={() => setReserveOpen(false)}
       />
       <ComingSoonModal
         open={soonKind === 'share'}

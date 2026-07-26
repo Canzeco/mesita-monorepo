@@ -4,13 +4,14 @@ import { useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { ReservationsList } from '@/components/reservations/ReservationsList';
 import { ShellWash } from '@/components/ui/HeroBackdrop';
 import { GRADIENT_DIAGONAL, GRADIENTS, SHADOW_GLOW } from '@/constants/brand';
 
-// Parked reservations surface — web `/saved/reservations` parity:
-// Upcoming / History segment + polished empty states (MESITA-569).
-// Tab bar opens ComingSoonModal (web BottomNav); this screen stays for
-// deep links / one-flag unpark.
+// Reservations surface — web `/saved/reservations` parity: Upcoming / History
+// segment. Booking is live (MESITA-715): each tab reads
+// consumer-web-list-reservations for its scope and renders the ReservationCard
+// rows, falling back to a polished empty state.
 
 type Tab = 'upcoming' | 'history';
 
@@ -62,21 +63,30 @@ export default function ReservationsScreen() {
 
 function UpcomingBody() {
   return (
-    <ReservationsEmptyState
-      icon={CalendarCheck}
-      eyebrow="Coming soon"
-      title="No upcoming reservations"
-      body="Booking a table straight from Mesita is on the way. We'll let you know the moment reservations go live."
+    <ReservationsList
+      scope="upcoming"
+      empty={
+        <ReservationsEmptyState
+          icon={CalendarCheck}
+          title="No upcoming reservations"
+          body="Reserve a table from any place and Mesita calls to book it — your upcoming bookings show up here."
+        />
+      }
     />
   );
 }
 
 function HistoryBody() {
   return (
-    <ReservationsEmptyState
-      icon={Clock}
-      title="No past reservations"
-      body="Your dining history will show up here once you've booked and visited a place through Mesita."
+    <ReservationsList
+      scope="past"
+      empty={
+        <ReservationsEmptyState
+          icon={Clock}
+          title="No past reservations"
+          body="Your dining history will show up here once you've booked and visited a place through Mesita."
+        />
+      }
     />
   );
 }

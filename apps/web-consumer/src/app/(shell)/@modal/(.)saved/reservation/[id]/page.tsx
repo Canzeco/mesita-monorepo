@@ -1,22 +1,15 @@
-import { notFound } from "next/navigation";
-import { ReservationDetailBody } from "@/components/consumer/ReservationDetailBody";
-import { ReservationDetailModalShell } from "@/components/consumer/ReservationDetailModalShell";
-import { getMockReservationById } from "@/lib/mock/reservations-mock";
+import { ReservationDetailModalClient } from "@/components/consumer/reservation-detail-fetch";
 
 export const dynamic = "force-dynamic";
 
+// Intercepted soft-nav variant of /saved/reservation/[id]. The client owns the
+// slide-over shell (mounted from the segment layout) and fetches the row from
+// the list EF — there's no server-side get-by-id.
 export default async function SavedReservationModalPage({
   params,
 }: {
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const reservation = getMockReservationById(id);
-  if (!reservation) notFound();
-
-  return (
-    <ReservationDetailModalShell placeName={reservation.placeName}>
-      <ReservationDetailBody r={reservation} />
-    </ReservationDetailModalShell>
-  );
+  return <ReservationDetailModalClient id={id} />;
 }

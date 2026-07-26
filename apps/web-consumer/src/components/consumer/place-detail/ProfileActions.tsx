@@ -15,8 +15,9 @@ import { cn } from "@/lib/utils";
 
 // Save · Contact · Reserve · Share — four equal outline buttons. Save toggles
 // the localStorage favorite (saved state = primary tint + filled heart).
-// Reserve + Share are parked: tap opens ComingSoonModal (no "Soon" pills).
-// Contact glyph prefers WhatsApp when the place has it.
+// Reserve opens the booking sheet (Mesita calls the place); Share is still
+// parked behind ComingSoonModal (no "Soon" pills). Contact glyph prefers
+// WhatsApp when the place has it.
 export function ProfileActions({
   place,
   className,

@@ -11,8 +11,10 @@ export const PARKED = {
       title: 'Rewards coming soon',
       body: 'Pay with QR and claim Mesita rewards from here shortly. Hang tight.',
     },
+    // Un-parked (MESITA-715): booking is live, so the tab opens the real
+    // Upcoming/History screen instead of a coming-soon dialog.
     reservations: {
-      soon: true,
+      soon: false,
       title: 'Reservations coming soon',
       body: 'Your bookings will live here. For now, reach places from Contact on a place.',
     },

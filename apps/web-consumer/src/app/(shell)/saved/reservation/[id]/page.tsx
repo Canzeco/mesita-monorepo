@@ -1,20 +1,19 @@
-import { notFound } from "next/navigation";
 import { ChevronLeft } from "lucide-react";
 import Link from "next/link";
-import { ReservationDetailBody } from "@/components/consumer/ReservationDetailBody";
-import { getMockReservationById } from "@/lib/mock/reservations-mock";
+import { ReservationDetailFetcher } from "@/components/consumer/reservation-detail-fetch";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 
 export const dynamic = "force-dynamic";
 
+// Hard-nav reservation detail. The row is fetched client-side (the list EF is
+// the authed read; there's no get-by-id), so the header renders immediately
+// and ReservationDetailFetcher owns loading / not-found / body.
 export default async function SavedReservationPage({
   params,
 }: {
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const reservation = getMockReservationById(id);
-  if (!reservation) notFound();
 
   return (
     <div className="relative flex h-full flex-col">
@@ -32,7 +31,7 @@ export default async function SavedReservationPage({
         <span className="h-9 w-9 shrink-0" aria-hidden />
       </header>
       <div className="min-h-0 flex-1 overflow-y-auto">
-        <ReservationDetailBody r={reservation} />
+        <ReservationDetailFetcher id={id} />
       </div>
     </div>
   );

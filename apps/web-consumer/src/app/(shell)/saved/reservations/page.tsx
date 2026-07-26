@@ -4,16 +4,16 @@ import { useState } from "react";
 import { CalendarCheck, Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { SHEET_TITLE_CLASS } from "@/lib/ui-classes";
+import { ReservationsList } from "@/components/consumer/reservations-list";
 
 // The Reservations surface (the Reservations bottom-tab lands here). It used
 // to be the "Saved" page — a Places grid + a parked Reservations tab — but
 // saving a place now lives on Home > Favorites, so this surface is purely
 // about reservations: two sub-tabs, Upcoming and History.
 //
-// Booking a table from Mesita isn't live yet, so both tabs render polished
-// empty states (Upcoming carries the coming-soon framing). Once the booking
-// flow ships, these bodies fill with real reservation rows — the parked
-// ReservationCard / Calendar / WhatsApp building blocks stay in the tree.
+// Booking is live (MESITA-715): each tab reads consumer-web-list-reservations
+// for its scope and renders the ReservationCard rows, falling back to a
+// polished empty state when the account has none.
 
 export const dynamic = "force-dynamic";
 
@@ -59,21 +59,30 @@ export default function ReservationsPage() {
 
 function UpcomingBody() {
   return (
-    <ReservationsEmptyState
-      icon={<CalendarCheck className="h-7 w-7" strokeWidth={2} />}
-      eyebrow="Coming soon"
-      title="No upcoming reservations"
-      body="Booking a table straight from Mesita is on the way. We'll let you know the moment reservations go live."
+    <ReservationsList
+      scope="upcoming"
+      empty={
+        <ReservationsEmptyState
+          icon={<CalendarCheck className="h-7 w-7" strokeWidth={2} />}
+          title="No upcoming reservations"
+          body="Reserve a table from any place and Mesita calls to book it — your upcoming bookings show up here."
+        />
+      }
     />
   );
 }
 
 function HistoryBody() {
   return (
-    <ReservationsEmptyState
-      icon={<Clock className="h-7 w-7" strokeWidth={2} />}
-      title="No past reservations"
-      body="Your dining history will show up here once you've booked and visited a place through Mesita."
+    <ReservationsList
+      scope="past"
+      empty={
+        <ReservationsEmptyState
+          icon={<Clock className="h-7 w-7" strokeWidth={2} />}
+          title="No past reservations"
+          body="Your dining history will show up here once you've booked and visited a place through Mesita."
+        />
+      }
     />
   );
 }
