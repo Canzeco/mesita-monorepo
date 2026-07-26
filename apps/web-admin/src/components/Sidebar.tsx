@@ -10,6 +10,7 @@ import {
   UserRound,
 } from "lucide-react";
 import { ATLAS_PARENT } from "@/app/(app)/atlas-config/nav";
+import { DB_PARENT } from "@/app/(app)/db-config/nav";
 import { ENRICHER_PARENT } from "@/app/(app)/enricher-config/nav";
 import { MEMO_PARENT } from "@/app/(app)/memo-config/nav";
 import { RESERVATIONS_PARENT } from "@/app/(app)/reservations-config/nav";
@@ -59,6 +60,11 @@ const ALERTS_NAV: NavItem[] = [
 
 const CONFIGS_NAV: NavItem[] = [
   { href: "/admin-config", label: "Admin Config", Icon: ShieldCheck },
+  {
+    href: DB_PARENT.href,
+    label: DB_PARENT.label,
+    Icon: DB_PARENT.Icon,
+  },
   {
     href: ATLAS_PARENT.href,
     label: ATLAS_PARENT.label,
