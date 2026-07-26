@@ -36,7 +36,7 @@ export function ManualPriorityCard({ place }: { place: AdminPlace }) {
       icon={<Star className="h-4.5 w-4.5" />}
       tint="teal"
       title="Manual Priority"
-      subtitle="Your thumb on the scale for THIS place — an operator priority in [0,1] that multiplies every Lineup lane (Organic · Inorganic · Hybrid). Saving moves Swipe & Map live. Default 0.1; raise it to surface the place."
+      subtitle="Your thumb on the scale for THIS place — an operator priority in [0,1] that multiplies both Lineup lanes (Organic · Inorganic). Saving moves Swipe & Map live. Default 0.1; raise it to surface the place."
     >
       <div className="mt-2 flex items-baseline justify-between gap-3">
         <GroupLabel>Priority · multiplies all three lanes</GroupLabel>

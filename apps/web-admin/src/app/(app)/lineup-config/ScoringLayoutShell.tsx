@@ -13,7 +13,7 @@ const SUBPAGE_DESCRIPTION: Record<string, string> = {
   "/lineup-config/subscores":
     "Tune the five subscores — every knob is a belief; judge changes by break-even, not spread.",
   "/lineup-config/scores":
-    "How the five subscores multiply into the three lane scores — read-mostly; tune on Subscores.",
+    "How the five subscores multiply into the two lane scores — read-mostly; tune on Subscores.",
   "/lineup-config/lanes":
     "Compose the deck: how many cards each lane contributes, how they merge, and who calls Lineup.",
   "/lineup-config/playground":

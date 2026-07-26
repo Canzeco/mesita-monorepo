@@ -42,11 +42,11 @@
 // infeasible → the card dies. Relative strength, if ever needed, is exponent
 // weights (EM^a · SM^b) — never an average.
 //
-// MERGE (locked 2026-07-16 · per-lane counts MESITA-659): the three lanes
-// each rank the pool by their own score and take their own top-N — laneN is
-// PER LANE ({ organic, inorganic, hybrid }; a lane at 0 is off). Round-robin
-// O → I → H — identical for Swipe and Map — dedupe ON INSERT (keep the FIRST
-// occurrence). On a duplicate, stay on the CURRENT lane and pull its next
+// MERGE (locked 2026-07-16 · per-lane counts MESITA-659 · Hybrid removed
+// 2026-07-22): the two lanes each rank the pool by their own score and take
+// their own top-N — laneN is PER LANE ({ organic, inorganic }; a lane at 0 is
+// off). Round-robin O → I — identical for Swipe and Map — dedupe ON INSERT
+// (keep the FIRST occurrence). On a duplicate, stay on the CURRENT lane and pull its next
 // card before rotating (MESITA-717 — skipping the turn starved Inorganic
 // when its top cards already landed from Organic). NO backfill: the final
 // deck is ≤ N_O + N_I + N_H and shrinks as lanes agree.
@@ -128,9 +128,12 @@ export const SUBSCORE_BY_ID = Object.fromEntries(SUBSCORES.map((s) => [s.id, s])
  * subscore's inputs are FIXED — tuned by knobs, never by field selection. */
 type FixedSubscoreId = Exclude<SubscoreId, "em">;
 
-// ── THE THREE LANES ────────────────────────────────────────────────────
+// ── THE TWO LANES ──────────────────────────────────────────────────────
+// Hybrid (GP·RP together) was removed (Pato 2026-07-22): a place surfaces
+// through EARNED merit (Organic) or BOUGHT merit (Inorganic), never a combined
+// lane. Only these two remain.
 
-export type LaneId = "organic" | "inorganic" | "hybrid";
+export type LaneId = "organic" | "inorganic";
 
 export type Lane = {
   id: LaneId;
@@ -144,14 +147,13 @@ export type Lane = {
 // MP multiplies EVERY lane (Pato 2026-07-22) — it trails each formula so the
 // operator override reads as the last gate applied to earned/bought merit.
 export const LANES: readonly Lane[] = [
-  { id: "organic",   label: "Organic",   parts: ["em", "sm", "gp", "xx", "mp"],       merit: "earned — Google" },
-  { id: "inorganic", label: "Inorganic", parts: ["em", "sm", "rp", "xx", "mp"],       merit: "bought — Rewards" },
-  { id: "hybrid",    label: "Hybrid",    parts: ["em", "sm", "gp", "rp", "xx", "mp"], merit: "both" },
+  { id: "organic",   label: "Organic",   parts: ["em", "sm", "gp", "xx", "mp"], merit: "earned — Google" },
+  { id: "inorganic", label: "Inorganic", parts: ["em", "sm", "rp", "xx", "mp"], merit: "bought — Rewards" },
 ];
 
 
 /** The locked merge rotation — identical for Swipe and Map. */
-export const MERGE_ROTATION: readonly LaneId[] = ["organic", "inorganic", "hybrid"];
+export const MERGE_ROTATION: readonly LaneId[] = ["organic", "inorganic"];
 
 /** A lane's formula in the model's shorthand — e.g. "EM·SM·GP·XX". */
 export function laneFormula(lane: Lane): string {
@@ -547,7 +549,7 @@ export function unitDraw(placeId: string, laneId: LaneId, roll: number): number 
   return hash32(`${placeId}·${laneId}·${roll}`) / 4294967296;
 }
 
-// ── THE FINAL DECK — three lanes, round-robin, dedupe, no backfill ─────
+// ── THE FINAL DECK — two lanes, round-robin, dedupe, no backfill ──────
 
 /** Shared lane length N — every lane contributes up to N cards. */
 /** Per-lane deck counts — how many cards each lane may contribute
@@ -557,13 +559,12 @@ export type LaneCounts = Record<LaneId, number>;
 const DEFAULT_LANE_COUNTS: LaneCounts = {
   organic: 8,
   inorganic: 8,
-  hybrid: 8,
 };
 export const LANE_N_MAX = 50;
 
 /** Ceiling of the merged deck at the given counts. */
 export function laneCountsTotal(counts: LaneCounts): number {
-  return counts.organic + counts.inorganic + counts.hybrid;
+  return counts.organic + counts.inorganic;
 }
 
 export type DeckSlot = {
@@ -632,9 +633,9 @@ export function composeFinalDeck(
     };
   }
 
-  // Per-lane cursor into that lane's top-N. Rotate O→I→H; on each turn keep
+  // Per-lane cursor into that lane's top-N. Rotate O→I; on each turn keep
   // pulling from the current lane until a unique card lands (or it's empty).
-  const cursor: Record<LaneId, number> = { organic: 0, inorganic: 0, hybrid: 0 };
+  const cursor: Record<LaneId, number> = { organic: 0, inorganic: 0 };
   const seen = new Set<string>();
   const slots: DeckSlot[] = [];
   let progress = true;
@@ -662,17 +663,17 @@ export function composeFinalDeck(
 
 // ── LINEUP — the one engine (named 2026-07-17) ─────────────────────────
 // Lineup is the candidate-generation engine: consumer + intent → scored
-// candidates → the deck. There is exactly ONE engine — the three lanes,
-// Organic · Inorganic · Hybrid, merged O → I → H (dedupe on insert, no
-// backfill). It has three CALLERS, not surfaces: Swipe and Map (the consumer
-// hits Lineup directly from Home and the Map) and Memo (the RAG concierge
-// calls Lineup as a TOOL, then reasons over what it returns). Callers differ
-// only in where the intent-data comes from (prebuilt taste embedding · taste +
-// viewport · synthesized from the question).
+// candidates → the deck. There is exactly ONE engine — the two lanes,
+// Organic · Inorganic, merged O → I (dedupe on insert, no backfill; Hybrid
+// removed 2026-07-22). It has three CALLERS, not surfaces: Swipe and Map (the
+// consumer hits Lineup directly from Home and the Map) and Memo (the RAG
+// concierge calls Lineup as a TOOL, then reasons over what it returns). Callers
+// differ only in where the intent-data comes from (prebuilt taste embedding ·
+// taste + viewport · synthesized from the question).
 
 export const LINEUP_ENGINE = {
   name: "Lineup",
-  composition: "Organic + Inorganic + Hybrid, merged O → I → H · on dupe keep pulling same lane · no backfill",
+  composition: "Organic + Inorganic, merged O → I · on dupe keep pulling same lane · no backfill",
   callers: [
     { caller: "Swipe", intent: "prebuilt taste embedding" },
     { caller: "Map",   intent: "taste embedding + viewport" },
@@ -763,8 +764,9 @@ export const CONTEXT_FIELDS: readonly ContextFieldDef[] = [
 // RANGE TABLE (mirrored VERBATIM in admin-web-update-lineup-config).
 // The encoder (EM_ENCODER — small @ 1536) is a FIXED constant, deliberately
 // absent: fixed decisions never enter the blob.
-//   laneN.{organic,inorganic,hybrid}  0–50 int each, sum ≥ 1 (0 = lane off;
-//                                     legacy flat number expands to all three)
+//   laneN.{organic,inorganic}  0–50 int each, sum ≥ 1 (0 = lane off; legacy
+//                              flat number expands to both; stray hybrid key
+//                              from a pre-v12 blob is ignored)
 //   (retrieval.recallTopK is GONE — v9: Lineup scores the whole metro
 //    catalog, no recall cap; a stray retrieval key is ignored)
 //   sm.where.defaultTolKm 0.5–20 (GREEN — where's ONE param / consumer default)
@@ -779,7 +781,7 @@ export const CONTEXT_FIELDS: readonly ContextFieldDef[] = [
 //   (dataAccess + context are GONE — v10: inputs are FIXED documentation)
 
 export type ScoringSettings = {
-  v: 11;
+  v: 12;
   /** Per-lane deck counts (MESITA-659) — how many cards each lane may
    * contribute to the merged deck; 0 turns the lane off. */
   laneN: LaneCounts;
@@ -790,7 +792,7 @@ export type ScoringSettings = {
 };
 
 export const DEFAULT_SCORING_SETTINGS: ScoringSettings = {
-  v: 11,
+  v: 12,
   laneN: DEFAULT_LANE_COUNTS,
   sm: DEFAULT_SM_PARAMS,
   gp: DEFAULT_GP_PARAMS,
@@ -802,20 +804,19 @@ function num(v: unknown, fallback: number, lo: number, hi: number): number {
   return typeof v === "number" && Number.isFinite(v) ? Math.min(hi, Math.max(lo, v)) : fallback;
 }
 
-// Per-lane counts (v5). A legacy flat number (v4 blobs) expands to all three
-// lanes; per-key garbage falls back to that lane's default; an all-zero
-// result (a config that would empty every deck) falls back to defaults —
-// degenerate lanes are fine, a degenerate DECK is not.
+// Per-lane counts. A legacy flat number expands to both lanes; per-key garbage
+// falls back to that lane's default; a stray pre-v12 `hybrid` key is ignored;
+// an all-zero result (a config that would empty every deck) falls back to
+// defaults — a degenerate lane is fine, a degenerate DECK is not.
 function coerceLaneCounts(v: unknown, fallback: LaneCounts): LaneCounts {
   if (typeof v === "number" && Number.isFinite(v)) {
     const n = Math.round(Math.min(LANE_N_MAX, Math.max(0, v)));
-    return { organic: n, inorganic: n, hybrid: n };
+    return { organic: n, inorganic: n };
   }
   const raw = (v && typeof v === "object" ? v : {}) as Record<string, unknown>;
   const counts: LaneCounts = {
     organic: Math.round(num(raw.organic, fallback.organic, 0, LANE_N_MAX)),
     inorganic: Math.round(num(raw.inorganic, fallback.inorganic, 0, LANE_N_MAX)),
-    hybrid: Math.round(num(raw.hybrid, fallback.hybrid, 0, LANE_N_MAX)),
   };
   return laneCountsTotal(counts) < 1 ? { ...fallback } : counts;
 }
@@ -853,7 +854,7 @@ export function coerceScoringSettings(raw: unknown): ScoringSettings {
   const whatTol = num(smWhat.tol ?? smWhat.sibling, d.sm.what.tol, 0, 1);
 
   return {
-    v: 11,
+    v: 12,
     laneN: coerceLaneCounts(r.laneN, d.laneN),
     sm: {
       where: {

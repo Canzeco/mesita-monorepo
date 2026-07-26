@@ -35,7 +35,7 @@ export function LanesPanel() {
       {/* ══ Merge ════════════════════════════════════════════════════ */}
       <PanelCard
         title="Per-lane deck counts · the merge"
-        subtitle="Each lane takes its own top-N; round-robin O → I → H — on a duplicate keep pulling from the same lane, then rotate. A short deck means the lanes agree."
+        subtitle="Each lane takes its own top-N; round-robin O → I — on a duplicate keep pulling from the same lane, then rotate. A short deck means the lanes agree."
         pill={`deck ≤ ${total}`}
       >
         <div className="mt-4 grid gap-x-8 gap-y-4 lg:grid-cols-2">
@@ -103,7 +103,7 @@ export function LanesPanel() {
       {/* ══ Lineup — engine · callers · consumer inputs ══════════════ */}
       <PanelCard
         title="Lineup · the one engine"
-        subtitle="One engine, three lanes, three callers — Swipe and Map call it directly, Memo calls it as a tool."
+        subtitle="One engine, two lanes, three callers — Swipe and Map call it directly, Memo calls it as a tool."
       >
         <div className="mt-4">
           <SubHead>Engine</SubHead>

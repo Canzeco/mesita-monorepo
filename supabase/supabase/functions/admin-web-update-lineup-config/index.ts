@@ -11,9 +11,9 @@
 // — the Subscores tab always saves its full form, so partial patches would
 // only invite drift.
 //
-// v11 blob (MESITA-714): ONE hyperparam per intent axis + GP ratingPow.
-//   { v: 11, laneN, sm, gp, rp, xx }
-//   laneN     PER-LANE deck counts { organic, inorganic, hybrid }, each
+// v12 blob (MESITA-714 · Hybrid lane removed 2026-07-22): ONE hyperparam per intent axis + GP ratingPow.
+//   { v: 12, laneN, sm, gp, rp, xx }
+//   laneN     PER-LANE deck counts { organic, inorganic }, each (Hybrid
 //             0–50 int (0 = lane off), sum ≥ 1
 //   sm        where: { defaultTolKm } — GREEN consumer default (falloff frozen)
 //             when:  { patience } — ONE shape knob over 2×24×7 openness array
@@ -54,7 +54,7 @@ function validate(raw: unknown): { ok: true; config: unknown } | { ok: false; er
   if (!raw || typeof raw !== "object") return { ok: false, error: "config must be an object" };
   const r = raw as Record<string, unknown>;
 
-  const LANE_IDS = ["organic", "inorganic", "hybrid"] as const;
+  const LANE_IDS = ["organic", "inorganic"] as const;
   const laneN: Record<string, number> = {};
   if (typeof r.laneN === "number") {
     const n = num(r.laneN, 0, LANE_N_MAX);
@@ -74,10 +74,10 @@ function validate(raw: unknown): { ok: true; config: unknown } | { ok: false; er
   } else {
     return {
       ok: false,
-      error: "laneN must be per-lane counts { organic, inorganic, hybrid }",
+      error: "laneN must be per-lane counts { organic, inorganic }",
     };
   }
-  if (laneN.organic + laneN.inorganic + laneN.hybrid < 1) {
+  if (laneN.organic + laneN.inorganic < 1) {
     return { ok: false, error: "laneN: at least one lane must be > 0" };
   }
 
@@ -121,11 +121,10 @@ function validate(raw: unknown): { ok: true; config: unknown } | { ok: false; er
   return {
     ok: true,
     config: {
-      v: 11,
+      v: 12,
       laneN: {
         organic: laneN.organic,
         inorganic: laneN.inorganic,
-        hybrid: laneN.hybrid,
       },
       sm: {
         where: { defaultTolKm },

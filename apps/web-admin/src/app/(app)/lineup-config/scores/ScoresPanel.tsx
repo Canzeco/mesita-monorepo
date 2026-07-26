@@ -6,7 +6,7 @@ import { useScoring } from "../ScoringProvider";
 import { PanelCard, SubHead } from "../panel-ui";
 import { LaneBadge } from "../playground-ui";
 
-// Scores — READ-MOSTLY, one card: the three lane formulas with deep-link
+// Scores — READ-MOSTLY, one card: the two lane formulas with deep-link
 // factor chips, then the live definitions at the CURRENT form values (shared
 // provider — an unsaved knob edit on Subscores moves the numbers here).
 
@@ -15,7 +15,7 @@ export function ScoresPanel() {
 
   return (
     <PanelCard
-      title="The three lane scores"
+      title="The two lane scores"
       subtitle="Each lane multiplies its subscores — click a factor to tune it on Subscores."
       pill="formulas locked"
     >

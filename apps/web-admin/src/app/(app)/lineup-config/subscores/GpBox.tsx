@@ -105,9 +105,8 @@ export function GpBox() {
       }
       outputs={
         <Prose>
-          <b className="text-foreground/80">GP ∈ [0,1]</b> — multiplies Organic + Hybrid; no
-          Google presence → 0 and the place exits the organic lanes (a member still rides
-          Inorganic).
+          <b className="text-foreground/80">GP ∈ [0,1]</b> — multiplies the Organic lane; no
+          Google presence → 0 and the place exits Organic (a member still rides Inorganic).
         </Prose>
       }
     />
