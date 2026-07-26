@@ -13,7 +13,7 @@ export function EmBox() {
     <SubscoreBox
       id="em"
       tint="sky"
-      title="EM Subscore · Embeddings Match"
+      title="EM · Embeddings Match"
       overview={
         <Prose>
           The semantic gate every lane shares — how well the place matches who the consumer is

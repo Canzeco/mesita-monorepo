@@ -20,7 +20,7 @@ export function XxBox() {
       id="xx"
       save="xx"
       tint="violet"
-      title="XX Subscore · Random Number"
+      title="XX · Random Number"
       pill={xx.control === 0 ? "default: off — pure merit" : `default control ${xx.control.toFixed(1)}`}
       overview={
         <Prose>

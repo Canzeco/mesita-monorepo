@@ -16,7 +16,7 @@ export function MpBox() {
     <SubscoreBox
       id="mp"
       tint="teal"
-      title="MP Subscore · Manual Priority"
+      title="MP · Manual Priority"
       pill={`default ${d.toFixed(2)} · per place`}
       overview={
         <Prose>

@@ -38,7 +38,7 @@ export function SmBox() {
       id="sm"
       save="sm"
       tint="emerald"
-      title="SM Subscore · Structured Match — where × when × what"
+      title="SM · Structured Match"
       overview={
         <Prose>
           The intent&apos;s STRUCTURED asks — Where · When · What — one hyperparam each. That

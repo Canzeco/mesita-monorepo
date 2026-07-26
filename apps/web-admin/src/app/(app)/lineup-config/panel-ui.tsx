@@ -114,9 +114,10 @@ export function Slider({
   );
 }
 
-/** Per-subscore card washes — every subscore box carries its own tint
- * (EM sky · SM emerald · GP amber · RP rose · XX violet, matching the
- * playground's ScoreBox colors). Untinted cards keep the neutral shell. */
+/** Per-subscore card washes — the optional full tint PanelCard can carry.
+ * Kept for the neutral shell's tinted variant; the subscore boxes now use the
+ * calmer CARD_ACCENTS spine instead (Pato 2026-07-26). Same hue per subscore
+ * as the playground's ScoreBox colors. */
 export const CARD_TINTS = {
   sky: "border-sky-500/25 bg-sky-500/[0.04]",
   emerald: "border-emerald-500/25 bg-emerald-500/[0.04]",
@@ -126,6 +127,19 @@ export const CARD_TINTS = {
   teal: "border-teal-500/25 bg-teal-500/[0.04]",
 } as const;
 export type CardTint = keyof typeof CARD_TINTS;
+
+/** Per-subscore LEFT-EDGE accent — a thin colored spine on an otherwise
+ * neutral card, the calm replacement for the old full-card wash (Pato
+ * 2026-07-26 "cleaner"). Same hue per subscore as the emoji and the
+ * playground ScoreBox, so identity survives without the rainbow. */
+export const CARD_ACCENTS: Record<CardTint, string> = {
+  sky: "border-l-sky-400",
+  emerald: "border-l-emerald-400",
+  amber: "border-l-amber-400",
+  rose: "border-l-rose-400",
+  violet: "border-l-violet-400",
+  teal: "border-l-teal-400",
+};
 
 /** The shared card shell every scoring tab wraps its panel in. */
 export function PanelCard({
