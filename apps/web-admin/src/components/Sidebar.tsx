@@ -13,6 +13,7 @@ import { ATLAS_PARENT } from "@/app/(app)/atlas-config/nav";
 import { DB_PARENT } from "@/app/(app)/db-config/nav";
 import { ENRICHER_PARENT } from "@/app/(app)/enricher-config/nav";
 import { MEMO_PARENT } from "@/app/(app)/memo-config/nav";
+import { MODELS_PARENT } from "@/app/(app)/models-config/nav";
 import { RESERVATIONS_PARENT } from "@/app/(app)/reservations-config/nav";
 import { SCORING_PARENT } from "@/app/(app)/lineup-config/nav";
 import { SOURCING_PARENT } from "@/app/(app)/sourcing-config/nav";
@@ -63,6 +64,11 @@ const CONFIGS_NAV: NavItem[] = [
     href: DB_PARENT.href,
     label: DB_PARENT.label,
     Icon: DB_PARENT.Icon,
+  },
+  {
+    href: MODELS_PARENT.href,
+    label: MODELS_PARENT.label,
+    Icon: MODELS_PARENT.Icon,
   },
   {
     href: ATLAS_PARENT.href,
