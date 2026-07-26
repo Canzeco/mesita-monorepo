@@ -1,11 +1,7 @@
-import { MemoConfigClient } from "./MemoConfigClient";
+import { redirect } from "next/navigation";
 
-// Memo Config — its own sidebar section again (MESITA-627). Memo is one of the
-// three product agents, not a ranking tab: the Pre-Memo deck is its input, but
-// its persona / model / retrieval knobs are its own. /lineup-config/memo now
-// redirects here.
-export const dynamic = "force-dynamic";
-
-export default function MemoConfigPage() {
-  return <MemoConfigClient />;
+// Memo Config parent route → default to the Config tab. Subpages: config,
+// playground.
+export default function MemoConfigIndex() {
+  redirect("/memo-config/config");
 }
