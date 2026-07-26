@@ -30,7 +30,12 @@ import {
   STORY_KINDS,
   toDbTicketKind,
 } from "../_shared/ticket-kinds.ts";
-import { isConsumerFirstVisit, selectprojectRate } from "../_shared/membership.ts";
+import { isConsumerFirstVisit } from "../_shared/membership.ts";
+import {
+  loadRewardsGrid,
+  placePosture,
+  resolveTicketRate,
+} from "../_shared/rewards-config.ts";
 import {
   assessPromoLane,
   loadMembershipRow,
@@ -204,9 +209,17 @@ Deno.serve(async (req) => {
     );
   }
 
+  // Promos v5 best-of (MESITA-723): posture (from v4 rate columns) × the
+  // operator grid. This path prices BEFORE inserting the ticket, so no
+  // exclusion is needed for the first-visit count. Actions haven't happened
+  // yet at create time (they verify later and bump via reprice).
+  const grid = await loadRewardsGrid(admin);
   const firstVisit = await isConsumerFirstVisit(admin, consumerId, projectId);
-  const ratePercent = selectprojectRate(place, consumerRow.data.class_key, firstVisit);
-  const capPesos = place.monthly_promo_cap;
+  const ratePercent = resolveTicketRate(placePosture(place), grid, {
+    classKey: consumerRow.data.class_key,
+    isFirstVisit: firstVisit,
+  });
+  const capPesos = grid.cap;
 
   const billRes = computeTicketBill({ subtotal, ratePercent, capPesos });
   if (!billRes.ok) {

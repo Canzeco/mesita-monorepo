@@ -16,6 +16,7 @@ import {
   readEFEnv,
   requireMembership,
 } from "../_shared/auth.ts";
+import { repriceTicketAfterAction } from "../_shared/ticket-reprice.ts";
 
 type Body = {
   ticketId?: string;
@@ -126,5 +127,13 @@ Deno.serve(async (req) => {
     );
   }
 
-  return json({ ok: true, ticket: updated.data });
+  // Promos v5 (MESITA-723): a verified story joins the best-of set — bump the
+  // snapshotted discount if the Story rate beats it (never lowers).
+  let repricedPercent: number | null = null;
+  if (decision === "approve" && billed) {
+    const reprice = await repriceTicketAfterAction(admin, ticketId);
+    if (reprice.ok) repricedPercent = reprice.ratePercent;
+  }
+
+  return json({ ok: true, ticket: updated.data, repricedPercent });
 });
