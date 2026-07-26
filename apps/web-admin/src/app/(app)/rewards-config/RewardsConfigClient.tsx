@@ -1,13 +1,24 @@
 "use client";
 
 import { useEffect, useMemo, useState, useTransition } from "react";
-import { Coins, Info, Percent, RotateCcw } from "lucide-react";
+import {
+  AtSign,
+  Coins,
+  Info,
+  Instagram,
+  Magnet,
+  MapPin,
+  Percent,
+  RotateCcw,
+  Store,
+} from "lucide-react";
 
 import {
   ErrorNote,
   NumberField,
   SaveRow,
   SectionCard,
+  Switch,
 } from "../enricher-config/atlas-ui";
 import { getRewardsConfig, updateRewardsConfig } from "./actions";
 import {
@@ -15,11 +26,14 @@ import {
   CAP_MAX,
   CAP_MIN,
   DEFAULT_CONFIG,
+  FOLLOWERS_MAX,
+  FOLLOWERS_MIN,
   POSTURES,
   SEGMENTS,
   type RewardPosture,
   type RewardSegmentKey,
   type RewardsConfig,
+  type StorySegmentTags,
 } from "./catalog";
 
 const KIND_TINT: Record<string, string> = {
@@ -90,6 +104,42 @@ export function RewardsConfigClient({
     setOk(false);
   };
 
+  const setMagneticFollowers = (value: number) => {
+    setCfg((c) => ({
+      ...c,
+      segments: {
+        ...c.segments,
+        magneticFollowers: value,
+        // Keep the Story bar below the Magnetic bar — if the ceiling drops
+        // under it, pull the Story bar down too.
+        storyFollowers: Math.min(c.segments.storyFollowers, value),
+      },
+    }));
+    setOk(false);
+  };
+
+  const setStoryFollowers = (value: number) => {
+    setCfg((c) => ({
+      ...c,
+      segments: {
+        ...c.segments,
+        storyFollowers: Math.min(value, c.segments.magneticFollowers),
+      },
+    }));
+    setOk(false);
+  };
+
+  const setStoryTag = (tag: keyof StorySegmentTags) => {
+    setCfg((c) => ({
+      ...c,
+      segments: {
+        ...c.segments,
+        storyTags: { ...c.segments.storyTags, [tag]: !c.segments.storyTags[tag] },
+      },
+    }));
+    setOk(false);
+  };
+
   const resetDefaults = () => {
     setCfg(DEFAULT_CONFIG);
     setOk(false);
@@ -112,6 +162,75 @@ export function RewardsConfigClient({
 
   return (
     <div className="space-y-6">
+      {/* Segments — the Instagram follower bars + Story requirements that gate
+          the IG-driven rungs. Sits above the grid: who qualifies, then what
+          each rung pays. */}
+      <SectionCard
+        icon={<Magnet className="text-secondary h-4 w-4" />}
+        title="Segments"
+        subtitle="The Instagram bars that put a guest on a rung: the follower count that auto-assigns the Magnetic class, and the one that unlocks the Instagram-Story discount — plus what a qualifying story must tag. Staff still verify every story."
+      >
+        <div className="mt-5 grid gap-2.5 sm:grid-cols-2">
+          <NumberField
+            icon={<Magnet className="text-muted-foreground mt-0.5 h-4 w-4" />}
+            label="Instagram followers → auto-Magnetic"
+            value={cfg.segments.magneticFollowers}
+            min={FOLLOWERS_MIN}
+            max={FOLLOWERS_MAX}
+            onChange={setMagneticFollowers}
+            disabled={pending}
+          />
+          <NumberField
+            icon={<Instagram className="text-muted-foreground mt-0.5 h-4 w-4" />}
+            label="Min followers → Instagram-Story discount"
+            value={cfg.segments.storyFollowers}
+            min={FOLLOWERS_MIN}
+            max={cfg.segments.magneticFollowers}
+            onChange={setStoryFollowers}
+            disabled={pending}
+          />
+        </div>
+        <p className="text-muted-foreground/80 mt-2 flex items-start gap-1.5 text-[11px] leading-snug">
+          <Info className="mt-0.5 h-3 w-3 shrink-0" />
+          The Story bar always sits below the auto-Magnetic bar — a guest with
+          Magnetic reach already holds a higher rung. Auto-Magnetic at{" "}
+          {cfg.segments.magneticFollowers.toLocaleString()} · Story from{" "}
+          {cfg.segments.storyFollowers.toLocaleString()} followers.
+        </p>
+
+        <div className="mt-5">
+          <p className="text-muted-foreground text-[10px] font-bold tracking-[0.12em] uppercase">
+            A qualifying Instagram Story must…
+          </p>
+          <div className="divide-border/60 border-border mt-2 divide-y rounded-xl border">
+            <StoryTagRow
+              icon={<AtSign className="h-4 w-4" />}
+              label="Tag @mesita"
+              desc="The story mentions Mesita's handle."
+              on={cfg.segments.storyTags.mesita}
+              pending={pending}
+              onClick={() => setStoryTag("mesita")}
+            />
+            <StoryTagRow
+              icon={<Store className="h-4 w-4" />}
+              label="Tag the venue"
+              desc="The story mentions the place's own handle."
+              on={cfg.segments.storyTags.venue}
+              pending={pending}
+              onClick={() => setStoryTag("venue")}
+            />
+            <StoryTagRow
+              icon={<MapPin className="h-4 w-4" />}
+              label="Add the venue's location"
+              desc="The story carries a location sticker / geotag."
+              on={cfg.segments.storyTags.geo}
+              pending={pending}
+              onClick={() => setStoryTag("geo")}
+            />
+          </div>
+        </div>
+      </SectionCard>
+
       {/* The grid — six segments (rows) × three postures (columns). */}
       <SectionCard
         icon={<Percent className="text-secondary h-4 w-4" />}
@@ -276,5 +395,39 @@ function RateSelect({
         </option>
       ))}
     </select>
+  );
+}
+
+function StoryTagRow({
+  icon,
+  label,
+  desc,
+  on,
+  pending,
+  onClick,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  desc: string;
+  on: boolean;
+  pending: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <div className="flex items-center gap-3 px-3 py-3">
+      <span
+        className="bg-muted text-muted-foreground grid size-8 shrink-0 place-items-center rounded-lg"
+        aria-hidden
+      >
+        {icon}
+      </span>
+      <div className="min-w-0 flex-1">
+        <p className="text-foreground text-[13px] font-semibold">{label}</p>
+        <p className="text-muted-foreground truncate text-[11px] leading-tight">
+          {desc}
+        </p>
+      </div>
+      <Switch on={on} pending={pending} onClick={onClick} label={label} />
+    </div>
   );
 }

@@ -12,7 +12,7 @@ export default function RewardsConfigLayout({
     <ConfigPageLayout
       eyebrow="Product · Rewards"
       title="Rewards Config"
-      description="The Mesita reward grid (Promos v5). Six segments — Standard, Magnetic, Premium, Instagram Story, Welcome Visit, Google Review — climb a worst→best ladder; for each posture a place can pick, set what every segment pays. A guest is always paid their single best qualifying rung (best-of, never stacked). Rates run on a 5% grid, floor 10%, ceiling 50%; every discount applies to the first MX$500 of the bill. This is the operator source of truth the v5 bill engine reads."
+      description="The Mesita reward grid (Promos v5). Six segments — Standard, Premium, Magnetic, Instagram Story, Welcome Visit, Google Review — climb a worst→best ladder; for each posture a place can pick, set what every segment pays. A guest is always paid their single best qualifying rung (best-of, never stacked). Rates run on a 5% grid, floor 10%, ceiling 50%; every discount applies to the first MX$500 of the bill. This is the operator source of truth the v5 bill engine reads."
     >
       {children}
     </ConfigPageLayout>

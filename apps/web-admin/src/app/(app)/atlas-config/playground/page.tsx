@@ -1,9 +1,7 @@
-import { AtlasPlaygroundClient } from "../AtlasPlaygroundClient";
+import { redirect } from "next/navigation";
 
-// Atlas Config · Playground — preview which place fields each writer may set.
-// Reads the shipped static edit matrix (no server data needed).
-export const dynamic = "force-dynamic";
-
-export default function AtlasPlaygroundPage() {
-  return <AtlasPlaygroundClient />;
+// The Atlas field-permission previewer was removed — Atlas is a single flat page.
+// Kept as a redirect so old "Playground" links/bookmarks keep working.
+export default function LegacyAtlasPlaygroundRedirect() {
+  redirect("/atlas-config");
 }

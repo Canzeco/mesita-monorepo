@@ -9,8 +9,8 @@
 
 const SEGMENT_KEYS = [
   "standard",
-  "magnetic",
   "premium",
+  "magnetic",
   "story",
   "welcome",
   "review",
@@ -18,7 +18,17 @@ const SEGMENT_KEYS = [
 type SegmentKey = (typeof SEGMENT_KEYS)[number];
 
 type SegmentRates = { zero: number; conservative: number; aggressive: number };
-type RewardsConfig = { grid: Record<SegmentKey, SegmentRates>; cap: number };
+type StorySegmentTags = { mesita: boolean; venue: boolean; geo: boolean };
+type SegmentsConfig = {
+  magneticFollowers: number;
+  storyFollowers: number;
+  storyTags: StorySegmentTags;
+};
+type RewardsConfig = {
+  grid: Record<SegmentKey, SegmentRates>;
+  cap: number;
+  segments: SegmentsConfig;
+};
 
 const RATE_STEP = 5;
 const RATE_FLOOR = 10;
@@ -27,10 +37,21 @@ const CAP_MIN = 0;
 const CAP_MAX = 5000;
 const CAP_DEFAULT = 500;
 
+// Instagram follower bars — whole non-negative counts, generously bounded.
+const FOLLOWERS_MIN = 0;
+const FOLLOWERS_MAX = 100_000_000;
+const MAGNETIC_FOLLOWERS_DEFAULT = 10_000;
+const STORY_FOLLOWERS_DEFAULT = 1_000;
+const STORY_TAGS_DEFAULT: StorySegmentTags = {
+  mesita: true,
+  venue: true,
+  geo: false,
+};
+
 // The locked v5 defaults — the fallback for any absent/invalid cell.
 const DEFAULTS: Record<SegmentKey, SegmentRates> = {
   standard: { zero: 0, conservative: 10, aggressive: 10 },
-  magnetic: { zero: 0, conservative: 15, aggressive: 20 },
+  magnetic: { zero: 0, conservative: 15, aggressive: 25 },
   premium: { zero: 0, conservative: 15, aggressive: 20 },
   story: { zero: 0, conservative: 20, aggressive: 30 },
   welcome: { zero: 0, conservative: 20, aggressive: 30 },
@@ -48,6 +69,42 @@ function snapRate(v: unknown, fallback: number): number {
 function clampCap(v: unknown): number {
   if (typeof v !== "number" || !Number.isFinite(v)) return CAP_DEFAULT;
   return Math.max(CAP_MIN, Math.min(CAP_MAX, Math.round(v)));
+}
+
+function clampFollowers(v: unknown, fallback: number): number {
+  if (typeof v !== "number" || !Number.isFinite(v)) return fallback;
+  return Math.max(FOLLOWERS_MIN, Math.min(FOLLOWERS_MAX, Math.round(v)));
+}
+
+// Segment-qualification block. Missing/invalid → v5 defaults; the Story bar is
+// clamped to never exceed the auto-Magnetic bar (the load-bearing invariant).
+// Mirrors coerceSegments in the admin catalog.
+function normalizeSegments(raw: unknown): SegmentsConfig {
+  const s =
+    raw && typeof raw === "object" && !Array.isArray(raw)
+      ? (raw as Record<string, unknown>)
+      : {};
+  const magneticFollowers = clampFollowers(
+    s.magneticFollowers,
+    MAGNETIC_FOLLOWERS_DEFAULT,
+  );
+  const storyFollowers = Math.min(
+    clampFollowers(s.storyFollowers, STORY_FOLLOWERS_DEFAULT),
+    magneticFollowers,
+  );
+  const tags =
+    s.storyTags && typeof s.storyTags === "object" && !Array.isArray(s.storyTags)
+      ? (s.storyTags as Record<string, unknown>)
+      : {};
+  return {
+    magneticFollowers,
+    storyFollowers,
+    storyTags: {
+      mesita: typeof tags.mesita === "boolean" ? tags.mesita : STORY_TAGS_DEFAULT.mesita,
+      venue: typeof tags.venue === "boolean" ? tags.venue : STORY_TAGS_DEFAULT.venue,
+      geo: typeof tags.geo === "boolean" ? tags.geo : STORY_TAGS_DEFAULT.geo,
+    },
+  };
 }
 
 export function normalizeConfig(
@@ -76,5 +133,8 @@ export function normalizeConfig(
     };
   }
 
-  return { ok: true, value: { grid, cap: clampCap(c.cap) } };
+  return {
+    ok: true,
+    value: { grid, cap: clampCap(c.cap), segments: normalizeSegments(c.segments) },
+  };
 }

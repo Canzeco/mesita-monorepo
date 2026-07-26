@@ -1,10 +1,8 @@
-import { PageContainer } from "@/components/PageContainer";
-import { AtlasLayoutShell } from "./AtlasLayoutShell";
+import { ConfigPageLayout } from "@/components/ConfigPageLayout";
 
-// Atlas Config — tabbed (Config · Playground). The layout mounts the shared shell
-// (header + tab strip); each subpage renders its own content beneath it. Atlas is
-// the profile spec — the controlled vocabulary and field limits the Enricher and
-// operators write place profiles with. The Enricher's own pipeline behaviour
+// Atlas Config — the profile spec: the controlled vocabulary (categories, tags,
+// facets) and the field limits the Enricher and operators write place profiles
+// with. A single flat page (no sub-tabs); the Enricher's own pipeline behaviour
 // lives on the separate Enricher Config page.
 export default function AtlasConfigLayout({
   children,
@@ -12,8 +10,11 @@ export default function AtlasConfigLayout({
   children: React.ReactNode;
 }) {
   return (
-    <PageContainer>
-      <AtlasLayoutShell>{children}</AtlasLayoutShell>
-    </PageContainer>
+    <ConfigPageLayout
+      title="Atlas Config"
+      description="Atlas Params — who can edit each place field, the controlled vocabulary, and the field limits the Enricher and operators write place profiles with."
+    >
+      {children}
+    </ConfigPageLayout>
   );
 }

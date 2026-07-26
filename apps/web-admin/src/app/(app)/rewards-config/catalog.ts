@@ -28,11 +28,38 @@ export type RewardSegmentKey =
 
 export type SegmentRates = Record<RewardPosture, number>;
 
+// What a qualifying Instagram Story must carry to earn the Story discount.
+// Three independent toggles (staff still verify the post) — persisted ahead of
+// enforcement, like the rest of this blob.
+export type StorySegmentTags = {
+  /** The story tags Mesita's own handle (@mesita). */
+  mesita: boolean;
+  /** The story tags the venue's own handle. */
+  venue: boolean;
+  /** The story carries the venue's location (geotag / location sticker). */
+  geo: boolean;
+};
+
+// Segment-qualification rules — the two Instagram follower bars and the Story
+// requirements. INVARIANT: magneticFollowers ≥ storyFollowers (a guest with
+// Magnetic reach already sits on a higher rung than the Story action), enforced
+// live in the editor and again in coerceSegments / the save normalizer.
+export type SegmentsConfig = {
+  /** Instagram followers at/above which a guest is auto-assigned the Magnetic class (the higher bar). */
+  magneticFollowers: number;
+  /** Minimum Instagram followers to earn the Instagram-Story discount (the lower bar). */
+  storyFollowers: number;
+  /** What a qualifying Instagram Story must tag. */
+  storyTags: StorySegmentTags;
+};
+
 export type RewardsConfig = {
   /** Per-segment rate under each posture. 0 = off. */
   grid: Record<RewardSegmentKey, SegmentRates>;
   /** Universal cap (MXN): the discount applies to the first `cap` of the bill. */
   cap: number;
+  /** Follower bars + Story requirements that gate the Instagram-driven rungs. */
+  segments: SegmentsConfig;
 };
 
 // Ontology of a rung: class (who the guest is), action (a rewarded thing they
@@ -56,34 +83,34 @@ export const SEGMENTS: readonly SegmentMeta[] = [
   {
     key: "standard",
     rank: 1,
-    name: "Standard",
+    name: "Standard Customer",
     nameEs: "Estándar",
     kind: "class",
     emoji: "🙂",
     blurb: "Base class — the floor every guest inherits.",
   },
   {
-    key: "magnetic",
-    rank: 2,
-    name: "Magnetic",
-    nameEs: "Magnético",
-    kind: "class",
-    emoji: "🧲",
-    blurb: "Invite-only class for guests with real Instagram reach.",
-  },
-  {
     key: "premium",
-    rank: 3,
-    name: "Premium",
+    rank: 2,
+    name: "Premium Customer",
     nameEs: "Premium",
     kind: "class",
     emoji: "👑",
     blurb: "Paid class — MX$100/mo, the consumer revenue lever.",
   },
   {
+    key: "magnetic",
+    rank: 3,
+    name: "Magnetic Customer",
+    nameEs: "Magnético",
+    kind: "class",
+    emoji: "🧲",
+    blurb: "Invite-only class for guests with real Instagram reach.",
+  },
+  {
     key: "story",
     rank: 4,
-    name: "Instagram Story",
+    name: "Instagram Story Bonus",
     nameEs: "Historia de Instagram",
     kind: "action",
     emoji: "📸",
@@ -92,7 +119,7 @@ export const SEGMENTS: readonly SegmentMeta[] = [
   {
     key: "welcome",
     rank: 5,
-    name: "Welcome Visit",
+    name: "Welcome Visit Bonus",
     nameEs: "Visita de Bienvenida",
     kind: "visit",
     emoji: "🚪",
@@ -101,7 +128,7 @@ export const SEGMENTS: readonly SegmentMeta[] = [
   {
     key: "review",
     rank: 6,
-    name: "Google Review",
+    name: "Google Review Bonus",
     nameEs: "Reseña de Google",
     kind: "action",
     emoji: "⭐",
@@ -143,30 +170,89 @@ export const CAP_MIN = 0;
 export const CAP_MAX = 5000;
 export const CAP_DEFAULT = 500;
 
+// Instagram follower bars — whole non-negative counts, generously bounded.
+export const FOLLOWERS_MIN = 0;
+export const FOLLOWERS_MAX = 100_000_000;
+export const MAGNETIC_FOLLOWERS_DEFAULT = 10_000;
+export const STORY_FOLLOWERS_DEFAULT = 1_000;
+export const STORY_TAGS_DEFAULT: StorySegmentTags = {
+  mesita: true,
+  venue: true,
+  geo: false,
+};
+
 // The locked v5 defaults (MESITA-723). Zero column is all 0 by definition.
 export const DEFAULT_CONFIG: RewardsConfig = {
   cap: CAP_DEFAULT,
   grid: {
     standard: { zero: 0, conservative: 10, aggressive: 10 },
-    magnetic: { zero: 0, conservative: 15, aggressive: 20 },
     premium: { zero: 0, conservative: 15, aggressive: 20 },
+    magnetic: { zero: 0, conservative: 15, aggressive: 25 },
     story: { zero: 0, conservative: 20, aggressive: 30 },
     welcome: { zero: 0, conservative: 20, aggressive: 30 },
     review: { zero: 0, conservative: 30, aggressive: 50 },
   },
+  segments: {
+    magneticFollowers: MAGNETIC_FOLLOWERS_DEFAULT,
+    storyFollowers: STORY_FOLLOWERS_DEFAULT,
+    storyTags: { ...STORY_TAGS_DEFAULT },
+  },
 };
 
-/** Snap any number to the 5% grid: ≤0 → 0, else clamp to [10,50] rounded to 5. */
-export function snapRate(v: unknown): number {
-  const n = typeof v === "number" && Number.isFinite(v) ? v : 0;
-  if (n <= 0) return 0;
-  const stepped = Math.round(n / RATE_STEP) * RATE_STEP;
+/**
+ * Snap a rate to the 5% grid: a non-number resolves to `fallback`, a number ≤0 →
+ * 0 (Off), else clamp to [10,50] rounded to 5. Signature/behavior mirror snapRate
+ * in the update EF's rewards-config-normalize.ts, so coerce (display) and
+ * normalize (save gate) treat a present-but-invalid cell identically.
+ */
+export function snapRate(v: unknown, fallback = 0): number {
+  if (typeof v !== "number" || !Number.isFinite(v)) return fallback;
+  if (v <= 0) return 0;
+  const stepped = Math.round(v / RATE_STEP) * RATE_STEP;
   return Math.max(RATE_FLOOR, Math.min(RATE_MAX, stepped));
 }
 
 function clampCap(v: unknown): number {
   const n = typeof v === "number" && Number.isFinite(v) ? Math.round(v) : CAP_DEFAULT;
   return Math.max(CAP_MIN, Math.min(CAP_MAX, n));
+}
+
+function clampFollowers(v: unknown, fallback: number): number {
+  const n = typeof v === "number" && Number.isFinite(v) ? Math.round(v) : fallback;
+  return Math.max(FOLLOWERS_MIN, Math.min(FOLLOWERS_MAX, n));
+}
+
+/**
+ * Coerce the segment-qualification block. Missing/invalid → v5 defaults; the
+ * Story bar is clamped to never exceed the auto-Magnetic bar (the load-bearing
+ * invariant). Mirrors normalizeSegments in the update EF.
+ */
+export function coerceSegments(raw: unknown): SegmentsConfig {
+  const s =
+    raw && typeof raw === "object" && !Array.isArray(raw)
+      ? (raw as Record<string, unknown>)
+      : {};
+  const magneticFollowers = clampFollowers(
+    s.magneticFollowers,
+    MAGNETIC_FOLLOWERS_DEFAULT,
+  );
+  const storyFollowers = Math.min(
+    clampFollowers(s.storyFollowers, STORY_FOLLOWERS_DEFAULT),
+    magneticFollowers,
+  );
+  const tags =
+    s.storyTags && typeof s.storyTags === "object" && !Array.isArray(s.storyTags)
+      ? (s.storyTags as Record<string, unknown>)
+      : {};
+  return {
+    magneticFollowers,
+    storyFollowers,
+    storyTags: {
+      mesita: typeof tags.mesita === "boolean" ? tags.mesita : STORY_TAGS_DEFAULT.mesita,
+      venue: typeof tags.venue === "boolean" ? tags.venue : STORY_TAGS_DEFAULT.venue,
+      geo: typeof tags.geo === "boolean" ? tags.geo : STORY_TAGS_DEFAULT.geo,
+    },
+  };
 }
 
 /**
@@ -194,14 +280,18 @@ export function coerceConfig(raw: unknown): RewardsConfig {
       zero: 0, // off by definition
       conservative:
         seg.key in rawGrid && "conservative" in row
-          ? snapRate(row.conservative)
+          ? snapRate(row.conservative, fallback.conservative)
           : fallback.conservative,
       aggressive:
         seg.key in rawGrid && "aggressive" in row
-          ? snapRate(row.aggressive)
+          ? snapRate(row.aggressive, fallback.aggressive)
           : fallback.aggressive,
     };
   }
 
-  return { grid, cap: "cap" in c ? clampCap(c.cap) : CAP_DEFAULT };
+  return {
+    grid,
+    cap: "cap" in c ? clampCap(c.cap) : CAP_DEFAULT,
+    segments: coerceSegments(c.segments),
+  };
 }

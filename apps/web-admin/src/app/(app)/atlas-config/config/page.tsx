@@ -1,14 +1,7 @@
-import { getAtlasFields } from "../actions";
-import { AtlasSettingsError } from "@/components/AtlasSettingsError";
-import { AtlasFieldsClient } from "../AtlasFieldsClient";
+import { redirect } from "next/navigation";
 
-// Atlas Config · Config — the profile spec: the edit matrix, the controlled
-// vocabulary (categories, tags, facets), and the field limits.
-export const dynamic = "force-dynamic";
-
-export default async function AtlasConfigPage() {
-  const result = await getAtlasFields();
-  if (!result.ok) return <AtlasSettingsError error={result.error} />;
-
-  return <AtlasFieldsClient data={result.data} />;
+// Atlas Config folded back into a single flat page (Playground tab removed).
+// Kept as a redirect so old "Config" tab links/bookmarks keep working.
+export default function LegacyAtlasConfigTabRedirect() {
+  redirect("/atlas-config");
 }
