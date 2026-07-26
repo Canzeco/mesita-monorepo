@@ -1,17 +1,24 @@
-// Shared Models Config types + catalogs. Kept OUT of actions.ts because that
-// file is a "use server" module (it can only export async functions to the
-// client) and it pulls in efInvoke / next/headers — importing the catalogs or
-// SUBSYSTEMS from there would hand the client stubs and crash the pickers. Same
+// Shared Models Config types + catalog. Kept OUT of actions.ts because that
+// file is a "use server" module (it may only export async functions to the
+// client) and it pulls in efInvoke / next/headers — importing the catalog or
+// SUBSYSTEMS from there would hand the client stubs and crash the picker. Same
 // footgun the Memo Config types file documents.
+//
+// This page is a MODEL MAP, not a second control panel. Almost every subsystem
+// already chooses its model on its own page (Enricher Config, Memo Config), and
+// those knobs are richer + live. The only thing this page owns is the Supabase
+// Edge Functions general default — every other row is read-only and links to
+// the page that actually controls it. See SUBSYSTEMS below for the ownership.
 
 import type { LucideIcon } from "lucide-react";
 import { Database, Layers, MessagesSquare, Sparkles } from "lucide-react";
 
 export type SubsystemKey = "supabase" | "enricher" | "lineup" | "memo";
 
-// The MAIN model is always OpenAI (a chat model, or an embedding model for
-// Lineup). Perplexity is NEVER a main model — it's an optional web-grounding /
-// validation leg, and ONLY Enricher and Memo have one ("off" disables it).
+// The persisted blob (app_settings.models_config). Only `supabase.model` is
+// edited on this page today; the enricher/lineup/memo entries are retained in
+// the shape (the EF contract) but are informational — their real, live model
+// settings live on their own pages. STAGED: nothing reads the blob yet.
 export type ModelsConfig = {
   v: number;
   supabase: { model: string };
@@ -20,11 +27,10 @@ export type ModelsConfig = {
   memo: { model: string; perplexity: string };
 };
 
-// ── Model catalogs ─────────────────────────────────────────────────────────
-// OpenAI is the main brain everywhere. The gpt-5.6 family (Sol / Terra / Luna —
-// GA 2026-07-09) is included; treat those ids as PROVISIONAL until confirmed
-// against platform.openai.com when enforcement is wired. Model is stored as a
-// free string, so editing these lists never breaks a saved blob.
+// OpenAI chat catalog for the one editable knob (the Supabase general default).
+// The gpt-5.6 family (Sol / Terra / Luna — GA 2026-07-09) is included; treat
+// those ids as PROVISIONAL until confirmed against platform.openai.com. Model is
+// stored as a free string, so editing this list never breaks a saved blob.
 export const OPENAI_CHAT_MODELS = [
   "gpt-4o-mini",
   "gpt-4o",
@@ -35,12 +41,9 @@ export const OPENAI_CHAT_MODELS = [
   "gpt-5.6-sol",
 ] as const;
 
-export const OPENAI_EMBEDDING_MODELS = [
-  "text-embedding-3-small",
-  "text-embedding-3-large",
-] as const;
-
-// Perplexity grounding options — Enricher + Memo only. "off" = no grounding leg.
+// Perplexity values accepted in the blob's enricher/memo legs ("off" = none).
+// Kept for the EF contract + coercion; the page no longer edits them (Enricher
+// Config / Memo Config own those legs).
 export const PERPLEXITY_OPTIONS = [
   "off",
   "sonar",
@@ -49,61 +52,63 @@ export const PERPLEXITY_OPTIONS = [
   "sonar-reasoning-pro",
 ] as const;
 
-export type MainKind = "chat" | "embedding";
+// ── Subsystem map ──────────────────────────────────────────────────────────
+// Drives the page. `editableHere` is true for exactly one row (Supabase); every
+// other row shows its status + a link to the page that actually owns the model.
+export type ModelStatus = "live" | "staged" | "locked";
 
-/** OpenAI catalog for a subsystem's main model, by kind. */
-export function mainModelsFor(kind: MainKind): readonly string[] {
-  return kind === "embedding" ? OPENAI_EMBEDDING_MODELS : OPENAI_CHAT_MODELS;
-}
-
-// ── Subsystem descriptors ──────────────────────────────────────────────────
-// Drives the page: one card per entry. Only Enricher + Memo expose a Perplexity
-// leg — Supabase + Lineup are OpenAI-only.
 export type SubsystemMeta = {
   key: SubsystemKey;
   label: string;
-  subtitle: string;
-  mainKind: MainKind;
-  hasPerplexity: boolean;
   Icon: LucideIcon;
+  status: ModelStatus;
+  // Human description of the model(s) this subsystem actually uses today.
+  detail: string;
+  editableHere: boolean;
+  // Where the model is really controlled (or shown). null → owned here.
+  owner: { label: string; href: string } | null;
 };
 
 export const SUBSYSTEMS: readonly SubsystemMeta[] = [
   {
     key: "supabase",
     label: "Supabase Edge Functions",
-    subtitle:
-      "General default OpenAI model for Edge Functions that call an LLM without a more specific override.",
-    mainKind: "chat",
-    hasPerplexity: false,
     Icon: Database,
+    status: "staged",
+    detail:
+      "General default model for Edge Functions that call an LLM without a specific one of their own. This is the only model this page owns — nothing reads it yet.",
+    editableHere: true,
+    owner: null,
   },
   {
     key: "enricher",
     label: "Enricher",
-    subtitle:
-      "The place-intelligence pipeline (Atlas / Enricher). OpenAI is the main model; Perplexity is its optional web-grounding / validation leg.",
-    mainKind: "chat",
-    hasPerplexity: true,
     Icon: Sparkles,
+    status: "live",
+    detail:
+      "Text model (synthesis quality: Economy = gpt-4o-mini, Standard / High = gpt-4o), the vision model, and the Perplexity search preset — all set on, and read live by, Enricher Config.",
+    editableHere: false,
+    owner: { label: "Enricher Config", href: "/enricher-config" },
   },
   {
     key: "lineup",
     label: "Lineup",
-    subtitle:
-      "The recommendation engine's embedding model for place embeddings. OpenAI embeddings only.",
-    mainKind: "embedding",
-    hasPerplexity: false,
     Icon: Layers,
+    status: "locked",
+    detail:
+      "Place embeddings: OpenAI text-embedding-3-small (1536-d). Fixed by design — changing it re-vectors the whole catalog — and shown read-only on Enricher Config.",
+    editableHere: false,
+    owner: { label: "Enricher Config", href: "/enricher-config" },
   },
   {
     key: "memo",
     label: "Memo",
-    subtitle:
-      "The consumer AI concierge (consumer-web-ask-memo). OpenAI is its brain; Perplexity is an optional web-grounding leg. Overlaps the Memo Config model knob — centralised here going forward.",
-    mainKind: "chat",
-    hasPerplexity: true,
     Icon: MessagesSquare,
+    status: "staged",
+    detail:
+      "OpenAI brain plus an optional Perplexity web-grounding leg. Its model knob lives on Memo Config (also staged — Memo's instructions are what run live today).",
+    editableHere: false,
+    owner: { label: "Memo Config", href: "/memo-config" },
   },
 ];
 
