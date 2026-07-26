@@ -7,30 +7,24 @@
 import type { LucideIcon } from "lucide-react";
 import { Database, Layers, MessagesSquare, Sparkles } from "lucide-react";
 
-export type ModelProvider = "openai" | "perplexity";
-export type ModelKind = "chat" | "embedding";
-
-export type SubsystemModel = { provider: ModelProvider; model: string };
-
 export type SubsystemKey = "supabase" | "enricher" | "lineup" | "memo";
 
-// The persisted blob (app_settings.models_config). One { provider, model } per
-// subsystem. STAGED today — see the migration + EF headers: the page
-// round-trips the blob; the subsystems are pointed at it in a follow-up.
+// The MAIN model is always OpenAI (a chat model, or an embedding model for
+// Lineup). Perplexity is NEVER a main model — it's an optional web-grounding /
+// validation leg, and ONLY Enricher and Memo have one ("off" disables it).
 export type ModelsConfig = {
   v: number;
-  supabase: SubsystemModel;
-  enricher: SubsystemModel;
-  lineup: SubsystemModel;
-  memo: SubsystemModel;
+  supabase: { model: string };
+  enricher: { model: string; perplexity: string };
+  lineup: { model: string };
+  memo: { model: string; perplexity: string };
 };
 
 // ── Model catalogs ─────────────────────────────────────────────────────────
-// Selectable model ids per provider, surfaced in the pickers. The gpt-5.6 family
-// (Sol / Terra / Luna — GA 2026-07-09) is included; treat those ids as
-// PROVISIONAL until confirmed against platform.openai.com when enforcement is
-// wired. Model is stored as a free string, so editing this list never breaks a
-// saved blob.
+// OpenAI is the main brain everywhere. The gpt-5.6 family (Sol / Terra / Luna —
+// GA 2026-07-09) is included; treat those ids as PROVISIONAL until confirmed
+// against platform.openai.com when enforcement is wired. Model is stored as a
+// free string, so editing these lists never breaks a saved blob.
 export const OPENAI_CHAT_MODELS = [
   "gpt-4o-mini",
   "gpt-4o",
@@ -46,35 +40,31 @@ export const OPENAI_EMBEDDING_MODELS = [
   "text-embedding-3-large",
 ] as const;
 
-export const PERPLEXITY_MODELS = [
+// Perplexity grounding options — Enricher + Memo only. "off" = no grounding leg.
+export const PERPLEXITY_OPTIONS = [
+  "off",
   "sonar",
   "sonar-pro",
   "sonar-reasoning",
   "sonar-reasoning-pro",
 ] as const;
 
-export const PROVIDER_LABEL: Record<ModelProvider, string> = {
-  openai: "OpenAI",
-  perplexity: "Perplexity",
-};
+export type MainKind = "chat" | "embedding";
 
-/** Model options for a subsystem, given its selected provider + kind. */
-export function modelsFor(
-  provider: ModelProvider,
-  kind: ModelKind,
-): readonly string[] {
-  if (kind === "embedding") return OPENAI_EMBEDDING_MODELS; // OpenAI only
-  return provider === "openai" ? OPENAI_CHAT_MODELS : PERPLEXITY_MODELS;
+/** OpenAI catalog for a subsystem's main model, by kind. */
+export function mainModelsFor(kind: MainKind): readonly string[] {
+  return kind === "embedding" ? OPENAI_EMBEDDING_MODELS : OPENAI_CHAT_MODELS;
 }
 
 // ── Subsystem descriptors ──────────────────────────────────────────────────
-// Drives the page: one card per entry, rendering provider-appropriate options.
+// Drives the page: one card per entry. Only Enricher + Memo expose a Perplexity
+// leg — Supabase + Lineup are OpenAI-only.
 export type SubsystemMeta = {
   key: SubsystemKey;
   label: string;
   subtitle: string;
-  kind: ModelKind;
-  providers: readonly ModelProvider[];
+  mainKind: MainKind;
+  hasPerplexity: boolean;
   Icon: LucideIcon;
 };
 
@@ -83,18 +73,18 @@ export const SUBSYSTEMS: readonly SubsystemMeta[] = [
     key: "supabase",
     label: "Supabase Edge Functions",
     subtitle:
-      "The general default model for Edge Functions that call an LLM and don't have a more specific override.",
-    kind: "chat",
-    providers: ["openai", "perplexity"],
+      "General default OpenAI model for Edge Functions that call an LLM without a more specific override.",
+    mainKind: "chat",
+    hasPerplexity: false,
     Icon: Database,
   },
   {
     key: "enricher",
     label: "Enricher",
     subtitle:
-      "The place-intelligence pipeline (Atlas / Enricher) — its web validation + extraction leg. Perplexity sonar-pro today.",
-    kind: "chat",
-    providers: ["openai", "perplexity"],
+      "The place-intelligence pipeline (Atlas / Enricher). OpenAI is the main model; Perplexity is its optional web-grounding / validation leg.",
+    mainKind: "chat",
+    hasPerplexity: true,
     Icon: Sparkles,
   },
   {
@@ -102,17 +92,17 @@ export const SUBSYSTEMS: readonly SubsystemMeta[] = [
     label: "Lineup",
     subtitle:
       "The recommendation engine's embedding model for place embeddings. OpenAI embeddings only.",
-    kind: "embedding",
-    providers: ["openai"],
+    mainKind: "embedding",
+    hasPerplexity: false,
     Icon: Layers,
   },
   {
     key: "memo",
     label: "Memo",
     subtitle:
-      "The consumer AI concierge (consumer-web-ask-memo). Overlaps the Memo Config model knob — centralised here going forward.",
-    kind: "chat",
-    providers: ["openai", "perplexity"],
+      "The consumer AI concierge (consumer-web-ask-memo). OpenAI is its brain; Perplexity is an optional web-grounding leg. Overlaps the Memo Config model knob — centralised here going forward.",
+    mainKind: "chat",
+    hasPerplexity: true,
     Icon: MessagesSquare,
   },
 ];
@@ -121,40 +111,35 @@ export const SUBSYSTEMS: readonly SubsystemMeta[] = [
 // shows these before load; the server coerces a null/partial blob to them.
 export const DEFAULT_MODELS_CONFIG: ModelsConfig = {
   v: 1,
-  supabase: { provider: "openai", model: "gpt-4o-mini" },
-  enricher: { provider: "perplexity", model: "sonar-pro" },
-  lineup: { provider: "openai", model: "text-embedding-3-small" },
-  memo: { provider: "openai", model: "gpt-4o-mini" },
+  supabase: { model: "gpt-4o-mini" },
+  enricher: { model: "gpt-4o-mini", perplexity: "sonar-pro" },
+  lineup: { model: "text-embedding-3-small" },
+  memo: { model: "gpt-4o-mini", perplexity: "sonar-pro" },
 };
 
 /** Merge a null / partial / untrusted blob into a complete, valid config. */
 export function coerceModelsConfig(raw: unknown): ModelsConfig {
   const r = (raw && typeof raw === "object" ? raw : {}) as Record<string, unknown>;
-  const byKey = Object.fromEntries(
-    SUBSYSTEMS.map((s) => [s.key, s]),
-  ) as Record<SubsystemKey, SubsystemMeta>;
-
-  const pick = (key: SubsystemKey): SubsystemModel => {
-    const meta = byKey[key];
-    const fb = DEFAULT_MODELS_CONFIG[key];
-    const o = (r[key] && typeof r[key] === "object"
-      ? r[key]
-      : {}) as Record<string, unknown>;
-    const provider = meta.providers.includes(o.provider as ModelProvider)
-      ? (o.provider as ModelProvider)
-      : fb.provider;
-    const model =
-      typeof o.model === "string" && o.model.trim().length > 0
-        ? o.model.trim()
-        : fb.model;
-    return { provider, model };
+  const obj = (k: SubsystemKey): Record<string, unknown> =>
+    (r[k] && typeof r[k] === "object" ? r[k] : {}) as Record<string, unknown>;
+  const str = (v: unknown, fb: string): string =>
+    typeof v === "string" && v.trim().length > 0 ? v.trim() : fb;
+  const perp = (v: unknown, fb: string): string => {
+    const s = typeof v === "string" ? v.trim() : "";
+    return (PERPLEXITY_OPTIONS as readonly string[]).includes(s) ? s : fb;
   };
-
+  const d = DEFAULT_MODELS_CONFIG;
   return {
     v: 1,
-    supabase: pick("supabase"),
-    enricher: pick("enricher"),
-    lineup: pick("lineup"),
-    memo: pick("memo"),
+    supabase: { model: str(obj("supabase").model, d.supabase.model) },
+    enricher: {
+      model: str(obj("enricher").model, d.enricher.model),
+      perplexity: perp(obj("enricher").perplexity, d.enricher.perplexity),
+    },
+    lineup: { model: str(obj("lineup").model, d.lineup.model) },
+    memo: {
+      model: str(obj("memo").model, d.memo.model),
+      perplexity: perp(obj("memo").perplexity, d.memo.perplexity),
+    },
   };
 }
