@@ -147,8 +147,8 @@ export type Lane = {
 // MP multiplies EVERY lane (Pato 2026-07-22) — it trails each formula so the
 // operator override reads as the last gate applied to earned/bought merit.
 export const LANES: readonly Lane[] = [
-  { id: "organic",   label: "Organic",   parts: ["em", "sm", "gp", "xx", "mp"], merit: "earned — Google" },
-  { id: "inorganic", label: "Inorganic", parts: ["em", "sm", "rp", "xx", "mp"], merit: "bought — Rewards" },
+  { id: "organic",   label: "Organic",   parts: ["em", "sm", "gp", "mp", "xx"], merit: "earned — Google" },
+  { id: "inorganic", label: "Inorganic", parts: ["em", "sm", "rp", "mp", "xx"], merit: "bought — Rewards" },
 ];
 
 
