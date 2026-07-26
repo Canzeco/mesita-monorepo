@@ -16,7 +16,7 @@ export function ScoresPanel() {
   return (
     <PanelCard
       title="The two lane scores"
-      subtitle="Each lane multiplies its subscores — click a factor to tune it on Subscores."
+      subtitle="Each lane multiplies its subscores — click a factor to jump to its box."
       pill="formulas locked"
     >
       <div className="mt-4 flex flex-col gap-2">
@@ -31,10 +31,11 @@ export function ScoresPanel() {
               {l.parts.map((p, i) => (
                 <span key={p} className="flex items-center gap-1.5">
                   <Link
-                    href={`/lineup-config/subscores#${p}`}
-                    title={`${SUBSCORE_BY_ID[p].name} — tune it on Subscores`}
-                    className="border-border/70 bg-card hover:border-primary/50 hover:bg-primary/10 rounded-md border px-2 py-0.5 font-mono text-[12px] font-semibold transition"
+                    href={`/lineup-config/config#${p}`}
+                    title={`${SUBSCORE_BY_ID[p].name} — jump to its box`}
+                    className="border-border/70 bg-card hover:border-primary/50 hover:bg-primary/10 inline-flex items-center gap-1 rounded-md border px-2 py-0.5 font-mono text-[12px] font-semibold transition"
                   >
+                    <span aria-hidden>{SUBSCORE_BY_ID[p].emoji}</span>
                     {SUBSCORE_BY_ID[p].short}
                   </Link>
                   {i < l.parts.length - 1 ? (

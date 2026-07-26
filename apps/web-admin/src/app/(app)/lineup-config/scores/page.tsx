@@ -1,8 +1,6 @@
-import { ScoresPanel } from "./ScoresPanel";
+import { redirect } from "next/navigation";
 
-// Scores — how the five subscores combine into the two lane scores.
-// Read-mostly; tuning lives on Subscores (the shared provider keeps the
-// live definitions here in sync with unsaved edits over there).
-export default function ScoringScoresPage() {
-  return <ScoresPanel />;
+// Retired 2026-07-26: Subscores + Scores + Lanes merged into one Config page.
+export default function LineupConfigScoresRedirect() {
+  redirect("/lineup-config/config");
 }

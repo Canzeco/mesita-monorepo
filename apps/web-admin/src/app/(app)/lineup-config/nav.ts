@@ -1,12 +1,11 @@
 import type { LucideIcon } from "lucide-react";
-import { FlaskConical, Gauge, Layers, Sigma, SlidersHorizontal } from "lucide-react";
+import { FlaskConical, Gauge, SlidersHorizontal } from "lucide-react";
 
-// One sidebar entry with FOUR tabs — the operator's pipeline, in order:
-//   Subscores  TUNE        the five subscores' knobs + data access
-//   Scores     UNDERSTAND  how the five multiply into the three lane scores
-//   Lanes      COMPOSE     per-lane deck counts · the merge · Lineup's callers
-//   Playground SIMULATE    one call (consumer + intent) → the sorted deck
-// One job per page (2026-07-20 restructure; plan: lineup-config-replan).
+// One sidebar entry with TWO tabs (Pato 2026-07-26 — collapsed from four):
+//   Config     the whole model on one page — the six subscore boxes
+//              (collapsible), the two lane formulas, and deck composition
+//   Playground one call (consumer + intent) → the sorted deck
+// Old /subscores · /scores · /lanes routes permanently redirect to /config.
 //
 // The sidebar, the page header, the ROUTE (/lineup-config, since 2026-07-20;
 // /scoring-config/* permanently redirects) and the EF slugs
@@ -25,9 +24,7 @@ export const SCORING_PARENT = {
 } as const;
 
 export const SCORING_SUBROUTES = [
-  { href: "/lineup-config/subscores", label: "Subscores", Icon: SlidersHorizontal },
-  { href: "/lineup-config/scores", label: "Scores", Icon: Sigma },
-  { href: "/lineup-config/lanes", label: "Lanes", Icon: Layers },
+  { href: "/lineup-config/config", label: "Config", Icon: SlidersHorizontal },
   { href: "/lineup-config/playground", label: "Playground", Icon: FlaskConical },
 ] as const satisfies ReadonlyArray<{
   href: string;

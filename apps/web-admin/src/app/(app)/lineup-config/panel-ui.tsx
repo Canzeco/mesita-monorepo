@@ -117,7 +117,7 @@ export function Slider({
 /** Per-subscore card washes — every subscore box carries its own tint
  * (EM sky · SM emerald · GP amber · RP rose · XX violet, matching the
  * playground's ScoreBox colors). Untinted cards keep the neutral shell. */
-const CARD_TINTS = {
+export const CARD_TINTS = {
   sky: "border-sky-500/25 bg-sky-500/[0.04]",
   emerald: "border-emerald-500/25 bg-emerald-500/[0.04]",
   amber: "border-amber-500/25 bg-amber-500/[0.04]",

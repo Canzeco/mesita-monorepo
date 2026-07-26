@@ -1,8 +1,9 @@
 "use client";
 
-import type { SubscoreId } from "@/lib/business/scores";
+import { ChevronDown } from "lucide-react";
+import { SUBSCORE_BY_ID, type SubscoreId } from "@/lib/business/scores";
 import { useScoring, type SettingsSection } from "../ScoringProvider";
-import { BoxSaveBar, BoxSection, PanelCard, type CardTint } from "../panel-ui";
+import { BoxSaveBar, BoxSection, CARD_TINTS, type CardTint } from "../panel-ui";
 
 // The ONE shell every subscore box renders through (Pato 2026-07-21): the
 // FIVE parts are required props, so a box literally cannot ship without
@@ -46,9 +47,32 @@ export function SubscoreBox({
     resetSection,
   } = useScoring();
 
+  // Collapsible (Pato 2026-07-26): a chevron toggle folds each box. Default
+  // OPEN; the anchor id stays on the <details> so the Scores tab's factor
+  // chips still deep-link here (and an anchored box scrolls into view even
+  // when collapsed — the summary is always rendered).
+  const emoji = SUBSCORE_BY_ID[id].emoji;
   return (
-    <section id={id} className="scroll-mt-24">
-      <PanelCard tint={tint} title={title} pill={pill}>
+    <details
+      id={id}
+      open
+      className={"group shadow-card scroll-mt-24 rounded-2xl border " + CARD_TINTS[tint]}
+    >
+      <summary className="flex cursor-pointer list-none items-center gap-3 p-5 sm:p-6 [&::-webkit-details-marker]:hidden">
+        <h2 className="font-display min-w-0 flex-1 text-base font-semibold tracking-tight">
+          <span aria-hidden>{emoji}</span> {title}
+        </h2>
+        {pill ? (
+          <span className="bg-muted text-muted-foreground shrink-0 rounded-full px-3 py-1.5 text-[11px] font-semibold">
+            {pill}
+          </span>
+        ) : null}
+        <ChevronDown
+          className="text-muted-foreground h-4 w-4 shrink-0 transition-transform group-open:rotate-180"
+          aria-hidden
+        />
+      </summary>
+      <div className="px-5 pb-5 sm:px-6 sm:pb-6">
         <BoxSection label="Overview">{overview}</BoxSection>
         <BoxSection label="Hyperparams">{hyperparams}</BoxSection>
         <BoxSection label="Inputs">{inputs}</BoxSection>
@@ -65,8 +89,8 @@ export function SubscoreBox({
             onReset={() => resetSection(save)}
           />
         ) : null}
-      </PanelCard>
-    </section>
+      </div>
+    </details>
   );
 }
 
