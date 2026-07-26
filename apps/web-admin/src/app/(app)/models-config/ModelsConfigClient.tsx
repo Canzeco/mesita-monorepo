@@ -5,18 +5,18 @@ import { ErrorNote, SaveRow, SectionCard } from "../enricher-config/atlas-ui";
 import { getModelsConfig, updateModelsConfig } from "./actions";
 import {
   DEFAULT_MODELS_CONFIG,
-  modelsFor,
-  PROVIDER_LABEL,
+  mainModelsFor,
+  PERPLEXITY_OPTIONS,
   SUBSYSTEMS,
-  type ModelProvider,
   type ModelsConfig,
   type SubsystemMeta,
 } from "./types";
 
-// Models Config surface — one card per subsystem, each a provider + model
-// picker. DEFAULTS are the pre-load placeholder; on mount the page loads the
-// persisted blob from admin-web-get-models-config (app_settings.models_config).
-// STAGED: saving persists the blob but the subsystems don't read it yet.
+// Models Config surface — one card per subsystem. The main model is always
+// OpenAI; Enricher + Memo additionally expose a Perplexity web-grounding leg
+// (never a main model). DEFAULTS are the pre-load placeholder; on mount the
+// page loads the persisted blob (admin-web-get-models-config). STAGED: saving
+// persists the blob but the subsystems don't read it yet.
 
 function Select<T extends string>({
   value,
@@ -94,23 +94,18 @@ export function ModelsConfigClient() {
   const busy = pending || loading;
   const dirty = JSON.stringify(cfg) !== JSON.stringify(saved);
 
-  const setProvider = (meta: SubsystemMeta, provider: ModelProvider) => {
+  const setMain = (meta: SubsystemMeta, model: string) => {
     setOk(false);
-    setCfg((c) => {
-      const opts = modelsFor(provider, meta.kind);
-      const cur = c[meta.key].model;
-      const model = opts.includes(cur) ? cur : opts[0];
-      return { ...c, [meta.key]: { provider, model } } as ModelsConfig;
-    });
+    setCfg(
+      (c) => ({ ...c, [meta.key]: { ...c[meta.key], model } }) as ModelsConfig,
+    );
   };
 
-  const setModel = (meta: SubsystemMeta, model: string) => {
+  const setPerplexity = (meta: SubsystemMeta, perplexity: string) => {
     setOk(false);
-    setCfg((c) =>
-      ({
-        ...c,
-        [meta.key]: { provider: c[meta.key].provider, model },
-      }) as ModelsConfig,
+    setCfg(
+      (c) =>
+        ({ ...c, [meta.key]: { ...c[meta.key], perplexity } }) as ModelsConfig,
     );
   };
 
@@ -132,8 +127,7 @@ export function ModelsConfigClient() {
     <div className="space-y-4 sm:space-y-6">
       {SUBSYSTEMS.map((meta) => {
         const entry = cfg[meta.key];
-        const modelOptions = modelsFor(entry.provider, meta.kind);
-        const singleProvider = meta.providers.length < 2;
+        const mainOptions = mainModelsFor(meta.mainKind);
         return (
           <SectionCard
             key={meta.key}
@@ -142,25 +136,31 @@ export function ModelsConfigClient() {
             subtitle={meta.subtitle}
           >
             <div className="mt-4 grid gap-3 sm:grid-cols-2">
-              <Field label="Provider">
-                <Select
-                  value={entry.provider}
-                  options={meta.providers}
-                  disabled={busy || singleProvider}
-                  onChange={(v) => setProvider(meta, v)}
-                  labelFor={(v) => PROVIDER_LABEL[v]}
-                />
-              </Field>
               <Field
-                label={meta.kind === "embedding" ? "Embedding model" : "Model"}
+                label={
+                  meta.mainKind === "embedding"
+                    ? "OpenAI embedding model"
+                    : "OpenAI model (main)"
+                }
               >
                 <Select
                   value={entry.model}
-                  options={modelOptions}
+                  options={mainOptions}
                   disabled={busy}
-                  onChange={(v) => setModel(meta, v)}
+                  onChange={(v) => setMain(meta, v)}
                 />
               </Field>
+              {meta.hasPerplexity && "perplexity" in entry ? (
+                <Field label="Perplexity (web grounding)">
+                  <Select
+                    value={entry.perplexity}
+                    options={PERPLEXITY_OPTIONS}
+                    disabled={busy}
+                    onChange={(v) => setPerplexity(meta, v)}
+                    labelFor={(v) => (v === "off" ? "Off" : v)}
+                  />
+                </Field>
+              ) : null}
             </div>
           </SectionCard>
         );

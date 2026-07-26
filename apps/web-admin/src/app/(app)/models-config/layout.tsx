@@ -15,7 +15,7 @@ export default function ModelsConfigLayout({
     <ConfigPageLayout
       eyebrow="Platform · Models"
       title="Models Config"
-      description="Pick which AI model each subsystem uses, in one place. Selections are saved now but not yet read at runtime (staged) — the Supabase EFs, Enricher, Lineup, and Memo still run their existing model settings until each is wired to this blob. This intentionally overlaps the model knob on Memo Config."
+      description="Pick which AI model each subsystem uses, in one place. The main model is always OpenAI; Perplexity is an optional web-grounding leg for Enricher and Memo only — never a main model. Selections are saved now but not yet read at runtime (staged): the Supabase EFs, Enricher, Lineup, and Memo still run their existing model settings until each is wired to this blob. Overlaps the model knob on Memo Config."
     >
       {children}
     </ConfigPageLayout>

@@ -6,11 +6,12 @@
 // singleton (models_config). Whole-blob writes only — the Models Config page
 // always saves its full form, so partial patches would only invite drift.
 //
-// One { provider, model } per subsystem (supabase / enricher / lineup / memo).
-// provider ∈ ('openai','perplexity'); model is a free string (the catalogs in
-// web-admin evolve, so only the STRUCTURE is enforced here — a missing/garbage
-// key falls back to the migration default so the blob is always complete). See
-// 20260726000000_models_config.sql.
+// The MAIN model is always OpenAI (a chat model, or an embedding model for
+// Lineup). Perplexity is NEVER a main model — it's an optional web-grounding
+// leg, and ONLY Enricher and Memo have one ("off" disables it). Model is a free
+// string (the web-admin catalogs evolve, so only the STRUCTURE is enforced —
+// a missing/garbage key falls back to the migration default so the blob is
+// always complete). See 20260726010000_models_config_reshape.sql.
 //
 // STAGED: persisted ahead of the wiring; the subsystems read the blob in a
 // follow-up. When they do, this blob is their model source.
@@ -29,34 +30,38 @@ import {
 
 type Body = { config?: unknown };
 
-const PROVIDERS = ["openai", "perplexity"] as const;
-type Provider = (typeof PROVIDERS)[number];
+const PERPLEXITY_OPTIONS = [
+  "off",
+  "sonar",
+  "sonar-pro",
+  "sonar-reasoning",
+  "sonar-reasoning-pro",
+] as const;
 
-const SUBSYSTEMS = ["supabase", "enricher", "lineup", "memo"] as const;
-
-type Entry = { provider: Provider; model: string };
-
-// Per-subsystem fallback — mirrors the migration default so a partial or
-// garbage body still yields a complete, well-formed blob.
-const FALLBACK: Record<(typeof SUBSYSTEMS)[number], Entry> = {
-  supabase: { provider: "openai", model: "gpt-4o-mini" },
-  enricher: { provider: "perplexity", model: "sonar-pro" },
-  lineup: { provider: "openai", model: "text-embedding-3-small" },
-  memo: { provider: "openai", model: "gpt-4o-mini" },
+// Defaults — mirror the reshape migration so a partial or garbage body still
+// yields a complete, well-formed blob.
+const DEFAULT = {
+  supabase: { model: "gpt-4o-mini" },
+  enricher: { model: "gpt-4o-mini", perplexity: "sonar-pro" },
+  lineup: { model: "text-embedding-3-small" },
+  memo: { model: "gpt-4o-mini", perplexity: "sonar-pro" },
 };
 
-function cleanEntry(raw: unknown, fallback: Entry): Entry {
-  const r = (raw && typeof raw === "object" ? raw : {}) as Record<string, unknown>;
-  const provider = PROVIDERS.includes(r.provider as Provider)
-    ? (r.provider as Provider)
-    : fallback.provider;
-  const model =
-    typeof r.model === "string" &&
-    r.model.trim().length > 0 &&
-    r.model.trim().length <= 100
-      ? r.model.trim()
-      : fallback.model;
-  return { provider, model };
+function obj(v: unknown): Record<string, unknown> {
+  return v && typeof v === "object" ? (v as Record<string, unknown>) : {};
+}
+
+function cleanModel(v: unknown, fallback: string): string {
+  return typeof v === "string" &&
+    v.trim().length > 0 &&
+    v.trim().length <= 100
+    ? v.trim()
+    : fallback;
+}
+
+function cleanPerplexity(v: unknown, fallback: string): string {
+  const s = typeof v === "string" ? v.trim() : "";
+  return (PERPLEXITY_OPTIONS as readonly string[]).includes(s) ? s : fallback;
 }
 
 /** Structural validation → a clean, complete blob (never trusts client shape). */
@@ -67,10 +72,29 @@ function validate(
     return { ok: false, error: "config must be an object" };
   }
   const r = raw as Record<string, unknown>;
-  const config: Record<string, unknown> = { v: 1 };
-  for (const key of SUBSYSTEMS) {
-    config[key] = cleanEntry(r[key], FALLBACK[key]);
-  }
+  const config = {
+    v: 1,
+    supabase: {
+      model: cleanModel(obj(r.supabase).model, DEFAULT.supabase.model),
+    },
+    enricher: {
+      model: cleanModel(obj(r.enricher).model, DEFAULT.enricher.model),
+      perplexity: cleanPerplexity(
+        obj(r.enricher).perplexity,
+        DEFAULT.enricher.perplexity,
+      ),
+    },
+    lineup: {
+      model: cleanModel(obj(r.lineup).model, DEFAULT.lineup.model),
+    },
+    memo: {
+      model: cleanModel(obj(r.memo).model, DEFAULT.memo.model),
+      perplexity: cleanPerplexity(
+        obj(r.memo).perplexity,
+        DEFAULT.memo.perplexity,
+      ),
+    },
+  };
   return { ok: true, config };
 }
 
