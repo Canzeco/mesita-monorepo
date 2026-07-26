@@ -1,9 +1,10 @@
-import type { SupabaseClient } from "@supabase/supabase-js";
-import { invokeEF } from "./_invoke";
+import { invokeEF } from '@/lib/ef';
+import { supabase } from '@/lib/supabase';
 
 // Booking through the Reservationist. The EF writes a pending reservation row
 // and (server-side) fires the outbound call to the place — the client just
-// collects the params and shows the pending state.
+// collects the params and shows the pending state. Web parity:
+// apps/web-consumer/src/lib/api/reservations.ts.
 
 export type CreatedReservation = {
   reservation: {
@@ -14,25 +15,22 @@ export type CreatedReservation = {
     notes: string | null;
   };
   linked_coupon_id: string | null;
-  /** Whether the outbound-call trigger was accepted (best-effort; not required). */
+  /** Whether the outbound-call trigger was accepted (best-effort). */
   call_triggered?: boolean;
 };
 
-export function apiCreateReservation(
-  client: SupabaseClient,
-  args: {
-    /** places.id == projects.id — the place being booked. */
-    projectId: string;
-    /** ISO 8601 instant (built with an explicit MX offset by the caller). */
-    reservedAt: string;
-    partySize: number;
-    notes?: string;
-  },
-): Promise<CreatedReservation> {
+export function apiCreateReservation(args: {
+  /** places.id == projects.id — the place being booked. */
+  projectId: string;
+  /** ISO 8601 instant (built with an explicit MX offset by the caller). */
+  reservedAt: string;
+  partySize: number;
+  notes?: string;
+}): Promise<CreatedReservation> {
   const notes = args.notes?.trim();
   return invokeEF<CreatedReservation>(
-    client,
-    "consumer-web-create-reservation",
+    supabase,
+    'consumer-web-create-reservation',
     {
       project_id: args.projectId,
       reserved_at: args.reservedAt,
@@ -45,16 +43,15 @@ export function apiCreateReservation(
 
 // Which slice of the caller's bookings to list. "upcoming" = pending |
 // confirmed; "past" = the terminal states; "all" leaves it unfiltered.
-export type ReservationScope = "upcoming" | "past" | "all";
+export type ReservationScope = 'upcoming' | 'past' | 'all';
 
 // One row from consumer-web-list-reservations: booking metadata joined with
-// the place summary. No money fields (the entity split keeps discounts on the
-// coupon row); the linked coupon is exposed by id only.
+// the place summary. No money fields (entity split); coupon by id only.
 export type EFReservationRow = {
   id: string;
   reserved_at: string;
   party_size: number;
-  status: "pending" | "confirmed" | "declined" | "no_show" | "cancelled";
+  status: 'pending' | 'confirmed' | 'declined' | 'no_show' | 'cancelled';
   notes: string | null;
   confirmed_at: string | null;
   completed_at: string | null;
@@ -72,15 +69,14 @@ export type EFReservationRow = {
 };
 
 export function apiListReservations(
-  client: SupabaseClient,
   args: { scope?: ReservationScope; limit?: number } = {},
 ): Promise<{ reservations: EFReservationRow[] }> {
   return invokeEF<{ reservations: EFReservationRow[] }>(
-    client,
-    "consumer-web-list-reservations",
+    supabase,
+    'consumer-web-list-reservations',
     {
       ...(args.scope ? { scope: args.scope } : {}),
-      ...(typeof args.limit === "number" ? { limit: args.limit } : {}),
+      ...(typeof args.limit === 'number' ? { limit: args.limit } : {}),
     },
     "Couldn't load your reservations",
   );
