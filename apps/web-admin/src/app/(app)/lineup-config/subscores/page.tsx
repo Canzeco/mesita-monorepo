@@ -1,8 +1,6 @@
-import { SubscoresPanel } from "./SubscoresPanel";
+import { redirect } from "next/navigation";
 
-// Subscores — TUNE: every subscore's knobs, per-box save; Inputs are fixed
-// documentation. Sample + saved settings come from the layout's ScoringProvider.
-// The simulators live on the Playground tab.
-export default function ScoringSubscoresPage() {
-  return <SubscoresPanel />;
+// Retired 2026-07-26: Subscores + Scores + Lanes merged into one Config page.
+export default function LineupConfigSubscoresRedirect() {
+  redirect("/lineup-config/config");
 }

@@ -101,17 +101,19 @@ export type SubscoreDef = {
   id: SubscoreId;
   short: string;
   name: string;
+  /** One emoji standing in for the subscore across the console (Pato). */
+  emoji: string;
   basis: string;
   range: string;
 };
 
 const SUBSCORES: readonly SubscoreDef[] = [
-  { id: "em", short: "EM", name: "Embeddings Match",   basis: "cosine(place vector, consumer+intent vector)", range: "0–1" },
-  { id: "sm", short: "SM", name: "Structured Match",   basis: "where × when × what — structured asks vs place facts", range: "0–1" },
-  { id: "gp", short: "GP", name: "Google Popularity",  basis: "ln(1 + rating × reviews) / ceiling", range: "0–1" },
-  { id: "rp", short: "RP", name: "Rewards Promotions", basis: "membership posture → rung", range: "0–1" },
-  { id: "xx", short: "XX", name: "Random Number",      basis: "U^control · per card per lane", range: "0–1" },
-  { id: "mp", short: "MP", name: "Manual Priority",    basis: "the place's operator priority — per-place, default 0.1", range: "0–1" },
+  { id: "em", short: "EM", name: "Embeddings Match",   emoji: "🧠", basis: "cosine(place vector, consumer+intent vector)", range: "0–1" },
+  { id: "sm", short: "SM", name: "Structured Match",   emoji: "🎯", basis: "where × when × what — structured asks vs place facts", range: "0–1" },
+  { id: "gp", short: "GP", name: "Google Popularity",  emoji: "⭐", basis: "ln(1 + rating × reviews) / ceiling", range: "0–1" },
+  { id: "rp", short: "RP", name: "Rewards Promotions", emoji: "💸", basis: "membership posture → rung", range: "0–1" },
+  { id: "xx", short: "XX", name: "Random Number",      emoji: "🎲", basis: "U^control · per card per lane", range: "0–1" },
+  { id: "mp", short: "MP", name: "Manual Priority",    emoji: "📌", basis: "the place's operator priority — per-place, default 0.1", range: "0–1" },
 ];
 
 /** The MP baseline for a place the operator hasn't touched (DB column default

@@ -1,8 +1,6 @@
-import { LanesPanel } from "./LanesPanel";
+import { redirect } from "next/navigation";
 
-// Lanes — COMPOSE the deck: per-lane counts + the merge, Lineup's callers,
-// and the consumer-filters mapping. Formulas live on Scores; simulators on
-// Playground.
-export default function ScoringLanesPage() {
-  return <LanesPanel />;
+// Retired 2026-07-26: Subscores + Scores + Lanes merged into one Config page.
+export default function LineupConfigLanesRedirect() {
+  redirect("/lineup-config/config");
 }
