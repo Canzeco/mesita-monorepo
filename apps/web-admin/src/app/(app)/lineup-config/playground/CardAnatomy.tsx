@@ -194,6 +194,22 @@ export function CardAnatomy({
         </ScoreBox>
 
         <ScoreBox
+          icon={Star}
+          tint="teal"
+          title="MP · Manual Priority"
+          note="the place's operator priority · per place"
+          result={pct(parts.mp)}
+          className="lg:col-span-2"
+        >
+          <LedgerRow label="manual_priority (on the place)" value={pct(parts.mp)} />
+          <ResultLine>
+            MP = <b>{pct(parts.mp)}</b>
+            {parts.mp === 0.1 ? " · baseline (untouched)" : " · operator-set"} · multiplies every
+            lane
+          </ResultLine>
+        </ScoreBox>
+
+        <ScoreBox
           icon={Dices}
           tint="violet"
           title="XX · Random Number"
@@ -210,22 +226,6 @@ export function CardAnatomy({
               value={parts.xxVals[l.id]}
             />
           ))}
-        </ScoreBox>
-
-        <ScoreBox
-          icon={Star}
-          tint="teal"
-          title="MP · Manual Priority"
-          note="the place's operator priority · per place"
-          result={pct(parts.mp)}
-          className="lg:col-span-2"
-        >
-          <LedgerRow label="manual_priority (on the place)" value={pct(parts.mp)} />
-          <ResultLine>
-            MP = <b>{pct(parts.mp)}</b>
-            {parts.mp === 0.1 ? " · baseline (untouched)" : " · operator-set"} · multiplies every
-            lane
-          </ResultLine>
         </ScoreBox>
       </div>
 

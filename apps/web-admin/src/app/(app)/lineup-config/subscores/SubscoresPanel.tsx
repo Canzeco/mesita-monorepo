@@ -23,8 +23,8 @@ export function SubscoresPanel() {
       <SmBox />
       <GpBox />
       <RpBox />
-      <XxBox />
       <MpBox />
+      <XxBox />
     </div>
   );
 }

@@ -13,8 +13,8 @@ export type Lane = {
 // MP (Manual Priority) multiplies EVERY lane — the operator's per-place
 // override, trailing each formula (MESITA / Pato 2026-07-22).
 export const LANES: readonly Lane[] = [
-  { id: "organic", parts: ["em", "sm", "gp", "xx", "mp"] },
-  { id: "inorganic", parts: ["em", "sm", "rp", "xx", "mp"] },
+  { id: "organic", parts: ["em", "sm", "gp", "mp", "xx"] },
+  { id: "inorganic", parts: ["em", "sm", "rp", "mp", "xx"] },
 ];
 
 /** MP baseline for an untouched place (mirrors the DB column default). */
