@@ -1,16 +1,7 @@
-import { getReservationsConfig } from "./actions";
-import { ReservationsConfigClient } from "./ReservationsConfigClient";
-import { DEFAULT_CONFIG } from "./catalog";
+import { redirect } from "next/navigation";
 
-export const dynamic = "force-dynamic";
-
-export default async function ReservationsConfigPage() {
-  const res = await getReservationsConfig();
-  return (
-    <ReservationsConfigClient
-      initialConfig={res.ok ? res.config : DEFAULT_CONFIG}
-      initialUpdatedAt={res.ok ? res.updatedAt : null}
-      loadError={res.ok ? null : res.error}
-    />
-  );
+// Reservations Config parent route → default to the Config tab. Subpages:
+// config, playground.
+export default function ReservationsConfigIndex() {
+  redirect("/reservations-config/config");
 }

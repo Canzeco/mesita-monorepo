@@ -35,3 +35,34 @@ export const PERPLEXITY_MODELS = [
   "sonar-reasoning",
   "sonar-reasoning-pro",
 ] as const;
+
+// ── Playground ────────────────────────────────────────────────────────────
+// The concierge's place suggestion. Mirrors the Prediction contract returned by
+// consumer-web-ask-memo (see its memo-google-text-search.ts) — the Playground
+// only renders a subset.
+export type MemoPredictionStatus =
+  | "not_in_mesita"
+  | "web_listed"
+  | "verified_partner_other"
+  | "verified_partner_self";
+
+export type MemoPrediction = {
+  placeId: string;
+  mainText: string;
+  secondaryText: string;
+  status: MemoPredictionStatus;
+  rating?: number | null;
+  ratingCount?: number | null;
+  openNow?: boolean | null;
+};
+
+// Result of one live Memo run from the Playground.
+export type AskMemoResult =
+  | {
+      ok: true;
+      answer: string;
+      predictions: MemoPrediction[];
+      related: string[];
+      citations: string[];
+    }
+  | { ok: false; error: string };

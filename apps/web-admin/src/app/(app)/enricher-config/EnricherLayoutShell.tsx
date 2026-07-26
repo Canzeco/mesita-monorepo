@@ -11,8 +11,8 @@ import { ENRICHER_SUBROUTES } from "./nav";
 const SUBPAGE_DESCRIPTION: Record<string, string> = {
   "/enricher-config/config":
     "Pipeline behaviour: the image funnel (collection → analysis → selection), link discovery, and synthesis models.",
-  "/enricher-config/calculator":
-    "Preview cost and runtime for one enrichment run at the current settings.",
+  "/enricher-config/playground":
+    "Preview the cost and runtime of one enrichment run at the current settings.",
 };
 
 export function EnricherLayoutShell({
