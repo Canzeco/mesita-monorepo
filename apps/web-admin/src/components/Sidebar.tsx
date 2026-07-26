@@ -14,7 +14,6 @@ import { DB_PARENT } from "@/app/(app)/db-config/nav";
 import { ENRICHER_PARENT } from "@/app/(app)/enricher-config/nav";
 import { MEMO_PARENT } from "@/app/(app)/memo-config/nav";
 import { RESERVATIONS_PARENT } from "@/app/(app)/reservations-config/nav";
-import { REWARDS_PARENT } from "@/app/(app)/rewards-config/nav";
 import { SCORING_PARENT } from "@/app/(app)/lineup-config/nav";
 import { SOURCING_PARENT } from "@/app/(app)/sourcing-config/nav";
 import {
@@ -84,11 +83,6 @@ const CONFIGS_NAV: NavItem[] = [
     href: SCORING_PARENT.href,
     label: SCORING_PARENT.label,
     Icon: SCORING_PARENT.Icon,
-  },
-  {
-    href: REWARDS_PARENT.href,
-    label: REWARDS_PARENT.label,
-    Icon: REWARDS_PARENT.Icon,
   },
   {
     href: MEMO_PARENT.href,
