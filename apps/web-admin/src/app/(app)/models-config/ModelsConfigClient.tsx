@@ -8,6 +8,7 @@ import { getModelsConfig, updateModelsConfig } from "./actions";
 import {
   DEFAULT_MODELS_CONFIG,
   OPENAI_CHAT_MODELS,
+  OPENAI_MODEL_INFO,
   SUBSYSTEMS,
   type ModelsConfig,
   type ModelStatus,
@@ -54,11 +55,13 @@ function Select({
   options,
   disabled,
   onChange,
+  labelFor,
 }: {
   value: string;
   options: readonly string[];
   disabled?: boolean;
   onChange: (v: string) => void;
+  labelFor?: (v: string) => string;
 }) {
   return (
     <select
@@ -69,7 +72,7 @@ function Select({
     >
       {options.map((o) => (
         <option key={o} value={o}>
-          {o}
+          {labelFor ? labelFor(o) : o}
         </option>
       ))}
     </select>
@@ -184,7 +187,15 @@ export function ModelsConfigClient() {
                   options={OPENAI_CHAT_MODELS}
                   disabled={busy}
                   onChange={setSupabaseModel}
+                  labelFor={(id) =>
+                    OPENAI_MODEL_INFO[id] ? `${id} — ${OPENAI_MODEL_INFO[id]}` : id
+                  }
                 />
+                {OPENAI_MODEL_INFO[cfg.supabase.model] ? (
+                  <span className="text-muted-foreground text-xs leading-relaxed">
+                    {OPENAI_MODEL_INFO[cfg.supabase.model]}
+                  </span>
+                ) : null}
               </label>
             </div>
           ) : meta.owner ? (

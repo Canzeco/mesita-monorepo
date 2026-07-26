@@ -41,6 +41,19 @@ export const OPENAI_CHAT_MODELS = [
   "gpt-5.6-sol",
 ] as const;
 
+// One-line "what is this" per model, shown beside each option in the picker.
+// Descriptions are intentionally short; the gpt-5.6 tiers follow OpenAI's own
+// framing (Sol = flagship, Terra = balanced, Luna = cost-efficient).
+export const OPENAI_MODEL_INFO: Record<string, string> = {
+  "gpt-4o-mini": "fast · cheapest — safe default",
+  "gpt-4o": "stronger multimodal · pricier",
+  "gpt-4.1-mini": "fast · 1M-token context",
+  "gpt-4.1": "strong · 1M-token context",
+  "gpt-5.6-luna": "most cost-efficient of the 5.6 family",
+  "gpt-5.6-terra": "balanced 5.6 — everyday work",
+  "gpt-5.6-sol": "flagship 5.6 — most capable",
+};
+
 // Perplexity values accepted in the blob's enricher/memo legs ("off" = none).
 // Kept for the EF contract + coercion; the page no longer edits them (Enricher
 // Config / Memo Config own those legs).
