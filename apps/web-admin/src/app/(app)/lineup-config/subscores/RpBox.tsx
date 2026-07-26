@@ -62,9 +62,9 @@ export function RpBox() {
       }
       outputs={
         <Prose>
-          <b className="text-foreground/80">RP ∈ [0,1]</b> — multiplies Inorganic + Hybrid;
-          non-members never enter the paid lanes at all (a lane filter, not a score), and the
-          zero-posture member keeps the whisper.
+          <b className="text-foreground/80">RP ∈ [0,1]</b> — multiplies the Inorganic lane;
+          non-members never enter it at all (a lane filter, not a score), and the zero-posture
+          member keeps the whisper.
         </Prose>
       }
     />

@@ -102,11 +102,10 @@ export function ScoreBox({
   );
 }
 
-/** Lane badge — Organic sky · Inorganic (paid) pink · Hybrid violet. */
+/** Lane badge — Organic sky · Inorganic (paid) pink. */
 const LANE_BADGE_TONES: Record<LaneId, string> = {
   organic: "border-sky-300/80 bg-sky-50 text-sky-700",
   inorganic: "border-pink-300/80 bg-pink-50 text-pink-700",
-  hybrid: "border-violet-300/80 bg-violet-50 text-violet-700",
 };
 
 export function LaneBadge({ laneId, title }: { laneId: LaneId; title?: string }) {

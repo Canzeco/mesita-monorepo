@@ -126,13 +126,12 @@ export function ScoringProvider({
   // dirty diffs are JSON.stringify equality per section.
   const current: ScoringSettings = useMemo(
     () => ({
-      v: 11,
+      v: 12,
       // Same key order as coerceLaneCounts' output — the dirty diff is
       // JSON.stringify equality.
       laneN: {
         organic: laneN.organic,
         inorganic: laneN.inorganic,
-        hybrid: laneN.hybrid,
       },
       sm: {
         where: { defaultTolKm: sm.where.defaultTolKm },

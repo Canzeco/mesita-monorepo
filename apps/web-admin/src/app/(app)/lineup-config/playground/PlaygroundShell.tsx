@@ -324,7 +324,7 @@ export function PlaygroundShell() {
         </div>
       </PanelCard>
 
-      {/* ══ The result — four decks: the three lanes + the final ═════ */}
+      {/* ══ The result — three decks: the two lanes + the final ═════ */}
       {run == null ? (
         <PanelCard
           title="The decks"
@@ -336,8 +336,8 @@ export function PlaygroundShell() {
         </PanelCard>
       ) : (
         <PanelCard
-          title="The decks · three lanes + the final"
-          subtitle="Each lane ranks the WHOLE pool by its own score and takes its top-N; round-robin O → I → H — on a duplicate, keep pulling from the same lane until a new card lands, then rotate. Click any card for its subscore anatomy."
+          title="The decks · two lanes + the final"
+          subtitle="Each lane ranks the WHOLE pool by its own score and takes its top-N; round-robin O → I — on a duplicate, keep pulling from the same lane until a new card lands, then rotate. Click any card for its subscore anatomy."
           pill={`final ${run.deck.slots.length} ≤ ${run.snap.total}`}
         >
           {stale ? (

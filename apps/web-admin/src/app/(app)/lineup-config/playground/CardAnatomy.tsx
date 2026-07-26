@@ -229,7 +229,7 @@ export function CardAnatomy({
         </ScoreBox>
       </div>
 
-      {/* The card's three lane scores — its deck lane bolded */}
+      {/* The card's two lane scores — its deck lane bolded */}
       <div className="border-border/60 mt-3 rounded-xl border px-3 py-2.5">
         <div className="grid gap-1.5 sm:grid-cols-3">
           {LANES.map((l) => (

@@ -1,5 +1,5 @@
 // Lineup ranker — score a place pool with the live scoring_config blob
-// and merge Organic → Inorganic → Hybrid (MESITA-718).
+// and merge Organic → Inorganic (MESITA-718; Hybrid removed 2026-07-22).
 
 import { haversineKm } from "./geo.ts";
 import { localClock } from "./local-time.ts";
@@ -60,8 +60,8 @@ export function cosineById(
 }
 
 /**
- * Score the pool with Lineup v11 and return place ids in merge order.
- * Paid lanes (inorganic/hybrid) only admit listing_type === "partner".
+ * Score the pool with Lineup v12 and return place ids in merge order.
+ * The paid lane (inorganic) only admits listing_type === "partner".
  */
 export function lineupOrderIds(
   places: readonly LineupPlace[],
@@ -113,7 +113,7 @@ export function lineupOrderIds(
       const xx = xxScore(unitDraw(ctx.xxSeed, p.id, lane.id), settings.xx.control);
       const subs = { em, sm, gp, rp, xx, mp };
       // Paid lanes: force 0 for non-partners even if RP whisper would be >0.
-      if ((lane.id === "inorganic" || lane.id === "hybrid") && !isPartner) {
+      if (lane.id === "inorganic" && !isPartner) {
         scores[lane.id] = 0;
       } else {
         scores[lane.id] = laneScore(lane, subs);

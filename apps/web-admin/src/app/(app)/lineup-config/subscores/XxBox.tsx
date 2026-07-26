@@ -52,7 +52,7 @@ export function XxBox() {
       process={
         <>
           <ProcessSteps>
-            <p>U ~ Uniform[0,1) drawn fresh per card PER LANE — three independent draws</p>
+            <p>U ~ Uniform[0,1) drawn fresh per card PER LANE — two independent draws</p>
             <p>XX = U^control · control 0 → XX ≡ 1 (off, pure merit) … 5 → near-total chaos</p>
             <p>seeded per (card, lane, roll) in the playgrounds; live decks draw fresh</p>
           </ProcessSteps>

@@ -34,22 +34,24 @@ Deno.test("composeFinalDeck keep-lane-on-dupe (MESITA-717)", () => {
   // O and I both top with A; on I's turn A is dupe → keep pulling I → B.
   const deck = composeFinalDeck(
     [
-      { id: "A", scores: { organic: 1, inorganic: 0.9, hybrid: 0 } },
-      { id: "B", scores: { organic: 0.5, inorganic: 0.8, hybrid: 0 } },
-      { id: "C", scores: { organic: 0.4, inorganic: 0.1, hybrid: 0.7 } },
+      { id: "A", scores: { organic: 1, inorganic: 0.9 } },
+      { id: "B", scores: { organic: 0.5, inorganic: 0.8 } },
+      { id: "C", scores: { organic: 0.4, inorganic: 0.1 } },
     ],
-    { organic: 2, inorganic: 2, hybrid: 1 },
+    { organic: 2, inorganic: 2 },
   );
   const ids = deck.slots.map((s) => s.id);
-  // O places A, I skips A and places B, H places C, O places (next) …
+  // O places A; on I's turn A is a dupe → keep pulling I → B. Both lanes'
+  // top-2 are {A, B}, so C (rank 3) never enters — deck is exactly [A, B].
   assertEquals(ids[0], "A");
   assertEquals(ids[1], "B");
-  assertEquals(ids.includes("C"), true);
+  assertEquals(ids.length, 2);
+  assertEquals(ids.includes("C"), false);
 });
 
 Deno.test("coerceScoringSettings null → defaults", () => {
   const s = coerceScoringSettings(null);
-  assertEquals(s.v, 11);
+  assertEquals(s.v, 12);
   assertEquals(s.laneN, DEFAULT_SCORING_SETTINGS.laneN);
 });
 

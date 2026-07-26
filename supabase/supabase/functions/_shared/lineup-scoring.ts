@@ -1,9 +1,9 @@
-// Lineup v11 — pure scoring math for Deno Edge Functions.
+// Lineup v12 — pure scoring math for Deno Edge Functions.
 // Mirrors apps/web-admin/src/lib/business/scores.ts (MESITA-714/717/718).
 // Keep in lockstep when the console model changes.
 
 export type SubscoreId = "em" | "sm" | "gp" | "rp" | "xx" | "mp";
-export type LaneId = "organic" | "inorganic" | "hybrid";
+export type LaneId = "organic" | "inorganic";
 
 export type Lane = {
   id: LaneId;
@@ -15,13 +15,12 @@ export type Lane = {
 export const LANES: readonly Lane[] = [
   { id: "organic", parts: ["em", "sm", "gp", "xx", "mp"] },
   { id: "inorganic", parts: ["em", "sm", "rp", "xx", "mp"] },
-  { id: "hybrid", parts: ["em", "sm", "gp", "rp", "xx", "mp"] },
 ];
 
 /** MP baseline for an untouched place (mirrors the DB column default). */
 export const DEFAULT_MANUAL_PRIORITY = 0.1;
 
-export const MERGE_ROTATION: readonly LaneId[] = ["organic", "inorganic", "hybrid"];
+export const MERGE_ROTATION: readonly LaneId[] = ["organic", "inorganic"];
 
 const clamp01 = (v: number) => Math.max(0, Math.min(1, Number.isFinite(v) ? v : 0));
 
@@ -176,11 +175,11 @@ export function unitDraw(seed: string, placeId: string, laneId: LaneId): number 
 // ── Merge ──────────────────────────────────────────────────────────────
 
 export type LaneCounts = Record<LaneId, number>;
-export const DEFAULT_LANE_COUNTS: LaneCounts = { organic: 8, inorganic: 8, hybrid: 8 };
+export const DEFAULT_LANE_COUNTS: LaneCounts = { organic: 8, inorganic: 8 };
 export const LANE_N_MAX = 50;
 
 export function laneCountsTotal(counts: LaneCounts): number {
-  return counts.organic + counts.inorganic + counts.hybrid;
+  return counts.organic + counts.inorganic;
 }
 
 export type DeckCandidate = { id: string; scores: Record<LaneId, number> };
@@ -205,7 +204,7 @@ export function composeFinalDeck(
       .map((c) => ({ id: c.id, laneId: lane.id, score: c.scores[lane.id] }));
   }
 
-  const cursor: Record<LaneId, number> = { organic: 0, inorganic: 0, hybrid: 0 };
+  const cursor: Record<LaneId, number> = { organic: 0, inorganic: 0 };
   const seen = new Set<string>();
   const slots: DeckSlot[] = [];
   let progress = true;
@@ -229,7 +228,7 @@ export function composeFinalDeck(
 // ── Blob coerce ────────────────────────────────────────────────────────
 
 export type ScoringSettings = {
-  v: 11;
+  v: 12;
   laneN: LaneCounts;
   sm: SmParams;
   gp: GpParams;
@@ -238,7 +237,7 @@ export type ScoringSettings = {
 };
 
 export const DEFAULT_SCORING_SETTINGS: ScoringSettings = {
-  v: 11,
+  v: 12,
   laneN: DEFAULT_LANE_COUNTS,
   sm: DEFAULT_SM_PARAMS,
   gp: DEFAULT_GP_PARAMS,
@@ -253,15 +252,14 @@ function num(v: unknown, fallback: number, lo: number, hi: number): number {
 function coerceLaneCounts(v: unknown, fallback: LaneCounts): LaneCounts {
   if (typeof v === "number" && Number.isFinite(v)) {
     const n = Math.round(Math.min(LANE_N_MAX, Math.max(0, v)));
-    return { organic: n, inorganic: n, hybrid: n };
+    return { organic: n, inorganic: n };
   }
   const raw = (v && typeof v === "object" ? v : {}) as Record<string, unknown>;
   const counts: LaneCounts = {
     organic: Math.round(num(raw.organic, fallback.organic, 0, LANE_N_MAX)),
     inorganic: Math.round(num(raw.inorganic, fallback.inorganic, 0, LANE_N_MAX)),
-    hybrid: Math.round(num(raw.hybrid, fallback.hybrid, 0, LANE_N_MAX)),
   };
-  const sum = counts.organic + counts.inorganic + counts.hybrid;
+  const sum = counts.organic + counts.inorganic;
   return sum < 1 ? { ...fallback } : counts;
 }
 
@@ -279,7 +277,7 @@ export function coerceScoringSettings(raw: unknown): ScoringSettings {
   const xx = (r.xx ?? {}) as Record<string, unknown>;
 
   return {
-    v: 11,
+    v: 12,
     laneN: coerceLaneCounts(r.laneN, d.laneN),
     sm: {
       where: {

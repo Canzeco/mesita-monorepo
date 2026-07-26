@@ -60,9 +60,9 @@ export function MpBox() {
       }
       outputs={
         <Prose>
-          <b className="text-foreground/80">MP ∈ [0,1]</b> — multiplies Organic · Inorganic ·
-          Hybrid, like EM and SM. At the {d.toFixed(2)} baseline every place is scaled equally
-          (relative order unchanged); a raised MP lifts that place across all three lanes. MP = 0
+          <b className="text-foreground/80">MP ∈ [0,1]</b> — multiplies both lanes (Organic ·
+          Inorganic), like EM and SM. At the {d.toFixed(2)} baseline every place is scaled equally
+          (relative order unchanged); a raised MP lifts that place across both lanes. MP = 0
           would bury a place everywhere.
         </Prose>
       }
