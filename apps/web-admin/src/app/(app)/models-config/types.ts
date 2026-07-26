@@ -70,12 +70,19 @@ export const PERPLEXITY_OPTIONS = [
 // other row shows its status + a link to the page that actually owns the model.
 export type ModelStatus = "live" | "staged" | "locked";
 
+// A model shown "up front" on a card — the id (rendered as a mono chip) plus a
+// short note on what it is / what it's for.
+export type ModelChip = { id: string; note?: string };
+
 export type SubsystemMeta = {
   key: SubsystemKey;
   label: string;
   Icon: LucideIcon;
   status: ModelStatus;
-  // Human description of the model(s) this subsystem actually uses today.
+  // The model(s) this subsystem uses, shown as chips at the top of the card.
+  // Omitted for the editable Supabase row — it renders its selected model live.
+  models?: ModelChip[];
+  // One line of context under the title.
   detail: string;
   editableHere: boolean;
   // Where the model is really controlled (or shown). null → owned here.
@@ -89,7 +96,7 @@ export const SUBSYSTEMS: readonly SubsystemMeta[] = [
     Icon: Database,
     status: "staged",
     detail:
-      "General default model for Edge Functions that call an LLM without a specific one of their own. This is the only model this page owns — nothing reads it yet.",
+      "General default for Edge Functions that call an LLM without a model of their own. The only knob this page owns — nothing reads it yet.",
     editableHere: true,
     owner: null,
   },
@@ -98,8 +105,12 @@ export const SUBSYSTEMS: readonly SubsystemMeta[] = [
     label: "Enricher",
     Icon: Sparkles,
     status: "live",
-    detail:
-      "Text model (synthesis quality: Economy = gpt-4o-mini, Standard / High = gpt-4o), the vision model, and the Perplexity search preset — all set on, and read live by, Enricher Config.",
+    models: [
+      { id: "gpt-4o-mini · gpt-4o", note: "text — by synthesis quality" },
+      { id: "gpt-4o", note: "vision" },
+      { id: "perplexity", note: "web search preset" },
+    ],
+    detail: "Set on, and read live by, Enricher Config.",
     editableHere: false,
     owner: { label: "Enricher Config", href: "/enricher-config" },
   },
@@ -108,8 +119,11 @@ export const SUBSYSTEMS: readonly SubsystemMeta[] = [
     label: "Lineup",
     Icon: Layers,
     status: "locked",
+    models: [
+      { id: "text-embedding-3-small", note: "1536-d — place ↔ intent" },
+    ],
     detail:
-      "Place embeddings: OpenAI text-embedding-3-small (1536-d). Fixed by design — changing it re-vectors the whole catalog — and shown read-only on Enricher Config.",
+      "Fixed by design — changing it re-vectors the whole catalog. Shown read-only on Enricher Config.",
     editableHere: false,
     owner: { label: "Enricher Config", href: "/enricher-config" },
   },
@@ -118,8 +132,12 @@ export const SUBSYSTEMS: readonly SubsystemMeta[] = [
     label: "Memo",
     Icon: MessagesSquare,
     status: "staged",
+    models: [
+      { id: "gpt-4o-mini", note: "OpenAI brain" },
+      { id: "sonar-pro", note: "Perplexity grounding — optional" },
+    ],
     detail:
-      "OpenAI brain plus an optional Perplexity web-grounding leg. Its model knob lives on Memo Config (also staged — Memo's instructions are what run live today).",
+      "Model knob owned by Memo Config (also staged — Memo's instructions run live).",
     editableHere: false,
     owner: { label: "Memo Config", href: "/memo-config" },
   },
