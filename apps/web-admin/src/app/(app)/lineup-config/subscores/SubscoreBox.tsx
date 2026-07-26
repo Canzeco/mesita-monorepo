@@ -3,15 +3,16 @@
 import { ChevronDown } from "lucide-react";
 import { SUBSCORE_BY_ID, type SubscoreId } from "@/lib/business/scores";
 import { useScoring, type SettingsSection } from "../ScoringProvider";
-import { BoxSaveBar, BoxSection, CARD_TINTS, type CardTint } from "../panel-ui";
+import { BoxSaveBar, BoxSection, CARD_ACCENTS, type CardTint } from "../panel-ui";
 
 // The ONE shell every subscore box renders through (Pato 2026-07-21): the
 // FIVE parts are required props, so a box literally cannot ship without
-// Overview · Hyperparams · Inputs · Process · Outputs, in that order. The
-// shell also owns the anchor id (the Scores tab's factor chips deep-link
-// here), the per-subscore tint, and — when the box HAS a blob section — the
-// per-box save bar. EM passes no `save`: everything in it is fixed (v10), so
-// it renders no bar at all.
+// Overview · Hyperparams · Inputs · Process · Outputs, in that order —
+// Overview leads as the box's plain sentence, the other four stay labeled.
+// The shell also owns the anchor id (the Scores tab's factor chips deep-link
+// here), the per-subscore accent spine, and — when the box HAS a blob section
+// — the per-box save bar. EM passes no `save`: everything in it is fixed
+// (v10), so it renders no bar at all.
 
 export function SubscoreBox({
   id,
@@ -56,7 +57,10 @@ export function SubscoreBox({
     <details
       id={id}
       open
-      className={"group shadow-card scroll-mt-24 rounded-2xl border " + CARD_TINTS[tint]}
+      className={
+        "group shadow-card scroll-mt-24 overflow-hidden rounded-2xl border border-border border-l-[3px] bg-card " +
+        CARD_ACCENTS[tint]
+      }
     >
       <summary className="flex cursor-pointer list-none items-center gap-3 p-5 sm:p-6 [&::-webkit-details-marker]:hidden">
         <h2 className="font-display min-w-0 flex-1 text-base font-semibold tracking-tight">
@@ -73,7 +77,10 @@ export function SubscoreBox({
         />
       </summary>
       <div className="px-5 pb-5 sm:px-6 sm:pb-6">
-        <BoxSection label="Overview">{overview}</BoxSection>
+        {/* Overview is the box's lead sentence, not a labeled section — the
+            uppercase "Overview" micro-label was pure redundancy (Pato
+            2026-07-26). The four remaining parts keep their labels. */}
+        <div className="-mt-1">{overview}</div>
         <BoxSection label="Hyperparams">{hyperparams}</BoxSection>
         <BoxSection label="Inputs">{inputs}</BoxSection>
         <BoxSection label="Process">{process}</BoxSection>

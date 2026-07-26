@@ -31,7 +31,7 @@ export function LanesPanel() {
   const total = laneCountsTotal(laneN);
 
   return (
-    <div className="flex flex-col gap-4 sm:gap-5">
+    <div className="flex flex-col gap-5">
       {/* ══ Merge ════════════════════════════════════════════════════ */}
       <PanelCard
         title="Per-lane deck counts · the merge"

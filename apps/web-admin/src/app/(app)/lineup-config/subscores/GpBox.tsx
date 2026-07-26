@@ -25,7 +25,7 @@ export function GpBox() {
       id="gp"
       save="gp"
       tint="amber"
-      title="GP Subscore · Google Popularity"
+      title="GP · Google Popularity"
       overview={
         <Prose>
           EARNED popularity — star mass = (stars average)^{gp.ratingPow.toFixed(1)} × review

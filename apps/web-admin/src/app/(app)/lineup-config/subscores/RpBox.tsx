@@ -17,7 +17,7 @@ export function RpBox() {
       id="rp"
       save="rp"
       tint="rose"
-      title="RP Subscore · Rewards Promotions"
+      title="RP · Rewards Promotions"
       overview={
         <Prose>
           BOUGHT merit — the place&apos;s live promo rates (never shown to consumers) resolve to
