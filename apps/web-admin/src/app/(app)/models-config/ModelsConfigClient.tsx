@@ -10,6 +10,7 @@ import {
   OPENAI_CHAT_MODELS,
   OPENAI_MODEL_INFO,
   SUBSYSTEMS,
+  type ModelChip,
   type ModelsConfig,
   type ModelStatus,
 } from "./types";
@@ -88,6 +89,25 @@ function OwnerLink({ label, href }: { label: string; href: string }) {
       Configured on {label}
       <ArrowUpRight className="h-3.5 w-3.5" />
     </Link>
+  );
+}
+
+// The model(s) a subsystem uses, shown up front on the card: a mono id chip
+// plus a short note on what it is / what it's for.
+function ModelChips({ items }: { items: ModelChip[] }) {
+  return (
+    <div className="mt-4 flex flex-col gap-2">
+      {items.map((m) => (
+        <div key={m.id} className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+          <code className="border-border bg-muted text-foreground rounded-md border px-1.5 py-0.5 font-mono text-xs">
+            {m.id}
+          </code>
+          {m.note ? (
+            <span className="text-muted-foreground text-xs">{m.note}</span>
+          ) : null}
+        </div>
+      ))}
+    </div>
   );
 }
 
@@ -176,11 +196,26 @@ export function ModelsConfigClient() {
           subtitle={meta.detail}
           status={<StatusBadge status={meta.status} />}
         >
+          {/* Model(s) up front — the id chip + what it is. */}
+          {meta.editableHere ? (
+            <ModelChips
+              items={[
+                {
+                  id: cfg.supabase.model,
+                  note: OPENAI_MODEL_INFO[cfg.supabase.model],
+                },
+              ]}
+            />
+          ) : meta.models ? (
+            <ModelChips items={meta.models} />
+          ) : null}
+
+          {/* Editable knob (Supabase) or a link to the owning page. */}
           {meta.editableHere ? (
             <div className="mt-4 grid gap-3 sm:grid-cols-2">
               <label className="border-border bg-background flex flex-col gap-2 rounded-xl border p-4">
                 <span className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
-                  OpenAI model (general default)
+                  Change default
                 </span>
                 <Select
                   value={cfg.supabase.model}
@@ -191,11 +226,6 @@ export function ModelsConfigClient() {
                     OPENAI_MODEL_INFO[id] ? `${id} — ${OPENAI_MODEL_INFO[id]}` : id
                   }
                 />
-                {OPENAI_MODEL_INFO[cfg.supabase.model] ? (
-                  <span className="text-muted-foreground text-xs leading-relaxed">
-                    {OPENAI_MODEL_INFO[cfg.supabase.model]}
-                  </span>
-                ) : null}
               </label>
             </div>
           ) : meta.owner ? (
