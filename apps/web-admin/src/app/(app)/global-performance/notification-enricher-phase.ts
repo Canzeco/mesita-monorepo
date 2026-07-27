@@ -10,7 +10,7 @@ export type EnricherPhase = {
   tone: Tone;
 };
 
-export const ENRICHER_PHASES: Record<
+const ENRICHER_PHASES: Record<
   "research" | "analysis" | "contents",
   EnricherPhase
 > = {
