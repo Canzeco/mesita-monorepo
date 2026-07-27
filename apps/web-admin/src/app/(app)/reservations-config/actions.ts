@@ -63,33 +63,39 @@ export type ConsumerTarget = {
   avatar: string | null;
 };
 
-export type SearchTargetsResult<T> =
+export type ListTargetsResult<T> =
   | { ok: true; results: T[] }
   | { ok: false; error: string };
 
-export async function searchPlaceTargets(
-  query: string,
-): Promise<SearchTargetsResult<PlaceTarget>> {
+// No search — the EF returns a small random sample of real rows to pick from.
+export async function listPlaceTargets(): Promise<ListTargetsResult<PlaceTarget>> {
   const r = await efInvoke<{ results: PlaceTarget[] }>(
     "admin-web-search-reservation-targets",
-    { kind: "place", query },
+    { kind: "place" },
   );
   if (!r.ok) return { ok: false, error: r.error };
   return { ok: true, results: r.data.results ?? [] };
 }
 
-export async function searchConsumerTargets(
-  query: string,
-): Promise<SearchTargetsResult<ConsumerTarget>> {
+export async function listConsumerTargets(): Promise<ListTargetsResult<ConsumerTarget>> {
   const r = await efInvoke<{ results: ConsumerTarget[] }>(
     "admin-web-search-reservation-targets",
-    { kind: "consumer", query },
+    { kind: "consumer" },
   );
   if (!r.ok) return { ok: false, error: r.error };
   return { ok: true, results: r.data.results ?? [] };
 }
 
 export type NumberMode = "test" | "actual";
+
+/** One entry of a ticket's intent log. */
+export type PlaygroundAttempt = {
+  n: number;
+  started_at: string;
+  conversation_id: string | null;
+  /** dialing | ringing | answered | no_answer | unknown | placement failed: … */
+  result: string;
+};
 
 /** A sandbox ticket — a playground_reservations row, verbatim from the EF. */
 export type PlaygroundTicket = {
@@ -110,6 +116,10 @@ export type PlaygroundTicket = {
   call_status: string | null;
   conversation_id: string | null;
   called_at: string | null;
+  attempts: PlaygroundAttempt[];
+  attempts_planned: number;
+  /** running | answered | exhausted | error — the UI polls while running. */
+  attempts_state: string;
 };
 
 export type CreatePlaygroundReservationInput = {
@@ -124,27 +134,24 @@ export type CreatePlaygroundReservationInput = {
 };
 
 export type CreatePlaygroundReservationResult =
-  | {
-      ok: true;
-      ticket: PlaygroundTicket;
-      call: { ok: true; conversation_id: string | null; dialed: string } | { ok: false; error: string };
-    }
+  | { ok: true; ticket: PlaygroundTicket }
   | { ok: false; error: string };
 
 /**
- * Run the intent: create the sandbox ticket, then place the REAL call. Spends
- * ElevenLabs/Twilio budget. A failed call still returns ok:true with the ticket
- * — the sandbox remembers every run; branch on `call.ok` for the outcome.
+ * Run the intent, ticket-first: the EF inserts the sandbox ticket and responds
+ * IMMEDIATELY; the call intents (up to config attempts) then run server-side in
+ * a background task, updating the ticket as they go — poll the list to watch.
+ * Spends ElevenLabs/Twilio budget.
  */
 export async function createPlaygroundReservation(
   input: CreatePlaygroundReservationInput,
 ): Promise<CreatePlaygroundReservationResult> {
-  const r = await efInvoke<{
-    ticket: PlaygroundTicket;
-    call: { ok: true; conversation_id: string | null; dialed: string } | { ok: false; error: string };
-  }>("admin-web-create-playground-reservation", input);
+  const r = await efInvoke<{ ticket: PlaygroundTicket }>(
+    "admin-web-create-playground-reservation",
+    input,
+  );
   if (!r.ok) return { ok: false, error: r.error };
-  return { ok: true, ticket: r.data.ticket, call: r.data.call };
+  return { ok: true, ticket: r.data.ticket };
 }
 
 export type ListPlaygroundReservationsResult =

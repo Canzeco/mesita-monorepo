@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Building2,
   CalendarClock,
@@ -10,19 +10,18 @@ import {
   MessageSquareText,
   Phone,
   PhoneCall,
-  Search,
+  RefreshCw,
   TriangleAlert,
   User,
   Users,
-  X,
   XCircle,
 } from "lucide-react";
 import { ErrorNote, SectionCard } from "../enricher-config/atlas-ui";
 import {
   createPlaygroundReservation,
+  listConsumerTargets,
+  listPlaceTargets,
   listPlaygroundReservations,
-  searchConsumerTargets,
-  searchPlaceTargets,
   type ConsumerTarget,
   type NumberMode,
   type PlaceTarget,
@@ -30,25 +29,28 @@ import {
 } from "./actions";
 import { looksLikePhone, type ReservationsConfig } from "./catalog";
 
-// Reservations Playground — FAKE USERS ONLY. The operator emulates a full
-// reservation intent:
+// Reservations Playground — FAKE USERS ONLY, kept simple on purpose:
 //
-//   1. Pick a REAL place from the Mesita DB.
-//   2. Pick a REAL consumer from the Mesita DB.
+//   1. Pick a place — ten real rows from the DB, click one (no search bar).
+//   2. Pick a consumer — same.
 //   3. Author the intent (date & time, party size, special requests).
-//   4. Choose each side's number: business = test line or the place's actual
-//      endpoint; consumer = consumer test line or the consumer's actual phone.
-//   5. Run it — a REAL Reservationist call goes out (ElevenLabs/Twilio spend).
+//   4. Choose each side's number: test line or the actual DB phone.
+//   5. Run it — the TICKET IS CREATED IMMEDIATELY, then the intents start:
+//      up to config.attempts real calls (the "3 intents"), server-side. If the
+//      venue doesn't answer intent 1, intent 2 dials, then intent 3.
 //
-// Every run creates a SANDBOX ticket in playground_reservations — never
-// public.reservations, so nothing leaks into consumer apps — and the sandbox
-// below remembers every ticket across sessions.
+// Tickets live in playground_reservations (never public.reservations) and the
+// sandbox below polls while intents are running, so progress shows live.
 
 const inputCls =
   "border-border bg-card focus:border-foreground h-9 w-full rounded-lg border px-3 text-sm outline-none";
 
-// Venue-local (Mexico City) formatting for sandbox tickets. Tickets store real
-// instants; MX-City rendering shows the wall clock the venue was told.
+// How long the sandbox keeps polling a running ticket before assuming the
+// background loop died (its wall clock is far shorter than this).
+const RUNNING_POLL_WINDOW_MS = 10 * 60 * 1000;
+const POLL_MS = 8_000;
+
+// Venue-local (Mexico City) formatting for sandbox tickets.
 function mxDateTime(iso: string): string {
   try {
     return new Intl.DateTimeFormat("es-MX", {
@@ -84,139 +86,94 @@ function Labeled({
   );
 }
 
-// ── Target picker — one search box + dropdown over the real DB ───────────────
+// ── Target grid — ten pre-loaded real rows, click one. No search. ────────────
 
-function TargetPicker<T extends { id: string; name: string; phone: string | null }>({
+function TargetGrid<T extends { id: string; name: string; phone: string | null }>({
   icon,
   label,
-  placeholder,
   selected,
   onSelect,
-  onClear,
-  search,
-  renderMeta,
+  load,
+  metaLine,
 }: {
   icon: React.ReactNode;
   label: string;
-  placeholder: string;
   selected: T | null;
   onSelect: (t: T) => void;
-  onClear: () => void;
-  search: (q: string) => Promise<{ ok: true; results: T[] } | { ok: false; error: string }>;
-  renderMeta?: (t: T) => React.ReactNode;
+  load: () => Promise<{ ok: true; results: T[] } | { ok: false; error: string }>;
+  metaLine?: (t: T) => string | null;
 }) {
-  const [query, setQuery] = useState("");
-  const [results, setResults] = useState<T[]>([]);
-  const [open, setOpen] = useState(false);
-  const [busy, setBusy] = useState(false);
+  const [items, setItems] = useState<T[] | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const seq = useRef(0);
-
-  // Debounced live search against the DB (also fires on focus with "" to browse).
-  const run = useCallback(
-    (q: string) => {
-      const mine = ++seq.current;
-      setBusy(true);
-      setError(null);
-      search(q)
-        .then((r) => {
-          if (seq.current !== mine) return;
-          if (r.ok) setResults(r.results);
-          else setError(r.error);
-        })
-        .finally(() => {
-          if (seq.current === mine) setBusy(false);
-        });
-    },
-    [search],
-  );
+  const [nonce, setNonce] = useState(0);
 
   useEffect(() => {
-    if (!open) return;
-    const t = setTimeout(() => run(query), 250);
-    return () => clearTimeout(t);
-  }, [query, open, run]);
+    let active = true;
+    (async () => {
+      const r = await load();
+      if (!active) return;
+      if (r.ok) setItems(r.results);
+      else setError(r.error);
+    })();
+    return () => {
+      active = false;
+    };
+  }, [load, nonce]);
 
-  if (selected) {
-    return (
-      <div className="border-border bg-background flex flex-col gap-2 rounded-xl border p-4">
+  return (
+    <div className="border-border bg-background rounded-xl border p-4">
+      <div className="flex items-center justify-between gap-2">
         <span className="text-muted-foreground flex items-center gap-2 text-xs font-medium">
           {icon}
           {label}
         </span>
-        <div className="border-border bg-card flex items-center gap-3 rounded-lg border px-3 py-2">
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-semibold">{selected.name}</p>
-            <p className="text-muted-foreground truncate text-xs">
-              {renderMeta ? renderMeta(selected) : null}
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={() => {
-              onClear();
-              setQuery("");
-              setOpen(false);
-            }}
-            aria-label={`Clear ${label}`}
-            className="text-muted-foreground hover:text-foreground shrink-0"
-          >
-            <X className="h-4 w-4" />
-          </button>
-        </div>
+        <button
+          type="button"
+          onClick={() => {
+            setItems(null);
+            setError(null);
+            setNonce((n) => n + 1);
+          }}
+          aria-label={`Reload ${label}`}
+          className="text-muted-foreground hover:text-foreground"
+        >
+          <RefreshCw className="h-3.5 w-3.5" />
+        </button>
       </div>
-    );
-  }
-
-  return (
-    <div className="border-border bg-background relative flex flex-col gap-2 rounded-xl border p-4">
-      <span className="text-muted-foreground flex items-center gap-2 text-xs font-medium">
-        {icon}
-        {label}
-      </span>
-      <div className="relative">
-        <Search className="text-muted-foreground pointer-events-none absolute top-1/2 left-3 h-3.5 w-3.5 -translate-y-1/2" />
-        <input
-          className={inputCls + " pl-8"}
-          value={query}
-          placeholder={placeholder}
-          onChange={(e) => setQuery(e.target.value)}
-          onFocus={() => setOpen(true)}
-          onBlur={() => setTimeout(() => setOpen(false), 150)}
-        />
-      </div>
-      {open && (
-        <div className="border-border bg-card absolute top-full right-4 left-4 z-10 mt-1 max-h-64 overflow-y-auto rounded-xl border shadow-lg">
-          {busy ? (
-            <p className="text-muted-foreground flex items-center gap-2 px-3 py-2.5 text-xs">
-              <Loader2 className="h-3.5 w-3.5 animate-spin" /> Searching…
-            </p>
-          ) : error ? (
-            <p className="px-3 py-2.5 text-xs text-amber-600">{error}</p>
-          ) : results.length === 0 ? (
-            <p className="text-muted-foreground px-3 py-2.5 text-xs">
-              No matches in the database.
-            </p>
-          ) : (
-            results.map((t) => (
+      {error ? (
+        <p className="mt-3 text-xs text-amber-600">{error}</p>
+      ) : items === null ? (
+        <p className="text-muted-foreground mt-3 flex items-center gap-2 text-xs">
+          <Loader2 className="h-3.5 w-3.5 animate-spin" /> Loading…
+        </p>
+      ) : items.length === 0 ? (
+        <p className="text-muted-foreground mt-3 text-xs">Nothing in the database yet.</p>
+      ) : (
+        <div className="mt-3 grid max-h-56 gap-1.5 overflow-y-auto sm:grid-cols-2">
+          {items.map((t) => {
+            const active = selected?.id === t.id;
+            const meta = metaLine?.(t);
+            return (
               <button
                 key={t.id}
                 type="button"
-                // onMouseDown so the click wins over the input's onBlur close.
-                onMouseDown={(e) => {
-                  e.preventDefault();
-                  onSelect(t);
-                  setOpen(false);
-                }}
-                className="hover:bg-muted/60 block w-full px-3 py-2 text-left"
+                aria-pressed={active}
+                onClick={() => onSelect(t)}
+                className={
+                  "rounded-lg border p-2 text-left transition " +
+                  (active
+                    ? "border-secondary bg-secondary/[0.06] ring-secondary/30 ring-1"
+                    : "border-border bg-card hover:border-foreground/30")
+                }
               >
-                <p className="truncate text-sm font-medium">{t.name}</p>
-                <p className="text-muted-foreground truncate font-mono text-[11px]">
+                <p className="truncate text-xs font-semibold">{t.name}</p>
+                <p className="text-muted-foreground truncate font-mono text-[10px]">
                   {t.phone ?? "no phone"}
+                  {meta ? ` · ${meta}` : ""}
                 </p>
               </button>
-            ))
-          )}
+            );
+          })}
         </div>
       )}
     </div>
@@ -297,29 +254,86 @@ function NumberModePicker({
 
 // ── Sandbox ticket card ──────────────────────────────────────────────────────
 
+function intentChip(result: string | null, n: number, running: boolean) {
+  const base =
+    "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold";
+  if (result === null) {
+    if (!running) return null; // terminal ticket — this intent never fired
+    return (
+      <span key={n} className={`${base} text-muted-foreground bg-muted`}>
+        intent {n}
+      </span>
+    );
+  }
+  if (result === "answered") {
+    return (
+      <span key={n} className={`${base} bg-emerald-500/10 text-emerald-700`}>
+        <CheckCircle2 className="h-3 w-3" /> intent {n}: answered
+      </span>
+    );
+  }
+  if (result === "no_answer") {
+    return (
+      <span key={n} className={`${base} bg-red-500/10 text-red-700`}>
+        <XCircle className="h-3 w-3" /> intent {n}: no answer
+      </span>
+    );
+  }
+  if (result === "dialing" || result === "ringing") {
+    return (
+      <span key={n} className={`${base} bg-secondary/10 text-secondary`}>
+        <Loader2 className="h-3 w-3 animate-spin" /> intent {n}: {result}
+      </span>
+    );
+  }
+  if (result === "unknown") {
+    return (
+      <span key={n} className={`${base} bg-amber-500/10 text-amber-700`}>
+        intent {n}: unknown
+      </span>
+    );
+  }
+  return (
+    <span key={n} className={`${base} bg-red-500/10 text-red-700`}>
+      <XCircle className="h-3 w-3" /> intent {n}: failed
+    </span>
+  );
+}
+
 function TicketCard({ t }: { t: PlaygroundTicket }) {
-  const placed = t.call_status === "placed";
+  const running = t.attempts_state === "running";
+  const attempts = Array.isArray(t.attempts) ? t.attempts : [];
+  const badge =
+    t.attempts_state === "answered" ? (
+      <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold text-emerald-700">
+        <CheckCircle2 className="h-3 w-3" /> answered
+      </span>
+    ) : t.attempts_state === "exhausted" ? (
+      <span className="inline-flex items-center gap-1 rounded-full bg-red-500/10 px-2 py-0.5 text-[10px] font-semibold text-red-700">
+        <XCircle className="h-3 w-3" /> no answer
+      </span>
+    ) : t.attempts_state === "error" ? (
+      <span className="inline-flex items-center gap-1 rounded-full bg-red-500/10 px-2 py-0.5 text-[10px] font-semibold text-red-700">
+        <XCircle className="h-3 w-3" /> {t.call_status ?? "error"}
+      </span>
+    ) : (
+      <span className="text-secondary bg-secondary/10 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold">
+        <Loader2 className="h-3 w-3 animate-spin" /> intents running
+      </span>
+    );
+
   return (
     <li className="border-border bg-card rounded-2xl border p-4">
       <div className="flex flex-wrap items-center gap-2">
         <span className="text-sm font-semibold">{t.place_name}</span>
         <span className="text-muted-foreground text-xs">for</span>
         <span className="text-sm font-medium">{t.consumer_name}</span>
-        <span className="ml-auto flex items-center gap-1.5">
-          {placed ? (
-            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold text-emerald-700">
-              <CheckCircle2 className="h-3 w-3" /> call placed
-            </span>
-          ) : t.call_status ? (
-            <span className="inline-flex items-center gap-1 rounded-full bg-red-500/10 px-2 py-0.5 text-[10px] font-semibold text-red-700">
-              <XCircle className="h-3 w-3" /> {t.call_status}
-            </span>
-          ) : (
-            <span className="text-muted-foreground bg-muted rounded-full px-2 py-0.5 text-[10px] font-medium">
-              no call
-            </span>
-          )}
-        </span>
+        <span className="ml-auto">{badge}</span>
+      </div>
+      <div className="mt-2 flex flex-wrap items-center gap-1.5">
+        {Array.from({ length: Math.max(t.attempts_planned, attempts.length) }, (_, i) =>
+          intentChip(attempts[i]?.result ?? null, i + 1, running),
+        )}
       </div>
       <div className="text-muted-foreground mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs">
         <span className="inline-flex items-center gap-1.5">
@@ -382,11 +396,7 @@ export function ReservationsPlaygroundClient({
 
   const [placing, setPlacing] = useState(false);
   const [runError, setRunError] = useState<string | null>(null);
-  const [lastCall, setLastCall] = useState<
-    | { ok: true; conversation_id: string | null; dialed: string }
-    | { ok: false; error: string }
-    | null
-  >(null);
+  const [justRan, setJustRan] = useState(false);
 
   const [tickets, setTickets] = useState<PlaygroundTicket[]>([]);
   const [ticketsLoading, setTicketsLoading] = useState(true);
@@ -414,6 +424,27 @@ export function ReservationsPlaygroundClient({
     };
   }, []);
 
+  // Live progress: while any ticket's intent loop is running, poll. The
+  // interval stops itself once every running ticket is stale (a crashed loop
+  // can leave 'running' behind) — recency is checked in the callback, where
+  // Date.now() is allowed.
+  const hasRunning = tickets.some((t) => t.attempts_state === "running");
+  useEffect(() => {
+    if (!hasRunning) return;
+    const id = setInterval(async () => {
+      const r = await listPlaygroundReservations();
+      if (!r.ok) return;
+      setTickets(r.tickets);
+      const stillLive = r.tickets.some(
+        (t) =>
+          t.attempts_state === "running" &&
+          Date.now() - Date.parse(t.created_at) < RUNNING_POLL_WINDOW_MS,
+      );
+      if (!stillLive) clearInterval(id);
+    }, POLL_MS);
+    return () => clearInterval(id);
+  }, [hasRunning]);
+
   // Effective modes are DERIVED, never stored invalid: a requested mode whose
   // number is unavailable falls back to the side's available option (or 'test',
   // leaving the number null so the run stays blocked with a hint).
@@ -440,7 +471,7 @@ export function ReservationsPlaygroundClient({
     if (!place || !consumer) return;
     setPlacing(true);
     setRunError(null);
-    setLastCall(null);
+    setJustRan(false);
     try {
       const r = await createPlaygroundReservation({
         project_id: place.id,
@@ -455,7 +486,7 @@ export function ReservationsPlaygroundClient({
         setRunError(r.error);
         return;
       }
-      setLastCall(r.call);
+      setJustRan(true);
       setTickets((prev) => [r.ticket, ...prev.filter((p) => p.id !== r.ticket.id)]);
     } finally {
       setPlacing(false);
@@ -469,10 +500,12 @@ export function ReservationsPlaygroundClient({
       <div className="flex items-start gap-2.5 rounded-xl border border-amber-500/30 bg-amber-500/[0.06] p-3.5 text-xs text-amber-700">
         <TriangleAlert className="mt-0.5 h-4 w-4 shrink-0" />
         <p>
-          <span className="font-semibold">Fake users only — but the call is real.</span>{" "}
-          Running an intent places a live Reservationist call (ElevenLabs/Twilio
-          spend) to whichever business number you choose below. Tickets land in the
-          playground sandbox — never in real consumer reservations.
+          <span className="font-semibold">Fake users only — but the calls are real.</span>{" "}
+          A run creates its ticket immediately, then up to{" "}
+          <span className="font-semibold">{config.attempts}</span> call intent
+          {config.attempts === 1 ? "" : "s"} fire for real (ElevenLabs/Twilio
+          spend) — if the line doesn&apos;t answer, the next intent dials. Tickets
+          stay in the playground sandbox, never in real consumer reservations.
         </p>
       </div>
 
@@ -480,33 +513,23 @@ export function ReservationsPlaygroundClient({
       <SectionCard
         icon={<CalendarClock className="text-secondary h-4 w-4" />}
         title="The intent"
-        subtitle="Emulate a reservation: a real place, a real consumer — both from the Mesita database — and the booking the fake user wants."
+        subtitle="Pick one of each — real rows from the Mesita database — then the booking the fake user wants."
       >
-        <div className="mt-4 grid gap-2.5 sm:grid-cols-2">
-          <TargetPicker
+        <div className="mt-4 grid gap-2.5 lg:grid-cols-2">
+          <TargetGrid
             icon={<Building2 className="h-3.5 w-3.5" />}
             label="Place (from database)"
-            placeholder="Search places by name…"
             selected={place}
-            onSelect={(p) => setPlace(p)}
-            onClear={() => setPlace(null)}
-            search={searchPlaceTargets}
-            renderMeta={(p) => (
-              <>
-                {p.address ? `${p.address} · ` : ""}
-                <span className="font-mono">{p.phone ?? "no phone"}</span>
-              </>
-            )}
+            onSelect={setPlace}
+            load={listPlaceTargets}
+            metaLine={(p) => p.address}
           />
-          <TargetPicker
+          <TargetGrid
             icon={<User className="h-3.5 w-3.5" />}
             label="Consumer (from database)"
-            placeholder="Search consumers by name or phone…"
             selected={consumer}
-            onSelect={(c) => setConsumer(c)}
-            onClear={() => setConsumer(null)}
-            search={searchConsumerTargets}
-            renderMeta={(c) => <span className="font-mono">{c.phone ?? "no phone"}</span>}
+            onSelect={setConsumer}
+            load={listConsumerTargets}
           />
           <Labeled
             icon={<CalendarClock className="h-3.5 w-3.5" />}
@@ -533,7 +556,7 @@ export function ReservationsPlaygroundClient({
               }
             />
           </Labeled>
-          <div className="sm:col-span-2">
+          <div className="lg:col-span-2">
             <Labeled
               icon={<MessageSquareText className="h-3.5 w-3.5" />}
               label="Special requests"
@@ -581,7 +604,7 @@ export function ReservationsPlaygroundClient({
         {effBusinessMode === "actual" && place?.phone && (
           <p className="mt-3 flex items-start gap-2 text-xs text-amber-700">
             <TriangleAlert className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-            Actual business number selected — this run will ring{" "}
+            Actual business number selected — every intent of this run will ring{" "}
             <span className="font-semibold">{place.name}</span> on its real line (
             <span className="font-mono">{place.phone}</span>).
           </p>
@@ -592,7 +615,7 @@ export function ReservationsPlaygroundClient({
       <SectionCard
         icon={<PhoneCall className="text-secondary h-4 w-4" />}
         title="Run the intent"
-        subtitle="Creates a sandbox ticket and places the real call with the brief above."
+        subtitle={`Creates the ticket immediately, then the ${config.attempts} intent${config.attempts === 1 ? " fires" : "s fire"} on their own — watch them land in the sandbox.`}
       >
         <div className="mt-4 flex flex-wrap items-center gap-3">
           <button
@@ -604,12 +627,12 @@ export function ReservationsPlaygroundClient({
             {placing ? (
               <>
                 <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                Placing call…
+                Creating ticket…
               </>
             ) : (
               <>
                 <PhoneCall className="h-3.5 w-3.5" />
-                Create ticket &amp; call
+                Create ticket &amp; start intents
               </>
             )}
           </button>
@@ -629,9 +652,9 @@ export function ReservationsPlaygroundClient({
         {!canRun && !placing && (
           <p className="text-muted-foreground mt-3 text-xs">
             {!place
-              ? "Pick a place from the database."
+              ? "Pick a place."
               : !consumer
-                ? "Pick a consumer from the database."
+                ? "Pick a consumer."
                 : !when
                   ? "Pick a date & time."
                   : !businessNumber
@@ -642,30 +665,12 @@ export function ReservationsPlaygroundClient({
           </p>
         )}
 
-        {lastCall?.ok && (
+        {justRan && (
           <div className="mt-4 flex items-start gap-2.5 rounded-xl border border-emerald-500/30 bg-emerald-500/[0.06] p-3.5 text-xs text-emerald-700">
             <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
-            <div className="min-w-0">
-              <p className="font-semibold">Call placed.</p>
-              <p className="mt-0.5">
-                Dialing <span className="font-mono">{lastCall.dialed}</span>
-                {lastCall.conversation_id ? (
-                  <>
-                    {" "}
-                    · conversation{" "}
-                    <span className="font-mono break-all">{lastCall.conversation_id}</span>
-                  </>
-                ) : null}
-              </p>
-            </div>
-          </div>
-        )}
-        {lastCall && !lastCall.ok && (
-          <div className="mt-4 flex items-start gap-2.5 rounded-xl border border-red-500/30 bg-red-500/[0.06] p-3.5 text-xs text-red-700">
-            <XCircle className="mt-0.5 h-4 w-4 shrink-0" />
             <p>
-              <span className="font-semibold">Ticket created, call failed:</span>{" "}
-              {lastCall.error}
+              <span className="font-semibold">Ticket created — intents are running.</span>{" "}
+              Intent 1 is dialing now; progress updates live on the ticket below.
             </p>
           </div>
         )}
@@ -680,7 +685,7 @@ export function ReservationsPlaygroundClient({
       <SectionCard
         icon={<Inbox className="text-secondary h-4 w-4" />}
         title="Sandbox — playground tickets"
-        subtitle="Every emulated reservation, remembered. These live only in the playground — they never touch real consumer reservations."
+        subtitle="Every emulated reservation, remembered, with its intent-by-intent outcome. These live only in the playground."
       >
         {ticketsLoading ? (
           <p className="text-muted-foreground mt-4 flex items-center gap-2 text-sm">

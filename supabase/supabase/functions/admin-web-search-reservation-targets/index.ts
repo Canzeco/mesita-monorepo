@@ -2,16 +2,17 @@
 //
 // Naming: caller-verb-words. Caller = admin, verb = search, words = reservation-targets.
 //
-// The Reservations Playground's pickers: an emulated intent is built from a REAL
-// place and a REAL consumer, both straight from the Mesita DB. This endpoint
-// searches either kind and returns the fields the playground needs to build a
-// call brief — crucially the phone each side would use in "actual number" mode:
+// The Reservations Playground's pickers, kept deliberately dumb: no free-text
+// search — each call returns a small RANDOM sample of real rows (default 10)
+// for the operator to pick from. (v1 shipped a search bar over places.slug,
+// which doesn't exist on `places` — slug lives on projects_view only. The
+// playground doesn't need search; it needs ten pickable rows.)
+//
+// Returns the fields the playground needs to build a call brief — crucially the
+// phone each side would use in "actual number" mode:
 //   place    → the reservation endpoint the agent would dial
 //              (products.reservations phone endpoint, else places.phone)
 //   consumer → consumers.phone (the guest callback number)
-//
-// admin-web-search-places deliberately stays untouched — it reads projects_view
-// for the Manage Single Unit catalog and carries no phone/products.
 //
 // Auth: caller's JWT email must be in public.super_admins.
 //
@@ -26,14 +27,18 @@ import {
   requireSuperAdmin,
 } from "../_shared/auth.ts";
 
-type Body = { kind?: unknown; query?: unknown; limit?: unknown };
+type Body = { kind?: unknown; limit?: unknown };
 
-const UUID_RE =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+// How many recent rows we sample from before shuffling. Small enough to stay a
+// cheap indexed scan, big enough that consecutive loads feel different.
+const POOL = 40;
 
-function likePattern(q: string): string {
-  const safe = q.replace(/[,()"]/g, " ").trim();
-  return `%${safe.replace(/[%_\\]/g, (m) => `\\${m}`)}%`;
+function shuffle<T>(arr: T[]): T[] {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
 }
 
 // The number the Reservationist would dial for this place in "actual" mode —
@@ -81,26 +86,19 @@ Deno.serve(async (req) => {
   if (kind !== "place" && kind !== "consumer") {
     return json({ ok: false, error: "kind must be 'place' or 'consumer'" }, 400);
   }
-  const q = typeof bodyRes.body.query === "string" ? bodyRes.body.query.trim() : "";
   const limit =
     typeof bodyRes.body.limit === "number" && Number.isInteger(bodyRes.body.limit)
       ? Math.min(Math.max(bodyRes.body.limit, 1), 25)
       : 10;
 
   if (kind === "place") {
-    const cols = "id, slug, name, address, phone, products, photos";
-    let query = admin.from("places").select(cols).limit(limit);
-    if (UUID_RE.test(q)) {
-      query = admin.from("places").select(cols).eq("id", q);
-    } else if (q) {
-      const pattern = likePattern(q);
-      query = query.or(`name.ilike."${pattern}",slug.ilike."${pattern}"`);
-    } else {
-      query = query.order("created_at", { ascending: false });
-    }
-    const { data, error } = await query;
-    if (error) return json({ ok: false, error: `search_failed: ${error.message}` }, 500);
-    const results = (data ?? []).map((v) => ({
+    const { data, error } = await admin
+      .from("places")
+      .select("id, name, address, phone, products, photos")
+      .order("created_at", { ascending: false })
+      .limit(POOL);
+    if (error) return json({ ok: false, error: `targets_failed: ${error.message}` }, 500);
+    const results = shuffle(data ?? []).slice(0, limit).map((v) => ({
       id: v.id,
       name: v.name ?? "(unnamed place)",
       address: v.address ?? null,
@@ -112,21 +110,13 @@ Deno.serve(async (req) => {
   }
 
   // kind === "consumer"
-  const cols = "id, full_name, first_name, last_name, phone, avatar_url";
-  let query = admin.from("consumers").select(cols).limit(limit);
-  if (UUID_RE.test(q)) {
-    query = admin.from("consumers").select(cols).eq("id", q);
-  } else if (q) {
-    const pattern = likePattern(q);
-    query = query.or(
-      `full_name.ilike."${pattern}",first_name.ilike."${pattern}",last_name.ilike."${pattern}",phone.ilike."${pattern}"`,
-    );
-  } else {
-    query = query.order("created_at", { ascending: false });
-  }
-  const { data, error } = await query;
-  if (error) return json({ ok: false, error: `search_failed: ${error.message}` }, 500);
-  const results = (data ?? []).map((v) => ({
+  const { data, error } = await admin
+    .from("consumers")
+    .select("id, full_name, first_name, last_name, phone, avatar_url")
+    .order("created_at", { ascending: false })
+    .limit(POOL);
+  if (error) return json({ ok: false, error: `targets_failed: ${error.message}` }, 500);
+  const results = shuffle(data ?? []).slice(0, limit).map((v) => ({
     id: v.id,
     name: consumerName(v),
     phone: (v.phone as string | null)?.trim() || null,

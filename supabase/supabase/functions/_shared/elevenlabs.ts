@@ -78,6 +78,49 @@ export async function resolvePhoneNumberId(
   };
 }
 
+export type ConversationStatusResult =
+  | { ok: true; status: string; callDurationSecs: number | null }
+  | { ok: false; error: string };
+
+/**
+ * Read a Convai conversation's lifecycle status — how the playground's intent
+ * loop learns whether an outbound call was answered. GET
+ * /v1/convai/conversations/{id}; `status` walks initiated → in-progress →
+ * processing → done, or lands on failed (which is what an unanswered/declined
+ * Twilio leg becomes).
+ */
+export async function getConversationStatus(
+  key: string,
+  conversationId: string,
+): Promise<ConversationStatusResult> {
+  let r: Response;
+  try {
+    r = await fetch(
+      `${EL_BASE}/v1/convai/conversations/${encodeURIComponent(conversationId)}`,
+      { headers: headers(key) },
+    );
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "conversation fetch failed" };
+  }
+  if (!r.ok) return { ok: false, error: `conversation HTTP ${r.status}` };
+  let body: unknown;
+  try {
+    body = await r.json();
+  } catch {
+    return { ok: false, error: "conversation returned non-JSON" };
+  }
+  const b = body as Record<string, unknown>;
+  const meta = (b.metadata ?? null) as Record<string, unknown> | null;
+  const duration = meta && typeof meta.call_duration_secs === "number"
+    ? meta.call_duration_secs
+    : null;
+  return {
+    ok: true,
+    status: typeof b.status === "string" ? b.status : "unknown",
+    callDurationSecs: duration,
+  };
+}
+
 export type OutboundCallResult =
   | { ok: true; conversationId: string | null; callSid: string | null }
   | { ok: false; error: string };
