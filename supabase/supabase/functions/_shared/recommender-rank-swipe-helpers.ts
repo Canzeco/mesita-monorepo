@@ -48,7 +48,7 @@ export function composeIntent({
   return parts.join("; ");
 }
 
-export function topCategoriesIn(rows: PlaceRow[], k: number): string[] {
+function topCategoriesIn(rows: PlaceRow[], k: number): string[] {
   const counts = new Map<string, number>();
   for (const r of rows) {
     const c = (r.category ?? "").toLowerCase().trim();
