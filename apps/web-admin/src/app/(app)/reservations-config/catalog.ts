@@ -50,7 +50,7 @@ export type ReservationsConfig = {
   attempts: number;
 };
 
-export const CHANNEL_KEYS: ReservationChannel[] = ["phone", "whatsapp", "instagram"];
+const CHANNEL_KEYS: ReservationChannel[] = ["phone", "whatsapp", "instagram"];
 
 export const ATTEMPTS = 2;
 
