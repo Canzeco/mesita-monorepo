@@ -3,7 +3,7 @@ import { CreditCard, Crown, Smile, type LucideIcon } from "lucide-react";
 // Ascending class ladder: standard (default) < premium (paid) < magnetic
 // (top, invite-only via Instagram reach). "class" is the consumer membership
 // axis — distinct from a business's billing "plan" (free/pro/ultra).
-export const CLASS_ORDER = ["standard", "premium", "magnetic"] as const;
+const CLASS_ORDER = ["standard", "premium", "magnetic"] as const;
 type Class = (typeof CLASS_ORDER)[number];
 
 // Premium-perk gate: everything above Standard (Premium and Magnetic) unlocks
