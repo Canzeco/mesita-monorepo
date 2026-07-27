@@ -27,7 +27,7 @@ import { json } from "./http.ts";
 // Attempts per consumer per rolling 24 h. Generous for a real user (adds are
 // occasional), tiny for a script. Dedupe-409 clicks count too — acceptable at
 // this ceiling.
-export const CONSUMER_CREATE_QUOTA = 20;
+const CONSUMER_CREATE_QUOTA = 20;
 
 export async function consumeConsumerCreateQuota(
   admin: SupabaseClient,
