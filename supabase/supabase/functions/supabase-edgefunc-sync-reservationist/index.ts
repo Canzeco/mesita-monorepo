@@ -5,27 +5,27 @@
 // ELEVENLABS_KEY never leaves EF env, so an operator (or an agent session with
 // SQL access) can wire everything without touching the console.
 //
-// Body: { mode?: "inspect" | "sync" | "fleet" }
+// Body: { mode?: "inspect" | "sync" | "fleet" | "prune" }
 //
-//   inspect  read-only report: donor agent, workspace tools, configured fleet.
-//   sync     legacy single-agent path — keeps `get_reservation` (webhook →
-//            eleven-agent-get-reservation) attached to the ORIGINAL agent.
+//   inspect  read-only report: donor agent, workspace agents/tools, fleet.
+//   sync     legacy single-agent path — attaches `get_reservation` to the
+//            donor (a1). Prefer fleet; sync kept for one-off tool repairs.
 //   fleet    the four-agent fleet (_shared/reservationist-fleet.ts):
-//            creates/updates the 7 family webhook tools (eleven-a1-* …
+//            creates/updates the family webhook tools (eleven-a1-* …
 //            eleven-a4-*), creates each missing agent (voice/model/ASR cloned
-//            from the original agent as donor, language es — the name carries
-//            the es-mx tag), attaches exactly its family's tools, and stores
-//            the ids in app_settings.agents_config.agents so the call engine
-//            places leg 1 on a1 and leg 2 on a2.
+//            from a1 as donor, language es — the name carries the es-mx tag),
+//            attaches exactly its family's tools, and stores the ids in
+//            app_settings.agents_config.agents so the call engine places
+//            leg 1 on a1 and leg 2 on a2.
+//   prune    delete every workspace agent whose id is NOT in
+//            agents_config.agents.{a1,a2,a3,a4}, and drop the legacy
+//            get_reservation tool. Leaves only the fleet.
 //
 // PROMPTS ARE WRITTEN ONLY AT AGENT CREATION. On every later run the fleet
 // mode PATCHes name + prompt.tool_ids exclusively and verifies the prompt
-// text length is unchanged — console tuning survives, exactly like the legacy
-// sync always treated the original agent. EXCEPTION, opt-in per run:
+// text length is unchanged — console tuning survives. EXCEPTION, opt-in:
 // { mode: "fleet", write_prompts: true } ALSO rewrites each fleet agent's
-// prompt + first message from the repo spec — use it to push a deliberate
-// prompt upgrade, knowing it overwrites any console tuning on the FLEET
-// agents (the original/donor agent is never touched).
+// prompt + first message from the repo spec.
 //
 // Auth: verify_jwt = true + requireInternalCaller — invoke via pg_net with the
 // vault scheduler_service_role_key, exactly like the cron schedulers do.
@@ -179,13 +179,19 @@ Deno.serve(async (req) => {
 
   const key = elevenLabsKey();
   if (!key) return json({ ok: false, error: "ELEVENLABS_KEY not configured" }, 503);
-  const agentId = reservationAgentId();
+  const fallbackAgentId = reservationAgentId();
 
   const body = await readJsonOr<{ mode?: unknown; write_prompts?: unknown }>(req, {});
-  const mode = body.mode === "inspect" ? "inspect" : body.mode === "fleet" ? "fleet" : "sync";
+  const mode = body.mode === "inspect"
+    ? "inspect"
+    : body.mode === "fleet"
+    ? "fleet"
+    : body.mode === "prune"
+    ? "prune"
+    : "sync";
   const writePrompts = body.write_prompts === true;
 
-  // The tool secret + fleet state — read live so a SQL rotation propagates on
+  // The tool secret + agent state — read live so a SQL rotation propagates on
   // the next sync.
   const admin = adminClient(envRes.env);
   const { data: settings } = await admin
@@ -202,17 +208,8 @@ Deno.serve(async (req) => {
     string,
     { id?: string; name?: string } | undefined
   >;
-
-  // ── Read the donor agent + workspace tools (all modes need both) ───────────
-  const agentRes = await elFetch(key, `/v1/convai/agents/${encodeURIComponent(agentId)}`);
-  if (!agentRes.ok) return json({ ok: false, error: agentRes.error }, 502);
-  const donor = agentRes.body as AgentShape;
-  const donorCc = donor.conversation_config ?? {};
-  const donorPrompt = donorCc.agent?.prompt ?? {};
-  const promptCharsBefore = typeof donorPrompt.prompt === "string" ? donorPrompt.prompt.length : 0;
-  const toolIdsBefore: string[] = Array.isArray(donorPrompt.tool_ids)
-    ? [...donorPrompt.tool_ids]
-    : [];
+  // Donor = a1 from live fleet config. Env / DEFAULT only for brand-new workspaces.
+  const donorId = configuredAgents.a1?.id?.trim() || fallbackAgentId;
 
   const toolsRes = await elFetch(key, "/v1/convai/tools");
   if (!toolsRes.ok) return json({ ok: false, error: toolsRes.error }, 502);
@@ -223,13 +220,93 @@ Deno.serve(async (req) => {
   }
   const legacyToolId = toolIdByName.get(TOOL_NAME) ?? null;
 
+  const listResEarly = await elFetch(key, "/v1/convai/agents?page_size=100");
+  if (!listResEarly.ok) return json({ ok: false, error: listResEarly.error }, 502);
+  const listedAgents = (listResEarly.body as {
+    agents?: Array<{ agent_id?: string; name?: string }>;
+  } | null)?.agents ?? [];
+
+  if (mode === "prune") {
+    const keep = new Set<string>();
+    for (const k of ["a1", "a2", "a3", "a4"] as const) {
+      const id = configuredAgents[k]?.id?.trim();
+      if (id) keep.add(id);
+    }
+    if (keep.size < 4) {
+      return json({
+        ok: false,
+        error: "agents_config.agents must hold a1–a4 before prune",
+        keep: [...keep],
+        configured_fleet: configuredAgents,
+      }, 400);
+    }
+    const deleted: Array<{ id: string; name: string | null }> = [];
+    for (const a of listedAgents) {
+      const id = a.agent_id?.trim();
+      if (!id || keep.has(id)) continue;
+      const del = await elFetch(key, `/v1/convai/agents/${encodeURIComponent(id)}`, {
+        method: "DELETE",
+      });
+      if (!del.ok) {
+        return json({
+          ok: false,
+          error: `delete agent ${id} (${a.name ?? "?"}): ${del.error}`,
+          deleted,
+        }, 502);
+      }
+      deleted.push({ id, name: a.name ?? null });
+    }
+    let legacyTool: { id: string; action: string } | null = null;
+    if (legacyToolId) {
+      const delTool = await elFetch(
+        key,
+        `/v1/convai/tools/${encodeURIComponent(legacyToolId)}?force=true`,
+        { method: "DELETE" },
+      );
+      if (!delTool.ok) {
+        return json({
+          ok: false,
+          error: `delete tool get_reservation: ${delTool.error}`,
+          deleted,
+        }, 502);
+      }
+      legacyTool = { id: legacyToolId, action: "deleted" };
+    }
+    const afterList = await elFetch(key, "/v1/convai/agents?page_size=100");
+    const remaining = afterList.ok
+      ? ((afterList.body as {
+        agents?: Array<{ agent_id?: string; name?: string }>;
+      } | null)?.agents ?? []).map((a) => ({ id: a.agent_id, name: a.name }))
+      : null;
+    return json({
+      ok: true,
+      mode,
+      deleted,
+      legacy_tool: legacyTool,
+      remaining,
+      configured_fleet: configuredAgents,
+    });
+  }
+
+  // ── Read the donor agent (a1) + its prompt shape ───────────────────────────
+  const agentRes = await elFetch(key, `/v1/convai/agents/${encodeURIComponent(donorId)}`);
+  if (!agentRes.ok) return json({ ok: false, error: agentRes.error }, 502);
+  const donor = agentRes.body as AgentShape;
+  const donorCc = donor.conversation_config ?? {};
+  const donorPrompt = donorCc.agent?.prompt ?? {};
+  const promptCharsBefore = typeof donorPrompt.prompt === "string" ? donorPrompt.prompt.length : 0;
+  const toolIdsBefore: string[] = Array.isArray(donorPrompt.tool_ids)
+    ? [...donorPrompt.tool_ids]
+    : [];
+
   if (mode === "inspect") {
     return json({
       ok: true,
       mode,
-      agent: { id: agentId, name: donor.name ?? null },
+      donor: { id: donorId, name: donor.name ?? null },
       prompt_chars: promptCharsBefore,
       tool_ids: toolIdsBefore,
+      workspace_agents: listedAgents.map((a) => ({ id: a.agent_id, name: a.name })),
       workspace_tools: toolRows.map((t) => ({ id: t.id, name: t.tool_config?.name })),
       get_reservation_tool_id: legacyToolId,
       configured_fleet: configuredAgents,
@@ -389,7 +466,7 @@ Deno.serve(async (req) => {
     return json({
       ok: true,
       mode,
-      donor: { id: agentId, name: donor.name ?? null, language, sections: Object.keys(donorSections) },
+      donor: { id: donorId, name: donor.name ?? null, language, sections: Object.keys(donorSections) },
       tools: toolReport,
       agents: agentReport,
       config_saved: !saveErr,
@@ -427,7 +504,7 @@ Deno.serve(async (req) => {
   // Attach to the original agent (tool_ids only — the prompt text is never sent).
   let attachAction = "already-attached";
   if (!toolIdsBefore.includes(toolId)) {
-    const patch = await elFetch(key, `/v1/convai/agents/${encodeURIComponent(agentId)}`, {
+    const patch = await elFetch(key, `/v1/convai/agents/${encodeURIComponent(donorId)}`, {
       method: "PATCH",
       body: {
         conversation_config: {
@@ -440,7 +517,7 @@ Deno.serve(async (req) => {
   }
 
   // Verify: prompt untouched, tool attached.
-  const verify = await elFetch(key, `/v1/convai/agents/${encodeURIComponent(agentId)}`);
+  const verify = await elFetch(key, `/v1/convai/agents/${encodeURIComponent(donorId)}`);
   if (!verify.ok) return json({ ok: false, error: verify.error }, 502);
   const after = verify.body as AgentShape;
   const promptAfter = after.conversation_config?.agent?.prompt ?? {};
@@ -452,7 +529,7 @@ Deno.serve(async (req) => {
   return json({
     ok: true,
     mode,
-    agent: { id: agentId, name: after.name ?? null },
+    agent: { id: donorId, name: after.name ?? null },
     tool: { id: toolId, name: TOOL_NAME, action: toolAction },
     attach: attachAction,
     tool_ids_before: toolIdsBefore,
