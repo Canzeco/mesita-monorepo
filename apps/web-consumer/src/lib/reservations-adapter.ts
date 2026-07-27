@@ -84,7 +84,7 @@ function noteFor(phase: ReservationStatus, row: EFReservationRow): string | unde
   }
 }
 
-export function formatReservationWhen(iso: string): string {
+function formatReservationWhen(iso: string): string {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return "";
   const weekday = d.toLocaleDateString("en-US", {

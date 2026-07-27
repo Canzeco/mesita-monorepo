@@ -15,12 +15,8 @@ import {
   Smartphone,
   Workflow,
 } from "lucide-react";
-import {
-  ErrorNote,
-  SaveRow,
-  SectionCard,
-  Switch,
-} from "../enricher-config/atlas-ui";
+import { ErrorNote } from "@/components/ErrorNote";
+import { SaveRow, SectionCard, Switch } from "../enricher-config/atlas-ui";
 import { getReservationsConfig, updateReservationsConfig } from "./actions";
 import { CHANNELS, looksLikePhone, type ReservationsConfig } from "./catalog";
 

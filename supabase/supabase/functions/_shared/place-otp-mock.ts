@@ -17,13 +17,6 @@ export function placeOtpOutboundImplemented(): boolean {
 }
 
 /** Guard for future Twilio/Resend wiring — throws if called while still mock-only. */
-export function assertPlaceOtpOutboundAllowed(): void {
-  if (!placeOtpOutboundImplemented()) {
-    throw new Error(
-      "place_otp_outbound_disabled: mock mode only — places must not be called or emailed yet",
-    );
-  }
-}
 
 /** Shown in the business app instead of the place's real listed phone. */
 export function mockPlaceOtpPhone(): string {

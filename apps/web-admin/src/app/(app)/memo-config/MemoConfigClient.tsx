@@ -2,13 +2,8 @@
 
 import { useEffect, useState, useTransition } from "react";
 import { Bot, Globe, MessageSquare } from "lucide-react";
-import {
-  ErrorNote,
-  SaveRow,
-  SectionCard,
-  Switch,
-  TextAreaField,
-} from "../enricher-config/atlas-ui";
+import { ErrorNote } from "@/components/ErrorNote";
+import { SaveRow, SectionCard, Switch, TextAreaField } from "../enricher-config/atlas-ui";
 import { getMemoConfig, updateMemoConfig } from "./actions";
 import {
   OPENAI_MODELS,

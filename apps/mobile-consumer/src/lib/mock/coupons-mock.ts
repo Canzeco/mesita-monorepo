@@ -50,7 +50,7 @@ export type CouponItem =
       rejectReason?: string;
     });
 
-export const MOCK_COUPONS: CouponItem[] = [
+const MOCK_COUPONS: CouponItem[] = [
   {
     id: "cp-mar-verde",
     projectId: "mar-verde",

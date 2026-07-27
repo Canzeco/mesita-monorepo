@@ -19,9 +19,9 @@ import {
   Star,
 } from "lucide-react";
 import { updateAtlasConfig, type PerplexityPreset, type SynthesisQuality } from "./actions";
+import { ErrorNote } from "@/components/ErrorNote";
 import {
   Collapsible,
-  ErrorNote,
   NumberField,
   SaveRow,
   SectionCard,

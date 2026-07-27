@@ -80,7 +80,7 @@ export async function handleStaffInboundMessage(opts: {
 
   if (isSwitchPlaceCommand(body)) {
     if (session && session.state !== "idle" && session.state !== "selecting_project") {
-      await reply(
+      await sendStaffWhatsAppReply(
         admin,
         twilio,
         identity.phoneE164,
@@ -89,7 +89,7 @@ export async function handleStaffInboundMessage(opts: {
       return;
     }
     if (places.length < 2) {
-      await reply(
+      await sendStaffWhatsAppReply(
         admin,
         twilio,
         identity.phoneE164,
@@ -100,7 +100,7 @@ export async function handleStaffInboundMessage(opts: {
       return;
     }
     session = await enterPlaceSelection(admin, identity, session, places);
-    await reply(admin, twilio, identity.phoneE164, placePickerText(places));
+    await sendStaffWhatsAppReply(admin, twilio, identity.phoneE164, placePickerText(places));
     return;
   }
 
@@ -119,7 +119,7 @@ export async function handleStaffInboundMessage(opts: {
     (session?.state === "selecting_project" || !session?.project_id) &&
     places.length > 1
   ) {
-    await reply(admin, twilio, identity.phoneE164, placePickerText(places));
+    await sendStaffWhatsAppReply(admin, twilio, identity.phoneE164, placePickerText(places));
     return;
   }
 
@@ -129,7 +129,7 @@ export async function handleStaffInboundMessage(opts: {
       session = await activatePlaceAndPrompt(admin, twilio, identity, session, picked);
       return;
     }
-    await reply(
+    await sendStaffWhatsAppReply(
       admin,
       twilio,
       identity.phoneE164,
@@ -163,7 +163,7 @@ export async function handleStaffInboundMessage(opts: {
       !parsePlaceSelection(body, places) &&
       intent.place_index == null;
     if (unclear && body.trim().length > 0) {
-      await reply(
+      await sendStaffWhatsAppReply(
         admin,
         twilio,
         identity.phoneE164,
@@ -176,7 +176,7 @@ export async function handleStaffInboundMessage(opts: {
         }),
       );
     } else {
-      await reply(admin, twilio, identity.phoneE164, placePickerText(places));
+      await sendStaffWhatsAppReply(admin, twilio, identity.phoneE164, placePickerText(places));
     }
     return;
   }
@@ -196,7 +196,7 @@ export async function handleStaffInboundMessage(opts: {
   }
 
   if (intent.intent === "help") {
-    await reply(
+    await sendStaffWhatsAppReply(
       admin,
       twilio,
       staff.phoneE164,
@@ -214,7 +214,7 @@ export async function handleStaffInboundMessage(opts: {
       | { staffMessage?: string }
       | undefined;
     if (opsBlock?.staffMessage && session.pending_consumer_code) {
-      await reply(
+      await sendStaffWhatsAppReply(
         admin,
         twilio,
         staff.phoneE164,
@@ -222,7 +222,7 @@ export async function handleStaffInboundMessage(opts: {
       );
       return;
     }
-    await reply(
+    await sendStaffWhatsAppReply(
       admin,
       twilio,
       staff.phoneE164,
@@ -246,7 +246,7 @@ export async function handleStaffInboundMessage(opts: {
       intent.check_subtotal_cents == null &&
       intent.tip_cents == null
     ) {
-      await reply(
+      await sendStaffWhatsAppReply(
         admin,
         twilio,
         staff.phoneE164,
@@ -349,7 +349,7 @@ export async function handleStaffInboundMessage(opts: {
     !intent.consumer_code &&
     session.state === "idle"
   ) {
-    await reply(
+    await sendStaffWhatsAppReply(
       admin,
       twilio,
       staff.phoneE164,
@@ -369,7 +369,7 @@ export async function handleStaffInboundMessage(opts: {
     ? "partial_bill"
     : undefined;
 
-  await reply(
+  await sendStaffWhatsAppReply(
     admin,
     twilio,
     staff.phoneE164,
@@ -394,7 +394,7 @@ async function activatePlaceAndPrompt(
 ): Promise<SessionRow> {
   const next = await applyActivePlace(admin, identity, session, picked);
   const warn = await placeOpsShortWarning(admin, picked.projectId);
-  await reply(
+  await sendStaffWhatsAppReply(
     admin,
     twilio,
     identity.phoneE164,
@@ -427,7 +427,7 @@ async function replyIfDiscountOpsBlocked(
     })
     .eq("id", session.id);
 
-  await reply(
+  await sendStaffWhatsAppReply(
     admin,
     twilio,
     staff.phoneE164,
@@ -463,7 +463,7 @@ async function tryHandleBillDraft(opts: {
 
   if (!gotNewAmounts && !billDraftHasAnyAmount(draft)) {
     if (intent.intent === "submit_bill") {
-      await reply(
+      await sendStaffWhatsAppReply(
         admin,
         twilio,
         staff.phoneE164,
@@ -493,7 +493,7 @@ async function tryHandleBillDraft(opts: {
     return true;
   }
 
-  await reply(admin, twilio, staff.phoneE164, billDraftNeedMessage(merged));
+  await sendStaffWhatsAppReply(admin, twilio, staff.phoneE164, billDraftNeedMessage(merged));
   return true;
 }
 
@@ -508,13 +508,13 @@ async function handleSubmitBill(
 
   const place = await loadPlaceOpsRow(admin, staff.projectId);
   if (!place) {
-    await reply(admin, twilio, staff.phoneE164, "No encontré el restaurante.");
+    await sendStaffWhatsAppReply(admin, twilio, staff.phoneE164, "No encontré el restaurante.");
     return;
   }
   const hasOwner = await placeHasVerifiedOwner(admin, staff.projectId);
   const ops = assessDiscountTicketOps(place, hasOwner);
   if (!ops.ok) {
-    await reply(
+    await sendStaffWhatsAppReply(
       admin,
       twilio,
       staff.phoneE164,
@@ -524,7 +524,7 @@ async function handleSubmitBill(
     return;
   }
   if (place.status === "archived") {
-    await reply(admin, twilio, staff.phoneE164, "Este local está archivado.");
+    await sendStaffWhatsAppReply(admin, twilio, staff.phoneE164, "Este local está archivado.");
     return;
   }
 
@@ -536,7 +536,7 @@ async function handleSubmitBill(
     .eq("id", session.consumer_id)
     .single();
   if (consumerRes.error) {
-    await reply(admin, twilio, staff.phoneE164, "Error con el registro del comensal.");
+    await sendStaffWhatsAppReply(admin, twilio, staff.phoneE164, "Error con el registro del comensal.");
     return;
   }
 
@@ -549,7 +549,7 @@ async function handleSubmitBill(
   );
 
   if (calc.subtotal === 0) {
-    await reply(admin, twilio, staff.phoneE164, "El total de la cuenta no puede ser cero.");
+    await sendStaffWhatsAppReply(admin, twilio, staff.phoneE164, "El total de la cuenta no puede ser cero.");
     return;
   }
 
@@ -562,7 +562,7 @@ async function handleSubmitBill(
     .select("id")
     .single();
   if (insert.error) {
-    await reply(
+    await sendStaffWhatsAppReply(
       admin,
       twilio,
       staff.phoneE164,
@@ -601,7 +601,7 @@ async function handleSubmitBill(
     });
   }
 
-  await reply(
+  await sendStaffWhatsAppReply(
     admin,
     twilio,
     staff.phoneE164,
@@ -609,11 +609,3 @@ async function handleSubmitBill(
   );
 }
 
-async function reply(
-  admin: SupabaseClient,
-  twilio: TwilioEnv,
-  to: string,
-  body: string,
-) {
-  await sendStaffWhatsAppReply(admin, twilio, to, body);
-}

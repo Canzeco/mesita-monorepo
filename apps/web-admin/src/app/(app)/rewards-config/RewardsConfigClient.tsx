@@ -3,12 +3,8 @@
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { Coins, Info, Percent, RotateCcw } from "lucide-react";
 
-import {
-  ErrorNote,
-  NumberField,
-  SaveRow,
-  SectionCard,
-} from "../enricher-config/atlas-ui";
+import { ErrorNote } from "@/components/ErrorNote";
+import { NumberField, SaveRow, SectionCard } from "../enricher-config/atlas-ui";
 import { getRewardsConfig, updateRewardsConfig } from "./actions";
 import {
   ALLOWED_RATES,

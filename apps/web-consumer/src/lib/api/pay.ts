@@ -285,18 +285,3 @@ export async function submitTicketReview(
   );
 }
 
-// Promos v5 (MESITA-723): opt into the Google Review rung — upload a screenshot
-// of the review posted at the table. Staff verify (business-web-verify-review),
-// which bumps the ticket's discount to the Review rate (best-of, bump-only,
-// once per consumer × place). Mirrors the Instagram-story submit.
-export async function submitGoogleReview(
-  supabase: SupabaseClient<Database>,
-  input: { ticketId: string; screenshotUrl: string },
-) {
-  return invokeEF<Record<string, unknown>>(
-    supabase,
-    "consumer-web-submit-review",
-    { ...input },
-    "Could not submit Google review",
-  );
-}

@@ -1,6 +1,5 @@
 // Ranking helpers for the consumer swipe deck pipeline
-// (`recommender-rank-swipe.ts`): intent composition, tier boost, fallback
-// ordering, and category diversification.
+// (`recommender-rank-swipe.ts`): intent composition and fallback ordering.
 
 import {
   type ConsumerProfile,
@@ -62,21 +61,6 @@ export function topCategoriesIn(rows: PlaceRow[], k: number): string[] {
     .map(([c]) => c);
 }
 
-// Premium overlay: stable partition that floats partner places above
-// non-partners while preserving the relevance order inside each group. A
-// no-op for standard / anonymous, so the deck only changes for Premium and
-// Magnetic members (magnetic ≥ premium).
-export function applyTierBoost(rows: PlaceRow[], tier: string | null): PlaceRow[] {
-  if (!isPremiumOrHigher(tier)) return rows;
-  const partners: PlaceRow[] = [];
-  const rest: PlaceRow[] = [];
-  for (const r of rows) {
-    if (r.listing_type === "partner") partners.push(r);
-    else rest.push(r);
-  }
-  return [...partners, ...rest];
-}
-
 export function fallbackRank(rows: PlaceRow[]): PlaceRow[] {
   // Partner-first, then newest. Stable when OpenAI is down.
   return [...rows].sort((a, b) => {
@@ -87,25 +71,3 @@ export function fallbackRank(rows: PlaceRow[]): PlaceRow[] {
   });
 }
 
-// Cap the final deck so we don't return 50 identical "Italian" cards.
-export function diversify(rows: PlaceRow[], limit: number, perCategory: number): PlaceRow[] {
-  const out: PlaceRow[] = [];
-  const seenCat = new Map<string, number>();
-  const tail: PlaceRow[] = [];
-  for (const r of rows) {
-    if (out.length >= limit) break;
-    const cat = (r.category ?? "").toLowerCase().trim();
-    const count = seenCat.get(cat) ?? 0;
-    if (cat && count >= perCategory) {
-      tail.push(r);
-      continue;
-    }
-    out.push(r);
-    if (cat) seenCat.set(cat, count + 1);
-  }
-  for (const r of tail) {
-    if (out.length >= limit) break;
-    out.push(r);
-  }
-  return out;
-}

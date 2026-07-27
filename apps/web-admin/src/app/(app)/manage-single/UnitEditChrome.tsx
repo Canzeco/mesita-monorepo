@@ -22,15 +22,6 @@ import { UNIT_TAB_SECTIONS, unitSectionHref } from "./nav";
 import { useUnitPlace } from "./UnitPlaceContext";
 import { ConfirmDialog } from "./ui";
 
-export function currentUnitSection(pathname: string) {
-  for (const { id } of UNIT_TAB_SECTIONS) {
-    if (pathname.endsWith(`/${id}`) || pathname.includes(`/${id}/`)) {
-      return id;
-    }
-  }
-  return "place" as const;
-}
-
 /** True while the Enricher pipeline is mid-flight.
  *  decision: Pato (MESITA-453) — Enriching = the WHOLE pipeline:
  *  research OR analysis OR contents. Never clear after research alone. */

@@ -22,7 +22,7 @@ type EFResult<T> =
 // Carries the EF's machine-readable `code` and the full parsed error body so
 // call sites can branch on a code (e.g. "place_already_exists") without
 // re-implementing the raw-invoke unwrap themselves.
-export class EFError extends Error {
+class EFError extends Error {
   readonly code: string | null;
   readonly fn: string;
   readonly body: Record<string, unknown> | null;

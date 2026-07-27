@@ -15,7 +15,8 @@ import {
   User,
   Users,
 } from "lucide-react";
-import { ErrorNote, SectionCard } from "../enricher-config/atlas-ui";
+import { ErrorNote } from "@/components/ErrorNote";
+import { SectionCard } from "../enricher-config/atlas-ui";
 import { askMemoAdmin, getMemoConfig, sampleConsumers } from "./actions";
 import { MemoTrace } from "./MemoTrace";
 import {

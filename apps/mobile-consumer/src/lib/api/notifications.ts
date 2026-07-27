@@ -9,7 +9,7 @@ import {
   type TicketBillPayload,
 } from '@/lib/api/pay';
 
-export type ConsumerNotificationRow = PayNotificationRow;
+type ConsumerNotificationRow = PayNotificationRow;
 
 export type ConsumerNotification = ConsumerNotificationRow & {
   bill: TicketBillPayload;
@@ -32,7 +32,7 @@ type ListPayNotificationsResult = {
   placeInstagramUrl?: string | null;
 };
 
-export function enrichNotification(
+function enrichNotification(
   row: ConsumerNotificationRow,
 ): ConsumerNotification {
   return {

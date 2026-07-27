@@ -157,11 +157,6 @@ export const LANES: readonly Lane[] = [
 /** The locked merge rotation — identical for Swipe and Map. */
 export const MERGE_ROTATION: readonly LaneId[] = ["organic", "inorganic"];
 
-/** A lane's formula in the model's shorthand — e.g. "EM·SM·GP·XX". */
-export function laneFormula(lane: Lane): string {
-  return lane.parts.map((p) => SUBSCORE_BY_ID[p].short).join("·");
-}
-
 const clamp01 = (v: number) => Math.max(0, Math.min(1, Number.isFinite(v) ? v : 0));
 
 /** One lane's score — the product of its subscores, each clamped to [0,1]. */

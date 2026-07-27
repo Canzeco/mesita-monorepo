@@ -1,131 +1,15 @@
-// Reservations store — mock implementation backed by localStorage.
-//
-// Pared down to the actions the UI actually calls (`add` from
-// ReservationSheet, `cancel` reserved for the future cancel CTA). The
-// list itself is now rendered from `src/lib/mock/reservations-mock.ts`
-// (static MOCK_RESERVATIONS) and reads do not go through this store,
-// so the useSyncExternalStore subscriber plumbing the older revision
-// carried has been removed.
-//
-// localStorage is still written so that when `consumer-web-list-reservations`
-// lands a future migration can replay it as a backfill, and so the
-// /reservations page can light up the moment that EF replaces the static
-// mock without losing in-flight bookings.
-
-import { useCallback } from "react";
+// Local reservations cache clear — companion to clearSavedPlacesLocal.
+// The booking UI talks to consumer-web-* reservation EFs now; this only
+// drops any legacy localStorage key left from the old mock store when the
+// signed-in consumer changes (consumer-local-reset).
 
 const STORAGE_KEY = "mesita:reservations";
 
-type Reservation = {
-  id: string;
-  projectId: string;
-  placeName: string;
-  // ISO date (YYYY-MM-DD) — picked by the sheet's date pill row.
-  date: string;
-  // 24h time (HH:MM) — picked by the sheet's time slot grid.
-  time: string;
-  partySize: number;
-  // Creation epoch ms — used to sort newest-first in the Saved page.
-  createdAt: number;
-  // Coarse lifecycle. The mock only emits "upcoming"; "past" / "cancelled"
-  // round out the shape so future EF rows fit without a type change.
-  status: "upcoming" | "past" | "cancelled";
-};
-
-let cache: ReadonlyArray<Reservation> = [];
-let hydrated = false;
-
-function readFromStorage(): Reservation[] {
-  if (typeof window === "undefined") return [];
-  try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (!raw) return [];
-    const arr = JSON.parse(raw) as unknown;
-    if (!Array.isArray(arr)) return [];
-    return arr.filter((r): r is Reservation => {
-      return (
-        r != null &&
-        typeof r === "object" &&
-        typeof (r as Reservation).id === "string" &&
-        typeof (r as Reservation).projectId === "string" &&
-        typeof (r as Reservation).date === "string" &&
-        typeof (r as Reservation).time === "string"
-      );
-    });
-  } catch {
-    return [];
-  }
-}
-
-function writeToStorage(list: ReadonlyArray<Reservation>) {
+export function clearReservationsLocal(): void {
   if (typeof window === "undefined") return;
   try {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
+    window.localStorage.removeItem(STORAGE_KEY);
   } catch {
-    /* quota / private mode */
+    /* private mode — nothing to clear */
   }
-}
-
-function ensureHydrated() {
-  if (hydrated || typeof window === "undefined") return;
-  cache = readFromStorage();
-  hydrated = true;
-}
-
-function addReservation(input: {
-  projectId: string;
-  placeName: string;
-  date: string;
-  time: string;
-  partySize: number;
-}): Reservation {
-  ensureHydrated();
-  const r: Reservation = {
-    id: crypto.randomUUID(),
-    projectId: input.projectId,
-    placeName: input.placeName,
-    date: input.date,
-    time: input.time,
-    partySize: input.partySize,
-    createdAt: Date.now(),
-    status: "upcoming",
-  };
-  cache = [r, ...cache];
-  writeToStorage(cache);
-  return r;
-}
-
-function cancelReservation(id: string): void {
-  ensureHydrated();
-  const next = cache.map((r) =>
-    r.id === id ? { ...r, status: "cancelled" as const } : r,
-  );
-  cache = next;
-  writeToStorage(cache);
-}
-
-// Companion to clearSavedPlacesLocal (saved-places.ts): drop the
-// localStorage-backed bookings + in-memory cache when the signed-in consumer
-// changes. Draft reservations carry a projectId + placeName from the old
-// data, so a reset + fresh account would otherwise inherit them once the
-// /reservations page reads from this store instead of the static mock.
-export function clearReservationsLocal(): void {
-  if (typeof window !== "undefined") {
-    try {
-      window.localStorage.removeItem(STORAGE_KEY);
-    } catch {
-      /* private mode — nothing to clear */
-    }
-  }
-  cache = [];
-  hydrated = false;
-}
-
-export function useReservationActions() {
-  const add = useCallback(
-    (input: Parameters<typeof addReservation>[0]) => addReservation(input),
-    [],
-  );
-  const cancel = useCallback((id: string) => cancelReservation(id), []);
-  return { add, cancel };
 }
