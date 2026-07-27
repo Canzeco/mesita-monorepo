@@ -66,7 +66,7 @@ export function igCandidates(urls: string[], name: string): string[] {
   const toks = nameTokens(name);
   return out.sort((a, b) => igScore(b, toks) - igScore(a, toks));
 }
-export function igScore(handle: string, toks: string[]): number {
+function igScore(handle: string, toks: string[]): number {
   const h = handle.replace(/[^a-z0-9]/g, "");
   let s = 0;
   for (const t of toks) if (h.includes(stripAccents(t))) s += t.length;
