@@ -14,7 +14,7 @@
 export type RewardClassKey = 'standard' | 'premium' | 'magnetic';
 
 // The business discount strategy that sets how generous a place's grid is.
-export type GridStrategy = 'zero' | 'conservative' | 'aggressive';
+type GridStrategy = 'zero' | 'conservative' | 'aggressive';
 
 type RewardSegmentKind = 'class' | 'action' | 'visit';
 
