@@ -7,7 +7,7 @@ import { cache } from "react";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { invokeEF } from "./_invoke";
 
-export type WhoamiResult = {
+type WhoamiResult = {
   email: string | null;
   isSuperAdmin: boolean;
 };
