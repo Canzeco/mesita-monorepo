@@ -138,25 +138,4 @@ export function strategyForPlace(rates: StrategyRates): StrategyId | null {
   return match?.id ?? null;
 }
 
-// RP — the Rewards Promotions subscore of the recommendation model (v10:
-// [0,1] rungs; see ./scores) — the strategy as a number. The rung each
-// strategy earns is CONFIG (the scoring blob's rp block); these are the code
-// defaults. Only the SPREAD between rungs matters inside the paid lanes
-// (they rank against themselves), never the absolute scale.
-//
-// No literal 0 (decision 2026-07-16): non-members never ENTER the paid
-// lanes at all — a lane filter, not a score — and the zero-strategy member
-// keeps a 0.1 whisper (membership buys a whisper of paid presence;
-// generosity buys placement — promos v4.1). Custom/legacy rates that match
-// no preset (null) land on the zero rung too.
-//
-// Dominant retired in v5 (MESITA-723): the Lineup RP subscore in ./scores
-// now mirrors these three presets — a 3-rung RpStrategy (zero · conservative
-// · aggressive) + scoring_config.rp blob; the vestigial `dominant` rung has
-// been dropped.
-export const RP_BY_STRATEGY: Record<StrategyId, number> = {
-  zero: 0.1,
-  conservative: 0.4,
-  aggressive: 0.7,
-};
 
