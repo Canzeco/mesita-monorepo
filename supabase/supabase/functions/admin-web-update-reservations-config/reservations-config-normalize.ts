@@ -4,7 +4,7 @@ type ReservationsConfig = {
   priority: string[];
   disabled: string[];
   respectAdminOverride: boolean;
-  testCall: { enabled: boolean; number: string };
+  testCall: { enabled: boolean; number: string; consumerNumber: string };
   attempts: number;
 };
 
@@ -75,8 +75,9 @@ export function normalizeConfig(
 
   // testCall — optional. Default off/empty. When present it must be well-formed,
   // and an ENABLED override must carry a plausible number (so we can't ship a
-  // "route every call to nowhere" state).
-  let testCall = { enabled: false, number: "" };
+  // "route every call to nowhere" state). consumerNumber is the Playground's
+  // guest-side test line: optional, and E.164 when non-empty ('' = unset).
+  let testCall = { enabled: false, number: "", consumerNumber: "" };
   if (c.testCall !== undefined) {
     if (!c.testCall || typeof c.testCall !== "object" || Array.isArray(c.testCall)) {
       return { ok: false, error: "config.testCall must be an object" };
@@ -95,7 +96,17 @@ export function normalizeConfig(
         error: "config.testCall.number must be an E.164 phone (e.g. +5215512345678) while the override is on",
       };
     }
-    testCall = { enabled: t.enabled, number };
+    if (t.consumerNumber !== undefined && typeof t.consumerNumber !== "string") {
+      return { ok: false, error: "config.testCall.consumerNumber must be a string" };
+    }
+    const consumerNumber = typeof t.consumerNumber === "string" ? t.consumerNumber.trim() : "";
+    if (consumerNumber && !looksLikePhone(consumerNumber)) {
+      return {
+        ok: false,
+        error: "config.testCall.consumerNumber must be an E.164 phone (e.g. +5215512345678) or empty",
+      };
+    }
+    testCall = { enabled: t.enabled, number, consumerNumber };
   }
 
   // attempts — optional. Default 3. Integer, clamped to [1, 3].

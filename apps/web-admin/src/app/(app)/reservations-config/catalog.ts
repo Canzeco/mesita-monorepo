@@ -34,9 +34,12 @@ export type ReservationsConfig = {
   /**
    * Testing override. While enabled, EVERY reservation call dials `number`
    * instead of the place's real line — no matter which venue the guest booked —
-   * so we never ring a real business during testing.
+   * so we never ring a real business during testing. `consumerNumber` is the
+   * guest-side test line the Playground can put in a call brief instead of a
+   * real consumer's phone — playground-only, never read by the production
+   * calling path ('' = unset).
    */
-  testCall: { enabled: boolean; number: string };
+  testCall: { enabled: boolean; number: string; consumerNumber: string };
   /**
    * How many times the Reservationist tries a place before giving up. Attempt 1
    * always fires immediately when the guest taps Reserve (many venues run a 24/7
@@ -96,7 +99,8 @@ export const CHANNELS: Channel[] = [
 // this one number for EVERY reservation instead of any real venue. Fully editable
 // from the admin page — this is only what the page (and a fresh/reset config row)
 // starts from. Ships ON so a missing config can never fall through to a real place.
-export const TEST_CALL_SEED = { enabled: true, number: "+524445499597" };
+// consumerNumber ships empty — set it in Config before the Playground can use it.
+export const TEST_CALL_SEED = { enabled: true, number: "+524445499597", consumerNumber: "" };
 
 export const DEFAULT_CONFIG: ReservationsConfig = {
   priority: ["phone", "whatsapp", "instagram"],
@@ -159,6 +163,10 @@ export function coerceConfig(raw: unknown): ReservationsConfig {
     testCall: {
       enabled: typeof testRaw.enabled === "boolean" ? testRaw.enabled : TEST_CALL_SEED.enabled,
       number: typeof testRaw.number === "string" ? testRaw.number.trim() : TEST_CALL_SEED.number,
+      consumerNumber:
+        typeof testRaw.consumerNumber === "string"
+          ? testRaw.consumerNumber.trim()
+          : TEST_CALL_SEED.consumerNumber,
     },
     attempts: clampAttempts(c.attempts),
   };

@@ -78,6 +78,10 @@ export function ReservationsConfigClient({
 
   const testInvalid =
     cfg.testCall.enabled && !looksLikePhone(cfg.testCall.number);
+  // Consumer test number is optional ('' = unset) but must be E.164 when present.
+  const consumerTestInvalid =
+    cfg.testCall.consumerNumber.trim() !== "" &&
+    !looksLikePhone(cfg.testCall.consumerNumber);
 
   const dirty = useMemo(
     () => JSON.stringify(cfg) !== JSON.stringify(saved),
@@ -99,6 +103,7 @@ export function ReservationsConfigClient({
       testCall: {
         enabled: cfg.testCall.enabled,
         number: cfg.testCall.number.trim(),
+        consumerNumber: cfg.testCall.consumerNumber.trim(),
       },
     };
     startTransition(async () => {
@@ -176,7 +181,7 @@ export function ReservationsConfigClient({
         <label className="mt-4 flex flex-col gap-2">
           <span className="flex items-center gap-2 text-sm font-medium">
             <Phone className="text-muted-foreground h-4 w-4" />
-            Test number
+            Business test number
           </span>
           <input
             type="tel"
@@ -196,8 +201,42 @@ export function ReservationsConfigClient({
             </span>
           ) : (
             <span className="text-muted-foreground text-xs">
-              E.164 format (leading +, country code). This is the only line the
-              agent will dial while test mode is on.
+              E.164 format (leading +, country code). Stands in for the
+              venue&apos;s line: the only number the agent dials while test mode
+              is on, and the Playground&apos;s “test number” option on the
+              business side.
+            </span>
+          )}
+        </label>
+
+        <label className="mt-4 flex flex-col gap-2">
+          <span className="flex items-center gap-2 text-sm font-medium">
+            <Phone className="text-muted-foreground h-4 w-4" />
+            Consumer test number
+          </span>
+          <input
+            type="tel"
+            inputMode="tel"
+            placeholder="+52 1 55 1234 5678"
+            value={cfg.testCall.consumerNumber}
+            disabled={pending}
+            onChange={(e) =>
+              patch({
+                testCall: { ...cfg.testCall, consumerNumber: e.target.value },
+              })
+            }
+            className="border-border bg-card focus:border-foreground h-9 w-full max-w-sm rounded-lg border px-3 text-sm tabular-nums outline-none disabled:opacity-50"
+          />
+          {consumerTestInvalid ? (
+            <span className="text-xs text-amber-600">
+              Enter an E.164 number — a leading + and country code — or leave it
+              empty.
+            </span>
+          ) : (
+            <span className="text-muted-foreground text-xs">
+              Stands in for the guest: the callback number the Playground puts in
+              a call brief when the consumer side is set to “test number”. Only
+              used by the Playground — the real reservation flow never reads it.
             </span>
           )}
         </label>
@@ -335,7 +374,7 @@ export function ReservationsConfigClient({
         </p>
         <SaveRow
           pending={pending}
-          dirty={dirty && !testInvalid}
+          dirty={dirty && !testInvalid && !consumerTestInvalid}
           ok={ok}
           onClick={save}
         />

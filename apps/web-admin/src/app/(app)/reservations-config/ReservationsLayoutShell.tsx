@@ -11,7 +11,7 @@ const SUBPAGE_DESCRIPTION: Record<string, string> = {
   "/reservations-config/config":
     "The Reservationist is a voice agent, not a form: a Supabase function briefs an ElevenLabs agent and it phones the venue over Twilio. Tune the number it dials while testing, how hard it retries, and the channel it books through.",
   "/reservations-config/playground":
-    "Exercise the Reservationist two ways: Fake user places a real call to the test number with a stand-in booking, and Actual user (soon) runs the real reservation flow.",
+    "Emulate a reservation as a fake user: pick a real place and consumer from the database, author the intent, choose test or actual numbers on both sides, and place the call. Tickets stay in the playground sandbox.",
 };
 
 export function ReservationsLayoutShell({
