@@ -28,7 +28,7 @@ const STEP_ICONS: Record<TicketFlowStepId, LucideIcon> = {
  * One round step indicator, NU-verification style:
  * done = green check · active = pink gradient + step icon · upcoming = gray + lock.
  */
-export function TicketFlowStepCircle({
+function TicketFlowStepCircle({
   step,
   Icon,
   selected,

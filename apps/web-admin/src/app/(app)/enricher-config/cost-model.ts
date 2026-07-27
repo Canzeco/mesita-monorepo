@@ -96,7 +96,7 @@ export const fmtTime = (secs: number) => {
   return m ? `${h}h ${m}m` : `${h}h`;
 };
 
-export const STAGE_META = {
+const STAGE_META = {
   pre: { label: "Setup", hint: "Runs before sources are fetched" },
   gather: { label: "Gather", hint: "Sources fetched in parallel — time is the slowest step" },
   post: { label: "Analyze & write", hint: "Vision, sorting, and profile synthesis" },

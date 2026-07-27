@@ -2,7 +2,7 @@
 // Visibility ladder / subscription catalog UI moved to strategies.ts
 // (STRATEGY_VISIBILITY_LADDER) — dead locals removed 2026-07 (MESITA-722).
 
-export type SubscriptionId = "free" | "pro_discount" | "ultra_discount";
+type SubscriptionId = "free" | "pro_discount" | "ultra_discount";
 
 /** The `membership` enum value a strategy maps to. */
 export type PlanKey = "free" | "pro" | "ultra";

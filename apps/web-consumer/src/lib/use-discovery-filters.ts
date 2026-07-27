@@ -130,7 +130,7 @@ function subscribe(listener: () => void): () => void {
   };
 }
 
-export function patchDiscoveryFilters(partial: Partial<DiscoveryFilters>) {
+function patchDiscoveryFilters(partial: Partial<DiscoveryFilters>) {
   state = { ...state, ...partial };
   persist();
   emit();

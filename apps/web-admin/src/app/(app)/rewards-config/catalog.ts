@@ -132,16 +132,16 @@ export const STRATEGY_IDS: readonly {
 ];
 
 // The 5% grid: off, then 10 → 50 in steps of 5.
-export const RATE_STEP = 5;
-export const RATE_FLOOR = 10;
-export const RATE_MAX = 50;
+const RATE_STEP = 5;
+const RATE_FLOOR = 10;
+const RATE_MAX = 50;
 export const ALLOWED_RATES: readonly number[] = [
   0, 10, 15, 20, 25, 30, 35, 40, 45, 50,
 ];
 
 export const CAP_MIN = 0;
 export const CAP_MAX = 5000;
-export const CAP_DEFAULT = 500;
+const CAP_DEFAULT = 500;
 
 // The locked v5 defaults (MESITA-723). Zero column is all 0 by definition.
 export const DEFAULT_CONFIG: RewardsConfig = {
@@ -157,7 +157,7 @@ export const DEFAULT_CONFIG: RewardsConfig = {
 };
 
 /** Snap any number to the 5% grid: ≤0 → 0, else clamp to [10,50] rounded to 5. */
-export function snapRate(v: unknown): number {
+function snapRate(v: unknown): number {
   const n = typeof v === "number" && Number.isFinite(v) ? v : 0;
   if (n <= 0) return 0;
   const stepped = Math.round(n / RATE_STEP) * RATE_STEP;

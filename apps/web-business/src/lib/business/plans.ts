@@ -9,7 +9,7 @@ import type { PlacePlan } from "@/lib/api/places";
 // for display.
 
 /** Catalog id — Free or the single Verified membership. */
-export type SubscriptionId = "free" | "verified";
+type SubscriptionId = "free" | "verified";
 
 type SubscriptionRow = {
   id: SubscriptionId;

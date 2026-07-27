@@ -24,7 +24,7 @@ export const GOOGLE_PLACES_AUTOCOMPLETE_URL =
   "https://places.googleapis.com/v1/places:autocomplete";
 export const GOOGLE_PLACES_TEXT_SEARCH_URL =
   "https://places.googleapis.com/v1/places:searchText";
-export const GOOGLE_PLACES_DETAILS_BASE =
+const GOOGLE_PLACES_DETAILS_BASE =
   "https://places.googleapis.com/v1/places";
 
 // Reads SUPA_GMP_KEY, returning a typed error envelope when missing so the

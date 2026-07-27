@@ -199,7 +199,7 @@ async function mapPool<T, R>(
   return results;
 }
 
-export async function textSortImages(
+async function textSortImages(
   openaiKey: string,
   descriptions: string[],
   prompt: string,

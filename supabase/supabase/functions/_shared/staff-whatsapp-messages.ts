@@ -4,7 +4,7 @@ import { type SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { normalizePhoneE164 } from "./phone.ts";
 import { sendWhatsAppText, type TwilioEnv } from "./twilio.ts";
 
-export const STAFF_WHATSAPP_HISTORY_LIMIT = 20;
+const STAFF_WHATSAPP_HISTORY_LIMIT = 20;
 
 export type StaffWhatsAppMessageRow = {
   direction: "inbound" | "outbound";
@@ -42,7 +42,7 @@ export async function appendStaffWhatsAppMessage(
   }
 }
 
-export async function loadStaffWhatsAppHistory(
+async function loadStaffWhatsAppHistory(
   admin: SupabaseClient,
   phoneE164: string,
   limit = STAFF_WHATSAPP_HISTORY_LIMIT,
@@ -61,7 +61,7 @@ export async function loadStaffWhatsAppHistory(
   return (data as StaffWhatsAppMessageRow[]).reverse();
 }
 
-export function formatStaffWhatsAppHistoryForLlm(
+function formatStaffWhatsAppHistoryForLlm(
   rows: StaffWhatsAppMessageRow[],
 ): string {
   if (!rows.length) return "";

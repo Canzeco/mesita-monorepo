@@ -9,7 +9,7 @@ import {
   type LucideIcon,
 } from 'lucide-react-native';
 
-export type SocialActionKind = 'visit' | 'like' | 'reward' | 'story';
+type SocialActionKind = 'visit' | 'like' | 'reward' | 'story';
 
 export const SOCIAL_ACTION_META: Record<
   SocialActionKind,

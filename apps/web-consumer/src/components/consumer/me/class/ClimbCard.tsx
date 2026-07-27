@@ -6,7 +6,7 @@ import { Check, type LucideIcon } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 
-export type ClimbCardAction = {
+type ClimbCardAction = {
   label: string;
   href?: string;
   onClick?: () => void;

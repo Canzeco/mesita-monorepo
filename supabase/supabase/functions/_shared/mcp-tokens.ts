@@ -5,7 +5,7 @@
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { json } from "./http.ts";
 
-export const MCP_TOKEN_PREFIX = "mesita_mcp_";
+const MCP_TOKEN_PREFIX = "mesita_mcp_";
 
 function bytesToHex(buf: ArrayBuffer): string {
   return [...new Uint8Array(buf)]
@@ -19,7 +19,7 @@ function bytesToBase64Url(bytes: Uint8Array): string {
   return btoa(s).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 }
 
-export async function hashMcpToken(plaintext: string): Promise<string> {
+async function hashMcpToken(plaintext: string): Promise<string> {
   const digest = await crypto.subtle.digest(
     "SHA-256",
     new TextEncoder().encode(plaintext),

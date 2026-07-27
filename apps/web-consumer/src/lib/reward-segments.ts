@@ -16,7 +16,7 @@ import type { ConsumerClass } from "@/lib/mock/place";
 
 // The business discount strategy that sets how generous a place's grid is.
 // Dominant was removed — the strategies are Zero / Conservative / Aggressive.
-export type GridStrategy = "zero" | "conservative" | "aggressive";
+type GridStrategy = "zero" | "conservative" | "aggressive";
 
 // Ontology of a rung (per the v5 canonical definitions):
 //   class  — who the guest is (Standard / Magnetic / Premium)
@@ -125,7 +125,7 @@ export function segmentKeyForClass(classKey: ConsumerClass): RewardSegmentKey {
 // story, a Google review). A Standard/Premium guest never reaches the Magnetic
 // rung (invite-only); a Magnetic guest reaches it via their own class rung.
 // Returned worst→best.
-export function reachableSegments(classKey: ConsumerClass): RewardSegment[] {
+function reachableSegments(classKey: ConsumerClass): RewardSegment[] {
   const mine = segmentKeyForClass(classKey);
   const universal: RewardSegmentKey[] = ["story", "welcome", "review"];
   return REWARD_SEGMENTS.filter(

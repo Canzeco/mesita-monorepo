@@ -5,7 +5,7 @@ import { invokeEF } from "./_invoke";
 // and (server-side) fires the outbound call to the place — the client just
 // collects the params and shows the pending state.
 
-export type CreatedReservation = {
+type CreatedReservation = {
   reservation: {
     id: string;
     reserved_at: string;

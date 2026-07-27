@@ -25,7 +25,7 @@ import {
   type MenuKind,
 } from '@/lib/menu-url';
 
-export type MenuViewerItem = {
+type MenuViewerItem = {
   name: string;
   url: string;
   kind: MenuKind;

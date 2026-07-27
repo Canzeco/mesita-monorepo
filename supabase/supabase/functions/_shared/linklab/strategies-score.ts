@@ -9,7 +9,7 @@ const STOP = new Set([
   "bar","cafe","café","taqueria","taquería","by","en","mx","mexico","méxico",
 ]);
 
-export function stripAccents(s: string): string {
+function stripAccents(s: string): string {
   return s.normalize("NFD").replace(/[̀-ͯ]/g, "");
 }
 export function nameTokens(name: string): string[] {
@@ -17,7 +17,7 @@ export function nameTokens(name: string): string[] {
     .split(/[^a-z0-9]+/)
     .filter((t) => t.length >= 3 && !STOP.has(t));
 }
-export function domainLabel(host: string): string {
+function domainLabel(host: string): string {
   const parts = host.split(".");
   // second-level label (skip common 2-part TLDs like com.mx)
   if (parts.length >= 3 && ["com", "co", "org", "net"].includes(parts[parts.length - 2])) {
@@ -66,7 +66,7 @@ export function igCandidates(urls: string[], name: string): string[] {
   const toks = nameTokens(name);
   return out.sort((a, b) => igScore(b, toks) - igScore(a, toks));
 }
-export function igScore(handle: string, toks: string[]): number {
+function igScore(handle: string, toks: string[]): number {
   const h = handle.replace(/[^a-z0-9]/g, "");
   let s = 0;
   for (const t of toks) if (h.includes(stripAccents(t))) s += t.length;

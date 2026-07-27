@@ -28,7 +28,7 @@ const hiddenFromA11y = Platform.select({
   },
 });
 
-export type ChannelKey =
+type ChannelKey =
   | 'website'
   | 'whatsapp'
   | 'instagram'

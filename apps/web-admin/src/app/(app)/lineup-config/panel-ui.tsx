@@ -105,7 +105,7 @@ export function Slider({
  * Kept for the neutral shell's tinted variant; the subscore boxes now use the
  * calmer CARD_ACCENTS spine instead (Pato 2026-07-26). Same hue per subscore
  * as the playground's ScoreBox colors. */
-export const CARD_TINTS = {
+const CARD_TINTS = {
   sky: "border-sky-500/25 bg-sky-500/[0.04]",
   emerald: "border-emerald-500/25 bg-emerald-500/[0.04]",
   amber: "border-amber-500/25 bg-amber-500/[0.04]",

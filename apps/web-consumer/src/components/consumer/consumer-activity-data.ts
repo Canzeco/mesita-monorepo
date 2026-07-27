@@ -7,7 +7,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 
-export type ActivityKind =
+type ActivityKind =
   | "earned"
   | "saved"
   | "booked"

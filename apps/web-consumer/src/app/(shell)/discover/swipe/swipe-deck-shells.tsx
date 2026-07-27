@@ -165,7 +165,7 @@ export function withUserDistance(place: Place, coords: Coords | null): Place {
   return place.distance_km != null ? place : { ...place, distance_km: 0 };
 }
 
-export function toCoord(v: unknown): number | null {
+function toCoord(v: unknown): number | null {
   const n = typeof v === "number" ? v : typeof v === "string" ? Number(v) : NaN;
   return Number.isFinite(n) ? n : null;
 }

@@ -28,7 +28,7 @@ export type Channels = Record<ChannelKey, string | null>;
 // Hostname → channel column. Accepts exact hostnames and subdomain matches
 // (`m.facebook.com` → `facebook_url`). `didi` rules are loose
 // because the TLD varies by country (`.com`, `.com.mx`, `.es`, `.com.ar`).
-export function matchChannel(host: string): ChannelKey | null {
+function matchChannel(host: string): ChannelKey | null {
   const h = host.replace(/^www\./, "").toLowerCase();
   if (h === "instagram.com" || h.endsWith(".instagram.com")) return "instagram_url";
   if (h === "facebook.com" || h.endsWith(".facebook.com")) return "facebook_url";
@@ -167,7 +167,7 @@ export function domainOf(url: string | null | undefined): string | null {
 // the host must match one of those domains (or a subdomain) AND carry a path
 // beyond "/" — guards against a bare host or a hallucinated one. `allowed=null`
 // accepts any web host (used for resolving an arbitrary official website).
-export function validHost(v: unknown, allowed: string[] | null): string | null {
+function validHost(v: unknown, allowed: string[] | null): string | null {
   if (typeof v !== "string" || !v) return null;
   let u: URL;
   try {

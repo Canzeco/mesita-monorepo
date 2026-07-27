@@ -36,7 +36,7 @@ const TIME_SLOTS = [
 const MIN_PARTY = 1;
 const MAX_PARTY = 12;
 
-export type DateOption = {
+type DateOption = {
   iso: string;
   weekday: string;
   day: number;

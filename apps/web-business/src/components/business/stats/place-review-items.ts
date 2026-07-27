@@ -1,6 +1,6 @@
 import type { MyPlace } from "@/lib/api/places";
 
-export type ReviewItem = {
+type ReviewItem = {
   id: string;
   source: "Mesita" | "Google";
   author: string;

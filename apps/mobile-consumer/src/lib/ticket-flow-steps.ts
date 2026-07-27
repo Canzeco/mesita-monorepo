@@ -1,6 +1,6 @@
 import { storyTagInstruction } from "@/lib/api/pay";
 
-export type TicketStepCopyContext = {
+type TicketStepCopyContext = {
   placeInstagramHandle?: string | null;
 };
 
@@ -45,7 +45,7 @@ export type TicketFlowStepView = {
   state: TicketFlowStepState;
 };
 
-export type TicketProgressInput = {
+type TicketProgressInput = {
   kind: TicketKind | string;
   status: TicketStatus | string;
   story_status: StoryStatus | string;

@@ -14,7 +14,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { PlacePlan } from "./places";
 import { invokeEF } from "./_invoke";
 
-export type ChangeSubscriptionResult = {
+type ChangeSubscriptionResult = {
   plan: PlacePlan;
   // Present when the caller must complete Stripe Checkout (real mode) or
   // when the mock grant wants a redirect to the success URL.

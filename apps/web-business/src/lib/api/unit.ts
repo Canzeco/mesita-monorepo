@@ -16,7 +16,7 @@ import { invokeEF } from "./_invoke";
 // with the full Ticket type and re-introduce the ticket helpers EF wrappers.
 type PlaceTicketStub = Record<string, unknown>;
 
-export type UnitOverview = {
+type UnitOverview = {
   user: { id: string; email: string | null };
   // True when the EF resolved the caller as a super-admin (their email
   // is in public.super_admins). Drives the Topbar banner.

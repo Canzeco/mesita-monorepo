@@ -7,7 +7,7 @@ import { Pressable, Text, View } from 'react-native';
 import { GRADIENT_DIAGONAL, GRADIENTS } from '@/constants/brand';
 import { useReduceMotion } from '@/lib/useReduceMotion';
 
-export type BoxTint =
+type BoxTint =
   | 'pink'
   | 'sky'
   | 'emerald'
@@ -86,7 +86,7 @@ function TintedIconTile({
   );
 }
 
-export function BoxShell({
+function BoxShell({
   iconTint,
   icon,
   title,

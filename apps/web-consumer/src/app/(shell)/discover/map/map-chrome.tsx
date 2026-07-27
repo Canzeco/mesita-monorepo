@@ -84,7 +84,7 @@ export function RecentreButton({
   );
 }
 
-export function LegendDot({
+function LegendDot({
   color,
   icon,
   children,

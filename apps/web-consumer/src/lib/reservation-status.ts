@@ -13,7 +13,7 @@ import {
 } from "lucide-react";
 import type { ReservationStatus } from "@/lib/mock/reservations-mock";
 
-export type ReservationStatusMeta = {
+type ReservationStatusMeta = {
   label: string;
   /** Pill styling — border + tint + text, semantic tokens only. */
   pillClass: string;
@@ -25,7 +25,7 @@ export type ReservationStatusMeta = {
   banner: string | null;
 };
 
-export const RESERVATION_STATUS_META: Record<ReservationStatus, ReservationStatusMeta> = {
+const RESERVATION_STATUS_META: Record<ReservationStatus, ReservationStatusMeta> = {
   created: {
     label: "Created",
     pillClass: "border-sky-500/30 bg-sky-50 text-sky-800",

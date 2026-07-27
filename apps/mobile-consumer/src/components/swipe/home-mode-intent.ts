@@ -11,7 +11,7 @@
 //   useEffect(() => subscribeHomeMode((m) => m === 'favorites' && setMode('favorites')), []);
 // which completes the "View" jump. Everything else here is self-contained.
 
-export type HomeMode = 'favorites';
+type HomeMode = 'favorites';
 
 const listeners = new Set<(mode: HomeMode) => void>();
 

@@ -109,7 +109,7 @@ export function messageLooksLikeBill(body: string): boolean {
   return /^(sin\s+propina|sin\s+tip)/i.test(body.trim());
 }
 
-export function moneyToCents(v: string): number | null {
+function moneyToCents(v: string): number | null {
   const n = Number(v);
   if (!Number.isFinite(n) || n < 0) return null;
   return Math.round(n * 100);

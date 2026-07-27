@@ -1,6 +1,6 @@
 import { mexicoZone } from "./local-time.ts";
 
-export function daypartLabel(hour: number): string {
+function daypartLabel(hour: number): string {
   if (hour < 5) return "the middle of the night";
   if (hour < 11) return "morning";
   if (hour < 15) return "midday";

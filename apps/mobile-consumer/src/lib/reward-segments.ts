@@ -14,7 +14,7 @@
 export type RewardClassKey = 'standard' | 'premium' | 'magnetic';
 
 // The business discount strategy that sets how generous a place's grid is.
-export type GridStrategy = 'zero' | 'conservative' | 'aggressive';
+type GridStrategy = 'zero' | 'conservative' | 'aggressive';
 
 type RewardSegmentKind = 'class' | 'action' | 'visit';
 
@@ -95,7 +95,7 @@ export const REWARD_SEGMENTS: readonly RewardSegment[] = [
   },
 ];
 
-export const REWARD_SEGMENT_BY_KEY = Object.fromEntries(
+const REWARD_SEGMENT_BY_KEY = Object.fromEntries(
   REWARD_SEGMENTS.map((s) => [s.key, s]),
 ) as Record<RewardSegmentKey, RewardSegment>;
 
@@ -109,7 +109,7 @@ export function segmentKeyForClass(classKey: RewardClassKey): RewardSegmentKey {
 // The rungs a consumer can reach: their class rung + the three universal rungs
 // (a first visit, a story, a Google review). A Standard/Premium guest never
 // reaches Magnetic (invite-only); a Magnetic guest reaches it via their rung.
-export function reachableSegments(classKey: RewardClassKey): RewardSegment[] {
+function reachableSegments(classKey: RewardClassKey): RewardSegment[] {
   const mine = segmentKeyForClass(classKey);
   const universal: RewardSegmentKey[] = ['story', 'welcome', 'review'];
   return REWARD_SEGMENTS.filter(

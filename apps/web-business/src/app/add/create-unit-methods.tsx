@@ -90,7 +90,7 @@ export function MethodsPicker({
 // Keeps the chip visible so operators see the full supported set, and
 // nudges them to the best next action: the other auto-method when it's
 // available (still instant), otherwise the manual Talk-to-us path.
-export function MethodUnavailableBody({
+function MethodUnavailableBody({
   method,
   methods,
 }: {
@@ -138,7 +138,7 @@ export function MethodUnavailableBody({
   );
 }
 
-export function MethodChip({
+function MethodChip({
   active,
   unavailable,
   onClick,

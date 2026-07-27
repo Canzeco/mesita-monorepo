@@ -18,9 +18,9 @@ export type TicketFlowType = "A" | "B";
  *
  * Review runs on the consumer app after the ticket closes.
  */
-export type StaffLifecycleStepId = "scan" | "bill" | "story" | "pay" | "done";
+type StaffLifecycleStepId = "scan" | "bill" | "story" | "pay" | "done";
 
-export type StaffLifecycleStepState = "done" | "active" | "upcoming";
+type StaffLifecycleStepState = "done" | "active" | "upcoming";
 
 export type StaffLifecycleStepView = {
   id: StaffLifecycleStepId;
@@ -29,7 +29,7 @@ export type StaffLifecycleStepView = {
   hint?: string;
 };
 
-export type StaffTicketProgressInput = Pick<
+type StaffTicketProgressInput = Pick<
   BusinessTicket,
   "kind" | "status" | "story_status" | "check_subtotal_cents" | "total_cents"
 >;

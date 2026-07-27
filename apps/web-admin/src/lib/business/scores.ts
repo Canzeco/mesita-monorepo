@@ -97,7 +97,7 @@
 
 export type SubscoreId = "em" | "sm" | "gp" | "rp" | "xx" | "mp";
 
-export type SubscoreDef = {
+type SubscoreDef = {
   id: SubscoreId;
   short: string;
   name: string;
@@ -248,7 +248,7 @@ export type SmParams = {
 export const DIST_EXP = 3;
 const ZONE_SPILL_FRAC = 0.3;
 /** The CODE default for sm.where.defaultTolKm. 5 km = car metros. */
-export const DEFAULT_POINT_TOL_KM = 5;
+const DEFAULT_POINT_TOL_KM = 5;
 
 /** Time resolves to half-hour blocks. */
 export const TIME_BLOCK_H = 0.5;
@@ -259,14 +259,14 @@ export const OPENNESS_DAYS = 7;
 export const OPENNESS_SLOTS =
   OPENNESS_SLOTS_PER_HOUR * OPENNESS_HOURS * OPENNESS_DAYS;
 
-export const DEFAULT_SM_PARAMS: SmParams = {
+const DEFAULT_SM_PARAMS: SmParams = {
   where: { defaultTolKm: DEFAULT_POINT_TOL_KM },
   when: { patience: 0.35 },
   what: { tol: 0.5 },
 };
 
 /** Snap hours to the time grid. Everything time-shaped goes through this. */
-export function quantizeH(hours: number, blockH: number = TIME_BLOCK_H): number {
+function quantizeH(hours: number, blockH: number = TIME_BLOCK_H): number {
   if (!Number.isFinite(hours) || hours <= 0) return 0;
   if (blockH <= 0) return hours;
   return Math.round(hours / blockH) * blockH;
@@ -332,7 +332,7 @@ type WhenParts = {
  *   patience 1 → tolerant of future opens and short windows (waitTol=24 h, need 0.5 h)
  * Never-open in the horizon → 0. No hours data is the caller's job (→ when 1).
  */
-export function whenParts(bits: readonly boolean[], patience: number): WhenParts {
+function whenParts(bits: readonly boolean[], patience: number): WhenParts {
   const p = clamp01(patience);
   const { opensInSlots, openRunSlots } = opennessStats(bits);
   if (opensInSlots == null) {
@@ -388,7 +388,7 @@ function whatScore(rel: WhatRelation, p: SmWhatParams): number {
   }
 }
 
-export type SmInputs = {
+type SmInputs = {
   /** km to W (0 inside a named region) · null = unknown → where 1. */
   km: number | null;
   /** The consumer's distance tolerance (their Where filter slider), km ·
@@ -571,7 +571,7 @@ export type DeckSlot = {
   score: number;
 };
 
-export type LaneFill = {
+type LaneFill = {
   /** Cards the lane put forward (min(eligible, N)). */
   taken: number;
   /** Candidates with score > 0 in this lane. */
@@ -882,7 +882,7 @@ export function coerceScoringSettings(raw: unknown): ScoringSettings {
 // EM compares two independently-built vectors, neither of which knows the
 // pair).
 
-export type ContextField = {
+type ContextField = {
   field: string;
   status: "live" | "planned" | "spec";
   note?: string;

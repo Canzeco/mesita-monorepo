@@ -16,7 +16,7 @@ import { sendStaffWhatsAppReply } from "./staff-whatsapp-messages.ts";
 import type { TwilioEnv } from "./twilio.ts";
 
 /** Parse flow_token from Twilio InteractiveData / FlowData. */
-export function extractStaffInviteFlowToken(
+function extractStaffInviteFlowToken(
   params: Record<string, string>,
 ): string | null {
   const raw = params.InteractiveData ?? params.FlowData ?? "";

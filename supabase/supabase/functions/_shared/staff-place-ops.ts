@@ -23,13 +23,13 @@ export {
   selectDiscountPromoRate,
 } from "./staff-place-ops-eligibility.ts";
 
-export function tierLabelEs(tierKey: string | null | undefined): string {
+function tierLabelEs(tierKey: string | null | undefined): string {
   if (tierKey === "premium") return "Premium";
   return "Free";
 }
 
 /** What this guest would get at this place right now (for staff WhatsApp). */
-export function formatGuestRewardLine(opts: {
+function formatGuestRewardLine(opts: {
   ratePercent: number;
   firstVisit: boolean;
   tierKey: string | null | undefined;

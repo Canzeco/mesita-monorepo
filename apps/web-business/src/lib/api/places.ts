@@ -18,7 +18,7 @@ type PlaceStatus =
   | "pending_review"
   | "pending_verification";
 
-export type FiscalType = "formal" | "informal";
+type FiscalType = "formal" | "informal";
 // Place plan keys (public.membership enum): Free + Verified (`pro`,
 // MX$1,000/year Promos v4 membership) + legacy `ultra`. Billing goes through
 // business-web-change-subscription — see lib/business/plans.ts and

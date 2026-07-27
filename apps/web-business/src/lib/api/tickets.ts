@@ -6,7 +6,7 @@ type TicketStatus = Database["public"]["Enums"]["ticket_status"];
 type TicketKind = Database["public"]["Enums"]["ticket_kind"];
 type StoryStatus = Database["public"]["Enums"]["story_status"];
 
-export type TicketConsumer = {
+type TicketConsumer = {
   id: string;
   code: string | null;
   full_name: string | null;

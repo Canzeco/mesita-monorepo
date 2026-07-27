@@ -22,7 +22,7 @@ import {
 } from "@/lib/menu-url";
 import { cn } from "@/lib/utils";
 
-export type MenuViewerItem = {
+type MenuViewerItem = {
   name: string;
   url: string;
   kind: MenuKind;

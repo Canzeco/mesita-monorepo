@@ -28,7 +28,7 @@ export type Tint =
   | "indigo"
   | "slate";
 
-export const TINT_CHIP: Record<Tint, string> = {
+const TINT_CHIP: Record<Tint, string> = {
   rose: "bg-rose-500/10 text-rose-600",
   pink: "bg-pink-500/10 text-pink-600",
   amber: "bg-amber-500/10 text-amber-600",

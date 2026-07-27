@@ -29,7 +29,7 @@ export function buildSearchCsvRows(result: SearchResponse): string[] {
   return rows;
 }
 
-export function csvCell(s: string): string {
+function csvCell(s: string): string {
   if (/[",\n]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
   return s;
 }

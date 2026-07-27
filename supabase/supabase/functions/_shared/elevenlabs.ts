@@ -11,8 +11,8 @@ const EL_BASE = "https://api.elevenlabs.io";
 
 // The "Mesita Reservationist (Spanish MX)" agent + the "Mesita Reservations
 // (Businesses)" outbound line, both in the ElevenAgents workspace.
-export const DEFAULT_AGENT_ID = "agent_2201kxsktw0me9rb2kdtqerrgzha";
-export const DEFAULT_FROM_NUMBER = "+16282960710";
+const DEFAULT_AGENT_ID = "agent_2201kxsktw0me9rb2kdtqerrgzha";
+const DEFAULT_FROM_NUMBER = "+16282960710";
 
 export function elevenLabsKey(): string | null {
   // Canonical name ELEVENLABS_KEY; ELEVEN_KEY accepted (the name the secret was
@@ -160,7 +160,7 @@ export type CallOverrides = {
 // Flip the env on ONLY after enabling prompt + first-message + language
 // overrides in the agent's ElevenLabs Security tab. Until then calls go
 // vars-only — call_direction still rides along for a branching console prompt.
-export function overridesAllowed(): boolean {
+function overridesAllowed(): boolean {
   const v = (Deno.env.get("ELEVENLABS_ALLOW_OVERRIDES") ?? "").trim().toLowerCase();
   return v === "1" || v === "true" || v === "yes";
 }

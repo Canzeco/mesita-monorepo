@@ -123,7 +123,7 @@ export function LaneBadge({ laneId, title }: { laneId: LaneId; title?: string })
 }
 
 /** A verbatim context document, labeled. */
-export function DocPre({
+function DocPre({
   label,
   text,
   empty,
@@ -212,7 +212,7 @@ export function FactorRow({
 /** A vector's semantic profile as a mirrored waveform. Every dim lands in a
  * bin (positive mass drawn up, negative mass down) — aggregation, never
  * sampling: the old strip read 1 dim in ~24 and missed 96% of the vector. */
-export function VectorStrip({
+function VectorStrip({
   vec,
   mini,
   className = "",
