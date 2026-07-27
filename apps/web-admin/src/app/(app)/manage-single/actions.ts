@@ -521,4 +521,8 @@ export async function suggestPlaces(
 
 // The create-unit pipeline is shared with the bulk creator — see the single
 // canonical implementation in @/lib/create-unit-from-place.
-export { createUnitFromPlaceId } from "@/lib/create-unit-from-place";
+// The create-unit pipeline is shared with the bulk creator — see the single
+// canonical implementation in @/lib/create-unit-from-place.
+export async function createUnitFromPlaceId(placeId: string) {
+  return createUnitFromPlaceIdImpl(placeId);
+}
