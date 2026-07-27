@@ -21,7 +21,7 @@ export type FamilyKey =
   | "experiences"
   | "culture_arts";
 
-export type PlaceFamily = {
+type PlaceFamily = {
   key: FamilyKey;
   label: string;
   emoji: string;
