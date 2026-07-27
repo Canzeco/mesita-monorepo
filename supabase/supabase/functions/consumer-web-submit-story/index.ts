@@ -27,7 +27,7 @@ import {
 import {
   loadRewardsGrid,
   offersSegment,
-  placePosture,
+  placeStrategy,
 } from "../_shared/rewards-config.ts";
 
 type Body = { ticketId?: string; screenshotUrl?: string };
@@ -89,7 +89,7 @@ Deno.serve(async (req) => {
   }
   // Promos v5 (MESITA-723): the Story rung is UNIVERSAL — any consumer may opt
   // in from 'not_required' as long as the place's program runs the Instagram
-  // Story rung at its posture (grid.story[posture] > 0). Legacy kind-seeded
+  // Story rung at its strategy (grid.story[strategy] > 0). Legacy kind-seeded
   // story-required tickets already sit in 'pending' and skip this gate.
   if (ticket.story_status == null || ticket.story_status === "not_required") {
     const placeRow = await admin
@@ -103,7 +103,7 @@ Deno.serve(async (req) => {
       return json({ ok: false, error: "Place not found" }, 404);
     }
     const grid = await loadRewardsGrid(admin);
-    if (!offersSegment(placePosture(placeRow.data), grid, "story")) {
+    if (!offersSegment(placeStrategy(placeRow.data), grid, "story")) {
       return json(
         { ok: false, error: "This place doesn't run the Instagram Story reward." },
         409,

@@ -6,6 +6,7 @@ import { QRCodeSVG } from "qrcode.react";
 import { displayConsumerCode } from "@/lib/consumer-code";
 import { formatCurrency } from "@/lib/api/profile";
 import { useConsumerClass } from "@/lib/class-context";
+import { classProperLabel, isElevatedClass } from "@/lib/consumer-data";
 import { cn, firstInitials, formatCompactCount } from "@/lib/utils";
 import type { RewardStats } from "@/lib/hooks/useConsumerPayTickets";
 
@@ -49,7 +50,14 @@ export function MyQrCard({
 }) {
   const displayCode = displayConsumerCode(code);
   const { key, origin, followers } = useConsumerClass();
-  const isPremium = key === "premium";
+  const isElevated = isElevatedClass(key);
+  // Standard = coral; Premium adds violet; Magnetic (top tier) shifts to gold.
+  const cardGradient =
+    key === "magnetic"
+      ? "bg-[linear-gradient(150deg,#ff7a45_0%,#ffb03d_55%,#e0982e_100%)]"
+      : isElevated
+        ? "bg-[linear-gradient(150deg,#ff7a45_0%,#ff3d73_45%,#a13cf0_100%)]"
+        : "bg-[linear-gradient(150deg,#ff7a45_0%,#ff4d6d_55%,#ff2d78_100%)]";
   const displayName = name?.trim() || "Mesita member";
   const igConnected = origin === "instagram" || Boolean(instagramHandle);
 
@@ -70,9 +78,7 @@ export function MyQrCard({
     <section
       className={cn(
         "overflow-hidden rounded-[28px] px-5 pt-5 pb-5 text-white shadow-[0_20px_44px_-22px_rgba(255,77,109,0.6)]",
-        isPremium
-          ? "bg-[linear-gradient(150deg,#ff7a45_0%,#ff3d73_45%,#a13cf0_100%)]"
-          : "bg-[linear-gradient(150deg,#ff7a45_0%,#ff4d6d_55%,#ff2d78_100%)]",
+        cardGradient,
       )}
     >
       {/* Header — brand + class chip */}
@@ -84,8 +90,8 @@ export function MyQrCard({
           Mesita Card
         </span>
         <span className="flex shrink-0 items-center gap-1.5 rounded-full bg-white/22 px-2.5 py-1 text-[10px] font-extrabold tracking-widest uppercase">
-          {isPremium ? <Crown className="size-3 fill-current" /> : null}
-          {isPremium ? "Premium" : "Free"}
+          {isElevated ? <Crown className="size-3 fill-current" /> : null}
+          {classProperLabel(key)}
         </span>
       </div>
 
@@ -134,13 +140,13 @@ export function MyQrCard({
             {displayName}
           </p>
           <p className="mt-0.5 flex items-center gap-1.5 text-[11px] text-white/90">
-            {isPremium ? (
+            {isElevated ? (
               <>
                 <Crown className="size-3 shrink-0 fill-current" />
-                Premium · via {ORIGIN_LABEL[origin] ?? "Mesita"}
+                {classProperLabel(key)} · via {ORIGIN_LABEL[origin] ?? "Mesita"}
               </>
             ) : (
-              "Free member"
+              "Standard member"
             )}
           </p>
         </div>

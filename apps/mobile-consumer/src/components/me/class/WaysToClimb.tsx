@@ -17,38 +17,25 @@ export function WaysToClimb({
   onConnectInstagram: () => void;
 }) {
   const premium = CLASSES.find((c) => c.id === 'premium')!;
+  const magnetic = CLASSES.find((c) => c.id === 'magnetic')!;
   const { consumerClass, profile } = useAuth();
   const { key, origin, followers } = useEffectiveClass(
     consumerClass,
     profile?.instagram_handle ?? null,
   );
-  const isFree = key === 'free';
+  const isStandard = key === 'standard';
 
   const cards: ClimbCardData[] = [
     {
-      key: 'free',
+      key: 'standard',
       icon: Smile,
-      title: 'Free',
+      title: 'Standard',
       price: '$0',
       priceNote: 'always free',
       desc: 'Your default account at no cost. Get a base discount at Verified Partners, standard recommendations, and book up to 2 reservations every month.',
-      reached: isFree,
+      reached: isStandard,
       reachedLabel: 'Current class',
-      note: isFree ? undefined : 'Included in every account',
-    },
-    {
-      key: 'instagram',
-      icon: AtSign,
-      igGradient: true,
-      title: 'Premium',
-      via: 'Instagram',
-      accent: true,
-      price: `${premium.followerThreshold.toLocaleString('en-US')}+ followers`,
-      priceNote: 'no payment — earned with reach',
-      desc: 'Connect an Instagram with 1,000+ followers and post a story each time you visit. You get full Premium — boosted discounts, personalized recommendations, and unlimited reservations — without paying a peso.',
-      reached: origin === 'instagram',
-      reachedLabel: 'Connected',
-      action: { label: 'Connect', onPress: onConnectInstagram },
+      note: isStandard ? undefined : 'Included in every account',
     },
     {
       key: 'subscription',
@@ -65,6 +52,20 @@ export function WaysToClimb({
         label: 'Subscribe on web',
         onPress: () => void Linking.openURL(PREMIUM_SUBSCRIBE_URL),
       },
+    },
+    {
+      key: 'instagram',
+      icon: AtSign,
+      igGradient: true,
+      title: 'Magnetic',
+      via: 'Instagram',
+      accent: true,
+      price: `${magnetic.followerThreshold.toLocaleString('en-US')}+ followers`,
+      priceNote: 'no payment — earned with reach',
+      desc: "Connect an Instagram with 1,000+ followers and post a story each time you visit. You unlock Magnetic — Mesita's top, invite-only tier — with the biggest discounts, personalized recommendations, and unlimited reservations, without paying a peso.",
+      reached: origin === 'instagram',
+      reachedLabel: 'Connected',
+      action: { label: 'Connect', onPress: onConnectInstagram },
     },
   ];
 

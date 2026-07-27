@@ -12,6 +12,7 @@ import { toast } from "@/lib/toast";
 import { errMsg } from "@/lib/utils";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { useConsumerClass } from "@/lib/class-context";
+import { isElevatedClass } from "@/lib/consumer-data";
 import { SHEET_BODY_CLASS } from "@/lib/ui-classes";
 import {
   apiCreateMcpToken,
@@ -26,7 +27,8 @@ import {
 // Mesita profile (find places, book, check rewards).
 //
 // decision: Pato — real Consumer MCP, not a copy-paste tip (MESITA-265).
-// decision: Pato — Premium-only (not Free) (MESITA-266).
+// decision: Pato — elevated classes only: Premium & Magnetic, not Standard
+// (MESITA-266).
 
 function cursorSnippet(mcpUrl: string, token: string): string {
   return JSON.stringify(
@@ -54,7 +56,8 @@ export function AiConnectModal({
 }) {
   const supabase = useBrowserSupabase();
   const { key: classKey } = useConsumerClass();
-  const isPremium = classKey === "premium";
+  // AI connect is an elevated-class perk — Premium and Magnetic, not Standard.
+  const canConnect = isElevatedClass(classKey);
   const [tokens, setTokens] = useState<McpTokenMeta[]>([]);
   const [loading, setLoading] = useState(false);
   const [minting, setMinting] = useState(false);
@@ -83,7 +86,7 @@ export function AiConnectModal({
   }, [open, refresh]);
 
   async function mint() {
-    if (!isPremium) {
+    if (!canConnect) {
       toast("AI connect is for Mesita Premium — upgrade to create a token");
       return;
     }
@@ -147,17 +150,18 @@ export function AiConnectModal({
           Claude, Cursor, or ChatGPT. Your AI can then find places, save them,
           book tables, and check rewards — as you.{" "}
           <span className="text-foreground font-semibold">
-            Available for Premium members only
+            Available for Premium and Magnetic members
           </span>
-          — not on Free.
+          — not on Standard.
         </p>
 
-        {!isPremium && (
+        {!canConnect && (
           <div className="mt-4 flex items-start gap-3 rounded-2xl border border-amber-500/25 bg-amber-500/10 px-4 py-3">
             <Crown className="mt-0.5 h-4 w-4 shrink-0 text-amber-700" />
             <p className="text-[12px] leading-relaxed text-amber-950">
-              You’re on Free. Upgrade to Mesita Premium to create an MCP token
-              and let an AI control your profile.
+              You’re on Standard. Upgrade to Premium — or reach Magnetic via
+              Instagram — to create an MCP token and let an AI control your
+              profile.
             </p>
           </div>
         )}
@@ -167,7 +171,7 @@ export function AiConnectModal({
             <button
               type="button"
               onClick={mint}
-              disabled={minting || !isPremium}
+              disabled={minting || !canConnect}
               className="hover:bg-muted flex w-full items-center gap-3 px-4 py-3 text-left transition disabled:opacity-60"
             >
               <IconCircle tint="violet">
@@ -181,12 +185,12 @@ export function AiConnectModal({
                 <span className="block text-sm font-semibold">
                   {minting
                     ? "Creating token…"
-                    : isPremium
+                    : canConnect
                       ? "Create MCP token"
                       : "Premium required"}
                 </span>
                 <span className="text-muted-foreground block truncate text-[11px]">
-                  {isPremium
+                  {canConnect
                     ? "Shown once — copy it into your AI client"
                     : "Upgrade to Premium to mint a token"}
                 </span>

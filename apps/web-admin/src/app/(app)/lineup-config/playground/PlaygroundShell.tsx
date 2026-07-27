@@ -147,13 +147,13 @@ export function PlaygroundShell() {
         current.sm,
       );
       const gpP = gpParts(p.google_review_count, p.google_stars_overall, current.gp);
-      const posture = strategyForPlace({
+      const placeStrategy = strategyForPlace({
         welcome_free_rate: p.welcome_free_rate,
         welcome_premium_rate: p.welcome_premium_rate,
         free_rate: p.free_rate,
         premium_rate: p.premium_rate,
       });
-      const rpVal = rpScore(posture, current.rp);
+      const rpVal = rpScore(placeStrategy, current.rp);
       const mp = p.manual_priority ?? DEFAULT_MANUAL_PRIORITY;
       const draws = Object.fromEntries(
         LANES.map((l) => [l.id, unitDraw(p.id, l.id, 1)]),
@@ -167,7 +167,7 @@ export function PlaygroundShell() {
           laneScore(l, { em, sm: smP.sm, gp: gpP.gp, rp: rpVal, xx: xxVals[l.id], mp }),
         ]),
       ) as Record<LaneId, number>;
-      parts.set(p.id, { em, placeDoc, placeVec, w, win, rel, smP, gpP, posture, rpVal, mp, draws, xxVals, laneScores });
+      parts.set(p.id, { em, placeDoc, placeVec, w, win, rel, smP, gpP, placeStrategy, rpVal, mp, draws, xxVals, laneScores });
       return { id: p.id, scores: laneScores };
     });
 

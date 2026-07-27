@@ -4,6 +4,7 @@ import { Text, View } from 'react-native';
 
 import { GRADIENT_DIAGONAL, GRADIENTS } from '@/constants/brand';
 import type { Place } from '@/lib/api/places';
+import { isElevatedClass } from '@/lib/consumer-classes';
 import { resolvePromoRateFromPlaceRow } from '@/lib/promo-rates';
 import { useAuth } from '@/providers/auth';
 
@@ -17,12 +18,12 @@ export function PromoChip({
   showWhenEmpty?: boolean;
 }) {
   const { consumerClass } = useAuth();
-  const classKey = consumerClass?.key === 'premium' ? 'premium' : 'free';
+  const classKey = consumerClass?.key ?? 'standard';
   const isFirstVisit = place.is_first_visit !== false;
   const promoPercent = resolvePromoRateFromPlaceRow(
     place as unknown as Record<string, unknown>,
     isFirstVisit,
-    classKey === 'premium',
+    isElevatedClass(classKey),
   );
   const textSize = size === 'md' ? 'text-[11.5px]' : 'text-[10.5px]';
   const iconSize = size === 'md' ? 12 : 10;

@@ -26,7 +26,7 @@ import {
 } from "./place-to-detail-helpers";
 import {
   buildPromoMatrixFromRow,
-  hasExplicitTierRates,
+  hasExplicitClassRates,
 } from "@/lib/promo-rates";
 
 export {
@@ -200,7 +200,7 @@ export function placeRowToDetail(row: Row, tags?: ResolvedTag[]): PlaceDetail {
     },
 
     promo_matrix: buildPromoMatrixFromRow(row, listingType),
-    promo_configured: hasExplicitTierRates(row),
+    promo_configured: hasExplicitClassRates(row),
     // Ticket cap — the promo applies to the first `monthly_promo_cap` of the
     // bill (a peso amount in the place's currency), then full price. 0 = no
     // cap. Reads the same column the business sets on the Promos page.

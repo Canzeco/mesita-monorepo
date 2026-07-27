@@ -57,7 +57,7 @@ export async function handleLookupCode(
   const name = c.full_name ||
     [c.first_name, c.last_name].filter(Boolean).join(" ") ||
     "Guest";
-  const tier = c.class_key ?? "free";
+  const tier = c.class_key ?? "standard";
   const ig = c.consumer_instagram_followers_count;
   const igLine = ig != null ? `\nInstagram followers: ${ig}` : "";
   const subLine = subRes.data

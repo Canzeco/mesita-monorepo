@@ -29,8 +29,16 @@ export type TierConfig = {
 
 // Promos v5 (MESITA-723): the promo rate resolver moved to the grid-authoritative
 // engine in ./rewards-config.ts (resolveTicketRate over the app_settings grid ×
-// the place's posture, best-of). selectprojectRate (v4, per-place columns) is
+// the place's strategy, best-of). selectprojectRate (v4, per-place columns) is
 // retired; the helpers below feed the new resolver's rate context.
+
+// Consumer-class perk gate: which classes clear the "Premium or better" bar.
+// Premium (paid) and Magnetic (Instagram-earned, the active top tier) both
+// pass; Standard / null / anonymous do not. Route every premium-perk class
+// check through this so Magnetic inherits Premium's perks (magnetic ≥ premium).
+export function isPremiumOrHigher(classKey: string | null | undefined): boolean {
+  return classKey === "premium" || classKey === "magnetic";
+}
 
 // Loads a tier's config row. Returns null if the key isn't in the lookup.
 export async function getTierConfig(

@@ -5,6 +5,8 @@ import Link from "next/link";
 import { Crown, Info, Percent, Sparkles } from "lucide-react";
 import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
 import { useConsumerClass } from "@/lib/class-context";
+import { classProperLabel, isElevatedClass } from "@/lib/consumer-data";
+import { cn } from "@/lib/utils";
 
 const ORIGIN_LABEL: Record<string, string> = {
   instagram: "Instagram",
@@ -17,23 +19,28 @@ const ORIGIN_LABEL: Record<string, string> = {
 // as two distinct cards with a gap so each is its own tap target.
 export function RewardsTopCards() {
   const { key, origin } = useConsumerClass();
-  const isPremium = key === "premium";
+  const isElevated = isElevatedClass(key);
   const [howOpen, setHowOpen] = useState(false);
 
   return (
     <>
       <div className="flex items-stretch gap-2.5">
-        {isPremium ? (
+        {isElevated ? (
           <Link
             href="/me"
             className="border-border bg-card flex flex-1 items-center gap-2.5 rounded-2xl border p-3 text-left transition active:scale-[0.99]"
           >
-            <span className="bg-tier-premium grid size-9 shrink-0 place-items-center rounded-xl text-white">
+            <span
+              className={cn(
+                "grid size-9 shrink-0 place-items-center rounded-xl text-white",
+                key === "magnetic" ? "bg-tier-gold" : "bg-tier-premium",
+              )}
+            >
               <Crown className="size-[18px] fill-current" />
             </span>
             <span className="min-w-0">
               <span className="text-foreground block text-[13px] leading-tight font-bold">
-                Premium active
+                {classProperLabel(key)} active
               </span>
               <span className="text-muted-foreground block truncate text-[11px]">
                 via {ORIGIN_LABEL[origin] ?? "Mesita"}
@@ -112,10 +119,10 @@ export function RewardsTopCards() {
             </span>
             <p className="text-muted-foreground text-[13px] leading-relaxed">
               <span className="text-foreground font-semibold">
-                Premium boosts them.
+                Premium and Magnetic boost them.
               </span>{" "}
-              Free gets the base discount; Premium unlocks bigger ones — free
-              with Instagram.
+              Standard gets the base discount; Premium and Magnetic unlock bigger
+              ones — Magnetic is free with Instagram.
             </p>
           </div>
         </div>

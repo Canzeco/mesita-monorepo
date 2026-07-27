@@ -3,7 +3,7 @@ import { AtSign, Crown, Smile } from 'lucide-react-native';
 import { Text, View } from 'react-native';
 
 import { GRADIENT_DIAGONAL, GRADIENTS } from '@/constants/brand';
-import { CLASSES } from '@/lib/consumer-classes';
+import { CLASSES, isElevatedClass } from '@/lib/consumer-classes';
 import { useEffectiveClass } from '@/lib/mock-class';
 import { useAuth } from '@/providers/auth';
 
@@ -14,11 +14,14 @@ export function CurrentClassCard() {
     profile?.instagram_handle ?? null,
   );
   const meta = CLASSES.find((c) => c.id === key)!;
-  const isPremium = key === 'premium';
+  const isElevated = isElevatedClass(key);
+  // Magnetic (top tier) reads gold; Premium reads its violet gradient.
+  const elevatedColors =
+    key === 'magnetic' ? [...GRADIENTS.gold] : [...GRADIENTS.premium];
   const Icon =
-    !isPremium ? Smile : origin === 'instagram' ? AtSign : Crown;
+    !isElevated ? Smile : origin === 'instagram' ? AtSign : Crown;
   const via =
-    !isPremium
+    !isElevated
       ? null
       : origin === 'instagram'
         ? 'via Instagram'
@@ -30,7 +33,7 @@ export function CurrentClassCard() {
 
   return (
     <LinearGradient
-      colors={isPremium ? [...GRADIENTS.premium] : [...GRADIENTS.free]}
+      colors={isElevated ? elevatedColors : [...GRADIENTS.free]}
       start={GRADIENT_DIAGONAL.start}
       end={GRADIENT_DIAGONAL.end}
       style={{
@@ -46,22 +49,22 @@ export function CurrentClassCard() {
           width: 40,
           height: 40,
           borderRadius: 12,
-          backgroundColor: isPremium
+          backgroundColor: isElevated
             ? 'rgba(255,255,255,0.2)'
             : 'rgba(38,4,9,0.06)',
           alignItems: 'center',
           justifyContent: 'center',
         }}
       >
-        <Icon color={isPremium ? '#fff' : '#260409'} size={20} />
+        <Icon color={isElevated ? '#fff' : '#260409'} size={20} />
       </View>
       <View style={{ flex: 1 }}>
         <Text
           className="font-display font-semibold tracking-tight"
           style={{
-            color: isPremium ? '#fff' : '#260409',
+            color: isElevated ? '#fff' : '#260409',
             fontSize: 22,
-            textShadowColor: isPremium ? 'rgba(0,0,0,0.35)' : 'transparent',
+            textShadowColor: isElevated ? 'rgba(0,0,0,0.35)' : 'transparent',
             textShadowOffset: { width: 0, height: 1 },
             textShadowRadius: 6,
           }}
@@ -71,10 +74,10 @@ export function CurrentClassCard() {
         {via ? (
           <Text
             style={{
-              color: isPremium ? 'rgba(255,255,255,0.95)' : '#775254',
+              color: isElevated ? 'rgba(255,255,255,0.95)' : '#775254',
               fontSize: 11,
               marginTop: 2,
-              textShadowColor: isPremium ? 'rgba(0,0,0,0.3)' : 'transparent',
+              textShadowColor: isElevated ? 'rgba(0,0,0,0.3)' : 'transparent',
               textShadowOffset: { width: 0, height: 1 },
               textShadowRadius: 4,
             }}

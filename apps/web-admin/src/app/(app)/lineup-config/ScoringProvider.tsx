@@ -143,7 +143,6 @@ export function ScoringProvider({
         zero: rp.zero,
         conservative: rp.conservative,
         aggressive: rp.aggressive,
-        dominant: rp.dominant,
       },
       xx: { control: xx.control },
     }),

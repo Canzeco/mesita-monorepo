@@ -20,7 +20,7 @@ import { isConsumerFirstVisit } from "../_shared/membership.ts";
 import {
   isActionVerified,
   loadRewardsGrid,
-  placePosture,
+  placeStrategy,
   resolveTicketRate,
 } from "../_shared/rewards-config.ts";
 import {
@@ -135,7 +135,7 @@ Deno.serve(async (req) => {
     return json({ ok: false, error: "Consumer not found" }, 404);
   }
 
-  // Promos v5 best-of (MESITA-723): the place's posture (from its v4 rate
+  // Promos v5 best-of (MESITA-723): the place's strategy (from its v4 rate
   // columns) × the operator grid on app_settings. The ticket already exists
   // (scan step), so exclude it from the first-visit count — otherwise Welcome
   // never fires on the scan → bill path. Actions verified before billing join
@@ -147,7 +147,7 @@ Deno.serve(async (req) => {
     ticket.project_id,
     ticketId,
   );
-  const ratePercent = resolveTicketRate(placePosture(place), grid, {
+  const ratePercent = resolveTicketRate(placeStrategy(place), grid, {
     classKey: consumerRow.data.class_key,
     isFirstVisit: firstVisit,
     storyVerified: isActionVerified(ticket.story_status),

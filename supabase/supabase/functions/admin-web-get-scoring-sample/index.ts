@@ -4,7 +4,7 @@
 // consumers and REAL places, with everything the frontend scoring draft needs
 // to compute the four Subscores — ES (consumer+intent doc × place doc), GP
 // (google review count × rating), IC (geo + hours vs a synthetic query time)
-// and RP (posture from the live promo rates on projects).
+// and RP (strategy from the live promo rates on projects).
 //
 // Consumer taste comes from what they actually saved/visited (saved_places /
 // paid tickets → place categories+tags). Empty history returns empty arrays —
@@ -171,7 +171,7 @@ Deno.serve(async (req) => {
       id: c.id,
       // First name only.
       label: c.first_name ?? (c.full_name ? String(c.full_name).split(" ")[0] : null),
-      class_key: c.class_key ?? "free",
+      class_key: c.class_key ?? "standard",
       instagram_followers: c.consumer_instagram_followers_count ?? null,
       sex: typeof c.sex === "string" ? c.sex : null,
       age,

@@ -16,11 +16,11 @@
 //   GP  Google Popularity    [0,1]  min(1, ln(1 + r^ratingPow · n) / lnCeiling)
 //                                   — star mass with a rating exponent
 //                                   (default 1, max 2), log-squashed.
-//   RP  Rewards Promotions   [0,1]  the membership posture as a rung —
-//                                   0.1 · 0.4 · 0.7 · 1.0. No literal 0:
+//   RP  Rewards Promotions   [0,1]  the membership strategy as a rung —
+//                                   0.1 · 0.4 · 0.7. No literal 0:
 //                                   non-members never ENTER the paid lanes
 //                                   (a lane filter, not a score); the zero-
-//                                   posture member keeps a 0.1 whisper.
+//                                   strategy member keeps a 0.1 whisper.
 //   XX  Random Number        [0,1)  U^control, U ~ Uniform[0,1) drawn per
 //                                   card per lane; control ∈ [0,5] is one
 //                                   deck-wide knob. control 0 → XX ≡ 1 (off,
@@ -111,7 +111,7 @@ const SUBSCORES: readonly SubscoreDef[] = [
   { id: "em", short: "EM", name: "Embeddings Match",   emoji: "🧠", basis: "cosine(place vector, consumer+intent vector)", range: "0–1" },
   { id: "sm", short: "SM", name: "Structured Match",   emoji: "🎯", basis: "where × when × what — structured asks vs place facts", range: "0–1" },
   { id: "gp", short: "GP", name: "Google Popularity",  emoji: "⭐", basis: "ln(1 + rating × reviews) / ceiling", range: "0–1" },
-  { id: "rp", short: "RP", name: "Rewards Promotions", emoji: "💸", basis: "membership posture → rung", range: "0–1" },
+  { id: "rp", short: "RP", name: "Rewards Promotions", emoji: "💸", basis: "membership strategy → rung", range: "0–1" },
   { id: "xx", short: "XX", name: "Random Number",      emoji: "🎲", basis: "U^control · per card per lane", range: "0–1" },
   { id: "mp", short: "MP", name: "Manual Priority",    emoji: "📌", basis: "the place's operator priority — per-place, default 0.1", range: "0–1" },
 ];
@@ -502,25 +502,24 @@ export function gpParts(
 /** GP as one number, 0–1. */
 
 // ── RP — Rewards Promotions ────────────────────────────────────────────
-// Postures come from ./strategies (the four promo presets). The rung each
-// posture earns is CONFIG (the blob's rp block). No literal 0: non-members
+// Strategies come from ./strategies (the promo presets). The rung each
+// strategy earns is CONFIG (the blob's rp block). No literal 0: non-members
 // never enter the paid lanes at all (lane filter); custom/legacy rates that
 // match no preset land on the zero rung.
 
-type RpPosture = "zero" | "conservative" | "aggressive" | "dominant";
+type RpStrategy = "zero" | "conservative" | "aggressive";
 
-export type RpRungs = Record<RpPosture, number>;
+export type RpRungs = Record<RpStrategy, number>;
 
 const DEFAULT_RP_RUNGS: RpRungs = {
   zero: 0.1,
   conservative: 0.4,
   aggressive: 0.7,
-  dominant: 1.0,
 };
 
-/** RP for a posture (null = custom/legacy → the zero rung). */
-export function rpScore(posture: RpPosture | null, rungs: RpRungs = DEFAULT_RP_RUNGS): number {
-  return clamp01(rungs[posture ?? "zero"]);
+/** RP for a strategy (null = custom/legacy → the zero rung). */
+export function rpScore(strategy: RpStrategy | null, rungs: RpRungs = DEFAULT_RP_RUNGS): number {
+  return clamp01(rungs[strategy ?? "zero"]);
 }
 
 // ── XX — Random Number ─────────────────────────────────────────────────
@@ -873,7 +872,6 @@ export function coerceScoringSettings(raw: unknown): ScoringSettings {
       zero: num(rp.zero, d.rp.zero, 0, 1),
       conservative: num(rp.conservative, d.rp.conservative, 0, 1),
       aggressive: num(rp.aggressive, d.rp.aggressive, 0, 1),
-      dominant: num(rp.dominant, d.rp.dominant, 0, 1),
     },
     xx: {
       control: num(xx.control, d.xx.control, 0, 5),

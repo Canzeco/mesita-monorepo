@@ -67,7 +67,7 @@ export function RewardMatrix({
       <View className="flex-row items-center px-3 py-2.5">
         <View className="flex-1" />
         <Text className="flex-1 text-center font-display text-[13px] font-bold">
-          Free
+          Standard
         </Text>
         <View className="flex-1 flex-row items-center justify-center gap-1">
           <Crown color="#8b6ce8" size={12} fill="#8b6ce8" />
@@ -89,14 +89,15 @@ export function RewardMatrix({
           <View className="flex-1 items-center">
             <RewardCell
               value={r.vals.free}
-              active={r.onAxis && currentClass === 'free'}
+              active={r.onAxis && currentClass === 'standard'}
             />
           </View>
           <View className="flex-1 items-center">
             <RewardCell
               value={r.vals.premium}
               accent
-              active={r.onAxis && currentClass === 'premium'}
+              // Premium and Magnetic both read the elevated column.
+              active={r.onAxis && currentClass !== 'standard'}
             />
           </View>
         </View>

@@ -10,6 +10,7 @@ import { MesitaMark } from "./MesitaMark";
 import { ComingSoonModal } from "./ComingSoonModal";
 import { cn } from "@/lib/utils";
 import { useConsumerClass } from "@/lib/class-context";
+import { classProperLabel } from "@/lib/consumer-data";
 import {
   CONSUMER_RESERVATION_SURFACE_PREFIX,
   CONSUMER_ROUTES,
@@ -88,11 +89,12 @@ export function BottomNav({ userId }: { userId?: string }) {
   // site doesn't churn while other agents work this tree.
   void userId;
   const pathname = usePathname();
-  // Real, server-seeded class → the Me tab reads "Me · Premium" / "Me · Free"
-  // instead of a literal "Class". Defaults to Free before the shell seeds the
-  // profile (harmless: a Premium member is shown Free for one paint at most).
+  // Real, server-seeded class → the Me tab reads "Me · Premium" / "Me ·
+  // Magnetic" / "Me · Standard" instead of a literal "Class". Defaults to
+  // Standard before the shell seeds the profile (harmless: an elevated member is
+  // shown Standard for one paint at most).
   const { key: classKey } = useConsumerClass();
-  const classLabel = classKey === "premium" ? "Premium" : "Free";
+  const classLabel = classProperLabel(classKey);
   const [soonItem, setSoonItem] = useState<Item | null>(null);
 
   return (

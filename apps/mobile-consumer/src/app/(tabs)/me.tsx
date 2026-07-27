@@ -33,7 +33,7 @@ import { TAB_SCROLL_PADDING_BOTTOM } from '@/lib/tab-layout';
 import { BoxRow } from '@/components/ui/BoxRow';
 import { Button } from '@/components/ui/Button';
 import { inboxPath } from '@/lib/consumer-route-contract';
-import { CLASSES } from '@/lib/consumer-classes';
+import { CLASSES, isElevatedClass } from '@/lib/consumer-classes';
 import { useEffectiveClass } from '@/lib/mock-class';
 import {
   ageFromBirthday,
@@ -63,7 +63,7 @@ export default function MeScreen() {
     consumerClass,
     profile?.instagram_handle ?? null,
   );
-  const isPremium = effective.key === 'premium';
+  const isElevated = isElevatedClass(effective.key);
   const [sheet, setSheet] = useState<Sheet>(null);
 
   const name =
@@ -78,9 +78,9 @@ export default function MeScreen() {
     .join(' · ');
 
   const classLabel =
-    CLASSES.find((c) => c.id === effective.key)?.label ?? 'Free';
+    CLASSES.find((c) => c.id === effective.key)?.label ?? 'Standard';
   const classVia =
-    isPremium && effective.origin !== 'default' ? effective.origin : null;
+    isElevated && effective.origin !== 'default' ? effective.origin : null;
   const handle = profile?.instagram_handle ?? effective.handle;
   const igConnected = effective.origin === 'instagram' || Boolean(handle);
 
@@ -103,7 +103,7 @@ export default function MeScreen() {
           <IdentityHeroSkeleton />
         ) : (
           <IdentityHero
-            isPremium={isPremium}
+            classKey={effective.key}
             name={name}
             phone={phone}
             meta={meta}

@@ -6,6 +6,7 @@ import { Text, View } from 'react-native';
 
 import { ChannelMark } from '@/components/brand/channel-marks';
 import { GRADIENT_DIAGONAL, GRADIENTS } from '@/constants/brand';
+import { isElevatedClass } from '@/lib/consumer-classes';
 import { resolvePromoRateFromPlaceRow } from '@/lib/promo-rates';
 import type { PlaceDetail } from '@/lib/types/place-detail';
 import { firstInitial } from '@/lib/utils';
@@ -75,7 +76,7 @@ export function ProfileStat({
 
 export function ProfileRewardStat({ place }: { place: PlaceDetail }) {
   const { consumerClass } = useAuth();
-  const isPremium = consumerClass?.class === 'premium';
+  const isElevated = isElevatedClass(consumerClass?.class ?? 'standard');
   const isFirstVisit = place.promo_matrix.is_first_visit;
   const promoPercent = resolvePromoRateFromPlaceRow(
     {
@@ -87,7 +88,7 @@ export function ProfileRewardStat({ place }: { place: PlaceDetail }) {
       is_first_visit: isFirstVisit,
     },
     isFirstVisit,
-    isPremium,
+    isElevated,
   );
   if (promoPercent == null) {
     return <ProfileStat value="—" label="No reward" gift />;
@@ -111,7 +112,7 @@ export function ProfileMetaChip({ children }: { children: ReactNode }) {
 
 export function PromoMetaChip({ place }: { place: PlaceDetail }) {
   const { consumerClass } = useAuth();
-  const isPremium = consumerClass?.class === 'premium';
+  const isElevated = isElevatedClass(consumerClass?.class ?? 'standard');
   const rate = resolvePromoRateFromPlaceRow(
     {
       listing_type: place.listing_type,
@@ -122,7 +123,7 @@ export function PromoMetaChip({ place }: { place: PlaceDetail }) {
       is_first_visit: place.promo_matrix.is_first_visit,
     },
     place.promo_matrix.is_first_visit,
-    isPremium,
+    isElevated,
   );
   return (
     <ProfileMetaChip>

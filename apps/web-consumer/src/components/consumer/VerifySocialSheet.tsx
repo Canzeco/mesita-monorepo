@@ -17,8 +17,9 @@ import {
 import { DEMO_INSTAGRAM_FOLLOWERS } from "@/lib/instagram-demo";
 
 // Bottom-sheet flow for verifying Instagram — the social door into Mesita
-// Premium. 1,000+ followers (and a story per visit) unlocks Premium. Extracted
-// from ProfileClient so the profile tabs stay lean.
+// Magnetic (the top, invite-only tier). 1,000+ followers (and a story per
+// visit) unlocks Magnetic. Extracted from ProfileClient so the profile tabs
+// stay lean.
 //
 // Built on LocalSheet: state-driven (parent keeps it mounted and flips
 // `open`) so the exit animation plays, backdrop covers the whole MobileFrame
@@ -29,8 +30,8 @@ type SocialPlatform = "instagram";
 // The @mesita.bot DM bot doesn't exist yet, so the follower count can't be
 // read from a real social-graph check. Until the bot ships, any 8-digit code
 // verifies and the claim is sent with this demo count (comfortably past the
-// 1,000 premium threshold) — but the grant itself is REAL: the EF persists
-// the handle + count and sets class_key=premium / origin=instagram
+// 1,000 Magnetic threshold) — but the grant itself is REAL: the EF persists
+// the handle + count and sets class_key=magnetic / origin=instagram
 // server-side, so every surface reads the class from the profile, not a
 // device flag. Swap the constant for the bot-reported count when it lands.
 const HANDLE_RE = /^@?[A-Za-z0-9._]{1,30}$/;
@@ -53,18 +54,31 @@ export function VerifySocialSheet({
     HANDLE_RE.test(handle.trim()) && code.length >= 8 && !verifying;
 
   // Real claim through consumer-web-claim-instagram: persists the @handle and
-  // follower count, grants Premium (origin "instagram") at 1,000+ followers.
-  // Hard-navigates on success so the shell re-seeds with the unlocked class
-  // and the Profile lands on its success toast.
+  // follower count, grants Magnetic (origin "instagram") at 1,000+ followers;
+  // below the threshold the consumer stays Standard. The EF response `tier`
+  // ("magnetic" | "standard") tells us which happened. On a Magnetic grant we
+  // hard-navigate so the shell re-seeds with the unlocked class and the Profile
+  // lands on its success toast; below the threshold we stay put and explain.
   async function verify() {
     if (!canVerify) return;
     setVerifying(true);
     try {
-      await apiClaimInstagram(supabase, {
+      const result = await apiClaimInstagram(supabase, {
         followers: DEMO_INSTAGRAM_FOLLOWERS,
         handle: handle.trim().replace(/^@/, "").toLowerCase(),
       });
-      window.location.href = `${CONSUMER_ROUTES.me}?instagram=success`;
+      if (result.tier === "magnetic") {
+        window.location.href = `${CONSUMER_ROUTES.me}?instagram=success`;
+        return;
+      }
+      // Below the 1,000-follower bar — Instagram is linked but the consumer
+      // stays Standard.
+      toast(
+        `Instagram connected, but ${result.followers.toLocaleString(
+          "en-US",
+        )} followers is below the 1,000 needed for Magnetic.`,
+      );
+      setVerifying(false);
     } catch (e) {
       toast(errMsg(e, "Couldn't verify your Instagram — try again."));
       setVerifying(false);
@@ -120,7 +134,7 @@ export function VerifySocialSheet({
               Mesita will reply with an 8-digit verification code. Paste it
               here.
             </>,
-            <>1,000+ followers unlocks Mesita Premium instantly.</>,
+            <>1,000+ followers unlocks Mesita Magnetic instantly.</>,
           ].map((line, i) => (
             <li
               key={i}

@@ -8,6 +8,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MesitaMark } from '@/components/brand/MesitaMark';
 import { ComingSoonModal } from '@/components/ui/ComingSoonModal';
 import { COLORS } from '@/constants/brand';
+import { classProperLabel } from '@/lib/consumer-classes';
 import { isTabParked, PARKED, type ParkedTabKey } from '@/lib/parked-flags';
 import { useReduceMotion } from '@/lib/useReduceMotion';
 import { useAuth } from '@/providers/auth';
@@ -70,8 +71,7 @@ export function ConsumerTabBar({ state, navigation }: ConsumerTabBarProps) {
   const insets = useSafeAreaInsets();
   const reduceMotion = useReduceMotion();
   const { consumerClass } = useAuth();
-  const classLabel =
-    consumerClass?.key === 'premium' ? 'Premium' : 'Free';
+  const classLabel = classProperLabel(consumerClass?.key ?? 'standard');
   const [soonKey, setSoonKey] = useState<ParkedTabKey | null>(null);
   const soon = soonKey ? PARKED.tabs[soonKey] : null;
   const SoonIcon = soonKey ? SOON_ICONS[soonKey] : undefined;

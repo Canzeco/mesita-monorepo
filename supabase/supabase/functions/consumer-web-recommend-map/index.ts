@@ -46,7 +46,7 @@ Deno.serve(async (req) => {
       .maybeSingle();
     if (data) {
       const { class_key, ...rest } = data as Record<string, unknown>;
-      profile = { ...(rest as ConsumerProfile), tier: (class_key as string) ?? "free" };
+      profile = { ...(rest as ConsumerProfile), tier: (class_key as string) ?? "standard" };
     }
   }
 

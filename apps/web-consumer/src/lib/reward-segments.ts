@@ -14,9 +14,9 @@
 
 import type { ConsumerClass } from "@/lib/mock/place";
 
-// The business posture that sets how generous a place's grid is. Dominant was
-// removed in v5 — the strategies are Zero / Conservative / Aggressive.
-export type RewardPosture = "zero" | "conservative" | "aggressive";
+// The business discount strategy that sets how generous a place's grid is.
+// Dominant was removed — the strategies are Zero / Conservative / Aggressive.
+export type GridStrategy = "zero" | "conservative" | "aggressive";
 
 // Ontology of a rung (per the v5 canonical definitions):
 //   class  — who the guest is (Standard / Magnetic / Premium)
@@ -44,7 +44,7 @@ export type RewardSegment = {
   /** One consumer-facing line: how you land on this rung. */
   blurb: string;
   /** The locked v5 grid, 5% steps, floor 10, 0 = off. Peak = aggressive. */
-  rates: Record<RewardPosture, number>;
+  rates: Record<GridStrategy, number>;
 };
 
 // The canonical ladder, stored worst→best (rank order). Amounts tie within the
@@ -111,21 +111,20 @@ export const REWARD_SEGMENT_BY_KEY = Object.fromEntries(
 ) as Record<RewardSegmentKey, RewardSegment>;
 
 // The peak column — what "up to" quotes. Aggressive is the most generous
-// posture, so the top of the ladder a place can reach is its aggressive rate.
-export const PEAK_POSTURE: RewardPosture = "aggressive";
+// strategy, so the top of the ladder a place can reach is its aggressive rate.
+export const PEAK_STRATEGY: GridStrategy = "aggressive";
 
-// Which class rung a consumer sits on. The DB enum is still free/premium; the
-// free class displays as "Standard" on the ladder (magnetic is not assignable
-// to consumers yet — no consumer carries it, so it is always an aspirational
-// rung here).
+// Which class rung a consumer sits on. Consumer classes (standard / premium /
+// magnetic) map one-to-one onto their same-named ladder rungs.
 export function segmentKeyForClass(classKey: ConsumerClass): RewardSegmentKey {
-  return classKey === "premium" ? "premium" : "standard";
+  return classKey;
 }
 
 // The rungs a given consumer can actually reach: their own class rung, plus the
 // three universal rungs any class can unlock at the table (a first visit, a
-// story, a Google review). Magnetic is excluded — it is invite-only and no
-// consumer holds it. Returned worst→best.
+// story, a Google review). A Standard/Premium guest never reaches the Magnetic
+// rung (invite-only); a Magnetic guest reaches it via their own class rung.
+// Returned worst→best.
 export function reachableSegments(classKey: ConsumerClass): RewardSegment[] {
   const mine = segmentKeyForClass(classKey);
   const universal: RewardSegmentKey[] = ["story", "welcome", "review"];
@@ -137,23 +136,23 @@ export function reachableSegments(classKey: ConsumerClass): RewardSegment[] {
 /** Your class rung's peak rate — 10% Standard, 20% Premium. The "just for being you" number. */
 export function baseRateForClass(
   classKey: ConsumerClass,
-  posture: RewardPosture = PEAK_POSTURE,
+  strategy: GridStrategy = PEAK_STRATEGY,
 ): number {
-  return REWARD_SEGMENT_BY_KEY[segmentKeyForClass(classKey)].rates[posture];
+  return REWARD_SEGMENT_BY_KEY[segmentKeyForClass(classKey)].rates[strategy];
 }
 
 /**
  * The ceiling a consumer can reach — the best rate across every rung they can
- * unlock, under the most generous posture. This is the "Max X% for you" number.
+ * unlock, under the most generous strategy. This is the "Max X% for you" number.
  * Universal actions (a Google review) put the top of the ladder within reach of
  * any class, so this is 50% today; the class rung still shows below it.
  */
 export function peakRateForClass(
   classKey: ConsumerClass,
-  posture: RewardPosture = PEAK_POSTURE,
+  strategy: GridStrategy = PEAK_STRATEGY,
 ): number {
   return reachableSegments(classKey).reduce(
-    (max, s) => Math.max(max, s.rates[posture]),
+    (max, s) => Math.max(max, s.rates[strategy]),
     0,
   );
 }

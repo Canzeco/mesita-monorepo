@@ -44,7 +44,7 @@ export function Step({
   );
 }
 
-// The 2x2 discount matrix — Welcome/Returning x Free/Premium. Pato-sanctioned
+// The 2x2 discount matrix — Welcome/Returning x Standard/Premium. Pato-sanctioned
 // per-card matrix (MESITA-590); rates live in HTML text, never in the artwork.
 export function RateMatrix({ rates }: { rates: Strategy["rates"] }) {
   const cell = (v: number | null) => (v == null ? "—" : `${v}%`);
@@ -52,7 +52,7 @@ export function RateMatrix({ rates }: { rates: Strategy["rates"] }) {
     <div className="border-border grid grid-cols-[auto_1fr_1fr] overflow-hidden rounded-lg border text-[11px]">
       <span className="bg-muted/40 px-2.5 py-1.5" aria-hidden />
       <span className="text-muted-foreground bg-muted/40 px-2.5 py-1.5 text-center font-semibold">
-        Free
+        Standard
       </span>
       <span className="bg-tier-premium/10 text-tier-premium px-2.5 py-1.5 text-center font-semibold">
         Premium

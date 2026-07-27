@@ -4,6 +4,7 @@ import { Camera, Crown, Gift, QrCode, Sparkles } from 'lucide-react-native';
 import { Pressable, Text, View } from 'react-native';
 
 import { GRADIENT_DIAGONAL, GRADIENTS, SHADOW_GLOW } from '@/constants/brand';
+import { classProperLabel } from '@/lib/consumer-classes';
 import { CONSUMER_ROUTES } from '@/lib/consumer-route-contract';
 import { placeOffersMesitaRewards, resolveActivePromoRate } from '@/lib/promo-rates';
 import type { ConsumerClassKey, PlaceDetail } from '@/lib/types/place-detail';
@@ -14,8 +15,8 @@ import { Box, BoxLabel } from './shared';
 export function RewardsBox({ place }: { place: PlaceDetail }) {
   const router = useRouter();
   const { consumerClass } = useAuth();
-  const classKey: ConsumerClassKey =
-    consumerClass?.class === 'premium' ? 'premium' : 'free';
+  const classKey: ConsumerClassKey = (consumerClass?.class ??
+    'standard') as ConsumerClassKey;
   const { welcome, default: returning, is_first_visit } = place.promo_matrix;
   const offersRewards = placeOffersMesitaRewards({
     listing_type: place.listing_type,
@@ -59,13 +60,13 @@ export function RewardsBox({ place }: { place: PlaceDetail }) {
   const visitLabel = is_first_visit ? 'First visit' : 'Returning visit';
   const subtitle =
     activeValue == null
-      ? `No reward at Mesita ${classKey === 'premium' ? 'Premium' : 'Free'} yet`
+      ? `No reward at Mesita ${classProperLabel(classKey)} yet`
       : capLabel
         ? `${visitLabel} · on your first ${capLabel}`
         : visitLabel;
-  const isFree = classKey === 'free';
-  const isPremiumViaInstagram =
-    !isFree && consumerClass?.origin === 'instagram';
+  const isStandard = classKey === 'standard';
+  const isMagneticViaInstagram =
+    !isStandard && consumerClass?.origin === 'instagram';
 
   return (
     <Box title="Reward" icon={Sparkles} iconColor="#f472b6">
@@ -94,8 +95,8 @@ export function RewardsBox({ place }: { place: PlaceDetail }) {
         <RewardStep
           n={2}
           icon={Camera}
-          title="Post a story — Premium via Instagram only"
-          body="If your Premium comes from Instagram, post a story tagging the place right after the waiter scans your QR. Free and paid-Premium guests skip this step."
+          title="Post a story — Magnetic (via Instagram) only"
+          body="If you're Magnetic via Instagram, post a story tagging the place right after the waiter scans your QR. Standard and Premium guests skip this step."
           accent
         />
         <RewardStep
@@ -116,7 +117,7 @@ export function RewardsBox({ place }: { place: PlaceDetail }) {
       />
 
       <View className="gap-2">
-        {isFree ? (
+        {isStandard ? (
           <View className="flex-row gap-2">
             <Pressable
               onPress={() => router.push(CONSUMER_ROUTES.rewards.root)}
@@ -171,7 +172,7 @@ export function RewardsBox({ place }: { place: PlaceDetail }) {
             >
               <QrCode color="#fff" size={16} />
               <Text className="text-sm font-semibold text-white">
-                {isPremiumViaInstagram
+                {isMagneticViaInstagram
                   ? 'Pay with QR & post IG story'
                   : 'Pay with QR to claim reward'}
               </Text>
@@ -179,11 +180,11 @@ export function RewardsBox({ place }: { place: PlaceDetail }) {
           </Pressable>
         )}
         <Text className="text-center text-[11px] leading-snug text-muted-foreground">
-          {isFree
+          {isStandard
             ? 'Pay with your QR to claim your reward — or upgrade to Premium for a bigger one.'
-            : isPremiumViaInstagram
-              ? 'Pay with your QR, then post an Instagram story to unlock your Premium reward.'
-              : 'Just pay with your QR — your Premium reward applies automatically.'}
+            : isMagneticViaInstagram
+              ? 'Pay with your QR, then post an Instagram story to unlock your Magnetic reward.'
+              : 'Just pay with your QR — your reward applies automatically.'}
         </Text>
       </View>
     </Box>

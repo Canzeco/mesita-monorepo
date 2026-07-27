@@ -1,6 +1,6 @@
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
-import { AtSign, Crown, X } from 'lucide-react-native';
+import { AtSign, Crown, Magnet, X } from 'lucide-react-native';
 import { useState } from 'react';
 import { Linking, Modal, Pressable, Text, View } from 'react-native';
 
@@ -84,8 +84,16 @@ export function SocialProfileSheet({
                     }}
                     contentFit="cover"
                   />
-                  {shown.plan === 'premium' ? (
+                  {shown.plan === 'magnetic' ? (
                     <View className="absolute -bottom-0.5 -left-0.5 size-6 items-center justify-center rounded-full bg-amber-400">
+                      <Magnet color="#fff" size={14} />
+                    </View>
+                  ) : null}
+                  {shown.plan === 'premium' ? (
+                    <View
+                      className="absolute -bottom-0.5 -left-0.5 size-6 items-center justify-center rounded-full"
+                      style={{ backgroundColor: '#8b6ce8' }}
+                    >
                       <Crown color="#fff" size={14} fill="#fff" />
                     </View>
                   ) : null}
@@ -119,10 +127,14 @@ export function SocialProfileSheet({
                   </Text>
                 </Pressable>
 
-                {shown.plan === 'premium' ? (
+                {shown.plan !== 'standard' ? (
                   <View className="mt-3 flex-row">
                     <LinearGradient
-                      colors={[...GRADIENTS.premium]}
+                      colors={
+                        shown.plan === 'magnetic'
+                          ? [...GRADIENTS.gold]
+                          : [...GRADIENTS.premium]
+                      }
                       start={GRADIENT_DIAGONAL.start}
                       end={GRADIENT_DIAGONAL.end}
                       style={{
@@ -134,9 +146,13 @@ export function SocialProfileSheet({
                         gap: 4,
                       }}
                     >
-                      <Crown color="#fff" size={12} fill="#fff" />
+                      {shown.plan === 'magnetic' ? (
+                        <Magnet color="#fff" size={12} />
+                      ) : (
+                        <Crown color="#fff" size={12} fill="#fff" />
+                      )}
                       <Text className="text-[11px] font-semibold text-white">
-                        Premium
+                        {shown.plan === 'magnetic' ? 'Magnetic' : 'Premium'}
                       </Text>
                     </LinearGradient>
                   </View>

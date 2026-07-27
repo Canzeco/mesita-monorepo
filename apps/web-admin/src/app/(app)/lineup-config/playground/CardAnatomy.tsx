@@ -38,7 +38,7 @@ export type CardParts = {
   rel: string;
   smP: SmParts;
   gpP: { reviews: number; rating: number | null; raw: number; gp: number };
-  posture: StrategyId | null;
+  placeStrategy: StrategyId | null;
   rpVal: number;
   /** MP — the place's operator priority [0,1] (default 0.1). */
   mp: number;
@@ -180,12 +180,12 @@ export function CardAnatomy({
           icon={Store}
           tint="rose"
           title="RP · Rewards Promotions"
-          note="live rates → posture → rung"
+          note="live rates → strategy → rung"
           result={pct(parts.rpVal)}
         >
           <LedgerRow
-            label="posture (from the four live rates)"
-            value={parts.posture ? STRATEGY_BY_ID[parts.posture].name : "custom → zero rung"}
+            label="strategy (from the four live rates)"
+            value={parts.placeStrategy ? STRATEGY_BY_ID[parts.placeStrategy].name : "custom → zero rung"}
           />
           <LedgerRow label="rung" value={pct(parts.rpVal)} strong />
           <ResultLine>

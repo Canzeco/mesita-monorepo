@@ -2,7 +2,7 @@
 // save. Mirrors coerceConfig in the admin catalog. Self-contained (no _shared
 // import) so the contract lives beside the writer.
 //
-// Grid rule: 5% steps, floor 10%, ceiling 50% (0 = off). Zero posture is off by
+// Grid rule: 5% steps, floor 10%, ceiling 50% (0 = off). Zero strategy is off by
 // definition. Every cell is snapped to the grid and every segment is present, so
 // a partial or slightly-off body can never write a malformed row; the only hard
 // error is a non-object body.

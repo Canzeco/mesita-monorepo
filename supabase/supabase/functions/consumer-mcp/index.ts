@@ -19,7 +19,7 @@ import { corsPreflight, json } from "../_shared/http.ts";
 import { adminClient, readEFEnv } from "../_shared/auth.ts";
 import { resolveMcpBearer } from "../_shared/mcp-tokens.ts";
 import { PLACE_PUBLIC_COLUMNS } from "../_shared/place-columns.ts";
-import { getTierConfig } from "../_shared/membership.ts";
+import { getTierConfig, isPremiumOrHigher } from "../_shared/membership.ts";
 import { suggestPlaces } from "../_shared/suggest-places.ts";
 import { CORS } from "../_shared/cors.ts";
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
@@ -174,7 +174,7 @@ async function runTool(
         .select("class_key")
         .eq("id", consumerId)
         .maybeSingle();
-      const classKey = consumerRow?.class_key ?? "free";
+      const classKey = consumerRow?.class_key ?? "standard";
       let tier = null;
       try {
         tier = await getTierConfig(admin, classKey);
@@ -287,7 +287,7 @@ Deno.serve(async (req) => {
     .select("class_key")
     .eq("id", consumerId)
     .maybeSingle();
-  if ((consumerRow?.class_key ?? "free") !== "premium") {
+  if (!isPremiumOrHigher(consumerRow?.class_key)) {
     return json(
       {
         ok: false,

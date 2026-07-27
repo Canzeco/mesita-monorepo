@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { Crown, Instagram } from "lucide-react";
+import { Crown, Instagram, Magnet } from "lucide-react";
 import type { Place } from "@/lib/api/places";
 import { INSTAGRAM_BADGE_GRADIENT_CLASS } from "@/lib/ui-classes";
 import { cn, firstInitial } from "@/lib/utils";
@@ -41,6 +41,11 @@ export function SocialActivityRow({
             height={44}
             className="h-11 w-11 rounded-full object-cover"
           />
+          {person.plan === "magnetic" && (
+            <span className="bg-tier-gold ring-background absolute -bottom-0.5 -left-0.5 grid h-4 w-4 place-items-center rounded-full text-white ring-2">
+              <Magnet className="h-2.5 w-2.5" />
+            </span>
+          )}
           {person.plan === "premium" && (
             <span className="bg-tier-premium ring-background absolute -bottom-0.5 -left-0.5 grid h-4 w-4 place-items-center rounded-full text-white ring-2">
               <Crown className="h-2.5 w-2.5 fill-current" />

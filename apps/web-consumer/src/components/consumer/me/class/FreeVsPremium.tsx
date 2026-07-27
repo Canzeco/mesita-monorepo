@@ -2,10 +2,10 @@ import { Crown } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 
-const COMPARE_ROWS: { label: string; free: string; premium: string }[] = [
-  { label: "Discounts", free: "Base", premium: "Boosted" },
-  { label: "Recommendations", free: "Standard", premium: "Personalized" },
-  { label: "Max monthly reservations", free: "2", premium: "Unlimited" },
+const COMPARE_ROWS: { label: string; standard: string; premium: string }[] = [
+  { label: "Discounts", standard: "Base", premium: "Boosted" },
+  { label: "Recommendations", standard: "Standard", premium: "Personalized" },
+  { label: "Max monthly reservations", standard: "2", premium: "Unlimited" },
 ];
 
 export function FreeVsPremium() {
@@ -13,7 +13,7 @@ export function FreeVsPremium() {
     <div className="border-border bg-card overflow-hidden rounded-2xl border px-2 py-1.5">
       <div className="grid grid-cols-[1.3fr_0.8fr_1fr] items-end gap-1 px-2 pt-2">
         <span />
-        <CompareHead label="Free" />
+        <CompareHead label="Standard" />
         <CompareHead label="Premium" accent />
       </div>
       <div className="mt-1">
@@ -29,7 +29,7 @@ export function FreeVsPremium() {
               {row.label}
             </span>
             <span className="text-foreground/70 text-center text-[12.5px] font-semibold">
-              {row.free}
+              {row.standard}
             </span>
             <span className="bg-tier-premium/[0.07] text-premium rounded-lg py-1.5 text-center text-[12.5px] font-semibold">
               {row.premium}

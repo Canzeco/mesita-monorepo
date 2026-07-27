@@ -11,8 +11,12 @@ import {
 // web (`mesita:mock-class`) so mental model stays aligned.
 
 export const MOCK_CLASS_KEY = 'mesita:mock-class';
-export type MockClass = 'free' | 'subscription' | 'instagram';
-const MOCK_CLASS_VALUES: MockClass[] = ['free', 'subscription', 'instagram'];
+export type MockClass = 'standard' | 'subscription' | 'instagram';
+const MOCK_CLASS_VALUES: MockClass[] = [
+  'standard',
+  'subscription',
+  'instagram',
+];
 
 const listeners = new Set<() => void>();
 
@@ -21,14 +25,14 @@ function notify(): void {
 }
 
 export type ConsumerClassState = {
-  key: 'free' | 'premium';
+  key: 'standard' | 'premium' | 'magnetic';
   origin: 'default' | 'instagram' | 'subscription' | 'invitation';
   followers: number;
   handle: string | null;
 };
 
-const FREE: ConsumerClassState = {
-  key: 'free',
+const STANDARD: ConsumerClassState = {
+  key: 'standard',
   origin: 'default',
   followers: 0,
   handle: null,
@@ -38,10 +42,10 @@ function normalize(
   c: ConsumerClass | null | undefined,
   profileHandle: string | null,
 ): ConsumerClassState {
-  if (!c) return { ...FREE, handle: profileHandle };
-  const tier = c.key ?? c.class ?? 'free';
+  if (!c) return { ...STANDARD, handle: profileHandle };
+  const raw = c.key ?? c.class ?? 'standard';
   return {
-    key: tier === 'premium' ? 'premium' : 'free',
+    key: raw === 'premium' || raw === 'magnetic' ? raw : 'standard',
     origin: (c.origin as ConsumerClassState['origin']) ?? 'default',
     followers: c.followers ?? 0,
     handle: profileHandle,
@@ -53,12 +57,13 @@ function applyMock(
   base: ConsumerClassState,
 ): ConsumerClassState {
   switch (mock) {
-    case 'free':
-      return { ...base, key: 'free', origin: 'default' };
+    case 'standard':
+      return { ...base, key: 'standard', origin: 'default' };
     case 'instagram':
+      // Instagram reach is the door into Magnetic (the top, invite-only tier).
       return {
         ...base,
-        key: 'premium',
+        key: 'magnetic',
         origin: 'instagram',
         followers:
           base.followers > 0 ? base.followers : DEMO_INSTAGRAM_FOLLOWERS,

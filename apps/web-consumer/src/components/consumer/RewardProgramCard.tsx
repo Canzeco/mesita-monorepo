@@ -11,8 +11,9 @@ import {
 } from "lucide-react";
 
 import { useConsumerClass } from "@/lib/class-context";
+import { classProperLabel, isElevatedClass } from "@/lib/consumer-data";
 import {
-  PEAK_POSTURE,
+  PEAK_STRATEGY,
   REWARD_SEGMENTS,
   baseRateForClass,
   peakRateForClass,
@@ -54,13 +55,13 @@ export function RewardProgramCard() {
   const mineKey = segmentKeyForClass(classKey);
   const peak = peakRateForClass(classKey);
   const base = baseRateForClass(classKey);
-  const isPremium = classKey === "premium";
+  const isElevated = isElevatedClass(classKey);
 
-  // Banner copy — the ceiling headline, then a class-aware line so Premium's
-  // higher base still reads even though the ceiling (a Google review) is
-  // universal.
-  const bannerSub = isPremium
-    ? `Premium gives you a ${base}% base — climb to ${peak}% with a Google review at the table.`
+  // Banner copy — the ceiling headline, then a class-aware line so an elevated
+  // class's higher base still reads even though the ceiling (a Google review)
+  // is universal.
+  const bannerSub = isElevated
+    ? `${classProperLabel(classKey)} gives you a ${base}% base — climb to ${peak}% with a Google review at the table.`
     : `You start at ${base}% as Standard — go up to ${peak}% with Premium, stories and reviews.`;
 
   return (
@@ -105,7 +106,7 @@ export function RewardProgramCard() {
 
 function RungRow({ seg, mine }: { seg: RewardSegment; mine: boolean }) {
   const Icon = SEGMENT_ICON[seg.key];
-  const peak = seg.rates[PEAK_POSTURE];
+  const peak = seg.rates[PEAK_STRATEGY];
   const magneticLocked = seg.key === "magnetic" && !mine;
 
   return (

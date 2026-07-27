@@ -2,9 +2,9 @@ import { Crown } from 'lucide-react-native';
 import { Text, View } from 'react-native';
 
 const COMPARE_ROWS = [
-  { label: 'Discounts', free: 'Base', premium: 'Boosted' },
-  { label: 'Recommendations', free: 'Standard', premium: 'Personalized' },
-  { label: 'Max monthly reservations', free: '2', premium: 'Unlimited' },
+  { label: 'Discounts', standard: 'Base', premium: 'Boosted' },
+  { label: 'Recommendations', standard: 'Standard', premium: 'Personalized' },
+  { label: 'Max monthly reservations', standard: '2', premium: 'Unlimited' },
 ];
 
 export function FreeVsPremium() {
@@ -12,7 +12,7 @@ export function FreeVsPremium() {
     <View className="overflow-hidden rounded-2xl border border-border bg-card px-2 py-1.5">
       <View className="flex-row items-end gap-1 px-2 pt-2">
         <View style={{ flex: 1.3 }} />
-        <CompareHead label="Free" style={{ flex: 0.8 }} />
+        <CompareHead label="Standard" style={{ flex: 0.8 }} />
         <CompareHead label="Premium" accent style={{ flex: 1 }} />
       </View>
       <View className="mt-1">
@@ -33,7 +33,7 @@ export function FreeVsPremium() {
               className="text-center font-semibold text-foreground/70"
               style={{ flex: 0.8, fontSize: 12.5 }}
             >
-              {row.free}
+              {row.standard}
             </Text>
             <Text
               className="rounded-lg bg-violet-500/[0.07] py-1.5 text-center font-semibold text-violet-600"

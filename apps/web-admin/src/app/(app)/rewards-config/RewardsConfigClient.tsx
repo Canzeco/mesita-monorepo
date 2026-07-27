@@ -15,9 +15,9 @@ import {
   CAP_MAX,
   CAP_MIN,
   DEFAULT_CONFIG,
-  POSTURES,
+  STRATEGY_IDS,
   SEGMENTS,
-  type RewardPosture,
+  type GridStrategy,
   type RewardSegmentKey,
   type RewardsConfig,
 } from "./catalog";
@@ -72,14 +72,14 @@ export function RewardsConfigClient({
 
   const setRate = (
     seg: RewardSegmentKey,
-    posture: RewardPosture,
+    strategy: GridStrategy,
     value: number,
   ) => {
     setCfg((c) => ({
       ...c,
       grid: {
         ...c.grid,
-        [seg]: { ...c.grid[seg], [posture]: value },
+        [seg]: { ...c.grid[seg], [strategy]: value },
       },
     }));
     setOk(false);
@@ -112,11 +112,11 @@ export function RewardsConfigClient({
 
   return (
     <div className="space-y-6">
-      {/* The grid — six segments (rows) × three postures (columns). */}
+      {/* The grid — six segments (rows) × three strategies (columns). */}
       <SectionCard
         icon={<Percent className="text-secondary h-4 w-4" />}
         title="Reward grid"
-        subtitle="For each posture a place can pick, set what every segment pays. Rates snap to the 5% grid (10–50%); Zero is off by definition. A guest is paid their single best qualifying rung — never a sum."
+        subtitle="For each strategy a place can pick, set what every segment pays. Rates snap to the 5% grid (10–50%); Zero is off by definition. A guest is paid their single best qualifying rung — never a sum."
         status={
           updatedAt ? (
             <span className="text-muted-foreground text-xs">
@@ -127,12 +127,12 @@ export function RewardsConfigClient({
       >
         <div className="mt-5 overflow-x-auto">
           <div className="min-w-[560px]">
-            {/* Header — posture columns. */}
+            {/* Header — strategy columns. */}
             <div className="grid grid-cols-[minmax(150px,1fr)_repeat(3,104px)] items-end gap-2 px-1 pb-2">
               <span className="text-muted-foreground text-[10px] font-bold tracking-[0.12em] uppercase">
                 Segment
               </span>
-              {POSTURES.map((p) => (
+              {STRATEGY_IDS.map((p) => (
                 <span key={p.key} className="text-center">
                   <span className="text-foreground block text-[13px] font-bold tracking-tight">
                     {p.label}
@@ -176,7 +176,7 @@ export function RewardsConfigClient({
                     </div>
                   </div>
 
-                  {POSTURES.map((p) =>
+                  {STRATEGY_IDS.map((p) =>
                     p.editable ? (
                       <RateSelect
                         key={p.key}

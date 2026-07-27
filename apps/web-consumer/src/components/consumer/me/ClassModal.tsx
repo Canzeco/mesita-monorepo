@@ -37,7 +37,7 @@ export function ClassModal({
               Your class
             </h2>
             <p className="text-muted-foreground text-[12px]">
-              Free or Premium — and how to climb
+              Standard, Premium or Magnetic — and how to climb
             </p>
           </div>
         </div>

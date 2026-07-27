@@ -45,6 +45,7 @@ import {
   slug,
 } from "./recommender-rank-map-fallback.ts";
 import { localClock } from "./local-time.ts";
+import { isPremiumOrHigher } from "./membership.ts";
 import { loadScoringSettings } from "./lineup-config.ts";
 import { cosineById, lineupReorder } from "./lineup-rank.ts";
 
@@ -261,8 +262,8 @@ async function proposeCategories({
     location: lat != null && lng != null ? { lat, lng } : null,
     local_hour: clock?.hour ?? 12,
     weekday: clock?.weekday ?? "unknown",
-    // Premium members get more aspirational, standout-leaning curation.
-    membership: profile?.tier === "premium" ? "premium" : "free",
+    // Premium/Magnetic members get more aspirational, standout-leaning curation.
+    membership: isPremiumOrHigher(profile?.tier) ? "premium" : "standard",
   };
 
   const system = [

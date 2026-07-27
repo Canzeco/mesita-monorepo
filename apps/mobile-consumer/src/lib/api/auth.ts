@@ -41,9 +41,9 @@ export type ConsumerProfile = {
 // Matches consumer-web-get-profile `class` payload (EF uses `key`).
 // AuthProvider.normalizeClass fills both `key` and `class` for call-site compat.
 export type ConsumerClass = {
-  key?: 'free' | 'premium';
+  key?: 'standard' | 'premium' | 'magnetic';
   /** Normalized alias of `key` — existing screens still read `.class`. */
-  class?: 'free' | 'premium';
+  class?: 'standard' | 'premium' | 'magnetic';
   origin?: 'default' | 'instagram' | 'subscription' | 'invitation' | string | null;
   label?: string;
   followers?: number | null;
@@ -78,9 +78,10 @@ export function apiUpdateConsumerProfile(patch: {
   return invokeEF<ProfileResult>(supabase, 'consumer-web-update-profile', patch);
 }
 
-// consumer-web-claim-instagram — social door into Premium (1,000+ followers).
+// consumer-web-claim-instagram — social door into Magnetic (1,000+ followers);
+// below the threshold the consumer stays Standard.
 export type InstagramClaimResult = {
-  tier: 'free' | 'premium';
+  tier: 'standard' | 'magnetic';
   followers: number;
   handle: string | null;
 };

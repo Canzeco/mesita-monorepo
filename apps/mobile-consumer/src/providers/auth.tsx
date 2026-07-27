@@ -12,11 +12,13 @@ import { supabase } from '@/lib/supabase';
 
 function normalizeClass(raw: ConsumerClass | null): ConsumerClass | null {
   if (!raw) return null;
-  const tier = raw.class ?? raw.key ?? 'free';
+  const raw_key = raw.class ?? raw.key ?? 'standard';
+  const key =
+    raw_key === 'premium' || raw_key === 'magnetic' ? raw_key : 'standard';
   return {
     ...raw,
-    class: tier === 'premium' ? 'premium' : 'free',
-    key: tier === 'premium' ? 'premium' : 'free',
+    class: key,
+    key,
     origin: raw.origin ?? 'default',
     followers: raw.followers ?? 0,
   };

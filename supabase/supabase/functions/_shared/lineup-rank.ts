@@ -5,7 +5,7 @@ import { haversineKm } from "./geo.ts";
 import { localClock } from "./local-time.ts";
 import { parseVector, cosineSim } from "./embeddings-vector.ts";
 import { buildOpennessArray } from "./lineup-openness.ts";
-import { postureForRates, ratesFromPlace } from "./lineup-posture.ts";
+import { strategyForRates, ratesFromPlace } from "./lineup-strategy.ts";
 import {
   composeFinalDeck,
   DEFAULT_MANUAL_PRIORITY,
@@ -101,9 +101,9 @@ export function lineupOrderIds(
       settings.gp,
     );
     const isPartner = p.listing_type === "partner";
-    const posture = isPartner ? postureForRates(ratesFromPlace(p)) : null;
+    const strategy = isPartner ? strategyForRates(ratesFromPlace(p)) : null;
     // Non-members never enter paid lanes (lane filter, not a whisper score).
-    const rp = isPartner ? rpScore(posture, settings.rp) : 0;
+    const rp = isPartner ? rpScore(strategy, settings.rp) : 0;
     // MP — the operator's per-place priority; unset → the 0.1 baseline.
     const mpRaw = Number(p.manual_priority);
     const mp = Number.isFinite(mpRaw) ? mpRaw : DEFAULT_MANUAL_PRIORITY;

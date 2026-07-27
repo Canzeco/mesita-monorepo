@@ -15,7 +15,7 @@ export async function getProfileTool(
     .maybeSingle();
   if (error) return toolError(error.message);
   if (!consumer) return toolError("Consumer profile not found");
-  const classKey = consumer.class_key ?? "free";
+  const classKey = consumer.class_key ?? "standard";
   let tier = null;
   try {
     tier = await getTierConfig(admin, classKey);
