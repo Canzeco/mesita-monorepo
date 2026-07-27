@@ -15,9 +15,9 @@ import { INSTAGRAM_ICON_GRADIENT_CLASS } from "@/lib/ui-classes";
 // useConsumerClass() — profile card, place promo chips, reward box — can be
 // previewed without real billing or a 1K-follower Instagram. Both toggles are
 // backed by the single tri-state override, so they stay mutually consistent:
-//   • Emulate Instagram ON  → 'instagram'  (Premium via IG: @handle + reach)
+//   • Emulate Instagram ON  → 'instagram'  (Magnetic via IG: @handle + reach)
 //   • Emulate Class Premium → 'subscription' (Premium via paid plan)
-//   • either OFF/Free       → 'free'
+//   • either OFF/Standard   → 'standard'
 // Remove this file together with the MOCK_ paths once the states can be
 // produced with real data.
 
@@ -53,9 +53,9 @@ export function MockControls() {
         }
         iconClass={INSTAGRAM_ICON_GRADIENT_CLASS}
         title="Emulate Instagram"
-        summary="Preview the Instagram-connected profile"
+        summary="Preview the Magnetic (Instagram) profile"
         on={igOn}
-        onToggle={() => setMockClass(igOn ? "free" : "instagram")}
+        onToggle={() => setMockClass(igOn ? "standard" : "instagram")}
       />
 
       <EmulateRow
@@ -64,7 +64,9 @@ export function MockControls() {
         title="Emulate Class"
         summary="Preview Mesita Premium"
         on={classPremium}
-        onToggle={() => setMockClass(classPremium ? "free" : "subscription")}
+        onToggle={() =>
+          setMockClass(classPremium ? "standard" : "subscription")
+        }
       />
     </div>
   );

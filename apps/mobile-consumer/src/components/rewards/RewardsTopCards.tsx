@@ -5,7 +5,11 @@ import { Linking, Modal, Pressable, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { GRADIENT_DIAGONAL, GRADIENTS } from '@/constants/brand';
-import { PREMIUM_SUBSCRIBE_URL } from '@/lib/consumer-classes';
+import {
+  PREMIUM_SUBSCRIBE_URL,
+  classProperLabel,
+  isElevatedClass,
+} from '@/lib/consumer-classes';
 import { useAuth } from '@/providers/auth';
 
 const ORIGIN_LABEL: Record<string, string> = {
@@ -19,7 +23,8 @@ const ORIGIN_LABEL: Record<string, string> = {
 export function RewardsTopCards() {
   const { consumerClass } = useAuth();
   const insets = useSafeAreaInsets();
-  const isPremium = consumerClass?.class === 'premium';
+  const classKey = consumerClass?.class ?? 'standard';
+  const isElevated = isElevatedClass(classKey);
   const origin = consumerClass?.origin ?? 'default';
   const [howOpen, setHowOpen] = useState(false);
 
@@ -28,17 +33,21 @@ export function RewardsTopCards() {
       <View className="flex-row items-stretch gap-2.5">
         <Pressable
           onPress={() => {
-            if (isPremium) return;
+            if (isElevated) return;
             void Linking.openURL(PREMIUM_SUBSCRIBE_URL);
           }}
           accessibilityRole="button"
           accessibilityLabel={
-            isPremium ? 'Premium active' : 'Subscribe on web'
+            isElevated ? `${classProperLabel(classKey)} active` : 'Subscribe on web'
           }
           className="flex-1 flex-row items-center gap-2.5 rounded-2xl border border-border bg-card p-3 active:opacity-95"
         >
           <LinearGradient
-            colors={[...GRADIENTS.premium]}
+            colors={
+              classKey === 'magnetic'
+                ? [...GRADIENTS.gold]
+                : [...GRADIENTS.premium]
+            }
             start={GRADIENT_DIAGONAL.start}
             end={GRADIENT_DIAGONAL.end}
             style={{
@@ -49,7 +58,7 @@ export function RewardsTopCards() {
               justifyContent: 'center',
             }}
           >
-            {isPremium ? (
+            {isElevated ? (
               <Crown color="#fff" size={18} fill="#fff" />
             ) : (
               <Sparkles color="#fff" size={18} />
@@ -61,14 +70,16 @@ export function RewardsTopCards() {
               className="font-bold text-foreground"
               style={{ fontSize: 13 }}
             >
-              {isPremium ? 'Premium active' : 'Unlock Premium'}
+              {isElevated
+                ? `${classProperLabel(classKey)} active`
+                : 'Unlock Premium'}
             </Text>
             <Text
               numberOfLines={1}
               className="text-muted-foreground"
               style={{ fontSize: 11 }}
             >
-              {isPremium
+              {isElevated
                 ? `via ${ORIGIN_LABEL[origin] ?? 'Mesita'}`
                 : 'Subscribe on web'}
             </Text>
@@ -177,10 +188,10 @@ export function RewardsTopCards() {
               style={{ fontSize: 13, lineHeight: 20 }}
             >
               <Text className="font-semibold text-foreground">
-                Premium boosts them.{' '}
+                Premium and Magnetic boost them.{' '}
               </Text>
-              Free gets the base discount; Premium unlocks bigger ones — free
-              with Instagram.
+              Standard gets the base discount; Premium and Magnetic unlock bigger
+              ones — Magnetic is free with Instagram.
             </Text>
           </View>
         </View>

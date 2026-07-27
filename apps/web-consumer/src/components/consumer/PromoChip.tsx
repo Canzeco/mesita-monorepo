@@ -1,7 +1,7 @@
 "use client";
 
 import { Gift } from "lucide-react";
-import { classProperLabel } from "@/lib/consumer-data";
+import { classProperLabel, isElevatedClass } from "@/lib/consumer-data";
 import { useConsumerClass } from "@/lib/class-context";
 import { resolvePromoRateFromPlaceRow } from "@/lib/promo-rates";
 import type { Place } from "@/lib/api/places";
@@ -63,7 +63,7 @@ export function PromoChip({
   const promoPercent = resolvePromoRateFromPlaceRow(
     place as unknown as Record<string, unknown>,
     isFirstVisit,
-    classKey === "premium",
+    isElevatedClass(classKey),
   );
 
   // No reward at the current class. Hidden by default; when the caller opts

@@ -3,7 +3,7 @@
 import Image from "next/image";
 import { BadgeCheck, Crown, Instagram } from "lucide-react";
 import type { ConsumerProfile } from "@/lib/api/profile";
-import { CLASSES } from "@/lib/consumer-data";
+import { CLASSES, isElevatedClass } from "@/lib/consumer-data";
 import { useConsumerClass } from "@/lib/class-context";
 import {
   ageFromBirthday,
@@ -22,7 +22,9 @@ export function ProfileSummaryCard({
   loading: boolean;
 }) {
   const { key, origin, followers, handle: classHandle } = useConsumerClass();
-  const isPremium = key === "premium";
+  const isElevated = isElevatedClass(key);
+  // Magnetic (top tier) reads gold; Premium reads its violet token.
+  const elevatedBg = key === "magnetic" ? "bg-tier-gold" : "bg-tier-premium";
 
   if (loading) {
     return (
@@ -72,8 +74,8 @@ export function ProfileSummaryCard({
   // Every piece of the member's actual data lives here in the card — name,
   // phone, class, Instagram. The boxes below are pure action buttons and carry
   // no user data (so "why class?" is answered once, here).
-  const classLabel = CLASSES.find((c) => c.id === key)?.label ?? "Free";
-  const classVia = isPremium && origin !== "default" ? origin : null;
+  const classLabel = CLASSES.find((c) => c.id === key)?.label ?? "Standard";
+  const classVia = isElevated && origin !== "default" ? origin : null;
   // Real handle lives on the profile; fall back to the class-context handle
   // (carries the demo handle for the Instagram preview state).
   const handle = profile?.instagram_handle ?? classHandle;
@@ -86,7 +88,7 @@ export function ProfileSummaryCard({
     <section
       className={cn(
         "border-border overflow-hidden rounded-3xl border p-4",
-        isPremium
+        isElevated
           ? "from-primary/[0.14] via-secondary/[0.10] to-accent/[0.12] bg-gradient-to-br"
           : "from-primary/[0.08] via-secondary/[0.06] to-accent/[0.08] bg-gradient-to-br",
       )}
@@ -96,7 +98,7 @@ export function ProfileSummaryCard({
         <div
           className={cn(
             "shrink-0 rounded-full p-[2.5px]",
-            isPremium ? "bg-tier-premium" : "bg-pink-gradient",
+            isElevated ? elevatedBg : "bg-pink-gradient",
           )}
         >
           <div className="bg-card rounded-full p-[2.5px]">
@@ -171,8 +173,8 @@ export function ProfileSummaryCard({
           <span
             className={cn(
               "flex h-7 w-7 shrink-0 items-center justify-center rounded-lg shadow-sm",
-              isPremium
-                ? "bg-tier-premium text-white"
+              isElevated
+                ? `${elevatedBg} text-white`
                 : "bg-amber-400/20 text-amber-700",
             )}
           >

@@ -42,7 +42,7 @@ export type ConsumerProfile = {
 // the (shell) layout feeds into the ClassProvider so every client
 // surface renders the consumer's actual class instead of a hardcoded mock.
 export type ConsumerClass = {
-  key: "free" | "premium";
+  key: "standard" | "premium" | "magnetic";
   origin: "default" | "instagram" | "subscription" | "invitation";
   label: string;
   followers: number | null;
@@ -112,12 +112,12 @@ export async function apiDeleteConsumerAccount(
 
 // ─── Instagram claim ─────────────────────────────────────────────────────
 
-// consumer-web-claim-instagram: the social door into Premium. 1,000+
-// followers grants Premium with origin "instagram"; below the threshold an
-// instagram-origin Premium is dropped back to Free. The handle is persisted
-// to consumers.instagram_handle.
+// consumer-web-claim-instagram: the social door into Magnetic. 1,000+
+// followers grants Magnetic with origin "instagram"; below the threshold the
+// consumer stays Standard. The handle is persisted to
+// consumers.instagram_handle.
 export type InstagramClaimResult = {
-  tier: "free" | "premium";
+  tier: "standard" | "magnetic";
   followers: number;
   handle: string | null;
 };

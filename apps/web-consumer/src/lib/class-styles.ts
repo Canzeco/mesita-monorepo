@@ -16,11 +16,14 @@
 import type { ConsumerClass } from "@/lib/mock/place";
 
 export const CLASS_AVATAR_BG: Record<ConsumerClass, string> = {
-  free: "bg-tier-free",
+  standard: "bg-tier-free",
   premium: "bg-tier-premium",
+  // Magnetic (top tier) uses the existing gold design token.
+  magnetic: "bg-tier-gold",
 };
 
 export const CLASS_TEXT: Record<ConsumerClass, string> = {
-  free: "text-muted-foreground",
+  standard: "text-muted-foreground",
   premium: "text-premium",
+  magnetic: "text-amber-600",
 };

@@ -1446,8 +1446,8 @@ function MetaCard({
   );
 }
 
-// Promos — read-only summary of the Mesita Membership posture (MESITA-588);
-// mirrors the Promos tab's four-strategy model. Editing happens there.
+// Promos — read-only summary of the Mesita Membership strategy (MESITA-588);
+// mirrors the Promos tab's strategy model. Editing happens there.
 function PromosCard({ place }: { place: AdminPlace }) {
   const strategyId = strategyForPlace(place);
   const strategy = strategyId ? STRATEGY_BY_ID[strategyId] : null;
@@ -1458,12 +1458,12 @@ function PromosCard({ place }: { place: AdminPlace }) {
     ? STRATEGY_VISIBILITY_LADDER.indexOf(strategy.visibility)
     : -1;
 
-  // Matrix order — Welcome then Returning, Free then Premium — matching the
+  // Matrix order — Welcome then Returning, Standard then Premium — matching the
   // 2×2 matrix on the Promos-tab membership cards (MESITA-590).
   const rows: { label: string; rate: number | null }[] = [
-    { label: "Welcome · Free", rate: place.welcome_free_rate },
+    { label: "Welcome · Standard", rate: place.welcome_free_rate },
     { label: "Welcome · Premium", rate: place.welcome_premium_rate },
-    { label: "Returning · Free", rate: place.free_rate },
+    { label: "Returning · Standard", rate: place.free_rate },
     { label: "Returning · Premium", rate: place.premium_rate },
   ];
 
@@ -1472,7 +1472,7 @@ function PromosCard({ place }: { place: AdminPlace }) {
       icon={<Percent className="h-4 w-4" />}
       tint="pink"
       title="Mesita Membership"
-      subtitle="Posture, discounts & visibility — edit on the Promos tab."
+      subtitle="Strategy, discounts & visibility — edit on the Promos tab."
       action={
         <Link
           href={unitSectionHref(place.id, "promos")}

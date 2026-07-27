@@ -8,7 +8,7 @@
 //
 //   - Welcome ≥ Returning inside a class — winning a guest is worth more than
 //     keeping one (retention discounts are partly deadweight).
-//   - Premium ≥ Free in every row — Premium guests always get more.
+//   - Premium ≥ Standard in every row — Premium guests always get more.
 //   - Rates live on a tens grid, max 50% — "half off" is the strongest
 //     credible headline; 70 was retired on margin math.
 //   - Every discount applies to the first MX$500 of the bill — one
@@ -27,13 +27,12 @@ export const UNIVERSAL_CAP_MXN = 500;
 
 export type StrategyId = "zero" | "conservative" | "aggressive";
 
-// Three rungs (Dominant retired in v5, MESITA-723), distinct from the plan
-// visibility of the old model.
+// Three rungs, distinct from the plan visibility of the old model.
 export type StrategyVisibility = "Low" | "Mid" | "High";
 
 // The four discount cells, keyed by the exact places column each maps to.
 //   welcome_* → first visit at the place · unprefixed → every visit after.
-//   *_free_*  → Free guests             · *_premium_* → Premium guests.
+//   *_free_*  → Standard guests         · *_premium_* → Premium guests.
 export type StrategyRates = {
   welcome_free_rate: number | null; // FW — Free · Welcome (first visit)
   welcome_premium_rate: number | null; // PW — Premium · Welcome
@@ -54,8 +53,7 @@ export type Strategy = {
 };
 
 // Ordered ascending in generosity so the picker reads Zero → Aggressive.
-// The rate tuples are the canonical Promos table (Dominant retired in v5,
-// MESITA-723 — three postures only):
+// The rate tuples are the canonical Promos table (three Strategies):
 //
 //   Level          FR  PR  FW  PW   Cap   Visibility
 //   ⭕ Zero        off off off off   —     Low

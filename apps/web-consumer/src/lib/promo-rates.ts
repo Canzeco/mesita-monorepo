@@ -1,13 +1,19 @@
 import type { ConsumerClass } from "@/lib/mock/place";
 
-type PromoTierRates = {
+// Per-class promo rates. The `free`/`premium` keys mirror the v4 places
+// columns (welcome_free_rate / free_rate / …) — the DB column vocabulary is
+// unchanged (the v5 standard/magnetic columns are a not-yet-landed backend
+// follow-up, MESITA-723). The consumer class → column mapping lives in
+// resolveActivePromoRate: Standard reads `free`; Premium and Magnetic read
+// `premium`.
+type PromoClassRates = {
   free: number | null;
   premium: number | null;
 };
 
 type PromoMatrix = {
-  welcome: PromoTierRates;
-  default: PromoTierRates;
+  welcome: PromoClassRates;
+  default: PromoClassRates;
   is_first_visit: boolean;
 };
 
@@ -16,7 +22,7 @@ function positiveRate(v: unknown): number | null {
   return v;
 }
 
-export function hasExplicitTierRates(row: Record<string, unknown>): boolean {
+export function hasExplicitClassRates(row: Record<string, unknown>): boolean {
   return (
     positiveRate(row.welcome_free_rate) != null ||
     positiveRate(row.welcome_premium_rate) != null ||
@@ -25,7 +31,7 @@ export function hasExplicitTierRates(row: Record<string, unknown>): boolean {
   );
 }
 
-/** Map places row → promo matrix from the per-tier rate columns. */
+/** Map places row → promo matrix from the per-class rate columns. */
 export function buildPromoMatrixFromRow(
   row: Record<string, unknown>,
   _listingType: "partner" | "web",
@@ -60,8 +66,11 @@ export function resolveActivePromoRate(
   classKey: ConsumerClass,
   isFirstVisit = matrix.is_first_visit,
 ): number | null {
-  const welcome = matrix.welcome[classKey];
-  const returning = matrix.default[classKey];
+  // Standard reads the `free` column; Premium and Magnetic both read `premium`
+  // (Magnetic has no dedicated v4 column, and ranks at or above Premium).
+  const col: keyof PromoClassRates = classKey === "standard" ? "free" : "premium";
+  const welcome = matrix.welcome[col];
+  const returning = matrix.default[col];
   return (
     (isFirstVisit ? (welcome ?? returning) : (returning ?? welcome)) ?? null
   );
@@ -91,14 +100,14 @@ export function resolvePromoRateFromPlaceRow(
     !placeOffersMesitaRewards({
       listing_type: listingType,
       promo_matrix: matrix,
-      promo_configured: hasExplicitTierRates(row),
+      promo_configured: hasExplicitClassRates(row),
     })
   ) {
     return null;
   }
   return resolveActivePromoRate(
     matrix,
-    premium ? "premium" : "free",
+    premium ? "premium" : "standard",
     isFirstVisit,
   );
 }

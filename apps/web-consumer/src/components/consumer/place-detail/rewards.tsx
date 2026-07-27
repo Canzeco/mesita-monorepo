@@ -83,13 +83,14 @@ export function RewardsBox({ place }: { place: PlaceDetail }) {
         ? `${visitLabel} · on your first ${capLabel}`
         : visitLabel;
   // The claim action depends on the guest's own account, not the place:
-  //   free            → Pay with QR + Upgrade (claim now, or unlock a bigger
-  //                     Premium reward)
-  //   Premium (paid)  → one Pay-with-QR button, reward applies automatically
-  //   Premium via IG  → one button: Pay with QR *and* post an Instagram story,
-  //                     since the story is what re-verifies the IG Premium class
-  const isFree = consumerClass.key === "free";
-  const isPremiumViaInstagram = !isFree && consumerClass.origin === "instagram";
+  //   Standard         → Pay with QR + Upgrade (claim now, or unlock a bigger
+  //                      reward)
+  //   Premium (paid)   → one Pay-with-QR button, reward applies automatically
+  //   Magnetic via IG  → one button: Pay with QR *and* post an Instagram story,
+  //                      since the story is what re-verifies the IG Magnetic class
+  const isStandard = consumerClass.key === "standard";
+  const isMagneticViaInstagram =
+    !isStandard && consumerClass.origin === "instagram";
   return (
     <Box title="Reward" icon={Sparkles} iconColor="text-pink-400">
       {/* Hero — the active reward, mechanic, and cap. The box header already
@@ -103,9 +104,8 @@ export function RewardsBox({ place }: { place: PlaceDetail }) {
 
       {/* How it works — the claim sequence, spelled out so every case is
           unambiguous at the table. The Instagram-story step only applies to
-          guests whose Premium comes from Instagram; Free and paid-Premium
-          guests skip straight to the reward, so it's labelled rather than
-          hidden. */}
+          Magnetic guests (Instagram-verified); Standard and Premium guests skip
+          straight to the reward, so it's labelled rather than hidden. */}
       <div className="flex flex-col gap-3">
         <BoxLabel>How it works</BoxLabel>
         <ol className="flex flex-col gap-3">
@@ -118,8 +118,8 @@ export function RewardsBox({ place }: { place: PlaceDetail }) {
           <RewardStep
             n={2}
             icon={Instagram}
-            title="Post a story — Premium via Instagram only"
-            body="If your Premium comes from Instagram, post a story tagging the place right after the waiter scans your QR. Free and paid-Premium guests skip this step."
+            title="Post a story — Magnetic (via Instagram) only"
+            body="If you're Magnetic via Instagram, post a story tagging the place right after the waiter scans your QR. Standard and Premium guests skip this step."
             accent
           />
           <RewardStep
@@ -132,7 +132,7 @@ export function RewardsBox({ place }: { place: PlaceDetail }) {
       </div>
 
       {/* One matrix instead of two ladders — First / Returning rows ×
-          Free / Premium columns. The active cell is highlighted ("you are
+          Standard / Premium columns. The active cell is highlighted ("you are
           here") so the hero's number isn't restated as a second big tile. */}
       <RewardMatrix
         welcome={welcome}
@@ -143,10 +143,10 @@ export function RewardsBox({ place }: { place: PlaceDetail }) {
       />
 
       {/* CTAs — class- and source-aware so the exact action is unambiguous.
-          Free: Pay + Upgrade. Paid Premium: one Pay button. Instagram
-          Premium: one Pay-and-post-story button. */}
+          Standard: Pay + Upgrade. Paid Premium: one Pay button. Magnetic via
+          Instagram: one Pay-and-post-story button. */}
       <div className="flex flex-col gap-2">
-        {isFree ? (
+        {isStandard ? (
           <div className="flex gap-2">
             <Link href="/rewards" className={REWARD_PAY_BTN}>
               <QrCode className="h-4 w-4" />
@@ -160,17 +160,17 @@ export function RewardsBox({ place }: { place: PlaceDetail }) {
         ) : (
           <Link href="/rewards" className={REWARD_PAY_BTN}>
             <QrCode className="h-4 w-4" />
-            {isPremiumViaInstagram
+            {isMagneticViaInstagram
               ? "Pay with QR & post IG story"
               : "Pay with QR to claim reward"}
           </Link>
         )}
         <p className="text-muted-foreground text-center text-[11px] leading-snug">
-          {isFree
+          {isStandard
             ? "Pay with your QR to claim your reward — or upgrade to Premium for a bigger one."
-            : isPremiumViaInstagram
-              ? "Pay with your QR, then post an Instagram story to unlock your Premium reward."
-              : "Just pay with your QR — your Premium reward applies automatically."}
+            : isMagneticViaInstagram
+              ? "Pay with your QR, then post an Instagram story to unlock your Magnetic reward."
+              : "Just pay with your QR — your reward applies automatically."}
         </p>
       </div>
     </Box>

@@ -2,7 +2,7 @@
 
 import { Crown, Instagram, Smile } from "lucide-react";
 
-import { CLASSES, classBadgeClass } from "@/lib/consumer-data";
+import { CLASSES, classBadgeClass, isElevatedClass } from "@/lib/consumer-data";
 import { useConsumerClass } from "@/lib/class-context";
 import { cn } from "@/lib/utils";
 
@@ -10,9 +10,9 @@ export function CurrentClassCard() {
   const { key, origin } = useConsumerClass();
   const meta = CLASSES.find((c) => c.id === key)!;
   const brand = `Mesita ${meta.label}`;
-  const isPremium = key === "premium";
+  const isElevated = isElevatedClass(key);
   const { Icon, via } = (() => {
-    if (!isPremium) return { Icon: Smile, via: null as string | null };
+    if (!isElevated) return { Icon: Smile, via: null as string | null };
     switch (origin) {
       case "instagram":
         return { Icon: Instagram, via: "via Instagram" };
@@ -34,7 +34,7 @@ export function CurrentClassCard() {
       <span
         className={cn(
           "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl backdrop-blur",
-          isPremium ? "bg-white/20" : "bg-foreground/[0.06]",
+          isElevated ? "bg-white/20" : "bg-foreground/[0.06]",
         )}
       >
         <Icon className="h-5 w-5" />

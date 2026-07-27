@@ -16,8 +16,8 @@ export function ClassPreviewToggle() {
   );
   const selected: MockClass =
     override ??
-    (effective.key === 'free'
-      ? 'free'
+    (effective.key === 'standard'
+      ? 'standard'
       : effective.origin === 'instagram'
         ? 'instagram'
         : 'subscription');
@@ -65,9 +65,9 @@ export function ClassPreviewToggle() {
       >
         {(
           [
-            { value: 'free', label: 'Free' },
-            { value: 'subscription', label: 'Subscription' },
-            { value: 'instagram', label: 'Instagram' },
+            { value: 'standard', label: 'Standard' },
+            { value: 'subscription', label: 'Premium' },
+            { value: 'instagram', label: 'Magnetic' },
           ] as const
         ).map((opt) => {
           const active = selected === opt.value;

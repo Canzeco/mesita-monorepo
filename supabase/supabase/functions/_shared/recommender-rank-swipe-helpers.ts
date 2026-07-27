@@ -7,6 +7,7 @@ import {
   type PlaceRow,
 } from "./recommender-pool.ts";
 import { localHour } from "./local-time.ts";
+import { isPremiumOrHigher } from "./membership.ts";
 
 const DEFAULT_RADIUS_KM = 25;
 
@@ -36,7 +37,7 @@ export function composeIntent({
   else parts.push("dinner, cocktails, and late-night spots");
 
   if (profile?.country) parts.push(`a consumer from ${profile.country}`);
-  if (profile?.tier === "premium") {
+  if (isPremiumOrHigher(profile?.tier)) {
     parts.push("a Mesita Premium member who values standout, high-quality places");
   }
   if (lat != null && lng != null) parts.push(`within ${DEFAULT_RADIUS_KM}km of this location`);
@@ -63,9 +64,10 @@ export function topCategoriesIn(rows: PlaceRow[], k: number): string[] {
 
 // Premium overlay: stable partition that floats partner places above
 // non-partners while preserving the relevance order inside each group. A
-// no-op for free / anonymous, so the deck only changes for Premium members.
+// no-op for standard / anonymous, so the deck only changes for Premium and
+// Magnetic members (magnetic ≥ premium).
 export function applyTierBoost(rows: PlaceRow[], tier: string | null): PlaceRow[] {
-  if (tier !== "premium") return rows;
+  if (!isPremiumOrHigher(tier)) return rows;
   const partners: PlaceRow[] = [];
   const rest: PlaceRow[] = [];
   for (const r of rows) {

@@ -9,15 +9,15 @@ import {
 import { cn } from "@/lib/utils";
 
 // Dev/demo affordance — flip the signed-in consumer between the three class
-// states (Free / Premium via subscription / Premium via Instagram) so every
-// surface that reads useConsumerClass() can be previewed without real billing
-// or a 1K-follower Instagram. Writes a client-only localStorage override that
-// wins over the real server-seeded class. Remove with the MOCK_ paths once the
-// three states can be produced with real data.
+// states (Standard / Premium via subscription / Magnetic via Instagram) so
+// every surface that reads useConsumerClass() can be previewed without real
+// billing or a 1K-follower Instagram. Writes a client-only localStorage
+// override that wins over the real server-seeded class. Remove with the MOCK_
+// paths once the three states can be produced with real data.
 const CLASS_PREVIEW_OPTIONS: { value: MockClass; label: string }[] = [
-  { value: "free", label: "Free" },
-  { value: "subscription", label: "Subscription" },
-  { value: "instagram", label: "Instagram" },
+  { value: "standard", label: "Standard" },
+  { value: "subscription", label: "Premium" },
+  { value: "instagram", label: "Magnetic" },
 ];
 
 export function ClassPreviewToggle() {
@@ -25,8 +25,8 @@ export function ClassPreviewToggle() {
   const { key, origin } = useConsumerClass();
   const selected: MockClass =
     override ??
-    (key === "free"
-      ? "free"
+    (key === "standard"
+      ? "standard"
       : origin === "instagram"
         ? "instagram"
         : "subscription");

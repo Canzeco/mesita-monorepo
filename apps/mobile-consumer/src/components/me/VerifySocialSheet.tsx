@@ -32,15 +32,28 @@ export function VerifySocialSheet({ visible, onClose }: Props) {
     if (!canVerify) return;
     setVerifying(true);
     try {
-      await apiClaimInstagram({
+      const result = await apiClaimInstagram({
         followers: DEMO_INSTAGRAM_FOLLOWERS,
         handle: handle.trim().replace(/^@/, '').toLowerCase(),
       });
       await refreshProfile();
-      Alert.alert('Connected', 'Instagram connected — Mesita Premium unlocked.');
-      setHandle('');
-      setCode('');
-      onClose();
+      if (result.tier === 'magnetic') {
+        Alert.alert(
+          'Connected',
+          'Instagram connected — Mesita Magnetic unlocked.',
+        );
+        setHandle('');
+        setCode('');
+        onClose();
+        return;
+      }
+      // Below the 1,000-follower bar — linked, but the consumer stays Standard.
+      Alert.alert(
+        'Instagram connected',
+        `${result.followers.toLocaleString(
+          'en-US',
+        )} followers is below the 1,000 needed for Magnetic.`,
+      );
     } catch (e) {
       Alert.alert(
         "Couldn't verify",
@@ -79,7 +92,7 @@ export function VerifySocialSheet({ visible, onClose }: Props) {
         'Follow @mesita.bot on Instagram.',
         'DM @mesita.bot with the word VERIFY.',
         'Mesita will reply with an 8-digit verification code. Paste it here.',
-        '1,000+ followers unlocks Mesita Premium instantly.',
+        '1,000+ followers unlocks Mesita Magnetic instantly.',
       ].map((line, i) => (
         <View
           key={line}

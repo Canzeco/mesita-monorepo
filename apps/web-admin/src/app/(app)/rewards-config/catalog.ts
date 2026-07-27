@@ -2,13 +2,13 @@
 //
 // This page lifts the canonical v5 rate table out of code (business/admin
 // strategies.ts hardcode it) and onto the public.app_settings singleton, so an
-// operator can tune, for each posture (Zero / Conservative / Aggressive), what
+// operator can tune, for each strategy (Zero / Conservative / Aggressive), what
 // each of the six segments pays. It is the source of truth the v5 bill engine
 // will read once it lands; today it persists ahead of enforcement, exactly like
 // the Sourcing / Reservations knobs did before their pipelines read them.
 //
 // Grid rule (locked by Pato 2026-07-22): 5% steps, floor 10%, ceiling 50%
-// (allowed {0, 10, 15, … 50}; 0 = off). Zero posture is off by definition — its
+// (allowed {0, 10, 15, … 50}; 0 = off). Zero strategy is off by definition — its
 // column is always 0. Universal cap: every discount applies to the first `cap`
 // MXN of the bill (monthly_promo_cap).
 //
@@ -16,7 +16,7 @@
 // (eventually) the v5 best-of resolution in _shared/membership.ts — keep them
 // in lock-step with apps/web-consumer/src/lib/reward-segments.ts.
 
-export type RewardPosture = "zero" | "conservative" | "aggressive";
+export type GridStrategy = "zero" | "conservative" | "aggressive";
 
 export type RewardSegmentKey =
   | "standard"
@@ -26,10 +26,10 @@ export type RewardSegmentKey =
   | "welcome"
   | "review";
 
-export type SegmentRates = Record<RewardPosture, number>;
+export type SegmentRates = Record<GridStrategy, number>;
 
 export type RewardsConfig = {
-  /** Per-segment rate under each posture. 0 = off. */
+  /** Per-segment rate under each strategy. 0 = off. */
   grid: Record<RewardSegmentKey, SegmentRates>;
   /** Universal cap (MXN): the discount applies to the first `cap` of the bill. */
   cap: number;
@@ -109,8 +109,8 @@ export const SEGMENTS: readonly SegmentMeta[] = [
   },
 ];
 
-export const POSTURES: readonly {
-  key: RewardPosture;
+export const STRATEGY_IDS: readonly {
+  key: GridStrategy;
   label: string;
   blurb: string;
   /** Zero is off by definition — its column is fixed, not editable. */
@@ -171,7 +171,7 @@ function clampCap(v: unknown): number {
 
 /**
  * Coerce whatever the row holds into a renderable grid. Anything malformed
- * resolves to the v5 default — the page must always be usable. Zero posture is
+ * resolves to the v5 default — the page must always be usable. Zero strategy is
  * forced to 0 (off by definition). Mirrors normalizeConfig in the update EF
  * (the strict gate on save).
  */

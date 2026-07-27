@@ -1,7 +1,7 @@
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import { AtSign, Crown } from 'lucide-react-native';
+import { AtSign, Crown, Magnet } from 'lucide-react-native';
 import { Pressable, Text, View } from 'react-native';
 
 import { GRADIENTS, GRADIENT_DIAGONAL } from '@/constants/brand';
@@ -41,8 +41,16 @@ export function SocialActivityRow({
             style={{ width: 44, height: 44, borderRadius: 22 }}
             contentFit="cover"
           />
-          {person.plan === 'premium' ? (
+          {person.plan === 'magnetic' ? (
             <View className="absolute -bottom-0.5 -left-0.5 size-4 items-center justify-center rounded-full bg-amber-400">
+              <Magnet color="#fff" size={10} />
+            </View>
+          ) : null}
+          {person.plan === 'premium' ? (
+            <View
+              className="absolute -bottom-0.5 -left-0.5 size-4 items-center justify-center rounded-full"
+              style={{ backgroundColor: '#8b6ce8' }}
+            >
               <Crown color="#fff" size={10} fill="#fff" />
             </View>
           ) : null}

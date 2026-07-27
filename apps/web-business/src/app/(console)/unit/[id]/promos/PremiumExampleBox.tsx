@@ -25,7 +25,7 @@ export function PremiumExampleBox({
 
   return (
     <Section
-      title="What a Premium guest gets"
+      title="What Premium & Magnetic guests get"
       description={`The current rates worked on a sample ${formatMoney(EXAMPLE_BILL_MXN, place.currency)} ticket.`}
       right={
         hasPromo ? (
@@ -56,15 +56,16 @@ export function PremiumExampleBox({
             />
           </div>
           <p className="text-muted-foreground text-[11px] leading-snug">
-            Premium ≥ Free in every posture — Premium guests always get the
-            better deal. They are what the membership buys.
+            Premium ≥ Standard in every Strategy — your Premium and Magnetic
+            guests always get the better deal. They are what the membership
+            buys.
           </p>
         </>
       ) : (
         <div className="border-border bg-muted/20 rounded-xl border border-dashed px-4 py-5 text-center">
           <p className="text-muted-foreground text-[12px] leading-snug">
             No promos right now — Premium guests see your place in the catalog
-            with no discount card. Join a posture above to preview the deal.
+            with no discount card. Join a Strategy above to preview the deal.
           </p>
         </div>
       )}
@@ -128,8 +129,8 @@ function ExampleCard({
           </p>
           <p className="text-muted-foreground mt-1 text-[11px]">
             {freeRate == null
-              ? "A Free guest gets no discount on this visit."
-              : `A Free guest saves ${formatMoney(freeSaves, currency)} (${freeRate}%).`}
+              ? "A Standard guest gets no discount on this visit."
+              : `A Standard guest saves ${formatMoney(freeSaves, currency)} (${freeRate}%).`}
           </p>
         </>
       )}

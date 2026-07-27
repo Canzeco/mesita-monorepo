@@ -4,6 +4,7 @@ import { AtSign, BadgeCheck, Crown } from 'lucide-react-native';
 import { Text, View } from 'react-native';
 
 import { GRADIENT_DIAGONAL, GRADIENTS, SHADOW_ELEV } from '@/constants/brand';
+import { isElevatedClass } from '@/lib/consumer-classes';
 import { firstInitials } from '@/lib/utils';
 
 export function IdentityHeroSkeleton() {
@@ -32,7 +33,7 @@ export function IdentityHeroSkeleton() {
 }
 
 export function IdentityHero({
-  isPremium,
+  classKey,
   name,
   phone,
   meta,
@@ -43,7 +44,7 @@ export function IdentityHero({
   classLabel,
   classVia,
 }: {
-  isPremium: boolean;
+  classKey: string;
   name: string;
   phone: string;
   meta: string;
@@ -54,6 +55,14 @@ export function IdentityHero({
   classLabel: string;
   classVia: string | null;
 }) {
+  const isElevated = isElevatedClass(classKey);
+  // Magnetic (top tier) reads gold; Premium reads its violet gradient.
+  const elevatedRing =
+    classKey === 'magnetic' ? [...GRADIENTS.gold] : [...GRADIENTS.premium];
+  const elevatedWash =
+    classKey === 'magnetic'
+      ? (['rgba(245,204,88,0.20)', 'rgba(235,136,31,0.12)'] as const)
+      : (['rgba(139,108,232,0.18)', 'rgba(140,204,255,0.14)'] as const);
   return (
     // Identity hero — web ProfileSummaryCard DNA (no "Me" H1, no Chip).
     <View
@@ -62,8 +71,8 @@ export function IdentityHero({
     >
       <LinearGradient
         colors={
-          isPremium
-            ? ['rgba(139,108,232,0.18)', 'rgba(140,204,255,0.14)']
+          isElevated
+            ? elevatedWash
             : ['rgba(251,43,123,0.10)', 'rgba(255,90,171,0.08)']
         }
         start={GRADIENT_DIAGONAL.start}
@@ -79,7 +88,7 @@ export function IdentityHero({
       <View className="flex-row items-center gap-4">
         {/* Double story-ring: gradient → card → avatar (web parity). */}
         <LinearGradient
-          colors={isPremium ? [...GRADIENTS.premium] : [...GRADIENTS.pink]}
+          colors={isElevated ? elevatedRing : [...GRADIENTS.pink]}
           start={GRADIENT_DIAGONAL.start}
           end={GRADIENT_DIAGONAL.end}
           style={{ borderRadius: 999, padding: 2.5 }}
@@ -189,9 +198,9 @@ export function IdentityHero({
           )}
         </View>
         <View className="flex-row items-center gap-2.5">
-          {isPremium ? (
+          {isElevated ? (
             <LinearGradient
-              colors={[...GRADIENTS.premium]}
+              colors={elevatedRing}
               start={GRADIENT_DIAGONAL.start}
               end={GRADIENT_DIAGONAL.end}
               style={{

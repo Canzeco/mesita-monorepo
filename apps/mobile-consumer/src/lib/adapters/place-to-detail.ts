@@ -4,7 +4,7 @@ import { detectMenuKind } from '@/lib/menu-url';
 import { resolvePlaceCategoryName } from '@/lib/place-category';
 import {
   buildPromoMatrixFromRow,
-  hasExplicitTierRates,
+  hasExplicitClassRates,
 } from '@/lib/promo-rates';
 import type {
   PlaceDetail,
@@ -182,7 +182,7 @@ export function placeRowToDetail(
       reward_value: activePremiumRate,
     },
     promo_matrix: buildPromoMatrixFromRow(row, listingType),
-    promo_configured: hasExplicitTierRates(row),
+    promo_configured: hasExplicitClassRates(row),
     reward_cap_mxn: num(row.monthly_promo_cap) ?? 0,
     requires_story: row.requires_story === true,
     long_description:

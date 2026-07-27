@@ -11,8 +11,9 @@ import {
 import { Text, View } from 'react-native';
 
 import { COLORS, GRADIENT_DIAGONAL, GRADIENTS } from '@/constants/brand';
+import { classProperLabel, isElevatedClass } from '@/lib/consumer-classes';
 import {
-  PEAK_POSTURE,
+  PEAK_STRATEGY,
   REWARD_SEGMENTS,
   baseRateForClass,
   peakRateForClass,
@@ -51,15 +52,15 @@ function rungTint(
 
 export function RewardProgramCard() {
   const { consumerClass } = useAuth();
-  const classKey: RewardClassKey =
-    consumerClass?.class === 'premium' ? 'premium' : 'free';
+  const classKey: RewardClassKey = (consumerClass?.class ??
+    'standard') as RewardClassKey;
   const mineKey = segmentKeyForClass(classKey);
   const peak = peakRateForClass(classKey);
   const base = baseRateForClass(classKey);
-  const isPremium = classKey === 'premium';
+  const isElevated = isElevatedClass(classKey);
 
-  const bannerSub = isPremium
-    ? `Premium gives you a ${base}% base — climb to ${peak}% with a Google review at the table.`
+  const bannerSub = isElevated
+    ? `${classProperLabel(classKey)} gives you a ${base}% base — climb to ${peak}% with a Google review at the table.`
     : `You start at ${base}% as Standard — go up to ${peak}% with Premium, stories and reviews.`;
 
   return (
@@ -131,7 +132,7 @@ export function RewardProgramCard() {
 
 function RungRow({ seg, mine }: { seg: RewardSegment; mine: boolean }) {
   const Icon = SEGMENT_ICON[seg.key];
-  const peak = seg.rates[PEAK_POSTURE];
+  const peak = seg.rates[PEAK_STRATEGY];
   const magneticLocked = seg.key === 'magnetic' && !mine;
   const tint = rungTint(seg, mine);
   const filled = seg.key === 'premium' || seg.key === 'review';

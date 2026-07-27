@@ -97,7 +97,7 @@ Deno.serve(async (req) => {
   // Profile tab. `getTierConfig` already returns null for an unknown
   // class_key; we additionally guard the await so a transient throw can't
   // take the whole response down.
-  const classKey = consumer.class_key ?? "free";
+  const classKey = consumer.class_key ?? "standard";
   let tier = null;
   try {
     tier = await getTierConfig(admin, classKey);
@@ -132,9 +132,9 @@ Deno.serve(async (req) => {
   used = count ?? 0;
 
   const subscriptionClass = {
-    key: consumer.class_key ?? "free",
+    key: consumer.class_key ?? "standard",
     origin: consumer.class_origin ?? "default",
-    label: tier?.label ?? "Free",
+    label: tier?.label ?? "Standard",
     followers: consumer.consumer_instagram_followers_count ?? null,
     expires_at: consumer.class_expires_at ?? null,
     subscription: subscription ?? null,

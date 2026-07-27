@@ -16,7 +16,7 @@ const STRIKES: { n: string; consequence: string }[] = [
   {
     n: "3",
     consequence:
-      "Removed from the paid postures and the fee is forfeited — the place stays listed on Mesita.",
+      "Removed from the paid Strategies and the fee is forfeited — the place stays listed on Mesita.",
   },
 ];
 
@@ -53,7 +53,7 @@ export function SubscriptionBox({
           <p className="text-sm font-semibold">
             {formatMoney(PRODUCT_PRICE_MXN, currency)}{" "}
             <span className="text-muted-foreground text-[11px] font-normal">
-              / year · per posture
+              / year · per Strategy
             </span>
           </p>
           <p className="text-muted-foreground text-[11px] leading-snug">

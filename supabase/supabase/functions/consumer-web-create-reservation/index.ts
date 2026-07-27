@@ -71,7 +71,7 @@ Deno.serve(async (req) => {
     .maybeSingle();
   if (consumerErr) return json({ ok: false, error: consumerErr.message }, 500);
 
-  const tier = await getTierConfig(admin, consumerRow?.class_key ?? "free");
+  const tier = await getTierConfig(admin, consumerRow?.class_key ?? "standard");
   const monthlyLimit = tier?.monthly_reservation_limit ?? null;
   if (monthlyLimit != null) {
     const monthStart = new Date();
@@ -92,7 +92,7 @@ Deno.serve(async (req) => {
           error:
             "You've reached your monthly reservation limit. Upgrade to Mesita Premium for unlimited reservations.",
           limit: monthlyLimit,
-          tier: consumerRow?.class_key ?? "free",
+          tier: consumerRow?.class_key ?? "standard",
         },
         409,
       );

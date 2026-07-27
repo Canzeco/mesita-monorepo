@@ -92,7 +92,7 @@ export function ProfileClient({
       toast("Checkout cancelled — you can subscribe anytime.");
     }
     if (params.get("instagram") === "success") {
-      toast.success("Instagram connected — Mesita Premium unlocked.");
+      toast.success("Instagram connected — Mesita Magnetic unlocked.");
     }
   }, []);
 

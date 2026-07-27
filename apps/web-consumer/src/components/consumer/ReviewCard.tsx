@@ -22,8 +22,9 @@ import { CLASS_AVATAR_BG, CLASS_TEXT } from "@/lib/class-styles";
 const LONG_QUOTE_THRESHOLD = 220;
 
 const CLASS_LABEL: Record<ConsumerClass, string> = {
-  free: "FREE",
+  standard: "STANDARD",
   premium: "PREMIUM",
+  magnetic: "MAGNETIC",
 };
 
 type MesitaPayload = {

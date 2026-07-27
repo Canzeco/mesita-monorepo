@@ -27,7 +27,7 @@ import { SubscriptionBox } from "./SubscriptionBox";
 //      card is the click target: it opens a product modal with the full
 //      detail (what you give / what you get back / the commitment) and the
 //      action footer — the modal IS the confirm-and-pay step. Three products
-//      cost the SAME MX$1,000/year Verified membership; switching postures
+//      cost the SAME MX$1,000/year Verified membership; switching Strategies
 //      later is a NEW membership (the lock-in).
 //   2. The subscription — fee framing, activation steps, strikes ladder.
 //   3. Premium example — what the current rates feel like at the bill.
@@ -86,7 +86,7 @@ export function PromosClient({ place }: { place: MyPlace }) {
       .then(() => router.refresh())
       .catch((err) => {
         setSelectedId(previous);
-        setError(errMsg(err, "Couldn't save the posture."));
+        setError(errMsg(err, "Couldn't save the Strategy."));
       })
       .finally(() => setPendingId(null));
   };
@@ -208,14 +208,14 @@ export function PromosClient({ place }: { place: MyPlace }) {
 
         {selectedId === null && (
           <p className="text-muted-foreground text-[11px]">
-            Your current rates don&apos;t match a posture — pick one to
+            Your current rates don&apos;t match a Strategy — pick one to
             standardize them.
           </p>
         )}
 
         <p className="text-muted-foreground text-[11px] leading-snug">
-          Same price on every posture keeps rank off the market — you buy a
-          commitment to give, not placement. Switching postures later is a new{" "}
+          Same price on every Strategy keeps rank off the market — you buy a
+          commitment to give, not placement. Switching Strategies later is a new{" "}
           {formatMoney(PRODUCT_PRICE_MXN, place.currency)}/year membership.
         </p>
 

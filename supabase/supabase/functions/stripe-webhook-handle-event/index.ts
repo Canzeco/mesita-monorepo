@@ -213,7 +213,7 @@ async function reconcileConsumerSubscription(
     const revoke = await admin
       .from("consumers")
       .update({
-        class_key: "free",
+        class_key: "standard",
         class_origin: "default",
         class_expires_at: null,
       })

@@ -3,7 +3,7 @@ import type { MenuKind } from '@/lib/menu-url';
 // Rich PlaceDetail — mirrors apps/web-consumer PlaceDetail plus MESITA-560
 // menu viewer fields (`menus` with url/kind).
 
-export type ConsumerClassKey = 'free' | 'premium';
+export type ConsumerClassKey = 'standard' | 'premium' | 'magnetic';
 
 type PlaceDetailTag = {
   slug: string;

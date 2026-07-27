@@ -15,7 +15,7 @@
 //       openness array from intent time (when's PARAM), and the category
 //       ladder — where × when × what.
 //   GP  from the real place — ln(1 + rating^pow × reviews) / ceiling.
-//   RP  from the real place — posture derived from its live promo rates.
+//   RP  from the real place — strategy derived from its live promo rates.
 //   XX  a seeded unit draw per card per lane (scores.unitDraw), U^control.
 //
 // HONESTY RULES. Consumers and places come from the DB (via
@@ -364,7 +364,7 @@ function buildConsumerDoc(profile: ConsumerProfile): string {
     c?.sex ?? null,
     c?.age != null ? `${c.age} years old` : null,
     c?.country ?? null,
-    `${c?.class_key ?? "free"} class (${igWhy})`,
+    `${c?.class_key ?? "standard"} class (${igWhy})`,
   ]
     .filter(Boolean)
     .join(" · ");

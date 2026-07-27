@@ -5,6 +5,7 @@ import { useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import QRCode from 'react-native-qrcode-svg';
 
+import { classProperLabel, isElevatedClass } from '@/lib/consumer-classes';
 import { displayConsumerCode } from '@/lib/consumer-code';
 import type { RewardStats } from '@/lib/hooks/useConsumerPayTickets';
 import { useAuth } from '@/providers/auth';
@@ -12,8 +13,9 @@ import { useAuth } from '@/providers/auth';
 import { IdentityStrip, IgChips, Scorecard } from './my-qr-card-parts';
 
 // Coral Mesita Card passport — web MyQrCard.tsx port (MESITA-580).
-// Free: #ff7a45→#ff2d78 · Premium: →#a13cf0. QR plate ink #2b1233.
-// White-on-coral is the one intentional white-on-color surface here.
+// Standard: #ff7a45→#ff2d78 · Premium: →#a13cf0 · Magnetic: →gold #e0982e.
+// QR plate ink #2b1233. White-on-coral is the one intentional white-on-color
+// surface here.
 
 const PASSPORT_SHADOW = {
   shadowColor: '#ff4d6d',
@@ -44,7 +46,8 @@ export function MyQrCard({
 }) {
   const { consumerClass } = useAuth();
   const displayCode = displayConsumerCode(code);
-  const isPremium = consumerClass?.class === 'premium';
+  const classKey = consumerClass?.class ?? 'standard';
+  const isElevated = isElevatedClass(classKey);
   const origin = consumerClass?.origin ?? 'default';
   const followerCount = consumerClass?.followers ?? 0;
 
@@ -63,9 +66,13 @@ export function MyQrCard({
   };
 
   const s = stats ?? { visits: 0, savedCents: 0, stories: 0, reviews: 0 };
-  const gradientColors = isPremium
-    ? (['#ff7a45', '#ff3d73', '#a13cf0'] as const)
-    : (['#ff7a45', '#ff4d6d', '#ff2d78'] as const);
+  // Standard = coral; Premium adds violet; Magnetic (top tier) shifts to gold.
+  const gradientColors =
+    classKey === 'magnetic'
+      ? (['#ff7a45', '#ffb03d', '#e0982e'] as const)
+      : isElevated
+        ? (['#ff7a45', '#ff3d73', '#a13cf0'] as const)
+        : (['#ff7a45', '#ff4d6d', '#ff2d78'] as const);
 
   return (
     <LinearGradient
@@ -94,12 +101,12 @@ export function MyQrCard({
           </Text>
         </View>
         <View className="shrink-0 flex-row items-center gap-1.5 rounded-full bg-white/20 px-2.5 py-1">
-          {isPremium ? <Crown color="#fff" size={12} fill="#fff" /> : null}
+          {isElevated ? <Crown color="#fff" size={12} fill="#fff" /> : null}
           <Text
             className="font-extrabold uppercase text-white"
             style={{ fontSize: 10, letterSpacing: 1.2 }}
           >
-            {isPremium ? 'Premium' : 'Free'}
+            {classProperLabel(classKey)}
           </Text>
         </View>
       </View>
@@ -150,7 +157,7 @@ export function MyQrCard({
 
       <IdentityStrip
         displayName={displayName}
-        isPremium={isPremium}
+        classKey={classKey}
         origin={origin}
       />
 

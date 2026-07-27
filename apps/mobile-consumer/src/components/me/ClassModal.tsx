@@ -26,7 +26,7 @@ export function ClassModal({
       visible={visible}
       onClose={onClose}
       title="Your class"
-      subtitle="Free or Premium — and how to climb"
+      subtitle="Standard, Premium or Magnetic — and how to climb"
     >
       {/* Branded crown-icon tile (web ClassModal DNA). The sheet header already
           carries the title, so the body leads with the mark only. */}

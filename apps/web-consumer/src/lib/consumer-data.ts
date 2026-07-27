@@ -1,5 +1,14 @@
-export const CLASS_ORDER = ["free", "premium"] as const;
+// Ascending class ladder: standard (default) < premium (paid) < magnetic
+// (top, invite-only via Instagram reach). "class" is the consumer membership
+// axis — distinct from a business's billing "plan" (free/pro/ultra).
+export const CLASS_ORDER = ["standard", "premium", "magnetic"] as const;
 type Class = (typeof CLASS_ORDER)[number];
+
+// Premium-perk gate: everything above Standard (Premium and Magnetic) unlocks
+// the elevated perks (bigger rewards, AI connect, unlimited reservations).
+export function isElevatedClass(classKey: Class | string): boolean {
+  return classKey === "premium" || classKey === "magnetic";
+}
 
 // NOTE: The original Lovable export shipped a large local `Place` type
 // (with fields for popular-times bars, visitor avatars, etc.). Discover
@@ -64,20 +73,22 @@ export const CLASSES: {
   id: Class;
   label: string;
   req: string;
-  /** Monthly subscription price in MXN. 0 for Free (the default class).
-   *  Granted upfront — no spend accumulation required. */
+  /** Monthly subscription price in MXN. 0 for Standard (the default class)
+   *  and Magnetic (earned with Instagram reach, never paid). Premium is
+   *  granted upfront on payment — no spend accumulation required. */
   priceMxn: number;
   /** Follower threshold via Instagram verification. 0 = no threshold. */
   followerThreshold: number;
   reward: string;
   perk: string;
 }[] = [
-  // The class IS the brand — rendered as "Mesita Free" / "Mesita Premium" in
-  // marketing and subscribe surfaces. The compact `label` here is used inside
-  // tight UI (class badges, table rows) where the "Mesita" prefix is noise.
+  // The class IS the brand — rendered as "Mesita Standard" / "Mesita Premium" /
+  // "Mesita Magnetic" in marketing and subscribe surfaces. The compact `label`
+  // here is used inside tight UI (class badges, table rows) where the "Mesita"
+  // prefix is noise.
   {
-    id: "free",
-    label: "Free",
+    id: "standard",
+    label: "Standard",
     req: "Default account",
     priceMxn: 0,
     followerThreshold: 0,
@@ -87,11 +98,20 @@ export const CLASSES: {
   {
     id: "premium",
     label: "Premium",
-    req: "1K+ IG followers · invitation · or $100 MXN / mo",
+    req: "Invitation · or $100 MXN / mo",
     priceMxn: 100,
-    followerThreshold: 1_000,
+    followerThreshold: 0,
     reward: "Bigger discount",
     perk: "Better recs · more reservations",
+  },
+  {
+    id: "magnetic",
+    label: "Magnetic",
+    req: "1K+ IG followers · post a story each visit",
+    priceMxn: 0,
+    followerThreshold: 1_000,
+    reward: "Top discount",
+    perk: "The invite-only tier for real Instagram reach",
   },
 ];
 
@@ -100,24 +120,29 @@ export const CLASSES: {
 // cn() at the call site when extra modifiers (size, rounding) are needed.
 export function classBadgeClass(classKey: Class): string {
   switch (classKey) {
-    case "free":
+    case "standard":
       return "bg-tier-free text-foreground";
     case "premium":
       return "bg-tier-premium text-white";
+    case "magnetic":
+      // Magnetic is the top tier — the gold treatment (existing bg-tier-gold
+      // design token) sets it apart from Premium's violet.
+      return "bg-tier-gold text-white";
   }
 }
 
 // Compact Title-Case label per class. Used by the swipe overlay, the
 // promo chip, the /coupons promo card, and the place detail rewards
-// box — anywhere we render "Mesita Free" / "Mesita Premium" alongside
-// the lower-case class id (`free` / `premium`).
+// box — anywhere we render "Mesita Standard" / "Mesita Premium" /
+// "Mesita Magnetic" alongside the lower-case class id.
 //
 // Accepts a strictly-typed Class or a plain string so callers can hand us
 // either (e.g. a server-sourced class_key that flows as string) without an
 // extra cast; unknown values fall back to the "Mesita" brand word.
 const CLASS_LABELS: Record<Class, string> = {
-  free: "Free",
+  standard: "Standard",
   premium: "Premium",
+  magnetic: "Magnetic",
 };
 
 export function classProperLabel(classKey: Class | string): string {

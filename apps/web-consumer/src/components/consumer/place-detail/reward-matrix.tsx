@@ -47,10 +47,11 @@ export function RewardStep({
   );
 }
 
-// Compact reward matrix — First / Returning rows × Free / Premium columns.
+// Compact reward matrix — First / Returning rows × Standard / Premium columns.
 // Mirrors the Class comparison table on the Profile (FreeVsPremium) for
 // visual consistency. The active cell (current class × current visit axis)
-// is highlighted so "you are here" is obvious.
+// is highlighted so "you are here" is obvious. Magnetic maps to the Premium
+// column (it has no dedicated v4 rate column and ranks at or above Premium).
 export function RewardMatrix({
   welcome,
   returning,
@@ -83,11 +84,11 @@ export function RewardMatrix({
         className="bg-tier-premium/[0.05] pointer-events-none absolute inset-y-0 right-0 w-1/3"
       />
       <div className="relative">
-        {/* Header — Free / Premium columns. */}
+        {/* Header — Standard / Premium columns. */}
         <div className="grid grid-cols-3 items-center px-3 py-2.5">
           <span />
           <span className="font-display text-center text-[13px] font-bold tracking-tight">
-            Free
+            Standard
           </span>
           <span className="text-premium font-display flex items-center justify-center gap-1 text-[13px] font-bold tracking-tight">
             <Crown className="h-3 w-3 fill-current" />
@@ -108,13 +109,14 @@ export function RewardMatrix({
             <RewardCell
               value={r.vals.free}
               suffix={suffix}
-              active={r.onAxis && currentClass === "free"}
+              active={r.onAxis && currentClass === "standard"}
             />
             <RewardCell
               value={r.vals.premium}
               suffix={suffix}
               accent
-              active={r.onAxis && currentClass === "premium"}
+              // Premium and Magnetic both read the elevated column.
+              active={r.onAxis && currentClass !== "standard"}
             />
           </div>
         ))}

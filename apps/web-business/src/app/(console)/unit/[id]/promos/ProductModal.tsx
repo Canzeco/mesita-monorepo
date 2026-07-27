@@ -37,7 +37,7 @@ export function ProductModal({
   const needsJoin = paid && !subscribed;
 
   const primaryLabel = isCurrent
-    ? "Current posture"
+    ? "Current Strategy"
     : paid
       ? subscribed
         ? `Switch to ${strategy.name}`
@@ -149,7 +149,7 @@ export function ProductModal({
               <ModalLabel>How it works</ModalLabel>
               <Step n={1} title="Pay the membership">
                 {formatMoney(PRODUCT_PRICE_MXN, currency)}/year Verified
-                membership — one posture at a time; switching later is a new
+                membership — one Strategy at a time; switching later is a new
                 membership.
               </Step>
               <Step n={2} title="Set up your staff on WhatsApp">
@@ -169,7 +169,7 @@ export function ProductModal({
               <ModalLabel>How it works</ModalLabel>
               <p className="text-muted-foreground text-[12px] leading-snug">
                 No membership, nothing to set up — Zero is free and you stay
-                listed on Mesita. Join a posture any time.
+                listed on Mesita. Join a Strategy any time.
               </p>
             </div>
           )}

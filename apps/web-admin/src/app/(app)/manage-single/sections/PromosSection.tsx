@@ -28,7 +28,7 @@ import { SectionCard, ErrorNote } from "../ui";
 // Admin Promos — Mesita Membership (MESITA-585, card shape MESITA-590).
 //   1. Mesita Membership — THREE pricing cards, each a plain give/receive
 //      pitch: YOU GIVE the MX$1,000/year membership + the discounts as a 2×2
-//      matrix (Welcome/Returning × Free/Premium, capped per bill) → YOU
+//      matrix (Welcome/Returning × Standard/Premium, capped per bill) → YOU
 //      RECEIVE {Low/Mid/High} algorithm placement → Join. The whole card
 //      opens the product modal (full detail + the action); switching is a
 //      NEW membership (the lock-in). One tap in the modal writes rates +
@@ -96,7 +96,7 @@ function formatMoney(amount: number, currency: string | null): string {
   return `${prefix}${amount.toLocaleString("en-US")}`;
 }
 
-// A place on any paid posture carries a membership (plan != free).
+// A place on any paid strategy carries a membership (plan != free).
 function isMember(place: AdminPlace): boolean {
   return !!place.plan && place.plan !== "free";
 }
@@ -116,9 +116,9 @@ export function PromosSection({
   const member = isMember(v);
   const storedStrategy = strategyForPlace(v);
 
-  // The modal is the confirm step: its footer action commits the posture.
+  // The modal is the confirm step: its footer action commits the strategy.
   //
-  // A posture is rates + cap + plan, but plan lives behind a different door:
+  // A strategy is rates + cap + plan, but plan lives behind a different door:
   // business-web-update-project rejects any body carrying `plan` (that field
   // belongs to billing), so it goes through admin-web-set-plan instead. Two
   // calls can't be atomic, so order them by what a partial failure leaves
@@ -178,7 +178,7 @@ export function PromosSection({
         icon={<Percent className="h-4 w-4" />}
         tint="pink"
         title="Mesita Membership"
-        subtitle={`Three postures, one price for the paid two — ${formatMoney(MEMBERSHIP_PRICE_MXN, v.currency)}/year each. Tap a card for the full detail.`}
+        subtitle={`Three strategies, one price for the paid two — ${formatMoney(MEMBERSHIP_PRICE_MXN, v.currency)}/year each. Tap a card for the full detail.`}
         action={
           <span className="flex items-center gap-2">
             {pending && (
@@ -204,7 +204,7 @@ export function PromosSection({
 
         {storedStrategy === null && (
           <p className="text-muted-foreground mt-2.5 text-[11px]">
-            Current rates don&apos;t match a posture — pick one to standardize.
+            Current rates don&apos;t match a strategy — pick one to standardize.
           </p>
         )}
 
@@ -400,7 +400,7 @@ function ProductModal({
   const r = strategy.rates;
 
   const primaryLabel = isCurrent
-    ? "Current posture"
+    ? "Current strategy"
     : paid
       ? member
         ? `Switch to ${strategy.name}`
@@ -500,7 +500,7 @@ function ProductModal({
             <div className="flex flex-col gap-3">
               <ModalLabel>How it works</ModalLabel>
               <Step n={1} title="Pay the membership">
-                {formatMoney(MEMBERSHIP_PRICE_MXN, currency)}/year — one posture
+                {formatMoney(MEMBERSHIP_PRICE_MXN, currency)}/year — one strategy
                 at a time; switching later is a new membership.
               </Step>
               <Step n={2} title="Set up your staff on WhatsApp">
@@ -520,7 +520,7 @@ function ProductModal({
               <ModalLabel>How it works</ModalLabel>
               <p className="text-muted-foreground text-[12px] leading-snug">
                 No membership, nothing to set up — Zero is free and you stay
-                listed on Mesita. Join a posture any time.
+                listed on Mesita. Join a strategy any time.
               </p>
             </div>
           )}
@@ -609,7 +609,7 @@ function Step({
   );
 }
 
-// The 2×2 discount matrix — Welcome/Returning × Free/Premium. Pato-sanctioned
+// The 2×2 discount matrix — Welcome/Returning × Standard/Premium. Pato-sanctioned
 // per-card matrix (MESITA-590); rates live in HTML text, never in the artwork.
 function RateMatrix({ rates }: { rates: Strategy["rates"] }) {
   const cell = (v: number | null) => (v == null ? "—" : `${v}%`);
@@ -617,7 +617,7 @@ function RateMatrix({ rates }: { rates: Strategy["rates"] }) {
     <div className="border-border/60 grid grid-cols-[auto_1fr_1fr] overflow-hidden rounded-lg border text-[11px]">
       <span className="bg-muted/40 px-2.5 py-1.5" aria-hidden />
       <span className="text-muted-foreground bg-muted/40 px-2.5 py-1.5 text-center font-semibold">
-        Free
+        Standard
       </span>
       <span className="bg-violet-500/10 px-2.5 py-1.5 text-center font-semibold text-violet-600">
         Premium
@@ -726,7 +726,7 @@ function FaqsBox({
             Because rank is never for sale. The {price}/year is identical on
             Conservative and Aggressive — what you buy is a
             commitment to give, not placement. The only thing that changes
-            between postures is the discount schedule you promise your guests,
+            between strategies is the discount schedule you promise your guests,
             and the visibility that generosity earns back.
           </p>
         </Faq>
@@ -735,7 +735,7 @@ function FaqsBox({
           <p>
             It is a commitment filter, not a feature tier — it keeps
             half-hearted restaurants out of the rewards program and guests
-            away from dead coupons. Being a member unlocks the paid postures
+            away from dead coupons. Being a member unlocks the paid strategies
             and turns on your discounts. Being listed on Mesita never costs
             anything, member or not.
           </p>
@@ -770,10 +770,10 @@ function FaqsBox({
           </p>
         </Faq>
 
-        <Faq q="Can a place switch postures or cancel?">
+        <Faq q="Can a place switch strategies or cancel?">
           <p>
-            Switching postures is a NEW {price}/year membership — that is the
-            lock-in: places pick a posture and live it. Dropping to Zero is
+            Switching strategies is a NEW {price}/year membership — that is the
+            lock-in: places pick a strategy and live it. Dropping to Zero is
             free and instant; it clears the rates and paid promos stop, but
             the place stays listed on Mesita.
           </p>
@@ -783,7 +783,7 @@ function FaqsBox({
           <p>
             A refused or ignored QR is a strike: 1 — warning and the
             activation test re-runs · 2 — your discounts pause for 30 days ·
-            3 — removed from the paid postures and the fee is forfeited (the
+            3 — removed from the paid strategies and the fee is forfeited (the
             place stays listed on Mesita). Strikes decay after 6 months clean,
             and the turned-away guest is compensated instantly.
           </p>
@@ -839,7 +839,7 @@ function PremiumExamples({
       <div className="border-border/60 bg-muted/20 rounded-xl border border-dashed px-4 py-4 text-center">
         <p className="text-muted-foreground text-[12px] leading-snug">
           No promos right now — Premium guests see this place in the catalog
-          with no discount card. Join a posture above to preview the deal.
+          with no discount card. Join a strategy above to preview the deal.
         </p>
       </div>
     );
@@ -875,8 +875,8 @@ function PremiumExamples({
         />
       </div>
       <p>
-        Premium ≥ Free in every posture — Premium guests always get the better
-        deal. They are what the membership buys.
+        Premium ≥ Standard in every strategy — Premium guests always get the
+        better deal. They are what the membership buys.
       </p>
     </>
   );
@@ -937,8 +937,8 @@ function ExampleCard({
           </p>
           <p className="text-muted-foreground mt-1 text-[11px]">
             {freeRate == null
-              ? "A Free guest gets no discount on this visit."
-              : `A Free guest saves ${formatMoney(freeSaves, currency)} (${freeRate}%).`}
+              ? "A Standard guest gets no discount on this visit."
+              : `A Standard guest saves ${formatMoney(freeSaves, currency)} (${freeRate}%).`}
           </p>
         </>
       )}

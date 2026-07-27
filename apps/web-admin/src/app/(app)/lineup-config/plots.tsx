@@ -93,7 +93,7 @@ export function CurvePlot({
   );
 }
 
-/** A categorical [0,1] rung chart — the what ladder, RP's posture rungs. */
+/** A categorical [0,1] rung chart — the what ladder, RP's strategy rungs. */
 export function LadderPlot({
   bars,
   tone,

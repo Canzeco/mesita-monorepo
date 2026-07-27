@@ -1,17 +1,17 @@
 // Supabase Edge Function — consumer-web-claim-instagram (natural caller)
 //
-// Authenticated. The Instagram "door" into Premium: a consumer with at least
-// the premium follower threshold (1,000) gets Mesita Premium instantly,
+// Authenticated. The Instagram "door" into Magnetic: a consumer with at least
+// the Magnetic follower threshold (5,000) gets the Magnetic class instantly,
 // origin 'instagram'. Below the threshold, an existing instagram-origin
-// Premium is dropped back to Free. Subscription / invitation Premium is never
-// touched here (origin precedence).
+// Magnetic is dropped back to Standard. Premium is now paid-only (subscription);
+// subscription / invitation classes are never touched here (origin precedence).
 //
 // The per-visit "post a story" requirement is enforced separately by the
 // existing ticket story-verification flow; follower count sets the class
 // instantly, matching the consumer app's VerifySocialSheet promise.
 //
 // Body: { followers: number, handle?: string }
-// Response: { ok: true, tier: "free"|"premium", followers: number,
+// Response: { ok: true, tier: "standard"|"magnetic", followers: number,
 //             handle: string | null }
 //
 // `handle` (when sent) is normalized (leading @ stripped, lowercased) and
@@ -56,8 +56,8 @@ Deno.serve(async (req) => {
 
   const admin = adminClient(envRes.env);
 
-  const premium = await getTierConfig(admin, "premium");
-  const threshold = premium?.follower_threshold ?? 1000;
+  const magnetic = await getTierConfig(admin, "magnetic");
+  const threshold = magnetic?.follower_threshold ?? 5000;
   const qualifies = followers >= threshold;
 
   // Always persist the latest follower count (and handle when sent).
@@ -67,16 +67,16 @@ Deno.serve(async (req) => {
   if (handle !== null) patch.instagram_handle = handle;
 
   if (qualifies) {
-    patch.class_key = "premium";
+    patch.class_key = "magnetic";
     patch.class_origin = "instagram";
     patch.class_granted_at = new Date().toISOString();
     patch.class_expires_at = null;
     const { error } = await admin.from("consumers").update(patch).eq("id", consumerId);
     if (error) return json({ ok: false, error: error.message }, 500);
-    return json({ ok: true, tier: "premium", followers, handle });
+    return json({ ok: true, tier: "magnetic", followers, handle });
   }
 
-  // Below threshold: record followers; drop ONLY an instagram-origin Premium.
+  // Below threshold: record followers; drop ONLY an instagram-origin Magnetic.
   const { error: e1 } = await admin
     .from("consumers")
     .update(patch)
@@ -85,9 +85,9 @@ Deno.serve(async (req) => {
 
   await admin
     .from("consumers")
-    .update({ class_key: "free", class_origin: "default", class_expires_at: null })
+    .update({ class_key: "standard", class_origin: "default", class_expires_at: null })
     .eq("id", consumerId)
     .eq("class_origin", "instagram");
 
-  return json({ ok: true, tier: "free", followers, handle });
+  return json({ ok: true, tier: "standard", followers, handle });
 });

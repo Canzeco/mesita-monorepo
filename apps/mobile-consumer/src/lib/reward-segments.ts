@@ -9,11 +9,12 @@
 // v5 backend lands (tracked under MESITA-723). Static locked defaults so no new
 // consumer Edge Function is needed.
 
-// The class rung a consumer sits on. Mirrors the web ConsumerClass ("free" |
-// "premium"); the free class displays as "Standard" on the ladder.
-export type RewardClassKey = 'free' | 'premium';
+// The class rung a consumer sits on. Mirrors the web ConsumerClass
+// ("standard" | "premium" | "magnetic").
+export type RewardClassKey = 'standard' | 'premium' | 'magnetic';
 
-export type RewardPosture = 'zero' | 'conservative' | 'aggressive';
+// The business discount strategy that sets how generous a place's grid is.
+export type GridStrategy = 'zero' | 'conservative' | 'aggressive';
 
 export type RewardSegmentKind = 'class' | 'action' | 'visit';
 
@@ -32,7 +33,7 @@ export type RewardSegment = {
   nameEs: string;
   kind: RewardSegmentKind;
   blurb: string;
-  rates: Record<RewardPosture, number>;
+  rates: Record<GridStrategy, number>;
 };
 
 // Canonical ladder, worst→best (rank order). Ties within {Magnetic, Premium}
@@ -99,14 +100,15 @@ export const REWARD_SEGMENT_BY_KEY = Object.fromEntries(
 ) as Record<RewardSegmentKey, RewardSegment>;
 
 // The peak column — what "up to" quotes.
-export const PEAK_POSTURE: RewardPosture = 'aggressive';
+export const PEAK_STRATEGY: GridStrategy = 'aggressive';
 
 export function segmentKeyForClass(classKey: RewardClassKey): RewardSegmentKey {
-  return classKey === 'premium' ? 'premium' : 'standard';
+  return classKey;
 }
 
 // The rungs a consumer can reach: their class rung + the three universal rungs
-// (a first visit, a story, a Google review). Magnetic is excluded (invite-only).
+// (a first visit, a story, a Google review). A Standard/Premium guest never
+// reaches Magnetic (invite-only); a Magnetic guest reaches it via their rung.
 export function reachableSegments(classKey: RewardClassKey): RewardSegment[] {
   const mine = segmentKeyForClass(classKey);
   const universal: RewardSegmentKey[] = ['story', 'welcome', 'review'];
@@ -118,18 +120,18 @@ export function reachableSegments(classKey: RewardClassKey): RewardSegment[] {
 /** Your class rung's peak rate — 10% Standard, 20% Premium. */
 export function baseRateForClass(
   classKey: RewardClassKey,
-  posture: RewardPosture = PEAK_POSTURE,
+  strategy: GridStrategy = PEAK_STRATEGY,
 ): number {
-  return REWARD_SEGMENT_BY_KEY[segmentKeyForClass(classKey)].rates[posture];
+  return REWARD_SEGMENT_BY_KEY[segmentKeyForClass(classKey)].rates[strategy];
 }
 
 /** The ceiling a consumer can reach across every rung they can unlock. */
 export function peakRateForClass(
   classKey: RewardClassKey,
-  posture: RewardPosture = PEAK_POSTURE,
+  strategy: GridStrategy = PEAK_STRATEGY,
 ): number {
   return reachableSegments(classKey).reduce(
-    (max, s) => Math.max(max, s.rates[posture]),
+    (max, s) => Math.max(max, s.rates[strategy]),
     0,
   );
 }

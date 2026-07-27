@@ -21,11 +21,11 @@ export function RpBox() {
       overview={
         <Prose>
           BOUGHT merit — the place&apos;s live promo rates (never shown to consumers) resolve to
-          a posture, the posture to a rung.
+          a strategy, the strategy to a rung.
         </Prose>
       }
       hyperparams={
-        <KnobGrid cols={4}>
+        <KnobGrid cols={3}>
           {STRATEGIES.map((s) => (
             <Slider
               key={s.id}
@@ -36,7 +36,7 @@ export function RpBox() {
               step={0.05}
               v={rp[s.id]}
               onChange={(v) => setRp((p) => ({ ...p, [s.id]: Math.max(0, Math.min(1, v)) }))}
-              hint={`the ${s.name.toLowerCase()} posture's rung`}
+              hint={`the ${s.name.toLowerCase()} strategy's rung`}
             />
           ))}
         </KnobGrid>
@@ -45,17 +45,16 @@ export function RpBox() {
       process={
         <>
           <ProcessSteps>
-            <p>live rates (welcome/returning × free/premium) → posture (Zero · Conservative · Aggressive · Dominant)</p>
-            <p>posture → its rung above · custom/legacy rates that match no preset → the zero rung</p>
+            <p>live rates (welcome/returning × standard/premium) → strategy (Zero · Conservative · Aggressive)</p>
+            <p>strategy → its rung above · custom/legacy rates that match no preset → the zero rung</p>
           </ProcessSteps>
           <LadderPlot
             tone="rose"
-            title="posture → rung"
+            title="strategy → rung"
             bars={[
               { label: "zero", value: rp.zero },
               { label: "cons", value: rp.conservative },
               { label: "aggr", value: rp.aggressive },
-              { label: "dom", value: rp.dominant },
             ]}
           />
         </>
@@ -63,7 +62,7 @@ export function RpBox() {
       outputs={
         <Prose>
           <b className="text-foreground/80">RP ∈ [0,1]</b> — multiplies the Inorganic lane;
-          non-members never enter it at all (a lane filter, not a score), and the zero-posture
+          non-members never enter it at all (a lane filter, not a score), and the zero-strategy
           member keeps the whisper.
         </Prose>
       }

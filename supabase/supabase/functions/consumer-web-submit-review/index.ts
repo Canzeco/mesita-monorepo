@@ -8,8 +8,8 @@
 //
 // Rules enforced here:
 //   - Caller must be the ticket's consumer (the proof is personal).
-//   - The place's program must run the Google Review rung at its posture
-//     (grid.review[posture] > 0).
+//   - The place's program must run the Google Review rung at its strategy
+//     (grid.review[strategy] > 0).
 //   - Once per consumer × place — consumer_review_claims is checked before
 //     accepting a submission (Google allows one review per account per place).
 //   - Sentiment-blind by design: nothing here reads or gates on the review's
@@ -24,7 +24,7 @@ import { hasClaimedReview } from "../_shared/membership.ts";
 import {
   loadRewardsGrid,
   offersSegment,
-  placePosture,
+  placeStrategy,
 } from "../_shared/rewards-config.ts";
 
 type Body = { ticketId?: string; screenshotUrl?: string };
@@ -102,7 +102,7 @@ Deno.serve(async (req) => {
     );
   }
 
-  // The place's program must run the Google Review rung at its posture.
+  // The place's program must run the Google Review rung at its strategy.
   const placeRow = await admin
     .from("projects_view")
     .select(
@@ -114,7 +114,7 @@ Deno.serve(async (req) => {
     return json({ ok: false, error: "Place not found" }, 404);
   }
   const grid = await loadRewardsGrid(admin);
-  if (!offersSegment(placePosture(placeRow.data), grid, "review")) {
+  if (!offersSegment(placeStrategy(placeRow.data), grid, "review")) {
     return json(
       { ok: false, error: "This place doesn't run the Google Review reward." },
       409,

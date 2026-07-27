@@ -14,6 +14,7 @@ import {
   apiRevokeMcpToken,
   type McpTokenMinted,
 } from '@/lib/api/mcp-tokens';
+import { isElevatedClass } from '@/lib/consumer-classes';
 import { useEffectiveClass } from '@/lib/mock-class';
 import { errMsg } from '@/lib/utils';
 import { useAuth } from '@/providers/auth';
@@ -29,7 +30,8 @@ export function AiConnectModal({ visible, onClose }: Props) {
     consumerClass,
     profile?.instagram_handle ?? null,
   );
-  const isPremium = classKey === 'premium';
+  // AI connect is an elevated-class perk — Premium and Magnetic, not Standard.
+  const canConnect = isElevatedClass(classKey);
   const [minting, setMinting] = useState(false);
   const [fresh, setFresh] = useState<McpTokenMinted | null>(null);
 
@@ -42,7 +44,7 @@ export function AiConnectModal({ visible, onClose }: Props) {
   const loading = tokensQuery.isLoading;
 
   async function mint() {
-    if (!isPremium) {
+    if (!canConnect) {
       Alert.alert(
         'Premium required',
         'AI connect is for Mesita Premium — upgrade to create a token.',
@@ -129,11 +131,11 @@ export function AiConnectModal({ visible, onClose }: Props) {
       <Text style={{ color: '#775254', lineHeight: 20, fontSize: 14 }}>
         Generate a personal access token, then add Mesita as an MCP server in
         Claude, Cursor, or ChatGPT. Your AI can then find places, save them,
-        book tables, and check rewards — as you. Available for Premium members
-        only — not on Free.
+        book tables, and check rewards — as you. Available for Premium and
+        Magnetic members — not on Standard.
       </Text>
 
-      {!isPremium ? (
+      {!canConnect ? (
         <View
           style={{
             flexDirection: 'row',
@@ -147,22 +149,23 @@ export function AiConnectModal({ visible, onClose }: Props) {
         >
           <Crown color="#b45309" size={16} style={{ marginTop: 2 }} />
           <Text style={{ flex: 1, color: '#78350f', lineHeight: 18, fontSize: 13 }}>
-            You’re on Free. Upgrade to Mesita Premium to create an MCP token and
-            let an AI control your profile.
+            You’re on Standard. Upgrade to Premium — or reach Magnetic via
+            Instagram — to create an MCP token and let an AI control your
+            profile.
           </Text>
         </View>
       ) : null}
 
       <Button
         onPress={() => void mint()}
-        disabled={minting || !isPremium}
+        disabled={minting || !canConnect}
         loading={minting}
         accessibilityLabel="Create MCP token"
       >
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
           <KeyRound color="#fff" size={18} />
           <Text style={{ color: '#fffafb', fontWeight: '600', fontSize: 14 }}>
-            {isPremium ? 'Create MCP token' : 'Premium required'}
+            {canConnect ? 'Create MCP token' : 'Premium required'}
           </Text>
         </View>
       </Button>

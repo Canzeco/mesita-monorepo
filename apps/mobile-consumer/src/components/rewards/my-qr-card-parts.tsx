@@ -2,6 +2,7 @@ import { AtSign, Crown, Users } from 'lucide-react-native';
 import { Text, View } from 'react-native';
 
 import { formatCurrency } from '@/lib/api/pay';
+import { classProperLabel, isElevatedClass } from '@/lib/consumer-classes';
 import type { RewardStats } from '@/lib/hooks/useConsumerPayTickets';
 import { firstInitials, formatCompactCount } from '@/lib/utils';
 
@@ -32,13 +33,14 @@ export function Stat({ value, label }: { value: string; label: string }) {
 
 export function IdentityStrip({
   displayName,
-  isPremium,
+  classKey,
   origin,
 }: {
   displayName: string;
-  isPremium: boolean;
+  classKey: string;
   origin: string;
 }) {
+  const isElevated = isElevatedClass(classKey);
   return (
     <View className="mt-4 flex-row items-center gap-3 border-t border-white/20 pt-4">
       <View
@@ -58,16 +60,17 @@ export function IdentityStrip({
           {displayName}
         </Text>
         <View className="mt-0.5 flex-row items-center gap-1.5">
-          {isPremium ? (
+          {isElevated ? (
             <>
               <Crown color="#fff" size={12} fill="#fff" />
               <Text className="text-white/90" style={{ fontSize: 11 }}>
-                Premium · via {ORIGIN_LABEL[origin] ?? 'Mesita'}
+                {classProperLabel(classKey)} · via{' '}
+                {ORIGIN_LABEL[origin] ?? 'Mesita'}
               </Text>
             </>
           ) : (
             <Text className="text-white/90" style={{ fontSize: 11 }}>
-              Free member
+              Standard member
             </Text>
           )}
         </View>

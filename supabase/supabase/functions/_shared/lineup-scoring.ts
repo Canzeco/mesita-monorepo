@@ -140,8 +140,8 @@ export function gpScore(
   return clamp01(Math.log(1 + raw) / Math.max(1, p.lnCeiling));
 }
 
-export type RpPosture = "zero" | "conservative" | "aggressive" | "dominant";
-export type RpRungs = Record<RpPosture, number>;
+export type RpStrategy = "zero" | "conservative" | "aggressive" | "dominant";
+export type RpRungs = Record<RpStrategy, number>;
 export const DEFAULT_RP_RUNGS: RpRungs = {
   zero: 0.1,
   conservative: 0.4,
@@ -149,8 +149,8 @@ export const DEFAULT_RP_RUNGS: RpRungs = {
   dominant: 1.0,
 };
 
-export function rpScore(posture: RpPosture | null, rungs: RpRungs = DEFAULT_RP_RUNGS): number {
-  return clamp01(rungs[posture ?? "zero"]);
+export function rpScore(strategy: RpStrategy | null, rungs: RpRungs = DEFAULT_RP_RUNGS): number {
+  return clamp01(rungs[strategy ?? "zero"]);
 }
 
 export type XxParams = { control: number };

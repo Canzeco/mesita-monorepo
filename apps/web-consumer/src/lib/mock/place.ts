@@ -6,7 +6,7 @@
 // When wiring real data, write an adapter that maps the EF response →
 // PlaceDetail; the view stays untouched.
 
-export type ConsumerClass = "free" | "premium";
+export type ConsumerClass = "standard" | "premium" | "magnetic";
 
 export type PlaceDetail = {
   // Stable identifier — matches public.places.id once the real fetch lands.

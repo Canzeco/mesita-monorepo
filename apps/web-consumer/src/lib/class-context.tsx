@@ -24,7 +24,7 @@ import {
 // redirect reloads the shell.
 
 export type ConsumerClassState = {
-  key: "free" | "premium";
+  key: "standard" | "premium" | "magnetic";
   origin: "default" | "instagram" | "subscription" | "invitation";
   /** Subscription renewal date (ISO). Only meaningful when
    *  origin === "subscription"; null for every other origin. */
@@ -36,12 +36,12 @@ export type ConsumerClassState = {
   handle: string | null;
 };
 
-// Safe default for any tree rendered without a provider: a plain Free
+// Safe default for any tree rendered without a provider: a plain Standard
 // account. Nothing is ever gated *open* by this default — the worst case is a
-// real Premium member momentarily shown as Free, which the server-seeded
-// value corrects on first paint.
-const FREE_CLASS: ConsumerClassState = {
-  key: "free",
+// real Premium/Magnetic member momentarily shown as Standard, which the
+// server-seeded value corrects on first paint.
+const STANDARD_CLASS: ConsumerClassState = {
+  key: "standard",
   origin: "default",
   renewsAt: null,
   followers: 0,
@@ -49,9 +49,9 @@ const FREE_CLASS: ConsumerClassState = {
 };
 
 function normalize(c: ConsumerClass | null | undefined): ConsumerClassState {
-  if (!c) return FREE_CLASS;
+  if (!c) return STANDARD_CLASS;
   return {
-    key: c.key === "premium" ? "premium" : "free",
+    key: c.key === "premium" || c.key === "magnetic" ? c.key : "standard",
     origin: c.origin ?? "default",
     renewsAt: c.subscription?.current_period_end ?? c.expires_at ?? null,
     followers: c.followers ?? 0,
@@ -59,7 +59,7 @@ function normalize(c: ConsumerClass | null | undefined): ConsumerClassState {
   };
 }
 
-const ClassContext = createContext<ConsumerClassState>(FREE_CLASS);
+const ClassContext = createContext<ConsumerClassState>(STANDARD_CLASS);
 
 // Client-side mock upgrade. The Premium "Continue to checkout" button sets this
 // localStorage flag instead of running Stripe, so the full upgrade UX is
@@ -73,12 +73,17 @@ export const MOCK_PREMIUM_KEY = "mesita:mock-premium";
 
 // Demo/design override. The Me → Class preview toggle writes one of these
 // values so every class state is previewable regardless of the real
-// server-seeded class — free, Premium via subscription, Premium via Instagram.
-// Purely a client-side dev affordance; absent = use the real class. Remove the
-// toggle + this key once the three states can be produced with real data.
+// server-seeded class — Standard, Premium via subscription, Magnetic via
+// Instagram. Purely a client-side dev affordance; absent = use the real class.
+// Remove the toggle + this key once the three states can be produced with real
+// data.
 export const MOCK_CLASS_KEY = "mesita:mock-class";
-export type MockClass = "free" | "subscription" | "instagram";
-const MOCK_CLASS_VALUES: MockClass[] = ["free", "subscription", "instagram"];
+export type MockClass = "standard" | "subscription" | "instagram";
+const MOCK_CLASS_VALUES: MockClass[] = [
+  "standard",
+  "subscription",
+  "instagram",
+];
 
 // Demo IG followers/handle: see @/lib/instagram-demo.
 
@@ -144,12 +149,13 @@ function mockClassState(
   base: ConsumerClassState,
 ): ConsumerClassState {
   switch (mock) {
-    case "free":
-      return { ...base, key: "free", origin: "default", renewsAt: null };
+    case "standard":
+      return { ...base, key: "standard", origin: "default", renewsAt: null };
     case "instagram":
+      // Instagram reach is the door into Magnetic (the top, invite-only tier).
       return {
         ...base,
-        key: "premium",
+        key: "magnetic",
         origin: "instagram",
         renewsAt: null,
         followers: base.followers > 0 ? base.followers : DEMO_INSTAGRAM_FOLLOWERS,
@@ -187,8 +193,9 @@ export function ClassProvider({
     // Demo/design override (Me → Class preview toggle) wins over everything so
     // all three class states are previewable regardless of the real class.
     if (mockClass) return mockClassState(mockClass, base);
-    // A real server-seeded Premium always wins — never downgrade or relabel it.
-    if (base.key === "premium") return base;
+    // A real server-seeded elevated class (Premium or Magnetic) always wins —
+    // never downgrade or relabel it.
+    if (base.key !== "standard") return base;
     if (mockPremium) {
       const renews = new Date();
       renews.setMonth(renews.getMonth() + 1);

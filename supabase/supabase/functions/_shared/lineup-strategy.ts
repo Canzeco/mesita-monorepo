@@ -1,7 +1,7 @@
-// Promo rates → RP posture (MESITA-718).
+// Promo rates → RP strategy (MESITA-718).
 // Mirrors apps/web-admin/src/lib/business/strategies.ts strategyForPlace.
 
-import type { RpPosture } from "./lineup-scoring.ts";
+import type { RpStrategy } from "./lineup-scoring.ts";
 
 export type PromoRates = {
   welcome_free_rate: number | null;
@@ -10,7 +10,7 @@ export type PromoRates = {
   premium_rate: number | null;
 };
 
-const PRESETS: { id: RpPosture; rates: PromoRates }[] = [
+const PRESETS: { id: RpStrategy; rates: PromoRates }[] = [
   {
     id: "zero",
     rates: {
@@ -50,7 +50,7 @@ const PRESETS: { id: RpPosture; rates: PromoRates }[] = [
 ];
 
 /** Match stored rates to a preset; null = custom/legacy → zero rung. */
-export function postureForRates(rates: PromoRates): RpPosture | null {
+export function strategyForRates(rates: PromoRates): RpStrategy | null {
   const match = PRESETS.find(
     (s) =>
       s.rates.welcome_free_rate === rates.welcome_free_rate &&

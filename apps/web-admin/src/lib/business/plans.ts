@@ -4,11 +4,11 @@
 
 export type SubscriptionId = "free" | "pro_discount" | "ultra_discount";
 
-/** The `membership` enum value a posture maps to. */
+/** The `membership` enum value a strategy maps to. */
 export type PlanKey = "free" | "pro" | "ultra";
 
 /**
- * The plan a posture grants. Goes to admin-web-set-plan, NOT into a
+ * The plan a strategy grants. Goes to admin-web-set-plan, NOT into a
  * business-web-update-project patch — that EF rejects any body carrying a
  * `plan` key (plan is billing, not profile).
  */

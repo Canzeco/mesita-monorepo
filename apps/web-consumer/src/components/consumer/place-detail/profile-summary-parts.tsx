@@ -4,6 +4,7 @@ import type React from "react";
 import { Gift } from "lucide-react";
 
 import type { Place } from "@/lib/api/places";
+import { isElevatedClass } from "@/lib/consumer-data";
 import { useConsumerClass } from "@/lib/class-context";
 import type { PlaceDetail } from "@/lib/mock/place";
 import { resolvePromoRateFromPlaceRow } from "@/lib/promo-rates";
@@ -60,7 +61,7 @@ export function ProfileRewardStat({ place }: { place: Place }) {
   const promoPercent = resolvePromoRateFromPlaceRow(
     place as unknown as Record<string, unknown>,
     isFirstVisit,
-    classKey === "premium",
+    isElevatedClass(classKey),
   );
   if (promoPercent == null) {
     return (

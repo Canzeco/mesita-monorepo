@@ -12,7 +12,7 @@ import { isConsumerFirstVisit } from "./membership.ts";
 import {
   isActionVerified,
   loadRewardsGrid,
-  placePosture,
+  placeStrategy,
   resolveTicketRate,
 } from "./rewards-config.ts";
 import { placeInstagramHandleForPayload } from "./ticket-bill-payload.ts";
@@ -87,7 +87,7 @@ export async function repriceTicketAfterAction(
     ticket.project_id,
     ticket.id,
   );
-  const ratePercent = resolveTicketRate(placePosture(place), grid, {
+  const ratePercent = resolveTicketRate(placeStrategy(place), grid, {
     classKey: consumerRes.data.class_key,
     isFirstVisit: firstVisit,
     storyVerified: isActionVerified(ticket.story_status),

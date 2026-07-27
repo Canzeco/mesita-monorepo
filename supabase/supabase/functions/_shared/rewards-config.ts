@@ -2,15 +2,15 @@
 //
 // The reward grid is operator config on app_settings.rewards_config (#474):
 //   { cap, grid: { <segment>: { zero, conservative, aggressive } } }
-// A place's POSTURE (zero/conservative/aggressive) is derived from its v4 rate
-// columns via postureForRates — exactly as #474 left it — so no per-place v5
+// A place's STRATEGY (zero/conservative/aggressive) is derived from its v4 rate
+// columns via strategyForRates — exactly as #474 left it — so no per-place v5
 // columns exist. This module resolves a ticket's discount by looking up each
-// qualifying segment in the grid at the place's posture and paying BEST-OF
+// qualifying segment in the grid at the place's strategy and paying BEST-OF
 // (the single highest rung, never a sum). The grid is the single source of
 // truth, which keeps the admin Rewards-Config page authoritative.
 
 import { type SupabaseClient } from "jsr:@supabase/supabase-js@2";
-import { postureForRates, ratesFromPlace } from "./lineup-posture.ts";
+import { strategyForRates, ratesFromPlace } from "./lineup-strategy.ts";
 
 export const REWARD_SEGMENTS = [
   "standard",
@@ -22,11 +22,11 @@ export const REWARD_SEGMENTS = [
 ] as const;
 export type RewardSegment = (typeof REWARD_SEGMENTS)[number];
 
-// The three surviving postures (Dominant retired in v5). Legacy places whose
+// The three surviving strategies (Dominant retired in v5). Legacy places whose
 // v4 rates still match the retired Dominant preset coerce to aggressive (its
 // nearest surviving neighbour); anything unrecognised coerces to zero.
-export type GridPosture = "zero" | "conservative" | "aggressive";
-export type SegmentRates = Record<GridPosture, number>;
+export type GridStrategy = "zero" | "conservative" | "aggressive";
+export type SegmentRates = Record<GridStrategy, number>;
 export type RewardsGrid = {
   grid: Record<RewardSegment, SegmentRates>;
   cap: number;
@@ -89,9 +89,9 @@ export async function loadRewardsGrid(
     : DEFAULT_REWARDS_GRID;
 }
 
-// A place's posture from its v4 rate columns → the three surviving grid keys.
-export function placePosture(place: Record<string, unknown>): GridPosture {
-  const p = postureForRates(ratesFromPlace(place));
+// A place's strategy from its v4 rate columns → the three surviving grid keys.
+export function placeStrategy(place: Record<string, unknown>): GridStrategy {
+  const p = strategyForRates(ratesFromPlace(place));
   if (p === "conservative") return "conservative";
   if (p === "aggressive") return "aggressive";
   if (p === "dominant") return "aggressive"; // retired → nearest surviving
@@ -116,32 +116,32 @@ export type RateContext = {
   reviewVerified?: boolean;
 };
 
-// Best-of resolution over the six-segment grid at the place's posture.
+// Best-of resolution over the six-segment grid at the place's strategy.
 // Everyone inherits the Standard floor; class/action/visit segments join the
 // qualifying set from context. Returns a clamped integer percent — and ONLY
 // that, never the class (the blended-rate privacy invariant).
 export function resolveTicketRate(
-  posture: GridPosture,
+  strategy: GridStrategy,
   grid: RewardsGrid,
   ctx: RateContext,
 ): number {
   const g = grid.grid;
-  const qualifying: number[] = [g.standard[posture]];
-  if (ctx.classKey === "premium") qualifying.push(g.premium[posture]);
-  if (ctx.classKey === "magnetic") qualifying.push(g.magnetic[posture]);
-  if (ctx.isFirstVisit) qualifying.push(g.welcome[posture]);
-  if (ctx.storyVerified) qualifying.push(g.story[posture]);
-  if (ctx.reviewVerified) qualifying.push(g.review[posture]);
+  const qualifying: number[] = [g.standard[strategy]];
+  if (ctx.classKey === "premium") qualifying.push(g.premium[strategy]);
+  if (ctx.classKey === "magnetic") qualifying.push(g.magnetic[strategy]);
+  if (ctx.isFirstVisit) qualifying.push(g.welcome[strategy]);
+  if (ctx.storyVerified) qualifying.push(g.story[strategy]);
+  if (ctx.reviewVerified) qualifying.push(g.review[strategy]);
   const best = qualifying.reduce((m, r) => (r > m ? r : m), 0);
   return Math.max(0, Math.min(100, best));
 }
 
-// Whether the place's program offers a given action rung at its posture —
+// Whether the place's program offers a given action rung at its strategy —
 // the gate the consumer opt-in EFs check before accepting a submission.
 export function offersSegment(
-  posture: GridPosture,
+  strategy: GridStrategy,
   grid: RewardsGrid,
   segment: RewardSegment,
 ): boolean {
-  return grid.grid[segment][posture] > 0;
+  return grid.grid[segment][strategy] > 0;
 }

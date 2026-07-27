@@ -19,7 +19,7 @@
 //             when:  { patience } — ONE shape knob over 2×24×7 openness array
 //             what:  { tol } — super = t, none = t²
 //   gp        { lnCeiling, ratingPow } — ratingPow ∈ [1,2], default 1
-//   rp        Rewards Promotions rungs per posture, [0,1]
+//   rp        Rewards Promotions rungs per strategy, [0,1]
 //   xx        { control } ∈ [0,5] — GREEN default only
 // Soft-migrate: patience ← waitFloor · tol ← sibling · ratingPow defaults to 1.
 // Stray pre-v11 keys (distExp · sessionH · sibling · dataAccess · context ·
@@ -41,7 +41,7 @@ import {
 
 type Body = { config?: unknown };
 
-const POSTURES = ["zero", "conservative", "aggressive", "dominant"] as const;
+const STRATEGY_IDS = ["zero", "conservative", "aggressive", "dominant"] as const;
 const LANE_N_MAX = 50;
 
 function num(v: unknown, lo: number, hi: number): number | null {
@@ -104,10 +104,10 @@ function validate(raw: unknown): { ok: true; config: unknown } | { ok: false; er
   if (lnCeiling == null) return { ok: false, error: "gp.lnCeiling out of range" };
   const ratingPow = num(gpIn?.ratingPow, 1, 2) ?? 1;
 
-  // RP — the posture rungs, [0,1].
+  // RP — the strategy rungs, [0,1].
   const rpIn = r.rp as Record<string, unknown> | undefined;
   const rp: Record<string, number> = {};
-  for (const p of POSTURES) {
+  for (const p of STRATEGY_IDS) {
     const v = num(rpIn?.[p], 0, 1);
     if (v == null) return { ok: false, error: `rp.${p} must be a number 0–1` };
     rp[p] = v;

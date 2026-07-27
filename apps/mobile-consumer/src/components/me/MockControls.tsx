@@ -79,15 +79,15 @@ export function MockControls() {
       <EmulateRow
         ig
         title="Emulate Instagram"
-        summary="Preview the Instagram-connected profile"
+        summary="Preview the Magnetic (Instagram) profile"
         on={igOn}
-        onToggle={() => setMockClass(igOn ? 'free' : 'instagram')}
+        onToggle={() => setMockClass(igOn ? 'standard' : 'instagram')}
       />
       <EmulateRow
         title="Emulate Class"
         summary="Preview Mesita Premium"
         on={classPremium}
-        onToggle={() => setMockClass(classPremium ? 'free' : 'subscription')}
+        onToggle={() => setMockClass(classPremium ? 'standard' : 'subscription')}
       />
     </View>
   );
