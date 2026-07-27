@@ -28,7 +28,7 @@ export const UNIVERSAL_CAP_MXN = 500;
 export type StrategyId = "zero" | "conservative" | "aggressive";
 
 // Three rungs, distinct from the plan visibility of the old model.
-export type StrategyVisibility = "Low" | "Mid" | "High";
+type StrategyVisibility = "Low" | "Mid" | "High";
 
 // The four discount cells, keyed by the exact places column each maps to.
 //   welcome_* → first visit at the place · unprefixed → every visit after.
