@@ -157,7 +157,7 @@ export const DEFAULT_CONFIG: RewardsConfig = {
 };
 
 /** Snap any number to the 5% grid: ≤0 → 0, else clamp to [10,50] rounded to 5. */
-export function snapRate(v: unknown): number {
+function snapRate(v: unknown): number {
   const n = typeof v === "number" && Number.isFinite(v) ? v : 0;
   if (n <= 0) return 0;
   const stepped = Math.round(n / RATE_STEP) * RATE_STEP;
