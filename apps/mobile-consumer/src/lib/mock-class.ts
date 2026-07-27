@@ -10,7 +10,7 @@ import {
 // Client-only demo override (Me → Class preview / MockControls). Same key as
 // web (`mesita:mock-class`) so mental model stays aligned.
 
-export const MOCK_CLASS_KEY = 'mesita:mock-class';
+const MOCK_CLASS_KEY = 'mesita:mock-class';
 export type MockClass = 'standard' | 'subscription' | 'instagram';
 const MOCK_CLASS_VALUES: MockClass[] = [
   'standard',
