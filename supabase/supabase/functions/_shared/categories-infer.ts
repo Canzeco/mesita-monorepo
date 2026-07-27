@@ -110,7 +110,7 @@ export async function inferPlaceCategory(
   }
 }
 
-export function normaliseCategoryToken(v: string): string {
+function normaliseCategoryToken(v: string): string {
   return v
     .toLowerCase()
     .normalize("NFKD")
