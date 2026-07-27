@@ -1,16 +1,16 @@
-// Supabase Edge Function — admin-web-delete-playground-reservation
+// Supabase Edge Function — admin-web-delete-reservation
 //
-// Naming: caller-verb-words. Caller = admin, verb = delete, words = playground-reservation.
+// Naming: caller-verb-words. Caller = admin, verb = delete, words = reservation.
 //
-// Sandbox cleanup for the Reservations Playground: deletes tickets from
-// public.playground_reservations — one by id, or every one of them with
-// { all: true }. These rows exist only for the playground (never
-// public.reservations), so deleting them is always safe; a running intent
-// loop whose ticket disappears just stops persisting progress.
+// Operator cleanup on the ONE reservations table (sandbox retired,
+// 2026-07-27): deletes one ticket by id — any row, it's the operator console —
+// or every is_test row with { all_test: true }. There is deliberately NO
+// "delete everything": real guest reservations can only go one-by-one, on
+// purpose.
 //
 // Auth: caller's JWT email must be in public.super_admins.
 //
-// Deploy: supabase functions deploy admin-web-delete-playground-reservation
+// Deploy: supabase functions deploy admin-web-delete-reservation
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { corsPreflight, json, readJsonOr } from "../_shared/http.ts";
@@ -36,16 +36,15 @@ Deno.serve(async (req) => {
   const saRes = await requireSuperAdmin(admin, authRes.user);
   if (!saRes.ok) return saRes.response;
 
-  const body = await readJsonOr<{ id?: unknown; all?: unknown }>(req, {});
-  const all = body.all === true;
+  const body = await readJsonOr<{ id?: unknown; all_test?: unknown }>(req, {});
+  const allTest = body.all_test === true;
   const id = typeof body.id === "string" && body.id.trim() ? body.id.trim() : null;
-  if (!all && !id) {
-    return json({ ok: false, error: "Pass a ticket id, or all: true" }, 400);
+  if (!allTest && !id) {
+    return json({ ok: false, error: "Pass a reservation id, or all_test: true" }, 400);
   }
 
-  // PostgREST refuses an unfiltered DELETE — `not id is null` matches all rows.
-  const del = admin.from("playground_reservations").delete();
-  const filtered = all ? del.not("id", "is", null) : del.eq("id", id as string);
+  const del = admin.from("reservations").delete();
+  const filtered = allTest ? del.eq("is_test", true) : del.eq("id", id as string);
   const { data, error } = await filtered.select("id");
   if (error) return json({ ok: false, error: error.message }, 500);
 

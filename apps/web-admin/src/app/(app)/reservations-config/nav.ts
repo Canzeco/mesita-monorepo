@@ -4,7 +4,8 @@ import { CalendarCheck, FlaskConical, Settings2 } from "lucide-react";
 // Reservations Config — two sub-tabs. "Config" tunes the Reservationist (test
 // numbers, retries, booking channel); "Playground" emulates fake-user intents
 // against real DB places/consumers, places real calls, and keeps its tickets in
-// a sandbox (playground_reservations). RESERVATIONS_PARENT is the single
+// the ONE reservations table (runs land there flagged is_test — the sandbox
+// is retired). RESERVATIONS_PARENT is the single
 // Sidebar entry; RESERVATIONS_SUBROUTES are the in-page tabs (never added to
 // the Sidebar).
 export const RESERVATIONS_PARENT = {

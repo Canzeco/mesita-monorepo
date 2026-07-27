@@ -82,6 +82,7 @@ Deno.serve(async (req) => {
       .from("reservations")
       .select("id", { count: "exact", head: true })
       .eq("consumer_id", consumerId)
+      .eq("is_test", false)
       .gte("created_at", monthStart.toISOString())
       .neq("status", "cancelled");
     if (countErr) return json({ ok: false, error: countErr.message }, 500);

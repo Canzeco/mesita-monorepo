@@ -6,13 +6,12 @@
 // how "connect ElevenLabs to Supabase" works in Mesita: the agent never touches
 // the DB — it calls an EF, like every other client.
 //
-// Looks up a reservation ticket in REAL TIME so the agent can verify what a
-// caller says on the phone. Two lookup keys, either works:
+// Looks up a reservation ticket in REAL TIME on the ONE reservations table
+// (sandbox retired 2026-07-27; is_test rows are included on purpose — the
+// agent must resolve operator test calls too). Two lookup keys, either works:
 //   { reference_code }              — the ticket's 8-digit code (exact)
 //   { first_name?, last_name? }     — the guest's name (fuzzy, at least one)
-// Searches BOTH public.reservations (production) and
-// public.playground_reservations (sandbox — so admin test calls resolve too),
-// newest first, 5 max, each labeled with its source.
+// Newest first, 5 max, es-MX speakable fields.
 //
 // Auth (two locks):
 //   1. Gateway verify_jwt — the tool sends `Authorization: Bearer <anon key>`
@@ -35,7 +34,6 @@ type Body = {
 };
 
 type AgentTicket = {
-  source: "production" | "playground";
   reference_code: string | null;
   guest_name: string;
   place_name: string;
@@ -46,6 +44,7 @@ type AgentTicket = {
   party_size: number;
   status: string;
   notes: string | null;
+  is_test: boolean;
 };
 
 function esDate(iso: string): string {
@@ -85,46 +84,7 @@ function nameMatches(haystack: string, terms: string[]): boolean {
   return terms.every((t) => h.includes(t.toLowerCase()));
 }
 
-type PlaygroundRow = {
-  reference_code: string | null;
-  consumer_name: string | null;
-  place_name: string | null;
-  reserved_at: string;
-  party_size: number;
-  status: string;
-  notes: string | null;
-};
-
-async function searchPlayground(
-  admin: SupabaseClient,
-  code: string | null,
-  terms: string[],
-): Promise<AgentTicket[]> {
-  let q = admin
-    .from("playground_reservations")
-    .select("reference_code, consumer_name, place_name, reserved_at, party_size, status, notes")
-    .order("created_at", { ascending: false })
-    .limit(10);
-  if (code) q = q.eq("reference_code", code);
-  else q = q.ilike("consumer_name", `%${terms[0]}%`);
-  const { data } = await q;
-  return ((data ?? []) as PlaygroundRow[])
-    .filter((r) => code || nameMatches(r.consumer_name ?? "", terms))
-    .map((r) => ({
-      source: "playground" as const,
-      reference_code: r.reference_code ?? null,
-      guest_name: r.consumer_name ?? "",
-      place_name: r.place_name ?? "",
-      date_es: esDate(r.reserved_at),
-      time_es: esTime(r.reserved_at),
-      reserved_at: r.reserved_at,
-      party_size: r.party_size,
-      status: r.status,
-      notes: r.notes ?? null,
-    }));
-}
-
-async function searchProduction(
+async function searchReservations(
   admin: SupabaseClient,
   code: string | null,
   terms: string[],
@@ -135,6 +95,7 @@ async function searchProduction(
     party_size: number;
     status: string;
     notes: string | null;
+    is_test: boolean;
     project_id: string;
     consumer: {
       full_name: string | null;
@@ -142,13 +103,13 @@ async function searchProduction(
       last_name: string | null;
     } | null;
   };
+  const SELECT =
+    "reference_code, reserved_at, party_size, status, notes, is_test, project_id, consumer:consumers(full_name, first_name, last_name)";
   let rows: Row[] = [];
   if (code) {
     const { data } = await admin
       .from("reservations")
-      .select(
-        "reference_code, reserved_at, party_size, status, notes, project_id, consumer:consumers(full_name, first_name, last_name)",
-      )
+      .select(SELECT)
       .eq("reference_code", code)
       .limit(5);
     rows = (data ?? []) as Row[];
@@ -178,9 +139,7 @@ async function searchProduction(
     if (ids.length === 0) return [];
     const { data } = await admin
       .from("reservations")
-      .select(
-        "reference_code, reserved_at, party_size, status, notes, project_id, consumer:consumers(full_name, first_name, last_name)",
-      )
+      .select(SELECT)
       .in("consumer_id", ids)
       .order("created_at", { ascending: false })
       .limit(10);
@@ -189,7 +148,7 @@ async function searchProduction(
   if (rows.length === 0) return [];
 
   // reservations.project_id has no PostgREST FK hint to places — batch the
-  // place names separately (same workaround as supabase-edgefunc-reservation-call).
+  // place names separately (same workaround as the engine).
   const placeIds = [...new Set(rows.map((r) => r.project_id))];
   const { data: places } = await admin
     .from("places")
@@ -206,7 +165,6 @@ async function searchProduction(
     const guest = c?.full_name?.trim() ||
       [c?.first_name, c?.last_name].map((s) => (s ?? "").trim()).filter(Boolean).join(" ");
     return {
-      source: "production" as const,
       reference_code: r.reference_code ?? null,
       guest_name: guest || "(sin nombre)",
       place_name: placeName.get(r.project_id) ?? "",
@@ -216,6 +174,7 @@ async function searchProduction(
       party_size: r.party_size,
       status: r.status,
       notes: r.notes ?? null,
+      is_test: !!r.is_test,
     };
   });
 }
@@ -258,11 +217,7 @@ Deno.serve(async (req) => {
     }, 400);
   }
 
-  const [playground, production] = await Promise.all([
-    searchPlayground(admin, code, terms),
-    searchProduction(admin, code, terms),
-  ]);
-  const tickets = [...production, ...playground]
+  const tickets = (await searchReservations(admin, code, terms))
     .sort((a, b) => (a.reserved_at < b.reserved_at ? 1 : -1))
     .slice(0, 5);
 

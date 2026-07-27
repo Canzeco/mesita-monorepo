@@ -41,8 +41,8 @@ import { looksLikePhone, type ReservationsConfig } from "./catalog";
 //      up to config.attempts real calls (the "3 intents"), server-side. If the
 //      venue doesn't answer intent 1, intent 2 dials, then intent 3.
 //
-// Tickets live in playground_reservations (never public.reservations) and the
-// sandbox below polls while intents are running, so progress shows live.
+// Tickets are REAL public.reservations rows flagged is_test (the sandbox is
+// retired) and the list below polls while intents run, so progress shows live.
 
 const inputCls =
   "border-border bg-card focus:border-foreground h-9 w-full rounded-lg border px-3 text-sm outline-none";
@@ -478,6 +478,11 @@ function TicketCard({
             #{t.reference_code}
           </span>
         )}
+        {t.is_test && (
+          <span className="rounded-full bg-amber-500/10 px-2 py-0.5 text-[10px] font-semibold text-amber-700">
+            TEST
+          </span>
+        )}
         <span className="ml-auto inline-flex items-center gap-1.5">
           {badge}
           <button
@@ -521,17 +526,11 @@ function TicketCard({
       <div className="text-muted-foreground mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px]">
         <span>
           venue{" "}
-          <span className="text-foreground font-mono">{t.business_number ?? "—"}</span>{" "}
-          <span className="border-border bg-background rounded-full border px-1.5 py-px text-[9px] font-medium uppercase">
-            {t.business_number_mode}
-          </span>
+          <span className="text-foreground font-mono">{t.business_number ?? "—"}</span>
         </span>
         <span>
           guest{" "}
-          <span className="text-foreground font-mono">{t.consumer_number ?? "—"}</span>{" "}
-          <span className="border-border bg-background rounded-full border px-1.5 py-px text-[9px] font-medium uppercase">
-            {t.consumer_number_mode}
-          </span>
+          <span className="text-foreground font-mono">{t.consumer_number ?? "—"}</span>
         </span>
         {t.conversation_id && (
           <span className="min-w-0">
@@ -694,12 +693,12 @@ export function ReservationsPlaygroundClient({
     setDeleting("all");
     setDeleteError(null);
     try {
-      const r = await deletePlaygroundReservations({ all: true });
+      const r = await deletePlaygroundReservations({ all_test: true });
       if (!r.ok) {
         setDeleteError(r.error);
         return;
       }
-      setTickets([]);
+      setTickets((prev) => prev.filter((t) => !t.is_test));
     } finally {
       setDeleting(null);
     }
@@ -721,7 +720,9 @@ export function ReservationsPlaygroundClient({
           <span className="font-semibold">confirms</span>, the agent then calls
           the guest (business → consumer) to confirm it to the human — and it
           hangs up on its own once each call&apos;s outcome is settled. Tickets
-          stay in the playground sandbox, never in real consumer reservations.
+          are REAL rows in the reservations table, flagged{" "}
+          <span className="font-semibold">TEST</span> so consumer and business
+          surfaces never show them.
         </p>
       </div>
 
@@ -965,11 +966,11 @@ export function ReservationsPlaygroundClient({
         )}
       </SectionCard>
 
-      {/* ── Sandbox ── */}
+      {/* ── Tickets — the one real table ── */}
       <SectionCard
         icon={<Inbox className="text-secondary h-4 w-4" />}
-        title="Sandbox — playground tickets"
-        subtitle="Every emulated reservation, remembered, with its intent-by-intent outcome. These live only in the playground."
+        title="Tickets — the reservations table"
+        subtitle="Newest tickets on the ONE real table, live intent-by-intent. Playground runs land here flagged TEST; guest bookings appear unflagged."
       >
         {ticketsLoading ? (
           <p className="text-muted-foreground mt-4 flex items-center gap-2 text-sm">
@@ -983,7 +984,7 @@ export function ReservationsPlaygroundClient({
           <div className="border-border bg-muted/30 mt-4 flex items-center gap-3 rounded-xl border border-dashed p-6">
             <Inbox className="text-muted-foreground h-5 w-5" />
             <p className="text-muted-foreground text-sm">
-              No playground tickets yet — run an intent above and it lands here.
+              No tickets yet — run an intent above and it lands here.
             </p>
           </div>
         ) : (
@@ -1003,7 +1004,7 @@ export function ReservationsPlaygroundClient({
                 ) : (
                   <Trash2 className="h-3.5 w-3.5" />
                 )}
-                Clear all
+                Clear tests
               </button>
             </div>
             {deleteError && (

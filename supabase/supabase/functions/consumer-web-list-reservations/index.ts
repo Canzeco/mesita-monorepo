@@ -53,6 +53,9 @@ Deno.serve(async (req) => {
       "id, reserved_at, party_size, status, notes, confirmed_at, completed_at, cancelled_at, coupon_id, created_at, place:places(id, slug, name, category, photos, address)",
     )
     .eq("consumer_id", consumerId)
+    // Operator test tickets (is_test) reference real consumers — never surface
+    // them in the guest's own list.
+    .eq("is_test", false)
     .order("reserved_at", { ascending: scope === "past" ? false : true })
     .limit(limit);
 

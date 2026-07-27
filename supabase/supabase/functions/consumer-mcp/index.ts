@@ -20,6 +20,7 @@ import { adminClient, readEFEnv } from "../_shared/auth.ts";
 import { resolveMcpBearer } from "../_shared/mcp-tokens.ts";
 import { PLACE_PUBLIC_COLUMNS } from "../_shared/place-columns.ts";
 import { getTierConfig, isPremiumOrHigher } from "../_shared/membership.ts";
+import { generateReservationCode, isUniqueViolation } from "../_shared/reservation-code.ts";
 import { suggestPlaces } from "../_shared/suggest-places.ts";
 import { CORS } from "../_shared/cors.ts";
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
@@ -153,6 +154,8 @@ async function runTool(
           "id, reserved_at, party_size, status, notes, confirmed_at, completed_at, cancelled_at, coupon_id, created_at, place:places(id, slug, name, category, photos, address)",
         )
         .eq("consumer_id", consumerId)
+        // Operator test tickets (is_test) reference real consumers — hidden.
+        .eq("is_test", false)
         .order("reserved_at", { ascending: scope === "past" ? false : true })
         .limit(limit);
       if (scope === "upcoming") q = q.in("status", ["pending", "confirmed"]);
@@ -190,6 +193,7 @@ async function runTool(
           .from("reservations")
           .select("id", { count: "exact", head: true })
           .eq("consumer_id", consumerId)
+          .eq("is_test", false)
           .gte("created_at", monthStart.toISOString())
           .neq("status", "cancelled");
         if (countErr) return toolError(countErr.message);
@@ -208,22 +212,36 @@ async function runTool(
         .eq("status", "active")
         .maybeSingle();
 
-      const { data: reservation, error } = await admin
-        .from("reservations")
-        .insert({
-          consumer_id: consumerId,
-          project_id: placeId,
-          coupon_id: coupon?.id ?? null,
-          reserved_at: reservedAt.toISOString(),
-          party_size: partySize,
-          notes,
-          status: "pending",
-        })
-        .select(
-          "id, reserved_at, party_size, status, notes, coupon_id, created_at, place:places(id, slug, name, category, photos, address)",
-        )
-        .single();
-      if (error) return toolError(error.message);
+      // Insert with the ticket's 8-digit reference code — fresh code per try;
+      // a unique-index collision just redraws.
+      let reservation: Record<string, unknown> | null = null;
+      let insertError: { message: string } | null = null;
+      for (let i = 0; i < 3 && !reservation; i++) {
+        const ins = await admin
+          .from("reservations")
+          .insert({
+            consumer_id: consumerId,
+            project_id: placeId,
+            coupon_id: coupon?.id ?? null,
+            reference_code: generateReservationCode(),
+            reserved_at: reservedAt.toISOString(),
+            party_size: partySize,
+            notes,
+            status: "pending",
+          })
+          .select(
+            "id, reference_code, reserved_at, party_size, status, notes, coupon_id, created_at, place:places(id, slug, name, category, photos, address)",
+          )
+          .single();
+        if (!ins.error) {
+          reservation = ins.data as Record<string, unknown>;
+          insertError = null;
+        } else {
+          insertError = ins.error;
+          if (!isUniqueViolation(ins.error)) break;
+        }
+      }
+      if (!reservation) return toolError(insertError?.message ?? "insert failed");
       return toolText({
         ok: true,
         reservation,
