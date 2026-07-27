@@ -65,6 +65,9 @@ export type EFReservationRow = {
     | "unresolved";
   /** The ticket's 8-digit reference code (null only on pre-code rows). */
   reference_code: string | null;
+  /** Run state — the app reads these to tell `created` from `booking`. */
+  attempts_state: string | null;
+  call_attempts: number | null;
   notes: string | null;
   confirmed_at: string | null;
   completed_at: string | null;
@@ -80,6 +83,50 @@ export type EFReservationRow = {
     address: string | null;
   } | null;
 };
+
+/**
+ * Cancel the caller's own reservation. Idempotent server-side; a slot that
+ * already passed is refused (there's nothing left to call off).
+ */
+export function apiCancelReservation(
+  client: SupabaseClient,
+  args: { reservationId: string; reason?: string },
+): Promise<{ cancelled?: boolean; already?: boolean }> {
+  const reason = args.reason?.trim();
+  return invokeEF<{ cancelled?: boolean; already?: boolean }>(
+    client,
+    "consumer-web-cancel-reservation",
+    { reservation_id: args.reservationId, ...(reason ? { reason } : {}) },
+    "Couldn't cancel the reservation",
+  );
+}
+
+/**
+ * Reschedule (or resize) the caller's own reservation. New terms send the
+ * ticket back to `booking` and Mesita calls the venue again.
+ */
+export function apiUpdateReservation(
+  client: SupabaseClient,
+  args: {
+    reservationId: string;
+    /** ISO 8601 instant with an explicit MX offset. */
+    reservedAt?: string;
+    partySize?: number;
+    notes?: string;
+  },
+): Promise<{ updated: boolean; call_started?: boolean }> {
+  return invokeEF<{ updated: boolean; call_started?: boolean }>(
+    client,
+    "consumer-web-update-reservation",
+    {
+      reservation_id: args.reservationId,
+      ...(args.reservedAt ? { reserved_at: args.reservedAt } : {}),
+      ...(typeof args.partySize === "number" ? { party_size: args.partySize } : {}),
+      ...(args.notes !== undefined ? { notes: args.notes } : {}),
+    },
+    "Couldn't update the reservation",
+  );
+}
 
 export function apiListReservations(
   client: SupabaseClient,

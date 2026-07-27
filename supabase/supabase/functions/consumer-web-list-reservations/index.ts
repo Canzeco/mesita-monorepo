@@ -21,6 +21,20 @@ import { attachPlaces } from "../_shared/reservation-places.ts";
 const DEFAULT_LIMIT = 50;
 const MAX_LIMIT = 200;
 
+// How long a slot stays in Upcoming after its time — you're still at the
+// table. Mirrored by consumer-web-{cancel,update}-reservation.
+const PASSED_GRACE_MS = 4 * 3600_000;
+
+// Everything that ended without a live booking. `passed` is NOT here: it's
+// derived (confirmed + slot behind us), never stored — no cron to keep honest.
+const TERMINAL_STATUSES = [
+  "declined",
+  "no_show",
+  "cancelled",
+  "unreachable",
+  "unresolved",
+] as const;
+
 type Scope = "upcoming" | "past" | "all";
 type Body = { limit?: number; scope?: Scope };
 
@@ -54,7 +68,10 @@ Deno.serve(async (req) => {
   let q = admin
     .from("reservations")
     .select(
-      "id, reserved_at, party_size, status, reference_code, notes, confirmed_at, completed_at, cancelled_at, coupon_id, created_at, project_id",
+      // attempts_state / call_attempts let the app separate `created` (no dial
+      // yet) from `booking` (agent working it) — see the lifecycle in the
+      // consumer adapter.
+      "id, reserved_at, party_size, status, reference_code, notes, confirmed_at, completed_at, cancelled_at, coupon_id, created_at, project_id, attempts_state, call_attempts",
     )
     .eq("consumer_id", consumerId)
     // Operator test tickets (is_test) reference real consumers — never surface
@@ -63,13 +80,18 @@ Deno.serve(async (req) => {
     .order("reserved_at", { ascending: scope === "past" ? false : true })
     .limit(limit);
 
-  // "upcoming" hides terminal-state past bookings. "past" inverts (including
-  // the engine outcomes unreachable / unresolved). "all" leaves the result
-  // unfiltered for the archive view.
+  // Scope is DATE-AWARE, not status-only: a confirmed table whose slot came
+  // and went is "passed" and belongs in History — it used to sit in Upcoming
+  // forever. The grace keeps tonight's booking in Upcoming while you're at it.
+  const passedCutoff = new Date(Date.now() - PASSED_GRACE_MS).toISOString();
   if (scope === "upcoming") {
-    q = q.in("status", ["pending", "confirmed"]);
+    q = q.in("status", ["pending", "confirmed"]).gte("reserved_at", passedCutoff);
   } else if (scope === "past") {
-    q = q.in("status", ["declined", "no_show", "cancelled", "unreachable", "unresolved"]);
+    // Terminal outcomes at any date, OR a live ticket whose slot has passed.
+    q = q.or(
+      `status.in.(${TERMINAL_STATUSES.join(",")}),` +
+        `and(status.in.(pending,confirmed),reserved_at.lt.${passedCutoff})`,
+    );
   }
 
   const { data, error } = await q;

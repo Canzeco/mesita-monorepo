@@ -2,20 +2,12 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import {
-  Calendar,
-  Users,
-  Clock,
-  X,
-  CheckCircle2,
-  Gift,
-  Instagram,
-} from "lucide-react";
+import { Calendar, Gift, Instagram, Users } from "lucide-react";
 import type {
   ReservationItem,
-  ReservationStatus,
   LinkedCouponSummary,
 } from "@/lib/mock/reservations-mock";
+import { statusMeta } from "@/lib/reservation-status";
 import { cn, guestNoun } from "@/lib/utils";
 import { reservationPath } from "@/lib/consumer-route-contract";
 
@@ -24,38 +16,10 @@ import { reservationPath } from "@/lib/consumer-route-contract";
 // stub" rides along underneath the card — dashed perforated edge above
 // it sells the metaphor without needing a literal scissor icon.
 
-const STATUS_META: Record<
-  ReservationStatus,
-  {
-    label: string;
-    pillClass: string;
-    Icon: typeof Clock;
-    iconClass: string;
-  }
-> = {
-  booking: {
-    label: "Booking",
-    pillClass: "border-amber-500/30 bg-amber-50 text-amber-800",
-    Icon: Clock,
-    iconClass: "text-amber-600",
-  },
-  booked: {
-    label: "Booked",
-    pillClass: "border-emerald-500/30 bg-emerald-50 text-emerald-800",
-    Icon: CheckCircle2,
-    iconClass: "text-emerald-600",
-  },
-  cancelled: {
-    label: "Cancelled",
-    pillClass: "border-border bg-muted text-muted-foreground",
-    Icon: X,
-    iconClass: "text-muted-foreground",
-  },
-};
-
 export function ReservationCard({ r }: { r: ReservationItem }) {
-  const meta = STATUS_META[r.status];
-  const cancelled = r.status === "cancelled";
+  const meta = statusMeta(r.status);
+  // "spent" = finished and not happening (passed / cancelled / not booked).
+  const spent = meta.spent;
   // Tapping the card opens the intercepted /reservation/[id] modal on
   // soft nav and the full page on hard nav. Linked-coupon stub stays
   // inside the same link so the whole ticket is one tap target.
@@ -65,7 +29,7 @@ export function ReservationCard({ r }: { r: ReservationItem }) {
       aria-label={`Open reservation at ${r.placeName}`}
       className={cn(
         "border-border bg-card hover:bg-muted/40 flex flex-col gap-3 overflow-hidden rounded-2xl border p-3 transition active:scale-[0.995]",
-        cancelled && "opacity-70",
+        spent && "opacity-70",
       )}
     >
       <div className="flex items-start gap-3">
@@ -86,7 +50,7 @@ export function ReservationCard({ r }: { r: ReservationItem }) {
             <h3
               className={cn(
                 "font-display truncate text-base leading-tight font-semibold",
-                cancelled && "line-through",
+                spent && "line-through",
               )}
             >
               {r.placeName}
@@ -143,7 +107,7 @@ export function ReservationCard({ r }: { r: ReservationItem }) {
           "perforated edge" metaphor; the inline ticket icon + the
           small percent badge keep the stub visually distinct from
           the main reservation surface above. */}
-      {r.linkedCoupon && !cancelled && (
+      {r.linkedCoupon && !spent && (
         <LinkedCouponStub coupon={r.linkedCoupon} />
       )}
     </Link>
