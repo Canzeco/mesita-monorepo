@@ -18,6 +18,7 @@ import { BirthdayPicker } from '@/components/ui/BirthdayPicker';
 import { BoxRow } from '@/components/ui/BoxRow';
 import { Button } from '@/components/ui/Button';
 import { FullScreenSheet } from '@/components/ui/FullScreenSheet';
+import { SexSelector, toSexValue, type SexValue } from '@/components/ui/SexSelector';
 import { TextField } from '@/components/ui/TextField';
 import { GRADIENT_DIAGONAL, GRADIENTS } from '@/constants/brand';
 import { apiUpdateConsumerProfile } from '@/lib/api/auth';
@@ -62,6 +63,9 @@ export function PersonalDetailsSheet({
   const { profile, session } = useAuth();
   const [firstName, setFirstName] = useState(profile?.first_name ?? '');
   const [lastName, setLastName] = useState(profile?.last_name ?? '');
+  // null = nothing stored yet; a legacy profile shouldn't silently acquire a
+  // sex just by opening this sheet, so it stays unset until picked.
+  const [sex, setSex] = useState<SexValue | null>(toSexValue(profile?.sex));
   const [birthday, setBirthday] = useState(profile?.birthday ?? '');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -85,12 +89,13 @@ export function PersonalDetailsSheet({
     setSaving(true);
     setError(null);
     try {
-      // Sex isn't edited here and is never re-sent — the EF patches only the
-      // keys present, so omitting it leaves the stored value untouched (and
-      // avoids resurrecting the dropped "other" value).
+      // Sex is only sent once it's set: the EF patches the keys it receives,
+      // so omitting it leaves the stored value untouched rather than nulling
+      // it (and never resurrects the dropped "other" value).
       await apiUpdateConsumerProfile({
         first_name: firstName.trim(),
         last_name: lastName.trim(),
+        ...(sex ? { sex } : {}),
         birthday: birthday || '',
       });
       onSaved();
@@ -192,6 +197,12 @@ export function PersonalDetailsSheet({
         editable={false}
         helper="Phone is your sign-in identity and can’t be edited here."
       />
+      <View className="gap-1.5">
+        <Text className="font-semibold text-foreground" style={{ fontSize: 13 }}>
+          Sex
+        </Text>
+        <SexSelector value={sex} onChange={setSex} />
+      </View>
       <View className="gap-1.5">
         <Text className="font-semibold text-foreground" style={{ fontSize: 13 }}>
           Birthday
