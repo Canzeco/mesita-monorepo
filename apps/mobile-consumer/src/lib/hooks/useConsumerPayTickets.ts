@@ -19,7 +19,7 @@ import {
   type TicketFlowStepView,
 } from '@/lib/ticket-flow-steps';
 
-export type TicketBundle = {
+type TicketBundle = {
   ticketId: string;
   payload: TicketBillPayload;
   bill?: PayNotificationRow;
