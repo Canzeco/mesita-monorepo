@@ -19,7 +19,7 @@ export {
   type PlacePredictionStatus,
 } from "./places";
 
-export type CreatedProject = {
+type CreatedProject = {
   ok: boolean;
   /** The freshly created place row (content_status='generating'). */
   place: { id: string; slug: string; name: string; status: string };
