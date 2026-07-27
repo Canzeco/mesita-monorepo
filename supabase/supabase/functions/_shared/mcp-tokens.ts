@@ -19,7 +19,7 @@ function bytesToBase64Url(bytes: Uint8Array): string {
   return btoa(s).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 }
 
-export async function hashMcpToken(plaintext: string): Promise<string> {
+async function hashMcpToken(plaintext: string): Promise<string> {
   const digest = await crypto.subtle.digest(
     "SHA-256",
     new TextEncoder().encode(plaintext),
