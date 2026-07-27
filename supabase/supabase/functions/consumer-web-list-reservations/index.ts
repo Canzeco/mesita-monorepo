@@ -16,6 +16,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { clampIntRange, corsPreflight, json, readJsonOr } from "../_shared/http.ts";
 import { adminClient, getAuthedUser, readEFEnv } from "../_shared/auth.ts";
+import { attachPlaces } from "../_shared/reservation-places.ts";
 
 const DEFAULT_LIMIT = 50;
 const MAX_LIMIT = 200;
@@ -47,10 +48,13 @@ Deno.serve(async (req) => {
 
   const admin = adminClient(envRes.env);
 
+  // NO place embed — reservations→places is a two-hop FK chain and PostgREST
+  // rejects it ("no relationship … in the schema cache"). attachPlaces does the
+  // lookup; see _shared/reservation-places.ts.
   let q = admin
     .from("reservations")
     .select(
-      "id, reserved_at, party_size, status, reference_code, notes, confirmed_at, completed_at, cancelled_at, coupon_id, created_at, place:places(id, slug, name, category, photos, address)",
+      "id, reserved_at, party_size, status, reference_code, notes, confirmed_at, completed_at, cancelled_at, coupon_id, created_at, project_id",
     )
     .eq("consumer_id", consumerId)
     // Operator test tickets (is_test) reference real consumers — never surface
@@ -70,5 +74,6 @@ Deno.serve(async (req) => {
 
   const { data, error } = await q;
   if (error) return json({ ok: false, error: error.message }, 500);
-  return json({ ok: true, reservations: data ?? [] });
+  const reservations = await attachPlaces(admin, data ?? []);
+  return json({ ok: true, reservations });
 });

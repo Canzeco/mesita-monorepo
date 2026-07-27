@@ -21,6 +21,7 @@ import { resolveMcpBearer } from "../_shared/mcp-tokens.ts";
 import { PLACE_PUBLIC_COLUMNS } from "../_shared/place-columns.ts";
 import { getTierConfig, isPremiumOrHigher } from "../_shared/membership.ts";
 import { generateReservationCode, isUniqueViolation } from "../_shared/reservation-code.ts";
+import { attachPlaces } from "../_shared/reservation-places.ts";
 import { suggestPlaces } from "../_shared/suggest-places.ts";
 import { CORS } from "../_shared/cors.ts";
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
@@ -148,10 +149,12 @@ async function runTool(
       const scope = args.scope === "past" || args.scope === "all"
         ? args.scope
         : "upcoming";
+      // NO place embed — reservations→places is a two-hop FK chain PostgREST
+      // can't resolve; attachPlaces does the lookup (see the shared module).
       let q = admin
         .from("reservations")
         .select(
-          "id, reserved_at, party_size, status, notes, confirmed_at, completed_at, cancelled_at, coupon_id, created_at, place:places(id, slug, name, category, photos, address)",
+          "id, reserved_at, party_size, status, reference_code, notes, confirmed_at, completed_at, cancelled_at, coupon_id, created_at, project_id",
         )
         .eq("consumer_id", consumerId)
         // Operator test tickets (is_test) reference real consumers — hidden.
@@ -160,11 +163,12 @@ async function runTool(
         .limit(limit);
       if (scope === "upcoming") q = q.in("status", ["pending", "confirmed"]);
       else if (scope === "past") {
-        q = q.in("status", ["declined", "no_show", "cancelled"]);
+        // Engine outcomes included, else those tickets are invisible in both scopes.
+        q = q.in("status", ["declined", "no_show", "cancelled", "unreachable", "unresolved"]);
       }
       const { data, error } = await q;
       if (error) return toolError(error.message);
-      return toolText({ ok: true, reservations: data ?? [] });
+      return toolText({ ok: true, reservations: await attachPlaces(admin, data ?? []) });
     }
 
     case "create_reservation": {
