@@ -37,7 +37,7 @@ export function msgId(): string {
 // and the first render always matches SSR (greeting) — no hydration mismatch,
 // and no set-state-in-effect. Intentionally NOT localStorage: a full reload
 // starts fresh, which keeps this clean and avoids a client-only initial read.
-export type StoredThread = { messages: AiMessage[]; related: string[] };
+type StoredThread = { messages: AiMessage[]; related: string[] };
 const THREAD_CAP = 40; // bound the retained history
 
 let threadCache: StoredThread | null = null;
