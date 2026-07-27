@@ -1,8 +1,11 @@
 "use client";
 
-import { Crown, Instagram, Smile } from "lucide-react";
-
-import { CLASSES, classBadgeClass, isElevatedClass } from "@/lib/consumer-data";
+import {
+  CLASSES,
+  CLASS_ICONS,
+  classBadgeClass,
+  isElevatedClass,
+} from "@/lib/consumer-data";
 import { useConsumerClass } from "@/lib/class-context";
 import { cn } from "@/lib/utils";
 
@@ -11,19 +14,18 @@ export function CurrentClassCard() {
   const meta = CLASSES.find((c) => c.id === key)!;
   const brand = `Mesita ${meta.label}`;
   const isElevated = isElevatedClass(key);
-  const { Icon, via } = (() => {
-    if (!isElevated) return { Icon: Smile, via: null as string | null };
-    switch (origin) {
-      case "instagram":
-        return { Icon: Instagram, via: "via Instagram" };
-      case "subscription":
-        return { Icon: Crown, via: "via subscription" };
-      case "invitation":
-        return { Icon: Crown, via: "via invitation" };
-      default:
-        return { Icon: Crown, via: null as string | null };
-    }
-  })();
+  // The class wears its canonical icon (smile / card / crown); the origin
+  // only sets the "via" line.
+  const Icon = CLASS_ICONS[key];
+  const via = !isElevated
+    ? null
+    : origin === "instagram"
+      ? "via Instagram"
+      : origin === "subscription"
+        ? "via subscription"
+        : origin === "invitation"
+          ? "via invitation"
+          : null;
   return (
     <div
       className={cn(
