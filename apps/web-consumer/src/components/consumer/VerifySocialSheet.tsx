@@ -15,7 +15,7 @@ import {
   SHEET_BODY_CLASS,
 } from "@/lib/ui-classes";
 import { DEMO_INSTAGRAM_FOLLOWERS } from "@/lib/instagram-demo";
-import { CLASSES } from "@/lib/consumer-data";
+import { MAGNETIC_FOLLOWER_THRESHOLD } from "@/lib/consumer-data";
 
 // Bottom-sheet flow for verifying Instagram — the social door into Mesita
 // Magnetic (the top, invite-only tier). Crossing the Magnetic follower
@@ -36,11 +36,6 @@ type SocialPlatform = "instagram";
 // server-side, so every surface reads the class from the profile, not a
 // device flag. Swap the constant for the bot-reported count when it lands.
 const HANDLE_RE = /^@?[A-Za-z0-9._]{1,30}$/;
-
-// Display copy of the grant bar. The EF reads classes.follower_threshold in
-// the DB (the actual gate); consumer-data mirrors that row.
-const MAGNETIC_THRESHOLD = CLASSES.find((c) => c.id === "magnetic")!
-  .followerThreshold;
 
 export function VerifySocialSheet({
   platform: _platform,
@@ -82,7 +77,7 @@ export function VerifySocialSheet({
       toast(
         `Instagram connected, but ${result.followers.toLocaleString(
           "en-US",
-        )} followers is below the ${MAGNETIC_THRESHOLD.toLocaleString(
+        )} followers is below the ${MAGNETIC_FOLLOWER_THRESHOLD.toLocaleString(
           "en-US",
         )} needed for Magnetic.`,
       );
@@ -143,7 +138,7 @@ export function VerifySocialSheet({
               here.
             </>,
             <>
-              {MAGNETIC_THRESHOLD.toLocaleString("en-US")}+ followers unlocks
+              {MAGNETIC_FOLLOWER_THRESHOLD.toLocaleString("en-US")}+ followers unlocks
               Mesita Magnetic instantly.
             </>,
           ].map((line, i) => (

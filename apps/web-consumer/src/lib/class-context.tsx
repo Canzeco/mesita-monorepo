@@ -12,6 +12,7 @@ import {
   DEMO_INSTAGRAM_FOLLOWERS,
   DEMO_INSTAGRAM_HANDLE,
 } from "@/lib/instagram-demo";
+import { MAGNETIC_FOLLOWER_THRESHOLD } from "@/lib/consumer-data";
 
 // Real, server-sourced class for the signed-in consumer, shared with
 // every client surface under the (shell) layout: the Profile Class tab, the
@@ -71,19 +72,30 @@ export const MOCK_PREMIUM_KEY = "mesita:mock-premium";
 // (The old MOCK_INSTAGRAM_KEY path is gone — the Verify Instagram sheet now
 // calls consumer-web-claim-instagram for a real server-side grant, MESITA-74.)
 
-// Demo/design override. The Me → Class preview toggle writes one of these
-// values so every class state is previewable regardless of the real
-// server-seeded class — Standard, Premium via subscription, Magnetic via
-// Instagram. Purely a client-side dev affordance; absent = use the real class.
-// Remove the toggle + this key once the three states can be produced with real
-// data.
-export const MOCK_CLASS_KEY = "mesita:mock-class";
-export type MockClass = "standard" | "subscription" | "instagram";
-const MOCK_CLASS_VALUES: MockClass[] = [
-  "standard",
-  "subscription",
-  "instagram",
-];
+// Demo/design override. The Me-page demo toggles write this JSON blob so
+// every account state is previewable regardless of the real server-seeded
+// class. Two independent axes, mirroring the real model:
+//   • class     — forced class ("standard" down-previews a real elevated
+//                 account; premium = via subscription, magnetic = via
+//                 invitation). null = use the real class.
+//   • instagram — a connected Instagram (handle + follower reach). Crossing
+//                 MAGNETIC_FOLLOWER_THRESHOLD grants Magnetic via Instagram
+//                 and wins over the class axis — exactly like a qualifying
+//                 consumer-web-claim-instagram claim overwrites the class.
+// Purely a client-side dev affordance; absent = the real account. Remove the
+// toggles + this key once the states can be produced with real data.
+export const MOCK_ACCOUNT_KEY = "mesita:mock-account";
+export type MockAccount = {
+  class: "standard" | "premium" | "magnetic" | null;
+  instagram: boolean;
+  followers: number;
+};
+
+const MOCK_ACCOUNT_OFF: MockAccount = {
+  class: null,
+  instagram: false,
+  followers: DEMO_INSTAGRAM_FOLLOWERS,
+};
 
 // Demo IG followers/handle: see @/lib/instagram-demo.
 
@@ -117,61 +129,118 @@ function useLocalStorageFlag(key: string): boolean {
   );
 }
 
-function readMockClass(): MockClass | null {
+// Parse + validate the stored blob. The snapshot is CACHED on the raw string:
+// useSyncExternalStore compares snapshots by reference, so parsing fresh on
+// every read would loop forever.
+let mockAccountRaw: string | null = null;
+let mockAccountCache: MockAccount | null = null;
+
+function parseMockAccount(raw: string | null): MockAccount | null {
+  if (!raw) return null;
   try {
-    const v = window.localStorage.getItem(MOCK_CLASS_KEY);
-    return MOCK_CLASS_VALUES.includes(v as MockClass) ? (v as MockClass) : null;
+    const v = JSON.parse(raw) as Partial<MockAccount>;
+    const cls =
+      v.class === "standard" || v.class === "premium" || v.class === "magnetic"
+        ? v.class
+        : null;
+    const instagram = v.instagram === true;
+    if (cls == null && !instagram) return null; // nothing overridden
+    const followers =
+      typeof v.followers === "number" &&
+      Number.isFinite(v.followers) &&
+      v.followers >= 0
+        ? Math.trunc(v.followers)
+        : DEMO_INSTAGRAM_FOLLOWERS;
+    return { class: cls, instagram, followers };
   } catch {
     return null;
   }
 }
 
-// Read the current demo override (null when off). SSR snapshot is null so the
-// hydration render matches the server-seeded class.
-export function useMockClass(): MockClass | null {
-  return useSyncExternalStore(subscribeToStore, readMockClass, () => null);
+function readMockAccount(): MockAccount | null {
+  let raw: string | null;
+  try {
+    raw = window.localStorage.getItem(MOCK_ACCOUNT_KEY);
+  } catch {
+    raw = null;
+  }
+  if (raw !== mockAccountRaw) {
+    mockAccountRaw = raw;
+    mockAccountCache = parseMockAccount(raw);
+  }
+  return mockAccountCache;
 }
 
-// Set (or clear, with null) the demo override and notify every subscriber in
-// this tab so the shell re-renders immediately.
-export function setMockClass(value: MockClass | null): void {
+// Read the current demo override (null when off). SSR snapshot is null so the
+// hydration render matches the server-seeded class.
+export function useMockAccount(): MockAccount | null {
+  return useSyncExternalStore(subscribeToStore, readMockAccount, () => null);
+}
+
+// Merge a patch into the demo override (or clear it entirely with null) and
+// notify every subscriber in this tab so the shell re-renders immediately.
+// A patch that lands on "nothing overridden" clears the key.
+export function setMockAccount(patch: Partial<MockAccount> | null): void {
   try {
-    if (value == null) window.localStorage.removeItem(MOCK_CLASS_KEY);
-    else window.localStorage.setItem(MOCK_CLASS_KEY, value);
+    if (patch == null) {
+      window.localStorage.removeItem(MOCK_ACCOUNT_KEY);
+    } else {
+      const next = { ...(readMockAccount() ?? MOCK_ACCOUNT_OFF), ...patch };
+      if (next.class == null && !next.instagram) {
+        window.localStorage.removeItem(MOCK_ACCOUNT_KEY);
+      } else {
+        window.localStorage.setItem(MOCK_ACCOUNT_KEY, JSON.stringify(next));
+      }
+    }
   } catch {
     // best-effort persistence
   }
   notifyStore();
 }
 
-function mockClassState(
-  mock: MockClass,
+function mockAccountState(
+  mock: MockAccount,
   base: ConsumerClassState,
 ): ConsumerClassState {
-  switch (mock) {
-    case "standard":
-      return { ...base, key: "standard", origin: "default", renewsAt: null };
-    case "instagram":
-      // Instagram reach is the door into Magnetic (the top, invite-only tier).
-      return {
-        ...base,
-        key: "magnetic",
-        origin: "instagram",
-        renewsAt: null,
-        followers: base.followers > 0 ? base.followers : DEMO_INSTAGRAM_FOLLOWERS,
-        handle: base.handle ?? DEMO_INSTAGRAM_HANDLE,
-      };
-    case "subscription": {
-      const renews = new Date();
-      renews.setMonth(renews.getMonth() + 1);
-      return {
-        ...base,
-        key: "premium",
-        origin: "subscription",
-        renewsAt: renews.toISOString(),
-      };
-    }
+  // Instagram reach wins over the class axis, exactly like a qualifying
+  // consumer-web-claim-instagram claim overwrites class_key server-side.
+  const igMagnetic =
+    mock.instagram && mock.followers >= MAGNETIC_FOLLOWER_THRESHOLD;
+
+  let key: ConsumerClassState["key"];
+  let origin: ConsumerClassState["origin"];
+  let renewsAt: string | null;
+  if (igMagnetic) {
+    key = "magnetic";
+    origin = "instagram";
+    renewsAt = null;
+  } else if (mock.class === "premium") {
+    const renews = new Date();
+    renews.setMonth(renews.getMonth() + 1);
+    key = "premium";
+    origin = "subscription";
+    renewsAt = renews.toISOString();
+  } else if (mock.class === "magnetic") {
+    // Magnetic without the reach — the manual-invite door.
+    key = "magnetic";
+    origin = "invitation";
+    renewsAt = null;
+  } else if (mock.class === "standard") {
+    key = "standard";
+    origin = "default";
+    renewsAt = null;
+  } else {
+    // No class override — the real class shows through the IG emulation.
+    ({ key, origin, renewsAt } = base);
   }
+
+  return {
+    key,
+    origin,
+    renewsAt,
+    followers: mock.instagram ? mock.followers : base.followers,
+    handle: mock.instagram ? (base.handle ?? DEMO_INSTAGRAM_HANDLE) : base.handle,
+  };
 }
 
 export function ClassProvider({
@@ -187,12 +256,12 @@ export function ClassProvider({
   // first (hydration) render sees the server-seeded class; the real
   // localStorage values fold in immediately after.
   const mockPremium = useLocalStorageFlag(MOCK_PREMIUM_KEY);
-  const mockClass = useMockClass();
+  const mockAccount = useMockAccount();
 
   const value = useMemo<ConsumerClassState>(() => {
-    // Demo/design override (Me → Class preview toggle) wins over everything so
-    // all three class states are previewable regardless of the real class.
-    if (mockClass) return mockClassState(mockClass, base);
+    // Demo/design override (Me-page demo toggles) wins over everything so
+    // every account state is previewable regardless of the real class.
+    if (mockAccount) return mockAccountState(mockAccount, base);
     // A real server-seeded elevated class (Premium or Magnetic) always wins —
     // never downgrade or relabel it.
     if (base.key !== "standard") return base;
@@ -207,7 +276,7 @@ export function ClassProvider({
       };
     }
     return base;
-  }, [base, mockPremium, mockClass]);
+  }, [base, mockPremium, mockAccount]);
 
   return (
     <ClassContext.Provider value={value}>{children}</ClassContext.Provider>

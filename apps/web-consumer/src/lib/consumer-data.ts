@@ -117,6 +117,13 @@ export const CLASSES: {
   },
 ];
 
+// The Magnetic follower bar — mirrors classes.follower_threshold in the DB
+// (the gate consumer-web-claim-instagram grants off). Every surface quoting
+// or applying the bar derives from this one constant.
+export const MAGNETIC_FOLLOWER_THRESHOLD = CLASSES.find(
+  (c) => c.id === "magnetic",
+)!.followerThreshold;
+
 // Canonical bg + text class per class. Used wherever a class needs the
 // brand-color chip treatment (avatars, pills, hero rows). Compose with
 // cn() at the call site when extra modifiers (size, rounding) are needed.
