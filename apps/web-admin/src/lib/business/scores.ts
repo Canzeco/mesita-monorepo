@@ -97,7 +97,7 @@
 
 export type SubscoreId = "em" | "sm" | "gp" | "rp" | "xx" | "mp";
 
-export type SubscoreDef = {
+type SubscoreDef = {
   id: SubscoreId;
   short: string;
   name: string;
