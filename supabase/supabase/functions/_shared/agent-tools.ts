@@ -133,7 +133,7 @@ export function ticketMatchesGuestName(row: TicketRow, query: string): boolean {
 
 // ── Ticket reads ─────────────────────────────────────────────────────────────
 
-export const TICKET_SELECT =
+const TICKET_SELECT =
   "id, reference_code, reserved_at, party_size, status, notes, is_test, project_id, consumer_id, reported_verdict, alternatives, guest_confirmed_at, negotiation_rounds, consumer:consumers(full_name, first_name, last_name, phone)";
 
 export type TicketRow = {
