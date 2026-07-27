@@ -8,8 +8,4 @@
 // client invokes this once per Place ID (with small concurrency) so progress
 // streams in.
 
-import { createUnitFromPlaceId as createUnitFromPlaceIdImpl } from "@/lib/create-unit-from-place";
-
-export async function createUnitFromPlaceId(placeId: string) {
-  return createUnitFromPlaceIdImpl(placeId);
-}
+export { createUnitFromPlaceId } from "@/lib/create-unit-from-place";
