@@ -141,7 +141,7 @@ export const ALLOWED_RATES: readonly number[] = [
 
 export const CAP_MIN = 0;
 export const CAP_MAX = 5000;
-export const CAP_DEFAULT = 500;
+const CAP_DEFAULT = 500;
 
 // The locked v5 defaults (MESITA-723). Zero column is all 0 by definition.
 export const DEFAULT_CONFIG: RewardsConfig = {
