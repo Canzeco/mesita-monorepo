@@ -91,38 +91,3 @@ export function useStoredString(
 
 // ─── String set (joined communities, multi-select) ───────────────────────
 
-function parseSet(raw: string | null): string[] {
-  if (!raw) return [];
-  try {
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed)
-      ? parsed.filter((v): v is string => typeof v === "string")
-      : [];
-  } catch {
-    return [];
-  }
-}
-
-const EMPTY: string[] = [];
-
-export function useStoredSet(
-  key: string,
-): [string[], (id: string) => void] {
-  const raw = useSyncExternalStore(
-    subscribe,
-    () => readString(key),
-    () => null,
-  );
-  const ids = raw == null ? EMPTY : parseSet(raw);
-  const toggle = useCallback(
-    (id: string) => {
-      const current = parseSet(readString(key));
-      const next = current.includes(id)
-        ? current.filter((v) => v !== id)
-        : [...current, id];
-      writeString(key, JSON.stringify(next));
-    },
-    [key],
-  );
-  return [ids, toggle];
-}
