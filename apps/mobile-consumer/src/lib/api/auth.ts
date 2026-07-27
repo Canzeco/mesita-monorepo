@@ -61,7 +61,7 @@ export type ConsumerClass = {
   } | Record<string, unknown> | null;
 };
 
-export type ProfileResult = {
+type ProfileResult = {
   consumer: ConsumerProfile;
   class: ConsumerClass | null;
 };
