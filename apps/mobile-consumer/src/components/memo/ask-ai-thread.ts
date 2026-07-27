@@ -10,7 +10,7 @@ export const AI_ERROR =
   'Hmm, my line dropped for a second — give it another try in a moment.';
 
 const MAX_CARDS = 3;
-export const MAX_RELATED = 3;
+const MAX_RELATED = 3;
 export const THREAD_CAP = 40;
 
 let nextId = 0;
