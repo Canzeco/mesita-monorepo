@@ -61,6 +61,7 @@ export function PersonalDetailsSheet({
 }) {
   const { profile, session } = useAuth();
   const [firstName, setFirstName] = useState(profile?.first_name ?? '');
+  const [lastName, setLastName] = useState(profile?.last_name ?? '');
   const [birthday, setBirthday] = useState(profile?.birthday ?? '');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -69,8 +70,10 @@ export function PersonalDetailsSheet({
   const initials = firstInitial(firstName, 'M');
 
   const save = async () => {
-    if (!firstName.trim()) {
-      setError('First name required');
+    // Both halves are required — the EF re-derives full_name from them and
+    // that's the name a reservation is booked under.
+    if (!firstName.trim() || !lastName.trim()) {
+      setError('First and last name required');
       return;
     }
     // Age gate — 13 or below is restricted (MESITA-727).
@@ -87,6 +90,7 @@ export function PersonalDetailsSheet({
       // avoids resurrecting the dropped "other" value).
       await apiUpdateConsumerProfile({
         first_name: firstName.trim(),
+        last_name: lastName.trim(),
         birthday: birthday || '',
       });
       onSaved();
@@ -169,7 +173,18 @@ export function PersonalDetailsSheet({
         value={firstName}
         onChangeText={setFirstName}
         autoCapitalize="words"
+        autoComplete="given-name"
+        maxLength={60}
         error={error && !firstName.trim() ? error : undefined}
+      />
+      <TextField
+        label="Last name"
+        value={lastName}
+        onChangeText={setLastName}
+        autoCapitalize="words"
+        autoComplete="family-name"
+        maxLength={60}
+        error={error && firstName.trim() && !lastName.trim() ? error : undefined}
       />
       <TextField
         label="Phone"
@@ -183,7 +198,9 @@ export function PersonalDetailsSheet({
         </Text>
         <BirthdayPicker value={birthday} onChange={setBirthday} />
       </View>
-      {error && firstName.trim() ? (
+      {/* Name errors already render inline under their own field — only
+          everything else (age gate, EF failures) surfaces down here. */}
+      {error && firstName.trim() && lastName.trim() ? (
         <Text className="text-destructive" style={{ fontSize: 13 }}>
           {error}
         </Text>

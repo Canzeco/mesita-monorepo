@@ -70,8 +70,12 @@ export function apiFetchConsumerProfile(): Promise<ProfileResult> {
   return invokeEF<ProfileResult>(supabase, 'consumer-web-get-profile', {});
 }
 
+// first_name + last_name always travel together — the EF joins them into
+// full_name (the name reservations are booked under) and rejects one
+// without the other.
 export function apiUpdateConsumerProfile(patch: {
   first_name?: string;
+  last_name?: string;
   sex?: 'male' | 'female'; // Male/Female only (MESITA-727)
   birthday?: string; // YYYY-MM-DD
 }): Promise<ProfileResult> {
@@ -102,9 +106,17 @@ export async function apiDeleteConsumerAccount(): Promise<void> {
   await invokeEF<{ id: string }>(supabase, 'consumer-web-delete-account', {});
 }
 
-// Same predicate as the web (shell)/layout.tsx guard.
+// Same predicate as the web (shell)/layout.tsx guard. First AND last name:
+// reservations are booked with the venue under the guest's full name, so a
+// first-name-only profile isn't onboarded (consumers from before that rule
+// get sent back to /onboard once).
 export function isOnboarded(profile: ConsumerProfile | null | undefined): boolean {
-  return Boolean(profile?.full_name && profile?.birthday && profile?.sex);
+  return Boolean(
+    profile?.first_name &&
+      profile?.last_name &&
+      profile?.birthday &&
+      profile?.sex,
+  );
 }
 
 export { EFError };

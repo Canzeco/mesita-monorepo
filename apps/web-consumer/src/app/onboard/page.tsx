@@ -3,7 +3,7 @@ import { MobileFrame } from "@/components/consumer/MobileFrame";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { apiFetchConsumerProfile } from "@/lib/api/profile";
 import { SignOutButton } from "@/components/auth/SignOutButton";
-import { OnboardForm } from "./OnboardForm";
+import { OnboardForm, type OnboardInitialValues } from "./OnboardForm";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 
 // Consumer onboarding — server-side gated. The middleware already blocks
@@ -23,18 +23,33 @@ export default async function ConsumerOnboardPage() {
   if (!user) redirect("/?next=/onboard");
 
   // Completeness predicate is the same one the (shell) layout uses to
-  // gate every authed surface — name + birthday + sex. If we only checked
-  // full_name here, a partially-onboarded user would loop:
+  // gate every authed surface — first + last name + birthday + sex. If we
+  // only checked full_name here, a partially-onboarded user would loop:
   //   onboard → discover/swipe (full_name truthy) → shell sees missing
   //   birthday/sex → bounces back to onboard. Strict here too.
+  // Consumers onboarded before the last-name requirement land back here
+  // once (full_name is first-name-only for them, and reservations need
+  // both); `initial` prefills what they already gave us.
   // redirect() throws NEXT_REDIRECT, so it MUST live outside the try/catch —
   // otherwise the catch swallows the redirect and logs it as an error (and
   // the already-onboarded user gets stuck on the form).
   let onboarded = false;
+  let initial: OnboardInitialValues | undefined;
   try {
     const { consumer: profile } = await apiFetchConsumerProfile(supabase);
     onboarded =
-      !!profile.full_name && !!profile.birthday && !!profile.sex;
+      !!profile.first_name &&
+      !!profile.last_name &&
+      !!profile.birthday &&
+      !!profile.sex;
+    initial = {
+      // Legacy rows predate the first/last split: full_name holds whatever
+      // the old single field captured (usually just the first name).
+      firstName: profile.first_name ?? profile.full_name ?? "",
+      lastName: profile.last_name ?? "",
+      sex: profile.sex ?? "",
+      birthday: profile.birthday ?? "",
+    };
   } catch (err) {
     // Profile fetch failed — render the form. The submit handler will
     // surface a real error if persistence is broken.
@@ -79,7 +94,7 @@ export default async function ConsumerOnboardPage() {
           </p>
         </div>
 
-        <OnboardForm />
+        <OnboardForm initial={initial} />
       </div>
     </MobileFrame>
   );

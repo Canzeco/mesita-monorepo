@@ -62,14 +62,15 @@ export type ConsumerClass = {
 };
 
 type ConsumerOnboardingInput = {
+  // First + last name are both required everywhere the consumer writes their
+  // name: the EF joins them into full_name, which is the name the reservation
+  // agent books the table under. The EF rejects one without the other.
   first_name: string;
+  last_name: string;
   // Male/Female only (MESITA-727). Optional so callers that don't edit sex
   // (e.g. the Edit-profile sheet) omit it — the EF patches only present keys.
   sex?: "male" | "female";
   birthday: string; // YYYY-MM-DD
-  // Optional — legacy field; neither onboarding nor Edit profile collects it.
-  // The EF only patches keys that are present.
-  last_name?: string;
   // Optional — phone is the auth identity and lives on auth.user.phone.
   // Set at sign-in; consumer-update-profile mirrors it into consumers.phone
   // on first call. Not editable from the profile sheet.

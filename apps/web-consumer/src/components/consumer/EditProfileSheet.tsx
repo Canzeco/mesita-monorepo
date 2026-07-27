@@ -35,7 +35,10 @@ import {
 // sheet animates both ways, the backdrop covers the whole MobileFrame card,
 // and ESC closes it. Field state survives a close (draft-friendly) and the
 // dirty check tracks the latest saved profile. Phone is auth identity (set at
-// sign-in) and is not editable here — only first name and birthday.
+// sign-in) and is not editable here — only first name, last name and
+// birthday. Both name halves are required and always sent together: the EF
+// re-derives full_name from them, and that's the name reservations are
+// booked under.
 
 export function EditProfileSheet({
   profile,
@@ -50,20 +53,22 @@ export function EditProfileSheet({
 }) {
   const supabase = useBrowserSupabase();
   const [firstName, setFirstName] = useState(profile.first_name ?? "");
+  const [lastName, setLastName] = useState(profile.last_name ?? "");
   // birthday is stored as YYYY-MM-DD; the BirthdayPicker round-trips it.
   const [birthday, setBirthday] = useState(profile.birthday ?? "");
   const [saving, setSaving] = useState(false);
 
   const dirty =
     firstName.trim() !== (profile.first_name ?? "") ||
+    lastName.trim() !== (profile.last_name ?? "") ||
     birthday !== (profile.birthday ?? "");
 
   const initials = firstInitial(firstName, "M");
 
   async function save() {
     if (!dirty || saving) return;
-    if (!firstName.trim()) {
-      toast("First name is required.");
+    if (!firstName.trim() || !lastName.trim()) {
+      toast("First and last name are both required.");
       return;
     }
     // Age gate — 13 or below is restricted (MESITA-727).
@@ -80,6 +85,7 @@ export function EditProfileSheet({
       // collected anywhere — it's inferred from the phone's dial code.
       const updated = await apiUpdateConsumerProfile(supabase, {
         first_name: firstName.trim(),
+        last_name: lastName.trim(),
         birthday: birthday || "",
       });
       toast("Profile updated.");
@@ -138,6 +144,12 @@ export function EditProfileSheet({
             value={firstName}
             onChange={setFirstName}
             placeholder="First name"
+          />
+          <SheetField
+            label="Last name"
+            value={lastName}
+            onChange={setLastName}
+            placeholder="Last name"
           />
           <label className="block">
             <span className="text-muted-foreground mb-1 block text-[11px] font-medium">

@@ -15,14 +15,33 @@ import {
 } from "@/lib/ui-classes";
 
 // Onboarding collects the minimum beyond the phone (already on the
-// auth.user from the OTP sign-in step): first name, sex, birthday.
+// auth.user from the OTP sign-in step): first name, last name, sex,
+// birthday.
+//
+// Last name is REQUIRED, not cosmetic: reservations are placed with the
+// venue under the guest's full name (the host system keys on "last name +
+// party size"), and the reservation agent reads consumers.full_name, which
+// this EF derives from first + last. A first-name-only profile books a
+// table nobody can find.
+//
+// `initial` prefills from the stored profile so a consumer who onboarded
+// before the last-name requirement only has to fill the one missing field
+// instead of re-typing everything.
 
-export function OnboardForm() {
+export type OnboardInitialValues = {
+  firstName: string;
+  lastName: string;
+  sex: string;
+  birthday: string;
+};
+
+export function OnboardForm({ initial }: { initial?: OnboardInitialValues }) {
   const router = useRouter();
   const supabase = useBrowserSupabase();
-  const [firstName, setFirstName] = useState("");
-  const [sex, setSex] = useState("");
-  const [birthday, setBirthday] = useState("");
+  const [firstName, setFirstName] = useState(initial?.firstName ?? "");
+  const [lastName, setLastName] = useState(initial?.lastName ?? "");
+  const [sex, setSex] = useState(initial?.sex ?? "");
+  const [birthday, setBirthday] = useState(initial?.birthday ?? "");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -35,7 +54,8 @@ export function OnboardForm() {
     // /onboard (full_name gate). DOM value wins, with state as the fallback.
     const fd = new FormData(e.currentTarget);
     const first = ((fd.get("first_name") as string | null) ?? firstName).trim();
-    if (!first || !sex || !birthday) {
+    const last = ((fd.get("last_name") as string | null) ?? lastName).trim();
+    if (!first || !last || !sex || !birthday) {
       setError("Please complete all required fields");
       return;
     }
@@ -55,6 +75,7 @@ export function OnboardForm() {
       try {
         await apiUpdateConsumerProfile(supabase, {
           first_name: first,
+          last_name: last,
           sex,
           birthday,
         });
@@ -83,19 +104,32 @@ export function OnboardForm() {
           />
         </Field>
 
-        <Field label="Sex">
-          <select
+        <Field label="Last name">
+          <input
+            name="last_name"
             className={INPUT_CLASS}
-            value={sex}
-            onChange={(e) => setSex(e.target.value)}
+            value={lastName}
+            onChange={(e) => setLastName(e.target.value)}
+            maxLength={60}
+            placeholder="Last name"
+            autoComplete="family-name"
             required
-          >
-            <option value="">Select</option>
-            <option value="female">Female</option>
-            <option value="male">Male</option>
-          </select>
+          />
         </Field>
       </div>
+
+      <Field label="Sex">
+        <select
+          className={INPUT_CLASS}
+          value={sex}
+          onChange={(e) => setSex(e.target.value)}
+          required
+        >
+          <option value="">Select</option>
+          <option value="female">Female</option>
+          <option value="male">Male</option>
+        </select>
+      </Field>
 
       <Field label="Birthday">
         <BirthdayPicker value={birthday} onChange={setBirthday} />
@@ -118,8 +152,9 @@ export function OnboardForm() {
           )}
         </button>
         <p className="text-muted-foreground mt-3 text-center text-[11px]">
-          We use these to personalize recommendations. Your details are never
-          shared with places.
+          We use these to personalize recommendations. Only your name is
+          shared with a place — it&apos;s the name your reservation is booked
+          under.
         </p>
       </div>
     </form>

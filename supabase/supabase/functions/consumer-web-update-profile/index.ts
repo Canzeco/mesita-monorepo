@@ -18,6 +18,7 @@ import { clean } from "../_shared/input.ts";
 import {
   buildProfilePatch,
   parseBirthday,
+  parseName,
   parseSex,
   type UpdateProfileBody,
 } from "./update-profile-fields.ts";
@@ -48,6 +49,10 @@ Deno.serve(async (req) => {
   const phone = clean(body.phone, 32);
   const sexRaw = clean(body.sex, 16);
   const birthdayRaw = clean(body.birthday, 32);
+
+  // Name is written as a pair — never half of one (see parseName).
+  const nameRes = parseName(body, firstName, lastName);
+  if (!nameRes.ok) return nameRes.response;
 
   const sexRes = parseSex(sexRaw);
   if (!sexRes.ok) return sexRes.response;
