@@ -2,10 +2,10 @@ import type { LucideIcon } from "lucide-react";
 import { CalendarCheck, FlaskConical, Settings2 } from "lucide-react";
 
 // Reservations Config — two sub-tabs. "Config" tunes the Reservationist (test
-// number, retries, booking channel); "Playground" previews the exact brief a
-// booking would produce, without placing a call. RESERVATIONS_PARENT is the
-// single Sidebar entry; RESERVATIONS_SUBROUTES are the in-page tabs (never added
-// to the Sidebar).
+// number, retries, booking channel); "Playground" exercises it in two modes —
+// Fake user (places a real call to the test number) and Actual user (real
+// reservation flow, soon). RESERVATIONS_PARENT is the single Sidebar entry;
+// RESERVATIONS_SUBROUTES are the in-page tabs (never added to the Sidebar).
 export const RESERVATIONS_PARENT = {
   href: "/reservations-config",
   label: "Reservations Config",
