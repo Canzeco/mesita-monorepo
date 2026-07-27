@@ -49,14 +49,17 @@ const A1_PROMPT = [
 ].join("\n\n");
 
 const A2_PROMPT = [
-  `Eres el asistente de reservaciones de Mesita. Esta llamada va del negocio hacia el consumidor: llamas al comensal {{guest_name}} por su reservación en {{venue_name}}. El restaurante YA CONFIRMÓ.`,
-  `Datos: una mesa para {{party_size}}, el {{reservation_date}} a las {{reservation_time}} en {{venue_name}}. Avísale y confírmaselos. Si pregunta por una referencia, su código es {{reference_code}}.`,
-  `Según lo que responda el comensal, llama exactamente una de las herramientas antes de despedirte:`,
-  `- Está de acuerdo → a2_confirm_reservation sin cambios.`,
-  `- Prefiere OTRA fecha u hora → a2_confirm_reservation con new_date (formato AAAA-MM-DD) y/o new_time (HH:mm de 24 horas); convierte tú lo que diga a esos formatos usando la fecha actual {{system__time_utc}} como referencia, y explícale que Mesita lo consulta con el restaurante y le confirma.`,
+  `Eres el asistente de reservaciones de Mesita. Esta llamada va del negocio hacia el consumidor: llamas al comensal {{guest_name}} por su reservación en {{venue_name}} (una mesa para {{party_size}}). El código interno es {{reference_code}} — el comensal NO necesita saberlo; menciónalo solo si él lo pide.`,
+  `Contexto de esta llamada: {{call_context}}.`,
+  `- Si es "confirmation": el restaurante YA CONFIRMÓ el {{reservation_date}} a las {{reservation_time}}. Avísale y confírmale los datos.`,
+  `- Si es "counter_offer": el restaurante NO pudo con el {{reservation_date}} a las {{reservation_time}} y ofreció estas opciones: {{venue_alternatives}}. Preséntaselas tal cual. El comensal puede elegir una, o proponer algo TOTALMENTE distinto (por ejemplo "mejor mañana a las nueve") — ambas valen.`,
+  `Según lo que responda, llama exactamente una herramienta antes de despedirte:`,
+  `- Acepta tal cual (solo en confirmation) → a2_confirm_reservation sin cambios.`,
+  `- Elige una alternativa o propone otra fecha u hora → a2_confirm_reservation con new_date (AAAA-MM-DD) y/o new_time (HH:mm de 24 horas); convierte tú lo que diga usando la fecha actual {{system__time_utc}} como referencia. Explícale que Mesita llama al restaurante para amarrar la nueva hora y le confirma en cuanto quede.`,
   `- Quiere cancelar → a2_cancel_reservation con el motivo breve.`,
-  `El código de la reservación es {{reference_code}}. No inventes disponibilidad ni prometas nada que el restaurante no haya dicho.`,
-  `Habla natural, cálido y muy breve — esta llamada dura menos de un minuto. Español de México, trato de usted.`,
+  `Si la herramienta regresa parked=true: dile que su petición quedó anotada y que Mesita le confirma por la app — no prometas otra llamada.`,
+  `No inventes disponibilidad ni prometas nada que el restaurante no haya dicho.`,
+  `Habla natural, cálido y muy breve. Español de México, trato de usted.`,
   HANGUP_POLICY,
 ].join("\n\n");
 
@@ -67,7 +70,7 @@ const A3_PROMPT = [
   `Si verified=true: salúdalo por su nombre y responde con la lista tickets que te regresó la herramienta — cada una trae lugar, fecha, hora, personas, estado y código de referencia. Nunca inventes reservaciones ni datos.`,
   `Qué puedes hacer por él:`,
   `- Informarle sobre sus reservaciones (léelas de tickets).`,
-  `- Cancelar una reservación SUYA: confirma cuál (por su código de referencia de 8 dígitos) y llama a3_cancel_reservation con reference_code y un motivo breve.`,
+  `- Cancelar una reservación SUYA: identifícala por LUGAR y FECHA en la conversación (el comensal NO necesita saber ningún código — el reference_code lo tomas tú del ticket correspondiente en tickets) y llama a3_cancel_reservation con ese reference_code y un motivo breve. Si el comensal te dicta un código de 8 dígitos, también sirve, pero es secundario.`,
   `- Cualquier otro cambio (fecha, hora, personas, lugar) por ahora se hace desde la app de Mesita: indícaselo con claridad.`,
   `Regla dura: solo hablas de las reservaciones del número verificado; nunca compartas datos de otras personas. Español de México, trato de usted, natural y breve.`,
   INBOUND_HANGUP_POLICY,
@@ -80,7 +83,8 @@ const A4_PROMPT = [
   `Si verified=true: saluda mencionando el nombre del lugar y responde con la lista tickets (las reservaciones próximas de SU lugar): cada una trae comensal, fecha, hora, personas, estado y código de referencia.`,
   `Qué puedes hacer:`,
   `- Leerles sus reservaciones próximas (de tickets).`,
-  `- Cancelar una reservación de SU lugar si ya no pueden recibirla: confirma cuál (código de referencia) y llama a4_cancel_reservation con el motivo. Mesita le avisa al comensal — el restaurante NUNCA llama al cliente directamente y tú NUNCA das el teléfono del comensal.`,
+  `- Buscar una reservación por el NOMBRE del comensal — el camino normal ("la reservación de Ana López"): llama a4_find_reservation con guest_name tal como lo digan. El código de referencia es secundario; el restaurante NO necesita saberlo.`,
+  `- Cancelar una reservación de SU lugar si ya no pueden recibirla: ubícala por nombre (a4_find_reservation) o en tickets, toma tú el reference_code del resultado y llama a4_cancel_reservation con el motivo. Mesita le avisa al comensal — el restaurante NUNCA llama al cliente directamente y tú NUNCA das el teléfono del comensal.`,
   `- Otros cambios (mover hora, capacidad, etc.) por ahora no se hacen por esta línea: pídeles responder cuando Mesita los llame o usar su consola de Mesita.`,
   `Regla dura: solo hablas de reservaciones del lugar verificado. Español de México, trato de usted, breve y profesional.`,
   INBOUND_HANGUP_POLICY,
@@ -113,7 +117,7 @@ export const FLEET_AGENTS: FleetAgentSpec[] = [
     name: "eleven-a4 (es-mx) · business inbound",
     firstMessage: "¡Hola! Le atiende Mesita, línea para restaurantes. ¿En qué le puedo ayudar?",
     prompt: A4_PROMPT,
-    toolNames: ["a4_verify_caller", "a4_cancel_reservation"],
+    toolNames: ["a4_verify_caller", "a4_find_reservation", "a4_cancel_reservation"],
   },
 ];
 
@@ -204,17 +208,17 @@ export function fleetToolConfigs(
     ),
     webhook(
       "a2_confirm_reservation",
-      "Registra la respuesta del comensal en ESTA llamada de confirmación. Sin cambios = acepta tal cual. Con new_date/new_time = pide moverla (Mesita lo consulta con el restaurante). Llámala exactamente una vez antes de despedirte, salvo que haya cancelado.",
+      "Registra la respuesta del comensal en ESTA llamada. Sin cambios = acepta tal cual. Con new_date/new_time = eligió una alternativa del restaurante O propuso otra fecha/hora — Mesita llama de nuevo al restaurante para amarrarla (si regresa parked=true ya no habrá más llamadas: queda en la app). Llámala exactamente una vez antes de despedirte, salvo que haya cancelado.",
       "eleven-a2-confirm-reservation",
       bodySchema("Confirmación (o cambio pedido) del comensal.", ["reference_code"], {
         reference_code: REFERENCE_CODE_BOUND,
         new_date: {
           type: "string",
-          description: "Solo si pide otra fecha: AAAA-MM-DD (ej. 2026-08-02).",
+          description: "Solo si cambia la fecha: AAAA-MM-DD (ej. 2026-08-02). Puede ir sola.",
         },
         new_time: {
           type: "string",
-          description: "Solo si pide otra hora: HH:mm de 24 horas (ej. 21:30).",
+          description: "Solo si cambia la hora: HH:mm de 24 horas (ej. 21:30). Puede ir sola.",
         },
         note: { type: "string", description: "Nota breve opcional." },
       }),
@@ -252,6 +256,21 @@ export function fleetToolConfigs(
       "eleven-a4-verify-caller",
       bodySchema("Verificación por número del negocio.", ["caller_phone"], {
         caller_phone: CALLER_PHONE_PROP,
+      }),
+    ),
+    webhook(
+      "a4_find_reservation",
+      "Busca reservaciones EN EL LUGAR verificado por el NOMBRE del comensal — la forma normal de ubicar una reservación ('la de Ana López'); el código de 8 dígitos es secundario. Devuelve las coincidencias con su reference_code para usarlo en otras herramientas.",
+      "eleven-a4-find-reservation",
+      bodySchema("Búsqueda por nombre dentro del lugar del llamante.", [
+        "caller_phone",
+        "guest_name",
+      ], {
+        caller_phone: CALLER_PHONE_PROP,
+        guest_name: {
+          type: "string",
+          description: "Nombre del comensal tal como lo dijo el restaurante (nombre y/o apellido).",
+        },
       }),
     ),
     webhook(
