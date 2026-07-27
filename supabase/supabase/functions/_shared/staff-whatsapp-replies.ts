@@ -55,7 +55,7 @@ const COACH_STATIC: Record<string, (ctx: StaffCoachContext) => string> = {
   default: (ctx) => staticCoachReply(ctx),
 };
 
-export function staticUnauthReply(reason: StaffAccessDeniedReason): string {
+function staticUnauthReply(reason: StaffAccessDeniedReason): string {
   return UNAUTH_STATIC[reason];
 }
 
