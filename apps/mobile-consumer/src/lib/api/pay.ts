@@ -198,7 +198,7 @@ export function explainTicketBillPromo(
   };
 }
 
-export type TicketTransactionSummary = {
+type TicketTransactionSummary = {
   promoPercent: number | null;
   paymentCents: number | null;
   rewardCents: number;
