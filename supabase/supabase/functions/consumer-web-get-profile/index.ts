@@ -127,6 +127,7 @@ Deno.serve(async (req) => {
     .from("reservations")
     .select("id", { count: "exact", head: true })
     .eq("consumer_id", userId)
+    .eq("is_test", false)
     .gte("created_at", monthStart.toISOString())
     .neq("status", "cancelled");
   used = count ?? 0;

@@ -39,13 +39,13 @@ export async function updateReservationsConfig(
   return { ok: true, config: coerceConfig(r.data.config), updatedAt: r.data.updatedAt ?? null };
 }
 
-// ── Playground: intent targets, sandbox runs, sandbox tickets ────────────────
+// ── Playground: intent targets + runs on the ONE reservations table ──────────
 //
-// The Playground emulates a fake-user reservation: a REAL place + a REAL
-// consumer (both from the Mesita DB) + operator-authored intent. Runs create
-// SANDBOX tickets in public.playground_reservations — never public.reservations
-// — and place a REAL Reservationist call whose numbers (business + consumer
-// side) each resolve to a test line or the actual DB phone, per run.
+// The sandbox is retired (2026-07-27). A Playground run is a REAL row in
+// public.reservations flagged is_test — same engine, same agent tool, same
+// reference code as any guest booking; consumer/business surfaces filter
+// is_test rows out. Numbers (business + consumer side) each resolve to a test
+// line or the actual DB phone, per run.
 
 export type PlaceTarget = {
   id: string;
@@ -101,7 +101,7 @@ export type PlaygroundAttempt = {
   result: string;
 };
 
-/** A sandbox ticket — a playground_reservations row, verbatim from the EF. */
+/** An admin-shaped reservations row (names joined server-side by the list EF). */
 export type PlaygroundTicket = {
   id: string;
   created_at: string;
@@ -109,16 +109,15 @@ export type PlaygroundTicket = {
   reference_code: string | null;
   project_id: string;
   place_name: string;
-  consumer_id: string;
   consumer_name: string;
+  /** Playground-created row — hidden from every consumer/business surface. */
+  is_test: boolean;
   reserved_at: string;
   party_size: number;
   notes: string | null;
-  /** Verdict: pending | confirmed | declined | unresolved | unreachable | error. */
+  /** Verdict: pending | confirmed | declined | unresolved | unreachable. */
   status: string;
-  business_number_mode: NumberMode;
   business_number: string | null;
-  consumer_number_mode: NumberMode;
   consumer_number: string | null;
   call_status: string | null;
   conversation_id: string | null;
@@ -154,16 +153,16 @@ export type CreatePlaygroundReservationResult =
   | { ok: false; error: string };
 
 /**
- * Run the intent, ticket-first: the EF inserts the sandbox ticket and responds
- * IMMEDIATELY; the call intents (up to config attempts) then run server-side in
- * a background task, updating the ticket as they go — poll the list to watch.
- * Spends ElevenLabs/Twilio budget.
+ * Run the intent, ticket-first: the EF inserts a REAL reservations row flagged
+ * is_test and hands off to the production call engine, which acks immediately;
+ * the intents run server-side, updating the row as they go — poll the list to
+ * watch. Spends ElevenLabs/Twilio budget.
  */
 export async function createPlaygroundReservation(
   input: CreatePlaygroundReservationInput,
 ): Promise<CreatePlaygroundReservationResult> {
   const r = await efInvoke<{ ticket: PlaygroundTicket }>(
-    "admin-web-create-playground-reservation",
+    "admin-web-create-test-reservation",
     input,
   );
   if (!r.ok) return { ok: false, error: r.error };
@@ -174,9 +173,10 @@ export type ListPlaygroundReservationsResult =
   | { ok: true; tickets: PlaygroundTicket[] }
   | { ok: false; error: string };
 
+/** Newest reservations — real and test alike, admin-shaped. */
 export async function listPlaygroundReservations(): Promise<ListPlaygroundReservationsResult> {
   const r = await efInvoke<{ tickets: PlaygroundTicket[] }>(
-    "admin-web-list-playground-reservations",
+    "admin-web-list-reservations",
     {},
   );
   if (!r.ok) return { ok: false, error: r.error };
@@ -187,12 +187,12 @@ export type DeletePlaygroundReservationsResult =
   | { ok: true; deleted: number }
   | { ok: false; error: string };
 
-/** Delete one sandbox ticket by id, or every one of them with { all: true }. */
+/** Delete one reservation by id, or every is_test row with { all_test: true }. */
 export async function deletePlaygroundReservations(
-  input: { id: string } | { all: true },
+  input: { id: string } | { all_test: true },
 ): Promise<DeletePlaygroundReservationsResult> {
   const r = await efInvoke<{ deleted: number }>(
-    "admin-web-delete-playground-reservation",
+    "admin-web-delete-reservation",
     input,
   );
   if (!r.ok) return { ok: false, error: r.error };

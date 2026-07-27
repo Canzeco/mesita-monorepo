@@ -54,6 +54,9 @@ Deno.serve(async (req) => {
     .from("reservations")
     .select(RESERVATION_SELECT)
     .eq("project_id", projectId)
+    // Operator test tickets (is_test) reference real places — never surface
+    // them on the venue's incoming list.
+    .eq("is_test", false)
     .order("reserved_at", { ascending: scope !== "past" })
     .limit(limit);
 
