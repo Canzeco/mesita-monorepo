@@ -100,7 +100,7 @@ export function reservationPath(id: string): string {
 }
 
 // Coupon detail is singular /coupon/[id] (list lives at /coupons).
-export const COUPON_PATH_PREFIX = "/coupon/";
+const COUPON_PATH_PREFIX = "/coupon/";
 
 export function couponPath(id: string): string {
   return `${COUPON_PATH_PREFIX}${id}`;
