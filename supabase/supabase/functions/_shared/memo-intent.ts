@@ -5,7 +5,7 @@
 export const PLACE_INTENT =
   /\b(near|nearby|around|close|best|top|recommend|recommendation|where|spot|spots|place|places|bar|bars|club|clubs|nightlife|restaurant|restaurants|cafe|coffee|taco|tacos|dinner|lunch|brunch|breakfast|drink|drinks|rooftop|date night|eat|food|hungry|open now|tonight|cerca|cercano|mejor|mejores|dónde|donde|lugar|lugares|antro|antros|comer|cena|cenar|comida|desayun|almuerz|bares|restaurante|café|reserva|abierto|esta noche|recomienda|recomiénda)\b/i;
 
-export const DEFINITIONAL =
+const DEFINITIONAL =
   /^\s*(what|why|how|who|when|which|is|are|does|do|can|should|explain|tell me|qué|que|por qué|porque|cómo|como|quién|quien|cuándo|cuando|cuál|cual|explica|dime)\b/i;
 
 export function isPlaceSeeking(query: string): boolean {
