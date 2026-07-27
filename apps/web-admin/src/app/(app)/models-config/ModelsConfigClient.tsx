@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { useEffect, useState, useTransition } from "react";
 import { ArrowUpRight } from "lucide-react";
-import { ErrorNote, SaveRow, SectionCard } from "../enricher-config/atlas-ui";
+import { ErrorNote } from "@/components/ErrorNote";
+import { SaveRow, SectionCard } from "../enricher-config/atlas-ui";
 import { getModelsConfig, updateModelsConfig } from "./actions";
 import {
   DEFAULT_MODELS_CONFIG,

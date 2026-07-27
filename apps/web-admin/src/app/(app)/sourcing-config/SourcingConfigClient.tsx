@@ -2,12 +2,8 @@
 
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { Layers, Star, Users } from "lucide-react";
-import {
-  ErrorNote,
-  SaveRow,
-  SectionCard,
-  Switch,
-} from "../enricher-config/atlas-ui";
+import { ErrorNote } from "@/components/ErrorNote";
+import { SaveRow, SectionCard, Switch } from "../enricher-config/atlas-ui";
 import {
   getSourcingConfig,
   updateSourcingConfig,

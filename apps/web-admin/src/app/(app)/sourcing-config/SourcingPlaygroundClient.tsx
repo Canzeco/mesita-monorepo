@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { CheckCircle2, Filter, Star, Users, XCircle } from "lucide-react";
-import { ErrorNote, SectionCard } from "../enricher-config/atlas-ui";
+import { ErrorNote } from "@/components/ErrorNote";
+import { SectionCard } from "../enricher-config/atlas-ui";
 import {
   CHANNELS,
   FAMILIES,
