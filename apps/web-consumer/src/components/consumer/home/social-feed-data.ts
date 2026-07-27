@@ -15,7 +15,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 
-export type SocialActionKind = "visit" | "like" | "reward" | "story";
+type SocialActionKind = "visit" | "like" | "reward" | "story";
 
 // Differentiated chip tints per action — same /10-tint + -600-text recipe as
 // ACTIVITY_KIND_META in consumer-activity-data.ts (kept separate because
