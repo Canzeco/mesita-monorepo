@@ -8,7 +8,7 @@ import { efInvoke } from "@/lib/supabase-ef";
 // authorises the call (admin allowlist). Callers invoke this once per Place ID
 // (with small concurrency for bulk) so progress streams in.
 
-export type CreateUnitOk = {
+type CreateUnitOk = {
   ok: true;
   projectId: string;
   name: string;
@@ -18,8 +18,8 @@ export type CreateUnitOk = {
   enrichmentTriggered: boolean;
   enrichmentError: string | null;
 };
-export type CreateUnitErr = { ok: false; error: string };
-export type CreateUnitResult = CreateUnitOk | CreateUnitErr;
+type CreateUnitErr = { ok: false; error: string };
+type CreateUnitResult = CreateUnitOk | CreateUnitErr;
 
 type CreatedPlace = {
   id?: string;
