@@ -2,11 +2,20 @@
 //
 // Naming: caller-verb-words. Caller = admin, verb = create, words = playground-reservation.
 //
-// The Reservations Playground's fake-user run: takes an emulated intent — a REAL
-// place + a REAL consumer (both from the Mesita DB) + operator-authored intent —
-// creates a SANDBOX ticket in public.playground_reservations, then places a REAL
-// Reservationist call for it. Playground tickets never touch public.reservations,
-// so nothing here can surface in a consumer app or count against a cap.
+// The Reservations Playground's fake-user run, ticket-first: takes an emulated
+// intent — a REAL place + a REAL consumer (both from the Mesita DB) + operator-
+// authored intent — inserts a SANDBOX ticket in public.playground_reservations
+// and responds IMMEDIATELY. Then, in an EdgeRuntime background task (the
+// enricher's ack-early pattern), the INTENT LOOP runs: up to
+// reservations_config.attempts call intents — place the outbound call, watch
+// the ElevenLabs conversation, and if the venue didn't answer, fire the next
+// intent. Every intent lands in the ticket's `attempts` log; `attempts_state`
+// tells the sandbox UI when the loop is done. Playground tickets never touch
+// public.reservations.
+//
+// Playground intents are spaced SECONDS apart on purpose — production's
+// attempts 2..N wait for the venue's opening hours (that scheduler is the
+// production follow-up; this loop is its compressed test double).
 //
 // Both sides of the call choose their number per run:
 //   business_number_mode: 'test'   → config testCall.number (the business test line)
@@ -18,15 +27,8 @@
 // sends the modes. 'actual' on the business side rings the real venue; the
 // playground UI warns before allowing it.
 //
-// The consumer-side number is carried into the brief as guest_phone (the callback
-// number the agent can leave with the venue). The call is attempt-1-only — the
-// retry scheduler never touches sandbox tickets.
-//
-// A ticket is created even when the call fails — the sandbox remembers every run;
-// the call outcome lands on the ticket (call_status / conversation_id).
-//
-// Supersedes admin-web-place-reservation-test-call as the playground's trigger
-// (that EF remains a bare test-line-only pipe).
+// The consumer-side number is carried into the brief as guest_phone (the
+// callback number the agent can leave with the venue).
 //
 // Auth: caller's JWT email must be in public.super_admins.
 // Requires the ELEVENLABS_KEY secret; agent id + outbound line default to the
@@ -35,6 +37,7 @@
 // Deploy: supabase functions deploy admin-web-create-playground-reservation
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { corsPreflight, json, readJson } from "../_shared/http.ts";
 import {
   adminClient,
@@ -45,6 +48,7 @@ import {
 import { coerceReservationsCallConfig } from "../_shared/reservations-config.ts";
 import {
   elevenLabsKey,
+  getConversationStatus,
   placeOutboundCall,
   reservationAgentId,
   reservationFromNumber,
@@ -67,6 +71,28 @@ type Body = {
   business_number_mode?: NumberMode;
   consumer_number_mode?: NumberMode;
 };
+
+// ── Intent-loop pacing ────────────────────────────────────────────────────────
+// Poll the conversation every WATCH_POLL_MS up to WATCH_BUDGET_MS per intent
+// (an unanswered Twilio leg lands 'failed' well inside it), then wait
+// RETRY_GAP_MS before the next intent. Worst case 3 intents ≈ 5 min — inside
+// the edge-runtime background wall clock.
+const WATCH_POLL_MS = 8_000;
+const WATCH_BUDGET_MS = 80_000;
+const RETRY_GAP_MS = 12_000;
+
+const delay = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+// Ack-early background task — mirror of runInBackground in
+// _shared/enrich-pipeline.ts (not imported: that module drags the whole
+// enrichment stage machinery into the bundle).
+function runInBackground(task: Promise<unknown>): void {
+  const edgeRuntime = (globalThis as unknown as {
+    EdgeRuntime?: { waitUntil?: (p: Promise<unknown>) => void };
+  }).EdgeRuntime;
+  if (edgeRuntime?.waitUntil) edgeRuntime.waitUntil(task);
+  else void task;
+}
 
 function looksLikePhone(v: string): boolean {
   return /^\+[1-9]\d{7,14}$/.test(v.trim());
@@ -126,6 +152,146 @@ function guestName(c: {
     .filter(Boolean)
     .join(" ");
   return joined || "el cliente";
+}
+
+type AttemptEntry = {
+  n: number;
+  started_at: string;
+  conversation_id: string | null;
+  result: string;
+};
+
+// Watch one placed call until we can tell whether the venue answered.
+//   'answered'  — the conversation connected (in-progress / processing / done)
+//   'no_answer' — ElevenLabs marked it failed (unanswered/declined Twilio leg)
+//   'unknown'   — budget expired without a verdict (we stop; never double-call
+//                 a line that might be mid-conversation)
+async function watchConversation(
+  key: string,
+  conversationId: string,
+): Promise<"answered" | "no_answer" | "unknown"> {
+  const deadline = Date.now() + WATCH_BUDGET_MS;
+  while (Date.now() < deadline) {
+    await delay(WATCH_POLL_MS);
+    const s = await getConversationStatus(key, conversationId);
+    if (!s.ok) continue; // transient fetch trouble — keep watching until budget
+    if (s.status === "failed") return "no_answer";
+    if (s.status === "in-progress" || s.status === "processing" || s.status === "done") {
+      return "answered";
+    }
+    // 'initiated' (still ringing) or anything unrecognised → keep watching.
+  }
+  return "unknown";
+}
+
+// The intent loop — runs AFTER the HTTP response, updating the ticket as it
+// goes so the sandbox shows live progress.
+async function runIntents(input: {
+  admin: SupabaseClient;
+  ticketId: string;
+  attemptsPlanned: number;
+  businessNumber: string;
+  dynamicVariables: Record<string, string | number | boolean>;
+}): Promise<void> {
+  const { admin, ticketId, attemptsPlanned } = input;
+  const attempts: AttemptEntry[] = [];
+  const record = async (patch: Record<string, unknown>) => {
+    await admin.from("playground_reservations").update(patch).eq("id", ticketId);
+  };
+
+  try {
+    const key = elevenLabsKey();
+    if (!key) {
+      await record({ attempts_state: "error", call_status: "no ELEVENLABS_KEY" });
+      return;
+    }
+    const phoneRes = await resolvePhoneNumberId(key, reservationFromNumber());
+    if (!phoneRes.ok) {
+      await record({
+        attempts_state: "error",
+        call_status: `failed: ${phoneRes.error}`.slice(0, 200),
+      });
+      return;
+    }
+
+    for (let n = 1; n <= attemptsPlanned; n++) {
+      const entry: AttemptEntry = {
+        n,
+        started_at: new Date().toISOString(),
+        conversation_id: null,
+        result: "dialing",
+      };
+      attempts.push(entry);
+      await record({
+        attempts,
+        call_attempts: n,
+        called_at: entry.started_at,
+        call_status: `intent ${n}: dialing`,
+      });
+
+      const call = await placeOutboundCall(key, {
+        agentId: reservationAgentId(),
+        agentPhoneNumberId: phoneRes.id,
+        toNumber: input.businessNumber,
+        dynamicVariables: input.dynamicVariables,
+      });
+
+      if (!call.ok) {
+        entry.result = `placement failed: ${call.error}`.slice(0, 160);
+        await record({
+          attempts,
+          call_status: `intent ${n} failed: ${call.error}`.slice(0, 200),
+        });
+        if (n < attemptsPlanned) await delay(RETRY_GAP_MS);
+        continue;
+      }
+
+      entry.conversation_id = call.conversationId;
+      entry.result = "ringing";
+      await record({
+        attempts,
+        conversation_id: call.conversationId,
+        call_status: `intent ${n}: ringing`,
+      });
+
+      const outcome = call.conversationId
+        ? await watchConversation(key, call.conversationId)
+        : "unknown";
+      entry.result = outcome;
+
+      if (outcome === "answered") {
+        await record({
+          attempts,
+          attempts_state: "answered",
+          call_status: `intent ${n}: answered`,
+        });
+        return;
+      }
+      if (outcome === "unknown") {
+        // Can't tell — the line may be mid-conversation. Stop rather than risk
+        // ringing it again on top of a live call.
+        await record({
+          attempts,
+          attempts_state: "exhausted",
+          call_status: `intent ${n}: outcome unknown — not retrying`,
+        });
+        return;
+      }
+      // no_answer → next intent (if any remain).
+      await record({ attempts, call_status: `intent ${n}: no answer` });
+      if (n < attemptsPlanned) await delay(RETRY_GAP_MS);
+    }
+
+    await record({
+      attempts_state: "exhausted",
+      call_status: `no answer after ${attemptsPlanned} intent${attemptsPlanned === 1 ? "" : "s"}`,
+    });
+  } catch (e) {
+    await record({
+      attempts_state: "error",
+      call_status: `failed: ${e instanceof Error ? e.message : "intent loop crashed"}`.slice(0, 200),
+    });
+  }
 }
 
 Deno.serve(async (req) => {
@@ -264,7 +430,7 @@ Deno.serve(async (req) => {
     consumerNumber = consumer.phone.trim();
   }
 
-  // ── Create the sandbox ticket (remembered even if the call fails) ──────────
+  // ── The ticket is created IMMEDIATELY … ────────────────────────────────────
   const { data: ticket, error: insErr } = await admin
     .from("playground_reservations")
     .insert({
@@ -281,64 +447,33 @@ Deno.serve(async (req) => {
       business_number: businessNumber,
       consumer_number_mode: consumerMode,
       consumer_number: consumerNumber,
+      attempts: [],
+      attempts_planned: cfg.attempts,
+      attempts_state: "running",
     })
     .select("*")
     .single();
   if (insErr) return json({ ok: false, error: insErr.message }, 500);
 
-  const recordCall = async (status: string, conversationId: string | null) => {
-    const { data } = await admin
-      .from("playground_reservations")
-      .update({
-        call_status: status.slice(0, 200),
-        conversation_id: conversationId,
-        called_at: new Date().toISOString(),
-      })
-      .eq("id", ticket.id)
-      .select("*")
-      .single();
-    return data ?? { ...ticket, call_status: status.slice(0, 200), conversation_id: conversationId };
-  };
+  // ── … and then the intents start (background — the response doesn't wait). ─
+  runInBackground(
+    runIntents({
+      admin,
+      ticketId: ticket.id,
+      attemptsPlanned: cfg.attempts,
+      businessNumber,
+      dynamicVariables: {
+        venue_name: place.name?.trim() || "el lugar",
+        guest_name: guestName(consumer),
+        guest_phone: consumerNumber,
+        party_size: partySize,
+        reservation_date: esDate(reservedAt),
+        reservation_time: esTime(reservedAt),
+        occasion: "",
+        special_requests: notes,
+      },
+    }),
+  );
 
-  // ── Place the real call. Failures are DATA on the ticket, not request errors:
-  //    the run happened and the sandbox remembers it. ──────────────────────────
-  const key = elevenLabsKey();
-  if (!key) {
-    const t = await recordCall("no ELEVENLABS_KEY", null);
-    return json({ ok: true, ticket: t, call: { ok: false, error: "ELEVENLABS_KEY not configured" } });
-  }
-
-  const phoneRes = await resolvePhoneNumberId(key, reservationFromNumber());
-  if (!phoneRes.ok) {
-    const t = await recordCall(`failed: ${phoneRes.error}`, null);
-    return json({ ok: true, ticket: t, call: { ok: false, error: phoneRes.error } });
-  }
-
-  const call = await placeOutboundCall(key, {
-    agentId: reservationAgentId(),
-    agentPhoneNumberId: phoneRes.id,
-    toNumber: businessNumber,
-    dynamicVariables: {
-      venue_name: place.name?.trim() || "el lugar",
-      guest_name: guestName(consumer),
-      guest_phone: consumerNumber,
-      party_size: partySize,
-      reservation_date: esDate(reservedAt),
-      reservation_time: esTime(reservedAt),
-      occasion: "",
-      special_requests: notes,
-    },
-  });
-
-  if (!call.ok) {
-    const t = await recordCall(`failed: ${call.error}`, null);
-    return json({ ok: true, ticket: t, call: { ok: false, error: call.error } });
-  }
-
-  const t = await recordCall("placed", call.conversationId);
-  return json({
-    ok: true,
-    ticket: t,
-    call: { ok: true, conversation_id: call.conversationId, dialed: businessNumber },
-  });
+  return json({ ok: true, ticket });
 });
