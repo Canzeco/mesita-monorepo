@@ -1,11 +1,12 @@
 // Supabase Edge Function — supabase-edgefunc-reservation-call (internal / artificial caller)
 //
-// THE Reservationist call engine — the sandbox is retired (2026-07-27) and the
-// full two-leg run now executes on public.reservations for EVERY ticket, real
-// or is_test. Invoked with { reservation_id } by:
-//   · consumer-web-create-reservation  (real guest tapped Reserve)
+// THE Reservationist call engine — the sandbox AND the admin Playground are
+// retired (2026-07-27): every ticket is a real public.reservations row and
+// testing happens through the consumer app with config testCall mode ON (the
+// venue leg dials the test line instead of a real place). Invoked with
+// { reservation_id } by:
+//   · consumer-web-create-reservation  (guest tapped Reserve)
 //   · consumer-mcp                     (assistant-created reservation)
-//   · admin-web-create-test-reservation (operator Playground run, is_test rows)
 //
 // ACK-EARLY: validates + marks attempts_state='running', then the legs run in
 // an EdgeRuntime background task and the response returns immediately — the
@@ -180,6 +181,8 @@ async function runIntents(input: {
   attemptsPlanned: number;
   businessNumber: string;
   consumerNumber: string; // "" = no guest number → leg 2 skipped
+  bookerAgentId: string; // eleven-a1 (fallback: the original agent)
+  confirmerAgentId: string; // eleven-a2 (fallback: the original agent)
   legVars: ReservationLegVars;
 }): Promise<void> {
   const { admin, reservationId, attemptsPlanned, legVars } = input;
@@ -198,7 +201,7 @@ async function runIntents(input: {
       return;
     }
     const call = await placeOutboundCall(key, {
-      agentId: reservationAgentId(),
+      agentId: input.confirmerAgentId,
       agentPhoneNumberId: phoneNumberId,
       toNumber: input.consumerNumber,
       dynamicVariables: legDynamicVariables("guest_confirmation", legVars),
@@ -270,7 +273,7 @@ async function runIntents(input: {
       });
 
       const call = await placeOutboundCall(key, {
-        agentId: reservationAgentId(),
+        agentId: input.bookerAgentId,
         agentPhoneNumberId: phoneRes.id,
         toNumber: input.businessNumber,
         dynamicVariables: legDynamicVariables("business_booking", legVars),
@@ -431,10 +434,19 @@ Deno.serve(async (req) => {
 
   const { data: settings } = await admin
     .from("app_settings")
-    .select("reservations_config")
+    .select("reservations_config, agents_config")
     .eq("id", 1)
     .maybeSingle();
   const cfg = coerceReservationsCallConfig(settings?.reservations_config);
+
+  // Fleet routing: leg 1 rides eleven-a1 (booker), leg 2 eleven-a2
+  // (confirmer) — ids written by sync-reservationist mode "fleet"; fallback is
+  // the original single agent, whose prompt branches on {{call_direction}}.
+  const fleet = ((settings?.agents_config as Record<string, unknown> | null)?.agents ?? null) as
+    | Record<string, { id?: string } | undefined>
+    | null;
+  const bookerAgentId = fleet?.a1?.id?.trim() || reservationAgentId();
+  const confirmerAgentId = fleet?.a2?.id?.trim() || reservationAgentId();
 
   const { data: placeRow } = await admin
     .from("places")
@@ -493,6 +505,8 @@ Deno.serve(async (req) => {
       attemptsPlanned: cfg.attempts,
       businessNumber,
       consumerNumber,
+      bookerAgentId,
+      confirmerAgentId,
       legVars: {
         venueName: place?.name?.trim() || "el lugar",
         guestName: guestName(consumer),

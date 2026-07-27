@@ -5,11 +5,13 @@
 //   business → consumer  ("guest_confirmation")   after the venue confirms,
 //                        the agent calls the human guest to confirm it.
 //
-// ONE ElevenLabs agent plays both roles. Every call carries `call_direction`
-// in its dynamic variables so the console prompt can branch on
-// {{call_direction}}; when the agent's security tab allows overrides, the full
-// per-leg prompt + first message ride along too (placeOutboundCall falls back
-// to vars-only when overrides are rejected — see _shared/elevenlabs.ts).
+// Since the a1..a4 fleet exists (_shared/reservationist-fleet.ts), leg 1 is
+// placed on eleven-a1 and leg 2 on eleven-a2 (agent ids in
+// app_settings.agents_config.agents, fallback = the original single agent,
+// which still branches on {{call_direction}}). Every call carries the same
+// dynamic variables either way; when the agent's security tab allows
+// overrides, the full per-leg prompt + first message ride along too
+// (placeOutboundCall falls back to vars-only — see _shared/elevenlabs.ts).
 //
 // Both briefs end with the same hang-up policy: the agent ends the call
 // ITSELF (the ElevenLabs `end_call` system tool — keep it enabled on the
@@ -36,7 +38,9 @@ export type ReservationLegVars = {
 };
 
 // Shared closing policy — hang up YOURSELF, but ONLY once the call is SOLVED.
-const HANGUP_POLICY = `Política de cierre (obligatoria): puedes colgar tú mismo con la herramienta end_call, pero ÚNICAMENTE cuando la llamada ya quedó RESUELTA — es decir, cuando ya existe un resultado explícito: reservación confirmada, rechazada o imposible, y ya te despediste en una sola frase. Mientras la otra persona siga hablando, revisando disponibilidad, negociando, ofreciendo alternativas o haciendo preguntas, la llamada NO está resuelta: quédate en la línea y termina la gestión. Está PROHIBIDO colgar antes de tener el resultado. Únicas excepciones sin resultado: contesta un buzón de voz — deja un recado de una frase y cuelga —, te dejan en espera más de dos minutos, o la línea queda muda. Ya resuelta, no alargues la conversación ni esperes a que la otra persona cuelgue primero.`;
+// Exported so the fleet agents (_shared/reservationist-fleet.ts) carry the
+// exact same policy text.
+export const HANGUP_POLICY = `Política de cierre (obligatoria): puedes colgar tú mismo con la herramienta end_call, pero ÚNICAMENTE cuando la llamada ya quedó RESUELTA — es decir, cuando ya existe un resultado explícito: reservación confirmada, rechazada o imposible, y ya te despediste en una sola frase. Mientras la otra persona siga hablando, revisando disponibilidad, negociando, ofreciendo alternativas o haciendo preguntas, la llamada NO está resuelta: quédate en la línea y termina la gestión. Está PROHIBIDO colgar antes de tener el resultado. Únicas excepciones sin resultado: contesta un buzón de voz — deja un recado de una frase y cuelga —, te dejan en espera más de dos minutos, o la línea queda muda. Ya resuelta, no alargues la conversación ni esperes a que la otra persona cuelgue primero.`;
 
 /** Leg 1 · consumer → business: request the reservation from the venue. */
 export function businessLegPrompt(v: ReservationLegVars): string {
