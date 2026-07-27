@@ -271,7 +271,7 @@ export function deriveCategoryOptions(
  * fix arriving, a zone recenter), so the randomness source must replay the
  * same sequence per seed or the deck visibly reshuffles under the user.
  */
-export function createSeededRandom(seed: number): () => number {
+function createSeededRandom(seed: number): () => number {
   let a = seed >>> 0;
   return () => {
     a = (a + 0x6d2b79f5) >>> 0;
