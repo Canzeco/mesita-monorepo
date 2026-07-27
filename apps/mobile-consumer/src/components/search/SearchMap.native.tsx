@@ -19,7 +19,8 @@ export function SearchMap({
   userLocation,
   center,
   apiKey,
-  onSelect,
+  onSelectPlace,
+  onOpenPlace,
   onMapPress,
 }: SearchMapProps) {
   const mapRef = useRef<MapView>(null);
@@ -113,7 +114,10 @@ export function SearchMap({
             }
             onPress={(e) => {
               e.stopPropagation();
-              onSelect(place.id);
+              // First tap selects; tapping the already-selected pin opens
+              // the place (web SearchMap parity).
+              if (selectedPin) onOpenPlace(place);
+              else onSelectPlace(place);
             }}
           />
         );

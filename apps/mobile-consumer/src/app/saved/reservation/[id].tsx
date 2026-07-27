@@ -21,13 +21,15 @@ export default function ReservationDetailScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ id: string }>();
   const id = typeof params.id === 'string' ? params.id : (params.id?.[0] ?? '');
-  const [state, setState] = useState<State>({ status: 'loading' });
+  const [fetched, setFetched] = useState<State>({ status: 'loading' });
+  // An absent id can never resolve to a row, so it reads as missing without
+  // ever entering the loading state.
+  const state: State = id ? fetched : { status: 'missing' };
 
   useEffect(() => {
-    if (!id) {
-      setState({ status: 'missing' });
-      return;
-    }
+    // No id = nothing to fetch; the missing state is DERIVED below rather than
+    // set here (setState in an effect body triggers cascading renders).
+    if (!id) return;
     let cancelled = false;
     (async () => {
       try {
@@ -37,14 +39,14 @@ export default function ReservationDetailScreen() {
         });
         const match = reservations.find((row) => row.id === id);
         if (!cancelled) {
-          setState(
+          setFetched(
             match
               ? { status: 'found', r: toReservationItem(match) }
               : { status: 'missing' },
           );
         }
       } catch {
-        if (!cancelled) setState({ status: 'missing' });
+        if (!cancelled) setFetched({ status: 'missing' });
       }
     })();
     return () => {

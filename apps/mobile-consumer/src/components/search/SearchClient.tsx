@@ -15,8 +15,12 @@ import {
   IdleCatalogRail,
 } from '@/components/search/SearchCatalogRail';
 import { SearchMap } from '@/components/search/SearchMap';
-import { SearchResultsPanel } from '@/components/search/SearchResultsPanel';
+import {
+  SearchResultsPanel,
+  type SearchFailureKind,
+} from '@/components/search/SearchResultsPanel';
 import type { AddState } from '@/components/memo/types';
+import { EFError } from '@/lib/ef';
 import { SHADOW_ELEV } from '@/constants/brand';
 import {
   apiCreateProject,
@@ -44,6 +48,25 @@ const GMP_KEY = process.env.EXPO_PUBLIC_GMP_KEY ?? '';
 
 type Coords = { lat: number; lng: number };
 
+/**
+ * Which failure the results panel should explain. `timeout` and `network` get
+ * their own copy + a Retry button; everything else falls back to the EF's own
+ * message. An EFError with no `status` never reached Mesita (offline / DNS),
+ * so it reads as a network problem rather than a server fault.
+ */
+function classifyFailure(err: unknown): SearchFailureKind {
+  if (err instanceof EFError) return err.status == null ? 'network' : 'server';
+  if (err instanceof Error) {
+    if (err.name === 'AbortError' || /timed?\s?out/i.test(err.message)) {
+      return 'timeout';
+    }
+    if (/network|failed to fetch|fetch failed/i.test(err.message)) {
+      return 'network';
+    }
+  }
+  return 'server';
+}
+
 export function SearchClient() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -59,6 +82,9 @@ export function SearchClient() {
   const [predictions, setPredictions] = useState<PlacePrediction[]>([]);
   const [searching, setSearching] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
+  const [failureKind, setFailureKind] = useState<SearchFailureKind>(null);
+  // Bumped by Retry to re-run the suggest effect for the same query.
+  const [retryTick, setRetryTick] = useState(0);
   const [addStates, setAddStates] = useState<Record<string, AddState>>({});
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [preview, setPreview] = useState<PlacePrediction | null>(null);
@@ -160,6 +186,7 @@ export function SearchClient() {
       setPredictions([]);
       setSearching(false);
       setSearchError(null);
+      setFailureKind(null);
     } else if (nextTrimmed !== trimmed) {
       setSearching(true);
     }
@@ -179,11 +206,13 @@ export function SearchClient() {
           if (!cancelled) {
             setPredictions(rows);
             setSearchError(null);
+            setFailureKind(null);
           }
         } catch (err) {
           if (!cancelled) {
             setPredictions([]);
             setSearchError(errMsg(err, 'Search failed — try again.'));
+            setFailureKind(classifyFailure(err));
           }
         } finally {
           if (!cancelled) setSearching(false);
@@ -194,6 +223,16 @@ export function SearchClient() {
       cancelled = true;
       clearTimeout(handle);
     };
+  }, [trimmed, retryTick]);
+
+  // Retry re-runs the suggest effect for the SAME query (the effect is keyed on
+  // retryTick), so the consumer never has to retype after a network blip.
+  const retrySearch = useCallback(() => {
+    if (trimmed.length < 2) return;
+    setSearchError(null);
+    setFailureKind(null);
+    setSearching(true);
+    setRetryTick((t) => t + 1);
   }, [trimmed]);
 
   // On-Mesita row tap → show the place on the map (red selected pin + rail
@@ -268,12 +307,13 @@ export function SearchClient() {
           userLocation={coords}
           center={center}
           apiKey={GMP_KEY}
-          onSelect={(id) => {
-            setSelectedId(id);
+          onSelectPlace={(place) => {
+            setSelectedId(place.id);
             setRailCollapsed(false);
             setSearchOpen(false);
             updateQuery('');
           }}
+          onOpenPlace={(place) => router.push(`/place/${place.id}`)}
           onMapPress={() => {
             if (searchOpen) {
               setSearchOpen(false);
@@ -313,10 +353,12 @@ export function SearchClient() {
               query={trimmed}
               searching={searching}
               searchError={searchError}
+              failureKind={failureKind}
               predictions={predictions}
               addStates={addStates}
               onPickMesita={handlePickMesita}
               onPickGoogle={handlePickGoogle}
+              onRetry={retrySearch}
             />
           )}
         </View>
