@@ -156,7 +156,7 @@ export function computeWitcCoverPlacementFromRatios({
 }
 
 /** Natural pixel entry point — derives imageRatio, then same cover math as above. */
-export function computeWitcCoverPlacement({
+function computeWitcCoverPlacement({
   photoNaturalWidth,
   photoNaturalHeight,
   cardWidth,
