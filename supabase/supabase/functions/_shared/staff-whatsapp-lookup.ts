@@ -26,7 +26,7 @@ export async function handleLookupCode(
     .eq("code", code)
     .maybeSingle();
   if (consumerRes.error || !consumerRes.data) {
-    await reply(
+    await sendStaffWhatsAppReply(
       admin,
       twilio,
       staff.phoneE164,
@@ -37,7 +37,7 @@ export async function handleLookupCode(
   const c = consumerRes.data as ConsumerRow;
   const placeRow = await loadPlaceOpsRow(admin, staff.projectId);
   if (!placeRow) {
-    await reply(admin, twilio, staff.phoneE164, "No encontré el restaurante.");
+    await sendStaffWhatsAppReply(admin, twilio, staff.phoneE164, "No encontré el restaurante.");
     return null;
   }
   const placeOps = await guestRewardContext(
@@ -87,7 +87,7 @@ export async function handleLookupCode(
       })
       .eq("id", session.id);
 
-    await reply(
+    await sendStaffWhatsAppReply(
       admin,
       twilio,
       staff.phoneE164,
@@ -114,7 +114,7 @@ export async function handleLookupCode(
     .select("*")
     .single();
   if (updated.error) {
-    await reply(admin, twilio, staff.phoneE164, "Error al guardar la sesión.");
+    await sendStaffWhatsAppReply(admin, twilio, staff.phoneE164, "Error al guardar la sesión.");
     return null;
   }
 
@@ -123,7 +123,7 @@ export async function handleLookupCode(
     : `\n\nManda la cuenta aquí (ej. SUBTOTAL 850, luego PROPINA 100).\n` +
       `Al terminar, el comensal recibe la notificación en la app Mesita → Pay.`;
 
-  await reply(
+  await sendStaffWhatsAppReply(
     admin,
     twilio,
     staff.phoneE164,
@@ -135,11 +135,3 @@ export async function handleLookupCode(
   return updated.data as SessionRow;
 }
 
-async function reply(
-  admin: SupabaseClient,
-  twilio: TwilioEnv,
-  to: string,
-  body: string,
-) {
-  await sendStaffWhatsAppReply(admin, twilio, to, body);
-}
