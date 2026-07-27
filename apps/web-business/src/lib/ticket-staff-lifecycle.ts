@@ -29,7 +29,7 @@ export type StaffLifecycleStepView = {
   hint?: string;
 };
 
-export type StaffTicketProgressInput = Pick<
+type StaffTicketProgressInput = Pick<
   BusinessTicket,
   "kind" | "status" | "story_status" | "check_subtotal_cents" | "total_cents"
 >;
