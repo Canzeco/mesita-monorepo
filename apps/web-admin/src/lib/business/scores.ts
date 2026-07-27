@@ -332,7 +332,7 @@ type WhenParts = {
  *   patience 1 → tolerant of future opens and short windows (waitTol=24 h, need 0.5 h)
  * Never-open in the horizon → 0. No hours data is the caller's job (→ when 1).
  */
-export function whenParts(bits: readonly boolean[], patience: number): WhenParts {
+function whenParts(bits: readonly boolean[], patience: number): WhenParts {
   const p = clamp01(patience);
   const { opensInSlots, openRunSlots } = opennessStats(bits);
   if (opensInSlots == null) {
