@@ -6,7 +6,7 @@ import { Check, CheckCircle2, ChevronRight, Copy, Star } from "lucide-react";
 import { formatShortDate } from "@/lib/format";
 import type { PlaceLite, QueryResult } from "@/lib/places-types";
 
-export function RatingBadge({ place }: { place: PlaceLite }) {
+function RatingBadge({ place }: { place: PlaceLite }) {
   if (place.rating === null && place.userRatingCount === null) {
     return (
       <span className="text-muted-foreground/70 inline-flex items-center gap-1 text-[11px]">
