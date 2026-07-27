@@ -86,7 +86,7 @@ function TintedIconTile({
   );
 }
 
-export function BoxShell({
+function BoxShell({
   iconTint,
   icon,
   title,
