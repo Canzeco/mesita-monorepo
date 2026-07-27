@@ -20,7 +20,7 @@ export async function handleStaffPaymentConfirm(
     .maybeSingle();
   if (!ticket.data || ticket.data.status !== "awaiting_payment_confirm") {
     await resetSession(admin, session.id, staff.projectId);
-    await reply(
+    await sendStaffWhatsAppReply(
       admin,
       twilio,
       staff.phoneE164,
@@ -36,12 +36,12 @@ export async function handleStaffPaymentConfirm(
     staff.projectId,
   );
   if (!done.ok) {
-    await reply(admin, twilio, staff.phoneE164, `Error al cerrar: ${done.error}`);
+    await sendStaffWhatsAppReply(admin, twilio, staff.phoneE164, `Error al cerrar: ${done.error}`);
     return;
   }
 
   await resetSession(admin, session.id, staff.projectId);
-  await reply(
+  await sendStaffWhatsAppReply(
     admin,
     twilio,
     staff.phoneE164,
@@ -51,11 +51,3 @@ export async function handleStaffPaymentConfirm(
   );
 }
 
-async function reply(
-  admin: SupabaseClient,
-  twilio: TwilioEnv,
-  to: string,
-  body: string,
-) {
-  await sendStaffWhatsAppReply(admin, twilio, to, body);
-}
