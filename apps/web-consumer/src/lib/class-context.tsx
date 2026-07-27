@@ -84,7 +84,7 @@ export const MOCK_PREMIUM_KEY = "mesita:mock-premium";
 //                 consumer-web-claim-instagram claim overwrites the class.
 // Purely a client-side dev affordance; absent = the real account. Remove the
 // toggles + this key once the states can be produced with real data.
-export const MOCK_ACCOUNT_KEY = "mesita:mock-account";
+const MOCK_ACCOUNT_KEY = "mesita:mock-account";
 export type MockAccount = {
   class: "standard" | "premium" | "magnetic" | null;
   instagram: boolean;
