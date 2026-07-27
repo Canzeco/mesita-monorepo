@@ -138,7 +138,7 @@ export async function apiBusinessSendsPhoneOtp(
   );
 }
 
-export type VerifyOtpResult = {
+type VerifyOtpResult = {
   projectId: string;
   // True when the EF accepted the OTP but auto-verify was off for this
   // method, so the row sits in the admin queue. False (default) means
