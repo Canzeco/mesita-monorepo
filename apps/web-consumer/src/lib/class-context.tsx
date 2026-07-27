@@ -24,7 +24,7 @@ import { MAGNETIC_FOLLOWER_THRESHOLD } from "@/lib/consumer-data";
 // Premium mock subscription flow becomes visible the moment the post-checkout
 // redirect reloads the shell.
 
-export type ConsumerClassState = {
+type ConsumerClassState = {
   key: "standard" | "premium" | "magnetic";
   origin: "default" | "instagram" | "subscription" | "invitation";
   /** Subscription renewal date (ISO). Only meaningful when
