@@ -1,4 +1,4 @@
-export const CONSUMER_CODE_RE = /^[0-9]{4}-[0-9]{4}$/;
+const CONSUMER_CODE_RE = /^[0-9]{4}-[0-9]{4}$/;
 
 function formatSequentialCode(n: number): string {
   const hi = Math.floor(n / 10000);
