@@ -259,7 +259,7 @@ export const OPENNESS_DAYS = 7;
 export const OPENNESS_SLOTS =
   OPENNESS_SLOTS_PER_HOUR * OPENNESS_HOURS * OPENNESS_DAYS;
 
-export const DEFAULT_SM_PARAMS: SmParams = {
+const DEFAULT_SM_PARAMS: SmParams = {
   where: { defaultTolKm: DEFAULT_POINT_TOL_KM },
   when: { patience: 0.35 },
   what: { tol: 0.5 },
