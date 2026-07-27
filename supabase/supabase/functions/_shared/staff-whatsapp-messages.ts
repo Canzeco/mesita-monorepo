@@ -42,7 +42,7 @@ export async function appendStaffWhatsAppMessage(
   }
 }
 
-export async function loadStaffWhatsAppHistory(
+async function loadStaffWhatsAppHistory(
   admin: SupabaseClient,
   phoneE164: string,
   limit = STAFF_WHATSAPP_HISTORY_LIMIT,
