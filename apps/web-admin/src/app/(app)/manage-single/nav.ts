@@ -11,7 +11,7 @@ import {
 // `soon` sections stay in the catalog for routes/placeholders but are hidden
 // from the primary tablist until shipped (MESITA-547 — dead tabs dilute IA).
 // Products + Reviews live inside the Place page (not separate tabs).
-export const UNIT_SECTIONS = [
+const UNIT_SECTIONS = [
   { id: "place", label: "Place", Icon: Store, soon: false },
   { id: "promos", label: "Promos", Icon: Tag, soon: false },
   { id: "scores", label: "Scores", Icon: Gauge, soon: false },
