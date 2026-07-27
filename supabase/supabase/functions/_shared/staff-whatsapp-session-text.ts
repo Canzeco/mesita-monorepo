@@ -7,7 +7,7 @@ import type {
   StaffPlace,
 } from "./staff-whatsapp-types.ts";
 
-export function prefixActivePlace(staff: StaffContext): string {
+function prefixActivePlace(staff: StaffContext): string {
   return `Unidad: ${staff.placeName}\n`;
 }
 
