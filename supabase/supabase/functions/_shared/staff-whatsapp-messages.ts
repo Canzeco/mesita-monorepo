@@ -4,7 +4,7 @@ import { type SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { normalizePhoneE164 } from "./phone.ts";
 import { sendWhatsAppText, type TwilioEnv } from "./twilio.ts";
 
-export const STAFF_WHATSAPP_HISTORY_LIMIT = 20;
+const STAFF_WHATSAPP_HISTORY_LIMIT = 20;
 
 export type StaffWhatsAppMessageRow = {
   direction: "inbound" | "outbound";
