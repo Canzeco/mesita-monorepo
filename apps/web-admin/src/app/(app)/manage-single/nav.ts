@@ -49,7 +49,4 @@ export function parseUnitId(pathname: string): string | null {
   return id;
 }
 
-export function isManageSingleHubRoute(pathname: string): boolean {
-  return pathname === "/manage-single/select" || parseUnitId(pathname) !== null;
-}
 
