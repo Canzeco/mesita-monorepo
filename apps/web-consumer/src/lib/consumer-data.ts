@@ -5,7 +5,8 @@ export const CLASS_ORDER = ["standard", "premium", "magnetic"] as const;
 type Class = (typeof CLASS_ORDER)[number];
 
 // Premium-perk gate: everything above Standard (Premium and Magnetic) unlocks
-// the elevated perks (bigger rewards, AI connect, unlimited reservations).
+// the same elevated perk set — better recommendations, higher discount
+// rewards, 10 reservations a month. Premium and Magnetic never differ.
 export function isElevatedClass(classKey: Class | string): boolean {
   return classKey === "premium" || classKey === "magnetic";
 }
@@ -101,8 +102,8 @@ export const CLASSES: {
     req: "Invitation · or $100 MXN / mo",
     priceMxn: 100,
     followerThreshold: 0,
-    reward: "Bigger discount",
-    perk: "Better recs · more reservations",
+    reward: "Higher discount",
+    perk: "Better recs · 10 reservations",
   },
   {
     id: "magnetic",
@@ -112,8 +113,9 @@ export const CLASSES: {
     // Mirrors classes.follower_threshold in the DB — the EF grants off that
     // row, so this constant is display-only and must track it.
     followerThreshold: 5_000,
-    reward: "Top discount",
-    perk: "The invite-only tier for real Instagram reach",
+    // Same perk set as Premium — only the door differs (earned, not paid).
+    reward: "Higher discount",
+    perk: "Better recs · 10 reservations",
   },
 ];
 

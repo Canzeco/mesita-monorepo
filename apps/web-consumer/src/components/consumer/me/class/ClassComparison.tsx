@@ -4,9 +4,9 @@ import { cn } from "@/lib/utils";
 
 // Three-class comparison — Standard / Premium / Magnetic in ladder order
 // (standard < premium ≤ magnetic; Magnetic is the top tier and reads gold,
-// matching the QR + summary cards). Premium and Magnetic tie on perks by
-// design — best-of at the bill makes ties harmless — so the Price row is
-// what separates them: Premium is paid, Magnetic is earned with reach.
+// matching the QR + summary cards). Premium and Magnetic share ONE perk set
+// by design (Pato, 2026-07-27), so the Price row is what separates them:
+// Premium is paid, Magnetic is earned with reach.
 
 const COMPARE_ROWS: {
   label: string;
@@ -15,18 +15,23 @@ const COMPARE_ROWS: {
   magnetic: string;
 }[] = [
   { label: "Price", standard: "Free", premium: "$100/mo", magnetic: "Free" },
-  { label: "Discounts", standard: "Base", premium: "Boosted", magnetic: "Boosted" },
+  {
+    label: "Discount rewards",
+    standard: "Base",
+    premium: "Higher",
+    magnetic: "Higher",
+  },
   {
     label: "Recommendations",
     standard: "Standard",
-    premium: "Personalized",
-    magnetic: "Personalized",
+    premium: "Better",
+    magnetic: "Better",
   },
   {
     label: "Reservations / month",
     standard: "2",
-    premium: "Unlimited",
-    magnetic: "Unlimited",
+    premium: "10",
+    magnetic: "10",
   },
 ];
 

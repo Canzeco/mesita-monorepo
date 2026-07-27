@@ -98,7 +98,7 @@ function LandingPane() {
           <ValueProp
             Icon={Sparkles}
             title="Premium perks"
-            blurb="Go Premium for better rewards, smarter recommendations, and unlimited reservations."
+            blurb="Go Premium for higher discount rewards, smarter recommendations, and 10 reservations a month."
           />
         </ul>
       </div>

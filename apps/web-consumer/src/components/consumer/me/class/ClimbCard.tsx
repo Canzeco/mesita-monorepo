@@ -16,6 +16,8 @@ export type ClimbCardData = {
   price: string;
   priceNote?: string;
   desc: string;
+  /** The class's perks, rendered as a check-list between desc and footer. */
+  perks?: string[];
   reached: boolean;
   reachedLabel: string;
   action?: { label: string; href?: string; onClick?: () => void };
@@ -107,6 +109,28 @@ export function ClimbCard({ data }: { data: ClimbCardData }) {
       <p className="text-muted-foreground mt-4 text-[12.5px] leading-relaxed">
         {data.desc}
       </p>
+      {data.perks && data.perks.length > 0 && (
+        <ul className="mt-3.5 flex flex-col gap-2">
+          {data.perks.map((perk) => (
+            <li
+              key={perk}
+              className="flex items-start gap-2 text-[12.5px] leading-snug"
+            >
+              <span
+                className={cn(
+                  "mt-[1px] flex h-4.5 w-4.5 shrink-0 items-center justify-center rounded-full",
+                  data.accent
+                    ? "bg-tier-premium/15 text-premium"
+                    : "bg-emerald-500/15 text-emerald-700",
+                )}
+              >
+                <Check className="h-3 w-3" strokeWidth={3} />
+              </span>
+              <span className="text-foreground/85">{perk}</span>
+            </li>
+          ))}
+        </ul>
+      )}
       <div className="mt-4">{footer}</div>
     </article>
   );
