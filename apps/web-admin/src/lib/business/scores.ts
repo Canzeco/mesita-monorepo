@@ -882,7 +882,7 @@ export function coerceScoringSettings(raw: unknown): ScoringSettings {
 // EM compares two independently-built vectors, neither of which knows the
 // pair).
 
-export type ContextField = {
+type ContextField = {
   field: string;
   status: "live" | "planned" | "spec";
   note?: string;
