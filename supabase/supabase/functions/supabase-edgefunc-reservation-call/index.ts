@@ -41,6 +41,7 @@ type ConsumerName = {
   full_name?: string | null;
   first_name?: string | null;
   last_name?: string | null;
+  phone?: string | null;
 };
 
 type Place = {
@@ -115,7 +116,7 @@ Deno.serve(async (req) => {
   const { data: r, error: rErr } = await admin
     .from("reservations")
     .select(
-      "id, reserved_at, party_size, notes, status, project_id, consumer:consumers(full_name, first_name, last_name)",
+      "id, reserved_at, party_size, notes, status, project_id, consumer:consumers(full_name, first_name, last_name, phone)",
     )
     .eq("id", reservationId)
     .maybeSingle();
@@ -183,8 +184,13 @@ Deno.serve(async (req) => {
     agentPhoneNumberId: phoneRes.id,
     toNumber,
     dynamicVariables: {
+      // Same variable set as the playground legs (reservation-legs.ts): a
+      // console prompt that branches on {{call_direction}} or leaves the
+      // guest's callback number must work on every caller.
+      call_direction: "business_booking",
       venue_name: place?.name || "el lugar",
       guest_name: guestName(consumer),
+      guest_phone: (consumer?.phone ?? "").trim(),
       party_size: r.party_size,
       reservation_date: esDate(r.reserved_at),
       reservation_time: esTime(r.reserved_at),

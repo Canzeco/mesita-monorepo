@@ -93,7 +93,11 @@ export type PlaygroundAttempt = {
   n: number;
   started_at: string;
   conversation_id: string | null;
-  /** dialing | ringing | answered | no_answer | unknown | placement failed: … */
+  /**
+   * dialing | ringing | answered | no_answer | unknown | confirmed | declined
+   * | unresolved | placement failed: … — confirmed/declined/unresolved are the
+   * venue's verdict on the answered intent.
+   */
   result: string;
 };
 
@@ -108,6 +112,7 @@ export type PlaygroundTicket = {
   reserved_at: string;
   party_size: number;
   notes: string | null;
+  /** Verdict: pending | confirmed | declined | unresolved | unreachable | error. */
   status: string;
   business_number_mode: NumberMode;
   business_number: string | null;
@@ -120,6 +125,15 @@ export type PlaygroundTicket = {
   attempts_planned: number;
   /** running | answered | exhausted | error — the UI polls while running. */
   attempts_state: string;
+  /**
+   * The business→consumer confirmation call (fires only after the venue
+   * confirms): none | skipped | calling | ringing | answered | no_answer |
+   * unknown | failed.
+   */
+  callback_state: string;
+  callback_conversation_id: string | null;
+  callback_at: string | null;
+  confirmed_at: string | null;
 };
 
 export type CreatePlaygroundReservationInput = {
