@@ -33,7 +33,7 @@ function titleizeCategoryWords(input: string): string {
 }
 
 /** Format a category label or slug for display — keeps leading emoji. */
-export function formatPlaceCategoryName(
+function formatPlaceCategoryName(
   category: string | null | undefined,
 ): string | null {
   if (!category) return null;
