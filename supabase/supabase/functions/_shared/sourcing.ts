@@ -98,7 +98,7 @@ const GOOGLE_TYPE_TO_FAMILIES: Record<string, FamilyKey[]> = (() => {
 })();
 
 /** Every family a Google type belongs to. Empty = not a Mesita type. */
-export function familiesForGoogleType(
+function familiesForGoogleType(
   primaryType: string | null | undefined,
 ): FamilyKey[] {
   if (!primaryType) return [];
