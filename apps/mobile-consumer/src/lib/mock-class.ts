@@ -24,7 +24,7 @@ function notify(): void {
   listeners.forEach((l) => l());
 }
 
-export type ConsumerClassState = {
+type ConsumerClassState = {
   key: 'standard' | 'premium' | 'magnetic';
   origin: 'default' | 'instagram' | 'subscription' | 'invitation';
   followers: number;
