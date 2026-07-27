@@ -6,7 +6,7 @@
 // This is intentionally distinct from the platform-level business role
 // (auth.users app_metadata.role = 'business').
 
-export const MEMBER_ROLES = ["owner", "editor", "viewer"] as const;
+const MEMBER_ROLES = ["owner", "editor", "viewer"] as const;
 export type MemberRole = (typeof MEMBER_ROLES)[number];
 
 const MEMBER_ROLE_SET = new Set<string>(MEMBER_ROLES);
