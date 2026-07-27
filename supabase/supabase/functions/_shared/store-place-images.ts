@@ -24,7 +24,7 @@ export {
   sanitiseUrls,
 } from "./store-place-images-sanitize.ts";
 
-export const IMAGE_BUCKET = "place-images";
+const IMAGE_BUCKET = "place-images";
 const MAX_FETCH_BYTES = 12_000_000;
 const FETCH_TIMEOUT_MS = 15_000;
 const PLACE_PHOTOS_CAP = 50;
