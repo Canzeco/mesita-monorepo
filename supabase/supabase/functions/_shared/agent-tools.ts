@@ -1,0 +1,229 @@
+// Shared implementation for the eleven-a1..a4 caller families — the FOUR
+// Reservationist agents' mid-call server tools (plain webhook tools on the
+// ElevenLabs agents; MCP deliberately unused). One agent = one caller prefix:
+//
+//   eleven-a1-*  c2b outbound — the Booker calls the venue for the guest
+//   eleven-a2-*  b2c outbound — the Confirmer calls the human guest
+//   eleven-a3-*  c inbound   — a consumer calls Mesita (support / cancel)
+//   eleven-a4-*  b inbound   — a business calls Mesita (support / changes)
+//
+// Endpoints stay THIN — one capability per EF, auth + data shaping here.
+// Auth (two locks, same as eleven-agent-get-reservation): gateway verify_jwt
+// via the anon-key bearer, then `x-agent-secret` matched timing-safe against
+// app_settings.agents_config.toolSecret (rotatable with SQL).
+//
+// Inbound scope rule: a3/a4 tools NEVER trust the LLM's claims — identity is
+// re-derived server-side from the caller's phone number (the agent passes
+// {{system__caller_id}}), and every mutation re-checks that the ticket
+// belongs to that verified caller.
+
+import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
+import { json } from "./http.ts";
+import { timingSafeEqual } from "./timing-safe-equal.ts";
+
+// ── Auth ─────────────────────────────────────────────────────────────────────
+
+/** Returns an error Response to send, or null when the secret checks out. */
+export async function requireAgentSecret(
+  req: Request,
+  admin: SupabaseClient,
+): Promise<Response | null> {
+  const sent = (req.headers.get("x-agent-secret") ?? "").trim();
+  const { data: settings } = await admin
+    .from("app_settings")
+    .select("agents_config")
+    .eq("id", 1)
+    .maybeSingle();
+  const expected =
+    ((settings?.agents_config as Record<string, unknown> | null)?.toolSecret as
+      | string
+      | undefined)?.trim() ?? "";
+  if (!expected || !sent || !timingSafeEqual(sent, expected)) {
+    return json({ ok: false, error: "agent tool secret rejected" }, 401);
+  }
+  return null;
+}
+
+// ── Phone matching (inbound identity) ────────────────────────────────────────
+
+/** Last 10 digits — MX numbers compare equal across +52 / +521 / bare forms. */
+export function phoneTail(v: unknown): string {
+  const digits = typeof v === "string" ? v.replace(/\D/g, "") : "";
+  return digits.slice(-10);
+}
+
+export function sameLine(a: unknown, b: unknown): boolean {
+  const ta = phoneTail(a);
+  const tb = phoneTail(b);
+  return ta.length === 10 && ta === tb;
+}
+
+// ── Speakable formatting ─────────────────────────────────────────────────────
+
+export function esDate(iso: string): string {
+  try {
+    return new Intl.DateTimeFormat("es-MX", {
+      timeZone: "America/Mexico_City",
+      weekday: "long",
+      day: "numeric",
+      month: "long",
+    }).format(new Date(iso));
+  } catch {
+    return iso;
+  }
+}
+export function esTime(iso: string): string {
+  try {
+    return new Intl.DateTimeFormat("es-MX", {
+      timeZone: "America/Mexico_City",
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
+    }).format(new Date(iso));
+  } catch {
+    return iso;
+  }
+}
+
+/** Venue-local "YYYY-MM-DD" + "HH:mm" → Date (Mexico City, fixed UTC-6). */
+export function parseVenueLocal(date: unknown, time: unknown): Date | null {
+  if (typeof date !== "string" || typeof time !== "string") return null;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date.trim())) return null;
+  if (!/^\d{2}:\d{2}$/.test(time.trim())) return null;
+  const d = new Date(`${date.trim()}T${time.trim()}:00-06:00`);
+  return Number.isNaN(d.getTime()) ? null : d;
+}
+
+// ── Ticket reads ─────────────────────────────────────────────────────────────
+
+export const TICKET_SELECT =
+  "id, reference_code, reserved_at, party_size, status, notes, is_test, project_id, consumer_id, reported_verdict, alternatives, guest_confirmed_at, consumer:consumers(full_name, first_name, last_name, phone)";
+
+export type TicketRow = {
+  id: string;
+  reference_code: string | null;
+  reserved_at: string;
+  party_size: number;
+  status: string;
+  notes: string | null;
+  is_test: boolean;
+  project_id: string;
+  consumer_id: string;
+  reported_verdict: string | null;
+  alternatives: unknown;
+  guest_confirmed_at: string | null;
+  consumer: {
+    full_name: string | null;
+    first_name: string | null;
+    last_name: string | null;
+    phone: string | null;
+  } | null;
+};
+
+export function guestNameOf(r: TicketRow): string {
+  const c = r.consumer;
+  return c?.full_name?.trim() ||
+    [c?.first_name, c?.last_name].map((s) => (s ?? "").trim()).filter(Boolean).join(" ") ||
+    "(sin nombre)";
+}
+
+export async function placeNames(
+  admin: SupabaseClient,
+  ids: string[],
+): Promise<Map<string, string>> {
+  if (ids.length === 0) return new Map();
+  const { data } = await admin.from("places").select("id, name").in("id", ids);
+  return new Map<string, string>(
+    ((data ?? []) as { id: string; name: string | null }[]).map(
+      (p) => [p.id, p.name ?? "(sin nombre)"],
+    ),
+  );
+}
+
+/** The shape every agent tool speaks — es-MX ready. */
+export function speakable(r: TicketRow, placeName: string) {
+  return {
+    reference_code: r.reference_code ?? null,
+    guest_name: guestNameOf(r),
+    place_name: placeName,
+    date_es: esDate(r.reserved_at),
+    time_es: esTime(r.reserved_at),
+    reserved_at: r.reserved_at,
+    party_size: r.party_size,
+    status: r.status,
+    notes: r.notes ?? null,
+    is_test: !!r.is_test,
+  };
+}
+
+/** Exact lookup by the 8-digit reference code (digits extracted from input). */
+export async function ticketByCode(
+  admin: SupabaseClient,
+  codeRaw: unknown,
+): Promise<TicketRow | null> {
+  const digits = typeof codeRaw === "string" ? codeRaw.replace(/\D/g, "") : "";
+  if (!/^\d{8}$/.test(digits)) return null;
+  const { data } = await admin
+    .from("reservations")
+    .select(TICKET_SELECT)
+    .eq("reference_code", digits)
+    .maybeSingle();
+  return (data ?? null) as TicketRow | null;
+}
+
+/** A verified consumer's newest tickets (is_test included — agent surface). */
+export async function ticketsOfConsumers(
+  admin: SupabaseClient,
+  consumerIds: string[],
+  limit = 5,
+): Promise<TicketRow[]> {
+  if (consumerIds.length === 0) return [];
+  const { data } = await admin
+    .from("reservations")
+    .select(TICKET_SELECT)
+    .in("consumer_id", consumerIds)
+    .order("created_at", { ascending: false })
+    .limit(limit);
+  return (data ?? []) as TicketRow[];
+}
+
+/** A verified place's book, soonest first from six hours ago. */
+export async function ticketsOfPlace(
+  admin: SupabaseClient,
+  projectId: string,
+  limit = 8,
+): Promise<TicketRow[]> {
+  const since = new Date(Date.now() - 6 * 3600_000).toISOString();
+  const { data } = await admin
+    .from("reservations")
+    .select(TICKET_SELECT)
+    .eq("project_id", projectId)
+    .gte("reserved_at", since)
+    .order("reserved_at", { ascending: true })
+    .limit(limit);
+  return (data ?? []) as TicketRow[];
+}
+
+// ── Mutations ────────────────────────────────────────────────────────────────
+
+export async function cancelTicket(
+  admin: SupabaseClient,
+  id: string,
+  by: "consumer" | "business" | "agent",
+  reason: string,
+): Promise<string | null> {
+  const { error } = await admin
+    .from("reservations")
+    .update({
+      status: "cancelled",
+      cancelled_at: new Date().toISOString(),
+      cancelled_by: by,
+      outcome_note: reason ? reason.slice(0, 300) : null,
+    })
+    .eq("id", id);
+  return error ? error.message : null;
+}
+
+export function cleanNote(v: unknown, max = 300): string {
+  return typeof v === "string" ? v.trim().slice(0, max) : "";
+}
