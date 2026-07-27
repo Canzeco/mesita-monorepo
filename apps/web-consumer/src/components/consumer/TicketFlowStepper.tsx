@@ -24,8 +24,6 @@ const STEP_ICONS: Record<TicketFlowStepId, LucideIcon> = {
   review: Star,
 };
 
-export const TICKET_STEP_ICONS = STEP_ICONS;
-
 /**
  * One round step indicator, NU-verification style:
  * done = green check · active = pink gradient + step icon · upcoming = gray + lock.
