@@ -10,9 +10,9 @@ type ReservationsConfig = {
 
 const KNOWN = new Set<string>(RESERVATION_CHANNELS);
 
-const ATTEMPTS_MIN = 1;
-const ATTEMPTS_MAX = 3;
-const ATTEMPTS_DEFAULT = 3;
+// FIXED at 2 by protocol — not configurable. Any attempts value a client sends
+// is accepted and ignored so older admin builds keep saving cleanly.
+const ATTEMPTS = 2;
 
 // A leading + and 8–15 digits. Mirrors looksLikePhone in the admin catalog. The
 // real validity check is placing the call — this only stops an obvious typo.
@@ -109,18 +109,8 @@ export function normalizeConfig(
     testCall = { enabled: t.enabled, number, consumerNumber };
   }
 
-  // attempts — optional. Default 3. Integer, clamped to [1, 3].
-  let attempts = ATTEMPTS_DEFAULT;
-  if (c.attempts !== undefined) {
-    if (typeof c.attempts !== "number" || !Number.isFinite(c.attempts)) {
-      return { ok: false, error: "config.attempts must be a number" };
-    }
-    const n = Math.round(c.attempts);
-    if (n < ATTEMPTS_MIN || n > ATTEMPTS_MAX) {
-      return { ok: false, error: `config.attempts must be between ${ATTEMPTS_MIN} and ${ATTEMPTS_MAX}` };
-    }
-    attempts = n;
-  }
+  // attempts — fixed. Whatever the client sent (or didn't), the row stores 2.
+  const attempts = ATTEMPTS;
 
   return {
     ok: true,

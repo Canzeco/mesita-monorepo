@@ -4,28 +4,25 @@ import { useEffect, useMemo, useState, useTransition } from "react";
 import {
   Bot,
   CalendarCheck,
+  CheckCircle2,
   Clock,
   FlaskConical,
   Lock,
   Phone,
+  PhoneCall,
   RotateCcw,
   ShieldCheck,
+  Smartphone,
+  Workflow,
 } from "lucide-react";
 import {
   ErrorNote,
-  NumberField,
   SaveRow,
   SectionCard,
   Switch,
 } from "../enricher-config/atlas-ui";
 import { getReservationsConfig, updateReservationsConfig } from "./actions";
-import {
-  ATTEMPTS_MAX,
-  ATTEMPTS_MIN,
-  CHANNELS,
-  looksLikePhone,
-  type ReservationsConfig,
-} from "./catalog";
+import { CHANNELS, looksLikePhone, type ReservationsConfig } from "./catalog";
 
 // While only phone is bookable, the stored channel shape is fixed: phone ranked,
 // WhatsApp + Instagram parked. Kept out of the UI (nothing to reorder with one
@@ -242,22 +239,20 @@ export function ReservationsConfigClient({
         </label>
       </SectionCard>
 
-      {/* Call attempts — how hard the agent tries. */}
+      {/* Call attempts — fixed by protocol, shown only so the number is never a mystery. */}
       <SectionCard
         icon={<RotateCcw className="text-secondary h-4 w-4" />}
         title="Call attempts"
-        subtitle="How many times the Reservationist tries a place before it gives up and the guest is told the venue couldn't be reached."
+        subtitle="Fixed by protocol — two attempts per reservation, then the guest is told the venue couldn't be reached. Not configurable."
       >
-        <div className="mt-5 max-w-xs">
-          <NumberField
-            icon={<RotateCcw className="text-muted-foreground mt-0.5 h-4 w-4" />}
-            label="Attempts per reservation"
-            value={cfg.attempts}
-            min={ATTEMPTS_MIN}
-            max={ATTEMPTS_MAX}
-            onChange={(n) => patch({ attempts: n })}
-            disabled={pending}
-          />
+        <div className="border-border bg-card mt-5 inline-flex items-center gap-3 rounded-xl border px-4 py-3">
+          <RotateCcw className="text-muted-foreground h-4 w-4" />
+          <span className="text-2xl font-semibold tabular-nums">2</span>
+          <span className="text-muted-foreground text-xs leading-tight">
+            attempts per reservation
+            <br />
+            fixed — not configurable
+          </span>
         </div>
         <div className="mt-4 space-y-2 rounded-xl border border-border/60 bg-muted/30 p-4">
           <p className="flex items-start gap-2 text-xs">
@@ -272,12 +267,116 @@ export function ReservationsConfigClient({
             <Clock className="text-secondary mt-0.5 h-3.5 w-3.5 shrink-0" />
             <span>
               <span className="text-foreground font-medium">
-                Attempts 2–{cfg.attempts} wait for opening hours
+                Attempt 2 waits for opening hours
               </span>{" "}
-              — if the first call goes unanswered, the agent holds until the venue’s
-              next opening window and tries again, spacing the remaining tries across
-              it rather than redialing blindly. It waits on the venue’s hours, never
-              the guest.
+              — five minutes after the first miss if the venue is open right now,
+              otherwise 30 minutes after it next opens, today or tomorrow. It waits
+              on the venue’s hours, never the guest. Still no answer → the ticket
+              lands unreachable and the guest is informed.
+            </span>
+          </p>
+        </div>
+      </SectionCard>
+
+      {/* The workflow — read-only. The protocol drawn out so it's understood at a glance. */}
+      <SectionCard
+        icon={<Workflow className="text-secondary h-4 w-4" />}
+        title="The reservation workflow"
+        subtitle="Fixed protocol, read-only — how every ticket flows from intent to a table, and who calls whom. Calls continue until both sides confirm the same reservation."
+      >
+        <ol className="mt-5">
+          <li className="relative pb-6 pl-9">
+            <span className="bg-secondary/10 text-secondary absolute top-0 left-0 flex h-6 w-6 items-center justify-center rounded-full text-[11px] font-bold">
+              1
+            </span>
+            <span className="bg-border absolute top-7 bottom-1 left-3 w-px" />
+            <p className="text-sm font-medium">Intent → ticket</p>
+            <p className="text-muted-foreground mt-1 text-xs">
+              The guest sets place, date, hour, party size and any requests. The
+              ticket is created that instant with its 8-digit reference code —
+              and opening hours never block an intent: a Thursday ask at a
+              Friday–Saturday venue still gets tried.
+            </p>
+          </li>
+          <li className="relative pb-6 pl-9">
+            <span className="bg-secondary/10 text-secondary absolute top-0 left-0 flex h-6 w-6 items-center justify-center rounded-full text-[11px] font-bold">
+              2
+            </span>
+            <span className="bg-border absolute top-7 bottom-1 left-3 w-px" />
+            <p className="text-sm font-medium">
+              The Booker calls the venue{" "}
+              <span className="text-muted-foreground text-xs font-normal">
+                · consumer → business
+              </span>
+            </p>
+            <p className="text-muted-foreground mt-1 text-xs">
+              The two attempts above. On the call it requests the table, reads the
+              details back, leaves the guest’s number — and hangs up only once the
+              call is solved. It comes back with one of:
+            </p>
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              <span className="inline-flex items-center rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold text-emerald-700">
+                confirmed
+              </span>
+              <span className="inline-flex items-center rounded-full bg-amber-500/10 px-2 py-0.5 text-[10px] font-semibold text-amber-700">
+                counter-offer
+              </span>
+              <span className="inline-flex items-center rounded-full bg-red-500/10 px-2 py-0.5 text-[10px] font-semibold text-red-700">
+                declined
+              </span>
+              <span className="inline-flex items-center rounded-full bg-red-500/10 px-2 py-0.5 text-[10px] font-semibold text-red-700">
+                unreachable
+              </span>
+            </div>
+          </li>
+          <li className="relative pb-6 pl-9">
+            <span className="bg-secondary/10 text-secondary absolute top-0 left-0 flex h-6 w-6 items-center justify-center rounded-full text-[11px] font-bold">
+              3
+            </span>
+            <span className="bg-border absolute top-7 bottom-1 left-3 w-px" />
+            <p className="text-sm font-medium">
+              The Confirmer reaches the guest{" "}
+              <span className="text-muted-foreground text-xs font-normal">
+                · business → consumer
+              </span>
+            </p>
+            <p className="text-muted-foreground mt-1 text-xs">
+              By default the guest gets a call explaining the outcome; with the
+              app-only preference the ticket just updates silently in the consumer
+              app. A counter-offer — “outside only at 10, inside at 9” — is put to
+              the guest, and their pick triggers a fresh Booker call to the venue.
+              Two negotiation rounds max, then the ticket parks in the app for the
+              guest to decide.
+            </p>
+          </li>
+          <li className="relative pl-9">
+            <span className="bg-secondary/10 text-secondary absolute top-0 left-0 flex h-6 w-6 items-center justify-center rounded-full text-[11px] font-bold">
+              <CheckCircle2 className="h-3.5 w-3.5" />
+            </span>
+            <p className="text-sm font-medium">Both sides confirmed</p>
+            <p className="text-muted-foreground mt-1 text-xs">
+              Calls keep happening only while the two sides disagree. The moment
+              venue and guest match, the ticket closes confirmed — otherwise it
+              lands declined, unreachable or cancelled, and the guest always ends
+              up informed.
+            </p>
+          </li>
+        </ol>
+        <div className="mt-5 space-y-2 rounded-xl border border-border/60 bg-muted/30 p-4">
+          <p className="flex items-start gap-2 text-xs">
+            <Smartphone className="text-secondary mt-0.5 h-3.5 w-3.5 shrink-0" />
+            <span>
+              <span className="text-foreground font-medium">Anytime</span> — the
+              guest can edit or cancel the ticket in the mobile app; that supersedes
+              any pending call.
+            </span>
+          </p>
+          <p className="flex items-start gap-2 text-xs">
+            <PhoneCall className="text-secondary mt-0.5 h-3.5 w-3.5 shrink-0" />
+            <span>
+              <span className="text-foreground font-medium">Future</span> — inbound
+              lines for guests and venues (agents 3 and 4), callers auto-verified
+              by phone number against the Mesita database.
             </span>
           </p>
         </div>

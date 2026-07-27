@@ -60,7 +60,9 @@ Each endpoint encodes exactly one authorized caller from a **closed set**. The n
 - **Origin** segment: usually `web` (e.g. `consumer-web-get-profile`).
 - **Artificial callers** (machine origins): `supabase-cron-*` (the Enricher
   pipeline), `supabase-edgefunc-*` (internal EF→EF, gated by `X-Internal-Caller`),
-  plus vendor webhooks like `stripe-webhook-*` and `twilio-*`.
+  plus vendor webhooks like `stripe-webhook-*`, `twilio-*`, and `eleven-agent-*`
+  (the ElevenLabs Reservationist's mid-call server tools — anon-key bearer for
+  the gateway + `x-agent-secret` matched against `app_settings.agents_config`).
 - Natural callers may invoke artificial ones, never the reverse.
 
 Roughly 93 EFs today: business 34 · consumer 24 · admin 18 · plus staff / stripe /

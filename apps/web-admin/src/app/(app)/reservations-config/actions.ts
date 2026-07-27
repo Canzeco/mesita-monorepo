@@ -105,6 +105,8 @@ export type PlaygroundAttempt = {
 export type PlaygroundTicket = {
   id: string;
   created_at: string;
+  /** The ticket's 8-digit reference code (null only on pre-code rows). */
+  reference_code: string | null;
   project_id: string;
   place_name: string;
   consumer_id: string;

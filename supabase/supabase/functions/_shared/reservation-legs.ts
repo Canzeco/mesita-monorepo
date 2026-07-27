@@ -25,6 +25,8 @@ export type ReservationLegVars = {
   guestName: string;
   /** The guest-side callback number the venue may be left with. */
   guestPhone: string;
+  /** The ticket's 8-digit reference code — speakable if either side asks. */
+  referenceCode: string;
   partySize: number;
   /** Venue-local es-MX date, e.g. "sábado 2 de agosto". */
   dateEs: string;
@@ -44,7 +46,7 @@ export function businessLegPrompt(v: ReservationLegVars): string {
   return [
     `Eres el asistente de reservaciones de Mesita. Esta llamada va del consumidor hacia el negocio: llamas al restaurante ${v.venueName} DE PARTE del comensal ${v.guestName}.`,
     `Objetivo único: conseguir una reservación para ${v.partySize} ${v.partySize === 1 ? "persona" : "personas"} el ${v.dateEs} a las ${v.timeEs}, a nombre de ${v.guestName}.`,
-    `Si el restaurante acepta, confirma leyendo de vuelta: nombre, ${v.partySize} ${v.partySize === 1 ? "persona" : "personas"}, ${v.dateEs}, ${v.timeEs}. Si piden un teléfono de contacto, da el del comensal: ${v.guestPhone}.`,
+    `Si el restaurante acepta, confirma leyendo de vuelta: nombre, ${v.partySize} ${v.partySize === 1 ? "persona" : "personas"}, ${v.dateEs}, ${v.timeEs}. Si piden un teléfono de contacto, da el del comensal: ${v.guestPhone}. Si piden un número de referencia o confirmación, el código de Mesita es ${v.referenceCode}.`,
     `Si no hay lugar a esa hora, pregunta por la opción más cercana y acéptala SOLO si queda dentro de una hora de diferencia; si no, agradece y da la reservación por rechazada.`,
     requests,
     `Habla natural y breve, español de México, trato de usted.`,
@@ -62,7 +64,7 @@ export function businessLegFirstMessage(v: ReservationLegVars): string {
 export function guestLegPrompt(v: ReservationLegVars): string {
   return [
     `Eres el asistente de reservaciones de Mesita. Esta llamada va del negocio hacia el consumidor: llamas al comensal ${v.guestName} DE PARTE del restaurante ${v.venueName}.`,
-    `El restaurante YA CONFIRMÓ la reservación. Tu único objetivo es avisarle y confirmarle al humano los datos: ${v.partySize} ${v.partySize === 1 ? "persona" : "personas"}, el ${v.dateEs} a las ${v.timeEs} en ${v.venueName}.`,
+    `El restaurante YA CONFIRMÓ la reservación. Tu único objetivo es avisarle y confirmarle al humano los datos: ${v.partySize} ${v.partySize === 1 ? "persona" : "personas"}, el ${v.dateEs} a las ${v.timeEs} en ${v.venueName}. Si pregunta por una referencia, su código es ${v.referenceCode}.`,
     `No cambies nada en esta llamada: si el comensal quiere modificar o cancelar, dile que Mesita le ayuda con gusto por la app y que por ahora su reservación queda como está.`,
     `Habla natural, cálido y muy breve — esta llamada dura menos de un minuto.`,
     HANGUP_POLICY,
@@ -87,6 +89,7 @@ export function legDynamicVariables(
     venue_name: v.venueName,
     guest_name: v.guestName,
     guest_phone: v.guestPhone,
+    reference_code: v.referenceCode,
     party_size: v.partySize,
     reservation_date: v.dateEs,
     reservation_time: v.timeEs,

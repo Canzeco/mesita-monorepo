@@ -57,6 +57,7 @@ import {
   requireSuperAdmin,
 } from "../_shared/auth.ts";
 import { coerceReservationsCallConfig } from "../_shared/reservations-config.ts";
+import { generateReservationCode, isUniqueViolation } from "../_shared/reservation-code.ts";
 import {
   elevenLabsKey,
   getConversationStatus,
@@ -576,31 +577,46 @@ Deno.serve(async (req) => {
     consumerNumber = consumer.phone.trim();
   }
 
-  // ── The ticket is created IMMEDIATELY … ────────────────────────────────────
-  const { data: ticket, error: insErr } = await admin
-    .from("playground_reservations")
-    .insert({
-      created_by: authRes.user.id,
-      project_id: place.id,
-      place_name: place.name ?? "(unnamed place)",
-      consumer_id: consumer.id,
-      consumer_name: guestName(consumer),
-      reserved_at: reservedAt.toISOString(),
-      party_size: partySize,
-      notes: notes || null,
-      status: "pending",
-      business_number_mode: businessMode,
-      business_number: businessNumber,
-      consumer_number_mode: consumerMode,
-      consumer_number: consumerNumber,
-      attempts: [],
-      attempts_planned: cfg.attempts,
-      attempts_state: "running",
-      callback_state: "none",
-    })
-    .select("*")
-    .single();
-  if (insErr) return json({ ok: false, error: insErr.message }, 500);
+  // ── The ticket is created IMMEDIATELY, with its 8-digit reference code ─────
+  // (fresh code per try; a unique-index collision just redraws).
+  let ticket: { id: string } & Record<string, unknown> | null = null;
+  let insErr: { message: string } | null = null;
+  let referenceCode = "";
+  for (let i = 0; i < 3 && !ticket; i++) {
+    referenceCode = generateReservationCode();
+    const ins = await admin
+      .from("playground_reservations")
+      .insert({
+        created_by: authRes.user.id,
+        project_id: place.id,
+        place_name: place.name ?? "(unnamed place)",
+        consumer_id: consumer.id,
+        consumer_name: guestName(consumer),
+        reference_code: referenceCode,
+        reserved_at: reservedAt.toISOString(),
+        party_size: partySize,
+        notes: notes || null,
+        status: "pending",
+        business_number_mode: businessMode,
+        business_number: businessNumber,
+        consumer_number_mode: consumerMode,
+        consumer_number: consumerNumber,
+        attempts: [],
+        attempts_planned: cfg.attempts,
+        attempts_state: "running",
+        callback_state: "none",
+      })
+      .select("*")
+      .single();
+    if (!ins.error) {
+      ticket = ins.data as { id: string } & Record<string, unknown>;
+      insErr = null;
+    } else {
+      insErr = ins.error;
+      if (!isUniqueViolation(ins.error)) break;
+    }
+  }
+  if (!ticket) return json({ ok: false, error: insErr?.message ?? "insert failed" }, 500);
 
   // ── … and then the intents start (background — the response doesn't wait). ─
   runInBackground(
@@ -614,6 +630,7 @@ Deno.serve(async (req) => {
         venueName: place.name?.trim() || "el lugar",
         guestName: guestName(consumer),
         guestPhone: consumerNumber,
+        referenceCode,
         partySize,
         dateEs: esDate(reservedAt),
         timeEs: esTime(reservedAt),

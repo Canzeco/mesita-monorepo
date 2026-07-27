@@ -19,6 +19,7 @@ import { corsPreflight, json, readJson } from "../_shared/http.ts";
 import { adminClient, getAuthedUser, readEFEnv } from "../_shared/auth.ts";
 import { getTierConfig } from "../_shared/membership.ts";
 import { invokeArtificialCaller } from "../_shared/internal.ts";
+import { generateReservationCode, isUniqueViolation } from "../_shared/reservation-code.ts";
 
 type Body = {
   project_id?: string;
@@ -110,23 +111,38 @@ Deno.serve(async (req) => {
     .eq("status", "active")
     .maybeSingle();
 
-  const { data: reservation, error } = await admin
-    .from("reservations")
-    .insert({
-      consumer_id: consumerId,
-      project_id: body.project_id,
-      coupon_id: coupon?.id ?? null,
-      reserved_at: reservedAt.toISOString(),
-      party_size: partySize,
-      notes: (body.notes ?? "").trim() || null,
-      status: "pending",
-    })
-    .select(
-      "id, reserved_at, party_size, status, notes, coupon_id, created_at, place:places(id, slug, name, category, photos, address)",
-    )
-    .single();
-
-  if (error) return json({ ok: false, error: error.message }, 500);
+  // Insert with the ticket's 8-digit reference code — fresh code per try; a
+  // unique-index collision just redraws.
+  let reservation: { id: string } & Record<string, unknown> | null = null;
+  let insertError: { message: string } | null = null;
+  for (let i = 0; i < 3 && !reservation; i++) {
+    const ins = await admin
+      .from("reservations")
+      .insert({
+        consumer_id: consumerId,
+        project_id: body.project_id,
+        coupon_id: coupon?.id ?? null,
+        reference_code: generateReservationCode(),
+        reserved_at: reservedAt.toISOString(),
+        party_size: partySize,
+        notes: (body.notes ?? "").trim() || null,
+        status: "pending",
+      })
+      .select(
+        "id, reference_code, reserved_at, party_size, status, notes, coupon_id, created_at, place:places(id, slug, name, category, photos, address)",
+      )
+      .single();
+    if (!ins.error) {
+      reservation = ins.data as { id: string } & Record<string, unknown>;
+      insertError = null;
+    } else {
+      insertError = ins.error;
+      if (!isUniqueViolation(ins.error)) break;
+    }
+  }
+  if (!reservation) {
+    return json({ ok: false, error: insertError?.message ?? "insert failed" }, 500);
+  }
 
   // Attempt 1 is immediate: hand off to the Reservationist to phone the venue.
   // Best-effort — the reservation already exists, so a call-trigger failure must

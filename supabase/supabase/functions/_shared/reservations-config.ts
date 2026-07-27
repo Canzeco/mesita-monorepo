@@ -12,9 +12,11 @@
 export type TestCall = { enabled: boolean; number: string; consumerNumber: string };
 export type ReservationsCallConfig = { testCall: TestCall; attempts: number };
 
-export const ATTEMPTS_MIN = 1;
-export const ATTEMPTS_MAX = 3;
-export const ATTEMPTS_DEFAULT = 3;
+// FIXED at 2 by protocol — not configurable. Attempt 1 fires immediately;
+// attempt 2 fires 5 minutes later if the venue is open, else 30 minutes after
+// it next opens (that scheduler is the production follow-up). Coerce pins this
+// regardless of what the stored row says.
+export const ATTEMPTS = 2;
 
 // Current testing seed — while under test the agent dials this ONE number for
 // EVERY reservation instead of any real venue. Ships ENABLED so a config row that
@@ -26,8 +28,8 @@ export const TEST_CALL_SEED: TestCall = { enabled: true, number: "+524445499597"
 /**
  * Coerce the stored reservations_config jsonb into the agent-runtime knobs.
  * Anything missing/malformed resolves to the safe default (test mode on, the test
- * line, 3 attempts) — the calling path must never crash on a bad row, and must
- * never default into ringing a real venue.
+ * line) — the calling path must never crash on a bad row, and must never default
+ * into ringing a real venue. Attempts are fixed at 2 regardless of the row.
  */
 export function coerceReservationsCallConfig(raw: unknown): ReservationsCallConfig {
   const c = raw && typeof raw === "object" && !Array.isArray(raw)
@@ -36,9 +38,6 @@ export function coerceReservationsCallConfig(raw: unknown): ReservationsCallConf
   const t = c.testCall && typeof c.testCall === "object" && !Array.isArray(c.testCall)
     ? c.testCall as Record<string, unknown>
     : {};
-  const attemptsRaw = typeof c.attempts === "number" && Number.isFinite(c.attempts)
-    ? Math.round(c.attempts)
-    : ATTEMPTS_DEFAULT;
   return {
     testCall: {
       enabled: typeof t.enabled === "boolean" ? t.enabled : TEST_CALL_SEED.enabled,
@@ -49,6 +48,6 @@ export function coerceReservationsCallConfig(raw: unknown): ReservationsCallConf
         ? t.consumerNumber.trim()
         : TEST_CALL_SEED.consumerNumber,
     },
-    attempts: Math.max(ATTEMPTS_MIN, Math.min(ATTEMPTS_MAX, attemptsRaw)),
+    attempts: ATTEMPTS,
   };
 }
