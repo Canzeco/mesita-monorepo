@@ -8,8 +8,6 @@ export const dynamic = "force-dynamic";
 // the intercepted variant at (shell)/@modal/(.)reservation/[id]/page.tsx
 // which renders inside a modal on top of the underlying surface.
 //
-// Mocked: ids resolve through getMockReservationById; unknown ids 404.
-
 export default async function ReservationDetailPage({
   params,
 }: {
