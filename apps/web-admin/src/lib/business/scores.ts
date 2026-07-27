@@ -388,7 +388,7 @@ function whatScore(rel: WhatRelation, p: SmWhatParams): number {
   }
 }
 
-export type SmInputs = {
+type SmInputs = {
   /** km to W (0 inside a named region) · null = unknown → where 1. */
   km: number | null;
   /** The consumer's distance tolerance (their Where filter slider), km ·
