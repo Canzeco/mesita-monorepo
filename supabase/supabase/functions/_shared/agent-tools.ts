@@ -94,10 +94,47 @@ export function parseVenueLocal(date: unknown, time: unknown): Date | null {
   return Number.isNaN(d.getTime()) ? null : d;
 }
 
+/** ISO instant → venue-local "YYYY-MM-DD" (CDMX) — defaulting for partial changes. */
+export function venueLocalDate(iso: string): string {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Mexico_City",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date(iso));
+}
+
+/** ISO instant → venue-local "HH:mm" (CDMX, 24h). */
+export function venueLocalTime(iso: string): string {
+  return new Intl.DateTimeFormat("en-GB", {
+    timeZone: "America/Mexico_City",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).format(new Date(iso));
+}
+
+// ── Guest-name matching (the PRIMARY lookup key — the code is secondary) ─────
+
+/** Lowercase + accent-strip so "López" matches "lopez". */
+function nameKey(s: string): string {
+  return s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+}
+
+/**
+ * True when every word of the spoken query appears in the ticket's guest name
+ * — "ana lopez" matches "Ana María López", "lopez" alone matches too.
+ */
+export function ticketMatchesGuestName(row: TicketRow, query: string): boolean {
+  const guest = nameKey(guestNameOf(row));
+  const words = nameKey(query).split(/\s+/).filter(Boolean);
+  return words.length > 0 && words.every((w) => guest.includes(w));
+}
+
 // ── Ticket reads ─────────────────────────────────────────────────────────────
 
 export const TICKET_SELECT =
-  "id, reference_code, reserved_at, party_size, status, notes, is_test, project_id, consumer_id, reported_verdict, alternatives, guest_confirmed_at, consumer:consumers(full_name, first_name, last_name, phone)";
+  "id, reference_code, reserved_at, party_size, status, notes, is_test, project_id, consumer_id, reported_verdict, alternatives, guest_confirmed_at, negotiation_rounds, consumer:consumers(full_name, first_name, last_name, phone)";
 
 export type TicketRow = {
   id: string;
@@ -112,6 +149,7 @@ export type TicketRow = {
   reported_verdict: string | null;
   alternatives: unknown;
   guest_confirmed_at: string | null;
+  negotiation_rounds: number;
   consumer: {
     full_name: string | null;
     first_name: string | null;

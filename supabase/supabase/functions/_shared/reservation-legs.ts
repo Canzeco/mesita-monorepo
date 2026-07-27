@@ -79,14 +79,24 @@ export function guestLegFirstMessage(v: ReservationLegVars): string {
   return `¡Hola ${v.guestName}! Te llamo de parte de ${v.venueName}: tu reservación está confirmada.`;
 }
 
+/** Guest-leg context: what the Confirmer call is about. */
+export type GuestLegContext = {
+  /** "confirmation" (venue said yes) · "counter_offer" (venue offered options). */
+  callContext?: string;
+  /** Speakable list of the venue's alternatives — "" when none. */
+  venueAlternatives?: string;
+};
+
 /**
  * The dynamic variables every Reservationist call carries — same names both
  * legs, plus `call_direction` so the console prompt can branch even when
- * per-call overrides are disallowed.
+ * per-call overrides are disallowed. `call_context` / `venue_alternatives`
+ * drive the a2 (Confirmer) prompt's confirmation-vs-counter-offer branch.
  */
 export function legDynamicVariables(
   direction: ReservationLegDirection,
   v: ReservationLegVars,
+  extra?: GuestLegContext,
 ): Record<string, string | number | boolean> {
   return {
     call_direction: direction,
@@ -99,5 +109,8 @@ export function legDynamicVariables(
     reservation_time: v.timeEs,
     occasion: "",
     special_requests: v.specialRequests,
+    call_context: extra?.callContext ??
+      (direction === "guest_confirmation" ? "confirmation" : "booking"),
+    venue_alternatives: extra?.venueAlternatives ?? "",
   };
 }

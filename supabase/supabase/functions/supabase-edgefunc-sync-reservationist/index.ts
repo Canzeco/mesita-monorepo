@@ -21,7 +21,11 @@
 // PROMPTS ARE WRITTEN ONLY AT AGENT CREATION. On every later run the fleet
 // mode PATCHes name + prompt.tool_ids exclusively and verifies the prompt
 // text length is unchanged — console tuning survives, exactly like the legacy
-// sync always treated the original agent.
+// sync always treated the original agent. EXCEPTION, opt-in per run:
+// { mode: "fleet", write_prompts: true } ALSO rewrites each fleet agent's
+// prompt + first message from the repo spec — use it to push a deliberate
+// prompt upgrade, knowing it overwrites any console tuning on the FLEET
+// agents (the original/donor agent is never touched).
 //
 // Auth: verify_jwt = true + requireInternalCaller — invoke via pg_net with the
 // vault scheduler_service_role_key, exactly like the cron schedulers do.
@@ -177,8 +181,9 @@ Deno.serve(async (req) => {
   if (!key) return json({ ok: false, error: "ELEVENLABS_KEY not configured" }, 503);
   const agentId = reservationAgentId();
 
-  const body = await readJsonOr<{ mode?: unknown }>(req, {});
+  const body = await readJsonOr<{ mode?: unknown; write_prompts?: unknown }>(req, {});
   const mode = body.mode === "inspect" ? "inspect" : body.mode === "fleet" ? "fleet" : "sync";
+  const writePrompts = body.write_prompts === true;
 
   // The tool secret + fleet state — read live so a SQL rotation propagates on
   // the next sync.
@@ -284,19 +289,26 @@ Deno.serve(async (req) => {
       let action: string;
 
       if (id) {
-        // Existing agent: PATCH name + tool_ids ONLY — the prompt is console
-        // territory after creation.
+        // Existing agent: PATCH name + tool_ids — the prompt is console
+        // territory after creation UNLESS write_prompts opts into pushing the
+        // repo spec (a deliberate prompt upgrade).
         const before = await elFetch(key, `/v1/convai/agents/${encodeURIComponent(id)}`);
         if (!before.ok) {
           id = null; // deleted in console — fall through to create
         } else {
           const prevPrompt = (before.body as AgentShape).conversation_config?.agent?.prompt ?? {};
           const prevChars = typeof prevPrompt.prompt === "string" ? prevPrompt.prompt.length : 0;
+          const agentPatch: Record<string, unknown> = writePrompts
+            ? {
+              first_message: spec.firstMessage,
+              prompt: { prompt: spec.prompt, tool_ids: toolIds },
+            }
+            : { prompt: { tool_ids: toolIds } };
           const patch = await elFetch(key, `/v1/convai/agents/${encodeURIComponent(id)}`, {
             method: "PATCH",
             body: {
               name: spec.name,
-              conversation_config: { agent: { prompt: { tool_ids: toolIds } } },
+              conversation_config: { agent: agentPatch },
             },
           });
           if (!patch.ok) return json({ ok: false, error: `agent ${spec.key}: ${patch.error}` }, 502);
@@ -305,7 +317,7 @@ Deno.serve(async (req) => {
             ? (after.body as AgentShape).conversation_config?.agent?.prompt ?? {}
             : {};
           const afterChars = typeof afterPrompt.prompt === "string" ? afterPrompt.prompt.length : 0;
-          action = "updated";
+          action = writePrompts ? "updated+prompt" : "updated";
           agentsOut[spec.key] = { id, name: spec.name };
           agentReport.push({
             key: spec.key,
@@ -313,6 +325,8 @@ Deno.serve(async (req) => {
             name: spec.name,
             action,
             tool_ids: toolIds,
+            prompt_chars_before: prevChars,
+            prompt_chars_after: afterChars,
             prompt_untouched: prevChars === afterChars,
           });
           continue;

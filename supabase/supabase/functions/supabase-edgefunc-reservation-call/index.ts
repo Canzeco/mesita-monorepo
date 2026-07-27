@@ -7,6 +7,8 @@
 // { reservation_id } by:
 //   · consumer-web-create-reservation  (guest tapped Reserve)
 //   · consumer-mcp                     (assistant-created reservation)
+//   · eleven-a2-confirm-reservation    (negotiation re-fire: the guest picked
+//     an alternative or proposed a new datetime → fresh Booker call)
 //
 // ACK-EARLY: validates + marks attempts_state='running', then the legs run in
 // an EdgeRuntime background task and the response returns immediately — the
@@ -14,11 +16,15 @@
 //
 //   Leg 1 · consumer → business  up to ATTEMPTS (fixed 2) call intents — the
 //     agent calls the venue ON BEHALF OF the guest; no answer → next intent.
-//     Once answered, watch the conversation to its post-call analysis:
-//     call_successful=success → the venue CONFIRMED.
-//   Leg 2 · business → consumer  ONLY after a confirmation, the agent calls
-//     the human guest back to confirm (callback_* columns). Skipped when the
-//     ticket has no guest number.
+//     Once answered, the verdict: what a1 RECORDED via a1_report_outcome
+//     (confirmed / counter_offer + alternatives / declined) outranks the
+//     post-call analysis heuristic (call_successful=success → CONFIRMED).
+//   Leg 2 · business → consumer  after a confirmation (call_context
+//     "confirmation") OR a counter-offer (call_context "counter_offer", the
+//     alternatives ride venue_alternatives) the agent calls the human guest
+//     (callback_* columns). Skipped when the ticket has no guest number. On a
+//     counter-offer the ticket STAYS pending — the guest's pick lands through
+//     eleven-a2-confirm-reservation, which re-fires this engine (≤2 rounds).
 //
 // Intents are spaced SECONDS apart still — the open-hours-aware scheduler
 // (+5 min if open, else 30 min after next opening) is the production
@@ -153,6 +159,24 @@ async function watchUntilAnswered(
   return "unknown";
 }
 
+// What the Booker explicitly recorded mid-call via a1_report_outcome — the
+// authoritative verdict; the analysis heuristic is only the fallback.
+async function readReportedVerdict(
+  admin: SupabaseClient,
+  id: string,
+): Promise<{ verdict: string | null; alternativesText: string }> {
+  const { data } = await admin
+    .from("reservations")
+    .select("reported_verdict, alternatives")
+    .eq("id", id)
+    .maybeSingle();
+  const alts = Array.isArray(data?.alternatives) ? (data.alternatives as unknown[]) : [];
+  return {
+    verdict: (data?.reported_verdict as string | null) ?? null,
+    alternativesText: alts.filter((a): a is string => typeof a === "string").join(" · "),
+  };
+}
+
 // After the venue answered, wait for the post-call verdict.
 async function watchVerdict(
   key: string,
@@ -191,12 +215,20 @@ async function runIntents(input: {
     await admin.from("reservations").update(patch).eq("id", reservationId);
   };
 
-  // Leg 2 · business → consumer — the confirmation call to the human.
-  const callGuest = async (key: string, phoneNumberId: string): Promise<void> => {
+  // Leg 2 · business → consumer — the Confirmer call to the human. Context
+  // "confirmation" relays a venue yes; "counter_offer" presents the venue's
+  // alternatives (the guest's answer lands via eleven-a2-confirm-reservation).
+  const callGuest = async (
+    key: string,
+    phoneNumberId: string,
+    context: "confirmation" | "counter_offer",
+    alternativesText: string,
+  ): Promise<void> => {
+    const label = context === "confirmation" ? "confirmed" : "counter-offer";
     if (!input.consumerNumber) {
       await record({
         callback_state: "skipped",
-        last_call_status: "confirmed — no guest number for the callback",
+        last_call_status: `${label} — no guest number for the callback`,
       });
       return;
     }
@@ -204,7 +236,10 @@ async function runIntents(input: {
       agentId: input.confirmerAgentId,
       agentPhoneNumberId: phoneNumberId,
       toNumber: input.consumerNumber,
-      dynamicVariables: legDynamicVariables("guest_confirmation", legVars),
+      dynamicVariables: legDynamicVariables("guest_confirmation", legVars, {
+        callContext: context,
+        venueAlternatives: alternativesText,
+      }),
       overrides: {
         prompt: guestLegPrompt(legVars),
         firstMessage: guestLegFirstMessage(legVars),
@@ -214,14 +249,14 @@ async function runIntents(input: {
     if (!call.ok) {
       await record({
         callback_state: "failed",
-        last_call_status: `confirmed — guest call failed: ${call.error}`.slice(0, 200),
+        last_call_status: `${label} — guest call failed: ${call.error}`.slice(0, 200),
       });
       return;
     }
     await record({
       callback_state: "ringing",
       callback_conversation_id: call.conversationId,
-      last_call_status: "confirmed — calling the guest",
+      last_call_status: `${label} — calling the guest`,
     });
     const outcome = call.conversationId
       ? await watchUntilAnswered(key, call.conversationId, CALLBACK_BUDGET_MS)
@@ -229,10 +264,10 @@ async function runIntents(input: {
     await record({
       callback_state: outcome,
       last_call_status: outcome === "answered"
-        ? "confirmed — guest notified"
+        ? `${label} — guest notified`
         : outcome === "no_answer"
-        ? "confirmed — guest didn't answer"
-        : "confirmed — guest call outcome unknown",
+        ? `${label} — guest didn't answer`
+        : `${label} — guest call outcome unknown`,
     });
   };
 
@@ -332,9 +367,15 @@ async function runIntents(input: {
         attempts,
         last_call_status: `intent ${n}: answered — awaiting verdict`,
       });
-      const verdict = call.conversationId
+      const analyzed = call.conversationId
         ? await watchVerdict(key, call.conversationId)
         : "unknown";
+      // a1's explicit report (a1_report_outcome) outranks the analysis.
+      const reported = await readReportedVerdict(admin, reservationId);
+      const verdict = reported.verdict === "confirmed" ||
+          reported.verdict === "declined" || reported.verdict === "counter_offer"
+        ? reported.verdict
+        : analyzed;
 
       if (verdict === "confirmed") {
         entry.result = "confirmed";
@@ -347,7 +388,22 @@ async function runIntents(input: {
           callback_at: new Date().toISOString(),
           last_call_status: `intent ${n}: venue confirmed — calling the guest`,
         });
-        await callGuest(key, phoneRes.id);
+        await callGuest(key, phoneRes.id, "confirmation", "");
+        return;
+      }
+      if (verdict === "counter_offer") {
+        // Venue offered options — the ticket STAYS pending; the guest hears
+        // them on the Confirmer leg and their pick (via
+        // eleven-a2-confirm-reservation) re-fires this engine.
+        entry.result = "counter_offer";
+        await record({
+          attempts,
+          attempts_state: "answered",
+          callback_state: "calling",
+          callback_at: new Date().toISOString(),
+          last_call_status: `intent ${n}: venue counter-offer — calling the guest`,
+        });
+        await callGuest(key, phoneRes.id, "counter_offer", reported.alternativesText);
         return;
       }
       if (verdict === "declined") {
@@ -495,6 +551,9 @@ Deno.serve(async (req) => {
       attempts_planned: cfg.attempts,
       business_number: businessNumber,
       consumer_number: consumerNumber || null,
+      // A stale verdict from a previous negotiation round must never be read
+      // as this run's outcome.
+      reported_verdict: null,
     })
     .eq("id", reservationId);
 
