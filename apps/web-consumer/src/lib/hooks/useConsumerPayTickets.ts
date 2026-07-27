@@ -26,7 +26,7 @@ import { useBrowserSupabase } from "@/lib/supabase/browser";
 // poll + bundle/sort out of PayTickets so the page fetches once and derives
 // stats + the list from a single source.
 
-export type TicketBundle = {
+type TicketBundle = {
   ticketId: string;
   payload: TicketBillPayload;
   bill?: PayNotificationRow;
