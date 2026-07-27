@@ -571,7 +571,7 @@ export type DeckSlot = {
   score: number;
 };
 
-export type LaneFill = {
+type LaneFill = {
   /** Cards the lane put forward (min(eligible, N)). */
   taken: number;
   /** Candidates with score > 0 in this lane. */
