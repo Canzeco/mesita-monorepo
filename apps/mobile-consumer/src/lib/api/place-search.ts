@@ -10,7 +10,7 @@ export {
   type PlacePredictionStatus,
 } from '@/lib/api/places';
 
-export type CreatedProject = {
+type CreatedProject = {
   ok: boolean;
   place: { id: string; slug: string; name: string; status: string };
 };
