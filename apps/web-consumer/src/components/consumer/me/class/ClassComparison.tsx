@@ -1,5 +1,4 @@
-import { Crown, Magnet } from "lucide-react";
-
+import { CLASS_ICONS } from "@/lib/consumer-data";
 import { cn } from "@/lib/utils";
 
 // Three-class comparison — Standard / Premium / Magnetic in ladder order
@@ -82,6 +81,10 @@ function CompareHead({
   label: string;
   accent?: "premium" | "magnetic";
 }) {
+  // The canonical class icon trio: Premium = paying (card), Magnetic = the
+  // crown (top tier). Standard's smile is skipped in this tight header.
+  const PremiumIcon = CLASS_ICONS.premium;
+  const MagneticIcon = CLASS_ICONS.magnetic;
   return (
     <div
       className={cn(
@@ -92,9 +95,11 @@ function CompareHead({
     >
       <span className="inline-flex items-center gap-1">
         {accent === "premium" && (
-          <Crown className="text-premium h-3 w-3 fill-current" />
+          <PremiumIcon className="text-premium h-3 w-3" />
         )}
-        {accent === "magnetic" && <Magnet className="h-3 w-3 text-amber-700" />}
+        {accent === "magnetic" && (
+          <MagneticIcon className="h-3 w-3 fill-current text-amber-700" />
+        )}
         <span
           className={cn(
             "font-display text-[12.5px] font-bold tracking-tight",

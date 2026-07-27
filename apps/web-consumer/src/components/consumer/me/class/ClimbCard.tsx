@@ -2,9 +2,17 @@
 
 import { type ReactNode } from "react";
 import Link from "next/link";
-import { Check, Crown, type LucideIcon } from "lucide-react";
+import { Check, type LucideIcon } from "lucide-react";
 
 import { cn } from "@/lib/utils";
+
+export type ClimbCardAction = {
+  label: string;
+  href?: string;
+  onClick?: () => void;
+  /** Secondary actions render as a quiet bordered button under the primary. */
+  secondary?: boolean;
+};
 
 export type ClimbCardData = {
   key: string;
@@ -20,7 +28,8 @@ export type ClimbCardData = {
   perks?: string[];
   reached: boolean;
   reachedLabel: string;
-  action?: { label: string; href?: string; onClick?: () => void };
+  /** Doors into the class — a card can have several (e.g. Magnetic). */
+  actions?: ClimbCardAction[];
   note?: string;
 };
 
@@ -35,21 +44,29 @@ export function ClimbCard({ data }: { data: ClimbCardData }) {
         {data.reachedLabel}
       </span>
     );
-  } else if (data.action) {
-    const cls =
-      "bg-pink-gradient shadow-sm flex items-center justify-center rounded-lg py-2.5 text-[13px] font-semibold text-white transition active:scale-[0.99]";
-    footer = data.action.href ? (
-      <Link href={data.action.href} className={cls}>
-        {data.action.label}
-      </Link>
-    ) : (
-      <button
-        type="button"
-        onClick={data.action.onClick}
-        className={cn(cls, "w-full")}
-      >
-        {data.action.label}
-      </button>
+  } else if (data.actions && data.actions.length > 0) {
+    footer = (
+      <div className="flex flex-col gap-2">
+        {data.actions.map((action) => {
+          const cls = action.secondary
+            ? "border-border bg-card hover:bg-muted flex items-center justify-center rounded-lg border py-2.5 text-[13px] font-semibold transition active:scale-[0.99]"
+            : "bg-pink-gradient shadow-sm flex items-center justify-center rounded-lg py-2.5 text-[13px] font-semibold text-white transition active:scale-[0.99]";
+          return action.href ? (
+            <Link key={action.label} href={action.href} className={cls}>
+              {action.label}
+            </Link>
+          ) : (
+            <button
+              key={action.label}
+              type="button"
+              onClick={action.onClick}
+              className={cn(cls, "w-full")}
+            >
+              {action.label}
+            </button>
+          );
+        })}
+      </div>
     );
   } else if (data.note) {
     footer = (
@@ -79,9 +96,6 @@ export function ClimbCard({ data }: { data: ClimbCardData }) {
         </span>
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-1.5">
-            {data.accent && (
-              <Crown className="text-premium h-4 w-4 shrink-0 fill-current" />
-            )}
             <span
               className={cn(
                 "font-display text-[16px] leading-none font-bold tracking-tight",

@@ -1,9 +1,9 @@
 "use client";
 
 import Image from "next/image";
-import { BadgeCheck, Crown, Instagram } from "lucide-react";
+import { BadgeCheck, Instagram } from "lucide-react";
 import type { ConsumerProfile } from "@/lib/api/profile";
-import { CLASSES, isElevatedClass } from "@/lib/consumer-data";
+import { CLASSES, CLASS_ICONS, isElevatedClass } from "@/lib/consumer-data";
 import { useConsumerClass } from "@/lib/class-context";
 import {
   ageFromBirthday,
@@ -23,8 +23,10 @@ export function ProfileSummaryCard({
 }) {
   const { key, origin, followers, handle: classHandle } = useConsumerClass();
   const isElevated = isElevatedClass(key);
-  // Magnetic (top tier) reads gold; Premium reads its violet token.
+  // Magnetic (top tier) reads gold; Premium reads its violet token. The icon
+  // is the canonical class trio (smile / card / crown).
   const elevatedBg = key === "magnetic" ? "bg-tier-gold" : "bg-tier-premium";
+  const ClassIcon = CLASS_ICONS[key];
 
   if (loading) {
     return (
@@ -178,7 +180,7 @@ export function ProfileSummaryCard({
                 : "bg-amber-400/20 text-amber-700",
             )}
           >
-            <Crown className="h-[15px] w-[15px]" />
+            <ClassIcon className="h-[15px] w-[15px]" />
           </span>
           <span className="text-[13px] font-semibold tracking-tight">
             Mesita {classLabel}

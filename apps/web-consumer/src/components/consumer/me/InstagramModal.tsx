@@ -1,0 +1,399 @@
+"use client";
+
+import { useState } from "react";
+import { BadgeCheck, Camera, Crown, Instagram } from "lucide-react";
+import { cn, errMsg } from "@/lib/utils";
+import { toast } from "@/lib/toast";
+import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
+import { Spinner } from "@/components/shared/Spinner";
+import { SectionEyebrow } from "@/components/consumer/me/settings-rows";
+import { useBrowserSupabase } from "@/lib/supabase/browser";
+import { apiClaimInstagram } from "@/lib/api/profile";
+import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
+import {
+  useConsumerClass,
+  useMockAccount,
+  setMockAccount,
+} from "@/lib/class-context";
+import {
+  MAGNETIC_FOLLOWER_THRESHOLD,
+  STORY_FOLLOWER_THRESHOLD,
+} from "@/lib/consumer-data";
+import { REWARD_SEGMENT_BY_KEY, PEAK_STRATEGY } from "@/lib/reward-segments";
+import { DEMO_INSTAGRAM_FOLLOWERS } from "@/lib/instagram-demo";
+import {
+  INSTAGRAM_ICON_GRADIENT_CLASS,
+  SHEET_TITLE_CLASS,
+  SHEET_BODY_CLASS,
+} from "@/lib/ui-classes";
+
+// The Instagram surface — a bottom sheet the Me page opens from the Instagram
+// box (and the Class modal's "Join with Instagram" door). Three labeled
+// sections top to bottom, mirroring the Class modal's structure:
+//   emulator          — the demo Instagram toggle + editable follower count
+//                       (moved here from the old Me-page MockControls; the
+//                       class emulator lives on the Class modal)
+//   current connection — the live IG state off useConsumerClass()
+//   connect            — the real @mesita.bot verify flow
+//                       (consumer-web-claim-instagram; replaces the old
+//                       VerifySocialSheet)
+//
+// Built on LocalSheet: state-driven (parent keeps it mounted and flips
+// `open`) so the exit animation plays, backdrop covers the whole MobileFrame
+// card, and ESC closes it.
+
+// The @mesita.bot DM bot doesn't exist yet, so the follower count can't be
+// read from a real social-graph check. Until the bot ships, any 8-digit code
+// verifies and the claim is sent with the demo count (comfortably past the
+// Magnetic follower threshold) — but the grant itself is REAL: the EF
+// persists the handle + count and sets class_key=magnetic / origin=instagram
+// server-side. Swap the constant for the bot-reported count when it lands.
+const HANDLE_RE = /^@?[A-Za-z0-9._]{1,30}$/;
+
+export function InstagramModal({
+  open,
+  onClose,
+}: {
+  open: boolean;
+  onClose: () => void;
+}) {
+  const supabase = useBrowserSupabase();
+  const [handle, setHandle] = useState("");
+  const [code, setCode] = useState("");
+  const [verifying, setVerifying] = useState(false);
+
+  const canVerify =
+    HANDLE_RE.test(handle.trim()) && code.length >= 8 && !verifying;
+
+  // Real claim through consumer-web-claim-instagram: persists the @handle and
+  // follower count, grants Magnetic (origin "instagram") at the threshold;
+  // below it the consumer stays Standard. On a Magnetic grant we hard-navigate
+  // so the shell re-seeds with the unlocked class.
+  async function verify() {
+    if (!canVerify) return;
+    setVerifying(true);
+    try {
+      const result = await apiClaimInstagram(supabase, {
+        followers: DEMO_INSTAGRAM_FOLLOWERS,
+        handle: handle.trim().replace(/^@/, "").toLowerCase(),
+      });
+      if (result.tier === "magnetic") {
+        window.location.href = `${CONSUMER_ROUTES.me}?instagram=success`;
+        return;
+      }
+      toast(
+        `Instagram connected, but ${result.followers.toLocaleString(
+          "en-US",
+        )} followers is below the ${MAGNETIC_FOLLOWER_THRESHOLD.toLocaleString(
+          "en-US",
+        )} needed for Magnetic.`,
+      );
+      setVerifying(false);
+    } catch (e) {
+      toast(errMsg(e, "Couldn't verify your Instagram — try again."));
+      setVerifying(false);
+    }
+  }
+
+  return (
+    <LocalSheet open={open} onClose={onClose} ariaLabel="Instagram">
+      <div className={cn(SHEET_BODY_CLASS, "pt-3")}>
+        <div className="mb-4 flex items-center gap-3">
+          <span
+            className={cn(
+              "flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl text-white",
+              INSTAGRAM_ICON_GRADIENT_CLASS,
+            )}
+          >
+            <Instagram className="h-5 w-5" />
+          </span>
+          <div>
+            <h2 className={SHEET_TITLE_CLASS}>Instagram</h2>
+            <p className="text-muted-foreground text-[12px]">
+              Your reach unlocks Mesita Magnetic
+            </p>
+          </div>
+        </div>
+
+        <div className="flex flex-col gap-6">
+          <InstagramEmulator />
+
+          <section className="flex flex-col gap-2">
+            <SectionEyebrow>Current connection</SectionEyebrow>
+            <CurrentConnectionCard />
+          </section>
+
+          <section className="flex flex-col gap-2">
+            <SectionEyebrow>Two ways your reach pays</SectionEyebrow>
+            <TwoWaysCards />
+          </section>
+
+          <section className="flex flex-col gap-2">
+            <SectionEyebrow>Connect</SectionEyebrow>
+            <ol className="flex flex-col gap-3">
+              {[
+                <>
+                  Follow <span className="text-secondary">@mesita.bot</span> on
+                  Instagram.
+                </>,
+                <>
+                  DM <span className="text-secondary">@mesita.bot</span> with
+                  the word{" "}
+                  <span className="text-secondary font-mono">VERIFY</span>.
+                </>,
+                <>
+                  Mesita will reply with an 8-digit verification code. Paste it
+                  here.
+                </>,
+                <>
+                  {MAGNETIC_FOLLOWER_THRESHOLD.toLocaleString("en-US")}+
+                  followers unlocks Mesita Magnetic instantly.
+                </>,
+              ].map((line, i) => (
+                <li
+                  key={i}
+                  className="flex items-start gap-3 text-[13px] leading-snug"
+                >
+                  <span className="bg-secondary/15 text-secondary flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[11px] font-bold">
+                    {i + 1}
+                  </span>
+                  <span>{line}</span>
+                </li>
+              ))}
+            </ol>
+            <input
+              value={handle}
+              onChange={(e) => setHandle(e.target.value)}
+              placeholder="@your.instagram"
+              autoCapitalize="none"
+              autoCorrect="off"
+              spellCheck={false}
+              className="border-border bg-muted/30 placeholder:text-muted-foreground/70 mt-2 h-12 w-full rounded-lg border px-5 text-center text-sm outline-none"
+              maxLength={31}
+            />
+            <input
+              value={code}
+              onChange={(e) => setCode(e.target.value)}
+              placeholder="Paste 8-digit code"
+              className="border-border bg-muted/30 placeholder:text-muted-foreground/70 h-12 w-full rounded-lg border px-5 text-center text-sm outline-none"
+              maxLength={8}
+            />
+            <div className="mt-1 flex gap-2">
+              <button
+                type="button"
+                onClick={onClose}
+                className="border-border bg-card hover:bg-muted flex-1 rounded-lg border py-3 text-sm font-semibold transition"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={verify}
+                disabled={!canVerify}
+                className="bg-pink-gradient flex flex-1 items-center justify-center gap-2 rounded-lg py-3 text-sm font-semibold text-white transition disabled:opacity-60"
+              >
+                {verifying ? (
+                  <Spinner
+                    size="sm"
+                    className="border-white/40 border-t-white"
+                  />
+                ) : (
+                  <BadgeCheck className="h-4 w-4" />
+                )}
+                {verifying ? "Connecting…" : "Verify"}
+              </button>
+            </div>
+            <p className="text-muted-foreground mt-1 text-center text-[11px]">
+              We never ask for your Instagram password.
+            </p>
+          </section>
+        </div>
+      </div>
+    </LocalSheet>
+  );
+}
+
+// ─── Two ways your reach pays ──────────────────────────────────────────────
+
+// The two independent Instagram mechanics, each with its own follower bar:
+//   ≥5,000 → the WHOLE ACCOUNT upgrades to Magnetic automatically — no story
+//            required (class rung, up to 20%).
+//   ≥1,000 → a story tagging the place counts for the Story Bonus at that
+//            bill (action rung, up to 30%) — any class.
+// Rates quote the reward ladder's peak (aggressive) column so they always
+// match the /rewards program summary.
+function TwoWaysCards() {
+  const magneticRate = REWARD_SEGMENT_BY_KEY.magnetic.rates[PEAK_STRATEGY];
+  const storyRate = REWARD_SEGMENT_BY_KEY.story.rates[PEAK_STRATEGY];
+
+  return (
+    <div className="flex flex-col gap-2">
+      <div className="border-border bg-card flex items-start gap-3 rounded-2xl border p-4">
+        <span className="bg-tier-gold mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-white shadow-sm">
+          <Crown className="h-5 w-5" />
+        </span>
+        <div className="min-w-0">
+          <p className="text-[14px] leading-tight font-bold tracking-tight">
+            Magnetic upgrade{" "}
+            <span className="text-muted-foreground font-semibold">
+              · {MAGNETIC_FOLLOWER_THRESHOLD.toLocaleString("en-US")}+ followers
+            </span>
+          </p>
+          <p className="text-muted-foreground mt-1 text-[12px] leading-snug">
+            Automatic — no story required. Your whole account upgrades to
+            Mesita Magnetic: up to {magneticRate}% discount rewards at every
+            Verified Partner.
+          </p>
+        </div>
+      </div>
+
+      <div className="border-border bg-card flex items-start gap-3 rounded-2xl border p-4">
+        <span
+          className={cn(
+            "mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-white shadow-sm",
+            INSTAGRAM_ICON_GRADIENT_CLASS,
+          )}
+        >
+          <Camera className="h-5 w-5" />
+        </span>
+        <div className="min-w-0">
+          <p className="text-[14px] leading-tight font-bold tracking-tight">
+            Instagram Story Bonus{" "}
+            <span className="text-muted-foreground font-semibold">
+              · {STORY_FOLLOWER_THRESHOLD.toLocaleString("en-US")}+ followers
+            </span>
+          </p>
+          <p className="text-muted-foreground mt-1 text-[12px] leading-snug">
+            Post a story tagging the place during your visit — up to{" "}
+            {storyRate}% off that bill, every visit, whatever your class.
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Current connection ────────────────────────────────────────────────────
+
+function CurrentConnectionCard() {
+  const { origin, followers, handle } = useConsumerClass();
+  const connected = origin === "instagram";
+
+  return (
+    <div className="border-border bg-card flex items-center gap-3 rounded-2xl border p-4">
+      <span
+        className={cn(
+          "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-white shadow-sm",
+          connected ? INSTAGRAM_ICON_GRADIENT_CLASS : "bg-muted",
+        )}
+      >
+        <Instagram
+          className={cn("h-5 w-5", !connected && "text-muted-foreground")}
+        />
+      </span>
+      <div className="min-w-0 flex-1">
+        {connected ? (
+          <>
+            <p className="truncate text-[14px] font-bold tracking-tight">
+              {handle ? `@${handle}` : "Instagram connected"}
+            </p>
+            <p className="text-muted-foreground text-[12px]">
+              {followers.toLocaleString("en-US")} followers
+            </p>
+          </>
+        ) : (
+          <>
+            <p className="text-[14px] font-bold tracking-tight">
+              Not connected
+            </p>
+            <p className="text-muted-foreground text-[12px] leading-snug">
+              {MAGNETIC_FOLLOWER_THRESHOLD.toLocaleString("en-US")}+ followers
+              unlocks Mesita Magnetic.
+            </p>
+          </>
+        )}
+      </div>
+      {connected && (
+        <span className="bg-tier-gold flex shrink-0 items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-bold text-white shadow-sm">
+          <Crown className="h-3 w-3 fill-current" />
+          Magnetic
+        </span>
+      )}
+    </div>
+  );
+}
+
+// ─── Demo emulator ─────────────────────────────────────────────────────────
+
+// The Instagram half of the demo override (the class half lives on the Class
+// modal's preview toggle). Toggling on emulates a connected IG with an
+// editable follower count; crossing MAGNETIC_FOLLOWER_THRESHOLD grants
+// Magnetic via Instagram over the class axis, exactly like the real claim EF.
+// Remove with the MOCK_ paths once the states can be produced with real data.
+function InstagramEmulator() {
+  const mock = useMockAccount();
+  const igOn = mock?.instagram ?? false;
+  const followers = mock?.followers ?? DEMO_INSTAGRAM_FOLLOWERS;
+  const igMagnetic = igOn && followers >= MAGNETIC_FOLLOWER_THRESHOLD;
+
+  return (
+    <div className="border-border/70 rounded-2xl border border-dashed p-3">
+      <div className="flex items-center gap-1.5">
+        <span className="rounded bg-amber-500/15 px-1.5 py-0.5 text-[9px] font-bold tracking-[0.12em] text-amber-600 uppercase">
+          Demo
+        </span>
+        <span className="text-muted-foreground text-[11px] font-medium">
+          Emulate a connected Instagram
+        </span>
+        <span className="ml-auto">
+          <button
+            type="button"
+            role="switch"
+            aria-checked={igOn}
+            aria-label="Emulate Instagram"
+            onClick={() => setMockAccount({ instagram: !igOn })}
+            className={cn(
+              "relative inline-flex h-6 w-10 shrink-0 items-center rounded-full transition",
+              igOn ? "bg-primary" : "bg-muted",
+            )}
+          >
+            <span
+              className={cn(
+                "inline-block h-5 w-5 transform rounded-full bg-white shadow-sm transition",
+                igOn ? "translate-x-[18px]" : "translate-x-[2px]",
+              )}
+            />
+          </button>
+        </span>
+      </div>
+      {igOn && (
+        <div className="mt-2.5 flex items-center gap-2">
+          <label
+            htmlFor="mock-ig-followers"
+            className="text-muted-foreground text-[11px] font-medium"
+          >
+            Followers
+          </label>
+          <input
+            id="mock-ig-followers"
+            inputMode="numeric"
+            value={followers}
+            onChange={(e) => {
+              const n = Number(e.target.value.replace(/[^\d]/g, ""));
+              setMockAccount({ followers: Number.isFinite(n) ? n : 0 });
+            }}
+            className="border-border bg-muted/30 h-8 w-24 rounded-lg border px-2.5 text-right text-[12px] font-semibold outline-none"
+          />
+          <span
+            className={cn(
+              "ml-auto text-[10.5px] font-semibold",
+              igMagnetic ? "text-amber-700" : "text-muted-foreground",
+            )}
+          >
+            {MAGNETIC_FOLLOWER_THRESHOLD.toLocaleString("en-US")}+ = Magnetic
+          </span>
+        </div>
+      )}
+    </div>
+  );
+}

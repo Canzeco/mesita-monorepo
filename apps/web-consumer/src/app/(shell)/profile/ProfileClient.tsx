@@ -13,13 +13,12 @@ import {
 import { SignOutButton } from "@/components/auth/SignOutButton";
 import { DeleteAccountSheet } from "@/components/consumer/DeleteAccountSheet";
 import { EditProfileSheet } from "@/components/consumer/EditProfileSheet";
-import { VerifySocialSheet } from "@/components/consumer/VerifySocialSheet";
+import { InstagramModal } from "@/components/consumer/me/InstagramModal";
 import { ShareModal } from "@/components/consumer/me/ShareModal";
 import { ClassModal } from "@/components/consumer/me/ClassModal";
 import { SettingsModal } from "@/components/consumer/me/SettingsModal";
 import { ContactModal } from "@/components/consumer/me/ContactModal";
 import { AiConnectModal } from "@/components/consumer/me/AiConnectModal";
-import { MockControls } from "@/components/consumer/me/MockControls";
 import { errMsg } from "@/lib/utils";
 import { toast } from "@/lib/toast";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
@@ -109,10 +108,9 @@ export function ProfileClient({
         <div className="flex flex-col gap-3">
           <ProfileSummaryCard profile={profile} loading={loading} />
 
-          {/* Demo emulation controls — surfaced here while the real Instagram
-              + Class cards below are parked (soon), so every class/IG state
-              stays previewable. Remove with the MOCK_ paths. */}
-          <MockControls />
+          {/* Demo emulation lives INSIDE the modals now: the class preview
+              toggle on the Class modal, the Instagram toggle + follower input
+              on the Instagram modal. */}
 
           {/* Conversion cluster — membership first, then the free upgrade
               path. Un-parked: Class opens the full ladder (perks comparison +
@@ -198,11 +196,7 @@ export function ProfileClient({
         onClose={() => setClassOpen(false)}
         onConnectInstagram={openVerify}
       />
-      <VerifySocialSheet
-        platform="instagram"
-        open={verifyOpen}
-        onClose={() => setVerifyOpen(false)}
-      />
+      <InstagramModal open={verifyOpen} onClose={() => setVerifyOpen(false)} />
       {profile && (
         <EditProfileSheet
           profile={profile}

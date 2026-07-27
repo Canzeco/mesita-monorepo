@@ -1,3 +1,5 @@
+import { CreditCard, Crown, Smile, type LucideIcon } from "lucide-react";
+
 // Ascending class ladder: standard (default) < premium (paid) < magnetic
 // (top, invite-only via Instagram reach). "class" is the consumer membership
 // axis — distinct from a business's billing "plan" (free/pro/ultra).
@@ -125,6 +127,21 @@ export const CLASSES: {
 export const MAGNETIC_FOLLOWER_THRESHOLD = CLASSES.find(
   (c) => c.id === "magnetic",
 )!.followerThreshold;
+
+// The Instagram Story Bonus eligibility bar (v5 spec, MESITA-723) — distinct
+// from the Magnetic class bar above: 1,000+ followers makes a story count for
+// the story reward at the table; 5,000+ upgrades the whole account to
+// Magnetic. Display-only until the backend enforces it.
+export const STORY_FOLLOWER_THRESHOLD = 1_000;
+
+// Canonical class icon trio (Pato, 2026-07-27): Standard = the happy face,
+// Premium = paying (card), Magnetic = the crown — the top of the ladder
+// wears it. Use these everywhere a class is iconified so surfaces agree.
+export const CLASS_ICONS: Record<Class, LucideIcon> = {
+  standard: Smile,
+  premium: CreditCard,
+  magnetic: Crown,
+};
 
 // Canonical bg + text class per class. Used wherever a class needs the
 // brand-color chip treatment (avatars, pills, hero rows). Compose with

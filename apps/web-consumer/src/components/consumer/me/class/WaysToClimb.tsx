@@ -1,12 +1,11 @@
 "use client";
 
 import { Fragment } from "react";
-import { Crown, Instagram, Smile } from "lucide-react";
 
-import { CLASSES } from "@/lib/consumer-data";
+import { CLASSES, CLASS_ICONS } from "@/lib/consumer-data";
 import { useConsumerClass } from "@/lib/class-context";
 import { baseRateForClass } from "@/lib/reward-segments";
-import { INSTAGRAM_ICON_GRADIENT_CLASS } from "@/lib/ui-classes";
+import { toast } from "@/lib/toast";
 import { ClimbCard, type ClimbCardData } from "./ClimbCard";
 import { InstagramConnectedSummary } from "./InstagramConnectedSummary";
 
@@ -33,7 +32,7 @@ export function WaysToClimb({
   const cards: ClimbCardData[] = [
     {
       key: "standard",
-      icon: Smile,
+      icon: CLASS_ICONS.standard,
       iconBg: "bg-muted text-foreground",
       title: "Standard",
       price: "$0",
@@ -49,9 +48,9 @@ export function WaysToClimb({
       note: isStandard ? undefined : "Included in every account",
     },
     {
-      key: "subscription",
-      icon: Crown,
-      iconBg: "bg-pink-gradient text-white",
+      key: "premium",
+      icon: CLASS_ICONS.premium,
+      iconBg: "bg-tier-premium text-white",
       title: "Premium",
       via: "Subscription",
       accent: true,
@@ -59,24 +58,35 @@ export function WaysToClimb({
       priceNote: "per month · cancel anytime",
       desc: "Subscribe and unlock full Premium instantly. No follower count needed; cancel whenever you want.",
       perks: ELEVATED_PERKS,
-      reached: origin === "subscription",
+      reached: key === "premium",
       reachedLabel: "Active",
-      action: { label: "Subscribe", href: "/subscribe/premium" },
+      actions: [{ label: "Join with subscription", href: "/subscribe/premium" }],
     },
     {
-      key: "instagram",
-      icon: Instagram,
-      iconBg: [INSTAGRAM_ICON_GRADIENT_CLASS, "text-white"].join(" "),
+      key: "magnetic",
+      icon: CLASS_ICONS.magnetic,
+      iconBg: "bg-tier-gold text-white",
       title: "Magnetic",
-      via: "Instagram",
+      via: "Instagram or invitation",
       accent: true,
       price: `${magnetic.followerThreshold.toLocaleString("en-US")}+ followers`,
-      priceNote: "no payment — earned with reach",
+      priceNote: "no payment — earned with reach, or invited by Mesita",
       desc: `Connect an Instagram with ${magnetic.followerThreshold.toLocaleString("en-US")}+ followers and post a story each time you visit — Mesita's top, invite-only tier, without paying a peso.`,
       perks: ELEVATED_PERKS,
-      reached: origin === "instagram",
-      reachedLabel: "Connected",
-      action: { label: "Connect", onClick: onConnectInstagram },
+      reached: key === "magnetic",
+      reachedLabel: origin === "instagram" ? "Connected" : "Active",
+      actions: [
+        { label: "Join with Instagram", onClick: onConnectInstagram },
+        {
+          label: "Join via invitation",
+          secondary: true,
+          // No invite-code flow yet — invitations are extended by Mesita.
+          onClick: () =>
+            toast(
+              "Magnetic invitations come directly from Mesita — there's nothing to claim here yet.",
+            ),
+        },
+      ],
     },
   ];
 
