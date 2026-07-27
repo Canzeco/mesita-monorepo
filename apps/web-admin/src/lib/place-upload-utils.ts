@@ -1,8 +1,8 @@
 /** Shared upload constraints — mirrors mesita-web-business place-upload-utils. */
 
-export const MAX_UPLOAD_BYTES = 8 * 1024 * 1024;
+const MAX_UPLOAD_BYTES = 8 * 1024 * 1024;
 
-export const ALLOWED_IMAGE_MIME_TYPES = new Set([
+const ALLOWED_IMAGE_MIME_TYPES = new Set([
   "image/jpeg",
   "image/png",
   "image/webp",
@@ -11,7 +11,7 @@ export const ALLOWED_IMAGE_MIME_TYPES = new Set([
 
 export const ALLOWED_IMAGE_ACCEPT = Array.from(ALLOWED_IMAGE_MIME_TYPES).join(",");
 
-export const ALLOWED_MENU_MIME_TYPES = new Set([
+const ALLOWED_MENU_MIME_TYPES = new Set([
   "application/pdf",
   ...ALLOWED_IMAGE_MIME_TYPES,
 ]);
@@ -23,20 +23,20 @@ export const PLACE_IMAGES_BUCKET = "place-images";
 // Menu uploads go to their own buckets, separate from gallery photos and split
 // by kind — images to menu-images, PDFs to menu-pdfs (see supabase migrations
 // 20260711182000_menu_images_bucket + 20260711190000_menu_pdfs_bucket).
-export const MENU_IMAGES_BUCKET = "menu-images";
-export const MENU_PDFS_BUCKET = "menu-pdfs";
+const MENU_IMAGES_BUCKET = "menu-images";
+const MENU_PDFS_BUCKET = "menu-pdfs";
 
 /** Menu uploads split by kind: PDFs to menu-pdfs, images to menu-images. */
 export function bucketForMenuFile(file: File): string {
   return file.type === "application/pdf" ? MENU_PDFS_BUCKET : MENU_IMAGES_BUCKET;
 }
 
-export function formatBytes(bytes: number): string {
+function formatBytes(bytes: number): string {
   if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} KB`;
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-export function extForFile(file: File): string {
+function extForFile(file: File): string {
   switch (file.type) {
     case "image/jpeg":
       return "jpg";
@@ -74,7 +74,7 @@ export function validateMenuUploadFile(file: File): string | null {
   return null;
 }
 
-export function extForMenuFile(file: File): string {
+function extForMenuFile(file: File): string {
   if (file.type === "application/pdf") return "pdf";
   return extForFile(file);
 }
@@ -93,7 +93,7 @@ export function isDriveMenuUrl(url: string): boolean {
   }
 }
 
-export type MenuFileKind = "image" | "pdf" | "drive";
+type MenuFileKind = "image" | "pdf" | "drive";
 
 const IMAGE_EXT = /\.(jpe?g|png|webp|avif|gif)(\?|#|$)/i;
 const PDF_EXT = /\.pdf(\?|#|$)/i;
