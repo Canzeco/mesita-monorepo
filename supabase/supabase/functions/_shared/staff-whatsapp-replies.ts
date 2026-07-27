@@ -59,7 +59,7 @@ export function staticUnauthReply(reason: StaffAccessDeniedReason): string {
   return UNAUTH_STATIC[reason];
 }
 
-export function staticCoachReply(ctx: StaffCoachContext): string {
+function staticCoachReply(ctx: StaffCoachContext): string {
   const key = ctx.situation && COACH_STATIC[ctx.situation]
     ? ctx.situation
     : ctx.sessionState in COACH_STATIC
