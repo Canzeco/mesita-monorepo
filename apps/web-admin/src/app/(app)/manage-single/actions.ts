@@ -434,54 +434,6 @@ export async function removeMember(
   return { ok: true, data: r.data };
 }
 
-// ── Scan / tickets ───────────────────────────────────────────────────────
-
-export type AdminTicket = {
-  id: string;
-  kind: string;
-  status: string;
-  story_status?: string | null;
-  consumer: { code?: string | null; full_name?: string | null; class_key?: string | null } | null;
-  check_subtotal_cents: number | null;
-  total_cents: number | null;
-  discount_cents: number | null;
-  discount_percent: number | null;
-  currency: string | null;
-  created_at: string;
-  paid_at: string | null;
-  cancelled_at: string | null;
-};
-
-export async function listTickets(
-  projectId: string,
-  limit = 100,
-): Promise<Result<AdminTicket[]>> {
-  const r = await efInvoke<{ tickets: AdminTicket[] } | AdminTicket[]>(
-    "business-web-list-tickets",
-    { placeId: projectId, limit },
-  );
-  if (!r.ok) return { ok: false, error: r.error };
-  const tickets = Array.isArray(r.data)
-    ? r.data
-    : ((r.data as { tickets?: AdminTicket[] }).tickets ?? []);
-  return { ok: true, data: tickets };
-}
-
-export async function markTicketPaid(ticketId: string): Promise<Result<unknown>> {
-  const r = await efInvoke<unknown>("business-web-mark-ticket-paid", { ticketId });
-  if (!r.ok) return { ok: false, error: r.error };
-  return { ok: true, data: r.data };
-}
-
-export async function cancelTicket(
-  ticketId: string,
-  reason?: string,
-): Promise<Result<unknown>> {
-  const r = await efInvoke<unknown>("business-web-cancel-ticket", { ticketId, reason });
-  if (!r.ok) return { ok: false, error: r.error };
-  return { ok: true, data: r.data };
-}
-
 // Default business web origin used when the env var isn't set on Vercel —
 // production lives at business.mesita.ai today. Override per environment by
 // setting BUSINESS_WEB_URL.
