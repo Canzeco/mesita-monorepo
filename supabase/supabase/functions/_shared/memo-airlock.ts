@@ -1,4 +1,4 @@
-// airlock.ts — the security airlock for Memo's read-only reasoning agent.
+// memo-airlock.ts — the security airlock for Memo's read-only reasoning agent.
 //
 // Memo v-next reasons with OpenAI, but the model is untrusted: the user's
 // message (and every web page / DB row a tool returns) can carry injected
@@ -18,10 +18,15 @@
 //     before they re-enter the model context.
 //
 // This file is the mechanism (registry + validated dispatch + the OpenAI
-// tool-calling loop). The concrete tools live in ./airlock-tools.ts.
+// tool-calling loop). The concrete tools live in ./memo-airlock-tools.ts.
+//
+// An OPTIONAL trace sink (ctx.trace) records the model's rounds and every tool
+// dispatch for the admin playground. It is absent on the consumer path — the
+// live concierge is unchanged and pays no overhead.
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
-import type { Prediction } from "./memo-google-text-search.ts";
+import type { Prediction } from "./memo-types.ts";
+import { clampSummary, type TraceSink, toolSource } from "./memo-trace.ts";
 
 // ── Tool contract ──────────────────────────────────────────────────────
 
@@ -53,6 +58,8 @@ export type AirlockContext = {
   lng: number | null;
   keys: { openai: string; perplexity: string; google: string };
   model: string;
+  // OPTIONAL admin-only reasoning trace. Absent on the consumer path.
+  trace?: TraceSink;
 };
 
 // What a tool hands back. `text` is the model-facing summary (public-safe,
@@ -141,6 +148,15 @@ function toOpenAiTool(t: AirlockTool) {
   };
 }
 
+function safeParseArgs(raw: string): Record<string, unknown> {
+  try {
+    const v = JSON.parse(raw || "{}");
+    return v && typeof v === "object" ? v as Record<string, unknown> : {};
+  } catch {
+    return {};
+  }
+}
+
 // ── The airlock ────────────────────────────────────────────────────────
 
 export class Airlock {
@@ -155,22 +171,54 @@ export class Airlock {
 
   // Run one tool call from the model. A name the registry doesn't know, or
   // args that don't validate, yield a benign result — never an escalation and
-  // never a throw that leaks a stack to the model.
+  // never a throw that leaks a stack to the model. Every dispatch is recorded
+  // to the trace when one is attached.
   async dispatch(name: string, rawArgs: unknown): Promise<ToolResult> {
+    const start = Date.now();
     const tool = this.byName.get(name);
-    if (!tool) return { text: `No such capability: ${name}.` };
+    if (!tool) {
+      const result = { text: `No such capability: ${name}.` };
+      this.record(name, {}, result, start);
+      return result;
+    }
     let args: Record<string, unknown>;
     try {
       args = validateArgs(rawArgs, tool.schema);
     } catch (e) {
-      return { text: `Can't run ${name}: ${(e as Error).message}.` };
+      const result = { text: `Can't run ${name}: ${(e as Error).message}.` };
+      this.record(name, {}, result, start);
+      return result;
     }
+    let result: ToolResult;
     try {
-      return await tool.run(args, this.ctx);
+      result = await tool.run(args, this.ctx);
     } catch (e) {
       console.error(`[airlock] tool ${name} threw:`, (e as Error).message);
-      return { text: `Couldn't complete ${name} right now.` };
+      result = { text: `Couldn't complete ${name} right now.` };
     }
+    this.record(name, args, result, start);
+    return result;
+  }
+
+  private record(
+    name: string,
+    args: Record<string, unknown>,
+    result: ToolResult,
+    start: number,
+  ) {
+    if (!this.ctx.trace) return;
+    const source = toolSource(name);
+    this.ctx.trace.push({
+      kind: "tool",
+      title: `${name} · ${source}`,
+      source,
+      tool: name,
+      args,
+      summary: clampSummary(result.text),
+      predictions: result.predictions?.length ?? 0,
+      citations: result.citations?.length ?? 0,
+      ms: Date.now() - start,
+    });
   }
 }
 
@@ -200,8 +248,9 @@ export type AgentOutput = {
 // Drive the sealed model: it thinks, optionally calls airlock tools, sees the
 // (public-safe) results, and finally answers in natural language. We collect
 // place-card predictions + citations from whatever tools it used along the
-// way. `seedMessages` lets the caller prime the loop RAG-first (e.g. with a
-// Lineup recall already in context) per Pato's "RAG is central".
+// way. `messages` lets the caller prime the loop RAG-first (e.g. with a
+// Lineup recall already in context) per Pato's "RAG is central". Each round
+// and the final answer are recorded to ctx.trace when one is attached.
 export async function runAgent(
   airlock: Airlock,
   ctx: AirlockContext,
@@ -233,11 +282,35 @@ export async function runAgent(
 
   for (let step = 0; step < MAX_STEPS; step++) {
     const last = step === MAX_STEPS - 1;
+    const t0 = Date.now();
     const res = await openAiChat(ctx, messages, last ? undefined : tools);
+    const ms = Date.now() - t0;
     const choice = res?.choices?.[0]?.message;
+    const calls = choice?.tool_calls ?? [];
+
+    if (ctx.trace) {
+      const content = (choice?.content ?? "").trim();
+      ctx.trace.push({
+        kind: "model",
+        title: `OpenAI reasoning · round ${step + 1}`,
+        source: "OpenAI",
+        model: ctx.model,
+        step,
+        toolsOffered: !last,
+        // On the answering round the content IS the reply (shown in the chat
+        // bubble), so we don't duplicate it here; a planning round's content
+        // is the model's thought.
+        thought: calls.length > 0 ? (content.length > 0 ? content : null) : null,
+        toolCalls: calls.map((c) => ({
+          name: c.function.name,
+          args: safeParseArgs(c.function.arguments),
+        })),
+        ms,
+      });
+    }
+
     if (!choice) break;
 
-    const calls = choice.tool_calls ?? [];
     if (calls.length === 0) {
       return {
         answer: (choice.content ?? "").trim(),
@@ -254,12 +327,7 @@ export async function runAgent(
       tool_calls: calls,
     });
     for (const call of calls) {
-      let parsed: unknown = {};
-      try {
-        parsed = JSON.parse(call.function.arguments || "{}");
-      } catch {
-        parsed = {};
-      }
+      const parsed = safeParseArgs(call.function.arguments);
       const result = await airlock.dispatch(call.function.name, parsed);
       absorb(result);
       messages.push({
@@ -271,8 +339,23 @@ export async function runAgent(
   }
 
   // Ran out of steps mid-tool-use — ask once more for a plain answer.
+  const tF = Date.now();
   const finalRes = await openAiChat(ctx, messages, undefined);
+  const finalMs = Date.now() - tF;
   const answer = (finalRes?.choices?.[0]?.message?.content ?? "").trim();
+  if (ctx.trace) {
+    ctx.trace.push({
+      kind: "model",
+      title: "OpenAI reasoning · final answer",
+      source: "OpenAI",
+      model: ctx.model,
+      step: MAX_STEPS,
+      toolsOffered: false,
+      thought: null,
+      toolCalls: [],
+      ms: finalMs,
+    });
+  }
   return { answer, predictions, citations, related };
 }
 

@@ -422,6 +422,12 @@ verify_jwt = true
 [functions.admin-web-update-scoring-config]
 verify_jwt = true
 
+# Memo Config Playground engine — runs Memo's reasoning agent for a super-admin
+# with a full reasoning trace (real/mock persona, persona+model override, always
+# the agent engine). Read-only; the agent's airlock is read-only by construction.
+[functions.admin-web-ask-memo]
+verify_jwt = true
+
 [functions.admin-web-search-places]
 verify_jwt = true
 

@@ -14,7 +14,15 @@
 // only export async functions to the client.
 
 import { efInvoke } from "@/lib/supabase-ef";
-import type { AskMemoResult, MemoConfig, MemoPrediction } from "./types";
+import type {
+  AskMemoMeta,
+  AskMemoResult,
+  MemoConfig,
+  MemoPrediction,
+  SampleConsumer,
+  SampleConsumersResult,
+  TraceStep,
+} from "./types";
 
 export type { AskMemoResult, MemoConfig, MemoPrediction } from "./types";
 
@@ -40,21 +48,24 @@ export async function updateMemoConfig(
   return { ok: true, data: r.data };
 }
 
-// Playground — run one live Memo query at the current SAVED persona so an
-// operator can dogfood the concierge from the admin console.
-//
-// It calls the consumer concierge EF directly. Two honest caveats, both tracked
-// for a dedicated super-admin `admin-web-ask-memo` EF follow-up:
-//   • ACL: the admin origin calling a `consumer-*` endpoint bends the
-//     one-caller-per-endpoint rule.
-//   • It can only exercise the SAVED persona — there is no draft override, so
-//     save Config edits before testing them here.
-// `consumer-web-ask-memo` is verify_jwt=false + optional-auth, so this works
-// today with no deploy.
-export async function askMemo(input: {
+// ── Playground ──────────────────────────────────────────────────────────
+// The Playground drives Memo's v-next REASONING AGENT via the dedicated
+// super-admin `admin-web-ask-memo` EF — a full multi-turn chat AS any persona
+// (a real consumer, a mock one, or a signed-out guest), returning Memo's
+// internal reasoning trace (the RAG recall + each OpenAI round + every tool
+// call). This replaces the old one-shot call to `consumer-web-ask-memo`, which
+// bent the ACL (admin origin → consumer endpoint) and could only exercise the
+// saved persona.
+
+export async function askMemoAdmin(input: {
   query: string;
-  latitude?: number;
-  longitude?: number;
+  history?: { role: "user" | "assistant"; content: string }[];
+  consumerId?: string | null;
+  mockProfile?: { name?: string; age?: number; sex?: string } | null;
+  latitude?: number | null;
+  longitude?: number | null;
+  instructions?: string | null;
+  model?: string | null;
 }): Promise<AskMemoResult> {
   const query = input.query.trim();
   if (query.length < 2) {
@@ -65,10 +76,17 @@ export async function askMemo(input: {
     predictions?: MemoPrediction[];
     related?: string[];
     citations?: string[];
-  }>("consumer-web-ask-memo", {
+    trace?: TraceStep[];
+    meta?: AskMemoMeta;
+  }>("admin-web-ask-memo", {
     query,
-    latitude: input.latitude,
-    longitude: input.longitude,
+    history: input.history ?? [],
+    consumerId: input.consumerId ?? undefined,
+    mockProfile: input.mockProfile ?? undefined,
+    latitude: input.latitude ?? undefined,
+    longitude: input.longitude ?? undefined,
+    instructions: input.instructions ?? undefined,
+    model: input.model ?? undefined,
   });
   if (!r.ok) return { ok: false, error: r.error };
   return {
@@ -77,5 +95,20 @@ export async function askMemo(input: {
     predictions: r.data.predictions ?? [],
     related: r.data.related ?? [],
     citations: r.data.citations ?? [],
+    trace: r.data.trace ?? [],
+    meta: r.data.meta,
   };
+}
+
+// Sample real consumers for the "talk as a real user" picker. Reuses the
+// scoring-sample EF (super-admin gated) which already returns a random sample
+// of real consumers with first name + coarse demographics — the same signals
+// Memo reasons over. `places: 1` is the EF's minimum; we only read consumers.
+export async function sampleConsumers(): Promise<SampleConsumersResult> {
+  const r = await efInvoke<{ consumers?: SampleConsumer[] }>(
+    "admin-web-get-scoring-sample",
+    { consumers: 10, places: 1 },
+  );
+  if (!r.ok) return { ok: false, error: r.error };
+  return { ok: true, consumers: r.data.consumers ?? [] };
 }

@@ -1,10 +1,14 @@
-// memo-agent.ts — Memo v-next entry point.
+// memo-agent.ts — Memo v-next entry point (shared engine).
 //
 // Assembles the airlock (fixed read-only tools), seeds the loop RAG-first with
 // a Lineup recall so the model always reasons over real Mesita candidates, runs
 // the OpenAI tool-calling loop, and returns the SAME response shape the legacy
 // Perplexity pipeline did — so the (already-enabled) frontend is unchanged.
-// Gated behind MEMO_ENGINE=agent in index.ts; falls back gracefully.
+//
+// Shared by the consumer concierge (consumer-web-ask-memo, gated behind
+// MEMO_ENGINE=agent) and the admin playground (admin-web-ask-memo, which always
+// runs the agent and attaches a trace to inspect its reasoning). Falls back
+// gracefully.
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import {
@@ -12,13 +16,14 @@ import {
   type AirlockContext,
   type ChatMessage,
   runAgent,
-} from "./airlock.ts";
-import { buildMemoTools, lineupRecall } from "./airlock-tools.ts";
-import { buildAgentSystemPrompt } from "./airlock-prompt.ts";
-import { isPlaceSeeking } from "../_shared/memo-intent.ts";
-import { fallbackAnswer } from "../_shared/memo-fallback.ts";
+} from "./memo-airlock.ts";
+import { buildMemoTools, lineupRecall } from "./memo-airlock-tools.ts";
+import { buildAgentSystemPrompt } from "./memo-airlock-prompt.ts";
+import { isPlaceSeeking } from "./memo-intent.ts";
+import { fallbackAnswer } from "./memo-fallback.ts";
 import { toPlainText } from "./memo-text.ts";
-import type { Prediction } from "./memo-google-text-search.ts";
+import type { Prediction } from "./memo-types.ts";
+import type { TraceSink } from "./memo-trace.ts";
 
 const MAX_CARDS = 3;
 const MAX_HISTORY = 6;
@@ -41,6 +46,8 @@ export type AgentOpts = {
   history?: { role?: unknown; content?: unknown }[];
   keys: { openai: string; perplexity: string; google: string };
   model: string;
+  // OPTIONAL admin-only reasoning trace. Absent on the consumer path.
+  trace?: TraceSink;
 };
 
 export async function answerWithAgent(opts: AgentOpts): Promise<AgentAnswer> {
@@ -51,6 +58,7 @@ export async function answerWithAgent(opts: AgentOpts): Promise<AgentAnswer> {
     lng: opts.lng,
     keys: opts.keys,
     model: opts.model,
+    trace: opts.trace,
   };
   const airlock = new Airlock(buildMemoTools(), ctx);
 
@@ -66,7 +74,7 @@ export async function answerWithAgent(opts: AgentOpts): Promise<AgentAnswer> {
   const placeSeeking = isPlaceSeeking(opts.query);
   let seed: Prediction[] = [];
   if (placeSeeking) {
-    const recall = await lineupRecall(ctx, opts.query);
+    const recall = await lineupRecall(ctx, opts.query, { traceKind: "recall" });
     seed = recall.predictions ?? [];
     const userContent = recall.text && seed.length > 0
       ? `${opts.query}\n\n[${recall.text}\nRecommend from these when they fit — they show as cards, so reference them naturally and never list them mechanically.]`

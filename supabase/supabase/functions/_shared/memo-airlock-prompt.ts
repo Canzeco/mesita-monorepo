@@ -1,4 +1,4 @@
-// airlock-prompt.ts — how the reasoning model is told to behave inside the
+// memo-airlock-prompt.ts — how the reasoning model is told to behave inside the
 // airlock. The persona itself is operator-tunable (app_settings.memo_
 // instructions, read by readMemoSystemPrompt); this wraps that persona with
 // the fixed OPERATING rules that make Memo safe, passive, and natural. These
