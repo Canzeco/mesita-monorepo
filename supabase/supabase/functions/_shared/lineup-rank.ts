@@ -63,7 +63,7 @@ export function cosineById(
  * Score the pool with Lineup v12 and return place ids in merge order.
  * The paid lane (inorganic) only admits listing_type === "partner".
  */
-export function lineupOrderIds(
+function lineupOrderIds(
   places: readonly LineupPlace[],
   cosine: Map<string, number>,
   settings: ScoringSettings,
