@@ -13,7 +13,7 @@ import {
 } from "lucide-react";
 import type { ReservationStatus } from "@/lib/mock/reservations-mock";
 
-export type ReservationStatusMeta = {
+type ReservationStatusMeta = {
   label: string;
   /** Pill styling — border + tint + text, semantic tokens only. */
   pillClass: string;
