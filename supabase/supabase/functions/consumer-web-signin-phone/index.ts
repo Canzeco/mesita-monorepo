@@ -62,7 +62,7 @@ Deno.serve(async (req) => {
   // account can both insert — handle 23505 by reading the row back.
   const existing = await admin
     .from("consumers")
-    .select("id, code, full_name, phone")
+    .select("id, code, full_name, first_name, last_name, phone")
     .eq("id", user.id)
     .maybeSingle();
   if (existing.error) {
@@ -83,7 +83,7 @@ Deno.serve(async (req) => {
           code: codeResult.data as string,
           phone: user.phone,
         })
-        .select("id, code, full_name, phone")
+        .select("id, code, full_name, first_name, last_name, phone")
         .single();
       if (!inserted.error) {
         consumerRow = inserted.data;
@@ -95,7 +95,7 @@ Deno.serve(async (req) => {
       // Conflict — someone else inserted concurrently. Read it back.
       const refetch = await admin
         .from("consumers")
-        .select("id, code, full_name, phone")
+        .select("id, code, full_name, first_name, last_name, phone")
         .eq("id", user.id)
         .maybeSingle();
       if (refetch.data) {
@@ -110,7 +110,7 @@ Deno.serve(async (req) => {
       .from("consumers")
       .update({ phone: user.phone })
       .eq("id", user.id)
-      .select("id, code, full_name, phone")
+      .select("id, code, full_name, first_name, last_name, phone")
       .single();
     if (sync.error) {
       return json({ ok: false, error: `consumer_phone_sync: ${sync.error.message}` }, 500);
@@ -122,6 +122,12 @@ Deno.serve(async (req) => {
     ok: true,
     role,
     consumer: consumerRow,
-    onboarded: !!consumerRow?.full_name,
+    // Routing hint for post-signin. First AND last name: reservations are
+    // booked with the venue under the guest's full name, so a first-name-only
+    // profile still owes us the other half. Keeps this in step with the
+    // client-side guards (web (shell)/layout.tsx, mobile isOnboarded), which
+    // also require birthday + sex — a legacy row that clears this check still
+    // gets sent to /onboard there.
+    onboarded: !!consumerRow?.first_name && !!consumerRow?.last_name,
   });
 });

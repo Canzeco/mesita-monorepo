@@ -57,8 +57,14 @@ export default async function ConsumerShellLayout({
   try {
     const { consumer: profile, consumerClass: c } =
       await apiFetchConsumerProfile(supabase);
+    // First + last name are both required: reservations are booked with the
+    // venue under the guest's full name, so a first-name-only profile can't
+    // reserve. Consumers from before that rule get bounced to /onboard once.
     const onboarded =
-      !!profile.full_name && !!profile.birthday && !!profile.sex;
+      !!profile.first_name &&
+      !!profile.last_name &&
+      !!profile.birthday &&
+      !!profile.sex;
     if (!onboarded) redirect("/onboard");
     consumerClass = c;
   } catch {

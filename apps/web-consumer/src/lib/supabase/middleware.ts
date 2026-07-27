@@ -11,7 +11,7 @@ import type { Database } from "./database.types";
 // 2. "Already-signed-in bounce" — / hosts the auth surface; signed-in
 //    visitors should not see it. We bounce them through
 //    /auth/post-signin which forwards to onboard or the app depending
-//    on whether the profile has a full_name.
+//    on whether the profile has both name halves (first + last).
 //
 // The onboarded-vs-not check is intentionally NOT in middleware — that
 // requires an Edge Function call per request, which is too expensive.

@@ -22,7 +22,7 @@ Useful scripts:
 
 ## Architecture in one breath
 
-Expo Router five tabs (Home / Search / Rewards / Reservations / Me) behind a session gate (`src/app/index.tsx`): phone-OTP auth → `consumer-web-signin-phone` EF → onboard gate (`full_name && birthday && sex`) → tabs. All data flows through Supabase Edge Functions via `src/lib/ef.ts` (ported verbatim from the web app). Design tokens in `tailwind.config.js` + `src/constants/brand.ts` are copied values from the web app's `globals.css` — light theme only.
+Expo Router five tabs (Home / Search / Rewards / Reservations / Me) behind a session gate (`src/app/index.tsx`): phone-OTP auth → `consumer-web-signin-phone` EF → onboard gate (`first_name && last_name && birthday && sex`) → tabs. All data flows through Supabase Edge Functions via `src/lib/ef.ts` (ported verbatim from the web app). Design tokens in `tailwind.config.js` + `src/constants/brand.ts` are copied values from the web app's `globals.css` — light theme only.
 
 Agent rules and hard constraints: see [CLAUDE.md](CLAUDE.md). Roadmap: Linear project **Mobile Consumer App**.
 

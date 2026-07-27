@@ -24,12 +24,20 @@ const SEX_OPTIONS = [
 
 export default function Onboard() {
   const router = useRouter();
-  const { refreshProfile, signOut, session, onboarded } = useAuth();
-  const [firstName, setFirstName] = useState('');
+  const { profile, refreshProfile, signOut, session, onboarded } = useAuth();
+  // Consumers who onboarded before the last-name requirement land back here
+  // once — prefill what they already gave us so it's a one-field ask.
+  const storedSex =
+    profile?.sex === 'male' || profile?.sex === 'female' ? profile.sex : null;
+  const [firstName, setFirstName] = useState(profile?.first_name ?? '');
+  // Last name is required, not cosmetic: the EF joins first + last into
+  // full_name, and that's the name the reservation agent books the table
+  // under with the venue (web-consumer onboarding parity).
+  const [lastName, setLastName] = useState(profile?.last_name ?? '');
   const [sex, setSex] = useState<(typeof SEX_OPTIONS)[number]['value'] | null>(
-    null,
+    storedSex,
   );
-  const [birthday, setBirthday] = useState('');
+  const [birthday, setBirthday] = useState(profile?.birthday ?? '');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -38,7 +46,11 @@ export default function Onboard() {
   const age = ageFromBirthday(birthday.trim());
   const underage = age !== null && age < MIN_SIGNUP_AGE;
   const canSubmit =
-    firstName.trim().length > 0 && sex !== null && validBirthday && !underage;
+    firstName.trim().length > 0 &&
+    lastName.trim().length > 0 &&
+    sex !== null &&
+    validBirthday &&
+    !underage;
 
   const phoneLabel = session?.user.phone ? `+${session.user.phone}` : null;
 
@@ -53,6 +65,7 @@ export default function Onboard() {
     try {
       await apiUpdateConsumerProfile({
         first_name: firstName.trim(),
+        last_name: lastName.trim(),
         sex,
         birthday: birthday.trim(),
       });
@@ -131,9 +144,22 @@ export default function Onboard() {
           <TextField
             label="First name"
             autoComplete="given-name"
+            autoCapitalize="words"
+            maxLength={60}
             value={firstName}
             onChangeText={setFirstName}
           />
+
+          <View style={{ marginTop: 16 }}>
+            <TextField
+              label="Last name"
+              autoComplete="family-name"
+              autoCapitalize="words"
+              maxLength={60}
+              value={lastName}
+              onChangeText={setLastName}
+            />
+          </View>
 
           <Text
             className="font-semibold text-muted-foreground"
@@ -208,8 +234,9 @@ export default function Onboard() {
             className="text-muted-foreground"
             style={{ marginTop: 12, textAlign: 'center', fontSize: 11, lineHeight: 15 }}
           >
-            We use these to personalize recommendations. Your details are never
-            shared with places.
+            We use these to personalize recommendations. Only your name is
+            shared with a place — it&apos;s the name your reservation is booked
+            under.
           </Text>
         </View>
       </KeyboardAvoidingView>
