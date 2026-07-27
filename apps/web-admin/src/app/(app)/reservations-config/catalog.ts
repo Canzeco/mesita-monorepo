@@ -41,18 +41,18 @@ export type ReservationsConfig = {
    */
   testCall: { enabled: boolean; number: string; consumerNumber: string };
   /**
-   * How many times the Reservationist tries a place before giving up. Attempt 1
-   * always fires immediately when the guest taps Reserve (many venues run a 24/7
-   * AI receptionist); attempts 2..N wait for the venue's next opening window.
+   * FIXED at 2 by protocol — not configurable. Attempt 1 always fires
+   * immediately when the guest taps Reserve (many venues run a 24/7 AI
+   * receptionist); attempt 2 fires 5 minutes later if the venue is open, else
+   * 30 minutes after it next opens. Coerce pins this to ATTEMPTS regardless of
+   * what the stored row says.
    */
   attempts: number;
 };
 
 export const CHANNEL_KEYS: ReservationChannel[] = ["phone", "whatsapp", "instagram"];
 
-export const ATTEMPTS_MIN = 1;
-export const ATTEMPTS_MAX = 3;
-export const ATTEMPTS_DEFAULT = 3;
+export const ATTEMPTS = 2;
 
 export type Channel = {
   key: ReservationChannel;
@@ -109,16 +109,11 @@ export const DEFAULT_CONFIG: ReservationsConfig = {
   disabled: ["whatsapp", "instagram"],
   respectAdminOverride: true,
   testCall: { ...TEST_CALL_SEED },
-  attempts: ATTEMPTS_DEFAULT,
+  attempts: ATTEMPTS,
 };
 
 function isChannel(v: unknown): v is ReservationChannel {
   return v === "phone" || v === "whatsapp" || v === "instagram";
-}
-
-function clampAttempts(v: unknown): number {
-  const n = typeof v === "number" && Number.isFinite(v) ? Math.round(v) : ATTEMPTS_DEFAULT;
-  return Math.max(ATTEMPTS_MIN, Math.min(ATTEMPTS_MAX, n));
 }
 
 /**
@@ -168,7 +163,8 @@ export function coerceConfig(raw: unknown): ReservationsConfig {
           ? testRaw.consumerNumber.trim()
           : TEST_CALL_SEED.consumerNumber,
     },
-    attempts: clampAttempts(c.attempts),
+    // Fixed by protocol — whatever an old row stored, the platform runs 2.
+    attempts: ATTEMPTS,
   };
 }
 

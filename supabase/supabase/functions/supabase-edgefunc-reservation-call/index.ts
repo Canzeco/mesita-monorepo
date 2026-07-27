@@ -116,7 +116,7 @@ Deno.serve(async (req) => {
   const { data: r, error: rErr } = await admin
     .from("reservations")
     .select(
-      "id, reserved_at, party_size, notes, status, project_id, consumer:consumers(full_name, first_name, last_name, phone)",
+      "id, reference_code, reserved_at, party_size, notes, status, project_id, consumer:consumers(full_name, first_name, last_name, phone)",
     )
     .eq("id", reservationId)
     .maybeSingle();
@@ -191,6 +191,7 @@ Deno.serve(async (req) => {
       venue_name: place?.name || "el lugar",
       guest_name: guestName(consumer),
       guest_phone: (consumer?.phone ?? "").trim(),
+      reference_code: (r as { reference_code?: string | null }).reference_code ?? "",
       party_size: r.party_size,
       reservation_date: esDate(r.reserved_at),
       reservation_time: esTime(r.reserved_at),

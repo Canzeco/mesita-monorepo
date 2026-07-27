@@ -473,6 +473,11 @@ function TicketCard({
         <span className="text-sm font-semibold">{t.place_name}</span>
         <span className="text-muted-foreground text-xs">for</span>
         <span className="text-sm font-medium">{t.consumer_name}</span>
+        {t.reference_code && (
+          <span className="border-border bg-background text-muted-foreground rounded-full border px-2 py-0.5 font-mono text-[10px] font-medium">
+            #{t.reference_code}
+          </span>
+        )}
         <span className="ml-auto inline-flex items-center gap-1.5">
           {badge}
           <button
