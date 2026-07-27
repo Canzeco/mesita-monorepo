@@ -123,7 +123,7 @@ export function LaneBadge({ laneId, title }: { laneId: LaneId; title?: string })
 }
 
 /** A verbatim context document, labeled. */
-export function DocPre({
+function DocPre({
   label,
   text,
   empty,
