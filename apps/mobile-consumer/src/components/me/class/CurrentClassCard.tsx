@@ -16,8 +16,10 @@ export function CurrentClassCard() {
   const meta = CLASSES.find((c) => c.id === key)!;
   const isElevated = isElevatedClass(key);
   // Magnetic (top tier) reads gold; Premium reads its violet gradient.
+  // Keep the readonly tuple shape (see IdentityHero) — spreading into a
+  // variable widens it past LinearGradient's `colors` tuple type.
   const elevatedColors =
-    key === 'magnetic' ? [...GRADIENTS.gold] : [...GRADIENTS.premium];
+    key === 'magnetic' ? GRADIENTS.gold : GRADIENTS.premium;
   const Icon =
     !isElevated ? Smile : origin === 'instagram' ? AtSign : Crown;
   const via =

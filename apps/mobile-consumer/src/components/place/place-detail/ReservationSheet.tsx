@@ -1,4 +1,4 @@
-import { CalendarCheck, PhoneCall } from 'lucide-react-native';
+import { PhoneCall } from 'lucide-react-native';
 import { useMemo, useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 

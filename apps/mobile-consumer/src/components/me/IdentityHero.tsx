@@ -57,8 +57,11 @@ export function IdentityHero({
 }) {
   const isElevated = isElevatedClass(classKey);
   // Magnetic (top tier) reads gold; Premium reads its violet gradient.
+  // Keep the readonly tuple shape — LinearGradient's `colors` needs
+  // `readonly [ColorValue, ColorValue, ...]`, and spreading here would widen
+  // it to a plain array (no contextual type on a variable declaration).
   const elevatedRing =
-    classKey === 'magnetic' ? [...GRADIENTS.gold] : [...GRADIENTS.premium];
+    classKey === 'magnetic' ? GRADIENTS.gold : GRADIENTS.premium;
   const elevatedWash =
     classKey === 'magnetic'
       ? (['rgba(245,204,88,0.20)', 'rgba(235,136,31,0.12)'] as const)
