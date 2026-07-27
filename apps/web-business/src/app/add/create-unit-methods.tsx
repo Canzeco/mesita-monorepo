@@ -138,7 +138,7 @@ function MethodUnavailableBody({
   );
 }
 
-export function MethodChip({
+function MethodChip({
   active,
   unavailable,
   onClick,
