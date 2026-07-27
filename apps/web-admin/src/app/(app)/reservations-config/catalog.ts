@@ -34,10 +34,10 @@ export type ReservationsConfig = {
   /**
    * Testing override. While enabled, EVERY reservation call dials `number`
    * instead of the place's real line — no matter which venue the guest booked —
-   * so we never ring a real business during testing. `consumerNumber` is the
-   * guest-side test line the Playground can put in a call brief instead of a
-   * real consumer's phone — playground-only, never read by the production
-   * calling path ('' = unset).
+   * so we never ring a real business during testing (reserve from the consumer
+   * app to test end-to-end). `consumerNumber` is legacy from the retired admin
+   * Playground — never read by the calling path, kept only so stored rows stay
+   * shape-stable ('' = unset).
    */
   testCall: { enabled: boolean; number: string; consumerNumber: string };
   /**
@@ -99,7 +99,7 @@ export const CHANNELS: Channel[] = [
 // this one number for EVERY reservation instead of any real venue. Fully editable
 // from the admin page — this is only what the page (and a fresh/reset config row)
 // starts from. Ships ON so a missing config can never fall through to a real place.
-// consumerNumber ships empty — set it in Config before the Playground can use it.
+// consumerNumber is legacy (retired Playground) and stays empty.
 export const TEST_CALL_SEED = { enabled: true, number: "+524445499597", consumerNumber: "" };
 
 export const DEFAULT_CONFIG: ReservationsConfig = {
