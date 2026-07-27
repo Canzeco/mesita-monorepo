@@ -23,7 +23,7 @@ export {
   selectDiscountPromoRate,
 } from "./staff-place-ops-eligibility.ts";
 
-export function tierLabelEs(tierKey: string | null | undefined): string {
+function tierLabelEs(tierKey: string | null | undefined): string {
   if (tierKey === "premium") return "Premium";
   return "Free";
 }
