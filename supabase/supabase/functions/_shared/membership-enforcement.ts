@@ -17,7 +17,7 @@ import { compensateBurnedGuest } from "./membership-compensation.ts";
 export { PROMO_PAUSE_MS } from "./membership-strike-patch.ts";
 export { COMPENSATION_RATES, compensateBurnedGuest } from "./membership-compensation.ts";
 
-export const STRIKE_REASONS = ["refused_qr", "ignored_qr"] as const;
+const STRIKE_REASONS = ["refused_qr", "ignored_qr"] as const;
 export type StrikeReason = (typeof STRIKE_REASONS)[number];
 
 export const STRIKE_DECAY_MS = 183 * 24 * 60 * 60 * 1000; // ~6 months
