@@ -70,12 +70,14 @@ export function apiFetchConsumerProfile(): Promise<ProfileResult> {
   return invokeEF<ProfileResult>(supabase, 'consumer-web-get-profile', {});
 }
 
-// first_name + last_name always travel together — the EF joins them into
-// full_name (the name reservations are booked under) and rejects one
-// without the other.
+// first_name + last_name are REQUIRED as a pair, not optional halves: the EF
+// joins them into full_name — the name reservations are booked under — and
+// 400s on one without the other. Typing them as required makes a half-name
+// patch a compile error here rather than a runtime rejection, matching
+// ConsumerOnboardingInput in apps/web-consumer/src/lib/api/profile.ts.
 export function apiUpdateConsumerProfile(patch: {
-  first_name?: string;
-  last_name?: string;
+  first_name: string;
+  last_name: string;
   sex?: 'male' | 'female'; // Male/Female only (MESITA-727)
   birthday?: string; // YYYY-MM-DD
 }): Promise<ProfileResult> {
