@@ -248,7 +248,7 @@ export type SmParams = {
 export const DIST_EXP = 3;
 const ZONE_SPILL_FRAC = 0.3;
 /** The CODE default for sm.where.defaultTolKm. 5 km = car metros. */
-export const DEFAULT_POINT_TOL_KM = 5;
+const DEFAULT_POINT_TOL_KM = 5;
 
 /** Time resolves to half-hour blocks. */
 export const TIME_BLOCK_H = 0.5;
