@@ -11,6 +11,7 @@ import {
   Phone,
   PhoneCall,
   RefreshCw,
+  SlidersHorizontal,
   TriangleAlert,
   User,
   Users,
@@ -29,18 +30,20 @@ import {
 } from "./actions";
 import { looksLikePhone, type ReservationsConfig } from "./catalog";
 
-// Reservations Playground — FAKE USERS ONLY, kept simple on purpose:
+// Reservations Playground — FAKE USERS ONLY, kept simple on purpose. The page is
+// four boxes, top to bottom:
 //
-//   1. Pick a place — ten real rows from the DB, click one (no search bar).
-//   2. Pick a consumer — same.
-//   3. Author the intent (date & time, party size, special requests).
-//   4. Choose each side's number: test line or the actual DB phone.
-//   5. Run it — the TICKET IS CREATED IMMEDIATELY, then the intents start:
-//      up to config.attempts real calls (the "3 intents"), server-side. If the
-//      venue doesn't answer intent 1, intent 2 dials, then intent 3.
+//   1. Participants — the business + the consumer (ten real DB rows each, click
+//      one) and the phone each side uses (test line or the actual DB number).
+//   2. Intent — the booking the fake user wants (date & time, party, requests).
+//   3. Tune & run — the effective call settings (how many intents, the resolved
+//      numbers) and the trigger. A run creates the TICKET IMMEDIATELY, then up
+//      to config.attempts real calls (the "intents") fire server-side.
+//   4. Sandbox — every emulated ticket, remembered, with its live intent-by-
+//      intent lifecycle.
 //
 // Tickets live in playground_reservations (never public.reservations) and the
-// sandbox below polls while intents are running, so progress shows live.
+// sandbox polls while intents are running, so progress shows live.
 
 const inputCls =
   "border-border bg-card focus:border-foreground h-9 w-full rounded-lg border px-3 text-sm outline-none";
@@ -377,6 +380,38 @@ function TicketCard({ t }: { t: PlaygroundTicket }) {
   );
 }
 
+// A single read-only "what the run will do" tile for the Tune & run box.
+function TuneTile({
+  label,
+  value,
+  note,
+  tone,
+}: {
+  label: string;
+  value: string;
+  note?: string;
+  tone?: "danger";
+}) {
+  return (
+    <div className="border-border bg-background rounded-xl border p-3">
+      <p className="text-muted-foreground text-[10px] font-bold tracking-[0.12em] uppercase">
+        {label}
+      </p>
+      <p className="text-foreground mt-1 truncate font-mono text-sm font-semibold">{value}</p>
+      {note && (
+        <p
+          className={
+            "mt-0.5 text-[10px] font-medium uppercase " +
+            (tone === "danger" ? "text-amber-600" : "text-muted-foreground")
+          }
+        >
+          {note}
+        </p>
+      )}
+    </div>
+  );
+}
+
 // ── The playground ───────────────────────────────────────────────────────────
 
 export function ReservationsPlaygroundClient({
@@ -509,11 +544,11 @@ export function ReservationsPlaygroundClient({
         </p>
       </div>
 
-      {/* ── The intent ── */}
+      {/* ── 1 · Participants — business, consumer & phones ── */}
       <SectionCard
-        icon={<CalendarClock className="text-secondary h-4 w-4" />}
-        title="The intent"
-        subtitle="Pick one of each — real rows from the Mesita database — then the booking the fake user wants."
+        icon={<Users className="text-secondary h-4 w-4" />}
+        title="Business, consumer & phones"
+        subtitle="Who's on the call — a real place and a real consumer from the Mesita DB — and which number each side uses."
       >
         <div className="mt-4 grid gap-2.5 lg:grid-cols-2">
           <TargetGrid
@@ -531,54 +566,8 @@ export function ReservationsPlaygroundClient({
             onSelect={setConsumer}
             load={listConsumerTargets}
           />
-          <Labeled
-            icon={<CalendarClock className="h-3.5 w-3.5" />}
-            label="Date & time (venue local)"
-          >
-            <input
-              type="datetime-local"
-              className={inputCls}
-              value={when}
-              onChange={(e) => setWhen(e.target.value)}
-            />
-          </Labeled>
-          <Labeled icon={<Users className="h-3.5 w-3.5" />} label="Party size">
-            <input
-              type="number"
-              min={1}
-              max={20}
-              className={inputCls + " tabular-nums"}
-              value={party}
-              onChange={(e) =>
-                setParty(
-                  Math.max(1, Math.min(20, Math.round(Number(e.target.value) || 1))),
-                )
-              }
-            />
-          </Labeled>
-          <div className="lg:col-span-2">
-            <Labeled
-              icon={<MessageSquareText className="h-3.5 w-3.5" />}
-              label="Special requests"
-            >
-              <input
-                className={inputCls}
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                placeholder="mesa afuera, cumpleaños…"
-              />
-            </Labeled>
-          </div>
         </div>
-      </SectionCard>
-
-      {/* ── Numbers ── */}
-      <SectionCard
-        icon={<Phone className="text-secondary h-4 w-4" />}
-        title="Numbers"
-        subtitle="Each side of the call can use its test line or the actual number from the database."
-      >
-        <div className="mt-4 grid gap-2.5 lg:grid-cols-2">
+        <div className="mt-2.5 grid gap-2.5 lg:grid-cols-2">
           <NumberModePicker
             label="Business number — what the agent dials"
             mode={effBusinessMode}
@@ -611,12 +600,79 @@ export function ReservationsPlaygroundClient({
         )}
       </SectionCard>
 
-      {/* ── Run ── */}
+      {/* ── 2 · Intent — the booking params ── */}
       <SectionCard
-        icon={<PhoneCall className="text-secondary h-4 w-4" />}
-        title="Run the intent"
-        subtitle={`Creates the ticket immediately, then the ${config.attempts} intent${config.attempts === 1 ? " fires" : "s fire"} on their own — watch them land in the sandbox.`}
+        icon={<CalendarClock className="text-secondary h-4 w-4" />}
+        title="The intent"
+        subtitle="The booking the fake user wants."
       >
+        <div className="mt-4 grid gap-2.5 sm:grid-cols-2">
+          <Labeled
+            icon={<CalendarClock className="h-3.5 w-3.5" />}
+            label="Date & time (venue local)"
+          >
+            <input
+              type="datetime-local"
+              className={inputCls}
+              value={when}
+              onChange={(e) => setWhen(e.target.value)}
+            />
+          </Labeled>
+          <Labeled icon={<Users className="h-3.5 w-3.5" />} label="Party size">
+            <input
+              type="number"
+              min={1}
+              max={20}
+              className={inputCls + " tabular-nums"}
+              value={party}
+              onChange={(e) =>
+                setParty(
+                  Math.max(1, Math.min(20, Math.round(Number(e.target.value) || 1))),
+                )
+              }
+            />
+          </Labeled>
+          <div className="sm:col-span-2">
+            <Labeled
+              icon={<MessageSquareText className="h-3.5 w-3.5" />}
+              label="Special requests"
+            >
+              <input
+                className={inputCls}
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                placeholder="mesa afuera, cumpleaños…"
+              />
+            </Labeled>
+          </div>
+        </div>
+      </SectionCard>
+
+      {/* ── 3 · Tune & run ── */}
+      <SectionCard
+        icon={<SlidersHorizontal className="text-secondary h-4 w-4" />}
+        title="Tune & run"
+        subtitle="What the run will do, resolved from the numbers above and the saved config. Tune the retry count in the Config tab."
+      >
+        <div className="mt-4 grid gap-2.5 sm:grid-cols-3">
+          <TuneTile
+            label="Call intents"
+            value={`up to ${config.attempts}`}
+            note="from Config · attempts"
+          />
+          <TuneTile
+            label="Business dials"
+            value={businessNumber ?? "—"}
+            note={effBusinessMode === "actual" ? "actual venue line" : "test number"}
+            tone={effBusinessMode === "actual" ? "danger" : undefined}
+          />
+          <TuneTile
+            label="Guest callback"
+            value={consumerNumber ?? "—"}
+            note={effConsumerMode === "actual" ? "actual consumer phone" : "test number"}
+          />
+        </div>
+
         <div className="mt-4 flex flex-wrap items-center gap-3">
           <button
             type="button"
@@ -636,17 +692,6 @@ export function ReservationsPlaygroundClient({
               </>
             )}
           </button>
-          {businessNumber && (
-            <span className="text-muted-foreground text-xs">
-              Dials <span className="text-foreground font-mono">{businessNumber}</span>
-              {consumerNumber && (
-                <>
-                  {" "}
-                  · guest <span className="text-foreground font-mono">{consumerNumber}</span>
-                </>
-              )}
-            </span>
-          )}
         </div>
 
         {!canRun && !placing && (
@@ -681,11 +726,11 @@ export function ReservationsPlaygroundClient({
         )}
       </SectionCard>
 
-      {/* ── Sandbox ── */}
+      {/* ── 4 · Sandbox — playground tickets + lifecycle ── */}
       <SectionCard
         icon={<Inbox className="text-secondary h-4 w-4" />}
         title="Sandbox — playground tickets"
-        subtitle="Every emulated reservation, remembered, with its intent-by-intent outcome. These live only in the playground."
+        subtitle="Every emulated reservation, remembered, with its intent-by-intent lifecycle. These live only in the playground."
       >
         {ticketsLoading ? (
           <p className="text-muted-foreground mt-4 flex items-center gap-2 text-sm">
