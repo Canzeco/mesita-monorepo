@@ -12,7 +12,7 @@ const ORIGIN_LABEL: Record<string, string> = {
   invitation: 'Invite',
 };
 
-export function Stat({ value, label }: { value: string; label: string }) {
+function Stat({ value, label }: { value: string; label: string }) {
   return (
     <View className="relative min-w-0 flex-1 items-center px-1">
       <Text
