@@ -6,10 +6,6 @@ import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 // restore the SocialFeed render below and flip `soon: false` in HomeModeNav.
 // The nav pill is disabled; this redirect also blocks direct URLs.
 //
-//   import { SocialFeed } from "@/components/consumer/home/SocialFeed";
-//   import { useHomeDeck } from "@/components/consumer/home/HomeDeckContext";
-//   const { places } = useHomeDeck();
-//   return <SocialFeed places={places} />;
 export default function HomeSocialPage() {
   redirect(CONSUMER_ROUTES.homeDefault);
 }
