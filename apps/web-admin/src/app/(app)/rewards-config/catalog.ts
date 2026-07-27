@@ -133,7 +133,7 @@ export const STRATEGY_IDS: readonly {
 
 // The 5% grid: off, then 10 → 50 in steps of 5.
 const RATE_STEP = 5;
-export const RATE_FLOOR = 10;
+const RATE_FLOOR = 10;
 export const RATE_MAX = 50;
 export const ALLOWED_RATES: readonly number[] = [
   0, 10, 15, 20, 25, 30, 35, 40, 45, 50,
