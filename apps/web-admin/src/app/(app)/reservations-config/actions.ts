@@ -180,3 +180,19 @@ export async function listPlaygroundReservations(): Promise<ListPlaygroundReserv
   if (!r.ok) return { ok: false, error: r.error };
   return { ok: true, tickets: r.data.tickets ?? [] };
 }
+
+export type DeletePlaygroundReservationsResult =
+  | { ok: true; deleted: number }
+  | { ok: false; error: string };
+
+/** Delete one sandbox ticket by id, or every one of them with { all: true }. */
+export async function deletePlaygroundReservations(
+  input: { id: string } | { all: true },
+): Promise<DeletePlaygroundReservationsResult> {
+  const r = await efInvoke<{ deleted: number }>(
+    "admin-web-delete-playground-reservation",
+    input,
+  );
+  if (!r.ok) return { ok: false, error: r.error };
+  return { ok: true, deleted: r.data.deleted ?? 0 };
+}
