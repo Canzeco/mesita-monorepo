@@ -12,7 +12,7 @@
 import { type SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { strategyForRates, ratesFromPlace } from "./lineup-strategy.ts";
 
-export const REWARD_SEGMENTS = [
+const REWARD_SEGMENTS = [
   "standard",
   "magnetic",
   "premium",
