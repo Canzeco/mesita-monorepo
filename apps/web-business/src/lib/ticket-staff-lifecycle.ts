@@ -20,7 +20,7 @@ export type TicketFlowType = "A" | "B";
  */
 type StaffLifecycleStepId = "scan" | "bill" | "story" | "pay" | "done";
 
-export type StaffLifecycleStepState = "done" | "active" | "upcoming";
+type StaffLifecycleStepState = "done" | "active" | "upcoming";
 
 export type StaffLifecycleStepView = {
   id: StaffLifecycleStepId;
