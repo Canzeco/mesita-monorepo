@@ -52,7 +52,7 @@ export type ReservationsConfig = {
 
 const CHANNEL_KEYS: ReservationChannel[] = ["phone", "whatsapp", "instagram"];
 
-export const ATTEMPTS = 2;
+const ATTEMPTS = 2;
 
 export type Channel = {
   key: ReservationChannel;
