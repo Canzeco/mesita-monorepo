@@ -151,7 +151,7 @@ export async function loadMembershipRow(
 }
 
 /** Persist lazy decay when the effective count dropped. */
-export async function maybeDecayStrikes(
+async function maybeDecayStrikes(
   admin: SupabaseClient,
   row: MembershipRow,
   now: Date = new Date(),
