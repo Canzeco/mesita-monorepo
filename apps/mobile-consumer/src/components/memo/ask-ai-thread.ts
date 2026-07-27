@@ -3,7 +3,7 @@ import type { MemoAnswer, MemoTurn } from '@/lib/api/memo';
 
 export type { AiMessage } from '@/components/memo/types';
 
-export const GREETING =
+const GREETING =
   "Hello 👋 I'm Memo, the AI of Mesita. Tell me what you're craving — try “rooftop date tonight” or just “tacos al pastor”.";
 
 export const AI_ERROR =
