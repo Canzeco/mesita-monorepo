@@ -161,7 +161,7 @@ export async function apiBusinessVerifiesPhone(
 
 // ── Email OTP path ────────────────────────────────────────────────────
 
-export type SendEmailOtpResult = {
+type SendEmailOtpResult = {
   verificationId: string;
   sentTo: string;
   mockMode?: boolean;
