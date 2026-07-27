@@ -26,9 +26,12 @@
 //     counter-offer the ticket STAYS pending — the guest's pick lands through
 //     eleven-a2-confirm-reservation, which re-fires this engine (≤2 rounds).
 //
-// Intents are spaced SECONDS apart still — the open-hours-aware scheduler
-// (+5 min if open, else 30 min after next opening) is the production
-// follow-up; this loop is its compressed version.
+// RETRIES ARE OPEN-HOURS AWARE (no longer seconds apart): a no-answer parks
+// the ticket with attempts_state='scheduled' + next_attempt_at — +5 min if the
+// venue is open right now, else ~30 min after it next opens — and
+// supabase-cron-reservation-retries wakes it. A run therefore places ONE call
+// and returns; the run that resumes reads call_attempts and continues the
+// sequence. See _shared/reservation-retry.ts.
 //
 // Number resolution, per side:
 //   business — reservations.business_number when pre-resolved (test tickets),
@@ -59,6 +62,7 @@ import {
   reservationFromNumber,
   resolvePhoneNumberId,
 } from "../_shared/elevenlabs.ts";
+import { nextAttemptAt } from "../_shared/reservation-retry.ts";
 import {
   businessLegFirstMessage,
   businessLegPrompt,
@@ -75,7 +79,6 @@ const WATCH_POLL_MS = 8_000;
 const ANSWER_BUDGET_MS = 60_000;
 const VERDICT_BUDGET_MS = 130_000;
 const CALLBACK_BUDGET_MS = 60_000;
-const RETRY_GAP_MS = 8_000;
 
 const delay = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -203,6 +206,13 @@ async function runIntents(input: {
   admin: SupabaseClient;
   reservationId: string;
   attemptsPlanned: number;
+  /** Attempts already burned by earlier runs — this run resumes after them. */
+  attemptsDone: number;
+  /** Log carried across runs so the ticket keeps its full history. */
+  priorAttempts: AttemptEntry[];
+  /** The venue's weekly hours + lng — when the next try is allowed to fire. */
+  placeHours: unknown;
+  placeLng: number | null;
   businessNumber: string;
   consumerNumber: string; // "" = no guest number → leg 2 skipped
   bookerAgentId: string; // eleven-a1 (fallback: the original agent)
@@ -210,7 +220,8 @@ async function runIntents(input: {
   legVars: ReservationLegVars;
 }): Promise<void> {
   const { admin, reservationId, attemptsPlanned, legVars } = input;
-  const attempts: AttemptEntry[] = [];
+  // Prior runs' entries stay in the log; this run appends to them.
+  const attempts: AttemptEntry[] = [...input.priorAttempts];
   const record = async (patch: Record<string, unknown>) => {
     await admin.from("reservations").update(patch).eq("id", reservationId);
   };
@@ -292,7 +303,7 @@ async function runIntents(input: {
     }
 
     // Leg 1 · consumer → business — the booking intents.
-    for (let n = 1; n <= attemptsPlanned; n++) {
+    for (let n = input.attemptsDone + 1; n <= attemptsPlanned; n++) {
       const entry: AttemptEntry = {
         n,
         started_at: new Date().toISOString(),
@@ -321,11 +332,20 @@ async function runIntents(input: {
 
       if (!call.ok) {
         entry.result = `placement failed: ${call.error}`.slice(0, 160);
+        if (n < attemptsPlanned) {
+          const next = nextAttemptAt(input.placeHours, input.placeLng);
+          await record({
+            attempts,
+            attempts_state: "scheduled",
+            next_attempt_at: next.at.toISOString(),
+            last_call_status: `intent ${n} failed: ${call.error}`.slice(0, 200),
+          });
+          return;
+        }
         await record({
           attempts,
           last_call_status: `intent ${n} failed: ${call.error}`.slice(0, 200),
         });
-        if (n < attemptsPlanned) await delay(RETRY_GAP_MS);
         continue;
       }
 
@@ -343,8 +363,19 @@ async function runIntents(input: {
 
       if (outcome === "no_answer") {
         entry.result = "no_answer";
+        if (n < attemptsPlanned) {
+          // Park it: the venue's own hours decide when we try again, and a run
+          // can't sleep 30 minutes. supabase-cron-reservation-retries wakes it.
+          const next = nextAttemptAt(input.placeHours, input.placeLng);
+          await record({
+            attempts,
+            attempts_state: "scheduled",
+            next_attempt_at: next.at.toISOString(),
+            last_call_status: `intent ${n}: no answer — ${next.reason}`.slice(0, 200),
+          });
+          return;
+        }
         await record({ attempts, last_call_status: `intent ${n}: no answer` });
-        if (n < attemptsPlanned) await delay(RETRY_GAP_MS);
         continue;
       }
       if (outcome === "unknown") {
@@ -354,6 +385,7 @@ async function runIntents(input: {
         await record({
           attempts,
           attempts_state: "exhausted",
+          next_attempt_at: null,
           status: "unresolved",
           callback_state: "skipped",
           last_call_status: `intent ${n}: outcome unknown — not retrying`,
@@ -382,6 +414,7 @@ async function runIntents(input: {
         await record({
           attempts,
           attempts_state: "answered",
+          next_attempt_at: null,
           status: "confirmed",
           confirmed_at: new Date().toISOString(),
           callback_state: "calling",
@@ -399,6 +432,7 @@ async function runIntents(input: {
         await record({
           attempts,
           attempts_state: "answered",
+          next_attempt_at: null,
           callback_state: "calling",
           callback_at: new Date().toISOString(),
           last_call_status: `intent ${n}: venue counter-offer — calling the guest`,
@@ -412,6 +446,7 @@ async function runIntents(input: {
         await record({
           attempts,
           attempts_state: "answered",
+          next_attempt_at: null,
           status: "declined",
           callback_state: "skipped",
           last_call_status: `intent ${n}: venue declined — no guest call`,
@@ -431,6 +466,7 @@ async function runIntents(input: {
 
     await record({
       attempts_state: "exhausted",
+      next_attempt_at: null,
       status: "unreachable",
       callback_state: "skipped",
       last_call_status: `no answer after ${attemptsPlanned} intent${
@@ -475,7 +511,7 @@ Deno.serve(async (req) => {
   const { data: r, error: rErr } = await admin
     .from("reservations")
     .select(
-      "id, reference_code, reserved_at, party_size, notes, status, project_id, is_test, business_number, consumer_number, attempts_state, consumer:consumers(full_name, first_name, last_name, phone)",
+      "id, reference_code, reserved_at, party_size, notes, status, project_id, is_test, business_number, consumer_number, attempts_state, attempts, call_attempts, consumer:consumers(full_name, first_name, last_name, phone)",
     )
     .eq("id", reservationId)
     .maybeSingle();
@@ -506,13 +542,15 @@ Deno.serve(async (req) => {
 
   const { data: placeRow } = await admin
     .from("places")
-    .select("name, phone, products")
+    .select("name, phone, products, hours, lng")
     .eq("id", r.project_id)
     .maybeSingle();
   const place = (placeRow ?? null) as {
     name?: string | null;
     phone?: string | null;
     products?: Record<string, unknown> | null;
+    hours?: unknown;
+    lng?: number | null;
   } | null;
 
   // ── Resolve the business number: row override → test mode → place endpoint ─
@@ -548,6 +586,7 @@ Deno.serve(async (req) => {
     .from("reservations")
     .update({
       attempts_state: "running",
+      next_attempt_at: null,
       attempts_planned: cfg.attempts,
       business_number: businessNumber,
       consumer_number: consumerNumber || null,
@@ -562,6 +601,10 @@ Deno.serve(async (req) => {
       admin,
       reservationId,
       attemptsPlanned: cfg.attempts,
+      attemptsDone: typeof r.call_attempts === "number" ? r.call_attempts : 0,
+      priorAttempts: Array.isArray(r.attempts) ? (r.attempts as AttemptEntry[]) : [],
+      placeHours: place?.hours ?? null,
+      placeLng: typeof place?.lng === "number" ? place.lng : null,
       businessNumber,
       consumerNumber,
       bookerAgentId,

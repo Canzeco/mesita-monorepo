@@ -136,6 +136,15 @@ verify_jwt = true
 [functions.supabase-edgefunc-reservation-call]
 verify_jwt = true
 
+# Wakes reservations parked by the engine: a venue that doesn't answer gets
+# attempts_state='scheduled' + next_attempt_at (+5 min if open, ~30 min after it
+# next opens — _shared/reservation-retry.ts), because a run can't sleep that
+# long. pg_cron job run-reservation-retries fires this every minute with the
+# Vault service-role bearer; it hands each due ticket back to the engine.
+# Kill switch: select cron.unschedule('run-reservation-retries');
+[functions.supabase-cron-reservation-retries]
+verify_jwt = true
+
 # --- Enricher v2 pipeline (the Enricher is a PROCESS: cron-driven stages) ---
 #
 # Three stage EFs walk a place_research row research → analysis → contents.
