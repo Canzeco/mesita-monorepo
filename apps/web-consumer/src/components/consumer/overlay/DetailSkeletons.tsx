@@ -30,7 +30,7 @@ export function PlaceBodySkeleton() {
 
 // Generic detail silhouette (coupon / reservation): inset rounded hero card,
 // chip row, text rows, section boxes.
-export function DetailBodySkeleton() {
+function DetailBodySkeleton() {
   return (
     <div aria-hidden className="space-y-4 p-4">
       <Skeleton className="h-56 w-full rounded-2xl" />
