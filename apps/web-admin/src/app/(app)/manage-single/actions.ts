@@ -1,7 +1,6 @@
 "use server";
 
 import { efInvoke } from "@/lib/supabase-ef";
-import { createUnitFromPlaceId as createUnitFromPlaceIdImpl } from "@/lib/create-unit-from-place";
 import type { PlanKey } from "@/lib/business/plans";
 
 // ════════════════════════════════════════════════════════════════════════
@@ -522,6 +521,4 @@ export async function suggestPlaces(
 
 // The create-unit pipeline is shared with the bulk creator — see the single
 // canonical implementation in @/lib/create-unit-from-place.
-export async function createUnitFromPlaceId(placeId: string) {
-  return createUnitFromPlaceIdImpl(placeId);
-}
+export { createUnitFromPlaceId } from "@/lib/create-unit-from-place";
