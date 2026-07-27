@@ -388,7 +388,10 @@ export function ReservationsPlaygroundClient({
 }) {
   const [place, setPlace] = useState<PlaceTarget | null>(null);
   const [consumer, setConsumer] = useState<ConsumerTarget | null>(null);
-  const [when, setWhen] = useState("");
+  // Date and hour are two separate boxes; the EF gets them joined back into
+  // its "YYYY-MM-DDTHH:mm" venue-local wall clock.
+  const [date, setDate] = useState("");
+  const [time, setTime] = useState("");
   const [party, setParty] = useState(2);
   const [notes, setNotes] = useState("");
   const [businessMode, setBusinessMode] = useState<NumberMode>("test");
@@ -465,7 +468,7 @@ export function ReservationsPlaygroundClient({
   const consumerNumber = effConsumerMode === "test" ? consumerTest : consumer?.phone ?? null;
 
   const canRun =
-    !!place && !!consumer && !!when && !!businessNumber && !!consumerNumber && !placing;
+    !!place && !!consumer && !!date && !!time && !!businessNumber && !!consumerNumber && !placing;
 
   async function onRun() {
     if (!place || !consumer) return;
@@ -476,7 +479,7 @@ export function ReservationsPlaygroundClient({
       const r = await createPlaygroundReservation({
         project_id: place.id,
         consumer_id: consumer.id,
-        reserved_at: when,
+        reserved_at: `${date}T${time}`,
         party_size: party,
         notes: notes.trim(),
         business_number_mode: effBusinessMode,
@@ -502,10 +505,11 @@ export function ReservationsPlaygroundClient({
         <p>
           <span className="font-semibold">Fake users only — but the calls are real.</span>{" "}
           A run creates its ticket immediately, then up to{" "}
-          <span className="font-semibold">{config.attempts}</span> call intent
-          {config.attempts === 1 ? "" : "s"} fire for real (ElevenLabs/Twilio
-          spend) — if the line doesn&apos;t answer, the next intent dials. Tickets
-          stay in the playground sandbox, never in real consumer reservations.
+          <span className="font-semibold">{config.attempts}</span>{" "}
+          {config.attempts === 1 ? "call intent fires" : "call intents fire"} for
+          real (ElevenLabs/Twilio spend) — if the line doesn&apos;t answer, the
+          next intent dials. Tickets stay in the playground sandbox, never in
+          real consumer reservations.
         </p>
       </div>
 
@@ -533,13 +537,21 @@ export function ReservationsPlaygroundClient({
           />
           <Labeled
             icon={<CalendarClock className="h-3.5 w-3.5" />}
-            label="Date & time (venue local)"
+            label="Date (venue local)"
           >
             <input
-              type="datetime-local"
+              type="date"
               className={inputCls}
-              value={when}
-              onChange={(e) => setWhen(e.target.value)}
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+            />
+          </Labeled>
+          <Labeled icon={<CalendarClock className="h-3.5 w-3.5" />} label="Hour">
+            <input
+              type="time"
+              className={inputCls}
+              value={time}
+              onChange={(e) => setTime(e.target.value)}
             />
           </Labeled>
           <Labeled icon={<Users className="h-3.5 w-3.5" />} label="Party size">
@@ -655,9 +667,11 @@ export function ReservationsPlaygroundClient({
               ? "Pick a place."
               : !consumer
                 ? "Pick a consumer."
-                : !when
-                  ? "Pick a date & time."
-                  : !businessNumber
+                : !date
+                  ? "Pick a date."
+                  : !time
+                    ? "Pick an hour."
+                    : !businessNumber
                     ? "No business number available — set the test number in Config."
                     : !consumerNumber
                       ? "No consumer number available — set the consumer test number in Config or pick a consumer with a phone."
