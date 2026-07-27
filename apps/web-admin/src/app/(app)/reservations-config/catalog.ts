@@ -168,6 +168,3 @@ export function coerceConfig(raw: unknown): ReservationsConfig {
   };
 }
 
-export function channelMeta(key: ReservationChannel): Channel {
-  return CHANNELS.find((c) => c.key === key) ?? CHANNELS[0];
-}
