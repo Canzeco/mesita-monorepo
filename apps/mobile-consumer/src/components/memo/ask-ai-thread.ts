@@ -9,7 +9,7 @@ const GREETING =
 export const AI_ERROR =
   'Hmm, my line dropped for a second — give it another try in a moment.';
 
-export const MAX_CARDS = 3;
+const MAX_CARDS = 3;
 export const MAX_RELATED = 3;
 export const THREAD_CAP = 40;
 
