@@ -45,27 +45,42 @@ export function ClimbCard({ data }: { data: ClimbCardData }) {
       </span>
     );
   } else if (data.actions && data.actions.length > 0) {
+    // Primary actions stack full-width; consecutive SECONDARY actions share
+    // one row (e.g. Magnetic's "Join with invitation | Request invitation").
+    const groups = data.actions.reduce<ClimbCardAction[][]>((acc, action) => {
+      const last = acc[acc.length - 1];
+      if (action.secondary && last && last[0]?.secondary) last.push(action);
+      else acc.push([action]);
+      return acc;
+    }, []);
     footer = (
       <div className="flex flex-col gap-2">
-        {data.actions.map((action) => {
-          const cls = action.secondary
-            ? "border-border bg-card hover:bg-muted flex items-center justify-center rounded-lg border py-2.5 text-[13px] font-semibold transition active:scale-[0.99]"
-            : "bg-pink-gradient shadow-sm flex items-center justify-center rounded-lg py-2.5 text-[13px] font-semibold text-white transition active:scale-[0.99]";
-          return action.href ? (
-            <Link key={action.label} href={action.href} className={cls}>
-              {action.label}
-            </Link>
-          ) : (
-            <button
-              key={action.label}
-              type="button"
-              onClick={action.onClick}
-              className={cn(cls, "w-full")}
-            >
-              {action.label}
-            </button>
-          );
-        })}
+        {groups.map((group) => (
+          <div key={group[0].label} className="flex gap-2">
+            {group.map((action) => {
+              const cls = cn(
+                "flex flex-1 items-center justify-center rounded-lg py-2.5 text-[13px] font-semibold transition active:scale-[0.99]",
+                action.secondary
+                  ? "border-border bg-card hover:bg-muted border"
+                  : "bg-pink-gradient text-white shadow-sm",
+              );
+              return action.href ? (
+                <Link key={action.label} href={action.href} className={cls}>
+                  {action.label}
+                </Link>
+              ) : (
+                <button
+                  key={action.label}
+                  type="button"
+                  onClick={action.onClick}
+                  className={cls}
+                >
+                  {action.label}
+                </button>
+              );
+            })}
+          </div>
+        ))}
       </div>
     );
   } else if (data.note) {

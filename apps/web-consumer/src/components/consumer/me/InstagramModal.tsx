@@ -58,6 +58,8 @@ export function InstagramModal({
   onClose: () => void;
 }) {
   const supabase = useBrowserSupabase();
+  const { origin } = useConsumerClass();
+  const connected = origin === "instagram";
   const [handle, setHandle] = useState("");
   const [code, setCode] = useState("");
   const [verifying, setVerifying] = useState(false);
@@ -118,10 +120,14 @@ export function InstagramModal({
         <div className="flex flex-col gap-6">
           <InstagramEmulator />
 
-          <section className="flex flex-col gap-2">
-            <SectionEyebrow>Current connection</SectionEyebrow>
-            <CurrentConnectionCard />
-          </section>
+          {/* Connection status only when there IS one — the not-connected
+              case is already told by the two cards below. */}
+          {connected && (
+            <section className="flex flex-col gap-2">
+              <SectionEyebrow>Connected</SectionEyebrow>
+              <CurrentConnectionCard />
+            </section>
+          )}
 
           <section className="flex flex-col gap-2">
             <SectionEyebrow>Two ways your reach pays</SectionEyebrow>
@@ -133,22 +139,11 @@ export function InstagramModal({
             <ol className="flex flex-col gap-3">
               {[
                 <>
-                  Follow <span className="text-secondary">@mesita.bot</span> on
-                  Instagram.
+                  DM <span className="text-secondary">@mesita.bot</span> the
+                  word <span className="text-secondary font-mono">VERIFY</span>{" "}
+                  on Instagram.
                 </>,
-                <>
-                  DM <span className="text-secondary">@mesita.bot</span> with
-                  the word{" "}
-                  <span className="text-secondary font-mono">VERIFY</span>.
-                </>,
-                <>
-                  Mesita will reply with an 8-digit verification code. Paste it
-                  here.
-                </>,
-                <>
-                  {MAGNETIC_FOLLOWER_THRESHOLD.toLocaleString("en-US")}+
-                  followers unlocks Mesita Magnetic instantly.
-                </>,
+                <>Paste the 8-digit code it replies with.</>,
               ].map((line, i) => (
                 <li
                   key={i}
@@ -178,31 +173,19 @@ export function InstagramModal({
               className="border-border bg-muted/30 placeholder:text-muted-foreground/70 h-12 w-full rounded-lg border px-5 text-center text-sm outline-none"
               maxLength={8}
             />
-            <div className="mt-1 flex gap-2">
-              <button
-                type="button"
-                onClick={onClose}
-                className="border-border bg-card hover:bg-muted flex-1 rounded-lg border py-3 text-sm font-semibold transition"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={verify}
-                disabled={!canVerify}
-                className="bg-pink-gradient flex flex-1 items-center justify-center gap-2 rounded-lg py-3 text-sm font-semibold text-white transition disabled:opacity-60"
-              >
-                {verifying ? (
-                  <Spinner
-                    size="sm"
-                    className="border-white/40 border-t-white"
-                  />
-                ) : (
-                  <BadgeCheck className="h-4 w-4" />
-                )}
-                {verifying ? "Connecting…" : "Verify"}
-              </button>
-            </div>
+            <button
+              type="button"
+              onClick={verify}
+              disabled={!canVerify}
+              className="bg-pink-gradient mt-1 flex w-full items-center justify-center gap-2 rounded-lg py-3 text-sm font-semibold text-white transition disabled:opacity-60"
+            >
+              {verifying ? (
+                <Spinner size="sm" className="border-white/40 border-t-white" />
+              ) : (
+                <BadgeCheck className="h-4 w-4" />
+              )}
+              {verifying ? "Connecting…" : "Verify"}
+            </button>
             <p className="text-muted-foreground mt-1 text-center text-[11px]">
               We never ask for your Instagram password.
             </p>
@@ -240,8 +223,7 @@ function TwoWaysCards() {
             </span>
           </p>
           <p className="text-muted-foreground mt-1 text-[12px] leading-snug">
-            Automatic — no story required. Your whole account upgrades to
-            Mesita Magnetic: up to {magneticRate}% discount rewards at every
+            Automatic, no story needed — up to {magneticRate}% at every
             Verified Partner.
           </p>
         </div>
@@ -264,8 +246,8 @@ function TwoWaysCards() {
             </span>
           </p>
           <p className="text-muted-foreground mt-1 text-[12px] leading-snug">
-            Post a story tagging the place during your visit — up to{" "}
-            {storyRate}% off that bill, every visit, whatever your class.
+            Post a story at your visit — up to {storyRate}% off that bill, any
+            class.
           </p>
         </div>
       </div>
@@ -275,50 +257,33 @@ function TwoWaysCards() {
 
 // ─── Current connection ────────────────────────────────────────────────────
 
+// Rendered only when the account IS connected (origin === "instagram") — the
+// not-connected case is carried by the two-ways cards.
 function CurrentConnectionCard() {
-  const { origin, followers, handle } = useConsumerClass();
-  const connected = origin === "instagram";
+  const { followers, handle } = useConsumerClass();
 
   return (
     <div className="border-border bg-card flex items-center gap-3 rounded-2xl border p-4">
       <span
         className={cn(
           "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-white shadow-sm",
-          connected ? INSTAGRAM_ICON_GRADIENT_CLASS : "bg-muted",
+          INSTAGRAM_ICON_GRADIENT_CLASS,
         )}
       >
-        <Instagram
-          className={cn("h-5 w-5", !connected && "text-muted-foreground")}
-        />
+        <Instagram className="h-5 w-5" />
       </span>
       <div className="min-w-0 flex-1">
-        {connected ? (
-          <>
-            <p className="truncate text-[14px] font-bold tracking-tight">
-              {handle ? `@${handle}` : "Instagram connected"}
-            </p>
-            <p className="text-muted-foreground text-[12px]">
-              {followers.toLocaleString("en-US")} followers
-            </p>
-          </>
-        ) : (
-          <>
-            <p className="text-[14px] font-bold tracking-tight">
-              Not connected
-            </p>
-            <p className="text-muted-foreground text-[12px] leading-snug">
-              {MAGNETIC_FOLLOWER_THRESHOLD.toLocaleString("en-US")}+ followers
-              unlocks Mesita Magnetic.
-            </p>
-          </>
-        )}
+        <p className="truncate text-[14px] font-bold tracking-tight">
+          {handle ? `@${handle}` : "Instagram connected"}
+        </p>
+        <p className="text-muted-foreground text-[12px]">
+          {followers.toLocaleString("en-US")} followers
+        </p>
       </div>
-      {connected && (
-        <span className="bg-tier-gold flex shrink-0 items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-bold text-white shadow-sm">
-          <Crown className="h-3 w-3 fill-current" />
-          Magnetic
-        </span>
-      )}
+      <span className="bg-tier-gold flex shrink-0 items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-bold text-white shadow-sm">
+        <Crown className="h-3 w-3 fill-current" />
+        Magnetic
+      </span>
     </div>
   );
 }
