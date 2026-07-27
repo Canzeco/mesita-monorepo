@@ -9,9 +9,10 @@
 
 const EL_BASE = "https://api.elevenlabs.io";
 
-// The "Mesita Reservationist (Spanish MX)" agent + the "Mesita Reservations
-// (Businesses)" outbound line, both in the ElevenAgents workspace.
-const DEFAULT_AGENT_ID = "agent_2201kxsktw0me9rb2kdtqerrgzha";
+// Fallback agent = eleven-a1 (es-mx) · c2b outbound booker. The old single
+// donor ("XD" / agent_2201kxsktw0me9rb2kdtqerrgzha) was deleted — the fleet
+// is the only agents in the workspace. The outbound Twilio line is shared.
+const DEFAULT_AGENT_ID = "agent_0101kyjcfjecfk69ty20rmcf12gn";
 const DEFAULT_FROM_NUMBER = "+16282960710";
 
 export function elevenLabsKey(): string | null {
