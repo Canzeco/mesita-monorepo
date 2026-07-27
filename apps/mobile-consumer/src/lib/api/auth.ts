@@ -86,7 +86,7 @@ export function apiUpdateConsumerProfile(patch: {
 
 // consumer-web-claim-instagram — social door into Magnetic (1,000+ followers);
 // below the threshold the consumer stays Standard.
-export type InstagramClaimResult = {
+type InstagramClaimResult = {
   tier: 'standard' | 'magnetic';
   followers: number;
   handle: string | null;
