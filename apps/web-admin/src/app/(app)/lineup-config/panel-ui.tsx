@@ -1,21 +1,8 @@
 "use client";
 
-import { CONTEXT_FIELDS, LANES, type ContextSide, type LaneId } from "@/lib/business/scores";
+import { CONTEXT_FIELDS, type ContextSide } from "@/lib/business/scores";
 
 // Tiny presentational bits shared by the Subscores and Scores & Lanes panels.
-
-/** O / I / H badge text — derived from Lane.label, never restated. */
-export const LANE_SHORT: Record<LaneId, string> = Object.fromEntries(
-  LANES.map((l) => [l.id, l.label[0].toUpperCase()]),
-) as Record<LaneId, string>;
-
-export function GroupHead({ children }: { children: React.ReactNode }) {
-  return (
-    <p className="text-muted-foreground text-[11px] font-semibold tracking-[0.12em] uppercase">
-      {children}
-    </p>
-  );
-}
 
 export function SubHead({ children }: { children: React.ReactNode }) {
   return <p className="text-foreground/80 text-[12px] font-semibold tracking-tight">{children}</p>;
