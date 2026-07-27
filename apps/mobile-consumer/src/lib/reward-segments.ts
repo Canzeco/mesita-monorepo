@@ -95,7 +95,7 @@ export const REWARD_SEGMENTS: readonly RewardSegment[] = [
   },
 ];
 
-export const REWARD_SEGMENT_BY_KEY = Object.fromEntries(
+const REWARD_SEGMENT_BY_KEY = Object.fromEntries(
   REWARD_SEGMENTS.map((s) => [s.key, s]),
 ) as Record<RewardSegmentKey, RewardSegment>;
 
