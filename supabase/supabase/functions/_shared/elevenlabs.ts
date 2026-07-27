@@ -79,7 +79,17 @@ export async function resolvePhoneNumberId(
 }
 
 export type ConversationStatusResult =
-  | { ok: true; status: string; callDurationSecs: number | null }
+  | {
+    ok: true;
+    status: string;
+    callDurationSecs: number | null;
+    /**
+     * The post-call verdict, once `status` is done: analysis.call_successful
+     * ("success" | "failure" | "unknown"). null until the analysis exists —
+     * "success" is what the intent loop reads as "the venue CONFIRMED".
+     */
+    callSuccessful: string | null;
+  }
   | { ok: false; error: string };
 
 /**
@@ -114,21 +124,44 @@ export async function getConversationStatus(
   const duration = meta && typeof meta.call_duration_secs === "number"
     ? meta.call_duration_secs
     : null;
+  const analysis = (b.analysis ?? null) as Record<string, unknown> | null;
   return {
     ok: true,
     status: typeof b.status === "string" ? b.status : "unknown",
     callDurationSecs: duration,
+    callSuccessful: analysis && typeof analysis.call_successful === "string"
+      ? analysis.call_successful
+      : null,
   };
 }
 
 export type OutboundCallResult =
-  | { ok: true; conversationId: string | null; callSid: string | null }
+  | {
+    ok: true;
+    conversationId: string | null;
+    callSid: string | null;
+    /** Whether the per-call prompt/first-message override actually rode along. */
+    usedOverrides: boolean;
+  }
   | { ok: false; error: string };
+
+/** Per-call agent override — the per-leg brief (see _shared/reservation-legs.ts). */
+export type CallOverrides = {
+  prompt?: string;
+  firstMessage?: string;
+  language?: string;
+};
 
 /**
  * Place an outbound Convai call over the agent's Twilio number.
  * POST /v1/convai/twilio/outbound-call. Returns quickly with the conversation_id
  * (the join key for the post-call webhook); it does NOT wait for the call to end.
+ *
+ * `overrides` sends a per-call conversation_config_override (prompt / first
+ * message / language). Each overridden field must be whitelisted in the agent's
+ * ElevenLabs Security tab; if the placement is REJECTED with overrides on, we
+ * retry once without them (the dynamic variables still carry call_direction,
+ * so a branching console prompt keeps working) and report usedOverrides=false.
  */
 export async function placeOutboundCall(
   key: string,
@@ -137,42 +170,61 @@ export async function placeOutboundCall(
     agentPhoneNumberId: string;
     toNumber: string;
     dynamicVariables: Record<string, string | number | boolean>;
+    overrides?: CallOverrides;
   },
 ): Promise<OutboundCallResult> {
-  let r: Response;
-  try {
-    r = await fetch(`${EL_BASE}/v1/convai/twilio/outbound-call`, {
-      method: "POST",
-      headers: headers(key),
-      body: JSON.stringify({
-        agent_id: input.agentId,
-        agent_phone_number_id: input.agentPhoneNumberId,
-        to_number: input.toNumber,
-        conversation_initiation_client_data: {
-          dynamic_variables: input.dynamicVariables,
-        },
-      }),
-    });
-  } catch (e) {
-    return { ok: false, error: e instanceof Error ? e.message : "outbound-call fetch failed" };
-  }
-  let body: unknown;
-  try {
-    body = await r.json();
-  } catch {
-    return { ok: false, error: `outbound-call returned non-JSON (HTTP ${r.status})` };
-  }
-  if (!r.ok) {
-    const detail = (body as { detail?: { message?: string } | string } | null)?.detail;
-    const msg = typeof detail === "string"
-      ? detail
-      : detail?.message ?? `outbound-call HTTP ${r.status}`;
-    return { ok: false, error: msg };
-  }
-  const b = body as Record<string, unknown>;
-  return {
-    ok: true,
-    conversationId: typeof b.conversation_id === "string" ? b.conversation_id : null,
-    callSid: typeof b.callSid === "string" ? b.callSid : null,
+  const attempt = async (withOverrides: boolean): Promise<OutboundCallResult> => {
+    const initData: Record<string, unknown> = {
+      dynamic_variables: input.dynamicVariables,
+    };
+    if (withOverrides && input.overrides) {
+      const agent: Record<string, unknown> = {};
+      if (input.overrides.prompt) agent.prompt = { prompt: input.overrides.prompt };
+      if (input.overrides.firstMessage) agent.first_message = input.overrides.firstMessage;
+      if (input.overrides.language) agent.language = input.overrides.language;
+      if (Object.keys(agent).length) {
+        initData.conversation_config_override = { agent };
+      }
+    }
+    let r: Response;
+    try {
+      r = await fetch(`${EL_BASE}/v1/convai/twilio/outbound-call`, {
+        method: "POST",
+        headers: headers(key),
+        body: JSON.stringify({
+          agent_id: input.agentId,
+          agent_phone_number_id: input.agentPhoneNumberId,
+          to_number: input.toNumber,
+          conversation_initiation_client_data: initData,
+        }),
+      });
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : "outbound-call fetch failed" };
+    }
+    let body: unknown;
+    try {
+      body = await r.json();
+    } catch {
+      return { ok: false, error: `outbound-call returned non-JSON (HTTP ${r.status})` };
+    }
+    if (!r.ok) {
+      const detail = (body as { detail?: { message?: string } | string } | null)?.detail;
+      const msg = typeof detail === "string"
+        ? detail
+        : detail?.message ?? `outbound-call HTTP ${r.status}`;
+      return { ok: false, error: msg };
+    }
+    const b = body as Record<string, unknown>;
+    return {
+      ok: true,
+      conversationId: typeof b.conversation_id === "string" ? b.conversation_id : null,
+      callSid: typeof b.callSid === "string" ? b.callSid : null,
+      usedOverrides: withOverrides && !!input.overrides,
+    };
   };
+
+  const first = await attempt(!!input.overrides);
+  if (first.ok || !input.overrides) return first;
+  // Overrides rejected (most likely not whitelisted on the agent) — vars-only.
+  return await attempt(false);
 }

@@ -284,10 +284,32 @@ function intentChip(result: string | null, n: number, running: boolean) {
       </span>
     );
   }
-  if (result === "answered") {
+  if (result === "confirmed") {
     return (
       <span key={n} className={`${base} bg-emerald-500/10 text-emerald-700`}>
-        <CheckCircle2 className="h-3 w-3" /> intent {n}: answered
+        <CheckCircle2 className="h-3 w-3" /> intent {n}: confirmed
+      </span>
+    );
+  }
+  if (result === "declined") {
+    return (
+      <span key={n} className={`${base} bg-red-500/10 text-red-700`}>
+        <XCircle className="h-3 w-3" /> intent {n}: declined
+      </span>
+    );
+  }
+  if (result === "unresolved") {
+    return (
+      <span key={n} className={`${base} bg-amber-500/10 text-amber-700`}>
+        intent {n}: no verdict
+      </span>
+    );
+  }
+  if (result === "answered") {
+    return (
+      <span key={n} className={`${base} bg-secondary/10 text-secondary`}>
+        {running ? <Loader2 className="h-3 w-3 animate-spin" /> : <CheckCircle2 className="h-3 w-3" />}{" "}
+        intent {n}: answered
       </span>
     );
   }
@@ -319,27 +341,70 @@ function intentChip(result: string | null, n: number, running: boolean) {
   );
 }
 
+// The guest-confirmation chip — leg 2 (business → consumer), shown once leg 1
+// has settled. `skipped` renders nothing: the verdict badge already says why.
+function guestCallChip(state: string) {
+  const base =
+    "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold";
+  if (state === "calling" || state === "ringing") {
+    return (
+      <span className={`${base} bg-secondary/10 text-secondary`}>
+        <Loader2 className="h-3 w-3 animate-spin" /> guest call: {state}
+      </span>
+    );
+  }
+  if (state === "answered") {
+    return (
+      <span className={`${base} bg-emerald-500/10 text-emerald-700`}>
+        <PhoneCall className="h-3 w-3" /> guest confirmed by phone
+      </span>
+    );
+  }
+  if (state === "no_answer") {
+    return (
+      <span className={`${base} bg-amber-500/10 text-amber-700`}>
+        <PhoneCall className="h-3 w-3" /> guest call: no answer
+      </span>
+    );
+  }
+  if (state === "failed" || state === "unknown") {
+    return (
+      <span className={`${base} bg-red-500/10 text-red-700`}>
+        <XCircle className="h-3 w-3" /> guest call: {state}
+      </span>
+    );
+  }
+  return null; // none | skipped
+}
+
 function TicketCard({ t }: { t: PlaygroundTicket }) {
   const running = t.attempts_state === "running";
   const attempts = Array.isArray(t.attempts) ? t.attempts : [];
-  const badge =
-    t.attempts_state === "answered" ? (
-      <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold text-emerald-700">
-        <CheckCircle2 className="h-3 w-3" /> answered
-      </span>
-    ) : t.attempts_state === "exhausted" ? (
-      <span className="inline-flex items-center gap-1 rounded-full bg-red-500/10 px-2 py-0.5 text-[10px] font-semibold text-red-700">
-        <XCircle className="h-3 w-3" /> no answer
-      </span>
-    ) : t.attempts_state === "error" ? (
-      <span className="inline-flex items-center gap-1 rounded-full bg-red-500/10 px-2 py-0.5 text-[10px] font-semibold text-red-700">
-        <XCircle className="h-3 w-3" /> {t.call_status ?? "error"}
-      </span>
-    ) : (
-      <span className="text-secondary bg-secondary/10 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold">
-        <Loader2 className="h-3 w-3 animate-spin" /> intents running
-      </span>
-    );
+  const badge = running ? (
+    <span className="text-secondary bg-secondary/10 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold">
+      <Loader2 className="h-3 w-3 animate-spin" /> intents running
+    </span>
+  ) : t.status === "confirmed" ? (
+    <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold text-emerald-700">
+      <CheckCircle2 className="h-3 w-3" /> confirmed
+    </span>
+  ) : t.status === "declined" ? (
+    <span className="inline-flex items-center gap-1 rounded-full bg-red-500/10 px-2 py-0.5 text-[10px] font-semibold text-red-700">
+      <XCircle className="h-3 w-3" /> declined
+    </span>
+  ) : t.status === "unreachable" ? (
+    <span className="inline-flex items-center gap-1 rounded-full bg-red-500/10 px-2 py-0.5 text-[10px] font-semibold text-red-700">
+      <XCircle className="h-3 w-3" /> no answer
+    </span>
+  ) : t.status === "unresolved" ? (
+    <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/10 px-2 py-0.5 text-[10px] font-semibold text-amber-700">
+      no verdict
+    </span>
+  ) : (
+    <span className="inline-flex items-center gap-1 rounded-full bg-red-500/10 px-2 py-0.5 text-[10px] font-semibold text-red-700">
+      <XCircle className="h-3 w-3" /> {t.call_status ?? "error"}
+    </span>
+  );
 
   return (
     <li className="border-border bg-card rounded-2xl border p-4">
@@ -353,6 +418,7 @@ function TicketCard({ t }: { t: PlaygroundTicket }) {
         {Array.from({ length: Math.max(t.attempts_planned, attempts.length) }, (_, i) =>
           intentChip(attempts[i]?.result ?? null, i + 1, running),
         )}
+        {guestCallChip(t.callback_state)}
       </div>
       <div className="text-muted-foreground mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs">
         <span className="inline-flex items-center gap-1.5">
@@ -446,11 +512,16 @@ export function ReservationsPlaygroundClient({
     };
   }, []);
 
-  // Live progress: while any ticket's intent loop is running, poll. The
-  // interval stops itself once every running ticket is stale (a crashed loop
-  // can leave 'running' behind) — recency is checked in the callback, where
-  // Date.now() is allowed.
-  const hasRunning = tickets.some((t) => t.attempts_state === "running");
+  // Live progress: while any ticket's run is still moving — intent loop
+  // running OR the guest confirmation call in flight — poll. The interval
+  // stops itself once every live ticket is stale (a crashed loop can leave
+  // 'running' behind) — recency is checked in the callback, where Date.now()
+  // is allowed.
+  const isLive = (t: PlaygroundTicket) =>
+    t.attempts_state === "running" ||
+    t.callback_state === "calling" ||
+    t.callback_state === "ringing";
+  const hasRunning = tickets.some(isLive);
   useEffect(() => {
     if (!hasRunning) return;
     const id = setInterval(async () => {
@@ -459,7 +530,9 @@ export function ReservationsPlaygroundClient({
       setTickets(r.tickets);
       const stillLive = r.tickets.some(
         (t) =>
-          t.attempts_state === "running" &&
+          (t.attempts_state === "running" ||
+            t.callback_state === "calling" ||
+            t.callback_state === "ringing") &&
           Date.now() - Date.parse(t.created_at) < RUNNING_POLL_WINDOW_MS,
       );
       if (!stillLive) clearInterval(id);
@@ -525,10 +598,13 @@ export function ReservationsPlaygroundClient({
           <span className="font-semibold">Fake users only — but the calls are real.</span>{" "}
           A run creates its ticket immediately, then up to{" "}
           <span className="font-semibold">{config.attempts}</span>{" "}
-          {config.attempts === 1 ? "call intent fires" : "call intents fire"} for
-          real (ElevenLabs/Twilio spend) — if the line doesn&apos;t answer, the
-          next intent dials. Tickets stay in the playground sandbox, never in
-          real consumer reservations.
+          {config.attempts === 1 ? "call intent fires" : "call intents fire"}{" "}
+          venue-ward (consumer → business, real ElevenLabs/Twilio spend) — no
+          answer, next intent dials. When the venue{" "}
+          <span className="font-semibold">confirms</span>, the agent then calls
+          the guest (business → consumer) to confirm it to the human — and it
+          hangs up on its own once each call&apos;s outcome is settled. Tickets
+          stay in the playground sandbox, never in real consumer reservations.
         </p>
       </div>
 

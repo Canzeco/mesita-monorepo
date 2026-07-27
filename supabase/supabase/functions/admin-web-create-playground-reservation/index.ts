@@ -6,12 +6,23 @@
 // intent — a REAL place + a REAL consumer (both from the Mesita DB) + operator-
 // authored intent — inserts a SANDBOX ticket in public.playground_reservations
 // and responds IMMEDIATELY. Then, in an EdgeRuntime background task (the
-// enricher's ack-early pattern), the INTENT LOOP runs: up to
-// reservations_config.attempts call intents — place the outbound call, watch
-// the ElevenLabs conversation, and if the venue didn't answer, fire the next
-// intent. Every intent lands in the ticket's `attempts` log; `attempts_state`
-// tells the sandbox UI when the loop is done. Playground tickets never touch
-// public.reservations.
+// enricher's ack-early pattern), the TWO-LEG agent run fires:
+//
+//   Leg 1 · consumer → business  up to reservations_config.attempts call
+//     intents — the agent calls the venue ON BEHALF OF the guest; no answer →
+//     next intent. Once answered, we watch the conversation to its post-call
+//     analysis: call_successful=success → the venue CONFIRMED.
+//   Leg 2 · business → consumer  ONLY after a confirmation, the agent calls
+//     the human guest back to confirm the reservation (callback_* columns).
+//     Declined / unreachable / unresolved runs skip it.
+//
+// Both legs carry per-leg briefs (prompt + first message overrides, with a
+// vars-only fallback) that include the hang-up policy: the agent ends the
+// call itself once the outcome is settled — see _shared/reservation-legs.ts.
+// Every intent lands in the ticket's `attempts` log; `attempts_state` tells
+// the sandbox UI when the loop is done and `status` carries the verdict
+// (pending → confirmed | declined | unresolved | unreachable | error).
+// Playground tickets never touch public.reservations.
 //
 // Playground intents are spaced SECONDS apart on purpose — production's
 // attempts 2..N wait for the venue's opening hours (that scheduler is the
@@ -54,6 +65,14 @@ import {
   reservationFromNumber,
   resolvePhoneNumberId,
 } from "../_shared/elevenlabs.ts";
+import {
+  businessLegFirstMessage,
+  businessLegPrompt,
+  guestLegFirstMessage,
+  guestLegPrompt,
+  legDynamicVariables,
+  type ReservationLegVars,
+} from "../_shared/reservation-legs.ts";
 
 type NumberMode = "test" | "actual";
 
@@ -72,14 +91,19 @@ type Body = {
   consumer_number_mode?: NumberMode;
 };
 
-// ── Intent-loop pacing ────────────────────────────────────────────────────────
-// Poll the conversation every WATCH_POLL_MS up to WATCH_BUDGET_MS per intent
-// (an unanswered Twilio leg lands 'failed' well inside it), then wait
-// RETRY_GAP_MS before the next intent. Worst case 3 intents ≈ 5 min — inside
-// the edge-runtime background wall clock.
+// ── Run pacing ───────────────────────────────────────────────────────────────
+// Both legs run inside ONE background task, under the edge-runtime ~400s wall:
+//   leg 1: per intent, poll every WATCH_POLL_MS within ANSWER_BUDGET_MS for
+//     answered/no-answer (an unanswered Twilio leg lands 'failed' well inside
+//     it), RETRY_GAP_MS between intents; once answered, up to VERDICT_BUDGET_MS
+//     more for the post-call analysis (call duration + processing).
+//   leg 2: one guest call, CALLBACK_BUDGET_MS to see it answered.
+// Worst case (3 intents, answered on the last): 2×(60+8) + 60 + 130 + 60 ≈ 386s.
 const WATCH_POLL_MS = 8_000;
-const WATCH_BUDGET_MS = 80_000;
-const RETRY_GAP_MS = 12_000;
+const ANSWER_BUDGET_MS = 60_000;
+const VERDICT_BUDGET_MS = 130_000;
+const CALLBACK_BUDGET_MS = 60_000;
+const RETRY_GAP_MS = 8_000;
 
 const delay = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -161,16 +185,17 @@ type AttemptEntry = {
   result: string;
 };
 
-// Watch one placed call until we can tell whether the venue answered.
+// Watch one placed call until we can tell whether it was answered.
 //   'answered'  — the conversation connected (in-progress / processing / done)
 //   'no_answer' — ElevenLabs marked it failed (unanswered/declined Twilio leg)
 //   'unknown'   — budget expired without a verdict (we stop; never double-call
 //                 a line that might be mid-conversation)
-async function watchConversation(
+async function watchUntilAnswered(
   key: string,
   conversationId: string,
+  budgetMs: number,
 ): Promise<"answered" | "no_answer" | "unknown"> {
-  const deadline = Date.now() + WATCH_BUDGET_MS;
+  const deadline = Date.now() + budgetMs;
   while (Date.now() < deadline) {
     await delay(WATCH_POLL_MS);
     const s = await getConversationStatus(key, conversationId);
@@ -184,36 +209,107 @@ async function watchConversation(
   return "unknown";
 }
 
-// The intent loop — runs AFTER the HTTP response, updating the ticket as it
+// After the venue answered, keep watching to the post-call analysis: did it
+// CONFIRM the reservation? (analysis.call_successful on the done conversation —
+// the agent's success criterion is "reservation confirmed".)
+async function watchVerdict(
+  key: string,
+  conversationId: string,
+): Promise<"confirmed" | "declined" | "unknown"> {
+  const deadline = Date.now() + VERDICT_BUDGET_MS;
+  while (Date.now() < deadline) {
+    await delay(WATCH_POLL_MS);
+    const s = await getConversationStatus(key, conversationId);
+    if (!s.ok) continue;
+    if (s.status === "done") {
+      if (s.callSuccessful === "success") return "confirmed";
+      if (s.callSuccessful === "failure") return "declined";
+      return "unknown";
+    }
+    if (s.status === "failed") return "unknown"; // dropped mid-call — no verdict
+  }
+  return "unknown";
+}
+
+// The two-leg run — fires AFTER the HTTP response, updating the ticket as it
 // goes so the sandbox shows live progress.
 async function runIntents(input: {
   admin: SupabaseClient;
   ticketId: string;
   attemptsPlanned: number;
   businessNumber: string;
-  dynamicVariables: Record<string, string | number | boolean>;
+  consumerNumber: string;
+  legVars: ReservationLegVars;
 }): Promise<void> {
-  const { admin, ticketId, attemptsPlanned } = input;
+  const { admin, ticketId, attemptsPlanned, legVars } = input;
   const attempts: AttemptEntry[] = [];
   const record = async (patch: Record<string, unknown>) => {
     await admin.from("playground_reservations").update(patch).eq("id", ticketId);
   };
 
+  // Leg 2 · business → consumer — the confirmation call to the human. Reached
+  // ONLY after leg 1 lands a confirmation (callback_state is already 'calling',
+  // written atomically with status='confirmed' so the UI never sees a gap).
+  const callGuest = async (key: string, phoneNumberId: string): Promise<void> => {
+    const call = await placeOutboundCall(key, {
+      agentId: reservationAgentId(),
+      agentPhoneNumberId: phoneNumberId,
+      toNumber: input.consumerNumber,
+      dynamicVariables: legDynamicVariables("guest_confirmation", legVars),
+      overrides: {
+        prompt: guestLegPrompt(legVars),
+        firstMessage: guestLegFirstMessage(legVars),
+        language: "es",
+      },
+    });
+    if (!call.ok) {
+      await record({
+        callback_state: "failed",
+        call_status: `confirmed — guest call failed: ${call.error}`.slice(0, 200),
+      });
+      return;
+    }
+    await record({
+      callback_state: "ringing",
+      callback_conversation_id: call.conversationId,
+      call_status: "confirmed — calling the guest",
+    });
+    const outcome = call.conversationId
+      ? await watchUntilAnswered(key, call.conversationId, CALLBACK_BUDGET_MS)
+      : "unknown";
+    await record({
+      callback_state: outcome,
+      call_status: outcome === "answered"
+        ? "confirmed — guest notified"
+        : outcome === "no_answer"
+        ? "confirmed — guest didn't answer"
+        : "confirmed — guest call outcome unknown",
+    });
+  };
+
   try {
     const key = elevenLabsKey();
     if (!key) {
-      await record({ attempts_state: "error", call_status: "no ELEVENLABS_KEY" });
+      await record({
+        attempts_state: "error",
+        status: "error",
+        callback_state: "skipped",
+        call_status: "no ELEVENLABS_KEY",
+      });
       return;
     }
     const phoneRes = await resolvePhoneNumberId(key, reservationFromNumber());
     if (!phoneRes.ok) {
       await record({
         attempts_state: "error",
+        status: "error",
+        callback_state: "skipped",
         call_status: `failed: ${phoneRes.error}`.slice(0, 200),
       });
       return;
     }
 
+    // Leg 1 · consumer → business — the booking intents.
     for (let n = 1; n <= attemptsPlanned; n++) {
       const entry: AttemptEntry = {
         n,
@@ -233,7 +329,12 @@ async function runIntents(input: {
         agentId: reservationAgentId(),
         agentPhoneNumberId: phoneRes.id,
         toNumber: input.businessNumber,
-        dynamicVariables: input.dynamicVariables,
+        dynamicVariables: legDynamicVariables("business_booking", legVars),
+        overrides: {
+          prompt: businessLegPrompt(legVars),
+          firstMessage: businessLegFirstMessage(legVars),
+          language: "es",
+        },
       });
 
       if (!call.ok) {
@@ -255,41 +356,86 @@ async function runIntents(input: {
       });
 
       const outcome = call.conversationId
-        ? await watchConversation(key, call.conversationId)
+        ? await watchUntilAnswered(key, call.conversationId, ANSWER_BUDGET_MS)
         : "unknown";
-      entry.result = outcome;
 
-      if (outcome === "answered") {
-        await record({
-          attempts,
-          attempts_state: "answered",
-          call_status: `intent ${n}: answered`,
-        });
-        return;
+      if (outcome === "no_answer") {
+        entry.result = "no_answer";
+        await record({ attempts, call_status: `intent ${n}: no answer` });
+        if (n < attemptsPlanned) await delay(RETRY_GAP_MS);
+        continue;
       }
       if (outcome === "unknown") {
         // Can't tell — the line may be mid-conversation. Stop rather than risk
         // ringing it again on top of a live call.
+        entry.result = "unknown";
         await record({
           attempts,
           attempts_state: "exhausted",
+          status: "unresolved",
+          callback_state: "skipped",
           call_status: `intent ${n}: outcome unknown — not retrying`,
         });
         return;
       }
-      // no_answer → next intent (if any remain).
-      await record({ attempts, call_status: `intent ${n}: no answer` });
-      if (n < attemptsPlanned) await delay(RETRY_GAP_MS);
+
+      // Answered — now wait for the venue's VERDICT before anything else.
+      entry.result = "answered";
+      await record({ attempts, call_status: `intent ${n}: answered — awaiting verdict` });
+      const verdict = call.conversationId
+        ? await watchVerdict(key, call.conversationId)
+        : "unknown";
+
+      if (verdict === "confirmed") {
+        entry.result = "confirmed";
+        await record({
+          attempts,
+          attempts_state: "answered",
+          status: "confirmed",
+          confirmed_at: new Date().toISOString(),
+          callback_state: "calling",
+          callback_at: new Date().toISOString(),
+          call_status: `intent ${n}: venue confirmed — calling the guest`,
+        });
+        await callGuest(key, phoneRes.id);
+        return;
+      }
+      if (verdict === "declined") {
+        // The venue ANSWERED and said no — terminal. Re-dialing would re-ask
+        // a venue that already declined.
+        entry.result = "declined";
+        await record({
+          attempts,
+          attempts_state: "answered",
+          status: "declined",
+          callback_state: "skipped",
+          call_status: `intent ${n}: venue declined — no guest call`,
+        });
+        return;
+      }
+      entry.result = "unresolved";
+      await record({
+        attempts,
+        attempts_state: "answered",
+        status: "unresolved",
+        callback_state: "skipped",
+        call_status: `intent ${n}: answered, verdict unknown — no guest call`,
+      });
+      return;
     }
 
     await record({
       attempts_state: "exhausted",
+      status: "unreachable",
+      callback_state: "skipped",
       call_status: `no answer after ${attemptsPlanned} intent${attemptsPlanned === 1 ? "" : "s"}`,
     });
   } catch (e) {
     await record({
       attempts_state: "error",
-      call_status: `failed: ${e instanceof Error ? e.message : "intent loop crashed"}`.slice(0, 200),
+      status: "error",
+      callback_state: "skipped",
+      call_status: `failed: ${e instanceof Error ? e.message : "run crashed"}`.slice(0, 200),
     });
   }
 }
@@ -450,6 +596,7 @@ Deno.serve(async (req) => {
       attempts: [],
       attempts_planned: cfg.attempts,
       attempts_state: "running",
+      callback_state: "none",
     })
     .select("*")
     .single();
@@ -462,15 +609,15 @@ Deno.serve(async (req) => {
       ticketId: ticket.id,
       attemptsPlanned: cfg.attempts,
       businessNumber,
-      dynamicVariables: {
-        venue_name: place.name?.trim() || "el lugar",
-        guest_name: guestName(consumer),
-        guest_phone: consumerNumber,
-        party_size: partySize,
-        reservation_date: esDate(reservedAt),
-        reservation_time: esTime(reservedAt),
-        occasion: "",
-        special_requests: notes,
+      consumerNumber,
+      legVars: {
+        venueName: place.name?.trim() || "el lugar",
+        guestName: guestName(consumer),
+        guestPhone: consumerNumber,
+        partySize,
+        dateEs: esDate(reservedAt),
+        timeEs: esTime(reservedAt),
+        specialRequests: notes,
       },
     }),
   );

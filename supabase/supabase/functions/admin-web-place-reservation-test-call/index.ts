@@ -117,8 +117,12 @@ Deno.serve(async (req) => {
     agentPhoneNumberId: phoneRes.id,
     toNumber,
     dynamicVariables: {
+      // The config-tab smoke call is always leg 1 (consumer → business); no
+      // guest number rides along, so guest_phone stays empty.
+      call_direction: "business_booking",
       venue_name: str(body.venue_name) || "el lugar",
       guest_name: str(body.guest_name) || "el cliente",
+      guest_phone: "",
       party_size: partySize,
       reservation_date: str(body.reservation_date),
       reservation_time: str(body.reservation_time),
