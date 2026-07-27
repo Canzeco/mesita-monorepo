@@ -9,28 +9,12 @@ import {
 } from "../_shared/sourcing.ts";
 import { openScore } from "../_shared/local-time.ts";
 
-export type PredictionStatus =
-  | "not_in_mesita"
-  | "web_listed"
-  | "verified_partner_other"
-  | "verified_partner_self";
-
-// Mirrors the consumer PlacePrediction contract (see consumer-web-suggest-
-// places) so the same PredictionRow renders these with no client changes.
-// `rating`/`ratingCount` are Memo extras the client may ignore.
-export type Prediction = {
-  placeId: string;
-  mainText: string;
-  secondaryText: string;
-  status: PredictionStatus;
-  mesitaId?: string;
-  mesitaSlug?: string;
-  // Memo extra: Google's live open/closed state, used to demote closed spots
-  // at the current local hour (null = unknown, don't penalise).
-  rating?: number | null;
-  ratingCount?: number | null;
-  openNow?: boolean | null;
-};
+// The Prediction card contract now lives in _shared/memo-types.ts (shared with
+// the admin playground engine). Imported for this file's own use and re-exported
+// so downstream local importers (index.ts, memo-answer.ts, memo-catalog-helpers)
+// are unchanged.
+import type { Prediction, PredictionStatus } from "../_shared/memo-types.ts";
+export type { Prediction, PredictionStatus };
 
 const GOOGLE_RADIUS_M = 8000;
 

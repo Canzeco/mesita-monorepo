@@ -48,18 +48,18 @@ import { fallbackAnswer } from "../_shared/memo-fallback.ts";
 import { isPlaceSeeking } from "../_shared/memo-intent.ts";
 import { readMemoSystemPrompt } from "../_shared/memo-prompt.ts";
 import { answerWithPerplexity } from "./memo-answer.ts";
-import { readConsumerContext } from "./memo-consumer-context.ts";
+import { readConsumerContext } from "../_shared/memo-consumer-context.ts";
 import {
   googleTextSearch,
   type Prediction,
   type PredictionStatus,
 } from "./memo-google-text-search.ts";
-import { toPlainText } from "./memo-text.ts";
+import { toPlainText } from "../_shared/memo-text.ts";
 import {
   mergeAndRankMemoPredictions,
 } from "./memo-catalog-helpers.ts";
-import { answerWithAgent } from "./memo-agent.ts";
-import { localMoment } from "../_shared/memo-local-moment.ts";
+import { answerWithAgent } from "../_shared/memo-agent.ts";
+import { buildHiddenMemoContext } from "../_shared/memo-hidden-context.ts";
 
 // ── Types ──────────────────────────────────────────────────────────────
 
@@ -141,7 +141,7 @@ Deno.serve(async (req) => {
         lat,
         lng,
         persona,
-        hiddenContext: hiddenMemoContext(profileCtx, lat, lng),
+        hiddenContext: buildHiddenMemoContext(profileCtx, lat, lng),
         history: body.history,
         keys: {
           openai: Deno.env.get("OPENAI_KEY") ?? "",
@@ -358,22 +358,3 @@ async function mesitaByName(
   }));
 }
 
-// Location + local time (+ signed-in profile) the agent reasons over but must
-// not recite. Mirrors the legacy hidden context; buildAgentSystemPrompt wraps
-// it under a "never recite verbatim" header.
-function hiddenMemoContext(
-  profileCtx: string | null,
-  lat: number | null,
-  lng: number | null,
-): string | null {
-  const { clock, daypart } = localMoment(lng);
-  const bits: string[] = [];
-  if (profileCtx) bits.push(profileCtx);
-  if (lat !== null && lng !== null) {
-    bits.push(`near latitude ${lat.toFixed(4)}, longitude ${lng.toFixed(4)}`);
-  }
-  if (clock) bits.push(`local time ${clock} (${daypart})`);
-  return bits.length > 0
-    ? `The user is ${bits.join("; ")}. Favour places open and appropriate for this time of day.`
-    : null;
-}
