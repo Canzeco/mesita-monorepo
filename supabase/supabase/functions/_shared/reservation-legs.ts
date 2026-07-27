@@ -11,9 +11,12 @@
 // per-leg prompt + first message ride along too (placeOutboundCall falls back
 // to vars-only when overrides are rejected — see _shared/elevenlabs.ts).
 //
-// Both briefs end with the same hang-up policy: the agent decides when the
-// call is over and ends it ITSELF (the ElevenLabs `end_call` system tool —
-// keep it enabled on the agent).
+// Both briefs end with the same hang-up policy: the agent ends the call
+// ITSELF (the ElevenLabs `end_call` system tool — keep it enabled on the
+// agent), but ONLY once the call is SOLVED — an explicit outcome reached
+// (confirmed / declined / impossible). Hanging up before resolution is
+// forbidden; voicemail, a dead line, or a 2-minute hold are the only
+// no-outcome exceptions.
 
 export type ReservationLegDirection = "business_booking" | "guest_confirmation";
 
@@ -30,8 +33,8 @@ export type ReservationLegVars = {
   specialRequests: string;
 };
 
-// Shared closing policy — the "smart enough to hang up" rule.
-const HANGUP_POLICY = `Política de cierre (obligatoria): tú decides cuándo termina la llamada y la cuelgas tú mismo con la herramienta end_call. Cuelga en cuanto el objetivo quede resuelto — confirmado, rechazado o imposible — después de despedirte en una sola frase. Si contesta un buzón de voz, deja un recado de una frase y cuelga. Si te dejan en espera más de un minuto o la línea queda muda, despídete y cuelga. Nunca alargues la conversación ni esperes a que la otra persona cuelgue primero.`;
+// Shared closing policy — hang up YOURSELF, but ONLY once the call is SOLVED.
+const HANGUP_POLICY = `Política de cierre (obligatoria): puedes colgar tú mismo con la herramienta end_call, pero ÚNICAMENTE cuando la llamada ya quedó RESUELTA — es decir, cuando ya existe un resultado explícito: reservación confirmada, rechazada o imposible, y ya te despediste en una sola frase. Mientras la otra persona siga hablando, revisando disponibilidad, negociando, ofreciendo alternativas o haciendo preguntas, la llamada NO está resuelta: quédate en la línea y termina la gestión. Está PROHIBIDO colgar antes de tener el resultado. Únicas excepciones sin resultado: contesta un buzón de voz — deja un recado de una frase y cuelga —, te dejan en espera más de dos minutos, o la línea queda muda. Ya resuelta, no alargues la conversación ni esperes a que la otra persona cuelgue primero.`;
 
 /** Leg 1 · consumer → business: request the reservation from the venue. */
 export function businessLegPrompt(v: ReservationLegVars): string {

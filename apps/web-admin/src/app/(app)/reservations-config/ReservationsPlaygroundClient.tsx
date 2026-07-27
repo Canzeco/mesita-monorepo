@@ -11,6 +11,7 @@ import {
   Phone,
   PhoneCall,
   RefreshCw,
+  Trash2,
   TriangleAlert,
   User,
   Users,
@@ -19,6 +20,7 @@ import {
 import { ErrorNote, SectionCard } from "../enricher-config/atlas-ui";
 import {
   createPlaygroundReservation,
+  deletePlaygroundReservations,
   listConsumerTargets,
   listPlaceTargets,
   listPlaygroundReservations,
@@ -428,7 +430,15 @@ function guestCallChip(state: string) {
   return null; // none | skipped
 }
 
-function TicketCard({ t }: { t: PlaygroundTicket }) {
+function TicketCard({
+  t,
+  onDelete,
+  deleting,
+}: {
+  t: PlaygroundTicket;
+  onDelete: () => void;
+  deleting: boolean;
+}) {
   const running = t.attempts_state === "running";
   const attempts = Array.isArray(t.attempts) ? t.attempts : [];
   const badge = running ? (
@@ -463,7 +473,23 @@ function TicketCard({ t }: { t: PlaygroundTicket }) {
         <span className="text-sm font-semibold">{t.place_name}</span>
         <span className="text-muted-foreground text-xs">for</span>
         <span className="text-sm font-medium">{t.consumer_name}</span>
-        <span className="ml-auto">{badge}</span>
+        <span className="ml-auto inline-flex items-center gap-1.5">
+          {badge}
+          <button
+            type="button"
+            onClick={onDelete}
+            disabled={deleting}
+            title="Delete this sandbox ticket"
+            aria-label="Delete this sandbox ticket"
+            className="text-muted-foreground rounded-md p-1 transition-colors hover:bg-red-500/10 hover:text-red-600 disabled:pointer-events-none disabled:opacity-50"
+          >
+            {deleting ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <Trash2 className="h-3.5 w-3.5" />
+            )}
+          </button>
+        </span>
       </div>
       <div className="mt-2 flex flex-wrap items-center gap-1.5">
         {Array.from({ length: Math.max(t.attempts_planned, attempts.length) }, (_, i) =>
@@ -541,6 +567,10 @@ export function ReservationsPlaygroundClient({
   const [tickets, setTickets] = useState<PlaygroundTicket[]>([]);
   const [ticketsLoading, setTicketsLoading] = useState(true);
   const [ticketsError, setTicketsError] = useState<string | null>(null);
+  // Sandbox deletes: the id in flight ("all" while clearing), and its error —
+  // kept apart from ticketsError so a failed delete doesn't hide the list.
+  const [deleting, setDeleting] = useState<string | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   const businessTest = looksLikePhone(config.testCall.number)
     ? config.testCall.number.trim()
@@ -637,6 +667,36 @@ export function ReservationsPlaygroundClient({
       setTickets((prev) => [r.ticket, ...prev.filter((p) => p.id !== r.ticket.id)]);
     } finally {
       setPlacing(false);
+    }
+  }
+
+  async function onDeleteTicket(id: string) {
+    setDeleting(id);
+    setDeleteError(null);
+    try {
+      const r = await deletePlaygroundReservations({ id });
+      if (!r.ok) {
+        setDeleteError(r.error);
+        return;
+      }
+      setTickets((prev) => prev.filter((t) => t.id !== id));
+    } finally {
+      setDeleting(null);
+    }
+  }
+
+  async function onClearSandbox() {
+    setDeleting("all");
+    setDeleteError(null);
+    try {
+      const r = await deletePlaygroundReservations({ all: true });
+      if (!r.ok) {
+        setDeleteError(r.error);
+        return;
+      }
+      setTickets([]);
+    } finally {
+      setDeleting(null);
     }
   }
 
@@ -922,11 +982,41 @@ export function ReservationsPlaygroundClient({
             </p>
           </div>
         ) : (
-          <ul className="mt-4 space-y-2.5">
-            {tickets.map((t) => (
-              <TicketCard key={t.id} t={t} />
-            ))}
-          </ul>
+          <>
+            <div className="mt-4 flex items-center justify-between gap-3">
+              <span className="text-muted-foreground text-xs">
+                {tickets.length} ticket{tickets.length === 1 ? "" : "s"}
+              </span>
+              <button
+                type="button"
+                onClick={onClearSandbox}
+                disabled={deleting !== null}
+                className="text-muted-foreground border-border bg-background inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs font-medium transition-colors hover:border-red-500/30 hover:bg-red-500/10 hover:text-red-600 disabled:pointer-events-none disabled:opacity-50"
+              >
+                {deleting === "all" ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <Trash2 className="h-3.5 w-3.5" />
+                )}
+                Clear all
+              </button>
+            </div>
+            {deleteError && (
+              <div className="mt-2.5">
+                <ErrorNote message={deleteError} />
+              </div>
+            )}
+            <ul className="mt-2.5 space-y-2.5">
+              {tickets.map((t) => (
+                <TicketCard
+                  key={t.id}
+                  t={t}
+                  deleting={deleting === t.id || deleting === "all"}
+                  onDelete={() => onDeleteTicket(t.id)}
+                />
+              ))}
+            </ul>
+          </>
         )}
       </SectionCard>
     </div>
