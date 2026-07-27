@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Building2,
   CalendarClock,
@@ -50,6 +50,57 @@ const inputCls =
 // a.m. and wraps the full day, so dining hours lead and the small-hours edge
 // cases (the 3 a.m. AI-receptionist test) sit at the end of the scroll. Values
 // stay "HH:mm" — exactly what the type=time input produced.
+// ── Day chips ────────────────────────────────────────────────────────────────
+// Venue-local day picker — Mexico City, fixed UTC-6 (DST abolished, so adding
+// whole days never shifts the wall clock). Today, Tomorrow, then the next two
+// weeks. Values stay "YYYY-MM-DD" — exactly what the type=date input produced
+// (en-CA formatting yields that shape directly).
+const MX_TZ = "America/Mexico_City";
+const dayValueFmt = new Intl.DateTimeFormat("en-CA", {
+  timeZone: MX_TZ,
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+});
+const dayWeekdayFmt = new Intl.DateTimeFormat("es-MX", { timeZone: MX_TZ, weekday: "long" });
+const daySubFmt = new Intl.DateTimeFormat("es-MX", {
+  timeZone: MX_TZ,
+  day: "numeric",
+  month: "short",
+});
+const dayFullFmt = new Intl.DateTimeFormat("es-MX", {
+  timeZone: MX_TZ,
+  weekday: "long",
+  day: "numeric",
+  month: "long",
+});
+
+function buildDayChips(): { value: string; top: string; sub: string }[] {
+  const now = Date.now();
+  return Array.from({ length: 16 }, (_, i) => {
+    const d = new Date(now + i * 86_400_000);
+    const weekday = dayWeekdayFmt.format(d);
+    return {
+      value: dayValueFmt.format(d),
+      top: i === 0
+        ? "Today"
+        : i === 1
+        ? "Tomorrow"
+        : weekday.charAt(0).toUpperCase() + weekday.slice(1),
+      sub: daySubFmt.format(d),
+    };
+  });
+}
+
+// Full es-MX date for the box-header echo — the same wording the agent speaks.
+// Midnight pinned to -06:00 so the labeled day never shifts.
+function fullDateEs(value: string): string {
+  const d = new Date(`${value}T00:00:00-06:00`);
+  return Number.isNaN(d.getTime()) ? value : dayFullFmt.format(d);
+}
+
+const TZ_BADGE = "CDMX · UTC−6";
+
 const TIME_SLOTS: { value: string; label: string }[] = Array.from(
   { length: 48 },
   (_, i) => {
@@ -477,6 +528,7 @@ export function ReservationsPlaygroundClient({
   // its "YYYY-MM-DDTHH:mm" venue-local wall clock.
   const [date, setDate] = useState("");
   const [time, setTime] = useState("");
+  const dayChips = useMemo(() => buildDayChips(), []);
   const [party, setParty] = useState(2);
   const [notes, setNotes] = useState("");
   const [businessMode, setBusinessMode] = useState<NumberMode>("test");
@@ -630,21 +682,55 @@ export function ReservationsPlaygroundClient({
             onSelect={setConsumer}
             load={listConsumerTargets}
           />
-          <Labeled
-            icon={<CalendarClock className="h-3.5 w-3.5" />}
-            label="Date (venue local)"
-          >
-            <input
-              type="date"
-              className={inputCls}
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
-            />
-          </Labeled>
+          <div className="border-border bg-background rounded-xl border p-4">
+            <span className="text-muted-foreground flex items-center gap-2 text-xs font-medium">
+              <CalendarClock className="h-3.5 w-3.5" />
+              Date
+              <span className="border-border bg-card rounded-full border px-1.5 py-px text-[10px] font-medium">
+                {TZ_BADGE}
+              </span>
+              {date && (
+                <span className="text-secondary ml-auto text-right font-semibold">
+                  {fullDateEs(date)}
+                </span>
+              )}
+            </span>
+            <div className="mt-3 grid grid-cols-2 gap-1.5 sm:grid-cols-4">
+              {dayChips.map((c) => {
+                const active = date === c.value;
+                return (
+                  <button
+                    key={c.value}
+                    type="button"
+                    aria-pressed={active}
+                    onClick={() => setDate(c.value)}
+                    className={
+                      "rounded-lg border px-2 py-1.5 text-center transition " +
+                      (active
+                        ? "border-secondary bg-secondary/[0.08] ring-secondary/30 ring-1"
+                        : "border-border bg-card hover:border-foreground/30")
+                    }
+                  >
+                    <span
+                      className={
+                        "block text-xs font-semibold " + (active ? "text-secondary" : "")
+                      }
+                    >
+                      {c.top}
+                    </span>
+                    <span className="text-muted-foreground block text-[10px]">{c.sub}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
           <div className="border-border bg-background rounded-xl border p-4">
             <span className="text-muted-foreground flex items-center gap-2 text-xs font-medium">
               <CalendarClock className="h-3.5 w-3.5" />
               Hour
+              <span className="border-border bg-card rounded-full border px-1.5 py-px text-[10px] font-medium">
+                {TZ_BADGE}
+              </span>
               {time && (
                 <span className="text-secondary ml-auto font-semibold">
                   {TIME_SLOTS.find((s) => s.value === time)?.label ?? time}

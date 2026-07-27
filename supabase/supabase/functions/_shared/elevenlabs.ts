@@ -152,6 +152,19 @@ export type CallOverrides = {
   language?: string;
 };
 
+// Per-call overrides are HARD-GATED behind ELEVENLABS_ALLOW_OVERRIDES, default
+// OFF. A non-whitelisted override is NOT rejected at placement — the POST
+// succeeds, the Twilio leg connects, and ElevenLabs kills the conversation at
+// initiation, i.e. the callee hears an immediate hang-up (observed live
+// 2026-07-27, MESITA-757). So a placement-time fallback can never catch it.
+// Flip the env on ONLY after enabling prompt + first-message + language
+// overrides in the agent's ElevenLabs Security tab. Until then calls go
+// vars-only — call_direction still rides along for a branching console prompt.
+export function overridesAllowed(): boolean {
+  const v = (Deno.env.get("ELEVENLABS_ALLOW_OVERRIDES") ?? "").trim().toLowerCase();
+  return v === "1" || v === "true" || v === "yes";
+}
+
 /**
  * Place an outbound Convai call over the agent's Twilio number.
  * POST /v1/convai/twilio/outbound-call. Returns quickly with the conversation_id
@@ -223,8 +236,10 @@ export async function placeOutboundCall(
     };
   };
 
-  const first = await attempt(!!input.overrides);
-  if (first.ok || !input.overrides) return first;
-  // Overrides rejected (most likely not whitelisted on the agent) — vars-only.
+  const wantOverrides = !!input.overrides && overridesAllowed();
+  const first = await attempt(wantOverrides);
+  if (first.ok || !wantOverrides) return first;
+  // Placement rejected with overrides on — retry vars-only (belt & braces; the
+  // dangerous failure mode is the init-time kill documented above).
   return await attempt(false);
 }
