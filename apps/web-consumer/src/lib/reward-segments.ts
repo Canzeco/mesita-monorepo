@@ -125,7 +125,7 @@ export function segmentKeyForClass(classKey: ConsumerClass): RewardSegmentKey {
 // story, a Google review). A Standard/Premium guest never reaches the Magnetic
 // rung (invite-only); a Magnetic guest reaches it via their own class rung.
 // Returned worst→best.
-export function reachableSegments(classKey: ConsumerClass): RewardSegment[] {
+function reachableSegments(classKey: ConsumerClass): RewardSegment[] {
   const mine = segmentKeyForClass(classKey);
   const universal: RewardSegmentKey[] = ["story", "welcome", "review"];
   return REWARD_SEGMENTS.filter(
