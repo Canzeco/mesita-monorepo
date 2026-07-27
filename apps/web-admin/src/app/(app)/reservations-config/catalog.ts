@@ -100,7 +100,7 @@ export const CHANNELS: Channel[] = [
 // from the admin page — this is only what the page (and a fresh/reset config row)
 // starts from. Ships ON so a missing config can never fall through to a real place.
 // consumerNumber is legacy (retired Playground) and stays empty.
-export const TEST_CALL_SEED = { enabled: true, number: "+524445499597", consumerNumber: "" };
+const TEST_CALL_SEED = { enabled: true, number: "+524445499597", consumerNumber: "" };
 
 export const DEFAULT_CONFIG: ReservationsConfig = {
   priority: ["phone", "whatsapp", "instagram"],
