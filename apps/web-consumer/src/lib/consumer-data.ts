@@ -18,7 +18,6 @@ export function isElevatedClass(classKey: Class | string): boolean {
 // surfaces now consume `Place` from `@/lib/api/places` — the EF-backed
 // shape — and the rich detail surface reads `PlaceDetail` from
 // `@/lib/mock/place`. This module no longer carries a Place type; the
-// SAVED_PLACES export below is typed against the public api Place.
 
 // Country list — used by the phone-input dial-code picker (the residence
 // dropdown was retired; country is inferred from the phone's dial code).
@@ -177,5 +176,3 @@ export function classProperLabel(classKey: Class | string): string {
   return CLASS_LABELS[classKey as Class] ?? "Mesita";
 }
 
-// NOTE: The SAVED_PLACES mock catalog lives in `@/lib/mock/saved-places-mock`
-// alongside the other entity mocks (reservations-mock, coupons-mock).
