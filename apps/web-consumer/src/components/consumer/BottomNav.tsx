@@ -68,10 +68,8 @@ const ITEMS: Item[] = [
     label: "Reservations",
     // Singular prefix also catches /saved/reservation/[id] detail views.
     match: CONSUMER_RESERVATION_SURFACE_PREFIX,
-    soon: true,
-    soonTitle: "Reservations coming soon",
-    soonBody:
-      "Your bookings will live here. For now, reach places from Contact on a place.",
+    // LIVE since 2026-07-27 — the Reservationist books over the phone and the
+    // Upcoming/History tabs read consumer-web-list-reservations.
   },
   {
     href: CONSUMER_ROUTES.me,

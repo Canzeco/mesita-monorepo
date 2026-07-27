@@ -54,7 +54,17 @@ export type EFReservationRow = {
   id: string;
   reserved_at: string;
   party_size: number;
-  status: "pending" | "confirmed" | "declined" | "no_show" | "cancelled";
+  status:
+    | "pending"
+    | "confirmed"
+    | "declined"
+    | "no_show"
+    | "cancelled"
+    // Engine outcomes: the venue never answered / the call ended unclear.
+    | "unreachable"
+    | "unresolved";
+  /** The ticket's 8-digit reference code (null only on pre-code rows). */
+  reference_code: string | null;
   notes: string | null;
   confirmed_at: string | null;
   completed_at: string | null;

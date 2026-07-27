@@ -50,7 +50,7 @@ Deno.serve(async (req) => {
   let q = admin
     .from("reservations")
     .select(
-      "id, reserved_at, party_size, status, notes, confirmed_at, completed_at, cancelled_at, coupon_id, created_at, place:places(id, slug, name, category, photos, address)",
+      "id, reserved_at, party_size, status, reference_code, notes, confirmed_at, completed_at, cancelled_at, coupon_id, created_at, place:places(id, slug, name, category, photos, address)",
     )
     .eq("consumer_id", consumerId)
     // Operator test tickets (is_test) reference real consumers — never surface
@@ -59,12 +59,13 @@ Deno.serve(async (req) => {
     .order("reserved_at", { ascending: scope === "past" ? false : true })
     .limit(limit);
 
-  // "upcoming" hides terminal-state past bookings. "past" inverts.
-  // "all" leaves the result unfiltered for the archive view.
+  // "upcoming" hides terminal-state past bookings. "past" inverts (including
+  // the engine outcomes unreachable / unresolved). "all" leaves the result
+  // unfiltered for the archive view.
   if (scope === "upcoming") {
     q = q.in("status", ["pending", "confirmed"]);
   } else if (scope === "past") {
-    q = q.in("status", ["declined", "no_show", "cancelled"]);
+    q = q.in("status", ["declined", "no_show", "cancelled", "unreachable", "unresolved"]);
   }
 
   const { data, error } = await q;

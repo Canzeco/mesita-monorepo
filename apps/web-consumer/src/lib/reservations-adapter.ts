@@ -33,6 +33,10 @@ function noteFor(status: EFReservationRow["status"]): string | undefined {
       return "Marked as a no-show.";
     case "cancelled":
       return "This reservation was cancelled.";
+    case "unreachable":
+      return "The place didn't answer Mesita's calls. Try again or pick another time.";
+    case "unresolved":
+      return "The call didn't reach a clear answer — Mesita follows up.";
     default:
       return undefined;
   }
@@ -68,6 +72,8 @@ export function toReservationItem(row: EFReservationRow): ReservationItem {
     partySize: row.party_size,
     status: toCardStatus(row.status),
     statusNote: noteFor(row.status),
+    // The 8-digit code the agents speak on calls — the guest's ticket handle.
+    referenceCode: row.reference_code ?? undefined,
     // linkedCoupon intentionally omitted: the list EF exposes the coupon by
     // id only (rates/class live on the coupon row), and cross-looking it up
     // is out of scope for MESITA-715.
