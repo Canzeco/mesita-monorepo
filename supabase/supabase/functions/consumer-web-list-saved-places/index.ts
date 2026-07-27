@@ -9,6 +9,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { clampIntRange, corsPreflight, json, readJsonOr } from "../_shared/http.ts";
 import { adminClient, getAuthedUser, readEFEnv } from "../_shared/auth.ts";
+import { attachPlaces } from "../_shared/reservation-places.ts";
 
 const DEFAULT_LIMIT = 50;
 const MAX_LIMIT = 200;
@@ -38,12 +39,12 @@ Deno.serve(async (req) => {
   const { data, error } = await admin
     .from("saved_places")
     .select(
-      "id, created_at, place:places(id, slug, name, category, price_level, listing_type, photos, address, lat, lng)",
+      "id, created_at, project_id",
     )
     .eq("consumer_id", consumerId)
     .order("created_at", { ascending: false })
     .limit(limit);
 
   if (error) return json({ ok: false, error: error.message }, 500);
-  return json({ ok: true, saved_places: data ?? [] });
+  return json({ ok: true, saved_places: await attachPlaces(admin, data ?? []) });
 });
