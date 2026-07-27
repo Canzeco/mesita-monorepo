@@ -266,7 +266,7 @@ const DEFAULT_SM_PARAMS: SmParams = {
 };
 
 /** Snap hours to the time grid. Everything time-shaped goes through this. */
-export function quantizeH(hours: number, blockH: number = TIME_BLOCK_H): number {
+function quantizeH(hours: number, blockH: number = TIME_BLOCK_H): number {
   if (!Number.isFinite(hours) || hours <= 0) return 0;
   if (blockH <= 0) return hours;
   return Math.round(hours / blockH) * blockH;
