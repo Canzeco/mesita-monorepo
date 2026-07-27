@@ -12,8 +12,6 @@
 // /reservations page can light up the moment that EF replaces the static
 // mock without losing in-flight bookings.
 
-import { useCallback } from "react";
-
 const STORAGE_KEY = "mesita:reservations";
 
 type Reservation = {
@@ -121,11 +119,3 @@ export function clearReservationsLocal(): void {
   hydrated = false;
 }
 
-export function useReservationActions() {
-  const add = useCallback(
-    (input: Parameters<typeof addReservation>[0]) => addReservation(input),
-    [],
-  );
-  const cancel = useCallback((id: string) => cancelReservation(id), []);
-  return { add, cancel };
-}
