@@ -9,7 +9,7 @@ const STOP = new Set([
   "bar","cafe","café","taqueria","taquería","by","en","mx","mexico","méxico",
 ]);
 
-export function stripAccents(s: string): string {
+function stripAccents(s: string): string {
   return s.normalize("NFD").replace(/[̀-ͯ]/g, "");
 }
 export function nameTokens(name: string): string[] {
