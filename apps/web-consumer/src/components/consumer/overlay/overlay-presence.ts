@@ -13,7 +13,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 // Must be >= the longest overlay CSS transition (duration-300) so the exit
 // finishes painting before onExited unmounts the tree.
-export const OVERLAY_MS = 320;
+const OVERLAY_MS = 320;
 
 // iOS-style decelerating push curve, shared by panel + sheet transitions.
 export const OVERLAY_EASE = "ease-[cubic-bezier(0.32,0.72,0,1)]";
