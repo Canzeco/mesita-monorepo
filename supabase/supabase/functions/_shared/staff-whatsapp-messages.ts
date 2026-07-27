@@ -61,7 +61,7 @@ export async function loadStaffWhatsAppHistory(
   return (data as StaffWhatsAppMessageRow[]).reverse();
 }
 
-export function formatStaffWhatsAppHistoryForLlm(
+function formatStaffWhatsAppHistoryForLlm(
   rows: StaffWhatsAppMessageRow[],
 ): string {
   if (!rows.length) return "";
