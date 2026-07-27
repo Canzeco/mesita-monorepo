@@ -45,7 +45,7 @@ export type TicketFlowStepView = {
   state: TicketFlowStepState;
 };
 
-export type TicketProgressInput = {
+type TicketProgressInput = {
   kind: TicketKind | string;
   status: TicketStatus | string;
   story_status: StoryStatus | string;
