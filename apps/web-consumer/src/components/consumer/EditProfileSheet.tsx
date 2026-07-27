@@ -35,10 +35,10 @@ import {
 // sheet animates both ways, the backdrop covers the whole MobileFrame card,
 // and ESC closes it. Field state survives a close (draft-friendly) and the
 // dirty check tracks the latest saved profile. Phone is auth identity (set at
-// sign-in) and is not editable here — only first name, last name and
-// birthday. Both name halves are required and always sent together: the EF
-// re-derives full_name from them, and that's the name reservations are
-// booked under.
+// sign-in) and is not editable here — only first name, last name, sex and
+// birthday, the same set onboarding collects. Both name halves are required
+// and always sent together: the EF re-derives full_name from them, and that's
+// the name reservations are booked under.
 
 export function EditProfileSheet({
   profile,
@@ -54,6 +54,10 @@ export function EditProfileSheet({
   const supabase = useBrowserSupabase();
   const [firstName, setFirstName] = useState(profile.first_name ?? "");
   const [lastName, setLastName] = useState(profile.last_name ?? "");
+  // Male/Female only (MESITA-727). "" = nothing stored yet, which is why the
+  // select carries an empty option — a legacy profile shouldn't silently
+  // acquire a sex just by opening this sheet.
+  const [sex, setSex] = useState(profile.sex ?? "");
   // birthday is stored as YYYY-MM-DD; the BirthdayPicker round-trips it.
   const [birthday, setBirthday] = useState(profile.birthday ?? "");
   const [saving, setSaving] = useState(false);
@@ -61,6 +65,7 @@ export function EditProfileSheet({
   const dirty =
     firstName.trim() !== (profile.first_name ?? "") ||
     lastName.trim() !== (profile.last_name ?? "") ||
+    sex !== (profile.sex ?? "") ||
     birthday !== (profile.birthday ?? "");
 
   const initials = firstInitial(firstName, "M");
@@ -79,13 +84,14 @@ export function EditProfileSheet({
     }
     setSaving(true);
     try {
-      // Sex isn't edited here and is never re-sent — the EF patches only the
-      // keys present, so omitting it leaves the stored value untouched (and
-      // avoids resurrecting the dropped "other" value). Country is no longer
-      // collected anywhere — it's inferred from the phone's dial code.
+      // Sex is only sent once it's actually set: the EF patches the keys it
+      // receives, so omitting it leaves the stored value untouched rather than
+      // nulling it (and never resurrects the dropped "other" value). Country is
+      // no longer collected anywhere — it's inferred from the phone's dial code.
       const updated = await apiUpdateConsumerProfile(supabase, {
         first_name: firstName.trim(),
         last_name: lastName.trim(),
+        ...(sex === "male" || sex === "female" ? { sex } : {}),
         birthday: birthday || "",
       });
       toast("Profile updated.");
@@ -151,6 +157,20 @@ export function EditProfileSheet({
             onChange={setLastName}
             placeholder="Last name"
           />
+          <label className="block">
+            <span className="text-muted-foreground mb-1 block text-[11px] font-medium">
+              Sex
+            </span>
+            <select
+              value={sex}
+              onChange={(e) => setSex(e.target.value)}
+              className={cn(INPUT_CLASS, "h-auto rounded-lg py-2")}
+            >
+              <option value="">Select</option>
+              <option value="female">Female</option>
+              <option value="male">Male</option>
+            </select>
+          </label>
           <label className="block">
             <span className="text-muted-foreground mb-1 block text-[11px] font-medium">
               Birthday

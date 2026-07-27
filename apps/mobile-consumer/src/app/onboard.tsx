@@ -11,32 +11,24 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { BirthdayPicker } from '@/components/ui/BirthdayPicker';
 import { Button } from '@/components/ui/Button';
+import { SexSelector, toSexValue, type SexValue } from '@/components/ui/SexSelector';
 import { TextField } from '@/components/ui/TextField';
 import { apiUpdateConsumerProfile } from '@/lib/api/auth';
 import { ageFromBirthday, MIN_SIGNUP_AGE } from '@/lib/utils';
 import { useAuth } from '@/providers/auth';
-
-// Male/Female only (MESITA-727).
-const SEX_OPTIONS = [
-  { value: 'male', label: 'Male' },
-  { value: 'female', label: 'Female' },
-] as const;
 
 export default function Onboard() {
   const router = useRouter();
   const { profile, refreshProfile, signOut, session, onboarded } = useAuth();
   // Consumers who onboarded before the last-name requirement land back here
   // once — prefill what they already gave us so it's a one-field ask.
-  const storedSex =
-    profile?.sex === 'male' || profile?.sex === 'female' ? profile.sex : null;
+  const storedSex = toSexValue(profile?.sex);
   const [firstName, setFirstName] = useState(profile?.first_name ?? '');
   // Last name is required, not cosmetic: the EF joins first + last into
   // full_name, and that's the name the reservation agent books the table
   // under with the venue (web-consumer onboarding parity).
   const [lastName, setLastName] = useState(profile?.last_name ?? '');
-  const [sex, setSex] = useState<(typeof SEX_OPTIONS)[number]['value'] | null>(
-    storedSex,
-  );
+  const [sex, setSex] = useState<SexValue | null>(storedSex);
   const [birthday, setBirthday] = useState(profile?.birthday ?? '');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -167,35 +159,7 @@ export default function Onboard() {
           >
             SEX
           </Text>
-          <View className="flex-row rounded-2xl border border-border bg-muted p-1">
-            {SEX_OPTIONS.map((option) => {
-              const active = sex === option.value;
-              return (
-                <Pressable
-                  key={option.value}
-                  onPress={() => setSex(option.value)}
-                  accessibilityRole="button"
-                  accessibilityState={{ selected: active }}
-                  className={
-                    active
-                      ? 'flex-1 items-center rounded-xl bg-card px-3 py-3'
-                      : 'flex-1 items-center rounded-xl px-3 py-3'
-                  }
-                >
-                  <Text
-                    className={
-                      active
-                        ? 'font-semibold text-foreground'
-                        : 'font-semibold text-muted-foreground'
-                    }
-                    style={{ fontSize: 13 }}
-                  >
-                    {option.label}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </View>
+          <SexSelector value={sex} onChange={setSex} />
 
           <Text
             className="font-semibold text-muted-foreground"
