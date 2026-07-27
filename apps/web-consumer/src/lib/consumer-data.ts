@@ -107,9 +107,11 @@ export const CLASSES: {
   {
     id: "magnetic",
     label: "Magnetic",
-    req: "1K+ IG followers · post a story each visit",
+    req: "5K+ IG followers · post a story each visit",
     priceMxn: 0,
-    followerThreshold: 1_000,
+    // Mirrors classes.follower_threshold in the DB — the EF grants off that
+    // row, so this constant is display-only and must track it.
+    followerThreshold: 5_000,
     reward: "Top discount",
     perk: "The invite-only tier for real Instagram reach",
   },

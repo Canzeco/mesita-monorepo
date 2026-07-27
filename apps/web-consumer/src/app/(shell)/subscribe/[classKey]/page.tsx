@@ -104,8 +104,8 @@ export default function SubscribePage() {
                 <Instagram className="h-3.5 w-3.5" />
               </span>
               <span>
-                <span className="font-semibold">Instagram</span> — 1,000+
-                followers and post a story. Premium, free.
+                <span className="font-semibold">Instagram</span> — 5,000+
+                followers and post a story. Magnetic, free.
               </span>
             </li>
             <li className="flex items-start gap-2.5">

@@ -113,9 +113,9 @@ export async function apiDeleteConsumerAccount(
 
 // ─── Instagram claim ─────────────────────────────────────────────────────
 
-// consumer-web-claim-instagram: the social door into Magnetic. 1,000+
-// followers grants Magnetic with origin "instagram"; below the threshold the
-// consumer stays Standard. The handle is persisted to
+// consumer-web-claim-instagram: the social door into Magnetic. Crossing
+// classes.follower_threshold (5,000) grants Magnetic with origin "instagram";
+// below the threshold the consumer stays Standard. The handle is persisted to
 // consumers.instagram_handle.
 export type InstagramClaimResult = {
   tier: "standard" | "magnetic";
