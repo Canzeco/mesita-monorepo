@@ -31,7 +31,7 @@ export function TicketCardSkeleton() {
 }
 
 /** Tickets list placeholder: section header line + two ticket cards. */
-export function PayTicketListSkeleton() {
+function PayTicketListSkeleton() {
   return (
     <div className="flex flex-col gap-3">
       <div className="flex items-baseline justify-between gap-2 px-0.5">
