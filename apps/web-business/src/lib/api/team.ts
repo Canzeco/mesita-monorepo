@@ -170,7 +170,7 @@ export async function apiRemoveMember(
   );
 }
 
-export type TestStaffChannelResult = {
+type TestStaffChannelResult = {
   channel: "whatsapp" | "sms";
   to: string;
   sent: boolean;
