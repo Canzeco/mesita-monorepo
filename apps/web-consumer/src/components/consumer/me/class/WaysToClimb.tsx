@@ -77,13 +77,23 @@ export function WaysToClimb({
       reachedLabel: origin === "instagram" ? "Connected" : "Active",
       actions: [
         { label: "Join with Instagram", onClick: onConnectInstagram },
+        // The invitation pair renders side by side (consecutive secondaries).
+        // No invite-code or request flow exists yet — both are placeholders
+        // until Mesita's curation door gets a backend.
         {
-          label: "Join via invitation",
+          label: "Join with invitation",
           secondary: true,
-          // No invite-code flow yet — invitations are extended by Mesita.
           onClick: () =>
             toast(
-              "Magnetic invitations come directly from Mesita — there's nothing to claim here yet.",
+              "Have an invitation? Magnetic activates automatically — invitations come directly from Mesita.",
+            ),
+        },
+        {
+          label: "Request invitation",
+          secondary: true,
+          onClick: () =>
+            toast(
+              "Invitation requests open soon — Mesita curates Magnetic personally.",
             ),
         },
       ],
