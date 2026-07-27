@@ -33,7 +33,7 @@ type StrategyVisibility = "Low" | "Mid" | "High";
 // The four discount cells, keyed by the exact places column each maps to.
 //   welcome_* → first visit at the place · unprefixed → every visit after.
 //   *_free_*  → Standard guests         · *_premium_* → Premium guests.
-export type StrategyRates = {
+type StrategyRates = {
   welcome_free_rate: number | null; // FW — Free · Welcome (first visit)
   welcome_premium_rate: number | null; // PW — Premium · Welcome
   free_rate: number | null; // FR — Free · Returning
