@@ -45,6 +45,25 @@ import { looksLikePhone, type ReservationsConfig } from "./catalog";
 const inputCls =
   "border-border bg-card focus:border-foreground h-9 w-full rounded-lg border px-3 text-sm outline-none";
 
+// ── Hour slots ───────────────────────────────────────────────────────────────
+// Reservation-style pick-one chips, 30-minute steps. The list starts at 8:00
+// a.m. and wraps the full day, so dining hours lead and the small-hours edge
+// cases (the 3 a.m. AI-receptionist test) sit at the end of the scroll. Values
+// stay "HH:mm" — exactly what the type=time input produced.
+const TIME_SLOTS: { value: string; label: string }[] = Array.from(
+  { length: 48 },
+  (_, i) => {
+    const half = (16 + i) % 48; // rotate so 08:00 is first
+    const h = Math.floor(half / 2);
+    const m = half % 2 === 0 ? "00" : "30";
+    const h12 = ((h + 11) % 12) + 1;
+    return {
+      value: `${String(h).padStart(2, "0")}:${m}`,
+      label: `${h12}:${m} ${h < 12 ? "a.m." : "p.m."}`,
+    };
+  },
+);
+
 // How long the sandbox keeps polling a running ticket before assuming the
 // background loop died (its wall clock is far shorter than this).
 const RUNNING_POLL_WINDOW_MS = 10 * 60 * 1000;
@@ -546,14 +565,38 @@ export function ReservationsPlaygroundClient({
               onChange={(e) => setDate(e.target.value)}
             />
           </Labeled>
-          <Labeled icon={<CalendarClock className="h-3.5 w-3.5" />} label="Hour">
-            <input
-              type="time"
-              className={inputCls}
-              value={time}
-              onChange={(e) => setTime(e.target.value)}
-            />
-          </Labeled>
+          <div className="border-border bg-background rounded-xl border p-4">
+            <span className="text-muted-foreground flex items-center gap-2 text-xs font-medium">
+              <CalendarClock className="h-3.5 w-3.5" />
+              Hour
+              {time && (
+                <span className="text-secondary ml-auto font-semibold">
+                  {TIME_SLOTS.find((s) => s.value === time)?.label ?? time}
+                </span>
+              )}
+            </span>
+            <div className="mt-3 grid max-h-40 grid-cols-3 gap-1.5 overflow-y-auto sm:grid-cols-4">
+              {TIME_SLOTS.map((s) => {
+                const active = time === s.value;
+                return (
+                  <button
+                    key={s.value}
+                    type="button"
+                    aria-pressed={active}
+                    onClick={() => setTime(s.value)}
+                    className={
+                      "rounded-lg border px-2 py-1.5 text-center text-xs font-medium tabular-nums transition " +
+                      (active
+                        ? "border-secondary bg-secondary/[0.08] text-secondary ring-secondary/30 ring-1"
+                        : "border-border bg-card hover:border-foreground/30")
+                    }
+                  >
+                    {s.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
           <Labeled icon={<Users className="h-3.5 w-3.5" />} label="Party size">
             <input
               type="number"
