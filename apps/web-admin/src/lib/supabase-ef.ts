@@ -15,7 +15,7 @@ import { createServerSupabase } from "@/lib/supabase/server";
 // re-parsing `.data` — see EFFailure below.
 
 /** Machine-readable failure, mirroring EFError's { code, status, fn, body }. */
-export type EFFailure = {
+type EFFailure = {
   ok: false;
   /** HTTP status from the EF response, or 0 for transport/init errors. */
   status: number;
