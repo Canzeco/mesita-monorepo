@@ -29,7 +29,7 @@ function tierLabelEs(tierKey: string | null | undefined): string {
 }
 
 /** What this guest would get at this place right now (for staff WhatsApp). */
-export function formatGuestRewardLine(opts: {
+function formatGuestRewardLine(opts: {
   ratePercent: number;
   firstVisit: boolean;
   tierKey: string | null | undefined;
