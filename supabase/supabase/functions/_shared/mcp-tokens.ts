@@ -5,7 +5,7 @@
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { json } from "./http.ts";
 
-export const MCP_TOKEN_PREFIX = "mesita_mcp_";
+const MCP_TOKEN_PREFIX = "mesita_mcp_";
 
 function bytesToHex(buf: ArrayBuffer): string {
   return [...new Uint8Array(buf)]
