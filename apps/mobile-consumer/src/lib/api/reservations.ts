@@ -6,7 +6,7 @@ import { supabase } from '@/lib/supabase';
 // collects the params and shows the pending state. Web parity:
 // apps/web-consumer/src/lib/api/reservations.ts.
 
-export type CreatedReservation = {
+type CreatedReservation = {
   reservation: {
     id: string;
     reserved_at: string;
