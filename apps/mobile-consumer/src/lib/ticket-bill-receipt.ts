@@ -10,7 +10,7 @@ export type TicketReceiptLine = {
   kind: "item" | "subtotal" | "deduction" | "total" | "note";
 };
 
-export type TicketReceiptView = {
+type TicketReceiptView = {
   lines: TicketReceiptLine[];
   footerNote?: string;
 };
