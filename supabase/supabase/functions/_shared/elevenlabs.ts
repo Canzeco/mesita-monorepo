@@ -160,7 +160,7 @@ export type CallOverrides = {
 // Flip the env on ONLY after enabling prompt + first-message + language
 // overrides in the agent's ElevenLabs Security tab. Until then calls go
 // vars-only — call_direction still rides along for a branching console prompt.
-export function overridesAllowed(): boolean {
+function overridesAllowed(): boolean {
   const v = (Deno.env.get("ELEVENLABS_ALLOW_OVERRIDES") ?? "").trim().toLowerCase();
   return v === "1" || v === "true" || v === "yes";
 }
