@@ -22,7 +22,7 @@ export type GridStrategy = "zero" | "conservative" | "aggressive";
 //   class  — who the guest is (Standard / Magnetic / Premium)
 //   action — a rewarded thing the guest does at the table (Story / Google Review)
 //   visit  — a state of the visit itself (Welcome = first ticket at the venue)
-export type RewardSegmentKind = "class" | "action" | "visit";
+type RewardSegmentKind = "class" | "action" | "visit";
 
 export type RewardSegmentKey =
   | "standard"
