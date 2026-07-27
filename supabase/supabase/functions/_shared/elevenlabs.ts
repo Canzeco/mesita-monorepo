@@ -12,7 +12,7 @@ const EL_BASE = "https://api.elevenlabs.io";
 // The "Mesita Reservationist (Spanish MX)" agent + the "Mesita Reservations
 // (Businesses)" outbound line, both in the ElevenAgents workspace.
 const DEFAULT_AGENT_ID = "agent_2201kxsktw0me9rb2kdtqerrgzha";
-export const DEFAULT_FROM_NUMBER = "+16282960710";
+const DEFAULT_FROM_NUMBER = "+16282960710";
 
 export function elevenLabsKey(): string | null {
   // Canonical name ELEVENLABS_KEY; ELEVEN_KEY accepted (the name the secret was
