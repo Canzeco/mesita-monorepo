@@ -24,7 +24,7 @@ function titleizeCategoryWords(input: string): string {
     .join(' ');
 }
 
-export function formatPlaceCategoryName(
+function formatPlaceCategoryName(
   category: string | null | undefined,
 ): string | null {
   if (!category) return null;
