@@ -158,7 +158,7 @@ export type TicketRow = {
   } | null;
 };
 
-export function guestNameOf(r: TicketRow): string {
+function guestNameOf(r: TicketRow): string {
   const c = r.consumer;
   return c?.full_name?.trim() ||
     [c?.first_name, c?.last_name].map((s) => (s ?? "").trim()).filter(Boolean).join(" ") ||
