@@ -2,7 +2,7 @@
 
 const CONSUMER_CODE_RE = /^[0-9]{4}-[0-9]{4}$/;
 
-export function formatSequentialCode(n: number): string {
+function formatSequentialCode(n: number): string {
   const hi = Math.floor(n / 10000);
   const lo = n % 10000;
   return `${String(hi).padStart(4, "0")}-${String(lo).padStart(4, "0")}`;
