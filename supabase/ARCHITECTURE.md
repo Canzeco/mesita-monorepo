@@ -109,7 +109,20 @@ Apify/Perplexity/Firecrawl budget** — deploying/arming the cron is money-gated
 
 - **Memo** — consumer AI concierge (`consumer-web-ask-memo`), the Home "Ask AI"
   tab. Perplexity `sonar-pro` + Google Places + the Mesita catalog. Persona
-  "Don Memo" (Spanish-first voice).
+  "Don Memo" (Spanish-first voice). Dogfooded from the admin Playground via
+  `admin-web-ask-memo`, which runs the identical shared engine (`_shared/memo-*`).
+  - **INVARIANT: Memo holds no database client.** Every Mesita read — on the
+    reasoning-agent engine AND the legacy pipeline — goes through
+    `_shared/memo-data.ts` to a closed set of four read-only internal EFs:
+    `supabase-edgefunc-{recall-lineup, search-places, get-consumer-context,
+    get-memo-config}`. Each owns its own SELECT and projects to a public shape,
+    so the column whitelist lives at the source, not in the agent. This is the
+    reach half of the airlock (`_shared/memo-airlock.ts` is the capability half):
+    the model can only call a whitelisted tool, and a tool can only call a
+    whitelisted endpoint — there is no generic query capability inside to be
+    injected toward. Adding an endpoint means adding a row to the admin console's
+    Memo Config → **Data Access** tab in the same PR; that page is the
+    operator-facing mirror of this set.
 - **Reservationist** — voice reservations on ElevenLabs (config under
   `integrations/elevenlabs`).
 

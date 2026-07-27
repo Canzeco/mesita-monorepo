@@ -1,19 +1,15 @@
-type MemoSettingsClient = {
-  from(table: "app_settings"): {
-    select(columns: "memo_instructions"): {
-      eq(column: "id", value: 1): {
-        maybeSingle(): unknown;
-      };
-    };
-  };
-};
+// memo-prompt.ts — Memo's voice.
+//
+// The default persona lives here in code; the operator-tunable override lives in
+// app_settings.memo_instructions, written by the admin console's Memo Config
+// page and SERVED to Memo by supabase-edgefunc-get-memo-config (Memo holds no
+// database client — see memo-data.ts).
+//
+// So this file is pure: it owns the default and the fallback rule, not the read.
+// A blank or unreadable config falls back to SYSTEM_PROMPT — a config hiccup
+// must never cost Memo its voice.
 
-type MemoSettingsResult = {
-  data: { memo_instructions: unknown } | null;
-  error: { message: string } | null;
-};
-
-const SYSTEM_PROMPT =
+export const SYSTEM_PROMPT =
   `You are Memo, the AI of Mesita — a warm, sharp local concierge for dining, nightlife, cafés, and experiences, with deep taste for Monterrey and Mexico generally, but able to help anywhere.
 
 Style:
@@ -26,28 +22,10 @@ Style:
 - You may know a few basics about the user (first name, age, sex, and their location). Use them lightly — greet by first name when it feels natural and tailor suggestions to where and who they are — but never recite their personal details back to them.
 - Never invent specific addresses, prices, or phone numbers you aren't sure of; speak generally when unsure.`;
 
-// Memo's system prompt is operator-tunable: the admin console's Memo Config page
-// writes app_settings.memo_instructions (seeded with SYSTEM_PROMPT above). Read
-// the live value, falling back to the in-code default whenever the row is blank
-// or the read fails — a config hiccup must never sink Memo's voice.
-export async function readMemoSystemPrompt(
-  admin: unknown,
-): Promise<string> {
-  try {
-    const client = admin as MemoSettingsClient;
-    const { data, error } = await (client
-      .from("app_settings")
-      .select("memo_instructions")
-      .eq("id", 1)
-      .maybeSingle() as MemoSettingsResult | PromiseLike<MemoSettingsResult>);
-    if (error) {
-      console.error("[ask-memo] memo_instructions read:", error.message);
-      return SYSTEM_PROMPT;
-    }
-    const custom = (data?.memo_instructions ?? "").toString().trim();
-    return custom.length > 0 ? custom : SYSTEM_PROMPT;
-  } catch (e) {
-    console.error("[ask-memo] memo_instructions threw:", (e as Error).message);
-    return SYSTEM_PROMPT;
-  }
+// The saved persona when there is one, else the in-code default. `saved` is
+// whatever supabase-edgefunc-get-memo-config returned — null when blank OR when
+// the read failed, and both mean "use the default".
+export function resolveMemoSystemPrompt(saved: string | null): string {
+  const custom = (saved ?? "").trim();
+  return custom.length > 0 ? custom : SYSTEM_PROMPT;
 }

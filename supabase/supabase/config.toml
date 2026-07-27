@@ -136,6 +136,35 @@ verify_jwt = true
 [functions.supabase-edgefunc-reservation-call]
 verify_jwt = true
 
+# --- Memo's data surface (the agent holds NO database client) ---
+#
+# Memo reads Mesita ONLY through these four endpoints, called via
+# _shared/memo-data.ts from consumer-web-ask-memo and admin-web-ask-memo. Each
+# owns its SELECT and projects to a public shape, so Memo's reach is a closed
+# set you can enumerate instead of an open service-role query capability. All
+# read-only — there is deliberately no write endpoint here to add a tool for.
+# Documented for operators at admin.mesita.ai/memo-config (Data Access).
+
+# Lineup's RAG leg: pool near the caller → embed intent → cosine rank → public
+# cards. Embeddings, ranker internals and OPENAI_KEY never leave this function.
+[functions.supabase-edgefunc-recall-lineup]
+verify_jwt = true
+
+# Public catalog lookup by name (status ∈ active,lead) and/or by Google place id
+# (identity join for on-Mesita badging).
+[functions.supabase-edgefunc-search-places]
+verify_jwt = true
+
+# The signed-in consumer's persona CLAUSE ("named Ana, 28 years old, female").
+# Composed here so full name, birthday and sex never cross into a model context.
+[functions.supabase-edgefunc-get-consumer-context]
+verify_jwt = true
+
+# Memo's own config: persona instructions + model + the memo_search sourcing
+# policy. Read side only — writes stay on admin-web-update-memo-config.
+[functions.supabase-edgefunc-get-memo-config]
+verify_jwt = true
+
 # --- Enricher v2 pipeline (the Enricher is a PROCESS: cron-driven stages) ---
 #
 # Three stage EFs walk a place_research row research → analysis → contents.
