@@ -16,7 +16,7 @@ import type { ConsumerClass } from "@/lib/mock/place";
 
 // The business discount strategy that sets how generous a place's grid is.
 // Dominant was removed — the strategies are Zero / Conservative / Aggressive.
-export type GridStrategy = "zero" | "conservative" | "aggressive";
+type GridStrategy = "zero" | "conservative" | "aggressive";
 
 // Ontology of a rung (per the v5 canonical definitions):
 //   class  — who the guest is (Standard / Magnetic / Premium)
