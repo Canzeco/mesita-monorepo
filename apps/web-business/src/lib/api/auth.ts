@@ -12,7 +12,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { invokeEF } from "./_invoke";
 
-export type BusinessSigninResult = {
+type BusinessSigninResult = {
   role: "consumer" | "staff" | "business" | "admin";
   business: {
     id: string;
