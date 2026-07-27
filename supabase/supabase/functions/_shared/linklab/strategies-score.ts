@@ -17,7 +17,7 @@ export function nameTokens(name: string): string[] {
     .split(/[^a-z0-9]+/)
     .filter((t) => t.length >= 3 && !STOP.has(t));
 }
-export function domainLabel(host: string): string {
+function domainLabel(host: string): string {
   const parts = host.split(".");
   // second-level label (skip common 2-part TLDs like com.mx)
   if (parts.length >= 3 && ["com", "co", "org", "net"].includes(parts[parts.length - 2])) {
