@@ -10,7 +10,7 @@ import {
   type LucideIcon,
 } from 'lucide-react-native';
 
-export type ActivityKind =
+type ActivityKind =
   | 'earned'
   | 'saved'
   | 'booked'
