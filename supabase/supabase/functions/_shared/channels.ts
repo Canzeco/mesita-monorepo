@@ -167,7 +167,7 @@ export function domainOf(url: string | null | undefined): string | null {
 // the host must match one of those domains (or a subdomain) AND carry a path
 // beyond "/" — guards against a bare host or a hallucinated one. `allowed=null`
 // accepts any web host (used for resolving an arbitrary official website).
-export function validHost(v: unknown, allowed: string[] | null): string | null {
+function validHost(v: unknown, allowed: string[] | null): string | null {
   if (typeof v !== "string" || !v) return null;
   let u: URL;
   try {
