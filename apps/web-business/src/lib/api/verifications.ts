@@ -106,7 +106,7 @@ export async function apiLookupPlace(
 
 // ── Phone OTP path ────────────────────────────────────────────────────
 
-export type SendPhoneOtpResult = {
+type SendPhoneOtpResult = {
   verificationId: string;
   // "call" or "sms" — chosen by the EF based on place country (call for
   // LatAm landlines, SMS for US/CA). Surfaced so the UI can phrase the
