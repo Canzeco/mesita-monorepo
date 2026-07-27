@@ -175,7 +175,7 @@ export function discoveryFiltersAreActive(f: DiscoveryFilters): boolean {
   );
 }
 
-export function matchesDiscoveryFilters(
+function matchesDiscoveryFilters(
   place: Place,
   f: DiscoveryFilters,
 ): boolean {
