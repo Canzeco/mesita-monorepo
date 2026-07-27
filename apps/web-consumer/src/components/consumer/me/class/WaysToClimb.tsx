@@ -55,7 +55,7 @@ export function WaysToClimb({
       accent: true,
       price: `${magnetic.followerThreshold.toLocaleString("en-US")}+ followers`,
       priceNote: "no payment — earned with reach",
-      desc: "Connect an Instagram with 1,000+ followers and post a story each time you visit. You unlock Magnetic — Mesita's top, invite-only tier — with the biggest discounts, personalized recommendations, and unlimited reservations, without paying a peso.",
+      desc: `Connect an Instagram with ${magnetic.followerThreshold.toLocaleString("en-US")}+ followers and post a story each time you visit. You unlock Magnetic — Mesita's top, invite-only tier — with the biggest discounts, personalized recommendations, and unlimited reservations, without paying a peso.`,
       reached: origin === "instagram",
       reachedLabel: "Connected",
       action: { label: "Connect", onClick: onConnectInstagram },

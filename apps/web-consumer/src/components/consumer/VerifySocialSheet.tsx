@@ -15,11 +15,12 @@ import {
   SHEET_BODY_CLASS,
 } from "@/lib/ui-classes";
 import { DEMO_INSTAGRAM_FOLLOWERS } from "@/lib/instagram-demo";
+import { CLASSES } from "@/lib/consumer-data";
 
 // Bottom-sheet flow for verifying Instagram — the social door into Mesita
-// Magnetic (the top, invite-only tier). 1,000+ followers (and a story per
-// visit) unlocks Magnetic. Extracted from ProfileClient so the profile tabs
-// stay lean.
+// Magnetic (the top, invite-only tier). Crossing the Magnetic follower
+// threshold (and a story per visit) unlocks it. Extracted from ProfileClient
+// so the profile tabs stay lean.
 //
 // Built on LocalSheet: state-driven (parent keeps it mounted and flips
 // `open`) so the exit animation plays, backdrop covers the whole MobileFrame
@@ -30,11 +31,16 @@ type SocialPlatform = "instagram";
 // The @mesita.bot DM bot doesn't exist yet, so the follower count can't be
 // read from a real social-graph check. Until the bot ships, any 8-digit code
 // verifies and the claim is sent with this demo count (comfortably past the
-// 1,000 Magnetic threshold) — but the grant itself is REAL: the EF persists
-// the handle + count and sets class_key=magnetic / origin=instagram
+// Magnetic follower threshold) — but the grant itself is REAL: the EF
+// persists the handle + count and sets class_key=magnetic / origin=instagram
 // server-side, so every surface reads the class from the profile, not a
 // device flag. Swap the constant for the bot-reported count when it lands.
 const HANDLE_RE = /^@?[A-Za-z0-9._]{1,30}$/;
+
+// Display copy of the grant bar. The EF reads classes.follower_threshold in
+// the DB (the actual gate); consumer-data mirrors that row.
+const MAGNETIC_THRESHOLD = CLASSES.find((c) => c.id === "magnetic")!
+  .followerThreshold;
 
 export function VerifySocialSheet({
   platform: _platform,
@@ -54,8 +60,8 @@ export function VerifySocialSheet({
     HANDLE_RE.test(handle.trim()) && code.length >= 8 && !verifying;
 
   // Real claim through consumer-web-claim-instagram: persists the @handle and
-  // follower count, grants Magnetic (origin "instagram") at 1,000+ followers;
-  // below the threshold the consumer stays Standard. The EF response `tier`
+  // follower count, grants Magnetic (origin "instagram") at the threshold;
+  // below it the consumer stays Standard. The EF response `tier`
   // ("magnetic" | "standard") tells us which happened. On a Magnetic grant we
   // hard-navigate so the shell re-seeds with the unlocked class and the Profile
   // lands on its success toast; below the threshold we stay put and explain.
@@ -71,12 +77,14 @@ export function VerifySocialSheet({
         window.location.href = `${CONSUMER_ROUTES.me}?instagram=success`;
         return;
       }
-      // Below the 1,000-follower bar — Instagram is linked but the consumer
+      // Below the follower bar — Instagram is linked but the consumer
       // stays Standard.
       toast(
         `Instagram connected, but ${result.followers.toLocaleString(
           "en-US",
-        )} followers is below the 1,000 needed for Magnetic.`,
+        )} followers is below the ${MAGNETIC_THRESHOLD.toLocaleString(
+          "en-US",
+        )} needed for Magnetic.`,
       );
       setVerifying(false);
     } catch (e) {
@@ -134,7 +142,10 @@ export function VerifySocialSheet({
               Mesita will reply with an 8-digit verification code. Paste it
               here.
             </>,
-            <>1,000+ followers unlocks Mesita Magnetic instantly.</>,
+            <>
+              {MAGNETIC_THRESHOLD.toLocaleString("en-US")}+ followers unlocks
+              Mesita Magnetic instantly.
+            </>,
           ].map((line, i) => (
             <li
               key={i}

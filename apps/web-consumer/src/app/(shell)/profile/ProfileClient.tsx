@@ -114,25 +114,25 @@ export function ProfileClient({
               stays previewable. Remove with the MOCK_ paths. */}
           <MockControls />
 
-          {/* Conversion cluster — the free upgrade path + membership. Parked
-              (soon & blocked) for now: kept visible so the surface reads as
-              intentional, but non-interactive. Un-park = drop `soon` and
-              restore the onClick. */}
+          {/* Conversion cluster — membership first, then the free upgrade
+              path. Parked (soon & blocked) for now: kept visible so the
+              surface reads as intentional, but non-interactive. Un-park =
+              drop `soon` and restore the onClick. */}
+          <BoxRow
+            Icon={Crown}
+            tint="amber"
+            title="Class"
+            summary="Standard, Premium & Magnetic"
+            onClick={() => setClassOpen(true)}
+            soon
+          />
+
           <BoxRow
             Icon={Instagram}
             tint="pink"
             title="Instagram"
             summary="Connect Instagram to upgrade your class"
             onClick={() => setVerifyOpen(true)}
-            soon
-          />
-
-          <BoxRow
-            Icon={Crown}
-            tint="amber"
-            title="Class"
-            summary="Upgrade your class for better rewards"
-            onClick={() => setClassOpen(true)}
             soon
           />
 
