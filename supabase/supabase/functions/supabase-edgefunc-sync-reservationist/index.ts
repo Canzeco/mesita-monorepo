@@ -5,21 +5,15 @@
 // ELEVENLABS_KEY never leaves EF env, so an operator (or an agent session with
 // SQL access) can wire everything without touching the console.
 //
-// Body: { mode?: "inspect" | "sync" | "fleet" | "prune" }
+// Body: { mode?: "inspect" | "sync" | "fleet" | "prune" | "workflows" }
 //
-//   inspect  read-only report: donor agent, workspace agents/tools, fleet.
-//   sync     legacy single-agent path — attaches `get_reservation` to the
-//            donor (a1). Prefer fleet; sync kept for one-off tool repairs.
-//   fleet    the four-agent fleet (_shared/reservationist-fleet.ts):
-//            creates/updates the family webhook tools (eleven-a1-* …
-//            eleven-a4-*), creates each missing agent (voice/model/ASR cloned
-//            from a1 as donor, language es — the name carries the es-mx tag),
-//            attaches exactly its family's tools, and stores the ids in
-//            app_settings.agents_config.agents so the call engine places
-//            leg 1 on a1 and leg 2 on a2.
-//   prune    delete every workspace agent whose id is NOT in
-//            agents_config.agents.{a1,a2,a3,a4}, and drop the legacy
-//            get_reservation tool. Leaves only the fleet.
+//   inspect    read-only report: donor agent, workspace agents/tools, fleet.
+//   sync       LEGACY — prefer fleet. Unknown modes return 400 (never silently
+//              fall through to sync — that once recreated get_reservation).
+//   fleet      upsert family tools + agents; store ids in agents_config.
+//   prune      delete non-fleet agents + force-delete legacy get_reservation.
+//   workflows  PATCH conversation_config.workflow for a1–a4 from
+//              fleetWorkflows() — Workflows only (Procedures stay unused).
 //
 // PROMPTS ARE WRITTEN ONLY AT AGENT CREATION. On every later run the fleet
 // mode PATCHes name + prompt.tool_ids exclusively and verifies the prompt
@@ -37,7 +31,7 @@ import { corsPreflight, json, readJsonOr } from "../_shared/http.ts";
 import { adminClient, readEFEnv } from "../_shared/auth.ts";
 import { requireInternalCaller } from "../_shared/internal.ts";
 import { elevenLabsKey, reservationAgentId } from "../_shared/elevenlabs.ts";
-import { FLEET_AGENTS, fleetToolConfigs } from "../_shared/reservationist-fleet.ts";
+import { FLEET_AGENTS, fleetToolConfigs, fleetWorkflows } from "../_shared/reservationist-fleet.ts";
 
 const EL_BASE = "https://api.elevenlabs.io";
 const TOOL_NAME = "get_reservation";
@@ -182,13 +176,15 @@ Deno.serve(async (req) => {
   const fallbackAgentId = reservationAgentId();
 
   const body = await readJsonOr<{ mode?: unknown; write_prompts?: unknown }>(req, {});
-  const mode = body.mode === "inspect"
-    ? "inspect"
-    : body.mode === "fleet"
-    ? "fleet"
-    : body.mode === "prune"
-    ? "prune"
-    : "sync";
+  const rawMode = typeof body.mode === "string" ? body.mode : "inspect";
+  const allowed = new Set(["inspect", "sync", "fleet", "prune", "workflows"]);
+  if (!allowed.has(rawMode)) {
+    return json({
+      ok: false,
+      error: `unknown mode ${JSON.stringify(rawMode)}; use inspect|sync|fleet|prune|workflows`,
+    }, 400);
+  }
+  const mode = rawMode as "inspect" | "sync" | "fleet" | "prune" | "workflows";
   const writePrompts = body.write_prompts === true;
 
   // The tool secret + agent state — read live so a SQL rotation propagates on
@@ -286,6 +282,64 @@ Deno.serve(async (req) => {
       remaining,
       configured_fleet: configuredAgents,
     });
+  }
+
+  if (mode === "workflows") {
+    let specs: ReturnType<typeof fleetWorkflows>;
+    try {
+      specs = fleetWorkflows(toolIdByName);
+    } catch (e) {
+      return json({
+        ok: false,
+        error: e instanceof Error ? e.message : "fleetWorkflows failed",
+      }, 500);
+    }
+    const report: Array<Record<string, unknown>> = [];
+    for (const spec of FLEET_AGENTS) {
+      const id = configuredAgents[spec.key]?.id?.trim();
+      if (!id) {
+        return json({
+          ok: false,
+          error: `agents_config.agents.${spec.key}.id missing — run mode fleet first`,
+          report,
+        }, 400);
+      }
+      const wf = specs[spec.key];
+      // Top-level `workflow` per Agents update OpenAPI (also accepted under
+      // conversation_config — top-level is the dedicated field).
+      const patch = await elFetch(key, `/v1/convai/agents/${encodeURIComponent(id)}`, {
+        method: "PATCH",
+        body: { workflow: wf },
+      });
+      if (!patch.ok) {
+        return json({
+          ok: false,
+          error: `workflow ${spec.key}: ${patch.error}`,
+          report,
+        }, 502);
+      }
+      // Verify nodes landed.
+      const after = await elFetch(key, `/v1/convai/agents/${encodeURIComponent(id)}`);
+      const afterWf = after.ok
+        ? ((after.body as {
+          workflow?: { nodes?: Record<string, unknown> };
+          conversation_config?: { workflow?: { nodes?: Record<string, unknown> } };
+        })?.workflow ??
+          (after.body as {
+            conversation_config?: { workflow?: { nodes?: Record<string, unknown> } };
+          })?.conversation_config?.workflow)
+        : null;
+      const nodeKeys = afterWf?.nodes ? Object.keys(afterWf.nodes) : [];
+      report.push({
+        key: spec.key,
+        id,
+        nodes: Object.keys(wf.nodes),
+        edges: Object.keys(wf.edges),
+        verified_nodes: nodeKeys,
+        ok: nodeKeys.length >= 2 && nodeKeys.includes("start_node"),
+      });
+    }
+    return json({ ok: true, mode, agents: report });
   }
 
   // ── Read the donor agent (a1) + its prompt shape ───────────────────────────
