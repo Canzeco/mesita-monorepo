@@ -100,10 +100,6 @@ function isReservedIgWord(h: string): boolean {
   ].includes(h);
 }
 
-/** Canonical instagram URL from a handle, for reporting. */
-export function igUrlFromHandle(h: string | null): string | null {
-  return h ? `https://www.instagram.com/${h}` : null;
-}
 
 export type FieldOutcome = "TP" | "TN" | "FP" | "FN" | "WRONG";
 
