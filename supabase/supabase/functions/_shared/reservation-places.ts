@@ -12,19 +12,34 @@
 // this helper does the explicit lookup instead, exactly like the call engine
 // (supabase-edgefunc-reservation-call) already does for a single row.
 //
-// One extra query per list: projects (slug) embedded with its place — that
-// direction DOES have a usable FK. Callers select `project_id` on the
-// reservation rows and get back the same `place` shape clients already speak.
+// One extra query per list: projects embedded with its place — that direction
+// DOES have a usable FK. Callers select `project_id` on their rows and get
+// back the same flat `place` shape clients already speak.
+//
+// NOT reservation-only despite the filename: EVERY table that points at
+// projects hits this same wall — tickets, coupons, saved_places all FK to
+// projects, so they use this helper too. The summary is a SUPERSET of what
+// those callers need (extra keys are harmless); note which side each column
+// lives on, because the old embeds got that wrong as well:
+//   places   → name, category, photos, address, price_level, lat, lng
+//   projects → slug, listing_type, fiscal_type
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 
 export type PlaceSummary = {
   id: string;
+  /** From projects. */
   slug: string | null;
+  listing_type: string | null;
+  fiscal_type: string | null;
+  /** From places. */
   name: string | null;
   category: string | null;
   photos: string[] | null;
   address: string | null;
+  price_level: number | null;
+  lat: number | null;
+  lng: number | null;
 };
 
 type RowWithProject = { project_id?: string | null };
@@ -45,11 +60,16 @@ export async function attachPlaces<T extends RowWithProject>(
     // from projects; the rest from places.
     const { data } = await admin
       .from("projects")
-      .select("id, slug, place:places(id, name, category, photos, address)")
+      .select(
+        "id, slug, listing_type, fiscal_type, " +
+          "place:places(id, name, category, photos, address, price_level, lat, lng)",
+      )
       .in("id", ids);
     type Row = {
       id: string;
       slug: string | null;
+      listing_type: string | null;
+      fiscal_type: string | null;
       place:
         | {
           id: string;
@@ -57,6 +77,9 @@ export async function attachPlaces<T extends RowWithProject>(
           category: string | null;
           photos: string[] | null;
           address: string | null;
+          price_level: number | null;
+          lat: number | null;
+          lng: number | null;
         }
         | null;
     };
@@ -64,10 +87,15 @@ export async function attachPlaces<T extends RowWithProject>(
       byId.set(p.id, {
         id: p.id,
         slug: p.slug ?? null,
+        listing_type: p.listing_type ?? null,
+        fiscal_type: p.fiscal_type ?? null,
         name: p.place?.name ?? null,
         category: p.place?.category ?? null,
         photos: p.place?.photos ?? null,
         address: p.place?.address ?? null,
+        price_level: p.place?.price_level ?? null,
+        lat: p.place?.lat ?? null,
+        lng: p.place?.lng ?? null,
       });
     }
   }
