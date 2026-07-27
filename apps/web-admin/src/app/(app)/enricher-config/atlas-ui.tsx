@@ -209,7 +209,6 @@ export function SaveRow({
   );
 }
 
-export { ErrorNote } from "@/components/ErrorNote";
 
 // Shared economy/standard/high segmented picker used by the calculator and the
 // inline cost card.
