@@ -115,16 +115,14 @@ export function ProfileClient({
           <MockControls />
 
           {/* Conversion cluster — membership first, then the free upgrade
-              path. Parked (soon & blocked) for now: kept visible so the
-              surface reads as intentional, but non-interactive. Un-park =
-              drop `soon` and restore the onClick. */}
+              path. Un-parked: Class opens the full ladder (perks comparison +
+              class cards), Instagram opens the verify sheet. */}
           <BoxRow
             Icon={Crown}
             tint="amber"
             title="Class"
             summary="Standard, Premium & Magnetic"
             onClick={() => setClassOpen(true)}
-            soon
           />
 
           <BoxRow
@@ -133,7 +131,6 @@ export function ProfileClient({
             title="Instagram"
             summary="Connect Instagram to upgrade your class"
             onClick={() => setVerifyOpen(true)}
-            soon
           />
 
           {/* Account management. */}

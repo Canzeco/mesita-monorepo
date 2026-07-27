@@ -21,10 +21,12 @@ import { cn } from "@/lib/utils";
 // collapsed to this single page; the [classKey] segment is kept so existing
 // /subscribe/premium links resolve, but only "premium" is valid.
 
+// The elevated perk set — identical for Premium and Magnetic (Pato,
+// 2026-07-27); only the door differs. Mirrors ELEVATED_PERKS on the Me page.
 const PERKS = [
-  "Bigger discounts at every Verified Partner.",
+  "Higher discount rewards at every Verified Partner.",
   "Better, more rewarding recommendations across discovery.",
-  "Unlimited reservations every month.",
+  "10 reservations every month.",
 ];
 
 export default function SubscribePage() {
@@ -63,7 +65,7 @@ export default function SubscribePage() {
             Mesita Premium
           </h2>
           <p className="mt-1 text-sm opacity-90">
-            Better rewards, better recommendations, unlimited reservations.
+            Higher discount rewards, better recommendations, 10 reservations.
           </p>
           <p className="font-display mt-4 text-4xl font-bold tabular-nums">
             ${premium.priceMxn.toLocaleString()}
