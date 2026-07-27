@@ -11,7 +11,7 @@ export const AI_ERROR =
 
 const MAX_CARDS = 3;
 const MAX_RELATED = 3;
-export const THREAD_CAP = 40;
+const THREAD_CAP = 40;
 
 let nextId = 0;
 export function msgId(): string {
