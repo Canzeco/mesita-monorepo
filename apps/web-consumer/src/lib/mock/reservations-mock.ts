@@ -25,6 +25,8 @@ export type ReservationItem = {
   partySize: number;
   status: ReservationStatus;
   statusNote?: string;
+  /** The 8-digit code the Reservationist speaks on calls (live rows only). */
+  referenceCode?: string;
   linkedCoupon?: LinkedCouponSummary;
 };
 

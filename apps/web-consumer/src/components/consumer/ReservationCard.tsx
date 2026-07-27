@@ -115,6 +115,12 @@ export function ReservationCard({ r }: { r: ReservationItem }) {
               <Users className="h-3 w-3" />
               {r.partySize} {guestNoun(r.partySize)}
             </span>
+            {r.referenceCode && (
+              <>
+                <span className="text-muted-foreground/60">·</span>
+                <span className="tabular-nums">#{r.referenceCode}</span>
+              </>
+            )}
           </div>
         </div>
       </div>
