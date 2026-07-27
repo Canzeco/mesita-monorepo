@@ -1,7 +1,7 @@
 import { Pressable, Text, View } from 'react-native';
 
 // Male/Female only — "other" was dropped from the product (MESITA-727).
-export const SEX_OPTIONS = [
+const SEX_OPTIONS = [
   { value: 'male', label: 'Male' },
   { value: 'female', label: 'Female' },
 ] as const;
