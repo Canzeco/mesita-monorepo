@@ -1,6 +1,6 @@
 import { storyTagInstruction } from "@/lib/api/pay";
 
-export type TicketStepCopyContext = {
+type TicketStepCopyContext = {
   placeInstagramHandle?: string | null;
 };
 
