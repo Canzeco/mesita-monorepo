@@ -1,18 +1,14 @@
 "use client";
 
 import Image from "next/image";
-import {
-  Calendar,
-  Users,
-  Clock,
-  CheckCircle2,
-  X,
-} from "lucide-react";
-import type {
-  ReservationItem,
-  ReservationStatus,
-} from "@/lib/mock/reservations-mock";
+import { Calendar, Hash, Users } from "lucide-react";
+
+import type { ReservationItem } from "@/lib/mock/reservations-mock";
 import { cn, guestNoun } from "@/lib/utils";
+import {
+  RESERVATION_FLOW,
+  statusMeta,
+} from "@/lib/reservation-status";
 import {
   LinkedCouponCard,
   MetaRow,
@@ -21,48 +17,58 @@ import { ReservationActions } from "@/components/consumer/reservation-actions";
 
 // Shared body for /reservation/[id]. Used by both the intercepted modal
 // (ReservationDetailModalShell) and the hard-nav page. Stays narrow on
-// purpose — booking metadata, the linked coupon if any, and the few
-// reservation-level actions. No payment, no bill math (that happens at
+// purpose — the ticket's lifecycle, its metadata, the linked coupon if any,
+// and the actions that can move it. No payment, no bill math (that happens at
 // the table); no full place detail (that lives on /places/[id]).
 
-const STATUS_META: Record<
-  ReservationStatus,
-  {
-    label: string;
-    pillClass: string;
-    Icon: typeof Clock;
-    iconClass: string;
-    banner: string | null;
-  }
-> = {
-  booking: {
-    label: "Booking",
-    pillClass: "border-amber-500/30 bg-amber-50 text-amber-800",
-    Icon: Clock,
-    iconClass: "text-amber-600",
-    banner:
-      "We're booking this for you — you'll get a confirmation as soon as the place replies.",
-  },
-  booked: {
-    label: "Booked",
-    pillClass: "border-emerald-500/30 bg-emerald-50 text-emerald-800",
-    Icon: CheckCircle2,
-    iconClass: "text-emerald-600",
-    banner: null,
-  },
-  cancelled: {
-    label: "Cancelled",
-    pillClass: "border-border bg-muted text-muted-foreground",
-    Icon: X,
-    iconClass: "text-muted-foreground",
-    banner:
-      "This reservation is cancelled. Saved rewards remain valid for a new booking.",
-  },
-};
+// The happy path as a stepper: created → booking → confirmed → passed. A
+// ticket that exited the path (cancelled / failed) shows the banner instead —
+// drawing a half-lit ladder for a dead ticket reads as "still going".
+function LifecycleStepper({ status }: { status: ReservationItem["status"] }) {
+  const index = RESERVATION_FLOW.indexOf(status);
+  if (index < 0) return null;
+  return (
+    <section aria-label="Reservation progress" className="flex items-center gap-1.5">
+      {RESERVATION_FLOW.map((step, i) => {
+        const done = i <= index;
+        const meta = statusMeta(step);
+        return (
+          <div key={step} className="flex min-w-0 flex-1 flex-col gap-1.5">
+            <span
+              className={cn(
+                "h-1 rounded-full transition",
+                done ? "bg-primary" : "bg-border",
+              )}
+            />
+            <span
+              className={cn(
+                "truncate text-[10.5px] font-medium",
+                i === index
+                  ? "text-foreground"
+                  : done
+                    ? "text-muted-foreground"
+                    : "text-muted-foreground/60",
+              )}
+            >
+              {meta.label}
+            </span>
+          </div>
+        );
+      })}
+    </section>
+  );
+}
 
-export function ReservationDetailBody({ r }: { r: ReservationItem }) {
-  const meta = STATUS_META[r.status];
-  const cancelled = r.status === "cancelled";
+export function ReservationDetailBody({
+  r,
+  onChanged,
+}: {
+  r: ReservationItem;
+  onChanged?: () => void;
+}) {
+  const meta = statusMeta(r.status);
+  const banner = r.statusNote ?? meta.banner;
+
   return (
     <div className="flex flex-col gap-4 px-4 pt-4 pb-8">
       {/* Hero — place photo + name + status pill stacked. Larger than the
@@ -75,10 +81,7 @@ export function ReservationDetailBody({ r }: { r: ReservationItem }) {
               alt={r.placeName}
               fill
               sizes="(max-width: 640px) 100vw, 480px"
-              className={cn(
-                "object-cover",
-                cancelled && "opacity-80 grayscale",
-              )}
+              className={cn("object-cover", meta.spent && "opacity-80 grayscale")}
             />
           ) : null}
         </div>
@@ -86,7 +89,7 @@ export function ReservationDetailBody({ r }: { r: ReservationItem }) {
           <h1
             className={cn(
               "font-display text-xl leading-tight font-semibold tracking-tight",
-              cancelled && "line-through",
+              r.status === "cancelled" && "line-through",
             )}
           >
             {r.placeName}
@@ -97,25 +100,26 @@ export function ReservationDetailBody({ r }: { r: ReservationItem }) {
               meta.pillClass,
             )}
           >
-            <meta.Icon
-              className={cn("h-3 w-3", meta.iconClass)}
-              strokeWidth={2.25}
-            />
+            <meta.Icon className={cn("h-3 w-3", meta.iconClass)} strokeWidth={2.25} />
             {meta.label}
           </span>
         </div>
       </section>
 
-      {meta.banner && (
+      <LifecycleStepper status={r.status} />
+
+      {banner && (
         <p
           className={cn(
             "rounded-2xl px-3 py-2.5 text-[12.5px] leading-snug",
-            r.status === "booking"
+            r.status === "booking" || r.status === "created"
               ? "bg-amber-50 text-amber-900 ring-1 ring-amber-400/30"
-              : "bg-muted text-muted-foreground",
+              : r.status === "failed"
+                ? "bg-rose-50 text-rose-900 ring-1 ring-rose-400/30"
+                : "bg-muted text-muted-foreground",
           )}
         >
-          {r.statusNote ?? meta.banner}
+          {banner}
         </p>
       )}
 
@@ -133,13 +137,14 @@ export function ReservationDetailBody({ r }: { r: ReservationItem }) {
           label="Status"
           value={meta.label}
         />
+        {r.referenceCode && (
+          <MetaRow Icon={Hash} label="Reference" value={r.referenceCode} />
+        )}
       </section>
 
-      {r.linkedCoupon && !cancelled && (
-        <LinkedCouponCard coupon={r.linkedCoupon} />
-      )}
+      {r.linkedCoupon && !meta.spent && <LinkedCouponCard coupon={r.linkedCoupon} />}
 
-      <ReservationActions projectId={r.projectId} cancelled={cancelled} />
+      <ReservationActions r={r} onChanged={onChanged} />
     </div>
   );
 }

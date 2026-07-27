@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { CalendarX } from "lucide-react";
 
 import { ReservationDetailBody } from "@/components/consumer/ReservationDetailBody";
@@ -20,9 +20,13 @@ type State =
 // consumer-web-list-reservations has no get-by-id, so the detail surface pulls
 // the caller's full list once (scope "all") and finds the row. N is small — a
 // single account rarely holds more than a handful of bookings.
-function useReservationById(id: string): State {
+function useReservationById(id: string): { state: State; reload: () => void } {
   const supabase = useBrowserSupabase();
   const [state, setState] = useState<State>({ status: "loading" });
+  // Bumped by the detail actions (cancel / reschedule) so the ticket's phase,
+  // banner and available actions re-derive from the server, not from guesses.
+  const [nonce, setNonce] = useState(0);
+  const reload = useCallback(() => setNonce((n) => n + 1), []);
 
   useEffect(() => {
     let cancelled = false;
@@ -47,9 +51,9 @@ function useReservationById(id: string): State {
     return () => {
       cancelled = true;
     };
-  }, [supabase, id]);
+  }, [supabase, id, nonce]);
 
-  return state;
+  return { state, reload };
 }
 
 function ReservationNotFound() {
@@ -72,18 +76,18 @@ function ReservationNotFound() {
 // Body for the hard-nav /saved/reservation/[id] page — the page supplies its
 // own header around this.
 export function ReservationDetailFetcher({ id }: { id: string }) {
-  const state = useReservationById(id);
+  const { state, reload } = useReservationById(id);
   if (state.status === "loading") {
     return <LoadingFill label="Loading reservation" />;
   }
   if (state.status === "missing") return <ReservationNotFound />;
-  return <ReservationDetailBody r={state.r} />;
+  return <ReservationDetailBody r={state.r} onChanged={reload} />;
 }
 
 // Intercepted soft-nav modal: owns the slide-over shell so the place name is
 // available for the share action once the row resolves.
 export function ReservationDetailModalClient({ id }: { id: string }) {
-  const state = useReservationById(id);
+  const { state, reload } = useReservationById(id);
   const placeName =
     state.status === "found" ? state.r.placeName : "your reservation";
   return (
@@ -93,7 +97,7 @@ export function ReservationDetailModalClient({ id }: { id: string }) {
       ) : state.status === "missing" ? (
         <ReservationNotFound />
       ) : (
-        <ReservationDetailBody r={state.r} />
+        <ReservationDetailBody r={state.r} onChanged={reload} />
       )}
     </ReservationDetailModalShell>
   );
