@@ -13,10 +13,7 @@ export {
 } from "./PlaceKvField";
 export { PlaceLocationFields } from "./PlaceLocationFields";
 export { PlaceMenuFields } from "./PlaceMenuFields";
-export {
-  getProfileProgress,
-  type ProfileProgressCheck,
-} from "./place-profile-progress";
+export { getProfileProgress } from "./place-profile-progress";
 export {
   PLACE_DESCRIPTION_MAX,
   PLACE_NAME_MAX,

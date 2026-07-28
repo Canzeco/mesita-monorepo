@@ -1,7 +1,7 @@
 import { PLACE_HOUR_DAYS } from "./place-hours";
 import type { PlaceFormState } from "./place-form-types";
 
-export type ProfileProgressCheck = {
+type ProfileProgressCheck = {
   label: string;
   done: boolean;
 };
