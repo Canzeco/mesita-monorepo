@@ -8,9 +8,9 @@ import {
   removeMember,
   updateMemberRole,
   type AdminPlace,
-  type TeamSnapshot,
-} from "../actions";
-import { ConfirmDialog, ErrorNote, SectionCard, SelectField, Spinner, TextField } from "../ui";
+  type TeamSnapshot } from "../actions";
+import {ConfirmDialog,SectionCard,SelectField,Spinner,TextField} from "../ui";
+import { ErrorNote } from "@/components/ErrorNote";
 
 const ROLES = ["owner", "editor", "viewer"];
 
@@ -167,8 +167,7 @@ export function TeamSection({ place }: { place: AdminPlace }) {
                         key: m.memberId,
                         label: m.fullName ?? m.email ?? "this member",
                         roleLabel: m.role,
-                        run: () => removeMember(m.memberId, "editor"),
-                      })
+                        run: () => removeMember(m.memberId, "editor") })
                     }
                   />
                 </div>
@@ -198,8 +197,7 @@ export function TeamSection({ place }: { place: AdminPlace }) {
                       key: p.id,
                       label: p.email,
                       roleLabel: `${p.role} invite`,
-                      run: () => removeMember(p.id, "editorInvite"),
-                    })
+                      run: () => removeMember(p.id, "editorInvite") })
                   }
                 />
               </Row>
@@ -220,8 +218,7 @@ export function TeamSection({ place }: { place: AdminPlace }) {
                       key: `${w.userId}:${place.id}`,
                       label: w.phone ?? "this waiter",
                       roleLabel: "waiter",
-                      run: () => removeMember(`${w.userId}:${place.id}`, "waiter"),
-                    })
+                      run: () => removeMember(`${w.userId}:${place.id}`, "waiter") })
                   }
                 />
               </Row>

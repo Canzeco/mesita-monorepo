@@ -6,12 +6,12 @@ import { Search } from "lucide-react";
 import { getPlace, type AdminPlace } from "./actions";
 import { UnitEditChrome } from "./UnitEditChrome";
 import { UnitPlaceProvider } from "./UnitPlaceContext";
-import { ErrorNote, Spinner } from "./ui";
+import {Spinner} from "./ui";
+import { ErrorNote } from "@/components/ErrorNote";
 
 export function UnitEditShell({
   projectId,
-  children,
-}: {
+  children }: {
   projectId: string;
   children: React.ReactNode;
 }) {
