@@ -2,7 +2,7 @@ import type { Place } from "@/lib/api/places";
 
 const SWIPE_STATE_STORAGE_KEY = "mesita_swipe_state_v1";
 
-export type SwipeDeckSnapshot = {
+type SwipeDeckSnapshot = {
   runtimeDeck: Place[];
   idx: number;
 };
