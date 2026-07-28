@@ -6,7 +6,7 @@ export type ProfileProgressCheck = {
   done: boolean;
 };
 
-export function getProfileProgressChecks(
+function getProfileProgressChecks(
   v: PlaceFormState,
 ): ProfileProgressCheck[] {
   return [
