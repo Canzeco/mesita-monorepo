@@ -8,18 +8,16 @@ import type { SampleConsumer, SamplePlace } from "@/lib/business/cip";
 // Clients never touch the DB.
 //
 // NOT a "use server" module: only the page (a server component) calls this,
-// and that directive would forbid every non-async export — SAMPLE_MAX and the
-// re-exported types included — failing only at BUILD time, not typecheck.
+// and that directive would forbid every non-async export — failing only at
+// BUILD time, not typecheck.
 // `efInvoke` pulls in next/headers, so a client import fails on its own.
 
-export { SAMPLE_MAX };
-
-export type ScoringSample = {
+type ScoringSample = {
   consumers: SampleConsumer[];
   places: SamplePlace[];
 };
 
-export type SampleResult =
+type SampleResult =
   | { ok: true; sample: ScoringSample }
   | { ok: false; error: string };
 

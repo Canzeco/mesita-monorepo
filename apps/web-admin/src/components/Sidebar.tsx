@@ -165,7 +165,7 @@ function SectionGap() {
   return <div className="py-2" />;
 }
 
-export function SidebarNav({ onNavigate }: SidebarProps) {
+function SidebarNav({ onNavigate }: SidebarProps) {
   const pathname = usePathname();
   const projectId = parseUnitId(pathname);
 

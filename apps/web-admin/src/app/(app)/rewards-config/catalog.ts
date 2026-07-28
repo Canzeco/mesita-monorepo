@@ -26,7 +26,7 @@ export type RewardSegmentKey =
   | "welcome"
   | "review";
 
-export type SegmentRates = Record<GridStrategy, number>;
+type SegmentRates = Record<GridStrategy, number>;
 
 export type RewardsConfig = {
   /** Per-segment rate under each strategy. 0 = off. */
@@ -37,9 +37,9 @@ export type RewardsConfig = {
 
 // Ontology of a rung: class (who the guest is), action (a rewarded thing they
 // do at the table), visit (a state of the visit). Drives the row grouping.
-export type RewardSegmentKind = "class" | "action" | "visit";
+type RewardSegmentKind = "class" | "action" | "visit";
 
-export type SegmentMeta = {
+type SegmentMeta = {
   key: RewardSegmentKey;
   /** Pato's worst→best ladder rank (1 Standard … 6 Google Review). */
   rank: number;

@@ -26,7 +26,7 @@ import type {
 
 export type { AskMemoResult, MemoConfig, MemoPrediction } from "./types";
 
-export type GetMemoConfigResult =
+type GetMemoConfigResult =
   | { ok: true; data: MemoConfig }
   | { ok: false; error: string };
 
@@ -36,7 +36,7 @@ export async function getMemoConfig(): Promise<GetMemoConfigResult> {
   return { ok: true, data: r.data };
 }
 
-export type UpdateMemoConfigResult =
+type UpdateMemoConfigResult =
   | { ok: true; data: MemoConfig }
   | { ok: false; error: string };
 

@@ -8,14 +8,14 @@ import { efInvoke } from "@/lib/supabase-ef";
 // that the Enricher (and operators) write place profiles with. The Enricher's
 // own pipeline behaviour lives on the separate Enricher Config page.
 
-export type AtlasCategory = {
+type AtlasCategory = {
   slug: string;
   label: string;
   section: string;
   sort_order: number;
 };
 
-export type AtlasTag = {
+type AtlasTag = {
   slug: string;
   label_es: string;
   label_en: string;
@@ -24,14 +24,14 @@ export type AtlasTag = {
   sort_order: number;
 };
 
-export type AtlasTagFacet = {
+type AtlasTagFacet = {
   slug: string;
   emoji: string;
   label_es: string;
   label_en: string;
 };
 
-export type AtlasFieldLimit = {
+type AtlasFieldLimit = {
   max: number;
   note: string;
 };

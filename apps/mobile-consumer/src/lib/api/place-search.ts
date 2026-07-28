@@ -7,7 +7,6 @@ import { invokeEF } from '@/lib/ef';
 export {
   apiSuggestPlaces,
   type PlacePrediction,
-  type PlacePredictionStatus,
 } from '@/lib/api/places';
 
 type CreatedProject = {

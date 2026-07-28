@@ -14,23 +14,6 @@ export function Skeleton({ className }: { className?: string }) {
   );
 }
 
-// A standard card-shaped placeholder (image band + two text rows) matching
-// the PlaceCatalogCard / list-card silhouette used across tabs.
-export function SkeletonCard({ className }: { className?: string }) {
-  return (
-    <div
-      aria-hidden
-      className={cn(
-        "border-border bg-card space-y-3 rounded-2xl border p-3",
-        className,
-      )}
-    >
-      <Skeleton className="h-32 w-full rounded-xl" />
-      <Skeleton className="h-4 w-2/3" />
-      <Skeleton className="h-3 w-1/3" />
-    </div>
-  );
-}
 
 // A standard row placeholder (avatar + two lines) matching activity /
 // notification / reservation list rows.

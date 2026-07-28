@@ -4,7 +4,7 @@ import { TONES, type Tone } from "./notification-config";
 // step event carries its S-code, which maps a step onto one of the phases.
 // Colors follow the catalog: Research≈Link=emerald, Analysis=sky,
 // Contents/Persist=amber.
-export type EnricherPhase = {
+type EnricherPhase = {
   label: string;
   blurb: string;
   tone: Tone;

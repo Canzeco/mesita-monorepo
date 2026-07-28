@@ -10,8 +10,7 @@ import {
   Loader2,
   Percent,
   TrendingUp,
-  X,
-} from "lucide-react";
+  X } from "lucide-react";
 import {
   STRATEGIES,
   STRATEGY_BY_ID,
@@ -19,11 +18,11 @@ import {
   UNIVERSAL_CAP_MXN,
   strategyForPlace,
   type Strategy,
-  type StrategyId,
-} from "@/lib/business/strategies";
+  type StrategyId } from "@/lib/business/strategies";
 import { planForSubscription } from "@/lib/business/plans";
 import { setPlacePlan, updatePlace, type AdminPlace } from "../actions";
-import { SectionCard, ErrorNote } from "../ui";
+import {SectionCard} from "../ui";
+import { ErrorNote } from "@/components/ErrorNote";
 
 // Admin Promos — Mesita Membership (MESITA-585, card shape MESITA-590).
 //   1. Mesita Membership — THREE pricing cards, each a plain give/receive
@@ -66,8 +65,7 @@ const CARD_ART: Record<
     meter: "bg-slate-400",
     recvText: "text-slate-500",
     recvBg: "bg-muted/40",
-    recvBorder: "border-border/60",
-  },
+    recvBorder: "border-border/60" },
   conservative: {
     src: "/promos/strategy-conservative.jpg",
     fallback: "from-emerald-900 to-teal-500",
@@ -75,8 +73,7 @@ const CARD_ART: Record<
     meter: "bg-emerald-500",
     recvText: "text-emerald-600",
     recvBg: "bg-emerald-500/[0.07]",
-    recvBorder: "border-emerald-500/25",
-  },
+    recvBorder: "border-emerald-500/25" },
   aggressive: {
     src: "/promos/strategy-aggressive.jpg",
     fallback: "from-red-800 to-orange-500",
@@ -84,9 +81,7 @@ const CARD_ART: Record<
     meter: "bg-orange-500",
     recvText: "text-orange-600",
     recvBg: "bg-orange-500/[0.07]",
-    recvBorder: "border-orange-500/25",
-  },
-};
+    recvBorder: "border-orange-500/25" } };
 
 const cx = (...c: (string | false | null | undefined)[]) =>
   c.filter(Boolean).join(" ");
@@ -103,8 +98,7 @@ function isMember(place: AdminPlace): boolean {
 
 export function PromosSection({
   place,
-  onSaved,
-}: {
+  onSaved }: {
   place: AdminPlace;
   onSaved: (v: AdminPlace) => void;
 }) {
@@ -135,8 +129,7 @@ export function PromosSection({
       welcome_premium_rate: s.rates.welcome_premium_rate,
       free_rate: s.rates.free_rate,
       premium_rate: s.rates.premium_rate,
-      monthly_promo_cap: s.cap,
-    };
+      monthly_promo_cap: s.cap };
 
     const prev = v;
     setV({ ...v, ...rates, plan } as AdminPlace);
@@ -244,8 +237,7 @@ function PricingCard({
   selected,
   member,
   pending,
-  onOpen,
-}: {
+  onOpen }: {
   strategy: Strategy;
   currency: string | null;
   selected: boolean;
@@ -378,8 +370,7 @@ function ProductModal({
   isCurrent,
   member,
   onConfirm,
-  onClose,
-}: {
+  onClose }: {
   strategy: Strategy;
   currency: string | null;
   isCurrent: boolean;
@@ -584,8 +575,7 @@ function ModalLabel({ children }: { children: React.ReactNode }) {
 function Step({
   n,
   title,
-  children,
-}: {
+  children }: {
   n: number;
   title: string;
   children?: React.ReactNode;
@@ -651,8 +641,7 @@ function RateMatrix({ rates }: { rates: Strategy["rates"] }) {
 // filled ladder, so what the membership BUYS reads louder than the mechanics.
 function PlacementReward({
   strategy,
-  art,
-}: {
+  art }: {
   strategy: Strategy;
   art: (typeof CARD_ART)[StrategyId];
 }) {
@@ -700,8 +689,7 @@ function PlacementReward({
 
 function FaqsBox({
   place,
-  storedStrategy,
-}: {
+  storedStrategy }: {
   place: AdminPlace;
   storedStrategy: StrategyId | null;
 }) {
@@ -797,8 +785,7 @@ function FaqsBox({
 function Faq({
   q,
   defaultOpen,
-  children,
-}: {
+  children }: {
   q: string;
   defaultOpen?: boolean;
   children: React.ReactNode;
@@ -824,8 +811,7 @@ function Faq({
 // would apply today.
 function PremiumExamples({
   place,
-  storedStrategy,
-}: {
+  storedStrategy }: {
   place: AdminPlace;
   storedStrategy: StrategyId | null;
 }) {
@@ -887,8 +873,7 @@ function ExampleCard({
   premiumRate,
   freeRate,
   cap,
-  currency,
-}: {
+  currency }: {
   visit: string;
   premiumRate: number | null;
   freeRate: number | null;

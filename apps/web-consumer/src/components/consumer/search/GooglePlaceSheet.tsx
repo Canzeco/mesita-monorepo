@@ -20,7 +20,7 @@ import { ExternalLink, MapPinPlus, Wand2, X } from "lucide-react";
 import { Spinner } from "@/components/shared";
 import type { PlacePrediction } from "@/lib/api/place-search";
 import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
-import type { AddState } from "./PredictionRow";
+import type { AddState } from "./add-state";
 
 type GoogleProfile = {
   photoUrl?: string;

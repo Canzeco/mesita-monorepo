@@ -61,7 +61,7 @@ export const TONES = {
   },
 } satisfies Record<string, Tone>;
 
-export type TypeConfig = {
+type TypeConfig = {
   label: string;
   shortLabel: string;
   Icon: ComponentType<{ className?: string }>;
@@ -110,7 +110,7 @@ export const TYPE_ORDER: NotificationType[] = [
   "atlas.enrichment_step",
 ];
 
-export type CategoryDef = {
+type CategoryDef = {
   key: string;
   label: string;
   Icon: ComponentType<{ className?: string }>;

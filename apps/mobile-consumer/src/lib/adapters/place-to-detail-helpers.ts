@@ -33,7 +33,7 @@ export function neighborhoodFromAddress(
 
 // City fallback when zone + colonia are missing. Keep in sync with web
 // `apps/web-consumer/src/lib/adapters/place-to-detail.ts`.
-export function cityFromAddress(
+function cityFromAddress(
   address: string | undefined,
 ): string | null {
   if (!address) return null;

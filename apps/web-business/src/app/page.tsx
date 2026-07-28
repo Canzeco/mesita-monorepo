@@ -7,7 +7,7 @@ import {
 import { errMsg } from "@/lib/utils";
 import { MobileFrame } from "@/components/business/MobileFrame";
 import { AuthCard, AuthShell } from "@/components/auth/AuthShell";
-import { AuthChip } from "@/components/auth/EnterpriseAuthLayout";
+import { AuthChip } from "@/components/auth/AuthChip";
 import { AuthTabs } from "@/components/auth/AuthTabs";
 import { authSignInWithEmail, authSignUpWithEmail } from "@/app/auth/actions";
 

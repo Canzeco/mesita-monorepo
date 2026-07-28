@@ -11,7 +11,7 @@
 import { efInvoke } from "@/lib/supabase-ef";
 import { coerceConfig, type RewardsConfig } from "./catalog";
 
-export type GetRewardsConfigResult =
+type GetRewardsConfigResult =
   | { ok: true; config: RewardsConfig; updatedAt: string | null }
   | { ok: false; error: string };
 
@@ -28,7 +28,7 @@ export async function getRewardsConfig(): Promise<GetRewardsConfigResult> {
   };
 }
 
-export type UpdateRewardsConfigResult =
+type UpdateRewardsConfigResult =
   | { ok: true; config: RewardsConfig; updatedAt: string | null }
   | { ok: false; error: string };
 

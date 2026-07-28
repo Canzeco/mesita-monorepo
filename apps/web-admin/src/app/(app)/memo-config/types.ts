@@ -40,7 +40,7 @@ export const PERPLEXITY_MODELS = [
 // The concierge's place suggestion. Mirrors the Prediction contract returned by
 // consumer-web-ask-memo (see its memo-google-text-search.ts) — the Playground
 // only renders a subset.
-export type MemoPredictionStatus =
+type MemoPredictionStatus =
   | "not_in_mesita"
   | "web_listed"
   | "verified_partner_other"
@@ -146,7 +146,7 @@ export type SampleConsumersResult =
 export type PersonaMode = "consumer" | "mock" | "guest";
 
 // A location preset — Memo is location-first, so every session picks a metro.
-export type LocationPreset = {
+type LocationPreset = {
   key: string;
   label: string;
   lat: number | null;
@@ -162,7 +162,7 @@ export const LOCATION_PRESETS: readonly LocationPreset[] = [
 ] as const;
 
 // One message in the playground chat thread.
-export type ChatRole = "user" | "assistant";
+type ChatRole = "user" | "assistant";
 export type MemoTurn = {
   role: ChatRole;
   content: string;

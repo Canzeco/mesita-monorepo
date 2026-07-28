@@ -102,9 +102,9 @@ const STAGE_META = {
   post: { label: "Analyze & write", hint: "Vision, sorting, and profile synthesis" },
 } as const;
 
-export type Stage = keyof typeof STAGE_META;
+type Stage = keyof typeof STAGE_META;
 
-export type CostLine = {
+type CostLine = {
   label: string;
   // What the call fetches + the exact SKU / model it bills as.
   detail: string;
@@ -118,7 +118,7 @@ export type CostLine = {
   active: boolean;
 };
 
-export type CostParams = {
+type CostParams = {
   // Models box.
   quality: SynthesisQuality; // profile text model
   imageModel: SynthesisQuality; // image vision model
@@ -133,7 +133,7 @@ export type CostParams = {
   places: number;
 };
 
-export type CostEstimate = {
+type CostEstimate = {
   lines: CostLine[];
   active: CostLine[];
   perPlace: number;

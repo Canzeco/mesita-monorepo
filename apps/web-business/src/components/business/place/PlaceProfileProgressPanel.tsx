@@ -5,36 +5,6 @@ import { cn } from "@/lib/utils";
 import type { PlaceFormState } from "./place-form-types";
 import { getProfileProgress } from "./place-profile-progress";
 
-export function PlaceProfileCompletionBar({
-  v,
-  alwaysShow = false,
-}: {
-  v: PlaceFormState;
-  alwaysShow?: boolean;
-}) {
-  const { pct, isComplete } = getProfileProgress(v);
-
-  if (!alwaysShow && isComplete) return null;
-
-  return (
-    <div role="status" aria-label={`Profile ${pct}% complete`} className="pb-1">
-      <div className="mb-1.5 flex items-center justify-between gap-2">
-        <span className="text-muted-foreground text-[11px]">Profile</span>
-        <span className="text-[11px] font-medium tabular-nums">{pct}%</span>
-      </div>
-      <div className="bg-muted h-1 overflow-hidden rounded-full">
-        <div
-          className={cn(
-            "h-full rounded-full transition-[width] duration-500",
-            isComplete ? "bg-emerald-500" : "bg-pink-gradient",
-          )}
-          style={{ width: `${pct}%` }}
-        />
-      </div>
-    </div>
-  );
-}
-
 export function PlaceProfileProgressPanel({ v }: { v: PlaceFormState }) {
   const { checks, pct, isComplete } = getProfileProgress(v);
 

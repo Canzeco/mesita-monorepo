@@ -405,7 +405,6 @@ export function SaveBar({
   );
 }
 
-export { ErrorNote };
 
 /** Shared confirm modal — focus Escape + backdrop cancel. */
 export function ConfirmDialog({

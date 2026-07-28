@@ -23,7 +23,7 @@ const UNIT_SECTIONS = [
 /** Tabs shown in UnitEditChrome — excludes not-yet-shipped sections. */
 export const UNIT_TAB_SECTIONS = UNIT_SECTIONS.filter((s) => !s.soon);
 
-export type UnitSection = (typeof UNIT_SECTIONS)[number]["id"];
+type UnitSection = (typeof UNIT_SECTIONS)[number]["id"];
 
 export const TOOL_ROUTES = [
   {

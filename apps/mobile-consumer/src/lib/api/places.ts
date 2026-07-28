@@ -142,7 +142,7 @@ function stripInsecurePhotos<T extends { photos: string[] }>(v: T): T {
 }
 
 // Per-row status from consumer-web-suggest-places / ask-memo predictions.
-export type PlacePredictionStatus =
+type PlacePredictionStatus =
   | 'not_in_mesita'
   | 'web_listed'
   | 'verified_partner_other'

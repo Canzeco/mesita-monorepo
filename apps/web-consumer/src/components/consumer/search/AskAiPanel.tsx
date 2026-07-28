@@ -20,7 +20,7 @@ import type { Place } from "@/lib/api/places";
 import type { PlacePrediction } from "@/lib/api/place-search";
 import type { MemoAnswer, MemoTurn } from "@/lib/api/memo";
 import { cn } from "@/lib/utils";
-import type { AddState } from "./PredictionRow";
+import type { AddState } from "./add-state";
 import { MemoAnswerText } from "./MemoAnswerText";
 import {
   buildAiReply,

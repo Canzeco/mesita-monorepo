@@ -13,20 +13,18 @@ import {
   Plus,
   Search,
   Star,
-  X,
-} from "lucide-react";
+  X } from "lucide-react";
 import {
   createUnitFromPlaceId,
   findPlaceByPlaceId,
   suggestPlaces,
   type PlacePrediction,
   type PlacePredictionStatus,
-  type UnitHit,
-} from "./actions";
+  type UnitHit } from "./actions";
 import { unitSectionHref } from "./nav";
 import { UnitThumb } from "./UnitEditChrome";
 import { useUnitCatalogSearch } from "./useUnitCatalogSearch";
-import { ErrorNote } from "./ui";
+import { ErrorNote } from "@/components/ErrorNote";
 
 const STATUS_BADGE: Record<
   PlacePredictionStatus,
@@ -35,24 +33,19 @@ const STATUS_BADGE: Record<
   not_in_mesita: {
     label: "New · create",
     className: "bg-muted text-muted-foreground",
-    Icon: Plus,
-  },
+    Icon: Plus },
   web_listed: {
     label: "On Mesita · unclaimed",
     className: "bg-secondary/15 text-secondary",
-    Icon: MapPin,
-  },
+    Icon: MapPin },
   verified_partner_other: {
     label: "On Mesita · claimed",
     className: "bg-amber-100 text-amber-800",
-    Icon: CheckCircle2,
-  },
+    Icon: CheckCircle2 },
   verified_partner_self: {
     label: "On Mesita · claimed",
     className: "bg-amber-100 text-amber-800",
-    Icon: Crown,
-  },
-};
+    Icon: Crown } };
 
 export function UnitSelectCatalog() {
   const router = useRouter();
@@ -439,8 +432,7 @@ export function UnitSelectCatalog() {
 function UnitCatalogRow({
   unit,
   disabled,
-  onPick,
-}: {
+  onPick }: {
   unit: UnitHit;
   disabled: boolean;
   onPick: () => void;
@@ -512,8 +504,7 @@ function BoolCell({
   value,
   trueLabel,
   falseLabel,
-  accent = false,
-}: {
+  accent = false }: {
   value: boolean;
   trueLabel: string;
   falseLabel: string;
@@ -585,8 +576,7 @@ async function fetchGooglePlaceDetails(placeId: string): Promise<GooglePlaceDeta
         ? `https://places.googleapis.com/v1/${photoName}/media?maxWidthPx=1200&key=${key}`
         : null,
       address: data.formattedAddress ?? null,
-      mapsUrl: data.googleMapsUri ?? null,
-    };
+      mapsUrl: data.googleMapsUri ?? null };
     placeDetailCache.set(placeId, details);
     return details;
   } catch {
@@ -601,8 +591,7 @@ function AddPlaceModal({
   adding,
   error,
   onConfirm,
-  onClose,
-}: {
+  onClose }: {
   prediction: PlacePrediction;
   adding: boolean;
   error: string | null;

@@ -7,7 +7,7 @@ import { efInvoke } from "@/lib/supabase-ef";
 // (billing, verifications, consumers…) reuse the same item shape and the
 // client renders title/icon from `type`.
 
-export type NotificationCategory = "atlas";
+type NotificationCategory = "atlas";
 
 export type NotificationType =
   | "atlas.place_created"
@@ -15,7 +15,7 @@ export type NotificationType =
   | "atlas.ownership_claimed"
   | "atlas.enrichment_step";
 
-export type NotificationPlace = {
+type NotificationPlace = {
   id: string;
   slug: string | null;
   name: string;
@@ -43,13 +43,13 @@ export type NotificationsPayload = {
   generatedAt: string;
 };
 
-export type NotificationsResult =
+type NotificationsResult =
   | { ok: true; data: NotificationsPayload }
   | { ok: false; error: string };
 
 // Optional server-side narrowing supported by the EF. `limit` caps the feed
 // size (step events are chatty, so we fetch a bigger window by default).
-export type ListNotificationsOptions = {
+type ListNotificationsOptions = {
   types?: NotificationType[];
   projectId?: string;
   q?: string;
