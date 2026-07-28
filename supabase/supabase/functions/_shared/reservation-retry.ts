@@ -39,8 +39,8 @@ function toMinutes(hhmm: unknown): number | null {
   return h * 60 + min;
 }
 
-export const OPEN_RETRY_MINUTES = 5;
-export const AFTER_OPENING_MINUTES = 30;
+const OPEN_RETRY_MINUTES = 5;
+const AFTER_OPENING_MINUTES = 30;
 
 /**
  * Minutes from now until the venue's next opening, scanning up to a week
@@ -52,7 +52,7 @@ export const AFTER_OPENING_MINUTES = 30;
  * can skew it by an hour; most of Mexico has no DST since 2022, and an hour on
  * a 30-minute courtesy delay is harmless.
  */
-export function minutesUntilNextOpening(
+function minutesUntilNextOpening(
   hours: unknown,
   lng: number | null,
 ): number | null {
