@@ -130,7 +130,7 @@ export type PlaceEmbeddingWrite = {
 
 // On-Update S2+S3 for one place. Skips when facts digest matches the stored
 // embedding_source_hash and both text + vector are present.
-export async function computeAndPersistPlaceEmbedding(
+async function computeAndPersistPlaceEmbedding(
   admin: SupabaseClient,
   place: EmbeddablePlace,
   apiKey: string,
@@ -182,7 +182,7 @@ export async function computeAndPersistPlaceEmbedding(
   return { embedding: vector, hash: factsHash, text, skipped: false };
 }
 
-export async function loadEmbeddablePlace(
+async function loadEmbeddablePlace(
   admin: SupabaseClient,
   placeId: string,
 ): Promise<EmbeddablePlace | null> {
