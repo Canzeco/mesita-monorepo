@@ -57,7 +57,7 @@ export const OPENAI_MODEL_INFO: Record<string, string> = {
 // Perplexity values accepted in the blob's enricher/memo legs ("off" = none).
 // Kept for the EF contract + coercion; the page no longer edits them (Enricher
 // Config / Memo Config own those legs).
-export const PERPLEXITY_OPTIONS = [
+const PERPLEXITY_OPTIONS = [
   "off",
   "sonar",
   "sonar-pro",
