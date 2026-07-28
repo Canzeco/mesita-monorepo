@@ -175,7 +175,7 @@ export async function apiRecommendDeck(
 //     basic profile.
 //   - verified_partner_other: A claimed partner row — primary CTA.
 //   - verified_partner_self: The caller owns this place.
-export type PlacePredictionStatus =
+type PlacePredictionStatus =
   | "not_in_mesita"
   | "web_listed"
   | "verified_partner_other"
