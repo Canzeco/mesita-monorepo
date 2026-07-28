@@ -289,7 +289,8 @@ export function fleetToolConfigs(
 // ── Workflow graphs (config-as-code) ─────────────────────────────────────────
 // Procedures are Alpha — unused. Workflows only. Pushed by
 // supabase-edgefunc-sync-reservationist mode "workflows".
-// Docs: conversation_config.workflow = { nodes, edges, prevent_subagent_loops }.
+// OpenAPI: top-level AgentWorkflowRequestModel { nodes, edges, prevent_subagent_loops }.
+// Versioned agents: PATCH must target main via ?branch_id=… + version_description.
 
 export type FleetWorkflow = {
   nodes: Record<string, Record<string, unknown>>;
@@ -317,11 +318,48 @@ function edge(
 }
 
 const UNCOND = { type: "unconditional" as const };
-const RESULT_OK = { type: "result" as const, successful: true, label: "tool ok" };
-const RESULT_FAIL = { type: "result" as const, successful: false, label: "tool failed" };
+const RESULT_OK = { type: "result" as const, successful: true, label: "success" };
+const RESULT_FAIL = { type: "result" as const, successful: false, label: "failure" };
+const BACK_HELP = { type: "unconditional" as const, label: "back to help" };
 
 function llm(condition: string, label: string) {
   return { type: "llm" as const, condition, label };
+}
+
+/** Subagent with no webhook tools — tools run only via dedicated tool nodes. */
+function talkNode(opts: {
+  label: string;
+  position: { x: number; y: number };
+  additionalPrompt: string;
+  edgeOrder: string[];
+  /** Outbound should speak immediately; inbound after a tool usually too. */
+  entryBehavior: "generate_immediately" | "wait_for_user" | "auto";
+}): Record<string, unknown> {
+  return {
+    type: "override_agent",
+    label: opts.label,
+    position: opts.position,
+    additional_prompt: opts.additionalPrompt,
+    entry_behavior: opts.entryBehavior,
+    // Overwrite attached tools for this phase — family tools fire as tool nodes.
+    conversation_config: {
+      agent: { prompt: { tool_ids: [] } },
+    },
+    edge_order: opts.edgeOrder,
+  };
+}
+
+function toolNode(
+  toolId: string,
+  position: { x: number; y: number },
+  edgeOrder: string[],
+): Record<string, unknown> {
+  return {
+    type: "tool",
+    position,
+    tools: [{ tool_id: toolId }],
+    edge_order: edgeOrder,
+  };
 }
 
 function requireTool(ids: Map<string, string>, name: string): string {
@@ -344,33 +382,28 @@ export function fleetWorkflows(toolIdByName: Map<string, string>): Record<FleetA
   return {
     // a1 · book with venue → guaranteed outcome report → end
     a1: {
-      prevent_subagent_loops: false,
+      prevent_subagent_loops: true,
       nodes: {
         start_node: { type: "start", position: pos(0, 0), edge_order: ["e_start_book"] },
-        book: {
-          type: "override_agent",
+        book: talkNode({
           label: "Book with venue",
-          position: pos(320, 0),
-          additional_prompt:
-            "Negocia la mesa. Cuando el restaurante confirme, ofrezca alternativas, o rechace, avanza — no te despidas todavía.",
-          edge_order: ["e_book_report"],
-        },
-        report: {
-          type: "tool",
-          position: pos(640, 0),
-          tools: [{ tool_id: a1Report }],
-          edge_order: ["e_report_ok"],
-        },
-        end_node: { type: "end", position: pos(960, 0) },
+          position: pos(360, 0),
+          entryBehavior: "generate_immediately",
+          additionalPrompt:
+            "Negocia la mesa con el restaurante. Cuando confirmen, ofrezcan alternativas concretas, o rechacen / digan que no hay lugar, AVANZA al siguiente paso — no te despidas ni cuelgues todavía. No inventes disponibilidad.",
+          edgeOrder: ["e_book_report"],
+        }),
+        report: toolNode(a1Report, pos(720, 0), ["e_report_ok"]),
+        end_node: { type: "end", position: pos(1080, 0), edge_order: [] },
       },
       edges: {
         e_start_book: edge("start_node", "book", UNCOND),
-        // One undirected pair book↔report: forward = outcome ready, backward = tool failed.
+        // One undirected pair book↔report (EL rejects A→B plus B→A as duplicate).
         e_book_report: edge(
           "book",
           "report",
           llm(
-            "El restaurante ya dio un resultado claro: confirmó la mesa, ofreció alternativas concretas, o rechazó / no hay lugar.",
+            "El restaurante ya dio un resultado claro: confirmó la mesa tal cual, ofreció alternativas concretas, o rechazó / no hay lugar.",
             "outcome ready",
           ),
           RESULT_FAIL,
@@ -381,30 +414,20 @@ export function fleetWorkflows(toolIdByName: Map<string, string>): Record<FleetA
 
     // a2 · talk to guest → confirm OR cancel tool → end
     a2: {
-      prevent_subagent_loops: false,
+      prevent_subagent_loops: true,
       nodes: {
         start_node: { type: "start", position: pos(0, 0), edge_order: ["e_start_talk"] },
-        talk: {
-          type: "override_agent",
+        talk: talkNode({
           label: "Talk to guest",
-          position: pos(320, 0),
-          additional_prompt:
-            "Presenta el contexto (confirmation o counter_offer). Cuando el comensal acepte, proponga otra fecha/hora, o pida cancelar, avanza — no cuelgues todavía.",
-          edge_order: ["e_talk_confirm", "e_talk_cancel"],
-        },
-        confirm: {
-          type: "tool",
-          position: pos(640, -120),
-          tools: [{ tool_id: a2Confirm }],
-          edge_order: ["e_confirm_ok"],
-        },
-        cancel: {
-          type: "tool",
-          position: pos(640, 120),
-          tools: [{ tool_id: a2Cancel }],
-          edge_order: ["e_cancel_ok"],
-        },
-        end_node: { type: "end", position: pos(960, 0) },
+          position: pos(360, 0),
+          entryBehavior: "generate_immediately",
+          additionalPrompt:
+            "Presenta el contexto (confirmation o counter_offer) con claridad. Cuando el comensal acepte tal cual, elija/propuesta otra fecha u hora, o pida cancelar, AVANZA — no cuelgues todavía.",
+          edgeOrder: ["e_talk_confirm", "e_talk_cancel"],
+        }),
+        confirm: toolNode(a2Confirm, pos(720, -140), ["e_confirm_ok"]),
+        cancel: toolNode(a2Cancel, pos(720, 140), ["e_cancel_ok"]),
+        end_node: { type: "end", position: pos(1080, 0), edge_order: [] },
       },
       edges: {
         e_start_talk: edge("start_node", "talk", UNCOND),
@@ -412,15 +435,15 @@ export function fleetWorkflows(toolIdByName: Map<string, string>): Record<FleetA
           "talk",
           "confirm",
           llm(
-            "El comensal aceptó la confirmación o eligió / propuso una nueva fecha u hora (no canceló).",
-            "confirm path",
+            "El comensal aceptó la confirmación o eligió / propuso una nueva fecha u hora. No quiere cancelar.",
+            "confirm",
           ),
           RESULT_FAIL,
         ),
         e_talk_cancel: edge(
           "talk",
           "cancel",
-          llm("El comensal quiere cancelar la reservación.", "cancel path"),
+          llm("El comensal quiere cancelar la reservación.", "cancel"),
           RESULT_FAIL,
         ),
         e_confirm_ok: edge("confirm", "end_node", RESULT_OK),
@@ -428,40 +451,30 @@ export function fleetWorkflows(toolIdByName: Map<string, string>): Record<FleetA
       },
     },
 
-    // a3 · verify caller first → help (cancel loop) → end
+    // a3 · verify caller first → help (cancel loop) / deny → end
     a3: {
-      prevent_subagent_loops: false,
+      prevent_subagent_loops: true,
       nodes: {
         start_node: { type: "start", position: pos(0, 0), edge_order: ["e_start_verify"] },
-        verify: {
-          type: "tool",
-          position: pos(280, 0),
-          tools: [{ tool_id: a3Verify }],
-          edge_order: ["e_verify_ok", "e_verify_fail"],
-        },
-        help: {
-          type: "override_agent",
+        verify: toolNode(a3Verify, pos(300, 0), ["e_verify_ok", "e_verify_fail"]),
+        help: talkNode({
           label: "Help guest",
-          position: pos(560, -80),
-          additional_prompt:
-            "Ya está verificado. Usa tickets de la verificación. Si pide cancelar, avanza a cancelar; si ya resolviste su duda, cierra.",
-          edge_order: ["e_help_cancel", "e_help_end"],
-        },
-        deny: {
-          type: "override_agent",
+          position: pos(620, -120),
+          entryBehavior: "generate_immediately",
+          additionalPrompt:
+            "Caller verified=true. Saluda por nombre y usa SOLO los tickets de la verificación. Si pide cancelar una suya, avanza a cancelar. Si ya resolviste su duda y te despediste, cierra. No inventes reservaciones.",
+          edgeOrder: ["e_help_cancel", "e_help_end"],
+        }),
+        deny: talkNode({
           label: "Unknown caller",
-          position: pos(560, 120),
-          additional_prompt:
-            "verified=false. Con amabilidad di que no hay cuenta Mesita con ese número, invita a la app, y despídete. No des datos de reservaciones.",
-          edge_order: ["e_deny_end"],
-        },
-        cancel: {
-          type: "tool",
-          position: pos(840, -80),
-          tools: [{ tool_id: a3Cancel }],
-          edge_order: [],
-        },
-        end_node: { type: "end", position: pos(1120, 0) },
+          position: pos(620, 160),
+          entryBehavior: "generate_immediately",
+          additionalPrompt:
+            "Caller verified=false. Con amabilidad di que no hay cuenta Mesita con ese número, invita a la app, y despídete. PROHIBIDO dar datos de reservaciones.",
+          edgeOrder: ["e_deny_end"],
+        }),
+        cancel: toolNode(a3Cancel, pos(940, -120), []),
+        end_node: { type: "end", position: pos(1260, 0), edge_order: [] },
       },
       edges: {
         e_start_verify: edge("start_node", "verify", UNCOND),
@@ -470,9 +483,8 @@ export function fleetWorkflows(toolIdByName: Map<string, string>): Record<FleetA
         e_help_cancel: edge(
           "help",
           "cancel",
-          llm("El comensal quiere cancelar una de SUS reservaciones.", "cancel"),
-          // After cancel tool (ok or fail) return to help via backward.
-          { type: "unconditional", label: "back to help" },
+          llm("El comensal quiere cancelar una de SUS reservaciones verificadas.", "cancel"),
+          BACK_HELP,
         ),
         e_help_end: edge(
           "help",
@@ -487,46 +499,31 @@ export function fleetWorkflows(toolIdByName: Map<string, string>): Record<FleetA
       },
     },
 
-    // a4 · verify venue → help (find / cancel) → end
+    // a4 · verify venue → help (find / cancel) / deny → end
     a4: {
-      prevent_subagent_loops: false,
+      prevent_subagent_loops: true,
       nodes: {
         start_node: { type: "start", position: pos(0, 0), edge_order: ["e_start_verify"] },
-        verify: {
-          type: "tool",
-          position: pos(280, 0),
-          tools: [{ tool_id: a4Verify }],
-          edge_order: ["e_verify_ok", "e_verify_fail"],
-        },
-        help: {
-          type: "override_agent",
+        verify: toolNode(a4Verify, pos(300, 0), ["e_verify_ok", "e_verify_fail"]),
+        help: talkNode({
           label: "Help venue",
-          position: pos(560, -80),
-          additional_prompt:
-            "Lugar verificado. Puedes leer tickets, buscar por nombre del comensal, o cancelar. Nunca des el teléfono del comensal.",
-          edge_order: ["e_help_find", "e_help_cancel", "e_help_end"],
-        },
-        deny: {
-          type: "override_agent",
+          position: pos(620, -120),
+          entryBehavior: "generate_immediately",
+          additionalPrompt:
+            "Lugar verificado. Lee tickets del lugar. Si piden buscar por nombre del comensal, avanza a find. Si quieren cancelar una de SU lugar, avanza a cancel. NUNCA des el teléfono del comensal. Cuando ya resolviste y te despediste, cierra.",
+          edgeOrder: ["e_help_find", "e_help_cancel", "e_help_end"],
+        }),
+        deny: talkNode({
           label: "Unknown venue line",
-          position: pos(560, 140),
-          additional_prompt:
-            "verified=false. Di que ese número no está registrado como línea de ningún lugar; pide llamar desde el teléfono del negocio. No des información.",
-          edge_order: ["e_deny_end"],
-        },
-        find: {
-          type: "tool",
-          position: pos(840, -180),
-          tools: [{ tool_id: a4Find }],
-          edge_order: [],
-        },
-        cancel: {
-          type: "tool",
-          position: pos(840, 20),
-          tools: [{ tool_id: a4Cancel }],
-          edge_order: [],
-        },
-        end_node: { type: "end", position: pos(1120, 0) },
+          position: pos(620, 180),
+          entryBehavior: "generate_immediately",
+          additionalPrompt:
+            "Caller verified=false. Di que ese número no está registrado como línea de ningún lugar en Mesita; pide llamar desde el teléfono del negocio o usar la consola. No des información.",
+          edgeOrder: ["e_deny_end"],
+        }),
+        find: toolNode(a4Find, pos(940, -220), []),
+        cancel: toolNode(a4Cancel, pos(940, 20), []),
+        end_node: { type: "end", position: pos(1260, 0), edge_order: [] },
       },
       edges: {
         e_start_verify: edge("start_node", "verify", UNCOND),
@@ -536,13 +533,13 @@ export function fleetWorkflows(toolIdByName: Map<string, string>): Record<FleetA
           "help",
           "find",
           llm("El restaurante pide buscar una reservación por el nombre del comensal.", "find"),
-          { type: "unconditional", label: "back to help" },
+          BACK_HELP,
         ),
         e_help_cancel: edge(
           "help",
           "cancel",
           llm("El restaurante quiere cancelar una reservación de SU lugar.", "cancel"),
-          { type: "unconditional", label: "back to help" },
+          BACK_HELP,
         ),
         e_help_end: edge(
           "help",

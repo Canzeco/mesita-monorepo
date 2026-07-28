@@ -12,8 +12,9 @@
 //              fall through to sync — that once recreated get_reservation).
 //   fleet      upsert family tools + agents; store ids in agents_config.
 //   prune      delete non-fleet agents + force-delete legacy get_reservation.
-//   workflows  PATCH conversation_config.workflow for a1–a4 from
-//              fleetWorkflows() — Workflows only (Procedures stay unused).
+//   workflows  Commit AgentWorkflowRequestModel for a1–a4 from fleetWorkflows()
+//              onto each agent's Main branch (?branch_id + version_description).
+//              Workflows only — Procedures stay unused (Alpha).
 //
 // PROMPTS ARE WRITTEN ONLY AT AGENT CREATION. On every later run the fleet
 // mode PATCHes name + prompt.tool_ids exclusively and verifies the prompt
@@ -70,6 +71,65 @@ async function elFetch(
     };
   }
   return { ok: true, status: r.status, body };
+}
+
+type AgentWorkflowShape = {
+  nodes?: Record<string, { type?: string; label?: string; edge_order?: string[] }>;
+  edges?: Record<string, { source?: string; target?: string }>;
+  prevent_subagent_loops?: boolean;
+};
+
+type VersionedAgentShape = {
+  workflow?: AgentWorkflowShape;
+  conversation_config?: { workflow?: AgentWorkflowShape };
+  version_id?: string | null;
+  branch_id?: string | null;
+  main_branch_id?: string | null;
+};
+
+function readWorkflow(agent: VersionedAgentShape | null | undefined): AgentWorkflowShape | null {
+  if (!agent) return null;
+  return agent.workflow ?? agent.conversation_config?.workflow ?? null;
+}
+
+function summarizeWorkflow(wf: AgentWorkflowShape | null) {
+  if (!wf?.nodes) {
+    return { node_count: 0, edge_count: 0, nodes: [] as string[], edges: [] as string[] };
+  }
+  const nodes = Object.entries(wf.nodes).map(([id, n]) => {
+    const label = typeof n.label === "string" && n.label ? `:${n.label}` : "";
+    return `${id}(${n.type ?? "?"}${label})`;
+  });
+  const edges = Object.entries(wf.edges ?? {}).map(([id, e]) =>
+    `${id}:${e.source ?? "?"}→${e.target ?? "?"}`
+  );
+  return {
+    node_count: nodes.length,
+    edge_count: edges.length,
+    nodes,
+    edges,
+    prevent_subagent_loops: wf.prevent_subagent_loops ?? null,
+  };
+}
+
+/** Resolve Main branch id for a versioned agent (required to commit workflow). */
+async function resolveMainBranchId(
+  key: string,
+  agentId: string,
+  tip: VersionedAgentShape,
+): Promise<{ ok: true; branchId: string } | { ok: false; error: string }> {
+  const fromTip = tip.main_branch_id?.trim() || tip.branch_id?.trim() || "";
+  if (fromTip) return { ok: true, branchId: fromTip };
+  const listed = await elFetch(key, `/v1/convai/agents/${encodeURIComponent(agentId)}/branches`);
+  if (!listed.ok) return { ok: false, error: `list branches: ${listed.error}` };
+  const branches = (listed.body as {
+    branches?: Array<{ id?: string; name?: string; archived?: boolean }>;
+  } | null)?.branches ?? [];
+  const main = branches.find((b) => (b.name ?? "").toLowerCase() === "main" && !b.archived) ??
+    branches.find((b) => !b.archived);
+  const id = main?.id?.trim();
+  if (!id) return { ok: false, error: "no Main branch found on agent" };
+  return { ok: true, branchId: id };
 }
 
 // The legacy webhook tool definition, built from live env + DB state.
@@ -304,12 +364,28 @@ Deno.serve(async (req) => {
           report,
         }, 400);
       }
+      const before = await elFetch(key, `/v1/convai/agents/${encodeURIComponent(id)}`);
+      if (!before.ok) {
+        return json({ ok: false, error: `get ${spec.key}: ${before.error}`, report }, 502);
+      }
+      const tip = before.body as VersionedAgentShape;
+      const branch = await resolveMainBranchId(key, id, tip);
+      if (!branch.ok) {
+        return json({ ok: false, error: `branch ${spec.key}: ${branch.error}`, report }, 502);
+      }
       const wf = specs[spec.key];
-      // Top-level `workflow` per Agents update OpenAPI (also accepted under
-      // conversation_config — top-level is the dedicated field).
-      const patch = await elFetch(key, `/v1/convai/agents/${encodeURIComponent(id)}`, {
+      // Versioned agents: commit onto Main via ?branch_id=… (otherwise the UI
+      // Main tip can keep an orphan Start while a draft holds the graph).
+      const path =
+        `/v1/convai/agents/${encodeURIComponent(id)}?branch_id=${
+          encodeURIComponent(branch.branchId)
+        }`;
+      const patch = await elFetch(key, path, {
         method: "PATCH",
-        body: { workflow: wf },
+        body: {
+          workflow: wf,
+          version_description: `Mesita fleet workflows ${spec.key} (ASDM sync)`,
+        },
       });
       if (!patch.ok) {
         return json({
@@ -318,28 +394,37 @@ Deno.serve(async (req) => {
           report,
         }, 502);
       }
-      // Verify nodes landed.
-      const after = await elFetch(key, `/v1/convai/agents/${encodeURIComponent(id)}`);
-      const afterWf = after.ok
-        ? ((after.body as {
-          workflow?: { nodes?: Record<string, unknown> };
-          conversation_config?: { workflow?: { nodes?: Record<string, unknown> } };
-        })?.workflow ??
-          (after.body as {
-            conversation_config?: { workflow?: { nodes?: Record<string, unknown> } };
-          })?.conversation_config?.workflow)
-        : null;
-      const nodeKeys = afterWf?.nodes ? Object.keys(afterWf.nodes) : [];
+      const after = await elFetch(
+        key,
+        `/v1/convai/agents/${encodeURIComponent(id)}?branch_id=${
+          encodeURIComponent(branch.branchId)
+        }`,
+      );
+      const afterBody = after.ok ? after.body as VersionedAgentShape : null;
+      const afterWf = readWorkflow(afterBody);
+      const summary = summarizeWorkflow(afterWf);
+      const startEdges = Object.values(afterWf?.edges ?? {}).filter((e) =>
+        e.source === "start_node"
+      );
       report.push({
         key: spec.key,
         id,
-        nodes: Object.keys(wf.nodes),
-        edges: Object.keys(wf.edges),
-        verified_nodes: nodeKeys,
-        ok: nodeKeys.length >= 2 && nodeKeys.includes("start_node"),
+        branch_id: branch.branchId,
+        version_id: afterBody?.version_id ?? null,
+        desired_nodes: Object.keys(wf.nodes),
+        desired_edges: Object.keys(wf.edges),
+        verified: summary,
+        start_connected: startEdges.length > 0,
+        ok: summary.node_count >= 3 &&
+          summary.nodes.some((n) => n.startsWith("start_node")) &&
+          startEdges.length > 0,
       });
     }
-    return json({ ok: true, mode, agents: report });
+    return json({
+      ok: report.every((r) => r.ok === true),
+      mode,
+      agents: report,
+    });
   }
 
   // ── Read the donor agent (a1) + its prompt shape ───────────────────────────
@@ -354,6 +439,33 @@ Deno.serve(async (req) => {
     : [];
 
   if (mode === "inspect") {
+    const fleetWorkflowsLive: Array<Record<string, unknown>> = [];
+    for (const spec of FLEET_AGENTS) {
+      const id = configuredAgents[spec.key]?.id?.trim();
+      if (!id) {
+        fleetWorkflowsLive.push({ key: spec.key, error: "missing agents_config id" });
+        continue;
+      }
+      const got = await elFetch(key, `/v1/convai/agents/${encodeURIComponent(id)}`);
+      if (!got.ok) {
+        fleetWorkflowsLive.push({ key: spec.key, id, error: got.error });
+        continue;
+      }
+      const body = got.body as VersionedAgentShape & { name?: string };
+      const wf = readWorkflow(body);
+      const summary = summarizeWorkflow(wf);
+      const startEdges = Object.values(wf?.edges ?? {}).filter((e) => e.source === "start_node");
+      fleetWorkflowsLive.push({
+        key: spec.key,
+        id,
+        name: body.name ?? null,
+        version_id: body.version_id ?? null,
+        branch_id: body.branch_id ?? null,
+        main_branch_id: body.main_branch_id ?? null,
+        start_connected: startEdges.length > 0,
+        workflow: summary,
+      });
+    }
     return json({
       ok: true,
       mode,
@@ -364,6 +476,7 @@ Deno.serve(async (req) => {
       workspace_tools: toolRows.map((t) => ({ id: t.id, name: t.tool_config?.name })),
       get_reservation_tool_id: legacyToolId,
       configured_fleet: configuredAgents,
+      fleet_workflows: fleetWorkflowsLive,
     });
   }
 
