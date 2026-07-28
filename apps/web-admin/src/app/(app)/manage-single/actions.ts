@@ -251,7 +251,7 @@ export type PlaceCategoryOption = {
   sort_order: number;
 };
 
-export type PlaceTagCatalog = {
+type PlaceTagCatalog = {
   tags: PlaceTagOption[];
   facets: PlaceTagFacet[];
   categories: PlaceCategoryOption[];
@@ -318,7 +318,7 @@ export type PlaceMediaMeta = {
   source_metadata: Record<string, unknown> | null;
 };
 
-export type PlaceEnrichmentStatus = {
+type PlaceEnrichmentStatus = {
   content_status: string | null;
   stage: string | null;
   stage_status: string | null;
@@ -450,7 +450,7 @@ type FoundPlace = {
 
 type EFResponse = { place: FoundPlace | null };
 
-export type FindPlaceResult =
+type FindPlaceResult =
   | {
       ok: true;
       found: true;
