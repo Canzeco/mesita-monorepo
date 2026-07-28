@@ -39,7 +39,7 @@ export type RewardsConfig = {
 // do at the table), visit (a state of the visit). Drives the row grouping.
 type RewardSegmentKind = "class" | "action" | "visit";
 
-export type SegmentMeta = {
+type SegmentMeta = {
   key: RewardSegmentKey;
   /** Pato's worst→best ladder rank (1 Standard … 6 Google Review). */
   rank: number;
