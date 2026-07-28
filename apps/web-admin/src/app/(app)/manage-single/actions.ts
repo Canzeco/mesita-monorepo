@@ -318,7 +318,7 @@ export type PlaceMediaMeta = {
   source_metadata: Record<string, unknown> | null;
 };
 
-type PlaceEnrichmentStatus = {
+export type PlaceEnrichmentStatus = {
   content_status: string | null;
   stage: string | null;
   stage_status: string | null;
@@ -327,7 +327,7 @@ type PlaceEnrichmentStatus = {
   updated_at: string | null;
 };
 
-export type PlaceEnrichment = {
+type PlaceEnrichment = {
   media: Record<string, PlaceMediaMeta>;
   status: PlaceEnrichmentStatus | null;
 };
