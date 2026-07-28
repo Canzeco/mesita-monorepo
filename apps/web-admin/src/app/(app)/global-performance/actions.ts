@@ -43,13 +43,13 @@ export type NotificationsPayload = {
   generatedAt: string;
 };
 
-export type NotificationsResult =
+type NotificationsResult =
   | { ok: true; data: NotificationsPayload }
   | { ok: false; error: string };
 
 // Optional server-side narrowing supported by the EF. `limit` caps the feed
 // size (step events are chatty, so we fetch a bigger window by default).
-export type ListNotificationsOptions = {
+type ListNotificationsOptions = {
   types?: NotificationType[];
   projectId?: string;
   q?: string;
