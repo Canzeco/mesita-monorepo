@@ -73,8 +73,7 @@ export const MAP_MINIMAL_STYLES = [
 export const MAP_CIRCLE_PATH =
   "M -12 0 A 12 12 0 1 0 12 0 A 12 12 0 1 0 -12 0";
 
-// Discover-map pin colours — partners vs scraped web listings.
-export const MAP_PARTNER_PIN_COLOR = "#E91E63";
+// Discover/search map pin colour for scraped web listings.
 export const MAP_WEB_PIN_COLOR = "#9ca3af";
 
 // Search-map selection pin (held place in the rail).
