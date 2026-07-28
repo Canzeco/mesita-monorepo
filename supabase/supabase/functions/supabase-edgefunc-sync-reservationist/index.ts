@@ -5,7 +5,7 @@
 // ELEVENLABS_KEY never leaves EF env, so an operator (or an agent session with
 // SQL access) can wire everything without touching the console.
 //
-// Body: { mode?: "inspect" | "sync" | "fleet" | "prune" | "workflows" }
+// Body: { mode?: "inspect" | "sync" | "fleet" | "prune" | "workflows" | "knowledge" }
 //
 //   inspect    read-only report: donor agent, workspace agents/tools, fleet.
 //   sync       LEGACY — prefer fleet. Unknown modes return 400 (never silently
@@ -15,6 +15,8 @@
 //   workflows  Commit AgentWorkflowRequestModel for a1–a4 from fleetWorkflows()
 //              onto each agent's Main branch (?branch_id + version_description).
 //              Workflows only — Procedures stay unused (Alpha).
+//   knowledge  Upsert curated Mesita brief (Notion-sourced, repo-held) as one
+//              ElevenLabs KB text doc; attach to a1–a4 with usage_mode=prompt.
 //
 // PROMPTS ARE WRITTEN ONLY AT AGENT CREATION. On every later run the fleet
 // mode PATCHes name + prompt.tool_ids exclusively and verifies the prompt
@@ -33,6 +35,10 @@ import { adminClient, readEFEnv } from "../_shared/auth.ts";
 import { requireInternalCaller } from "../_shared/internal.ts";
 import { elevenLabsKey, reservationAgentId } from "../_shared/elevenlabs.ts";
 import { FLEET_AGENTS, fleetToolConfigs, fleetWorkflows } from "../_shared/reservationist-fleet.ts";
+import {
+  RESERVATIONIST_KB_DOC_NAME,
+  RESERVATIONIST_KB_TEXT,
+} from "../_shared/reservationist-kb.ts";
 
 const EL_BASE = "https://api.elevenlabs.io";
 const TOOL_NAME = "get_reservation";
@@ -237,14 +243,15 @@ Deno.serve(async (req) => {
 
   const body = await readJsonOr<{ mode?: unknown; write_prompts?: unknown }>(req, {});
   const rawMode = typeof body.mode === "string" ? body.mode : "inspect";
-  const allowed = new Set(["inspect", "sync", "fleet", "prune", "workflows"]);
+  const allowed = new Set(["inspect", "sync", "fleet", "prune", "workflows", "knowledge"]);
   if (!allowed.has(rawMode)) {
     return json({
       ok: false,
-      error: `unknown mode ${JSON.stringify(rawMode)}; use inspect|sync|fleet|prune|workflows`,
+      error:
+        `unknown mode ${JSON.stringify(rawMode)}; use inspect|sync|fleet|prune|workflows|knowledge`,
     }, 400);
   }
-  const mode = rawMode as "inspect" | "sync" | "fleet" | "prune" | "workflows";
+  const mode = rawMode as "inspect" | "sync" | "fleet" | "prune" | "workflows" | "knowledge";
   const writePrompts = body.write_prompts === true;
 
   // The tool secret + agent state — read live so a SQL rotation propagates on
@@ -427,6 +434,190 @@ Deno.serve(async (req) => {
     });
   }
 
+  if (mode === "knowledge") {
+    // 1 · Resolve or create the curated text document.
+    const savedDocId = typeof agentsConfig.knowledgeDocId === "string"
+      ? agentsConfig.knowledgeDocId.trim()
+      : "";
+    let docId = savedDocId;
+    let docAction = "updated";
+
+    if (docId) {
+      const upd = await elFetch(
+        key,
+        `/v1/convai/knowledge-base/${encodeURIComponent(docId)}`,
+        {
+          method: "PATCH",
+          body: { name: RESERVATIONIST_KB_DOC_NAME, content: RESERVATIONIST_KB_TEXT },
+        },
+      );
+      if (!upd.ok) {
+        // Stale id — fall through to create.
+        docId = "";
+      }
+    }
+
+    if (!docId) {
+      // Prefer an existing workspace doc with the same name.
+      const listed = await elFetch(key, "/v1/convai/knowledge-base?page_size=100");
+      if (listed.ok) {
+        const docs = (listed.body as {
+          documents?: Array<{ id?: string; name?: string; type?: string }>;
+        } | null)?.documents ??
+          (Array.isArray(listed.body)
+            ? listed.body as Array<{ id?: string; name?: string; type?: string }>
+            : []);
+        const hit = docs.find((d) => d.name === RESERVATIONIST_KB_DOC_NAME && d.id);
+        if (hit?.id) {
+          docId = hit.id;
+          const upd = await elFetch(
+            key,
+            `/v1/convai/knowledge-base/${encodeURIComponent(docId)}`,
+            {
+              method: "PATCH",
+              body: { name: RESERVATIONIST_KB_DOC_NAME, content: RESERVATIONIST_KB_TEXT },
+            },
+          );
+          if (!upd.ok) {
+            return json({ ok: false, error: `kb update: ${upd.error}` }, 502);
+          }
+          docAction = "updated-by-name";
+        }
+      }
+    }
+
+    if (!docId) {
+      const crt = await elFetch(key, "/v1/convai/knowledge-base/text", {
+        method: "POST",
+        body: { name: RESERVATIONIST_KB_DOC_NAME, text: RESERVATIONIST_KB_TEXT },
+      });
+      if (!crt.ok) return json({ ok: false, error: `kb create: ${crt.error}` }, 502);
+      docId = ((crt.body as { id?: string } | null)?.id) ?? "";
+      if (!docId) {
+        return json({
+          ok: false,
+          error: `kb create returned no id: ${JSON.stringify(crt.body).slice(0, 300)}`,
+        }, 502);
+      }
+      docAction = "created";
+    }
+
+    const kbLocator = {
+      type: "text",
+      name: RESERVATIONIST_KB_DOC_NAME,
+      id: docId,
+      usage_mode: "prompt",
+    };
+
+    // 2 · Attach to each fleet agent on Main (merge other KB entries by id).
+    const attachReport: Array<Record<string, unknown>> = [];
+    for (const spec of FLEET_AGENTS) {
+      const id = configuredAgents[spec.key]?.id?.trim();
+      if (!id) {
+        return json({
+          ok: false,
+          error: `agents_config.agents.${spec.key}.id missing — run mode fleet first`,
+          document: { id: docId, action: docAction },
+          attachReport,
+        }, 400);
+      }
+      const before = await elFetch(key, `/v1/convai/agents/${encodeURIComponent(id)}`);
+      if (!before.ok) {
+        return json({
+          ok: false,
+          error: `get ${spec.key}: ${before.error}`,
+          document: { id: docId, action: docAction },
+          attachReport,
+        }, 502);
+      }
+      const tip = before.body as VersionedAgentShape & {
+        conversation_config?: {
+          agent?: { prompt?: { knowledge_base?: Array<Record<string, unknown>> } };
+        };
+      };
+      const branch = await resolveMainBranchId(key, id, tip);
+      if (!branch.ok) {
+        return json({
+          ok: false,
+          error: `branch ${spec.key}: ${branch.error}`,
+          document: { id: docId, action: docAction },
+          attachReport,
+        }, 502);
+      }
+      const prevKb = tip.conversation_config?.agent?.prompt?.knowledge_base ?? [];
+      const others = prevKb.filter((d) => d.id !== docId);
+      const nextKb = [...others, kbLocator];
+      const path =
+        `/v1/convai/agents/${encodeURIComponent(id)}?branch_id=${
+          encodeURIComponent(branch.branchId)
+        }`;
+      const patch = await elFetch(key, path, {
+        method: "PATCH",
+        body: {
+          conversation_config: {
+            agent: { prompt: { knowledge_base: nextKb } },
+          },
+          version_description: `Mesita KB context attach ${spec.key}`,
+        },
+      });
+      if (!patch.ok) {
+        return json({
+          ok: false,
+          error: `attach ${spec.key}: ${patch.error}`,
+          document: { id: docId, action: docAction },
+          attachReport,
+        }, 502);
+      }
+      const after = await elFetch(
+        key,
+        `/v1/convai/agents/${encodeURIComponent(id)}?branch_id=${
+          encodeURIComponent(branch.branchId)
+        }`,
+      );
+      const afterKb = after.ok
+        ? ((after.body as {
+          conversation_config?: {
+            agent?: { prompt?: { knowledge_base?: Array<{ id?: string; name?: string }> } };
+          };
+        }).conversation_config?.agent?.prompt?.knowledge_base ?? [])
+        : [];
+      const attached = afterKb.some((d) => d.id === docId);
+      attachReport.push({
+        key: spec.key,
+        id,
+        branch_id: branch.branchId,
+        knowledge_base: afterKb.map((d) => ({ id: d.id, name: d.name })),
+        attached,
+        ok: attached,
+      });
+    }
+
+    // 3 · Persist doc id so the next sync PATCHes content instead of recreating.
+    const newConfig = {
+      ...agentsConfig,
+      knowledgeDocId: docId,
+      knowledgeSyncedAt: new Date().toISOString(),
+    };
+    const { error: saveErr } = await admin
+      .from("app_settings")
+      .update({ agents_config: newConfig })
+      .eq("id", 1);
+
+    return json({
+      ok: attachReport.every((r) => r.ok === true),
+      mode,
+      document: {
+        id: docId,
+        name: RESERVATIONIST_KB_DOC_NAME,
+        action: docAction,
+        chars: RESERVATIONIST_KB_TEXT.length,
+      },
+      agents: attachReport,
+      config_saved: !saveErr,
+      config_error: saveErr?.message ?? null,
+    });
+  }
+
   // ── Read the donor agent (a1) + its prompt shape ───────────────────────────
   const agentRes = await elFetch(key, `/v1/convai/agents/${encodeURIComponent(donorId)}`);
   if (!agentRes.ok) return json({ ok: false, error: agentRes.error }, 502);
@@ -451,10 +642,16 @@ Deno.serve(async (req) => {
         fleetWorkflowsLive.push({ key: spec.key, id, error: got.error });
         continue;
       }
-      const body = got.body as VersionedAgentShape & { name?: string };
+      const body = got.body as VersionedAgentShape & {
+        name?: string;
+        conversation_config?: {
+          agent?: { prompt?: { knowledge_base?: Array<{ id?: string; name?: string }> } };
+        };
+      };
       const wf = readWorkflow(body);
       const summary = summarizeWorkflow(wf);
       const startEdges = Object.values(wf?.edges ?? {}).filter((e) => e.source === "start_node");
+      const kb = body.conversation_config?.agent?.prompt?.knowledge_base ?? [];
       fleetWorkflowsLive.push({
         key: spec.key,
         id,
@@ -464,6 +661,7 @@ Deno.serve(async (req) => {
         main_branch_id: body.main_branch_id ?? null,
         start_connected: startEdges.length > 0,
         workflow: summary,
+        knowledge_base: kb.map((d) => ({ id: d.id, name: d.name })),
       });
     }
     return json({
