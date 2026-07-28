@@ -1,11 +1,8 @@
 import { redirect } from "next/navigation";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 
-// Ask AI (the Memo concierge, MESITA-156) is temporarily BLOCKED while we finish
-// Swipe / Favorites / Search first. The route is kept (not deleted) so un-parking
-// is a one-file revert: restore the AskAiTab render below and flip `soon: false`
-// in HomeModeNav. The nav pill is disabled; this redirect also blocks direct URLs.
-//
+// Ask AI is parked — redirect keeps deep links safe. Unpark via HomeModeNav
+// + remounting AskAiTab (git history has the prior page body).
 export default function HomeAiPage() {
   redirect(CONSUMER_ROUTES.homeDefault);
 }
