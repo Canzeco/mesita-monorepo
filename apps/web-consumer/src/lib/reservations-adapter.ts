@@ -34,7 +34,7 @@ function slotPassed(iso: string): boolean {
 }
 
 /** The lifecycle phase for a row — the single place this is decided. */
-export function reservationPhase(row: EFReservationRow): ReservationStatus {
+function reservationPhase(row: EFReservationRow): ReservationStatus {
   switch (row.status) {
     case "cancelled":
       return "cancelled";
