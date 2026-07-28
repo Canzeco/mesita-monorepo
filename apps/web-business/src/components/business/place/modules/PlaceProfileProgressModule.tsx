@@ -1,5 +1,5 @@
 import { PlaceModule } from "../PlaceModule";
-import { PlaceProfileProgressPanel } from "../PlaceProfileCompletionBar";
+import { PlaceProfileProgressPanel } from "../PlaceProfileProgressPanel";
 import type { PlaceFormState } from "../place-form-types";
 
 export function PlaceProfileProgressModule({ v }: { v: PlaceFormState }) {
