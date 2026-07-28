@@ -16,7 +16,6 @@ import { invokeEF } from "./_invoke";
 export {
   apiSuggestPlaces,
   type PlacePrediction,
-  type PlacePredictionStatus,
 } from "./places";
 
 type CreatedProject = {
