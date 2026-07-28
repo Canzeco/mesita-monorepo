@@ -17,7 +17,7 @@ import { toast } from "@/lib/toast";
 import { errMsg } from "@/lib/utils";
 import { AskAiPanel } from "@/components/consumer/search/AskAiPanel";
 import { matchPredictionToPlace } from "@/components/consumer/search/search-utils";
-import type { AddState } from "@/components/consumer/search/PredictionRow";
+import type { AddState } from "@/components/consumer/search/add-state";
 
 export function AskAiTab({ places }: { places: Place[] }) {
   const router = useRouter();

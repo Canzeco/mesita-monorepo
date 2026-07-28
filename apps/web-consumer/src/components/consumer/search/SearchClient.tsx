@@ -42,7 +42,7 @@ import { SearchMap } from "./SearchMap";
 import { SearchResultsPanel } from "./SearchResultsPanel";
 import { GooglePlaceSheet } from "./GooglePlaceSheet";
 import { SearchBar } from "./SearchBar";
-import type { AddState } from "./PredictionRow";
+import type { AddState } from "./add-state";
 import { EmptySearchPrompt, SearchRailOverlay } from "./search-catalog-overlays";
 import {
   applyDiscoveryFilters,

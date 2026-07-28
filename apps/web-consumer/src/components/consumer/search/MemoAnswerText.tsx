@@ -13,7 +13,7 @@ import { useMemo } from "react";
 import type { Place } from "@/lib/api/places";
 import type { PlacePrediction } from "@/lib/api/place-search";
 import { cn } from "@/lib/utils";
-import type { AddState } from "./PredictionRow";
+import type { AddState } from "./add-state";
 
 type Segment =
   | { kind: "text"; value: string }

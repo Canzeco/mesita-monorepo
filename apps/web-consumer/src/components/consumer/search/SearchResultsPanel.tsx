@@ -13,7 +13,7 @@ import { ERROR_BOX_CLASS } from "@/lib/ui-classes";
 import { cn } from "@/lib/utils";
 import { Spinner } from "@/components/shared";
 import type { PlacePrediction } from "@/lib/api/place-search";
-import type { AddState } from "./PredictionRow";
+import type { AddState } from "./add-state";
 
 export function SearchResultsPanel({
   query,
