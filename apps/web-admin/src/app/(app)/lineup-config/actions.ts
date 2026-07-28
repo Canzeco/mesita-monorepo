@@ -12,12 +12,12 @@ import type { SampleConsumer, SamplePlace } from "@/lib/business/cip";
 // BUILD time, not typecheck.
 // `efInvoke` pulls in next/headers, so a client import fails on its own.
 
-export type ScoringSample = {
+type ScoringSample = {
   consumers: SampleConsumer[];
   places: SamplePlace[];
 };
 
-export type SampleResult =
+type SampleResult =
   | { ok: true; sample: ScoringSample }
   | { ok: false; error: string };
 

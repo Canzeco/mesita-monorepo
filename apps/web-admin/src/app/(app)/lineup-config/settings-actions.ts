@@ -8,7 +8,7 @@
 
 import { efInvoke } from "@/lib/supabase-ef";
 
-export type SettingsResult =
+type SettingsResult =
   | { ok: true; config: unknown }
   | { ok: false; error: string };
 
