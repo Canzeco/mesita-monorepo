@@ -36,9 +36,9 @@ export function emScore(cos: number): number {
 
 // ── SM ─────────────────────────────────────────────────────────────────
 
-export const DIST_EXP = 3;
-export const ZONE_SPILL_FRAC = 0.3;
-export const DEFAULT_POINT_TOL_KM = 5;
+const DIST_EXP = 3;
+const ZONE_SPILL_FRAC = 0.3;
+const DEFAULT_POINT_TOL_KM = 5;
 export const TIME_BLOCK_H = 0.5;
 export const OPENNESS_DAYS = 7;
 export const OPENNESS_SLOTS = 2 * 24 * 7; // 336
@@ -55,7 +55,7 @@ export const DEFAULT_SM_PARAMS: SmParams = {
   what: { tol: 0.5 },
 };
 
-export function whereScore(km: number | null, tolKm: number): number {
+function whereScore(km: number | null, tolKm: number): number {
   if (km == null) return 1;
   const tol = Math.max(0.5, tolKm);
   if (km <= 0) return 1;
@@ -87,7 +87,7 @@ export function whenFromOpenness(bits: readonly boolean[], patience: number): nu
 
 export type WhatRelation = "exact" | "sibling" | "mismatch" | "none";
 
-export function whatScore(rel: WhatRelation, tol: number): number {
+function whatScore(rel: WhatRelation, tol: number): number {
   const t = clamp01(tol);
   switch (rel) {
     case "exact":
