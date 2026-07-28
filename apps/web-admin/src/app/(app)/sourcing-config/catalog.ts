@@ -30,7 +30,7 @@ export type ChannelKey =
   | "consumer_add"
   | "memo_search";
 
-export type ChannelPolicy = {
+type ChannelPolicy = {
   enabled: boolean;
   families: FamilyKey[];
   minRating: number;
@@ -215,7 +215,7 @@ export const FAMILIES: Family[] = [
 
 const ALL_FAMILY_KEYS: FamilyKey[] = FAMILIES.map((f) => f.key);
 
-export type ChannelVerb = "search" | "add";
+type ChannelVerb = "search" | "add";
 
 export type Channel = {
   key: ChannelKey;
