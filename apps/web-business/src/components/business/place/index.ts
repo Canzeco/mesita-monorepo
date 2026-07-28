@@ -8,7 +8,6 @@ export { PlaceModule } from "./PlaceModule";
 export { PlaceFormField, PlaceUrlField } from "./PlaceFormField";
 export {
   PlaceKvField,
-  PLACE_KV_BLOCKED_CLASS,
   PLACE_GOOGLE_FIELD_INFO,
   PLACE_GOOGLE_LOCATION_INFO,
 } from "./PlaceKvField";
@@ -16,7 +15,6 @@ export { PlaceLocationFields } from "./PlaceLocationFields";
 export { PlaceMenuFields } from "./PlaceMenuFields";
 export {
   getProfileProgress,
-  getProfileProgressChecks,
   type ProfileProgressCheck,
 } from "./place-profile-progress";
 export {

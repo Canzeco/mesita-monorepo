@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Info } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-export const PLACE_KV_BLOCKED_CLASS =
+const PLACE_KV_BLOCKED_CLASS =
   "rounded-xl border border-border/60 bg-muted/40 px-3 py-2.5 text-[13px] leading-snug text-foreground";
 
 export const PLACE_GOOGLE_FIELD_INFO =
