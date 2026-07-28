@@ -146,7 +146,7 @@ export type SampleConsumersResult =
 export type PersonaMode = "consumer" | "mock" | "guest";
 
 // A location preset — Memo is location-first, so every session picks a metro.
-export type LocationPreset = {
+type LocationPreset = {
   key: string;
   label: string;
   lat: number | null;

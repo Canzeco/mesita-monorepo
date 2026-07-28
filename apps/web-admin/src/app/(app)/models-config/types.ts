@@ -13,7 +13,7 @@
 import type { LucideIcon } from "lucide-react";
 import { Database, Layers, MessagesSquare, Sparkles } from "lucide-react";
 
-export type SubsystemKey = "supabase" | "enricher" | "lineup" | "memo";
+type SubsystemKey = "supabase" | "enricher" | "lineup" | "memo";
 
 // The persisted blob (app_settings.models_config). Only `supabase.model` is
 // edited on this page today; the enricher/lineup/memo entries are retained in
@@ -74,7 +74,7 @@ export type ModelStatus = "live" | "staged" | "locked";
 // short note on what it is / what it's for.
 export type ModelChip = { id: string; note?: string };
 
-export type SubsystemMeta = {
+type SubsystemMeta = {
   key: SubsystemKey;
   label: string;
   Icon: LucideIcon;

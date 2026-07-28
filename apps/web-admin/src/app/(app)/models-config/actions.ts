@@ -17,7 +17,7 @@ import { coerceModelsConfig, type ModelsConfig } from "./types";
 
 export type { ModelsConfig } from "./types";
 
-export type GetModelsConfigResult =
+type GetModelsConfigResult =
   | { ok: true; data: ModelsConfig }
   | { ok: false; error: string };
 
@@ -31,7 +31,7 @@ export async function getModelsConfig(): Promise<GetModelsConfigResult> {
   return { ok: true, data: coerceModelsConfig(r.data.config) };
 }
 
-export type UpdateModelsConfigResult =
+type UpdateModelsConfigResult =
   | { ok: true; data: ModelsConfig }
   | { ok: false; error: string };
 
