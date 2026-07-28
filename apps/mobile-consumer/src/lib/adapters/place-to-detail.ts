@@ -24,7 +24,6 @@ import {
 } from './place-to-detail-helpers';
 
 export {
-  cityFromAddress,
   computeOpenState,
   neighborhoodFromAddress,
   resolveZoneLabel,

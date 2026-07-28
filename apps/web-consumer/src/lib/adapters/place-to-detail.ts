@@ -30,7 +30,6 @@ import {
 } from "@/lib/promo-rates";
 
 export {
-  cityFromAddress,
   computeOpenState,
   neighborhoodFromAddress,
   resolveZoneLabel,
