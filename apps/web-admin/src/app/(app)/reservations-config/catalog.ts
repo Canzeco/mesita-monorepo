@@ -22,7 +22,7 @@
 export type ReservationChannel = "phone" | "whatsapp" | "instagram";
 
 /** Live today, or held for a future launch (verified partners only). */
-export type ChannelStatus = "live" | "soon";
+type ChannelStatus = "live" | "soon";
 
 export type ReservationsConfig = {
   /** Ordered, most preferred first. Order IS the rule. Always ranks every channel. */

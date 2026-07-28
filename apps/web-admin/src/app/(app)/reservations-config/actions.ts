@@ -14,7 +14,7 @@
 import { efInvoke } from "@/lib/supabase-ef";
 import { coerceConfig, type ReservationsConfig } from "./catalog";
 
-export type GetReservationsConfigResult =
+type GetReservationsConfigResult =
   | { ok: true; config: ReservationsConfig; updatedAt: string | null }
   | { ok: false; error: string };
 
@@ -27,7 +27,7 @@ export async function getReservationsConfig(): Promise<GetReservationsConfigResu
   return { ok: true, config: coerceConfig(r.data.config), updatedAt: r.data.updatedAt ?? null };
 }
 
-export type UpdateReservationsConfigResult =
+type UpdateReservationsConfigResult =
   | { ok: true; config: ReservationsConfig; updatedAt: string | null }
   | { ok: false; error: string };
 

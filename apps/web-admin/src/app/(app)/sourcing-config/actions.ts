@@ -11,7 +11,7 @@
 import { efInvoke } from "@/lib/supabase-ef";
 import { coerceConfig, type SourcingConfig } from "./catalog";
 
-export type GetSourcingConfigResult =
+type GetSourcingConfigResult =
   | { ok: true; config: SourcingConfig; updatedAt: string | null }
   | { ok: false; error: string };
 
@@ -24,7 +24,7 @@ export async function getSourcingConfig(): Promise<GetSourcingConfigResult> {
   return { ok: true, config: coerceConfig(r.data.config), updatedAt: r.data.updatedAt ?? null };
 }
 
-export type UpdateSourcingConfigResult =
+type UpdateSourcingConfigResult =
   | { ok: true; config: SourcingConfig; updatedAt: string | null }
   | { ok: false; error: string };
 
