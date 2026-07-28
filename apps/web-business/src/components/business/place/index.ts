@@ -19,7 +19,6 @@ export {
   getProfileProgressChecks,
   type ProfileProgressCheck,
 } from "./place-profile-progress";
-export { PlaceProfileCompletionBar } from "./PlaceProfileCompletionBar";
 export {
   PLACE_DESCRIPTION_MAX,
   PLACE_NAME_MAX,
