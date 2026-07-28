@@ -13,7 +13,7 @@ import { SegmentNav, type SegmentItem } from '@/components/ui/SegmentNav';
 
 // Mirrors web HomeModeNav: Swipe + Favorites live; Memo + Social parked.
 // Parked modes stay tappable and open a coming-soon modal (MESITA-601).
-// AskAiTab / SocialTab stay in tree for a one-flag unpark.
+// AskAiTab / SocialTab stay on disk for a one-flag unpark.
 type Mode = 'swipe' | 'favorites';
 
 const MODES: (SegmentItem & {
