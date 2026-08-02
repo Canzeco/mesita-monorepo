@@ -1,0 +1,11 @@
+allowBuilds:
+  msw: true
+  sharp: true
+  unrs-resolver: true
+onlyBuiltDependencies:
+  - sharp
+  - unrs-resolver
+overrides:
+  postcss: 8.5.14
+  '@babel/core': 7.29.6
+  js-yaml: 4.2.0
