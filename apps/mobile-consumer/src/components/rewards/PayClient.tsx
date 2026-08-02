@@ -7,6 +7,7 @@ import { RewardProgramCard } from '@/components/rewards/RewardProgramCard';
 import { RewardsTopCards } from '@/components/rewards/RewardsTopCards';
 import {
   computeRewardStats,
+  derivePassTicket,
   useConsumerPayTickets,
 } from '@/lib/hooks/useConsumerPayTickets';
 import { TAB_SCROLL_PADDING_BOTTOM } from '@/lib/tab-layout';
@@ -28,6 +29,12 @@ export function PayClient({
     () => computeRewardStats(tickets.bundles, tickets.ticketMetaById),
     [tickets.bundles, tickets.ticketMetaById],
   );
+  // A visit in flight flips the pass from "what you can claim anywhere" to the
+  // resolved rate at this table — same fetch, no extra request.
+  const activeTicket = useMemo(
+    () => derivePassTicket(tickets.bundles, tickets.ticketMetaById),
+    [tickets.bundles, tickets.ticketMetaById],
+  );
 
   return (
     <ScrollView
@@ -47,6 +54,7 @@ export function PayClient({
         name={name}
         instagramHandle={instagramHandle}
         stats={stats}
+        activeTicket={activeTicket}
       />
       <View className="min-h-[200px]">
         <PayTickets {...tickets} />

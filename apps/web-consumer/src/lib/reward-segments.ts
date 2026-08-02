@@ -135,7 +135,9 @@ export function segmentKeyForClass(classKey: ConsumerClass): RewardSegmentKey {
 // The rungs a given consumer can actually reach: their own class rung, the two
 // universal rungs any class can unlock at the table (a first visit, a Google
 // review), and — for Influencers only — the Story action. Returned worst→best.
-function reachableSegments(classKey: ConsumerClass): RewardSegment[] {
+// Exported because the Rewards pass renders exactly this set: the v6 story gate
+// lives here and must never be re-derived in a component.
+export function reachableSegments(classKey: ConsumerClass): RewardSegment[] {
   const mine = segmentKeyForClass(classKey);
   const universal: RewardSegmentKey[] = ["welcome", "review"];
   return REWARD_SEGMENTS.filter(

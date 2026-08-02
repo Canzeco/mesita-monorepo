@@ -26,10 +26,12 @@ export function InstagramConnectedSummary({ followers }: { followers: number }) 
             ? `${followers.toLocaleString("en-US")} followers · Influencer active`
             : "Influencer active"}
         </p>
-        {/* The Instagram door grants Influencer off follower count alone — there
-            is no story-to-keep-it rule. Stories are an optional extra rung. */}
+        {/* The Instagram door grants Influencer off follower count alone (no
+            story-to-keep-it rule), but under segments v6 the Story rung is this
+            class's EXCLUSIVE action — so lead with the upside, not the opt-out. */}
         <p className="text-muted-foreground/80 mt-0.5 text-[11px] leading-snug">
-          Your reward applies every visit — no story needed.
+          The Instagram Story reward is yours alone — post one any visit for
+          more off.
         </p>
       </div>
     </div>
