@@ -7,6 +7,9 @@ import {
   CheckCircle2,
   Clock,
   FlaskConical,
+  // Aliased: the lucide export is named `Infinity`, which would shadow the
+  // global of the same name for this whole module.
+  Infinity as InfinityIcon,
   Lock,
   Phone,
   PhoneCall,
@@ -423,6 +426,39 @@ export function ReservationsConfigClient({
           <p className="mt-3 text-xs text-amber-600">
             With this off, the next enrich of any place clobbers its operator-chosen
             contact. Turn it back on once the backfill is done.
+          </p>
+        )}
+      </SectionCard>
+
+      {/* Testing-only cap bypass. Lives next to the test-call override because
+          both exist for the same reason: keeping a test run unblocked. */}
+      <SectionCard
+        icon={<InfinityIcon className="text-secondary h-4 w-4" />}
+        title="Unlimited reservations"
+        subtitle="Testing switch — lets any consumer keep booking past their class's monthly cap."
+      >
+        <div className="mt-5 flex items-start justify-between gap-4">
+          <div className="min-w-0">
+            <p className="text-sm font-semibold">Ignore the monthly cap</p>
+            <p className="text-muted-foreground mt-0.5 text-xs">
+              {cfg.unlimitedReservations
+                ? "On — the per-class monthly reservation limit is skipped for EVERY consumer. Booking never hits the paywall."
+                : "Off — each consumer is held to their class's monthly reservation limit (Standard is capped; Premium and above are unlimited)."}
+            </p>
+          </div>
+          <Switch
+            on={cfg.unlimitedReservations}
+            pending={pending}
+            label="Ignore the monthly cap"
+            onClick={() =>
+              patch({ unlimitedReservations: !cfg.unlimitedReservations })
+            }
+          />
+        </div>
+        {cfg.unlimitedReservations && (
+          <p className="mt-3 text-xs text-amber-600">
+            This hides the exact paywall the Premium upsell depends on — nobody can
+            reach the limit while it's on. Turn it off before any real run.
           </p>
         )}
       </SectionCard>

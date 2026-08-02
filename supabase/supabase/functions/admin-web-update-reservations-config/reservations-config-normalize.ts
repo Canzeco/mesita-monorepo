@@ -6,6 +6,8 @@ type ReservationsConfig = {
   respectAdminOverride: boolean;
   testCall: { enabled: boolean; number: string; consumerNumber: string };
   attempts: number;
+  /** Testing escape hatch: ignore the per-class monthly reservation cap. */
+  unlimitedReservations: boolean;
 };
 
 const KNOWN = new Set<string>(RESERVATION_CHANNELS);
@@ -112,8 +114,22 @@ export function normalizeConfig(
   // attempts — fixed. Whatever the client sent (or didn't), the row stores 2.
   const attempts = ATTEMPTS;
 
+  // unlimitedReservations — optional, defaults OFF so an older admin build that
+  // omits the field can never silently switch the cap off. Testing-only knob.
+  if (c.unlimitedReservations !== undefined && typeof c.unlimitedReservations !== "boolean") {
+    return { ok: false, error: "config.unlimitedReservations must be a boolean" };
+  }
+  const unlimitedReservations = c.unlimitedReservations === true;
+
   return {
     ok: true,
-    value: { priority, disabled, respectAdminOverride: c.respectAdminOverride, testCall, attempts },
+    value: {
+      priority,
+      disabled,
+      respectAdminOverride: c.respectAdminOverride,
+      testCall,
+      attempts,
+      unlimitedReservations,
+    },
   };
 }
