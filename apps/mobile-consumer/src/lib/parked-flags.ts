@@ -6,8 +6,10 @@
 
 export const PARKED = {
   tabs: {
+    // Un-parked: the pass + ticket stack are live, and web unparked in the
+    // same change (the parked-vs-live parity rule).
     rewards: {
-      soon: true,
+      soon: false,
       title: 'Rewards coming soon',
       body: 'Pay with QR and claim Mesita rewards from here shortly. Hang tight.',
     },

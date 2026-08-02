@@ -126,7 +126,22 @@ export function RewardsTopCards() {
                 Elevated classes boost them.
               </span>{" "}
               Standard gets the base discount; Premium, Influencer and Aura
-              unlock bigger ones — Influencer is free with Instagram reach.
+              unlock bigger ones — Influencer is free with Instagram reach, Aura
+              is invite-only.
+            </p>
+          </div>
+
+          <div className="flex items-start gap-3">
+            <span className="bg-secondary/12 text-secondary grid size-9 shrink-0 place-items-center rounded-xl">
+              <Sparkles className="size-[18px]" strokeWidth={2.25} />
+            </span>
+            <p className="text-muted-foreground text-[13px] leading-relaxed">
+              <span className="text-foreground font-semibold">
+                Actions beat your class.
+              </span>{" "}
+              A first visit or a Google review at the table pays more than your
+              class rate — and the Instagram Story reward belongs to Influencers.
+              You always keep your single best one, never a sum.
             </p>
           </div>
         </div>

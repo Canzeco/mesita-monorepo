@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { Linking, Modal, Pressable, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { GRADIENT_DIAGONAL, GRADIENTS } from '@/constants/brand';
+import { COLORS, GRADIENT_DIAGONAL, GRADIENTS } from '@/constants/brand';
 import {
   PREMIUM_SUBSCRIBE_URL,
   classProperLabel,
@@ -193,7 +193,25 @@ export function RewardsTopCards() {
                 Elevated classes boost them.{' '}
               </Text>
               Standard gets the base discount; Premium, Influencer and Aura
-              unlock bigger ones — Influencer is free with Instagram reach.
+              unlock bigger ones — Influencer is free with Instagram reach, Aura
+              is invite-only.
+            </Text>
+          </View>
+
+          <View className="flex-row items-start gap-3">
+            <View className="h-9 w-9 items-center justify-center rounded-xl bg-secondary/10">
+              <Sparkles color={COLORS.secondary} size={18} />
+            </View>
+            <Text
+              className="flex-1 text-muted-foreground"
+              style={{ fontSize: 13, lineHeight: 20 }}
+            >
+              <Text className="font-semibold text-foreground">
+                Actions beat your class.{' '}
+              </Text>
+              A first visit or a Google review at the table pays more than your
+              class rate — and the Instagram Story reward belongs to
+              Influencers. You always keep your single best one, never a sum.
             </Text>
           </View>
         </View>

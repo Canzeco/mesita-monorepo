@@ -57,10 +57,8 @@ const ITEMS: Item[] = [
     Icon: QrCode,
     label: "Rewards",
     match: CONSUMER_ROUTE_PREFIX.rewards,
-    soon: true,
-    soonTitle: "Rewards coming soon",
-    soonBody:
-      "Pay with QR and claim Mesita rewards from here shortly. Hang tight.",
+    // LIVE — the pass (QR + code + what you can claim + live visit) and the
+    // ticket stack are built; the tab opens the real page.
   },
   {
     href: CONSUMER_ROUTES.saved.reservations,

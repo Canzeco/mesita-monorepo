@@ -7,6 +7,7 @@ import { RewardProgramCard } from "@/components/consumer/RewardProgramCard";
 import { RewardsTopCards } from "@/components/consumer/RewardsTopCards";
 import {
   computeRewardStats,
+  derivePassTicket,
   useConsumerPayTickets,
 } from "@/lib/hooks/useConsumerPayTickets";
 
@@ -30,6 +31,12 @@ export function PayClient({
     () => computeRewardStats(tickets.bundles, tickets.ticketMetaById),
     [tickets.bundles, tickets.ticketMetaById],
   );
+  // A visit in flight flips the pass from "what you can claim anywhere" to the
+  // resolved rate at this table — same fetch, no extra request.
+  const activeTicket = useMemo(
+    () => derivePassTicket(tickets.bundles, tickets.ticketMetaById),
+    [tickets.bundles, tickets.ticketMetaById],
+  );
 
   return (
     <div className="scrollbar-hide flex h-full min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-4 pt-4 pb-6">
@@ -42,6 +49,7 @@ export function PayClient({
         name={name}
         instagramHandle={instagramHandle}
         stats={stats}
+        activeTicket={activeTicket}
       />
 
       <div className="flex min-h-0 flex-1 flex-col">

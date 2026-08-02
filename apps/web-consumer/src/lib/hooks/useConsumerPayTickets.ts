@@ -171,6 +171,63 @@ export function bundleToCardView(
   };
 }
 
+// ─── The pass's live ticket ─────────────────────────────────────────────────
+
+// A visit still in flight — the pass flips from "what you can claim anywhere"
+// to "what's happening at this table" while one of these is open.
+const LIVE_TICKET_STATUSES = new Set([
+  "open",
+  "revealed",
+  "awaiting_story",
+  "pending_payment",
+]);
+
+// Story lifecycle → the one line the guest needs. `not_required` and the two
+// verified states mean there is nothing left for them to do.
+const STORY_PENDING_LABEL: Record<string, string> = {
+  pending: "Post your story to unlock it",
+  submitted: "Story sent — waiting on the place",
+  ai_rejected: "Story wasn't accepted — ask the staff",
+  staff_rejected: "Story wasn't accepted — ask the staff",
+};
+
+export type PassTicketView = {
+  ticketId: string;
+  placeName: string;
+  /** Resolved percent once the bill is in; null before billing. */
+  discountPercent: number | null;
+  /** What the guest still has to do, if anything. */
+  pendingLabel: string | null;
+};
+
+/**
+ * The newest visit still in flight, for the pass's live state.
+ *
+ * NB the consumer ticket list is notification-driven, so a ticket surfaces here
+ * once it has produced a notification — i.e. from billing onward in practice.
+ * A just-scanned ticket with no notification yet simply leaves the pass in its
+ * at-rest state, which is the correct fallback rather than a wrong quote.
+ */
+export function derivePassTicket(
+  bundles: TicketBundle[],
+  ticketMetaById: Map<string, PayTicketMeta>,
+): PassTicketView | null {
+  // bundles are already sorted most-recent-first.
+  for (const b of bundles) {
+    const meta = ticketMetaById.get(b.ticketId);
+    if (!meta?.status || !LIVE_TICKET_STATUSES.has(meta.status)) continue;
+    return {
+      ticketId: b.ticketId,
+      placeName: b.payload.place_name ?? "Partner place",
+      discountPercent: meta.discount_percent ?? b.payload.discount_percent ?? null,
+      pendingLabel: meta.story_status
+        ? (STORY_PENDING_LABEL[meta.story_status] ?? null)
+        : null,
+    };
+  }
+  return null;
+}
+
 // ─── Member stats (derived from the ticket list) ────────────────────────────
 
 const STORY_VERIFIED = new Set(["ai_verified", "staff_verified"]);

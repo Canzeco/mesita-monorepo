@@ -7,10 +7,19 @@ import QRCode from 'react-native-qrcode-svg';
 
 import { classProperLabel, isElevatedClass } from '@/lib/consumer-classes';
 import { displayConsumerCode } from '@/lib/consumer-code';
-import type { RewardStats } from '@/lib/hooks/useConsumerPayTickets';
+import type {
+  PassTicketView,
+  RewardStats,
+} from '@/lib/hooks/useConsumerPayTickets';
 import { useAuth } from '@/providers/auth';
 
-import { IdentityStrip, IgChips, Scorecard } from './my-qr-card-parts';
+import {
+  ClaimBlock,
+  IdentityStrip,
+  IgChips,
+  LiveStrip,
+  Scorecard,
+} from './my-qr-card-parts';
 
 // Coral Mesita Card passport — web MyQrCard.tsx port (MESITA-580).
 // Standard: #ff7a45→#ff2d78 · Premium: →#a13cf0 · Influencer: →sky #2f7fd6 ·
@@ -38,11 +47,14 @@ export function MyQrCard({
   name,
   instagramHandle,
   stats,
+  activeTicket,
 }: {
   code: string;
   name?: string;
   instagramHandle?: string | null;
   stats?: RewardStats;
+  /** A visit in flight — flips the pass from entitlement to live state. */
+  activeTicket?: PassTicketView | null;
 }) {
   const { consumerClass } = useAuth();
   const displayCode = displayConsumerCode(code);
@@ -169,6 +181,13 @@ export function MyQrCard({
         instagramHandle={instagramHandle}
         followerCount={followerCount}
       />
+
+      {/* Entitlement at rest, the live visit once one is open. */}
+      {activeTicket ? (
+        <LiveStrip ticket={activeTicket} />
+      ) : (
+        <ClaimBlock classKey={classKey} />
+      )}
 
       <Scorecard stats={s} />
     </LinearGradient>
