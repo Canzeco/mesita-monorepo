@@ -218,14 +218,15 @@ export function fleetToolConfigs(
   return [
     webhook(
       "a1_report_outcome",
-      "Registra en Mesita el resultado de ESTA llamada con el restaurante. Llámala exactamente una vez, justo antes de despedirte: verdict=confirmed si aceptaron tal cual · counter_offer si ofrecieron alternativas (mándalas en alternatives, textuales y cortas) · declined si no hay lugar.",
+      "Registra en Mesita el resultado de ESTA llamada con el restaurante. Llámala exactamente una vez, justo antes de despedirte. OJO con la diferencia: declined es que el restaurante TE DIJO que no hay lugar; unreachable es que nunca lograste hablar con alguien que pueda reservar (buzón de voz, conmutador sin salida, te pidieron llamar más tarde) — eso se reintenta después. wrong_number es que sí contestaron pero no es este restaurante.",
       "eleven-a1-report-outcome",
       bodySchema("Resultado de la llamada con el restaurante.", ["reference_code", "verdict"], {
         reference_code: REFERENCE_CODE_BOUND,
         verdict: {
           type: "string",
-          description: "Resultado: confirmed, counter_offer o declined.",
-          enum: ["confirmed", "counter_offer", "declined"],
+          description:
+            "confirmed (aceptaron tal cual) · counter_offer (ofrecieron alternativas) · declined (te dijeron que NO hay lugar) · unreachable (nunca llegaste con alguien que pueda reservar) · wrong_number (contestaron y NO es este restaurante).",
+          enum: ["confirmed", "counter_offer", "declined", "unreachable", "wrong_number"],
         },
         alternatives: {
           type: "array",
@@ -427,10 +428,15 @@ function requireTool(ids: Map<string, string>, name: string): string {
  * Engine truths these graphs encode (supabase-edgefunc-reservation-call):
  * - a1: an ANSWERED call that ends without a1_report_outcome goes terminal
  *   (analysis fallback → declined/unresolved), so EVERY spoken path funnels
- *   through exactly one report tool node before the farewell. No silent
- *   voicemail exit — that needs an engine-side verdict first (deploy-gated).
+ *   through exactly one report tool node before the farewell — including the
+ *   weird ones. Voicemail / IVR dead-end / "call back later" report
+ *   `unreachable`, which the engine retries exactly like a no-answer; a line
+ *   that isn't the venue reports `wrong_number`, which is terminal on the spot
+ *   because redialling would only ring the same stranger again.
  * - a2: tools fire only on explicit guest action; a voicemail message with no
  *   tool call is safe (ticket state simply doesn't move — same as no answer).
+ *   It also verifies it is speaking to the guest BEFORE disclosing anything —
+ *   a reservation reveals where someone will be at a given hour.
  * - a3/a4: inbound; identity rides system__caller_id bindings. get_reservation
  *   is the code-only lookup lane (response carries no phone numbers).
  */
@@ -458,8 +464,8 @@ export function fleetWorkflows(toolIdByName: Map<string, string>): Record<FleetA
           position: pos(300, 0),
           entryBehavior: "generate_immediately",
           additionalPrompt:
-            "Primer contacto: saluda y di que llamas para hacer una reservación a nombre de {{guest_name}}. Si contesta un conmutador/IVR o alguien que no toma reservaciones, pide con cortesía que te comuniquen con quien sí las tome; acepta esperas cortas en línea. En cuanto te atienda una persona que pueda tomar la reservación, AVANZA. Aquí no negocies, no te despidas y no intentes llamar herramientas.",
-          edgeOrder: ["e_gk_book"],
+            "Primer contacto: saluda y di que llamas para hacer una reservación a nombre de {{guest_name}} para {{venue_name}}. Si contesta un conmutador/IVR o alguien que no toma reservaciones, pide con cortesía que te comuniquen con quien sí las tome; acepta esperas cortas en línea. En cuanto te atienda una persona que pueda tomar la reservación, AVANZA a negociar. Tres salidas raras, y en las tres AVANZA por su rama SIN colgar tú: (a) contestó un buzón de voz o una grabadora — no dejes recado; (b) es un conmutador del que no sales, llevas mucho en espera, o te piden llamar más tarde; (c) contestó una persona pero NO es {{venue_name}} (número equivocado). Aquí no negocies, no te despidas y no llames herramientas.",
+          edgeOrder: ["e_gk_book", "e_gk_wrong", "e_gk_unreachable"],
         }),
         book: talkNode({
           label: "Negotiate the table",
@@ -467,11 +473,19 @@ export function fleetWorkflows(toolIdByName: Map<string, string>): Record<FleetA
           entryBehavior: "generate_immediately",
           additionalPrompt:
             "Negocia la mesa: {{party_size}} personas, {{reservation_date}} a las {{reservation_time}}, a nombre de {{guest_name}}. Si piden un teléfono de contacto da {{guest_phone}}; si piden número de confirmación, el código Mesita es {{reference_code}}. Menciona {{special_requests}} una sola vez si no está vacío y hay disponibilidad. Si no pueden tal cual, pregunta qué opciones cercanas tienen y apúntalas textuales y cortas — NO aceptes ninguna por tu cuenta. Con un resultado claro (confirmaron tal cual · ofrecieron alternativas · rechazaron/no hay lugar) AVANZA por la rama correcta SIN despedirte; el flujo dispara el registro. No inventes disponibilidad.",
-          edgeOrder: ["e_book_confirmed", "e_book_counter", "e_book_declined"],
+          edgeOrder: [
+            "e_book_confirmed",
+            "e_book_counter",
+            "e_book_declined",
+            "e_book_unreachable",
+          ],
         }),
         report_confirmed: toolNode(a1Report, pos(940, -170), ["e_rc_farewell"]),
         report_counter: toolNode(a1Report, pos(940, 0), ["e_rco_farewell"]),
         report_declined: toolNode(a1Report, pos(940, 170), ["e_rd_farewell"]),
+        // Weird-case reports. Same tool; the branch fixes the verdict.
+        report_unreachable: toolNode(a1Report, pos(940, 340), ["e_ru_farewell"]),
+        report_wrong: toolNode(a1Report, pos(940, 500), ["e_rw_farewell"]),
         farewell_ok: talkNode({
           label: "Confirm & close",
           position: pos(1260, -170),
@@ -495,6 +509,22 @@ export function fleetWorkflows(toolIdByName: Map<string, string>): Record<FleetA
           additionalPrompt:
             "El resultado ya se registró (verdict=declined). Agradece el tiempo, despídete corto y cuelga con end_call.",
           edgeOrder: ["e_fd_end"],
+        }),
+        farewell_unreachable: talkNode({
+          label: "Unreachable close",
+          position: pos(1260, 340),
+          entryBehavior: "generate_immediately",
+          additionalPrompt:
+            "Ya quedó registrado que no se pudo llegar con nadie que reserve (verdict=unreachable); Mesita lo reintenta más tarde. Si hay una persona en la línea, agradece en una frase y despídete. Si es un buzón o una grabadora, NO dejes recado ni datos del comensal: simplemente cuelga con end_call.",
+          edgeOrder: ["e_fu_end"],
+        }),
+        farewell_wrong: talkNode({
+          label: "Wrong number close",
+          position: pos(1260, 500),
+          entryBehavior: "generate_immediately",
+          additionalPrompt:
+            "Ya se registró que este número no es el restaurante (verdict=wrong_number). Discúlpate en una sola frase por la equivocación y cuelga con end_call. NO des el nombre del comensal, su teléfono ni ningún dato de la reservación — quien contestó no tiene nada que ver con Mesita.",
+          edgeOrder: ["e_fw_end"],
         }),
         end_node: { type: "end", position: pos(1580, 0), edge_order: [] },
       },
@@ -528,9 +558,40 @@ export function fleetWorkflows(toolIdByName: Map<string, string>): Record<FleetA
           llm("El restaurante rechazó definitivamente: no hay lugar ni alternativas.", "declined"),
           RESULT_FAIL,
         ),
+        // Weird cases. unreachable can be decided at first contact (voicemail,
+        // IVR dead-end) or mid-negotiation (line dies, "llámenos luego").
+        e_gk_wrong: edge(
+          "gatekeeper",
+          "report_wrong",
+          llm(
+            "Contestó una persona pero este número NO es el restaurante — es otro negocio o un particular.",
+            "wrong number",
+          ),
+          RESULT_FAIL,
+        ),
+        e_gk_unreachable: edge(
+          "gatekeeper",
+          "report_unreachable",
+          llm(
+            "Contestó un buzón de voz o grabadora, o es un conmutador sin salida, o llevas demasiado en espera, o te pidieron llamar más tarde — nunca llegaste con alguien que pueda reservar.",
+            "unreachable",
+          ),
+          RESULT_FAIL,
+        ),
+        e_book_unreachable: edge(
+          "book",
+          "report_unreachable",
+          llm(
+            "Ya no se puede terminar la gestión ahora: te pidieron llamar más tarde, te pasaron a alguien que nunca llegó, o la persona que reserva no está.",
+            "call back later",
+          ),
+          RESULT_FAIL,
+        ),
         e_rc_farewell: edge("report_confirmed", "farewell_ok", RESULT_OK),
         e_rco_farewell: edge("report_counter", "farewell_counter", RESULT_OK),
         e_rd_farewell: edge("report_declined", "farewell_declined", RESULT_OK),
+        e_ru_farewell: edge("report_unreachable", "farewell_unreachable", RESULT_OK),
+        e_rw_farewell: edge("report_wrong", "farewell_wrong", RESULT_OK),
         e_fok_end: edge(
           "farewell_ok",
           "end_node",
@@ -542,6 +603,16 @@ export function fleetWorkflows(toolIdByName: Map<string, string>): Record<FleetA
           llm("Ya avisaste que Mesita regresa la respuesta y te despediste.", "done"),
         ),
         e_fd_end: edge("farewell_declined", "end_node", llm("Ya agradeciste y te despediste.", "done")),
+        e_fu_end: edge(
+          "farewell_unreachable",
+          "end_node",
+          llm("Ya cerraste (o era un buzón y no dejaste recado).", "done"),
+        ),
+        e_fw_end: edge(
+          "farewell_wrong",
+          "end_node",
+          llm("Ya te disculpaste por la equivocación.", "done"),
+        ),
       },
     },
 
@@ -556,8 +627,21 @@ export function fleetWorkflows(toolIdByName: Map<string, string>): Record<FleetA
           position: pos(300, 0),
           entryBehavior: "generate_immediately",
           additionalPrompt:
-            "Saluda a {{guest_name}} y di que llamas de Mesita por su reservación en {{venue_name}}. Enruta según {{call_context}} (confirmation o counter_offer). Si contesta un buzón de voz o grabadora en lugar de una persona, toma la rama de buzón. Aquí no llames herramientas.",
-          edgeOrder: ["e_route_confirmation", "e_route_counter", "e_route_voicemail"],
+            "Abre preguntando por {{guest_name}}: «Hola, buenas, ¿hablo con {{guest_name}}? Le llamo de Mesita.» NO digas todavía el restaurante, la fecha, la hora ni ningún dato de la reservación — una reservación dice dónde va a estar una persona y a qué hora, así que primero confirma con quién hablas. Si es el comensal (o dice que sí es él), enruta según {{call_context}}: confirmation o counter_offer. Si contestó un buzón de voz o una grabadora, toma la rama de buzón. Si es OTRA persona — no está, es un número equivocado, o te ofrecen tomar el recado — toma la rama de tercero. Aquí no llames herramientas.",
+          edgeOrder: [
+            "e_route_confirmation",
+            "e_route_counter",
+            "e_route_voicemail",
+            "e_route_third_party",
+          ],
+        }),
+        third_party: talkNode({
+          label: "Not the guest",
+          position: pos(640, 560),
+          entryBehavior: "generate_immediately",
+          additionalPrompt:
+            "No es el comensal quien contesta. NO reveles nada: ni el restaurante, ni la fecha, ni la hora, ni que hay una reservación. Di solamente que llamas de Mesita, que buscabas a {{guest_name}}, que no es nada urgente y que lo intentarás después o que puede revisar la app de Mesita. Si insisten en tomar recado, agradece y declina con amabilidad. Despídete y cuelga con end_call. No llames ninguna herramienta: el ticket no debe moverse por algo que dijo un tercero.",
+          edgeOrder: ["e_tp_end"],
         }),
         present_confirmation: talkNode({
           label: "Deliver confirmation",
@@ -620,6 +704,14 @@ export function fleetWorkflows(toolIdByName: Map<string, string>): Record<FleetA
           "voicemail",
           llm("Contestó un buzón de voz o una grabadora, no una persona.", "voicemail"),
         ),
+        e_route_third_party: edge(
+          "route",
+          "third_party",
+          llm(
+            "Contestó una persona que NO es el comensal: dice que no está, que es número equivocado, o se ofrece a tomar el recado.",
+            "not the guest",
+          ),
+        ),
         e_pc_confirm: edge(
           "present_confirmation",
           "do_confirm",
@@ -655,6 +747,11 @@ export function fleetWorkflows(toolIdByName: Map<string, string>): Record<FleetA
         e_fdone_end: edge("farewell_done", "end_node", llm("Ya cerraste y te despediste.", "done")),
         e_fcancel_end: edge("farewell_cancel", "end_node", llm("Ya cerraste y te despediste.", "done")),
         e_vm_end: edge("voicemail", "end_node", llm("Ya dejaste el recado y colgaste.", "done")),
+        e_tp_end: edge(
+          "third_party",
+          "end_node",
+          llm("Ya cerraste sin revelar nada de la reservación.", "done"),
+        ),
       },
     },
 

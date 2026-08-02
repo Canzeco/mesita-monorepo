@@ -167,16 +167,18 @@ async function watchUntilAnswered(
 async function readReportedVerdict(
   admin: SupabaseClient,
   id: string,
-): Promise<{ verdict: string | null; alternativesText: string }> {
+): Promise<{ verdict: string | null; alternativesText: string; note: string }> {
   const { data } = await admin
     .from("reservations")
-    .select("reported_verdict, alternatives")
+    .select("reported_verdict, alternatives, outcome_note")
     .eq("id", id)
     .maybeSingle();
   const alts = Array.isArray(data?.alternatives) ? (data.alternatives as unknown[]) : [];
   return {
     verdict: (data?.reported_verdict as string | null) ?? null,
     alternativesText: alts.filter((a): a is string => typeof a === "string").join(" · "),
+    // a1 puts the human-readable reason here — e.g. which farmacia answered.
+    note: typeof data?.outcome_note === "string" ? data.outcome_note : "",
   };
 }
 
@@ -404,10 +406,63 @@ async function runIntents(input: {
         : "unknown";
       // a1's explicit report (a1_report_outcome) outranks the analysis.
       const reported = await readReportedVerdict(admin, reservationId);
-      const verdict = reported.verdict === "confirmed" ||
-          reported.verdict === "declined" || reported.verdict === "counter_offer"
+      const REPORTABLE = [
+        "confirmed",
+        "declined",
+        "counter_offer",
+        "unreachable",
+        "wrong_number",
+      ];
+      const verdict = reported.verdict && REPORTABLE.includes(reported.verdict)
         ? reported.verdict
         : analyzed;
+
+      // The line is not this venue. Terminal on the spot: redialling would just
+      // ring the same stranger, so this must NOT consume the retry path.
+      if (verdict === "wrong_number") {
+        entry.result = "wrong_number";
+        await record({
+          attempts,
+          attempts_state: "exhausted",
+          next_attempt_at: null,
+          status: "unresolved",
+          callback_state: "skipped",
+          last_call_status:
+            `intent ${n}: wrong number — the line isn't the venue${
+              reported.note ? ` (${reported.note})` : ""
+            }`.slice(0, 200),
+        });
+        return;
+      }
+
+      // Answered, but we never got to anyone who could book (voicemail, IVR
+      // dead-end, "call back later"). Unlike `declined` this is not an answer —
+      // it's the absence of one, so it retries exactly like a no-answer.
+      if (verdict === "unreachable") {
+        entry.result = "unreachable";
+        if (n < attemptsPlanned) {
+          const next = nextAttemptAt(input.placeHours, input.placeLng);
+          await record({
+            attempts,
+            attempts_state: "scheduled",
+            next_attempt_at: next.at.toISOString(),
+            // Clear it so the next attempt starts from a blank verdict.
+            reported_verdict: null,
+            last_call_status: `intent ${n}: no one who books was reached — ${next.reason}`
+              .slice(0, 200),
+          });
+          return;
+        }
+        await record({
+          attempts,
+          attempts_state: "exhausted",
+          next_attempt_at: null,
+          status: "unreachable",
+          callback_state: "skipped",
+          last_call_status: `intent ${n}: no one who books was reached — giving up`,
+        });
+        return;
+      }
 
       if (verdict === "confirmed") {
         entry.result = "confirmed";
