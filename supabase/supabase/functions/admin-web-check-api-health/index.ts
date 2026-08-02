@@ -196,21 +196,58 @@ const PROBES: ProbeSpec[] = [
     envKeys: ["ELEVENLABS_KEY", "ELEVEN_KEY"],
     run: async (keys) => {
       const key = firstKey(keys, ["ELEVENLABS_KEY", "ELEVEN_KEY"])!;
+      const headers = { "xi-api-key": key };
+
+      // Probe the capability Mesita actually depends on — the ConvAI agent
+      // fleet — NOT /v1/user/subscription. ElevenLabs keys carry per-scope
+      // permissions, and an agents-scoped key without `user_read` 401s on the
+      // account endpoint while working perfectly for every call the product
+      // makes. Reading the account first made a healthy key look like a dead
+      // vendor (MESITA-826).
       const res = await timedFetch(
-        "https://api.elevenlabs.io/v1/user/subscription",
-        { headers: { "xi-api-key": key } },
+        "https://api.elevenlabs.io/v1/convai/agents?page_size=100",
+        { headers },
       );
+
+      // Quota is a nice-to-have, not the verdict. Fetch it best-effort so a
+      // key scoped only for agents still reports healthy — just without the
+      // character balance. Never let this leg fail the probe.
+      let quota: string | null = null;
+      if (res.ok) {
+        try {
+          const sub = await timedFetch(
+            "https://api.elevenlabs.io/v1/user/subscription",
+            { headers },
+          );
+          if (sub.ok) {
+            const b = await sub.json();
+            const used = num(b, "character_count");
+            const limit = num(b, "character_limit");
+            const tier = str(b, "tier");
+            const chars = used !== null && limit !== null
+              ? `${used.toLocaleString()}/${limit.toLocaleString()} chars`
+              : null;
+            quota =
+              [tier && `tier ${tier}`, chars].filter(Boolean).join(" · ") ||
+              null;
+          } else if (sub.status === 401 || sub.status === 403) {
+            quota = "quota hidden (key lacks user_read)";
+          }
+        } catch {
+          // Timeout or transport error on the optional leg — the agents call
+          // already answered the question that decides the verdict.
+          quota = null;
+        }
+      }
+
       return {
         res,
         detail: (b) => {
-          const used = num(b, "character_count");
-          const limit = num(b, "character_limit");
-          const tier = str(b, "tier");
-          const chars = used !== null && limit !== null
-            ? `${used.toLocaleString()}/${limit.toLocaleString()} chars`
-            : null;
-          return [tier && `tier ${tier}`, chars].filter(Boolean).join(" · ") ||
-            "Key accepted.";
+          const agents = (b as { agents?: unknown[] } | null)?.agents;
+          const head = Array.isArray(agents)
+            ? `${agents.length} agent(s) visible`
+            : "Key accepted";
+          return [head, quota].filter(Boolean).join(" · ") + ".";
         },
       };
     },
