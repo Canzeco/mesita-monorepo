@@ -37,7 +37,12 @@ import { corsPreflight, json, readJsonOr } from "../_shared/http.ts";
 import { adminClient, readEFEnv } from "../_shared/auth.ts";
 import { requireInternalCaller } from "../_shared/internal.ts";
 import { elevenLabsKey, reservationAgentId } from "../_shared/elevenlabs.ts";
-import { FLEET_AGENTS, fleetToolConfigs, fleetWorkflows } from "../_shared/reservationist-fleet.ts";
+import {
+  FLEET_AGENTS,
+  FLEET_BUILT_IN_TOOLS,
+  fleetToolConfigs,
+  fleetWorkflows,
+} from "../_shared/reservationist-fleet.ts";
 import {
   LEGACY_RESERVATIONIST_KB_DOC_NAME,
   RESERVATIONIST_KB_TEXT,
@@ -600,13 +605,27 @@ Deno.serve(async (req) => {
       const body = got.body as VersionedAgentShape & {
         name?: string;
         conversation_config?: {
-          agent?: { prompt?: { knowledge_base?: Array<{ id?: string; name?: string }> } };
+          agent?: {
+            prompt?: {
+              knowledge_base?: Array<{ id?: string; name?: string }>;
+              built_in_tools?: Record<string, unknown> | null;
+              tools?: Array<{ type?: string; name?: string }> | null;
+            };
+          };
         };
       };
       const wf = readWorkflow(body);
       const summary = summarizeWorkflow(wf);
       const startEdges = Object.values(wf?.edges ?? {}).filter((e) => e.source === "start_node");
-      const kb = body.conversation_config?.agent?.prompt?.knowledge_base ?? [];
+      const prompt = body.conversation_config?.agent?.prompt ?? {};
+      const kb = prompt.knowledge_base ?? [];
+      // SYSTEM TOOLS are the hang-up question: end_call is only auto-added to
+      // agents created in the DASHBOARD. Ours are API-created, so report what
+      // each one actually carries instead of assuming.
+      const builtIn = prompt.built_in_tools ?? null;
+      const systemToolNames = Array.isArray(prompt.tools)
+        ? prompt.tools.filter((t) => t?.type === "system").map((t) => t?.name ?? "?")
+        : [];
       fleetWorkflowsLive.push({
         key: spec.key,
         id,
@@ -617,6 +636,11 @@ Deno.serve(async (req) => {
         start_connected: startEdges.length > 0,
         workflow: summary,
         knowledge_base: kb.map((d) => ({ id: d.id, name: d.name })),
+        built_in_tools: builtIn,
+        built_in_tool_keys: builtIn ? Object.keys(builtIn) : [],
+        system_tools: systemToolNames,
+        has_end_call: !!(builtIn && "end_call" in builtIn) ||
+          systemToolNames.includes("end_call"),
       });
     }
     return json({
@@ -704,12 +728,19 @@ Deno.serve(async (req) => {
             : `/v1/convai/agents/${encodeURIComponent(id)}`;
           const prevPrompt = tip.conversation_config?.agent?.prompt ?? {};
           const prevChars = typeof prevPrompt.prompt === "string" ? prevPrompt.prompt.length : 0;
+          // built_in_tools rides EVERY fleet run, not just write_prompts: the
+          // agents came back from the API with every system tool null (=off),
+          // so end_call was unavailable and they could never hang up.
           const agentPatch: Record<string, unknown> = writePrompts
             ? {
               first_message: spec.firstMessage,
-              prompt: { prompt: spec.prompt, tool_ids: toolIds },
+              prompt: {
+                prompt: spec.prompt,
+                tool_ids: toolIds,
+                built_in_tools: FLEET_BUILT_IN_TOOLS,
+              },
             }
-            : { prompt: { tool_ids: toolIds } };
+            : { prompt: { tool_ids: toolIds, built_in_tools: FLEET_BUILT_IN_TOOLS } };
           const patchBody: Record<string, unknown> = {
             name: spec.name,
             conversation_config: { agent: agentPatch },
