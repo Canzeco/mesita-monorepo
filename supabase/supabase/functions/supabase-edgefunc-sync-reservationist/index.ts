@@ -8,10 +8,11 @@
 // Body: { mode?: "inspect" | "sync" | "fleet" | "prune" | "workflows" | "knowledge" }
 //
 //   inspect    read-only report: donor agent, workspace agents/tools, fleet.
-//   sync       LEGACY — prefer fleet. Unknown modes return 400 (never silently
-//              fall through to sync — that once recreated get_reservation).
-//   fleet      upsert family tools + agents; store ids in agents_config.
-//   prune      delete non-fleet agents + force-delete legacy get_reservation.
+//   sync       RETIRED (2026-08-01) — returns 400. get_reservation is a fleet
+//              tool now (fleetToolConfigs, attached to a3/a4).
+//   fleet      upsert the 9 fleet tools + agents; store ids in agents_config.
+//   prune      delete non-fleet agents (fleet tools are managed by fleet mode
+//              and never deleted here).
 //   workflows  Commit AgentWorkflowRequestModel for a1–a4 from fleetWorkflows()
 //              onto each agent's Main branch (?branch_id + version_description).
 //              Workflows only — Procedures stay unused (Alpha).
@@ -44,7 +45,6 @@ import {
 } from "../_shared/reservationist-kb.ts";
 
 const EL_BASE = "https://api.elevenlabs.io";
-const TOOL_NAME = "get_reservation";
 
 function headers(key: string): HeadersInit {
   return { "xi-api-key": key, "Content-Type": "application/json" };
@@ -139,45 +139,6 @@ async function resolveMainBranchId(
   const id = main?.id?.trim();
   if (!id) return { ok: false, error: "no Main branch found on agent" };
   return { ok: true, branchId: id };
-}
-
-// The legacy webhook tool definition, built from live env + DB state.
-function desiredToolConfig(supabaseUrl: string, anonKey: string, toolSecret: string) {
-  return {
-    type: "webhook",
-    name: TOOL_NAME,
-    description:
-      "Busca una reservación de Mesita en la base de datos en TIEMPO REAL. Úsala cuando el interlocutor mencione una reservación existente: pide el código de referencia de 8 dígitos, o si no lo tiene, el nombre y apellido del comensal. Devuelve lugar, fecha, hora, personas y estado, listos para decirse en voz alta.",
-    response_timeout_secs: 15,
-    api_schema: {
-      url: `${supabaseUrl}/functions/v1/eleven-agent-get-reservation`,
-      method: "POST",
-      request_headers: {
-        Authorization: `Bearer ${anonKey}`,
-        "x-agent-secret": toolSecret,
-        "Content-Type": "application/json",
-      },
-      request_body_schema: {
-        type: "object",
-        required: [],
-        description: "Claves de búsqueda — manda el código si lo tienes, si no el nombre.",
-        properties: {
-          reference_code: {
-            type: "string",
-            description: "Código de referencia de 8 dígitos de la reservación (ej. 48291057).",
-          },
-          first_name: {
-            type: "string",
-            description: "Nombre del comensal, tal como lo dijo.",
-          },
-          last_name: {
-            type: "string",
-            description: "Apellido del comensal, tal como lo dijo.",
-          },
-        },
-      },
-    },
-  };
 }
 
 type PromptShape = Record<string, unknown> & {
@@ -284,8 +245,6 @@ Deno.serve(async (req) => {
   for (const t of toolRows) {
     if (t.id && t.tool_config?.name) toolIdByName.set(t.tool_config.name, t.id);
   }
-  const legacyToolId = toolIdByName.get(TOOL_NAME) ?? null;
-
   const listResEarly = await elFetch(key, "/v1/convai/agents?page_size=100");
   if (!listResEarly.ok) return json({ ok: false, error: listResEarly.error }, 502);
   const listedAgents = (listResEarly.body as {
@@ -322,22 +281,6 @@ Deno.serve(async (req) => {
       }
       deleted.push({ id, name: a.name ?? null });
     }
-    let legacyTool: { id: string; action: string } | null = null;
-    if (legacyToolId) {
-      const delTool = await elFetch(
-        key,
-        `/v1/convai/tools/${encodeURIComponent(legacyToolId)}?force=true`,
-        { method: "DELETE" },
-      );
-      if (!delTool.ok) {
-        return json({
-          ok: false,
-          error: `delete tool get_reservation: ${delTool.error}`,
-          deleted,
-        }, 502);
-      }
-      legacyTool = { id: legacyToolId, action: "deleted" };
-    }
     const afterList = await elFetch(key, "/v1/convai/agents?page_size=100");
     const remaining = afterList.ok
       ? ((afterList.body as {
@@ -348,7 +291,6 @@ Deno.serve(async (req) => {
       ok: true,
       mode,
       deleted,
-      legacy_tool: legacyTool,
       remaining,
       configured_fleet: configuredAgents,
     });
@@ -685,7 +627,7 @@ Deno.serve(async (req) => {
       tool_ids: toolIdsBefore,
       workspace_agents: listedAgents.map((a) => ({ id: a.agent_id, name: a.name })),
       workspace_tools: toolRows.map((t) => ({ id: t.id, name: t.tool_config?.name })),
-      get_reservation_tool_id: legacyToolId,
+      get_reservation_tool_id: toolIdByName.get("get_reservation") ?? null,
       configured_fleet: configuredAgents,
       fleet_workflows: fleetWorkflowsLive,
     });
@@ -863,69 +805,12 @@ Deno.serve(async (req) => {
     });
   }
 
-  // ── mode "sync" (legacy): create or update the single get_reservation tool ─
-  const toolConfig = desiredToolConfig(envRes.env.url, envRes.env.anonKey, toolSecret);
-  let toolId = legacyToolId;
-  let toolAction: string;
-  if (toolId) {
-    const upd = await elFetch(key, `/v1/convai/tools/${encodeURIComponent(toolId)}`, {
-      method: "PATCH",
-      body: { tool_config: toolConfig },
-    });
-    if (!upd.ok) return json({ ok: false, error: upd.error }, 502);
-    toolAction = "updated";
-  } else {
-    const crt = await elFetch(key, "/v1/convai/tools", {
-      method: "POST",
-      body: { tool_config: toolConfig },
-    });
-    if (!crt.ok) return json({ ok: false, error: crt.error }, 502);
-    toolId = ((crt.body as { id?: string } | null)?.id) ?? null;
-    if (!toolId) {
-      return json({
-        ok: false,
-        error: `tool created but no id in response: ${JSON.stringify(crt.body).slice(0, 300)}`,
-      }, 502);
-    }
-    toolAction = "created";
-  }
-
-  // Attach to the original agent (tool_ids only — the prompt text is never sent).
-  let attachAction = "already-attached";
-  if (!toolIdsBefore.includes(toolId)) {
-    const patch = await elFetch(key, `/v1/convai/agents/${encodeURIComponent(donorId)}`, {
-      method: "PATCH",
-      body: {
-        conversation_config: {
-          agent: { prompt: { tool_ids: [...toolIdsBefore, toolId] } },
-        },
-      },
-    });
-    if (!patch.ok) return json({ ok: false, error: patch.error }, 502);
-    attachAction = "attached";
-  }
-
-  // Verify: prompt untouched, tool attached.
-  const verify = await elFetch(key, `/v1/convai/agents/${encodeURIComponent(donorId)}`);
-  if (!verify.ok) return json({ ok: false, error: verify.error }, 502);
-  const after = verify.body as AgentShape;
-  const promptAfter = after.conversation_config?.agent?.prompt ?? {};
-  const promptCharsAfter = typeof promptAfter.prompt === "string" ? promptAfter.prompt.length : 0;
-  const toolIdsAfter: string[] = Array.isArray(promptAfter.tool_ids)
-    ? [...promptAfter.tool_ids]
-    : [];
-
+  // ── mode "sync" — RETIRED 2026-08-01 ───────────────────────────────────────
+  // get_reservation is a first-class fleet tool now (fleetToolConfigs, attached
+  // to a3/a4); the old single-agent path would fight fleet mode over the same
+  // workspace tool name with a divergent schema.
   return json({
-    ok: true,
-    mode,
-    agent: { id: donorId, name: after.name ?? null },
-    tool: { id: toolId, name: TOOL_NAME, action: toolAction },
-    attach: attachAction,
-    tool_ids_before: toolIdsBefore,
-    tool_ids_after: toolIdsAfter,
-    prompt_chars_before: promptCharsBefore,
-    prompt_chars_after: promptCharsAfter,
-    prompt_untouched: promptCharsBefore === promptCharsAfter,
-    attached: toolIdsAfter.includes(toolId),
-  });
+    ok: false,
+    error: 'mode "sync" is retired — use mode "fleet" (get_reservation is a fleet tool now)',
+  }, 400);
 });
