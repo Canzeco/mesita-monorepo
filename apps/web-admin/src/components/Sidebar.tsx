@@ -10,6 +10,7 @@ import {
   UserRound,
 } from "lucide-react";
 import { ATLAS_PARENT } from "@/app/(app)/atlas-config/nav";
+import { BILLING_TEST_PARENT } from "@/app/(app)/billing-test/nav";
 import { DB_PARENT } from "@/app/(app)/db-config/nav";
 import { ENRICHER_PARENT } from "@/app/(app)/enricher-config/nav";
 import { MEMO_PARENT } from "@/app/(app)/memo-config/nav";
@@ -113,10 +114,20 @@ const MANAGE_NAV: NavItem[] = [
   ...TOOL_ROUTES,
 ];
 
+// Testing — operator tools that probe live systems rather than configure them.
+const TESTING_NAV: NavItem[] = [
+  {
+    href: BILLING_TEST_PARENT.href,
+    label: BILLING_TEST_PARENT.label,
+    Icon: BILLING_TEST_PARENT.Icon,
+  },
+];
+
 const SIDEBAR_SECTIONS = [
   { label: "Account", items: ACCOUNT_NAV },
   { label: "Alerts", items: ALERTS_NAV },
   { label: "Configs", items: CONFIGS_NAV },
+  { label: "Testing", items: TESTING_NAV },
   { label: "Manage", items: MANAGE_NAV },
 ] as const;
 
