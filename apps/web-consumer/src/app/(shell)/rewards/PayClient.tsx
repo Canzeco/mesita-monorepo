@@ -1,45 +1,55 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
-import { MapPin, Plus, QrCode, Sparkles, TicketX } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { MapPin, QrCode, Sparkles, TicketX } from "lucide-react";
 
-import { ContextStrip } from "@/components/consumer/rewards/ContextStrip";
+import { WalletHeader } from "@/components/consumer/rewards/WalletHeader";
 import { CheckTicketCard } from "@/components/consumer/rewards/CheckTicketCard";
-import { CreateTicketSheet } from "@/components/consumer/rewards/CreateTicketSheet";
 import { HistoryTicketCard } from "@/components/consumer/rewards/HistoryTicketCard";
-import { MemberRow } from "@/components/consumer/rewards/MemberRow";
+import { PlacePickList } from "@/components/consumer/rewards/PlacePickList";
 import { SavingsReveal } from "@/components/consumer/rewards/SavingsReveal";
+import { VenuePassModal } from "@/components/consumer/rewards/VenuePassModal";
 import { TicketCardSkeleton } from "./PayTabLoading";
 import { apiCancelTicket, type ConsumerTicketRow } from "@/lib/api/tickets";
+import type { Place } from "@/lib/api/places";
 import { useConsumerTickets } from "@/lib/hooks/useConsumerTickets";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { cn } from "@/lib/utils";
 
-// Rewards is a WALLET (MESITA-808, redesign 1A): the first viewport answers
-// "what do I do at this table?" — the live ticket QR (or the Start hero +
-// pitch strip) owns THE slot; the context strip carries orientation; the
-// identity row replaces the retired passport card (2A: no second QR, ever).
-// Education lives on Me > Help (MESITA-809) — this page is for doing. Motion
-// budget = exactly two beats: the verified pulse and the savings reveal.
+// Rewards Wallet v3 (MESITA-811) — Pato's spec, top to bottom: identity
+// header (name + class, nothing else) → the three steps → New / Pending /
+// History. New lists every partner place (no searchbar yet); tapping one
+// opens the venue pass modal, which reuses-or-creates the ticket and shows
+// the QR. Education stays on Me > Help (MESITA-809); the motion budget
+// (verified pulse + savings reveal) carries over from MESITA-808.
 
-type Tab = "ticket" | "history";
+type Tab = "new" | "pending" | "history";
 
 export function PayClient({
   userId,
   code,
   name,
-  instagramHandle,
 }: {
   userId: string;
   code: string;
   name?: string;
-  instagramHandle?: string | null;
 }) {
   const supabase = useBrowserSupabase();
-  const [tab, setTab] = useState<Tab>("ticket");
-  const [createOpen, setCreateOpen] = useState(false);
-
   const tickets = useConsumerTickets(userId);
+
+  // Default tab is DERIVED, not effect-set: Pending while a live ticket
+  // exists (mid-visit the QR is one tap away), New otherwise. A manual tap
+  // pins the choice for the session.
+  const [tabChoice, setTabChoice] = useState<Tab | null>(null);
+  const tab: Tab =
+    tabChoice ?? (tickets.active.length > 0 ? "pending" : "new");
+
+  const [passPlace, setPassPlace] = useState<Place | null>(null);
+
+  const activePlaceIds = useMemo(
+    () => new Set(tickets.active.map((t) => t.project_id)),
+    [tickets.active],
+  );
 
   const cancelTicket = useCallback(
     async (ticketId: string) => {
@@ -49,9 +59,8 @@ export function PayClient({
     [supabase, tickets],
   );
 
-  // The paid beat (4A): when a ticket the guest was WATCHING (it was active)
-  // flips to revealed on a poll, hold it in THE slot as a savings reveal for
-  // a few seconds before it settles into History.
+  // The paid beat (MESITA-808, 4A): a watched ticket flipping to revealed
+  // holds a savings reveal before settling into History.
   const [justPaid, setJustPaid] = useState<ConsumerTicketRow | null>(null);
   const prevActiveIdsRef = useRef<Set<string>>(new Set());
   useEffect(() => {
@@ -66,9 +75,10 @@ export function PayClient({
 
   return (
     <div className="scrollbar-hide flex h-full min-h-0 flex-1 flex-col gap-3.5 overflow-y-auto px-4 pt-4 pb-6">
-      <ContextStrip />
+      <WalletHeader name={name} />
 
-      {/* THE slot — the wallet's object. */}
+      <PitchSteps />
+
       {justPaid ? (
         <SavingsReveal
           placeName={justPaid.place?.name ?? "the place"}
@@ -77,18 +87,19 @@ export function PayClient({
         />
       ) : null}
 
-      {/* Ticket / History pills (5A) — ≥44px hit areas (Pass 6). */}
-      <div className="border-border bg-card grid grid-cols-2 gap-0 rounded-2xl border p-1">
+      {/* New / Pending / History pills — ≥44px hit areas. */}
+      <div className="border-border bg-card grid grid-cols-3 gap-0 rounded-2xl border p-1">
         {(
           [
-            { id: "ticket", label: "Ticket" },
+            { id: "new", label: "New" },
+            { id: "pending", label: "Pending" },
             { id: "history", label: "History" },
           ] as const
         ).map((t) => (
           <button
             key={t.id}
             type="button"
-            onClick={() => setTab(t.id)}
+            onClick={() => setTabChoice(t.id)}
             aria-pressed={tab === t.id}
             className={cn(
               "flex min-h-11 items-center justify-center gap-1.5 rounded-xl px-1 text-center text-[12.5px] font-semibold transition",
@@ -98,11 +109,11 @@ export function PayClient({
             )}
           >
             {t.label}
-            {t.id === "ticket" && tickets.active.length > 0 ? (
+            {t.id === "pending" && tickets.active.length > 0 ? (
               <span
                 className={cn(
                   "rounded-full px-1.5 text-[10px] font-bold",
-                  tab === "ticket"
+                  tab === "pending"
                     ? "bg-background/25 text-background"
                     : "bg-primary/10 text-primary",
                 )}
@@ -114,27 +125,41 @@ export function PayClient({
         ))}
       </div>
 
-      {tab === "ticket" ? (
+      {tab === "new" ? (
+        <PlacePickList
+          activePlaceIds={activePlaceIds}
+          onPick={(place) => setPassPlace(place)}
+        />
+      ) : tab === "pending" ? (
         <div className="flex flex-col gap-3">
           {tickets.status === "loading" ? (
             <TicketCardSkeleton />
           ) : tickets.status === "error" ? (
             <ErrorBox retry={tickets.retry} />
           ) : tickets.active.length === 0 ? (
-            <EmptyPitch onStart={() => setCreateOpen(true)} />
-          ) : (
-            <>
-              {tickets.active.map((t) => (
-                <CheckTicketCard key={t.id} ticket={t} onCancel={cancelTicket} />
-              ))}
+            <div className="surface-card flex flex-col items-center gap-3 rounded-2xl px-6 py-10 text-center">
+              <span className="bg-primary/10 text-primary grid size-12 place-items-center rounded-2xl">
+                <QrCode className="size-6" />
+              </span>
+              <p className="text-foreground text-[14px] font-semibold">
+                No live ticket
+              </p>
+              <p className="text-muted-foreground max-w-[280px] text-[12.5px] leading-relaxed">
+                Pick the place you&apos;re visiting in New and your QR is
+                ready to scan.
+              </p>
               <button
                 type="button"
-                onClick={() => setCreateOpen(true)}
-                className="border-border text-muted-foreground hover:text-foreground flex min-h-11 items-center justify-center gap-1.5 rounded-2xl border border-dashed text-[12.5px] font-semibold transition"
+                onClick={() => setTabChoice("new")}
+                className="bg-pink-gradient shadow-glow mt-1 rounded-xl px-5 py-2.5 text-[13px] font-semibold text-white transition active:scale-[0.99]"
               >
-                <Plus className="size-4" /> Another place
+                Browse places
               </button>
-            </>
+            </div>
+          ) : (
+            tickets.active.map((t) => (
+              <CheckTicketCard key={t.id} ticket={t} onCancel={cancelTicket} />
+            ))
           )}
         </div>
       ) : (
@@ -153,47 +178,34 @@ export function PayClient({
               </p>
             </div>
           ) : (
-            tickets.history.map((t) => <HistoryTicketCard key={t.id} ticket={t} />)
+            tickets.history.map((t) => (
+              <HistoryTicketCard key={t.id} ticket={t} />
+            ))
           )}
         </div>
       )}
 
-      {/* Identity row — the demoted passport (2A: text code, no QR). */}
-      <MemberRow code={code} name={name} instagramHandle={instagramHandle} />
-
-      <CreateTicketSheet
-        // Remount per open: fresh state without a reset effect (React 19
-        // set-state-in-effect rule).
-        key={String(createOpen)}
-        open={createOpen}
-        onClose={() => setCreateOpen(false)}
-        onCreated={async () => {
-          await tickets.refresh();
-          setTab("ticket");
-        }}
+      <VenuePassModal
+        // Remount per venue: fresh modal state without reset effects.
+        key={passPlace?.id ?? "closed"}
+        place={passPlace}
+        code={code}
+        tickets={tickets}
+        onClose={() => setPassPlace(null)}
+        onTicketStarted={() => setTabChoice("pending")}
       />
     </div>
   );
 }
 
-// The empty state IS the pitch (3A): the three-step story plus the one
-// gradient hero this page is allowed when no ticket is live.
-function EmptyPitch({ onStart }: { onStart: () => void }) {
+// The three steps — always visible per Pato's spec (the pitch is the
+// program's whole story: pick the place, show your QR, pay less).
+function PitchSteps() {
   return (
-    <div className="flex flex-col gap-3">
-      <div className="border-border bg-card grid grid-cols-3 gap-1 rounded-2xl border px-3 py-4">
-        <PitchStep icon={<MapPin className="size-[18px]" />} label="Pick the place" />
-        <PitchStep icon={<QrCode className="size-[18px]" />} label="Show your QR" />
-        <PitchStep icon={<Sparkles className="size-[18px]" />} label="Pay less" />
-      </div>
-      <button
-        type="button"
-        onClick={onStart}
-        className="bg-pink-gradient shadow-glow flex min-h-12 items-center justify-center gap-2 rounded-2xl px-4 text-sm font-semibold text-white transition active:scale-[0.99]"
-      >
-        <Plus className="size-4" strokeWidth={2.5} />
-        Start a ticket
-      </button>
+    <div className="border-border bg-card grid grid-cols-3 gap-1 rounded-2xl border px-3 py-4">
+      <PitchStep icon={<MapPin className="size-[18px]" />} label="Pick the place" />
+      <PitchStep icon={<QrCode className="size-[18px]" />} label="Show your QR" />
+      <PitchStep icon={<Sparkles className="size-[18px]" />} label="Pay less" />
     </div>
   );
 }

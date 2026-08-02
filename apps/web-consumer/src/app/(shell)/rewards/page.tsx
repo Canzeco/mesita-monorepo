@@ -14,8 +14,9 @@ const PayClient = nextDynamic(
 
 export const dynamic = "force-dynamic";
 
-// Rewards is one page: banner + Mesita passport (QR/code) + tickets.
-// Legacy /pay/* paths redirect here.
+// Rewards Wallet (MESITA-811): identity header + three steps + New/Pending/
+// History; the venue pass modal carries the QR. Legacy /pay/* paths redirect
+// here.
 export default async function RewardsPage() {
   const supabase = await createServerSupabase();
   const {
@@ -50,7 +51,6 @@ export default async function RewardsPage() {
           profile.full_name ||
           ""
         }
-        instagramHandle={profile.instagram_handle}
       />
     </div>
   );
