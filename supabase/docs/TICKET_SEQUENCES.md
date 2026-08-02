@@ -7,8 +7,9 @@ rate numbers here.
 **The inversion:** the CONSUMER creates the ticket before any staff involvement
 (`consumer-web-create-ticket`); staff-initiated creation (`business-web-create-ticket`)
 is retired — never re-add it. The ticket's QR is `https://mesita.ai/check/<check_code>`
-(public page in `apps/web-landing`), and the staff side of the flow happens on that
-page via the `check-web-*` EFs — `verify_jwt = false`; possession of the 128-bit
+(public page — canonical home `apps/web-checkout`, checkout.mesita.ai pending; `apps/web-landing`
+still serves live QRs until the URL flip, MESITA-813), and the staff side of the flow happens on
+that page via the `check-web-*` EFs — `verify_jwt = false`; possession of the 128-bit
 `check_code` IS the authentication (security model: `_shared/ticket-check.ts`).
 
 ## Sequences
@@ -56,7 +57,7 @@ page via the `check-web-*` EFs — `verify_jwt = false`; possession of the 128-b
 | Surface | Module |
 |---------|--------|
 | Consumer create + stepper | `consumer-web-create-ticket` · `apps/web-consumer/src/lib/ticket-flow-steps.ts` (mobile mirror in `apps/mobile-consumer`) |
-| Public check page | `apps/web-landing/src/app/check/[code]/` · `check-web-{get-ticket,submit-bill,verify-action,mark-paid}` |
+| Public check page | `apps/web-checkout/src/app/check/[code]/` (landing mirror until MESITA-813) · `check-web-{get-ticket,submit-bill,verify-action,mark-paid}` |
 | Shared security/billing | `_shared/ticket-check.ts` · `_shared/business-ticket-billing.ts` · `_shared/rewards-config.ts` |
 | Business console | `apps/web-business/.../unit/[id]/tickets/` |
 | Staff WhatsApp | `_shared/staff-whatsapp-flow.ts` |

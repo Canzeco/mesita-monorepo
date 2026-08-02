@@ -9,7 +9,7 @@ This is **ASDM** — the Agentic Software Development Methodology: one protocol,
 | `CLAUDE.md` | Claude Code (local · cloud · subagent) or Claude Cowork |
 | `AGENTS.md` | Cursor, Codex, or any open-standard agent — generated from `CLAUDE.md`; hand edits go there |
 
-- **ONE repo (since 2026-07-11): `Canzeco/mesita-monorepo`** — the whole product, one `.git`, one history: `apps/{web-admin,web-business,web-consumer,web-landing,mobile-consumer,mobile-business}` + `supabase/`. The six former standalone repos are frozen read-only history — never work in them. Package rules: each package's `CLAUDE.md`.
+- **ONE repo (since 2026-07-11): `Canzeco/mesita-monorepo`** — the whole product, one `.git`, one history: `apps/{web-admin,web-business,web-consumer,web-landing,web-checkout,mobile-consumer,mobile-business}` + `supabase/`. The six former standalone repos are frozen read-only history — never work in them. Package rules: each package's `CLAUDE.md`.
 - **Agents never talk to each other.** Coordination is written state on two surfaces: **Linear** carries intent (issues, claims, `decision:` comments, statuses) · **git/GitHub** carries the work (branches, squash PRs; `Closes <ID>` is the join). Commits document code, they don't coordinate; chat is ephemeral — durable things land in the ledger or the docs, same session.
 - **ASDM mode — solo (alone on the repo)?** → branch off fresh main, work, squash-PR, merge it yourself, create the one-line issue at merge time (Ops & maintenance). That's the whole loop.
 - **ASDM mode — multi-agent (other agents live on the repo)?** → same loop, plus coordinate: pick → claim (`claimed: <platform>:<session-slug> · branch:<actual-branch>`) → isolated worktree → merge.

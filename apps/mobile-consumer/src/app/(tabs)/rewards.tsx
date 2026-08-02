@@ -5,8 +5,7 @@ import { PayClient } from '@/components/rewards/PayClient';
 import { ShellWash } from '@/components/ui/HeroBackdrop';
 import { useAuth } from '@/providers/auth';
 
-// Live Rewards page (web PayClient parity). Tab taps still open ComingSoonModal
-// via ConsumerTabBar (web BottomNav soon=true); deep links land here.
+// Live Rewards page (web PayClient parity) — the tab unparked in #548.
 export default function RewardsScreen() {
   const { loading, session, profile } = useAuth();
 
@@ -49,9 +48,6 @@ export default function RewardsScreen() {
           userId={session.user.id}
           code={profile?.code ?? ''}
           name={name}
-          instagramHandle={
-            profile?.instagram_handle ?? null
-          }
         />
       </SafeAreaView>
     </ShellWash>

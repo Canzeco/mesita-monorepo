@@ -1,41 +1,50 @@
-import { MapPin, Plus, QrCode, Sparkles, TicketX } from 'lucide-react-native';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { MapPin, QrCode, Sparkles, TicketX } from 'lucide-react-native';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 
 import { CheckTicketCard } from '@/components/rewards/CheckTicketCard';
-import { ContextStrip } from '@/components/rewards/ContextStrip';
-import { CreateTicketSheet } from '@/components/rewards/CreateTicketSheet';
 import { HistoryTicketCard } from '@/components/rewards/HistoryTicketCard';
-import { MemberRow } from '@/components/rewards/MemberRow';
+import { PlacePickList } from '@/components/rewards/PlacePickList';
 import { SavingsReveal } from '@/components/rewards/SavingsReveal';
+import { VenuePassModal } from '@/components/rewards/VenuePassModal';
+import { WalletHeader } from '@/components/rewards/WalletHeader';
 import { GRADIENT_DIAGONAL, GRADIENTS } from '@/constants/brand';
+import type { Place } from '@/lib/api/places';
 import { apiCancelTicket, type ConsumerTicketRow } from '@/lib/api/tickets';
 import { useConsumerTickets } from '@/lib/hooks/useConsumerTickets';
 import { TAB_SCROLL_PADDING_BOTTOM } from '@/lib/tab-layout';
 
-// Rewards is a WALLET (MESITA-808, 1A) — web PayClient mirror: context strip
-// → THE slot (live ticket QR / Start hero + pitch) → Ticket/History pills →
-// MemberRow (2A: no passport QR). Education lives on Me > Help (MESITA-809).
-// Motion budget: verified pulse (card) + savings reveal (here) only.
+// Rewards Wallet v3 (MESITA-811) — web PayClient mirror: identity header
+// (name + class, nothing else) → the three steps → New / Pending / History.
+// New lists every partner place; tapping one opens the venue pass modal,
+// which reuses-or-creates the ticket and shows the QR. Education stays on
+// Me > Help (MESITA-809); motion budget carries over from MESITA-808.
 
-type Tab = 'ticket' | 'history';
+type Tab = 'new' | 'pending' | 'history';
 
 export function PayClient({
   userId,
   code,
   name,
-  instagramHandle,
 }: {
   userId: string;
   code: string;
   name?: string;
-  instagramHandle?: string | null;
 }) {
-  const [tab, setTab] = useState<Tab>('ticket');
-  const [createOpen, setCreateOpen] = useState(false);
-
   const tickets = useConsumerTickets(userId);
+
+  // Default tab is DERIVED, not effect-set: Pending while a live ticket
+  // exists, New otherwise. A manual tap pins the choice for the session.
+  const [tabChoice, setTabChoice] = useState<Tab | null>(null);
+  const tab: Tab = tabChoice ?? (tickets.active.length > 0 ? 'pending' : 'new');
+
+  const [passPlace, setPassPlace] = useState<Place | null>(null);
+
+  const activePlaceIds = useMemo(
+    () => new Set(tickets.active.map((t) => t.project_id)),
+    [tickets.active],
+  );
 
   const cancelTicket = useCallback(
     async (ticketId: string) => {
@@ -45,8 +54,8 @@ export function PayClient({
     [tickets],
   );
 
-  // The paid beat (4A): a watched ticket flipping to revealed holds THE slot
-  // as a savings reveal before settling into History.
+  // The paid beat (MESITA-808, 4A): a watched ticket flipping to revealed
+  // holds a savings reveal before settling into History.
   const [justPaid, setJustPaid] = useState<ConsumerTicketRow | null>(null);
   const prevActiveIdsRef = useRef<Set<string>>(new Set());
   useEffect(() => {
@@ -71,7 +80,9 @@ export function PayClient({
         }}
         showsVerticalScrollIndicator={false}
       >
-        <ContextStrip />
+        <WalletHeader name={name} />
+
+        <PitchSteps />
 
         {justPaid ? (
           <SavingsReveal
@@ -81,17 +92,18 @@ export function PayClient({
           />
         ) : null}
 
-        {/* Ticket / History pills (5A) — ≥44px hit areas. */}
+        {/* New / Pending / History pills — ≥44px hit areas. */}
         <View className="flex-row rounded-2xl border border-border bg-card p-1">
           {(
             [
-              { id: 'ticket', label: 'Ticket' },
+              { id: 'new', label: 'New' },
+              { id: 'pending', label: 'Pending' },
               { id: 'history', label: 'History' },
             ] as const
           ).map((t) => (
             <Pressable
               key={t.id}
-              onPress={() => setTab(t.id)}
+              onPress={() => setTabChoice(t.id)}
               accessibilityRole="tab"
               accessibilityState={{ selected: tab === t.id }}
               className={`flex-1 flex-row items-center justify-center gap-1.5 rounded-xl px-1 ${
@@ -107,15 +119,15 @@ export function PayClient({
               >
                 {t.label}
               </Text>
-              {t.id === 'ticket' && tickets.active.length > 0 ? (
+              {t.id === 'pending' && tickets.active.length > 0 ? (
                 <View
                   className={`rounded-full px-1.5 ${
-                    tab === 'ticket' ? 'bg-background/25' : 'bg-primary/10'
+                    tab === 'pending' ? 'bg-background/25' : 'bg-primary/10'
                   }`}
                 >
                   <Text
                     className={`font-bold ${
-                      tab === 'ticket' ? 'text-background' : 'text-primary'
+                      tab === 'pending' ? 'text-background' : 'text-primary'
                     }`}
                     style={{ fontSize: 10 }}
                   >
@@ -127,34 +139,59 @@ export function PayClient({
           ))}
         </View>
 
-        {tab === 'ticket' ? (
+        {tab === 'new' ? (
+          <PlacePickList
+            activePlaceIds={activePlaceIds}
+            onPick={(place) => setPassPlace(place)}
+          />
+        ) : tab === 'pending' ? (
           <View style={{ gap: 12 }}>
             {tickets.status === 'loading' ? (
               <ActivityIndicator style={{ paddingVertical: 24 }} />
             ) : tickets.status === 'error' ? (
               <ErrorBox retry={tickets.retry} />
             ) : tickets.active.length === 0 ? (
-              <EmptyPitch onStart={() => setCreateOpen(true)} />
-            ) : (
-              <>
-                {tickets.active.map((t) => (
-                  <CheckTicketCard key={t.id} ticket={t} onCancel={cancelTicket} />
-                ))}
-                <Pressable
-                  onPress={() => setCreateOpen(true)}
-                  accessibilityRole="button"
-                  className="flex-row items-center justify-center gap-1.5 rounded-2xl border border-dashed border-border"
-                  style={{ minHeight: 44 }}
+              <View className="items-center gap-3 rounded-2xl border border-border bg-card px-6 py-10">
+                <View className="h-12 w-12 items-center justify-center rounded-2xl bg-primary/10">
+                  <QrCode size={24} color="#cf0360" />
+                </View>
+                <Text
+                  className="font-semibold text-foreground"
+                  style={{ fontSize: 14 }}
                 >
-                  <Plus size={16} color="#775254" />
-                  <Text
-                    className="font-semibold text-muted-foreground"
-                    style={{ fontSize: 12.5 }}
+                  No live ticket
+                </Text>
+                <Text
+                  className="text-center text-muted-foreground"
+                  style={{ fontSize: 12.5, lineHeight: 17, maxWidth: 280 }}
+                >
+                  Pick the place you&apos;re visiting in New and your QR is
+                  ready to scan.
+                </Text>
+                <Pressable
+                  onPress={() => setTabChoice('new')}
+                  accessibilityRole="button"
+                  className="mt-1 overflow-hidden rounded-xl active:opacity-90"
+                >
+                  <LinearGradient
+                    colors={[...GRADIENTS.pink]}
+                    start={GRADIENT_DIAGONAL.start}
+                    end={GRADIENT_DIAGONAL.end}
+                    style={{ paddingHorizontal: 20, paddingVertical: 10 }}
                   >
-                    Another place
-                  </Text>
+                    <Text
+                      className="font-semibold text-white"
+                      style={{ fontSize: 13 }}
+                    >
+                      Browse places
+                    </Text>
+                  </LinearGradient>
                 </Pressable>
-              </>
+              </View>
+            ) : (
+              tickets.active.map((t) => (
+                <CheckTicketCard key={t.id} ticket={t} onCancel={cancelTicket} />
+              ))
             )}
           </View>
         ) : (
@@ -179,58 +216,29 @@ export function PayClient({
             )}
           </View>
         )}
-
-        {/* Identity row — the demoted passport (2A: text code, no QR). */}
-        <MemberRow code={code} name={name} instagramHandle={instagramHandle} />
       </ScrollView>
 
-      <CreateTicketSheet
-        // Remount per open: fresh state without a reset effect.
-        key={String(createOpen)}
-        visible={createOpen}
-        onClose={() => setCreateOpen(false)}
-        onCreated={async () => {
-          await tickets.refresh();
-          setTab('ticket');
-        }}
+      <VenuePassModal
+        // Remount per venue: fresh modal state without reset effects.
+        key={passPlace?.id ?? 'closed'}
+        place={passPlace}
+        code={code}
+        tickets={tickets}
+        onClose={() => setPassPlace(null)}
+        onTicketStarted={() => setTabChoice('pending')}
       />
     </>
   );
 }
 
-// The empty state IS the pitch (3A): the three-step story plus the one
-// gradient hero this page is allowed when no ticket is live.
-function EmptyPitch({ onStart }: { onStart: () => void }) {
+// The three steps — always visible per Pato's spec (the pitch is the
+// program's whole story: pick the place, show your QR, pay less).
+function PitchSteps() {
   return (
-    <View style={{ gap: 12 }}>
-      <View className="flex-row rounded-2xl border border-border bg-card px-3 py-4">
-        <PitchStep icon={<MapPin size={18} color="#cf0360" />} label="Pick the place" />
-        <PitchStep icon={<QrCode size={18} color="#cf0360" />} label="Show your QR" />
-        <PitchStep icon={<Sparkles size={18} color="#cf0360" />} label="Pay less" />
-      </View>
-      <Pressable
-        onPress={onStart}
-        accessibilityRole="button"
-        className="overflow-hidden rounded-2xl active:opacity-90"
-      >
-        <LinearGradient
-          colors={[...GRADIENTS.pink]}
-          start={GRADIENT_DIAGONAL.start}
-          end={GRADIENT_DIAGONAL.end}
-          style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: 8,
-            minHeight: 48,
-          }}
-        >
-          <Plus size={16} color="#fff" strokeWidth={2.5} />
-          <Text className="font-semibold text-white" style={{ fontSize: 14 }}>
-            Start a ticket
-          </Text>
-        </LinearGradient>
-      </Pressable>
+    <View className="flex-row rounded-2xl border border-border bg-card px-3 py-4">
+      <PitchStep icon={<MapPin size={18} color="#cf0360" />} label="Pick the place" />
+      <PitchStep icon={<QrCode size={18} color="#cf0360" />} label="Show your QR" />
+      <PitchStep icon={<Sparkles size={18} color="#cf0360" />} label="Pay less" />
     </View>
   );
 }
