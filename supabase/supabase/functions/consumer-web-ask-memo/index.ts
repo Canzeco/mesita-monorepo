@@ -73,6 +73,10 @@ type MemoBody = {
 const MAX_CARDS = 3;
 // The on-Mesita name sweep in the legacy pipeline.
 const NAME_SWEEP_LIMIT = 4;
+// How long a warm isolate may reuse the config + persona-clause reads. Short
+// enough that an operator's Memo Config save feels immediate, long enough to
+// cover a whole conversation.
+const CONFIG_CACHE_MS = 30_000;
 
 // ── Handler ────────────────────────────────────────────────────────────
 
@@ -102,7 +106,16 @@ Deno.serve(async (req) => {
   const { user } = await getOptionalAuthedUser(req, env);
 
   // Memo's whole reach, on either engine.
-  const data = createMemoData(env, "consumer-web-ask-memo");
+  //
+  // Config + persona-clause reads are cached briefly (see memo-data.ts): this
+  // is the consumer's synchronous chat path, app_settings changes a few times a
+  // week, and a chat asks for the same user's clause on every turn. Place reads
+  // are never cached — those are the answer. An operator's Config save takes
+  // effect within CONFIG_CACHE_MS; the admin Playground opts out entirely so it
+  // always tests what was just saved.
+  const data = createMemoData(env, "consumer-web-ask-memo", {
+    cacheMs: CONFIG_CACHE_MS,
+  });
   const perplexityKey = Deno.env.get("PERPLEXITY_KEY") ?? "";
 
   // Only look up places when the ask is actually place-seeking — a definition

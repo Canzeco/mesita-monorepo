@@ -102,6 +102,9 @@ Deno.serve(async (req) => {
     : null;
 
   // Memo's data surface — the same four internal EFs the consumer path uses.
+  // Uncached on purpose (no cacheMs): the consumer path reuses config reads for
+  // ~30s, but this page exists to test the persona you JUST saved, so a stale
+  // read here would look like a broken Save.
   const data = createMemoData(envRes.env, "admin-web-ask-memo");
 
   // Saved persona + model in one hop (supabase-edgefunc-get-memo-config).
