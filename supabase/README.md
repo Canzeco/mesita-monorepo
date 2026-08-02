@@ -1,4 +1,4 @@
-# mesita-supabase
+# supabase — Mesita backend
 
 **Mesita backend** — Supabase (Postgres, Auth, Edge Functions) plus third-party integrations (Twilio, Stripe, ElevenLabs). Web and mobile apps call Edge Functions only; functions own business logic and talk to the database.
 
@@ -123,9 +123,7 @@ advancing places through the `place_research` stage table
 poller `run_place_enrichment_stages` drives the stages. n8n is fully out of
 the stack (the Reservationist will be ElevenLabs-based).
 
-Reward ticket sequences (scan, billing, story, payment, review) are documented in [docs/TICKET_SEQUENCES.md](docs/TICKET_SEQUENCES.md). They orchestrate in **business-** / **consumer-** / **staff-** functions; Twilio sends the messages.
-
-Business console: `business-web-create-ticket` with `scanOnly: true`, then `business-web-submit-ticket-bill`. Consumer step order and staff floor steppers live in each web repo’s `ticket-flow-steps.ts` / `ticket-staff-lifecycle.ts`.
+Reward ticket sequences (create, scan, billing, story, payment, review) are documented in [docs/TICKET_SEQUENCES.md](docs/TICKET_SEQUENCES.md). Tickets v2 (MESITA-806): the CONSUMER creates the ticket (`consumer-web-create-ticket`); staff work it on the public check page `mesita.ai/check/<code>` (`check-web-*`, `verify_jwt=false`), with the business console + staff WhatsApp as secondary rails; Twilio sends the messages. Consumer step order lives in each app's `ticket-flow-steps.ts`.
 
 ---
 
