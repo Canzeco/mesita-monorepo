@@ -2,7 +2,8 @@
 //
 // This page lifts the canonical rate table out of code and onto the
 // public.app_settings singleton, so an operator can tune, for each strategy
-// (Zero / Conservative / Aggressive), what each of the seven segments pays.
+// (Zero / Conservative / Aggressive / Dominant), what each of the seven
+// segments pays.
 // The v6 bill engine (_shared/rewards-config.ts) reads it on every ticket.
 //
 // Segments v6 (2026-08-01): four classes — Standard, Premium, Influencer
@@ -20,7 +21,7 @@
 // the best-of resolution in _shared/rewards-config.ts — keep them in lock-step
 // with apps/web-consumer/src/lib/reward-segments.ts.
 
-export type GridStrategy = "zero" | "conservative" | "aggressive";
+export type GridStrategy = "zero" | "conservative" | "aggressive" | "dominant";
 
 export type RewardSegmentKey =
   | "standard"
@@ -145,6 +146,12 @@ export const STRATEGY_IDS: readonly {
     blurb: "Bold headlines to pull a crowd.",
     editable: true,
   },
+  {
+    key: "dominant",
+    label: "Dominant",
+    blurb: "Raises the floor — a strong deal for every guest.",
+    editable: true,
+  },
 ];
 
 // The 5% grid: off, then 10 → 50 in steps of 5.
@@ -159,17 +166,18 @@ export const CAP_MIN = 0;
 export const CAP_MAX = 5000;
 const CAP_DEFAULT = 500;
 
-// The locked v6 defaults. Zero column is all 0 by definition.
+// The locked v6 defaults. Zero column is all 0 by definition; Dominant raises
+// the floor over Aggressive, never the ceiling (Review is already at 50).
 export const DEFAULT_CONFIG: RewardsConfig = {
   cap: CAP_DEFAULT,
   grid: {
-    standard: { zero: 0, conservative: 10, aggressive: 10 },
-    premium: { zero: 0, conservative: 15, aggressive: 20 },
-    influencer: { zero: 0, conservative: 15, aggressive: 20 },
-    aura: { zero: 0, conservative: 20, aggressive: 25 },
-    story: { zero: 0, conservative: 20, aggressive: 30 },
-    welcome: { zero: 0, conservative: 20, aggressive: 30 },
-    review: { zero: 0, conservative: 30, aggressive: 50 },
+    standard: { zero: 0, conservative: 10, aggressive: 10, dominant: 20 },
+    premium: { zero: 0, conservative: 15, aggressive: 20, dominant: 25 },
+    influencer: { zero: 0, conservative: 15, aggressive: 20, dominant: 25 },
+    aura: { zero: 0, conservative: 20, aggressive: 25, dominant: 30 },
+    story: { zero: 0, conservative: 20, aggressive: 30, dominant: 40 },
+    welcome: { zero: 0, conservative: 20, aggressive: 30, dominant: 40 },
+    review: { zero: 0, conservative: 30, aggressive: 50, dominant: 50 },
   },
 };
 
@@ -217,6 +225,10 @@ export function coerceConfig(raw: unknown): RewardsConfig {
         seg.key in rawGrid && "aggressive" in row
           ? snapRate(row.aggressive)
           : fallback.aggressive,
+      dominant:
+        seg.key in rawGrid && "dominant" in row
+          ? snapRate(row.dominant)
+          : fallback.dominant,
     };
   }
 

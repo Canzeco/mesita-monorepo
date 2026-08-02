@@ -23,10 +23,10 @@ import { StatusPill } from "./promoShared";
 import { SubscriptionBox } from "./SubscriptionBox";
 
 // Promos — v4.1 pricing cards + product modal (mirrors admin MESITA-584).
-//   1. Subscription — THREE pricing cards with generated art bands. The whole
+//   1. Subscription — FOUR pricing cards with generated art bands. The whole
 //      card is the click target: it opens a product modal with the full
 //      detail (what you give / what you get back / the commitment) and the
-//      action footer — the modal IS the confirm-and-pay step. Three products
+//      action footer — the modal IS the confirm-and-pay step. Four products
 //      cost the SAME MX$1,000/year Verified membership; switching Strategies
 //      later is a NEW membership (the lock-in).
 //   2. The subscription — fee framing, activation steps, strikes ladder.
@@ -169,15 +169,15 @@ export function PromosClient({ place }: { place: MyPlace }) {
           Promos
         </h2>
         <p className="text-muted-foreground text-[13px] leading-snug">
-          Three memberships, one price — what changes is the discounts you give,
+          Four memberships, one price — what changes is the discounts you give,
           and the visibility the algorithm gives back.
         </p>
       </header>
 
-      {/* ── Box 1 · Subscription (three pricing cards) ────────────────── */}
+      {/* ── Box 1 · Subscription (four pricing cards) ─────────────────── */}
       <Section
         title="Mesita Membership"
-        description={`${formatMoney(PRODUCT_PRICE_MXN, place.currency)}/year each for the paid two — tap a card for the full detail. Every discount applies to the first ${formatMoney(UNIVERSAL_CAP_MXN, place.currency)} of the bill.`}
+        description={`${formatMoney(PRODUCT_PRICE_MXN, place.currency)}/year each for the paid three — tap a card for the full detail. Every discount applies to the first ${formatMoney(UNIVERSAL_CAP_MXN, place.currency)} of the bill.`}
         right={<StatusPill subscribed={subscribed} />}
       >
         <div className="grid grid-cols-1 gap-3 min-[480px]:grid-cols-2">

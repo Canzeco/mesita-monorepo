@@ -25,7 +25,7 @@ export function RpBox() {
         </Prose>
       }
       hyperparams={
-        <KnobGrid cols={3}>
+        <KnobGrid cols={4}>
           {STRATEGIES.map((s) => (
             <Slider
               key={s.id}
@@ -45,7 +45,7 @@ export function RpBox() {
       process={
         <>
           <ProcessSteps>
-            <p>live rates (welcome/returning × standard/premium) → strategy (Zero · Conservative · Aggressive)</p>
+            <p>live rates (welcome/returning × standard/premium) → strategy (Zero · Conservative · Aggressive · Dominant)</p>
             <p>strategy → its rung above · custom/legacy rates that match no preset → the zero rung</p>
           </ProcessSteps>
           <LadderPlot
@@ -55,6 +55,7 @@ export function RpBox() {
               { label: "zero", value: rp.zero },
               { label: "cons", value: rp.conservative },
               { label: "aggr", value: rp.aggressive },
+              { label: "domi", value: rp.dominant },
             ]}
           />
         </>

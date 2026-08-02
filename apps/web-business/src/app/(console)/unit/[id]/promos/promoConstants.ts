@@ -50,6 +50,15 @@ export const CARD_ART: Record<
     recvBg: "bg-orange-500/[0.07]",
     recvBorder: "border-orange-500/25",
   },
+  dominant: {
+    src: "/promos/strategy-dominant.jpg",
+    fallback: "from-purple-950 to-amber-500",
+    cta: "from-purple-700 via-fuchsia-600 to-amber-500",
+    meter: "bg-purple-500",
+    recvText: "text-purple-600",
+    recvBg: "bg-purple-500/[0.07]",
+    recvBorder: "border-purple-500/25",
+  },
 };
 
 export type CardArt = (typeof CARD_ART)[StrategyId];

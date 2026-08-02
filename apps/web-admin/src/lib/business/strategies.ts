@@ -25,11 +25,10 @@
 // (computeTicketBill → promoEligibleSubtotalCents reads it), and always shown.
 export const UNIVERSAL_CAP_MXN = 500;
 
-export type StrategyId = "zero" | "conservative" | "aggressive";
+export type StrategyId = "zero" | "conservative" | "aggressive" | "dominant";
 
-// Three rungs (Dominant retired in v5, MESITA-723), distinct from the plan
-// visibility of the old model.
-type StrategyVisibility = "Low" | "Mid" | "High";
+// Four rungs, distinct from the plan visibility of the old model.
+type StrategyVisibility = "Low" | "Mid" | "High" | "Max";
 
 // The four discount cells, keyed by the exact places column each maps to.
 //   welcome_* → first visit at the place · unprefixed → every visit after.
@@ -53,16 +52,18 @@ export type Strategy = {
   cap: number | null;
 };
 
-// Ordered ascending in generosity so the picker reads Zero → Aggressive.
-// The rate tuples are the canonical Promos table (Dominant retired in v5,
-// MESITA-723 — three strategies only):
+// Ordered ascending in generosity so the picker reads Zero → Dominant.
+// The rate tuples are the canonical Promos table (Dominant restored in v6.1,
+// 2026-08-02 — four strategies):
 //
 //   Level          FR  PR  FW  PW   Cap   Visibility
 //   ⭕ Zero        off off off off   —     Low
 //   🌿 Conservative 10  20  20  30   500   Mid
 //   ⚡ Aggressive   10  30  30  50   500   High
+//   👑 Dominant     20  30  40  50   500   Max
 //
-// Aggressive is Conservative stretched ×2 on the Premium/Welcome side.
+// Aggressive is Conservative stretched ×2 on the Premium/Welcome side;
+// Dominant raises the floor (FR/FW), not the ceiling (PW stays 50).
 export const STRATEGIES: readonly Strategy[] = [
   {
     id: "zero",
@@ -109,6 +110,21 @@ export const STRATEGIES: readonly Strategy[] = [
     },
     cap: UNIVERSAL_CAP_MXN,
   },
+  {
+    id: "dominant",
+    name: "Dominant",
+    nameEs: "Dominante",
+    emoji: "👑",
+    tagline: "Raise the floor — every guest walks in to a strong deal.",
+    visibility: "Max",
+    rates: {
+      welcome_free_rate: 40,
+      welcome_premium_rate: 50,
+      free_rate: 20,
+      premium_rate: 30,
+    },
+    cap: UNIVERSAL_CAP_MXN,
+  },
 ];
 
 export const STRATEGY_BY_ID = Object.fromEntries(
@@ -120,6 +136,7 @@ export const STRATEGY_VISIBILITY_LADDER: readonly StrategyVisibility[] = [
   "Low",
   "Mid",
   "High",
+  "Max",
 ];
 
 // Which strategy a place's stored rates currently reflect. Matched on the four

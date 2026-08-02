@@ -198,7 +198,7 @@ export function InstagramModal({
 // One bar, two payoffs (segments v6): ≥1,000 followers upgrades the WHOLE
 // ACCOUNT to Influencer automatically — and the Instagram Story action is
 // EXCLUSIVE to that class, so the same door opens both the class rung and the
-// per-visit story rung. Rates quote the reward ladder's peak (aggressive)
+// per-visit story rung. Rates quote the reward ladder's peak (dominant)
 // column so they always match the /rewards program summary.
 function ReachCards() {
   const influencerRate =
