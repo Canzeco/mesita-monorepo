@@ -5,8 +5,15 @@
 
 import { Image } from 'expo-image';
 import { BadgeCheck, Loader2, ScanLine, X } from 'lucide-react-native';
-import { useState } from 'react';
-import { ActivityIndicator, Pressable, Text, View } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import {
+  ActivityIndicator,
+  Dimensions,
+  Pressable,
+  Text,
+  Vibration,
+  View,
+} from 'react-native';
 import QRCode from 'react-native-qrcode-svg';
 import { LinearGradient } from 'expo-linear-gradient';
 
@@ -14,11 +21,30 @@ import { GRADIENT_DIAGONAL, GRADIENTS } from '@/constants/brand';
 import { formatCurrency } from '@/lib/api/pay';
 import { checkUrlForCode, type ConsumerTicketRow } from '@/lib/api/tickets';
 
-const STATUS_LINE: Record<string, string> = {
-  open: 'Show this QR — staff scan it to verify and start your visit.',
-  awaiting_story: 'Bill is in. Post your tagged story so the place can approve it.',
-  awaiting_payment_confirm: 'All set — pay the discounted total at the table.',
+// Story lifecycle → the guest's one line (rejected must read differently
+// from pending — the guest has to act, not wait).
+const STORY_LINE: Record<string, string> = {
+  pending: 'Bill is in. Post your tagged story so the place can approve it.',
+  submitted: 'Story sent — the place is checking it.',
+  ai_rejected: "Story wasn't accepted — ask the staff to review it.",
+  staff_rejected: "Story wasn't accepted — ask the staff to review it.",
 };
+
+function statusLine(ticket: ConsumerTicketRow): string {
+  switch (ticket.status) {
+    case 'open':
+      return 'Show this QR — staff scan it to verify and start your visit.';
+    case 'awaiting_story':
+      return STORY_LINE[ticket.story_status ?? ''] ?? STORY_LINE.pending;
+    case 'awaiting_payment_confirm':
+      return 'All set — pay the discounted total at the table.';
+    default:
+      return ticket.status;
+  }
+}
+
+// QR clamp (Pass 6): the code shrinks before the status copy does.
+const QR_SIZE = Math.min(190, Math.round(Dimensions.get('window').width * 0.6));
 
 export function CheckTicketCard({
   ticket,
@@ -33,6 +59,21 @@ export function CheckTicketCard({
   const scanned = ticket.first_scanned_at != null;
   const billed = (ticket.total_cents ?? 0) > 0;
 
+  // The verified pulse (MESITA-808, 4A): fires ONCE when the poll flips
+  // first_scanned_at — emerald border flash + a short vibration (built-in
+  // Vibration API; no haptics dep). Static color change, reduce-motion safe.
+  const [pulse, setPulse] = useState(false);
+  const wasScannedRef = useRef(scanned);
+  useEffect(() => {
+    if (scanned && !wasScannedRef.current) {
+      Vibration.vibrate(30);
+      setPulse(true);
+      const t = setTimeout(() => setPulse(false), 1400);
+      return () => clearTimeout(t);
+    }
+    wasScannedRef.current = scanned;
+  }, [scanned]);
+
   const handleCancel = async () => {
     setCancelling(true);
     try {
@@ -43,7 +84,12 @@ export function CheckTicketCard({
   };
 
   return (
-    <View className="overflow-hidden rounded-[24px] border border-border bg-card">
+    <View
+      className="overflow-hidden rounded-[24px] border border-border bg-card"
+      // Style wins over className only while pulsing — the token border
+      // returns untouched afterwards.
+      style={pulse ? { borderColor: '#059669', borderWidth: 2 } : undefined}
+    >
       {/* Place header */}
       <View className="flex-row items-center gap-3 border-b border-border px-4 py-3">
         {photo ? (
@@ -63,8 +109,12 @@ export function CheckTicketCard({
           </Text>
           <View className="mt-0.5 flex-row items-center gap-1">
             {scanned ? <BadgeCheck size={12} color="#059669" /> : null}
-            <Text className="text-muted-foreground" style={{ fontSize: 11 }}>
-              {scanned ? 'Scanned by the place' : 'Not scanned yet'}
+            <Text
+              accessibilityLiveRegion="polite"
+              className="text-muted-foreground"
+              style={{ fontSize: 11 }}
+            >
+              {scanned ? `Verified by ${placeName}` : 'Not scanned yet'}
             </Text>
           </View>
         </View>
@@ -99,7 +149,7 @@ export function CheckTicketCard({
           >
             <QRCode
               value={checkUrlForCode(ticket.check_code)}
-              size={190}
+              size={QR_SIZE}
               backgroundColor="#ffffff"
               color="#2b1233"
               ecl="M"
@@ -108,10 +158,11 @@ export function CheckTicketCard({
         ) : null}
 
         <Text
+          accessibilityLiveRegion="polite"
           className="text-center text-muted-foreground"
           style={{ fontSize: 12, maxWidth: 240 }}
         >
-          {STATUS_LINE[ticket.status] ?? ticket.status}
+          {statusLine(ticket)}
         </Text>
 
         {billed ? (

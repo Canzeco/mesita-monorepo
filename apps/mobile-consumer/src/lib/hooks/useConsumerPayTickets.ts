@@ -156,58 +156,6 @@ export function bundleToCardView(
   };
 }
 
-// ─── The pass's live ticket (mirrors web useConsumerPayTickets) ─────────────
-
-const LIVE_TICKET_STATUSES = new Set([
-  'open',
-  'revealed',
-  'awaiting_story',
-  'pending_payment',
-]);
-
-const STORY_PENDING_LABEL: Record<string, string> = {
-  pending: 'Post your story to unlock it',
-  submitted: 'Story sent — waiting on the place',
-  ai_rejected: "Story wasn't accepted — ask the staff",
-  staff_rejected: "Story wasn't accepted — ask the staff",
-};
-
-export type PassTicketView = {
-  ticketId: string;
-  placeName: string;
-  /** Resolved percent once the bill is in; null before billing. */
-  discountPercent: number | null;
-  /** What the guest still has to do, if anything. */
-  pendingLabel: string | null;
-};
-
-/**
- * The newest visit still in flight, for the pass's live state. The ticket list
- * is notification-driven, so a ticket surfaces here once it has produced a
- * notification — before that the pass correctly stays in its at-rest state
- * rather than quoting a rate it doesn't know.
- */
-export function derivePassTicket(
-  bundles: TicketBundle[],
-  ticketMetaById: Map<string, PayTicketMeta>,
-): PassTicketView | null {
-  // bundles are already sorted most-recent-first.
-  for (const b of bundles) {
-    const meta = ticketMetaById.get(b.ticketId);
-    if (!meta?.status || !LIVE_TICKET_STATUSES.has(meta.status)) continue;
-    return {
-      ticketId: b.ticketId,
-      placeName: b.payload.place_name ?? 'Partner place',
-      discountPercent:
-        meta.discount_percent ?? b.payload.discount_percent ?? null,
-      pendingLabel: meta.story_status
-        ? (STORY_PENDING_LABEL[meta.story_status] ?? null)
-        : null,
-    };
-  }
-  return null;
-}
-
 const STORY_VERIFIED = new Set(['ai_verified', 'staff_verified']);
 
 export type RewardStats = {

@@ -6,7 +6,7 @@
 // visit live off ticket columns alone — scanned ✓ from first_scanned_at,
 // amounts once billed, the story step when opted in.
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { QRCodeSVG } from "qrcode.react";
 import { BadgeCheck, Loader2, ScanLine, X } from "lucide-react";
@@ -18,11 +18,27 @@ import {
 } from "@/lib/api/tickets";
 import { cn } from "@/lib/utils";
 
-const STATUS_LINE: Record<string, string> = {
-  open: "Show this QR — staff scan it to verify and start your visit.",
-  awaiting_story: "Bill is in. Post your tagged story so the place can approve it.",
-  awaiting_payment_confirm: "All set — pay the discounted total at the table.",
+// Story lifecycle → the guest's one line (rejected must read differently from
+// pending — the guest has to act, not wait).
+const STORY_LINE: Record<string, string> = {
+  pending: "Bill is in. Post your tagged story so the place can approve it.",
+  submitted: "Story sent — the place is checking it.",
+  ai_rejected: "Story wasn't accepted — ask the staff to review it.",
+  staff_rejected: "Story wasn't accepted — ask the staff to review it.",
 };
+
+function statusLine(ticket: ConsumerTicketRow): string {
+  switch (ticket.status) {
+    case "open":
+      return "Show this QR — staff scan it to verify and start your visit.";
+    case "awaiting_story":
+      return STORY_LINE[ticket.story_status ?? ""] ?? STORY_LINE.pending;
+    case "awaiting_payment_confirm":
+      return "All set — pay the discounted total at the table.";
+    default:
+      return ticket.status;
+  }
+}
 
 export function CheckTicketCard({
   ticket,
@@ -37,6 +53,20 @@ export function CheckTicketCard({
   const scanned = ticket.first_scanned_at != null;
   const billed = (ticket.total_cents ?? 0) > 0;
 
+  // The verified pulse (MESITA-808, 4A): fire ONCE when the poll flips
+  // first_scanned_at from null — the handshake moment, not a re-render of an
+  // already-scanned ticket. CSS animation honors prefers-reduced-motion.
+  const [pulse, setPulse] = useState(false);
+  const wasScannedRef = useRef(scanned);
+  useEffect(() => {
+    if (scanned && !wasScannedRef.current) {
+      setPulse(true);
+      const t = window.setTimeout(() => setPulse(false), 1400);
+      return () => window.clearTimeout(t);
+    }
+    wasScannedRef.current = scanned;
+  }, [scanned]);
+
   const handleCancel = async () => {
     setCancelling(true);
     try {
@@ -47,7 +77,12 @@ export function CheckTicketCard({
   };
 
   return (
-    <section className="border-border bg-card overflow-hidden rounded-[24px] border">
+    <section
+      className={cn(
+        "border-border bg-card overflow-hidden rounded-[24px] border",
+        pulse && "animate-verified-pulse",
+      )}
+    >
       {/* Place header */}
       <div className="flex items-center gap-3 border-b border-border px-4 py-3">
         {photo ? (
@@ -65,10 +100,14 @@ export function CheckTicketCard({
         )}
         <div className="min-w-0 flex-1">
           <p className="truncate text-[14px] leading-tight font-bold">{placeName}</p>
-          <p className="text-muted-foreground mt-0.5 flex items-center gap-1 text-[11px]">
+          <p
+            aria-live="polite"
+            className="text-muted-foreground mt-0.5 flex items-center gap-1 text-[11px]"
+          >
             {scanned ? (
               <>
-                <BadgeCheck className="size-3 text-emerald-600" /> Scanned by the place
+                <BadgeCheck className="size-3 text-emerald-600" /> Verified by{" "}
+                {placeName}
               </>
             ) : (
               "Not scanned yet"
@@ -94,7 +133,9 @@ export function CheckTicketCard({
 
       <div className="flex flex-col items-center gap-3 px-4 py-4">
         {ticket.check_code ? (
-          <div className="w-full max-w-[220px] rounded-[20px] bg-white p-3.5 shadow-[0_10px_26px_-14px_rgba(120,20,40,0.45)]">
+          // Clamp so the status caption never clips below the fold on short
+          // screens (Pass 6): the QR shrinks before the copy does.
+          <div className="w-full max-w-[min(220px,60vw)] rounded-[20px] bg-white p-3.5 shadow-[0_10px_26px_-14px_rgba(120,20,40,0.45)]">
             <QRCodeSVG
               value={checkUrlForCode(ticket.check_code)}
               size={220}
@@ -107,8 +148,11 @@ export function CheckTicketCard({
           </div>
         ) : null}
 
-        <p className="text-muted-foreground max-w-[30ch] text-center text-[12px] leading-snug">
-          {STATUS_LINE[ticket.status] ?? ticket.status}
+        <p
+          aria-live="polite"
+          className="text-muted-foreground max-w-[30ch] text-center text-[12px] leading-snug"
+        >
+          {statusLine(ticket)}
         </p>
 
         {billed ? (
