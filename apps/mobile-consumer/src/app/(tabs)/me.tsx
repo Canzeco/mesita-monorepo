@@ -4,6 +4,7 @@ import {
   Bell,
   Bot,
   Crown,
+  HelpCircle,
   MessageCircle,
   Settings as SettingsIcon,
   Share2,
@@ -15,6 +16,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AiConnectModal } from '@/components/me/AiConnectModal';
 import { ClassModal } from '@/components/me/ClassModal';
+import { HelpModal } from '@/components/me/HelpModal';
 import { ContactSheet } from '@/components/me/contact-sheet';
 import { DeleteAccountSheet } from '@/components/me/DeleteAccountSheet';
 import {
@@ -45,6 +47,7 @@ type Sheet =
   | 'personal'
   | 'settings'
   | 'contact'
+  | 'help'
   | 'class'
   | 'verify'
   | 'share'
@@ -171,6 +174,16 @@ export default function MeScreen() {
           summary="Connect your Mesita profile to an AI · Premium"
           onPress={() => setSheet('ai')}
         />
+        {/* Help — how the reward program works + the tier ladder. Moved off
+            the Rewards wallet (MESITA-809): that page is for doing, this is
+            for understanding. */}
+        <BoxRow
+          Icon={HelpCircle}
+          tint="sky"
+          title="Help"
+          summary="How rewards work · tiers · discounts"
+          onPress={() => setSheet('help')}
+        />
         <BoxRow
           Icon={MessageCircle}
           tint="emerald"
@@ -206,6 +219,7 @@ export default function MeScreen() {
         visible={sheet === 'contact'}
         onClose={() => setSheet(null)}
       />
+      <HelpModal visible={sheet === 'help'} onClose={() => setSheet(null)} />
 
       <ClassModal
         visible={sheet === 'class'}

@@ -1,5 +1,5 @@
 import { MapPin, Plus, QrCode, Sparkles, TicketX } from 'lucide-react-native';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 
@@ -7,22 +7,17 @@ import { CheckTicketCard } from '@/components/rewards/CheckTicketCard';
 import { ContextStrip } from '@/components/rewards/ContextStrip';
 import { CreateTicketSheet } from '@/components/rewards/CreateTicketSheet';
 import { HistoryTicketCard } from '@/components/rewards/HistoryTicketCard';
-import { HowItWorksSheet } from '@/components/rewards/HowItWorksSheet';
 import { MemberRow } from '@/components/rewards/MemberRow';
 import { SavingsReveal } from '@/components/rewards/SavingsReveal';
 import { GRADIENT_DIAGONAL, GRADIENTS } from '@/constants/brand';
 import { apiCancelTicket, type ConsumerTicketRow } from '@/lib/api/tickets';
-import {
-  computeRewardStats,
-  useConsumerPayTickets,
-} from '@/lib/hooks/useConsumerPayTickets';
 import { useConsumerTickets } from '@/lib/hooks/useConsumerTickets';
 import { TAB_SCROLL_PADDING_BOTTOM } from '@/lib/tab-layout';
 
 // Rewards is a WALLET (MESITA-808, 1A) — web PayClient mirror: context strip
 // → THE slot (live ticket QR / Start hero + pitch) → Ticket/History pills →
-// MemberRow (2A: no passport QR). Education lives in HowItWorksSheet. Motion
-// budget: verified pulse (card) + savings reveal (here) only.
+// MemberRow (2A: no passport QR). Education lives on Me > Help (MESITA-809).
+// Motion budget: verified pulse (card) + savings reveal (here) only.
 
 type Tab = 'ticket' | 'history';
 
@@ -39,14 +34,8 @@ export function PayClient({
 }) {
   const [tab, setTab] = useState<Tab>('ticket');
   const [createOpen, setCreateOpen] = useState(false);
-  const [howOpen, setHowOpen] = useState(false);
 
   const tickets = useConsumerTickets(userId);
-  const notifications = useConsumerPayTickets(userId);
-  const stats = useMemo(
-    () => computeRewardStats(notifications.bundles, notifications.ticketMetaById),
-    [notifications.bundles, notifications.ticketMetaById],
-  );
 
   const cancelTicket = useCallback(
     async (ticketId: string) => {
@@ -82,7 +71,7 @@ export function PayClient({
         }}
         showsVerticalScrollIndicator={false}
       >
-        <ContextStrip onOpenHow={() => setHowOpen(true)} />
+        <ContextStrip />
 
         {justPaid ? (
           <SavingsReveal
@@ -194,12 +183,6 @@ export function PayClient({
         {/* Identity row — the demoted passport (2A: text code, no QR). */}
         <MemberRow code={code} name={name} instagramHandle={instagramHandle} />
       </ScrollView>
-
-      <HowItWorksSheet
-        visible={howOpen}
-        onClose={() => setHowOpen(false)}
-        stats={stats}
-      />
 
       <CreateTicketSheet
         // Remount per open: fresh state without a reset effect.

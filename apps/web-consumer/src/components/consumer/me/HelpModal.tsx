@@ -1,9 +1,9 @@
 "use client";
 
-// The single education home for the Rewards wallet (MESITA-808, decision 1A):
-// how rewards work, the seven-rung ladder, and the member scorecard — all the
-// content that used to live as page-level cards (RewardProgramCard banner,
-// RewardsTopCards sheet, MyQrCard scorecard) now opens from the context strip.
+// Help — the single education home for the reward program (MESITA-809):
+// how rewards work plus the seven-rung tier ladder. Lives on Me, not on
+// Rewards: the wallet is for doing, this is for understanding. Opened from
+// the Me > Help row.
 
 import type { LucideIcon } from "lucide-react";
 import {
@@ -19,9 +19,7 @@ import {
 } from "lucide-react";
 
 import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
-import { formatCurrency } from "@/lib/api/profile";
 import { useConsumerClass } from "@/lib/class-context";
-import type { RewardStats } from "@/lib/hooks/useConsumerPayTickets";
 import {
   PEAK_STRATEGY,
   REWARD_SEGMENTS,
@@ -40,20 +38,18 @@ const SEGMENT_ICON: Record<RewardSegmentKey, LucideIcon> = {
   review: Star,
 };
 
-export function HowItWorksSheet({
+export function HelpModal({
   open,
   onClose,
-  stats,
 }: {
   open: boolean;
   onClose: () => void;
-  stats?: RewardStats;
 }) {
   const { key: classKey } = useConsumerClass();
   const mine = segmentKeyForClass(classKey);
 
   return (
-    <LocalSheet open={open} onClose={onClose} ariaLabel="How rewards work">
+    <LocalSheet open={open} onClose={onClose} ariaLabel="Help — how rewards work">
       <div className="space-y-4 px-5 pt-4 pb-8">
         <div className="flex items-center gap-2.5">
           <span className="bg-primary/10 text-primary grid size-9 place-items-center rounded-xl">
@@ -164,32 +160,7 @@ export function HowItWorksSheet({
           })}
         </div>
 
-        {/* Member scorecard — relocated from the retired passport card. */}
-        {stats ? (
-          <div className="border-border grid grid-cols-4 gap-1 rounded-2xl border p-3.5">
-            <Stat value={String(stats.visits)} label="Visits" />
-            <Stat
-              value={stats.savedCents > 0 ? formatCurrency(stats.savedCents) : "—"}
-              label="Saved"
-            />
-            <Stat value={String(stats.stories)} label="Stories" />
-            <Stat value={String(stats.reviews)} label="Reviews" />
-          </div>
-        ) : null}
       </div>
     </LocalSheet>
-  );
-}
-
-function Stat({ value, label }: { value: string; label: string }) {
-  return (
-    <div className="flex flex-col items-center px-1 text-center">
-      <span className="text-foreground text-base leading-none font-extrabold tracking-tight tabular-nums">
-        {value}
-      </span>
-      <span className="text-muted-foreground mt-1 text-[8.5px] font-bold tracking-[0.06em] uppercase">
-        {label}
-      </span>
-    </div>
   );
 }

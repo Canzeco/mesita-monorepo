@@ -1,6 +1,7 @@
-// The single education home for the Rewards wallet (MESITA-808, 1A) —
-// mobile mirror of web HowItWorksSheet: how rewards work, the seven-rung
-// ladder, and the member scorecard, all inside one FullScreenSheet.
+// Help — the education home for the reward program (MESITA-809), mobile
+// mirror of web HelpModal: how rewards work + the seven-rung tier ladder.
+// Lives on Me, not on Rewards: the wallet is for doing, this is for
+// understanding. Opened from the Me > Help row.
 
 import type { LucideIcon } from 'lucide-react-native';
 import {
@@ -16,8 +17,6 @@ import {
 import { ScrollView, Text, View } from 'react-native';
 
 import { FullScreenSheet } from '@/components/ui/FullScreenSheet';
-import { formatCurrency } from '@/lib/api/pay';
-import type { RewardStats } from '@/lib/hooks/useConsumerPayTickets';
 import {
   PEAK_STRATEGY,
   REWARD_SEGMENTS,
@@ -62,21 +61,20 @@ function ExplainRow({
   );
 }
 
-export function HowItWorksSheet({
+export function HelpModal({
   visible,
   onClose,
-  stats,
 }: {
   visible: boolean;
   onClose: () => void;
-  stats?: RewardStats;
 }) {
   const { consumerClass } = useAuth();
   const key = (consumerClass?.class ?? 'standard') as RewardClassKey;
   const mine = segmentKeyForClass(key);
 
   return (
-    <FullScreenSheet visible={visible} onClose={onClose} title="How rewards work">
+    <FullScreenSheet visible={visible} onClose={onClose} title="Help"
+      subtitle="How rewards work">
       <ScrollView
         className="flex-1"
         contentContainerStyle={{ padding: 16, gap: 16 }}
@@ -156,38 +154,7 @@ export function HowItWorksSheet({
           })}
         </View>
 
-        {/* Member scorecard — relocated from the retired passport card. */}
-        {stats ? (
-          <View className="flex-row rounded-2xl border border-border p-3.5">
-            <Stat value={String(stats.visits)} label="Visits" />
-            <Stat
-              value={stats.savedCents > 0 ? formatCurrency(stats.savedCents) : '—'}
-              label="Saved"
-            />
-            <Stat value={String(stats.stories)} label="Stories" />
-            <Stat value={String(stats.reviews)} label="Reviews" />
-          </View>
-        ) : null}
       </ScrollView>
     </FullScreenSheet>
-  );
-}
-
-function Stat({ value, label }: { value: string; label: string }) {
-  return (
-    <View className="min-w-0 flex-1 items-center px-1">
-      <Text
-        className="font-extrabold text-foreground"
-        style={{ fontSize: 15, fontVariant: ['tabular-nums'] }}
-      >
-        {value}
-      </Text>
-      <Text
-        className="mt-1 font-bold uppercase text-muted-foreground"
-        style={{ fontSize: 8.5, letterSpacing: 0.5 }}
-      >
-        {label}
-      </Text>
-    </View>
   );
 }
