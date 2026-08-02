@@ -140,9 +140,16 @@ export type RateContext = {
 // Best-of resolution over the seven-segment grid at the place's strategy.
 // Everyone inherits the Standard floor; the guest's class segment resolves
 // GENERICALLY (its own grid row — no per-class branches); Welcome/Review join
-// from context for anyone; the Story rung is Influencer-exclusive. Returns a
-// clamped integer percent — and ONLY that, never the class (the blended-rate
-// privacy invariant).
+// from context for anyone. Returns a clamped integer percent — and ONLY that,
+// never the class (the blended-rate privacy invariant).
+//
+// Story eligibility is settled UPSTREAM, not here: the Influencer-only rule is
+// enforced where a story can start — business-web-create-ticket (never seeds a
+// story step for a non-Influencer) and consumer-web-submit-story (403s a
+// non-Influencer opt-in). By the time a story is VERIFIED the guest has done
+// the work and it was approved, so it always pays — re-checking the live class
+// at bill time would strip an already-earned reward from someone whose reach
+// lapsed between the post and the check.
 export function resolveTicketRate(
   strategy: GridStrategy,
   grid: RewardsGrid,
@@ -152,9 +159,7 @@ export function resolveTicketRate(
   const qualifying: number[] = [g.standard[strategy]];
   if (isClassSegment(ctx.classKey)) qualifying.push(g[ctx.classKey][strategy]);
   if (ctx.isFirstVisit) qualifying.push(g.welcome[strategy]);
-  if (ctx.storyVerified && ctx.classKey === "influencer") {
-    qualifying.push(g.story[strategy]);
-  }
+  if (ctx.storyVerified) qualifying.push(g.story[strategy]);
   if (ctx.reviewVerified) qualifying.push(g.review[strategy]);
   const best = qualifying.reduce((m, r) => (r > m ? r : m), 0);
   return Math.max(0, Math.min(100, best));

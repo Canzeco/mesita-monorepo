@@ -37,24 +37,30 @@ Deno.test("resolveTicketRate: Welcome joins the set on a first visit", () => {
   assertEquals(resolveTicketRate("conservative", GRID, { classKey: "premium", isFirstVisit: true }), 20);
 });
 
-Deno.test("resolveTicketRate: Story is Influencer-exclusive", () => {
-  // Influencer with a verified story takes the story rung.
+Deno.test("resolveTicketRate: a VERIFIED story always pays (eligibility settled upstream)", () => {
+  // The Influencer-only rule is enforced where a story can start
+  // (business-web-create-ticket seeding + consumer-web-submit-story opt-in).
+  // Once verified, the work is done and approved — it pays regardless of the
+  // live class, so a reach lapse between the post and the check can't strip an
+  // already-earned reward.
   assertEquals(
     resolveTicketRate("aggressive", GRID, { classKey: "influencer", isFirstVisit: false, storyVerified: true }),
     30,
   );
-  // Any other class with a verified story is ignored — keeps its class rate.
-  assertEquals(
-    resolveTicketRate("aggressive", GRID, { classKey: "aura", isFirstVisit: false, storyVerified: true }),
-    25,
-  );
-  assertEquals(
-    resolveTicketRate("aggressive", GRID, { classKey: "premium", isFirstVisit: false, storyVerified: true }),
-    20,
-  );
+  // Class that later dropped below the bar keeps the earned story rung.
   assertEquals(
     resolveTicketRate("aggressive", GRID, { classKey: "standard", isFirstVisit: false, storyVerified: true }),
-    10,
+    30,
+  );
+  // Aura's own rung (25) loses to an earned story (30) — best-of, not a sum.
+  assertEquals(
+    resolveTicketRate("aggressive", GRID, { classKey: "aura", isFirstVisit: false, storyVerified: true }),
+    30,
+  );
+  // No verified story: every class just takes its own rung.
+  assertEquals(
+    resolveTicketRate("aggressive", GRID, { classKey: "aura", isFirstVisit: false }),
+    25,
   );
 });
 

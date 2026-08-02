@@ -107,6 +107,12 @@ Deno.serve(async (req) => {
     );
   }
 
+  // Both remaining doors are evaluated, then the HIGHEST-RANKED one wins —
+  // the ladder is standard(0) < premium(1) < influencer(2) < aura(3), so a
+  // consumer who both subscribes and has reach must land on the better class.
+  // (Checking the subscription first would strand an Influencer-qualified
+  // consumer on Premium — and the next claim-instagram call, whose rank guard
+  // permits the upgrade, would immediately overturn it.)
   const sub = await admin
     .from("consumer_subscriptions")
     .select("current_period_end")
@@ -116,32 +122,48 @@ Deno.serve(async (req) => {
     .limit(1)
     .maybeSingle();
 
+  // Reach door: highest classes row whose follower_threshold the persisted
+  // count clears (data-driven, same rule as claim-instagram).
+  const followers = consumer.consumer_instagram_followers_count ?? 0;
+  const tiers = await admin
+    .from("classes")
+    .select("key, rank, follower_threshold")
+    .not("follower_threshold", "is", null)
+    .order("rank", { ascending: false });
+  const won = (tiers.data ?? []).find(
+    (t) => t.follower_threshold != null && followers >= t.follower_threshold,
+  );
+
+  const premiumRow = await admin
+    .from("classes")
+    .select("rank")
+    .eq("key", "premium")
+    .maybeSingle();
+  const premiumRank = premiumRow.data?.rank ?? 1;
+
   let fallback: {
     class_key: string;
     class_origin: string;
     class_expires_at: string | null;
   };
-  if (sub.data) {
+  if (won && (!sub.data || won.rank >= premiumRank)) {
+    fallback = {
+      class_key: won.key,
+      class_origin: "instagram",
+      class_expires_at: null,
+    };
+  } else if (sub.data) {
     fallback = {
       class_key: "premium",
       class_origin: "subscription",
       class_expires_at: sub.data.current_period_end ?? null,
     };
   } else {
-    // Reach door: highest classes row whose follower_threshold the persisted
-    // count clears (data-driven, same rule as claim-instagram).
-    const followers = consumer.consumer_instagram_followers_count ?? 0;
-    const tiers = await admin
-      .from("classes")
-      .select("key, rank, follower_threshold")
-      .not("follower_threshold", "is", null)
-      .order("rank", { ascending: false });
-    const won = (tiers.data ?? []).find(
-      (t) => t.follower_threshold != null && followers >= t.follower_threshold,
-    );
-    fallback = won
-      ? { class_key: won.key, class_origin: "instagram", class_expires_at: null }
-      : { class_key: "standard", class_origin: "default", class_expires_at: null };
+    fallback = {
+      class_key: "standard",
+      class_origin: "default",
+      class_expires_at: null,
+    };
   }
 
   const revoke = await admin

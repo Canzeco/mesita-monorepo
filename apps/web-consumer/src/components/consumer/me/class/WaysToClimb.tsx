@@ -4,7 +4,11 @@ import { Fragment } from "react";
 
 import { CLASSES, CLASS_ICONS } from "@/lib/consumer-data";
 import { useConsumerClass } from "@/lib/class-context";
-import { baseRateForClass, peakRateForClass } from "@/lib/reward-segments";
+import {
+  baseRateForClass,
+  PEAK_STRATEGY,
+  REWARD_SEGMENT_BY_KEY,
+} from "@/lib/reward-segments";
 import { toast } from "@/lib/toast";
 import { ClimbCard, type ClimbCardData } from "./ClimbCard";
 import { InstagramConnectedSummary } from "./InstagramConnectedSummary";
@@ -76,7 +80,10 @@ export function WaysToClimb({
       // The Influencer class's real money is per-post: the Instagram Story
       // action is EXCLUSIVE to this class (segments v6) and pays the story
       // rung on any visit where a tagged story is verified.
-      desc: `Connect an Instagram with ${influencer.followerThreshold.toLocaleString("en-US")}+ followers. The Instagram Story reward is yours alone — post a tagged story on any visit and take up to ${peakRateForClass("influencer")}% off.`,
+      // Quote the STORY rung's own peak (30) — not peakRateForClass, which
+      // returns the universal Google-Review ceiling (50) and would promise a
+      // number the story alone never pays.
+      desc: `Connect an Instagram with ${influencer.followerThreshold.toLocaleString("en-US")}+ followers. The Instagram Story reward is yours alone — post a tagged story on any visit and take up to ${REWARD_SEGMENT_BY_KEY.story.rates[PEAK_STRATEGY]}% off.`,
       perks: [
         `Up to ${baseRateForClass("influencer")}% base discount`,
         "Instagram Story bonus — exclusive to Influencers",

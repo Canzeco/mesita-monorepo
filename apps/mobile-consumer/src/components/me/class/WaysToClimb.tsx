@@ -8,7 +8,11 @@ import {
   PREMIUM_SUBSCRIBE_URL,
 } from '@/lib/consumer-classes';
 import { useEffectiveClass } from '@/lib/mock-class';
-import { baseRateForClass, peakRateForClass } from '@/lib/reward-segments';
+import {
+  baseRateForClass,
+  PEAK_STRATEGY,
+  REWARD_SEGMENTS,
+} from '@/lib/reward-segments';
 import { toast } from '@/lib/toast';
 import { useAuth } from '@/providers/auth';
 import { ClimbCard, type ClimbCardData } from './ClimbCard';
@@ -19,6 +23,12 @@ import { InstagramConnectedSummary } from './InstagramConnectedSummary';
 // made (flat rate vs the Story action vs the highest flat rate). Keep the
 // shared lines a single constant so the cards can never drift apart.
 const ELEVATED_PERKS = ['Better recommendations', '10 reservations a month'];
+
+// The Story rung's own peak rate. NOT peakRateForClass('influencer') — that
+// returns the universal Google-Review ceiling (50) and would promise a number
+// the story alone never pays.
+const STORY_PEAK_RATE =
+  REWARD_SEGMENTS.find((s) => s.key === 'story')!.rates[PEAK_STRATEGY];
 
 export function WaysToClimb({
   onConnectInstagram,
@@ -83,7 +93,10 @@ export function WaysToClimb({
       // The Influencer class's real money is per-post: the Instagram Story
       // action is EXCLUSIVE to this class (segments v6) and pays the story
       // rung on any visit where a tagged story is verified.
-      desc: `Connect an Instagram with ${influencer.followerThreshold.toLocaleString('en-US')}+ followers. The Instagram Story reward is yours alone — post a tagged story on any visit and take up to ${peakRateForClass('influencer')}% off.`,
+      // Quote the STORY rung's own peak (30) — not peakRateForClass, which
+      // returns the universal Google-Review ceiling (50) and would promise a
+      // number the story alone never pays.
+      desc: `Connect an Instagram with ${influencer.followerThreshold.toLocaleString('en-US')}+ followers. The Instagram Story reward is yours alone — post a tagged story on any visit and take up to ${STORY_PEAK_RATE}% off.`,
       perks: [
         `Up to ${baseRateForClass('influencer')}% base discount`,
         'Instagram Story bonus — exclusive to Influencers',

@@ -146,6 +146,32 @@ Deno.serve(async (req) => {
       .update(fallback)
       .eq("id", consumerId)
       .eq("class_origin", "instagram");
+
+    // Re-verify liveness after the write. The subscription read above and this
+    // write are not atomic: a Stripe lapse webhook landing between them would
+    // no-op its own revoke (it is guarded on class_origin='subscription' while
+    // ours is still 'instagram') and leave a free Premium that no later event
+    // ever heals — canceled subscriptions emit nothing more, and
+    // class_expires_at is display-only. Settle it here instead.
+    if (sub.data) {
+      const stillLive = await admin
+        .from("consumer_subscriptions")
+        .select("consumer_id", { count: "exact", head: true })
+        .eq("consumer_id", consumerId)
+        .in("status", ["active", "past_due"]);
+      if ((stillLive.count ?? 0) === 0) {
+        await admin
+          .from("consumers")
+          .update({
+            class_key: "standard",
+            class_origin: "default",
+            class_expires_at: null,
+          })
+          .eq("id", consumerId)
+          .eq("class_origin", "subscription");
+        fellBackTo = "standard";
+      }
+    }
   }
 
   return json({ ok: true, tier: fellBackTo, followers, handle });
