@@ -18,7 +18,12 @@ const SEGMENT_KEYS = [
 ] as const;
 type SegmentKey = (typeof SEGMENT_KEYS)[number];
 
-type SegmentRates = { zero: number; conservative: number; aggressive: number };
+type SegmentRates = {
+  zero: number;
+  conservative: number;
+  aggressive: number;
+  dominant: number;
+};
 type RewardsConfig = { grid: Record<SegmentKey, SegmentRates>; cap: number };
 
 const RATE_STEP = 5;
@@ -30,13 +35,13 @@ const CAP_DEFAULT = 500;
 
 // The locked v6 defaults — the fallback for any absent/invalid cell.
 const DEFAULTS: Record<SegmentKey, SegmentRates> = {
-  standard: { zero: 0, conservative: 10, aggressive: 10 },
-  premium: { zero: 0, conservative: 15, aggressive: 20 },
-  influencer: { zero: 0, conservative: 15, aggressive: 20 },
-  aura: { zero: 0, conservative: 20, aggressive: 25 },
-  story: { zero: 0, conservative: 20, aggressive: 30 },
-  welcome: { zero: 0, conservative: 20, aggressive: 30 },
-  review: { zero: 0, conservative: 30, aggressive: 50 },
+  standard: { zero: 0, conservative: 10, aggressive: 10, dominant: 20 },
+  premium: { zero: 0, conservative: 15, aggressive: 20, dominant: 25 },
+  influencer: { zero: 0, conservative: 15, aggressive: 20, dominant: 25 },
+  aura: { zero: 0, conservative: 20, aggressive: 25, dominant: 30 },
+  story: { zero: 0, conservative: 20, aggressive: 30, dominant: 40 },
+  welcome: { zero: 0, conservative: 20, aggressive: 30, dominant: 40 },
+  review: { zero: 0, conservative: 30, aggressive: 50, dominant: 50 },
 };
 
 // Snap to the 5% grid: ≤0 → 0, else clamp to [10,50] rounded to the nearest 5.
@@ -75,6 +80,7 @@ export function normalizeConfig(
       zero: 0, // off by definition
       conservative: snapRate(row.conservative, d.conservative),
       aggressive: snapRate(row.aggressive, d.aggressive),
+      dominant: snapRate(row.dominant, d.dominant),
     };
   }
 

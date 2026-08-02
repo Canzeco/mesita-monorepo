@@ -1,10 +1,10 @@
 // Promos v6 — the grid-authoritative bill engine (MESITA-723, segments v6).
 //
 // The reward grid is operator config on app_settings.rewards_config (#474):
-//   { cap, grid: { <segment>: { zero, conservative, aggressive } } }
-// A place's STRATEGY (zero/conservative/aggressive) is derived from its v4 rate
-// columns via strategyForRates — exactly as #474 left it — so no per-place v5
-// columns exist. This module resolves a ticket's discount by looking up each
+//   { cap, grid: { <segment>: { zero, conservative, aggressive, dominant } } }
+// A place's STRATEGY (zero/conservative/aggressive/dominant) is derived from its
+// v4 rate columns via strategyForRates — exactly as #474 left it — so no
+// per-place v5 columns exist. This module resolves a ticket's discount by looking up each
 // qualifying segment in the grid at the place's strategy and paying BEST-OF
 // (the single highest rung, never a sum). The grid is the single source of
 // truth, which keeps the admin Rewards-Config page authoritative.
@@ -42,10 +42,11 @@ export function isClassSegment(
   return key != null && (CLASS_SEGMENTS as readonly string[]).includes(key);
 }
 
-// The three surviving strategies (Dominant retired in v5). Legacy places whose
-// v4 rates still match the retired Dominant preset coerce to aggressive (its
-// nearest surviving neighbour); anything unrecognised coerces to zero.
-export type GridStrategy = "zero" | "conservative" | "aggressive";
+// The four strategies. Dominant was retired in v5 and RESTORED in v6.1
+// (2026-08-02): its v4 rate tuple never left lineup-strategy.ts, so places
+// carrying it stopped coercing to aggressive and resolve to their own column
+// again. Anything unrecognised (custom/legacy) still coerces to zero.
+export type GridStrategy = "zero" | "conservative" | "aggressive" | "dominant";
 export type SegmentRates = Record<GridStrategy, number>;
 export type RewardsGrid = {
   grid: Record<RewardSegment, SegmentRates>;
@@ -55,16 +56,19 @@ export type RewardsGrid = {
 // The locked v6 defaults — used when app_settings can't be read (never in
 // prod; the column is NOT NULL with a default), so the bill degrades to the
 // canonical table rather than to zero.
+// Dominant follows the v4 invariant it always had — it raises the FLOOR, not
+// the ceiling: every rung climbs a step over aggressive except Review, which
+// is already at the 50% ceiling and stays there.
 export const DEFAULT_REWARDS_GRID: RewardsGrid = {
   cap: 500,
   grid: {
-    standard: { zero: 0, conservative: 10, aggressive: 10 },
-    premium: { zero: 0, conservative: 15, aggressive: 20 },
-    influencer: { zero: 0, conservative: 15, aggressive: 20 },
-    aura: { zero: 0, conservative: 20, aggressive: 25 },
-    story: { zero: 0, conservative: 20, aggressive: 30 },
-    welcome: { zero: 0, conservative: 20, aggressive: 30 },
-    review: { zero: 0, conservative: 30, aggressive: 50 },
+    standard: { zero: 0, conservative: 10, aggressive: 10, dominant: 20 },
+    premium: { zero: 0, conservative: 15, aggressive: 20, dominant: 25 },
+    influencer: { zero: 0, conservative: 15, aggressive: 20, dominant: 25 },
+    aura: { zero: 0, conservative: 20, aggressive: 25, dominant: 30 },
+    story: { zero: 0, conservative: 20, aggressive: 30, dominant: 40 },
+    welcome: { zero: 0, conservative: 20, aggressive: 30, dominant: 40 },
+    review: { zero: 0, conservative: 30, aggressive: 50, dominant: 50 },
   },
 };
 
@@ -90,6 +94,7 @@ export function coerceRewardsGrid(raw: unknown): RewardsGrid {
       zero: 0, // off by definition
       conservative: num(row.conservative, d.conservative),
       aggressive: num(row.aggressive, d.aggressive),
+      dominant: num(row.dominant, d.dominant),
     };
   }
   return { grid, cap: num(c.cap, DEFAULT_REWARDS_GRID.cap) };
@@ -110,12 +115,12 @@ export async function loadRewardsGrid(
     : DEFAULT_REWARDS_GRID;
 }
 
-// A place's strategy from its v4 rate columns → the three surviving grid keys.
+// A place's strategy from its v4 rate columns → the four grid keys.
 export function placeStrategy(place: Record<string, unknown>): GridStrategy {
   const p = strategyForRates(ratesFromPlace(place));
   if (p === "conservative") return "conservative";
   if (p === "aggressive") return "aggressive";
-  if (p === "dominant") return "aggressive"; // retired → nearest surviving
+  if (p === "dominant") return "dominant";
   return "zero"; // zero, null (custom/legacy)
 }
 

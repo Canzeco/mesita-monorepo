@@ -4,7 +4,7 @@
 //
 // Returns the seven-segment reward grid (Promos v6, MESITA-723) from the
 // public.app_settings singleton for the admin console's Rewards Config page: for
-// each strategy (zero / conservative / aggressive), what each segment pays
+// each strategy (zero / conservative / aggressive / dominant), what each segment pays
 // (standard · premium · influencer · aura · story · welcome · review), plus the universal
 // cap. See 20260722200000_rewards_config.sql.
 //

@@ -458,7 +458,7 @@ export function ReservationsConfigClient({
         {cfg.unlimitedReservations && (
           <p className="mt-3 text-xs text-amber-600">
             This hides the exact paywall the Premium upsell depends on — nobody can
-            reach the limit while it's on. Turn it off before any real run.
+            reach the limit while it&apos;s on. Turn it off before any real run.
           </p>
         )}
       </SectionCard>

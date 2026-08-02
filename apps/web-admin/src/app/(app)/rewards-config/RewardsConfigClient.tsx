@@ -108,7 +108,7 @@ export function RewardsConfigClient({
 
   return (
     <div className="space-y-6">
-      {/* The grid — seven segments (rows) × three strategies (columns). */}
+      {/* The grid — seven segments (rows) × four strategies (columns). */}
       <SectionCard
         icon={<Percent className="text-secondary h-4 w-4" />}
         title="Reward grid"
@@ -122,9 +122,9 @@ export function RewardsConfigClient({
         }
       >
         <div className="mt-5 overflow-x-auto">
-          <div className="min-w-[560px]">
+          <div className="min-w-[664px]">
             {/* Header — strategy columns. */}
-            <div className="grid grid-cols-[minmax(150px,1fr)_repeat(3,104px)] items-end gap-2 px-1 pb-2">
+            <div className="grid grid-cols-[minmax(150px,1fr)_repeat(4,104px)] items-end gap-2 px-1 pb-2">
               <span className="text-muted-foreground text-[10px] font-bold tracking-[0.12em] uppercase">
                 Segment
               </span>
@@ -145,7 +145,7 @@ export function RewardsConfigClient({
               {SEGMENTS.map((seg) => (
                 <div
                   key={seg.key}
-                  className="grid grid-cols-[minmax(150px,1fr)_repeat(3,104px)] items-center gap-2 px-3 py-2.5"
+                  className="grid grid-cols-[minmax(150px,1fr)_repeat(4,104px)] items-center gap-2 px-3 py-2.5"
                 >
                   <div className="flex items-center gap-2.5 min-w-0">
                     <span

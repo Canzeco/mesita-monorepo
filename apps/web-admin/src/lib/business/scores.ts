@@ -505,7 +505,7 @@ export function gpParts(
 // never enter the paid lanes at all (lane filter); custom/legacy rates that
 // match no preset land on the zero rung.
 
-type RpStrategy = "zero" | "conservative" | "aggressive";
+type RpStrategy = "zero" | "conservative" | "aggressive" | "dominant";
 
 export type RpRungs = Record<RpStrategy, number>;
 
@@ -513,6 +513,7 @@ const DEFAULT_RP_RUNGS: RpRungs = {
   zero: 0.1,
   conservative: 0.4,
   aggressive: 0.7,
+  dominant: 1.0,
 };
 
 /** RP for a strategy (null = custom/legacy → the zero rung). */
@@ -869,6 +870,7 @@ export function coerceScoringSettings(raw: unknown): ScoringSettings {
       zero: num(rp.zero, d.rp.zero, 0, 1),
       conservative: num(rp.conservative, d.rp.conservative, 0, 1),
       aggressive: num(rp.aggressive, d.rp.aggressive, 0, 1),
+      dominant: num(rp.dominant, d.rp.dominant, 0, 1),
     },
     xx: {
       control: num(xx.control, d.xx.control, 0, 5),

@@ -19,7 +19,7 @@
 export type RewardClassKey = 'standard' | 'premium' | 'influencer' | 'aura';
 
 // The business discount strategy that sets how generous a place's grid is.
-type GridStrategy = 'zero' | 'conservative' | 'aggressive';
+type GridStrategy = 'zero' | 'conservative' | 'aggressive' | 'dominant';
 
 // Ontology of a rung (per the canonical definitions):
 //   class  — who the guest is (Standard / Premium / Influencer / Aura)
@@ -44,7 +44,7 @@ export type RewardSegment = {
   nameEs: string;
   kind: RewardSegmentKind;
   blurb: string;
-  /** The locked v6 grid, 5% steps, floor 10, 0 = off. Peak = aggressive. */
+  /** The locked v6 grid, 5% steps, floor 10, 0 = off. Peak = dominant. */
   rates: Record<GridStrategy, number>;
 };
 
@@ -59,7 +59,7 @@ export const REWARD_SEGMENTS: readonly RewardSegment[] = [
     nameEs: 'Estándar',
     kind: 'class',
     blurb: 'The base rate every guest gets, always.',
-    rates: { zero: 0, conservative: 10, aggressive: 10 },
+    rates: { zero: 0, conservative: 10, aggressive: 10, dominant: 20 },
   },
   {
     rank: 2,
@@ -68,7 +68,7 @@ export const REWARD_SEGMENTS: readonly RewardSegment[] = [
     nameEs: 'Premium',
     kind: 'class',
     blurb: 'Mesita Premium — a bigger base at every place.',
-    rates: { zero: 0, conservative: 15, aggressive: 20 },
+    rates: { zero: 0, conservative: 15, aggressive: 20, dominant: 25 },
   },
   {
     rank: 3,
@@ -77,7 +77,7 @@ export const REWARD_SEGMENTS: readonly RewardSegment[] = [
     nameEs: 'Influencer',
     kind: 'class',
     blurb: '1,000+ Instagram followers — and the Story bonus is yours.',
-    rates: { zero: 0, conservative: 15, aggressive: 20 },
+    rates: { zero: 0, conservative: 15, aggressive: 20, dominant: 25 },
   },
   {
     rank: 4,
@@ -86,7 +86,7 @@ export const REWARD_SEGMENTS: readonly RewardSegment[] = [
     nameEs: 'Aura',
     kind: 'class',
     blurb: 'Invite-only — the highest base, just for showing up.',
-    rates: { zero: 0, conservative: 20, aggressive: 25 },
+    rates: { zero: 0, conservative: 20, aggressive: 25, dominant: 30 },
   },
   {
     rank: 5,
@@ -95,7 +95,7 @@ export const REWARD_SEGMENTS: readonly RewardSegment[] = [
     nameEs: 'Historia de Instagram',
     kind: 'action',
     blurb: 'Influencers only — post a story tagging the place, any visit.',
-    rates: { zero: 0, conservative: 20, aggressive: 30 },
+    rates: { zero: 0, conservative: 20, aggressive: 30, dominant: 40 },
   },
   {
     rank: 6,
@@ -104,7 +104,7 @@ export const REWARD_SEGMENTS: readonly RewardSegment[] = [
     nameEs: 'Visita de Bienvenida',
     kind: 'visit',
     blurb: 'Your first ever visit to a place.',
-    rates: { zero: 0, conservative: 20, aggressive: 30 },
+    rates: { zero: 0, conservative: 20, aggressive: 30, dominant: 40 },
   },
   {
     rank: 7,
@@ -113,7 +113,7 @@ export const REWARD_SEGMENTS: readonly RewardSegment[] = [
     nameEs: 'Reseña de Google',
     kind: 'action',
     blurb: 'Leave a Google review at the table — once per place.',
-    rates: { zero: 0, conservative: 30, aggressive: 50 },
+    rates: { zero: 0, conservative: 30, aggressive: 50, dominant: 50 },
   },
 ];
 
@@ -121,8 +121,8 @@ const REWARD_SEGMENT_BY_KEY = Object.fromEntries(
   REWARD_SEGMENTS.map((s) => [s.key, s]),
 ) as Record<RewardSegmentKey, RewardSegment>;
 
-// The peak column — what "up to" quotes.
-export const PEAK_STRATEGY: GridStrategy = 'aggressive';
+// The peak column — what "up to" quotes. Dominant is the most generous strategy.
+export const PEAK_STRATEGY: GridStrategy = 'dominant';
 
 // Which class rung a consumer sits on. Consumer classes map one-to-one onto
 // their same-named ladder rungs.

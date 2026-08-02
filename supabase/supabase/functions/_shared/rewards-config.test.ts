@@ -17,6 +17,22 @@ import {
 
 const GRID = DEFAULT_REWARDS_GRID;
 
+Deno.test("resolveTicketRate: dominant raises the floor, never the ceiling", () => {
+  // Dominant pays a step above aggressive on every rung...
+  assertEquals(resolveTicketRate("dominant", GRID, { classKey: "standard", isFirstVisit: false }), 20);
+  assertEquals(resolveTicketRate("dominant", GRID, { classKey: "aura", isFirstVisit: false }), 30);
+  assertEquals(resolveTicketRate("dominant", GRID, { classKey: "standard", isFirstVisit: true }), 40);
+  // ...except Review, already at the 50% platform ceiling under aggressive.
+  assertEquals(
+    resolveTicketRate("dominant", GRID, { classKey: "standard", isFirstVisit: false, reviewVerified: true }),
+    50,
+  );
+  assertEquals(
+    resolveTicketRate("aggressive", GRID, { classKey: "standard", isFirstVisit: false, reviewVerified: true }),
+    50,
+  );
+});
+
 Deno.test("resolveTicketRate: class rates on a returning visit (aggressive)", () => {
   assertEquals(resolveTicketRate("aggressive", GRID, { classKey: "standard", isFirstVisit: false }), 10);
   assertEquals(resolveTicketRate("aggressive", GRID, { classKey: "premium", isFirstVisit: false }), 20);
@@ -105,16 +121,21 @@ Deno.test("isClassSegment: the four classes and nothing else", () => {
   assertEquals(isClassSegment(undefined), false);
 });
 
-Deno.test("placeStrategy: derives from v4 columns, dominant → aggressive", () => {
+Deno.test("placeStrategy: derives from v4 columns, all four strategies", () => {
   // Conservative preset (v4 tens grid).
   assertEquals(
     placeStrategy({ welcome_free_rate: 20, welcome_premium_rate: 30, free_rate: 10, premium_rate: 20 }),
     "conservative",
   );
-  // Retired Dominant preset coerces to the nearest surviving strategy.
+  // Aggressive preset.
+  assertEquals(
+    placeStrategy({ welcome_free_rate: 30, welcome_premium_rate: 50, free_rate: 10, premium_rate: 30 }),
+    "aggressive",
+  );
+  // Dominant preset — restored in v6.1; no longer coerced to aggressive.
   assertEquals(
     placeStrategy({ welcome_free_rate: 40, welcome_premium_rate: 50, free_rate: 20, premium_rate: 30 }),
-    "aggressive",
+    "dominant",
   );
   // Custom / all-null → zero.
   assertEquals(
@@ -128,6 +149,7 @@ Deno.test("coerceRewardsGrid: partial blob snaps to locked defaults", () => {
   assertEquals(g.grid.standard.conservative, 25);
   assertEquals(g.grid.review.aggressive, 50); // filled from defaults
   assertEquals(g.grid.aura.aggressive, 25); // new segment filled from defaults
+  assertEquals(g.grid.standard.dominant, 20); // dominant column filled from defaults
   assertEquals(g.grid.standard.zero, 0); // off by definition
   assertEquals(g.cap, 500);
 });
