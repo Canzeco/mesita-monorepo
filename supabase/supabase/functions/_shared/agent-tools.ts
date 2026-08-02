@@ -222,7 +222,10 @@ export async function ticketsOfConsumers(
     .in("consumer_id", consumerIds)
     .order("created_at", { ascending: false })
     .limit(limit);
-  return (data ?? []) as TicketRow[];
+  // supabase-js types an embedded to-one relation as an ARRAY, so the direct
+  // cast is "insufficiently overlapping" (TS2352). The runtime shape is a
+  // single object; go through unknown rather than widen TicketRow to a lie.
+  return (data ?? []) as unknown as TicketRow[];
 }
 
 /** A verified place's book, soonest first from six hours ago. */
@@ -239,7 +242,10 @@ export async function ticketsOfPlace(
     .gte("reserved_at", since)
     .order("reserved_at", { ascending: true })
     .limit(limit);
-  return (data ?? []) as TicketRow[];
+  // supabase-js types an embedded to-one relation as an ARRAY, so the direct
+  // cast is "insufficiently overlapping" (TS2352). The runtime shape is a
+  // single object; go through unknown rather than widen TicketRow to a lie.
+  return (data ?? []) as unknown as TicketRow[];
 }
 
 // ── Mutations ────────────────────────────────────────────────────────────────

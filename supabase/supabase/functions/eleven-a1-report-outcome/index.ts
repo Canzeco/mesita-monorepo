@@ -4,9 +4,17 @@
 // venue on the guest's behalf. Mid-call it reports what the venue actually
 // said, replacing inference from ElevenLabs' coarse call_successful flag:
 //
-//   { reference_code, verdict: "confirmed" | "counter_offer" | "declined",
+//   { reference_code,
+//     verdict: "confirmed" | "counter_offer" | "declined"
+//            | "unreachable"   // never reached anyone who can book: voicemail,
+//                              // IVR dead-end, "call back later"  → RETRYABLE
+//            | "wrong_number", // the line is not this venue           → TERMINAL
 //     alternatives?: string[],   // speakable options: "afuera a las 10"
 //     note?: string }
+//
+// unreachable vs declined matters: declined is the venue SAYING NO (terminal,
+// real signal); unreachable is us never getting to ask (worth another attempt).
+// wrong_number must never retry — redialling just rings a stranger again.
 //
 // Writes reported_verdict / alternatives / outcome_note onto the ticket. It
 // deliberately does NOT flip status or fire the confirmation leg — the engine
@@ -20,7 +28,13 @@ import { corsPreflight, json, readJsonOr } from "../_shared/http.ts";
 import { adminClient, readEFEnv } from "../_shared/auth.ts";
 import { cleanNote, requireAgentSecret, ticketByCode } from "../_shared/agent-tools.ts";
 
-const VERDICTS = ["confirmed", "counter_offer", "declined"] as const;
+const VERDICTS = [
+  "confirmed",
+  "counter_offer",
+  "declined",
+  "unreachable",
+  "wrong_number",
+] as const;
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
@@ -41,7 +55,10 @@ Deno.serve(async (req) => {
 
   const verdict = typeof body.verdict === "string" ? body.verdict.trim() : "";
   if (!(VERDICTS as readonly string[]).includes(verdict)) {
-    return json({ ok: false, error: "verdict must be confirmed | counter_offer | declined" }, 400);
+    return json({
+      ok: false,
+      error: `verdict must be one of ${VERDICTS.join(" | ")}`,
+    }, 400);
   }
   const ticket = await ticketByCode(admin, body.reference_code);
   if (!ticket) return json({ ok: false, error: "reservation not found for that reference_code" }, 404);

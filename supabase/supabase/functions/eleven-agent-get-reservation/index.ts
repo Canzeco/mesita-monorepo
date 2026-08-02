@@ -112,7 +112,10 @@ async function searchReservations(
       .select(SELECT)
       .eq("reference_code", code)
       .limit(5);
-    rows = (data ?? []) as Row[];
+    // supabase-js types an embedded to-one relation as an ARRAY, so the direct
+    // cast is "insufficiently overlapping" (TS2352); the runtime shape is one
+    // object. Go through unknown rather than widen Row to a lie.
+    rows = (data ?? []) as unknown as Row[];
   } else {
     // Names live on consumers — resolve matching guests first, then their
     // reservations (reservations.consumer_id has no name columns to filter on).
@@ -143,7 +146,10 @@ async function searchReservations(
       .in("consumer_id", ids)
       .order("created_at", { ascending: false })
       .limit(10);
-    rows = (data ?? []) as Row[];
+    // supabase-js types an embedded to-one relation as an ARRAY, so the direct
+    // cast is "insufficiently overlapping" (TS2352); the runtime shape is one
+    // object. Go through unknown rather than widen Row to a lie.
+    rows = (data ?? []) as unknown as Row[];
   }
   if (rows.length === 0) return [];
 
