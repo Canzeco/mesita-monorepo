@@ -35,3 +35,18 @@ export function writeSwipeSnapshot(snapshot: SwipeDeckSnapshot) {
     // ignore storage failures
   }
 }
+
+/**
+ * Drop the cached deck. The snapshot outlives the rows it describes — an admin
+ * reset re-creates places under FRESH uuids — so a stored card can point at a
+ * project_id the backend no longer has. Anything that discovers a card is
+ * stale (a `place_not_found` when booking) clears it; the next mount refetches.
+ */
+export function clearSwipeSnapshot() {
+  if (typeof window === "undefined") return;
+  try {
+    window.sessionStorage.removeItem(SWIPE_STATE_STORAGE_KEY);
+  } catch {
+    // ignore storage failures
+  }
+}
