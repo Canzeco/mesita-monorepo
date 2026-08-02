@@ -2,15 +2,14 @@
 // and this modal IS your Mesita pass for that venue — class-tinted card, the
 // ticket QR, live status. Reuses the venue's open ticket when one exists,
 // otherwise creates on open; Influencers get one interstitial tap (the Story
-// opt-in is create-time only). Member code lives in the footer — the typed
-// fallback belongs next to the QR it backs up.
+// opt-in is create-time only). NO member code (MESITA-820): check-web-get-ticket
+// resolves ONLY the per-ticket check_code, and _shared/ticket-check.ts forbids
+// consumers.code from ever reaching the staff page.
 
-import * as Clipboard from 'expo-clipboard';
 import {
   BadgeCheck,
   Camera,
   Check,
-  Copy,
   PartyPopper,
   Sparkles,
 } from 'lucide-react-native';
@@ -38,7 +37,6 @@ import {
   type ConsumerTicketRow,
 } from '@/lib/api/tickets';
 import { classProperLabel } from '@/lib/consumer-classes';
-import { displayConsumerCode } from '@/lib/consumer-code';
 import { EFError } from '@/lib/ef';
 import type { ConsumerTicketsState } from '@/lib/hooks/useConsumerTickets';
 import { useAuth } from '@/providers/auth';
@@ -73,15 +71,12 @@ function statusLine(t: ConsumerTicketRow): string {
 
 export function VenuePassModal({
   place,
-  code,
   tickets,
   onClose,
   onTicketStarted,
 }: {
   /** The venue this pass is for; null = closed. Parent remounts per place. */
   place: Place | null;
-  /** Member code — the typed fallback in the footer. */
-  code: string;
   tickets: ConsumerTicketsState;
   onClose: () => void;
   /** Fired once a live ticket exists, so the page can land on Pending. */
@@ -183,17 +178,6 @@ export function VenuePassModal({
     }
   }, [ticketId, tickets, onClose]);
 
-  const displayCode = displayConsumerCode(code);
-  const [copied, setCopied] = useState(false);
-  const onCopy = async () => {
-    try {
-      await Clipboard.setStringAsync(displayCode);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1400);
-    } catch {
-      // clipboard unavailable
-    }
-  };
 
   const placeName = place?.name ?? 'the place';
   const live = ticket ? ACTIVE_TICKET_STATUSES.has(ticket.status) : false;
@@ -443,38 +427,6 @@ export function VenuePassModal({
           </Pressable>
         ) : null}
 
-        {/* Member-code fallback — the typed backup when the QR won't scan. */}
-        <View className="flex-row items-center gap-3 rounded-2xl border border-border bg-muted/40 px-3.5 py-3">
-          <Text
-            className="min-w-0 flex-1 text-muted-foreground"
-            style={{ fontSize: 11.5, lineHeight: 15 }}
-          >
-            QR won&apos;t scan? Staff can type your member code instead.
-          </Text>
-          <Pressable
-            onPress={() => void onCopy()}
-            accessibilityRole="button"
-            accessibilityLabel={copied ? 'Code copied' : 'Copy member code'}
-            className="flex-row items-center gap-1.5"
-            style={{ minHeight: 44 }}
-          >
-            <Text
-              className="font-semibold text-foreground"
-              style={{
-                fontFamily: 'Inter_600SemiBold',
-                fontSize: 13,
-                letterSpacing: 2,
-              }}
-            >
-              {displayCode}
-            </Text>
-            {copied ? (
-              <Check size={14} color="#059669" />
-            ) : (
-              <Copy size={14} color="#775254" />
-            )}
-          </Pressable>
-        </View>
       </ScrollView>
     </FullScreenSheet>
   );

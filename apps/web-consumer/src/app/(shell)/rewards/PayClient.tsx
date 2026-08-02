@@ -1,9 +1,15 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  Fragment,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { MapPin, QrCode, Sparkles, TicketX } from "lucide-react";
 
-import { WalletHeader } from "@/components/consumer/rewards/WalletHeader";
 import { CheckTicketCard } from "@/components/consumer/rewards/CheckTicketCard";
 import { HistoryTicketCard } from "@/components/consumer/rewards/HistoryTicketCard";
 import { PlacePickList } from "@/components/consumer/rewards/PlacePickList";
@@ -16,24 +22,17 @@ import { useConsumerTickets } from "@/lib/hooks/useConsumerTickets";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { cn } from "@/lib/utils";
 
-// Rewards Wallet v3 (MESITA-811) — Pato's spec, top to bottom: identity
-// header (name + class, nothing else) → the three steps → New / Pending /
-// History. New lists every partner place (no searchbar yet); tapping one
+// Rewards Wallet v3 (MESITA-811 · MESITA-820) — the three steps → New /
+// Pending / History. No identity header: the tab bar already reads
+// "Me · <class>", so repeating name+tier here was pure chrome on a page
+// whose job is doing. New lists every partner place (no searchbar yet); tapping one
 // opens the venue pass modal, which reuses-or-creates the ticket and shows
 // the QR. Education stays on Me > Help (MESITA-809); the motion budget
 // (verified pulse + savings reveal) carries over from MESITA-808.
 
 type Tab = "new" | "pending" | "history";
 
-export function PayClient({
-  userId,
-  code,
-  name,
-}: {
-  userId: string;
-  code: string;
-  name?: string;
-}) {
+export function PayClient({ userId }: { userId: string }) {
   const supabase = useBrowserSupabase();
   const tickets = useConsumerTickets(userId);
 
@@ -75,8 +74,6 @@ export function PayClient({
 
   return (
     <div className="scrollbar-hide flex h-full min-h-0 flex-1 flex-col gap-3.5 overflow-y-auto px-4 pt-4 pb-6">
-      <WalletHeader name={name} />
-
       <PitchSteps />
 
       {justPaid ? (
@@ -87,8 +84,10 @@ export function PayClient({
         />
       ) : null}
 
-      {/* New / Pending / History pills — ≥44px hit areas. */}
-      <div className="border-border bg-card grid grid-cols-3 gap-0 rounded-2xl border p-1">
+      {/* Segmented control — a FILLED track, not a bordered card, so it
+          reads as a control and never twins with the step rail above.
+          ≥44px hit areas. */}
+      <div className="bg-muted grid grid-cols-3 gap-1 rounded-2xl p-1">
         {(
           [
             { id: "new", label: "New" },
@@ -104,7 +103,7 @@ export function PayClient({
             className={cn(
               "flex min-h-11 items-center justify-center gap-1.5 rounded-xl px-1 text-center text-[12.5px] font-semibold transition",
               tab === t.id
-                ? "bg-foreground text-background"
+                ? "bg-foreground text-background shadow-sm"
                 : "text-muted-foreground hover:text-foreground",
             )}
           >
@@ -189,7 +188,6 @@ export function PayClient({
         // Remount per venue: fresh modal state without reset effects.
         key={passPlace?.id ?? "closed"}
         place={passPlace}
-        code={code}
         tickets={tickets}
         onClose={() => setPassPlace(null)}
         onTicketStarted={() => setTabChoice("pending")}
@@ -198,28 +196,39 @@ export function PayClient({
   );
 }
 
-// The three steps — always visible per Pato's spec (the pitch is the
-// program's whole story: pick the place, show your QR, pay less).
+// The three steps — a RAIL, not a card: numbered, connected by hairlines, no
+// border. Previously it was a bordered card sitting directly above the tab
+// card, so the two read as twins; steps are instruction and tabs are control,
+// and they should never look alike.
+const PITCH_STEPS = [
+  { icon: MapPin, label: "Pick the place" },
+  { icon: QrCode, label: "Show your QR" },
+  { icon: Sparkles, label: "Pay less" },
+] as const;
+
 function PitchSteps() {
   return (
-    <div className="border-border bg-card grid grid-cols-3 gap-1 rounded-2xl border px-3 py-4">
-      <PitchStep icon={<MapPin className="size-[18px]" />} label="Pick the place" />
-      <PitchStep icon={<QrCode className="size-[18px]" />} label="Show your QR" />
-      <PitchStep icon={<Sparkles className="size-[18px]" />} label="Pay less" />
-    </div>
-  );
-}
-
-function PitchStep({ icon, label }: { icon: React.ReactNode; label: string }) {
-  return (
-    <div className="flex flex-col items-center gap-1.5 text-center">
-      <span className="bg-secondary/10 text-secondary grid size-9 place-items-center rounded-xl">
-        {icon}
-      </span>
-      <span className="text-foreground text-[11px] leading-tight font-semibold">
-        {label}
-      </span>
-    </div>
+    <ol className="flex items-start px-1 pt-1 pb-0.5">
+      {PITCH_STEPS.map(({ icon: Icon, label }, i) => (
+        <Fragment key={label}>
+          <li className="flex w-0 flex-1 flex-col items-center gap-1.5">
+            <span className="bg-secondary/10 text-secondary grid size-10 place-items-center rounded-xl">
+              <Icon className="size-[18px]" />
+            </span>
+            <span className="text-foreground text-center text-[11px] leading-tight font-semibold">
+              <span className="text-primary font-extrabold">{i + 1}</span>{" "}
+              {label}
+            </span>
+          </li>
+          {i < PITCH_STEPS.length - 1 ? (
+            <span
+              aria-hidden="true"
+              className="bg-border mt-5 h-px w-5 shrink-0 sm:w-8"
+            />
+          ) : null}
+        </Fragment>
+      ))}
+    </ol>
   );
 }
 

@@ -8,16 +8,15 @@
 // the Story opt-in is create-time only (wantsStory), so it can't be offered
 // after an auto-create.
 //
-// The member code lives in the footer, not the page header: the moment you
-// need the typed fallback (QR won't scan, WhatsApp staff bot) is exactly the
-// moment you're staring at this modal.
+// NO member code here (MESITA-820). check-web-get-ticket resolves ONLY the
+// per-ticket check_code, and _shared/ticket-check.ts explicitly forbids
+// consumers.code from ever reaching the staff page. Offering it as a "type
+// this instead" fallback promised something staff cannot do.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { QRCodeSVG } from "qrcode.react";
 import {
   BadgeCheck,
-  Check,
-  Copy,
   Instagram,
   Loader2,
   PartyPopper,
@@ -36,7 +35,6 @@ import {
   checkUrlForCode,
   type ConsumerTicketRow,
 } from "@/lib/api/tickets";
-import { displayConsumerCode } from "@/lib/consumer-code";
 import { useConsumerClass } from "@/lib/class-context";
 import { classProperLabel } from "@/lib/consumer-data";
 import type { ConsumerTicketsState } from "@/lib/hooks/useConsumerTickets";
@@ -77,15 +75,12 @@ function statusLine(t: ConsumerTicketRow): string {
 
 export function VenuePassModal({
   place,
-  code,
   tickets,
   onClose,
   onTicketStarted,
 }: {
   /** The venue this pass is for; null = closed. Parent remounts per place. */
   place: Place | null;
-  /** Member code — the typed fallback in the footer. */
-  code: string;
   tickets: ConsumerTicketsState;
   onClose: () => void;
   /** Fired once a live ticket exists, so the page can land on Pending. */
@@ -193,17 +188,6 @@ export function VenuePassModal({
     }
   }, [ticketId, supabase, tickets, onClose]);
 
-  const displayCode = displayConsumerCode(code);
-  const [copied, setCopied] = useState(false);
-  const onCopy = async () => {
-    try {
-      await navigator.clipboard.writeText(displayCode);
-      setCopied(true);
-      window.setTimeout(() => setCopied(false), 1400);
-    } catch {
-      // clipboard unavailable — ignore
-    }
-  };
 
   const placeName = place?.name ?? "the place";
   const live = ticket ? ACTIVE_TICKET_STATUSES.has(ticket.status) : false;
@@ -387,25 +371,6 @@ export function VenuePassModal({
           </button>
         ) : null}
 
-        {/* Member-code fallback — the typed backup when the QR won't scan. */}
-        <div className="border-border bg-muted/40 flex items-center gap-3 rounded-2xl border px-3.5 py-3">
-          <p className="text-muted-foreground min-w-0 flex-1 text-[11.5px] leading-snug">
-            QR won&apos;t scan? Staff can type your member code instead.
-          </p>
-          <button
-            type="button"
-            onClick={() => void onCopy()}
-            aria-label={copied ? "Code copied" : "Copy member code"}
-            className="text-foreground flex min-h-11 shrink-0 items-center gap-1.5 font-mono text-[13px] font-semibold tracking-[0.14em]"
-          >
-            {displayCode}
-            {copied ? (
-              <Check className="size-3.5 text-emerald-600" />
-            ) : (
-              <Copy className="text-muted-foreground size-3.5" />
-            )}
-          </button>
-        </div>
       </div>
     </LocalSheet>
   );
