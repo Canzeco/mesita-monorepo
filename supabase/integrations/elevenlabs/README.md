@@ -24,9 +24,13 @@ engine and the webhook-tool EFs read them from there.
 ## Config-as-code surfaces
 
 - `functions/_shared/reservationist-fleet.ts` — agent specs (names, prompts,
-  first messages), the 7 workspace webhook tools (`a1_report_outcome` …
-  `a4_cancel_reservation` → `eleven-a*-*` EFs, anon bearer + `x-agent-secret`),
-  and the four Workflow graphs (exactly one per agent).
+  first messages), the 9 workspace webhook tools (the 8 family tools
+  `a1_report_outcome` … `a4_cancel_reservation` → `eleven-a*-*` EFs, plus the
+  transitional `get_reservation` → `eleven-agent-get-reservation`, attached to
+  a3/a4 for reference-code lookups; anon bearer + `x-agent-secret`), and the
+  four Workflow graphs (exactly one per agent — v2 complex graphs: a1
+  gatekeeper + per-outcome reporting, a2 context routing + voicemail leg,
+  a3/a4 triage with cancel confirmation and code-lookup lanes).
 - `functions/_shared/reservationist-kb.ts` — the curated Mesita brief. Each
   agent carries EXACTLY ONE KB doc named `<key>-kb-v<version>` (`a1-kb-v1` …),
   attached `usage_mode=prompt`. Bump `RESERVATIONIST_KB_VERSION` on material
@@ -43,12 +47,12 @@ The sync EF is an internal caller (`verify_jwt` + service-role): invoke via
 pg_net with the vault `scheduler_service_role_key`, body `{ "mode": … }`.
 
 - `inspect` — read-only report: agents, tools, per-agent workflow + KB state.
-- `fleet` — upsert the 7 tools + 4 agents; PATCHes name + `tool_ids` onto Main;
+- `fleet` — upsert the 9 tools + 4 agents; PATCHes name + `tool_ids` onto Main;
   prompts/first messages only with `write_prompts: true`.
 - `workflows` — commit each agent's Workflow graph onto its Main branch.
 - `knowledge` — upsert `a1-kb-v1` … `a4-kb-v1` and attach each as its agent's
   SOLE KB doc; deletes the pre-fleet shared doc once detached.
-- `prune` — delete non-fleet agents + the legacy `get_reservation` tool.
+- `prune` — delete non-fleet agents (never touches fleet tools).
 
 Per-call dynamic variables ride from `_shared/reservation-legs.ts`
 (venue/guest/date/time/party, `reference_code`, `call_context`,
