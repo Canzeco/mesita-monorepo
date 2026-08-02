@@ -110,14 +110,14 @@ export const FLEET_AGENTS: FleetAgentSpec[] = [
     name: "eleven-a3 (es-mx) · consumer inbound",
     firstMessage: "¡Hola! Le atiende Mesita, asistente de reservaciones. ¿En qué le puedo ayudar?",
     prompt: A3_PROMPT,
-    toolNames: ["a3_verify_caller", "a3_cancel_reservation"],
+    toolNames: ["a3_verify_caller", "a3_cancel_reservation", "get_reservation"],
   },
   {
     key: "a4",
     name: "eleven-a4 (es-mx) · business inbound",
     firstMessage: "¡Hola! Le atiende Mesita, línea para restaurantes. ¿En qué le puedo ayudar?",
     prompt: A4_PROMPT,
-    toolNames: ["a4_verify_caller", "a4_find_reservation", "a4_cancel_reservation"],
+    toolNames: ["a4_verify_caller", "a4_find_reservation", "a4_cancel_reservation", "get_reservation"],
   },
 ];
 
@@ -283,6 +283,22 @@ export function fleetToolConfigs(
         reason: { type: "string", description: "Motivo breve del restaurante." },
       }),
     ),
+    // Transitional shared lookup (EF caller eleven-agent-*): real-time ticket
+    // lookup by reference code. Attached to the inbound agents (a3/a4) for the
+    // "tengo un código" paths; response carries NO phone numbers.
+    webhook(
+      "get_reservation",
+      "Busca una reservación de Mesita en la base de datos en TIEMPO REAL por su código de referencia de 8 dígitos (o, como último recurso, por nombre y apellido del comensal). Devuelve lugar, fecha, hora, personas y estado, listos para decirse en voz alta.",
+      "eleven-agent-get-reservation",
+      bodySchema("Claves de búsqueda — manda el código si lo tienes; el nombre es secundario.", [], {
+        reference_code: {
+          type: "string",
+          description: "Código de referencia de 8 dígitos de la reservación (ej. 48291057).",
+        },
+        first_name: { type: "string", description: "Nombre del comensal, tal como lo dijo." },
+        last_name: { type: "string", description: "Apellido del comensal, tal como lo dijo." },
+      }),
+    ),
   ];
 }
 
@@ -320,7 +336,11 @@ function edge(
 const UNCOND = { type: "unconditional" as const };
 const RESULT_OK = { type: "result" as const, successful: true, label: "success" };
 const RESULT_FAIL = { type: "result" as const, successful: false, label: "failure" };
-const BACK_HELP = { type: "unconditional" as const, label: "back to help" };
+
+/** Unconditional backward condition — lets the flow return along the edge. */
+function back(label: string) {
+  return { type: "unconditional" as const, label };
+}
 
 function llm(condition: string, label: string) {
   return { type: "llm" as const, condition, label };
@@ -368,7 +388,20 @@ function requireTool(ids: Map<string, string>, name: string): string {
   return id;
 }
 
-/** Build the four fleet workflows. Tool nodes need live workspace tool ids. */
+/**
+ * Build the four fleet workflows (v2 — complex graphs). Tool nodes need live
+ * workspace tool ids.
+ *
+ * Engine truths these graphs encode (supabase-edgefunc-reservation-call):
+ * - a1: an ANSWERED call that ends without a1_report_outcome goes terminal
+ *   (analysis fallback → declined/unresolved), so EVERY spoken path funnels
+ *   through exactly one report tool node before the farewell. No silent
+ *   voicemail exit — that needs an engine-side verdict first (deploy-gated).
+ * - a2: tools fire only on explicit guest action; a voicemail message with no
+ *   tool call is safe (ticket state simply doesn't move — same as no answer).
+ * - a3/a4: inbound; identity rides system__caller_id bindings. get_reservation
+ *   is the code-only lookup lane (response carries no phone numbers).
+ */
 export function fleetWorkflows(toolIdByName: Map<string, string>): Record<FleetAgentKey, FleetWorkflow> {
   const a1Report = requireTool(toolIdByName, "a1_report_outcome");
   const a2Confirm = requireTool(toolIdByName, "a2_confirm_reservation");
@@ -378,178 +411,467 @@ export function fleetWorkflows(toolIdByName: Map<string, string>): Record<FleetA
   const a4Verify = requireTool(toolIdByName, "a4_verify_caller");
   const a4Find = requireTool(toolIdByName, "a4_find_reservation");
   const a4Cancel = requireTool(toolIdByName, "a4_cancel_reservation");
+  const getRes = requireTool(toolIdByName, "get_reservation");
 
   return {
-    // a1 · book with venue → guaranteed outcome report → end
+    // a1 · gatekeeper → negotiate → per-outcome report (confirmed / counter /
+    // declined) → tailored farewell → end. The three report nodes fire the
+    // SAME tool; the branch fixes the verdict context and the closing line.
     a1: {
       prevent_subagent_loops: true,
       nodes: {
-        start_node: { type: "start", position: pos(0, 0), edge_order: ["e_start_book"] },
-        book: talkNode({
-          label: "Book with venue",
-          position: pos(360, 0),
+        start_node: { type: "start", position: pos(0, 0), edge_order: ["e_start_gk"] },
+        gatekeeper: talkNode({
+          label: "Reach the right person",
+          position: pos(300, 0),
           entryBehavior: "generate_immediately",
           additionalPrompt:
-            "Negocia la mesa con el restaurante. Cuando confirmen, ofrezcan alternativas concretas, o rechacen / digan que no hay lugar, AVANZA al siguiente paso — no te despidas ni cuelgues todavía. No inventes disponibilidad.",
-          edgeOrder: ["e_book_report"],
+            "Primer contacto: saluda y di que llamas para hacer una reservación a nombre de {{guest_name}}. Si contesta un conmutador/IVR o alguien que no toma reservaciones, pide con cortesía que te comuniquen con quien sí las tome; acepta esperas cortas en línea. En cuanto te atienda una persona que pueda tomar la reservación, AVANZA. Aquí no negocies, no te despidas y no intentes llamar herramientas.",
+          edgeOrder: ["e_gk_book"],
         }),
-        report: toolNode(a1Report, pos(720, 0), ["e_report_ok"]),
-        end_node: { type: "end", position: pos(1080, 0), edge_order: [] },
+        book: talkNode({
+          label: "Negotiate the table",
+          position: pos(620, 0),
+          entryBehavior: "generate_immediately",
+          additionalPrompt:
+            "Negocia la mesa: {{party_size}} personas, {{reservation_date}} a las {{reservation_time}}, a nombre de {{guest_name}}. Si piden un teléfono de contacto da {{guest_phone}}; si piden número de confirmación, el código Mesita es {{reference_code}}. Menciona {{special_requests}} una sola vez si no está vacío y hay disponibilidad. Si no pueden tal cual, pregunta qué opciones cercanas tienen y apúntalas textuales y cortas — NO aceptes ninguna por tu cuenta. Con un resultado claro (confirmaron tal cual · ofrecieron alternativas · rechazaron/no hay lugar) AVANZA por la rama correcta SIN despedirte; el flujo dispara el registro. No inventes disponibilidad.",
+          edgeOrder: ["e_book_confirmed", "e_book_counter", "e_book_declined"],
+        }),
+        report_confirmed: toolNode(a1Report, pos(940, -170), ["e_rc_farewell"]),
+        report_counter: toolNode(a1Report, pos(940, 0), ["e_rco_farewell"]),
+        report_declined: toolNode(a1Report, pos(940, 170), ["e_rd_farewell"]),
+        farewell_ok: talkNode({
+          label: "Confirm & close",
+          position: pos(1260, -170),
+          entryBehavior: "generate_immediately",
+          additionalPrompt:
+            "La mesa quedó CONFIRMADA y ya se registró (verdict=confirmed). Lee de vuelta en una sola frase: nombre, personas, fecha y hora. Agradece, despídete corto y cuelga con end_call.",
+          edgeOrder: ["e_fok_end"],
+        }),
+        farewell_counter: talkNode({
+          label: "Counter-offer close",
+          position: pos(1260, 0),
+          entryBehavior: "generate_immediately",
+          additionalPrompt:
+            "Las alternativas ya se registraron (verdict=counter_offer). Di que Mesita se las propone al comensal y les regresa la respuesta. Agradece, despídete corto y cuelga con end_call.",
+          edgeOrder: ["e_fco_end"],
+        }),
+        farewell_declined: talkNode({
+          label: "Declined close",
+          position: pos(1260, 170),
+          entryBehavior: "generate_immediately",
+          additionalPrompt:
+            "El resultado ya se registró (verdict=declined). Agradece el tiempo, despídete corto y cuelga con end_call.",
+          edgeOrder: ["e_fd_end"],
+        }),
+        end_node: { type: "end", position: pos(1580, 0), edge_order: [] },
       },
       edges: {
-        e_start_book: edge("start_node", "book", UNCOND),
-        // One undirected pair book↔report (EL rejects A→B plus B→A as duplicate).
-        e_book_report: edge(
+        e_start_gk: edge("start_node", "gatekeeper", UNCOND),
+        e_gk_book: edge(
+          "gatekeeper",
           "book",
-          "report",
+          llm("Ya te atiende una persona que puede tomar o negociar la reservación.", "host reached"),
+        ),
+        // Backward RESULT_FAIL: if the report webhook fails, fall back to book
+        // and try the outcome again rather than closing unreported.
+        e_book_confirmed: edge(
+          "book",
+          "report_confirmed",
+          llm("El restaurante CONFIRMÓ la mesa tal como se pidió.", "confirmed"),
+          RESULT_FAIL,
+        ),
+        e_book_counter: edge(
+          "book",
+          "report_counter",
           llm(
-            "El restaurante ya dio un resultado claro: confirmó la mesa tal cual, ofreció alternativas concretas, o rechazó / no hay lugar.",
-            "outcome ready",
+            "El restaurante NO puede tal cual y ofreció alternativas concretas (otra hora u otra área).",
+            "counter-offer",
           ),
           RESULT_FAIL,
         ),
-        e_report_ok: edge("report", "end_node", RESULT_OK),
+        e_book_declined: edge(
+          "book",
+          "report_declined",
+          llm("El restaurante rechazó definitivamente: no hay lugar ni alternativas.", "declined"),
+          RESULT_FAIL,
+        ),
+        e_rc_farewell: edge("report_confirmed", "farewell_ok", RESULT_OK),
+        e_rco_farewell: edge("report_counter", "farewell_counter", RESULT_OK),
+        e_rd_farewell: edge("report_declined", "farewell_declined", RESULT_OK),
+        e_fok_end: edge(
+          "farewell_ok",
+          "end_node",
+          llm("Ya leíste los datos de vuelta y te despediste.", "done"),
+        ),
+        e_fco_end: edge(
+          "farewell_counter",
+          "end_node",
+          llm("Ya avisaste que Mesita regresa la respuesta y te despediste.", "done"),
+        ),
+        e_fd_end: edge("farewell_declined", "end_node", llm("Ya agradeciste y te despediste.", "done")),
       },
     },
 
-    // a2 · talk to guest → confirm OR cancel tool → end
+    // a2 · route by call_context (confirmation / counter_offer / voicemail) →
+    // dedicated presentation → confirm-or-cancel tools → tailored farewell.
     a2: {
       prevent_subagent_loops: true,
       nodes: {
-        start_node: { type: "start", position: pos(0, 0), edge_order: ["e_start_talk"] },
-        talk: talkNode({
-          label: "Talk to guest",
-          position: pos(360, 0),
+        start_node: { type: "start", position: pos(0, 0), edge_order: ["e_start_route"] },
+        route: talkNode({
+          label: "Open & route by context",
+          position: pos(300, 0),
           entryBehavior: "generate_immediately",
           additionalPrompt:
-            "Presenta el contexto (confirmation o counter_offer) con claridad. Cuando el comensal acepte tal cual, elija/propuesta otra fecha u hora, o pida cancelar, AVANZA — no cuelgues todavía.",
-          edgeOrder: ["e_talk_confirm", "e_talk_cancel"],
+            "Saluda a {{guest_name}} y di que llamas de Mesita por su reservación en {{venue_name}}. Enruta según {{call_context}} (confirmation o counter_offer). Si contesta un buzón de voz o grabadora en lugar de una persona, toma la rama de buzón. Aquí no llames herramientas.",
+          edgeOrder: ["e_route_confirmation", "e_route_counter", "e_route_voicemail"],
         }),
-        confirm: toolNode(a2Confirm, pos(720, -140), ["e_confirm_ok"]),
-        cancel: toolNode(a2Cancel, pos(720, 140), ["e_cancel_ok"]),
-        end_node: { type: "end", position: pos(1080, 0), edge_order: [] },
+        present_confirmation: talkNode({
+          label: "Deliver confirmation",
+          position: pos(640, -180),
+          entryBehavior: "generate_immediately",
+          additionalPrompt:
+            "Contexto confirmation: el restaurante YA CONFIRMÓ el {{reservation_date}} a las {{reservation_time}} para {{party_size}}. Avísale y confírmale los datos. El comensal puede aceptar tal cual, proponer otra fecha u hora, o cancelar — AVANZA por la rama que corresponda; no cuelgues todavía.",
+          edgeOrder: ["e_pc_confirm", "e_pc_cancel"],
+        }),
+        present_alternatives: talkNode({
+          label: "Present alternatives",
+          position: pos(640, 120),
+          entryBehavior: "generate_immediately",
+          additionalPrompt:
+            "Contexto counter_offer: el restaurante NO pudo con el horario pedido y ofreció: {{venue_alternatives}}. Preséntaselas tal cual. Puede elegir una, proponer algo TOTALMENTE distinto, o cancelar — AVANZA por la rama que corresponda. Convierte lo que diga a fecha/hora usando {{system__time_utc}} como referencia. No inventes disponibilidad ni prometas nada que el restaurante no dijo.",
+          edgeOrder: ["e_pa_confirm", "e_pa_cancel"],
+        }),
+        voicemail: talkNode({
+          label: "Voicemail message",
+          position: pos(640, 400),
+          entryBehavior: "generate_immediately",
+          additionalPrompt:
+            "Es un buzón de voz: deja UN recado de una sola frase — que Mesita llamó por su reservación en {{venue_name}} y que puede revisar y confirmar en la app de Mesita — y cuelga con end_call. NO llames ninguna herramienta ni des más datos.",
+          edgeOrder: ["e_vm_end"],
+        }),
+        do_confirm: toolNode(a2Confirm, pos(980, -180), ["e_dc_farewell"]),
+        do_cancel: toolNode(a2Cancel, pos(980, 120), ["e_dx_farewell"]),
+        farewell_done: talkNode({
+          label: "Close (registered)",
+          position: pos(1300, -180),
+          entryBehavior: "generate_immediately",
+          additionalPrompt:
+            "Quedó registrado. Si la herramienta regresó parked=true, di que su petición quedó anotada y que Mesita le confirma por la app — no prometas otra llamada. Si hubo cambio de fecha/hora, explica que Mesita llama al restaurante para amarrarla y le confirma en cuanto quede. Despídete corto y cuelga con end_call.",
+          edgeOrder: ["e_fdone_end"],
+        }),
+        farewell_cancel: talkNode({
+          label: "Close (cancelled)",
+          position: pos(1300, 120),
+          entryBehavior: "generate_immediately",
+          additionalPrompt:
+            "La cancelación quedó registrada. Lamenta brevemente, agradece y cuelga con end_call.",
+          edgeOrder: ["e_fcancel_end"],
+        }),
+        end_node: { type: "end", position: pos(1620, 0), edge_order: [] },
       },
       edges: {
-        e_start_talk: edge("start_node", "talk", UNCOND),
-        e_talk_confirm: edge(
-          "talk",
-          "confirm",
+        e_start_route: edge("start_node", "route", UNCOND),
+        e_route_confirmation: edge(
+          "route",
+          "present_confirmation",
+          llm("El contexto de la llamada es confirmation: el restaurante ya confirmó.", "confirmation"),
+        ),
+        e_route_counter: edge(
+          "route",
+          "present_alternatives",
+          llm("El contexto es counter_offer: hay alternativas del restaurante que presentar.", "counter-offer"),
+        ),
+        e_route_voicemail: edge(
+          "route",
+          "voicemail",
+          llm("Contestó un buzón de voz o una grabadora, no una persona.", "voicemail"),
+        ),
+        e_pc_confirm: edge(
+          "present_confirmation",
+          "do_confirm",
           llm(
-            "El comensal aceptó la confirmación o eligió / propuso una nueva fecha u hora. No quiere cancelar.",
+            "Acepta tal cual, o eligió/propuso una nueva fecha u hora (mándala en new_date AAAA-MM-DD / new_time HH:mm).",
             "confirm",
           ),
           RESULT_FAIL,
         ),
-        e_talk_cancel: edge(
-          "talk",
-          "cancel",
+        e_pc_cancel: edge(
+          "present_confirmation",
+          "do_cancel",
           llm("El comensal quiere cancelar la reservación.", "cancel"),
           RESULT_FAIL,
         ),
-        e_confirm_ok: edge("confirm", "end_node", RESULT_OK),
-        e_cancel_ok: edge("cancel", "end_node", RESULT_OK),
+        e_pa_confirm: edge(
+          "present_alternatives",
+          "do_confirm",
+          llm(
+            "Eligió una alternativa o propuso otra fecha u hora (mándala en new_date AAAA-MM-DD / new_time HH:mm).",
+            "confirm",
+          ),
+          RESULT_FAIL,
+        ),
+        e_pa_cancel: edge(
+          "present_alternatives",
+          "do_cancel",
+          llm("El comensal quiere cancelar.", "cancel"),
+          RESULT_FAIL,
+        ),
+        e_dc_farewell: edge("do_confirm", "farewell_done", RESULT_OK),
+        e_dx_farewell: edge("do_cancel", "farewell_cancel", RESULT_OK),
+        e_fdone_end: edge("farewell_done", "end_node", llm("Ya cerraste y te despediste.", "done")),
+        e_fcancel_end: edge("farewell_cancel", "end_node", llm("Ya cerraste y te despediste.", "done")),
+        e_vm_end: edge("voicemail", "end_node", llm("Ya dejaste el recado y colgaste.", "done")),
       },
     },
 
-    // a3 · verify caller first → help (cancel loop) / deny → end
+    // a3 · verify → triage (inform / cancel-with-confirmation / redirect) on
+    // the verified lane; deny + reference-code lookup on the unverified lane.
     a3: {
       prevent_subagent_loops: true,
       nodes: {
         start_node: { type: "start", position: pos(0, 0), edge_order: ["e_start_verify"] },
-        verify: toolNode(a3Verify, pos(300, 0), ["e_verify_ok", "e_verify_fail"]),
-        help: talkNode({
-          label: "Help guest",
-          position: pos(620, -120),
+        verify: toolNode(a3Verify, pos(280, 0), ["e_verify_ok", "e_verify_fail"]),
+        triage: talkNode({
+          label: "Triage guest",
+          position: pos(580, -160),
           entryBehavior: "generate_immediately",
           additionalPrompt:
-            "Caller verified=true. Saluda por nombre y usa SOLO los tickets de la verificación. Si pide cancelar una suya, avanza a cancelar. Si ya resolviste su duda y te despediste, cierra. No inventes reservaciones.",
-          edgeOrder: ["e_help_cancel", "e_help_end"],
+            "Caller verified=true. Saluda por su nombre y pregunta en qué le ayudas. Usa SOLO los tickets de la verificación; nunca inventes reservaciones ni hables de datos de otras personas. Según lo que pida, AVANZA: informar sus reservaciones · cancelar una suya · otros cambios (fecha/hora/personas → app Mesita).",
+          edgeOrder: ["e_triage_inform", "e_triage_cancel", "e_triage_redirect"],
+        }),
+        inform: talkNode({
+          label: "Read their tickets",
+          position: pos(900, -320),
+          entryBehavior: "generate_immediately",
+          additionalPrompt:
+            "Léele sus reservaciones de los tickets verificados: lugar, fecha, hora, personas y estado — breve y claro. Si decide cancelar una, AVANZA a la confirmación de cancelación. Si ya quedó resuelto, despídete y cierra.",
+          edgeOrder: ["e_inform_cancel", "e_inform_end"],
+        }),
+        confirm_cancel: talkNode({
+          label: "Confirm cancellation",
+          position: pos(900, -120),
+          entryBehavior: "generate_immediately",
+          additionalPrompt:
+            "Identifica la reservación por LUGAR y FECHA en la conversación (el comensal NO necesita ningún código — el reference_code lo tomas tú del ticket correspondiente). Confirma UNA vez: '¿Cancelo su reservación en X del día Y?'. Solo con un sí claro AVANZA a cancelar.",
+          edgeOrder: ["e_cc_cancel"],
+        }),
+        do_cancel: toolNode(a3Cancel, pos(1220, -120), ["e_dc_done"]),
+        cancel_done: talkNode({
+          label: "Cancelled — close",
+          position: pos(1540, -120),
+          entryBehavior: "generate_immediately",
+          additionalPrompt:
+            "La cancelación quedó hecha. Confírmalo en una frase, ofrece ayudar en algo más y, resuelto, despídete y cuelga con end_call.",
+          edgeOrder: ["e_done_end"],
+        }),
+        redirect_app: talkNode({
+          label: "Redirect to app",
+          position: pos(900, 60),
+          entryBehavior: "generate_immediately",
+          additionalPrompt:
+            "Cambios de fecha, hora o personas por ahora se hacen desde la app de Mesita: indícaselo con claridad y amabilidad, despídete y cuelga con end_call.",
+          edgeOrder: ["e_redirect_end"],
         }),
         deny: talkNode({
           label: "Unknown caller",
-          position: pos(620, 160),
+          position: pos(580, 260),
           entryBehavior: "generate_immediately",
           additionalPrompt:
-            "Caller verified=false. Con amabilidad di que no hay cuenta Mesita con ese número, invita a la app, y despídete. PROHIBIDO dar datos de reservaciones.",
-          edgeOrder: ["e_deny_end"],
+            "Caller verified=false. Di que no encuentras una cuenta de Mesita con el número desde el que llama. Ofrece UNA alternativa: si tiene su código de referencia de 8 dígitos, puedes revisar esa reservación puntual; si no, invítalo a la app de Mesita. PROHIBIDO dar datos sin código.",
+          edgeOrder: ["e_deny_code", "e_deny_end"],
         }),
-        cancel: toolNode(a3Cancel, pos(940, -120), []),
-        end_node: { type: "end", position: pos(1260, 0), edge_order: [] },
+        code_lookup: toolNode(getRes, pos(900, 260), ["e_code_info"]),
+        code_info: talkNode({
+          label: "Code result",
+          position: pos(1220, 260),
+          entryBehavior: "generate_immediately",
+          additionalPrompt:
+            "Informa SOLO lo que regresó la búsqueda por código: lugar, fecha, hora, personas y estado de ESA reservación. Para cualquier cambio o cancelación: la app de Mesita, o llamar desde el número registrado de su cuenta. No busques por nombre; no des datos de nada más. Resuelto, despídete y cuelga con end_call.",
+          edgeOrder: ["e_ci_end"],
+        }),
+        end_node: { type: "end", position: pos(1860, 0), edge_order: [] },
       },
       edges: {
         e_start_verify: edge("start_node", "verify", UNCOND),
-        e_verify_ok: edge("verify", "help", RESULT_OK),
+        e_verify_ok: edge("verify", "triage", RESULT_OK),
         e_verify_fail: edge("verify", "deny", RESULT_FAIL),
-        e_help_cancel: edge(
-          "help",
-          "cancel",
-          llm("El comensal quiere cancelar una de SUS reservaciones verificadas.", "cancel"),
-          BACK_HELP,
+        e_triage_inform: edge(
+          "triage",
+          "inform",
+          llm("Quiere saber de sus reservaciones: cuáles tiene, cuándo o en qué estado están.", "inform"),
+          back("tiene otra gestión"),
         ),
-        e_help_end: edge(
-          "help",
+        e_triage_cancel: edge(
+          "triage",
+          "confirm_cancel",
+          llm("Quiere cancelar una de SUS reservaciones.", "cancel"),
+          back("ya no quiere cancelar"),
+        ),
+        e_triage_redirect: edge(
+          "triage",
+          "redirect_app",
+          llm("Quiere cambiar fecha, hora o personas, u otra gestión que no es cancelar.", "redirect"),
+        ),
+        e_inform_cancel: edge(
+          "inform",
+          "confirm_cancel",
+          llm("Decidió cancelar una de esas reservaciones.", "cancel"),
+        ),
+        e_inform_end: edge(
+          "inform",
           "end_node",
-          llm("La gestión del comensal ya quedó resuelta y ya te despediste.", "done"),
+          llm("Su duda quedó resuelta y ya te despediste.", "done"),
+        ),
+        e_cc_cancel: edge(
+          "confirm_cancel",
+          "do_cancel",
+          llm("Confirmó explícitamente que sí cancela ESA reservación (lugar y fecha claros).", "confirmed"),
+          RESULT_FAIL,
+        ),
+        e_dc_done: edge("do_cancel", "cancel_done", RESULT_OK),
+        e_done_end: edge("cancel_done", "end_node", llm("Resuelto y despedido.", "done")),
+        e_redirect_end: edge("redirect_app", "end_node", llm("Ya lo orientaste a la app y te despediste.", "done")),
+        e_deny_code: edge(
+          "deny",
+          "code_lookup",
+          llm("Dictó un código de referencia de 8 dígitos.", "has code"),
+          RESULT_FAIL,
         ),
         e_deny_end: edge(
           "deny",
           "end_node",
-          llm("Ya le explicaste que no hay cuenta y te despediste.", "done"),
+          llm("No tiene código; ya lo invitaste a la app y te despediste.", "done"),
         ),
+        e_code_info: edge("code_lookup", "code_info", RESULT_OK),
+        e_ci_end: edge("code_info", "end_node", llm("Resuelto y despedido.", "done")),
       },
     },
 
-    // a4 · verify venue → help (find / cancel) / deny → end
+    // a4 · verify venue → triage (upcoming / find-by-name / code lookup /
+    // redirect) → shared results node → cancel with confirmation → close.
     a4: {
       prevent_subagent_loops: true,
       nodes: {
         start_node: { type: "start", position: pos(0, 0), edge_order: ["e_start_verify"] },
-        verify: toolNode(a4Verify, pos(300, 0), ["e_verify_ok", "e_verify_fail"]),
-        help: talkNode({
-          label: "Help venue",
-          position: pos(620, -120),
+        verify: toolNode(a4Verify, pos(280, 0), ["e_verify_ok", "e_verify_fail"]),
+        triage: talkNode({
+          label: "Triage venue",
+          position: pos(580, -160),
           entryBehavior: "generate_immediately",
           additionalPrompt:
-            "Lugar verificado. Lee tickets del lugar. Si piden buscar por nombre del comensal, avanza a find. Si quieren cancelar una de SU lugar, avanza a cancel. NUNCA des el teléfono del comensal. Cuando ya resolviste y te despediste, cierra.",
-          edgeOrder: ["e_help_find", "e_help_cancel", "e_help_end"],
+            "Lugar verificado. Saluda mencionando el nombre del lugar y pregunta en qué ayudas. Rutas: repasar sus reservaciones próximas · buscar por NOMBRE del comensal (el camino normal) · un código de referencia de 8 dígitos que dicten · otros cambios. Regla dura: solo hablas de reservaciones de SU lugar y NUNCA das el teléfono del comensal.",
+          edgeOrder: ["e_triage_upcoming", "e_triage_find", "e_triage_code", "e_triage_redirect"],
+        }),
+        upcoming: talkNode({
+          label: "Read upcoming",
+          position: pos(920, -400),
+          entryBehavior: "generate_immediately",
+          additionalPrompt:
+            "Léeles las reservaciones próximas de SU lugar (de los tickets de la verificación): comensal, fecha, hora, personas, estado y código — breve. Si quieren cancelar una, AVANZA a la confirmación. Resuelto, despídete y cierra.",
+          edgeOrder: ["e_upcoming_cancel", "e_upcoming_end"],
+        }),
+        find: toolNode(a4Find, pos(920, -160), ["e_find_found"]),
+        code_lookup: toolNode(getRes, pos(920, 40), ["e_code_found"]),
+        found: talkNode({
+          label: "Present matches",
+          position: pos(1240, -160),
+          entryBehavior: "generate_immediately",
+          additionalPrompt:
+            "Presenta las coincidencias: comensal, fecha, hora, personas y estado, con su código de referencia. Si quieren cancelar una, AVANZA a la confirmación; si solo era consulta y quedó resuelta, despídete y cierra. NUNCA des el teléfono del comensal.",
+          edgeOrder: ["e_found_cancel", "e_found_end"],
+        }),
+        confirm_cancel: talkNode({
+          label: "Confirm cancellation",
+          position: pos(1560, -160),
+          entryBehavior: "generate_immediately",
+          additionalPrompt:
+            "Confirma UNA vez qué reservación cancelan (comensal, fecha y hora); el reference_code lo tomas tú del resultado — el restaurante no necesita dictarlo. Solo con un sí claro AVANZA a cancelar. Mesita le avisa al comensal; el restaurante NUNCA llama al cliente.",
+          edgeOrder: ["e_cc_do"],
+        }),
+        do_cancel: toolNode(a4Cancel, pos(1880, -160), ["e_do_done"]),
+        cancel_done: talkNode({
+          label: "Cancelled — close",
+          position: pos(2200, -160),
+          entryBehavior: "generate_immediately",
+          additionalPrompt:
+            "La cancelación quedó registrada y Mesita le avisa al comensal. Confírmalo en una frase, ofrece algo más y, resuelto, despídete y cuelga con end_call.",
+          edgeOrder: ["e_done_end"],
+        }),
+        redirect: talkNode({
+          label: "Redirect to console",
+          position: pos(920, 240),
+          entryBehavior: "generate_immediately",
+          additionalPrompt:
+            "Otros cambios (mover hora, capacidad, datos del lugar) no se hacen por esta línea: pídeles responder cuando Mesita los llame o usar su consola de Mesita. Despídete y cuelga con end_call.",
+          edgeOrder: ["e_redirect_end"],
         }),
         deny: talkNode({
           label: "Unknown venue line",
-          position: pos(620, 180),
+          position: pos(580, 300),
           entryBehavior: "generate_immediately",
           additionalPrompt:
-            "Caller verified=false. Di que ese número no está registrado como línea de ningún lugar en Mesita; pide llamar desde el teléfono del negocio o usar la consola. No des información.",
+            "Caller verified=false. Di que ese número no está registrado como línea de ningún lugar en Mesita; pídeles llamar desde el teléfono registrado del negocio o escribir desde su consola de Mesita. No des NINGUNA información de reservaciones.",
           edgeOrder: ["e_deny_end"],
         }),
-        find: toolNode(a4Find, pos(940, -220), []),
-        cancel: toolNode(a4Cancel, pos(940, 20), []),
-        end_node: { type: "end", position: pos(1260, 0), edge_order: [] },
+        end_node: { type: "end", position: pos(2520, 0), edge_order: [] },
       },
       edges: {
         e_start_verify: edge("start_node", "verify", UNCOND),
-        e_verify_ok: edge("verify", "help", RESULT_OK),
+        e_verify_ok: edge("verify", "triage", RESULT_OK),
         e_verify_fail: edge("verify", "deny", RESULT_FAIL),
-        e_help_find: edge(
-          "help",
+        e_triage_upcoming: edge(
+          "triage",
+          "upcoming",
+          llm("Quieren repasar las reservaciones próximas de su lugar.", "upcoming"),
+          back("otra gestión"),
+        ),
+        e_triage_find: edge(
+          "triage",
           "find",
-          llm("El restaurante pide buscar una reservación por el nombre del comensal.", "find"),
-          BACK_HELP,
+          llm("Buscan una reservación por el NOMBRE del comensal.", "find"),
+          RESULT_FAIL,
         ),
-        e_help_cancel: edge(
-          "help",
-          "cancel",
-          llm("El restaurante quiere cancelar una reservación de SU lugar.", "cancel"),
-          BACK_HELP,
+        e_triage_code: edge(
+          "triage",
+          "code_lookup",
+          llm("Dictan un código de referencia de Mesita de 8 dígitos.", "has code"),
+          RESULT_FAIL,
         ),
-        e_help_end: edge(
-          "help",
-          "end_node",
-          llm("La gestión del restaurante ya quedó resuelta y ya te despediste.", "done"),
+        e_triage_redirect: edge(
+          "triage",
+          "redirect",
+          llm("Piden otros cambios (mover hora, capacidad, datos) que no se hacen por esta línea.", "redirect"),
         ),
+        e_upcoming_cancel: edge(
+          "upcoming",
+          "confirm_cancel",
+          llm("Quieren cancelar una de esas reservaciones.", "cancel"),
+        ),
+        e_upcoming_end: edge("upcoming", "end_node", llm("Resuelto y despedido.", "done")),
+        e_find_found: edge("find", "found", RESULT_OK, back("buscar otro nombre")),
+        e_code_found: edge("code_lookup", "found", RESULT_OK),
+        e_found_cancel: edge(
+          "found",
+          "confirm_cancel",
+          llm("Quieren cancelar ESA reservación: el lugar ya no puede recibirla.", "cancel"),
+          back("buscar otra u otra gestión"),
+        ),
+        e_found_end: edge("found", "end_node", llm("Solo era consulta; resuelto y despedido.", "done")),
+        e_cc_do: edge(
+          "confirm_cancel",
+          "do_cancel",
+          llm("Confirmaron explícitamente la cancelación de esa reservación.", "confirmed"),
+          RESULT_FAIL,
+        ),
+        e_do_done: edge("do_cancel", "cancel_done", RESULT_OK),
+        e_done_end: edge("cancel_done", "end_node", llm("Resuelto y despedido.", "done")),
+        e_redirect_end: edge("redirect", "end_node", llm("Ya los orientaste y te despediste.", "done")),
         e_deny_end: edge(
           "deny",
           "end_node",
-          llm("Ya le explicaste que el número no está registrado y te despediste.", "done"),
+          llm("Ya explicaste que el número no está registrado y te despediste.", "done"),
         ),
       },
     },
