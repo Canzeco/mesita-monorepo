@@ -121,7 +121,10 @@ export function CheckTicketCard({
               {ticket.discount_percent ?? 0}% off applied
             </p>
             <p className="font-display mt-0.5 text-2xl leading-none font-bold">
-              {formatCurrency(ticket.total_cents ?? 0)}
+              {/* total_cents is the PRE-discount bill; amount due = total − discount. */}
+              {formatCurrency(
+                Math.max(0, (ticket.total_cents ?? 0) - (ticket.discount_cents ?? 0)),
+              )}
             </p>
             <p className="mt-1 text-[11px] opacity-90">
               to pay at the table

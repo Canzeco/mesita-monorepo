@@ -141,7 +141,13 @@ export function shapeCheckPayload(args: {
         check_subtotal_cents: ticket.check_subtotal_cents,
         discount_percent: ticket.discount_percent,
         discount_cents: ticket.discount_cents,
-        amount_due_cents: ticket.total_cents,
+        // tickets.total_cents is the PRE-discount bill total (subtotal+tip);
+        // the amount to charge is total minus the snapshotted discount.
+        // Caught live by the MESITA-806 E2E — a MX$800 bill showed $800 due.
+        amount_due_cents: Math.max(
+          0,
+          (ticket.total_cents ?? 0) - (ticket.discount_cents ?? 0),
+        ),
         reward_cap_mxn: args.capMxn,
       }
       : null,

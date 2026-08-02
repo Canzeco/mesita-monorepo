@@ -74,7 +74,7 @@ Deno.test("isPlausibleCheckCode: rejects consumer codes, UUIDs, junk", () => {
 Deno.test("shapeCheckPayload: the allowlist — forbidden fields never leak", () => {
   const payload = shape({
     status: "awaiting_payment_confirm",
-    total_cents: 40_000,
+    total_cents: 50_000, // PRE-discount (subtotal + tip)
     check_subtotal_cents: 50_000,
     discount_percent: 20,
     discount_cents: 10_000,
@@ -104,9 +104,22 @@ Deno.test("shapeCheckPayload: the allowlist — forbidden fields never leak", ()
       `public payload leaked "${forbidden}"`,
     );
   }
-  // What IS there: the blended final percent and the amounts.
+  // What IS there: the blended final percent and the amounts. NB
+  // total_cents is the PRE-discount bill (the live-E2E bug): a MX$500 bill
+  // with MX$100 off is MX$400 due.
   assertEquals((payload.bill as Record<string, unknown>).discount_percent, 20);
   assertEquals((payload.bill as Record<string, unknown>).amount_due_cents, 40_000);
+});
+
+Deno.test("shapeCheckPayload: amount due = total minus discount (E2E regression)", () => {
+  const payload = shape({
+    status: "awaiting_payment_confirm",
+    check_subtotal_cents: 80_000,
+    total_cents: 80_000,
+    discount_percent: 20,
+    discount_cents: 10_000,
+  });
+  assertEquals((payload.bill as Record<string, unknown>).amount_due_cents, 70_000);
 });
 
 Deno.test("shapeCheckPayload: bill is null before billing", () => {
