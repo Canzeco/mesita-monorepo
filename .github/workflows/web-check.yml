@@ -1,23 +1,23 @@
-name: web-checkout CI
+name: web-check CI
 
 on:
   push:
     branches: [main]
     paths:
-      - "apps/web-checkout/**"
-      - ".github/workflows/web-checkout.yml"
+      - "apps/web-check/**"
+      - ".github/workflows/web-check.yml"
   pull_request:
     paths:
-      - "apps/web-checkout/**"
-      - ".github/workflows/web-checkout.yml"
+      - "apps/web-check/**"
+      - ".github/workflows/web-check.yml"
 
 concurrency:
-  group: web-checkout-ci-${{ github.ref }}
+  group: web-check-ci-${{ github.ref }}
   cancel-in-progress: true
 
 defaults:
   run:
-    working-directory: apps/web-checkout
+    working-directory: apps/web-check
 
 jobs:
   check:
@@ -37,7 +37,7 @@ jobs:
         with:
           node-version: 22
           cache: pnpm
-          cache-dependency-path: apps/web-checkout/pnpm-lock.yaml
+          cache-dependency-path: apps/web-check/pnpm-lock.yaml
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile

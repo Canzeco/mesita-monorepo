@@ -15,15 +15,15 @@ const fraunces = Fraunces({
   axes: ["opsz"],
 });
 
-// Mesita Checkout — the staff-side app. The waiter scans the QR the guest
+// Mesita Check — the staff-side app. The waiter scans the QR the guest
 // generated in their app and lands on /check/<code>: proof the ticket is a
 // real, live Mesita check, plus the actions of the visit (bill, approvals,
 // payment). Staff-facing → Spanish (es-MX), never indexed.
 export const metadata: Metadata = {
-  metadataBase: new URL("https://checkout.mesita.ai"),
+  metadataBase: new URL("https://check.mesita.ai"),
   title: {
-    default: "Mesita Checkout",
-    template: "%s · Mesita Checkout",
+    default: "Mesita Check",
+    template: "%s · Mesita Check",
   },
   description: "Verificación y cobro oficial de tickets Mesita.",
   robots: { index: false, follow: false },

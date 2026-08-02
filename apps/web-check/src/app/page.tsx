@@ -1,6 +1,6 @@
 "use client";
 
-// Mesita Checkout home. Staff normally never see this page — scanning a
+// Mesita Check home. Staff normally never see this page — scanning a
 // guest's QR lands them straight on /check/<code>. This is the fallback
 // door: a hand-typed check code (camera trouble, broken screen) and a
 // one-glance explanation of what the app is.
@@ -27,7 +27,7 @@ export default function CheckoutHome() {
           <ScanLine className="size-5" />
         </span>
         <h1 className="font-display text-3xl font-bold tracking-tight">
-          Mesita Checkout
+          Mesita Check
         </h1>
         <p className="text-muted-foreground text-sm leading-relaxed">
           Escanea el QR que el cliente genera en su app de Mesita. Si el QR es
