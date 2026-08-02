@@ -14,13 +14,9 @@ export function ClassPreviewToggle() {
     consumerClass,
     profile?.instagram_handle ?? null,
   );
-  const selected: MockClass =
-    override ??
-    (effective.key === 'standard'
-      ? 'standard'
-      : effective.origin === 'instagram'
-        ? 'instagram'
-        : 'subscription');
+  // MockClass values ARE class keys (segments v6), so the selected chip is
+  // simply the effective class.
+  const selected: MockClass = override ?? effective.key;
 
   return (
     <View
@@ -66,8 +62,9 @@ export function ClassPreviewToggle() {
         {(
           [
             { value: 'standard', label: 'Standard' },
-            { value: 'subscription', label: 'Premium' },
-            { value: 'instagram', label: 'Magnetic' },
+            { value: 'premium', label: 'Premium' },
+            { value: 'influencer', label: 'Influencer' },
+            { value: 'aura', label: 'Aura' },
           ] as const
         ).map((opt) => {
           const active = selected === opt.value;

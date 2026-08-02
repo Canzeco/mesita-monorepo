@@ -44,9 +44,11 @@ export function RewardsTopCards() {
         >
           <LinearGradient
             colors={
-              classKey === 'magnetic'
+              classKey === 'aura'
                 ? [...GRADIENTS.gold]
-                : [...GRADIENTS.premium]
+                : classKey === 'influencer'
+                  ? [...GRADIENTS.sky]
+                  : [...GRADIENTS.premium]
             }
             start={GRADIENT_DIAGONAL.start}
             end={GRADIENT_DIAGONAL.end}
@@ -188,10 +190,10 @@ export function RewardsTopCards() {
               style={{ fontSize: 13, lineHeight: 20 }}
             >
               <Text className="font-semibold text-foreground">
-                Premium and Magnetic boost them.{' '}
+                Elevated classes boost them.{' '}
               </Text>
-              Standard gets the base discount; Premium and Magnetic unlock bigger
-              ones — Magnetic is free with Instagram.
+              Standard gets the base discount; Premium, Influencer and Aura
+              unlock bigger ones — Influencer is free with Instagram reach.
             </Text>
           </View>
         </View>

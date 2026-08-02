@@ -1,6 +1,7 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import { Camera, Crown, Gift, QrCode, Sparkles } from 'lucide-react-native';
+// lucide-react-native has no Instagram glyph — AtSign is the house IG mark.
+import { AtSign, Crown, Gift, QrCode, Sparkles } from 'lucide-react-native';
 import { Pressable, Text, View } from 'react-native';
 
 import { GRADIENT_DIAGONAL, GRADIENTS, SHADOW_GLOW } from '@/constants/brand';
@@ -64,10 +65,14 @@ export function RewardsBox({ place }: { place: PlaceDetail }) {
       : capLabel
         ? `${visitLabel} · on your first ${capLabel}`
         : visitLabel;
-  // Magnetic is NOT story-gated: the class rung pays on every bill regardless
-  // of Instagram activity (resolveTicketRate, _shared/rewards-config.ts), so
-  // Premium and Magnetic share one "just pay with your QR" CTA.
+  // The claim action depends on the guest's own account, not the place:
+  //   Standard → Pay with QR + Upgrade (claim now, or unlock a bigger reward)
+  //   Elevated → one Pay-with-QR button, reward applies automatically
+  // The class rung pays on every bill with no strings; the Story rung is the
+  // INFLUENCER class's exclusive extra (segments v6 — resolveTicketRate,
+  // _shared/rewards-config.ts), best-of so it only ever raises the rate.
   const isStandard = classKey === 'standard';
+  const isInfluencer = classKey === 'influencer';
 
   return (
     <Box title="Reward" icon={Sparkles} iconColor="#f472b6">
@@ -95,9 +100,17 @@ export function RewardsBox({ place }: { place: PlaceDetail }) {
         />
         <RewardStep
           n={2}
-          icon={Camera}
-          title="Post a story — optional, any class"
-          body="Want more? Post a story tagging the place after the waiter scans your QR for a bigger reward. Skip it and you still keep your class reward in full."
+          icon={AtSign}
+          title={
+            isInfluencer
+              ? 'Post a story — optional, yours as an Influencer'
+              : 'Post a story — Influencers only'
+          }
+          body={
+            isInfluencer
+              ? 'Want more? Post a story tagging the place after the waiter scans your QR for a bigger reward. Skip it and you still keep your class reward in full.'
+              : 'The Instagram Story bonus is exclusive to the Influencer class (1,000+ followers). Every class keeps its own reward — and the Google review bonus is open to all.'
+          }
           accent
         />
         <RewardStep

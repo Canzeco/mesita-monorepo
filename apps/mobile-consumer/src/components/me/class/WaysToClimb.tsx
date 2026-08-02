@@ -1,15 +1,24 @@
-import { AtSign, Crown, Smile } from 'lucide-react-native';
 import { Fragment } from 'react';
 import { Linking, View } from 'react-native';
 
+import { GRADIENTS } from '@/constants/brand';
 import {
   CLASSES,
+  CLASS_ICONS,
   PREMIUM_SUBSCRIBE_URL,
 } from '@/lib/consumer-classes';
 import { useEffectiveClass } from '@/lib/mock-class';
+import { baseRateForClass, peakRateForClass } from '@/lib/reward-segments';
+import { toast } from '@/lib/toast';
 import { useAuth } from '@/providers/auth';
 import { ClimbCard, type ClimbCardData } from './ClimbCard';
 import { InstagramConnectedSummary } from './InstagramConnectedSummary';
+
+// Every elevated class (Premium / Influencer / Aura) shares ONE core perk set —
+// they differ in the door (paid / reach / invited) and in how their money is
+// made (flat rate vs the Story action vs the highest flat rate). Keep the
+// shared lines a single constant so the cards can never drift apart.
+const ELEVATED_PERKS = ['Better recommendations', '10 reservations a month'];
 
 export function WaysToClimb({
   onConnectInstagram,
@@ -17,7 +26,7 @@ export function WaysToClimb({
   onConnectInstagram: () => void;
 }) {
   const premium = CLASSES.find((c) => c.id === 'premium')!;
-  const magnetic = CLASSES.find((c) => c.id === 'magnetic')!;
+  const influencer = CLASSES.find((c) => c.id === 'influencer')!;
   const { consumerClass, profile } = useAuth();
   const { key, origin, followers } = useEffectiveClass(
     consumerClass,
@@ -28,25 +37,34 @@ export function WaysToClimb({
   const cards: ClimbCardData[] = [
     {
       key: 'standard',
-      icon: Smile,
+      icon: CLASS_ICONS.standard,
       title: 'Standard',
       price: '$0',
       priceNote: 'always free',
-      desc: 'Your default account at no cost. Get a base discount at Verified Partners, standard recommendations, and book up to 2 reservations every month.',
+      desc: 'Your default account at no cost — every guest starts here.',
+      perks: [
+        `Up to ${baseRateForClass('standard')}% discount rewards at Verified Partners`,
+        'Standard recommendations',
+        '2 reservations a month',
+      ],
       reached: isStandard,
       reachedLabel: 'Current class',
       note: isStandard ? undefined : 'Included in every account',
     },
     {
-      key: 'subscription',
-      icon: Crown,
+      key: 'premium',
+      icon: CLASS_ICONS.premium,
       title: 'Premium',
       via: 'Subscription',
       accent: true,
       price: `$${premium.priceMxn} MXN`,
       priceNote: 'per month · cancel anytime',
-      desc: 'Subscribe and unlock full Premium instantly — boosted discounts, personalized recommendations, and 10 reservations a month. No follower count needed; cancel whenever you want. Manage on web from this app.',
-      reached: origin === 'subscription',
+      desc: 'Subscribe and unlock full Premium instantly. No follower count needed; cancel whenever you want. Manage on web from this app.',
+      perks: [
+        `Up to ${baseRateForClass('premium')}% discount rewards — double Standard's`,
+        ...ELEVATED_PERKS,
+      ],
+      reached: key === 'premium',
       reachedLabel: 'Active',
       action: {
         label: 'Subscribe on web',
@@ -54,21 +72,56 @@ export function WaysToClimb({
       },
     },
     {
-      key: 'instagram',
-      icon: AtSign,
-      igGradient: true,
-      title: 'Magnetic',
+      key: 'influencer',
+      icon: CLASS_ICONS.influencer,
+      iconColors: GRADIENTS.sky,
+      title: 'Influencer',
       via: 'Instagram',
       accent: true,
-      price: `${magnetic.followerThreshold.toLocaleString('en-US')}+ followers`,
-      priceNote: 'no payment — earned with reach',
-      // Magnetic's discount is unconditional — the class rung pays on every
-      // bill. A story is a separate, optional rung any class can take, never a
-      // Magnetic requirement. Threshold reads off the DB-mirrored constant.
-      desc: `Connect an Instagram with ${magnetic.followerThreshold.toLocaleString('en-US')}+ followers to unlock Magnetic — Mesita's top, invite-only tier — with boosted discounts, personalized recommendations, and 10 reservations a month, without paying a peso. Your discount applies every visit; no story required.`,
-      reached: origin === 'instagram',
-      reachedLabel: 'Connected',
-      action: { label: 'Connect', onPress: onConnectInstagram },
+      price: `${influencer.followerThreshold.toLocaleString('en-US')}+ followers`,
+      priceNote: 'no payment — earned with reach, automatic',
+      // The Influencer class's real money is per-post: the Instagram Story
+      // action is EXCLUSIVE to this class (segments v6) and pays the story
+      // rung on any visit where a tagged story is verified.
+      desc: `Connect an Instagram with ${influencer.followerThreshold.toLocaleString('en-US')}+ followers. The Instagram Story reward is yours alone — post a tagged story on any visit and take up to ${peakRateForClass('influencer')}% off.`,
+      perks: [
+        `Up to ${baseRateForClass('influencer')}% base discount`,
+        'Instagram Story bonus — exclusive to Influencers',
+        ...ELEVATED_PERKS,
+      ],
+      reached: key === 'influencer',
+      reachedLabel: origin === 'instagram' ? 'Connected' : 'Active',
+      action: { label: 'Join with Instagram', onPress: onConnectInstagram },
+    },
+    {
+      key: 'aura',
+      icon: CLASS_ICONS.aura,
+      iconColors: GRADIENTS.gold,
+      title: 'Aura',
+      via: 'Invitation',
+      accent: true,
+      price: 'By invitation only',
+      priceNote: 'no payment — Mesita curates Aura personally',
+      // Aura is the presence class: the highest flat rate, paid for showing
+      // up. No follower count, no posting — the invite is the whole door.
+      desc: `Mesita's invite-only class. The highest base discount — up to ${baseRateForClass('aura')}% on every visit — just for being you. No followers required, nothing to post.`,
+      perks: [
+        `Up to ${baseRateForClass('aura')}% base discount — the highest of any class`,
+        ...ELEVATED_PERKS,
+      ],
+      reached: key === 'aura',
+      reachedLabel: 'Active',
+      // No invite-code or request flow exists yet — placeholder until the
+      // curation door gets a consumer-side backend (grants are admin-console
+      // only for launch).
+      action: {
+        label: 'Request invitation',
+        secondary: true,
+        onPress: () =>
+          toast(
+            'Invitation requests open soon — Mesita curates Aura personally.',
+          ),
+      },
     },
   ];
 
@@ -77,7 +130,7 @@ export function WaysToClimb({
       {cards.map((c) => (
         <Fragment key={c.key}>
           <ClimbCard data={c} />
-          {c.key === 'instagram' && origin === 'instagram' ? (
+          {c.key === 'influencer' && origin === 'instagram' ? (
             <InstagramConnectedSummary followers={followers} />
           ) : null}
         </Fragment>

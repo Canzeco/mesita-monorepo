@@ -1,6 +1,6 @@
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
-import { AtSign, Crown, Magnet, X } from 'lucide-react-native';
+import { AtSign, Crown, Megaphone, X } from 'lucide-react-native';
 import { useState } from 'react';
 import { Linking, Modal, Pressable, Text, View } from 'react-native';
 
@@ -84,9 +84,9 @@ export function SocialProfileSheet({
                     }}
                     contentFit="cover"
                   />
-                  {shown.plan === 'magnetic' ? (
-                    <View className="absolute -bottom-0.5 -left-0.5 size-6 items-center justify-center rounded-full bg-amber-400">
-                      <Magnet color="#fff" size={14} />
+                  {shown.plan === 'influencer' ? (
+                    <View className="absolute -bottom-0.5 -left-0.5 size-6 items-center justify-center rounded-full bg-sky-600">
+                      <Megaphone color="#fff" size={14} />
                     </View>
                   ) : null}
                   {shown.plan === 'premium' ? (
@@ -129,32 +129,36 @@ export function SocialProfileSheet({
 
                 {shown.plan !== 'standard' ? (
                   <View className="mt-3 flex-row">
-                    <LinearGradient
-                      colors={
-                        shown.plan === 'magnetic'
-                          ? [...GRADIENTS.gold]
-                          : [...GRADIENTS.premium]
-                      }
-                      start={GRADIENT_DIAGONAL.start}
-                      end={GRADIENT_DIAGONAL.end}
-                      style={{
-                        height: 28,
-                        borderRadius: 14,
-                        paddingHorizontal: 10,
-                        flexDirection: 'row',
-                        alignItems: 'center',
-                        gap: 4,
-                      }}
-                    >
-                      {shown.plan === 'magnetic' ? (
-                        <Magnet color="#fff" size={12} />
-                      ) : (
+                    {shown.plan === 'influencer' ? (
+                      <View
+                        className="flex-row items-center rounded-full bg-sky-600"
+                        style={{ height: 28, paddingHorizontal: 10, gap: 4 }}
+                      >
+                        <Megaphone color="#fff" size={12} />
+                        <Text className="text-[11px] font-semibold text-white">
+                          Influencer
+                        </Text>
+                      </View>
+                    ) : (
+                      <LinearGradient
+                        colors={[...GRADIENTS.premium]}
+                        start={GRADIENT_DIAGONAL.start}
+                        end={GRADIENT_DIAGONAL.end}
+                        style={{
+                          height: 28,
+                          borderRadius: 14,
+                          paddingHorizontal: 10,
+                          flexDirection: 'row',
+                          alignItems: 'center',
+                          gap: 4,
+                        }}
+                      >
                         <Crown color="#fff" size={12} fill="#fff" />
-                      )}
-                      <Text className="text-[11px] font-semibold text-white">
-                        {shown.plan === 'magnetic' ? 'Magnetic' : 'Premium'}
-                      </Text>
-                    </LinearGradient>
+                        <Text className="text-[11px] font-semibold text-white">
+                          Premium
+                        </Text>
+                      </LinearGradient>
+                    )}
                   </View>
                 ) : null}
 

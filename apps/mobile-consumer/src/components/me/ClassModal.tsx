@@ -4,9 +4,9 @@ import { View } from 'react-native';
 
 import { FullScreenSheet } from '@/components/ui/FullScreenSheet';
 import { GRADIENT_DIAGONAL, GRADIENTS } from '@/constants/brand';
+import { ClassComparison } from './class/ClassComparison';
 import { ClassPreviewToggle } from './class/ClassPreviewToggle';
 import { CurrentClassCard } from './class/CurrentClassCard';
-import { FreeVsPremium } from './class/FreeVsPremium';
 import { SectionEyebrow } from './class/SectionEyebrow';
 import { WaysToClimb } from './class/WaysToClimb';
 
@@ -26,7 +26,7 @@ export function ClassModal({
       visible={visible}
       onClose={onClose}
       title="Your class"
-      subtitle="Standard, Premium or Magnetic — and how to climb"
+      subtitle="Standard, Premium, Influencer or Aura — and how to climb"
     >
       {/* Branded crown-icon tile (web ClassModal DNA). The sheet header already
           carries the title, so the body leads with the mark only. */}
@@ -55,7 +55,7 @@ export function ClassModal({
       <SectionEyebrow>Current class</SectionEyebrow>
       <CurrentClassCard />
       <SectionEyebrow>Comparison</SectionEyebrow>
-      <FreeVsPremium />
+      <ClassComparison />
       <SectionEyebrow>Classes</SectionEyebrow>
       <WaysToClimb onConnectInstagram={onConnectInstagram} />
     </FullScreenSheet>

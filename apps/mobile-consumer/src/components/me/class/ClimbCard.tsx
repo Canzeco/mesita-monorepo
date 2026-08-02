@@ -15,11 +15,17 @@ export type ClimbCardData = {
   price: string;
   priceNote?: string;
   desc: string;
+  /** The class's perks, rendered as a check-list between desc and footer. */
+  perks?: string[];
   reached: boolean;
   reachedLabel: string;
-  action?: { label: string; onPress: () => void };
+  /** Secondary actions render as a quiet outline button (web parity). */
+  action?: { label: string; onPress: () => void; secondary?: boolean };
   note?: string;
   igGradient?: boolean;
+  /** Custom icon-tile gradient (e.g. Influencer sky, Aura gold). Wins over
+   *  igGradient and the accent default. */
+  iconColors?: readonly [string, string, ...string[]];
 };
 
 export function ClimbCard({ data }: { data: ClimbCardData }) {
@@ -48,7 +54,11 @@ export function ClimbCard({ data }: { data: ClimbCardData }) {
     );
   } else if (data.action) {
     footer = (
-      <Button onPress={data.action.onPress} accessibilityLabel={data.action.label}>
+      <Button
+        onPress={data.action.onPress}
+        variant={data.action.secondary ? 'outline' : 'primary'}
+        accessibilityLabel={data.action.label}
+      >
         {data.action.label}
       </Button>
     );
@@ -84,9 +94,11 @@ export function ClimbCard({ data }: { data: ClimbCardData }) {
       }}
     >
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
-        {data.igGradient ? (
+        {data.iconColors || data.igGradient ? (
           <LinearGradient
-            colors={[...GRADIENTS.instagram]}
+            colors={
+              data.iconColors ? [...data.iconColors] : [...GRADIENTS.instagram]
+            }
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={{
@@ -164,6 +176,39 @@ export function ClimbCard({ data }: { data: ClimbCardData }) {
       >
         {data.desc}
       </Text>
+      {data.perks && data.perks.length > 0 ? (
+        <View style={{ marginTop: 14, gap: 8 }}>
+          {data.perks.map((perk) => (
+            <View
+              key={perk}
+              style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 8 }}
+            >
+              <View
+                style={{
+                  marginTop: 1,
+                  width: 18,
+                  height: 18,
+                  borderRadius: 9,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  backgroundColor: data.accent
+                    ? 'rgba(139,108,232,0.15)'
+                    : 'rgba(16,185,129,0.15)',
+                }}
+              >
+                <Check
+                  color={data.accent ? '#6d4fd8' : '#047857'}
+                  size={12}
+                  strokeWidth={3}
+                />
+              </View>
+              <Text style={{ flex: 1, color: 'rgba(38,4,9,0.85)', fontSize: 12.5 }}>
+                {perk}
+              </Text>
+            </View>
+          ))}
+        </View>
+      ) : null}
       {footer ? <View style={{ marginTop: 16 }}>{footer}</View> : null}
     </View>
   );

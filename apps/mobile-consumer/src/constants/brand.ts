@@ -36,6 +36,9 @@ export const GRADIENTS = {
   // Instagram brand gradient (social verify + IG-connected chrome)
   instagram: ['#f58529', '#dd2a7b', '#8134af'] as const,
   gold: ['#f5cc58', '#eb881f'] as const,
+  // Influencer class identity — web renders flat bg-sky-600 (#0284c7); the
+  // mobile tile keeps the house gradient idiom with a sky pair.
+  sky: ['#38bdf8', '#0284c7'] as const,
   free: ['#ced9e5', '#9ba6b1'] as const,
 } as const;
 

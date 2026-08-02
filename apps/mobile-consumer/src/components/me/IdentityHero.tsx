@@ -1,10 +1,10 @@
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
-import { AtSign, BadgeCheck, Crown } from 'lucide-react-native';
+import { AtSign, BadgeCheck, type LucideIcon } from 'lucide-react-native';
 import { Text, View } from 'react-native';
 
 import { GRADIENT_DIAGONAL, GRADIENTS, SHADOW_ELEV } from '@/constants/brand';
-import { isElevatedClass } from '@/lib/consumer-classes';
+import { CLASS_ICONS, isElevatedClass } from '@/lib/consumer-classes';
 import { firstInitials } from '@/lib/utils';
 
 export function IdentityHeroSkeleton() {
@@ -56,16 +56,27 @@ export function IdentityHero({
   classVia: string | null;
 }) {
   const isElevated = isElevatedClass(classKey);
-  // Magnetic (top tier) reads gold; Premium reads its violet gradient.
+  // Aura (top of the ladder) reads gold; Influencer reads sky; Premium keeps
+  // its violet gradient.
   // Keep the readonly tuple shape — LinearGradient's `colors` needs
   // `readonly [ColorValue, ColorValue, ...]`, and spreading here would widen
   // it to a plain array (no contextual type on a variable declaration).
   const elevatedRing =
-    classKey === 'magnetic' ? GRADIENTS.gold : GRADIENTS.premium;
+    classKey === 'aura'
+      ? GRADIENTS.gold
+      : classKey === 'influencer'
+        ? GRADIENTS.sky
+        : GRADIENTS.premium;
   const elevatedWash =
-    classKey === 'magnetic'
+    classKey === 'aura'
       ? (['rgba(245,204,88,0.20)', 'rgba(235,136,31,0.12)'] as const)
-      : (['rgba(139,108,232,0.18)', 'rgba(140,204,255,0.14)'] as const);
+      : classKey === 'influencer'
+        ? (['rgba(56,189,248,0.18)', 'rgba(2,132,199,0.12)'] as const)
+        : (['rgba(139,108,232,0.18)', 'rgba(140,204,255,0.14)'] as const);
+  // The class wears its canonical icon (smile / card / megaphone / sparkles).
+  const ClassIcon: LucideIcon =
+    (CLASS_ICONS as Record<string, LucideIcon>)[classKey] ??
+    CLASS_ICONS.standard;
   return (
     // Identity hero — web ProfileSummaryCard DNA (no "Me" H1, no Chip).
     <View
@@ -218,11 +229,11 @@ export function IdentityHero({
                 shadowOffset: { width: 0, height: 1 },
               }}
             >
-              <Crown color="#ffffff" size={15} />
+              <ClassIcon color="#ffffff" size={15} />
             </LinearGradient>
           ) : (
             <View className="h-7 w-7 items-center justify-center rounded-lg bg-amber-400/20">
-              <Crown color="#b45309" size={15} />
+              <ClassIcon color="#b45309" size={15} />
             </View>
           )}
           <Text

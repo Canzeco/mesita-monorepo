@@ -1,9 +1,8 @@
 import { LinearGradient } from 'expo-linear-gradient';
-import { AtSign, Crown, Smile } from 'lucide-react-native';
 import { Text, View } from 'react-native';
 
 import { GRADIENT_DIAGONAL, GRADIENTS } from '@/constants/brand';
-import { CLASSES, isElevatedClass } from '@/lib/consumer-classes';
+import { CLASSES, CLASS_ICONS, isElevatedClass } from '@/lib/consumer-classes';
 import { useEffectiveClass } from '@/lib/mock-class';
 import { useAuth } from '@/providers/auth';
 
@@ -15,13 +14,19 @@ export function CurrentClassCard() {
   );
   const meta = CLASSES.find((c) => c.id === key)!;
   const isElevated = isElevatedClass(key);
-  // Magnetic (top tier) reads gold; Premium reads its violet gradient.
+  // Aura (top of the ladder) inherits the gold treatment; Influencer reads
+  // sky; Premium keeps its violet gradient.
   // Keep the readonly tuple shape (see IdentityHero) — spreading into a
   // variable widens it past LinearGradient's `colors` tuple type.
   const elevatedColors =
-    key === 'magnetic' ? GRADIENTS.gold : GRADIENTS.premium;
-  const Icon =
-    !isElevated ? Smile : origin === 'instagram' ? AtSign : Crown;
+    key === 'aura'
+      ? GRADIENTS.gold
+      : key === 'influencer'
+        ? GRADIENTS.sky
+        : GRADIENTS.premium;
+  // The class wears its canonical icon (smile / card / megaphone / sparkles);
+  // the origin only sets the "via" line.
+  const Icon = CLASS_ICONS[key];
   const via =
     !isElevated
       ? null

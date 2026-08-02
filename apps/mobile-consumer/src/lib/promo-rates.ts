@@ -4,9 +4,10 @@ import type { ConsumerClassKey } from '@/lib/types/place-detail';
 
 // Per-class promo rates. The `free`/`premium` keys mirror the v4 places columns
 // (welcome_free_rate / free_rate / …) — the DB column vocabulary is unchanged
-// (v5 standard/magnetic columns are a not-yet-landed backend follow-up). The
-// class → column mapping lives in resolveActivePromoRate: Standard reads
-// `free`; Premium and Magnetic read `premium`.
+// (per-segment place columns are a not-yet-landed backend follow-up,
+// MESITA-723). The class → column mapping lives in resolveActivePromoRate:
+// Standard reads `free`; every elevated class (Premium / Influencer / Aura)
+// reads `premium`.
 type PromoClassRates = {
   free: number | null;
   premium: number | null;
@@ -63,7 +64,9 @@ export function resolveActivePromoRate(
   classKey: ConsumerClassKey,
   isFirstVisit = matrix.is_first_visit,
 ): number | null {
-  // Standard reads the `free` column; Premium and Magnetic read `premium`.
+  // Standard reads the `free` column; every elevated class (Premium /
+  // Influencer / Aura) reads `premium` — the v4 columns only know the binary
+  // free-vs-elevated split.
   const col: keyof PromoClassRates =
     classKey === 'standard' ? 'free' : 'premium';
   const welcome = matrix.welcome[col];
