@@ -1,17 +1,8 @@
-import { getSourcingConfig } from "../actions";
-import { SourcingPlaygroundClient } from "../SourcingPlaygroundClient";
-import { DEFAULT_CONFIG } from "../catalog";
+import { redirect } from "next/navigation";
 
-// Sourcing Config · Playground — test a candidate place against every channel.
-// Seeds the saved policy so the verdicts reflect the live floors.
-export const dynamic = "force-dynamic";
-
-export default async function SourcingPlaygroundPage() {
-  const res = await getSourcingConfig();
-  return (
-    <SourcingPlaygroundClient
-      config={res.ok ? res.config : DEFAULT_CONFIG}
-      loadError={res.ok ? null : res.error}
-    />
-  );
+// The Playground was retired 2026-08-01 — its eligibility tester was a
+// duplicate of the policy already visible in the config table. Kept as a
+// redirect so old links/bookmarks keep working.
+export default function LegacySourcingPlaygroundRedirect() {
+  redirect("/sourcing-config");
 }

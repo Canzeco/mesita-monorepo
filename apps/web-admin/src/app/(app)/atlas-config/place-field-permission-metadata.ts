@@ -3,14 +3,6 @@ import type {
   PlaceFieldPermission,
 } from "./place-field-permissions";
 
-export const PLACE_FIELD_PERMISSION_GROUPS = [
-  "Google native",
-  "Enriched",
-  "Manual",
-  "Signals",
-  "Lifecycle",
-] as const satisfies readonly PlaceFieldPermission["group"][];
-
 export const PLACE_FIELD_PERMISSION_GROUP_DESCRIPTIONS: Record<
   PlaceFieldPermission["group"],
   string

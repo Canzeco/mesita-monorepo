@@ -1,9 +1,8 @@
-import { AtlasPlaygroundClient } from "../AtlasPlaygroundClient";
+import { redirect } from "next/navigation";
 
-// Atlas Config · Playground — preview which place fields each writer may set.
-// Reads the shipped static edit matrix (no server data needed).
-export const dynamic = "force-dynamic";
-
-export default function AtlasPlaygroundPage() {
-  return <AtlasPlaygroundClient />;
+// The Playground was retired 2026-08-01 — its "who can edit" per-writer
+// filter was redundant with the matrix already on the main page. Kept as a
+// redirect so old links/bookmarks keep working.
+export default function LegacyAtlasPlaygroundRedirect() {
+  redirect("/atlas-config");
 }
