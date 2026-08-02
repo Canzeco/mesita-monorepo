@@ -32,6 +32,7 @@ import {
   shuffleDeck,
   withUserDistance,
 } from "./swipe-deck-shells";
+import { ReservationSheet } from "@/components/consumer/place-detail/ReservationSheet";
 import { SwipeActionRow } from "./swipe-action-row";
 import { readSwipeSnapshot, writeSwipeSnapshot } from "./swipe-deck-storage";
 import { SwipeDecisionBadge } from "./swipe-decision-badge";
@@ -95,6 +96,9 @@ function Deck({ places }: { places: Place[] }) {
   const [exiting, setExiting] = useState<null | "left" | "right">(null);
   const [showTutorial, setShowTutorial] = useState(false);
   const [filtersOpen, setFiltersOpen] = useState(false);
+  // Reserve opens the booking sheet over the deck — the card already carries
+  // the id + name the sheet needs, so there's no detour through /place/[id].
+  const [reserveOpen, setReserveOpen] = useState(false);
   // Shared discovery filters (MESITA-646): the deck below narrows LIVE and
   // the red Filter-action dot (MESITA-633) lights on any deviation from
   // defaults. One global store — Search shows the exact same state.
@@ -595,8 +599,17 @@ function Deck({ places }: { places: Place[] }) {
           onSkip={skip}
           onOpenInfo={openInfo}
           onSave={save}
+          onReserve={() => setReserveOpen(true)}
         />
       </div>
+
+      {v && (
+        <ReservationSheet
+          place={{ id: v.id, name: v.name }}
+          open={reserveOpen}
+          onClose={() => setReserveOpen(false)}
+        />
+      )}
 
       {sheet}
     </div>

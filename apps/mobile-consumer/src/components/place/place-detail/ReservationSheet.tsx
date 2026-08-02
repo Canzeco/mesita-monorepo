@@ -6,7 +6,6 @@ import { Button } from '@/components/ui/Button';
 import { FullScreenSheet } from '@/components/ui/FullScreenSheet';
 import { TextField } from '@/components/ui/TextField';
 import { apiCreateReservation } from '@/lib/api/reservations';
-import type { PlaceDetail } from '@/lib/types/place-detail';
 import { errMsg, guestNoun } from '@/lib/utils';
 
 const DATE_WINDOW = 14; // two weeks of pills
@@ -47,12 +46,20 @@ function timeLabel(hhmm: string): string {
   return `${hour}:${String(m).padStart(2, '0')} ${ampm}`;
 }
 
+/**
+ * Everything the sheet needs from a place: the project id it books against and
+ * a name to show. Deliberately narrower than PlaceDetail (which structurally
+ * satisfies it) so the swipe deck can open this straight from a deck card,
+ * without fetching the full place-detail payload.
+ */
+export type ReservationSheetPlace = { id: string; name: string };
+
 export function ReservationSheet({
   place,
   visible,
   onClose,
 }: {
-  place: PlaceDetail;
+  place: ReservationSheetPlace;
   visible: boolean;
   onClose: () => void;
 }) {
