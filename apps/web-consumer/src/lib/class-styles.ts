@@ -18,12 +18,15 @@ import type { ConsumerClass } from "@/lib/mock/place";
 export const CLASS_AVATAR_BG: Record<ConsumerClass, string> = {
   standard: "bg-tier-free",
   premium: "bg-tier-premium",
-  // Magnetic (top tier) uses the existing gold design token.
-  magnetic: "bg-tier-gold",
+  // Influencer reads digital — sky, distinct from Premium's violet.
+  influencer: "bg-sky-600",
+  // Aura (top of the ladder) inherits the gold design token.
+  aura: "bg-tier-gold",
 };
 
 export const CLASS_TEXT: Record<ConsumerClass, string> = {
   standard: "text-muted-foreground",
   premium: "text-premium",
-  magnetic: "text-amber-600",
+  influencer: "text-sky-600",
+  aura: "text-amber-600",
 };

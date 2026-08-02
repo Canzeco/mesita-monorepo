@@ -33,7 +33,11 @@ export function RewardsTopCards() {
             <span
               className={cn(
                 "grid size-9 shrink-0 place-items-center rounded-xl text-white",
-                key === "magnetic" ? "bg-tier-gold" : "bg-tier-premium",
+                key === "aura"
+                  ? "bg-tier-gold"
+                  : key === "influencer"
+                    ? "bg-sky-600"
+                    : "bg-tier-premium",
               )}
             >
               <Crown className="size-[18px] fill-current" />
@@ -119,10 +123,10 @@ export function RewardsTopCards() {
             </span>
             <p className="text-muted-foreground text-[13px] leading-relaxed">
               <span className="text-foreground font-semibold">
-                Premium and Magnetic boost them.
+                Elevated classes boost them.
               </span>{" "}
-              Standard gets the base discount; Premium and Magnetic unlock bigger
-              ones — Magnetic is free with Instagram.
+              Standard gets the base discount; Premium, Influencer and Aura
+              unlock bigger ones — Influencer is free with Instagram reach.
             </p>
           </div>
         </div>

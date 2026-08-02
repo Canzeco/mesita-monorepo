@@ -1,11 +1,11 @@
 "use client";
 
 import { useEffect, useMemo, useState, useTransition } from "react";
-import { Coins, Info, Percent, RotateCcw } from "lucide-react";
+import { Coins, Info, Percent, RotateCcw, Sparkles } from "lucide-react";
 
 import { ErrorNote } from "@/components/ErrorNote";
 import { NumberField, SaveRow, SectionCard } from "../enricher-config/atlas-ui";
-import { getRewardsConfig, updateRewardsConfig } from "./actions";
+import { getRewardsConfig, grantAura, updateRewardsConfig } from "./actions";
 import {
   ALLOWED_RATES,
   CAP_MAX,
@@ -108,7 +108,7 @@ export function RewardsConfigClient({
 
   return (
     <div className="space-y-6">
-      {/* The grid — six segments (rows) × three strategies (columns). */}
+      {/* The grid — seven segments (rows) × three strategies (columns). */}
       <SectionCard
         icon={<Percent className="text-secondary h-4 w-4" />}
         title="Reward grid"
@@ -198,8 +198,9 @@ export function RewardsConfigClient({
         <div className="mt-3 flex items-center justify-between gap-3">
           <p className="text-muted-foreground/80 flex items-start gap-1.5 text-[11px] leading-snug">
             <Info className="mt-0.5 h-3 w-3 shrink-0" />
-            Ties within {"{Magnetic, Premium}"} and {"{Story, Welcome}"} are
-            harmless — best-of pays only the highest.
+            Ties within {"{Premium, Influencer}"} and {"{Story, Welcome}"} are
+            harmless — best-of pays only the highest. Story pays only the
+            Influencer class.
           </p>
           <button
             type="button"
@@ -208,7 +209,7 @@ export function RewardsConfigClient({
             className="border-border text-muted-foreground hover:text-foreground hover:bg-muted inline-flex shrink-0 items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-medium transition disabled:opacity-50"
           >
             <RotateCcw className="h-3 w-3" />
-            v5 defaults
+            v6 defaults
           </button>
         </div>
       </SectionCard>
@@ -236,16 +237,91 @@ export function RewardsConfigClient({
         </p>
       </SectionCard>
 
+      {/* Aura invitations — the invite-only door, admin-granted for launch. */}
+      <AuraGrantCard />
+
       <div>
         <p className="text-muted-foreground text-xs">
           Persisted to <code className="font-mono">app_settings.rewards_config</code>. This
-          is the operator source of truth for the v5 reward grid; the bill engine
-          reads it once v5 best-of ships (MESITA-723).
+          is the operator source of truth for the v6 reward grid; the bill engine
+          reads it on every ticket (MESITA-723).
         </p>
         <SaveRow pending={pending} dirty={dirty} ok={ok} onClick={save} />
         {error && <ErrorNote message={error} />}
       </div>
     </div>
+  );
+}
+
+// Minimal honest surface for the Aura door: paste a consumer id, grant or
+// revoke. Grant writes aura/'invitation'; revoke recomputes the best remaining
+// door server-side (admin-web-grant-class). A richer consumer browser can
+// replace this when one exists.
+function AuraGrantCard() {
+  const [consumerId, setConsumerId] = useState("");
+  const [pending, startTransition] = useTransition();
+  const [result, setResult] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const act = (grant: boolean) => {
+    setError(null);
+    setResult(null);
+    startTransition(async () => {
+      const r = await grantAura(consumerId.trim(), grant);
+      if (r.ok) {
+        setResult(
+          grant
+            ? "Granted — the consumer is now Aura (invitation)."
+            : `Revoked — the consumer fell back to ${r.classKey} (${r.origin}).`,
+        );
+      } else {
+        setError(r.error);
+      }
+    });
+  };
+
+  return (
+    <SectionCard
+      icon={<Sparkles className="text-secondary h-4 w-4" />}
+      title="Aura invitations"
+      subtitle="Aura is invite-only, and for launch the only door is this console. Grant sets aura via the 'invitation' origin; revoke recomputes the consumer's best remaining door (subscription → Premium, 1,000+ followers → Influencer, else Standard)."
+    >
+      <div className="mt-5 flex flex-wrap items-center gap-2">
+        <input
+          value={consumerId}
+          onChange={(e) => {
+            setConsumerId(e.target.value);
+            setResult(null);
+            setError(null);
+          }}
+          placeholder="Consumer id (uuid)"
+          spellCheck={false}
+          className="border-border bg-card focus:border-foreground h-9 w-full max-w-sm rounded-lg border px-3 font-mono text-[12px] outline-none disabled:opacity-50"
+          disabled={pending}
+        />
+        <button
+          type="button"
+          onClick={() => act(true)}
+          disabled={pending || consumerId.trim().length === 0}
+          className="bg-foreground text-background hover:opacity-90 inline-flex h-9 items-center gap-1.5 rounded-lg px-3 text-xs font-semibold transition disabled:opacity-50"
+        >
+          <Sparkles className="h-3 w-3" />
+          Grant Aura
+        </button>
+        <button
+          type="button"
+          onClick={() => act(false)}
+          disabled={pending || consumerId.trim().length === 0}
+          className="border-border text-muted-foreground hover:text-foreground hover:bg-muted inline-flex h-9 items-center rounded-lg border px-3 text-xs font-medium transition disabled:opacity-50"
+        >
+          Revoke
+        </button>
+      </div>
+      {result && (
+        <p className="text-muted-foreground mt-3 text-xs font-medium">{result}</p>
+      )}
+      {error && <ErrorNote message={error} />}
+    </SectionCard>
   );
 }
 

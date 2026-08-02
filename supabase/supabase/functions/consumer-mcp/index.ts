@@ -19,7 +19,7 @@ import { corsPreflight, json } from "../_shared/http.ts";
 import { adminClient, readEFEnv } from "../_shared/auth.ts";
 import { resolveMcpBearer } from "../_shared/mcp-tokens.ts";
 import { PLACE_PUBLIC_COLUMNS } from "../_shared/place-columns.ts";
-import { getTierConfig, isPremiumOrHigher } from "../_shared/membership.ts";
+import { getTierConfig, isElevatedClass } from "../_shared/membership.ts";
 import { generateReservationCode, isUniqueViolation } from "../_shared/reservation-code.ts";
 import { attachPlaces } from "../_shared/reservation-places.ts";
 import { suggestPlaces } from "../_shared/suggest-places.ts";
@@ -309,7 +309,7 @@ Deno.serve(async (req) => {
     .select("class_key")
     .eq("id", consumerId)
     .maybeSingle();
-  if (!isPremiumOrHigher(consumerRow?.class_key)) {
+  if (!isElevatedClass(consumerRow?.class_key)) {
     return json(
       {
         ok: false,

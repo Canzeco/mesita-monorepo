@@ -93,6 +93,11 @@ Deno.serve(async (req) => {
       return json({ ok: false, error: `mock_subscription: ${sub.error.message}` }, 500);
     }
 
+    // Grant Premium via the subscription door — but never downgrade a
+    // higher-ranked earned class (Influencer/Aura ride on instagram/invitation
+    // origins, both rank above Premium). The subscription row above is always
+    // recorded; if reach later lapses, claim-instagram's fallback lands the
+    // paying consumer on premium, not standard.
     const grant = await admin
       .from("consumers")
       .update({
@@ -101,7 +106,8 @@ Deno.serve(async (req) => {
         class_granted_at: new Date().toISOString(),
         class_expires_at: periodEnd,
       })
-      .eq("id", consumerId);
+      .eq("id", consumerId)
+      .in("class_origin", ["default", "subscription"]);
     if (grant.error) {
       return json({ ok: false, error: `mock_grant: ${grant.error.message}` }, 500);
     }

@@ -24,7 +24,8 @@ const LONG_QUOTE_THRESHOLD = 220;
 const CLASS_LABEL: Record<ConsumerClass, string> = {
   standard: "STANDARD",
   premium: "PREMIUM",
-  magnetic: "MAGNETIC",
+  influencer: "INFLUENCER",
+  aura: "AURA",
 };
 
 type MesitaPayload = {

@@ -1,4 +1,4 @@
-// Promos v5 — the grid-authoritative bill engine (MESITA-723).
+// Promos v6 — the grid-authoritative bill engine (MESITA-723, segments v6).
 //
 // The reward grid is operator config on app_settings.rewards_config (#474):
 //   { cap, grid: { <segment>: { zero, conservative, aggressive } } }
@@ -8,19 +8,39 @@
 // qualifying segment in the grid at the place's strategy and paying BEST-OF
 // (the single highest rung, never a sum). The grid is the single source of
 // truth, which keeps the admin Rewards-Config page authoritative.
+//
+// Segments v6 (2026-08-01): four classes — standard, premium, influencer
+// (Instagram ≥ 1,000 followers, automatic), aura (invite-only presence class) —
+// plus three actions. The Story rung is the Influencer class's EXCLUSIVE action;
+// Review and Welcome stay universal. Class segments resolve generically (any
+// known class key qualifies for its own grid row), so a future class/tier is a
+// classes-table INSERT + one entry here — never per-class branches.
 
 import { type SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { strategyForRates, ratesFromPlace } from "./lineup-strategy.ts";
 
-const REWARD_SEGMENTS = [
+// Class segments in rank order (mirrors public.classes: rank 0..3).
+export const CLASS_SEGMENTS = [
   "standard",
-  "magnetic",
   "premium",
+  "influencer",
+  "aura",
+] as const;
+export type ClassSegment = (typeof CLASS_SEGMENTS)[number];
+
+const REWARD_SEGMENTS = [
+  ...CLASS_SEGMENTS,
   "story",
   "welcome",
   "review",
 ] as const;
 export type RewardSegment = (typeof REWARD_SEGMENTS)[number];
+
+export function isClassSegment(
+  key: string | null | undefined,
+): key is ClassSegment {
+  return key != null && (CLASS_SEGMENTS as readonly string[]).includes(key);
+}
 
 // The three surviving strategies (Dominant retired in v5). Legacy places whose
 // v4 rates still match the retired Dominant preset coerce to aggressive (its
@@ -32,15 +52,16 @@ export type RewardsGrid = {
   cap: number;
 };
 
-// The locked v5 defaults — used when app_settings can't be read (never in
+// The locked v6 defaults — used when app_settings can't be read (never in
 // prod; the column is NOT NULL with a default), so the bill degrades to the
 // canonical table rather than to zero.
 export const DEFAULT_REWARDS_GRID: RewardsGrid = {
   cap: 500,
   grid: {
     standard: { zero: 0, conservative: 10, aggressive: 10 },
-    magnetic: { zero: 0, conservative: 15, aggressive: 20 },
     premium: { zero: 0, conservative: 15, aggressive: 20 },
+    influencer: { zero: 0, conservative: 15, aggressive: 20 },
+    aura: { zero: 0, conservative: 20, aggressive: 25 },
     story: { zero: 0, conservative: 20, aggressive: 30 },
     welcome: { zero: 0, conservative: 20, aggressive: 30 },
     review: { zero: 0, conservative: 30, aggressive: 50 },
@@ -116,10 +137,12 @@ export type RateContext = {
   reviewVerified?: boolean;
 };
 
-// Best-of resolution over the six-segment grid at the place's strategy.
-// Everyone inherits the Standard floor; class/action/visit segments join the
-// qualifying set from context. Returns a clamped integer percent — and ONLY
-// that, never the class (the blended-rate privacy invariant).
+// Best-of resolution over the seven-segment grid at the place's strategy.
+// Everyone inherits the Standard floor; the guest's class segment resolves
+// GENERICALLY (its own grid row — no per-class branches); Welcome/Review join
+// from context for anyone; the Story rung is Influencer-exclusive. Returns a
+// clamped integer percent — and ONLY that, never the class (the blended-rate
+// privacy invariant).
 export function resolveTicketRate(
   strategy: GridStrategy,
   grid: RewardsGrid,
@@ -127,10 +150,11 @@ export function resolveTicketRate(
 ): number {
   const g = grid.grid;
   const qualifying: number[] = [g.standard[strategy]];
-  if (ctx.classKey === "premium") qualifying.push(g.premium[strategy]);
-  if (ctx.classKey === "magnetic") qualifying.push(g.magnetic[strategy]);
+  if (isClassSegment(ctx.classKey)) qualifying.push(g[ctx.classKey][strategy]);
   if (ctx.isFirstVisit) qualifying.push(g.welcome[strategy]);
-  if (ctx.storyVerified) qualifying.push(g.story[strategy]);
+  if (ctx.storyVerified && ctx.classKey === "influencer") {
+    qualifying.push(g.story[strategy]);
+  }
   if (ctx.reviewVerified) qualifying.push(g.review[strategy]);
   const best = qualifying.reduce((m, r) => (r > m ? r : m), 0);
   return Math.max(0, Math.min(100, best));

@@ -23,9 +23,14 @@ export function ProfileSummaryCard({
 }) {
   const { key, origin, followers, handle: classHandle } = useConsumerClass();
   const isElevated = isElevatedClass(key);
-  // Magnetic (top tier) reads gold; Premium reads its violet token. The icon
-  // is the canonical class trio (smile / card / crown).
-  const elevatedBg = key === "magnetic" ? "bg-tier-gold" : "bg-tier-premium";
+  // Aura (top of the ladder) reads gold, Influencer reads sky, Premium its
+  // violet token. The icon is the canonical class set.
+  const elevatedBg =
+    key === "aura"
+      ? "bg-tier-gold"
+      : key === "influencer"
+        ? "bg-sky-600"
+        : "bg-tier-premium";
   const ClassIcon = CLASS_ICONS[key];
 
   if (loading) {

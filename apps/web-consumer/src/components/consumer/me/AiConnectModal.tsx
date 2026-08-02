@@ -27,7 +27,7 @@ import {
 // Mesita profile (find places, book, check rewards).
 //
 // decision: Pato — real Consumer MCP, not a copy-paste tip (MESITA-265).
-// decision: Pato — elevated classes only: Premium & Magnetic, not Standard
+// decision: Pato — elevated classes only (Premium / Influencer / Aura), not Standard
 // (MESITA-266).
 
 function cursorSnippet(mcpUrl: string, token: string): string {
@@ -56,7 +56,7 @@ export function AiConnectModal({
 }) {
   const supabase = useBrowserSupabase();
   const { key: classKey } = useConsumerClass();
-  // AI connect is an elevated-class perk — Premium and Magnetic, not Standard.
+  // AI connect is an elevated-class perk — every class above Standard.
   const canConnect = isElevatedClass(classKey);
   const [tokens, setTokens] = useState<McpTokenMeta[]>([]);
   const [loading, setLoading] = useState(false);
@@ -150,7 +150,7 @@ export function AiConnectModal({
           Claude, Cursor, or ChatGPT. Your AI can then find places, save them,
           book tables, and check rewards — as you.{" "}
           <span className="text-foreground font-semibold">
-            Available for Premium and Magnetic members
+            Available for Premium, Influencer and Aura members
           </span>
           — not on Standard.
         </p>
@@ -159,7 +159,7 @@ export function AiConnectModal({
           <div className="mt-4 flex items-start gap-3 rounded-2xl border border-amber-500/25 bg-amber-500/10 px-4 py-3">
             <Crown className="mt-0.5 h-4 w-4 shrink-0 text-amber-700" />
             <p className="text-[12px] leading-relaxed text-amber-950">
-              You’re on Standard. Upgrade to Premium — or reach Magnetic via
+              You’re on Standard. Upgrade to Premium — or reach Influencer via
               Instagram — to create an MCP token and let an AI control your
               profile.
             </p>

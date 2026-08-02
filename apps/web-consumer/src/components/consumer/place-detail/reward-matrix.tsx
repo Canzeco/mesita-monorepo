@@ -50,8 +50,8 @@ export function RewardStep({
 // Compact reward matrix — First / Returning rows × Standard / Premium columns.
 // Mirrors the Class comparison table on the Profile (ClassComparison) for
 // visual consistency. The active cell (current class × current visit axis)
-// is highlighted so "you are here" is obvious. Magnetic maps to the Premium
-// column (it has no dedicated v4 rate column and ranks at or above Premium).
+// is highlighted so "you are here" is obvious. Every elevated class maps to the
+// Premium column (the v4 columns only know the free-vs-elevated split).
 export function RewardMatrix({
   welcome,
   returning,
@@ -115,7 +115,7 @@ export function RewardMatrix({
               value={r.vals.premium}
               suffix={suffix}
               accent
-              // Premium and Magnetic both read the elevated column.
+              // Every elevated class reads the elevated column.
               active={r.onAxis && currentClass !== "standard"}
             />
           </div>

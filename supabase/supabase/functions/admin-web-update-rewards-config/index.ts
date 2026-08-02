@@ -2,7 +2,7 @@
 //
 // Naming: caller-verb-words. Caller = admin, verb = update, words = rewards-config.
 //
-// Writes the six-segment reward grid (Promos v5, MESITA-723) on the
+// Writes the seven-segment reward grid (Promos v6, MESITA-723) on the
 // public.app_settings singleton from the admin console's Rewards Config page. A
 // WHOLE-CONFIG write: the grid is one coherent table, so the caller always sends
 // the full config. normalizeConfig snaps every cell to the 5% grid and fills any

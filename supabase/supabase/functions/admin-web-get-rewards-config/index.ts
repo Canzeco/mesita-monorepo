@@ -2,10 +2,10 @@
 //
 // Naming: caller-verb-words. Caller = admin, verb = get, words = rewards-config.
 //
-// Returns the six-segment reward grid (Promos v5, MESITA-723) from the
+// Returns the seven-segment reward grid (Promos v6, MESITA-723) from the
 // public.app_settings singleton for the admin console's Rewards Config page: for
 // each strategy (zero / conservative / aggressive), what each segment pays
-// (standard · magnetic · premium · story · welcome · review), plus the universal
+// (standard · premium · influencer · aura · story · welcome · review), plus the universal
 // cap. See 20260722200000_rewards_config.sql.
 //
 // Auth: caller's JWT email must be in public.super_admins.

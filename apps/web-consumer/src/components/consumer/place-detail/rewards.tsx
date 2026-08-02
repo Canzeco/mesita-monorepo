@@ -83,12 +83,13 @@ export function RewardsBox({ place }: { place: PlaceDetail }) {
         ? `${visitLabel} · on your first ${capLabel}`
         : visitLabel;
   // The claim action depends on the guest's own account, not the place:
-  //   Standard        → Pay with QR + Upgrade (claim now, or unlock a bigger
-  //                     reward)
-  //   Premium/Magnetic → one Pay-with-QR button, reward applies automatically
-  // Magnetic is NOT story-gated: the class rung pays on every bill regardless
-  // of Instagram activity (resolveTicketRate, _shared/rewards-config.ts).
+  //   Standard → Pay with QR + Upgrade (claim now, or unlock a bigger reward)
+  //   Elevated → one Pay-with-QR button, reward applies automatically
+  // The class rung pays on every bill with no strings; the Story rung is the
+  // INFLUENCER class's exclusive extra (segments v6 — resolveTicketRate,
+  // _shared/rewards-config.ts), best-of so it only ever raises the rate.
   const isStandard = consumerClass.key === "standard";
+  const isInfluencer = consumerClass.key === "influencer";
   return (
     <Box title="Reward" icon={Sparkles} iconColor="text-pink-400">
       {/* Hero — the active reward, mechanic, and cap. The box header already
@@ -101,9 +102,9 @@ export function RewardsBox({ place }: { place: PlaceDetail }) {
       </div>
 
       {/* How it works — the claim sequence, spelled out so every case is
-          unambiguous at the table. The story is an OPTIONAL extra rung open to
-          every class (best-of, so it only ever raises your rate) — never a
-          requirement, least of all for Magnetic. */}
+          unambiguous at the table. The story is the Influencer class's
+          OPTIONAL exclusive rung (best-of, so it only ever raises your
+          rate) — never a requirement. */}
       <div className="flex flex-col gap-3">
         <BoxLabel>How it works</BoxLabel>
         <ol className="flex flex-col gap-3">
@@ -116,8 +117,16 @@ export function RewardsBox({ place }: { place: PlaceDetail }) {
           <RewardStep
             n={2}
             icon={Instagram}
-            title="Post a story — optional, any class"
-            body="Want more? Post a story tagging the place after the waiter scans your QR for a bigger reward. Skip it and you still keep your class reward in full."
+            title={
+              isInfluencer
+                ? "Post a story — optional, yours as an Influencer"
+                : "Post a story — Influencers only"
+            }
+            body={
+              isInfluencer
+                ? "Want more? Post a story tagging the place after the waiter scans your QR for a bigger reward. Skip it and you still keep your class reward in full."
+                : "The Instagram Story bonus is exclusive to the Influencer class (1,000+ followers). Every class keeps its own reward — and the Google review bonus is open to all."
+            }
             accent
           />
           <RewardStep
@@ -141,8 +150,8 @@ export function RewardsBox({ place }: { place: PlaceDetail }) {
       />
 
       {/* CTAs — class-aware so the exact action is unambiguous. Standard: Pay
-          + Upgrade. Premium and Magnetic alike: one Pay button, nothing else
-          to do. */}
+          + Upgrade. Every elevated class: one Pay button, nothing else to
+          do. */}
       <div className="flex flex-col gap-2">
         {isStandard ? (
           <div className="flex gap-2">

@@ -21,8 +21,8 @@ import { cn } from "@/lib/utils";
 // collapsed to this single page; the [classKey] segment is kept so existing
 // /subscribe/premium links resolve, but only "premium" is valid.
 
-// The elevated perk set — identical for Premium and Magnetic (Pato,
-// 2026-07-27); only the door differs. Mirrors ELEVATED_PERKS on the Me page.
+// The elevated perk set — shared by every elevated class (Premium /
+// Influencer / Aura); only the door differs. Mirrors ELEVATED_PERKS on Me.
 const PERKS = [
   "Higher discount rewards at every Verified Partner.",
   "Better, more rewarding recommendations across discovery.",
@@ -106,8 +106,8 @@ export default function SubscribePage() {
                 <Instagram className="h-3.5 w-3.5" />
               </span>
               <span>
-                <span className="font-semibold">Instagram</span> — 5,000+
-                followers. Magnetic, free, no story required.
+                <span className="font-semibold">Instagram</span> — 1,000+
+                followers. Influencer, free, automatic — plus the Story bonus.
               </span>
             </li>
             <li className="flex items-start gap-2.5">
@@ -115,8 +115,8 @@ export default function SubscribePage() {
                 <Mail className="h-3.5 w-3.5" />
               </span>
               <span>
-                <span className="font-semibold">Invitation</span> — for locals,
-                influencers, and talent picked by Mesita.
+                <span className="font-semibold">Invitation</span> — Aura, for
+                the guests Mesita picks personally.
               </span>
             </li>
             <li className="flex items-start gap-2.5">

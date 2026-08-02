@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { BadgeCheck, Camera, Crown, Instagram } from "lucide-react";
+import { BadgeCheck, Camera, Instagram, Megaphone } from "lucide-react";
 import { cn, errMsg } from "@/lib/utils";
 import { toast } from "@/lib/toast";
 import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
@@ -15,10 +15,7 @@ import {
   useMockAccount,
   setMockAccount,
 } from "@/lib/class-context";
-import {
-  MAGNETIC_FOLLOWER_THRESHOLD,
-  STORY_FOLLOWER_THRESHOLD,
-} from "@/lib/consumer-data";
+import { INFLUENCER_FOLLOWER_THRESHOLD } from "@/lib/consumer-data";
 import { REWARD_SEGMENT_BY_KEY, PEAK_STRATEGY } from "@/lib/reward-segments";
 import { DEMO_INSTAGRAM_FOLLOWERS } from "@/lib/instagram-demo";
 import {
@@ -45,8 +42,8 @@ import {
 // The @mesita.bot DM bot doesn't exist yet, so the follower count can't be
 // read from a real social-graph check. Until the bot ships, any 8-digit code
 // verifies and the claim is sent with the demo count (comfortably past the
-// Magnetic follower threshold) — but the grant itself is REAL: the EF
-// persists the handle + count and sets class_key=magnetic / origin=instagram
+// Influencer follower threshold) — but the grant itself is REAL: the EF
+// persists the handle + count and sets class_key=influencer / origin=instagram
 // server-side. Swap the constant for the bot-reported count when it lands.
 const HANDLE_RE = /^@?[A-Za-z0-9._]{1,30}$/;
 
@@ -68,9 +65,9 @@ export function InstagramModal({
     HANDLE_RE.test(handle.trim()) && code.length >= 8 && !verifying;
 
   // Real claim through consumer-web-claim-instagram: persists the @handle and
-  // follower count, grants Magnetic (origin "instagram") at the threshold;
-  // below it the consumer stays Standard. On a Magnetic grant we hard-navigate
-  // so the shell re-seeds with the unlocked class.
+  // follower count, grants Influencer (origin "instagram") at the threshold;
+  // below it the consumer stays on their best remaining door. On an
+  // Influencer grant we hard-navigate so the shell re-seeds with the class.
   async function verify() {
     if (!canVerify) return;
     setVerifying(true);
@@ -79,16 +76,16 @@ export function InstagramModal({
         followers: DEMO_INSTAGRAM_FOLLOWERS,
         handle: handle.trim().replace(/^@/, "").toLowerCase(),
       });
-      if (result.tier === "magnetic") {
+      if (result.tier === "influencer") {
         window.location.href = `${CONSUMER_ROUTES.me}?instagram=success`;
         return;
       }
       toast(
         `Instagram connected, but ${result.followers.toLocaleString(
           "en-US",
-        )} followers is below the ${MAGNETIC_FOLLOWER_THRESHOLD.toLocaleString(
+        )} followers is below the ${INFLUENCER_FOLLOWER_THRESHOLD.toLocaleString(
           "en-US",
-        )} needed for Magnetic.`,
+        )} needed for Influencer.`,
       );
       setVerifying(false);
     } catch (e) {
@@ -112,7 +109,7 @@ export function InstagramModal({
           <div>
             <h2 className={SHEET_TITLE_CLASS}>Instagram</h2>
             <p className="text-muted-foreground text-[12px]">
-              Your reach unlocks Mesita Magnetic
+              Your reach unlocks Mesita Influencer
             </p>
           </div>
         </div>
@@ -130,8 +127,8 @@ export function InstagramModal({
           )}
 
           <section className="flex flex-col gap-2">
-            <SectionEyebrow>Two ways your reach pays</SectionEyebrow>
-            <TwoWaysCards />
+            <SectionEyebrow>What your reach unlocks</SectionEyebrow>
+            <ReachCards />
           </section>
 
           <section className="flex flex-col gap-2">
@@ -196,35 +193,34 @@ export function InstagramModal({
   );
 }
 
-// ─── Two ways your reach pays ──────────────────────────────────────────────
+// ─── What your reach unlocks ───────────────────────────────────────────────
 
-// The two independent Instagram mechanics, each with its own follower bar:
-//   ≥5,000 → the WHOLE ACCOUNT upgrades to Magnetic automatically — no story
-//            required (class rung, up to 20%).
-//   ≥1,000 → a story tagging the place counts for the Story Bonus at that
-//            bill (action rung, up to 30%) — any class.
-// Rates quote the reward ladder's peak (aggressive) column so they always
-// match the /rewards program summary.
-function TwoWaysCards() {
-  const magneticRate = REWARD_SEGMENT_BY_KEY.magnetic.rates[PEAK_STRATEGY];
+// One bar, two payoffs (segments v6): ≥1,000 followers upgrades the WHOLE
+// ACCOUNT to Influencer automatically — and the Instagram Story action is
+// EXCLUSIVE to that class, so the same door opens both the class rung and the
+// per-visit story rung. Rates quote the reward ladder's peak (aggressive)
+// column so they always match the /rewards program summary.
+function ReachCards() {
+  const influencerRate =
+    REWARD_SEGMENT_BY_KEY.influencer.rates[PEAK_STRATEGY];
   const storyRate = REWARD_SEGMENT_BY_KEY.story.rates[PEAK_STRATEGY];
 
   return (
     <div className="flex flex-col gap-2">
       <div className="border-border bg-card flex items-start gap-3 rounded-2xl border p-4">
-        <span className="bg-tier-gold mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-white shadow-sm">
-          <Crown className="h-5 w-5" />
+        <span className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-sky-600 text-white shadow-sm">
+          <Megaphone className="h-5 w-5" />
         </span>
         <div className="min-w-0">
           <p className="text-[14px] leading-tight font-bold tracking-tight">
-            Magnetic upgrade{" "}
+            Influencer upgrade{" "}
             <span className="text-muted-foreground font-semibold">
-              · {MAGNETIC_FOLLOWER_THRESHOLD.toLocaleString("en-US")}+ followers
+              · {INFLUENCER_FOLLOWER_THRESHOLD.toLocaleString("en-US")}+
+              followers
             </span>
           </p>
           <p className="text-muted-foreground mt-1 text-[12px] leading-snug">
-            Automatic, no story needed — up to {magneticRate}% at every
-            Verified Partner.
+            Automatic — up to {influencerRate}% base at every Verified Partner.
           </p>
         </div>
       </div>
@@ -242,12 +238,12 @@ function TwoWaysCards() {
           <p className="text-[14px] leading-tight font-bold tracking-tight">
             Instagram Story Bonus{" "}
             <span className="text-muted-foreground font-semibold">
-              · {STORY_FOLLOWER_THRESHOLD.toLocaleString("en-US")}+ followers
+              · Influencers only
             </span>
           </p>
           <p className="text-muted-foreground mt-1 text-[12px] leading-snug">
-            Post a story at your visit — up to {storyRate}% off that bill, any
-            class.
+            Post a tagged story at your visit — up to {storyRate}% off that
+            bill, every visit.
           </p>
         </div>
       </div>
@@ -258,7 +254,7 @@ function TwoWaysCards() {
 // ─── Current connection ────────────────────────────────────────────────────
 
 // Rendered only when the account IS connected (origin === "instagram") — the
-// not-connected case is carried by the two-ways cards.
+// not-connected case is carried by the reach cards.
 function CurrentConnectionCard() {
   const { followers, handle } = useConsumerClass();
 
@@ -280,9 +276,9 @@ function CurrentConnectionCard() {
           {followers.toLocaleString("en-US")} followers
         </p>
       </div>
-      <span className="bg-tier-gold flex shrink-0 items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-bold text-white shadow-sm">
-        <Crown className="h-3 w-3 fill-current" />
-        Magnetic
+      <span className="flex shrink-0 items-center gap-1 rounded-full bg-sky-600 px-2.5 py-1 text-[11px] font-bold text-white shadow-sm">
+        <Megaphone className="h-3 w-3" />
+        Influencer
       </span>
     </div>
   );
@@ -292,14 +288,15 @@ function CurrentConnectionCard() {
 
 // The Instagram half of the demo override (the class half lives on the Class
 // modal's preview toggle). Toggling on emulates a connected IG with an
-// editable follower count; crossing MAGNETIC_FOLLOWER_THRESHOLD grants
-// Magnetic via Instagram over the class axis, exactly like the real claim EF.
-// Remove with the MOCK_ paths once the states can be produced with real data.
+// editable follower count; crossing INFLUENCER_FOLLOWER_THRESHOLD grants
+// Influencer via Instagram over the class axis, exactly like the real claim
+// EF. Remove with the MOCK_ paths once the states can be produced with real
+// data.
 function InstagramEmulator() {
   const mock = useMockAccount();
   const igOn = mock?.instagram ?? false;
   const followers = mock?.followers ?? DEMO_INSTAGRAM_FOLLOWERS;
-  const igMagnetic = igOn && followers >= MAGNETIC_FOLLOWER_THRESHOLD;
+  const igInfluencer = igOn && followers >= INFLUENCER_FOLLOWER_THRESHOLD;
 
   return (
     <div className="border-border/70 rounded-2xl border border-dashed p-3">
@@ -352,10 +349,11 @@ function InstagramEmulator() {
           <span
             className={cn(
               "ml-auto text-[10.5px] font-semibold",
-              igMagnetic ? "text-amber-700" : "text-muted-foreground",
+              igInfluencer ? "text-sky-700" : "text-muted-foreground",
             )}
           >
-            {MAGNETIC_FOLLOWER_THRESHOLD.toLocaleString("en-US")}+ = Magnetic
+            {INFLUENCER_FOLLOWER_THRESHOLD.toLocaleString("en-US")}+ =
+            Influencer
           </span>
         </div>
       )}

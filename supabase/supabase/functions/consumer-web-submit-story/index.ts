@@ -87,10 +87,36 @@ Deno.serve(async (req) => {
       403,
     );
   }
-  // Promos v5 (MESITA-723): the Story rung is UNIVERSAL — any consumer may opt
-  // in from 'not_required' as long as the place's program runs the Instagram
-  // Story rung at its strategy (grid.story[strategy] > 0). Legacy kind-seeded
-  // story-required tickets already sit in 'pending' and skip this gate.
+
+  // Segments v6: the Story rung is the INFLUENCER class's exclusive action.
+  // Everyone keeps Review + Welcome; a non-influencer story earns nothing at
+  // the bill (resolveTicketRate ignores it), so reject it here where the user
+  // can still be told why.
+  const consumerRow = await admin
+    .from("consumers")
+    .select("class_key")
+    .eq("id", userId)
+    .maybeSingle();
+  if (consumerRow.error) {
+    return json(
+      { ok: false, error: `consumer_lookup: ${consumerRow.error.message}` },
+      500,
+    );
+  }
+  if (consumerRow.data?.class_key !== "influencer") {
+    return json(
+      {
+        ok: false,
+        error:
+          "The Instagram Story reward is for the Influencer class. Connect an Instagram with 1,000+ followers to join.",
+      },
+      403,
+    );
+  }
+
+  // The place must run the Story rung at its strategy (grid.story[strategy]
+  // > 0) for a fresh opt-in. Legacy kind-seeded story-required tickets already
+  // sit in 'pending' and skip this gate.
   if (ticket.story_status == null || ticket.story_status === "not_required") {
     const placeRow = await admin
       .from("projects_view")

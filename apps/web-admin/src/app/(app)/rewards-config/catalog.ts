@@ -1,11 +1,15 @@
-// Rewards Config catalog — the six-segment reward grid (Promos v5, MESITA-723).
+// Rewards Config catalog — the seven-segment reward grid (Promos v6, MESITA-723).
 //
-// This page lifts the canonical v5 rate table out of code (business/admin
-// strategies.ts hardcode it) and onto the public.app_settings singleton, so an
-// operator can tune, for each strategy (Zero / Conservative / Aggressive), what
-// each of the six segments pays. It is the source of truth the v5 bill engine
-// will read once it lands; today it persists ahead of enforcement, exactly like
-// the Sourcing / Reservations knobs did before their pipelines read them.
+// This page lifts the canonical rate table out of code and onto the
+// public.app_settings singleton, so an operator can tune, for each strategy
+// (Zero / Conservative / Aggressive), what each of the seven segments pays.
+// The v6 bill engine (_shared/rewards-config.ts) reads it on every ticket.
+//
+// Segments v6 (2026-08-01): four classes — Standard, Premium, Influencer
+// (Instagram ≥ 1,000 followers, automatic), Aura (invite-only presence class)
+// — plus three actions. Story is the Influencer class's exclusive action;
+// Review and Welcome are universal. One tier per class for launch; future
+// tiers are classes-table INSERTs + a row here.
 //
 // Grid rule (locked by Pato 2026-07-22): 5% steps, floor 10%, ceiling 50%
 // (allowed {0, 10, 15, … 50}; 0 = off). Zero strategy is off by definition — its
@@ -13,15 +17,16 @@
 // MXN of the bill (monthly_promo_cap).
 //
 // Keys are the contract shared with admin-web-{get,update}-rewards-config and
-// (eventually) the v5 best-of resolution in _shared/membership.ts — keep them
-// in lock-step with apps/web-consumer/src/lib/reward-segments.ts.
+// the best-of resolution in _shared/rewards-config.ts — keep them in lock-step
+// with apps/web-consumer/src/lib/reward-segments.ts.
 
 export type GridStrategy = "zero" | "conservative" | "aggressive";
 
 export type RewardSegmentKey =
   | "standard"
-  | "magnetic"
   | "premium"
+  | "influencer"
+  | "aura"
   | "story"
   | "welcome"
   | "review";
@@ -41,7 +46,7 @@ type RewardSegmentKind = "class" | "action" | "visit";
 
 type SegmentMeta = {
   key: RewardSegmentKey;
-  /** Pato's worst→best ladder rank (1 Standard … 6 Google Review). */
+  /** Pato's worst→best ladder rank (1 Standard … 7 Google Review). */
   rank: number;
   name: string;
   nameEs: string;
@@ -50,10 +55,10 @@ type SegmentMeta = {
   blurb: string;
 };
 
-// Rows, in ladder order (worst→best — the locked class ladder is
-// standard < premium ≤ magnetic, so Magnetic ranks above Premium). Amounts
-// tie within {Premium, Magnetic} and {Story, Welcome} — best-of at the bill
-// makes ties harmless.
+// Rows, in ladder order (worst→best). The class ladder is
+// standard < premium ≤ influencer < aura; amounts tie within
+// {Premium, Influencer} and {Story, Welcome} — best-of at the bill makes
+// ties harmless.
 export const SEGMENTS: readonly SegmentMeta[] = [
   {
     key: "standard",
@@ -74,26 +79,35 @@ export const SEGMENTS: readonly SegmentMeta[] = [
     blurb: "Paid class — MX$100/mo, the consumer revenue lever.",
   },
   {
-    key: "magnetic",
+    key: "influencer",
     rank: 3,
-    name: "Magnetic",
-    nameEs: "Magnético",
+    name: "Influencer",
+    nameEs: "Influencer",
     kind: "class",
-    emoji: "👑",
-    blurb: "Invite-only class for guests with real Instagram reach.",
+    emoji: "📣",
+    blurb: "Reach class — Instagram 1,000+ followers, automatic. Story is theirs.",
+  },
+  {
+    key: "aura",
+    rank: 4,
+    name: "Aura",
+    nameEs: "Aura",
+    kind: "class",
+    emoji: "✨",
+    blurb: "Invite-only presence class — paid for showing up, no posting required.",
   },
   {
     key: "story",
-    rank: 4,
+    rank: 5,
     name: "Instagram Story",
     nameEs: "Historia de Instagram",
     kind: "action",
     emoji: "📸",
-    blurb: "Repeatable action — a story tagging the place, staff-verified.",
+    blurb: "Influencer-only action — a story tagging the place, staff-verified.",
   },
   {
     key: "welcome",
-    rank: 5,
+    rank: 6,
     name: "Welcome Visit",
     nameEs: "Visita de Bienvenida",
     kind: "visit",
@@ -102,12 +116,12 @@ export const SEGMENTS: readonly SegmentMeta[] = [
   },
   {
     key: "review",
-    rank: 6,
+    rank: 7,
     name: "Google Review",
     nameEs: "Reseña de Google",
     kind: "action",
     emoji: "⭐",
-    blurb: "One-shot action — a Google review at the table, claimable once.",
+    blurb: "One-shot action, any class — a Google review at the table, claimable once.",
   },
 ];
 
@@ -145,13 +159,14 @@ export const CAP_MIN = 0;
 export const CAP_MAX = 5000;
 const CAP_DEFAULT = 500;
 
-// The locked v5 defaults (MESITA-723). Zero column is all 0 by definition.
+// The locked v6 defaults. Zero column is all 0 by definition.
 export const DEFAULT_CONFIG: RewardsConfig = {
   cap: CAP_DEFAULT,
   grid: {
     standard: { zero: 0, conservative: 10, aggressive: 10 },
-    magnetic: { zero: 0, conservative: 15, aggressive: 20 },
     premium: { zero: 0, conservative: 15, aggressive: 20 },
+    influencer: { zero: 0, conservative: 15, aggressive: 20 },
+    aura: { zero: 0, conservative: 20, aggressive: 25 },
     story: { zero: 0, conservative: 20, aggressive: 30 },
     welcome: { zero: 0, conservative: 20, aggressive: 30 },
     review: { zero: 0, conservative: 30, aggressive: 50 },
@@ -173,7 +188,7 @@ function clampCap(v: unknown): number {
 
 /**
  * Coerce whatever the row holds into a renderable grid. Anything malformed
- * resolves to the v5 default — the page must always be usable. Zero strategy is
+ * resolves to the v6 default — the page must always be usable. Zero strategy is
  * forced to 0 (off by definition). Mirrors normalizeConfig in the update EF
  * (the strict gate on save).
  */

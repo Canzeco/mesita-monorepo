@@ -12,7 +12,7 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { corsPreflight, json, readJsonOr } from "../_shared/http.ts";
 import { adminClient, getAuthedUser, readEFEnv } from "../_shared/auth.ts";
 import { mintMcpTokenPlaintext } from "../_shared/mcp-tokens.ts";
-import { isPremiumOrHigher } from "../_shared/membership.ts";
+import { isElevatedClass } from "../_shared/membership.ts";
 
 type Body = { label?: string };
 
@@ -50,7 +50,7 @@ Deno.serve(async (req) => {
   if (consumerErr) {
     return json({ ok: false, error: `consumer_read: ${consumerErr.message}` }, 500);
   }
-  if (!isPremiumOrHigher(consumerRow?.class_key)) {
+  if (!isElevatedClass(consumerRow?.class_key)) {
     return json(
       {
         ok: false,

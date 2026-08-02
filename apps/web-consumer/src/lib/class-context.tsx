@@ -12,7 +12,7 @@ import {
   DEMO_INSTAGRAM_FOLLOWERS,
   DEMO_INSTAGRAM_HANDLE,
 } from "@/lib/instagram-demo";
-import { MAGNETIC_FOLLOWER_THRESHOLD } from "@/lib/consumer-data";
+import { INFLUENCER_FOLLOWER_THRESHOLD } from "@/lib/consumer-data";
 
 // Real, server-sourced class for the signed-in consumer, shared with
 // every client surface under the (shell) layout: the Profile Class tab, the
@@ -25,7 +25,7 @@ import { MAGNETIC_FOLLOWER_THRESHOLD } from "@/lib/consumer-data";
 // redirect reloads the shell.
 
 type ConsumerClassState = {
-  key: "standard" | "premium" | "magnetic";
+  key: "standard" | "premium" | "influencer" | "aura";
   origin: "default" | "instagram" | "subscription" | "invitation";
   /** Subscription renewal date (ISO). Only meaningful when
    *  origin === "subscription"; null for every other origin. */
@@ -39,8 +39,8 @@ type ConsumerClassState = {
 
 // Safe default for any tree rendered without a provider: a plain Standard
 // account. Nothing is ever gated *open* by this default — the worst case is a
-// real Premium/Magnetic member momentarily shown as Standard, which the
-// server-seeded value corrects on first paint.
+// real elevated member momentarily shown as Standard, which the server-seeded
+// value corrects on first paint.
 const STANDARD_CLASS: ConsumerClassState = {
   key: "standard",
   origin: "default",
@@ -49,10 +49,14 @@ const STANDARD_CLASS: ConsumerClassState = {
   handle: null,
 };
 
+// The known class keys — an unknown/stale server key (e.g. the retired
+// "magnetic") renders as Standard instead of crashing a Record lookup.
+const KNOWN_CLASS_KEYS = new Set(["standard", "premium", "influencer", "aura"]);
+
 function normalize(c: ConsumerClass | null | undefined): ConsumerClassState {
   if (!c) return STANDARD_CLASS;
   return {
-    key: c.key === "premium" || c.key === "magnetic" ? c.key : "standard",
+    key: KNOWN_CLASS_KEYS.has(c.key) ? c.key : "standard",
     origin: c.origin ?? "default",
     renewsAt: c.subscription?.current_period_end ?? c.expires_at ?? null,
     followers: c.followers ?? 0,
@@ -76,17 +80,17 @@ export const MOCK_PREMIUM_KEY = "mesita:mock-premium";
 // every account state is previewable regardless of the real server-seeded
 // class. Two independent axes, mirroring the real model:
 //   • class     — forced class ("standard" down-previews a real elevated
-//                 account; premium = via subscription, magnetic = via
-//                 invitation). null = use the real class.
+//                 account; premium = via subscription, aura = via
+//                 invitation, influencer = via Instagram). null = real class.
 //   • instagram — a connected Instagram (handle + follower reach). Crossing
-//                 MAGNETIC_FOLLOWER_THRESHOLD grants Magnetic via Instagram
-//                 and wins over the class axis — exactly like a qualifying
-//                 consumer-web-claim-instagram claim overwrites the class.
+//                 INFLUENCER_FOLLOWER_THRESHOLD grants Influencer via
+//                 Instagram — exactly like a qualifying
+//                 consumer-web-claim-instagram claim writes the class.
 // Purely a client-side dev affordance; absent = the real account. Remove the
 // toggles + this key once the states can be produced with real data.
 const MOCK_ACCOUNT_KEY = "mesita:mock-account";
 export type MockAccount = {
-  class: "standard" | "premium" | "magnetic" | null;
+  class: "standard" | "premium" | "influencer" | "aura" | null;
   instagram: boolean;
   followers: number;
 };
@@ -140,7 +144,10 @@ function parseMockAccount(raw: string | null): MockAccount | null {
   try {
     const v = JSON.parse(raw) as Partial<MockAccount>;
     const cls =
-      v.class === "standard" || v.class === "premium" || v.class === "magnetic"
+      v.class === "standard" ||
+      v.class === "premium" ||
+      v.class === "influencer" ||
+      v.class === "aura"
         ? v.class
         : null;
     const instagram = v.instagram === true;
@@ -202,16 +209,20 @@ function mockAccountState(
   mock: MockAccount,
   base: ConsumerClassState,
 ): ConsumerClassState {
-  // Instagram reach wins over the class axis, exactly like a qualifying
-  // consumer-web-claim-instagram claim overwrites class_key server-side.
-  const igMagnetic =
-    mock.instagram && mock.followers >= MAGNETIC_FOLLOWER_THRESHOLD;
+  // Instagram reach wins over the class axis (except an explicit Aura
+  // preview — invitation outranks the reach door), exactly like a qualifying
+  // consumer-web-claim-instagram claim writes class_key server-side but never
+  // clobbers a higher-ranked invitation class.
+  const igInfluencer =
+    mock.instagram &&
+    mock.followers >= INFLUENCER_FOLLOWER_THRESHOLD &&
+    mock.class !== "aura";
 
   let key: ConsumerClassState["key"];
   let origin: ConsumerClassState["origin"];
   let renewsAt: string | null;
-  if (igMagnetic) {
-    key = "magnetic";
+  if (igInfluencer) {
+    key = "influencer";
     origin = "instagram";
     renewsAt = null;
   } else if (mock.class === "premium") {
@@ -220,10 +231,15 @@ function mockAccountState(
     key = "premium";
     origin = "subscription";
     renewsAt = renews.toISOString();
-  } else if (mock.class === "magnetic") {
-    // Magnetic without the reach — the manual-invite door.
-    key = "magnetic";
+  } else if (mock.class === "aura") {
+    // The invite-only presence class — the manual-invitation door.
+    key = "aura";
     origin = "invitation";
+    renewsAt = null;
+  } else if (mock.class === "influencer") {
+    // Influencer preview without the IG axis on — still the reach door.
+    key = "influencer";
+    origin = "instagram";
     renewsAt = null;
   } else if (mock.class === "standard") {
     key = "standard";
@@ -262,8 +278,8 @@ export function ClassProvider({
     // Demo/design override (Me-page demo toggles) wins over everything so
     // every account state is previewable regardless of the real class.
     if (mockAccount) return mockAccountState(mockAccount, base);
-    // A real server-seeded elevated class (Premium or Magnetic) always wins —
-    // never downgrade or relabel it.
+    // A real server-seeded elevated class always wins — never downgrade or
+    // relabel it.
     if (base.key !== "standard") return base;
     if (mockPremium) {
       const renews = new Date();
