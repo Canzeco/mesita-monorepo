@@ -32,13 +32,16 @@ const DEFAULT_PARTY = 2;
 
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
-// Same window as web (apps/web-consumer/src/components/consumer/
-// reservation-pickers.tsx). The lists must match: "is this whole day gone?" is
-// decided against them, so a divergence means the two apps disable different
-// days at the same instant.
+// PRE-EXISTING divergence from web, left alone on purpose: mobile offers a
+// lunch window, web (apps/web-consumer/src/components/consumer/
+// reservation-pickers.tsx) starts at 18:00. Dropping lunch here would remove a
+// booking capability guests have today, which is a product call — not something
+// to settle inside a past-slot bug fix. The past-slot guard below works off
+// whatever this list holds, so the divergence costs only an edge case: late at
+// night the two apps can disable "Today" at slightly different minutes.
 const TIME_SLOTS = [
-  '18:00', '18:30', '19:00', '19:30', '20:00', '20:30',
-  '21:00', '21:30', '22:00', '22:30', '23:00',
+  '13:00', '13:30', '14:00', '14:30', '18:00', '18:30', '19:00',
+  '19:30', '20:00', '20:30', '21:00', '21:30', '22:00',
 ];
 
 type DateOption = {
