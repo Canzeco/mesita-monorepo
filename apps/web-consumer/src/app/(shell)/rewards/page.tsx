@@ -1,9 +1,6 @@
 import nextDynamic from "next/dynamic";
 import { redirect } from "next/navigation";
 import { createServerSupabase } from "@/lib/supabase/server";
-import { apiFetchConsumerProfile } from "@/lib/api/profile";
-import { ERROR_BOX_CLASS } from "@/lib/ui-classes";
-import { cn, errMsg } from "@/lib/utils";
 import { CONSUMER_ROUTE_PREFIX } from "@/lib/consumer-route-contract";
 import { PayTabLoading } from "./PayTabLoading";
 
@@ -14,9 +11,14 @@ const PayClient = nextDynamic(
 
 export const dynamic = "force-dynamic";
 
-// Rewards Wallet (MESITA-811): identity header + three steps + New/Pending/
-// History; the venue pass modal carries the QR. Legacy /pay/* paths redirect
-// here.
+// Rewards Wallet (MESITA-811 · MESITA-820): three steps + New/Pending/History;
+// the venue pass modal carries the QR. Legacy /pay/* paths redirect here.
+//
+// No profile fetch: the page needs the user id and nothing else since the
+// identity header and the member code both left (MESITA-820). Dropping it
+// removes a blocking round-trip AND the failure mode where a profile-EF
+// hiccup replaced the whole wallet with an error box — tickets load
+// client-side and have their own retry.
 export default async function RewardsPage() {
   const supabase = await createServerSupabase();
   const {
@@ -26,32 +28,9 @@ export default async function RewardsPage() {
     redirect(`/?next=${encodeURIComponent(CONSUMER_ROUTE_PREFIX.rewards)}`);
   }
 
-  let profile;
-  try {
-    ({ consumer: profile } = await apiFetchConsumerProfile(supabase));
-  } catch (err) {
-    return (
-      <div className="flex h-full min-h-0 flex-1 flex-col">
-        <div className="px-4 py-6">
-          <p className={cn(ERROR_BOX_CLASS, "rounded-xl text-sm")}>
-            {errMsg(err, "Couldn't load your profile.")}
-          </p>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="flex h-full min-h-0 flex-1 flex-col">
-      <PayClient
-        userId={user.id}
-        code={profile.code ?? ""}
-        name={
-          [profile.first_name, profile.last_name].filter(Boolean).join(" ") ||
-          profile.full_name ||
-          ""
-        }
-      />
+      <PayClient userId={user.id} />
     </div>
   );
 }

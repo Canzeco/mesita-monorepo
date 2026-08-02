@@ -4,12 +4,13 @@
 //
 // Non-partners are shown, not hidden (MESITA-817). Hiding them meant a guest
 // whose catalog is all `web` listings saw an empty tab and concluded the page
-// was broken. They render dimmed and untappable instead, because
-// consumer-web-create-ticket 409s `not_partner` — a tap would be a dead end.
+// was broken. They get a LOCKED treatment instead (MESITA-819) — padlock pill,
+// dimmed thumbnail, muted name, no tap target — because
+// consumer-web-create-ticket 409s `not_partner`, so a tap is a dead end.
 // Partners sort first.
 
 import { Image } from 'expo-image';
-import { ChevronRight, MapPin, Store } from 'lucide-react-native';
+import { ChevronRight, Lock, MapPin, QrCode, Store } from 'lucide-react-native';
 import { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 
@@ -143,9 +144,17 @@ function PlaceRow({
   const body = (
     <>
       {photo ? (
+        // The THUMBNAIL carries the inactive state, not the whole row —
+        // blanket row opacity reads as a rendering glitch and costs
+        // legibility. (RN has no CSS grayscale, so dimming alone.)
         <Image
           source={{ uri: photo }}
-          style={{ width: 48, height: 48, borderRadius: 12 }}
+          style={{
+            width: 48,
+            height: 48,
+            borderRadius: 12,
+            opacity: isPartner ? 1 : 0.5,
+          }}
           contentFit="cover"
         />
       ) : (
@@ -159,7 +168,9 @@ function PlaceRow({
       )}
       <View className="min-w-0 flex-1">
         <Text
-          className="font-bold text-foreground"
+          className={`font-bold ${
+            isPartner ? 'text-foreground' : 'text-muted-foreground'
+          }`}
           numberOfLines={1}
           style={{ fontSize: 13.5 }}
         >
@@ -168,13 +179,15 @@ function PlaceRow({
         <Text
           className="mt-0.5 text-muted-foreground"
           numberOfLines={1}
-          style={{ fontSize: 11.5 }}
+          style={{ fontSize: 11.5, opacity: 0.8 }}
         >
           {subtitle}
         </Text>
       </View>
       {!isPartner ? (
-        <View className="rounded-full bg-muted px-2 py-0.5">
+        // One unambiguous locked signal, in one place.
+        <View className="flex-row items-center gap-1 rounded-full bg-muted px-2 py-0.5">
+          <Lock size={10} color="#775254" />
           <Text
             className="font-extrabold uppercase text-muted-foreground"
             style={{ fontSize: 10, letterSpacing: 0.5 }}
@@ -192,7 +205,20 @@ function PlaceRow({
           </Text>
         </View>
       ) : (
-        <ChevronRight size={16} color="#775254" />
+        <>
+          {/* Ghost QR — the row's promise, made visible. A dashed placeholder
+              reads "your QR comes from here, tap it", which a bare chevron
+              never says. Deliberately NOT a scannable code: nothing exists
+              until the ticket is created. */}
+          <View
+            accessibilityElementsHidden
+            importantForAccessibility="no-hide-descendants"
+            className="h-9 w-9 items-center justify-center rounded-lg border border-dashed border-primary/30 bg-primary/5"
+          >
+            <QrCode size={18} color="#cf0360" opacity={0.7} />
+          </View>
+          <ChevronRight size={16} color="#775254" />
+        </>
       )}
     </>
   );
@@ -204,11 +230,7 @@ function PlaceRow({
   // Non-partners are visible but inert: create-ticket would 409 `not_partner`.
   if (!isPartner) {
     return (
-      <View
-        accessibilityState={{ disabled: true }}
-        className={rowClass}
-        style={{ opacity: 0.55 }}
-      >
+      <View accessibilityState={{ disabled: true }} className={rowClass}>
         {body}
       </View>
     );

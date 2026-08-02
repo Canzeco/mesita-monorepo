@@ -6,13 +6,14 @@
 //
 // Non-partners are shown, not hidden (MESITA-817). Hiding them meant a guest
 // whose catalog is all `web` listings saw an empty tab and concluded the page
-// was broken. They render dimmed and untappable instead, because
-// consumer-web-create-ticket 409s `not_partner` — a tap would be a dead end.
+// was broken. They get a LOCKED treatment instead (MESITA-819) — padlock pill,
+// desaturated thumbnail, muted name, no tap target — because
+// consumer-web-create-ticket 409s `not_partner`, so a tap is a dead end.
 // Partners sort first.
 
 import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
-import { ChevronRight, MapPin, Store } from "lucide-react";
+import { ChevronRight, Lock, MapPin, QrCode, Store } from "lucide-react";
 
 import { apiFetchPublicPlaces, type Place } from "@/lib/api/places";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
@@ -159,7 +160,13 @@ function PlaceRow({
           alt=""
           width={48}
           height={48}
-          className="size-12 shrink-0 rounded-xl object-cover"
+          // The THUMBNAIL carries the inactive state, not the whole row —
+          // blanket row opacity reads as a rendering glitch and costs
+          // legibility. Desaturated + dimmed says "real place, not live".
+          className={cn(
+            "size-12 shrink-0 rounded-xl object-cover",
+            !isPartner && "opacity-60 grayscale",
+          )}
         />
       ) : (
         <span
@@ -174,15 +181,22 @@ function PlaceRow({
         </span>
       )}
       <span className="min-w-0 flex-1">
-        <span className="text-foreground block truncate text-[13.5px] leading-tight font-bold">
+        <span
+          className={cn(
+            "block truncate text-[13.5px] leading-tight font-bold",
+            isPartner ? "text-foreground" : "text-muted-foreground",
+          )}
+        >
           {place.name}
         </span>
-        <span className="text-muted-foreground mt-0.5 block truncate text-[11.5px]">
+        <span className="text-muted-foreground/80 mt-0.5 block truncate text-[11.5px]">
           {subtitle}
         </span>
       </span>
       {!isPartner ? (
-        <span className="bg-muted text-muted-foreground shrink-0 rounded-full px-2 py-0.5 text-[10px] font-extrabold tracking-wide uppercase">
+        // One unambiguous locked signal, in one place.
+        <span className="bg-muted text-muted-foreground flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-extrabold tracking-wide uppercase">
+          <Lock className="size-2.5" />
           Soon
         </span>
       ) : hasOpen ? (
@@ -190,7 +204,19 @@ function PlaceRow({
           Open
         </span>
       ) : (
-        <ChevronRight className="text-muted-foreground size-4 shrink-0" />
+        <>
+          {/* Ghost QR — the row's promise, made visible. A dashed placeholder
+              reads "your QR comes from here, tap it", which a bare chevron
+              never says. Deliberately NOT a scannable code: nothing exists
+              until the ticket is created. */}
+          <span
+            aria-hidden="true"
+            className="border-primary/30 bg-primary/5 text-primary/70 grid size-9 shrink-0 place-items-center rounded-lg border border-dashed"
+          >
+            <QrCode className="size-[18px]" />
+          </span>
+          <ChevronRight className="text-muted-foreground size-4 shrink-0" />
+        </>
       )}
     </>
   );
@@ -200,7 +226,7 @@ function PlaceRow({
     return (
       <div
         aria-disabled="true"
-        className="flex w-full items-center gap-3 px-3.5 py-3 text-left opacity-55"
+        className="flex w-full items-center gap-3 px-3.5 py-3 text-left"
       >
         {body}
       </div>

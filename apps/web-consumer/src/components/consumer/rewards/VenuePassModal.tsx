@@ -8,24 +8,43 @@
 // the Story opt-in is create-time only (wantsStory), so it can't be offered
 // after an auto-create.
 //
-// The member code lives in the footer, not the page header: the moment you
-// need the typed fallback (QR won't scan, WhatsApp staff bot) is exactly the
-// moment you're staring at this modal.
+// The pass answers three questions at once (MESITA-821):
+//   WHERE   — place name + zone/category, so the guest knows the pass is
+//             bound to this venue and not a generic card.
+//   WHO     — name, class and @handle under the QR. Staff match the face to
+//             the pass BEFORE scanning; the QR proves the ticket, the
+//             identity strip proves the person.
+//   WHAT    — the opportunity board: every rung this guest can reach here.
+//             Deliberately a BOARD, not a picker: the engine is best-of, so
+//             a guest who posts a story AND leaves a review keeps the higher
+//             one automatically. A "choose one" control would imply picking
+//             review forfeits welcome, which is false. Only Story is a real
+//             toggle, because wantsStory is create-time only.
+//
+// NO member code here (MESITA-820). check-web-get-ticket resolves ONLY the
+// per-ticket check_code, and _shared/ticket-check.ts explicitly forbids
+// consumers.code from ever reaching the staff page. Offering it as a "type
+// this instead" fallback promised something staff cannot do.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { QRCodeSVG } from "qrcode.react";
+import type { LucideIcon } from "lucide-react";
 import {
   BadgeCheck,
-  Check,
-  Copy,
+  Crown,
+  DoorOpen,
   Instagram,
   Loader2,
+  Megaphone,
   PartyPopper,
   Sparkles,
+  Star,
+  User,
+  Users,
 } from "lucide-react";
 
 import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
-import { formatCurrency } from "@/lib/api/profile";
+import { apiFetchConsumerProfile, formatCurrency } from "@/lib/api/profile";
 import { EFError } from "@/lib/api/_invoke";
 import type { Place } from "@/lib/api/places";
 import {
@@ -36,12 +55,17 @@ import {
   checkUrlForCode,
   type ConsumerTicketRow,
 } from "@/lib/api/tickets";
-import { displayConsumerCode } from "@/lib/consumer-code";
 import { useConsumerClass } from "@/lib/class-context";
 import { classProperLabel } from "@/lib/consumer-data";
+import {
+  PEAK_STRATEGY,
+  reachableSegments,
+  segmentKeyForClass,
+  type RewardSegmentKey,
+} from "@/lib/reward-segments";
 import type { ConsumerTicketsState } from "@/lib/hooks/useConsumerTickets";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
-import { cn } from "@/lib/utils";
+import { cn, firstInitials, formatCompactCount } from "@/lib/utils";
 
 // Class-tinted pass gradients — ported from the retired passport card (#548):
 // Standard coral · Premium violet · Influencer sky · Aura gold.
@@ -54,6 +78,28 @@ function passGradient(key: string, isElevated: boolean): string {
     return "bg-[linear-gradient(150deg,#ff7a45_0%,#ff3d73_45%,#a13cf0_100%)]";
   return "bg-[linear-gradient(150deg,#ff7a45_0%,#ff4d6d_55%,#ff2d78_100%)]";
 }
+
+const SEGMENT_ICON: Record<RewardSegmentKey, LucideIcon> = {
+  standard: User,
+  premium: Crown,
+  influencer: Megaphone,
+  aura: Sparkles,
+  story: Instagram,
+  welcome: DoorOpen,
+  review: Star,
+};
+
+// HOW you land on each rung, in the guest's words. Shorter than the ladder
+// blurbs in reward-segments: the program card teaches, the pass reminds.
+const SEGMENT_HOW: Record<RewardSegmentKey, string> = {
+  standard: "Always on",
+  premium: "Always on",
+  influencer: "Always on",
+  aura: "Always on",
+  story: "Post a story tagging the place",
+  welcome: "Automatic on your first visit here",
+  review: "Leave a Google review at the table",
+};
 
 const STORY_LINE: Record<string, string> = {
   pending: "Bill is in. Post your tagged story so the place can approve it.",
@@ -77,22 +123,19 @@ function statusLine(t: ConsumerTicketRow): string {
 
 export function VenuePassModal({
   place,
-  code,
   tickets,
   onClose,
   onTicketStarted,
 }: {
   /** The venue this pass is for; null = closed. Parent remounts per place. */
   place: Place | null;
-  /** Member code — the typed fallback in the footer. */
-  code: string;
   tickets: ConsumerTicketsState;
   onClose: () => void;
   /** Fired once a live ticket exists, so the page can land on Pending. */
   onTicketStarted: () => void;
 }) {
   const supabase = useBrowserSupabase();
-  const { key: classKey } = useConsumerClass();
+  const { key: classKey, followers } = useConsumerClass();
   const { isElevated, isInfluencer } = useMemo(
     () => ({
       isElevated: classKey !== "standard",
@@ -193,19 +236,47 @@ export function VenuePassModal({
     }
   }, [ticketId, supabase, tickets, onClose]);
 
-  const displayCode = displayConsumerCode(code);
-  const [copied, setCopied] = useState(false);
-  const onCopy = async () => {
-    try {
-      await navigator.clipboard.writeText(displayCode);
-      setCopied(true);
-      window.setTimeout(() => setCopied(false), 1400);
-    } catch {
-      // clipboard unavailable — ignore
-    }
-  };
+
+  // Identity for the staff eyeball-check. Fetched HERE, lazily, not at the
+  // page: the wallet itself needs no profile (MESITA-820), and most page
+  // views never open a pass. Failure degrades to class-only — the QR is what
+  // proves the ticket, this strip only helps a human match a face.
+  const [identity, setIdentity] = useState<{
+    name: string;
+    handle: string | null;
+  } | null>(null);
+  useEffect(() => {
+    if (!place) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const { consumer } = await apiFetchConsumerProfile(supabase);
+        if (cancelled) return;
+        const full =
+          [consumer.first_name, consumer.last_name].filter(Boolean).join(" ") ||
+          consumer.full_name ||
+          "";
+        setIdentity({
+          name: full.trim() || "Mesita member",
+          handle: consumer.instagram_handle ?? null,
+        });
+      } catch {
+        // class chip alone still identifies the tier
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [place, supabase]);
+
+  const rungs = useMemo(() => reachableSegments(classKey), [classKey]);
+  const mineKey = segmentKeyForClass(classKey);
 
   const placeName = place?.name ?? "the place";
+  const placeSub =
+    [place?.zone, place?.category_label ?? place?.category]
+      .filter(Boolean)
+      .join(" · ") || "Mesita partner";
   const live = ticket ? ACTIVE_TICKET_STATUSES.has(ticket.status) : false;
   const scanned = ticket?.first_scanned_at != null;
   const billed = (ticket?.total_cents ?? 0) > 0;
@@ -232,6 +303,9 @@ export function VenuePassModal({
               </p>
               <p className="mt-0.5 truncate text-[17px] leading-tight font-extrabold tracking-tight">
                 {placeName}
+              </p>
+              <p className="mt-0.5 truncate text-[11.5px] text-white/80">
+                {placeSub}
               </p>
             </div>
             <span className="shrink-0 rounded-full bg-white/22 px-2.5 py-1 text-[10px] font-extrabold tracking-widest uppercase">
@@ -372,7 +446,103 @@ export function VenuePassModal({
               </button>
             </div>
           ) : null}
+
+          {/* WHO — the staff eyeball-check. The QR proves the ticket is real;
+              this proves the person holding it is the guest on it. Sits
+              INSIDE the pass so one glance covers both. */}
+          {qrCode ? (
+            <div className="mt-4 flex items-center gap-2.5 border-t border-white/22 pt-3.5">
+              <span className="grid size-9 shrink-0 place-items-center rounded-full bg-white/18 text-[12px] font-extrabold ring-2 ring-white/25">
+                {firstInitials(identity?.name ?? "")}
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-[13.5px] leading-tight font-extrabold">
+                  {identity?.name ?? classProperLabel(classKey) + " member"}
+                </p>
+                <p className="mt-0.5 flex items-center gap-2 truncate text-[11px] text-white/85">
+                  {identity?.handle ? (
+                    <span className="flex items-center gap-1">
+                      <Instagram className="size-3 shrink-0" />@
+                      {identity.handle}
+                    </span>
+                  ) : null}
+                  {followers > 0 ? (
+                    <span className="flex items-center gap-1">
+                      <Users className="size-3 shrink-0" />
+                      {formatCompactCount(followers)}
+                    </span>
+                  ) : null}
+                  {!identity?.handle && followers === 0
+                    ? classProperLabel(classKey)
+                    : null}
+                </p>
+              </div>
+            </div>
+          ) : null}
         </section>
+
+        {/* WHAT — the opportunity board. A BOARD, not a picker: the engine is
+            best-of, so doing two things keeps the higher one automatically.
+            A "choose one" control would imply picking review forfeits
+            welcome, which is false. */}
+        {live || !ticket ? (
+          <section className="border-border bg-card overflow-hidden rounded-2xl border">
+            <div className="flex items-baseline justify-between gap-2 px-3.5 pt-3.5 pb-1">
+              <h3 className="text-foreground text-[13px] font-bold tracking-tight">
+                What you can earn here
+              </h3>
+              <span className="text-muted-foreground text-[10.5px]">
+                Best one wins
+              </span>
+            </div>
+            <ul className="flex flex-col gap-1.5 px-2.5 pt-1.5 pb-3">
+              {rungs.map((seg) => {
+                const Icon = SEGMENT_ICON[seg.key];
+                const mine = seg.key === mineKey;
+                return (
+                  <li
+                    key={seg.key}
+                    className={cn(
+                      "flex items-center gap-2.5 rounded-xl px-2.5 py-2",
+                      mine ? "bg-primary/8" : "bg-muted/45",
+                    )}
+                  >
+                    <span
+                      className={cn(
+                        "grid size-8 shrink-0 place-items-center rounded-lg",
+                        mine
+                          ? "bg-primary/12 text-primary"
+                          : "bg-secondary/10 text-secondary",
+                      )}
+                    >
+                      <Icon className="size-4" strokeWidth={2.25} />
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="text-foreground flex items-center gap-1.5 truncate text-[12.5px] leading-tight font-bold">
+                        {seg.name}
+                        {mine ? (
+                          <span className="bg-primary/12 text-primary shrink-0 rounded-full px-1.5 py-0.5 text-[8.5px] font-extrabold tracking-widest uppercase">
+                            You
+                          </span>
+                        ) : null}
+                      </span>
+                      <span className="text-muted-foreground mt-0.5 block truncate text-[11px]">
+                        {SEGMENT_HOW[seg.key]}
+                      </span>
+                    </span>
+                    <span className="font-display text-foreground/85 shrink-0 text-[15px] leading-none font-extrabold tabular-nums">
+                      {seg.rates[PEAK_STRATEGY]}%
+                    </span>
+                  </li>
+                );
+              })}
+            </ul>
+            <p className="text-muted-foreground/80 border-border border-t px-3.5 py-2.5 text-[10.5px] leading-snug">
+              You always keep your single best one — never added together. The
+              exact % is set by each place.
+            </p>
+          </section>
+        ) : null}
 
         {/* Live-ticket housekeeping */}
         {ticket?.status === "open" ? (
@@ -387,25 +557,6 @@ export function VenuePassModal({
           </button>
         ) : null}
 
-        {/* Member-code fallback — the typed backup when the QR won't scan. */}
-        <div className="border-border bg-muted/40 flex items-center gap-3 rounded-2xl border px-3.5 py-3">
-          <p className="text-muted-foreground min-w-0 flex-1 text-[11.5px] leading-snug">
-            QR won&apos;t scan? Staff can type your member code instead.
-          </p>
-          <button
-            type="button"
-            onClick={() => void onCopy()}
-            aria-label={copied ? "Code copied" : "Copy member code"}
-            className="text-foreground flex min-h-11 shrink-0 items-center gap-1.5 font-mono text-[13px] font-semibold tracking-[0.14em]"
-          >
-            {displayCode}
-            {copied ? (
-              <Check className="size-3.5 text-emerald-600" />
-            ) : (
-              <Copy className="text-muted-foreground size-3.5" />
-            )}
-          </button>
-        </div>
       </div>
     </LocalSheet>
   );

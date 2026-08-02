@@ -6,8 +6,10 @@ import { ShellWash } from '@/components/ui/HeroBackdrop';
 import { useAuth } from '@/providers/auth';
 
 // Live Rewards page (web PayClient parity) — the tab unparked in #548.
+// No `profile` read: the wallet needs the user id and nothing else since the
+// identity header and the member code both left (MESITA-820).
 export default function RewardsScreen() {
-  const { loading, session, profile } = useAuth();
+  const { loading, session } = useAuth();
 
   if (loading) {
     return (
@@ -36,19 +38,10 @@ export default function RewardsScreen() {
     );
   }
 
-  const name =
-    [profile?.first_name, profile?.last_name].filter(Boolean).join(' ') ||
-    profile?.full_name ||
-    '';
-
   return (
     <ShellWash>
       <SafeAreaView className="flex-1" edges={['top']}>
-        <PayClient
-          userId={session.user.id}
-          code={profile?.code ?? ''}
-          name={name}
-        />
+        <PayClient userId={session.user.id} />
       </SafeAreaView>
     </ShellWash>
   );

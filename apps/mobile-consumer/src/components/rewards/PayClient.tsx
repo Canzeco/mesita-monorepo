@@ -1,5 +1,11 @@
 import { MapPin, QrCode, Sparkles, TicketX } from 'lucide-react-native';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 
@@ -8,30 +14,23 @@ import { HistoryTicketCard } from '@/components/rewards/HistoryTicketCard';
 import { PlacePickList } from '@/components/rewards/PlacePickList';
 import { SavingsReveal } from '@/components/rewards/SavingsReveal';
 import { VenuePassModal } from '@/components/rewards/VenuePassModal';
-import { WalletHeader } from '@/components/rewards/WalletHeader';
 import { GRADIENT_DIAGONAL, GRADIENTS } from '@/constants/brand';
 import type { Place } from '@/lib/api/places';
 import { apiCancelTicket, type ConsumerTicketRow } from '@/lib/api/tickets';
 import { useConsumerTickets } from '@/lib/hooks/useConsumerTickets';
 import { TAB_SCROLL_PADDING_BOTTOM } from '@/lib/tab-layout';
 
-// Rewards Wallet v3 (MESITA-811) — web PayClient mirror: identity header
-// (name + class, nothing else) → the three steps → New / Pending / History.
+// Rewards Wallet v3 (MESITA-811 · MESITA-820) — web PayClient mirror: the
+// three steps → New / Pending / History. No identity header: the tab bar
+// already reads "Me · <class>", so repeating name+tier here was pure chrome
+// on a page whose job is doing.
 // New lists every partner place; tapping one opens the venue pass modal,
 // which reuses-or-creates the ticket and shows the QR. Education stays on
 // Me > Help (MESITA-809); motion budget carries over from MESITA-808.
 
 type Tab = 'new' | 'pending' | 'history';
 
-export function PayClient({
-  userId,
-  code,
-  name,
-}: {
-  userId: string;
-  code: string;
-  name?: string;
-}) {
+export function PayClient({ userId }: { userId: string }) {
   const tickets = useConsumerTickets(userId);
 
   // Default tab is DERIVED, not effect-set: Pending while a live ticket
@@ -80,8 +79,6 @@ export function PayClient({
         }}
         showsVerticalScrollIndicator={false}
       >
-        <WalletHeader name={name} />
-
         <PitchSteps />
 
         {justPaid ? (
@@ -92,8 +89,10 @@ export function PayClient({
           />
         ) : null}
 
-        {/* New / Pending / History pills — ≥44px hit areas. */}
-        <View className="flex-row rounded-2xl border border-border bg-card p-1">
+        {/* Segmented control — a FILLED track, not a bordered card, so it
+            reads as a control and never twins with the step rail above.
+            ≥44px hit areas. */}
+        <View className="flex-row rounded-2xl bg-muted p-1" style={{ gap: 4 }}>
           {(
             [
               { id: 'new', label: 'New' },
@@ -222,7 +221,6 @@ export function PayClient({
         // Remount per venue: fresh modal state without reset effects.
         key={passPlace?.id ?? 'closed'}
         place={passPlace}
-        code={code}
         tickets={tickets}
         onClose={() => setPassPlace(null)}
         onTicketStarted={() => setTabChoice('pending')}
@@ -231,30 +229,40 @@ export function PayClient({
   );
 }
 
-// The three steps — always visible per Pato's spec (the pitch is the
-// program's whole story: pick the place, show your QR, pay less).
+// The three steps — a RAIL, not a card: numbered, connected by hairlines, no
+// border. Previously it was a bordered card sitting directly above the tab
+// card, so the two read as twins; steps are instruction and tabs are control,
+// and they should never look alike.
+const PITCH_STEPS = [
+  { Icon: MapPin, label: 'Pick the place' },
+  { Icon: QrCode, label: 'Show your QR' },
+  { Icon: Sparkles, label: 'Pay less' },
+] as const;
+
 function PitchSteps() {
   return (
-    <View className="flex-row rounded-2xl border border-border bg-card px-3 py-4">
-      <PitchStep icon={<MapPin size={18} color="#cf0360" />} label="Pick the place" />
-      <PitchStep icon={<QrCode size={18} color="#cf0360" />} label="Show your QR" />
-      <PitchStep icon={<Sparkles size={18} color="#cf0360" />} label="Pay less" />
-    </View>
-  );
-}
-
-function PitchStep({ icon, label }: { icon: React.ReactNode; label: string }) {
-  return (
-    <View className="flex-1 items-center" style={{ gap: 6 }}>
-      <View className="h-9 w-9 items-center justify-center rounded-xl bg-secondary/10">
-        {icon}
-      </View>
-      <Text
-        className="text-center font-semibold text-foreground"
-        style={{ fontSize: 11, lineHeight: 14 }}
-      >
-        {label}
-      </Text>
+    <View className="flex-row items-start px-1" style={{ paddingTop: 4 }}>
+      {PITCH_STEPS.map(({ Icon, label }, i) => (
+        <React.Fragment key={label}>
+          <View className="flex-1 items-center" style={{ gap: 6 }}>
+            <View className="h-10 w-10 items-center justify-center rounded-xl bg-secondary/10">
+              <Icon size={18} color="#cf0360" />
+            </View>
+            <Text
+              className="text-center font-semibold text-foreground"
+              style={{ fontSize: 11, lineHeight: 14 }}
+            >
+              <Text className="font-extrabold text-primary">{i + 1}</Text> {label}
+            </Text>
+          </View>
+          {i < PITCH_STEPS.length - 1 ? (
+            <View
+              className="bg-border"
+              style={{ height: 1, width: 20, marginTop: 20 }}
+            />
+          ) : null}
+        </React.Fragment>
+      ))}
     </View>
   );
 }
