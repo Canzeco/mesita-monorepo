@@ -5,6 +5,7 @@
 // leaks into any business/staff response.
 
 import { type SupabaseClient } from "jsr:@supabase/supabase-js@2";
+import { isClassSegment } from "./rewards-config.ts";
 
 // The subset of place columns the rate resolver needs. Any place row read
 // with PLACE_*_COLUMNS satisfies this.
@@ -33,11 +34,12 @@ export type TierConfig = {
 // retired; the helpers below feed the new resolver's rate context.
 
 // Consumer-class perk gate: which classes clear the "Premium or better" bar.
-// Premium (paid) and Magnetic (Instagram-earned, the active top tier) both
-// pass; Standard / null / anonymous do not. Route every premium-perk class
-// check through this so Magnetic inherits Premium's perks (magnetic ≥ premium).
-export function isPremiumOrHigher(classKey: string | null | undefined): boolean {
-  return classKey === "premium" || classKey === "magnetic";
+// Segments v6: every elevated class — Premium (paid), Influencer (Instagram
+// ≥ 1,000, automatic), Aura (invite-only) — passes; Standard / null / unknown
+// do not. Generic on purpose (rank > 0 in classes-table terms): a future class
+// or tier INSERT inherits the elevated perks without touching this gate.
+export function isElevatedClass(classKey: string | null | undefined): boolean {
+  return isClassSegment(classKey) && classKey !== "standard";
 }
 
 // Loads a tier's config row. Returns null if the key isn't in the lookup.

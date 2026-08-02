@@ -1,4 +1,4 @@
-// Normalize the Rewards Config blob (Promos v5, MESITA-723) — the strict gate on
+// Normalize the Rewards Config blob (Promos v6, MESITA-723) — the strict gate on
 // save. Mirrors coerceConfig in the admin catalog. Self-contained (no _shared
 // import) so the contract lives beside the writer.
 //
@@ -9,8 +9,9 @@
 
 const SEGMENT_KEYS = [
   "standard",
-  "magnetic",
   "premium",
+  "influencer",
+  "aura",
   "story",
   "welcome",
   "review",
@@ -27,11 +28,12 @@ const CAP_MIN = 0;
 const CAP_MAX = 5000;
 const CAP_DEFAULT = 500;
 
-// The locked v5 defaults — the fallback for any absent/invalid cell.
+// The locked v6 defaults — the fallback for any absent/invalid cell.
 const DEFAULTS: Record<SegmentKey, SegmentRates> = {
   standard: { zero: 0, conservative: 10, aggressive: 10 },
-  magnetic: { zero: 0, conservative: 15, aggressive: 20 },
   premium: { zero: 0, conservative: 15, aggressive: 20 },
+  influencer: { zero: 0, conservative: 15, aggressive: 20 },
+  aura: { zero: 0, conservative: 20, aggressive: 25 },
   story: { zero: 0, conservative: 20, aggressive: 30 },
   welcome: { zero: 0, conservative: 20, aggressive: 30 },
   review: { zero: 0, conservative: 30, aggressive: 50 },

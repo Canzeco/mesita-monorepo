@@ -8,6 +8,7 @@ import { FullScreenSheet } from '@/components/ui/FullScreenSheet';
 import { TextField } from '@/components/ui/TextField';
 import { GRADIENTS } from '@/constants/brand';
 import { apiClaimInstagram } from '@/lib/api/auth';
+import { INFLUENCER_FOLLOWER_THRESHOLD } from '@/lib/consumer-classes';
 import { DEMO_INSTAGRAM_FOLLOWERS } from '@/lib/instagram-demo';
 import { errMsg } from '@/lib/utils';
 import { useAuth } from '@/providers/auth';
@@ -37,22 +38,25 @@ export function VerifySocialSheet({ visible, onClose }: Props) {
         handle: handle.trim().replace(/^@/, '').toLowerCase(),
       });
       await refreshProfile();
-      if (result.tier === 'magnetic') {
+      if (result.tier === 'influencer') {
         Alert.alert(
           'Connected',
-          'Instagram connected — Mesita Magnetic unlocked.',
+          'Instagram connected — Mesita Influencer unlocked.',
         );
         setHandle('');
         setCode('');
         onClose();
         return;
       }
-      // Below the 1,000-follower bar — linked, but the consumer stays Standard.
+      // Below the 1,000-follower bar — linked, but the class stays put
+      // (`tier` echoes the resulting class key: premium or standard).
       Alert.alert(
         'Instagram connected',
         `${result.followers.toLocaleString(
           'en-US',
-        )} followers is below the 1,000 needed for Magnetic.`,
+        )} followers is below the ${INFLUENCER_FOLLOWER_THRESHOLD.toLocaleString(
+          'en-US',
+        )} needed for Influencer.`,
       );
     } catch (e) {
       Alert.alert(
@@ -92,7 +96,7 @@ export function VerifySocialSheet({ visible, onClose }: Props) {
         'Follow @mesita.bot on Instagram.',
         'DM @mesita.bot with the word VERIFY.',
         'Mesita will reply with an 8-digit verification code. Paste it here.',
-        '1,000+ followers unlocks Mesita Magnetic instantly.',
+        `${INFLUENCER_FOLLOWER_THRESHOLD.toLocaleString('en-US')}+ followers unlocks Mesita Influencer instantly.`,
       ].map((line, i) => (
         <View
           key={line}

@@ -96,7 +96,8 @@ export function RewardMatrix({
             <RewardCell
               value={r.vals.premium}
               accent
-              // Premium and Magnetic both read the elevated column.
+              // Every elevated class (Premium / Influencer / Aura) reads the
+              // elevated column — the v4 columns only know the binary split.
               active={r.onAxis && currentClass !== 'standard'}
             />
           </View>

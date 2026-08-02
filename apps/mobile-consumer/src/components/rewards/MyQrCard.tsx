@@ -13,9 +13,9 @@ import { useAuth } from '@/providers/auth';
 import { IdentityStrip, IgChips, Scorecard } from './my-qr-card-parts';
 
 // Coral Mesita Card passport — web MyQrCard.tsx port (MESITA-580).
-// Standard: #ff7a45→#ff2d78 · Premium: →#a13cf0 · Magnetic: →gold #e0982e.
-// QR plate ink #2b1233. White-on-coral is the one intentional white-on-color
-// surface here.
+// Standard: #ff7a45→#ff2d78 · Premium: →#a13cf0 · Influencer: →sky #2f7fd6 ·
+// Aura: →gold #e0982e. QR plate ink #2b1233. White-on-coral is the one
+// intentional white-on-color surface here.
 
 const PASSPORT_SHADOW = {
   shadowColor: '#ff4d6d',
@@ -66,13 +66,16 @@ export function MyQrCard({
   };
 
   const s = stats ?? { visits: 0, savedCents: 0, stories: 0, reviews: 0 };
-  // Standard = coral; Premium adds violet; Magnetic (top tier) shifts to gold.
+  // Standard = coral; Premium adds violet; Influencer shifts to sky; Aura
+  // (top of the ladder) shifts to gold.
   const gradientColors =
-    classKey === 'magnetic'
+    classKey === 'aura'
       ? (['#ff7a45', '#ffb03d', '#e0982e'] as const)
-      : isElevated
-        ? (['#ff7a45', '#ff3d73', '#a13cf0'] as const)
-        : (['#ff7a45', '#ff4d6d', '#ff2d78'] as const);
+      : classKey === 'influencer'
+        ? (['#ff7a45', '#4aa8ff', '#2f7fd6'] as const)
+        : isElevated
+          ? (['#ff7a45', '#ff3d73', '#a13cf0'] as const)
+          : (['#ff7a45', '#ff4d6d', '#ff2d78'] as const);
 
   return (
     <LinearGradient

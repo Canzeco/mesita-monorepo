@@ -54,7 +54,7 @@ export type SocialPerson = {
   id: string;
   name: string;
   igHandle: string;
-  plan: "standard" | "premium" | "magnetic";
+  plan: "standard" | "premium" | "influencer";
   avatarUrl: string;
   action: SocialActionKind;
   /** Index into the live deck (modulo length) — resolves to a real place. */
@@ -69,12 +69,12 @@ export type SocialPerson = {
 
 // Relevance score — how much this person should surface in the "Relevance"
 // sort. Weighted engagement (rewards + likes count most), with a class
-// bump (Magnetic > Premium). Higher = more relevant. Pure function of the
+// bump (Influencer > Premium). Higher = more relevant. Pure function of the
 // row so it stays stable.
 export function socialRelevance(p: SocialPerson): number {
   const { visits, likes, stories, rewards } = p.stats;
   const engagement = visits + likes * 2 + stories + rewards * 3;
-  const mult = p.plan === "magnetic" ? 1.25 : p.plan === "premium" ? 1.15 : 1;
+  const mult = p.plan === "influencer" ? 1.25 : p.plan === "premium" ? 1.15 : 1;
   return Math.round(engagement * mult);
 }
 
@@ -83,7 +83,7 @@ export const SOCIAL_PEOPLE: SocialPerson[] = [
     id: "sofi",
     name: "Sofía Méndez",
     igHandle: "@sofi.mz",
-    plan: "magnetic",
+    plan: "influencer",
     avatarUrl: "https://i.pravatar.cc/200?img=20",
     action: "visit",
     placeSlot: 0,
@@ -135,7 +135,7 @@ export const SOCIAL_PEOPLE: SocialPerson[] = [
     id: "mariana",
     name: "Mariana",
     igHandle: "@mari.mx",
-    plan: "magnetic",
+    plan: "influencer",
     avatarUrl: "https://i.pravatar.cc/200?img=32",
     action: "reward",
     placeSlot: 0,
@@ -161,7 +161,7 @@ export const SOCIAL_PEOPLE: SocialPerson[] = [
     id: "camila",
     name: "Camila V.",
     igHandle: "@cami.v",
-    plan: "magnetic",
+    plan: "influencer",
     avatarUrl: "https://i.pravatar.cc/200?img=23",
     action: "like",
     placeSlot: 3,
@@ -200,7 +200,7 @@ export const SOCIAL_PEOPLE: SocialPerson[] = [
     id: "andres",
     name: "Andrés C.",
     igHandle: "@andres.c",
-    plan: "magnetic",
+    plan: "influencer",
     avatarUrl: "https://i.pravatar.cc/200?img=15",
     action: "story",
     placeSlot: 6,

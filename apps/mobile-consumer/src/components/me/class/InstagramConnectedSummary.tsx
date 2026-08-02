@@ -41,10 +41,10 @@ export function InstagramConnectedSummary({ followers }: { followers: number }) 
         </View>
         <Text style={{ color: '#775254', marginTop: 4 }}>
           {followers > 0
-            ? `${followers.toLocaleString('en-US')} followers · Magnetic active`
-            : 'Magnetic active'}
+            ? `${followers.toLocaleString('en-US')} followers · Influencer active`
+            : 'Influencer active'}
         </Text>
-        {/* The Instagram door grants Magnetic off follower count alone — there
+        {/* The Instagram door grants Influencer off follower count alone — there
             is no story-to-keep-it rule. Stories are an optional extra rung. */}
         <Text
           style={{ color: 'rgba(119,82,84,0.8)', marginTop: 2 }}

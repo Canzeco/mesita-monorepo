@@ -1,115 +1,100 @@
-import { CLASS_ICONS } from "@/lib/consumer-data";
+import { CLASSES, CLASS_ICONS, classBadgeClass } from "@/lib/consumer-data";
+import { baseRateForClass } from "@/lib/reward-segments";
 import { cn } from "@/lib/utils";
+import type { ConsumerClass } from "@/lib/mock/place";
 
-// Three-class comparison — Standard / Premium / Magnetic in ladder order
-// (standard < premium ≤ magnetic; Magnetic is the top tier and reads gold,
-// matching the QR + summary cards). Premium and Magnetic share ONE perk set
-// by design (Pato, 2026-07-27), so the Price row is what separates them:
-// Premium is paid, Magnetic is earned with reach.
+// Four-class comparison (segments v6) — Standard / Premium / Influencer /
+// Aura in ladder order. Four columns no longer fit a phone-width grid, so the
+// comparison is a stacked list: one compact row-card per class with the three
+// separating facts (door, base discount, reservations). The elevated classes
+// share the recommendation/reservation perks by design; the door and the way
+// the money is made are what differ.
 
-const COMPARE_ROWS: {
-  label: string;
-  standard: string;
-  premium: string;
-  magnetic: string;
+const ROWS: {
+  key: ConsumerClass;
+  door: string;
+  discount: string;
+  reservations: string;
+  tint: string;
+  text: string;
 }[] = [
-  { label: "Price", standard: "Free", premium: "$100/mo", magnetic: "Free" },
   {
-    label: "Discount rewards",
-    standard: "Base",
-    premium: "Higher",
-    magnetic: "Higher",
+    key: "standard",
+    door: "Free",
+    discount: `Up to ${baseRateForClass("standard")}% base`,
+    reservations: "2",
+    tint: "bg-muted/50",
+    text: "text-foreground/80",
   },
   {
-    label: "Recommendations",
-    standard: "Standard",
-    premium: "Better",
-    magnetic: "Better",
+    key: "premium",
+    door: "$100/mo",
+    discount: `Up to ${baseRateForClass("premium")}% base`,
+    reservations: "10",
+    tint: "bg-tier-premium/[0.07]",
+    text: "text-premium",
   },
   {
-    label: "Reservations / month",
-    standard: "2",
-    premium: "10",
-    magnetic: "10",
+    key: "influencer",
+    door: "1,000+ IG followers",
+    discount: `Up to ${baseRateForClass("influencer")}% + Story bonus`,
+    reservations: "10",
+    tint: "bg-sky-500/10",
+    text: "text-sky-700",
+  },
+  {
+    key: "aura",
+    door: "By invitation",
+    discount: `Up to ${baseRateForClass("aura")}% base — highest`,
+    reservations: "10",
+    tint: "bg-amber-400/15",
+    text: "text-amber-700",
   },
 ];
 
-const GRID_COLS = "grid-cols-[1.1fr_0.7fr_0.95fr_0.95fr]";
-
 export function ClassComparison() {
   return (
-    <div className="border-border bg-card overflow-hidden rounded-2xl border px-2 py-1.5">
-      <div className={cn("grid items-end gap-1 px-2 pt-2", GRID_COLS)}>
-        <span />
-        <CompareHead label="Standard" />
-        <CompareHead label="Premium" accent="premium" />
-        <CompareHead label="Magnetic" accent="magnetic" />
-      </div>
-      <div className="mt-1">
-        {COMPARE_ROWS.map((row, i) => (
+    <div className="flex flex-col gap-2">
+      {ROWS.map((row) => {
+        const cls = CLASSES.find((c) => c.id === row.key)!;
+        const Icon = CLASS_ICONS[row.key];
+        return (
           <div
-            key={row.label}
+            key={row.key}
             className={cn(
-              "grid items-center gap-1 px-2 py-3.5",
-              GRID_COLS,
-              i > 0 && "border-border/50 border-t",
+              "border-border/60 flex items-center gap-3 rounded-2xl border px-3 py-2.5",
+              row.tint,
             )}
           >
-            <span className="text-foreground/80 text-[12px] leading-tight font-medium">
-              {row.label}
+            <span
+              className={cn(
+                "grid size-9 shrink-0 place-items-center rounded-xl",
+                classBadgeClass(row.key),
+              )}
+            >
+              <Icon className="h-4 w-4" />
             </span>
-            <span className="text-foreground/70 text-center text-[12px] leading-tight font-semibold">
-              {row.standard}
-            </span>
-            <span className="bg-tier-premium/[0.07] text-premium rounded-lg px-0.5 py-1.5 text-center text-[12px] leading-tight font-semibold">
-              {row.premium}
-            </span>
-            <span className="rounded-lg bg-amber-400/15 px-0.5 py-1.5 text-center text-[12px] leading-tight font-semibold text-amber-700">
-              {row.magnetic}
-            </span>
+            <div className="min-w-0 flex-1">
+              <p className="flex items-baseline gap-1.5">
+                <span
+                  className={cn(
+                    "font-display text-[13px] font-bold tracking-tight",
+                    row.text,
+                  )}
+                >
+                  {cls.label}
+                </span>
+                <span className="text-muted-foreground text-[11px] font-medium">
+                  {row.door}
+                </span>
+              </p>
+              <p className="text-muted-foreground truncate text-[11.5px] leading-snug">
+                {row.discount} · {row.reservations} reservations/mo
+              </p>
+            </div>
           </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function CompareHead({
-  label,
-  accent,
-}: {
-  label: string;
-  accent?: "premium" | "magnetic";
-}) {
-  // The canonical class icon trio: Premium = paying (card), Magnetic = the
-  // crown (top tier). Standard's smile is skipped in this tight header.
-  const PremiumIcon = CLASS_ICONS.premium;
-  const MagneticIcon = CLASS_ICONS.magnetic;
-  return (
-    <div
-      className={cn(
-        "flex flex-col items-center rounded-t-lg px-1 py-1.5",
-        accent === "premium" && "bg-tier-premium/[0.07]",
-        accent === "magnetic" && "bg-amber-400/15",
-      )}
-    >
-      <span className="inline-flex items-center gap-1">
-        {accent === "premium" && (
-          <PremiumIcon className="text-premium h-3 w-3" />
-        )}
-        {accent === "magnetic" && (
-          <MagneticIcon className="h-3 w-3 fill-current text-amber-700" />
-        )}
-        <span
-          className={cn(
-            "font-display text-[12.5px] font-bold tracking-tight",
-            accent === "premium" && "text-premium",
-            accent === "magnetic" && "text-amber-700",
-          )}
-        >
-          {label}
-        </span>
-      </span>
+        );
+      })}
     </div>
   );
 }

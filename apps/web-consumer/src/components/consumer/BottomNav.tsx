@@ -88,7 +88,7 @@ export function BottomNav({ userId }: { userId?: string }) {
   void userId;
   const pathname = usePathname();
   // Real, server-seeded class → the Me tab reads "Me · Premium" / "Me ·
-  // Magnetic" / "Me · Standard" instead of a literal "Class". Defaults to
+  // Aura" / "Me · Standard" instead of a literal "Class". Defaults to
   // Standard before the shell seeds the profile (harmless: an elevated member is
   // shown Standard for one paint at most).
   const { key: classKey } = useConsumerClass();

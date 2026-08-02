@@ -25,7 +25,7 @@ export function PremiumExampleBox({
 
   return (
     <Section
-      title="What Premium & Magnetic guests get"
+      title="What elevated Mesita guests get"
       description={`The current rates worked on a sample ${formatMoney(EXAMPLE_BILL_MXN, place.currency)} ticket.`}
       right={
         hasPromo ? (
@@ -56,9 +56,8 @@ export function PremiumExampleBox({
             />
           </div>
           <p className="text-muted-foreground text-[11px] leading-snug">
-            Premium ≥ Standard in every Strategy — your Premium and Magnetic
-            guests always get the better deal. They are what the membership
-            buys.
+            Premium ≥ Standard in every Strategy — your elevated Mesita guests
+            always get the better deal. They are what the membership buys.
           </p>
         </>
       ) : (

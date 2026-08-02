@@ -28,7 +28,7 @@ export type ClimbCardData = {
   perks?: string[];
   reached: boolean;
   reachedLabel: string;
-  /** Doors into the class — a card can have several (e.g. Magnetic). */
+  /** Doors into the class — a card can have several. */
   actions?: ClimbCardAction[];
   note?: string;
 };
@@ -46,7 +46,7 @@ export function ClimbCard({ data }: { data: ClimbCardData }) {
     );
   } else if (data.actions && data.actions.length > 0) {
     // Primary actions stack full-width; consecutive SECONDARY actions share
-    // one row (e.g. Magnetic's "Join with invitation | Request invitation").
+    // one row (consecutive secondary actions render side by side).
     const groups = data.actions.reduce<ClimbCardAction[][]>((acc, action) => {
       const last = acc[acc.length - 1];
       if (action.secondary && last && last[0]?.secondary) last.push(action);

@@ -91,7 +91,7 @@ export function ProfileClient({
       toast("Checkout cancelled — you can subscribe anytime.");
     }
     if (params.get("instagram") === "success") {
-      toast.success("Instagram connected — Mesita Magnetic unlocked.");
+      toast.success("Instagram connected — Mesita Influencer unlocked.");
     }
   }, []);
 
@@ -119,7 +119,7 @@ export function ProfileClient({
             Icon={Crown}
             tint="amber"
             title="Class"
-            summary="Standard, Premium & Magnetic"
+            summary="Standard · Premium · Influencer · Aura"
             onClick={() => setClassOpen(true)}
           />
 

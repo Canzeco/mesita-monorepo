@@ -6,7 +6,7 @@ import {
   type PlaceRow,
 } from "./recommender-pool.ts";
 import { localHour } from "./local-time.ts";
-import { isPremiumOrHigher } from "./membership.ts";
+import { isElevatedClass } from "./membership.ts";
 
 const DEFAULT_RADIUS_KM = 25;
 
@@ -36,7 +36,7 @@ export function composeIntent({
   else parts.push("dinner, cocktails, and late-night spots");
 
   if (profile?.country) parts.push(`a consumer from ${profile.country}`);
-  if (isPremiumOrHigher(profile?.tier)) {
+  if (isElevatedClass(profile?.tier)) {
     parts.push("a Mesita Premium member who values standout, high-quality places");
   }
   if (lat != null && lng != null) parts.push(`within ${DEFAULT_RADIUS_KM}km of this location`);

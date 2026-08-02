@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Image from "next/image";
-import { Crown, Instagram, Magnet, X } from "lucide-react";
+import { Crown, Instagram, Megaphone, X } from "lucide-react";
 import type { SocialPerson } from "./social-feed-data";
 import { LocalDialog } from "@/components/consumer/overlay/LocalOverlay";
 import { INSTAGRAM_BADGE_GRADIENT_CLASS } from "@/lib/ui-classes";
@@ -67,9 +67,9 @@ export function SocialProfileModal({
                 height={80}
                 className="ring-background h-20 w-20 rounded-full object-cover ring-4"
               />
-              {shown.plan === "magnetic" && (
-                <span className="bg-tier-gold ring-background absolute -bottom-0.5 -left-0.5 grid h-6 w-6 place-items-center rounded-full text-white ring-2">
-                  <Magnet className="h-3.5 w-3.5" />
+              {shown.plan === "influencer" && (
+                <span className="bg-sky-600 ring-background absolute -bottom-0.5 -left-0.5 grid h-6 w-6 place-items-center rounded-full text-white ring-2">
+                  <Megaphone className="h-3.5 w-3.5" />
                 </span>
               )}
               {shown.plan === "premium" && (
@@ -106,14 +106,14 @@ export function SocialProfileModal({
                 <span
                   className={cn(
                     "inline-flex h-7 items-center gap-1 rounded-full px-2.5 text-[11px] font-semibold text-white",
-                    shown.plan === "magnetic"
-                      ? "bg-tier-gold"
+                    shown.plan === "influencer"
+                      ? "bg-sky-600"
                       : "bg-tier-premium",
                   )}
                 >
-                  {shown.plan === "magnetic" ? (
+                  {shown.plan === "influencer" ? (
                     <>
-                      <Magnet className="h-3 w-3" /> Magnetic
+                      <Megaphone className="h-3 w-3" /> Influencer
                     </>
                   ) : (
                     <>

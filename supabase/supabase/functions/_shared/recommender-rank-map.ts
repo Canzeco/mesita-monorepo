@@ -45,7 +45,7 @@ import {
   slug,
 } from "./recommender-rank-map-fallback.ts";
 import { localClock } from "./local-time.ts";
-import { isPremiumOrHigher } from "./membership.ts";
+import { isElevatedClass } from "./membership.ts";
 import { loadScoringSettings } from "./lineup-config.ts";
 import { cosineById, lineupReorder } from "./lineup-rank.ts";
 
@@ -262,8 +262,11 @@ async function proposeCategories({
     location: lat != null && lng != null ? { lat, lng } : null,
     local_hour: clock?.hour ?? 12,
     weekday: clock?.weekday ?? "unknown",
-    // Premium/Magnetic members get more aspirational, standout-leaning curation.
-    membership: isPremiumOrHigher(profile?.tier) ? "premium" : "standard",
+    // Elevated-class members get more aspirational, standout-leaning curation.
+    // Deliberately binary: the rank model's membership feature only knows
+    // elevated-vs-standard; per-class (influencer/aura) weighting is a future
+    // recommendation_weight change, not a model input.
+    membership: isElevatedClass(profile?.tier) ? "premium" : "standard",
   };
 
   const system = [

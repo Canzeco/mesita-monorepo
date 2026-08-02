@@ -90,7 +90,12 @@ Deno.serve(async (req) => {
     );
   }
 
-  const requiresStory = STORY_KINDS.has(kind);
+  // Provisional: the wire kind asks for a story step. Segments v6 makes the
+  // Story rung Influencer-exclusive, so this is re-decided after the consumer
+  // lookup below — a non-Influencer guest degrades to the storyless path
+  // SILENTLY (never an error), because a staff-visible rejection would leak
+  // the guest's class and break the blended-rate privacy invariant.
+  let requiresStory = STORY_KINDS.has(kind);
   const isReservation = RESERVATION_KINDS.has(kind);
   // Persisted enum value — story is orthogonal (story_status), so kind only
   // distinguishes reservation vs coupon.
@@ -151,6 +156,16 @@ Deno.serve(async (req) => {
     return json({ ok: false, error: `No consumer with code ${consumerCode}` }, 404);
   }
   const consumerId = consumerRow.data.id;
+
+  // Segments v6: the Story rung belongs to the Influencer class alone
+  // (resolveTicketRate + consumer-web-submit-story both gate on it). Seeding
+  // story_status='pending' for anyone else would strand the ticket in
+  // 'awaiting_story': the guest's submit-story 403s and mark-ticket-paid 409s,
+  // leaving cancel as the only exit. Degrade to the storyless path instead —
+  // silently, so staff never learn the guest's class.
+  if (requiresStory && consumerRow.data.class_key !== "influencer") {
+    requiresStory = false;
+  }
 
   // ── Scan-only (no bill yet) ─────────────────────────────────────────
   if (scanOnly) {

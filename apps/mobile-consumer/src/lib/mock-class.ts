@@ -9,13 +9,20 @@ import {
 
 // Client-only demo override (Me → Class preview / MockControls). Same key as
 // web (`mesita:mock-class`) so mental model stays aligned.
+//
+// Segments v6: the override is the previewed CLASS KEY — each class implies
+// its door (premium = subscription, influencer = instagram, aura =
+// invitation). A single explicit value per preview means the IG emulation can
+// never override an explicit Aura preview (unlike web's two-axis MockAccount,
+// which guards that case by hand).
 
 const MOCK_CLASS_KEY = 'mesita:mock-class';
-export type MockClass = 'standard' | 'subscription' | 'instagram';
+export type MockClass = 'standard' | 'premium' | 'influencer' | 'aura';
 const MOCK_CLASS_VALUES: MockClass[] = [
   'standard',
-  'subscription',
-  'instagram',
+  'premium',
+  'influencer',
+  'aura',
 ];
 
 const listeners = new Set<() => void>();
@@ -25,11 +32,20 @@ function notify(): void {
 }
 
 type ConsumerClassState = {
-  key: 'standard' | 'premium' | 'magnetic';
+  key: 'standard' | 'premium' | 'influencer' | 'aura';
   origin: 'default' | 'instagram' | 'subscription' | 'invitation';
   followers: number;
   handle: string | null;
 };
+
+// The known class keys — an unknown/stale server key (e.g. the retired
+// "magnetic") normalizes to Standard instead of leaking into gates.
+const KNOWN_CLASS_KEYS = [
+  'standard',
+  'premium',
+  'influencer',
+  'aura',
+] as const;
 
 const STANDARD: ConsumerClassState = {
   key: 'standard',
@@ -45,7 +61,9 @@ function normalize(
   if (!c) return { ...STANDARD, handle: profileHandle };
   const raw = c.key ?? c.class ?? 'standard';
   return {
-    key: raw === 'premium' || raw === 'magnetic' ? raw : 'standard',
+    key: (KNOWN_CLASS_KEYS as readonly string[]).includes(raw)
+      ? (raw as ConsumerClassState['key'])
+      : 'standard',
     origin: (c.origin as ConsumerClassState['origin']) ?? 'default',
     followers: c.followers ?? 0,
     handle: profileHandle,
@@ -59,21 +77,28 @@ function applyMock(
   switch (mock) {
     case 'standard':
       return { ...base, key: 'standard', origin: 'default' };
-    case 'instagram':
-      // Instagram reach is the door into Magnetic (the top, invite-only tier).
+    case 'influencer':
+      // Instagram reach (≥ 1,000 followers) is the door into Influencer.
       return {
         ...base,
-        key: 'magnetic',
+        key: 'influencer',
         origin: 'instagram',
         followers:
           base.followers > 0 ? base.followers : DEMO_INSTAGRAM_FOLLOWERS,
         handle: base.handle ?? DEMO_INSTAGRAM_HANDLE,
       };
-    case 'subscription':
+    case 'premium':
       return {
         ...base,
         key: 'premium',
         origin: 'subscription',
+      };
+    case 'aura':
+      // The invite-only presence class — the manual-invitation door.
+      return {
+        ...base,
+        key: 'aura',
+        origin: 'invitation',
       };
   }
 }

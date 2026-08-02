@@ -11,7 +11,7 @@ import { SHEET_TITLE_CLASS, SHEET_BODY_CLASS } from "@/lib/ui-classes";
 
 // The full class surface, lifted out of the old Class tab into a bottom sheet
 // the Me page opens from the Class box. Three labeled sections top to bottom:
-// current class, the three-class comparison (Standard / Premium / Magnetic),
+// current class, the four-class comparison (Standard / Premium / Influencer / Aura),
 // and the class cards with each ladder's door (subscribe / connect Instagram).
 // `onConnectInstagram` bubbles up so the parent can close this sheet before
 // opening the verify sheet (two LocalSheets must never stack at the same
@@ -38,7 +38,7 @@ export function ClassModal({
               Your class
             </h2>
             <p className="text-muted-foreground text-[12px]">
-              Standard, Premium or Magnetic — and how to climb
+              Standard, Premium, Influencer or Aura — and how to climb
             </p>
           </div>
         </div>

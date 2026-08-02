@@ -1,9 +1,10 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import {
-  Camera,
+  AtSign,
   Crown,
   DoorOpen,
-  Magnet,
+  Megaphone,
+  Sparkles,
   Star,
   User,
   type LucideIcon,
@@ -25,26 +26,35 @@ import {
 import { useAuth } from '@/providers/auth';
 
 // Rewards program card (web RewardProgramCard port, MESITA-723): a "max % for
-// you" banner over the six-segment ladder, with the guest's own class rung
-// marked "You". Program education, not a per-place quote.
+// you" banner over the seven-segment ladder (Promos v6), with the guest's own
+// class rung marked "You". Program education, not a per-place quote.
 
 const SEGMENT_ICON: Record<RewardSegmentKey, LucideIcon> = {
   standard: User,
-  magnetic: Magnet,
   premium: Crown,
-  story: Camera,
+  influencer: Megaphone,
+  aura: Sparkles,
+  // lucide-react-native has no Instagram glyph — AtSign is the house IG mark.
+  story: AtSign,
   welcome: DoorOpen,
   review: Star,
 };
 
 // Icon tile fill + glyph color per rung (mine → white on the gradient row).
+// Elevated class rungs read their own identity (violet / sky / gold), the
+// earned action + visit rungs read secondary, so "who you are" vs "what you
+// do" is legible at a glance.
 function rungTint(
   seg: RewardSegment,
   mine: boolean,
 ): { bg: string; fg: string } {
   if (mine) return { bg: 'rgba(255,255,255,0.2)', fg: '#ffffff' };
-  if (seg.key === 'premium' || seg.key === 'magnetic')
+  if (seg.key === 'premium')
     return { bg: 'rgba(139,108,232,0.12)', fg: '#8b6ce8' };
+  if (seg.key === 'influencer')
+    return { bg: 'rgba(14,165,233,0.10)', fg: '#0284c7' };
+  if (seg.key === 'aura')
+    return { bg: 'rgba(251,191,36,0.15)', fg: '#b45309' };
   if (seg.kind === 'class')
     return { bg: 'rgba(251,43,123,0.1)', fg: COLORS.primary };
   return { bg: 'rgba(207,3,96,0.1)', fg: COLORS.secondary };
@@ -115,7 +125,17 @@ export function RewardProgramCard() {
         </View>
 
         {REWARD_SEGMENTS.map((seg) => (
-          <RungRow key={seg.key} seg={seg} mine={seg.key === mineKey} />
+          <RungRow
+            key={seg.key}
+            seg={seg}
+            mine={seg.key === mineKey}
+            // Aura is invite-only; the Story rung is Influencer-exclusive —
+            // both render dimmed with a chip for anyone who can't reach them.
+            locked={
+              (seg.key === 'aura' && classKey !== 'aura') ||
+              (seg.key === 'story' && classKey !== 'influencer')
+            }
+          />
         ))}
 
         <Text
@@ -123,24 +143,33 @@ export function RewardProgramCard() {
           style={{ fontSize: 11, lineHeight: 15 }}
         >
           Tiers stack up to the best one you qualify for — never added together.
-          Magnetic is invite-only. The exact % at each place shows on its page.
+          Aura is invite-only; the Story bonus is Influencers-only. The exact %
+          at each place shows on its page.
         </Text>
       </View>
     </View>
   );
 }
 
-function RungRow({ seg, mine }: { seg: RewardSegment; mine: boolean }) {
+function RungRow({
+  seg,
+  mine,
+  locked,
+}: {
+  seg: RewardSegment;
+  mine: boolean;
+  locked: boolean;
+}) {
   const Icon = SEGMENT_ICON[seg.key];
   const peak = seg.rates[PEAK_STRATEGY];
-  const magneticLocked = seg.key === 'magnetic' && !mine;
+  const lockLabel = seg.key === 'aura' ? 'Invite only' : 'Influencers only';
   const tint = rungTint(seg, mine);
   const filled = seg.key === 'premium' || seg.key === 'review';
 
   const inner = (
     <View
       className="flex-row items-center px-3 py-2.5"
-      style={{ gap: 12, opacity: magneticLocked ? 0.6 : 1 }}
+      style={{ gap: 12, opacity: locked ? 0.6 : 1 }}
     >
       <View
         className="items-center justify-center rounded-xl"
@@ -179,7 +208,7 @@ function RungRow({ seg, mine }: { seg: RewardSegment; mine: boolean }) {
                 You
               </Text>
             </View>
-          ) : magneticLocked ? (
+          ) : locked ? (
             <View
               className="rounded-full"
               style={{
@@ -192,7 +221,7 @@ function RungRow({ seg, mine }: { seg: RewardSegment; mine: boolean }) {
                 className="font-bold uppercase"
                 style={{ fontSize: 9, letterSpacing: 0.5, color: '#8b6ce8' }}
               >
-                Invite only
+                {lockLabel}
               </Text>
             </View>
           ) : null}

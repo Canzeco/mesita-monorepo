@@ -5,7 +5,8 @@ import {
   Crown,
   DoorOpen,
   Instagram,
-  Magnet,
+  Megaphone,
+  Sparkles,
   Star,
   User,
 } from "lucide-react";
@@ -23,8 +24,8 @@ import {
 } from "@/lib/reward-segments";
 import { cn } from "@/lib/utils";
 
-// The Rewards program card: a "max % for you" banner over the six-segment
-// ladder (Promos v5, MESITA-723). It answers the two questions the guest has on
+// The Rewards program card: a "max % for you" banner over the seven-segment
+// ladder (Promos v6, MESITA-723). It answers the two questions the guest has on
 // the Rewards page — "how much can I get?" (the banner) and "why / how do I get
 // more?" (the ladder, with the guest's own rung marked "You"). Program
 // education, not a per-place quote: the exact % at a given place shows on that
@@ -32,20 +33,22 @@ import { cn } from "@/lib/utils";
 
 const SEGMENT_ICON: Record<RewardSegmentKey, LucideIcon> = {
   standard: User,
-  magnetic: Magnet,
   premium: Crown,
+  influencer: Megaphone,
+  aura: Sparkles,
   story: Instagram,
   welcome: DoorOpen,
   review: Star,
 };
 
-// Tint per ontology: class rungs read brand-pink / premium-violet, the earned
-// action + visit rungs read secondary, so "who you are" vs "what you do" is
-// legible at a glance.
+// Tint per ontology: elevated class rungs read their own identity (violet /
+// sky / gold), the earned action + visit rungs read secondary, so "who you
+// are" vs "what you do" is legible at a glance.
 function rungTint(seg: RewardSegment, mine: boolean): string {
   if (mine) return "bg-white/20 text-white";
-  if (seg.key === "premium" || seg.key === "magnetic")
-    return "bg-tier-premium/10 text-premium";
+  if (seg.key === "premium") return "bg-tier-premium/10 text-premium";
+  if (seg.key === "influencer") return "bg-sky-500/10 text-sky-600";
+  if (seg.key === "aura") return "bg-amber-400/15 text-amber-700";
   if (seg.kind === "class") return "bg-primary/10 text-primary";
   return "bg-secondary/10 text-secondary";
 }
@@ -92,22 +95,41 @@ export function RewardProgramCard() {
         </div>
 
         {REWARD_SEGMENTS.map((seg) => (
-          <RungRow key={seg.key} seg={seg} mine={seg.key === mineKey} />
+          <RungRow
+            key={seg.key}
+            seg={seg}
+            mine={seg.key === mineKey}
+            // Aura is invite-only; the Story rung is Influencer-exclusive —
+            // both render dimmed with a chip for anyone who can't reach them.
+            locked={
+              (seg.key === "aura" && classKey !== "aura") ||
+              (seg.key === "story" && classKey !== "influencer")
+            }
+          />
         ))}
 
         <p className="text-muted-foreground/80 mt-2 px-1 text-[11px] leading-snug">
           Tiers stack up to the best one you qualify for — never added together.
-          Magnetic is invite-only. The exact % at each place shows on its page.
+          Aura is invite-only; the Story bonus is Influencers-only. The exact %
+          at each place shows on its page.
         </p>
       </div>
     </section>
   );
 }
 
-function RungRow({ seg, mine }: { seg: RewardSegment; mine: boolean }) {
+function RungRow({
+  seg,
+  mine,
+  locked,
+}: {
+  seg: RewardSegment;
+  mine: boolean;
+  locked: boolean;
+}) {
   const Icon = SEGMENT_ICON[seg.key];
   const peak = seg.rates[PEAK_STRATEGY];
-  const magneticLocked = seg.key === "magnetic" && !mine;
+  const lockLabel = seg.key === "aura" ? "Invite only" : "Influencers only";
 
   return (
     <div
@@ -116,7 +138,7 @@ function RungRow({ seg, mine }: { seg: RewardSegment; mine: boolean }) {
         mine
           ? "bg-pink-gradient shadow-glow text-white"
           : "bg-muted/40 ring-border/50 ring-1 ring-inset",
-        magneticLocked && "opacity-60",
+        locked && "opacity-60",
       )}
     >
       <span
@@ -146,9 +168,9 @@ function RungRow({ seg, mine }: { seg: RewardSegment; mine: boolean }) {
             <span className="shrink-0 rounded-full bg-white/25 px-1.5 py-0.5 text-[9px] font-extrabold tracking-widest uppercase">
               You
             </span>
-          ) : magneticLocked ? (
+          ) : locked ? (
             <span className="text-premium bg-tier-premium/10 shrink-0 rounded-full px-1.5 py-0.5 text-[9px] font-bold tracking-wide uppercase">
-              Invite only
+              {lockLabel}
             </span>
           ) : null}
         </p>

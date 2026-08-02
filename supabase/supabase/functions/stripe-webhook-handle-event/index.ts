@@ -196,7 +196,11 @@ async function reconcileConsumerSubscription(
   }
 
   if (isLive) {
-    // Grant Premium via the subscription door.
+    // Grant Premium via the subscription door — but never downgrade a
+    // higher-ranked earned class (Influencer/Aura ride on instagram/invitation
+    // origins, both rank above Premium). The subscription mirror above is
+    // always recorded; if reach later lapses, claim-instagram's fallback lands
+    // the paying consumer on premium, not standard.
     const grant = await admin
       .from("consumers")
       .update({
@@ -205,7 +209,8 @@ async function reconcileConsumerSubscription(
         class_granted_at: new Date().toISOString(),
         class_expires_at: periodEnd,
       })
-      .eq("id", consumerId);
+      .eq("id", consumerId)
+      .in("class_origin", ["default", "subscription"]);
     if (grant.error) throw new Error(`consumer_grant: ${grant.error.message}`);
   } else {
     // Lapsed/cancelled: only downgrade if Premium came through the paid door.

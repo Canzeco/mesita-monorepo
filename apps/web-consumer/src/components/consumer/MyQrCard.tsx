@@ -51,13 +51,16 @@ export function MyQrCard({
   const displayCode = displayConsumerCode(code);
   const { key, origin, followers } = useConsumerClass();
   const isElevated = isElevatedClass(key);
-  // Standard = coral; Premium adds violet; Magnetic (top tier) shifts to gold.
+  // Standard = coral; Premium adds violet; Influencer shifts to sky; Aura
+  // (top of the ladder) wears gold.
   const cardGradient =
-    key === "magnetic"
+    key === "aura"
       ? "bg-[linear-gradient(150deg,#ff7a45_0%,#ffb03d_55%,#e0982e_100%)]"
-      : isElevated
-        ? "bg-[linear-gradient(150deg,#ff7a45_0%,#ff3d73_45%,#a13cf0_100%)]"
-        : "bg-[linear-gradient(150deg,#ff7a45_0%,#ff4d6d_55%,#ff2d78_100%)]";
+      : key === "influencer"
+        ? "bg-[linear-gradient(150deg,#ff7a45_0%,#4aa8ff_55%,#2f7fd6_100%)]"
+        : isElevated
+          ? "bg-[linear-gradient(150deg,#ff7a45_0%,#ff3d73_45%,#a13cf0_100%)]"
+          : "bg-[linear-gradient(150deg,#ff7a45_0%,#ff4d6d_55%,#ff2d78_100%)]";
   const displayName = name?.trim() || "Mesita member";
   const igConnected = origin === "instagram" || Boolean(instagramHandle);
 

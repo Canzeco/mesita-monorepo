@@ -1,16 +1,27 @@
-import { CreditCard, Crown, Smile, type LucideIcon } from "lucide-react";
+import {
+  CreditCard,
+  Megaphone,
+  Smile,
+  Sparkles,
+  type LucideIcon,
+} from "lucide-react";
 
-// Ascending class ladder: standard (default) < premium (paid) < magnetic
-// (top, invite-only via Instagram reach). "class" is the consumer membership
-// axis — distinct from a business's billing "plan" (free/pro/ultra).
-const CLASS_ORDER = ["standard", "premium", "magnetic"] as const;
+// Ascending class ladder (segments v6): standard (default) < premium (paid)
+// < influencer (Instagram ≥ 1,000 followers, automatic) < aura (invite-only
+// presence class). "class" is the consumer membership axis — distinct from a
+// business's billing "plan" (free/pro/ultra).
+const CLASS_ORDER = ["standard", "premium", "influencer", "aura"] as const;
 type Class = (typeof CLASS_ORDER)[number];
 
-// Premium-perk gate: everything above Standard (Premium and Magnetic) unlocks
-// the same elevated perk set — better recommendations, higher discount
-// rewards, 10 reservations a month. Premium and Magnetic never differ.
+// Premium-perk gate: everything above Standard unlocks the same elevated perk
+// set — better recommendations, higher discount rewards, 10 reservations a
+// month. Generic on purpose: a future class joins the ladder by joining
+// CLASS_ORDER, never by another branch here.
 export function isElevatedClass(classKey: Class | string): boolean {
-  return classKey === "premium" || classKey === "magnetic";
+  return (
+    classKey !== "standard" &&
+    (CLASS_ORDER as readonly string[]).includes(classKey)
+  );
 }
 
 // NOTE: The original Lovable export shipped a large local `Place` type
@@ -75,9 +86,9 @@ export const CLASSES: {
   id: Class;
   label: string;
   req: string;
-  /** Monthly subscription price in MXN. 0 for Standard (the default class)
-   *  and Magnetic (earned with Instagram reach, never paid). Premium is
-   *  granted upfront on payment — no spend accumulation required. */
+  /** Monthly subscription price in MXN. 0 for Standard (the default),
+   *  Influencer (earned with Instagram reach), and Aura (invited). Premium
+   *  is granted upfront on payment — no spend accumulation required. */
   priceMxn: number;
   /** Follower threshold via Instagram verification. 0 = no threshold. */
   followerThreshold: number;
@@ -85,9 +96,9 @@ export const CLASSES: {
   perk: string;
 }[] = [
   // The class IS the brand — rendered as "Mesita Standard" / "Mesita Premium" /
-  // "Mesita Magnetic" in marketing and subscribe surfaces. The compact `label`
-  // here is used inside tight UI (class badges, table rows) where the "Mesita"
-  // prefix is noise.
+  // "Mesita Influencer" / "Mesita Aura" in marketing and subscribe surfaces.
+  // The compact `label` here is used inside tight UI (class badges, table
+  // rows) where the "Mesita" prefix is noise.
   {
     id: "standard",
     label: "Standard",
@@ -100,46 +111,53 @@ export const CLASSES: {
   {
     id: "premium",
     label: "Premium",
-    req: "Invitation · or $100 MXN / mo",
+    req: "$100 MXN / mo",
     priceMxn: 100,
     followerThreshold: 0,
     reward: "Higher discount",
     perk: "Better recs · 10 reservations",
   },
   {
-    id: "magnetic",
-    label: "Magnetic",
-    req: "5K+ IG followers · or invitation",
+    id: "influencer",
+    label: "Influencer",
+    req: "1,000+ IG followers",
     priceMxn: 0,
     // Mirrors classes.follower_threshold in the DB — the EF grants off that
     // row, so this constant is display-only and must track it.
-    followerThreshold: 5_000,
-    // Same perk set as Premium — only the door differs (earned, not paid).
-    reward: "Higher discount",
+    followerThreshold: 1_000,
+    // The Story action is this class's exclusive earning engine.
+    reward: "Story bonus every visit",
+    perk: "Better recs · 10 reservations",
+  },
+  {
+    id: "aura",
+    label: "Aura",
+    req: "By invitation only",
+    priceMxn: 0,
+    followerThreshold: 0,
+    // Highest flat class rate — paid for presence, no posting required.
+    reward: "Highest base discount",
     perk: "Better recs · 10 reservations",
   },
 ];
 
-// The Magnetic follower bar — mirrors classes.follower_threshold in the DB
+// The Influencer follower bar — mirrors classes.follower_threshold in the DB
 // (the gate consumer-web-claim-instagram grants off). Every surface quoting
-// or applying the bar derives from this one constant.
-export const MAGNETIC_FOLLOWER_THRESHOLD = CLASSES.find(
-  (c) => c.id === "magnetic",
+// or applying the bar derives from this one constant. Segments v6: this is
+// also the Story bar — Story is Influencer-only, so the class IS the access.
+export const INFLUENCER_FOLLOWER_THRESHOLD = CLASSES.find(
+  (c) => c.id === "influencer",
 )!.followerThreshold;
 
-// The Instagram Story Bonus eligibility bar (v5 spec, MESITA-723) — distinct
-// from the Magnetic class bar above: 1,000+ followers makes a story count for
-// the story reward at the table; 5,000+ upgrades the whole account to
-// Magnetic. Display-only until the backend enforces it.
-export const STORY_FOLLOWER_THRESHOLD = 1_000;
-
-// Canonical class icon trio (Pato, 2026-07-27): Standard = the happy face,
-// Premium = paying (card), Magnetic = the crown — the top of the ladder
-// wears it. Use these everywhere a class is iconified so surfaces agree.
+// Canonical class icon set: Standard = the happy face, Premium = paying
+// (card), Influencer = the megaphone (digital reach), Aura = sparkles (the
+// invite-only presence class). Use these everywhere a class is iconified so
+// surfaces agree.
 export const CLASS_ICONS: Record<Class, LucideIcon> = {
   standard: Smile,
   premium: CreditCard,
-  magnetic: Crown,
+  influencer: Megaphone,
+  aura: Sparkles,
 };
 
 // Canonical bg + text class per class. Used wherever a class needs the
@@ -151,9 +169,12 @@ export function classBadgeClass(classKey: Class): string {
       return "bg-tier-free text-foreground";
     case "premium":
       return "bg-tier-premium text-white";
-    case "magnetic":
-      // Magnetic is the top tier — the gold treatment (existing bg-tier-gold
-      // design token) sets it apart from Premium's violet.
+    case "influencer":
+      // Reach reads digital — sky, distinct from Premium's violet.
+      return "bg-sky-600 text-white";
+    case "aura":
+      // Aura is the top of the ladder — it inherits the gold treatment
+      // (existing bg-tier-gold design token).
       return "bg-tier-gold text-white";
   }
 }
@@ -161,7 +182,7 @@ export function classBadgeClass(classKey: Class): string {
 // Compact Title-Case label per class. Used by the swipe overlay, the
 // promo chip, the /coupons promo card, and the place detail rewards
 // box — anywhere we render "Mesita Standard" / "Mesita Premium" /
-// "Mesita Magnetic" alongside the lower-case class id.
+// "Mesita Influencer" / "Mesita Aura" alongside the lower-case class id.
 //
 // Accepts a strictly-typed Class or a plain string so callers can hand us
 // either (e.g. a server-sourced class_key that flows as string) without an
@@ -169,7 +190,8 @@ export function classBadgeClass(classKey: Class): string {
 const CLASS_LABELS: Record<Class, string> = {
   standard: "Standard",
   premium: "Premium",
-  magnetic: "Magnetic",
+  influencer: "Influencer",
+  aura: "Aura",
 };
 
 export function classProperLabel(classKey: Class | string): string {

@@ -1,6 +1,6 @@
 import { Gift } from "lucide-react";
 
-// One sidebar entry — "Rewards Config". The six-segment reward grid (Promos v5,
+// One sidebar entry — "Rewards Config". The seven-segment reward grid (Promos v6,
 // MESITA-723): what each segment pays under each strategy. A single flat page,
 // no sub-tabs.
 export const REWARDS_PARENT = {

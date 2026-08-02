@@ -10,11 +10,16 @@ import {
 } from '@/lib/api/auth';
 import { supabase } from '@/lib/supabase';
 
+// The known class keys — an unknown/stale server key (e.g. the retired
+// "magnetic") normalizes to Standard instead of leaking into gates.
+const KNOWN_CLASS_KEYS = ['standard', 'premium', 'influencer', 'aura'] as const;
+
 function normalizeClass(raw: ConsumerClass | null): ConsumerClass | null {
   if (!raw) return null;
   const raw_key = raw.class ?? raw.key ?? 'standard';
-  const key =
-    raw_key === 'premium' || raw_key === 'magnetic' ? raw_key : 'standard';
+  const key = (KNOWN_CLASS_KEYS as readonly string[]).includes(raw_key)
+    ? (raw_key as (typeof KNOWN_CLASS_KEYS)[number])
+    : 'standard';
   return {
     ...raw,
     class: key,
