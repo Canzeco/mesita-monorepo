@@ -47,8 +47,10 @@ export type RewardSegment = {
   rates: Record<GridStrategy, number>;
 };
 
-// The canonical ladder, stored worst→best (rank order). Amounts tie within the
-// pairs {Magnetic, Premium} and {Story, Welcome} — best-of makes ties harmless.
+// The canonical ladder, stored worst→best (rank order — the locked class
+// ladder is standard < premium ≤ magnetic, so Magnetic ranks above Premium;
+// they tie on rates today, as do {Story, Welcome} — best-of makes ties
+// harmless).
 export const REWARD_SEGMENTS: readonly RewardSegment[] = [
   {
     rank: 1,
@@ -61,20 +63,20 @@ export const REWARD_SEGMENTS: readonly RewardSegment[] = [
   },
   {
     rank: 2,
-    key: "magnetic",
-    name: "Magnetic",
-    nameEs: "Magnético",
-    kind: "class",
-    blurb: "Invite-only, for guests with real Instagram reach.",
-    rates: { zero: 0, conservative: 15, aggressive: 20 },
-  },
-  {
-    rank: 3,
     key: "premium",
     name: "Premium",
     nameEs: "Premium",
     kind: "class",
     blurb: "Mesita Premium — a bigger base at every place.",
+    rates: { zero: 0, conservative: 15, aggressive: 20 },
+  },
+  {
+    rank: 3,
+    key: "magnetic",
+    name: "Magnetic",
+    nameEs: "Magnético",
+    kind: "class",
+    blurb: "Invite-only, for guests with real Instagram reach.",
     rates: { zero: 0, conservative: 15, aggressive: 20 },
   },
   {

@@ -50,8 +50,10 @@ type SegmentMeta = {
   blurb: string;
 };
 
-// Rows, in ladder order (worst→best). Amounts tie within {Magnetic, Premium}
-// and {Story, Welcome} — best-of at the bill makes ties harmless.
+// Rows, in ladder order (worst→best — the locked class ladder is
+// standard < premium ≤ magnetic, so Magnetic ranks above Premium). Amounts
+// tie within {Premium, Magnetic} and {Story, Welcome} — best-of at the bill
+// makes ties harmless.
 export const SEGMENTS: readonly SegmentMeta[] = [
   {
     key: "standard",
@@ -63,22 +65,22 @@ export const SEGMENTS: readonly SegmentMeta[] = [
     blurb: "Base class — the floor every guest inherits.",
   },
   {
-    key: "magnetic",
-    rank: 2,
-    name: "Magnetic",
-    nameEs: "Magnético",
-    kind: "class",
-    emoji: "🧲",
-    blurb: "Invite-only class for guests with real Instagram reach.",
-  },
-  {
     key: "premium",
-    rank: 3,
+    rank: 2,
     name: "Premium",
     nameEs: "Premium",
     kind: "class",
-    emoji: "👑",
+    emoji: "💳",
     blurb: "Paid class — MX$100/mo, the consumer revenue lever.",
+  },
+  {
+    key: "magnetic",
+    rank: 3,
+    name: "Magnetic",
+    nameEs: "Magnético",
+    kind: "class",
+    emoji: "👑",
+    blurb: "Invite-only class for guests with real Instagram reach.",
   },
   {
     key: "story",
