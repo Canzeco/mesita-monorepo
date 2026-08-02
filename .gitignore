@@ -10,3 +10,4 @@ node_modules/
 
 # agent worktrees parked inside the repo
 .worktrees/
+.gstack/
