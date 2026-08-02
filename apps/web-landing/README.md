@@ -1,4 +1,4 @@
-# mesita-web-landing
+# apps/web-landing — Mesita marketing site
 
 Marketing site for Mesita — lives at [mesita.ai](https://mesita.ai).
 

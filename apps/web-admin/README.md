@@ -1,4 +1,4 @@
-# mesita-web-admin
+# apps/web-admin — Mesita admin console
 
 Super-admin console for Mesita — lives at
 [admin.mesita.ai](https://admin.mesita.ai).

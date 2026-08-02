@@ -1,4 +1,4 @@
-# mesita-web-business
+# apps/web-business — Mesita business console
 
 Business console for Mesita place owners and team members — lives at
 [business.mesita.ai](https://business.mesita.ai).

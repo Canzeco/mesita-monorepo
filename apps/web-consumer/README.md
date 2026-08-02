@@ -1,4 +1,4 @@
-# mesita-web-consumer
+# apps/web-consumer — Mesita consumer app
 
 Consumer (diner) app for Mesita — lives at
 [consumer.mesita.ai](https://consumer.mesita.ai).
