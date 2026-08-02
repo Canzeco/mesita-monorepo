@@ -1,21 +1,16 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { MapPin, Plus, QrCode, Sparkles, TicketX } from "lucide-react";
 
 import { ContextStrip } from "@/components/consumer/rewards/ContextStrip";
 import { CheckTicketCard } from "@/components/consumer/rewards/CheckTicketCard";
 import { CreateTicketSheet } from "@/components/consumer/rewards/CreateTicketSheet";
 import { HistoryTicketCard } from "@/components/consumer/rewards/HistoryTicketCard";
-import { HowItWorksSheet } from "@/components/consumer/rewards/HowItWorksSheet";
 import { MemberRow } from "@/components/consumer/rewards/MemberRow";
 import { SavingsReveal } from "@/components/consumer/rewards/SavingsReveal";
 import { TicketCardSkeleton } from "./PayTabLoading";
 import { apiCancelTicket, type ConsumerTicketRow } from "@/lib/api/tickets";
-import {
-  computeRewardStats,
-  useConsumerPayTickets,
-} from "@/lib/hooks/useConsumerPayTickets";
 import { useConsumerTickets } from "@/lib/hooks/useConsumerTickets";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { cn } from "@/lib/utils";
@@ -23,9 +18,9 @@ import { cn } from "@/lib/utils";
 // Rewards is a WALLET (MESITA-808, redesign 1A): the first viewport answers
 // "what do I do at this table?" — the live ticket QR (or the Start hero +
 // pitch strip) owns THE slot; the context strip carries orientation; the
-// identity row replaces the retired passport card (2A: no second QR, ever);
-// all education lives in the How-it-works sheet. Motion budget = exactly two
-// beats: the verified pulse (CheckTicketCard) and the savings reveal here.
+// identity row replaces the retired passport card (2A: no second QR, ever).
+// Education lives on Me > Help (MESITA-809) — this page is for doing. Motion
+// budget = exactly two beats: the verified pulse and the savings reveal.
 
 type Tab = "ticket" | "history";
 
@@ -43,15 +38,8 @@ export function PayClient({
   const supabase = useBrowserSupabase();
   const [tab, setTab] = useState<Tab>("ticket");
   const [createOpen, setCreateOpen] = useState(false);
-  const [howOpen, setHowOpen] = useState(false);
 
   const tickets = useConsumerTickets(userId);
-  // Notifications remain the scorecard + bill-poll source.
-  const notifications = useConsumerPayTickets(userId);
-  const stats = useMemo(
-    () => computeRewardStats(notifications.bundles, notifications.ticketMetaById),
-    [notifications.bundles, notifications.ticketMetaById],
-  );
 
   const cancelTicket = useCallback(
     async (ticketId: string) => {
@@ -78,7 +66,7 @@ export function PayClient({
 
   return (
     <div className="scrollbar-hide flex h-full min-h-0 flex-1 flex-col gap-3.5 overflow-y-auto px-4 pt-4 pb-6">
-      <ContextStrip onOpenHow={() => setHowOpen(true)} />
+      <ContextStrip />
 
       {/* THE slot — the wallet's object. */}
       {justPaid ? (
@@ -172,12 +160,6 @@ export function PayClient({
 
       {/* Identity row — the demoted passport (2A: text code, no QR). */}
       <MemberRow code={code} name={name} instagramHandle={instagramHandle} />
-
-      <HowItWorksSheet
-        open={howOpen}
-        onClose={() => setHowOpen(false)}
-        stats={stats}
-      />
 
       <CreateTicketSheet
         // Remount per open: fresh state without a reset effect (React 19

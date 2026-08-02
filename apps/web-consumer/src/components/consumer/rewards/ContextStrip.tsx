@@ -2,19 +2,20 @@
 
 // The wallet's context strip (MESITA-808, decision 1A) — FLAT by design: the
 // only gradient on this page belongs to the live ticket / Start hero. One
-// line of orientation (class + ceiling), the education door, and the Premium
-// door for Standard guests. Replaces the RewardProgramCard banner and both
-// RewardsTopCards cards.
+// line of orientation (class + ceiling) and the Premium door for Standard
+// guests — nothing else. The education door moved to Me > Help (MESITA-809);
+// with only three things on the row the ceiling line stops truncating on a
+// 375px screen.
 
 import Link from "next/link";
-import { ChevronRight, Crown, Sparkles } from "lucide-react";
+import { Crown } from "lucide-react";
 
 import { useConsumerClass } from "@/lib/class-context";
 import { classProperLabel, isElevatedClass } from "@/lib/consumer-data";
 import { peakRateForClass } from "@/lib/reward-segments";
 import { cn } from "@/lib/utils";
 
-export function ContextStrip({ onOpenHow }: { onOpenHow: () => void }) {
+export function ContextStrip() {
   const { key } = useConsumerClass();
   const isElevated = isElevatedClass(key);
   const peak = peakRateForClass(key);
@@ -40,14 +41,6 @@ export function ContextStrip({ onOpenHow }: { onOpenHow: () => void }) {
           <Crown className="size-3.5 fill-current" /> Premium
         </Link>
       ) : null}
-      <button
-        type="button"
-        onClick={onOpenHow}
-        className="text-muted-foreground hover:text-foreground flex min-h-11 shrink-0 items-center gap-0.5 text-[11.5px] font-semibold transition"
-      >
-        <Sparkles className="size-3.5" /> How it works
-        <ChevronRight className="size-3.5" />
-      </button>
     </div>
   );
 }

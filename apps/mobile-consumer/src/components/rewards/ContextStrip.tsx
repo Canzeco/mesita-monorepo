@@ -1,8 +1,10 @@
 // The wallet's context strip (MESITA-808, 1A) — mobile mirror. FLAT by
 // design: the only gradient on this page belongs to the live ticket / Start
-// hero. Premium door links out to web (no payment UI in this app).
+// hero. Premium door links out to web (no payment UI in this app). The
+// education door moved to Me > Help (MESITA-809) — three items on the row
+// means the ceiling line stops truncating.
 
-import { ChevronRight, Crown, Sparkles } from 'lucide-react-native';
+import { Crown } from 'lucide-react-native';
 import { Linking, Pressable, Text, View } from 'react-native';
 
 import {
@@ -13,7 +15,7 @@ import {
 import { peakRateForClass, type RewardClassKey } from '@/lib/reward-segments';
 import { useAuth } from '@/providers/auth';
 
-export function ContextStrip({ onOpenHow }: { onOpenHow: () => void }) {
+export function ContextStrip() {
   const { consumerClass } = useAuth();
   const key = (consumerClass?.class ?? 'standard') as RewardClassKey;
   const isElevated = isElevatedClass(key);
@@ -58,18 +60,6 @@ export function ContextStrip({ onOpenHow }: { onOpenHow: () => void }) {
           </Text>
         </Pressable>
       ) : null}
-      <Pressable
-        onPress={onOpenHow}
-        accessibilityRole="button"
-        className="flex-row items-center gap-0.5"
-        style={{ minHeight: 44, justifyContent: 'center' }}
-      >
-        <Sparkles size={14} color="#775254" />
-        <Text className="font-semibold text-muted-foreground" style={{ fontSize: 11.5 }}>
-          How it works
-        </Text>
-        <ChevronRight size={14} color="#775254" />
-      </Pressable>
     </View>
   );
 }

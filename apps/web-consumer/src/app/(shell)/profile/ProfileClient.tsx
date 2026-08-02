@@ -5,6 +5,7 @@ import {
   Bot,
   Crown,
   Instagram,
+  HelpCircle,
   MessageCircle,
   Settings as SettingsIcon,
   Share2,
@@ -18,6 +19,7 @@ import { ShareModal } from "@/components/consumer/me/ShareModal";
 import { ClassModal } from "@/components/consumer/me/ClassModal";
 import { SettingsModal } from "@/components/consumer/me/SettingsModal";
 import { ContactModal } from "@/components/consumer/me/ContactModal";
+import { HelpModal } from "@/components/consumer/me/HelpModal";
 import { AiConnectModal } from "@/components/consumer/me/AiConnectModal";
 import { errMsg } from "@/lib/utils";
 import { toast } from "@/lib/toast";
@@ -58,6 +60,7 @@ export function ProfileClient({
   const [editOpen, setEditOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(openSettings);
   const [contactOpen, setContactOpen] = useState(false);
+  const [helpOpen, setHelpOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
 
   useEffect(() => {
@@ -169,6 +172,17 @@ export function ProfileClient({
             soon
           />
 
+          {/* Help — how the reward program works + the tier ladder. Moved
+              off the Rewards wallet (MESITA-809): that page is for doing,
+              this is for understanding. */}
+          <BoxRow
+            Icon={HelpCircle}
+            tint="sky"
+            title="Help"
+            summary="How rewards work · tiers · discounts"
+            onClick={() => setHelpOpen(true)}
+          />
+
           <BoxRow
             Icon={MessageCircle}
             tint="emerald"
@@ -211,6 +225,7 @@ export function ProfileClient({
         onDeleteAccount={() => setDeleteOpen(true)}
       />
       <ContactModal open={contactOpen} onClose={() => setContactOpen(false)} />
+      <HelpModal open={helpOpen} onClose={() => setHelpOpen(false)} />
       <DeleteAccountSheet
         open={deleteOpen}
         onClose={() => setDeleteOpen(false)}
