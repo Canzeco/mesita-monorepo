@@ -30,6 +30,13 @@
       "autoPort": true
     },
     {
+      "name": "web-checkout",
+      "runtimeExecutable": "sh",
+      "runtimeArgs": ["-c", "cd apps/web-checkout && exec env WATCHPACK_POLLING=true CHOKIDAR_USEPOLLING=1 npx next dev -H 127.0.0.1 -p 3005"],
+      "port": 3005,
+      "autoPort": true
+    },
+    {
       "name": "mobile-consumer",
       "runtimeExecutable": "sh",
       "runtimeArgs": ["-c", "cd apps/mobile-consumer && exec npx expo start --web --port 8081 --host lan"],

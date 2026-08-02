@@ -41,6 +41,7 @@ const TARGETS = [
   { label: "apps/web-business", dir: join(repoRoot, "apps", "web-business"), quickstart: false },
   { label: "apps/web-consumer", dir: join(repoRoot, "apps", "web-consumer"), quickstart: false },
   { label: "apps/web-landing", dir: join(repoRoot, "apps", "web-landing"), quickstart: false },
+  { label: "apps/web-checkout", dir: join(repoRoot, "apps", "web-checkout"), quickstart: false },
   { label: "apps/mobile-consumer", dir: join(repoRoot, "apps", "mobile-consumer"), quickstart: false },
   { label: "apps/mobile-business", dir: join(repoRoot, "apps", "mobile-business"), quickstart: false },
   { label: "supabase", dir: join(repoRoot, "supabase"), quickstart: false },
