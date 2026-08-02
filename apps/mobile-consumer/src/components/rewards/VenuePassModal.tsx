@@ -46,6 +46,8 @@ import {
   apiCancelTicket,
   apiCreateTicket,
   apiListConsumerTickets,
+  apiSubmitReview,
+  apiSubmitStory,
   checkUrlForCode,
   type ConsumerTicketRow,
 } from '@/lib/api/tickets';
@@ -207,6 +209,30 @@ export function VenuePassModal({
     void create(false);
   }, [place, ticketId, isInfluencer, create]);
 
+  // Guest actions on a live ticket (MESITA-824). Real EFs — only the
+  // screenshot is a placeholder — so the ticket genuinely reaches
+  // `submitted` and staff can approve it on the check page.
+  const [acting, setActing] = useState<'story' | 'review' | null>(null);
+  const runAction = useCallback(
+    async (kind: 'story' | 'review') => {
+      if (!ticketId) return;
+      setActing(kind);
+      setError(null);
+      try {
+        if (kind === 'story') await apiSubmitStory(ticketId);
+        else await apiSubmitReview(ticketId);
+        await tickets.refresh();
+      } catch (err) {
+        setError(
+          err instanceof Error ? err.message : "Couldn't send that just yet.",
+        );
+      } finally {
+        setActing(null);
+      }
+    },
+    [ticketId, tickets],
+  );
+
   const [cancelling, setCancelling] = useState(false);
   const cancel = useCallback(async () => {
     if (!ticketId) return;
@@ -235,6 +261,36 @@ export function VenuePassModal({
     () => reachableSegments(classKey as RewardClassKey),
     [classKey],
   );
+
+  // Which proofs the guest can send RIGHT NOW.
+  const actionable = useMemo(() => {
+    if (!ticket || !ACTIVE_TICKET_STATUSES.has(ticket.status)) return [];
+    const settled = (v: string | null | undefined) =>
+      v != null && v !== 'not_required' && v !== 'pending';
+    const out: {
+      kind: 'story' | 'review';
+      label: string;
+      Icon: typeof Star;
+      done: boolean;
+    }[] = [];
+    if (ticket.story_status != null && ticket.story_status !== 'not_required') {
+      out.push({
+        kind: 'story',
+        label: settled(ticket.story_status) ? 'Story sent' : 'I posted my story',
+        Icon: Camera,
+        done: settled(ticket.story_status),
+      });
+    }
+    out.push({
+      kind: 'review',
+      label: settled(ticket.review_status)
+        ? 'Google review sent'
+        : 'I left a Google review',
+      Icon: Star,
+      done: settled(ticket.review_status),
+    });
+    return out;
+  }, [ticket]);
   const mineKey = segmentKeyForClass(classKey as RewardClassKey);
 
   const placeName = place?.name ?? 'the place';
@@ -602,6 +658,34 @@ export function VenuePassModal({
                   </View>
                 );
               })}
+              {actionable.map((a) => (
+                <Pressable
+                  key={`act-${a.kind}`}
+                  onPress={() => void runAction(a.kind)}
+                  disabled={acting !== null || a.done}
+                  accessibilityRole="button"
+                  className={`flex-row items-center justify-center rounded-xl px-3 ${
+                    a.done ? 'bg-emerald-500/10' : 'bg-secondary/10'
+                  }`}
+                  style={{ minHeight: 44, gap: 8, opacity: acting ? 0.6 : 1 }}
+                >
+                  {acting === a.kind ? (
+                    <ActivityIndicator size="small" />
+                  ) : a.done ? (
+                    <BadgeCheck size={16} color="#059669" />
+                  ) : (
+                    <a.Icon size={16} color="#cf0360" />
+                  )}
+                  <Text
+                    className={`font-bold ${
+                      a.done ? 'text-emerald-700' : 'text-secondary'
+                    }`}
+                    style={{ fontSize: 12.5 }}
+                  >
+                    {a.label}
+                  </Text>
+                </Pressable>
+              ))}
             </View>
             <Text
               className="border-t border-border px-3.5 py-2.5 text-muted-foreground"
