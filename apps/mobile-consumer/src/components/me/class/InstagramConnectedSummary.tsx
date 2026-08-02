@@ -41,13 +41,15 @@ export function InstagramConnectedSummary({ followers }: { followers: number }) 
         </View>
         <Text style={{ color: '#775254', marginTop: 4 }}>
           {followers > 0
-            ? `${followers.toLocaleString('en-US')} followers · Premium active`
-            : 'Premium active'}
+            ? `${followers.toLocaleString('en-US')} followers · Magnetic active`
+            : 'Magnetic active'}
         </Text>
+        {/* The Instagram door grants Magnetic off follower count alone — there
+            is no story-to-keep-it rule. Stories are an optional extra rung. */}
         <Text
           style={{ color: 'rgba(119,82,84,0.8)', marginTop: 2 }}
         >
-          Post a story each visit to keep Premium.
+          Your reward applies every visit — no story needed.
         </Text>
       </View>
     </View>

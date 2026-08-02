@@ -85,7 +85,7 @@ export const REWARD_SEGMENTS: readonly RewardSegment[] = [
     name: "Instagram Story",
     nameEs: "Historia de Instagram",
     kind: "action",
-    blurb: "Post a story tagging the place — every visit.",
+    blurb: "Optional — post a story tagging the place, any visit.",
     rates: { zero: 0, conservative: 20, aggressive: 30 },
   },
   {

@@ -83,14 +83,12 @@ export function RewardsBox({ place }: { place: PlaceDetail }) {
         ? `${visitLabel} · on your first ${capLabel}`
         : visitLabel;
   // The claim action depends on the guest's own account, not the place:
-  //   Standard         → Pay with QR + Upgrade (claim now, or unlock a bigger
-  //                      reward)
-  //   Premium (paid)   → one Pay-with-QR button, reward applies automatically
-  //   Magnetic via IG  → one button: Pay with QR *and* post an Instagram story,
-  //                      since the story is what re-verifies the IG Magnetic class
+  //   Standard        → Pay with QR + Upgrade (claim now, or unlock a bigger
+  //                     reward)
+  //   Premium/Magnetic → one Pay-with-QR button, reward applies automatically
+  // Magnetic is NOT story-gated: the class rung pays on every bill regardless
+  // of Instagram activity (resolveTicketRate, _shared/rewards-config.ts).
   const isStandard = consumerClass.key === "standard";
-  const isMagneticViaInstagram =
-    !isStandard && consumerClass.origin === "instagram";
   return (
     <Box title="Reward" icon={Sparkles} iconColor="text-pink-400">
       {/* Hero — the active reward, mechanic, and cap. The box header already
@@ -103,9 +101,9 @@ export function RewardsBox({ place }: { place: PlaceDetail }) {
       </div>
 
       {/* How it works — the claim sequence, spelled out so every case is
-          unambiguous at the table. The Instagram-story step only applies to
-          Magnetic guests (Instagram-verified); Standard and Premium guests skip
-          straight to the reward, so it's labelled rather than hidden. */}
+          unambiguous at the table. The story is an OPTIONAL extra rung open to
+          every class (best-of, so it only ever raises your rate) — never a
+          requirement, least of all for Magnetic. */}
       <div className="flex flex-col gap-3">
         <BoxLabel>How it works</BoxLabel>
         <ol className="flex flex-col gap-3">
@@ -118,8 +116,8 @@ export function RewardsBox({ place }: { place: PlaceDetail }) {
           <RewardStep
             n={2}
             icon={Instagram}
-            title="Post a story — Magnetic (via Instagram) only"
-            body="If you're Magnetic via Instagram, post a story tagging the place right after the waiter scans your QR. Standard and Premium guests skip this step."
+            title="Post a story — optional, any class"
+            body="Want more? Post a story tagging the place after the waiter scans your QR for a bigger reward. Skip it and you still keep your class reward in full."
             accent
           />
           <RewardStep
@@ -142,9 +140,9 @@ export function RewardsBox({ place }: { place: PlaceDetail }) {
         suffix={mechanicShort}
       />
 
-      {/* CTAs — class- and source-aware so the exact action is unambiguous.
-          Standard: Pay + Upgrade. Paid Premium: one Pay button. Magnetic via
-          Instagram: one Pay-and-post-story button. */}
+      {/* CTAs — class-aware so the exact action is unambiguous. Standard: Pay
+          + Upgrade. Premium and Magnetic alike: one Pay button, nothing else
+          to do. */}
       <div className="flex flex-col gap-2">
         {isStandard ? (
           <div className="flex gap-2">
@@ -160,17 +158,13 @@ export function RewardsBox({ place }: { place: PlaceDetail }) {
         ) : (
           <Link href="/rewards" className={REWARD_PAY_BTN}>
             <QrCode className="h-4 w-4" />
-            {isMagneticViaInstagram
-              ? "Pay with QR & post IG story"
-              : "Pay with QR to claim reward"}
+            Pay with QR to claim reward
           </Link>
         )}
         <p className="text-muted-foreground text-center text-[11px] leading-snug">
           {isStandard
             ? "Pay with your QR to claim your reward — or upgrade to Premium for a bigger one."
-            : isMagneticViaInstagram
-              ? "Pay with your QR, then post an Instagram story to unlock your Magnetic reward."
-              : "Just pay with your QR — your reward applies automatically."}
+            : "Just pay with your QR — your reward applies automatically."}
         </p>
       </div>
     </Box>

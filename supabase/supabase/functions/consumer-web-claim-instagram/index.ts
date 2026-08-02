@@ -6,9 +6,10 @@
 // Magnetic is dropped back to Standard. Premium is now paid-only (subscription);
 // subscription / invitation classes are never touched here (origin precedence).
 //
-// The per-visit "post a story" requirement is enforced separately by the
-// existing ticket story-verification flow; follower count sets the class
-// instantly, matching the consumer app's VerifySocialSheet promise.
+// There is NO per-visit "post a story" requirement: follower count alone sets
+// (and keeps) the class, and the Magnetic rung pays on every bill unconditionally
+// (resolveTicketRate, _shared/rewards-config.ts). The ticket story-verification
+// flow feeds the SEPARATE, optional `story` rung any class can take.
 //
 // Body: { followers: number, handle?: string }
 // Response: { ok: true, tier: "standard"|"magnetic", followers: number,
