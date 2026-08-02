@@ -16,6 +16,7 @@ type SwipeActionRowProps = {
   onSkip: () => void;
   onOpenInfo: () => void;
   onSave: () => void;
+  onReserve: () => void;
 };
 
 export function SwipeActionRow({
@@ -25,6 +26,7 @@ export function SwipeActionRow({
   onSkip,
   onOpenInfo,
   onSave,
+  onReserve,
 }: SwipeActionRowProps) {
   return (
     <div className="mt-3 flex items-center gap-2">
@@ -81,11 +83,10 @@ export function SwipeActionRow({
       </button>
       <button
         type="button"
-        disabled
-        aria-disabled="true"
-        aria-label="Reserve (coming soon)"
-        title="Reserve (coming soon)"
-        className="border-border bg-muted/40 text-muted-foreground/70 flex h-12 flex-1 cursor-not-allowed items-center justify-center rounded-lg border"
+        onClick={onReserve}
+        aria-label="Reserve a table"
+        title="Reserve a table"
+        className="border-border bg-card text-foreground/70 hover:bg-muted flex h-12 flex-1 items-center justify-center rounded-lg border transition active:scale-[0.97]"
       >
         <CalendarCheck className="h-5 w-5" />
       </button>

@@ -25,6 +25,7 @@ import Animated, {
 /* eslint-disable react-hooks/immutability */
 
 import { FilterSheet } from '@/components/discovery/FilterSheet';
+import { ReservationSheet } from '@/components/place/place-detail/ReservationSheet';
 import { PlaceSwipeCard } from '@/components/swipe/PlaceSwipeCard';
 import { SwipeActionRow } from '@/components/swipe/SwipeActionRow';
 import { SwipeDecisionBadge } from '@/components/swipe/SwipeDecisionBadge';
@@ -327,6 +328,9 @@ function DeckBody({
   const v = places[idx]!;
   const next = idx + 1 < places.length ? places[idx + 1]! : null;
   const [stamp, setStamp] = useState<null | 'left' | 'right'>(null);
+  // Reserve opens the booking sheet over the deck — the card already carries
+  // the id + name the sheet needs, so there's no detour through /place/[id].
+  const [reserveOpen, setReserveOpen] = useState(false);
 
   const translateX = useSharedValue(0);
   const exiting = useSharedValue(0); // 0 idle, -1 left, 1 right
@@ -468,8 +472,15 @@ function DeckBody({
           onSkip={() => beginExit('left')}
           onOpenInfo={() => router.push(`/place/${v.id}`)}
           onSave={() => beginExit('right')}
+          onReserve={() => setReserveOpen(true)}
         />
       </View>
+
+      <ReservationSheet
+        place={{ id: v.id, name: v.name }}
+        visible={reserveOpen}
+        onClose={() => setReserveOpen(false)}
+      />
     </View>
   );
 }

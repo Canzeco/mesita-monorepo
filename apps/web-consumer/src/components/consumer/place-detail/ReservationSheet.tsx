@@ -13,7 +13,6 @@ import {
 import { apiCreateReservation } from "@/lib/api/reservations";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { SHEET_BODY_CLASS, SHEET_TITLE_CLASS } from "@/lib/ui-classes";
-import type { PlaceDetail } from "@/lib/mock/place";
 import { cn } from "@/lib/utils";
 
 const DATE_WINDOW = 14; // two weeks of pills
@@ -24,12 +23,20 @@ const DEFAULT_PARTY = 2;
 // in America/Mexico_City and it matches what the guest chose.
 const MX_OFFSET = "-06:00";
 
+/**
+ * Everything the sheet needs from a place: the project id it books against and
+ * a name to show. Deliberately narrower than PlaceDetail (which structurally
+ * satisfies it) so the swipe deck can open this straight from a deck card,
+ * without fetching the full place-detail payload.
+ */
+export type ReservationSheetPlace = { id: string; name: string };
+
 export function ReservationSheet({
   place,
   open,
   onClose,
 }: {
-  place: PlaceDetail;
+  place: ReservationSheetPlace;
   open: boolean;
   onClose: () => void;
 }) {

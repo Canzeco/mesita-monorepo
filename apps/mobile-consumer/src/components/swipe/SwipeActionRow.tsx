@@ -15,6 +15,7 @@ type SwipeActionRowProps = {
   onSkip: () => void;
   onOpenInfo: () => void;
   onSave: () => void;
+  onReserve: () => void;
 };
 
 export function SwipeActionRow({
@@ -24,6 +25,7 @@ export function SwipeActionRow({
   onSkip,
   onOpenInfo,
   onSave,
+  onReserve,
 }: SwipeActionRowProps) {
   return (
     <>
@@ -42,12 +44,7 @@ export function SwipeActionRow({
         primary={saved}
         filled={saved}
       />
-      <ActionBtn
-        label="Reserve"
-        Icon={CalendarCheck}
-        onPress={() => undefined}
-        disabled
-      />
+      <ActionBtn label="Reserve" Icon={CalendarCheck} onPress={onReserve} />
     </>
   );
 }
