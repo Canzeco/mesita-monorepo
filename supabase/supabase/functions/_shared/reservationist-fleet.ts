@@ -18,9 +18,46 @@
 // prompts are then console-tunable and never overwritten; tools + attachments
 // re-synced on every run).
 
-import { HANGUP_POLICY } from "./reservation-legs.ts";
-
 export type FleetAgentKey = "a1" | "a2" | "a3" | "a4";
+
+// ── System (built-in) tools ──────────────────────────────────────────────────
+// HARD-LEARNED, 2026-08-02: `end_call` is auto-enabled only for agents created
+// in the DASHBOARD. Ours are created over the API, and every built-in came back
+// as `null` — i.e. DISABLED. The agents therefore could not hang up at all: the
+// only thing that could end a call was reaching the workflow's end node, which
+// is why closing felt random (sometimes early, sometimes never). A `null` value
+// means off; an object means on.
+//
+// voicemail_detection is enabled too so the machine-answered branches below are
+// driven by the platform's own detection rather than the LLM guessing.
+export const FLEET_BUILT_IN_TOOLS: Record<string, unknown> = {
+  end_call: {
+    name: "end_call",
+    type: "system",
+    description:
+      "Cuelga la llamada. Úsala SOLO cuando el paso actual del flujo te lo indique explícitamente y ya te despediste.",
+    params: { system_tool_type: "end_call" },
+    response_timeout_secs: 20,
+  },
+  voicemail_detection: {
+    name: "voicemail_detection",
+    type: "system",
+    description:
+      "Detecta que contestó un buzón de voz o una grabadora en lugar de una persona.",
+    params: { system_tool_type: "voicemail_detection" },
+    response_timeout_secs: 20,
+  },
+};
+
+// ── Closing policy ───────────────────────────────────────────────────────────
+// The WORKFLOW owns hang-up, not the prompt. The old policy (still exported from
+// reservation-legs.ts for the non-workflow per-call override path) authorised
+// end_call the moment "ya existe un resultado explícito" — which is exactly the
+// moment the graph wants to route to the report tool node, so the agent hung up
+// BEFORE recording the outcome and the engine fell back to its analysis guess.
+// Under a workflow, end_call is legal only where a closing node says so.
+const WORKFLOW_CLOSING_POLICY =
+  `Política de cierre (obligatoria): esta llamada la conduce un FLUJO por pasos. Está PROHIBIDO usar end_call por tu cuenta: solo puedes colgar cuando el paso en el que estás te lo indique con todas sus letras, y siempre después de despedirte en una sola frase. Aunque ya tengas el resultado (confirmada, rechazada, sin lugar), NO cuelgues: sigue en la línea y deja que el flujo avance al paso que registra el resultado — colgar antes lo pierde. Mientras la otra persona hable, revise disponibilidad, negocie o pregunte, quédate. Cuando el paso de cierre te lo indique, despídete corto y cuelga sin esperar a que la otra persona cuelgue primero.`;
 
 export type FleetAgentSpec = {
   key: FleetAgentKey;
@@ -32,11 +69,6 @@ export type FleetAgentSpec = {
   toolNames: string[];
 };
 
-// Inbound variant of the closing policy: "solved" means the caller's matter is
-// handled, not a reservation verdict.
-const INBOUND_HANGUP_POLICY =
-  `Política de cierre (obligatoria): puedes colgar tú mismo con la herramienta end_call, pero ÚNICAMENTE cuando la gestión del llamante ya quedó RESUELTA — su duda respondida o su trámite hecho — y ya te despediste en una sola frase. Mientras siga hablando o preguntando, la llamada NO está resuelta: quédate en la línea. Está PROHIBIDO colgar antes. Únicas excepciones sin resultado: te dejan en espera más de dos minutos o la línea queda muda. Ya resuelta, no alargues la conversación ni esperes a que la otra persona cuelgue primero.`;
-
 const A1_PROMPT = [
   `Eres el asistente de reservaciones de Mesita. Esta llamada va del consumidor hacia el negocio: llamas al restaurante {{venue_name}} DE PARTE del comensal {{guest_name}}.`,
   `Objetivo único: conseguir una mesa para {{party_size}} el {{reservation_date}} a las {{reservation_time}}, a nombre de {{guest_name}}.`,
@@ -45,7 +77,7 @@ const A1_PROMPT = [
   `Peticiones especiales del comensal: {{special_requests}}. Si hay alguna, menciónala una vez que haya disponibilidad; si está vacío, no menciones nada.`,
   `Antes de despedirte llama SIEMPRE la herramienta a1_report_outcome exactamente una vez con el resultado: verdict=confirmed si quedó confirmada tal como se pidió · verdict=counter_offer con la lista de alternativas si ofrecieron otras opciones · verdict=declined si no hay lugar. El código de la reservación es {{reference_code}}.`,
   `Habla natural y breve, español de México, trato de usted.`,
-  HANGUP_POLICY,
+  WORKFLOW_CLOSING_POLICY,
 ].join("\n\n");
 
 const A2_PROMPT = [
@@ -60,7 +92,7 @@ const A2_PROMPT = [
   `Si la herramienta regresa parked=true: dile que su petición quedó anotada y que Mesita le confirma por la app — no prometas otra llamada.`,
   `No inventes disponibilidad ni prometas nada que el restaurante no haya dicho.`,
   `Habla natural, cálido y muy breve. Español de México, trato de usted.`,
-  HANGUP_POLICY,
+  WORKFLOW_CLOSING_POLICY,
 ].join("\n\n");
 
 const A3_PROMPT = [
@@ -73,7 +105,7 @@ const A3_PROMPT = [
   `- Cancelar una reservación SUYA: identifícala por LUGAR y FECHA en la conversación (el comensal NO necesita saber ningún código — el reference_code lo tomas tú del ticket correspondiente en tickets) y llama a3_cancel_reservation con ese reference_code y un motivo breve. Si el comensal te dicta un código de 8 dígitos, también sirve, pero es secundario.`,
   `- Cualquier otro cambio (fecha, hora, personas, lugar) por ahora se hace desde la app de Mesita: indícaselo con claridad.`,
   `Regla dura: solo hablas de las reservaciones del número verificado; nunca compartas datos de otras personas. Español de México, trato de usted, natural y breve.`,
-  INBOUND_HANGUP_POLICY,
+  WORKFLOW_CLOSING_POLICY,
 ].join("\n\n");
 
 const A4_PROMPT = [
@@ -87,7 +119,7 @@ const A4_PROMPT = [
   `- Cancelar una reservación de SU lugar si ya no pueden recibirla: ubícala por nombre (a4_find_reservation) o en tickets, toma tú el reference_code del resultado y llama a4_cancel_reservation con el motivo. Mesita le avisa al comensal — el restaurante NUNCA llama al cliente directamente y tú NUNCA das el teléfono del comensal.`,
   `- Otros cambios (mover hora, capacidad, etc.) por ahora no se hacen por esta línea: pídeles responder cuando Mesita los llame o usar su consola de Mesita.`,
   `Regla dura: solo hablas de reservaciones del lugar verificado. Español de México, trato de usted, breve y profesional.`,
-  INBOUND_HANGUP_POLICY,
+  WORKFLOW_CLOSING_POLICY,
 ].join("\n\n");
 
 export const FLEET_AGENTS: FleetAgentSpec[] = [
