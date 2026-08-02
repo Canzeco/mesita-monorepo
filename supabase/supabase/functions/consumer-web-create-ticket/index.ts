@@ -1,0 +1,204 @@
+// Supabase Edge Function — consumer-web-create-ticket (natural caller)
+//
+// Tickets v2 (MESITA-806): the guest creates their own reward ticket BEFORE
+// staff involvement. Pick the place, opt into the story rung (Influencer
+// only), get back a check_code — the QR the app renders is
+// https://mesita.ai/check/<check_code>, and everything staff-side happens on
+// that public page (check-web-*). Replaces staff-initiated creation
+// (business-web-create-ticket, retired in the same change).
+//
+// Welcome is NEVER asserted here: it is detected server-side at billing time
+// (isConsumerFirstVisit inside check-web-submit-bill). The story opt-in is
+// re-checked against class + the place's grid (offersSegment); a non-eligible
+// opt-in silently downgrades to not_required — same posture the old staff
+// create had, and the class never leaks in the response.
+//
+// Body:     { placeId: string, wantsStory?: boolean }
+// Response: { ok: true, ticket: {...}, checkUrl } | { ok, error, code? }
+
+import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+import { corsPreflight, json, readJson, readPlaceIdAlias } from "../_shared/http.ts";
+import { adminClient, getAuthedUser, readEFEnv } from "../_shared/auth.ts";
+import {
+  assessPromoLane,
+  loadMembershipRow,
+} from "../_shared/membership-enforcement.ts";
+import {
+  loadRewardsGrid,
+  offersSegment,
+  placeStrategy,
+} from "../_shared/rewards-config.ts";
+import { checkUrlFor, newCheckCode } from "../_shared/ticket-check.ts";
+
+type Body = {
+  placeId?: string;
+  projectId?: string;
+  wantsStory?: boolean;
+};
+
+Deno.serve(async (req) => {
+  if (req.method === "OPTIONS") return corsPreflight();
+  if (req.method !== "POST") {
+    return json({ ok: false, error: "Method not allowed" }, 405);
+  }
+
+  const envRes = readEFEnv();
+  if (!envRes.ok) return envRes.response;
+  const authRes = await getAuthedUser(req, envRes.env);
+  if (!authRes.ok) return authRes.response;
+  const consumerId = authRes.user.id;
+
+  const bodyRes = await readJson<Body>(req);
+  if (!bodyRes.ok) return bodyRes.response;
+  const body = bodyRes.body;
+
+  const placeId = readPlaceIdAlias(body);
+  if (!placeId) return json({ ok: false, error: "placeId is required" }, 400);
+  const wantsStory = body.wantsStory === true;
+
+  const admin = adminClient(envRes.env);
+
+  const placeRow = await admin
+    .from("projects_view")
+    .select(
+      "id, name, slug, status, listing_type, welcome_free_rate, welcome_premium_rate, free_rate, premium_rate",
+    )
+    .eq("id", placeId)
+    .maybeSingle();
+  if (placeRow.error) {
+    return json(
+      { ok: false, error: `place_lookup: ${placeRow.error.message}` },
+      500,
+    );
+  }
+  if (!placeRow.data) return json({ ok: false, error: "Place not found" }, 404);
+  const place = placeRow.data;
+  if (place.status === "archived") {
+    return json({ ok: false, error: "Place is archived" }, 409);
+  }
+  if (place.listing_type !== "partner") {
+    return json(
+      {
+        ok: false,
+        error: "Only Verified Partners run the Mesita reward program.",
+        code: "not_partner",
+      },
+      409,
+    );
+  }
+
+  // Promo lane must be open (membership strikes can pause it).
+  const membershipRow = await loadMembershipRow(admin, placeId);
+  if (membershipRow) {
+    const lane = assessPromoLane(membershipRow);
+    if (!lane.open) {
+      return json(
+        {
+          ok: false,
+          // Consumer-facing wording; the es-MX staffMessage stays staff-side.
+          error: "This place isn't running Mesita rewards right now.",
+          code: lane.code,
+        },
+        409,
+      );
+    }
+  }
+
+  // One LIVE self-created ticket per guest × place — friendly check first,
+  // the partial unique index wins any race.
+  const existing = await admin
+    .from("tickets")
+    .select("id, check_code, status")
+    .eq("consumer_id", consumerId)
+    .eq("project_id", placeId)
+    .eq("status", "open")
+    .not("check_code", "is", null)
+    .maybeSingle();
+  if (existing.data) {
+    return json(
+      {
+        ok: false,
+        error: "You already have an open ticket at this place.",
+        code: "already_open",
+        ticketId: existing.data.id,
+      },
+      409,
+    );
+  }
+
+  // Story opt-in: Influencer-only (segments v6) AND the place's strategy must
+  // actually offer the rung. Anything else downgrades silently — never an
+  // error, so the response can't be used to probe class.
+  let storyStatus = "not_required";
+  if (wantsStory) {
+    const consumerRow = await admin
+      .from("consumers")
+      .select("id, class_key")
+      .eq("id", consumerId)
+      .maybeSingle();
+    if (consumerRow.error || !consumerRow.data) {
+      return json({ ok: false, error: "Consumer not found" }, 404);
+    }
+    if (consumerRow.data.class_key === "influencer") {
+      const grid = await loadRewardsGrid(admin);
+      if (offersSegment(placeStrategy(place), grid, "story")) {
+        storyStatus = "pending";
+      }
+    }
+  }
+
+  // Insert with a fresh 128-bit code; regenerate once on the astronomically
+  // unlikely collision. The consumer×place race lands here too (23505 on the
+  // partial index) and maps to the friendly 409 above.
+  let inserted: Record<string, unknown> | null = null;
+  let lastError = "";
+  for (let attempt = 0; attempt < 2 && !inserted; attempt++) {
+    const res = await admin
+      .from("tickets")
+      .insert({
+        project_id: placeId,
+        consumer_id: consumerId,
+        opened_by: consumerId, // self-opened: the v2 marker
+        status: "open",
+        kind: "coupon",
+        story_status: storyStatus,
+        check_code: newCheckCode(),
+      })
+      .select(
+        "id, status, kind, story_status, review_status, check_code, first_scanned_at, currency, created_at",
+      )
+      .single();
+    if (!res.error) {
+      inserted = res.data;
+      break;
+    }
+    lastError = res.error.message;
+    if (res.error.code === "23505") {
+      if (res.error.message.includes("tickets_one_open_check_per_consumer_place")) {
+        return json(
+          {
+            ok: false,
+            error: "You already have an open ticket at this place.",
+            code: "already_open",
+          },
+          409,
+        );
+      }
+      continue; // check_code collision — regenerate
+    }
+    break;
+  }
+  if (!inserted) {
+    return json({ ok: false, error: `ticket_insert: ${lastError}` }, 500);
+  }
+
+  return json({
+    ok: true,
+    ticket: {
+      ...inserted,
+      place_name: place.name,
+      place_slug: place.slug ?? null,
+    },
+    checkUrl: checkUrlFor(inserted.check_code as string),
+  }, 201);
+});

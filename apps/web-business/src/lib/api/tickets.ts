@@ -95,29 +95,9 @@ export async function apiCancelTicket(
   );
 }
 
-/** Scan step — link guest code without billing. */
-export async function apiOpenTicket(
-  client: SupabaseClient,
-  input: {
-    projectId: string;
-    consumerCode: string;
-    /** Legacy EF wire kind (e.g. "dp", "s_dp_sf") — see ticket-staff-lifecycle. */
-    kind?: string;
-  },
-): Promise<{ ticket: BusinessTicket }> {
-  return invokeEF<{ ticket: BusinessTicket }>(
-    client,
-    "business-web-create-ticket",
-    {
-      // Canonical payload key is `placeId` (MESITA-26); local naming unchanged.
-      placeId: input.projectId,
-      consumerCode: input.consumerCode,
-      kind: input.kind ?? "dp",
-      scanOnly: true,
-    },
-    "Couldn't scan guest.",
-  );
-}
+// apiOpenTicket retired with Tickets v2 (MESITA-806): guests create their
+// own tickets (consumer-web-create-ticket) and staff scan the ticket QR —
+// business-web-create-ticket is deleted.
 
 /** Billing step — attach check totals to an open ticket. */
 export async function apiSubmitTicketBill(

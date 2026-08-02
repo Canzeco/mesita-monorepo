@@ -225,6 +225,37 @@ verify_jwt = true
 [functions.consumer-web-list-tickets]
 verify_jwt = true
 
+# Tickets v2 self-check-in (MESITA-806): the guest creates/cancels their own
+# reward ticket; the QR encodes mesita.ai/check/<check_code>.
+[functions.consumer-web-create-ticket]
+verify_jwt = true
+
+[functions.consumer-web-cancel-ticket]
+verify_jwt = true
+
+# --- check-web (PUBLIC check page at mesita.ai/check/<code>) ---
+# verify_jwt deliberately FALSE: the 128-bit tickets.check_code is the whole
+# authentication — whoever holds the freshly scanned QR (nominally staff) can
+# view, bill, approve a submitted story/review, and mark paid. That includes
+# the guest themselves; a static QR screenshot is indistinguishable from a
+# live scan. ACCEPTED: Mesita never moves money — the waiter applies the
+# discount off this same page — so self-service is a data-quality nuisance,
+# not theft. Mitigations are visibility (first_scanned_at on the page,
+# ticket_check_events audit with self_view + daily-salted ip_hash, in-EF rate
+# limiting, uniform 404s). See _shared/ticket-check.ts.
+
+[functions.check-web-get-ticket]
+verify_jwt = false
+
+[functions.check-web-submit-bill]
+verify_jwt = false
+
+[functions.check-web-verify-action]
+verify_jwt = false
+
+[functions.check-web-mark-paid]
+verify_jwt = false
+
 # Entity-split EFs (migration 0031). consumer-list-tickets stays for
 # now while clients migrate; the new surfaces split saved-places,
 # reservations, and coupons into first-class entities.
@@ -240,6 +271,14 @@ verify_jwt = true
 verify_jwt = true
 
 [functions.business-web-verify-story]
+verify_jwt = true
+
+# Promos v5 rails — entries were missing (platform default already =true;
+# pinned here for consistency).
+[functions.business-web-verify-review]
+verify_jwt = true
+
+[functions.consumer-web-submit-review]
 verify_jwt = true
 
 # Consumer lookup at the table (resolve 6-char code → name + balance).
@@ -333,10 +372,8 @@ verify_jwt = true
 [functions.business-web-get-overview]
 verify_jwt = true
 
-# Ticket workflow
-[functions.business-web-create-ticket]
-verify_jwt = true
-
+# Ticket workflow — business-web-create-ticket retired by Tickets v2
+# (MESITA-806): guests create their own tickets (consumer-web-create-ticket).
 [functions.business-web-submit-ticket-bill]
 verify_jwt = true
 

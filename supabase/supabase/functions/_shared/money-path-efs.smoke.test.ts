@@ -26,7 +26,10 @@ setDummyEnv();
 // POST-only, JWT-gated EFs (the common shape). `accepts` lists the allowed
 // methods so we can pick a disallowed one for the 405 probe.
 const JWT_EFS: { name: string; path: string; accepts: string[] }[] = [
-  { name: "business-web-create-ticket", path: "../business-web-create-ticket/index.ts", accepts: ["POST"] },
+  // business-web-create-ticket retired by Tickets v2 (MESITA-806) — guests
+  // create their own tickets now.
+  { name: "consumer-web-create-ticket", path: "../consumer-web-create-ticket/index.ts", accepts: ["POST"] },
+  { name: "consumer-web-cancel-ticket", path: "../consumer-web-cancel-ticket/index.ts", accepts: ["POST"] },
   { name: "business-web-submit-ticket-bill", path: "../business-web-submit-ticket-bill/index.ts", accepts: ["POST"] },
   { name: "business-web-mark-ticket-paid", path: "../business-web-mark-ticket-paid/index.ts", accepts: ["POST"] },
   { name: "business-web-cancel-ticket", path: "../business-web-cancel-ticket/index.ts", accepts: ["POST"] },
@@ -37,6 +40,47 @@ const JWT_EFS: { name: string; path: string; accepts: string[] }[] = [
   { name: "consumer-web-list-pay-notifications", path: "../consumer-web-list-pay-notifications/index.ts", accepts: ["POST"] },
   { name: "consumer-web-list-tickets", path: "../consumer-web-list-tickets/index.ts", accepts: ["GET", "POST"] },
 ];
+
+// The public check surface (Tickets v2, MESITA-806): verify_jwt=false,
+// code-possession auth. No 401 probes — instead assert the uniform 404 on a
+// missing/implausible code fires BEFORE any DB work (the plausibility gate
+// and the null ip-hash shortcut make these probes network-free).
+const PUBLIC_CHECK_EFS: { name: string; path: string }[] = [
+  { name: "check-web-get-ticket", path: "../check-web-get-ticket/index.ts" },
+  { name: "check-web-submit-bill", path: "../check-web-submit-bill/index.ts" },
+  { name: "check-web-verify-action", path: "../check-web-verify-action/index.ts" },
+  { name: "check-web-mark-paid", path: "../check-web-mark-paid/index.ts" },
+];
+
+for (const ef of PUBLIC_CHECK_EFS) {
+  Deno.test(`${ef.name}: OPTIONS preflight -> 200 with CORS`, async () => {
+    const h = await loadEFHandler(ef.path);
+    const res = await h(new Request("http://ef.local/", { method: "OPTIONS" }));
+    assertEquals(res.status, 200);
+    assertEquals(res.headers.get("Access-Control-Allow-Origin"), "*");
+    await res.body?.cancel();
+  });
+
+  Deno.test(`${ef.name}: disallowed method -> 405`, async () => {
+    const h = await loadEFHandler(ef.path);
+    const res = await h(new Request("http://ef.local/", { method: "DELETE" }));
+    assertEquals(res.status, 405);
+    await res.body?.cancel();
+  });
+
+  Deno.test(`${ef.name}: missing code -> uniform 404, no auth required`, async () => {
+    const h = await loadEFHandler(ef.path);
+    const res = await h(jsonRequest({}, { method: "POST", bearer: null }));
+    // submit-bill validates the subtotal only after the code, so an empty
+    // body must already be the uniform miss (or a 400 for its own field —
+    // never a 401).
+    assert(
+      res.status === 404 || res.status === 400,
+      `${ef.name} must never 401 (got ${res.status})`,
+    );
+    await res.body?.cancel();
+  });
+}
 
 for (const ef of JWT_EFS) {
   Deno.test(`${ef.name}: OPTIONS preflight -> 200 with CORS`, async () => {

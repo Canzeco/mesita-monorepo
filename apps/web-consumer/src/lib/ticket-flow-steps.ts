@@ -92,10 +92,12 @@ function ticketStepNowInstructions(
 ): string[] {
   switch (stepId) {
     case "scan":
+      // Tickets v2 (MESITA-806): the guest creates the ticket; the QR IS the
+      // ticket (mesita.ai/check/<code>) and staff scan it to verify.
       return [
-        "Open Mesita → Pay → QR.",
-        "Show that code to your waiter.",
-        "They scan it — your visit starts.",
+        "Open Rewards → New and show your ticket QR.",
+        "Staff scan it with any phone camera.",
+        "It opens Mesita's check page — your visit starts.",
       ];
     case "bill":
       return [
