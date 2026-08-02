@@ -5,13 +5,26 @@
 // opt-in is create-time only). NO member code (MESITA-820): check-web-get-ticket
 // resolves ONLY the per-ticket check_code, and _shared/ticket-check.ts forbids
 // consumers.code from ever reaching the staff page.
+//
+// The pass answers WHERE (place + zone/category), WHO (name, class, @handle —
+// staff match the face BEFORE scanning) and WHAT (the opportunity board).
+// The board is a BOARD, not a picker: the engine is best-of, so doing two
+// things keeps the higher one automatically; "choose one" would imply picking
+// review forfeits welcome, which is false (MESITA-821).
 
 import {
+  AtSign,
   BadgeCheck,
   Camera,
   Check,
+  Crown,
+  DoorOpen,
+  Megaphone,
   PartyPopper,
   Sparkles,
+  Star,
+  User,
+  Users,
 } from 'lucide-react-native';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
@@ -37,9 +50,17 @@ import {
   type ConsumerTicketRow,
 } from '@/lib/api/tickets';
 import { classProperLabel } from '@/lib/consumer-classes';
+import {
+  PEAK_STRATEGY,
+  reachableSegments,
+  segmentKeyForClass,
+  type RewardClassKey,
+  type RewardSegmentKey,
+} from '@/lib/reward-segments';
 import { EFError } from '@/lib/ef';
 import type { ConsumerTicketsState } from '@/lib/hooks/useConsumerTickets';
 import { useAuth } from '@/providers/auth';
+import { firstInitials, formatCompactCount } from '@/lib/utils';
 
 // Class-tinted pass gradients — ported from the retired passport card (#548).
 const PASS_GRADIENTS: Record<string, [string, string, string]> = {
@@ -47,6 +68,27 @@ const PASS_GRADIENTS: Record<string, [string, string, string]> = {
   premium: ['#ff7a45', '#ff3d73', '#a13cf0'],
   influencer: ['#ff7a45', '#4aa8ff', '#2f7fd6'],
   aura: ['#ff7a45', '#ffb03d', '#e0982e'],
+};
+
+const SEGMENT_ICON: Record<RewardSegmentKey, typeof User> = {
+  standard: User,
+  premium: Crown,
+  influencer: Megaphone,
+  aura: Sparkles,
+  story: Camera,
+  welcome: DoorOpen,
+  review: Star,
+};
+
+// HOW you land on each rung, in the guest's words.
+const SEGMENT_HOW: Record<RewardSegmentKey, string> = {
+  standard: 'Always on',
+  premium: 'Always on',
+  influencer: 'Always on',
+  aura: 'Always on',
+  story: 'Post a story tagging the place',
+  welcome: 'Automatic on your first visit here',
+  review: 'Leave a Google review at the table',
 };
 
 const STORY_LINE: Record<string, string> = {
@@ -179,7 +221,27 @@ export function VenuePassModal({
   }, [ticketId, tickets, onClose]);
 
 
+  // Identity for the staff eyeball-check. `profile` is already in auth
+  // context here, so unlike web this costs no extra request.
+  const { profile } = useAuth();
+  const identityName =
+    ([profile?.first_name, profile?.last_name].filter(Boolean).join(' ') ||
+      profile?.full_name ||
+      '').trim() || `${classProperLabel(classKey)} member`;
+  const identityHandle = profile?.instagram_handle ?? null;
+  const followers = consumerClass?.followers ?? 0;
+
+  const rungs = useMemo(
+    () => reachableSegments(classKey as RewardClassKey),
+    [classKey],
+  );
+  const mineKey = segmentKeyForClass(classKey as RewardClassKey);
+
   const placeName = place?.name ?? 'the place';
+  const placeSub =
+    [place?.zone, place?.category_label ?? place?.category]
+      .filter(Boolean)
+      .join(' · ') || 'Mesita partner';
   const live = ticket ? ACTIVE_TICKET_STATUSES.has(ticket.status) : false;
   const scanned = ticket?.first_scanned_at != null;
   const billed = (ticket?.total_cents ?? 0) > 0;
@@ -220,6 +282,13 @@ export function VenuePassModal({
                   style={{ fontSize: 17 }}
                 >
                   {placeName}
+                </Text>
+                <Text
+                  className="mt-0.5 text-white/80"
+                  numberOfLines={1}
+                  style={{ fontSize: 11.5 }}
+                >
+                  {placeSub}
                 </Text>
               </View>
               <View className="rounded-full bg-white/25 px-2.5 py-1">
@@ -405,8 +474,144 @@ export function VenuePassModal({
                 </Pressable>
               </View>
             ) : null}
+            {/* WHO — staff match the face to the pass BEFORE scanning. */}
+            {qrCode ? (
+              <View
+                className="mt-4 flex-row items-center border-t border-white/20 pt-3.5"
+                style={{ gap: 10 }}
+              >
+                <View className="h-9 w-9 items-center justify-center rounded-full bg-white/20">
+                  <Text
+                    className="font-extrabold text-white"
+                    style={{ fontSize: 12 }}
+                  >
+                    {firstInitials(identityName)}
+                  </Text>
+                </View>
+                <View className="min-w-0 flex-1">
+                  <Text
+                    className="font-extrabold text-white"
+                    numberOfLines={1}
+                    style={{ fontSize: 13.5 }}
+                  >
+                    {identityName}
+                  </Text>
+                  <View
+                    className="mt-0.5 flex-row items-center"
+                    style={{ gap: 8 }}
+                  >
+                    {identityHandle ? (
+                      <View className="flex-row items-center" style={{ gap: 3 }}>
+                        <AtSign size={11} color="rgba(255,255,255,0.85)" />
+                        <Text
+                          className="text-white/85"
+                          numberOfLines={1}
+                          style={{ fontSize: 11 }}
+                        >
+                          {identityHandle}
+                        </Text>
+                      </View>
+                    ) : null}
+                    {followers > 0 ? (
+                      <View className="flex-row items-center" style={{ gap: 3 }}>
+                        <Users size={11} color="rgba(255,255,255,0.85)" />
+                        <Text className="text-white/85" style={{ fontSize: 11 }}>
+                          {formatCompactCount(followers)}
+                        </Text>
+                      </View>
+                    ) : null}
+                    {!identityHandle && followers === 0 ? (
+                      <Text className="text-white/85" style={{ fontSize: 11 }}>
+                        {classProperLabel(classKey)}
+                      </Text>
+                    ) : null}
+                  </View>
+                </View>
+              </View>
+            ) : null}
           </LinearGradient>
         </View>
+
+        {/* WHAT — the opportunity board (best-of, never a picker). */}
+        {live || !ticket ? (
+          <View className="overflow-hidden rounded-2xl border border-border bg-card">
+            <View className="flex-row items-baseline justify-between px-3.5 pt-3.5 pb-1">
+              <Text
+                className="font-bold text-foreground"
+                style={{ fontSize: 13 }}
+              >
+                What you can earn here
+              </Text>
+              <Text className="text-muted-foreground" style={{ fontSize: 10.5 }}>
+                Best one wins
+              </Text>
+            </View>
+            <View className="px-2.5 pt-1.5 pb-3" style={{ gap: 6 }}>
+              {rungs.map((seg) => {
+                const Icon = SEGMENT_ICON[seg.key];
+                const mine = seg.key === mineKey;
+                return (
+                  <View
+                    key={seg.key}
+                    className={`flex-row items-center rounded-xl px-2.5 py-2 ${
+                      mine ? 'bg-primary/10' : 'bg-muted/50'
+                    }`}
+                    style={{ gap: 10 }}
+                  >
+                    <View
+                      className={`h-8 w-8 items-center justify-center rounded-lg ${
+                        mine ? 'bg-primary/10' : 'bg-secondary/10'
+                      }`}
+                    >
+                      <Icon size={16} color={mine ? '#cf0360' : '#cf0360'} />
+                    </View>
+                    <View className="min-w-0 flex-1">
+                      <View className="flex-row items-center" style={{ gap: 6 }}>
+                        <Text
+                          className="font-bold text-foreground"
+                          numberOfLines={1}
+                          style={{ fontSize: 12.5, flexShrink: 1 }}
+                        >
+                          {seg.name}
+                        </Text>
+                        {mine ? (
+                          <View className="rounded-full bg-primary/10 px-1.5 py-0.5">
+                            <Text
+                              className="font-extrabold uppercase text-primary"
+                              style={{ fontSize: 8.5, letterSpacing: 1 }}
+                            >
+                              You
+                            </Text>
+                          </View>
+                        ) : null}
+                      </View>
+                      <Text
+                        className="mt-0.5 text-muted-foreground"
+                        numberOfLines={1}
+                        style={{ fontSize: 11 }}
+                      >
+                        {SEGMENT_HOW[seg.key]}
+                      </Text>
+                    </View>
+                    <Text
+                      className="font-extrabold text-foreground"
+                      style={{ fontSize: 15 }}
+                    >
+                      {seg.rates[PEAK_STRATEGY]}%
+                    </Text>
+                  </View>
+                );
+              })}
+            </View>
+            <Text
+              className="border-t border-border px-3.5 py-2.5 text-muted-foreground"
+              style={{ fontSize: 10.5, lineHeight: 14 }}
+            >
+              You always keep your single best one — never added together. The
+              exact % is set by each place.
+            </Text>
+          </View>
+        ) : null}
 
         {/* Live-ticket housekeeping */}
         {ticket?.status === 'open' ? (
