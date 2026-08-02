@@ -51,7 +51,15 @@ export type EFReservationRow = {
   id: string;
   reserved_at: string;
   party_size: number;
-  status: 'pending' | 'confirmed' | 'declined' | 'no_show' | 'cancelled';
+  status:
+    | 'pending'
+    | 'confirmed'
+    | 'declined'
+    | 'no_show'
+    | 'cancelled'
+    // Engine outcomes: the venue never answered / the call ended unclear.
+    | 'unreachable'
+    | 'unresolved';
   notes: string | null;
   confirmed_at: string | null;
   completed_at: string | null;
@@ -67,6 +75,33 @@ export type EFReservationRow = {
     address: string | null;
   } | null;
 };
+
+/**
+ * Reschedule (or resize) the caller's own reservation. New terms send the
+ * ticket back to `booking` and Mesita calls the venue again. Web parity:
+ * apps/web-consumer/src/lib/api/reservations.ts.
+ */
+export function apiUpdateReservation(args: {
+  reservationId: string;
+  /** ISO 8601 instant with an explicit MX offset. */
+  reservedAt?: string;
+  partySize?: number;
+  notes?: string;
+}): Promise<{ updated: boolean; call_started?: boolean }> {
+  return invokeEF<{ updated: boolean; call_started?: boolean }>(
+    supabase,
+    'consumer-web-update-reservation',
+    {
+      reservation_id: args.reservationId,
+      ...(args.reservedAt ? { reserved_at: args.reservedAt } : {}),
+      ...(typeof args.partySize === 'number'
+        ? { party_size: args.partySize }
+        : {}),
+      ...(args.notes !== undefined ? { notes: args.notes } : {}),
+    },
+    "Couldn't update the reservation",
+  );
+}
 
 export function apiListReservations(
   args: { scope?: ReservationScope; limit?: number } = {},

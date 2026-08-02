@@ -1,42 +1,92 @@
-import { PhoneCall } from 'lucide-react-native';
-import { useMemo, useState } from 'react';
+import { CalendarClock, PhoneCall } from 'lucide-react-native';
+import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 
 import { Button } from '@/components/ui/Button';
 import { FullScreenSheet } from '@/components/ui/FullScreenSheet';
 import { TextField } from '@/components/ui/TextField';
-import { apiCreateReservation } from '@/lib/api/reservations';
+import {
+  apiCreateReservation,
+  apiListReservations,
+  apiUpdateReservation,
+  type EFReservationRow,
+} from '@/lib/api/reservations';
 import { errMsg, guestNoun } from '@/lib/utils';
+import {
+  isSlotPast,
+  MX_OFFSET,
+  VENUE_TZ_LABEL,
+  venueDateIso,
+  venueDateParts,
+  venueDateTime,
+} from '@/lib/venue-time';
 
 const DATE_WINDOW = 14; // two weeks of pills
 const DEFAULT_TIME = '20:00';
 const DEFAULT_PARTY = 2;
-// Mexico City is UTC-6 year-round (no DST since 2022). The picked slot is the
+
+// MX_OFFSET (and everything else about the venue's clock) lives in
+// @/lib/venue-time — the single source of truth. The picked slot is the
 // venue's wall-clock; stamping the offset lets the agent read it back in
 // America/Mexico_City and match what the guest chose.
-const MX_OFFSET = '-06:00';
 
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+// Same window as web (apps/web-consumer/src/components/consumer/
+// reservation-pickers.tsx). The lists must match: "is this whole day gone?" is
+// decided against them, so a divergence means the two apps disable different
+// days at the same instant.
 const TIME_SLOTS = [
-  '13:00', '13:30', '14:00', '14:30', '18:00', '18:30', '19:00',
-  '19:30', '20:00', '20:30', '21:00', '21:30', '22:00',
+  '18:00', '18:30', '19:00', '19:30', '20:00', '20:30',
+  '21:00', '21:30', '22:00', '22:30', '23:00',
 ];
 
-type DateOption = { iso: string; weekday: string; day: number };
+type DateOption = {
+  iso: string;
+  weekday: string;
+  day: number;
+  /** Every slot on this day is already behind the venue's clock. */
+  disabled: boolean;
+};
 
+/**
+ * The next `count` days on the VENUE's calendar — not the device's. A guest in
+ * Tokyo and a guest in CDMX must see the same "Today", or they'd disagree
+ * about which slots are still bookable.
+ */
 function buildDateOptions(count: number): DateOption[] {
   const out: DateOption[] = [];
-  const base = new Date();
   for (let i = 0; i < count; i += 1) {
-    const d = new Date(base);
-    d.setDate(base.getDate() + i);
-    const iso = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(
-      d.getDate(),
-    ).padStart(2, '0')}`;
-    const weekday = i === 0 ? 'Today' : i === 1 ? 'Tom.' : WEEKDAYS[d.getDay()];
-    out.push({ iso, weekday, day: d.getDate() });
+    const iso = venueDateIso(i);
+    const { weekday, day } = venueDateParts(iso);
+    out.push({
+      iso,
+      weekday: i === 0 ? 'Today' : i === 1 ? 'Tom.' : WEEKDAYS[weekday],
+      day,
+      // Late at night today has nothing left. The pill stays in the row and
+      // goes dead — hiding it would shift every other pill sideways.
+      disabled: TIME_SLOTS.every((slot) => isSlotPast(iso, slot)),
+    });
   }
   return out;
+}
+
+/** First day still open for booking — the safe default / fallback. */
+function firstOpenDate(options: DateOption[]): string {
+  return options.find((d) => !d.disabled)?.iso ?? '';
+}
+
+/**
+ * The slot to actually use for `dateIso`: the guest's pick when it's still
+ * ahead of the venue's clock, otherwise the first slot that is. Null when the
+ * day is spent — the submit button disables on that.
+ */
+function resolveSlot(dateIso: string, preferred: string): string | null {
+  if (!dateIso) return null;
+  if (TIME_SLOTS.includes(preferred) && !isSlotPast(dateIso, preferred)) {
+    return preferred;
+  }
+  return TIME_SLOTS.find((slot) => !isSlotPast(dateIso, slot)) ?? null;
 }
 
 function timeLabel(hhmm: string): string {
@@ -54,6 +104,12 @@ function timeLabel(hhmm: string): string {
  */
 export type ReservationSheetPlace = { id: string; name: string };
 
+// What to do when the guest already holds a live table here.
+//   null         → they haven't answered the banner yet; submit stays locked
+//   "another"    → book a second table (normal create flow)
+//   "reschedule" → move the existing ticket instead of creating a twin
+type DuplicateChoice = 'another' | 'reschedule';
+
 export function ReservationSheet({
   place,
   visible,
@@ -63,19 +119,73 @@ export function ReservationSheet({
   visible: boolean;
   onClose: () => void;
 }) {
-  const dateOptions = useMemo(() => buildDateOptions(DATE_WINDOW), []);
-  const [date, setDate] = useState(dateOptions[0]?.iso ?? '');
-  const [time, setTime] = useState(DEFAULT_TIME);
+  // Recomputed every render (14 tiny objects) rather than memoised: the sheet
+  // can sit mounted across midnight, and a stale "Today" pill would offer
+  // slots that are a day gone.
+  const dateOptions = buildDateOptions(DATE_WINDOW);
+
+  const [dateChoice, setDateChoice] = useState('');
+  const [timeChoice, setTimeChoice] = useState(DEFAULT_TIME);
   const [party, setParty] = useState(DEFAULT_PARTY);
   const [notes, setNotes] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState(false);
 
+  // Duplicate guard: the caller's live booking at THIS place, if any.
+  const [checking, setChecking] = useState(false);
+  const [existing, setExisting] = useState<EFReservationRow | null>(null);
+  const [choice, setChoice] = useState<DuplicateChoice | null>(null);
+
+  // Selection is DERIVED, not stored: if the guest's pick has since passed (or
+  // they switched to today late at night), we fall through to the first slot
+  // that's still ahead of the venue's clock. No effect, nothing to desync.
+  const date =
+    dateOptions.find((d) => d.iso === dateChoice && !d.disabled)?.iso ??
+    firstOpenDate(dateOptions);
+  const time = resolveSlot(date, timeChoice);
+
   const chosen = dateOptions.find((d) => d.iso === date);
+  const timeText = time ? timeLabel(time) : '—';
   const whenLabel = chosen
-    ? `${chosen.weekday === 'Today' || chosen.weekday === 'Tom.' ? chosen.weekday : `${chosen.weekday} ${chosen.day}`} · ${timeLabel(time)}`
-    : timeLabel(time);
+    ? `${chosen.weekday === 'Today' || chosen.weekday === 'Tom.' ? chosen.weekday : `${chosen.weekday} ${chosen.day}`} · ${timeText}`
+    : timeText;
+
+  const rescheduling = choice === 'reschedule' && existing !== null;
+  // A found duplicate locks submit until the guest answers the banner — the
+  // whole point is that a second table is never created silently.
+  const awaitingChoice = existing !== null && choice === null;
+
+  // Look for a live booking at this place whenever the sheet opens. `upcoming`
+  // is exactly "active" server-side: consumer-web-list-reservations filters to
+  // status pending|confirmed AND reserved_at >= now - 4h, so cancelled,
+  // declined, unreachable and long-gone tickets never come back.
+  useEffect(() => {
+    if (!visible) return;
+    let cancelled = false;
+    (async () => {
+      setChecking(true);
+      try {
+        const { reservations } = await apiListReservations({
+          scope: 'upcoming',
+          limit: 100,
+        });
+        // place.id is places.id == projects.id, the same id the list EF
+        // stitches onto each row via attachPlaces.
+        const hit = reservations.find((r) => r.place?.id === place.id) ?? null;
+        if (!cancelled) setExisting(hit);
+      } catch {
+        // Fail OPEN: a flaky list read must not block someone from booking.
+        // Worst case is the pre-existing behaviour (a possible second ticket).
+        if (!cancelled) setExisting(null);
+      } finally {
+        if (!cancelled) setChecking(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [visible, place.id]);
 
   function handleClose() {
     onClose();
@@ -83,19 +193,44 @@ export function ReservationSheet({
     setDone(false);
     setError(null);
     setSubmitting(false);
+    setChoice(null);
+    setExisting(null);
+  }
+
+  /** Move the existing table: seed the pickers from what's already booked. */
+  function chooseReschedule() {
+    if (!existing) return;
+    const seed = venueDateTime(existing.reserved_at);
+    if (seed) {
+      setDateChoice(seed.date);
+      setTimeChoice(seed.time);
+    }
+    setParty(existing.party_size);
+    if (existing.notes) setNotes(existing.notes);
+    setChoice('reschedule');
   }
 
   async function submit() {
-    if (!date || submitting) return;
+    if (!date || !time || submitting || checking || awaitingChoice) return;
     setSubmitting(true);
     setError(null);
     try {
-      await apiCreateReservation({
-        projectId: place.id,
-        reservedAt: `${date}T${time}:00${MX_OFFSET}`,
-        partySize: party,
-        notes,
-      });
+      const reservedAt = `${date}T${time}:00${MX_OFFSET}`;
+      if (rescheduling) {
+        await apiUpdateReservation({
+          reservationId: existing.id,
+          reservedAt,
+          partySize: party,
+          notes,
+        });
+      } else {
+        await apiCreateReservation({
+          projectId: place.id,
+          reservedAt,
+          partySize: party,
+          notes,
+        });
+      }
       setDone(true);
     } catch (e) {
       setError(errMsg(e, "Couldn't request the reservation."));
@@ -104,11 +239,29 @@ export function ReservationSheet({
     }
   }
 
+  const submitLabel = checking
+    ? 'Checking your reservations…'
+    : awaitingChoice
+      ? 'Choose an option above'
+      : !time
+        ? 'No times left'
+        : rescheduling
+          ? `Move my table · ${whenLabel}`
+          : `Request · ${whenLabel}`;
+
   return (
     <FullScreenSheet
       visible={visible}
       onClose={handleClose}
-      title={done ? 'Reservation requested' : 'Reserve a table'}
+      title={
+        done
+          ? rescheduling
+            ? 'Reservation updated'
+            : 'Reservation requested'
+          : rescheduling
+            ? 'Move your table'
+            : 'Reserve a table'
+      }
       subtitle={done ? undefined : `${place.name} · Mesita calls the place for you`}
     >
       {done ? (
@@ -117,13 +270,14 @@ export function ReservationSheet({
             <PhoneCall color="#ec006c" size={26} />
           </View>
           <Text className="mt-4 font-display text-xl font-semibold text-foreground">
-            Reservation requested
+            {rescheduling ? 'Reservation updated' : 'Reservation requested'}
           </Text>
           <Text className="mt-2 max-w-xs text-center text-[13px] leading-relaxed text-muted-foreground">
             Mesita is calling{' '}
-            <Text className="font-medium text-foreground">{place.name}</Text> to
-            book your table for {party} {guestNoun(party)} on {whenLabel}. We&apos;ll
-            update this reservation once the place confirms.
+            <Text className="font-medium text-foreground">{place.name}</Text> to{' '}
+            {rescheduling ? 'move' : 'book'} your table for {party}{' '}
+            {guestNoun(party)} on {whenLabel}. We&apos;ll update this
+            reservation once the place confirms.
           </Text>
           <View className="mt-6 w-full">
             <Button onPress={handleClose}>Done</Button>
@@ -131,6 +285,16 @@ export function ReservationSheet({
         </View>
       ) : (
         <>
+          {existing ? (
+            <DuplicateBanner
+              existing={existing}
+              choice={choice}
+              onReschedule={chooseReschedule}
+              onAnother={() => setChoice('another')}
+              onReset={() => setChoice(null)}
+            />
+          ) : null}
+
           {/* Date pills */}
           <View>
             <Text className="mb-2 text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
@@ -146,22 +310,38 @@ export function ReservationSheet({
                 return (
                   <Pressable
                     key={d.iso}
-                    onPress={() => setDate(d.iso)}
+                    onPress={() => setDateChoice(d.iso)}
+                    disabled={d.disabled}
                     accessibilityRole="button"
-                    accessibilityState={{ selected: active }}
+                    accessibilityState={{
+                      selected: active,
+                      disabled: d.disabled,
+                    }}
+                    accessibilityHint={
+                      d.disabled ? 'No times left on this day' : undefined
+                    }
+                    style={d.disabled ? { opacity: 0.45 } : undefined}
                     className={`h-16 w-14 items-center justify-center rounded-2xl border ${
-                      active
-                        ? 'border-primary bg-primary'
-                        : 'border-border bg-card'
+                      d.disabled
+                        ? 'border-border bg-muted'
+                        : active
+                          ? 'border-primary bg-primary'
+                          : 'border-border bg-card'
                     }`}
                   >
                     <Text
-                      className={`text-[11px] font-semibold ${active ? 'text-primary-foreground' : 'text-muted-foreground'}`}
+                      className={`text-[11px] font-semibold ${active && !d.disabled ? 'text-primary-foreground' : 'text-muted-foreground'}`}
                     >
                       {d.weekday}
                     </Text>
                     <Text
-                      className={`text-[17px] font-bold ${active ? 'text-primary-foreground' : 'text-foreground'}`}
+                      className={`text-[17px] font-bold ${
+                        d.disabled
+                          ? 'text-muted-foreground'
+                          : active
+                            ? 'text-primary-foreground'
+                            : 'text-foreground'
+                      }`}
                     >
                       {d.day}
                     </Text>
@@ -171,28 +351,45 @@ export function ReservationSheet({
             </ScrollView>
           </View>
 
-          {/* Time slots */}
+          {/* Time slots — past ones stay in the grid, muted, so it never jumps */}
           <View>
-            <Text className="mb-2 text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
+            <Text className="mb-1 text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
               Time
+            </Text>
+            <Text className="mb-2 text-[11px] text-muted-foreground">
+              Times shown in {VENUE_TZ_LABEL}
             </Text>
             <View className="flex-row flex-wrap gap-2">
               {TIME_SLOTS.map((slot) => {
-                const active = slot === time;
+                const past = isSlotPast(date, slot);
+                const active = slot === time && !past;
                 return (
                   <Pressable
                     key={slot}
-                    onPress={() => setTime(slot)}
+                    onPress={() => setTimeChoice(slot)}
+                    disabled={past}
                     accessibilityRole="button"
-                    accessibilityState={{ selected: active }}
+                    accessibilityState={{ selected: active, disabled: past }}
+                    accessibilityHint={
+                      past ? 'This time has already passed' : undefined
+                    }
+                    style={past ? { opacity: 0.45 } : undefined}
                     className={`rounded-xl border px-3 py-2 ${
-                      active
-                        ? 'border-primary bg-primary'
-                        : 'border-border bg-card'
+                      past
+                        ? 'border-border bg-muted'
+                        : active
+                          ? 'border-primary bg-primary'
+                          : 'border-border bg-card'
                     }`}
                   >
                     <Text
-                      className={`text-[13px] font-semibold ${active ? 'text-primary-foreground' : 'text-foreground'}`}
+                      className={`text-[13px] font-semibold ${
+                        past
+                          ? 'text-muted-foreground'
+                          : active
+                            ? 'text-primary-foreground'
+                            : 'text-foreground'
+                      }`}
                     >
                       {timeLabel(slot)}
                     </Text>
@@ -247,8 +444,16 @@ export function ReservationSheet({
             </View>
           ) : null}
 
-          <Button onPress={submit} loading={submitting} disabled={!date}>
-            {submitting ? 'Requesting…' : `Request · ${whenLabel}`}
+          <Button
+            onPress={submit}
+            loading={submitting}
+            disabled={!date || !time || checking || awaitingChoice}
+          >
+            {submitting
+              ? rescheduling
+                ? 'Updating…'
+                : 'Requesting…'
+              : submitLabel}
           </Button>
           <Text className="text-center text-[11px] text-muted-foreground">
             Mesita&apos;s AI agent calls the place to book — you&apos;ll be notified.
@@ -256,6 +461,85 @@ export function ReservationSheet({
         </>
       )}
     </FullScreenSheet>
+  );
+}
+
+/**
+ * "You already have a table here." Shown inline above the pickers rather than
+ * as a blocking dialog: the guest keeps the whole form in view and just tells
+ * us which of the two things they meant. Web parity:
+ * apps/web-consumer/src/components/consumer/place-detail/ReservationSheet.tsx.
+ */
+function DuplicateBanner({
+  existing,
+  choice,
+  onReschedule,
+  onAnother,
+  onReset,
+}: {
+  existing: EFReservationRow;
+  choice: DuplicateChoice | null;
+  onReschedule: () => void;
+  onAnother: () => void;
+  onReset: () => void;
+}) {
+  const seed = venueDateTime(existing.reserved_at);
+  const when = seed
+    ? `${seed.date} · ${timeLabel(seed.time)}`
+    : 'an upcoming slot';
+
+  return (
+    <View className="rounded-2xl border border-border bg-muted px-3 py-3">
+      <View className="flex-row items-start gap-2.5">
+        <View className="h-8 w-8 items-center justify-center rounded-full bg-primary/10">
+          <CalendarClock color="#ec006c" size={16} />
+        </View>
+        <View className="min-w-0 flex-1">
+          <Text className="text-[13px] font-semibold text-foreground">
+            You already have a table here
+          </Text>
+          <Text className="mt-0.5 text-[12px] leading-snug text-muted-foreground">
+            {when} for {existing.party_size} {guestNoun(existing.party_size)}.
+          </Text>
+        </View>
+      </View>
+
+      {choice === null ? (
+        <View className="mt-3 flex-row gap-2">
+          <Pressable
+            onPress={onReschedule}
+            accessibilityRole="button"
+            className="flex-1 items-center rounded-full bg-primary py-2"
+          >
+            <Text className="text-[12.5px] font-semibold text-primary-foreground">
+              Reschedule that one
+            </Text>
+          </Pressable>
+          <Pressable
+            onPress={onAnother}
+            accessibilityRole="button"
+            className="flex-1 items-center rounded-full border border-border bg-card py-2"
+          >
+            <Text className="text-[12.5px] font-semibold text-foreground">
+              Make another
+            </Text>
+          </Pressable>
+        </View>
+      ) : (
+        <View className="mt-2 flex-row items-center gap-1.5">
+          <Text className="text-[12px] text-muted-foreground">
+            {choice === 'reschedule'
+              ? 'Moving your existing table.'
+              : 'Booking a second table here.'}
+          </Text>
+          <Pressable onPress={onReset} accessibilityRole="button" hitSlop={8}>
+            <Text className="text-[12px] font-semibold text-foreground underline">
+              Change
+            </Text>
+          </Pressable>
+        </View>
+      )}
+    </View>
   );
 }
 
