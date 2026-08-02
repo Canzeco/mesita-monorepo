@@ -138,7 +138,7 @@ export function AtlasFieldsClient({ data }: { data: AtlasFieldsPayload }) {
               >
                 <dt className="text-sm font-medium">{humanizeKey(key)}</dt>
                 <dd className="mt-1 font-mono text-lg font-semibold tabular-nums">
-                  {formatLimit(key, max)}
+                  {formatLimit(limit.unit, limit.min, max)}
                 </dd>
                 <dd className="text-muted-foreground mt-1 text-xs">{note}</dd>
               </div>
@@ -250,23 +250,20 @@ function humanizeKey(key: string): string {
   if (key === "tagCatalogSize") return "Tag catalog";
   if (key === "photos") return "Photos";
   if (key === "googleReviews") return "Google reviews";
+  if (key === "descriptionEnricherMax") return "Description (Enricher synthesis)";
+  if (key === "priceLevel") return "Price level";
   return key
     .replace(/([A-Z])/g, " $1")
     .replace(/^./, (c) => c.toUpperCase())
     .trim();
 }
 
-function formatLimit(key: string, max: number): string {
-  const countKeys = new Set([
-    "tagsPerPlace",
-    "tagCatalogSize",
-    "photos",
-    "googleReviews",
-  ]);
-  if (key === "tagsPerPlace") return `Up to ${max.toLocaleString()}`;
-  if (key === "photos" || key === "googleReviews") {
-    return `Up to ${max.toLocaleString()}`;
-  }
-  if (countKeys.has(key)) return max.toLocaleString();
+function formatLimit(
+  unit: "chars" | "count" | "range",
+  min: number | undefined,
+  max: number,
+): string {
+  if (unit === "range") return `${min ?? 0}–${max}`;
+  if (unit === "count") return `Up to ${max.toLocaleString()}`;
   return `${max.toLocaleString()} chars`;
 }
