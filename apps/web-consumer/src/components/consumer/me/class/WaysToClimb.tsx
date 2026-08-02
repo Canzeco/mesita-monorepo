@@ -71,7 +71,10 @@ export function WaysToClimb({
       accent: true,
       price: `${magnetic.followerThreshold.toLocaleString("en-US")}+ followers`,
       priceNote: "no payment — earned with reach, or invited by Mesita",
-      desc: `Connect an Instagram with ${magnetic.followerThreshold.toLocaleString("en-US")}+ followers and post a story each time you visit — Mesita's top, invite-only tier, without paying a peso.`,
+      // Magnetic's discount is unconditional — the class rung pays on every
+      // bill with no strings. Posting a story is a separate, optional rung any
+      // class can take (see reward-segments), never a Magnetic requirement.
+      desc: `Connect an Instagram with ${magnetic.followerThreshold.toLocaleString("en-US")}+ followers — Mesita's top, invite-only tier, without paying a peso. Your discount applies every visit; no story required.`,
       perks: ELEVATED_PERKS,
       reached: key === "magnetic",
       reachedLabel: origin === "instagram" ? "Connected" : "Active",

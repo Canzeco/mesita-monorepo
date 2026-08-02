@@ -107,7 +107,7 @@ export default function SubscribePage() {
               </span>
               <span>
                 <span className="font-semibold">Instagram</span> — 5,000+
-                followers and post a story. Magnetic, free.
+                followers. Magnetic, free, no story required.
               </span>
             </li>
             <li className="flex items-start gap-2.5">

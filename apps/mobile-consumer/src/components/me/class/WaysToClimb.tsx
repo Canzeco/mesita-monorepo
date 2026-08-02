@@ -45,7 +45,7 @@ export function WaysToClimb({
       accent: true,
       price: `$${premium.priceMxn} MXN`,
       priceNote: 'per month · cancel anytime',
-      desc: 'Subscribe and unlock full Premium instantly — boosted discounts, personalized recommendations, and unlimited reservations. No follower count needed; cancel whenever you want. Manage on web from this app.',
+      desc: 'Subscribe and unlock full Premium instantly — boosted discounts, personalized recommendations, and 10 reservations a month. No follower count needed; cancel whenever you want. Manage on web from this app.',
       reached: origin === 'subscription',
       reachedLabel: 'Active',
       action: {
@@ -62,7 +62,10 @@ export function WaysToClimb({
       accent: true,
       price: `${magnetic.followerThreshold.toLocaleString('en-US')}+ followers`,
       priceNote: 'no payment — earned with reach',
-      desc: "Connect an Instagram with 1,000+ followers and post a story each time you visit. You unlock Magnetic — Mesita's top, invite-only tier — with the biggest discounts, personalized recommendations, and unlimited reservations, without paying a peso.",
+      // Magnetic's discount is unconditional — the class rung pays on every
+      // bill. A story is a separate, optional rung any class can take, never a
+      // Magnetic requirement. Threshold reads off the DB-mirrored constant.
+      desc: `Connect an Instagram with ${magnetic.followerThreshold.toLocaleString('en-US')}+ followers to unlock Magnetic — Mesita's top, invite-only tier — with boosted discounts, personalized recommendations, and 10 reservations a month, without paying a peso. Your discount applies every visit; no story required.`,
       reached: origin === 'instagram',
       reachedLabel: 'Connected',
       action: { label: 'Connect', onPress: onConnectInstagram },

@@ -64,9 +64,10 @@ export function RewardsBox({ place }: { place: PlaceDetail }) {
       : capLabel
         ? `${visitLabel} · on your first ${capLabel}`
         : visitLabel;
+  // Magnetic is NOT story-gated: the class rung pays on every bill regardless
+  // of Instagram activity (resolveTicketRate, _shared/rewards-config.ts), so
+  // Premium and Magnetic share one "just pay with your QR" CTA.
   const isStandard = classKey === 'standard';
-  const isMagneticViaInstagram =
-    !isStandard && consumerClass?.origin === 'instagram';
 
   return (
     <Box title="Reward" icon={Sparkles} iconColor="#f472b6">
@@ -95,8 +96,8 @@ export function RewardsBox({ place }: { place: PlaceDetail }) {
         <RewardStep
           n={2}
           icon={Camera}
-          title="Post a story — Magnetic (via Instagram) only"
-          body="If you're Magnetic via Instagram, post a story tagging the place right after the waiter scans your QR. Standard and Premium guests skip this step."
+          title="Post a story — optional, any class"
+          body="Want more? Post a story tagging the place after the waiter scans your QR for a bigger reward. Skip it and you still keep your class reward in full."
           accent
         />
         <RewardStep
@@ -172,9 +173,7 @@ export function RewardsBox({ place }: { place: PlaceDetail }) {
             >
               <QrCode color="#fff" size={16} />
               <Text className="text-sm font-semibold text-white">
-                {isMagneticViaInstagram
-                  ? 'Pay with QR & post IG story'
-                  : 'Pay with QR to claim reward'}
+                Pay with QR to claim reward
               </Text>
             </LinearGradient>
           </Pressable>
@@ -182,9 +181,7 @@ export function RewardsBox({ place }: { place: PlaceDetail }) {
         <Text className="text-center text-[11px] leading-snug text-muted-foreground">
           {isStandard
             ? 'Pay with your QR to claim your reward — or upgrade to Premium for a bigger one.'
-            : isMagneticViaInstagram
-              ? 'Pay with your QR, then post an Instagram story to unlock your Magnetic reward.'
-              : 'Just pay with your QR — your reward applies automatically.'}
+            : 'Just pay with your QR — your reward applies automatically.'}
         </Text>
       </View>
     </Box>
