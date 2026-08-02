@@ -52,6 +52,8 @@ import {
   apiCancelTicket,
   apiCreateTicket,
   apiListConsumerTickets,
+  apiSubmitReview,
+  apiSubmitStory,
   checkUrlForCode,
   type ConsumerTicketRow,
 } from "@/lib/api/tickets";
@@ -223,6 +225,30 @@ export function VenuePassModal({
     void create(false);
   }, [place, ticketId, isInfluencer, create]);
 
+  // Guest actions on a live ticket (MESITA-824). These call the REAL EFs —
+  // only the screenshot is a placeholder — so the ticket genuinely reaches
+  // `submitted` and staff can approve it on the check page.
+  const [acting, setActing] = useState<"story" | "review" | null>(null);
+  const runAction = useCallback(
+    async (kind: "story" | "review") => {
+      if (!ticketId) return;
+      setActing(kind);
+      setError(null);
+      try {
+        if (kind === "story") await apiSubmitStory(supabase, ticketId);
+        else await apiSubmitReview(supabase, ticketId);
+        await tickets.refresh();
+      } catch (err) {
+        setError(
+          err instanceof Error ? err.message : "Couldn't send that just yet.",
+        );
+      } finally {
+        setActing(null);
+      }
+    },
+    [ticketId, supabase, tickets],
+  );
+
   const [cancelling, setCancelling] = useState(false);
   const cancel = useCallback(async () => {
     if (!ticketId) return;
@@ -270,6 +296,43 @@ export function VenuePassModal({
   }, [place, supabase]);
 
   const rungs = useMemo(() => reachableSegments(classKey), [classKey]);
+
+  // Which proofs the guest can send RIGHT NOW. Story only when the ticket
+  // actually carries the rung (Influencer + the place offers it); Google
+  // review is universal on a live ticket. `done` covers submitted AND the
+  // verified states, so the button never invites a second submission.
+  const actionable = useMemo(() => {
+    if (!ticket || !ACTIVE_TICKET_STATUSES.has(ticket.status)) return [];
+    const settled = (v: string | null | undefined) =>
+      v != null && v !== "not_required" && v !== "pending";
+    const out: {
+      kind: "story" | "review";
+      label: string;
+      Icon: LucideIcon;
+      done: boolean;
+    }[] = [];
+    const storyOn =
+      ticket.story_status != null && ticket.story_status !== "not_required";
+    if (storyOn) {
+      out.push({
+        kind: "story",
+        label: settled(ticket.story_status)
+          ? "Story sent"
+          : "I posted my story",
+        Icon: Instagram,
+        done: settled(ticket.story_status),
+      });
+    }
+    out.push({
+      kind: "review",
+      label: settled(ticket.review_status)
+        ? "Google review sent"
+        : "I left a Google review",
+      Icon: Star,
+      done: settled(ticket.review_status),
+    });
+    return out;
+  }, [ticket]);
   const mineKey = segmentKeyForClass(classKey);
 
   const placeName = place?.name ?? "the place";
@@ -536,6 +599,30 @@ export function VenuePassModal({
                   </li>
                 );
               })}
+              {actionable.map((a) => (
+                <li key={`act-${a.kind}`}>
+                  <button
+                    type="button"
+                    disabled={acting !== null || a.done}
+                    onClick={() => void runAction(a.kind)}
+                    className={cn(
+                      "flex min-h-11 w-full items-center justify-center gap-2 rounded-xl px-3 text-[12.5px] font-bold transition active:scale-[0.99] disabled:opacity-60",
+                      a.done
+                        ? "bg-emerald-500/10 text-emerald-700"
+                        : "bg-secondary/10 text-secondary hover:bg-secondary/15",
+                    )}
+                  >
+                    {acting === a.kind ? (
+                      <Loader2 className="size-4 animate-spin" />
+                    ) : a.done ? (
+                      <BadgeCheck className="size-4" />
+                    ) : (
+                      <a.Icon className="size-4" />
+                    )}
+                    {a.label}
+                  </button>
+                </li>
+              ))}
             </ul>
             <p className="text-muted-foreground/80 border-border border-t px-3.5 py-2.5 text-[10.5px] leading-snug">
               You always keep your single best one — never added together. The
