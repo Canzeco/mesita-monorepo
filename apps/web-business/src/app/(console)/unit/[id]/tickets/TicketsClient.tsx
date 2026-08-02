@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Loader2, Plus, ReceiptText, RefreshCw, ScanLine } from "lucide-react";
+import { Loader2, ReceiptText, RefreshCw } from "lucide-react";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import {
   apiCancelTicket,
@@ -13,7 +13,6 @@ import { cn, errMsg } from "@/lib/utils";
 import { ERROR_BOX_CLASS } from "@/lib/ui-classes";
 import { EmptyState } from "@/components/shared";
 import { SubTabs, type SubTabItem } from "@/components/business/SubTabs";
-import { ScanTicketPanel } from "@/components/tickets/ScanTicketPanel";
 import { TicketCard } from "@/components/tickets/TicketCard";
 import {
   ticketNeedsBill,
@@ -48,10 +47,13 @@ export function TicketsClient({
   initialTickets: BusinessTicket[];
 }) {
   const supabase = useBrowserSupabase();
+  // Tickets v2 (MESITA-806): staff-initiated creation retired — guests
+  // create their own tickets in the consumer app and staff scan the ticket
+  // QR (mesita.ai/check/<code>). The console keeps the list, the bill form
+  // (fallback), Paid received, and Cancel.
   const [tickets, setTickets] = useState(initialTickets);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [scanOpen, setScanOpen] = useState(false);
   const [filter, setFilter] = useState<TicketFilter>("create");
 
   const counts = useMemo(() => {
@@ -96,7 +98,6 @@ export function TicketsClient({
         limit: TICKET_LIST_LIMIT,
       });
       setTickets(rows);
-      if (message.includes("scanned")) setScanOpen(false);
     } catch (e) {
       setError(errMsg(e, "Updated but refresh failed."));
     } finally {
@@ -144,21 +145,10 @@ export function TicketsClient({
       />
 
       <div className="flex items-center gap-2">
-        <button
-          type="button"
-          onClick={() => setScanOpen((v) => !v)}
-          className={cn(
-            "bg-pink-gradient inline-flex h-11 flex-1 items-center justify-center gap-2 rounded-full text-sm font-semibold text-white shadow-sm transition hover:opacity-90",
-            scanOpen && "ring-primary/30 ring-2 ring-offset-2",
-          )}
-        >
-          {scanOpen ? (
-            <ScanLine className="h-4 w-4" strokeWidth={2.5} />
-          ) : (
-            <Plus className="h-4 w-4" strokeWidth={2.5} />
-          )}
-          {scanOpen ? "Scanning…" : "New ticket"}
-        </button>
+        <p className="text-muted-foreground flex-1 text-[12.5px] leading-snug">
+          Guests open their own tickets in the Mesita app — scan their ticket
+          QR with any phone camera to verify and bill on the check page.
+        </p>
         <button
           type="button"
           aria-label="Refresh tickets"
@@ -174,16 +164,6 @@ export function TicketsClient({
         </button>
       </div>
 
-      {scanOpen ? (
-        <ScanTicketPanel
-          projectId={projectId}
-          supabase={supabase}
-          onCreated={(msg) => void reloadTickets(msg)}
-          onError={setError}
-          onClose={() => setScanOpen(false)}
-        />
-      ) : null}
-
       {error ? (
         <p className={cn(ERROR_BOX_CLASS, "text-[13px] leading-snug")} role="alert">
           {error}
@@ -195,7 +175,7 @@ export function TicketsClient({
           <EmptyState
             icon={<ReceiptText className="text-muted-foreground/60 h-5 w-5" />}
             title="No tickets yet"
-            description="Tap New ticket to scan a guest code. You'll enter the bill on their row right after."
+            description="Guests start tickets from their Mesita app. Scan their ticket QR to verify and bill — new tickets also appear here."
             className="border-border/60 py-12"
           />
         ) : visibleTickets.length === 0 ? (
