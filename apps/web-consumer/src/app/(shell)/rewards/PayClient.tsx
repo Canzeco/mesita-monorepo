@@ -1,34 +1,33 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
-import { Plus, TicketX } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { MapPin, Plus, QrCode, Sparkles, TicketX } from "lucide-react";
 
-import { MyQrCard } from "@/components/consumer/MyQrCard";
-import { RewardProgramCard } from "@/components/consumer/RewardProgramCard";
-import { RewardsTopCards } from "@/components/consumer/RewardsTopCards";
+import { ContextStrip } from "@/components/consumer/rewards/ContextStrip";
 import { CheckTicketCard } from "@/components/consumer/rewards/CheckTicketCard";
 import { CreateTicketSheet } from "@/components/consumer/rewards/CreateTicketSheet";
 import { HistoryTicketCard } from "@/components/consumer/rewards/HistoryTicketCard";
+import { HowItWorksSheet } from "@/components/consumer/rewards/HowItWorksSheet";
+import { MemberRow } from "@/components/consumer/rewards/MemberRow";
+import { SavingsReveal } from "@/components/consumer/rewards/SavingsReveal";
 import { TicketCardSkeleton } from "./PayTabLoading";
-import { apiCancelTicket } from "@/lib/api/tickets";
+import { apiCancelTicket, type ConsumerTicketRow } from "@/lib/api/tickets";
 import {
   computeRewardStats,
   useConsumerPayTickets,
 } from "@/lib/hooks/useConsumerPayTickets";
-import {
-  derivePassTicketFromRows,
-  useConsumerTickets,
-} from "@/lib/hooks/useConsumerTickets";
+import { useConsumerTickets } from "@/lib/hooks/useConsumerTickets";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { cn } from "@/lib/utils";
 
-// Rewards — Tickets v2 (MESITA-806): program card + passport, then the
-// TICKET-driven New/History tabs. New = live tickets (the QR is the ticket:
-// it encodes mesita.ai/check/<code>) + the create flow; History = closed
-// visits. Notifications stay underneath as the bill push/poll + the member
-// scorecard source; tickets are the state, notifications the signal.
+// Rewards is a WALLET (MESITA-808, redesign 1A): the first viewport answers
+// "what do I do at this table?" — the live ticket QR (or the Start hero +
+// pitch strip) owns THE slot; the context strip carries orientation; the
+// identity row replaces the retired passport card (2A: no second QR, ever);
+// all education lives in the How-it-works sheet. Motion budget = exactly two
+// beats: the verified pulse (CheckTicketCard) and the savings reveal here.
 
-type Tab = "new" | "history";
+type Tab = "ticket" | "history";
 
 export function PayClient({
   userId,
@@ -42,19 +41,16 @@ export function PayClient({
   instagramHandle?: string | null;
 }) {
   const supabase = useBrowserSupabase();
-  const [tab, setTab] = useState<Tab>("new");
+  const [tab, setTab] = useState<Tab>("ticket");
   const [createOpen, setCreateOpen] = useState(false);
+  const [howOpen, setHowOpen] = useState(false);
 
   const tickets = useConsumerTickets(userId);
-  // Notification bundles still feed the passport's member scorecard.
+  // Notifications remain the scorecard + bill-poll source.
   const notifications = useConsumerPayTickets(userId);
   const stats = useMemo(
     () => computeRewardStats(notifications.bundles, notifications.ticketMetaById),
     [notifications.bundles, notifications.ticketMetaById],
-  );
-  const activeTicket = useMemo(
-    () => derivePassTicketFromRows(tickets.active),
-    [tickets.active],
   );
 
   const cancelTicket = useCallback(
@@ -65,25 +61,39 @@ export function PayClient({
     [supabase, tickets],
   );
 
+  // The paid beat (4A): when a ticket the guest was WATCHING (it was active)
+  // flips to revealed on a poll, hold it in THE slot as a savings reveal for
+  // a few seconds before it settles into History.
+  const [justPaid, setJustPaid] = useState<ConsumerTicketRow | null>(null);
+  const prevActiveIdsRef = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    if (tickets.status !== "ready") return;
+    const prev = prevActiveIdsRef.current;
+    const revealed = tickets.history.find(
+      (t) => t.status === "revealed" && prev.has(t.id),
+    );
+    prevActiveIdsRef.current = new Set(tickets.active.map((t) => t.id));
+    if (revealed) setJustPaid(revealed);
+  }, [tickets.status, tickets.active, tickets.history]);
+
   return (
-    <div className="scrollbar-hide flex h-full min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-4 pt-4 pb-6">
-      <RewardProgramCard />
+    <div className="scrollbar-hide flex h-full min-h-0 flex-1 flex-col gap-3.5 overflow-y-auto px-4 pt-4 pb-6">
+      <ContextStrip onOpenHow={() => setHowOpen(true)} />
 
-      <RewardsTopCards />
+      {/* THE slot — the wallet's object. */}
+      {justPaid ? (
+        <SavingsReveal
+          placeName={justPaid.place?.name ?? "the place"}
+          savedCents={justPaid.discount_cents ?? 0}
+          onDone={() => setJustPaid(null)}
+        />
+      ) : null}
 
-      <MyQrCard
-        code={code}
-        name={name}
-        instagramHandle={instagramHandle}
-        stats={stats}
-        activeTicket={activeTicket}
-      />
-
-      {/* New / History — the ticket tabs (saved/reservations two-pill pattern). */}
+      {/* Ticket / History pills (5A) — ≥44px hit areas (Pass 6). */}
       <div className="border-border bg-card grid grid-cols-2 gap-0 rounded-2xl border p-1">
         {(
           [
-            { id: "new", label: "New" },
+            { id: "ticket", label: "Ticket" },
             { id: "history", label: "History" },
           ] as const
         ).map((t) => (
@@ -93,18 +103,18 @@ export function PayClient({
             onClick={() => setTab(t.id)}
             aria-pressed={tab === t.id}
             className={cn(
-              "flex items-center justify-center gap-1.5 rounded-xl px-1 py-1.5 text-center text-[12px] font-medium transition",
+              "flex min-h-11 items-center justify-center gap-1.5 rounded-xl px-1 text-center text-[12.5px] font-semibold transition",
               tab === t.id
                 ? "bg-foreground text-background"
                 : "text-muted-foreground hover:text-foreground",
             )}
           >
             {t.label}
-            {t.id === "new" && tickets.active.length > 0 ? (
+            {t.id === "ticket" && tickets.active.length > 0 ? (
               <span
                 className={cn(
                   "rounded-full px-1.5 text-[10px] font-bold",
-                  tab === "new"
+                  tab === "ticket"
                     ? "bg-background/25 text-background"
                     : "bg-primary/10 text-primary",
                 )}
@@ -116,30 +126,27 @@ export function PayClient({
         ))}
       </div>
 
-      {tab === "new" ? (
+      {tab === "ticket" ? (
         <div className="flex flex-col gap-3">
-          <button
-            type="button"
-            onClick={() => setCreateOpen(true)}
-            className="bg-pink-gradient shadow-glow flex items-center justify-center gap-2 rounded-2xl px-4 py-3.5 text-sm font-semibold text-white transition active:scale-[0.99]"
-          >
-            <Plus className="size-4" strokeWidth={2.5} />
-            Start a ticket
-          </button>
-
           {tickets.status === "loading" ? (
             <TicketCardSkeleton />
           ) : tickets.status === "error" ? (
             <ErrorBox retry={tickets.retry} />
           ) : tickets.active.length === 0 ? (
-            <p className="text-muted-foreground px-2 py-4 text-center text-[12.5px] leading-relaxed">
-              No live ticket. Start one when you sit down — pick the place,
-              show the QR, and your discount applies at the bill.
-            </p>
+            <EmptyPitch onStart={() => setCreateOpen(true)} />
           ) : (
-            tickets.active.map((t) => (
-              <CheckTicketCard key={t.id} ticket={t} onCancel={cancelTicket} />
-            ))
+            <>
+              {tickets.active.map((t) => (
+                <CheckTicketCard key={t.id} ticket={t} onCancel={cancelTicket} />
+              ))}
+              <button
+                type="button"
+                onClick={() => setCreateOpen(true)}
+                className="border-border text-muted-foreground hover:text-foreground flex min-h-11 items-center justify-center gap-1.5 rounded-2xl border border-dashed text-[12.5px] font-semibold transition"
+              >
+                <Plus className="size-4" /> Another place
+              </button>
+            </>
           )}
         </div>
       ) : (
@@ -163,6 +170,15 @@ export function PayClient({
         </div>
       )}
 
+      {/* Identity row — the demoted passport (2A: text code, no QR). */}
+      <MemberRow code={code} name={name} instagramHandle={instagramHandle} />
+
+      <HowItWorksSheet
+        open={howOpen}
+        onClose={() => setHowOpen(false)}
+        stats={stats}
+      />
+
       <CreateTicketSheet
         // Remount per open: fresh state without a reset effect (React 19
         // set-state-in-effect rule).
@@ -171,9 +187,44 @@ export function PayClient({
         onClose={() => setCreateOpen(false)}
         onCreated={async () => {
           await tickets.refresh();
-          setTab("new");
+          setTab("ticket");
         }}
       />
+    </div>
+  );
+}
+
+// The empty state IS the pitch (3A): the three-step story plus the one
+// gradient hero this page is allowed when no ticket is live.
+function EmptyPitch({ onStart }: { onStart: () => void }) {
+  return (
+    <div className="flex flex-col gap-3">
+      <div className="border-border bg-card grid grid-cols-3 gap-1 rounded-2xl border px-3 py-4">
+        <PitchStep icon={<MapPin className="size-[18px]" />} label="Pick the place" />
+        <PitchStep icon={<QrCode className="size-[18px]" />} label="Show your QR" />
+        <PitchStep icon={<Sparkles className="size-[18px]" />} label="Pay less" />
+      </div>
+      <button
+        type="button"
+        onClick={onStart}
+        className="bg-pink-gradient shadow-glow flex min-h-12 items-center justify-center gap-2 rounded-2xl px-4 text-sm font-semibold text-white transition active:scale-[0.99]"
+      >
+        <Plus className="size-4" strokeWidth={2.5} />
+        Start a ticket
+      </button>
+    </div>
+  );
+}
+
+function PitchStep({ icon, label }: { icon: React.ReactNode; label: string }) {
+  return (
+    <div className="flex flex-col items-center gap-1.5 text-center">
+      <span className="bg-secondary/10 text-secondary grid size-9 place-items-center rounded-xl">
+        {icon}
+      </span>
+      <span className="text-foreground text-[11px] leading-tight font-semibold">
+        {label}
+      </span>
     </div>
   );
 }

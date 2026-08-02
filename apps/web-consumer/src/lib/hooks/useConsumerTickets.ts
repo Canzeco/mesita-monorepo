@@ -7,7 +7,6 @@ import {
   apiListConsumerTickets,
   type ConsumerTicketRow,
 } from "@/lib/api/tickets";
-import type { PassTicketView } from "@/lib/hooks/useConsumerPayTickets";
 import { usePayNotificationPoll } from "@/lib/hooks/usePayNotificationPoll";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 
@@ -77,28 +76,4 @@ export function useConsumerTickets(userId: string): ConsumerTicketsState {
   }, [rows]);
 
   return { active, history, status, refresh, retry };
-}
-
-// Story lifecycle → the one line the pass needs (ticket-driven twin of the
-// old notification-derived derivePassTicket).
-const STORY_PENDING_LABEL: Record<string, string> = {
-  pending: "Post your story to unlock it",
-  submitted: "Story sent — waiting on the place",
-  ai_rejected: "Story wasn't accepted — ask the staff",
-  staff_rejected: "Story wasn't accepted — ask the staff",
-};
-
-export function derivePassTicketFromRows(
-  active: ConsumerTicketRow[],
-): PassTicketView | null {
-  const t = active[0];
-  if (!t) return null;
-  return {
-    ticketId: t.id,
-    placeName: t.place?.name ?? "Partner place",
-    discountPercent: t.discount_percent,
-    pendingLabel: t.story_status
-      ? (STORY_PENDING_LABEL[t.story_status] ?? null)
-      : null,
-  };
 }

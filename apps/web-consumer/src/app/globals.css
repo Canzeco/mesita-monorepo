@@ -313,3 +313,29 @@
     @apply border-secondary/20 from-secondary/12 to-accent/8 flex items-center gap-3 rounded-2xl border bg-gradient-to-br px-3 py-2.5;
   }
 }
+
+/* Verified pulse — the Tickets-v2 scan handshake (MESITA-808, motion budget
+   4A): one emerald ring sweep when the waiter first opens the check page.
+   Fires once from CheckTicketCard; the savings count-up in SavingsReveal is
+   the ONLY other motion on the Rewards page. */
+@keyframes verified-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(5, 150, 105, 0.45);
+  }
+  70% {
+    box-shadow: 0 0 0 14px rgba(5, 150, 105, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(5, 150, 105, 0);
+  }
+}
+
+@utility animate-verified-pulse {
+  animation: verified-pulse 0.7s ease-out 2;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-verified-pulse {
+    animation: none;
+  }
+}
