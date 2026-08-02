@@ -212,7 +212,9 @@ Deno.serve(async (req) => {
         check_subtotal_cents: update.data.check_subtotal_cents,
         discount_percent: update.data.discount_percent,
         discount_cents: update.data.discount_cents,
-        amount_due_cents: update.data.total_cents,
+        // total_cents is the pre-discount bill; the snapshot carries the
+        // real amount to charge.
+        amount_due_cents: snap.amountDueCents,
         reward_cap_mxn: capPesos ?? null,
       },
       currency: update.data.currency ?? "MXN",

@@ -136,7 +136,10 @@ export function CheckTicketCard({
               className="font-display mt-0.5 font-bold text-white"
               style={{ fontSize: 24 }}
             >
-              {formatCurrency(ticket.total_cents ?? 0)}
+              {/* total_cents is the PRE-discount bill; due = total − discount. */}
+              {formatCurrency(
+                Math.max(0, (ticket.total_cents ?? 0) - (ticket.discount_cents ?? 0)),
+              )}
             </Text>
             <Text className="mt-1 text-white/90" style={{ fontSize: 11 }}>
               to pay at the table
