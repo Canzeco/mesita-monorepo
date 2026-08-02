@@ -1,27 +1,36 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { CalendarCheck, Loader2, PhoneCall } from "lucide-react";
+import { useEffect, useState } from "react";
+import { CalendarCheck, CalendarClock, Loader2, PhoneCall } from "lucide-react";
 
 import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
 import {
   buildDateOptions,
+  firstOpenDate,
   ReservationDatePicker,
   ReservationPartyPicker,
   ReservationTimePicker,
+  resolveSlot,
 } from "@/components/consumer/reservation-pickers";
-import { apiCreateReservation } from "@/lib/api/reservations";
+import {
+  apiCreateReservation,
+  apiListReservations,
+  apiUpdateReservation,
+  type EFReservationRow,
+} from "@/lib/api/reservations";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { SHEET_BODY_CLASS, SHEET_TITLE_CLASS } from "@/lib/ui-classes";
-import { cn } from "@/lib/utils";
+import { cn, guestNoun } from "@/lib/utils";
+import { MX_OFFSET, venueDateTime } from "@/lib/venue-time";
 
 const DATE_WINDOW = 14; // two weeks of pills
 const DEFAULT_TIME = "20:00";
 const DEFAULT_PARTY = 2;
-// Mexico City is UTC-6 year-round (no DST since 2022). The picked slot is the
-// venue's wall-clock, so we stamp that offset — the agent reads the time back
+
+// MX_OFFSET (and everything else about the venue's clock) lives in
+// @/lib/venue-time — the single source of truth. The picked slot is the
+// venue's wall-clock, so we stamp that offset: the agent reads the time back
 // in America/Mexico_City and it matches what the guest chose.
-const MX_OFFSET = "-06:00";
 
 /**
  * Everything the sheet needs from a place: the project id it books against and
@@ -30,6 +39,12 @@ const MX_OFFSET = "-06:00";
  * without fetching the full place-detail payload.
  */
 export type ReservationSheetPlace = { id: string; name: string };
+
+// What to do when the guest already holds a live table here.
+//   null         → they haven't answered the banner yet; submit stays locked
+//   "another"    → book a second table (normal create flow)
+//   "reschedule" → move the existing ticket instead of creating a twin
+type DuplicateChoice = "another" | "reschedule";
 
 export function ReservationSheet({
   place,
@@ -41,20 +56,73 @@ export function ReservationSheet({
   onClose: () => void;
 }) {
   const supabase = useBrowserSupabase();
-  const dateOptions = useMemo(() => buildDateOptions(DATE_WINDOW), []);
 
-  const [date, setDate] = useState(dateOptions[0]?.iso ?? "");
-  const [time, setTime] = useState(DEFAULT_TIME);
+  // Recomputed every render (14 tiny objects) rather than memoised: the sheet
+  // can sit mounted across midnight, and a stale "Today" pill would offer
+  // slots that are a day gone.
+  const dateOptions = buildDateOptions(DATE_WINDOW);
+
+  const [dateChoice, setDateChoice] = useState("");
+  const [timeChoice, setTimeChoice] = useState(DEFAULT_TIME);
   const [party, setParty] = useState(DEFAULT_PARTY);
   const [notes, setNotes] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState(false);
 
+  // Duplicate guard: the caller's live booking at THIS place, if any.
+  const [checking, setChecking] = useState(false);
+  const [existing, setExisting] = useState<EFReservationRow | null>(null);
+  const [choice, setChoice] = useState<DuplicateChoice | null>(null);
+
+  // Selection is DERIVED, not stored: if the guest's pick has since passed (or
+  // they switched to today late at night), we fall through to the first slot
+  // that's still ahead of the venue's clock. No effect, nothing to desync.
+  const date =
+    dateOptions.find((d) => d.iso === dateChoice && !d.disabled)?.iso ??
+    firstOpenDate(dateOptions);
+  const time = resolveSlot(date, timeChoice);
+
   const chosen = dateOptions.find((d) => d.iso === date);
   const whenLabel = chosen
-    ? `${chosen.weekday === "Today" || chosen.weekday === "Tom." ? chosen.weekday : `${chosen.weekday} ${chosen.day}`} · ${time}`
-    : time;
+    ? `${chosen.weekday === "Today" || chosen.weekday === "Tom." ? chosen.weekday : `${chosen.weekday} ${chosen.day}`} · ${time ?? "—"}`
+    : (time ?? "—");
+
+  const rescheduling = choice === "reschedule" && existing !== null;
+  // A found duplicate locks submit until the guest answers the banner — the
+  // whole point is that a second table is never created silently.
+  const awaitingChoice = existing !== null && choice === null;
+
+  // Look for a live booking at this place whenever the sheet opens. `upcoming`
+  // is exactly "active" server-side: consumer-web-list-reservations filters to
+  // status pending|confirmed AND reserved_at >= now - 4h, so cancelled,
+  // declined, unreachable and long-gone tickets never come back.
+  useEffect(() => {
+    if (!open) return;
+    let cancelled = false;
+    (async () => {
+      setChecking(true);
+      try {
+        const { reservations } = await apiListReservations(supabase, {
+          scope: "upcoming",
+          limit: 100,
+        });
+        // place.id is places.id == projects.id, the same id the list EF
+        // stitches onto each row via attachPlaces.
+        const hit = reservations.find((r) => r.place?.id === place.id) ?? null;
+        if (!cancelled) setExisting(hit);
+      } catch {
+        // Fail OPEN: a flaky list read must not block someone from booking.
+        // Worst case is the pre-existing behaviour (a possible second ticket).
+        if (!cancelled) setExisting(null);
+      } finally {
+        if (!cancelled) setChecking(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [open, place.id, supabase]);
 
   function handleClose() {
     onClose();
@@ -63,40 +131,85 @@ export function ReservationSheet({
     setDone(false);
     setError(null);
     setSubmitting(false);
+    setChoice(null);
+    setExisting(null);
+  }
+
+  /** Move the existing table: seed the pickers from what's already booked. */
+  function chooseReschedule() {
+    if (!existing) return;
+    const seed = venueDateTime(existing.reserved_at);
+    if (seed) {
+      setDateChoice(seed.date);
+      setTimeChoice(seed.time);
+    }
+    setParty(existing.party_size);
+    if (existing.notes) setNotes(existing.notes);
+    setChoice("reschedule");
   }
 
   async function submit() {
-    if (!date || submitting) return;
+    if (!date || !time || submitting || checking || awaitingChoice) return;
     setSubmitting(true);
     setError(null);
     try {
-      await apiCreateReservation(supabase, {
-        projectId: place.id,
-        reservedAt: `${date}T${time}:00${MX_OFFSET}`,
-        partySize: party,
-        notes,
-      });
+      const reservedAt = `${date}T${time}:00${MX_OFFSET}`;
+      if (rescheduling) {
+        await apiUpdateReservation(supabase, {
+          reservationId: existing.id,
+          reservedAt,
+          partySize: party,
+          notes,
+        });
+      } else {
+        await apiCreateReservation(supabase, {
+          projectId: place.id,
+          reservedAt,
+          partySize: party,
+          notes,
+        });
+      }
       setDone(true);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Couldn't request the reservation.");
+      setError(
+        e instanceof Error ? e.message : "Couldn't request the reservation.",
+      );
     } finally {
       setSubmitting(false);
     }
   }
 
+  const submitLabel = checking
+    ? "Checking your reservations…"
+    : awaitingChoice
+      ? "Choose an option above"
+      : !time
+        ? "No times left"
+        : rescheduling
+          ? `Move my table · ${whenLabel}`
+          : `Request reservation · ${whenLabel}`;
+
   return (
-    <LocalSheet open={open} onClose={handleClose} ariaLabel={`Reserve at ${place.name}`}>
+    <LocalSheet
+      open={open}
+      onClose={handleClose}
+      ariaLabel={`Reserve at ${place.name}`}
+    >
       <div className={SHEET_BODY_CLASS}>
         {done ? (
           <div className="py-2 text-center">
             <span className="bg-primary/10 text-primary mx-auto flex h-14 w-14 items-center justify-center rounded-full">
               <PhoneCall className="h-6 w-6" />
             </span>
-            <h2 className={cn(SHEET_TITLE_CLASS, "mt-4")}>Reservation requested</h2>
+            <h2 className={cn(SHEET_TITLE_CLASS, "mt-4")}>
+              {rescheduling ? "Reservation updated" : "Reservation requested"}
+            </h2>
             <p className="text-muted-foreground mx-auto mt-2 max-w-xs text-[13px] leading-relaxed">
-              Mesita is calling <span className="text-foreground font-medium">{place.name}</span> to
-              book your table for {party} on {whenLabel}. We&apos;ll update this reservation once the
-              place confirms.
+              Mesita is calling{" "}
+              <span className="text-foreground font-medium">{place.name}</span>{" "}
+              to {rescheduling ? "move" : "book"} your table for {party} on{" "}
+              {whenLabel}. We&apos;ll update this reservation once the place
+              confirms.
             </p>
             <button
               type="button"
@@ -113,15 +226,35 @@ export function ReservationSheet({
                 <CalendarCheck className="h-5 w-5" />
               </span>
               <div className="min-w-0">
-                <h2 className={SHEET_TITLE_CLASS}>Reserve a table</h2>
+                <h2 className={SHEET_TITLE_CLASS}>
+                  {rescheduling ? "Move your table" : "Reserve a table"}
+                </h2>
                 <p className="text-muted-foreground truncate text-[12px]">
                   {place.name} · Mesita calls the place for you
                 </p>
               </div>
             </div>
 
-            <ReservationDatePicker options={dateOptions} value={date} onChange={setDate} />
-            <ReservationTimePicker value={time} onChange={setTime} />
+            {existing && (
+              <DuplicateBanner
+                existing={existing}
+                choice={choice}
+                onReschedule={chooseReschedule}
+                onAnother={() => setChoice("another")}
+                onReset={() => setChoice(null)}
+              />
+            )}
+
+            <ReservationDatePicker
+              options={dateOptions}
+              value={date}
+              onChange={setDateChoice}
+            />
+            <ReservationTimePicker
+              value={time}
+              onChange={setTimeChoice}
+              date={date}
+            />
             <ReservationPartyPicker value={party} onChange={(u) => setParty(u)} />
 
             <div className="mt-4">
@@ -148,24 +281,97 @@ export function ReservationSheet({
             <button
               type="button"
               onClick={submit}
-              disabled={submitting || !date}
+              disabled={submitting || checking || awaitingChoice || !time}
               className="bg-primary text-primary-foreground mt-5 inline-flex h-11 w-full items-center justify-center gap-2 rounded-full text-sm font-semibold transition active:scale-[0.99] disabled:opacity-60"
             >
               {submitting ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin" />
-                  Requesting…
+                  {rescheduling ? "Updating…" : "Requesting…"}
                 </>
               ) : (
-                `Request reservation · ${whenLabel}`
+                submitLabel
               )}
             </button>
             <p className="text-muted-foreground mt-2 text-center text-[11px]">
-              Mesita&apos;s AI agent calls the place to book — you&apos;ll be notified.
+              Mesita&apos;s AI agent calls the place to book — you&apos;ll be
+              notified.
             </p>
           </>
         )}
       </div>
     </LocalSheet>
+  );
+}
+
+/**
+ * "You already have a table here." Shown inline above the pickers rather than
+ * as a blocking dialog: the guest keeps the whole form in view and just tells
+ * us which of the two things they meant.
+ */
+function DuplicateBanner({
+  existing,
+  choice,
+  onReschedule,
+  onAnother,
+  onReset,
+}: {
+  existing: EFReservationRow;
+  choice: DuplicateChoice | null;
+  onReschedule: () => void;
+  onAnother: () => void;
+  onReset: () => void;
+}) {
+  const seed = venueDateTime(existing.reserved_at);
+  const when = seed ? `${seed.date} · ${seed.time}` : "an upcoming slot";
+
+  return (
+    <div className="border-border bg-muted/50 mt-4 rounded-2xl border p-3">
+      <div className="flex items-start gap-2.5">
+        <span className="bg-primary/10 text-primary flex h-8 w-8 shrink-0 items-center justify-center rounded-full">
+          <CalendarClock className="h-4 w-4" />
+        </span>
+        <div className="min-w-0">
+          <p className="text-foreground text-[13px] font-semibold">
+            You already have a table here
+          </p>
+          <p className="text-muted-foreground mt-0.5 text-[12px] leading-snug">
+            {when} for {existing.party_size} {guestNoun(existing.party_size)}.
+          </p>
+        </div>
+      </div>
+
+      {choice === null ? (
+        <div className="mt-3 flex gap-2">
+          <button
+            type="button"
+            onClick={onReschedule}
+            className="bg-primary text-primary-foreground flex-1 rounded-full py-2 text-[12.5px] font-semibold transition active:scale-[0.99]"
+          >
+            Reschedule that one
+          </button>
+          <button
+            type="button"
+            onClick={onAnother}
+            className="border-border bg-card hover:bg-muted flex-1 rounded-full border py-2 text-[12.5px] font-semibold transition"
+          >
+            Make another
+          </button>
+        </div>
+      ) : (
+        <p className="text-muted-foreground mt-2 text-[12px]">
+          {choice === "reschedule"
+            ? "Moving your existing table."
+            : "Booking a second table here."}
+          <button
+            type="button"
+            onClick={onReset}
+            className="text-foreground ml-1.5 font-semibold underline underline-offset-2"
+          >
+            Change
+          </button>
+        </p>
+      )}
+    </div>
   );
 }

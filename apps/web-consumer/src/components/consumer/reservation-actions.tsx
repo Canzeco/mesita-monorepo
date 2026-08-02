@@ -10,9 +10,11 @@ import {
 } from "@/components/consumer/overlay/LocalOverlay";
 import {
   buildDateOptions,
+  firstOpenDate,
   ReservationDatePicker,
   ReservationPartyPicker,
   ReservationTimePicker,
+  resolveSlot,
 } from "@/components/consumer/reservation-pickers";
 import {
   apiCancelReservation,
@@ -24,6 +26,7 @@ import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { toast } from "@/lib/toast";
 import { ERROR_BOX_CLASS, SHEET_BODY_CLASS, SHEET_TITLE_CLASS } from "@/lib/ui-classes";
 import { cn, errMsg, guestNoun } from "@/lib/utils";
+import { MX_OFFSET, venueDateTime } from "@/lib/venue-time";
 
 // Action cluster for reservation detail. The two that MOVE the ticket —
 // reschedule and cancel — are live: each hits its consumer-web-* EF, and a
@@ -32,29 +35,15 @@ import { cn, errMsg, guestNoun } from "@/lib/utils";
 // and available actions update in place.
 
 const DATE_WINDOW = 14;
-const MX_OFFSET = "-06:00";
 
-// The venue's wall clock (CDMX) — the pickers speak local date + HH:mm.
-const TZ = "America/Mexico_City";
-
+// The venue's wall clock (CDMX) — the pickers speak local date + HH:mm, and
+// @/lib/venue-time owns the offset for the whole app.
 function localDate(iso: string | undefined): string {
-  if (!iso) return "";
-  return new Intl.DateTimeFormat("en-CA", {
-    timeZone: TZ,
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).format(new Date(iso));
+  return (iso ? venueDateTime(iso)?.date : "") ?? "";
 }
 
 function localTime(iso: string | undefined): string {
-  if (!iso) return "20:00";
-  return new Intl.DateTimeFormat("en-GB", {
-    timeZone: TZ,
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-  }).format(new Date(iso));
+  return (iso ? venueDateTime(iso)?.time : "20:00") ?? "20:00";
 }
 
 export function ReservationActions({
@@ -73,15 +62,23 @@ export function ReservationActions({
   const [error, setError] = useState<string | null>(null);
 
   // Seeded from the current booking so "just move it an hour" is two taps.
-  const [date, setDate] = useState(() => localDate(r.reservedAt));
-  const [time, setTime] = useState(() => localTime(r.reservedAt));
+  const [dateChoice, setDateChoice] = useState(() => localDate(r.reservedAt));
+  const [timeChoice, setTimeChoice] = useState(() => localTime(r.reservedAt));
   const [party, setParty] = useState(r.partySize);
+
+  // Derived, never stored: the seeded slot can already be behind the venue's
+  // clock (tonight's table, rescheduled inside the 4h grace), so fall through
+  // to the first slot that's still ahead of it.
+  const date =
+    dateOptions.find((d) => d.iso === dateChoice && !d.disabled)?.iso ??
+    firstOpenDate(dateOptions);
+  const time = resolveSlot(date, timeChoice);
 
   const canReschedule = r.canReschedule ?? false;
   const canCancel = r.canCancel ?? false;
 
   async function submitReschedule() {
-    if (busy || !date) return;
+    if (busy || !date || !time) return;
     setBusy(true);
     setError(null);
     try {
@@ -196,9 +193,13 @@ export function ReservationActions({
             <ReservationDatePicker
               options={dateOptions}
               value={date}
-              onChange={setDate}
+              onChange={setDateChoice}
             />
-            <ReservationTimePicker value={time} onChange={setTime} />
+            <ReservationTimePicker
+              value={time}
+              onChange={setTimeChoice}
+              date={date}
+            />
             <ReservationPartyPicker value={party} onChange={setParty} />
           </div>
 
@@ -207,13 +208,15 @@ export function ReservationActions({
           <button
             type="button"
             onClick={submitReschedule}
-            disabled={busy || !date}
+            disabled={busy || !date || !time}
             className="bg-primary text-primary-foreground mt-5 inline-flex h-11 w-full items-center justify-center gap-2 rounded-full text-sm font-semibold transition active:scale-[0.99] disabled:opacity-60"
           >
             {busy && <Loader2 className="h-4 w-4 animate-spin" />}
             {busy
               ? "Updating…"
-              : `Ask for ${party} ${guestNoun(party)} at ${time}`}
+              : !time
+                ? "No times left"
+                : `Ask for ${party} ${guestNoun(party)} at ${time}`}
           </button>
         </div>
       </LocalSheet>

@@ -55,6 +55,13 @@ Deno.serve(async (req) => {
   if (Number.isNaN(reservedAt.getTime())) {
     return json({ ok: false, error: "reserved_at must be a valid ISO 8601 timestamp" }, 400);
   }
+  // A past slot must never reach the Booker — it would phone a venue to ask for
+  // a table that has already come and gone. The clients block past slots in the
+  // picker, but this is the real gate: consumer-web-update-reservation has
+  // always rejected past instants and create silently did not.
+  if (reservedAt.getTime() < Date.now()) {
+    return json({ ok: false, error: "Pick a time in the future." }, 400);
+  }
   const partySize = Math.trunc(Number(body.party_size));
   if (!Number.isFinite(partySize) || partySize < 1 || partySize > 50) {
     return json({ ok: false, error: "party_size must be 1..50" }, 400);
