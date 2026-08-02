@@ -69,6 +69,27 @@ Deno.serve(async (req) => {
 
   const admin = adminClient(envRes.env);
 
+  // ── The place must still exist ──────────────────────────────────────────
+  // Clients can hold a project_id that has since been deleted — the swipe deck
+  // persists its card list in sessionStorage, and an admin reset re-creates
+  // places under FRESH uuids. Without this check the insert reaches Postgres
+  // and the raw FK message ("violates foreign key constraint
+  // reservations_project_id_fkey") is what the guest reads. Fail clean, and
+  // give the client a code it can act on.
+  const { data: projectRow, error: projectErr } = await admin
+    .from("projects")
+    .select("id")
+    .eq("id", body.project_id)
+    .maybeSingle();
+  if (projectErr) return json({ ok: false, error: projectErr.message }, 500);
+  if (!projectRow) {
+    return json({
+      ok: false,
+      code: "place_not_found",
+      error: "That place isn't available anymore. Refresh to get the latest list.",
+    }, 404);
+  }
+
   // ── Monthly reservation cap (Premium perk: "more reservations") ─────────
   // Free guests are limited per calendar month; Premium is unlimited (null
   // limit). The limit lives on the plans lookup so it's tunable
