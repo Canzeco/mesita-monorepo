@@ -13,7 +13,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
-import { ChevronRight, Lock, MapPin, Store } from "lucide-react";
+import { ChevronRight, Lock, MapPin, QrCode, Store } from "lucide-react";
 
 import { apiFetchPublicPlaces, type Place } from "@/lib/api/places";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
@@ -204,7 +204,19 @@ function PlaceRow({
           Open
         </span>
       ) : (
-        <ChevronRight className="text-muted-foreground size-4 shrink-0" />
+        <>
+          {/* Ghost QR — the row's promise, made visible. A dashed placeholder
+              reads "your QR comes from here, tap it", which a bare chevron
+              never says. Deliberately NOT a scannable code: nothing exists
+              until the ticket is created. */}
+          <span
+            aria-hidden="true"
+            className="border-primary/30 bg-primary/5 text-primary/70 grid size-9 shrink-0 place-items-center rounded-lg border border-dashed"
+          >
+            <QrCode className="size-[18px]" />
+          </span>
+          <ChevronRight className="text-muted-foreground size-4 shrink-0" />
+        </>
       )}
     </>
   );

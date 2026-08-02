@@ -10,7 +10,7 @@
 // Partners sort first.
 
 import { Image } from 'expo-image';
-import { ChevronRight, Lock, MapPin, Store } from 'lucide-react-native';
+import { ChevronRight, Lock, MapPin, QrCode, Store } from 'lucide-react-native';
 import { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 
@@ -205,7 +205,20 @@ function PlaceRow({
           </Text>
         </View>
       ) : (
-        <ChevronRight size={16} color="#775254" />
+        <>
+          {/* Ghost QR — the row's promise, made visible. A dashed placeholder
+              reads "your QR comes from here, tap it", which a bare chevron
+              never says. Deliberately NOT a scannable code: nothing exists
+              until the ticket is created. */}
+          <View
+            accessibilityElementsHidden
+            importantForAccessibility="no-hide-descendants"
+            className="h-9 w-9 items-center justify-center rounded-lg border border-dashed border-primary/30 bg-primary/5"
+          >
+            <QrCode size={18} color="#cf0360" opacity={0.7} />
+          </View>
+          <ChevronRight size={16} color="#775254" />
+        </>
       )}
     </>
   );
