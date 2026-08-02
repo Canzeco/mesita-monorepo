@@ -7,13 +7,29 @@
 // This is NOT a live Notion crawl (EF has no Notion secret). Keep this brief
 // short (full-prompt KB), Spanish (es-mx voice), and free of per-ticket facts
 // — those ride dynamic variables + webhook tools.
+//
+// Every fleet agent carries EXACTLY ONE KB doc, named `<key>-kb-v<version>`
+// (a1-kb-v1 …) so the console shows owner + content version at a glance. Bump
+// RESERVATIONIST_KB_VERSION when the text changes materially — the sync
+// renames each doc in place (ids persist in agents_config.knowledgeDocIds).
 
-/** Stable ElevenLabs KB document name — sync finds/creates by this. */
-export const RESERVATIONIST_KB_DOC_NAME =
+import type { FleetAgentKey } from "./reservationist-fleet.ts";
+
+/** Content version — rides in every doc name (a1-kb-v1 → bump → a1-kb-v2). */
+export const RESERVATIONIST_KB_VERSION = 1;
+
+/** Per-agent ElevenLabs KB doc name — sync finds/creates/renames by this. */
+export function reservationistKbDocName(key: FleetAgentKey): string {
+  return `${key}-kb-v${RESERVATIONIST_KB_VERSION}`;
+}
+
+/** Pre-fleet SHARED doc name — knowledge mode deletes it once detached. */
+export const LEGACY_RESERVATIONIST_KB_DOC_NAME =
   "mesita-reservationist-context (es-mx)";
 
 /**
- * Agent-facing brief. usage_mode=prompt on attach — keep under ~8k chars.
+ * Agent-facing brief (one text for the whole fleet). usage_mode=prompt on
+ * attach — keep under ~8k chars.
  */
 export const RESERVATIONIST_KB_TEXT = [
   `# Mesita — contexto para el Reservationist (es-MX)`,
