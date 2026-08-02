@@ -56,7 +56,11 @@ whole system.
 Each endpoint encodes exactly one authorized caller from a **closed set**. The name
 *is* the access-control contract.
 
-- **Natural callers** (a real audience): `admin` · `business` · `consumer` · `staff`.
+- **Natural callers** (a real audience): `admin` · `business` · `consumer` · `staff`
+  · `check` (Tickets v2, MESITA-806 — the PUBLIC check page at
+  `mesita.ai/check/<code>`; audience = whoever holds a freshly scanned ticket QR,
+  nominally staff. `check-web-*` EFs are `verify_jwt=false`: the 128-bit
+  `tickets.check_code` is the whole authentication — see `_shared/ticket-check.ts`).
 - **Origin** segment: usually `web` (e.g. `consumer-web-get-profile`).
 - **Artificial callers** (machine origins): `supabase-cron-*` (the Enricher
   pipeline), `supabase-edgefunc-*` (internal EF→EF, gated by `X-Internal-Caller`),
