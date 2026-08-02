@@ -39,7 +39,7 @@ export function ManualPriorityCard({ place }: { place: AdminPlace }) {
       subtitle="Your thumb on the scale for THIS place — an operator priority in [0,1] that multiplies both Lineup lanes (Organic · Inorganic). Saving moves Swipe & Map live. Default 0.1; raise it to surface the place."
     >
       <div className="mt-2 flex items-baseline justify-between gap-3">
-        <GroupLabel>Priority · multiplies all three lanes</GroupLabel>
+        <GroupLabel>Priority · multiplies both lanes</GroupLabel>
         <span className="font-display text-2xl font-semibold tabular-nums">{mp.toFixed(2)}</span>
       </div>
       <input

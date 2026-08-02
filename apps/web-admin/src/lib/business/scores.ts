@@ -1,7 +1,7 @@
-// Recommendation Scores v11 — the model behind Swipe · Map · Memo.
-// Master spec: Notion 🎲 Lineup (blob v11, 2026-07-21).
+// Recommendation Scores v12 — the model behind Swipe · Map · Memo.
+// Master spec: Notion 🎲 Lineup (blob v12 — see ScoringSettings.v below).
 //
-// FIVE SUBSCORES → THREE LANES → ONE FINAL DECK.
+// SIX SUBSCORES → TWO LANES → ONE FINAL DECK.
 //
 //   EM  Embeddings Match     [0,1]  cosine(place vector, consumer+intent
 //                                   vector), clamped max(0, cos). Encoder:
@@ -27,14 +27,17 @@
 //                                   pure merit) · 5 → near-total chaos.
 //                                   Higher control never changes WHO is
 //                                   luckiest, only how much luck beats merit.
+//   MP  Manual Priority       [0,1]  the operator's thumb on the scale for ONE
+//                                   place (places.manual_priority, default
+//                                   0.1) — it multiplies BOTH lanes, trailing
+//                                   each formula as the last gate applied.
 //
 // Every subscore lands in [0,1], so a lane score (the product of its active
 // subscores) is itself in [0,1].
 //
 //   lane        score                    merit source
-//   Organic     EM · SM · GP · XX        earned (Google)
-//   Inorganic   EM · SM · RP · XX        bought (Rewards)
-//   Hybrid      EM · SM · GP · RP · XX   both
+//   Organic     EM · SM · GP · MP · XX   earned (Google)
+//   Inorganic   EM · SM · RP · MP · XX   bought (Rewards)
 //
 // EM and SM MULTIPLY — never blend (decision 2026-07-16): a 50/50 average
 // would be compensatory, letting great vibes rescue a closed or cross-town
@@ -49,11 +52,11 @@
 // (keep the FIRST occurrence). On a duplicate, stay on the CURRENT lane and pull its next
 // card before rotating (MESITA-717 — skipping the turn starved Inorganic
 // when its top cards already landed from Organic). NO backfill: the final
-// deck is ≤ N_O + N_I + N_H and shrinks as lanes agree.
+// deck is ≤ N_O + N_I and shrinks as lanes agree.
 //
-// ENGINES ARE CONTAINERS, not formulas: Swipe and Map compose the three
+// ENGINES ARE CONTAINERS, not formulas: Swipe and Map compose the two
 // lanes exactly as above and differ only in intent source (taste embedding;
-// + viewport). Memo is free/dynamic — indexes + RAG, decomposing the five
+// + viewport). Memo is free/dynamic — indexes + RAG, decomposing the six
 // subscores however the question needs.
 //
 // ── SM = where × when × what ───────────────────────────────────────────
@@ -547,7 +550,6 @@ export function unitDraw(placeId: string, laneId: LaneId, roll: number): number 
 
 // ── THE FINAL DECK — two lanes, round-robin, dedupe, no backfill ──────
 
-/** Shared lane length N — every lane contributes up to N cards. */
 /** Per-lane deck counts — how many cards each lane may contribute
  * (MESITA-659). 0 turns a lane off (e.g. no paid cards). */
 export type LaneCounts = Record<LaneId, number>;
@@ -585,12 +587,12 @@ type LaneFill = {
 export type FinalDeck = {
   /** Each lane's top-N as generated — including cards later merged away. */
   lanes: Record<LaneId, DeckSlot[]>;
-  /** The merged deck, in rotation order. ≤ N_O + N_I + N_H. */
+  /** The merged deck, in rotation order. ≤ N_O + N_I. */
   slots: DeckSlot[];
   fills: Record<LaneId, LaneFill>;
 };
 
-/** One place's three lane scores. */
+/** One place's per-lane scores. */
 export type DeckCandidate = { id: string; scores: Record<LaneId, number> };
 
 /**

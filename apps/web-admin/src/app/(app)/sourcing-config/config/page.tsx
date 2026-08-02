@@ -1,17 +1,7 @@
-import { getSourcingConfig } from "../actions";
-import { SourcingConfigClient } from "../SourcingConfigClient";
-import { DEFAULT_CONFIG } from "../catalog";
+import { redirect } from "next/navigation";
 
-// Sourcing Config · Config — the per-channel eligibility policy table.
-export const dynamic = "force-dynamic";
-
-export default async function SourcingConfigPage() {
-  const res = await getSourcingConfig();
-  return (
-    <SourcingConfigClient
-      initialConfig={res.ok ? res.config : DEFAULT_CONFIG}
-      initialUpdatedAt={res.ok ? res.updatedAt : null}
-      loadError={res.ok ? null : res.error}
-    />
-  );
+// The Config/Playground tabs were retired 2026-08-01 — Sourcing Config is one
+// flat page now. Kept as a redirect so old links/bookmarks keep working.
+export default function LegacySourcingConfigTabRedirect() {
+  redirect("/sourcing-config");
 }
