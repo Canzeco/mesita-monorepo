@@ -60,15 +60,15 @@ async function runTool(
     case "list_saved_places": {
       const limit = clamp(args.limit, 1, 100, 50);
       const { data, error } = await admin
+        // saved_places.project_id → projects → places is two hops; a direct
+        // places embed 500s. Stitch instead (_shared/reservation-places.ts).
         .from("saved_places")
-        .select(
-          "id, created_at, place:places(id, slug, name, category, price_level, listing_type, photos, address, lat, lng)",
-        )
+        .select("id, created_at, project_id")
         .eq("consumer_id", consumerId)
         .order("created_at", { ascending: false })
         .limit(limit);
       if (error) return toolError(error.message);
-      return toolText({ ok: true, saved_places: data ?? [] });
+      return toolText({ ok: true, saved_places: await attachPlaces(admin, data ?? []) });
     }
 
     case "save_place": {
@@ -233,8 +233,9 @@ async function runTool(
             notes,
             status: "pending",
           })
+          // No places embed — two-hop FK (_shared/reservation-places.ts).
           .select(
-            "id, reference_code, reserved_at, party_size, status, notes, coupon_id, created_at, place:places(id, slug, name, category, photos, address)",
+            "id, reference_code, reserved_at, party_size, status, notes, coupon_id, created_at, project_id",
           )
           .single();
         if (!ins.error) {
@@ -246,9 +247,12 @@ async function runTool(
         }
       }
       if (!reservation) return toolError(insertError?.message ?? "insert failed");
+      const [reservationWithPlace] = await attachPlaces(admin, [
+        reservation as { project_id?: string | null },
+      ]);
       return toolText({
         ok: true,
-        reservation,
+        reservation: reservationWithPlace ?? reservation,
         linked_coupon_id: coupon?.id ?? null,
       });
     }
@@ -257,9 +261,10 @@ async function runTool(
       const limit = clamp(args.limit, 1, 100, 50);
       const includeInactive = args.include_inactive === true;
       let q = admin
+        // coupons.project_id → projects → places is two hops; stitch instead.
         .from("coupons")
         .select(
-          "id, status, issued_at, redeemed_at, cancelled_at, expires_at, welcome_free_rate, welcome_premium_rate, free_rate, premium_rate, cap_cents, currency, place:places(id, slug, name, category, photos, address)",
+          "id, status, issued_at, redeemed_at, cancelled_at, expires_at, welcome_free_rate, welcome_premium_rate, free_rate, premium_rate, cap_cents, currency, project_id",
         )
         .eq("consumer_id", consumerId)
         .order("issued_at", { ascending: false })
@@ -267,7 +272,7 @@ async function runTool(
       if (!includeInactive) q = q.eq("status", "active");
       const { data, error } = await q;
       if (error) return toolError(error.message);
-      return toolText({ ok: true, coupons: data ?? [] });
+      return toolText({ ok: true, coupons: await attachPlaces(admin, data ?? []) });
     }
 
     default:

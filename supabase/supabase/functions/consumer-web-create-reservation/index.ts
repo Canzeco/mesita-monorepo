@@ -20,6 +20,7 @@ import { adminClient, getAuthedUser, readEFEnv } from "../_shared/auth.ts";
 import { getTierConfig } from "../_shared/membership.ts";
 import { invokeArtificialCaller } from "../_shared/internal.ts";
 import { generateReservationCode, isUniqueViolation } from "../_shared/reservation-code.ts";
+import { attachPlaces } from "../_shared/reservation-places.ts";
 
 type Body = {
   project_id?: string;
@@ -129,8 +130,13 @@ Deno.serve(async (req) => {
         notes: (body.notes ?? "").trim() || null,
         status: "pending",
       })
+      // NO `place:places(...)` embed here — reservations→places is a two-hop FK
+      // (reservations.project_id → projects.id → places.id), so PostgREST fails
+      // with "Could not find a relationship between 'reservations' and 'places'
+      // in the schema cache". Select project_id and stitch via attachPlaces,
+      // exactly like the list EFs (#518/#523).
       .select(
-        "id, reference_code, reserved_at, party_size, status, notes, coupon_id, created_at, place:places(id, slug, name, category, photos, address)",
+        "id, reference_code, reserved_at, party_size, status, notes, coupon_id, created_at, project_id",
       )
       .single();
     if (!ins.error) {
@@ -145,6 +151,11 @@ Deno.serve(async (req) => {
     return json({ ok: false, error: insertError?.message ?? "insert failed" }, 500);
   }
 
+  // Same flat `place` shape the clients already speak.
+  const [withPlace] = await attachPlaces(admin, [
+    reservation as { project_id?: string | null },
+  ]);
+
   // Attempt 1 is immediate: hand off to the Reservationist to phone the venue.
   // Best-effort — the reservation already exists, so a call-trigger failure must
   // NOT fail the request (the call EF returns 503 until ELEVENLABS_KEY is set).
@@ -157,7 +168,7 @@ Deno.serve(async (req) => {
 
   return json({
     ok: true,
-    reservation,
+    reservation: withPlace ?? reservation,
     linked_coupon_id: coupon?.id ?? null,
     call_triggered: call.ok,
   });
