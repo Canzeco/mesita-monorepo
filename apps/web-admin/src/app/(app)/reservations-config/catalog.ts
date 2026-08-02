@@ -48,6 +48,13 @@ export type ReservationsConfig = {
    * what the stored row says.
    */
   attempts: number;
+  /**
+   * TESTING ONLY. While on, `consumer-web-create-reservation` skips the
+   * per-class monthly reservation cap for EVERY consumer, so a tester can keep
+   * booking past the Standard limit. Off in any real run — it hides the exact
+   * paywall the Premium upsell depends on.
+   */
+  unlimitedReservations: boolean;
 };
 
 const CHANNEL_KEYS: ReservationChannel[] = ["phone", "whatsapp", "instagram"];
@@ -110,6 +117,7 @@ export const DEFAULT_CONFIG: ReservationsConfig = {
   respectAdminOverride: true,
   testCall: { ...TEST_CALL_SEED },
   attempts: ATTEMPTS,
+  unlimitedReservations: false,
 };
 
 function isChannel(v: unknown): v is ReservationChannel {
@@ -165,6 +173,7 @@ export function coerceConfig(raw: unknown): ReservationsConfig {
     },
     // Fixed by protocol — whatever an old row stored, the platform runs 2.
     attempts: ATTEMPTS,
+    unlimitedReservations: c.unlimitedReservations === true,
   };
 }
 

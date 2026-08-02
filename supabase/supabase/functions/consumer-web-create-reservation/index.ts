@@ -73,8 +73,20 @@ Deno.serve(async (req) => {
     .maybeSingle();
   if (consumerErr) return json({ ok: false, error: consumerErr.message }, 500);
 
+  // Admin testing switch (app_settings.reservations_config.unlimitedReservations)
+  // lifts the cap for EVERY consumer so a tester isn't blocked mid-run. Defaults
+  // off; the admin Reservations Config page owns it.
+  const { data: settingsRow } = await admin
+    .from("app_settings")
+    .select("reservations_config")
+    .eq("id", 1)
+    .maybeSingle();
+  const capLifted =
+    (settingsRow?.reservations_config as { unlimitedReservations?: unknown } | null)
+      ?.unlimitedReservations === true;
+
   const tier = await getTierConfig(admin, consumerRow?.class_key ?? "standard");
-  const monthlyLimit = tier?.monthly_reservation_limit ?? null;
+  const monthlyLimit = capLifted ? null : (tier?.monthly_reservation_limit ?? null);
   if (monthlyLimit != null) {
     const monthStart = new Date();
     monthStart.setUTCDate(1);
