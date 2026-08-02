@@ -1,6 +1,11 @@
 // Supabase Edge Function — consumer-web-submit-ticket-review
 //
 // Post-visit review (Food, Service, Ambiance, Value, Overall + comments).
+//
+// ONE review per account per place (MESITA-825) — NOT per ticket. The upsert
+// conflicts on (consumer_id, project_id), matching the unique constraint added
+// in 20260802232526, so a guest's second visit to the same place edits their
+// existing review rather than creating a duplicate.
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { corsPreflight, json, readJson } from "../_shared/http.ts";
@@ -103,7 +108,11 @@ Deno.serve(async (req) => {
         overall,
         comments,
       },
-      { onConflict: "ticket_id" },
+      // ONE review per account per place (MESITA-825). A repeat visit to the
+      // same place UPDATES the existing review instead of inserting a second
+      // one; ticket_id above is rewritten to the ticket it was last edited
+      // from, which is what the check page and notifications join on.
+      { onConflict: "consumer_id,project_id" },
     )
     .select("id")
     .single();
