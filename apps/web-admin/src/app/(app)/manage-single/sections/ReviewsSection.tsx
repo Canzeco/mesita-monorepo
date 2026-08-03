@@ -159,8 +159,8 @@ function mesitaOverall(v: MesitaVisitor): number {
   return (v.food + v.service + v.ambiance + v.value) / 4;
 }
 
-function RatingBar({ label, value }: { label: string; value: number }) {
-  const pct = Math.min(100, (value / 5) * 100);
+function RatingBar({ label, value }: { label: string; value: number | null }) {
+  const pct = value == null ? 0 : Math.min(100, (value / 5) * 100);
   return (
     <div className="flex items-center gap-2">
       <span className="text-muted-foreground w-14 shrink-0 truncate text-xs">
@@ -173,7 +173,7 @@ function RatingBar({ label, value }: { label: string; value: number }) {
         />
       </div>
       <span className="w-8 shrink-0 text-right text-xs font-semibold tabular-nums">
-        {value.toFixed(1)}
+        {value == null ? "—" : value.toFixed(1)}
       </span>
     </div>
   );
@@ -277,9 +277,6 @@ function ReviewSortChips({
 // long one with no way to expand.
 const REVIEW_CLAMP_CHARS = 220;
 
-// Rating shown when a place has no Mesita reviews yet (neutral placeholder).
-const DEFAULT_STARS = 5;
-
 function GoogleReviewCard({ review }: { review: GoogleReview }) {
   const [expanded, setExpanded] = useState(false);
   const clampable = review.quote.length > REVIEW_CLAMP_CHARS;
@@ -365,20 +362,24 @@ function HScroll({ children }: { children: React.ReactNode }) {
 }
 
 export function ReviewsSection({ place }: { place: AdminPlace }) {
+  // Ratings only exist once a guest has actually reviewed. These columns are
+  // null until then, and defaulting them to 5 rendered a fabricated "5.0
+  // OVERALL" badge on every unreviewed place — read as a real score, not a
+  // placeholder. null means "no score yet"; the card says so instead.
   const hasMesitaReviews = (place.mesita_review_count ?? 0) > 0;
-  const starOrDefault = (value: number | null | undefined) =>
-    hasMesitaReviews ? (value ?? DEFAULT_STARS) : DEFAULT_STARS;
-
-  const overall = starOrDefault(place.mesita_stars_overall);
-  const subRatings: Array<[string, number]> = [
-    ["Food", starOrDefault(place.mesita_stars_food)],
-    ["Service", starOrDefault(place.mesita_stars_service)],
-    ["Ambience", starOrDefault(place.mesita_stars_ambience)],
-    [
-      "Value",
-      starOrDefault(place.mesita_stars_value ?? place.mesita_stars_overall),
-    ],
-  ];
+  const overall = hasMesitaReviews ? (place.mesita_stars_overall ?? null) : null;
+  const subRatings: Array<[string, number | null]> | null = hasMesitaReviews
+    ? [
+        ["Food", place.mesita_stars_food ?? null],
+        ["Service", place.mesita_stars_service ?? null],
+        ["Ambience", place.mesita_stars_ambience ?? null],
+        // Value falls back to overall — a reviewed place always has one.
+        [
+          "Value",
+          place.mesita_stars_value ?? place.mesita_stars_overall ?? null,
+        ],
+      ]
+    : null;
 
   const googleReviews = useMemo(
     () => parseGoogleReviews(place.google_reviews),
@@ -452,21 +453,30 @@ export function ReviewsSection({ place }: { place: AdminPlace }) {
               <div className="bg-secondary/10 ring-secondary/20 flex h-20 w-20 shrink-0 flex-col items-center justify-center gap-1 rounded-2xl ring-1">
                 <div className="flex items-baseline gap-1">
                   <span className="text-2xl leading-none font-semibold tabular-nums">
-                    {overall.toFixed(1)}
+                    {overall == null ? "—" : overall.toFixed(1)}
                   </span>
-                  <Star
-                    className="h-3 w-3 fill-amber-400 text-amber-400"
-                    strokeWidth={0}
-                  />
+                  {overall != null ? (
+                    <Star
+                      className="h-3 w-3 fill-amber-400 text-amber-400"
+                      strokeWidth={0}
+                    />
+                  ) : null}
                 </div>
                 <span className="text-muted-foreground text-[9px] font-bold tracking-wider uppercase">
                   Overall
                 </span>
               </div>
               <div className="flex flex-1 flex-col gap-2">
-                {subRatings.map(([label, value]) => (
-                  <RatingBar key={label} label={label} value={value} />
-                ))}
+                {subRatings ? (
+                  subRatings.map(([label, value]) => (
+                    <RatingBar key={label} label={label} value={value} />
+                  ))
+                ) : (
+                  <p className="text-muted-foreground text-xs leading-snug">
+                    No Mesita reviews yet — ratings appear once a guest reviews
+                    this place.
+                  </p>
+                )}
               </div>
             </div>
           </div>
