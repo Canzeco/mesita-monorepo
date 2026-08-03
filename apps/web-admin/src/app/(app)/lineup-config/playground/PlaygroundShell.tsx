@@ -27,6 +27,7 @@ import {
   type DeckSlot,
   type FinalDeck,
   type GpParams,
+  type Lane,
   type LaneId,
   type SmParams,
 } from "@/lib/business/scores";
@@ -67,6 +68,11 @@ function fmtHour(h: number): string {
   const hh = Math.floor(h);
   const mm = Math.round((h - hh) * 60);
   return `${String(hh).padStart(2, "0")}:${String(mm).padStart(2, "0")}`;
+}
+
+/** Builds one Record<LaneId, T> by running `compute` over every lane. */
+function laneRecord<T>(compute: (lane: Lane) => T): Record<LaneId, T> {
+  return Object.fromEntries(LANES.map((l) => [l.id, compute(l)])) as Record<LaneId, T>;
 }
 
 type Run = {
@@ -155,18 +161,11 @@ export function PlaygroundShell() {
       });
       const rpVal = rpScore(placeStrategy, current.rp);
       const mp = p.manual_priority ?? DEFAULT_MANUAL_PRIORITY;
-      const draws = Object.fromEntries(
-        LANES.map((l) => [l.id, unitDraw(p.id, l.id, 1)]),
-      ) as Record<LaneId, number>;
-      const xxVals = Object.fromEntries(
-        LANES.map((l) => [l.id, xxScore(draws[l.id], xxControl)]),
-      ) as Record<LaneId, number>;
-      const laneScores = Object.fromEntries(
-        LANES.map((l) => [
-          l.id,
-          laneScore(l, { em, sm: smP.sm, gp: gpP.gp, rp: rpVal, xx: xxVals[l.id], mp }),
-        ]),
-      ) as Record<LaneId, number>;
+      const draws = laneRecord((l) => unitDraw(p.id, l.id, 1));
+      const xxVals = laneRecord((l) => xxScore(draws[l.id], xxControl));
+      const laneScores = laneRecord((l) =>
+        laneScore(l, { em, sm: smP.sm, gp: gpP.gp, rp: rpVal, xx: xxVals[l.id], mp }),
+      );
       parts.set(p.id, { em, placeDoc, placeVec, w, win, rel, smP, gpP, placeStrategy, rpVal, mp, draws, xxVals, laneScores });
       return { id: p.id, scores: laneScores };
     });

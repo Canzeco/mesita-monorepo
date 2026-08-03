@@ -41,11 +41,13 @@ import { SwipeExitStamp, SwipeTutorialOverlay } from "./swipe-deck-overlays";
 const SWIPE_THRESHOLD = 64;
 const SWIPE_VELOCITY = 0.35; // px/ms — a quick flick commits even with small displacement
 const MIN_FLICK_DISTANCE = 16;
+const MAX_FLICK_DURATION_MS = 250; // time since the last recorded move for a release to still count as a flick
 const EXIT_ANIMATION_MS = 300;
 const TUTORIAL_STORAGE_KEY = "mesita_swipe_tutorial_seen";
 const TUTORIAL_AUTO_DISMISS_MS = 5500;
 // How many upcoming cards' cover photos to pre-warm ahead of the active card.
 const PRELOAD_CARDS_AHEAD = 3;
+const DECISION_BADGE_THRESHOLD = 30; // px of drag before the Skip/Save badge lights up
 
 export function SwipeDeck({
   places,
@@ -283,14 +285,17 @@ function Deck({ places }: { places: Place[] }) {
     [isSaved, releaseCapture, resetGesture, router, setSaved, v],
   );
 
+  const isForeignPointer = useCallback((pointerId: number) => {
+    return (
+      activePointerIdRef.current != null &&
+      pointerId !== activePointerIdRef.current
+    );
+  }, []);
+
   const finishPointerGesture = useCallback(
     (el: HTMLElement | null, pointerId: number | null) => {
       if (!draggingRef.current) return;
-      if (
-        pointerId != null &&
-        activePointerIdRef.current != null &&
-        pointerId !== activePointerIdRef.current
-      ) {
+      if (pointerId != null && isForeignPointer(pointerId)) {
         return;
       }
 
@@ -312,7 +317,7 @@ function Deck({ places }: { places: Place[] }) {
         const isFlick =
           Math.abs(velocity) >= SWIPE_VELOCITY &&
           Math.abs(dx) >= MIN_FLICK_DISTANCE &&
-          dt < 250;
+          dt < MAX_FLICK_DURATION_MS;
 
         if (Math.abs(dx) > SWIPE_THRESHOLD || isFlick) {
           const dir =
@@ -324,7 +329,7 @@ function Deck({ places }: { places: Place[] }) {
 
       resetGesture();
     },
-    [beginExit, releaseCapture, resetGesture],
+    [beginExit, isForeignPointer, releaseCapture, resetGesture],
   );
 
   const restart = async () => {
@@ -387,12 +392,7 @@ function Deck({ places }: { places: Place[] }) {
 
   const onPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
     if (!draggingRef.current) return;
-    if (
-      activePointerIdRef.current != null &&
-      e.pointerId !== activePointerIdRef.current
-    ) {
-      return;
-    }
+    if (isForeignPointer(e.pointerId)) return;
     const dx = e.clientX - startRef.current.x;
     const dy = e.clientY - startRef.current.y;
     if (lockedRef.current == null) {
@@ -400,7 +400,7 @@ function Deck({ places }: { places: Place[] }) {
       const ady = Math.abs(dy);
       if (adx > 8 && adx > ady * 1.1) {
         lockedRef.current = "swipe";
-        (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+        e.currentTarget.setPointerCapture(e.pointerId);
       } else if (ady > 14 && ady > adx * 1.4) {
         lockedRef.current = "ignore";
       }
@@ -416,12 +416,7 @@ function Deck({ places }: { places: Place[] }) {
   };
 
   const onLostPointerCapture = (e: React.PointerEvent<HTMLDivElement>) => {
-    if (
-      activePointerIdRef.current != null &&
-      e.pointerId !== activePointerIdRef.current
-    ) {
-      return;
-    }
+    if (isForeignPointer(e.pointerId)) return;
     finishPointerGesture(e.currentTarget, e.pointerId);
   };
 
@@ -579,10 +574,16 @@ function Deck({ places }: { places: Place[] }) {
               className="absolute inset-0"
             />
 
-            <SwipeDecisionBadge side="left" active={dragX < -30}>
+            <SwipeDecisionBadge
+              side="left"
+              active={dragX < -DECISION_BADGE_THRESHOLD}
+            >
               Skip
             </SwipeDecisionBadge>
-            <SwipeDecisionBadge side="right" active={dragX > 30}>
+            <SwipeDecisionBadge
+              side="right"
+              active={dragX > DECISION_BADGE_THRESHOLD}
+            >
               Save
             </SwipeDecisionBadge>
           </div>

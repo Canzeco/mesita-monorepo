@@ -35,6 +35,7 @@ import { MX_OFFSET, venueDateTime } from "@/lib/venue-time";
 // and available actions update in place.
 
 const DATE_WINDOW = 14;
+const DEFAULT_TIME = "20:00";
 
 // The venue's wall clock (CDMX) — the pickers speak local date + HH:mm, and
 // @/lib/venue-time owns the offset for the whole app.
@@ -43,7 +44,7 @@ function localDate(iso: string | undefined): string {
 }
 
 function localTime(iso: string | undefined): string {
-  return (iso ? venueDateTime(iso)?.time : "20:00") ?? "20:00";
+  return (iso ? venueDateTime(iso)?.time : DEFAULT_TIME) ?? DEFAULT_TIME;
 }
 
 export function ReservationActions({

@@ -17,6 +17,7 @@ import {
   Pill,
   PillText,
 } from '@/components/discovery/discovery-filter-controls';
+import { COLORS } from '@/constants/brand';
 import { apiSuggestPlaces, type PlacePrediction } from '@/lib/api/place-search';
 import type { DiscoveryZone } from '@/lib/discovery-filters-engine';
 import { newSessionToken } from '@/lib/search-utils';
@@ -108,7 +109,10 @@ export function DiscoveryZoneField({
     <View className="gap-2">
       <View className="flex-row flex-wrap gap-1.5">
         <Pill active={zone === null} onClick={() => setDiscoveryZone(null)}>
-          <LocateFixed color={zone === null ? '#fff' : '#775254'} size={14} />
+          <LocateFixed
+            color={zone === null ? '#fff' : COLORS.mutedForeground}
+            size={14}
+          />
           <PillText active={zone === null}>Current location</PillText>
         </Pill>
         {zone ? (
@@ -144,7 +148,7 @@ export function DiscoveryZoneField({
           className="absolute left-3 z-10"
           style={{ top: 14 }}
         >
-          <Search color="#775254" size={16} />
+          <Search color={COLORS.mutedForeground} size={16} />
         </View>
         <TextInput
           value={query}
@@ -158,14 +162,14 @@ export function DiscoveryZoneField({
         {searching || query.length > 0 ? (
           <View className="absolute right-3" style={{ top: 12 }}>
             {searching ? (
-              <ActivityIndicator color="#fb2b7b" size="small" />
+              <ActivityIndicator color={COLORS.primary} size="small" />
             ) : (
               <Pressable
                 onPress={() => updateQuery('')}
                 accessibilityLabel="Clear search"
                 hitSlop={8}
               >
-                <X color="#775254" size={16} />
+                <X color={COLORS.mutedForeground} size={16} />
               </Pressable>
             )}
           </View>
@@ -192,7 +196,7 @@ export function DiscoveryZoneField({
                   resolvingId !== null ? 'opacity-60' : ''
                 }`}
               >
-                <MapPin color="#775254" size={16} />
+                <MapPin color={COLORS.mutedForeground} size={16} />
                 <View className="min-w-0 flex-1">
                   <Text
                     className="text-[13px] font-medium text-foreground"
@@ -210,7 +214,7 @@ export function DiscoveryZoneField({
                   ) : null}
                 </View>
                 {resolvingId === prediction.placeId ? (
-                  <ActivityIndicator color="#fb2b7b" size="small" />
+                  <ActivityIndicator color={COLORS.primary} size="small" />
                 ) : null}
               </Pressable>
             ))

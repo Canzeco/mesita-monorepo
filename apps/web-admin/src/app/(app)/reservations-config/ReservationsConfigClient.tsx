@@ -27,9 +27,9 @@ import { CHANNELS, looksLikePhone, type ReservationsConfig } from "./catalog";
 // WhatsApp + Instagram parked. Kept out of the UI (nothing to reorder with one
 // live channel) but written on every save so the Enricher never seeds a channel
 // the agent can't yet call.
-const PHONE_ONLY_CHANNELS = {
-  priority: ["phone", "whatsapp", "instagram"] as ReservationsConfig["priority"],
-  disabled: ["whatsapp", "instagram"] as ReservationsConfig["disabled"],
+const PHONE_ONLY_CHANNELS: Pick<ReservationsConfig, "priority" | "disabled"> = {
+  priority: ["phone", "whatsapp", "instagram"],
+  disabled: ["whatsapp", "instagram"],
 };
 
 const STEPS = [
@@ -96,7 +96,6 @@ export function ReservationsConfigClient({
       // Playground, kept so stored rows stay shape-stable.
       testCall: {
         ...cfg.testCall,
-        enabled: cfg.testCall.enabled,
         number: cfg.testCall.number.trim(),
       },
     };
