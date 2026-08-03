@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { CalendarCheck, CalendarClock, Loader2, PhoneCall } from "lucide-react";
 
-import { clearSwipeSnapshot } from "@/app/(shell)/discover/swipe/swipe-deck-storage";
+import { clearSwipeProgress } from "@/app/(shell)/discover/swipe/swipe-deck-storage";
 import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
 import {
   buildDateOptions,
@@ -192,7 +192,7 @@ export function ReservationSheet({
       // reset re-creates places under fresh uuids). Drop the snapshot so the
       // next mount refetches instead of re-offering the same dead card.
       if (/isn't available anymore|place_not_found/i.test(msg)) {
-        clearSwipeSnapshot();
+        clearSwipeProgress();
       }
       setError(msg || "Couldn't request the reservation.");
     } finally {

@@ -2,10 +2,9 @@
 //
 // Billing step after scan: attach the check subtotal to an open ticket and
 // snapshot the discount. The discount is applied right here, but the ticket
-// closes only when staff confirm payment (business-web-mark-ticket-paid):
-//   Type A (no story):  -> awaiting_payment_confirm
-//   Type B (with story): -> awaiting_story (then awaiting_payment_confirm)
-// The discounted bill is delivered to the consumer's Pay inbox either way.
+// closes only when staff confirm payment (business-web-mark-ticket-paid), so
+// billing always lands on awaiting_payment_confirm. The discounted bill is
+// delivered to the consumer's Pay inbox.
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { corsPreflight, json, readJson } from "../_shared/http.ts";
@@ -95,11 +94,6 @@ Deno.serve(async (req) => {
   }
 
   const kind = ticket.kind;
-  // Story is orthogonal to `kind` (enum is reservation|coupon) — the story
-  // requirement is carried by story_status, seeded at scan/create time.
-  const requiresStory = ticket.story_status != null &&
-    ticket.story_status !== "not_required";
-
   const placeRow = await admin
     .from("projects_view")
     .select(
@@ -161,18 +155,17 @@ Deno.serve(async (req) => {
   }
   const snap = billRes.snapshot;
 
-  // Type A goes straight to the staff payment-confirm gate; Type B waits for
-  // the story to verify first. Either way the ticket closes only when staff
-  // tap Paid received (business-web-mark-ticket-paid).
+  // v3 (MESITA-849): the bill never parks a ticket on a story — tasks are
+  // already settled by the time anyone bills. It must also NOT touch
+  // story_status: the old `pending` reset would wipe a self-verified story
+  // immediately after pricing with it. The ticket closes when staff confirm
+  // payment (business-web-mark-ticket-paid).
   const now = new Date().toISOString();
-  const storyStatus = requiresStory ? "pending" : "not_required";
-  const status = requiresStory ? "awaiting_story" : "awaiting_payment_confirm";
 
   const update = await admin
     .from("tickets")
     .update({
-      status,
-      story_status: storyStatus,
+      status: "awaiting_payment_confirm",
       check_subtotal_cents: snap.checkSubtotalCents,
       tip_cents: snap.tipCents,
       total_cents: snap.totalCents,

@@ -46,12 +46,14 @@ export function ProfileStat({
   label,
   star,
   ig,
+  fb,
   gift,
 }: {
   value: string;
   label: string;
   star?: boolean;
   ig?: boolean;
+  fb?: boolean;
   gift?: boolean;
 }) {
   return (
@@ -59,6 +61,7 @@ export function ProfileStat({
       <View className="flex-row items-center gap-0.5">
         {star ? <Star color="#f59e0b" fill="#f59e0b" size={12} /> : null}
         {ig ? <ChannelMark channel="instagram" size={12} color="#ec4899" /> : null}
+        {fb ? <ChannelMark channel="facebook" size={12} color="#2563eb" /> : null}
         {gift ? <Gift color="#0ea5e9" size={12} /> : null}
         <Text className="text-[17px] font-bold tabular-nums text-foreground">
           {value}
@@ -74,6 +77,9 @@ export function ProfileStat({
   );
 }
 
+// PARKED: the reward held the third stat slot until the row became the three
+// outside channels (Google · Instagram · Facebook). The reward still shows as
+// PromoMetaChip in the tag row below; keep this for a future slot.
 export function ProfileRewardStat({ place }: { place: PlaceDetail }) {
   const { consumerClass } = useAuth();
   const isElevated = isElevatedClass(consumerClass?.class ?? 'standard');

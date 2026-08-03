@@ -15,7 +15,6 @@ import { ProfileActions } from './ProfileActions';
 import {
   ProfileMetaChip,
   ProfilePhoto,
-  ProfileRewardStat,
   ProfileStat,
   PromoMetaChip,
 } from './profile-summary-parts';
@@ -30,6 +29,7 @@ export function ProfileSummary({
   const googleRating = formatRating(place.google.rating) ?? '—';
   const googleCount = formatCompactCount(place.google.count, false);
   const igFollowers = formatCompactCount(place.instagram.followers, false);
+  const fbFollowers = formatCompactCount(place.facebook.followers, false);
   const priceLabel = formatPlacePriceChip({
     priceRange: place.price_range,
     priceLevel: place.price_level,
@@ -55,7 +55,11 @@ export function ProfileSummary({
             label="Instagram"
             ig
           />
-          <ProfileRewardStat place={place} />
+          <ProfileStat
+            value={fbFollowers}
+            label="Facebook"
+            fb
+          />
         </View>
       </View>
 

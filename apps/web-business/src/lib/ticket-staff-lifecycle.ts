@@ -34,7 +34,12 @@ type StaffTicketProgressInput = Pick<
   "kind" | "status" | "story_status" | "check_subtotal_cents" | "total_cents"
 >;
 
-const STORY_VERIFIED = new Set<StoryStatus>(["ai_verified", "staff_verified"]);
+// `self_verified` is the v3 state; the rest is history.
+const STORY_VERIFIED = new Set<StoryStatus | string>([
+  "self_verified",
+  "ai_verified",
+  "staff_verified",
+]);
 
 // Legacy EF wire kinds (business-web-create-ticket contract). These are request
 // payload strings, NOT members of the regenerated DB `ticket_kind` enum
@@ -67,12 +72,15 @@ function ticketHasBill(input: StaffTicketProgressInput): boolean {
   return (input.total_cents ?? 0) > 0;
 }
 
+// v3 (MESITA-849): the guest's story is settled BEFORE the scan and staff
+// never rule on it, so it is not a staff step in either flow. The B rail keeps
+// its label so a with-story ticket still reads differently in the list.
 const STAFF_STEPS_BY_FLOW_TYPE: Record<
   TicketFlowType,
   StaffLifecycleStepId[]
 > = {
   A: ["scan", "bill", "pay", "done"],
-  B: ["scan", "bill", "story", "pay", "done"],
+  B: ["scan", "bill", "pay", "done"],
 };
 
 const STAFF_STEP_LABELS: Record<StaffLifecycleStepId, string> = {
@@ -86,7 +94,7 @@ const STAFF_STEP_LABELS: Record<StaffLifecycleStepId, string> = {
 const STAFF_STEP_HINTS: Record<StaffLifecycleStepId, string> = {
   scan: "Guest code scanned — bot validated and linked the visit.",
   bill: "Enter the subtotal and send the bill. The guest pays the discounted total at the table.",
-  story: "Guest posts IG story; confirm when the bot asks you to validate.",
+  story: "The guest posts and confirms their own story — nothing to approve.",
   pay: "Tap Paid received once the guest pays — that closes the ticket.",
   done: "Visit closed.",
 };
@@ -178,8 +186,6 @@ export function staffLifecycleFromTicket(
 
 export function staffStatusLabel(status: TicketStatus): string {
   switch (status) {
-    case "awaiting_story":
-      return "Awaiting story";
     case "awaiting_payment_confirm":
       return "Awaiting payment";
     case "revealed":
@@ -205,9 +211,6 @@ export function staffStatusTone(status: TicketStatus): string {
   if (status === "revealed") {
     return "bg-emerald-500/10 text-emerald-800";
   }
-  if (status === "awaiting_story") {
-    return "bg-violet-500/10 text-violet-800";
-  }
   if (status === "cancelled") {
     return "bg-muted text-muted-foreground";
   }
@@ -227,8 +230,6 @@ export function ticketNeedsBill(ticket: BusinessTicket): boolean {
 
 export function ticketCanCancel(ticket: BusinessTicket): boolean {
   return (
-    ticket.status === "open" ||
-    ticket.status === "awaiting_story" ||
-    ticket.status === "awaiting_payment_confirm"
+    ticket.status === "open" || ticket.status === "awaiting_payment_confirm"
   );
 }

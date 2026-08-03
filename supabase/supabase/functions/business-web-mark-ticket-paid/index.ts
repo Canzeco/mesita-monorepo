@@ -61,13 +61,7 @@ Deno.serve(async (req) => {
   }
   if (ticket.status !== "awaiting_payment_confirm") {
     return json(
-      {
-        ok: false,
-        error:
-          ticket.status === "awaiting_story"
-            ? "Confirm the guest's story before marking paid."
-            : `Cannot mark a ${ticket.status} ticket as paid.`,
-      },
+      { ok: false, error: `Cannot mark a ${ticket.status} ticket as paid.` },
       409,
     );
   }

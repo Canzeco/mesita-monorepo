@@ -34,7 +34,11 @@ import {
 } from "./swipe-deck-shells";
 import { ReservationSheet } from "@/components/consumer/place-detail/ReservationSheet";
 import { SwipeActionRow } from "./swipe-action-row";
-import { readSwipeSnapshot, writeSwipeSnapshot } from "./swipe-deck-storage";
+import {
+  clearSwipeProgress,
+  readSwipeProgress,
+  writeSwipeProgress,
+} from "./swipe-deck-storage";
 import { SwipeDecisionBadge } from "./swipe-decision-badge";
 import { SwipeExitStamp, SwipeTutorialOverlay } from "./swipe-deck-overlays";
 
@@ -86,11 +90,14 @@ function Deck({ places }: { places: Place[] }) {
   const pathname = usePathname();
   const supabase = useBrowserSupabase();
   const { isSaved, setSaved } = useSavedPlaces();
-  // Seed from the server-provided deck so the first client render matches the
-  // SSR HTML. The persisted snapshot is restored after mount (see below) —
-  // reading sessionStorage during render trips a hydration mismatch because
-  // the server has no storage to read.
+  // The server-provided deck is ALWAYS the source of truth for card content:
+  // every load re-runs Lineup, so an enrichment that landed since the last
+  // visit shows up immediately. Stored progress only hides cards already
+  // swiped (applied after mount, below) — it never supplies card data.
   const [runtimeDeck, setRuntimeDeck] = useState<Place[]>(places);
+  // Ids swiped past this session. Seeded empty so the hydration render matches
+  // the server's, then filled from sessionStorage after mount.
+  const [seenIds, setSeenIds] = useState<string[]>([]);
   const [restarting, setRestarting] = useState(false);
   const [idx, setIdx] = useState(0);
   const [dragX, setDragX] = useState(0);
@@ -117,31 +124,40 @@ function Deck({ places }: { places: Place[] }) {
   const activePointerIdRef = useRef<number | null>(null);
   const advanceTimerRef = useRef<number | null>(null);
 
-  // Restore a persisted deck + position AFTER mount (client-only), so the
-  // hydration render stays identical to the server's.
+  // Restore progress AFTER mount (client-only), so the hydration render stays
+  // identical to the server's.
   useEffect(() => {
-    const snap = readSwipeSnapshot();
-    if (snap?.runtimeDeck?.length) {
+    const progress = readSwipeProgress();
+    if (progress?.seenIds.length) {
       // Post-mount setState is intentional: the server has no sessionStorage,
       // so restoring here (rather than during render) is what keeps SSR and
       // hydration identical.
       /* eslint-disable react-hooks/set-state-in-effect */
-      setRuntimeDeck(snap.runtimeDeck);
-      setIdx(Math.min(snap.idx, snap.runtimeDeck.length - 1));
+      setSeenIds(progress.seenIds);
       /* eslint-enable react-hooks/set-state-in-effect */
     }
   }, []);
 
-  // Persist on change — but skip the initial mount so the fresh server deck
-  // doesn't clobber a stored snapshot before the restore effect applies it.
+  // A fresh server deck replaces the runtime one outright — same reason as
+  // above: content always comes from the latest Lineup run, never from a
+  // previous render's copy.
+  useEffect(() => {
+    /* eslint-disable react-hooks/set-state-in-effect */
+    setRuntimeDeck(places);
+    setIdx(0);
+    /* eslint-enable react-hooks/set-state-in-effect */
+  }, [places]);
+
+  // Persist on change — but skip the initial mount so the empty seed doesn't
+  // clobber stored progress before the restore effect applies it.
   const didPersistMountRef = useRef(false);
   useEffect(() => {
     if (!didPersistMountRef.current) {
       didPersistMountRef.current = true;
       return;
     }
-    writeSwipeSnapshot({ runtimeDeck, idx });
-  }, [runtimeDeck, idx]);
+    writeSwipeProgress({ seenIds });
+  }, [seenIds]);
 
   const syncDragX = useCallback((x: number) => {
     dragXRef.current = x;
@@ -226,14 +242,23 @@ function Deck({ places }: { places: Place[] }) {
   // arriving, a zone recenter), and an unseeded shuffle would visibly swap
   // the top card mid-swipe.
   const [orderSeed] = useState(() => Math.floor(Math.random() * 0x7fffffff));
+  // Cards already swiped this session drop out here rather than being skipped
+  // by index: a re-run of Lineup can return a different order (or different
+  // places entirely), which makes a stored position meaningless but leaves
+  // "don't show me this again" perfectly well-defined.
+  const seenSet = useMemo(() => new Set(seenIds), [seenIds]);
+  const filtered = useMemo(
+    () => applyDiscoveryFilters(located, filters),
+    [located, filters],
+  );
   const deck = useMemo(
     () =>
       orderByRandomness(
-        applyDiscoveryFilters(located, filters),
+        filtered.filter((place) => !seenSet.has(place.id)),
         filters.randomness,
         createSeededRandom(orderSeed),
       ),
-    [located, filters, orderSeed],
+    [filtered, filters.randomness, orderSeed, seenSet],
   );
   const categoryOptions = useMemo(
     () => deriveCategoryOptions(runtimeDeck),
@@ -246,18 +271,29 @@ function Deck({ places }: { places: Place[] }) {
   // catalogs. An explicit "you're caught up" state with a restart CTA
   // is clearer. Filters excluding EVERYTHING is a distinct state — the
   // deck isn't empty and the user hasn't seen it all; their filters did it.
-  const filterEmptied = deck.length === 0 && located.length > 0;
+  // Measured BEFORE the seen filter, so "your filters excluded everything"
+  // and "you're caught up" stay distinct states — otherwise swiping the last
+  // card would blame the filters.
+  const filterEmptied = filtered.length === 0 && located.length > 0;
   const exhausted = idx >= deck.length;
   const v = exhausted ? null : deck[idx];
   const next = idx + 1 < deck.length ? deck[idx + 1] : null;
 
+  // `v` is the card being dismissed; capture it before the deck re-derives.
+  const currentId = v?.id ?? null;
   const advance = useCallback(() => {
     clearAdvanceTimer();
     exitingRef.current = null;
     resetGesture();
-    setIdx((i) => i + 1);
+    // Marking it seen removes it from `deck`, so the next card slides into
+    // index 0 — no cursor to keep in sync with a deck that can change shape.
+    if (currentId) {
+      setSeenIds((prev) => (prev.includes(currentId) ? prev : [...prev, currentId]));
+    } else {
+      setIdx((i) => i + 1);
+    }
     setExiting(null);
-  }, [clearAdvanceTimer, resetGesture]);
+  }, [clearAdvanceTimer, resetGesture, currentId]);
 
   const beginExit = useCallback(
     (dir: "left" | "right") => {
@@ -348,10 +384,14 @@ function Deck({ places }: { places: Place[] }) {
       });
       const enriched = sorted.map((v) => enrichPlaceOverview(v));
       const fresh = shuffleDeck(enriched);
+      setSeenIds([]);
+      clearSwipeProgress();
       setRuntimeDeck(fresh);
       setIdx(0);
     } catch {
       // Fallback to server re-fetch path if client call fails.
+      setSeenIds([]);
+      clearSwipeProgress();
       router.refresh();
       setIdx(0);
     } finally {

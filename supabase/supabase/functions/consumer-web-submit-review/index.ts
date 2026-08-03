@@ -1,19 +1,27 @@
 // Supabase Edge Function — consumer-web-submit-review
 //
-// Promos v5 (MESITA-723): the consumer opts into the Google Review rung on an
-// open ticket by uploading a screenshot of the review they just posted at the
-// table. Sets review_status to 'submitted' so staff (business-web-verify-review)
-// can approve it — approval bumps the ticket's discount to the Review rate
-// (best-of, bump-only).
+// Lifecycle v3 (MESITA-849): the guest leaves their Google review and tells us
+// here — BEFORE the business is involved. Their declaration is the
+// verification: review_status goes straight to 'self_verified'. No screenshot,
+// no staff approval (that was check-web-verify-action / business-web-verify-review,
+// both retired in this change).
+//
+// The once-per-place claim moved WITH the verification. It used to be consumed
+// at approval time; now it is consumed here, at submit time, which is the only
+// moment left. consumer_review_claims' (consumer_id, project_id) primary key
+// is still what wins a race — the friendly check below is just the nice error.
 //
 // Rules enforced here:
 //   - Caller must be the ticket's consumer (the proof is personal).
 //   - The place's program must run the Google Review rung at its strategy
 //     (grid.review[strategy] > 0).
-//   - Once per consumer × place — consumer_review_claims is checked before
-//     accepting a submission (Google allows one review per account per place).
+//   - Once per consumer × place (Google allows one review per account per
+//     place, so the reward can only be earned once there).
 //   - Sentiment-blind by design: nothing here reads or gates on the review's
 //     rating. Any rating qualifies. Keep it that way.
+//
+// Body:     { ticketId: string }
+// Response: { ok: true, ticket: {...}, repricedPercent } | { ok, error, code? }
 //
 // Self-contained: own auth, own DB writes via service role.
 
@@ -22,12 +30,24 @@ import { corsPreflight, json, readJson } from "../_shared/http.ts";
 import { adminClient, getAuthedUser, readEFEnv } from "../_shared/auth.ts";
 import { hasClaimedReview } from "../_shared/membership.ts";
 import {
+  isActionVerified,
   loadRewardsGrid,
   offersSegment,
   placeStrategy,
 } from "../_shared/rewards-config.ts";
+import { repriceTicketAfterAction } from "../_shared/ticket-reprice.ts";
 
-type Body = { ticketId?: string; screenshotUrl?: string };
+type Body = { ticketId?: string };
+
+// Ticket states that can still take a task. A closed ticket can't — the
+// reward is already settled.
+const OPEN_TO_TASKS = new Set(["open", "awaiting_payment_confirm"]);
+
+const ALREADY_CLAIMED = {
+  ok: false,
+  code: "already_claimed",
+  error: "The Google Review reward was already used at this place.",
+};
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
@@ -43,19 +63,8 @@ Deno.serve(async (req) => {
 
   const bodyRes = await readJson<Body>(req);
   if (!bodyRes.ok) return bodyRes.response;
-  const body = bodyRes.body;
-  const ticketId = (body.ticketId ?? "").toString().trim();
-  const url = (body.screenshotUrl ?? "").toString().trim();
+  const ticketId = (bodyRes.body.ticketId ?? "").toString().trim();
   if (!ticketId) return json({ ok: false, error: "ticketId is required" }, 400);
-  if (!url) return json({ ok: false, error: "screenshotUrl is required" }, 400);
-  try {
-    const parsed = new URL(url);
-    if (parsed.protocol !== "https:") {
-      return json({ ok: false, error: "screenshotUrl must be https://" }, 400);
-    }
-  } catch {
-    return json({ ok: false, error: "screenshotUrl is not a valid URL" }, 400);
-  }
 
   const admin = adminClient(envRes.env);
 
@@ -79,27 +88,16 @@ Deno.serve(async (req) => {
       403,
     );
   }
-  if (ticket.status === "paid" || ticket.status === "cancelled") {
+  if (!OPEN_TO_TASKS.has(ticket.status)) {
     return json(
       { ok: false, error: "This ticket is closed — reviews attach to open tickets." },
       409,
     );
   }
-  if (
-    ticket.review_status === "staff_verified" ||
-    ticket.review_status === "ai_verified"
-  ) {
+
+  // Already done — idempotent, so a double-tap or a retry is harmless.
+  if (isActionVerified(ticket.review_status)) {
     return json({ ok: true, ticket, alreadyVerified: true });
-  }
-  if (ticket.review_status === "staff_rejected") {
-    return json(
-      {
-        ok: false,
-        error:
-          "This review was rejected. No more submissions allowed for this ticket.",
-      },
-      409,
-    );
   }
 
   // The place's program must run the Google Review rung at its strategy.
@@ -121,40 +119,61 @@ Deno.serve(async (req) => {
     );
   }
 
-  // Once per consumer × place.
+  // Once per consumer × place — friendly check first, the primary key wins
+  // any race.
   if (await hasClaimedReview(admin, userId, ticket.project_id)) {
+    return json(ALREADY_CLAIMED, 409);
+  }
+  const claim = await admin
+    .from("consumer_review_claims")
+    .insert({
+      consumer_id: userId,
+      project_id: ticket.project_id,
+      ticket_id: ticket.id,
+    })
+    .select("consumer_id")
+    .maybeSingle();
+  if (claim.error) {
+    if (claim.error.code === "23505") return json(ALREADY_CLAIMED, 409);
     return json(
-      {
-        ok: false,
-        code: "already_claimed",
-        error: "The Google Review reward was already used at this place.",
-      },
-      409,
+      { ok: false, error: `review_claim: ${claim.error.message}` },
+      500,
     );
   }
 
-  const submittedAt = new Date().toISOString();
+  const now = new Date().toISOString();
   const updated = await admin
     .from("tickets")
     .update({
-      review_status: "submitted",
-      review_screenshot_url: url,
-      review_submitted_at: submittedAt,
-      review_verified_at: null,
+      review_status: "self_verified",
+      review_submitted_at: now,
+      review_verified_at: now,
+      // FKs to accounts (business-side); self-verification has no approver.
       review_verified_by: null,
       review_reject_reason: null,
     })
     .eq("id", ticketId)
-    .select(
-      "id, kind, status, review_status, review_screenshot_url, review_submitted_at",
-    )
+    .select("id, kind, status, review_status, review_submitted_at")
     .single();
   if (updated.error) {
+    // Give the claim back — otherwise a transient write failure would burn the
+    // guest's one shot at this place forever.
+    await admin
+      .from("consumer_review_claims")
+      .delete()
+      .eq("consumer_id", userId)
+      .eq("project_id", ticket.project_id);
     return json(
       { ok: false, error: `review_submit: ${updated.error.message}` },
       500,
     );
   }
 
-  return json({ ok: true, ticket: updated.data });
+  // A task completed AFTER the bill was snapshotted re-prices it upward
+  // (bump-only). Before the bill, this no-ops.
+  let repricedPercent: number | null = null;
+  const reprice = await repriceTicketAfterAction(admin, ticketId);
+  if (reprice.ok) repricedPercent = reprice.ratePercent;
+
+  return json({ ok: true, ticket: updated.data, repricedPercent });
 });

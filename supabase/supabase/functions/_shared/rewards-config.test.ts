@@ -155,6 +155,8 @@ Deno.test("coerceRewardsGrid: partial blob snaps to locked defaults", () => {
 });
 
 Deno.test("isActionVerified: verified states only", () => {
+  // v3 (MESITA-849): the guest's own declaration is a verification.
+  assertEquals(isActionVerified("self_verified"), true);
   assertEquals(isActionVerified("staff_verified"), true);
   assertEquals(isActionVerified("ai_verified"), true);
   assertEquals(isActionVerified("submitted"), false);

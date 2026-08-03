@@ -47,7 +47,6 @@ export type ConsumerTicketRow = {
 
 export const ACTIVE_TICKET_STATUSES = new Set([
   "open",
-  "awaiting_story",
   "awaiting_payment_confirm",
 ]);
 
@@ -93,36 +92,39 @@ export async function apiCancelTicket(
 }
 
 
-// ── Guest actions on a live ticket (MESITA-824) ─────────────────────────
+// ── Guest tasks on a live ticket (MESITA-824, v3 in MESITA-849) ─────────
 //
-// Both EFs require a real https screenshot URL. Until the upload flow exists,
-// the pass sends DEMO_SCREENSHOT_URL — a real, loadable asset on our own
-// domain that is obviously not a screenshot, so staff reviewing it on the
-// check page can tell at a glance that it's a placeholder rather than a
-// guest's genuine proof. Swap this one constant for the uploaded URL when
-// the upload lands; nothing else changes.
-export const DEMO_SCREENSHOT_URL = "https://mesita.ai/icon.svg";
-
+// The guest completes these BEFORE staff are involved and their tap IS the
+// verification — the ticket lands on `self_verified` and, if the bill is
+// already in, re-prices immediately. No screenshot: there was never anything
+// that could check one (the old placeholder URL went to a staff verdict that
+// no longer exists), and pretending otherwise cost the guest an upload for a
+// human coin-flip.
+//
+// `repricedPercent` is non-null only when the task beat an already-snapshotted
+// discount — the caller can surface "your discount just went up".
 export async function apiSubmitStory(
   client: SupabaseClient,
   ticketId: string,
-  screenshotUrl: string = DEMO_SCREENSHOT_URL,
-): Promise<void> {
-  await invokeEF(client, "consumer-web-submit-story", {
-    ticketId,
-    screenshotUrl,
-  });
+): Promise<{ repricedPercent: number | null }> {
+  const res = await invokeEF<{ repricedPercent?: number | null }>(
+    client,
+    "consumer-web-submit-story",
+    { ticketId },
+  );
+  return { repricedPercent: res.repricedPercent ?? null };
 }
 
 export async function apiSubmitReview(
   client: SupabaseClient,
   ticketId: string,
-  screenshotUrl: string = DEMO_SCREENSHOT_URL,
-): Promise<void> {
-  await invokeEF(client, "consumer-web-submit-review", {
-    ticketId,
-    screenshotUrl,
-  });
+): Promise<{ repricedPercent: number | null }> {
+  const res = await invokeEF<{ repricedPercent?: number | null }>(
+    client,
+    "consumer-web-submit-review",
+    { ticketId },
+  );
+  return { repricedPercent: res.repricedPercent ?? null };
 }
 
 // The QR every active ticket renders — must match the EF's CHECK_URL_BASE.

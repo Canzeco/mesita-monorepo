@@ -263,17 +263,6 @@ export function payloadFromNotification(
   return payload as TicketBillPayload;
 }
 
-export const MOCK_STORY_DETECT_ENABLED = __DEV__;
-
-export function mockStoryDetect(ticketId: string) {
-  return invokeEF<Record<string, unknown>>(
-    supabase,
-    'consumer-web-mock-story-detect',
-    { ticketId },
-    'Could not simulate story detection.',
-  );
-}
-
 export function submitTicketReview(input: {
   ticketId: string;
   food: number;
