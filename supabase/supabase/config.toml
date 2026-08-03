@@ -510,15 +510,13 @@ verify_jwt = true
 [functions.stripe-webhook-handle-event]
 verify_jwt = false
 
-# --- Twilio (external webhooks) ---
+# --- Twilio ---
 #
-# Outbound delivery status. Public at the gateway; security is
-# X-Twilio-Signature validation inside the EF (TWILIO_AUTH_TOKEN).
-# The inbound handler (business-whats-handle-message) went with the waiter
-# identity in MESITA-833 — nothing converses with staff over WhatsApp now.
-
-[functions.twilio-webhook-update-delivery]
-verify_jwt = false
+# No Twilio webhook reaches an Edge Function. Twilio serves two rails and
+# neither needs one: SMS phone-OTP is delivered by Supabase Auth itself
+# ([auth.sms.twilio] above), and voice is the Reservationist's line, whose
+# webhooks point at ElevenLabs. The `twilio-webhook` caller is retired with
+# the WhatsApp rail that was its only user.
 
 # Diagnostic-only (not client-wired): runs the 5 link-discovery strategies from
 # _shared/linklab against a place and returns each strategy's {website, instagram}.

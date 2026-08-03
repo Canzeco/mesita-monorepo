@@ -68,5 +68,14 @@ change repo and workspace in the same session.**
   API Keys).
 - Twilio **voice geo-permissions must allow Mexico** (low-risk) or every +52
   dial fails at 0s with a "failed" conversation and no Twilio call record.
-- **Do not import the WhatsApp numbers (`…4968`, `…8794`) into ElevenLabs** —
-  they are owned by Supabase webhooks.
+- **Two lines, one per audience** — an imported number binds to exactly ONE
+  inbound agent, so a3 (guests) and a4 (venues) cannot share one. The
+  venue-facing line is `ELEVENLABS_FROM_NUMBER` (default `+1 628 296 0710`,
+  inbound → a4); the guest-facing line is `ELEVENLABS_CONSUMER_FROM_NUMBER`
+  (inbound → a3), and it falls back to the venue line until set. Outbound
+  pairs the same way: a1 dials venues from the venue line, a2 dials guests
+  from the guest line, so each side saves a different caller ID and a callback
+  routes on the dialed number.
+- **Only import numbers marked `owner: elevenlabs`** in
+  `../twilio/numbers.json`. The sign-in number is a Messaging Service owned by
+  Supabase Auth — importing it would break phone OTP.

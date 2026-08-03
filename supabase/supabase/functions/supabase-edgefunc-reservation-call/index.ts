@@ -40,6 +40,12 @@
 //   consumer — reservations.consumer_number when pre-resolved, else the
 //     consumer's own phone; empty → leg 2 is skipped.
 //
+// And per LINE: leg 1 dials FROM the venue-facing line, leg 2 FROM the
+// guest-facing one, so each side saves a different caller ID and a callback
+// reaches the right inbound agent (a4 for venues, a3 for guests) without a
+// caller-ID lookup. An unresolvable consumer line degrades to the business
+// line rather than dropping a reservation that may already be confirmed.
+//
 // Status transitions (reservation_status enum): pending → confirmed |
 // declined | unreachable | unresolved. Engine crashes leave status alone and
 // park attempts_state='error' with the reason in last_call_status.
@@ -55,6 +61,7 @@ import { adminClient, readEFEnv } from "../_shared/auth.ts";
 import { requireInternalCaller } from "../_shared/internal.ts";
 import { coerceReservationsCallConfig } from "../_shared/reservations-config.ts";
 import {
+  consumerFromNumber,
   elevenLabsKey,
   getConversationStatus,
   placeOutboundCall,
@@ -294,6 +301,12 @@ async function runIntents(input: {
       });
       return;
     }
+    // One line per audience: the venue leg dials from the business line, the
+    // guest leg from the consumer line. The business line is required — no
+    // line, no booking. The consumer line is NOT: if it can't be resolved
+    // (typically the number isn't imported into ElevenLabs yet) leg 1 must
+    // still run, so we fall back to the business line for the callback rather
+    // than abandoning a reservation that may already be confirmed.
     const phoneRes = await resolvePhoneNumberId(key, reservationFromNumber());
     if (!phoneRes.ok) {
       await record({
@@ -302,6 +315,20 @@ async function runIntents(input: {
         last_call_status: `failed: ${phoneRes.error}`.slice(0, 200),
       });
       return;
+    }
+
+    const consumerLine = consumerFromNumber();
+    let guestPhoneNumberId = phoneRes.id;
+    if (consumerLine !== reservationFromNumber()) {
+      const consumerRes = await resolvePhoneNumberId(key, consumerLine);
+      if (consumerRes.ok) {
+        guestPhoneNumberId = consumerRes.id;
+      } else {
+        console.error(
+          `[reservation-call] consumer line ${consumerLine} unresolved, ` +
+            `falling back to the business line: ${consumerRes.error}`,
+        );
+      }
     }
 
     // Leg 1 · consumer → business — the booking intents.
@@ -476,7 +503,7 @@ async function runIntents(input: {
           callback_at: new Date().toISOString(),
           last_call_status: `intent ${n}: venue confirmed — calling the guest`,
         });
-        await callGuest(key, phoneRes.id, "confirmation", "");
+        await callGuest(key, guestPhoneNumberId, "confirmation", "");
         return;
       }
       if (verdict === "counter_offer") {
@@ -492,7 +519,7 @@ async function runIntents(input: {
           callback_at: new Date().toISOString(),
           last_call_status: `intent ${n}: venue counter-offer — calling the guest`,
         });
-        await callGuest(key, phoneRes.id, "counter_offer", reported.alternativesText);
+        await callGuest(key, guestPhoneNumberId, "counter_offer", reported.alternativesText);
         return;
       }
       if (verdict === "declined") {

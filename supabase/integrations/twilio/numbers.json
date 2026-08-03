@@ -1,0 +1,72 @@
+{
+  "$comment": [
+    "The Twilio number inventory — the source of truth for what each number is",
+    "for and whether it may be released. This file exists because the numbers",
+    "used to live as inline defaults across four files with only one of them",
+    "documented, which is how a release step aimed at 'the WhatsApp numbers'",
+    "can reach for the sign-in number instead.",
+    "",
+    "owner tells you WHO configures the number's webhooks. Never point a",
+    "Twilio-side webhook at a number owned by elevenlabs — its voice URL is",
+    "ElevenLabs' and overwriting it silently kills the Reservationist.",
+    "",
+    "releasable=false means releasing it breaks something live. Releasing is",
+    "irreversible: Twilio does not give a number back."
+  ],
+  "numbers": [
+    {
+      "e164": "+16282960710",
+      "name": "Mesita Reservations (Businesses)",
+      "owner": "elevenlabs",
+      "status": "active",
+      "releasable": false,
+      "recordIncoming": false,
+      "purpose": "Venue-facing reservation line. a1 dials venues from it; a4 answers venues on it. Imported into ElevenLabs; its Twilio voice + messaging webhooks belong to ElevenLabs. Code default: ELEVENLABS_FROM_NUMBER in _shared/elevenlabs.ts."
+    },
+    {
+      "e164": null,
+      "name": "Mesita Reservations (Consumers)",
+      "owner": "elevenlabs",
+      "status": "pending-purchase",
+      "releasable": false,
+      "recordIncoming": false,
+      "purpose": "Guest-facing reservation line. a2 dials guests from it; a3 answers guests on it. An ElevenLabs number binds to ONE inbound agent, so a3 and a4 cannot share a line. Once bought: import into ElevenLabs, bind inbound to a3, set the EF secret ELEVENLABS_CONSUMER_FROM_NUMBER. Until then the code falls back to the business line."
+    },
+    {
+      "e164": "+16282784122",
+      "name": "Mesita Verifications (Consumers)",
+      "owner": "supabase-auth",
+      "status": "active",
+      "releasable": false,
+      "recordIncoming": false,
+      "purpose": "Phone-OTP sign-in — the ONLY consumer auth path there is. Attached to a Twilio Messaging Service; Supabase Auth sends through it directly via config.toml [auth.sms.twilio] (TWILIO_MESSAGE_SERVICE_SID). No Edge Function touches it. If this number goes dark, nobody can sign in."
+    },
+    {
+      "e164": "+16282968466",
+      "name": "Canzeco Virtual Phone",
+      "owner": "canzeco",
+      "status": "active",
+      "releasable": false,
+      "recordIncoming": false,
+      "purpose": "Not Mesita — the company's general US line. Do NOT release without checking whether it is the number on file with Stripe Atlas, Mercury, or the registered agent; releasing it could lock you out of bank 2FA."
+    },
+    {
+      "e164": "+16282964968",
+      "name": "Mesita Notifications (Consumers)",
+      "owner": "none",
+      "status": "pending-release",
+      "releasable": true,
+      "recordIncoming": false,
+      "purpose": "RETIRED — was the consumer WhatsApp sender. Nothing sends WhatsApp: there is no call to Twilio's Messages.json anywhere in the codebase. Safe to release."
+    },
+    {
+      "e164": "+16282968794",
+      "name": "Mesita Ops (Businesses)",
+      "owner": "none",
+      "status": "pending-release",
+      "releasable": true,
+      "recordIncoming": false,
+      "purpose": "RETIRED — was the staff WhatsApp sender, dead since the waiter identity was retired (MESITA-833). Safe to release."
+    }
+  ]
+}

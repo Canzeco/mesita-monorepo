@@ -1,5 +1,5 @@
 // Consumer bill payload + money formatting helpers for ticket Realtime
-// notifications and staff WhatsApp bill messages.
+// notifications.
 
 import { instagramHandleFromUrl } from "./apify.ts";
 import type { InformalBillCalc } from "./ticket-informal.ts";

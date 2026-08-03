@@ -21,17 +21,14 @@
 ```
 mesita-supabase/
 ├── README.md                 # you are here
-├── docs/
-│   └── whatsapp.md           # Twilio/Meta IDs, webhook URLs, runbook
 ├── integrations/             # declarative config (git = source of truth)
 │   ├── twilio/
-│   │   ├── twiml/            # voice TwiML (recording, etc.)
-│   │   └── templates/        # WhatsApp Content API template definitions
-│   └── elevenlabs/           # reservation voice agents (post-MVP)
+│   │   ├── numbers.json      # the number inventory — owner + releasable
+│   │   └── twiml/            # voice TwiML (recording, etc.)
+│   └── elevenlabs/           # the Reservationist fleet (a1–a4)
 ├── scripts/
 │   ├── deploy.sh             # db push + regen types for web repos
-│   ├── setup-twilio-call-recording.sh
-│   └── sync-twilio-whatsapp-webhooks.sh
+│   └── setup-twilio-call-recording.sh
 ├── supabase/
 │   ├── config.toml           # CLI config, per-function JWT flags
 │   ├── functions/            # Edge Functions (runtime)
@@ -45,66 +42,45 @@ mesita-supabase/
 | Layer | Location | Deploy |
 |---|---|---|
 | **App logic** (tickets, reservations, auth) | `supabase/functions/` | `supabase functions deploy` |
-| **Twilio WhatsApp / SMS** | `_shared/twilio.ts` + `twilio-webhook-update-delivery` | same |
 | **Stripe** | `stripe-webhook-handle-event` | same |
-| **Twilio templates, TwiML, webhooks** | `integrations/twilio/` + `scripts/` | run scripts locally |
+| **Twilio numbers, TwiML** | `integrations/twilio/` + `scripts/` | run scripts locally |
 | **ElevenLabs agents** (later) | `integrations/elevenlabs/` | API scripts + Supabase webhook EF |
 
 ---
 
 ## External integrations
 
-### Twilio (WhatsApp, SMS, voice)
+### Twilio (SMS + voice)
 
-**Role: three independent rails on one Twilio account.** They share only
-`TWILIO_ACCOUNT_SID` / `TWILIO_AUTH_TOKEN` — changing one never touches the others.
+**Two rails on one account. No WhatsApp** — Mesita neither sends nor receives it
+(retired 2026-08-03); there is no `Messages.json` call anywhere in the codebase and
+no Twilio webhook reaches an Edge Function.
 
 1. **SMS — phone OTP.** Supabase Auth sends it directly via `TWILIO_MESSAGE_SERVICE_SID`
    ([config.toml](supabase/config.toml) `[auth.sms.twilio]`). This is the ONLY consumer
    sign-in there is; no Edge Function is in the path.
-2. **Voice — incoming-call recording.** `integrations/twilio/twiml/record-incoming.xml`
-   on bin `EHfd33...`, applied by `./scripts/setup-twilio-call-recording.sh`. (Reservation
-   voice is ElevenLabs on its own dedicated number — see below.)
-3. **WhatsApp — outbound to consumers only.** Notifications + delivery receipts. No
-   inbound handler: staff WhatsApp went with the waiter identity (MESITA-833), and staff
-   now work the check page instead.
+2. **Voice — the Reservationist.** Two ElevenLabs-owned lines, one per audience: a
+   venue-facing line (a1 dials out, a4 answers) and a guest-facing line (a2 dials out,
+   a3 answers). An ElevenLabs number binds to ONE inbound agent, which is why they
+   cannot share. Their Twilio webhooks point at ElevenLabs — never overwrite them.
 
-The scope note in (3) is about WhatsApp alone. Retiring WhatsApp pieces must never strip
-`TWILIO_ACCOUNT_SID` / `TWILIO_AUTH_TOKEN` / `TWILIO_MESSAGE_SERVICE_SID` — that would
-break sign-in and call recording.
+**The number inventory is [`integrations/twilio/numbers.json`](integrations/twilio/numbers.json)**,
+not this file: each entry carries its owner and whether it may be released. Read it
+before releasing anything — the sign-in number is one careless click from a lockout,
+and Twilio does not give a number back.
 
-| Number | Label | Use |
-|---|---|---|
-| `+1 628 296 4968` | Mesita Notifications | Consumer notifications |
-
-Meta WABA `1389123139178386` · Portfolio `1180640363250622`. Details: [docs/whatsapp.md](docs/whatsapp.md).
-
-**Secrets (Supabase):**
-
-```bash
-supabase secrets set \
-  TWILIO_ACCOUNT_SID=AC... \
-  TWILIO_AUTH_TOKEN=... \
-  TWILIO_WHATSAPP_FROM_CONSUMERS='whatsapp:+16282964968'
-```
-
-`TWILIO_MESSAGE_SERVICE_SID` is also used by Supabase Auth SMS ([config.toml](supabase/config.toml)).
+**Secrets (Supabase):** `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN` and
+`TWILIO_MESSAGE_SERVICE_SID` are read by Supabase Auth (`config.toml`) and the local
+scripts — no Edge Function reads them. Stripping any of the three breaks sign-in.
 
 **Local scripts** — copy [`.env.twilio.local.example`](.env.twilio.local.example) → `.env.twilio.local`, then sync into project-root `.env` (Supabase CLI reads it for `config.toml`):
 
 ```bash
 ./scripts/sync-root-env.sh                    # .env.twilio.local → .env (run after edits)
 ./scripts/setup-twilio-call-recording.sh      # voice → record-incoming TwiML
-./scripts/sync-twilio-whatsapp-webhooks.sh    # WA senders → Supabase EFs
 ```
 
 `./scripts/deploy.sh` runs `sync-root-env.sh` automatically.
-
-**Deploy webhooks:**
-
-```bash
-supabase functions deploy twilio-webhook-update-delivery
-```
 
 ### Stripe
 
@@ -112,7 +88,7 @@ Webhook: `stripe-webhook-handle-event` (public, signature-verified). Membership 
 
 ### ElevenLabs (post-MVP)
 
-AI voice for **phone reservations** on a **dedicated** Twilio number — not the WhatsApp lines. See [integrations/elevenlabs/README.md](integrations/elevenlabs/README.md).
+AI voice for **phone reservations** on its own **two** Twilio lines (venue-facing + guest-facing). See [integrations/elevenlabs/README.md](integrations/elevenlabs/README.md).
 
 ---
 
@@ -124,7 +100,6 @@ AI voice for **phone reservations** on a **dedicated** Twilio number — not the
 | `business-web-*` | email | Places, tickets, team, verification |
 | `consumer-*` | phone OTP | Discovery, tickets, **reservations**, profile |
 | `check-web-*` | none (`check_code` possession) | Public check page — the whole staff surface |
-| `twilio-webhook-update-delivery` | Twilio signature | Delivery status |
 | `stripe-webhook-handle-event` | Stripe signature | Subscriptions |
 | `supabase-cron-*` | internal (pg_cron poller) | Scheduled creates + the Enricher pipeline |
 | `enricher-agent-*` | internal | Place persistence services (service role) |
@@ -136,7 +111,7 @@ advancing places through the `place_research` stage table
 poller `run_place_enrichment_stages` drives the stages. n8n is fully out of
 the stack (the Reservationist will be ElevenLabs-based).
 
-Reward ticket sequences (create, scan, billing, story, payment, review) are documented in [docs/TICKET_SEQUENCES.md](docs/TICKET_SEQUENCES.md). Tickets v2 (MESITA-806): the CONSUMER creates the ticket (`consumer-web-create-ticket`); staff work it on the public check page `mesita.ai/check/<code>` (`check-web-*`, `verify_jwt=false`), with the business console as the only secondary rail; Twilio sends the consumer messages. Consumer step order lives in each app's `ticket-flow-steps.ts`.
+Reward ticket sequences (create, scan, billing, story, payment, review) are documented in [docs/TICKET_SEQUENCES.md](docs/TICKET_SEQUENCES.md). Tickets v2 (MESITA-806): the CONSUMER creates the ticket (`consumer-web-create-ticket`); staff work it on the public check page `mesita.ai/check/<code>` (`check-web-*`, `verify_jwt=false`), with the business console as the only secondary rail. Consumer step order lives in each app's `ticket-flow-steps.ts`.
 
 ---
 
@@ -176,14 +151,10 @@ RLS: clients read only what they may see; writes go through Edge Functions.
 
 ## MVP checklist (communications)
 
-- [x] WABA + WhatsApp senders connected
-- [ ] Meta Business Verification
 - [ ] `supabase secrets set` Twilio vars
-- [ ] Deploy `twilio-webhook-update-delivery`
-- [ ] `./scripts/sync-twilio-whatsapp-webhooks.sh`
-- [ ] WhatsApp templates in `integrations/twilio/templates/` + apply script
-- [ ] Wire reservation confirmations
-- [ ] Reservation voice (ElevenLabs) — post-MVP, separate number
+- [ ] Buy + import the guest-facing reservation line, bind inbound to a3
+- [ ] Set `ELEVENLABS_CONSUMER_FROM_NUMBER`
+- [ ] Release the two retired WhatsApp numbers (see `integrations/twilio/numbers.json`)
 
 ---
 
