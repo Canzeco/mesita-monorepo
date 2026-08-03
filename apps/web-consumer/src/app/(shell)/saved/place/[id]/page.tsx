@@ -2,7 +2,10 @@ import { redirect } from "next/navigation";
 import { PlaceDetailPageBody } from "@/components/consumer/PlaceDetailPageBody";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { apiFetchPlaceDetail } from "@/lib/api/places";
-import { toCanonicalPlaceHrefOrNull } from "@/lib/place-route";
+import {
+  placeGoneHref,
+  toCanonicalPlaceHrefOrNull,
+} from "@/lib/place-route";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 
 export const dynamic = "force-dynamic";
@@ -19,7 +22,9 @@ export default async function SavedPlacePage({
   const supabase = await createServerSupabase();
   const place = await apiFetchPlaceDetail(supabase, id);
   if (!place) {
-    redirect(CONSUMER_ROUTES.favorites);
+    // Dead id (reset-away row, stale localStorage favorite, old bookmark).
+    // Bounce, but say so — see <PlaceGoneNotice />.
+    redirect(placeGoneHref(CONSUMER_ROUTES.favorites, id));
   }
   return (
     <PlaceDetailPageBody

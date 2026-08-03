@@ -1,13 +1,8 @@
 "use client";
 
 import type React from "react";
-import { Gift } from "lucide-react";
 
-import type { Place } from "@/lib/api/places";
-import { isElevatedClass } from "@/lib/consumer-data";
-import { useConsumerClass } from "@/lib/class-context";
 import type { PlaceDetail } from "@/lib/mock/place";
-import { resolvePromoRateFromPlaceRow } from "@/lib/promo-rates";
 import { firstInitial } from "@/lib/utils";
 
 export function ProfilePhoto({ place }: { place: PlaceDetail }) {
@@ -51,33 +46,6 @@ export function ProfileStat({
         {label}
       </span>
     </div>
-  );
-}
-
-/** Third IG-style column — reward % or “No reward”. */
-export function ProfileRewardStat({ place }: { place: Place }) {
-  const { key: classKey } = useConsumerClass();
-  const isFirstVisit = place.is_first_visit !== false;
-  const promoPercent = resolvePromoRateFromPlaceRow(
-    place as unknown as Record<string, unknown>,
-    isFirstVisit,
-    isElevatedClass(classKey),
-  );
-  if (promoPercent == null) {
-    return (
-      <ProfileStat
-        value="—"
-        label="No reward"
-        icon={<Gift className="h-3 w-3 text-sky-500" />}
-      />
-    );
-  }
-  return (
-    <ProfileStat
-      value={`${promoPercent}%`}
-      label={isFirstVisit ? "Welcome" : "Returning"}
-      icon={<Gift className="h-3 w-3 text-sky-500" />}
-    />
   );
 }
 

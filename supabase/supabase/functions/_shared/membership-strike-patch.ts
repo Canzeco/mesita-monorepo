@@ -18,7 +18,16 @@ export function buildStrikePatch(
       .toISOString();
   } else {
     // Strike 3: remove paid posture, forfeit fee stamp, keep catalog listing.
+    //
+    // "Keep catalog listing" means the place stays browsable — it does NOT
+    // mean it keeps running rewards. Verified Partner tracks the paid
+    // membership (MESITA-818: admin-web-set-plan promotes on a paid plan and
+    // demotes on Zero), so forfeiting the membership demotes here too;
+    // otherwise a struck-out place would keep an openable ticket lane with
+    // every rate nulled. Unconditional 'web' is safe: only a partner can
+    // reach strike 3.
     patch.plan = "free";
+    patch.listing_type = "web";
     patch.welcome_free_rate = null;
     patch.welcome_premium_rate = null;
     patch.free_rate = null;
