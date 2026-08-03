@@ -28,6 +28,17 @@ export const CLASS_SEGMENTS = [
 ] as const;
 export type ClassSegment = (typeof CLASS_SEGMENTS)[number];
 
+// The rewarded actions (v7, MESITA-859): each is priced PER CLASS per
+// strategy. mesita_review joined in v7 — previously the one action that
+// deliberately paid nothing; it launches at 0 until the operator prices it.
+export const ACTION_SEGMENTS = [
+  "mesita_review",
+  "story",
+  "welcome",
+  "review",
+] as const;
+export type ActionSegment = (typeof ACTION_SEGMENTS)[number];
+
 const REWARD_SEGMENTS = [
   ...CLASS_SEGMENTS,
   "story",
@@ -48,8 +59,17 @@ export function isClassSegment(
 // again. Anything unrecognised (custom/legacy) still coerces to zero.
 export type GridStrategy = "zero" | "conservative" | "aggressive" | "dominant";
 export type SegmentRates = Record<GridStrategy, number>;
+
+// v13 (v7 matrix, MESITA-859): `grid` holds the four STANDING class rows (the
+// "None" column of the table); `actions` prices every action per class per
+// strategy — "different discount for each item, depending on the tier".
+export type ActionMatrix = Record<
+  ActionSegment,
+  Record<ClassSegment, SegmentRates>
+>;
 export type RewardsGrid = {
-  grid: Record<RewardSegment, SegmentRates>;
+  grid: Record<ClassSegment, SegmentRates>;
+  actions: ActionMatrix;
   cap: number;
 };
 
@@ -59,16 +79,39 @@ export type RewardsGrid = {
 // Dominant follows the v4 invariant it always had — it raises the FLOOR, not
 // the ceiling: every rung climbs a step over aggressive except Review, which
 // is already at the 50% ceiling and stays there.
+const FLAT = (
+  conservative: number,
+  aggressive: number,
+  dominant: number,
+): SegmentRates => ({ zero: 0, conservative, aggressive, dominant });
+
+const FLAT_ACTION = (
+  conservative: number,
+  aggressive: number,
+  dominant: number,
+): Record<ClassSegment, SegmentRates> => ({
+  standard: FLAT(conservative, aggressive, dominant),
+  premium: FLAT(conservative, aggressive, dominant),
+  influencer: FLAT(conservative, aggressive, dominant),
+  aura: FLAT(conservative, aggressive, dominant),
+});
+
+// v7 launch values = identity migration of the locked v6 table: every action
+// starts FLAT across classes at its v6 rate, mesita_review at 0. Billing is
+// byte-identical to v6 until the operator prices cells in Rewards Config.
 export const DEFAULT_REWARDS_GRID: RewardsGrid = {
   cap: 500,
   grid: {
-    standard: { zero: 0, conservative: 10, aggressive: 10, dominant: 20 },
-    premium: { zero: 0, conservative: 15, aggressive: 20, dominant: 25 },
-    influencer: { zero: 0, conservative: 15, aggressive: 20, dominant: 25 },
-    aura: { zero: 0, conservative: 20, aggressive: 25, dominant: 30 },
-    story: { zero: 0, conservative: 20, aggressive: 30, dominant: 40 },
-    welcome: { zero: 0, conservative: 20, aggressive: 30, dominant: 40 },
-    review: { zero: 0, conservative: 30, aggressive: 50, dominant: 50 },
+    standard: FLAT(10, 10, 20),
+    premium: FLAT(15, 20, 25),
+    influencer: FLAT(15, 20, 25),
+    aura: FLAT(20, 25, 30),
+  },
+  actions: {
+    mesita_review: FLAT_ACTION(0, 0, 0),
+    story: FLAT_ACTION(20, 30, 40),
+    welcome: FLAT_ACTION(20, 30, 40),
+    review: FLAT_ACTION(30, 50, 50),
   },
 };
 
@@ -76,28 +119,59 @@ function num(v: unknown, fallback: number): number {
   return typeof v === "number" && Number.isFinite(v) ? v : fallback;
 }
 
-// Coerce a raw config blob to a complete grid, snapping missing cells to the
-// locked defaults so a partial row can't produce NaN discounts.
+// Coerce a raw config blob to a complete v13 grid, snapping missing cells to
+// the locked defaults so a partial row can't produce NaN discounts.
+//
+// MIGRATION IS BUILT IN: a v12 blob has flat action rows inside `grid`
+// (grid.story/welcome/review) and no `actions` block. Those flat values are
+// copied to EVERY class of the action — the identity migration — so a stored
+// v12 config keeps billing exactly as before. mesita_review, absent from v12,
+// coerces to the default (0 everywhere).
 export function coerceRewardsGrid(raw: unknown): RewardsGrid {
   const c = (raw && typeof raw === "object" ? raw : {}) as Record<string, unknown>;
   const rawGrid = (c.grid && typeof c.grid === "object" ? c.grid : {}) as Record<
     string,
     unknown
   >;
-  const grid = {} as Record<RewardSegment, SegmentRates>;
-  for (const seg of REWARD_SEGMENTS) {
-    const row = (rawGrid[seg] && typeof rawGrid[seg] === "object"
-      ? rawGrid[seg]
-      : {}) as Record<string, unknown>;
-    const d = DEFAULT_REWARDS_GRID.grid[seg];
-    grid[seg] = {
+  const rawActions = (c.actions && typeof c.actions === "object"
+    ? c.actions
+    : {}) as Record<string, unknown>;
+
+  const rates = (row: unknown, d: SegmentRates): SegmentRates => {
+    const r = (row && typeof row === "object" ? row : {}) as Record<
+      string,
+      unknown
+    >;
+    return {
       zero: 0, // off by definition
-      conservative: num(row.conservative, d.conservative),
-      aggressive: num(row.aggressive, d.aggressive),
-      dominant: num(row.dominant, d.dominant),
+      conservative: num(r.conservative, d.conservative),
+      aggressive: num(r.aggressive, d.aggressive),
+      dominant: num(r.dominant, d.dominant),
     };
+  };
+
+  const grid = {} as Record<ClassSegment, SegmentRates>;
+  for (const cls of CLASS_SEGMENTS) {
+    grid[cls] = rates(rawGrid[cls], DEFAULT_REWARDS_GRID.grid[cls]);
   }
-  return { grid, cap: num(c.cap, DEFAULT_REWARDS_GRID.cap) };
+
+  const actions = {} as ActionMatrix;
+  for (const action of ACTION_SEGMENTS) {
+    const rawAction = (rawActions[action] && typeof rawActions[action] === "object"
+      ? rawActions[action]
+      : null) as Record<string, unknown> | null;
+    // v12 fallback: the action's flat row lived inside `grid` (never for
+    // mesita_review, which v12 didn't price).
+    const legacyFlat = action === "mesita_review" ? null : rawGrid[action];
+    const perClass = {} as Record<ClassSegment, SegmentRates>;
+    for (const cls of CLASS_SEGMENTS) {
+      const d = DEFAULT_REWARDS_GRID.actions[action][cls];
+      perClass[cls] = rates(rawAction?.[cls] ?? legacyFlat, d);
+    }
+    actions[action] = perClass;
+  }
+
+  return { grid, actions, cap: num(c.cap, DEFAULT_REWARDS_GRID.cap) };
 }
 
 // Loads the reward grid from the app_settings singleton. Falls back to the
@@ -146,6 +220,8 @@ export type RateContext = {
   isFirstVisit: boolean;
   storyVerified?: boolean;
   reviewVerified?: boolean;
+  /** A ticket_reviews row exists for this consumer × place (v7 rung). */
+  mesitaReviewed?: boolean;
 };
 
 // Best-of resolution over the seven-segment grid at the place's strategy.
@@ -166,22 +242,35 @@ export function resolveTicketRate(
   grid: RewardsGrid,
   ctx: RateContext,
 ): number {
-  const g = grid.grid;
-  const qualifying: number[] = [g.standard[strategy]];
-  if (isClassSegment(ctx.classKey)) qualifying.push(g[ctx.classKey][strategy]);
-  if (ctx.isFirstVisit) qualifying.push(g.welcome[strategy]);
-  if (ctx.storyVerified) qualifying.push(g.story[strategy]);
-  if (ctx.reviewVerified) qualifying.push(g.review[strategy]);
+  // v7: an action's rate depends on WHO performs it — the guest's class row
+  // of the action matrix, falling back to standard for unknown/stale keys.
+  const cls: ClassSegment = isClassSegment(ctx.classKey)
+    ? ctx.classKey
+    : "standard";
+  const a = grid.actions;
+  const qualifying: number[] = [
+    grid.grid.standard[strategy],
+    grid.grid[cls][strategy],
+  ];
+  if (ctx.isFirstVisit) qualifying.push(a.welcome[cls][strategy]);
+  if (ctx.storyVerified) qualifying.push(a.story[cls][strategy]);
+  if (ctx.reviewVerified) qualifying.push(a.review[cls][strategy]);
+  if (ctx.mesitaReviewed) qualifying.push(a.mesita_review[cls][strategy]);
   const best = qualifying.reduce((m, r) => (r > m ? r : m), 0);
   return Math.max(0, Math.min(100, best));
 }
 
-// Whether the place's program offers a given action rung at its strategy —
-// the gate the consumer opt-in EFs check before accepting a submission.
-export function offersSegment(
+// Whether the place's program offers a given action rung at its strategy for
+// ANY class — the capability gate the consumer opt-in EFs check before
+// accepting a submission. Per-class differentiation happens at rate
+// resolution, not here: zeroing an action for one class shouldn't block the
+// submission door for everyone (the class rung still applies via best-of).
+export function offersAction(
   strategy: GridStrategy,
   grid: RewardsGrid,
-  segment: RewardSegment,
+  action: ActionSegment,
 ): boolean {
-  return grid.grid[segment][strategy] > 0;
+  return CLASS_SEGMENTS.some(
+    (cls) => grid.actions[action][cls][strategy] > 0,
+  );
 }

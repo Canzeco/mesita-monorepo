@@ -2,11 +2,12 @@
 //
 // Naming: caller-verb-words. Caller = admin, verb = get, words = rewards-config.
 //
-// Returns the seven-segment reward grid (Promos v6, MESITA-723) from the
-// public.app_settings singleton for the admin console's Rewards Config page: for
-// each strategy (zero / conservative / aggressive / dominant), what each segment pays
-// (standard · premium · influencer · aura · story · welcome · review), plus the universal
-// cap. See 20260722200000_rewards_config.sql.
+// Returns the raw rewards_config blob (v7 Strategy × Class matrix, MESITA-859)
+// from the public.app_settings singleton for the admin console's Rewards Config
+// page: standing class rates in `grid` plus per-class action rates in `actions`
+// (mesita_review · story · welcome · review), and the universal cap. The blob is
+// returned as stored — the admin catalog's coerceConfig migrates a v12 row by
+// identity client-side. See 20260722200000_rewards_config.sql.
 //
 // Auth: caller's JWT email must be in public.super_admins.
 

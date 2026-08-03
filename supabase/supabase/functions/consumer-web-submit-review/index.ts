@@ -32,7 +32,7 @@ import { hasClaimedReview } from "../_shared/membership.ts";
 import {
   isActionVerified,
   loadRewardsGrid,
-  offersSegment,
+  offersAction,
   placeStrategy,
 } from "../_shared/rewards-config.ts";
 import { repriceTicketAfterAction } from "../_shared/ticket-reprice.ts";
@@ -112,7 +112,7 @@ Deno.serve(async (req) => {
     return json({ ok: false, error: "Place not found" }, 404);
   }
   const grid = await loadRewardsGrid(admin);
-  if (!offersSegment(placeStrategy(placeRow.data), grid, "review")) {
+  if (!offersAction(placeStrategy(placeRow.data), grid, "review")) {
     return json(
       { ok: false, error: "This place doesn't run the Google Review reward." },
       409,

@@ -7,26 +7,27 @@ import { ErrorNote } from "@/components/ErrorNote";
 import { NumberField, SaveRow, SectionCard } from "../enricher-config/atlas-ui";
 import { getRewardsConfig, grantAura, updateRewardsConfig } from "./actions";
 import {
+  ACTION_KEYS,
+  ACTION_META,
   ALLOWED_RATES,
   CAP_MAX,
   CAP_MIN,
+  CLASS_KEYS,
+  CLASS_META,
   DEFAULT_CONFIG,
-  STRATEGY_IDS,
-  SEGMENTS,
+  EDITABLE_STRATEGIES,
+  type ActionKey,
+  type ClassKey,
   type GridStrategy,
-  type RewardSegmentKey,
   type RewardsConfig,
 } from "./catalog";
 
-// Mirrors the (unexported) RewardSegmentKind union in ./catalog — kept in
-// lock-step by hand since that type isn't exported for reuse here.
-type SegmentKind = "class" | "action" | "visit";
-
-const KIND_TINT: Record<SegmentKind, string> = {
-  class: "bg-violet-500/10 text-violet-600",
-  action: "bg-sky-500/10 text-sky-600",
-  visit: "bg-amber-500/10 text-amber-600",
-};
+// The editor renders Pato's table VERBATIM (2026-08-03): rows are
+// Strategy × Class, columns are None + the four actions. "None" edits the
+// standing class rate (`grid`); an action cell edits
+// `actions[action][class]` at the row's strategy. The Story column is
+// disabled outside the Influencer rows — eligibility is Influencer-only
+// (segments v6) and an editable dead cell would imply otherwise.
 
 function rateLabel(v: number): string {
   return v <= 0 ? "Off" : `${v}%`;
@@ -70,16 +71,28 @@ export function RewardsConfigClient({
     [cfg, saved],
   );
 
-  const setRate = (
-    seg: RewardSegmentKey,
+  const setStanding = (cls: ClassKey, strategy: GridStrategy, value: number) => {
+    setCfg((c) => ({
+      ...c,
+      grid: { ...c.grid, [cls]: { ...c.grid[cls], [strategy]: value } },
+    }));
+    setOk(false);
+  };
+
+  const setActionRate = (
+    action: ActionKey,
+    cls: ClassKey,
     strategy: GridStrategy,
     value: number,
   ) => {
     setCfg((c) => ({
       ...c,
-      grid: {
-        ...c.grid,
-        [seg]: { ...c.grid[seg], [strategy]: value },
+      actions: {
+        ...c.actions,
+        [action]: {
+          ...c.actions[action],
+          [cls]: { ...c.actions[action][cls], [strategy]: value },
+        },
       },
     }));
     setOk(false);
@@ -112,11 +125,10 @@ export function RewardsConfigClient({
 
   return (
     <div className="space-y-6">
-      {/* The grid — seven segments (rows) × four strategies (columns). */}
       <SectionCard
         icon={<Percent className="text-secondary h-4 w-4" />}
-        title="Reward grid"
-        subtitle="For each strategy a place can pick, set what every segment pays. Rates snap to the 5% grid (10–50%); Zero is off by definition. A guest is paid their single best qualifying rung — never a sum."
+        title="Rewards table"
+        subtitle="Strategy × Class rows, one cell per action — different discount for each item, depending on the tier. None is the standing class discount. Rates snap to the 5% grid (10–50%); 0 = off; Zero strategy is off by definition and has no rows. A guest is paid their single best qualifying cell — never a sum."
         status={
           updatedAt ? (
             <span className="text-muted-foreground text-xs">
@@ -126,73 +138,105 @@ export function RewardsConfigClient({
         }
       >
         <div className="mt-5 overflow-x-auto">
-          <div className="min-w-[664px]">
-            {/* Header — strategy columns. */}
-            <div className="grid grid-cols-[minmax(150px,1fr)_repeat(4,104px)] items-end gap-2 px-1 pb-2">
+          <div className="min-w-[860px]">
+            {/* Header — the action columns. */}
+            <div className="grid grid-cols-[110px_130px_repeat(5,96px)] items-end gap-2 px-1 pb-2">
               <span className="text-muted-foreground text-[10px] font-bold tracking-[0.12em] uppercase">
-                Segment
+                Strategy
               </span>
-              {STRATEGY_IDS.map((p) => (
-                <span key={p.key} className="text-center">
-                  <span className="text-foreground block text-[13px] font-bold tracking-tight">
-                    {p.label}
+              <span className="text-muted-foreground text-[10px] font-bold tracking-[0.12em] uppercase">
+                Class
+              </span>
+              <span className="text-center">
+                <span className="text-foreground block text-[12px] font-bold tracking-tight">
+                  None
+                </span>
+                <span className="text-muted-foreground/80 block text-[10px] leading-tight">
+                  standing
+                </span>
+              </span>
+              {ACTION_KEYS.map((a) => (
+                <span key={a} className="text-center" title={ACTION_META[a].blurb}>
+                  <span className="text-foreground block text-[12px] font-bold tracking-tight">
+                    {ACTION_META[a].emoji} {ACTION_META[a].name.split(" ")[0]}
                   </span>
-                  <span className="text-muted-foreground/80 block text-[10px] leading-tight">
-                    {p.editable ? "editable" : "always off"}
+                  <span className="text-muted-foreground/80 block truncate text-[10px] leading-tight">
+                    {ACTION_META[a].name.split(" ").slice(1).join(" ") || "action"}
                   </span>
                 </span>
               ))}
             </div>
 
-            {/* Rows — ladder order, worst→best. */}
-            <div className="divide-border/60 border-border divide-y rounded-xl border">
-              {SEGMENTS.map((seg) => (
+            {/* Rows — Strategy × Class, grouped by strategy. */}
+            <div className="space-y-3">
+              {EDITABLE_STRATEGIES.map((strat) => (
                 <div
-                  key={seg.key}
-                  className="grid grid-cols-[minmax(150px,1fr)_repeat(4,104px)] items-center gap-2 px-3 py-2.5"
+                  key={strat.key}
+                  className="divide-border/60 border-border divide-y rounded-xl border"
                 >
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    <span
-                      className="bg-muted grid size-8 shrink-0 place-items-center rounded-lg text-base"
-                      aria-hidden
+                  {CLASS_KEYS.map((cls, i) => (
+                    <div
+                      key={cls}
+                      className="grid grid-cols-[110px_130px_repeat(5,96px)] items-center gap-2 px-3 py-2"
                     >
-                      {seg.emoji}
-                    </span>
-                    <div className="min-w-0">
-                      <p className="text-foreground flex items-center gap-1.5 text-[13px] font-semibold">
-                        <span className="text-muted-foreground/70 tabular-nums text-[11px]">
-                          {seg.rank}.
+                      <div className="min-w-0">
+                        {i === 0 ? (
+                          <>
+                            <p className="text-foreground text-[13px] font-bold">
+                              {strat.label}
+                            </p>
+                            <p className="text-muted-foreground truncate text-[10.5px] leading-tight">
+                              {strat.blurb}
+                            </p>
+                          </>
+                        ) : null}
+                      </div>
+                      <div className="flex min-w-0 items-center gap-2">
+                        <span className="text-base" aria-hidden>
+                          {CLASS_META[cls].emoji}
                         </span>
-                        <span className="truncate">{seg.name}</span>
                         <span
-                          className={`shrink-0 rounded px-1 py-0.5 text-[9px] font-bold tracking-wide uppercase ${KIND_TINT[seg.kind]}`}
+                          className="text-foreground truncate text-[12.5px] font-semibold"
+                          title={CLASS_META[cls].blurb}
                         >
-                          {seg.kind}
+                          {CLASS_META[cls].name}
                         </span>
-                      </p>
-                      <p className="text-muted-foreground truncate text-[11px] leading-tight">
-                        {seg.blurb}
-                      </p>
-                    </div>
-                  </div>
+                      </div>
 
-                  {STRATEGY_IDS.map((p) =>
-                    p.editable ? (
+                      {/* None — the standing class rate. */}
                       <RateSelect
-                        key={p.key}
-                        value={cfg.grid[seg.key][p.key]}
+                        value={cfg.grid[cls][strat.key]}
                         disabled={pending}
-                        onChange={(v) => setRate(seg.key, p.key, v)}
+                        onChange={(v) => setStanding(cls, strat.key, v)}
                       />
-                    ) : (
-                      <span
-                        key={p.key}
-                        className="text-muted-foreground/60 text-center text-[13px] font-semibold tabular-nums"
-                      >
-                        Off
-                      </span>
-                    ),
-                  )}
+
+                      {ACTION_KEYS.map((action) => {
+                        // Story eligibility is Influencer-only (segments v6);
+                        // an editable cell on other rows would imply the gate
+                        // is priceable away. It is not — it changes upstream.
+                        const storyLocked =
+                          action === "story" && cls !== "influencer";
+                        return storyLocked ? (
+                          <span
+                            key={action}
+                            title="Influencer-only — eligibility is a class gate, not a price"
+                            className="text-muted-foreground/50 text-center text-[13px] font-semibold"
+                          >
+                            —
+                          </span>
+                        ) : (
+                          <RateSelect
+                            key={action}
+                            value={cfg.actions[action][cls][strat.key]}
+                            disabled={pending}
+                            onChange={(v) =>
+                              setActionRate(action, cls, strat.key, v)
+                            }
+                          />
+                        );
+                      })}
+                    </div>
+                  ))}
                 </div>
               ))}
             </div>
@@ -202,9 +246,9 @@ export function RewardsConfigClient({
         <div className="mt-3 flex items-center justify-between gap-3">
           <p className="text-muted-foreground/80 flex items-start gap-1.5 text-[11px] leading-snug">
             <Info className="mt-0.5 h-3 w-3 shrink-0" />
-            Ties within {"{Premium, Influencer}"} and {"{Story, Welcome}"} are
-            harmless — best-of pays only the highest. Story pays only the
-            Influencer class.
+            Mesita Review launched unpriced (0 everywhere) — price it here to
+            make it pay. Best-of pays only the highest qualifying cell, so ties
+            are harmless.
           </p>
           <button
             type="button"
@@ -213,7 +257,7 @@ export function RewardsConfigClient({
             className="border-border text-muted-foreground hover:text-foreground hover:bg-muted inline-flex shrink-0 items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-medium transition disabled:opacity-50"
           >
             <RotateCcw className="h-3 w-3" />
-            v6 defaults
+            Launch defaults
           </button>
         </div>
       </SectionCard>
@@ -246,9 +290,9 @@ export function RewardsConfigClient({
 
       <div>
         <p className="text-muted-foreground text-xs">
-          Persisted to <code className="font-mono">app_settings.rewards_config</code>. This
-          is the operator source of truth for the v6 reward grid; the bill engine
-          reads it on every ticket (MESITA-723).
+          Persisted to <code className="font-mono">app_settings.rewards_config</code>{" "}
+          (v13 matrix). This is the operator source of truth for the v7 rewards
+          table; the bill engine reads it on every ticket (MESITA-859).
         </p>
         <SaveRow pending={pending} dirty={dirty} ok={ok} onClick={save} />
         {error && <ErrorNote message={error} />}
@@ -346,7 +390,7 @@ function RateSelect({
       disabled={disabled}
       onChange={(e) => onChange(Number(e.target.value))}
       aria-label="Rate"
-      className="border-border bg-card focus:border-foreground h-9 w-full rounded-lg border px-2 text-center text-[13px] font-semibold tabular-nums outline-none disabled:opacity-50"
+      className="border-border bg-card focus:border-foreground h-9 w-full rounded-lg border px-1.5 text-center text-[13px] font-semibold tabular-nums outline-none disabled:opacity-50"
     >
       {ALLOWED_RATES.map((r) => (
         <option key={r} value={r}>

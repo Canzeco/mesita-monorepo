@@ -9,7 +9,7 @@
 //
 // Welcome is NEVER asserted here: it is detected server-side at billing time
 // (isConsumerFirstVisit inside check-web-submit-bill). The story opt-in is
-// re-checked against class + the place's grid (offersSegment); a non-eligible
+// re-checked against class + the place's grid (offersAction); a non-eligible
 // opt-in silently downgrades to not_required — same posture the old staff
 // create had, and the class never leaks in the response.
 //
@@ -25,7 +25,7 @@ import {
 } from "../_shared/membership-enforcement.ts";
 import {
   loadRewardsGrid,
-  offersSegment,
+  offersAction,
   placeStrategy,
 } from "../_shared/rewards-config.ts";
 import { checkUrlFor, newCheckCode } from "../_shared/ticket-check.ts";
@@ -141,7 +141,7 @@ Deno.serve(async (req) => {
     }
     if (consumerRow.data.class_key === "influencer") {
       const grid = await loadRewardsGrid(admin);
-      if (offersSegment(placeStrategy(place), grid, "story")) {
+      if (offersAction(placeStrategy(place), grid, "story")) {
         storyStatus = "pending";
       }
     }

@@ -1,22 +1,23 @@
-// Normalize the Rewards Config blob (Promos v6, MESITA-723) — the strict gate on
-// save. Mirrors coerceConfig in the admin catalog. Self-contained (no _shared
-// import) so the contract lives beside the writer.
+// Normalize the Rewards Config blob (v7 matrix, MESITA-859) — the strict gate
+// on save. Mirrors coerceConfig in the admin catalog. Self-contained (no
+// _shared import) so the contract lives beside the writer.
 //
-// Grid rule: 5% steps, floor 10%, ceiling 50% (0 = off). Zero strategy is off by
-// definition. Every cell is snapped to the grid and every segment is present, so
-// a partial or slightly-off body can never write a malformed row; the only hard
-// error is a non-object body.
+// v13 shape: `grid` holds the four STANDING class rows (the "None" column of
+// Pato's table); `actions` prices every rewarded action PER CLASS per
+// strategy. A v12 body (flat story/welcome/review rows inside `grid`, no
+// `actions`) is accepted and migrated by IDENTITY — the flat value copies to
+// every class; mesita_review, absent from v12, lands at its 0 default.
+//
+// Grid rule: 5% steps, floor 10%, ceiling 50% (0 = off). Zero strategy is off
+// by definition. Every cell is snapped and every key is present, so a partial
+// or slightly-off body can never write a malformed row; the only hard error is
+// a non-object body.
 
-const SEGMENT_KEYS = [
-  "standard",
-  "premium",
-  "influencer",
-  "aura",
-  "story",
-  "welcome",
-  "review",
-] as const;
-type SegmentKey = (typeof SEGMENT_KEYS)[number];
+const CLASS_KEYS = ["standard", "premium", "influencer", "aura"] as const;
+type ClassKey = (typeof CLASS_KEYS)[number];
+
+const ACTION_KEYS = ["mesita_review", "story", "welcome", "review"] as const;
+type ActionKey = (typeof ACTION_KEYS)[number];
 
 type SegmentRates = {
   zero: number;
@@ -24,7 +25,11 @@ type SegmentRates = {
   aggressive: number;
   dominant: number;
 };
-type RewardsConfig = { grid: Record<SegmentKey, SegmentRates>; cap: number };
+type RewardsConfig = {
+  grid: Record<ClassKey, SegmentRates>;
+  actions: Record<ActionKey, Record<ClassKey, SegmentRates>>;
+  cap: number;
+};
 
 const RATE_STEP = 5;
 const RATE_FLOOR = 10;
@@ -33,15 +38,34 @@ const CAP_MIN = 0;
 const CAP_MAX = 5000;
 const CAP_DEFAULT = 500;
 
-// The locked v6 defaults — the fallback for any absent/invalid cell.
-const DEFAULTS: Record<SegmentKey, SegmentRates> = {
-  standard: { zero: 0, conservative: 10, aggressive: 10, dominant: 20 },
-  premium: { zero: 0, conservative: 15, aggressive: 20, dominant: 25 },
-  influencer: { zero: 0, conservative: 15, aggressive: 20, dominant: 25 },
-  aura: { zero: 0, conservative: 20, aggressive: 25, dominant: 30 },
-  story: { zero: 0, conservative: 20, aggressive: 30, dominant: 40 },
-  welcome: { zero: 0, conservative: 20, aggressive: 30, dominant: 40 },
-  review: { zero: 0, conservative: 30, aggressive: 50, dominant: 50 },
+const R = (
+  conservative: number,
+  aggressive: number,
+  dominant: number,
+): SegmentRates => ({ zero: 0, conservative, aggressive, dominant });
+
+const FLAT = (r: SegmentRates): Record<ClassKey, SegmentRates> => ({
+  standard: { ...r },
+  premium: { ...r },
+  influencer: { ...r },
+  aura: { ...r },
+});
+
+// The v7 launch defaults — the identity migration of the locked v6 table.
+const DEFAULTS: RewardsConfig = {
+  cap: CAP_DEFAULT,
+  grid: {
+    standard: R(10, 10, 20),
+    premium: R(15, 20, 25),
+    influencer: R(15, 20, 25),
+    aura: R(20, 25, 30),
+  },
+  actions: {
+    mesita_review: FLAT(R(0, 0, 0)),
+    story: FLAT(R(20, 30, 40)),
+    welcome: FLAT(R(20, 30, 40)),
+    review: FLAT(R(30, 50, 50)),
+  },
 };
 
 // Snap to the 5% grid: ≤0 → 0, else clamp to [10,50] rounded to the nearest 5.
@@ -57,6 +81,19 @@ function clampCap(v: unknown): number {
   return Math.max(CAP_MIN, Math.min(CAP_MAX, Math.round(v)));
 }
 
+function snapRow(row: unknown, d: SegmentRates): SegmentRates {
+  const r =
+    row && typeof row === "object" && !Array.isArray(row)
+      ? (row as Record<string, unknown>)
+      : {};
+  return {
+    zero: 0, // off by definition
+    conservative: snapRate(r.conservative, d.conservative),
+    aggressive: snapRate(r.aggressive, d.aggressive),
+    dominant: snapRate(r.dominant, d.dominant),
+  };
+}
+
 export function normalizeConfig(
   raw: unknown,
 ): { ok: true; value: RewardsConfig } | { ok: false; error: string } {
@@ -68,21 +105,36 @@ export function normalizeConfig(
     c.grid && typeof c.grid === "object" && !Array.isArray(c.grid)
       ? (c.grid as Record<string, unknown>)
       : {};
+  const rawActions =
+    c.actions && typeof c.actions === "object" && !Array.isArray(c.actions)
+      ? (c.actions as Record<string, unknown>)
+      : {};
 
-  const grid = {} as Record<SegmentKey, SegmentRates>;
-  for (const key of SEGMENT_KEYS) {
-    const row =
-      rawGrid[key] && typeof rawGrid[key] === "object" && !Array.isArray(rawGrid[key])
-        ? (rawGrid[key] as Record<string, unknown>)
-        : {};
-    const d = DEFAULTS[key];
-    grid[key] = {
-      zero: 0, // off by definition
-      conservative: snapRate(row.conservative, d.conservative),
-      aggressive: snapRate(row.aggressive, d.aggressive),
-      dominant: snapRate(row.dominant, d.dominant),
-    };
+  const grid = {} as Record<ClassKey, SegmentRates>;
+  for (const cls of CLASS_KEYS) {
+    grid[cls] = snapRow(rawGrid[cls], DEFAULTS.grid[cls]);
   }
 
-  return { ok: true, value: { grid, cap: clampCap(c.cap) } };
+  const actions = {} as Record<ActionKey, Record<ClassKey, SegmentRates>>;
+  for (const action of ACTION_KEYS) {
+    const rawAction =
+      rawActions[action] &&
+      typeof rawActions[action] === "object" &&
+      !Array.isArray(rawActions[action])
+        ? (rawActions[action] as Record<string, unknown>)
+        : null;
+    // v12 fallback: the action's flat row lived inside `grid` (never for
+    // mesita_review, which v12 didn't price).
+    const legacyFlat = action === "mesita_review" ? null : rawGrid[action];
+    const perClass = {} as Record<ClassKey, SegmentRates>;
+    for (const cls of CLASS_KEYS) {
+      perClass[cls] = snapRow(
+        rawAction?.[cls] ?? legacyFlat,
+        DEFAULTS.actions[action][cls],
+      );
+    }
+    actions[action] = perClass;
+  }
+
+  return { ok: true, value: { grid, actions, cap: clampCap(c.cap) } };
 }
