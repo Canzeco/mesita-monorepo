@@ -142,6 +142,18 @@ function setPlaceSaved(placeId: string, saved: boolean): void {
   emit();
 }
 
+// Forget ONE place — drop it from the saved set and from the preview cache.
+//
+// The surgical counterpart to clearSavedPlacesLocal(): used when a specific id
+// turns out to be dead server-side (consumer-web-get-place 404s on it), so the
+// tile that pointed at it stops existing instead of bouncing the guest again.
+// Both stores are keyed by place id — the set drives the row, the preview map
+// drives its thumbnail/name — so forgetting means clearing both.
+export function forgetSavedPlace(placeId: string): void {
+  setPlaceSaved(placeId, false);
+  removeSavedPlacePreview(placeId);
+}
+
 // Wipe the localStorage-backed saved set + previews and reset the in-memory
 // cache, then notify subscribers. Called when the signed-in consumer changes
 // (see consumer-local-reset.ts): these saves live only in the browser, so

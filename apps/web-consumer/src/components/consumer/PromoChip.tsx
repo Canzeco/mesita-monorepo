@@ -22,10 +22,17 @@ import type { Place } from "@/lib/api/places";
 // listing_type, independent of any reward columns the row might still
 // carry. A Verified Partner MAY also choose not to set a rate. Either way
 // there is no fabricated promo: only a partner with a real, non-zero rate
-// shows a pink ribbon. When there's no reward the chip renders nothing by
-// default, or — if the caller passes `showWhenEmpty` — a neutral dark
+// shows a filled ribbon. When there's no reward the chip renders nothing by
+// default, or — if the caller passes `showWhenEmpty` — a stated
 // "No reward for you" pill so the absence is stated rather than silently
 // hidden.
+//
+// decision: Pato — on the place profile (`tone="light"`) the reward is the
+// ONLY reward signal in the header (it was pulled out of the stat trio, which
+// is now Google · Instagram · Mesita). So it can't read as one more grey tag:
+// it carries the premium violet — `bg-tier-premium` when a rate resolves, a
+// violet-tinted outline when it doesn't. The dark tone (swipe overlay) and the
+// `sm` catalog tile keep the pink-gradient ribbon.
 //
 // `size` lets the caller pick chip vs body weight:
 //   - "sm" (default) — catalog / saved tile
@@ -43,7 +50,7 @@ export function PromoChip({
    *  clean; the swipe card opts in to state the absence explicitly. */
   showWhenEmpty?: boolean;
   /** `dark` = swipe overlay (white on black/45). `light` = place profile
-   *  summary on white (bordered card chip). */
+   *  summary on white (violet chip — see the tone note above). */
   tone?: "dark" | "light";
 }) {
   const { key: classKey } = useConsumerClass();
@@ -52,10 +59,9 @@ export function PromoChip({
   const iconSize = size === "md" ? "h-3 w-3" : "h-2.5 w-2.5";
   const emptyTone =
     tone === "light"
-      ? "border-border bg-background text-foreground border"
+      ? "border border-violet-200 bg-violet-50 text-violet-700"
       : "border border-white/35 bg-black/45 text-white";
-  const emptyIconTone =
-    tone === "light" ? "text-muted-foreground" : undefined;
+  const emptyIconTone = tone === "light" ? "text-violet-500" : undefined;
 
   // Hard gate: only Verified Partners can offer rewards. Web-listed places
   // never resolve a rate; a Verified Partner may also choose not to set one.
@@ -97,7 +103,7 @@ export function PromoChip({
 
   return (
     <span
-      className={`bg-pink-gradient shadow-glow inline-flex max-w-full items-center gap-1.5 rounded-md whitespace-nowrap text-white ${sizing}`}
+      className={`shadow-glow inline-flex max-w-full items-center gap-1.5 rounded-md whitespace-nowrap text-white ${tone === "light" ? "bg-tier-premium" : "bg-pink-gradient"} ${sizing}`}
       title={
         capLabel
           ? `at Mesita ${classLabel} · ${capLabel}`

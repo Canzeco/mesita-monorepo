@@ -26,19 +26,27 @@ import { ProfileActions } from "./ProfileActions";
 import {
   ProfileMetaChip,
   ProfilePhoto,
-  ProfileRewardStat,
   ProfileStat,
 } from "./profile-summary-parts";
 
 // ── 1. Profile summary (IG photo+stats + swipe-style tags) ───────────────
 
 export function ProfileSummary({ place }: { place: PlaceDetail }) {
-  // decision: Pato — name in header; photo · Google · IG · reward; then
+  // decision: Pato — name in header; photo · Google · IG · Mesita; then
   // swipe-style tags: verification · category · price · zone · distance ·
   // hours · reward (MESITA-561).
+  // decision: Pato — the stat trio is REPUTATION only (Google · Instagram ·
+  // Mesita, since Mesita carries its own reviews too). The reward is not a
+  // reputation number and read as odd in that slot — it lives solely as the
+  // violet PromoChip in the tag row below.
   const googleRating = formatRating(place.google.rating)!;
   const googleCount = formatCompactCount(place.google.count, false);
   const igFollowers = formatCompactCount(place.instagram.followers, false);
+  // Mesita's own review aggregate (mesita_stars_overall / mesita_review_count).
+  // Zero reviews → an em dash rather than a fake 0.0.
+  const mesitaCount = place.mesita_reviews.total;
+  const mesitaRating =
+    mesitaCount > 0 ? (formatRating(place.mesita_reviews.overall) ?? "—") : "—";
   const priceLabel =
     formatPlacePriceChip({
       priceRange: place.price_range,
@@ -73,7 +81,16 @@ export function ProfileSummary({ place }: { place: PlaceDetail }) {
             label="Instagram"
             icon={<Instagram className="h-3 w-3 text-pink-500" />}
           />
-          <ProfileRewardStat place={promoPlace} />
+          <ProfileStat
+            value={mesitaRating}
+            label={`${formatCompactCount(mesitaCount, false)} Mesita`}
+            icon={
+              <Star
+                className="h-3 w-3 fill-pink-500 text-pink-500"
+                strokeWidth={0}
+              />
+            }
+          />
         </div>
       </div>
 

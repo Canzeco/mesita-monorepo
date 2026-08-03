@@ -1,3 +1,5 @@
+import { Suspense } from "react";
+
 import { Z_ROUTE_MODAL } from "@/lib/z-index";
 import { cn } from "@/lib/utils";
 import { headers } from "next/headers";
@@ -5,6 +7,7 @@ import { redirect } from "next/navigation";
 import { MobileFrame } from "@/components/consumer/MobileFrame";
 import { BottomNav } from "@/components/consumer/BottomNav";
 import { ConsumerLocalDataGuard } from "@/components/consumer/ConsumerLocalDataGuard";
+import { PlaceGoneNotice } from "@/components/consumer/PlaceGoneNotice";
 import { ShellChildrenSlot } from "@/components/consumer/ShellChildrenSlot";
 import { Toaster } from "@/components/consumer/Toaster";
 import { createServerSupabase } from "@/lib/supabase/server";
@@ -90,6 +93,11 @@ export default async function ConsumerShellLayout({
           consumer never inherits the previous account's localStorage-backed
           favorites / reservations (survives sign-out + DB reset). */}
       <ConsumerLocalDataGuard consumerId={user.id} />
+      {/* Turns the place-detail 404 bounce into a stated reason + prunes the
+          dead id. Suspense because it reads useSearchParams. */}
+      <Suspense fallback={null}>
+        <PlaceGoneNotice />
+      </Suspense>
       <ClassProvider consumerClass={consumerClass}>
         <div className="relative flex flex-1 flex-col overflow-hidden">
           <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">

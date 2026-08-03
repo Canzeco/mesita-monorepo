@@ -78,12 +78,46 @@ Deno.serve(async (req) => {
   }
   const plan = body.plan as Plan;
 
+  // MESITA-818 — plan is also the VERIFIED-PARTNER switch.
+  //
+  // Until now this EF wrote `plan` and nothing else, and no other EF or UI in
+  // the repo ever wrote `listing_type` at all: `_shared/save-place.ts`
+  // hardcodes 'web' on create, and the only 'partner' anywhere was the local
+  // seed row. So every place in production was born 'web' and stayed 'web'
+  // forever — while the consumer side gates the ENTIRE reward program on
+  // `listing_type === 'partner'` (rewards New tab, consumer-web-create-ticket's
+  // 409 not_partner, the venue pass, Mesita Check). An admin could put a place
+  // on a paid strategy with real rates and the guest would still see "Soon".
+  //
+  // Entitlement and listing are therefore one decision, made here: a paid
+  // membership IS Verified Partner status. Demotion is the mirror — dropping
+  // to Zero returns the place to the plain catalog listing. 'unclaimed' is
+  // left alone on demotion: it means "we have not heard from this venue",
+  // which a plan change doesn't answer.
+  const { data: current, error: readCurrent } = await admin
+    .from("projects")
+    .select("listing_type")
+    .eq("id", projectId)
+    .maybeSingle();
+  if (readCurrent) {
+    return json({ ok: false, error: `plan_read: ${readCurrent.message}` }, 500);
+  }
+  if (!current) {
+    return json({ ok: false, error: "Place not found" }, 404);
+  }
+  const patch: { plan: Plan; listing_type?: "partner" | "web" } = { plan };
+  if (plan !== "free") {
+    if (current.listing_type !== "partner") patch.listing_type = "partner";
+  } else if (current.listing_type === "partner") {
+    patch.listing_type = "web";
+  }
+
   // plan is a `projects` column — write it where the other two plan writers
   // do (business-web-change-subscription's mock grant, stripe-webhook-handle-
   // event), not through projects_view.
   const { data: updated, error } = await admin
     .from("projects")
-    .update({ plan })
+    .update(patch)
     .eq("id", projectId)
     .select("id")
     .maybeSingle();
