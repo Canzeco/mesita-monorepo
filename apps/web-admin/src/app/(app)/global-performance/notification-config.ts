@@ -35,11 +35,18 @@ export const TONES = {
     chip: "bg-indigo-500/10 text-indigo-700",
     dot: "bg-indigo-500",
   },
-  violet: {
-    tile: "bg-violet-500/10 text-violet-600",
-    kicker: "text-violet-600",
-    chip: "bg-violet-500/10 text-violet-700",
-    dot: "bg-violet-500",
+  // Was violet until 2026-08-03. Validated against the categorical checks
+  // (dataviz validator, light surface): violet-600 vs indigo-600 scored ΔE
+  // 7.5 for NORMAL vision — below the 15 floor, i.e. Tickets and Reviews
+  // were near-indistinguishable for everyone, not just CVD readers. Rose
+  // re-steps that pair to 16.6 and the whole ramp passes. Every row and tile
+  // also carries an icon + text label, which is what makes the one remaining
+  // 6–8 band WARN (emerald↔amber) legal.
+  rose: {
+    tile: "bg-rose-500/10 text-rose-600",
+    kicker: "text-rose-600",
+    chip: "bg-rose-500/10 text-rose-700",
+    dot: "bg-rose-500",
   },
   amber: {
     tile: "bg-amber-500/10 text-amber-600",
@@ -85,7 +92,7 @@ export const TYPE_CONFIG: Record<NotificationType, TypeConfig> = {
     label: "Place enriched",
     shortLabel: "Enriched",
     Icon: Sparkles,
-    tone: TONES.violet,
+    tone: TONES.rose,
   },
   "atlas.ownership_claimed": {
     label: "Ownership claimed",
@@ -127,7 +134,7 @@ export const TYPE_CONFIG: Record<NotificationType, TypeConfig> = {
     label: "Review submitted",
     shortLabel: "Reviews",
     Icon: Star,
-    tone: TONES.violet,
+    tone: TONES.rose,
   },
   "reservations.reservation_created": {
     label: "Reservation requested",

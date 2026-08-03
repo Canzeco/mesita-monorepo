@@ -8,16 +8,22 @@ import {
 } from "../../../global-performance/actions";
 import { GlobalPerformanceClient } from "../../../global-performance/GlobalPerformanceClient";
 import { ACTIVITY_TYPE_ORDER } from "../../../global-performance/notification-config";
+import { PerformanceSummary } from "../../sections/PerformanceSummary";
 import { ReviewsSection } from "../../sections/ReviewsSection";
 import { Spinner } from "../../ui";
 import { useUnitPlace } from "../../UnitPlaceContext";
 
-// Per-place Performance — how this place is DOING (MESITA-834 + Pato's
-// 2026-08-03 fold): reputation first (the Reviews cards — Mesita aggregates,
-// Google, Instagram/Facebook signals), then what the app did with the place
-// (saves, ticket creates / visits / payments, reviews, reservation requests).
-// The feed is the Global Monitor engine scoped to this place and narrowed to
-// the consumer-activity types — Enricher noise stays on Global.
+// Per-place Performance — how this place is DOING. Three layers, widest to
+// narrowest (Pato 2026-08-03: "include summary … and then the actual
+// notifications"):
+//   1. Summary     — the headline numbers (KPI tiles): Mesita + Google stars,
+//                    IG/FB reach, and activity/money derived from the feed.
+//   2. Reviews     — the review cards themselves.
+//   3. App activity— the raw per-place event feed.
+// Summary and feed read the SAME payload, so the tiles can never disagree
+// with the rows beneath them. The feed is the Global Monitor engine scoped to
+// this place and narrowed to consumer-activity types — Enricher noise stays
+// on Global.
 export default function UnitPerformancePage() {
   const { place } = useUnitPlace();
   const [initial, setInitial] = useState<NotificationsPayload | null>(null);
@@ -45,6 +51,14 @@ export default function UnitPerformancePage() {
 
   return (
     <div className="flex flex-col gap-6 lg:gap-8">
+      {/* Headline numbers. Rendered only with the payload — the tiles are
+          derived from it, so there is nothing honest to show before it lands. */}
+      {initial ? (
+        <div className="mx-auto w-full max-w-6xl">
+          <PerformanceSummary place={place} data={initial} />
+        </div>
+      ) : null}
+
       {/* Reputation — same masonry language as the other tabs. */}
       <div className="mx-auto w-full max-w-6xl">
         <div className="columns-1 gap-4 [&>section]:mb-4 [&>section]:break-inside-avoid lg:columns-2 lg:gap-5 lg:[&>section]:mb-5">
