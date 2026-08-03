@@ -1,4 +1,4 @@
-import { MapPin, QrCode, Sparkles, TicketX } from 'lucide-react-native';
+import { MapPin, QrCode, Sparkles, Star, TicketX } from 'lucide-react-native';
 import React, {
   useCallback,
   useEffect,
@@ -233,9 +233,13 @@ export function PayClient({ userId }: { userId: string }) {
 // border. Previously it was a bordered card sitting directly above the tab
 // card, so the two read as twins; steps are instruction and tabs are control,
 // and they should never look alike.
+// Four steps (Pato, 2026-08-03): "pick place. post review. show qr. pay less."
+// Post-review sits SECOND because the guest does it at the table before the
+// close. Short labels on purpose: four columns plus connectors is tight.
 const PITCH_STEPS = [
-  { Icon: MapPin, label: 'Pick the place' },
-  { Icon: QrCode, label: 'Show your QR' },
+  { Icon: MapPin, label: 'Pick place' },
+  { Icon: Star, label: 'Post review' },
+  { Icon: QrCode, label: 'Show QR' },
   { Icon: Sparkles, label: 'Pay less' },
 ] as const;
 
@@ -258,7 +262,7 @@ function PitchSteps() {
           {i < PITCH_STEPS.length - 1 ? (
             <View
               className="bg-border"
-              style={{ height: 1, width: 20, marginTop: 20 }}
+              style={{ height: 1, width: 12, marginTop: 20 }}
             />
           ) : null}
         </React.Fragment>
