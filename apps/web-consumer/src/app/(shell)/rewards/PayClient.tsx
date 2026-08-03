@@ -8,54 +8,134 @@ import {
   useRef,
   useState,
 } from "react";
-import { MapPin, QrCode, Sparkles, Star, TicketX } from "lucide-react";
+import { useRouter } from "next/navigation";
+import {
+  Instagram,
+  Loader2,
+  MapPin,
+  QrCode,
+  Sparkles,
+  Star,
+  TicketX,
+} from "lucide-react";
 
-import { CheckTicketCard } from "@/components/consumer/rewards/CheckTicketCard";
-import { HistoryTicketCard } from "@/components/consumer/rewards/HistoryTicketCard";
+import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
 import { PlacePickList } from "@/components/consumer/rewards/PlacePickList";
 import { SavingsReveal } from "@/components/consumer/rewards/SavingsReveal";
-import { VenuePassModal } from "@/components/consumer/rewards/VenuePassModal";
+import { TicketRow } from "@/components/consumer/rewards/TicketRow";
 import { TicketCardSkeleton } from "./PayTabLoading";
-import { apiCancelTicket, type ConsumerTicketRow } from "@/lib/api/tickets";
+import { EFError } from "@/lib/api/_invoke";
+import {
+  ACTIVE_TICKET_STATUSES,
+  apiCreateTicket,
+  apiListConsumerTickets,
+  type ConsumerTicketRow,
+} from "@/lib/api/tickets";
 import type { Place } from "@/lib/api/places";
+import { ticketPath } from "@/lib/consumer-route-contract";
+import { useConsumerClass } from "@/lib/class-context";
 import { useConsumerTickets } from "@/lib/hooks/useConsumerTickets";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { cn } from "@/lib/utils";
 
-// Rewards Wallet v3 (MESITA-811 · MESITA-820) — the three steps → New /
-// Pending / History. No identity header: the tab bar already reads
-// "Me · <class>", so repeating name+tier here was pure chrome on a page
-// whose job is doing. New lists every partner place (no searchbar yet); tapping one
-// opens the venue pass modal, which reuses-or-creates the ticket and shows
-// the QR. Education stays on Me > Help (MESITA-809); the motion budget
-// (verified pulse + savings reveal) carries over from MESITA-808.
+// Rewards Wallet (MESITA-811 · 820 · 857) — the four steps → New / Pending /
+// History. The wallet is now purely the DOOR: tapping a partner in New
+// creates the ticket and navigates straight to THE ticket screen
+// (/rewards/ticket/[id]); Pending and History are compact rows into the same
+// screen. The venue pass modal and the in-list QR card died with MESITA-857 —
+// one object, one surface. Influencers get the one create-time interstitial
+// (wantsStory can't be added after create).
 
 type Tab = "new" | "pending" | "history";
 
 export function PayClient({ userId }: { userId: string }) {
   const supabase = useBrowserSupabase();
+  const router = useRouter();
   const tickets = useConsumerTickets(userId);
+  const { key: classKey } = useConsumerClass();
 
   // Default tab is DERIVED, not effect-set: Pending while a live ticket
-  // exists (mid-visit the QR is one tap away), New otherwise. A manual tap
-  // pins the choice for the session.
+  // exists, New otherwise. A manual tap pins the choice for the session.
   const [tabChoice, setTabChoice] = useState<Tab | null>(null);
   const tab: Tab =
     tabChoice ?? (tickets.active.length > 0 ? "pending" : "new");
-
-  const [passPlace, setPassPlace] = useState<Place | null>(null);
 
   const activePlaceIds = useMemo(
     () => new Set(tickets.active.map((t) => t.project_id)),
     [tickets.active],
   );
 
-  const cancelTicket = useCallback(
-    async (ticketId: string) => {
-      await apiCancelTicket(supabase, ticketId);
-      await tickets.refresh();
+  // ── Ticket creation: tap → create → navigate. ──
+  const [startingId, setStartingId] = useState<string | null>(null);
+  const [startError, setStartError] = useState<string | null>(null);
+  const [storyPlace, setStoryPlace] = useState<Place | null>(null);
+  const [wantsStory, setWantsStory] = useState(false);
+
+  const openTicket = useCallback(
+    (id: string) => {
+      setTabChoice("pending");
+      router.push(ticketPath(id), { scroll: false });
     },
-    [supabase, tickets],
+    [router],
+  );
+
+  const startTicket = useCallback(
+    async (place: Place, withStory: boolean) => {
+      setStartingId(place.id);
+      setStartError(null);
+      try {
+        const res = await apiCreateTicket(supabase, place.id, withStory);
+        void tickets.refresh();
+        openTicket(res.ticket.id);
+      } catch (err) {
+        if (err instanceof EFError && err.code === "already_open") {
+          // Another device/tab won the race — open the existing ticket. The
+          // friendly 409 carries its id; the index-race arm doesn't, so fall
+          // back to a fresh list (never the stale closure state).
+          const fromBody = err.body?.ticketId;
+          let id = typeof fromBody === "string" ? fromBody : null;
+          if (!id) {
+            const rows = await apiListConsumerTickets(supabase).catch(
+              () => [] as ConsumerTicketRow[],
+            );
+            id =
+              rows.find(
+                (t) =>
+                  t.project_id === place.id &&
+                  ACTIVE_TICKET_STATUSES.has(t.status),
+              )?.id ?? null;
+          }
+          if (id) {
+            openTicket(id);
+            return;
+          }
+        }
+        setStartError(
+          err instanceof Error ? err.message : "Couldn't start your ticket.",
+        );
+      } finally {
+        setStartingId(null);
+      }
+    },
+    [supabase, tickets, openTicket],
+  );
+
+  const onPick = useCallback(
+    (place: Place) => {
+      const existing = tickets.active.find((t) => t.project_id === place.id);
+      if (existing) {
+        openTicket(existing.id);
+        return;
+      }
+      if (classKey === "influencer") {
+        // The one create-time choice: the Story rung can't be added later.
+        setWantsStory(false);
+        setStoryPlace(place);
+        return;
+      }
+      void startTicket(place, false);
+    },
+    [tickets.active, classKey, openTicket, startTicket],
   );
 
   // The paid beat (MESITA-808, 4A): a watched ticket flipping to revealed
@@ -125,12 +205,20 @@ export function PayClient({ userId }: { userId: string }) {
       </div>
 
       {tab === "new" ? (
-        <PlacePickList
-          activePlaceIds={activePlaceIds}
-          onPick={(place) => setPassPlace(place)}
-        />
+        <>
+          {startError ? (
+            <p className="bg-destructive/10 text-destructive rounded-lg px-3 py-2 text-[12.5px]">
+              {startError}
+            </p>
+          ) : null}
+          <PlacePickList
+            activePlaceIds={activePlaceIds}
+            busyPlaceId={startingId}
+            onPick={onPick}
+          />
+        </>
       ) : tab === "pending" ? (
-        <div className="flex flex-col gap-3">
+        <div className="flex flex-col gap-2.5">
           {tickets.status === "loading" ? (
             <TicketCardSkeleton />
           ) : tickets.status === "error" ? (
@@ -144,8 +232,8 @@ export function PayClient({ userId }: { userId: string }) {
                 No live ticket
               </p>
               <p className="text-muted-foreground max-w-[280px] text-[12.5px] leading-relaxed">
-                Pick the place you&apos;re visiting in New and your QR is
-                ready to scan.
+                Pick the place you&apos;re visiting in New and your ticket
+                opens with its QR.
               </p>
               <button
                 type="button"
@@ -157,7 +245,7 @@ export function PayClient({ userId }: { userId: string }) {
             </div>
           ) : (
             tickets.active.map((t) => (
-              <CheckTicketCard key={t.id} ticket={t} onCancel={cancelTicket} />
+              <TicketRow key={t.id} ticket={t} onOpen={() => openTicket(t.id)} />
             ))
           )}
         </div>
@@ -178,32 +266,79 @@ export function PayClient({ userId }: { userId: string }) {
             </div>
           ) : (
             tickets.history.map((t) => (
-              <HistoryTicketCard key={t.id} ticket={t} />
+              <TicketRow key={t.id} ticket={t} onOpen={() => openTicket(t.id)} />
             ))
           )}
         </div>
       )}
 
-      <VenuePassModal
-        // Remount per venue: fresh modal state without reset effects.
-        key={passPlace?.id ?? "closed"}
-        place={passPlace}
-        tickets={tickets}
-        onClose={() => setPassPlace(null)}
-        onTicketStarted={() => setTabChoice("pending")}
-      />
+      {/* Influencer interstitial — the ONE create-time choice (wantsStory). */}
+      <LocalSheet
+        open={storyPlace !== null}
+        onClose={() => setStoryPlace(null)}
+        ariaLabel="Add the Story bonus?"
+      >
+        <div className="flex flex-col gap-4 px-5 pt-4 pb-8">
+          <div>
+            <h2 className="text-foreground text-lg leading-tight font-bold tracking-tight">
+              Add the Story bonus?
+            </h2>
+            <p className="text-muted-foreground mt-0.5 text-[12.5px]">
+              Yours alone as an Influencer — decide before the ticket opens.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setWantsStory((v) => !v)}
+            aria-pressed={wantsStory}
+            className={cn(
+              "flex items-start gap-3 rounded-2xl border px-3.5 py-3 text-left transition",
+              wantsStory ? "border-secondary/40 bg-secondary/5" : "border-border",
+            )}
+          >
+            <span className="bg-secondary/10 text-secondary grid size-8 shrink-0 place-items-center rounded-lg">
+              <Instagram className="size-4" />
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="text-foreground block text-[13px] font-semibold">
+                Post a tagged story at the table
+              </span>
+              <span className="text-muted-foreground block text-[12px] leading-snug">
+                A bigger reward than your class rate — verified before it pays.
+              </span>
+            </span>
+            <span
+              className={cn(
+                "mt-0.5 grid size-5 shrink-0 place-items-center rounded-full border text-[10px] font-bold",
+                wantsStory
+                  ? "border-secondary bg-secondary text-white"
+                  : "border-border text-transparent",
+              )}
+            >
+              ✓
+            </span>
+          </button>
+          <button
+            type="button"
+            disabled={startingId !== null}
+            onClick={() => {
+              const p = storyPlace;
+              setStoryPlace(null);
+              if (p) void startTicket(p, wantsStory);
+            }}
+            className="bg-pink-gradient shadow-glow flex items-center justify-center gap-2 rounded-xl px-4 py-3.5 text-sm font-semibold text-white transition active:scale-[0.99] disabled:opacity-50"
+          >
+            {startingId ? <Loader2 className="size-4 animate-spin" /> : null}
+            Open my ticket
+          </button>
+        </div>
+      </LocalSheet>
     </div>
   );
 }
 
-// The three steps — a RAIL, not a card: numbered, connected by hairlines, no
-// border. Previously it was a bordered card sitting directly above the tab
-// card, so the two read as twins; steps are instruction and tabs are control,
-// and they should never look alike.
-// Four steps (Pato, 2026-08-03): "pick place. post review. show qr. pay less."
-// Post-review sits SECOND because the guest does it at the table before the
-// close — the rail tells the story, so it uses his wording verbatim. Labels
-// are deliberately short: four columns plus connectors is tight at 375px.
+// The four steps — a RAIL, not a card (MESITA-826): numbered, connected by
+// hairlines, instruction-weight. Pato's wording verbatim.
 const PITCH_STEPS = [
   { icon: MapPin, label: "Pick place" },
   { icon: Star, label: "Post review" },

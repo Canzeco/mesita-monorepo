@@ -1,4 +1,12 @@
-import { MapPin, QrCode, Sparkles, Star, TicketX } from 'lucide-react-native';
+import { useRouter } from 'expo-router';
+import {
+  Camera,
+  MapPin,
+  QrCode,
+  Sparkles,
+  Star,
+  TicketX,
+} from 'lucide-react-native';
 import React, {
   useCallback,
   useEffect,
@@ -6,55 +14,127 @@ import React, {
   useRef,
   useState,
 } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Pressable,
+  ScrollView,
+  Text,
+  View,
+} from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 
-import { CheckTicketCard } from '@/components/rewards/CheckTicketCard';
-import { HistoryTicketCard } from '@/components/rewards/HistoryTicketCard';
+import { FullScreenSheet } from '@/components/ui/FullScreenSheet';
 import { PlacePickList } from '@/components/rewards/PlacePickList';
 import { SavingsReveal } from '@/components/rewards/SavingsReveal';
-import { VenuePassModal } from '@/components/rewards/VenuePassModal';
+import { TicketRow } from '@/components/rewards/TicketRow';
 import { GRADIENT_DIAGONAL, GRADIENTS } from '@/constants/brand';
 import type { Place } from '@/lib/api/places';
-import { apiCancelTicket, type ConsumerTicketRow } from '@/lib/api/tickets';
+import {
+  ACTIVE_TICKET_STATUSES,
+  apiCreateTicket,
+  apiListConsumerTickets,
+  type ConsumerTicketRow,
+} from '@/lib/api/tickets';
+import { EFError } from '@/lib/ef';
 import { useConsumerTickets } from '@/lib/hooks/useConsumerTickets';
 import { TAB_SCROLL_PADDING_BOTTOM } from '@/lib/tab-layout';
+import { useAuth } from '@/providers/auth';
 
-// Rewards Wallet v3 (MESITA-811 · MESITA-820) — web PayClient mirror: the
-// three steps → New / Pending / History. No identity header: the tab bar
-// already reads "Me · <class>", so repeating name+tier here was pure chrome
-// on a page whose job is doing.
-// New lists every partner place; tapping one opens the venue pass modal,
-// which reuses-or-creates the ticket and shows the QR. Education stays on
-// Me > Help (MESITA-809); motion budget carries over from MESITA-808.
+// Rewards Wallet (MESITA-811 · 820 · 857) — web PayClient mirror. The wallet
+// is now purely the DOOR: tapping a partner in New creates the ticket and
+// navigates straight to THE ticket screen (/rewards/ticket/[id]); Pending and
+// History are compact rows into the same screen. The venue pass modal and the
+// in-list QR card died with MESITA-857 — one object, one surface. Influencers
+// get the one create-time interstitial (wantsStory can't be added later).
 
 type Tab = 'new' | 'pending' | 'history';
 
 export function PayClient({ userId }: { userId: string }) {
+  const router = useRouter();
   const tickets = useConsumerTickets(userId);
+  const { consumerClass } = useAuth();
+  const classKey = consumerClass?.class ?? 'standard';
 
   // Default tab is DERIVED, not effect-set: Pending while a live ticket
   // exists, New otherwise. A manual tap pins the choice for the session.
   const [tabChoice, setTabChoice] = useState<Tab | null>(null);
   const tab: Tab = tabChoice ?? (tickets.active.length > 0 ? 'pending' : 'new');
 
-  const [passPlace, setPassPlace] = useState<Place | null>(null);
-
   const activePlaceIds = useMemo(
     () => new Set(tickets.active.map((t) => t.project_id)),
     [tickets.active],
   );
 
-  const cancelTicket = useCallback(
-    async (ticketId: string) => {
-      await apiCancelTicket(ticketId);
-      await tickets.refresh();
+  // ── Ticket creation: tap → create → navigate. ──
+  const [startingId, setStartingId] = useState<string | null>(null);
+  const [startError, setStartError] = useState<string | null>(null);
+  const [storyPlace, setStoryPlace] = useState<Place | null>(null);
+  const [wantsStory, setWantsStory] = useState(false);
+
+  const openTicket = useCallback(
+    (id: string) => {
+      setTabChoice('pending');
+      router.push(`/rewards/ticket/${id}`);
     },
-    [tickets],
+    [router],
   );
 
-  // The paid beat (MESITA-808, 4A): a watched ticket flipping to revealed
-  // holds a savings reveal before settling into History.
+  const startTicket = useCallback(
+    async (place: Place, withStory: boolean) => {
+      setStartingId(place.id);
+      setStartError(null);
+      try {
+        const res = await apiCreateTicket(place.id, withStory);
+        void tickets.refresh();
+        openTicket(res.ticket.id);
+      } catch (err) {
+        if (err instanceof EFError && err.code === 'already_open') {
+          const fromBody = err.body?.ticketId;
+          let id = typeof fromBody === 'string' ? fromBody : null;
+          if (!id) {
+            const rows = await apiListConsumerTickets().catch(
+              () => [] as ConsumerTicketRow[],
+            );
+            id =
+              rows.find(
+                (t) =>
+                  t.project_id === place.id &&
+                  ACTIVE_TICKET_STATUSES.has(t.status),
+              )?.id ?? null;
+          }
+          if (id) {
+            openTicket(id);
+            return;
+          }
+        }
+        setStartError(
+          err instanceof Error ? err.message : "Couldn't start your ticket.",
+        );
+      } finally {
+        setStartingId(null);
+      }
+    },
+    [tickets, openTicket],
+  );
+
+  const onPick = useCallback(
+    (place: Place) => {
+      const existing = tickets.active.find((t) => t.project_id === place.id);
+      if (existing) {
+        openTicket(existing.id);
+        return;
+      }
+      if (classKey === 'influencer') {
+        setWantsStory(false);
+        setStoryPlace(place);
+        return;
+      }
+      void startTicket(place, false);
+    },
+    [tickets.active, classKey, openTicket, startTicket],
+  );
+
+  // The paid beat (MESITA-808, 4A).
   const [justPaid, setJustPaid] = useState<ConsumerTicketRow | null>(null);
   const prevActiveIdsRef = useRef<Set<string>>(new Set());
   useEffect(() => {
@@ -89,9 +169,7 @@ export function PayClient({ userId }: { userId: string }) {
           />
         ) : null}
 
-        {/* Segmented control — a FILLED track, not a bordered card, so it
-            reads as a control and never twins with the step rail above.
-            ≥44px hit areas. */}
+        {/* Segmented control — filled track (MESITA-820). */}
         <View className="flex-row rounded-2xl bg-muted p-1" style={{ gap: 4 }}>
           {(
             [
@@ -139,12 +217,23 @@ export function PayClient({ userId }: { userId: string }) {
         </View>
 
         {tab === 'new' ? (
-          <PlacePickList
-            activePlaceIds={activePlaceIds}
-            onPick={(place) => setPassPlace(place)}
-          />
+          <>
+            {startError ? (
+              <Text
+                className="rounded-lg bg-destructive/10 px-3 py-2 text-destructive"
+                style={{ fontSize: 12.5 }}
+              >
+                {startError}
+              </Text>
+            ) : null}
+            <PlacePickList
+              activePlaceIds={activePlaceIds}
+              busyPlaceId={startingId}
+              onPick={onPick}
+            />
+          </>
         ) : tab === 'pending' ? (
-          <View style={{ gap: 12 }}>
+          <View style={{ gap: 10 }}>
             {tickets.status === 'loading' ? (
               <ActivityIndicator style={{ paddingVertical: 24 }} />
             ) : tickets.status === 'error' ? (
@@ -164,8 +253,8 @@ export function PayClient({ userId }: { userId: string }) {
                   className="text-center text-muted-foreground"
                   style={{ fontSize: 12.5, lineHeight: 17, maxWidth: 280 }}
                 >
-                  Pick the place you&apos;re visiting in New and your QR is
-                  ready to scan.
+                  Pick the place you&apos;re visiting in New and your ticket
+                  opens with its QR.
                 </Text>
                 <Pressable
                   onPress={() => setTabChoice('new')}
@@ -189,7 +278,11 @@ export function PayClient({ userId }: { userId: string }) {
               </View>
             ) : (
               tickets.active.map((t) => (
-                <CheckTicketCard key={t.id} ticket={t} onCancel={cancelTicket} />
+                <TicketRow
+                  key={t.id}
+                  ticket={t}
+                  onOpen={() => openTicket(t.id)}
+                />
               ))
             )}
           </View>
@@ -210,32 +303,99 @@ export function PayClient({ userId }: { userId: string }) {
               </View>
             ) : (
               tickets.history.map((t) => (
-                <HistoryTicketCard key={t.id} ticket={t} />
+                <TicketRow
+                  key={t.id}
+                  ticket={t}
+                  onOpen={() => openTicket(t.id)}
+                />
               ))
             )}
           </View>
         )}
       </ScrollView>
 
-      <VenuePassModal
-        // Remount per venue: fresh modal state without reset effects.
-        key={passPlace?.id ?? 'closed'}
-        place={passPlace}
-        tickets={tickets}
-        onClose={() => setPassPlace(null)}
-        onTicketStarted={() => setTabChoice('pending')}
-      />
+      {/* Influencer interstitial — the ONE create-time choice (wantsStory). */}
+      <FullScreenSheet
+        visible={storyPlace !== null}
+        onClose={() => setStoryPlace(null)}
+        title="Add the Story bonus?"
+        subtitle="Yours alone as an Influencer — decide before the ticket opens."
+      >
+        <View className="flex-1 px-4 pt-4" style={{ gap: 16 }}>
+          <Pressable
+            onPress={() => setWantsStory((v) => !v)}
+            accessibilityRole="checkbox"
+            accessibilityState={{ checked: wantsStory }}
+            className={`flex-row items-start rounded-2xl border px-3.5 py-3 ${
+              wantsStory ? 'border-secondary/40 bg-secondary/5' : 'border-border'
+            }`}
+            style={{ gap: 12 }}
+          >
+            <View className="h-8 w-8 items-center justify-center rounded-lg bg-secondary/10">
+              <Camera size={16} color="#cf0360" />
+            </View>
+            <View className="min-w-0 flex-1">
+              <Text
+                className="font-semibold text-foreground"
+                style={{ fontSize: 13 }}
+              >
+                Post a tagged story at the table
+              </Text>
+              <Text
+                className="text-muted-foreground"
+                style={{ fontSize: 12, lineHeight: 16 }}
+              >
+                A bigger reward than your class rate — verified before it pays.
+              </Text>
+            </View>
+            <View
+              className={`mt-0.5 h-5 w-5 items-center justify-center rounded-full border ${
+                wantsStory ? 'border-secondary bg-secondary' : 'border-border'
+              }`}
+            >
+              {wantsStory ? (
+                <Text className="font-bold text-white" style={{ fontSize: 10 }}>
+                  ✓
+                </Text>
+              ) : null}
+            </View>
+          </Pressable>
+          <Pressable
+            disabled={startingId !== null}
+            onPress={() => {
+              const p = storyPlace;
+              setStoryPlace(null);
+              if (p) void startTicket(p, wantsStory);
+            }}
+            accessibilityRole="button"
+            className="overflow-hidden rounded-xl active:opacity-90"
+          >
+            <LinearGradient
+              colors={[...GRADIENTS.pink]}
+              start={GRADIENT_DIAGONAL.start}
+              end={GRADIENT_DIAGONAL.end}
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 8,
+                minHeight: 48,
+              }}
+            >
+              {startingId ? <ActivityIndicator size="small" color="#fff" /> : null}
+              <Text className="font-semibold text-white" style={{ fontSize: 14 }}>
+                Open my ticket
+              </Text>
+            </LinearGradient>
+          </Pressable>
+        </View>
+      </FullScreenSheet>
     </>
   );
 }
 
-// The three steps — a RAIL, not a card: numbered, connected by hairlines, no
-// border. Previously it was a bordered card sitting directly above the tab
-// card, so the two read as twins; steps are instruction and tabs are control,
-// and they should never look alike.
-// Four steps (Pato, 2026-08-03): "pick place. post review. show qr. pay less."
-// Post-review sits SECOND because the guest does it at the table before the
-// close. Short labels on purpose: four columns plus connectors is tight.
+// The four steps — a RAIL, not a card (MESITA-826): numbered, connected by
+// hairlines, instruction-weight. Pato's wording verbatim.
 const PITCH_STEPS = [
   { Icon: MapPin, label: 'Pick place' },
   { Icon: Star, label: 'Post review' },
@@ -256,7 +416,8 @@ function PitchSteps() {
               className="text-center font-semibold text-foreground"
               style={{ fontSize: 11, lineHeight: 14 }}
             >
-              <Text className="font-extrabold text-primary">{i + 1}</Text> {label}
+              <Text className="font-extrabold text-primary">{i + 1}</Text>{' '}
+              {label}
             </Text>
           </View>
           {i < PITCH_STEPS.length - 1 ? (

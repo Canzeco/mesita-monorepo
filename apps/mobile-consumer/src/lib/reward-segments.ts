@@ -117,11 +117,12 @@ export const REWARD_SEGMENTS: readonly RewardSegment[] = [
   },
 ];
 
-const REWARD_SEGMENT_BY_KEY = Object.fromEntries(
+export const REWARD_SEGMENT_BY_KEY = Object.fromEntries(
   REWARD_SEGMENTS.map((s) => [s.key, s]),
 ) as Record<RewardSegmentKey, RewardSegment>;
 
 // The peak column — what "up to" quotes. Dominant is the most generous strategy.
+
 export const PEAK_STRATEGY: GridStrategy = 'dominant';
 
 // Which class rung a consumer sits on. Consumer classes map one-to-one onto

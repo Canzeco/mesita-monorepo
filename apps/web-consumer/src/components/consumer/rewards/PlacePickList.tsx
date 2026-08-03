@@ -13,7 +13,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
-import { ChevronRight, Lock, MapPin, QrCode, Store } from "lucide-react";
+import { ChevronRight, Loader2, Lock, MapPin, QrCode, Store } from "lucide-react";
 
 import { apiFetchPublicPlaces, type Place } from "@/lib/api/places";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
@@ -21,10 +21,13 @@ import { cn } from "@/lib/utils";
 
 export function PlacePickList({
   activePlaceIds,
+  busyPlaceId = null,
   onPick,
 }: {
   /** Places that already hold a live ticket — rows get an "Open" chip. */
   activePlaceIds: ReadonlySet<string>;
+  /** Place whose ticket is being created right now — its row shows a spinner. */
+  busyPlaceId?: string | null;
   onPick: (place: Place) => void;
 }) {
   const supabase = useBrowserSupabase();
@@ -121,6 +124,7 @@ export function PlacePickList({
             <PlaceRow
               place={p}
               hasOpen={activePlaceIds.has(p.id)}
+              busy={busyPlaceId === p.id}
               onPick={onPick}
             />
           </li>
@@ -139,10 +143,12 @@ export function PlacePickList({
 function PlaceRow({
   place,
   hasOpen,
+  busy = false,
   onPick,
 }: {
   place: Place;
   hasOpen: boolean;
+  busy?: boolean;
   onPick: (place: Place) => void;
 }) {
   const isPartner = place.listing_type === "partner";
@@ -208,12 +214,17 @@ function PlaceRow({
           {/* Ghost QR — the row's promise, made visible. A dashed placeholder
               reads "your QR comes from here, tap it", which a bare chevron
               never says. Deliberately NOT a scannable code: nothing exists
-              until the ticket is created. */}
+              until the ticket is created. While the ticket is being created
+              it becomes the spinner, in place. */}
           <span
             aria-hidden="true"
             className="border-primary/30 bg-primary/5 text-primary/70 grid size-9 shrink-0 place-items-center rounded-lg border border-dashed"
           >
-            <QrCode className="size-[18px]" />
+            {busy ? (
+              <Loader2 className="size-[18px] animate-spin" />
+            ) : (
+              <QrCode className="size-[18px]" />
+            )}
           </span>
           <ChevronRight className="text-muted-foreground size-4 shrink-0" />
         </>

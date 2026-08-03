@@ -19,10 +19,13 @@ import { supabase } from '@/lib/supabase';
 
 export function PlacePickList({
   activePlaceIds,
+  busyPlaceId = null,
   onPick,
 }: {
   /** Places that already hold a live ticket — rows get an "Open" chip. */
   activePlaceIds: ReadonlySet<string>;
+  /** Place whose ticket is being created right now — its row shows a spinner. */
+  busyPlaceId?: string | null;
   onPick: (place: Place) => void;
 }) {
   const [places, setPlaces] = useState<Place[]>([]);
@@ -105,6 +108,7 @@ export function PlacePickList({
             key={p.id}
             place={p}
             hasOpen={activePlaceIds.has(p.id)}
+            busy={busyPlaceId === p.id}
             onPick={onPick}
             first={i === 0}
           />
@@ -126,11 +130,13 @@ export function PlacePickList({
 function PlaceRow({
   place,
   hasOpen,
+  busy = false,
   onPick,
   first,
 }: {
   place: Place;
   hasOpen: boolean;
+  busy?: boolean;
   onPick: (place: Place) => void;
   first: boolean;
 }) {
@@ -215,7 +221,11 @@ function PlaceRow({
             importantForAccessibility="no-hide-descendants"
             className="h-9 w-9 items-center justify-center rounded-lg border border-dashed border-primary/30 bg-primary/5"
           >
-            <QrCode size={18} color="#cf0360" opacity={0.7} />
+            {busy ? (
+              <ActivityIndicator size="small" color="#cf0360" />
+            ) : (
+              <QrCode size={18} color="#cf0360" opacity={0.7} />
+            )}
           </View>
           <ChevronRight size={16} color="#775254" />
         </>
