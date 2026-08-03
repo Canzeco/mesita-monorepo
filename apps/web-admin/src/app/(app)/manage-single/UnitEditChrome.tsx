@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import {
   ArrowLeftRight,
@@ -20,7 +20,6 @@ import {
 } from "./actions";
 import { UNIT_TAB_SECTIONS, unitSectionHref } from "./nav";
 import { useUnitPlace } from "./UnitPlaceContext";
-import { ConfirmDialog } from "./ui";
 
 /** True while the Enricher pipeline is mid-flight.
  *  decision: Pato (MESITA-453) — Enriching = the WHOLE pipeline:
@@ -38,10 +37,6 @@ function isEnriching(status: PlaceEnrichmentStatus | null): boolean {
 // anything else (draft, paused, etc.) renders the amber dot.
 const POSITIVE_STATUS_LABELS = new Set(["active", "published", "live", "ready"]);
 
-type PendingNav =
-  | { kind: "href"; href: string }
-  | { kind: "reenrich"; mode: ReenrichMode };
-
 export function UnitEditChrome({
   projectId,
   place,
@@ -50,8 +45,10 @@ export function UnitEditChrome({
   place: AdminPlace;
 }) {
   const pathname = usePathname();
-  const router = useRouter();
-  const { isDirty, requestDiscard } = useUnitPlace();
+  // The discard guard and its dialog live on UnitPlaceContext so every exit
+  // path is covered — including the cross-tab links inside PlaceSection, which
+  // used to bypass the chrome-local guard entirely.
+  const { isDirty, guardNav, guardIntent } = useUnitPlace();
   const heroPhoto = place.photos?.[0] ?? null;
   const statusLabel = place.status?.trim()
     ? place.status.charAt(0).toUpperCase() + place.status.slice(1)
@@ -62,7 +59,6 @@ export function UnitEditChrome({
   const [enrichPollError, setEnrichPollError] = useState(false);
   const enriching = isEnriching(enrichStatus);
   const enrichFailed = enrichStatus?.stage === "failed";
-  const [pendingNav, setPendingNav] = useState<PendingNav | null>(null);
 
   // decision: Pato (MESITA-451) — Enriching badge also lives next to the place
   // name in this chrome. Meta card shows enriching status too (MESITA-466).
@@ -99,25 +95,6 @@ export function UnitEditChrome({
     return () => window.removeEventListener("beforeunload", onBeforeUnload);
   }, [isDirty]);
 
-  const guardNav = useCallback(
-    (href: string, e?: React.MouseEvent) => {
-      if (!isDirty) return false;
-      e?.preventDefault();
-      setPendingNav({ kind: "href", href });
-      return true;
-    },
-    [isDirty],
-  );
-
-  const guardReenrich = useCallback(
-    (mode: ReenrichMode): boolean => {
-      if (!isDirty) return false;
-      setPendingNav({ kind: "reenrich", mode });
-      return true;
-    },
-    [isDirty],
-  );
-
   const [reenrichPending, startReenrich] = useTransition();
   const [reenrichState, setReenrichState] = useState<"idle" | "done" | "error">(
     "idle",
@@ -153,18 +130,6 @@ export function UnitEditChrome({
     },
     [projectId],
   );
-
-  const confirmDiscard = () => {
-    if (!pendingNav) return;
-    const nav = pendingNav;
-    setPendingNav(null);
-    requestDiscard();
-    if (nav.kind === "href") {
-      router.push(nav.href);
-      return;
-    }
-    runReenrich(nav.mode);
-  };
 
   return (
     // Light sticky chrome — content area stays light; only the lateral menu is dark.
@@ -247,7 +212,8 @@ export function UnitEditChrome({
             error={reenrichError}
             ranMode={ranMode}
             onPick={(mode) => {
-              if (guardReenrich(mode)) return;
+              if (guardIntent({ kind: "reenrich", run: () => runReenrich(mode) }))
+                return;
               runReenrich(mode);
             }}
           />
@@ -295,30 +261,6 @@ export function UnitEditChrome({
           })}
         </nav>
       </div>
-
-      <ConfirmDialog
-        open={pendingNav != null}
-        title="Unsaved Place edits"
-        body={
-          pendingNav?.kind === "reenrich" ? (
-            <p>
-              Re-enrich can overwrite fields you&apos;re editing. Discard unsaved
-              changes and queue the Enricher, or cancel and save first.
-            </p>
-          ) : (
-            <p>
-              You have unsaved Place edits. Discard them to leave this page, or
-              cancel and save first.
-            </p>
-          )
-        }
-        confirmLabel={
-          pendingNav?.kind === "reenrich" ? "Discard & re-enrich" : "Discard & leave"
-        }
-        danger
-        onConfirm={confirmDiscard}
-        onCancel={() => setPendingNav(null)}
-      />
     </div>
   );
 }

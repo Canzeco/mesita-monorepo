@@ -1141,6 +1141,34 @@ export function PlaceSection({
   );
 }
 
+// Link out to another unit tab, routed through the discard guard.
+//
+// These used to be bare <Link>s. `guardNav` lived as a local useCallback inside
+// UnitEditChrome, so the chrome's own tabs were guarded but these were not:
+// editing Basics and clicking "Edit on Promos" navigated away and dropped the
+// edits with no dialog and no warning. The guard now lives on UnitPlaceContext
+// precisely so every cross-tab link can reach it — use this, never a raw <Link>,
+// for anything that leaves the Place tab.
+function CrossTabLink({
+  href,
+  children,
+}: {
+  href: string;
+  children: React.ReactNode;
+}) {
+  const { guardNav } = useUnitPlace();
+  return (
+    <Link
+      href={href}
+      onClick={(e) => guardNav(href, e)}
+      className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1 text-xs font-medium transition"
+    >
+      {children}
+      <ArrowRight className="h-3 w-3" />
+    </Link>
+  );
+}
+
 // ── Read-only display helpers ────────────────────────────────────────────
 
 // Labelled read-only value used inside editable cards (Price, Category). The
@@ -1476,13 +1504,9 @@ function PromosCard({ place }: { place: AdminPlace }) {
       title="Mesita Membership"
       subtitle="Strategy, discounts & visibility — edit on the Promos tab."
       action={
-        <Link
-          href={unitSectionHref(place.id, "promos")}
-          className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1 text-xs font-medium transition"
-        >
+        <CrossTabLink href={unitSectionHref(place.id, "promos")}>
           Edit on Promos
-          <ArrowRight className="h-3 w-3" />
-        </Link>
+        </CrossTabLink>
       }
     >
       {/* One boxed field per row — same filled-input language as the
@@ -1581,13 +1605,7 @@ function OwnershipCard({
       title="Ownership"
       subtitle="Partner verification & owner accounts — manage on the Team tab."
       action={
-        <Link
-          href={unitSectionHref(place.id, "team")}
-          className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1 text-xs font-medium transition"
-        >
-          Edit
-          <ArrowRight className="h-3 w-3" />
-        </Link>
+        <CrossTabLink href={unitSectionHref(place.id, "team")}>Edit</CrossTabLink>
       }
     >
       {/* One boxed field per row — same filled-input language as the
