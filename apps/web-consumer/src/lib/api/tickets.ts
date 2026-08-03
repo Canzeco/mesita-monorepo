@@ -8,10 +8,16 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { invokeEF } from "./_invoke";
 
+// Mirrors _shared/reservation-places.ts attachPlaces — the EF returns the
+// full summary; fields the wallet didn't need were previously under-declared.
 export type ConsumerTicketPlace = {
   id: string;
   name: string | null;
   photos: string[] | null;
+  category?: string | null;
+  address?: string | null;
+  price_level?: number | null;
+  slug?: string | null;
 } | null;
 
 export type ConsumerTicketRow = {
