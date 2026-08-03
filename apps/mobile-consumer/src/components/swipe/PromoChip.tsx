@@ -56,7 +56,7 @@ export function PromoChip({
     >
       <Gift color="#fff" size={iconSize} />
       <Text className={`${textSize} font-semibold text-white`}>
-        {promoPercent}% OFF {isFirstVisit ? 'welcome' : 'return-visit'} discount
+        Up to {promoPercent}% Discount for You
       </Text>
     </LinearGradient>
   );

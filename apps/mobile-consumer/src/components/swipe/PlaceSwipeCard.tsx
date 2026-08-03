@@ -164,8 +164,7 @@ export function PlaceSwipeCard({ place: rawPlace }: { place: Place }) {
             >
               <Gift color="#fff" size={12} />
               <Text className="text-[11.5px] font-semibold text-white">
-                {promoPercent}% OFF{' '}
-                {isFirstVisit ? 'welcome' : 'return-visit'} discount
+                Up to {promoPercent}% Discount for You
               </Text>
             </LinearGradient>
           ) : isVerified ? (
