@@ -11,6 +11,7 @@ import { notFound } from "next/navigation";
 
 import { fetchCheck } from "@/lib/check-api";
 import { CheckClient } from "@/components/check/CheckClient";
+import { CheckUnavailable } from "@/components/check/CheckUnavailable";
 
 export const dynamic = "force-dynamic";
 
@@ -27,10 +28,24 @@ export default async function CheckPage({
 }) {
   const { code } = await params;
   const res = await fetchCheck(code);
-  if (!res.ok || !("check" in res)) notFound();
+
+  if (!res.ok) {
+    // 404 is the ONLY answer that means "this code is not a check" — the EF
+    // returns a uniform miss for unknown, malformed and purged codes alike.
+    // Anything else (429, 5xx, an unreachable network) is our problem, not
+    // the guest's, and must not be shown as a failed verification.
+    if (res.status === 404) notFound();
+    return (
+      <main className="bg-background min-h-dvh px-4 py-8">
+        <div className="mx-auto w-full max-w-md">
+          <CheckUnavailable status={res.status} />
+        </div>
+      </main>
+    );
+  }
 
   return (
-    <main className="min-h-dvh bg-background px-4 py-8">
+    <main className="bg-background min-h-dvh px-4 py-8">
       <div className="mx-auto w-full max-w-md">
         <CheckClient code={code} initial={res.check} />
       </div>

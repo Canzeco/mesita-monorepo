@@ -14,7 +14,6 @@ function row(partial: Partial<MembershipRow> = {}): MembershipRow {
   return {
     id: "p1",
     plan: "pro",
-    staff_channel_pinged_at: "2026-01-01T00:00:00.000Z",
     first_ticket_honored_at: "2026-01-02T00:00:00.000Z",
     membership_live_at: "2026-01-02T00:00:00.000Z",
     strike_count: 0,
@@ -60,11 +59,7 @@ Deno.test("assessPromoLane: free plan always open", () => {
 
 Deno.test("assessPromoLane: paid not activated blocks", () => {
   const r = assessPromoLane(
-    row({
-      membership_live_at: null,
-      staff_channel_pinged_at: null,
-      first_ticket_honored_at: null,
-    }),
+    row({ membership_live_at: null, first_ticket_honored_at: null }),
   );
   assertEquals(r.open, false);
   if (!r.open) assertEquals(r.code, "not_activated");
@@ -73,7 +68,6 @@ Deno.test("assessPromoLane: paid not activated blocks", () => {
 Deno.test("assessPromoLane: live membership opens", () => {
   const r = assessPromoLane(row());
   assertEquals(r.open, true);
-  if (r.open) assertEquals(r.needsRetest, false);
 });
 
 Deno.test("assessPromoLane: pause blocks until expiry", () => {
@@ -104,14 +98,10 @@ Deno.test("assessPromoLane: forfeit blocks even when plan is free", () => {
   if (!r.open) assertEquals(r.code, "forfeited");
 });
 
-Deno.test("assessPromoLane: strike-1 retest flag when ping cleared", () => {
+Deno.test("assessPromoLane: strike 1 is a warning — lane stays open", () => {
   const r = assessPromoLane(
-    row({
-      staff_channel_pinged_at: null,
-      strike_count: 1,
-      last_strike_at: "2026-06-20T00:00:00.000Z",
-    }),
+    row({ strike_count: 1, last_strike_at: "2026-06-20T00:00:00.000Z" }),
   );
   assertEquals(r.open, true);
-  if (r.open) assertEquals(r.needsRetest, true);
+  if (r.open) assertEquals(r.strikeCount, 1);
 });

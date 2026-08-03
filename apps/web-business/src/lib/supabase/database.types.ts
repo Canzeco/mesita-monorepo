@@ -1101,38 +1101,6 @@ export type Database = {
           },
         ]
       }
-      project_roles: {
-        Row: {
-          created_at: string
-          invited_by: string | null
-          project_id: string
-          role: Database["public"]["Enums"]["project_role"]
-          user_id: string
-        }
-        Insert: {
-          created_at?: string
-          invited_by?: string | null
-          project_id: string
-          role: Database["public"]["Enums"]["project_role"]
-          user_id: string
-        }
-        Update: {
-          created_at?: string
-          invited_by?: string | null
-          project_id?: string
-          role?: Database["public"]["Enums"]["project_role"]
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "project_roles_project_id_fkey"
-            columns: ["project_id"]
-            isOneToOne: false
-            referencedRelation: "projects"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       project_subscriptions: {
         Row: {
           cancel_at_period_end: boolean
@@ -1429,144 +1397,6 @@ export type Database = {
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "projects"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      staff_invites: {
-        Row: {
-          channel: string
-          claimed_at: string | null
-          claimed_by: string | null
-          created_at: string
-          created_by: string
-          expires_at: string
-          id: string
-          phone: string | null
-          project_id: string
-          token: string
-        }
-        Insert: {
-          channel?: string
-          claimed_at?: string | null
-          claimed_by?: string | null
-          created_at?: string
-          created_by: string
-          expires_at?: string
-          id?: string
-          phone?: string | null
-          project_id: string
-          token: string
-        }
-        Update: {
-          channel?: string
-          claimed_at?: string | null
-          claimed_by?: string | null
-          created_at?: string
-          created_by?: string
-          expires_at?: string
-          id?: string
-          phone?: string | null
-          project_id?: string
-          token?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "staff_invites_project_id_fkey"
-            columns: ["project_id"]
-            isOneToOne: false
-            referencedRelation: "projects"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      staff_whatsapp_messages: {
-        Row: {
-          body: string
-          created_at: string
-          direction: string
-          id: string
-          phone_e164: string
-          twilio_message_sid: string | null
-        }
-        Insert: {
-          body: string
-          created_at?: string
-          direction: string
-          id?: string
-          phone_e164: string
-          twilio_message_sid?: string | null
-        }
-        Update: {
-          body?: string
-          created_at?: string
-          direction?: string
-          id?: string
-          phone_e164?: string
-          twilio_message_sid?: string | null
-        }
-        Relationships: []
-      }
-      staff_whatsapp_sessions: {
-        Row: {
-          consumer_id: string | null
-          context: Json
-          created_at: string
-          id: string
-          pending_consumer_code: string | null
-          phone_e164: string
-          project_id: string | null
-          staff_user_id: string
-          state: string
-          ticket_id: string | null
-          updated_at: string
-        }
-        Insert: {
-          consumer_id?: string | null
-          context?: Json
-          created_at?: string
-          id?: string
-          pending_consumer_code?: string | null
-          phone_e164: string
-          project_id?: string | null
-          staff_user_id: string
-          state?: string
-          ticket_id?: string | null
-          updated_at?: string
-        }
-        Update: {
-          consumer_id?: string | null
-          context?: Json
-          created_at?: string
-          id?: string
-          pending_consumer_code?: string | null
-          phone_e164?: string
-          project_id?: string | null
-          staff_user_id?: string
-          state?: string
-          ticket_id?: string | null
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "staff_whatsapp_sessions_consumer_id_fkey"
-            columns: ["consumer_id"]
-            isOneToOne: false
-            referencedRelation: "consumers"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "staff_whatsapp_sessions_project_id_fkey"
-            columns: ["project_id"]
-            isOneToOne: false
-            referencedRelation: "projects"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "staff_whatsapp_sessions_ticket_id_fkey"
-            columns: ["ticket_id"]
-            isOneToOne: false
-            referencedRelation: "tickets"
             referencedColumns: ["id"]
           },
         ]
@@ -1916,7 +1746,6 @@ export type Database = {
       member_role: "owner" | "editor" | "viewer"
       membership: "free" | "pro" | "ultra"
       project_fiscal_type: "formal" | "informal"
-      project_role: "staff" | "business"
       project_status:
         | "lead"
         | "active"
@@ -2090,7 +1919,6 @@ export const Constants = {
       member_role: ["owner", "editor", "viewer"],
       membership: ["free", "pro", "ultra"],
       project_fiscal_type: ["formal", "informal"],
-      project_role: ["staff", "business"],
       project_status: [
         "lead",
         "active",

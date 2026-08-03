@@ -40,23 +40,72 @@ export type CheckPayload = {
   pin_required?: boolean;
 };
 
-type EFResult<T> = { ok: true } & T | { ok: false; error?: string; code?: string };
+/** A failed call. `status` is the HTTP status, or 0 when the request never
+ *  reached the Edge Function (offline, DNS, CORS). Callers MUST branch on it:
+ *  only 404 means "this check does not exist". */
+export type EFFailure = {
+  ok: false;
+  error?: string;
+  code?: string;
+  status: number;
+};
+
+export type EFResult<T> = ({ ok: true } & T) | EFFailure;
 
 async function callCheckEF<T>(
   fn: string,
   body: Record<string, unknown>,
 ): Promise<EFResult<T>> {
+  let res: Response;
   try {
-    const res = await fetch(`${FUNCTIONS_BASE}/${fn}`, {
+    res = await fetch(`${FUNCTIONS_BASE}/${fn}`, {
       method: "POST",
       cache: "no-store",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
     });
-    return (await res.json()) as EFResult<T>;
   } catch {
-    return { ok: false, error: "network" };
+    return { ok: false, error: "network", status: 0 };
   }
+
+  // A 502 from the edge, a cold-start timeout or a WAF page is not JSON —
+  // swallow the parse error and let the status carry the meaning.
+  let payload: unknown = null;
+  try {
+    payload = await res.json();
+  } catch {
+    payload = null;
+  }
+
+  const parsed = (payload ?? {}) as { ok?: boolean; error?: string; code?: string };
+  if (res.ok && parsed.ok) return payload as { ok: true } & T;
+  return { ok: false, error: parsed.error, code: parsed.code, status: res.status };
+}
+
+// Staff-facing Spanish for every way a call can fail. The Edge Functions
+// answer in English ("Check not found", "Too many requests") — never show
+// those raw, and never imply the ticket is fake when the truth is that
+// Mesita is unreachable.
+const FAILURE_CODE_COPY: Record<string, string> = {
+  pin_required: "Este lugar pide un PIN del personal para continuar.",
+  pin_invalid: "PIN incorrecto — inténtalo de nuevo.",
+};
+
+export function checkErrorMessage(res: EFFailure): string {
+  if (res.code && FAILURE_CODE_COPY[res.code]) return FAILURE_CODE_COPY[res.code];
+  if (res.status === 0) {
+    return "Sin conexión. Revisa la señal del teléfono e inténtalo de nuevo.";
+  }
+  if (res.status === 404) {
+    return "Este ticket ya no está disponible. Pide al cliente que vuelva a mostrar su QR.";
+  }
+  if (res.status === 429) {
+    return "Demasiados intentos seguidos. Espera un momento y vuelve a intentarlo.";
+  }
+  if (res.status >= 500) {
+    return "Mesita no responde en este momento. Inténtalo de nuevo en unos segundos.";
+  }
+  return "Algo salió mal — inténtalo de nuevo.";
 }
 
 export function fetchCheck(code: string) {

@@ -11,8 +11,10 @@ export function buildStrikePatch(
   };
 
   if (strikeNumber === 1) {
-    // Warning + re-run activation test: clear the ping stamp.
-    patch.staff_channel_pinged_at = null;
+    // Warning only. It used to clear the staff WhatsApp ping stamp to force a
+    // re-test, but there is no staff channel to re-test — the place works the
+    // check page, and its next honored ticket is the only signal that matters.
+    // Nothing to patch beyond the count and timestamp above.
   } else if (strikeNumber === 2) {
     patch.promo_paused_until = new Date(now.getTime() + PROMO_PAUSE_MS)
       .toISOString();

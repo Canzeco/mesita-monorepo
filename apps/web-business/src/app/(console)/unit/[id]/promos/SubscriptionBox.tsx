@@ -1,9 +1,4 @@
-import {
-  AlertTriangle,
-  MessageCircle,
-  ShieldCheck,
-  Ticket,
-} from "lucide-react";
+import { AlertTriangle, QrCode, ShieldCheck, Ticket } from "lucide-react";
 import { Section } from "@/components/shared";
 import type { MyPlace } from "@/lib/api/places";
 import { cn, formatMoney } from "@/lib/utils";
@@ -11,7 +6,7 @@ import { PRODUCT_PRICE_MXN } from "./promoConstants";
 import { ActivationStep, SubHeading } from "./promoShared";
 
 const STRIKES: { n: string; consequence: string }[] = [
-  { n: "1", consequence: "Warning, and we re-run the activation test." },
+  { n: "1", consequence: "A warning — your discounts keep running." },
   { n: "2", consequence: "Your discounts are paused for 30 days." },
   {
     n: "3",
@@ -66,11 +61,13 @@ export function SubscriptionBox({
 
       <SubHeading icon={Ticket}>Activation</SubHeading>
       <div className="flex flex-col gap-1.5">
-        <ActivationStep icon={MessageCircle}>
-          Your staff WhatsApp channel passes a test ping.
+        <ActivationStep icon={QrCode}>
+          Your staff scan a guest&apos;s QR on Mesita Check — no app, no
+          account, no setup.
         </ActivationStep>
         <ActivationStep icon={Ticket}>
-          The first guest ticket is honored at the bill.
+          The first guest ticket is honored at the bill. That&apos;s it —
+          you&apos;re live.
         </ActivationStep>
       </div>
 
@@ -138,12 +135,6 @@ function describeMembershipStatus(
   }
   if (place.membership_live_at) {
     const strikes = place.strike_count ?? 0;
-    if (!place.staff_channel_pinged_at) {
-      return {
-        label: `Live — re-run the staff WhatsApp test ping (strike ${strikes}).`,
-        tone: "warn",
-      };
-    }
     return {
       label:
         strikes > 0
@@ -152,12 +143,9 @@ function describeMembershipStatus(
       tone: strikes > 0 ? "warn" : "live",
     };
   }
-  const ping = place.staff_channel_pinged_at ? "ping ✓" : "ping pending";
-  const honor = place.first_ticket_honored_at
-    ? "first ticket ✓"
-    : "first ticket pending";
   return {
-    label: `Activating — ${ping} · ${honor}. Promo lane opens when both pass.`,
+    label:
+      "Activating — honor your first guest check and the promo lane opens.",
     tone: "warn",
   };
 }

@@ -78,7 +78,6 @@ type Place = {
   // One of 200 / 500 / 1000 / 2000 or null (no cap).
   monthly_promo_cap: number | null;
   // Promos v4 membership / strikes (MESITA-542).
-  staff_channel_pinged_at?: string | null;
   first_ticket_honored_at?: string | null;
   membership_live_at?: string | null;
   strike_count?: number | null;

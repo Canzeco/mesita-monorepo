@@ -1,7 +1,11 @@
 // Promos v4 membership enforcement (MESITA-542).
 //
-// Activation gate: staff WhatsApp test ping + first honored guest ticket → live.
-// Strikes (refused/ignored QR): 1 warning+re-test · 2 pause promo 30d ·
+// Activation gate: the first honored guest ticket → live. It used to also
+// require a staff WhatsApp test ping, but there is no staff WhatsApp — the
+// waiter identity and its channel were retired (MESITA-833) and the EF that
+// stamped the ping went with them, which left every paid place stuck on
+// "not_activated" forever. Honoring a check IS the proof the gate wanted.
+// Strikes (refused/ignored QR): 1 warning · 2 pause promo 30d ·
 // 3 remove paid posture (plan→free, rates cleared) + forfeit stamp.
 // Strikes decay after 6 months clean. Burned guests get an instant compensation
 // coupon at another live partner place.
@@ -25,7 +29,6 @@ export const STRIKE_DECAY_MS = 183 * 24 * 60 * 60 * 1000; // ~6 months
 export type MembershipRow = {
   id: string;
   plan: string | null;
-  staff_channel_pinged_at: string | null;
   first_ticket_honored_at: string | null;
   membership_live_at: string | null;
   strike_count: number;
@@ -40,7 +43,7 @@ export type PromoLaneBlockCode =
   | "paused";
 
 export type PromoLaneEligibility =
-  | { open: true; strikeCount: number; needsRetest: boolean }
+  | { open: true; strikeCount: number }
   | {
     open: false;
     code: PromoLaneBlockCode;
@@ -89,7 +92,7 @@ export function assessPromoLane(
   }
 
   if (!isPaidPlan(row.plan)) {
-    return { open: true, strikeCount, needsRetest: false };
+    return { open: true, strikeCount };
   }
 
   if (row.promo_paused_until) {
@@ -107,32 +110,19 @@ export function assessPromoLane(
   }
 
   if (!row.membership_live_at) {
-    const needsPing = !row.staff_channel_pinged_at;
-    const needsHonor = !row.first_ticket_honored_at;
-    let detail = "Falta completar la activación";
-    if (needsPing && needsHonor) {
-      detail = "Falta el test ping de WhatsApp y honrar el primer ticket";
-    } else if (needsPing) {
-      detail = "Falta el test ping de WhatsApp del canal del staff";
-    } else if (needsHonor) {
-      detail = "Falta honrar el primer ticket de un comensal";
-    }
     return {
       open: false,
       code: "not_activated",
       strikeCount,
-      staffMessage: `${detail}.\n\n` +
-        "En Mesita Business → Promos / Team: manda el test ping y canjea el primer reward.",
+      staffMessage: "Falta honrar el primer ticket de un comensal.\n\n" +
+        "Escanea el QR del primer cliente y aplica su descuento en la cuenta: " +
+        "con eso se activa la membresía.",
     };
   }
 
-  // Strike 1 clears the ping stamp while membership stays live — re-test
-  // required, but the promo lane stays open.
-  return {
-    open: true,
-    strikeCount,
-    needsRetest: !row.staff_channel_pinged_at,
-  };
+  // Strike 1 is a warning only — membership stays live and the promo lane
+  // stays open.
+  return { open: true, strikeCount };
 }
 
 export async function loadMembershipRow(
@@ -142,7 +132,7 @@ export async function loadMembershipRow(
   const res = await admin
     .from("projects")
     .select(
-      "id, plan, staff_channel_pinged_at, first_ticket_honored_at, membership_live_at, strike_count, last_strike_at, promo_paused_until, membership_forfeited_at",
+      "id, plan, first_ticket_honored_at, membership_live_at, strike_count, last_strike_at, promo_paused_until, membership_forfeited_at",
     )
     .eq("id", projectId)
     .maybeSingle();
@@ -163,32 +153,23 @@ async function maybeDecayStrikes(
     .update({ strike_count: effective })
     .eq("id", row.id)
     .select(
-      "id, plan, staff_channel_pinged_at, first_ticket_honored_at, membership_live_at, strike_count, last_strike_at, promo_paused_until, membership_forfeited_at",
+      "id, plan, first_ticket_honored_at, membership_live_at, strike_count, last_strike_at, promo_paused_until, membership_forfeited_at",
     )
     .single();
   if (update.error || !update.data) return { ...row, strike_count: effective };
   return update.data as MembershipRow;
 }
 
-type ActivationStampField = "staff_channel_pinged_at" | "first_ticket_honored_at";
-
 function buildActivationPatch(
   row: MembershipRow,
-  stampField: ActivationStampField,
   now: Date,
 ): { patch: Record<string, unknown>; membershipLive: boolean } {
   const iso = now.toISOString();
-  const patch: Record<string, unknown> = { [stampField]: iso };
+  const patch: Record<string, unknown> = { first_ticket_honored_at: iso };
   let membershipLive = !!row.membership_live_at;
-  const hasPing = stampField === "staff_channel_pinged_at" ||
-    !!row.staff_channel_pinged_at;
-  const hasFirstHonor = stampField === "first_ticket_honored_at" ||
-    !!row.first_ticket_honored_at;
 
   if (
     !row.membership_live_at &&
-    hasPing &&
-    hasFirstHonor &&
     !row.membership_forfeited_at &&
     isPaidPlan(row.plan)
   ) {
@@ -199,31 +180,10 @@ function buildActivationPatch(
   return { patch, membershipLive };
 }
 
-/** Stamp a successful staff WhatsApp activation/test ping. */
-export async function recordStaffChannelPing(
-  admin: SupabaseClient,
-  projectId: string,
-  now: Date = new Date(),
-): Promise<
-  { ok: true; membershipLive: boolean } | { ok: false; error: string }
-> {
-  const row = await loadMembershipRow(admin, projectId);
-  if (!row) return { ok: false, error: "project not found" };
-
-  const { patch, membershipLive } = buildActivationPatch(
-    row,
-    "staff_channel_pinged_at",
-    now,
-  );
-
-  const update = await admin.from("projects").update(patch).eq("id", projectId);
-  if (update.error) return { ok: false, error: update.error.message };
-  return { ok: true, membershipLive };
-}
-
 /**
- * Stamp first honored discount ticket and flip membership live when the
- * WhatsApp ping has already passed.
+ * Stamp the first honored discount ticket and flip membership live. This is
+ * the whole activation gate now — honoring a check at the table is the only
+ * proof a place is really running the program.
  */
 export async function recordFirstTicketHonored(
   admin: SupabaseClient,
@@ -246,11 +206,7 @@ export async function recordFirstTicketHonored(
     };
   }
 
-  const { patch, membershipLive } = buildActivationPatch(
-    row,
-    "first_ticket_honored_at",
-    now,
-  );
+  const { patch, membershipLive } = buildActivationPatch(row, now);
 
   const update = await admin.from("projects").update(patch).eq("id", projectId);
   if (update.error) return { ok: false, error: update.error.message };

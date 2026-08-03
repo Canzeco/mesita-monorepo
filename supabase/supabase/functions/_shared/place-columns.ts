@@ -123,7 +123,6 @@ const COLUMNS: readonly string[] = [
   "created_at",
   // Promos v4 membership / strikes (MESITA-542) — projects columns exposed via
   // projects_view. Readers that hit `places` directly simply won't see them.
-  "staff_channel_pinged_at",
   "first_ticket_honored_at",
   "membership_live_at",
   "strike_count",

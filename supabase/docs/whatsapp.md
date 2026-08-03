@@ -2,11 +2,10 @@
 
 Operational detail for Mesita WhatsApp. Architecture overview: [README.md](../README.md).
 
-> **Staff WhatsApp is gone (MESITA-833).** The waiter identity was retired — staff work
-> the public check page (`mesita.ai/check/<code>`), hold no account, and are never
-> messaged. The inbound handler (`business-whats-handle-message`), the waiter invite and
-> the Type A conversational flow were deleted with it. What remains below is
-> **outbound-only**: consumer notifications and delivery receipts.
+> **Outbound to consumers only.** There is no staff WhatsApp and no inbound rail:
+> staff work the check page (`check.mesita.ai`), hold no account, and are never
+> messaged. Don't re-add an inbound handler, a waiter invite template or a Meta
+> Flow — all three existed only to give a waiter an identity.
 
 ## IDs
 
@@ -17,9 +16,8 @@ Operational detail for Mesita WhatsApp. Architecture overview: [README.md](../RE
 | Consumer sender | `+1 628 296 4968` — Mesita Notifications |
 | Recording TwiML bin | `EHfd33bff85448c2a934494625fb70d808` |
 
-The staff sender `+1 628 296 8794` (Mesita Ops) no longer has an inbound handler. Retiring
-the number and its `staff-invite` content template is a console-only chore — see the
-cleanup note at the bottom.
+The old staff sender `+1 628 296 8794` (Mesita Ops) is unused by any code. Releasing it is
+a console-only chore — see the cleanup note at the bottom.
 
 ## Webhook URLs (prod)
 
@@ -42,8 +40,8 @@ supabase secrets set \
 
 Local scripts: `.env.twilio.local` (see `.env.twilio.local.example`).
 
-`TWILIO_WHATSAPP_FROM_STAFF` and `TWILIO_CONTENT_SID_STAFF_INVITE` are dead — nothing
-reads them since the waiter retirement.
+`TWILIO_WHATSAPP_FROM_STAFF` and `TWILIO_CONTENT_SID_STAFF_INVITE` are gone from the code
+entirely. If they are still set in Supabase secrets, unset them (below).
 
 ## Billing
 

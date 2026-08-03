@@ -2,10 +2,12 @@
 // Webhook security: HMAC-SHA1 per Twilio docs (no SDK required) —
 // implementation in twilio-signature.ts, re-exported below.
 
+// Outbound only, and only to consumers. The staff sender went with the
+// waiter identity (MESITA-833) — staff work the check page, hold no
+// account, and are never messaged.
 export type TwilioEnv = {
   accountSid: string;
   authToken: string;
-  whatsappFromStaff: string;
   whatsappFromConsumers: string;
 };
 
@@ -17,9 +19,6 @@ export function readTwilioEnv():
   if (!accountSid || !authToken) {
     return { ok: false, error: "Twilio not configured" };
   }
-  const staff =
-    Deno.env.get("TWILIO_WHATSAPP_FROM_STAFF")?.trim() ||
-    "whatsapp:+16282968794";
   const consumers =
     Deno.env.get("TWILIO_WHATSAPP_FROM_CONSUMERS")?.trim() ||
     "whatsapp:+16282964968";
@@ -28,7 +27,6 @@ export function readTwilioEnv():
     env: {
       accountSid,
       authToken,
-      whatsappFromStaff: normaliseWhatsAppFrom(staff),
       whatsappFromConsumers: normaliseWhatsAppFrom(consumers),
     },
   };

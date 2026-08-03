@@ -56,16 +56,15 @@ that page via the `check-web-*` EFs — `verify_jwt = false`; possession of the 
   `business-web-{list-tickets,submit-ticket-bill,mark-ticket-paid,cancel-ticket}`. Signed-in
   business members only — not a staff rail.
 
-The **Staff WhatsApp** rail (`business-whats-handle-message` + `_shared/staff-whatsapp-*`)
-was deleted in MESITA-833: it identified the waiter by phone against `project_roles`, and
-that identity no longer exists. Don't re-add it.
+There is no staff WhatsApp rail. It identified the waiter by phone against
+`project_roles`, and that identity no longer exists — don't re-add it.
 
 ## Implementation map
 
 | Surface | Module |
 |---------|--------|
 | Consumer create + stepper | `consumer-web-create-ticket` · `apps/web-consumer/src/lib/ticket-flow-steps.ts` (mobile mirror in `apps/mobile-consumer`) |
-| Public check page | `apps/web-checkout/src/app/check/[code]/` (landing mirror until MESITA-813) · `check-web-{get-ticket,submit-bill,verify-action,mark-paid}` |
+| Public check page | `apps/web-check/src/app/check/[code]/` (landing mirror until MESITA-814) · `check-web-{get-ticket,submit-bill,verify-action,mark-paid}` |
 | Shared security/billing | `_shared/ticket-check.ts` · `_shared/business-ticket-billing.ts` · `_shared/rewards-config.ts` |
 | Business console | `apps/web-business/.../unit/[id]/tickets/` |
 

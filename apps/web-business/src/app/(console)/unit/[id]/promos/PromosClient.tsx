@@ -35,7 +35,9 @@ import { SubscriptionBox } from "./SubscriptionBox";
 // Plan is billing-locked: Join calls business-web-change-subscription
 // (Verified = plan=pro, MX$1,000/yr). Mock mode grants instantly; real mode
 // redirects to Stripe Checkout (MOCK_SUBSCRIPTION flip = MESITA-37). After
-// pay, staff WhatsApp activation still applies (MESITA-542). A subscribed
+// pay, the membership still has to activate — the first honored guest check
+// is the whole gate (MESITA-542; the staff WhatsApp ping went with the
+// waiter identity). A subscribed
 // place switches rates directly (rates + cap only, never plan). Drop to Zero
 // downgrades membership via the same billing EF.
 
@@ -200,9 +202,9 @@ export function PromosClient({ place }: { place: MyPlace }) {
             <span className="font-semibold">
               {activationStrategy.emoji} {activationStrategy.name}
             </span>{" "}
-            ({formatMoney(PRODUCT_PRICE_MXN, place.currency)}/year). Mesita will
-            reach out on your staff WhatsApp to run the test ping — guests
-            redeem after activation.
+            ({formatMoney(PRODUCT_PRICE_MXN, place.currency)}/year). It
+            activates the first time your staff honor a guest check at the
+            table — nothing to install, nothing to wait for.
           </p>
         )}
 

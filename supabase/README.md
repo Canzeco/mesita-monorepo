@@ -56,8 +56,22 @@ mesita-supabase/
 
 ### Twilio (WhatsApp, SMS, voice)
 
-**Role:** outbound messaging pipe for consumer notifications and reservations. There is
-no inbound rail: staff WhatsApp went with the waiter identity (MESITA-833).
+**Role: three independent rails on one Twilio account.** They share only
+`TWILIO_ACCOUNT_SID` / `TWILIO_AUTH_TOKEN` — changing one never touches the others.
+
+1. **SMS — phone OTP.** Supabase Auth sends it directly via `TWILIO_MESSAGE_SERVICE_SID`
+   ([config.toml](supabase/config.toml) `[auth.sms.twilio]`). This is the ONLY consumer
+   sign-in there is; no Edge Function is in the path.
+2. **Voice — incoming-call recording.** `integrations/twilio/twiml/record-incoming.xml`
+   on bin `EHfd33...`, applied by `./scripts/setup-twilio-call-recording.sh`. (Reservation
+   voice is ElevenLabs on its own dedicated number — see below.)
+3. **WhatsApp — outbound to consumers only.** Notifications + delivery receipts. No
+   inbound handler: staff WhatsApp went with the waiter identity (MESITA-833), and staff
+   now work the check page instead.
+
+The scope note in (3) is about WhatsApp alone. Retiring WhatsApp pieces must never strip
+`TWILIO_ACCOUNT_SID` / `TWILIO_AUTH_TOKEN` / `TWILIO_MESSAGE_SERVICE_SID` — that would
+break sign-in and call recording.
 
 | Number | Label | Use |
 |---|---|---|
@@ -71,7 +85,6 @@ Meta WABA `1389123139178386` · Portfolio `1180640363250622`. Details: [docs/wha
 supabase secrets set \
   TWILIO_ACCOUNT_SID=AC... \
   TWILIO_AUTH_TOKEN=... \
-  TWILIO_WHATSAPP_FROM_STAFF='whatsapp:+16282968794' \
   TWILIO_WHATSAPP_FROM_CONSUMERS='whatsapp:+16282964968'
 ```
 
@@ -123,7 +136,7 @@ advancing places through the `place_research` stage table
 poller `run_place_enrichment_stages` drives the stages. n8n is fully out of
 the stack (the Reservationist will be ElevenLabs-based).
 
-Reward ticket sequences (create, scan, billing, story, payment, review) are documented in [docs/TICKET_SEQUENCES.md](docs/TICKET_SEQUENCES.md). Tickets v2 (MESITA-806): the CONSUMER creates the ticket (`consumer-web-create-ticket`); staff work it on the public check page `mesita.ai/check/<code>` (`check-web-*`, `verify_jwt=false`), with the business console + staff WhatsApp as secondary rails; Twilio sends the messages. Consumer step order lives in each app's `ticket-flow-steps.ts`.
+Reward ticket sequences (create, scan, billing, story, payment, review) are documented in [docs/TICKET_SEQUENCES.md](docs/TICKET_SEQUENCES.md). Tickets v2 (MESITA-806): the CONSUMER creates the ticket (`consumer-web-create-ticket`); staff work it on the public check page `mesita.ai/check/<code>` (`check-web-*`, `verify_jwt=false`), with the business console as the only secondary rail; Twilio sends the consumer messages. Consumer step order lives in each app's `ticket-flow-steps.ts`.
 
 ---
 
@@ -152,10 +165,10 @@ deno task test
 ## Schema highlights
 
 - **`places`** — catalog (`lead | active | paused | archived`)
-- **`project_members` / `project_roles`** — business and staff access
+- **`project_members`** — business team access (owner / editor / viewer)
 - **`tickets`** — reward tickets (discount × story/no-story)
 - **`reservations`** — consumer bookings (MVP)
-- **`staff_invites` / `business_invites`** — token invites
+- **`business_invites`** — token invites (business team only; there is no waiter invite)
 
 RLS: clients read only what they may see; writes go through Edge Functions.
 

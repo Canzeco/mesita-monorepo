@@ -11,10 +11,19 @@ import { ArrowRight, QrCode, ReceiptText, ScanLine } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 
+// Staff copy what they can see. That's sometimes the bare code, and
+// sometimes the whole scanned URL read off a screenshot — accept both, plus
+// the stray spaces a phone keyboard adds.
+function normalizeCode(raw: string): string {
+  const trimmed = raw.trim();
+  const fromUrl = trimmed.match(/\/check\/([^/?#\s]+)/i);
+  return (fromUrl ? fromUrl[1] : trimmed).replace(/\s+/g, "");
+}
+
 export default function CheckHome() {
   const router = useRouter();
   const [code, setCode] = useState("");
-  const trimmed = code.trim();
+  const trimmed = normalizeCode(code);
 
   const go = () => {
     if (trimmed) router.push(`/check/${encodeURIComponent(trimmed)}`);
