@@ -4,7 +4,6 @@ import { useEffect, useMemo, useState, useTransition } from "react";
 import {
   ArrowLeft,
   ArrowRight,
-  CalendarCheck,
   Clock,
   ExternalLink,
   Globe,
@@ -14,7 +13,6 @@ import {
   Loader2,
   Mail,
   MapPin,
-  Phone,
   Store,
   X,
   type LucideIcon,
@@ -184,7 +182,6 @@ function boxToPatch(
   f: Form,
   id: string,
   limits: PlaceFieldLimits,
-  existingProducts?: AdminPlace["products"],
 ): Record<string, unknown> & { id: string } {
   const nz = (s: string) => (s.trim() ? s.trim() : null);
   if (box === "basics") {
@@ -439,7 +436,7 @@ export function PlaceSection({
     setPendingBox(box);
     start(async () => {
       const r = await updatePlace(
-        boxToPatch(box, form, place.id, limits, place.products),
+        boxToPatch(box, form, place.id, limits),
       );
       setPendingBox(null);
       if (!r.ok) {
