@@ -24,13 +24,13 @@
       "purpose": "Venue-facing reservation line. a1 dials venues from it; a4 answers venues on it. Imported into ElevenLabs; its Twilio voice + messaging webhooks belong to ElevenLabs. Code default: ELEVENLABS_FROM_NUMBER in _shared/elevenlabs.ts."
     },
     {
-      "e164": null,
+      "e164": "+16282968794",
       "name": "Mesita Reservations (Consumers)",
       "owner": "elevenlabs",
-      "status": "pending-purchase",
+      "status": "active",
       "releasable": false,
       "recordIncoming": false,
-      "purpose": "Guest-facing reservation line. a2 dials guests from it; a3 answers guests on it. An ElevenLabs number binds to ONE inbound agent, so a3 and a4 cannot share a line. Once bought: import into ElevenLabs, bind inbound to a3, set the EF secret ELEVENLABS_CONSUMER_FROM_NUMBER. Until then the code falls back to the business line."
+      "purpose": "Guest-facing reservation line. a2 dials guests from it; a3 answers guests on it. REUSED 2026-08-03 — this was the retired staff WhatsApp sender, renamed and repurposed instead of buying a new number, so anything that still calls it 'Mesita Ops' or lists it as releasable is stale. Imported into ElevenLabs; its Twilio webhooks now belong to ElevenLabs. EF secret: ELEVENLABS_CONSUMER_FROM_NUMBER."
     },
     {
       "e164": "+16282784122",
@@ -58,15 +58,6 @@
       "releasable": true,
       "recordIncoming": false,
       "purpose": "RETIRED — was the consumer WhatsApp sender. Nothing sends WhatsApp: there is no call to Twilio's Messages.json anywhere in the codebase. Safe to release."
-    },
-    {
-      "e164": "+16282968794",
-      "name": "Mesita Ops (Businesses)",
-      "owner": "none",
-      "status": "pending-release",
-      "releasable": true,
-      "recordIncoming": false,
-      "purpose": "RETIRED — was the staff WhatsApp sender, dead since the waiter identity was retired (MESITA-833). Safe to release."
     }
   ]
 }
