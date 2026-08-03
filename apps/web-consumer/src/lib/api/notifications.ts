@@ -15,6 +15,7 @@ export type PayTicketMeta = {
   status?: string;
   story_status?: string;
   story_submitted_at?: string | null;
+  first_scanned_at?: string | null;
   total_cents?: number | null;
   discount_percent?: number | null;
   capMxn?: number | null;

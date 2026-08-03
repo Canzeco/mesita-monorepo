@@ -87,24 +87,15 @@ const SEGMENT_HOW: Record<RewardSegmentKey, string> = {
   premium: 'Always on',
   influencer: 'Always on',
   aura: 'Always on',
-  story: 'Post a story tagging the place',
+  story: 'Post a tagged story, then tap it here',
   welcome: 'Automatic on your first visit here',
-  review: 'Leave a Google review at the table',
-};
-
-const STORY_LINE: Record<string, string> = {
-  pending: 'Bill is in. Post your tagged story so the place can approve it.',
-  submitted: 'Story sent — the place is checking it.',
-  ai_rejected: "Story wasn't accepted — ask the staff to review it.",
-  staff_rejected: "Story wasn't accepted — ask the staff to review it.",
+  review: 'Leave a Google review, then tap it here',
 };
 
 function statusLine(t: ConsumerTicketRow): string {
   switch (t.status) {
     case 'open':
       return 'Show this QR — staff scan it to verify and start your visit.';
-    case 'awaiting_story':
-      return STORY_LINE[t.story_status ?? ''] ?? STORY_LINE.pending;
     case 'awaiting_payment_confirm':
       return 'All set — pay the discounted total at the table.';
     default:
@@ -271,7 +262,7 @@ export function VenuePassModal({
     if (ticket.story_status != null && ticket.story_status !== 'not_required') {
       out.push({
         kind: 'story',
-        label: settled(ticket.story_status) ? 'Story sent' : 'I posted my story',
+        label: settled(ticket.story_status) ? 'Story added' : 'I posted my story',
         Icon: Camera,
         done: settled(ticket.story_status),
       });
@@ -279,7 +270,7 @@ export function VenuePassModal({
     out.push({
       kind: 'review',
       label: settled(ticket.review_status)
-        ? 'Google review sent'
+        ? 'Google review added'
         : 'I left a Google review',
       Icon: Star,
       done: settled(ticket.review_status),

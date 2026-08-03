@@ -8,15 +8,21 @@ import { SectionCard } from "../ui";
 // actually earned (Pato 2026-08-03: "you can see like all the stories and
 // comments and shit"):
 //
-//   stories  — the Instagram-story / Google-review SCREENSHOTS guests
-//              submitted against a ticket, with their verification verdict.
+//   stories  — the Instagram-story / Google-review tasks guests completed
+//              against a ticket, with their state.
 //   comments — the post-visit review text + per-axis ratings.
 //
-// Read-only. Verdicts are decided on the check page (check-web-verify-action)
-// by whoever is holding the ticket, not from the admin console.
+// Read-only — and since v3 (MESITA-849) there is no verdict anywhere: the
+// guest completes their tasks before the scan and their own declaration is
+// the verification. The rejected/needs-review states below only ever render
+// on tickets that predate v3.
 
 const STATE: Record<string, { label: string; chip: string }> = {
   pending: { label: "Awaiting guest", chip: "bg-muted text-muted-foreground" },
+  self_verified: {
+    label: "Done by guest",
+    chip: "bg-emerald-500/10 text-emerald-700",
+  },
   submitted: { label: "Needs review", chip: "bg-amber-500/10 text-amber-700" },
   ai_verified: { label: "Approved (AI)", chip: "bg-emerald-500/10 text-emerald-700" },
   staff_verified: { label: "Approved", chip: "bg-emerald-500/10 text-emerald-700" },

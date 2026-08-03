@@ -124,20 +124,6 @@ export function submitBill(
   });
 }
 
-export function verifyAction(
-  code: string,
-  action: "story" | "review",
-  decision: "approve" | "reject",
-  pin?: string,
-) {
-  return callCheckEF<{ state: string }>("check-web-verify-action", {
-    code,
-    action,
-    decision,
-    ...(pin ? { pin } : {}),
-  });
-}
-
 export function markPaid(code: string, pin?: string) {
   return callCheckEF<{ alreadyPaid?: boolean }>("check-web-mark-paid", {
     code,

@@ -102,9 +102,6 @@ Deno.serve(async (req) => {
     return json({ ok: false, error: "Bill already submitted for this ticket." }, 409);
   }
 
-  const requiresStory = ticket.story_status != null &&
-    ticket.story_status !== "not_required";
-
   const placeRow = await admin
     .from("projects_view")
     .select(
@@ -158,14 +155,15 @@ Deno.serve(async (req) => {
   const snap = billRes.snapshot;
 
   const now = new Date().toISOString();
-  const storyStatus = requiresStory ? "pending" : "not_required";
-  const status = requiresStory ? "awaiting_story" : "awaiting_payment_confirm";
 
+  // v3 (MESITA-849): the bill never parks a ticket on a story. Tasks are done
+  // before the scan, so by now story_status is already settled — and this step
+  // must NOT touch it: the old `story_status: pending` reset would have wiped
+  // a self-verified story right after pricing with it.
   const update = await admin
     .from("tickets")
     .update({
-      status,
-      story_status: storyStatus,
+      status: "awaiting_payment_confirm",
       check_subtotal_cents: snap.checkSubtotalCents,
       tip_cents: snap.tipCents,
       total_cents: snap.totalCents,

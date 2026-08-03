@@ -37,6 +37,8 @@ const JWT_EFS: { name: string; path: string; accepts: string[] }[] = [
   { name: "business-web-change-subscription", path: "../business-web-change-subscription/index.ts", accepts: ["POST"] },
   { name: "consumer-web-create-subscription", path: "../consumer-web-create-subscription/index.ts", accepts: ["POST"] },
   { name: "consumer-web-submit-ticket-review", path: "../consumer-web-submit-ticket-review/index.ts", accepts: ["POST"] },
+  { name: "consumer-web-submit-story", path: "../consumer-web-submit-story/index.ts", accepts: ["POST"] },
+  { name: "consumer-web-submit-review", path: "../consumer-web-submit-review/index.ts", accepts: ["POST"] },
   { name: "consumer-web-list-pay-notifications", path: "../consumer-web-list-pay-notifications/index.ts", accepts: ["POST"] },
   { name: "consumer-web-list-tickets", path: "../consumer-web-list-tickets/index.ts", accepts: ["GET", "POST"] },
 ];
@@ -48,7 +50,6 @@ const JWT_EFS: { name: string; path: string; accepts: string[] }[] = [
 const PUBLIC_CHECK_EFS: { name: string; path: string }[] = [
   { name: "check-web-get-ticket", path: "../check-web-get-ticket/index.ts" },
   { name: "check-web-submit-bill", path: "../check-web-submit-bill/index.ts" },
-  { name: "check-web-verify-action", path: "../check-web-verify-action/index.ts" },
   { name: "check-web-mark-paid", path: "../check-web-mark-paid/index.ts" },
 ];
 

@@ -18,7 +18,6 @@ import {
   KeyRound,
   Loader2,
   Star,
-  X,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -30,16 +29,11 @@ import {
   formatMxn,
   markPaid,
   submitBill,
-  verifyAction,
 } from "@/lib/check-api";
 import { cn } from "@/lib/utils";
 
 const STATUS_LABEL: Record<string, { label: string; tone: string }> = {
   open: { label: "Ticket abierto — falta la cuenta", tone: "bg-primary/10 text-primary" },
-  awaiting_story: {
-    label: "Esperando historia de Instagram",
-    tone: "bg-amber-500/15 text-amber-700",
-  },
   awaiting_payment_confirm: {
     label: "Listo para cobrar",
     tone: "bg-emerald-500/15 text-emerald-700",
@@ -256,33 +250,24 @@ export function CheckClient({
           </div>
         ) : null}
 
-        {/* Action: story verdict. */}
+        {/* Lo que el cliente ya hizo — SOLO informativo (MESITA-849). El
+            cliente completa sus tareas antes de que tú escanees; aquí no se
+            aprueba ni se rechaza nada. */}
         {check.story.required && !terminal ? (
-          <ActionRow
+          <TaskRow
             icon={<Instagram className="size-4" />}
             title="Historia de Instagram"
             state={check.story.state}
-            screenshotUrl={check.story.screenshot_url}
-            pendingHint="El cliente aún no envía su historia."
-            busy={busy === "story"}
-            disabled={busy != null}
-            onDecide={(d) =>
-              void run("story", () => verifyAction(code, "story", d, pin))}
+            pendingHint="El cliente aún no la publicó."
           />
         ) : null}
 
-        {/* Action: review verdict. */}
         {check.review.required && !terminal ? (
-          <ActionRow
+          <TaskRow
             icon={<Star className="size-4" />}
             title="Reseña de Google"
             state={check.review.state}
-            screenshotUrl={null}
-            pendingHint="El cliente aún no envía su reseña."
-            busy={busy === "review"}
-            disabled={busy != null}
-            onDecide={(d) =>
-              void run("review", () => verifyAction(code, "review", d, pin))}
+            pendingHint="El cliente aún no la dejó."
           />
         ) : null}
 
@@ -325,25 +310,21 @@ export function CheckClient({
   );
 }
 
-function ActionRow({
+// Read-only (MESITA-849). El personal ya no juzga las tareas del cliente: se
+// completan antes del escaneo y el descuento ya viene calculado con ellas.
+// Esta fila existe para que veas QUÉ hizo el cliente, no para decidirlo.
+function TaskRow({
   icon,
   title,
   state,
-  screenshotUrl,
   pendingHint,
-  busy,
-  disabled,
-  onDecide,
 }: {
   icon: React.ReactNode;
   title: string;
   state: string;
-  screenshotUrl: string | null;
   pendingHint: string;
-  busy: boolean;
-  disabled: boolean;
-  onDecide: (decision: "approve" | "reject") => void;
 }) {
+  const done = state === "approved";
   return (
     <div className="rounded-xl border border-border p-3.5">
       <div className="flex items-center justify-between gap-3">
@@ -353,44 +334,14 @@ function ActionRow({
           </span>
           {title}
         </span>
-        {state === "approved" ? (
+        {done ? (
           <span className="flex items-center gap-1 text-xs font-bold text-emerald-700">
-            <Check className="size-3.5" /> Aprobada
+            <Check className="size-3.5" /> Lista
           </span>
-        ) : state === "pending" || state === "none" ? (
+        ) : (
           <span className="text-xs text-muted-foreground">{pendingHint}</span>
-        ) : null}
+        )}
       </div>
-      {(state === "submitted" || state === "rejected") && (
-        <div className="mt-3 flex flex-col gap-2.5">
-          {screenshotUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element -- external, unoptimizable screenshot
-            <img
-              src={screenshotUrl}
-              alt="Captura enviada por el cliente"
-              className="max-h-56 w-full rounded-lg border border-border object-contain"
-            />
-          ) : null}
-          <div className="flex gap-2">
-            <Button
-              className="flex-1"
-              disabled={disabled}
-              onClick={() => onDecide("approve")}
-            >
-              {busy ? <Loader2 className="animate-spin" /> : <Check />}
-              Aprobar
-            </Button>
-            <Button
-              variant="outline"
-              className="flex-1"
-              disabled={disabled}
-              onClick={() => onDecide("reject")}
-            >
-              <X /> Rechazar
-            </Button>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

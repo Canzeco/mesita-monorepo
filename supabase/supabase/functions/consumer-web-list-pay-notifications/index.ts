@@ -23,6 +23,7 @@ type TicketMeta = {
   status?: string;
   story_status?: string;
   story_submitted_at?: string | null;
+  first_scanned_at?: string | null;
   total_cents?: number | null;
   discount_percent?: number | null;
   capMxn?: number | null;
@@ -91,7 +92,7 @@ Deno.serve(async (req) => {
     const ticketRes = await admin
       .from("tickets")
       .select(
-        "id, kind, status, story_status, story_submitted_at, discount_percent, project_id, total_cents, created_at",
+        "id, kind, status, story_status, story_submitted_at, first_scanned_at, discount_percent, project_id, total_cents, created_at",
       )
       .in("id", ticketIds);
 
@@ -130,6 +131,7 @@ Deno.serve(async (req) => {
         status: t.status,
         story_status: t.story_status,
         story_submitted_at: t.story_submitted_at,
+        first_scanned_at: t.first_scanned_at,
         total_cents: t.total_cents,
         discount_percent: t.discount_percent,
         capMxn: t.project_id ? (placeCapById.get(t.project_id) ?? null) : null,

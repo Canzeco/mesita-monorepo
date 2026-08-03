@@ -250,9 +250,6 @@ verify_jwt = false
 [functions.check-web-submit-bill]
 verify_jwt = false
 
-[functions.check-web-verify-action]
-verify_jwt = false
-
 [functions.check-web-mark-paid]
 verify_jwt = false
 
@@ -268,14 +265,6 @@ verify_jwt = true
 # Identity
 
 [functions.consumer-web-submit-story]
-verify_jwt = true
-
-[functions.business-web-verify-story]
-verify_jwt = true
-
-# Promos v5 rails — entries were missing (platform default already =true;
-# pinned here for consistency).
-[functions.business-web-verify-review]
 verify_jwt = true
 
 [functions.consumer-web-submit-review]
@@ -322,9 +311,6 @@ verify_jwt = true
 
 [functions.consumer-mcp]
 verify_jwt = false
-
-[functions.consumer-web-mock-story-detect]
-verify_jwt = true
 
 [functions.consumer-web-submit-ticket-review]
 verify_jwt = true

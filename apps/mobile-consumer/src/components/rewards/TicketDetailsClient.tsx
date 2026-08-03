@@ -21,8 +21,6 @@ import {
   formatTicketRewardLabel,
   formatTicketTransactionSummaryLine,
   formatTicketVisitDate,
-  MOCK_STORY_DETECT_ENABLED,
-  mockStoryDetect,
   payloadFromNotification,
   resolvePlaceInstagramHandle,
   submitTicketReview,
@@ -173,19 +171,6 @@ export function TicketDetailsClient({ ticketId }: { ticketId: string }) {
     else setPeekStepId(id);
   };
 
-  const onMockStoryDetect = useCallback(async () => {
-    setBusy(true);
-    setError(null);
-    try {
-      await mockStoryDetect(ticketId);
-      await load();
-    } catch (e) {
-      setError(errMsg(e, "Couldn’t simulate story detection."));
-    } finally {
-      setBusy(false);
-    }
-  }, [ticketId, load]);
-
   const onReview = useCallback(async () => {
     setBusy(true);
     setError(null);
@@ -282,8 +267,6 @@ export function TicketDetailsClient({ ticketId }: { ticketId: string }) {
                   reviewDraft,
                   onReviewDraftChange: setReviewDraft,
                   onSubmitReview: () => void onReview(),
-                  onMockStoryDetect: () => void onMockStoryDetect(),
-                  showMockStoryButton: MOCK_STORY_DETECT_ENABLED,
                 })}
               </ActionCard>
             ) : null}

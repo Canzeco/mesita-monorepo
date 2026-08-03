@@ -256,23 +256,6 @@ export function payloadFromNotification(
   return payload as TicketBillPayload;
 }
 
-/** Show mock story-detect control in ticket detail (dev / explicit flag). */
-export const MOCK_STORY_DETECT_ENABLED =
-  process.env.NODE_ENV === "development" ||
-  process.env.NEXT_PUBLIC_MOCK_STORY_DETECT === "true";
-
-export async function mockStoryDetect(
-  supabase: SupabaseClient<Database>,
-  ticketId: string,
-) {
-  return invokeEF<Record<string, unknown>>(
-    supabase,
-    "consumer-web-mock-story-detect",
-    { ticketId },
-    "Could not simulate story detection.",
-  );
-}
-
 export async function submitTicketReview(
   supabase: SupabaseClient<Database>,
   input: {
