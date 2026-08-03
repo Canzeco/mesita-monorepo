@@ -2,13 +2,14 @@
 //
 // Returns the active team of a place in one round trip:
 //   - businesses : project_members joined to businesses (email-pool roles)
-//   - waiters  : project_roles joined to auth.users phones (phone-pool
-//     staff)
 //   - pendingBusinessInvites
-//   - pendingWaiterInvites
 //   - myRole : caller's role on this place (or "super_admin"), so the
 //     UI doesn't have to derive owner-ness from the businesses list and
 //     gets the right answer for super-admins who skipped project_members
+//
+// The team is the BUSINESS team only. Waiters were retired (MESITA-833):
+// staff handle tickets on the public check page, where possession of the
+// check_code is the authentication — there is no waiter account to list.
 //
 // Auth: any signed-in member of the place. Super-admins
 // (public.super_admins) bypass the membership check.
@@ -21,10 +22,6 @@ import {
   readEFEnv,
   requireMembership,
 } from "../_shared/auth.ts";
-import {
-  dedupePendingWaiterInvites,
-  loadWaitersWithPhones,
-} from "./team-waiters.ts";
 
 type Body = { placeId?: string; projectId?: string };
 
@@ -47,9 +44,8 @@ Deno.serve(async (req) => {
 
   const nowIso = new Date().toISOString();
 
-  // Four independent reads in parallel — no further fan-out except
-  // for the waiter phone lookups below.
-  const [memberRows, roleRows, pendingBusinessRows, pendingWaiterRows] = await Promise.all([
+  // Two independent reads in parallel — no further fan-out.
+  const [memberRows, pendingBusinessRows] = await Promise.all([
     admin
       .from("project_members")
       // business_id → accounts (businesses was renamed to accounts in the R2
@@ -58,28 +54,15 @@ Deno.serve(async (req) => {
       .eq("project_id", projectId)
       .order("created_at", { ascending: true }),
     admin
-      .from("project_roles")
-      .select("user_id, role, created_at")
-      .eq("project_id", projectId)
-      .eq("role", "staff")
-      .order("created_at", { ascending: true }),
-    admin
       .from("account_invites")
       .select("id, email, role, token, created_at, expires_at")
       .eq("project_id", projectId)
       .is("claimed_at", null)
       .gt("expires_at", nowIso)
       .order("created_at", { ascending: false }),
-    admin
-      .from("staff_invites")
-      .select("id, phone, channel, token, created_at, expires_at")
-      .eq("project_id", projectId)
-      .is("claimed_at", null)
-      .gt("expires_at", nowIso)
-      .order("created_at", { ascending: false }),
   ]);
 
-  for (const r of [memberRows, roleRows, pendingBusinessRows, pendingWaiterRows]) {
+  for (const r of [memberRows, pendingBusinessRows]) {
     if (r.error) {
       return json({ ok: false, error: `read: ${r.error.message}` }, 500);
     }
@@ -102,8 +85,6 @@ Deno.serve(async (req) => {
       createdAt: r.created_at,
     }));
 
-  const waiters = await loadWaitersWithPhones(admin, roleRows.data ?? []);
-
   const pendingBusinessInvites = (pendingBusinessRows.data ?? []).map((r) => ({
     id: r.id,
     email: r.email,
@@ -112,17 +93,6 @@ Deno.serve(async (req) => {
     createdAt: r.created_at,
     expiresAt: r.expires_at,
   }));
-
-  const pendingWaiterInvites = dedupePendingWaiterInvites(
-    (pendingWaiterRows.data ?? []).map((r) => ({
-      id: r.id,
-      phone: r.phone,
-      channel: r.channel ?? "whatsapp",
-      token: r.token,
-      createdAt: r.created_at,
-      expiresAt: r.expires_at,
-    })),
-  );
 
   // `myRole` lets the client gate UI without re-deriving from the
   // businesses list (super-admins aren't always in project_members).
@@ -134,8 +104,6 @@ Deno.serve(async (req) => {
     ok: true,
     myRole,
     businesses,
-    waiters,
     pendingBusinessInvites,
-    pendingWaiterInvites,
   });
 });

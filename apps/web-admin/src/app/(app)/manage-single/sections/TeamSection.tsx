@@ -96,7 +96,7 @@ export function TeamSection({ place }: { place: AdminPlace }) {
       icon={<Users className="h-4 w-4" />}
       tint="indigo"
       title="Team"
-      subtitle={`Business members, pending invites and waiters for ${place.name}. Actions save immediately.`}
+      subtitle={`Business members and pending invites for ${place.name}. Actions save immediately.`}
     >
       {error && <ErrorNote message={error} />}
 
@@ -205,25 +205,6 @@ export function TeamSection({ place }: { place: AdminPlace }) {
             {snap.pendingBusinessInvites.length === 0 && (
               <Empty>No pending invites.</Empty>
             )}
-          </Group>
-
-          <Group title="Waiters" count={snap.waiters.length}>
-            {snap.waiters.map((w) => (
-              <Row key={w.userId}>
-                <p className="text-sm font-medium tabular-nums">{w.phone ?? "—"}</p>
-                <RemoveBtn
-                  disabled={busy}
-                  onClick={() =>
-                    setRemoveTarget({
-                      key: `${w.userId}:${place.id}`,
-                      label: w.phone ?? "this waiter",
-                      roleLabel: "waiter",
-                      run: () => removeMember(`${w.userId}:${place.id}`, "waiter") })
-                  }
-                />
-              </Row>
-            ))}
-            {snap.waiters.length === 0 && <Empty>No waiters linked.</Empty>}
           </Group>
         </div>
       )}

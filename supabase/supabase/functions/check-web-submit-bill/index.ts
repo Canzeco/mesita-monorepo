@@ -9,7 +9,7 @@
 // requireMembership, keyed by the check code instead of a business JWT.
 //
 // Accepted risk, stated in the open: the guest holds their own URL and can
-// self-bill. Mesita moves no money — the waiter applies the discount off the
+// self-bill. Mesita moves no money — the staff apply the discount off the
 // same page — so the exposure is data quality (visit history, and
 // recordFirstTicketHonored at mark-paid trusting this surface), not theft.
 // Every submit is audit-logged with self_view + ip_hash.

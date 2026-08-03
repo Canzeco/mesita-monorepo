@@ -3,9 +3,11 @@
 // Removes one team artefact from a place. The `kind` discriminates:
 //
 //   editor       → project_members row (cannot remove last owner)
-//   waiter       → project_roles row
 //   editorInvite → account_invites row (revoke pending email invite)
-//   waiterInvite → staff_invites row (revoke pending waiter invite)
+//
+// The waiter / waiterInvite kinds were retired with the waiter identity
+// itself (MESITA-833) — staff work the public check page and hold no
+// account, so there is no access to revoke.
 //
 // Owners (and super-admins) can remove anyone. Editors and viewers
 // cannot remove other members but may remove themselves (handy "leave
@@ -22,7 +24,7 @@ import {
 import { isLastOwnerOfPlace } from "../_shared/place-ownership.ts";
 import { deleteTarget, loadTarget, type Kind } from "./member-target.ts";
 
-const KINDS = ["editor", "waiter", "editorInvite", "waiterInvite"] as const;
+const KINDS = ["editor", "editorInvite"] as const;
 type Body = { id?: string; kind?: Kind };
 
 Deno.serve(async (req) => {
@@ -39,7 +41,7 @@ Deno.serve(async (req) => {
   const kind = body.kind;
   if (!id) return json({ ok: false, error: "id is required" }, 400);
   if (!kind || !(KINDS as readonly string[]).includes(kind)) {
-    return json({ ok: false, error: "kind must be editor | waiter | editorInvite | waiterInvite" }, 400);
+    return json({ ok: false, error: "kind must be editor | editorInvite" }, 400);
   }
 
   const admin = adminClient(envRes.env);

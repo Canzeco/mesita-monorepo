@@ -1,7 +1,10 @@
 import { type SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { json } from "../_shared/http.ts";
 
-export type Kind = "editor" | "waiter" | "editorInvite" | "waiterInvite";
+// Only the BUSINESS team is removable here. The waiter kinds were retired
+// (MESITA-833) along with project_roles / staff_invites — staff hold no
+// account, so there is nothing to revoke.
+export type Kind = "editor" | "editorInvite";
 
 export type LoadedTarget =
   | {
@@ -34,36 +37,14 @@ export async function loadTarget(
         targetIsOwner: row.data.role === "owner",
       };
     }
-    case "waiter": {
-      const [userId, placeIdFromKey] = id.split(":");
-      if (!userId || !placeIdFromKey) {
-        return notFound("id must be userId:projectId", 400);
-      }
-      const row = await admin
-        .from("project_roles")
-        .select("user_id, project_id")
-        .eq("user_id", userId)
-        .eq("project_id", placeIdFromKey)
-        .maybeSingle();
-      if (row.error) return notFound(`role_read: ${row.error.message}`, 500);
-      if (!row.data) return notFound("Waiter not found on this place.", 404);
-      return {
-        ok: true,
-        projectId: row.data.project_id,
-        isSelfRemoval: false,
-        targetIsOwner: false,
-      };
-    }
     case "editorInvite":
       return await loadInvite(admin, "account_invites", id);
-    case "waiterInvite":
-      return await loadInvite(admin, "staff_invites", id);
   }
 }
 
 export async function loadInvite(
   admin: SupabaseClient,
-  table: "account_invites" | "staff_invites",
+  table: "account_invites",
   id: string,
 ): Promise<LoadedTarget> {
   const row = await admin.from(table).select("project_id").eq("id", id).maybeSingle();
@@ -85,17 +66,7 @@ export async function deleteTarget(admin: SupabaseClient, kind: Kind, id: string
   switch (kind) {
     case "editor":
       return await admin.from("project_members").delete().eq("id", id);
-    case "waiter": {
-      const [userId, placeIdFromKey] = id.split(":");
-      return await admin
-        .from("project_roles")
-        .delete()
-        .eq("user_id", userId)
-        .eq("project_id", placeIdFromKey);
-    }
     case "editorInvite":
       return await admin.from("account_invites").delete().eq("id", id);
-    case "waiterInvite":
-      return await admin.from("staff_invites").delete().eq("id", id);
   }
 }
