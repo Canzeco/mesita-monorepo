@@ -1,19 +1,28 @@
 // Supabase Edge Function — consumer-web-submit-story
 //
-// Authenticated. The consumer uploads the URL of their Instagram-story
-// screenshot for a story-required ticket. Sets story_status to
-// 'submitted' and records the screenshot URL + timestamp, so the AI
-// verifier (or staff fallback) can pick it up.
+// Lifecycle v3 (MESITA-849): the guest posts their tagged Instagram story and
+// tells us here — BEFORE the business is involved at all. Their declaration is
+// the verification: story_status goes straight to 'self_verified'. No
+// screenshot, no queue, no staff verdict.
 //
-// This function is the *queue* feeder for the verification pipeline:
-//   - Submit moves the row from 'pending' (or 'ai_rejected') to 'submitted'.
-//   - The AI bot polls 'submitted' rows, attempts to match the @mention
-//     or location tag, and flips to 'ai_verified' / 'ai_rejected' on its own.
-//   - Anything that ends up 'ai_rejected' falls to staff via
-//     business-web-verify-story.
+// Why self-attestation and not a check: there is no Instagram connection in
+// this product. The follower count behind the Influencer class is itself
+// self-declared (consumer-web-claim-instagram takes it from the request body),
+// and no code path has ever read Instagram to confirm a post — the "AI
+// verifier" the old flow deferred to was only ever consumer-web-mock-story-detect,
+// a dev helper. The staff verdict it fell back to was a human guessing from a
+// screenshot the guest chose. v3 stops pretending: the guest asserts, the place
+// applies the discount in front of them and can refuse, and MESITA-851 gives
+// the guest the matching route in the other direction.
 //
-// Auth model: the caller must be the ticket's consumer. The validator does
-// NOT submit on the consumer's behalf — that's the whole point of the proof.
+// What still gates a story, because these are checkable:
+//   - The caller must be the ticket's consumer.
+//   - Influencer class only (segments v6 — the Story rung is its exclusive
+//     action; resolveTicketRate ignores a story from anyone else).
+//   - The place must actually run the Story rung at its strategy.
+//
+// Body:     { ticketId: string }
+// Response: { ok: true, ticket: {...}, repricedPercent } | { ok, error }
 //
 // Self-contained: own auth, own DB writes via service role.
 
@@ -25,12 +34,18 @@ import {
   readEFEnv,
 } from "../_shared/auth.ts";
 import {
+  isActionVerified,
   loadRewardsGrid,
   offersSegment,
   placeStrategy,
 } from "../_shared/rewards-config.ts";
+import { repriceTicketAfterAction } from "../_shared/ticket-reprice.ts";
 
-type Body = { ticketId?: string; screenshotUrl?: string };
+type Body = { ticketId?: string };
+
+// Ticket states that can still take a task. A closed ticket can't — the
+// reward is already settled.
+const OPEN_TO_TASKS = new Set(["open", "awaiting_payment_confirm"]);
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
@@ -46,30 +61,14 @@ Deno.serve(async (req) => {
 
   const bodyRes = await readJson<Body>(req);
   if (!bodyRes.ok) return bodyRes.response;
-  const body = bodyRes.body;
-  const ticketId = (body.ticketId ?? "").toString().trim();
-  const url = (body.screenshotUrl ?? "").toString().trim();
+  const ticketId = (bodyRes.body.ticketId ?? "").toString().trim();
   if (!ticketId) return json({ ok: false, error: "ticketId is required" }, 400);
-  if (!url) {
-    return json({ ok: false, error: "screenshotUrl is required" }, 400);
-  }
-  try {
-    const parsed = new URL(url);
-    if (parsed.protocol !== "https:") {
-      return json(
-        { ok: false, error: "screenshotUrl must be https://" },
-        400,
-      );
-    }
-  } catch {
-    return json({ ok: false, error: "screenshotUrl is not a valid URL" }, 400);
-  }
 
   const admin = adminClient(envRes.env);
 
   const ticketRow = await admin
     .from("tickets")
-    .select("id, project_id, consumer_id, kind, story_status")
+    .select("id, project_id, consumer_id, kind, status, story_status")
     .eq("id", ticketId)
     .maybeSingle();
   if (ticketRow.error) {
@@ -86,6 +85,20 @@ Deno.serve(async (req) => {
       { ok: false, error: "Only the ticket's consumer can submit a story." },
       403,
     );
+  }
+  if (!OPEN_TO_TASKS.has(ticket.status)) {
+    return json(
+      {
+        ok: false,
+        error: "This ticket is closed — stories attach to open tickets.",
+      },
+      409,
+    );
+  }
+
+  // Already done — idempotent, so a double-tap or a retry is harmless.
+  if (isActionVerified(ticket.story_status)) {
+    return json({ ok: true, ticket, alreadyVerified: true });
   }
 
   // Segments v6: the Story rung is the INFLUENCER class's exclusive action.
@@ -115,76 +128,40 @@ Deno.serve(async (req) => {
   }
 
   // The place must run the Story rung at its strategy (grid.story[strategy]
-  // > 0) for a fresh opt-in. Legacy kind-seeded story-required tickets already
-  // sit in 'pending' and skip this gate.
-  if (ticket.story_status == null || ticket.story_status === "not_required") {
-    const placeRow = await admin
-      .from("projects_view")
-      .select(
-        "id, welcome_free_rate, welcome_premium_rate, free_rate, premium_rate",
-      )
-      .eq("id", ticket.project_id)
-      .maybeSingle();
-    if (placeRow.error || !placeRow.data) {
-      return json({ ok: false, error: "Place not found" }, 404);
-    }
-    const grid = await loadRewardsGrid(admin);
-    if (!offersSegment(placeStrategy(placeRow.data), grid, "story")) {
-      return json(
-        { ok: false, error: "This place doesn't run the Instagram Story reward." },
-        409,
-      );
-    }
+  // > 0) — checked on every submit, not just a fresh opt-in, because the
+  // ticket may have been created before the place changed its program.
+  const placeRow = await admin
+    .from("projects_view")
+    .select(
+      "id, welcome_free_rate, welcome_premium_rate, free_rate, premium_rate",
+    )
+    .eq("id", ticket.project_id)
+    .maybeSingle();
+  if (placeRow.error || !placeRow.data) {
+    return json({ ok: false, error: "Place not found" }, 404);
   }
-  if (
-    ticket.story_status === "staff_verified" ||
-    ticket.story_status === "waiter_verified" ||
-    ticket.story_status === "ai_verified"
-  ) {
-    return json({ ok: true, ticket, alreadyVerified: true });
-  }
-  if (
-    ticket.story_status === "staff_rejected" ||
-    ticket.story_status === "waiter_rejected"
-  ) {
+  const grid = await loadRewardsGrid(admin);
+  if (!offersSegment(placeStrategy(placeRow.data), grid, "story")) {
     return json(
-      {
-        ok: false,
-        error:
-          "This story was rejected. No more submissions allowed for this ticket.",
-      },
+      { ok: false, error: "This place doesn't run the Instagram Story reward." },
       409,
     );
   }
 
-  // Allowed inbound states: not_required (v5 universal opt-in — the place gate
-  // above already passed), pending, submitted (re-upload), ai_rejected.
-  const allowed = new Set(["not_required", "pending", "submitted", "ai_rejected"]);
-  if (!allowed.has(ticket.story_status)) {
-    return json(
-      {
-        ok: false,
-        error: `Cannot submit a story when story_status=${ticket.story_status}`,
-      },
-      409,
-    );
-  }
-
-  const submittedAt = new Date().toISOString();
+  const now = new Date().toISOString();
   const updated = await admin
     .from("tickets")
     .update({
-      story_status: "submitted",
-      story_screenshot_url: url,
-      story_submitted_at: submittedAt,
-      story_verified_at: null,
+      story_status: "self_verified",
+      story_submitted_at: now,
+      story_verified_at: now,
+      // tickets.story_verified_by FKs to accounts (business-side) — a consumer
+      // id can't go here, and self-verification has no approver anyway.
       story_verified_by: null,
       story_reject_reason: null,
     })
     .eq("id", ticketId)
-    .select(
-      "id, kind, status, story_status, story_screenshot_url, story_submitted_at",
-    )
+    .select("id, kind, status, story_status, story_submitted_at")
     .single();
   if (updated.error) {
     return json(
@@ -193,5 +170,12 @@ Deno.serve(async (req) => {
     );
   }
 
-  return json({ ok: true, ticket: updated.data });
+  // A task completed AFTER the bill was snapshotted re-prices it upward
+  // (bump-only). Before the bill, this no-ops — check-web-submit-bill already
+  // prices with the verified story in the qualifying set.
+  let repricedPercent: number | null = null;
+  const reprice = await repriceTicketAfterAction(admin, ticketId);
+  if (reprice.ok) repricedPercent = reprice.ratePercent;
+
+  return json({ ok: true, ticket: updated.data, repricedPercent });
 });

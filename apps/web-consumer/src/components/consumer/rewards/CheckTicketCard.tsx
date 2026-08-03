@@ -18,21 +18,10 @@ import {
 } from "@/lib/api/tickets";
 import { cn } from "@/lib/utils";
 
-// Story lifecycle → the guest's one line (rejected must read differently from
-// pending — the guest has to act, not wait).
-const STORY_LINE: Record<string, string> = {
-  pending: "Bill is in. Post your tagged story so the place can approve it.",
-  submitted: "Story sent — the place is checking it.",
-  ai_rejected: "Story wasn't accepted — ask the staff to review it.",
-  staff_rejected: "Story wasn't accepted — ask the staff to review it.",
-};
-
 function statusLine(ticket: ConsumerTicketRow): string {
   switch (ticket.status) {
     case "open":
       return "Show this QR — staff scan it to verify and start your visit.";
-    case "awaiting_story":
-      return STORY_LINE[ticket.story_status ?? ""] ?? STORY_LINE.pending;
     case "awaiting_payment_confirm":
       return "All set — pay the discounted total at the table.";
     default:

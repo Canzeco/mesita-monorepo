@@ -9,8 +9,6 @@ import {
   formatTicketRewardLabel,
   formatTicketVisitDate,
   payloadFromNotification,
-  mockStoryDetect,
-  MOCK_STORY_DETECT_ENABLED,
   resolvePlaceInstagramHandle,
   submitTicketReview,
   type PayNotificationRow,
@@ -149,19 +147,6 @@ export function TicketDetailsRouteClient({
     [payload, placeInstagramUrl],
   );
 
-  const onMockStoryDetect = useCallback(async () => {
-    setBusy(true);
-    setError(null);
-    try {
-      await mockStoryDetect(supabase, ticketId);
-      await load();
-    } catch (e) {
-      setError(errMsg(e, "Couldn't simulate story detection."));
-    } finally {
-      setBusy(false);
-    }
-  }, [supabase, ticketId, load]);
-
   const onReview = useCallback(async () => {
     setBusy(true);
     setError(null);
@@ -226,8 +211,6 @@ export function TicketDetailsRouteClient({
             busy={busy}
             error={error}
             onSubmitReview={() => void onReview()}
-            onMockStoryDetect={() => void onMockStoryDetect()}
-            showMockStoryButton={MOCK_STORY_DETECT_ENABLED}
             placeInstagramHandle={placeInstagramHandle}
           />
         )}

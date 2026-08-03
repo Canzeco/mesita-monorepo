@@ -4,8 +4,8 @@
 //
 // Security model, stated plainly: the check-web-* EFs are verify_jwt=false.
 // The 128-bit check_code is the entire authentication — whoever holds the
-// URL can view the ticket, enter the bill, approve a submitted story/review,
-// and mark it paid. That includes the guest themselves (the QR is static; a
+// URL can view the ticket, enter the bill, and mark it paid. That includes
+// the guest themselves (the QR is static; a
 // forwarded screenshot is indistinguishable from a live scan). This is
 // ACCEPTED by design: Mesita never moves money — the staff physically
 // applies the discount off the same page — so self-service is a data-quality
@@ -90,8 +90,13 @@ export async function loadTicketByCheckCode(
 // else. Never add: class_key, segment/rung names, the rate breakdown or
 // strategy, consumers.code, consumer/ticket UUIDs, phone, follower count.
 // discount_percent is the blended final integer — the same privacy invariant
-// resolveTicketRate already enforces. ai_verified/staff_verified collapse to
-// "approved" so even the verification channel doesn't leak.
+// resolveTicketRate already enforces. Every verified value collapses to
+// "approved" so the verification channel itself doesn't leak.
+//
+// v3 (MESITA-849): these states are DISPLAY ONLY. The guest completes their
+// tasks before the scan, so the page reports what they did — it never asks
+// staff to rule on it. "pending"/"submitted"/"rejected" survive purely to
+// render pre-v3 tickets.
 
 function collapseActionState(status: string | null): {
   required: boolean;
@@ -102,6 +107,7 @@ function collapseActionState(status: string | null): {
       return { required: true, state: "pending" };
     case "submitted":
       return { required: true, state: "submitted" };
+    case "self_verified":
     case "ai_verified":
     case "staff_verified":
     case "waiter_verified": // legacy value kept through the r1 enum rename
@@ -157,7 +163,9 @@ export function shapeCheckPayload(args: {
     story: {
       required: story.required,
       state: story.state,
-      // The screenshot is only staff-relevant while a decision is pending.
+      // Pre-v3 leftovers only: a story still awaiting a verdict. Nothing on
+      // the page acts on it any more, but hiding a screenshot staff were
+      // already shown would be a regression for tickets mid-flight.
       screenshot_url: story.state === "submitted" || story.state === "rejected"
         ? ticket.story_screenshot_url
         : null,
@@ -173,13 +181,12 @@ export function shapeCheckPayload(args: {
 
 // ── Audit + rate limiting ───────────────────────────────────────────────
 
+// The story_*/review_* verdict events retired with the staff verdict itself
+// (MESITA-849) — nothing writes them any more. Stored rows keep their values;
+// this union only constrains new inserts.
 export type CheckEvent =
   | "scanned"
   | "bill_submitted"
-  | "story_approved"
-  | "story_rejected"
-  | "review_approved"
-  | "review_rejected"
   | "marked_paid"
   | "pin_rejected";
 

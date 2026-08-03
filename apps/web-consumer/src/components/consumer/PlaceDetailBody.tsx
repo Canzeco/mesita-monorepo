@@ -9,10 +9,15 @@ import { LocationBox, HoursBox } from "./place-detail/location-hours";
 import { MediaBox } from "./place-detail/media";
 import { ProductsBox } from "./place-detail/products";
 import { ProfileSummary } from "./place-detail/profile-summary";
-// Promos v5 (MESITA-723): Mesita reviews are removed for MVP — the Reviews tab
-// shows Google only. ReviewsSummaryBox / MesitaReviewsBox stay on disk (parked)
-// but are no longer rendered.
-import { GoogleReviewsBox } from "./place-detail/reviews";
+// decision: Pato (live, 2026-08-03) — the Reviews tab carries all three boxes
+// again: the cross-channel summary, Google's reviews, then Mesita's own. The
+// v5 Google-only cut (MESITA-723) is over, and mobile never stopped rendering
+// the full set — this restores web↔mobile parity.
+import {
+  GoogleReviewsBox,
+  MesitaReviewsBox,
+  ReviewsSummaryBox,
+} from "./place-detail/reviews";
 import { RewardsBox } from "./place-detail/rewards";
 import { PlaceTabBar, type PlaceTab } from "./place-detail/tabs";
 import {
@@ -28,7 +33,7 @@ import {
 // bar (back + place name + ⋯) on top of this. Structure:
 //
 //   1. Profile summary — name in page chrome; photo + Google/Instagram/
-//      reward; swipe-style tags; then Save · Contact · Reserve · Share.
+//      Facebook; swipe-style tags; then Save · Contact · Reserve · Share.
 //   2. Sticky tab strip — Place · Reviews · Products · Rewards.
 //   3. The active tab's boxes.
 
@@ -56,7 +61,13 @@ export function PlaceDetailBody({ place }: { place: PlaceDetail }) {
             <LastUpdatedBox place={place} />
           </>
         )}
-        {tab === "reviews" && <GoogleReviewsBox place={place} />}
+        {tab === "reviews" && (
+          <>
+            <ReviewsSummaryBox place={place} />
+            <GoogleReviewsBox place={place} />
+            <MesitaReviewsBox place={place} />
+          </>
+        )}
         {tab === "products" && <ProductsBox place={place} />}
         {/* Reward always renders on its tab. Web listings and rate-less
             partners get a "doesn't offer rewards" state inside RewardsBox

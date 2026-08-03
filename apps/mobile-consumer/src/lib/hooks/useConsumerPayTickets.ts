@@ -14,7 +14,6 @@ import { usePayNotificationPoll } from '@/lib/hooks/usePayNotificationPoll';
 import {
   isTicketFlowComplete,
   resolveTicketFlowSteps,
-  ticketFlowTypeFromKind,
   ticketProgressFromBundle,
   type TicketFlowStepView,
 } from '@/lib/ticket-flow-steps';
@@ -132,6 +131,7 @@ function progressOf(bundle: TicketBundle, meta?: PayTicketMeta) {
     status: meta?.status,
     story_status: meta?.story_status,
     story_submitted_at: meta?.story_submitted_at,
+    first_scanned_at: meta?.first_scanned_at,
     total_cents: meta?.total_cents ?? p.total_cents,
     review: bundle.review,
   });
@@ -156,7 +156,13 @@ export function bundleToCardView(
   };
 }
 
-const STORY_VERIFIED = new Set(['ai_verified', 'staff_verified']);
+// `self_verified` is the v3 state (MESITA-849); the other two are history
+// from the retired bot/staff verdicts.
+const STORY_VERIFIED = new Set([
+  'self_verified',
+  'ai_verified',
+  'staff_verified',
+]);
 
 export type RewardStats = {
   visits: number;
@@ -186,12 +192,10 @@ export function computeRewardStats(
     visits += 1;
     if (complete) savedCents += rewardCentsOf(b.payload);
 
-    const kind = meta?.kind ?? b.payload.ticket_kind ?? 'dp';
-    if (
-      ticketFlowTypeFromKind(kind) === 'B' &&
-      meta?.story_status &&
-      STORY_VERIFIED.has(meta.story_status)
-    ) {
+    // A verified story IS the story step — no separate flow-type test. The
+    // old one keyed on legacy `kind` strings the enum no longer emits, so
+    // this counter had been stuck at zero.
+    if (meta?.story_status && STORY_VERIFIED.has(meta.story_status)) {
       stories += 1;
     }
     if (b.review?.status === 'completed') reviews += 1;

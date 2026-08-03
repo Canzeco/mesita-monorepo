@@ -49,8 +49,6 @@ type TicketDetailsViewProps = {
   busy: boolean;
   error: string | null;
   onSubmitReview: () => void;
-  onMockStoryDetect?: () => void;
-  showMockStoryButton?: boolean;
   placeInstagramHandle?: string | null;
 };
 
@@ -71,8 +69,6 @@ export function TicketDetailsView({
   busy,
   error,
   onSubmitReview,
-  onMockStoryDetect,
-  showMockStoryButton,
   placeInstagramHandle,
 }: TicketDetailsViewProps) {
   const stepCopy = useMemo(
@@ -164,8 +160,6 @@ export function TicketDetailsView({
             reviewDraft,
             onReviewDraftChange,
             onSubmitReview,
-            onMockStoryDetect,
-            showMockStoryButton,
           })}
         </TicketActionCard>
       ) : null}

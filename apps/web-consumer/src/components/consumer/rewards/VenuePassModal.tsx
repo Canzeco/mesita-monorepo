@@ -98,16 +98,9 @@ const SEGMENT_HOW: Record<RewardSegmentKey, string> = {
   premium: "Always on",
   influencer: "Always on",
   aura: "Always on",
-  story: "Post a story tagging the place",
+  story: "Post a tagged story, then tap it here",
   welcome: "Automatic on your first visit here",
-  review: "Leave a Google review at the table",
-};
-
-const STORY_LINE: Record<string, string> = {
-  pending: "Bill is in. Post your tagged story so the place can approve it.",
-  submitted: "Story sent — the place is checking it.",
-  ai_rejected: "Story wasn't accepted — ask the staff to review it.",
-  staff_rejected: "Story wasn't accepted — ask the staff to review it.",
+  review: "Leave a Google review, then tap it here",
 };
 
 // story_status/review_status value meaning "this rung doesn't apply to this
@@ -119,8 +112,6 @@ function statusLine(t: ConsumerTicketRow): string {
   switch (t.status) {
     case "open":
       return "Show this QR — staff scan it to verify and start your visit.";
-    case "awaiting_story":
-      return STORY_LINE[t.story_status ?? ""] ?? STORY_LINE.pending;
     case "awaiting_payment_confirm":
       return "All set — pay the discounted total at the table.";
     default:
@@ -302,10 +293,13 @@ export function VenuePassModal({
 
   const rungs = useMemo(() => reachableSegments(classKey), [classKey]);
 
-  // Which proofs the guest can send RIGHT NOW. Story only when the ticket
+  // The tasks the guest can complete RIGHT NOW. Story only when the ticket
   // actually carries the rung (Influencer + the place offers it); Google
-  // review is universal on a live ticket. `done` covers submitted AND the
-  // verified states, so the button never invites a second submission.
+  // review is universal on a live ticket.
+  //
+  // v3 (MESITA-849): the tap IS the completion — no staff verdict follows, so
+  // `done` is a finished state, not "sent, awaiting approval". Tasks are meant
+  // to be done BEFORE the scan; nothing here requires the bill to exist first.
   const actionable = useMemo(() => {
     if (!ticket || !ACTIVE_TICKET_STATUSES.has(ticket.status)) return [];
     const settled = (v: string | null | undefined) =>
@@ -322,7 +316,7 @@ export function VenuePassModal({
       out.push({
         kind: "story",
         label: settled(ticket.story_status)
-          ? "Story sent"
+          ? "Story added"
           : "I posted my story",
         Icon: Instagram,
         done: settled(ticket.story_status),
@@ -331,7 +325,7 @@ export function VenuePassModal({
     out.push({
       kind: "review",
       label: settled(ticket.review_status)
-        ? "Google review sent"
+        ? "Google review added"
         : "I left a Google review",
       Icon: Star,
       done: settled(ticket.review_status),

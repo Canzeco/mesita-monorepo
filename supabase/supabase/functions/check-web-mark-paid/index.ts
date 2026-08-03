@@ -68,16 +68,6 @@ Deno.serve(async (req) => {
   if (ticket.status === "revealed") {
     return json({ ok: true, alreadyPaid: true });
   }
-  if (ticket.status === "awaiting_story") {
-    return json(
-      {
-        ok: false,
-        error: "Confirm the guest's story first — approve or reject it above.",
-        code: "story_pending",
-      },
-      409,
-    );
-  }
   if (ticket.status !== "awaiting_payment_confirm") {
     return json(
       { ok: false, error: `Ticket is ${ticket.status} — nothing to confirm yet.` },

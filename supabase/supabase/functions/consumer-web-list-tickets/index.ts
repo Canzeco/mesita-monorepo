@@ -53,7 +53,7 @@ Deno.serve(async (req) => {
     )
     .eq("consumer_id", userId);
   if (scope === "active") {
-    query = query.in("status", ["open", "awaiting_story", "awaiting_payment_confirm"]);
+    query = query.in("status", ["open", "awaiting_payment_confirm"]);
   } else if (scope === "history") {
     query = query.in("status", ["revealed", "cancelled"]);
   }

@@ -112,7 +112,10 @@ Deno.test("shapeCheckPayload: the allowlist — forbidden fields never leak", ()
   // total_cents is the PRE-discount bill (the live-E2E bug): a MX$500 bill
   // with MX$100 off is MX$400 due.
   assertEquals((payload.bill as Record<string, unknown>).discount_percent, 20);
-  assertEquals((payload.bill as Record<string, unknown>).amount_due_cents, 40_000);
+  assertEquals(
+    (payload.bill as Record<string, unknown>).amount_due_cents,
+    40_000,
+  );
 });
 
 Deno.test("shapeCheckPayload: pin_required is a flag — the PIN value never ships", () => {
@@ -122,7 +125,7 @@ Deno.test("shapeCheckPayload: pin_required is a flag — the PIN value never shi
   assertEquals(shape().pin_required, false);
   assertEquals(shape({}, true).pin_required, true);
   const flat = JSON.stringify(shape({}, true));
-  for (const forbidden of ["check_pin", "pin\":\"", "123456"]) {
+  for (const forbidden of ["check_pin", 'pin":"', "123456"]) {
     assertEquals(
       flat.includes(forbidden),
       false,
@@ -139,7 +142,10 @@ Deno.test("shapeCheckPayload: amount due = total minus discount (E2E regression)
     discount_percent: 20,
     discount_cents: 10_000,
   });
-  assertEquals((payload.bill as Record<string, unknown>).amount_due_cents, 70_000);
+  assertEquals(
+    (payload.bill as Record<string, unknown>).amount_due_cents,
+    70_000,
+  );
 });
 
 Deno.test("shapeCheckPayload: bill is null before billing", () => {
@@ -148,7 +154,14 @@ Deno.test("shapeCheckPayload: bill is null before billing", () => {
 });
 
 Deno.test("shapeCheckPayload: verification channel collapses to approved", () => {
-  for (const status of ["ai_verified", "staff_verified", "waiter_verified"]) {
+  for (
+    const status of [
+      "self_verified",
+      "ai_verified",
+      "staff_verified",
+      "waiter_verified",
+    ]
+  ) {
     const payload = shape({ story_status: status });
     assertEquals(
       (payload.story as Record<string, unknown>).state,
@@ -171,7 +184,10 @@ Deno.test("shapeCheckPayload: screenshot only visible while decidable", () => {
     story_status: "staff_verified",
     story_screenshot_url: "https://example.com/s.png",
   });
-  assertEquals((approved.story as Record<string, unknown>).screenshot_url, null);
+  assertEquals(
+    (approved.story as Record<string, unknown>).screenshot_url,
+    null,
+  );
 });
 
 Deno.test("shapeCheckPayload: story/review required flags follow status", () => {
