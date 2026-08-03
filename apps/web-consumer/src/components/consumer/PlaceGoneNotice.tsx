@@ -25,6 +25,13 @@ import { toast } from "@/lib/toast";
 // dead id is dropped from the saved set and its cached preview, so the ghost
 // tile that caused the bounce disappears instead of waiting to bounce again.
 // The param is stripped afterwards so a refresh doesn't re-toast.
+//
+// The self-heal has to cover BOTH stores of dead ids. Favorites live in
+// localStorage (forgetSavedPlace). The Home deck lives in the /home layout's
+// server fetch, which by design never re-runs on tab navigation — so after a
+// DB reset an open tab keeps dealing cards whose rows are gone, and every tap
+// bounces right back here. router.refresh() re-runs the layout's server
+// components, so the deck is refetched and the dead card stops existing too.
 export function PlaceGoneNotice() {
   const params = useSearchParams();
   const router = useRouter();
@@ -41,6 +48,9 @@ export function PlaceGoneNotice() {
     next.delete("gone");
     const qs = next.toString();
     router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+    // Refetch the layout's server-provided data (the Home deck) so the card
+    // that pointed at the dead row is dealt out of existence.
+    router.refresh();
   }, [gone, params, pathname, router]);
 
   return null;
