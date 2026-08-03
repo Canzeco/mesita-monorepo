@@ -228,6 +228,93 @@ export async function setPlacePlan(
   return { ok: true, data: r.data.place };
 }
 
+// ── Performance: per-place activity (read-only) ──────────────────────────
+// Reservations + their Reservationist call lifecycle, story/review
+// screenshots, review text, and the two inbound AI phone lines. Deliberately
+// read-only: a booking is changed by CALLING a3/a4, never by editing a row
+// (Pato, MESITA-847) — there is no write counterpart to this action.
+
+export type PlaceReservation = {
+  id: string;
+  referenceCode: string | null;
+  reservedAt: string | null;
+  partySize: number | null;
+  status: string | null;
+  notes: string | null;
+  createdAt: string | null;
+  confirmedAt: string | null;
+  cancelledAt: string | null;
+  cancelledBy: string | null;
+  guest: string;
+  call: {
+    attempts: number;
+    attemptsPlanned: number | null;
+    state: string | null;
+    nextAttemptAt: string | null;
+    lastStatus: string | null;
+    lastCalledAt: string | null;
+    verdict: string | null;
+    alternatives: unknown;
+    outcomeNote: string | null;
+    negotiationRounds: number;
+    callbackState: string | null;
+    guestConfirmedAt: string | null;
+  };
+  isTest: boolean;
+  guestNumber: string | null;
+  venueNumber: string | null;
+};
+
+export type PlaceStory = {
+  ticketId: string;
+  createdAt: string | null;
+  guest: string;
+  story: {
+    status: string | null;
+    screenshotUrl: string | null;
+    submittedAt: string | null;
+    verifiedAt: string | null;
+    rejectReason: string | null;
+  };
+  review: {
+    status: string | null;
+    screenshotUrl: string | null;
+    submittedAt: string | null;
+    verifiedAt: string | null;
+  };
+};
+
+export type PlaceComment = {
+  id: string;
+  createdAt: string | null;
+  guest: string;
+  food: number | null;
+  service: number | null;
+  ambiance: number | null;
+  value: number | null;
+  overall: number | null;
+  comments: string | null;
+};
+
+export type PlaceActivity = {
+  reservations: PlaceReservation[];
+  stories: PlaceStory[];
+  comments: PlaceComment[];
+  /** The only way to change a booking — a3 answers guests, a4 answers venues. */
+  lines: { guest: string; venue: string };
+  generatedAt: string;
+};
+
+export async function getPlaceActivity(
+  projectId: string,
+): Promise<Result<PlaceActivity>> {
+  const r = await efInvoke<PlaceActivity>("admin-web-get-place-activity", {
+    placeId: projectId,
+  });
+  if (!r.ok) return { ok: false, error: r.error };
+  return { ok: true, data: r.data };
+}
+
 // ── Atlas tag catalog (for Place tags picker) ────────────────────────────
 // Same backend source Atlas Config reads (`admin-web-get-atlas-fields` →
 // public.place_tags). Manage Single Unit calls this EF via its own server

@@ -429,8 +429,14 @@ export function ReviewsSection({ place }: { place: AdminPlace }) {
   const scrapedGoogle = googleReviews.length;
   const googleReviewsSubtitle =
     googleCount > scrapedGoogle
-      ? `${scrapedGoogle} of ${formatCount(googleCount, true)} scraped · Apify caps the pull at 100.`
-      : `${scrapedGoogle} scraped · Apify caps the pull at 100.`;
+      ? `${scrapedGoogle} of ${formatCount(googleCount, true)} scraped.`
+      : `${scrapedGoogle} scraped.`;
+  // Flagged, not buried: the Enricher can only ever hold 100 Google review
+  // TEXTS (Apify's hard per-run cap), while google_review_count is Google's
+  // full aggregate. Pato 2026-08-03: "mention a flag there that max 100
+  // google reviews. we know its a limitation but maybe later we fix it" —
+  // the fix is tracked as MESITA-848.
+  const googleCapped = scrapedGoogle >= 100 || googleCount > scrapedGoogle;
 
   // Cards are siblings of Place boxes — parent PlaceSection owns the 2-col grid.
   return (
@@ -516,6 +522,15 @@ export function ReviewsSection({ place }: { place: AdminPlace }) {
           title="Google reviews"
           subtitle={googleReviewsSubtitle}
         >
+          {googleCapped && (
+            <p className="border-border bg-muted/40 text-muted-foreground mt-4 rounded-xl border px-3 py-2 text-[11px] leading-snug">
+              <span className="text-foreground font-semibold">Known limit ·</span>{" "}
+              Mesita stores at most <span className="font-semibold">100</span> Google
+              review texts per place — Apify caps the pull. The star average and the
+              total count above come from Google and are complete; only the list below
+              is truncated. Raising it is tracked (MESITA-848).
+            </p>
+          )}
           <div className="mt-5 flex flex-col gap-3">
             <ReviewSortChips
               sort={googleSort}
