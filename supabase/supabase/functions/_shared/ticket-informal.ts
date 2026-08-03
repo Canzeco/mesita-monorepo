@@ -1,6 +1,8 @@
-// Discount ticket math — shared by business-web-create-ticket and the Staff
-// WhatsApp Type-A flow. Discounts only: Mesita never holds a balance, so there
-// is no redeem/ledger step — the discount is applied straight to the bill.
+// Discount ticket math — shared by the check page and the business console
+// (check-web-mark-paid, business-web-mark-ticket-paid, via
+// business-ticket-billing.ts). Discounts only: Mesita never holds a balance,
+// so there is no redeem/ledger step — the discount is applied straight to the
+// bill.
 
 import { type SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { isConsumerFirstVisit } from "./membership.ts";
@@ -84,7 +86,7 @@ export async function computeInformalBill(
 ): Promise<InformalBillCalc> {
   const total = subtotal;
   // Promos v5 best-of (MESITA-723): strategy (from the place's v4 rate columns)
-  // × the operator grid. Type-A WhatsApp tickets carry no action rungs.
+  // × the operator grid.
   const grid = await loadRewardsGrid(admin);
   const firstVisit = await isConsumerFirstVisit(admin, consumer.id, place.id);
   const ratePercent = resolveTicketRate(placeStrategy(place), grid, {

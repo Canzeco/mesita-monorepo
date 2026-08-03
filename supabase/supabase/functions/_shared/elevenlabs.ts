@@ -11,8 +11,20 @@ const EL_BASE = "https://api.elevenlabs.io";
 
 // Fallback agent = eleven-a1 (es-mx) · c2b outbound booker. The old single
 // donor ("XD" / agent_2201kxsktw0me9rb2kdtqerrgzha) was deleted — the fleet
-// is the only agents in the workspace. The outbound Twilio line is shared.
+// is the only agents in the workspace.
 const DEFAULT_AGENT_ID = "agent_0101kyjcfjecfk69ty20rmcf12gn";
+
+// ONE LINE PER AUDIENCE. The fleet has two inbound agents — a4 answers venues,
+// a3 answers guests — and an imported ElevenLabs number binds to exactly one
+// of them, so a single shared line can only ever serve one side (the other
+// hears "no Mesita account with this number"). Two lines also mean a venue and
+// a guest each save a DIFFERENT caller ID, so a callback routes on the dialed
+// number instead of a caller-ID lookup that can't resolve an owner who is also
+// a Mesita consumer on the same handset.
+//
+// The consumer line falls back to the business line, so nothing breaks before
+// the number is bought and ELEVENLABS_CONSUMER_FROM_NUMBER is set — the
+// cutover is one secret, not a deploy.
 const DEFAULT_FROM_NUMBER = "+16282960710";
 
 export function elevenLabsKey(): string | null {
@@ -26,8 +38,16 @@ export function reservationAgentId(): string {
   return Deno.env.get("ELEVENLABS_AGENT_ID")?.trim() || DEFAULT_AGENT_ID;
 }
 
+/** The venue-facing line — a1 dials venues from it, a4 answers venues on it. */
 export function reservationFromNumber(): string {
   return Deno.env.get("ELEVENLABS_FROM_NUMBER")?.trim() || DEFAULT_FROM_NUMBER;
+}
+
+/** The guest-facing line — a2 dials guests from it, a3 answers guests on it.
+ *  Falls back to the business line until the number exists. */
+export function consumerFromNumber(): string {
+  return Deno.env.get("ELEVENLABS_CONSUMER_FROM_NUMBER")?.trim() ||
+    reservationFromNumber();
 }
 
 function headers(key: string): HeadersInit {
