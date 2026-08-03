@@ -17,12 +17,14 @@ import {
   type PlaceEnrichmentStatus,
 } from "../actions";
 import { ManualPriorityCard } from "./ManualPriorityCard";
-import { CopyIdButton, CrossTabLink, ReadField, SectionCard } from "../ui";
-import { unitSectionHref } from "../nav";
+import { TeamSection } from "./TeamSection";
+import { CopyIdButton, ReadField, SectionCard } from "../ui";
 import { formatAbsoluteUtc } from "@/lib/format";
 
-// Settings — the operator/meta cards pulled out of the Place tab
-// (MESITA-834): Manual Priority (the one live editable per-place score),
+// Settings — the operator/meta cards pulled out of the Place tab plus the
+// business Team card (MESITA-834; Team's own tab folded in per Pato, same
+// day): Manual Priority (the one live editable per-place score), Team
+// (managers + invites — no waiters, that identity is gone, MESITA-833),
 // Ownership, Metadata (uid + live enriching status — keeps the 8s poll that
 // used to live on Place), and Embeddings. Profile content stays on Place.
 export function SettingsSection({ place }: { place: AdminPlace }) {
@@ -69,6 +71,7 @@ export function SettingsSection({ place }: { place: AdminPlace }) {
     // Same masonry as the Place tab — columns pack top-down (MESITA-399).
     <div className="columns-1 gap-4 pb-8 [&>section]:mb-4 [&>section]:break-inside-avoid [&>details]:mb-4 [&>details]:break-inside-avoid lg:columns-2 lg:gap-5 lg:pb-10 lg:[&>section]:mb-5 lg:[&>details]:mb-5">
       <ManualPriorityCard place={place} />
+      <TeamSection place={place} />
       <OwnershipCard place={place} owners={owners} ownersError={ownersError} />
       <MetaCard place={place} enrichStatus={enrichStatus} />
       <EmbeddingsCard place={place} />
@@ -91,14 +94,11 @@ function OwnershipCard({
       icon={<ShieldCheck className="h-4 w-4" />}
       tint="emerald"
       title="Ownership"
-      subtitle="Partner verification & owner accounts — manage on the Team tab."
-      action={
-        <CrossTabLink href={unitSectionHref(place.id, "team")}>Edit</CrossTabLink>
-      }
+      subtitle="Partner verification & owner accounts — manage in the Team card."
     >
       {/* One boxed field per row — same filled-input language as the
-          editable cards. Verification is a single binary field; request
-          history lives on the Team tab. */}
+          editable cards. Verification is a single binary field; member
+          management lives in the Team card beside this one. */}
       <div className="mt-5 grid gap-4">
         <ReadField label="Verification status" boxed>
           {verified ? (

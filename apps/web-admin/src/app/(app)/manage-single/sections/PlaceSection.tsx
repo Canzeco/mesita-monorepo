@@ -14,7 +14,6 @@ import {
   Loader2,
   Mail,
   MapPin,
-  Percent,
   Phone,
   Store,
   X,
@@ -33,8 +32,6 @@ import {
 import { PlaceTagsPicker } from "../PlaceTagsPicker";
 import { PlaceCategorySelect } from "../PlaceCategorySelect";
 import {
-  CrossTabLink,
-  GroupLabel,
   OpenLink,
   PhoneField,
   ReadField,
@@ -43,13 +40,6 @@ import {
   TextArea,
   TextField,
 } from "../ui";
-import { unitSectionHref } from "../nav";
-import {
-  STRATEGY_BY_ID,
-  STRATEGY_VISIBILITY_LADDER,
-  UNIVERSAL_CAP_MXN,
-  strategyForPlace,
-} from "@/lib/business/strategies";
 import { useUnitPlace } from "../UnitPlaceContext";
 import { formatAbsoluteUtc } from "@/lib/format";
 import { createBrowserSupabase } from "@/lib/supabase/browser";
@@ -272,13 +262,6 @@ const FALLBACK_LIMITS: PlaceFieldLimits = {
   tagsPerPlaceMax: 20,
   photosMax: 10,
 };
-
-// Membership fee, mirrored from the Promos tab. MXN-first money format.
-const MEMBERSHIP_PRICE_MXN = 1000;
-function mxn(amount: number, currency: string | null): string {
-  const prefix = !currency || currency === "MXN" ? "MX$" : "$";
-  return `${prefix}${amount.toLocaleString("en-US")}`;
-}
 
 function placeToForm(v: AdminPlace, limits: PlaceFieldLimits = FALLBACK_LIMITS): Form {
   const hours = {} as Record<Day, DayHours>;
@@ -1080,8 +1063,6 @@ export function PlaceSection({
         ) : null}
       </SectionCard>
 
-      <PromosCard place={place} />
-
       {metaFor !== null && (
         <MediaMetaDialog
           url={metaFor}
@@ -1095,118 +1076,6 @@ export function PlaceSection({
   );
 }
 
-// Promos — read-only summary of the Mesita Membership strategy (MESITA-588);
-// mirrors the Promos tab's strategy model. Editing happens there.
-function PromosCard({ place }: { place: AdminPlace }) {
-  const strategyId = strategyForPlace(place);
-  const strategy = strategyId ? STRATEGY_BY_ID[strategyId] : null;
-  const paid = strategy != null && strategy.id !== "zero";
-  const member = !!place.plan && place.plan !== "free";
-  const cap = place.monthly_promo_cap ?? UNIVERSAL_CAP_MXN;
-  const visIdx = strategy
-    ? STRATEGY_VISIBILITY_LADDER.indexOf(strategy.visibility)
-    : -1;
-
-  // Matrix order — Welcome then Returning, Standard then Premium — matching the
-  // 2×2 matrix on the Promos-tab membership cards (MESITA-590).
-  const rows: { label: string; rate: number | null }[] = [
-    { label: "Welcome · Standard", rate: place.welcome_free_rate },
-    { label: "Welcome · Premium", rate: place.welcome_premium_rate },
-    { label: "Returning · Standard", rate: place.free_rate },
-    { label: "Returning · Premium", rate: place.premium_rate },
-  ];
-
-  return (
-    <SectionCard
-      icon={<Percent className="h-4 w-4" />}
-      tint="pink"
-      title="Mesita Membership"
-      subtitle="Strategy, discounts & visibility — edit on the Promos tab."
-      action={
-        <CrossTabLink href={unitSectionHref(place.id, "promos")}>
-          Edit on Promos
-        </CrossTabLink>
-      }
-    >
-      {/* One boxed field per row — same filled-input language as the
-          editable cards. */}
-      <div className="mt-5 grid gap-4">
-        <ReadField label="Membership" boxed>
-          <span className="flex min-w-0 flex-1 flex-wrap items-center gap-x-1.5 gap-y-1">
-            {strategy ? (
-              <>
-                <span className="font-semibold">
-                  {strategy.emoji} {strategy.name}
-                </span>
-                <span className="text-muted-foreground text-xs">
-                  {paid ? `${mxn(MEMBERSHIP_PRICE_MXN, place.currency)} / year` : "Free"}
-                </span>
-              </>
-            ) : (
-              <span className="font-semibold">Custom rates</span>
-            )}
-            <span
-              className={
-                "ml-auto inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[10px] font-bold tracking-wide uppercase " +
-                (member
-                  ? "bg-emerald-500/12 text-emerald-700"
-                  : "bg-muted text-muted-foreground")
-              }
-            >
-              {member ? "Member" : "Free"}
-            </span>
-          </span>
-        </ReadField>
-        <ReadField label="Visibility on Mesita" boxed>
-          <span className="flex min-w-0 flex-1 items-center justify-between gap-3">
-            <span className="font-display text-pink-gradient text-base font-semibold tracking-tight">
-              {strategy ? strategy.visibility : "—"}
-            </span>
-            <span className="flex shrink-0 gap-1" aria-hidden>
-              {STRATEGY_VISIBILITY_LADDER.map((lvl, i) => (
-                <span
-                  key={lvl}
-                  className={
-                    "h-1.5 w-5 rounded-full " +
-                    (i <= visIdx ? "bg-pink-gradient" : "bg-muted")
-                  }
-                />
-              ))}
-            </span>
-          </span>
-        </ReadField>
-      </div>
-      <div className="mt-5 mb-2">
-        <GroupLabel>Discounts</GroupLabel>
-      </div>
-      <div className="border-border/60 divide-border/60 divide-y overflow-hidden rounded-xl border">
-        {rows.map((row) => (
-          <div
-            key={row.label}
-            className="flex items-center justify-between gap-3 px-3.5 py-2.5"
-          >
-            <p className="truncate text-sm font-medium">{row.label}</p>
-            {typeof row.rate === "number" ? (
-              <span className="text-foreground shrink-0 text-sm font-semibold tabular-nums">
-                {row.rate}%
-              </span>
-            ) : (
-              <span className="text-muted-foreground shrink-0 text-xs italic">Off</span>
-            )}
-          </div>
-        ))}
-      </div>
-      {paid && (
-        <p className="text-muted-foreground mt-3 text-[11px] leading-snug">
-          Every discount applies to the first {mxn(cap, place.currency)} of the
-          bill.
-        </p>
-      )}
-    </SectionCard>
-  );
-}
-
-// Ownership — partner verification + the accounts that own the place.
 function PhotosEditor({
   placeId,
   photos,

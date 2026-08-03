@@ -1,17 +1,11 @@
-"use client";
+import { redirect } from "next/navigation";
 
-import { TeamSection } from "../../sections/TeamSection";
-import { useUnitPlace } from "../../UnitPlaceContext";
-
-// Owner/editor management — the Place tab's Ownership card links here via
-// its "Edit →". Backed by the business-web team EFs (super-admins bypass the
-// membership check, which is what authorises the admin operator).
-export default function UnitTeamPage() {
-  const { place } = useUnitPlace();
-
-  return (
-    <div className="mx-auto max-w-6xl">
-      <TeamSection place={place} />
-    </div>
-  );
+/** Team folded into Settings (MESITA-834 follow-up) — keep the old URL working. */
+export default async function UnitTeamRedirectPage({
+  params,
+}: {
+  params: Promise<{ projectId: string }>;
+}) {
+  const { projectId } = await params;
+  redirect(`/manage-single/${projectId}/settings`);
 }
