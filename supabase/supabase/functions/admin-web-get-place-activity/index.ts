@@ -1,23 +1,31 @@
 // Supabase Edge Function — admin-web-get-place-activity (admin caller)
 //
-// Everything the admin Performance tab shows BELOW the summary, for one
-// place, in one round trip:
+// Everything the admin Performance tab needs for ONE place, in one round
+// trip. The tab answers a single question — "is Mesita working here?" — so
+// this endpoint returns the numbers that answer it plus the short lists that
+// support it. Nothing else.
 //
-//   reservations — the bookings themselves PLUS the Reservationist call
-//     lifecycle (attempts, state, last call status, the agent's reported
-//     verdict, the alternatives a venue offered, when the next retry fires).
-//     business-web-list-reservations deliberately omits all of that — the
-//     business console shows a booking, the admin console debugs an agent.
-//   lines        — the two Mesita phone numbers a human calls to change a
-//     booking. READ-ONLY BY DESIGN (Pato 2026-08-03): "reservations tickets
-//     cannot be directly edited. just must call the ai … just give the phone
-//     numbers to reschedule". So this EF exposes no reservation writes and
-//     the tab renders no edit affordance; rescheduling happens on the phone
-//     with a3 (guests) / a4 (venues), which is the only path that keeps the
-//     agent's own state consistent.
-//   stories      — guest story/review screenshots submitted against this
-//     place's tickets, with their verification state.
-//   comments     — post-visit review text + per-axis ratings.
+//   stats        — REAL aggregates over the whole place, not a sample. Counts
+//     run server-side (head + exact count); the two money sums read only the
+//     two integer columns of this place's paid tickets.
+//
+//     This replaced deriving the headline numbers from a page of the
+//     notification feed. That feed is capped (default 150 events), so
+//     "influenced spend" silently meant "…of the last 150 events" — a
+//     plausible number that was wrong, on the one card whose entire job is to
+//     be trusted. Aggregates can't drift from the truth that way.
+//
+//   reservations — the compact booking list: when, who, party, status. The
+//     call-lifecycle columns (attempts, verdicts, alternatives, retries) are
+//     deliberately NOT returned any more; they were agent-debugging detail on
+//     a page meant to be read at a glance.
+//
+//   lines        — the two Mesita numbers a human calls to change a booking.
+//     READ-ONLY BY DESIGN (Pato): "reservations tickets cannot be directly
+//     edited. just must call the ai … just give the phone numbers to
+//     reschedule". No reservation write exists here, and the tab renders no
+//     edit affordance — rescheduling happens on the phone with a3 (guests) /
+//     a4 (venues), the only path that keeps the agent's own state consistent.
 //
 // Auth: caller's JWT email must be in public.super_admins.
 //
@@ -48,7 +56,6 @@ function one<T>(rel: T | T[] | null | undefined): T | null {
 }
 
 type GuestShape = {
-  id: string;
   full_name: string | null;
   first_name: string | null;
   instagram_handle: string | null;
@@ -64,8 +71,6 @@ function guestName(c: GuestShape | null): string {
   if (ig) return `@${ig.replace(/^@/, "")}`;
   return "Guest";
 }
-
-const GUEST_EMBED = "consumer:consumers(id, full_name, first_name, instagram_handle)";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
@@ -86,39 +91,54 @@ Deno.serve(async (req) => {
   if (!bodyRes.ok) return bodyRes.response;
   const projectId = readPlaceIdAlias(bodyRes.body);
   if (!projectId) return json({ ok: false, error: "placeId is required" }, 400);
-  const limit = clampIntRange(Number(bodyRes.body.limit ?? 50), 1, 200);
+  const limit = clampIntRange(Number(bodyRes.body.limit ?? 8), 1, 50);
 
-  const [resvRes, storyRes, reviewRes] = await Promise.all([
+  // A visit = the guest's QR met the venue (first_scanned_at stamped).
+  // A paid check = the ticket was closed and honored (paid_at stamped) —
+  // paid_at rather than status so a later status change can't rewrite history.
+  const [
+    savesRes,
+    ticketsRes,
+    visitsRes,
+    paidRes,
+    resvCountRes,
+    moneyRes,
+    resvListRes,
+  ] = await Promise.all([
+    admin
+      .from("saved_places")
+      .select("id", { count: "exact", head: true })
+      .eq("project_id", projectId),
+    admin
+      .from("tickets")
+      .select("id", { count: "exact", head: true })
+      .eq("project_id", projectId),
+    admin
+      .from("tickets")
+      .select("id", { count: "exact", head: true })
+      .eq("project_id", projectId)
+      .not("first_scanned_at", "is", null),
+    admin
+      .from("tickets")
+      .select("id", { count: "exact", head: true })
+      .eq("project_id", projectId)
+      .not("paid_at", "is", null),
+    admin
+      .from("reservations")
+      .select("id", { count: "exact", head: true })
+      .eq("project_id", projectId),
+    // Only two integer columns, only this place's paid tickets — small even
+    // for a busy venue, and exact (no sampling).
+    admin
+      .from("tickets")
+      .select("check_subtotal_cents, discount_cents")
+      .eq("project_id", projectId)
+      .not("paid_at", "is", null),
     admin
       .from("reservations")
       .select(
-        "id, reference_code, reserved_at, party_size, status, notes, created_at, " +
-          "confirmed_at, cancelled_at, completed_at, cancelled_by, " +
-          "call_attempts, attempts_planned, attempts_state, next_attempt_at, " +
-          "last_call_status, last_called_at, reported_verdict, alternatives, " +
-          "outcome_note, negotiation_rounds, callback_state, guest_confirmed_at, " +
-          `is_test, consumer_number, business_number, ${GUEST_EMBED}`,
-      )
-      .eq("project_id", projectId)
-      .order("created_at", { ascending: false })
-      .limit(limit),
-    // A story/review only exists once the guest submitted a screenshot.
-    admin
-      .from("tickets")
-      .select(
-        "id, created_at, status, story_status, story_screenshot_url, " +
-          "story_submitted_at, story_verified_at, story_reject_reason, " +
-          "review_status, review_screenshot_url, review_submitted_at, " +
-          `review_verified_at, ${GUEST_EMBED}`,
-      )
-      .eq("project_id", projectId)
-      .or("story_screenshot_url.not.is.null,review_screenshot_url.not.is.null")
-      .order("created_at", { ascending: false })
-      .limit(limit),
-    admin
-      .from("ticket_reviews")
-      .select(
-        `id, created_at, food, service, ambiance, overall, value, comments, ${GUEST_EMBED}`,
+        "id, reserved_at, party_size, status, is_test, " +
+          "consumer:consumers(full_name, first_name, instagram_handle)",
       )
       .eq("project_id", projectId)
       .order("created_at", { ascending: false })
@@ -126,96 +146,74 @@ Deno.serve(async (req) => {
   ]);
 
   for (const [label, r] of [
-    ["reservations", resvRes],
-    ["stories", storyRes],
-    ["comments", reviewRes],
+    ["saves", savesRes],
+    ["tickets", ticketsRes],
+    ["visits", visitsRes],
+    ["paid", paidRes],
+    ["reservation_count", resvCountRes],
+    ["money", moneyRes],
+    ["reservations", resvListRes],
   ] as const) {
     if (r.error) return json({ ok: false, error: `${label}: ${r.error.message}` }, 500);
   }
 
-  type ResvRow = Record<string, unknown> & {
+  let influencedCents = 0;
+  let discountCents = 0;
+  let withAmount = 0;
+  for (
+    const row of (moneyRes.data ?? []) as Array<{
+      check_subtotal_cents: number | null;
+      discount_cents: number | null;
+    }>
+  ) {
+    const sub = row.check_subtotal_cents ?? 0;
+    if (sub > 0) {
+      influencedCents += sub;
+      withAmount += 1;
+    }
+    discountCents += row.discount_cents ?? 0;
+  }
+
+  const saves = savesRes.count ?? 0;
+  const visits = visitsRes.count ?? 0;
+  const paid = paidRes.count ?? 0;
+
+  type ResvRow = {
     id: string;
+    reserved_at: string | null;
+    party_size: number | null;
+    status: string | null;
+    is_test: boolean | null;
     consumer: GuestShape | GuestShape[] | null;
   };
-  const reservations = ((resvRes.data ?? []) as unknown as ResvRow[]).map((r) => ({
+  const reservations = ((resvListRes.data ?? []) as unknown as ResvRow[]).map((r) => ({
     id: r.id,
-    referenceCode: r.reference_code ?? null,
-    reservedAt: r.reserved_at ?? null,
-    partySize: r.party_size ?? null,
-    status: r.status ?? null,
-    notes: r.notes ?? null,
-    createdAt: r.created_at ?? null,
-    confirmedAt: r.confirmed_at ?? null,
-    cancelledAt: r.cancelled_at ?? null,
-    cancelledBy: r.cancelled_by ?? null,
-    guest: guestName(one(r.consumer)),
-    // The call lifecycle — why a booking is in the state it's in.
-    call: {
-      attempts: r.call_attempts ?? 0,
-      attemptsPlanned: r.attempts_planned ?? null,
-      state: r.attempts_state ?? null,
-      nextAttemptAt: r.next_attempt_at ?? null,
-      lastStatus: r.last_call_status ?? null,
-      lastCalledAt: r.last_called_at ?? null,
-      verdict: r.reported_verdict ?? null,
-      alternatives: r.alternatives ?? null,
-      outcomeNote: r.outcome_note ?? null,
-      negotiationRounds: r.negotiation_rounds ?? 0,
-      callbackState: r.callback_state ?? null,
-      guestConfirmedAt: r.guest_confirmed_at ?? null,
-    },
+    reservedAt: r.reserved_at,
+    partySize: r.party_size,
+    status: r.status,
     isTest: r.is_test === true,
-    // Which numbers this specific booking used, when pre-resolved.
-    guestNumber: r.consumer_number ?? null,
-    venueNumber: r.business_number ?? null,
-  }));
-
-  type TicketRow = Record<string, unknown> & {
-    id: string;
-    consumer: GuestShape | GuestShape[] | null;
-  };
-  const stories = ((storyRes.data ?? []) as unknown as TicketRow[]).map((t) => ({
-    ticketId: t.id,
-    createdAt: t.created_at ?? null,
-    guest: guestName(one(t.consumer)),
-    story: {
-      status: t.story_status ?? null,
-      screenshotUrl: t.story_screenshot_url ?? null,
-      submittedAt: t.story_submitted_at ?? null,
-      verifiedAt: t.story_verified_at ?? null,
-      rejectReason: t.story_reject_reason ?? null,
-    },
-    review: {
-      status: t.review_status ?? null,
-      screenshotUrl: t.review_screenshot_url ?? null,
-      submittedAt: t.review_submitted_at ?? null,
-      verifiedAt: t.review_verified_at ?? null,
-    },
-  }));
-
-  type ReviewRow = Record<string, unknown> & {
-    id: string;
-    consumer: GuestShape | GuestShape[] | null;
-  };
-  const comments = ((reviewRes.data ?? []) as unknown as ReviewRow[]).map((v) => ({
-    id: v.id,
-    createdAt: v.created_at ?? null,
-    guest: guestName(one(v.consumer)),
-    food: v.food ?? null,
-    service: v.service ?? null,
-    ambiance: v.ambiance ?? null,
-    value: v.value ?? null,
-    overall: v.overall ?? null,
-    comments: typeof v.comments === "string" ? v.comments : null,
+    guest: guestName(one(r.consumer)),
   }));
 
   return json({
     ok: true,
+    stats: {
+      saves,
+      tickets: ticketsRes.count ?? 0,
+      visits,
+      paid,
+      reservations: resvCountRes.count ?? 0,
+      influencedCents,
+      discountCents,
+      // Averaged over the tickets that actually carry a subtotal, so one
+      // un-billed close can't drag the average down.
+      avgTicketCents: withAmount > 0 ? Math.round(influencedCents / withAmount) : null,
+      // The two conversions the funnel annotates.
+      visitRate: saves > 0 ? Math.round((visits / saves) * 100) : null,
+      closeRate: visits > 0 ? Math.round((paid / visits) * 100) : null,
+    },
     reservations,
-    stories,
-    comments,
-    // The ONLY way to change a booking. Surfaced so the operator can read
-    // them off the screen and dial — no write endpoint exists here.
+    reservationTotal: resvCountRes.count ?? 0,
     lines: {
       guest: consumerFromNumber(),
       venue: reservationFromNumber(),
