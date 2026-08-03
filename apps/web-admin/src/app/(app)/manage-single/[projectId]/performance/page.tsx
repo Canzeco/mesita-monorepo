@@ -6,10 +6,13 @@ import {
   listNotifications,
   type NotificationsPayload,
 } from "../../../global-performance/actions";
+import { getPlaceActivity, type PlaceActivity } from "../../actions";
 import { GlobalPerformanceClient } from "../../../global-performance/GlobalPerformanceClient";
 import { ACTIVITY_TYPE_ORDER } from "../../../global-performance/notification-config";
 import { PerformanceSummary } from "../../sections/PerformanceSummary";
+import { ReservationsPanel } from "../../sections/ReservationsPanel";
 import { ReviewsSection } from "../../sections/ReviewsSection";
+import { StoriesCommentsPanel } from "../../sections/StoriesCommentsPanel";
 import { Spinner } from "../../ui";
 import { useUnitPlace } from "../../UnitPlaceContext";
 
@@ -28,6 +31,10 @@ export default function UnitPerformancePage() {
   const { place } = useUnitPlace();
   const [initial, setInitial] = useState<NotificationsPayload | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // Reservations + stories/comments ride their own read-only EF. A failure
+  // here must not take the rest of the page down, so it keeps its own state.
+  const [activity, setActivity] = useState<PlaceActivity | null>(null);
+  const [activityError, setActivityError] = useState<string | null>(null);
 
   // No sync resets in the effect body (react-hooks/set-state-in-effect) —
   // state starts null and a place switch remounts the page via the shell.
@@ -43,6 +50,14 @@ export default function UnitPerformancePage() {
         return;
       }
       setInitial(r.data);
+    });
+    getPlaceActivity(place.id).then((r) => {
+      if (!alive) return;
+      if (!r.ok) {
+        setActivityError(r.error);
+        return;
+      }
+      setActivity(r.data);
     });
     return () => {
       alive = false;
@@ -64,6 +79,28 @@ export default function UnitPerformancePage() {
         <div className="columns-1 gap-4 [&>section]:mb-4 [&>section]:break-inside-avoid lg:columns-2 lg:gap-5 lg:[&>section]:mb-5">
           <ReviewsSection place={place} />
         </div>
+      </div>
+
+      {/* Reservations + guest content — read-only, own EF, own error state. */}
+      <div className="mx-auto w-full max-w-6xl">
+        {activityError ? (
+          <div className="border-destructive/40 bg-destructive/5 text-destructive flex items-start gap-3 rounded-2xl border p-4 text-sm">
+            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+            <div>
+              <p className="font-medium">
+                Couldn&apos;t load reservations or guest content.
+              </p>
+              <p className="mt-1 opacity-90">{activityError}</p>
+            </div>
+          </div>
+        ) : activity ? (
+          <div className="columns-1 gap-4 [&>section]:mb-4 [&>section]:break-inside-avoid lg:gap-5 lg:[&>section]:mb-5">
+            <ReservationsPanel activity={activity} />
+            <StoriesCommentsPanel activity={activity} />
+          </div>
+        ) : (
+          <Spinner label="Loading reservations…" />
+        )}
       </div>
 
       {/* App activity — the notification feed, scoped to this place. */}

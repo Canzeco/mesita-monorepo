@@ -493,6 +493,13 @@ verify_jwt = true
 
 # Atlas configuration — place research/enrichment knobs on app_settings,
 # owned by admins.
+# Read-only per-place activity for the admin Performance tab: reservations +
+# their Reservationist call lifecycle, story/review screenshots, review text,
+# and the two inbound AI lines. No writes — a booking is changed by phoning
+# a3/a4, never by editing a row (MESITA-847).
+[functions.admin-web-get-place-activity]
+verify_jwt = true
+
 [functions.admin-web-get-settings]
 verify_jwt = true
 
