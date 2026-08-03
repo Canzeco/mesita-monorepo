@@ -210,18 +210,136 @@ Deno.serve(async (req) => {
   if (!key) return json({ ok: false, error: "ELEVENLABS_KEY not configured" }, 503);
   const fallbackAgentId = reservationAgentId();
 
-  const body = await readJsonOr<{ mode?: unknown; write_prompts?: unknown }>(req, {});
+  const body = await readJsonOr<{
+    mode?: unknown;
+    write_prompts?: unknown;
+    conversation_id?: unknown;
+    limit?: unknown;
+  }>(req, {});
   const rawMode = typeof body.mode === "string" ? body.mode : "inspect";
-  const allowed = new Set(["inspect", "sync", "fleet", "prune", "workflows", "knowledge"]);
+  const allowed = new Set([
+    "inspect",
+    "sync",
+    "fleet",
+    "prune",
+    "workflows",
+    "knowledge",
+    "calls",
+    "transcript",
+  ]);
   if (!allowed.has(rawMode)) {
     return json({
       ok: false,
-      error:
-        `unknown mode ${JSON.stringify(rawMode)}; use inspect|sync|fleet|prune|workflows|knowledge`,
+      error: `unknown mode ${JSON.stringify(rawMode)}; use ${[...allowed].join("|")}`,
     }, 400);
   }
-  const mode = rawMode as "inspect" | "sync" | "fleet" | "prune" | "workflows" | "knowledge";
+  const mode = rawMode as
+    | "inspect"
+    | "sync"
+    | "fleet"
+    | "prune"
+    | "workflows"
+    | "knowledge"
+    | "calls"
+    | "transcript";
   const writePrompts = body.write_prompts === true;
+
+  // ── Read-only call observability ─────────────────────────────────────────
+  // WHY: prompts and graphs were being tuned blind. Nothing in Supabase records
+  // what the agent actually SAID — the transcript lives only in ElevenLabs, and
+  // the key never leaves EF env. These two modes are the eyes: `calls` lists
+  // recent conversations, `transcript` replays one turn by turn with its tool
+  // calls. Read-only; they never mutate an agent.
+  if (mode === "calls" || mode === "transcript") {
+    if (mode === "transcript") {
+      const cid = typeof body.conversation_id === "string" ? body.conversation_id.trim() : "";
+      if (!cid) {
+        return json({ ok: false, error: "transcript mode needs conversation_id" }, 400);
+      }
+      const got = await elFetch(key, `/v1/convai/conversations/${encodeURIComponent(cid)}`);
+      if (!got.ok) return json({ ok: false, error: got.error }, 502);
+      const c = got.body as {
+        agent_id?: string;
+        status?: string;
+        metadata?: { call_duration_secs?: number; start_time_unix_secs?: number };
+        analysis?: { call_successful?: string; transcript_summary?: string };
+        transcript?: Array<{
+          role?: string;
+          message?: string | null;
+          time_in_call_secs?: number;
+          tool_calls?: Array<{ tool_name?: string; params_as_json?: string }>;
+          tool_results?: Array<{ tool_name?: string; result_value?: string; is_error?: boolean }>;
+        }>;
+      };
+      // Flatten to something readable in a SQL cell: who said what, and every
+      // tool the agent fired (the thing that decides whether the ticket moves).
+      const turns = (c.transcript ?? []).map((t) => {
+        const bits: string[] = [];
+        for (const call of t.tool_calls ?? []) {
+          bits.push(`TOOL→ ${call.tool_name}(${(call.params_as_json ?? "").slice(0, 240)})`);
+        }
+        for (const res of t.tool_results ?? []) {
+          bits.push(
+            `TOOL← ${res.tool_name}${res.is_error ? " ERROR" : ""}: ${
+              (res.result_value ?? "").slice(0, 240)
+            }`,
+          );
+        }
+        return {
+          at: t.time_in_call_secs ?? null,
+          role: t.role ?? "?",
+          text: (t.message ?? "").slice(0, 400),
+          tools: bits.length ? bits : undefined,
+        };
+      });
+      return json({
+        ok: true,
+        mode,
+        conversation_id: cid,
+        agent_id: c.agent_id ?? null,
+        status: c.status ?? null,
+        call_successful: c.analysis?.call_successful ?? null,
+        duration_secs: c.metadata?.call_duration_secs ?? null,
+        summary: c.analysis?.transcript_summary ?? null,
+        tools_fired: turns.flatMap((t) => t.tools ?? []),
+        turns,
+      });
+    }
+
+    const lim = typeof body.limit === "number" && body.limit > 0
+      ? Math.min(Math.trunc(body.limit), 30)
+      : 10;
+    const listed = await elFetch(key, `/v1/convai/conversations?page_size=${lim}`);
+    if (!listed.ok) return json({ ok: false, error: listed.error }, 502);
+    const rows = (listed.body as {
+      conversations?: Array<{
+        conversation_id?: string;
+        agent_id?: string;
+        agent_name?: string;
+        status?: string;
+        call_successful?: string;
+        start_time_unix_secs?: number;
+        call_duration_secs?: number;
+        message_count?: number;
+      }>;
+    } | null)?.conversations ?? [];
+    return json({
+      ok: true,
+      mode,
+      count: rows.length,
+      conversations: rows.map((r) => ({
+        id: r.conversation_id,
+        agent: r.agent_name ?? r.agent_id,
+        status: r.status,
+        successful: r.call_successful,
+        secs: r.call_duration_secs,
+        turns: r.message_count,
+        started_utc: r.start_time_unix_secs
+          ? new Date(r.start_time_unix_secs * 1000).toISOString()
+          : null,
+      })),
+    });
+  }
 
   // The tool secret + agent state — read live so a SQL rotation propagates on
   // the next sync.

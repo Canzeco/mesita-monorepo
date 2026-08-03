@@ -458,26 +458,30 @@ export function fleetWorkflows(toolIdByName: Map<string, string>): Record<FleetA
     a1: {
       prevent_subagent_loops: true,
       nodes: {
-        start_node: { type: "start", position: pos(0, 0), edge_order: ["e_start_gk"] },
-        gatekeeper: talkNode({
-          label: "Reach the right person",
-          position: pos(300, 0),
-          entryBehavior: "generate_immediately",
-          additionalPrompt:
-            "Primer contacto: saluda y di que llamas para hacer una reservación a nombre de {{guest_name}} para {{venue_name}}. Si contesta un conmutador/IVR o alguien que no toma reservaciones, pide con cortesía que te comuniquen con quien sí las tome; acepta esperas cortas en línea. En cuanto te atienda una persona que pueda tomar la reservación, AVANZA a negociar. Tres salidas raras, y en las tres AVANZA por su rama SIN colgar tú: (a) contestó un buzón de voz o una grabadora — no dejes recado; (b) es un conmutador del que no sales, llevas mucho en espera, o te piden llamar más tarde; (c) contestó una persona pero NO es {{venue_name}} (número equivocado). Aquí no negocies, no te despidas y no llames herramientas.",
-          edgeOrder: ["e_gk_book", "e_gk_wrong", "e_gk_unreachable"],
-        }),
+        start_node: { type: "start", position: pos(0, 0), edge_order: ["e_start_book"] },
+        // ONE talk node for the whole conversation with the venue.
+        //
+        // There used to be a separate "gatekeeper" node in front of this one.
+        // It broke real calls (conv_1201kz2cg6…, 2026-08-02): the agent
+        // naturally answered "Sí, soy yo" by starting the booking ask, the
+        // gatekeeper→book edge fired MID-SENTENCE, truncated it, and the call
+        // died 4s later. Reaching the right person is a conversational nuance,
+        // not a state — splitting it put a machine boundary inside one human
+        // speech act. Every talk→talk hop is a chance to cut the agent off, so
+        // a1 has none: the only transitions leave this node once the venue has
+        // actually answered.
         book: talkNode({
-          label: "Negotiate the table",
-          position: pos(620, 0),
+          label: "Book with venue",
+          position: pos(340, 0),
           entryBehavior: "generate_immediately",
           additionalPrompt:
-            "Negocia la mesa: {{party_size}} personas, {{reservation_date}} a las {{reservation_time}}, a nombre de {{guest_name}}. Si piden un teléfono de contacto da {{guest_phone}}; si piden número de confirmación, el código Mesita es {{reference_code}}. Menciona {{special_requests}} una sola vez si no está vacío y hay disponibilidad. Si no pueden tal cual, pregunta qué opciones cercanas tienen y apúntalas textuales y cortas — NO aceptes ninguna por tu cuenta. Con un resultado claro (confirmaron tal cual · ofrecieron alternativas · rechazaron/no hay lugar) AVANZA por la rama correcta SIN despedirte; el flujo dispara el registro. No inventes disponibilidad.",
+            "Ya saludaste. Si quien contesta no toma reservaciones o es un conmutador, pide con cortesía que te pasen con quien sí; acepta esperas cortas. Luego pide la mesa: {{party_size}} personas, {{reservation_date}} a las {{reservation_time}}, a nombre de {{guest_name}}. Si piden teléfono de contacto da {{guest_phone}}; si piden número de confirmación, el código Mesita es {{reference_code}}. Menciona {{special_requests}} una sola vez si no está vacío y ya hay disponibilidad. Si no pueden tal cual, pregunta qué opciones cercanas tienen y apúntalas textuales y cortas — NO aceptes ninguna por tu cuenta, Mesita se las propone al comensal. No inventes disponibilidad. Quédate en esta conversación hasta que pase UNA de estas cinco cosas: confirmaron · ofrecieron alternativas · dijeron que no hay lugar · nunca llegaste con alguien que reserve (buzón, conmutador sin salida, «llame más tarde») · no es este restaurante. Ahí AVANZA por la rama que toque, sin despedirte todavía: el flujo registra el resultado.",
           edgeOrder: [
             "e_book_confirmed",
             "e_book_counter",
             "e_book_declined",
             "e_book_unreachable",
+            "e_book_wrong",
           ],
         }),
         report_confirmed: toolNode(a1Report, pos(940, -170), ["e_rc_farewell"]),
@@ -529,12 +533,7 @@ export function fleetWorkflows(toolIdByName: Map<string, string>): Record<FleetA
         end_node: { type: "end", position: pos(1580, 0), edge_order: [] },
       },
       edges: {
-        e_start_gk: edge("start_node", "gatekeeper", UNCOND),
-        e_gk_book: edge(
-          "gatekeeper",
-          "book",
-          llm("Ya te atiende una persona que puede tomar o negociar la reservación.", "host reached"),
-        ),
+        e_start_book: edge("start_node", "book", UNCOND),
         // Backward RESULT_FAIL: if the report webhook fails, fall back to book
         // and try the outcome again rather than closing unreported.
         e_book_confirmed: edge(
@@ -560,8 +559,8 @@ export function fleetWorkflows(toolIdByName: Map<string, string>): Record<FleetA
         ),
         // Weird cases. unreachable can be decided at first contact (voicemail,
         // IVR dead-end) or mid-negotiation (line dies, "llámenos luego").
-        e_gk_wrong: edge(
-          "gatekeeper",
+        e_book_wrong: edge(
+          "book",
           "report_wrong",
           llm(
             "Contestó una persona pero este número NO es el restaurante — es otro negocio o un particular.",
@@ -569,21 +568,12 @@ export function fleetWorkflows(toolIdByName: Map<string, string>): Record<FleetA
           ),
           RESULT_FAIL,
         ),
-        e_gk_unreachable: edge(
-          "gatekeeper",
-          "report_unreachable",
-          llm(
-            "Contestó un buzón de voz o grabadora, o es un conmutador sin salida, o llevas demasiado en espera, o te pidieron llamar más tarde — nunca llegaste con alguien que pueda reservar.",
-            "unreachable",
-          ),
-          RESULT_FAIL,
-        ),
         e_book_unreachable: edge(
           "book",
           "report_unreachable",
           llm(
-            "Ya no se puede terminar la gestión ahora: te pidieron llamar más tarde, te pasaron a alguien que nunca llegó, o la persona que reserva no está.",
-            "call back later",
+            "Nunca llegaste con alguien que pueda reservar: buzón de voz o grabadora, conmutador sin salida, demasiada espera, o te pidieron llamar más tarde.",
+            "unreachable",
           ),
           RESULT_FAIL,
         ),
@@ -621,43 +611,31 @@ export function fleetWorkflows(toolIdByName: Map<string, string>): Record<FleetA
     a2: {
       prevent_subagent_loops: true,
       nodes: {
-        start_node: { type: "start", position: pos(0, 0), edge_order: ["e_start_route"] },
-        route: talkNode({
-          label: "Open & route by context",
-          position: pos(300, 0),
+        start_node: { type: "start", position: pos(0, 0), edge_order: ["e_start_talk"] },
+        // ONE talk node, same lesson as a1: identity check and the two call
+        // contexts are prompt-level branches, not states. Splitting them put a
+        // machine boundary right after "sí, soy yo" — exactly where the agent
+        // naturally keeps talking — and the transition truncated it.
+        talk: talkNode({
+          label: "Talk to guest",
+          position: pos(340, 0),
           entryBehavior: "generate_immediately",
           additionalPrompt:
-            "Abre preguntando por {{guest_name}}: «Hola, buenas, ¿hablo con {{guest_name}}? Le llamo de Mesita.» NO digas todavía el restaurante, la fecha, la hora ni ningún dato de la reservación — una reservación dice dónde va a estar una persona y a qué hora, así que primero confirma con quién hablas. Si es el comensal (o dice que sí es él), enruta según {{call_context}}: confirmation o counter_offer. Si contestó un buzón de voz o una grabadora, toma la rama de buzón. Si es OTRA persona — no está, es un número equivocado, o te ofrecen tomar el recado — toma la rama de tercero. Aquí no llames herramientas.",
+            "Ya saludaste. PRIMERO confirma con quién hablas: «¿hablo con {{guest_name}}?». Hasta que lo confirme, NO digas el restaurante, la fecha, la hora ni que existe una reservación — una reservación revela dónde va a estar una persona y a qué hora. Confirmado que es el comensal, sigue según {{call_context}}: si es confirmation, el restaurante YA CONFIRMÓ el {{reservation_date}} a las {{reservation_time}} para {{party_size}} — avísale y confirma los datos; si es counter_offer, el restaurante no pudo con esa hora y ofreció {{venue_alternatives}} — preséntalas tal cual, sin inventar ni prometer nada que el restaurante no dijo. El comensal puede aceptar, elegir una alternativa, proponer otra fecha u hora (conviértela con {{system__time_utc}} como referencia), o cancelar: AVANZA por la rama que toque sin colgar. Si quien contesta NO es el comensal, o es un buzón de voz, toma su rama.",
           edgeOrder: [
-            "e_route_confirmation",
-            "e_route_counter",
-            "e_route_voicemail",
-            "e_route_third_party",
+            "e_talk_confirm",
+            "e_talk_cancel",
+            "e_talk_third_party",
+            "e_talk_voicemail",
           ],
         }),
         third_party: talkNode({
           label: "Not the guest",
-          position: pos(640, 560),
+          position: pos(680, 400),
           entryBehavior: "generate_immediately",
           additionalPrompt:
-            "No es el comensal quien contesta. NO reveles nada: ni el restaurante, ni la fecha, ni la hora, ni que hay una reservación. Di solamente que llamas de Mesita, que buscabas a {{guest_name}}, que no es nada urgente y que lo intentarás después o que puede revisar la app de Mesita. Si insisten en tomar recado, agradece y declina con amabilidad. Despídete y cuelga con end_call. No llames ninguna herramienta: el ticket no debe moverse por algo que dijo un tercero.",
+            "No es el comensal quien contesta. NO reveles nada: ni el restaurante, ni la fecha, ni la hora, ni que hay una reservación. Di solamente que llamas de Mesita, que buscabas a {{guest_name}}, que no es urgente y que lo intentarás después o que puede revisar la app de Mesita. Si insisten en tomar recado, agradece y declina con amabilidad. Despídete y cuelga con end_call. No llames ninguna herramienta: el ticket no debe moverse por lo que diga un tercero.",
           edgeOrder: ["e_tp_end"],
-        }),
-        present_confirmation: talkNode({
-          label: "Deliver confirmation",
-          position: pos(640, -180),
-          entryBehavior: "generate_immediately",
-          additionalPrompt:
-            "Contexto confirmation: el restaurante YA CONFIRMÓ el {{reservation_date}} a las {{reservation_time}} para {{party_size}}. Avísale y confírmale los datos. El comensal puede aceptar tal cual, proponer otra fecha u hora, o cancelar — AVANZA por la rama que corresponda; no cuelgues todavía.",
-          edgeOrder: ["e_pc_confirm", "e_pc_cancel"],
-        }),
-        present_alternatives: talkNode({
-          label: "Present alternatives",
-          position: pos(640, 120),
-          entryBehavior: "generate_immediately",
-          additionalPrompt:
-            "Contexto counter_offer: el restaurante NO pudo con el horario pedido y ofreció: {{venue_alternatives}}. Preséntaselas tal cual. Puede elegir una, proponer algo TOTALMENTE distinto, o cancelar — AVANZA por la rama que corresponda. Convierte lo que diga a fecha/hora usando {{system__time_utc}} como referencia. No inventes disponibilidad ni prometas nada que el restaurante no dijo.",
-          edgeOrder: ["e_pa_confirm", "e_pa_cancel"],
         }),
         voicemail: talkNode({
           label: "Voicemail message",
@@ -688,59 +666,34 @@ export function fleetWorkflows(toolIdByName: Map<string, string>): Record<FleetA
         end_node: { type: "end", position: pos(1620, 0), edge_order: [] },
       },
       edges: {
-        e_start_route: edge("start_node", "route", UNCOND),
-        e_route_confirmation: edge(
-          "route",
-          "present_confirmation",
-          llm("El contexto de la llamada es confirmation: el restaurante ya confirmó.", "confirmation"),
+        e_start_talk: edge("start_node", "talk", UNCOND),
+        e_talk_confirm: edge(
+          "talk",
+          "do_confirm",
+          llm(
+            "El comensal (ya identificado) aceptó tal cual, eligió una alternativa, o propuso otra fecha u hora — mándala en new_date AAAA-MM-DD / new_time HH:mm.",
+            "confirm",
+          ),
+          RESULT_FAIL,
         ),
-        e_route_counter: edge(
-          "route",
-          "present_alternatives",
-          llm("El contexto es counter_offer: hay alternativas del restaurante que presentar.", "counter-offer"),
+        e_talk_cancel: edge(
+          "talk",
+          "do_cancel",
+          llm("El comensal (ya identificado) quiere cancelar la reservación.", "cancel"),
+          RESULT_FAIL,
         ),
-        e_route_voicemail: edge(
-          "route",
-          "voicemail",
-          llm("Contestó un buzón de voz o una grabadora, no una persona.", "voicemail"),
-        ),
-        e_route_third_party: edge(
-          "route",
+        e_talk_third_party: edge(
+          "talk",
           "third_party",
           llm(
             "Contestó una persona que NO es el comensal: dice que no está, que es número equivocado, o se ofrece a tomar el recado.",
             "not the guest",
           ),
         ),
-        e_pc_confirm: edge(
-          "present_confirmation",
-          "do_confirm",
-          llm(
-            "Acepta tal cual, o eligió/propuso una nueva fecha u hora (mándala en new_date AAAA-MM-DD / new_time HH:mm).",
-            "confirm",
-          ),
-          RESULT_FAIL,
-        ),
-        e_pc_cancel: edge(
-          "present_confirmation",
-          "do_cancel",
-          llm("El comensal quiere cancelar la reservación.", "cancel"),
-          RESULT_FAIL,
-        ),
-        e_pa_confirm: edge(
-          "present_alternatives",
-          "do_confirm",
-          llm(
-            "Eligió una alternativa o propuso otra fecha u hora (mándala en new_date AAAA-MM-DD / new_time HH:mm).",
-            "confirm",
-          ),
-          RESULT_FAIL,
-        ),
-        e_pa_cancel: edge(
-          "present_alternatives",
-          "do_cancel",
-          llm("El comensal quiere cancelar.", "cancel"),
-          RESULT_FAIL,
+        e_talk_voicemail: edge(
+          "talk",
+          "voicemail",
+          llm("Contestó un buzón de voz o una grabadora, no una persona.", "voicemail"),
         ),
         e_dc_farewell: edge("do_confirm", "farewell_done", RESULT_OK),
         e_dx_farewell: edge("do_cancel", "farewell_cancel", RESULT_OK),
