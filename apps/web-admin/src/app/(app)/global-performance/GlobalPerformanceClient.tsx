@@ -10,7 +10,11 @@ import {
 } from "react";
 import { AlertTriangle, Inbox } from "lucide-react";
 import { formatAbsoluteUtc, timeAgo } from "@/lib/format";
-import { listNotifications, type NotificationsPayload } from "./actions";
+import {
+  listNotifications,
+  type NotificationsPayload,
+  type NotificationType,
+} from "./actions";
 import {
   NotificationFilters,
   type TypeFilter,
@@ -23,8 +27,15 @@ const AUTO_REFRESH_MS = 30_000;
 
 export function GlobalPerformanceClient({
   initial,
+  projectId,
+  types,
 }: {
   initial: NotificationsPayload;
+  /** Scope the feed to one place (per-place Performance tab). Hides the
+   *  category chips + place-name filter and threads the id into refreshes. */
+  projectId?: string;
+  /** Narrow the filter segments (defaults to every known type). */
+  types?: NotificationType[];
 }) {
   const [data, setData] = useState(initial);
   const [error, setError] = useState<string | null>(null);
@@ -50,7 +61,10 @@ export function GlobalPerformanceClient({
     inFlightRef.current = true;
     setError(null);
     startRefresh(async () => {
-      const r = await listNotifications("all");
+      const r = await listNotifications("all", {
+        ...(projectId ? { projectId } : {}),
+        ...(types && types.length > 0 ? { types } : {}),
+      });
       inFlightRef.current = false;
       if (!r.ok) {
         setError(r.error);
@@ -58,7 +72,7 @@ export function GlobalPerformanceClient({
       }
       setData(r.data);
     });
-  }, []);
+  }, [projectId, types]);
 
   // Auto-refresh while the tab is visible; document.hidden pauses the poll.
   useEffect(() => {
@@ -92,8 +106,10 @@ export function GlobalPerformanceClient({
         placeQuery={placeQuery}
         updatedLabel={updatedLabel}
         pending={pending}
+        types={types}
+        showCategories={!projectId}
         onTypeFilterChange={setTypeFilter}
-        onPlaceQueryChange={setPlaceQuery}
+        onPlaceQueryChange={projectId ? undefined : setPlaceQuery}
         onRefresh={refresh}
       />
 

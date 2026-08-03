@@ -1,30 +1,21 @@
 "use client";
 
 import { useEffect, useMemo, useState, useTransition } from "react";
-import Link from "next/link";
 import {
   ArrowLeft,
   ArrowRight,
-  BadgeCheck,
   CalendarCheck,
-  Check,
-  ChevronDown,
   Clock,
-  Copy,
   ExternalLink,
-  Fingerprint,
-  Braces,
   Globe,
   ImagePlus,
   Images,
   Info,
   Loader2,
-  Lock,
   Mail,
   MapPin,
   Percent,
   Phone,
-  ShieldCheck,
   Store,
   X,
   type LucideIcon,
@@ -32,10 +23,8 @@ import {
 import {
   getPlaceEnrichment,
   listPlaceTagCatalog,
-  listTeam,
   updatePlace,
   type AdminPlace,
-  type PlaceEnrichmentStatus,
   type PlaceFieldLimits,
   type PlaceMediaMeta,
   type ReservationChannel,
@@ -43,8 +32,17 @@ import {
 } from "../actions";
 import { PlaceTagsPicker } from "../PlaceTagsPicker";
 import { PlaceCategorySelect } from "../PlaceCategorySelect";
-import { ManualPriorityCard } from "./ManualPriorityCard";
-import { GroupLabel, PhoneField, SaveBar, SectionCard, TextArea, TextField } from "../ui";
+import {
+  CrossTabLink,
+  GroupLabel,
+  OpenLink,
+  PhoneField,
+  ReadField,
+  SaveBar,
+  SectionCard,
+  TextArea,
+  TextField,
+} from "../ui";
 import { unitSectionHref } from "../nav";
 import {
   STRATEGY_BY_ID,
@@ -397,12 +395,9 @@ function mergeBoxSlice(base: Form, from: Form, box: PlaceBox): Form {
 export function PlaceSection({
   place,
   onSaved,
-  children,
 }: {
   place: AdminPlace;
   onSaved: (v: AdminPlace) => void;
-  /** Extra Place-page boxes (Products, Reviews) — flow in the same masonry columns. */
-  children?: React.ReactNode;
 }) {
   const [limits, setLimits] = useState<PlaceFieldLimits>(FALLBACK_LIMITS);
   const [form, setForm] = useState<Form>(() => placeToForm(place));
@@ -553,17 +548,12 @@ export function PlaceSection({
 
   const removePhoto = (idx: number) => setPhotos(form.photos.filter((_, i) => i !== idx));
 
-  // Admin-only: per-place Enricher inspector data — per-photo metadata (source
-  // + vision analysis) for the ⓘ dialog, keyed by image URL, plus the place's
-  // enrichment status. Media loads once; status polls so Meta stays live.
+  // Admin-only: per-place Enricher inspector data — per-photo metadata
+  // (source + vision analysis) for the ⓘ dialog, keyed by image URL. Loads
+  // once; the live enriching status (and its poll) lives on the Settings
+  // tab's Metadata card now (MESITA-834).
   const [media, setMedia] = useState<Record<string, PlaceMediaMeta>>({});
-  const [enrichStatus, setEnrichStatus] = useState<PlaceEnrichmentStatus | null>(
-    null,
-  );
   const [metaFor, setMetaFor] = useState<string | null>(null);
-  // Owner emails (project_members role=owner) — null while loading.
-  const [owners, setOwners] = useState<string[] | null>(null);
-  const [ownersError, setOwnersError] = useState<string | null>(null);
 
   useEffect(() => {
     let alive = true;
@@ -579,39 +569,12 @@ export function PlaceSection({
         photos: f.photos.slice(0, r.data.fieldLimits.photosMax),
       }));
     });
-    const loadEnrichment = (includeMedia: boolean) => {
-      getPlaceEnrichment(place.id).then((r) => {
-        if (!alive) return;
-        if (!r.ok) {
-          if (includeMedia) setMedia({});
-          setEnrichStatus(null);
-          return;
-        }
-        if (includeMedia) setMedia(r.data.media);
-        setEnrichStatus(r.data.status);
-      });
-    };
-    loadEnrichment(true);
-    // decision: Pato (MESITA-466) — Meta shows live enriching status; poll
-    // while the Place tab is open (same cadence as UnitEditChrome).
-    const pollId = window.setInterval(() => loadEnrichment(false), 8_000);
-    listTeam(place.id).then((r) => {
+    getPlaceEnrichment(place.id).then((r) => {
       if (!alive) return;
-      if (!r.ok) {
-        setOwnersError(r.error);
-        setOwners(null);
-        return;
-      }
-      setOwnersError(null);
-      setOwners(
-        r.data.businesses
-          .filter((m) => m.role === "owner")
-          .map((m) => m.email ?? m.fullName ?? m.userId),
-      );
+      setMedia(r.ok ? r.data.media : {});
     });
     return () => {
       alive = false;
-      window.clearInterval(pollId);
     };
   }, [place.id]);
 
@@ -671,12 +634,11 @@ export function PlaceSection({
     // [&>section]; the fixed photo dialog is a <div>, exempt and out of flow.
     // lg (not xl): admin content + sidebar rarely reaches 1280px of free width.
     <div className="columns-1 gap-4 pb-8 [&>section]:mb-4 [&>section]:break-inside-avoid [&>details]:mb-4 [&>details]:break-inside-avoid lg:columns-2 lg:gap-5 lg:pb-10 lg:[&>section]:mb-5 lg:[&>details]:mb-5">
-      {/* Box order (MESITA-547 / MESITA-720): edit-first — Basics → Hours →
-          Channels → Reservations → Photos → Products/Reviews → Location →
-          Ownership → Promos → Metadata → Embeddings. Manual Priority (MP
-          subscore) leads — the one live, editable per-place score. */}
-      <ManualPriorityCard place={place} />
-{/* Basics — editable identity. Price stays Enricher/Google-derived
+      {/* Box order (MESITA-547 / MESITA-720 / MESITA-834): edit-first —
+          Basics → Hours → Channels → Reservations → Photos → Location →
+          Promos summary. The operator/meta cards (Manual Priority, Ownership,
+          Metadata, Embeddings) live on the Settings tab. */}
+      {/* Basics — editable identity. Price stays Enricher/Google-derived
           read-only; category is Enricher + Admin + Business (MESITA-469). */}
       <SectionCard
         icon={<Store className="h-4 w-4" />}
@@ -1073,8 +1035,6 @@ export function PlaceSection({
         />
       </SectionCard>
 
-      {children}
-
       {/* Location is native — Google Places seed + Enricher synthesis. The EF
           rejects manual address writes, so this whole box is read-only. */}
       <SectionCard
@@ -1120,13 +1080,7 @@ export function PlaceSection({
         ) : null}
       </SectionCard>
 
-      <OwnershipCard place={place} owners={owners} ownersError={ownersError} />
-
       <PromosCard place={place} />
-
-      <MetaCard place={place} enrichStatus={enrichStatus} />
-
-      <EmbeddingsCard place={place} />
 
       {metaFor !== null && (
         <MediaMetaDialog
@@ -1138,341 +1092,6 @@ export function PlaceSection({
         />
       )}
     </div>
-  );
-}
-
-// Link out to another unit tab, routed through the discard guard.
-//
-// These used to be bare <Link>s. `guardNav` lived as a local useCallback inside
-// UnitEditChrome, so the chrome's own tabs were guarded but these were not:
-// editing Basics and clicking "Edit on Promos" navigated away and dropped the
-// edits with no dialog and no warning. The guard now lives on UnitPlaceContext
-// precisely so every cross-tab link can reach it — use this, never a raw <Link>,
-// for anything that leaves the Place tab.
-function CrossTabLink({
-  href,
-  children,
-}: {
-  href: string;
-  children: React.ReactNode;
-}) {
-  const { guardNav } = useUnitPlace();
-  return (
-    <Link
-      href={href}
-      onClick={(e) => guardNav(href, e)}
-      className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1 text-xs font-medium transition"
-    >
-      {children}
-      <ArrowRight className="h-3 w-3" />
-    </Link>
-  );
-}
-
-// ── Read-only display helpers ────────────────────────────────────────────
-
-// Labelled read-only value used inside editable cards (Price, Category). The
-// `auto` pill signals the value is Enricher-owned and not hand-edited.
-function ReadField({
-  label,
-  auto,
-  boxed,
-  children,
-}: {
-  label: string;
-  auto?: boolean;
-  /** Render label + value like a (disabled) filled input, so the field sits
-   *  flush with the editable TextFields around it instead of as bare text. */
-  boxed?: boolean;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="flex min-w-0 flex-col gap-1.5">
-      <span
-        className={
-          boxed
-            ? "text-foreground/90 flex min-h-4 items-center gap-1.5 text-[13px] font-medium"
-            : "text-muted-foreground flex min-h-4 items-center gap-1.5 text-[11px] font-semibold tracking-[0.05em] uppercase"
-        }
-      >
-        {label}
-        {auto ? (
-          <span className="text-muted-foreground/70 inline-flex items-center gap-0.5 text-[10px] font-normal tracking-normal normal-case">
-            <Lock className="h-3 w-3" />
-            auto
-          </span>
-        ) : null}
-      </span>
-      <div
-        className={
-          boxed
-            ? "bg-muted/60 border-border/60 flex min-h-10 min-w-0 items-center rounded-xl border px-3.5 text-sm"
-            : "flex min-h-9 items-center text-sm"
-        }
-      >
-        {children}
-      </div>
-    </div>
-  );
-}
-
-// Small "Open ↗" affordance shown in a link field's label when it has a value.
-function OpenLink({ href }: { href: string }) {
-  const trimmed = href.trim();
-  const url = /^(https?|tel|mailto|sms):/i.test(trimmed)
-    ? trimmed
-    : `https://${trimmed}`;
-  const external = /^https?:/i.test(url);
-  return (
-    <a
-      href={url}
-      {...(external ? { target: "_blank", rel: "noopener noreferrer" } : {})}
-      onClick={(e) => e.stopPropagation()}
-      className="text-muted-foreground hover:text-foreground inline-flex items-center gap-0.5 text-[11px] font-medium transition"
-    >
-      Open
-      <ExternalLink className="h-3 w-3" />
-    </a>
-  );
-}
-
-// No updated_by column exists, so attribute the last write by proximity: the
-// Enricher's final write stamps enriched_at and bumps updated_at in the same
-// statement — a tiny gap means the AI wrote last; anything later is a human
-// edit (admin / business save).
-function lastUpdatedBy(place: AdminPlace): "ai" | "human" | null {
-  if (!place.updated_at) return null;
-  if (!place.enriched_at) return "human";
-  const updated = new Date(place.updated_at).getTime();
-  const enriched = new Date(place.enriched_at).getTime();
-  if (Number.isNaN(updated) || Number.isNaN(enriched)) return null;
-  return updated - enriched <= 90_000 ? "ai" : "human";
-}
-
-function CopyIdButton({ id }: { id: string }) {
-  const [copied, setCopied] = useState(false);
-  return (
-    <button
-      type="button"
-      onClick={async () => {
-        try {
-          await navigator.clipboard.writeText(id);
-          setCopied(true);
-          window.setTimeout(() => setCopied(false), 1200);
-        } catch {
-          /* clipboard unavailable — ignore */
-        }
-      }}
-      className="hover:text-foreground inline-flex items-center gap-1 transition"
-    >
-      {copied ? (
-        <>
-          <Check className="h-3.5 w-3.5 text-green-600" /> Copied
-        </>
-      ) : (
-        <>
-          <Copy className="h-3.5 w-3.5" /> Copy
-        </>
-      )}
-    </button>
-  );
-}
-
-// place_research stage; falls back to the project's content_status when the
-// place has no research row yet (created but never enriched).
-function enrichmentBadge(
-  s: PlaceEnrichmentStatus | null,
-): { text: string; cls: string; spinning: boolean } {
-  const stage = s?.stage ?? null;
-  if (stage === "done")
-    return { text: "Enriched", cls: "bg-green-500/10 text-green-600", spinning: false };
-  if (stage === "failed")
-    return { text: "Failed", cls: "bg-red-500/10 text-red-600", spinning: false };
-  if (stage === "research" || stage === "analysis" || stage === "contents") {
-    return {
-      text: `Enriching… (${stage})`,
-      cls: "bg-blue-500/10 text-blue-600",
-      spinning: true,
-    };
-  }
-  switch (s?.content_status) {
-    case "ready":
-      return { text: "Enriched", cls: "bg-green-500/10 text-green-600", spinning: false };
-    case "generating":
-    case "queued":
-      return { text: "Enriching…", cls: "bg-blue-500/10 text-blue-600", spinning: true };
-    case "failed":
-      return { text: "Failed", cls: "bg-red-500/10 text-red-600", spinning: false };
-    default:
-      return { text: "Not enriched", cls: "bg-muted text-muted-foreground", spinning: false };
-  }
-}
-
-function parseEmbeddingVector(raw: AdminPlace["embedding"]): number[] | null {
-  if (Array.isArray(raw)) {
-    const nums = raw.map((n) => Number(n));
-    return nums.every((n) => Number.isFinite(n)) ? nums : null;
-  }
-  if (typeof raw !== "string" || !raw.trim()) return null;
-  const inner = raw.trim().replace(/^\[/, "").replace(/\]$/, "");
-  if (!inner) return null;
-  const nums = inner.split(",").map((s) => Number(s.trim()));
-  return nums.every((n) => Number.isFinite(n)) ? nums : null;
-}
-
-// Embeddings — the Place Synthesis text + the vector it embeds to (MESITA-720).
-// NOTE: the Place Synthesis is NOT the About/description. About is the
-// human-readable profile copy; the synthesis is a separate, super-concise text
-// purpose-built for semantic search. Written on create + on profile update.
-// Open by default; collapsible like Metadata.
-function EmbeddingsCard({ place }: { place: AdminPlace }) {
-  const text = (place.embedding_source_text ?? "").trim();
-  const vector = parseEmbeddingVector(place.embedding);
-  const preview = vector?.slice(0, 24) ?? null;
-  const dims = vector?.length ?? 0;
-  return (
-    <details
-      className="border-border bg-card shadow-card group rounded-2xl border"
-      open
-    >
-      <summary className="flex cursor-pointer list-none items-center gap-3 p-5 sm:p-6 [&::-webkit-details-marker]:hidden">
-        <span className="bg-muted text-muted-foreground inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl">
-          <Braces className="h-4 w-4" />
-        </span>
-        <div className="min-w-0 flex-1">
-          <h2 className="font-display text-base font-semibold tracking-tight">
-            Embeddings
-          </h2>
-          <p className="text-muted-foreground mt-0.5 text-xs leading-relaxed">
-            The Place Synthesis — a super-concise text built FOR semantic search (not the
-            human About), and the vector OpenAI embeds it into.
-          </p>
-        </div>
-        <ChevronDown
-          className="text-muted-foreground h-4 w-4 shrink-0 transition-transform group-open:rotate-180"
-          aria-hidden
-        />
-      </summary>
-      <div className="border-border/60 flex flex-col gap-4 border-t px-5 pb-6 sm:px-6 sm:pb-8">
-        <ReadField label="Place Synthesis as Text" boxed>
-          {text ? (
-            <span className="text-sm leading-relaxed whitespace-pre-wrap">{text}</span>
-          ) : (
-            <span className="text-muted-foreground text-xs italic">
-              Not synthesized yet — written on create and when the profile changes.
-            </span>
-          )}
-        </ReadField>
-        <ReadField label="Place Synthesis as Embedding" boxed>
-          {vector && preview ? (
-            <span className="flex min-w-0 flex-col gap-1.5 py-0.5">
-              <code className="text-muted-foreground break-all font-mono text-[10px] leading-snug">
-                [{preview.map((n) => n.toFixed(4)).join(", ")}
-                {dims > preview.length ? `, … +${dims - preview.length} dims` : ""}]
-              </code>
-              <span className="text-muted-foreground text-[11px] tabular-nums">
-                {dims}d · text-embedding-3-small
-                {place.embedding_source_hash
-                  ? ` · hash ${place.embedding_source_hash.slice(0, 8)}…`
-                  : ""}
-              </span>
-            </span>
-          ) : (
-            <span className="text-muted-foreground text-xs italic">
-              No vector yet — produced from the synthesis text above.
-            </span>
-          )}
-        </ReadField>
-      </div>
-    </details>
-  );
-}
-
-// Metadata — UID + audit trail + enriching status. Open by default
-// (MESITA-588) but still collapsible; stays a <details> so it can be tucked.
-function MetaCard({
-  place,
-  enrichStatus,
-}: {
-  place: AdminPlace;
-  enrichStatus: PlaceEnrichmentStatus | null;
-}) {
-  const by = lastUpdatedBy(place);
-  const badge = enrichmentBadge(enrichStatus);
-  const failed = enrichStatus?.stage === "failed";
-  return (
-    <details
-      className="border-border bg-card shadow-card group rounded-2xl border"
-      open
-    >
-      <summary className="flex cursor-pointer list-none items-center gap-3 p-5 sm:p-6 [&::-webkit-details-marker]:hidden">
-        <span className="bg-muted text-muted-foreground inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl">
-          <Fingerprint className="h-4 w-4" />
-        </span>
-        <div className="min-w-0 flex-1">
-          <h2 className="font-display text-base font-semibold tracking-tight">
-            Metadata
-          </h2>
-          <p className="text-muted-foreground mt-0.5 text-xs leading-relaxed">
-            UID, audit trail & enriching status.
-          </p>
-        </div>
-        <ChevronDown
-          className="text-muted-foreground h-4 w-4 shrink-0 transition-transform group-open:rotate-180"
-          aria-hidden
-        />
-      </summary>
-      <div className="border-border/60 flex flex-col gap-4 border-t px-5 pb-5 sm:px-6 sm:pb-6">
-        <ReadField label="UID" boxed>
-          <span className="flex min-w-0 flex-1 items-center justify-between gap-2">
-            <code className="min-w-0 truncate font-mono text-[11px]">
-              {place.id}
-            </code>
-            <span className="text-muted-foreground shrink-0 text-xs">
-              <CopyIdButton id={place.id} />
-            </span>
-          </span>
-        </ReadField>
-        <ReadField label="Created at" boxed>
-          {place.created_at ? formatAbsoluteUtc(place.created_at) : "—"}
-        </ReadField>
-        <ReadField label="Updated at" boxed>
-          <span className="flex min-w-0 flex-wrap items-center gap-1.5">
-            {place.updated_at ? formatAbsoluteUtc(place.updated_at) : "—"}
-            {by != null && (
-              <span
-                className={
-                  "inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold " +
-                  (by === "ai"
-                    ? "bg-sky-500/10 text-sky-700"
-                    : "bg-card text-muted-foreground border-border/70 border")
-                }
-              >
-                by {by === "ai" ? "Enricher (AI)" : "human"}
-              </span>
-            )}
-          </span>
-        </ReadField>
-        <ReadField label="Enriching status" boxed>
-          <span
-            className={
-              "inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[11px] font-semibold " +
-              badge.cls
-            }
-          >
-            {badge.spinning && (
-              <Loader2 className="h-3 w-3 shrink-0 animate-spin" aria-hidden />
-            )}
-            {badge.text}
-          </span>
-        </ReadField>
-        {failed && enrichStatus?.error ? (
-          <p className="text-xs leading-snug text-red-600">
-            Last enrichment failed: {enrichStatus.error}
-          </p>
-        ) : null}
-      </div>
-    </details>
   );
 }
 
@@ -1588,67 +1207,6 @@ function PromosCard({ place }: { place: AdminPlace }) {
 }
 
 // Ownership — partner verification + the accounts that own the place.
-function OwnershipCard({
-  place,
-  owners,
-  ownersError,
-}: {
-  place: AdminPlace;
-  owners: string[] | null;
-  ownersError: string | null;
-}) {
-  const verified = place.listing_type === "partner";
-  return (
-    <SectionCard
-      icon={<ShieldCheck className="h-4 w-4" />}
-      tint="emerald"
-      title="Ownership"
-      subtitle="Partner verification & owner accounts — manage on the Team tab."
-      action={
-        <CrossTabLink href={unitSectionHref(place.id, "team")}>Edit</CrossTabLink>
-      }
-    >
-      {/* One boxed field per row — same filled-input language as the
-          editable cards. Verification is a single binary field; request
-          history lives on the Team tab. */}
-      <div className="mt-5 grid gap-4">
-        <ReadField label="Verification status" boxed>
-          {verified ? (
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200/80 bg-emerald-50/80 px-2.5 py-1 text-[11px] font-semibold text-emerald-800">
-              <BadgeCheck className="h-3.5 w-3.5" />
-              Verified
-            </span>
-          ) : (
-            <span className="border-border/70 bg-card text-foreground/80 inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-semibold">
-              Not verified
-            </span>
-          )}
-        </ReadField>
-        <ReadField label="Owners" boxed>
-          {ownersError ? (
-            <span className="text-destructive text-xs">{ownersError}</span>
-          ) : owners === null ? (
-            <span className="text-muted-foreground text-xs">Checking…</span>
-          ) : owners.length === 0 ? (
-            <span className="text-muted-foreground text-xs italic">
-              No owners — nobody has claimed this place yet.
-            </span>
-          ) : (
-            <ul className="flex w-full flex-col gap-1.5 py-2.5">
-              {owners.map((email) => (
-                <li key={email} className="flex min-w-0 items-center gap-2 text-sm">
-                  <Mail className="text-muted-foreground h-3.5 w-3.5 shrink-0" />
-                  <span className="truncate">{email}</span>
-                </li>
-              ))}
-            </ul>
-          )}
-        </ReadField>
-      </div>
-    </SectionCard>
-  );
-}
-
 function PhotosEditor({
   placeId,
   photos,

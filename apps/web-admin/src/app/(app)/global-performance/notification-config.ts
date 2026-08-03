@@ -1,13 +1,19 @@
 import type { ComponentType } from "react";
 import {
   BadgeCheck,
+  Bookmark,
   Building2,
+  CalendarCheck,
+  CircleDollarSign,
   Compass,
   CreditCard,
+  Footprints,
   Inbox,
   ListChecks,
   ShieldCheck,
   Sparkles,
+  Star,
+  Ticket,
   Users,
 } from "lucide-react";
 import type { NotificationType } from "./actions";
@@ -93,6 +99,42 @@ export const TYPE_CONFIG: Record<NotificationType, TypeConfig> = {
     Icon: ListChecks,
     tone: TONES.muted,
   },
+  "consumer.place_saved": {
+    label: "Place saved",
+    shortLabel: "Saves",
+    Icon: Bookmark,
+    tone: TONES.sky,
+  },
+  "rewards.ticket_created": {
+    label: "Ticket created",
+    shortLabel: "Tickets",
+    Icon: Ticket,
+    tone: TONES.indigo,
+  },
+  "rewards.ticket_visit": {
+    label: "Visit — QR scanned",
+    shortLabel: "Visits",
+    Icon: Footprints,
+    tone: TONES.amber,
+  },
+  "rewards.ticket_paid": {
+    label: "Ticket paid",
+    shortLabel: "Paid",
+    Icon: CircleDollarSign,
+    tone: TONES.emerald,
+  },
+  "rewards.review_submitted": {
+    label: "Review submitted",
+    shortLabel: "Reviews",
+    Icon: Star,
+    tone: TONES.violet,
+  },
+  "reservations.reservation_created": {
+    label: "Reservation requested",
+    shortLabel: "Reservations",
+    Icon: CalendarCheck,
+    tone: TONES.emerald,
+  },
 };
 
 // Runtime fallback — the EF may ship new types before this client knows them.
@@ -108,6 +150,24 @@ export const TYPE_ORDER: NotificationType[] = [
   "atlas.place_enriched",
   "atlas.ownership_claimed",
   "atlas.enrichment_step",
+  "consumer.place_saved",
+  "rewards.ticket_created",
+  "rewards.ticket_visit",
+  "rewards.ticket_paid",
+  "rewards.review_submitted",
+  "reservations.reservation_created",
+];
+
+// Consumer-activity types only — the per-place Performance tab's filter row
+// (atlas/enricher events have their own home on Global Monitor; a per-place
+// operator cares about what CONSUMERS did to this place).
+export const ACTIVITY_TYPE_ORDER: NotificationType[] = [
+  "consumer.place_saved",
+  "rewards.ticket_created",
+  "rewards.ticket_visit",
+  "rewards.ticket_paid",
+  "rewards.review_submitted",
+  "reservations.reservation_created",
 ];
 
 type CategoryDef = {
@@ -119,7 +179,9 @@ type CategoryDef = {
 
 export const CATEGORIES: CategoryDef[] = [
   { key: "atlas", label: "Atlas", Icon: Compass, live: true },
+  { key: "consumer", label: "Consumers", Icon: Users, live: true },
+  { key: "rewards", label: "Rewards", Icon: Ticket, live: true },
+  { key: "reservations", label: "Reservations", Icon: CalendarCheck, live: true },
   { key: "billing", label: "Billing", Icon: CreditCard, live: false },
   { key: "verifications", label: "Verifications", Icon: ShieldCheck, live: false },
-  { key: "consumers", label: "Consumers", Icon: Users, live: false },
 ];

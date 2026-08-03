@@ -7,13 +7,19 @@ import { efInvoke } from "@/lib/supabase-ef";
 // (billing, verifications, consumers…) reuse the same item shape and the
 // client renders title/icon from `type`.
 
-type NotificationCategory = "atlas";
+type NotificationCategory = "atlas" | "consumer" | "rewards" | "reservations";
 
 export type NotificationType =
   | "atlas.place_created"
   | "atlas.place_enriched"
   | "atlas.ownership_claimed"
-  | "atlas.enrichment_step";
+  | "atlas.enrichment_step"
+  | "consumer.place_saved"
+  | "rewards.ticket_created"
+  | "rewards.ticket_visit"
+  | "rewards.ticket_paid"
+  | "rewards.review_submitted"
+  | "reservations.reservation_created";
 
 type NotificationPlace = {
   id: string;

@@ -1,13 +1,11 @@
-"use client";
+import { redirect } from "next/navigation";
 
-import { ScoresSection } from "../../sections/ScoresSection";
-
-// Per-place Scores — a placeholder for now (the draft simulator was retired).
-// The live editable per-place score, Manual Priority, is on the Place tab.
-export default function UnitScoresPage() {
-  return (
-    <div className="mx-auto max-w-6xl">
-      <ScoresSection />
-    </div>
-  );
+/** The Scores tab was removed (MESITA-834) — keep the old URL working. */
+export default async function UnitScoresRedirectPage({
+  params,
+}: {
+  params: Promise<{ projectId: string }>;
+}) {
+  const { projectId } = await params;
+  redirect(`/manage-single/${projectId}/place`);
 }
