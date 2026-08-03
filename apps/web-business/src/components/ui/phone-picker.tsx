@@ -146,7 +146,8 @@ export function PhonePicker({
       if (national !== "") setNational("");
       return;
     }
-    if (value === country.dial + national) return;
+    const digitsOnly = national.replace(/[^0-9]/g, "");
+    if (value === country.dial + digitsOnly) return;
     const next = countryFromValue(value);
     setCountry(next.country);
     setNational(next.national);

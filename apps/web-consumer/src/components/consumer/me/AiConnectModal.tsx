@@ -6,6 +6,7 @@ import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
 import { ActiveTokensList } from "@/components/consumer/me/AiConnectActiveTokensList";
 import {
   IconCircle,
+  SectionEyebrow,
   SettingsGroup,
 } from "@/components/consumer/me/settings-rows";
 import { toast } from "@/lib/toast";
@@ -247,9 +248,9 @@ export function AiConnectModal({
         )}
 
         <div className="mt-5">
-          <p className="text-foreground/60 mb-2 text-[10px] font-semibold tracking-[0.16em] uppercase">
-            Active tokens
-          </p>
+          <div className="mb-2">
+            <SectionEyebrow>Active tokens</SectionEyebrow>
+          </div>
           <ActiveTokensList
             loading={loading}
             tokens={tokens}

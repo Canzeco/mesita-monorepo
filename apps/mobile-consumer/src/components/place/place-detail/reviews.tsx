@@ -19,14 +19,16 @@ import {
 } from './review-ui';
 import { Box } from './shared';
 
+const DEFAULT_RATING = 5;
+
 export function ReviewsSummaryBox({ place }: { place: PlaceDetail }) {
   const hasReviews = place.mesita_reviews.total > 0;
-  const overall = hasReviews ? place.mesita_reviews.overall : 5.0;
+  const overall = hasReviews ? place.mesita_reviews.overall : DEFAULT_RATING;
   const subRatings: [string, number][] = [
-    ['Food', hasReviews ? place.mesita_reviews.food : 5.0],
-    ['Service', hasReviews ? place.mesita_reviews.service : 5.0],
-    ['Ambience', hasReviews ? place.mesita_reviews.ambiance : 5.0],
-    ['Value', hasReviews ? place.mesita_reviews.value : 5.0],
+    ['Food', hasReviews ? place.mesita_reviews.food : DEFAULT_RATING],
+    ['Service', hasReviews ? place.mesita_reviews.service : DEFAULT_RATING],
+    ['Ambience', hasReviews ? place.mesita_reviews.ambiance : DEFAULT_RATING],
+    ['Value', hasReviews ? place.mesita_reviews.value : DEFAULT_RATING],
   ];
   return (
     <Box title="Reviews summary" icon={Star} iconColor="#a78bfa">

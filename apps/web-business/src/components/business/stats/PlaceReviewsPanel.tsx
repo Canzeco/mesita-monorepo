@@ -11,6 +11,8 @@ import { cn, formatCompactCount } from "@/lib/utils";
 import { TINY_LABEL_CLASS } from "@/lib/ui-classes";
 import { extractRelevantReviews } from "./place-review-items";
 
+const MAX_RATING = 5;
+
 export function PlaceReviewsPanel({ place }: { place: MyPlace }) {
   return (
     <div className="flex flex-col gap-4">
@@ -60,13 +62,13 @@ function ReviewsSummarySection({ place }: { place: MyPlace }) {
     },
   ];
 
-  const overallMesita = place.mesita_stars_overall ?? 5;
+  const overallMesita = place.mesita_stars_overall ?? MAX_RATING;
   const overallCount = place.mesita_review_count ?? 0;
   const bars = [
     ["Overall", overallMesita],
-    ["Food", place.mesita_stars_food ?? 5],
-    ["Service", place.mesita_stars_service ?? 5],
-    ["Ambience", place.mesita_stars_ambience ?? 5],
+    ["Food", place.mesita_stars_food ?? MAX_RATING],
+    ["Service", place.mesita_stars_service ?? MAX_RATING],
+    ["Ambience", place.mesita_stars_ambience ?? MAX_RATING],
     ["Value", overallMesita],
   ] as const;
 
@@ -147,7 +149,7 @@ function RelevantReviewsSection({ place }: { place: MyPlace }) {
                 <ReviewSourceBadge source={item.source} />
               </div>
               <div className="mb-2 flex items-center gap-0.5">
-                {Array.from({ length: 5 }, (_, i) => (
+                {Array.from({ length: MAX_RATING }, (_, i) => (
                   <Star
                     key={i}
                     className={cn(
@@ -191,7 +193,7 @@ function ReviewSourceBadge({ source }: { source: "Mesita" | "Google" }) {
 }
 
 function RatingBar({ label, value }: { label: string; value: number }) {
-  const pct = Math.min(100, (value / 5) * 100);
+  const pct = Math.min(100, (value / MAX_RATING) * 100);
   return (
     <div className="flex items-center gap-2">
       <span className="text-muted-foreground w-14 shrink-0 truncate text-[11px]">

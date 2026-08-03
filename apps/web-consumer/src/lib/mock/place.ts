@@ -1,10 +1,9 @@
-// Mock place data shaped for the place-detail screen. While /places/[id]
-// is in design-mode, every id resolves to this same fixture and the view
-// component reads from `PlaceDetail` instead of the leaner `Place` row
-// that the Edge Function will eventually return.
-//
-// When wiring real data, write an adapter that maps the EF response →
-// PlaceDetail; the view stays untouched.
+// Canonical shape for the place-detail screen. The view components read
+// `PlaceDetail`, not the leaner `Place` row from `@/lib/api/places` — the
+// richer fields (reviews, visitors, promo matrix, hours table, …) come from
+// `placeRowToDetail` in `@/lib/adapters/place-to-detail`, which maps a
+// consumer-web-get-place row onto this type. Despite the module path, this
+// file exports only the type, not literal fixture data.
 
 export type ConsumerClass = "standard" | "premium" | "influencer" | "aura";
 

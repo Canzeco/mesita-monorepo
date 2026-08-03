@@ -111,6 +111,19 @@ function RowText({
   );
 }
 
+// Shared by every row variant below — the tinted circle + row icon combo.
+function RowIcon({ tint, Icon }: { tint: RowTint; Icon: LucideIcon }) {
+  return (
+    <IconCircle tint={tint}>
+      <Icon className="h-[18px] w-[18px]" />
+    </IconCircle>
+  );
+}
+
+// Interactive row chrome shared by the button- and link-style rows.
+const ROW_INTERACTIVE_CLASS =
+  "hover:bg-muted flex w-full items-center gap-3 px-4 py-3 text-left transition";
+
 export function SettingsActionRow({
   Icon,
   tint,
@@ -127,14 +140,8 @@ export function SettingsActionRow({
   onClick: () => void;
 }) {
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="hover:bg-muted flex w-full items-center gap-3 px-4 py-3 text-left transition"
-    >
-      <IconCircle tint={tint}>
-        <Icon className="h-[18px] w-[18px]" />
-      </IconCircle>
+    <button type="button" onClick={onClick} className={ROW_INTERACTIVE_CLASS}>
+      <RowIcon tint={tint} Icon={Icon} />
       <RowText label={label} sub={sub} destructive={destructive} />
       <ChevronRight className="text-muted-foreground h-4 w-4 shrink-0" />
     </button>
@@ -156,9 +163,7 @@ export function SettingsStaticRow({
 }) {
   return (
     <div className="flex w-full items-center gap-3 px-4 py-3">
-      <IconCircle tint={tint}>
-        <Icon className="h-[18px] w-[18px]" />
-      </IconCircle>
+      <RowIcon tint={tint} Icon={Icon} />
       <RowText label={label} sub={sub} />
       {trailing}
     </div>
@@ -184,11 +189,9 @@ export function SettingsLinkRow({
     <a
       href={href}
       {...(external ? { target: "_blank", rel: "noreferrer" } : {})}
-      className="hover:bg-muted flex w-full items-center gap-3 px-4 py-3 text-left transition"
+      className={ROW_INTERACTIVE_CLASS}
     >
-      <IconCircle tint={tint}>
-        <Icon className="h-[18px] w-[18px]" />
-      </IconCircle>
+      <RowIcon tint={tint} Icon={Icon} />
       <RowText label={label} sub={sub} />
       <ChevronRight className="text-muted-foreground h-4 w-4 shrink-0" />
     </a>
@@ -239,11 +242,9 @@ export function StoredToggleRow({
       onClick={() => set()}
       role="switch"
       aria-checked={on}
-      className="hover:bg-muted flex w-full items-center gap-3 px-4 py-3 text-left transition"
+      className={ROW_INTERACTIVE_CLASS}
     >
-      <IconCircle tint={tint}>
-        <Icon className="h-[18px] w-[18px]" />
-      </IconCircle>
+      <RowIcon tint={tint} Icon={Icon} />
       <RowText label={label} sub={sub} />
       <Switch on={on} />
     </button>
@@ -274,9 +275,7 @@ export function StoredSelectRow({
   const [value, set] = useStoredString(storageKey, defaultValue);
   return (
     <label className="hover:bg-muted flex w-full cursor-pointer items-center gap-3 px-4 py-3 transition">
-      <IconCircle tint={tint}>
-        <Icon className="h-[18px] w-[18px]" />
-      </IconCircle>
+      <RowIcon tint={tint} Icon={Icon} />
       <RowText label={label} sub={sub} />
       <select
         value={value}

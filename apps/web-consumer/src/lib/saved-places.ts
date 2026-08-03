@@ -113,33 +113,31 @@ function writePreviewStorage<T extends { id: string }>(map: Map<string, T>) {
   }
 }
 
-function toggleSavedPlace(placeId: string): boolean {
-  ensureHydrated();
-  const next = new Set(cache);
-  let nowSaved: boolean;
-  if (next.has(placeId)) {
-    next.delete(placeId);
-    nowSaved = false;
-  } else {
-    next.add(placeId);
-    nowSaved = true;
-  }
+// Swaps in a new cache reference, persists it, and notifies subscribers —
+// the commit tail shared by every mutation below.
+function commitCache(next: ReadonlySet<string>): void {
   cache = next;
   writeToStorage(cache);
   emit();
+}
+
+function toggleSavedPlace(placeId: string): boolean {
+  ensureHydrated();
+  const next = new Set(cache);
+  const nowSaved = !next.has(placeId);
+  if (nowSaved) next.add(placeId);
+  else next.delete(placeId);
+  commitCache(next);
   return nowSaved;
 }
 
 function setPlaceSaved(placeId: string, saved: boolean): void {
   ensureHydrated();
-  const has = cache.has(placeId);
-  if (has === saved) return;
+  if (cache.has(placeId) === saved) return;
   const next = new Set(cache);
   if (saved) next.add(placeId);
   else next.delete(placeId);
-  cache = next;
-  writeToStorage(cache);
-  emit();
+  commitCache(next);
 }
 
 // Forget ONE place — drop it from the saved set and from the preview cache.

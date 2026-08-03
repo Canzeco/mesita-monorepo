@@ -36,19 +36,26 @@ export function PlaceTagsPicker({
     if (loaded || loading) return;
     setLoading(true);
     setError(null);
-    listPlaceTagCatalog().then((r) => {
-      setLoading(false);
-      if (!r.ok) {
-        setError(r.error);
+    listPlaceTagCatalog()
+      .then((r) => {
+        setLoading(false);
+        if (!r.ok) {
+          setError(r.error);
+          setFacets([]);
+          setTags([]);
+          return;
+        }
+        setFacets(r.data.facets);
+        setTags(r.data.tags);
+        setMax(r.data.tagsPerPlaceMax);
+        setLoaded(true);
+      })
+      .catch(() => {
+        setLoading(false);
+        setError("Failed to load tag catalog.");
         setFacets([]);
         setTags([]);
-        return;
-      }
-      setFacets(r.data.facets);
-      setTags(r.data.tags);
-      setMax(r.data.tagsPerPlaceMax);
-      setLoaded(true);
-    });
+      });
   };
 
   const openModal = () => {

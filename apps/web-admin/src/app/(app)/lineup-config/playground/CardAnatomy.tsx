@@ -10,18 +10,19 @@ import {
   type LaneId,
   type SmParams,
   type SmParts,
+  type SubscoreId,
 } from "@/lib/business/scores";
 import { STRATEGY_BY_ID, type StrategyId } from "@/lib/business/strategies";
 import type { Intent } from "@/lib/business/cip";
 import {
   FactorRow,
+  LaneBadge,
   LedgerRow,
   MatchStrip,
   ResultLine,
   ScoreBox,
   SemanticProfile,
 } from "../playground-ui";
-import { LaneBadge } from "../playground-ui";
 
 // One deck card's FULL anatomy — every subscore's internal process for THIS
 // place, computed at CALL time (the run snapshots the knobs, so a knob edit
@@ -48,6 +49,24 @@ export type CardParts = {
 };
 
 const pct = (v: number) => v.toFixed(2);
+
+/** One lane-part's contribution, formatted — the factor chip strip below the card. */
+function factorPct(part: SubscoreId, parts: CardParts, laneId: LaneId): string {
+  switch (part) {
+    case "em":
+      return pct(parts.em);
+    case "sm":
+      return pct(parts.smP.sm);
+    case "gp":
+      return pct(parts.gpP.gp);
+    case "rp":
+      return pct(parts.rpVal);
+    case "mp":
+      return pct(parts.mp);
+    case "xx":
+      return pct(parts.xxVals[laneId]);
+  }
+}
 
 export function CardAnatomy({
   intent,
@@ -239,21 +258,7 @@ export function CardAnatomy({
             >
               <LaneBadge laneId={l.id} />
               <span className="text-muted-foreground min-w-0 flex-1 truncate font-mono text-[10px]">
-                {l.parts
-                  .map((p) =>
-                    p === "em"
-                      ? pct(parts.em)
-                      : p === "sm"
-                        ? pct(parts.smP.sm)
-                        : p === "gp"
-                          ? pct(parts.gpP.gp)
-                          : p === "rp"
-                            ? pct(parts.rpVal)
-                            : p === "mp"
-                              ? pct(parts.mp)
-                              : pct(parts.xxVals[l.id]),
-                  )
-                  .join(" × ")}
+                {l.parts.map((p) => factorPct(p, parts, l.id)).join(" × ")}
               </span>
               <span
                 className={

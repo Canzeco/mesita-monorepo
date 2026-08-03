@@ -129,10 +129,10 @@ export function TicketDetailsClient({ ticketId }: { ticketId: string }) {
   const activeStep = flowSteps.find((s) => s.state === 'active');
 
   const displayStepId: TicketFlowStepId = useMemo(() => {
-    if (peekStepId && flowSteps.some((s) => s.id === peekStepId)) {
-      const peek = flowSteps.find((s) => s.id === peekStepId)!;
-      if (peek.state !== 'upcoming') return peekStepId;
-    }
+    const peekedStep = peekStepId
+      ? flowSteps.find((s) => s.id === peekStepId)
+      : undefined;
+    if (peekedStep && peekedStep.state !== 'upcoming') return peekedStep.id;
     return activeStep?.id ?? flowSteps[flowSteps.length - 1]?.id ?? 'scan';
   }, [peekStepId, activeStep, flowSteps]);
 
@@ -160,11 +160,9 @@ export function TicketDetailsClient({ ticketId }: { ticketId: string }) {
   );
 
   const statusLine = useMemo(() => {
-    if (isComplete) return null;
-    const active = flowSteps.find((s) => s.state === 'active');
-    if (!active) return null;
-    return `${STEP_NOW_TITLE[active.id]} — in progress`;
-  }, [isComplete, flowSteps]);
+    if (isComplete || !activeStep) return null;
+    return `${STEP_NOW_TITLE[activeStep.id]} — in progress`;
+  }, [isComplete, activeStep]);
 
   const handleStepSelect = (id: TicketFlowStepId) => {
     const step = flowSteps.find((s) => s.id === id);

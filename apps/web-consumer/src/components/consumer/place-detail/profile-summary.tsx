@@ -47,12 +47,11 @@ export function ProfileSummary({ place }: { place: PlaceDetail }) {
   const mesitaCount = place.mesita_reviews.total;
   const mesitaRating =
     mesitaCount > 0 ? (formatRating(place.mesita_reviews.overall) ?? "—") : "—";
-  const priceLabel =
-    formatPlacePriceChip({
-      priceRange: place.price_range,
-      priceLevel: place.price_level,
-      currency: place.currency,
-    }) ?? null;
+  const priceLabel = formatPlacePriceChip({
+    priceRange: place.price_range,
+    priceLevel: place.price_level,
+    currency: place.currency,
+  });
   const statusValue = place.open_now
     ? `Open · until ${place.closes_at}`
     : `Closed · opens ${place.opens_at}`;

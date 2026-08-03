@@ -3,9 +3,15 @@ import { TrendingUp, type LucideIcon } from "lucide-react";
 import {
   STRATEGY_VISIBILITY_LADDER,
   type Strategy,
+  type StrategyId,
 } from "@/lib/business/strategies";
 import { cn } from "@/lib/utils";
 import type { CardArt } from "./promoConstants";
+
+// A place is "paid" on any strategy except the free Zero tier.
+export function isPaidStrategy(id: StrategyId): boolean {
+  return id !== "zero";
+}
 
 export function ModalLabel({ children }: { children: ReactNode }) {
   return (

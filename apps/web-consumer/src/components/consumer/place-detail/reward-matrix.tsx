@@ -47,6 +47,9 @@ export function RewardStep({
   );
 }
 
+/** Per-class reward rates for one visit tier (welcome or returning). */
+type ClassRates = { free: number | null; premium: number | null };
+
 // Compact reward matrix — First / Returning rows × Standard / Premium columns.
 // Mirrors the Class comparison table on the Profile (ClassComparison) for
 // visual consistency. The active cell (current class × current visit axis)
@@ -59,8 +62,8 @@ export function RewardMatrix({
   isFirstVisit,
   suffix,
 }: {
-  welcome: { free: number | null; premium: number | null };
-  returning: { free: number | null; premium: number | null };
+  welcome: ClassRates;
+  returning: ClassRates;
   currentClass: ConsumerClass;
   isFirstVisit: boolean;
   /** Reward unit shown after the percent, e.g. "off". */

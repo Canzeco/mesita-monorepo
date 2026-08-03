@@ -155,7 +155,7 @@ export function RewardsBox({ place }: { place: PlaceDetail }) {
       <div className="flex flex-col gap-2">
         {isStandard ? (
           <div className="flex gap-2">
-            <Link href="/rewards" className={REWARD_PAY_BTN}>
+            <Link href={CONSUMER_ROUTES.rewards.root} className={REWARD_PAY_BTN}>
               <QrCode className="h-4 w-4" />
               Pay with QR
             </Link>
@@ -165,7 +165,7 @@ export function RewardsBox({ place }: { place: PlaceDetail }) {
             </Link>
           </div>
         ) : (
-          <Link href="/rewards" className={REWARD_PAY_BTN}>
+          <Link href={CONSUMER_ROUTES.rewards.root} className={REWARD_PAY_BTN}>
             <QrCode className="h-4 w-4" />
             Pay with QR to claim reward
           </Link>

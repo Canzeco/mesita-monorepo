@@ -3,7 +3,7 @@ import { Star } from 'lucide-react-native';
 import { useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 
-import { GoogleBadge, MesitaBadge } from '@/components/place/place-detail/review-ui';
+import { GoogleBadge, mesitaOverall, MesitaBadge } from '@/components/place/place-detail/review-ui';
 import type { PlaceDetail } from '@/lib/types/place-detail';
 import { firstInitial } from '@/lib/utils';
 
@@ -24,10 +24,9 @@ export function ReviewCard(props: MesitaPayload | GooglePayload) {
 
   if (props.kind === 'mesita') {
     const v = props.data;
-    const overall = Math.round(
-      (v.food + v.service + v.ambiance + v.value) / 4,
-    );
+    const overall = Math.round(mesitaOverall(v));
     const isLong = v.quote.length > LONG_QUOTE_THRESHOLD;
+    const showExpand = isLong && !expanded;
     return (
       <View className="w-72 shrink-0 gap-3 rounded-2xl bg-background p-4">
         <Header
@@ -52,10 +51,8 @@ export function ReviewCard(props: MesitaPayload | GooglePayload) {
         <Quote
           text={v.quote}
           italic
-          truncated={isLong && !expanded}
-          onExpand={
-            isLong && !expanded ? () => setExpanded(true) : undefined
-          }
+          truncated={showExpand}
+          onExpand={showExpand ? () => setExpanded(true) : undefined}
         />
         {v.photo_url ? (
           <Image
@@ -70,6 +67,7 @@ export function ReviewCard(props: MesitaPayload | GooglePayload) {
 
   const g = props.data;
   const isLong = g.quote.length > LONG_QUOTE_THRESHOLD;
+  const showExpand = isLong && !expanded;
   return (
     <View className="w-72 shrink-0 gap-3 rounded-2xl bg-background p-4">
       <Header
@@ -81,8 +79,8 @@ export function ReviewCard(props: MesitaPayload | GooglePayload) {
       <StarRow rating={g.rating} />
       <Quote
         text={g.quote}
-        truncated={isLong && !expanded}
-        onExpand={isLong && !expanded ? () => setExpanded(true) : undefined}
+        truncated={showExpand}
+        onExpand={showExpand ? () => setExpanded(true) : undefined}
       />
       {g.photo_url ? (
         <Image

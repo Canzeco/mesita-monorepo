@@ -13,11 +13,48 @@ import { useAuth } from '@/providers/auth';
 import { RewardMatrix, RewardStep } from './reward-matrix';
 import { Box, BoxLabel } from './shared';
 
+const QR_BUTTON_GRADIENT_STYLE = {
+  flexDirection: 'row',
+  alignItems: 'center',
+  justifyContent: 'center',
+  gap: 8,
+  paddingVertical: 12,
+  paddingHorizontal: 16,
+} as const;
+
+function QrPayButton({
+  label,
+  solo,
+  onPress,
+}: {
+  label: string;
+  solo?: boolean;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      onPress={onPress}
+      className={
+        solo ? 'overflow-hidden rounded-lg' : 'flex-1 overflow-hidden rounded-lg'
+      }
+    >
+      <LinearGradient
+        colors={[...GRADIENTS.pink]}
+        start={GRADIENT_DIAGONAL.start}
+        end={GRADIENT_DIAGONAL.end}
+        style={QR_BUTTON_GRADIENT_STYLE}
+      >
+        <QrCode color="#fff" size={16} />
+        <Text className="text-sm font-semibold text-white">{label}</Text>
+      </LinearGradient>
+    </Pressable>
+  );
+}
+
 export function RewardsBox({ place }: { place: PlaceDetail }) {
   const router = useRouter();
   const { consumerClass } = useAuth();
-  const classKey: ConsumerClassKey = (consumerClass?.class ??
-    'standard') as ConsumerClassKey;
+  const classKey: ConsumerClassKey = consumerClass?.class ?? 'standard';
   const { welcome, default: returning, is_first_visit } = place.promo_matrix;
   const offersRewards = placeOffersMesitaRewards({
     listing_type: place.listing_type,
@@ -133,29 +170,10 @@ export function RewardsBox({ place }: { place: PlaceDetail }) {
       <View className="gap-2">
         {isStandard ? (
           <View className="flex-row gap-2">
-            <Pressable
+            <QrPayButton
+              label="Pay with QR"
               onPress={() => router.push(CONSUMER_ROUTES.rewards.root)}
-              className="flex-1 overflow-hidden rounded-lg"
-            >
-              <LinearGradient
-                colors={[...GRADIENTS.pink]}
-                start={GRADIENT_DIAGONAL.start}
-                end={GRADIENT_DIAGONAL.end}
-                style={{
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: 8,
-                  paddingVertical: 12,
-                  paddingHorizontal: 16,
-                }}
-              >
-                <QrCode color="#fff" size={16} />
-                <Text className="text-sm font-semibold text-white">
-                  Pay with QR
-                </Text>
-              </LinearGradient>
-            </Pressable>
+            />
             <Pressable
               onPress={() => router.push(CONSUMER_ROUTES.me)}
               className="flex-1 flex-row items-center justify-center gap-2 rounded-lg border border-border bg-card px-4 py-3"
@@ -167,29 +185,11 @@ export function RewardsBox({ place }: { place: PlaceDetail }) {
             </Pressable>
           </View>
         ) : (
-          <Pressable
+          <QrPayButton
+            label="Pay with QR to claim reward"
+            solo
             onPress={() => router.push(CONSUMER_ROUTES.rewards.root)}
-            className="overflow-hidden rounded-lg"
-          >
-            <LinearGradient
-              colors={[...GRADIENTS.pink]}
-              start={GRADIENT_DIAGONAL.start}
-              end={GRADIENT_DIAGONAL.end}
-              style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: 8,
-                paddingVertical: 12,
-                paddingHorizontal: 16,
-              }}
-            >
-              <QrCode color="#fff" size={16} />
-              <Text className="text-sm font-semibold text-white">
-                Pay with QR to claim reward
-              </Text>
-            </LinearGradient>
-          </Pressable>
+          />
         )}
         <Text className="text-center text-[11px] leading-snug text-muted-foreground">
           {isStandard

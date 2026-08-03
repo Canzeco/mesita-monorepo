@@ -91,6 +91,8 @@ const CHECKS: readonly CompletenessCheck[] = [
   },
 ];
 
+const MAX_MISSING_CHIPS = 5;
+
 export function ProfileCompleteness({ place }: { place: AdminPlace }) {
   const missing = CHECKS.filter((c) => !c.done(place));
   const pct = 100 - missing.reduce((sum, c) => sum + c.weight, 0);
@@ -155,7 +157,7 @@ export function ProfileCompleteness({ place }: { place: AdminPlace }) {
               <span className="text-muted-foreground text-[10px] font-semibold tracking-wide uppercase">
                 Missing:
               </span>
-              {missing.slice(0, 5).map((c) => (
+              {missing.slice(0, MAX_MISSING_CHIPS).map((c) => (
                 <span
                   key={c.label}
                   className="rounded-full bg-amber-500/10 px-2 py-0.5 text-[10px] font-semibold text-amber-700"
@@ -163,9 +165,9 @@ export function ProfileCompleteness({ place }: { place: AdminPlace }) {
                   {c.hint}
                 </span>
               ))}
-              {missing.length > 5 && (
+              {missing.length > MAX_MISSING_CHIPS && (
                 <span className="text-muted-foreground text-[10px]">
-                  +{missing.length - 5} more
+                  +{missing.length - MAX_MISSING_CHIPS} more
                 </span>
               )}
             </div>

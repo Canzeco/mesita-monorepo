@@ -3,7 +3,12 @@ import { Check, Loader2 } from "lucide-react";
 import { UNIVERSAL_CAP_MXN, type Strategy } from "@/lib/business/strategies";
 import { cn, formatMoney } from "@/lib/utils";
 import { CARD_ART, PRODUCT_PRICE_MXN } from "./promoConstants";
-import { ModalLabel, PlacementReward, RateMatrix } from "./promoShared";
+import {
+  isPaidStrategy,
+  ModalLabel,
+  PlacementReward,
+  RateMatrix,
+} from "./promoShared";
 
 // Whole card opens the product modal.
 export function PricingCard({
@@ -22,7 +27,7 @@ export function PricingCard({
   onOpen: () => void;
 }) {
   const art = CARD_ART[strategy.id];
-  const paid = strategy.id !== "zero";
+  const paid = isPaidStrategy(strategy.id);
   const r = strategy.rates;
 
   return (

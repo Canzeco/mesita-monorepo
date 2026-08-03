@@ -8,6 +8,7 @@ import {
 } from "@/lib/business/strategies";
 import { formatMoney } from "@/lib/utils";
 import { EXAMPLE_BILL_MXN } from "./promoConstants";
+import { isPaidStrategy } from "./promoShared";
 
 // Worked from the place's LIVE rate columns (not the preset), so custom or
 // legacy rates preview exactly what the bill EF would apply today.
@@ -30,7 +31,7 @@ export function PremiumExampleBox({
       right={
         hasPromo ? (
           <span className="bg-muted text-foreground/70 inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[10px] font-bold tracking-wide uppercase">
-            {strategy && strategy.id !== "zero"
+            {strategy && isPaidStrategy(strategy.id)
               ? `${strategy.emoji} ${strategy.name}`
               : "Custom rates"}
           </span>
@@ -79,7 +80,7 @@ function ExampleCard({
   cap,
   currency,
 }: {
-  visit: string;
+  visit: "Welcome" | "Returning";
   premiumRate: number | null;
   freeRate: number | null;
   cap: number;

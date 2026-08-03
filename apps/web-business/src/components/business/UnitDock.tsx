@@ -67,11 +67,13 @@ export function UnitDock() {
   const currentSection = useMemo(() => {
     if (pathname === BUSINESS_ROUTES.central) return "place";
     const match = pathname.match(/^\/unit\/[^/]+\/([^/]+)/)?.[1];
-    if (match === "place" || match === "promos" || match === "scan") {
-      return match;
-    }
-    if (match === "performance" || match === "team") return match;
-    return null;
+    return match === "place" ||
+      match === "promos" ||
+      match === "scan" ||
+      match === "performance" ||
+      match === "team"
+      ? match
+      : null;
   }, [pathname]);
 
   const settingsActive = pathname === BUSINESS_ROUTES.settings;

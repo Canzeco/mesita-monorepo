@@ -91,6 +91,13 @@ export function TeamSection({ place }: { place: AdminPlace }) {
     });
   };
 
+  const askRemove = (
+    key: string,
+    label: string,
+    roleLabel: string,
+    removeFn: () => Promise<{ ok: boolean; error?: string }>,
+  ) => setRemoveTarget({ key, label, roleLabel, run: removeFn });
+
   return (
     <SectionCard
       icon={<Users className="h-4 w-4" />}
@@ -163,11 +170,12 @@ export function TeamSection({ place }: { place: AdminPlace }) {
                   <RemoveBtn
                     disabled={busy}
                     onClick={() =>
-                      setRemoveTarget({
-                        key: m.memberId,
-                        label: m.fullName ?? m.email ?? "this member",
-                        roleLabel: m.role,
-                        run: () => removeMember(m.memberId, "editor") })
+                      askRemove(
+                        m.memberId,
+                        m.fullName ?? m.email ?? "this member",
+                        m.role,
+                        () => removeMember(m.memberId, "editor"),
+                      )
                     }
                   />
                 </div>
@@ -193,11 +201,9 @@ export function TeamSection({ place }: { place: AdminPlace }) {
                 <RemoveBtn
                   disabled={busy}
                   onClick={() =>
-                    setRemoveTarget({
-                      key: p.id,
-                      label: p.email,
-                      roleLabel: `${p.role} invite`,
-                      run: () => removeMember(p.id, "editorInvite") })
+                    askRemove(p.id, p.email, `${p.role} invite`, () =>
+                      removeMember(p.id, "editorInvite"),
+                    )
                   }
                 />
               </Row>
@@ -214,11 +220,9 @@ export function TeamSection({ place }: { place: AdminPlace }) {
                 <RemoveBtn
                   disabled={busy}
                   onClick={() =>
-                    setRemoveTarget({
-                      key: `${w.userId}:${place.id}`,
-                      label: w.phone ?? "this waiter",
-                      roleLabel: "waiter",
-                      run: () => removeMember(`${w.userId}:${place.id}`, "waiter") })
+                    askRemove(`${w.userId}:${place.id}`, w.phone ?? "this waiter", "waiter", () =>
+                      removeMember(`${w.userId}:${place.id}`, "waiter"),
+                    )
                   }
                 />
               </Row>

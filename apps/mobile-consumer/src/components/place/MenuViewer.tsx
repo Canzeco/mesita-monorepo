@@ -31,6 +31,10 @@ type MenuViewerItem = {
   kind: MenuKind;
 };
 
+const MIN_ZOOM = 0.75;
+const MAX_ZOOM = 2.5;
+const ZOOM_STEP = 0.25;
+
 /** Full-screen menu viewer — web MenuViewer peer (zoom ± for images). */
 export function MenuViewer({
   open,
@@ -173,9 +177,9 @@ function MenuViewerBody({
           >
             <Pressable
               accessibilityLabel="Zoom out"
-              disabled={zoom <= 0.75}
+              disabled={zoom <= MIN_ZOOM}
               onPress={() =>
-                setZoom((z) => Math.max(0.75, +(z - 0.25).toFixed(2)))
+                setZoom((z) => Math.max(MIN_ZOOM, +(z - ZOOM_STEP).toFixed(2)))
               }
               className="size-9 items-center justify-center rounded-full bg-muted disabled:opacity-40"
             >
@@ -186,9 +190,9 @@ function MenuViewerBody({
             </Text>
             <Pressable
               accessibilityLabel="Zoom in"
-              disabled={zoom >= 2.5}
+              disabled={zoom >= MAX_ZOOM}
               onPress={() =>
-                setZoom((z) => Math.min(2.5, +(z + 0.25).toFixed(2)))
+                setZoom((z) => Math.min(MAX_ZOOM, +(z + ZOOM_STEP).toFixed(2)))
               }
               className="size-9 items-center justify-center rounded-full bg-muted disabled:opacity-40"
             >

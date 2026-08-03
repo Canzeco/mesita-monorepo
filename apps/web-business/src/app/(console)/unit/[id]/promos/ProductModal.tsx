@@ -4,7 +4,13 @@ import { Check, Loader2, X } from "lucide-react";
 import { UNIVERSAL_CAP_MXN, type Strategy } from "@/lib/business/strategies";
 import { cn, formatMoney } from "@/lib/utils";
 import { CARD_ART, PRODUCT_PRICE_MXN } from "./promoConstants";
-import { ModalLabel, PlacementReward, RateMatrix, Step } from "./promoShared";
+import {
+  isPaidStrategy,
+  ModalLabel,
+  PlacementReward,
+  RateMatrix,
+  Step,
+} from "./promoShared";
 
 export function ProductModal({
   strategy,
@@ -32,21 +38,32 @@ export function ProductModal({
   }, [onClose]);
 
   const art = CARD_ART[strategy.id];
-  const paid = strategy.id !== "zero";
+  const paid = isPaidStrategy(strategy.id);
   const r = strategy.rates;
   const needsJoin = paid && !subscribed;
+  const priceLabel = formatMoney(PRODUCT_PRICE_MXN, currency);
 
   const primaryLabel = isCurrent
     ? "Current Strategy"
     : paid
       ? subscribed
         ? `Switch to ${strategy.name}`
-        : `Join — ${formatMoney(PRODUCT_PRICE_MXN, currency)}/year`
+        : `Join — ${priceLabel}/year`
       : "Drop to Zero";
 
   const onPrimary = () => {
     if (isCurrent || billingBusy) return;
     onCommit();
+  };
+
+  const footerNote = (): string => {
+    if (needsJoin)
+      return "Starts Verified membership billing, then Mesita activates staff WhatsApp.";
+    if (subscribed && paid && !isCurrent)
+      return "Rates change now — Mesita follows up on the billing.";
+    if (subscribed && !paid)
+      return "Cancels Verified membership (keeps listing on Mesita).";
+    return "";
   };
 
   return (
@@ -105,7 +122,7 @@ export function ProductModal({
             <p className="text-[12px] font-semibold text-white/90 drop-shadow-sm">
               {paid ? (
                 <>
-                  {formatMoney(PRODUCT_PRICE_MXN, currency)}{" "}
+                  {priceLabel}{" "}
                   <span className="font-normal text-white/80">/ year</span>
                 </>
               ) : (
@@ -148,9 +165,8 @@ export function ProductModal({
             <div className="flex flex-col gap-3">
               <ModalLabel>How it works</ModalLabel>
               <Step n={1} title="Pay the membership">
-                {formatMoney(PRODUCT_PRICE_MXN, currency)}/year Verified
-                membership — one Strategy at a time; switching later is a new
-                membership.
+                {priceLabel}/year Verified membership — one Strategy at a
+                time; switching later is a new membership.
               </Step>
               <Step n={2} title="Set up your staff on WhatsApp">
                 We send a test ping so your team can receive guest tickets.
@@ -181,7 +197,7 @@ export function ProductModal({
             <span className="text-sm font-bold">
               {paid ? (
                 <>
-                  {formatMoney(PRODUCT_PRICE_MXN, currency)}
+                  {priceLabel}
                   <span className="text-muted-foreground text-[11px] font-normal">
                     {" "}
                     / year
@@ -217,13 +233,7 @@ export function ProductModal({
             </button>
           </div>
           <p className="text-muted-foreground text-[10px] leading-snug">
-            {needsJoin
-              ? "Starts Verified membership billing, then Mesita activates staff WhatsApp."
-              : subscribed && paid && !isCurrent
-                ? "Rates change now — Mesita follows up on the billing."
-                : subscribed && !paid
-                  ? "Cancels Verified membership (keeps listing on Mesita)."
-                  : ""}
+            {footerNote()}
           </p>
         </div>
       </div>
