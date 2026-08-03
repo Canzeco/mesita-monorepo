@@ -6,12 +6,14 @@ import {
 
 export const BUSINESS_ROUTES = {
   central: "/central",
+  // Account-level settings (billing, sign-out) — distinct from the per-place
+  // Settings tab, which is `unit/<id>/settings`.
   settings: "/settings",
   add: "/add",
   onboard: "/onboard",
 } as const;
 
-type UnitSection = "scan" | "performance" | "team";
+type UnitSection = "performance" | "settings";
 
 export function placePath(projectId: string, tab: PlaceSubTab = "preview"): string {
   return `/unit/${projectId}/place/${tab}`;
@@ -37,7 +39,7 @@ export function pathnameUnitId(pathname: string): string | null {
 }
 
 export function dockHrefForSection(
-  section: "place" | "promos" | "scan" | "performance" | "team",
+  section: "place" | "promos" | "performance" | "settings",
   activeUnitId: string | null,
 ): string {
   if (section === "place") return BUSINESS_ROUTES.central;
@@ -59,8 +61,9 @@ export function placeSwitchHref(
   if (section === "promos") {
     return promosPath(projectId);
   }
-  if (section === "scan") return unitSectionPath(projectId, "scan");
   if (section === "performance") return unitSectionPath(projectId, "performance");
-  if (section === "team") return unitSectionPath(projectId, "team");
+  if (section === "settings") return unitSectionPath(projectId, "settings");
+  // The retired check surface (scan/tickets) and the old standalone team tab
+  // all land back on the place when you switch places.
   return placePath(projectId);
 }
