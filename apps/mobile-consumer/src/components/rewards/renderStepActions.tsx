@@ -4,7 +4,6 @@ import {
   TicketReviewForm,
   type TicketReviewDraft,
 } from '@/components/rewards/TicketReviewForm';
-import { Button } from '@/components/ui/Button';
 import type { TicketFlowStepView } from '@/lib/ticket-flow-steps';
 
 export function renderStepActions({
