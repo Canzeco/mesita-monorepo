@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
-# Point WhatsApp senders at Supabase webhook Edge Functions.
+# Point the WhatsApp consumer sender at its Supabase webhook Edge Function.
 # Requires Senders API access on your account.
+#
+# Delivery receipts only. There is no inbound handler: the staff rail
+# (business-whats-handle-message) went with the waiter identity — staff work
+# the check page at check.mesita.ai and are never messaged.
 
 set -euo pipefail
 
@@ -11,11 +15,9 @@ source "${ROOT}/scripts/_load-local-env.sh"
 ACCOUNT_SID="${TWILIO_ACCOUNT_SID:?Set TWILIO_ACCOUNT_SID}"
 AUTH_TOKEN="${TWILIO_AUTH_TOKEN:?Set TWILIO_AUTH_TOKEN}"
 PROJECT_REF="${SUPABASE_PROJECT_REF:-yjalywfzdelacdzccpgb}"
-INBOUND="https://${PROJECT_REF}.supabase.co/functions/v1/business-whats-handle-message"
 STATUS="https://${PROJECT_REF}.supabase.co/functions/v1/twilio-webhook-update-delivery"
-TARGET="${TWILIO_PHONE_NUMBERS:-+16282968794,+16282964968}"
+TARGET="${TWILIO_PHONE_NUMBERS:-+16282964968}"
 
-echo "==> Inbound:  ${INBOUND}"
 echo "==> Status:   ${STATUS}"
 echo ""
 
@@ -41,7 +43,7 @@ for s in json.load(sys.stdin).get('senders', []):
   HTTP=$(curl -sS -o /tmp/twilio-sender.json -w "%{http_code}" -u "${ACCOUNT_SID}:${AUTH_TOKEN}" \
     -X POST "https://messaging.twilio.com/v2/Channels/Senders/${SID}" \
     -H "Content-Type: application/json" \
-    -d "{\"webhook\":{\"callback_url\":\"${INBOUND}\",\"callback_method\":\"POST\",\"status_callback_url\":\"${STATUS}\",\"status_callback_method\":\"POST\"}}")
+    -d "{\"webhook\":{\"status_callback_url\":\"${STATUS}\",\"status_callback_method\":\"POST\"}}")
   if [[ "${HTTP}" == "200" || "${HTTP}" == "201" || "${HTTP}" == "202" ]]; then
     echo "    ✓ webhooks updated (${SID})"
   else
@@ -51,4 +53,4 @@ for s in json.load(sys.stdin).get('senders', []):
 done
 
 echo ""
-echo "Deploy EFs first: supabase functions deploy business-whats-handle-message twilio-webhook-update-delivery"
+echo "Deploy the EF first: supabase functions deploy twilio-webhook-update-delivery"

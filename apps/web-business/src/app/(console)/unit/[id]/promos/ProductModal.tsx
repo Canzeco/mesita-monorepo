@@ -218,7 +218,7 @@ export function ProductModal({
           </div>
           <p className="text-muted-foreground text-[10px] leading-snug">
             {needsJoin
-              ? "Starts Verified membership billing, then Mesita activates staff WhatsApp."
+              ? "Starts Verified membership billing. It goes live when you honor your first guest check."
               : subscribed && paid && !isCurrent
                 ? "Rates change now — Mesita follows up on the billing."
                 : subscribed && !paid

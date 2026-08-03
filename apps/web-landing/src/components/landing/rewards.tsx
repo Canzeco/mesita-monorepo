@@ -10,7 +10,7 @@ function Rewards() {
     {
       n: "1",
       title: "Escanea tu código",
-      body: "El mesero escanea el código de tu tarjeta Mesita. Nada que instalar para ellos — funciona por WhatsApp o web.",
+      body: "El mesero escanea el código de tu tarjeta Mesita. Nada que instalar para ellos — se abre en el navegador del teléfono, sin cuenta ni contraseña.",
       Icon: QrCode,
     },
     {

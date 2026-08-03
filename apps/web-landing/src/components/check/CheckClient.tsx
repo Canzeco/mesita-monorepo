@@ -24,6 +24,8 @@ import {
 import { Button } from "@/components/ui/button";
 import {
   type CheckPayload,
+  type EFResult,
+  checkErrorMessage,
   fetchCheck,
   formatMxn,
   markPaid,
@@ -79,25 +81,27 @@ export function CheckClient({
   }, [code]);
 
   const run = useCallback(
-    async (key: string, fn: () => Promise<{ ok: boolean; error?: string }>) => {
+    async (key: string, fn: () => Promise<EFResult<unknown>>) => {
       setBusy(key);
       setError(null);
       const res = await fn();
       if (!res.ok) {
         // The place turned on a staff PIN (MESITA-823): surface the field
         // instead of a raw error, and keep the entered digits on a retry.
-        const code = (res as { code?: string }).code;
-        if (code === "pin_required" || code === "pin_invalid") {
+        if (res.code === "pin_required" || res.code === "pin_invalid") {
           setPinOpen(true);
-          setError(
-            code === "pin_invalid"
-              ? "PIN incorrecto — inténtalo de nuevo."
-              : "Este lugar pide un PIN del personal para continuar.",
-          );
+          setError(checkErrorMessage(res));
           setBusy(null);
           return;
         }
-        setError(res.error ?? "Algo salió mal — intenta de nuevo.");
+        setError(checkErrorMessage(res));
+        // A write that failed on the network or a rate limit changed
+        // nothing server-side, and re-fetching would only replace the
+        // message with a second failure. Stop here and let staff retry.
+        if (res.status === 0 || res.status === 429) {
+          setBusy(null);
+          return;
+        }
       }
       await refresh();
       setBusy(null);

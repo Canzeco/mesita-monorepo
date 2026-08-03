@@ -3,7 +3,9 @@
 # Submit WhatsApp approval and write Content SIDs to integrations/twilio/content-sids.json
 #
 # Requires TWILIO_ACCOUNT_SID + TWILIO_AUTH_TOKEN (.env.twilio.local)
-# staff-invite uses twilio/text (natural language; flows later)
+#
+# Consumer templates only. Meta Flows (in-chat forms) went with the waiter
+# identity — they existed solely for staff onboarding.
 
 set -euo pipefail
 
@@ -14,7 +16,6 @@ source "${ROOT}/scripts/_load-local-env.sh"
 ACCOUNT_SID="${TWILIO_ACCOUNT_SID:?Set TWILIO_ACCOUNT_SID}"
 AUTH_TOKEN="${TWILIO_AUTH_TOKEN:?Set TWILIO_AUTH_TOKEN}"
 TEMPLATES_DIR="${ROOT}/integrations/twilio/templates"
-REGISTRY="${ROOT}/integrations/twilio/flows/registry.json"
 OUT="${ROOT}/integrations/twilio/content-sids.json"
 CONTENT_API="https://content.twilio.com/v1/Content"
 
@@ -27,20 +28,10 @@ apply_one() {
   echo "==> Template: ${name}"
 
   local payload
-  payload="$(python3 - "${file}" "${REGISTRY}" <<'PY'
+  payload="$(python3 - "${file}" <<'PY'
 import json, sys
-path, reg_path = sys.argv[1], sys.argv[2]
-with open(path) as f:
-    tpl = json.load(f)
-with open(reg_path) as f:
-    reg = json.load(f)
-raw = json.dumps(tpl)
-if "__FLOW_ID_STAFF_INVITE_ACCEPT__" in raw:
-    flow_id = reg.get("staff-invite-accept", {}).get("flow_id", "")
-    if not flow_id:
-        raise SystemExit("SKIP_FLOW_TEMPLATE")
-    raw = raw.replace("__FLOW_ID_STAFF_INVITE_ACCEPT__", flow_id)
-print(raw)
+with open(sys.argv[1]) as f:
+    print(json.dumps(json.load(f)))
 PY
 )"
 
@@ -88,21 +79,16 @@ PY
 mkdir -p "$(dirname "${OUT}")"
 echo '{}' > "${OUT}"
 
+applied=0
 for f in "${TEMPLATES_DIR}"/*.json; do
   [[ -f "${f}" ]] || continue
   apply_one "${f}"
+  applied=$((applied + 1))
 done
 
 echo ""
-staff_sid="$(python3 -c "
-import json
-d=json.load(open('${OUT}'))
-print(d.get('staff-invite',{}).get('content_sid',''))
-")"
-if [[ -n "${staff_sid}" ]]; then
-  echo "Primary ContentSid for TWILIO_CONTENT_SID_STAFF_INVITE: ${staff_sid}"
-  echo "Or run: ./scripts/twilio-setup-staff-invite.sh  (applies + sets Supabase secret + deploys)"
-else
-  echo "No staff-invite ContentSid created." >&2
-  exit 1
+if [[ "${applied}" -eq 0 ]]; then
+  echo "No template definitions in ${TEMPLATES_DIR} — nothing to apply." >&2
+  exit 0
 fi
+echo "Applied ${applied} template(s). Content SIDs written to ${OUT}."
