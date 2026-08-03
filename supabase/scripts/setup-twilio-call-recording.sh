@@ -58,7 +58,9 @@ for PHONE in "${PHONES[@]}"; do
   PHONE="${PHONE// /}"
   [[ -z "${PHONE}" ]] && continue
   echo "→ ${PHONE}"
-  LOOKUP=$(twilio_get "${API}/IncomingPhoneNumbers.json?PhoneNumber=${PHONE}")
+  # Twilio decodes an unencoded "+" in a query string as a space, so the
+  # lookup silently matches nothing unless it's percent-encoded.
+  LOOKUP=$(twilio_get "${API}/IncomingPhoneNumbers.json?PhoneNumber=${PHONE/+/%2B}")
   PN_SID=$(echo "${LOOKUP}" | python3 -c "
 import json, sys
 nums = json.load(sys.stdin).get('incoming_phone_numbers', [])

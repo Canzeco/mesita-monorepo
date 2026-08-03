@@ -38,6 +38,10 @@ export type TicketBillPayload = {
 
 const MESITA_IG_HANDLE = '@mesita';
 
+function currencySymbolPrefix(currency: string): string {
+  return currency === 'MXN' ? 'MX$' : '$';
+}
+
 export function formatCurrency(
   cents: number | null | undefined,
   currency = 'MXN',
@@ -51,7 +55,7 @@ export function formatCurrency(
       maximumFractionDigits: 0,
     }).format(value);
   } catch {
-    return `${currency === 'MXN' ? 'MX$' : '$'}${value.toFixed(0)}`;
+    return `${currencySymbolPrefix(currency)}${value.toFixed(0)}`;
   }
 }
 
@@ -99,7 +103,7 @@ function formatBillScopeSuffix(
   currency = 'MXN',
 ): string {
   if (capMxn != null && capMxn > 0) {
-    const prefix = currency === 'MXN' ? 'MX$' : '$';
+    const prefix = currencySymbolPrefix(currency);
     return `on the first ${prefix}${capMxn.toLocaleString('en-US')}`;
   }
   return 'on the full bill';
@@ -174,20 +178,18 @@ export function explainTicketBillPromo(
           subtotal,
         )
       : promoCents;
-  const displayPromoCents =
-    ratePercent != null && ratePercent > 0 ? computedPromoCents : promoCents;
 
   const redeemCents = p.redeem_cents ?? 0;
   const tip = p.tip_cents ?? 0;
   const total = p.total_cents ?? subtotal + tip;
   const amountDueCents =
     p.amount_due_cents ??
-    Math.max(0, subtotal - displayPromoCents - redeemCents);
+    Math.max(0, subtotal - computedPromoCents - redeemCents);
 
   return {
     ratePercent,
-    promoCents: displayPromoCents,
-    computedPromoCents: displayPromoCents,
+    promoCents: computedPromoCents,
+    computedPromoCents,
     redeemCents,
     subtotalCents: subtotal,
     tipCents: tip,

@@ -54,24 +54,23 @@ function extForFile(file: File): string {
   return fromName && /^[a-z0-9]+$/.test(fromName) ? fromName : "jpg";
 }
 
+function fileSizeError(file: File): string | null {
+  if (file.size <= MAX_UPLOAD_BYTES) return null;
+  return `File is too large (${formatBytes(file.size)}). Max ${formatBytes(MAX_UPLOAD_BYTES)}.`;
+}
+
 export function validateUploadFile(file: File): string | null {
   if (!ALLOWED_IMAGE_MIME_TYPES.has(file.type)) {
     return "Unsupported file type. Use JPG, PNG, WEBP, or AVIF.";
   }
-  if (file.size > MAX_UPLOAD_BYTES) {
-    return `File is too large (${formatBytes(file.size)}). Max ${formatBytes(MAX_UPLOAD_BYTES)}.`;
-  }
-  return null;
+  return fileSizeError(file);
 }
 
 export function validateMenuUploadFile(file: File): string | null {
   if (!ALLOWED_MENU_MIME_TYPES.has(file.type)) {
     return "Use a PDF or image (JPG, PNG, WEBP, AVIF).";
   }
-  if (file.size > MAX_UPLOAD_BYTES) {
-    return `File is too large (${formatBytes(file.size)}). Max ${formatBytes(MAX_UPLOAD_BYTES)}.`;
-  }
-  return null;
+  return fileSizeError(file);
 }
 
 function extForMenuFile(file: File): string {
@@ -79,18 +78,21 @@ function extForMenuFile(file: File): string {
   return extForFile(file);
 }
 
+function parseLooseUrl(trimmed: string): URL | null {
+  try {
+    return new URL(/^[a-z]+:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`);
+  } catch {
+    return null;
+  }
+}
+
 export function isDriveMenuUrl(url: string): boolean {
   const trimmed = url.trim();
   if (!trimmed) return false;
-  try {
-    const parsed = new URL(
-      /^[a-z]+:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`,
-    );
-    const host = parsed.hostname.toLowerCase();
-    return host.includes("drive.google.com") || host.includes("docs.google.com");
-  } catch {
-    return false;
-  }
+  const parsed = parseLooseUrl(trimmed);
+  if (!parsed) return false;
+  const host = parsed.hostname.toLowerCase();
+  return host.includes("drive.google.com") || host.includes("docs.google.com");
 }
 
 type MenuFileKind = "image" | "pdf" | "drive";
@@ -112,36 +114,31 @@ export function detectMenuFileKind(url: string): MenuFileKind {
 export function drivePreviewUrl(url: string): string | null {
   const trimmed = url.trim();
   if (!trimmed || !isDriveMenuUrl(trimmed)) return null;
-  try {
-    const parsed = new URL(
-      /^[a-z]+:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`,
-    );
-    const host = parsed.hostname.toLowerCase();
-    const path = parsed.pathname;
+  const parsed = parseLooseUrl(trimmed);
+  if (!parsed) return null;
+  const host = parsed.hostname.toLowerCase();
+  const path = parsed.pathname;
 
-    const fileMatch = path.match(/\/file\/d\/([^/]+)/);
-    if (fileMatch?.[1]) {
-      return `https://drive.google.com/file/d/${fileMatch[1]}/preview`;
-    }
-
-    const id = parsed.searchParams.get("id");
-    if (id) {
-      return `https://drive.google.com/file/d/${id}/preview`;
-    }
-
-    if (host.includes("docs.google.com")) {
-      const docMatch = path.match(
-        /\/(document|spreadsheets|presentation)\/d\/([^/]+)/,
-      );
-      if (docMatch?.[1] && docMatch[2]) {
-        return `https://docs.google.com/${docMatch[1]}/d/${docMatch[2]}/preview`;
-      }
-    }
-
-    return null;
-  } catch {
-    return null;
+  const fileMatch = path.match(/\/file\/d\/([^/]+)/);
+  if (fileMatch?.[1]) {
+    return `https://drive.google.com/file/d/${fileMatch[1]}/preview`;
   }
+
+  const id = parsed.searchParams.get("id");
+  if (id) {
+    return `https://drive.google.com/file/d/${id}/preview`;
+  }
+
+  if (host.includes("docs.google.com")) {
+    const docMatch = path.match(
+      /\/(document|spreadsheets|presentation)\/d\/([^/]+)/,
+    );
+    if (docMatch?.[1] && docMatch[2]) {
+      return `https://docs.google.com/${docMatch[1]}/d/${docMatch[2]}/preview`;
+    }
+  }
+
+  return null;
 }
 
 /** Storage object path for a business/admin gallery upload. */

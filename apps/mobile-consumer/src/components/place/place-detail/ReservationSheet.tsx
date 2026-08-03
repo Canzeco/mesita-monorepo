@@ -24,6 +24,8 @@ import {
 const DATE_WINDOW = 14; // two weeks of pills
 const DEFAULT_TIME = '20:00';
 const DEFAULT_PARTY = 2;
+const MIN_PARTY_SIZE = 1;
+const MAX_PARTY_SIZE = 20;
 
 // MX_OFFSET (and everything else about the venue's clock) lives in
 // @/lib/venue-time — the single source of truth. The picked slot is the
@@ -415,14 +417,14 @@ export function ReservationSheet({
                 <Stepper
                   label="Decrease party size"
                   symbol="−"
-                  disabled={party <= 1}
-                  onPress={() => setParty((p) => Math.max(1, p - 1))}
+                  disabled={party <= MIN_PARTY_SIZE}
+                  onPress={() => setParty((p) => Math.max(MIN_PARTY_SIZE, p - 1))}
                 />
                 <Stepper
                   label="Increase party size"
                   symbol="+"
-                  disabled={party >= 20}
-                  onPress={() => setParty((p) => Math.min(20, p + 1))}
+                  disabled={party >= MAX_PARTY_SIZE}
+                  onPress={() => setParty((p) => Math.min(MAX_PARTY_SIZE, p + 1))}
                 />
               </View>
             </View>

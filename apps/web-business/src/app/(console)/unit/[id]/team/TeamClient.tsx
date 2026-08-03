@@ -27,6 +27,27 @@ function staffInvitePhoneKey(phone: string | null | undefined): string {
   return phone.replace(/\D/g, "");
 }
 
+type StaffInviteResult = Awaited<ReturnType<typeof apiInviteStaff>>;
+
+function staffInviteNotice(
+  res: StaffInviteResult,
+  channel: "whatsapp" | "sms",
+): string {
+  if (res.sent) {
+    return res.resent
+      ? `Invitación reenviada por WhatsApp a ${res.phone}.`
+      : `Invitación enviada por WhatsApp a ${res.phone}. Queda pendiente hasta que respondan sí.`;
+  }
+  if (res.sendError) {
+    return res.resent
+      ? `No se pudo reenviar por WhatsApp: ${res.sendError}`
+      : `Invitación pendiente — no se envió por WhatsApp: ${res.sendError}`;
+  }
+  return channel === "whatsapp"
+    ? "Invitación pendiente — agrega el teléfono y usa Reenviar en la fila."
+    : "Invitación pendiente — usa WhatsApp; el mesero acepta respondiendo sí en Mesita Ops.";
+}
+
 export function TeamClient({
   projectId,
   currentUserId,
@@ -102,7 +123,7 @@ export function TeamClient({
     );
 
   const applyStaffInviteResult = (
-    res: Awaited<ReturnType<typeof apiInviteStaff>>,
+    res: StaffInviteResult,
     channel: "whatsapp" | "sms",
   ) => {
     const phoneKey = staffInvitePhoneKey(res.phone);
@@ -123,23 +144,7 @@ export function TeamClient({
         ),
       ],
     }));
-    if (res.sent) {
-      setNotice(
-        res.resent
-          ? `Invitación reenviada por WhatsApp a ${res.phone}.`
-          : `Invitación enviada por WhatsApp a ${res.phone}. Queda pendiente hasta que respondan sí.`,
-      );
-    } else {
-      setNotice(
-        res.sendError
-          ? res.resent
-            ? `No se pudo reenviar por WhatsApp: ${res.sendError}`
-            : `Invitación pendiente — no se envió por WhatsApp: ${res.sendError}`
-          : channel === "whatsapp"
-            ? "Invitación pendiente — agrega el teléfono y usa Reenviar en la fila."
-            : "Invitación pendiente — usa WhatsApp; el mesero acepta respondiendo sí en Mesita Ops.",
-      );
-    }
+    setNotice(staffInviteNotice(res, channel));
   };
 
   const handleInviteStaff = (channel: "whatsapp" | "sms", phone: string) =>

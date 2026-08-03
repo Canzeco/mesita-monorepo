@@ -44,14 +44,20 @@ export const RANDOMNESS_MAX = 5;
 export const RANDOMNESS_ENDPOINTS = { min: "Ranked", max: "Surprise" } as const;
 
 // ── Where / distance ────────────────────────────────────────────────────────
-export type DiscoveryZoneLevel =
-  | "address"
-  | "street"
-  | "neighborhood"
-  | "city"
-  | "county"
-  | "state"
-  | "country";
+// Single source of truth for the zone hierarchy — callers that need to
+// validate an untyped value at runtime (e.g. use-discovery-filters' persisted
+// storage parser) read this array instead of re-listing the levels.
+export const DISCOVERY_ZONE_LEVELS = [
+  "address",
+  "street",
+  "neighborhood",
+  "city",
+  "county",
+  "state",
+  "country",
+] as const;
+
+export type DiscoveryZoneLevel = (typeof DISCOVERY_ZONE_LEVELS)[number];
 
 /** A resolved geographic center for the Where filter (a searched location). */
 export type DiscoveryZone = {
@@ -271,7 +277,7 @@ export function deriveCategoryOptions(
  * fix arriving, a zone recenter), so the randomness source must replay the
  * same sequence per seed or the deck visibly reshuffles under the user.
  */
-function createSeededRandom(seed: number): () => number {
+export function createSeededRandom(seed: number): () => number {
   let a = seed >>> 0;
   return () => {
     a = (a + 0x6d2b79f5) >>> 0;

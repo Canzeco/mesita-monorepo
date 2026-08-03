@@ -17,18 +17,7 @@ import {
   SWIPE_CARD_WITC_FIELDS_TARGET_H,
 } from "./swipe-card-styles";
 
-/**
- * TIWC — cover over the full card.
- * WITC — cover in the top band only; blue strip below (fields in SwipeCardFieldsLayer).
- */
-export function CarouselPhotoSlide({
-  src,
-  alt,
-  layoutMode,
-  fieldsHeight,
-  className,
-  onNaturalSize,
-}: {
+type PhotoSlideProps = {
   src: string;
   alt: string;
   layoutMode: SwipeCardLayoutMode;
@@ -36,13 +25,28 @@ export function CarouselPhotoSlide({
   priority?: boolean;
   className?: string;
   onNaturalSize?: (size: ImageNaturalSize) => void;
-}) {
+};
+
+/**
+ * TIWC — cover over the full card.
+ * WITC — cover in the top band only; blue strip below (fields in SwipeCardFieldsLayer).
+ */
+function PhotoSlide({
+  src,
+  alt,
+  layoutMode,
+  fieldsHeight,
+  priority,
+  className,
+  onNaturalSize,
+}: PhotoSlideProps) {
   if (isSplitLayout(layoutMode)) {
     return (
       <WitcPhotoSlide
         src={src}
         alt={alt}
         fieldsHeight={fieldsHeight}
+        priority={priority}
         className={className}
         onNaturalSize={onNaturalSize}
       />
@@ -53,48 +57,19 @@ export function CarouselPhotoSlide({
     <TiwcPhotoSlide
       src={src}
       alt={alt}
+      priority={priority}
       className={className}
       onNaturalSize={onNaturalSize}
     />
   );
 }
 
-export function StaticPhotoSlide({
-  src,
-  alt,
-  layoutMode,
-  fieldsHeight,
-  className,
-  onNaturalSize,
-}: {
-  src: string;
-  alt: string;
-  layoutMode: SwipeCardLayoutMode;
-  fieldsHeight: number;
-  priority?: boolean;
-  className?: string;
-  onNaturalSize?: (size: ImageNaturalSize) => void;
-}) {
-  if (isSplitLayout(layoutMode)) {
-    return (
-      <WitcPhotoSlide
-        src={src}
-        alt={alt}
-        fieldsHeight={fieldsHeight}
-        className={className}
-        onNaturalSize={onNaturalSize}
-      />
-    );
-  }
+export function CarouselPhotoSlide(props: PhotoSlideProps) {
+  return <PhotoSlide {...props} />;
+}
 
-  return (
-    <TiwcPhotoSlide
-      src={src}
-      alt={alt}
-      className={className}
-      onNaturalSize={onNaturalSize}
-    />
-  );
+export function StaticPhotoSlide(props: PhotoSlideProps) {
+  return <PhotoSlide {...props} />;
 }
 
 /** WITC — top photo band + vertically mirrored strip below. */
@@ -102,12 +77,14 @@ function WitcPhotoSlide({
   src,
   alt,
   fieldsHeight,
+  priority,
   className,
   onNaturalSize,
 }: {
   src: string;
   alt: string;
   fieldsHeight: number;
+  priority?: boolean;
   className?: string;
   onNaturalSize?: (size: ImageNaturalSize) => void;
 }) {
@@ -127,6 +104,7 @@ function WitcPhotoSlide({
         <CoverImage
           src={src}
           alt={alt}
+          priority={priority}
           onNaturalSize={onNaturalSize}
           className="h-full w-full object-bottom"
         />
@@ -167,11 +145,13 @@ function WitcPhotoSlide({
 function TiwcPhotoSlide({
   src,
   alt,
+  priority,
   className,
   onNaturalSize,
 }: {
   src: string;
   alt: string;
+  priority?: boolean;
   className?: string;
   onNaturalSize?: (size: ImageNaturalSize) => void;
 }) {
@@ -180,6 +160,7 @@ function TiwcPhotoSlide({
       <CoverImage
         src={src}
         alt={alt}
+        priority={priority}
         className="absolute inset-0 h-full w-full"
         onNaturalSize={onNaturalSize}
       />
@@ -190,12 +171,14 @@ function TiwcPhotoSlide({
 function CoverImage({
   src,
   alt,
+  priority,
   className,
   onNaturalSize,
   style,
 }: {
   src: string;
   alt: string;
+  priority?: boolean;
   className?: string;
   onNaturalSize?: (size: ImageNaturalSize) => void;
   style?: CSSProperties;
@@ -207,6 +190,7 @@ function CoverImage({
       alt={alt}
       draggable={false}
       loading="eager"
+      fetchPriority={priority ? "high" : "auto"}
       decoding="async"
       onLoad={
         onNaturalSize

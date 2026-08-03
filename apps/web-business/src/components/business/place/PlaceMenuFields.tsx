@@ -17,6 +17,8 @@ import {
   validateMenuUploadFile,
 } from "./place-upload-utils";
 
+const MENU_NAME_MAX_LENGTH = 80;
+
 function normalizeHttpsUrl(raw: string): string {
   const trimmed = raw.trim();
   if (!trimmed) return "";
@@ -130,7 +132,7 @@ export function PlaceMenuFields({
       const baseName = file.name.replace(/\.[^.]+$/, "").trim();
       setLink({
         url: data.publicUrl,
-        name: link.name.trim() || baseName.slice(0, 80),
+        name: link.name.trim() || baseName.slice(0, MENU_NAME_MAX_LENGTH),
       });
       onError(null);
     } catch (err) {
@@ -146,7 +148,9 @@ export function PlaceMenuFields({
         <input
           type="text"
           value={link.name}
-          onChange={(e) => setLink({ name: e.target.value.slice(0, 80) })}
+          onChange={(e) =>
+            setLink({ name: e.target.value.slice(0, MENU_NAME_MAX_LENGTH) })
+          }
           placeholder="Dinner menu"
           className={INPUT}
         />
@@ -154,7 +158,7 @@ export function PlaceMenuFields({
       <PlaceFormField label="Menu link" kv>
         <input
           type="url"
-          value={isDriveMenuUrl(link.url) || !hasUploadedFile ? link.url : ""}
+          value={hasUploadedFile ? "" : link.url}
           onChange={(e) => setLink({ url: e.target.value })}
           placeholder="Google Drive or URL"
           spellCheck={false}

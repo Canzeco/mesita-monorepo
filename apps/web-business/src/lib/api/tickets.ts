@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { invokeEF } from "./_invoke";
+import { invokeEF, withPlaceId } from "./_invoke";
 import type { Database } from "@/lib/supabase/database.types";
 
 type TicketStatus = Database["public"]["Enums"]["ticket_status"];
@@ -64,8 +64,7 @@ export async function apiListTickets(
   const { tickets } = await invokeEF<{ tickets: RawTicket[] }>(
     client,
     "business-web-list-tickets",
-    // Canonical payload key is `placeId` (MESITA-26); local naming unchanged.
-    { placeId: input.projectId, limit: input.limit },
+    withPlaceId(input),
     "Couldn't load tickets.",
   );
   return (tickets ?? []).map(normalizeTicketConsumer);

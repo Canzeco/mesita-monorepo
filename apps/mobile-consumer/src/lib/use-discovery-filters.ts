@@ -8,6 +8,7 @@ import { useSyncExternalStore } from 'react';
 
 import {
   DISCOVERY_FILTER_DEFAULTS,
+  DISCOVERY_ZONE_LEVELS,
   defaultRadiusForLevel,
   type DiscoveryFilters,
   type DiscoveryWhen,
@@ -20,16 +21,12 @@ import { PLACE_FAMILIES, type FamilyKey } from '@/lib/place-families';
 // v4 = v3 + `ask` (the intent's That axis, MESITA-699); old keys ignored.
 const STORAGE_KEY = 'mesita_discovery_filters_v4';
 
+// Matches setDiscoveryAsk's cap — the persisted parser re-clamps in case an
+// older/foreign payload slipped past the original limit.
+const MAX_ASK_LENGTH = 200;
+
 const KNOWN_FAMILY_KEYS = new Set<string>(PLACE_FAMILIES.map((f) => f.key));
-const ZONE_LEVELS = new Set<string>([
-  'address',
-  'street',
-  'neighborhood',
-  'city',
-  'county',
-  'state',
-  'country',
-]);
+const ZONE_LEVELS = new Set<string>(DISCOVERY_ZONE_LEVELS);
 
 function readZone(raw: unknown): DiscoveryZone | null {
   if (!raw || typeof raw !== 'object') return null;
@@ -91,7 +88,10 @@ function parsePersisted(raw: string): DiscoveryFilters {
       zone: readZone(parsed.zone),
       maxKm,
       when: readWhen(parsed.when),
-      ask: typeof parsed.ask === 'string' ? parsed.ask.slice(0, 200) : '',
+      ask:
+        typeof parsed.ask === 'string'
+          ? parsed.ask.slice(0, MAX_ASK_LENGTH)
+          : '',
       randomness,
     };
   } catch {
@@ -188,7 +188,7 @@ export function setDiscoveryMaxKm(maxKm: number | null) {
 
 /** That — the free-text ask (the intent's 4th axis). Capped at 200 chars. */
 export function setDiscoveryAsk(ask: string) {
-  patchDiscoveryFilters({ ask: ask.slice(0, 200) });
+  patchDiscoveryFilters({ ask: ask.slice(0, MAX_ASK_LENGTH) });
 }
 
 export function setDiscoveryRandomness(randomness: RandomnessLevel) {

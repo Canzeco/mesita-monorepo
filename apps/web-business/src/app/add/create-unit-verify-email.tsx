@@ -17,23 +17,18 @@ import {
   type VerificationCallbacks,
 } from "./create-unit-shared";
 
+type OtpSession = {
+  verificationId: string;
+  mockCode: string | null;
+  sentTo: string;
+  mockMode: boolean;
+};
+
 type EmailState =
   | { kind: "idle" }
   | { kind: "sending" }
-  | {
-      kind: "awaiting_code";
-      verificationId: string;
-      mockCode: string | null;
-      sentTo: string;
-      mockMode: boolean;
-    }
-  | {
-      kind: "verifying";
-      verificationId: string;
-      mockCode: string | null;
-      sentTo: string;
-      mockMode: boolean;
-    };
+  | ({ kind: "awaiting_code" } & OtpSession)
+  | ({ kind: "verifying" } & OtpSession);
 
 export function EmailBody({
   place,
@@ -151,14 +146,8 @@ export function EmailBody({
   }
 
   const verifying = state.kind === "verifying";
-  const sentTo =
-    state.kind === "awaiting_code" || state.kind === "verifying"
-      ? state.sentTo
-      : emailDisplay;
-  const mockMode =
-    state.kind === "awaiting_code" || state.kind === "verifying"
-      ? state.mockMode
-      : false;
+  const sentTo = state.sentTo;
+  const mockMode = state.mockMode;
 
   return (
     <div className="flex flex-col gap-4">
@@ -200,7 +189,7 @@ export function EmailBody({
 
         <button
           type="submit"
-          disabled={verifying || otpCode.length !== 6}
+          disabled={verifying || !isOtpCode(otpCode)}
           className={cn(
             "mt-1 flex h-12 items-center justify-center gap-2 rounded-full text-sm font-semibold transition disabled:opacity-50",
             "bg-pink-gradient shadow-glow text-white",

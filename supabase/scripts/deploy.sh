@@ -3,7 +3,7 @@
 # Apply pending migrations to the linked Supabase project and
 # regenerate TypeScript types into @mesita/supabase-contract (mesita monorepo).
 #
-# Run from the mesita-supabase repo root:
+# Run from the supabase/ package root (mesita-monorepo):
 #   ./scripts/deploy.sh
 #
 # Edge Functions are deployed individually (or via `supabase functions
@@ -14,12 +14,12 @@ set -euo pipefail
 
 PROJECT_REF="yjalywfzdelacdzccpgb"
 
-# Types are copied into each standalone web repo (the permanent architecture;
-# monorepo experiment retired 2026-07-09 — MESITA-357).
+# Types are copied into each app package's generated types file, when it has one
+# (web-admin has no database.types.ts and is skipped below).
 WEB_REPOS=(
-  "../mesita-web-business"
-  "../mesita-web-consumer"
-  "../mesita-web-admin"
+  "../apps/web-business"
+  "../apps/web-consumer"
+  "../apps/web-admin"
 )
 
 cd "$(dirname "$0")/.."

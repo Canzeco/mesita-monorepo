@@ -4,7 +4,7 @@
 // one Edge Function per call, errors unwrapped by invokeEF.
 
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { invokeEF } from "./_invoke";
+import { invokeEF, withPlaceId } from "./_invoke";
 
 // project_members.role DB enum — per-place tier (distinct from the
 // platform-level "business" app role). Migration 0025 renamed
@@ -101,12 +101,10 @@ export async function apiInviteEditor(
     redirectBase?: string;
   },
 ): Promise<InviteEditorResult> {
-  const { projectId, ...rest } = input;
   return await invokeEF<InviteEditorResult>(
     client,
     "business-web-invite-member",
-    // Canonical payload key is `placeId` (MESITA-26); local naming unchanged.
-    { ...rest, placeId: projectId },
+    withPlaceId(input),
     "Couldn't send the invite.",
   );
 }
@@ -134,12 +132,10 @@ export async function apiInviteStaff(
     redirectBase?: string;
   },
 ): Promise<InviteStaffResult> {
-  const { projectId, ...rest } = input;
   return await invokeEF<InviteStaffResult>(
     client,
     "business-web-invite-staff",
-    // Canonical payload key is `placeId` (MESITA-26); local naming unchanged.
-    { ...rest, placeId: projectId },
+    withPlaceId(input),
     "Couldn't send the staff invite.",
   );
 }
@@ -182,12 +178,10 @@ export async function apiTestStaffChannel(
   client: SupabaseClient,
   input: { projectId: string; channel: "whatsapp" | "sms"; phone: string },
 ): Promise<TestStaffChannelResult> {
-  const { projectId, ...rest } = input;
   return await invokeEF<TestStaffChannelResult>(
     client,
     "business-web-test-staff-channel",
-    // Canonical payload key is `placeId` (MESITA-26); local naming unchanged.
-    { ...rest, placeId: projectId },
+    withPlaceId(input),
     "Couldn't send the test message.",
   );
 }

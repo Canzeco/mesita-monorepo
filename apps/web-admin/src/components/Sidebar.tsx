@@ -62,51 +62,15 @@ const ALERTS_NAV: NavItem[] = [
 
 const CONFIGS_NAV: NavItem[] = [
   { href: "/admin-config", label: "Admin Config", Icon: ShieldCheck },
-  {
-    href: DB_PARENT.href,
-    label: DB_PARENT.label,
-    Icon: DB_PARENT.Icon,
-  },
-  {
-    href: MODELS_PARENT.href,
-    label: MODELS_PARENT.label,
-    Icon: MODELS_PARENT.Icon,
-  },
-  {
-    href: ATLAS_PARENT.href,
-    label: ATLAS_PARENT.label,
-    Icon: ATLAS_PARENT.Icon,
-  },
-  {
-    href: SOURCING_PARENT.href,
-    label: SOURCING_PARENT.label,
-    Icon: SOURCING_PARENT.Icon,
-  },
-  {
-    href: ENRICHER_PARENT.href,
-    label: ENRICHER_PARENT.label,
-    Icon: ENRICHER_PARENT.Icon,
-  },
-  {
-    href: SCORING_PARENT.href,
-    label: SCORING_PARENT.label,
-    Icon: SCORING_PARENT.Icon,
-  },
-  {
-    href: REWARDS_PARENT.href,
-    label: REWARDS_PARENT.label,
-    Icon: REWARDS_PARENT.Icon,
-  },
-  {
-    href: MEMO_PARENT.href,
-    label: MEMO_PARENT.label,
-    Icon: MEMO_PARENT.Icon,
-  },
-  {
-    href: RESERVATIONS_PARENT.href,
-    label: RESERVATIONS_PARENT.label,
-    Icon: RESERVATIONS_PARENT.Icon,
-  },
+  DB_PARENT,
+  MODELS_PARENT,
+  ATLAS_PARENT,
+  SOURCING_PARENT,
+  ENRICHER_PARENT,
+  SCORING_PARENT,
+  REWARDS_PARENT,
+  MEMO_PARENT,
+  RESERVATIONS_PARENT,
 ];
 
 const MANAGE_NAV: NavItem[] = [

@@ -41,7 +41,7 @@ export type TicketProgressInput = {
   reviewCompleted: boolean;
 };
 
-const STORY_VERIFIED = new Set<StoryStatus>(["ai_verified", "staff_verified"]);
+const STORY_VERIFIED = new Set<string>(["ai_verified", "staff_verified"]);
 
 const STORY_KINDS = new Set(["s_dp_sf", "r_s_dp_sf"]);
 
@@ -141,7 +141,7 @@ function hasBill(input: TicketProgressInput): boolean {
 }
 
 function storyVerified(story_status: string): boolean {
-  return STORY_VERIFIED.has(story_status as StoryStatus);
+  return STORY_VERIFIED.has(story_status);
 }
 
 function reviewDone(input: TicketProgressInput): boolean {
@@ -169,12 +169,20 @@ function inferCurrentIndex(
   return steps.length;
 }
 
-export function resolveTicketFlowSteps(
-  input: TicketProgressInput,
-): TicketFlowStepView[] {
+function resolveFlowProgress(input: TicketProgressInput): {
+  stepIds: TicketFlowStepId[];
+  currentIndex: number;
+} {
   const flowType = ticketFlowTypeFromKind(input.kind);
   const stepIds = FLOW_STEPS_BY_TYPE[flowType];
   const currentIndex = inferCurrentIndex(flowType, stepIds, input);
+  return { stepIds, currentIndex };
+}
+
+export function resolveTicketFlowSteps(
+  input: TicketProgressInput,
+): TicketFlowStepView[] {
+  const { stepIds, currentIndex } = resolveFlowProgress(input);
 
   return stepIds.map((id, index) => ({
     id,
@@ -210,8 +218,6 @@ export function ticketProgressFromBundle(input: {
 }
 
 export function isTicketFlowComplete(input: TicketProgressInput): boolean {
-  const flowType = ticketFlowTypeFromKind(input.kind);
-  const stepIds = FLOW_STEPS_BY_TYPE[flowType];
-  const currentIndex = inferCurrentIndex(flowType, stepIds, input);
+  const { stepIds, currentIndex } = resolveFlowProgress(input);
   return currentIndex >= stepIds.length;
 }

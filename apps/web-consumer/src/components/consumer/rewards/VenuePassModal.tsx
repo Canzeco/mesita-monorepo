@@ -110,6 +110,11 @@ const STORY_LINE: Record<string, string> = {
   staff_rejected: "Story wasn't accepted — ask the staff to review it.",
 };
 
+// story_status/review_status value meaning "this rung doesn't apply to this
+// ticket" — as opposed to null (not yet evaluated) or "pending" (evaluated,
+// awaiting proof).
+const NOT_REQUIRED = "not_required";
+
 function statusLine(t: ConsumerTicketRow): string {
   switch (t.status) {
     case "open":
@@ -121,6 +126,10 @@ function statusLine(t: ConsumerTicketRow): string {
     default:
       return t.status;
   }
+}
+
+function errorMessage(err: unknown, fallback: string): string {
+  return err instanceof Error ? err.message : fallback;
 }
 
 export function VenuePassModal({
@@ -206,9 +215,7 @@ export function VenuePassModal({
             return;
           }
         }
-        setError(
-          err instanceof Error ? err.message : "Couldn't start your ticket.",
-        );
+        setError(errorMessage(err, "Couldn't start your ticket."));
       } finally {
         setCreating(false);
       }
@@ -239,9 +246,7 @@ export function VenuePassModal({
         else await apiSubmitReview(supabase, ticketId);
         await tickets.refresh();
       } catch (err) {
-        setError(
-          err instanceof Error ? err.message : "Couldn't send that just yet.",
-        );
+        setError(errorMessage(err, "Couldn't send that just yet."));
       } finally {
         setActing(null);
       }
@@ -304,7 +309,7 @@ export function VenuePassModal({
   const actionable = useMemo(() => {
     if (!ticket || !ACTIVE_TICKET_STATUSES.has(ticket.status)) return [];
     const settled = (v: string | null | undefined) =>
-      v != null && v !== "not_required" && v !== "pending";
+      v != null && v !== NOT_REQUIRED && v !== "pending";
     const out: {
       kind: "story" | "review";
       label: string;
@@ -312,7 +317,7 @@ export function VenuePassModal({
       done: boolean;
     }[] = [];
     const storyOn =
-      ticket.story_status != null && ticket.story_status !== "not_required";
+      ticket.story_status != null && ticket.story_status !== NOT_REQUIRED;
     if (storyOn) {
       out.push({
         kind: "story",

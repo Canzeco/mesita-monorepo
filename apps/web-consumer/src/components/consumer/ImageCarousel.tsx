@@ -140,6 +140,12 @@ export function ImageCarousel({
       goTo(target);
     };
 
+  // In transform mode every slide must already be eager (paging can't wait
+  // on a lazy fetch); in native-scroll mode only a window around the active
+  // slide is eager so neighbours are warm before you reach them.
+  const isInPreloadWindow = (i: number) =>
+    noNativeScroll || (i >= idx - PRELOAD_BEHIND && i <= idx + PRELOAD_AHEAD);
+
   const toggleMute = () => {
     const next = !muted;
     setMuted(next);
@@ -231,16 +237,10 @@ export function ImageCarousel({
                 fill
                 sizes={sizes}
                 priority={priority && i === 0}
-                // Force eager in transform mode so paging shows the next
-                // photo instantly instead of waiting on a lazy fetch. In
-                // native-scroll mode, still eager-load a window around the
-                // active slide so the neighbours are warm before you reach
-                // them.
                 loading={
                   priority && i === 0
                     ? undefined
-                    : noNativeScroll ||
-                        (i >= idx - PRELOAD_BEHIND && i <= idx + PRELOAD_AHEAD)
+                    : isInPreloadWindow(i)
                       ? "eager"
                       : "lazy"
                 }

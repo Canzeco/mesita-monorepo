@@ -12,7 +12,7 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { PlacePlan } from "./places";
-import { invokeEF } from "./_invoke";
+import { invokeEF, withPlaceId } from "./_invoke";
 
 type ChangeSubscriptionResult = {
   plan: PlacePlan;
@@ -41,12 +41,10 @@ export async function apiChangeSubscription(
     cancelUrl?: string;
   },
 ): Promise<ChangeSubscriptionResult> {
-  const { projectId, ...rest } = input;
   return await invokeEF<ChangeSubscriptionResult>(
     client,
     "business-web-change-subscription",
-    // Canonical payload key is `placeId` (MESITA-26); local naming unchanged.
-    { ...rest, placeId: projectId },
+    withPlaceId(input),
     "Couldn't update the subscription",
   );
 }

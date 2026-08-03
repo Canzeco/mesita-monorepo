@@ -21,7 +21,6 @@ import {
   PEAK_STRATEGY,
   REWARD_SEGMENTS,
   segmentKeyForClass,
-  type RewardClassKey,
   type RewardSegmentKey,
 } from '@/lib/reward-segments';
 import { useAuth } from '@/providers/auth';
@@ -69,7 +68,7 @@ export function HelpModal({
   onClose: () => void;
 }) {
   const { consumerClass } = useAuth();
-  const key = (consumerClass?.class ?? 'standard') as RewardClassKey;
+  const key = consumerClass?.class ?? 'standard';
   const mine = segmentKeyForClass(key);
 
   return (

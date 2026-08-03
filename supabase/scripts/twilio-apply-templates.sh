@@ -20,10 +20,6 @@ CONTENT_API="https://content.twilio.com/v1/Content"
 
 auth=(-u "${ACCOUNT_SID}:${AUTH_TOKEN}")
 
-flow_id_for_staff_invite() {
-  python3 -c "import json; r=json.load(open('${REGISTRY}')); print(r.get('staff-invite-accept',{}).get('flow_id',''))"
-}
-
 apply_one() {
   local file="$1"
   local name

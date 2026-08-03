@@ -54,9 +54,9 @@ export default async function SettingsPage() {
   const overview = overviewResult.value;
   const business =
     profileResult.status === "fulfilled" ? profileResult.value : null;
-  const isSuperAdmin = overview?.isSuperAdmin === true;
+  const isSuperAdmin = overview.isSuperAdmin;
 
-  const places = overview?.places ?? [];
+  const places = overview.places;
   const activePlaceId = resolveActiveUnitId({
     cookieId: cookieUnitId,
     projectIds: places.map((v) => v.id),
@@ -148,7 +148,7 @@ export default async function SettingsPage() {
           <SectionLabel>Profile</SectionLabel>
           <div className="border-border bg-card flex items-center gap-3 rounded-2xl border px-3 py-3">
             <span className="bg-pink-gradient flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-bold text-white">
-              {personInitial(accountName, email)}
+              {initialLetter(accountName, "?")}
             </span>
             <div className="min-w-0 flex-1">
               <p className="truncate text-sm font-semibold">{accountName}</p>
@@ -224,10 +224,6 @@ function PlaceAvatar({ name }: { name: string }) {
       {initial}
     </span>
   );
-}
-
-function personInitial(fullName: string | null, email: string | null): string {
-  return initialLetter(fullName ?? email, "?");
 }
 
 function accountLabel(email: string | null): string {

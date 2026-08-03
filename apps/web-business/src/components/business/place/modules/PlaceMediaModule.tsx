@@ -98,10 +98,6 @@ function MediaSection({
     const files = Array.from(e.target.files ?? []);
     e.target.value = "";
     if (files.length === 0 || uploading) return;
-    if (photos.length >= MAX_PHOTOS) {
-      onError(`At most ${MAX_PHOTOS} photos.`);
-      return;
-    }
     const slots = Math.max(0, MAX_PHOTOS - photos.length);
     const nextBatch = files.slice(0, slots);
     if (nextBatch.length === 0) {

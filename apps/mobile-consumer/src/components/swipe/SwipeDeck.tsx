@@ -67,6 +67,9 @@ import { useSwipeTutorial } from './useSwipeTutorial';
 
 const SWIPE_THRESHOLD = 64;
 const SWIPE_VELOCITY = 800; // px/s — RNGH velocity is px/s, not px/ms
+// Below this speed, translation is a more reliable direction signal than a
+// twitchy low-velocity reading, so direction falls back to translationX.
+const DIRECTION_VELOCITY_MIN = 120;
 const EXIT_MS = 280;
 const SCREEN_W = Dimensions.get('window').width;
 
@@ -390,7 +393,9 @@ function DeckBody({
         Math.abs(e.velocityX) > SWIPE_VELOCITY;
       if (shouldCommit) {
         const dir =
-          (Math.abs(e.velocityX) > 120 ? e.velocityX : e.translationX) > 0
+          (Math.abs(e.velocityX) > DIRECTION_VELOCITY_MIN
+            ? e.velocityX
+            : e.translationX) > 0
             ? 'right'
             : 'left';
         runOnJS(beginExit)(dir);

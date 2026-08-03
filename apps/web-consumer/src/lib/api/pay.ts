@@ -29,6 +29,7 @@ export type TicketBillPayload = {
 };
 
 const MESITA_IG_HANDLE = "@mesita";
+const DEFAULT_CURRENCY = "MXN";
 
 export function formatInstagramHandle(
   raw: string | null | undefined,
@@ -72,29 +73,40 @@ export function storyTagInstruction(
 
 function formatBillScopeSuffix(
   capMxn: number | null | undefined,
-  currency = "MXN",
+  currency = DEFAULT_CURRENCY,
 ): string {
   if (capMxn != null && capMxn > 0) {
-    const prefix = currency === "MXN" ? "MX$" : "$";
+    const prefix = currency === DEFAULT_CURRENCY ? "MX$" : "$";
     return `on the first ${prefix}${capMxn.toLocaleString("en-US")}`;
   }
   return "on the full bill";
+}
+
+function resolveCapMxn(
+  p: TicketBillPayload,
+  opts?: { capMxn?: number | null },
+): number | null {
+  return opts?.capMxn ?? p.reward_cap_mxn ?? p.monthly_promo_cap ?? null;
+}
+
+function computeRewardCents(p: TicketBillPayload): number {
+  return (
+    p.total_reward_cents ?? (p.discount_cents ?? 0) + (p.redeem_cents ?? 0)
+  );
 }
 
 export function formatTicketRewardLabel(
   p: TicketBillPayload,
   opts?: { capMxn?: number | null },
 ): string {
-  const capMxn =
-    opts?.capMxn ?? p.reward_cap_mxn ?? p.monthly_promo_cap ?? null;
+  const capMxn = resolveCapMxn(p, opts);
   const billPart = formatBillScopeSuffix(capMxn, p.currency);
 
   if (p.discount_percent != null && p.discount_percent > 0) {
     return `${p.discount_percent}% Discount ${billPart}`;
   }
 
-  const rewardCents =
-    p.total_reward_cents ?? (p.discount_cents ?? 0) + (p.redeem_cents ?? 0);
+  const rewardCents = computeRewardCents(p);
   if (rewardCents > 0) {
     return `${formatPayMx(rewardCents, p.currency)} ${billPart}`;
   }
@@ -138,8 +150,7 @@ export function explainTicketBillPromo(
   const subtotal = p.check_subtotal_cents ?? p.total_cents ?? 0;
   if (subtotal <= 0) return null;
 
-  const capMxn =
-    opts?.capMxn ?? p.reward_cap_mxn ?? p.monthly_promo_cap ?? null;
+  const capMxn = resolveCapMxn(p, opts);
   const capCents = capMxn != null && capMxn > 0 ? capMxn * 100 : null;
   const eligibleSubtotalCents =
     capCents != null ? Math.min(subtotal, capCents) : subtotal;
@@ -154,8 +165,6 @@ export function explainTicketBillPromo(
           subtotal,
         )
       : promoCents;
-  const displayPromoCents =
-    ratePercent != null && ratePercent > 0 ? computedPromoCents : promoCents;
 
   const redeemCents = p.redeem_cents ?? 0;
   const tip = p.tip_cents ?? 0;
@@ -163,12 +172,12 @@ export function explainTicketBillPromo(
 
   const amountDueCents =
     p.amount_due_cents ??
-    Math.max(0, subtotal - displayPromoCents - redeemCents);
+    Math.max(0, subtotal - computedPromoCents - redeemCents);
 
   return {
     ratePercent,
-    promoCents: displayPromoCents,
-    computedPromoCents: displayPromoCents,
+    promoCents,
+    computedPromoCents,
     redeemCents,
     subtotalCents: subtotal,
     tipCents: tip,
@@ -196,8 +205,7 @@ export function buildTicketTransactionSummary(
 
   const promoPercent = p.discount_percent ?? null;
 
-  const rewardCents =
-    p.total_reward_cents ?? (p.discount_cents ?? 0) + (p.redeem_cents ?? 0);
+  const rewardCents = computeRewardCents(p);
 
   const subtotal = p.check_subtotal_cents ?? total;
 
@@ -215,7 +223,7 @@ export function buildTicketTransactionSummary(
     promoPercent: derivedPromoPercent,
     paymentCents,
     rewardCents,
-    currency: p.currency ?? "MXN",
+    currency: p.currency ?? DEFAULT_CURRENCY,
   };
 }
 
@@ -235,7 +243,7 @@ export function formatTicketTransactionSummaryLine(
 
 export function formatPayMx(
   cents: number | undefined | null,
-  currency = "MXN",
+  currency = DEFAULT_CURRENCY,
 ): string {
   if (cents == null) return "—";
   return `$${(cents / 100).toFixed(2)} ${currency}`;

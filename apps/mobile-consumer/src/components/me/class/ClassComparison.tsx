@@ -80,6 +80,15 @@ const ROWS: { label: string; values: (string | null)[] }[] = [
 const LABEL_FLEX = 1.15;
 const COL_FLEX = 0.82;
 
+// Shared by both header icon tiles below (gradient and flat variants).
+const ICON_TILE_STYLE = {
+  width: 24,
+  height: 24,
+  borderRadius: 6,
+  alignItems: 'center',
+  justifyContent: 'center',
+} as const;
+
 export function ClassComparison() {
   return (
     <View
@@ -117,26 +126,13 @@ export function ClassComparison() {
                   colors={[...col.iconColors]}
                   start={GRADIENT_DIAGONAL.start}
                   end={GRADIENT_DIAGONAL.end}
-                  style={{
-                    width: 24,
-                    height: 24,
-                    borderRadius: 6,
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}
+                  style={ICON_TILE_STYLE}
                 >
                   <Icon color="#fff" size={12} />
                 </LinearGradient>
               ) : (
                 <View
-                  style={{
-                    width: 24,
-                    height: 24,
-                    borderRadius: 6,
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    backgroundColor: '#faeff0',
-                  }}
+                  style={{ ...ICON_TILE_STYLE, backgroundColor: '#faeff0' }}
                 >
                   <Icon color="#260409" size={12} />
                 </View>

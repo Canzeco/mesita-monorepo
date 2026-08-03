@@ -37,8 +37,12 @@ export type UnitHit = {
   verified: boolean;
 };
 
+// The search EF only guarantees id/name — every other field may be absent,
+// hence the defensive `?? null` normalization below.
+type RawUnitHit = Pick<UnitHit, "id" | "name"> & Partial<Omit<UnitHit, "id" | "name">>;
+
 async function fetchUnits(query: string, limit = 50): Promise<Result<UnitHit[]>> {
-  const r = await efInvoke<{ places: UnitHit[] }>("admin-web-search-places", {
+  const r = await efInvoke<{ places: RawUnitHit[] }>("admin-web-search-places", {
     query,
     limit,
   });
@@ -46,7 +50,7 @@ async function fetchUnits(query: string, limit = 50): Promise<Result<UnitHit[]>>
   return { ok: true, data: (r.data.places ?? []).map(normalizeUnitHit) };
 }
 
-function normalizeUnitHit(raw: UnitHit): UnitHit {
+function normalizeUnitHit(raw: RawUnitHit): UnitHit {
   const contentStatus = raw.content_status ?? null;
   const listingType = raw.listing_type ?? null;
   return {

@@ -46,6 +46,10 @@ const EXAMPLES = [
 
 const DEFAULT_GREETING = "¡Hola! Soy Memo 👋 ¿Qué se te antoja hoy?";
 
+// Mirrors admin-web-ask-memo's own minimum (see actions.ts) so the button
+// disables in step with what the server would actually reject.
+const MIN_QUERY_LENGTH = 2;
+
 const MODEL_OPTIONS = ["saved", ...OPENAI_MODELS] as const;
 
 const STATUS_BADGE: Record<
@@ -205,9 +209,30 @@ export function MemoPlaygroundClient() {
     setPhase("setup");
   };
 
+  // Which persona to send with the request, per the picker in the setup phase.
+  const buildPersona = (): {
+    consumerId: string | null;
+    mockProfile: { name?: string; age?: number; sex?: string } | null;
+  } => {
+    if (personaMode === "consumer" && selected) {
+      return { consumerId: selected.id, mockProfile: null };
+    }
+    if (personaMode === "mock") {
+      return {
+        consumerId: null,
+        mockProfile: {
+          name: mockName || undefined,
+          age: mockAge ? Number(mockAge) : undefined,
+          sex: mockSex || undefined,
+        },
+      };
+    }
+    return { consumerId: null, mockProfile: null };
+  };
+
   const send = async (raw: string) => {
     const text = raw.trim();
-    if (text.length < 2 || busy) return;
+    if (text.length < MIN_QUERY_LENGTH || busy) return;
 
     // History = the thread so far (before this turn); the agent replays it.
     const history = turns.map((t) => ({ role: t.role, content: t.content }));
@@ -215,23 +240,10 @@ export function MemoPlaygroundClient() {
     setInput("");
     setBusy(true);
 
-    const persona = personaMode === "consumer" && selected
-      ? { consumerId: selected.id, mockProfile: null }
-      : personaMode === "mock"
-      ? {
-        consumerId: null,
-        mockProfile: {
-          name: mockName || undefined,
-          age: mockAge ? Number(mockAge) : undefined,
-          sex: mockSex || undefined,
-        },
-      }
-      : { consumerId: null, mockProfile: null };
-
     const res = await askMemoAdmin({
       query: text,
       history,
-      ...persona,
+      ...buildPersona(),
       latitude: location.lat,
       longitude: location.lng,
       model: modelKey === "saved" ? null : modelKey,
@@ -602,7 +614,7 @@ export function MemoPlaygroundClient() {
             <button
               type="button"
               onClick={() => void send(input)}
-              disabled={busy || input.trim().length < 2}
+              disabled={busy || input.trim().length < MIN_QUERY_LENGTH}
               className="bg-foreground text-background inline-flex h-11 shrink-0 items-center gap-2 rounded-xl px-4 text-sm font-semibold transition hover:opacity-90 disabled:opacity-50"
             >
               {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
