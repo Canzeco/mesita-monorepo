@@ -8,6 +8,7 @@
 import { assertEquals } from "jsr:@std/assert@1";
 import {
   coerceRewardsGrid,
+  offersAction,
   DEFAULT_REWARDS_GRID,
   isActionVerified,
   isClassSegment,
@@ -144,14 +145,96 @@ Deno.test("placeStrategy: derives from v4 columns, all four strategies", () => {
   );
 });
 
-Deno.test("coerceRewardsGrid: partial blob snaps to locked defaults", () => {
+Deno.test("coerceRewardsGrid: partial blob snaps to locked defaults (v13)", () => {
   const g = coerceRewardsGrid({ grid: { standard: { conservative: 25 } } });
   assertEquals(g.grid.standard.conservative, 25);
-  assertEquals(g.grid.review.aggressive, 50); // filled from defaults
-  assertEquals(g.grid.aura.aggressive, 25); // new segment filled from defaults
-  assertEquals(g.grid.standard.dominant, 20); // dominant column filled from defaults
+  assertEquals(g.actions.review.standard.aggressive, 50); // filled from defaults
+  assertEquals(g.grid.aura.aggressive, 25); // class filled from defaults
+  assertEquals(g.grid.standard.dominant, 20); // dominant column filled
   assertEquals(g.grid.standard.zero, 0); // off by definition
   assertEquals(g.cap, 500);
+});
+
+Deno.test("coerceRewardsGrid: v12 blob migrates by IDENTITY — flat action rows copy to every class", () => {
+  // A stored v12 blob: flat story/welcome/review rows inside `grid`, no
+  // `actions` block, custom review number to prove it's read (not defaults).
+  const g = coerceRewardsGrid({
+    cap: 500,
+    grid: {
+      standard: { conservative: 10, aggressive: 10, dominant: 20 },
+      review: { conservative: 33, aggressive: 44, dominant: 55 },
+      story: { conservative: 20, aggressive: 30, dominant: 40 },
+    },
+  });
+  // The flat legacy value lands on EVERY class of the action.
+  assertEquals(g.actions.review.standard.aggressive, 44);
+  assertEquals(g.actions.review.premium.aggressive, 44);
+  assertEquals(g.actions.review.aura.dominant, 55);
+  assertEquals(g.actions.story.influencer.conservative, 20);
+  // mesita_review didn't exist in v12 → launches at 0 everywhere.
+  assertEquals(g.actions.mesita_review.standard.dominant, 0);
+  assertEquals(g.actions.mesita_review.aura.aggressive, 0);
+});
+
+Deno.test("resolveTicketRate: v7 per-class action rates resolve on the guest's row", () => {
+  const g = coerceRewardsGrid({
+    actions: {
+      review: {
+        standard: { conservative: 30, aggressive: 50, dominant: 50 },
+        premium: { conservative: 35, aggressive: 50, dominant: 50 },
+      },
+    },
+  });
+  // Same verified review, different class row → different rate.
+  assertEquals(
+    resolveTicketRate("conservative", g, {
+      classKey: "standard", isFirstVisit: false, reviewVerified: true,
+    }),
+    30,
+  );
+  assertEquals(
+    resolveTicketRate("conservative", g, {
+      classKey: "premium", isFirstVisit: false, reviewVerified: true,
+    }),
+    35,
+  );
+});
+
+Deno.test("resolveTicketRate: the Mesita review rung pays only when priced", () => {
+  // Identity defaults: mesita_review is 0 — the flag changes nothing.
+  assertEquals(
+    resolveTicketRate("aggressive", GRID, {
+      classKey: "standard", isFirstVisit: false, mesitaReviewed: true,
+    }),
+    10, // still the standing rate
+  );
+  // Priced by the operator → it joins best-of.
+  const priced = coerceRewardsGrid({
+    actions: { mesita_review: { standard: { aggressive: 15 } } },
+  });
+  assertEquals(
+    resolveTicketRate("aggressive", priced, {
+      classKey: "standard", isFirstVisit: false, mesitaReviewed: true,
+    }),
+    15,
+  );
+});
+
+Deno.test("offersAction: capability is ANY class > 0, per-class zeroing keeps the door open", () => {
+  assertEquals(offersAction("aggressive", GRID, "review"), true);
+  assertEquals(offersAction("zero", GRID, "review"), false);
+  assertEquals(offersAction("aggressive", GRID, "mesita_review"), false); // unpriced at launch
+  const partial = coerceRewardsGrid({
+    actions: {
+      story: {
+        standard: { aggressive: 0 },
+        premium: { aggressive: 0 },
+        influencer: { aggressive: 30 },
+        aura: { aggressive: 0 },
+      },
+    },
+  });
+  assertEquals(offersAction("aggressive", partial, "story"), true);
 });
 
 Deno.test("isActionVerified: verified states only", () => {

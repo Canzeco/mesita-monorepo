@@ -61,6 +61,21 @@ export async function getTierConfig(
 // Welcome rung. Pass excludeTicketId when the current ticket already exists
 // (the scan → bill path) so the ticket being billed doesn't count itself and
 // suppress its own Welcome rate.
+// v7 (MESITA-859): the Mesita-review rung's verified signal. One review per
+// consumer × place (unique pair since MESITA-825), so existence IS the flag.
+export async function hasMesitaReview(
+  admin: SupabaseClient,
+  consumerId: string,
+  projectId: string,
+): Promise<boolean> {
+  const { count } = await admin
+    .from("ticket_reviews")
+    .select("id", { count: "exact", head: true })
+    .eq("consumer_id", consumerId)
+    .eq("project_id", projectId);
+  return (count ?? 0) > 0;
+}
+
 export async function isConsumerFirstVisit(
   admin: SupabaseClient,
   consumerId: string,

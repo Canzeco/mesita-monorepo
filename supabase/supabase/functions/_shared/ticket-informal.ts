@@ -5,7 +5,7 @@
 // bill.
 
 import { type SupabaseClient } from "jsr:@supabase/supabase-js@2";
-import { isConsumerFirstVisit } from "./membership.ts";
+import { hasMesitaReview, isConsumerFirstVisit } from "./membership.ts";
 import {
   loadRewardsGrid,
   placeStrategy,
@@ -88,10 +88,14 @@ export async function computeInformalBill(
   // Promos v5 best-of (MESITA-723): strategy (from the place's v4 rate columns)
   // × the operator grid.
   const grid = await loadRewardsGrid(admin);
-  const firstVisit = await isConsumerFirstVisit(admin, consumer.id, place.id);
+  const [firstVisit, mesitaReviewed] = await Promise.all([
+    isConsumerFirstVisit(admin, consumer.id, place.id),
+    hasMesitaReview(admin, consumer.id, place.id),
+  ]);
   const ratePercent = resolveTicketRate(placeStrategy(place), grid, {
     classKey: consumer.class_key,
     isFirstVisit: firstVisit,
+    mesitaReviewed,
   });
 
   const capPesos = grid.cap;

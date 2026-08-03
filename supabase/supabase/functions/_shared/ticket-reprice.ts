@@ -8,7 +8,7 @@
 
 import { type SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { computeTicketBill } from "./business-ticket-billing.ts";
-import { isConsumerFirstVisit } from "./membership.ts";
+import { hasMesitaReview, isConsumerFirstVisit } from "./membership.ts";
 import {
   isActionVerified,
   loadRewardsGrid,
@@ -81,17 +81,16 @@ export async function repriceTicketAfterAction(
   }
 
   const grid = await loadRewardsGrid(admin);
-  const firstVisit = await isConsumerFirstVisit(
-    admin,
-    ticket.consumer_id,
-    ticket.project_id,
-    ticket.id,
-  );
+  const [firstVisit, mesitaReviewed] = await Promise.all([
+    isConsumerFirstVisit(admin, ticket.consumer_id, ticket.project_id, ticket.id),
+    hasMesitaReview(admin, ticket.consumer_id, ticket.project_id),
+  ]);
   const ratePercent = resolveTicketRate(placeStrategy(place), grid, {
     classKey: consumerRes.data.class_key,
     isFirstVisit: firstVisit,
     storyVerified: isActionVerified(ticket.story_status),
     reviewVerified: isActionVerified(ticket.review_status),
+    mesitaReviewed,
   });
 
   // Bump-only: never lower a snapshotted discount.
