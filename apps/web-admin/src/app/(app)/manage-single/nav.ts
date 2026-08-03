@@ -6,22 +6,20 @@ import {
   Star,
   Store,
   Tag,
-  UsersRound,
 } from "lucide-react";
 
-// Tab order is Pato's 2026-08-02 spec (MESITA-834): place · reviews ·
-// products · promos · performance · team · settings. Reviews + Products are
-// their own tabs again (MESITA-368 folded them into Place; unfolded here);
-// Scores and Scan are gone from the catalog (their old URLs redirect to
-// Place). Settings holds the operator/meta cards; Performance is the
-// per-place activity feed.
+// Tab order is Pato's 2026-08-02 spec (MESITA-834, amended same day):
+// place · reviews · products · promos · performance · settings. Reviews +
+// Products are their own tabs again (MESITA-368 folded them into Place;
+// unfolded here); Scores and Scan are gone from the catalog and Team folded
+// INTO Settings (their old URLs redirect). Settings holds the business team
+// + operator/meta cards; Performance is the per-place activity feed.
 const UNIT_SECTIONS = [
   { id: "place", label: "Place", Icon: Store },
   { id: "reviews", label: "Reviews", Icon: Star },
   { id: "products", label: "Products", Icon: Package },
   { id: "promos", label: "Promos", Icon: Tag },
   { id: "performance", label: "Performance", Icon: ChartLine },
-  { id: "team", label: "Team", Icon: UsersRound },
   { id: "settings", label: "Settings", Icon: Settings },
 ] as const;
 
