@@ -26,8 +26,6 @@ import {
   type AdminPlace,
   type PlaceFieldLimits,
   type PlaceMediaMeta,
-  type ReservationChannel,
-  type ReservationTarget,
 } from "../actions";
 import { PlaceTagsPicker } from "../PlaceTagsPicker";
 import { PlaceCategorySelect } from "../PlaceCategorySelect";
@@ -93,88 +91,6 @@ const CHANNELS: {
 
 const EDITABLE_CHANNELS = CHANNELS.filter((c) => !c.readOnly);
 
-const RESERVATION_CHANNELS: {
-  key: ReservationChannel;
-  label: string;
-  /** Primary-channel profile field the reservationist contacts. */
-  profileKey: keyof AdminPlace;
-  /** Graphical mark for the segmented picker: brand SVG or a lucide icon. */
-  logo?: string;
-  Icon?: LucideIcon;
-  /** Held for a later launch — shown in the picker but never selectable. Today
-   *  only phone is a real reservation channel; WhatsApp + Instagram read "Soon". */
-  comingSoon?: boolean;
-  // Default priority order — phone > whatsapp > instagram (MESITA-596). The
-  // Enricher fills the channel following the same order; admin can override.
-}[] = [
-  { key: "phone", label: "Phone", profileKey: "phone", Icon: Phone },
-  { key: "whatsapp", label: "WhatsApp", profileKey: "whatsapp_url", logo: "/channels/whatsapp.svg", comingSoon: true },
-  { key: "instagram", label: "Instagram", profileKey: "instagram_url", logo: "/channels/instagram.svg", comingSoon: true },
-];
-
-/** Reservation channel — single-choice now: a 0-or-1-element list. Kept as an
- *  array so the read/serialize back-compat with older fallback shapes holds. */
-type ReservationOrder = ReservationChannel[];
-
-const isReservationChannel = (c: unknown): c is ReservationChannel =>
-  c === "instagram" || c === "whatsapp" || c === "phone";
-
-function profileValueFor(place: AdminPlace, channel: ReservationChannel): string {
-  const meta = RESERVATION_CHANNELS.find((c) => c.key === channel);
-  return meta ? str(place[meta.profileKey]) : "";
-}
-
-/** Read the reservation channel — collapses any stored fallbacks to the single
- *  primary (reservations are single-choice now). Tolerates the older
- *  single-channel and per-channel-routes shapes. Only CHANNELS matter — the
- *  stored values are snapshots resolved at save time, never hand-entered. */
-function readReservationTarget(v: AdminPlace): ReservationOrder {
-  const raw = v.products?.reservations as unknown;
-  if (raw && typeof raw === "object" && !Array.isArray(raw)) {
-    const obj = raw as Record<string, unknown>;
-    const order: ReservationOrder = [];
-    const push = (c: unknown) => {
-      if (isReservationChannel(c) && !order.includes(c)) order.push(c);
-    };
-    push(obj.channel);
-    if (Array.isArray(obj.fallbacks)) {
-      for (const f of obj.fallbacks) {
-        if (f && typeof f === "object") push((f as Record<string, unknown>).channel);
-      }
-    }
-    if (order.length > 0) return order.slice(0, 1);
-    // Legacy MESITA-378 routes: first channel that had a route or a profile value.
-    for (const key of ["phone", "whatsapp", "instagram"] as const) {
-      const c = obj[key];
-      const route = c && typeof c === "object" ? (c as Record<string, unknown>) : null;
-      if (route && (route.mode === "different" || profileValueFor(v, key))) return [key];
-    }
-  }
-  return [];
-}
-
-function serializeReservationTarget(order: ReservationOrder, f: Form): ReservationTarget | null {
-  const [first, ...rest] = order;
-  if (!first) return null;
-  // Same convention as the Enricher's Selected Reservation Endpoint: values
-  // are snapshots of the profile contacts at save time. The 1st choice keeps
-  // the flat { channel, value } shape the Enricher's override check reads.
-  const snapshot = (c: ReservationChannel) => formContactFor(f, c).trim() || null;
-  const target: ReservationTarget = { channel: first, value: snapshot(first) };
-  if (rest.length > 0) {
-    target.fallbacks = rest.map((c) => ({ channel: c, value: snapshot(c) }));
-  }
-  return target;
-}
-
-/** The profile contact for one channel as currently held in the editor form. */
-function formContactFor(f: Form, channel: ReservationChannel | ""): string {
-  if (channel === "phone") return f.phone;
-  if (channel === "whatsapp") return f.channels.whatsapp_url ?? "";
-  if (channel === "instagram") return f.channels.instagram_url ?? "";
-  return "";
-}
-
 function ChannelLabelIcon({
   logo,
   Icon,
@@ -189,33 +105,6 @@ function ChannelLabelIcon({
   }
   if (Icon) {
     return <Icon className="text-muted-foreground h-3.5 w-3.5 shrink-0" />;
-  }
-  return null;
-}
-
-// Larger channel mark for the reservation segmented picker. Brand SVGs keep
-// their own colour; a lucide fallback (Phone) takes the active/idle tint.
-function ReservationChannelIcon({
-  logo,
-  Icon,
-  active,
-}: {
-  logo?: string;
-  Icon?: LucideIcon;
-  active: boolean;
-}) {
-  if (logo) {
-    // eslint-disable-next-line @next/next/no-img-element
-    return <img src={logo} alt="" aria-hidden className="h-6 w-6 shrink-0" />;
-  }
-  if (Icon) {
-    return (
-      <Icon
-        className={
-          "h-6 w-6 shrink-0 " + (active ? "text-primary" : "text-muted-foreground")
-        }
-      />
-    );
   }
   return null;
 }
@@ -251,7 +140,6 @@ type Form = {
   tags: string[];
   photos: string[];
   channels: Record<string, string>;
-  reservation: ReservationOrder;
   hours: Record<Day, DayHours>;
 };
 
@@ -283,14 +171,13 @@ function placeToForm(v: AdminPlace, limits: PlaceFieldLimits = FALLBACK_LIMITS):
     tags: (v.tags ?? []).slice(0, limits.tagsPerPlaceMax),
     photos: (v.photos ?? []).slice(0, limits.photosMax),
     channels,
-    reservation: readReservationTarget(v),
     hours,
   };
 }
 
 // Build a partial business-update-project patch for one Place box.
 // Empty strings become null so a cleared field actually clears.
-type PlaceBox = "basics" | "time" | "channels" | "reservations" | "photos";
+type PlaceBox = "basics" | "time" | "channels" | "photos";
 
 function boxToPatch(
   box: PlaceBox,
@@ -327,18 +214,6 @@ function boxToPatch(
     for (const c of EDITABLE_CHANNELS) patch[c.key as string] = nz(f.channels[c.key as string]);
     return patch;
   }
-  if (box === "reservations") {
-    return {
-      id,
-      // Clear the overbuilt MESITA-377 fields — selector is the only source now.
-      reservation_endpoint: null,
-      reservation_contacts: [],
-      products: {
-        ...(existingProducts ?? {}),
-        reservations: serializeReservationTarget(f.reservation, f),
-      },
-    };
-  }
   return { id, photos: f.photos.slice(0, limits.photosMax) };
 }
 
@@ -364,12 +239,6 @@ function mergeBoxSlice(base: Form, from: Form, box: PlaceBox): Form {
       channels: from.channels,
       phone: from.phone,
       email: from.email,
-    };
-  }
-  if (box === "reservations") {
-    return {
-      ...base,
-      reservation: from.reservation,
     };
   }
   return { ...base, photos: from.photos };
@@ -432,17 +301,13 @@ export function PlaceSection({
       ),
     [form.channels, form.phone, form.email, saved.channels, saved.phone, saved.email],
   );
-  const dirtyReservations = useMemo(
-    () => !sliceEqual(form.reservation, saved.reservation),
-    [form.reservation, saved.reservation],
-  );
   const dirtyPhotos = useMemo(
     () => !sliceEqual(form.photos, saved.photos),
     [form.photos, saved.photos],
   );
 
   const placeDirty =
-    dirtyBasics || dirtyTime || dirtyChannels || dirtyReservations || dirtyPhotos;
+    dirtyBasics || dirtyTime || dirtyChannels || dirtyPhotos;
 
   const { setSectionDirty, registerDiscardHandler } = useUnitPlace();
   useEffect(() => {
@@ -467,15 +332,6 @@ export function PlaceSection({
     setForm((f) => ({ ...f, [k]: val }));
   const setChannel = (key: string, val: string) =>
     setForm((f) => ({ ...f, channels: { ...f.channels, [key]: val } }));
-  // Single reservation channel — the agent contacts exactly one channel, so the
-  // form holds a 0-or-1-element order. Selecting "" (Select…) clears it.
-  const setReservationChannel = (channel: ReservationChannel | "") =>
-    setForm((f) => ({ ...f, reservation: channel ? [channel] : [] }));
-  const reservationChannel = form.reservation[0] ?? "";
-  const reservationResolved = formContactFor(form, reservationChannel);
-  const reservationMeta = RESERVATION_CHANNELS.find(
-    (c) => c.key === reservationChannel,
-  );
   const setDay = (d: Day, patch: Partial<DayHours>) =>
     setForm((f) => ({ ...f, hours: { ...f.hours, [d]: { ...f.hours[d], ...patch } } }));
 
@@ -578,16 +434,6 @@ export function PlaceSection({
       setErrors((e) => ({ ...e, basics: "Name is required." }));
       return;
     }
-    // "Select…" is a placeholder, not a contact channel — refuse empty saves
-    // so reservations never land as null after a successful Save (MESITA-441).
-    if (box === "reservations" && form.reservation.length === 0) {
-      setErrors((e) => ({
-        ...e,
-        reservations: "Pick Instagram, WhatsApp, or phone — Select… isn’t a contact channel.",
-      }));
-      setOks((o) => ({ ...o, reservations: false }));
-      return;
-    }
     setErrors((e) => ({ ...e, [box]: undefined }));
     setOks((o) => ({ ...o, [box]: false }));
     setPendingBox(box);
@@ -621,7 +467,7 @@ export function PlaceSection({
     // lg (not xl): admin content + sidebar rarely reaches 1280px of free width.
     <div className="columns-1 gap-4 pb-8 [&>section]:mb-4 [&>section]:break-inside-avoid [&>details]:mb-4 [&>details]:break-inside-avoid lg:columns-2 lg:gap-5 lg:pb-10 lg:[&>section]:mb-5 lg:[&>details]:mb-5">
       {/* Box order (MESITA-547 / MESITA-720 / MESITA-834): edit-first —
-          Basics → Hours → Channels → Reservations → Photos → Location →
+          Basics → Hours → Channels → Photos → Location →
           Promos summary. The operator/meta cards (Manual Priority, Ownership,
           Metadata, Embeddings) live on the Settings tab. */}
       {/* Basics — editable identity. Price stays Enricher/Google-derived
@@ -879,112 +725,6 @@ export function PlaceSection({
           error={errors.channels}
           onSave={() => saveBox("channels")}
           onCancel={() => cancelBox("channels")}
-        />
-      </SectionCard>
-
-      {/* Reservations — the single contact channel for the Reservationist. */}
-      <SectionCard
-        icon={<CalendarCheck className="h-4 w-4" />}
-        tint="teal"
-        title="Reservations"
-        subtitle="Mesita's AI agent makes the reservation by contacting the place — via phone, WhatsApp, or Instagram."
-      >
-        <p className="text-muted-foreground mt-5 text-xs">
-          Pick the channel the agent uses to reach the place — only channels
-          with a saved contact are selectable. Add the contact under Channels
-          first. Default priority: phone, then WhatsApp, then Instagram.
-        </p>
-        <div className="mt-3.5 grid gap-3.5">
-          <div className="flex flex-col gap-1.5">
-            <span className="text-foreground/90 flex min-h-4 items-center text-[13px] font-medium">
-              Channel
-            </span>
-            {/* Segmented icon picker — single-choice; a channel IS the value
-                (no free-text). The agent always contacts the PROFILE value for
-                the channel; the contact itself lives in Channels. */}
-            <div
-              role="group"
-              aria-label="Reservation channel"
-              className="grid grid-cols-3 gap-2"
-            >
-              {RESERVATION_CHANNELS.map((c) => {
-                // Only phone is a real reservation channel today. WhatsApp +
-                // Instagram are shown but held for a later launch — always
-                // blocked, labelled "Soon", never active.
-                const comingSoon = c.comingSoon === true;
-                const active = !comingSoon && reservationChannel === c.key;
-                // A channel is only selectable once the place actually has
-                // that contact on the profile (MESITA-596) — you can't point
-                // the agent at a WhatsApp that doesn't exist. The stored
-                // channel stays interactive so a legacy empty one can be
-                // switched away from.
-                const hasValue = formContactFor(form, c.key).trim() !== "";
-                const unavailable = !active && !hasValue;
-                return (
-                  <button
-                    key={c.key}
-                    type="button"
-                    onClick={() => !comingSoon && setReservationChannel(c.key)}
-                    disabled={anyPending || comingSoon || unavailable}
-                    aria-pressed={active}
-                    title={
-                      comingSoon
-                        ? `${c.label} reservations are coming soon`
-                        : unavailable
-                          ? `Add a ${c.label} contact under Channels to use it`
-                          : undefined
-                    }
-                    className={
-                      "flex h-[4.5rem] flex-col items-center justify-center gap-1 rounded-xl border text-[12px] font-semibold transition disabled:cursor-not-allowed disabled:opacity-45 " +
-                      (active
-                        ? "border-primary/50 bg-primary/8 text-primary ring-primary/15 ring-2"
-                        : "border-border/60 bg-muted/40 text-foreground/70 hover:border-foreground/25 hover:bg-muted/70")
-                    }
-                  >
-                    <ReservationChannelIcon
-                      logo={c.logo}
-                      Icon={c.Icon}
-                      active={active}
-                    />
-                    {c.label}
-                    {comingSoon ? (
-                      <span className="text-muted-foreground/70 text-[9px] font-medium">
-                        Soon
-                      </span>
-                    ) : unavailable ? (
-                      <span className="text-muted-foreground/70 text-[9px] font-medium">
-                        not set
-                      </span>
-                    ) : null}
-                  </button>
-                );
-              })}
-            </div>
-            {reservationChannel ? (
-              reservationResolved.trim() ? (
-                <span className="text-muted-foreground text-xs">
-                  Uses the profile&apos;s {reservationMeta?.label ?? reservationChannel}:{" "}
-                  <span className="text-foreground/90 font-medium break-all">
-                    {reservationResolved}
-                  </span>
-                </span>
-              ) : (
-                <span className="text-xs font-medium text-amber-700">
-                  No {reservationMeta?.label ?? reservationChannel} on the profile yet —
-                  add it in Channels first.
-                </span>
-              )
-            ) : null}
-          </div>
-        </div>
-        <SaveBar
-          pending={pendingBox === "reservations"}
-          dirtyLabel="Reservations · unsaved"
-          dirty={dirtyReservations}
-          ok={!!oks.reservations}
-          error={errors.reservations}
-          onSave={() => saveBox("reservations")}
-          onCancel={() => cancelBox("reservations")}
         />
       </SectionCard>
 

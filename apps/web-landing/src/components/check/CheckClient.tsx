@@ -15,6 +15,7 @@ import {
   Check,
   Flame,
   Instagram,
+  KeyRound,
   Loader2,
   Star,
   X,
@@ -66,6 +67,11 @@ export function CheckClient({
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [subtotal, setSubtotal] = useState("");
+  // Staff PIN (MESITA-823) — only asked for when the place turned the gate
+  // on. Held in component state for the session, so one entry covers the
+  // whole visit (bill → verdict → paid) and the close stays two-tap.
+  const [pin, setPin] = useState("");
+  const [pinOpen, setPinOpen] = useState(false);
 
   const refresh = useCallback(async () => {
     const res = await fetchCheck(code);
@@ -77,7 +83,22 @@ export function CheckClient({
       setBusy(key);
       setError(null);
       const res = await fn();
-      if (!res.ok) setError(res.error ?? "Algo salió mal — intenta de nuevo.");
+      if (!res.ok) {
+        // The place turned on a staff PIN (MESITA-823): surface the field
+        // instead of a raw error, and keep the entered digits on a retry.
+        const code = (res as { code?: string }).code;
+        if (code === "pin_required" || code === "pin_invalid") {
+          setPinOpen(true);
+          setError(
+            code === "pin_invalid"
+              ? "PIN incorrecto — inténtalo de nuevo."
+              : "Este lugar pide un PIN del personal para continuar.",
+          );
+          setBusy(null);
+          return;
+        }
+        setError(res.error ?? "Algo salió mal — intenta de nuevo.");
+      }
       await refresh();
       setBusy(null);
     },
@@ -97,7 +118,7 @@ export function CheckClient({
       setError("Escribe el subtotal de la cuenta en pesos.");
       return;
     }
-    void run("bill", () => submitBill(code, Math.round(pesos * 100)));
+    void run("bill", () => submitBill(code, Math.round(pesos * 100), pin));
   };
 
   return (
@@ -175,6 +196,32 @@ export function CheckClient({
           </div>
         ) : null}
 
+        {/* Staff PIN — shown only when the place turned the gate on. One
+            entry covers every action of this visit. */}
+        {(check.pin_required || pinOpen) && !terminal ? (
+          <div className="flex flex-col gap-1.5 rounded-xl border border-amber-500/30 bg-amber-500/5 p-3.5">
+            <label
+              htmlFor="check-pin"
+              className="flex items-center gap-2 text-xs font-semibold tracking-wide text-amber-800 uppercase"
+            >
+              <KeyRound className="size-3.5" /> PIN del personal
+            </label>
+            <input
+              id="check-pin"
+              inputMode="numeric"
+              autoComplete="off"
+              placeholder="······"
+              value={pin}
+              onChange={(e) => setPin(e.target.value.replace(/\D/g, "").slice(0, 6))}
+              className="h-11 w-36 rounded-md border border-input bg-background px-3 font-mono text-lg tracking-[0.3em] tabular-nums outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
+            />
+            <p className="text-[11px] leading-snug text-amber-800/80">
+              Este lugar pide un código de 6 dígitos para cobrar o cerrar el
+              ticket. Pídeselo a tu gerente.
+            </p>
+          </div>
+        ) : null}
+
         {/* Action: bill entry (only while open). */}
         {check.status === "open" ? (
           <div className="flex flex-col gap-2">
@@ -215,7 +262,8 @@ export function CheckClient({
             pendingHint="El cliente aún no envía su historia."
             busy={busy === "story"}
             disabled={busy != null}
-            onDecide={(d) => void run("story", () => verifyAction(code, "story", d))}
+            onDecide={(d) =>
+              void run("story", () => verifyAction(code, "story", d, pin))}
           />
         ) : null}
 
@@ -229,7 +277,8 @@ export function CheckClient({
             pendingHint="El cliente aún no envía su reseña."
             busy={busy === "review"}
             disabled={busy != null}
-            onDecide={(d) => void run("review", () => verifyAction(code, "review", d))}
+            onDecide={(d) =>
+              void run("review", () => verifyAction(code, "review", d, pin))}
           />
         ) : null}
 
@@ -239,7 +288,7 @@ export function CheckClient({
             size="lg"
             className="w-full"
             disabled={busy != null}
-            onClick={() => void run("paid", () => markPaid(code))}
+            onClick={() => void run("paid", () => markPaid(code, pin))}
           >
             {busy === "paid" ? <Loader2 className="animate-spin" /> : <Check />}
             Pago recibido — cerrar ticket

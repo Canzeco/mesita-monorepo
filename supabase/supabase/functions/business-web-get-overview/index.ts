@@ -119,6 +119,22 @@ Deno.serve(async (req) => {
     : (requestedUnitId && places.find((v) => (v as { id: string }).id === requestedUnitId)) ||
         places[0];
 
+  // Staff check PIN (MESITA-823) — attached to the ACTIVE place only, and
+  // only for owners (super-admin path tags my_role=owner). Read straight off
+  // projects: the column is deliberately NOT in projects_view / PLACE_COLUMNS
+  // so no consumer- or viewer-facing payload can ever pick it up.
+  if (active && (active as { my_role?: string }).my_role === "owner") {
+    const pinRow = await admin
+      .from("projects")
+      .select("check_pin")
+      .eq("id", (active as { id: string }).id)
+      .maybeSingle();
+    if (!pinRow.error) {
+      (active as Record<string, unknown>).check_pin =
+        (pinRow.data as { check_pin: string | null } | null)?.check_pin ?? null;
+    }
+  }
+
   // Recent tickets for the active place (skipped when ticketsLimit=0 or
   // there's no active place — saves a query the layout doesn't care about).
   let recentTickets: unknown[] = [];

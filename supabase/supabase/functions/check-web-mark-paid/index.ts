@@ -24,9 +24,10 @@ import {
   isRateLimited,
   loadTicketByCheckCode,
   logCheckEvent,
+  requireCheckPin,
 } from "../_shared/ticket-check.ts";
 
-type Body = { code?: string };
+type Body = { code?: string; pin?: string };
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
@@ -50,6 +51,19 @@ Deno.serve(async (req) => {
 
   const ticket = await loadTicketByCheckCode(admin, code);
   if (!ticket) return checkNotFound(json);
+
+  // Staff PIN gate (MESITA-823) — write actions only; no-op when the place
+  // has no PIN set.
+  const pinRes = await requireCheckPin({
+    admin,
+    projectId: ticket.project_id,
+    ticketId: ticket.id,
+    pin: bodyRes.body.pin,
+    ipHash,
+    userAgent: req.headers.get("user-agent"),
+    json,
+  });
+  if (!pinRes.ok) return pinRes.response;
 
   if (ticket.status === "revealed") {
     return json({ ok: true, alreadyPaid: true });

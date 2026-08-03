@@ -21,6 +21,7 @@ import {
   checkNotFound,
   hashRequestIp,
   isRateLimited,
+  loadCheckPin,
   loadTicketByCheckCode,
   logCheckEvent,
   shapeCheckPayload,
@@ -53,7 +54,7 @@ Deno.serve(async (req) => {
   const ticket = await loadTicketByCheckCode(admin, code);
   if (!ticket) return checkNotFound(json);
 
-  const [placeRow, consumerRow, grid] = await Promise.all([
+  const [placeRow, consumerRow, grid, checkPin] = await Promise.all([
     admin
       .from("projects_view")
       .select("id, name, slug")
@@ -65,6 +66,7 @@ Deno.serve(async (req) => {
       .eq("id", ticket.consumer_id)
       .maybeSingle(),
     loadRewardsGrid(admin),
+    loadCheckPin(admin, ticket.project_id),
   ]);
   if (!placeRow.data || !consumerRow.data) return checkNotFound(json);
 
@@ -106,6 +108,7 @@ Deno.serve(async (req) => {
           guest.first_name?.trim() || "Mesita guest",
         guestInstagramHandle: guest.instagram_handle ?? null,
         capMxn: grid.cap ?? null,
+        pinRequired: checkPin != null,
       }),
       scanned_before: wasScanned,
     },

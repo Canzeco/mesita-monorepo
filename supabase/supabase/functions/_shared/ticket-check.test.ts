@@ -40,7 +40,10 @@ function row(overrides: Partial<CheckTicketRow> = {}): CheckTicketRow {
   };
 }
 
-function shape(overrides: Partial<CheckTicketRow> = {}) {
+function shape(
+  overrides: Partial<CheckTicketRow> = {},
+  pinRequired = false,
+) {
   return shapeCheckPayload({
     ticket: row(overrides),
     placeName: "Café Prueba",
@@ -48,6 +51,7 @@ function shape(overrides: Partial<CheckTicketRow> = {}) {
     guestDisplayName: "Ana López",
     guestInstagramHandle: "analopez",
     capMxn: 500,
+    pinRequired,
   });
 }
 
@@ -109,6 +113,22 @@ Deno.test("shapeCheckPayload: the allowlist — forbidden fields never leak", ()
   // with MX$100 off is MX$400 due.
   assertEquals((payload.bill as Record<string, unknown>).discount_percent, 20);
   assertEquals((payload.bill as Record<string, unknown>).amount_due_cents, 40_000);
+});
+
+Deno.test("shapeCheckPayload: pin_required is a flag — the PIN value never ships", () => {
+  // MESITA-823. The shaper is only ever handed the BOOLEAN; the digits live
+  // on projects.check_pin and are compared server-side in requireCheckPin.
+  // This asserts the contract at the one place a leak could happen.
+  assertEquals(shape().pin_required, false);
+  assertEquals(shape({}, true).pin_required, true);
+  const flat = JSON.stringify(shape({}, true));
+  for (const forbidden of ["check_pin", "pin\":\"", "123456"]) {
+    assertEquals(
+      flat.includes(forbidden),
+      false,
+      `public payload leaked "${forbidden}"`,
+    );
+  }
 });
 
 Deno.test("shapeCheckPayload: amount due = total minus discount (E2E regression)", () => {
