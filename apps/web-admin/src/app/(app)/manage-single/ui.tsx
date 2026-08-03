@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import { CheckCircle2, ChevronDown, Loader2 } from "lucide-react";
 import { ErrorNote } from "@/components/ErrorNote";
 import {
@@ -126,7 +126,7 @@ export function TextField({
   value: string;
   onChange?: (v: string) => void;
   placeholder?: string;
-  type?: string;
+  type?: React.HTMLInputTypeAttribute;
   disabled?: boolean;
   maxLength?: number;
 }) {
@@ -428,6 +428,8 @@ export function ConfirmDialog({
   onConfirm: () => void;
   onCancel: () => void;
 }) {
+  const titleId = useId();
+
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
@@ -453,10 +455,10 @@ export function ConfirmDialog({
       <div
         role="dialog"
         aria-modal="true"
-        aria-labelledby="confirm-dialog-title"
+        aria-labelledby={titleId}
         className="border-border bg-card relative z-10 w-full max-w-md rounded-2xl border p-5 shadow-lg"
       >
-        <h2 id="confirm-dialog-title" className="font-display text-base font-semibold tracking-tight">
+        <h2 id={titleId} className="font-display text-base font-semibold tracking-tight">
           {title}
         </h2>
         <div className="text-muted-foreground mt-2 text-sm leading-relaxed">{body}</div>

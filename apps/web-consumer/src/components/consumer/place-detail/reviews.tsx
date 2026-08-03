@@ -25,17 +25,20 @@ import {
 
 // ── 3. Reviews summary ──────────────────────────────────────────────────
 
+// Brand-new places default to 5.0 across the board with 0 reviews.
+const DEFAULT_RATING = 5.0;
+
 export function ReviewsSummaryBox({ place }: { place: PlaceDetail }) {
-  // Brand-new places default to 5.0 across the board with 0 reviews until
-  // the first real one lands; once mesita_reviews.total > 0 we trust the
-  // averaged values that come in on the row.
+  // Until the first real review lands; once mesita_reviews.total > 0 we
+  // trust the averaged values that come in on the row.
   const hasReviews = place.mesita_reviews.total > 0;
-  const overall = hasReviews ? place.mesita_reviews.overall : 5.0;
+  const rating = (value: number) => (hasReviews ? value : DEFAULT_RATING);
+  const overall = rating(place.mesita_reviews.overall);
   const subRatings: Array<[string, number]> = [
-    ["Food", hasReviews ? place.mesita_reviews.food : 5.0],
-    ["Service", hasReviews ? place.mesita_reviews.service : 5.0],
-    ["Ambience", hasReviews ? place.mesita_reviews.ambiance : 5.0],
-    ["Value", hasReviews ? place.mesita_reviews.value : 5.0],
+    ["Food", rating(place.mesita_reviews.food)],
+    ["Service", rating(place.mesita_reviews.service)],
+    ["Ambience", rating(place.mesita_reviews.ambiance)],
+    ["Value", rating(place.mesita_reviews.value)],
   ];
   return (
     <Box title="Reviews summary" icon={Star} iconColor="text-violet-400">

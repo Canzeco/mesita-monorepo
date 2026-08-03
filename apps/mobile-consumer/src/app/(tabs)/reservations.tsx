@@ -1,5 +1,5 @@
 import { LinearGradient } from 'expo-linear-gradient';
-import { CalendarCheck, Clock } from 'lucide-react-native';
+import { CalendarCheck, Clock, type LucideIcon } from 'lucide-react-native';
 import { useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -93,12 +93,10 @@ function HistoryBody() {
 
 function ReservationsEmptyState({
   icon: Icon,
-  eyebrow,
   title,
   body,
 }: {
-  icon: typeof CalendarCheck;
-  eyebrow?: string;
+  icon: LucideIcon;
   title: string;
   body: string;
 }) {
@@ -122,14 +120,6 @@ function ReservationsEmptyState({
         <Icon color="#fff" size={28} strokeWidth={2} />
       </LinearGradient>
       <View className="items-center gap-1.5">
-        {eyebrow ? (
-          <Text
-            className="font-semibold uppercase text-primary"
-            style={{ fontSize: 11, letterSpacing: 1.8 }}
-          >
-            {eyebrow}
-          </Text>
-        ) : null}
         <Text className="font-display text-center text-xl font-semibold text-foreground">
           {title}
         </Text>

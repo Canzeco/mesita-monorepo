@@ -38,11 +38,11 @@ export function WaysToClimb({
   const premium = CLASSES.find((c) => c.id === 'premium')!;
   const influencer = CLASSES.find((c) => c.id === 'influencer')!;
   const { consumerClass, profile } = useAuth();
-  const { key, origin, followers } = useEffectiveClass(
+  const { key: classKey, origin, followers } = useEffectiveClass(
     consumerClass,
     profile?.instagram_handle ?? null,
   );
-  const isStandard = key === 'standard';
+  const isStandard = classKey === 'standard';
 
   const cards: ClimbCardData[] = [
     {
@@ -74,7 +74,7 @@ export function WaysToClimb({
         `Up to ${baseRateForClass('premium')}% discount rewards — double Standard's`,
         ...ELEVATED_PERKS,
       ],
-      reached: key === 'premium',
+      reached: classKey === 'premium',
       reachedLabel: 'Active',
       action: {
         label: 'Subscribe on web',
@@ -102,7 +102,7 @@ export function WaysToClimb({
         'Instagram Story bonus — exclusive to Influencers',
         ...ELEVATED_PERKS,
       ],
-      reached: key === 'influencer',
+      reached: classKey === 'influencer',
       reachedLabel: origin === 'instagram' ? 'Connected' : 'Active',
       action: { label: 'Join with Instagram', onPress: onConnectInstagram },
     },
@@ -122,7 +122,7 @@ export function WaysToClimb({
         `Up to ${baseRateForClass('aura')}% base discount — the highest of any class`,
         ...ELEVATED_PERKS,
       ],
-      reached: key === 'aura',
+      reached: classKey === 'aura',
       reachedLabel: 'Active',
       // No invite-code or request flow exists yet — placeholder until the
       // curation door gets a consumer-side backend (grants are admin-console

@@ -14,6 +14,7 @@ import { errMsg } from '@/lib/utils';
 import { useAuth } from '@/providers/auth';
 
 const HANDLE_RE = /^@?[A-Za-z0-9._]{1,30}$/;
+const VERIFICATION_CODE_LENGTH = 8;
 
 type Props = {
   visible: boolean;
@@ -27,7 +28,9 @@ export function VerifySocialSheet({ visible, onClose }: Props) {
   const [verifying, setVerifying] = useState(false);
 
   const canVerify =
-    HANDLE_RE.test(handle.trim()) && code.length >= 8 && !verifying;
+    HANDLE_RE.test(handle.trim()) &&
+    code.length >= VERIFICATION_CODE_LENGTH &&
+    !verifying;
 
   async function verify() {
     if (!canVerify) return;
@@ -135,7 +138,7 @@ export function VerifySocialSheet({ visible, onClose }: Props) {
         value={code}
         onChangeText={setCode}
         keyboardType="number-pad"
-        maxLength={8}
+        maxLength={VERIFICATION_CODE_LENGTH}
       />
 
       <View style={{ flexDirection: 'row', gap: 8, marginTop: 4 }}>

@@ -22,9 +22,8 @@ export type ClimbCardData = {
   /** Secondary actions render as a quiet outline button (web parity). */
   action?: { label: string; onPress: () => void; secondary?: boolean };
   note?: string;
-  igGradient?: boolean;
   /** Custom icon-tile gradient (e.g. Influencer sky, Aura gold). Wins over
-   *  igGradient and the accent default. */
+   *  the accent default. */
   iconColors?: readonly [string, string, ...string[]];
 };
 
@@ -94,13 +93,11 @@ export function ClimbCard({ data }: { data: ClimbCardData }) {
       }}
     >
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
-        {data.iconColors || data.igGradient ? (
+        {data.iconColors ? (
           <LinearGradient
-            colors={
-              data.iconColors ? [...data.iconColors] : [...GRADIENTS.instagram]
-            }
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
+            colors={[...data.iconColors]}
+            start={GRADIENT_DIAGONAL.start}
+            end={GRADIENT_DIAGONAL.end}
             style={{
               width: 48,
               height: 48,

@@ -92,7 +92,7 @@ export function EditProfileSheet({
         first_name: firstName.trim(),
         last_name: lastName.trim(),
         ...(sex === "male" || sex === "female" ? { sex } : {}),
-        birthday: birthday || "",
+        birthday,
       });
       toast("Profile updated.");
       onSaved(updated);

@@ -136,6 +136,10 @@ function MapLoadingVeil() {
   );
 }
 
+function hasCoords(place: Place): place is Place & { lat: number; lng: number } {
+  return typeof place.lat === "number" && typeof place.lng === "number";
+}
+
 function SearchMapCanvas({
   places,
   userLocation,
@@ -153,9 +157,7 @@ function SearchMapCanvas({
   onMapClick?: () => void;
   onReady: () => void;
 }) {
-  const located = places.filter(
-    (p) => typeof p.lat === "number" && typeof p.lng === "number",
-  );
+  const located = places.filter(hasCoords);
   const selected = selectedId
     ? (located.find((p) => p.id === selectedId) ?? null)
     : null;
@@ -187,7 +189,7 @@ function SearchMapCanvas({
       {located.map((place) => (
         <Marker
           key={place.id}
-          position={{ lat: place.lat as number, lng: place.lng as number }}
+          position={{ lat: place.lat, lng: place.lng }}
           title={place.name}
           icon={placeIcon(place.id === selectedId)}
           // First tap picks the place (pin turns red, rail syncs); tapping
@@ -200,11 +202,22 @@ function SearchMapCanvas({
         />
       ))}
       <Recentre target={userLocation} />
-      {selected && (
-        <PanTo lat={selected.lat as number} lng={selected.lng as number} />
-      )}
+      {selected && <PanTo lat={selected.lat} lng={selected.lng} />}
     </Map>
   );
+}
+
+// Shared by Recentre/PanTo: pan to the target, and bump zoom in only if
+// it's currently more zoomed-out than the user-focused level (never zooms
+// the consumer's own framing back out).
+function panAndEnsureZoom(
+  map: NonNullable<ReturnType<typeof useMap>>,
+  target: LatLng,
+) {
+  map.panTo(target);
+  if ((map.getZoom() ?? MAP_DEFAULT_ZOOM) < MAP_USER_ZOOM) {
+    map.setZoom(MAP_USER_ZOOM);
+  }
 }
 
 // Pan to the consumer once geolocation resolves.
@@ -212,10 +225,7 @@ function Recentre({ target }: { target: LatLng | null }) {
   const map = useMap();
   useEffect(() => {
     if (!map || !target) return;
-    map.panTo(target);
-    if ((map.getZoom() ?? MAP_DEFAULT_ZOOM) < MAP_USER_ZOOM) {
-      map.setZoom(MAP_USER_ZOOM);
-    }
+    panAndEnsureZoom(map, target);
   }, [map, target]);
   return null;
 }
@@ -227,10 +237,7 @@ function PanTo({ lat, lng }: { lat: number; lng: number }) {
   const map = useMap();
   useEffect(() => {
     if (!map) return;
-    map.panTo({ lat, lng });
-    if ((map.getZoom() ?? MAP_DEFAULT_ZOOM) < MAP_USER_ZOOM) {
-      map.setZoom(MAP_USER_ZOOM);
-    }
+    panAndEnsureZoom(map, { lat, lng });
   }, [map, lat, lng]);
   return null;
 }

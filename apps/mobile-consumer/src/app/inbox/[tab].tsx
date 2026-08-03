@@ -26,6 +26,8 @@ import { useAuth } from '@/providers/auth';
 
 export type InboxTab = 'mine' | 'global';
 
+const NOTIFICATIONS_LOAD_ERROR = "Couldn't load notifications.";
+
 function tabFromParam(raw: string | string[] | undefined): InboxTab {
   const seg = Array.isArray(raw) ? raw[0] : raw;
   if (seg === 'global' || seg === 'global-activity') return 'global';
@@ -64,7 +66,7 @@ export default function InboxScreen() {
       setRows(data);
       setError(null);
     } catch (e) {
-      setError(errMsg(e, "Couldn't load notifications."));
+      setError(errMsg(e, NOTIFICATIONS_LOAD_ERROR));
     } finally {
       setLoading(false);
     }
@@ -81,7 +83,7 @@ export default function InboxScreen() {
           setError(null);
         }
       } catch (e) {
-        if (!cancelled) setError(errMsg(e, "Couldn't load notifications."));
+        if (!cancelled) setError(errMsg(e, NOTIFICATIONS_LOAD_ERROR));
       } finally {
         if (!cancelled) setLoading(false);
       }
