@@ -20,7 +20,7 @@ import {
   type Strategy,
   type StrategyId } from "@/lib/business/strategies";
 import { planForSubscription } from "@/lib/business/plans";
-import { setPlacePlan, updatePlace, type AdminPlace } from "../actions";
+import { setPlacePlan, type AdminPlace } from "../actions";
 import {SectionCard} from "../ui";
 import { ErrorNote } from "@/components/ErrorNote";
 
@@ -120,12 +120,16 @@ export function PromosSection({
 
   // The modal is the confirm step: its footer action commits the strategy.
   //
-  // A strategy is rates + cap + plan, but plan lives behind a different door:
-  // business-web-update-project rejects any body carrying `plan` (that field
-  // belongs to billing), so it goes through admin-web-set-plan instead. Two
-  // calls can't be atomic, so order them by what a partial failure leaves
-  // behind — never discounts running without the membership that pays for
-  // them. Joining grants the plan first; leaving drops the rates first.
+  // A strategy is rates + cap + plan, and all three go through admin-web-set-
+  // plan in ONE call. It used to be two — business-web-update-project for the
+  // rates, admin-web-set-plan for the plan — ordered so a partial failure
+  // never left discounts running without the membership that pays for them.
+  // But two calls can't be atomic, and the gap between them was a state the
+  // backend couldn't validate: mid-join the place carried a paid plan with
+  // the OLD rates. Now that the plan door takes rates too (MESITA-818), the
+  // whole strategy lands in a single UPDATE and the EF can enforce "a paid
+  // plan must resolve to a real preset" — no partial state to reason about,
+  // and no partner stuck at 0%.
   const commitStrategy = (target: StrategyId) => {
     setModalId(null);
     if (pending || target === storedStrategy) return;
@@ -145,28 +149,16 @@ export function PromosSection({
     setError(null);
 
     start(async () => {
-      const writeRates = () => updatePlace({ id: prev.id, ...rates });
-      const writePlan = () => setPlacePlan(prev.id, plan);
-      const writes = leaving ? [writeRates, writePlan] : [writePlan, writeRates];
-
-      let confirmed: AdminPlace | null = null;
-      for (const write of writes) {
-        const r = await write();
-        if (!r.ok) {
-          // Show the truth, not the optimistic guess: whatever the server
-          // confirmed so far, else the pre-commit state.
-          const truth = confirmed ?? prev;
-          setV(truth);
-          onSaved(truth);
-          setError(r.error);
-          return;
-        }
-        confirmed = r.data;
+      const r = await setPlacePlan(prev.id, plan, rates);
+      if (!r.ok) {
+        // Show the truth, not the optimistic guess.
+        setV(prev);
+        onSaved(prev);
+        setError(r.error);
+        return;
       }
-      if (confirmed) {
-        setV(confirmed);
-        onSaved(confirmed);
-      }
+      setV(r.data);
+      onSaved(r.data);
     });
   };
 

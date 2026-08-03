@@ -1,3 +1,10 @@
+// The four per-class promo rate columns and their legal value set.
+//
+// Lives in _shared because two EFs now validate them: business-web-update-
+// project (the profile door) and admin-web-set-plan (the membership door,
+// which takes rates alongside the plan so a paid membership and the strategy
+// that justifies it land in ONE write — see MESITA-818).
+
 export const PROMO_RATE_FIELDS = [
   "welcome_free_rate",
   "welcome_premium_rate",
