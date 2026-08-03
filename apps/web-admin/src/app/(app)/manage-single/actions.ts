@@ -229,77 +229,37 @@ export async function setPlacePlan(
 }
 
 // ── Performance: per-place activity (read-only) ──────────────────────────
-// Reservations + their Reservationist call lifecycle, story/review
-// screenshots, review text, and the two inbound AI phone lines. Deliberately
-// read-only: a booking is changed by CALLING a3/a4, never by editing a row
-// (Pato, MESITA-847) — there is no write counterpart to this action.
+// Real aggregates + a short reservation list + the two inbound AI phone
+// lines. Deliberately read-only: a booking is changed by CALLING a3/a4, never
+// by editing a row (Pato) — there is no write counterpart to this action.
+
+export type PlaceStats = {
+  saves: number;
+  tickets: number;
+  visits: number;
+  paid: number;
+  reservations: number;
+  influencedCents: number;
+  discountCents: number;
+  avgTicketCents: number | null;
+  /** visits ÷ saves, and paid ÷ visits — the funnel's two conversions. */
+  visitRate: number | null;
+  closeRate: number | null;
+};
 
 export type PlaceReservation = {
   id: string;
-  referenceCode: string | null;
   reservedAt: string | null;
   partySize: number | null;
   status: string | null;
-  notes: string | null;
-  createdAt: string | null;
-  confirmedAt: string | null;
-  cancelledAt: string | null;
-  cancelledBy: string | null;
-  guest: string;
-  call: {
-    attempts: number;
-    attemptsPlanned: number | null;
-    state: string | null;
-    nextAttemptAt: string | null;
-    lastStatus: string | null;
-    lastCalledAt: string | null;
-    verdict: string | null;
-    alternatives: unknown;
-    outcomeNote: string | null;
-    negotiationRounds: number;
-    callbackState: string | null;
-    guestConfirmedAt: string | null;
-  };
   isTest: boolean;
-  guestNumber: string | null;
-  venueNumber: string | null;
-};
-
-export type PlaceStory = {
-  ticketId: string;
-  createdAt: string | null;
   guest: string;
-  story: {
-    status: string | null;
-    screenshotUrl: string | null;
-    submittedAt: string | null;
-    verifiedAt: string | null;
-    rejectReason: string | null;
-  };
-  review: {
-    status: string | null;
-    screenshotUrl: string | null;
-    submittedAt: string | null;
-    verifiedAt: string | null;
-  };
-};
-
-export type PlaceComment = {
-  id: string;
-  createdAt: string | null;
-  guest: string;
-  food: number | null;
-  service: number | null;
-  ambiance: number | null;
-  value: number | null;
-  overall: number | null;
-  comments: string | null;
 };
 
 export type PlaceActivity = {
+  stats: PlaceStats;
   reservations: PlaceReservation[];
-  stories: PlaceStory[];
-  comments: PlaceComment[];
+  reservationTotal: number;
   /** The only way to change a booking — a3 answers guests, a4 answers venues. */
   lines: { guest: string; venue: string };
   generatedAt: string;

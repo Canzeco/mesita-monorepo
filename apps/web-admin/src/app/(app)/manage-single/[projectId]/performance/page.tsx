@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Activity, AlertTriangle } from "lucide-react";
+import { AlertTriangle } from "lucide-react";
 import {
   listNotifications,
   type NotificationsPayload,
@@ -9,31 +9,36 @@ import {
 import { getPlaceActivity, type PlaceActivity } from "../../actions";
 import { GlobalPerformanceClient } from "../../../global-performance/GlobalPerformanceClient";
 import { ACTIVITY_TYPE_ORDER } from "../../../global-performance/notification-config";
-import { PerformanceSummary } from "../../sections/PerformanceSummary";
-import { ReservationsPanel } from "../../sections/ReservationsPanel";
-import { ReviewsSection } from "../../sections/ReviewsSection";
-import { StoriesCommentsPanel } from "../../sections/StoriesCommentsPanel";
+import { PerformanceHeadline } from "../../sections/PerformanceHeadline";
+import { ReputationStrip } from "../../sections/ReputationStrip";
+import { ReservationsList } from "../../sections/ReservationsList";
 import { SectionCard, Spinner } from "../../ui";
 import { useUnitPlace } from "../../UnitPlaceContext";
 
-// Per-place Performance — how this place is DOING, narrowing as you scroll:
-// headline numbers → reputation → bookings & guest content → the raw event
-// feed. Summary and feed read the SAME payload, so the tiles can never
-// disagree with the rows beneath them; the feed is the Global Monitor engine
-// scoped to this place (Enricher noise stays on Global).
+// Per-place Performance. FOUR cards, in the order the question is answered
+// (Pato, 2026-08-03: "make the performance page simpler by far. remove lots of
+// stuff … just focus on the simple important stuff to know"):
 //
-// LAYOUT CONTRACT — one column, one rhythm. The page owns a single
-// `max-w-6xl` wrapper and every block sits inside it; each content group is a
-// labelled band whose cards flow in the SAME lg:columns-2 masonry. Before
-// this it was four separately-wrapped blocks with mismatched column counts,
-// and the feed — built to bleed OUT of PageContainer's padding — rendered
-// wider than its siblings, which is why it now gets `bleed={false}`.
+//   1. Is Mesita working here? — the money + the Saved→Visited→Paid funnel.
+//   2. Reputation             — five numbers on one strip.
+//   3. Reservations           — a plain list + the AI line to call.
+//   4. Activity               — the raw event feed, for when a number
+//                               surprises you and you want the receipts.
+//
+// Removed in this pass: the 8-tile KPI grid, the three review cards, and the
+// story/review screenshot grid. What replaced the tiles matters more than the
+// tile count — the headline numbers now come from REAL aggregates
+// (admin-web-get-place-activity → stats) instead of being summed from a
+// capped page of the event feed, where "influenced spend" silently meant
+// "…of the last 150 events".
+//
+// Layout: one max-w-4xl column, one card per row. The earlier two-column
+// masonry existed to fit six cards; with four there is nothing to pack, and a
+// single column reads top-to-bottom in the order above.
 export default function UnitPerformancePage() {
   const { place } = useUnitPlace();
-  const [initial, setInitial] = useState<NotificationsPayload | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  // Reservations + stories/comments ride their own read-only EF. A failure
-  // here must not take the rest of the page down, so it keeps its own state.
+  const [feed, setFeed] = useState<NotificationsPayload | null>(null);
+  const [feedError, setFeedError] = useState<string | null>(null);
   const [activity, setActivity] = useState<PlaceActivity | null>(null);
   const [activityError, setActivityError] = useState<string | null>(null);
 
@@ -41,17 +46,6 @@ export default function UnitPerformancePage() {
   // state starts null and a place switch remounts the page via the shell.
   useEffect(() => {
     let alive = true;
-    listNotifications("all", {
-      projectId: place.id,
-      types: ACTIVITY_TYPE_ORDER,
-    }).then((r) => {
-      if (!alive) return;
-      if (!r.ok) {
-        setError(r.error);
-        return;
-      }
-      setInitial(r.data);
-    });
     getPlaceActivity(place.id).then((r) => {
       if (!alive) return;
       if (!r.ok) {
@@ -60,54 +54,49 @@ export default function UnitPerformancePage() {
       }
       setActivity(r.data);
     });
+    listNotifications("all", {
+      projectId: place.id,
+      types: ACTIVITY_TYPE_ORDER,
+    }).then((r) => {
+      if (!alive) return;
+      if (!r.ok) {
+        setFeedError(r.error);
+        return;
+      }
+      setFeed(r.data);
+    });
     return () => {
       alive = false;
     };
   }, [place.id]);
 
   return (
-    <div className="mx-auto flex w-full max-w-6xl flex-col gap-7 pb-10 lg:gap-9">
-      {/* Headline numbers — the tiles ARE the cards here, so no wrapping
-          card (a card full of bordered boxes just reads as clutter). */}
-      {initial ? <PerformanceSummary place={place} data={initial} /> : null}
+    <div className="mx-auto flex w-full max-w-4xl flex-col gap-5 pb-10">
+      {activityError ? (
+        <ErrorNote title="Couldn't load this place's numbers." detail={activityError} />
+      ) : activity ? (
+        <>
+          <PerformanceHeadline stats={activity.stats} />
+          <ReputationStrip place={place} stats={activity.stats} />
+          <ReservationsList activity={activity} />
+        </>
+      ) : (
+        <Spinner label="Loading…" />
+      )}
 
-      <Band title="Reputation">
-        <ReviewsSection place={place} />
-      </Band>
-
-      <Band title="Bookings & guest content">
-        {activityError ? (
-          <ErrorNote
-            title="Couldn't load reservations or guest content."
-            detail={activityError}
-          />
-        ) : activity ? (
-          <>
-            <ReservationsPanel activity={activity} />
-            <StoriesCommentsPanel activity={activity} />
-          </>
-        ) : (
-          <Spinner label="Loading reservations…" />
-        )}
-      </Band>
-
-      {/* The raw feed, carded like everything else instead of floating under
-          a bare label. */}
       <SectionCard
-        icon={<Activity className="h-4 w-4" />}
-        tint="indigo"
-        title="Activity feed"
+        title="Activity"
         subtitle="Every consumer event on this place, newest first. Auto-refreshes while the tab is open."
       >
-        {error ? (
+        {feedError ? (
           <div className="mt-4">
-            <ErrorNote title="Couldn't load this place's activity." detail={error} />
+            <ErrorNote title="Couldn't load the activity feed." detail={feedError} />
           </div>
-        ) : !initial ? (
+        ) : !feed ? (
           <Spinner label="Loading activity…" />
         ) : (
           <GlobalPerformanceClient
-            initial={initial}
+            initial={feed}
             projectId={place.id}
             types={ACTIVITY_TYPE_ORDER}
             bleed={false}
@@ -115,20 +104,6 @@ export default function UnitPerformancePage() {
         )}
       </SectionCard>
     </div>
-  );
-}
-
-/** A labelled group whose cards flow in the page's one masonry. */
-function Band({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <section>
-      <h2 className="text-muted-foreground mb-3 text-[11px] font-semibold tracking-[0.12em] uppercase">
-        {title}
-      </h2>
-      <div className="columns-1 gap-4 [&>section]:mb-4 [&>section]:break-inside-avoid lg:columns-2 lg:gap-5 lg:[&>section]:mb-5">
-        {children}
-      </div>
-    </section>
   );
 }
 
