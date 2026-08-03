@@ -25,14 +25,18 @@ import { ConfirmDialog } from "./ui";
 /** True while the Enricher pipeline is mid-flight.
  *  decision: Pato (MESITA-453) — Enriching = the WHOLE pipeline:
  *  research OR analysis OR contents. Never clear after research alone. */
-function isEnriching(s: PlaceEnrichmentStatus | null): boolean {
-  const stage = s?.stage ?? null;
+function isEnriching(status: PlaceEnrichmentStatus | null): boolean {
+  const stage = status?.stage ?? null;
   if (stage === "research" || stage === "analysis" || stage === "contents") {
     return true;
   }
-  const cs = s?.content_status ?? null;
-  return cs === "generating" || cs === "queued";
+  const contentStatus = status?.content_status ?? null;
+  return contentStatus === "generating" || contentStatus === "queued";
 }
+
+// Status values that render the green "healthy" dot next to the place name;
+// anything else (draft, paused, etc.) renders the amber dot.
+const POSITIVE_STATUS_LABELS = new Set(["active", "published", "live", "ready"]);
 
 type PendingNav =
   | { kind: "href"; href: string }
@@ -206,9 +210,7 @@ export function UnitEditChrome({
                 <span
                   className={
                     "h-1.5 w-1.5 rounded-full " +
-                    (["active", "published", "live", "ready"].includes(
-                      statusLabel.toLowerCase(),
-                    )
+                    (POSITIVE_STATUS_LABELS.has(statusLabel.toLowerCase())
                       ? "bg-green-500"
                       : "bg-amber-500")
                   }
@@ -223,7 +225,7 @@ export function UnitEditChrome({
                   <span className="bg-border h-1 w-1 rounded-full" aria-hidden />
                 ) : null}
                 <span className="truncate">
-                  {place.category_label ?? place.category}
+                  {place.category_label || place.category}
                 </span>
               </>
             ) : null}

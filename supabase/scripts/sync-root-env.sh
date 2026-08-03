@@ -29,11 +29,7 @@ done
 
 touch "${DEST}"
 tmp="$(mktemp)"
-if [[ -f "${DEST}" ]]; then
-  grep -v '^TWILIO_ACCOUNT_SID=' "${DEST}" 2>/dev/null | grep -v '^TWILIO_AUTH_TOKEN=' | grep -v '^TWILIO_MESSAGE_SERVICE_SID=' | grep -v '^# Twilio (synced from .env.twilio.local)' > "${tmp}" || true
-else
-  : > "${tmp}"
-fi
+grep -v '^TWILIO_ACCOUNT_SID=' "${DEST}" | grep -v '^TWILIO_AUTH_TOKEN=' | grep -v '^TWILIO_MESSAGE_SERVICE_SID=' | grep -v '^# Twilio (synced from .env.twilio.local)' > "${tmp}" || true
 
 {
   cat "${tmp}"

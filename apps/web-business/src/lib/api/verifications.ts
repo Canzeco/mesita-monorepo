@@ -104,6 +104,19 @@ export async function apiLookupPlace(
   );
 }
 
+// Shared by both OTP-send calls below (phone + email), which take the
+// same projectId + optional requesterEmail shape. Canonical payload key
+// is `placeId` (MESITA-26); local naming unchanged.
+function otpSendBody(
+  projectId: string,
+  requesterEmail?: string,
+): Record<string, unknown> {
+  return {
+    placeId: projectId,
+    ...(requesterEmail?.trim() ? { requesterEmail: requesterEmail.trim() } : {}),
+  };
+}
+
 // ── Phone OTP path ────────────────────────────────────────────────────
 
 type SendPhoneOtpResult = {
@@ -127,13 +140,7 @@ export async function apiBusinessSendsPhoneOtp(
   return invokeEF<SendPhoneOtpResult>(
     client,
     "business-web-send-phone-otp",
-    {
-      // Canonical payload key is `placeId` (MESITA-26); local naming unchanged.
-      placeId: projectId,
-      ...(requesterEmail?.trim()
-        ? { requesterEmail: requesterEmail.trim() }
-        : {}),
-    },
+    otpSendBody(projectId, requesterEmail),
     "Couldn't start the phone verification.",
   );
 }
@@ -176,13 +183,7 @@ export async function apiBusinessSendsEmailOtp(
   return invokeEF<SendEmailOtpResult>(
     client,
     "business-web-send-email-otp",
-    {
-      // Canonical payload key is `placeId` (MESITA-26); local naming unchanged.
-      placeId: projectId,
-      ...(requesterEmail?.trim()
-        ? { requesterEmail: requesterEmail.trim() }
-        : {}),
-    },
+    otpSendBody(projectId, requesterEmail),
     "Couldn't start the email verification.",
   );
 }

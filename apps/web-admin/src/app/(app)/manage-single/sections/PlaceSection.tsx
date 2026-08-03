@@ -233,16 +233,18 @@ function ReservationChannelIcon({
 }
 
 const PRICE_NAMES = ["", "Budget", "Casual", "Upscale", "Fine dining"] as const;
+const MAX_PRICE_LEVEL = PRICE_NAMES.length - 1;
 
 // Price is Google-Places inferred — read-only. Filled $ + dimmed remainder.
 function PriceDisplay({ level }: { level: number | null | undefined }) {
   if (level == null || level < 1) return <span className="text-muted-foreground">—</span>;
-  const n = Math.max(1, Math.min(4, level));
+  // level is already >= 1 here, so clamping only needs an upper bound.
+  const n = Math.min(MAX_PRICE_LEVEL, level);
   return (
     <span className="flex items-center gap-2">
       <span className="font-semibold tracking-wide">
         <span className="text-foreground">{"$".repeat(n)}</span>
-        <span className="text-muted-foreground/40">{"$".repeat(4 - n)}</span>
+        <span className="text-muted-foreground/40">{"$".repeat(MAX_PRICE_LEVEL - n)}</span>
       </span>
       <span className="text-muted-foreground">{PRICE_NAMES[n]}</span>
     </span>
@@ -315,7 +317,7 @@ function boxToPatch(
   id: string,
   limits: PlaceFieldLimits,
   existingProducts?: AdminPlace["products"],
-): Record<string, unknown> {
+): Record<string, unknown> & { id: string } {
   const nz = (s: string) => (s.trim() ? s.trim() : null);
   if (box === "basics") {
     return {
@@ -336,7 +338,7 @@ function boxToPatch(
     return { id, hours };
   }
   if (box === "channels") {
-    const patch: Record<string, unknown> = {
+    const patch: Record<string, unknown> & { id: string } = {
       id,
       phone: nz(f.phone),
       email: nz(f.email),
@@ -642,7 +644,7 @@ export function PlaceSection({
     setPendingBox(box);
     start(async () => {
       const r = await updatePlace(
-        boxToPatch(box, form, place.id, limits, place.products) as { id: string },
+        boxToPatch(box, form, place.id, limits, place.products),
       );
       setPendingBox(null);
       if (!r.ok) {

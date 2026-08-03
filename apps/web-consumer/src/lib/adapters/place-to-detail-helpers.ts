@@ -22,6 +22,13 @@ export function obj(v: unknown): Record<string, unknown> {
     : {};
 }
 
+// A candidate containing a digit is a street/building line or an explicit
+// numeric value, not a clean label — shared by the address parsers below and
+// the price-range fallback check.
+function hasDigit(s: string): boolean {
+  return /\d/.test(s);
+}
+
 // Best-effort neighborhood (colonia) pulled from a Mexican-style formatted
 // address — "Street, Colonia, NNNNN City, State" — by grabbing the segment
 // immediately before the 5-digit postal code. Any candidate containing a
@@ -37,7 +44,7 @@ export function neighborhoodFromAddress(
   if (!address) return undefined;
   const match = address.match(/,\s*([^,]+?),\s*\d{5}\s/);
   const candidate = match?.[1]?.trim();
-  if (!candidate || /\d/.test(candidate)) return undefined;
+  if (!candidate || hasDigit(candidate)) return undefined;
   return candidate;
 }
 
@@ -50,14 +57,14 @@ function cityFromAddress(
   if (!address) return null;
   const postCodeCityMatch = address.match(/\d{5}\s+([^,]+)/);
   const direct = postCodeCityMatch?.[1]?.trim();
-  if (direct && !/\d/.test(direct)) return direct;
+  if (direct && !hasDigit(direct)) return direct;
 
   const parts = address
     .split(",")
     .map((p) => p.trim())
     .filter(Boolean);
   const fallback = parts.length >= 2 ? parts[parts.length - 2] : parts[0];
-  if (!fallback || /\d/.test(fallback)) return null;
+  if (!fallback || hasDigit(fallback)) return null;
   return fallback;
 }
 
@@ -104,6 +111,10 @@ const WEEK_KEYS = [
   "saturday",
 ];
 
+// One weekday's shift, as stored in the `hours` jsonb — shared by
+// computeOpenState and hoursTable so both read the same shape.
+type HourRange = { open?: string; close?: string };
+
 function parseMinutes(t: unknown): number | null {
   if (typeof t !== "string") return null;
   const m = /^(\d{1,2}):(\d{2})/.exec(t.trim());
@@ -140,7 +151,7 @@ export function derivePriceRange(
 ): string {
   const raw = str(row.price_range);
   // Keep explicit numeric ranges from the backend when present.
-  if (raw && /\d/.test(raw)) return raw;
+  if (raw && hasDigit(raw)) return raw;
   return fallbackPriceRange(priceLevel, currency);
 }
 
@@ -205,7 +216,7 @@ export function computeOpenState(
   const yKey = WEEK_KEYS[(dayIdx + 6) % 7];
 
   // Yesterday's overnight range still in progress this morning.
-  for (const r of arr<{ open?: string; close?: string }>(h[yKey])) {
+  for (const r of arr<HourRange>(h[yKey])) {
     const o = parseMinutes(r.open);
     const c = parseMinutes(r.close);
     if (o == null || c == null) continue;
@@ -215,7 +226,7 @@ export function computeOpenState(
   }
 
   let nextOpen: { min: number; at: string } | null = null;
-  for (const r of arr<{ open?: string; close?: string }>(h[todayKey])) {
+  for (const r of arr<HourRange>(h[todayKey])) {
     const o = parseMinutes(r.open);
     const c = parseMinutes(r.close);
     if (o == null || c == null) continue;
@@ -233,7 +244,7 @@ export function computeOpenState(
   // Closed today already — first opening of the next day with any hours.
   for (let i = 1; i <= 7; i += 1) {
     const k = WEEK_KEYS[(dayIdx + i) % 7];
-    const ranges = arr<{ open?: string }>(h[k]);
+    const ranges = arr<HourRange>(h[k]);
     if (ranges.length > 0 && ranges[0].open) {
       return { open_now: false, opens_at: ranges[0].open, closes_at: "" };
     }
@@ -245,7 +256,7 @@ export function hoursTable(hours: unknown): PlaceDetail["hours_table"] {
   const h = obj(hours);
   const out: PlaceDetail["hours_table"] = [];
   for (const day of DAY_ORDER) {
-    const ranges = arr<{ open?: string; close?: string }>(h[day]);
+    const ranges = arr<HourRange>(h[day]);
     if (ranges.length === 0) {
       out.push({ day: DAY_LABELS[day], range: "Closed" });
       continue;

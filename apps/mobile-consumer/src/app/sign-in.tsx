@@ -24,6 +24,8 @@ import { supabase } from '@/lib/supabase';
 
 // Phone OTP with country dial picker — web PhoneInputWithCountry parity.
 
+const OTP_LENGTH = 6;
+
 export default function SignIn() {
   const router = useRouter();
   const [step, setStep] = useState<'phone' | 'code'>('phone');
@@ -41,9 +43,9 @@ export default function SignIn() {
     [countryCode, localNumber],
   );
   const phoneOk = localNumber.replace(/\D/g, '').length >= 8;
-  const codeOk = token.trim().length === 6;
+  const codeOk = token.trim().length === OTP_LENGTH;
 
-  const sendCode = async () => {
+  const requestOtp = async () => {
     setError(null);
     setInfo(null);
     setBusy(true);
@@ -51,24 +53,23 @@ export default function SignIn() {
     setBusy(false);
     if (err) {
       setError(err.message);
-      return;
+      return false;
     }
-    setStep('code');
+    return true;
+  };
+
+  const sendCode = async () => {
+    if (await requestOtp()) {
+      setStep('code');
+    }
   };
 
   // "Resend code" re-calls signInWithOtp without leaving the code step, then
   // confirms inline (web PhoneOtpForm parity).
   const resendCode = async () => {
-    setError(null);
-    setInfo(null);
-    setBusy(true);
-    const { error: err } = await supabase.auth.signInWithOtp({ phone: e164 });
-    setBusy(false);
-    if (err) {
-      setError(err.message);
-      return;
+    if (await requestOtp()) {
+      setInfo('We sent you a new code.');
     }
-    setInfo('We sent you a new code.');
   };
 
   const verifyCode = async () => {
@@ -224,7 +225,7 @@ export default function SignIn() {
                   keyboardType="number-pad"
                   textContentType="oneTimeCode"
                   autoComplete="sms-otp"
-                  maxLength={6}
+                  maxLength={OTP_LENGTH}
                   placeholder="••••••"
                   value={token}
                   onChangeText={setToken}

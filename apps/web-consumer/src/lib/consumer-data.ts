@@ -28,7 +28,7 @@ export function isElevatedClass(classKey: Class | string): boolean {
 // (with fields for popular-times bars, visitor avatars, etc.). Discover
 // surfaces now consume `Place` from `@/lib/api/places` — the EF-backed
 // shape — and the rich detail surface reads `PlaceDetail` from
-// `@/lib/mock/place`. This module no longer carries a Place type; the
+// `@/lib/mock/place`. This module no longer carries a Place type.
 
 // Country list — used by the phone-input dial-code picker (the residence
 // dropdown was retired; country is inferred from the phone's dial code).

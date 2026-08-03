@@ -178,6 +178,13 @@ export function SearchClient() {
     sessionTokenRef.current = newSessionToken();
   }, []);
 
+  // Closes the search overlay without picking a place — shared by the
+  // clear button and tapping the map while search is open.
+  const closeSearch = () => {
+    updateQuery('');
+    setSearchOpen(false);
+  };
+
   const updateQuery = (next: string) => {
     setQuery(next);
     const nextTrimmed = next.trim();
@@ -235,22 +242,27 @@ export function SearchClient() {
     setRetryTick((t) => t + 1);
   }, [trimmed]);
 
-  // On-Mesita row tap → show the place on the map (red selected pin + rail
-  // card) instead of opening detail; the detail is one more tap on the pin or
-  // card. The EF-provided Mesita id is the primary join; the exact-name match
-  // covers older suggest payloads. Web parity (MESITA-672).
+  // Selects a place on the map (red pin + rail card) and returns to the idle
+  // map — shared by search picks and tapping a pin directly. Clearing the
+  // query is what ends the Places session (updateQuery mints the next token).
+  const selectPlace = (id: string) => {
+    updateQuery('');
+    setSearchOpen(false);
+    setRailCollapsed(false);
+    setSelectedId(id);
+  };
+
+  // On-Mesita row tap → show the place on the map instead of opening detail;
+  // the detail is one more tap on the pin or card. The EF-provided Mesita id
+  // is the primary join; the exact-name match covers older suggest payloads.
+  // Web parity (MESITA-672).
   const handlePickMesita = (prediction: PlacePrediction) => {
     const match =
       (prediction.mesitaId
         ? catalog.find((p) => p.id === prediction.mesitaId)
         : null) ?? matchPredictionToPlace(prediction, catalog);
     if (match) {
-      // Clearing the query is the selection that ends the Places session
-      // (updateQuery mints the next token) and hands back the idle map.
-      updateQuery('');
-      setSearchOpen(false);
-      setRailCollapsed(false);
-      setSelectedId(match.id);
+      selectPlace(match.id);
       return;
     }
     // On Mesita per the EF but outside the mappable catalog snapshot — no
@@ -307,18 +319,10 @@ export function SearchClient() {
           userLocation={coords}
           center={center}
           apiKey={GMP_KEY}
-          onSelectPlace={(place) => {
-            setSelectedId(place.id);
-            setRailCollapsed(false);
-            setSearchOpen(false);
-            updateQuery('');
-          }}
+          onSelectPlace={(place) => selectPlace(place.id)}
           onOpenPlace={(place) => router.push(`/place/${place.id}`)}
           onMapPress={() => {
-            if (searchOpen) {
-              setSearchOpen(false);
-              updateQuery('');
-            }
+            if (searchOpen) closeSearch();
           }}
         />
       </View>
@@ -329,10 +333,7 @@ export function SearchClient() {
         filtersActive={filtersActive}
         onChangeQuery={updateQuery}
         onFocus={() => setSearchOpen(true)}
-        onClear={() => {
-          updateQuery('');
-          setSearchOpen(false);
-        }}
+        onClear={closeSearch}
         onOpenFilters={() => setFiltersOpen(true)}
       />
 

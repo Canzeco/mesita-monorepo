@@ -12,15 +12,17 @@ export function errMsg(err: unknown, fallback: string): string {
   return err instanceof Error ? err.message : fallback;
 }
 
+const HOUR_MS = 60 * 60 * 1000;
+const DAY_MS = 24 * HOUR_MS;
+
 export function formatRelative(iso: string): string {
   const ms = new Date(iso).getTime() - Date.now();
   const abs = Math.abs(ms);
-  const day = 24 * 60 * 60 * 1000;
-  if (abs < day) {
-    const hr = Math.round(abs / (60 * 60 * 1000));
+  if (abs < DAY_MS) {
+    const hr = Math.round(abs / HOUR_MS);
     return ms >= 0 ? `in ${hr}h` : `${hr}h ago`;
   }
-  const d = Math.round(abs / day);
+  const d = Math.round(abs / DAY_MS);
   return ms >= 0 ? `in ${d}d` : `${d}d ago`;
 }
 

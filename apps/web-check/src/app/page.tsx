@@ -11,7 +11,7 @@ import { ArrowRight, QrCode, ReceiptText, ScanLine } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 
-export default function CheckoutHome() {
+export default function CheckHome() {
   const router = useRouter();
   const [code, setCode] = useState("");
   const trimmed = code.trim();

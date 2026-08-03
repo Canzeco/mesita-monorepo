@@ -7,7 +7,7 @@
 #   1. Marks remote-only versions as reverted (CLI stops complaining)
 #   2. Marks local-only versions as applied (schema already on remote)
 #
-# Run from mesita-supabase:
+# Run from the supabase/ package root (mesita-monorepo):
 #   ./scripts/sync-migration-history.sh
 #
 # Safe when remote DB already matches your local migration *content*.
@@ -15,12 +15,14 @@
 
 set -euo pipefail
 
+PROJECT_REF="yjalywfzdelacdzccpgb"
+
 cd "$(dirname "$0")/.."
 
 bash scripts/sync-root-env.sh
 
 echo "▶ Linking ..."
-supabase link --project-ref yjalywfzdelacdzccpgb >/dev/null
+supabase link --project-ref "${PROJECT_REF}" >/dev/null
 
 echo "▶ Reading migration list ..."
 LIST=$(supabase migration list --linked 2>/dev/null || true)

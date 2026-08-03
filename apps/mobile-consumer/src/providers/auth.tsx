@@ -16,9 +16,9 @@ const KNOWN_CLASS_KEYS = ['standard', 'premium', 'influencer', 'aura'] as const;
 
 function normalizeClass(raw: ConsumerClass | null): ConsumerClass | null {
   if (!raw) return null;
-  const raw_key = raw.class ?? raw.key ?? 'standard';
-  const key = (KNOWN_CLASS_KEYS as readonly string[]).includes(raw_key)
-    ? (raw_key as (typeof KNOWN_CLASS_KEYS)[number])
+  const rawKey = raw.class ?? raw.key ?? 'standard';
+  const key = (KNOWN_CLASS_KEYS as readonly string[]).includes(rawKey)
+    ? (rawKey as (typeof KNOWN_CLASS_KEYS)[number])
     : 'standard';
   return {
     ...raw,
@@ -68,7 +68,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // TOKEN_REFRESHED refetch (app foreground after token expiry). A
         // genuine "no profile" arrives on the SUCCESS path above
         // (result.consumer === null), never through this catch.
-        if (!active) return;
       }
     };
 

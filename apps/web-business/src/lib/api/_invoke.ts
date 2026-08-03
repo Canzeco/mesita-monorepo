@@ -123,3 +123,13 @@ function pickErrorMessage(body: Record<string, unknown> | null): string | null {
   const msg = body?.error;
   return typeof msg === "string" && msg.length > 0 ? msg : null;
 }
+
+// Local params commonly carry `projectId`; every EF payload takes the
+// canonical `placeId` (MESITA-26). Centralises the rename so call sites
+// across this directory don't each duplicate the destructure + spread.
+export function withPlaceId<T extends { projectId: string }>(
+  input: T,
+): Record<string, unknown> {
+  const { projectId, ...rest } = input;
+  return { ...rest, placeId: projectId };
+}

@@ -266,7 +266,6 @@ export type UpdatePlaceInput = {
 };
 
 type UpdatedPlace = Place & {
-  phone: string | null;
   updated_at: string;
 };
 

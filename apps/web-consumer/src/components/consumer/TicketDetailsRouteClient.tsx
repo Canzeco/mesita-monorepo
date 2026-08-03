@@ -67,20 +67,25 @@ export function TicketDetailsRouteClient({
     comments: "",
   });
 
+  const applyBundle = useCallback(
+    (bundle: Awaited<ReturnType<typeof fetchPayTicketBundle>>) => {
+      setRows(bundle.notifications);
+      setTicketMeta(bundle.ticketMeta);
+      setPlaceInstagramUrl(bundle.placeInstagramUrl);
+      setError(null);
+    },
+    [],
+  );
+
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const { notifications, ticketMeta, placeInstagramUrl } =
-        await fetchPayTicketBundle(supabase, ticketId);
-      setRows(notifications);
-      setTicketMeta(ticketMeta);
-      setPlaceInstagramUrl(placeInstagramUrl);
-      setError(null);
+      applyBundle(await fetchPayTicketBundle(supabase, ticketId));
     } catch (e) {
       setError(errMsg(e, "Couldn't load ticket."));
     }
     setLoading(false);
-  }, [supabase, ticketId]);
+  }, [supabase, ticketId, applyBundle]);
 
   // Initial + on-ticket-change load: run the fetch inline in the effect body
   // (cancellation guarded) so no setState fires synchronously on mount.
@@ -88,13 +93,8 @@ export function TicketDetailsRouteClient({
     let cancelled = false;
     (async () => {
       try {
-        const { notifications, ticketMeta, placeInstagramUrl } =
-          await fetchPayTicketBundle(supabase, ticketId);
-        if (cancelled) return;
-        setRows(notifications);
-        setTicketMeta(ticketMeta);
-        setPlaceInstagramUrl(placeInstagramUrl);
-        setError(null);
+        const bundle = await fetchPayTicketBundle(supabase, ticketId);
+        if (!cancelled) applyBundle(bundle);
       } catch (e) {
         if (!cancelled) setError(errMsg(e, "Couldn't load ticket."));
       } finally {
@@ -104,7 +104,7 @@ export function TicketDetailsRouteClient({
     return () => {
       cancelled = true;
     };
-  }, [supabase, ticketId]);
+  }, [supabase, ticketId, applyBundle]);
 
   const payload = useMemo<TicketBillPayload>(() => {
     const merged: TicketBillPayload = {};

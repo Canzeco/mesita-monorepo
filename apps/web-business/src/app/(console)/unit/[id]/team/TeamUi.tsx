@@ -91,13 +91,11 @@ export function PendingRow({
   icon,
   title,
   subtitle,
-  titleClassName,
   children,
 }: {
   icon: ReactNode;
   title: string;
   subtitle: string;
-  titleClassName?: string;
   children: ReactNode;
 }) {
   return (
@@ -106,9 +104,7 @@ export function PendingRow({
         {icon}
       </span>
       <div className="min-w-0 flex-1">
-        <p className={cn("truncate text-[12px] font-semibold", titleClassName)}>
-          {title}
-        </p>
+        <p className="truncate text-[12px] font-semibold">{title}</p>
         <p className="text-muted-foreground truncate text-[10px]">{subtitle}</p>
       </div>
       {children}
@@ -143,6 +139,11 @@ export function RoleSelect({
   );
 }
 
+// Swaps a button's icon for a spinner while its action is in flight.
+function BusyIcon({ busy, icon }: { busy: boolean; icon: ReactNode }) {
+  return busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : icon;
+}
+
 export function RemoveButton({
   busy,
   hidden,
@@ -167,11 +168,7 @@ export function RemoveButton({
         "hover:border-destructive/40 hover:bg-destructive/10 hover:text-destructive border-transparent bg-transparent",
       )}
     >
-      {busy ? (
-        <Loader2 className="h-3.5 w-3.5 animate-spin" />
-      ) : (
-        <Trash2 className="h-3.5 w-3.5" />
-      )}
+      <BusyIcon busy={busy} icon={<Trash2 className="h-3.5 w-3.5" />} />
     </button>
   );
 }
@@ -194,11 +191,7 @@ export function PingButton({
       title={label}
       className={ICON_BUTTON_CLASS}
     >
-      {busy ? (
-        <Loader2 className="h-3.5 w-3.5 animate-spin" />
-      ) : (
-        <Send className="h-3.5 w-3.5" />
-      )}
+      <BusyIcon busy={busy} icon={<Send className="h-3.5 w-3.5" />} />
     </button>
   );
 }

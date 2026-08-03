@@ -99,6 +99,7 @@ export function PromosClient({ place }: { place: MyPlace }) {
     if (billingBusy || pendingId) return;
     setBillingBusy(true);
     setError(null);
+    const previous = selectedId;
     try {
       const result = await apiChangeSubscription(supabase, {
         projectId: place.id,
@@ -122,7 +123,6 @@ export function PromosClient({ place }: { place: MyPlace }) {
       setModalId(null);
       // Force rate write even when selectedId already matches (first Join).
       const strat = STRATEGY_BY_ID[target];
-      const previous = selectedId;
       setSelectedId(target);
       setPendingId(target);
       await apiUpdatePlace(supabase, {
@@ -135,8 +135,8 @@ export function PromosClient({ place }: { place: MyPlace }) {
       });
       router.refresh();
       setPendingId(null);
-      void previous;
     } catch (err) {
+      setSelectedId(previous);
       setError(errMsg(err, "Couldn't update the membership."));
       setPendingId(null);
     } finally {

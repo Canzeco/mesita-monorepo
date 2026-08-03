@@ -32,6 +32,10 @@ import { cn } from "@/lib/utils";
 // across Profile / account flows.
 const MESITA_CONTACT_EMAIL = "support@mesita.ai";
 
+// How long the "Shared" / "Copied" confirmation shows before the button
+// reverts to its default label.
+const FLASH_DURATION_MS = 1600;
+
 type GiftCard = {
   id: string;
   audience: string;
@@ -128,6 +132,10 @@ export function GiftCardDeck() {
 
 function GiftCardTile({ card }: { card: GiftCard }) {
   const [flash, setFlash] = useState<null | "shared" | "copied">(null);
+  const showFlash = (state: "shared" | "copied") => {
+    setFlash(state);
+    window.setTimeout(() => setFlash(null), FLASH_DURATION_MS);
+  };
   const onShare = async () => {
     const payload = {
       title: card.share.title,
@@ -137,8 +145,7 @@ function GiftCardTile({ card }: { card: GiftCard }) {
     if (typeof navigator !== "undefined" && navigator.share) {
       try {
         await navigator.share(payload);
-        setFlash("shared");
-        window.setTimeout(() => setFlash(null), 1600);
+        showFlash("shared");
         return;
       } catch {
         // Cancelled or refused — fall through to clipboard copy.
@@ -146,8 +153,7 @@ function GiftCardTile({ card }: { card: GiftCard }) {
     }
     try {
       await navigator.clipboard.writeText(`${payload.text} ${payload.url}`);
-      setFlash("copied");
-      window.setTimeout(() => setFlash(null), 1600);
+      showFlash("copied");
     } catch {
       // Clipboard unavailable — fail silently.
     }

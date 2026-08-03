@@ -209,6 +209,28 @@ export function FactorRow({
   );
 }
 
+const DEFAULT_BINS = 96;
+const MINI_BINS = 16;
+const MIN_SCALE = 0.0001;
+
+/** Splits [0, length) into up-to-`bins` contiguous ranges of equal size (the
+ * last one possibly shorter) — the shared binning strategy behind
+ * VectorStrip and MatchStrip. */
+function binRanges(length: number, bins: number): Array<[number, number]> {
+  const size = Math.max(1, Math.ceil(length / bins));
+  const ranges: Array<[number, number]> = [];
+  for (let start = 0; start < length; start += size) {
+    ranges.push([start, Math.min(length, start + size)]);
+  }
+  return ranges;
+}
+
+/** Bar height, as a % of a strip, for a mass value against the strip's max —
+ * floored so a nonzero value never disappears to 0px. */
+function barHeightPct(value: number, max: number): number {
+  return Math.max(4, (value / max) * 46);
+}
+
 /** A vector's semantic profile as a mirrored waveform. Every dim lands in a
  * bin (positive mass drawn up, negative mass down) — aggregation, never
  * sampling: the old strip read 1 dim in ~24 and missed 96% of the vector. */
@@ -221,14 +243,13 @@ function VectorStrip({
   mini?: boolean;
   className?: string;
 }) {
-  const bins = mini ? 16 : 96;
-  const size = Math.max(1, Math.ceil(vec.length / bins));
+  const ranges = binRanges(vec.length, mini ? MINI_BINS : DEFAULT_BINS);
   const pos: number[] = [];
   const neg: number[] = [];
-  for (let b = 0; b * size < vec.length; b++) {
+  for (const [start, end] of ranges) {
     let p = 0;
     let n = 0;
-    for (let i = b * size; i < Math.min(vec.length, (b + 1) * size); i++) {
+    for (let i = start; i < end; i++) {
       const v = vec[i];
       if (v > 0) p += v;
       else n -= v;
@@ -236,7 +257,7 @@ function VectorStrip({
     pos.push(p);
     neg.push(n);
   }
-  const max = Math.max(0.0001, ...pos, ...neg);
+  const max = Math.max(MIN_SCALE, ...pos, ...neg);
   return (
     <div
       className={
@@ -253,13 +274,13 @@ function VectorStrip({
           {p > 0 ? (
             <span
               className="absolute right-0 bottom-1/2 left-0 rounded-t-[1px] bg-sky-500/70"
-              style={{ height: `${Math.max(4, (p / max) * 46)}%` }}
+              style={{ height: `${barHeightPct(p, max)}%` }}
             />
           ) : null}
           {neg[i] > 0 ? (
             <span
               className="absolute top-1/2 right-0 left-0 rounded-b-[1px] bg-pink-500/70"
-              style={{ height: `${Math.max(4, (neg[i] / max) * 46)}%` }}
+              style={{ height: `${barHeightPct(neg[i], max)}%` }}
             />
           ) : null}
         </span>
@@ -321,16 +342,16 @@ export function MatchStrip({
   className?: string;
 }) {
   const dims = Math.min(a.length, b.length);
-  const size = Math.max(1, Math.ceil(dims / 96));
+  const ranges = binRanges(dims, DEFAULT_BINS);
   const vals: number[] = [];
   let cos = 0;
-  for (let bi = 0; bi * size < dims; bi++) {
+  for (const [start, end] of ranges) {
     let c = 0;
-    for (let i = bi * size; i < Math.min(dims, (bi + 1) * size); i++) c += a[i] * b[i];
+    for (let i = start; i < end; i++) c += a[i] * b[i];
     vals.push(c);
     cos += c;
   }
-  const max = Math.max(0.0001, ...vals.map((v) => Math.abs(v)));
+  const max = Math.max(MIN_SCALE, ...vals.map((v) => Math.abs(v)));
   return (
     <div className={className}>
       <div className="flex items-baseline gap-2">
@@ -356,7 +377,7 @@ export function MatchStrip({
                     ? "bottom-1/2 rounded-t-[1px] bg-emerald-500/70"
                     : "top-1/2 rounded-b-[1px] bg-rose-500/70")
                 }
-                style={{ height: `${Math.max(4, (Math.abs(v) / max) * 46)}%` }}
+                style={{ height: `${barHeightPct(Math.abs(v), max)}%` }}
               />
             ) : null}
           </span>

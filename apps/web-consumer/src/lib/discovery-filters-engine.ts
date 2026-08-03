@@ -44,14 +44,17 @@ export const RANDOMNESS_MAX = 5;
 export const RANDOMNESS_ENDPOINTS = { min: "Ranked", max: "Surprise" } as const;
 
 // ── Where / distance ────────────────────────────────────────────────────────
-export type DiscoveryZoneLevel =
-  | "address"
-  | "street"
-  | "neighborhood"
-  | "city"
-  | "county"
-  | "state"
-  | "country";
+export const DISCOVERY_ZONE_LEVELS = [
+  "address",
+  "street",
+  "neighborhood",
+  "city",
+  "county",
+  "state",
+  "country",
+] as const;
+
+export type DiscoveryZoneLevel = (typeof DISCOVERY_ZONE_LEVELS)[number];
 
 /** A resolved geographic center for the Where filter (a searched location). */
 export type DiscoveryZone = {

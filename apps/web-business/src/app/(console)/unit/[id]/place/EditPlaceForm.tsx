@@ -35,6 +35,8 @@ import { nullable, nullableUrl, placeToFormState } from "./place-form-mappers";
 const SAVED_TOAST_MS = 2200;
 const TAG_MAX = 40;
 const TAG_MAX_COUNT = 20;
+const MENU_ITEM_NAME_MAX = 80;
+const PLACE_REFRESH_SIMULATED_MS = 950;
 
 export function EditPlaceForm({
   place,
@@ -84,7 +86,7 @@ export function EditPlaceForm({
       setRefreshNotice(
         "Refresh queued — we'll update your place details shortly.",
       );
-    }, 950);
+    }, PLACE_REFRESH_SIMULATED_MS);
   };
 
   const onSubmit = (e: React.FormEvent<HTMLFormElement>) => {
@@ -100,7 +102,7 @@ export function EditPlaceForm({
 
     const menuEntries = v.menu_links
       .map((m) => ({
-        name: m.name.trim() ? m.name.trim().slice(0, 80) : null,
+        name: nullable(m.name)?.slice(0, MENU_ITEM_NAME_MAX) ?? null,
         url: nullableUrl(m.url),
       }))
       .filter((m): m is { name: string | null; url: string } => !!m.url);
@@ -118,10 +120,7 @@ export function EditPlaceForm({
       id: place.id,
       name: trimmedName.slice(0, PLACE_NAME_MAX),
       category: nullable(v.category),
-      description:
-        v.description.trim() === ""
-          ? null
-          : v.description.trim().slice(0, PLACE_DESCRIPTION_MAX),
+      description: nullable(v.description)?.slice(0, PLACE_DESCRIPTION_MAX) ?? null,
       hours: formHoursToPlace(v.hours),
       menu_pdf_url: firstMenu?.url ?? null,
       menu_pdf_name: firstMenu?.name ?? null,
@@ -133,7 +132,7 @@ export function EditPlaceForm({
         .slice(0, TAG_MAX_COUNT),
       phone: nullable(v.phone),
       whatsapp_url: nullableUrl(v.whatsapp_url),
-      email: v.email.trim() === "" ? null : v.email.trim(),
+      email: nullable(v.email),
       website_url: nullableUrl(v.website_url),
       instagram_url: nullableUrl(v.instagram_url),
       facebook_url: nullableUrl(v.facebook_url),

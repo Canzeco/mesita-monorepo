@@ -7,6 +7,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 
 import { COLORS, GRADIENTS, GRADIENT_DIAGONAL } from '@/constants/brand';
 
+const SLIDER_THUMB_SIZE = 20;
+
 // Shared presentational primitives for the discovery filter sheet (MESITA-672):
 // Pill + SectionLabel + brand-filled RangeSlider. RN port of web
 // discovery-filter-controls.tsx.
@@ -50,6 +52,14 @@ export function SectionLabel({
   );
 }
 
+/** Pill children rendered as raw string/number need a Text wrapper for RN. */
+function renderPillLabel(children: ReactNode, textClassName: string) {
+  if (typeof children === 'string' || typeof children === 'number') {
+    return <Text className={textClassName}>{children}</Text>;
+  }
+  return children;
+}
+
 export function Pill({
   active,
   onClick,
@@ -81,11 +91,7 @@ export function Pill({
             borderRadius: 999,
           }}
         >
-          {typeof children === 'string' || typeof children === 'number' ? (
-            <Text className="text-[13px] font-medium text-white">{children}</Text>
-          ) : (
-            children
-          )}
+          {renderPillLabel(children, 'text-[13px] font-medium text-white')}
         </LinearGradient>
       </Pressable>
     );
@@ -98,13 +104,7 @@ export function Pill({
       accessibilityState={{ selected: false }}
       className="min-h-11 shrink-0 flex-row items-center gap-1.5 rounded-full bg-muted/60 px-4 active:bg-muted"
     >
-      {typeof children === 'string' || typeof children === 'number' ? (
-        <Text className="text-[13px] font-medium text-foreground/70">
-          {children}
-        </Text>
-      ) : (
-        children
-      )}
+      {renderPillLabel(children, 'text-[13px] font-medium text-foreground/70')}
     </Pressable>
   );
 }
@@ -200,10 +200,10 @@ export function RangeSlider({
             pointerEvents="none"
             style={{
               position: 'absolute',
-              left: Math.max(0, pct * trackW - 10),
-              width: 20,
-              height: 20,
-              borderRadius: 10,
+              left: Math.max(0, pct * trackW - SLIDER_THUMB_SIZE / 2),
+              width: SLIDER_THUMB_SIZE,
+              height: SLIDER_THUMB_SIZE,
+              borderRadius: SLIDER_THUMB_SIZE / 2,
               backgroundColor: COLORS.primary,
               borderWidth: 2,
               borderColor: '#fff',

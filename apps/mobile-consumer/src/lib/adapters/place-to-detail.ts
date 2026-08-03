@@ -103,6 +103,8 @@ export function placeRowToDetail(
     typeof p === 'string' ? p.startsWith('https://') : false,
   );
   const menus = menusFromRow(row);
+  const zoneLabel = str(row.zone) ?? neighborhoodFromAddress(str(row.address));
+  const popularTimes = arr<Record<string, unknown>>(row.popular_times);
 
   return {
     id: str(row.id) ?? str(row.slug) ?? '',
@@ -122,11 +124,7 @@ export function placeRowToDetail(
     address: str(row.address) ?? '',
     lat: num(row.lat) ?? null,
     lng: num(row.lng) ?? null,
-    zone:
-      str(row.zone) ??
-      neighborhoodFromAddress(str(row.address)) ??
-      str(row.city) ??
-      '',
+    zone: zoneLabel ?? str(row.city) ?? '',
     listing_type: listingType,
     last_updated_label:
       relativeLabel(str(row.enriched_at) ?? str(row.created_at)) ?? 'recently',
@@ -187,18 +185,15 @@ export function placeRowToDetail(
     long_description:
       str(row.description) ?? str(row.story) ?? str(row.pitch) ?? '',
     hours_table: hoursTable(row.hours),
-    popular_times: arr<Record<string, unknown>>(row.popular_times).map(
-      (p) => ({
-        day: str(p.day) ?? '',
-        range: str(p.range) ?? '',
-        bars: arr<number>(p.bars),
-      }),
-    ),
-    popular_times_featured:
-      str(arr<Record<string, unknown>>(row.popular_times)[0]?.day) ?? '',
+    popular_times: popularTimes.map((p) => ({
+      day: str(p.day) ?? '',
+      range: str(p.range) ?? '',
+      bars: arr<number>(p.bars),
+    })),
+    popular_times_featured: str(popularTimes[0]?.day) ?? '',
     details: {
       category_full: categoryName,
-      zone: str(row.zone) ?? neighborhoodFromAddress(str(row.address)) ?? '',
+      zone: zoneLabel ?? '',
       dining_style: str(details.dining_style) ?? '',
       dress_code: str(details.dress_code) ?? '',
       service_options: arr<string>(details.service_options),

@@ -92,7 +92,7 @@ export function ticketStepDummyInstructions(
   progress: TicketProgressInput,
   ctx?: TicketStepCopyContext,
 ): string[] {
-  const lines = ticketStepNowInstructions(stepId, progress, ctx);
+  const lines = ticketStepNowInstructions(stepId, ctx);
   if (lines.length === 0) return [];
   if (stepId === "story") return lines;
   if (lines.length === 1) return lines;
@@ -102,7 +102,6 @@ export function ticketStepDummyInstructions(
 /** Short numbered steps shown under the headline (active step only). */
 function ticketStepNowInstructions(
   stepId: TicketFlowStepId,
-  _progress: TicketProgressInput,
   ctx?: TicketStepCopyContext,
 ): string[] {
   switch (stepId) {
@@ -184,12 +183,20 @@ function inferCurrentIndex(
   return steps.length;
 }
 
-export function resolveTicketFlowSteps(
-  input: TicketProgressInput,
-): TicketFlowStepView[] {
+function resolveCurrentStep(input: TicketProgressInput): {
+  stepIds: TicketFlowStepId[];
+  currentIndex: number;
+} {
   const flowType = ticketFlowTypeFromKind(input.kind);
   const stepIds = FLOW_STEPS_BY_TYPE[flowType];
   const currentIndex = inferCurrentIndex(flowType, stepIds, input);
+  return { stepIds, currentIndex };
+}
+
+export function resolveTicketFlowSteps(
+  input: TicketProgressInput,
+): TicketFlowStepView[] {
+  const { stepIds, currentIndex } = resolveCurrentStep(input);
 
   return stepIds.map((id, index) => ({
     id,
@@ -225,8 +232,6 @@ export function ticketProgressFromBundle(input: {
 }
 
 export function isTicketFlowComplete(input: TicketProgressInput): boolean {
-  const flowType = ticketFlowTypeFromKind(input.kind);
-  const stepIds = FLOW_STEPS_BY_TYPE[flowType];
-  const currentIndex = inferCurrentIndex(flowType, stepIds, input);
+  const { stepIds, currentIndex } = resolveCurrentStep(input);
   return currentIndex >= stepIds.length;
 }

@@ -81,19 +81,27 @@ function formatReviewDate(date: string): string {
   });
 }
 
+function asRecord(raw: unknown): Record<string, unknown> | null {
+  return raw && typeof raw === "object" ? (raw as Record<string, unknown>) : null;
+}
+
+function extractQuote(row: Record<string, unknown>): string | null {
+  return firstNonEmptyString([
+    row["quote"],
+    row["text"],
+    row["review"],
+    row["body"],
+    row["comment"],
+  ]);
+}
+
 function parseGoogleReviews(input: unknown): GoogleReview[] {
   if (!Array.isArray(input)) return [];
   const items: GoogleReview[] = [];
   input.forEach((raw, idx) => {
-    if (!raw || typeof raw !== "object") return;
-    const row = raw as Record<string, unknown>;
-    const quote = firstNonEmptyString([
-      row["quote"],
-      row["text"],
-      row["review"],
-      row["body"],
-      row["comment"],
-    ]);
+    const row = asRecord(raw);
+    if (!row) return;
+    const quote = extractQuote(row);
     if (!quote) return;
     const author =
       firstNonEmptyString([
@@ -121,15 +129,9 @@ function parseMesitaVisitors(input: unknown): MesitaVisitor[] {
   if (!Array.isArray(input)) return [];
   const items: MesitaVisitor[] = [];
   input.forEach((raw, idx) => {
-    if (!raw || typeof raw !== "object") return;
-    const row = raw as Record<string, unknown>;
-    const quote = firstNonEmptyString([
-      row["quote"],
-      row["text"],
-      row["review"],
-      row["body"],
-      row["comment"],
-    ]);
+    const row = asRecord(raw);
+    if (!row) return;
+    const quote = extractQuote(row);
     if (!quote) return;
     const name =
       firstNonEmptyString([row["name"], row["author"], row["author_name"]]) ??

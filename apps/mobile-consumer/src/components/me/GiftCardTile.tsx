@@ -8,6 +8,7 @@ import { copyText } from '@/lib/clipboard';
 
 const MESITA_CONTACT_EMAIL = 'support@mesita.ai';
 export const DEFAULT_SHARE_URL = 'https://www.mesita.ai';
+const FLASH_DURATION_MS = 1600;
 
 export type GiftCard = {
   id: string;
@@ -24,6 +25,11 @@ export function GiftCardTile({ card }: { card: GiftCard }) {
   const Emblem = card.Icon;
   const contact = card.contact;
 
+  const triggerFlash = (mode: 'shared' | 'copied') => {
+    setFlash(mode);
+    setTimeout(() => setFlash(null), FLASH_DURATION_MS);
+  };
+
   const onShare = async () => {
     const url = card.share.url ?? DEFAULT_SHARE_URL;
     const message = `${card.share.text} ${url}`;
@@ -34,8 +40,7 @@ export function GiftCardTile({ card }: { card: GiftCard }) {
         url,
       });
       if (result.action === Share.sharedAction) {
-        setFlash('shared');
-        setTimeout(() => setFlash(null), 1600);
+        triggerFlash('shared');
         return;
       }
     } catch {
@@ -43,8 +48,7 @@ export function GiftCardTile({ card }: { card: GiftCard }) {
     }
     try {
       const mode = await copyText(message);
-      setFlash(mode === 'copied' ? 'copied' : 'shared');
-      setTimeout(() => setFlash(null), 1600);
+      triggerFlash(mode === 'copied' ? 'copied' : 'shared');
     } catch {
       // Clipboard unavailable — fail silently.
     }

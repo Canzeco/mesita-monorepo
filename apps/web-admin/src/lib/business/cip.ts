@@ -31,6 +31,7 @@
 // ladder proxies mega-category siblings through tag overlap.
 
 import {
+  hash32,
   OPENNESS_DAYS,
   OPENNESS_SLOTS,
   TIME_BLOCK_H,
@@ -121,12 +122,6 @@ const TASTE_POOL = [
   "wine_bar", "terrace", "speakeasy", "sports_bar", "casual",
 ];
 
-function hash(s: string): number {
-  let h = 2166136261;
-  for (let i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 16777619);
-  return h >>> 0;
-}
-
 const norm = (t: string) => t.trim().toLowerCase().replace(/\s+/g, "_");
 
 export function buildConsumerProfile(c: SampleConsumer | null): ConsumerProfile {
@@ -134,7 +129,7 @@ export function buildConsumerProfile(c: SampleConsumer | null): ConsumerProfile 
   if (c && real.length > 0) return { consumer: c, tasteTokens: real.slice(0, 12), synthetic: false };
   // Deterministic synthetic taste from the consumer id (or a fixed seed when
   // there is no consumer at all).
-  const seed = hash(c?.id ?? "no-consumers");
+  const seed = hash32(c?.id ?? "no-consumers");
   const taste: string[] = [];
   for (let i = 0; taste.length < 5 && i < 32; i++) {
     const t = TASTE_POOL[(seed + i * 7) % TASTE_POOL.length];
@@ -422,7 +417,7 @@ function tokenize(text: string): string[] {
 export function embedText(text: string, dims = EMBED_DIMS): number[] {
   const v = new Array<number>(dims).fill(0);
   for (const t of tokenize(text)) {
-    const h = hash(t);
+    const h = hash32(t);
     const idx = h % dims;
     const sign = (h >>> 16) & 1 ? 1 : -1;
     v[idx] += sign;

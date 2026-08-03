@@ -18,7 +18,11 @@ import {
   type RewardsConfig,
 } from "./catalog";
 
-const KIND_TINT: Record<string, string> = {
+// Mirrors the (unexported) RewardSegmentKind union in ./catalog — kept in
+// lock-step by hand since that type isn't exported for reuse here.
+type SegmentKind = "class" | "action" | "visit";
+
+const KIND_TINT: Record<SegmentKind, string> = {
   class: "bg-violet-500/10 text-violet-600",
   action: "bg-sky-500/10 text-sky-600",
   visit: "bg-amber-500/10 text-amber-600",
@@ -263,11 +267,13 @@ function AuraGrantCard() {
   const [result, setResult] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  const trimmedId = consumerId.trim();
+
   const act = (grant: boolean) => {
     setError(null);
     setResult(null);
     startTransition(async () => {
-      const r = await grantAura(consumerId.trim(), grant);
+      const r = await grantAura(trimmedId, grant);
       if (r.ok) {
         setResult(
           grant
@@ -302,7 +308,7 @@ function AuraGrantCard() {
         <button
           type="button"
           onClick={() => act(true)}
-          disabled={pending || consumerId.trim().length === 0}
+          disabled={pending || trimmedId.length === 0}
           className="bg-foreground text-background hover:opacity-90 inline-flex h-9 items-center gap-1.5 rounded-lg px-3 text-xs font-semibold transition disabled:opacity-50"
         >
           <Sparkles className="h-3 w-3" />
@@ -311,7 +317,7 @@ function AuraGrantCard() {
         <button
           type="button"
           onClick={() => act(false)}
-          disabled={pending || consumerId.trim().length === 0}
+          disabled={pending || trimmedId.length === 0}
           className="border-border text-muted-foreground hover:text-foreground hover:bg-muted inline-flex h-9 items-center rounded-lg border px-3 text-xs font-medium transition disabled:opacity-50"
         >
           Revoke

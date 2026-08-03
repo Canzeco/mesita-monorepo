@@ -106,7 +106,7 @@ function fallbackPriceRange(
 ): string {
   const prefix = currencyPrefix(currency);
   const [min, max] = LEVEL_RANGES[priceLevel];
-  return `${prefix}${min}-${max}`;
+  return `${prefix}${min}–${max}`;
 }
 
 export function derivePriceRange(

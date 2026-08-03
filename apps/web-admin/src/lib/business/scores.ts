@@ -207,9 +207,6 @@ export const EMBEDDING_SYNTHESIS = {
     "You write a short place blurb for semantic search embeddings. Output 1–3 sentences, plain text only — no labels, no bullets, no tags. Capture what the place IS (cuisine/format), where it is, and the vibe from About. Never invent facts not present in the input. Never list amenity tags.",
 } as const;
 
-/** EM from a raw cosine — clamp negatives (opposite/unrelated → 0). Revisit
- * (percentile calibration) only if real cosines cluster too tight. */
-
 // ── SM — Structured Match ──────────────────────────────────────────────
 //
 // ONE hyperparam per intent axis (Pato 2026-07-21, blob v11):
@@ -341,8 +338,8 @@ function whenParts(bits: readonly boolean[], patience: number): WhenParts {
   if (opensInSlots == null) {
     return { opensInSlots: null, openRunSlots: 0, wait: 0, fit: 0, when: 0 };
   }
-  // waitTol in slots: p=0 → 0 (must be open now); p=1 → 48 slots (24 h).
-  const waitTol = p * 48;
+  // waitTol in slots: p=0 → 0 (must be open now); p=1 → a full day of slots (24 h).
+  const waitTol = p * (OPENNESS_HOURS * OPENNESS_SLOTS_PER_HOUR);
   // needRun in slots: p=0 → 6 (3 h); p=1 → 1 (0.5 h).
   const needRun = 1 + (1 - p) * 5;
   const wait =
@@ -365,8 +362,6 @@ function whenParts(bits: readonly boolean[], patience: number): WhenParts {
 export function whenFromOpenness(bits: readonly boolean[], patience: number): number {
   return whenParts(bits, patience).when;
 }
-
-/** Convenience: when from opens-in / open-for hours (synthesizes the array). */
 
 /** The category ladder's rungs — how the place's one category sits against
  * the intent's SET of categories and/or mega categories. */
@@ -456,8 +451,6 @@ export function smParts(i: SmInputs, p: SmParams = DEFAULT_SM_PARAMS): SmParts {
   };
 }
 
-/** SM as one number, 0–1. */
-
 // ── GP — Google Popularity ─────────────────────────────────────────────
 
 export type GpParams = {
@@ -497,8 +490,6 @@ export function gpParts(
   return { reviews: n, rating: r, raw, gp };
 }
 
-/** GP as one number, 0–1. */
-
 // ── RP — Rewards Promotions ────────────────────────────────────────────
 // Strategies come from ./strategies (the promo presets). The rung each
 // strategy earns is CONFIG (the blob's rp block). No literal 0: non-members
@@ -536,9 +527,11 @@ export function xxScore(u: number, control: number): number {
   return clamp01(Math.pow(clamp01(u), c));
 }
 
-// Deterministic unit draws for the playground — a seeded hash so the same
-// (card, lane, roll) always lands the same U until the operator re-rolls.
-function hash32(s: string): number {
+// A small FNV-1a string hash, shared with cip.ts (synthetic taste tokens,
+// the toy embedding encoder) — here it seeds XX's deterministic unit draws
+// so the same (card, lane, roll) always lands the same U until the operator
+// re-rolls.
+export function hash32(s: string): number {
   let h = 2166136261;
   for (let i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 16777619);
   return h >>> 0;
@@ -751,8 +744,6 @@ export const CONTEXT_FIELDS: readonly ContextFieldDef[] = [
   { key: "place.reviews",     side: "place",   label: "reviews summary (Google · Instagram · Facebook)", status: "planned" },
   { key: "place.price",       side: "place",   label: "price",                       status: "planned" },
 ];
-
-/** The fields EM actually embeds — every live key; display counts read this. */
 
 // ── Persisted settings (app_settings.scoring_config) ───────────────────
 // The Subscores tab saves ONE versioned blob. NULL in the DB means

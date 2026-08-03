@@ -47,6 +47,10 @@ import {
 // server-side. Swap the constant for the bot-reported count when it lands.
 const HANDLE_RE = /^@?[A-Za-z0-9._]{1,30}$/;
 
+function formatCount(n: number): string {
+  return n.toLocaleString("en-US");
+}
+
 export function InstagramModal({
   open,
   onClose,
@@ -81,10 +85,10 @@ export function InstagramModal({
         return;
       }
       toast(
-        `Instagram connected, but ${result.followers.toLocaleString(
-          "en-US",
-        )} followers is below the ${INFLUENCER_FOLLOWER_THRESHOLD.toLocaleString(
-          "en-US",
+        `Instagram connected, but ${formatCount(
+          result.followers,
+        )} followers is below the ${formatCount(
+          INFLUENCER_FOLLOWER_THRESHOLD,
         )} needed for Influencer.`,
       );
       setVerifying(false);
@@ -215,8 +219,7 @@ function ReachCards() {
           <p className="text-[14px] leading-tight font-bold tracking-tight">
             Influencer upgrade{" "}
             <span className="text-muted-foreground font-semibold">
-              · {INFLUENCER_FOLLOWER_THRESHOLD.toLocaleString("en-US")}+
-              followers
+              · {formatCount(INFLUENCER_FOLLOWER_THRESHOLD)}+ followers
             </span>
           </p>
           <p className="text-muted-foreground mt-1 text-[12px] leading-snug">
@@ -273,7 +276,7 @@ function CurrentConnectionCard() {
           {handle ? `@${handle}` : "Instagram connected"}
         </p>
         <p className="text-muted-foreground text-[12px]">
-          {followers.toLocaleString("en-US")} followers
+          {formatCount(followers)} followers
         </p>
       </div>
       <span className="flex shrink-0 items-center gap-1 rounded-full bg-sky-600 px-2.5 py-1 text-[11px] font-bold text-white shadow-sm">
@@ -352,8 +355,7 @@ function InstagramEmulator() {
               igInfluencer ? "text-sky-700" : "text-muted-foreground",
             )}
           >
-            {INFLUENCER_FOLLOWER_THRESHOLD.toLocaleString("en-US")}+ =
-            Influencer
+            {formatCount(INFLUENCER_FOLLOWER_THRESHOLD)}+ = Influencer
           </span>
         </div>
       )}

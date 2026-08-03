@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Star } from "lucide-react";
 import type { MyPlace } from "@/lib/api/places";
-import { cn, formatCompactCount, formatPriceLevelSymbols, formatRating, initialLetter } from "@/lib/utils";
+import { cn, formatRating, initialLetter } from "@/lib/utils";
 import { formatPlaceCategoryName } from "@/lib/place-category";
 import { PlaceModule } from "../PlaceModule";
 import { PlaceProfileProgressModule } from "./PlaceProfileProgressModule";
@@ -12,69 +12,15 @@ import type { PlaceFormState } from "../place-form-types";
 import { MAX_PHOTOS } from "../place-upload-utils";
 import { placeCategoryName } from "../place-utils";
 
-function shortLocationFromAddress(address: string): string {
-  const parts = address
-    .split(",")
-    .map((p) => p.trim())
-    .filter(Boolean);
-  if (parts.length >= 2) return parts[parts.length - 2];
-  return parts[0] ?? "Neighborhood";
-}
-
-function resolvePreviewRewardRate(place: MyPlace): number | null {
-  const rates = [
-    place.welcome_free_rate,
-    place.welcome_premium_rate,
-    place.free_rate,
-    place.premium_rate,
-  ].filter((rate): rate is number => typeof rate === "number" && rate > 0);
-  if (rates.length === 0) return null;
-  return Math.max(...rates);
-}
-
 function previewMeta(place: MyPlace, v: PlaceFormState) {
   const name = v.name || place.name || "Place name";
   const category =
     (v.category && formatPlaceCategoryName(v.category)) ||
     placeCategoryName(place) ||
     null;
-  const price = formatPriceLevelSymbols(place.price_level);
   const googleRating = formatRating(place.google_stars_overall);
-  const googleCount =
-    place.google_review_count != null
-      ? formatCompactCount(place.google_review_count)
-      : null;
-  const instagramFollowers =
-    place.instagram_followers_count != null
-      ? formatCompactCount(place.instagram_followers_count)
-      : null;
-  const zone = place.address
-    ? shortLocationFromAddress(place.address)
-    : "Neighborhood";
-  const distance = null;
-  const status = place.closes_at ? `Open · until ${place.closes_at}` : null;
-  const isPartner = true;
-  const rewardRate = resolvePreviewRewardRate(place);
-  const rewardMechanic =
-    place.fiscal_type === "informal" ? "Discount" : "Reward";
-  const promoLabel =
-    rewardRate != null
-      ? `Reward · ${rewardRate}% ${rewardMechanic}`
-      : "No reward yet";
 
-  return {
-    name,
-    category,
-    price,
-    googleRating,
-    googleCount,
-    instagramFollowers,
-    zone,
-    distance,
-    status,
-    isPartner,
-    promoLabel,
-  };
+  return { name, category, googleRating };
 }
 
 function PreviewMetaChip({ children }: { children: React.ReactNode }) {

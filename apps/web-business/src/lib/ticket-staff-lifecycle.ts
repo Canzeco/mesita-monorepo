@@ -80,12 +80,8 @@ const STAFF_STEP_LABELS: Record<StaffLifecycleStepId, string> = {
   bill: "Billing",
   story: "Story",
   pay: "Payment",
-  done: "Done",
+  done: "Closed",
 };
-
-function staffDoneStepLabel(_kind: string): string {
-  return "Closed";
-}
 
 const STAFF_STEP_HINTS: Record<StaffLifecycleStepId, string> = {
   scan: "Guest code scanned — bot validated and linked the visit.",
@@ -106,7 +102,6 @@ function paymentConfirmed(input: StaffTicketProgressInput): boolean {
 }
 
 function visitComplete(input: StaffTicketProgressInput): boolean {
-  if (input.status === "cancelled") return false;
   return input.status === "revealed";
 }
 
@@ -162,8 +157,7 @@ function resolveStaffLifecycleSteps(
 
     return {
       id,
-      label:
-        id === "done" ? staffDoneStepLabel(input.kind) : STAFF_STEP_LABELS[id],
+      label: STAFF_STEP_LABELS[id],
       state,
       hint: state === "active" ? STAFF_STEP_HINTS[id] : undefined,
     };

@@ -10,6 +10,7 @@ import {
 import {
   resolveSwipeCardLayout,
   type SwipeCardLayoutMode,
+  type SwipeCardLayoutResult,
 } from "./swipe-card-layout";
 
 export type ImageNaturalSize = { width: number; height: number };
@@ -150,18 +151,26 @@ function useObservedSize<T extends HTMLElement>(
   return size;
 }
 
-function resolvePhotoLayoutMode(
+function resolvePhotoLayout(
   imageSize: ImageNaturalSize | null | undefined,
   cardWidth: number,
   cardHeight: number,
-): SwipeCardLayoutMode | null {
+): SwipeCardLayoutResult | null {
   if (!imageSize) return null;
   return resolveSwipeCardLayout({
     photoNaturalWidth: imageSize.width,
     photoNaturalHeight: imageSize.height,
     cardWidth,
     cardHeight,
-  }).mode;
+  });
+}
+
+function resolvePhotoLayoutMode(
+  imageSize: ImageNaturalSize | null | undefined,
+  cardWidth: number,
+  cardHeight: number,
+): SwipeCardLayoutMode | null {
+  return resolvePhotoLayout(imageSize, cardWidth, cardHeight)?.mode ?? null;
 }
 
 /**
@@ -236,14 +245,11 @@ export function useSwipeCardPhotoLayout(
     (src: string | undefined) => {
       void sizesEpoch;
       if (!src || !cardSize) return null;
-      const imageSize = getCachedImageNaturalSize(src);
-      if (!imageSize) return null;
-      return resolveSwipeCardLayout({
-        photoNaturalWidth: imageSize.width,
-        photoNaturalHeight: imageSize.height,
-        cardWidth: cardSize.width,
-        cardHeight: cardSize.height,
-      });
+      return resolvePhotoLayout(
+        getCachedImageNaturalSize(src),
+        cardSize.width,
+        cardSize.height,
+      );
     },
     [cardSize, sizesEpoch],
   );

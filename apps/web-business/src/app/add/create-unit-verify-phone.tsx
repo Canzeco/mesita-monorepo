@@ -17,23 +17,18 @@ import {
   type VerificationCallbacks,
 } from "./create-unit-shared";
 
+type OtpSession = {
+  verificationId: string;
+  mockCode: string | null;
+  phoneDialed: string;
+  mockMode: boolean;
+};
+
 type CallState =
   | { kind: "idle" }
   | { kind: "placing" }
-  | {
-      kind: "awaiting_code";
-      verificationId: string;
-      mockCode: string | null;
-      phoneDialed: string;
-      mockMode: boolean;
-    }
-  | {
-      kind: "verifying";
-      verificationId: string;
-      mockCode: string | null;
-      phoneDialed: string;
-      mockMode: boolean;
-    };
+  | ({ kind: "awaiting_code" } & OtpSession)
+  | ({ kind: "verifying" } & OtpSession);
 
 export function PhoneBody({
   place,
@@ -157,14 +152,8 @@ export function PhoneBody({
   }
 
   const verifying = state.kind === "verifying";
-  const dialed =
-    state.kind === "awaiting_code" || state.kind === "verifying"
-      ? state.phoneDialed
-      : phoneDisplay;
-  const mockMode =
-    state.kind === "awaiting_code" || state.kind === "verifying"
-      ? state.mockMode
-      : false;
+  const dialed = state.phoneDialed;
+  const mockMode = state.mockMode;
 
   return (
     <div className="flex flex-col gap-4">
@@ -206,7 +195,7 @@ export function PhoneBody({
 
         <button
           type="submit"
-          disabled={verifying || otpCode.length !== 6}
+          disabled={verifying || !isOtpCode(otpCode)}
           className={cn(
             "mt-1 flex h-12 items-center justify-center gap-2 rounded-full text-sm font-semibold transition disabled:opacity-50",
             "bg-pink-gradient shadow-glow text-white",

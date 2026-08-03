@@ -96,13 +96,10 @@ export const fmtTime = (secs: number) => {
   return m ? `${h}h ${m}m` : `${h}h`;
 };
 
-const STAGE_META = {
-  pre: { label: "Setup", hint: "Runs before sources are fetched" },
-  gather: { label: "Gather", hint: "Sources fetched in parallel — time is the slowest step" },
-  post: { label: "Analyze & write", hint: "Vision, sorting, and profile synthesis" },
-} as const;
-
-type Stage = keyof typeof STAGE_META;
+// pre = setup, runs before sources are fetched · gather = sources fetched in
+// parallel, time is the slowest step · post = analyze & write (vision,
+// sorting, profile synthesis).
+type Stage = "pre" | "gather" | "post";
 
 type CostLine = {
   label: string;
@@ -127,7 +124,7 @@ type CostParams = {
   gCollect: number; // Google collect (1–10) → Place Photo fetches
   igCollect: number; // Instagram collect (1–50) → Apify posts pulled
   gAnalyze: number; // Analyze Google (0–10, ≤ collect) → vision calls
-  igAnalyze: number; // Analyze Instagram (0–30, ≤ collect) → vision calls
+  igAnalyze: number; // Analyze Instagram (0–50, ≤ collect) → vision calls
   // Links box — per-channel Firecrawl Search candidate counts (0 disables).
   links: LinkCounts;
   places: number;
@@ -167,6 +164,7 @@ export function computeEnrichmentCost({
     imageModel === "economy" ? COST_RATES.visionEconomy : COST_RATES.visionStandard;
   const visionSecsPer =
     imageModel === "economy" ? TIME_RATES.visionEconomy : TIME_RATES.visionStandard;
+  const visionRounds = Math.ceil(visionImgs / VISION_CONCURRENCY);
 
   const googlePhotoCost = COST_RATES.googlePhoto * gCollect;
   const igApifyCost =
@@ -194,7 +192,7 @@ export function computeEnrichmentCost({
       label: "S1 · Google photos",
       detail: "Place Photo media fetch",
       pricing: "$7 / 1k photos",
-      note: `Google collect = ${gCollect} photo${gCollect === 1 ? "" : "s"} fetched (≤10 refs) × $0.007`,
+      note: `Google collect = ${gCollect} photo${gCollect === 1 ? "" : "s"} fetched (≤10 refs) × ${money(COST_RATES.googlePhoto)}`,
       cost: googlePhotoCost,
       secs: 0,
       stage: "pre",
@@ -277,11 +275,11 @@ export function computeEnrichmentCost({
       detail: imageModel === "economy" ? "gpt-4o-mini vision" : "gpt-4o vision",
       pricing:
         imageModel === "economy" ? "~$0.001 / image" : "~$0.008 / image",
-      note: `Analyze ${gAnalyze} Google + ${igAnalyze} Instagram = ${visionImgs} image${visionImgs === 1 ? "" : "s"} × ${money(visionCostPer)}, described in parallel (${Math.ceil(visionImgs / VISION_CONCURRENCY) || 0} round${Math.ceil(visionImgs / VISION_CONCURRENCY) === 1 ? "" : "s"})`,
+      note: `Analyze ${gAnalyze} Google + ${igAnalyze} Instagram = ${visionImgs} image${visionImgs === 1 ? "" : "s"} × ${money(visionCostPer)}, described in parallel (${visionRounds} round${visionRounds === 1 ? "" : "s"})`,
       cost: visionImgs * visionCostPer,
       // Parallel: the whole analyze pool is described at once, so time is the
       // number of rounds (≈1) × per-image, not N × per-image.
-      secs: Math.ceil(visionImgs / VISION_CONCURRENCY) * visionSecsPer,
+      secs: visionRounds * visionSecsPer,
       stage: "post",
       active: visionActive,
     },

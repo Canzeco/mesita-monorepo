@@ -194,20 +194,19 @@ export function BoxSection({
  * whose fields are ALL "—" placeholders is not rendered (GP/RP read only the
  * place, XX only its own draw — an em-dash column says nothing); interaction
  * = the consumer × place EDGE, SM-only. */
+type ContextFieldEntry = { field: string; status: "live" | "planned" | "spec"; note?: string };
+
 export function ContextCols({
   ctx,
 }: {
   ctx: {
-    consumer: { field: string; status: "live" | "planned" | "spec"; note?: string }[];
-    intent: { field: string; status: "live" | "planned" | "spec"; note?: string }[];
-    place: { field: string; status: "live" | "planned" | "spec"; note?: string }[];
-    interaction?: { field: string; status: "live" | "planned" | "spec"; note?: string }[];
+    consumer: ContextFieldEntry[];
+    intent: ContextFieldEntry[];
+    place: ContextFieldEntry[];
+    interaction?: ContextFieldEntry[];
   };
 }) {
-  const col = (
-    label: string,
-    fields: { field: string; status: "live" | "planned" | "spec"; note?: string }[],
-  ) => (
+  const col = (label: string, fields: ContextFieldEntry[]) => (
     <div key={label}>
       <p className="text-muted-foreground text-[10px] font-bold tracking-[0.12em] uppercase">
         {label}
