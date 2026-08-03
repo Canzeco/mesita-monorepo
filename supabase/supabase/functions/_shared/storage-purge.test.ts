@@ -31,27 +31,36 @@ Deno.test("groupByBucket: skips malformed rows instead of removing ''", () => {
   assertEquals(grouped.get("place-images"), ["images/a.jpg"]);
 });
 
-// A fake that behaves like storage does: rpc() reports what is still there,
-// remove() takes it away.
+// A fake that behaves like storage does: the lister reports what is still
+// there, remove() takes it away, the counter answers how much is left.
 function fakeClient(objects: StoragePathRow[], opts: {
   removeFails?: boolean;
   rpcError?: string;
 } = {}) {
   let live = [...objects];
-  const calls = { rpc: 0, remove: 0 };
+  const calls = { list: 0, count: 0, remove: 0 };
+  const visibleTo = (keep: string[]) =>
+    live.filter((o) => !keep.includes(o.bucket_id));
   const client = {
-    rpc(_fn: string, args: { p_limit: number; p_keep_buckets: string[] }) {
-      calls.rpc++;
+    rpc(fn: string, args: { p_limit?: number; p_keep_buckets: string[] }) {
       if (opts.rpcError) {
         return Promise.resolve({
           data: null,
           error: { message: opts.rpcError },
         });
       }
-      const visible = live
-        .filter((o) => !args.p_keep_buckets.includes(o.bucket_id))
-        .slice(0, args.p_limit);
-      return Promise.resolve({ data: visible, error: null });
+      if (fn === "admin_reset_storage_count") {
+        calls.count++;
+        return Promise.resolve({
+          data: visibleTo(args.p_keep_buckets).length,
+          error: null,
+        });
+      }
+      calls.list++;
+      return Promise.resolve({
+        data: visibleTo(args.p_keep_buckets).slice(0, args.p_limit),
+        error: null,
+      });
     },
     storage: {
       from(bucket: string) {
@@ -94,13 +103,18 @@ Deno.test("purgeStorageObjects: drains every bucket across batches", async () =>
 
   const res = await purgeStorageObjects(client);
 
-  assertEquals(res, { purged: 451, error: null });
+  assertEquals(res, { purged: 451, remaining: 0, done: true, error: null });
   assertEquals(live().length, 0);
 });
 
 Deno.test("purgeStorageObjects: an empty bucket set is a no-op, not an error", async () => {
   const { client, calls } = fakeClient([]);
-  assertEquals(await purgeStorageObjects(client), { purged: 0, error: null });
+  assertEquals(await purgeStorageObjects(client), {
+    purged: 0,
+    remaining: 0,
+    done: true,
+    error: null,
+  });
   assertEquals(calls.remove, 0);
 });
 
@@ -110,10 +124,39 @@ Deno.test("purgeStorageObjects: preserved buckets survive", async () => {
     { bucket_id: "brand", name: "logo.svg" },
   ]);
 
-  const res = await purgeStorageObjects(client, ["brand"]);
+  const res = await purgeStorageObjects(client, { keepBuckets: ["brand"] });
 
-  assertEquals(res, { purged: 1, error: null });
+  assertEquals(res, { purged: 1, remaining: 0, done: true, error: null });
   assertEquals(live(), [{ bucket_id: "brand", name: "logo.svg" }]);
+});
+
+Deno.test("purgeStorageObjects: stops on the budget and reports what's left", async () => {
+  // 1,000 objects = 5 pages. The clock jumps a second per read, so the budget
+  // expires after the first batch — the pass must hand back the rest, not
+  // grind on past its deadline.
+  const objects: StoragePathRow[] = Array.from({ length: 1000 }, (_, i) => ({
+    bucket_id: "place-images",
+    name: `images/${i}.jpg`,
+  }));
+  const { client, live } = fakeClient(objects);
+  let clock = 0;
+
+  const first = await purgeStorageObjects(client, {
+    budgetMs: 500,
+    now: () => (clock += 1000),
+  });
+
+  assertEquals(first.done, false);
+  assertEquals(first.error, null); // out of time is not a failure
+  assertEquals(first.purged, 200);
+  assertEquals(first.remaining, 800);
+  assertEquals(live().length, 800);
+
+  // Resuming picks up exactly where it stopped — the lister only ever hands
+  // back objects that are still there.
+  const rest = await purgeStorageObjects(client);
+  assertEquals(rest, { purged: 800, remaining: 0, done: true, error: null });
+  assertEquals(live().length, 0);
 });
 
 Deno.test("purgeStorageObjects: a failing remove stalls out instead of looping", async () => {
@@ -125,15 +168,19 @@ Deno.test("purgeStorageObjects: a failing remove stalls out instead of looping",
   const res = await purgeStorageObjects(client);
 
   assertEquals(res.purged, 0);
+  assertEquals(res.done, false);
+  assertEquals(res.remaining, 1);
   assertEquals(res.error, "remove(place-images): boom");
-  // Two RPC pages would mean it went back for the same undeletable object.
-  assertEquals(calls.rpc, 1);
+  // Two listings would mean it went back for the same undeletable object.
+  assertEquals(calls.list, 1);
 });
 
 Deno.test("purgeStorageObjects: reports a lister failure without throwing", async () => {
   const { client } = fakeClient([], { rpcError: "permission denied" });
   assertEquals(await purgeStorageObjects(client), {
     purged: 0,
+    remaining: 0,
+    done: false,
     error: "list_objects: permission denied",
   });
 });

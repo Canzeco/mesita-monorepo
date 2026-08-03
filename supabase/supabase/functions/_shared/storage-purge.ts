@@ -15,16 +15,36 @@
 // what's left. No cursor to skip past a failed delete — which is exactly why
 // a batch that removes nothing is treated as a stall and stops the loop
 // instead of spinning.
+//
+// BUDGETED, RESUMABLE. Draining thousands of files takes longer than the
+// caller's request budget (a Vercel server action, then the EF's own wall
+// clock) is willing to wait, and an operator whose button times out on the
+// slow half of the job has no way to tell a stalled reset from a working one.
+// So a pass stops at `budgetMs` and reports `done: false` + what's left; the
+// caller keeps calling until `done`. Every pass is independent — the lister
+// always returns live objects — so resuming is just calling again.
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 
 export type StoragePathRow = { bucket_id: string; name: string };
 
 export type PurgeResult = {
-  /** Objects actually removed (both the file and its metadata row). */
+  /** Objects actually removed by THIS pass (both file and metadata row). */
   purged: number;
-  /** Non-null when the purge stopped early — the DB wipe already succeeded. */
+  /** Objects still in the buckets when this pass returned. */
+  remaining: number;
+  /** false → the budget ran out mid-drain; call again to continue. */
+  done: boolean;
+  /** Non-null when the purge stopped on an error, never on the budget. */
   error: string | null;
+};
+
+export type PurgeOptions = {
+  keepBuckets?: string[];
+  /** Wall-clock budget for one pass. */
+  budgetMs?: number;
+  /** Injectable clock — tests drive the budget without sleeping. */
+  now?: () => number;
 };
 
 // Buckets a reset keeps. Empty on purpose: every bucket today (place-images,
@@ -36,8 +56,12 @@ export const PRESERVED_BUCKETS: string[] = [];
 // 200 paths per Storage remove() call — well under the API's limit, small
 // enough that one failing object doesn't sink a large batch.
 const BATCH = 200;
-// 40k objects (BATCH × this). A wall, not a budget: hitting it means something
-// is re-creating objects mid-purge, and the operator should re-run.
+// One pass never runs longer than this. Sized to fit inside the shortest hop
+// in the chain (the admin app's server action), not the EF's own wall clock —
+// the caller resumes, so a small budget costs a round trip, never progress.
+export const DEFAULT_BUDGET_MS = 20_000;
+// A wall, not a budget: hitting it means something is re-creating objects
+// mid-purge. Bounds a single pass even if the clock misbehaves.
 const MAX_BATCHES = 200;
 
 /** Group a page of paths by bucket so each bucket gets one remove() call. */
@@ -52,26 +76,65 @@ export function groupByBucket(rows: StoragePathRow[]): Map<string, string[]> {
   return byBucket;
 }
 
+/** Live object count, so the caller can show real progress and stop at 0. */
+async function countRemaining(
+  admin: SupabaseClient,
+  keepBuckets: string[],
+): Promise<number> {
+  const { data, error } = await admin.rpc("admin_reset_storage_count", {
+    p_keep_buckets: keepBuckets,
+  });
+  if (error) return 0;
+  return Number(data ?? 0);
+}
+
 /**
- * Empty every non-preserved bucket. Never throws: the caller runs this AFTER
- * the DB wipe has already committed, so a storage failure is reported, not
- * raised — the reset really did happen.
+ * Empty every non-preserved bucket, up to `budgetMs` of work. Never throws:
+ * the caller runs this AFTER the DB wipe has already committed, so a storage
+ * failure is reported, not raised — the reset really did happen.
+ *
+ * Returns `done: false` when the budget ran out with objects left. That is a
+ * normal outcome, not an error: call again to pick up where it stopped.
  */
 export async function purgeStorageObjects(
   admin: SupabaseClient,
-  keepBuckets: string[] = PRESERVED_BUCKETS,
+  options: PurgeOptions = {},
 ): Promise<PurgeResult> {
+  const keepBuckets = options.keepBuckets ?? PRESERVED_BUCKETS;
+  const budgetMs = options.budgetMs ?? DEFAULT_BUDGET_MS;
+  const now = options.now ?? (() => Date.now());
+  const deadline = now() + budgetMs;
+
   let purged = 0;
 
   for (let batch = 0; batch < MAX_BATCHES; batch++) {
+    // Checked BEFORE the work, so a pass never overshoots by a whole batch.
+    if (batch > 0 && now() >= deadline) {
+      return {
+        purged,
+        remaining: await countRemaining(admin, keepBuckets),
+        done: false,
+        error: null,
+      };
+    }
+
     const { data, error } = await admin.rpc("admin_reset_storage_paths", {
       p_limit: BATCH,
       p_keep_buckets: keepBuckets,
     });
-    if (error) return { purged, error: `list_objects: ${error.message}` };
+    if (error) {
+      return {
+        purged,
+        remaining: await countRemaining(admin, keepBuckets),
+        done: false,
+        error: `list_objects: ${error.message}`,
+      };
+    }
 
     const rows = (data ?? []) as StoragePathRow[];
-    if (rows.length === 0) return { purged, error: null };
+    if (rows.length === 0) {
+      return { purged, remaining: 0, done: true, error: null };
+    }
 
     let removedThisBatch = 0;
     let lastError: string | null = null;
@@ -91,6 +154,8 @@ export async function purgeStorageObjects(
     if (removedThisBatch === 0) {
       return {
         purged,
+        remaining: await countRemaining(admin, keepBuckets),
+        done: false,
         error: lastError ??
           `stalled: ${rows.length} object(s) could not be removed`,
       };
@@ -99,7 +164,8 @@ export async function purgeStorageObjects(
 
   return {
     purged,
-    error:
-      `incomplete: stopped after ${MAX_BATCHES} batches — re-run the reset`,
+    remaining: await countRemaining(admin, keepBuckets),
+    done: false,
+    error: null,
   };
 }

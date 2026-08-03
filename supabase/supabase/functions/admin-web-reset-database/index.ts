@@ -21,6 +21,19 @@
 // go through the Storage API — see _shared/storage-purge.ts. It runs AFTER
 // the DB wipe commits: that way a storage failure leaves recoverable orphans
 // (re-run the reset) instead of live rows pointing at deleted images.
+//
+// ONE CALL IS NOT THE WHOLE JOB. The DB wipe is a single fast statement, but
+// the purge is thousands of HTTP deletes — more than the caller's request
+// budget allows, and growing with the catalog. So the purge runs to a time
+// budget and reports what's left:
+//
+//   { confirm: "RESET" }                     wipe the DB, then purge a slice
+//   { confirm: "RESET", storageOnly: true }  purge the next slice
+//
+// The caller repeats the second form until `storage_done`. Resuming is safe
+// by construction: the lister only ever returns objects that are still there,
+// so a continuation can't double-delete or skip. `storageOnly` never touches
+// the DB, so a stuck purge can also be drained later without re-wiping.
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { corsPreflight, json, readJson } from "../_shared/http.ts";
@@ -32,7 +45,7 @@ import {
 } from "../_shared/auth.ts";
 import { purgeStorageObjects } from "../_shared/storage-purge.ts";
 
-type Body = { confirm?: string };
+type Body = { confirm?: string; storageOnly?: boolean };
 
 const CONFIRM_PHRASE = "RESET";
 
@@ -65,23 +78,30 @@ Deno.serve(async (req) => {
   }
 
   // --- Delegate the DB wipe to the locked-down SQL function. ---
-  const { data, error } = await admin.rpc("admin_reset_database");
-  if (error) {
-    return json({ ok: false, error: `reset_failed: ${error.message}` }, 500);
+  // Skipped on a continuation: the tables are already empty, and re-running
+  // the wipe would delete anything the operator created since.
+  let result: Record<string, unknown> = {};
+  if (!body.storageOnly) {
+    const { data, error } = await admin.rpc("admin_reset_database");
+    if (error) {
+      return json({ ok: false, error: `reset_failed: ${error.message}` }, 500);
+    }
+    result = (data ?? {}) as Record<string, unknown>;
   }
 
-  // --- Then collect the media the wipe just orphaned. ---
+  // --- Then collect the media the wipe orphaned, for one budget's worth. ---
   const purge = await purgeStorageObjects(admin);
   if (purge.error) {
     console.error("[admin-web-reset-database] storage_purge:", purge.error);
   }
 
-  const result = (data ?? {}) as Record<string, unknown>;
   return json({
     ok: true,
     result: {
       ...result,
       purged_storage_objects: purge.purged,
+      remaining_storage_objects: purge.remaining,
+      storage_done: purge.done,
       storage_purge_error: purge.error,
     },
   });
