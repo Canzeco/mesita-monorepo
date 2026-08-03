@@ -1,27 +1,32 @@
 import {
   ChartLine,
-  Gauge,
   MapPin,
-  QrCode,
+  Package,
+  Settings,
+  Star,
   Store,
   Tag,
   UsersRound,
 } from "lucide-react";
 
-// `soon` sections stay in the catalog for routes/placeholders but are hidden
-// from the primary tablist until shipped (MESITA-547 — dead tabs dilute IA).
-// Products + Reviews live inside the Place page (not separate tabs).
+// Tab order is Pato's 2026-08-02 spec (MESITA-834): place · reviews ·
+// products · promos · performance · team · settings. Reviews + Products are
+// their own tabs again (MESITA-368 folded them into Place; unfolded here);
+// Scores and Scan are gone from the catalog (their old URLs redirect to
+// Place). Settings holds the operator/meta cards; Performance is the
+// per-place activity feed.
 const UNIT_SECTIONS = [
-  { id: "place", label: "Place", Icon: Store, soon: false },
-  { id: "promos", label: "Promos", Icon: Tag, soon: false },
-  { id: "scores", label: "Scores", Icon: Gauge, soon: false },
-  { id: "scan", label: "Scan", Icon: QrCode, soon: true },
-  { id: "performance", label: "Performance", Icon: ChartLine, soon: true },
-  { id: "team", label: "Team", Icon: UsersRound, soon: false },
+  { id: "place", label: "Place", Icon: Store },
+  { id: "reviews", label: "Reviews", Icon: Star },
+  { id: "products", label: "Products", Icon: Package },
+  { id: "promos", label: "Promos", Icon: Tag },
+  { id: "performance", label: "Performance", Icon: ChartLine },
+  { id: "team", label: "Team", Icon: UsersRound },
+  { id: "settings", label: "Settings", Icon: Settings },
 ] as const;
 
-/** Tabs shown in UnitEditChrome — excludes not-yet-shipped sections. */
-export const UNIT_TAB_SECTIONS = UNIT_SECTIONS.filter((s) => !s.soon);
+/** Tabs shown in UnitEditChrome — every section is live (no `soon` gate). */
+export const UNIT_TAB_SECTIONS = UNIT_SECTIONS;
 
 type UnitSection = (typeof UNIT_SECTIONS)[number]["id"];
 
@@ -48,5 +53,3 @@ export function parseUnitId(pathname: string): string | null {
   if (id === "select" || id === "create" || id === "add") return null;
   return id;
 }
-
-

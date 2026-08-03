@@ -63,6 +63,49 @@ export function MetaRow({ item }: { item: NotificationItem }) {
     }
   }
 
+  // Consumer-activity tags (per-place Performance feed — MESITA-834).
+  if (item.type === "rewards.ticket_created" || item.type === "rewards.ticket_visit") {
+    if (typeof m.status === "string") tags.push(<MetaTag key="ts">{m.status}</MetaTag>);
+  }
+
+  if (item.type === "rewards.ticket_paid") {
+    if (typeof m.subtotalCents === "number" && m.subtotalCents > 0) {
+      tags.push(
+        <MetaTag key="sub">
+          bill ${(m.subtotalCents / 100).toLocaleString()}
+          {typeof m.currency === "string" ? ` ${m.currency}` : ""}
+        </MetaTag>,
+      );
+    }
+    if (typeof m.discountPercent === "number" && m.discountPercent > 0) {
+      tags.push(<MetaTag key="dp">−{m.discountPercent}%</MetaTag>);
+    }
+  }
+
+  if (item.type === "rewards.review_submitted") {
+    if (typeof m.overall === "number") {
+      tags.push(<MetaTag key="ov">★ {m.overall} overall</MetaTag>);
+    }
+    for (const [key, label] of [
+      ["food", "food"],
+      ["service", "service"],
+      ["ambiance", "ambiance"],
+    ] as const) {
+      const v = m[key];
+      if (typeof v === "number") {
+        tags.push(<MetaTag key={key}>{label} {v}</MetaTag>);
+      }
+    }
+  }
+
+  if (item.type === "reservations.reservation_created") {
+    if (typeof m.status === "string") tags.push(<MetaTag key="rs">{m.status}</MetaTag>);
+    if (typeof m.partySize === "number") {
+      tags.push(<MetaTag key="ps">party of {m.partySize}</MetaTag>);
+    }
+    if (m.isTest === true) tags.push(<MetaTag key="tt">test</MetaTag>);
+  }
+
   if (item.place?.googlePlaceId) {
     tags.push(
       <a

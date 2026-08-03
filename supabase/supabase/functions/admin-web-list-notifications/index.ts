@@ -19,10 +19,21 @@
 //   atlas.ownership_claimed  someone submitted an ownership proof
 //                            (public.project_verifications) for a place
 //
-// The envelope is category-agnostic so future categories (billing,
-// verifications, consumers…) slot in without a client rewrite: each item
-// is { id, category, type, occurredAt, place, actor, detail, meta } and the
-// client renders title/icon from `type`.
+// The envelope is category-agnostic so future categories slot in without a
+// client rewrite: each item is { id, category, type, occurredAt, place,
+// actor, detail, meta } and the client renders title/icon from `type`.
+//
+// Consumer-activity categories (MESITA-834 — powers the per-place
+// Performance tab, scoped via `placeId`; the Global Monitor shows them too):
+//
+//   consumer.place_saved                a consumer saved the place
+//   rewards.ticket_created              a reward ticket was opened in-app
+//   rewards.ticket_visit                its QR met the venue (first scan)
+//   rewards.ticket_paid                 staff marked the discounted bill paid
+//   rewards.review_submitted            the post-visit review landed
+//   reservations.reservation_created    a reservation request was placed
+//
+// All derived from tables the product already writes — no new event tables.
 //
 // Filters: `category` narrows to a category; `types` narrows to specific
 // event types server-side (skips whole source reads — step events flood the
@@ -69,8 +80,10 @@ import {
   truncate,
 } from "./notification-shapes.ts";
 import {
+  consumerActor,
   mapPlaceCreatedNotification,
   type Category,
+  type ConsumerShape,
   type CreatedNotificationRow,
   type NotificationItem,
   type NotificationType,
@@ -81,7 +94,23 @@ const ALL_TYPES: NotificationType[] = [
   "atlas.place_enriched",
   "atlas.enrichment_step",
   "atlas.ownership_claimed",
+  "consumer.place_saved",
+  "rewards.ticket_created",
+  "rewards.ticket_visit",
+  "rewards.ticket_paid",
+  "rewards.review_submitted",
+  "reservations.reservation_created",
 ];
+
+const ALL_CATEGORIES: Category[] = ["atlas", "consumer", "rewards", "reservations"];
+
+// Consumer-activity sources all FK the projects entity (shared PK with
+// places) — same hop-through-projects embed the claims source uses, plus the
+// consumer for the actor line.
+const PROJECT_EMBED =
+  "project:projects(id, slug, place:places(name, address, category_label, google_place_id))";
+const CONSUMER_EMBED =
+  "consumer:consumers(full_name, first_name, last_name, instagram_handle)";
 
 type Body = {
   // "all" (or omitted) returns every category. A specific category narrows
@@ -116,11 +145,12 @@ Deno.serve(async (req) => {
   const body = await readJsonOr<Body>(req, {});
   const limit = clampIntRange(body.limit ?? 60, 1, 200);
   const category = body.category ?? "all";
-  const wantAtlas = category === "all" || category === "atlas";
   const typesFilter = (Array.isArray(body.types) ? body.types : [])
     .filter((t): t is NotificationType => ALL_TYPES.includes(t as NotificationType));
   const wantType = (t: NotificationType) =>
-    wantAtlas && (typesFilter.length === 0 || typesFilter.includes(t));
+    (category === "all" || t.startsWith(`${category}.`)) &&
+    (typesFilter.length === 0 || typesFilter.includes(t));
+  const wantAtlas = category === "all" || category === "atlas";
   const projectId = readPlaceIdAlias(body) || null;
   const q = (body.q ?? "").toString().trim().toLowerCase() || null;
 
@@ -331,6 +361,190 @@ Deno.serve(async (req) => {
     }
   }
 
+  // ── Consumer activity (consumer / rewards / reservations) ─────────────
+  // Same per-source window + merge pattern as atlas. Every source hops
+  // project → places for the profile and embeds the consumer for the actor.
+  // Tickets contribute three event types from three timestamps — each gets
+  // its OWN window (ordered by its own timestamp) so a burst of creates
+  // can't hide older visits/payments.
+  {
+    type ActivityRow = {
+      id: string;
+      created_at: string;
+      project: ProjectPlaceShape | ProjectPlaceShape[] | null;
+      consumer: ConsumerShape | ConsumerShape[] | null;
+    };
+
+    const activitySource = (
+      table: string,
+      extraCols: string,
+      orderCol: string,
+      wanted: boolean,
+    ) =>
+      wanted
+        ? (() => {
+          let qb = admin
+            .from(table)
+            .select(
+              `id, created_at, ${extraCols}${PROJECT_EMBED}, ${CONSUMER_EMBED}`,
+            )
+            .order(orderCol, { ascending: false })
+            .limit(limit);
+          if (projectId) qb = qb.eq("project_id", projectId);
+          if (orderCol !== "created_at") qb = qb.not(orderCol, "is", null);
+          return qb;
+        })()
+        : Promise.resolve({ data: null, error: null });
+
+    const [savesRes, tCreatedRes, tVisitRes, tPaidRes, reviewsRes, resvRes] =
+      await Promise.all([
+        activitySource("saved_places", "", "created_at", wantType("consumer.place_saved")),
+        activitySource(
+          "tickets",
+          "status, kind, ",
+          "created_at",
+          wantType("rewards.ticket_created"),
+        ),
+        activitySource(
+          "tickets",
+          "status, kind, first_scanned_at, ",
+          "first_scanned_at",
+          wantType("rewards.ticket_visit"),
+        ),
+        activitySource(
+          "tickets",
+          "status, kind, paid_at, check_subtotal_cents, discount_percent, discount_cents, currency, ",
+          "paid_at",
+          wantType("rewards.ticket_paid"),
+        ),
+        activitySource(
+          "ticket_reviews",
+          "overall, food, service, ambiance, comments, ",
+          "created_at",
+          wantType("rewards.review_submitted"),
+        ),
+        activitySource(
+          "reservations",
+          "status, party_size, reserved_at, is_test, ",
+          "created_at",
+          wantType("reservations.reservation_created"),
+        ),
+      ]);
+
+    for (const [label, r] of [
+      ["saved_places", savesRes],
+      ["tickets_created", tCreatedRes],
+      ["tickets_visit", tVisitRes],
+      ["tickets_paid", tPaidRes],
+      ["ticket_reviews", reviewsRes],
+      ["reservations", resvRes],
+    ] as const) {
+      if (r.error) {
+        return json({ ok: false, error: `${label}: ${r.error.message}` }, 500);
+      }
+    }
+
+    const push = (
+      type: NotificationType,
+      category: Category,
+      row: ActivityRow,
+      occurredAt: string,
+      detail: string | null,
+      meta: Record<string, unknown>,
+    ) =>
+      items.push({
+        id: `${type}:${row.id}`,
+        category,
+        type,
+        occurredAt,
+        place: projectPlaceRef(one(row.project)),
+        actor: consumerActor(one(row.consumer)),
+        detail,
+        meta,
+      });
+
+    for (const r of ((savesRes.data ?? []) as unknown[]) as ActivityRow[]) {
+      push("consumer.place_saved", "consumer", r, r.created_at, null, {});
+    }
+
+    for (const r of ((tCreatedRes.data ?? []) as unknown[]) as Array<ActivityRow & {
+      status: string;
+      kind: string;
+    }>) {
+      push("rewards.ticket_created", "rewards", r, r.created_at, null, {
+        status: r.status,
+        kind: r.kind,
+      });
+    }
+
+    // A first scan is the visit signal — the guest's QR met the venue.
+    for (const r of ((tVisitRes.data ?? []) as unknown[]) as Array<ActivityRow & {
+      status: string;
+      kind: string;
+      first_scanned_at: string;
+    }>) {
+      push("rewards.ticket_visit", "rewards", r, r.first_scanned_at, null, {
+        status: r.status,
+        kind: r.kind,
+      });
+    }
+
+    for (const r of ((tPaidRes.data ?? []) as unknown[]) as Array<ActivityRow & {
+      status: string;
+      kind: string;
+      paid_at: string;
+      check_subtotal_cents: number | null;
+      discount_percent: number | null;
+      discount_cents: number | null;
+      currency: string | null;
+    }>) {
+      push("rewards.ticket_paid", "rewards", r, r.paid_at, null, {
+        status: r.status,
+        kind: r.kind,
+        subtotalCents: r.check_subtotal_cents,
+        discountPercent: r.discount_percent,
+        discountCents: r.discount_cents,
+        currency: r.currency,
+      });
+    }
+
+    for (const r of ((reviewsRes.data ?? []) as unknown[]) as Array<ActivityRow & {
+      overall: number | null;
+      food: number | null;
+      service: number | null;
+      ambiance: number | null;
+      comments: string | null;
+    }>) {
+      push(
+        "rewards.review_submitted",
+        "rewards",
+        r,
+        r.created_at,
+        r.comments?.trim() ? truncate(r.comments, 260) : null,
+        {
+          overall: r.overall,
+          food: r.food,
+          service: r.service,
+          ambiance: r.ambiance,
+        },
+      );
+    }
+
+    for (const r of ((resvRes.data ?? []) as unknown[]) as Array<ActivityRow & {
+      status: string;
+      party_size: number | null;
+      reserved_at: string | null;
+      is_test: boolean;
+    }>) {
+      push("reservations.reservation_created", "reservations", r, r.created_at, null, {
+        status: r.status,
+        partySize: r.party_size,
+        reservedAt: r.reserved_at,
+        isTest: r.is_test,
+      });
+    }
+  }
+
   // Place-name substring filter, then newest-first across every type, then cap
   // to the requested window. Counts reflect the filtered set so the client's
   // pills stay consistent with what is shown.
@@ -350,7 +564,7 @@ Deno.serve(async (req) => {
     ok: true,
     notifications,
     counts,
-    categories: ["atlas"],
+    categories: ALL_CATEGORIES,
     types: ALL_TYPES,
     total: filtered.length,
     generatedAt: new Date().toISOString(),

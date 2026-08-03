@@ -1,8 +1,19 @@
 "use client";
 
 import { useEffect, useId, useState } from "react";
-import { CheckCircle2, ChevronDown, Loader2 } from "lucide-react";
+import Link from "next/link";
+import {
+  ArrowRight,
+  Check,
+  CheckCircle2,
+  ChevronDown,
+  Copy,
+  ExternalLink,
+  Loader2,
+  Lock,
+} from "lucide-react";
 import { ErrorNote } from "@/components/ErrorNote";
+import { useUnitPlace } from "./UnitPlaceContext";
 import {
   COUNTRIES,
   COUNTRY_BY_CODE,
@@ -497,5 +508,128 @@ export function Spinner({ label }: { label?: string }) {
       <Loader2 className="h-4 w-4 animate-spin" />
       {label ?? "Loading…"}
     </div>
+  );
+}
+
+// ── Read-only display primitives (shared by Place + Settings cards) ──────
+
+// Link out to another unit tab, routed through the discard guard.
+//
+// These used to be bare <Link>s. `guardNav` lived as a local useCallback inside
+// UnitEditChrome, so the chrome's own tabs were guarded but these were not:
+// editing Basics and clicking "Edit on Promos" navigated away and dropped the
+// edits with no dialog and no warning. The guard now lives on UnitPlaceContext
+// precisely so every cross-tab link can reach it — use this, never a raw <Link>.
+export function CrossTabLink({
+  href,
+  children,
+}: {
+  href: string;
+  children: React.ReactNode;
+}) {
+  const { guardNav } = useUnitPlace();
+  return (
+    <Link
+      href={href}
+      onClick={(e) => guardNav(href, e)}
+      className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1 text-xs font-medium transition"
+    >
+      {children}
+      <ArrowRight className="h-3 w-3" />
+    </Link>
+  );
+}
+
+// Labelled read-only value used inside editable cards (Price, Category). The
+// `auto` pill signals the value is Enricher-owned and not hand-edited.
+export function ReadField({
+  label,
+  auto,
+  boxed,
+  children,
+}: {
+  label: string;
+  auto?: boolean;
+  /** Render label + value like a (disabled) filled input, so the field sits
+   *  flush with the editable TextFields around it instead of as bare text. */
+  boxed?: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="flex min-w-0 flex-col gap-1.5">
+      <span
+        className={
+          boxed
+            ? "text-foreground/90 flex min-h-4 items-center gap-1.5 text-[13px] font-medium"
+            : "text-muted-foreground flex min-h-4 items-center gap-1.5 text-[11px] font-semibold tracking-[0.05em] uppercase"
+        }
+      >
+        {label}
+        {auto ? (
+          <span className="text-muted-foreground/70 inline-flex items-center gap-0.5 text-[10px] font-normal tracking-normal normal-case">
+            <Lock className="h-3 w-3" />
+            auto
+          </span>
+        ) : null}
+      </span>
+      <div
+        className={
+          boxed
+            ? "bg-muted/60 border-border/60 flex min-h-10 min-w-0 items-center rounded-xl border px-3.5 text-sm"
+            : "flex min-h-9 items-center text-sm"
+        }
+      >
+        {children}
+      </div>
+    </div>
+  );
+}
+
+// Small "Open ↗" affordance shown in a link field's label when it has a value.
+export function OpenLink({ href }: { href: string }) {
+  const trimmed = href.trim();
+  const url = /^(https?|tel|mailto|sms):/i.test(trimmed)
+    ? trimmed
+    : `https://${trimmed}`;
+  const external = /^https?:/i.test(url);
+  return (
+    <a
+      href={url}
+      {...(external ? { target: "_blank", rel: "noopener noreferrer" } : {})}
+      onClick={(e) => e.stopPropagation()}
+      className="text-muted-foreground hover:text-foreground inline-flex items-center gap-0.5 text-[11px] font-medium transition"
+    >
+      Open
+      <ExternalLink className="h-3 w-3" />
+    </a>
+  );
+}
+
+export function CopyIdButton({ id }: { id: string }) {
+  const [copied, setCopied] = useState(false);
+  return (
+    <button
+      type="button"
+      onClick={async () => {
+        try {
+          await navigator.clipboard.writeText(id);
+          setCopied(true);
+          window.setTimeout(() => setCopied(false), 1200);
+        } catch {
+          /* clipboard unavailable — ignore */
+        }
+      }}
+      className="hover:text-foreground inline-flex items-center gap-1 transition"
+    >
+      {copied ? (
+        <>
+          <Check className="h-3.5 w-3.5 text-green-600" /> Copied
+        </>
+      ) : (
+        <>
+          <Copy className="h-3.5 w-3.5" /> Copy
+        </>
+      )}
+    </button>
   );
 }

@@ -4,13 +4,19 @@ import {
   type PlaceShape,
 } from "./notification-shapes.ts";
 
-export type Category = "atlas";
+export type Category = "atlas" | "consumer" | "rewards" | "reservations";
 
 export type NotificationType =
   | "atlas.place_created"
   | "atlas.place_enriched"
   | "atlas.enrichment_step"
-  | "atlas.ownership_claimed";
+  | "atlas.ownership_claimed"
+  | "consumer.place_saved"
+  | "rewards.ticket_created"
+  | "rewards.ticket_visit"
+  | "rewards.ticket_paid"
+  | "rewards.review_submitted"
+  | "reservations.reservation_created";
 
 export type NotificationItem = {
   // Stable per underlying row so the client can key/dedupe across refreshes.
@@ -38,6 +44,28 @@ export type NotificationOwner = {
   email: string | null;
   name: string | null;
 };
+
+// Consumer display name for activity events — the same precedence the
+// consumer app uses: full name, else first+last, else IG handle. Never the
+// phone (the feed is operator-facing but names read better than numbers,
+// and the phone is PII we don't need here).
+export type ConsumerShape = {
+  full_name: string | null;
+  first_name: string | null;
+  last_name: string | null;
+  instagram_handle: string | null;
+};
+
+export function consumerActor(c: ConsumerShape | null): string | null {
+  if (!c) return null;
+  const full = c.full_name?.trim();
+  if (full) return full;
+  const joined = [c.first_name, c.last_name].filter(Boolean).join(" ").trim();
+  if (joined) return joined;
+  const ig = c.instagram_handle?.trim();
+  if (ig) return `@${ig.replace(/^@/, "")}`;
+  return null;
+}
 
 export function mapPlaceCreatedNotification(
   v: CreatedNotificationRow,

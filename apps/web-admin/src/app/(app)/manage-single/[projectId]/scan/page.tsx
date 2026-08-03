@@ -1,7 +1,11 @@
-import { SoonSection } from "../../sections/SoonSection";
+import { redirect } from "next/navigation";
 
-// Scan is gated "Soon" in nav.ts — the tab is non-navigable; this handles
-// direct URLs with a coming-soon placeholder.
-export default function UnitScanPage() {
-  return <SoonSection label="Scan" />;
+/** The Scan tab was removed (MESITA-834) — keep the old URL working. */
+export default async function UnitScanRedirectPage({
+  params,
+}: {
+  params: Promise<{ projectId: string }>;
+}) {
+  const { projectId } = await params;
+  redirect(`/manage-single/${projectId}/place`);
 }
