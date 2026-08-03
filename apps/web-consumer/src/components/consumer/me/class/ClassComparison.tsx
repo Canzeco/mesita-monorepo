@@ -1,4 +1,4 @@
-import { Check, Minus } from "lucide-react";
+import { Minus } from "lucide-react";
 
 import { CLASS_ICONS, classBadgeClass } from "@/lib/consumer-data";
 import {
@@ -142,8 +142,6 @@ export function ClassComparison() {
               >
                 {v == null ? (
                   <Minus className="text-muted-foreground/50 h-3 w-3" aria-label="Not included" />
-                ) : v === "✓" ? (
-                  <Check className="h-3.5 w-3.5" />
                 ) : (
                   v
                 )}

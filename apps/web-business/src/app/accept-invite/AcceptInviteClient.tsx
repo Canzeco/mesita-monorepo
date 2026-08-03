@@ -19,6 +19,9 @@ import { errMsg } from "@/lib/utils";
 
 type Status = "claiming" | "needs_signin" | "success" | "error";
 
+// Brief pause on success so the checkmark is legible before we redirect.
+const SUCCESS_REDIRECT_DELAY_MS = 1200;
+
 function initialFromParams(
   token: string | null,
   kind: string | null,
@@ -44,12 +47,13 @@ export function AcceptInviteClient() {
   const initial = initialFromParams(token, kind);
   const [status, setStatus] = useState<Status>(initial.status);
   const [message, setMessage] = useState<string>(initial.message);
-  const [projectId, setPlaceId] = useState<string | null>(null);
+  const [projectId, setProjectId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!token || kind === "staff") return; // static error already rendered
 
     let cancelled = false;
+    let redirectTimeout: number | undefined;
     (async () => {
       const { data } = await supabase.auth.getUser();
       if (cancelled) return;
@@ -60,11 +64,11 @@ export function AcceptInviteClient() {
       try {
         const res = await apiAcceptEditorInvite(supabase, token);
         if (cancelled) return;
-        setPlaceId(res.projectId);
+        setProjectId(res.projectId);
         setStatus("success");
-        window.setTimeout(() => {
+        redirectTimeout = window.setTimeout(() => {
           router.replace(placePath(res.projectId));
-        }, 1200);
+        }, SUCCESS_REDIRECT_DELAY_MS);
       } catch (err) {
         if (cancelled) return;
         setMessage(errMsg(err, "Couldn't claim that invite."));
@@ -74,6 +78,7 @@ export function AcceptInviteClient() {
 
     return () => {
       cancelled = true;
+      if (redirectTimeout !== undefined) window.clearTimeout(redirectTimeout);
     };
   }, [supabase, token, kind, router]);
 

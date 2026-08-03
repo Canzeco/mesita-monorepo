@@ -45,12 +45,7 @@ export function CostCalculator({
   pagesPerQuery,
   totalCalls,
   totalCostUsd,
-}: {
-  queries: number;
-  pagesPerQuery: number;
-  totalCalls: number;
-  totalCostUsd: number;
-}) {
+}: SearchCostEstimate & { queries: number }) {
   const pricePerCallLabel = `US$${PRICE_PER_REQUEST_USD.toFixed(3)}`;
   const freeTierLabel = FREE_PRO_REQUESTS_PER_MONTH.toLocaleString();
   return (
@@ -100,8 +95,8 @@ export function CostCalculator({
 
       <p className="text-muted-foreground/70 mt-3 text-[11px] leading-relaxed">
         Worst-case estimate. Quality filters don&apos;t change the cost — every
-        page of 20 results is one billable request whether or not the places
-        pass the filters. The first {freeTierLabel} Pro calls each month are
+        page of {PAGE_SIZE} results is one billable request whether or not the
+        places pass the filters. The first {freeTierLabel} Pro calls each month are
         free across the whole Google Cloud project, and per-call price drops in
         higher volume tiers.
       </p>

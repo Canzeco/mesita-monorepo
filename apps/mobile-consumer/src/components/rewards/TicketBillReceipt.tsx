@@ -6,9 +6,14 @@ import {
   type TicketReceiptLine,
 } from '@/lib/ticket-bill-receipt';
 
+const TEXT_COLOR = '#260409';
+const MUTED_TEXT_COLOR = '#775254';
+const DEDUCTION_COLOR = '#059669';
+
 function ReceiptRow({ line }: { line: TicketReceiptLine }) {
   const isDeduction = line.kind === 'deduction';
   const isSubtotal = line.kind === 'subtotal';
+  const amountColor = isDeduction ? DEDUCTION_COLOR : TEXT_COLOR;
   return (
     <View
       style={{
@@ -26,7 +31,7 @@ function ReceiptRow({ line }: { line: TicketReceiptLine }) {
         style={{
           flex: 1,
           fontSize: 14,
-          color: isDeduction ? '#059669' : '#260409',
+          color: amountColor,
           fontWeight: isSubtotal ? '600' : '400',
         }}
       >
@@ -36,7 +41,7 @@ function ReceiptRow({ line }: { line: TicketReceiptLine }) {
         style={{
           fontSize: 14,
           fontWeight: '600',
-          color: isDeduction ? '#059669' : '#260409',
+          color: amountColor,
           fontVariant: ['tabular-nums'],
         }}
       >
@@ -85,10 +90,10 @@ export function TicketBillReceipt({
           paddingVertical: 12,
         }}
       >
-        <Text style={{ fontSize: 16, fontWeight: '600', color: '#260409' }}>
+        <Text style={{ fontSize: 16, fontWeight: '600', color: TEXT_COLOR }}>
           {placeName ?? 'Your bill'}
         </Text>
-        <Text style={{ marginTop: 2, fontSize: 12, color: '#775254' }}>
+        <Text style={{ marginTop: 2, fontSize: 12, color: MUTED_TEXT_COLOR }}>
           What you owe at the restaurant
         </Text>
       </View>
@@ -102,7 +107,7 @@ export function TicketBillReceipt({
                 fontWeight: '700',
                 letterSpacing: 1,
                 textTransform: 'uppercase',
-                color: '#775254',
+                color: MUTED_TEXT_COLOR,
               }}
             >
               Charges
@@ -122,7 +127,7 @@ export function TicketBillReceipt({
               justifyContent: 'space-between',
               gap: 16,
               borderRadius: 12,
-              backgroundColor: '#260409',
+              backgroundColor: TEXT_COLOR,
               paddingHorizontal: 16,
               paddingVertical: 12,
             }}
@@ -146,7 +151,7 @@ export function TicketBillReceipt({
         {noteLines.map((line, i) => (
           <Text
             key={`note-${i}`}
-            style={{ marginTop: 4, fontSize: 12, color: '#775254', lineHeight: 16 }}
+            style={{ marginTop: 4, fontSize: 12, color: MUTED_TEXT_COLOR, lineHeight: 16 }}
           >
             {line.label}
           </Text>
@@ -167,7 +172,7 @@ export function TicketBillReceipt({
             style={{
               textAlign: 'center',
               fontSize: 12,
-              color: '#775254',
+              color: MUTED_TEXT_COLOR,
               lineHeight: 16,
             }}
           >

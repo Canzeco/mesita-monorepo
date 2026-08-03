@@ -5,7 +5,7 @@ import { Pressable, Text, View } from 'react-native';
 
 import { TicketFlowStepper } from '@/components/rewards/TicketFlowStepper';
 import { VisitHeaderStatus } from '@/components/rewards/visit-header-status';
-import { SHADOW_ELEV } from '@/constants/brand';
+import { COLORS, SHADOW_ELEV } from '@/constants/brand';
 import type { TicketFlowStepId, TicketFlowStepView } from '@/lib/ticket-flow-steps';
 
 export function VisitHeader({
@@ -39,6 +39,11 @@ export function VisitHeader({
     justifyContent: 'center' as const,
     borderWidth: 1,
   };
+  const nameLabel = (
+    <Text numberOfLines={1} style={{ fontSize: 14, fontWeight: '600' }}>
+      {placeName}
+    </Text>
+  );
 
   return (
     <View
@@ -73,7 +78,7 @@ export function VisitHeader({
                 contentFit="cover"
               />
             ) : (
-              <MapPin color="#775254" size={24} style={{ opacity: 0.4 }} />
+              <MapPin color={COLORS.mutedForeground} size={24} style={{ opacity: 0.4 }} />
             )}
           </View>
           <View style={{ flex: 1, gap: 8 }}>
@@ -90,12 +95,7 @@ export function VisitHeader({
                   opacity: pressed ? 0.7 : 1,
                 })}
               >
-                <Text
-                  numberOfLines={1}
-                  style={{ fontSize: 14, fontWeight: '600' }}
-                >
-                  {placeName}
-                </Text>
+                {nameLabel}
               </Pressable>
             ) : (
               <View
@@ -105,12 +105,7 @@ export function VisitHeader({
                   borderColor: 'rgba(235,217,219,0.5)',
                 }}
               >
-                <Text
-                  numberOfLines={1}
-                  style={{ fontSize: 14, fontWeight: '600' }}
-                >
-                  {placeName}
-                </Text>
+                {nameLabel}
               </View>
             )}
             <View
@@ -139,7 +134,7 @@ export function VisitHeader({
                 style={{
                   fontSize: 14,
                   fontWeight: '500',
-                  color: '#775254',
+                  color: COLORS.mutedForeground,
                   fontVariant: ['tabular-nums'],
                 }}
               >

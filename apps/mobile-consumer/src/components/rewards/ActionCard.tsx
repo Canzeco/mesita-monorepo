@@ -18,6 +18,8 @@ import {
 } from '@/lib/ticket-flow-steps';
 import { StatusPill } from './StatusPill';
 
+const MUTED_TEXT_COLOR = '#775254';
+
 export function ActionCard({
   step,
   progress,
@@ -95,7 +97,7 @@ export function ActionCard({
               marginTop: 8,
               fontSize: 20,
               fontWeight: '700',
-              color: isLocked ? '#775254' : '#260409',
+              color: isLocked ? MUTED_TEXT_COLOR : '#260409',
               lineHeight: 26,
             }}
           >
@@ -169,7 +171,7 @@ export function ActionCard({
         {children}
 
         {isDone && step.id !== 'bill' && !children ? (
-          <Text style={{ textAlign: 'center', fontSize: 14, color: '#775254' }}>
+          <Text style={{ textAlign: 'center', fontSize: 14, color: MUTED_TEXT_COLOR }}>
             Nothing else needed for this step.
           </Text>
         ) : null}

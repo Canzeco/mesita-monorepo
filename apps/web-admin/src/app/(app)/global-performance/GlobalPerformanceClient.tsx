@@ -21,6 +21,9 @@ import { NotificationRow } from "./NotificationRow";
 // hidden — the operator still has the manual Refresh button).
 const AUTO_REFRESH_MS = 30_000;
 
+// Tick cadence for refreshing the "time ago" labels.
+const NOW_TICK_MS = 30_000;
+
 export function GlobalPerformanceClient({
   initial,
 }: {
@@ -36,7 +39,7 @@ export function GlobalPerformanceClient({
   useEffect(() => {
     const update = () => setNow(Date.now());
     const first = setTimeout(update, 0);
-    const iv = setInterval(update, 30_000);
+    const iv = setInterval(update, NOW_TICK_MS);
     return () => {
       clearTimeout(first);
       clearInterval(iv);

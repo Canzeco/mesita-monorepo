@@ -56,12 +56,12 @@ export function CurvePlot({
   const H = 60;
   const PAD = 3;
   const N = 72;
-  const clamp01v = (v: number) => Math.max(0, Math.min(1, v));
+  const clamp01 = (v: number) => Math.max(0, Math.min(1, v));
   const xAt = (t: number) => (logX ? x0 * Math.pow(x1 / x0, t) : x0 + t * (x1 - x0));
   const tOf = (x: number) =>
     logX ? Math.log(x / x0) / Math.log(x1 / x0) : (x - x0) / (x1 - x0);
-  const px = (t: number) => PAD + Math.max(0, Math.min(1, t)) * (W - 2 * PAD);
-  const py = (y: number) => H - PAD - clamp01v(y) * (H - 2 * PAD);
+  const px = (t: number) => PAD + clamp01(t) * (W - 2 * PAD);
+  const py = (y: number) => H - PAD - clamp01(y) * (H - 2 * PAD);
 
   let d = "";
   for (let i = 0; i <= N; i++) {
@@ -93,6 +93,8 @@ export function CurvePlot({
   );
 }
 
+const BAR_MAX_HEIGHT = 46;
+
 /** A categorical [0,1] rung chart — the what ladder, RP's strategy rungs. */
 export function LadderPlot({
   bars,
@@ -112,10 +114,10 @@ export function LadderPlot({
         {bars.map((b) => (
           <div key={b.label} className="flex min-w-0 flex-1 flex-col items-center">
             <span className="font-mono text-[9px] tabular-nums leading-none">{b.value.toFixed(2)}</span>
-            <div className="mt-0.5 flex w-full items-end justify-center" style={{ height: 46 }}>
+            <div className="mt-0.5 flex w-full items-end justify-center" style={{ height: BAR_MAX_HEIGHT }}>
               <div
                 className={"w-full rounded-t-sm " + TONE_BAR[tone]}
-                style={{ height: Math.max(2, Math.min(1, b.value) * 46) }}
+                style={{ height: Math.max(2, Math.min(1, b.value) * BAR_MAX_HEIGHT) }}
               />
             </div>
             <span className="text-muted-foreground mt-0.5 text-center font-mono text-[8.5px] leading-tight">
