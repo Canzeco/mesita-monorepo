@@ -378,9 +378,12 @@ function mergeBoxSlice(base: Form, from: Form, box: PlaceBox): Form {
 export function PlaceSection({
   place,
   onSaved,
+  children,
 }: {
   place: AdminPlace;
   onSaved: (v: AdminPlace) => void;
+  /** Extra Place-page boxes (Products) — flow in the same masonry columns. */
+  children?: React.ReactNode;
 }) {
   const [limits, setLimits] = useState<PlaceFieldLimits>(FALLBACK_LIMITS);
   const [form, setForm] = useState<Form>(() => placeToForm(place));
@@ -1017,6 +1020,8 @@ export function PlaceSection({
           onCancel={() => cancelBox("photos")}
         />
       </SectionCard>
+
+      {children}
 
       {/* Location is native — Google Places seed + Enricher synthesis. The EF
           rejects manual address writes, so this whole box is read-only. */}
