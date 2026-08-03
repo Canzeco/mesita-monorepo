@@ -28,6 +28,7 @@ function ResetCard() {
   const [confirm, setConfirm] = useState("");
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<string | null>(null);
+  const [warning, setWarning] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const armed = confirm === CONFIRM_PHRASE;
@@ -36,15 +37,22 @@ function ResetCard() {
     if (!armed || busy) return;
     setBusy(true);
     setResult(null);
+    setWarning(null);
     setError(null);
     const r = await resetDatabase(confirm);
     setBusy(false);
     if (r.ok) {
       setResult(
-        `Database reset complete. Removed ${
-          r.deletedAuthUsers ?? "?"
-        } non-admin auth account(s).`,
+        `Database reset complete. Emptied ${r.truncatedTables ?? "?"} table(s), ` +
+          `removed ${r.deletedAuthUsers ?? "?"} non-admin auth account(s) and ` +
+          `purged ${r.purgedStorageObjects ?? "?"} stored file(s).`,
       );
+      // The DB wipe committed either way — the purge is the part that stopped.
+      if (r.storagePurgeError) {
+        setWarning(
+          `Storage purge stopped early (${r.storagePurgeError}). The database is reset; run it again to clear the remaining files.`,
+        );
+      }
       setConfirm("");
     } else {
       setError(r.error);
@@ -66,10 +74,11 @@ function ResetCard() {
       </div>
 
       <p className="text-muted-foreground text-sm leading-relaxed">
-        Permanently deletes <strong>all</strong> places, tickets, consumers,
-        businesses, staff invites, verifications and place roles, and removes
-        every auth account that isn&apos;t an admin. The admin allowlist and app
-        settings are kept. This cannot be undone.
+        Permanently empties <strong>every</strong> operational table — places,
+        tickets, reservations, consumers, businesses, invites, verifications,
+        enrichment — deletes every stored image and menu file, and removes every
+        auth account that isn&apos;t an admin. The admin allowlist, app settings
+        and the category/tag/plan vocabularies are kept. This cannot be undone.
       </p>
 
       <label className="flex flex-col gap-1.5">
@@ -109,6 +118,12 @@ function ResetCard() {
         <p className="inline-flex items-center gap-1.5 rounded-xl bg-green-50 px-3 py-2 text-sm text-green-700">
           <CheckCircle2 className="h-4 w-4 shrink-0" />
           {result}
+        </p>
+      )}
+      {warning && (
+        <p className="inline-flex items-center gap-1.5 rounded-xl bg-amber-50 px-3 py-2 text-sm text-amber-800">
+          <AlertTriangle className="h-4 w-4 shrink-0" />
+          {warning}
         </p>
       )}
       {error && (
