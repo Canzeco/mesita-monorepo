@@ -3,13 +3,19 @@
 import { useState } from "react";
 import { AlertTriangle, CheckCircle2, Loader2 } from "lucide-react";
 import { PageContainer, PageHeader } from "@/components/PageContainer";
-import { resetDatabase } from "./actions";
+import { continueStoragePurge, resetDatabase } from "./actions";
 
 // DB Config — database-wide operator actions. Today: reset the environment
 // (moved here from Admin Config 2026-07-26). Super-admins only.
 
 // Must match the EF's CONFIRM_PHRASE.
 const CONFIRM_PHRASE = "RESET";
+
+// The EF wipes the DB in one call but purges storage a time-budgeted slice at
+// a time, so one press can take several round trips. This is the ceiling on
+// them: at ~20s and thousands of files per slice it is far past any real
+// catalog, and it means a bucket that somehow refills can't spin forever.
+const MAX_PURGE_PASSES = 60;
 
 export function DbConfigClient() {
   return (
@@ -27,7 +33,9 @@ export function DbConfigClient() {
 function ResetCard() {
   const [confirm, setConfirm] = useState("");
   const [busy, setBusy] = useState(false);
+  const [progress, setProgress] = useState<string | null>(null);
   const [result, setResult] = useState<string | null>(null);
+  const [warning, setWarning] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const armed = confirm === CONFIRM_PHRASE;
@@ -35,20 +43,65 @@ function ResetCard() {
   async function onReset() {
     if (!armed || busy) return;
     setBusy(true);
+    setProgress(null);
     setResult(null);
+    setWarning(null);
     setError(null);
-    const r = await resetDatabase(confirm);
-    setBusy(false);
-    if (r.ok) {
-      setResult(
-        `Database reset complete. Removed ${
-          r.deletedAuthUsers ?? "?"
-        } non-admin auth account(s).`,
-      );
-      setConfirm("");
-    } else {
+
+    // Pass 1 wipes the DB and starts the purge; the rest only drain storage.
+    let r = await resetDatabase(confirm);
+    if (!r.ok) {
+      setBusy(false);
       setError(r.error);
+      return;
     }
+
+    const truncatedTables = r.truncatedTables;
+    const deletedAuthUsers = r.deletedAuthUsers;
+    let purged = r.purgedStorageObjects;
+    let passes = 1;
+
+    while (r.ok && !r.storageDone && !r.storagePurgeError) {
+      if (passes >= MAX_PURGE_PASSES) {
+        setWarning(
+          `Stopped after ${passes} storage passes with ${r.remainingStorageObjects} file(s) left. ` +
+            `The database is reset — press again to clear the rest.`,
+        );
+        break;
+      }
+      setProgress(
+        `Database emptied. Clearing stored files — ${purged} done, ` +
+          `${r.remainingStorageObjects} to go…`,
+      );
+      r = await continueStoragePurge(confirm);
+      passes += 1;
+      if (!r.ok) {
+        setBusy(false);
+        setProgress(null);
+        setError(
+          `The database was reset, but clearing stored files failed: ${r.error}. ` +
+            `Press again to clear the rest.`,
+        );
+        return;
+      }
+      purged += r.purgedStorageObjects;
+    }
+
+    setBusy(false);
+    setProgress(null);
+    setResult(
+      `Database reset complete. Emptied ${truncatedTables ?? "?"} table(s), ` +
+        `removed ${deletedAuthUsers ?? "?"} non-admin auth account(s) and ` +
+        `purged ${purged} stored file(s).`,
+    );
+    // The DB wipe committed either way — the purge is the part that stopped.
+    if (r.ok && r.storagePurgeError) {
+      setWarning(
+        `Storage purge stopped early (${r.storagePurgeError}) with ${r.remainingStorageObjects} file(s) left. ` +
+          `The database is reset; press again to clear them.`,
+      );
+    }
+    setConfirm("");
   }
 
   return (
@@ -66,10 +119,11 @@ function ResetCard() {
       </div>
 
       <p className="text-muted-foreground text-sm leading-relaxed">
-        Permanently deletes <strong>all</strong> places, tickets, consumers,
-        businesses, staff invites, verifications and place roles, and removes
-        every auth account that isn&apos;t an admin. The admin allowlist and app
-        settings are kept. This cannot be undone.
+        Permanently empties <strong>every</strong> operational table — places,
+        tickets, reservations, consumers, businesses, invites, verifications,
+        enrichment — deletes every stored image and menu file, and removes every
+        auth account that isn&apos;t an admin. The admin allowlist, app settings
+        and the category/tag/plan vocabularies are kept. This cannot be undone.
       </p>
 
       <label className="flex flex-col gap-1.5">
@@ -105,10 +159,22 @@ function ResetCard() {
         )}
       </button>
 
+      {progress && (
+        <p className="text-muted-foreground bg-muted inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-sm">
+          <Loader2 className="h-4 w-4 shrink-0 animate-spin" />
+          {progress}
+        </p>
+      )}
       {result && (
         <p className="inline-flex items-center gap-1.5 rounded-xl bg-green-50 px-3 py-2 text-sm text-green-700">
           <CheckCircle2 className="h-4 w-4 shrink-0" />
           {result}
+        </p>
+      )}
+      {warning && (
+        <p className="inline-flex items-center gap-1.5 rounded-xl bg-amber-50 px-3 py-2 text-sm text-amber-800">
+          <AlertTriangle className="h-4 w-4 shrink-0" />
+          {warning}
         </p>
       )}
       {error && (
