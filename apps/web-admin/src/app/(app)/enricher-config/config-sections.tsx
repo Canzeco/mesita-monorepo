@@ -44,17 +44,23 @@ import {
 
 type Funnel = { gg: number; depth: number; ag: number; ai: number; save: number };
 
+// Shared with the NumberField bounds below — keep both in sync so the clamp
+// and the input's max never disagree about the funnel's invariant.
+const MAX_GOOGLE_COLLECT = 10;
+const MAX_INSTAGRAM_COLLECT = 50;
+const MAX_SAVE_IMAGES = 10;
+
 const clampN = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, Math.round(v)));
 
 // Enforce the per-source chain, reducing downstream values to fit:
 //   Google analyze ≤ Google collect · IG analyze ≤ IG collect ·
-//   save ≤ (Google analyze + IG analyze), capped at 10.
+//   save ≤ (Google analyze + IG analyze), capped at MAX_SAVE_IMAGES.
 function normalizeFunnel(s: Funnel): Funnel {
-  const gg = clampN(s.gg, 1, 10); // Google collect
-  const depth = clampN(s.depth, 1, 50); // Instagram collect (downloaded, sorted by likes)
+  const gg = clampN(s.gg, 1, MAX_GOOGLE_COLLECT); // Google collect
+  const depth = clampN(s.depth, 1, MAX_INSTAGRAM_COLLECT); // Instagram collect (downloaded, sorted by likes)
   const ag = clampN(s.ag, 1, gg); // Google analyze ≤ Google collect
   const ai = clampN(s.ai, 1, depth); // Instagram analyze ≤ Instagram collect
-  const save = clampN(s.save, 1, Math.min(10, ag + ai)); // Selection ≤ analyzed, ≤ 10
+  const save = clampN(s.save, 1, Math.min(MAX_SAVE_IMAGES, ag + ai)); // Selection ≤ analyzed
   return { gg, depth, ag, ai, save };
 }
 
@@ -229,8 +235,8 @@ export function ImageFunnelSection({
           status={<StageTotal label="collected" n={cSum} />}
         />
         <div className="mt-3 grid gap-4 sm:grid-cols-2">
-          <NumberField icon={<ImageIcon className="text-muted-foreground h-4 w-4" />} label="Google collect" value={f.gg} min={1} max={10} onChange={(v) => patch({ gg: v })} disabled={savePending} />
-          <NumberField icon={<Instagram className="text-muted-foreground h-4 w-4" />} label="Instagram collect" value={f.depth} min={1} max={50} onChange={(v) => patch({ depth: v })} disabled={savePending} />
+          <NumberField icon={<ImageIcon className="text-muted-foreground h-4 w-4" />} label="Google collect" value={f.gg} min={1} max={MAX_GOOGLE_COLLECT} onChange={(v) => patch({ gg: v })} disabled={savePending} />
+          <NumberField icon={<Instagram className="text-muted-foreground h-4 w-4" />} label="Instagram collect" value={f.depth} min={1} max={MAX_INSTAGRAM_COLLECT} onChange={(v) => patch({ depth: v })} disabled={savePending} />
         </div>
         <p className="text-muted-foreground mt-3 text-xs leading-relaxed">
           Google returns its photos already ranked by relevance — best first, so we take them in order. Instagram returns the <em>most recent</em> posts, so the Enricher re-ranks that window by number of likes. No separate keep step — Analysis reads the top of each pool.
@@ -275,7 +281,7 @@ export function ImageFunnelSection({
             label="Photos to keep on profile (all sources combined)"
             value={f.save}
             min={1}
-            max={Math.min(10, aSum)}
+            max={Math.min(MAX_SAVE_IMAGES, aSum)}
             onChange={(v) => patch({ save: v })}
             disabled={savePending}
           />
@@ -318,6 +324,8 @@ export function ImageFunnelSection({
 // How many Firecrawl Search results to pull per source when hunting for a
 // place's official links. Agent Y then reviews these candidates and picks one
 // (or none) per field. 0 disables a source's search entirely.
+
+const MAX_DISCOVERY_CANDIDATES = 10;
 
 export function DiscoverySection({
   initialWebsiteN,
@@ -397,11 +405,11 @@ export function DiscoverySection({
       subtitle="How many Firecrawl Search candidates to pull per source (0–10) when finding a place's official links. Agent Y reviews these and picks the best one per field (or none). 0 turns a source off."
     >
       <div className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-        <NumberField icon={<Globe className="text-muted-foreground h-4 w-4" />} label="Website" value={website} min={0} max={10} onChange={setWebsite} disabled={pending} />
-        <NumberField icon={<Instagram className="text-muted-foreground h-4 w-4" />} label="Instagram" value={instagram} min={0} max={10} onChange={setInstagram} disabled={pending} />
-        <NumberField icon={<Facebook className="text-muted-foreground h-4 w-4" />} label="Facebook" value={facebook} min={0} max={10} onChange={setFacebook} disabled={pending} />
-        <NumberField icon={<CalendarClock className="text-muted-foreground h-4 w-4" />} label="OpenTable" value={opentable} min={0} max={10} onChange={setOpentable} disabled={pending} />
-        <NumberField icon={<ShoppingBag className="text-muted-foreground h-4 w-4" />} label="Uber Eats" value={ubereats} min={0} max={10} onChange={setUbereats} disabled={pending} />
+        <NumberField icon={<Globe className="text-muted-foreground h-4 w-4" />} label="Website" value={website} min={0} max={MAX_DISCOVERY_CANDIDATES} onChange={setWebsite} disabled={pending} />
+        <NumberField icon={<Instagram className="text-muted-foreground h-4 w-4" />} label="Instagram" value={instagram} min={0} max={MAX_DISCOVERY_CANDIDATES} onChange={setInstagram} disabled={pending} />
+        <NumberField icon={<Facebook className="text-muted-foreground h-4 w-4" />} label="Facebook" value={facebook} min={0} max={MAX_DISCOVERY_CANDIDATES} onChange={setFacebook} disabled={pending} />
+        <NumberField icon={<CalendarClock className="text-muted-foreground h-4 w-4" />} label="OpenTable" value={opentable} min={0} max={MAX_DISCOVERY_CANDIDATES} onChange={setOpentable} disabled={pending} />
+        <NumberField icon={<ShoppingBag className="text-muted-foreground h-4 w-4" />} label="Uber Eats" value={ubereats} min={0} max={MAX_DISCOVERY_CANDIDATES} onChange={setUbereats} disabled={pending} />
       </div>
 
       <SaveRow pending={pending} dirty={dirty} ok={ok} onClick={save} />

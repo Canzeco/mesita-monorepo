@@ -26,6 +26,9 @@ import { UnitThumb } from "./UnitEditChrome";
 import { useUnitCatalogSearch } from "./useUnitCatalogSearch";
 import { ErrorNote } from "@/components/ErrorNote";
 
+// Minimum characters before a query triggers Mesita/Google search logic.
+const MIN_QUERY_LENGTH = 2;
+
 const STATUS_BADGE: Record<
   PlacePredictionStatus,
   { label: string; className: string; Icon: typeof MapPin }
@@ -78,14 +81,14 @@ export function UnitSelectCatalog() {
     searchedQuery !== null &&
     searchedQuery === trimmed &&
     hits.length === 0 &&
-    trimmed.length >= 2;
+    trimmed.length >= MIN_QUERY_LENGTH;
 
   // Show Google lane when Mesita has nothing for this query — including while
   // Mesita is still in flight (optimistic empty) so both spinners are visible.
   // Hide once Mesita returns hits (create-from-Google path not needed).
   const showGoogleSection =
     !placeIdMode &&
-    trimmed.length >= 2 &&
+    trimmed.length >= MIN_QUERY_LENGTH &&
     hits.length === 0 &&
     (pending || catalogSettledEmpty);
 
@@ -94,7 +97,7 @@ export function UnitSelectCatalog() {
   // ~2s dead gap (Mesita spinner clears → silence → Google appears).
   useEffect(() => {
     const query = debouncedQuery;
-    if (query.length < 2 || looksLikePlaceId(query)) return;
+    if (query.length < MIN_QUERY_LENGTH || looksLikePlaceId(query)) return;
 
     const id = ++googleRequestIdRef.current;
     void (async () => {
@@ -114,7 +117,7 @@ export function UnitSelectCatalog() {
     googleRemoteError !== null && googleRemoteError.query === trimmed;
   // In-flight for the settled query (prefetch or display) — independent of Mesita.
   const googleFetching =
-    debouncedQuery.length >= 2 &&
+    debouncedQuery.length >= MIN_QUERY_LENGTH &&
     debouncedQuery === trimmed &&
     !placeIdMode &&
     !googleReady &&
@@ -224,7 +227,7 @@ export function UnitSelectCatalog() {
               spellCheck={false}
               className="placeholder:text-muted-foreground min-w-0 flex-1 bg-transparent text-base outline-none sm:text-lg"
             />
-            {(anySearching) && trimmed.length >= 2 && (
+            {(anySearching) && trimmed.length >= MIN_QUERY_LENGTH && (
               <Loader2 className="text-primary h-5 w-5 shrink-0 animate-spin sm:h-6 sm:w-6" />
             )}
             {!anySearching && q.length > 0 && (
@@ -247,12 +250,7 @@ export function UnitSelectCatalog() {
       </div>
 
       <div className="px-4 pt-5 sm:px-6 lg:px-8">
-        <p
-          className={
-            "flex items-center gap-2 text-xs font-medium tracking-wide uppercase transition-colors " +
-            (pending ? "text-primary" : "text-muted-foreground")
-          }
-        >
+        <p className={sectionLabelClass(pending)}>
           {pending && (
             <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin" aria-hidden />
           )}
@@ -281,7 +279,7 @@ export function UnitSelectCatalog() {
                     <th className="px-3 py-2.5 font-semibold">Name</th>
                     <th className="px-3 py-2.5 font-semibold">Category</th>
                     <th className="px-3 py-2.5 font-semibold">Zone</th>
-                    <th className="px-3 py-2.5 font-semibold">Google revws</th>
+                    <th className="px-3 py-2.5 font-semibold">Google reviews</th>
                     <th className="px-3 py-2.5 text-center font-semibold">Enriched</th>
                     <th className="px-3 py-2.5 text-center font-semibold">Verified</th>
                     <th className="w-10 px-3 py-2.5" aria-hidden />
@@ -304,7 +302,7 @@ export function UnitSelectCatalog() {
           !pending &&
           !error &&
           searchedQuery === null &&
-          q.trim().length === 0 && (
+          trimmed.length === 0 && (
             <div className="border-border bg-card mt-4 rounded-2xl border px-4 py-12 text-center">
               <p className="text-muted-foreground text-sm">
                 No units in the catalog yet. Search a place name to create one from Google.
@@ -315,12 +313,7 @@ export function UnitSelectCatalog() {
 
         {showGoogleSection && (
           <div className="mt-8">
-            <p
-              className={
-                "flex items-center gap-2 text-xs font-medium tracking-wide uppercase transition-colors " +
-                (googleSearching ? "text-primary" : "text-muted-foreground")
-              }
-            >
+            <p className={sectionLabelClass(googleSearching)}>
               {googleSearching && (
                 <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin" aria-hidden />
               )}
@@ -426,6 +419,13 @@ export function UnitSelectCatalog() {
         />
       )}
     </div>
+  );
+}
+
+function sectionLabelClass(active: boolean): string {
+  return (
+    "flex items-center gap-2 text-xs font-medium tracking-wide uppercase transition-colors " +
+    (active ? "text-primary" : "text-muted-foreground")
   );
 }
 

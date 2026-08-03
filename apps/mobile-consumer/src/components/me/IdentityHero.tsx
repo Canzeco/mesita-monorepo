@@ -7,6 +7,19 @@ import { GRADIENT_DIAGONAL, GRADIENTS, SHADOW_ELEV } from '@/constants/brand';
 import { CLASS_ICONS, isElevatedClass } from '@/lib/consumer-classes';
 import { firstInitials } from '@/lib/utils';
 
+// Shared by the IG and class icon badges below (28px tile, soft drop shadow).
+const ICON_BADGE_STYLE = {
+  width: 28,
+  height: 28,
+  borderRadius: 8,
+  alignItems: 'center',
+  justifyContent: 'center',
+  shadowColor: '#000',
+  shadowOpacity: 0.08,
+  shadowRadius: 2,
+  shadowOffset: { width: 0, height: 1 },
+} as const;
+
 export function IdentityHeroSkeleton() {
   return (
     <View className="overflow-hidden rounded-3xl border border-border bg-muted/50 p-4">
@@ -164,17 +177,7 @@ export function IdentityHero({
             colors={[...GRADIENTS.pink]}
             start={GRADIENT_DIAGONAL.start}
             end={GRADIENT_DIAGONAL.end}
-            style={{
-              width: 28,
-              height: 28,
-              borderRadius: 8,
-              alignItems: 'center',
-              justifyContent: 'center',
-              shadowColor: '#000',
-              shadowOpacity: 0.08,
-              shadowRadius: 2,
-              shadowOffset: { width: 0, height: 1 },
-            }}
+            style={ICON_BADGE_STYLE}
           >
             {/* lucide-react-native has no Instagram glyph — AtSign + IG gradient. */}
             <AtSign color="#ffffff" size={15} />
@@ -217,17 +220,7 @@ export function IdentityHero({
               colors={elevatedRing}
               start={GRADIENT_DIAGONAL.start}
               end={GRADIENT_DIAGONAL.end}
-              style={{
-                width: 28,
-                height: 28,
-                borderRadius: 8,
-                alignItems: 'center',
-                justifyContent: 'center',
-                shadowColor: '#000',
-                shadowOpacity: 0.08,
-                shadowRadius: 2,
-                shadowOffset: { width: 0, height: 1 },
-              }}
+              style={ICON_BADGE_STYLE}
             >
               <ClassIcon color="#ffffff" size={15} />
             </LinearGradient>

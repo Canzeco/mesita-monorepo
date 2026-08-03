@@ -62,6 +62,9 @@ import {
 // ≥300ms so a fast typist costs one Google autocomplete call per pause,
 // not one per keystroke.
 const SUGGEST_DEBOUNCE_MS = 300;
+// Below this, the query is too short to suggest against — the results panel
+// stays closed and no autocomplete call goes out.
+const MIN_SUGGEST_QUERY_LENGTH = 2;
 
 export function SearchClient({
   apiKey,
@@ -102,8 +105,9 @@ export function SearchClient({
   // flips) so the exit transition doesn't blank the panel mid-slide.
   const [preview, setPreview] = useState<PlacePrediction | null>(null);
   const [previewOpen, setPreviewOpen] = useState(false);
-  // 1-based position of the card nearest the rail's scroll start — powers
-  // the "3 / 12 places" pager so the horizontal rail reads as browsable.
+  // 0-based position of the card nearest the rail's scroll start (shown
+  // 1-based) — powers the "3 / 12 places" pager so the horizontal rail
+  // reads as browsable.
   const [railIndex, setRailIndex] = useState(0);
   // The bottom rail can be dismissed (X on the counter) to clear the map;
   // it reopens via the floating reopen pill or by tapping any pin.
@@ -150,11 +154,11 @@ export function SearchClient({
   const updateQuery = (next: string) => {
     setQuery(next);
     const nextTrimmed = next.trim();
-    if (nextTrimmed.length < 2) {
+    if (nextTrimmed.length < MIN_SUGGEST_QUERY_LENGTH) {
       // Dropping below the threshold dismisses the results panel — the
       // running autocomplete session is abandoned, so end it here and
       // start the next search on a fresh token.
-      if (trimmed.length >= 2) resetSearchSession();
+      if (trimmed.length >= MIN_SUGGEST_QUERY_LENGTH) resetSearchSession();
       setPredictions([]);
       setSearching(false);
       setSearchError(null);
@@ -165,7 +169,7 @@ export function SearchClient({
 
   // Debounced live suggest — Mesita + Google merged by the EF.
   useEffect(() => {
-    if (trimmed.length < 2) return;
+    if (trimmed.length < MIN_SUGGEST_QUERY_LENGTH) return;
     let cancelled = false;
     const handle = window.setTimeout(async () => {
       try {
@@ -273,8 +277,9 @@ export function SearchClient({
     railScrollRef.current?.scrollTo({ left: 0 });
   };
 
-  // Card width (264) + flex gap (8) → the horizontal stride between cards.
-  const RAIL_STRIDE = 272;
+  // Card width (288, SearchRailCard's w-[288px]) + flex gap (8, gap-2) → the
+  // horizontal stride between cards.
+  const RAIL_STRIDE = 296;
   const handleRailScroll = () => {
     const el = railScrollRef.current;
     if (!el || visible.length === 0) return;
@@ -334,6 +339,9 @@ export function SearchClient({
     setSearchOpen(true);
   };
 
+  const handleOpenPlace = (place: Place) =>
+    router.push(placeHref(place.slug || place.id));
+
   return (
     <div className="relative min-h-0 flex-1 overflow-hidden">
       {/* Base layer — pins reflect the same chip filtering as the rail. */}
@@ -343,7 +351,7 @@ export function SearchClient({
         userLocation={userLocation}
         selectedId={selectedId}
         onSelectPlace={handleSelectPlace}
-        onOpenPlace={(place) => router.push(placeHref(place.slug || place.id))}
+        onOpenPlace={handleOpenPlace}
         onMapClick={handleMapClick}
       />
 
@@ -381,7 +389,7 @@ export function SearchClient({
         onClearFilters={clearFilters}
         onRailScroll={handleRailScroll}
         onSelectPlace={handleSelectPlace}
-        onOpenPlace={(place) => router.push(placeHref(place.slug || place.id))}
+        onOpenPlace={handleOpenPlace}
         setRailCardRef={(placeId, el) => {
           railRefs.current.set(placeId, el);
         }}
