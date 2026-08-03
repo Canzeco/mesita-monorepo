@@ -8,7 +8,7 @@ import {
   useRef,
   useState,
 } from "react";
-import { MapPin, QrCode, Sparkles, TicketX } from "lucide-react";
+import { MapPin, QrCode, Sparkles, Star, TicketX } from "lucide-react";
 
 import { CheckTicketCard } from "@/components/consumer/rewards/CheckTicketCard";
 import { HistoryTicketCard } from "@/components/consumer/rewards/HistoryTicketCard";
@@ -200,9 +200,14 @@ export function PayClient({ userId }: { userId: string }) {
 // border. Previously it was a bordered card sitting directly above the tab
 // card, so the two read as twins; steps are instruction and tabs are control,
 // and they should never look alike.
+// Four steps (Pato, 2026-08-03): "pick place. post review. show qr. pay less."
+// Post-review sits SECOND because the guest does it at the table before the
+// close — the rail tells the story, so it uses his wording verbatim. Labels
+// are deliberately short: four columns plus connectors is tight at 375px.
 const PITCH_STEPS = [
-  { icon: MapPin, label: "Pick the place" },
-  { icon: QrCode, label: "Show your QR" },
+  { icon: MapPin, label: "Pick place" },
+  { icon: Star, label: "Post review" },
+  { icon: QrCode, label: "Show QR" },
   { icon: Sparkles, label: "Pay less" },
 ] as const;
 
@@ -223,7 +228,7 @@ function PitchSteps() {
           {i < PITCH_STEPS.length - 1 ? (
             <span
               aria-hidden="true"
-              className="bg-border mt-5 h-px w-5 shrink-0 sm:w-8"
+              className="bg-border mt-5 h-px w-3 shrink-0 sm:w-6"
             />
           ) : null}
         </Fragment>
