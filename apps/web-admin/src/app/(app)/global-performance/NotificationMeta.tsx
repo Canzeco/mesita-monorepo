@@ -106,29 +106,54 @@ export function MetaTag({
 // Status chip for enrichment step events: completed = green-ish (secondary
 // accent, same as approved claims), failed = destructive, started/skipped =
 // muted secondary chips.
+
+type StatusTone = "positive" | "negative" | "neutral";
+
+const STATUS_TONE_CLASSES: Record<StatusTone, string> = {
+  positive: "bg-secondary/10 text-secondary",
+  negative: "bg-destructive/10 text-destructive",
+  neutral: "bg-muted text-muted-foreground",
+};
+
+function StatusTag({
+  tone,
+  icon: Icon,
+  children,
+}: {
+  tone: StatusTone;
+  icon: typeof CheckCircle2;
+  children: ReactNode;
+}) {
+  return (
+    <span
+      className={`${STATUS_TONE_CLASSES[tone]} inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-medium`}
+    >
+      <Icon className="h-3 w-3" />
+      {children}
+    </span>
+  );
+}
+
 function StepStatusTag({ status }: { status: string }) {
   if (status === "completed") {
     return (
-      <span className="bg-secondary/10 text-secondary inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-medium">
-        <CheckCircle2 className="h-3 w-3" />
+      <StatusTag tone="positive" icon={CheckCircle2}>
         completed
-      </span>
+      </StatusTag>
     );
   }
   if (status === "failed") {
     return (
-      <span className="bg-destructive/10 text-destructive inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-medium">
-        <XCircle className="h-3 w-3" />
+      <StatusTag tone="negative" icon={XCircle}>
         failed
-      </span>
+      </StatusTag>
     );
   }
   if (status === "started") {
     return (
-      <span className="bg-muted text-muted-foreground inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-medium">
-        <Clock className="h-3 w-3" />
+      <StatusTag tone="neutral" icon={Clock}>
         started
-      </span>
+      </StatusTag>
     );
   }
   return (
@@ -141,24 +166,21 @@ function StepStatusTag({ status }: { status: string }) {
 function ClaimStatusTag({ status }: { status: string }) {
   if (status === "approved") {
     return (
-      <span className="bg-secondary/10 text-secondary inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-medium">
-        <CheckCircle2 className="h-3 w-3" />
+      <StatusTag tone="positive" icon={CheckCircle2}>
         approved
-      </span>
+      </StatusTag>
     );
   }
   if (status === "rejected") {
     return (
-      <span className="bg-destructive/10 text-destructive inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-medium">
-        <XCircle className="h-3 w-3" />
+      <StatusTag tone="negative" icon={XCircle}>
         rejected
-      </span>
+      </StatusTag>
     );
   }
   return (
-    <span className="bg-muted text-muted-foreground inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-medium">
-      <Clock className="h-3 w-3" />
+    <StatusTag tone="neutral" icon={Clock}>
       pending
-    </span>
+    </StatusTag>
   );
 }

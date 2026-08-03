@@ -35,6 +35,7 @@ export default function SubscribePage() {
 
   const premium = CLASSES.find((c) => c.id === "premium");
   if (!premium) notFound();
+  const priceLabel = premium.priceMxn.toLocaleString();
 
   return (
     <div className="bg-background flex flex-1 flex-col overflow-y-auto">
@@ -51,7 +52,7 @@ export default function SubscribePage() {
             Mesita Premium
           </h1>
           <p className="text-muted-foreground text-[11px]">
-            ${premium.priceMxn.toLocaleString()} MXN / month · cancel anytime
+            ${priceLabel} MXN / month · cancel anytime
           </p>
         </div>
       </header>
@@ -68,7 +69,7 @@ export default function SubscribePage() {
             Higher discount rewards, better recommendations, 10 reservations.
           </p>
           <p className="font-display mt-4 text-4xl font-bold tabular-nums">
-            ${premium.priceMxn.toLocaleString()}
+            ${priceLabel}
             <span className="ml-1 text-base font-semibold opacity-80">
               MXN / mo
             </span>
@@ -125,7 +126,7 @@ export default function SubscribePage() {
               </span>
               <span>
                 <span className="font-semibold">Subscribe</span> — $
-                {premium.priceMxn} MXN / mo, below. Cancel anytime.
+                {priceLabel} MXN / mo, below. Cancel anytime.
               </span>
             </li>
           </ul>

@@ -61,6 +61,7 @@ export function CheckTicketCard({
   useEffect(() => {
     if (scanned && !wasScannedRef.current) {
       setPulse(true);
+      wasScannedRef.current = scanned;
       const t = window.setTimeout(() => setPulse(false), 1400);
       return () => window.clearTimeout(t);
     }

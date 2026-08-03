@@ -111,12 +111,15 @@ export function TicketReviewForm({
     draft.value > 0;
   const noteLen = draft.comments.trim().length;
   const canSubmit = ratingsSet && noteLen >= NOTE_MIN;
+  const setRating =
+    (key: keyof Omit<TicketReviewDraft, "comments">) => (n: number) =>
+      onChange({ ...draft, [key]: n });
   return (
     <div className="space-y-3">
       {placeName ? (
         <p className="text-foreground text-sm font-medium">{placeName}</p>
       ) : null}
-      {showIntro !== false ? (
+      {showIntro ? (
         <ol className="text-muted-foreground list-decimal space-y-1 pl-4 text-[13px] leading-snug">
           <li>Tap stars on each row — 1 is bad, 5 is great.</li>
           <li>
@@ -131,28 +134,28 @@ export function TicketReviewForm({
           label="Overall"
           hint="How was the visit in general?"
           value={draft.overall}
-          onChange={(overall) => onChange({ ...draft, overall })}
+          onChange={setRating("overall")}
           emphasized
         />
         <StarRatingRow
           label="Food"
           value={draft.food}
-          onChange={(food) => onChange({ ...draft, food })}
+          onChange={setRating("food")}
         />
         <StarRatingRow
           label="Service"
           value={draft.service}
-          onChange={(service) => onChange({ ...draft, service })}
+          onChange={setRating("service")}
         />
         <StarRatingRow
           label="Ambiance"
           value={draft.ambiance}
-          onChange={(ambiance) => onChange({ ...draft, ambiance })}
+          onChange={setRating("ambiance")}
         />
         <StarRatingRow
           label="Value"
           value={draft.value}
-          onChange={(value) => onChange({ ...draft, value })}
+          onChange={setRating("value")}
         />
       </div>
 

@@ -50,12 +50,7 @@ export function SubTabs<T extends string>({
                 ? "flex min-w-0 flex-col items-center justify-center gap-1 rounded-xl px-1 py-2.5"
                 : "flex items-center",
               equalWidth && !segmentedStacked
-                ? cn(
-                    "min-w-0 justify-center gap-1 rounded-lg px-2 py-2 text-[12px]",
-                    isSegmented && tabs.length >= 5 && "px-1 text-[11px]",
-                    isSegmented && tabs.length >= 6 && "px-0.5 text-[10px]",
-                    isSegmented && "py-2.5",
-                  )
+                ? "min-w-0 justify-center gap-1 rounded-lg px-2 py-2 text-[12px]"
                 : !segmentedStacked &&
                     "shrink-0 gap-1.5 rounded-full px-3.5 py-1.5 text-[13px] whitespace-nowrap",
               isSegmented
@@ -114,7 +109,7 @@ export function SubTabs<T extends string>({
     </>
   );
 
-  if (isSegmented && equalWidth) {
+  if (segmentedStacked) {
     return (
       <div
         className={cn(
@@ -144,8 +139,7 @@ export function SubTabs<T extends string>({
           ? "grid gap-1"
           : "scrollbar-hide flex gap-1 overflow-x-auto px-4",
         !equalWidth && variant === "default" && "px-4",
-        equalWidth && variant === "minimal" && "px-2",
-        equalWidth && variant === "default" && "px-2",
+        equalWidth && "px-2",
         className,
       )}
       style={

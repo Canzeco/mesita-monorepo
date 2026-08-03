@@ -44,6 +44,10 @@ function fmtMs(n: number): string {
   return n >= 1000 ? `${(n / 1000).toFixed(1)}s` : `${Math.round(n)}ms`;
 }
 
+function plural(n: number, word: string): string {
+  return `${n} ${word}${n === 1 ? "" : "s"}`;
+}
+
 function ArgChips({ args }: { args: Record<string, unknown> }) {
   const entries = Object.entries(args ?? {});
   if (entries.length === 0) return null;
@@ -68,9 +72,10 @@ export function MemoTrace({ trace }: { trace: TraceStep[] }) {
 
   return (
     <Collapsible
-      summary={`How Memo thought · ${trace.length} steps · ${tools} tool call${
-        tools === 1 ? "" : "s"
-      } · ${fmtMs(total)}`}
+      summary={`How Memo thought · ${trace.length} steps · ${plural(
+        tools,
+        "tool call",
+      )} · ${fmtMs(total)}`}
     >
       <ol className="border-border/70 space-y-2 border-l pl-4">
         {trace.map((step, i) => (
@@ -166,17 +171,9 @@ export function MemoTrace({ trace }: { trace: TraceStep[] }) {
                   </p>
                   {(step.predictions > 0 || step.citations > 0) && (
                     <p className="text-muted-foreground mt-1 text-[11px]">
-                      {step.predictions > 0 && (
-                        <>
-                          {step.predictions} card{step.predictions === 1 ? "" : "s"}
-                        </>
-                      )}
+                      {step.predictions > 0 && plural(step.predictions, "card")}
                       {step.predictions > 0 && step.citations > 0 && " · "}
-                      {step.citations > 0 && (
-                        <>
-                          {step.citations} citation{step.citations === 1 ? "" : "s"}
-                        </>
-                      )}
+                      {step.citations > 0 && plural(step.citations, "citation")}
                     </p>
                   )}
                 </div>

@@ -18,6 +18,11 @@ import { ProcessSteps, Prose, SubscoreBox } from "./SubscoreBox";
 // SM · Structured Match — where × when × what (emerald).
 // ONE hyperparam per intent axis (blob v11).
 
+// Sample point for the "when" illustrations below: an open-for window fixed
+// at 3 h, sampled at a 2 h wait — shows patience's wait side.
+const WHEN_OPEN_FOR_HOURS = 3;
+const WHEN_SAMPLE_WAIT_HOURS = 2;
+
 export function SmBox() {
   const { sm, setSm } = useScoring();
 
@@ -29,9 +34,11 @@ export function SmBox() {
     setSm((s) => ({ ...s, what: { ...s.what, [k]: v } }));
 
   const none = noneRung(sm.what.tol);
-  // Live when curve: open-for fixed at 3 h, vary opens-in — shows patience's wait side.
   const whenAt = (opensInH: number) =>
-    whenFromOpenness(synthesizeOpenness(opensInH, 3), sm.when.patience);
+    whenFromOpenness(
+      synthesizeOpenness(opensInH, WHEN_OPEN_FOR_HOURS),
+      sm.when.patience,
+    );
 
   return (
     <SubscoreBox
@@ -79,7 +86,7 @@ export function SmBox() {
                     ? "strict — only open-now-for-a-while"
                     : sm.when.patience > 0.75
                       ? "lenient — future opens + short windows ok"
-                      : `mid — a 2 h wait → when ${whenAt(2).toFixed(2)}`
+                      : `mid — a ${WHEN_SAMPLE_WAIT_HOURS} h wait → when ${whenAt(WHEN_SAMPLE_WAIT_HOURS).toFixed(2)}`
                 }
               />
             </div>
@@ -132,11 +139,11 @@ export function SmBox() {
             />
             <CurvePlot
               tone="emerald"
-              title="when · wait (3 h open run)"
+              title={`when · wait (${WHEN_OPEN_FOR_HOURS} h open run)`}
               f={(h) => whenAt(h)}
               x0={0}
               x1={12}
-              markers={[{ x: 2 }]}
+              markers={[{ x: WHEN_SAMPLE_WAIT_HOURS }]}
               xLabel="h until open → when"
               caption={`patience ${sm.when.patience.toFixed(2)}`}
             />

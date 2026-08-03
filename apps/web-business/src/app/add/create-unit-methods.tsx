@@ -2,6 +2,7 @@
 
 import { useState, type ReactNode } from "react";
 import { Mail, MessagesSquare, Phone } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import type { LookupMethods, LookupPlace } from "@/lib/api/verifications";
 import { cn } from "@/lib/utils";
 import { EmailBody } from "./create-unit-verify-email";
@@ -22,6 +23,7 @@ import type { VerificationCallbacks } from "./create-unit-shared";
 // so a bare listing opens straight on the WhatsApp/email panel.
 
 type MethodKey = "phone" | "email" | "manual";
+type AutoMethodKey = Exclude<MethodKey, "manual">;
 
 export function MethodsPicker({
   place,
@@ -90,20 +92,30 @@ export function MethodsPicker({
 // Keeps the chip visible so operators see the full supported set, and
 // nudges them to the best next action: the other auto-method when it's
 // available (still instant), otherwise the manual Talk-to-us path.
+const UNAVAILABLE_COPY: Record<
+  AutoMethodKey,
+  { Icon: LucideIcon; title: string; what: string }
+> = {
+  phone: {
+    Icon: Phone,
+    title: "Phone check unavailable",
+    what: "a public phone number on Google",
+  },
+  email: {
+    Icon: Mail,
+    title: "Email check unavailable",
+    what: "a verified email on the place's website",
+  },
+};
+
 function MethodUnavailableBody({
   method,
   methods,
 }: {
-  method: "phone" | "email";
+  method: AutoMethodKey;
   methods: LookupMethods;
 }) {
-  const Icon = method === "phone" ? Phone : Mail;
-  const title =
-    method === "phone" ? "Phone check unavailable" : "Email check unavailable";
-  const what =
-    method === "phone"
-      ? "a public phone number on Google"
-      : "a verified email on the place's website";
+  const { Icon, title, what } = UNAVAILABLE_COPY[method];
 
   // Pick the best alternative the operator can take right now. We
   // prefer the other instant auto-method (Phone/Email) when its data

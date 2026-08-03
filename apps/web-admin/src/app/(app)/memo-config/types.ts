@@ -4,22 +4,6 @@
 // handed the client stubs and crashed Select's options.map (TypeError:
 // c.map is not a function on /memo-config).
 
-// The tunable surface an operator edits. Mirrors the knobs Memo actually reads
-// at runtime (persona prose, model params, retrieval shape).
-export type MemoConfig = {
-  greeting: string;
-  instructions: string;
-  // OpenAI is Memo's brain (intent + orchestration + prose).
-  provider: "openai";
-  openaiModel: string;
-  // Perplexity is the OPTIONAL web-grounding leg (live editorial color +
-  // citations). Off by default — Google Places + the catalog do place
-  // grounding. When on, Memo calls this Perplexity model for web color.
-  webGrounding: boolean;
-  perplexityModel: string;
-  updatedAt?: string;
-};
-
 // Selectable model ids surfaced in the admin picker (kept here so the page and
 // any future EF share one list).
 export const OPENAI_MODELS = [
@@ -35,6 +19,25 @@ export const PERPLEXITY_MODELS = [
   "sonar-reasoning",
   "sonar-reasoning-pro",
 ] as const;
+
+export type OpenAIModel = (typeof OPENAI_MODELS)[number];
+export type PerplexityModel = (typeof PERPLEXITY_MODELS)[number];
+
+// The tunable surface an operator edits. Mirrors the knobs Memo actually reads
+// at runtime (persona prose, model params, retrieval shape).
+export type MemoConfig = {
+  greeting: string;
+  instructions: string;
+  // OpenAI is Memo's brain (intent + orchestration + prose).
+  provider: "openai";
+  openaiModel: OpenAIModel;
+  // Perplexity is the OPTIONAL web-grounding leg (live editorial color +
+  // citations). Off by default — Google Places + the catalog do place
+  // grounding. When on, Memo calls this Perplexity model for web color.
+  webGrounding: boolean;
+  perplexityModel: PerplexityModel;
+  updatedAt?: string;
+};
 
 // ── Playground ────────────────────────────────────────────────────────────
 // The concierge's place suggestion. Mirrors the Prediction contract returned by

@@ -17,6 +17,8 @@ import { apiUpdateConsumerProfile } from '@/lib/api/auth';
 import { ageFromBirthday, MIN_SIGNUP_AGE } from '@/lib/utils';
 import { useAuth } from '@/providers/auth';
 
+const NAME_MAX_LENGTH = 60;
+
 export default function Onboard() {
   const router = useRouter();
   const { profile, refreshProfile, signOut, session, onboarded } = useAuth();
@@ -137,7 +139,7 @@ export default function Onboard() {
             label="First name"
             autoComplete="given-name"
             autoCapitalize="words"
-            maxLength={60}
+            maxLength={NAME_MAX_LENGTH}
             value={firstName}
             onChangeText={setFirstName}
           />
@@ -147,7 +149,7 @@ export default function Onboard() {
               label="Last name"
               autoComplete="family-name"
               autoCapitalize="words"
-              maxLength={60}
+              maxLength={NAME_MAX_LENGTH}
               value={lastName}
               onChangeText={setLastName}
             />

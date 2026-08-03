@@ -28,6 +28,10 @@ type MenuViewerItem = {
   kind: MenuKind;
 };
 
+const MIN_ZOOM = 0.75;
+const MAX_ZOOM = 2.5;
+const ZOOM_STEP = 0.25;
+
 export function MenuViewer({
   open,
   onClose,
@@ -106,7 +110,9 @@ function MenuViewerBody({
       </header>
 
       <div className="bg-muted/40 relative min-h-0 flex-1 overflow-hidden">
-        {menu.kind === "image" ? (
+        {embedFailed ? (
+          <EmbedFallback url={menu.url} kind={menu.kind} />
+        ) : menu.kind === "image" ? (
           <ImagePane
             url={menu.url}
             zoom={zoom}
@@ -117,8 +123,6 @@ function MenuViewerBody({
               setEmbedFailed(true);
             }}
           />
-        ) : embedFailed ? (
-          <EmbedFallback url={menu.url} kind={menu.kind} />
         ) : (
           <iframe
             key={previewUrl}
@@ -151,8 +155,10 @@ function MenuViewerBody({
         <div className="border-border flex shrink-0 items-center justify-center gap-3 border-t px-4 py-2.5">
           <button
             type="button"
-            disabled={zoom <= 0.75}
-            onClick={() => setZoom((z) => Math.max(0.75, +(z - 0.25).toFixed(2)))}
+            disabled={zoom <= MIN_ZOOM}
+            onClick={() =>
+              setZoom((z) => Math.max(MIN_ZOOM, +(z - ZOOM_STEP).toFixed(2)))
+            }
             className="bg-muted text-foreground inline-flex h-9 w-9 items-center justify-center rounded-full transition disabled:opacity-40"
             aria-label="Zoom out"
           >
@@ -163,8 +169,10 @@ function MenuViewerBody({
           </span>
           <button
             type="button"
-            disabled={zoom >= 2.5}
-            onClick={() => setZoom((z) => Math.min(2.5, +(z + 0.25).toFixed(2)))}
+            disabled={zoom >= MAX_ZOOM}
+            onClick={() =>
+              setZoom((z) => Math.min(MAX_ZOOM, +(z + ZOOM_STEP).toFixed(2)))
+            }
             className="bg-muted text-foreground inline-flex h-9 w-9 items-center justify-center rounded-full transition disabled:opacity-40"
             aria-label="Zoom in"
           >

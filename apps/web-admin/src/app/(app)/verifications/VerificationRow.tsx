@@ -6,24 +6,23 @@ import { type AdminVerification, decideVerification } from "./actions";
 import { METHOD_ICON, METHOD_LABEL } from "./verification-config";
 import { KV, StatusBadge, formatDate } from "./verification-ui";
 
+type Decision = "approved" | "rejected";
+
 export function VerificationRow({
   verification,
   onDecided,
 }: {
   verification: AdminVerification;
-  onDecided: (
-    id: string,
-    decision: "approved" | "rejected",
-    rejectReason: string,
-  ) => void;
+  onDecided: (id: string, decision: Decision, rejectReason: string) => void;
 }) {
   const Icon = METHOD_ICON[verification.method];
   const [rejectReason, setRejectReason] = useState("");
   const [showRejectForm, setShowRejectForm] = useState(false);
   const [pending, startDecide] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const isPending = verification.status === "pending";
 
-  const decide = (decision: "approved" | "rejected") => {
+  const decide = (decision: Decision) => {
     if (pending) return;
     if (decision === "rejected" && !rejectReason.trim()) {
       setError("Reject reason is required.");
@@ -48,7 +47,7 @@ export function VerificationRow({
     <li
       className={
         "border-border bg-card flex flex-col gap-4 rounded-2xl border p-5 " +
-        (verification.status === "pending" ? "" : "opacity-80")
+        (isPending ? "" : "opacity-80")
       }
     >
       <div className="flex items-start gap-3">
@@ -123,7 +122,7 @@ export function VerificationRow({
         </p>
       )}
 
-      {verification.status === "pending" && (
+      {isPending && (
         <div className="flex flex-col gap-3">
           {showRejectForm ? (
             <div className="flex flex-col gap-2">

@@ -6,15 +6,17 @@ import { ErrorNote } from "@/components/ErrorNote";
 import { grantAdmin, revokeAdmin, type AdminRow } from "./actions";
 import { PageContainer, PageHeader } from "@/components/PageContainer";
 
+type AdminsPanelProps = {
+  initialAdmins: AdminRow[];
+  self: string | null;
+  loadError: string | null;
+};
+
 export function AdminConfigClient({
   initialAdmins,
   self,
   loadError,
-}: {
-  initialAdmins: AdminRow[];
-  self: string | null;
-  loadError: string | null;
-}) {
+}: AdminsPanelProps) {
   return (
     <PageContainer size="3xl" className="flex flex-col gap-6 sm:gap-8">
       <PageHeader
@@ -34,11 +36,7 @@ function AdminsCard({
   initialAdmins,
   self,
   loadError,
-}: {
-  initialAdmins: AdminRow[];
-  self: string | null;
-  loadError: string | null;
-}) {
+}: AdminsPanelProps) {
   const [admins, setAdmins] = useState<AdminRow[]>(initialAdmins);
   const [email, setEmail] = useState("");
   const [note, setNote] = useState("");
@@ -48,11 +46,11 @@ function AdminsCard({
   const [removing, startRemove] = useTransition();
 
   const add = () => {
-    const e = email.trim().toLowerCase();
-    if (!e || adding) return;
+    const trimmedEmail = email.trim().toLowerCase();
+    if (!trimmedEmail || adding) return;
     setError(null);
     startAdd(async () => {
-      const r = await grantAdmin(e, note.trim());
+      const r = await grantAdmin(trimmedEmail, note.trim());
       if (!r.ok) {
         setError(r.error);
         return;

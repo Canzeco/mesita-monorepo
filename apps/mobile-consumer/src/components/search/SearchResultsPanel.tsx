@@ -26,6 +26,24 @@ if (
 
 export type SearchFailureKind = 'timeout' | 'network' | 'server' | null;
 
+const MIN_QUERY_LENGTH = 2;
+
+function failureTitle(kind: SearchFailureKind): string {
+  if (kind === 'timeout') return 'Search timed out';
+  if (kind === 'network') return 'Network problem';
+  return 'Search failed';
+}
+
+function failureMessage(kind: SearchFailureKind, fallback: string): string {
+  if (kind === 'timeout') {
+    return 'Mesita took too long to respond. Check your connection and try again.';
+  }
+  if (kind === 'network') {
+    return "We couldn't reach Mesita. Check your connection and try again.";
+  }
+  return fallback;
+}
+
 export function SearchResultsPanel({
   query,
   searching,
@@ -49,7 +67,8 @@ export function SearchResultsPanel({
 }) {
   const onMesita = predictions.filter((p) => p.status !== 'not_in_mesita');
   const fromGoogle = predictions.filter((p) => p.status === 'not_in_mesita');
-  const settled = !searching && query.trim().length >= 2;
+  const trimmedQueryLength = query.trim().length;
+  const settled = !searching && trimmedQueryLength >= MIN_QUERY_LENGTH;
   const rowCount = predictions.length;
 
   useEffect(() => {
@@ -65,7 +84,7 @@ export function SearchResultsPanel({
       accessibilityRole="list"
       accessibilityLabel="Search results"
     >
-      {query.trim().length < 2 ? (
+      {trimmedQueryLength < MIN_QUERY_LENGTH ? (
         <Text
           className="py-6 text-center text-muted-foreground"
           style={{ fontSize: 13 }}
@@ -99,18 +118,10 @@ export function SearchResultsPanel({
           className="gap-2 rounded-xl bg-destructive/10 px-3 py-3"
         >
           <Text className="font-semibold text-destructive" style={{ fontSize: 13 }}>
-            {failureKind === 'timeout'
-              ? 'Search timed out'
-              : failureKind === 'network'
-                ? 'Network problem'
-                : 'Search failed'}
+            {failureTitle(failureKind)}
           </Text>
           <Text className="text-destructive" style={{ fontSize: 13 }}>
-            {failureKind === 'timeout'
-              ? 'Mesita took too long to respond. Check your connection and try again.'
-              : failureKind === 'network'
-                ? "We couldn't reach Mesita. Check your connection and try again."
-                : searchError}
+            {failureMessage(failureKind, searchError)}
           </Text>
           <Pressable
             onPress={onRetry}

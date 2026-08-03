@@ -56,8 +56,12 @@ type Sheet =
   | null;
 
 // Me screen — 583 chrome (NativeWind BoxRow) + 568 conversion modals.
-// Order: identity → Instagram → Class → Inbox → Personal → Settings → Share → AI → Contact.
+// Order: identity → Instagram → Class → Inbox → Personal → Settings → Share → AI → Help → Contact.
 // decision: conversion rows LIVE (design lock profile-premium-20260720); no Stripe.
+
+// Class sheet must close before Verify opens — two FullScreenSheets can't stack.
+const SHEET_SWITCH_DELAY_MS = 50;
+
 export default function MeScreen() {
   const router = useRouter();
   const { profile, consumerClass, session, refreshProfile, signOut } =
@@ -88,9 +92,8 @@ export default function MeScreen() {
   const igConnected = effective.origin === 'instagram' || Boolean(handle);
 
   function openVerify() {
-    // Close Class before Verify — two FullScreenSheets must not stack.
     setSheet(null);
-    setTimeout(() => setSheet('verify'), 50);
+    setTimeout(() => setSheet('verify'), SHEET_SWITCH_DELAY_MS);
   }
 
   return (
@@ -112,7 +115,7 @@ export default function MeScreen() {
             meta={meta}
             avatarUrl={profile?.avatar_url}
             igConnected={igConnected}
-            handle={handle ?? null}
+            handle={handle}
             followers={effective.followers}
             classLabel={classLabel}
             classVia={classVia}

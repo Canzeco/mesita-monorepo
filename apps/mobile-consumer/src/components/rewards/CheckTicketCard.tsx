@@ -23,11 +23,12 @@ import { checkUrlForCode, type ConsumerTicketRow } from '@/lib/api/tickets';
 
 // Story lifecycle → the guest's one line (rejected must read differently
 // from pending — the guest has to act, not wait).
+const STORY_REJECTED_LINE = "Story wasn't accepted — ask the staff to review it.";
 const STORY_LINE: Record<string, string> = {
   pending: 'Bill is in. Post your tagged story so the place can approve it.',
   submitted: 'Story sent — the place is checking it.',
-  ai_rejected: "Story wasn't accepted — ask the staff to review it.",
-  staff_rejected: "Story wasn't accepted — ask the staff to review it.",
+  ai_rejected: STORY_REJECTED_LINE,
+  staff_rejected: STORY_REJECTED_LINE,
 };
 
 function statusLine(ticket: ConsumerTicketRow): string {
@@ -65,13 +66,14 @@ export function CheckTicketCard({
   const [pulse, setPulse] = useState(false);
   const wasScannedRef = useRef(scanned);
   useEffect(() => {
-    if (scanned && !wasScannedRef.current) {
+    const wasScanned = wasScannedRef.current;
+    wasScannedRef.current = scanned;
+    if (scanned && !wasScanned) {
       Vibration.vibrate(30);
       setPulse(true);
       const t = setTimeout(() => setPulse(false), 1400);
       return () => clearTimeout(t);
     }
-    wasScannedRef.current = scanned;
   }, [scanned]);
 
   const handleCancel = async () => {

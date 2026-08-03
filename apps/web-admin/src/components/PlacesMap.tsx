@@ -39,11 +39,14 @@ const CLEAN_MAP_STYLE: google.maps.MapTypeStyle[] = [
   },
 ];
 
+type MappablePlace = PlaceLite & { lat: number; lng: number };
+
+function hasCoords(p: PlaceLite): p is MappablePlace {
+  return p.lat !== null && p.lng !== null;
+}
+
 export function PlacesMap({ places }: { places: PlaceLite[] }) {
-  const mappable = useMemo(
-    () => places.filter((p) => p.lat !== null && p.lng !== null),
-    [places],
-  );
+  const mappable = useMemo(() => places.filter(hasCoords), [places]);
   const missing = places.length - mappable.length;
 
   if (!GOOGLE_MAPS_KEY) {
@@ -103,16 +106,14 @@ export function PlacesMap({ places }: { places: PlaceLite[] }) {
   );
 }
 
-function FitBoundsToPlaces({ places }: { places: PlaceLite[] }) {
+function FitBoundsToPlaces({ places }: { places: MappablePlace[] }) {
   const map = useMap();
   const coreLib = useMapsLibrary("core");
   useEffect(() => {
     if (!map || !coreLib || places.length === 0) return;
     const bounds = new coreLib.LatLngBounds();
     for (const p of places) {
-      if (p.lat !== null && p.lng !== null) {
-        bounds.extend({ lat: p.lat, lng: p.lng });
-      }
+      bounds.extend({ lat: p.lat, lng: p.lng });
     }
     if (bounds.isEmpty()) return;
     map.fitBounds(bounds, MAP_FIT_BOUNDS_PADDING_PX);
@@ -120,7 +121,7 @@ function FitBoundsToPlaces({ places }: { places: PlaceLite[] }) {
   return null;
 }
 
-function Markers({ places }: { places: PlaceLite[] }) {
+function Markers({ places }: { places: MappablePlace[] }) {
   const map = useMap();
   const markerLib = useMapsLibrary("marker");
   const [openId, setOpenId] = useState<string | null>(null);
@@ -129,7 +130,6 @@ function Markers({ places }: { places: PlaceLite[] }) {
     if (!map || !markerLib) return;
     const markers: google.maps.Marker[] = [];
     for (const p of places) {
-      if (p.lat === null || p.lng === null) continue;
       const marker = new markerLib.Marker({
         position: { lat: p.lat, lng: p.lng },
         map,
@@ -158,9 +158,7 @@ function Markers({ places }: { places: PlaceLite[] }) {
   const openPlace =
     openId === null ? null : places.find((p) => p.id === openId) ?? null;
 
-  if (!openPlace || openPlace.lat === null || openPlace.lng === null) {
-    return null;
-  }
+  if (!openPlace) return null;
 
   return (
     <InfoWindow
