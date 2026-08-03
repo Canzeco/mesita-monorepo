@@ -62,19 +62,12 @@ const PASS_GRADIENTS: Record<string, [string, string, string]> = {
   aura: ['#ff7a45', '#ffb03d', '#e0982e'],
 };
 
-const STORY_LINE: Record<string, string> = {
-  pending: 'Bill is in. Post your tagged story so the place can approve it.',
-  submitted: 'Story sent — the place is checking it.',
-  ai_rejected: "Story wasn't accepted — ask the staff to review it.",
-  staff_rejected: "Story wasn't accepted — ask the staff to review it.",
-};
-
+// awaiting_story is GONE (MESITA-849/#591): tasks are self-attested before
+// the scan, so a ticket is only ever open or awaiting payment while live.
 function statusLine(t: ConsumerTicketRow): string {
   switch (t.status) {
     case 'open':
       return 'Show this QR — staff scan it to start your visit.';
-    case 'awaiting_story':
-      return STORY_LINE[t.story_status ?? ''] ?? STORY_LINE.pending;
     case 'awaiting_payment_confirm':
       return 'All set — pay the discounted total at the table.';
     default:
