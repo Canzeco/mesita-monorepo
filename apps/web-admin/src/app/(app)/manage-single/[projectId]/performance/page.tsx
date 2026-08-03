@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { AlertTriangle } from "lucide-react";
+import { Activity, AlertTriangle } from "lucide-react";
 import {
   listNotifications,
   type NotificationsPayload,
@@ -13,20 +13,21 @@ import { PerformanceSummary } from "../../sections/PerformanceSummary";
 import { ReservationsPanel } from "../../sections/ReservationsPanel";
 import { ReviewsSection } from "../../sections/ReviewsSection";
 import { StoriesCommentsPanel } from "../../sections/StoriesCommentsPanel";
-import { Spinner } from "../../ui";
+import { SectionCard, Spinner } from "../../ui";
 import { useUnitPlace } from "../../UnitPlaceContext";
 
-// Per-place Performance — how this place is DOING. Three layers, widest to
-// narrowest (Pato 2026-08-03: "include summary … and then the actual
-// notifications"):
-//   1. Summary     — the headline numbers (KPI tiles): Mesita + Google stars,
-//                    IG/FB reach, and activity/money derived from the feed.
-//   2. Reviews     — the review cards themselves.
-//   3. App activity— the raw per-place event feed.
-// Summary and feed read the SAME payload, so the tiles can never disagree
-// with the rows beneath them. The feed is the Global Monitor engine scoped to
-// this place and narrowed to consumer-activity types — Enricher noise stays
-// on Global.
+// Per-place Performance — how this place is DOING, narrowing as you scroll:
+// headline numbers → reputation → bookings & guest content → the raw event
+// feed. Summary and feed read the SAME payload, so the tiles can never
+// disagree with the rows beneath them; the feed is the Global Monitor engine
+// scoped to this place (Enricher noise stays on Global).
+//
+// LAYOUT CONTRACT — one column, one rhythm. The page owns a single
+// `max-w-6xl` wrapper and every block sits inside it; each content group is a
+// labelled band whose cards flow in the SAME lg:columns-2 masonry. Before
+// this it was four separately-wrapped blocks with mismatched column counts,
+// and the feed — built to bleed OUT of PageContainer's padding — rendered
+// wider than its siblings, which is why it now gets `bleed={false}`.
 export default function UnitPerformancePage() {
   const { place } = useUnitPlace();
   const [initial, setInitial] = useState<NotificationsPayload | null>(null);
@@ -65,58 +66,42 @@ export default function UnitPerformancePage() {
   }, [place.id]);
 
   return (
-    <div className="flex flex-col gap-6 lg:gap-8">
-      {/* Headline numbers. Rendered only with the payload — the tiles are
-          derived from it, so there is nothing honest to show before it lands. */}
-      {initial ? (
-        <div className="mx-auto w-full max-w-6xl">
-          <PerformanceSummary place={place} data={initial} />
-        </div>
-      ) : null}
+    <div className="mx-auto flex w-full max-w-6xl flex-col gap-7 pb-10 lg:gap-9">
+      {/* Headline numbers — the tiles ARE the cards here, so no wrapping
+          card (a card full of bordered boxes just reads as clutter). */}
+      {initial ? <PerformanceSummary place={place} data={initial} /> : null}
 
-      {/* Reputation — same masonry language as the other tabs. */}
-      <div className="mx-auto w-full max-w-6xl">
-        <div className="columns-1 gap-4 [&>section]:mb-4 [&>section]:break-inside-avoid lg:columns-2 lg:gap-5 lg:[&>section]:mb-5">
-          <ReviewsSection place={place} />
-        </div>
-      </div>
+      <Band title="Reputation">
+        <ReviewsSection place={place} />
+      </Band>
 
-      {/* Reservations + guest content — read-only, own EF, own error state. */}
-      <div className="mx-auto w-full max-w-6xl">
+      <Band title="Bookings & guest content">
         {activityError ? (
-          <div className="border-destructive/40 bg-destructive/5 text-destructive flex items-start gap-3 rounded-2xl border p-4 text-sm">
-            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-            <div>
-              <p className="font-medium">
-                Couldn&apos;t load reservations or guest content.
-              </p>
-              <p className="mt-1 opacity-90">{activityError}</p>
-            </div>
-          </div>
+          <ErrorNote
+            title="Couldn't load reservations or guest content."
+            detail={activityError}
+          />
         ) : activity ? (
-          <div className="columns-1 gap-4 [&>section]:mb-4 [&>section]:break-inside-avoid lg:gap-5 lg:[&>section]:mb-5">
+          <>
             <ReservationsPanel activity={activity} />
             <StoriesCommentsPanel activity={activity} />
-          </div>
+          </>
         ) : (
           <Spinner label="Loading reservations…" />
         )}
-      </div>
+      </Band>
 
-      {/* App activity — the notification feed, scoped to this place. */}
-      <div>
-        <p className="text-muted-foreground mx-auto mb-3 w-full max-w-6xl text-[11px] font-semibold tracking-[0.12em] uppercase">
-          App activity
-        </p>
+      {/* The raw feed, carded like everything else instead of floating under
+          a bare label. */}
+      <SectionCard
+        icon={<Activity className="h-4 w-4" />}
+        tint="indigo"
+        title="Activity feed"
+        subtitle="Every consumer event on this place, newest first. Auto-refreshes while the tab is open."
+      >
         {error ? (
-          <div className="border-destructive/40 bg-destructive/5 text-destructive mx-auto flex max-w-6xl items-start gap-3 rounded-2xl border p-4 text-sm">
-            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-            <div>
-              <p className="font-medium">
-                Couldn&apos;t load this place&apos;s activity.
-              </p>
-              <p className="mt-1 opacity-90">{error}</p>
-            </div>
+          <div className="mt-4">
+            <ErrorNote title="Couldn't load this place's activity." detail={error} />
           </div>
         ) : !initial ? (
           <Spinner label="Loading activity…" />
@@ -125,8 +110,35 @@ export default function UnitPerformancePage() {
             initial={initial}
             projectId={place.id}
             types={ACTIVITY_TYPE_ORDER}
+            bleed={false}
           />
         )}
+      </SectionCard>
+    </div>
+  );
+}
+
+/** A labelled group whose cards flow in the page's one masonry. */
+function Band({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <section>
+      <h2 className="text-muted-foreground mb-3 text-[11px] font-semibold tracking-[0.12em] uppercase">
+        {title}
+      </h2>
+      <div className="columns-1 gap-4 [&>section]:mb-4 [&>section]:break-inside-avoid lg:columns-2 lg:gap-5 lg:[&>section]:mb-5">
+        {children}
+      </div>
+    </section>
+  );
+}
+
+function ErrorNote({ title, detail }: { title: string; detail: string }) {
+  return (
+    <div className="border-destructive/40 bg-destructive/5 text-destructive flex items-start gap-3 rounded-2xl border p-4 text-sm">
+      <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+      <div>
+        <p className="font-medium">{title}</p>
+        <p className="mt-1 opacity-90">{detail}</p>
       </div>
     </div>
   );

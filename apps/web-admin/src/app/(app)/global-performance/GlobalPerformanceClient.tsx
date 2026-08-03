@@ -29,6 +29,7 @@ export function GlobalPerformanceClient({
   initial,
   projectId,
   types,
+  bleed = true,
 }: {
   initial: NotificationsPayload;
   /** Scope the feed to one place (per-place Performance tab). Hides the
@@ -36,6 +37,10 @@ export function GlobalPerformanceClient({
   projectId?: string;
   /** Narrow the filter segments (defaults to every known type). */
   types?: NotificationType[];
+  /** Break OUT of the parent's page padding so the filter bar spans edge to
+   *  edge — right on the Global Monitor (inside PageContainer), wrong inside
+   *  a plain max-width column, where it renders wider than its siblings. */
+  bleed?: boolean;
 }) {
   const [data, setData] = useState(initial);
   const [error, setError] = useState<string | null>(null);
@@ -98,7 +103,7 @@ export function GlobalPerformanceClient({
       : timeAgo(data.generatedAt, now);
 
   return (
-    <div className="-mx-4 mt-6 sm:-mx-6 sm:mt-8 lg:-mx-8">
+    <div className={bleed ? "-mx-4 mt-6 sm:-mx-6 sm:mt-8 lg:-mx-8" : ""}>
       <NotificationFilters
         typeFilter={typeFilter}
         total={data.total}
@@ -113,7 +118,7 @@ export function GlobalPerformanceClient({
         onRefresh={refresh}
       />
 
-      <div className="px-4 pt-4 sm:px-6 lg:px-8">
+      <div className={bleed ? "px-4 pt-4 sm:px-6 lg:px-8" : "pt-4"}>
         {error && (
           <div className="border-destructive/40 bg-destructive/5 text-destructive mb-4 flex items-start gap-3 rounded-xl border p-3 text-sm">
             <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />

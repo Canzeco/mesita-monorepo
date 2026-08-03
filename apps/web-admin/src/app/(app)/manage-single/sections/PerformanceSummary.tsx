@@ -14,7 +14,6 @@ import {
   Ticket,
 } from "lucide-react";
 import type { AdminPlace } from "../actions";
-import { SectionCard } from "../ui";
 import type { NotificationsPayload } from "../../global-performance/actions";
 
 // Performance → Summary. The headline numbers for one place, above the
@@ -31,7 +30,7 @@ import type { NotificationsPayload } from "../../global-performance/actions";
 // Two groups, because the numbers answer two different questions:
 //   Reputation & reach — what the OUTSIDE world says (Mesita + Google stars,
 //     IG/FB audience). Sourced from the place row (Enricher-populated).
-//   App activity      — what MESITA did here. Derived from the same
+//   Mesita activity   — what MESITA did here. Derived from the same
 //     notification feed rendered below, so the tiles and the rows can never
 //     disagree; no extra endpoint.
 
@@ -83,7 +82,7 @@ function Tile({
   hint?: string | null;
 }) {
   return (
-    <div className="border-border bg-background flex flex-col gap-2 rounded-xl border p-3.5">
+    <div className="border-border bg-card shadow-card flex flex-col gap-2 rounded-xl border p-4">
       <span className="flex items-center gap-2">
         <span
           className={
@@ -99,7 +98,7 @@ function Tile({
       </span>
       {/* Proportional figures on purpose — tabular-nums is for COLUMNS of
           numbers, and makes a standalone display value look loose. */}
-      <span className="text-foreground text-2xl leading-none font-semibold">
+      <span className="text-foreground text-[26px] leading-none font-semibold">
         {value}
       </span>
       <span className="text-muted-foreground min-h-[1rem] text-[11px] leading-none">
@@ -199,122 +198,115 @@ export function PerformanceSummary({
     activity.reservations === 0;
 
   return (
-    <SectionCard
-      icon={<Receipt className="h-4 w-4" />}
-      tint="indigo"
-      title="Summary"
-      subtitle={`Headline numbers for ${place.name}. Reputation comes from the place profile; activity is computed from the feed below.`}
-    >
-      <div className="mt-5 flex flex-col gap-6">
-        <Group title="Reputation & reach">
-          <Tile
-            icon={<Star className="h-3.5 w-3.5" />}
-            tone="rose"
-            label="Mesita reviews"
-            value={mesitaStars != null ? mesitaStars.toFixed(1) : "—"}
-            hint={
-              mesitaCount > 0
-                ? `${compact(mesitaCount)} review${mesitaCount === 1 ? "" : "s"}`
-                : "No guest reviews yet"
-            }
-          />
-          <Tile
-            icon={<Star className="h-3.5 w-3.5" />}
-            tone="amber"
-            label="Google reviews"
-            value={googleStars != null ? googleStars.toFixed(1) : "—"}
-            hint={
-              googleCount > 0 ? `${compact(googleCount)} reviews` : "Not scraped yet"
-            }
-          />
-          <Tile
-            icon={<Instagram className="h-3.5 w-3.5" />}
-            tone="rose"
-            label="Instagram"
-            value={ig != null ? compact(ig) : "—"}
-            hint={ig != null ? "followers" : "No IG channel linked"}
-          />
-          <Tile
-            icon={<Facebook className="h-3.5 w-3.5" />}
-            tone="sky"
-            label="Facebook"
-            value={fb != null ? compact(fb) : "—"}
-            hint={fb != null ? "followers" : "No FB channel linked"}
-          />
-        </Group>
-
-        <Group
-          title="App activity"
-          note={
-            empty
-              ? "Nothing yet — tiles fill in as guests save the place, open tickets and pay."
-              : activity.truncated
-                ? `Counts cover every matching event; money sums the ${data.notifications.length} loaded.`
-                : undefined
+    <div className="flex flex-col gap-5">
+      <Group title="Reputation & reach">
+        <Tile
+          icon={<Star className="h-3.5 w-3.5" />}
+          tone="rose"
+          label="Mesita reviews"
+          value={mesitaStars != null ? mesitaStars.toFixed(1) : "—"}
+          hint={
+            mesitaCount > 0
+              ? `${compact(mesitaCount)} review${mesitaCount === 1 ? "" : "s"}`
+              : "No guest reviews yet"
           }
-        >
-          <Tile
-            icon={<Bookmark className="h-3.5 w-3.5" />}
-            tone="sky"
-            label="Saves"
-            value={compact(activity.saves)}
-            hint="guests saved this place"
-          />
-          <Tile
-            icon={<Ticket className="h-3.5 w-3.5" />}
-            tone="indigo"
-            label="Tickets"
-            value={compact(activity.tickets)}
-            hint={`${compact(activity.visits)} reached the venue`}
-          />
-          <Tile
-            icon={<Footprints className="h-3.5 w-3.5" />}
-            tone="amber"
-            label="Visits"
-            value={compact(activity.visits)}
-            hint={
-              activity.closeRate != null
-                ? `${activity.closeRate}% closed a paid check`
-                : "QR scanned at the venue"
-            }
-          />
-          <Tile
-            icon={<CircleDollarSign className="h-3.5 w-3.5" />}
-            tone="emerald"
-            label="Paid checks"
-            value={compact(activity.paid)}
-            hint="closed and honored"
-          />
-          <Tile
-            icon={<Receipt className="h-3.5 w-3.5" />}
-            tone="emerald"
-            label="Influenced spend"
-            value={activity.subtotal > 0 ? mxn(activity.subtotal) : "—"}
-            hint="subtotals Mesita brought in"
-          />
-          <Tile
-            icon={<Percent className="h-3.5 w-3.5" />}
-            tone="rose"
-            label="Discount given"
-            value={activity.discount > 0 ? mxn(activity.discount) : "—"}
-            hint="what the place funded"
-          />
-          <Tile
-            icon={<Receipt className="h-3.5 w-3.5" />}
-            tone="slate"
-            label="Avg ticket"
-            value={activity.avgTicket != null ? mxn(activity.avgTicket) : "—"}
-            hint="per paid check"
-          />
-          <Tile
-            icon={<CalendarCheck className="h-3.5 w-3.5" />}
-            tone="slate"
-            label="Reservations"
-            value={compact(activity.reservations)}
-            hint="requested through Mesita"
-          />
-        </Group>
-      </div>
-    </SectionCard>
+        />
+        <Tile
+          icon={<Star className="h-3.5 w-3.5" />}
+          tone="amber"
+          label="Google reviews"
+          value={googleStars != null ? googleStars.toFixed(1) : "—"}
+          hint={
+            googleCount > 0 ? `${compact(googleCount)} reviews` : "Not scraped yet"
+          }
+        />
+        <Tile
+          icon={<Instagram className="h-3.5 w-3.5" />}
+          tone="rose"
+          label="Instagram"
+          value={ig != null ? compact(ig) : "—"}
+          hint={ig != null ? "followers" : "No IG channel linked"}
+        />
+        <Tile
+          icon={<Facebook className="h-3.5 w-3.5" />}
+          tone="sky"
+          label="Facebook"
+          value={fb != null ? compact(fb) : "—"}
+          hint={fb != null ? "followers" : "No FB channel linked"}
+        />
+      </Group>
+
+      <Group
+        title="Mesita activity"
+        note={
+          empty
+            ? "Nothing yet — tiles fill in as guests save the place, open tickets and pay."
+            : activity.truncated
+              ? `Counts cover every matching event; money sums the ${data.notifications.length} loaded.`
+              : undefined
+        }
+      >
+        <Tile
+          icon={<Bookmark className="h-3.5 w-3.5" />}
+          tone="sky"
+          label="Saves"
+          value={compact(activity.saves)}
+          hint="guests saved this place"
+        />
+        <Tile
+          icon={<Ticket className="h-3.5 w-3.5" />}
+          tone="indigo"
+          label="Tickets"
+          value={compact(activity.tickets)}
+          hint={`${compact(activity.visits)} reached the venue`}
+        />
+        <Tile
+          icon={<Footprints className="h-3.5 w-3.5" />}
+          tone="amber"
+          label="Visits"
+          value={compact(activity.visits)}
+          hint={
+            activity.closeRate != null
+              ? `${activity.closeRate}% closed a paid check`
+              : "QR scanned at the venue"
+          }
+        />
+        <Tile
+          icon={<CircleDollarSign className="h-3.5 w-3.5" />}
+          tone="emerald"
+          label="Paid checks"
+          value={compact(activity.paid)}
+          hint="closed and honored"
+        />
+        <Tile
+          icon={<Receipt className="h-3.5 w-3.5" />}
+          tone="emerald"
+          label="Influenced spend"
+          value={activity.subtotal > 0 ? mxn(activity.subtotal) : "—"}
+          hint="subtotals Mesita brought in"
+        />
+        <Tile
+          icon={<Percent className="h-3.5 w-3.5" />}
+          tone="rose"
+          label="Discount given"
+          value={activity.discount > 0 ? mxn(activity.discount) : "—"}
+          hint="what the place funded"
+        />
+        <Tile
+          icon={<Receipt className="h-3.5 w-3.5" />}
+          tone="slate"
+          label="Avg ticket"
+          value={activity.avgTicket != null ? mxn(activity.avgTicket) : "—"}
+          hint="per paid check"
+        />
+        <Tile
+          icon={<CalendarCheck className="h-3.5 w-3.5" />}
+          tone="slate"
+          label="Reservations"
+          value={compact(activity.reservations)}
+          hint="requested through Mesita"
+        />
+      </Group>
+    </div>
   );
 }

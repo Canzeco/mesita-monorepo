@@ -264,6 +264,7 @@ function Row({ r }: { r: PlaceReservation }) {
 
 export function ReservationsPanel({ activity }: { activity: PlaceActivity }) {
   const rows = activity.reservations;
+  const sharedLine = activity.lines.guest === activity.lines.venue;
 
   return (
     <SectionCard
@@ -275,14 +276,25 @@ export function ReservationsPanel({ activity }: { activity: PlaceActivity }) {
       {/* The affordance, stated before the list so it reads as the answer to
           "how do I change one?" */}
       <div className="mt-4 flex flex-col gap-2 sm:flex-row">
-        <LineButton label="Guests" who="a3 answers" number={activity.lines.guest} />
-        <LineButton label="Venues" who="a4 answers" number={activity.lines.venue} />
+        {sharedLine ? (
+          // Rendering the same number twice reads as a bug, not as a fact.
+          <LineButton
+            label="Guests & venues"
+            who="one shared line"
+            number={activity.lines.guest}
+          />
+        ) : (
+          <>
+            <LineButton label="Guests" who="a3 answers" number={activity.lines.guest} />
+            <LineButton label="Venues" who="a4 answers" number={activity.lines.venue} />
+          </>
+        )}
       </div>
       <p className="text-muted-foreground mt-2 text-[11px] leading-snug">
         To reschedule or cancel, call the line for that side — the agent holds the
         conversation state, so editing the row directly would desync it.
-        {activity.lines.guest === activity.lines.venue
-          ? " Both sides currently share one line (ELEVENLABS_CONSUMER_FROM_NUMBER unset)."
+        {sharedLine
+          ? " Guests and venues still share one number until ELEVENLABS_CONSUMER_FROM_NUMBER is set."
           : ""}
       </p>
 
