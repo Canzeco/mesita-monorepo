@@ -1,14 +1,14 @@
 "use client";
 
 import { Gift } from "lucide-react";
-import { classProperLabel, isElevatedClass } from "@/lib/consumer-data";
+import { isElevatedClass } from "@/lib/consumer-data";
 import { useConsumerClass } from "@/lib/class-context";
 import { resolvePromoRateFromPlaceRow } from "@/lib/promo-rates";
 import type { Place } from "@/lib/api/places";
 
 // Tiny shared building block for the place-card promo callout.
 //
-// Renders the "X% OFF welcome / return-visit discount" pink-gradient pill
+// Renders the "Up to X% Discount for You" pink-gradient pill
 // at the bottom of both the swipe overlay and the catalog/saved tile. Owns
 // the per-class rate resolution, kind logic, and the class+cap tooltip so the
 // two surfaces can't drift.
@@ -90,9 +90,9 @@ export function PromoChip({
     );
   }
 
-  const promoKindLabel = isFirstVisit ? "welcome" : "return-visit";
-  const mechanicWord = "discount";
-  const classLabel = classProperLabel(classKey);
+  // NEVER the reason (Pato, 2026-08-03): the ribbon states what you can get,
+  // never WHY — no "welcome", no "return-visit", no class. The mechanism
+  // lives on the ticket and the place page, not on a card chip.
   const capPrefix = place.currency === "MXN" ? "MX$" : "$";
   // Ticket cap: the reward applies to the first N of the bill, then full
   // price — not a ceiling on the reward itself. 0/null means no cap.
@@ -104,17 +104,11 @@ export function PromoChip({
   return (
     <span
       className={`shadow-glow inline-flex max-w-full items-center gap-1.5 rounded-md whitespace-nowrap text-white ${tone === "light" ? "bg-tier-premium" : "bg-pink-gradient"} ${sizing}`}
-      title={
-        capLabel
-          ? `at Mesita ${classLabel} · ${capLabel}`
-          : `at Mesita ${classLabel}`
-      }
+      title={capLabel ?? "Depending on your eligible bonuses"}
     >
       <Gift className={`${iconSize} shrink-0`} strokeWidth={2.25} />
       <span className="font-semibold">
-        {tone === "light"
-          ? `${promoPercent}% Discount for You`
-          : `${promoPercent}% ${mechanicWord} · ${promoKindLabel}`}
+        Up to {promoPercent}% Discount for You
       </span>
     </span>
   );
