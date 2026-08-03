@@ -27,7 +27,7 @@ import {
   URL_FIELDS,
   type UrlField,
 } from "./project-urls.ts";
-import { normalisePromoRate, PROMO_RATE_FIELDS } from "./promo-rates.ts";
+import { normalisePromoRate, PROMO_RATE_FIELDS } from "../_shared/promo-rates.ts";
 import {
   isMissingCategoryLabelColumnError,
   optString,

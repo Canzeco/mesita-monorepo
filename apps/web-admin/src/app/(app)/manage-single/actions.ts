@@ -204,13 +204,21 @@ export async function updatePlace(
 // Plan is billing, not profile: business-web-update-project rejects any body
 // carrying a `plan` key. The admin grants it through its own door instead —
 // no Stripe, no money (admin-web-set-plan).
+//
+// `rates` rides along on purpose (MESITA-818). A membership and the strategy
+// that justifies it are one decision, and sending them together makes it ONE
+// atomic write — which is what lets the EF refuse a paid plan whose rates
+// don't match a preset (409 `no_strategy`), instead of leaving a Verified
+// Partner that gives 0%.
 export async function setPlacePlan(
   placeId: string,
   plan: PlanKey,
+  rates?: Record<string, number | null>,
 ): Promise<Result<AdminPlace>> {
   const r = await efInvoke<{ place: AdminPlace }>("admin-web-set-plan", {
     placeId,
     plan,
+    ...(rates ?? {}),
   });
   if (!r.ok) return { ok: false, error: r.error };
   return { ok: true, data: r.data.place };
