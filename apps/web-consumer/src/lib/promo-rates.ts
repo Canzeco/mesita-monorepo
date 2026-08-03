@@ -77,6 +77,35 @@ export function resolveActivePromoRate(
   );
 }
 
+// ── Strategy derivation (v7, MESITA-861) ────────────────────────────────
+//
+// The four place rate columns ARE the strategy (a membership writes them as
+// one preset — admin-web-set-plan refuses partial grids), so the client can
+// recover it by exact preset match, mirroring _shared/lineup-strategy.ts.
+// null/custom coerces to "zero", same as the bill engine.
+export type PlaceStrategy = "zero" | "conservative" | "aggressive" | "dominant";
+
+const STRATEGY_PRESETS: { id: PlaceStrategy; w_free: number | null; w_prem: number | null; free: number | null; prem: number | null }[] = [
+  { id: "zero", w_free: null, w_prem: null, free: null, prem: null },
+  { id: "conservative", w_free: 20, w_prem: 30, free: 10, prem: 20 },
+  { id: "aggressive", w_free: 30, w_prem: 50, free: 10, prem: 30 },
+  { id: "dominant", w_free: 40, w_prem: 50, free: 20, prem: 30 },
+];
+
+export function strategyForPromoMatrix(matrix: {
+  welcome: { free: number | null; premium: number | null };
+  default: { free: number | null; premium: number | null };
+}): PlaceStrategy {
+  const hit = STRATEGY_PRESETS.find(
+    (s) =>
+      s.w_free === matrix.welcome.free &&
+      s.w_prem === matrix.welcome.premium &&
+      s.free === matrix.default.free &&
+      s.prem === matrix.default.premium,
+  );
+  return hit?.id ?? "zero";
+}
+
 /** Whether the place runs the Mesita reward program (detail hero + matrix). */
 export function placeOffersMesitaRewards(input: {
   listing_type: "partner" | "web";
