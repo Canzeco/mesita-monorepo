@@ -27,7 +27,6 @@ export function timeAgo(iso: string, nowMs: number): string {
   const then = new Date(iso).getTime();
   if (Number.isNaN(then)) return iso.slice(0, 10);
   const secs = Math.round((nowMs - then) / 1000);
-  if (secs < 0) return "just now";
   if (secs < 45) return "just now";
   const mins = Math.round(secs / 60);
   if (mins < 60) return `${mins}m ago`;

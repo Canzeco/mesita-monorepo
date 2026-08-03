@@ -37,6 +37,10 @@ import { ErrorNote } from "@/components/ErrorNote";
 
 const MEMBERSHIP_PRICE_MXN = 1000;
 
+// The free, no-discount strategy — the "leaving"/"not paid" boundary checked
+// throughout this file.
+const ZERO_STRATEGY_ID: StrategyId = "zero";
+
 // Sample ticket for the worked example — deliberately above the universal cap
 // so the "first MX$500" rule is visible in the math.
 const EXAMPLE_BILL_MXN = 700;
@@ -130,7 +134,7 @@ export function PromosSection({
     setModalId(null);
     if (pending || target === storedStrategy) return;
     const s = STRATEGY_BY_ID[target];
-    const leaving = target === "zero";
+    const leaving = target === ZERO_STRATEGY_ID;
     const plan = planForSubscription(leaving ? "free" : "pro_discount");
     const rates = {
       welcome_free_rate: s.rates.welcome_free_rate,
@@ -140,8 +144,9 @@ export function PromosSection({
       monthly_promo_cap: s.cap };
 
     const prev = v;
-    setV({ ...v, ...rates, plan } as AdminPlace);
-    onSaved({ ...v, ...rates, plan } as AdminPlace);
+    const optimistic: AdminPlace = { ...v, ...rates, plan };
+    setV(optimistic);
+    onSaved(optimistic);
     setError(null);
 
     start(async () => {
@@ -254,7 +259,7 @@ function PricingCard({
   onOpen: () => void;
 }) {
   const art = CARD_ART[strategy.id];
-  const paid = strategy.id !== "zero";
+  const paid = strategy.id !== ZERO_STRATEGY_ID;
   const r = strategy.rates;
 
   return (
@@ -395,7 +400,7 @@ function ProductModal({
   }, [onClose]);
 
   const art = CARD_ART[strategy.id];
-  const paid = strategy.id !== "zero";
+  const paid = strategy.id !== ZERO_STRATEGY_ID;
   const r = strategy.rates;
 
   const primaryLabel = isCurrent
@@ -704,6 +709,8 @@ function FaqsBox({
   const currency = place.currency;
   const price = formatMoney(MEMBERSHIP_PRICE_MXN, currency);
   const cap = formatMoney(UNIVERSAL_CAP_MXN, currency);
+  // 50% off, the FAQ's worked example rate — applied to the capped portion.
+  const exampleSavesMxn = UNIVERSAL_CAP_MXN * 0.5;
 
   return (
     <SectionCard
@@ -752,8 +759,8 @@ function FaqsBox({
             platform-wide constant, always shown to guests. Example: 50% off
             a {formatMoney(EXAMPLE_BILL_MXN, currency)} bill touches the first{" "}
             {cap}, so the guest saves{" "}
-            {formatMoney(UNIVERSAL_CAP_MXN * 0.5, currency)} and pays{" "}
-            {formatMoney(EXAMPLE_BILL_MXN - UNIVERSAL_CAP_MXN * 0.5, currency)}
+            {formatMoney(exampleSavesMxn, currency)} and pays{" "}
+            {formatMoney(EXAMPLE_BILL_MXN - exampleSavesMxn, currency)}
             . The headline stays big; the cost stays bounded.
           </p>
         </Faq>
@@ -847,7 +854,7 @@ function PremiumExamples({
           {formatMoney(EXAMPLE_BILL_MXN, place.currency)} ticket:
         </p>
         <span className="bg-muted text-foreground/70 inline-flex shrink-0 items-center gap-1 rounded-md px-2 py-0.5 text-[10px] font-bold tracking-wide uppercase">
-          {strategy && strategy.id !== "zero"
+          {strategy && strategy.id !== ZERO_STRATEGY_ID
             ? `${strategy.emoji} ${strategy.name}`
             : "Custom rates"}
         </span>

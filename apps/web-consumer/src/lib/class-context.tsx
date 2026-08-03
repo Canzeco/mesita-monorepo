@@ -24,8 +24,10 @@ import { INFLUENCER_FOLLOWER_THRESHOLD } from "@/lib/consumer-data";
 // Premium mock subscription flow becomes visible the moment the post-checkout
 // redirect reloads the shell.
 
+type ClassKey = "standard" | "premium" | "influencer" | "aura";
+
 type ConsumerClassState = {
-  key: "standard" | "premium" | "influencer" | "aura";
+  key: ClassKey;
   origin: "default" | "instagram" | "subscription" | "invitation";
   /** Subscription renewal date (ISO). Only meaningful when
    *  origin === "subscription"; null for every other origin. */
@@ -51,12 +53,24 @@ const STANDARD_CLASS: ConsumerClassState = {
 
 // The known class keys — an unknown/stale server key (e.g. the retired
 // "magnetic") renders as Standard instead of crashing a Record lookup.
-const KNOWN_CLASS_KEYS = new Set(["standard", "premium", "influencer", "aura"]);
+const CLASS_KEYS: readonly ClassKey[] = [
+  "standard",
+  "premium",
+  "influencer",
+  "aura",
+];
+
+function isClassKey(value: unknown): value is ClassKey {
+  return (
+    typeof value === "string" &&
+    (CLASS_KEYS as readonly string[]).includes(value)
+  );
+}
 
 function normalize(c: ConsumerClass | null | undefined): ConsumerClassState {
   if (!c) return STANDARD_CLASS;
   return {
-    key: KNOWN_CLASS_KEYS.has(c.key) ? c.key : "standard",
+    key: isClassKey(c.key) ? c.key : "standard",
     origin: c.origin ?? "default",
     renewsAt: c.subscription?.current_period_end ?? c.expires_at ?? null,
     followers: c.followers ?? 0,
@@ -90,7 +104,7 @@ export const MOCK_PREMIUM_KEY = "mesita:mock-premium";
 // toggles + this key once the states can be produced with real data.
 const MOCK_ACCOUNT_KEY = "mesita:mock-account";
 export type MockAccount = {
-  class: "standard" | "premium" | "influencer" | "aura" | null;
+  class: ClassKey | null;
   instagram: boolean;
   followers: number;
 };
@@ -143,13 +157,7 @@ function parseMockAccount(raw: string | null): MockAccount | null {
   if (!raw) return null;
   try {
     const v = JSON.parse(raw) as Partial<MockAccount>;
-    const cls =
-      v.class === "standard" ||
-      v.class === "premium" ||
-      v.class === "influencer" ||
-      v.class === "aura"
-        ? v.class
-        : null;
+    const cls = isClassKey(v.class) ? v.class : null;
     const instagram = v.instagram === true;
     if (cls == null && !instagram) return null; // nothing overridden
     const followers =

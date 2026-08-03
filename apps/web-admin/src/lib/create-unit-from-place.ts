@@ -47,6 +47,12 @@ type CreateUnitErrorBody = {
   existing?: { id?: string; slug?: string | null; name?: string };
 };
 
+// HTTP 409 with either code (place_already_exists is current, venue_already_exists legacy).
+const DUPLICATE_PLACE_CODES = new Set([
+  "place_already_exists",
+  "venue_already_exists",
+]);
+
 export async function createUnitFromPlaceId(
   placeId: string,
 ): Promise<CreateUnitResult> {
@@ -57,15 +63,12 @@ export async function createUnitFromPlaceId(
     placeId: id,
   });
   if (!r.ok) {
-    // Duplicate: HTTP 409 with code place_already_exists (legacy:
-    // venue_already_exists) and an `existing` object.
+    // Duplicate error responses carry an `existing` object.
     const body = (r.data ?? {}) as CreateUnitErrorBody;
     if (
       r.status === 409 &&
-      (r.code === "place_already_exists" ||
-        r.code === "venue_already_exists" ||
-        body.code === "place_already_exists" ||
-        body.code === "venue_already_exists")
+      (DUPLICATE_PLACE_CODES.has(r.code ?? "") ||
+        DUPLICATE_PLACE_CODES.has(body.code ?? ""))
     ) {
       const name = body.existing?.name;
       return {

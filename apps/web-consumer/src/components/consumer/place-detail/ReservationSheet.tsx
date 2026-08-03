@@ -47,6 +47,21 @@ export type ReservationSheetPlace = { id: string; name: string };
 //   "reschedule" → move the existing ticket instead of creating a twin
 type DuplicateChoice = "another" | "reschedule";
 
+function resolveSubmitLabel(args: {
+  checking: boolean;
+  awaitingChoice: boolean;
+  time: string | null;
+  rescheduling: boolean;
+  whenLabel: string;
+}): string {
+  if (args.checking) return "Checking your reservations…";
+  if (args.awaitingChoice) return "Choose an option above";
+  if (!args.time) return "No times left";
+  return args.rescheduling
+    ? `Move my table · ${args.whenLabel}`
+    : `Request reservation · ${args.whenLabel}`;
+}
+
 export function ReservationSheet({
   place,
   open,
@@ -185,15 +200,13 @@ export function ReservationSheet({
     }
   }
 
-  const submitLabel = checking
-    ? "Checking your reservations…"
-    : awaitingChoice
-      ? "Choose an option above"
-      : !time
-        ? "No times left"
-        : rescheduling
-          ? `Move my table · ${whenLabel}`
-          : `Request reservation · ${whenLabel}`;
+  const submitLabel = resolveSubmitLabel({
+    checking,
+    awaitingChoice,
+    time,
+    rescheduling,
+    whenLabel,
+  });
 
   return (
     <LocalSheet

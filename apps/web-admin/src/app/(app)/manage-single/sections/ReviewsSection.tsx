@@ -81,19 +81,27 @@ function formatReviewDate(date: string): string {
   });
 }
 
+function asRecord(raw: unknown): Record<string, unknown> | null {
+  return raw && typeof raw === "object" ? (raw as Record<string, unknown>) : null;
+}
+
+function extractQuote(row: Record<string, unknown>): string | null {
+  return firstNonEmptyString([
+    row["quote"],
+    row["text"],
+    row["review"],
+    row["body"],
+    row["comment"],
+  ]);
+}
+
 function parseGoogleReviews(input: unknown): GoogleReview[] {
   if (!Array.isArray(input)) return [];
   const items: GoogleReview[] = [];
   input.forEach((raw, idx) => {
-    if (!raw || typeof raw !== "object") return;
-    const row = raw as Record<string, unknown>;
-    const quote = firstNonEmptyString([
-      row["quote"],
-      row["text"],
-      row["review"],
-      row["body"],
-      row["comment"],
-    ]);
+    const row = asRecord(raw);
+    if (!row) return;
+    const quote = extractQuote(row);
     if (!quote) return;
     const author =
       firstNonEmptyString([
@@ -121,15 +129,9 @@ function parseMesitaVisitors(input: unknown): MesitaVisitor[] {
   if (!Array.isArray(input)) return [];
   const items: MesitaVisitor[] = [];
   input.forEach((raw, idx) => {
-    if (!raw || typeof raw !== "object") return;
-    const row = raw as Record<string, unknown>;
-    const quote = firstNonEmptyString([
-      row["quote"],
-      row["text"],
-      row["review"],
-      row["body"],
-      row["comment"],
-    ]);
+    const row = asRecord(raw);
+    if (!row) return;
+    const quote = extractQuote(row);
     if (!quote) return;
     const name =
       firstNonEmptyString([row["name"], row["author"], row["author_name"]]) ??
@@ -275,6 +277,9 @@ function ReviewSortChips({
 // long one with no way to expand.
 const REVIEW_CLAMP_CHARS = 220;
 
+// Rating shown when a place has no Mesita reviews yet (neutral placeholder).
+const DEFAULT_STARS = 5;
+
 function GoogleReviewCard({ review }: { review: GoogleReview }) {
   const [expanded, setExpanded] = useState(false);
   const clampable = review.quote.length > REVIEW_CLAMP_CHARS;
@@ -361,18 +366,17 @@ function HScroll({ children }: { children: React.ReactNode }) {
 
 export function ReviewsSection({ place }: { place: AdminPlace }) {
   const hasMesitaReviews = (place.mesita_review_count ?? 0) > 0;
-  const overall = hasMesitaReviews
-    ? (place.mesita_stars_overall ?? 5)
-    : 5;
+  const starOrDefault = (value: number | null | undefined) =>
+    hasMesitaReviews ? (value ?? DEFAULT_STARS) : DEFAULT_STARS;
+
+  const overall = starOrDefault(place.mesita_stars_overall);
   const subRatings: Array<[string, number]> = [
-    ["Food", hasMesitaReviews ? (place.mesita_stars_food ?? 5) : 5],
-    ["Service", hasMesitaReviews ? (place.mesita_stars_service ?? 5) : 5],
-    ["Ambience", hasMesitaReviews ? (place.mesita_stars_ambience ?? 5) : 5],
+    ["Food", starOrDefault(place.mesita_stars_food)],
+    ["Service", starOrDefault(place.mesita_stars_service)],
+    ["Ambience", starOrDefault(place.mesita_stars_ambience)],
     [
       "Value",
-      hasMesitaReviews
-        ? (place.mesita_stars_value ?? place.mesita_stars_overall ?? 5)
-        : 5,
+      starOrDefault(place.mesita_stars_value ?? place.mesita_stars_overall),
     ],
   ];
 

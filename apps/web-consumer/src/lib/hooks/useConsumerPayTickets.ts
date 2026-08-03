@@ -116,11 +116,7 @@ export function useConsumerPayTickets(userId: string): PayTicketsState {
     }
     // Pure time sort, most recent first.
     const timeOf = (b: TicketBundle): number => {
-      const iso =
-        ticketMetaById.get(b.ticketId)?.created_at ??
-        b.bill?.created_at ??
-        b.review?.created_at ??
-        null;
+      const iso = ticketCreatedAtIso(b, ticketMetaById.get(b.ticketId));
       return iso ? new Date(iso).getTime() : 0;
     };
     return [...map.values()].sort((a, b) => timeOf(b) - timeOf(a));
@@ -138,6 +134,15 @@ export type TicketCardView = {
   timeLabel: string;
   steps: TicketFlowStepView[];
 };
+
+function ticketCreatedAtIso(
+  bundle: TicketBundle,
+  meta?: PayTicketMeta,
+): string | null {
+  return (
+    meta?.created_at ?? bundle.bill?.created_at ?? bundle.review?.created_at ?? null
+  );
+}
 
 function progressOf(bundle: TicketBundle, meta?: PayTicketMeta) {
   const p = bundle.payload;
@@ -157,11 +162,7 @@ export function bundleToCardView(
   meta?: PayTicketMeta,
 ): TicketCardView {
   const p = bundle.payload;
-  const visitDateIso =
-    meta?.created_at ??
-    bundle.bill?.created_at ??
-    bundle.review?.created_at ??
-    null;
+  const visitDateIso = ticketCreatedAtIso(bundle, meta);
   return {
     ticketId: bundle.ticketId,
     placeName: p.place_name ?? "Partner place",

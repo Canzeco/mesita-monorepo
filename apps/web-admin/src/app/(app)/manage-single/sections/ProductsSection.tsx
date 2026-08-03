@@ -72,11 +72,12 @@ function menusFromPlace(place: AdminPlace): MenuDraft[] {
 
   const fromJson = source
     .map((m): MenuDraft | null => {
+      const legacyPdfUrl = (m as { pdf_url?: unknown })?.pdf_url;
       const url =
         typeof m?.url === "string"
           ? m.url.trim()
-          : typeof (m as { pdf_url?: unknown })?.pdf_url === "string"
-            ? String((m as { pdf_url: string }).pdf_url).trim()
+          : typeof legacyPdfUrl === "string"
+            ? legacyPdfUrl.trim()
             : "";
       const name = typeof m?.name === "string" ? m.name.trim() : "";
       if (!url && !name) return null;
@@ -103,10 +104,13 @@ function menusFromPlace(place: AdminPlace): MenuDraft[] {
 
 function serializeMenus(items: MenuDraft[]): AdminMenuItem[] {
   return items
-    .map((m) => ({
-      name: m.name.trim() ? m.name.trim().slice(0, MENU_NAME_MAX) : null,
-      url: m.url.trim() || null,
-    }))
+    .map((m) => {
+      const name = m.name.trim();
+      return {
+        name: name ? name.slice(0, MENU_NAME_MAX) : null,
+        url: m.url.trim() || null,
+      };
+    })
     .filter((m) => m.url);
 }
 
@@ -470,7 +474,7 @@ function MenuItemCard({
         <div className="flex items-center gap-2">
           <FileText className="text-muted-foreground h-4 w-4" />
           <span className="text-sm font-semibold">
-            {isNew ? "New menu" : `Menu${itemsLabel(index)}`}
+            {isNew ? "New menu" : `Menu${menuNumberSuffix(index)}`}
           </span>
         </div>
         <button
@@ -699,6 +703,6 @@ function SourceCard({
   );
 }
 
-function itemsLabel(index: number): string {
+function menuNumberSuffix(index: number): string {
   return index === 0 ? "" : ` ${index + 1}`;
 }

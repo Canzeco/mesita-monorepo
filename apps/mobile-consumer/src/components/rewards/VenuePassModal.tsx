@@ -56,7 +56,6 @@ import {
   PEAK_STRATEGY,
   reachableSegments,
   segmentKeyForClass,
-  type RewardClassKey,
   type RewardSegmentKey,
 } from '@/lib/reward-segments';
 import { EFError } from '@/lib/ef';
@@ -126,7 +125,7 @@ export function VenuePassModal({
   /** Fired once a live ticket exists, so the page can land on Pending. */
   onTicketStarted: () => void;
 }) {
-  const { consumerClass } = useAuth();
+  const { consumerClass, profile } = useAuth();
   const classKey = consumerClass?.class ?? 'standard';
   const isInfluencer = classKey === 'influencer';
 
@@ -247,9 +246,8 @@ export function VenuePassModal({
   }, [ticketId, tickets, onClose]);
 
 
-  // Identity for the staff eyeball-check. `profile` is already in auth
-  // context here, so unlike web this costs no extra request.
-  const { profile } = useAuth();
+  // Identity for the staff eyeball-check — unlike web this costs no extra
+  // request since `profile` is already in auth context.
   const identityName =
     ([profile?.first_name, profile?.last_name].filter(Boolean).join(' ') ||
       profile?.full_name ||
@@ -257,10 +255,7 @@ export function VenuePassModal({
   const identityHandle = profile?.instagram_handle ?? null;
   const followers = consumerClass?.followers ?? 0;
 
-  const rungs = useMemo(
-    () => reachableSegments(classKey as RewardClassKey),
-    [classKey],
-  );
+  const rungs = useMemo(() => reachableSegments(classKey), [classKey]);
 
   // Which proofs the guest can send RIGHT NOW.
   const actionable = useMemo(() => {
@@ -291,7 +286,7 @@ export function VenuePassModal({
     });
     return out;
   }, [ticket]);
-  const mineKey = segmentKeyForClass(classKey as RewardClassKey);
+  const mineKey = segmentKeyForClass(classKey);
 
   const placeName = place?.name ?? 'the place';
   const placeSub =
@@ -619,7 +614,7 @@ export function VenuePassModal({
                         mine ? 'bg-primary/10' : 'bg-secondary/10'
                       }`}
                     >
-                      <Icon size={16} color={mine ? '#cf0360' : '#cf0360'} />
+                      <Icon size={16} color="#cf0360" />
                     </View>
                     <View className="min-w-0 flex-1">
                       <View className="flex-row items-center" style={{ gap: 6 }}>

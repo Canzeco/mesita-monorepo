@@ -105,19 +105,19 @@ export function PlaceTagsPicker({
       .filter((group) => group.rows.length > 0);
   }, [groups, query]);
 
+  const removeTag = (slug: string) => {
+    onChange(value.filter((item) => item !== slug));
+  };
+
   const toggle = (slug: string) => {
     if (selected.has(slug)) {
-      onChange(value.filter((item) => item !== slug));
+      removeTag(slug);
     } else if (value.length < TAG_MAX_COUNT) {
       onChange([...value, slug]);
     }
   };
 
   const atLimit = value.length >= TAG_MAX_COUNT;
-
-  const removeTag = (slug: string) => {
-    onChange(value.filter((item) => item !== slug));
-  };
 
   const labelFor = (slug: string) =>
     bySlug.get(slug)?.label_en ?? deslugify(slug);

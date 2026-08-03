@@ -31,6 +31,19 @@ type EFFailure = {
 
 type InvokeResult<T> = { ok: true; status: number; data: T } | EFFailure;
 
+/** `obj.error` coerced to a string, or null when the field is absent. */
+function readErrorField(obj: unknown): string | null {
+  if (!obj || typeof obj !== "object" || !("error" in obj)) return null;
+  return String((obj as { error: unknown }).error);
+}
+
+/** `obj.code`, kept only when it's actually a string. */
+function readCodeField(obj: unknown): string | null {
+  if (!obj || typeof obj !== "object" || !("code" in obj)) return null;
+  const value = (obj as { code: unknown }).code;
+  return typeof value === "string" ? value : null;
+}
+
 export async function efInvoke<T>(
   fnName: string,
   body: unknown,
@@ -72,17 +85,8 @@ export async function efInvoke<T>(
         if (text) inner = { error: text.slice(0, 500) };
       }
     }
-    const innerError =
-      inner && typeof inner === "object" && "error" in inner
-        ? String((inner as { error: unknown }).error)
-        : null;
-    const code =
-      inner &&
-      typeof inner === "object" &&
-      "code" in inner &&
-      typeof (inner as { code: unknown }).code === "string"
-        ? ((inner as { code: string }).code)
-        : null;
+    const innerError = readErrorField(inner);
+    const code = readCodeField(inner);
     const status =
       ctx && typeof ctx.status === "number" ? ctx.status : 0;
     return {
@@ -104,17 +108,8 @@ export async function efInvoke<T>(
     typeof parsed !== "object" ||
     (parsed as { ok?: unknown }).ok !== true
   ) {
-    const errMsg =
-      parsed && typeof parsed === "object" && "error" in parsed
-        ? String((parsed as { error: unknown }).error)
-        : `EF ${fnName} returned no ok body`;
-    const code =
-      parsed &&
-      typeof parsed === "object" &&
-      "code" in parsed &&
-      typeof (parsed as { code: unknown }).code === "string"
-        ? ((parsed as { code: string }).code)
-        : null;
+    const errMsg = readErrorField(parsed) ?? `EF ${fnName} returned no ok body`;
+    const code = readCodeField(parsed);
     return { ok: false, status: 0, code, fn: fnName, error: errMsg, data: parsed };
   }
 

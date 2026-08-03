@@ -11,6 +11,9 @@
 import { useSyncExternalStore } from "react";
 import {
   DISCOVERY_FILTER_DEFAULTS,
+  DISCOVERY_ZONE_LEVELS,
+  RANDOMNESS_MAX,
+  RANDOMNESS_MIN,
   defaultRadiusForLevel,
   type DiscoveryFilters,
   type DiscoveryWhen,
@@ -26,15 +29,7 @@ import { PLACE_FAMILIES, type FamilyKey } from "@/lib/place-families";
 const STORAGE_KEY = "mesita_discovery_filters_v4";
 
 const KNOWN_FAMILY_KEYS = new Set<string>(PLACE_FAMILIES.map((f) => f.key));
-const ZONE_LEVELS = new Set<string>([
-  "address",
-  "street",
-  "neighborhood",
-  "city",
-  "county",
-  "state",
-  "country",
-]);
+const ZONE_LEVELS = new Set<string>(DISCOVERY_ZONE_LEVELS);
 
 function readZone(raw: unknown): DiscoveryZone | null {
   if (!raw || typeof raw !== "object") return null;
@@ -79,11 +74,13 @@ function readPersisted(): DiscoveryFilters {
       parsed.maxKm > 0
         ? parsed.maxKm
         : null;
-    const randomness = ([0, 1, 2, 3, 4, 5] as const).includes(
-      parsed.randomness as RandomnessLevel,
-    )
-      ? (parsed.randomness as RandomnessLevel)
-      : 0;
+    const randomness =
+      typeof parsed.randomness === "number" &&
+      Number.isInteger(parsed.randomness) &&
+      parsed.randomness >= RANDOMNESS_MIN &&
+      parsed.randomness <= RANDOMNESS_MAX
+        ? (parsed.randomness as RandomnessLevel)
+        : 0;
     return {
       familyKeys: Array.isArray(parsed.familyKeys)
         ? (parsed.familyKeys as unknown[]).filter(
