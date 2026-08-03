@@ -112,7 +112,7 @@ export function RewardsBox({ place }: { place: PlaceDetail }) {
             n={1}
             icon={QrCode}
             title="Pay with your QR"
-            body="Pay your bill and show your Mesita QR — the waiter scans it to start your reward."
+            body="Pay your bill and show your Mesita QR — the staff scan it to start your reward."
           />
           <RewardStep
             n={2}
@@ -124,7 +124,7 @@ export function RewardsBox({ place }: { place: PlaceDetail }) {
             }
             body={
               isInfluencer
-                ? "Want more? Post a story tagging the place after the waiter scans your QR for a bigger reward. Skip it and you still keep your class reward in full."
+                ? "Want more? Post a story tagging the place after the staff scan your QR for a bigger reward. Skip it and you still keep your class reward in full."
                 : "The Instagram Story bonus is exclusive to the Influencer class (1,000+ followers). Every class keeps its own reward — and the Google review bonus is open to all."
             }
             accent

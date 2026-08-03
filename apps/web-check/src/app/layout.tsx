@@ -15,7 +15,7 @@ const fraunces = Fraunces({
   axes: ["opsz"],
 });
 
-// Mesita Check — the staff-side app. The waiter scans the QR the guest
+// Mesita Check — the staff-side app. Staff scan the QR the guest
 // generated in their app and lands on /check/<code>: proof the ticket is a
 // real, live Mesita check, plus the actions of the visit (bill, approvals,
 // payment). Staff-facing → Spanish (es-MX), never indexed.

@@ -11,4 +11,4 @@ export const ROLE_LABEL: Record<BusinessRole, string> = {
 export const ROLE_CHOICES: BusinessRole[] = ["owner", "editor", "viewer"];
 export const MANAGER_ROLE_CHOICES: BusinessRole[] = ["owner", "editor"];
 
-export type InviteOpen = null | "manager" | "staff";
+export type InviteOpen = null | "manager";

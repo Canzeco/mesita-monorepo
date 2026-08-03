@@ -4,49 +4,25 @@ import { useCallback, useState } from "react";
 
 import {
   apiInviteEditor,
-  apiInviteStaff,
   apiListTeam,
   apiRemoveMember,
-  apiTestStaffChannel,
   apiUpdateMemberRole,
   type BusinessRole,
   type RemoveKind,
   type TeamSnapshot,
 } from "@/lib/api/team";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
-import { ERROR_BOX_CLASS, INFO_BOX_CLASS } from "@/lib/ui-classes";
+import { ERROR_BOX_CLASS } from "@/lib/ui-classes";
 import { errMsg } from "@/lib/utils";
 
 import { ConfirmDialog, type ConfirmState } from "./ConfirmDialog";
 import { ManagersTeamSection } from "./ManagersTeamSection";
-import { StaffTeamSection } from "./StaffTeamSection";
 import { ROLE_LABEL, type InviteOpen } from "./team-constants";
 
-function staffInvitePhoneKey(phone: string | null | undefined): string {
-  if (!phone) return "";
-  return phone.replace(/\D/g, "");
-}
-
-type StaffInviteResult = Awaited<ReturnType<typeof apiInviteStaff>>;
-
-function staffInviteNotice(
-  res: StaffInviteResult,
-  channel: "whatsapp" | "sms",
-): string {
-  if (res.sent) {
-    return res.resent
-      ? `Invitación reenviada por WhatsApp a ${res.phone}.`
-      : `Invitación enviada por WhatsApp a ${res.phone}. Queda pendiente hasta que respondan sí.`;
-  }
-  if (res.sendError) {
-    return res.resent
-      ? `No se pudo reenviar por WhatsApp: ${res.sendError}`
-      : `Invitación pendiente — no se envió por WhatsApp: ${res.sendError}`;
-  }
-  return channel === "whatsapp"
-    ? "Invitación pendiente — agrega el teléfono y usa Reenviar en la fila."
-    : "Invitación pendiente — usa WhatsApp; el mesero acepta respondiendo sí en Mesita Ops.";
-}
+// The Team page is the BUSINESS team — owners, managers, PRs. Waiters were
+// retired (MESITA-833): staff work tickets on the public check page, where
+// possession of the check_code is the authentication, so there is no staff
+// account to invite, ping or revoke.
 
 export function TeamClient({
   projectId,
@@ -66,7 +42,6 @@ export function TeamClient({
   const [busy, setBusy] = useState<string | null>(null);
   const [inviteOpen, setInviteOpen] = useState<InviteOpen>(null);
   const [confirmState, setConfirmState] = useState<ConfirmState | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     try {
@@ -86,7 +61,6 @@ export function TeamClient({
   const pendingManagerInvites = snapshot.pendingBusinessInvites.filter(
     (inv) => inv.role !== "viewer",
   );
-  const pendingStaffInvites = snapshot.pendingStaffInvites ?? [];
 
   // Wrap any mutating action in the shared busy/error/refresh frame.
   async function runAction(
@@ -96,7 +70,6 @@ export function TeamClient({
   ) {
     setBusy(key);
     setError(null);
-    setNotice(null);
     try {
       await fn();
       await refresh();
@@ -120,63 +93,6 @@ export function TeamClient({
         setInviteOpen(null);
       },
       "Couldn't send that manager invite.",
-    );
-
-  const applyStaffInviteResult = (
-    res: StaffInviteResult,
-    channel: "whatsapp" | "sms",
-  ) => {
-    const phoneKey = staffInvitePhoneKey(res.phone);
-    setSnapshot((prev) => ({
-      ...prev,
-      pendingStaffInvites: [
-        {
-          id: res.inviteId,
-          phone: res.phone,
-          channel: res.channel,
-          token: res.token,
-          createdAt: new Date().toISOString(),
-          expiresAt: res.expiresAt,
-        },
-        ...(prev.pendingStaffInvites ?? []).filter(
-          (p) =>
-            p.id !== res.inviteId && staffInvitePhoneKey(p.phone) !== phoneKey,
-        ),
-      ],
-    }));
-    setNotice(staffInviteNotice(res, channel));
-  };
-
-  const handleInviteStaff = (channel: "whatsapp" | "sms", phone: string) =>
-    runAction(
-      "invite-staff",
-      async () => {
-        const res = await apiInviteStaff(supabase, {
-          projectId,
-          channel,
-          phone: phone || undefined,
-        });
-        applyStaffInviteResult(res, channel);
-        setInviteOpen(null);
-      },
-      "Couldn't create that staff invite.",
-    );
-
-  const handleResendStaffInvite = (
-    channel: "whatsapp" | "sms",
-    phone: string,
-  ) =>
-    runAction(
-      `resend-staff-${phone}`,
-      async () => {
-        const res = await apiInviteStaff(supabase, {
-          projectId,
-          channel,
-          phone,
-        });
-        applyStaffInviteResult(res, channel);
-      },
-      "Couldn't resend that staff invite.",
     );
 
   const handleChangeRole = (
@@ -237,37 +153,9 @@ export function TeamClient({
     });
   };
 
-  const handleTestPing = (channel: "whatsapp" | "sms", phone: string) => {
-    const label = channel === "whatsapp" ? "WhatsApp" : "SMS";
-    setConfirmState({
-      title: "Send test message",
-      body: `Send a test ${label} message to ${phone}?`,
-      confirmLabel: "Send",
-      tone: "default",
-      onConfirm: () =>
-        runAction(
-          `ping-${phone}`,
-          async () => {
-            const res = await apiTestStaffChannel(supabase, {
-              projectId,
-              channel,
-              phone,
-            });
-            setNotice(
-              res.mock
-                ? `Test ping queued — ${res.note}`
-                : `Test ${res.channel} sent to ${res.to}.`,
-            );
-          },
-          "Couldn't send a test ping.",
-        ),
-    });
-  };
-
   return (
     <div className="flex flex-col gap-3">
       {error && <div className={ERROR_BOX_CLASS}>{error}</div>}
-      {notice && <div className={INFO_BOX_CLASS}>{notice}</div>}
 
       {confirmState && (
         <ConfirmDialog
@@ -294,22 +182,6 @@ export function TeamClient({
         onInviteManager={handleInviteManager}
         onChangeRole={handleChangeRole}
         onRemoveEditor={handleRemoveEditor}
-        onRemove={handleRemove}
-      />
-
-      <StaffTeamSection
-        projectId={projectId}
-        staffs={snapshot.staffs}
-        pendingStaffInvites={pendingStaffInvites}
-        isOwner={isOwner}
-        busy={busy}
-        inviteOpen={inviteOpen === "staff"}
-        onToggleInvite={() =>
-          setInviteOpen(inviteOpen === "staff" ? null : "staff")
-        }
-        onInviteStaff={handleInviteStaff}
-        onPing={handleTestPing}
-        onResendStaffInvite={handleResendStaffInvite}
         onRemove={handleRemove}
       />
     </div>

@@ -7,7 +7,7 @@
 // URL can view the ticket, enter the bill, approve a submitted story/review,
 // and mark it paid. That includes the guest themselves (the QR is static; a
 // forwarded screenshot is indistinguishable from a live scan). This is
-// ACCEPTED by design: Mesita never moves money — the waiter physically
+// ACCEPTED by design: Mesita never moves money — the staff physically
 // applies the discount off the same page — so self-service is a data-quality
 // nuisance, not a theft vector. The mitigations are visibility, not
 // prevention: first_scanned_at surfaced on the page, ticket_check_events

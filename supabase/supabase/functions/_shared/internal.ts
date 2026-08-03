@@ -1,7 +1,7 @@
 // Shared helpers for invoking *artificial-caller* EFs from *natural-caller*
 // EFs (and authenticating those calls on the receiving end).
 //
-// Background: natural callers (admin/business/consumer/staff/waiter) are
+// Background: natural callers (admin/business/consumer/check) are
 // invoked by web clients and authenticate end users. Artificial callers
 // (recommender/enricher/…) are reusable internal services with no end
 // user — they exist so multiple natural callers can share expensive

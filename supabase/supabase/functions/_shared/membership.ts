@@ -1,5 +1,5 @@
 // Membership helpers — the single place tier logic lives so the "blended
-// rate" privacy goal holds: a place/waiter never learns which tier (or which
+// rate" privacy goal holds: a place never learns which tier (or which
 // door — Instagram / invitation / subscription) a guest came through. The
 // rate resolver returns only the final integer percent; nothing tier-shaped
 // leaks into any business/staff response.

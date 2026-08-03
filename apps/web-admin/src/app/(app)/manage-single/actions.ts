@@ -389,19 +389,10 @@ export type TeamSnapshot = {
     email: string | null;
     createdAt: string;
   }[];
-  waiters: { userId: string; phone: string | null; createdAt: string }[];
   pendingBusinessInvites: {
     id: string;
     email: string;
     role: string;
-    token: string;
-    createdAt: string;
-    expiresAt: string;
-  }[];
-  pendingWaiterInvites: {
-    id: string;
-    phone: string | null;
-    channel: string;
     token: string;
     createdAt: string;
     expiresAt: string;
@@ -439,7 +430,7 @@ export async function updateMemberRole(
 
 export async function removeMember(
   id: string,
-  kind: "editor" | "waiter" | "editorInvite" | "waiterInvite",
+  kind: "editor" | "editorInvite",
 ): Promise<Result<unknown>> {
   const r = await efInvoke<unknown>("business-web-remove-member", { id, kind });
   if (!r.ok) return { ok: false, error: r.error };

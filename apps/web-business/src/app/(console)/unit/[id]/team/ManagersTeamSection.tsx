@@ -168,11 +168,10 @@ function initialOf(name: string | null, email: string | null): string {
   return initialLetter(name ?? email ?? "?", "");
 }
 
-function buildAcceptUrl(token: string, kind?: "staff"): string {
+function buildAcceptUrl(token: string): string {
   if (typeof window === "undefined") return "";
   const url = new URL("/accept-invite", window.location.origin);
   url.searchParams.set("token", token);
-  if (kind) url.searchParams.set("kind", kind);
   return url.toString();
 }
 

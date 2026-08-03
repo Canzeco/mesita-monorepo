@@ -9,9 +9,9 @@ import { apiAcceptEditorInvite } from "@/lib/api/team";
 import { placePath } from "@/lib/business-route-contract";
 import { errMsg } from "@/lib/utils";
 
-// Business-side accept page. The staff accept flow runs entirely in the
-// Ops WhatsApp conversation (reply SI; twilio-whatsapp-inbound redeems via
-// _shared/staff-invite-redeem) and never lands here.
+// Business-side accept page — the only invite flow there is. The staff
+// (waiter) invite was retired with the waiter identity itself
+// (MESITA-833): staff work the public check page and hold no account.
 //
 // Two preconditions: (1) a `token` query param, (2) a signed-in
 // auth.user. If the user isn't signed in we bounce them to the sign-in
@@ -19,18 +19,11 @@ import { errMsg } from "@/lib/utils";
 
 type Status = "claiming" | "needs_signin" | "success" | "error";
 
-function initialFromParams(
-  token: string | null,
-  kind: string | null,
-): { status: Status; message: string } {
+function initialFromParams(token: string | null): {
+  status: Status;
+  message: string;
+} {
   if (!token) return { status: "error", message: "Missing invite token." };
-  if (kind === "staff") {
-    return {
-      status: "error",
-      message:
-        "This invite is for a staff — open it in WhatsApp on the validator's phone.",
-    };
-  }
   return { status: "claiming", message: "" };
 }
 
@@ -39,15 +32,14 @@ export function AcceptInviteClient() {
   const params = useSearchParams();
   const router = useRouter();
   const token = params.get("token");
-  const kind = params.get("kind"); // "staff" → wrong app
 
-  const initial = initialFromParams(token, kind);
+  const initial = initialFromParams(token);
   const [status, setStatus] = useState<Status>(initial.status);
   const [message, setMessage] = useState<string>(initial.message);
   const [projectId, setPlaceId] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!token || kind === "staff") return; // static error already rendered
+    if (!token) return; // static error already rendered
 
     let cancelled = false;
     (async () => {
@@ -75,7 +67,7 @@ export function AcceptInviteClient() {
     return () => {
       cancelled = true;
     };
-  }, [supabase, token, kind, router]);
+  }, [supabase, token, router]);
 
   if (status === "claiming") {
     return (

@@ -396,16 +396,10 @@ verify_jwt = true
 [functions.business-web-invite-member]
 verify_jwt = true
 
-[functions.business-web-invite-staff]
-verify_jwt = true
-
 [functions.business-web-remove-member]
 verify_jwt = true
 
 [functions.business-web-update-member-role]
-verify_jwt = true
-
-[functions.business-web-test-staff-channel]
 verify_jwt = true
 
 [functions.business-web-record-membership-strike]
@@ -515,11 +509,10 @@ verify_jwt = false
 
 # --- Twilio (external webhooks) ---
 #
-# WhatsApp inbound + delivery status. Public at the gateway; security
-# is X-Twilio-Signature validation inside each EF (TWILIO_AUTH_TOKEN).
-
-[functions.business-whats-handle-message]
-verify_jwt = false
+# Outbound delivery status. Public at the gateway; security is
+# X-Twilio-Signature validation inside the EF (TWILIO_AUTH_TOKEN).
+# The inbound handler (business-whats-handle-message) went with the waiter
+# identity in MESITA-833 — nothing converses with staff over WhatsApp now.
 
 [functions.twilio-webhook-update-delivery]
 verify_jwt = false

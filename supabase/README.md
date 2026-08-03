@@ -45,7 +45,7 @@ mesita-supabase/
 | Layer | Location | Deploy |
 |---|---|---|
 | **App logic** (tickets, reservations, auth) | `supabase/functions/` | `supabase functions deploy` |
-| **Twilio WhatsApp / SMS** | `_shared/twilio.ts` + `business-whats-handle-message` + `twilio-webhook-update-delivery` | same |
+| **Twilio WhatsApp / SMS** | `_shared/twilio.ts` + `twilio-webhook-update-delivery` | same |
 | **Stripe** | `stripe-webhook-handle-event` | same |
 | **Twilio templates, TwiML, webhooks** | `integrations/twilio/` + `scripts/` | run scripts locally |
 | **ElevenLabs agents** (later) | `integrations/elevenlabs/` | API scripts + Supabase webhook EF |
@@ -56,11 +56,11 @@ mesita-supabase/
 
 ### Twilio (WhatsApp, SMS, voice)
 
-**Role:** messaging pipe for reward tickets, team invites, reservation notifications.
+**Role:** outbound messaging pipe for consumer notifications and reservations. There is
+no inbound rail: staff WhatsApp went with the waiter identity (MESITA-833).
 
 | Number | Label | Use |
 |---|---|---|
-| `+1 628 296 8794` | Mesita Ops (Staff) | Staff / waiter WhatsApp |
 | `+1 628 296 4968` | Mesita Notifications | Consumer notifications |
 
 Meta WABA `1389123139178386` · Portfolio `1180640363250622`. Details: [docs/whatsapp.md](docs/whatsapp.md).
@@ -90,7 +90,7 @@ supabase secrets set \
 **Deploy webhooks:**
 
 ```bash
-supabase functions deploy business-whats-handle-message twilio-webhook-update-delivery
+supabase functions deploy twilio-webhook-update-delivery
 ```
 
 ### Stripe
@@ -110,8 +110,8 @@ AI voice for **phone reservations** on a **dedicated** Twilio number — not the
 | `admin-*` | email + MFA | Super-admin console |
 | `business-web-*` | email | Places, tickets, team, verification |
 | `consumer-*` | phone OTP | Discovery, tickets, **reservations**, profile |
-| `staff-*` | phone OTP | Waiter post-invite |
-| `business-whats-handle-message` + `twilio-webhook-update-delivery` | Twilio signature | Inbound WA + delivery status |
+| `check-web-*` | none (`check_code` possession) | Public check page — the whole staff surface |
+| `twilio-webhook-update-delivery` | Twilio signature | Delivery status |
 | `stripe-webhook-handle-event` | Stripe signature | Subscriptions |
 | `supabase-cron-*` | internal (pg_cron poller) | Scheduled creates + the Enricher pipeline |
 | `enricher-agent-*` | internal | Place persistence services (service role) |
@@ -166,10 +166,10 @@ RLS: clients read only what they may see; writes go through Edge Functions.
 - [x] WABA + WhatsApp senders connected
 - [ ] Meta Business Verification
 - [ ] `supabase secrets set` Twilio vars
-- [ ] Deploy `business-whats-handle-message` / `-status`
+- [ ] Deploy `twilio-webhook-update-delivery`
 - [ ] `./scripts/sync-twilio-whatsapp-webhooks.sh`
 - [ ] WhatsApp templates in `integrations/twilio/templates/` + apply script
-- [ ] Wire `business-invite-waiter`, reservation confirmations
+- [ ] Wire reservation confirmations
 - [ ] Reservation voice (ElevenLabs) — post-MVP, separate number
 
 ---
