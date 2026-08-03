@@ -528,3 +528,21 @@ export async function suggestPlaces(
 export async function createUnitFromPlaceId(placeId: string) {
   return createUnitFromPlaceIdImpl(placeId);
 }
+
+// ── Check PIN (MESITA-823) ───────────────────────────────────────────────
+// The optional shared 6-digit staff PIN gating check-page WRITE actions.
+// Read: it rides on the active place from business-web-get-overview (owner /
+// super-admin only — the column is deliberately absent from projects_view).
+// Write: its own owner-gated EF.
+
+export async function setCheckPin(
+  placeId: string,
+  pin: string | null,
+): Promise<Result<string | null>> {
+  const r = await efInvoke<{ pin: string | null }>("business-web-set-check-pin", {
+    placeId,
+    pin,
+  });
+  if (!r.ok) return { ok: false, error: r.error };
+  return { ok: true, data: r.data.pin };
+}

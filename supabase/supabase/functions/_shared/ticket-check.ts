@@ -121,6 +121,9 @@ export function shapeCheckPayload(args: {
   guestDisplayName: string;
   guestInstagramHandle: string | null;
   capMxn: number | null;
+  /** Place has a staff PIN set — the page prompts before write actions.
+   *  Boolean ONLY; the PIN value never enters the public payload. */
+  pinRequired: boolean;
 }): Record<string, unknown> {
   const { ticket } = args;
   const story = collapseActionState(ticket.story_status);
@@ -163,6 +166,8 @@ export function shapeCheckPayload(args: {
     // v2 tickets are always guest-generated; scanned_before lets the page
     // say "first opened 47 min ago" — the red flag staff can actually see.
     self_opened: true,
+    // Staff PIN gate (MESITA-823) — flag only, never the value.
+    pin_required: args.pinRequired,
   };
 }
 
@@ -175,7 +180,8 @@ export type CheckEvent =
   | "story_rejected"
   | "review_approved"
   | "review_rejected"
-  | "marked_paid";
+  | "marked_paid"
+  | "pin_rejected";
 
 // sha256(ip | yyyy-mm-dd | server salt) — the raw IP never lands in the DB,
 // and the daily rotation means hashes can't be joined across days.
@@ -238,4 +244,70 @@ export async function isRateLimited(
 // so the endpoint is not an existence oracle.
 export function checkNotFound(json: (b: unknown, s?: number) => Response): Response {
   return json({ ok: false, error: "Check not found" }, 404);
+}
+
+// ── Staff PIN gate (MESITA-823) ─────────────────────────────────────────
+//
+// Optional per-place 6-digit PIN on projects.check_pin (NULL = off). NOT a
+// waiter identity (MESITA-833 stands) — one shared secret the manager
+// briefs staff with, gating the WRITE endpoints only. get-ticket never
+// gates: it exposes a boolean `pin_required` so the page can prompt.
+
+export async function loadCheckPin(
+  admin: SupabaseClient,
+  projectId: string,
+): Promise<string | null> {
+  const { data } = await admin
+    .from("projects")
+    .select("check_pin")
+    .eq("id", projectId)
+    .maybeSingle();
+  const pin = (data as { check_pin: string | null } | null)?.check_pin ?? null;
+  return pin && /^[0-9]{6}$/.test(pin) ? pin : null;
+}
+
+// Verify the caller's PIN against the place's. Returns the 401 to send on
+// failure; distinguishes "you didn't send one" (pin_required — the client
+// shows the input) from "wrong" (pin_invalid — audit-logged, which also
+// feeds the sliding-window rate limiter, so guessing throttles itself:
+// 30 attempts/min against a 10^6 space).
+export async function requireCheckPin(args: {
+  admin: SupabaseClient;
+  projectId: string;
+  ticketId: string;
+  pin: unknown;
+  ipHash: string | null;
+  userAgent: string | null;
+  json: (b: unknown, s?: number) => Response;
+}): Promise<{ ok: true } | { ok: false; response: Response }> {
+  const required = await loadCheckPin(args.admin, args.projectId);
+  if (!required) return { ok: true };
+
+  const supplied = typeof args.pin === "string" ? args.pin.trim() : "";
+  if (supplied === required) return { ok: true };
+
+  if (supplied) {
+    // Only real wrong attempts land in the audit trail — the bare first
+    // request from a page that didn't know a PIN was needed is normal flow.
+    await logCheckEvent(args.admin, {
+      ticketId: args.ticketId,
+      event: "pin_rejected",
+      selfView: false,
+      ipHash: args.ipHash,
+      userAgent: args.userAgent,
+    });
+  }
+  return {
+    ok: false,
+    response: args.json(
+      {
+        ok: false,
+        code: supplied ? "pin_invalid" : "pin_required",
+        error: supplied
+          ? "Incorrect staff PIN."
+          : "This place requires a staff PIN for check actions.",
+      },
+      401,
+    ),
+  };
 }

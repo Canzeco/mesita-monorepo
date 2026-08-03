@@ -35,6 +35,9 @@ export type CheckPayload = {
   review: { required: boolean; state: CheckActionState };
   self_opened: boolean;
   scanned_before?: boolean;
+  /** The place set a staff PIN (MESITA-823) — write actions must carry one.
+   *  Boolean only; the digits never leave the server. */
+  pin_required?: boolean;
 };
 
 type EFResult<T> = { ok: true } & T | { ok: false; error?: string; code?: string };
@@ -60,10 +63,15 @@ export function fetchCheck(code: string) {
   return callCheckEF<{ check: CheckPayload }>("check-web-get-ticket", { code });
 }
 
-export function submitBill(code: string, checkSubtotalCents: number) {
+export function submitBill(
+  code: string,
+  checkSubtotalCents: number,
+  pin?: string,
+) {
   return callCheckEF<{ check: unknown }>("check-web-submit-bill", {
     code,
     checkSubtotalCents,
+    ...(pin ? { pin } : {}),
   });
 }
 
@@ -71,16 +79,21 @@ export function verifyAction(
   code: string,
   action: "story" | "review",
   decision: "approve" | "reject",
+  pin?: string,
 ) {
   return callCheckEF<{ state: string }>("check-web-verify-action", {
     code,
     action,
     decision,
+    ...(pin ? { pin } : {}),
   });
 }
 
-export function markPaid(code: string) {
-  return callCheckEF<{ alreadyPaid?: boolean }>("check-web-mark-paid", { code });
+export function markPaid(code: string, pin?: string) {
+  return callCheckEF<{ alreadyPaid?: boolean }>("check-web-mark-paid", {
+    code,
+    ...(pin ? { pin } : {}),
+  });
 }
 
 export function formatMxn(cents: number | null | undefined): string {

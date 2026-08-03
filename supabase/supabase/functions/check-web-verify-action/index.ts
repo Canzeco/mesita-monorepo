@@ -25,6 +25,7 @@ import {
   isRateLimited,
   loadTicketByCheckCode,
   logCheckEvent,
+  requireCheckPin,
 } from "../_shared/ticket-check.ts";
 
 type Body = {
@@ -32,6 +33,7 @@ type Body = {
   action?: string;
   decision?: string;
   reason?: string;
+  pin?: string;
 };
 
 // Only a human-decidable state can flip: submitted (fresh) or ai_rejected
@@ -70,6 +72,19 @@ Deno.serve(async (req) => {
 
   const ticket = await loadTicketByCheckCode(admin, code);
   if (!ticket) return checkNotFound(json);
+
+  // Staff PIN gate (MESITA-823) — write actions only; no-op when the place
+  // has no PIN set.
+  const pinRes = await requireCheckPin({
+    admin,
+    projectId: ticket.project_id,
+    ticketId: ticket.id,
+    pin: bodyRes.body.pin,
+    ipHash,
+    userAgent: req.headers.get("user-agent"),
+    json,
+  });
+  if (!pinRes.ok) return pinRes.response;
 
   const statusCol = action === "story" ? "story_status" : "review_status";
   const current = action === "story" ? ticket.story_status : ticket.review_status;
