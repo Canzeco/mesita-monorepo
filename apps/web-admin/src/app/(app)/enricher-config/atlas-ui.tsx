@@ -3,10 +3,11 @@
 import { CheckCircle2, ChevronRight, Loader2 } from "lucide-react";
 import type { SynthesisQuality } from "./actions";
 
-// Local presentational primitives for the Atlas / Enricher config surface.
-// Light-themed admin surface — semantic tokens only. Kept in one module so the
-// config sections, the read-only catalog and the cost calculator all share the
-// exact same card / control / disclosure chrome.
+// Shared presentational primitives for the admin config surfaces — not
+// Atlas/Enricher-specific: Models, Rewards, Reservations, Sourcing and Memo
+// config pages import from here too. Light-themed admin surface — semantic
+// tokens only. Kept in one module so every config page shares the exact same
+// card / control / disclosure chrome.
 
 // Uniform config card: icon + title + one-line subtitle + optional status,
 // then the controls. The single wrapper keeps every section consistent.
@@ -46,9 +47,9 @@ export function SectionCard({
   );
 }
 
-// Native disclosure used to tuck the page's densest blocks (the per-step
-// source list, the vision prompts, the cost breakdown) out of the default
-// view — open on demand, no JS state.
+// Native disclosure used to tuck a page's densest reference blocks (prompt
+// text, field/category/tag lists, trace steps) out of the default view —
+// open on demand, no JS state.
 export function Collapsible({
   summary,
   children,
@@ -210,6 +211,12 @@ export function SaveRow({
 }
 
 
+const QUALITY_OPTIONS = [
+  "economy",
+  "standard",
+  "high",
+] as const satisfies readonly SynthesisQuality[];
+
 // Shared economy/standard/high segmented picker used by the calculator and the
 // inline cost card.
 export function QualityPicker({
@@ -221,7 +228,7 @@ export function QualityPicker({
 }) {
   return (
     <div className="flex w-full gap-1">
-      {(["economy", "standard", "high"] as SynthesisQuality[]).map((q) => (
+      {QUALITY_OPTIONS.map((q) => (
         <button
           key={q}
           type="button"

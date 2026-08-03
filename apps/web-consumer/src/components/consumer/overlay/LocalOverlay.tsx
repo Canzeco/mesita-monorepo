@@ -73,8 +73,8 @@ function useEscape(active: boolean, onClose: () => void) {
   }, [active, onClose]);
 }
 
-// Resolves the card portal target after mount (SSR-safe). Falls back to
-// in-place rendering if the card isn't in the DOM (tests, storybook).
+// Resolves the card portal target after mount (SSR-safe). Renders nothing
+// (not in place) until the card resolves, or if it's never in the DOM.
 function useCardContainer() {
   const [el, setEl] = useState<HTMLElement | null>(null);
   useEffect(() => {
@@ -92,6 +92,27 @@ function CardPortal({ children }: { children: React.ReactNode }) {
   const card = useCardContainer();
   if (!card) return null;
   return createPortal(children, card);
+}
+
+function OverlayBackdrop({
+  shown,
+  onClose,
+}: {
+  shown: boolean;
+  onClose: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      aria-label="Close"
+      tabIndex={-1}
+      onClick={onClose}
+      className={cn(
+        "absolute inset-0 cursor-default bg-black/40 backdrop-blur-sm transition-opacity duration-300 motion-reduce:transition-none",
+        shown ? "opacity-100" : "opacity-0",
+      )}
+    />
+  );
 }
 
 export function LocalSheet({
@@ -127,16 +148,7 @@ export function LocalSheet({
           !open && "pointer-events-none",
         )}
       >
-        <button
-          type="button"
-          aria-label="Close"
-          tabIndex={-1}
-          onClick={onClose}
-          className={cn(
-            "absolute inset-0 cursor-default bg-black/40 backdrop-blur-sm transition-opacity duration-300 motion-reduce:transition-none",
-            shown ? "opacity-100" : "opacity-0",
-          )}
-        />
+        <OverlayBackdrop shown={shown} onClose={onClose} />
         <div
           className={cn(
             "border-border bg-popover shadow-elev relative flex max-h-[85%] min-h-0 flex-col overflow-hidden rounded-t-3xl border-t",
@@ -180,16 +192,7 @@ export function LocalDialog({
         aria-label={ariaLabel}
         className={cn("absolute inset-0 flex items-center justify-center overflow-hidden p-5", Z_LOCAL_OVERLAY)}
       >
-        <button
-          type="button"
-          aria-label="Close"
-          tabIndex={-1}
-          onClick={onClose}
-          className={cn(
-            "absolute inset-0 cursor-default bg-black/40 backdrop-blur-sm transition-opacity duration-300 motion-reduce:transition-none",
-            shown ? "opacity-100" : "opacity-0",
-          )}
-        />
+        <OverlayBackdrop shown={shown} onClose={onClose} />
         <div
           className={cn(
             "border-border bg-popover shadow-elev relative w-full max-w-sm overflow-hidden rounded-3xl border",

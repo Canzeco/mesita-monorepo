@@ -73,15 +73,19 @@ export function TicketsClient({
     { id: "done", label: "Done", count: counts.done },
   ];
 
+  const fetchTickets = async () => {
+    const rows = await apiListTickets(supabase, {
+      projectId,
+      limit: TICKET_LIST_LIMIT,
+    });
+    setTickets(rows);
+  };
+
   const refresh = async () => {
     setBusy("refresh");
     setError(null);
     try {
-      const rows = await apiListTickets(supabase, {
-        projectId,
-        limit: TICKET_LIST_LIMIT,
-      });
-      setTickets(rows);
+      await fetchTickets();
     } catch (e) {
       setError(errMsg(e, "Couldn't refresh."));
     } finally {
@@ -89,15 +93,11 @@ export function TicketsClient({
     }
   };
 
-  const reloadTickets = async (message: string, billTicketId?: string) => {
+  const reloadTickets = async (billTicketId?: string) => {
     if (billTicketId) setBusy(`bill:${billTicketId}`);
     setError(null);
     try {
-      const rows = await apiListTickets(supabase, {
-        projectId,
-        limit: TICKET_LIST_LIMIT,
-      });
-      setTickets(rows);
+      await fetchTickets();
     } catch (e) {
       setError(errMsg(e, "Updated but refresh failed."));
     } finally {
@@ -110,7 +110,7 @@ export function TicketsClient({
     setError(null);
     try {
       await apiMarkTicketPaid(supabase, ticketId);
-      await reloadTickets("Payment confirmed.");
+      await reloadTickets();
     } catch (e) {
       setError(errMsg(e, "Couldn't mark as paid."));
     } finally {
@@ -126,7 +126,7 @@ export function TicketsClient({
         ticketId,
         reason: "Cancelled from business console",
       });
-      await reloadTickets("Ticket cancelled.");
+      await reloadTickets();
     } catch (e) {
       setError(errMsg(e, "Couldn't cancel."));
     } finally {
@@ -196,7 +196,7 @@ export function TicketsClient({
                   busy={busy}
                   onMarkPaid={(id) => void markPaid(id)}
                   onCancel={(id) => void cancelTicket(id)}
-                  onBillSubmitted={(msg) => void reloadTickets(msg, t.id)}
+                  onBillSubmitted={() => void reloadTickets(t.id)}
                   onError={setError}
                 />
               </li>

@@ -10,8 +10,12 @@ import {
   PLACE_FIELD_PERMISSION_GROUP_DESCRIPTIONS,
 } from "./place-field-permissions";
 
+const DEFAULT_TAGS_PER_PLACE_LIMIT = 20;
+
 export function AtlasFieldsClient({ data }: { data: AtlasFieldsPayload }) {
   const { categories, tags } = data;
+  const tagsPerPlaceLimit =
+    data.fieldLimits.tagsPerPlace?.max ?? DEFAULT_TAGS_PER_PLACE_LIMIT;
 
   const categoriesBySection = useMemo(() => {
     const map = new Map<string, typeof categories>();
@@ -125,12 +129,11 @@ export function AtlasFieldsClient({ data }: { data: AtlasFieldsPayload }) {
             // Tag catalog size is live DB state (place_tags row count), not the
             // static ENRICH_FIELD_LIMITS.tagCatalogSize constant — keep the card
             // loyal to what admin-web-get-atlas-fields actually returned.
-            const max =
-              key === "tagCatalogSize" ? data.counts.tags : limit.max;
-            const note =
-              key === "tagCatalogSize"
-                ? `Live count in place_tags (${data.counts.tags})`
-                : limit.note;
+            const isTagCatalogSize = key === "tagCatalogSize";
+            const max = isTagCatalogSize ? data.counts.tags : limit.max;
+            const note = isTagCatalogSize
+              ? `Live count in place_tags (${data.counts.tags})`
+              : limit.note;
             return (
               <div
                 key={key}
@@ -187,7 +190,7 @@ export function AtlasFieldsClient({ data }: { data: AtlasFieldsPayload }) {
           <h2 className="font-display text-base font-semibold tracking-tight">Tags</h2>
           <p className="text-muted-foreground text-xs">
             {data.counts.tags} possible tags · up to{" "}
-            {data.fieldLimits.tagsPerPlace?.max ?? 20} per place
+            {tagsPerPlaceLimit} per place
           </p>
         </div>
         <p className="text-muted-foreground mt-1 text-sm">
@@ -195,7 +198,7 @@ export function AtlasFieldsClient({ data }: { data: AtlasFieldsPayload }) {
           by facet.
         </p>
         <Collapsible
-          summary={`Show ${data.counts.tags} tags · up to ${data.fieldLimits.tagsPerPlace?.max ?? 20} per place`}
+          summary={`Show ${data.counts.tags} tags · up to ${tagsPerPlaceLimit} per place`}
         >
           <div className="flex flex-col gap-6">
             {data.facets.map((facet) => {

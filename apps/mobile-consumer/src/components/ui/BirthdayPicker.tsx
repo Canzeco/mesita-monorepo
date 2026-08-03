@@ -2,6 +2,8 @@ import { ChevronDown } from 'lucide-react-native';
 import { useMemo, useState } from 'react';
 import { FlatList, Modal, Pressable, Text, View } from 'react-native';
 
+import { COLORS } from '@/constants/brand';
+
 // Friendly birthday picker — three taps (Day / Month / Year) instead of a
 // free-text field, so a partial selection sticks and the month never offers a
 // bad day. RN port of apps/web-consumer BirthdayPicker: same parse/compose/
@@ -124,9 +126,8 @@ export function BirthdayPicker({
           : '';
 
   function choose(v: string) {
-    if (open === 'day') update({ ...parts, day: v });
-    else if (open === 'month') update({ ...parts, month: v });
-    else if (open === 'year') update({ ...parts, year: v });
+    if (!open) return;
+    update({ ...parts, [open]: v });
     setOpen(null);
   }
 
@@ -256,7 +257,7 @@ function Trigger({
       >
         {filled ? text : placeholder}
       </Text>
-      <ChevronDown color="#775254" size={16} />
+      <ChevronDown color={COLORS.mutedForeground} size={16} />
     </Pressable>
   );
 }

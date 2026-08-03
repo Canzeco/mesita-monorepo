@@ -22,12 +22,15 @@ import { cn } from "@/lib/utils";
 
 type Step = "phone" | "code";
 
+const DEFAULT_COUNTRY_CODE: string = "MX";
+const BUTTON_SPINNER_CLASS = "border-white/40 border-t-white";
+
 export function PhoneOtpForm({ redirectAfter }: { redirectAfter: string }) {
   const router = useRouter();
   const supabase = useBrowserSupabase();
 
   const [step, setStep] = useState<Step>("phone");
-  const [countryCode, setCountryCode] = useState("MX");
+  const [countryCode, setCountryCode] = useState(DEFAULT_COUNTRY_CODE);
   const [localPhone, setLocalPhone] = useState("");
   const [code, setCode] = useState("");
   const [loading, setLoading] = useState(false);
@@ -62,7 +65,7 @@ export function PhoneOtpForm({ redirectAfter }: { redirectAfter: string }) {
   const verifyCode = async () => {
     setError(null);
     setInfo(null);
-    const token = code.replace(/\D/g, "");
+    const token = code;
     if (token.length !== 6) {
       setError("Enter the 6-digit code we sent you.");
       return;
@@ -118,7 +121,7 @@ export function PhoneOtpForm({ redirectAfter }: { redirectAfter: string }) {
           className={cn(PRIMARY_BUTTON_CLASS, "mt-2")}
         >
           {loading ? (
-            <Spinner size="sm" className="border-white/40 border-t-white" />
+            <Spinner size="sm" className={BUTTON_SPINNER_CLASS} />
           ) : (
             <>
               <MessageCircle className="h-4 w-4" />
@@ -182,7 +185,7 @@ export function PhoneOtpForm({ redirectAfter }: { redirectAfter: string }) {
         className={cn(PRIMARY_BUTTON_CLASS, "mt-2")}
       >
         {loading ? (
-          <Spinner size="sm" className="border-white/40 border-t-white" />
+          <Spinner size="sm" className={BUTTON_SPINNER_CLASS} />
         ) : (
           "Verify"
         )}
@@ -204,7 +207,7 @@ export function PhoneOtpForm({ redirectAfter }: { redirectAfter: string }) {
 // PhoneInputWithCountry keeps the dial code separate, so we re-combine it
 // here from the country meta + the local subscriber digits.
 function buildE164(countryCode: string, local: string): string {
-  const country = COUNTRY_BY_CODE[countryCode] ?? COUNTRY_BY_CODE.MX;
+  const country = COUNTRY_BY_CODE[countryCode] ?? COUNTRY_BY_CODE[DEFAULT_COUNTRY_CODE];
   const digits = local.replace(/\D/g, "");
   if (!digits) return "";
   return `+${country.dial}${digits}`;

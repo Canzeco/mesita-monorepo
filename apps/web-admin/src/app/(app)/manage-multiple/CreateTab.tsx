@@ -43,12 +43,10 @@ export function CreateTab() {
     return out;
   }, [text]);
 
-  const done = placeIds.filter((id) => {
-    const s = results[id]?.status;
-    return s === "ok" || s === "error";
-  }).length;
   const created = placeIds.filter((id) => results[id]?.status === "ok").length;
   const failed = placeIds.filter((id) => results[id]?.status === "error").length;
+  const done = created + failed;
+  const idsPlural = placeIds.length === 1 ? "" : "s";
 
   async function onFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -154,7 +152,7 @@ export function CreateTab() {
             className="hidden"
           />
           <span className="text-muted-foreground text-xs">
-            {placeIds.length} valid ID{placeIds.length === 1 ? "" : "s"} detected
+            {placeIds.length} valid ID{idsPlural} detected
             {placeIds.length >= MAX_IDS ? ` (capped at ${MAX_IDS})` : ""}
           </span>
         </div>
@@ -174,7 +172,7 @@ export function CreateTab() {
             ) : (
               <>
                 <Play className="h-3.5 w-3.5" />
-                Create {placeIds.length} unit{placeIds.length === 1 ? "" : "s"}
+                Create {placeIds.length} unit{idsPlural}
               </>
             )}
           </button>

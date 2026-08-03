@@ -27,6 +27,8 @@ import {
   formatRating,
 } from '@/lib/utils';
 
+const MUTED_ICON_COLOR = 'rgba(255,255,255,0.7)';
+
 export function PlaceSwipeCard({ place: rawPlace }: { place: Place }) {
   // Overview enrichment (MESITA parity) — derives google_rating / review count
   // / IG followers / open-closed / zone from the raw public-places columns that
@@ -119,17 +121,17 @@ export function PlaceSwipeCard({ place: rawPlace }: { place: Place }) {
               <Text className="text-[11px] font-semibold text-white">
                 {igFollowersLabel}
               </Text>
-              <Users color="rgba(255,255,255,0.7)" size={12} />
+              <Users color={MUTED_ICON_COLOR} size={12} />
             </MetaChip>
           ) : null}
           <MetaChip>
-            <Navigation color="rgba(255,255,255,0.7)" size={12} />
+            <Navigation color={MUTED_ICON_COLOR} size={12} />
             <Text className="text-[11px] font-semibold text-white">
               {distanceLabel}
             </Text>
           </MetaChip>
           <MetaChip>
-            <MapPin color="rgba(255,255,255,0.7)" size={12} />
+            <MapPin color={MUTED_ICON_COLOR} size={12} />
             <Text
               className={`max-w-[160px] text-[11px] font-semibold ${zoneLabel ? 'text-white' : 'text-white/75'}`}
               numberOfLines={1}
@@ -140,7 +142,7 @@ export function PlaceSwipeCard({ place: rawPlace }: { place: Place }) {
           {statusLabel ? (
             <MetaChip>
               <Clock
-                color={isOpen ? '#34d399' : 'rgba(255,255,255,0.7)'}
+                color={isOpen ? '#34d399' : MUTED_ICON_COLOR}
                 size={12}
               />
               <Text className="text-[11px] font-semibold text-white">

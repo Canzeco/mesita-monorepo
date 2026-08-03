@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 
 import { RailCard } from '@/components/search/SearchRailCard';
-import { SHADOW_ELEV } from '@/constants/brand';
+import { COLORS, SHADOW_ELEV } from '@/constants/brand';
 import type { Place } from '@/lib/api/places';
 
 // Rail card geometry (w-56 = 224px) + the flex gap between cards. The pager
@@ -83,7 +83,7 @@ export function IdleCatalogRail({
     return (
       <View className="absolute inset-x-0 z-20" style={{ bottom: bottom + 4 }}>
         <View className="h-28 items-center justify-center">
-          <ActivityIndicator color="#fb2b7b" />
+          <ActivityIndicator color={COLORS.primary} />
         </View>
       </View>
     );
@@ -144,7 +144,7 @@ export function IdleCatalogRail({
           className="min-h-[44px] flex-row items-center gap-1.5 rounded-full border border-border bg-card px-3.5 py-2"
           style={SHADOW_ELEV}
         >
-          <ChevronUp color="#fb2b7b" size={16} />
+          <ChevronUp color={COLORS.primary} size={16} />
           <Text
             className="text-xs font-semibold text-foreground"
             style={{ fontVariant: ['tabular-nums'] }}
@@ -157,7 +157,6 @@ export function IdleCatalogRail({
   }
 
   const handleScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
-    if (places.length === 0) return;
     const { contentOffset, layoutMeasurement, contentSize } = e.nativeEvent;
     // At the far-right end the last card is fully visible but the offset never
     // reaches (n-1)·stride, so Math.round caps one short — snap to the last
@@ -180,7 +179,7 @@ export function IdleCatalogRail({
           className="flex-row items-center gap-1 rounded-full border border-border bg-card py-1 pl-2.5 pr-1"
           style={SHADOW_ELEV}
         >
-          <MapPin color="#fb2b7b" size={12} />
+          <MapPin color={COLORS.primary} size={12} />
           <Text
             className="text-[11px] font-semibold text-muted-foreground"
             style={{ fontVariant: ['tabular-nums'] }}
@@ -200,7 +199,7 @@ export function IdleCatalogRail({
             hitSlop={8}
             className="h-5 w-5 items-center justify-center rounded-full"
           >
-            <X color="#775254" size={14} />
+            <X color={COLORS.mutedForeground} size={14} />
           </Pressable>
         </View>
       </View>

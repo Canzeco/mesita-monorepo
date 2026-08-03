@@ -140,7 +140,7 @@ export function ProfileClient({
             tint="sky"
             title="Personal details"
             summary="Name, phone, birthday, photo"
-            onClick={() => profile && setEditOpen(true)}
+            onClick={() => setEditOpen(true)}
             disabled={!profile}
           />
 

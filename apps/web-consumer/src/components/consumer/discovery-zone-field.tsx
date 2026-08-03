@@ -22,6 +22,7 @@ import { Pill } from "./discovery-filter-controls";
 import { newSessionToken } from "./search/search-utils";
 
 const SUGGEST_DEBOUNCE_MS = 300;
+const MIN_QUERY_LENGTH = 2;
 // Public Google key the map already runs on — inlined at build (NEXT_PUBLIC_*),
 // so it's available on BOTH the Search and Swipe surfaces client-side.
 const GMP_KEY = process.env.NEXT_PUBLIC_GMP_KEY ?? "";
@@ -50,7 +51,7 @@ export function DiscoveryZoneField({
   const updateQuery = (next: string) => {
     setQuery(next);
     const nextTrimmed = next.trim();
-    if (nextTrimmed.length < 2) {
+    if (nextTrimmed.length < MIN_QUERY_LENGTH) {
       setPredictions([]);
       setSearching(false);
     } else if (nextTrimmed !== trimmed) {
@@ -59,7 +60,7 @@ export function DiscoveryZoneField({
   };
 
   useEffect(() => {
-    if (trimmed.length < 2) return;
+    if (trimmed.length < MIN_QUERY_LENGTH) return;
     let cancelled = false;
     const handle = window.setTimeout(async () => {
       try {
@@ -162,7 +163,7 @@ export function DiscoveryZoneField({
         )}
       </div>
 
-      {trimmed.length >= 2 && (
+      {trimmed.length >= MIN_QUERY_LENGTH && (
         <div className="border-border/60 divide-border/50 max-h-56 divide-y overflow-y-auto rounded-2xl border">
           {predictions.length === 0 && !searching ? (
             <p className="text-muted-foreground px-3 py-3 text-[13px]">

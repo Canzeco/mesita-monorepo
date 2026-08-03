@@ -44,6 +44,7 @@ export function QueryRow({
   const mesitaHits = q.places.filter((p) => p.existsInMesita).length;
   const filteredOut = q.rawCount - q.places.length;
   const copyKey = `q:${q.query}`;
+  const isSingleRawResult = q.rawCount === 1;
   return (
     <li>
       <button
@@ -91,10 +92,10 @@ export function QueryRow({
           ) : !hasResults ? (
             <p className="text-muted-foreground bg-muted/40 rounded-xl p-3 text-xs">
               {q.rawCount > 0
-                ? `${q.rawCount} ${q.rawCount === 1 ? "place" : "places"} found, but ${
-                    q.rawCount === 1 ? "it was" : "all were"
+                ? `${q.rawCount} ${isSingleRawResult ? "place" : "places"} found, but ${
+                    isSingleRawResult ? "it was" : "all were"
                   } below your quality filters. Loosen the filters to see ${
-                    q.rawCount === 1 ? "it" : "them"
+                    isSingleRawResult ? "it" : "them"
                   }.`
                 : "No results."}
             </p>

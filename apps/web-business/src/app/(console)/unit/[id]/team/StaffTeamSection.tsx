@@ -3,7 +3,7 @@ import { MessageCircle, Phone as PhoneIcon } from "lucide-react";
 import type { RemoveKind, TeamSnapshot } from "@/lib/api/team";
 import { formatRelative } from "@/lib/utils";
 
-import { StaffInviteForm } from "./StaffInviteForm";
+import { StaffInviteForm, type StaffChannel } from "./StaffInviteForm";
 import { TeamMemberRow } from "./TeamMemberRow";
 import {
   Avatar,
@@ -15,8 +15,6 @@ import {
   TeamList,
   TeamModule,
 } from "./TeamUi";
-
-type StaffChannel = "whatsapp" | "sms";
 
 export function StaffTeamSection({
   projectId,
@@ -70,41 +68,40 @@ export function StaffTeamSection({
         <TeamEmpty message="No staffs yet" />
       ) : (
         <TeamList>
-          {staffs.map((w) => (
-            <TeamMemberRow key={`${w.userId}:${projectId}`}>
-              <Avatar
-                initial={(w.phone ?? "?").slice(-2)}
-                tint="bg-whatsapp/15 text-whatsapp-deep"
-              />
-              <div className="min-w-0 flex-1">
-                <p className="truncate font-mono text-[13px] font-semibold">
-                  {w.phone ?? "—"}
-                </p>
-                <p className="text-muted-foreground text-[11px]">
-                  Joined {formatRelative(w.createdAt)}
-                </p>
-              </div>
-              {w.phone && (
-                <PingButton
-                  busy={busy === `ping-${w.phone}`}
-                  onClick={() => onPing("whatsapp", w.phone!)}
+          {staffs.map((w) => {
+            const staffKey = `${w.userId}:${projectId}`;
+            return (
+              <TeamMemberRow key={staffKey}>
+                <Avatar
+                  initial={(w.phone ?? "?").slice(-2)}
+                  tint="bg-whatsapp/15 text-whatsapp-deep"
                 />
-              )}
-              {isOwner && (
-                <RemoveButton
-                  busy={busy === `remove-${w.userId}`}
-                  label="Remove staff"
-                  onClick={() =>
-                    onRemove(
-                      `${w.userId}:${projectId}`,
-                      "staff",
-                      "Remove this staff?",
-                    )
-                  }
-                />
-              )}
-            </TeamMemberRow>
-          ))}
+                <div className="min-w-0 flex-1">
+                  <p className="truncate font-mono text-[13px] font-semibold">
+                    {w.phone ?? "—"}
+                  </p>
+                  <p className="text-muted-foreground text-[11px]">
+                    Joined {formatRelative(w.createdAt)}
+                  </p>
+                </div>
+                {w.phone && (
+                  <PingButton
+                    busy={busy === `ping-${w.phone}`}
+                    onClick={() => onPing("whatsapp", w.phone!)}
+                  />
+                )}
+                {isOwner && (
+                  <RemoveButton
+                    busy={busy === `remove-${w.userId}`}
+                    label="Remove staff"
+                    onClick={() =>
+                      onRemove(staffKey, "staff", "Remove this staff?")
+                    }
+                  />
+                )}
+              </TeamMemberRow>
+            );
+          })}
           {pendingStaffInvites.map((inv) => (
             <PendingRow
               key={inv.id}

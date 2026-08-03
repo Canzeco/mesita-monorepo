@@ -7,7 +7,19 @@ import { PhonePicker } from "@/components/ui/phone-picker";
 import { PILL_BUTTON_CLASS } from "@/lib/ui-classes";
 import { cn } from "@/lib/utils";
 
-type StaffChannel = "whatsapp" | "sms";
+export type StaffChannel = "whatsapp" | "sms";
+
+function channelLabel(channel: StaffChannel): string {
+  return channel === "whatsapp" ? "WhatsApp" : "SMS";
+}
+
+function ChannelIcon({ channel }: { channel: StaffChannel }) {
+  return channel === "whatsapp" ? (
+    <MessageCircle className="h-3.5 w-3.5" />
+  ) : (
+    <PhoneIcon className="h-3.5 w-3.5" />
+  );
+}
 
 export function StaffInviteForm({
   busy,
@@ -20,13 +32,14 @@ export function StaffInviteForm({
 }) {
   const [channel, setChannel] = useState<StaffChannel>("whatsapp");
   const [phone, setPhone] = useState("");
+  const trimmedPhone = phone.trim();
 
   return (
     <form
       className="bg-muted/30 border-border/50 flex flex-col gap-3 rounded-xl border p-3"
       onSubmit={(e) => {
         e.preventDefault();
-        onSubmit(channel, phone.trim());
+        onSubmit(channel, trimmedPhone);
       }}
     >
       <div className="flex items-center gap-2">
@@ -38,12 +51,8 @@ export function StaffInviteForm({
               : "bg-sky-500/15 text-sky-700",
           )}
         >
-          {channel === "whatsapp" ? (
-            <MessageCircle className="h-3.5 w-3.5" />
-          ) : (
-            <PhoneIcon className="h-3.5 w-3.5" />
-          )}
-          Sending via {channel === "whatsapp" ? "WhatsApp" : "SMS"}
+          <ChannelIcon channel={channel} />
+          Sending via {channelLabel(channel)}
         </span>
       </div>
 
@@ -64,12 +73,8 @@ export function StaffInviteForm({
                     : "text-muted-foreground hover:text-foreground",
                 )}
               >
-                {c === "whatsapp" ? (
-                  <MessageCircle className="h-3.5 w-3.5" />
-                ) : (
-                  <PhoneIcon className="h-3.5 w-3.5" />
-                )}
-                {c === "whatsapp" ? "WhatsApp" : "SMS"}
+                <ChannelIcon channel={c} />
+                {channelLabel(c)}
               </button>
             ))}
           </div>
@@ -84,7 +89,7 @@ export function StaffInviteForm({
           <button
             type="submit"
             disabled={
-              busy || (channel === "whatsapp" && phone.trim().length === 0)
+              busy || (channel === "whatsapp" && trimmedPhone.length === 0)
             }
             className={cn(
               PILL_BUTTON_CLASS,
@@ -100,8 +105,8 @@ export function StaffInviteForm({
           </button>
           <button
             type="button"
-            disabled={busy || phone.trim().length === 0}
-            onClick={() => onPing(channel, phone.trim())}
+            disabled={busy || trimmedPhone.length === 0}
+            onClick={() => onPing(channel, trimmedPhone)}
             className="border-border bg-background text-foreground hover:bg-muted inline-flex h-10 items-center gap-2 rounded-full border px-4 text-[13px] font-semibold transition disabled:opacity-50"
           >
             <Send className="h-3.5 w-3.5" />

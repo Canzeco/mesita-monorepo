@@ -151,6 +151,7 @@ export function CostSection({
     links,
     places,
   });
+  const batchTotal = total.toFixed(2);
 
   return (
     <div className="mx-auto flex max-w-6xl flex-col gap-6">
@@ -190,7 +191,7 @@ export function CostSection({
               Batch total · {places} places
             </span>
             <div className="flex items-center gap-4 text-sm font-semibold tabular-nums">
-              <span>${total.toFixed(2)}</span>
+              <span>${batchTotal}</span>
               <span className="text-muted-foreground font-normal">·</span>
               <span>~{fmtTime(totalSecs)}</span>
             </div>
@@ -313,7 +314,7 @@ export function CostSection({
                         ~{fmtTime(totalSecs)}
                       </td>
                       <td className="px-4 py-2.5 text-right font-semibold tabular-nums">
-                        ${total.toFixed(2)}
+                        ${batchTotal}
                       </td>
                     </tr>
                   )}
