@@ -57,12 +57,13 @@ Deno.test("assessPromoLane: free plan always open", () => {
   assertEquals(r.open, true);
 });
 
-Deno.test("assessPromoLane: paid not activated blocks", () => {
+Deno.test("assessPromoLane: paid not-yet-activated stays OPEN (MESITA-850)", () => {
+  // The guest's first ticket IS the activation — closing the lane here was
+  // a deadlock (creation checks the lane; no ticket could ever be honored).
   const r = assessPromoLane(
     row({ membership_live_at: null, first_ticket_honored_at: null }),
   );
-  assertEquals(r.open, false);
-  if (!r.open) assertEquals(r.code, "not_activated");
+  assertEquals(r.open, true);
 });
 
 Deno.test("assessPromoLane: live membership opens", () => {

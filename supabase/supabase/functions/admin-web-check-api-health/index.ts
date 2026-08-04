@@ -63,7 +63,17 @@ type ProbeSpec = {
   envKeys: string[];
   run: (
     keys: Record<string, string | undefined>,
-  ) => Promise<{ res: Response; detail: (body: unknown) => string }>;
+  ) => Promise<{
+    res: Response;
+    detail: (body: unknown) => string;
+    /**
+     * Downgrade a 2xx. A reachable vendor is not the same as a WORKING one:
+     * ElevenLabs answers `/convai/agents` perfectly while the account is out
+     * of credits and every call dies on answer. Without this the card reads
+     * "Healthy" during a total outage, which is worse than having no card.
+     */
+    verdict?: (body: unknown) => Verdict | null;
+  }>;
 };
 
 /** First non-empty env var among `names` — tolerates the ELEVEN_KEY/ELEVENLABS_KEY drift. */
@@ -128,10 +138,13 @@ const PROBES: ProbeSpec[] = [
       );
       return {
         res,
+        // "Key accepted" is not a balance. If the credit number is missing the
+        // page cannot answer the question it exists to answer, so say so.
+        verdict: (b) => (num(b, "data", "remaining_credits") === null ? "degraded" : null),
         detail: (b) => {
           const remaining = num(b, "data", "remaining_credits");
           return remaining === null
-            ? "Key accepted."
+            ? "Key accepted, but balance UNVERIFIED — no credit figure in the response."
             : `${remaining.toLocaleString()} credits remaining.`;
         },
       };
@@ -148,14 +161,41 @@ const PROBES: ProbeSpec[] = [
       const res = await timedFetch(
         `https://api.apify.com/v2/users/me?token=${encodeURIComponent(key)}`,
       );
+
+      // /users/me proves the token, not the money. Spend lives on the usage
+      // endpoint; without it a drained account reads "Healthy".
+      let spend: string | null = null;
+      let spendUnknown = true;
+      if (res.ok) {
+        try {
+          const u = await timedFetch(
+            `https://api.apify.com/v2/users/me/usage/monthly?token=${
+              encodeURIComponent(key)
+            }`,
+          );
+          if (u.ok) {
+            const b = await u.json();
+            const used = num(b, "data", "totalUsageCreditsUsdBeforeVolumeDiscount") ??
+              num(b, "data", "monthlyUsageUsd");
+            if (used !== null) {
+              spend = `$${used.toFixed(2)} used this month`;
+              spendUnknown = false;
+            }
+          }
+        } catch {
+          // best-effort
+        }
+      }
+
       return {
         res,
+        verdict: () => (spendUnknown ? "degraded" : null),
         detail: (b) => {
           const plan = str(b, "data", "plan", "id");
           const user = str(b, "data", "username");
-          return [user && `user ${user}`, plan && `plan ${plan}`]
-            .filter(Boolean)
-            .join(" · ") || "Key accepted.";
+          const head = [user && `user ${user}`, plan && `plan ${plan}`]
+            .filter(Boolean).join(" · ") || "Key accepted";
+          return `${head} · ${spend ?? "spend UNVERIFIED"}.`;
         },
       };
     },
@@ -175,15 +215,47 @@ const PROBES: ProbeSpec[] = [
         }.json`,
         { headers: { Authorization: `Basic ${btoa(`${sid}:${token}`)}` } },
       );
+      // An account reads "active" at $0.00 — and then every OTP silently fails
+      // and nobody can sign in. Status is not money; fetch the balance.
+      let balance: string | null = null;
+      let balanceUnknown = true;
+      let broke = false;
+      if (res.ok) {
+        try {
+          const bal = await timedFetch(
+            `https://api.twilio.com/2010-04-01/Accounts/${
+              encodeURIComponent(sid)
+            }/Balance.json`,
+            { headers: { Authorization: `Basic ${btoa(`${sid}:${token}`)}` } },
+          );
+          if (bal.ok) {
+            const b = await bal.json();
+            const raw = str(b, "balance");
+            const cur = str(b, "currency") ?? "";
+            const amount = raw === null ? null : Number(raw);
+            if (amount !== null && Number.isFinite(amount)) {
+              balance = `${amount.toFixed(2)} ${cur}`.trim();
+              balanceUnknown = false;
+              broke = amount <= 0;
+            }
+          }
+        } catch {
+          // best-effort
+        }
+      }
+
       return {
         res,
+        verdict: () => (broke ? "down" : (balanceUnknown ? "degraded" : null)),
         detail: (b) => {
           const status = str(b, "status");
           const type = str(b, "type");
-          return [status && `account ${status}`, type].filter(Boolean).join(
-            " · ",
-          ) ||
-            "Key accepted.";
+          const head = [status && `account ${status}`, type]
+            .filter(Boolean).join(" · ") || "Key accepted";
+          if (broke) return `${head} · NO BALANCE (${balance}) — OTP sign-in will fail.`;
+          return `${head} · ${
+            balance ? `balance ${balance}` : "balance UNVERIFIED"
+          }.`;
         },
       };
     },
@@ -209,10 +281,9 @@ const PROBES: ProbeSpec[] = [
         { headers },
       );
 
-      // Quota is a nice-to-have, not the verdict. Fetch it best-effort so a
-      // key scoped only for agents still reports healthy — just without the
-      // character balance. Never let this leg fail the probe.
+      // Quota, best-effort: an agents-scoped key 401s here.
       let quota: string | null = null;
+      let quotaHidden = false;
       if (res.ok) {
         try {
           const sub = await timedFetch(
@@ -231,23 +302,84 @@ const PROBES: ProbeSpec[] = [
               [tier && `tier ${tier}`, chars].filter(Boolean).join(" · ") ||
               null;
           } else if (sub.status === 401 || sub.status === 403) {
+            quotaHidden = true;
             quota = "quota hidden (key lacks user_read)";
           }
         } catch {
-          // Timeout or transport error on the optional leg — the agents call
-          // already answered the question that decides the verdict.
-          quota = null;
+          quotaHidden = true;
+        }
+      }
+
+      // THE CHECK THAT MATTERS. On 2026-08-04 this card read "Healthy" while
+      // every reservation call was being killed the instant the guest answered:
+      // `/convai/agents` answers fine with an exhausted balance, and the quota
+      // leg was invisible because the key lacks `user_read`. So ask the only
+      // question that can't be faked — did the LAST REAL CALL survive? A
+      // conversation carries `metadata.error.code 1002` / a quota
+      // termination_reason when the account is out of credits, and the
+      // conversations endpoint is readable by an agents-scoped key.
+      let lastCallFailure: string | null = null;
+      if (res.ok) {
+        try {
+          const conv = await timedFetch(
+            "https://api.elevenlabs.io/v1/convai/conversations?page_size=1",
+            { headers },
+          );
+          if (conv.ok) {
+            const list = (await conv.json()) as {
+              conversations?: Array<{ conversation_id?: string }>;
+            };
+            const id = list.conversations?.[0]?.conversation_id;
+            if (id) {
+              const one = await timedFetch(
+                `https://api.elevenlabs.io/v1/convai/conversations/${
+                  encodeURIComponent(id)
+                }`,
+                { headers },
+              );
+              if (one.ok) {
+                const c = (await one.json()) as {
+                  metadata?: {
+                    error?: { code?: number; reason?: string };
+                    termination_reason?: string;
+                    charging?: { tier?: string };
+                  };
+                };
+                const err = c.metadata?.error;
+                const reason = c.metadata?.termination_reason ?? "";
+                if (err?.code === 1002 || /quota/i.test(reason)) {
+                  lastCallFailure = `OUT OF CREDITS — last call killed on answer: ${
+                    (err?.reason ?? reason).slice(0, 90)
+                  }`;
+                }
+                if (!quota && c.metadata?.charging?.tier) {
+                  quota = `tier ${c.metadata.charging.tier}`;
+                }
+              }
+            }
+          }
+        } catch {
+          // Best-effort: never let this leg crash the probe.
         }
       }
 
       return {
         res,
+        // A reachable fleet is not a working one. Out of credits = down; a key
+        // that can't show the balance is degraded, not healthy, because the
+        // balance is precisely what this page promises to report.
+        verdict: () =>
+          lastCallFailure ? "down" : (quotaHidden ? "degraded" : null),
         detail: (b) => {
+          if (lastCallFailure) return lastCallFailure;
           const agents = (b as { agents?: unknown[] } | null)?.agents;
           const head = Array.isArray(agents)
             ? `${agents.length} agent(s) visible`
             : "Key accepted";
-          return [head, quota].filter(Boolean).join(" · ") + ".";
+          const tail = quotaHidden
+            ? "balance UNVERIFIED — grant user_read to the key to see it"
+            : quota;
+          return [head, tail].filter(Boolean).join(" · ") + ".";
         },
       };
     },
@@ -265,11 +397,14 @@ const PROBES: ProbeSpec[] = [
       });
       return {
         res,
+        // OpenAI exposes no unbilled balance endpoint, so this can only ever
+        // prove the key. Say that outright instead of implying a green wallet.
         detail: (b) => {
           const data = (b as { data?: unknown[] } | null)?.data;
-          return Array.isArray(data)
-            ? `Key accepted — ${data.length} models visible.`
-            : "Key accepted.";
+          const head = Array.isArray(data)
+            ? `Key accepted — ${data.length} models visible`
+            : "Key accepted";
+          return `${head} · balance not exposed by OpenAI (key-only check).`;
         },
       };
     },
@@ -403,7 +538,7 @@ async function runProbe(
 
   const started = Date.now();
   try {
-    const { res, detail } = await spec.run(keys);
+    const { res, detail, verdict: verdictOf } = await spec.run(keys);
     const latencyMs = Date.now() - started;
     const raw = await res.text();
     let body: unknown = null;
@@ -416,7 +551,9 @@ async function runProbe(
     if (res.ok) {
       return {
         ...base,
-        verdict: "ok",
+        // A 2xx means "the vendor answered", not "the vendor works". A probe
+        // that knows better (out of credits, balance unverifiable) says so.
+        verdict: verdictOf?.(body) ?? "ok",
         httpStatus: res.status,
         latencyMs,
         detail: detail(body),

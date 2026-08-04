@@ -1,10 +1,13 @@
 // Promos v4 membership enforcement (MESITA-542).
 //
-// Activation gate: the first honored guest ticket → live. It used to also
-// require a staff WhatsApp test ping, but there is no staff WhatsApp — the
-// waiter identity and its channel were retired (MESITA-833) and the EF that
-// stamped the ping went with them, which left every paid place stuck on
-// "not_activated" forever. Honoring a check IS the proof the gate wanted.
+// Activation is a recorded MILESTONE, not a lane gate (v3b, MESITA-850).
+// It used to close the promo lane until the first honored ticket — but since
+// Tickets v2 the CONSUMER creates tickets, and creation checks this very
+// lane, so "not activated blocks creation" was a deadlock: no ticket could
+// ever exist to be honored. (Same failure class as the retired WhatsApp
+// ping, which once left every paid place stuck the same way, MESITA-833.)
+// first_ticket_honored_at / membership_live_at still get stamped on the
+// first close and remain the activation signal for admin & Performance.
 // Strikes (refused/ignored QR): 1 warning · 2 pause promo 30d ·
 // 3 remove paid posture (plan→free, rates cleared) + forfeit stamp.
 // Strikes decay after 6 months clean. Burned guests get an instant compensation
@@ -39,7 +42,6 @@ export type MembershipRow = {
 
 export type PromoLaneBlockCode =
   | "forfeited"
-  | "not_activated"
   | "paused";
 
 export type PromoLaneEligibility =
@@ -109,19 +111,10 @@ export function assessPromoLane(
     }
   }
 
-  if (!row.membership_live_at) {
-    return {
-      open: false,
-      code: "not_activated",
-      strikeCount,
-      staffMessage: "Falta honrar el primer ticket de un comensal.\n\n" +
-        "Escanea el QR del primer cliente y aplica su descuento en la cuenta: " +
-        "con eso se activa la membresía.",
-    };
-  }
-
-  // Strike 1 is a warning only — membership stays live and the promo lane
-  // stays open.
+  // NOT-activated does NOT close the lane (v3b, MESITA-850): the guest's
+  // first ticket is exactly how a place activates — blocking creation on
+  // activation was a deadlock. Strike 1 is a warning only — membership
+  // stays live and the promo lane stays open.
   return { open: true, strikeCount };
 }
 
