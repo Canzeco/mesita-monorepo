@@ -250,11 +250,20 @@ export async function ticketsOfPlace(
 
 // ── Mutations ────────────────────────────────────────────────────────────────
 
+/**
+ * Cancel + owe the notice. `notice` names the side that must HEAR about it
+ * (RESERVATIONS-PROTOCOL.md legs 5/6): 'venue_cancel' when the guest walks
+ * away from a table the venue is holding, 'guest_cancel' when the venue calls
+ * it off. null = nobody to tell (the ticket never got confirmed). The caller
+ * then fires the engine with intent 'cancel_notice'; the retry cron is the
+ * safety net for a notice left 'pending'.
+ */
 export async function cancelTicket(
   admin: SupabaseClient,
   id: string,
   by: "consumer" | "business" | "agent",
   reason: string,
+  notice: "venue_cancel" | "guest_cancel" | null = null,
 ): Promise<string | null> {
   const { error } = await admin
     .from("reservations")
@@ -263,6 +272,14 @@ export async function cancelTicket(
       cancelled_at: new Date().toISOString(),
       cancelled_by: by,
       outcome_note: reason ? reason.slice(0, 300) : null,
+      // A cancelled ticket must never wake again as a booking or a callback.
+      attempts_state: "cancelled",
+      next_attempt_at: null,
+      callback_state: "skipped",
+      callback_next_attempt_at: null,
+      ...(notice
+        ? { notice_kind: notice, notice_state: "pending", notice_attempts: 0, notice_next_at: null }
+        : {}),
     })
     .eq("id", id);
   return error ? error.message : null;

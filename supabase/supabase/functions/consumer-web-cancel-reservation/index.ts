@@ -20,6 +20,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { corsPreflight, json, readJson } from "../_shared/http.ts";
 import { adminClient, getAuthedUser, readEFEnv } from "../_shared/auth.ts";
+import { invokeArtificialCaller } from "../_shared/internal.ts";
 
 type Body = { reservation_id?: string; reason?: string };
 
@@ -65,6 +66,11 @@ Deno.serve(async (req) => {
     return json({ ok: false, error: "This reservation already happened." }, 409);
   }
 
+  // A CONFIRMED table means the venue is holding it — it must HEAR about the
+  // cancel or this becomes a Mesita-made no-show (RESERVATIONS-PROTOCOL.md
+  // leg 5). Pending tickets owe nothing: never ring a venue to cancel what it
+  // never agreed to.
+  const notice = row.status === "confirmed" ? "venue_cancel" : null;
   const { error } = await admin
     .from("reservations")
     .update({
@@ -74,10 +80,27 @@ Deno.serve(async (req) => {
       outcome_note: reason || null,
       // Stop the run loop from re-entering on a cancelled ticket.
       attempts_state: "cancelled",
+      next_attempt_at: null,
       callback_state: "skipped",
+      callback_next_attempt_at: null,
+      ...(notice
+        ? { notice_kind: notice, notice_state: "pending", notice_attempts: 0, notice_next_at: null }
+        : {}),
     })
     .eq("id", id);
   if (error) return json({ ok: false, error: error.message }, 500);
+
+  // The cancel itself is done and instant; the courtesy call is a background
+  // consequence. The engine acks early, and the retry cron sweeps any notice
+  // left 'pending' if this invoke is lost.
+  if (notice) {
+    await invokeArtificialCaller(
+      envRes.env,
+      "consumer-web-cancel-reservation",
+      "supabase-edgefunc-reservation-call",
+      { reservation_id: id, intent: "cancel_notice" },
+    );
+  }
 
   return json({
     ok: true,
@@ -85,5 +108,6 @@ Deno.serve(async (req) => {
     reservation_id: id,
     status: "cancelled",
     reference_code: row.reference_code ?? null,
+    venue_notified: notice !== null,
   });
 });

@@ -7,8 +7,10 @@
 //   { caller_phone, reference_code, reason? }
 //
 // The ticket's place must own the calling line (places.phone or the
-// products.reservations endpoint), else 403. cancelled_by = business — the
-// guest-notification flow (b2c) is the follow-up consumer of this record.
+// products.reservations endpoint), else 403. cancelled_by = business — and
+// the guest is then CALLED: cancelTicket owes notice_kind='guest_cancel' and
+// the engine (intent cancel_notice) puts a2 on the line with call_context
+// "cancelled_by_venue" (RESERVATIONS-PROTOCOL.md leg 6).
 // Auth: anon bearer + x-agent-secret.
 //
 // Deploy: supabase functions deploy eleven-a4-cancel-reservation
@@ -23,6 +25,7 @@ import {
   sameLine,
   ticketByCode,
 } from "../_shared/agent-tools.ts";
+import { invokeArtificialCaller } from "../_shared/internal.ts";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
@@ -66,8 +69,18 @@ Deno.serve(async (req) => {
     return json({ ok: true, already: true, reference_code: ticket.reference_code });
   }
 
-  const err = await cancelTicket(admin, ticket.id, "business", cleanNote(body.reason));
+  // Leg 6: the venue calls it off, so the GUEST must hear — a2 rings them
+  // with call_context "cancelled_by_venue". The flag below used to be a
+  // dead letter; the notice columns + this engine fire make it real.
+  const err = await cancelTicket(admin, ticket.id, "business", cleanNote(body.reason), "guest_cancel");
   if (err) return json({ ok: false, error: err }, 500);
+
+  await invokeArtificialCaller(
+    envRes.env,
+    "eleven-a4-cancel-reservation",
+    "supabase-edgefunc-reservation-call",
+    { reservation_id: ticket.id, intent: "cancel_notice" },
+  );
 
   return json({
     ok: true,

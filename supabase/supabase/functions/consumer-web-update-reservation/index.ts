@@ -112,6 +112,8 @@ Deno.serve(async (req) => {
     // Reset means back to the DEFAULT, not to nothing; same as callback_state.
     attempts_state: "idle",
     callback_state: "none",
+    callback_attempts: 0,
+    callback_next_attempt_at: null,
     callback_conversation_id: null,
     callback_at: null,
     // MUST clear: if the old ticket was parked for a retry, the pg_cron poller

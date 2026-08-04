@@ -122,6 +122,7 @@ Deno.serve(async (req) => {
       // a2 is ON the phone with the guest right now — there is nothing left
       // to call them back about.
       callback_state: "skipped",
+      callback_next_attempt_at: null,
       last_call_status: `guest took the venue's own ${date} ${time} offer — confirmed on the spot`,
     };
     if (note) patch.outcome_note = note;
@@ -170,6 +171,8 @@ Deno.serve(async (req) => {
     reported_verdict: null,
     guest_confirmed_at: new Date().toISOString(),
     negotiation_rounds: rounds + 1,
+    callback_attempts: 0,
+    callback_next_attempt_at: null,
   };
   if (note) patch.outcome_note = note;
   const { error } = await admin.from("reservations").update(patch).eq("id", ticket.id);
