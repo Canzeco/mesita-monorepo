@@ -8,14 +8,20 @@
 // Vercel env setup is required for this page to work.
 
 const SUPABASE_URL =
-  process.env.NEXT_PUBLIC_SUPABASE_URL ?? "https://yjalywfzdelacdzccpgb.supabase.co";
+  process.env.NEXT_PUBLIC_SUPABASE_URL ??
+  "https://yjalywfzdelacdzccpgb.supabase.co";
 
 const FUNCTIONS_BASE = `${SUPABASE_URL}/functions/v1`;
 
 // The public payload — mirrors the allowlist shaped by the EF
 // (_shared/ticket-check.ts shapeCheckPayload). Nothing class- or rung-shaped
 // ever arrives here by design.
-export type CheckActionState = "none" | "pending" | "submitted" | "approved" | "rejected";
+export type CheckActionState =
+  | "none"
+  | "pending"
+  | "submitted"
+  | "approved"
+  | "rejected";
 
 export type CheckPayload = {
   status: string;
@@ -38,7 +44,11 @@ export type CheckPayload = {
     discount_percent: number | null;
     reward_cap_mxn: number | null;
   } | null;
-  story: { required: boolean; state: CheckActionState; screenshot_url: string | null };
+  story: {
+    required: boolean;
+    state: CheckActionState;
+    screenshot_url: string | null;
+  };
   review: { required: boolean; state: CheckActionState };
   self_opened: boolean;
   scanned_before?: boolean;
@@ -84,9 +94,18 @@ async function callCheckEF<T>(
     payload = null;
   }
 
-  const parsed = (payload ?? {}) as { ok?: boolean; error?: string; code?: string };
+  const parsed = (payload ?? {}) as {
+    ok?: boolean;
+    error?: string;
+    code?: string;
+  };
   if (res.ok && parsed.ok) return payload as { ok: true } & T;
-  return { ok: false, error: parsed.error, code: parsed.code, status: res.status };
+  return {
+    ok: false,
+    error: parsed.error,
+    code: parsed.code,
+    status: res.status,
+  };
 }
 
 // Staff-facing Spanish for every way a call can fail. The Edge Functions
@@ -99,7 +118,8 @@ const FAILURE_CODE_COPY: Record<string, string> = {
 };
 
 export function checkErrorMessage(res: EFFailure): string {
-  if (res.code && FAILURE_CODE_COPY[res.code]) return FAILURE_CODE_COPY[res.code];
+  if (res.code && FAILURE_CODE_COPY[res.code])
+    return FAILURE_CODE_COPY[res.code];
   if (res.status === 0) {
     return "Sin conexión. Revisa la señal del teléfono e inténtalo de nuevo.";
   }

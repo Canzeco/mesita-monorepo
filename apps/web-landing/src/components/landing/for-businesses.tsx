@@ -54,8 +54,8 @@ function ForBusinesses() {
         <div className="mt-10 flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-background/70 inline-flex items-center gap-2 text-[13px]">
             <CheckCircle2 className="h-4 w-4" />
-            Gratis (listado) · Pro $100 MXN/mes · Ultra $5,000 MXN/mes — la misma
-            mecánica, más visibilidad.
+            Gratis (listado) · Pro $100 MXN/mes · Ultra $5,000 MXN/mes — la
+            misma mecánica, más visibilidad.
           </p>
           <Button
             asChild

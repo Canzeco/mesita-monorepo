@@ -1,10 +1,7 @@
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {
-  BUSINESS_SIGNUP_URL,
-  CONSUMER_URL,
-} from "@/components/landing/urls";
+import { BUSINESS_SIGNUP_URL, CONSUMER_URL } from "@/components/landing/urls";
 
 const NAV_LINKS = [
   { href: "#como-funciona", label: "Cómo funciona" },

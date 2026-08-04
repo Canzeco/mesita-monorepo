@@ -1,9 +1,6 @@
 import { Store, UserCircle } from "lucide-react";
 import { PathButton } from "@/components/landing/path-button";
-import {
-  BUSINESS_SIGNUP_URL,
-  CONSUMER_URL,
-} from "@/components/landing/urls";
+import { BUSINESS_SIGNUP_URL, CONSUMER_URL } from "@/components/landing/urls";
 
 function FinalCTA() {
   return (
