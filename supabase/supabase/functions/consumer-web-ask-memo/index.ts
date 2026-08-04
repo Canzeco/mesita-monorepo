@@ -4,15 +4,22 @@
 // ElevenLabs Reservationist). Unlike those two, Memo lives here, as an
 // Edge Function, because it sits on the consumer's synchronous chat path.
 //
+// MEMO HOLDS NO DATABASE CLIENT. Every Mesita read on both engines below goes
+// through _shared/memo-data.ts to one of four named, read-only internal EFs
+// (recall-lineup · search-places · get-consumer-context · get-memo-config).
+// This EF authenticates the consumer and shapes the reply; it does not query.
+// See memo-data.ts for why, and admin.mesita.ai/memo-config (Data Access) for
+// the operator-facing map of that surface.
+//
 // One turn of the concierge chat:
 //
-//   1. GOOGLE PLACES (Text Search, New) + MESITA DB → the place CANDIDATES.
+//   1. GOOGLE PLACES (Text Search, New) + MESITA CATALOG → the place CANDIDATES.
 //      Only when the ask is place-seeking (isPlaceSeeking). Google understands
 //      the query (location-biased on lat/lng); results are type-filtered to
 //      Mesita's hospitality universe and ranked open-now-first then by rating.
-//      Google ids are cross-referenced against projects_view so cards get
-//      tagged on-Mesita (partner/web-listed) vs not, and a name search surfaces
-//      on-platform spots Google missed. (Future: RAG over the catalog here.)
+//      Google ids are cross-referenced against the catalog (via search-places)
+//      so cards get tagged on-Mesita (partner/web-listed) vs not, and a name
+//      search surfaces on-platform spots Google missed.
 //
 //   2. PERPLEXITY (sonar-pro, web-grounded) → the natural-language ANSWER.
 //      The candidates from step 1 are fed to Perplexity as context so its
@@ -29,26 +36,16 @@
 // Platform, shared with the enricher). Neither key ever leaves Supabase.
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { corsPreflight, json, readJson } from "../_shared/http.ts";
-import {
-  adminClient,
-  getOptionalAuthedUser,
-  readEFEnv,
-} from "../_shared/auth.ts";
-import {
-  escapeIlike,
-  readGooglePlacesKey,
-} from "../_shared/google-places.ts";
-import {
-  type ChannelPolicy,
-  readChannelPolicy,
-} from "../_shared/sourcing.ts";
+import { getOptionalAuthedUser, readEFEnv } from "../_shared/auth.ts";
+import { readGooglePlacesKey } from "../_shared/google-places.ts";
+import type { ChannelPolicy } from "../_shared/sourcing.ts";
 import { fallbackAnswer } from "../_shared/memo-fallback.ts";
 import { isPlaceSeeking } from "../_shared/memo-intent.ts";
-import { readMemoSystemPrompt } from "../_shared/memo-prompt.ts";
+import { resolveMemoSystemPrompt } from "../_shared/memo-prompt.ts";
 import { answerWithPerplexity } from "./memo-answer.ts";
-import { readConsumerContext } from "../_shared/memo-consumer-context.ts";
+import { createMemoData, type MemoData } from "../_shared/memo-data.ts";
+import { cardToPrediction } from "../_shared/memo-airlock-tools.ts";
 import {
   googleTextSearch,
   type Prediction,
@@ -74,6 +71,12 @@ type MemoBody = {
 // ── Tuning ─────────────────────────────────────────────────────────────
 
 const MAX_CARDS = 3;
+// The on-Mesita name sweep in the legacy pipeline.
+const NAME_SWEEP_LIMIT = 4;
+// How long a warm isolate may reuse the config + persona-clause reads. Short
+// enough that an operator's Memo Config save feels immediate, long enough to
+// cover a whole conversation.
+const CONFIG_CACHE_MS = 30_000;
 
 // ── Handler ────────────────────────────────────────────────────────────
 
@@ -102,45 +105,55 @@ Deno.serve(async (req) => {
   // Optional auth — Memo works signed-out; a user id lets us personalise later.
   const { user } = await getOptionalAuthedUser(req, env);
 
-  const admin = adminClient(env);
+  // Memo's whole reach, on either engine.
+  //
+  // Config + persona-clause reads are cached briefly (see memo-data.ts): this
+  // is the consumer's synchronous chat path, app_settings changes a few times a
+  // week, and a chat asks for the same user's clause on every turn. Place reads
+  // are never cached — those are the answer. An operator's Config save takes
+  // effect within CONFIG_CACHE_MS; the admin Playground opts out entirely so it
+  // always tests what was just saved.
+  const data = createMemoData(env, "consumer-web-ask-memo", {
+    cacheMs: CONFIG_CACHE_MS,
+  });
   const perplexityKey = Deno.env.get("PERPLEXITY_KEY") ?? "";
 
   // Only look up places when the ask is actually place-seeking — a definition
   // or general question gets a text-only reply (no forced cards).
   const placeSeeking = isPlaceSeeking(query);
 
-  // Memo's persona is operator-tunable from the admin console (Memo Config →
-  // app_settings.memo_instructions). Kick the read off now so it overlaps the
-  // Google leg; SYSTEM_PROMPT is the fallback when the row is blank/unreadable,
-  // so Memo never loses its voice.
-  const systemPromptPromise = readMemoSystemPrompt(admin);
+  // Memo's persona + the memo_search sourcing policy are operator-tunable from
+  // the admin console (Memo Config). One hop fetches both; kick it off now so
+  // it overlaps the Google leg. Every field degrades to a default, so a config
+  // hiccup never costs Memo its voice.
+  const configPromise = data.config();
 
   // Signed-in users get a personalised concierge: Memo learns their first name,
-  // age and sex from the consumers profile so it can greet by name and tailor
-  // suggestions. Read concurrently; signed-out (or a miss) just means no profile
-  // context — location still flows from the client either way.
+  // age and sex as a ready-made clause (the raw profile never leaves the
+  // consumer-context EF). Read concurrently; signed-out (or a miss) just means
+  // no profile context — location still flows from the client either way.
   const profileCtxPromise = user
-    ? readConsumerContext(admin, user.id)
+    ? data.consumerContext(user.id)
     : Promise.resolve<string | null>(null);
 
   // Memo v-next: the OpenAI reasoning airlock (sources: Perplexity · Lineup RAG
-  // · passive public-DB reads). Gated behind MEMO_ENGINE=agent so this ships
-  // dark until flipped; returns the exact same response contract as below, so
-  // the (already-enabled) frontend is untouched either way.
+  // · passive public catalog reads). Gated behind MEMO_ENGINE=agent so this
+  // ships dark until flipped; returns the exact same response contract as below,
+  // so the (already-enabled) frontend is untouched either way.
   if ((Deno.env.get("MEMO_ENGINE") ?? "").trim() === "agent") {
     try {
-      const [persona, profileCtx] = await Promise.all([
-        systemPromptPromise,
+      const [cfg, profileCtx] = await Promise.all([
+        configPromise,
         profileCtxPromise,
       ]);
       const gp = readGooglePlacesKey();
       const agent = await answerWithAgent({
-        admin,
+        data,
         userId: user?.id ?? null,
         query,
         lat,
         lng,
-        persona,
+        persona: resolveMemoSystemPrompt(cfg.instructions),
         hiddenContext: buildHiddenMemoContext(profileCtx, lat, lng),
         history: body.history,
         keys: {
@@ -175,9 +188,9 @@ Deno.serve(async (req) => {
   let predictions: Prediction[] = [];
   if (placeSeeking) {
     try {
-      const memoPolicy = await readChannelPolicy(admin, "memo_search");
+      const memoPolicy = (await configPromise).searchPolicy;
       const placeResult = await candidatePlaces(
-        admin,
+        data,
         query,
         lat,
         lng,
@@ -193,13 +206,13 @@ Deno.serve(async (req) => {
   ).length;
   const fromGoogle = predictions.length - onMesita;
 
-  const [systemPrompt, profileCtx] = await Promise.all([
-    systemPromptPromise,
+  const [cfg, profileCtx] = await Promise.all([
+    configPromise,
     profileCtxPromise,
   ]);
   const perplexity = await answerWithPerplexity(
     perplexityKey,
-    systemPrompt,
+    resolveMemoSystemPrompt(cfg.instructions),
     query,
     lat,
     lng,
@@ -227,7 +240,7 @@ Deno.serve(async (req) => {
 // ── Leg 2: place candidates (Google Text Search + Mesita merge) ─────────
 
 async function candidatePlaces(
-  admin: SupabaseClient,
+  data: MemoData,
   query: string,
   lat: number | null,
   lng: number | null,
@@ -246,13 +259,35 @@ async function candidatePlaces(
     );
   }
 
+  // Two independent catalog reads, both served by supabase-edgefunc-search-places:
+  //   • by Google id — badge/navigate the hits Google just returned
+  //   • by name      — surface on-Mesita spots Google missed (or didn't return
+  //                    for this phrasing)
+  // The id leg needs Google's results, so it can only start now; run both together.
+  const [byIdCards, nameCards] = await Promise.all([
+    googlePreds.length > 0
+      ? data.searchPlaces({ googlePlaceIds: googlePreds.map((p) => p.placeId) })
+      : Promise.resolve([]),
+    data.searchPlaces({ name: query, limit: NAME_SWEEP_LIMIT }),
+  ]);
+
   // Cross-reference Google hits against the Mesita catalog by google_place_id
   // so on-platform spots get the right badge + navigable ids.
-  if (googlePreds.length > 0) {
-    const byPlaceId = await mesitaByGooglePlaceIds(
-      admin,
-      googlePreds.map((p) => p.placeId),
-    );
+  if (byIdCards.length > 0) {
+    const byPlaceId = new Map<
+      string,
+      { status: PredictionStatus; mesitaId: string; mesitaSlug: string }
+    >();
+    for (const card of byIdCards) {
+      if (!card.googlePlaceId) continue;
+      byPlaceId.set(card.googlePlaceId, {
+        status: card.listingType === "partner"
+          ? "verified_partner_other"
+          : "web_listed",
+        mesitaId: card.id,
+        mesitaSlug: card.slug,
+      });
+    }
     for (const p of googlePreds) {
       const m = byPlaceId.get(p.placeId);
       if (m) {
@@ -264,96 +299,15 @@ async function candidatePlaces(
     }
   }
 
-  // Surface on-Mesita spots by name too (catches ones Google missed / that
-  // aren't in the Google result set for this phrasing).
-  const mesitaPreds = await mesitaByName(admin, query);
-
   // Merge, de-dupe by placeId, rank Mesita-first then by Google rating.
-  const predictions = mergeAndRankMemoPredictions(mesitaPreds, googlePreds);
-
+  //
   // No random-sample fallback: if nothing genuinely matches, we return an
   // empty rail and Memo replies text-only. Better a clean answer than
   // irrelevant cards (a department store for a nightlife ask).
+  const predictions = mergeAndRankMemoPredictions(
+    nameCards.map(cardToPrediction),
+    googlePreds,
+  );
+
   return { predictions };
-}
-
-async function mesitaByGooglePlaceIds(
-  admin: SupabaseClient,
-  placeIds: string[],
-): Promise<
-  Map<
-    string,
-    { status: PredictionStatus; mesitaId: string; mesitaSlug: string }
-  >
-> {
-  const out = new Map<
-    string,
-    { status: PredictionStatus; mesitaId: string; mesitaSlug: string }
-  >();
-  if (placeIds.length === 0) return out;
-
-  const { data, error } = await admin
-    .from("projects_view")
-    .select("id, slug, google_place_id, listing_type")
-    .in("google_place_id", placeIds);
-  if (error) {
-    console.error("[ask-memo] mesita placeId lookup:", error.message);
-    return out;
-  }
-  for (
-    const row of (data ?? []) as {
-      id: string;
-      slug: string;
-      google_place_id: string;
-      listing_type: string | null;
-    }[]
-  ) {
-    out.set(row.google_place_id, {
-      status: row.listing_type === "partner"
-        ? "verified_partner_other"
-        : "web_listed",
-      mesitaId: row.id,
-      mesitaSlug: row.slug,
-    });
-  }
-  return out;
-}
-
-async function mesitaByName(
-  admin: SupabaseClient,
-  query: string,
-): Promise<Prediction[]> {
-  const { data, error } = await admin
-    .from("projects_view")
-    .select(
-      "id, slug, name, address, google_place_id, listing_type, google_stars_overall, status",
-    )
-    .ilike("name", `%${escapeIlike(query)}%`)
-    .in("status", ["active", "lead"])
-    .limit(4);
-  if (error) {
-    console.error("[ask-memo] mesita name search:", error.message);
-    return [];
-  }
-  return ((data ?? []) as {
-    id: string;
-    slug: string;
-    name: string;
-    address: string | null;
-    google_place_id: string | null;
-    listing_type: string | null;
-    google_stars_overall: number | null;
-  }[]).map<Prediction>((row) => ({
-    // Prefer the Google id as the card key (keeps it aligned with the Google
-    // leg for de-dupe); fall back to the Mesita uuid when there's no Google id.
-    placeId: row.google_place_id ?? row.id,
-    mainText: row.name,
-    secondaryText: row.address ?? "On Mesita",
-    status: row.listing_type === "partner"
-      ? "verified_partner_other"
-      : "web_listed",
-    mesitaId: row.id,
-    mesitaSlug: row.slug,
-    rating: row.google_stars_overall,
-  }));
 }

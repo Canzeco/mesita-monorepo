@@ -10,7 +10,7 @@
 // runs the agent and attaches a trace to inspect its reasoning). Falls back
 // gracefully.
 
-import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
+import type { MemoData } from "./memo-data.ts";
 import {
   Airlock,
   type AirlockContext,
@@ -36,12 +36,13 @@ export type AgentAnswer = {
 };
 
 export type AgentOpts = {
-  admin: SupabaseClient;
+  // Memo's data client — four named read-only EFs, never a database client.
+  data: MemoData;
   userId: string | null;
   query: string;
   lat: number | null;
   lng: number | null;
-  persona: string; // readMemoSystemPrompt result (DB-tunable voice)
+  persona: string; // resolveMemoSystemPrompt result (operator-tunable voice)
   hiddenContext: string | null; // location + local time + (signed-in) profile
   history?: { role?: unknown; content?: unknown }[];
   keys: { openai: string; perplexity: string; google: string };
@@ -52,7 +53,7 @@ export type AgentOpts = {
 
 export async function answerWithAgent(opts: AgentOpts): Promise<AgentAnswer> {
   const ctx: AirlockContext = {
-    admin: opts.admin,
+    data: opts.data,
     userId: opts.userId,
     lat: opts.lat,
     lng: opts.lng,

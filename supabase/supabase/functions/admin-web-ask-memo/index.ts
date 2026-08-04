@@ -17,7 +17,11 @@
 //     the playground (it's currently held back for consumers, MESITA-729).
 //
 // Read-only: nothing here writes config or user data. The agent's airlock is
-// read-only by construction (see _shared/memo-airlock.ts).
+// read-only by construction (see _shared/memo-airlock.ts), and Memo reaches
+// Mesita data ONLY through the four internal EFs behind _shared/memo-data.ts —
+// so the playground dogfoods the identical data surface production runs on.
+// The service-role client below is this EF's OWN (super-admin gate); it is
+// never handed to Memo.
 //
 // Naming: caller-origin-verb-noun → admin · web · ask · memo.
 // Auth: caller's JWT email must be in public.super_admins.
@@ -31,11 +35,9 @@ import {
   requireSuperAdmin,
 } from "../_shared/auth.ts";
 import { readGooglePlacesKey } from "../_shared/google-places.ts";
-import { readMemoSystemPrompt } from "../_shared/memo-prompt.ts";
-import {
-  mockConsumerContext,
-  readConsumerContext,
-} from "../_shared/memo-consumer-context.ts";
+import { resolveMemoSystemPrompt } from "../_shared/memo-prompt.ts";
+import { mockConsumerContext } from "../_shared/memo-consumer-context.ts";
+import { createMemoData } from "../_shared/memo-data.ts";
 import { buildHiddenMemoContext } from "../_shared/memo-hidden-context.ts";
 import { answerWithAgent } from "../_shared/memo-agent.ts";
 import type { TraceSink } from "../_shared/memo-trace.ts";
@@ -99,6 +101,15 @@ Deno.serve(async (req) => {
     ? body.longitude
     : null;
 
+  // Memo's data surface — the same four internal EFs the consumer path uses.
+  // Uncached on purpose (no cacheMs): the consumer path reuses config reads for
+  // ~30s, but this page exists to test the persona you JUST saved, so a stale
+  // read here would look like a broken Save.
+  const data = createMemoData(envRes.env, "admin-web-ask-memo");
+
+  // Saved persona + model in one hop (supabase-edgefunc-get-memo-config).
+  const cfg = await data.config();
+
   // Persona: the saved instructions, or an operator draft override so unsaved
   // Config edits can be tested here without saving first (the old caveat).
   const override = typeof body.instructions === "string"
@@ -106,26 +117,18 @@ Deno.serve(async (req) => {
     : "";
   const persona = override.length > 0
     ? override
-    : await readMemoSystemPrompt(admin);
+    : resolveMemoSystemPrompt(cfg.instructions);
 
   // Model: the operator's pick (if valid), else the saved memo_openai_model,
   // else the default — so the playground reflects the configured brain.
-  let model = DEFAULT_MODEL;
   const modelOverride = typeof body.model === "string" ? body.model.trim() : "";
-  if (modelOverride && OPENAI_MODELS.has(modelOverride)) {
-    model = modelOverride;
-  } else {
-    const { data: cfg } = await admin
-      .from("app_settings")
-      .select("memo_openai_model")
-      .eq("id", 1)
-      .maybeSingle();
-    const saved = (cfg?.memo_openai_model ?? "").toString().trim();
-    if (saved) model = saved;
-  }
+  const model = modelOverride && OPENAI_MODELS.has(modelOverride)
+    ? modelOverride
+    : (cfg.model ?? DEFAULT_MODEL);
 
-  // Persona context: a real consumer's profile (name/age/sex from `consumers`),
-  // a mock persona, or none (guest). A real consumerId wins over a mock.
+  // Persona context: a real consumer's profile clause (served by
+  // supabase-edgefunc-get-consumer-context — the raw row never comes back
+  // here), a mock persona, or none (guest). A real consumerId wins over a mock.
   const consumerId =
     typeof body.consumerId === "string" && body.consumerId.length > 0
       ? body.consumerId
@@ -133,7 +136,7 @@ Deno.serve(async (req) => {
   let profileCtx: string | null = null;
   let profileKind: "consumer" | "mock" | "guest" = "guest";
   if (consumerId) {
-    profileCtx = await readConsumerContext(admin, consumerId);
+    profileCtx = await data.consumerContext(consumerId);
     profileKind = "consumer";
   } else if (body.mockProfile && typeof body.mockProfile === "object") {
     profileCtx = mockConsumerContext(body.mockProfile as MockProfile);
@@ -147,7 +150,7 @@ Deno.serve(async (req) => {
   try {
     const gp = readGooglePlacesKey();
     const agent = await answerWithAgent({
-      admin,
+      data,
       userId: consumerId,
       query,
       lat,

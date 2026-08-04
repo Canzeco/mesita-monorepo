@@ -2,75 +2,59 @@
 //
 // Exactly three sources, matching Pato's design, all reads of PUBLIC data:
 //   • web_search      → Perplexity (the live web)
-//   • lineup_recommend→ Lineup, Mesita's candidate engine: pgvector RAG over
-//                       the catalog (fetchCandidatePool + embed + cosine)
-//   • place_facts     → a direct indexed read of one named Mesita place
+//   • lineup_recommend→ Lineup, Mesita's candidate engine, via
+//                       supabase-edgefunc-recall-lineup
+//   • place_facts     → one named Mesita place, via
+//                       supabase-edgefunc-search-places
 //
-// The airlock's guarantees are as much about what is ABSENT as present: no
-// tool writes, reserves, edits, or reads any user's private data. Every row
-// returned here is public catalog data (name, category, rating, neighbourhood).
-// None of these tools takes a user id — personalisation flows only from the
-// sealed context's authenticated caller, never a model-supplied parameter.
+// Note what these handlers no longer contain: a query. Every Mesita read goes
+// through ctx.data (memo-data.ts) to a named Edge Function that owns its own
+// SELECT — Memo holds no database client, so a tool CANNOT reach a table its
+// endpoint doesn't already serve. The airlock's guarantees are as much about
+// what is ABSENT as present: no tool writes, reserves, edits, or reads any
+// user's private data. None of these tools takes a user id — personalisation
+// flows only from the sealed context's authenticated caller, never a
+// model-supplied parameter.
 
 import { callPerplexityChat } from "./perplexity-chat.ts";
-import { fetchCandidatePool, type PlaceRow } from "./recommender-pool.ts";
-import { embedSingle, rankByCosine } from "./embeddings.ts";
-import { escapeIlike } from "./google-places.ts";
 import type { AirlockContext, AirlockTool, ToolResult } from "./memo-airlock.ts";
+import type { MemoPlaceCard } from "./memo-place-card.ts";
 import type { Prediction } from "./memo-types.ts";
 
-const RECALL_RADIUS_KM = 25;
-const RECALL_POOL = 200;
 const TOOL_CARDS = 4;
 const PERPLEXITY_MODEL = "sonar-pro";
 
-// Public catalog columns a place lookup selects — deliberately NO private or
-// user-scoped fields. Kept in one place so the whitelist is auditable.
-const PLACE_PUBLIC_SELECT =
-  "id, slug, name, address, category, listing_type, google_place_id, google_stars_overall";
-
-// Extra public columns some rows carry (present on projects_view; PlaceRow's
-// index signature makes them `unknown`, so read them defensively).
-function str(v: unknown): string | null {
-  return typeof v === "string" && v.length > 0 ? v : null;
-}
-function num(v: unknown): number | null {
-  return typeof v === "number" && Number.isFinite(v) ? v : null;
-}
-
-// Public catalog row → public Prediction card (the existing frontend contract).
-function rowToPrediction(row: PlaceRow): Prediction {
-  const gp = str((row as Record<string, unknown>).google_place_id);
+// Public card → public Prediction card (the existing frontend contract).
+export function cardToPrediction(card: MemoPlaceCard): Prediction {
   return {
-    placeId: gp ?? row.id, // align with the Google leg's key when we have it
-    mainText: row.name,
-    secondaryText: row.address ?? (row.category ? String(row.category) : "On Mesita"),
-    status: row.listing_type === "partner" ? "verified_partner_other" : "web_listed",
-    mesitaId: row.id,
-    mesitaSlug: row.slug,
-    rating: num((row as Record<string, unknown>).google_stars_overall),
+    placeId: card.googlePlaceId ?? card.id, // align with the Google leg's key when we have it
+    mainText: card.name,
+    secondaryText: card.address ?? card.category ?? "On Mesita",
+    status: card.listingType === "partner" ? "verified_partner_other" : "web_listed",
+    mesitaId: card.id,
+    mesitaSlug: card.slug,
+    rating: card.rating,
   };
 }
 
 // Compact, public-safe lines the model reads about a set of places. No ids.
-function placesToText(rows: PlaceRow[]): string {
-  return rows
-    .map((r) => {
-      const bits: string[] = [r.name];
-      if (r.category) bits.push(String(r.category));
-      const stars = num((r as Record<string, unknown>).google_stars_overall);
-      if (stars != null) bits.push(`${stars}★`);
-      if (r.address) bits.push(String(r.address));
+export function cardsToText(cards: MemoPlaceCard[]): string {
+  return cards
+    .map((c) => {
+      const bits: string[] = [c.name];
+      if (c.category) bits.push(c.category);
+      if (c.rating != null) bits.push(`${c.rating}★`);
+      if (c.address) bits.push(c.address);
       return `- ${bits.join(" · ")}`;
     })
     .join("\n");
 }
 
 // ── Lineup recall (source 2) ───────────────────────────────────────────
-// The Lineup engine's RAG leg, read-only: recall a candidate pool near the
-// caller, embed the intent, cosine-rank the catalog, return the top cards.
-// Reused both as a tool AND to seed the loop RAG-first. Deliberately does NOT
-// lazy-embed/persist (unlike the swipe recommender) — Memo never writes.
+// Reused both as a tool AND to seed the loop RAG-first (see memo-agent.ts).
+// The pool query, the intent embedding and the cosine rank all happen inside
+// supabase-edgefunc-recall-lineup; what comes back is already ranked public
+// cards. Deliberately non-persisting on that side too — Memo never writes.
 //
 // `opts.traceKind === "recall"` records the RAG-seed step to ctx.trace (with
 // pool size + whether it embedded); the plain tool path is recorded generically
@@ -81,53 +65,32 @@ export async function lineupRecall(
   opts?: { traceKind?: "recall" },
 ): Promise<ToolResult> {
   const start = Date.now();
-  const pool = await fetchCandidatePool<PlaceRow>(ctx.admin, {
+  const recall = await ctx.data.recallLineup({
+    intent,
     lat: ctx.lat,
     lng: ctx.lng,
-    radiusKm: RECALL_RADIUS_KM,
-    poolSize: RECALL_POOL,
+    limit: TOOL_CARDS,
   });
-  const recordRecall = (
-    top: PlaceRow[],
-    poolSize: number,
-    embedded: boolean,
-  ) => {
-    if (opts?.traceKind !== "recall" || !ctx.trace) return;
+
+  if (opts?.traceKind === "recall" && ctx.trace) {
     ctx.trace.push({
       kind: "recall",
       title: "Lineup recall · RAG seed",
       source: "Lineup engine",
       intent,
-      poolSize,
-      embedded,
-      cards: top.map((r) => ({
-        name: r.name,
-        rating: num((r as Record<string, unknown>).google_stars_overall),
-      })),
+      poolSize: recall.poolSize,
+      embedded: recall.embedded,
+      cards: recall.cards.map((c) => ({ name: c.name, rating: c.rating })),
       ms: Date.now() - start,
     });
-  };
+  }
 
-  if (!pool.ok || pool.rows.length === 0) {
-    recordRecall([], 0, false);
+  if (recall.cards.length === 0) {
     return { text: "No Mesita places matched near there yet." };
   }
-  let ranked = pool.rows;
-  let embedded = false;
-  if (ctx.keys.openai && intent.trim().length > 0) {
-    try {
-      const vec = await embedSingle(intent, ctx.keys.openai);
-      ranked = rankByCosine(pool.rows, vec);
-      embedded = true;
-    } catch (e) {
-      console.error("[lineup] embed:", (e as Error).message);
-    }
-  }
-  const top = ranked.slice(0, TOOL_CARDS);
-  recordRecall(top, pool.rows.length, embedded);
   return {
-    text: `Mesita's lineup for this ask (public catalog):\n${placesToText(top)}`,
-    predictions: top.map(rowToPrediction),
+    text: `Mesita's lineup for this ask (public catalog):\n${cardsToText(recall.cards)}`,
+    predictions: recall.cards.map(cardToPrediction),
   };
 }
 
@@ -200,24 +163,15 @@ const placeFactsTool: AirlockTool = {
   async run(args, ctx): Promise<ToolResult> {
     const name = String(args.name ?? "").trim();
     if (name.length < 2) return { text: "Give me a place name to look up." };
-    const { data, error } = await ctx.admin
-      .from("projects_view")
-      .select(PLACE_PUBLIC_SELECT)
-      .ilike("name", `%${escapeIlike(name)}%`)
-      .in("status", ["active", "lead"])
-      .limit(TOOL_CARDS);
-    if (error) {
-      console.error("[place_facts]", error.message);
-      return { text: "Couldn't look that up right now." };
-    }
-    const rows = (data ?? []) as unknown as PlaceRow[];
-    if (rows.length === 0) return { text: `No Mesita place named "${name}" found.` };
-    return { text: placesToText(rows), predictions: rows.map(rowToPrediction) };
+    const cards = await ctx.data.searchPlaces({ name, limit: TOOL_CARDS });
+    if (cards.length === 0) return { text: `No Mesita place named "${name}" found.` };
+    return { text: cardsToText(cards), predictions: cards.map(cardToPrediction) };
   },
 };
 
 // The fixed registry. Adding a capability means adding a READ tool here — there
-// is intentionally no write/reserve/edit/delete tool to add.
+// is intentionally no write/reserve/edit/delete tool to add, and no endpoint on
+// Memo's data surface (config.toml, supabase-edgefunc-*) that would serve one.
 export function buildMemoTools(): AirlockTool[] {
   return [lineupTool, webSearchTool, placeFactsTool];
 }
