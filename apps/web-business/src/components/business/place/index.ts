@@ -31,7 +31,11 @@ export {
   placeSectionDescription,
   type PlaceSectionId,
 } from "./place-sections";
-export type { PlaceFormState, SetPlaceForm, MenuEntry } from "./place-form-types";
+export type {
+  PlaceFormState,
+  SetPlaceForm,
+  MenuEntry,
+} from "./place-form-types";
 export {
   PLACE_SUB_TABS,
   isPlaceSubTab,

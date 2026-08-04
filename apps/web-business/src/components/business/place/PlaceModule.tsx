@@ -46,7 +46,7 @@ export function PlaceModule({
       aria-labelledby={headingId}
       className={cn("relative z-0", className)}
     >
-      <div className="border-border/50 flex flex-col gap-4 rounded-2xl border bg-card/40 px-4 py-4">
+      <div className="border-border/50 bg-card/40 flex flex-col gap-4 rounded-2xl border px-4 py-4">
         <header className="flex flex-col gap-0.5">
           <h2
             id={headingId}

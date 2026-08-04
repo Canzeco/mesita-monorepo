@@ -39,7 +39,7 @@ export function PlaceAboutField({
         rows={7}
         className={cn(
           TEXTAREA,
-          "min-h-[160px] max-h-[320px] resize-none overflow-y-auto pb-7 text-[13px] leading-relaxed",
+          "max-h-[320px] min-h-[160px] resize-none overflow-y-auto pb-7 text-[13px] leading-relaxed",
         )}
       />
       <span

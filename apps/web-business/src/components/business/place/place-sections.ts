@@ -84,6 +84,8 @@ export function placeSectionLabel(id: PlaceSectionId): string {
   return PLACE_SECTIONS.find((section) => section.id === id)?.label ?? id;
 }
 
-export function placeSectionDescription(id: PlaceSectionId): string | undefined {
+export function placeSectionDescription(
+  id: PlaceSectionId,
+): string | undefined {
   return PLACE_SECTIONS.find((section) => section.id === id)?.description;
 }

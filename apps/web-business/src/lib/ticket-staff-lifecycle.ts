@@ -75,13 +75,11 @@ function ticketHasBill(input: StaffTicketProgressInput): boolean {
 // v3 (MESITA-849): the guest's story is settled BEFORE the scan and staff
 // never rule on it, so it is not a staff step in either flow. The B rail keeps
 // its label so a with-story ticket still reads differently in the list.
-const STAFF_STEPS_BY_FLOW_TYPE: Record<
-  TicketFlowType,
-  StaffLifecycleStepId[]
-> = {
-  A: ["scan", "bill", "pay", "done"],
-  B: ["scan", "bill", "pay", "done"],
-};
+const STAFF_STEPS_BY_FLOW_TYPE: Record<TicketFlowType, StaffLifecycleStepId[]> =
+  {
+    A: ["scan", "bill", "pay", "done"],
+    B: ["scan", "bill", "pay", "done"],
+  };
 
 const STAFF_STEP_LABELS: Record<StaffLifecycleStepId, string> = {
   scan: "Scan",

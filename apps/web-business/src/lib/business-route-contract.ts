@@ -13,7 +13,10 @@ export const BUSINESS_ROUTES = {
 
 type UnitSection = "scan" | "performance" | "team";
 
-export function placePath(projectId: string, tab: PlaceSubTab = "preview"): string {
+export function placePath(
+  projectId: string,
+  tab: PlaceSubTab = "preview",
+): string {
   return `/unit/${projectId}/place/${tab}`;
 }
 
@@ -25,7 +28,9 @@ function unitSectionPath(projectId: string, section: UnitSection): string {
   return `/unit/${projectId}/${section}`;
 }
 
-export function resolvePlaceTab(segment: string | null | undefined): PlaceSubTab | null {
+export function resolvePlaceTab(
+  segment: string | null | undefined,
+): PlaceSubTab | null {
   if (!segment) return null;
   if (isPlaceSubTab(segment)) return segment;
   if (segment === "photos" || segment === "menu") return "media";
@@ -46,10 +51,7 @@ export function dockHrefForSection(
   return unitSectionPath(activeUnitId, section);
 }
 
-export function placeSwitchHref(
-  projectId: string,
-  pathname: string,
-): string {
+export function placeSwitchHref(projectId: string, pathname: string): string {
   const placeTab = pathname.match(/\/place\/([^/]+)/)?.[1];
   const section = pathname.match(/^\/unit\/[^/]+\/([^/]+)/)?.[1];
 
@@ -60,7 +62,8 @@ export function placeSwitchHref(
     return promosPath(projectId);
   }
   if (section === "scan") return unitSectionPath(projectId, "scan");
-  if (section === "performance") return unitSectionPath(projectId, "performance");
+  if (section === "performance")
+    return unitSectionPath(projectId, "performance");
   if (section === "team") return unitSectionPath(projectId, "team");
   return placePath(projectId);
 }

@@ -35,7 +35,7 @@ function DayOpenToggle({
     >
       <span
         className={cn(
-          "inline-block h-[14px] w-[14px] rounded-full bg-background shadow-sm transition-transform duration-200",
+          "bg-background inline-block h-[14px] w-[14px] rounded-full shadow-sm transition-transform duration-200",
           open ? "translate-x-[17px]" : "translate-x-[3px]",
         )}
       />
@@ -96,7 +96,7 @@ export function PlaceHoursEditor({
     setDay(key, { closed: false, ranges: [{ open: "", close: "" }] });
 
   return (
-    <div className="divide-border/40 overflow-hidden rounded-lg bg-muted/20">
+    <div className="divide-border/40 bg-muted/20 overflow-hidden rounded-lg">
       {PLACE_HOUR_DAYS.map(({ key, label }) => {
         const day = hours[key];
         const isOpen = !day.closed;
@@ -151,7 +151,9 @@ export function PlaceHoursEditor({
                   ) : null}
                 </>
               ) : (
-                <span className="text-muted-foreground text-[11px]">Closed</span>
+                <span className="text-muted-foreground text-[11px]">
+                  Closed
+                </span>
               )}
             </div>
 

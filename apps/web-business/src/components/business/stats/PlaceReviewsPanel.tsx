@@ -1,10 +1,4 @@
-import {
-  BadgeCheck,
-  Facebook,
-  Sparkles,
-  Star,
-  Users,
-} from "lucide-react";
+import { BadgeCheck, Facebook, Sparkles, Star, Users } from "lucide-react";
 import { GoogleLogo, InstagramLogo, Section } from "@/components/shared";
 import type { MyPlace } from "@/lib/api/places";
 import { cn, formatCompactCount } from "@/lib/utils";
@@ -74,7 +68,7 @@ function ReviewsSummarySection({ place }: { place: MyPlace }) {
     <Section
       title="Reviews summary"
       right={<span className={TINY_LABEL_CLASS}>Read-only</span>}
-      className="rounded-xl border-border/60 shadow-none"
+      className="border-border/60 rounded-xl shadow-none"
     >
       <div className="bg-background border-border flex flex-col gap-4 rounded-xl border p-4">
         <div className="flex items-center gap-2">
@@ -129,7 +123,7 @@ function RelevantReviewsSection({ place }: { place: MyPlace }) {
     <Section
       title="Relevant reviews"
       right={<span className={TINY_LABEL_CLASS}>{items.length} shown</span>}
-      className="rounded-xl border-border/60 shadow-none"
+      className="border-border/60 rounded-xl shadow-none"
     >
       {items.length === 0 ? (
         <p className="bg-muted text-muted-foreground rounded-xl px-3 py-3 text-xs">

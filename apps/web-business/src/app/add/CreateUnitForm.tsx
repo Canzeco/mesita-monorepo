@@ -9,10 +9,7 @@ import {
   apiPlacesAutocomplete,
   type PlacePrediction,
 } from "@/lib/api/places";
-import {
-  apiLookupPlace,
-  type LookupResult,
-} from "@/lib/api/verifications";
+import { apiLookupPlace, type LookupResult } from "@/lib/api/verifications";
 import { ERROR_BOX_CLASS } from "@/lib/ui-classes";
 import { cn, errMsg } from "@/lib/utils";
 import { placePath } from "@/lib/business-route-contract";

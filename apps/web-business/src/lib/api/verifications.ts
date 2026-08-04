@@ -113,7 +113,9 @@ function otpSendBody(
 ): Record<string, unknown> {
   return {
     placeId: projectId,
-    ...(requesterEmail?.trim() ? { requesterEmail: requesterEmail.trim() } : {}),
+    ...(requesterEmail?.trim()
+      ? { requesterEmail: requesterEmail.trim() }
+      : {}),
   };
 }
 

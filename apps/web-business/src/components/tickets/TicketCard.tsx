@@ -63,14 +63,14 @@ export function TicketCard({
   const flowType = ticketFlowTypeFromKind(ticket.kind);
   const hasTotal = (ticket.total_cents ?? 0) > 0;
   const showActions = !cancelled && (needsBill || pendingPay || canCancel);
-  const flowLabel =
-    flowType === "B" ? FLOW_TYPE_SHORT_LABELS[flowType] : null;
+  const flowLabel = flowType === "B" ? FLOW_TYPE_SHORT_LABELS[flowType] : null;
 
   return (
     <article
       className={cn(
         "border-border/60 bg-card overflow-hidden rounded-2xl border transition",
-        needsBill && "border-primary/20 shadow-[0_8px_28px_-24px_rgba(0,0,0,0.35)]",
+        needsBill &&
+          "border-primary/20 shadow-[0_8px_28px_-24px_rgba(0,0,0,0.35)]",
         cancelled && "opacity-60",
       )}
     >
@@ -168,7 +168,7 @@ export function TicketCard({
               type="button"
               onClick={() => onCancel(ticket.id)}
               disabled={cancelBusy || busy === "refresh"}
-              className="text-muted-foreground hover:text-destructive border-border/60 hover:border-border inline-flex h-9 flex-1 items-center justify-center rounded-full border bg-card px-3.5 text-[13px] font-medium transition disabled:opacity-40 sm:flex-none"
+              className="text-muted-foreground hover:text-destructive border-border/60 hover:border-border bg-card inline-flex h-9 flex-1 items-center justify-center rounded-full border px-3.5 text-[13px] font-medium transition disabled:opacity-40 sm:flex-none"
             >
               {cancelBusy ? (
                 <Loader2 className="h-3.5 w-3.5 animate-spin" />

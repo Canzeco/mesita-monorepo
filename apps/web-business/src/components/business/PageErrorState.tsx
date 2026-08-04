@@ -23,10 +23,7 @@ export function PageErrorState({
           <p className="text-muted-foreground mx-auto mt-2 max-w-md text-sm">
             {message}
           </p>
-          <Link
-            href={retryHref}
-            className={cn(CTA_BUTTON_CLASS, "mt-5")}
-          >
+          <Link href={retryHref} className={cn(CTA_BUTTON_CLASS, "mt-5")}>
             Try again
           </Link>
         </div>

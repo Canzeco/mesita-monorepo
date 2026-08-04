@@ -11,7 +11,7 @@ export function PlaceBox({
   return (
     <div
       className={cn(
-        "border-border/50 flex flex-col gap-3 rounded-2xl border bg-card/40 px-4 py-4",
+        "border-border/50 bg-card/40 flex flex-col gap-3 rounded-2xl border px-4 py-4",
         className,
       )}
     >

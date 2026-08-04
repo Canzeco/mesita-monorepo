@@ -1,10 +1,4 @@
-import {
-  ClipboardList,
-  Eye,
-  Images,
-  Link2,
-  Star,
-} from "lucide-react";
+import { ClipboardList, Eye, Images, Link2, Star } from "lucide-react";
 import type { SubTabItem } from "@/components/business/SubTabs";
 
 export type PlaceSubTab =

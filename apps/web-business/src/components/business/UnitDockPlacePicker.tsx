@@ -47,7 +47,7 @@ export function UnitDockPlacePicker({
           width: Math.max(menuRect.width - 24, 0),
         }}
       >
-        <p className="text-muted-foreground sticky top-0 border-b border-border/40 bg-card px-3 pt-2.5 pb-2 text-[10px] font-semibold tracking-[0.12em] uppercase">
+        <p className="text-muted-foreground border-border/40 bg-card sticky top-0 border-b px-3 pt-2.5 pb-2 text-[10px] font-semibold tracking-[0.12em] uppercase">
           Your places
         </p>
         {places.map((v) => (

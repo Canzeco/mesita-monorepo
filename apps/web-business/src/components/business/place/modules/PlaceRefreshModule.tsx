@@ -20,10 +20,8 @@ export function PlaceRefreshModule({
         disabled={running}
         aria-busy={running}
         className={cn(
-          "inline-flex h-10 w-full items-center justify-center gap-2 rounded-full border border-border text-[13px] font-semibold transition",
-          running
-            ? "text-muted-foreground cursor-wait"
-            : "hover:bg-muted/50",
+          "border-border inline-flex h-10 w-full items-center justify-center gap-2 rounded-full border text-[13px] font-semibold transition",
+          running ? "text-muted-foreground cursor-wait" : "hover:bg-muted/50",
         )}
       >
         {running ? (

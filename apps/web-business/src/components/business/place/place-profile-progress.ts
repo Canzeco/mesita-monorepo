@@ -6,9 +6,7 @@ type ProfileProgressCheck = {
   done: boolean;
 };
 
-function getProfileProgressChecks(
-  v: PlaceFormState,
-): ProfileProgressCheck[] {
+function getProfileProgressChecks(v: PlaceFormState): ProfileProgressCheck[] {
   return [
     { label: "Category", done: v.category.trim() !== "" },
     { label: "About", done: v.description.trim() !== "" },

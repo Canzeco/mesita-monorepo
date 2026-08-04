@@ -86,11 +86,8 @@ export function EmailBody({
     setState({ kind: "verifying", verificationId, mockCode, sentTo, mockMode });
     void (async () => {
       try {
-        const { projectId: vId, awaitingAdmin } = await apiBusinessVerifiesEmail(
-          supabase,
-          verificationId,
-          code,
-        );
+        const { projectId: vId, awaitingAdmin } =
+          await apiBusinessVerifiesEmail(supabase, verificationId, code);
         if (awaitingAdmin) onAwaitingAdmin();
         else onApproved(vId);
       } catch (err) {

@@ -29,7 +29,11 @@ class EFError extends Error {
 
   constructor(
     message: string,
-    opts: { fn: string; code?: string | null; body?: Record<string, unknown> | null },
+    opts: {
+      fn: string;
+      code?: string | null;
+      body?: Record<string, unknown> | null;
+    },
   ) {
     super(message);
     this.name = "EFError";
@@ -46,10 +50,13 @@ class EFError extends Error {
 // crashing the form the catalog feeds.
 export function logSwallowedEFError(err: unknown): void {
   if (err instanceof EFError) {
-    console.error(`[${err.fn}] catalog fetch failed (degrading to empty): ${err.message}`, {
-      code: err.code,
-      body: err.body,
-    });
+    console.error(
+      `[${err.fn}] catalog fetch failed (degrading to empty): ${err.message}`,
+      {
+        code: err.code,
+        body: err.body,
+      },
+    );
   } else {
     console.error("catalog fetch failed (degrading to empty):", err);
   }
@@ -71,8 +78,7 @@ export async function invokeEF<T>(
   if (error) {
     const parsed = await parseInvokeErrorBody(error);
     const message = pickErrorMessage(parsed) ?? error.message;
-    const code =
-      parsed && typeof parsed.code === "string" ? parsed.code : null;
+    const code = parsed && typeof parsed.code === "string" ? parsed.code : null;
     throw new EFError(message, { fn, code, body: parsed });
   }
   if (!data) {
@@ -107,7 +113,8 @@ async function parseInvokeErrorBody(
       .clone()
       .json()
       .catch(() => null);
-    if (json && typeof json === "object") return json as Record<string, unknown>;
+    if (json && typeof json === "object")
+      return json as Record<string, unknown>;
     const text = await res
       .clone()
       .text()

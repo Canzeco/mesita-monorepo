@@ -146,8 +146,8 @@ export function TicketsClient({
 
       <div className="flex items-center gap-2">
         <p className="text-muted-foreground flex-1 text-[12.5px] leading-snug">
-          Guests open their own tickets in the Mesita app — scan their ticket
-          QR with any phone camera to verify and bill on the check page.
+          Guests open their own tickets in the Mesita app — scan their ticket QR
+          with any phone camera to verify and bill on the check page.
         </p>
         <button
           type="button"
@@ -165,7 +165,10 @@ export function TicketsClient({
       </div>
 
       {error ? (
-        <p className={cn(ERROR_BOX_CLASS, "text-[13px] leading-snug")} role="alert">
+        <p
+          className={cn(ERROR_BOX_CLASS, "text-[13px] leading-snug")}
+          role="alert"
+        >
           {error}
         </p>
       ) : null}

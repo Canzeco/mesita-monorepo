@@ -64,8 +64,7 @@ export function PlaceCategorySelect({
     resolvePlaceCategoryName({ category: googleCategorySlug });
 
   const showGoogleHint =
-    Boolean(googleHint) &&
-    (!value || value === (googleCategorySlug ?? ""));
+    Boolean(googleHint) && (!value || value === (googleCategorySlug ?? ""));
 
   if (loading) {
     return (
@@ -85,7 +84,11 @@ export function PlaceCategorySelect({
     <select
       value={value}
       onChange={(e) => onChange(e.target.value)}
-      className={cn(INPUT, "h-10 text-[13px]", !value && "text-muted-foreground")}
+      className={cn(
+        INPUT,
+        "h-10 text-[13px]",
+        !value && "text-muted-foreground",
+      )}
       aria-label="Category"
     >
       <option value="">Select category</option>
@@ -119,7 +122,9 @@ export function PlaceCategorySelect({
 
   return (
     <div>
-      <p className="text-muted-foreground mb-1 text-[11px] font-medium">Category</p>
+      <p className="text-muted-foreground mb-1 text-[11px] font-medium">
+        Category
+      </p>
       {showGoogleHint ? (
         <p className="text-muted-foreground/70 mb-1.5 text-[10px]">
           From Google · {googleHint}

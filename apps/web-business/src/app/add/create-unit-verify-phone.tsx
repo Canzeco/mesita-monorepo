@@ -92,11 +92,8 @@ export function PhoneBody({
     });
     void (async () => {
       try {
-        const { projectId: vId, awaitingAdmin } = await apiBusinessVerifiesPhone(
-          supabase,
-          verificationId,
-          code,
-        );
+        const { projectId: vId, awaitingAdmin } =
+          await apiBusinessVerifiesPhone(supabase, verificationId, code);
         if (awaitingAdmin) onAwaitingAdmin();
         else onApproved(vId);
       } catch (err) {
