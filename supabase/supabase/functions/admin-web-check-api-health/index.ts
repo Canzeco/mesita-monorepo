@@ -37,6 +37,10 @@ import {
 // tighter than the EF's own wall-clock budget.
 const PROBE_TIMEOUT_MS = 8_000;
 
+// A quota-killed call older than this is treated as history, not as proof the
+// account is still dry — the operator may have topped up in between.
+const STALE_CALL_MINS = 30;
+
 type Verdict = "ok" | "degraded" | "down" | "unconfigured";
 type Cost = "free" | "paid";
 
@@ -319,6 +323,7 @@ const PROBES: ProbeSpec[] = [
       // termination_reason when the account is out of credits, and the
       // conversations endpoint is readable by an agents-scoped key.
       let lastCallFailure: string | null = null;
+      let lastCallFailureStale = false;
       if (res.ok) {
         try {
           const conv = await timedFetch(
@@ -343,14 +348,32 @@ const PROBES: ProbeSpec[] = [
                     error?: { code?: number; reason?: string };
                     termination_reason?: string;
                     charging?: { tier?: string };
+                    start_time_unix_secs?: number;
                   };
                 };
                 const err = c.metadata?.error;
                 const reason = c.metadata?.termination_reason ?? "";
                 if (err?.code === 1002 || /quota/i.test(reason)) {
-                  lastCallFailure = `OUT OF CREDITS — last call killed on answer: ${
-                    (err?.reason ?? reason).slice(0, 90)
-                  }`;
+                  // TIMESTAMP IT. This is the LAST call, not a live balance —
+                  // after a top-up the newest conversation is still the old
+                  // failure, so an untimed "OUT OF CREDITS" keeps screaming
+                  // long after the account has been paid up. Old evidence is
+                  // a warning to go retest, not proof the account is dry.
+                  const startedSecs = c.metadata?.start_time_unix_secs ?? null;
+                  const ageMins = startedSecs
+                    ? Math.round((Date.now() / 1000 - startedSecs) / 60)
+                    : null;
+                  lastCallFailureStale = ageMins === null ? false : ageMins > STALE_CALL_MINS;
+                  const when = ageMins === null
+                    ? "at an unknown time"
+                    : ageMins < 60
+                    ? `${ageMins} min ago`
+                    : `${Math.round(ageMins / 60)} h ago`;
+                  lastCallFailure = lastCallFailureStale
+                    ? `Last call (${when}) was killed for quota — may be STALE if you have since topped up. Place a test call to confirm.`
+                    : `OUT OF CREDITS — last call (${when}) killed on answer: ${
+                      (err?.reason ?? reason).slice(0, 80)
+                    }`;
                 }
                 if (!quota && c.metadata?.charging?.tier) {
                   quota = `tier ${c.metadata.charging.tier}`;
@@ -368,8 +391,12 @@ const PROBES: ProbeSpec[] = [
         // A reachable fleet is not a working one. Out of credits = down; a key
         // that can't show the balance is degraded, not healthy, because the
         // balance is precisely what this page promises to report.
+        // Fresh quota kill = down. Stale one = degraded: worth chasing, but it
+        // is history, and calling history an outage is how a card lies twice.
         verdict: () =>
-          lastCallFailure ? "down" : (quotaHidden ? "degraded" : null),
+          lastCallFailure
+            ? (lastCallFailureStale ? "degraded" : "down")
+            : (quotaHidden ? "degraded" : null),
         detail: (b) => {
           if (lastCallFailure) return lastCallFailure;
           const agents = (b as { agents?: unknown[] } | null)?.agents;
