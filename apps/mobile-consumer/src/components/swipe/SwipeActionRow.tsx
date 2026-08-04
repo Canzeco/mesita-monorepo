@@ -30,21 +30,33 @@ export function SwipeActionRow({
   return (
     <>
       <ActionBtn
-        label="Filter"
+        label="Filters"
         Icon={SlidersHorizontal}
+        tone="amber"
         onPress={onOpenFilters}
         showDot={filtersActive}
       />
-      <ActionBtn label="Skip" Icon={X} onPress={onSkip} />
-      <ActionBtn label="Info" Icon={Store} onPress={onOpenInfo} />
+      <ActionBtn label="Skip" Icon={X} tone="rose" big onPress={onSkip} />
+      <ActionBtn
+        label="About this place"
+        Icon={Store}
+        tone="sky"
+        onPress={onOpenInfo}
+      />
       <ActionBtn
         label={saved ? 'Saved' : 'Save'}
         Icon={Heart}
+        tone="pink"
+        big
         onPress={onSave}
-        primary={saved}
         filled={saved}
       />
-      <ActionBtn label="Reserve" Icon={CalendarCheck} onPress={onReserve} />
+      <ActionBtn
+        label="Reserve a table"
+        Icon={CalendarCheck}
+        tone="violet"
+        onPress={onReserve}
+      />
     </>
   );
 }

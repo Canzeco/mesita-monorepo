@@ -1,8 +1,7 @@
-import { LinearGradient } from 'expo-linear-gradient';
 import { Compass, RotateCcw, X } from 'lucide-react-native';
 import { Pressable, Text, View } from 'react-native';
 
-import { GRADIENTS, GRADIENT_DIAGONAL, SHADOW_GLOW } from '@/constants/brand';
+import { COLORS } from '@/constants/brand';
 import type { Place } from '@/lib/api/places';
 import { haversineKm } from '@/lib/utils';
 
@@ -50,74 +49,76 @@ export function EmptyState({
   );
 }
 
+// Tinder-style circular action button. Ring colour per action, two sizes:
+// Skip and Save are the deck's real verbs and read big, the utilities sit
+// small either side. Mirrors apps/web-consumer/.../swipe-action-row.tsx —
+// values, not classes, because this package is NativeWind 4 / Tailwind 3.4
+// and the web one is Tailwind v4.
+export type ActionTone = 'amber' | 'rose' | 'sky' | 'pink' | 'violet';
+
+// Values COPIED from the web build's emitted CSS (the palette is customised —
+// e.g. rose-500 is #ff2357 here, not stock Tailwind's #f43f5e), so the two
+// apps render the same rings rather than merely similar ones. `ring` carries
+// the /70 alpha as a hex suffix; `tint` is the saved/filled fill.
+const TONE: Record<ActionTone, { ring: string; glyph: string; tint: string }> = {
+  amber: { ring: '#fcbb00b3', glyph: '#f99c00', tint: '#fffbeb' },
+  rose: { ring: '#ff667fb3', glyph: '#ff2357', tint: '#fff1f2' },
+  sky: { ring: '#00bcfeb3', glyph: '#00a5ef', tint: '#f0f9ff' },
+  pink: { ring: '#fb2b7bb3', glyph: COLORS.primary, tint: '#fff1f7' },
+  violet: { ring: '#a685ffb3', glyph: '#8d54ff', tint: '#f5f3ff' },
+};
+
 export function ActionBtn({
   label,
   Icon,
+  tone,
+  big,
   onPress,
   disabled,
-  primary,
   filled,
   showDot,
 }: {
   label: string;
   Icon: typeof X;
+  tone: ActionTone;
+  /** Skip / Save render one step larger. */
+  big?: boolean;
   onPress?: () => void;
   disabled?: boolean;
-  primary?: boolean;
   filled?: boolean;
   /** Red status dot (top-right) — used for the "filters active" Filter button. */
   showDot?: boolean;
 }) {
-  if (primary) {
-    return (
-      <Pressable
-        onPress={onPress}
-        disabled={disabled}
-        className="h-12 flex-1 active:opacity-90"
-        style={{ borderRadius: 8, overflow: 'hidden' }}
-      >
-        <LinearGradient
-          colors={[...GRADIENTS.pink]}
-          start={GRADIENT_DIAGONAL.start}
-          end={GRADIENT_DIAGONAL.end}
-          style={[
-            {
-              flex: 1,
-              flexDirection: 'row',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 4,
-              borderRadius: 8,
-            },
-            SHADOW_GLOW,
-          ]}
-        >
-          <Icon color="#fff" size={16} fill={filled ? '#fff' : 'transparent'} />
-          <Text className="text-xs font-semibold text-white">{label}</Text>
-        </LinearGradient>
-        {showDot ? <ActionDot /> : null}
-      </Pressable>
-    );
-  }
-
+  const t = TONE[tone];
+  const size = big ? 60 : 48;
   return (
     <Pressable
       onPress={onPress}
       disabled={disabled}
-      className={`h-12 flex-1 flex-row items-center justify-center gap-1 rounded-lg border border-border ${
-        disabled ? 'bg-muted/40' : 'bg-card active:bg-muted'
-      }`}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      className="items-center justify-center active:opacity-80"
+      style={{
+        width: size,
+        height: size,
+        borderRadius: size / 2,
+        borderWidth: 2,
+        borderColor: t.ring,
+        backgroundColor: filled ? t.tint : '#ffffff',
+        opacity: disabled ? 0.5 : 1,
+        shadowColor: '#501428',
+        shadowOpacity: 0.18,
+        shadowRadius: 8,
+        shadowOffset: { width: 0, height: 2 },
+        elevation: 2,
+      }}
     >
       <Icon
-        color={disabled ? '#77525499' : '#775254'}
-        size={16}
-        fill={filled ? '#fb2b7b' : 'transparent'}
+        color={t.glyph}
+        size={big ? 28 : 20}
+        strokeWidth={2.25}
+        fill={filled ? t.glyph : 'transparent'}
       />
-      <Text
-        className={`text-xs font-medium ${disabled ? 'text-muted-foreground/70' : 'text-foreground/70'}`}
-      >
-        {label}
-      </Text>
       {showDot ? <ActionDot /> : null}
     </Pressable>
   );
@@ -127,7 +128,7 @@ export function ActionBtn({
 function ActionDot() {
   return (
     <View
-      className="absolute top-1 right-1 size-2 rounded-full border border-card bg-primary"
+      className="absolute -top-0.5 -right-0.5 size-2.5 rounded-full border-2 border-card bg-red-500"
       pointerEvents="none"
     />
   );

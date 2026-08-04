@@ -469,7 +469,7 @@ function DeckBody({
         {showTutorial ? <SwipeTutorialOverlay /> : null}
       </View>
 
-      <View className="mt-3 flex-row items-center gap-1.5">
+      <View className="mt-3 flex-row items-center justify-center gap-3.5">
         <SwipeActionRow
           saved={saved}
           filtersActive={filtersActive}
