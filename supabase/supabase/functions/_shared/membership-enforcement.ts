@@ -289,4 +289,3 @@ export async function recordMembershipStrike(
 
   return { ok: true, strikeNumber: next, consequence, compensationCouponId };
 }
-

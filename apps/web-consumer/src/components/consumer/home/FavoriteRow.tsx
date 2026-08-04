@@ -33,7 +33,7 @@ export function RemoveConfirmDialog({
       ariaLabel="Remove from saved"
     >
       <div className="flex flex-col p-5">
-        <div className="bg-rose-500/10 flex h-12 w-12 items-center justify-center rounded-2xl">
+        <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-rose-500/10">
           <Heart className="h-6 w-6 fill-rose-500 text-rose-500" />
         </div>
         <h3 className="font-display mt-3 text-lg font-semibold tracking-tight">
@@ -130,7 +130,11 @@ export function FavoriteRow({
                     isOpen ? "bg-emerald-500" : "bg-muted-foreground/40"
                   }`}
                 />
-                <span className={isOpen ? "text-emerald-600" : "text-muted-foreground"}>
+                <span
+                  className={
+                    isOpen ? "text-emerald-600" : "text-muted-foreground"
+                  }
+                >
                   {openingLabel}
                 </span>
               </span>
@@ -145,7 +149,7 @@ export function FavoriteRow({
         type="button"
         onClick={onRemove}
         aria-label={`Remove ${place.name} from saved`}
-        className="bg-rose-500/10 hover:bg-rose-500/20 flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition active:scale-90"
+        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-rose-500/10 transition hover:bg-rose-500/20 active:scale-90"
       >
         <Heart className="h-4 w-4 fill-rose-500 text-rose-500" />
       </button>

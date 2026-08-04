@@ -573,7 +573,9 @@ export function TicketScreen({
                 hint="Tag the place — then check it here"
                 reward={pct(rate("story"))}
                 state={
-                  acting === "story" ? "busy" : taskStateFor(ticket.story_status)
+                  acting === "story"
+                    ? "busy"
+                    : taskStateFor(ticket.story_status)
                 }
                 onDo={live ? () => void runProof("story") : undefined}
               />
@@ -584,7 +586,9 @@ export function TicketScreen({
               hint="At the table, once per place"
               reward={pct(rate("review"))}
               state={
-                acting === "review" ? "busy" : taskStateFor(ticket.review_status)
+                acting === "review"
+                  ? "busy"
+                  : taskStateFor(ticket.review_status)
               }
               onDo={live ? () => void runProof("review") : undefined}
             />

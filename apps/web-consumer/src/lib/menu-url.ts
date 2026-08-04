@@ -13,7 +13,9 @@ function isDriveMenuUrl(url: string): boolean {
       /^[a-z]+:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`,
     );
     const host = parsed.hostname.toLowerCase();
-    return host.includes("drive.google.com") || host.includes("docs.google.com");
+    return (
+      host.includes("drive.google.com") || host.includes("docs.google.com")
+    );
   } catch {
     return false;
   }
@@ -23,7 +25,8 @@ export function detectMenuKind(url: string): MenuKind {
   const trimmed = url.trim();
   if (!trimmed) return "pdf";
   if (isDriveMenuUrl(trimmed)) return "drive";
-  if (IMAGE_EXT.test(trimmed) || /\/menu-images\//i.test(trimmed)) return "image";
+  if (IMAGE_EXT.test(trimmed) || /\/menu-images\//i.test(trimmed))
+    return "image";
   if (PDF_EXT.test(trimmed) || /\/menu-pdfs\//i.test(trimmed)) return "pdf";
   // Unknown Storage/public URL — prefer PDF viewer (images still render if wrong).
   return "pdf";

@@ -1,8 +1,5 @@
 import { cookies } from "next/headers";
-import {
-  ACTIVE_UNIT_COOKIE,
-  activeUnitCookieOptions,
-} from "@/lib/active-unit";
+import { ACTIVE_UNIT_COOKIE, activeUnitCookieOptions } from "@/lib/active-unit";
 
 export const dynamic = "force-dynamic";
 

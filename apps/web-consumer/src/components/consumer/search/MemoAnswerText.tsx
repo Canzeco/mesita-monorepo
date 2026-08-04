@@ -23,8 +23,11 @@ type Linkified = { segments: Segment[]; unlinked: PlacePrediction[] };
 
 function linkify(text: string, predictions: PlacePrediction[]): Linkified {
   const lower = text.toLowerCase();
-  const taken: Array<{ start: number; end: number; prediction: PlacePrediction }> =
-    [];
+  const taken: Array<{
+    start: number;
+    end: number;
+    prediction: PlacePrediction;
+  }> = [];
   const unlinked: PlacePrediction[] = [];
 
   // Longest names first so a fuller name claims the span before a shorter one
@@ -145,7 +148,9 @@ export function MemoAnswerText({
           {unlinked.map((prediction, i) => (
             <span key={prediction.placeId}>
               {i > 0 && ", "}
-              <PlaceLink prediction={prediction}>{prediction.mainText}</PlaceLink>
+              <PlaceLink prediction={prediction}>
+                {prediction.mainText}
+              </PlaceLink>
             </span>
           ))}
         </span>

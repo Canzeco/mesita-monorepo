@@ -9,7 +9,9 @@ const MENU_PDFS_BUCKET = "menu-pdfs";
 
 /** Menu uploads split by kind: PDFs to menu-pdfs, images to menu-images. */
 export function bucketForMenuFile(file: File): string {
-  return file.type === "application/pdf" ? MENU_PDFS_BUCKET : MENU_IMAGES_BUCKET;
+  return file.type === "application/pdf"
+    ? MENU_PDFS_BUCKET
+    : MENU_IMAGES_BUCKET;
 }
 
 const ALLOWED_IMAGE_MIME_TYPES = new Set([
@@ -91,7 +93,9 @@ export function isDriveMenuUrl(url: string): boolean {
       /^[a-z]+:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`,
     );
     const host = parsed.hostname.toLowerCase();
-    return host.includes("drive.google.com") || host.includes("docs.google.com");
+    return (
+      host.includes("drive.google.com") || host.includes("docs.google.com")
+    );
   } catch {
     return false;
   }
@@ -107,7 +111,8 @@ export function detectMenuFileKind(url: string): MenuFileKind {
   const trimmed = url.trim();
   if (!trimmed) return "pdf";
   if (isDriveMenuUrl(trimmed)) return "drive";
-  if (IMAGE_EXT.test(trimmed) || /\/menu-images\//i.test(trimmed)) return "image";
+  if (IMAGE_EXT.test(trimmed) || /\/menu-images\//i.test(trimmed))
+    return "image";
   if (PDF_EXT.test(trimmed) || /\/menu-pdfs\//i.test(trimmed)) return "pdf";
   return "pdf";
 }

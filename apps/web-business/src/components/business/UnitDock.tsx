@@ -16,10 +16,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useUnitChrome } from "./UnitChrome";
-import {
-  PlaceChip,
-  UnitDockPlacePicker,
-} from "./UnitDockPlacePicker";
+import { PlaceChip, UnitDockPlacePicker } from "./UnitDockPlacePicker";
 import {
   BUSINESS_ROUTES,
   dockHrefForSection,
@@ -218,13 +215,13 @@ export function UnitDock() {
             className={cn(
               "bg-dock-surface hover:bg-dock-surface-hover flex h-11 w-[4.5rem] shrink-0 flex-col items-center justify-center gap-0.5 rounded-xl transition",
               settingsActive &&
-                "bg-primary/20 ring-primary/35 ring-1 text-primary",
+                "bg-primary/20 ring-primary/35 text-primary ring-1",
             )}
           >
             <span className="bg-pink-gradient flex h-7 w-7 items-center justify-center rounded-full text-white shadow-sm">
               <CircleUser className="h-4 w-4" strokeWidth={2} />
             </span>
-            <span className="text-dock-muted text-[9px] font-medium leading-none">
+            <span className="text-dock-muted text-[9px] leading-none font-medium">
               Profile
             </span>
           </Link>

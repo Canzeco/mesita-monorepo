@@ -48,7 +48,6 @@ export function matchPredictionToPlace(
   return null;
 }
 
-
 /**
  * Fill distance_km from the consumer's live location. Real data only —
  * places without coordinates (or before the geolocation grant) keep

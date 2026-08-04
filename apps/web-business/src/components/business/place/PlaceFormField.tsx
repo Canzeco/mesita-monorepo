@@ -69,8 +69,9 @@ export function PlaceUrlField({
         readOnly={readOnly}
         className={cn(
           INPUT,
-          "h-10 text-[13px] placeholder:text-muted-foreground/50",
-          (missing || readOnly) && "bg-muted/40 text-muted-foreground cursor-not-allowed",
+          "placeholder:text-muted-foreground/50 h-10 text-[13px]",
+          (missing || readOnly) &&
+            "bg-muted/40 text-muted-foreground cursor-not-allowed",
         )}
       />
       {onToggleMissing && !readOnly ? (

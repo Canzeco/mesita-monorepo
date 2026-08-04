@@ -15,7 +15,9 @@ import { cn } from "@/lib/utils";
 function caption(t: ConsumerTicketRow): string {
   switch (t.status) {
     case "open":
-      return t.first_scanned_at ? "Scanned — visit started" : "Open — show your QR";
+      return t.first_scanned_at
+        ? "Scanned — visit started"
+        : "Open — show your QR";
     case "awaiting_payment_confirm":
       return "Pay the discounted total";
     case "revealed":

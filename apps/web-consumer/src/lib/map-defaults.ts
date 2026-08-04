@@ -70,8 +70,7 @@ export const MAP_MINIMAL_STYLES = [
 ] as const;
 
 // SVG circle path for place markers + the user location dot.
-export const MAP_CIRCLE_PATH =
-  "M -12 0 A 12 12 0 1 0 12 0 A 12 12 0 1 0 -12 0";
+export const MAP_CIRCLE_PATH = "M -12 0 A 12 12 0 1 0 12 0 A 12 12 0 1 0 -12 0";
 
 // Discover/search map pin colour for scraped web listings.
 export const MAP_WEB_PIN_COLOR = "#9ca3af";

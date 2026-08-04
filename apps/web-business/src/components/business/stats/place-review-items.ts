@@ -22,7 +22,10 @@ export function extractRelevantReviews(place: MyPlace): ReviewItem[] {
   return out;
 }
 
-function toReviewItems(input: unknown, source: ReviewItem["source"]): ReviewItem[] {
+function toReviewItems(
+  input: unknown,
+  source: ReviewItem["source"],
+): ReviewItem[] {
   if (!Array.isArray(input)) return [];
   const items: ReviewItem[] = [];
 

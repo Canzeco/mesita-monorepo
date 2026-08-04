@@ -7,10 +7,7 @@ import { UnitChromeProvider } from "@/components/business/UnitChrome";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { getUnitOverview } from "@/lib/api/unit";
 import { apiGetBusinessProfile } from "@/lib/api/business";
-import {
-  ACTIVE_UNIT_COOKIE,
-  resolveActiveUnitId,
-} from "@/lib/active-unit";
+import { ACTIVE_UNIT_COOKIE, resolveActiveUnitId } from "@/lib/active-unit";
 
 export const dynamic = "force-dynamic";
 
@@ -34,7 +31,10 @@ export default async function ConsoleLayout({
   if (overviewResult.status === "fulfilled") {
     overview = overviewResult.value;
   } else {
-    console.error("[console] business-web-get-overview:", overviewResult.reason);
+    console.error(
+      "[console] business-web-get-overview:",
+      overviewResult.reason,
+    );
   }
 
   const business =

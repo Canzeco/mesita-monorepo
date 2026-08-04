@@ -55,4 +55,3 @@ Deno.serve(async (req) => {
 
   return json({ ok: true, place: data, tags });
 });
-

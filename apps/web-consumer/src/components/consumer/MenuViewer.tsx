@@ -15,11 +15,7 @@ import {
   ImagePane,
 } from "@/components/consumer/menu-viewer-panes";
 import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
-import {
-  drivePreviewUrl,
-  menuKindLabel,
-  type MenuKind,
-} from "@/lib/menu-url";
+import { drivePreviewUrl, menuKindLabel, type MenuKind } from "@/lib/menu-url";
 import { cn } from "@/lib/utils";
 
 type MenuViewerItem = {
@@ -64,13 +60,13 @@ function MenuViewerBody({
   const [embedFailed, setEmbedFailed] = useState(false);
 
   const previewUrl =
-    menu.kind === "drive" ? drivePreviewUrl(menu.url) ?? menu.url : menu.url;
+    menu.kind === "drive" ? (drivePreviewUrl(menu.url) ?? menu.url) : menu.url;
   const kindLabel = menuKindLabel(menu.kind);
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <header className="border-border flex shrink-0 items-center gap-2 border-b px-4 py-3">
-        <span className="bg-amber-50 text-amber-700 flex h-9 w-9 shrink-0 items-center justify-center rounded-full">
+        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-amber-50 text-amber-700">
           {menu.kind === "image" ? (
             <Utensils className="h-4 w-4" strokeWidth={2} />
           ) : (
@@ -152,7 +148,9 @@ function MenuViewerBody({
           <button
             type="button"
             disabled={zoom <= 0.75}
-            onClick={() => setZoom((z) => Math.max(0.75, +(z - 0.25).toFixed(2)))}
+            onClick={() =>
+              setZoom((z) => Math.max(0.75, +(z - 0.25).toFixed(2)))
+            }
             className="bg-muted text-foreground inline-flex h-9 w-9 items-center justify-center rounded-full transition disabled:opacity-40"
             aria-label="Zoom out"
           >
@@ -164,7 +162,9 @@ function MenuViewerBody({
           <button
             type="button"
             disabled={zoom >= 2.5}
-            onClick={() => setZoom((z) => Math.min(2.5, +(z + 0.25).toFixed(2)))}
+            onClick={() =>
+              setZoom((z) => Math.min(2.5, +(z + 0.25).toFixed(2)))
+            }
             className="bg-muted text-foreground inline-flex h-9 w-9 items-center justify-center rounded-full transition disabled:opacity-40"
             aria-label="Zoom in"
           >

@@ -3,10 +3,7 @@ import { PlaceDetailBody } from "@/components/consumer/PlaceDetailBody";
 import { PlaceDetailModalShell } from "@/components/consumer/PlaceDetailModalShell";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { apiFetchPlaceDetail } from "@/lib/api/places";
-import {
-  placeGoneHref,
-  toCanonicalPlaceHrefOrNull,
-} from "@/lib/place-route";
+import { placeGoneHref, toCanonicalPlaceHrefOrNull } from "@/lib/place-route";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 
 export const dynamic = "force-dynamic";

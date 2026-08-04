@@ -38,9 +38,7 @@ export function formatInstagramHandle(
   return h ? `@${h}` : null;
 }
 
-function instagramHandleFromUrl(
-  url: string | null | undefined,
-): string | null {
+function instagramHandleFromUrl(url: string | null | undefined): string | null {
   if (!url) return null;
   const m = /instagram\.com\/([^/?#]+)/i.exec(url);
   if (!m) return null;
@@ -188,7 +186,6 @@ export function explainTicketBillPromo(
   };
 }
 
-
 export type TicketTransactionSummary = {
   promoPercent: number | null;
   paymentCents: number | null;
@@ -275,4 +272,3 @@ export async function submitTicketReview(
     "Could not submit review",
   );
 }
-

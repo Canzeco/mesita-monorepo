@@ -53,4 +53,3 @@ Deno.serve(async (req) => {
     autoVerifyColumn: "auto_verify_ai_call",
   });
 });
-

@@ -11,7 +11,5 @@ export function PlaceBasicsModule({
   form: PlaceFormState;
   set: SetPlaceForm;
 }) {
-  return (
-    <PlaceBasicsSection place={place} form={form} set={set} />
-  );
+  return <PlaceBasicsSection place={place} form={form} set={set} />;
 }

@@ -6,10 +6,7 @@ import { PlaceBox } from "./PlaceBox";
 import { PlaceCategorySelect } from "./PlaceCategorySelect";
 import { PlaceHoursSection } from "./PlaceHoursSection";
 import { PlaceLocationFields } from "./PlaceLocationFields";
-import {
-  PLACE_GOOGLE_FIELD_INFO,
-  PlaceKvField,
-} from "./PlaceKvField";
+import { PLACE_GOOGLE_FIELD_INFO, PlaceKvField } from "./PlaceKvField";
 import { PlaceTagsPicker } from "./PlaceTagsPicker";
 import type { PlaceFormState, SetPlaceForm } from "./place-form-types";
 import {

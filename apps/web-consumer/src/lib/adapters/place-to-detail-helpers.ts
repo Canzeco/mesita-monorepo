@@ -51,9 +51,7 @@ export function neighborhoodFromAddress(
 // City fallback when zone + colonia are missing. Parses MX-style
 // "…. 64000 Monterrey," or the penultimate comma segment. Shared with the
 // swipe card zone label so card + detail stay aligned.
-function cityFromAddress(
-  address: string | undefined,
-): string | null {
+function cityFromAddress(address: string | undefined): string | null {
   if (!address) return null;
   const postCodeCityMatch = address.match(/\d{5}\s+([^,]+)/);
   const direct = postCodeCityMatch?.[1]?.trim();

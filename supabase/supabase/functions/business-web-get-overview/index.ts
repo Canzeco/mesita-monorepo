@@ -179,4 +179,3 @@ function clampTicketsLimit(raw: unknown): number {
   if (n <= 0) return 0;
   return Math.min(100, Math.trunc(n));
 }
-

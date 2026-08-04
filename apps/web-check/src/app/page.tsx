@@ -40,8 +40,8 @@ export default function CheckHome() {
         </h1>
         <p className="text-muted-foreground text-sm leading-relaxed">
           Escanea el QR que el cliente genera en su app de Mesita. Si el QR es
-          real, aquí se abre su ticket — con la cuenta, el descuento y los
-          pasos de la visita.
+          real, aquí se abre su ticket — con la cuenta, el descuento y los pasos
+          de la visita.
         </p>
       </header>
 
@@ -90,7 +90,7 @@ export default function CheckHome() {
             placeholder="Código del QR"
             autoComplete="off"
             spellCheck={false}
-            className="border-border bg-card text-foreground placeholder:text-muted-foreground h-12 w-full rounded-xl border px-4 font-mono text-sm outline-none focus:ring-2 focus:ring-primary/30"
+            className="border-border bg-card text-foreground placeholder:text-muted-foreground focus:ring-primary/30 h-12 w-full rounded-xl border px-4 font-mono text-sm outline-none focus:ring-2"
           />
           <Button
             type="button"

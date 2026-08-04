@@ -288,7 +288,9 @@ function Deck({ places }: { places: Place[] }) {
     // Marking it seen removes it from `deck`, so the next card slides into
     // index 0 — no cursor to keep in sync with a deck that can change shape.
     if (currentId) {
-      setSeenIds((prev) => (prev.includes(currentId) ? prev : [...prev, currentId]));
+      setSeenIds((prev) =>
+        prev.includes(currentId) ? prev : [...prev, currentId],
+      );
     } else {
       setIdx((i) => i + 1);
     }

@@ -13,7 +13,14 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
-import { ChevronRight, Loader2, Lock, MapPin, QrCode, Store } from "lucide-react";
+import {
+  ChevronRight,
+  Loader2,
+  Lock,
+  MapPin,
+  QrCode,
+  Store,
+} from "lucide-react";
 
 import { apiFetchPublicPlaces, type Place } from "@/lib/api/places";
 import { useBrowserSupabase } from "@/lib/supabase/browser";

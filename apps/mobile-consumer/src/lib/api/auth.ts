@@ -1,7 +1,7 @@
 // Auth + profile EF surface — mirrors apps/web-consumer/src/lib/api/{auth,profile}.ts.
 // Clients never touch the DB: every read/write goes through an Edge Function.
 
-import { EFError, invokeEF } from '@/lib/ef';
+import { invokeEF } from '@/lib/ef';
 import { supabase } from '@/lib/supabase';
 
 type ConsumerSummary = {
@@ -123,5 +123,3 @@ export function isOnboarded(profile: ConsumerProfile | null | undefined): boolea
       profile?.sex,
   );
 }
-
-export { EFError };

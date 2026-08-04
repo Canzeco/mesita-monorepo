@@ -1,6 +1,12 @@
 import type { ReactNode } from "react";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { AlertTriangle, CheckCircle2, Crown, MapPin, Phone } from "lucide-react";
+import {
+  AlertTriangle,
+  CheckCircle2,
+  Crown,
+  MapPin,
+  Phone,
+} from "lucide-react";
 import type { PredictionStatus } from "@/lib/api/places";
 import type { LookupPlace } from "@/lib/api/verifications";
 import { ERROR_BOX_CLASS } from "@/lib/ui-classes";

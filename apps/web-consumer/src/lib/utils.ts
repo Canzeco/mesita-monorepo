@@ -26,7 +26,7 @@ export function firstInitials(name: string, fallback = "M"): string {
   const first = firstInitial(parts[0] ?? "", "");
   const last =
     parts.length > 1 ? firstInitial(parts[parts.length - 1] ?? "", "") : "";
-  return (first + last) || fallback;
+  return first + last || fallback;
 }
 
 // Guest-count noun: "person" for 1, "people" otherwise. Pair with the count
@@ -36,9 +36,7 @@ export function guestNoun(n: number): string {
 }
 
 // A star rating rounded to one decimal for display, or null when absent.
-export function formatRating(
-  rating: number | null | undefined,
-): string | null {
+export function formatRating(rating: number | null | undefined): string | null {
   return rating != null ? rating.toFixed(1) : null;
 }
 
@@ -117,7 +115,9 @@ export function formatCompactCount(n: number, exact = false): string {
 export const MIN_SIGNUP_AGE = 14;
 
 /** Whole years since `birthday` (YYYY-MM-DD). Null for missing/unparseable. */
-export function ageFromBirthday(birthday: string | null | undefined): number | null {
+export function ageFromBirthday(
+  birthday: string | null | undefined,
+): number | null {
   if (!birthday) return null;
   const dob = new Date(birthday);
   if (Number.isNaN(dob.getTime())) return null;
@@ -133,4 +133,3 @@ export function formatSex(sex: string | null | undefined): string | null {
   if (!sex) return null;
   return sex.charAt(0).toUpperCase() + sex.slice(1);
 }
-

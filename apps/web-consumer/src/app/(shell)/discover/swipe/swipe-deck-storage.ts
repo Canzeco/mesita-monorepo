@@ -35,7 +35,9 @@ export function readSwipeProgress(): SwipeProgress | null {
     const parsed = JSON.parse(raw) as SwipeProgress;
     if (!Array.isArray(parsed.seenIds)) return null;
     return {
-      seenIds: parsed.seenIds.filter((id): id is string => typeof id === "string"),
+      seenIds: parsed.seenIds.filter(
+        (id): id is string => typeof id === "string",
+      ),
     };
   } catch {
     return null;

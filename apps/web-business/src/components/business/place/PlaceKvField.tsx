@@ -33,7 +33,7 @@ function PlaceKvInfo({ message }: { message: string }) {
       {open ? (
         <span
           role="tooltip"
-          className="border-border/60 bg-background absolute top-full left-0 z-20 mt-1.5 w-52 rounded-lg border px-2.5 py-2 text-[10px] leading-snug font-normal text-foreground shadow-md"
+          className="border-border/60 bg-background text-foreground absolute top-full left-0 z-20 mt-1.5 w-52 rounded-lg border px-2.5 py-2 text-[10px] leading-snug font-normal shadow-md"
         >
           {message}
         </span>

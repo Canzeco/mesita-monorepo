@@ -1,13 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import {
-  ArrowLeft,
-  ArrowRight,
-  ImagePlus,
-  Loader2,
-  X,
-} from "lucide-react";
+import { ArrowLeft, ArrowRight, ImagePlus, Loader2, X } from "lucide-react";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { cn, errMsg } from "@/lib/utils";
 import { PlaceBox } from "../PlaceBox";

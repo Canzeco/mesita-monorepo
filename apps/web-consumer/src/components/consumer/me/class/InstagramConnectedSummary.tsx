@@ -3,7 +3,11 @@ import { BadgeCheck, Instagram } from "lucide-react";
 import { INSTAGRAM_ICON_GRADIENT_CLASS } from "@/lib/ui-classes";
 import { cn } from "@/lib/utils";
 
-export function InstagramConnectedSummary({ followers }: { followers: number }) {
+export function InstagramConnectedSummary({
+  followers,
+}: {
+  followers: number;
+}) {
   return (
     <div className="flex items-center gap-3.5 rounded-2xl border border-emerald-500/25 bg-emerald-500/[0.05] p-4">
       <span

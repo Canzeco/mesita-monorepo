@@ -34,9 +34,7 @@ export function ClassModal({
             <Crown className="h-5 w-5" />
           </span>
           <div>
-            <h2 className={SHEET_TITLE_CLASS}>
-              Your class
-            </h2>
+            <h2 className={SHEET_TITLE_CLASS}>Your class</h2>
             <p className="text-muted-foreground text-[12px]">
               Standard, Premium, Influencer or Aura — and how to climb
             </p>

@@ -103,7 +103,9 @@ export function HomeModeNav() {
         onClose={() => setSoonTab(null)}
         ariaLabel={soonTab ? `${soonTab.label} — coming soon` : "Coming soon"}
       >
-        {soonTab && <ComingSoon tab={soonTab} onClose={() => setSoonTab(null)} />}
+        {soonTab && (
+          <ComingSoon tab={soonTab} onClose={() => setSoonTab(null)} />
+        )}
       </LocalDialog>
     </div>
   );

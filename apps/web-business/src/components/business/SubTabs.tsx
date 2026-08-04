@@ -69,15 +69,23 @@ export function SubTabs<T extends string>({
                   : isActive
                     ? "bg-foreground text-background shadow-sm"
                     : "text-muted-foreground hover:bg-muted hover:text-foreground",
-              !equalWidth && variant === "minimal" && "rounded-lg px-3 py-1.5 text-[12px]",
-              equalWidth && variant === "default" && "sm:text-[12px] rounded-full px-1",
+              !equalWidth &&
+                variant === "minimal" &&
+                "rounded-lg px-3 py-1.5 text-[12px]",
+              equalWidth &&
+                variant === "default" &&
+                "rounded-full px-1 sm:text-[12px]",
             )}
           >
             {Icon && (
               <Icon
                 className={cn(
                   "shrink-0 transition-colors",
-                  segmentedStacked ? "h-4 w-4" : equalWidth ? "h-3 w-3" : "h-3.5 w-3.5",
+                  segmentedStacked
+                    ? "h-4 w-4"
+                    : equalWidth
+                      ? "h-3 w-3"
+                      : "h-3.5 w-3.5",
                   isSegmented && isActive && "text-pink-500",
                 )}
                 strokeWidth={isSegmented && isActive ? 2.25 : 2}
@@ -118,14 +126,16 @@ export function SubTabs<T extends string>({
     return (
       <div
         className={cn(
-          "border-border/40 sticky top-0 z-10 -mx-4 border-b bg-background/95 px-4 py-3 backdrop-blur-md",
+          "border-border/40 bg-background/95 sticky top-0 z-10 -mx-4 border-b px-4 py-3 backdrop-blur-md",
           className,
         )}
       >
         <div
           role="tablist"
           className="border-border/50 bg-muted/35 grid gap-1 rounded-2xl border p-1 shadow-[inset_0_1px_2px_rgba(0,0,0,0.04)]"
-          style={{ gridTemplateColumns: `repeat(${tabs.length}, minmax(0, 1fr))` }}
+          style={{
+            gridTemplateColumns: `repeat(${tabs.length}, minmax(0, 1fr))`,
+          }}
         >
           {tabList}
         </div>
@@ -138,7 +148,7 @@ export function SubTabs<T extends string>({
       role="tablist"
       className={cn(
         variant === "minimal"
-          ? "border-border/60 sticky top-0 z-10 -mx-4 border-b bg-background/95 px-3 py-1.5 backdrop-blur-sm"
+          ? "border-border/60 bg-background/95 sticky top-0 z-10 -mx-4 border-b px-3 py-1.5 backdrop-blur-sm"
           : "bg-background/90 border-border sticky top-0 z-10 -mx-4 border-b py-2 backdrop-blur-md",
         equalWidth
           ? "grid gap-1"

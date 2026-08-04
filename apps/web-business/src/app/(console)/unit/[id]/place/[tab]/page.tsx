@@ -60,10 +60,7 @@ export default async function BusinessPlaceTabPage({
             title="No place yet"
             description="Add a place to start editing it."
             action={
-              <Link
-                href="/add"
-                className={CTA_BUTTON_CLASS}
-              >
+              <Link href="/add" className={CTA_BUTTON_CLASS}>
                 <Plus className="h-4 w-4" />
                 Add place
               </Link>

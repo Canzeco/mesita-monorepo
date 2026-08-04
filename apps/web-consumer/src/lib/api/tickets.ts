@@ -101,7 +101,6 @@ export async function apiCancelTicket(
   });
 }
 
-
 // ── Guest tasks on a live ticket (MESITA-824, v3 in MESITA-849) ─────────
 //
 // The guest completes these BEFORE staff are involved and their tap IS the

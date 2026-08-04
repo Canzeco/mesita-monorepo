@@ -31,9 +31,7 @@ export function PlaceDetailModalShell({
   return (
     <>
       <SlideOverHeader
-        title={
-          <PlaceDetailTitle placeName={placeName} className="flex-none" />
-        }
+        title={<PlaceDetailTitle placeName={placeName} className="flex-none" />}
       />
       {/*
         `min-h-0` is the load-bearing class here: without it, a flex-1 child

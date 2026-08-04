@@ -85,10 +85,7 @@ export function firstOpenDate(options: DateOption[]): string {
  * ahead of the venue's clock, otherwise the first slot that is. Null when the
  * day is spent — callers disable submit on that.
  */
-export function resolveSlot(
-  dateIso: string,
-  preferred: string,
-): string | null {
+export function resolveSlot(dateIso: string, preferred: string): string | null {
   if (!dateIso) return null;
   if (TIME_SLOTS.includes(preferred) && !isSlotPast(dateIso, preferred)) {
     return preferred;

@@ -56,7 +56,10 @@ function reservationPhase(row: EFReservationRow): ReservationStatus {
   }
 }
 
-function noteFor(phase: ReservationStatus, row: EFReservationRow): string | undefined {
+function noteFor(
+  phase: ReservationStatus,
+  row: EFReservationRow,
+): string | undefined {
   switch (phase) {
     case "created":
       return "Mesita is about to call the place to book your table.";
@@ -107,7 +110,8 @@ function formatReservationWhen(iso: string): string {
 export function toReservationItem(row: EFReservationRow): ReservationItem {
   const status = reservationPhase(row);
   // A ticket is still yours to move while it's live and ahead of us.
-  const live = status === "created" || status === "booking" || status === "confirmed";
+  const live =
+    status === "created" || status === "booking" || status === "confirmed";
   return {
     id: row.id,
     projectId: row.place?.id ?? "",

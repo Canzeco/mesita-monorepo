@@ -31,13 +31,7 @@ function PreviewMetaChip({ children }: { children: React.ReactNode }) {
   );
 }
 
-function PreviewSwipeCard({
-  place,
-  v,
-}: {
-  place: MyPlace;
-  v: PlaceFormState;
-}) {
+function PreviewSwipeCard({ place, v }: { place: MyPlace; v: PlaceFormState }) {
   const photos = v.photos.slice(0, MAX_PHOTOS);
   const [photoIdx, setPhotoIdx] = useState(0);
   const safeIdx = photoIdx > photos.length - 1 ? 0 : photoIdx;
@@ -46,7 +40,7 @@ function PreviewSwipeCard({
   const canSlide = photos.length > 1;
 
   return (
-    <div className="relative z-0 mx-auto w-full max-w-[200px] overflow-hidden rounded-xl border bg-card">
+    <div className="bg-card relative z-0 mx-auto w-full max-w-[200px] overflow-hidden rounded-xl border">
       <div className="bg-muted relative aspect-[4/5] w-full overflow-hidden">
         {cover ? (
           // eslint-disable-next-line @next/next/no-img-element

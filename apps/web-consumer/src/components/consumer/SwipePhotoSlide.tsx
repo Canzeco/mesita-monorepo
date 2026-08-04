@@ -121,7 +121,7 @@ function WitcPhotoSlide({
         the strip in DOM, so the blur + darkening overlays paint on top of it.
       */}
       <div
-        className="pointer-events-none absolute inset-x-0 top-0 origin-bottom overflow-hidden [transform:scaleY(-1)]"
+        className="pointer-events-none absolute inset-x-0 top-0 origin-bottom [transform:scaleY(-1)] overflow-hidden"
         style={{ bottom: stripHeight }}
         aria-hidden
       >

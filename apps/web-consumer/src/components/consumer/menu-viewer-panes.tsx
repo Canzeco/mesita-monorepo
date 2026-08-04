@@ -31,7 +31,7 @@ export function ImagePane({
           onLoad={onLoaded}
           onError={onError}
           className={cn(
-            "max-w-none rounded-lg shadow-lg transition-[transform,opacity] duration-300 origin-center",
+            "max-w-none origin-center rounded-lg shadow-lg transition-[transform,opacity] duration-300",
             loading ? "opacity-0" : "opacity-100",
           )}
           style={{

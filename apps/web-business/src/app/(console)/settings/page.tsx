@@ -16,10 +16,7 @@ import { getUnitOverview } from "@/lib/api/unit";
 import { apiGetBusinessProfile } from "@/lib/api/business";
 import { placeSubtitle } from "@/components/business/place/place-utils";
 import { errMsg, initialLetter } from "@/lib/utils";
-import {
-  ACTIVE_UNIT_COOKIE,
-  resolveActiveUnitId,
-} from "@/lib/active-unit";
+import { ACTIVE_UNIT_COOKIE, resolveActiveUnitId } from "@/lib/active-unit";
 import { placePath } from "@/lib/business-route-contract";
 
 export const dynamic = "force-dynamic";

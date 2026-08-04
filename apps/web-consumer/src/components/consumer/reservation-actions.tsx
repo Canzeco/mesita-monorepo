@@ -24,7 +24,11 @@ import type { ReservationItem } from "@/lib/mock/reservations-mock";
 import { placeHref } from "@/lib/place-route";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { toast } from "@/lib/toast";
-import { ERROR_BOX_CLASS, SHEET_BODY_CLASS, SHEET_TITLE_CLASS } from "@/lib/ui-classes";
+import {
+  ERROR_BOX_CLASS,
+  SHEET_BODY_CLASS,
+  SHEET_TITLE_CLASS,
+} from "@/lib/ui-classes";
 import { cn, errMsg, guestNoun } from "@/lib/utils";
 import { MX_OFFSET, venueDateTime } from "@/lib/venue-time";
 

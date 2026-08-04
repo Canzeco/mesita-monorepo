@@ -57,8 +57,7 @@ export function PayClient({ userId }: { userId: string }) {
   // Default tab is DERIVED, not effect-set: Pending while a live ticket
   // exists, New otherwise. A manual tap pins the choice for the session.
   const [tabChoice, setTabChoice] = useState<Tab | null>(null);
-  const tab: Tab =
-    tabChoice ?? (tickets.active.length > 0 ? "pending" : "new");
+  const tab: Tab = tabChoice ?? (tickets.active.length > 0 ? "pending" : "new");
 
   const activePlaceIds = useMemo(
     () => new Set(tickets.active.map((t) => t.project_id)),
@@ -232,8 +231,8 @@ export function PayClient({ userId }: { userId: string }) {
                 No live ticket
               </p>
               <p className="text-muted-foreground max-w-[280px] text-[12.5px] leading-relaxed">
-                Pick the place you&apos;re visiting in New and your ticket
-                opens with its QR.
+                Pick the place you&apos;re visiting in New and your ticket opens
+                with its QR.
               </p>
               <button
                 type="button"
@@ -245,7 +244,11 @@ export function PayClient({ userId }: { userId: string }) {
             </div>
           ) : (
             tickets.active.map((t) => (
-              <TicketRow key={t.id} ticket={t} onOpen={() => openTicket(t.id)} />
+              <TicketRow
+                key={t.id}
+                ticket={t}
+                onOpen={() => openTicket(t.id)}
+              />
             ))
           )}
         </div>
@@ -266,7 +269,11 @@ export function PayClient({ userId }: { userId: string }) {
             </div>
           ) : (
             tickets.history.map((t) => (
-              <TicketRow key={t.id} ticket={t} onOpen={() => openTicket(t.id)} />
+              <TicketRow
+                key={t.id}
+                ticket={t}
+                onOpen={() => openTicket(t.id)}
+              />
             ))
           )}
         </div>
@@ -293,7 +300,9 @@ export function PayClient({ userId }: { userId: string }) {
             aria-pressed={wantsStory}
             className={cn(
               "flex items-start gap-3 rounded-2xl border px-3.5 py-3 text-left transition",
-              wantsStory ? "border-secondary/40 bg-secondary/5" : "border-border",
+              wantsStory
+                ? "border-secondary/40 bg-secondary/5"
+                : "border-border",
             )}
           >
             <span className="bg-secondary/10 text-secondary grid size-8 shrink-0 place-items-center rounded-lg">

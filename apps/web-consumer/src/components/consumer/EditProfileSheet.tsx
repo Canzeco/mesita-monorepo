@@ -107,9 +107,7 @@ export function EditProfileSheet({
   return (
     <LocalSheet open={open} onClose={onClose} ariaLabel="Edit profile">
       <div className={SHEET_BODY_CLASS}>
-        <h2 className={SHEET_TITLE_CLASS}>
-          Personal details
-        </h2>
+        <h2 className={SHEET_TITLE_CLASS}>Personal details</h2>
         <p className="text-muted-foreground text-[12px]">
           How you appear across Mesita
         </p>

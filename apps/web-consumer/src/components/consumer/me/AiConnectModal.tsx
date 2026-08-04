@@ -208,7 +208,7 @@ export function AiConnectModal({
               </p>
             </div>
             <div className="space-y-3 px-4 py-3">
-              <code className="bg-muted block break-all rounded-lg px-3 py-2 text-[11px] leading-relaxed">
+              <code className="bg-muted block rounded-lg px-3 py-2 text-[11px] leading-relaxed break-all">
                 {fresh.token}
               </code>
               <button
@@ -225,7 +225,7 @@ export function AiConnectModal({
                 <p className="text-muted-foreground mb-1 text-[11px] font-semibold tracking-wide uppercase">
                   MCP URL
                 </p>
-                <code className="bg-muted block break-all rounded-lg px-3 py-2 text-[11px]">
+                <code className="bg-muted block rounded-lg px-3 py-2 text-[11px] break-all">
                   {fresh.mcp_url}
                 </code>
               </div>

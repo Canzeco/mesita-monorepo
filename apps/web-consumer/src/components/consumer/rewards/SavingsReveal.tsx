@@ -28,7 +28,9 @@ export function SavingsReveal({
     // All setState happens inside rAF callbacks (never sync in the effect —
     // React 19 set-state-in-effect rule). Reduced motion snaps on frame one.
     let raf = 0;
-    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const reduced = window.matchMedia(
+      "(prefers-reduced-motion: reduce)",
+    ).matches;
     const start = performance.now();
     const tick = (now: number) => {
       if (reduced || savedCents <= 0) {

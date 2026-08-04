@@ -7,12 +7,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 
-type ActivityKind =
-  | "earned"
-  | "saved"
-  | "booked"
-  | "upgraded"
-  | "swiped";
+type ActivityKind = "earned" | "saved" | "booked" | "upgraded" | "swiped";
 
 export type ConsumerActivity = {
   id: string;

@@ -178,10 +178,7 @@ export function discoveryFiltersAreActive(f: DiscoveryFilters): boolean {
   );
 }
 
-function matchesDiscoveryFilters(
-  place: Place,
-  f: DiscoveryFilters,
-): boolean {
+function matchesDiscoveryFilters(place: Place, f: DiscoveryFilters): boolean {
   // What — OR across the two tiers.
   if (f.familyKeys.length > 0 || f.categories.length > 0) {
     const categoryHit =

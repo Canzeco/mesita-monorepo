@@ -120,7 +120,8 @@ export function EditPlaceForm({
       id: place.id,
       name: trimmedName.slice(0, PLACE_NAME_MAX),
       category: nullable(v.category),
-      description: nullable(v.description)?.slice(0, PLACE_DESCRIPTION_MAX) ?? null,
+      description:
+        nullable(v.description)?.slice(0, PLACE_DESCRIPTION_MAX) ?? null,
       hours: formHoursToPlace(v.hours),
       menu_pdf_url: firstMenu?.url ?? null,
       menu_pdf_name: firstMenu?.name ?? null,

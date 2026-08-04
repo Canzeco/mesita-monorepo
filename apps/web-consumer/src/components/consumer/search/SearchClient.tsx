@@ -17,13 +17,7 @@
 //     carrying the real Add flow (consumer-web-create-place creates the
 //     place immediately; the async Enricher builds the profile in minutes).
 
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import type { Place } from "@/lib/api/places";
@@ -43,7 +37,10 @@ import { SearchResultsPanel } from "./SearchResultsPanel";
 import { GooglePlaceSheet } from "./GooglePlaceSheet";
 import { SearchBar } from "./SearchBar";
 import type { AddState } from "./add-state";
-import { EmptySearchPrompt, SearchRailOverlay } from "./search-catalog-overlays";
+import {
+  EmptySearchPrompt,
+  SearchRailOverlay,
+} from "./search-catalog-overlays";
 import {
   applyDiscoveryFilters,
   deriveCategoryOptions,
@@ -373,7 +370,6 @@ export function SearchClient({
             {fetchError}
           </p>
         )}
-
       </div>
 
       <SearchRailOverlay

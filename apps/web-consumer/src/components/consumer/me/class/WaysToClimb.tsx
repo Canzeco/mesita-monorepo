@@ -17,10 +17,7 @@ import { InstagramConnectedSummary } from "./InstagramConnectedSummary";
 // they differ in the door (paid / reach / invited) and in how their money is
 // made (flat rate vs the Story action vs the highest flat rate). Keep the
 // shared lines a single constant so the cards can never drift apart.
-const ELEVATED_PERKS = [
-  "Better recommendations",
-  "10 reservations a month",
-];
+const ELEVATED_PERKS = ["Better recommendations", "10 reservations a month"];
 
 export function WaysToClimb({
   onConnectInstagram,
@@ -66,7 +63,9 @@ export function WaysToClimb({
       ],
       reached: key === "premium",
       reachedLabel: "Active",
-      actions: [{ label: "Join with subscription", href: "/subscribe/premium" }],
+      actions: [
+        { label: "Join with subscription", href: "/subscribe/premium" },
+      ],
     },
     {
       key: "influencer",

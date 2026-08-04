@@ -320,4 +320,3 @@ async function fetchTimezone(
     return null;
   }
 }
-

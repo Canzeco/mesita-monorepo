@@ -35,7 +35,7 @@ export function PlaceProfileProgressPanel({ v }: { v: PlaceFormState }) {
             className={cn(
               "flex items-center gap-2 rounded-lg border px-2.5 py-2 text-[11px] font-medium",
               done
-                ? "border-emerald-500/25 bg-emerald-500/5 text-foreground"
+                ? "text-foreground border-emerald-500/25 bg-emerald-500/5"
                 : "border-border/60 bg-muted/20 text-muted-foreground",
             )}
           >

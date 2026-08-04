@@ -1,10 +1,7 @@
 import { ExternalLink } from "lucide-react";
 import type { MyPlace } from "@/lib/api/places";
 import { cn } from "@/lib/utils";
-import {
-  PLACE_GOOGLE_LOCATION_INFO,
-  PlaceKvField,
-} from "./PlaceKvField";
+import { PLACE_GOOGLE_LOCATION_INFO, PlaceKvField } from "./PlaceKvField";
 
 function PlaceMapEmbed({
   lat,
@@ -72,7 +69,7 @@ export function PlaceLocationFields({ place }: { place: MyPlace }) {
       <div className="flex flex-col gap-2">
         <div
           className={cn(
-            "rounded-xl border border-border/60 bg-muted/40 px-3 py-2.5 text-[13px] leading-snug",
+            "border-border/60 bg-muted/40 rounded-xl border px-3 py-2.5 text-[13px] leading-snug",
             !place.address?.trim() && "text-muted-foreground",
           )}
         >

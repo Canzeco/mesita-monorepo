@@ -2,10 +2,7 @@ import Image from "next/image";
 import { Store, UserCircle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { PathButton } from "@/components/landing/path-button";
-import {
-  BUSINESS_SIGNUP_URL,
-  CONSUMER_URL,
-} from "@/components/landing/urls";
+import { BUSINESS_SIGNUP_URL, CONSUMER_URL } from "@/components/landing/urls";
 
 function Hero() {
   return (

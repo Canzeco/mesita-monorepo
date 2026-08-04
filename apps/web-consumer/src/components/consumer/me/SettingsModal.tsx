@@ -85,9 +85,7 @@ export function SettingsModal({
             <SettingsIcon className="h-5 w-5" />
           </span>
           <div>
-            <h2 className={SHEET_TITLE_CLASS}>
-              Settings
-            </h2>
+            <h2 className={SHEET_TITLE_CLASS}>Settings</h2>
             <p className="text-muted-foreground text-[12px]">
               Preferences on this device
             </p>

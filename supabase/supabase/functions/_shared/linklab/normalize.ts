@@ -99,5 +99,3 @@ function isReservedIgWord(h: string): boolean {
     "privacy",
   ].includes(h);
 }
-
-

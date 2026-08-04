@@ -136,7 +136,9 @@ function MapLoadingVeil() {
   );
 }
 
-function hasCoords(place: Place): place is Place & { lat: number; lng: number } {
+function hasCoords(
+  place: Place,
+): place is Place & { lat: number; lng: number } {
   return typeof place.lat === "number" && typeof place.lng === "number";
 }
 
@@ -172,7 +174,9 @@ function SearchMapCanvas({
       reuseMaps
       className="absolute inset-0 h-full w-full"
       colorScheme="LIGHT"
-      styles={MAP_MINIMAL_STYLES as unknown as Parameters<typeof Map>[0]["styles"]}
+      styles={
+        MAP_MINIMAL_STYLES as unknown as Parameters<typeof Map>[0]["styles"]
+      }
       onTilesLoaded={onReady}
       // Bare canvas tap toggles search — open when idle, close when the
       // overlay is up. Pan/drag and marker taps don't reach here.
@@ -195,9 +199,7 @@ function SearchMapCanvas({
           // First tap picks the place (pin turns red, rail syncs); tapping
           // the already-selected pin again opens it.
           onClick={() =>
-            place.id === selectedId
-              ? onOpenPlace(place)
-              : onSelectPlace(place)
+            place.id === selectedId ? onOpenPlace(place) : onSelectPlace(place)
           }
         />
       ))}

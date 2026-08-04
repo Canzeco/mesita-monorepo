@@ -24,7 +24,7 @@ import type {
   TraceStep,
 } from "./types";
 
-export type { AskMemoResult, MemoConfig, MemoPrediction } from "./types";
+export type { AskMemoResult, MemoConfig } from "./types";
 
 type GetMemoConfigResult =
   | { ok: true; data: MemoConfig }

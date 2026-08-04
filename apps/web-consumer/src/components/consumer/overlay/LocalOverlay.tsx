@@ -178,7 +178,10 @@ export function LocalDialog({
         role="dialog"
         aria-modal="true"
         aria-label={ariaLabel}
-        className={cn("absolute inset-0 flex items-center justify-center overflow-hidden p-5", Z_LOCAL_OVERLAY)}
+        className={cn(
+          "absolute inset-0 flex items-center justify-center overflow-hidden p-5",
+          Z_LOCAL_OVERLAY,
+        )}
       >
         <button
           type="button"

@@ -113,9 +113,7 @@ export function PlaceContactSheet({
             <MessageCircle className="h-5 w-5" />
           </span>
           <div className="min-w-0">
-            <h2 className={SHEET_TITLE_CLASS}>
-              Contact
-            </h2>
+            <h2 className={SHEET_TITLE_CLASS}>Contact</h2>
             <p className="text-muted-foreground truncate text-[12px]">
               {place.name}
             </p>

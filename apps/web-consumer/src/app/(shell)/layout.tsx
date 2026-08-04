@@ -11,10 +11,7 @@ import { PlaceGoneNotice } from "@/components/consumer/PlaceGoneNotice";
 import { ShellChildrenSlot } from "@/components/consumer/ShellChildrenSlot";
 import { Toaster } from "@/components/consumer/Toaster";
 import { createServerSupabase } from "@/lib/supabase/server";
-import {
-  apiFetchConsumerProfile,
-  type ConsumerClass,
-} from "@/lib/api/profile";
+import { apiFetchConsumerProfile, type ConsumerClass } from "@/lib/api/profile";
 import { ClassProvider } from "@/lib/class-context";
 
 // Every route under /(shell) calls supabase.auth.getUser() via this layout
@@ -107,7 +104,12 @@ export default async function ConsumerShellLayout({
           {/* Single modal host layer above shell chrome. Keeping this as the
               only stacking context avoids "menu peeking through" races while
               intercepted routes resolve/loading UI mounts. */}
-          <div className={cn("pointer-events-none absolute inset-0", Z_ROUTE_MODAL)}>
+          <div
+            className={cn(
+              "pointer-events-none absolute inset-0",
+              Z_ROUTE_MODAL,
+            )}
+          >
             {modal}
           </div>
         </div>

@@ -14,7 +14,6 @@ export function Skeleton({ className }: { className?: string }) {
   );
 }
 
-
 // A standard row placeholder (avatar + two lines) matching activity /
 // notification / reservation list rows.
 export function SkeletonRow({ className }: { className?: string }) {

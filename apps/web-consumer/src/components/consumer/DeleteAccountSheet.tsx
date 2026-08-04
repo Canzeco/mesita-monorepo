@@ -54,9 +54,7 @@ export function DeleteAccountSheet({
             <Trash2 className="h-5 w-5" />
           </span>
           <div>
-            <h2 className={SHEET_TITLE_CLASS}>
-              Delete account
-            </h2>
+            <h2 className={SHEET_TITLE_CLASS}>Delete account</h2>
             <p className="text-muted-foreground text-[12px]">
               This is permanent and can&apos;t be undone.
             </p>
@@ -79,8 +77,9 @@ export function DeleteAccountSheet({
         </p>
 
         <p className="mt-4 text-[13px] font-medium">
-          Type <span className="text-destructive font-mono">{CONFIRM_WORD}</span>{" "}
-          to confirm:
+          Type{" "}
+          <span className="text-destructive font-mono">{CONFIRM_WORD}</span> to
+          confirm:
         </p>
         <input
           value={confirm}

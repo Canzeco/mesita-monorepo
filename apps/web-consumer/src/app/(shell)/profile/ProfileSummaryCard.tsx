@@ -5,12 +5,7 @@ import { BadgeCheck, Instagram } from "lucide-react";
 import type { ConsumerProfile } from "@/lib/api/profile";
 import { CLASSES, CLASS_ICONS, isElevatedClass } from "@/lib/consumer-data";
 import { useConsumerClass } from "@/lib/class-context";
-import {
-  ageFromBirthday,
-  cn,
-  firstInitials,
-  formatSex,
-} from "@/lib/utils";
+import { ageFromBirthday, cn, firstInitials, formatSex } from "@/lib/utils";
 
 // ─── Profile summary (static, not clickable) ──────────────────────────────
 

@@ -203,8 +203,8 @@ export function PromosClient({ place }: { place: MyPlace }) {
               {activationStrategy.emoji} {activationStrategy.name}
             </span>{" "}
             ({formatMoney(PRODUCT_PRICE_MXN, place.currency)}/year). It
-            activates the first time your staff honor a guest check at the
-            table — nothing to install, nothing to wait for.
+            activates the first time your staff honor a guest check at the table
+            — nothing to install, nothing to wait for.
           </p>
         )}
 

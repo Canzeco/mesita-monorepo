@@ -45,7 +45,9 @@ export function ClassPreviewToggle() {
             <button
               key={o.value}
               type="button"
-              onClick={() => setMockAccount({ class: o.value, instagram: false })}
+              onClick={() =>
+                setMockAccount({ class: o.value, instagram: false })
+              }
               aria-pressed={active}
               className={cn(
                 "flex-1 rounded-md px-2 py-1.5 text-center text-[12px] font-semibold whitespace-nowrap transition",
