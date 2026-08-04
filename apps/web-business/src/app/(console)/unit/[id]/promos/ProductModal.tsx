@@ -152,8 +152,9 @@ export function ProductModal({
                 membership — one Strategy at a time; switching later is a new
                 membership.
               </Step>
-              <Step n={2} title="Set up your staff on WhatsApp">
-                We send a test ping so your team can receive guest tickets.
+              <Step n={2} title="Tell your staff to scan the guest's QR">
+                Nothing to install: any phone camera opens the check page. No
+                app, no account, no training.
               </Step>
               <Step n={3} title="Redeem your first guest reward">
                 Honor the first ticket at the bill and you&apos;re live.

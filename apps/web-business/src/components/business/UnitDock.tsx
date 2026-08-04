@@ -9,9 +9,8 @@ import {
   Plus,
   Store,
   Gift,
-  ScanLine,
-  Users,
   BarChart3,
+  Settings2,
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -25,17 +24,20 @@ import {
 import { resolveActiveUnitId } from "@/lib/active-unit";
 
 type NavItem = {
-  slug: "place" | "promos" | "scan" | "performance" | "team";
+  slug: "place" | "promos" | "performance" | "settings";
   Icon: LucideIcon;
   label: string;
 };
 
+// Four tabs, and only four (MESITA-843). There is no scan tab: Mesita Check is
+// the whole staff surface, so a check is worked on the public check page or
+// nowhere. Team, reservation routing, the Check PIN and billing all live under
+// Settings rather than each claiming a tab.
 const NAV_ITEMS: NavItem[] = [
   { slug: "place", Icon: Store, label: "Place" },
   { slug: "promos", Icon: Gift, label: "Promos" },
-  { slug: "scan", Icon: ScanLine, label: "Scan" },
-  { slug: "performance", Icon: BarChart3, label: "Stats" },
-  { slug: "team", Icon: Users, label: "Team" },
+  { slug: "performance", Icon: BarChart3, label: "Performance" },
+  { slug: "settings", Icon: Settings2, label: "Settings" },
 ];
 
 export function UnitDock() {
@@ -64,10 +66,8 @@ export function UnitDock() {
   const currentSection = useMemo(() => {
     if (pathname === BUSINESS_ROUTES.central) return "place";
     const match = pathname.match(/^\/unit\/[^/]+\/([^/]+)/)?.[1];
-    if (match === "place" || match === "promos" || match === "scan") {
-      return match;
-    }
-    if (match === "performance" || match === "team") return match;
+    if (match === "place" || match === "promos") return match;
+    if (match === "performance" || match === "settings") return match;
     return null;
   }, [pathname]);
 
