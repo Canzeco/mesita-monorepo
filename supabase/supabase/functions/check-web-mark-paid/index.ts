@@ -2,10 +2,13 @@
 // check page)
 //
 // verify_jwt = FALSE — code-possession auth (see _shared/ticket-check.ts).
-// The "Paid received" tap, moved from the business console to the check
-// page. Closes the ticket via the same closeTicketAndEnqueueReview helper
-// the staff path used: revealed + revealed_at/paid_at, first-honor
-// recording, and the queued post-visit review.
+// The SINGLE unconditional close of the v3 lifecycle (MESITA-850): staff tap
+// "done" and the ticket dies, whether or not a bill was entered — the bill
+// is internal control, never a gate. Closes via the same
+// closeTicketAndEnqueueReview helper: revealed + revealed_at/paid_at,
+// first-honor recording (now bound to the close), and the queued
+// post-visit review. With no bill on record the place applied the stated
+// offer at its own POS.
 //
 // NOTE (accepted, by design): recordFirstTicketHonored — the Promos v4
 // place-activation gate — now trusts this unauthenticated surface. It only
@@ -68,9 +71,12 @@ Deno.serve(async (req) => {
   if (ticket.status === "revealed") {
     return json({ ok: true, alreadyPaid: true });
   }
-  if (ticket.status !== "awaiting_payment_confirm") {
+  // v3b: the close is unconditional — a billed ticket (awaiting_payment_
+  // confirm) and an unbilled open one both close on this tap. Only a
+  // cancelled (or otherwise dead) ticket refuses.
+  if (ticket.status !== "awaiting_payment_confirm" && ticket.status !== "open") {
     return json(
-      { ok: false, error: `Ticket is ${ticket.status} — nothing to confirm yet.` },
+      { ok: false, error: `Ticket is ${ticket.status} — nothing to close.` },
       409,
     );
   }

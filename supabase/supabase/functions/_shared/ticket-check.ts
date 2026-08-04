@@ -46,7 +46,7 @@ export const CHECK_TICKET_COLUMNS =
   "id, project_id, consumer_id, kind, status, check_code, first_scanned_at, " +
   "story_status, story_screenshot_url, review_status, review_screenshot_url, " +
   "check_subtotal_cents, tip_cents, total_cents, discount_percent, discount_cents, " +
-  "currency, created_at, revealed_at, cancelled_at";
+  "bill_source, currency, created_at, revealed_at, cancelled_at";
 
 export type CheckTicketRow = {
   id: string;
@@ -65,6 +65,7 @@ export type CheckTicketRow = {
   total_cents: number | null;
   discount_percent: number | null;
   discount_cents: number | null;
+  bill_source: string | null;
   currency: string | null;
   created_at: string;
   revealed_at: string | null;
@@ -130,6 +131,11 @@ export function shapeCheckPayload(args: {
   /** Place has a staff PIN set — the page prompts before write actions.
    *  Boolean ONLY; the PIN value never enters the public payload. */
   pinRequired: boolean;
+  /** v3b (MESITA-850): the bill is optional, so an UNBILLED ticket must
+   *  still state the commitment — "N% off, up to MX$<cap>" — for the place
+   *  to apply at its own POS. Live best-of blended percent; same privacy
+   *  shape as discount_percent. Omit/null → no offer block. */
+  offerRatePercent?: number | null;
 }): Record<string, unknown> {
   const { ticket } = args;
   const story = collapseActionState(ticket.story_status);
@@ -157,6 +163,14 @@ export function shapeCheckPayload(args: {
           0,
           (ticket.total_cents ?? 0) - (ticket.discount_cents ?? 0),
         ),
+        reward_cap_mxn: args.capMxn,
+      }
+      : null,
+    // The cap-as-instruction block (MESITA-850): present only while the
+    // ticket has no bill and a live rate was resolved.
+    offer: !billed && args.offerRatePercent != null
+      ? {
+        discount_percent: args.offerRatePercent,
         reward_cap_mxn: args.capMxn,
       }
       : null,

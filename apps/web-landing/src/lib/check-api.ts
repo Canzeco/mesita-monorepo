@@ -31,6 +31,13 @@ export type CheckPayload = {
     amount_due_cents: number | null;
     reward_cap_mxn: number | null;
   } | null;
+  /** v3b (MESITA-850): the cap-as-instruction block — present only while the
+   *  ticket has no bill. States what the place committed to ("N% off, up to
+   *  MX$cap") so staff can apply it at their own POS and close directly. */
+  offer?: {
+    discount_percent: number | null;
+    reward_cap_mxn: number | null;
+  } | null;
   story: { required: boolean; state: CheckActionState; screenshot_url: string | null };
   review: { required: boolean; state: CheckActionState };
   self_opened: boolean;

@@ -27,6 +27,7 @@ import {
   shapeCheckPayload,
 } from "../_shared/ticket-check.ts";
 import { loadRewardsGrid } from "../_shared/rewards-config.ts";
+import { resolveLiveTicketRate } from "../_shared/ticket-reprice.ts";
 
 type Body = { code?: string };
 
@@ -96,6 +97,19 @@ Deno.serve(async (req) => {
     userAgent: req.headers.get("user-agent"),
   });
 
+  // v3b (MESITA-850): with the bill optional, an unbilled live ticket must
+  // state the commitment — "N% off, up to MX$<cap>" — so staff can apply it
+  // at their own POS and close. Resolve the live best-of rate only when the
+  // page will actually show it; a failed resolve degrades to no offer block
+  // rather than failing the scan.
+  let offerRatePercent: number | null = null;
+  const unbilled = (ticket.total_cents ?? 0) <= 0 &&
+    (ticket.check_subtotal_cents ?? 0) <= 0;
+  if (unbilled && ticket.status === "open") {
+    const live = await resolveLiveTicketRate(admin, ticket);
+    if (live.ok) offerRatePercent = live.ratePercent;
+  }
+
   const guest = consumerRow.data;
   return json({
     ok: true,
@@ -109,6 +123,7 @@ Deno.serve(async (req) => {
         guestInstagramHandle: guest.instagram_handle ?? null,
         capMxn: grid.cap ?? null,
         pinRequired: checkPin != null,
+        offerRatePercent,
       }),
       scanned_before: wasScanned,
     },

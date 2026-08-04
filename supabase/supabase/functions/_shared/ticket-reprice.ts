@@ -30,6 +30,63 @@ type RepriceTicketRow = {
   currency: string | null;
 };
 
+// The live best-of rate for a ticket, resolved fresh (v3b, MESITA-850):
+// place strategy × operator grid × the guest's current qualifying set
+// (class, first visit, story/review self-attestations, Mesita review).
+// Shared by the reprice below, check-web-get-ticket's cap-as-instruction
+// offer, and consumer-web-submit-ticket-total's fallback record.
+export async function resolveLiveTicketRate(
+  admin: SupabaseClient,
+  ticket: {
+    id: string;
+    project_id: string;
+    consumer_id: string;
+    story_status: string | null;
+    review_status: string | null;
+  },
+): Promise<
+  | { ok: true; ratePercent: number; capPesos: number }
+  | { ok: false; error: string }
+> {
+  const [placeRes, consumerRes, grid, firstVisit, mesitaReviewed] = await Promise
+    .all([
+      admin
+        .from("projects_view")
+        .select(
+          "id, welcome_free_rate, welcome_premium_rate, free_rate, premium_rate",
+        )
+        .eq("id", ticket.project_id)
+        .maybeSingle(),
+      admin
+        .from("consumers")
+        .select("id, class_key")
+        .eq("id", ticket.consumer_id)
+        .maybeSingle(),
+      loadRewardsGrid(admin),
+      isConsumerFirstVisit(
+        admin,
+        ticket.consumer_id,
+        ticket.project_id,
+        ticket.id,
+      ),
+      hasMesitaReview(admin, ticket.consumer_id, ticket.project_id),
+    ]);
+  if (placeRes.error || !placeRes.data) {
+    return { ok: false, error: "place not found" };
+  }
+  if (consumerRes.error || !consumerRes.data) {
+    return { ok: false, error: "consumer not found" };
+  }
+  const ratePercent = resolveTicketRate(placeStrategy(placeRes.data), grid, {
+    classKey: consumerRes.data.class_key,
+    isFirstVisit: firstVisit,
+    storyVerified: isActionVerified(ticket.story_status),
+    reviewVerified: isActionVerified(ticket.review_status),
+    mesitaReviewed,
+  });
+  return { ok: true, ratePercent, capPesos: grid.cap };
+}
+
 // Recompute the ticket's discount after an action verification. No-ops when
 // the ticket has no bill yet (the bill step prices with the verified action
 // already in the qualifying set) or when the new rate doesn't beat the
@@ -53,11 +110,10 @@ export async function repriceTicketAfterAction(
   const subtotal = ticket.check_subtotal_cents ?? 0;
   if (subtotal <= 0) return { ok: true, ratePercent: null }; // not billed yet
 
+  // The Pay-inbox refresh below still needs the place's display fields.
   const placeRes = await admin
     .from("projects_view")
-    .select(
-      "id, name, slug, photos, instagram_url, welcome_free_rate, welcome_premium_rate, free_rate, premium_rate",
-    )
+    .select("id, name, slug, photos, instagram_url")
     .eq("id", ticket.project_id)
     .maybeSingle();
   if (placeRes.error || !placeRes.data) {
@@ -69,29 +125,11 @@ export async function repriceTicketAfterAction(
     slug: string | null;
     photos: string[] | null;
     instagram_url: string | null;
-  } & Record<string, unknown>;
+  };
 
-  const consumerRes = await admin
-    .from("consumers")
-    .select("id, class_key")
-    .eq("id", ticket.consumer_id)
-    .maybeSingle();
-  if (consumerRes.error || !consumerRes.data) {
-    return { ok: false, error: "consumer not found" };
-  }
-
-  const grid = await loadRewardsGrid(admin);
-  const [firstVisit, mesitaReviewed] = await Promise.all([
-    isConsumerFirstVisit(admin, ticket.consumer_id, ticket.project_id, ticket.id),
-    hasMesitaReview(admin, ticket.consumer_id, ticket.project_id),
-  ]);
-  const ratePercent = resolveTicketRate(placeStrategy(place), grid, {
-    classKey: consumerRes.data.class_key,
-    isFirstVisit: firstVisit,
-    storyVerified: isActionVerified(ticket.story_status),
-    reviewVerified: isActionVerified(ticket.review_status),
-    mesitaReviewed,
-  });
+  const liveRes = await resolveLiveTicketRate(admin, ticket);
+  if (!liveRes.ok) return liveRes;
+  const { ratePercent } = liveRes;
 
   // Bump-only: never lower a snapshotted discount.
   if (ratePercent <= (ticket.discount_percent ?? 0)) {
@@ -101,7 +139,7 @@ export async function repriceTicketAfterAction(
   const billRes = computeTicketBill({
     subtotal,
     ratePercent,
-    capPesos: grid.cap,
+    capPesos: liveRes.capPesos,
   });
   if (!billRes.ok) return { ok: false, error: billRes.error };
   const snap = billRes.snapshot;
@@ -138,7 +176,7 @@ export async function repriceTicketAfterAction(
       discount_cents: snap.discountCents ?? 0,
       discount_percent: snap.discountPercent ?? 0,
       total_reward_cents: snap.discountCents ?? 0,
-      reward_cap_mxn: grid.cap,
+      reward_cap_mxn: liveRes.capPesos,
       amount_due_cents: snap.amountDueCents,
       currency: ticket.currency ?? "MXN",
     },

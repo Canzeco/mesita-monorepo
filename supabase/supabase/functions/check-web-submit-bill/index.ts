@@ -2,8 +2,10 @@
 // check page)
 //
 // verify_jwt = FALSE — code-possession auth (see _shared/ticket-check.ts).
-// The billing step of Tickets v2: staff (whoever holds the scanned QR) enter
-// the check subtotal on mesita.ai/check/<code>. Pricing is IDENTICAL to the
+// The OPTIONAL billing step (v3b, MESITA-850 — internal control, never a
+// gate): staff (whoever holds the scanned QR) may enter the check subtotal
+// on mesita.ai/check/<code>; skipping it and closing directly is equally
+// valid — the ticket then states the offer for the place's own POS. Pricing is IDENTICAL to the
 // retired business-web-submit-ticket-bill path — same grid, same best-of
 // resolveTicketRate, same computeTicketBill, same bill notification — minus
 // requireMembership, keyed by the check code instead of a business JWT.
@@ -21,7 +23,7 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { corsPreflight, json, readJson } from "../_shared/http.ts";
 import { adminClient, getOptionalAuthedUser, readEFEnv } from "../_shared/auth.ts";
 import { computeTicketBill } from "../_shared/business-ticket-billing.ts";
-import { isConsumerFirstVisit } from "../_shared/membership.ts";
+import { hasMesitaReview, isConsumerFirstVisit } from "../_shared/membership.ts";
 import {
   isActionVerified,
   loadRewardsGrid,
@@ -134,17 +136,21 @@ Deno.serve(async (req) => {
   // exists, so exclude it from the first-visit count (Welcome must fire on
   // the create → bill path exactly as it did on scan → bill).
   const grid = await loadRewardsGrid(admin);
-  const firstVisit = await isConsumerFirstVisit(
-    admin,
-    ticket.consumer_id,
-    ticket.project_id,
-    ticket.id,
-  );
+  const [firstVisit, mesitaReviewed] = await Promise.all([
+    isConsumerFirstVisit(
+      admin,
+      ticket.consumer_id,
+      ticket.project_id,
+      ticket.id,
+    ),
+    hasMesitaReview(admin, ticket.consumer_id, ticket.project_id),
+  ]);
   const ratePercent = resolveTicketRate(placeStrategy(place), grid, {
     classKey: consumerRow.data.class_key,
     isFirstVisit: firstVisit,
     storyVerified: isActionVerified(ticket.story_status),
     reviewVerified: isActionVerified(ticket.review_status),
+    mesitaReviewed,
   });
   const capPesos = grid.cap;
 
@@ -170,6 +176,7 @@ Deno.serve(async (req) => {
       redeem_cents: 0,
       discount_percent: snap.discountPercent,
       discount_cents: snap.discountCents,
+      bill_source: "business", // staff entered it at the check page (MESITA-850)
     })
     .eq("id", ticket.id)
     .eq("status", "open") // concurrent double-submits lose cleanly

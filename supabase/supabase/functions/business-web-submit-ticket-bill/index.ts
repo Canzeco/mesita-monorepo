@@ -172,6 +172,7 @@ Deno.serve(async (req) => {
       redeem_cents: 0,
       discount_percent: snap.discountPercent,
       discount_cents: snap.discountCents,
+      bill_source: "business", // place-entered amount (MESITA-850)
     })
     .eq("id", ticketId)
     .eq("status", "open")

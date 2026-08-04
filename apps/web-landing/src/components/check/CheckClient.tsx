@@ -33,7 +33,7 @@ import {
 import { cn } from "@/lib/utils";
 
 const STATUS_LABEL: Record<string, { label: string; tone: string }> = {
-  open: { label: "Ticket abierto — falta la cuenta", tone: "bg-primary/10 text-primary" },
+  open: { label: "Ticket abierto — descuento activo", tone: "bg-primary/10 text-primary" },
   awaiting_payment_confirm: {
     label: "Listo para cobrar",
     tone: "bg-emerald-500/15 text-emerald-700",
@@ -162,6 +162,24 @@ export function CheckClient({
           ) : null}
         </div>
 
+        {/* v3b (MESITA-850): no bill yet — the ticket states the commitment
+            outright. The place applies it at its own POS; entering the
+            subtotal below is optional, internal control only. */}
+        {!check.bill && check.offer && check.status === "open" ? (
+          <div className="rounded-xl border border-primary/25 bg-primary/5 p-4 text-center">
+            <p className="font-display text-3xl leading-none font-bold text-primary tabular-nums">
+              {check.offer.discount_percent ?? 0}%
+            </p>
+            <p className="mt-1 text-sm font-semibold">de descuento para este cliente</p>
+            {check.offer.reward_cap_mxn ? (
+              <p className="mt-1 text-[11px] text-muted-foreground">
+                Sobre los primeros MX${check.offer.reward_cap_mxn} de la cuenta —
+                aplícalo en tu punto de venta.
+              </p>
+            ) : null}
+          </div>
+        ) : null}
+
         {/* The number that matters. */}
         {check.bill ? (
           <div className="rounded-xl border border-border bg-muted/30 p-4">
@@ -220,14 +238,16 @@ export function CheckClient({
           </div>
         ) : null}
 
-        {/* Action: bill entry (only while open). */}
+        {/* Action: bill entry — OPTIONAL since v3b (MESITA-850). Internal
+            control only, never a gate: skipping it and closing directly is
+            equally valid. */}
         {check.status === "open" ? (
           <div className="flex flex-col gap-2">
             <label
               htmlFor="check-subtotal"
               className="text-xs font-semibold tracking-wide text-muted-foreground uppercase"
             >
-              Subtotal de la cuenta (MXN)
+              Subtotal de la cuenta (MXN) — opcional
             </label>
             <div className="flex gap-2">
               <input
@@ -240,12 +260,13 @@ export function CheckClient({
               />
               <Button onClick={onSubmitBill} disabled={busy != null}>
                 {busy === "bill" ? <Loader2 className="animate-spin" /> : <Banknote />}
-                Aplicar descuento
+                Calcular
               </Button>
             </div>
             <p className="text-[11px] leading-snug text-muted-foreground">
-              Escribe el subtotal y Mesita te regresa el total a cobrar con el
-              descuento aplicado.
+              Si la escribes, Mesita calcula el total a cobrar con el descuento.
+              Si no, aplica el descuento en tu punto de venta y cierra el
+              ticket directo.
             </p>
           </div>
         ) : null}
@@ -271,8 +292,9 @@ export function CheckClient({
           />
         ) : null}
 
-        {/* Action: paid received. */}
-        {check.status === "awaiting_payment_confirm" ? (
+        {/* Action: the single unconditional close (v3b, MESITA-850). Works
+            with or without a bill on record — the bill is never a gate. */}
+        {check.status === "awaiting_payment_confirm" || check.status === "open" ? (
           <Button
             size="lg"
             className="w-full"
@@ -280,7 +302,9 @@ export function CheckClient({
             onClick={() => void run("paid", () => markPaid(code, pin))}
           >
             {busy === "paid" ? <Loader2 className="animate-spin" /> : <Check />}
-            Pago recibido — cerrar ticket
+            {check.bill
+              ? "Pago recibido — cerrar ticket"
+              : "Descuento aplicado — cerrar ticket"}
           </Button>
         ) : null}
 

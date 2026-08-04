@@ -26,6 +26,7 @@ import {
   Pressable,
   ScrollView,
   Text,
+  TextInput,
   View,
 } from 'react-native';
 import QRCode from 'react-native-qrcode-svg';
@@ -42,6 +43,7 @@ import {
   apiCancelTicket,
   apiSubmitReview,
   apiSubmitStory,
+  apiSubmitTicketTotal,
   checkUrlForCode,
   type ConsumerTicketRow,
 } from '@/lib/api/tickets';
@@ -231,6 +233,31 @@ export function TicketScreen({
       setReviewBusy(false);
     }
   }, [ticketId, reviewDraft]);
+
+  // v3b amount fallback (MESITA-850): the staff bill is optional, so a
+  // closed ticket may carry no amount. Ask the guest once — a record for
+  // their savings history, never a money movement.
+  const [totalDraft, setTotalDraft] = useState('');
+  const [totalBusy, setTotalBusy] = useState(false);
+  const submitTotal = useCallback(async () => {
+    const pesos = Number(totalDraft.replace(/[,$\s]/g, ''));
+    if (!Number.isFinite(pesos) || pesos <= 0) {
+      setActionError('Type the bill total in pesos.');
+      return;
+    }
+    setTotalBusy(true);
+    setActionError(null);
+    try {
+      await apiSubmitTicketTotal(ticketId, Math.round(pesos * 100));
+      await tickets.refresh();
+    } catch (err) {
+      setActionError(
+        err instanceof Error ? err.message : "Couldn't save that just yet.",
+      );
+    } finally {
+      setTotalBusy(false);
+    }
+  }, [ticketId, tickets, totalDraft]);
 
   const [cancelling, setCancelling] = useState(false);
   const cancel = useCallback(async () => {
@@ -425,6 +452,52 @@ export function TicketScreen({
                         ? `${ticket.discount_percent}% off at ${placeName}`
                         : placeName}
                     </Text>
+                    {!billed ? (
+                      <View
+                        className="mt-3 w-full rounded-xl bg-white/20 p-3"
+                        style={{ maxWidth: 260 }}
+                      >
+                        <Text
+                          className="font-bold uppercase text-white/90"
+                          style={{ fontSize: 11, letterSpacing: 1 }}
+                        >
+                          How much was the bill?
+                        </Text>
+                        <Text
+                          className="mt-0.5 text-white/80"
+                          style={{ fontSize: 10.5 }}
+                        >
+                          Optional — it records what you saved.
+                        </Text>
+                        <View
+                          className="mt-2 flex-row items-center"
+                          style={{ gap: 6 }}
+                        >
+                          <TextInput
+                            inputMode="decimal"
+                            placeholder="850"
+                            placeholderTextColor="#a3a3a3"
+                            value={totalDraft}
+                            onChangeText={setTotalDraft}
+                            className="h-9 flex-1 rounded-lg bg-white/90 px-2.5 font-semibold text-neutral-900"
+                            style={{ fontSize: 13 }}
+                          />
+                          <Pressable
+                            disabled={totalBusy}
+                            onPress={() => void submitTotal()}
+                            accessibilityRole="button"
+                            accessibilityLabel="Save bill total"
+                            className="h-9 w-9 items-center justify-center rounded-lg bg-white/90 active:scale-95"
+                          >
+                            {totalBusy ? (
+                              <ActivityIndicator size="small" color="#171717" />
+                            ) : (
+                              <Check size={16} color="#171717" strokeWidth={3} />
+                            )}
+                          </Pressable>
+                        </View>
+                      </View>
+                    ) : null}
                   </>
                 ) : (
                   <>

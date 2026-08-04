@@ -52,6 +52,7 @@ import {
   apiCancelTicket,
   apiSubmitReview,
   apiSubmitStory,
+  apiSubmitTicketTotal,
   checkUrlForCode,
   type ConsumerTicketRow,
 } from "@/lib/api/tickets";
@@ -268,6 +269,31 @@ export function TicketScreen({
     }
   }, [supabase, ticketId, reviewDraft]);
 
+  // v3b amount fallback (MESITA-850): the staff bill is optional, so a
+  // closed ticket may carry no amount. Ask the guest once — a record for
+  // their savings history, never a money movement.
+  const [totalDraft, setTotalDraft] = useState("");
+  const [totalBusy, setTotalBusy] = useState(false);
+  const submitTotal = useCallback(async () => {
+    const pesos = Number(totalDraft.replace(/[,$\s]/g, ""));
+    if (!Number.isFinite(pesos) || pesos <= 0) {
+      setActionError("Type the bill total in pesos.");
+      return;
+    }
+    setTotalBusy(true);
+    setActionError(null);
+    try {
+      await apiSubmitTicketTotal(supabase, ticketId, Math.round(pesos * 100));
+      await tickets.refresh();
+    } catch (err) {
+      setActionError(
+        err instanceof Error ? err.message : "Couldn't save that just yet.",
+      );
+    } finally {
+      setTotalBusy(false);
+    }
+  }, [supabase, ticketId, tickets, totalDraft]);
+
   const [cancelling, setCancelling] = useState(false);
   const cancel = useCallback(async () => {
     setCancelling(true);
@@ -412,6 +438,38 @@ export function TicketScreen({
                     ? `${ticket.discount_percent}% off at ${placeName}`
                     : placeName}
                 </p>
+                {!billed ? (
+                  <div className="mt-3 w-full max-w-[260px] rounded-xl bg-white/18 p-3 text-left">
+                    <p className="text-[11px] font-bold tracking-wide uppercase opacity-90">
+                      How much was the bill?
+                    </p>
+                    <p className="mt-0.5 text-[10.5px] leading-snug opacity-80">
+                      Optional — it records what you saved.
+                    </p>
+                    <div className="mt-2 flex gap-1.5">
+                      <input
+                        inputMode="decimal"
+                        placeholder="850"
+                        value={totalDraft}
+                        onChange={(e) => setTotalDraft(e.target.value)}
+                        className="h-9 w-full min-w-0 rounded-lg border-0 bg-white/90 px-2.5 text-[13px] font-semibold text-neutral-900 outline-none placeholder:text-neutral-400"
+                      />
+                      <button
+                        type="button"
+                        disabled={totalBusy}
+                        onClick={() => void submitTotal()}
+                        className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-white/90 text-neutral-900 transition active:scale-95 disabled:opacity-60"
+                        aria-label="Save bill total"
+                      >
+                        {totalBusy ? (
+                          <Loader2 className="size-4 animate-spin" />
+                        ) : (
+                          <Check className="size-4" strokeWidth={3} />
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                ) : null}
               </>
             ) : (
               <>
