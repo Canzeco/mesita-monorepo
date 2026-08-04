@@ -7,6 +7,7 @@ import {
   CircleDollarSign,
   Compass,
   CreditCard,
+  Flag,
   Footprints,
   Inbox,
   ListChecks,
@@ -136,6 +137,14 @@ export const TYPE_CONFIG: Record<NotificationType, TypeConfig> = {
     Icon: Star,
     tone: TONES.rose,
   },
+  // The one event in this feed that asks the operator to DO something: a
+  // guest says a place didn't honor their ticket (v3c, MESITA-851).
+  "rewards.ticket_reported": {
+    label: "Ticket reported by guest",
+    shortLabel: "Reports",
+    Icon: Flag,
+    tone: TONES.indigo,
+  },
   "reservations.reservation_created": {
     label: "Reservation requested",
     shortLabel: "Reservations",
@@ -162,6 +171,7 @@ export const TYPE_ORDER: NotificationType[] = [
   "rewards.ticket_visit",
   "rewards.ticket_paid",
   "rewards.review_submitted",
+  "rewards.ticket_reported",
   "reservations.reservation_created",
 ];
 
@@ -174,6 +184,7 @@ export const ACTIVITY_TYPE_ORDER: NotificationType[] = [
   "rewards.ticket_visit",
   "rewards.ticket_paid",
   "rewards.review_submitted",
+  "rewards.ticket_reported",
   "reservations.reservation_created",
 ];
 

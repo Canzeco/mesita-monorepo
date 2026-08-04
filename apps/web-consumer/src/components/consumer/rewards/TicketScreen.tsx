@@ -44,6 +44,7 @@ import {
   ArrowLeft,
   BadgeCheck,
   Check,
+  Flag,
   Instagram,
   Loader2,
   PartyPopper,
@@ -62,12 +63,15 @@ import { submitTicketReview } from "@/lib/api/pay";
 import { formatCurrency } from "@/lib/api/profile";
 import {
   ACTIVE_TICKET_STATUSES,
+  REPORT_REASONS,
   apiCancelTicket,
+  apiReportTicket,
   apiSubmitReview,
   apiSubmitStory,
   apiSubmitTicketTotal,
   checkUrlForCode,
   type ConsumerTicketRow,
+  type ReportReason,
 } from "@/lib/api/tickets";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import { useConsumerClass } from "@/lib/class-context";
@@ -306,6 +310,33 @@ export function TicketScreen({
       setTotalBusy(false);
     }
   }, [supabase, ticketId, tickets, totalDraft]);
+
+  // v3c report (MESITA-851). `reported` is session-local: the EF's partial
+  // unique index is the real guard against duplicates, and there is no read
+  // API for a guest's own reports — this only stops the button re-inviting a
+  // report they just filed.
+  const [reportOpen, setReportOpen] = useState(false);
+  const [reportReason, setReportReason] = useState<ReportReason | null>(null);
+  const [reportDetails, setReportDetails] = useState("");
+  const [reportBusy, setReportBusy] = useState(false);
+  const [reportError, setReportError] = useState<string | null>(null);
+  const [reported, setReported] = useState(false);
+  const submitReport = useCallback(async () => {
+    if (!reportReason) return;
+    setReportBusy(true);
+    setReportError(null);
+    try {
+      await apiReportTicket(supabase, ticketId, reportReason, reportDetails);
+      setReported(true);
+      setReportOpen(false);
+    } catch (err) {
+      setReportError(
+        err instanceof Error ? err.message : "Couldn't send that just yet.",
+      );
+    } finally {
+      setReportBusy(false);
+    }
+  }, [supabase, ticketId, reportReason, reportDetails]);
 
   const [cancelling, setCancelling] = useState(false);
   const cancel = useCallback(async () => {
@@ -631,17 +662,43 @@ export function TicketScreen({
       ) : null}
 
       {/* ── Housekeeping ── */}
-      {ticket.status === "open" ? (
-        <button
-          type="button"
-          onClick={() => void cancel()}
-          disabled={cancelling}
-          className="text-muted-foreground hover:text-foreground mx-auto flex min-h-11 items-center gap-1.5 text-[12.5px] font-semibold transition"
-        >
-          {cancelling ? <Loader2 className="size-3.5 animate-spin" /> : null}
-          Cancel this ticket
-        </button>
-      ) : null}
+      <div className="flex shrink-0 flex-col items-center gap-1">
+        {ticket.status === "open" ? (
+          <button
+            type="button"
+            onClick={() => void cancel()}
+            disabled={cancelling}
+            className="text-muted-foreground hover:text-foreground flex min-h-11 items-center gap-1.5 text-[12.5px] font-semibold transition"
+          >
+            {cancelling ? <Loader2 className="size-3.5 animate-spin" /> : null}
+            Cancel this ticket
+          </button>
+        ) : null}
+
+        {/* The report button (v3c, MESITA-851) — live for the WHOLE ticket and
+            after it closes. With staff no longer ruling on tasks and the bill
+            optional, this is the guest's only route that isn't arguing with
+            the person holding the terminal. Quiet by design: it must be
+            findable when something goes wrong without implying it usually
+            does. */}
+        {!cancelled ? (
+          reported ? (
+            <p className="text-muted-foreground flex min-h-11 items-center gap-1.5 text-[12.5px] font-medium">
+              <Flag className="size-3.5" />
+              Reported — Mesita is looking at it
+            </p>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setReportOpen(true)}
+              className="text-muted-foreground hover:text-foreground flex min-h-11 items-center gap-1.5 text-[12.5px] font-semibold transition"
+            >
+              <Flag className="size-3.5" />
+              Something went wrong here
+            </button>
+          )
+        ) : null}
+      </div>
 
       {/* Mesita review sheet — the real form, real ratings. */}
       <LocalSheet
@@ -657,6 +714,75 @@ export function TicketScreen({
             busy={reviewBusy}
             placeName={placeName}
           />
+        </div>
+      </LocalSheet>
+
+      {/* Report sheet — pick a reason, add words if you want. */}
+      <LocalSheet
+        open={reportOpen}
+        onClose={() => setReportOpen(false)}
+        ariaLabel={`Report a problem at ${placeName}`}
+      >
+        <div className="flex flex-col gap-3 px-5 pt-4 pb-8">
+          <div>
+            <p className="text-foreground text-[15px] font-extrabold tracking-tight">
+              What went wrong at {placeName}?
+            </p>
+            <p className="text-muted-foreground mt-0.5 text-[12px] leading-snug">
+              A real person at Mesita reads every report. Places that don&apos;t
+              honor tickets lose the program.
+            </p>
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            {REPORT_REASONS.map((r) => {
+              const active = reportReason === r.key;
+              return (
+                <button
+                  key={r.key}
+                  type="button"
+                  onClick={() => setReportReason(r.key)}
+                  className={cn(
+                    "rounded-2xl px-3.5 py-3 text-left transition",
+                    active
+                      ? "bg-primary/8 ring-primary/40 ring-2"
+                      : "bg-muted/40 active:scale-[0.99]",
+                  )}
+                >
+                  <span className="text-foreground block text-[13.5px] font-bold">
+                    {r.label}
+                  </span>
+                  <span className="text-muted-foreground mt-0.5 block text-[11.5px]">
+                    {r.hint}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+
+          <textarea
+            value={reportDetails}
+            onChange={(e) => setReportDetails(e.target.value.slice(0, 1000))}
+            rows={3}
+            placeholder="Anything else we should know? (optional)"
+            className="border-border bg-card focus:border-foreground w-full resize-none rounded-2xl border px-3.5 py-3 text-[13px] outline-none"
+          />
+
+          {reportError ? (
+            <p className="bg-destructive/10 text-destructive rounded-lg px-3 py-2 text-[12px]">
+              {reportError}
+            </p>
+          ) : null}
+
+          <button
+            type="button"
+            disabled={!reportReason || reportBusy}
+            onClick={() => void submitReport()}
+            className="bg-pink-gradient shadow-glow flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl text-[14px] font-bold text-white transition active:scale-[0.99] disabled:opacity-50"
+          >
+            {reportBusy ? <Loader2 className="size-4 animate-spin" /> : null}
+            Send report
+          </button>
         </div>
       </LocalSheet>
     </Shell>

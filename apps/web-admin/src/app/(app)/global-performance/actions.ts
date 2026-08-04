@@ -19,6 +19,8 @@ export type NotificationType =
   | "rewards.ticket_visit"
   | "rewards.ticket_paid"
   | "rewards.review_submitted"
+  // v3c (MESITA-851): a guest filed a complaint about a visit.
+  | "rewards.ticket_reported"
   | "reservations.reservation_created";
 
 type NotificationPlace = {
