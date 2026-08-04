@@ -1,6 +1,7 @@
 import { Compass, RotateCcw, X } from 'lucide-react-native';
 import { Pressable, Text, View } from 'react-native';
 
+import { COLORS } from '@/constants/brand';
 import type { Place } from '@/lib/api/places';
 import { haversineKm } from '@/lib/utils';
 
@@ -55,12 +56,16 @@ export function EmptyState({
 // and the web one is Tailwind v4.
 export type ActionTone = 'amber' | 'rose' | 'sky' | 'pink' | 'violet';
 
-const TONE: Record<ActionTone, { ring: string; glyph: string; press: string }> = {
-  amber: { ring: '#fbbf24b3', glyph: '#f59e0b', press: '#fffbeb' },
-  rose: { ring: '#fb7185b3', glyph: '#f43f5e', press: '#fff1f2' },
-  sky: { ring: '#38bdf8b3', glyph: '#0ea5e9', press: '#f0f9ff' },
-  pink: { ring: '#fb2b7bb3', glyph: '#fb2b7b', press: '#fff1f7' },
-  violet: { ring: '#a78bfab3', glyph: '#8b5cf6', press: '#f5f3ff' },
+// Values COPIED from the web build's emitted CSS (the palette is customised —
+// e.g. rose-500 is #ff2357 here, not stock Tailwind's #f43f5e), so the two
+// apps render the same rings rather than merely similar ones. `ring` carries
+// the /70 alpha as a hex suffix; `tint` is the saved/filled fill.
+const TONE: Record<ActionTone, { ring: string; glyph: string; tint: string }> = {
+  amber: { ring: '#fcbb00b3', glyph: '#f99c00', tint: '#fffbeb' },
+  rose: { ring: '#ff667fb3', glyph: '#ff2357', tint: '#fff1f2' },
+  sky: { ring: '#00bcfeb3', glyph: '#00a5ef', tint: '#f0f9ff' },
+  pink: { ring: '#fb2b7bb3', glyph: COLORS.primary, tint: '#fff1f7' },
+  violet: { ring: '#a685ffb3', glyph: '#8d54ff', tint: '#f5f3ff' },
 };
 
 export function ActionBtn({
@@ -99,7 +104,7 @@ export function ActionBtn({
         borderRadius: size / 2,
         borderWidth: 2,
         borderColor: t.ring,
-        backgroundColor: filled ? t.press : '#ffffff',
+        backgroundColor: filled ? t.tint : '#ffffff',
         opacity: disabled ? 0.5 : 1,
         shadowColor: '#501428',
         shadowOpacity: 0.18,
