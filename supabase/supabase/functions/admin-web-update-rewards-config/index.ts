@@ -2,12 +2,13 @@
 //
 // Naming: caller-verb-words. Caller = admin, verb = update, words = rewards-config.
 //
-// Writes the seven-segment reward grid (Promos v6, MESITA-723) on the
+// Writes the v7 Strategy × Class rewards matrix (MESITA-859) on the
 // public.app_settings singleton from the admin console's Rewards Config page. A
-// WHOLE-CONFIG write: the grid is one coherent table, so the caller always sends
-// the full config. normalizeConfig snaps every cell to the 5% grid and fills any
-// gap from the locked v5 defaults, so a malformed row can never land. See the
-// getter + 20260722200000_rewards_config.sql for the shape.
+// WHOLE-CONFIG write: the matrix is one coherent table, so the caller always
+// sends the full config. normalizeConfig snaps every cell to the 5% grid
+// (floor 5%, MESITA-866) and fills any gap from the launch defaults, so a
+// malformed row can never land. See the getter +
+// 20260722200000_rewards_config.sql for the shape.
 //
 // Auth: caller's JWT email must be in public.super_admins.
 

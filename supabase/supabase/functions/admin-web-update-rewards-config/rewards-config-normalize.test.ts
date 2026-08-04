@@ -7,7 +7,7 @@
 // If someone ever "tightens" this into a strict gate, these tests fail and
 // say why.
 //
-// The rate contract also lives here: 5% steps, floor 10, ceiling 50, 0 = off,
+// The rate contract also lives here: 5% steps, floor 5, ceiling 50, 0 = off,
 // and the Zero column is always 0. v13 adds the per-class ACTION matrix and
 // the built-in v12 identity migration. Keep in lock-step with coerceConfig in
 // web-admin app/(app)/rewards-config/catalog.ts.
@@ -125,16 +125,20 @@ Deno.test("normalizeConfig: the Dominant column carries its launch defaults", ()
   }
 });
 
-Deno.test("normalizeConfig: rates snap to the 5% grid, floor 10, ceiling 50", () => {
+Deno.test("normalizeConfig: rates snap to the 5% grid, floor 5, ceiling 50", () => {
   const r = normalizeConfig({
     grid: { standard: { conservative: 13, aggressive: 999, dominant: 3 } },
-    actions: { review: { standard: { conservative: -5 } } },
+    actions: {
+      review: { standard: { conservative: -5, aggressive: 5, dominant: 1 } },
+    },
   });
   assert(r.ok);
   assertEquals(r.value.grid.standard.conservative, 15); // 13 → nearest 5
   assertEquals(r.value.grid.standard.aggressive, 50); // clamped to ceiling
-  assertEquals(r.value.grid.standard.dominant, 10); // 3 → 5, lifted to floor
+  assertEquals(r.value.grid.standard.dominant, 5); // 3 → 5, the floor (MESITA-866)
   assertEquals(r.value.actions.review.standard.conservative, 0); // ≤ 0 = off
+  assertEquals(r.value.actions.review.standard.aggressive, 5); // 5% survives
+  assertEquals(r.value.actions.review.standard.dominant, 5); // 1 → 5, not 0
 });
 
 Deno.test("normalizeConfig: the Zero column is always 0, whatever is sent", () => {

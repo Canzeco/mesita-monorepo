@@ -12,8 +12,10 @@
 // renders and bills exactly as before. mesita_review joined in v7 and
 // launches at 0 (unpriced) until the operator prices it here.
 //
-// Grid rule (locked by Pato 2026-07-22): 5% steps, floor 10%, ceiling 50%
-// (allowed {0, 10, 15, … 50}; 0 = off). Zero strategy is off by definition.
+// Grid rule: 5% steps, floor 5%, ceiling 50% (allowed {0, 5, 10, … 50};
+// 0 = off). The floor was 10% while rows were segments; per-class cells made
+// 5% a real price (a token standing rate, a cheap review), so Pato opened it
+// 2026-08-03 (MESITA-866). Zero strategy is off by definition.
 // Universal cap: every discount applies to the first `cap` MXN of the bill.
 //
 // Keys are the contract shared with admin-web-{get,update}-rewards-config and
@@ -128,10 +130,10 @@ export const EDITABLE_STRATEGIES: readonly {
 
 // The 5% grid: off, then 10 → 50 in steps of 5.
 const RATE_STEP = 5;
-const RATE_FLOOR = 10;
+const RATE_FLOOR = 5;
 const RATE_MAX = 50;
 export const ALLOWED_RATES: readonly number[] = [
-  0, 10, 15, 20, 25, 30, 35, 40, 45, 50,
+  0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50,
 ];
 
 export const CAP_MIN = 0;
@@ -168,7 +170,7 @@ export const DEFAULT_CONFIG: RewardsConfig = {
   },
 };
 
-/** Snap any number to the 5% grid: ≤0 → 0, else clamp to [10,50] rounded to 5. */
+/** Snap any number to the 5% grid: ≤0 → 0, else clamp to [5,50] rounded to 5. */
 function snapRate(v: unknown): number {
   const n = typeof v === "number" && Number.isFinite(v) ? v : 0;
   if (n <= 0) return 0;

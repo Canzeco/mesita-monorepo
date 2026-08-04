@@ -128,7 +128,7 @@ export function RewardsConfigClient({
       <SectionCard
         icon={<Percent className="text-secondary h-4 w-4" />}
         title="Rewards table"
-        subtitle="Strategy × Class rows, one cell per action — different discount for each item, depending on the tier. None is the standing class discount. Rates snap to the 5% grid (10–50%); 0 = off; Zero strategy is off by definition and has no rows. A guest is paid their single best qualifying cell — never a sum."
+        subtitle="Strategy × Class rows, one cell per action — different discount for each item, depending on the tier. None is the standing class discount. Rates snap to the 5% grid (5–50%); 0 = off; Zero strategy is off by definition and has no rows. A guest is paid their single best qualifying cell — never a sum."
         status={
           updatedAt ? (
             <span className="text-muted-foreground text-xs">
