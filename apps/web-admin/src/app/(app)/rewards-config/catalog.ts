@@ -157,22 +157,55 @@ export const ALLOWED_RATES: readonly number[] = [
 export const ALLOWED_CAPS: readonly number[] = [100, 200, 500, 1000];
 const CAP_DEFAULT = 500;
 
-// The v7 launch defaults. The standing column varies by class; the actions
-// don't (yet) — per-class action pricing is exactly what the matrix unlocked.
+// ── The defaults (Pato, 2026-08-04 — MESITA-876) ────────────────────────
+//
+// These are the numbers "Launch defaults" restores, and the ones a gap in
+// the stored table falls back to. Four properties hold across all 60 cells,
+// and a change that breaks one is a bug, not a preference:
+//
+//   1. Premium ≥ Standard EVERYWHERE, including on actions. The v7 launch
+//      priced actions flat across classes, which — because a guest is paid
+//      their single best cell — made the class ladder invisible to anyone
+//      who actually did something. Premium bought nothing at the exact
+//      moment it was supposed to pay off.
+//   2. Every action strictly BEATS the standing rate for its own class.
+//      An action that only ties standing pays the guest nothing extra, so
+//      it is a dead rung — which is what a flat 10% Mesita Review would
+//      have been against a 10% Conservative/Standard standing rate.
+//   3. Each strategy beats the one below it, cell for cell.
+//   4. Story is the Influencer's best rung. It is their exclusive and the
+//      only action that produces reach rather than a record.
+//
+// The class ladder on actions is a flat step — Standard +0, Premium +5,
+// Influencer +5, Aura +10 — over a per-strategy base, so the whole table
+// stays derivable by hand when someone re-prices it.
+const CLASS_STEP: Record<ClassKey, number> = {
+  standard: 0,
+  premium: 5,
+  influencer: 5,
+  aura: 10,
+};
+
+// The standing column is per-class outright (it IS the class ladder).
 const DEFAULT_STANDING: Record<ClassKey, Record<StrategyKey, number>> = {
   standard: { conservative: 10, aggressive: 10, dominant: 20 },
   premium: { conservative: 15, aggressive: 20, dominant: 25 },
   influencer: { conservative: 15, aggressive: 20, dominant: 25 },
   aura: { conservative: 20, aggressive: 25, dominant: 30 },
 };
-const DEFAULT_ACTION: Record<
+
+// Action bases = the STANDARD cell; every other class adds CLASS_STEP.
+// Story's base is written for its only real audience (Influencer, +5), so
+// its stored non-Influencer cells never surface — the engine gates the
+// action on class, and the editor renders them as "—".
+const DEFAULT_ACTION_BASE: Record<
   Exclude<ActionKey, "standing">,
   Record<StrategyKey, number>
 > = {
-  mesita_review: { conservative: 0, aggressive: 0, dominant: 0 },
-  story: { conservative: 20, aggressive: 30, dominant: 40 },
+  mesita_review: { conservative: 15, aggressive: 20, dominant: 25 },
+  story: { conservative: 25, aggressive: 40, dominant: 55 },
   welcome: { conservative: 20, aggressive: 30, dominant: 40 },
-  review: { conservative: 30, aggressive: 50, dominant: 50 },
+  review: { conservative: 25, aggressive: 40, dominant: 50 },
 };
 
 export function defaultRateFor(
@@ -180,9 +213,8 @@ export function defaultRateFor(
   cls: ClassKey,
   action: ActionKey,
 ): number {
-  return action === "standing"
-    ? DEFAULT_STANDING[cls][strategy]
-    : DEFAULT_ACTION[action][strategy];
+  if (action === "standing") return DEFAULT_STANDING[cls][strategy];
+  return DEFAULT_ACTION_BASE[action][strategy] + CLASS_STEP[cls];
 }
 
 export const ruleKey = (

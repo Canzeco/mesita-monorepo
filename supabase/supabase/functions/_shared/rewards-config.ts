@@ -73,32 +73,36 @@ export type RewardsGrid = {
   cap: number;
 };
 
-// The locked v6 defaults — used when app_settings can't be read (never in
-// prod; the column is NOT NULL with a default), so the bill degrades to the
-// canonical table rather than to zero.
-// Dominant follows the v4 invariant it always had — it raises the FLOOR, not
-// the ceiling: every rung climbs a step over aggressive except Review, which
-// is already at the 50% ceiling and stays there.
+// The defaults (MESITA-876) — the LAST-RESORT fallback, used only when both
+// reward_rules and app_settings come back empty, so a ticket degrades to the
+// canonical table rather than to zero. Must stay byte-identical to the admin
+// catalog's defaultRateFor and the update EF's defaultFor.
+//
+// Four properties hold across all 60 cells: Premium ≥ Standard everywhere
+// (including on actions — a flat action column made the class ladder
+// invisible to any guest who acted, since best-of pays exactly one cell);
+// every action strictly beats its class's standing rate (a tie is a dead
+// rung); each strategy beats the one below it; Story is the Influencer's
+// best rung, being their exclusive and the only action that produces reach.
 const FLAT = (
   conservative: number,
   aggressive: number,
   dominant: number,
 ): SegmentRates => ({ zero: 0, conservative, aggressive, dominant });
 
-const FLAT_ACTION = (
+// An action's rate is a per-strategy base (the STANDARD cell) plus a flat
+// class step: Standard +0, Premium +5, Influencer +5, Aura +10.
+const STEPPED_ACTION = (
   conservative: number,
   aggressive: number,
   dominant: number,
 ): Record<ClassSegment, SegmentRates> => ({
   standard: FLAT(conservative, aggressive, dominant),
-  premium: FLAT(conservative, aggressive, dominant),
-  influencer: FLAT(conservative, aggressive, dominant),
-  aura: FLAT(conservative, aggressive, dominant),
+  premium: FLAT(conservative + 5, aggressive + 5, dominant + 5),
+  influencer: FLAT(conservative + 5, aggressive + 5, dominant + 5),
+  aura: FLAT(conservative + 10, aggressive + 10, dominant + 10),
 });
 
-// v7 launch values = identity migration of the locked v6 table: every action
-// starts FLAT across classes at its v6 rate, mesita_review at 0. Billing is
-// byte-identical to v6 until the operator prices cells in Rewards Config.
 export const DEFAULT_REWARDS_GRID: RewardsGrid = {
   cap: 500,
   grid: {
@@ -108,10 +112,11 @@ export const DEFAULT_REWARDS_GRID: RewardsGrid = {
     aura: FLAT(20, 25, 30),
   },
   actions: {
-    mesita_review: FLAT_ACTION(0, 0, 0),
-    story: FLAT_ACTION(20, 30, 40),
-    welcome: FLAT_ACTION(20, 30, 40),
-    review: FLAT_ACTION(30, 50, 50),
+    mesita_review: STEPPED_ACTION(15, 20, 25),
+    // Influencer-exclusive: the base is written for THEIR cell (base + 5).
+    story: STEPPED_ACTION(25, 40, 55),
+    welcome: STEPPED_ACTION(20, 30, 40),
+    review: STEPPED_ACTION(25, 40, 50),
   },
 };
 
