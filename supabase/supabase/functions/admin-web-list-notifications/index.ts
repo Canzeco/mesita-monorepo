@@ -99,6 +99,7 @@ const ALL_TYPES: NotificationType[] = [
   "rewards.ticket_visit",
   "rewards.ticket_paid",
   "rewards.review_submitted",
+  "rewards.ticket_reported",
   "reservations.reservation_created",
 ];
 
@@ -396,8 +397,15 @@ Deno.serve(async (req) => {
         })()
         : Promise.resolve({ data: null, error: null });
 
-    const [savesRes, tCreatedRes, tVisitRes, tPaidRes, reviewsRes, resvRes] =
-      await Promise.all([
+    const [
+      savesRes,
+      tCreatedRes,
+      tVisitRes,
+      tPaidRes,
+      reviewsRes,
+      resvRes,
+      reportsRes,
+    ] = await Promise.all([
         activitySource("saved_places", "", "created_at", wantType("consumer.place_saved")),
         activitySource(
           "tickets",
@@ -429,6 +437,14 @@ Deno.serve(async (req) => {
           "created_at",
           wantType("reservations.reservation_created"),
         ),
+        // v3c (MESITA-851) — the guest said the visit went wrong. Evidence
+        // for an operator; nothing here strikes the place automatically.
+        activitySource(
+          "ticket_reports",
+          "reason, detail, status, ticket_id, ",
+          "created_at",
+          wantType("rewards.ticket_reported"),
+        ),
       ]);
 
     for (const [label, r] of [
@@ -438,6 +454,7 @@ Deno.serve(async (req) => {
       ["tickets_paid", tPaidRes],
       ["ticket_reviews", reviewsRes],
       ["reservations", resvRes],
+      ["ticket_reports", reportsRes],
     ] as const) {
       if (r.error) {
         return json({ ok: false, error: `${label}: ${r.error.message}` }, 500);
@@ -526,6 +543,26 @@ Deno.serve(async (req) => {
           food: r.food,
           service: r.service,
           ambiance: r.ambiance,
+        },
+      );
+    }
+
+    for (const r of ((reportsRes.data ?? []) as unknown[]) as Array<ActivityRow & {
+      reason: string;
+      detail: string | null;
+      status: string;
+      ticket_id: string;
+    }>) {
+      push(
+        "rewards.ticket_reported",
+        "rewards",
+        r,
+        r.created_at,
+        r.detail?.trim() ? truncate(r.detail, 260) : null,
+        {
+          reason: r.reason,
+          reportStatus: r.status,
+          ticketId: r.ticket_id,
         },
       );
     }

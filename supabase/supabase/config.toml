@@ -275,6 +275,10 @@ verify_jwt = true
 [functions.consumer-web-submit-review]
 verify_jwt = true
 
+# v3c (MESITA-851) — the guest's route when a visit went wrong.
+[functions.consumer-web-report-ticket]
+verify_jwt = true
+
 # Consumer lookup at the table (resolve 6-char code → name + balance).
 
 [functions.consumer-web-claim-instagram]

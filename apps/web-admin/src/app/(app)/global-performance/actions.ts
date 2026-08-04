@@ -19,6 +19,7 @@ export type NotificationType =
   | "rewards.ticket_visit"
   | "rewards.ticket_paid"
   | "rewards.review_submitted"
+  | "rewards.ticket_reported"
   | "reservations.reservation_created";
 
 type NotificationPlace = {

@@ -16,6 +16,7 @@ import {
   PartyPopper,
   Star,
   Store,
+  TriangleAlert,
   UtensilsCrossed,
   XCircle,
 } from 'lucide-react-native';
@@ -33,6 +34,7 @@ import QRCode from 'react-native-qrcode-svg';
 import { LinearGradient } from 'expo-linear-gradient';
 
 import { FullScreenSheet } from '@/components/ui/FullScreenSheet';
+import { ReportTicketSheet } from '@/components/rewards/ReportTicketSheet';
 import {
   TicketReviewForm,
   type TicketReviewDraft,
@@ -41,11 +43,13 @@ import { formatCurrency, submitTicketReview } from '@/lib/api/pay';
 import {
   ACTIVE_TICKET_STATUSES,
   apiCancelTicket,
+  apiReportTicket,
   apiSubmitReview,
   apiSubmitStory,
   apiSubmitTicketTotal,
   checkUrlForCode,
   type ConsumerTicketRow,
+  type ReportReason,
 } from '@/lib/api/tickets';
 import { classProperLabel } from '@/lib/consumer-classes';
 import {
@@ -270,6 +274,33 @@ export function TicketScreen({
       setCancelling(false);
     }
   }, [ticketId, tickets, router]);
+
+  // ── The report button (v3c, MESITA-851) ────────────────────────────
+  // Live for the WHOLE ticket, not just the closed one: a refused discount is
+  // most reportable while the guest is still standing there. The EF owns the
+  // window (open + a week past close) and returns `window_closed` when it has
+  // run out — the client never second-guesses that.
+  const [reportOpen, setReportOpen] = useState(false);
+  const [reportBusy, setReportBusy] = useState(false);
+  const [reportError, setReportError] = useState<string | null>(null);
+  const sendReport = useCallback(
+    async (reason: ReportReason, detail: string) => {
+      setReportBusy(true);
+      setReportError(null);
+      try {
+        await apiReportTicket(ticketId, reason, detail);
+        await tickets.refresh();
+        setReportOpen(false);
+      } catch (err) {
+        setReportError(
+          err instanceof Error ? err.message : "Couldn't send that just yet.",
+        );
+      } finally {
+        setReportBusy(false);
+      }
+    },
+    [ticketId, tickets],
+  );
 
   if (tickets.status === 'loading' && !ticket) {
     return (
@@ -677,7 +708,39 @@ export function TicketScreen({
             </Text>
           </Pressable>
         ) : null}
+
+        {/* Always available — a guest usually realises something went wrong
+            after they've left, which is exactly when every other control on
+            this screen has gone quiet. */}
+        <Pressable
+          onPress={() => setReportOpen(true)}
+          accessibilityRole="button"
+          className="flex-row items-center justify-center"
+          style={{ minHeight: 44, gap: 6 }}
+        >
+          <TriangleAlert color={ticket.report ? '#b91c1c' : '#775254'} size={14} />
+          <Text
+            className={`font-semibold ${ticket.report ? 'text-red-700' : 'text-muted-foreground'}`}
+            style={{ fontSize: 12.5 }}
+          >
+            {ticket.report
+              ? ticket.report.status === 'open'
+                ? 'Report sent — tap to update'
+                : 'We looked at your report'
+              : 'Something went wrong here'}
+          </Text>
+        </Pressable>
       </ScrollView>
+
+      <ReportTicketSheet
+        open={reportOpen}
+        placeName={placeName}
+        busy={reportBusy}
+        error={reportError}
+        existingReason={ticket.report?.reason ?? null}
+        onClose={() => setReportOpen(false)}
+        onSubmit={(reason, detail) => void sendReport(reason, detail)}
+      />
 
       <FullScreenSheet
         visible={reviewOpen}

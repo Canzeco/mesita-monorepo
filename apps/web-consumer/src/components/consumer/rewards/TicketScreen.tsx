@@ -36,11 +36,13 @@ import {
   PartyPopper,
   Star,
   Store,
+  TriangleAlert,
   UtensilsCrossed,
   XCircle,
 } from "lucide-react";
 
 import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
+import { ReportTicketSheet } from "@/components/consumer/rewards/ReportTicketSheet";
 import {
   TicketReviewForm,
   type TicketReviewDraft,
@@ -50,11 +52,13 @@ import { formatCurrency } from "@/lib/api/profile";
 import {
   ACTIVE_TICKET_STATUSES,
   apiCancelTicket,
+  apiReportTicket,
   apiSubmitReview,
   apiSubmitStory,
   apiSubmitTicketTotal,
   checkUrlForCode,
   type ConsumerTicketRow,
+  type ReportReason,
 } from "@/lib/api/tickets";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import { useConsumerClass } from "@/lib/class-context";
@@ -305,6 +309,33 @@ export function TicketScreen({
       setCancelling(false);
     }
   }, [supabase, ticketId, tickets, router]);
+
+  // ── The report button (v3c, MESITA-851) ────────────────────────────
+  // Live for the WHOLE ticket, not just the closed one: a refused discount is
+  // most reportable while the guest is still standing there. The EF owns the
+  // window (open + a week past close) and returns `window_closed` when it has
+  // run out — the client never second-guesses that.
+  const [reportOpen, setReportOpen] = useState(false);
+  const [reportBusy, setReportBusy] = useState(false);
+  const [reportError, setReportError] = useState<string | null>(null);
+  const sendReport = useCallback(
+    async (reason: ReportReason, detail: string) => {
+      setReportBusy(true);
+      setReportError(null);
+      try {
+        await apiReportTicket(supabase, ticketId, reason, detail);
+        await tickets.refresh();
+        setReportOpen(false);
+      } catch (err) {
+        setReportError(
+          err instanceof Error ? err.message : "Couldn't send that just yet.",
+        );
+      } finally {
+        setReportBusy(false);
+      }
+    },
+    [supabase, ticketId, tickets],
+  );
 
   // ── Render states ──────────────────────────────────────────────────
 
@@ -599,17 +630,54 @@ export function TicketScreen({
       ) : null}
 
       {/* ── Housekeeping ── */}
-      {ticket.status === "open" ? (
-        <button
-          type="button"
-          onClick={() => void cancel()}
-          disabled={cancelling}
-          className="text-muted-foreground hover:text-foreground mx-auto flex min-h-11 items-center gap-1.5 text-[12.5px] font-semibold transition"
-        >
-          {cancelling ? <Loader2 className="size-3.5 animate-spin" /> : null}
-          Cancel this ticket
-        </button>
-      ) : null}
+      <div className="flex flex-col items-center gap-2">
+        {ticket.status === "open" ? (
+          <button
+            type="button"
+            onClick={() => void cancel()}
+            disabled={cancelling}
+            className="text-muted-foreground hover:text-foreground flex min-h-11 items-center gap-1.5 text-[12.5px] font-semibold transition"
+          >
+            {cancelling ? <Loader2 className="size-3.5 animate-spin" /> : null}
+            Cancel this ticket
+          </button>
+        ) : null}
+
+        {/* Always available — a guest usually realises something went wrong
+            after they've left, which is exactly when every other control on
+            this screen has gone quiet. */}
+        {ticket.report ? (
+          <button
+            type="button"
+            onClick={() => setReportOpen(true)}
+            className="flex min-h-11 items-center gap-1.5 text-[12.5px] font-semibold text-red-700 transition"
+          >
+            <TriangleAlert className="size-3.5" />
+            {ticket.report.status === "open"
+              ? "Report sent — tap to update"
+              : "We looked at your report"}
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setReportOpen(true)}
+            className="text-muted-foreground hover:text-foreground flex min-h-11 items-center gap-1.5 text-[12.5px] font-semibold transition"
+          >
+            <TriangleAlert className="size-3.5" />
+            Something went wrong here
+          </button>
+        )}
+      </div>
+
+      <ReportTicketSheet
+        open={reportOpen}
+        placeName={placeName}
+        busy={reportBusy}
+        error={reportError}
+        existingReason={ticket.report?.reason ?? null}
+        onClose={() => setReportOpen(false)}
+        onSubmit={(reason, detail) => void sendReport(reason, detail)}
+      />
 
       {/* Mesita review sheet — the real form, real ratings. */}
       <LocalSheet

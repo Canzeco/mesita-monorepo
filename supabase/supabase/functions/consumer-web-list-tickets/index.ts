@@ -49,7 +49,7 @@ Deno.serve(async (req) => {
   let query = admin
     .from("tickets")
     .select(
-      "id, kind, status, story_status, story_screenshot_url, story_submitted_at, story_verified_at, story_reject_reason, review_status, review_screenshot_url, review_submitted_at, review_verified_at, review_reject_reason, check_code, first_scanned_at, check_subtotal_cents, tip_cents, total_cents, redeem_cents, discount_percent, discount_cents, bill_source, revealed_at, reservation_status, reservation_at, reservation_party_size, currency, created_at, paid_at, cancelled_at, cancel_reason, project_id",
+      "id, kind, status, story_status, story_screenshot_url, story_submitted_at, story_verified_at, story_reject_reason, review_status, review_screenshot_url, review_submitted_at, review_verified_at, review_reject_reason, check_code, first_scanned_at, check_subtotal_cents, tip_cents, total_cents, redeem_cents, discount_percent, discount_cents, bill_source, revealed_at, reservation_status, reservation_at, reservation_party_size, currency, created_at, paid_at, cancelled_at, cancel_reason, project_id, report:ticket_reports(id, reason, status, created_at)",
     )
     .eq("consumer_id", userId);
   if (scope === "active") {

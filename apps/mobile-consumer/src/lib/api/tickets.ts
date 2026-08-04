@@ -17,6 +17,24 @@ export type ConsumerTicketPlace = {
   slug?: string | null;
 } | null;
 
+// v3c (MESITA-851). Mirrors the CHECK on public.ticket_reports and the shared
+// EF module — change all three together.
+export const REPORT_REASONS = [
+  'discount_refused',
+  'closed_without_honoring',
+  'qr_not_scanned',
+  'other',
+] as const;
+
+export type ReportReason = (typeof REPORT_REASONS)[number];
+
+export type ConsumerTicketReport = {
+  id: string;
+  reason: ReportReason;
+  status: 'open' | 'reviewed' | 'dismissed';
+  created_at: string;
+};
+
 export type ConsumerTicketRow = {
   id: string;
   kind: string;
@@ -43,6 +61,8 @@ export type ConsumerTicketRow = {
   cancel_reason: string | null;
   project_id: string;
   place: ConsumerTicketPlace;
+  /** Present once the guest has reported this visit (v3c). */
+  report: ConsumerTicketReport | null;
 };
 
 export const ACTIVE_TICKET_STATUSES = new Set([
@@ -132,6 +152,23 @@ export async function apiSubmitTicketTotal(
     supabase,
     'consumer-web-submit-ticket-total',
     { ticketId, totalCents },
+  );
+}
+
+/**
+ * File (or edit) the guest's report on a ticket. Live from creation through
+ * close and for a week after — the EF owns that window, so a `window_closed`
+ * error is the authority, not anything the client computes.
+ */
+export async function apiReportTicket(
+  ticketId: string,
+  reason: ReportReason,
+  detail?: string,
+): Promise<{ report: ConsumerTicketReport }> {
+  return await invokeEF<{ report: ConsumerTicketReport }>(
+    supabase,
+    'consumer-web-report-ticket',
+    { ticketId, reason, ...(detail?.trim() ? { detail: detail.trim() } : {}) },
   );
 }
 

@@ -13,6 +13,7 @@ import {
   ShieldCheck,
   Sparkles,
   Star,
+  TriangleAlert,
   Ticket,
   Users,
 } from "lucide-react";
@@ -65,6 +66,15 @@ export const TONES = {
     kicker: "text-sky-600",
     chip: "bg-sky-500/10 text-sky-700",
     dot: "bg-sky-500",
+  },
+  // Reserved for the report kind — the one feed row that needs a human.
+  // Distinct from `rose` (Reviews) by hue AND by only ever appearing with the
+  // alert triangle, which is what keeps the pair legible at a glance.
+  red: {
+    tile: "bg-red-600/10 text-red-700",
+    kicker: "text-red-700",
+    chip: "bg-red-600/10 text-red-800",
+    dot: "bg-red-600",
   },
   muted: {
     tile: "bg-muted text-muted-foreground",
@@ -136,6 +146,16 @@ export const TYPE_CONFIG: Record<NotificationType, TypeConfig> = {
     Icon: Star,
     tone: TONES.rose,
   },
+  // v3c (MESITA-851). Deliberately the ONLY red in the feed: everything else
+  // is something that happened, this is something that went wrong and is
+  // waiting on a human. It is evidence, not a verdict — the label says
+  // "reported", not "violation".
+  "rewards.ticket_reported": {
+    label: "Guest reported a visit",
+    shortLabel: "Reports",
+    Icon: TriangleAlert,
+    tone: TONES.red,
+  },
   "reservations.reservation_created": {
     label: "Reservation requested",
     shortLabel: "Reservations",
@@ -162,6 +182,7 @@ export const TYPE_ORDER: NotificationType[] = [
   "rewards.ticket_visit",
   "rewards.ticket_paid",
   "rewards.review_submitted",
+  "rewards.ticket_reported",
   "reservations.reservation_created",
 ];
 
@@ -174,6 +195,7 @@ export const ACTIVITY_TYPE_ORDER: NotificationType[] = [
   "rewards.ticket_visit",
   "rewards.ticket_paid",
   "rewards.review_submitted",
+  "rewards.ticket_reported",
   "reservations.reservation_created",
 ];
 
