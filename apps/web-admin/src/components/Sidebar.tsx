@@ -10,6 +10,7 @@ import {
   UserRound,
 } from "lucide-react";
 import { ATLAS_PARENT } from "@/app/(app)/atlas-config/nav";
+import { AURA_PARENT } from "@/app/(app)/aura-config/nav";
 import { BILLING_TEST_PARENT } from "@/app/(app)/billing-test/nav";
 import { DB_PARENT } from "@/app/(app)/db-config/nav";
 import { ENRICHER_PARENT } from "@/app/(app)/enricher-config/nav";
@@ -69,6 +70,7 @@ const CONFIGS_NAV: NavItem[] = [
   ENRICHER_PARENT,
   SCORING_PARENT,
   REWARDS_PARENT,
+  AURA_PARENT,
   MEMO_PARENT,
   RESERVATIONS_PARENT,
 ];

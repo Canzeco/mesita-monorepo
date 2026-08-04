@@ -46,22 +46,3 @@ export async function updateRewardsConfig(
     updatedAt: r.data.updatedAt ?? null,
   };
 }
-
-type GrantClassResult =
-  | { ok: true; classKey: string; origin: string }
-  | { ok: false; error: string };
-
-// The Aura door (segments v6): grant writes aura/'invitation'; revoke
-// recomputes the best remaining door server-side (subscription → premium,
-// reach → influencer, else standard).
-export async function grantAura(
-  consumerId: string,
-  grant: boolean,
-): Promise<GrantClassResult> {
-  const r = await efInvoke<{ classKey: string; origin: string }>(
-    "admin-web-grant-class",
-    { consumerId, classKey: grant ? "aura" : null },
-  );
-  if (!r.ok) return { ok: false, error: r.error };
-  return { ok: true, classKey: r.data.classKey, origin: r.data.origin };
-}
