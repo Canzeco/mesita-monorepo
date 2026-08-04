@@ -233,14 +233,19 @@ verify_jwt = true
 [functions.consumer-web-cancel-ticket]
 verify_jwt = true
 
+# v3b amount fallback (MESITA-850): guest records the bill total after a
+# no-bill close. Authed — owner-only writes, provenance bill_source=consumer.
+[functions.consumer-web-submit-ticket-total]
+verify_jwt = true
+
 # --- check-web (PUBLIC check page at mesita.ai/check/<code>) ---
 # verify_jwt deliberately FALSE: the 128-bit tickets.check_code is the whole
 # authentication — whoever holds the freshly scanned QR (nominally staff) can
-# view, bill, approve a submitted story/review, and mark paid. That includes
-# the guest themselves; a static QR screenshot is indistinguishable from a
-# live scan. ACCEPTED: Mesita never moves money — the waiter applies the
-# discount off this same page — so self-service is a data-quality nuisance,
-# not theft. Mitigations are visibility (first_scanned_at on the page,
+# view, optionally bill (internal control, never a gate — MESITA-850), and
+# close the ticket. That includes the guest themselves; a static QR
+# screenshot is indistinguishable from a live scan. ACCEPTED: Mesita never
+# moves money — the staff apply the discount off this same page — so
+# self-service is a data-quality nuisance, not theft. Mitigations are visibility (first_scanned_at on the page,
 # ticket_check_events audit with self_view + daily-salted ip_hash, in-EF rate
 # limiting, uniform 404s). See _shared/ticket-check.ts.
 

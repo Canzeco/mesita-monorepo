@@ -130,7 +130,9 @@ export async function finalizeInformalTicket(
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   const ticket = await admin
     .from("tickets")
-    .select("id, status, project_id, discount_cents, discount_percent")
+    .select(
+      "id, status, project_id, check_subtotal_cents, total_cents, discount_cents, discount_percent",
+    )
     .eq("id", ticketId)
     .maybeSingle();
   if (ticket.error || !ticket.data) {
@@ -149,13 +151,18 @@ export async function finalizeInformalTicket(
     .eq("id", ticketId);
   if (update.error) return { ok: false, error: update.error.message };
 
-  // Honoring a discount ticket completes the Promos v4 activation gate
-  // (MESITA-542). Zero-discount tickets don't count.
+  // Activation binds to the CLOSE (v3b, MESITA-850) — the close is the only
+  // unconditional signal that the place honored a guest. With a bill on
+  // record, a zero-discount ticket still doesn't count (nothing was given);
+  // with no bill, the discount was applied at the place's own POS per the
+  // stated offer, so the close itself is the honor.
+  const billed = ((ticket.data.total_cents as number | null) ?? 0) > 0 ||
+    ((ticket.data.check_subtotal_cents as number | null) ?? 0) > 0;
   const discount =
     (ticket.data.discount_cents as number | null) ??
     (ticket.data.discount_percent as number | null) ??
     0;
-  if (discount > 0 && ticket.data.project_id) {
+  if ((!billed || discount > 0) && ticket.data.project_id) {
     await recordFirstTicketHonored(admin, ticket.data.project_id as string);
   }
 

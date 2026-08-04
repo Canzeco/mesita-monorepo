@@ -32,6 +32,7 @@ function row(overrides: Partial<CheckTicketRow> = {}): CheckTicketRow {
     total_cents: null,
     discount_percent: null,
     discount_cents: null,
+    bill_source: null,
     currency: "MXN",
     created_at: "2026-08-02T00:00:00Z",
     revealed_at: null,
@@ -196,4 +197,35 @@ Deno.test("shapeCheckPayload: story/review required flags follow status", () => 
   const pending = shape({ story_status: "pending" });
   assertEquals((pending.story as Record<string, unknown>).required, true);
   assertEquals((pending.story as Record<string, unknown>).state, "pending");
+});
+
+Deno.test("shapeCheckPayload: offer states the commitment only while unbilled (MESITA-850)", () => {
+  // Unbilled + a live rate → the cap-as-instruction block.
+  const open = shapeCheckPayload({
+    ticket: row(),
+    placeName: "Café Prueba",
+    placeSlug: "cafe-prueba",
+    guestDisplayName: "Ana López",
+    guestInstagramHandle: null,
+    capMxn: 500,
+    pinRequired: false,
+    offerRatePercent: 30,
+  });
+  assertEquals(open.offer, { discount_percent: 30, reward_cap_mxn: 500 });
+
+  // A billed ticket never carries an offer — the bill block is the truth.
+  const billed = shapeCheckPayload({
+    ticket: row({ check_subtotal_cents: 70000, total_cents: 70000 }),
+    placeName: "Café Prueba",
+    placeSlug: "cafe-prueba",
+    guestDisplayName: "Ana López",
+    guestInstagramHandle: null,
+    capMxn: 500,
+    pinRequired: false,
+    offerRatePercent: 30,
+  });
+  assertEquals(billed.offer, null);
+
+  // No rate resolved → no block (the page just shows the ticket).
+  assertEquals(shape().offer, null);
 });

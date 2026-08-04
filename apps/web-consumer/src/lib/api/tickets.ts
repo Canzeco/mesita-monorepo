@@ -36,6 +36,9 @@ export type ConsumerTicketRow = {
   total_cents: number | null;
   discount_percent: number | null;
   discount_cents: number | null;
+  /** Who supplied the recorded amount (MESITA-850): 'business' | 'consumer'
+   *  | null (no amount on record). */
+  bill_source: string | null;
   currency: string | null;
   created_at: string;
   revealed_at: string | null;
@@ -125,6 +128,22 @@ export async function apiSubmitReview(
     { ticketId },
   );
   return { repricedPercent: res.repricedPercent ?? null };
+}
+
+// v3b amount fallback (MESITA-850): the staff bill went optional, so when a
+// visit closes with no amount on record the guest is asked for the total.
+// Unverified by design — the discount was already applied at the place's POS,
+// so this is a record for reporting, never a money movement.
+export async function apiSubmitTicketTotal(
+  client: SupabaseClient,
+  ticketId: string,
+  totalCents: number,
+): Promise<void> {
+  await invokeEF<{ ticket?: unknown }>(
+    client,
+    "consumer-web-submit-ticket-total",
+    { ticketId, totalCents },
+  );
 }
 
 // The QR every active ticket renders — must match the EF's CHECK_URL_BASE.
