@@ -35,6 +35,12 @@ export type ReservationLegVars = {
   /** Venue-local es-MX time, e.g. "8:30 p.m.". */
   timeEs: string;
   specialRequests: string;
+  /** This engine run's generation token — rides every tool call as a bound
+   * dynamic variable so a stale (orphaned) call's reports are ignored. */
+  runId: string;
+  /** Old slot when this run MODIFIES a confirmed booking (else null): a1
+   * asks the venue to MOVE the reservation instead of booking a stranger's. */
+  modificationOf?: { dateEs: string; timeEs: string } | null;
 };
 
 // Shared closing policy — hang up YOURSELF, but ONLY once the call is SOLVED.
@@ -47,11 +53,15 @@ export function businessLegPrompt(v: ReservationLegVars): string {
   const requests = v.specialRequests.trim()
     ? `Peticiones especiales del comensal: ${v.specialRequests.trim()}. Menciónalas una vez confirmada la disponibilidad.`
     : "";
+  const modification = v.modificationOf
+    ? `OJO — esto es un CAMBIO, no una reservación nueva: el restaurante YA tiene confirmada una mesa a nombre de ${v.guestName} para el ${v.modificationOf.dateEs} a las ${v.modificationOf.timeEs}. Pide MOVERLA a los nuevos datos. Si no pueden con el cambio, pide de una vez que CANCELEN la reservación anterior — Mesita le avisa al comensal.`
+    : "";
   return [
     `Eres el asistente de reservaciones de Mesita. Esta llamada va del consumidor hacia el negocio: llamas al restaurante ${v.venueName} DE PARTE del comensal ${v.guestName}.`,
     `Objetivo único: conseguir una reservación para ${v.partySize} ${v.partySize === 1 ? "persona" : "personas"} el ${v.dateEs} a las ${v.timeEs}, a nombre de ${v.guestName}.`,
     `Si el restaurante acepta, confirma leyendo de vuelta: nombre, ${v.partySize} ${v.partySize === 1 ? "persona" : "personas"}, ${v.dateEs}, ${v.timeEs}. Si piden un teléfono de contacto, da el del comensal: ${v.guestPhone}. Si piden un número de referencia o confirmación, el código de Mesita es ${v.referenceCode}.`,
     `Si no hay lugar a esa hora, pregunta por la opción más cercana y acéptala SOLO si queda dentro de una hora de diferencia; si no, agradece y da la reservación por rechazada.`,
+    modification,
     requests,
     `Habla natural y breve, español de México, trato de usted.`,
     HANGUP_POLICY,
@@ -150,5 +160,11 @@ export function legDynamicVariables(
     call_context: extra?.callContext ??
       (direction === "guest_confirmation" ? "confirmation" : "booking"),
     venue_alternatives: extra?.venueAlternatives ?? "",
+    // Generation token — bound to the outbound tools' run_id property so a
+    // report from an orphaned call is recognized and ignored server-side.
+    run_id: v.runId,
+    // Modification context (empty strings when this is a plain booking).
+    modification_of_date: v.modificationOf?.dateEs ?? "",
+    modification_of_time: v.modificationOf?.timeEs ?? "",
   };
 }

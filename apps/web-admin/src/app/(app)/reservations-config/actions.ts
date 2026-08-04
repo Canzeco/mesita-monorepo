@@ -12,19 +12,33 @@
 // itself (2026-07-27) — testing happens from the consumer app with test mode ON.
 
 import { efInvoke } from "@/lib/supabase-ef";
-import { coerceConfig, type ReservationsConfig } from "./catalog";
+import { coerceConfig, type NeedsAttentionRow, type ReservationsConfig } from "./catalog";
 
 type GetReservationsConfigResult =
-  | { ok: true; config: ReservationsConfig; updatedAt: string | null }
+  | {
+    ok: true;
+    config: ReservationsConfig;
+    updatedAt: string | null;
+    needsAttention: NeedsAttentionRow[];
+  }
   | { ok: false; error: string };
 
 export async function getReservationsConfig(): Promise<GetReservationsConfigResult> {
-  const r = await efInvoke<{ config: unknown; updatedAt: string | null }>(
+  const r = await efInvoke<{
+    config: unknown;
+    updatedAt: string | null;
+    needs_attention?: NeedsAttentionRow[];
+  }>(
     "admin-web-get-reservations-config",
     {},
   );
   if (!r.ok) return { ok: false, error: r.error };
-  return { ok: true, config: coerceConfig(r.data.config), updatedAt: r.data.updatedAt ?? null };
+  return {
+    ok: true,
+    config: coerceConfig(r.data.config),
+    updatedAt: r.data.updatedAt ?? null,
+    needsAttention: Array.isArray(r.data.needs_attention) ? r.data.needs_attention : [],
+  };
 }
 
 type UpdateReservationsConfigResult =

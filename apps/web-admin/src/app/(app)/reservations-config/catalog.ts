@@ -55,6 +55,40 @@ export type ReservationsConfig = {
    * paywall the Premium upsell depends on.
    */
   unlimitedReservations: boolean;
+  /**
+   * Abuse/cost guards (eng-review 2026-08-04). Every unit of abuse in this
+   * system is a REAL metered phone call, so the doors are capped: reschedules
+   * per ticket per day (each one resets call_attempts = buys venue calls),
+   * outbound venue calls per place per day (booking + notices share the
+   * meter), and the kill switch — a hard stop on ALL outbound reservation
+   * calls, parked (not dropped) so flipping it back resumes within a minute.
+   */
+  limits: {
+    reschedulesPerTicketPerDay: number;
+    venueCallsPerPlacePerDay: number;
+    killSwitch: boolean;
+  };
+};
+
+/** One reservation the operator must look at — see the get EF's feed query. */
+export type NeedsAttentionRow = {
+  id: string;
+  reference_code: string | null;
+  status: string;
+  reserved_at: string;
+  last_call_status: string | null;
+  notice_state: string | null;
+  notice_kind: string | null;
+  attempts_state: string | null;
+  callback_state: string | null;
+  guest_confirmed_at: string | null;
+  is_test: boolean | null;
+};
+
+export const LIMITS_SEED = {
+  reschedulesPerTicketPerDay: 3,
+  venueCallsPerPlacePerDay: 10,
+  killSwitch: false,
 };
 
 const CHANNEL_KEYS: ReservationChannel[] = ["phone", "whatsapp", "instagram"];
@@ -118,6 +152,7 @@ export const DEFAULT_CONFIG: ReservationsConfig = {
   testCall: { ...TEST_CALL_SEED },
   attempts: ATTEMPTS,
   unlimitedReservations: false,
+  limits: { ...LIMITS_SEED },
 };
 
 function isChannel(v: unknown): v is ReservationChannel {
@@ -174,6 +209,26 @@ export function coerceConfig(raw: unknown): ReservationsConfig {
     // Fixed by protocol — whatever an old row stored, the platform runs 2.
     attempts: ATTEMPTS,
     unlimitedReservations: c.unlimitedReservations === true,
+    limits: coerceLimits(c.limits),
+  };
+}
+
+function coerceLimits(raw: unknown): ReservationsConfig["limits"] {
+  const l = raw && typeof raw === "object" && !Array.isArray(raw)
+    ? (raw as Record<string, unknown>)
+    : {};
+  const posInt = (v: unknown, seed: number) =>
+    typeof v === "number" && Number.isFinite(v) && v >= 1 ? Math.trunc(v) : seed;
+  return {
+    reschedulesPerTicketPerDay: posInt(
+      l.reschedulesPerTicketPerDay,
+      LIMITS_SEED.reschedulesPerTicketPerDay,
+    ),
+    venueCallsPerPlacePerDay: posInt(
+      l.venueCallsPerPlacePerDay,
+      LIMITS_SEED.venueCallsPerPlacePerDay,
+    ),
+    killSwitch: l.killSwitch === true,
   };
 }
 

@@ -71,7 +71,7 @@ export type FleetAgentSpec = {
 
 const A1_PROMPT = [
   `Eres el asistente de reservaciones de Mesita. Esta llamada va del consumidor hacia el negocio: llamas al restaurante {{venue_name}} DE PARTE del comensal {{guest_name}}.`,
-  `Contexto de esta llamada: {{call_context}}. Si es "cancellation", tu ÚNICO objetivo es AVISAR: el comensal {{guest_name}} CANCELA su reservación del {{reservation_date}} a las {{reservation_time}} (código {{reference_code}}) — da el aviso a quien conteste (a un buzón déjalo grabado igual: es la línea del propio restaurante), ofrece una disculpa breve de parte del comensal, agradece y cuelga con end_call; sin pedir mesa, sin negociar y sin herramientas. Todo lo demás de este brief aplica solo al contexto "booking".`,
+  `Contexto de esta llamada: {{call_context}}. Si es "modification": el restaurante YA tiene confirmada una mesa a nombre de {{guest_name}} para el {{modification_of_date}} a las {{modification_of_time}} — NO pidas una mesa nueva: pide MOVER esa reservación a los nuevos datos. Si no pueden con el cambio, pide de una vez que CANCELEN la anterior (Mesita le avisa al comensal) y repórtalo como declined. Todo lo demás del contexto "booking" aplica igual (reportar, alternativas, código). Si es "cancellation", tu ÚNICO objetivo es AVISAR: el comensal {{guest_name}} CANCELA su reservación del {{reservation_date}} a las {{reservation_time}} (código {{reference_code}}) — da el aviso a quien conteste (a un buzón déjalo grabado igual: es la línea del propio restaurante), ofrece una disculpa breve de parte del comensal, agradece y cuelga con end_call; sin pedir mesa, sin negociar y sin herramientas. Todo lo demás de este brief aplica solo al contexto "booking".`,
   `Objetivo único (booking): conseguir una mesa para {{party_size}} el {{reservation_date}} a las {{reservation_time}}, a nombre de {{guest_name}}.`,
   `Si el restaurante acepta tal cual, confirma leyendo de vuelta: nombre, personas, fecha y hora. Si piden un teléfono de contacto, da el del comensal: {{guest_phone}}. Si piden un número de referencia o confirmación, el código de Mesita es {{reference_code}}.`,
   `Si NO hay lugar exactamente así, pregunta qué opciones cercanas tienen (otra hora, otra área) y apunta CADA UNA por separado, con su hora en 24 horas. NO aceptes ninguna por tu cuenta: Mesita se las propone al comensal. Pide que dejen esas opciones apartadas un momento — si el comensal toma una de ellas, queda confirmada sin volver a llamarles.`,
@@ -187,6 +187,15 @@ const REFERENCE_CODE_SPOKEN: Prop = {
   description: "Código de referencia de 8 dígitos de la reservación a cancelar (ej. 48291057).",
 };
 
+// Generation token — rides every OUTBOUND call (a1/a2). Bound, never typed:
+// the EFs ignore writes from a call whose run was orphaned by a reschedule/
+// cancel that happened mid-call (eng-review 2026-08-04). Inbound tools
+// (a3/a4) have no run to correlate.
+const RUN_ID_BOUND: Prop = {
+  type: "string",
+  dynamic_variable: "run_id",
+};
+
 export function fleetToolConfigs(
   supabaseUrl: string,
   anonKey: string,
@@ -224,6 +233,7 @@ export function fleetToolConfigs(
       "eleven-a1-report-outcome",
       bodySchema("Resultado de la llamada con el restaurante.", ["reference_code", "verdict"], {
         reference_code: REFERENCE_CODE_BOUND,
+        run_id: RUN_ID_BOUND,
         verdict: {
           type: "string",
           description:
@@ -270,6 +280,7 @@ export function fleetToolConfigs(
       "eleven-a2-confirm-reservation",
       bodySchema("Confirmación (o cambio pedido) del comensal.", ["reference_code"], {
         reference_code: REFERENCE_CODE_BOUND,
+        run_id: RUN_ID_BOUND,
         new_date: {
           type: "string",
           description: "Solo si cambia la fecha: AAAA-MM-DD (ej. 2026-08-02). Puede ir sola.",
@@ -287,6 +298,7 @@ export function fleetToolConfigs(
       "eleven-a2-cancel-reservation",
       bodySchema("Cancelación pedida por el comensal.", ["reference_code"], {
         reference_code: REFERENCE_CODE_BOUND,
+        run_id: RUN_ID_BOUND,
         reason: { type: "string", description: "Motivo breve, en sus palabras." },
       }),
     ),
@@ -500,7 +512,7 @@ export function fleetWorkflows(toolIdByName: Map<string, string>): Record<FleetA
           position: pos(340, 0),
           entryBehavior: "generate_immediately",
           additionalPrompt:
-            "Si {{call_context}} es \"cancellation\": esta llamada NO pide mesa — el comensal {{guest_name}} CANCELA su reservación del {{reservation_date}} a las {{reservation_time}} (código Mesita {{reference_code}}). Da el aviso a quien conteste (a un buzón déjalo grabado igual), ofrece una disculpa breve de parte del comensal, agradece, despídete y cuelga con end_call — sin negociar y sin herramientas — y AVANZA por la rama de cancelación. Todo lo que sigue aplica solo al contexto \"booking\". Ya saludaste. Si quien contesta no toma reservaciones o es un conmutador, pide con cortesía que te pasen con quien sí; acepta esperas cortas. Luego pide la mesa: {{party_size}} personas, {{reservation_date}} a las {{reservation_time}}, a nombre de {{guest_name}}. Si piden teléfono de contacto da {{guest_phone}}; si piden número de confirmación, el código Mesita es {{reference_code}}. Menciona {{special_requests}} una sola vez si no está vacío y ya hay disponibilidad. Si no pueden tal cual, pregunta qué opciones cercanas tienen y apúntalas textuales y cortas — NO aceptes ninguna por tu cuenta, Mesita se las propone al comensal. No inventes disponibilidad. Quédate en esta conversación hasta que pase UNA de estas cinco cosas: confirmaron · ofrecieron alternativas · dijeron que no hay lugar · nunca llegaste con alguien que reserve (buzón, conmutador sin salida, «llame más tarde») · no es este restaurante. Ahí AVANZA por la rama que toque, sin despedirte todavía: el flujo registra el resultado.",
+            "Si {{call_context}} es \"modification\": NO pidas mesa nueva — el restaurante ya tiene una confirmada a nombre de {{guest_name}} el {{modification_of_date}} a las {{modification_of_time}}; pide MOVERLA a los nuevos datos y sigue las mismas ramas de booking (si no pueden, pide que cancelen la anterior y toma la rama declined). Si {{call_context}} es \"cancellation\": esta llamada NO pide mesa — el comensal {{guest_name}} CANCELA su reservación del {{reservation_date}} a las {{reservation_time}} (código Mesita {{reference_code}}). Da el aviso a quien conteste (a un buzón déjalo grabado igual), ofrece una disculpa breve de parte del comensal, agradece, despídete y cuelga con end_call — sin negociar y sin herramientas — y AVANZA por la rama de cancelación. Todo lo que sigue aplica solo al contexto \"booking\". Ya saludaste. Si quien contesta no toma reservaciones o es un conmutador, pide con cortesía que te pasen con quien sí; acepta esperas cortas. Luego pide la mesa: {{party_size}} personas, {{reservation_date}} a las {{reservation_time}}, a nombre de {{guest_name}}. Si piden teléfono de contacto da {{guest_phone}}; si piden número de confirmación, el código Mesita es {{reference_code}}. Menciona {{special_requests}} una sola vez si no está vacío y ya hay disponibilidad. Si no pueden tal cual, pregunta qué opciones cercanas tienen y apúntalas textuales y cortas — NO aceptes ninguna por tu cuenta, Mesita se las propone al comensal. No inventes disponibilidad. Quédate en esta conversación hasta que pase UNA de estas cinco cosas: confirmaron · ofrecieron alternativas · dijeron que no hay lugar · nunca llegaste con alguien que reserve (buzón, conmutador sin salida, «llame más tarde») · no es este restaurante. Ahí AVANZA por la rama que toque, sin despedirte todavía: el flujo registra el resultado.",
           edgeOrder: [
             "e_book_cancel_done",
             "e_book_confirmed",

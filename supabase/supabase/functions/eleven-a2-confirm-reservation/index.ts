@@ -54,10 +54,25 @@ Deno.serve(async (req) => {
     new_date?: unknown;
     new_time?: unknown;
     note?: unknown;
+    run_id?: unknown;
   }>(req, {});
 
   const ticket = await ticketByCode(admin, body.reference_code);
   if (!ticket) return json({ ok: false, error: "reservation not found for that reference_code" }, 404);
+  // Stale-run guard (eng-review 2026-08-04): run_id rides every outbound call
+  // as a bound dynamic variable. A mismatch means this CALL belongs to an
+  // orphaned run (the guest rescheduled/cancelled mid-call) — ignore the
+  // write, tell the agent to wrap up gracefully.
+  const callRunId = typeof body.run_id === "string" ? body.run_id.trim() : "";
+  if (callRunId && ticket.run_id && callRunId !== ticket.run_id) {
+    return json({
+      ok: true,
+      stale_run: true,
+      ignored: true,
+      say: "Esa reservación acaba de cambiar desde la app; Mesita le confirma los nuevos datos por ahí.",
+    });
+  }
+
   if (ticket.status === "cancelled") {
     return json({ ok: false, error: "this reservation is cancelled" }, 409);
   }
