@@ -20,15 +20,25 @@ import {
   type Strategy,
   type StrategyId } from "@/lib/business/strategies";
 import { planForSubscription } from "@/lib/business/plans";
+import { getRewardsConfig } from "@/app/(app)/rewards-config/actions";
+import {
+  ACTION_KEYS,
+  ACTION_META,
+  CLASS_KEYS,
+  CLASS_META,
+  DEFAULT_CONFIG,
+  type ClassKey,
+  type RewardsConfig } from "@/app/(app)/rewards-config/catalog";
 import { setPlacePlan, type AdminPlace } from "../actions";
 import {SectionCard} from "../ui";
 import { ErrorNote } from "@/components/ErrorNote";
 
 // Admin Promos — Mesita Membership (MESITA-585, card shape MESITA-590).
 //   1. Mesita Membership — FOUR pricing cards, each a plain give/receive
-//      pitch: YOU GIVE the MX$1,000/year membership + the discounts as a 2×2
-//      matrix (Welcome/Returning × Standard/Premium, capped per bill) → YOU
-//      RECEIVE {Low/Mid/High/Max} algorithm placement → Join. The whole card
+//      pitch: YOU GIVE the MX$1,000/year membership + the discounts as the
+//      v7 Strategy × Class matrix (classes × None/actions, capped per bill,
+//      read LIVE from rewards_config — MESITA-862) → YOU RECEIVE
+//      {Low/Mid/High/Max} algorithm placement → Join. The whole card
 //      opens the product modal (full detail + the action); switching is a
 //      NEW membership (the lock-in). One tap in the modal writes rates +
 //      cap + paying plan flags atomically.
@@ -118,6 +128,21 @@ export function PromosSection({
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [modalId, setModalId] = useState<StrategyId | null>(null);
+  // The v7 matrix, read LIVE from rewards_config (rates are never cached in
+  // code — MESITA-859). Identity defaults render until the fetch lands, so
+  // the cards never flash empty; on failure they simply keep the defaults.
+  const [matrix, setMatrix] = useState<RewardsConfig>(DEFAULT_CONFIG);
+
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      const r = await getRewardsConfig();
+      if (active && r.ok) setMatrix(r.config);
+    })();
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const member = isMember(v);
   const storedStrategy = strategyForPlace(v);
@@ -191,6 +216,7 @@ export function PromosSection({
             <PricingCard
               key={s.id}
               strategy={s}
+              matrix={matrix}
               currency={v.currency}
               selected={s.id === storedStrategy}
               member={member}
@@ -223,6 +249,7 @@ export function PromosSection({
       {modalStrategy && (
         <ProductModal
           strategy={modalStrategy}
+          matrix={matrix}
           currency={v.currency}
           isCurrent={modalStrategy.id === storedStrategy}
           member={member}
@@ -238,12 +265,14 @@ export function PromosSection({
 
 function PricingCard({
   strategy,
+  matrix,
   currency,
   selected,
   member,
   pending,
   onOpen }: {
   strategy: Strategy;
+  matrix: RewardsConfig;
   currency: string | null;
   selected: boolean;
   member: boolean;
@@ -252,7 +281,6 @@ function PricingCard({
 }) {
   const art = CARD_ART[strategy.id];
   const paid = strategy.id !== ZERO_STRATEGY_ID;
-  const r = strategy.rates;
 
   return (
     <button
@@ -325,7 +353,7 @@ function PricingCard({
                 {formatMoney(strategy.cap ?? UNIVERSAL_CAP_MXN, currency)} per
                 bill:
               </p>
-              <RateMatrix rates={r} />
+              <RewardsMatrix matrix={matrix} strategy={strategy.id} />
             </>
           ) : (
             <p className="text-muted-foreground text-[12px] leading-snug">
@@ -371,12 +399,14 @@ function PricingCard({
 
 function ProductModal({
   strategy,
+  matrix,
   currency,
   isCurrent,
   member,
   onConfirm,
   onClose }: {
   strategy: Strategy;
+  matrix: RewardsConfig;
   currency: string | null;
   isCurrent: boolean;
   member: boolean;
@@ -393,7 +423,6 @@ function ProductModal({
 
   const art = CARD_ART[strategy.id];
   const paid = strategy.id !== ZERO_STRATEGY_ID;
-  const r = strategy.rates;
 
   const primaryLabel = isCurrent
     ? "Current strategy"
@@ -473,11 +502,12 @@ function ProductModal({
             <ModalLabel>You give</ModalLabel>
             {paid ? (
               <>
-                <RateMatrix rates={r} />
+                <RewardsMatrix matrix={matrix} strategy={strategy.id} />
                 <p className="text-muted-foreground text-[11px] leading-snug">
                   Every discount applies to the first{" "}
                   {formatMoney(strategy.cap ?? UNIVERSAL_CAP_MXN, currency)} of
-                  the bill — a platform-wide cap, always shown to guests.
+                  the bill — a platform-wide cap, always shown to guests. A
+                  guest gets their single best qualifying rate, never a sum.
                 </p>
               </>
             ) : (
@@ -604,39 +634,75 @@ function Step({
   );
 }
 
-// The 2×2 discount matrix — Welcome/Returning × Standard/Premium. Pato-sanctioned
-// per-card matrix (MESITA-590); rates live in HTML text, never in the artwork.
-function RateMatrix({ rates }: { rates: Strategy["rates"] }) {
-  const cell = (v: number | null) => (v == null ? "—" : `${v}%`);
+// The v7 Strategy × Class matrix at this strategy (MESITA-862, replaces the
+// retired 2×2): rows = guest classes, columns = None (standing) + the four
+// rewarded actions, read live from rewards_config. Story is Influencer-only —
+// other rows show "—" regardless of stored value, mirroring the eligibility
+// gate (a class gate, not a price). Rates live in HTML text, never artwork.
+function RewardsMatrix({
+  matrix,
+  strategy }: {
+  matrix: RewardsConfig;
+  strategy: StrategyId;
+}) {
+  const cell = (v: number) => (v > 0 ? `${v}%` : "—");
+  const shortClass: Record<ClassKey, string> = {
+    standard: "Standard",
+    premium: "Premium",
+    influencer: "Influencer",
+    aura: "Aura" };
   return (
-    <div className="border-border/60 grid grid-cols-[auto_1fr_1fr] overflow-hidden rounded-lg border text-[11px]">
-      <span className="bg-muted/40 px-2.5 py-1.5" aria-hidden />
-      <span className="text-muted-foreground bg-muted/40 px-2.5 py-1.5 text-center font-semibold">
-        Standard
-      </span>
-      <span className="bg-violet-500/10 px-2.5 py-1.5 text-center font-semibold text-violet-600">
-        Premium
-      </span>
-
-      <span className="text-muted-foreground border-border/60 border-t px-2.5 py-1.5 font-medium">
-        Welcome
-      </span>
-      <span className="text-foreground/80 border-border/60 border-t px-2.5 py-1.5 text-center font-bold tabular-nums">
-        {cell(rates.welcome_free_rate)}
-      </span>
-      <span className="border-border/60 border-t bg-violet-500/[0.06] px-2.5 py-1.5 text-center font-bold tabular-nums text-violet-600">
-        {cell(rates.welcome_premium_rate)}
-      </span>
-
-      <span className="text-muted-foreground border-border/60 border-t px-2.5 py-1.5 font-medium">
-        Returning
-      </span>
-      <span className="text-foreground/80 border-border/60 border-t px-2.5 py-1.5 text-center font-bold tabular-nums">
-        {cell(rates.free_rate)}
-      </span>
-      <span className="border-border/60 border-t bg-violet-500/[0.06] px-2.5 py-1.5 text-center font-bold tabular-nums text-violet-600">
-        {cell(rates.premium_rate)}
-      </span>
+    <div className="flex flex-col gap-1">
+      <div className="border-border/60 grid grid-cols-[minmax(0,1.4fr)_repeat(5,minmax(0,1fr))] overflow-hidden rounded-lg border text-[10.5px]">
+        <span className="bg-muted/40 px-2 py-1.5" aria-hidden />
+        <span className="text-muted-foreground bg-muted/40 px-1 py-1.5 text-center font-semibold">
+          None
+        </span>
+        {ACTION_KEYS.map((a) => (
+          <span
+            key={a}
+            title={ACTION_META[a].name}
+            className="text-muted-foreground bg-muted/40 px-1 py-1.5 text-center font-semibold"
+          >
+            {ACTION_META[a].emoji}
+          </span>
+        ))}
+        {CLASS_KEYS.map((cls) => (
+          <div key={cls} className="contents">
+            <span
+              className="text-muted-foreground border-border/60 truncate border-t px-2 py-1.5 font-medium"
+              title={CLASS_META[cls].name}
+            >
+              {CLASS_META[cls].emoji} {shortClass[cls]}
+            </span>
+            <span className="text-foreground/80 border-border/60 border-t px-1 py-1.5 text-center font-bold tabular-nums">
+              {cell(matrix.grid[cls][strategy])}
+            </span>
+            {ACTION_KEYS.map((a) => (
+              <span
+                key={a}
+                className={cx(
+                  "border-border/60 border-t px-1 py-1.5 text-center font-bold tabular-nums",
+                  a === "story" && cls !== "influencer"
+                    ? "text-muted-foreground/50"
+                    : "text-foreground/80",
+                )}
+              >
+                {a === "story" && cls !== "influencer"
+                  ? "—"
+                  : cell(matrix.actions[a][cls][strategy])}
+              </span>
+            ))}
+          </div>
+        ))}
+      </div>
+      <p className="text-muted-foreground/80 text-[10px] leading-snug">
+        {ACTION_KEYS.map(
+          (a, i) =>
+            `${i > 0 ? " · " : ""}${ACTION_META[a].emoji} ${ACTION_META[a].name}`,
+        ).join("")}{" "}
+        · best rate wins
+      </p>
     </div>
   );
 }
