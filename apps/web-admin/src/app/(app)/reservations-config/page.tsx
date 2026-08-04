@@ -21,6 +21,7 @@ export default async function ReservationsConfigPage() {
         <ReservationsConfigClient
           initialConfig={res.ok ? res.config : DEFAULT_CONFIG}
           initialUpdatedAt={res.ok ? res.updatedAt : null}
+          initialNeedsAttention={res.ok ? res.needsAttention : []}
           loadError={res.ok ? null : res.error}
         />
       </div>

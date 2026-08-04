@@ -2,15 +2,18 @@
 
 import { useEffect, useMemo, useState, useTransition } from "react";
 import {
+  AlertTriangle,
   Bot,
   CalendarCheck,
   CheckCircle2,
   Clock,
   FlaskConical,
+  Gauge,
   // Aliased: the lucide export is named `Infinity`, which would shadow the
   // global of the same name for this whole module.
   Infinity as InfinityIcon,
   Lock,
+  OctagonPause,
   Phone,
   PhoneCall,
   RotateCcw,
@@ -21,7 +24,12 @@ import {
 import { ErrorNote } from "@/components/ErrorNote";
 import { SaveRow, SectionCard, Switch } from "../enricher-config/atlas-ui";
 import { getReservationsConfig, updateReservationsConfig } from "./actions";
-import { CHANNELS, looksLikePhone, type ReservationsConfig } from "./catalog";
+import {
+  CHANNELS,
+  looksLikePhone,
+  type NeedsAttentionRow,
+  type ReservationsConfig,
+} from "./catalog";
 
 // While only phone is bookable, the stored channel shape is fixed: phone ranked,
 // WhatsApp + Instagram parked. Kept out of the UI (nothing to reorder with one
@@ -42,10 +50,12 @@ const STEPS = [
 export function ReservationsConfigClient({
   initialConfig,
   initialUpdatedAt,
+  initialNeedsAttention,
   loadError,
 }: {
   initialConfig: ReservationsConfig;
   initialUpdatedAt: string | null;
+  initialNeedsAttention: NeedsAttentionRow[];
   loadError: string | null;
 }) {
   const [cfg, setCfg] = useState<ReservationsConfig>(initialConfig);
@@ -54,6 +64,7 @@ export function ReservationsConfigClient({
   const [error, setError] = useState<string | null>(loadError);
   const [ok, setOk] = useState(false);
   const [updatedAt, setUpdatedAt] = useState<string | null>(initialUpdatedAt);
+  const [attention, setAttention] = useState<NeedsAttentionRow[]>(initialNeedsAttention);
 
   // Re-fetch on mount so a client-side nav to the page shows the live row, not a
   // stale server render. On failure we keep the initial/default config usable.
@@ -65,6 +76,7 @@ export function ReservationsConfigClient({
       setCfg(r.config);
       setSaved(r.config);
       setUpdatedAt(r.updatedAt);
+      setAttention(r.needsAttention);
       setError(null);
     })();
     return () => {
@@ -112,8 +124,60 @@ export function ReservationsConfigClient({
     });
   };
 
+  const whyAttention = (row: NeedsAttentionRow): string => {
+    if (row.notice_state === "failed") {
+      return row.notice_kind === "venue_cancel"
+        ? "Venue release NOT delivered — the place may still hold a cancelled table"
+        : "Guest was never told their table was cancelled";
+    }
+    if (row.attempts_state === "error") return "Booking run died — see status below";
+    if (row.callback_state === "failed") return "Guest call could not be placed";
+    return "Venue confirmed but the guest never picked up — table exists, owner unaware";
+  };
+
   return (
     <div className="space-y-6">
+      {/* Needs attention — the protocol exists because states nobody reads
+          stop silently. This list is the reader: every terminal-bad state a
+          human must act on, straight from the same GET as the config. */}
+      {attention.length > 0 && (
+        <SectionCard
+          icon={<AlertTriangle className="h-4 w-4 text-red-600" />}
+          title={`Needs attention (${attention.length})`}
+          subtitle="Tickets in a terminal-bad state: failed cancel notices, dead booking runs, unreached guests on confirmed tables. These do not fix themselves."
+        >
+          <ul className="mt-5 space-y-2">
+            {attention.map((row) => (
+              <li
+                key={row.id}
+                className="border-border bg-card flex flex-col gap-1 rounded-2xl border p-3"
+              >
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="font-mono text-xs font-semibold tabular-nums">
+                    #{row.reference_code ?? row.id.slice(0, 8)}
+                  </span>
+                  <span className="bg-red-500/10 rounded-full px-1.5 py-0.5 text-[10px] font-semibold text-red-700">
+                    {row.status}
+                  </span>
+                  {row.is_test && (
+                    <span className="bg-muted text-muted-foreground rounded-full px-1.5 py-0.5 text-[10px] font-medium">
+                      test
+                    </span>
+                  )}
+                  <span className="text-muted-foreground text-xs">
+                    {new Date(row.reserved_at).toLocaleString()}
+                  </span>
+                </div>
+                <p className="text-xs font-medium text-red-700">{whyAttention(row)}</p>
+                {row.last_call_status && (
+                  <p className="text-muted-foreground text-xs">{row.last_call_status}</p>
+                )}
+              </li>
+            ))}
+          </ul>
+        </SectionCard>
+      )}
+
       {/* How it works — the shape of the agent, so the knobs below have context. */}
       <SectionCard
         icon={<Bot className="text-secondary h-4 w-4" />}
@@ -458,6 +522,97 @@ export function ReservationsConfigClient({
           <p className="mt-3 text-xs text-amber-600">
             This hides the exact paywall the Premium upsell depends on — nobody can
             reach the limit while it&apos;s on. Turn it off before any real run.
+          </p>
+        )}
+      </SectionCard>
+
+      {/* Abuse & cost guards — every unit of abuse here is a metered phone call. */}
+      <SectionCard
+        icon={<Gauge className="text-secondary h-4 w-4" />}
+        title="Call limits & kill switch"
+        subtitle="Abuse and cost guards. Reschedules reset the venue-call budget, so both doors are capped; the kill switch holds every outbound reservation call until it's flipped back."
+      >
+        <div className="mt-5 grid gap-4 sm:grid-cols-2">
+          <label className="flex flex-col gap-2">
+            <span className="text-sm font-medium">Reschedules per ticket per day</span>
+            <input
+              type="number"
+              min={1}
+              max={1000}
+              value={cfg.limits.reschedulesPerTicketPerDay}
+              disabled={pending}
+              onChange={(e) =>
+                patch({
+                  limits: {
+                    ...cfg.limits,
+                    reschedulesPerTicketPerDay: Math.max(
+                      1,
+                      Math.trunc(Number(e.target.value) || 1),
+                    ),
+                  },
+                })
+              }
+              className="border-border bg-card focus:border-foreground h-9 w-full max-w-[10rem] rounded-lg border px-3 text-sm tabular-nums outline-none disabled:opacity-50"
+            />
+            <span className="text-muted-foreground text-xs">
+              Each reschedule resets the ticket&apos;s call attempts — i.e. buys
+              fresh venue calls. Over the cap the app says &quot;try again
+              tomorrow&quot;.
+            </span>
+          </label>
+          <label className="flex flex-col gap-2">
+            <span className="text-sm font-medium">Venue calls per place per day</span>
+            <input
+              type="number"
+              min={1}
+              max={1000}
+              value={cfg.limits.venueCallsPerPlacePerDay}
+              disabled={pending}
+              onChange={(e) =>
+                patch({
+                  limits: {
+                    ...cfg.limits,
+                    venueCallsPerPlacePerDay: Math.max(
+                      1,
+                      Math.trunc(Number(e.target.value) || 1),
+                    ),
+                  },
+                })
+              }
+              className="border-border bg-card focus:border-foreground h-9 w-full max-w-[10rem] rounded-lg border px-3 text-sm tabular-nums outline-none disabled:opacity-50"
+            />
+            <span className="text-muted-foreground text-xs">
+              Booking calls and cancel notices share one daily meter per place —
+              N guests can&apos;t make Mesita ring one restaurant all day. Over
+              the cap, calls defer six hours.
+            </span>
+          </label>
+        </div>
+        <div className="mt-5 flex items-start justify-between gap-4 rounded-xl border border-red-200 bg-red-50/50 p-4 dark:border-red-900/40 dark:bg-red-950/20">
+          <div className="min-w-0">
+            <p className="flex items-center gap-2 text-sm font-semibold">
+              <OctagonPause className="h-4 w-4 text-red-600" />
+              Kill switch
+            </p>
+            <p className="text-muted-foreground mt-0.5 text-xs">
+              {cfg.limits.killSwitch
+                ? "ON — no outbound reservation call of any kind is being placed. Everything parks and resumes within a minute of turning this off."
+                : "Off — calls flow normally. Flip this on to stop ALL outbound reservation calls instantly (runaway loop, credit emergency, venue complaint)."}
+            </p>
+          </div>
+          <Switch
+            on={cfg.limits.killSwitch}
+            pending={pending}
+            label="Kill switch"
+            onClick={() =>
+              patch({ limits: { ...cfg.limits, killSwitch: !cfg.limits.killSwitch } })
+            }
+          />
+        </div>
+        {cfg.limits.killSwitch && (
+          <p className="mt-3 text-xs font-medium text-red-600">
+            While this is on, NO venue is called and NO guest is called — bookings
+            park as scheduled and retry after you turn it off. Don&apos;t forget it.
           </p>
         )}
       </SectionCard>
