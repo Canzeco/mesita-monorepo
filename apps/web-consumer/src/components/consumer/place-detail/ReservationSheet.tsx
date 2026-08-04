@@ -1,17 +1,17 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { CalendarCheck, CalendarClock, Loader2, PhoneCall } from "lucide-react";
 
 import { clearSwipeProgress } from "@/app/(shell)/discover/swipe/swipe-deck-storage";
 import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
 import {
   buildDateOptions,
+  ClosedSlotNotice,
   firstOpenDate,
   ReservationDatePicker,
   ReservationPartyPicker,
   ReservationTimePicker,
-  resolveSlot,
 } from "@/components/consumer/reservation-pickers";
 import {
   apiCreateReservation,
@@ -19,13 +19,13 @@ import {
   apiUpdateReservation,
   type EFReservationRow,
 } from "@/lib/api/reservations";
+import { parseHoursTable, resolveSlot } from "@/lib/reservation-slots";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { SHEET_BODY_CLASS, SHEET_TITLE_CLASS } from "@/lib/ui-classes";
 import { cn, guestNoun } from "@/lib/utils";
 import { MX_OFFSET, venueDateTime } from "@/lib/venue-time";
 
 const DATE_WINDOW = 14; // two weeks of pills
-const DEFAULT_TIME = "20:00";
 const DEFAULT_PARTY = 2;
 
 // MX_OFFSET (and everything else about the venue's clock) lives in
@@ -38,8 +38,16 @@ const DEFAULT_PARTY = 2;
  * a name to show. Deliberately narrower than PlaceDetail (which structurally
  * satisfies it) so the swipe deck can open this straight from a deck card,
  * without fetching the full place-detail payload.
+ *
+ * `hours_table` rides along when the caller has it (the detail page does; a deck
+ * card doesn't) — that's what turns the slot grid hours-aware. Absent, the sheet
+ * behaves exactly as before: baseline window, no closed-hours warning.
  */
-export type ReservationSheetPlace = { id: string; name: string };
+export type ReservationSheetPlace = {
+  id: string;
+  name: string;
+  hours_table?: Array<{ day: string; range: string }>;
+};
 
 // What to do when the guest already holds a live table here.
 //   null         → they haven't answered the banner yet; submit stays locked
@@ -73,13 +81,22 @@ export function ReservationSheet({
 }) {
   const supabase = useBrowserSupabase();
 
+  // Null when the place has no usable hours — the grid falls back to the
+  // baseline window and nothing is flagged closed.
+  const hours = useMemo(
+    () => parseHoursTable(place.hours_table),
+    [place.hours_table],
+  );
+
   // Recomputed every render (14 tiny objects) rather than memoised: the sheet
   // can sit mounted across midnight, and a stale "Today" pill would offer
   // slots that are a day gone.
-  const dateOptions = buildDateOptions(DATE_WINDOW);
+  const dateOptions = buildDateOptions(DATE_WINDOW, hours);
 
   const [dateChoice, setDateChoice] = useState("");
-  const [timeChoice, setTimeChoice] = useState(DEFAULT_TIME);
+  // Null = "no explicit pick yet", so the default lands on a slot the place is
+  // actually open for instead of a hardcoded 20:00 the place may be closed at.
+  const [timeChoice, setTimeChoice] = useState<string | null>(null);
   const [party, setParty] = useState(DEFAULT_PARTY);
   const [notes, setNotes] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -97,7 +114,7 @@ export function ReservationSheet({
   const date =
     dateOptions.find((d) => d.iso === dateChoice && !d.disabled)?.iso ??
     firstOpenDate(dateOptions);
-  const time = resolveSlot(date, timeChoice);
+  const time = resolveSlot(date, timeChoice, hours);
 
   const chosen = dateOptions.find((d) => d.iso === date);
   const whenLabel = chosen
@@ -273,6 +290,13 @@ export function ReservationSheet({
               value={time}
               onChange={setTimeChoice}
               date={date}
+              hours={hours}
+            />
+            <ClosedSlotNotice
+              date={date}
+              time={time}
+              hours={hours}
+              placeName={place.name}
             />
             <ReservationPartyPicker
               value={party}

@@ -14,7 +14,6 @@ import {
   ReservationDatePicker,
   ReservationPartyPicker,
   ReservationTimePicker,
-  resolveSlot,
 } from "@/components/consumer/reservation-pickers";
 import {
   apiCancelReservation,
@@ -22,6 +21,7 @@ import {
 } from "@/lib/api/reservations";
 import type { ReservationItem } from "@/lib/mock/reservations-mock";
 import { placeHref } from "@/lib/place-route";
+import { resolveSlot } from "@/lib/reservation-slots";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { toast } from "@/lib/toast";
 import {
