@@ -316,6 +316,12 @@ Deno.serve(async (req) => {
         call_successful: c.analysis?.call_successful ?? null,
         duration_secs: c.metadata?.call_duration_secs ?? null,
         summary: c.analysis?.transcript_summary ?? null,
+        // The WHOLE metadata blob, untrimmed. A 0-second "failed" call says
+        // nothing in its transcript — the reason (termination_reason, the
+        // rejection detail, whether a per-call override rode along) lives in
+        // here, and guessing at it burned real debugging time. Whatever field
+        // carries the answer next time, it will already be in the response.
+        metadata: (c as { metadata?: unknown }).metadata ?? null,
         tools_fired: turns.flatMap((t) => t.tools ?? []),
         turns,
       });
