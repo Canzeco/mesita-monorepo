@@ -8,8 +8,9 @@
 // `actions`) is accepted and migrated by IDENTITY — the flat value copies to
 // every class; mesita_review, absent from v12, lands at its 0 default.
 //
-// Grid rule: 5% steps, floor 5%, ceiling 50% (0 = off; the floor opened from
-// 10% in MESITA-866 — per-class cells made 5% a real price). Zero strategy is
+// Grid rule: 5% steps, floor 5%, ceiling 70% (0 = off; the floor opened from
+// 10% in MESITA-866, the ceiling from 50% in MESITA-872 — the matrix prices a
+// single best-of cell, not a place-wide headline). Zero strategy is
 // off by definition. Every cell is snapped and every key is present, so a partial
 // or slightly-off body can never write a malformed row; the only hard error is
 // a non-object body.
@@ -34,9 +35,13 @@ type RewardsConfig = {
 
 const RATE_STEP = 5;
 const RATE_FLOOR = 5;
-const RATE_MAX = 50;
-const CAP_MIN = 0;
-const CAP_MAX = 5000;
+const RATE_MAX = 70;
+// The cap is categorical (MESITA-872): MX$100 → MX$1,000 in hundreds. A 0
+// cap used to be writable, which silently meant "no ceiling" — the opposite
+// of what this knob promises a place.
+const CAP_STEP = 100;
+const CAP_MIN = 100;
+const CAP_MAX = 1000;
 const CAP_DEFAULT = 500;
 
 const R = (
@@ -69,7 +74,7 @@ const DEFAULTS: RewardsConfig = {
   },
 };
 
-// Snap to the 5% grid: ≤0 → 0, else clamp to [5,50] rounded to the nearest 5.
+// Snap to the 5% grid: ≤0 → 0, else clamp to [5,70] rounded to the nearest 5.
 function snapRate(v: unknown, fallback: number): number {
   if (typeof v !== "number" || !Number.isFinite(v)) return fallback;
   if (v <= 0) return 0;
@@ -77,9 +82,11 @@ function snapRate(v: unknown, fallback: number): number {
   return Math.max(RATE_FLOOR, Math.min(RATE_MAX, stepped));
 }
 
+/** Snap the cap onto the categorical ladder: nearest MX$100 in [100, 1000]. */
 function clampCap(v: unknown): number {
   if (typeof v !== "number" || !Number.isFinite(v)) return CAP_DEFAULT;
-  return Math.max(CAP_MIN, Math.min(CAP_MAX, Math.round(v)));
+  const stepped = Math.round(v / CAP_STEP) * CAP_STEP;
+  return Math.max(CAP_MIN, Math.min(CAP_MAX, stepped));
 }
 
 function snapRow(row: unknown, d: SegmentRates): SegmentRates {

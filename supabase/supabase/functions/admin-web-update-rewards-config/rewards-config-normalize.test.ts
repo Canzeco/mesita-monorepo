@@ -125,7 +125,7 @@ Deno.test("normalizeConfig: the Dominant column carries its launch defaults", ()
   }
 });
 
-Deno.test("normalizeConfig: rates snap to the 5% grid, floor 5, ceiling 50", () => {
+Deno.test("normalizeConfig: rates snap to the 5% grid, floor 5, ceiling 70", () => {
   const r = normalizeConfig({
     grid: { standard: { conservative: 13, aggressive: 999, dominant: 3 } },
     actions: {
@@ -134,7 +134,7 @@ Deno.test("normalizeConfig: rates snap to the 5% grid, floor 5, ceiling 50", () 
   });
   assert(r.ok);
   assertEquals(r.value.grid.standard.conservative, 15); // 13 → nearest 5
-  assertEquals(r.value.grid.standard.aggressive, 50); // clamped to ceiling
+  assertEquals(r.value.grid.standard.aggressive, 70); // clamped to ceiling (MESITA-872)
   assertEquals(r.value.grid.standard.dominant, 5); // 3 → 5, the floor (MESITA-866)
   assertEquals(r.value.actions.review.standard.conservative, 0); // ≤ 0 = off
   assertEquals(r.value.actions.review.standard.aggressive, 5); // 5% survives
@@ -155,14 +155,21 @@ Deno.test("normalizeConfig: the Zero column is always 0, whatever is sent", () =
   }
 });
 
-Deno.test("normalizeConfig: cap clamps; only a non-object body hard-errors", () => {
+Deno.test("normalizeConfig: cap snaps to the MX$100 ladder; only a non-object body hard-errors", () => {
+  // Categorical cap (MESITA-872): 100 → 1,000 in hundreds. Out-of-range
+  // clamps to an end of the ladder; an off-ladder value snaps to the
+  // nearest step — a cap of 0 ("no ceiling") can no longer be written.
   const hi = normalizeConfig({ cap: 999_999 });
   assert(hi.ok);
-  assertEquals(hi.value.cap, 5000);
+  assertEquals(hi.value.cap, 1000);
 
   const lo = normalizeConfig({ cap: -1 });
   assert(lo.ok);
-  assertEquals(lo.value.cap, 0);
+  assertEquals(lo.value.cap, 100);
+
+  const off = normalizeConfig({ cap: 237 });
+  assert(off.ok);
+  assertEquals(off.value.cap, 200);
 
   for (const bad of [null, undefined, 42, "config", [], true]) {
     assert(!normalizeConfig(bad).ok, `${JSON.stringify(bad)} was accepted`);

@@ -5,14 +5,13 @@ import Link from "next/link";
 import { Coins, Info, Percent, RotateCcw } from "lucide-react";
 
 import { ErrorNote } from "@/components/ErrorNote";
-import { NumberField, SaveRow, SectionCard } from "../enricher-config/atlas-ui";
+import { SaveRow, SectionCard } from "../enricher-config/atlas-ui";
 import { getRewardsConfig, updateRewardsConfig } from "./actions";
 import {
   ACTION_KEYS,
   ACTION_META,
+  ALLOWED_CAPS,
   ALLOWED_RATES,
-  CAP_MAX,
-  CAP_MIN,
   CLASS_KEYS,
   CLASS_META,
   DEFAULT_CONFIG,
@@ -129,7 +128,7 @@ export function RewardsConfigClient({
       <SectionCard
         icon={<Percent className="text-secondary h-4 w-4" />}
         title="Rewards table"
-        subtitle="Strategy × Class rows, one cell per action — different discount for each item, depending on the tier. None is the standing class discount. Rates snap to the 5% grid (5–50%); 0 = off; Zero strategy is off by definition and has no rows. A guest is paid their single best qualifying cell — never a sum."
+        subtitle="Strategy × Class rows, one cell per action — different discount for each item, depending on the tier. None is the standing class discount. Rates snap to the 5% grid (5–70%); 0 = off; Zero strategy is off by definition and has no rows. A guest is paid their single best qualifying cell — never a sum."
         status={
           updatedAt ? (
             <span className="text-muted-foreground text-xs">
@@ -269,20 +268,39 @@ export function RewardsConfigClient({
         title="Universal cap"
         subtitle="Every discount applies only to the first N pesos of the bill — a platform-wide constant, always shown to guests. Bounded, predictable cost."
       >
-        <div className="mt-5 max-w-xs">
-          <NumberField
-            icon={<Coins className="text-muted-foreground mt-0.5 h-4 w-4" />}
-            label="First MX$N of the bill"
-            value={cfg.cap}
-            min={CAP_MIN}
-            max={CAP_MAX}
-            onChange={setCap}
-            disabled={pending}
-          />
+        {/* Categorical, not a free number (MESITA-872): ten round options.
+            A typed cap invited both meaningless values (MX$37) and MX$0 —
+            which silently meant NO ceiling, the opposite of the promise. */}
+        <div className="mt-5 flex flex-wrap items-center gap-2">
+          {ALLOWED_CAPS.map((c) => {
+            const active = cfg.cap === c;
+            return (
+              <button
+                key={c}
+                type="button"
+                disabled={pending}
+                onClick={() => setCap(c)}
+                aria-pressed={active}
+                className={
+                  active
+                    ? "bg-foreground text-background inline-flex h-9 items-center rounded-lg px-3 text-[13px] font-bold tabular-nums transition disabled:opacity-50"
+                    : "border-border text-muted-foreground hover:text-foreground hover:bg-muted inline-flex h-9 items-center rounded-lg border px-3 text-[13px] font-semibold tabular-nums transition disabled:opacity-50"
+                }
+              >
+                <Coins className="mr-1.5 h-3.5 w-3.5" />
+                {c.toLocaleString("en-US")}
+              </button>
+            );
+          })}
         </div>
         <p className="text-muted-foreground mt-3 text-xs">
-          Example: 50% off a MX$700 bill touches the first MX${cfg.cap}, so the
-          guest saves MX${Math.round(cfg.cap * 0.5)}.
+          The discount applies to the first{" "}
+          <span className="text-foreground font-semibold">
+            MX${cfg.cap.toLocaleString("en-US")}
+          </span>{" "}
+          of the bill. Example: 50% off a MX$700 bill touches that first MX$
+          {cfg.cap.toLocaleString("en-US")}, so the guest saves MX$
+          {Math.round(Math.min(700, cfg.cap) * 0.5)}.
         </p>
       </SectionCard>
 
