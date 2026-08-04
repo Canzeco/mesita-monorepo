@@ -363,6 +363,12 @@ verify_jwt = true
 [functions.business-web-get-overview]
 verify_jwt = true
 
+# v3d Performance tab (MESITA-852): the place's whole record — summary, what
+# the guests produced, and the per-place feed. Membership-scoped, and never
+# selects a consumer's class (blended-rate privacy).
+[functions.business-web-get-performance]
+verify_jwt = true
+
 # Ticket workflow — business-web-create-ticket retired by Tickets v2
 # (MESITA-806): guests create their own tickets (consumer-web-create-ticket).
 [functions.business-web-submit-ticket-bill]

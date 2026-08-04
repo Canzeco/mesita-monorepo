@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { BarChart3 } from "lucide-react";
 import { PageErrorState } from "@/components/business/PageErrorState";
+import { PerformanceClient } from "@/components/business/stats/PerformanceClient";
 import { EmptyState } from "@/components/shared";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { getUnitOverview } from "@/lib/api/unit";
@@ -57,11 +58,7 @@ export default async function PerformancePage({
   return (
     <div className="flex-1 overflow-y-auto">
       <div className="mx-auto flex max-w-lg flex-col gap-4 px-4 pt-1 pb-6">
-        <EmptyState
-          icon={<BarChart3 className="text-muted-foreground h-5 w-5" />}
-          title="Stats coming soon"
-          description="Daily visits, retention, and replace charts will show up here once the analytics pipeline lands."
-        />
+        <PerformanceClient projectId={active.id} />
       </div>
     </div>
   );
