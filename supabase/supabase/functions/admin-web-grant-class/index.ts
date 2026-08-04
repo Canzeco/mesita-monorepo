@@ -13,8 +13,15 @@
 // (today just 'aura'; a future tier INSERT works unchanged). Granting never
 // needs a rank guard — an explicit admin grant is the highest-intent write.
 //
-// Body: { consumerId: string, classKey: "aura" | null }  (null = revoke)
-// Response: { ok: true, consumerId, classKey, origin }
+// The consumer is named either by `consumerId` (a uuid, the original contract)
+// or by `lookup` — a free identifier the operator actually has at hand: uuid,
+// 8-digit code, phone, @handle, or name. A lookup must land on EXACTLY one
+// consumer; several matches come back as a 409 listing the candidates, because
+// guessing which guest gets an invitation is not this function's call.
+//
+// Body: { consumerId?: string, lookup?: string, classKey: "aura" | null }
+//       (classKey null = revoke; exactly one of consumerId / lookup)
+// Response: { ok: true, consumerId, classKey, origin, consumer }
 //
 // Auth: caller's JWT email must be in public.super_admins.
 
@@ -26,8 +33,137 @@ import {
   readEFEnv,
   requireSuperAdmin,
 } from "../_shared/auth.ts";
+import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
+import {
+  candidateLabel,
+  classifyConsumerLookup,
+  CONSUMER_SUMMARY_COLUMNS,
+  describeLookup,
+  phoneDigitsTail,
+  safeOrFilterValue,
+  toConsumerSummary,
+} from "../_shared/consumer-lookup.ts";
 
-type Body = { consumerId?: string; classKey?: string | null };
+type Body = {
+  consumerId?: string;
+  lookup?: string;
+  classKey?: string | null;
+};
+
+/** The CONSUMER_SUMMARY_COLUMNS shape, as this untyped client returns it. */
+type ConsumerRow = {
+  id: string;
+  code: string | null;
+  full_name: string | null;
+  first_name: string | null;
+  last_name: string | null;
+  phone: string | null;
+  instagram_handle: string | null;
+  consumer_instagram_followers_count: number | null;
+  class_key: string | null;
+  class_origin: string | null;
+  class_granted_at: string | null;
+};
+
+// Resolve whatever the operator typed to a single consumer row, or the exact
+// response explaining why it couldn't be done.
+async function resolveConsumer(
+  admin: SupabaseClient,
+  raw: string,
+): Promise<{ ok: true; row: ConsumerRow } | { ok: false; response: Response }> {
+  const lookup = classifyConsumerLookup(raw);
+  if (!lookup) {
+    return {
+      ok: false,
+      response: json(
+        {
+          ok: false,
+          error:
+            `Not a consumer identifier: "${raw}". Use a uuid, an 8-digit code, a phone, an @handle, or a name.`,
+        },
+        400,
+      ),
+    };
+  }
+
+  let query = admin.from("consumers").select(CONSUMER_SUMMARY_COLUMNS).limit(6);
+  switch (lookup.kind) {
+    case "id":
+      query = query.eq("id", lookup.value);
+      break;
+    case "code":
+      query = query.eq("code", lookup.value);
+      break;
+    case "phone":
+      // Loose match on the national number — stored rows carry the country
+      // prefix inconsistently enough that an equality check misses people.
+      query = query.ilike("phone", `%${phoneDigitsTail(lookup.value)}`);
+      break;
+    case "handle":
+      // `_` is legal in a handle AND a single-char wildcard in LIKE, so this
+      // pattern over-matches by design; the exact compare below narrows it.
+      query = query.ilike("instagram_handle", lookup.value);
+      break;
+    case "text": {
+      const v = safeOrFilterValue(lookup.value);
+      if (!v) {
+        return {
+          ok: false,
+          response: json({ ok: false, error: "Empty search." }, 400),
+        };
+      }
+      query = query.or(
+        [
+          `full_name.ilike.%${v}%`,
+          `first_name.ilike.%${v}%`,
+          `last_name.ilike.%${v}%`,
+          `instagram_handle.ilike.%${v}%`,
+        ].join(","),
+      );
+      break;
+    }
+  }
+
+  const { data, error } = await query;
+  if (error) {
+    return {
+      ok: false,
+      response: json({ ok: false, error: `consumer: ${error.message}` }, 500),
+    };
+  }
+  const matched = (data ?? []) as unknown as ConsumerRow[];
+  const rows = lookup.kind === "handle"
+    ? matched.filter(
+      (r) => (r.instagram_handle ?? "").trim().toLowerCase() === lookup.value,
+    )
+    : matched;
+  if (rows.length === 0) {
+    return {
+      ok: false,
+      response: json(
+        { ok: false, error: `No consumer matches ${describeLookup(lookup)}.` },
+        404,
+      ),
+    };
+  }
+  if (rows.length > 1) {
+    // The query is capped at 6, so a full page means "at least this many".
+    const count = rows.length > 5 ? "More than 5 consumers" : `${rows.length} consumers`;
+    const names = rows.slice(0, 5).map(candidateLabel).join(", ");
+    return {
+      ok: false,
+      response: json(
+        {
+          ok: false,
+          error:
+            `${count} match ${describeLookup(lookup)} — ${names}. Narrow it down, or paste the id.`,
+        },
+        409,
+      ),
+    };
+  }
+  return { ok: true, row: rows[0] };
+}
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
@@ -46,24 +182,19 @@ Deno.serve(async (req) => {
 
   const bodyRes = await readJson<Body>(req);
   if (!bodyRes.ok) return bodyRes.response;
-  const consumerId = (bodyRes.body.consumerId ?? "").toString().trim();
+  const rawId = (bodyRes.body.consumerId ?? "").toString().trim();
+  const rawLookup = (bodyRes.body.lookup ?? "").toString().trim();
   const classKey = bodyRes.body.classKey ?? null;
-  if (!consumerId) {
-    return json({ ok: false, error: "consumerId is required" }, 400);
+  if (!rawId && !rawLookup) {
+    return json({ ok: false, error: "consumerId or lookup is required" }, 400);
   }
 
-  const consumerRes = await admin
-    .from("consumers")
-    .select("id, class_key, class_origin, consumer_instagram_followers_count")
-    .eq("id", consumerId)
-    .maybeSingle();
-  if (consumerRes.error) {
-    return json({ ok: false, error: `consumer: ${consumerRes.error.message}` }, 500);
-  }
-  if (!consumerRes.data) {
-    return json({ ok: false, error: "Consumer not found" }, 404);
-  }
-  const consumer = consumerRes.data;
+  // An explicit id wins over a lookup — a caller that has the uuid is not
+  // asking to be searched for.
+  const resolved = await resolveConsumer(admin, rawId || rawLookup);
+  if (!resolved.ok) return resolved.response;
+  const consumer = resolved.row;
+  const consumerId = String(consumer.id);
 
   // ── Grant ────────────────────────────────────────────────────────────────
   if (classKey !== null) {
@@ -87,11 +218,20 @@ Deno.serve(async (req) => {
         class_granted_at: new Date().toISOString(),
         class_expires_at: null,
       })
-      .eq("id", consumerId);
+      .eq("id", consumerId)
+      .select(CONSUMER_SUMMARY_COLUMNS)
+      .maybeSingle();
     if (grant.error) {
       return json({ ok: false, error: `grant: ${grant.error.message}` }, 500);
     }
-    return json({ ok: true, consumerId, classKey, origin: "invitation" });
+    return json({
+      ok: true,
+      consumerId,
+      classKey,
+      origin: "invitation",
+      // The row as written — the roster renders it without a refetch.
+      consumer: toConsumerSummary(grant.data ?? consumer),
+    });
   }
 
   // ── Revoke ───────────────────────────────────────────────────────────────
@@ -170,7 +310,9 @@ Deno.serve(async (req) => {
     .from("consumers")
     .update(fallback)
     .eq("id", consumerId)
-    .eq("class_origin", "invitation");
+    .eq("class_origin", "invitation")
+    .select(CONSUMER_SUMMARY_COLUMNS)
+    .maybeSingle();
   if (revoke.error) {
     return json({ ok: false, error: `revoke: ${revoke.error.message}` }, 500);
   }
@@ -179,5 +321,6 @@ Deno.serve(async (req) => {
     consumerId,
     classKey: fallback.class_key,
     origin: fallback.class_origin,
+    consumer: toConsumerSummary(revoke.data ?? { ...consumer, ...fallback }),
   });
 });

@@ -482,6 +482,15 @@ verify_jwt = true
 [functions.admin-web-revoke-admin]
 verify_jwt = true
 
+# The Aura door (segments v6) — the invite-only consumer class. The roster the
+# admin console's Aura Config page lists, and the single write that seats or
+# unseats a member. Both re-check super_admins on the caller.
+[functions.admin-web-list-aura]
+verify_jwt = true
+
+[functions.admin-web-grant-class]
+verify_jwt = true
+
 # Atlas configuration — place research/enrichment knobs on app_settings,
 # owned by admins.
 # Read-only per-place activity for the admin Performance tab: reservations +
