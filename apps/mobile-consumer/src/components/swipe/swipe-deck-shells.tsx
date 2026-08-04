@@ -49,30 +49,29 @@ export function EmptyState({
   );
 }
 
-// Tinder-style circular action button. Ring colour per action, two sizes:
-// Skip and Save are the deck's real verbs and read big, the utilities sit
-// small either side. Mirrors apps/web-consumer/.../swipe-action-row.tsx —
-// values, not classes, because this package is NativeWind 4 / Tailwind 3.4
-// and the web one is Tailwind v4.
-export type ActionTone = 'amber' | 'rose' | 'sky' | 'pink' | 'violet';
+// The deck's action rail button. Mirrors
+// apps/web-consumer/.../swipe/swipe-action-row.tsx — values, not classes,
+// because this package is NativeWind 4 / Tailwind 3.4 and the web one is
+// Tailwind v4.
+//
+// COLOUR IS NOT DECORATION HERE. The first pass gave each button its own hue
+// and it read cheap for three measurable reasons: every token in this app
+// lives in one warm band (background hue 10, primary hue 5), so amber/sky/
+// violet were an imported palette; Skip and Save were hue TWINS despite being
+// opposite verbs; and five equal rings cancelled the size hierarchy. So the
+// utilities recede to neutral, Skip is neutral but heavier, and Save is the
+// ONLY colour in the row.
+export type ActionVariant = 'utility' | 'skip' | 'save';
 
-// Values COPIED from the web build's emitted CSS (the palette is customised —
-// e.g. rose-500 is #ff2357 here, not stock Tailwind's #f43f5e), so the two
-// apps render the same rings rather than merely similar ones. `ring` carries
-// the /70 alpha as a hex suffix; `tint` is the saved/filled fill.
-const TONE: Record<ActionTone, { ring: string; glyph: string; tint: string }> = {
-  amber: { ring: '#fcbb00b3', glyph: '#f99c00', tint: '#fffbeb' },
-  rose: { ring: '#ff667fb3', glyph: '#ff2357', tint: '#fff1f2' },
-  sky: { ring: '#00bcfeb3', glyph: '#00a5ef', tint: '#f0f9ff' },
-  pink: { ring: '#fb2b7bb3', glyph: COLORS.primary, tint: '#fff1f7' },
-  violet: { ring: '#a685ffb3', glyph: '#8d54ff', tint: '#f5f3ff' },
-};
+const NEUTRAL_RING = '#e8d7db'; // --border, warm
+const NEUTRAL_GLYPH = '#775254'; // --muted-foreground
+const SKIP_RING = '#3a142040'; // foreground @ 25%
+const SKIP_GLYPH = '#3a1420cc';
 
 export function ActionBtn({
   label,
   Icon,
-  tone,
-  big,
+  variant,
   onPress,
   disabled,
   filled,
@@ -80,17 +79,26 @@ export function ActionBtn({
 }: {
   label: string;
   Icon: typeof X;
-  tone: ActionTone;
-  /** Skip / Save render one step larger. */
-  big?: boolean;
+  variant: ActionVariant;
   onPress?: () => void;
   disabled?: boolean;
   filled?: boolean;
   /** Red status dot (top-right) — used for the "filters active" Filter button. */
   showDot?: boolean;
 }) {
-  const t = TONE[tone];
+  const big = variant !== 'utility';
   const size = big ? 60 : 48;
+  const save = variant === 'save';
+  const ring = save
+    ? COLORS.primary
+    : variant === 'skip'
+      ? SKIP_RING
+      : NEUTRAL_RING;
+  const glyph = save
+    ? '#ffffff'
+    : variant === 'skip'
+      ? SKIP_GLYPH
+      : NEUTRAL_GLYPH;
   return (
     <Pressable
       onPress={onPress}
@@ -103,21 +111,21 @@ export function ActionBtn({
         height: size,
         borderRadius: size / 2,
         borderWidth: 2,
-        borderColor: t.ring,
-        backgroundColor: filled ? t.tint : '#ffffff',
+        borderColor: ring,
+        backgroundColor: save ? COLORS.primary : '#ffffff',
         opacity: disabled ? 0.5 : 1,
-        shadowColor: '#501428',
-        shadowOpacity: 0.18,
-        shadowRadius: 8,
-        shadowOffset: { width: 0, height: 2 },
-        elevation: 2,
+        shadowColor: save ? COLORS.primary : '#501428',
+        shadowOpacity: save ? 0.5 : 0.16,
+        shadowRadius: save ? 12 : 7,
+        shadowOffset: { width: 0, height: save ? 5 : 2 },
+        elevation: save ? 4 : 2,
       }}
     >
       <Icon
-        color={t.glyph}
+        color={glyph}
         size={big ? 28 : 20}
         strokeWidth={2.25}
-        fill={filled ? t.glyph : 'transparent'}
+        fill={filled ? glyph : 'transparent'}
       />
       {showDot ? <ActionDot /> : null}
     </Pressable>

@@ -10,48 +10,48 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-// Tinder-style action rail: circular buttons, each with its own ring colour,
-// centred under the card rather than a full-width row of rounded squares.
+// The deck's action rail: circular, centred under the card.
 //
-// Two sizes carry the hierarchy the old equal-width row flattened — Skip and
-// Save are the deck's real verbs and read big; Filters / Info / Reserve are
-// utilities and sit small on either side. Same five handlers as before, same
-// labels, same filters dot.
+// COLOUR IS NOT DECORATION HERE. The first pass gave each button its own hue
+// (amber / rose / sky / pink / violet) and it read cheap for three measurable
+// reasons, all fixed below:
+//
+//   1. Every token in this app lives in one narrow warm band — `--background`
+//      is oklch(.985 .012 10), primary hue 5, muted hue 10, border hue 10.
+//      Amber (~85), sky (~230) and violet (~290) are 75-280° away from
+//      anything else in the product. An imported palette, not ours.
+//   2. Skip (#ff2357) and Save (#fb2b7b) were hue TWINS — the two most
+//      consequential controls, opposite in meaning, looking like a pair.
+//   3. Five equally saturated rings cancelled the size hierarchy: sizing two
+//      buttons up says "these matter", colouring all five equally says
+//      "everything matters".
+//
+// So: the three utilities recede to neutral, Skip is neutral but heavier, and
+// Save is the ONLY colour in the row. Hierarchy comes from weight and fill,
+// which is what a light-theme surface actually has to work with — Tinder's
+// neon reads as neon because it sits on black, and copying the hues without
+// the surface copies the look while missing the logic.
 
-type Tone = "amber" | "rose" | "sky" | "pink" | "violet";
-
-// Ring + glyph per action. Kept as whole class strings (never interpolated)
-// so Tailwind's scanner sees every one of them.
-const TONE: Record<Tone, string> = {
-  amber: "border-amber-400/70 text-amber-500 hover:bg-amber-50",
-  rose: "border-rose-400/70 text-rose-500 hover:bg-rose-50",
-  sky: "border-sky-400/70 text-sky-500 hover:bg-sky-50",
-  pink: "border-primary/70 text-primary hover:bg-primary/8",
-  violet: "border-violet-400/70 text-violet-500 hover:bg-violet-50",
-};
+type Variant = "utility" | "skip" | "save";
 
 function SwipeActionButton({
   label,
   Icon,
-  tone,
-  big,
+  variant,
   onClick,
   filled,
   showDot,
-  className,
 }: {
   label: string;
   Icon: LucideIcon;
-  tone: Tone;
-  /** The two primary verbs (Skip / Save) render one step larger. */
-  big?: boolean;
+  variant: Variant;
   onClick: () => void;
   /** Solid glyph — the saved heart. */
   filled?: boolean;
   /** Red status dot: filters deviate from defaults (MESITA-633). */
   showDot?: boolean;
-  className?: string;
 }) {
+  const big = variant !== "utility";
   return (
     <button
       type="button"
@@ -59,12 +59,18 @@ function SwipeActionButton({
       aria-label={label}
       title={label}
       className={cn(
-        "bg-card relative grid shrink-0 place-items-center rounded-full border-2",
-        "shadow-[0_2px_10px_-3px_rgba(80,20,40,0.25)] transition",
+        "relative grid shrink-0 place-items-center rounded-full border-2 transition",
         "active:scale-90 motion-reduce:active:scale-100",
         big ? "h-15 w-15" : "h-12 w-12",
-        TONE[tone],
-        className,
+        variant === "utility" &&
+          "border-border bg-card text-muted-foreground hover:bg-muted shadow-[0_2px_8px_-4px_rgba(80,20,40,0.25)]",
+        // Heavier than the utilities, still no hue — Skip is a decision, not
+        // an error, so it must not read as destructive red.
+        variant === "skip" &&
+          "border-foreground/25 bg-card text-foreground/80 hover:bg-muted shadow-[0_2px_10px_-4px_rgba(80,20,40,0.3)]",
+        // The one colour. Solid, so it wins the row outright.
+        variant === "save" &&
+          "border-primary bg-primary text-primary-foreground shadow-[0_5px_16px_-5px_rgba(251,43,123,0.65)] hover:brightness-105",
       )}
     >
       <Icon
@@ -105,36 +111,30 @@ export function SwipeActionRow({
       <SwipeActionButton
         label={filtersActive ? "Filters (active)" : "Filters"}
         Icon={SlidersHorizontal}
-        tone="amber"
+        variant="utility"
         onClick={onOpenFilters}
         showDot={filtersActive}
       />
-      <SwipeActionButton
-        label="Skip"
-        Icon={X}
-        tone="rose"
-        big
-        onClick={onSkip}
-      />
+      <SwipeActionButton label="Skip" Icon={X} variant="skip" onClick={onSkip} />
       <SwipeActionButton
         label="About this place"
         Icon={Store}
-        tone="sky"
+        variant="utility"
         onClick={onOpenInfo}
       />
+      {/* The glyph fill carries the saved state — this button is already the
+          row's only colour, so a second colour for "saved" would be noise. */}
       <SwipeActionButton
         label={saved ? "Saved" : "Save"}
         Icon={Heart}
-        tone="pink"
-        big
+        variant="save"
         onClick={onSave}
         filled={saved}
-        className={saved ? "bg-primary/10" : undefined}
       />
       <SwipeActionButton
         label="Reserve a table"
         Icon={CalendarCheck}
-        tone="violet"
+        variant="utility"
         onClick={onReserve}
       />
     </div>

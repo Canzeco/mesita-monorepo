@@ -32,29 +32,28 @@ export function SwipeActionRow({
       <ActionBtn
         label="Filters"
         Icon={SlidersHorizontal}
-        tone="amber"
+        variant="utility"
         onPress={onOpenFilters}
         showDot={filtersActive}
       />
-      <ActionBtn label="Skip" Icon={X} tone="rose" big onPress={onSkip} />
+      <ActionBtn label="Skip" Icon={X} variant="skip" onPress={onSkip} />
       <ActionBtn
         label="About this place"
         Icon={Store}
-        tone="sky"
+        variant="utility"
         onPress={onOpenInfo}
       />
       <ActionBtn
         label={saved ? 'Saved' : 'Save'}
         Icon={Heart}
-        tone="pink"
-        big
+        variant="save"
         onPress={onSave}
         filled={saved}
       />
       <ActionBtn
         label="Reserve a table"
         Icon={CalendarCheck}
-        tone="violet"
+        variant="utility"
         onPress={onReserve}
       />
     </>
