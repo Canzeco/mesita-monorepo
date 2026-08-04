@@ -8,8 +8,9 @@
 // `actions`) is accepted and migrated by IDENTITY — the flat value copies to
 // every class; mesita_review, absent from v12, lands at its 0 default.
 //
-// Grid rule: 5% steps, floor 10%, ceiling 50% (0 = off). Zero strategy is off
-// by definition. Every cell is snapped and every key is present, so a partial
+// Grid rule: 5% steps, floor 5%, ceiling 50% (0 = off; the floor opened from
+// 10% in MESITA-866 — per-class cells made 5% a real price). Zero strategy is
+// off by definition. Every cell is snapped and every key is present, so a partial
 // or slightly-off body can never write a malformed row; the only hard error is
 // a non-object body.
 
@@ -32,7 +33,7 @@ type RewardsConfig = {
 };
 
 const RATE_STEP = 5;
-const RATE_FLOOR = 10;
+const RATE_FLOOR = 5;
 const RATE_MAX = 50;
 const CAP_MIN = 0;
 const CAP_MAX = 5000;
@@ -68,7 +69,7 @@ const DEFAULTS: RewardsConfig = {
   },
 };
 
-// Snap to the 5% grid: ≤0 → 0, else clamp to [10,50] rounded to the nearest 5.
+// Snap to the 5% grid: ≤0 → 0, else clamp to [5,50] rounded to the nearest 5.
 function snapRate(v: unknown, fallback: number): number {
   if (typeof v !== "number" || !Number.isFinite(v)) return fallback;
   if (v <= 0) return 0;
