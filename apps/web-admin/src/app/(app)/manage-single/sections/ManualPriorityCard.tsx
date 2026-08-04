@@ -9,9 +9,9 @@ import { GroupLabel, SectionCard } from "../ui";
 // Manual Priority — the one LIVE, editable per-place score (MP subscore). A
 // self-contained card (its own save, independent of the Place form's per-box
 // flow): the super-admin bumps this place's operator priority and Swipe & Map
-// move on save. Default 0.1 for every untouched place. Lives on the Place tab
-// (the Scores tab is a placeholder). Written via business-web-update-project
-// → super-admin-gated → places.manual_priority.
+// move on save. Default 0.1 for every untouched place. Lives on the Admin tab
+// — a business must never see its own thumb-on-the-scale. Written via
+// business-web-update-project → super-admin-gated → places.manual_priority.
 export function ManualPriorityCard({ place }: { place: AdminPlace }) {
   const [mp, setMp] = useState(place.manual_priority ?? DEFAULT_MANUAL_PRIORITY);
   const [savedMp, setSavedMp] = useState(place.manual_priority ?? DEFAULT_MANUAL_PRIORITY);
