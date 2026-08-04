@@ -47,18 +47,23 @@ export const STRATEGY_KEYS: readonly StrategyKey[] = [
   "aggressive",
   "dominant",
 ];
+// Worst → best, and the order rows render in. Influencer sits BELOW Premium
+// (v9, MESITA-877): they used to tie, which left the ladder ambiguous.
 export const CLASS_KEYS: readonly ClassKey[] = [
   "standard",
-  "premium",
   "influencer",
+  "premium",
   "aura",
 ];
+// Also worst → best, by the BUSINESS VALUE each creates: retention and
+// Mesita's own data, then social reach, then acquisition + public proof.
+// Welcome comes last because it is unlocked by the Google review.
 export const ACTION_KEYS: readonly ActionKey[] = [
   "standing",
   "mesita_review",
   "story",
-  "welcome",
   "review",
+  "welcome",
 ];
 
 export const RULE_COUNT =
@@ -157,55 +162,50 @@ export const ALLOWED_RATES: readonly number[] = [
 export const ALLOWED_CAPS: readonly number[] = [100, 200, 500, 1000];
 const CAP_DEFAULT = 500;
 
-// ── The defaults (Pato, 2026-08-04 — MESITA-876) ────────────────────────
+// ── The defaults (v9, Pato 2026-08-04 — MESITA-877) ─────────────────────
 //
-// These are the numbers "Launch defaults" restores, and the ones a gap in
-// the stored table falls back to. Four properties hold across all 60 cells,
-// and a change that breaks one is a bug, not a preference:
+// These are the numbers "Launch defaults" restores, and what a gap in the
+// stored table falls back to. EVERY CELL COMES FROM ONE FORMULA:
 //
-//   1. Premium ≥ Standard EVERYWHERE, including on actions. The v7 launch
-//      priced actions flat across classes, which — because a guest is paid
-//      their single best cell — made the class ladder invisible to anyone
-//      who actually did something. Premium bought nothing at the exact
-//      moment it was supposed to pay off.
-//   2. Every action strictly BEATS the standing rate for its own class.
-//      An action that only ties standing pays the guest nothing extra, so
-//      it is a dead rung — which is what a flat 10% Mesita Review would
-//      have been against a 10% Conservative/Standard standing rate.
-//   3. Each strategy beats the one below it, cell for cell.
-//   4. Story is the Influencer's best rung. It is their exclusive and the
-//      only action that produces reach rather than a record.
+//   rate = REWARD_FLOOR + type step + class step + strategy step
 //
-// The class ladder on actions is a flat step — Standard +0, Premium +5,
-// Influencer +5, Aura +10 — over a per-strategy base, so the whole table
-// stays derivable by hand when someone re-prices it.
+// which is what makes the model's monotonicity provable rather than
+// eyeballed — moving up any of the three dimensions can only raise a reward.
+// The dimensions are ordered by the BUSINESS VALUE created, not by the
+// effort the guest spends:
+//
+//   type      Base & Mesita (retention + Mesita's own data)
+//               < Story (social reach)
+//               < Google & Welcome (acquisition + permanent public proof)
+//   class     Standard < Influencer < Premium < Aura
+//   strategy  Zero < Conservative < Aggressive < Dominant
+//
+// The two groupings Pato wrote as ties are made STRICT by one step each —
+// Mesita = Base + 5, Welcome = Google + 5. Under best-of a tie is a DEAD
+// RUNG: an action worth exactly what the guest already had pays nothing for
+// doing it, which would leave both the Mesita review and the Welcome
+// coupling decorative.
+const REWARD_FLOOR = 5;
+
+const TYPE_STEP: Record<ActionKey, number> = {
+  standing: 0,
+  mesita_review: 5,
+  story: 10,
+  review: 15,
+  welcome: 20,
+};
+
 const CLASS_STEP: Record<ClassKey, number> = {
   standard: 0,
-  premium: 5,
   influencer: 5,
-  aura: 10,
+  premium: 10,
+  aura: 15,
 };
 
-// The standing column is per-class outright (it IS the class ladder).
-const DEFAULT_STANDING: Record<ClassKey, Record<StrategyKey, number>> = {
-  standard: { conservative: 10, aggressive: 10, dominant: 20 },
-  premium: { conservative: 15, aggressive: 20, dominant: 25 },
-  influencer: { conservative: 15, aggressive: 20, dominant: 25 },
-  aura: { conservative: 20, aggressive: 25, dominant: 30 },
-};
-
-// Action bases = the STANDARD cell; every other class adds CLASS_STEP.
-// Story's base is written for its only real audience (Influencer, +5), so
-// its stored non-Influencer cells never surface — the engine gates the
-// action on class, and the editor renders them as "—".
-const DEFAULT_ACTION_BASE: Record<
-  Exclude<ActionKey, "standing">,
-  Record<StrategyKey, number>
-> = {
-  mesita_review: { conservative: 15, aggressive: 20, dominant: 25 },
-  story: { conservative: 25, aggressive: 40, dominant: 55 },
-  welcome: { conservative: 20, aggressive: 30, dominant: 40 },
-  review: { conservative: 25, aggressive: 40, dominant: 50 },
+const STRATEGY_STEP: Record<StrategyKey, number> = {
+  conservative: 0,
+  aggressive: 10,
+  dominant: 20,
 };
 
 export function defaultRateFor(
@@ -213,8 +213,9 @@ export function defaultRateFor(
   cls: ClassKey,
   action: ActionKey,
 ): number {
-  if (action === "standing") return DEFAULT_STANDING[cls][strategy];
-  return DEFAULT_ACTION_BASE[action][strategy] + CLASS_STEP[cls];
+  return (
+    REWARD_FLOOR + TYPE_STEP[action] + CLASS_STEP[cls] + STRATEGY_STEP[strategy]
+  );
 }
 
 export const ruleKey = (

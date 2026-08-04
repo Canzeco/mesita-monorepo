@@ -143,7 +143,7 @@ Deno.serve(async (req) => {
       ticket.project_id,
       ticket.id,
     ),
-    hasMesitaReview(admin, ticket.consumer_id, ticket.project_id),
+    hasMesitaReview(admin, ticket.id),
   ]);
   const ratePercent = resolveTicketRate(placeStrategy(place), grid, {
     classKey: consumerRow.data.class_key,

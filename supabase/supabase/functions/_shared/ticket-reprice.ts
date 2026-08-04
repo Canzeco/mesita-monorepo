@@ -69,7 +69,7 @@ export async function resolveLiveTicketRate(
         ticket.project_id,
         ticket.id,
       ),
-      hasMesitaReview(admin, ticket.consumer_id, ticket.project_id),
+      hasMesitaReview(admin, ticket.id),
     ]);
   if (placeRes.error || !placeRes.data) {
     return { ok: false, error: "place not found" };

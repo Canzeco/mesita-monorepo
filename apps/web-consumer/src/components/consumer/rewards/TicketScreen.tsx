@@ -77,10 +77,7 @@ import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import { useConsumerClass } from "@/lib/class-context";
 import { classProperLabel } from "@/lib/consumer-data";
 import { strategyForPlaceRow } from "@/lib/promo-rates";
-import {
-  REWARD_SEGMENT_BY_KEY,
-  peakRateForClass,
-} from "@/lib/reward-segments";
+import { peakRateForClass, rateForSegment } from "@/lib/reward-segments";
 import { useConsumerTickets } from "@/lib/hooks/useConsumerTickets";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { cn } from "@/lib/utils";
@@ -402,12 +399,19 @@ export function TicketScreen({
   // than quoted wrong.
   const strategy = strategyForPlaceRow(ticket.place);
   const priced = strategy !== "zero";
+  // Per-class, exactly as the bill engine resolves it (v9, MESITA-877).
   const rate = (key: "story" | "review") =>
-    REWARD_SEGMENT_BY_KEY[key].rates[strategy];
+    rateForSegment(key, classKey, strategy);
   const pct = (v: number) => (priced && v > 0 ? `${v}%` : "—");
   // The ceiling across every rung this guest can reach here — the ONE number
   // the strip quotes. Never paired with its reason or the class (MESITA-860).
   const ceiling = peakRateForClass(classKey, strategy);
+  // v9 (MESITA-877): the Welcome Bonus is unlocked BY the Google review, so
+  // a first-timer is told exactly what the review buys them.
+  const firstVisit = !billed && ticket.first_scanned_at == null;
+  const firstVisitHint = firstVisit
+    ? "Unlocks your Welcome Bonus — the biggest one"
+    : "At the table, once per place";
 
   return (
     <Shell>
@@ -614,7 +618,7 @@ export function TicketScreen({
             <TaskRow
               icon={<Star className="size-4 shrink-0" />}
               title="Leave a Google review"
-              hint="At the table, once per place"
+              hint={firstVisitHint}
               reward={pct(rate("review"))}
               state={
                 acting === "review"

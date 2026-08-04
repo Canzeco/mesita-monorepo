@@ -60,25 +60,25 @@ export const REWARD_SEGMENTS: readonly RewardSegment[] = [
     nameEs: "Estándar",
     kind: "class",
     blurb: "The base rate every guest gets, always.",
-    rates: { zero: 0, conservative: 10, aggressive: 10, dominant: 20 },
+    rates: { zero: 0, conservative: 5, aggressive: 15, dominant: 25 },
   },
   {
-    rank: 2,
+    rank: 3,
     key: "premium",
     name: "Premium",
     nameEs: "Premium",
     kind: "class",
     blurb: "Mesita Premium — a bigger base at every place.",
-    rates: { zero: 0, conservative: 15, aggressive: 20, dominant: 25 },
+    rates: { zero: 0, conservative: 5, aggressive: 15, dominant: 25 },
   },
   {
-    rank: 3,
+    rank: 2,
     key: "influencer",
     name: "Influencer",
     nameEs: "Influencer",
     kind: "class",
     blurb: "1,000+ Instagram followers — and the Story bonus is yours.",
-    rates: { zero: 0, conservative: 15, aggressive: 20, dominant: 25 },
+    rates: { zero: 0, conservative: 5, aggressive: 15, dominant: 25 },
   },
   {
     rank: 4,
@@ -87,7 +87,7 @@ export const REWARD_SEGMENTS: readonly RewardSegment[] = [
     nameEs: "Aura",
     kind: "class",
     blurb: "Invite-only — the highest base, just for showing up.",
-    rates: { zero: 0, conservative: 20, aggressive: 25, dominant: 30 },
+    rates: { zero: 0, conservative: 5, aggressive: 15, dominant: 25 },
   },
   {
     rank: 5,
@@ -96,25 +96,25 @@ export const REWARD_SEGMENTS: readonly RewardSegment[] = [
     nameEs: "Historia de Instagram",
     kind: "action",
     blurb: "Influencers only — post a story tagging the place, any visit.",
-    rates: { zero: 0, conservative: 20, aggressive: 30, dominant: 40 },
+    rates: { zero: 0, conservative: 15, aggressive: 25, dominant: 35 },
   },
   {
-    rank: 6,
+    rank: 7,
     key: "welcome",
     name: "Welcome Visit",
     nameEs: "Visita de Bienvenida",
     kind: "visit",
     blurb: "Your first ever visit to a place.",
-    rates: { zero: 0, conservative: 20, aggressive: 30, dominant: 40 },
+    rates: { zero: 0, conservative: 25, aggressive: 35, dominant: 45 },
   },
   {
-    rank: 7,
+    rank: 6,
     key: "review",
     name: "Google Review",
     nameEs: "Reseña de Google",
     kind: "action",
     blurb: "Leave a Google review at the table — once per place.",
-    rates: { zero: 0, conservative: 30, aggressive: 50, dominant: 50 },
+    rates: { zero: 0, conservative: 20, aggressive: 30, dominant: 40 },
   },
 ];
 
@@ -149,11 +149,38 @@ export function reachableSegments(classKey: ConsumerClass): RewardSegment[] {
 }
 
 /** Your class rung's peak rate — the "just for being you" number. */
+// ── The class step (v9, MESITA-877) ─────────────────────────────────────
+//
+// Every rate above is stored on the STANDARD row. A guest's real rate adds
+// their class step, exactly as the bill engine computes it:
+//
+//   rate = 5 + type step + CLASS STEP + strategy step
+//
+// Keeping the step here rather than baking four copies of every rung into
+// the table is what lets this file stay a flat ladder while still matching
+// the engine cell for cell.
+const CLASS_STEP: Record<ConsumerClass, number> = {
+  standard: 0,
+  influencer: 5,
+  premium: 10,
+  aura: 15,
+};
+
+/** One rung's rate for a specific guest — the number they'd actually be paid. */
+export function rateForSegment(
+  key: RewardSegmentKey,
+  classKey: ConsumerClass,
+  strategy: GridStrategy = PEAK_STRATEGY,
+): number {
+  const base = REWARD_SEGMENT_BY_KEY[key].rates[strategy];
+  return base <= 0 ? 0 : base + CLASS_STEP[classKey];
+}
+
 export function baseRateForClass(
   classKey: ConsumerClass,
   strategy: GridStrategy = PEAK_STRATEGY,
 ): number {
-  return REWARD_SEGMENT_BY_KEY[segmentKeyForClass(classKey)].rates[strategy];
+  return rateForSegment(segmentKeyForClass(classKey), classKey, strategy);
 }
 
 /**
@@ -167,7 +194,7 @@ export function peakRateForClass(
   strategy: GridStrategy = PEAK_STRATEGY,
 ): number {
   return reachableSegments(classKey).reduce(
-    (max, s) => Math.max(max, s.rates[strategy]),
+    (max, seg) => Math.max(max, rateForSegment(seg.key, classKey, strategy)),
     0,
   );
 }

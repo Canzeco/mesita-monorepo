@@ -73,50 +73,85 @@ export type RewardsGrid = {
   cap: number;
 };
 
-// The defaults (MESITA-876) — the LAST-RESORT fallback, used only when both
-// reward_rules and app_settings come back empty, so a ticket degrades to the
-// canonical table rather than to zero. Must stay byte-identical to the admin
-// catalog's defaultRateFor and the update EF's defaultFor.
+// The defaults (v9, MESITA-877) — the LAST-RESORT fallback, used only when
+// both reward_rules and app_settings come back empty, so a ticket degrades to
+// the canonical table rather than to zero. Must stay byte-identical to the
+// admin catalog's defaultRateFor and the update EF's defaultFor.
 //
-// Four properties hold across all 60 cells: Premium ≥ Standard everywhere
-// (including on actions — a flat action column made the class ladder
-// invisible to any guest who acted, since best-of pays exactly one cell);
-// every action strictly beats its class's standing rate (a tie is a dead
-// rung); each strategy beats the one below it; Story is the Influencer's
-// best rung, being their exclusive and the only action that produces reach.
-const FLAT = (
-  conservative: number,
-  aggressive: number,
-  dominant: number,
-): SegmentRates => ({ zero: 0, conservative, aggressive, dominant });
+// EVERY CELL COMES FROM ONE FORMULA, which is what makes the model's
+// monotonicity provable instead of eyeballed:
+//
+//   rate = REWARD_FLOOR + type step + class step + strategy step
+//
+// so moving up ANY of the three dimensions can only raise the reward. The
+// dimensions are ordered by the BUSINESS VALUE they create, not by how much
+// effort they cost the guest:
+//
+//   type      Base & Mesita (retention + Mesita's own data)
+//               < Story (social reach)
+//               < Google & Welcome (acquisition + permanent public proof)
+//   class     Standard < Influencer < Premium < Aura
+//   strategy  Zero < Conservative < Aggressive < Dominant
+//
+// The two groupings Pato wrote as ties are made STRICT by one step each —
+// Mesita = Base + 5, Welcome = Google + 5. Under best-of a tie is a DEAD
+// RUNG: an action worth exactly what the guest already had pays nothing for
+// doing it, which would make both the Mesita review and the Welcome coupling
+// decorative.
+const REWARD_FLOOR = 5;
 
-// An action's rate is a per-strategy base (the STANDARD cell) plus a flat
-// class step: Standard +0, Premium +5, Influencer +5, Aura +10.
-const STEPPED_ACTION = (
-  conservative: number,
-  aggressive: number,
-  dominant: number,
+const TYPE_STEP = {
+  standing: 0,
+  mesita_review: 5,
+  story: 10,
+  review: 15,
+  welcome: 20,
+} as const;
+
+const CLASS_STEP: Record<ClassSegment, number> = {
+  standard: 0,
+  influencer: 5,
+  premium: 10,
+  aura: 15,
+};
+
+const STRATEGY_STEP = { conservative: 0, aggressive: 10, dominant: 20 } as const;
+
+function defaultCell(
+  type: keyof typeof TYPE_STEP,
+  cls: ClassSegment,
+  strategy: keyof typeof STRATEGY_STEP,
+): number {
+  return REWARD_FLOOR + TYPE_STEP[type] + CLASS_STEP[cls] + STRATEGY_STEP[strategy];
+}
+
+const defaultRow = (
+  type: keyof typeof TYPE_STEP,
+  cls: ClassSegment,
+): SegmentRates => ({
+  zero: 0, // off by definition
+  conservative: defaultCell(type, cls, "conservative"),
+  aggressive: defaultCell(type, cls, "aggressive"),
+  dominant: defaultCell(type, cls, "dominant"),
+});
+
+const defaultMatrix = (
+  type: keyof typeof TYPE_STEP,
 ): Record<ClassSegment, SegmentRates> => ({
-  standard: FLAT(conservative, aggressive, dominant),
-  premium: FLAT(conservative + 5, aggressive + 5, dominant + 5),
-  influencer: FLAT(conservative + 5, aggressive + 5, dominant + 5),
-  aura: FLAT(conservative + 10, aggressive + 10, dominant + 10),
+  standard: defaultRow(type, "standard"),
+  influencer: defaultRow(type, "influencer"),
+  premium: defaultRow(type, "premium"),
+  aura: defaultRow(type, "aura"),
 });
 
 export const DEFAULT_REWARDS_GRID: RewardsGrid = {
   cap: 500,
-  grid: {
-    standard: FLAT(10, 10, 20),
-    premium: FLAT(15, 20, 25),
-    influencer: FLAT(15, 20, 25),
-    aura: FLAT(20, 25, 30),
-  },
+  grid: defaultMatrix("standing"),
   actions: {
-    mesita_review: STEPPED_ACTION(15, 20, 25),
-    // Influencer-exclusive: the base is written for THEIR cell (base + 5).
-    story: STEPPED_ACTION(25, 40, 55),
-    welcome: STEPPED_ACTION(20, 30, 40),
-    review: STEPPED_ACTION(25, 40, 50),
+    mesita_review: defaultMatrix("mesita_review"),
+    story: defaultMatrix("story"),
+    welcome: defaultMatrix("welcome"),
+    review: defaultMatrix("review"),
   },
 };
 
@@ -292,7 +327,13 @@ export type RateContext = {
   isFirstVisit: boolean;
   storyVerified?: boolean;
   reviewVerified?: boolean;
-  /** A ticket_reviews row exists for this consumer × place (v7 rung). */
+  /**
+   * THIS ticket carries the guest's Mesita review (v9, MESITA-877).
+   * Deliberately per-TICKET, not per consumer × place: the review itself is
+   * one-per-account-per-place and stays editable (MESITA-825), but the
+   * REWARD is granted once — the Google/Yelp model. Asking "has this guest
+   * ever reviewed here" would pay the rung on every future visit forever.
+   */
   mesitaReviewed?: boolean;
 };
 
@@ -324,7 +365,15 @@ export function resolveTicketRate(
     grid.grid.standard[strategy],
     grid.grid[cls][strategy],
   ];
-  if (ctx.isFirstVisit) qualifying.push(a.welcome[cls][strategy]);
+  // v9 (MESITA-877): the Welcome Bonus is NOT an independent action — it is
+  // UNLOCKED BY the Google review on a first visit. The guest is told exactly
+  // that ("leave a Google review to unlock your welcome bonus"), and the
+  // business gets both value props from one mechanism: a first-time customer
+  // acquired AND a permanent public review. A first visit on its own still
+  // pays the guest's standing rate; it just doesn't pay the welcome rung.
+  if (ctx.isFirstVisit && ctx.reviewVerified) {
+    qualifying.push(a.welcome[cls][strategy]);
+  }
   if (ctx.storyVerified) qualifying.push(a.story[cls][strategy]);
   if (ctx.reviewVerified) qualifying.push(a.review[cls][strategy]);
   if (ctx.mesitaReviewed) qualifying.push(a.mesita_review[cls][strategy]);
