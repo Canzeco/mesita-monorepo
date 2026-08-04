@@ -73,7 +73,7 @@ const A1_PROMPT = [
   `Eres el asistente de reservaciones de Mesita. Esta llamada va del consumidor hacia el negocio: llamas al restaurante {{venue_name}} DE PARTE del comensal {{guest_name}}.`,
   `Objetivo único: conseguir una mesa para {{party_size}} el {{reservation_date}} a las {{reservation_time}}, a nombre de {{guest_name}}.`,
   `Si el restaurante acepta tal cual, confirma leyendo de vuelta: nombre, personas, fecha y hora. Si piden un teléfono de contacto, da el del comensal: {{guest_phone}}. Si piden un número de referencia o confirmación, el código de Mesita es {{reference_code}}.`,
-  `Si NO hay lugar exactamente así, pregunta qué opciones cercanas tienen (otra hora, otra área) y apúntalas textuales y cortas. NO aceptes ninguna alternativa por tu cuenta: Mesita se las propone al comensal y le regresa la respuesta al restaurante después.`,
+  `Si NO hay lugar exactamente así, pregunta qué opciones cercanas tienen (otra hora, otra área) y apunta CADA UNA por separado, con su hora en 24 horas. NO aceptes ninguna por tu cuenta: Mesita se las propone al comensal. Pide que dejen esas opciones apartadas un momento — si el comensal toma una de ellas, queda confirmada sin volver a llamarles.`,
   `Peticiones especiales del comensal: {{special_requests}}. Si hay alguna, menciónala una vez que haya disponibilidad; si está vacío, no menciones nada.`,
   `Antes de despedirte llama SIEMPRE la herramienta a1_report_outcome exactamente una vez con el resultado: verdict=confirmed si quedó confirmada tal como se pidió · verdict=counter_offer con la lista de alternativas si ofrecieron otras opciones · verdict=declined si no hay lugar. El código de la reservación es {{reference_code}}.`,
   `Habla natural y breve, español de México, trato de usted.`,
@@ -87,7 +87,7 @@ const A2_PROMPT = [
   `- Si es "counter_offer": el restaurante NO pudo con el {{reservation_date}} a las {{reservation_time}} y ofreció estas opciones: {{venue_alternatives}}. Preséntaselas tal cual. El comensal puede elegir una, o proponer algo TOTALMENTE distinto (por ejemplo "mejor mañana a las nueve") — ambas valen.`,
   `Según lo que responda, llama exactamente una herramienta antes de despedirte:`,
   `- Acepta tal cual (solo en confirmation) → a2_confirm_reservation sin cambios.`,
-  `- Elige una alternativa o propone otra fecha u hora → a2_confirm_reservation con new_date (AAAA-MM-DD) y/o new_time (HH:mm de 24 horas); convierte tú lo que diga usando la fecha actual {{system__time_utc}} como referencia. Explícale que Mesita llama al restaurante para amarrar la nueva hora y le confirma en cuanto quede.`,
+  `- Elige una alternativa o propone otra fecha u hora → a2_confirm_reservation con new_date (AAAA-MM-DD) y/o new_time (HH:mm de 24 horas); convierte tú lo que diga usando la fecha actual {{system__time_utc}} como referencia. Lee la respuesta antes de prometer nada: si regresa confirmed_on_the_spot=true, tomó una opción que el restaurante ya tenía apartada y la mesa QUEDA CONFIRMADA ahí mismo — no prometas más llamadas. Si no, explícale que Mesita llama al restaurante para amarrarla y le confirma en cuanto quede.`,
   `- Quiere cancelar → a2_cancel_reservation con el motivo breve.`,
   `Si la herramienta regresa parked=true: dile que su petición quedó anotada y que Mesita le confirma por la app — no prometas otra llamada.`,
   `No inventes disponibilidad ni prometas nada que el restaurante no haya dicho.`,
@@ -228,13 +228,36 @@ export function fleetToolConfigs(
             "confirmed (aceptaron tal cual) · counter_offer (ofrecieron alternativas) · declined (te dijeron que NO hay lugar) · unreachable (nunca llegaste con alguien que pueda reservar) · wrong_number (contestaron y NO es este restaurante).",
           enum: ["confirmed", "counter_offer", "declined", "unreachable", "wrong_number"],
         },
+        // STRUCTURED, not prose. A bare string can't be compared against what
+        // the guest later picks, so every pick looked like a brand-new
+        // proposal and cost the venue a second call. Each property object
+        // still sets exactly one of description/dynamic_variable/constant_value.
         alternatives: {
           type: "array",
           description:
-            "Solo con counter_offer: las alternativas que ofreció el restaurante, una por elemento, textuales y cortas (máx. 5).",
-          // items needs its own description too — every property object must
-          // set exactly one of description/dynamic_variable/constant_value.
-          items: { type: "string", description: "Una alternativa textual corta." },
+            "Solo con counter_offer: cada opción que ofreció el restaurante, por separado (máx. 5). Parte la hora del resto: si dicen «a las 9:30 en la terraza», eso es time 21:30 y note «en la terraza».",
+          items: {
+            type: "object",
+            description: "Una opción concreta que ofreció el restaurante.",
+            required: ["time"],
+            properties: {
+              time: {
+                type: "string",
+                description:
+                  "La hora en formato de 24 horas HH:mm (las 9:30 de la noche es 21:30).",
+              },
+              date: {
+                type: "string",
+                description:
+                  "Solo si la opción es para OTRO día: AAAA-MM-DD. Si es el mismo día, omítela.",
+              },
+              note: {
+                type: "string",
+                description:
+                  "Lo demás que dijeron de esa opción, corto y textual: «en la terraza», «solo barra».",
+              },
+            },
+          },
         },
         note: { type: "string", description: "Nota breve opcional sobre la llamada." },
       }),
@@ -503,7 +526,7 @@ export function fleetWorkflows(toolIdByName: Map<string, string>): Record<FleetA
           position: pos(1260, 0),
           entryBehavior: "generate_immediately",
           additionalPrompt:
-            "Las alternativas ya se registraron (verdict=counter_offer). Di que Mesita se las propone al comensal y les regresa la respuesta. Agradece, despídete corto y cuelga con end_call.",
+            "Las alternativas ya se registraron (verdict=counter_offer). Pide que POR FAVOR dejen apartadas esas opciones un momento mientras Mesita se las propone al comensal, y di que les regresas la respuesta enseguida. Ese apartado importa: si el comensal toma una de las opciones que ELLOS ofrecieron, Mesita la da por confirmada sin volver a llamar. Agradece, despídete corto y cuelga con end_call.",
           edgeOrder: ["e_fco_end"],
         }),
         farewell_declined: talkNode({
@@ -652,7 +675,7 @@ export function fleetWorkflows(toolIdByName: Map<string, string>): Record<FleetA
           position: pos(1300, -180),
           entryBehavior: "generate_immediately",
           additionalPrompt:
-            "Quedó registrado. Si la herramienta regresó parked=true, di que su petición quedó anotada y que Mesita le confirma por la app — no prometas otra llamada. Si hubo cambio de fecha/hora, explica que Mesita llama al restaurante para amarrarla y le confirma en cuanto quede. Despídete corto y cuelga con end_call.",
+            "Quedó registrado. Mira lo que regresó la herramienta y di SOLO eso: si confirmed_on_the_spot=true, la mesa YA quedó confirmada porque el comensal tomó una opción que el restaurante mismo había ofertado — díselo con esas palabras y NO prometas ninguna llamada más. Si parked=true, su petición quedó anotada y Mesita le confirma por la app, tampoco prometas llamada. En cualquier otro cambio de fecha u hora, explica que Mesita llama al restaurante para amarrarla y le confirma en cuanto quede. Despídete corto y cuelga con end_call.",
           edgeOrder: ["e_fdone_end"],
         }),
         farewell_cancel: talkNode({
