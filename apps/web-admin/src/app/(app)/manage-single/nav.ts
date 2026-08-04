@@ -1,16 +1,25 @@
-import { ChartLine, MapPin, Settings, Store, Tag } from "lucide-react";
+import { ChartLine, MapPin, Settings, Shield, Store, Tag } from "lucide-react";
 
 // Tab order is Pato's 2026-08-02/03 spec (MESITA-834 + amendments):
 // place · promos · performance · settings. Everything else folded INTO one
 // of the four (old URLs redirect): Products → Place; Team → Settings;
 // Reviews → Performance (reputation IS performance); Scores + Scan deleted.
-// Performance = the reviews cards + the per-place app-activity feed;
-// Settings = business team + operator/meta cards.
+// Performance = the reviews cards + the per-place app-activity feed.
+//
+// Then Admin, the fifth (Pato, 2026-08-04). The first four are the IA the
+// business console mirrors for its own places, so Settings only holds what a
+// business may legitimately set (reservations channel, Check PIN, its team).
+// Everything Mesita-internal — the operator's thumb on the scale, the
+// verification we grant, our identifiers and vectors — lives on Admin. This
+// tab exists only in this app, which is super-admin-gated whole
+// ((app)/layout.tsx → admin-web-get-identity), so "admin-only" is structural:
+// never port Admin into web-business.
 const UNIT_SECTIONS = [
   { id: "place", label: "Place", Icon: Store },
   { id: "promos", label: "Promos", Icon: Tag },
   { id: "performance", label: "Performance", Icon: ChartLine },
   { id: "settings", label: "Settings", Icon: Settings },
+  { id: "admin", label: "Admin", Icon: Shield },
 ] as const;
 
 /** Tabs shown in UnitEditChrome — every section is live (no `soon` gate). */
