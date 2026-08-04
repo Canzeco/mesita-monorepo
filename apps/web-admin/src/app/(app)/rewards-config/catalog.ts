@@ -12,10 +12,12 @@
 // renders and bills exactly as before. mesita_review joined in v7 and
 // launches at 0 (unpriced) until the operator prices it here.
 //
-// Grid rule: 5% steps, floor 5%, ceiling 50% (allowed {0, 5, 10, … 50};
-// 0 = off). The floor was 10% while rows were segments; per-class cells made
-// 5% a real price (a token standing rate, a cheap review), so Pato opened it
-// 2026-08-03 (MESITA-866). Zero strategy is off by definition.
+// Grid rule: 5% steps, floor 5%, ceiling 70% (allowed {0, 5, 10, … 70};
+// 0 = off). Both bounds were opened by Pato, live on the matrix: the floor
+// from 10% because per-class cells made 5% a real price (MESITA-866), the
+// ceiling from 50% because the v7 matrix prices a single best-of cell rather
+// than a place-wide headline (MESITA-872 — this reverses the v4-era retirement
+// of 70 in MESITA-543). Zero strategy is off by definition.
 // Universal cap: every discount applies to the first `cap` MXN of the bill.
 //
 // Keys are the contract shared with admin-web-{get,update}-rewards-config and
@@ -131,13 +133,21 @@ export const EDITABLE_STRATEGIES: readonly {
 // The 5% grid: off, then 10 → 50 in steps of 5.
 const RATE_STEP = 5;
 const RATE_FLOOR = 5;
-const RATE_MAX = 50;
+const RATE_MAX = 70;
 export const ALLOWED_RATES: readonly number[] = [
-  0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50,
+  0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70,
 ];
 
-export const CAP_MIN = 0;
-export const CAP_MAX = 5000;
+// The universal cap is CATEGORICAL (MESITA-872): ten round options, MX$100 →
+// MX$1,000 in hundreds. It used to be a free number field with a 0–5,000
+// range, which allowed both a meaningless cap (MX$37) and an unbounded one
+// (MX$0 = no ceiling at all, the opposite of the promise this knob makes).
+export const ALLOWED_CAPS: readonly number[] = [
+  100, 200, 300, 400, 500, 600, 700, 800, 900, 1000,
+];
+export const CAP_MIN = ALLOWED_CAPS[0];
+export const CAP_MAX = ALLOWED_CAPS[ALLOWED_CAPS.length - 1];
+const CAP_STEP = 100;
 const CAP_DEFAULT = 500;
 
 const R = (
@@ -170,7 +180,7 @@ export const DEFAULT_CONFIG: RewardsConfig = {
   },
 };
 
-/** Snap any number to the 5% grid: ≤0 → 0, else clamp to [5,50] rounded to 5. */
+/** Snap any number to the 5% grid: ≤0 → 0, else clamp to [5,70] rounded to 5. */
 function snapRate(v: unknown): number {
   const n = typeof v === "number" && Number.isFinite(v) ? v : 0;
   if (n <= 0) return 0;
@@ -178,10 +188,11 @@ function snapRate(v: unknown): number {
   return Math.max(RATE_FLOOR, Math.min(RATE_MAX, stepped));
 }
 
+/** Snap the cap onto the categorical ladder: nearest MX$100 in [100, 1000]. */
 function clampCap(v: unknown): number {
-  const n =
-    typeof v === "number" && Number.isFinite(v) ? Math.round(v) : CAP_DEFAULT;
-  return Math.max(CAP_MIN, Math.min(CAP_MAX, n));
+  if (typeof v !== "number" || !Number.isFinite(v)) return CAP_DEFAULT;
+  const stepped = Math.round(v / CAP_STEP) * CAP_STEP;
+  return Math.max(CAP_MIN, Math.min(CAP_MAX, stepped));
 }
 
 function coerceRow(row: unknown, fallback: SegmentRates): SegmentRates {
