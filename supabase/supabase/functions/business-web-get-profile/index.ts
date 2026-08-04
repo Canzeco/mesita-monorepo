@@ -76,4 +76,3 @@ Deno.serve(async (req) => {
   }
   return json({ ok: true, business: inserted.data });
 });
-

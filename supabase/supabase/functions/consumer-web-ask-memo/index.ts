@@ -357,4 +357,3 @@ async function mesitaByName(
     rating: row.google_stars_overall,
   }));
 }
-

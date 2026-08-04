@@ -70,4 +70,3 @@ export function fallbackRank(rows: PlaceRow[]): PlaceRow[] {
     return 0;
   });
 }
-
