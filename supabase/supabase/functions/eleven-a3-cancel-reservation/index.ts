@@ -21,6 +21,7 @@ import {
   sameLine,
   ticketByCode,
 } from "../_shared/agent-tools.ts";
+import { invokeArtificialCaller } from "../_shared/internal.ts";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
@@ -50,8 +51,26 @@ Deno.serve(async (req) => {
     return json({ ok: true, already: true, reference_code: ticket.reference_code });
   }
 
-  const err = await cancelTicket(admin, ticket.id, "consumer", cleanNote(body.reason));
+  // Leg 5: a confirmed table means the venue is holding it — it must hear.
+  const notice = ticket.status === "confirmed" ? "venue_cancel" as const : null;
+  const err = await cancelTicket(admin, ticket.id, "consumer", cleanNote(body.reason), notice);
   if (err) return json({ ok: false, error: err }, 500);
 
-  return json({ ok: true, cancelled: true, reference_code: ticket.reference_code });
+  // Fire-and-forget: the engine acks early; a lost invoke is caught by the
+  // retry cron, which sweeps notice_state='pending'.
+  if (notice) {
+    await invokeArtificialCaller(
+      envRes.env,
+      "eleven-a3-cancel-reservation",
+      "supabase-edgefunc-reservation-call",
+      { reservation_id: ticket.id, intent: "cancel_notice" },
+    );
+  }
+
+  return json({
+    ok: true,
+    cancelled: true,
+    reference_code: ticket.reference_code,
+    venue_notified: notice !== null,
+  });
 });

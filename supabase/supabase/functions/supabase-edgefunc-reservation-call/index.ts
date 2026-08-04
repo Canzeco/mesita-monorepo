@@ -70,6 +70,7 @@ import {
   resolvePhoneNumberId,
 } from "../_shared/elevenlabs.ts";
 import { nextAttemptAt } from "../_shared/reservation-retry.ts";
+import { nextGuestCallAt } from "../_shared/reservation-callback.ts";
 import {
   alternativesToSpeech,
   normalizeAlternatives,
@@ -77,13 +78,20 @@ import {
 import {
   businessLegFirstMessage,
   businessLegPrompt,
+  guestCancelNoticeFirstMessage,
+  guestCancelNoticePrompt,
   guestLegFirstMessage,
   guestLegPrompt,
   legDynamicVariables,
   type ReservationLegVars,
+  venueCancelNoticeFirstMessage,
+  venueCancelNoticePrompt,
 } from "../_shared/reservation-legs.ts";
 
-type Body = { reservation_id?: string };
+// intent: "book" (default) = the two-leg booking run · "callback_retry" =
+// re-ring the guest on a still-live verdict (leg 3) · "cancel_notice" = tell
+// the side that DIDN'T cancel (legs 5/6, notice_kind picks a1-venue/a2-guest).
+type Body = { reservation_id?: string; intent?: string };
 
 // ── Run pacing — one background task under the edge-runtime ~400s wall ───────
 const WATCH_POLL_MS = 8_000;
@@ -213,6 +221,270 @@ async function watchVerdict(
   return "unknown";
 }
 
+// One line per audience: the venue leg dials from the business line, the guest
+// leg from the consumer line. The business line is required; the consumer line
+// degrades to the business one rather than dropping a call that may matter.
+async function resolveLines(
+  key: string,
+): Promise<{ ok: true; venueLineId: string; guestLineId: string } | { ok: false; error: string }> {
+  const phoneRes = await resolvePhoneNumberId(key, reservationFromNumber());
+  if (!phoneRes.ok) return { ok: false, error: phoneRes.error };
+  let guestLineId = phoneRes.id;
+  const consumerLine = consumerFromNumber();
+  if (consumerLine !== reservationFromNumber()) {
+    const consumerRes = await resolvePhoneNumberId(key, consumerLine);
+    if (consumerRes.ok) {
+      guestLineId = consumerRes.id;
+    } else {
+      console.error(
+        `[reservation-call] consumer line ${consumerLine} unresolved, ` +
+          `falling back to the business line: ${consumerRes.error}`,
+      );
+    }
+  }
+  return { ok: true, venueLineId: phoneRes.id, guestLineId };
+}
+
+// Leg 2/3 · business → consumer — ONE Confirmer call to the human, plus the
+// retry ladder (RESERVATIONS-PROTOCOL.md leg 3): a missed call parks
+// callback_state='scheduled' + callback_next_attempt_at per nextGuestCallAt
+// (+10 min, then +1 h, cap 3, quiet hours 09:00–22:00 venue-local, nothing
+// within 30 min of the slot) and the retry cron re-fires this engine with
+// intent "callback_retry". Past the ladder the app is the fallback — never a
+// fourth ring.
+async function callGuest(input: {
+  admin: SupabaseClient;
+  reservationId: string;
+  key: string;
+  phoneNumberId: string;
+  context: "confirmation" | "counter_offer";
+  alternativesText: string;
+  consumerNumber: string;
+  confirmerAgentId: string;
+  legVars: ReservationLegVars;
+  /** Guest calls already placed for this errand (ladder position). */
+  attemptsDone: number;
+  placeLng: number | null;
+  reservedAtIso: string;
+}): Promise<void> {
+  const { admin, reservationId } = input;
+  const record = async (patch: Record<string, unknown>) => {
+    await admin.from("reservations").update(patch).eq("id", reservationId);
+  };
+  const label = input.context === "confirmation" ? "confirmed" : "counter-offer";
+  if (!input.consumerNumber) {
+    await record({
+      callback_state: "skipped",
+      callback_next_attempt_at: null,
+      last_call_status: `${label} — no guest number for the callback`,
+    });
+    return;
+  }
+  const n = input.attemptsDone + 1;
+  // Park the next ladder rung, or go quiet for good once the ladder is spent.
+  const parkOrGiveUp = async (state: string, failNote: string) => {
+    const next = nextGuestCallAt(
+      n,
+      input.placeLng,
+      input.reservedAtIso ? new Date(input.reservedAtIso) : null,
+    );
+    if (next) {
+      await record({
+        callback_attempts: n,
+        callback_state: "scheduled",
+        callback_next_attempt_at: next.at.toISOString(),
+        last_call_status: `${label} — ${failNote} — ${next.reason}`.slice(0, 200),
+      });
+    } else {
+      await record({
+        callback_attempts: n,
+        callback_state: state,
+        callback_next_attempt_at: null,
+        last_call_status:
+          `${label} — ${failNote} — guest unreached after ${n} call${n === 1 ? "" : "s"}; in-app only`
+            .slice(0, 200),
+      });
+    }
+  };
+  const call = await placeOutboundCall(input.key, {
+    agentId: input.confirmerAgentId,
+    agentPhoneNumberId: input.phoneNumberId,
+    toNumber: input.consumerNumber,
+    dynamicVariables: legDynamicVariables("guest_confirmation", input.legVars, {
+      callContext: input.context,
+      venueAlternatives: input.alternativesText,
+    }),
+    overrides: {
+      prompt: guestLegPrompt(input.legVars),
+      firstMessage: guestLegFirstMessage(input.legVars),
+      language: "es",
+    },
+  });
+  if (!call.ok) {
+    await parkOrGiveUp("failed", `guest call failed: ${call.error}`);
+    return;
+  }
+  await record({
+    callback_state: "ringing",
+    callback_conversation_id: call.conversationId,
+    last_call_status: `${label} — calling the guest`,
+  });
+  const outcome = call.conversationId
+    ? await watchUntilAnswered(input.key, call.conversationId, CALLBACK_BUDGET_MS)
+    : "unknown";
+  if (outcome === "answered") {
+    await record({
+      callback_attempts: n,
+      callback_state: "answered",
+      callback_next_attempt_at: null,
+      last_call_status: `${label} — guest notified`,
+    });
+    return;
+  }
+  await parkOrGiveUp(
+    outcome,
+    outcome === "no_answer" ? "guest didn't answer" : "guest call outcome unknown",
+  );
+}
+
+// Leg 3 resume — the cron woke a parked callback; same call, next rung.
+async function runCallbackRetry(input: {
+  admin: SupabaseClient;
+  reservationId: string;
+  key: string;
+  context: "confirmation" | "counter_offer";
+  alternativesText: string;
+  consumerNumber: string;
+  confirmerAgentId: string;
+  legVars: ReservationLegVars;
+  attemptsDone: number;
+  placeLng: number | null;
+  reservedAtIso: string;
+}): Promise<void> {
+  const lines = await resolveLines(input.key);
+  if (!lines.ok) {
+    await input.admin
+      .from("reservations")
+      .update({
+        callback_state: "failed",
+        callback_next_attempt_at: null,
+        last_call_status: `callback retry — line resolution failed: ${lines.error}`.slice(0, 200),
+      })
+      .eq("id", input.reservationId);
+    return;
+  }
+  await callGuest({ ...input, phoneNumberId: lines.guestLineId });
+}
+
+// Legs 5/6 · the cancellation notice — tell the side that DIDN'T cancel.
+// venue_cancel → a1 rings the venue to release the held table (paced by the
+// venue's own hours, cap 2); guest_cancel → a2 rings the guest (guest ladder,
+// cap 3). Answered = delivered — a voicemail pickup counts, the message is
+// left either way. Exhausted → notice_state='failed', visible for ops.
+const VENUE_NOTICE_ATTEMPTS = 2;
+async function runCancelNotice(input: {
+  admin: SupabaseClient;
+  reservationId: string;
+  key: string;
+  kind: "venue_cancel" | "guest_cancel";
+  attemptsDone: number;
+  toNumber: string;
+  agentId: string;
+  legVars: ReservationLegVars;
+  placeHours: unknown;
+  placeLng: number | null;
+  reservedAtIso: string;
+}): Promise<void> {
+  const { admin, reservationId } = input;
+  const record = async (patch: Record<string, unknown>) => {
+    await admin.from("reservations").update(patch).eq("id", reservationId);
+  };
+  const isVenue = input.kind === "venue_cancel";
+  const who = isVenue ? "venue" : "guest";
+  const n = input.attemptsDone + 1;
+  const park = async (failNote: string) => {
+    const next = isVenue
+      ? (n < VENUE_NOTICE_ATTEMPTS ? nextAttemptAt(input.placeHours, input.placeLng) : null)
+      : nextGuestCallAt(
+        n,
+        input.placeLng,
+        input.reservedAtIso ? new Date(input.reservedAtIso) : null,
+      );
+    if (next) {
+      await record({
+        notice_attempts: n,
+        notice_state: "scheduled",
+        notice_next_at: next.at.toISOString(),
+        last_call_status: `cancel notice (${who}) — ${failNote} — ${next.reason}`.slice(0, 200),
+      });
+    } else {
+      await record({
+        notice_attempts: n,
+        notice_state: "failed",
+        notice_next_at: null,
+        last_call_status:
+          `cancel notice (${who}) NOT delivered after ${n} call${n === 1 ? "" : "s"} — needs attention`
+            .slice(0, 200),
+      });
+    }
+  };
+  try {
+    const lines = await resolveLines(input.key);
+    if (!lines.ok) {
+      await park(`line resolution failed: ${lines.error}`);
+      return;
+    }
+    const call = await placeOutboundCall(input.key, {
+      agentId: input.agentId,
+      agentPhoneNumberId: isVenue ? lines.venueLineId : lines.guestLineId,
+      toNumber: input.toNumber,
+      dynamicVariables: legDynamicVariables(
+        isVenue ? "business_booking" : "guest_confirmation",
+        input.legVars,
+        { callContext: isVenue ? "cancellation" : "cancelled_by_venue", venueAlternatives: "" },
+      ),
+      overrides: {
+        prompt: isVenue
+          ? venueCancelNoticePrompt(input.legVars)
+          : guestCancelNoticePrompt(input.legVars),
+        firstMessage: isVenue
+          ? venueCancelNoticeFirstMessage(input.legVars)
+          : guestCancelNoticeFirstMessage(input.legVars),
+        language: "es",
+      },
+    });
+    if (!call.ok) {
+      await park(`call failed: ${call.error}`);
+      return;
+    }
+    await record({
+      notice_conversation_id: call.conversationId,
+      last_call_status: `cancel notice (${who}) — ringing`,
+    });
+    const outcome = call.conversationId
+      ? await watchUntilAnswered(input.key, call.conversationId, ANSWER_BUDGET_MS)
+      : "unknown";
+    if (outcome === "answered") {
+      await record({
+        notice_attempts: n,
+        notice_state: "done",
+        notice_next_at: null,
+        last_call_status: `cancel notice (${who}) delivered`,
+      });
+      return;
+    }
+    await park(outcome === "no_answer" ? "no answer" : "outcome unknown");
+  } catch (e) {
+    await record({
+      notice_state: "failed",
+      notice_next_at: null,
+      last_call_status: `cancel notice (${who}) crashed: ${
+        e instanceof Error ? e.message : "run crashed"
+      }`.slice(0, 200),
+    });
+  }
+}
+
 // The two-leg run — fires AFTER the HTTP response, updating the ticket as it
 // goes so every surface (admin tickets list, consumer app) shows live progress.
 async function runIntents(input: {
@@ -231,6 +503,9 @@ async function runIntents(input: {
   bookerAgentId: string; // eleven-a1 (fallback: the original agent)
   confirmerAgentId: string; // eleven-a2 (fallback: the original agent)
   legVars: ReservationLegVars;
+  /** Guest calls already placed this errand — the leg-2 ladder resumes here. */
+  callbackAttemptsDone: number;
+  reservedAtIso: string;
 }): Promise<void> {
   const { admin, reservationId, attemptsPlanned, legVars } = input;
   // Prior runs' entries stay in the log; this run appends to them.
@@ -238,62 +513,27 @@ async function runIntents(input: {
   const record = async (patch: Record<string, unknown>) => {
     await admin.from("reservations").update(patch).eq("id", reservationId);
   };
-
-  // Leg 2 · business → consumer — the Confirmer call to the human. Context
-  // "confirmation" relays a venue yes; "counter_offer" presents the venue's
-  // alternatives (the guest's answer lands via eleven-a2-confirm-reservation).
-  const callGuest = async (
+  // Leg 2 with everything threaded — outcomes and the ladder live in callGuest.
+  const guestCall = (
     key: string,
     phoneNumberId: string,
     context: "confirmation" | "counter_offer",
     alternativesText: string,
-  ): Promise<void> => {
-    const label = context === "confirmation" ? "confirmed" : "counter-offer";
-    if (!input.consumerNumber) {
-      await record({
-        callback_state: "skipped",
-        last_call_status: `${label} — no guest number for the callback`,
-      });
-      return;
-    }
-    const call = await placeOutboundCall(key, {
-      agentId: input.confirmerAgentId,
-      agentPhoneNumberId: phoneNumberId,
-      toNumber: input.consumerNumber,
-      dynamicVariables: legDynamicVariables("guest_confirmation", legVars, {
-        callContext: context,
-        venueAlternatives: alternativesText,
-      }),
-      overrides: {
-        prompt: guestLegPrompt(legVars),
-        firstMessage: guestLegFirstMessage(legVars),
-        language: "es",
-      },
+  ) =>
+    callGuest({
+      admin,
+      reservationId,
+      key,
+      phoneNumberId,
+      context,
+      alternativesText,
+      consumerNumber: input.consumerNumber,
+      confirmerAgentId: input.confirmerAgentId,
+      legVars,
+      attemptsDone: input.callbackAttemptsDone,
+      placeLng: input.placeLng,
+      reservedAtIso: input.reservedAtIso,
     });
-    if (!call.ok) {
-      await record({
-        callback_state: "failed",
-        last_call_status: `${label} — guest call failed: ${call.error}`.slice(0, 200),
-      });
-      return;
-    }
-    await record({
-      callback_state: "ringing",
-      callback_conversation_id: call.conversationId,
-      last_call_status: `${label} — calling the guest`,
-    });
-    const outcome = call.conversationId
-      ? await watchUntilAnswered(key, call.conversationId, CALLBACK_BUDGET_MS)
-      : "unknown";
-    await record({
-      callback_state: outcome,
-      last_call_status: outcome === "answered"
-        ? `${label} — guest notified`
-        : outcome === "no_answer"
-        ? `${label} — guest didn't answer`
-        : `${label} — guest call outcome unknown`,
-    });
-  };
 
   try {
     const key = elevenLabsKey();
@@ -305,34 +545,14 @@ async function runIntents(input: {
       });
       return;
     }
-    // One line per audience: the venue leg dials from the business line, the
-    // guest leg from the consumer line. The business line is required — no
-    // line, no booking. The consumer line is NOT: if it can't be resolved
-    // (typically the number isn't imported into ElevenLabs yet) leg 1 must
-    // still run, so we fall back to the business line for the callback rather
-    // than abandoning a reservation that may already be confirmed.
-    const phoneRes = await resolvePhoneNumberId(key, reservationFromNumber());
-    if (!phoneRes.ok) {
+    const lines = await resolveLines(key);
+    if (!lines.ok) {
       await record({
         attempts_state: "error",
         callback_state: "skipped",
-        last_call_status: `failed: ${phoneRes.error}`.slice(0, 200),
+        last_call_status: `failed: ${lines.error}`.slice(0, 200),
       });
       return;
-    }
-
-    const consumerLine = consumerFromNumber();
-    let guestPhoneNumberId = phoneRes.id;
-    if (consumerLine !== reservationFromNumber()) {
-      const consumerRes = await resolvePhoneNumberId(key, consumerLine);
-      if (consumerRes.ok) {
-        guestPhoneNumberId = consumerRes.id;
-      } else {
-        console.error(
-          `[reservation-call] consumer line ${consumerLine} unresolved, ` +
-            `falling back to the business line: ${consumerRes.error}`,
-        );
-      }
     }
 
     // Leg 1 · consumer → business — the booking intents.
@@ -353,7 +573,7 @@ async function runIntents(input: {
 
       const call = await placeOutboundCall(key, {
         agentId: input.bookerAgentId,
-        agentPhoneNumberId: phoneRes.id,
+        agentPhoneNumberId: lines.venueLineId,
         toNumber: input.businessNumber,
         dynamicVariables: legDynamicVariables("business_booking", legVars),
         overrides: {
@@ -507,7 +727,7 @@ async function runIntents(input: {
           callback_at: new Date().toISOString(),
           last_call_status: `intent ${n}: venue confirmed — calling the guest`,
         });
-        await callGuest(key, guestPhoneNumberId, "confirmation", "");
+        await guestCall(key, lines.guestLineId, "confirmation", "");
         return;
       }
       if (verdict === "counter_offer") {
@@ -523,7 +743,7 @@ async function runIntents(input: {
           callback_at: new Date().toISOString(),
           last_call_status: `intent ${n}: venue counter-offer — calling the guest`,
         });
-        await callGuest(key, guestPhoneNumberId, "counter_offer", reported.alternativesText);
+        await guestCall(key, lines.guestLineId, "counter_offer", reported.alternativesText);
         return;
       }
       if (verdict === "declined") {
@@ -585,6 +805,9 @@ Deno.serve(async (req) => {
   if (!reservationId || typeof reservationId !== "string") {
     return json({ ok: false, error: "reservation_id required" }, 400);
   }
+  const intent = bodyRes.body.intent === "callback_retry" || bodyRes.body.intent === "cancel_notice"
+    ? bodyRes.body.intent
+    : "book";
 
   if (!elevenLabsKey()) {
     return json({ ok: false, error: "ELEVENLABS_KEY not configured" }, 503);
@@ -597,17 +820,35 @@ Deno.serve(async (req) => {
   const { data: r, error: rErr } = await admin
     .from("reservations")
     .select(
-      "id, reference_code, reserved_at, party_size, notes, status, project_id, is_test, business_number, consumer_number, attempts_state, attempts, call_attempts, consumer:consumers(full_name, first_name, last_name, phone)",
+      "id, reference_code, reserved_at, party_size, notes, status, project_id, is_test, business_number, consumer_number, attempts_state, attempts, call_attempts, callback_attempts, guest_confirmed_at, alternatives, notice_kind, notice_state, notice_attempts, consumer:consumers(full_name, first_name, last_name, phone)",
     )
     .eq("id", reservationId)
     .maybeSingle();
   if (rErr) return json({ ok: false, error: rErr.message }, 500);
   if (!r) return json({ ok: false, error: "reservation not found" }, 404);
-  if (r.status !== "pending") {
-    return json({ ok: true, skipped: `reservation is ${r.status}, not pending` });
-  }
-  if (r.attempts_state === "running") {
-    return json({ ok: true, skipped: "intents already running" });
+  // Per-intent gates — each errand has its own idea of a live ticket.
+  if (intent === "book") {
+    if (r.status !== "pending") {
+      return json({ ok: true, skipped: `reservation is ${r.status}, not pending` });
+    }
+    if (r.attempts_state === "running") {
+      return json({ ok: true, skipped: "intents already running" });
+    }
+  } else if (intent === "cancel_notice") {
+    if (r.status !== "cancelled") {
+      return json({ ok: true, skipped: `reservation is ${r.status}, not cancelled` });
+    }
+    if (r.notice_kind !== "venue_cancel" && r.notice_kind !== "guest_cancel") {
+      return json({ ok: true, skipped: "no cancellation notice owed" });
+    }
+  } else {
+    // callback_retry: only a still-live verdict warrants re-ringing the guest.
+    const confirmationDue = r.status === "confirmed" && !r.guest_confirmed_at;
+    const counterDue = r.status === "pending" &&
+      normalizeAlternatives(r.alternatives).length > 0;
+    if (!confirmationDue && !counterDue) {
+      return json({ ok: true, skipped: "callback no longer applicable" });
+    }
   }
 
   const { data: settings } = await admin
@@ -655,16 +896,119 @@ Deno.serve(async (req) => {
       via = "place phone endpoint";
     }
   }
-  if (!businessNumber) {
-    await admin
-      .from("reservations")
-      .update({ attempts_state: "error", last_call_status: `no number to dial (${via})` })
-      .eq("id", reservationId);
+  const dialsVenue = intent === "book" ||
+    (intent === "cancel_notice" && r.notice_kind === "venue_cancel");
+  if (!businessNumber && dialsVenue) {
+    // Only a venue-dialing errand dies on a missing venue number — and a
+    // cancel notice must never corrupt attempts_state (it's 'cancelled').
+    if (intent === "book") {
+      await admin
+        .from("reservations")
+        .update({ attempts_state: "error", last_call_status: `no number to dial (${via})` })
+        .eq("id", reservationId);
+    } else {
+      await admin
+        .from("reservations")
+        .update({ notice_state: "failed", last_call_status: `cancel notice — no venue number (${via})` })
+        .eq("id", reservationId);
+    }
     return json({ ok: false, error: `no number to dial (${via})` }, 422);
   }
 
   const consumer = (r.consumer ?? null) as ConsumerName | null;
   const consumerNumber = (r.consumer_number ?? consumer?.phone ?? "").trim();
+
+  const legVars: ReservationLegVars = {
+    venueName: place?.name?.trim() || "el lugar",
+    guestName: guestName(consumer),
+    guestPhone: consumerNumber,
+    referenceCode: (r.reference_code ?? "").trim(),
+    partySize: r.party_size,
+    dateEs: esDate(r.reserved_at),
+    timeEs: esTime(r.reserved_at),
+    specialRequests: (r.notes ?? "").trim(),
+  };
+  const placeLng = typeof place?.lng === "number" ? place.lng : null;
+
+  if (intent === "cancel_notice") {
+    const kind = r.notice_kind as "venue_cancel" | "guest_cancel";
+    const toNumber = kind === "venue_cancel" ? businessNumber : consumerNumber;
+    if (!toNumber) {
+      await admin
+        .from("reservations")
+        .update({
+          notice_state: "failed",
+          last_call_status: `cancel notice (${kind}) — no number to dial`,
+        })
+        .eq("id", reservationId);
+      return json({ ok: false, error: "no number to dial for the notice" }, 422);
+    }
+    // Claim it compare-and-swap style: the cancel EF and the cron may both
+    // fire — whoever flips pending/scheduled → running places the call.
+    const { data: claimed } = await admin
+      .from("reservations")
+      .update({ notice_state: "running", notice_next_at: null })
+      .eq("id", reservationId)
+      .in("notice_state", ["pending", "scheduled"])
+      .select("id");
+    if (!claimed?.length) return json({ ok: true, skipped: "notice already claimed" });
+    runInBackground(
+      runCancelNotice({
+        admin,
+        reservationId,
+        key: elevenLabsKey()!,
+        kind,
+        attemptsDone: typeof r.notice_attempts === "number" ? r.notice_attempts : 0,
+        toNumber,
+        agentId: kind === "venue_cancel" ? bookerAgentId : confirmerAgentId,
+        legVars,
+        placeHours: place?.hours ?? null,
+        placeLng,
+        reservedAtIso: r.reserved_at,
+      }),
+    );
+    return json({ ok: true, started: true, intent, reservation_id: reservationId });
+  }
+
+  if (intent === "callback_retry") {
+    if (!consumerNumber) {
+      await admin
+        .from("reservations")
+        .update({
+          callback_state: "skipped",
+          callback_next_attempt_at: null,
+          last_call_status: "callback retry — no guest number",
+        })
+        .eq("id", reservationId);
+      return json({ ok: true, skipped: "no guest number" });
+    }
+    const { data: claimed } = await admin
+      .from("reservations")
+      .update({ callback_state: "calling", callback_next_attempt_at: null })
+      .eq("id", reservationId)
+      .eq("callback_state", "scheduled")
+      .select("id");
+    if (!claimed?.length) return json({ ok: true, skipped: "callback already claimed" });
+    const context = r.status === "confirmed" ? "confirmation" as const : "counter_offer" as const;
+    runInBackground(
+      runCallbackRetry({
+        admin,
+        reservationId,
+        key: elevenLabsKey()!,
+        context,
+        alternativesText: context === "counter_offer"
+          ? alternativesToSpeech(normalizeAlternatives(r.alternatives))
+          : "",
+        consumerNumber,
+        confirmerAgentId,
+        legVars,
+        attemptsDone: typeof r.callback_attempts === "number" ? r.callback_attempts : 0,
+        placeLng,
+        reservedAtIso: r.reserved_at,
+      }),
+    );
+    return json({ ok: true, started: true, intent, reservation_id: reservationId });
+  }
 
   // Mark running + persist the resolved numbers, then ack — the legs continue
   // in the background task.
@@ -677,8 +1021,10 @@ Deno.serve(async (req) => {
       business_number: businessNumber,
       consumer_number: consumerNumber || null,
       // A stale verdict from a previous negotiation round must never be read
-      // as this run's outcome.
+      // as this run's outcome — and a new errand starts a fresh guest ladder.
       reported_verdict: null,
+      callback_attempts: 0,
+      callback_next_attempt_at: null,
     })
     .eq("id", reservationId);
 
@@ -690,21 +1036,14 @@ Deno.serve(async (req) => {
       attemptsDone: typeof r.call_attempts === "number" ? r.call_attempts : 0,
       priorAttempts: Array.isArray(r.attempts) ? (r.attempts as AttemptEntry[]) : [],
       placeHours: place?.hours ?? null,
-      placeLng: typeof place?.lng === "number" ? place.lng : null,
+      placeLng,
       businessNumber,
       consumerNumber,
       bookerAgentId,
       confirmerAgentId,
-      legVars: {
-        venueName: place?.name?.trim() || "el lugar",
-        guestName: guestName(consumer),
-        guestPhone: consumerNumber,
-        referenceCode: (r.reference_code ?? "").trim(),
-        partySize: r.party_size,
-        dateEs: esDate(r.reserved_at),
-        timeEs: esTime(r.reserved_at),
-        specialRequests: (r.notes ?? "").trim(),
-      },
+      legVars,
+      callbackAttemptsDone: 0,
+      reservedAtIso: r.reserved_at,
     }),
   );
 

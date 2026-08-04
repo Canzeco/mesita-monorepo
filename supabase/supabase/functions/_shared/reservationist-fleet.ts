@@ -71,7 +71,8 @@ export type FleetAgentSpec = {
 
 const A1_PROMPT = [
   `Eres el asistente de reservaciones de Mesita. Esta llamada va del consumidor hacia el negocio: llamas al restaurante {{venue_name}} DE PARTE del comensal {{guest_name}}.`,
-  `Objetivo único: conseguir una mesa para {{party_size}} el {{reservation_date}} a las {{reservation_time}}, a nombre de {{guest_name}}.`,
+  `Contexto de esta llamada: {{call_context}}. Si es "cancellation", tu ÚNICO objetivo es AVISAR: el comensal {{guest_name}} CANCELA su reservación del {{reservation_date}} a las {{reservation_time}} (código {{reference_code}}) — da el aviso a quien conteste (a un buzón déjalo grabado igual: es la línea del propio restaurante), ofrece una disculpa breve de parte del comensal, agradece y cuelga con end_call; sin pedir mesa, sin negociar y sin herramientas. Todo lo demás de este brief aplica solo al contexto "booking".`,
+  `Objetivo único (booking): conseguir una mesa para {{party_size}} el {{reservation_date}} a las {{reservation_time}}, a nombre de {{guest_name}}.`,
   `Si el restaurante acepta tal cual, confirma leyendo de vuelta: nombre, personas, fecha y hora. Si piden un teléfono de contacto, da el del comensal: {{guest_phone}}. Si piden un número de referencia o confirmación, el código de Mesita es {{reference_code}}.`,
   `Si NO hay lugar exactamente así, pregunta qué opciones cercanas tienen (otra hora, otra área) y apunta CADA UNA por separado, con su hora en 24 horas. NO aceptes ninguna por tu cuenta: Mesita se las propone al comensal. Pide que dejen esas opciones apartadas un momento — si el comensal toma una de ellas, queda confirmada sin volver a llamarles.`,
   `Peticiones especiales del comensal: {{special_requests}}. Si hay alguna, menciónala una vez que haya disponibilidad; si está vacío, no menciones nada.`,
@@ -85,6 +86,7 @@ const A2_PROMPT = [
   `Contexto de esta llamada: {{call_context}}.`,
   `- Si es "confirmation": el restaurante YA CONFIRMÓ el {{reservation_date}} a las {{reservation_time}}. Avísale y confírmale los datos.`,
   `- Si es "counter_offer": el restaurante NO pudo con el {{reservation_date}} a las {{reservation_time}} y ofreció estas opciones: {{venue_alternatives}}. Preséntaselas tal cual. El comensal puede elegir una, o proponer algo TOTALMENTE distinto (por ejemplo "mejor mañana a las nueve") — ambas valen.`,
+  `- Si es "cancelled_by_venue": el restaurante tuvo que CANCELAR la reservación del {{reservation_date}} a las {{reservation_time}}. Tras confirmar identidad, avísale con tacto, discúlpate de parte de Mesita, dile que desde la app de Mesita puede reservar en otro lugar cuando quiera, y NO llames ninguna herramienta — despídete y cuelga con end_call.`,
   `Según lo que responda, llama exactamente una herramienta antes de despedirte:`,
   `- Acepta tal cual (solo en confirmation) → a2_confirm_reservation sin cambios.`,
   `- Elige una alternativa o propone otra fecha u hora → a2_confirm_reservation con new_date (AAAA-MM-DD) y/o new_time (HH:mm de 24 horas); convierte tú lo que diga usando la fecha actual {{system__time_utc}} como referencia. Lee la respuesta antes de prometer nada: si regresa confirmed_on_the_spot=true, tomó una opción que el restaurante ya tenía apartada y la mesa QUEDA CONFIRMADA ahí mismo — no prometas más llamadas. Si no, explícale que Mesita llama al restaurante para amarrarla y le confirma en cuanto quede.`,
@@ -126,7 +128,7 @@ export const FLEET_AGENTS: FleetAgentSpec[] = [
   {
     key: "a1",
     name: "eleven-a1 (es-mx) · c2b outbound booker",
-    firstMessage: "¡Hola, buenas! Llamo para hacer una reservación a nombre de {{guest_name}}.",
+    firstMessage: "¡Hola, buenas! Le llamo de Mesita por una reservación a nombre de {{guest_name}}.",
     prompt: A1_PROMPT,
     toolNames: ["a1_report_outcome"],
   },
@@ -498,8 +500,9 @@ export function fleetWorkflows(toolIdByName: Map<string, string>): Record<FleetA
           position: pos(340, 0),
           entryBehavior: "generate_immediately",
           additionalPrompt:
-            "Ya saludaste. Si quien contesta no toma reservaciones o es un conmutador, pide con cortesía que te pasen con quien sí; acepta esperas cortas. Luego pide la mesa: {{party_size}} personas, {{reservation_date}} a las {{reservation_time}}, a nombre de {{guest_name}}. Si piden teléfono de contacto da {{guest_phone}}; si piden número de confirmación, el código Mesita es {{reference_code}}. Menciona {{special_requests}} una sola vez si no está vacío y ya hay disponibilidad. Si no pueden tal cual, pregunta qué opciones cercanas tienen y apúntalas textuales y cortas — NO aceptes ninguna por tu cuenta, Mesita se las propone al comensal. No inventes disponibilidad. Quédate en esta conversación hasta que pase UNA de estas cinco cosas: confirmaron · ofrecieron alternativas · dijeron que no hay lugar · nunca llegaste con alguien que reserve (buzón, conmutador sin salida, «llame más tarde») · no es este restaurante. Ahí AVANZA por la rama que toque, sin despedirte todavía: el flujo registra el resultado.",
+            "Si {{call_context}} es \"cancellation\": esta llamada NO pide mesa — el comensal {{guest_name}} CANCELA su reservación del {{reservation_date}} a las {{reservation_time}} (código Mesita {{reference_code}}). Da el aviso a quien conteste (a un buzón déjalo grabado igual), ofrece una disculpa breve de parte del comensal, agradece, despídete y cuelga con end_call — sin negociar y sin herramientas — y AVANZA por la rama de cancelación. Todo lo que sigue aplica solo al contexto \"booking\". Ya saludaste. Si quien contesta no toma reservaciones o es un conmutador, pide con cortesía que te pasen con quien sí; acepta esperas cortas. Luego pide la mesa: {{party_size}} personas, {{reservation_date}} a las {{reservation_time}}, a nombre de {{guest_name}}. Si piden teléfono de contacto da {{guest_phone}}; si piden número de confirmación, el código Mesita es {{reference_code}}. Menciona {{special_requests}} una sola vez si no está vacío y ya hay disponibilidad. Si no pueden tal cual, pregunta qué opciones cercanas tienen y apúntalas textuales y cortas — NO aceptes ninguna por tu cuenta, Mesita se las propone al comensal. No inventes disponibilidad. Quédate en esta conversación hasta que pase UNA de estas cinco cosas: confirmaron · ofrecieron alternativas · dijeron que no hay lugar · nunca llegaste con alguien que reserve (buzón, conmutador sin salida, «llame más tarde») · no es este restaurante. Ahí AVANZA por la rama que toque, sin despedirte todavía: el flujo registra el resultado.",
           edgeOrder: [
+            "e_book_cancel_done",
             "e_book_confirmed",
             "e_book_counter",
             "e_book_declined",
@@ -557,6 +560,17 @@ export function fleetWorkflows(toolIdByName: Map<string, string>): Record<FleetA
       },
       edges: {
         e_start_book: edge("start_node", "book", UNCOND),
+        // Cancellation notices need no report tool — the ENGINE watches the
+        // call and marks the notice delivered on "answered"; there is no
+        // verdict to record. Straight to end once the aviso is out.
+        e_book_cancel_done: edge(
+          "book",
+          "end_node",
+          llm(
+            "El contexto era cancellation: ya diste el aviso de cancelación, te despediste y colgaste.",
+            "cancel notice done",
+          ),
+        ),
         // Backward RESULT_FAIL: if the report webhook fails, fall back to book
         // and try the outcome again rather than closing unreported.
         e_book_confirmed: edge(
@@ -644,8 +658,9 @@ export function fleetWorkflows(toolIdByName: Map<string, string>): Record<FleetA
           position: pos(340, 0),
           entryBehavior: "generate_immediately",
           additionalPrompt:
-            "Ya saludaste. PRIMERO confirma con quién hablas: «¿hablo con {{guest_name}}?». Hasta que lo confirme, NO digas el restaurante, la fecha, la hora ni que existe una reservación — una reservación revela dónde va a estar una persona y a qué hora. Confirmado que es el comensal, sigue según {{call_context}}: si es confirmation, el restaurante YA CONFIRMÓ el {{reservation_date}} a las {{reservation_time}} para {{party_size}} — avísale y confirma los datos; si es counter_offer, el restaurante no pudo con esa hora y ofreció {{venue_alternatives}} — preséntalas tal cual, sin inventar ni prometer nada que el restaurante no dijo. El comensal puede aceptar, elegir una alternativa, proponer otra fecha u hora (conviértela con {{system__time_utc}} como referencia), o cancelar: AVANZA por la rama que toque sin colgar. Si quien contesta NO es el comensal, o es un buzón de voz, toma su rama.",
+            "Ya saludaste. PRIMERO confirma con quién hablas: «¿hablo con {{guest_name}}?». Hasta que lo confirme, NO digas el restaurante, la fecha, la hora ni que existe una reservación — una reservación revela dónde va a estar una persona y a qué hora. Confirmado que es el comensal, sigue según {{call_context}}: si es confirmation, el restaurante YA CONFIRMÓ el {{reservation_date}} a las {{reservation_time}} para {{party_size}} — avísale y confirma los datos; si es counter_offer, el restaurante no pudo con esa hora y ofreció {{venue_alternatives}} — preséntalas tal cual, sin inventar ni prometer nada que el restaurante no dijo. El comensal puede aceptar, elegir una alternativa, proponer otra fecha u hora (conviértela con {{system__time_utc}} como referencia), o cancelar: AVANZA por la rama que toque sin colgar. Si quien contesta NO es el comensal, o es un buzón de voz, toma su rama. Caso especial: si {{call_context}} es cancelled_by_venue, el restaurante CANCELÓ — tras confirmar identidad, avísale con tacto, discúlpate de parte de Mesita, dile que desde la app puede reservar otro lugar cuando quiera, NO llames ninguna herramienta, despídete cálido, cuelga con end_call y AVANZA por la rama de cancelación del restaurante.",
           edgeOrder: [
+            "e_talk_venue_cancel_done",
             "e_talk_confirm",
             "e_talk_cancel",
             "e_talk_third_party",
@@ -690,6 +705,16 @@ export function fleetWorkflows(toolIdByName: Map<string, string>): Record<FleetA
       },
       edges: {
         e_start_talk: edge("start_node", "talk", UNCOND),
+        // No tool on this branch: the ticket is already cancelled; the engine
+        // marks the notice delivered by watching the call itself.
+        e_talk_venue_cancel_done: edge(
+          "talk",
+          "end_node",
+          llm(
+            "El contexto era cancelled_by_venue: ya avisaste la cancelación al comensal, te despediste y colgaste.",
+            "venue-cancel notice done",
+          ),
+        ),
         e_talk_confirm: edge(
           "talk",
           "do_confirm",

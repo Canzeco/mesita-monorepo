@@ -2,17 +2,18 @@
 
 Every timing rule the Reservationist obeys, in one place — the ONE protocol across all four agents. A reservation is not
 one conversation: it is **several independent legs**, each of which needs its
-own answer to *"what happens when this doesn't work?"* **Two of the six have
-that answer. Four do not** — and a leg without one stops silently, forever.
-Those gaps are marked ⛔ below. Everything here was read out of the code, not
-invented, so nobody has to re-derive it from the engine; the proposed cadences
-are labelled as proposals precisely because they are product calls.
+own answer to *"what happens when this doesn't work?"* **All six now have
+one** (legs 3–6 shipped 2026-08-04). Everything here is read out of the code,
+not invented, so nobody has to re-derive it from the engine.
 
 Code is the source of truth. Where this file and the code disagree, the code
 wins and this file is stale — fix it in the same session.
 
-- Engine: `functions/supabase-edgefunc-reservation-call/index.ts`
-- Retry math: `functions/_shared/reservation-retry.ts`
+- Engine: `functions/supabase-edgefunc-reservation-call/index.ts` — intents
+  `book` · `callback_retry` · `cancel_notice`
+- Waker: `functions/supabase-cron-reservation-retries/index.ts` (pg_cron, 1 min)
+- Venue pacing: `functions/_shared/reservation-retry.ts` (opening hours)
+- Guest pacing: `functions/_shared/reservation-callback.ts` (the ladder)
 - Guest answer: `functions/eleven-a2-confirm-reservation/index.ts`
 - Offers: `functions/_shared/reservation-alternatives.ts`
 
@@ -49,81 +50,57 @@ Verdicts a1 can report (`a1_report_outcome`): `confirmed` · `counter_offer` ·
 | **Shortcut** | If the guest picks a slot **the venue itself offered**, it is confirmed on the spot: no second venue call, no callback, no round consumed (`matchesOffer`). a1's close asks the venue to hold its offers, so this acts on a promise the venue made. |
 | **New proposal** | A time the venue never offered re-fires leg 1 with the new terms. |
 
-## Leg 3 · Confirmation — a2 phones the guest ⛔ NO PROTOCOL
-
-**One shot. No retry, no cap, no schedule, nothing.**
-
-The engine writes `callback_state` (`ringing` → `answered` / `no_answer` /
-`failed` / `unknown` / `skipped`) and **nothing ever reads it again**. The
-retry cron selects only `attempts_state='scheduled'`, which is leg 1; there is
-no `callback_next_attempt_at` and no cron that considers the callback at all.
-
-Consequences, all currently live:
-
-- **Guest doesn't answer** → the venue has confirmed the table and the guest is
-  never told. Ticket sits `pending` forever.
-- **Guest answers but doesn't decide** (hears the alternatives, says "let me
-  think") → `callback_state='answered'` and the ticket is inert. Observed on
-  ticket `55011809`.
-- **Call fails to place** → `callback_state='failed'`, same dead end.
-
-### Proposed (NOT IMPLEMENTED — needs Pato's call on cadence)
-
-Calling a customer is an annoyance budget, so the numbers are a product
-decision, not an engineering one. A sane default to argue with:
+## Leg 3 · Confirmation — a2 phones the guest ✅ HAS A PROTOCOL
 
 | | |
 | --- | --- |
-| Attempt 1 | Immediately when the venue verdict lands (today's behaviour). |
-| Attempt 2 | **+10 min** on no-answer. |
-| Attempt 3 | **+1 h**, and only while the reservation is still more than 2 h away. |
-| Cap | **3**, then stop calling and fall back to the app — the guest is never rung a fourth time. |
-| Quiet hours | Never dial the guest outside **09:00–22:00 venue-local**; hold until the window opens. |
-| Close to service | Inside 2 h of `reserved_at`, stop calling entirely and leave it in-app — a call that lands after the table time is worse than none. |
+| **Attempt 1** | Immediately when the venue verdict lands. |
+| **Attempt 2** | **+10 min** on no-answer. |
+| **Attempt 3** | **+1 h**. |
+| **Cap** | **3** (`GUEST_CALL_MAX_ATTEMPTS`) — then the app is the fallback, never a fourth ring. |
+| **Quiet hours** | No guest call outside **09:00–22:00 venue-local**… unless the slot is **< 6 h away** (the news can't wait). |
+| **Cutoff** | Nothing scheduled past `reserved_at − 30 min` — a call after the table time is worse than none. |
+| **How it waits** | `callback_state='scheduled'` + `callback_next_attempt_at`; the minute cron re-fires the engine with intent `callback_retry`. |
+| **Answered but undecided** | `callback_state='answered'` — deliberately NOT retried. The guest heard the options and said "let me think"; ringing them again is nagging, and their pick lands via a2's tool or the app. |
 
-Implementing it needs a `callback_next_attempt_at` column plus one more branch
-in the existing retry cron, which already runs every minute.
+The ladder lives in `_shared/reservation-callback.ts` (pure, tested). A fresh
+errand (new booking run, negotiation re-fire, reschedule) resets it to zero.
 
-## Leg 4 · Expiry — a ticket whose time has passed ⛔ PARTIAL
+## Leg 4 · Expiry — a ticket whose time has passed ✅ HAS A PROTOCOL
 
-**`passed` is fine.** It is *derived* in the consumer app
-(`confirmed` + slot behind us + 4 h grace — you may still be at the table),
-deliberately never written by a cron, and the Upcoming/History split uses the
-same rule. Don't "fix" that by adding a writer.
+**`passed` stays derived.** The app computes it (`confirmed` + slot behind us
++ 4 h grace) and no cron writes it — don't "fix" that.
 
-**A stuck `pending` ticket is the gap.** Nothing terminalises one whose
-`reserved_at` has gone by, and `pending` is not in the "not booked" set
-(`declined` · `unreachable` · `unresolved` · `no_show`), so it renders as
-*booking* forever — the guest is told Mesita is on the phone about a dinner
-that happened last night. The enum has `no_show` and **nothing writes it**.
+**Stuck `pending` now expires.** The minute cron moves any `pending` ticket
+4 h past `reserved_at` (and not mid-run) to `unresolved`, so the app stops
+claiming Mesita is on the phone about last night's dinner. `confirmed` rows
+are never touched — `no_show` stays unwritten until there is a real signal
+the guest didn't turn up.
 
-Proposed: a sweeper on the existing minute cron moving `pending` past
-`reserved_at + 4 h` to `unresolved` (never agreed), and `confirmed` past the
-same window to `no_show` only once there is a signal the guest didn't turn up
-— absent that signal, leave `confirmed` alone and let `passed` derive.
+## Leg 5 · Guest cancels a table the venue is HOLDING ✅ HAS A PROTOCOL
 
-## Leg 5 · Guest cancels a table the venue is HOLDING ⛔ NO PROTOCOL
+All four guest-side cancel doors (`consumer-web-cancel-reservation`,
+`eleven-a2-cancel-reservation`, `eleven-a3-cancel-reservation`, and
+`cancelTicket` behind them) now owe the venue a call when — and only when —
+the ticket was **`confirmed`**: never ring a venue to cancel something it
+never agreed to.
 
-**Nobody tells the venue. Ever.**
+| | |
+| --- | --- |
+| **Who calls** | **a1**, `call_context="cancellation"` — an aviso, not a booking: no negotiating, no tools, voicemail counts (it's the venue's own line). |
+| **State** | `notice_kind='venue_cancel'` + `notice_state` pending → running → done/failed; engine intent `cancel_notice`. |
+| **Pacing** | Attempt 1 immediately; retry by the venue's own hours (`nextAttemptAt`), cap **2**; exhausted → `notice_state='failed'`, visible for ops. |
+| **Never blocks** | The guest's cancel is instant and local; the courtesy call is a background consequence. A lost engine invoke is swept up by the cron (`notice_state='pending'`). |
 
-There are three guest-side cancel doors — `consumer-web-cancel-reservation`
-(app), `eleven-a2-cancel-reservation` (on the confirmation call),
-`eleven-a3-cancel-reservation` (inbound line) — and **not one of them contacts
-the venue**. When the table was already `confirmed`, the venue is holding it
-for a party that will never arrive. Mesita made that booking by phone, so from
-the restaurant's side this is Mesita generating no-shows. It is the most
-reputation-damaging gap in the system, and the cheapest to close.
+## Leg 6 · Venue cancels — telling the guest ✅ HAS A PROTOCOL
 
-### Proposed
-- Fires **only** when the ticket was `confirmed` (nothing to release
-  otherwise — never ring a venue to cancel something it never agreed to).
-- Reuses **a1**, not a new agent: same c2b outbound direction, with
-  `call_context="cancellation"` and a release branch in its graph.
-- Same retry shape as leg 1 (2 attempts, open-hours aware) — a release is less
-  urgent than a booking but still time-sensitive; unreached after the cap
-  leaves a flag for ops rather than failing silently.
-- Never blocks the cancel itself: the guest's cancellation is instant and
-  local; the courtesy call is a background consequence.
+`eleven-a4-cancel-reservation`'s `guest_needs_notification` flag is no longer
+a dead letter: the venue-side cancel owes `notice_kind='guest_cancel'` and
+**a2** rings the guest with `call_context="cancelled_by_venue"` — the news
+with tact, an apology from Mesita, and the app for rebooking. Identity is
+still verified before any detail is spoken. Pacing: the guest ladder (leg 3)
+— immediately, +10 min, +1 h, cap 3, quiet hours, urgent-waiver when the slot
+is close. The *"business never calls the consumer"* rule has its relay.
 
 ## Leg 6 · Venue cancels — telling the guest ⛔ DECLARED, NOT BUILT
 
@@ -153,21 +130,16 @@ gain — the direction is what's fixed, the errand is data:
 
 | Direction | Agent | `call_context` values |
 | --- | --- | --- |
-| Mesita → venue | **a1** | `booking` · `cancellation` *(new)* |
-| Mesita → guest | **a2** | `confirmation` · `counter_offer` · `cancelled_by_venue` *(new)* |
+| Mesita → venue | **a1** | `booking` · `cancellation` |
+| Mesita → guest | **a2** | `confirmation` · `counter_offer` · `cancelled_by_venue` |
 | guest → Mesita | **a3** | inbound support |
 | venue → Mesita | **a4** | inbound support |
 
-Every outbound leg then wants the same four answers, and the two that exist
-already answer them: **when does attempt 1 fire · when does a retry fire · how
-many attempts · what happens at the cap.** A leg without those four answers is
-a leg that stops silently, which is exactly how legs 3, 5 and 6 got lost.
-
-Implementation order by real-world harm:
-1. **Leg 5** — Mesita is currently generating no-shows at venues.
-2. **Leg 3** — venue confirmed, guest never learns.
-3. **Leg 6** — guest shows up to a cancelled table.
-4. **Leg 4** — cosmetic: stuck tickets read "booking" forever.
+Every outbound leg answers the same four questions: **when does attempt 1
+fire · when does a retry fire · how many attempts · what happens at the cap.**
+A leg without those four answers is a leg that stops silently — which is
+exactly how legs 3, 5 and 6 were lost the first time. Hold every future leg
+to this checklist.
 
 ---
 
