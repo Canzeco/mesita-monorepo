@@ -40,12 +40,18 @@ export function CheckUnavailable({ status }: { status: number }) {
   return (
     <div className="border-border bg-card rounded-2xl border p-8 text-center shadow-sm">
       <span className="bg-muted text-muted-foreground mx-auto flex size-12 items-center justify-center rounded-full">
-        {offline ? <WifiOff className="size-6" /> : <CloudOff className="size-6" />}
+        {offline ? (
+          <WifiOff className="size-6" />
+        ) : (
+          <CloudOff className="size-6" />
+        )}
       </span>
       <h1 className="font-display mt-4 text-xl font-semibold tracking-tight">
         {title}
       </h1>
-      <p className="text-muted-foreground mt-2 text-sm leading-relaxed">{body}</p>
+      <p className="text-muted-foreground mt-2 text-sm leading-relaxed">
+        {body}
+      </p>
       <Button
         className="mt-5 w-full"
         size="lg"
