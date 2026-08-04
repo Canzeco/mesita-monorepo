@@ -121,7 +121,11 @@ Apify/Perplexity/Firecrawl budget** — deploying/arming the cron is money-gated
   tab. Perplexity `sonar-pro` + Google Places + the Mesita catalog. Persona
   "Don Memo" (Spanish-first voice).
 - **Reservationist** — voice reservations on ElevenLabs (config under
-  `integrations/elevenlabs`).
+  `integrations/elevenlabs`). Every timing rule — when a1 retries the venue,
+  the negotiation cap, and the two legs that have **no** protocol yet (the
+  guest callback and ticket expiry) — is written down in
+  [`RESERVATIONS-PROTOCOL.md`](./RESERVATIONS-PROTOCOL.md). Read it before
+  changing anything about when a call fires.
 
 ## Billing
 
