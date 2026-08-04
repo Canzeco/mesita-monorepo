@@ -15,23 +15,31 @@ import {
   CLASS_KEYS,
   CLASS_META,
   DEFAULT_CONFIG,
-  EDITABLE_STRATEGIES,
+  RULE_COUNT,
+  STRATEGY_KEYS,
+  STRATEGY_META,
+  ruleKey,
   type ActionKey,
   type ClassKey,
-  type GridStrategy,
   type RewardsConfig,
+  type StrategyKey,
 } from "./catalog";
 
-// The editor renders Pato's table VERBATIM (2026-08-03): rows are
-// Strategy × Class, columns are None + the four actions. "None" edits the
-// standing class rate (`grid`); an action cell edits
-// `actions[action][class]` at the row's strategy. The Story column is
-// disabled outside the Influencer rows — eligibility is Influencer-only
-// (segments v6) and an editable dead cell would imply otherwise.
+// The v8 NORMALIZED editor (MESITA-873). Pato's format, verbatim: one row per
+// reward rule, listed Strategy → Class → Action → Discount, 60 rows.
+//
+// Why a list and not the wide matrix it replaced: every row is now a single
+// self-contained rule, which is exactly how it is stored (public.reward_rules,
+// PK on the triple). Adding a future action — TikTok, Referral, Birthday,
+// Spend $X — becomes rows in that table plus one entry in ACTION_KEYS, with no
+// reshaping of a nested blob and no schema change.
+//
+// Story stays Influencer-only: the row renders read-only for the other three
+// classes because eligibility is a CLASS GATE, not a price, and an editable
+// cell there would imply the gate could be priced away.
 
-function rateLabel(v: number): string {
-  return v <= 0 ? "Off" : `${v}%`;
-}
+const isStoryLocked = (action: ActionKey, cls: ClassKey) =>
+  action === "story" && cls !== "influencer";
 
 export function RewardsConfigClient({
   initialConfig,
@@ -49,7 +57,7 @@ export function RewardsConfigClient({
   const [ok, setOk] = useState(false);
   const [updatedAt, setUpdatedAt] = useState<string | null>(initialUpdatedAt);
 
-  // Re-fetch on mount so a client-side nav shows the live row, not a stale
+  // Re-fetch on mount so a client-side nav shows the live rows, not a stale
   // server render. On failure keep the initial/default config usable.
   useEffect(() => {
     let active = true;
@@ -71,29 +79,29 @@ export function RewardsConfigClient({
     [cfg, saved],
   );
 
-  const setStanding = (cls: ClassKey, strategy: GridStrategy, value: number) => {
-    setCfg((c) => ({
-      ...c,
-      grid: { ...c.grid, [cls]: { ...c.grid[cls], [strategy]: value } },
-    }));
-    setOk(false);
-  };
+  // Rules are a flat list, so an edit is a one-cell replace keyed by the
+  // triple — no nested spreading, which is the whole point of normalizing.
+  const rateByKey = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const r of cfg.rules) {
+      map.set(ruleKey(r.strategy, r.class, r.action), r.discount_percent);
+    }
+    return map;
+  }, [cfg.rules]);
 
-  const setActionRate = (
-    action: ActionKey,
+  const setRate = (
+    strategy: StrategyKey,
     cls: ClassKey,
-    strategy: GridStrategy,
+    action: ActionKey,
     value: number,
   ) => {
     setCfg((c) => ({
       ...c,
-      actions: {
-        ...c.actions,
-        [action]: {
-          ...c.actions[action],
-          [cls]: { ...c.actions[action][cls], [strategy]: value },
-        },
-      },
+      rules: c.rules.map((r) =>
+        r.strategy === strategy && r.class === cls && r.action === action
+          ? { ...r, discount_percent: value }
+          : r,
+      ),
     }));
     setOk(false);
   };
@@ -127,8 +135,8 @@ export function RewardsConfigClient({
     <div className="space-y-6">
       <SectionCard
         icon={<Percent className="text-secondary h-4 w-4" />}
-        title="Rewards table"
-        subtitle="Strategy × Class rows, one cell per action — different discount for each item, depending on the tier. None is the standing class discount. Rates snap to the 5% grid (5–70%); 0 = off; Zero strategy is off by definition and has no rows. A guest is paid their single best qualifying cell — never a sum."
+        title="Reward rules"
+        subtitle={`One row per rule — Strategy → Class → Action → Discount. ${RULE_COUNT} rules in total. Rates snap to the 5% grid (5–70%); 0 = off. Zero strategy has no rules: it is off by definition. A guest is paid their single best qualifying rule — never a sum.`}
         status={
           updatedAt ? (
             <span className="text-muted-foreground text-xs">
@@ -138,101 +146,93 @@ export function RewardsConfigClient({
         }
       >
         <div className="mt-5 overflow-x-auto">
-          <div className="min-w-[860px]">
-            {/* Header — the action columns. */}
-            <div className="grid grid-cols-[110px_130px_repeat(5,96px)] items-end gap-2 px-1 pb-2">
-              <span className="text-muted-foreground text-[10px] font-bold tracking-[0.12em] uppercase">
-                Strategy
-              </span>
-              <span className="text-muted-foreground text-[10px] font-bold tracking-[0.12em] uppercase">
-                Class
-              </span>
-              <span className="text-center">
-                <span className="text-foreground block text-[12px] font-bold tracking-tight">
-                  None
-                </span>
-                <span className="text-muted-foreground/80 block text-[10px] leading-tight">
-                  standing
-                </span>
-              </span>
-              {ACTION_KEYS.map((a) => (
-                <span key={a} className="text-center" title={ACTION_META[a].blurb}>
-                  <span className="text-foreground block text-[12px] font-bold tracking-tight">
-                    {ACTION_META[a].emoji} {ACTION_META[a].name.split(" ")[0]}
-                  </span>
-                  <span className="text-muted-foreground/80 block truncate text-[10px] leading-tight">
-                    {ACTION_META[a].name.split(" ").slice(1).join(" ") || "action"}
-                  </span>
-                </span>
-              ))}
+          <div className="min-w-[680px]">
+            {/* Column header — the four fields of a rule. */}
+            <div className="text-muted-foreground grid grid-cols-[140px_150px_minmax(0,1fr)_110px] gap-3 px-3 pb-2 text-[10px] font-bold tracking-[0.12em] uppercase">
+              <span>Strategy</span>
+              <span>Class</span>
+              <span>Action</span>
+              <span className="text-right">Discount</span>
             </div>
 
-            {/* Rows — Strategy × Class, grouped by strategy. */}
             <div className="space-y-3">
-              {EDITABLE_STRATEGIES.map((strat) => (
+              {STRATEGY_KEYS.map((strategy) => (
                 <div
-                  key={strat.key}
-                  className="divide-border/60 border-border divide-y rounded-xl border"
+                  key={strategy}
+                  className="border-border overflow-hidden rounded-xl border"
                 >
-                  {CLASS_KEYS.map((cls, i) => (
+                  {CLASS_KEYS.map((cls, classIndex) => (
                     <div
                       key={cls}
-                      className="grid grid-cols-[110px_130px_repeat(5,96px)] items-center gap-2 px-3 py-2"
+                      className={
+                        classIndex > 0 ? "border-border/60 border-t" : undefined
+                      }
                     >
-                      <div className="min-w-0">
-                        {i === 0 ? (
-                          <>
-                            <p className="text-foreground text-[13px] font-bold">
-                              {strat.label}
-                            </p>
-                            <p className="text-muted-foreground truncate text-[10.5px] leading-tight">
-                              {strat.blurb}
-                            </p>
-                          </>
-                        ) : null}
-                      </div>
-                      <div className="flex min-w-0 items-center gap-2">
-                        <span className="text-base" aria-hidden>
-                          {CLASS_META[cls].emoji}
-                        </span>
-                        <span
-                          className="text-foreground truncate text-[12.5px] font-semibold"
-                          title={CLASS_META[cls].blurb}
-                        >
-                          {CLASS_META[cls].name}
-                        </span>
-                      </div>
-
-                      {/* None — the standing class rate. */}
-                      <RateSelect
-                        value={cfg.grid[cls][strat.key]}
-                        disabled={pending}
-                        onChange={(v) => setStanding(cls, strat.key, v)}
-                      />
-
-                      {ACTION_KEYS.map((action) => {
-                        // Story eligibility is Influencer-only (segments v6);
-                        // an editable cell on other rows would imply the gate
-                        // is priceable away. It is not — it changes upstream.
-                        const storyLocked =
-                          action === "story" && cls !== "influencer";
-                        return storyLocked ? (
-                          <span
+                      {ACTION_KEYS.map((action, actionIndex) => {
+                        const value =
+                          rateByKey.get(ruleKey(strategy, cls, action)) ?? 0;
+                        const locked = isStoryLocked(action, cls);
+                        return (
+                          <div
                             key={action}
-                            title="Influencer-only — eligibility is a class gate, not a price"
-                            className="text-muted-foreground/50 text-center text-[13px] font-semibold"
+                            className="grid grid-cols-[140px_150px_minmax(0,1fr)_110px] items-center gap-3 px-3 py-1.5"
                           >
-                            —
-                          </span>
-                        ) : (
-                          <RateSelect
-                            key={action}
-                            value={cfg.actions[action][cls][strat.key]}
-                            disabled={pending}
-                            onChange={(v) =>
-                              setActionRate(action, cls, strat.key, v)
-                            }
-                          />
+                            {/* Strategy — named once per block. */}
+                            <div className="min-w-0">
+                              {classIndex === 0 && actionIndex === 0 ? (
+                                <>
+                                  <p className="text-foreground text-[13px] leading-tight font-bold">
+                                    {STRATEGY_META[strategy].emoji}{" "}
+                                    {STRATEGY_META[strategy].name}
+                                  </p>
+                                  <p className="text-muted-foreground truncate text-[10.5px] leading-tight">
+                                    {STRATEGY_META[strategy].blurb}
+                                  </p>
+                                </>
+                              ) : null}
+                            </div>
+
+                            {/* Class — named once per class run. */}
+                            <div className="min-w-0">
+                              {actionIndex === 0 ? (
+                                <span
+                                  className="text-foreground truncate text-[12.5px] font-semibold"
+                                  title={CLASS_META[cls].blurb}
+                                >
+                                  {CLASS_META[cls].emoji} {CLASS_META[cls].name}
+                                </span>
+                              ) : null}
+                            </div>
+
+                            {/* Action — every row names its own. */}
+                            <span
+                              className="text-foreground/80 truncate text-[12.5px]"
+                              title={ACTION_META[action].blurb}
+                            >
+                              {ACTION_META[action].emoji}{" "}
+                              {ACTION_META[action].name}
+                            </span>
+
+                            {/* Discount. */}
+                            <div className="flex justify-end">
+                              {locked ? (
+                                <span
+                                  title="Influencer-only — eligibility is a class gate, not a price"
+                                  className="text-muted-foreground/60 inline-flex h-8 items-center px-2 text-[12px] font-medium"
+                                >
+                                  Influencer only
+                                </span>
+                              ) : (
+                                <RateSelect
+                                  value={value}
+                                  disabled={pending}
+                                  onChange={(v) =>
+                                    setRate(strategy, cls, action, v)
+                                  }
+                                />
+                              )}
+                            </div>
+                          </div>
                         );
                       })}
                     </div>
@@ -247,7 +247,7 @@ export function RewardsConfigClient({
           <p className="text-muted-foreground/80 flex items-start gap-1.5 text-[11px] leading-snug">
             <Info className="mt-0.5 h-3 w-3 shrink-0" />
             Mesita Review launched unpriced (0 everywhere) — price it here to
-            make it pay. Best-of pays only the highest qualifying cell, so ties
+            make it pay. Best-of pays only the highest qualifying rule, so ties
             are harmless.
           </p>
           <button
@@ -262,15 +262,12 @@ export function RewardsConfigClient({
         </div>
       </SectionCard>
 
-      {/* Universal cap. */}
+      {/* Universal cap — a scalar, not a rule. */}
       <SectionCard
         icon={<Coins className="text-secondary h-4 w-4" />}
         title="Universal cap"
         subtitle="Every discount applies only to the first N pesos of the bill — a platform-wide constant, always shown to guests. Bounded, predictable cost."
       >
-        {/* Categorical, not a free number (MESITA-872): ten round options.
-            A typed cap invited both meaningless values (MX$37) and MX$0 —
-            which silently meant NO ceiling, the opposite of the promise. */}
         <div className="mt-5 flex flex-wrap items-center gap-2">
           {ALLOWED_CAPS.map((c) => {
             const active = cfg.cap === c;
@@ -283,8 +280,8 @@ export function RewardsConfigClient({
                 aria-pressed={active}
                 className={
                   active
-                    ? "bg-foreground text-background inline-flex h-9 items-center rounded-lg px-3 text-[13px] font-bold tabular-nums transition disabled:opacity-50"
-                    : "border-border text-muted-foreground hover:text-foreground hover:bg-muted inline-flex h-9 items-center rounded-lg border px-3 text-[13px] font-semibold tabular-nums transition disabled:opacity-50"
+                    ? "bg-foreground text-background inline-flex h-9 items-center rounded-lg px-3.5 text-[13px] font-bold tabular-nums transition disabled:opacity-50"
+                    : "border-border text-muted-foreground hover:text-foreground hover:bg-muted inline-flex h-9 items-center rounded-lg border px-3.5 text-[13px] font-semibold tabular-nums transition disabled:opacity-50"
                 }
               >
                 <Coins className="mr-1.5 h-3.5 w-3.5" />
@@ -306,10 +303,11 @@ export function RewardsConfigClient({
 
       <div>
         <p className="text-muted-foreground text-xs">
-          Persisted to <code className="font-mono">app_settings.rewards_config</code>{" "}
-          (v13 matrix). This is the operator source of truth for the v7 rewards
-          table; the bill engine reads it on every ticket (MESITA-859). This page
-          prices the Aura row — who is actually on Aura is decided in{" "}
+          Persisted to <code className="font-mono">public.reward_rules</code> —
+          one row per (strategy × class × action), which is why a new action is
+          rows rather than a schema change (v8, MESITA-873). The bill engine
+          reads it on every ticket. This page prices the Aura rows — who is
+          actually on Aura is decided in{" "}
           <Link href="/aura-config" className="underline underline-offset-2">
             Aura Config
           </Link>
@@ -336,12 +334,12 @@ function RateSelect({
       value={value}
       disabled={disabled}
       onChange={(e) => onChange(Number(e.target.value))}
-      aria-label="Rate"
-      className="border-border bg-card focus:border-foreground h-9 w-full rounded-lg border px-1.5 text-center text-[13px] font-semibold tabular-nums outline-none disabled:opacity-50"
+      aria-label="Discount"
+      className="border-border bg-card focus:border-foreground h-8 w-[92px] rounded-lg border px-2 text-center text-[13px] font-semibold tabular-nums outline-none disabled:opacity-50"
     >
       {ALLOWED_RATES.map((r) => (
         <option key={r} value={r}>
-          {rateLabel(r)}
+          {r <= 0 ? "Off" : `${r}%`}
         </option>
       ))}
     </select>

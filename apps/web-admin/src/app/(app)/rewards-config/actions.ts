@@ -4,26 +4,28 @@
 // Edge Functions via the Result-style efInvoke (never throws) — same contract as
 // the Reservations / Sourcing / Memo config actions.
 //
-// Backed by admin-web-get-rewards-config / admin-web-update-rewards-config, which
-// read and write the rewards_config jsonb on the public.app_settings singleton.
-// No client ever touches the DB.
+// Backed by admin-web-get-rewards-config / admin-web-update-rewards-config,
+// which read and write the NORMALIZED public.reward_rules table (v8,
+// MESITA-873) plus the universal cap scalar on app_settings. No client ever
+// touches the DB.
 
 import { efInvoke } from "@/lib/supabase-ef";
-import { coerceConfig, type RewardsConfig } from "./catalog";
+import { coerceRules, type RewardsConfig } from "./catalog";
 
 type GetRewardsConfigResult =
   | { ok: true; config: RewardsConfig; updatedAt: string | null }
   | { ok: false; error: string };
 
 export async function getRewardsConfig(): Promise<GetRewardsConfigResult> {
-  const r = await efInvoke<{ config: unknown; updatedAt: string | null }>(
-    "admin-web-get-rewards-config",
-    {},
-  );
+  const r = await efInvoke<{
+    rules: unknown;
+    cap: unknown;
+    updatedAt: string | null;
+  }>("admin-web-get-rewards-config", {});
   if (!r.ok) return { ok: false, error: r.error };
   return {
     ok: true,
-    config: coerceConfig(r.data.config),
+    config: coerceRules(r.data.rules, r.data.cap),
     updatedAt: r.data.updatedAt ?? null,
   };
 }
@@ -35,14 +37,20 @@ type UpdateRewardsConfigResult =
 export async function updateRewardsConfig(
   config: RewardsConfig,
 ): Promise<UpdateRewardsConfigResult> {
-  const r = await efInvoke<{ config: unknown; updatedAt: string | null }>(
-    "admin-web-update-rewards-config",
-    { config },
-  );
+  // A WHOLE-TABLE write: the payout table is one coherent thing, so every
+  // rule ships on every save and the EF upserts all 60 in one call.
+  const r = await efInvoke<{
+    rules: unknown;
+    cap: unknown;
+    updatedAt: string | null;
+  }>("admin-web-update-rewards-config", {
+    rules: config.rules,
+    cap: config.cap,
+  });
   if (!r.ok) return { ok: false, error: r.error };
   return {
     ok: true,
-    config: coerceConfig(r.data.config),
+    config: coerceRules(r.data.rules, r.data.cap),
     updatedAt: r.data.updatedAt ?? null,
   };
 }

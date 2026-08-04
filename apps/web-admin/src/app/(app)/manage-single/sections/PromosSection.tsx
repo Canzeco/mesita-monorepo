@@ -27,6 +27,8 @@ import {
   CLASS_KEYS,
   CLASS_META,
   DEFAULT_CONFIG,
+  rateFromRules,
+  type ActionKey,
   type ClassKey,
   type RewardsConfig } from "@/app/(app)/rewards-config/catalog";
 import { setPlacePlan, type AdminPlace } from "../actions";
@@ -651,20 +653,26 @@ function RewardsMatrix({
     premium: "Premium",
     influencer: "Influencer",
     aura: "Aura" };
+  // Zero has no rules — it is off by definition, and this card is only shown
+  // for the paid strategies anyway.
+  const paidStrategy = strategy === "zero" ? null : strategy;
+  const shortAction: Record<ActionKey, string> = {
+    standing: "None",
+    mesita_review: ACTION_META.mesita_review.emoji,
+    story: ACTION_META.story.emoji,
+    welcome: ACTION_META.welcome.emoji,
+    review: ACTION_META.review.emoji };
   return (
     <div className="flex flex-col gap-1">
       <div className="border-border/60 grid grid-cols-[minmax(0,1.4fr)_repeat(5,minmax(0,1fr))] overflow-hidden rounded-lg border text-[10.5px]">
         <span className="bg-muted/40 px-2 py-1.5" aria-hidden />
-        <span className="text-muted-foreground bg-muted/40 px-1 py-1.5 text-center font-semibold">
-          None
-        </span>
         {ACTION_KEYS.map((a) => (
           <span
             key={a}
             title={ACTION_META[a].name}
             className="text-muted-foreground bg-muted/40 px-1 py-1.5 text-center font-semibold"
           >
-            {ACTION_META[a].emoji}
+            {shortAction[a]}
           </span>
         ))}
         {CLASS_KEYS.map((cls) => (
@@ -674,9 +682,6 @@ function RewardsMatrix({
               title={CLASS_META[cls].name}
             >
               {CLASS_META[cls].emoji} {shortClass[cls]}
-            </span>
-            <span className="text-foreground/80 border-border/60 border-t px-1 py-1.5 text-center font-bold tabular-nums">
-              {cell(matrix.grid[cls][strategy])}
             </span>
             {ACTION_KEYS.map((a) => (
               <span
@@ -688,9 +693,9 @@ function RewardsMatrix({
                     : "text-foreground/80",
                 )}
               >
-                {a === "story" && cls !== "influencer"
+                {(a === "story" && cls !== "influencer") || !paidStrategy
                   ? "—"
-                  : cell(matrix.actions[a][cls][strategy])}
+                  : cell(rateFromRules(matrix.rules, paidStrategy, cls, a))}
               </span>
             ))}
           </div>

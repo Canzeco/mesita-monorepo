@@ -174,19 +174,86 @@ export function coerceRewardsGrid(raw: unknown): RewardsGrid {
   return { grid, actions, cap: num(c.cap, DEFAULT_REWARDS_GRID.cap) };
 }
 
-// Loads the reward grid from the app_settings singleton. Falls back to the
-// locked defaults on any read miss so a ticket never fails to price.
+// One (strategy, class, action) rule row — the v8 normalized shape
+// (MESITA-873). "standing" is the None column: v13's `grid` and `actions`
+// were two shapes for the same thing, and collapsing them means a future
+// action is rows, not a schema change.
+export type RewardRuleRow = {
+  strategy: string;
+  class: string;
+  action: string;
+  discount_percent: number | null;
+};
+
+/**
+ * Fold rule rows into the in-memory grid the engine has always used. The
+ * SHAPE is deliberately unchanged: resolveTicketRate, offersAction and every
+ * caller keep working, so normalizing storage never touched the money math.
+ * Rows for unknown keys are ignored; missing rows keep their default, so a
+ * partial table can't produce NaN discounts.
+ */
+export function gridFromRuleRows(
+  rows: readonly RewardRuleRow[],
+  cap: number,
+): RewardsGrid {
+  const grid = {} as Record<ClassSegment, SegmentRates>;
+  for (const cls of CLASS_SEGMENTS) {
+    grid[cls] = { ...DEFAULT_REWARDS_GRID.grid[cls], conservative: 0, aggressive: 0, dominant: 0 };
+  }
+  const actions = {} as ActionMatrix;
+  for (const action of ACTION_SEGMENTS) {
+    const perClass = {} as Record<ClassSegment, SegmentRates>;
+    for (const cls of CLASS_SEGMENTS) {
+      perClass[cls] = { zero: 0, conservative: 0, aggressive: 0, dominant: 0 };
+    }
+    actions[action] = perClass;
+  }
+
+  for (const row of rows) {
+    const strategy = row.strategy;
+    if (strategy !== "conservative" && strategy !== "aggressive" && strategy !== "dominant") {
+      continue;
+    }
+    const cls = CLASS_SEGMENTS.find((c) => c === row.class);
+    if (!cls) continue;
+    const value = num(row.discount_percent, 0);
+    if (row.action === "standing") {
+      grid[cls][strategy] = value;
+      continue;
+    }
+    const action = ACTION_SEGMENTS.find((a) => a === row.action);
+    if (!action) continue;
+    actions[action][cls][strategy] = value;
+  }
+
+  return { grid, actions, cap };
+}
+
+/**
+ * Loads the reward grid. `reward_rules` is the source of truth (v8); the
+ * cap stays a scalar on app_settings because it is one platform constant,
+ * not a rule.
+ *
+ * Two fallbacks, both deliberate — a ticket must never fail to price:
+ * an empty/unreadable rules table falls back to the legacy blob (which is
+ * still written on every save), and a missing blob falls back to the locked
+ * defaults.
+ */
 export async function loadRewardsGrid(
   admin: SupabaseClient,
 ): Promise<RewardsGrid> {
-  const { data } = await admin
-    .from("app_settings")
-    .select("rewards_config")
-    .eq("id", 1)
-    .maybeSingle();
-  return data?.rewards_config
-    ? coerceRewardsGrid(data.rewards_config)
-    : DEFAULT_REWARDS_GRID;
+  const [settingsRes, rulesRes] = await Promise.all([
+    admin.from("app_settings").select("rewards_config").eq("id", 1).maybeSingle(),
+    admin.from("reward_rules").select("strategy, class, action, discount_percent"),
+  ]);
+
+  const blob = settingsRes.data?.rewards_config;
+  const cap = blob ? coerceRewardsGrid(blob).cap : DEFAULT_REWARDS_GRID.cap;
+
+  const rows = (rulesRes.data ?? []) as RewardRuleRow[];
+  if (rows.length > 0) return gridFromRuleRows(rows, cap);
+
+  return blob ? coerceRewardsGrid(blob) : DEFAULT_REWARDS_GRID;
 }
 
 // A place's strategy from its v4 rate columns → the four grid keys.

@@ -1,45 +1,52 @@
-// Rewards Config catalog — the v7 Strategy × Class matrix (MESITA-859).
+// Rewards Config catalog — the v8 NORMALIZED rule list (MESITA-873).
 //
-// This page lifts Pato's canonical rewards table out of code and onto the
-// public.app_settings singleton. Rows are Strategy × Class; columns are the
-// standing discount (None) plus every rewarded action — "different discount
-// for each item, depending on the tier". The v13 bill engine
-// (_shared/rewards-config.ts) reads it on every ticket.
+// One rule per (strategy × class × action) — 3 × 4 × 5 = 60 rows, listed
+// Strategy → Class → Action → Discount, exactly the table Pato wrote out.
+// "standing" is the None column: v7 stored the standing discount and the
+// action rates in two different shapes for the same fact, and collapsing
+// them means a future action (TikTok, Referral, Birthday, Spend $X) is
+// INSERTED as rows instead of changing the schema.
 //
-// v13 blob: { cap, grid: { <class>: rates }, actions: { <action>: { <class>:
-// rates } } }. A v12 blob (flat action rows inside `grid`, no `actions`)
-// coerces by IDENTITY — the flat value copies to every class — so a stale row
-// renders and bills exactly as before. mesita_review joined in v7 and
-// launches at 0 (unpriced) until the operator prices it here.
+// Honest limit on that promise: pricing becomes pure data, but ELIGIBILITY
+// stays code — the bill engine has to know what verified signal gates an
+// action. A new row prices instantly and pays nothing until its signal ships.
 //
-// Grid rule: 5% steps, floor 5%, ceiling 70% (allowed {0, 5, 10, … 70};
-// 0 = off). Both bounds were opened by Pato, live on the matrix: the floor
-// from 10% because per-class cells made 5% a real price (MESITA-866), the
-// ceiling from 50% because the v7 matrix prices a single best-of cell rather
-// than a place-wide headline (MESITA-872 — this reverses the v4-era retirement
-// of 70 in MESITA-543). Zero strategy is off by definition.
-// Universal cap: every discount applies to the first `cap` MXN of the bill.
+// Rate grid: 5% steps, floor 5%, ceiling 70% (0 = off) — MESITA-866/872.
+// Zero strategy has no rules; it is off by definition.
+// The cap is NOT a rule — it is one platform-wide scalar, still on
+// app_settings.rewards_config.cap, and categorical (see ALLOWED_CAPS).
 //
 // Keys are the contract shared with admin-web-{get,update}-rewards-config and
-// the best-of resolution in _shared/rewards-config.ts — keep them in
+// the fold in _shared/rewards-config.ts gridFromRuleRows — keep them in
 // lock-step (MESITA-805 pins this with tests on the EF side).
 
-export type GridStrategy = "zero" | "conservative" | "aggressive" | "dominant";
-
+export type StrategyKey = "conservative" | "aggressive" | "dominant";
 export type ClassKey = "standard" | "premium" | "influencer" | "aura";
-export type ActionKey = "mesita_review" | "story" | "welcome" | "review";
+export type ActionKey =
+  | "standing"
+  | "mesita_review"
+  | "story"
+  | "welcome"
+  | "review";
 
-export type SegmentRates = Record<GridStrategy, number>;
+export type RewardRule = {
+  strategy: StrategyKey;
+  class: ClassKey;
+  action: ActionKey;
+  discount_percent: number;
+};
 
+/** The whole editable state: the rule list plus the one scalar. */
 export type RewardsConfig = {
-  /** Standing class discounts — the "None" column of the table. */
-  grid: Record<ClassKey, SegmentRates>;
-  /** Per-class, per-strategy action rates — the rest of the columns. */
-  actions: Record<ActionKey, Record<ClassKey, SegmentRates>>;
-  /** Universal cap (MXN): the discount applies to the first `cap` of the bill. */
+  rules: RewardRule[];
   cap: number;
 };
 
+export const STRATEGY_KEYS: readonly StrategyKey[] = [
+  "conservative",
+  "aggressive",
+  "dominant",
+];
 export const CLASS_KEYS: readonly ClassKey[] = [
   "standard",
   "premium",
@@ -47,11 +54,36 @@ export const CLASS_KEYS: readonly ClassKey[] = [
   "aura",
 ];
 export const ACTION_KEYS: readonly ActionKey[] = [
+  "standing",
   "mesita_review",
   "story",
   "welcome",
   "review",
 ];
+
+export const RULE_COUNT =
+  STRATEGY_KEYS.length * CLASS_KEYS.length * ACTION_KEYS.length; // 60
+
+export const STRATEGY_META: Record<
+  StrategyKey,
+  { name: string; emoji: string; blurb: string }
+> = {
+  conservative: {
+    name: "Conservative",
+    emoji: "🌿",
+    blurb: "A calm, sustainable discount.",
+  },
+  aggressive: {
+    name: "Aggressive",
+    emoji: "⚡",
+    blurb: "Bold headlines to pull a crowd.",
+  },
+  dominant: {
+    name: "Dominant",
+    emoji: "👑",
+    blurb: "Raises the floor — a strong deal for every guest.",
+  },
+};
 
 export const CLASS_META: Record<
   ClassKey,
@@ -83,6 +115,11 @@ export const ACTION_META: Record<
   ActionKey,
   { name: string; emoji: string; blurb: string }
 > = {
+  standing: {
+    name: "None (Standing)",
+    emoji: "🎫",
+    blurb: "The standing class discount — no action required.",
+  },
   mesita_review: {
     name: "Mesita Review",
     emoji: "🍽️",
@@ -106,31 +143,7 @@ export const ACTION_META: Record<
   },
 };
 
-// The editable strategies — Zero is off by definition, so it has no rows in
-// the matrix (all-None, fixed).
-export const EDITABLE_STRATEGIES: readonly {
-  key: Exclude<GridStrategy, "zero">;
-  label: string;
-  blurb: string;
-}[] = [
-  {
-    key: "conservative",
-    label: "Conservative",
-    blurb: "A calm, sustainable discount.",
-  },
-  {
-    key: "aggressive",
-    label: "Aggressive",
-    blurb: "Bold headlines to pull a crowd.",
-  },
-  {
-    key: "dominant",
-    label: "Dominant",
-    blurb: "Raises the floor — a strong deal for every guest.",
-  },
-];
-
-// The 5% grid: off, then 10 → 50 in steps of 5.
+// The 5% grid: off, then 5 → 70 in steps of 5.
 const RATE_STEP = 5;
 const RATE_FLOOR = 5;
 const RATE_MAX = 70;
@@ -138,121 +151,152 @@ export const ALLOWED_RATES: readonly number[] = [
   0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70,
 ];
 
-// The universal cap is CATEGORICAL (MESITA-872): ten round options, MX$100 →
-// MX$1,000 in hundreds. It used to be a free number field with a 0–5,000
-// range, which allowed both a meaningless cap (MX$37) and an unbounded one
-// (MX$0 = no ceiling at all, the opposite of the promise this knob makes).
-export const ALLOWED_CAPS: readonly number[] = [
-  100, 200, 300, 400, 500, 600, 700, 800, 900, 1000,
-];
-export const CAP_MIN = ALLOWED_CAPS[0];
-export const CAP_MAX = ALLOWED_CAPS[ALLOWED_CAPS.length - 1];
-const CAP_STEP = 100;
+// The universal cap is CATEGORICAL: four round options. A free number field
+// allowed both a meaningless cap (MX$37) and MX$0 — which silently meant NO
+// ceiling, the opposite of the promise this knob makes.
+export const ALLOWED_CAPS: readonly number[] = [100, 200, 500, 1000];
 const CAP_DEFAULT = 500;
 
-const R = (
-  conservative: number,
-  aggressive: number,
-  dominant: number,
-): SegmentRates => ({ zero: 0, conservative, aggressive, dominant });
-
-const FLAT = (r: SegmentRates): Record<ClassKey, SegmentRates> => ({
-  standard: { ...r },
-  premium: { ...r },
-  influencer: { ...r },
-  aura: { ...r },
-});
-
-// The v7 launch defaults — the identity migration of the locked v6 table.
-export const DEFAULT_CONFIG: RewardsConfig = {
-  cap: CAP_DEFAULT,
-  grid: {
-    standard: R(10, 10, 20),
-    premium: R(15, 20, 25),
-    influencer: R(15, 20, 25),
-    aura: R(20, 25, 30),
-  },
-  actions: {
-    mesita_review: FLAT(R(0, 0, 0)),
-    story: FLAT(R(20, 30, 40)),
-    welcome: FLAT(R(20, 30, 40)),
-    review: FLAT(R(30, 50, 50)),
-  },
+// The v7 launch defaults. The standing column varies by class; the actions
+// don't (yet) — per-class action pricing is exactly what the matrix unlocked.
+const DEFAULT_STANDING: Record<ClassKey, Record<StrategyKey, number>> = {
+  standard: { conservative: 10, aggressive: 10, dominant: 20 },
+  premium: { conservative: 15, aggressive: 20, dominant: 25 },
+  influencer: { conservative: 15, aggressive: 20, dominant: 25 },
+  aura: { conservative: 20, aggressive: 25, dominant: 30 },
+};
+const DEFAULT_ACTION: Record<
+  Exclude<ActionKey, "standing">,
+  Record<StrategyKey, number>
+> = {
+  mesita_review: { conservative: 0, aggressive: 0, dominant: 0 },
+  story: { conservative: 20, aggressive: 30, dominant: 40 },
+  welcome: { conservative: 20, aggressive: 30, dominant: 40 },
+  review: { conservative: 30, aggressive: 50, dominant: 50 },
 };
 
+export function defaultRateFor(
+  strategy: StrategyKey,
+  cls: ClassKey,
+  action: ActionKey,
+): number {
+  return action === "standing"
+    ? DEFAULT_STANDING[cls][strategy]
+    : DEFAULT_ACTION[action][strategy];
+}
+
+export const ruleKey = (
+  strategy: StrategyKey,
+  cls: ClassKey,
+  action: ActionKey,
+) => `${strategy}|${cls}|${action}`;
+
+/** The complete rule list in canonical order, at launch prices. */
+export function defaultRules(): RewardRule[] {
+  const rules: RewardRule[] = [];
+  for (const strategy of STRATEGY_KEYS) {
+    for (const cls of CLASS_KEYS) {
+      for (const action of ACTION_KEYS) {
+        rules.push({
+          strategy,
+          class: cls,
+          action,
+          discount_percent: defaultRateFor(strategy, cls, action),
+        });
+      }
+    }
+  }
+  return rules;
+}
+
+export const DEFAULT_CONFIG: RewardsConfig = {
+  rules: defaultRules(),
+  cap: CAP_DEFAULT,
+};
+
+/**
+ * One rule's rate out of the flat list. The normalized shape's tradeoff:
+ * lookups are a find instead of a nested index, so any surface reading more
+ * than a couple of cells should index once (see the map in the editor) —
+ * this helper is for the handful-of-cells case.
+ */
+export function rateFromRules(
+  rules: readonly RewardRule[],
+  strategy: StrategyKey,
+  cls: ClassKey,
+  action: ActionKey,
+): number {
+  const hit = rules.find(
+    (r) => r.strategy === strategy && r.class === cls && r.action === action,
+  );
+  return hit?.discount_percent ?? defaultRateFor(strategy, cls, action);
+}
+
 /** Snap any number to the 5% grid: ≤0 → 0, else clamp to [5,70] rounded to 5. */
-function snapRate(v: unknown): number {
-  const n = typeof v === "number" && Number.isFinite(v) ? v : 0;
-  if (n <= 0) return 0;
-  const stepped = Math.round(n / RATE_STEP) * RATE_STEP;
+function snapRate(v: unknown, fallback: number): number {
+  if (typeof v !== "number" || !Number.isFinite(v)) return fallback;
+  if (v <= 0) return 0;
+  const stepped = Math.round(v / RATE_STEP) * RATE_STEP;
   return Math.max(RATE_FLOOR, Math.min(RATE_MAX, stepped));
 }
 
-/** Snap the cap onto the categorical ladder: nearest MX$100 in [100, 1000]. */
-function clampCap(v: unknown): number {
+/** Snap the cap onto the categorical ladder — nearest allowed option. */
+function snapCap(v: unknown): number {
   if (typeof v !== "number" || !Number.isFinite(v)) return CAP_DEFAULT;
-  const stepped = Math.round(v / CAP_STEP) * CAP_STEP;
-  return Math.max(CAP_MIN, Math.min(CAP_MAX, stepped));
+  let best = ALLOWED_CAPS[0];
+  for (const option of ALLOWED_CAPS) {
+    if (Math.abs(option - v) < Math.abs(best - v)) best = option;
+  }
+  return best;
 }
 
-function coerceRow(row: unknown, fallback: SegmentRates): SegmentRates {
-  const r =
-    row && typeof row === "object" && !Array.isArray(row)
-      ? (row as Record<string, unknown>)
-      : null;
-  return {
-    zero: 0, // off by definition
-    conservative:
-      r && "conservative" in r
-        ? snapRate(r.conservative)
-        : fallback.conservative,
-    aggressive:
-      r && "aggressive" in r ? snapRate(r.aggressive) : fallback.aggressive,
-    dominant: r && "dominant" in r ? snapRate(r.dominant) : fallback.dominant,
-  };
-}
+const isStrategy = (v: unknown): v is StrategyKey =>
+  (STRATEGY_KEYS as readonly unknown[]).includes(v);
+const isClass = (v: unknown): v is ClassKey =>
+  (CLASS_KEYS as readonly unknown[]).includes(v);
+const isAction = (v: unknown): v is ActionKey =>
+  (ACTION_KEYS as readonly unknown[]).includes(v);
 
 /**
- * Coerce whatever the row holds into a renderable v13 matrix. Anything
- * malformed resolves to the launch defaults — the page must always be usable.
- * A v12 blob migrates by identity (flat action rows copy to every class).
- * Mirrors normalizeConfig in the update EF (the strict gate on save).
+ * Coerce whatever the EF returned into a COMPLETE, renderable rule set —
+ * always all 60, in canonical order. A partially-seeded table, an unknown
+ * key, or a stale shape all resolve to launch defaults for the gap rather
+ * than rendering a hole. Mirrors normalizeRewards in the update EF.
  */
-export function coerceConfig(raw: unknown): RewardsConfig {
-  if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
-    return DEFAULT_CONFIG;
-  }
-  const c = raw as Record<string, unknown>;
-  const rawGrid =
-    c.grid && typeof c.grid === "object" && !Array.isArray(c.grid)
-      ? (c.grid as Record<string, unknown>)
-      : {};
-  const rawActions =
-    c.actions && typeof c.actions === "object" && !Array.isArray(c.actions)
-      ? (c.actions as Record<string, unknown>)
-      : {};
-
-  const grid = {} as Record<ClassKey, SegmentRates>;
-  for (const cls of CLASS_KEYS) {
-    grid[cls] = coerceRow(rawGrid[cls], DEFAULT_CONFIG.grid[cls]);
-  }
-
-  const actions = {} as Record<ActionKey, Record<ClassKey, SegmentRates>>;
-  for (const action of ACTION_KEYS) {
-    const rawAction =
-      rawActions[action] && typeof rawActions[action] === "object"
-        ? (rawActions[action] as Record<string, unknown>)
-        : null;
-    const legacyFlat = action === "mesita_review" ? null : rawGrid[action];
-    const perClass = {} as Record<ClassKey, SegmentRates>;
-    for (const cls of CLASS_KEYS) {
-      perClass[cls] = coerceRow(
-        rawAction?.[cls] ?? legacyFlat,
-        DEFAULT_CONFIG.actions[action][cls],
+export function coerceRules(rawRules: unknown, rawCap: unknown): RewardsConfig {
+  const sent = new Map<string, number>();
+  if (Array.isArray(rawRules)) {
+    for (const entry of rawRules) {
+      if (!entry || typeof entry !== "object") continue;
+      const r = entry as Record<string, unknown>;
+      if (!isStrategy(r.strategy) || !isClass(r.class) || !isAction(r.action)) {
+        continue;
+      }
+      sent.set(
+        ruleKey(r.strategy, r.class, r.action),
+        snapRate(
+          r.discount_percent,
+          defaultRateFor(r.strategy, r.class, r.action),
+        ),
       );
     }
-    actions[action] = perClass;
   }
 
-  return { grid, actions, cap: "cap" in c ? clampCap(c.cap) : CAP_DEFAULT };
+  const rules: RewardRule[] = [];
+  for (const strategy of STRATEGY_KEYS) {
+    for (const cls of CLASS_KEYS) {
+      for (const action of ACTION_KEYS) {
+        const key = ruleKey(strategy, cls, action);
+        rules.push({
+          strategy,
+          class: cls,
+          action,
+          discount_percent:
+            sent.get(key) ?? defaultRateFor(strategy, cls, action),
+        });
+      }
+    }
+  }
+
+  return { rules, cap: snapCap(rawCap) };
 }
