@@ -34,7 +34,7 @@ export function ManageSingleLayoutShell({
       <PageHeader
         eyebrow="Units · Single"
         title="Manage Single Unit"
-        description="Search Mesita units or create from Google, then run Place, Promos, Performance, and Settings — super-admin access bypasses place membership."
+        description="Search Mesita units or create from Google, then run Place, Promos, Performance, Settings, and Admin — super-admin access bypasses place membership."
       />
       <div className="mt-6 sm:mt-8">{children}</div>
     </PageContainer>
