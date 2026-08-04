@@ -71,6 +71,10 @@ import {
 } from "../_shared/elevenlabs.ts";
 import { nextAttemptAt } from "../_shared/reservation-retry.ts";
 import {
+  alternativesToSpeech,
+  normalizeAlternatives,
+} from "../_shared/reservation-alternatives.ts";
+import {
   businessLegFirstMessage,
   businessLegPrompt,
   guestLegFirstMessage,
@@ -180,10 +184,10 @@ async function readReportedVerdict(
     .select("reported_verdict, alternatives, outcome_note")
     .eq("id", id)
     .maybeSingle();
-  const alts = Array.isArray(data?.alternatives) ? (data.alternatives as unknown[]) : [];
+  // Structured now ({time,date?,note?}); the helper still reads legacy strings.
   return {
     verdict: (data?.reported_verdict as string | null) ?? null,
-    alternativesText: alts.filter((a): a is string => typeof a === "string").join(" · "),
+    alternativesText: alternativesToSpeech(normalizeAlternatives(data?.alternatives)),
     // a1 puts the human-readable reason here — e.g. which farmacia answered.
     note: typeof data?.outcome_note === "string" ? data.outcome_note : "",
   };

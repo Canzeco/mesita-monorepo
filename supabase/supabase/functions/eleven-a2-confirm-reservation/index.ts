@@ -23,6 +23,10 @@ import { corsPreflight, json, readJsonOr } from "../_shared/http.ts";
 import { adminClient, readEFEnv } from "../_shared/auth.ts";
 import { invokeArtificialCaller } from "../_shared/internal.ts";
 import {
+  matchesOffer,
+  normalizeAlternatives,
+} from "../_shared/reservation-alternatives.ts";
+import {
   cleanNote,
   esDate,
   esTime,
@@ -95,6 +99,50 @@ Deno.serve(async (req) => {
       ok: false,
       error: "new_date must be YYYY-MM-DD and new_time HH:mm (venue-local)",
     }, 400);
+  }
+
+  // ── Did the guest just accept one of the venue's OWN offers? ─────────────
+  // If so the venue has already said that slot is free — re-calling it to ask
+  // for a slot it volunteered is a question that was answered a minute ago,
+  // and calling the guest back afterwards reports news they gave us
+  // themselves. That was 4 calls for one booking; this makes it 2. a1's
+  // counter-offer close asks the venue to hold what it offered, so acting on
+  // it here is a promise the venue already made, not an assumption.
+  const offered = normalizeAlternatives(ticket.alternatives);
+  if (matchesOffer(offered, date, time, venueLocalDate(ticket.reserved_at))) {
+    const nowIso = new Date().toISOString();
+    const patch: Record<string, unknown> = {
+      reserved_at: next.toISOString(),
+      status: "confirmed",
+      reported_verdict: "confirmed",
+      confirmed_at: nowIso,
+      guest_confirmed_at: nowIso,
+      next_attempt_at: null,
+      attempts_state: "answered",
+      // a2 is ON the phone with the guest right now — there is nothing left
+      // to call them back about.
+      callback_state: "skipped",
+      last_call_status: `guest took the venue's own ${date} ${time} offer — confirmed on the spot`,
+    };
+    if (note) patch.outcome_note = note;
+    const { error: confErr } = await admin
+      .from("reservations")
+      .update(patch)
+      .eq("id", ticket.id);
+    if (confErr) return json({ ok: false, error: confErr.message }, 500);
+    return json({
+      ok: true,
+      guest_confirmed: true,
+      changed: true,
+      confirmed_on_the_spot: true,
+      both_confirmed: true,
+      needs_new_venue_call: false,
+      reference_code: ticket.reference_code,
+      date_es: esDate(next.toISOString()),
+      time_es: esTime(next.toISOString()),
+      say:
+        "Listo, esa opción ya la tenía apartada el restaurante: su mesa queda confirmada. No hace falta otra llamada.",
+    });
   }
 
   const rounds = ticket.negotiation_rounds ?? 0;

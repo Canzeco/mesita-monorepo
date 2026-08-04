@@ -27,6 +27,7 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { corsPreflight, json, readJsonOr } from "../_shared/http.ts";
 import { adminClient, readEFEnv } from "../_shared/auth.ts";
 import { cleanNote, requireAgentSecret, ticketByCode } from "../_shared/agent-tools.ts";
+import { normalizeAlternatives } from "../_shared/reservation-alternatives.ts";
 
 const VERDICTS = [
   "confirmed",
@@ -63,12 +64,11 @@ Deno.serve(async (req) => {
   const ticket = await ticketByCode(admin, body.reference_code);
   if (!ticket) return json({ ok: false, error: "reservation not found for that reference_code" }, 404);
 
-  const alternatives = Array.isArray(body.alternatives)
-    ? body.alternatives
-      .filter((a): a is string => typeof a === "string" && a.trim().length > 0)
-      .map((a) => a.trim().slice(0, 120))
-      .slice(0, 5)
-    : [];
+  // Structured {time,date?,note?} entries — see _shared/reservation-alternatives.ts.
+  // Storing prose made every guest pick look like a brand-new proposal and cost
+  // the venue a second call. normalizeAlternatives still accepts the old string
+  // form, so an agent build that hasn't picked up the new schema keeps working.
+  const alternatives = normalizeAlternatives(body.alternatives).slice(0, 5);
 
   const { error } = await admin
     .from("reservations")
