@@ -22,7 +22,12 @@
 // those callers need (extra keys are harmless); note which side each column
 // lives on, because the old embeds got that wrong as well:
 //   places   → name, category, photos, address, price_level, lat, lng
-//   projects → slug, listing_type, fiscal_type
+//   projects → slug, listing_type, fiscal_type, the four promo rate columns
+//
+// The rate columns ride along (MESITA-869) so a consumer surface can quote
+// THIS place's real numbers. A membership writes them as one preset, so the
+// client recovers the strategy by exact match (lib/promo-rates.ts
+// strategyForPromoMatrix) — no rates blob, no extra EF, no extra query.
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 
@@ -32,6 +37,11 @@ export type PlaceSummary = {
   slug: string | null;
   listing_type: string | null;
   fiscal_type: string | null;
+  /** From projects — the v4 preset the place is running (MESITA-869). */
+  welcome_free_rate: number | null;
+  welcome_premium_rate: number | null;
+  free_rate: number | null;
+  premium_rate: number | null;
   /** From places. */
   name: string | null;
   category: string | null;
@@ -62,6 +72,7 @@ export async function attachPlaces<T extends RowWithProject>(
       .from("projects")
       .select(
         "id, slug, listing_type, fiscal_type, " +
+          "welcome_free_rate, welcome_premium_rate, free_rate, premium_rate, " +
           "place:places(id, name, category, photos, address, price_level, lat, lng)",
       )
       .in("id", ids);
@@ -70,6 +81,10 @@ export async function attachPlaces<T extends RowWithProject>(
       slug: string | null;
       listing_type: string | null;
       fiscal_type: string | null;
+      welcome_free_rate: number | null;
+      welcome_premium_rate: number | null;
+      free_rate: number | null;
+      premium_rate: number | null;
       place:
         | {
           id: string;
@@ -89,6 +104,10 @@ export async function attachPlaces<T extends RowWithProject>(
         slug: p.slug ?? null,
         listing_type: p.listing_type ?? null,
         fiscal_type: p.fiscal_type ?? null,
+        welcome_free_rate: p.welcome_free_rate ?? null,
+        welcome_premium_rate: p.welcome_premium_rate ?? null,
+        free_rate: p.free_rate ?? null,
+        premium_rate: p.premium_rate ?? null,
         name: p.place?.name ?? null,
         category: p.place?.category ?? null,
         photos: p.place?.photos ?? null,
