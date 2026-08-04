@@ -110,6 +110,13 @@ export type ConversationStatusResult =
      * "success" is what the intent loop reads as "the venue CONFIRMED".
      */
     callSuccessful: string | null;
+    /**
+     * metadata.error.code when the platform killed the call (1002 = out of
+     * credits) — how the engine tells OUR outage from THEIR silence.
+     */
+    errorCode: number | null;
+    /** Whether voicemail answered — detection tool fired / termination says so. */
+    voicemailDetected: boolean;
   }
   | { ok: false; error: string };
 
@@ -146,6 +153,13 @@ export async function getConversationStatus(
     ? meta.call_duration_secs
     : null;
   const analysis = (b.analysis ?? null) as Record<string, unknown> | null;
+  const err = (meta?.error ?? null) as Record<string, unknown> | null;
+  // Voicemail: the platform's own detection is authoritative when it fired;
+  // the transcript scan catches it wherever the tool call landed, and
+  // termination_reason is the belt-and-braces.
+  const voicemail = JSON.stringify(b.transcript ?? "").includes("voicemail_detection") ||
+    (typeof meta?.termination_reason === "string" &&
+      meta.termination_reason.toLowerCase().includes("voicemail"));
   return {
     ok: true,
     status: typeof b.status === "string" ? b.status : "unknown",
@@ -153,6 +167,8 @@ export async function getConversationStatus(
     callSuccessful: analysis && typeof analysis.call_successful === "string"
       ? analysis.call_successful
       : null,
+    errorCode: err && typeof err.code === "number" ? err.code : null,
+    voicemailDetected: voicemail,
   };
 }
 
@@ -164,7 +180,7 @@ export type OutboundCallResult =
     /** Whether the per-call prompt/first-message override actually rode along. */
     usedOverrides: boolean;
   }
-  | { ok: false; error: string };
+  | { ok: false; error: string; httpStatus: number | null };
 
 /** Per-call agent override — the per-leg brief (see _shared/reservation-legs.ts). */
 export type CallOverrides = {
@@ -233,20 +249,24 @@ export async function placeOutboundCall(
         }),
       });
     } catch (e) {
-      return { ok: false, error: e instanceof Error ? e.message : "outbound-call fetch failed" };
+      return {
+        ok: false,
+        error: e instanceof Error ? e.message : "outbound-call fetch failed",
+        httpStatus: null,
+      };
     }
     let body: unknown;
     try {
       body = await r.json();
     } catch {
-      return { ok: false, error: `outbound-call returned non-JSON (HTTP ${r.status})` };
+      return { ok: false, error: `outbound-call returned non-JSON (HTTP ${r.status})`, httpStatus: r.status };
     }
     if (!r.ok) {
       const detail = (body as { detail?: { message?: string } | string } | null)?.detail;
       const msg = typeof detail === "string"
         ? detail
         : detail?.message ?? `outbound-call HTTP ${r.status}`;
-      return { ok: false, error: msg };
+      return { ok: false, error: msg, httpStatus: r.status };
     }
     const b = body as Record<string, unknown>;
     return {

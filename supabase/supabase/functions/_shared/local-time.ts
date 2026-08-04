@@ -34,6 +34,7 @@ export function mexicoZone(lng: number | null): string {
 // runtime clock. Returns null on a bad zone so callers keep a neutral default.
 export function localClock(
   lng: number | null,
+  at: Date = new Date(),
 ): { weekday: string; hour: number; minutes: number } | null {
   const timeZone = mexicoZone(lng);
   try {
@@ -43,7 +44,7 @@ export function localClock(
       hour: "numeric",
       minute: "2-digit",
       hour12: false,
-    }).formatToParts(new Date());
+    }).formatToParts(at);
     let weekday = "";
     let hour = 12;
     let minute = 0;

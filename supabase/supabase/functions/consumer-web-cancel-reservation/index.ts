@@ -21,6 +21,7 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { corsPreflight, json, readJson } from "../_shared/http.ts";
 import { adminClient, getAuthedUser, readEFEnv } from "../_shared/auth.ts";
 import { invokeArtificialCaller } from "../_shared/internal.ts";
+import { cancelTicket } from "../_shared/agent-tools.ts";
 
 type Body = { reservation_id?: string; reason?: string };
 
@@ -70,25 +71,12 @@ Deno.serve(async (req) => {
   // cancel or this becomes a Mesita-made no-show (RESERVATIONS-PROTOCOL.md
   // leg 5). Pending tickets owe nothing: never ring a venue to cancel what it
   // never agreed to.
-  const notice = row.status === "confirmed" ? "venue_cancel" : null;
-  const { error } = await admin
-    .from("reservations")
-    .update({
-      status: "cancelled",
-      cancelled_at: new Date().toISOString(),
-      cancelled_by: "consumer",
-      outcome_note: reason || null,
-      // Stop the run loop from re-entering on a cancelled ticket.
-      attempts_state: "cancelled",
-      next_attempt_at: null,
-      callback_state: "skipped",
-      callback_next_attempt_at: null,
-      ...(notice
-        ? { notice_kind: notice, notice_state: "pending", notice_attempts: 0, notice_next_at: null }
-        : {}),
-    })
-    .eq("id", id);
-  if (error) return json({ ok: false, error: error.message }, 500);
+  const notice = row.status === "confirmed" ? "venue_cancel" as const : null;
+  // ONE cancel write-shape for all four doors (app + a2/a3/a4 voice) —
+  // cancelTicket owns it, including the run_id rotation that orphans any
+  // mid-flight engine run.
+  const err = await cancelTicket(admin, id, "consumer", reason, notice);
+  if (err) return json({ ok: false, error: err }, 500);
 
   // The cancel itself is done and instant; the courtesy call is a background
   // consequence. The engine acks early, and the retry cron sweeps any notice

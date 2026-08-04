@@ -26,6 +26,7 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { corsPreflight, json, readJson } from "../_shared/http.ts";
 import { adminClient, getAuthedUser, readEFEnv } from "../_shared/auth.ts";
 import { invokeArtificialCaller } from "../_shared/internal.ts";
+import { coerceReservationsCallConfig } from "../_shared/reservations-config.ts";
 
 type Body = {
   reservation_id?: string;
@@ -83,7 +84,9 @@ Deno.serve(async (req) => {
   const admin = adminClient(envRes.env);
   const { data: row, error: readErr } = await admin
     .from("reservations")
-    .select("id, status, reserved_at, consumer_id, reference_code")
+    .select(
+      "id, status, reserved_at, consumer_id, reference_code, reschedules_today, reschedules_day, modification_of",
+    )
     .eq("id", id)
     .maybeSingle();
   if (readErr) return json({ ok: false, error: readErr.message }, 500);
@@ -97,8 +100,42 @@ Deno.serve(async (req) => {
     return json({ ok: false, error: "This reservation already happened." }, 409);
   }
 
+  // ── Reschedule cap (abuse guard, eng-review 2026-08-04) ───────────────────
+  // Every reschedule resets call_attempts — i.e. buys fresh venue calls — so
+  // it is rate-limited per ticket per day. Knob lives in reservations_config.
+  const { data: settings } = await admin
+    .from("app_settings")
+    .select("reservations_config")
+    .eq("id", 1)
+    .maybeSingle();
+  const limits = coerceReservationsCallConfig(settings?.reservations_config).limits;
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const sameDay = row.reschedules_day === todayStr;
+  const usedToday = sameDay && typeof row.reschedules_today === "number"
+    ? row.reschedules_today
+    : 0;
+  if (usedToday >= limits.reschedulesPerTicketPerDay) {
+    return json({
+      ok: false,
+      error:
+        `This reservation was already rescheduled ${usedToday} times today — try again tomorrow or cancel it.`,
+    }, 429);
+  }
+
   // ── Back to the start of the lifecycle: the venue must agree again ────────
+  // A CONFIRMED ticket being moved is a MODIFICATION: the venue holds a live
+  // table, so a1 asks to MOVE it (and modification_of remembers the old slot
+  // so a failed re-book still releases the hold — leg 5 via this door).
+  // run_id rotation orphans any engine run mid-flight on the old terms.
   Object.assign(patch, {
+    run_id: crypto.randomUUID(),
+    claimed_at: null,
+    outage_retries: 0,
+    reschedules_today: usedToday + 1,
+    reschedules_day: todayStr,
+    modification_of: row.status === "confirmed"
+      ? row.reserved_at
+      : (row.modification_of ?? null),
     status: "pending",
     reported_verdict: null,
     alternatives: [],

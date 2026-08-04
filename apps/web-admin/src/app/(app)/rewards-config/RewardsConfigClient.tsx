@@ -1,11 +1,12 @@
 "use client";
 
 import { useEffect, useMemo, useState, useTransition } from "react";
-import { Coins, Info, Percent, RotateCcw, Sparkles } from "lucide-react";
+import Link from "next/link";
+import { Coins, Info, Percent, RotateCcw } from "lucide-react";
 
 import { ErrorNote } from "@/components/ErrorNote";
 import { NumberField, SaveRow, SectionCard } from "../enricher-config/atlas-ui";
-import { getRewardsConfig, grantAura, updateRewardsConfig } from "./actions";
+import { getRewardsConfig, updateRewardsConfig } from "./actions";
 import {
   ACTION_KEYS,
   ACTION_META,
@@ -285,93 +286,21 @@ export function RewardsConfigClient({
         </p>
       </SectionCard>
 
-      {/* Aura invitations — the invite-only door, admin-granted for launch. */}
-      <AuraGrantCard />
-
       <div>
         <p className="text-muted-foreground text-xs">
           Persisted to <code className="font-mono">app_settings.rewards_config</code>{" "}
           (v13 matrix). This is the operator source of truth for the v7 rewards
-          table; the bill engine reads it on every ticket (MESITA-859).
+          table; the bill engine reads it on every ticket (MESITA-859). This page
+          prices the Aura row — who is actually on Aura is decided in{" "}
+          <Link href="/aura-config" className="underline underline-offset-2">
+            Aura Config
+          </Link>
+          .
         </p>
         <SaveRow pending={pending} dirty={dirty} ok={ok} onClick={save} />
         {error && <ErrorNote message={error} />}
       </div>
     </div>
-  );
-}
-
-// Minimal honest surface for the Aura door: paste a consumer id, grant or
-// revoke. Grant writes aura/'invitation'; revoke recomputes the best remaining
-// door server-side (admin-web-grant-class). A richer consumer browser can
-// replace this when one exists.
-function AuraGrantCard() {
-  const [consumerId, setConsumerId] = useState("");
-  const [pending, startTransition] = useTransition();
-  const [result, setResult] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
-  const trimmedId = consumerId.trim();
-
-  const act = (grant: boolean) => {
-    setError(null);
-    setResult(null);
-    startTransition(async () => {
-      const r = await grantAura(trimmedId, grant);
-      if (r.ok) {
-        setResult(
-          grant
-            ? "Granted — the consumer is now Aura (invitation)."
-            : `Revoked — the consumer fell back to ${r.classKey} (${r.origin}).`,
-        );
-      } else {
-        setError(r.error);
-      }
-    });
-  };
-
-  return (
-    <SectionCard
-      icon={<Sparkles className="text-secondary h-4 w-4" />}
-      title="Aura invitations"
-      subtitle="Aura is invite-only, and for launch the only door is this console. Grant sets aura via the 'invitation' origin; revoke recomputes the consumer's best remaining door (subscription → Premium, 1,000+ followers → Influencer, else Standard)."
-    >
-      <div className="mt-5 flex flex-wrap items-center gap-2">
-        <input
-          value={consumerId}
-          onChange={(e) => {
-            setConsumerId(e.target.value);
-            setResult(null);
-            setError(null);
-          }}
-          placeholder="Consumer id (uuid)"
-          spellCheck={false}
-          className="border-border bg-card focus:border-foreground h-9 w-full max-w-sm rounded-lg border px-3 font-mono text-[12px] outline-none disabled:opacity-50"
-          disabled={pending}
-        />
-        <button
-          type="button"
-          onClick={() => act(true)}
-          disabled={pending || trimmedId.length === 0}
-          className="bg-foreground text-background hover:opacity-90 inline-flex h-9 items-center gap-1.5 rounded-lg px-3 text-xs font-semibold transition disabled:opacity-50"
-        >
-          <Sparkles className="h-3 w-3" />
-          Grant Aura
-        </button>
-        <button
-          type="button"
-          onClick={() => act(false)}
-          disabled={pending || trimmedId.length === 0}
-          className="border-border text-muted-foreground hover:text-foreground hover:bg-muted inline-flex h-9 items-center rounded-lg border px-3 text-xs font-medium transition disabled:opacity-50"
-        >
-          Revoke
-        </button>
-      </div>
-      {result && (
-        <p className="text-muted-foreground mt-3 text-xs font-medium">{result}</p>
-      )}
-      {error && <ErrorNote message={error} />}
-    </SectionCard>
   );
 }
 

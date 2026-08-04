@@ -8,6 +8,12 @@ type ReservationsConfig = {
   attempts: number;
   /** Testing escape hatch: ignore the per-class monthly reservation cap. */
   unlimitedReservations: boolean;
+  /** Abuse/cost guards — every unit of abuse here is a metered phone call. */
+  limits: {
+    reschedulesPerTicketPerDay: number;
+    venueCallsPerPlacePerDay: number;
+    killSwitch: boolean;
+  };
 };
 
 const KNOWN = new Set<string>(RESERVATION_CHANNELS);
@@ -121,6 +127,34 @@ export function normalizeConfig(
   }
   const unlimitedReservations = c.unlimitedReservations === true;
 
+  // limits — optional (older admin builds omit it → seeds), strict when sent.
+  // Mirrors LIMITS_SEED in _shared/reservations-config.ts.
+  let limits = { reschedulesPerTicketPerDay: 3, venueCallsPerPlacePerDay: 10, killSwitch: false };
+  if (c.limits !== undefined) {
+    if (!c.limits || typeof c.limits !== "object" || Array.isArray(c.limits)) {
+      return { ok: false, error: "config.limits must be an object" };
+    }
+    const l = c.limits as Record<string, unknown>;
+    const readCap = (v: unknown, name: string): number | { error: string } => {
+      if (typeof v !== "number" || !Number.isFinite(v) || Math.trunc(v) < 1 || v > 1000) {
+        return { error: `config.limits.${name} must be a number between 1 and 1000` };
+      }
+      return Math.trunc(v);
+    };
+    const resc = readCap(l.reschedulesPerTicketPerDay, "reschedulesPerTicketPerDay");
+    if (typeof resc === "object") return { ok: false, error: resc.error };
+    const venue = readCap(l.venueCallsPerPlacePerDay, "venueCallsPerPlacePerDay");
+    if (typeof venue === "object") return { ok: false, error: venue.error };
+    if (typeof l.killSwitch !== "boolean") {
+      return { ok: false, error: "config.limits.killSwitch must be a boolean" };
+    }
+    limits = {
+      reschedulesPerTicketPerDay: resc,
+      venueCallsPerPlacePerDay: venue,
+      killSwitch: l.killSwitch,
+    };
+  }
+
   return {
     ok: true,
     value: {
@@ -130,6 +164,7 @@ export function normalizeConfig(
       testCall,
       attempts,
       unlimitedReservations,
+      limits,
     },
   };
 }

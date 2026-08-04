@@ -48,10 +48,10 @@ import {
   type ConsumerTicketRow,
 } from '@/lib/api/tickets';
 import { classProperLabel } from '@/lib/consumer-classes';
+import { strategyForPlaceRow } from '@/lib/promo-rates';
 import {
-  PEAK_STRATEGY,
   REWARD_SEGMENT_BY_KEY,
-  baseRateForClass,
+  peakRateForClass,
   type RewardClassKey,
 } from '@/lib/reward-segments';
 import { useConsumerTickets } from '@/lib/hooks/useConsumerTickets';
@@ -318,10 +318,18 @@ export function TicketScreen({
   const category = ticket.place?.category ?? null;
   const storyOnTicket =
     ticket.story_status != null && ticket.story_status !== 'not_required';
-  const base = baseRateForClass(classKey);
-  const storyPeak = REWARD_SEGMENT_BY_KEY.story.rates[PEAK_STRATEGY];
-  const reviewPeak = REWARD_SEGMENT_BY_KEY.review.rates[PEAK_STRATEGY];
-  const welcomePeak = REWARD_SEGMENT_BY_KEY.welcome.rates[PEAK_STRATEGY];
+
+  // THIS place's strategy → THIS place's rates (MESITA-869). 'zero' means the
+  // rates are custom or cleared, so every percentage is suppressed rather
+  // than quoted wrong.
+  const strategy = strategyForPlaceRow(ticket.place);
+  const priced = strategy !== 'zero';
+  const rate = (key: 'story' | 'review') =>
+    REWARD_SEGMENT_BY_KEY[key].rates[strategy];
+  const pct = (v: number) => (priced && v > 0 ? `${v}%` : '—');
+  // The ceiling across every rung this guest can reach here — the ONE number
+  // the strip quotes. Never paired with its reason or the class (MESITA-860).
+  const ceiling = peakRateForClass(classKey, strategy);
   const qrSize = Math.min(230, Dimensions.get('window').width * 0.62);
 
   return (
@@ -590,7 +598,7 @@ export function TicketScreen({
                 Your tasks
               </Text>
               <Text className="text-muted-foreground" style={{ fontSize: 10.5 }}>
-                Optional — each one pays
+                {priced ? 'Optional — each one pays' : 'Optional'}
               </Text>
             </View>
             <View className="px-2.5 pb-3" style={{ gap: 6 }}>
@@ -599,7 +607,7 @@ export function TicketScreen({
                   Icon={Camera}
                   title="Post an Instagram story"
                   hint="Tag the place — then check it here"
-                  reward={`${storyPeak}%`}
+                  reward={pct(rate('story'))}
                   state={
                     acting === 'story'
                       ? 'busy'
@@ -612,7 +620,7 @@ export function TicketScreen({
                 Icon={Star}
                 title="Leave a Google review"
                 hint="At the table, once per place"
-                reward={`${reviewPeak}%`}
+                reward={pct(rate('review'))}
                 state={
                   acting === 'review'
                     ? 'busy'
@@ -640,23 +648,33 @@ export function TicketScreen({
           </View>
         ) : null}
 
-        {/* ── Reward strip ── */}
+        {/* ── Reward strip — the ceiling, never the reason (MESITA-860) ── */}
         {live ? (
           <View className="rounded-2xl border border-border bg-card px-3.5 py-3">
-            <Text
-              className="font-semibold text-foreground"
-              style={{ fontSize: 12.5, lineHeight: 17 }}
-            >
-              Your discount: up to {base}% as {classProperLabel(classKey)} —
-              first visit here pays {welcomePeak}% automatically.
-            </Text>
-            <Text
-              className="mt-1 text-muted-foreground"
-              style={{ fontSize: 11, lineHeight: 15 }}
-            >
-              You always keep your single best reward — never added together.
-              The exact % is set by the place.
-            </Text>
+            {priced && ceiling > 0 ? (
+              <>
+                <Text
+                  className="font-bold text-foreground"
+                  style={{ fontSize: 13, lineHeight: 18 }}
+                >
+                  Up to {ceiling}% — Discount for You
+                </Text>
+                <Text
+                  className="mt-1 text-muted-foreground"
+                  style={{ fontSize: 11, lineHeight: 15 }}
+                >
+                  Depending on your eligible bonuses. You always keep your
+                  single best reward — never added together.
+                </Text>
+              </>
+            ) : (
+              <Text
+                className="text-muted-foreground"
+                style={{ fontSize: 12, lineHeight: 16 }}
+              >
+                Your discount is set by the place and applied at the table.
+              </Text>
+            )}
           </View>
         ) : null}
 

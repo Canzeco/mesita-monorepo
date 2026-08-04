@@ -10,12 +10,25 @@
 //            scanned ✓ (pulse) → billed (amount block) → saved / cancelled.
 //   tasks  — lifecycle step 3 as checkboxes, each row carrying its reward:
 //            Instagram Story (only when the ticket carries the rung) ·
-//            Google Review · Mesita Review (★ — pays nothing by design,
-//            §4.2; it feeds the place's Mesita rating).
-//   strip  — your discount now + the best-of rule, one line each.
+//            Google Review · Mesita Review (★ — unpriced by design, §4.2;
+//            it feeds the place's Mesita rating).
+//   strip  — "Up to N% — Discount for You" + the best-of rule.
 //
 // Welcome Visit is NOT a task row: it's detected server-side at billing, so
-// showing it as something to "do" would be a lie. It lives in the strip.
+// showing it as something to "do" would be a lie. It lives in the strip's N.
+//
+// EVERY percentage on this screen is THIS PLACE's rate (MESITA-869): the
+// ticket's place summary carries the four rate columns, which ARE the
+// strategy, so the rungs are read at that strategy instead of the static
+// peak. A ticket that promised the peak while the place ran Conservative was
+// quoting money the bill engine would never pay. Custom/cleared rates → no
+// percentage at all, never a wrong one. The strip also never states the
+// REASON or the class (MESITA-860) — just the ceiling.
+//
+// Layout: every section is `shrink-0`. They carry `overflow-hidden` for the
+// rounded corners, which makes `min-height: auto` resolve to 0, and the flex
+// column would then happily crush them — that shipped once and ate the place
+// name, half the QR and a task row (MESITA-869).
 //
 // Data: the same polled list the wallet uses (one source, live updates ride
 // the existing cadence). Proof screenshots remain DEMO_SCREENSHOT_URL
@@ -59,10 +72,10 @@ import {
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import { useConsumerClass } from "@/lib/class-context";
 import { classProperLabel } from "@/lib/consumer-data";
+import { strategyForPlaceRow } from "@/lib/promo-rates";
 import {
-  PEAK_STRATEGY,
   REWARD_SEGMENT_BY_KEY,
-  baseRateForClass,
+  peakRateForClass,
 } from "@/lib/reward-segments";
 import { useConsumerTickets } from "@/lib/hooks/useConsumerTickets";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
@@ -352,16 +365,24 @@ export function TicketScreen({
   const category = ticket.place?.category ?? null;
   const storyOnTicket =
     ticket.story_status != null && ticket.story_status !== "not_required";
-  const base = baseRateForClass(classKey);
-  const storyPeak = REWARD_SEGMENT_BY_KEY.story.rates[PEAK_STRATEGY];
-  const reviewPeak = REWARD_SEGMENT_BY_KEY.review.rates[PEAK_STRATEGY];
-  const welcomePeak = REWARD_SEGMENT_BY_KEY.welcome.rates[PEAK_STRATEGY];
+
+  // THIS place's strategy → THIS place's rates (MESITA-869). "zero" means the
+  // rates are custom or cleared, so every percentage is suppressed rather
+  // than quoted wrong.
+  const strategy = strategyForPlaceRow(ticket.place);
+  const priced = strategy !== "zero";
+  const rate = (key: "story" | "review") =>
+    REWARD_SEGMENT_BY_KEY[key].rates[strategy];
+  const pct = (v: number) => (priced && v > 0 ? `${v}%` : "—");
+  // The ceiling across every rung this guest can reach here — the ONE number
+  // the strip quotes. Never paired with its reason or the class (MESITA-860).
+  const ceiling = peakRateForClass(classKey, strategy);
 
   return (
     <Shell>
       {/* ── Hero: the place this ticket is bound to ── */}
-      <section className="border-border bg-card overflow-hidden rounded-[28px] border">
-        <div className="relative h-32 w-full">
+      <section className="border-border bg-card shrink-0 overflow-hidden rounded-[28px] border">
+        <div className="relative h-32 w-full shrink-0">
           {photo ? (
             <Image src={photo} alt="" fill className="object-cover" />
           ) : (
@@ -409,7 +430,7 @@ export function TicketScreen({
       {/* ── The pass ── */}
       <section
         className={cn(
-          "overflow-hidden rounded-[28px] px-5 pt-5 pb-5 text-white shadow-[0_20px_44px_-22px_rgba(255,77,109,0.6)]",
+          "shrink-0 overflow-hidden rounded-[28px] px-5 pt-5 pb-5 text-white shadow-[0_20px_44px_-22px_rgba(255,77,109,0.6)]",
           passGradient(classKey),
           pulse && "animate-verified-pulse",
         )}
@@ -535,13 +556,13 @@ export function TicketScreen({
 
       {/* ── Tasks checklist (lifecycle step 3) ── */}
       {!cancelled ? (
-        <section className="border-border bg-card overflow-hidden rounded-2xl border">
+        <section className="border-border bg-card shrink-0 overflow-hidden rounded-2xl border">
           <div className="flex items-baseline justify-between gap-2 px-3.5 pt-3.5 pb-1.5">
             <h2 className="text-foreground text-[13px] font-bold tracking-tight">
               Your tasks
             </h2>
             <span className="text-muted-foreground text-[10.5px]">
-              Optional — each one pays
+              {priced ? "Optional — each one pays" : "Optional"}
             </span>
           </div>
           <div className="flex flex-col gap-1.5 px-2.5 pb-3">
@@ -550,7 +571,7 @@ export function TicketScreen({
                 icon={<Instagram className="size-4 shrink-0" />}
                 title="Post an Instagram story"
                 hint="Tag the place — then check it here"
-                reward={`${storyPeak}%`}
+                reward={pct(rate("story"))}
                 state={
                   acting === "story"
                     ? "busy"
@@ -563,7 +584,7 @@ export function TicketScreen({
               icon={<Star className="size-4 shrink-0" />}
               title="Leave a Google review"
               hint="At the table, once per place"
-              reward={`${reviewPeak}%`}
+              reward={pct(rate("review"))}
               state={
                 acting === "review"
                   ? "busy"
@@ -590,15 +611,22 @@ export function TicketScreen({
 
       {/* ── Reward strip ── */}
       {live ? (
-        <section className="border-border bg-card rounded-2xl border px-3.5 py-3">
-          <p className="text-foreground text-[12.5px] leading-snug font-semibold">
-            Your discount: up to {base}% as {classProperLabel(classKey)} — first
-            visit here pays {welcomePeak}% automatically.
-          </p>
-          <p className="text-muted-foreground/80 mt-1 text-[11px] leading-snug">
-            You always keep your single best reward — never added together. The
-            exact % is set by the place.
-          </p>
+        <section className="border-border bg-card shrink-0 rounded-2xl border px-3.5 py-3">
+          {priced && ceiling > 0 ? (
+            <>
+              <p className="text-foreground text-[13px] leading-snug font-bold">
+                Up to {ceiling}% — Discount for You
+              </p>
+              <p className="text-muted-foreground/80 mt-1 text-[11px] leading-snug">
+                Depending on your eligible bonuses. You always keep your single
+                best reward — never added together.
+              </p>
+            </>
+          ) : (
+            <p className="text-muted-foreground text-[12px] leading-snug">
+              Your discount is set by the place and applied at the table.
+            </p>
+          )}
         </section>
       ) : null}
 

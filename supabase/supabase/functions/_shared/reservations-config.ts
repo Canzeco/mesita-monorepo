@@ -10,7 +10,29 @@
 // admin Playground can put in a call brief instead of a real consumer's phone —
 // playground-only, never read by the production calling path.
 export type TestCall = { enabled: boolean; number: string; consumerNumber: string };
-export type ReservationsCallConfig = { testCall: TestCall; attempts: number };
+
+// Abuse/cost guards (eng-review 2026-08-04): every unit of abuse here is a real
+// metered phone call, so the doors are capped. Knobs, not constants — tunable
+// from the admin Reservations Config page; enforcement lives in the EFs.
+export type ReservationLimits = {
+  /** Reschedules per ticket per day — each one resets call_attempts (= buys venue calls). */
+  reschedulesPerTicketPerDay: number;
+  /** Outbound VENUE calls per place per day (booking + notices), any ticket. */
+  venueCallsPerPlacePerDay: number;
+  /** Hard stop: no outbound reservation call of any kind while on. */
+  killSwitch: boolean;
+};
+export const LIMITS_SEED: ReservationLimits = {
+  reschedulesPerTicketPerDay: 3,
+  venueCallsPerPlacePerDay: 10,
+  killSwitch: false,
+};
+
+export type ReservationsCallConfig = {
+  testCall: TestCall;
+  attempts: number;
+  limits: ReservationLimits;
+};
 
 // FIXED at 2 by protocol — not configurable. Attempt 1 fires immediately;
 // attempt 2 fires 5 minutes later if the venue is open, else 30 minutes after
@@ -49,5 +71,25 @@ export function coerceReservationsCallConfig(raw: unknown): ReservationsCallConf
         : TEST_CALL_SEED.consumerNumber,
     },
     attempts: ATTEMPTS,
+    limits: coerceLimits(c.limits),
+  };
+}
+
+function coerceLimits(raw: unknown): ReservationLimits {
+  const l = raw && typeof raw === "object" && !Array.isArray(raw)
+    ? raw as Record<string, unknown>
+    : {};
+  const posInt = (v: unknown, seed: number) =>
+    typeof v === "number" && Number.isFinite(v) && v >= 1 ? Math.trunc(v) : seed;
+  return {
+    reschedulesPerTicketPerDay: posInt(
+      l.reschedulesPerTicketPerDay,
+      LIMITS_SEED.reschedulesPerTicketPerDay,
+    ),
+    venueCallsPerPlacePerDay: posInt(
+      l.venueCallsPerPlacePerDay,
+      LIMITS_SEED.venueCallsPerPlacePerDay,
+    ),
+    killSwitch: typeof l.killSwitch === "boolean" ? l.killSwitch : LIMITS_SEED.killSwitch,
   };
 }

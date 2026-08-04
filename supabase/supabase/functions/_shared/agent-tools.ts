@@ -134,9 +134,10 @@ export function ticketMatchesGuestName(row: TicketRow, query: string): boolean {
 // ── Ticket reads ─────────────────────────────────────────────────────────────
 
 const TICKET_SELECT =
-  "id, reference_code, reserved_at, party_size, status, notes, is_test, project_id, consumer_id, reported_verdict, alternatives, guest_confirmed_at, negotiation_rounds, consumer:consumers(full_name, first_name, last_name, phone)";
+  "id, run_id, reference_code, reserved_at, party_size, status, notes, is_test, project_id, consumer_id, reported_verdict, alternatives, guest_confirmed_at, negotiation_rounds, consumer:consumers(full_name, first_name, last_name, phone)";
 
 export type TicketRow = {
+  run_id: string | null;
   id: string;
   reference_code: string | null;
   reserved_at: string;
@@ -272,11 +273,15 @@ export async function cancelTicket(
       cancelled_at: new Date().toISOString(),
       cancelled_by: by,
       outcome_note: reason ? reason.slice(0, 300) : null,
-      // A cancelled ticket must never wake again as a booking or a callback.
+      // A cancelled ticket must never wake again as a booking or a callback —
+      // and rotating run_id ORPHANS any runner mid-flight: its guarded writes
+      // die on the spot instead of racing this cancel (eng-review 2026-08-04).
       attempts_state: "cancelled",
       next_attempt_at: null,
       callback_state: "skipped",
       callback_next_attempt_at: null,
+      run_id: crypto.randomUUID(),
+      claimed_at: null,
       ...(notice
         ? { notice_kind: notice, notice_state: "pending", notice_attempts: 0, notice_next_at: null }
         : {}),

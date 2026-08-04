@@ -18,6 +18,13 @@ export type ConsumerTicketPlace = {
   address?: string | null;
   price_level?: number | null;
   slug?: string | null;
+  // The place's v4 preset — THE TICKET quotes THIS place's real rates instead
+  // of the static peak (MESITA-869). See lib/promo-rates strategyForPlaceRow.
+  listing_type?: string | null;
+  welcome_free_rate?: number | null;
+  welcome_premium_rate?: number | null;
+  free_rate?: number | null;
+  premium_rate?: number | null;
 } | null;
 
 export type ConsumerTicketRow = {

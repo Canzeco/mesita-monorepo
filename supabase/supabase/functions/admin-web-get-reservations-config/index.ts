@@ -45,9 +45,35 @@ Deno.serve(async (req) => {
     return json({ ok: false, error: "app_settings missing" }, 500);
   }
 
+  // ── Needs attention (eng-review 2026-08-04) ────────────────────────────────
+  // The protocol exists because states nobody reads stop silently — this feed
+  // is the reader. Every terminal-bad state a human must act on:
+  //   · notice_state=failed      cancel notice never delivered (held table /
+  //                              uninformed guest)
+  //   · attempts_state=error     booking run died (platform outage persisted,
+  //                              no number, crash)
+  //   · callback_state=failed    guest leg could not be placed at all
+  //   · confirmed-but-unheard    venue said yes, the guest ladder ran dry and
+  //                              nobody picked up — the table exists and its
+  //                              owner doesn't know
+  const { data: attention } = await admin
+    .from("reservations")
+    .select(
+      "id, reference_code, status, reserved_at, last_call_status, notice_state, notice_kind, attempts_state, callback_state, guest_confirmed_at, is_test",
+    )
+    .or(
+      "notice_state.eq.failed," +
+        "attempts_state.eq.error," +
+        "callback_state.eq.failed," +
+        "and(status.eq.confirmed,guest_confirmed_at.is.null,callback_state.in.(no_answer,unknown),callback_next_attempt_at.is.null)",
+    )
+    .order("reserved_at", { ascending: false })
+    .limit(30);
+
   return json({
     ok: true,
     config: data.reservations_config,
     updatedAt: data.updated_at,
+    needs_attention: attention ?? [],
   });
 });

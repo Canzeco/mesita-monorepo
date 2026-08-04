@@ -55,9 +55,10 @@ const AFTER_OPENING_MINUTES = 30;
 function minutesUntilNextOpening(
   hours: unknown,
   lng: number | null,
+  now: Date = new Date(),
 ): number | null {
   if (!hours || typeof hours !== "object") return null;
-  const clock = localClock(lng);
+  const clock = localClock(lng, now);
   if (!clock) return null;
   const week = hours as WeeklyHours;
   if (!DAY_KEYS.some((k) => Array.isArray(week[k]) && week[k].length > 0)) {
@@ -95,7 +96,7 @@ export function nextAttemptAt(
   lng: number | null,
   now: Date = new Date(),
 ): { at: Date; reason: string } {
-  const until = minutesUntilNextOpening(hours, lng);
+  const until = minutesUntilNextOpening(hours, lng, now);
   if (until === null) {
     return {
       at: new Date(now.getTime() + OPEN_RETRY_MINUTES * 60_000),
