@@ -238,6 +238,12 @@ verify_jwt = true
 [functions.consumer-web-submit-ticket-total]
 verify_jwt = true
 
+# v3c report button (MESITA-851): the guest's only route that isn't arguing
+# with the person holding the terminal. Authed — owner-only, and a report is
+# evidence for an operator, never an automatic strike.
+[functions.consumer-web-report-ticket]
+verify_jwt = true
+
 # --- check-web (PUBLIC check page at mesita.ai/check/<code>) ---
 # verify_jwt deliberately FALSE: the 128-bit tickets.check_code is the whole
 # authentication — whoever holds the freshly scanned QR (nominally staff) can

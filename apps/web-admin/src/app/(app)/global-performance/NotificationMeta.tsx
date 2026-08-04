@@ -98,6 +98,25 @@ export function MetaRow({ item }: { item: NotificationItem }) {
     }
   }
 
+  // v3c (MESITA-851). The reason is the whole point of the row — an operator
+  // triages "refused the discount" very differently from "never scanned".
+  if (item.type === "rewards.ticket_reported") {
+    const REPORT_REASON: Record<string, string> = {
+      discount_refused: "discount refused",
+      closed_without_honoring: "closed without honoring",
+      qr_not_scanned: "QR never scanned",
+      other: "other",
+    };
+    if (typeof m.reason === "string") {
+      tags.push(
+        <MetaTag key="rr">{REPORT_REASON[m.reason] ?? m.reason}</MetaTag>,
+      );
+    }
+    if (typeof m.status === "string") {
+      tags.push(<MetaTag key="rst">{m.status}</MetaTag>);
+    }
+  }
+
   if (item.type === "reservations.reservation_created") {
     if (typeof m.status === "string") tags.push(<MetaTag key="rs">{m.status}</MetaTag>);
     if (typeof m.partySize === "number") {

@@ -13,6 +13,7 @@ import {
   BadgeCheck,
   Camera,
   Check,
+  Flag,
   PartyPopper,
   Star,
   Store,
@@ -40,12 +41,15 @@ import {
 import { formatCurrency, submitTicketReview } from '@/lib/api/pay';
 import {
   ACTIVE_TICKET_STATUSES,
+  REPORT_REASONS,
   apiCancelTicket,
+  apiReportTicket,
   apiSubmitReview,
   apiSubmitStory,
   apiSubmitTicketTotal,
   checkUrlForCode,
   type ConsumerTicketRow,
+  type ReportReason,
 } from '@/lib/api/tickets';
 import { classProperLabel } from '@/lib/consumer-classes';
 import { strategyForPlaceRow } from '@/lib/promo-rates';
@@ -258,6 +262,32 @@ export function TicketScreen({
       setTotalBusy(false);
     }
   }, [ticketId, tickets, totalDraft]);
+
+  // v3c report (MESITA-851). `reported` is session-local: the EF's partial
+  // unique index is the real guard against duplicates, and there is no read
+  // API for a guest's own reports.
+  const [reportOpen, setReportOpen] = useState(false);
+  const [reportReason, setReportReason] = useState<ReportReason | null>(null);
+  const [reportDetails, setReportDetails] = useState('');
+  const [reportBusy, setReportBusy] = useState(false);
+  const [reportError, setReportError] = useState<string | null>(null);
+  const [reported, setReported] = useState(false);
+  const submitReport = useCallback(async () => {
+    if (!reportReason) return;
+    setReportBusy(true);
+    setReportError(null);
+    try {
+      await apiReportTicket(ticketId, reportReason, reportDetails);
+      setReported(true);
+      setReportOpen(false);
+    } catch (err) {
+      setReportError(
+        err instanceof Error ? err.message : "Couldn't send that just yet.",
+      );
+    } finally {
+      setReportBusy(false);
+    }
+  }, [ticketId, reportReason, reportDetails]);
 
   const [cancelling, setCancelling] = useState(false);
   const cancel = useCallback(async () => {
@@ -695,6 +725,42 @@ export function TicketScreen({
             </Text>
           </Pressable>
         ) : null}
+
+        {/* The report button (v3c, MESITA-851) — live for the WHOLE ticket
+            and after it closes. With staff no longer ruling on tasks and the
+            bill optional, this is the guest's only route that isn't arguing
+            with the person holding the terminal. */}
+        {!cancelled ? (
+          reported ? (
+            <View
+              className="flex-row items-center justify-center"
+              style={{ minHeight: 44, gap: 6 }}
+            >
+              <Flag size={14} color="#775254" />
+              <Text
+                className="font-medium text-muted-foreground"
+                style={{ fontSize: 12.5 }}
+              >
+                Reported — Mesita is looking at it
+              </Text>
+            </View>
+          ) : (
+            <Pressable
+              onPress={() => setReportOpen(true)}
+              accessibilityRole="button"
+              className="flex-row items-center justify-center"
+              style={{ minHeight: 44, gap: 6 }}
+            >
+              <Flag size={14} color="#775254" />
+              <Text
+                className="font-semibold text-muted-foreground"
+                style={{ fontSize: 12.5 }}
+              >
+                Something went wrong here
+              </Text>
+            </Pressable>
+          )
+        ) : null}
       </ScrollView>
 
       <FullScreenSheet
@@ -714,6 +780,100 @@ export function TicketScreen({
             onSubmit={() => void submitMesitaReview()}
             busy={reviewBusy}
           />
+        </ScrollView>
+      </FullScreenSheet>
+
+      {/* Report sheet — pick a reason, add words if you want. */}
+      <FullScreenSheet
+        visible={reportOpen}
+        onClose={() => setReportOpen(false)}
+        title={`What went wrong at ${placeName}?`}
+        subtitle="A real person at Mesita reads every report"
+      >
+        <ScrollView
+          className="flex-1"
+          contentContainerStyle={{ padding: 16, paddingBottom: 32, gap: 12 }}
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={{ gap: 6 }}>
+            {REPORT_REASONS.map((r) => {
+              const active = reportReason === r.key;
+              return (
+                <Pressable
+                  key={r.key}
+                  onPress={() => setReportReason(r.key)}
+                  accessibilityRole="button"
+                  className={`rounded-2xl px-3.5 py-3 ${
+                    active ? 'bg-primary/10' : 'bg-muted/40'
+                  }`}
+                  style={
+                    active
+                      ? { borderWidth: 2, borderColor: '#fb2b7b' }
+                      : { borderWidth: 2, borderColor: 'transparent' }
+                  }
+                >
+                  <Text
+                    className="font-bold text-foreground"
+                    style={{ fontSize: 13.5 }}
+                  >
+                    {r.label}
+                  </Text>
+                  <Text
+                    className="mt-0.5 text-muted-foreground"
+                    style={{ fontSize: 11.5 }}
+                  >
+                    {r.hint}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+
+          <TextInput
+            value={reportDetails}
+            onChangeText={(t) => setReportDetails(t.slice(0, 1000))}
+            placeholder="Anything else we should know? (optional)"
+            placeholderTextColor="#a3a3a3"
+            multiline
+            numberOfLines={3}
+            className="rounded-2xl border border-border bg-card px-3.5 py-3 text-foreground"
+            style={{ fontSize: 13, minHeight: 84, textAlignVertical: 'top' }}
+          />
+
+          {reportError ? (
+            <Text
+              className="rounded-lg bg-destructive/10 px-3 py-2 text-destructive"
+              style={{ fontSize: 12 }}
+            >
+              {reportError}
+            </Text>
+          ) : null}
+
+          <Pressable
+            disabled={!reportReason || reportBusy}
+            onPress={() => void submitReport()}
+            accessibilityRole="button"
+            className="overflow-hidden rounded-2xl active:opacity-90"
+            style={{ opacity: !reportReason || reportBusy ? 0.5 : 1 }}
+          >
+            <LinearGradient
+              colors={PASS_GRADIENTS.standard}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={{
+                minHeight: 48,
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexDirection: 'row',
+                gap: 8,
+              }}
+            >
+              {reportBusy ? <ActivityIndicator size="small" color="#fff" /> : null}
+              <Text className="font-bold text-white" style={{ fontSize: 14 }}>
+                Send report
+              </Text>
+            </LinearGradient>
+          </Pressable>
         </ScrollView>
       </FullScreenSheet>
     </>

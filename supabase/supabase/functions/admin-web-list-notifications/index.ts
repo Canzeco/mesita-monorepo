@@ -31,6 +31,11 @@
 //   rewards.ticket_visit                its QR met the venue (first scan)
 //   rewards.ticket_paid                 staff marked the discounted bill paid
 //   rewards.review_submitted            the post-visit review landed
+//   rewards.ticket_reported             the GUEST filed a complaint about the
+//                                       visit (v3c, MESITA-851) — the one
+//                                       event in this feed that asks the
+//                                       operator to act, since a report is
+//                                       evidence and never an auto-strike
 //   reservations.reservation_created    a reservation request was placed
 //
 // All derived from tables the product already writes — no new event tables.
@@ -99,6 +104,7 @@ const ALL_TYPES: NotificationType[] = [
   "rewards.ticket_visit",
   "rewards.ticket_paid",
   "rewards.review_submitted",
+  "rewards.ticket_reported",
   "reservations.reservation_created",
 ];
 
@@ -396,8 +402,15 @@ Deno.serve(async (req) => {
         })()
         : Promise.resolve({ data: null, error: null });
 
-    const [savesRes, tCreatedRes, tVisitRes, tPaidRes, reviewsRes, resvRes] =
-      await Promise.all([
+    const [
+      savesRes,
+      tCreatedRes,
+      tVisitRes,
+      tPaidRes,
+      reviewsRes,
+      reportsRes,
+      resvRes,
+    ] = await Promise.all([
         activitySource("saved_places", "", "created_at", wantType("consumer.place_saved")),
         activitySource(
           "tickets",
@@ -424,6 +437,12 @@ Deno.serve(async (req) => {
           wantType("rewards.review_submitted"),
         ),
         activitySource(
+          "ticket_reports",
+          "reason, details, status, ",
+          "created_at",
+          wantType("rewards.ticket_reported"),
+        ),
+        activitySource(
           "reservations",
           "status, party_size, reserved_at, is_test, ",
           "created_at",
@@ -437,6 +456,7 @@ Deno.serve(async (req) => {
       ["tickets_visit", tVisitRes],
       ["tickets_paid", tPaidRes],
       ["ticket_reviews", reviewsRes],
+      ["ticket_reports", reportsRes],
       ["reservations", resvRes],
     ] as const) {
       if (r.error) {
@@ -527,6 +547,24 @@ Deno.serve(async (req) => {
           service: r.service,
           ambiance: r.ambiance,
         },
+      );
+    }
+
+    // The guest's complaint (v3c). `detail` carries their own words when they
+    // wrote any — the operator reads this to decide whether the place earns a
+    // strike, which stays a deliberate human call.
+    for (const r of ((reportsRes.data ?? []) as unknown[]) as Array<ActivityRow & {
+      reason: string;
+      details: string | null;
+      status: string;
+    }>) {
+      push(
+        "rewards.ticket_reported",
+        "rewards",
+        r,
+        r.created_at,
+        r.details?.trim() ? truncate(r.details, 260) : null,
+        { reason: r.reason, status: r.status },
       );
     }
 

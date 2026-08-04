@@ -142,6 +142,43 @@ export async function apiSubmitTicketTotal(
   );
 }
 
+// v3c report button (MESITA-851): the guest's route when a place doesn't
+// honor the ticket. Live for the whole ticket and for a window after it
+// closes — people realise they were shorted once they're outside the venue.
+// A report is evidence for an operator, never an automatic strike.
+export const REPORT_REASONS = [
+  {
+    key: 'discount_refused',
+    label: 'They refused the discount',
+    hint: "The place wouldn't apply it at the table.",
+  },
+  {
+    key: 'closed_without_honoring',
+    label: 'Closed without honoring it',
+    hint: 'The ticket was marked done but I got nothing.',
+  },
+  {
+    key: 'qr_not_scanned',
+    label: 'They never scanned the QR',
+    hint: "Staff wouldn't scan it at all.",
+  },
+  { key: 'other', label: 'Something else', hint: 'Tell us what happened.' },
+] as const;
+
+export type ReportReason = (typeof REPORT_REASONS)[number]['key'];
+
+export async function apiReportTicket(
+  ticketId: string,
+  reason: ReportReason,
+  details?: string,
+): Promise<void> {
+  await invokeEF<{ report?: unknown }>(supabase, 'consumer-web-report-ticket', {
+    ticketId,
+    reason,
+    ...(details?.trim() ? { details: details.trim() } : {}),
+  });
+}
+
 // The QR every active ticket renders — must match the EF's CHECK_URL_BASE.
 export function checkUrlForCode(code: string): string {
   return `https://mesita.ai/check/${code}`;

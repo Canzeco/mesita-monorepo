@@ -16,6 +16,9 @@ export type NotificationType =
   | "rewards.ticket_visit"
   | "rewards.ticket_paid"
   | "rewards.review_submitted"
+  // v3c (MESITA-851): the guest filed a complaint about a visit. The one
+  // event here that asks the operator to DO something.
+  | "rewards.ticket_reported"
   | "reservations.reservation_created";
 
 export type NotificationItem = {
