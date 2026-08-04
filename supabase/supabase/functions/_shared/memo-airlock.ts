@@ -24,7 +24,7 @@
 // dispatch for the admin playground. It is absent on the consumer path — the
 // live concierge is unchanged and pays no overhead.
 
-import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
+import type { MemoData } from "./memo-data.ts";
 import type { Prediction } from "./memo-types.ts";
 import { clampSummary, type TraceSink, toolSource } from "./memo-trace.ts";
 
@@ -48,11 +48,15 @@ export type ToolSchema = {
   required?: string[];
 };
 
-// The sealed context. Handed to every tool; NEVER exposed to the model. The
-// admin (service-role) client lives here, but the model can only reach it
-// through a whitelisted tool — it never sees a generic query capability.
+// The sealed context. Handed to every tool; NEVER exposed to the model.
+//
+// `data` is Memo's data client (memo-data.ts), NOT a Supabase client: it speaks
+// to four named read-only Edge Functions and nothing else. So the airlock's two
+// halves now match — the model can only call a whitelisted tool, and a tool can
+// only call a whitelisted endpoint. There is no generic query capability
+// anywhere inside the chamber to be jailbroken into.
 export type AirlockContext = {
-  admin: SupabaseClient;
+  data: MemoData;
   userId: string | null; // authenticated caller; tools scope to this id
   lat: number | null;
   lng: number | null;

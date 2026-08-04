@@ -1,13 +1,16 @@
-import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
-
-// Memo's per-user profile clause — the signed-in user's first name, age and sex
-// from the consumers profile — assembled into the hidden context Memo reasons
-// over (but never recites). Shared by the consumer concierge
-// (consumer-web-ask-memo) and the admin playground (admin-web-ask-memo) so the
-// dogfood surface builds the SAME persona context production does.
+// memo-consumer-context.ts — how a consumer profile becomes Memo's persona clause.
+//
+// PURE composition only. The DB read that feeds the real path lives in
+// supabase-edgefunc-get-consumer-context (Memo holds no database client — see
+// memo-data.ts); it imports the two helpers below and returns only the finished
+// clause, so raw profile fields never travel to the agent.
+//
+// Keeping the composition here — not inside that EF — is what lets the MOCK
+// path (the admin playground's synthetic persona) render identically to a real
+// one: same function, one fed DB parts, one fed operator-typed parts.
 
 // Whole years from an ISO birthday (YYYY-MM-DD), or null when absent/implausible.
-function ageFromBirthday(birthday: unknown): number | null {
+export function ageFromBirthday(birthday: unknown): number | null {
   if (typeof birthday !== "string" || birthday.length < 4) return null;
   const dob = new Date(birthday);
   if (isNaN(dob.getTime())) return null;
@@ -20,8 +23,8 @@ function ageFromBirthday(birthday: unknown): number | null {
 
 // Assemble the clause from the parts we actually have (name / age / sex).
 // Returns null when there's nothing useful. Kept in one place so the real
-// (DB-read) and mock (admin-supplied) paths render identically.
-function composeProfileClause(
+// (EF-served) and mock (admin-supplied) paths render identically.
+export function composeProfileClause(
   name: string | null,
   age: number | null,
   sex: string | null,
@@ -35,35 +38,7 @@ function composeProfileClause(
   return bits.length > 0 ? bits.join(", ") : null;
 }
 
-// A short profile clause for Memo's hidden context, keyed by auth user id. Only
-// the parts we actually have are included; returns null when there's nothing
-// useful. Never let a profile miss sink the answer.
-export async function readConsumerContext(
-  admin: SupabaseClient,
-  userId: string,
-): Promise<string | null> {
-  try {
-    const { data, error } = await admin
-      .from("consumers")
-      .select("first_name, full_name, sex, birthday")
-      .eq("id", userId)
-      .maybeSingle();
-    if (error || !data) {
-      if (error) console.error("[ask-memo] profile read:", error.message);
-      return null;
-    }
-    return composeProfileClause(
-      (data.first_name ?? data.full_name ?? "") as string,
-      ageFromBirthday(data.birthday),
-      (data.sex ?? "") as string,
-    );
-  } catch (e) {
-    console.error("[ask-memo] profile threw:", (e as Error).message);
-    return null;
-  }
-}
-
-// The same clause from admin-supplied MOCK parts (no DB read) — lets the
+// The same clause from admin-supplied MOCK parts (no read at all) — lets the
 // playground dogfood a synthetic persona that renders exactly like a real one.
 export function mockConsumerContext(mock: {
   name?: unknown;

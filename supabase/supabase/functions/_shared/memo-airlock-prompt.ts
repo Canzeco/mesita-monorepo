@@ -1,6 +1,6 @@
 // memo-airlock-prompt.ts — how the reasoning model is told to behave inside the
 // airlock. The persona itself is operator-tunable (app_settings.memo_
-// instructions, read by readMemoSystemPrompt); this wraps that persona with
+// instructions, served by supabase-edgefunc-get-memo-config); this wraps that persona with
 // the fixed OPERATING rules that make Memo safe, passive, and natural. These
 // rules are code, not DB config — they are load-bearing security, not voice.
 
@@ -23,7 +23,7 @@ VOICE — reply in natural, flowing conversation, in the SAME language the user 
 // Compose the full system prompt: the (DB-tunable) persona, then the fixed
 // operating rules, then the live hidden context (location + local time, and
 // for signed-in users their first name / age / sex — already assembled by
-// readConsumerContext, passed through here).
+// supabase-edgefunc-get-consumer-context, passed through here).
 export function buildAgentSystemPrompt(
   persona: string,
   hiddenContext: string | null,
