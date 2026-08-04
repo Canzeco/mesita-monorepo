@@ -25,21 +25,40 @@ import {
   type StrategyKey,
 } from "./catalog";
 
-// The v8 NORMALIZED editor (MESITA-873). Pato's format, verbatim: one row per
-// reward rule, listed Strategy → Class → Action → Discount, 60 rows.
+// The v8 rewards editor. STORAGE is normalized — one row per (strategy ×
+// class × action) in public.reward_rules, PK on the triple (MESITA-873) — but
+// the EDITOR is wide: 12 rows of Strategy × Class, one column per action
+// (MESITA-874). Sixty selects in a list is a scroll; sixty in a grid is a
+// table you can read across, which is how the pricing decision is actually
+// made ("what does Premium get here versus Standard").
 //
-// Why a list and not the wide matrix it replaced: every row is now a single
-// self-contained rule, which is exactly how it is stored (public.reward_rules,
-// PK on the triple). Adding a future action — TikTok, Referral, Birthday,
-// Spend $X — becomes rows in that table plus one entry in ACTION_KEYS, with no
-// reshaping of a nested blob and no schema change.
+// The two shapes never fight because the flat rule list is the single source:
+// the grid indexes it by the triple, and an edit replaces exactly one rule.
+// Adding a future action — TikTok, Referral, Birthday, Spend $X — is rows in
+// that table plus one entry in ACTION_KEYS, and a column appears here.
 //
-// Story stays Influencer-only: the row renders read-only for the other three
+// Story stays Influencer-only: the cell renders "—" for the other three
 // classes because eligibility is a CLASS GATE, not a price, and an editable
 // cell there would imply the gate could be priced away.
 
 const isStoryLocked = (action: ActionKey, cls: ClassKey) =>
   action === "story" && cls !== "influencer";
+
+const cx = (...c: (string | false | null | undefined)[]) =>
+  c.filter(Boolean).join(" ");
+
+// Strategy · Class, then one column per action. Declared once so the header
+// and every row can never drift out of alignment.
+const GRID_COLS = "grid grid-cols-[130px_120px_repeat(5,96px)]";
+
+// Two-line column headings — the emoji + a short head, then the qualifier.
+const ACTION_LABEL: Record<ActionKey, { head: string; sub: string }> = {
+  standing: { head: "None", sub: "standing" },
+  mesita_review: { head: "Mesita", sub: "Review" },
+  story: { head: "Instagram", sub: "Story" },
+  welcome: { head: "Welcome", sub: "Visit" },
+  review: { head: "Google", sub: "Review" },
+};
 
 export function RewardsConfigClient({
   initialConfig,
@@ -136,7 +155,7 @@ export function RewardsConfigClient({
       <SectionCard
         icon={<Percent className="text-secondary h-4 w-4" />}
         title="Reward rules"
-        subtitle={`One row per rule — Strategy → Class → Action → Discount. ${RULE_COUNT} rules in total. Rates snap to the 5% grid (5–70%); 0 = off. Zero strategy has no rules: it is off by definition. A guest is paid their single best qualifying rule — never a sum.`}
+        subtitle={`Strategy × Class rows, one column per action — ${RULE_COUNT} rules in total. None is the standing class discount. Rates snap to the 5% grid (5–70%); 0 = off. Zero strategy has no rules: it is off by definition. A guest is paid their single best qualifying rule — never a sum.`}
         status={
           updatedAt ? (
             <span className="text-muted-foreground text-xs">
@@ -146,93 +165,89 @@ export function RewardsConfigClient({
         }
       >
         <div className="mt-5 overflow-x-auto">
-          <div className="min-w-[680px]">
-            {/* Column header — the four fields of a rule. */}
-            <div className="text-muted-foreground grid grid-cols-[140px_150px_minmax(0,1fr)_110px] gap-3 px-3 pb-2 text-[10px] font-bold tracking-[0.12em] uppercase">
-              <span>Strategy</span>
-              <span>Class</span>
-              <span>Action</span>
-              <span className="text-right">Discount</span>
+          <div className="min-w-[880px]">
+            {/* Header — Strategy · Class, then one column per action. */}
+            <div className={cx(GRID_COLS, "items-end gap-2 px-3 pb-2")}>
+              <span className="text-muted-foreground text-[10px] font-bold tracking-[0.12em] uppercase">
+                Strategy
+              </span>
+              <span className="text-muted-foreground text-[10px] font-bold tracking-[0.12em] uppercase">
+                Class
+              </span>
+              {ACTION_KEYS.map((a) => (
+                <span
+                  key={a}
+                  className="text-center"
+                  title={ACTION_META[a].blurb}
+                >
+                  <span className="text-foreground block text-[12px] font-bold tracking-tight">
+                    {ACTION_META[a].emoji} {ACTION_LABEL[a].head}
+                  </span>
+                  <span className="text-muted-foreground/80 block truncate text-[10px] leading-tight">
+                    {ACTION_LABEL[a].sub}
+                  </span>
+                </span>
+              ))}
             </div>
 
             <div className="space-y-3">
               {STRATEGY_KEYS.map((strategy) => (
                 <div
                   key={strategy}
-                  className="border-border overflow-hidden rounded-xl border"
+                  className="divide-border/60 border-border divide-y rounded-xl border"
                 >
                   {CLASS_KEYS.map((cls, classIndex) => (
                     <div
                       key={cls}
-                      className={
-                        classIndex > 0 ? "border-border/60 border-t" : undefined
-                      }
+                      className={cx(GRID_COLS, "items-center gap-2 px-3 py-2")}
                     >
-                      {ACTION_KEYS.map((action, actionIndex) => {
+                      {/* Strategy — named once per block. */}
+                      <div className="min-w-0">
+                        {classIndex === 0 ? (
+                          <>
+                            <p className="text-foreground text-[13px] leading-tight font-bold">
+                              {STRATEGY_META[strategy].emoji}{" "}
+                              {STRATEGY_META[strategy].name}
+                            </p>
+                            <p className="text-muted-foreground truncate text-[10.5px] leading-tight">
+                              {STRATEGY_META[strategy].blurb}
+                            </p>
+                          </>
+                        ) : null}
+                      </div>
+
+                      {/* Class — one per row. */}
+                      <div className="flex min-w-0 items-center gap-1.5">
+                        <span className="text-base" aria-hidden>
+                          {CLASS_META[cls].emoji}
+                        </span>
+                        <span
+                          className="text-foreground truncate text-[12.5px] font-semibold"
+                          title={CLASS_META[cls].blurb}
+                        >
+                          {CLASS_META[cls].name}
+                        </span>
+                      </div>
+
+                      {/* One cell per action. */}
+                      {ACTION_KEYS.map((action) => {
                         const value =
                           rateByKey.get(ruleKey(strategy, cls, action)) ?? 0;
-                        const locked = isStoryLocked(action, cls);
-                        return (
-                          <div
+                        return isStoryLocked(action, cls) ? (
+                          <span
                             key={action}
-                            className="grid grid-cols-[140px_150px_minmax(0,1fr)_110px] items-center gap-3 px-3 py-1.5"
+                            title="Influencer-only — eligibility is a class gate, not a price"
+                            className="text-muted-foreground/50 text-center text-[13px] font-semibold"
                           >
-                            {/* Strategy — named once per block. */}
-                            <div className="min-w-0">
-                              {classIndex === 0 && actionIndex === 0 ? (
-                                <>
-                                  <p className="text-foreground text-[13px] leading-tight font-bold">
-                                    {STRATEGY_META[strategy].emoji}{" "}
-                                    {STRATEGY_META[strategy].name}
-                                  </p>
-                                  <p className="text-muted-foreground truncate text-[10.5px] leading-tight">
-                                    {STRATEGY_META[strategy].blurb}
-                                  </p>
-                                </>
-                              ) : null}
-                            </div>
-
-                            {/* Class — named once per class run. */}
-                            <div className="min-w-0">
-                              {actionIndex === 0 ? (
-                                <span
-                                  className="text-foreground truncate text-[12.5px] font-semibold"
-                                  title={CLASS_META[cls].blurb}
-                                >
-                                  {CLASS_META[cls].emoji} {CLASS_META[cls].name}
-                                </span>
-                              ) : null}
-                            </div>
-
-                            {/* Action — every row names its own. */}
-                            <span
-                              className="text-foreground/80 truncate text-[12.5px]"
-                              title={ACTION_META[action].blurb}
-                            >
-                              {ACTION_META[action].emoji}{" "}
-                              {ACTION_META[action].name}
-                            </span>
-
-                            {/* Discount. */}
-                            <div className="flex justify-end">
-                              {locked ? (
-                                <span
-                                  title="Influencer-only — eligibility is a class gate, not a price"
-                                  className="text-muted-foreground/60 inline-flex h-8 items-center px-2 text-[12px] font-medium"
-                                >
-                                  Influencer only
-                                </span>
-                              ) : (
-                                <RateSelect
-                                  value={value}
-                                  disabled={pending}
-                                  onChange={(v) =>
-                                    setRate(strategy, cls, action, v)
-                                  }
-                                />
-                              )}
-                            </div>
-                          </div>
+                            —
+                          </span>
+                        ) : (
+                          <RateSelect
+                            key={action}
+                            value={value}
+                            disabled={pending}
+                            onChange={(v) => setRate(strategy, cls, action, v)}
+                          />
                         );
                       })}
                     </div>
@@ -335,7 +350,7 @@ function RateSelect({
       disabled={disabled}
       onChange={(e) => onChange(Number(e.target.value))}
       aria-label="Discount"
-      className="border-border bg-card focus:border-foreground h-8 w-[92px] rounded-lg border px-2 text-center text-[13px] font-semibold tabular-nums outline-none disabled:opacity-50"
+      className="border-border bg-card focus:border-foreground h-9 w-full rounded-lg border px-1.5 text-center text-[13px] font-semibold tabular-nums outline-none disabled:opacity-50"
     >
       {ALLOWED_RATES.map((r) => (
         <option key={r} value={r}>
