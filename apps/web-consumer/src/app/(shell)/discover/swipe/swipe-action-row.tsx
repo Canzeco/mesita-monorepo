@@ -39,6 +39,7 @@ function SwipeActionButton({
   Icon,
   variant,
   onClick,
+  disabled,
   filled,
   showDot,
 }: {
@@ -46,6 +47,10 @@ function SwipeActionButton({
   Icon: LucideIcon;
   variant: Variant;
   onClick: () => void;
+  /** Goes dead + dimmed. Parity with the mobile ActionBtn, which has always
+   *  had this — an action that can't fire must not look like it can, or the
+   *  guest taps twice and the second tap lands. */
+  disabled?: boolean;
   /** Solid glyph — the saved heart. */
   filled?: boolean;
   /** Red status dot: filters deviate from defaults (MESITA-633). */
@@ -56,11 +61,13 @@ function SwipeActionButton({
     <button
       type="button"
       onClick={onClick}
+      disabled={disabled}
       aria-label={label}
       title={label}
       className={cn(
         "relative grid shrink-0 place-items-center rounded-full border-2 transition",
         "active:scale-90 motion-reduce:active:scale-100",
+        "disabled:pointer-events-none disabled:opacity-50 disabled:shadow-none",
         big ? "h-15 w-15" : "h-12 w-12",
         variant === "utility" &&
           "border-border bg-card text-muted-foreground hover:bg-muted shadow-[0_2px_8px_-4px_rgba(80,20,40,0.25)]",
