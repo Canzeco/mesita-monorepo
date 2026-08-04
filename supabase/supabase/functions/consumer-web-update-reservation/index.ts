@@ -107,10 +107,17 @@ Deno.serve(async (req) => {
     negotiation_rounds: 0,
     attempts: [],
     call_attempts: 0,
-    attempts_state: null,
+    // 'idle' is this column's NOT NULL default — null is rejected outright
+    // ("null value in column attempts_state violates not-null constraint").
+    // Reset means back to the DEFAULT, not to nothing; same as callback_state.
+    attempts_state: "idle",
     callback_state: "none",
     callback_conversation_id: null,
     callback_at: null,
+    // MUST clear: if the old ticket was parked for a retry, the pg_cron poller
+    // (run-reservation-retries) would still fire on that stale timestamp — a
+    // second call to the venue on top of the one this EF triggers below.
+    next_attempt_at: null,
     last_conversation_id: null,
     last_called_at: null,
     last_call_status: "rescheduled by the guest — calling the place again",
