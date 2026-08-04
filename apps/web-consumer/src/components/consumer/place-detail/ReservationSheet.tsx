@@ -274,7 +274,10 @@ export function ReservationSheet({
               onChange={setTimeChoice}
               date={date}
             />
-            <ReservationPartyPicker value={party} onChange={(u) => setParty(u)} />
+            <ReservationPartyPicker
+              value={party}
+              onChange={(u) => setParty(u)}
+            />
 
             <div className="mt-4">
               <p className="text-muted-foreground text-[11px] font-medium tracking-[0.14em] uppercase">

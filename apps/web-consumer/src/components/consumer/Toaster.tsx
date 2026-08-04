@@ -28,7 +28,12 @@ export function Toaster() {
   if (toasts.length === 0) return null;
 
   return (
-    <div className={cn("pointer-events-none absolute inset-x-0 top-4 flex flex-col items-center gap-2 px-4", Z_TOASTER)}>
+    <div
+      className={cn(
+        "pointer-events-none absolute inset-x-0 top-4 flex flex-col items-center gap-2 px-4",
+        Z_TOASTER,
+      )}
+    >
       {toasts.map((t) => (
         <ToastCard key={t.id} t={t} />
       ))}

@@ -197,4 +197,3 @@ const CLASS_LABELS: Record<Class, string> = {
 export function classProperLabel(classKey: Class | string): string {
   return CLASS_LABELS[classKey as Class] ?? "Mesita";
 }
-

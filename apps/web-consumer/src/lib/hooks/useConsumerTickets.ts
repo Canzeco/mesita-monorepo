@@ -26,7 +26,9 @@ export type ConsumerTicketsState = {
 export function useConsumerTickets(userId: string): ConsumerTicketsState {
   const supabase = useBrowserSupabase();
   const [rows, setRows] = useState<ConsumerTicketRow[]>([]);
-  const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
+  const [status, setStatus] = useState<"loading" | "ready" | "error">(
+    "loading",
+  );
 
   const refresh = useCallback(async () => {
     try {
@@ -48,7 +50,8 @@ export function useConsumerTickets(userId: string): ConsumerTicketsState {
           setStatus("ready");
         }
       } catch {
-        if (!cancelled) setStatus((prev) => (prev === "ready" ? prev : "error"));
+        if (!cancelled)
+          setStatus((prev) => (prev === "ready" ? prev : "error"));
       }
     })();
     return () => {

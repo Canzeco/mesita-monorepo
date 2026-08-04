@@ -5,10 +5,7 @@ import { Calendar, Hash, Users } from "lucide-react";
 
 import type { ReservationItem } from "@/lib/mock/reservations-mock";
 import { cn, guestNoun } from "@/lib/utils";
-import {
-  RESERVATION_FLOW,
-  statusMeta,
-} from "@/lib/reservation-status";
+import { RESERVATION_FLOW, statusMeta } from "@/lib/reservation-status";
 import {
   LinkedCouponCard,
   MetaRow,
@@ -28,7 +25,10 @@ function LifecycleStepper({ status }: { status: ReservationItem["status"] }) {
   const index = RESERVATION_FLOW.indexOf(status);
   if (index < 0) return null;
   return (
-    <section aria-label="Reservation progress" className="flex items-center gap-1.5">
+    <section
+      aria-label="Reservation progress"
+      className="flex items-center gap-1.5"
+    >
       {RESERVATION_FLOW.map((step, i) => {
         const done = i <= index;
         const meta = statusMeta(step);
@@ -81,7 +81,10 @@ export function ReservationDetailBody({
               alt={r.placeName}
               fill
               sizes="(max-width: 640px) 100vw, 480px"
-              className={cn("object-cover", meta.spent && "opacity-80 grayscale")}
+              className={cn(
+                "object-cover",
+                meta.spent && "opacity-80 grayscale",
+              )}
             />
           ) : null}
         </div>
@@ -100,7 +103,10 @@ export function ReservationDetailBody({
               meta.pillClass,
             )}
           >
-            <meta.Icon className={cn("h-3 w-3", meta.iconClass)} strokeWidth={2.25} />
+            <meta.Icon
+              className={cn("h-3 w-3", meta.iconClass)}
+              strokeWidth={2.25}
+            />
             {meta.label}
           </span>
         </div>
@@ -142,7 +148,9 @@ export function ReservationDetailBody({
         )}
       </section>
 
-      {r.linkedCoupon && !meta.spent && <LinkedCouponCard coupon={r.linkedCoupon} />}
+      {r.linkedCoupon && !meta.spent && (
+        <LinkedCouponCard coupon={r.linkedCoupon} />
+      )}
 
       <ReservationActions r={r} onChanged={onChanged} />
     </div>

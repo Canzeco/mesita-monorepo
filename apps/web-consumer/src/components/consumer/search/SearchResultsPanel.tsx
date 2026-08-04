@@ -53,9 +53,7 @@ export function SearchResultsPanel({
         )}
 
         {searchError && (
-          <p className={cn(ERROR_BOX_CLASS, "rounded-xl")}>
-            {searchError}
-          </p>
+          <p className={cn(ERROR_BOX_CLASS, "rounded-xl")}>{searchError}</p>
         )}
 
         {settled && !searchError && predictions.length === 0 && (

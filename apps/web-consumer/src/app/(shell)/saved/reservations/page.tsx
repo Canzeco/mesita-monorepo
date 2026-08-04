@@ -110,9 +110,7 @@ function ReservationsEmptyState({
               {eyebrow}
             </span>
           )}
-          <h2 className={SHEET_TITLE_CLASS}>
-            {title}
-          </h2>
+          <h2 className={SHEET_TITLE_CLASS}>{title}</h2>
           <p className="text-muted-foreground max-w-xs text-sm leading-snug">
             {body}
           </p>

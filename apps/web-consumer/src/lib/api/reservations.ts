@@ -121,7 +121,9 @@ export function apiUpdateReservation(
     {
       reservation_id: args.reservationId,
       ...(args.reservedAt ? { reserved_at: args.reservedAt } : {}),
-      ...(typeof args.partySize === "number" ? { party_size: args.partySize } : {}),
+      ...(typeof args.partySize === "number"
+        ? { party_size: args.partySize }
+        : {}),
       ...(args.notes !== undefined ? { notes: args.notes } : {}),
     },
     "Couldn't update the reservation",

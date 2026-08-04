@@ -122,7 +122,12 @@ export function SwipeActionRow({
         onClick={onOpenFilters}
         showDot={filtersActive}
       />
-      <SwipeActionButton label="Skip" Icon={X} variant="skip" onClick={onSkip} />
+      <SwipeActionButton
+        label="Skip"
+        Icon={X}
+        variant="skip"
+        onClick={onSkip}
+      />
       <SwipeActionButton
         label="About this place"
         Icon={Store}

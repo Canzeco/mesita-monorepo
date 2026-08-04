@@ -265,7 +265,7 @@ export function DiscoveryFilters({
           onChange={(e) => setDiscoveryAsk(e.target.value)}
           placeholder='what are you craving? — "mezcal cocktails for a date"'
           aria-label="The ask — free text, shapes your lineup"
-          className="border-border/70 bg-muted/40 placeholder:text-muted-foreground/60 focus:border-primary/50 w-full rounded-xl border px-3.5 py-2.5 text-sm outline-none transition"
+          className="border-border/70 bg-muted/40 placeholder:text-muted-foreground/60 focus:border-primary/50 w-full rounded-xl border px-3.5 py-2.5 text-sm transition outline-none"
         />
         <p className="text-muted-foreground/70 mt-1.5 text-[11px]">
           Shapes your lineup once the engine reads it — doesn&apos;t narrow the

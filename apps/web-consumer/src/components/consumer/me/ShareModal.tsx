@@ -24,9 +24,7 @@ export function ShareModal({
             <UserPlus className="h-5 w-5" />
           </span>
           <div>
-            <h2 className={SHEET_TITLE_CLASS}>
-              Share Mesita
-            </h2>
+            <h2 className={SHEET_TITLE_CLASS}>Share Mesita</h2>
             <p className="text-muted-foreground text-[12px]">
               Your seat at the table — pass it on
             </p>

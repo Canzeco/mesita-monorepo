@@ -121,7 +121,10 @@ export function ClassComparison() {
       {ROWS.map((row, ri) => {
         const last = ri === ROWS.length - 1;
         return (
-          <div key={row.label} className={cn("grid items-stretch gap-x-1", GRID_COLS)}>
+          <div
+            key={row.label}
+            className={cn("grid items-stretch gap-x-1", GRID_COLS)}
+          >
             <span
               className={cn(
                 "text-foreground/80 flex items-center pl-1.5 text-[11px] leading-tight font-medium",
@@ -141,7 +144,10 @@ export function ClassComparison() {
                 )}
               >
                 {v == null ? (
-                  <Minus className="text-muted-foreground/50 h-3 w-3" aria-label="Not included" />
+                  <Minus
+                    className="text-muted-foreground/50 h-3 w-3"
+                    aria-label="Not included"
+                  />
                 ) : v === "✓" ? (
                   <Check className="h-3.5 w-3.5" />
                 ) : (

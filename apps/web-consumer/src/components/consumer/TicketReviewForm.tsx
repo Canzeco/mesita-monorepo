@@ -175,7 +175,10 @@ export function TicketReviewForm({
           onChange={(e) => onChange({ ...draft, comments: e.target.value })}
           placeholder="e.g. great tacos, slow drinks…"
           rows={2}
-          className={cn(TEXTAREA_CLASS, "bg-background text-foreground placeholder:text-muted-foreground/70")}
+          className={cn(
+            TEXTAREA_CLASS,
+            "bg-background text-foreground placeholder:text-muted-foreground/70",
+          )}
         />
       </label>
 

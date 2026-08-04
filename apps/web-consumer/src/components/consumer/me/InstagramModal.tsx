@@ -205,8 +205,7 @@ export function InstagramModal({
 // per-visit story rung. Rates quote the reward ladder's peak (dominant)
 // column so they always match the /rewards program summary.
 function ReachCards() {
-  const influencerRate =
-    REWARD_SEGMENT_BY_KEY.influencer.rates[PEAK_STRATEGY];
+  const influencerRate = REWARD_SEGMENT_BY_KEY.influencer.rates[PEAK_STRATEGY];
   const storyRate = REWARD_SEGMENT_BY_KEY.story.rates[PEAK_STRATEGY];
 
   return (

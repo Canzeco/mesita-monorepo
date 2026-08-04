@@ -95,7 +95,12 @@ export function BottomNav({ userId }: { userId?: string }) {
 
   return (
     <>
-      <nav className={cn("border-border bg-card/95 shrink-0 border-t px-0.5 pt-2 backdrop-blur", Z_BOTTOM_NAV)}>
+      <nav
+        className={cn(
+          "border-border bg-card/95 shrink-0 border-t px-0.5 pt-2 backdrop-blur",
+          Z_BOTTOM_NAV,
+        )}
+      >
         <div className="flex items-end justify-around">
           {ITEMS.map((item) => {
             const { href, Icon, label, match, soon } = item;
@@ -155,7 +160,10 @@ export function BottomNav({ userId }: { userId?: string }) {
                     active && "bg-primary/10 ring-primary/20 ring-1",
                   )}
                 >
-                  <Icon className="h-5 w-5" strokeWidth={active ? 2.25 : 1.75} />
+                  <Icon
+                    className="h-5 w-5"
+                    strokeWidth={active ? 2.25 : 1.75}
+                  />
                 </span>
                 <span className="w-full truncate text-center">
                   {displayLabel}

@@ -1,11 +1,5 @@
 import type { LucideIcon } from "lucide-react";
-import {
-  DoorOpen,
-  Instagram,
-  Star,
-  User,
-  UtensilsCrossed,
-} from "lucide-react";
+import { DoorOpen, Instagram, Star, User, UtensilsCrossed } from "lucide-react";
 
 import { classProperLabel } from "@/lib/consumer-data";
 import type { ConsumerClass } from "@/lib/mock/place";
@@ -59,7 +53,9 @@ export function RewardStep({
         <p className="text-foreground text-[13px] leading-tight font-semibold">
           {title}
         </p>
-        <p className="text-muted-foreground mt-0.5 text-xs leading-snug">{body}</p>
+        <p className="text-muted-foreground mt-0.5 text-xs leading-snug">
+          {body}
+        </p>
       </div>
     </li>
   );

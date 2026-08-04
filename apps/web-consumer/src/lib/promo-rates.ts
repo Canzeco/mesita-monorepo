@@ -69,7 +69,8 @@ export function resolveActivePromoRate(
   // Standard reads the `free` column; every elevated class (Premium /
   // Influencer / Aura) reads `premium` — the v4 columns only know the binary
   // free-vs-elevated split.
-  const col: keyof PromoClassRates = classKey === "standard" ? "free" : "premium";
+  const col: keyof PromoClassRates =
+    classKey === "standard" ? "free" : "premium";
   const welcome = matrix.welcome[col];
   const returning = matrix.default[col];
   return (
@@ -85,7 +86,13 @@ export function resolveActivePromoRate(
 // null/custom coerces to "zero", same as the bill engine.
 export type PlaceStrategy = "zero" | "conservative" | "aggressive" | "dominant";
 
-const STRATEGY_PRESETS: { id: PlaceStrategy; w_free: number | null; w_prem: number | null; free: number | null; prem: number | null }[] = [
+const STRATEGY_PRESETS: {
+  id: PlaceStrategy;
+  w_free: number | null;
+  w_prem: number | null;
+  free: number | null;
+  prem: number | null;
+}[] = [
   { id: "zero", w_free: null, w_prem: null, free: null, prem: null },
   { id: "conservative", w_free: 20, w_prem: 30, free: 10, prem: 20 },
   { id: "aggressive", w_free: 30, w_prem: 50, free: 10, prem: 30 },

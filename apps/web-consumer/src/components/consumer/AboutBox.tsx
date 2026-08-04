@@ -20,7 +20,12 @@ function formatAboutDisplay(text: string): string {
   const normalized = text.replace(/\r\n/g, "\n").trim();
   const blankSplit = normalized
     .split(/\n\s*\n+/)
-    .map((p) => p.replace(/\n+/g, " ").replace(/[ \t]+/g, " ").trim())
+    .map((p) =>
+      p
+        .replace(/\n+/g, " ")
+        .replace(/[ \t]+/g, " ")
+        .trim(),
+    )
     .filter(Boolean);
   if (blankSplit.length > 1) return blankSplit.join("\n\n");
   const soft = normalized
@@ -44,7 +49,7 @@ export function AboutBox({ text, name }: { text: string; name: string }) {
         <h3 className="text-muted-foreground text-[10px] font-bold tracking-[0.18em] uppercase">
           {heading}
         </h3>
-        <p className="text-muted-foreground whitespace-pre-wrap text-base leading-relaxed">
+        <p className="text-muted-foreground text-base leading-relaxed whitespace-pre-wrap">
           {body}
         </p>
       </section>
@@ -63,7 +68,7 @@ export function AboutBox({ text, name }: { text: string; name: string }) {
       </h3>
       <p
         className={cn(
-          "text-muted-foreground whitespace-pre-wrap text-base leading-relaxed",
+          "text-muted-foreground text-base leading-relaxed whitespace-pre-wrap",
           !expanded && "line-clamp-10",
         )}
       >

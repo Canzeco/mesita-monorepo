@@ -68,7 +68,7 @@ export function SocialProfileModal({
                 className="ring-background h-20 w-20 rounded-full object-cover ring-4"
               />
               {shown.plan === "influencer" && (
-                <span className="bg-sky-600 ring-background absolute -bottom-0.5 -left-0.5 grid h-6 w-6 place-items-center rounded-full text-white ring-2">
+                <span className="ring-background absolute -bottom-0.5 -left-0.5 grid h-6 w-6 place-items-center rounded-full bg-sky-600 text-white ring-2">
                   <Megaphone className="h-3.5 w-3.5" />
                 </span>
               )}

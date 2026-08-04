@@ -263,7 +263,9 @@ function mockAccountState(
     origin,
     renewsAt,
     followers: mock.instagram ? mock.followers : base.followers,
-    handle: mock.instagram ? (base.handle ?? DEMO_INSTAGRAM_HANDLE) : base.handle,
+    handle: mock.instagram
+      ? (base.handle ?? DEMO_INSTAGRAM_HANDLE)
+      : base.handle,
   };
 }
 

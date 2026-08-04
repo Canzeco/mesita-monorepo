@@ -25,7 +25,10 @@ type ReservationStatusMeta = {
   banner: string | null;
 };
 
-const RESERVATION_STATUS_META: Record<ReservationStatus, ReservationStatusMeta> = {
+const RESERVATION_STATUS_META: Record<
+  ReservationStatus,
+  ReservationStatusMeta
+> = {
   created: {
     label: "Created",
     pillClass: "border-sky-500/30 bg-sky-50 text-sky-800",

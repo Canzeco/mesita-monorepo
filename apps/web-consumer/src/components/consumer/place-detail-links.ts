@@ -81,15 +81,20 @@ export const REVIEW_DEFS = [
 // color so the row reads as real apps, not a flat grey wall. Unknown keys
 // fall back to the neutral surface.
 export const CHANNEL_CLAY: Record<string, string> = {
-  phone: "border-emerald-200/70 bg-emerald-50 text-emerald-900 hover:bg-emerald-100/70",
+  phone:
+    "border-emerald-200/70 bg-emerald-50 text-emerald-900 hover:bg-emerald-100/70",
   website_url: "border-sky-200/70 bg-sky-50 text-sky-900 hover:bg-sky-100/70",
   whatsapp_url:
     "border-emerald-200/70 bg-emerald-50 text-emerald-900 hover:bg-emerald-100/70",
-  instagram_url: "border-pink-200/70 bg-pink-50 text-pink-900 hover:bg-pink-100/70",
-  facebook_url: "border-blue-200/70 bg-blue-50 text-blue-900 hover:bg-blue-100/70",
+  instagram_url:
+    "border-pink-200/70 bg-pink-50 text-pink-900 hover:bg-pink-100/70",
+  facebook_url:
+    "border-blue-200/70 bg-blue-50 text-blue-900 hover:bg-blue-100/70",
   x_url: "border-zinc-300/70 bg-zinc-100 text-zinc-900 hover:bg-zinc-200/70",
-  threads_url: "border-zinc-300/70 bg-zinc-100 text-zinc-900 hover:bg-zinc-200/70",
-  reddit_url: "border-orange-200/70 bg-orange-50 text-orange-900 hover:bg-orange-100/70",
+  threads_url:
+    "border-zinc-300/70 bg-zinc-100 text-zinc-900 hover:bg-zinc-200/70",
+  reddit_url:
+    "border-orange-200/70 bg-orange-50 text-orange-900 hover:bg-orange-100/70",
   opentable_url: "border-red-200/70 bg-red-50 text-red-900 hover:bg-red-100/70",
   resy_url: "border-rose-200/70 bg-rose-50 text-rose-900 hover:bg-rose-100/70",
   uber_eats_url:

@@ -49,7 +49,11 @@ export function HelpModal({
   const mine = segmentKeyForClass(classKey);
 
   return (
-    <LocalSheet open={open} onClose={onClose} ariaLabel="Help — how rewards work">
+    <LocalSheet
+      open={open}
+      onClose={onClose}
+      ariaLabel="Help — how rewards work"
+    >
       <div className="space-y-4 px-5 pt-4 pb-8">
         <div className="flex items-center gap-2.5">
           <span className="bg-primary/10 text-primary grid size-9 place-items-center rounded-xl">
@@ -81,9 +85,9 @@ export function HelpModal({
             <span className="text-foreground font-semibold">
               Elevated classes boost them.
             </span>{" "}
-            Standard gets the base discount; Premium, Influencer and Aura
-            unlock bigger ones — Influencer is free with Instagram reach, Aura
-            is invite-only.
+            Standard gets the base discount; Premium, Influencer and Aura unlock
+            bigger ones — Influencer is free with Instagram reach, Aura is
+            invite-only.
           </p>
         </div>
 
@@ -127,7 +131,9 @@ export function HelpModal({
                 <span
                   className={cn(
                     "grid size-7 shrink-0 place-items-center rounded-lg",
-                    isMine ? "bg-white/20 text-white" : "bg-secondary/10 text-secondary",
+                    isMine
+                      ? "bg-white/20 text-white"
+                      : "bg-secondary/10 text-secondary",
                   )}
                 >
                   <Icon className="size-[14px]" strokeWidth={2.25} />
@@ -159,7 +165,6 @@ export function HelpModal({
             );
           })}
         </div>
-
       </div>
     </LocalSheet>
   );

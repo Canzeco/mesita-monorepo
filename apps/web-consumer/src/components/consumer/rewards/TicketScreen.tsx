@@ -552,7 +552,9 @@ export function TicketScreen({
                 hint="Tag the place — then check it here"
                 reward={`${storyPeak}%`}
                 state={
-                  acting === "story" ? "busy" : taskStateFor(ticket.story_status)
+                  acting === "story"
+                    ? "busy"
+                    : taskStateFor(ticket.story_status)
                 }
                 onDo={live ? () => void runProof("story") : undefined}
               />
@@ -563,7 +565,9 @@ export function TicketScreen({
               hint="At the table, once per place"
               reward={`${reviewPeak}%`}
               state={
-                acting === "review" ? "busy" : taskStateFor(ticket.review_status)
+                acting === "review"
+                  ? "busy"
+                  : taskStateFor(ticket.review_status)
               }
               onDo={live ? () => void runProof("review") : undefined}
             />
@@ -588,12 +592,12 @@ export function TicketScreen({
       {live ? (
         <section className="border-border bg-card rounded-2xl border px-3.5 py-3">
           <p className="text-foreground text-[12.5px] leading-snug font-semibold">
-            Your discount: up to {base}% as {classProperLabel(classKey)} —
-            first visit here pays {welcomePeak}% automatically.
+            Your discount: up to {base}% as {classProperLabel(classKey)} — first
+            visit here pays {welcomePeak}% automatically.
           </p>
           <p className="text-muted-foreground/80 mt-1 text-[11px] leading-snug">
-            You always keep your single best reward — never added together.
-            The exact % is set by the place.
+            You always keep your single best reward — never added together. The
+            exact % is set by the place.
           </p>
         </section>
       ) : null}

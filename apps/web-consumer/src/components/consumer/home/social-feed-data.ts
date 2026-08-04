@@ -7,13 +7,7 @@
 // point at places that exist in this environment (and survive DB resets).
 // `fallbackPlaceName` covers the empty-catalog case with an inert chip.
 
-import {
-  Camera,
-  Heart,
-  MapPin,
-  Sparkles,
-  type LucideIcon,
-} from "lucide-react";
+import { Camera, Heart, MapPin, Sparkles, type LucideIcon } from "lucide-react";
 
 type SocialActionKind = "visit" | "like" | "reward" | "story";
 

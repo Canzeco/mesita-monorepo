@@ -2,10 +2,7 @@ import { redirect } from "next/navigation";
 import { PlaceDetailPageBody } from "@/components/consumer/PlaceDetailPageBody";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { apiFetchPlaceDetail } from "@/lib/api/places";
-import {
-  placeGoneHref,
-  toCanonicalPlaceHrefOrNull,
-} from "@/lib/place-route";
+import { placeGoneHref, toCanonicalPlaceHrefOrNull } from "@/lib/place-route";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 
 export const dynamic = "force-dynamic";
@@ -26,7 +23,5 @@ export default async function PlaceDetailPage({
     // Bounce, but say so — see <PlaceGoneNotice />.
     redirect(placeGoneHref(CONSUMER_ROUTES.home, id));
   }
-  return (
-    <PlaceDetailPageBody place={place} backHref={CONSUMER_ROUTES.home} />
-  );
+  return <PlaceDetailPageBody place={place} backHref={CONSUMER_ROUTES.home} />;
 }

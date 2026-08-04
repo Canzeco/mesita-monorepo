@@ -107,9 +107,7 @@ export function ReservationCard({ r }: { r: ReservationItem }) {
           "perforated edge" metaphor; the inline ticket icon + the
           small percent badge keep the stub visually distinct from
           the main reservation surface above. */}
-      {r.linkedCoupon && !spent && (
-        <LinkedCouponStub coupon={r.linkedCoupon} />
-      )}
+      {r.linkedCoupon && !spent && <LinkedCouponStub coupon={r.linkedCoupon} />}
     </Link>
   );
 }

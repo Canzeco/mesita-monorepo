@@ -32,7 +32,10 @@ export function SwipeCardInfo({
     place.distance_km == null || place.distance_km <= 0
       ? "- km"
       : `${place.distance_km} km`;
-  const zoneLabel = resolveZoneLabel({ zone: place.zone, address: place.address });
+  const zoneLabel = resolveZoneLabel({
+    zone: place.zone,
+    address: place.address,
+  });
   const zoneDisplay = zoneLabel ?? "Neighborhood";
   const categoryLabel = resolvePlaceCategoryName({
     categoryLabel: place.category_label,
@@ -54,7 +57,7 @@ export function SwipeCardInfo({
     >
       <h2
         className={cn(
-          "inline-flex min-w-0 max-w-full items-center gap-1.5 leading-[1.15] font-semibold tracking-[-0.01em] text-white [text-shadow:0_2px_12px_rgba(0,0,0,0.62)]",
+          "inline-flex max-w-full min-w-0 items-center gap-1.5 leading-[1.15] font-semibold tracking-[-0.01em] text-white [text-shadow:0_2px_12px_rgba(0,0,0,0.62)]",
           compact ? "text-[1.3rem]" : "text-[1.95rem]",
         )}
       >
@@ -158,5 +161,3 @@ function MetaChip({
     </span>
   );
 }
-
-

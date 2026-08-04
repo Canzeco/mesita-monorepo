@@ -25,5 +25,9 @@ type ConsumerSigninResult = {
 export async function apiConsumerSigninPhone(
   client: SupabaseClient,
 ): Promise<ConsumerSigninResult> {
-  return invokeEF<ConsumerSigninResult>(client, "consumer-web-signin-phone", {});
+  return invokeEF<ConsumerSigninResult>(
+    client,
+    "consumer-web-signin-phone",
+    {},
+  );
 }

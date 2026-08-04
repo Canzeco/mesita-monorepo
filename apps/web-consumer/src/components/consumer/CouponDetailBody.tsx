@@ -1,11 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import {
-  Calendar,
-  Sparkles,
-  Ticket,
-} from "lucide-react";
+import { Calendar, Sparkles, Ticket } from "lucide-react";
 import type {
   CouponItem,
   InstagramCouponStatus,
@@ -97,7 +93,12 @@ export function CouponDetailBody({ c }: { c: CouponItem }) {
       {meta.banner && <StatusBanner banner={meta.banner} />}
 
       {c.kind === "instagram" && c.status === "rejected" && c.rejectReason && (
-        <p className={cn(ERROR_BOX_CLASS, "rounded-2xl px-3 py-2.5 text-[12.5px] leading-snug")}>
+        <p
+          className={cn(
+            ERROR_BOX_CLASS,
+            "rounded-2xl px-3 py-2.5 text-[12.5px] leading-snug",
+          )}
+        >
           {c.rejectReason}
         </p>
       )}

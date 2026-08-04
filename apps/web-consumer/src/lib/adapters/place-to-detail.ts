@@ -147,11 +147,7 @@ export function placeRowToDetail(row: Row, tags?: ResolvedTag[]): PlaceDetail {
         const source = menuItems.length > 0 ? menuItems : legacyMenus;
         const fromJson = source
           .map((m) => {
-            const url =
-              str(m.url) ??
-              str(m.pdf_url) ??
-              str(m.source_url) ??
-              "";
+            const url = str(m.url) ?? str(m.pdf_url) ?? str(m.source_url) ?? "";
             if (!url) return null;
             const kind = detectMenuKind(url);
             const itemPages = arr(m.items).length;

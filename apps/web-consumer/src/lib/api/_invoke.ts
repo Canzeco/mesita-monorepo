@@ -64,8 +64,7 @@ export async function invokeEF<T>(
   if (error) {
     const parsed = await parseInvokeErrorBody(error);
     const message = pickErrorMessage(parsed) ?? error.message;
-    const code =
-      parsed && typeof parsed.code === "string" ? parsed.code : null;
+    const code = parsed && typeof parsed.code === "string" ? parsed.code : null;
     throw new EFError(message, {
       fn,
       code,
@@ -105,7 +104,8 @@ async function parseInvokeErrorBody(
       .clone()
       .json()
       .catch(() => null);
-    if (json && typeof json === "object") return json as Record<string, unknown>;
+    if (json && typeof json === "object")
+      return json as Record<string, unknown>;
     const text = await res
       .clone()
       .text()

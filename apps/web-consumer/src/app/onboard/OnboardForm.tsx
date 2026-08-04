@@ -152,9 +152,8 @@ export function OnboardForm({ initial }: { initial?: OnboardInitialValues }) {
           )}
         </button>
         <p className="text-muted-foreground mt-3 text-center text-[11px]">
-          We use these to personalize recommendations. Only your name is
-          shared with a place — it&apos;s the name your reservation is booked
-          under.
+          We use these to personalize recommendations. Only your name is shared
+          with a place — it&apos;s the name your reservation is booked under.
         </p>
       </div>
     </form>

@@ -7,10 +7,7 @@ import type { Place } from "@/lib/api/places";
 import { INSTAGRAM_BADGE_GRADIENT_CLASS } from "@/lib/ui-classes";
 import { cn, firstInitial } from "@/lib/utils";
 import { placeHref } from "@/lib/place-route";
-import {
-  SOCIAL_ACTION_META,
-  type SocialPerson,
-} from "./social-feed-data";
+import { SOCIAL_ACTION_META, type SocialPerson } from "./social-feed-data";
 
 // One activity feed row: person (profile modal) + place chip (detail nav).
 // Place resolves against the live deck when available; otherwise the chip
@@ -42,7 +39,7 @@ export function SocialActivityRow({
             className="h-11 w-11 rounded-full object-cover"
           />
           {person.plan === "influencer" && (
-            <span className="bg-sky-600 ring-background absolute -bottom-0.5 -left-0.5 grid h-4 w-4 place-items-center rounded-full text-white ring-2">
+            <span className="ring-background absolute -bottom-0.5 -left-0.5 grid h-4 w-4 place-items-center rounded-full bg-sky-600 text-white ring-2">
               <Megaphone className="h-2.5 w-2.5" />
             </span>
           )}

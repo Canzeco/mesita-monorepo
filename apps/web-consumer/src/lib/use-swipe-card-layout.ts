@@ -63,9 +63,7 @@ function cacheImageNaturalSize(
   return size;
 }
 
-function getCachedImageNaturalSize(
-  src: string,
-): ImageNaturalSize | undefined {
+function getCachedImageNaturalSize(src: string): ImageNaturalSize | undefined {
   return imageSizeCache.get(normalizePhotoSrc(src));
 }
 
