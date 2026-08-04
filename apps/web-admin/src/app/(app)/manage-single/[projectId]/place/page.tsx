@@ -6,8 +6,8 @@ import { ProfileCompleteness } from "../../sections/ProfileCompleteness";
 import { useUnitPlace } from "../../UnitPlaceContext";
 
 // Place — the editable profile, with Products (menus) as a card in the same
-// masonry. Reviews has its own tab; the operator/meta cards live on Settings
-// (MESITA-834 + amendments).
+// masonry. Reviews folded into Performance; the Mesita-internal cards live on
+// the Admin tab (MESITA-834 + amendments).
 export default function UnitPlacePage() {
   const { place, setPlace } = useUnitPlace();
 

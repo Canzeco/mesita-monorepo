@@ -387,10 +387,9 @@ export function PlaceSection({
 
   const removePhoto = (idx: number) => setPhotos(form.photos.filter((_, i) => i !== idx));
 
-  // Admin-only: per-place Enricher inspector data — per-photo metadata
-  // (source + vision analysis) for the ⓘ dialog, keyed by image URL. Loads
-  // once; the live enriching status (and its poll) lives on the Settings
-  // tab's Metadata card now (MESITA-834).
+  // Per-place Enricher inspector data — per-photo metadata (source + vision
+  // analysis) for the ⓘ dialog, keyed by image URL. Loads once; the live
+  // enriching status (and its poll) lives on the Admin tab's Metadata card.
   const [media, setMedia] = useState<Record<string, PlaceMediaMeta>>({});
   const [metaFor, setMetaFor] = useState<string | null>(null);
 
@@ -465,8 +464,8 @@ export function PlaceSection({
     <div className="columns-1 gap-4 pb-8 [&>section]:mb-4 [&>section]:break-inside-avoid [&>details]:mb-4 [&>details]:break-inside-avoid lg:columns-2 lg:gap-5 lg:pb-10 lg:[&>section]:mb-5 lg:[&>details]:mb-5">
       {/* Box order (MESITA-547 / MESITA-720 / MESITA-834): edit-first —
           Basics → Hours → Channels → Photos → Location →
-          Promos summary. The operator/meta cards (Manual Priority, Ownership,
-          Metadata, Embeddings) live on the Settings tab. */}
+          Promos summary. The Mesita-internal cards (Manual Priority,
+          Ownership, Metadata, Embeddings) live on the Admin tab. */}
       {/* Basics — editable identity. Price stays Enricher/Google-derived
           read-only; category is Enricher + Admin + Business (MESITA-469). */}
       <SectionCard
@@ -1028,9 +1027,14 @@ function sourceMetaRows(
   return rows;
 }
 
-// Admin-only inspector: shows one image's Enricher metadata — source, gallery
-// order, save status, the pre-analysis source signals (likes/comments/dims/…),
-// and the vision analysis text — in a small modal.
+// Enricher inspector: shows one image's metadata — source, gallery order, save
+// status, the pre-analysis source signals (likes/comments/dims/…), and the
+// vision analysis text — in a small modal.
+//
+// This is Mesita-internal data but it deliberately stays on Place rather than
+// moving to the Admin tab: it is a read-only lens on the tile you are curating,
+// reachable only by clicking that tile, and hosting it on Admin would mean
+// duplicating the whole gallery there to have something to click.
 function MediaMetaDialog({
   url,
   meta,
