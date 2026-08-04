@@ -666,7 +666,7 @@ export function TicketScreen({
       ) : null}
 
       {/* ── Housekeeping ── */}
-      <div className="flex shrink-0 flex-col items-center gap-1">
+      <div className="flex shrink-0 flex-col items-center gap-2">
         {ticket.status === "open" ? (
           <button
             type="button"
@@ -682,24 +682,31 @@ export function TicketScreen({
         {/* The report button (v3c, MESITA-851) — live for the WHOLE ticket and
             after it closes. With staff no longer ruling on tasks and the bill
             optional, this is the guest's only route that isn't arguing with
-            the person holding the terminal. Quiet by design: it must be
-            findable when something goes wrong without implying it usually
-            does. */}
+            the person holding the terminal. It must therefore READ as an
+            action: an outlined pill that names what it does, not a muted line
+            of text that a guest reads as a caption of whatever failed above
+            it. Restraint lives in the color, not in the affordance. */}
         {!cancelled ? (
           reported ? (
-            <p className="text-muted-foreground flex min-h-11 items-center gap-1.5 text-[12.5px] font-medium">
+            <p className="border-border bg-muted/40 text-muted-foreground flex min-h-11 items-center gap-2 rounded-full border px-4 text-[12.5px] font-semibold">
               <Flag className="size-3.5" />
               Reported — Mesita is looking at it
             </p>
           ) : (
-            <button
-              type="button"
-              onClick={() => setReportOpen(true)}
-              className="text-muted-foreground hover:text-foreground flex min-h-11 items-center gap-1.5 text-[12.5px] font-semibold transition"
-            >
-              <Flag className="size-3.5" />
-              Something went wrong here
-            </button>
+            <>
+              <button
+                type="button"
+                onClick={() => setReportOpen(true)}
+                className="border-border bg-card text-foreground hover:bg-muted/50 flex min-h-11 items-center gap-2 rounded-full border px-4 text-[13px] font-bold transition active:scale-[0.99]"
+              >
+                <Flag className="text-destructive size-3.5" />
+                Report a problem
+              </button>
+              <p className="text-muted-foreground/80 max-w-[17rem] text-center text-[11px] leading-snug">
+                Discount not honored, wrong total, anything off — a real person
+                at Mesita reads it.
+              </p>
+            </>
           )
         ) : null}
       </div>
