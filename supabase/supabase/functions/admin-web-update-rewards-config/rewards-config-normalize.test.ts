@@ -50,13 +50,19 @@ Deno.test("normalizeRewards: an empty object still yields all 60 rules", () => {
     r.value.rules.map((x) => `${x.strategy}|${x.class}|${x.action}`),
   );
   assertEquals(keys.size, RULE_COUNT);
-  // Launch defaults survive: standing varies by class, review does not.
+  // Defaults survive, and BOTH ladders are in them (MESITA-876): standing
+  // varies by class, and so does every action via the +0/+5/+5/+10 step.
   assertEquals(rateOf(r.value.rules, "conservative", "standard", "standing"), 10);
   assertEquals(rateOf(r.value.rules, "conservative", "aura", "standing"), 20);
-  assertEquals(rateOf(r.value.rules, "aggressive", "premium", "review"), 50);
-  // Mesita Review launched unpriced.
+  assertEquals(rateOf(r.value.rules, "aggressive", "standard", "review"), 40);
+  assertEquals(rateOf(r.value.rules, "aggressive", "premium", "review"), 45);
+  assertEquals(rateOf(r.value.rules, "aggressive", "aura", "review"), 50);
+  // Mesita Review is priced now — and every action beats its class's
+  // standing rate, or it would be a dead rung under best-of.
   for (const cls of CLASSES) {
-    assertEquals(rateOf(r.value.rules, "dominant", cls, "mesita_review"), 0);
+    const mesita = rateOf(r.value.rules, "dominant", cls, "mesita_review");
+    const standing = rateOf(r.value.rules, "dominant", cls, "standing");
+    assertEquals(mesita > standing, true, `${cls}: ${mesita} must beat ${standing}`);
   }
 });
 
@@ -83,9 +89,10 @@ Deno.test("normalizeRewards: a sent rule wins; the rest keep their defaults", ()
   });
   assert(r.ok);
   assertEquals(rateOf(r.value.rules, "conservative", "premium", "review"), 35);
-  // Its siblings are untouched — per-class cells are independent.
-  assertEquals(rateOf(r.value.rules, "conservative", "standard", "review"), 30);
-  assertEquals(rateOf(r.value.rules, "conservative", "aura", "review"), 30);
+  // Its siblings are untouched — per-class cells are independent, and keep
+  // their own stepped defaults (25 Standard / 35 Aura).
+  assertEquals(rateOf(r.value.rules, "conservative", "standard", "review"), 25);
+  assertEquals(rateOf(r.value.rules, "conservative", "aura", "review"), 35);
 });
 
 Deno.test("normalizeRewards: rates snap to the 5% grid, floor 5, ceiling 70", () => {

@@ -53,17 +53,32 @@ const RATE_MAX = 70;
 const ALLOWED_CAPS = [100, 200, 500, 1000] as const;
 const CAP_DEFAULT = 500;
 
-// The v7 launch defaults, flattened. Only cells a caller omits fall back here.
-const DEFAULT_ACTION_RATE: Record<
+// The defaults (MESITA-876). Only cells a caller omits fall back here — but
+// they must stay byte-identical to the admin catalog's, or a saved table and
+// a re-rendered one disagree (MESITA-805).
+//
+// Four properties hold across all 60 cells: Premium ≥ Standard everywhere,
+// every action strictly beats its class's standing rate (an action that only
+// ties standing is a dead rung under best-of), each strategy beats the one
+// below it, and Story is the Influencer's best rung.
+const CLASS_STEP: Record<ClassKey, number> = {
+  standard: 0,
+  premium: 5,
+  influencer: 5,
+  aura: 10,
+};
+
+// Action bases = the STANDARD cell; every other class adds CLASS_STEP.
+const DEFAULT_ACTION_BASE: Record<
   Exclude<ActionKey, "standing">,
   Record<StrategyKey, number>
 > = {
-  mesita_review: { conservative: 0, aggressive: 0, dominant: 0 },
-  story: { conservative: 20, aggressive: 30, dominant: 40 },
+  mesita_review: { conservative: 15, aggressive: 20, dominant: 25 },
+  story: { conservative: 25, aggressive: 40, dominant: 55 },
   welcome: { conservative: 20, aggressive: 30, dominant: 40 },
-  review: { conservative: 30, aggressive: 50, dominant: 50 },
+  review: { conservative: 25, aggressive: 40, dominant: 50 },
 };
-// The standing column is the one that varies by class.
+// The standing column is per-class outright — it IS the class ladder.
 const DEFAULT_STANDING: Record<ClassKey, Record<StrategyKey, number>> = {
   standard: { conservative: 10, aggressive: 10, dominant: 20 },
   premium: { conservative: 15, aggressive: 20, dominant: 25 },
@@ -76,9 +91,8 @@ function defaultFor(
   action: ActionKey,
   strategy: StrategyKey,
 ): number {
-  return action === "standing"
-    ? DEFAULT_STANDING[cls][strategy]
-    : DEFAULT_ACTION_RATE[action][strategy];
+  if (action === "standing") return DEFAULT_STANDING[cls][strategy];
+  return DEFAULT_ACTION_BASE[action][strategy] + CLASS_STEP[cls];
 }
 
 // Snap to the 5% grid: ≤0 → 0, else clamp to [5,70] rounded to the nearest 5.
