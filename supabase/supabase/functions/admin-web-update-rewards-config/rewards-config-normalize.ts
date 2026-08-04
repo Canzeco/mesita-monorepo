@@ -16,17 +16,19 @@
 // Rate grid: 5% steps, floor 5%, ceiling 70% (0 = off) — MESITA-866/872.
 // Cap: categorical, one of {100, 200, 500, 1000} MXN.
 
-const CLASS_KEYS = ["standard", "premium", "influencer", "aura"] as const;
+// Worst → best. Influencer sits BELOW Premium (v9, MESITA-877); they used to
+// tie, which left the ladder ambiguous.
+const CLASS_KEYS = ["standard", "influencer", "premium", "aura"] as const;
 type ClassKey = (typeof CLASS_KEYS)[number];
 
-// "standing" first — it is the None column, and the admin page renders the
-// actions in exactly this order.
+// Also worst → best, by the BUSINESS VALUE each creates. "standing" is the
+// None column; welcome comes last because the Google review unlocks it.
 const ACTION_KEYS = [
   "standing",
   "mesita_review",
   "story",
-  "welcome",
   "review",
+  "welcome",
 ] as const;
 type ActionKey = (typeof ACTION_KEYS)[number];
 
@@ -53,37 +55,36 @@ const RATE_MAX = 70;
 const ALLOWED_CAPS = [100, 200, 500, 1000] as const;
 const CAP_DEFAULT = 500;
 
-// The defaults (MESITA-876). Only cells a caller omits fall back here — but
-// they must stay byte-identical to the admin catalog's, or a saved table and
-// a re-rendered one disagree (MESITA-805).
+// The defaults (v9, MESITA-877). Only cells a caller omits fall back here —
+// but they must stay byte-identical to the admin catalog's defaultRateFor
+// and the engine's DEFAULT_REWARDS_GRID, or a saved table and a re-rendered
+// one disagree (MESITA-805).
 //
-// Four properties hold across all 60 cells: Premium ≥ Standard everywhere,
-// every action strictly beats its class's standing rate (an action that only
-// ties standing is a dead rung under best-of), each strategy beats the one
-// below it, and Story is the Influencer's best rung.
-const CLASS_STEP: Record<ClassKey, number> = {
-  standard: 0,
-  premium: 5,
-  influencer: 5,
-  aura: 10,
+// One formula for all 60 cells, which is what makes the model's monotonicity
+// provable: rate = floor + type step + class step + strategy step. Moving up
+// any dimension can only raise a reward, and the dimensions are ordered by
+// the BUSINESS VALUE created, not the guest's effort.
+const REWARD_FLOOR = 5;
+
+const TYPE_STEP: Record<ActionKey, number> = {
+  standing: 0,
+  mesita_review: 5,
+  story: 10,
+  review: 15,
+  welcome: 20,
 };
 
-// Action bases = the STANDARD cell; every other class adds CLASS_STEP.
-const DEFAULT_ACTION_BASE: Record<
-  Exclude<ActionKey, "standing">,
-  Record<StrategyKey, number>
-> = {
-  mesita_review: { conservative: 15, aggressive: 20, dominant: 25 },
-  story: { conservative: 25, aggressive: 40, dominant: 55 },
-  welcome: { conservative: 20, aggressive: 30, dominant: 40 },
-  review: { conservative: 25, aggressive: 40, dominant: 50 },
+const CLASS_STEP: Record<ClassKey, number> = {
+  standard: 0,
+  influencer: 5,
+  premium: 10,
+  aura: 15,
 };
-// The standing column is per-class outright — it IS the class ladder.
-const DEFAULT_STANDING: Record<ClassKey, Record<StrategyKey, number>> = {
-  standard: { conservative: 10, aggressive: 10, dominant: 20 },
-  premium: { conservative: 15, aggressive: 20, dominant: 25 },
-  influencer: { conservative: 15, aggressive: 20, dominant: 25 },
-  aura: { conservative: 20, aggressive: 25, dominant: 30 },
+
+const STRATEGY_STEP: Record<StrategyKey, number> = {
+  conservative: 0,
+  aggressive: 10,
+  dominant: 20,
 };
 
 function defaultFor(
@@ -91,8 +92,9 @@ function defaultFor(
   action: ActionKey,
   strategy: StrategyKey,
 ): number {
-  if (action === "standing") return DEFAULT_STANDING[cls][strategy];
-  return DEFAULT_ACTION_BASE[action][strategy] + CLASS_STEP[cls];
+  return (
+    REWARD_FLOOR + TYPE_STEP[action] + CLASS_STEP[cls] + STRATEGY_STEP[strategy]
+  );
 }
 
 // Snap to the 5% grid: ≤0 → 0, else clamp to [5,70] rounded to the nearest 5.

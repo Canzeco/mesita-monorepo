@@ -83,6 +83,10 @@ export async function computeInformalBill(
   consumer: ConsumerRow,
   subtotal: number,
   _tip: number,
+  // The Mesita-review rung is granted once, on the ticket that carries the
+  // review (v9, MESITA-877) — so it can only be resolved with a ticket in
+  // hand. A caller without one simply doesn't qualify for that rung.
+  ticketId?: string,
 ): Promise<InformalBillCalc> {
   const total = subtotal;
   // Promos v5 best-of (MESITA-723): strategy (from the place's v4 rate columns)
@@ -90,7 +94,7 @@ export async function computeInformalBill(
   const grid = await loadRewardsGrid(admin);
   const [firstVisit, mesitaReviewed] = await Promise.all([
     isConsumerFirstVisit(admin, consumer.id, place.id),
-    hasMesitaReview(admin, consumer.id, place.id),
+    ticketId ? hasMesitaReview(admin, ticketId) : Promise.resolve(false),
   ]);
   const ratePercent = resolveTicketRate(placeStrategy(place), grid, {
     classKey: consumer.class_key,

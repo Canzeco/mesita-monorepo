@@ -18,84 +18,66 @@ import {
 
 const GRID = DEFAULT_REWARDS_GRID;
 
-Deno.test("resolveTicketRate: dominant pays above aggressive on every rung", () => {
-  // Dominant pays a step above aggressive throughout — including Review,
-  // which used to tie at the old 50% ceiling and made Dominant nearly
-  // indistinguishable from Aggressive despite the same price (MESITA-876).
-  assertEquals(resolveTicketRate("dominant", GRID, { classKey: "standard", isFirstVisit: false }), 20);
-  assertEquals(resolveTicketRate("dominant", GRID, { classKey: "aura", isFirstVisit: false }), 30);
-  assertEquals(resolveTicketRate("dominant", GRID, { classKey: "standard", isFirstVisit: true }), 40);
-  assertEquals(
-    resolveTicketRate("dominant", GRID, { classKey: "standard", isFirstVisit: false, reviewVerified: true }),
-    50,
-  );
-  assertEquals(
-    resolveTicketRate("aggressive", GRID, { classKey: "standard", isFirstVisit: false, reviewVerified: true }),
-    40,
-  );
-});
-
-Deno.test("resolveTicketRate: class rates on a returning visit (aggressive)", () => {
-  assertEquals(resolveTicketRate("aggressive", GRID, { classKey: "standard", isFirstVisit: false }), 10);
-  assertEquals(resolveTicketRate("aggressive", GRID, { classKey: "premium", isFirstVisit: false }), 20);
+Deno.test("resolveTicketRate: every dimension steps up (v9 spot-checks)", () => {
+  // Strategy: same guest, same rung, three strategies.
+  assertEquals(resolveTicketRate("conservative", GRID, { classKey: "standard", isFirstVisit: false }), 5);
+  assertEquals(resolveTicketRate("aggressive", GRID, { classKey: "standard", isFirstVisit: false }), 15);
+  assertEquals(resolveTicketRate("dominant", GRID, { classKey: "standard", isFirstVisit: false }), 25);
+  // Class: standard < influencer < premium < aura, strictly (MESITA-877).
   assertEquals(resolveTicketRate("aggressive", GRID, { classKey: "influencer", isFirstVisit: false }), 20);
-  assertEquals(resolveTicketRate("aggressive", GRID, { classKey: "aura", isFirstVisit: false }), 25);
-  assertEquals(resolveTicketRate("aggressive", GRID, { classKey: null, isFirstVisit: false }), 10);
+  assertEquals(resolveTicketRate("aggressive", GRID, { classKey: "premium", isFirstVisit: false }), 25);
+  assertEquals(resolveTicketRate("aggressive", GRID, { classKey: "aura", isFirstVisit: false }), 30);
+  assertEquals(resolveTicketRate("aggressive", GRID, { classKey: null, isFirstVisit: false }), 15);
 });
 
 Deno.test("resolveTicketRate: unknown class key falls to the Standard floor", () => {
   // A stale/unknown key (e.g. the retired 'magnetic') silently keeps the floor
   // instead of erroring — a ticket must always price.
-  assertEquals(resolveTicketRate("aggressive", GRID, { classKey: "magnetic", isFirstVisit: false }), 10);
-  assertEquals(resolveTicketRate("conservative", GRID, { classKey: "vip", isFirstVisit: false }), 10);
+  assertEquals(resolveTicketRate("aggressive", GRID, { classKey: "magnetic", isFirstVisit: false }), 15);
+  assertEquals(resolveTicketRate("conservative", GRID, { classKey: "vip", isFirstVisit: false }), 5);
 });
 
-Deno.test("resolveTicketRate: Welcome joins the set on a first visit", () => {
-  assertEquals(resolveTicketRate("aggressive", GRID, { classKey: "standard", isFirstVisit: true }), 30);
-  // Premium's welcome carries the +5 class step (MESITA-876), so it beats
-  // both its own standing rate and a Standard guest's welcome.
-  assertEquals(resolveTicketRate("conservative", GRID, { classKey: "premium", isFirstVisit: true }), 25);
+Deno.test("resolveTicketRate: a first visit ALONE pays only the standing rate", () => {
+  // v9 (MESITA-877): Welcome is unlocked by the Google review, so arriving
+  // for the first time and doing nothing is worth exactly the base bonus.
+  assertEquals(resolveTicketRate("aggressive", GRID, { classKey: "standard", isFirstVisit: true }), 15);
+  assertEquals(resolveTicketRate("conservative", GRID, { classKey: "premium", isFirstVisit: true }), 15);
 });
 
 Deno.test("resolveTicketRate: a VERIFIED story always pays (eligibility settled upstream)", () => {
   // The Influencer-only rule is enforced where a story can start
-  // (business-web-create-ticket seeding + consumer-web-submit-story opt-in).
+  // (consumer-web-create-ticket seeding + consumer-web-submit-story opt-in).
   // Once verified, the work is done and approved — it pays regardless of the
   // live class, so a reach lapse between the post and the check can't strip an
-  // already-earned reward.
+  // already-earned reward. The rate is read on the guest's OWN class row.
   assertEquals(
     resolveTicketRate("aggressive", GRID, { classKey: "influencer", isFirstVisit: false, storyVerified: true }),
-    45,
+    30,
   );
-  // Class that later dropped below the bar keeps the earned story rung — but
-  // reads it on the STANDARD row, since rates resolve on the guest's own
-  // class (MESITA-876 class step).
   assertEquals(
     resolveTicketRate("aggressive", GRID, { classKey: "standard", isFirstVisit: false, storyVerified: true }),
-    40,
+    25,
   );
-  // Aura's own rung (25) loses to an earned story (50 on the Aura row) —
-  // best-of, not a sum.
+  // Aura's own standing (30) loses to an earned story on the Aura row (40).
   assertEquals(
     resolveTicketRate("aggressive", GRID, { classKey: "aura", isFirstVisit: false, storyVerified: true }),
-    50,
+    40,
   );
-  // No verified story: every class just takes its own rung.
+  // No verified story: every class just takes its standing rung.
   assertEquals(
     resolveTicketRate("aggressive", GRID, { classKey: "aura", isFirstVisit: false }),
-    25,
+    30,
   );
 });
 
 Deno.test("resolveTicketRate: verified actions bump, best-of never stacks", () => {
-  // Review beats Welcome on a first visit (40 vs 30 on the Standard row).
+  // First visit + Google review → the coupled Welcome rung, the top rung.
   assertEquals(
     resolveTicketRate("aggressive", GRID, { classKey: "standard", isFirstVisit: true, reviewVerified: true }),
-    40,
+    35,
   );
-  // Story + Review verified for an influencer: still just the max, never a
-  // sum — and Story (45) is the Influencer's top rung over Review (45 tie is
-  // impossible here: story carries the +5 on a higher base).
+  // Story + Review + first visit for an influencer: still just the max
+  // (their Welcome cell), never a sum.
   assertEquals(
     resolveTicketRate("aggressive", GRID, {
       classKey: "influencer",
@@ -103,7 +85,7 @@ Deno.test("resolveTicketRate: verified actions bump, best-of never stacks", () =
       storyVerified: true,
       reviewVerified: true,
     }),
-    45,
+    40,
   );
 });
 
@@ -156,9 +138,9 @@ Deno.test("placeStrategy: derives from v4 columns, all four strategies", () => {
 Deno.test("coerceRewardsGrid: partial blob snaps to locked defaults (v13)", () => {
   const g = coerceRewardsGrid({ grid: { standard: { conservative: 25 } } });
   assertEquals(g.grid.standard.conservative, 25);
-  assertEquals(g.actions.review.standard.aggressive, 40); // filled from defaults
-  assertEquals(g.grid.aura.aggressive, 25); // class filled from defaults
-  assertEquals(g.grid.standard.dominant, 20); // dominant column filled
+  assertEquals(g.actions.review.standard.aggressive, 30); // filled from defaults
+  assertEquals(g.grid.aura.aggressive, 30); // class filled from defaults
+  assertEquals(g.grid.standard.dominant, 25); // dominant column filled
   assertEquals(g.grid.standard.zero, 0); // off by definition
   assertEquals(g.cap, 500);
 });
@@ -181,8 +163,8 @@ Deno.test("coerceRewardsGrid: v12 blob migrates by IDENTITY — flat action rows
   assertEquals(g.actions.story.influencer.conservative, 20);
   // mesita_review didn't exist in v12, so it takes today's DEFAULTS rather
   // than a legacy value — it is priced now (MESITA-876), not 0.
-  assertEquals(g.actions.mesita_review.standard.dominant, 25);
-  assertEquals(g.actions.mesita_review.aura.aggressive, 30);
+  assertEquals(g.actions.mesita_review.standard.dominant, 30);
+  assertEquals(g.actions.mesita_review.aura.aggressive, 35);
 });
 
 Deno.test("resolveTicketRate: v7 per-class action rates resolve on the guest's row", () => {
@@ -215,7 +197,7 @@ Deno.test("resolveTicketRate: the Mesita review rung pays only when priced", () 
     resolveTicketRate("aggressive", GRID, {
       classKey: "standard", isFirstVisit: false, mesitaReviewed: true,
     }),
-    20, // the mesita_review rung, above the 10% standing rate
+    20, // the mesita_review rung, above the 15% standing rate
   );
   // Zeroed by the operator → the flag stops changing anything.
   const unpriced = coerceRewardsGrid({
@@ -229,7 +211,7 @@ Deno.test("resolveTicketRate: the Mesita review rung pays only when priced", () 
     resolveTicketRate("aggressive", unpriced, {
       classKey: "standard", isFirstVisit: false, mesitaReviewed: true,
     }),
-    10, // back to the standing rate
+    15, // back to the standing rate
   );
 });
 
@@ -261,96 +243,127 @@ Deno.test("isActionVerified: verified states only", () => {
   assertEquals(isActionVerified(null), false);
 });
 
-// ── The default table's invariants (MESITA-876) ─────────────────────────
+
+// ── The v9 model's invariants (MESITA-877) ──────────────────────────────
 //
-// These four properties are WHY the defaults are the numbers they are. A
-// re-pricing that breaks one isn't a taste change, it's a bug: the guest
-// either stops being paid for acting, or the membership stops paying off.
+// The matrix is three-dimensional — Reward Type × Strategy × Class — and
+// STRICTLY monotonic on each axis. These tests are the model itself: a
+// re-pricing that breaks one isn't a taste change, it's a broken promise to
+// either the guest or the business. Ties are treated as failures because
+// best-of pays exactly ONE cell, so a rung worth what the guest already had
+// pays nothing for reaching it.
 
-const STRATEGIES = ["conservative", "aggressive", "dominant"] as const;
-const CLASSES = ["standard", "premium", "influencer", "aura"] as const;
-const ACTIONS = ["mesita_review", "story", "welcome", "review"] as const;
+const STRATEGY_ORDER = ["conservative", "aggressive", "dominant"] as const;
+// Worst → best.
+const CLASS_ORDER = ["standard", "influencer", "premium", "aura"] as const;
+// Worst → best, by the business value each creates.
+const TYPE_ORDER = [
+  "standing",
+  "mesita_review",
+  "story",
+  "review",
+  "welcome",
+] as const;
 
-Deno.test("defaults: every action strictly beats its class's standing rate", () => {
-  // A tie is a DEAD RUNG — best-of pays one cell, so an action worth the
-  // same as standing pays the guest nothing for doing it. This is exactly
-  // what a flat 10% Mesita Review would have been against a 10% standing.
-  for (const s of STRATEGIES) {
-    for (const c of CLASSES) {
-      const standing = GRID.grid[c][s];
-      for (const a of ACTIONS) {
-        // Story is Influencer-only; its other cells never surface.
-        if (a === "story" && c !== "influencer") continue;
-        const rate = GRID.actions[a][c][s];
+const cellOf = (
+  type: (typeof TYPE_ORDER)[number],
+  cls: (typeof CLASS_ORDER)[number],
+  strategy: (typeof STRATEGY_ORDER)[number],
+): number =>
+  type === "standing"
+    ? GRID.grid[cls][strategy]
+    : GRID.actions[type][cls][strategy];
+
+Deno.test("v9 defaults: reward TYPE is strictly increasing by business value", () => {
+  // Base & Mesita (retention, Mesita's own data) < Story (reach) <
+  // Google & Welcome (acquisition + permanent public proof).
+  for (const s of STRATEGY_ORDER) {
+    for (const c of CLASS_ORDER) {
+      for (let i = 1; i < TYPE_ORDER.length; i++) {
+        const lower = cellOf(TYPE_ORDER[i - 1], c, s);
+        const higher = cellOf(TYPE_ORDER[i], c, s);
         assertEquals(
-          rate > standing,
+          higher > lower,
           true,
-          `${s}/${c}/${a}: ${rate}% must beat standing ${standing}%`,
+          `${s}/${c}: ${TYPE_ORDER[i]} (${higher}%) must beat ${TYPE_ORDER[i - 1]} (${lower}%)`,
         );
       }
     }
   }
 });
 
-Deno.test("defaults: Premium ≥ Standard everywhere, including on actions", () => {
-  // The v7 launch priced actions FLAT across classes, which made the class
-  // ladder invisible to any guest who acted — Premium bought nothing at the
-  // moment it was supposed to pay off.
-  for (const s of STRATEGIES) {
-    assertEquals(GRID.grid.premium[s] >= GRID.grid.standard[s], true, `standing ${s}`);
-    for (const a of ACTIONS) {
-      assertEquals(
-        GRID.actions[a].premium[s] >= GRID.actions[a].standard[s],
-        true,
-        `${s}/${a}: premium must not trail standard`,
-      );
-      // Aura is the top of the class ladder on every rung.
-      assertEquals(
-        GRID.actions[a].aura[s] >= GRID.actions[a].premium[s],
-        true,
-        `${s}/${a}: aura must not trail premium`,
-      );
-    }
-  }
-});
-
-Deno.test("defaults: each strategy pays at least the one below it", () => {
-  for (const c of CLASSES) {
-    assertEquals(GRID.grid[c].aggressive >= GRID.grid[c].conservative, true);
-    assertEquals(GRID.grid[c].dominant >= GRID.grid[c].aggressive, true);
-    for (const a of ACTIONS) {
-      assertEquals(
-        GRID.actions[a][c].aggressive >= GRID.actions[a][c].conservative,
-        true,
-        `${c}/${a}: aggressive must not trail conservative`,
-      );
-      assertEquals(
-        GRID.actions[a][c].dominant >= GRID.actions[a][c].aggressive,
-        true,
-        `${c}/${a}: dominant must not trail aggressive`,
-      );
-    }
-  }
-});
-
-Deno.test("defaults: Story is the Influencer's best rung, and nothing exceeds the 70% ceiling", () => {
-  for (const s of STRATEGIES) {
-    const story = GRID.actions.story.influencer[s];
-    for (const a of ACTIONS) {
-      assertEquals(
-        story >= GRID.actions[a].influencer[s],
-        true,
-        `${s}: story (${story}%) must be the influencer's top rung`,
-      );
-    }
-  }
-  // Every cell stays on the 5% grid and inside the ceiling (MESITA-866/872).
-  for (const s of STRATEGIES) {
-    for (const c of CLASSES) {
-      for (const cell of [GRID.grid[c][s], ...ACTIONS.map((a) => GRID.actions[a][c][s])]) {
-        assertEquals(cell % 5, 0, `${s}/${c}: ${cell}% must sit on the 5% grid`);
-        assertEquals(cell <= 70, true, `${s}/${c}: ${cell}% exceeds the ceiling`);
+Deno.test("v9 defaults: CLASS is strictly increasing — standard < influencer < premium < aura", () => {
+  // Premium and Influencer used to TIE, which left the ladder ambiguous and
+  // made the membership invisible next to a reach class.
+  for (const s of STRATEGY_ORDER) {
+    for (const t of TYPE_ORDER) {
+      for (let i = 1; i < CLASS_ORDER.length; i++) {
+        const lower = cellOf(t, CLASS_ORDER[i - 1], s);
+        const higher = cellOf(t, CLASS_ORDER[i], s);
+        assertEquals(
+          higher > lower,
+          true,
+          `${s}/${t}: ${CLASS_ORDER[i]} (${higher}%) must beat ${CLASS_ORDER[i - 1]} (${lower}%)`,
+        );
       }
     }
   }
+});
+
+Deno.test("v9 defaults: STRATEGY is strictly increasing, and zero pays nothing", () => {
+  for (const c of CLASS_ORDER) {
+    for (const t of TYPE_ORDER) {
+      for (let i = 1; i < STRATEGY_ORDER.length; i++) {
+        const lower = cellOf(t, c, STRATEGY_ORDER[i - 1]);
+        const higher = cellOf(t, c, STRATEGY_ORDER[i]);
+        assertEquals(
+          higher > lower,
+          true,
+          `${c}/${t}: ${STRATEGY_ORDER[i]} (${higher}%) must beat ${STRATEGY_ORDER[i - 1]} (${lower}%)`,
+        );
+      }
+    }
+    // Zero is off by definition — it has no rules at all.
+    assertEquals(GRID.grid[c].zero, 0);
+    for (const t of TYPE_ORDER) {
+      if (t !== "standing") assertEquals(GRID.actions[t][c].zero, 0);
+    }
+  }
+});
+
+Deno.test("v9 defaults: every cell sits on the 5% grid, inside floor and ceiling", () => {
+  for (const s of STRATEGY_ORDER) {
+    for (const c of CLASS_ORDER) {
+      for (const t of TYPE_ORDER) {
+        const cell = cellOf(t, c, s);
+        assertEquals(cell % 5, 0, `${s}/${c}/${t}: ${cell}% off the 5% grid`);
+        assertEquals(cell >= 5, true, `${s}/${c}/${t}: ${cell}% below the floor`);
+        assertEquals(cell <= 70, true, `${s}/${c}/${t}: ${cell}% above the ceiling`);
+      }
+    }
+  }
+});
+
+Deno.test("v9: the Welcome bonus is UNLOCKED BY the Google review, never on its own", () => {
+  // A first visit with no review pays only the guest's standing rate — the
+  // welcome rung is coupled, so the business gets acquisition AND a
+  // permanent public review from one mechanism.
+  assertEquals(
+    resolveTicketRate("aggressive", GRID, { classKey: "standard", isFirstVisit: true }),
+    GRID.grid.standard.aggressive,
+  );
+  // Review on a first visit → the welcome rung, the top of the table.
+  assertEquals(
+    resolveTicketRate("aggressive", GRID, {
+      classKey: "standard", isFirstVisit: true, reviewVerified: true,
+    }),
+    GRID.actions.welcome.standard.aggressive,
+  );
+  // Same review on a RETURNING visit → the review rung, one step lower.
+  assertEquals(
+    resolveTicketRate("aggressive", GRID, {
+      classKey: "standard", isFirstVisit: false, reviewVerified: true,
+    }),
+    GRID.actions.review.standard.aggressive,
+  );
 });

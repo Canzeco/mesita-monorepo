@@ -16,13 +16,13 @@
 import { assert, assertEquals } from "jsr:@std/assert@1";
 import { normalizeRewards } from "./rewards-config-normalize.ts";
 
-const CLASSES = ["standard", "premium", "influencer", "aura"] as const;
+const CLASSES = ["standard", "influencer", "premium", "aura"] as const;
 const ACTIONS = [
   "standing",
   "mesita_review",
   "story",
-  "welcome",
   "review",
+  "welcome",
 ] as const;
 const STRATEGIES = ["conservative", "aggressive", "dominant"] as const;
 
@@ -50,15 +50,17 @@ Deno.test("normalizeRewards: an empty object still yields all 60 rules", () => {
     r.value.rules.map((x) => `${x.strategy}|${x.class}|${x.action}`),
   );
   assertEquals(keys.size, RULE_COUNT);
-  // Defaults survive, and BOTH ladders are in them (MESITA-876): standing
-  // varies by class, and so does every action via the +0/+5/+5/+10 step.
-  assertEquals(rateOf(r.value.rules, "conservative", "standard", "standing"), 10);
+  // Defaults survive, and all THREE ladders are in them (v9, MESITA-877):
+  // rate = 5 + type + class + strategy.
+  assertEquals(rateOf(r.value.rules, "conservative", "standard", "standing"), 5);
   assertEquals(rateOf(r.value.rules, "conservative", "aura", "standing"), 20);
-  assertEquals(rateOf(r.value.rules, "aggressive", "standard", "review"), 40);
-  assertEquals(rateOf(r.value.rules, "aggressive", "premium", "review"), 45);
-  assertEquals(rateOf(r.value.rules, "aggressive", "aura", "review"), 50);
-  // Mesita Review is priced now — and every action beats its class's
-  // standing rate, or it would be a dead rung under best-of.
+  assertEquals(rateOf(r.value.rules, "aggressive", "standard", "review"), 30);
+  assertEquals(rateOf(r.value.rules, "aggressive", "premium", "review"), 40);
+  assertEquals(rateOf(r.value.rules, "aggressive", "aura", "review"), 45);
+  // Welcome is the top rung — it is unlocked BY the Google review.
+  assertEquals(rateOf(r.value.rules, "aggressive", "aura", "welcome"), 50);
+  // Every action beats its class's standing rate, or it would be a dead
+  // rung under best-of.
   for (const cls of CLASSES) {
     const mesita = rateOf(r.value.rules, "dominant", cls, "mesita_review");
     const standing = rateOf(r.value.rules, "dominant", cls, "standing");
@@ -90,8 +92,8 @@ Deno.test("normalizeRewards: a sent rule wins; the rest keep their defaults", ()
   assert(r.ok);
   assertEquals(rateOf(r.value.rules, "conservative", "premium", "review"), 35);
   // Its siblings are untouched — per-class cells are independent, and keep
-  // their own stepped defaults (25 Standard / 35 Aura).
-  assertEquals(rateOf(r.value.rules, "conservative", "standard", "review"), 25);
+  // their own formula defaults (20 Standard / 35 Aura).
+  assertEquals(rateOf(r.value.rules, "conservative", "standard", "review"), 20);
   assertEquals(rateOf(r.value.rules, "conservative", "aura", "review"), 35);
 });
 
@@ -131,7 +133,7 @@ Deno.test("normalizeRewards: unknown keys are dropped, not written", () => {
     false,
   );
   // The real cell it tried to overwrite kept its default.
-  assertEquals(rateOf(r.value.rules, "conservative", "standard", "standing"), 10);
+  assertEquals(rateOf(r.value.rules, "conservative", "standard", "standing"), 5);
 });
 
 Deno.test("normalizeRewards: cap snaps to the nearest allowed option", () => {
