@@ -1,21 +1,10 @@
 "use client";
 
 import { PhoneCall } from "lucide-react";
-import type { PlaceActivity } from "../actions";
+import type { PlaceReservations } from "@/lib/api/reservations";
 
-// Reservations tab → Mesita Reservationist bookings, as a plain list
-// (MESITA-894). Scope is Mesita only — not Google Reserve / OpenTable.
-//
-// READ-ONLY, and that is the product decision, not a shortcut (Pato):
-// "reservations tickets cannot be directly edited. just must call the ai …
-// just give the phone numbers to reschedule shit." The Reservationist holds
-// conversation state across call legs, so editing a row behind it would
-// desync the agent from its own booking. The call bar therefore leads the
-// card and there is no edit control anywhere in it.
-//
-// Named ReservationsList, not ReservationsPanel: `ReservationsCard` already
-// exists on the Settings tab for channel routing, and two files a letter
-// apart is how the wrong one gets imported.
+// Business Reservations tab — Mesita bookings only (MESITA-894).
+// Mirrors admin ReservationsList: read-only + AI dial lines.
 
 const STATUS: Record<string, { label: string; chip: string }> = {
   pending: { label: "Pending", chip: "bg-amber-500/10 text-amber-700" },
@@ -25,6 +14,7 @@ const STATUS: Record<string, { label: string; chip: string }> = {
   cancelled: { label: "Cancelled", chip: "bg-muted text-muted-foreground" },
   unreachable: { label: "Unreachable", chip: "bg-sky-500/10 text-sky-700" },
   unresolved: { label: "Unresolved", chip: "bg-indigo-500/10 text-indigo-700" },
+  no_show: { label: "No-show", chip: "bg-rose-500/10 text-rose-700" },
 };
 
 function statusOf(s: string | null) {
@@ -60,11 +50,9 @@ function LineLink({ number, who }: { number: string; who: string }) {
   );
 }
 
-export function ReservationsList({ activity }: { activity: PlaceActivity }) {
-  const rows = activity.reservations;
-  // Both audiences share one number until ELEVENLABS_CONSUMER_FROM_NUMBER is
-  // set; rendering it twice would read as a bug rather than as a fact.
-  const shared = activity.lines.guest === activity.lines.venue;
+export function ReservationsClient({ data }: { data: PlaceReservations }) {
+  const rows = data.reservations;
+  const shared = data.lines.guest === data.lines.venue;
 
   return (
     <section className="border-border bg-card shadow-card rounded-2xl border p-5 sm:p-6">
@@ -78,20 +66,20 @@ export function ReservationsList({ activity }: { activity: PlaceActivity }) {
       <div className="mt-4 flex flex-col gap-2 sm:flex-row">
         {shared ? (
           <LineLink
-            number={activity.lines.guest}
+            number={data.lines.guest}
             who="Guests & venues · one shared line"
           />
         ) : (
           <>
-            <LineLink number={activity.lines.guest} who="Guests" />
-            <LineLink number={activity.lines.venue} who="Venues" />
+            <LineLink number={data.lines.guest} who="Guests" />
+            <LineLink number={data.lines.venue} who="Venues" />
           </>
         )}
       </div>
 
       {rows.length === 0 ? (
         <p className="text-muted-foreground border-border mt-4 rounded-xl border border-dashed px-4 py-7 text-center text-sm">
-          No reservations for this place yet.
+          No Mesita reservations for this place yet.
         </p>
       ) : (
         <>
@@ -126,7 +114,7 @@ export function ReservationsList({ activity }: { activity: PlaceActivity }) {
             })}
           </div>
           <p className="text-muted-foreground mt-3 text-xs">
-            Showing {rows.length} of {activity.reservationTotal} · newest first
+            Showing {rows.length} of {data.reservationTotal} · newest first
           </p>
         </>
       )}

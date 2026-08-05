@@ -345,7 +345,7 @@ export function PerformanceClient({
       {/* ── Band 3 · Activity ───────────────────────────────────────── */}
       <Section
         title="Activity"
-        description="Everything guests did here, newest first. Reservation requests land here too."
+        description="Everything guests did here, newest first. Booking ops live on Reservations."
       >
         {feed.length === 0 ? (
           <EmptyState
