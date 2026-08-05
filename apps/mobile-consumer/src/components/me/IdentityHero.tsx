@@ -12,51 +12,25 @@ import { formatCompactCount } from '@/lib/utils';
 // ─── ID-1 membership card (MESITA-930) — web ProfileSummaryCard parity.
 // Dual badges: Cls (left) + IG (right). Class once. Footer Saved · Visits · Stories.
 
-<<<<<<< HEAD
 const CLASS_LETTER: Record<string, string> = {
   standard: 'S',
   premium: 'P',
   influencer: 'I',
   aura: 'A',
 };
-=======
-function ClassChip({
-  label,
-  classKey,
-}: {
-  label: string;
-  classKey: string;
-}) {
-  const colors =
-    classKey === 'aura'
-      ? (['rgba(245,204,88,0.45)', 'rgba(235,136,31,0.28)'] as const)
-      : classKey === 'influencer'
-        ? (['rgba(252,165,165,0.55)', 'rgba(239,68,68,0.30)'] as const)
-        : classKey === 'premium'
-          ? (['rgba(147,197,253,0.55)', 'rgba(37,99,235,0.28)'] as const)
-          : (['rgba(206,217,229,0.70)', 'rgba(155,166,177,0.40)'] as const);
-  const textClass =
-    classKey === 'aura'
-      ? 'text-amber-900'
-      : classKey === 'influencer'
-        ? 'text-red-900'
-        : classKey === 'premium'
-          ? 'text-blue-900'
-          : 'text-foreground';
->>>>>>> 11c8de23 (feat(consumer): class icons Smile/Megaphone/CreditCard/Crown + Pyramid mark)
 
 function classBadgeColors(classKey: string): readonly [string, string] {
   if (classKey === 'aura') return ['#fde68a', '#fb923c'] as const;
-  if (classKey === 'influencer') return ['#bae6fd', '#38bdf8'] as const;
-  if (classKey === 'premium') return ['#ddd6fe', '#c084fc'] as const;
-  return ['rgba(251,43,123,0.85)', 'rgba(255,90,171,0.85)'] as const;
+  if (classKey === 'influencer') return ['#fecaca', '#ef4444'] as const;
+  if (classKey === 'premium') return ['#bfdbfe', '#2563eb'] as const;
+  return ['#e5e7eb', '#9ca3af'] as const;
 }
 
 function classBadgeText(classKey: string): string {
-  if (classKey === 'standard') return 'text-white';
   if (classKey === 'aura') return 'text-amber-950';
-  if (classKey === 'influencer') return 'text-sky-950';
-  return 'text-violet-950';
+  if (classKey === 'influencer') return 'text-red-950';
+  if (classKey === 'premium') return 'text-blue-950';
+  return 'text-neutral-900';
 }
 
 export function IdentityHeroSkeleton() {
