@@ -51,6 +51,7 @@ import {
   sortMesitaPredictionsFirst,
 } from "./suggest-places-helpers.ts";
 import { statusesForPlaces } from "./suggest-place-status.ts";
+import { displayName } from "./place-display-name.ts";
 
 export type SuggestPlacesArgs = {
   input?: string;
@@ -252,12 +253,16 @@ async function fetchMesitaPredictions(
   callerId: string | null,
 ): Promise<Prediction[]> {
   // ILIKE prefix-and-contains so "strana" finds both "Strana" and "Casa
-  // Strana, Monterrey". Limit small — Google is the primary surface; this
+  // Strana, Monterrey". Match Mesita name OR google_name (MESITA-917);
+  // one row per place id. Limit small — Google is the primary surface; this
   // is a fallback for the long-tail case where Google misses.
+  // Quote the pattern like admin-web-search-places — unquoted `%…%` breaks
+  // the PostgREST or() grammar.
+  const pattern = `%${escapeIlike(input)}%`;
   const { data, error } = await admin
     .from("projects_view")
-    .select("id, slug, google_place_id, name, address")
-    .ilike("name", `%${escapeIlike(input)}%`)
+    .select("id, slug, google_place_id, name, google_name, address")
+    .or(`name.ilike."${pattern}",google_name.ilike."${pattern}"`)
     .not("google_place_id", "is", null)
     .limit(8);
   if (error) {
@@ -268,16 +273,26 @@ async function fetchMesitaPredictions(
     id: string;
     slug: string;
     google_place_id: string;
-    name: string;
+    name: string | null;
+    google_name: string | null;
     address: string | null;
   };
-  const rows = (data ?? []) as Row[];
+  let rows = (data ?? []) as Row[];
   if (rows.length === 0) return [];
+
+  // Prefer Mesita-name hits ahead of google-only matches.
+  const qLower = input.toLowerCase();
+  rows = [...rows].sort((a, b) => {
+    const aMesita = (a.name ?? "").toLowerCase().includes(qLower);
+    const bMesita = (b.name ?? "").toLowerCase().includes(qLower);
+    if (aMesita !== bMesita) return aMesita ? -1 : 1;
+    return 0;
+  });
 
   const statuses = await statusesForPlaces(admin, rows, callerId);
   return rows.map<Prediction>((v) => ({
     placeId: v.google_place_id,
-    mainText: v.name,
+    mainText: displayName(v),
     secondaryText: v.address ?? "Already on Mesita",
     status: statuses.get(v.google_place_id) ?? "web_listed",
     mesitaId: v.id,

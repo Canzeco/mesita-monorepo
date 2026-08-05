@@ -185,9 +185,11 @@ function boxToPatch(
 ): Record<string, unknown> & { id: string } {
   const nz = (s: string) => (s.trim() ? s.trim() : null);
   if (box === "basics") {
+    // Empty Mesita name clears the override → UI falls back to google_name.
+    const mesitaName = f.name.trim().slice(0, limits.placeNameMax);
     return {
       id,
-      name: f.name.trim().slice(0, limits.placeNameMax),
+      name: mesitaName.length > 0 ? mesitaName : null,
       description: nz(f.description.slice(0, limits.descriptionMax)),
       tags: f.tags.slice(0, limits.tagsPerPlaceMax),
       // decision: Pato (MESITA-469) — admin may set category (Enricher + Admin + Business).
@@ -426,10 +428,7 @@ export function PlaceSection({
   };
 
   const saveBox = (box: PlaceBox) => {
-    if (box === "basics" && !form.name.trim()) {
-      setErrors((e) => ({ ...e, basics: "Name is required." }));
-      return;
-    }
+    // Mesita name may be blank — falls back to Google name (MESITA-917).
     setErrors((e) => ({ ...e, [box]: undefined }));
     setOks((o) => ({ ...o, [box]: false }));
     setPendingBox(box);
@@ -472,16 +471,28 @@ export function PlaceSection({
         icon={<Store className="h-4 w-4" />}
         tint="rose"
         title="Basics"
-        subtitle="Name, category, about & tags are editable — price comes from the Enricher / Google Places."
+        subtitle="Mesita name, category, about & tags are editable — Google name & price come from Enricher / Google Places."
       >
-        <div className="mt-5">
+        <div className="mt-5 grid gap-4">
+          <ReadField label="Google name" auto boxed>
+            {(place.google_name ?? "").trim() || "—"}
+          </ReadField>
+          <p className="text-muted-foreground -mt-2 text-[11px] leading-relaxed">
+            From Google Places. Updates on Re-enrich. Not editable here — change
+            it on Google Business Profile if the Google listing is wrong.
+          </p>
           <TextField
-            label="Name"
+            label="Mesita name"
             value={form.name}
             onChange={(x) => set("name", x.slice(0, limits.placeNameMax))}
             maxLength={limits.placeNameMax}
             disabled={anyPending}
+            placeholder={(place.google_name ?? "").trim() || undefined}
           />
+          <p className="text-muted-foreground -mt-2 text-[11px] leading-relaxed">
+            Shown everywhere in Mesita. Leave blank to use the Google name.
+            Search matches both.
+          </p>
         </div>
         {/* One field per row — the whole card is a single column. */}
         <div className="mt-4 grid gap-4">

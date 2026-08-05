@@ -180,12 +180,17 @@ serveEnrichStage("contents", async (admin, env, row) => {
   // phone/email from `gathered.place` and clobber a business edit. (The strip also
   // covers place_research rows seeded before this change, whose gathered still
   // carries phone/email.)
+  // Same for names (MESITA-917): google_name + sticky Mesita name are written in
+  // research only. Contents must NEVER write `name` / `google_name` — otherwise
+  // Re-enrich silently reverts an admin Mesita rename (the landmine this closes).
   const {
     id: _dropId,
     created_at: _dropCreated,
     updated_at: _dropUpdated,
     phone: _dropPhone,
     email: _dropEmail,
+    name: _dropName,
+    google_name: _dropGoogleName,
     ...placeUpdate
   } = place as Record<string, unknown> & {
     id?: unknown;
@@ -193,6 +198,8 @@ serveEnrichStage("contents", async (admin, env, row) => {
     updated_at?: unknown;
     phone?: unknown;
     email?: unknown;
+    name?: unknown;
+    google_name?: unknown;
   };
   const { error: placeErr } = await admin.from("places").update(placeUpdate).eq("id", projectId);
   if (placeErr) {

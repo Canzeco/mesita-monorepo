@@ -190,12 +190,24 @@ Deno.serve(async (req) => {
   // touched. Explicit null clears the field.
   const update: Record<string, unknown> = {};
   if ("name" in body) {
+    // Mesita display name (MESITA-917). Empty/whitespace clears the override
+    // so UI falls back to google_name. Reject google_name writes — Enricher only.
     const n = (body.name ?? "").toString().trim();
-    if (!n) return json({ ok: false, error: "name cannot be empty" }, 400);
     if (n.length > ENRICH_FIELD_LIMITS.placeName.max) {
       return json({ ok: false, error: "name too long" }, 400);
     }
-    update.name = n;
+    update.name = n.length > 0 ? n : null;
+  }
+  if ("google_name" in body) {
+    return json(
+      {
+        ok: false,
+        code: "google_name_via_enrich",
+        error:
+          "google_name is set by the Enricher from Google Places and cannot be updated manually.",
+      },
+      400,
+    );
   }
   if ("category" in body) {
     const resolved = await resolveCategoryInput(

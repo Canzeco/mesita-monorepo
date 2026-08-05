@@ -11,6 +11,7 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { corsPreflight, json, readJson } from "../_shared/http.ts";
 import { anonClient, readAnonEnv } from "../_shared/auth.ts";
 import { PLACE_PUBLIC_COLUMNS as PLACE_COLUMNS } from "../_shared/place-columns.ts";
+import { displayName } from "../_shared/place-display-name.ts";
 import { resolvePlaceTags } from "../_shared/tags.ts";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -53,5 +54,13 @@ Deno.serve(async (req) => {
     (data as { tags?: string[] | null }).tags,
   );
 
-  return json({ ok: true, place: data, tags });
+  // Dual-name (MESITA-917): consumer `name` is the display label (Mesita
+  // priority). Raw google_name stays on the payload for clients that need it.
+  const row = data as { name?: string | null; google_name?: string | null };
+  const place = {
+    ...data,
+    name: displayName(row),
+  };
+
+  return json({ ok: true, place, tags });
 });

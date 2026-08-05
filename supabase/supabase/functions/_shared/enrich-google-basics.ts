@@ -206,12 +206,17 @@ export async function fetchGoogleBasics(
   const hours = weeklyHoursFromPeriods(details.regularOpeningHours?.periods);
   const closesAt = closesAtFromHours(details.regularOpeningHours?.weekdayDescriptions ?? []);
 
+  const placeName = name.slice(0, ENRICH_FIELD_LIMITS.placeName.max);
   return {
     ok: true,
     primaryType: details.primaryType ?? null,
     basics: {
       google_place_id: placeIdSpine,
-      name: name.slice(0, ENRICH_FIELD_LIMITS.placeName.max),
+      // Dual identity (MESITA-917): google_name is the Enricher spine;
+      // name seeds Mesita display on create (sticky sync keeps them aligned
+      // until an operator customizes name).
+      google_name: placeName,
+      name: placeName,
       category: categorySlug,
       category_label: categoryLabel ?? humanizeCategorySlug(categorySlug ?? ""),
       price_level: priceLevelFromGoogle(details.priceLevel),

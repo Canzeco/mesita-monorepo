@@ -107,7 +107,10 @@ export type ReservationTarget = {
 export type AdminPlace = {
   id: string;
   slug: string | null;
+  /** Mesita display name (editable). Empty/null ⇒ fall back to google_name. */
   name: string;
+  /** Google Places displayName — Enricher spine; not admin-editable (MESITA-917). */
+  google_name?: string | null;
   category: string | null;
   category_label: string | null;
   status: string | null;
