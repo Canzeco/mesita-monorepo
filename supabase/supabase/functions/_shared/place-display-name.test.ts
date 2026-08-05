@@ -4,6 +4,8 @@ import {
   isStickyMesitaName,
   normalizePlaceName,
   stickyNamePatch,
+  withDisplayName,
+  withDisplayNames,
 } from "./place-display-name.ts";
 
 Deno.test("normalizePlaceName trims and NFKC-folds", () => {
@@ -26,6 +28,27 @@ Deno.test("displayName prefers Mesita name, then google_name", () => {
     "Tacos Martin",
   );
   assertEquals(displayName({ name: null, google_name: null }), "(unnamed)");
+});
+
+Deno.test("withDisplayName overwrites name and keeps google_name", () => {
+  const out = withDisplayName({
+    id: "p1",
+    name: "  ",
+    google_name: "Tacos Martin",
+    category: "tacos",
+  });
+  assertEquals(out.name, "Tacos Martin");
+  assertEquals(out.google_name, "Tacos Martin");
+  assertEquals(out.id, "p1");
+  assertEquals(out.category, "tacos");
+});
+
+Deno.test("withDisplayNames maps a list", () => {
+  const rows = withDisplayNames([
+    { name: null, google_name: "A" },
+    { name: "Custom", google_name: "B" },
+  ]);
+  assertEquals(rows.map((r) => r.name), ["A", "Custom"]);
 });
 
 Deno.test("isStickyMesitaName — empty tracks Google; customized does not", () => {

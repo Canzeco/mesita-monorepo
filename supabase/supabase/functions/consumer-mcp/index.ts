@@ -19,6 +19,7 @@ import { corsPreflight, json } from "../_shared/http.ts";
 import { adminClient, readEFEnv } from "../_shared/auth.ts";
 import { resolveMcpBearer } from "../_shared/mcp-tokens.ts";
 import { PLACE_PUBLIC_COLUMNS } from "../_shared/place-columns.ts";
+import { withDisplayName } from "../_shared/place-display-name.ts";
 import { getTierConfig, isElevatedClass } from "../_shared/membership.ts";
 import { generateReservationCode, isUniqueViolation } from "../_shared/reservation-code.ts";
 import { attachPlaces } from "../_shared/reservation-places.ts";
@@ -141,7 +142,12 @@ async function runTool(
         .maybeSingle();
       if (error) return toolError(error.message);
       if (!data) return toolError("Place not found");
-      return toolText({ ok: true, place: data });
+      return toolText({
+        ok: true,
+        place: withDisplayName(
+          data as { name?: string | null; google_name?: string | null },
+        ),
+      });
     }
 
     case "list_reservations": {

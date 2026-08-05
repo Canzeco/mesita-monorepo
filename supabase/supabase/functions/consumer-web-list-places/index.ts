@@ -10,6 +10,7 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { clampIntRange, corsPreflight, json, readJsonOr } from "../_shared/http.ts";
 import { anonClient, readAnonEnv } from "../_shared/auth.ts";
 import { PLACE_PUBLIC_COLUMNS } from "../_shared/place-columns.ts";
+import { withDisplayNames } from "../_shared/place-display-name.ts";
 
 const DEFAULT_LIMIT = 50;
 const MAX_LIMIT = 200;
@@ -53,5 +54,8 @@ Deno.serve(async (req) => {
     return json({ ok: false, error: error.message }, 500);
   }
 
-  return json({ ok: true, places: data ?? [] });
+  const places = withDisplayNames(
+    (data ?? []) as Array<{ name?: string | null; google_name?: string | null }>,
+  );
+  return json({ ok: true, places });
 });

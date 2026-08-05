@@ -18,6 +18,7 @@ import {
   readEFEnv,
 } from "../_shared/auth.ts";
 import { PLACE_BUSINESS_COLUMNS as PLACE_COLUMNS } from "../_shared/place-columns.ts";
+import { withDisplayName } from "../_shared/place-display-name.ts";
 
 // Super-admin manage-single Embeddings card (MESITA-720) — keep vectors off
 // the business overview payload; only elevate when the caller is a super-admin.
@@ -77,7 +78,10 @@ Deno.serve(async (req) => {
     // super-admin gets the broadest permission set the place role enum
     // can express. (The frontend MyPlace type only knows owner|business|staff.)
     places = [
-      { ...(placeRow.data as unknown as Record<string, unknown>), my_role: "owner" } as unknown as PlaceRow,
+      withDisplayName({
+        ...(placeRow.data as unknown as Record<string, unknown>),
+        my_role: "owner",
+      }) as unknown as PlaceRow,
     ];
   } else {
     // Pull every place the caller is a member of, with the role on each row.
@@ -105,10 +109,12 @@ Deno.serve(async (req) => {
       if (placeRows.error) {
         return json({ ok: false, error: placeRows.error.message }, 500);
       }
-      places = ((placeRows.data ?? []) as unknown as PlaceRow[]).map((p) => ({
-        ...p,
-        my_role: roleById.get(p.id) ?? "viewer",
-      }));
+      places = ((placeRows.data ?? []) as unknown as PlaceRow[]).map((p) =>
+        withDisplayName({
+          ...p,
+          my_role: roleById.get(p.id) ?? "viewer",
+        }) as PlaceRow
+      );
     }
   }
 

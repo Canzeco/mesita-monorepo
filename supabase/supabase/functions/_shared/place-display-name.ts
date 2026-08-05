@@ -32,6 +32,20 @@ export function displayName(row: PlaceNameRow): string {
 }
 
 /**
+ * Wire mapper: overwrite `name` with the resolved display label.
+ * Keeps raw `google_name` so clients that need the spine still see it.
+ * Use on every place-row response that leaves an EF (MESITA-925).
+ */
+export function withDisplayName<T extends PlaceNameRow>(row: T): T {
+  return { ...row, name: displayName(row) };
+}
+
+/** Map a list of place rows through {@link withDisplayName}. */
+export function withDisplayNames<T extends PlaceNameRow>(rows: T[]): T[] {
+  return rows.map(withDisplayName);
+}
+
+/**
  * True when Mesita `name` should track Google on the next enrich write:
  * empty/null Mesita name, or still equal to the previous google_name.
  */

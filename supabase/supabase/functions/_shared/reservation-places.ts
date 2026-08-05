@@ -30,6 +30,7 @@
 // strategyForPromoMatrix) — no rates blob, no extra EF, no extra query.
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
+import { displayName } from "./place-display-name.ts";
 
 export type PlaceSummary = {
   id: string;
@@ -73,7 +74,7 @@ export async function attachPlaces<T extends RowWithProject>(
       .select(
         "id, slug, listing_type, fiscal_type, " +
           "welcome_free_rate, welcome_premium_rate, free_rate, premium_rate, " +
-          "place:places(id, name, category, photos, address, price_level, lat, lng)",
+          "place:places(id, name, google_name, category, photos, address, price_level, lat, lng)",
       )
       .in("id", ids);
     type Row = {
@@ -89,6 +90,7 @@ export async function attachPlaces<T extends RowWithProject>(
         | {
           id: string;
           name: string | null;
+          google_name: string | null;
           category: string | null;
           photos: string[] | null;
           address: string | null;
@@ -99,6 +101,12 @@ export async function attachPlaces<T extends RowWithProject>(
         | null;
     };
     for (const p of (data ?? []) as unknown as Row[]) {
+      const placeName = p.place
+        ? displayName({
+          name: p.place.name,
+          google_name: p.place.google_name,
+        })
+        : null;
       byId.set(p.id, {
         id: p.id,
         slug: p.slug ?? null,
@@ -108,7 +116,7 @@ export async function attachPlaces<T extends RowWithProject>(
         welcome_premium_rate: p.welcome_premium_rate ?? null,
         free_rate: p.free_rate ?? null,
         premium_rate: p.premium_rate ?? null,
-        name: p.place?.name ?? null,
+        name: placeName === "(unnamed)" ? null : placeName,
         category: p.place?.category ?? null,
         photos: p.place?.photos ?? null,
         address: p.place?.address ?? null,
