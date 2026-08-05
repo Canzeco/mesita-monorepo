@@ -2,31 +2,24 @@
 
 import { useEffect, useState } from "react";
 import { AlertTriangle } from "lucide-react";
-import {
-  listNotifications,
-  type NotificationsPayload,
-} from "../../../global-performance/actions";
 import { getPlaceActivity, type PlaceActivity } from "../../actions";
-import { GlobalPerformanceClient } from "../../../global-performance/GlobalPerformanceClient";
-import { ACTIVITY_TYPE_ORDER } from "../../../global-performance/notification-config";
+import { EventSuperBoxes } from "../../sections/EventSuperBoxes";
 import { PerformanceHeadline } from "../../sections/PerformanceHeadline";
 import { ReputationStrip } from "../../sections/ReputationStrip";
 import { ReservationsList } from "../../sections/ReservationsList";
-import { SectionCard, Spinner } from "../../ui";
+import { Spinner } from "../../ui";
 import { useUnitPlace } from "../../UnitPlaceContext";
 
 // Per-place Performance (MESITA-900 — Reservations back inside this tab):
 //
 //   1. Is Mesita working here? — money + Saved→Visited→Closed funnel.
 //   2. Reputation             — Mesita / Google / IG / FB / reservations boxes (Stories rail).
-//   3. Reservations           — Mesita bookings list + AI dial lines.
-//   4. Activity               — consumer event feed (receipts).
+//   3. Event receipts         — typed Super Boxes (analytics lead + horizontal events).
+//   4. Reservations           — Mesita bookings list + AI dial lines.
 //
 // Channel routing stays on Settings. Layout: one max-w-4xl column.
 export default function UnitPerformancePage() {
   const { place } = useUnitPlace();
-  const [feed, setFeed] = useState<NotificationsPayload | null>(null);
-  const [feedError, setFeedError] = useState<string | null>(null);
   const [activity, setActivity] = useState<PlaceActivity | null>(null);
   const [activityError, setActivityError] = useState<string | null>(null);
 
@@ -42,17 +35,6 @@ export default function UnitPerformancePage() {
       }
       setActivity(r.data);
     });
-    listNotifications("all", {
-      projectId: place.id,
-      types: ACTIVITY_TYPE_ORDER,
-    }).then((r) => {
-      if (!alive) return;
-      if (!r.ok) {
-        setFeedError(r.error);
-        return;
-      }
-      setFeed(r.data);
-    });
     return () => {
       alive = false;
     };
@@ -66,31 +48,12 @@ export default function UnitPerformancePage() {
         <>
           <PerformanceHeadline stats={activity.stats} />
           <ReputationStrip place={place} stats={activity.stats} />
+          <EventSuperBoxes place={place} stats={activity.stats} />
           <ReservationsList activity={activity} />
         </>
       ) : (
         <Spinner label="Loading…" />
       )}
-
-      <SectionCard
-        title="Activity"
-        subtitle="Every consumer event on this place, newest first. Auto-refreshes while the tab is open."
-      >
-        {feedError ? (
-          <div className="mt-4">
-            <ErrorNote title="Couldn't load the activity feed." detail={feedError} />
-          </div>
-        ) : !feed ? (
-          <Spinner label="Loading activity…" />
-        ) : (
-          <GlobalPerformanceClient
-            initial={feed}
-            projectId={place.id}
-            types={ACTIVITY_TYPE_ORDER}
-            bleed={false}
-          />
-        )}
-      </SectionCard>
     </div>
   );
 }
