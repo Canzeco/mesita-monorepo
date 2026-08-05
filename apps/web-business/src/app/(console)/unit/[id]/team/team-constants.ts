@@ -1,7 +1,7 @@
 import type { BusinessRole } from "@/lib/api/team";
 
-// member_role enum values, surfaced as "Owner / Editor / Viewer" on
-// the Team page. Migration 0025 swapped legacy 'manager' -> 'editor'.
+// member_role enum — Owner / Editor / Viewer (MESITA-919). Exactly one
+// owner per place; invites are editor|viewer only.
 export const ROLE_LABEL: Record<BusinessRole, string> = {
   owner: "Owner",
   editor: "Editor",
@@ -9,6 +9,7 @@ export const ROLE_LABEL: Record<BusinessRole, string> = {
 };
 
 export const ROLE_CHOICES: BusinessRole[] = ["owner", "editor", "viewer"];
-export const MANAGER_ROLE_CHOICES: BusinessRole[] = ["owner", "editor"];
+/** Invite never creates an owner — transfer from Team instead. */
+export const INVITE_ROLE_CHOICES: BusinessRole[] = ["editor", "viewer"];
 
-export type InviteOpen = null | "manager";
+export type InviteOpen = null | "member";

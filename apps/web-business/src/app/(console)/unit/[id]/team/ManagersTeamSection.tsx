@@ -1,4 +1,4 @@
-import { Crown, Mail } from "lucide-react";
+import { Crown, Mail, Users } from "lucide-react";
 
 import type { BusinessRole, RemoveKind, TeamSnapshot } from "@/lib/api/team";
 import { formatRelative, initialLetter } from "@/lib/utils";
@@ -17,47 +17,47 @@ import {
   TeamModule,
 } from "./TeamUi";
 import {
-  MANAGER_ROLE_CHOICES,
+  INVITE_ROLE_CHOICES,
   ROLE_CHOICES,
   ROLE_LABEL,
 } from "./team-constants";
 
 export function ManagersTeamSection({
-  managers,
-  pendingManagerInvites,
+  members,
+  pendingInvites,
   isOwner,
   currentUserId,
   busy,
   inviteOpen,
   onToggleInvite,
-  onInviteManager,
+  onInviteMember,
   onChangeRole,
-  onRemoveEditor,
+  onRemoveMember,
   onRemove,
 }: {
-  managers: TeamSnapshot["businesses"];
-  pendingManagerInvites: TeamSnapshot["pendingBusinessInvites"];
+  members: TeamSnapshot["businesses"];
+  pendingInvites: TeamSnapshot["pendingBusinessInvites"];
   isOwner: boolean;
   currentUserId: string;
   busy: string | null;
   inviteOpen: boolean;
   onToggleInvite: () => void;
-  onInviteManager: (email: string, role: BusinessRole) => void | Promise<void>;
+  onInviteMember: (email: string, role: BusinessRole) => void | Promise<void>;
   onChangeRole: (
     memberId: string,
     role: BusinessRole,
     currentRole: BusinessRole,
     name: string,
   ) => void;
-  onRemoveEditor: (memberId: string, name: string, isSelf: boolean) => void;
+  onRemoveMember: (memberId: string, name: string, isSelf: boolean) => void;
   onRemove: (id: string, kind: RemoveKind, confirmText: string) => void;
 }) {
   return (
     <TeamModule
-      icon={<Crown className="h-4 w-4" />}
-      title="Managers"
-      active={managers.length}
-      pending={pendingManagerInvites.length}
+      icon={<Users className="h-4 w-4" />}
+      title="Members"
+      active={members.length}
+      pending={pendingInvites.length}
       action={
         isOwner ? (
           <InviteButton
@@ -70,19 +70,19 @@ export function ManagersTeamSection({
     >
       {inviteOpen && (
         <EditorInviteForm
-          busy={busy === "invite-manager"}
-          onSubmit={onInviteManager}
-          roleChoices={MANAGER_ROLE_CHOICES}
+          busy={busy === "invite-member"}
+          onSubmit={onInviteMember}
+          roleChoices={INVITE_ROLE_CHOICES}
           defaultRole="editor"
           submitLabel="Send invite"
         />
       )}
 
-      {managers.length === 0 && pendingManagerInvites.length === 0 ? (
-        <TeamEmpty message="No managers yet" />
+      {members.length === 0 && pendingInvites.length === 0 ? (
+        <TeamEmpty message="No members yet" />
       ) : (
         <TeamList>
-          {managers.map((m) => (
+          {members.map((m) => (
             <TeamMemberRow key={m.memberId}>
               <Avatar
                 initial={initialOf(m.fullName, m.email)}
@@ -114,7 +114,7 @@ export function ManagersTeamSection({
                     m.memberId,
                     r,
                     (m.role as BusinessRole) ?? "editor",
-                    m.fullName ?? m.email ?? "this editor",
+                    m.fullName ?? m.email ?? "this member",
                   )
                 }
               />
@@ -127,21 +127,21 @@ export function ManagersTeamSection({
                     : `Remove ${m.fullName ?? m.email}`
                 }
                 onClick={() =>
-                  onRemoveEditor(
+                  onRemoveMember(
                     m.memberId,
-                    m.fullName ?? m.email ?? "this editor",
+                    m.fullName ?? m.email ?? "this member",
                     m.userId === currentUserId,
                   )
                 }
               />
             </TeamMemberRow>
           ))}
-          {pendingManagerInvites.map((inv) => (
+          {pendingInvites.map((inv) => (
             <PendingRow
               key={inv.id}
               icon={<Mail className="text-muted-foreground h-3.5 w-3.5" />}
               title={inv.email}
-              subtitle={`${teamRoleLabel((inv.role as BusinessRole) ?? "editor")} · ${formatRelative(inv.expiresAt)}`}
+              subtitle={`${ROLE_LABEL[(inv.role as BusinessRole) ?? "editor"]} · ${formatRelative(inv.expiresAt)}`}
             >
               <CopyButton
                 text={buildAcceptUrl(inv.token)}
@@ -173,10 +173,4 @@ function buildAcceptUrl(token: string): string {
   const url = new URL("/accept-invite", window.location.origin);
   url.searchParams.set("token", token);
   return url.toString();
-}
-
-function teamRoleLabel(role: BusinessRole): string {
-  if (role === "viewer") return "PR";
-  if (role === "editor") return "Manager";
-  return ROLE_LABEL[role];
 }

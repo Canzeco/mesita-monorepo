@@ -60,7 +60,11 @@ Deno.serve(async (req) => {
   if (kind === "editor" && target.targetIsOwner) {
     if (await isLastOwnerOfPlace(admin, target.projectId)) {
       return json(
-        { ok: false, code: "last_owner", error: "Promote another owner first." },
+        {
+          ok: false,
+          code: "last_owner",
+          error: "Transfer ownership to another member first.",
+        },
         409,
       );
     }
