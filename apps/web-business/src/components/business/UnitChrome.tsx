@@ -9,7 +9,6 @@ import type { MyPlace } from "@/lib/api/places";
 export type UnitChrome = {
   activePlaceId: string | null;
   places: MyPlace[];
-  isSuperAdmin: boolean;
 };
 
 const UnitChromeContext = createContext<UnitChrome | null>(null);

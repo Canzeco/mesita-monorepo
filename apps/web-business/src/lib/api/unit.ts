@@ -2,8 +2,6 @@
 //
 // Wrapped in React.cache so the business layout and the active page (which
 // both need the bundle) reuse a single Edge Function round trip per render.
-// The EF decides super-admin elevation server-side from the caller's JWT
-// against public.super_admins; the client never carries a key.
 
 import { cache } from "react";
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -18,9 +16,7 @@ type PlaceTicketStub = Record<string, unknown>;
 
 type UnitOverview = {
   user: { id: string; email: string | null };
-  // True when the EF resolved the caller as a super-admin (their email
-  // is in public.super_admins). Drives the Topbar banner.
-  isSuperAdmin: boolean;
+  // EF may still return isSuperAdmin for admin Manage flows; business UI ignores it.
   places: MyPlace[];
   active: { place: MyPlace; recentTickets: PlaceTicketStub[] } | null;
 };

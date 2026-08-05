@@ -39,8 +39,7 @@ export default async function ConsoleLayout({
 
   const business =
     profileResult.status === "fulfilled" ? profileResult.value : null;
-  const isSuperAdmin = overview?.isSuperAdmin === true;
-  if (!isSuperAdmin && !business?.full_name) redirect("/onboard");
+  if (!business?.full_name) redirect("/onboard");
 
   const cookieStore = await cookies();
   const cookieUnitId = cookieStore.get(ACTIVE_UNIT_COOKIE)?.value ?? null;
@@ -57,7 +56,6 @@ export default async function ConsoleLayout({
         value={{
           activePlaceId,
           places,
-          isSuperAdmin,
         }}
       >
         <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">

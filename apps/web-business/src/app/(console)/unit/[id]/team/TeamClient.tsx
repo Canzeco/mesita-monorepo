@@ -55,8 +55,7 @@ export function TeamClient({
     }
   }, [supabase, projectId]);
 
-  const isOwner =
-    snapshot.myRole === "owner" || snapshot.myRole === "super_admin";
+  const isOwner = snapshot.myRole === "owner";
   const managers = snapshot.businesses.filter((m) => m.role !== "viewer");
   const pendingManagerInvites = snapshot.pendingBusinessInvites.filter(
     (inv) => inv.role !== "viewer",

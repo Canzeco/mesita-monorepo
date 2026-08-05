@@ -59,8 +59,6 @@ export function UnitDock() {
   });
   const activePlace =
     places.find((v) => v.id === activeUnitId) ?? places[0] ?? null;
-  const isSuperAdmin = chrome?.isSuperAdmin ?? false;
-  const canOpenPlaceMenu = !isSuperAdmin && !!activePlace;
 
   const currentSection = useMemo(() => {
     if (pathname === BUSINESS_ROUTES.central) return "place";
@@ -110,7 +108,7 @@ export function UnitDock() {
   return (
     <>
       <UnitDockPlacePicker
-        open={pickerOpen && canOpenPlaceMenu}
+        open={pickerOpen && !!activePlace}
         places={places}
         activePlace={activePlace}
         pathname={pathname}
@@ -170,36 +168,27 @@ export function UnitDock() {
 
         <div className="border-dock-border flex items-stretch gap-2 border-t px-3 pt-1.5 pb-1.5">
           {activePlace ? (
-            canOpenPlaceMenu ? (
-              <button
-                type="button"
-                onClick={() => setPickerOpen((o) => !o)}
-                aria-expanded={pickerOpen}
-                aria-label="Switch place or add a place"
+            <button
+              type="button"
+              onClick={() => setPickerOpen((o) => !o)}
+              aria-expanded={pickerOpen}
+              aria-label="Switch place or add a place"
+              className={cn(
+                "bg-dock-surface hover:bg-dock-surface-hover flex h-11 min-w-0 flex-1 items-center gap-2 rounded-xl px-3 transition",
+                pickerOpen && "bg-dock-surface-hover ring-primary/35 ring-1",
+              )}
+            >
+              <PlaceChip name={activePlace.name} />
+              <span className="truncate text-[13px] font-semibold tracking-tight">
+                {activePlace.name}
+              </span>
+              <ChevronDown
                 className={cn(
-                  "bg-dock-surface hover:bg-dock-surface-hover flex h-11 min-w-0 flex-1 items-center gap-2 rounded-xl px-3 transition",
-                  pickerOpen && "bg-dock-surface-hover ring-primary/35 ring-1",
+                  "text-dock-muted ml-auto h-3.5 w-3.5 shrink-0 transition-transform duration-200",
+                  pickerOpen && "rotate-180",
                 )}
-              >
-                <PlaceChip name={activePlace.name} />
-                <span className="truncate text-[13px] font-semibold tracking-tight">
-                  {activePlace.name}
-                </span>
-                <ChevronDown
-                  className={cn(
-                    "text-dock-muted ml-auto h-3.5 w-3.5 shrink-0 transition-transform duration-200",
-                    pickerOpen && "rotate-180",
-                  )}
-                />
-              </button>
-            ) : (
-              <div className="bg-dock-surface flex h-11 min-w-0 flex-1 items-center gap-2 rounded-xl px-3">
-                <PlaceChip name={activePlace.name} />
-                <span className="truncate text-[13px] font-semibold tracking-tight">
-                  {activePlace.name}
-                </span>
-              </div>
-            )
+              />
+            </button>
           ) : (
             <Link
               href="/add"
