@@ -75,14 +75,14 @@ Deno.test("applyProfileToUpdate: happy path unchanged (trimmed, capped, typed)",
   assertEquals(update.popular_times, [{ day: "Fri", range: "8-11pm" }]);
 });
 
-Deno.test("applyProfileToUpdate: description_es written alongside English About", () => {
+Deno.test("applyProfileToUpdate: ignores description_es — English only for now", () => {
   const update: Record<string, unknown> = {};
   applyProfileToUpdate(update, {
     description: "A warm brunch spot.",
     description_es: "Un rincón cálido para brunch.",
   } as ProfileResult);
   assertEquals(update.description, "A warm brunch spot.");
-  assertEquals(update.description_es, "Un rincón cálido para brunch.");
+  assertEquals(update.description_es, undefined);
 });
 
 Deno.test("applyProfileToUpdate: native Google zone/city win — synthesis never overwrites them", () => {

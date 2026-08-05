@@ -164,9 +164,8 @@ export type PlaceDetail = {
   // "Pay & Post" vs "Pay" CTA on the place Reward box.
   requires_story?: boolean;
 
-  // 9. Long description (English core) + Spanish translation (MESITA-926)
+  // 9. Long description — English (Mesita core). Spanish TMS later.
   long_description: string;
-  long_description_es?: string;
 
   // Hours / popular times
   hours_table: Array<{

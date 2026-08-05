@@ -56,7 +56,6 @@ export function PlaceDetailBody({
             <LinksBox place={place} />
             <AboutBox
               text={place.long_description}
-              textEs={place.long_description_es}
               name={place.name}
             />
             <TagsBox place={place} />

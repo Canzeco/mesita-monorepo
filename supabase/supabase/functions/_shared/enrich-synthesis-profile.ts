@@ -8,8 +8,6 @@ export type ProfileResult = {
   editorial_summary?: string | null;
   /** Canonical About — always English (Mesita core language). */
   description?: string | null;
-  /** Spanish translation of About (MESITA-926). */
-  description_es?: string | null;
   details?: Record<string, unknown> | null;
   popular_times?: unknown[] | null;
 };
@@ -100,18 +98,10 @@ export function applyProfileToUpdate(
   if (chef) update.executive_chef = chef;
   const editorial = asProfileText(parsed.editorial_summary);
   if (editorial) update.editorial_summary = editorial;
-  // Canonical About — English. Hard cap at ~1000 words. Normalize paragraphs.
+  // Canonical About — English only (MESITA-939). Spanish TMS later.
   const description = asProfileText(parsed.description);
   if (description) {
     update.description = formatAboutParagraphs(description).slice(0, ENRICH_DESCRIPTION_MAX);
-  }
-  // Spanish translation of the same About (MESITA-926).
-  const descriptionEs = asProfileText(parsed.description_es);
-  if (descriptionEs) {
-    update.description_es = formatAboutParagraphs(descriptionEs).slice(
-      0,
-      ENRICH_DESCRIPTION_MAX,
-    );
   }
   if (parsed.details && typeof parsed.details === "object" && !Array.isArray(parsed.details)) {
     update.details = parsed.details;
