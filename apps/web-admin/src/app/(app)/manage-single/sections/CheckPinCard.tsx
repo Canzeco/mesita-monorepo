@@ -1,6 +1,12 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import {
+  forwardRef,
+  useMemo,
+  useRef,
+  useState,
+  useTransition,
+} from "react";
 import { KeyRound } from "lucide-react";
 import { setCheckPin, type AdminPlace } from "../actions";
 import { SaveBar, SectionCard } from "../ui";
@@ -24,9 +30,19 @@ export function CheckPinCard({ place }: { place: AdminPlace }) {
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [ok, setOk] = useState(false);
+  const pinInputRef = useRef<HTMLInputElement>(null);
 
   const dirty = pin !== current;
   const valid = pin === "" || /^[0-9]{6}$/.test(pin);
+
+  const focusPin = () => {
+    window.requestAnimationFrame(() => pinInputRef.current?.focus());
+  };
+
+  const clearPin = () => {
+    setPin("");
+    focusPin();
+  };
 
   const save = () => {
     if (!valid) {
@@ -77,10 +93,21 @@ export function CheckPinCard({ place }: { place: AdminPlace }) {
         two-tap close.
       </p>
       <div className="mt-4 flex flex-col gap-1.5">
-        <span className="text-foreground/90 flex min-h-4 items-center text-[13px] font-medium">
-          PIN
-        </span>
+        <div className="flex min-h-4 items-center justify-between gap-2">
+          <span className="text-foreground/90 text-[13px] font-medium">PIN</span>
+          {pin !== "" ? (
+            <button
+              type="button"
+              disabled={pending}
+              onClick={clearPin}
+              className="text-muted-foreground hover:text-foreground text-[11px] font-medium underline-offset-2 hover:underline disabled:opacity-50"
+            >
+              Clear to edit
+            </button>
+          ) : null}
+        </div>
         <PinDigits
+          ref={pinInputRef}
           value={pin}
           onChange={setPin}
           disabled={pending}
@@ -92,7 +119,8 @@ export function CheckPinCard({ place }: { place: AdminPlace }) {
           </span>
         ) : (
           <span className="text-muted-foreground text-[11px]">
-            Six digits turns the gate on · clear all to turn it off.
+            Click a digit to edit from there · type over a full PIN to replace
+            it · clear all to turn the gate off.
           </span>
         )}
       </div>
@@ -109,25 +137,44 @@ export function CheckPinCard({ place }: { place: AdminPlace }) {
   );
 }
 
-// 6-cell digit input (same pattern as web-business OtpInput). Native <input>
-// sits invisibly over the cells so paste + numeric keypad keep working.
-function PinDigits({
-  value,
-  onChange,
-  disabled,
-  hasError,
-}: {
-  value: string;
-  onChange: (next: string) => void;
-  disabled: boolean;
-  hasError: boolean;
-}) {
+// 6-cell digit input. Invisible native <input> keeps paste + numeric keypad;
+// cells stay clickable so a set PIN can be edited (MESITA-884).
+const PinDigits = forwardRef<
+  HTMLInputElement,
+  {
+    value: string;
+    onChange: (next: string) => void;
+    disabled: boolean;
+    hasError: boolean;
+  }
+>(function PinDigits({ value, onChange, disabled, hasError }, ref) {
+  const [focused, setFocused] = useState(false);
   const cells = Array.from({ length: 6 }, (_, i) => value[i] ?? "");
-  const focusIndex = value.length < 6 ? value.length : -1;
+  // Highlight the next empty cell while typing; when full and focused,
+  // highlight the last cell so the row still reads as live/editable.
+  const focusIndex = !focused
+    ? -1
+    : value.length < 6
+      ? value.length
+      : 5;
+
+  const focusEl = () => {
+    const el = typeof ref === "object" && ref ? ref.current : null;
+    el?.focus();
+  };
+
+  const editFrom = (index: number) => {
+    if (disabled) return;
+    // Full PIN: just focus so the next digit replaces (onKeyDown) or
+    // Backspace trims — don't wipe on click. Partial: jump the caret.
+    if (value.length < 6) onChange(value.slice(0, index));
+    window.requestAnimationFrame(focusEl);
+  };
 
   return (
     <div className="relative max-w-xs">
       <input
+        ref={ref}
         id="check-pin"
         type="text"
         inputMode="numeric"
@@ -137,29 +184,60 @@ function PinDigits({
         onChange={(e) =>
           onChange(e.target.value.replace(/\D/g, "").slice(0, 6))
         }
+        onKeyDown={(e) => {
+          // Full PIN + a new digit → replace from scratch (settings edit).
+          if (
+            value.length === 6 &&
+            /^\d$/.test(e.key) &&
+            !e.metaKey &&
+            !e.ctrlKey &&
+            !e.altKey
+          ) {
+            e.preventDefault();
+            onChange(e.key);
+          }
+        }}
+        onFocus={() => setFocused(true)}
+        onBlur={() => setFocused(false)}
         disabled={disabled}
         aria-label="6-digit rewards check PIN"
         aria-invalid={hasError}
-        className="absolute inset-0 z-10 w-full cursor-text bg-transparent text-transparent caret-transparent outline-none disabled:cursor-not-allowed"
+        // pointer-events-none so clicks hit the cells (edit-from-index);
+        // keyboard still works once focused via cell click / Clear / tab.
+        className="pointer-events-none absolute inset-0 z-10 w-full bg-transparent text-transparent caret-transparent outline-none"
+        tabIndex={0}
       />
-      <div className="grid grid-cols-6 gap-1.5">
+      <div
+        className="grid grid-cols-6 gap-1.5"
+        onMouseDown={(e) => {
+          // Keep the input focused — prevent the cell button from
+          // taking focus away before we re-focus the input.
+          e.preventDefault();
+        }}
+      >
         {cells.map((char, i) => {
           const filled = char !== "";
-          const focused = !disabled && i === focusIndex;
+          const active = !disabled && i === focusIndex;
           return (
-            <div
+            <button
               key={i}
-              aria-hidden
+              type="button"
+              disabled={disabled}
+              tabIndex={-1}
+              aria-label={`Digit ${i + 1}${char ? `: ${char}` : ", empty"}`}
+              onClick={() => editFrom(i)}
               className={
                 "bg-background flex h-12 items-center justify-center rounded-xl border font-mono text-xl font-semibold tabular-nums transition " +
                 (hasError
                   ? "border-destructive/50"
-                  : focused
+                  : active
                     ? "border-amber-500 ring-2 ring-amber-500/20"
                     : filled
                       ? "border-foreground/20"
                       : "border-border") +
-                (disabled ? " opacity-60" : "")
+                (disabled
+                  ? " cursor-not-allowed opacity-60"
+                  : " cursor-text")
               }
             >
               {char || (
@@ -167,10 +245,10 @@ function PinDigits({
                   ·
                 </span>
               )}
-            </div>
+            </button>
           );
         })}
       </div>
     </div>
   );
-}
+});
