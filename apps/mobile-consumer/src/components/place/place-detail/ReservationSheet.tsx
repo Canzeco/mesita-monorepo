@@ -1,5 +1,5 @@
-import { CalendarClock, PhoneCall } from 'lucide-react-native';
-import { useEffect, useState } from 'react';
+import { AlertTriangle, CalendarClock, PhoneCall } from 'lucide-react-native';
+import { useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 
 import { Button } from '@/components/ui/Button';
@@ -11,6 +11,18 @@ import {
   apiUpdateReservation,
   type EFReservationRow,
 } from '@/lib/api/reservations';
+import {
+  BOOKING_HORIZON_MONTHS,
+  bookingWindowDays,
+  buildSlots,
+  hoursLabelForDate,
+  isDateSpent,
+  parseHoursTable,
+  resolveSlot,
+  slotState,
+  weekdayName,
+  type WeeklyHours,
+} from '@/lib/reservation-slots';
 import { errMsg, guestNoun } from '@/lib/utils';
 import {
   isSlotPast,
@@ -21,8 +33,6 @@ import {
   venueDateTime,
 } from '@/lib/venue-time';
 
-const DATE_WINDOW = 14; // two weeks of pills
-const DEFAULT_TIME = '20:00';
 const DEFAULT_PARTY = 2;
 const MIN_PARTY_SIZE = 1;
 const MAX_PARTY_SIZE = 20;
@@ -33,18 +43,6 @@ const MAX_PARTY_SIZE = 20;
 // America/Mexico_City and match what the guest chose.
 
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-
-// PRE-EXISTING divergence from web, left alone on purpose: mobile offers a
-// lunch window, web (apps/web-consumer/src/components/consumer/
-// reservation-pickers.tsx) starts at 18:00. Dropping lunch here would remove a
-// booking capability guests have today, which is a product call — not something
-// to settle inside a past-slot bug fix. The past-slot guard below works off
-// whatever this list holds, so the divergence costs only an edge case: late at
-// night the two apps can disable "Today" at slightly different minutes.
-const TIME_SLOTS = [
-  '13:00', '13:30', '14:00', '14:30', '18:00', '18:30', '19:00',
-  '19:30', '20:00', '20:30', '21:00', '21:30', '22:00',
-];
 
 type DateOption = {
   iso: string;
@@ -58,10 +56,14 @@ type DateOption = {
  * The next `count` days on the VENUE's calendar — not the device's. A guest in
  * Tokyo and a guest in CDMX must see the same "Today", or they'd disagree
  * about which slots are still bookable.
+ *
+ * `hours` only widens the day: a place open past midnight has slots the
+ * baseline window doesn't cover, so a day is "spent" only when none of ITS
+ * slots are left.
  */
-function buildDateOptions(count: number): DateOption[] {
+function buildDateOptions(hours: WeeklyHours | null): DateOption[] {
   const out: DateOption[] = [];
-  for (let i = 0; i < count; i += 1) {
+  for (let i = 0; i < bookingWindowDays(); i += 1) {
     const iso = venueDateIso(i);
     const { weekday, day } = venueDateParts(iso);
     out.push({
@@ -70,7 +72,7 @@ function buildDateOptions(count: number): DateOption[] {
       day,
       // Late at night today has nothing left. The pill stays in the row and
       // goes dead — hiding it would shift every other pill sideways.
-      disabled: TIME_SLOTS.every((slot) => isSlotPast(iso, slot)),
+      disabled: isDateSpent(iso, hours),
     });
   }
   return out;
@@ -79,19 +81,6 @@ function buildDateOptions(count: number): DateOption[] {
 /** First day still open for booking — the safe default / fallback. */
 function firstOpenDate(options: DateOption[]): string {
   return options.find((d) => !d.disabled)?.iso ?? '';
-}
-
-/**
- * The slot to actually use for `dateIso`: the guest's pick when it's still
- * ahead of the venue's clock, otherwise the first slot that is. Null when the
- * day is spent — the submit button disables on that.
- */
-function resolveSlot(dateIso: string, preferred: string): string | null {
-  if (!dateIso) return null;
-  if (TIME_SLOTS.includes(preferred) && !isSlotPast(dateIso, preferred)) {
-    return preferred;
-  }
-  return TIME_SLOTS.find((slot) => !isSlotPast(dateIso, slot)) ?? null;
 }
 
 function timeLabel(hhmm: string): string {
@@ -106,8 +95,16 @@ function timeLabel(hhmm: string): string {
  * a name to show. Deliberately narrower than PlaceDetail (which structurally
  * satisfies it) so the swipe deck can open this straight from a deck card,
  * without fetching the full place-detail payload.
+ *
+ * `hours_table` rides along when the caller has it (the detail page does; a deck
+ * card doesn't) — that's what turns the slot grid hours-aware. Absent, the sheet
+ * behaves exactly as before: baseline window, no closed-hours warning.
  */
-export type ReservationSheetPlace = { id: string; name: string };
+export type ReservationSheetPlace = {
+  id: string;
+  name: string;
+  hours_table?: { day: string; range: string }[];
+};
 
 // What to do when the guest already holds a live table here.
 //   null         → they haven't answered the banner yet; submit stays locked
@@ -124,13 +121,23 @@ export function ReservationSheet({
   visible: boolean;
   onClose: () => void;
 }) {
-  // Recomputed every render (14 tiny objects) rather than memoised: the sheet
-  // can sit mounted across midnight, and a stale "Today" pill would offer
-  // slots that are a day gone.
-  const dateOptions = buildDateOptions(DATE_WINDOW);
+  // Null when the place has no usable hours — the grid falls back to the
+  // baseline window and nothing is flagged closed.
+  const hours = useMemo(
+    () => parseHoursTable(place.hours_table),
+    [place.hours_table],
+  );
+
+  // Recomputed every render (one month of tiny objects) rather than memoised:
+  // the sheet can sit mounted across midnight, and a stale "Today" pill would
+  // offer slots that are a day gone — and a stale last pill would sit a day
+  // beyond the one-month horizon.
+  const dateOptions = buildDateOptions(hours);
 
   const [dateChoice, setDateChoice] = useState('');
-  const [timeChoice, setTimeChoice] = useState(DEFAULT_TIME);
+  // Null = "no explicit pick yet", so the default lands on a slot the place is
+  // actually open for instead of a hardcoded 20:00 the place may be closed at.
+  const [timeChoice, setTimeChoice] = useState<string | null>(null);
   const [party, setParty] = useState(DEFAULT_PARTY);
   const [notes, setNotes] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -148,7 +155,7 @@ export function ReservationSheet({
   const date =
     dateOptions.find((d) => d.iso === dateChoice && !d.disabled)?.iso ??
     firstOpenDate(dateOptions);
-  const time = resolveSlot(date, timeChoice);
+  const time = resolveSlot(date, timeChoice, hours);
 
   const chosen = dateOptions.find((d) => d.iso === date);
   const timeText = time ? timeLabel(time) : '—';
@@ -300,10 +307,13 @@ export function ReservationSheet({
             />
           ) : null}
 
-          {/* Date pills */}
+          {/* Date pills — today through the one-month horizon */}
           <View>
-            <Text className="mb-2 text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
+            <Text className="mb-1 text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
               Date
+            </Text>
+            <Text className="mb-2 text-[11px] text-muted-foreground">
+              Up to {BOOKING_HORIZON_MONTHS} month ahead
             </Text>
             <ScrollView
               horizontal
@@ -356,53 +366,87 @@ export function ReservationSheet({
             </ScrollView>
           </View>
 
-          {/* Time slots — past ones stay in the grid, muted, so it never jumps */}
+          {/* Time slots — past ones stay in the grid, muted, so it never jumps.
+              Slots the place's hours don't cover stay TAPPABLE and render amber:
+              hours are scraped and often wrong, and Mesita books by phone, so
+              the guest decides — ClosedSlotNotice below warns. */}
           <View>
             <Text className="mb-1 text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
               Time
             </Text>
             <Text className="mb-2 text-[11px] text-muted-foreground">
               Times shown in {VENUE_TZ_LABEL}
+              {hoursLabelForDate(date, hours)
+                ? ` · open ${hoursLabelForDate(date, hours)}`
+                : ''}
             </Text>
             <View className="flex-row flex-wrap gap-2">
-              {TIME_SLOTS.map((slot) => {
-                const past = isSlotPast(date, slot);
-                const active = slot === time && !past;
+              {buildSlots(date, hours).map((slot) => {
+                const past = isSlotPast(date, slot.time);
+                const active = slot.time === time && !past;
+                const closed = slot.state === 'closed';
                 return (
                   <Pressable
-                    key={slot}
-                    onPress={() => setTimeChoice(slot)}
+                    key={slot.time}
+                    onPress={() => setTimeChoice(slot.time)}
                     disabled={past}
                     accessibilityRole="button"
                     accessibilityState={{ selected: active, disabled: past }}
                     accessibilityHint={
-                      past ? 'This time has already passed' : undefined
+                      past
+                        ? 'This time has already passed'
+                        : closed
+                          ? 'The place looks closed at this time — you can still request it'
+                          : slot.afterMidnight
+                            ? 'After midnight'
+                            : undefined
                     }
-                    style={past ? { opacity: 0.45 } : undefined}
+                    style={
+                      past
+                        ? { opacity: 0.45 }
+                        : closed && !active
+                          ? { borderStyle: 'dashed' }
+                          : undefined
+                    }
                     className={`rounded-xl border px-3 py-2 ${
                       past
                         ? 'border-border bg-muted'
-                        : active
-                          ? 'border-primary bg-primary'
-                          : 'border-border bg-card'
+                        : closed
+                          ? active
+                            ? 'border-amber-500 bg-amber-500/15'
+                            : 'border-border bg-card'
+                          : active
+                            ? 'border-primary bg-primary'
+                            : 'border-border bg-card'
                     }`}
                   >
                     <Text
                       className={`text-[13px] font-semibold ${
                         past
                           ? 'text-muted-foreground'
-                          : active
-                            ? 'text-primary-foreground'
-                            : 'text-foreground'
+                          : closed
+                            ? active
+                              ? 'text-foreground'
+                              : 'text-muted-foreground'
+                            : active
+                              ? 'text-primary-foreground'
+                              : 'text-foreground'
                       }`}
                     >
-                      {timeLabel(slot)}
+                      {timeLabel(slot.time)}
                     </Text>
                   </Pressable>
                 );
               })}
             </View>
           </View>
+
+          <ClosedSlotNotice
+            date={date}
+            time={time}
+            hours={hours}
+            placeName={place.name}
+          />
 
           {/* Party stepper */}
           <View>
@@ -466,6 +510,44 @@ export function ReservationSheet({
         </>
       )}
     </FullScreenSheet>
+  );
+}
+
+/**
+ * "They look closed then — request anyway?" Inline, non-blocking, and only when
+ * we actually hold hours for the place: an un-enriched place has no opinion and
+ * must stay silent. Web parity:
+ * apps/web-consumer/src/components/consumer/reservation-pickers.tsx.
+ */
+function ClosedSlotNotice({
+  date,
+  time,
+  hours,
+  placeName,
+}: {
+  date: string;
+  time: string | null;
+  hours: WeeklyHours | null;
+  placeName: string;
+}) {
+  if (!time || !date || !hours) return null;
+  if (slotState(date, time, hours) !== 'closed') return null;
+  const dayHours = hoursLabelForDate(date, hours);
+
+  return (
+    <View className="flex-row items-start gap-2.5 rounded-2xl border border-amber-500/40 bg-amber-500/10 px-3 py-3">
+      <AlertTriangle color="#d97706" size={16} />
+      <Text className="flex-1 text-[12.5px] leading-snug text-amber-900">
+        <Text className="font-semibold">
+          {placeName} looks closed at {timeLabel(time)} on {weekdayName(date)}.
+        </Text>{' '}
+        {dayHours
+          ? `Our hours say ${dayHours}.`
+          : 'Our hours show them closed all day.'}{' '}
+        You can still request it — Mesita will tell you what the place says when
+        we call.
+      </Text>
+    </View>
   );
 }
 
