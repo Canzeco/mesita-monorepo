@@ -8,13 +8,11 @@ import { CurrentClassCard } from "@/components/consumer/me/class/CurrentClassCar
 import { WaysToClimb } from "@/components/consumer/me/class/WaysToClimb";
 import { SHEET_TITLE_CLASS, SHEET_BODY_CLASS } from "@/lib/ui-classes";
 
-// The full class surface, lifted out of the old Class tab into a bottom sheet
-// the Me page opens from the Class box. Two labeled sections top to bottom:
-// current class, and the class cards with each ladder's door (subscribe /
-// connect Instagram). ClimbCard detail bullets carry perk info (comparison
-// table removed — MESITA-910). `onConnectInstagram` bubbles up so the parent
-// can close this sheet before opening the verify sheet (two LocalSheets must
-// never stack at the same z-layer).
+// The full class surface — bottom sheet from the Me Class box.
+// IA: header → demo preview → You → Classes (Comparison removed MESITA-910/914).
+// `onConnectInstagram` bubbles up so the parent can close this sheet before
+// opening the verify sheet (two LocalSheets must never stack at the same
+// z-layer).
 
 export function ClassModal({
   open,
@@ -35,8 +33,7 @@ export function ClassModal({
           <div>
             <h2 className={SHEET_TITLE_CLASS}>Your class</h2>
             <p className="text-muted-foreground text-[12px]">
-              Mesita Standard, Mesita Influencer, Mesita Premium or Mesita Aura
-              — and how to climb
+              Reach, subscribe, or get invited — rewards climb with you.
             </p>
           </div>
         </div>
@@ -44,7 +41,7 @@ export function ClassModal({
         <div className="flex flex-col gap-6">
           <ClassPreviewToggle />
           <section className="flex flex-col gap-2">
-            <SectionEyebrow>Current class</SectionEyebrow>
+            <SectionEyebrow>You</SectionEyebrow>
             <CurrentClassCard />
           </section>
           <section className="flex flex-col gap-2">

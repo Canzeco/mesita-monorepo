@@ -35,7 +35,7 @@ export function ClassPreviewToggle() {
           Demo
         </span>
         <span className="text-muted-foreground text-[11px] font-medium">
-          Preview class state
+          Preview
         </span>
       </div>
       <div className="bg-muted/60 flex rounded-lg p-1">

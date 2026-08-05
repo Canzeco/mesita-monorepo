@@ -25,7 +25,7 @@ export function ClassModal({
       visible={visible}
       onClose={onClose}
       title="Your class"
-      subtitle="Mesita Standard, Mesita Influencer, Mesita Premium or Mesita Aura — and how to climb"
+      subtitle="Reach, subscribe, or get invited — rewards climb with you."
     >
       {/* Branded crown-icon tile (web ClassModal DNA). The sheet header already
           carries the title, so the body leads with the mark only. */}
@@ -51,7 +51,7 @@ export function ClassModal({
         </LinearGradient>
       </View>
       <ClassPreviewToggle />
-      <SectionEyebrow>Current class</SectionEyebrow>
+      <SectionEyebrow>You</SectionEyebrow>
       <CurrentClassCard />
       <SectionEyebrow>Classes</SectionEyebrow>
       <WaysToClimb onConnectInstagram={onConnectInstagram} />

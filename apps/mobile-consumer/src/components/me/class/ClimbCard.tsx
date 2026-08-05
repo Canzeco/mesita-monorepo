@@ -1,10 +1,11 @@
 import { LinearGradient } from 'expo-linear-gradient';
-import { Check, Crown, type LucideIcon } from 'lucide-react-native';
+import { Check, type LucideIcon } from 'lucide-react-native';
 import { type ReactNode } from 'react';
 import { Text, View } from 'react-native';
 
 import { Button } from '@/components/ui/Button';
 import { GRADIENT_DIAGONAL, GRADIENTS } from '@/constants/brand';
+import { DiscountMeter, type DiscountLevel } from './DiscountMeter';
 
 export type ClimbCardData = {
   key: string;
@@ -12,10 +13,10 @@ export type ClimbCardData = {
   title: string;
   via?: string;
   accent?: boolean;
-  price: string;
-  priceNote?: string;
-  desc: string;
-  /** The class's perks, rendered as a check-list between desc and footer. */
+  /** Door one-liner under the title row (price / threshold / invite). */
+  door?: string;
+  discountLevel: DiscountLevel;
+  /** The class's perks, rendered as a check-list under the meter. */
   perks?: string[];
   reached: boolean;
   reachedLabel: string;
@@ -41,12 +42,11 @@ export function ClimbCard({ data }: { data: ClimbCardData }) {
           borderRadius: 10,
           backgroundColor: 'rgba(16,185,129,0.15)',
           paddingVertical: 10,
+          minHeight: 44,
         }}
       >
         <Check color="#047857" size={14} strokeWidth={3} />
-        <Text
-          style={{ color: '#047857', fontWeight: '700' }}
-        >
+        <Text style={{ color: '#047857', fontWeight: '700' }}>
           {data.reachedLabel}
         </Text>
       </View>
@@ -71,11 +71,11 @@ export function ClimbCard({ data }: { data: ClimbCardData }) {
           backgroundColor: '#faeff0',
           paddingVertical: 10,
           alignItems: 'center',
+          minHeight: 44,
+          justifyContent: 'center',
         }}
       >
-        <Text style={{ color: '#775254' }}>
-          {data.note}
-        </Text>
+        <Text style={{ color: '#775254' }}>{data.note}</Text>
       </View>
     );
   }
@@ -137,42 +137,40 @@ export function ClimbCard({ data }: { data: ClimbCardData }) {
               gap: 6,
             }}
           >
-            {data.accent ? (
-              <Crown color="#6d4fd8" size={16} fill="#6d4fd8" />
-            ) : null}
             <Text
               style={{
                 fontWeight: '700',
+                fontSize: 16,
                 color: data.accent ? '#6d4fd8' : '#260409',
               }}
             >
               {data.title}
             </Text>
             {data.via ? (
-              <Text style={{ color: '#775254' }}>
+              <Text style={{ color: '#775254', fontSize: 13, fontWeight: '500' }}>
                 via {data.via}
               </Text>
             ) : null}
           </View>
-          <Text
-            style={{ fontWeight: '700', marginTop: 8 }}
-          >
-            {data.price}
-          </Text>
-          {data.priceNote ? (
+          {data.door ? (
             <Text
-              style={{ color: '#775254', marginTop: 2 }}
+              style={{
+                color: '#775254',
+                marginTop: 6,
+                fontSize: 12,
+                lineHeight: 16,
+              }}
             >
-              {data.priceNote}
+              {data.door}
             </Text>
           ) : null}
         </View>
       </View>
-      <Text
-        style={{ color: '#775254', marginTop: 16, lineHeight: 18 }}
-      >
-        {data.desc}
-      </Text>
+
+      <View style={{ marginTop: 16 }}>
+        <DiscountMeter level={data.discountLevel} />
+      </View>
+
       {data.perks && data.perks.length > 0 ? (
         <View style={{ marginTop: 14, gap: 8 }}>
           {data.perks.map((perk) => (
@@ -199,7 +197,13 @@ export function ClimbCard({ data }: { data: ClimbCardData }) {
                   strokeWidth={3}
                 />
               </View>
-              <Text style={{ flex: 1, color: 'rgba(38,4,9,0.85)', fontSize: 12.5 }}>
+              <Text
+                style={{
+                  flex: 1,
+                  color: 'rgba(38,4,9,0.85)',
+                  fontSize: 12.5,
+                }}
+              >
                 {perk}
               </Text>
             </View>

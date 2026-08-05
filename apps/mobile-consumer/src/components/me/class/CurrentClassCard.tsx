@@ -76,7 +76,7 @@ export function CurrentClassCard() {
             textShadowRadius: 6,
           }}
         >
-          Mesita {meta.label}
+          {meta.label}
         </Text>
         {via ? (
           <Text

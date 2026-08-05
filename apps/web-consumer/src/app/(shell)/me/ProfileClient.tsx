@@ -97,7 +97,7 @@ export function ProfileClient({
       toast("Checkout cancelled — you can subscribe anytime.");
     }
     if (params.get("instagram") === "success") {
-      toast.success("Instagram connected — Mesita Influencer unlocked.");
+      toast.success("Connected — you’re in Social. Your class updated.");
     }
   }, []);
 

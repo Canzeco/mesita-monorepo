@@ -9,15 +9,12 @@ import { toast } from "@/lib/toast";
 import { ClimbCard, type ClimbCardData } from "./ClimbCard";
 import { InstagramConnectedSummary } from "./InstagramConnectedSummary";
 
-// Every elevated class (Influencer / Premium / Aura) shares ONE core perk set —
-// they differ in the door (reach / paid / invited) and in how their money is
-// made (the Story action vs flat rate vs the highest flat rate). Keep the
-// shared lines a single constant so the cards can never drift apart. Perk
-// wording (MESITA-907): Discount stays qualitative; Places = Personalized;
-// Reservations = monthly count.
+// Elevated classes share core perks; the meter carries the discount signal
+// (MESITA-907 qualitative). Story Bonus is gated on Instagram connected
+// (MESITA-909), not Influencer class alone.
 const ELEVATED_PERKS = [
-  "Personalized places recommendations",
-  "10 AI-booked reservations a month",
+  "Personalized picks",
+  "10 reservations / mo",
 ];
 
 export function WaysToClimb({
@@ -35,36 +32,25 @@ export function WaysToClimb({
       key: "standard",
       icon: CLASS_ICONS.standard,
       iconBg: "bg-muted text-foreground",
-      title: "Mesita Standard",
-      price: "$0",
-      priceNote: "always free",
-      desc: "Your default account at no cost — every guest starts here.",
-      perks: [
-        "LOW discount rewards at Verified Partners",
-        "Basic places recommendations",
-        "2 AI-booked reservations a month",
-      ],
+      title: "Standard",
+      via: "Free",
+      discountLevel: "LOW",
+      perks: ["Basic place picks", "2 AI reservations / mo"],
       reached: isStandard,
       reachedLabel: "Current class",
-      note: isStandard ? undefined : "Included in every account",
+      note: isStandard ? undefined : "Included",
     },
     {
       key: "influencer",
       icon: CLASS_ICONS.influencer,
       iconBg: "bg-sky-600 text-white",
-      title: "Mesita Influencer",
+      title: "Influencer",
       via: "Instagram",
       accent: true,
-      price: `${influencer.followerThreshold.toLocaleString("en-US")}+ followers`,
-      priceNote: "no payment — earned with reach, automatic",
-      // Influencer door = follower threshold → automatic class + HIGH rates.
-      // Story Bonus is separate (MESITA-909): any connected Instagram unlocks
-      // it — connecting here still opens Story as a side effect of the claim.
-      // Discount stays qualitative (MESITA-907).
-      desc: `Connect an Instagram with ${influencer.followerThreshold.toLocaleString("en-US")}+ followers. Automatic class upgrade — no payment, better rates at every Verified Partner.`,
+      door: `${influencer.followerThreshold.toLocaleString("en-US")}+ followers · automatic`,
+      discountLevel: "HIGH",
       perks: [
-        "HIGH discount rewards",
-        "Instagram Story bonus when you connect",
+        "Story Bonus when connected",
         ...ELEVATED_PERKS,
       ],
       reached: key === "influencer",
@@ -75,16 +61,12 @@ export function WaysToClimb({
       key: "premium",
       icon: CLASS_ICONS.premium,
       iconBg: "bg-tier-premium text-white",
-      title: "Mesita Premium",
+      title: "Premium",
       via: "Subscription",
       accent: true,
-      price: `$${premium.priceMxn} MXN`,
-      priceNote: "per month · cancel anytime",
-      desc: "Subscribe and unlock full Premium instantly. No follower count needed; cancel whenever you want.",
-      perks: [
-        "EXTRA discount rewards",
-        ...ELEVATED_PERKS,
-      ],
+      door: `$${premium.priceMxn} MXN / mo · cancel anytime`,
+      discountLevel: "EXTRA",
+      perks: [...ELEVATED_PERKS],
       reached: key === "premium",
       reachedLabel: "Active",
       actions: [
@@ -95,27 +77,17 @@ export function WaysToClimb({
       key: "aura",
       icon: CLASS_ICONS.aura,
       iconBg: "bg-tier-gold text-white",
-      title: "Mesita Aura",
-      via: "Invitation",
+      title: "Aura",
+      via: "Invite",
       accent: true,
-      price: "By invitation only",
-      priceNote: "no payment — Mesita curates Aura personally",
-      // Aura is the presence class: the highest flat rate, paid for showing
-      // up. No follower count, no posting — the invite is the whole door.
-      // Qualitative MAX discount (MESITA-907) — no % in Class detail copy.
-      desc: "Mesita's invite-only class. MAX discount rewards on every visit — just for being you. No followers required, nothing to post.",
-      perks: [
-        "MAX discount rewards — the highest of any class",
-        ...ELEVATED_PERKS,
-      ],
+      door: "Invitation only · no payment",
+      discountLevel: "MAX",
+      perks: [...ELEVATED_PERKS],
       reached: key === "aura",
       reachedLabel: "Active",
       actions: [
-        // No invite-code or request flow exists yet — both are placeholders
-        // until the curation door gets a consumer-side backend (grants are
-        // admin-console only for launch).
         {
-          label: "Request invitation",
+          label: "Request invite",
           secondary: true,
           onClick: () =>
             toast(
