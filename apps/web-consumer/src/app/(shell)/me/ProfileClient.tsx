@@ -155,7 +155,7 @@ export function ProfileClient({
             Icon={SettingsIcon}
             tint="muted"
             title="Settings"
-            summary="Notifications, permissions, language"
+            summary="Notifications, privacy, language"
             onClick={() => setSettingsOpen(true)}
           />
 
@@ -240,6 +240,8 @@ export function ProfileClient({
         open={settingsOpen}
         onClose={() => setSettingsOpen(false)}
         onDeleteAccount={() => setDeleteOpen(true)}
+        profile={profile}
+        onProfileChange={setProfile}
       />
       <ContactModal open={contactOpen} onClose={() => setContactOpen(false)} />
       <HelpModal open={helpOpen} onClose={() => setHelpOpen(false)} />

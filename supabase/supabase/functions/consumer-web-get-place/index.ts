@@ -4,17 +4,28 @@
 // authority info needed for the detail page (vibe / channels / etc.).
 // Anon-readable but the places RLS policy still gates which rows ship.
 //
+// Also attaches privacy-shaped Mesita review cards (`mesita_visitors`) so
+// private accounts never leak a real name/handle to other guests
+// (MESITA-913). Reviews are read via the service role because ticket_reviews
+// RLS is own-row-only.
+//
 // Caller: consumer. Verb: get. Noun: place. (Per the new <caller>-<verb>-<noun>
 // naming convention.)
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { corsPreflight, json, readJson } from "../_shared/http.ts";
-import { anonClient, readAnonEnv } from "../_shared/auth.ts";
+import {
+  adminClient,
+  anonClient,
+  readEFEnv,
+} from "../_shared/auth.ts";
 import { PLACE_PUBLIC_COLUMNS as PLACE_COLUMNS } from "../_shared/place-columns.ts";
 import { displayName } from "../_shared/place-display-name.ts";
 import { resolvePlaceTags } from "../_shared/tags.ts";
+import { mapTicketReviewsToVisitors } from "../_shared/mesita-review-visitors.ts";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const MESITA_REVIEW_LIMIT = 24;
 
 type Body = { id?: string; slug?: string };
 
@@ -22,7 +33,9 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
   if (req.method !== "POST") return json({ ok: false, error: "Method not allowed" }, 405);
 
-  const envRes = readAnonEnv();
+  // Service role is required for the privacy-shaped review join; place browse
+  // still goes through the anon client + projects_view RLS.
+  const envRes = readEFEnv();
   if (!envRes.ok) return envRes.response;
 
   const bodyRes = await readJson<Body>(req);
@@ -54,6 +67,25 @@ Deno.serve(async (req) => {
     (data as { tags?: string[] | null }).tags,
   );
 
+  const placeId = (data as { id: string }).id;
+  const admin = adminClient(envRes.env);
+  const reviewsRes = await admin
+    .from("ticket_reviews")
+    .select(
+      "food, service, ambiance, value, comments, created_at, " +
+        "consumer:consumers(first_name, last_name, full_name, instagram_handle, " +
+        "profile_public, class_key, consumer_instagram_followers_count)",
+    )
+    .eq("project_id", placeId)
+    .order("created_at", { ascending: false })
+    .limit(MESITA_REVIEW_LIMIT);
+
+  // Best-effort: a reviews lookup failure must not 500 the place detail —
+  // the aggregates on the place row still render; the cards just stay empty.
+  const mesita_visitors = reviewsRes.error
+    ? []
+    : mapTicketReviewsToVisitors(reviewsRes.data ?? []);
+
   // Dual-name (MESITA-917): consumer `name` is the display label (Mesita
   // priority). Raw google_name stays on the payload for clients that need it.
   const row = data as unknown as Record<string, unknown>;
@@ -63,6 +95,7 @@ Deno.serve(async (req) => {
       name: (row.name as string | null | undefined) ?? null,
       google_name: (row.google_name as string | null | undefined) ?? null,
     }),
+    mesita_visitors,
   };
 
   return json({ ok: true, place, tags });

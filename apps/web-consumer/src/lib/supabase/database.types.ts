@@ -457,6 +457,7 @@ export type Database = {
           profile_public: boolean
           profile_show_saves: boolean
           profile_show_visits: boolean
+          profile_show_stories: boolean
           sex: string | null
         }
         Insert: {
@@ -479,6 +480,7 @@ export type Database = {
           profile_public?: boolean
           profile_show_saves?: boolean
           profile_show_visits?: boolean
+          profile_show_stories?: boolean
           sex?: string | null
         }
         Update: {
@@ -501,6 +503,7 @@ export type Database = {
           profile_public?: boolean
           profile_show_saves?: boolean
           profile_show_visits?: boolean
+          profile_show_stories?: boolean
           sex?: string | null
         }
         Relationships: [

@@ -1,6 +1,9 @@
 // TODO(EF): social feed — this whole dataset is a parked mock. When the
 // social backend lands (follows + live check-in/like/reward/story events),
 // swap SOCIAL_PEOPLE for an EF read and keep the row/meta contracts below.
+// That EF MUST apply `_shared/consumer-privacy.ts`: private accounts
+// (`profile_public = false`) → Anonymous guest; story events omitted when
+// `profile_show_stories = false` (MESITA-913).
 //
 // People don't hardcode place ids: each row carries a `placeSlot` index that
 // the feed resolves against the REAL server-fetched deck, so the chips always

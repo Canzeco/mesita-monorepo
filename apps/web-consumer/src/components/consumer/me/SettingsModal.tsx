@@ -4,8 +4,10 @@ import {
   Bell,
   Contact,
   Download,
+  EyeOff,
   FileText,
   Globe,
+  Images,
   Languages,
   MapPin,
   ScrollText,
@@ -13,6 +15,7 @@ import {
   Trash2,
   Users,
 } from "lucide-react";
+import { useState } from "react";
 import { SHEET_TITLE_CLASS, SHEET_BODY_CLASS } from "@/lib/ui-classes";
 import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
 import {
@@ -23,7 +26,15 @@ import {
   SettingsStaticRow,
   StoredSelectRow,
   StoredToggleRow,
+  ToggleRow,
 } from "@/components/consumer/me/settings-rows";
+import {
+  apiUpdateConsumerProfile,
+  type ConsumerProfile,
+} from "@/lib/api/profile";
+import { useBrowserSupabase } from "@/lib/supabase/browser";
+import { errMsg } from "@/lib/utils";
+import { toast } from "@/lib/toast";
 
 function SoonPill() {
   return (
@@ -33,11 +44,8 @@ function SoonPill() {
   );
 }
 
-// Device-level preferences, grouped. Everything here is client-only (no EF
-// yet): the toggles + selects persist to localStorage; the legal links open
-// the public site; export + delete are the two real account actions (delete
-// hands off to the parent-owned DeleteAccountSheet so two LocalSheets never
-// stack at the same z-layer).
+// Device-level preferences, grouped. Notifications / permissions / language
+// persist to localStorage. Privacy toggles are EF-backed (MESITA-913).
 
 const PREF_KEYS = {
   push: "mesita:notif:push",
@@ -72,11 +80,75 @@ export function SettingsModal({
   open,
   onClose,
   onDeleteAccount,
+  profile,
+  onProfileChange,
 }: {
   open: boolean;
   onClose: () => void;
   onDeleteAccount: () => void;
+  profile: ConsumerProfile | null;
+  onProfileChange: (next: ConsumerProfile) => void;
 }) {
+  const supabase = useBrowserSupabase();
+  // Optimistic override while a privacy write is in flight; otherwise the
+  // profile prop is the source of truth (no setState-in-effect sync).
+  const [privacyDraft, setPrivacyDraft] = useState<{
+    privateAccount: boolean;
+    showStories: boolean;
+  } | null>(null);
+  const [savingPrivacy, setSavingPrivacy] = useState(false);
+
+  const privateAccount =
+    privacyDraft?.privateAccount ?? profile?.profile_public === false;
+  const showStories =
+    privacyDraft?.showStories ?? profile?.profile_show_stories !== false;
+
+  async function persistPrivacy(
+    draft: { privateAccount: boolean; showStories: boolean },
+    patch: {
+      profile_public?: boolean;
+      profile_show_stories?: boolean;
+    },
+  ) {
+    setPrivacyDraft(draft);
+    setSavingPrivacy(true);
+    try {
+      const updated = await apiUpdateConsumerProfile(supabase, patch);
+      onProfileChange(updated);
+      setPrivacyDraft(null);
+    } catch (e) {
+      setPrivacyDraft(null);
+      toast(errMsg(e, "Couldn't save privacy settings."));
+    } finally {
+      setSavingPrivacy(false);
+    }
+  }
+
+  function onPrivateToggle() {
+    const nextPrivate = !privateAccount;
+    // Turning private ON hides Mesita stories by default; the guest can opt
+    // back in with the second toggle. Turning private OFF leaves stories as-is.
+    if (nextPrivate) {
+      void persistPrivacy(
+        { privateAccount: true, showStories: false },
+        { profile_public: false, profile_show_stories: false },
+      );
+      return;
+    }
+    void persistPrivacy(
+      { privateAccount: false, showStories },
+      { profile_public: true },
+    );
+  }
+
+  function onStoriesToggle() {
+    const next = !showStories;
+    void persistPrivacy(
+      { privateAccount, showStories: next },
+      { profile_show_stories: next },
+    );
+  }
+
   return (
     <LocalSheet open={open} onClose={onClose} ariaLabel="Settings">
       <div className={SHEET_BODY_CLASS}>
@@ -130,6 +202,28 @@ export function SettingsModal({
               label="Contacts"
               sub="Find friends already on Mesita"
               defaultOn={false}
+            />
+          </SettingsGroup>
+
+          <SettingsGroup title="Privacy">
+            <ToggleRow
+              Icon={EyeOff}
+              tint="rose"
+              label="Private account"
+              sub="When on, other guests see you as anonymous in the social feed and on reviews. Your Instagram can stay public — this only affects Mesita."
+              on={privateAccount}
+              onToggle={onPrivateToggle}
+              disabled={!profile || savingPrivacy}
+            />
+            <RowDivider />
+            <ToggleRow
+              Icon={Images}
+              tint="violet"
+              label="Show stories on Mesita"
+              sub="Let other Mesita guests see your story activity. Separate from posting to Instagram."
+              on={showStories}
+              onToggle={onStoriesToggle}
+              disabled={!profile || savingPrivacy}
             />
           </SettingsGroup>
 

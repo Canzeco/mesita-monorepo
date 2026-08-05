@@ -137,8 +137,29 @@ export function placeRowToDetail(row: Row, tags?: ResolvedTag[]): PlaceDetail {
       }),
     ),
 
-    // No Mesita-native traffic until guests visit; the UI nulls this cleanly.
-    mesita_visitors: [],
+    // Privacy-shaped by consumer-web-get-place (MESITA-913): private accounts
+    // arrive already anonymized — never rehydrate a real name client-side.
+    mesita_visitors: arr<Record<string, unknown>>(row.mesita_visitors).map(
+      (v) => ({
+        name: str(v.name) ?? "Anonymous guest",
+        handle: str(v.handle) ?? "",
+        class_key: ((): PlaceDetail["mesita_visitors"][number]["class_key"] => {
+          const k = (str(v.class_key) ?? "standard").toLowerCase();
+          return k === "premium" || k === "influencer" || k === "aura"
+            ? k
+            : "standard";
+        })(),
+        community: str(v.community) ?? "",
+        followers: num(v.followers) ?? 0,
+        quote: str(v.quote) ?? "",
+        food: num(v.food) ?? 0,
+        service: num(v.service) ?? 0,
+        ambiance: num(v.ambiance) ?? 0,
+        value: num(v.value) ?? 0,
+        photo_url: str(v.photo_url),
+        photo_aspect: undefined,
+      }),
+    ),
 
     products: {
       menu: (() => {
