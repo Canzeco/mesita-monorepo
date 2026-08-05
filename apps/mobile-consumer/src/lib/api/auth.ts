@@ -78,6 +78,33 @@ export function apiFetchConsumerProfile(): Promise<ProfileResult> {
   return invokeEF<ProfileResult>(supabase, 'consumer-web-get-profile', {});
 }
 
+// Lifetime counters from consumer-web-get-metrics (MESITA-895) — the Me →
+// Metrics sheet. Fetched lazily when the sheet opens, never on boot. Mirrors
+// ConsumerMetrics in apps/web-consumer/src/lib/api/profile.ts.
+export type ConsumerMetrics = {
+  /** Tickets the v3 close sealed ("revealed") — completed visits. */
+  visits: number;
+  /** Distinct places among those completed visits. */
+  places: number;
+  /** Confirmed, non-test reservations (all time). */
+  reservations: number;
+  /** Saved places. */
+  saves: number;
+  /** Verified Instagram stories. */
+  stories: number;
+  /** Verified Google reviews + Mesita post-visit reviews. */
+  reviews: number;
+};
+
+export async function apiFetchConsumerMetrics(): Promise<ConsumerMetrics> {
+  const { metrics } = await invokeEF<{ metrics: ConsumerMetrics }>(
+    supabase,
+    'consumer-web-get-metrics',
+    {},
+  );
+  return metrics;
+}
+
 // first_name + last_name are REQUIRED as a pair, not optional halves: the EF
 // joins them into full_name — the name reservations are booked under — and
 // 400s on one without the other. Typing them as required makes a half-name

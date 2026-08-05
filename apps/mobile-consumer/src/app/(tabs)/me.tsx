@@ -1,5 +1,6 @@
 import { useRouter } from 'expo-router';
 import {
+  Activity,
   AtSign,
   Bell,
   Bot,
@@ -27,6 +28,7 @@ import {
   PersonalDetailsSheet,
   SettingsSheet,
 } from '@/components/me/MeProfileSheets';
+import { MetricsModal } from '@/components/me/MetricsModal';
 import { MockControls } from '@/components/me/MockControls';
 import { ShareModal } from '@/components/me/ShareModal';
 import { VerifySocialSheet } from '@/components/me/VerifySocialSheet';
@@ -50,6 +52,7 @@ type Sheet =
   | 'contact'
   | 'help'
   | 'class'
+  | 'metrics'
   | 'verify'
   | 'share'
   | 'ai'
@@ -139,6 +142,17 @@ export default function MeScreen() {
           onPress={() => setSheet('class')}
         />
 
+        {/* Metrics — lifetime counters (MESITA-895): the passport's
+            analytics annex. Sits after the conversion cluster: it's about
+            what you've done, not what you can unlock. */}
+        <BoxRow
+          Icon={Activity}
+          tint="violet"
+          title="Metrics"
+          summary="Visits, places, reviews — your numbers"
+          onPress={() => setSheet('metrics')}
+        />
+
         <BoxRow
           Icon={Bell}
           tint="pink"
@@ -223,6 +237,10 @@ export default function MeScreen() {
         onClose={() => setSheet(null)}
       />
       <HelpModal visible={sheet === 'help'} onClose={() => setSheet(null)} />
+      <MetricsModal
+        visible={sheet === 'metrics'}
+        onClose={() => setSheet(null)}
+      />
 
       <ClassModal
         visible={sheet === 'class'}

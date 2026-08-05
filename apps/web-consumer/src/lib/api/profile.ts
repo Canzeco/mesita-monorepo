@@ -67,6 +67,34 @@ export type ConsumerStats = {
   visits: number;
 };
 
+// Lifetime counters from consumer-web-get-metrics (MESITA-895) — the Me →
+// Metrics sheet. Fetched lazily when the sheet opens, never on shell load.
+export type ConsumerMetrics = {
+  /** Tickets the v3 close sealed ("revealed") — completed visits. */
+  visits: number;
+  /** Distinct places among those completed visits. */
+  places: number;
+  /** Confirmed, non-test reservations (all time). */
+  reservations: number;
+  /** Saved places. */
+  saves: number;
+  /** Verified Instagram stories. */
+  stories: number;
+  /** Verified Google reviews + Mesita post-visit reviews. */
+  reviews: number;
+};
+
+export async function apiFetchConsumerMetrics(
+  client: SupabaseClient,
+): Promise<ConsumerMetrics> {
+  const { metrics } = await invokeEF<{ metrics: ConsumerMetrics }>(
+    client,
+    "consumer-web-get-metrics",
+    {},
+  );
+  return metrics;
+}
+
 type ConsumerOnboardingInput = {
   // First + last name are both required everywhere the consumer writes their
   // name: the EF joins them into full_name, which is the name the reservation

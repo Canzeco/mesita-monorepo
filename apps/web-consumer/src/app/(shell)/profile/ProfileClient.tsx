@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import {
+  Activity,
   Bot,
   Crown,
   Instagram,
@@ -20,6 +21,7 @@ import { ClassModal } from "@/components/consumer/me/ClassModal";
 import { SettingsModal } from "@/components/consumer/me/SettingsModal";
 import { ContactModal } from "@/components/consumer/me/ContactModal";
 import { HelpModal } from "@/components/consumer/me/HelpModal";
+import { MetricsModal } from "@/components/consumer/me/MetricsModal";
 import { AiConnectModal } from "@/components/consumer/me/AiConnectModal";
 import { errMsg } from "@/lib/utils";
 import { toast } from "@/lib/toast";
@@ -61,6 +63,7 @@ export function ProfileClient({
   const [editOpen, setEditOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(openSettings);
   const [contactOpen, setContactOpen] = useState(false);
+  const [metricsOpen, setMetricsOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
 
@@ -138,6 +141,17 @@ export function ProfileClient({
             title="Instagram"
             summary="Connect Instagram to upgrade your class"
             onClick={() => setVerifyOpen(true)}
+          />
+
+          {/* Metrics — lifetime counters (MESITA-895): the passport's
+              analytics annex. Sits after the conversion cluster: it's about
+              what you've done, not what you can unlock. */}
+          <BoxRow
+            Icon={Activity}
+            tint="violet"
+            title="Metrics"
+            summary="Visits, places, reviews — your numbers"
+            onClick={() => setMetricsOpen(true)}
           />
 
           {/* Account management. */}
@@ -232,6 +246,7 @@ export function ProfileClient({
       />
       <ContactModal open={contactOpen} onClose={() => setContactOpen(false)} />
       <HelpModal open={helpOpen} onClose={() => setHelpOpen(false)} />
+      <MetricsModal open={metricsOpen} onClose={() => setMetricsOpen(false)} />
       <DeleteAccountSheet
         open={deleteOpen}
         onClose={() => setDeleteOpen(false)}
