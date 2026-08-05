@@ -79,12 +79,12 @@ export function ReservationsList({ activity }: { activity: PlaceActivity }) {
         {shared ? (
           <LineLink
             number={activity.lines.guest}
-            who="Guests & venues · one shared line"
+            who="Guests & places · one shared line"
           />
         ) : (
           <>
             <LineLink number={activity.lines.guest} who="Guests" />
-            <LineLink number={activity.lines.venue} who="Venues" />
+            <LineLink number={activity.lines.venue} who="Places" />
           </>
         )}
       </div>

@@ -67,12 +67,12 @@ export function ReservationsClient({ data }: { data: PlaceReservations }) {
         {shared ? (
           <LineLink
             number={data.lines.guest}
-            who="Guests & venues · one shared line"
+            who="Guests & places · one shared line"
           />
         ) : (
           <>
             <LineLink number={data.lines.guest} who="Guests" />
-            <LineLink number={data.lines.venue} who="Venues" />
+            <LineLink number={data.lines.venue} who="Places" />
           </>
         )}
       </div>

@@ -1,7 +1,7 @@
 // Supabase Edge Function — business-web-list-reservations
 //
 // Authenticated. Returns Mesita Reservationist bookings for a place the
-// caller is a member of — plus the two AI dial lines (a3 guests / a4 venues).
+// caller is a member of — plus the two AI dial lines (a3 guests / a4 places).
 // Powers the business Reservations tab (MESITA-894).
 //
 // Privacy: never returns consumer class / entry door (blended-rate). Guest
