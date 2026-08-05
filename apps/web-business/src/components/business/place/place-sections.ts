@@ -30,7 +30,8 @@ export const PLACE_SECTIONS: readonly {
   {
     id: "products",
     label: "Menu",
-    description: "Link or upload your menu or catalog.",
+    description:
+      "Add menus shown to consumers. For each menu, choose Upload or Drive — not both.",
   },
   {
     id: "hours",
