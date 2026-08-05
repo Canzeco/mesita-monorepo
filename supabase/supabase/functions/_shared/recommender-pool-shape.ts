@@ -4,6 +4,7 @@
 // Supabase query path.
 
 import type { WeeklyHours } from "./local-time.ts";
+import { withDisplayName } from "./place-display-name.ts";
 
 // Shape of a candidate place row as projected by RECOMMENDER_PLACE_COLUMNS.
 // Both rankers (recommender-rank-swipe.ts, recommender-rank-map.ts) cast the
@@ -66,6 +67,8 @@ export function clampPositive(v: unknown, def: number, max: number): number {
 
 // Drops ranker-internal embedding columns so the row is safe to return to the
 // client. The leading-underscore rest-omit destructuring discards them.
+// Also resolves dual-name `name` (MESITA-925) so cleared Mesita overrides
+// fall back to google_name on swipe/map decks.
 export function stripInternal(
   v: PlaceRow,
 ): Omit<PlaceRow, "embedding" | "embedding_source_hash" | "embedding_source_text" | "manual_priority"> {
@@ -76,5 +79,5 @@ export function stripInternal(
     manual_priority: _mp,
     ...rest
   } = v;
-  return rest;
+  return withDisplayName(rest);
 }
