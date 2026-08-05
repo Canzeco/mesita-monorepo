@@ -5,6 +5,10 @@
 // Welcome Visit is NOT a task row (server-detected at billing); proof
 // screenshots remain DEMO_SCREENSHOT_URL (MESITA-824); Mesita-review done
 // state is session-local; the report button waits for MESITA-843.
+//
+// Compact by design (MESITA-879, mirrors web): the live ticket must FIT one
+// viewport — slim hero row, 190px QR ceiling, strip gone once billed. The
+// ScrollView stays only as the safety valve for very short screens.
 
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
@@ -112,10 +116,10 @@ function TaskRow({
       disabled={!actionable}
       onPress={onDo}
       accessibilityRole="button"
-      className={`flex-row items-center rounded-2xl px-3.5 py-3 ${
+      className={`flex-row items-center rounded-2xl px-3 py-2.5 ${
         done ? 'bg-emerald-500/10' : 'bg-muted/40'
       } ${actionable ? 'active:scale-[0.99]' : ''}`}
-      style={{ minHeight: 56, gap: 12 }}
+      style={{ minHeight: 48, gap: 12 }}
     >
       <View
         className={`h-6 w-6 items-center justify-center rounded-full border-2 ${
@@ -134,7 +138,7 @@ function TaskRow({
           <Text
             className={`font-bold ${done ? 'text-emerald-800' : 'text-foreground'}`}
             numberOfLines={1}
-            style={{ fontSize: 13.5, flexShrink: 1 }}
+            style={{ fontSize: 13, flexShrink: 1 }}
           >
             {title}
           </Text>
@@ -142,7 +146,7 @@ function TaskRow({
         <Text
           className="mt-0.5 text-muted-foreground"
           numberOfLines={1}
-          style={{ fontSize: 11.5 }}
+          style={{ fontSize: 11 }}
         >
           {state === 'checking'
             ? 'Sent — being checked'
@@ -367,18 +371,32 @@ export function TicketScreen({
   const firstVisitHint = firstVisit
     ? 'Unlocks your Welcome Bonus — the biggest one'
     : 'At the table, once per place';
-  const qrSize = Math.min(230, Dimensions.get('window').width * 0.62);
+  // Compact by design (MESITA-879): the live ticket must fit one viewport.
+  const qrSize = Math.min(190, Dimensions.get('window').width * 0.52);
 
   return (
     <>
       <ScrollView
         className="flex-1"
-        contentContainerStyle={{ padding: 16, paddingBottom: 32, gap: 14 }}
+        contentContainerStyle={{ padding: 14, paddingBottom: 24, gap: 12 }}
         showsVerticalScrollIndicator={false}
       >
-        {/* ── Hero ── */}
-        <View className="overflow-hidden rounded-3xl border border-border bg-card">
-          <View style={{ height: 128 }}>
+        {/* ── Hero: one compact row — the full-bleed photo card was eating a
+            third of the viewport while the QR + amount are this screen's
+            actual job (MESITA-879, mirrors web). ── */}
+        <View
+          className="flex-row items-center rounded-[22px] border border-border bg-card"
+          style={{ gap: 12, paddingVertical: 10, paddingLeft: 10, paddingRight: 14 }}
+        >
+          <Pressable
+            onPress={() => router.back()}
+            accessibilityRole="button"
+            accessibilityLabel="Back to Rewards"
+            className="h-9 w-9 items-center justify-center rounded-full bg-muted active:scale-95"
+          >
+            <ArrowLeft size={16} color="#260409" />
+          </Pressable>
+          <View className="h-11 w-11 overflow-hidden rounded-xl">
             {photo ? (
               <Image
                 source={{ uri: photo }}
@@ -397,60 +415,49 @@ export function TicketScreen({
                   justifyContent: 'center',
                 }}
               >
-                <Store size={32} color="rgba(255,255,255,0.8)" />
+                <Store size={20} color="rgba(255,255,255,0.8)" />
               </LinearGradient>
             )}
-            <Pressable
-              onPress={() => router.back()}
-              accessibilityRole="button"
-              accessibilityLabel="Back to Rewards"
-              className="absolute top-3 left-3 h-9 w-9 items-center justify-center rounded-full"
-              style={{ backgroundColor: 'rgba(0,0,0,0.35)' }}
-            >
-              <ArrowLeft size={16} color="#fff" />
-            </Pressable>
           </View>
-          <View className="flex-row items-center justify-between px-4 py-3" style={{ gap: 12 }}>
-            <View className="min-w-0 flex-1">
-              <Text
-                className="font-extrabold text-foreground"
-                numberOfLines={1}
-                style={{ fontSize: 16 }}
-              >
-                {placeName}
-              </Text>
-              {category ? (
-                <Text
-                  className="mt-0.5 capitalize text-muted-foreground"
-                  numberOfLines={1}
-                  style={{ fontSize: 11.5 }}
-                >
-                  {category.replaceAll('_', ' ')}
-                </Text>
-              ) : null}
-            </View>
-            <View
-              className={`rounded-full px-2.5 py-1 ${
-                saved
-                  ? 'bg-emerald-500/10'
-                  : cancelled
-                    ? 'bg-muted'
-                    : 'bg-primary/10'
-              }`}
+          <View className="min-w-0 flex-1">
+            <Text
+              className="font-extrabold text-foreground"
+              numberOfLines={1}
+              style={{ fontSize: 15 }}
             >
+              {placeName}
+            </Text>
+            {category ? (
               <Text
-                className={`font-extrabold uppercase ${
-                  saved
-                    ? 'text-emerald-700'
-                    : cancelled
-                      ? 'text-muted-foreground'
-                      : 'text-primary'
-                }`}
-                style={{ fontSize: 10, letterSpacing: 1 }}
+                className="mt-0.5 capitalize text-muted-foreground"
+                numberOfLines={1}
+                style={{ fontSize: 11 }}
               >
-                {saved ? 'Completed' : cancelled ? 'Cancelled' : 'Live'}
+                {category.replaceAll('_', ' ')}
               </Text>
-            </View>
+            ) : null}
+          </View>
+          <View
+            className={`rounded-full px-2.5 py-1 ${
+              saved
+                ? 'bg-emerald-500/10'
+                : cancelled
+                  ? 'bg-muted'
+                  : 'bg-primary/10'
+            }`}
+          >
+            <Text
+              className={`font-extrabold uppercase ${
+                saved
+                  ? 'text-emerald-700'
+                  : cancelled
+                    ? 'text-muted-foreground'
+                    : 'text-primary'
+              }`}
+              style={{ fontSize: 10, letterSpacing: 1 }}
+            >
+              {saved ? 'Completed' : cancelled ? 'Cancelled' : 'Live'}
+            </Text>
           </View>
         </View>
 
@@ -460,7 +467,7 @@ export function TicketScreen({
             colors={PASS_GRADIENTS[classKey] ?? PASS_GRADIENTS.standard}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
-            style={{ padding: 20 }}
+            style={{ paddingHorizontal: 20, paddingVertical: 16 }}
           >
             <View className="flex-row items-center justify-between">
               <Text
@@ -480,7 +487,7 @@ export function TicketScreen({
             </View>
 
             {closed ? (
-              <View className="items-center py-8" style={{ gap: 8 }}>
+              <View className="items-center py-6" style={{ gap: 8 }}>
                 {saved ? (
                   <>
                     <PartyPopper size={32} color="#fff" />
@@ -562,8 +569,8 @@ export function TicketScreen({
               <>
                 {ticket.check_code ? (
                   <View
-                    className="mt-4 self-center rounded-3xl bg-white"
-                    style={{ padding: 14 }}
+                    className="mt-3.5 self-center rounded-2xl bg-white"
+                    style={{ padding: 12 }}
                   >
                     <QRCode
                       value={checkUrlForCode(ticket.check_code)}
@@ -575,27 +582,30 @@ export function TicketScreen({
                 ) : null}
                 <View
                   accessibilityLiveRegion="polite"
-                  className="mt-3 flex-row items-center justify-center"
+                  className="mt-2.5 flex-row items-center justify-center"
                   style={{ gap: 6 }}
                 >
                   {scanned && ticket.status === 'open' ? (
                     <>
                       <BadgeCheck size={14} color="#fff" />
-                      <Text className="text-white/90" style={{ fontSize: 12 }}>
+                      <Text className="text-white/90" style={{ fontSize: 11.5 }}>
                         Verified by {placeName}
                       </Text>
                     </>
                   ) : (
                     <Text
                       className="text-center text-white/90"
-                      style={{ fontSize: 12, maxWidth: 260 }}
+                      style={{ fontSize: 11.5, maxWidth: 260 }}
                     >
                       {statusLine(ticket)}
                     </Text>
                   )}
                 </View>
                 {billed ? (
-                  <View className="mt-4 items-center rounded-xl bg-white/20 p-3.5">
+                  <View
+                    className="mt-3 items-center rounded-xl bg-white/20"
+                    style={{ paddingHorizontal: 14, paddingVertical: 10 }}
+                  >
                     <Text
                       className="font-bold uppercase text-white/90"
                       style={{ fontSize: 10, letterSpacing: 1.4 }}
@@ -604,7 +614,7 @@ export function TicketScreen({
                     </Text>
                     <Text
                       className="mt-0.5 font-extrabold text-white"
-                      style={{ fontSize: 24 }}
+                      style={{ fontSize: 22 }}
                     >
                       {formatCurrency(
                         Math.max(
@@ -614,7 +624,7 @@ export function TicketScreen({
                         ),
                       )}
                     </Text>
-                    <Text className="mt-1 text-white/90" style={{ fontSize: 11 }}>
+                    <Text className="mt-0.5 text-white/90" style={{ fontSize: 11 }}>
                       to pay at the table
                       {ticket.discount_cents
                         ? ` — you save ${formatCurrency(ticket.discount_cents)}`
@@ -630,7 +640,7 @@ export function TicketScreen({
         {/* ── Tasks checklist ── */}
         {!cancelled ? (
           <View className="overflow-hidden rounded-2xl border border-border bg-card">
-            <View className="flex-row items-baseline justify-between px-3.5 pt-3.5 pb-1.5">
+            <View className="flex-row items-baseline justify-between px-3.5 pt-3 pb-1">
               <Text className="font-bold text-foreground" style={{ fontSize: 13 }}>
                 Your tasks
               </Text>
@@ -638,7 +648,7 @@ export function TicketScreen({
                 {priced ? 'Optional — each one pays' : 'Optional'}
               </Text>
             </View>
-            <View className="px-2.5 pb-3" style={{ gap: 6 }}>
+            <View className="px-2.5 pb-2.5" style={{ gap: 4 }}>
               {storyOnTicket ? (
                 <TaskRow
                   Icon={Camera}
@@ -685,25 +695,22 @@ export function TicketScreen({
           </View>
         ) : null}
 
-        {/* ── Reward strip — the ceiling, never the reason (MESITA-860) ── */}
-        {live ? (
-          <View className="rounded-2xl border border-border bg-card px-3.5 py-3">
+        {/* ── Reward strip — the ceiling, never the reason (MESITA-860).
+            Only while the discount is still open: once the bill locks a
+            percentage the pass states it, and quoting the ceiling next to
+            the real number reads as a contradiction (MESITA-879). ── */}
+        {live && !billed ? (
+          <View className="rounded-2xl border border-border bg-card px-3.5 py-2.5">
             {priced && ceiling > 0 ? (
-              <>
-                <Text
-                  className="font-bold text-foreground"
-                  style={{ fontSize: 13, lineHeight: 18 }}
-                >
-                  Up to {ceiling}% — Discount for You
+              <Text style={{ fontSize: 12, lineHeight: 17 }}>
+                <Text className="font-bold text-foreground">
+                  Up to {ceiling}% — Discount for You.
+                </Text>{' '}
+                <Text className="text-muted-foreground">
+                  You always keep your single best reward — never added
+                  together.
                 </Text>
-                <Text
-                  className="mt-1 text-muted-foreground"
-                  style={{ fontSize: 11, lineHeight: 15 }}
-                >
-                  Depending on your eligible bonuses. You always keep your
-                  single best reward — never added together.
-                </Text>
-              </>
+              </Text>
             ) : (
               <Text
                 className="text-muted-foreground"
@@ -715,18 +722,19 @@ export function TicketScreen({
           </View>
         ) : null}
 
+        {/* ── Housekeeping — tight footer, no dead vertical (MESITA-879) ── */}
         {ticket.status === 'open' ? (
           <Pressable
             onPress={() => void cancel()}
             disabled={cancelling}
             accessibilityRole="button"
             className="flex-row items-center justify-center"
-            style={{ minHeight: 44, gap: 6 }}
+            style={{ minHeight: 40, gap: 6 }}
           >
             {cancelling ? <ActivityIndicator size="small" /> : null}
             <Text
               className="font-semibold text-muted-foreground"
-              style={{ fontSize: 12.5 }}
+              style={{ fontSize: 12 }}
             >
               Cancel this ticket
             </Text>
@@ -734,38 +742,46 @@ export function TicketScreen({
         ) : null}
 
         {/* The report button (v3c, MESITA-851) — live for the WHOLE ticket
-            and after it closes. With staff no longer ruling on tasks and the
-            bill optional, this is the guest's only route that isn't arguing
-            with the person holding the terminal. */}
+            and after it closes. It must READ as an action: an outlined pill
+            that names what it does (web parity), not a muted caption. */}
         {!cancelled ? (
           reported ? (
             <View
-              className="flex-row items-center justify-center"
-              style={{ minHeight: 44, gap: 6 }}
-            >
-              <Flag size={14} color="#775254" />
-              <Text
-                className="font-medium text-muted-foreground"
-                style={{ fontSize: 12.5 }}
-              >
-                Reported — Mesita is looking at it
-              </Text>
-            </View>
-          ) : (
-            <Pressable
-              onPress={() => setReportOpen(true)}
-              accessibilityRole="button"
-              className="flex-row items-center justify-center"
-              style={{ minHeight: 44, gap: 6 }}
+              className="flex-row items-center self-center rounded-full border border-border bg-muted/40 px-4"
+              style={{ minHeight: 40, gap: 8 }}
             >
               <Flag size={14} color="#775254" />
               <Text
                 className="font-semibold text-muted-foreground"
                 style={{ fontSize: 12.5 }}
               >
-                Something went wrong here
+                Reported — Mesita is looking at it
               </Text>
-            </Pressable>
+            </View>
+          ) : (
+            <View className="items-center" style={{ gap: 6 }}>
+              <Pressable
+                onPress={() => setReportOpen(true)}
+                accessibilityRole="button"
+                className="flex-row items-center rounded-full border border-border bg-card px-4 active:scale-[0.99]"
+                style={{ minHeight: 40, gap: 8 }}
+              >
+                <Flag size={14} color="#e6000c" />
+                <Text
+                  className="font-bold text-foreground"
+                  style={{ fontSize: 12.5 }}
+                >
+                  Report a problem
+                </Text>
+              </Pressable>
+              <Text
+                className="text-center text-muted-foreground"
+                style={{ fontSize: 10.5, lineHeight: 14, maxWidth: 300 }}
+              >
+                Discount not honored, wrong total, anything off — a real
+                person at Mesita reads it.
+              </Text>
+            </View>
           )
         ) : null}
       </ScrollView>
