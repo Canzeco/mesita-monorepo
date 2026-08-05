@@ -38,6 +38,7 @@ import {
   TicketReviewForm,
   type TicketReviewDraft,
 } from '@/components/rewards/TicketReviewForm';
+import { COLORS } from '@/constants/brand';
 import { formatCurrency, submitTicketReview } from '@/lib/api/pay';
 import {
   ACTIVE_TICKET_STATUSES,
@@ -736,36 +737,50 @@ export function TicketScreen({
         {/* The report button (v3c, MESITA-851) — live for the WHOLE ticket
             and after it closes. With staff no longer ruling on tasks and the
             bill optional, this is the guest's only route that isn't arguing
-            with the person holding the terminal. */}
+            with the person holding the terminal. It must therefore READ as an
+            action: an outlined pill that names what it does, not a muted line
+            of text a guest takes for a caption of whatever failed above it.
+            Restraint lives in the color, not in the affordance. */}
         {!cancelled ? (
           reported ? (
-            <View
-              className="flex-row items-center justify-center"
-              style={{ minHeight: 44, gap: 6 }}
-            >
-              <Flag size={14} color="#775254" />
-              <Text
-                className="font-medium text-muted-foreground"
-                style={{ fontSize: 12.5 }}
+            <View className="items-center">
+              <View
+                className="flex-row items-center justify-center rounded-full border border-border bg-muted/40"
+                style={{ minHeight: 44, gap: 8, paddingHorizontal: 16 }}
               >
-                Reported — Mesita is looking at it
-              </Text>
+                <Flag size={14} color={COLORS.mutedForeground} />
+                <Text
+                  className="font-semibold text-muted-foreground"
+                  style={{ fontSize: 12.5 }}
+                >
+                  Reported — Mesita is looking at it
+                </Text>
+              </View>
             </View>
           ) : (
-            <Pressable
-              onPress={() => setReportOpen(true)}
-              accessibilityRole="button"
-              className="flex-row items-center justify-center"
-              style={{ minHeight: 44, gap: 6 }}
-            >
-              <Flag size={14} color="#775254" />
-              <Text
-                className="font-semibold text-muted-foreground"
-                style={{ fontSize: 12.5 }}
+            <View className="items-center" style={{ gap: 8 }}>
+              <Pressable
+                onPress={() => setReportOpen(true)}
+                accessibilityRole="button"
+                className="flex-row items-center justify-center rounded-full border border-border bg-card active:opacity-80"
+                style={{ minHeight: 44, gap: 8, paddingHorizontal: 16 }}
               >
-                Something went wrong here
+                <Flag size={14} color={COLORS.destructive} />
+                <Text
+                  className="font-bold text-foreground"
+                  style={{ fontSize: 13 }}
+                >
+                  Report a problem
+                </Text>
+              </Pressable>
+              <Text
+                className="text-center text-muted-foreground"
+                style={{ fontSize: 11, lineHeight: 15, maxWidth: 272 }}
+              >
+                Discount not honored, wrong total, anything off — a real person
+                at Mesita reads it.
               </Text>
-            </Pressable>
+            </View>
           )
         ) : null}
       </ScrollView>
