@@ -474,6 +474,15 @@ verify_jwt = true
 [functions.admin-web-set-auto-verify]
 verify_jwt = true
 
+# Verification Config — whether new places land as Verified Partner
+# (listing_type=partner) without phone ownership proof. Distinct from the
+# ownership Verification Queue (list/decide/set-auto-verify above).
+[functions.admin-web-get-verification-config]
+verify_jwt = true
+
+[functions.admin-web-update-verification-config]
+verify_jwt = true
+
 [functions.admin-web-get-atlas-fields]
 verify_jwt = true
 
