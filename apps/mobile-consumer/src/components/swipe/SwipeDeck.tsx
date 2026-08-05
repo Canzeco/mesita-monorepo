@@ -24,7 +24,6 @@ import Animated, {
 // Compiler immutability rule does not understand that contract.
 /* eslint-disable react-hooks/immutability */
 
-import { FilterSheet } from '@/components/discovery/FilterSheet';
 import { ReservationSheet } from '@/components/place/place-detail/ReservationSheet';
 import { PlaceSwipeCard } from '@/components/swipe/PlaceSwipeCard';
 import { SwipeActionRow } from '@/components/swipe/SwipeActionRow';
@@ -46,6 +45,8 @@ import {
   apiRecommendDeck,
   type Place,
 } from '@/lib/api/places';
+import { filtersPath } from '@/lib/consumer-route-contract';
+import { publishFiltersHostContext } from '@/lib/filters-host-context';
 import {
   applyDiscoveryFilters,
   deriveCategoryOptions,
@@ -85,18 +86,18 @@ async function fetchSwipeDeck(): Promise<Place[]> {
 }
 
 export function SwipeDeck() {
+  const router = useRouter();
   const [idx, setIdx] = useState(0);
   const [overridePlaces, setOverridePlaces] = useState<Place[] | null>(null);
   const [restarting, setRestarting] = useState(false);
   const [coords, setCoords] = useState<Coords | null>(null);
-  const [filtersOpen, setFiltersOpen] = useState(false);
   const { isSaved, setSaved } = useSavedPlaces();
   const { showTutorial, dismissTutorial } = useSwipeTutorial();
 
   // Shared discovery filters (MESITA-646/672): the deck below narrows LIVE, the
-  // 0–5 randomness level reorders it, and the red Filter dot lights on any
+  // randomness level reorders it, and the red Filter dot lights on any
   // deviation from defaults. ONE global store — Search reads the exact same
-  // state, so filters carry across surfaces.
+  // state. Open via routed /filters (MESITA-905).
   const filters = useDiscoveryFilters();
   const filtersActive = discoveryFiltersAreActive(filters);
 
@@ -150,6 +151,19 @@ export function SwipeDeck() {
     [places],
   );
 
+  useEffect(() => {
+    publishFiltersHostContext({
+      surface: 'swipe',
+      count: deck.length,
+      categoryOptions,
+      hasLocation: coords != null,
+    });
+  }, [deck.length, categoryOptions, coords]);
+
+  const openFilters = useCallback(() => {
+    router.push(filtersPath());
+  }, [router]);
+
   const restart = useCallback(async () => {
     if (restarting) return;
     setRestarting(true);
@@ -198,28 +212,15 @@ export function SwipeDeck() {
     );
   }
 
-  // The sheet rides along in EVERY branch below — narrowing to zero results
-  // while it's open must not unmount it mid-interaction.
-  const sheet = (
-    <FilterSheet
-      open={filtersOpen}
-      onClose={() => setFiltersOpen(false)}
-      categoryOptions={categoryOptions}
-      count={deck.length}
-      hasLocation={filters.zone != null || coords != null}
-    />
-  );
-
   // Filters excluded EVERYTHING — the catalog isn't empty, the user's predicates
   // did it. A distinct state from "caught up": offer a way out, not a restart.
   if (deck.length === 0) {
     return (
       <View className="flex-1">
         <FilterEmptyState
-          onAdjust={() => setFiltersOpen(true)}
+          onAdjust={openFilters}
           onReset={resetDiscoveryFilters}
         />
-        {sheet}
       </View>
     );
   }
@@ -237,7 +238,6 @@ export function SwipeDeck() {
           actionDisabled={restarting}
           actionIcon={restarting ? undefined : RotateCcw}
         />
-        {sheet}
       </View>
     );
   }
@@ -253,9 +253,8 @@ export function SwipeDeck() {
         showTutorial={showTutorial}
         dismissTutorial={dismissTutorial}
         filtersActive={filtersActive}
-        onOpenFilters={() => setFiltersOpen(true)}
+        onOpenFilters={openFilters}
       />
-      {sheet}
     </View>
   );
 }

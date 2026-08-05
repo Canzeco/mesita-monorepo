@@ -39,6 +39,9 @@ export const CONSUMER_ROUTES = {
   },
   homeDefault: '/(tabs)/home',
   search: '/(tabs)/search',
+  // Shared discovery Filters modal — web /filters peer (MESITA-905). Expo
+  // Stack screen with presentation: 'modal'; values stay in the store.
+  filters: '/filters',
   favorites: '/(tabs)/home',
   place: {
     prefix: '/place/',
@@ -86,6 +89,10 @@ function asHref(path: string): Href {
 /** Inbox routes exist on disk; typed-routes lag until expo export regenerates. */
 export function inboxPath(which: 'mine' | 'global' = 'mine'): Href {
   return asHref(CONSUMER_ROUTES.inbox[which]);
+}
+
+export function filtersPath(): Href {
+  return asHref(CONSUMER_ROUTES.filters);
 }
 
 export function placePath(idOrSlug: string): Href {

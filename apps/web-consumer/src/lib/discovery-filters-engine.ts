@@ -22,7 +22,7 @@
 //                  = can't confirm open = excluded for now/at.
 //   · what       — super-categories (place families) OR concrete category
 //                  slugs; OR across the two tiers.
-//   · randomness — 0..5 deck-ordering level (0 ranked → 5 full shuffle); NOT a
+//   · randomness — 0..4 deck-ordering level (low → max / full shuffle); NOT a
 //                  predicate — only the Swipe host applies it (orderByRandomness);
 //                  the map's pin set is unaffected.
 //
@@ -36,12 +36,17 @@ import { resolvePlaceCategoryName } from "@/lib/place-category";
 import { familyKeysOfCategory, type FamilyKey } from "@/lib/place-families";
 
 // ── Randomness ────────────────────────────────────────────────────────────
-export type RandomnessLevel = 0 | 1 | 2 | 3 | 4 | 5;
+export type RandomnessLevel = 0 | 1 | 2 | 3 | 4;
 export const RANDOMNESS_MIN = 0;
-export const RANDOMNESS_MAX = 5;
-// Only the ends are named — the middle is a continuum, so the NUMBER stays the
-// primary signal (Pato: "a number from 0 to 5", not categorical labels).
-export const RANDOMNESS_ENDPOINTS = { min: "Ranked", max: "Surprise" } as const;
+export const RANDOMNESS_MAX = 4;
+/** Word levels shown in the Filters UI (MESITA-905) — no numerals. */
+export const RANDOMNESS_LABELS = [
+  "low",
+  "medium",
+  "high",
+  "extra",
+  "max",
+] as const;
 
 // ── Where / distance ────────────────────────────────────────────────────────
 export const DISCOVERY_ZONE_LEVELS = [
@@ -135,7 +140,7 @@ export type DiscoveryFilters = {
    * the free-text ask, EM's query once Lineup reads intent. Stored per
    * query; NOT a predicate — it never narrows client-side. */
   ask: string;
-  /** Deck ordering level, 0 ranked → 5 full shuffle. */
+  /** Deck ordering level, 0 low → 4 max (full shuffle). */
   randomness: RandomnessLevel;
 };
 
@@ -283,12 +288,10 @@ export function createSeededRandom(seed: number): () => number {
 }
 
 /**
- * Deck ordering for the 0..5 randomness level: 0 keeps the ranked order, 5 is a
- * full shuffle, 1–4 jitter each card around its rank (drift ~k positions, k
- * scaling with the level), so exploration scales smoothly without discarding
- * ranking outright. Pass a seeded `rand` (createSeededRandom) when the call
- * site re-derives the order across renders — the permutation must only change
- * when the level or the membership does.
+ * Deck ordering for the 0..4 randomness level: 0 keeps the ranked order, 4
+ * (max) is a full shuffle, 1–3 jitter each card around its rank (drift ~k
+ * positions, k scaling with the level). Pass a seeded `rand`
+ * (createSeededRandom) when the call site re-derives the order across renders.
  */
 export function orderByRandomness(
   places: Place[],
@@ -296,7 +299,7 @@ export function orderByRandomness(
   rand: () => number = Math.random,
 ): Place[] {
   if (level <= 0 || places.length < 2) return places;
-  if (level >= 5) {
+  if (level >= RANDOMNESS_MAX) {
     const out = [...places];
     for (let i = out.length - 1; i > 0; i -= 1) {
       const j = Math.floor(rand() * (i + 1));
@@ -304,7 +307,7 @@ export function orderByRandomness(
     }
     return out;
   }
-  const k = level * 4; // 1→4, 2→8, 3→12, 4→16 positions of drift
+  const k = level * 4; // 1→4, 2→8, 3→12 positions of drift
   return places
     .map((place, i) => ({ place, key: i + rand() * k }))
     .sort((a, b) => a.key - b.key)

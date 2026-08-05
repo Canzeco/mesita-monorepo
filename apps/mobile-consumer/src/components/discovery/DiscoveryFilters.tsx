@@ -1,5 +1,11 @@
 import { Clock, SlidersHorizontal, X } from 'lucide-react-native';
-import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import {
+  Pressable,
+  ScrollView,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 
 import {
@@ -14,7 +20,7 @@ import { GRADIENTS, GRADIENT_DIAGONAL, SHADOW_GLOW } from '@/constants/brand';
 import {
   DISTANCE_MAX_KM,
   DISTANCE_MIN_KM,
-  RANDOMNESS_ENDPOINTS,
+  RANDOMNESS_LABELS,
   RANDOMNESS_MAX,
   RANDOMNESS_MIN,
   WEEKDAY_LABELS,
@@ -35,10 +41,8 @@ import {
   useDiscoveryFilters,
 } from '@/lib/use-discovery-filters';
 
-// Shared body of the discovery FilterSheet (Home Swipe + Search map) — the
-// options panel configures TWO subscore inputs: the INTENT (Where incl. its
-// distance tolerance · When · What · That) and RANDOMNESS (XX's luck knob).
-// RN port of web DiscoveryFilters.tsx.
+// Shared body of the discovery Filters route modal — RN port of web
+// DiscoveryFilters (MESITA-905 simplify + routed /filters).
 
 export function DiscoveryFilters({
   onClose,
@@ -48,7 +52,8 @@ export function DiscoveryFilters({
 }: {
   onClose: () => void;
   categoryOptions: CategoryOption[];
-  count: number;
+  /** Live host count; null = cold open / unknown host → CTA "Done". */
+  count: number | null;
   hasLocation: boolean;
 }) {
   const filters = useDiscoveryFilters();
@@ -64,6 +69,8 @@ export function DiscoveryFilters({
   const staleCategories = filters.categories.filter(
     (slug) => !categoryOptions.some((c) => c.slug === slug),
   );
+
+  const distanceKm = filters.maxKm ?? DISTANCE_MAX_KM;
 
   return (
     <View className="min-h-0 flex-1 flex-col">
@@ -100,6 +107,7 @@ export function DiscoveryFilters({
         contentContainerStyle={{ paddingBottom: 16 }}
         keyboardShouldPersistTaps="handled"
         nestedScrollEnabled
+        horizontal={false}
       >
         <FilterGroupLabel>Intent · where when what that</FilterGroupLabel>
 
@@ -111,28 +119,29 @@ export function DiscoveryFilters({
         </SectionLabel>
         {hasCenter ? (
           <>
-            <View className="mb-1 flex-row items-center gap-3">
-              <Pill
-                active={filters.maxKm === null}
-                onClick={() => setDiscoveryMaxKm(null)}
-              >
-                Any
-              </Pill>
-              <Text className="ml-auto font-display text-base font-semibold tabular-nums text-foreground">
+            <View className="mb-1 flex-row justify-end">
+              <Text className="text-sm font-semibold tabular-nums text-foreground">
                 {filters.maxKm === null
-                  ? 'Any distance'
+                  ? 'Any'
                   : `within ${filters.maxKm} km`}
               </Text>
             </View>
             <RangeSlider
-              className="mt-3"
+              className="mt-2"
               min={DISTANCE_MIN_KM}
               max={DISTANCE_MAX_KM}
-              value={filters.maxKm ?? 10}
-              dimmed={filters.maxKm === null}
+              value={distanceKm}
               ariaLabel="Distance tolerance in kilometres"
-              onChange={(km) => setDiscoveryMaxKm(km)}
+              onChange={(km) =>
+                setDiscoveryMaxKm(km >= DISTANCE_MAX_KM ? null : km)
+              }
             />
+            <View className="mt-1 flex-row justify-between">
+              <Text className="text-[10px] text-muted-foreground">
+                {DISTANCE_MIN_KM} km
+              </Text>
+              <Text className="text-[10px] text-muted-foreground">Any</Text>
+            </View>
           </>
         ) : (
           <Text className="text-[11px] text-muted-foreground/70">
@@ -200,7 +209,12 @@ export function DiscoveryFilters({
         ) : null}
 
         <SectionLabel className="mt-5">What</SectionLabel>
-        <View className="flex-row flex-wrap gap-1.5">
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          className="flex-grow-0"
+          contentContainerStyle={{ gap: 6 }}
+        >
           {PLACE_FAMILIES.map((family) => (
             <Pill
               key={family.key}
@@ -210,13 +224,18 @@ export function DiscoveryFilters({
               {family.emoji} {family.label}
             </Pill>
           ))}
-        </View>
+        </ScrollView>
         {categoryOptions.length > 1 || staleCategories.length > 0 ? (
           <>
             <SectionLabel className="mt-3" sub>
               Categories
             </SectionLabel>
-            <View className="flex-row flex-wrap gap-1.5">
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              className="flex-grow-0"
+              contentContainerStyle={{ gap: 6 }}
+            >
               {categoryOptions.map((option) => (
                 <Pill
                   key={option.slug}
@@ -235,12 +254,11 @@ export function DiscoveryFilters({
                   {slug}
                 </Pill>
               ))}
-            </View>
+            </ScrollView>
           </>
         ) : null}
 
         <SectionLabel className="mt-5">That · the ask</SectionLabel>
-        {/* (the intent's 4th axis; Randomness below is its own group) */}
         <TextInput
           value={filters.ask}
           maxLength={200}
@@ -255,31 +273,32 @@ export function DiscoveryFilters({
           list yet.
         </Text>
 
-        <FilterGroupLabel className="mt-6">
-          Randomness · the luck knob
-        </FilterGroupLabel>
+        <SectionLabel className="mt-6">Random</SectionLabel>
         <View className="mb-1 flex-row items-center justify-between">
-          <Text className="text-[11px] font-medium text-muted-foreground">
-            {RANDOMNESS_ENDPOINTS.min}
-          </Text>
-          <Text className="font-display text-base font-semibold tabular-nums text-foreground">
-            {filters.randomness}
-          </Text>
-          <Text className="text-[11px] font-medium text-muted-foreground">
-            {RANDOMNESS_ENDPOINTS.max}
-          </Text>
+          {RANDOMNESS_LABELS.map((label, i) => (
+            <Text
+              key={label}
+              className={
+                filters.randomness === i
+                  ? 'text-[11px] font-semibold text-foreground'
+                  : 'text-[11px] font-medium text-muted-foreground'
+              }
+            >
+              {label}
+            </Text>
+          ))}
         </View>
         <RangeSlider
           min={RANDOMNESS_MIN}
           max={RANDOMNESS_MAX}
           value={filters.randomness}
-          ariaLabel="Randomness level, 0 to 5"
+          ariaLabel="Random level"
           onChange={(n) => setDiscoveryRandomness(n as RandomnessLevel)}
         />
       </ScrollView>
 
       <View className="shrink-0 border-t border-border/60 p-4">
-        {count > 0 ? (
+        {count != null && count > 0 ? (
           <Pressable
             onPress={onClose}
             className="h-12 w-full overflow-hidden rounded-xl active:opacity-90"
@@ -304,7 +323,7 @@ export function DiscoveryFilters({
               </Text>
             </LinearGradient>
           </Pressable>
-        ) : hasPredicates ? (
+        ) : count === 0 && hasPredicates ? (
           <Pressable
             onPress={resetDiscoveryFilters}
             className="h-12 w-full items-center justify-center rounded-xl bg-foreground active:opacity-90"
@@ -313,12 +332,35 @@ export function DiscoveryFilters({
               No matches — reset filters
             </Text>
           </Pressable>
-        ) : (
+        ) : count === 0 ? (
           <View className="h-12 w-full items-center justify-center rounded-xl bg-muted/60">
             <Text className="text-sm font-medium text-muted-foreground">
               No places to show
             </Text>
           </View>
+        ) : (
+          <Pressable
+            onPress={onClose}
+            className="h-12 w-full overflow-hidden rounded-xl active:opacity-90"
+            style={{ borderRadius: 12 }}
+          >
+            <LinearGradient
+              colors={[...GRADIENTS.pink]}
+              start={GRADIENT_DIAGONAL.start}
+              end={GRADIENT_DIAGONAL.end}
+              style={[
+                {
+                  flex: 1,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  borderRadius: 12,
+                },
+                SHADOW_GLOW,
+              ]}
+            >
+              <Text className="text-sm font-semibold text-white">Done</Text>
+            </LinearGradient>
+          </Pressable>
         )}
       </View>
     </View>

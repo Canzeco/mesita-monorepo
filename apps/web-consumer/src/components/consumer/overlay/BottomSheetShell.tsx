@@ -11,21 +11,27 @@ import { isModalContractPath } from "@/lib/consumer-route-contract";
 
 // Route-modal bottom sheet: slides up from the bottom edge and stops short
 // of the top so the underlying surface stays visible behind a dimmed
-// backdrop. This is the chrome for "companion" route modals (the live-visit
-// ticket) where the user should keep their sense of place; full detail
-// modals use SlideOverShell instead.
+// backdrop. This is the chrome for "companion" route modals (Filters,
+// live-visit ticket) where the user should keep their sense of place; full
+// detail modals use SlideOverShell instead.
 //
 // Same contracts as SlideOverShell: mount from the intercepted segment's
 // layout.tsx so the enter animation plays once across the loading → page
 // swap; `absolute` positioning only; dismiss plays the exit slide, then
 // router.back().
+//
+// `hideHeader` — child owns title / Reset / close (Filters DiscoveryFilters).
+// Body then does NOT scroll; the child keeps sticky header + footer.
 
 export function BottomSheetShell({
   children,
   title = "Your visit",
+  hideHeader = false,
 }: {
   children: React.ReactNode;
   title?: string;
+  /** When true, only grab + flex body (child owns header/footer/scroll). */
+  hideHeader?: boolean;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -62,22 +68,31 @@ export function BottomSheetShell({
       >
         <div className="bg-foreground/20 mx-auto mt-2.5 h-1 w-10 shrink-0 rounded-full" />
 
-        <header className="flex shrink-0 items-center gap-2 px-3 pt-2 pb-3">
-          <span className="h-8 w-8 shrink-0" />
-          <p className="font-display flex-1 truncate text-center text-sm font-semibold">
-            {title}
-          </p>
-          <button
-            type="button"
-            onClick={requestClose}
-            aria-label="Close"
-            className="border-border bg-card text-foreground hover:bg-muted flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border transition"
-          >
-            <X className="h-4 w-4" strokeWidth={2.25} />
-          </button>
-        </header>
+        {!hideHeader && (
+          <header className="flex shrink-0 items-center gap-2 px-3 pt-2 pb-3">
+            <span className="h-8 w-8 shrink-0" />
+            <p className="font-display flex-1 truncate text-center text-sm font-semibold">
+              {title}
+            </p>
+            <button
+              type="button"
+              onClick={requestClose}
+              aria-label="Close"
+              className="border-border bg-card text-foreground hover:bg-muted flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border transition"
+            >
+              <X className="h-4 w-4" strokeWidth={2.25} />
+            </button>
+          </header>
+        )}
 
-        <div className="min-h-0 flex-1 overflow-y-auto">{children}</div>
+        <div
+          className={cn(
+            "min-h-0 flex-1",
+            hideHeader ? "flex flex-col overflow-hidden" : "overflow-y-auto",
+          )}
+        >
+          {children}
+        </div>
       </div>
     </div>
   );

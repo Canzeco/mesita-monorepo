@@ -1,6 +1,5 @@
-// Where-module location search (MESITA-672): type any place or area → pick →
-// resolve to a CENTER the distance filter rings. RN port of web
-// discovery-zone-field.tsx.
+// Where-module location search (MESITA-672, unified field MESITA-905): one
+// control — search + in-field locate. RN port of web discovery-zone-field.
 
 import { useEffect, useRef, useState } from 'react';
 import {
@@ -12,12 +11,9 @@ import {
   View,
 } from 'react-native';
 import { LocateFixed, MapPin, Search, X } from 'lucide-react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 
-import {
-  Pill,
-  PillText,
-} from '@/components/discovery/discovery-filter-controls';
-import { COLORS } from '@/constants/brand';
+import { COLORS, GRADIENTS, GRADIENT_DIAGONAL } from '@/constants/brand';
 import { apiSuggestPlaces, type PlacePrediction } from '@/lib/api/place-search';
 import type { DiscoveryZone } from '@/lib/discovery-filters-engine';
 import { newSessionToken } from '@/lib/search-utils';
@@ -44,6 +40,7 @@ export function DiscoveryZoneField({
   const [resolvingId, setResolvingId] = useState<string | null>(null);
 
   const trimmed = query.trim();
+  const locateActive = zone === null;
 
   const updateQuery = (next: string) => {
     setQuery(next);
@@ -105,62 +102,63 @@ export function DiscoveryZoneField({
     }
   };
 
+  const clearZone = () => {
+    setDiscoveryZone(null);
+    setQuery('');
+    setPredictions([]);
+  };
+
   return (
     <View className="gap-2">
-      <View className="flex-row flex-wrap gap-1.5">
-        <Pill active={zone === null} onClick={() => setDiscoveryZone(null)}>
-          <LocateFixed
-            color={zone === null ? '#fff' : COLORS.mutedForeground}
-            size={14}
-          />
-          <PillText active={zone === null}>Current location</PillText>
-        </Pill>
+      <View className="h-11 flex-row items-center rounded-full bg-muted/60 pl-3 pr-1">
+        <Search color={COLORS.mutedForeground} size={16} />
         {zone ? (
-          <View className="min-h-11 flex-row items-center gap-1.5 overflow-hidden rounded-full bg-primary py-1 pl-4 pr-2">
-            <MapPin color="#fff" size={14} />
-            <Text
-              className="max-w-[180px] text-[13px] font-medium text-white"
-              numberOfLines={1}
+          <View className="ml-2 min-w-0 flex-1 flex-row items-center overflow-hidden rounded-full">
+            <LinearGradient
+              colors={[...GRADIENTS.pink]}
+              start={GRADIENT_DIAGONAL.start}
+              end={GRADIENT_DIAGONAL.end}
+              style={{
+                flex: 1,
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 6,
+                paddingVertical: 4,
+                paddingLeft: 12,
+                paddingRight: 6,
+                borderRadius: 999,
+              }}
             >
-              {zone.label}
-            </Text>
-            <Pressable
-              onPress={() => setDiscoveryZone(null)}
-              accessibilityLabel="Clear location"
-              hitSlop={8}
-              className="h-6 w-6 items-center justify-center rounded-full"
-            >
-              <X color="#fff" size={14} />
-            </Pressable>
+              <MapPin color="#fff" size={14} />
+              <Text
+                className="min-w-0 flex-1 text-[13px] font-medium text-white"
+                numberOfLines={1}
+              >
+                {zone.label}
+              </Text>
+              <Pressable
+                onPress={clearZone}
+                accessibilityLabel="Clear location"
+                hitSlop={8}
+                className="h-6 w-6 items-center justify-center rounded-full"
+              >
+                <X color="#fff" size={14} />
+              </Pressable>
+            </LinearGradient>
           </View>
-        ) : null}
-      </View>
-
-      {!hasLocation && zone === null ? (
-        <Text className="text-[11px] text-muted-foreground/70">
-          Turn on location to rank by distance, or search a place below.
-        </Text>
-      ) : null}
-
-      <View className="relative justify-center">
-        <View
-          pointerEvents="none"
-          className="absolute left-3 z-10"
-          style={{ top: 14 }}
-        >
-          <Search color={COLORS.mutedForeground} size={16} />
-        </View>
-        <TextInput
-          value={query}
-          onChangeText={updateQuery}
-          placeholder="Search a city, zone or address…"
-          placeholderTextColor="#77525466"
-          className="h-11 w-full rounded-full bg-muted/60 pl-9 pr-9 text-[13px] text-foreground"
-          autoCorrect={false}
-          returnKeyType="search"
-        />
-        {searching || query.length > 0 ? (
-          <View className="absolute right-3" style={{ top: 12 }}>
+        ) : (
+          <TextInput
+            value={query}
+            onChangeText={updateQuery}
+            placeholder="Search a city, zone or address…"
+            placeholderTextColor="#77525466"
+            className="min-w-0 flex-1 px-2 text-[13px] text-foreground"
+            autoCorrect={false}
+            returnKeyType="search"
+          />
+        )}
+        {searching || (!zone && query.length > 0) ? (
+          <View className="mr-1">
             {searching ? (
               <ActivityIndicator color={COLORS.primary} size="small" />
             ) : (
@@ -174,9 +172,40 @@ export function DiscoveryZoneField({
             )}
           </View>
         ) : null}
+        <Pressable
+          onPress={clearZone}
+          accessibilityLabel="Use current location"
+          accessibilityState={{ selected: locateActive }}
+          className="h-9 w-9 items-center justify-center overflow-hidden rounded-full"
+        >
+          {locateActive ? (
+            <LinearGradient
+              colors={[...GRADIENTS.pink]}
+              start={GRADIENT_DIAGONAL.start}
+              end={GRADIENT_DIAGONAL.end}
+              style={{
+                width: 36,
+                height: 36,
+                borderRadius: 999,
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <LocateFixed color="#fff" size={16} />
+            </LinearGradient>
+          ) : (
+            <LocateFixed color={COLORS.mutedForeground} size={16} />
+          )}
+        </Pressable>
       </View>
 
-      {trimmed.length >= 2 ? (
+      {!hasLocation && zone === null ? (
+        <Text className="text-[11px] text-muted-foreground/70">
+          Turn on location to rank by distance, or search a place above.
+        </Text>
+      ) : null}
+
+      {!zone && trimmed.length >= 2 ? (
         <ScrollView
           className="max-h-56 rounded-2xl border border-border/60"
           keyboardShouldPersistTaps="handled"

@@ -1,12 +1,9 @@
 "use client";
 
-// Where-module location search (MESITA-672): type any place or area → pick →
-// resolve to a CENTER the distance filter rings. Autocomplete rides the shared
-// EF (consumer-web-suggest-places, session-tokened, no CORS); only the chosen
-// prediction is geocoded to lat/lng — client-side via zone-geocode (Google
-// Places details, the GooglePlaceSheet precedent). "Current location" clears
-// back to the device fix. Self-contained so BOTH hosts (Swipe + Search) get the
-// same field with no extra wiring.
+// Where-module location search (MESITA-672, unified field MESITA-905): one
+// control — search + in-field locate. Selected zone = chip-in-field + clear.
+// Autocomplete rides consumer-web-suggest-places; only the chosen prediction
+// is geocoded. Locate clears back to the device fix (zone = null).
 
 import { useEffect, useRef, useState } from "react";
 import { LocateFixed, MapPin, Search, X } from "lucide-react";
@@ -18,12 +15,9 @@ import { setDiscoveryZone } from "@/lib/use-discovery-filters";
 import type { DiscoveryZone } from "@/lib/discovery-filters-engine";
 import { toast } from "@/lib/toast";
 import { cn, errMsg } from "@/lib/utils";
-import { Pill } from "./discovery-filter-controls";
 import { newSessionToken } from "./search/search-utils";
 
 const SUGGEST_DEBOUNCE_MS = 300;
-// Public Google key the map already runs on — inlined at build (NEXT_PUBLIC_*),
-// so it's available on BOTH the Search and Swipe surfaces client-side.
 const GMP_KEY = process.env.NEXT_PUBLIC_GMP_KEY ?? "";
 
 export function DiscoveryZoneField({
@@ -43,10 +37,8 @@ export function DiscoveryZoneField({
   const [resolvingId, setResolvingId] = useState<string | null>(null);
 
   const trimmed = query.trim();
+  const locateActive = zone === null;
 
-  // Synchronous resets live in the change handler (the set-state-in-effect lint
-  // rule bars them from the effect below); the effect only owns the debounced
-  // async fetch.
   const updateQuery = (next: string) => {
     setQuery(next);
     const nextTrimmed = next.trim();
@@ -95,7 +87,6 @@ export function DiscoveryZoneField({
         return;
       }
       setDiscoveryZone(resolved);
-      // Clear the field + end the Places session (fresh token next search).
       setQuery("");
       setPredictions([]);
       sessionTokenRef.current = newSessionToken();
@@ -106,46 +97,41 @@ export function DiscoveryZoneField({
     }
   };
 
+  const clearZone = () => {
+    setDiscoveryZone(null);
+    setQuery("");
+    setPredictions([]);
+  };
+
   return (
     <div className="space-y-2">
-      <div className="flex flex-wrap gap-1.5">
-        <Pill active={zone === null} onClick={() => setDiscoveryZone(null)}>
-          <LocateFixed className="h-3.5 w-3.5" /> Current location
-        </Pill>
-        {zone && (
-          <span className="bg-pink-gradient flex min-h-11 items-center gap-1.5 rounded-full py-1 pr-2 pl-4 text-[13px] font-medium text-white shadow-sm">
+      <div className="bg-muted/60 relative flex h-11 items-center rounded-full pr-1 pl-3">
+        <Search className="text-muted-foreground h-4 w-4 shrink-0" />
+        {zone ? (
+          <span className="bg-pink-gradient ml-2 flex min-w-0 flex-1 items-center gap-1.5 rounded-full py-1 pr-1.5 pl-3 text-[13px] font-medium text-white shadow-sm">
             <MapPin className="h-3.5 w-3.5 shrink-0" />
-            <span className="max-w-[180px] truncate">{zone.label}</span>
+            <span className="truncate">{zone.label}</span>
             <button
               type="button"
-              onClick={() => setDiscoveryZone(null)}
+              onClick={clearZone}
               aria-label="Clear location"
-              className="flex h-6 w-6 items-center justify-center rounded-full transition hover:bg-white/20"
+              className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full transition hover:bg-white/20"
             >
               <X className="h-3.5 w-3.5" />
             </button>
           </span>
+        ) : (
+          <input
+            type="text"
+            inputMode="search"
+            value={query}
+            onChange={(e) => updateQuery(e.target.value)}
+            placeholder="Search a city, zone or address…"
+            className="placeholder:text-muted-foreground/60 min-w-0 flex-1 bg-transparent px-2 text-[13px] outline-none"
+          />
         )}
-      </div>
-
-      {!hasLocation && zone === null && (
-        <p className="text-muted-foreground/70 text-[11px]">
-          Turn on location to rank by distance, or search a place below.
-        </p>
-      )}
-
-      <div className="relative">
-        <Search className="text-muted-foreground pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2" />
-        <input
-          type="text"
-          inputMode="search"
-          value={query}
-          onChange={(e) => updateQuery(e.target.value)}
-          placeholder="Search a city, zone or address…"
-          className="bg-muted/60 focus:bg-background focus:ring-primary/30 h-11 w-full rounded-full pr-9 pl-9 text-[13px] outline-none focus:ring-2"
-        />
-        {(searching || query.length > 0) && (
-          <span className="absolute top-1/2 right-3 -translate-y-1/2">
+        {(searching || (!zone && query.length > 0)) && (
+          <span className="mr-1 shrink-0">
             {searching ? (
               <Spinner className="h-4 w-4" />
             ) : (
@@ -160,9 +146,29 @@ export function DiscoveryZoneField({
             )}
           </span>
         )}
+        <button
+          type="button"
+          onClick={clearZone}
+          aria-label="Use current location"
+          aria-pressed={locateActive}
+          className={cn(
+            "flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition",
+            locateActive
+              ? "bg-pink-gradient text-white shadow-sm"
+              : "text-muted-foreground hover:bg-muted hover:text-foreground",
+          )}
+        >
+          <LocateFixed className="h-4 w-4" />
+        </button>
       </div>
 
-      {trimmed.length >= 2 && (
+      {!hasLocation && zone === null && (
+        <p className="text-muted-foreground/70 text-[11px]">
+          Turn on location to rank by distance, or search a place above.
+        </p>
+      )}
+
+      {!zone && trimmed.length >= 2 && (
         <div className="border-border/60 divide-border/50 max-h-56 divide-y overflow-y-auto rounded-2xl border">
           {predictions.length === 0 && !searching ? (
             <p className="text-muted-foreground px-3 py-3 text-[13px]">
