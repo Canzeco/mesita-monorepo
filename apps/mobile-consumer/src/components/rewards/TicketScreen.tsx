@@ -1,14 +1,6 @@
-// THE TICKET (MESITA-857) — mobile mirror of web TicketScreen: one
-// full-screen object for the whole lifecycle, per Notion Main §4.4. Place
-// hero → class-tinted pass with the QR → task checklist → reward strip; the
-// sections change with state instead of three surfaces drifting apart.
-// Welcome Visit is NOT a task row (server-detected at billing); proof
-// screenshots remain DEMO_SCREENSHOT_URL (MESITA-824); Mesita-review done
-// state is session-local; the report button waits for MESITA-843.
-//
-// Compact by design (MESITA-879, mirrors web): the live ticket must FIT one
-// viewport — slim hero row, 190px QR ceiling, strip gone once billed. The
-// ScrollView stays only as the safety valve for very short screens.
+// THE TICKET (MESITA-857 · MESITA-908) — mobile mirror of web TicketScreen.
+// Locked order: Place → Consumer → Reward → Tasks → QR (scannable) →
+// Results (closed) → Report. Task sheets are FullScreenSheets on this route.
 
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
@@ -37,7 +29,13 @@ import {
 import QRCode from 'react-native-qrcode-svg';
 import { LinearGradient } from 'expo-linear-gradient';
 
+import { DefaultAvatar } from '@/components/ui/DefaultAvatar';
 import { FullScreenSheet } from '@/components/ui/FullScreenSheet';
+import {
+  GoogleReviewSheet,
+  googleMapsSearchUrl,
+} from '@/components/rewards/GoogleReviewSheet';
+import { InstagramStorySheet } from '@/components/rewards/InstagramStorySheet';
 import {
   TicketReviewForm,
   type TicketReviewDraft,
@@ -73,8 +71,13 @@ const PASS_GRADIENTS: Record<string, [string, string, string]> = {
   aura: ['#ff7a45', '#ffb03d', '#e0982e'],
 };
 
-// awaiting_story is GONE (MESITA-849/#591): tasks are self-attested before
-// the scan, so a ticket is only ever open or awaiting payment while live.
+const CLASS_CHIP: Record<string, { bg: string; fg: string }> = {
+  standard: { bg: '#ced9e5', fg: '#260409' },
+  premium: { bg: '#8b6ce8', fg: '#ffffff' },
+  influencer: { bg: '#0284c7', fg: '#ffffff' },
+  aura: { bg: '#f5cc58', fg: '#ffffff' },
+};
+
 function statusLine(t: ConsumerTicketRow): string {
   switch (t.status) {
     case 'open':
@@ -111,35 +114,35 @@ function TaskRow({
   onDo?: () => void;
 }) {
   const done = state === 'done';
-  const actionable = (state === 'todo' || state === 'rejected') && !!onDo;
+  const actionable = (state === 'todo' || state === 'rejected') && onDo;
   return (
     <Pressable
-      disabled={!actionable}
       onPress={onDo}
+      disabled={!actionable}
       accessibilityRole="button"
-      className={`flex-row items-center rounded-2xl px-3 py-2.5 ${
-        done ? 'bg-emerald-500/10' : 'bg-muted/40'
-      } ${actionable ? 'active:scale-[0.99]' : ''}`}
-      style={{ minHeight: 48, gap: 12 }}
+      className={`flex-row items-center rounded-xl px-2.5 py-2 ${
+        done ? 'bg-emerald-500/10' : state === 'checking' ? 'bg-muted/50' : 'bg-muted/40'
+      }`}
+      style={{ minHeight: 44, gap: 10 }}
     >
       <View
-        className={`h-6 w-6 items-center justify-center rounded-full border-2 ${
+        className={`h-5 w-5 items-center justify-center rounded-full border-2 ${
           done ? 'border-emerald-500 bg-emerald-500' : 'border-border'
         }`}
       >
         {state === 'busy' || state === 'checking' ? (
-          <ActivityIndicator size="small" />
+          <ActivityIndicator size="small" color="#775254" />
         ) : done ? (
-          <Check size={14} color="#fff" strokeWidth={3} />
+          <Check size={12} color="#fff" strokeWidth={3} />
         ) : null}
       </View>
       <View className="min-w-0 flex-1">
-        <View className="flex-row items-center" style={{ gap: 8 }}>
-          <Icon size={16} color={done ? '#047857' : '#cf0360'} />
+        <View className="flex-row items-center" style={{ gap: 6 }}>
+          <Icon size={14} color={done ? '#047857' : '#260409'} />
           <Text
             className={`font-bold ${done ? 'text-emerald-800' : 'text-foreground'}`}
             numberOfLines={1}
-            style={{ fontSize: 13, flexShrink: 1 }}
+            style={{ fontSize: 12.5 }}
           >
             {title}
           </Text>
@@ -147,7 +150,7 @@ function TaskRow({
         <Text
           className="mt-0.5 text-muted-foreground"
           numberOfLines={1}
-          style={{ fontSize: 11 }}
+          style={{ fontSize: 10.5 }}
         >
           {state === 'checking'
             ? 'Sent — being checked'
@@ -160,13 +163,15 @@ function TaskRow({
       </View>
       <Text
         className={`font-extrabold ${done ? 'text-emerald-700' : 'text-foreground'}`}
-        style={{ fontSize: 15 }}
+        style={{ fontSize: 14 }}
       >
         {reward}
       </Text>
     </Pressable>
   );
 }
+
+type TaskSheet = 'mesita' | 'google' | 'instagram' | 'report' | null;
 
 export function TicketScreen({
   userId,
@@ -177,8 +182,21 @@ export function TicketScreen({
 }) {
   const router = useRouter();
   const tickets = useConsumerTickets(userId);
-  const { consumerClass } = useAuth();
+  const { consumerClass, profile } = useAuth();
   const classKey = (consumerClass?.class ?? 'standard') as RewardClassKey;
+
+  const guestName = useMemo(() => {
+    const first = profile?.first_name?.trim() ?? '';
+    const last = profile?.last_name?.trim() ?? '';
+    return (
+      [first, last].filter(Boolean).join(' ') ||
+      profile?.full_name?.trim() ||
+      null
+    );
+  }, [profile]);
+
+  const igHandle = profile?.instagram_handle ?? null;
+  const avatarUrl = profile?.avatar_url ?? null;
 
   const ticket = useMemo(
     () =>
@@ -191,34 +209,24 @@ export function TicketScreen({
   const scanned = ticket?.first_scanned_at != null;
   const wasScannedRef = useRef(scanned);
   useEffect(() => {
-    // Mobile keeps the vibration beat only (no CSS pulse in RN).
     wasScannedRef.current = scanned;
   }, [scanned]);
 
-  const [acting, setActing] = useState<'story' | 'review' | null>(null);
-  const [actionError, setActionError] = useState<string | null>(null);
-  const runProof = useCallback(
-    async (kind: 'story' | 'review') => {
-      setActing(kind);
-      setActionError(null);
-      try {
-        if (kind === 'story') await apiSubmitStory(ticketId);
-        else await apiSubmitReview(ticketId);
-        await tickets.refresh();
-      } catch (err) {
-        setActionError(
-          err instanceof Error ? err.message : "Couldn't send that just yet.",
-        );
-      } finally {
-        setActing(null);
-      }
-    },
-    [ticketId, tickets],
-  );
+  const [sheet, setSheet] = useState<TaskSheet>(null);
 
-  const [reviewOpen, setReviewOpen] = useState(false);
+  const confirmGoogle = useCallback(async () => {
+    await apiSubmitReview(ticketId);
+    await tickets.refresh();
+  }, [ticketId, tickets]);
+
+  const confirmStory = useCallback(async () => {
+    await apiSubmitStory(ticketId);
+    await tickets.refresh();
+  }, [ticketId, tickets]);
+
   const [reviewBusy, setReviewBusy] = useState(false);
   const [reviewDone, setReviewDone] = useState(false);
+  const [reviewError, setReviewError] = useState<string | null>(null);
   const [reviewDraft, setReviewDraft] = useState<TicketReviewDraft>({
     food: 0,
     service: 0,
@@ -229,13 +237,13 @@ export function TicketScreen({
   });
   const submitMesitaReview = useCallback(async () => {
     setReviewBusy(true);
-    setActionError(null);
+    setReviewError(null);
     try {
       await submitTicketReview({ ticketId, ...reviewDraft });
       setReviewDone(true);
-      setReviewOpen(false);
+      setSheet(null);
     } catch (err) {
-      setActionError(
+      setReviewError(
         err instanceof Error ? err.message : "Couldn't save your review.",
       );
     } finally {
@@ -243,11 +251,9 @@ export function TicketScreen({
     }
   }, [ticketId, reviewDraft]);
 
-  // v3b amount fallback (MESITA-850): the staff bill is optional, so a
-  // closed ticket may carry no amount. Ask the guest once — a record for
-  // their savings history, never a money movement.
   const [totalDraft, setTotalDraft] = useState('');
   const [totalBusy, setTotalBusy] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
   const submitTotal = useCallback(async () => {
     const pesos = Number(totalDraft.replace(/[,$\s]/g, ''));
     if (!Number.isFinite(pesos) || pesos <= 0) {
@@ -268,10 +274,6 @@ export function TicketScreen({
     }
   }, [ticketId, tickets, totalDraft]);
 
-  // v3c report (MESITA-851). `reported` is session-local: the EF's partial
-  // unique index is the real guard against duplicates, and there is no read
-  // API for a guest's own reports.
-  const [reportOpen, setReportOpen] = useState(false);
   const [reportReason, setReportReason] = useState<ReportReason | null>(null);
   const [reportDetails, setReportDetails] = useState('');
   const [reportBusy, setReportBusy] = useState(false);
@@ -284,7 +286,7 @@ export function TicketScreen({
     try {
       await apiReportTicket(ticketId, reportReason, reportDetails);
       setReported(true);
-      setReportOpen(false);
+      setSheet(null);
     } catch (err) {
       setReportError(
         err instanceof Error ? err.message : "Couldn't send that just yet.",
@@ -354,50 +356,49 @@ export function TicketScreen({
   const storyOnTicket =
     ticket.story_status != null && ticket.story_status !== 'not_required';
 
-  // THIS place's strategy → THIS place's rates (MESITA-869). 'zero' means the
-  // rates are custom or cleared, so every percentage is suppressed rather
-  // than quoted wrong.
   const strategy = strategyForPlaceRow(ticket.place);
   const priced = strategy !== 'zero';
-  // Per-class, exactly as the bill engine resolves it (v9, MESITA-877).
   const rate = (key: 'story' | 'review') =>
     rateForSegment(key, classKey, strategy);
   const pct = (v: number) => (priced && v > 0 ? `${v}%` : '—');
-  // The ceiling across every rung this guest can reach here — the ONE number
-  // the strip quotes. Never paired with its reason or the class (MESITA-860).
   const ceiling = peakRateForClass(classKey, strategy);
-  // v9 (MESITA-877): the Welcome Bonus is unlocked BY the Google review, so
-  // a first-timer is told exactly what the review buys them.
   const firstVisit = !billed && ticket.first_scanned_at == null;
   const firstVisitHint = firstVisit
     ? 'Unlocks your Welcome Bonus — the biggest one'
     : 'At the table, once per place';
-  // Compact by design (MESITA-879): the live ticket must fit one viewport.
-  const qrSize = Math.min(190, Dimensions.get('window').width * 0.52);
+  const qrSize = Math.min(170, Dimensions.get('window').width * 0.48);
+
+  const scannable =
+    live &&
+    Boolean(ticket.check_code) &&
+    (ticket.status === 'open' || ticket.status === 'awaiting_payment_confirm');
+
+  const showIgHandle =
+    (classKey === 'influencer' || storyOnTicket) && Boolean(igHandle);
+  const mapsUrl = googleMapsSearchUrl(placeName, ticket.place?.address);
+  const chip = CLASS_CHIP[classKey] ?? CLASS_CHIP.standard;
 
   return (
     <>
       <ScrollView
         className="flex-1"
-        contentContainerStyle={{ padding: 14, paddingBottom: 24, gap: 12 }}
+        contentContainerStyle={{ padding: 14, paddingBottom: 24, gap: 10 }}
         showsVerticalScrollIndicator={false}
       >
-        {/* ── Hero: one compact row — the full-bleed photo card was eating a
-            third of the viewport while the QR + amount are this screen's
-            actual job (MESITA-879, mirrors web). ── */}
+        {/* 1 · Place */}
         <View
-          className="flex-row items-center rounded-[22px] border border-border bg-card"
-          style={{ gap: 12, paddingVertical: 10, paddingLeft: 10, paddingRight: 14 }}
+          className="flex-row items-center rounded-[18px] border border-border bg-card"
+          style={{ gap: 10, paddingVertical: 8, paddingLeft: 8, paddingRight: 12 }}
         >
           <Pressable
             onPress={() => router.back()}
             accessibilityRole="button"
             accessibilityLabel="Back to Rewards"
-            className="h-9 w-9 items-center justify-center rounded-full bg-muted active:scale-95"
+            className="h-8 w-8 items-center justify-center rounded-full bg-muted active:scale-95"
           >
-            <ArrowLeft size={16} color="#260409" />
+            <ArrowLeft size={14} color="#260409" />
           </Pressable>
-          <View className="h-11 w-11 overflow-hidden rounded-xl">
+          <View className="h-10 w-10 overflow-hidden rounded-xl">
             {photo ? (
               <Image
                 source={{ uri: photo }}
@@ -416,7 +417,7 @@ export function TicketScreen({
                   justifyContent: 'center',
                 }}
               >
-                <Store size={20} color="rgba(255,255,255,0.8)" />
+                <Store size={16} color="rgba(255,255,255,0.8)" />
               </LinearGradient>
             )}
           </View>
@@ -424,7 +425,7 @@ export function TicketScreen({
             <Text
               className="font-extrabold text-foreground"
               numberOfLines={1}
-              style={{ fontSize: 15 }}
+              style={{ fontSize: 14 }}
             >
               {placeName}
             </Text>
@@ -432,14 +433,14 @@ export function TicketScreen({
               <Text
                 className="mt-0.5 capitalize text-muted-foreground"
                 numberOfLines={1}
-                style={{ fontSize: 11 }}
+                style={{ fontSize: 10.5 }}
               >
                 {category.replaceAll('_', ' ')}
               </Text>
             ) : null}
           </View>
           <View
-            className={`rounded-full px-2.5 py-1 ${
+            className={`rounded-full px-2 py-0.5 ${
               saved
                 ? 'bg-emerald-500/10'
                 : cancelled
@@ -455,70 +456,316 @@ export function TicketScreen({
                     ? 'text-muted-foreground'
                     : 'text-primary'
               }`}
-              style={{ fontSize: 10, letterSpacing: 1 }}
+              style={{ fontSize: 9, letterSpacing: 1 }}
             >
               {saved ? 'Completed' : cancelled ? 'Cancelled' : 'Live'}
             </Text>
           </View>
         </View>
 
-        {/* ── The pass ── */}
-        <View className="overflow-hidden rounded-3xl">
-          <LinearGradient
-            colors={PASS_GRADIENTS[classKey] ?? PASS_GRADIENTS.standard}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={{ paddingHorizontal: 20, paddingVertical: 16 }}
-          >
-            <View className="flex-row items-center justify-between">
+        {/* 2 · Consumer */}
+        <View
+          className="flex-row items-center rounded-[18px] border border-border bg-card px-3"
+          style={{ gap: 10, paddingVertical: 8 }}
+        >
+          <View className="h-9 w-9 overflow-hidden rounded-full">
+            {avatarUrl ? (
+              <Image
+                source={{ uri: avatarUrl }}
+                style={{ width: 36, height: 36 }}
+                contentFit="cover"
+              />
+            ) : (
+              <DefaultAvatar size={36} />
+            )}
+          </View>
+          <View className="min-w-0 flex-1">
+            <Text
+              className="font-bold text-foreground"
+              numberOfLines={1}
+              style={{ fontSize: 13 }}
+            >
+              {guestName ?? 'Mesita guest'}
+            </Text>
+            {showIgHandle ? (
               <Text
-                className="font-bold uppercase text-white/80"
-                style={{ fontSize: 10, letterSpacing: 1.4 }}
+                className="mt-0.5 text-muted-foreground"
+                numberOfLines={1}
+                style={{ fontSize: 10.5 }}
               >
-                Mesita Pass
+                @{igHandle!.replace(/^@/, '')}
               </Text>
-              <View className="rounded-full bg-white/25 px-2.5 py-1">
-                <Text
-                  className="font-extrabold uppercase text-white"
-                  style={{ fontSize: 10, letterSpacing: 1 }}
-                >
-                  {classProperLabel(classKey)}
-                </Text>
-              </View>
-            </View>
+            ) : null}
+          </View>
+          <View
+            className="rounded-full px-2 py-0.5"
+            style={{ backgroundColor: chip.bg }}
+          >
+            <Text
+              className="font-extrabold uppercase"
+              style={{ fontSize: 9, letterSpacing: 1, color: chip.fg }}
+            >
+              {classProperLabel(classKey)}
+            </Text>
+          </View>
+        </View>
 
-            {closed ? (
-              <View className="items-center py-6" style={{ gap: 8 }}>
+        {/* 3 · Reward */}
+        <View className="rounded-[18px] border border-border bg-card px-3 py-2">
+          {cancelled ? (
+            <Text className="text-muted-foreground" style={{ fontSize: 12 }}>
+              No reward on this visit — the ticket was cancelled.
+            </Text>
+          ) : live && billed ? (
+            <Text style={{ fontSize: 12, lineHeight: 16 }}>
+              <Text className="font-bold text-foreground">
+                {ticket.discount_percent ?? 0}% off applied
+              </Text>
+              <Text className="text-muted-foreground">
+                {' '}
+                — amount to pay shows under the QR.
+              </Text>
+            </Text>
+          ) : closed ? (
+            <Text className="text-muted-foreground" style={{ fontSize: 12 }}>
+              Visit closed — applied rate lives in Results below.
+            </Text>
+          ) : priced && ceiling > 0 ? (
+            <Text style={{ fontSize: 12, lineHeight: 16 }}>
+              <Text className="font-bold text-foreground">
+                Up to {ceiling}% — Discount for You.
+              </Text>{' '}
+              <Text className="text-muted-foreground">
+                You always keep your single best reward — never added together.
+              </Text>
+            </Text>
+          ) : (
+            <Text className="text-muted-foreground" style={{ fontSize: 12 }}>
+              Your discount is set by the place and applied at the table.
+            </Text>
+          )}
+        </View>
+
+        {/* 4 · Tasks */}
+        {!cancelled ? (
+          <View className="overflow-hidden rounded-2xl border border-border bg-card">
+            <View className="flex-row items-baseline justify-between px-3 pt-2.5 pb-1">
+              <Text className="font-bold text-foreground" style={{ fontSize: 12.5 }}>
+                Your tasks
+              </Text>
+              <Text className="text-muted-foreground" style={{ fontSize: 10 }}>
+                {priced ? 'Optional — each one pays' : 'Optional'}
+              </Text>
+            </View>
+            <View className="px-2 pb-2" style={{ gap: 2 }}>
+              {storyOnTicket ? (
+                <TaskRow
+                  Icon={Camera}
+                  title="Post an Instagram story"
+                  hint="Tag the place — then confirm here"
+                  reward={pct(rate('story'))}
+                  state={taskStateFor(ticket.story_status)}
+                  onDo={
+                    live
+                      ? () => {
+                          const st = taskStateFor(ticket.story_status);
+                          if (st === 'todo' || st === 'rejected')
+                            setSheet('instagram');
+                        }
+                      : undefined
+                  }
+                />
+              ) : null}
+              <TaskRow
+                Icon={Star}
+                title="Leave a Google review"
+                hint={firstVisitHint}
+                reward={pct(rate('review'))}
+                state={taskStateFor(ticket.review_status)}
+                onDo={
+                  live
+                    ? () => {
+                        const st = taskStateFor(ticket.review_status);
+                        if (st === 'todo' || st === 'rejected')
+                          setSheet('google');
+                      }
+                    : undefined
+                }
+              />
+              <TaskRow
+                Icon={UtensilsCrossed}
+                title="Rate it on Mesita"
+                hint="Food · service · ambiance — feeds its rating"
+                reward="★"
+                state={reviewDone ? 'done' : 'todo'}
+                onDo={
+                  reviewDone
+                    ? undefined
+                    : () => {
+                        setReviewError(null);
+                        setSheet('mesita');
+                      }
+                }
+              />
+            </View>
+            {actionError ? (
+              <Text
+                className="mx-3 mb-2.5 rounded-lg bg-destructive/10 px-3 py-2 text-destructive"
+                style={{ fontSize: 12 }}
+              >
+                {actionError}
+              </Text>
+            ) : null}
+          </View>
+        ) : null}
+
+        {/* 5 · QR scannable only */}
+        {scannable ? (
+          <View className="overflow-hidden rounded-3xl">
+            <LinearGradient
+              colors={PASS_GRADIENTS[classKey] ?? PASS_GRADIENTS.standard}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={{ paddingHorizontal: 16, paddingVertical: 14 }}
+            >
+              <View className="flex-row items-center justify-between">
+                <Text
+                  className="font-bold uppercase text-white/80"
+                  style={{ fontSize: 9, letterSpacing: 1.4 }}
+                >
+                  Show to waiter
+                </Text>
+                <View className="rounded-full bg-white/25 px-2 py-0.5">
+                  <Text
+                    className="font-extrabold uppercase text-white"
+                    style={{ fontSize: 9, letterSpacing: 1 }}
+                  >
+                    QR
+                  </Text>
+                </View>
+              </View>
+              <View
+                className="mt-2.5 self-center rounded-2xl bg-white"
+                style={{ padding: 10 }}
+              >
+                <QRCode
+                  value={checkUrlForCode(ticket.check_code!)}
+                  size={qrSize}
+                  color="#2b1233"
+                  backgroundColor="#ffffff"
+                />
+              </View>
+              <View
+                accessibilityLiveRegion="polite"
+                className="mt-2 flex-row items-center justify-center"
+                style={{ gap: 6 }}
+              >
+                {scanned && ticket.status === 'open' ? (
+                  <>
+                    <BadgeCheck size={14} color="#fff" />
+                    <Text className="text-white/90" style={{ fontSize: 11 }}>
+                      Verified by {placeName}
+                    </Text>
+                  </>
+                ) : (
+                  <Text
+                    className="text-center text-white/90"
+                    style={{ fontSize: 11, maxWidth: 260 }}
+                  >
+                    {statusLine(ticket)}
+                  </Text>
+                )}
+              </View>
+              {billed ? (
+                <View
+                  className="mt-2.5 items-center rounded-xl bg-white/20"
+                  style={{ paddingHorizontal: 12, paddingVertical: 8 }}
+                >
+                  <Text
+                    className="font-bold uppercase text-white/90"
+                    style={{ fontSize: 9, letterSpacing: 1.4 }}
+                  >
+                    {ticket.discount_percent ?? 0}% off applied
+                  </Text>
+                  <Text
+                    className="mt-0.5 font-extrabold text-white"
+                    style={{ fontSize: 20 }}
+                  >
+                    {formatCurrency(
+                      Math.max(
+                        0,
+                        (ticket.total_cents ?? 0) - (ticket.discount_cents ?? 0),
+                      ),
+                    )}
+                  </Text>
+                  <Text className="mt-0.5 text-white/90" style={{ fontSize: 10.5 }}>
+                    to pay at the table
+                    {ticket.discount_cents
+                      ? ` — you save ${formatCurrency(ticket.discount_cents)}`
+                      : ''}
+                  </Text>
+                </View>
+              ) : null}
+            </LinearGradient>
+          </View>
+        ) : null}
+
+        {/* 6 · Results closed only */}
+        {closed ? (
+          <View className="overflow-hidden rounded-3xl">
+            <LinearGradient
+              colors={PASS_GRADIENTS[classKey] ?? PASS_GRADIENTS.standard}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={{ paddingHorizontal: 16, paddingVertical: 14 }}
+            >
+              <View className="flex-row items-center justify-between">
+                <Text
+                  className="font-bold uppercase text-white/80"
+                  style={{ fontSize: 9, letterSpacing: 1.4 }}
+                >
+                  Mesita Pass
+                </Text>
+                <View className="rounded-full bg-white/25 px-2 py-0.5">
+                  <Text
+                    className="font-extrabold uppercase text-white"
+                    style={{ fontSize: 9, letterSpacing: 1 }}
+                  >
+                    {classProperLabel(classKey)}
+                  </Text>
+                </View>
+              </View>
+              <View className="items-center py-5" style={{ gap: 6 }}>
                 {saved ? (
                   <>
-                    <PartyPopper size={32} color="#fff" />
+                    <PartyPopper size={28} color="#fff" />
                     <Text
                       className="text-center font-extrabold text-white"
-                      style={{ fontSize: 16 }}
+                      style={{ fontSize: 15 }}
                     >
                       {ticket.discount_cents
                         ? `You saved ${formatCurrency(ticket.discount_cents)}`
                         : 'Visit complete'}
                     </Text>
-                    <Text className="text-white/85" style={{ fontSize: 12 }}>
+                    <Text className="text-white/85" style={{ fontSize: 11.5 }}>
                       {ticket.discount_percent
                         ? `${ticket.discount_percent}% off at ${placeName}`
                         : placeName}
                     </Text>
                     {!billed ? (
                       <View
-                        className="mt-3 w-full rounded-xl bg-white/20 p-3"
+                        className="mt-2.5 w-full rounded-xl bg-white/20 p-2.5"
                         style={{ maxWidth: 260 }}
                       >
                         <Text
                           className="font-bold uppercase text-white/90"
-                          style={{ fontSize: 11, letterSpacing: 1 }}
+                          style={{ fontSize: 10, letterSpacing: 1 }}
                         >
                           How much was the bill?
                         </Text>
                         <Text
                           className="mt-0.5 text-white/80"
-                          style={{ fontSize: 10.5 }}
+                          style={{ fontSize: 10 }}
                         >
                           Optional — it records what you saved.
                         </Text>
@@ -556,181 +803,28 @@ export function TicketScreen({
                   <>
                     <Text
                       className="font-extrabold text-white"
-                      style={{ fontSize: 16 }}
+                      style={{ fontSize: 15 }}
                     >
                       Ticket cancelled
                     </Text>
-                    <Text className="text-white/85" style={{ fontSize: 12 }}>
+                    <Text className="text-white/85" style={{ fontSize: 11.5 }}>
                       Start a fresh one from Rewards whenever you&apos;re back.
                     </Text>
                   </>
                 )}
               </View>
-            ) : (
-              <>
-                {ticket.check_code ? (
-                  <View
-                    className="mt-3.5 self-center rounded-2xl bg-white"
-                    style={{ padding: 12 }}
-                  >
-                    <QRCode
-                      value={checkUrlForCode(ticket.check_code)}
-                      size={qrSize}
-                      color="#2b1233"
-                      backgroundColor="#ffffff"
-                    />
-                  </View>
-                ) : null}
-                <View
-                  accessibilityLiveRegion="polite"
-                  className="mt-2.5 flex-row items-center justify-center"
-                  style={{ gap: 6 }}
-                >
-                  {scanned && ticket.status === 'open' ? (
-                    <>
-                      <BadgeCheck size={14} color="#fff" />
-                      <Text className="text-white/90" style={{ fontSize: 11.5 }}>
-                        Verified by {placeName}
-                      </Text>
-                    </>
-                  ) : (
-                    <Text
-                      className="text-center text-white/90"
-                      style={{ fontSize: 11.5, maxWidth: 260 }}
-                    >
-                      {statusLine(ticket)}
-                    </Text>
-                  )}
-                </View>
-                {billed ? (
-                  <View
-                    className="mt-3 items-center rounded-xl bg-white/20"
-                    style={{ paddingHorizontal: 14, paddingVertical: 10 }}
-                  >
-                    <Text
-                      className="font-bold uppercase text-white/90"
-                      style={{ fontSize: 10, letterSpacing: 1.4 }}
-                    >
-                      {ticket.discount_percent ?? 0}% off applied
-                    </Text>
-                    <Text
-                      className="mt-0.5 font-extrabold text-white"
-                      style={{ fontSize: 22 }}
-                    >
-                      {formatCurrency(
-                        Math.max(
-                          0,
-                          (ticket.total_cents ?? 0) -
-                            (ticket.discount_cents ?? 0),
-                        ),
-                      )}
-                    </Text>
-                    <Text className="mt-0.5 text-white/90" style={{ fontSize: 11 }}>
-                      to pay at the table
-                      {ticket.discount_cents
-                        ? ` — you save ${formatCurrency(ticket.discount_cents)}`
-                        : ''}
-                    </Text>
-                  </View>
-                ) : null}
-              </>
-            )}
-          </LinearGradient>
-        </View>
-
-        {/* ── Tasks checklist ── */}
-        {!cancelled ? (
-          <View className="overflow-hidden rounded-2xl border border-border bg-card">
-            <View className="flex-row items-baseline justify-between px-3.5 pt-3 pb-1">
-              <Text className="font-bold text-foreground" style={{ fontSize: 13 }}>
-                Your tasks
-              </Text>
-              <Text className="text-muted-foreground" style={{ fontSize: 10.5 }}>
-                {priced ? 'Optional — each one pays' : 'Optional'}
-              </Text>
-            </View>
-            <View className="px-2.5 pb-2.5" style={{ gap: 4 }}>
-              {storyOnTicket ? (
-                <TaskRow
-                  Icon={Camera}
-                  title="Post an Instagram story"
-                  hint="Tag the place — then check it here"
-                  reward={pct(rate('story'))}
-                  state={
-                    acting === 'story'
-                      ? 'busy'
-                      : taskStateFor(ticket.story_status)
-                  }
-                  onDo={live ? () => void runProof('story') : undefined}
-                />
-              ) : null}
-              <TaskRow
-                Icon={Star}
-                title="Leave a Google review"
-                hint={firstVisitHint}
-                reward={pct(rate('review'))}
-                state={
-                  acting === 'review'
-                    ? 'busy'
-                    : taskStateFor(ticket.review_status)
-                }
-                onDo={live ? () => void runProof('review') : undefined}
-              />
-              <TaskRow
-                Icon={UtensilsCrossed}
-                title="Rate it on Mesita"
-                hint="Food · service · ambiance — feeds its rating"
-                reward="★"
-                state={reviewDone ? 'done' : 'todo'}
-                onDo={() => setReviewOpen(true)}
-              />
-            </View>
-            {actionError ? (
-              <Text
-                className="mx-3.5 mb-3 rounded-lg bg-destructive/10 px-3 py-2 text-destructive"
-                style={{ fontSize: 12 }}
-              >
-                {actionError}
-              </Text>
-            ) : null}
+            </LinearGradient>
           </View>
         ) : null}
 
-        {/* ── Reward strip — the ceiling, never the reason (MESITA-860).
-            Only while the discount is still open: once the bill locks a
-            percentage the pass states it, and quoting the ceiling next to
-            the real number reads as a contradiction (MESITA-879). ── */}
-        {live && !billed ? (
-          <View className="rounded-2xl border border-border bg-card px-3.5 py-2.5">
-            {priced && ceiling > 0 ? (
-              <Text style={{ fontSize: 12, lineHeight: 17 }}>
-                <Text className="font-bold text-foreground">
-                  Up to {ceiling}% — Discount for You.
-                </Text>{' '}
-                <Text className="text-muted-foreground">
-                  You always keep your single best reward — never added
-                  together.
-                </Text>
-              </Text>
-            ) : (
-              <Text
-                className="text-muted-foreground"
-                style={{ fontSize: 12, lineHeight: 16 }}
-              >
-                Your discount is set by the place and applied at the table.
-              </Text>
-            )}
-          </View>
-        ) : null}
-
-        {/* ── Housekeeping — tight footer, no dead vertical (MESITA-879) ── */}
+        {/* 7 · Report */}
         {ticket.status === 'open' ? (
           <Pressable
             onPress={() => void cancel()}
             disabled={cancelling}
             accessibilityRole="button"
             className="flex-row items-center justify-center"
-            style={{ minHeight: 40, gap: 6 }}
+            style={{ minHeight: 36, gap: 6 }}
           >
             {cancelling ? <ActivityIndicator size="small" /> : null}
             <Text
@@ -742,44 +836,39 @@ export function TicketScreen({
           </Pressable>
         ) : null}
 
-        {/* The report button (v3c, MESITA-851) — live for the WHOLE ticket
-            and after it closes. It must READ as an action: an outlined pill
-            that names what it does (web parity), not a muted caption. Sizes
-            track the web pill exactly — min-h-11 (44, also the iOS touch
-            floor), 13px label, max-w-[17rem] hint. */}
         {!cancelled ? (
           reported ? (
             <View
               className="flex-row items-center self-center rounded-full border border-border bg-muted/40 px-4"
-              style={{ minHeight: 44, gap: 8 }}
+              style={{ minHeight: 40, gap: 8 }}
             >
               <Flag size={14} color={COLORS.mutedForeground} />
               <Text
                 className="font-semibold text-muted-foreground"
-                style={{ fontSize: 12.5 }}
+                style={{ fontSize: 12 }}
               >
                 Reported — Mesita is looking at it
               </Text>
             </View>
           ) : (
-            <View className="items-center" style={{ gap: 8 }}>
+            <View className="items-center" style={{ gap: 6 }}>
               <Pressable
-                onPress={() => setReportOpen(true)}
+                onPress={() => setSheet('report')}
                 accessibilityRole="button"
                 className="flex-row items-center rounded-full border border-border bg-card px-4 active:scale-[0.99]"
-                style={{ minHeight: 44, gap: 8 }}
+                style={{ minHeight: 40, gap: 8 }}
               >
                 <Flag size={14} color={COLORS.destructive} />
                 <Text
                   className="font-bold text-foreground"
-                  style={{ fontSize: 13 }}
+                  style={{ fontSize: 12.5 }}
                 >
                   Report a problem
                 </Text>
               </Pressable>
               <Text
                 className="text-center text-muted-foreground"
-                style={{ fontSize: 11, lineHeight: 15, maxWidth: 272 }}
+                style={{ fontSize: 10, lineHeight: 14, maxWidth: 272 }}
               >
                 Discount not honored, wrong total, anything off — a real person
                 at Mesita reads it.
@@ -790,10 +879,10 @@ export function TicketScreen({
       </ScrollView>
 
       <FullScreenSheet
-        visible={reviewOpen}
-        onClose={() => setReviewOpen(false)}
+        visible={sheet === 'mesita'}
+        onClose={() => setSheet(null)}
         title={`Rate ${placeName}`}
-        subtitle="Feeds the place's Mesita rating"
+        subtitle="On Mesita · feeds its rating"
       >
         <ScrollView
           className="flex-1"
@@ -805,14 +894,29 @@ export function TicketScreen({
             onChange={setReviewDraft}
             onSubmit={() => void submitMesitaReview()}
             busy={reviewBusy}
+            error={reviewError}
           />
         </ScrollView>
       </FullScreenSheet>
 
-      {/* Report sheet — pick a reason, add words if you want. */}
+      <GoogleReviewSheet
+        open={sheet === 'google'}
+        onClose={() => setSheet(null)}
+        placeName={placeName}
+        mapsUrl={mapsUrl}
+        onConfirm={confirmGoogle}
+      />
+
+      <InstagramStorySheet
+        open={sheet === 'instagram'}
+        onClose={() => setSheet(null)}
+        placeName={placeName}
+        onConfirm={confirmStory}
+      />
+
       <FullScreenSheet
-        visible={reportOpen}
-        onClose={() => setReportOpen(false)}
+        visible={sheet === 'report'}
+        onClose={() => setSheet(null)}
         title={`What went wrong at ${placeName}?`}
         subtitle="A real person at Mesita reads every report"
       >
