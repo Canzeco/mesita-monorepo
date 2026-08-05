@@ -4,6 +4,7 @@ import { PageErrorState } from "@/components/business/PageErrorState";
 import { PerformanceClient } from "@/components/business/stats/PerformanceClient";
 import { EmptyState } from "@/components/shared";
 import { createServerSupabase } from "@/lib/supabase/server";
+import { getPlacePerformance } from "@/lib/api/performance";
 import { getUnitOverview } from "@/lib/api/unit";
 import { errMsg } from "@/lib/utils";
 
@@ -21,30 +22,30 @@ export default async function PerformancePage({
   } = await supabase.auth.getUser();
   if (!user) redirect(`/?next=/unit/${id}/performance`);
 
-  let overview: Awaited<ReturnType<typeof getUnitOverview>> | null = null;
-  let overviewError: string | null = null;
-  try {
-    overview = await getUnitOverview(supabase, id, 0);
-  } catch (err) {
-    overviewError = errMsg(err, "Could not load your places.");
-  }
+  // Overview + performance in parallel — the route id IS the project id, so
+  // we don't need to wait on the overview to know what to fetch.
+  const [overviewSettled, perfSettled] = await Promise.allSettled([
+    getUnitOverview(supabase, id, 0),
+    getPlacePerformance(supabase, id),
+  ]);
 
-  if (overviewError) {
+  if (overviewSettled.status === "rejected") {
     return (
       <PageErrorState
         heading="Couldn't load stats"
-        message={overviewError}
+        message={errMsg(overviewSettled.reason, "Could not load your places.")}
         retryHref={`/unit/${id}/performance`}
       />
     );
   }
 
-  const active = overview?.active?.place ?? overview?.places[0] ?? null;
+  const overview = overviewSettled.value;
+  const active = overview.active?.place ?? overview.places[0] ?? null;
 
   if (!active) {
     return (
       <div className="flex-1 overflow-y-auto">
-        <div className="mx-auto max-w-lg px-4 pt-1 pb-6">
+        <div className="mx-auto max-w-6xl px-4 pt-1 pb-6">
           <EmptyState
             icon={<BarChart3 className="text-muted-foreground h-5 w-5" />}
             title="No place yet"
@@ -55,10 +56,28 @@ export default async function PerformancePage({
     );
   }
 
+  const initialData =
+    perfSettled.status === "fulfilled" && perfSettled.value &&
+      // Only hand the payload through when it matches the place we render —
+      // a stale/mismatched id would paint the wrong numbers.
+      active.id === id
+      ? perfSettled.value
+      : null;
+  const initialError =
+    initialData
+      ? null
+      : perfSettled.status === "rejected"
+      ? errMsg(perfSettled.reason, "Could not load performance.")
+      : null;
+
   return (
     <div className="flex-1 overflow-y-auto">
-      <div className="mx-auto flex max-w-lg flex-col gap-4 px-4 pt-1 pb-6">
-        <PerformanceClient projectId={active.id} />
+      <div className="mx-auto flex max-w-6xl flex-col gap-4 px-4 pt-1 pb-6">
+        <PerformanceClient
+          projectId={active.id}
+          initialData={initialData}
+          initialError={initialError}
+        />
       </div>
     </div>
   );

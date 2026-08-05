@@ -12,6 +12,12 @@
 //             This is the output the discounts bought.
 //   feed      the per-place activity stream, newest first.
 //
+// AGGREGATES ARE EXACT (same class of fix as admin-web-get-place-activity).
+// Funnel / content counts run server-side with `{ count: "exact", head: true }`.
+// Money + guest/repeat/by-action read only the narrow columns of this place's
+// closed tickets (paginated past PostgREST's 1000-row page). The feed is a
+// capped recent sample and must never be the source of the headline numbers.
+//
 // TWO HARD CONSTRAINTS, both load-bearing:
 //
 //   1. Every read is scoped to ONE place the caller is a member of
@@ -31,6 +37,9 @@
 // self-attested (MESITA-849) and no URL is ever captured, so the counts are
 // real and the artefacts don't exist.
 //
+// Closed = status "revealed" (v3b: the close is the unconditional signal).
+// Admin Performance uses paid_at for its own tab — different surface, kept.
+//
 // Body:     { placeId: string, feedLimit?: number, reviewLimit?: number }
 // Response: { ok: true, summary, content, feed }
 
@@ -48,15 +57,27 @@ import {
   readEFEnv,
   requireMembership,
 } from "../_shared/auth.ts";
+import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 
 const DEFAULT_FEED_LIMIT = 40;
 const MAX_FEED_LIMIT = 100;
 const DEFAULT_REVIEW_LIMIT = 20;
 const MAX_REVIEW_LIMIT = 50;
+const CLOSED_PAGE = 1000;
+// Pull enough recent ticket rows to seed the activity feed without pretending
+// they are the whole history.
+const FEED_TICKET_PAGE = 80;
 
 // A ticket counts as HONORED once it closed — v3b made the close the single
 // unconditional signal (MESITA-850), so this matches what activation records.
 const CLOSED_STATUS = "revealed";
+
+const ATTESTED_STATUSES = [
+  "self_verified",
+  "ai_verified",
+  "staff_verified",
+  "waiter_verified",
+] as const;
 
 type Body = {
   placeId?: string;
@@ -65,13 +86,11 @@ type Body = {
   reviewLimit?: number;
 };
 
-type TicketRow = {
+type ClosedTicketRow = {
   id: string;
   consumer_id: string;
-  status: string;
   story_status: string | null;
   review_status: string | null;
-  first_scanned_at: string | null;
   check_subtotal_cents: number | null;
   total_cents: number | null;
   discount_cents: number | null;
@@ -80,7 +99,21 @@ type TicketRow = {
   currency: string | null;
   created_at: string;
   revealed_at: string | null;
+  first_scanned_at: string | null;
+};
+
+type FeedTicketRow = {
+  id: string;
+  status: string;
+  first_scanned_at: string | null;
+  created_at: string;
+  revealed_at: string | null;
   cancelled_at: string | null;
+  check_subtotal_cents: number | null;
+  total_cents: number | null;
+  discount_cents: number | null;
+  discount_percent: number | null;
+  bill_source: string | null;
 };
 
 // Mirrors _shared/rewards-config isActionVerified — an action counts once the
@@ -90,6 +123,34 @@ function isAttested(status: string | null): boolean {
     status === "ai_verified" ||
     status === "staff_verified" ||
     status === "waiter_verified";
+}
+
+/** Drain every closed ticket for this place (narrow columns only). */
+async function fetchAllClosedTickets(
+  admin: SupabaseClient,
+  projectId: string,
+): Promise<{ ok: true; rows: ClosedTicketRow[] } | { ok: false; error: string }> {
+  const rows: ClosedTicketRow[] = [];
+  let from = 0;
+  for (;;) {
+    const { data, error } = await admin
+      .from("tickets")
+      .select(
+        "id, consumer_id, story_status, review_status, " +
+          "check_subtotal_cents, total_cents, discount_cents, discount_percent, " +
+          "bill_source, currency, created_at, revealed_at, first_scanned_at",
+      )
+      .eq("project_id", projectId)
+      .eq("status", CLOSED_STATUS)
+      .order("created_at", { ascending: false })
+      .range(from, from + CLOSED_PAGE - 1);
+    if (error) return { ok: false, error: error.message };
+    const page = (data ?? []) as unknown as ClosedTicketRow[];
+    rows.push(...page);
+    if (page.length < CLOSED_PAGE) break;
+    from += CLOSED_PAGE;
+  }
+  return { ok: true, rows };
 }
 
 Deno.serve(async (req) => {
@@ -123,18 +184,59 @@ Deno.serve(async (req) => {
   const memberRes = await requireMembership(admin, authRes.user, projectId);
   if (!memberRes.ok) return memberRes.response;
 
-  // Every source is filtered on project_id — constraint 1, enforced per query
-  // rather than trusted to a shared helper.
-  const [ticketsRes, reviewsRes, savesRes, resvRes] = await Promise.all([
+  // Exact counts + capped lists in parallel. Closed-ticket money/guest math
+  // is a second wave so we don't hold the count queries behind pagination.
+  const [
+    savedCountRes,
+    ticketsCountRes,
+    visitsCountRes,
+    honoredCountRes,
+    cancelledCountRes,
+    storiesCountRes,
+    googleReviewsCountRes,
+    mesitaReviewsCountRes,
+    reviewsRes,
+    savesFeedRes,
+    ticketsFeedRes,
+    resvRes,
+  ] = await Promise.all([
+    admin
+      .from("saved_places")
+      .select("id", { count: "exact", head: true })
+      .eq("project_id", projectId),
     admin
       .from("tickets")
-      .select(
-        "id, consumer_id, status, story_status, review_status, first_scanned_at, " +
-          "check_subtotal_cents, total_cents, discount_cents, discount_percent, " +
-          "bill_source, currency, created_at, revealed_at, cancelled_at",
-      )
+      .select("id", { count: "exact", head: true })
+      .eq("project_id", projectId),
+    admin
+      .from("tickets")
+      .select("id", { count: "exact", head: true })
       .eq("project_id", projectId)
-      .order("created_at", { ascending: false }),
+      .not("first_scanned_at", "is", null),
+    admin
+      .from("tickets")
+      .select("id", { count: "exact", head: true })
+      .eq("project_id", projectId)
+      .eq("status", CLOSED_STATUS),
+    admin
+      .from("tickets")
+      .select("id", { count: "exact", head: true })
+      .eq("project_id", projectId)
+      .eq("status", "cancelled"),
+    admin
+      .from("tickets")
+      .select("id", { count: "exact", head: true })
+      .eq("project_id", projectId)
+      .in("story_status", [...ATTESTED_STATUSES]),
+    admin
+      .from("tickets")
+      .select("id", { count: "exact", head: true })
+      .eq("project_id", projectId)
+      .in("review_status", [...ATTESTED_STATUSES]),
+    admin
+      .from("ticket_reviews")
+      .select("id", { count: "exact", head: true })
+      .eq("project_id", projectId),
     admin
       .from("ticket_reviews")
       .select(
@@ -151,6 +253,15 @@ Deno.serve(async (req) => {
       .order("created_at", { ascending: false })
       .limit(MAX_FEED_LIMIT),
     admin
+      .from("tickets")
+      .select(
+        "id, status, first_scanned_at, created_at, revealed_at, cancelled_at, " +
+          "check_subtotal_cents, total_cents, discount_cents, discount_percent, bill_source",
+      )
+      .eq("project_id", projectId)
+      .order("created_at", { ascending: false })
+      .limit(FEED_TICKET_PAGE),
+    admin
       .from("reservations")
       .select("id, status, party_size, reserved_at, created_at")
       .eq("project_id", projectId)
@@ -159,16 +270,27 @@ Deno.serve(async (req) => {
   ]);
 
   for (const [label, r] of [
-    ["tickets", ticketsRes],
+    ["saved_count", savedCountRes],
+    ["tickets_count", ticketsCountRes],
+    ["visits_count", visitsCountRes],
+    ["honored_count", honoredCountRes],
+    ["cancelled_count", cancelledCountRes],
+    ["stories_count", storiesCountRes],
+    ["google_reviews_count", googleReviewsCountRes],
+    ["mesita_reviews_count", mesitaReviewsCountRes],
     ["ticket_reviews", reviewsRes],
-    ["saved_places", savesRes],
+    ["saved_places", savesFeedRes],
+    ["tickets_feed", ticketsFeedRes],
     ["reservations", resvRes],
   ] as const) {
     if (r.error) return json({ ok: false, error: `${label}: ${r.error.message}` }, 500);
   }
 
-  const tickets = (ticketsRes.data ?? []) as unknown as TicketRow[];
-  const closed = tickets.filter((t) => t.status === CLOSED_STATUS);
+  const closedRes = await fetchAllClosedTickets(admin, projectId);
+  if (!closedRes.ok) {
+    return json({ ok: false, error: `closed_tickets: ${closedRes.error}` }, 500);
+  }
+  const closed = closedRes.rows;
 
   // Influenced spend = what guests actually spent on visits this program
   // closed. Only tickets with an amount on record contribute; v3b made the
@@ -200,11 +322,11 @@ Deno.serve(async (req) => {
 
   const summary = {
     // The funnel, starting where real data starts (see the header note).
-    saved: (savesRes.data ?? []).length,
-    ticketsOpened: tickets.length,
-    visits: tickets.filter((t) => t.first_scanned_at != null).length,
-    honored: closed.length,
-    cancelled: tickets.filter((t) => t.status === "cancelled").length,
+    saved: savedCountRes.count ?? 0,
+    ticketsOpened: ticketsCountRes.count ?? 0,
+    visits: visitsCountRes.count ?? 0,
+    honored: honoredCountRes.count ?? 0,
+    cancelled: cancelledCountRes.count ?? 0,
     guests: visitsByConsumer.size,
     repeatGuests,
     influencedCents,
@@ -217,7 +339,8 @@ Deno.serve(async (req) => {
     avgTicketCents: billedCount > 0 ? Math.round(influencedCents / billedCount) : null,
     // "Redemption by segment", reported by ACTION — never by class.
     byAction: {
-      welcome: closed.filter((t) => (visitsByConsumer.get(t.consumer_id) ?? 0) === 1).length,
+      welcome: closed.filter((t) => (visitsByConsumer.get(t.consumer_id) ?? 0) === 1)
+        .length,
       story: closed.filter((t) => isAttested(t.story_status)).length,
       review: closed.filter((t) => isAttested(t.review_status)).length,
     },
@@ -250,10 +373,12 @@ Deno.serve(async (req) => {
       // First name only: enough to read as a person, never an identity.
       guestFirstName: r.consumer?.first_name ?? null,
     })),
+    // Exact totals — the listed reviews stay capped for the UI.
+    mesitaReviewCount: mesitaReviewsCountRes.count ?? 0,
     // Attested counts. No artefact exists to link — these actions are
     // self-declared and no URL is captured (MESITA-849).
-    storiesPosted: tickets.filter((t) => isAttested(t.story_status)).length,
-    googleReviews: tickets.filter((t) => isAttested(t.review_status)).length,
+    storiesPosted: storiesCountRes.count ?? 0,
+    googleReviews: googleReviewsCountRes.count ?? 0,
   };
 
   // The feed — the same event vocabulary as the admin monitor, scoped to this
@@ -268,7 +393,7 @@ Deno.serve(async (req) => {
   };
   const feed: FeedItem[] = [];
 
-  for (const t of tickets) {
+  for (const t of (ticketsFeedRes.data ?? []) as unknown as FeedTicketRow[]) {
     feed.push({
       id: `ticket_created:${t.id}`,
       type: "rewards.ticket_created",
@@ -297,7 +422,7 @@ Deno.serve(async (req) => {
       });
     }
   }
-  for (const s of (savesRes.data ?? []) as Array<{ id: string; created_at: string }>) {
+  for (const s of (savesFeedRes.data ?? []) as Array<{ id: string; created_at: string }>) {
     feed.push({
       id: `saved:${s.id}`,
       type: "consumer.place_saved",
