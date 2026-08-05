@@ -92,9 +92,9 @@ const TESTING_NAV: NavItem[] = [
 const SIDEBAR_SECTIONS = [
   { label: "Account", items: ACCOUNT_NAV },
   { label: "Alerts", items: ALERTS_NAV },
+  { label: "Manage", items: MANAGE_NAV },
   { label: "Configs", items: CONFIGS_NAV },
   { label: "Testing", items: TESTING_NAV },
-  { label: "Manage", items: MANAGE_NAV },
 ] as const;
 
 function NavLink({
