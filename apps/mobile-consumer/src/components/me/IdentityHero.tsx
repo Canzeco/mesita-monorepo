@@ -21,16 +21,16 @@ const CLASS_LETTER: Record<string, string> = {
 
 function classBadgeColors(classKey: string): readonly [string, string] {
   if (classKey === 'aura') return ['#fde68a', '#fb923c'] as const;
-  if (classKey === 'influencer') return ['#bae6fd', '#38bdf8'] as const;
-  if (classKey === 'premium') return ['#ddd6fe', '#c084fc'] as const;
-  return ['rgba(251,43,123,0.85)', 'rgba(255,90,171,0.85)'] as const;
+  if (classKey === 'influencer') return ['#fecaca', '#ef4444'] as const;
+  if (classKey === 'premium') return ['#bfdbfe', '#2563eb'] as const;
+  return ['#e5e7eb', '#9ca3af'] as const;
 }
 
 function classBadgeText(classKey: string): string {
-  if (classKey === 'standard') return 'text-white';
   if (classKey === 'aura') return 'text-amber-950';
-  if (classKey === 'influencer') return 'text-sky-950';
-  return 'text-violet-950';
+  if (classKey === 'influencer') return 'text-red-950';
+  if (classKey === 'premium') return 'text-blue-950';
+  return 'text-neutral-900';
 }
 
 export function IdentityHeroSkeleton() {
@@ -94,14 +94,14 @@ export function IdentityHero({
     classKey === 'aura'
       ? GRADIENTS.gold
       : classKey === 'influencer'
-        ? GRADIENTS.sky
+        ? GRADIENTS.influencer
         : GRADIENTS.premium;
   const elevatedWash =
     classKey === 'aura'
       ? (['rgba(245,204,88,0.18)', 'rgba(235,136,31,0.10)'] as const)
       : classKey === 'influencer'
-        ? (['rgba(56,189,248,0.16)', 'rgba(2,132,199,0.10)'] as const)
-        : (['rgba(139,108,232,0.16)', 'rgba(140,204,255,0.12)'] as const);
+        ? (['rgba(239,68,68,0.16)', 'rgba(185,28,28,0.10)'] as const)
+        : (['rgba(37,99,235,0.16)', 'rgba(96,165,250,0.12)'] as const);
 
   const whisper = [sexLabel, age != null ? String(age) : null]
     .filter(Boolean)

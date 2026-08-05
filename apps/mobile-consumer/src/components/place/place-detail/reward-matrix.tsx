@@ -42,7 +42,7 @@ export function RewardStep({
           accent ? 'bg-violet-500/10' : 'bg-pink-500/10'
         }`}
       >
-        <Icon color={accent ? '#8b6ce8' : '#fb2b7b'} size={14} strokeWidth={2} />
+        <Icon color={accent ? '#2563eb' : '#fb2b7b'} size={14} strokeWidth={2} />
         <View
           className={`absolute -top-1 -right-1 size-4 items-center justify-center rounded-full ${
             done ? 'bg-emerald-500' : 'bg-foreground'

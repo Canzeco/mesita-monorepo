@@ -39,6 +39,7 @@ export function WaysToClimb({
     {
       key: 'standard',
       icon: CLASS_ICONS.standard,
+      iconColors: GRADIENTS.free,
       title: 'Standard',
       via: 'Free',
       discountLevel: 'LOW',
@@ -50,7 +51,7 @@ export function WaysToClimb({
     {
       key: 'influencer',
       icon: CLASS_ICONS.influencer,
-      iconColors: GRADIENTS.sky,
+      iconColors: GRADIENTS.influencer,
       title: 'Influencer',
       via: 'Instagram',
       accent: true,
@@ -64,6 +65,7 @@ export function WaysToClimb({
     {
       key: 'premium',
       icon: CLASS_ICONS.premium,
+      iconColors: GRADIENTS.premium,
       title: 'Premium',
       via: 'Subscription',
       accent: true,

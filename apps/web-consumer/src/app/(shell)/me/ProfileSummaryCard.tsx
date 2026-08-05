@@ -37,10 +37,10 @@ function ClassBadge({
     classKey === "aura"
       ? "bg-gradient-to-br from-amber-200 to-orange-300 text-amber-950"
       : classKey === "influencer"
-        ? "bg-gradient-to-br from-sky-200 to-sky-400 text-sky-950"
+        ? "bg-gradient-to-br from-red-200 to-red-400 text-red-950"
         : classKey === "premium"
-          ? "bg-gradient-to-br from-violet-200 to-fuchsia-300 text-violet-950"
-          : "bg-gradient-to-br from-primary/80 to-secondary/80 text-white";
+          ? "bg-gradient-to-br from-blue-200 to-blue-400 text-blue-950"
+          : "bg-gradient-to-br from-neutral-200 to-neutral-400 text-neutral-900";
 
   return (
     <div
@@ -116,7 +116,7 @@ export function ProfileSummaryCard({
     key === "aura"
       ? "bg-tier-gold"
       : key === "influencer"
-        ? "bg-sky-600"
+        ? "bg-tier-influencer"
         : "bg-tier-premium";
 
   if (loading) {

@@ -1,8 +1,9 @@
 import {
+  CreditCard,
   Crown,
-  Gem,
-  Radar,
-  UserRound,
+  Megaphone,
+  Pyramid,
+  Smile,
   type LucideIcon,
 } from "lucide-react";
 
@@ -150,15 +151,18 @@ export const INFLUENCER_FOLLOWER_THRESHOLD = CLASSES.find(
   (c) => c.id === "influencer",
 )!.followerThreshold;
 
-// Canonical class icon set (MESITA-921): Standard = guest, Influencer =
-// reach radar, Premium = gem, Aura = crown (invite-only apex). Use these
-// everywhere a class is iconified so surfaces agree.
+// Canonical class icon set (MESITA-929): one mark + one color per class.
+// Standard = smile (gray), Influencer = megaphone (red), Premium = card
+// (blue), Aura = crown (yellow/gold). The Classes sheet mark is the pyramid.
 export const CLASS_ICONS: Record<Class, LucideIcon> = {
-  standard: UserRound,
-  premium: Gem,
-  influencer: Radar,
+  standard: Smile,
+  premium: CreditCard,
+  influencer: Megaphone,
   aura: Crown,
 };
+
+/** Sheet / section mark for the Classes surface (not a membership class). */
+export const CLASS_MARK_ICON: LucideIcon = Pyramid;
 
 // Canonical bg + text class per class. Used wherever a class needs the
 // brand-color chip treatment (avatars, pills, hero rows). Compose with
@@ -170,11 +174,8 @@ export function classBadgeClass(classKey: Class): string {
     case "premium":
       return "bg-tier-premium text-white";
     case "influencer":
-      // Reach reads digital — sky, distinct from Premium's violet.
-      return "bg-sky-600 text-white";
+      return "bg-tier-influencer text-white";
     case "aura":
-      // Aura is the top of the ladder — it inherits the gold treatment
-      // (existing bg-tier-gold design token).
       return "bg-tier-gold text-white";
   }
 }

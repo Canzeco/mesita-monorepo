@@ -85,9 +85,9 @@ export function ClimbCard({ data }: { data: ClimbCardData }) {
       style={{
         borderRadius: 16,
         borderWidth: 1,
-        borderColor: data.accent ? 'rgba(139,108,232,0.3)' : '#ebd9db',
+        borderColor: data.accent ? 'rgba(37,99,235,0.25)' : '#ebd9db',
         backgroundColor: data.accent
-          ? 'rgba(139,108,232,0.03)'
+          ? 'rgba(37,99,235,0.03)'
           : '#ffffff',
         padding: 20,
       }}

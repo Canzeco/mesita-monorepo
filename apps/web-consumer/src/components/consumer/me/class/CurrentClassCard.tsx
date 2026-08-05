@@ -14,7 +14,7 @@ export function CurrentClassCard() {
   const meta = CLASSES.find((c) => c.id === key)!;
   const brand = meta.label;
   const isElevated = isElevatedClass(key);
-  // The class wears its canonical icon (smile / card / crown); the origin
+  // The class wears its canonical icon (smile / megaphone / card / crown); the origin
   // only sets the "via" line.
   const Icon = CLASS_ICONS[key];
   const via = !isElevated
