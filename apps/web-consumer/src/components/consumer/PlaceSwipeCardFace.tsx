@@ -63,6 +63,8 @@ export function PlaceSwipeCardFace({
     [place.name, getPhotoLayoutMode, fieldsHeight, priority, reportPhotoSize],
   );
 
+  const scoreLabel = formatLaneScore(place.score);
+
   return (
     <div
       ref={cardRef}
@@ -112,8 +114,24 @@ export function PlaceSwipeCardFace({
       ) : (
         <PhotoPlaceholder name={place.name} />
       )}
+
+      {/* Top-left lane score — symmetrical with CarouselSlideCounter (top-right). */}
+      {scoreLabel ? (
+        <div
+          className="pointer-events-none absolute top-3 left-3 z-10 rounded-full bg-black/60 px-2 py-0.5 text-[10px] font-semibold text-white shadow-[0_2px_8px_rgba(0,0,0,0.35)] backdrop-blur"
+          aria-label={`Score ${scoreLabel}`}
+        >
+          {scoreLabel}
+        </div>
+      ) : null}
     </div>
   );
+}
+
+/** Lineup playground parity — three decimal places on the 0–1 lane score. */
+function formatLaneScore(score: number | null | undefined): string | null {
+  if (score == null || !Number.isFinite(score)) return null;
+  return score.toFixed(3);
 }
 
 function PhotoPlaceholder({ name }: { name: string }) {

@@ -86,6 +86,14 @@ export type Place = {
   opens_at?: string | null;
   distance_km?: number | null;
   zone?: string | null;
+  /**
+   * Winning-lane Lineup score (0–1) from `consumer-web-recommend-swipe`.
+   * Presentational only — the deck is already ordered by this; the swipe
+   * card surfaces it as a top-left pill mirrored with the photo counter.
+   */
+  score?: number | null;
+  /** Lane that produced `score` (`organic` | `inorganic`). */
+  lane?: "organic" | "inorganic" | null;
   /** Per-visit reward ceiling in the place's currency. */
   reward_cap_mxn?: number | null;
   /**
