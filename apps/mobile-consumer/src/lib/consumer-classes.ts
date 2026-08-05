@@ -4,10 +4,10 @@
 // presence class).
 
 import {
-  CreditCard,
-  Megaphone,
-  Smile,
-  Sparkles,
+  Crown,
+  Gem,
+  Radar,
+  UserRound,
   type LucideIcon,
 } from 'lucide-react-native';
 
@@ -55,15 +55,14 @@ export const INFLUENCER_FOLLOWER_THRESHOLD = CLASSES.find(
   (c) => c.id === 'influencer',
 )!.followerThreshold;
 
-// Canonical class icon set: Standard = the happy face, Premium = paying
-// (card), Influencer = the megaphone (digital reach), Aura = sparkles (the
-// invite-only presence class). Use these everywhere a class is iconified so
-// surfaces agree (mirrors web CLASS_ICONS).
+// Canonical class icon set (MESITA-921): Standard = guest, Influencer =
+// reach radar, Premium = gem, Aura = crown (invite-only apex). Mirrors
+// web CLASS_ICONS.
 export const CLASS_ICONS: Record<ClassId, LucideIcon> = {
-  standard: Smile,
-  premium: CreditCard,
-  influencer: Megaphone,
-  aura: Sparkles,
+  standard: UserRound,
+  premium: Gem,
+  influencer: Radar,
+  aura: Crown,
 };
 
 // Premium-perk gate: everything above Standard unlocks the same elevated perk
