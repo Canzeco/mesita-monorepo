@@ -54,7 +54,11 @@ export function PlaceDetailBody({
             <LocationBox place={place} />
             <HoursBox place={place} />
             <LinksBox place={place} />
-            <AboutBox text={place.long_description} name={place.name} />
+            <AboutBox
+              text={place.long_description}
+              textEs={place.long_description_es}
+              name={place.name}
+            />
             <TagsBox place={place} />
             <VerificationBox place={place} />
             <DatesBox place={place} />

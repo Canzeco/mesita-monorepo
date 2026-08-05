@@ -17,6 +17,9 @@ const COLUMNS: readonly string[] = [
   // Google Places displayName spine (MESITA-917) — Enricher-only; Mesita
   // display stays in `name` (empty ⇒ UI falls back to google_name).
   "google_name",
+  // Spanish About translation (MESITA-926). Canonical About is English
+  // `description`; this is the translation layer.
+  "description_es",
   "category",
   // Human-friendly category copy (emoji + natural-language label),
   // derived from category via place_categories.
