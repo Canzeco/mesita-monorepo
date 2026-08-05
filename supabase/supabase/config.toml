@@ -409,6 +409,11 @@ verify_jwt = true
 [functions.business-web-get-performance]
 verify_jwt = true
 
+# MESITA-892: Memo-backed next-promo suggestions on Performance (advisory;
+# never writes rates; never exposes consumer class).
+[functions.business-web-suggest-promo]
+verify_jwt = true
+
 # Ticket workflow — business-web-create-ticket retired by Tickets v2
 # (MESITA-806): guests create their own tickets (consumer-web-create-ticket).
 [functions.business-web-submit-ticket-bill]

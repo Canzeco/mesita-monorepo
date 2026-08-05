@@ -36,6 +36,7 @@ import {
 } from "lucide-react";
 
 import { EmptyState, Section } from "@/components/shared";
+import { PromoCopilot } from "@/components/business/stats/PromoCopilot";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import {
   getPlacePerformance,
@@ -302,6 +303,9 @@ export function PerformanceClient({
           <Pill Icon={Star} label="With a Google review" value={summary.byAction.review} />
         </div>
       </Section>
+
+      {/* Memo-backed next-promo advice (MESITA-892) — advisory only. */}
+      <PromoCopilot projectId={projectId} />
 
       {/* ── Band 2 · What the guests produced ───────────────────────── */}
       <Section
