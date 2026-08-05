@@ -17,9 +17,10 @@ import {
   phoneCountryFlag,
 } from "@/lib/utils";
 
-// ─── Me membership card (MESITA-932 / MESITA-935) ───────────────────────────
+// ─── Me membership card (MESITA-932 / MESITA-935 / MESITA-937) ──────────────
 // Centered photo + Class/IG badges, then five equal-height identity rows:
 // name·sex·age / 🇲🇽 phone / [icon] class / IG handle·followers / visits·saved.
+// Typography: Fraunces only on MESITA wordmark; all identity rows = Inter.
 
 const ROW_CLASS =
   "flex h-11 items-center justify-center gap-1.5 px-3 text-center";
@@ -194,7 +195,7 @@ export function ProfileSummaryCard({
     {
       key: "identity",
       content: (
-        <span className="font-display truncate text-[15px] font-bold tracking-tight">
+        <span className="truncate text-[15px] font-bold tracking-tight">
           {identityLine}
         </span>
       ),
@@ -208,7 +209,7 @@ export function ProfileSummaryCard({
               {flag}
             </span>
           ) : null}
-          <span className="truncate font-mono text-[13px] font-semibold tracking-wide tabular-nums">
+          <span className="truncate text-[13px] font-semibold tracking-wide tabular-nums">
             {phone || "—"}
           </span>
         </>
