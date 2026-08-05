@@ -647,12 +647,10 @@ export function PlaceSection({
                   label={c.label}
                   boxed
                   auto
+                  labelRight={val.trim() ? <OpenLink href={val} /> : undefined}
                 >
                   {val.trim() ? (
-                    <span className="flex min-w-0 items-center justify-between gap-2">
-                      <span className="min-w-0 truncate">{val}</span>
-                      <OpenLink href={val} />
-                    </span>
+                    <span className="min-w-0 truncate">{val}</span>
                   ) : (
                     "—"
                   )}
