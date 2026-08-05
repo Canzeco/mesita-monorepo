@@ -1,53 +1,35 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import {
   BadgeCheck,
   Braces,
   ChevronDown,
   Fingerprint,
-  Loader2,
   Mail,
   ShieldCheck,
 } from "lucide-react";
-import {
-  getPlaceEnrichment,
-  listTeam,
-  type AdminPlace,
-  type PlaceEnrichmentStatus,
-} from "../actions";
+import { listTeam, type AdminPlace } from "../actions";
 import { ManualPriorityCard } from "./ManualPriorityCard";
 import { ScoresCard } from "./ScoresCard";
 import { CopyIdButton, ReadField, SectionCard } from "../ui";
 import { formatAbsoluteUtc } from "@/lib/format";
+import { unitSectionHref } from "../nav";
 
-// Admin — the Mesita-internal tab (Pato, 2026-08-04). Split out of Settings so
-// Settings keeps only what a business may set for itself: Manual Priority (the
-// one live editable per-place score), Scores (place-side Lineup subscores),
-// Ownership (the partner verification WE grant + who has claimed the place),
-// Metadata (uid + live enriching status — keeps the 8s poll) and Embeddings.
+// Admin — the Mesita-internal tab (Pato, 2026-08-04). Manual Priority, Scores,
+// Ownership (partner verification WE grant + who claimed the place), Metadata
+// (UID + audit trail), Embeddings. Enriching status lives in unit chrome next
+// to Re-enrich (MESITA-896) — not here, not as a Place body card.
 // Nothing here is business-facing; see nav.ts for why the tab can't leak to
 // web-business.
 export function AdminSection({ place }: { place: AdminPlace }) {
-  const [enrichStatus, setEnrichStatus] = useState<PlaceEnrichmentStatus | null>(
-    null,
-  );
   // Owner emails (project_members role=owner) — null while loading.
   const [owners, setOwners] = useState<string[] | null>(null);
   const [ownersError, setOwnersError] = useState<string | null>(null);
 
   useEffect(() => {
     let alive = true;
-    const loadStatus = () => {
-      getPlaceEnrichment(place.id).then((r) => {
-        if (!alive) return;
-        setEnrichStatus(r.ok ? r.data.status : null);
-      });
-    };
-    loadStatus();
-    // decision: Pato (MESITA-466) — Meta shows live enriching status; poll
-    // while the tab is open (same cadence as UnitEditChrome).
-    const pollId = window.setInterval(loadStatus, 8_000);
     listTeam(place.id).then((r) => {
       if (!alive) return;
       if (!r.ok) {
@@ -64,7 +46,6 @@ export function AdminSection({ place }: { place: AdminPlace }) {
     });
     return () => {
       alive = false;
-      window.clearInterval(pollId);
     };
   }, [place.id]);
 
@@ -74,7 +55,7 @@ export function AdminSection({ place }: { place: AdminPlace }) {
       <ManualPriorityCard place={place} />
       <ScoresCard place={place} />
       <OwnershipCard place={place} owners={owners} ownersError={ownersError} />
-      <MetaCard place={place} enrichStatus={enrichStatus} />
+      <MetaCard place={place} />
       <EmbeddingsCard place={place} />
     </div>
   );
@@ -90,16 +71,16 @@ function OwnershipCard({
   ownersError: string | null;
 }) {
   const verified = place.listing_type === "partner";
+  const teamHref = unitSectionHref(place.id, "settings");
   return (
     <SectionCard
       icon={<ShieldCheck className="h-4 w-4" />}
       tint="emerald"
       title="Ownership"
-      subtitle="The partner verification Mesita grants & the accounts that claimed this place — add or remove members in Settings → Team."
+      subtitle="Partner verification Mesita grants, plus who claimed this place. Add or remove members in Settings → Team."
     >
-      {/* One boxed field per row — same filled-input language as the
-          editable cards. Verification is a single binary field; member
-          management lives in the Team card on Settings. */}
+      {/* Verification = Mesita grant (admin-only). Owners = read-only glance;
+          writes live on Settings → Team (MESITA-896). */}
       <div className="mt-5 grid gap-4">
         <ReadField label="Verification status" boxed>
           {verified ? (
@@ -133,6 +114,14 @@ function OwnershipCard({
             </ul>
           )}
         </ReadField>
+        <p className="text-muted-foreground text-xs">
+          <Link
+            href={teamHref}
+            className="text-foreground font-medium underline-offset-2 hover:underline"
+          >
+            Manage team in Settings
+          </Link>
+        </p>
       </div>
     </SectionCard>
   );
@@ -151,48 +140,10 @@ function lastUpdatedBy(place: AdminPlace): "ai" | "human" | null {
   return updated - enriched <= 90_000 ? "ai" : "human";
 }
 
-// place_research stage; falls back to the project's content_status when the
-// place has no research row yet (created but never enriched).
-function enrichmentBadge(
-  s: PlaceEnrichmentStatus | null,
-): { text: string; cls: string; spinning: boolean } {
-  const stage = s?.stage ?? null;
-  if (stage === "done")
-    return { text: "Enriched", cls: "bg-green-500/10 text-green-600", spinning: false };
-  if (stage === "failed")
-    return { text: "Failed", cls: "bg-red-500/10 text-red-600", spinning: false };
-  if (stage === "research" || stage === "analysis" || stage === "contents") {
-    return {
-      text: `Enriching… (${stage})`,
-      cls: "bg-blue-500/10 text-blue-600",
-      spinning: true,
-    };
-  }
-  switch (s?.content_status) {
-    case "ready":
-      return { text: "Enriched", cls: "bg-green-500/10 text-green-600", spinning: false };
-    case "generating":
-    case "queued":
-      return { text: "Enriching…", cls: "bg-blue-500/10 text-blue-600", spinning: true };
-    case "failed":
-      return { text: "Failed", cls: "bg-red-500/10 text-red-600", spinning: false };
-    default:
-      return { text: "Not enriched", cls: "bg-muted text-muted-foreground", spinning: false };
-  }
-}
-
-// Metadata — UID + audit trail + enriching status. Open by default
-// (MESITA-588) but still collapsible; stays a <details> so it can be tucked.
-function MetaCard({
-  place,
-  enrichStatus,
-}: {
-  place: AdminPlace;
-  enrichStatus: PlaceEnrichmentStatus | null;
-}) {
+// Metadata — UID + audit trail only (MESITA-896). Enriching status moved to
+// unit chrome beside Re-enrich. Open by default (MESITA-588); collapsible.
+function MetaCard({ place }: { place: AdminPlace }) {
   const by = lastUpdatedBy(place);
-  const badge = enrichmentBadge(enrichStatus);
-  const failed = enrichStatus?.stage === "failed";
   return (
     <details
       className="border-border bg-card shadow-card group rounded-2xl border"
@@ -207,7 +158,7 @@ function MetaCard({
             Metadata
           </h2>
           <p className="text-muted-foreground mt-0.5 text-xs leading-relaxed">
-            UID, audit trail & enriching status.
+            UID & audit trail.
           </p>
         </div>
         <ChevronDown
@@ -246,24 +197,6 @@ function MetaCard({
             )}
           </span>
         </ReadField>
-        <ReadField label="Enriching status" boxed>
-          <span
-            className={
-              "inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[11px] font-semibold " +
-              badge.cls
-            }
-          >
-            {badge.spinning && (
-              <Loader2 className="h-3 w-3 shrink-0 animate-spin" aria-hidden />
-            )}
-            {badge.text}
-          </span>
-        </ReadField>
-        {failed && enrichStatus?.error ? (
-          <p className="text-xs leading-snug text-red-600">
-            Last enrichment failed: {enrichStatus.error}
-          </p>
-        ) : null}
       </div>
     </details>
   );
