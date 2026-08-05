@@ -1,0 +1,11 @@
+-- LEDGER STAMP — no DDL. Deliberately empty.
+--
+-- The live singleton's schema_migrations carries version 20260805192844 with
+-- no file behind it. It is the server-side stamp the Supabase MCP wrote when
+-- applying scoring_config_default (MESITA-737). The real DDL lives in
+-- 20260805163237_scoring_config_default.sql (also stamped in
+-- schema_migrations). Filing the MCP stamp keeps `supabase db push` from
+-- refusing future migrations with "Remote migration versions not found in
+-- local migrations directory".
+
+-- (no statements)
