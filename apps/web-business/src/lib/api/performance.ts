@@ -10,6 +10,9 @@ import { invokeEF, withPlaceId } from "./_invoke";
 // `saved` is the first funnel stage because it is the first one with a real
 // row behind it — this database records no views or swipes, so the tab says
 // so rather than showing a fabricated zero.
+//
+// Headline counts are exact aggregates from the EF (not feed-derived). The
+// review list stays capped; `mesitaReviewCount` is the true total.
 
 export type PerformanceSummary = {
   saved: number;
@@ -43,6 +46,8 @@ export type PerformanceReview = {
 
 export type PerformanceContent = {
   mesitaReviews: PerformanceReview[];
+  /** Exact total of Mesita reviews for this place (list may be capped). */
+  mesitaReviewCount: number;
   storiesPosted: number;
   googleReviews: number;
 };
@@ -60,6 +65,15 @@ export type PlacePerformance = {
   feed: PerformanceFeedItem[];
 };
 
+function normalizePerformance(res: PlacePerformance): PlacePerformance {
+  // Older deployed EFs omit mesitaReviewCount — fall back to the list length
+  // so a stale function never blanks the pill.
+  if (typeof res.content.mesitaReviewCount !== "number") {
+    res.content.mesitaReviewCount = res.content.mesitaReviews.length;
+  }
+  return res;
+}
+
 export async function getPlacePerformance(
   client: SupabaseClient,
   projectId: string,
@@ -70,5 +84,5 @@ export async function getPlacePerformance(
     withPlaceId({ projectId }),
     "Could not load performance.",
   );
-  return res;
+  return normalizePerformance(res);
 }

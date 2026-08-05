@@ -99,16 +99,25 @@ function timeAgo(iso: string): string {
   return `${days}d ago`;
 }
 
-export function PerformanceClient({ projectId }: { projectId: string }) {
+export function PerformanceClient({
+  projectId,
+  initialData = null,
+  initialError = null,
+}: {
+  projectId: string;
+  /** SSR-prefetched payload — kills the client waterfall on first paint. */
+  initialData?: PlacePerformance | null;
+  initialError?: string | null;
+}) {
   const supabase = useBrowserSupabase();
-  const [data, setData] = useState<PlacePerformance | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [busy, setBusy] = useState(true);
+  const [data, setData] = useState<PlacePerformance | null>(initialData);
+  const [error, setError] = useState<string | null>(initialError);
+  const [busy, setBusy] = useState(!initialData && !initialError);
 
-  // The first load runs INSIDE the effect's async body so no setState happens
-  // synchronously during the effect (React 19's set-state-in-effect rule);
-  // `refresh` is a handler, where eager setBusy is fine.
+  // Only fetch on the client when the server didn't already hand us data
+  // (or when projectId changes after mount). Refresh stays a handler.
   useEffect(() => {
+    if (initialData || initialError) return;
     let active = true;
     (async () => {
       try {
@@ -126,7 +135,7 @@ export function PerformanceClient({ projectId }: { projectId: string }) {
     return () => {
       active = false;
     };
-  }, [supabase, projectId]);
+  }, [supabase, projectId, initialData, initialError]);
 
   const load = useCallback(async () => {
     setBusy(true);
@@ -169,6 +178,7 @@ export function PerformanceClient({ projectId }: { projectId: string }) {
   const { summary, content, feed } = data;
   const cur = summary.currency;
   const softAmounts = summary.consumerReportedCount > 0;
+  const mesitaTotal = content.mesitaReviewCount ?? content.mesitaReviews.length;
 
   return (
     <div className="flex flex-col gap-4">
@@ -227,7 +237,11 @@ export function PerformanceClient({ projectId }: { projectId: string }) {
             Icon={Footprints}
             label="Visits"
             value={String(summary.honored)}
-            meta={`${summary.ticketsOpened} tickets opened`}
+            meta={
+              summary.cancelled > 0
+                ? `${summary.ticketsOpened} opened · ${summary.cancelled} cancelled`
+                : `${summary.ticketsOpened} tickets opened`
+            }
           />
         </div>
 
@@ -265,7 +279,7 @@ export function PerformanceClient({ projectId }: { projectId: string }) {
           <Pill
             Icon={UtensilsCrossed}
             label="Mesita reviews"
-            value={content.mesitaReviews.length}
+            value={mesitaTotal}
           />
         </div>
         <p className="text-muted-foreground text-[11px] leading-snug">
