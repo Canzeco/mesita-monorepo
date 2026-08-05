@@ -1,9 +1,10 @@
 // Shared Enricher place field limits — mirrored in business-web-update-project and
 // the business Place editor. Surfaced read-only in admin-web-get-atlas-fields.
 //
-// `unit` drives the admin card's format: "chars" → "N chars", "count" → "Up to
-// N", "range" → "min–max". `min` is only set for range fields (today just
-// price_level); every other field's floor is implicitly 0/none.
+// `unit` drives the admin card's format: "chars" → "N chars", "words" → "N
+// words", "count" → "Up to N", "range" → "min–max". `min` is only set for range
+// fields (today just price_level); every other field's floor is implicitly
+// 0/none.
 
 export const ENRICH_FIELD_LIMITS = {
   placeName: { max: 80, unit: "chars", note: "Business Place editor" },
@@ -22,6 +23,14 @@ export const ENRICH_FIELD_LIMITS = {
     max: 7000,
     unit: "chars",
     note: "places.description as freshly written by an Enricher run, before any business-editor overwrite (7,000 = 1,000-word target × 7).",
+  },
+  // Place Synthesis blurb that OpenAI embeds (places.embedding_source_text) —
+  // NOT the human About. Enforced at word boundaries in place-embeddings.ts
+  // (never a mid-word char slice).
+  embeddingSourceText: {
+    max: 60,
+    unit: "words",
+    note: "places.embedding_source_text — Place Synthesis blurb for semantic search (On-Create / On-Update / lazy recommender). Hard 60-word ceiling, truncated on word boundaries.",
   },
   tagsPerPlace: {
     max: 20,

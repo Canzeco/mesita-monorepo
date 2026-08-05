@@ -17,11 +17,28 @@ import {
   vectorLiteral,
 } from "./embeddings-vector.ts";
 import { OPENAI_URL } from "./enrich-config.ts";
+import { ENRICH_FIELD_LIMITS } from "./enrich-field-limits.ts";
 
 const SYNTH_MODEL = "gpt-4o-mini";
 const EMBEDDING_MODEL = "text-embedding-3-small";
 const EMBEDDING_DIMS = 1536;
-const MAX_BLURB_CHARS = 420;
+/** Hard ceiling for Place Synthesis blurbs — Atlas Config Field limits. */
+export const MAX_BLURB_WORDS = ENRICH_FIELD_LIMITS.embeddingSourceText.max;
+
+/** Normalize whitespace and clamp to a word count (never mid-word). */
+export function clampToWordLimit(text: string, maxWords = MAX_BLURB_WORDS): string {
+  const normalized = text.replace(/\s+/g, " ").trim();
+  if (!normalized) return "";
+  const words = normalized.split(" ");
+  if (words.length <= maxWords) return normalized;
+  return words.slice(0, maxWords).join(" ");
+}
+
+export function countWords(text: string): number {
+  const normalized = text.replace(/\s+/g, " ").trim();
+  if (!normalized) return 0;
+  return normalized.split(" ").length;
+}
 
 async function embedBlurb(text: string, apiKey: string): Promise<number[]> {
   const r = await fetch("https://api.openai.com/v1/embeddings", {
@@ -62,13 +79,13 @@ export function composeEmbeddingBlurb(v: EmbeddablePlace): string {
     .filter(Boolean)
     .join(" — ");
   const about = (v.description ?? "").trim().replace(/\s+/g, " ");
-  if (!about) return head.slice(0, MAX_BLURB_CHARS);
-  // First ~2 sentences of About, capped.
+  if (!about) return clampToWordLimit(head);
+  // First ~2 sentences of About, then word-cap.
   const sentences = about.match(/[^.!?]+[.!?]+(?:\s+|$)|[^.!?]+$/g)
     ?.map((s) => s.trim())
     .filter(Boolean) ?? [about];
   const body = sentences.slice(0, 2).join(" ");
-  return `${head}. ${body}`.replace(/\s+/g, " ").trim().slice(0, MAX_BLURB_CHARS);
+  return clampToWordLimit(`${head}. ${body}`);
 }
 
 export async function synthesizePlaceEmbeddingText(
@@ -94,13 +111,14 @@ export async function synthesizePlaceEmbeddingText(
             role: "system",
             content:
               "You write a short place blurb for semantic search embeddings. " +
-              "Output 1–3 sentences, plain text only — no labels, no bullets, no tags. " +
+              `Output 1–3 sentences, at most ${MAX_BLURB_WORDS} words, plain text only — no labels, no bullets, no tags. ` +
               "Capture what the place IS (cuisine/format), where it is, and the vibe from About. " +
-              "Never invent facts not present in the input. Never list amenity tags.",
+              "Never invent facts not present in the input. Never list amenity tags. " +
+              "Finish on a complete word — never truncate mid-word.",
           },
           {
             role: "user",
-            content: `Write the embedding blurb for this place:\n\n${facts}`,
+            content: `Write the embedding blurb (≤${MAX_BLURB_WORDS} words) for this place:\n\n${facts}`,
           },
         ],
       }),
@@ -114,7 +132,7 @@ export async function synthesizePlaceEmbeddingText(
     };
     const text = (data.choices?.[0]?.message?.content ?? "").trim();
     if (!text) return composeEmbeddingBlurb(v);
-    return text.replace(/\s+/g, " ").slice(0, MAX_BLURB_CHARS);
+    return clampToWordLimit(text);
   } catch (err) {
     console.error("[place-embeddings] synth exception:", err);
     return composeEmbeddingBlurb(v);

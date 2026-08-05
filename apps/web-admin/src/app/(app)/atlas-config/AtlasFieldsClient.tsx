@@ -117,8 +117,9 @@ export function AtlasFieldsClient({ data }: { data: AtlasFieldsPayload }) {
         <h2 className="font-display text-base font-semibold tracking-tight">Field limits</h2>
         <p className="text-muted-foreground mt-1 text-sm">
           Profile-spec caps from the Enricher shared limits — enforced in the
-          business Place editor / business-update-project, and (for Google
-          reviews) the Enricher Apify scrape.
+          business Place editor / business-update-project, Place Synthesis
+          embeddings (word ceiling), and (for Google reviews) the Enricher Apify
+          scrape.
         </p>
         <dl className="mt-4 grid gap-3 sm:grid-cols-2">
           {Object.entries(data.fieldLimits).map(([key, limit]) => {
@@ -251,6 +252,7 @@ function humanizeKey(key: string): string {
   if (key === "photos") return "Photos";
   if (key === "googleReviews") return "Google reviews";
   if (key === "descriptionEnricherMax") return "Description (Enricher synthesis)";
+  if (key === "embeddingSourceText") return "Embedding source text (Place Synthesis)";
   if (key === "priceLevel") return "Price level";
   return key
     .replace(/([A-Z])/g, " $1")
@@ -259,11 +261,12 @@ function humanizeKey(key: string): string {
 }
 
 function formatLimit(
-  unit: "chars" | "count" | "range",
+  unit: "chars" | "words" | "count" | "range",
   min: number | undefined,
   max: number,
 ): string {
   if (unit === "range") return `${min ?? 0}–${max}`;
   if (unit === "count") return `Up to ${max.toLocaleString()}`;
+  if (unit === "words") return `${max.toLocaleString()} words`;
   return `${max.toLocaleString()} chars`;
 }
