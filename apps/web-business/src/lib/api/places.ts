@@ -272,10 +272,6 @@ export async function apiUpdatePlace(
   client: SupabaseClient,
   input: UpdatePlaceInput,
 ): Promise<UpdatedPlace> {
-  // Super-admin elevation is now per-user: the EF reads the caller's JWT,
-  // checks public.super_admins, and skips project_members for allowlisted
-  // emails. The browser doesn't need to know — supabase-js attaches the
-  // JWT automatically.
   const { place } = await invokeEF<{ place: UpdatedPlace }>(
     client,
     "business-web-update-project",

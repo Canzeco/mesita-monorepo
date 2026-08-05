@@ -2,7 +2,6 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
 import {
-  ArrowLeft,
   ArrowRight,
   Check,
   LifeBuoy,
@@ -20,8 +19,6 @@ import { ACTIVE_UNIT_COOKIE, resolveActiveUnitId } from "@/lib/active-unit";
 import { placePath } from "@/lib/business-route-contract";
 
 export const dynamic = "force-dynamic";
-
-const ADMIN_WEB_URL_FALLBACK = "https://admin.mesita.ai";
 
 export default async function SettingsPage() {
   const supabase = await createServerSupabase();
@@ -51,7 +48,6 @@ export default async function SettingsPage() {
   const overview = overviewResult.value;
   const business =
     profileResult.status === "fulfilled" ? profileResult.value : null;
-  const isSuperAdmin = overview.isSuperAdmin;
 
   const places = overview.places;
   const activePlaceId = resolveActiveUnitId({
@@ -63,9 +59,7 @@ export default async function SettingsPage() {
   const otherPlaces = places.filter((v) => v.id !== activePlace?.id);
 
   const email = user.email ?? null;
-  const accountName = isSuperAdmin
-    ? "Super admin"
-    : (business?.full_name ?? accountLabel(email));
+  const accountName = business?.full_name ?? accountLabel(email);
 
   return (
     <div className="flex-1 overflow-y-auto">
@@ -107,7 +101,7 @@ export default async function SettingsPage() {
             </Link>
           )}
 
-          {!isSuperAdmin && otherPlaces.length > 0 && (
+          {otherPlaces.length > 0 && (
             <div className="border-border bg-card mt-1 overflow-hidden rounded-2xl border">
               {otherPlaces.map((v) => (
                 <Link
@@ -130,15 +124,13 @@ export default async function SettingsPage() {
             </div>
           )}
 
-          {!isSuperAdmin && (
-            <Link
-              href="/add"
-              className="border-border text-secondary hover:bg-secondary/5 flex items-center justify-center gap-2 rounded-2xl border px-3 py-2.5 text-sm font-semibold transition"
-            >
-              <Plus className="h-4 w-4" />
-              Add a place
-            </Link>
-          )}
+          <Link
+            href="/add"
+            className="border-border text-secondary hover:bg-secondary/5 flex items-center justify-center gap-2 rounded-2xl border px-3 py-2.5 text-sm font-semibold transition"
+          >
+            <Plus className="h-4 w-4" />
+            Add a place
+          </Link>
         </section>
 
         <section className="flex flex-col gap-2">
@@ -154,7 +146,6 @@ export default async function SettingsPage() {
               </p>
             </div>
           </div>
-          {isSuperAdmin && <BackToAdminLink />}
           <SignOutButton redirectTo="/" />
         </section>
 
@@ -196,21 +187,6 @@ function RowDisabled({
         Soon
       </span>
     </div>
-  );
-}
-
-function BackToAdminLink() {
-  const adminOrigin =
-    (process.env.NEXT_PUBLIC_ADMIN_WEB_URL ?? "").trim() ||
-    ADMIN_WEB_URL_FALLBACK;
-  return (
-    <Link
-      href={`${adminOrigin.replace(/\/$/, "")}/update`}
-      className="border-border bg-card hover:bg-muted flex items-center justify-center gap-2 rounded-full border py-3.5 text-sm font-semibold transition"
-    >
-      <ArrowLeft className="h-4 w-4" />
-      Back to admin
-    </Link>
   );
 }
 

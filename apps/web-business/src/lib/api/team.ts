@@ -29,17 +29,12 @@ type PendingEditorInvite = {
   expiresAt: string;
 };
 
-// `super_admin` is a synthetic role for users in public.super_admins
-// who aren't in project_members for this place; the EF still grants them
-// owner-level UI affordances.
-type CallerRole = BusinessRole | "super_admin";
-
 // Note on field naming: the EF returns `businesses` / `pendingBusinessInvites`
 // because those rows are joined from the `businesses` (platform-account)
 // table. The team UI labels them as "Editors" — that's the per-place tier
 // (member_role) name, distinct from the source table name.
 export type TeamSnapshot = {
-  myRole: CallerRole | null;
+  myRole: BusinessRole | null;
   businesses: TeamEditor[];
   pendingBusinessInvites: PendingEditorInvite[];
 };
