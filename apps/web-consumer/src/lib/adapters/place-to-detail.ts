@@ -229,7 +229,6 @@ export function placeRowToDetail(row: Row, tags?: ResolvedTag[]): PlaceDetail {
     long_description:
       str(row.description) ?? str(row.story) ?? str(row.pitch) ?? "",
     // Spanish About translation (MESITA-926). Empty until Enricher/admin fills it.
-    long_description_es: str(row.description_es) ?? "",
 
     hours_table: hoursTable(row.hours),
     popular_times: arr<Record<string, unknown>>(row.popular_times).map((p) => ({

@@ -31,7 +31,6 @@ const PROFILE_SCHEMA = {
     executive_chef: { type: ["string", "null"] },
     editorial_summary: { type: ["string", "null"] },
     description: { type: ["string", "null"] },
-    description_es: { type: ["string", "null"] },
     details: {
       type: "object",
       properties: {
@@ -105,27 +104,22 @@ export async function synthesizeProfile(input: {
     `, using ONLY the source material below. Return a single JSON object ` +
     `matching the schema. ` +
     `LANGUAGE (HARD RULE — Mesita core is English): "description", ` +
-    `"editorial_summary", and every other prose field EXCEPT ` +
-    `"description_es" MUST be written in English, even when the source ` +
-    `material is Spanish. Translate facts into English; do not leave ` +
-    `Spanish prose in "description". ` +
+    `"editorial_summary", and every other prose field MUST be written in ` +
+    `English, even when the source material is Spanish. Translate facts ` +
+    `into English; do not leave Spanish prose in any field. ` +
     `Write "description" as the public About section for the Place page: ` +
     `a rich, inviting, factual narrative of roughly ` +
     `${ENRICH_DESCRIPTION_TARGET_WORDS} words (max ` +
     `${ENRICH_DESCRIPTION_MAX} characters). ` +
-    `Also write "description_es" as a faithful Spanish (es-MX) translation ` +
-    `of that same About — same facts and paragraph structure, natural ` +
-    `Mexican Spanish, not a machine-literal calque. ` +
-    `CRITICAL — paragraphs: "description" and "description_es" MUST each be ` +
-    `several short paragraphs separated by a blank line (the two-character ` +
-    `sequence \\n\\n). Never return one unbroken wall of text. Aim for 3–6 ` +
-    `paragraphs; each paragraph is 2–4 sentences on one idea (atmosphere, ` +
-    `cuisine, signature dishes or experiences, history or neighborhood, ` +
-    `why visit) — only when the sources support it. No filler or invented ` +
-    `detail. "description", "description_es", and every other text field ` +
-    `MUST be a single JSON string — never an array or nested object. ` +
-    `Use null or [] for anything the sources don't support. Never invent ` +
-    `ratings, reviewer quotes, prices, or a chef's name.` +
+    `CRITICAL — paragraphs: "description" MUST be several short paragraphs ` +
+    `separated by a blank line (the two-character sequence \\n\\n). Never ` +
+    `return one unbroken wall of text. Aim for 3–6 paragraphs; each ` +
+    `paragraph is 2–4 sentences on one idea (atmosphere, cuisine, signature ` +
+    `dishes or experiences, history or neighborhood, why visit) — only when ` +
+    `the sources support it. No filler or invented detail. "description" and ` +
+    `every other text field MUST be a single JSON string — never an array or ` +
+    `nested object. Use null or [] for anything the sources don't support. ` +
+    `Never invent ratings, reviewer quotes, prices, or a chef's name.` +
     (grounding
       ? `\n\n--- SOURCE MATERIAL ---\n${grounding}`
       : "\n\n(No extra source material was gathered.)");
@@ -133,14 +127,13 @@ export async function synthesizeProfile(input: {
   const systemContent =
     "You are Mesita's place-intelligence synthesis agent. Use ONLY the source " +
     "material the user provides — do not browse or use outside knowledge. " +
-    "Mesita's core language is English: prose fields are English unless the " +
-    "schema field is explicitly a Spanish translation (description_es). " +
+    "Mesita's core language is English: all prose fields are English. " +
     "Output a SINGLE valid JSON object (no prose, no markdown fences) matching " +
     "this shape, using null or [] when the sources don't support a field: " +
     JSON.stringify(PROFILE_SCHEMA.properties) +
-    " Text fields (zone, city, executive_chef, editorial_summary, description, " +
-    "description_es) are single JSON strings — never arrays or nested objects. " +
-    "For description and description_es: separate paragraphs with blank lines " +
+    " Text fields (zone, city, executive_chef, editorial_summary, description) " +
+    "are single JSON strings — never arrays or nested objects. " +
+    "For description: separate paragraphs with blank lines " +
     "(\\n\\n); never one continuous block. Never invent ratings, reviewer " +
     "quotes, prices, or a chef's name.";
 

@@ -141,8 +141,6 @@ type UpdateBody = {
   reservation_contacts?: ReservationContact[] | null;
   // Place-redesign editable surface (Business-E=YES on the Components spec).
   description?: string | null;
-  /** Spanish About translation (MESITA-926). */
-  description_es?: string | null;
   menu_pdf_url?: string | null;
   // Optional human label paired with menu_pdf_url. Null clears.
   menu_pdf_name?: string | null;
@@ -403,9 +401,6 @@ Deno.serve(async (req) => {
   // Place-redesign editable fields.
   if ("description" in body) {
     update.description = optString(body.description, MAX_DESCRIPTION_LEN);
-  }
-  if ("description_es" in body) {
-    update.description_es = optString(body.description_es, MAX_DESCRIPTION_LEN);
   }
   if ("tags" in body) {
     const tags = normalisePlaceTags(body.tags);

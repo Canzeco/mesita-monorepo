@@ -104,7 +104,6 @@ export type PlaceDetail = {
   reward_cap_mxn: number;
   requires_story?: boolean;
   long_description: string;
-  long_description_es?: string;
   hours_table: { day: string; range: string }[];
   popular_times: { day: string; range: string; bars: number[] }[];
   popular_times_featured: string;

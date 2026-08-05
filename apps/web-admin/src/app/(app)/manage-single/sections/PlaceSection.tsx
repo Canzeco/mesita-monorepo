@@ -134,8 +134,6 @@ type Form = {
   category: string;
   /** Canonical About — English (Mesita core). */
   description: string;
-  /** Spanish translation of About. */
-  descriptionEs: string;
   phone: string;
   email: string;
   tags: string[];
@@ -167,7 +165,6 @@ function placeToForm(v: AdminPlace, limits: PlaceFieldLimits = FALLBACK_LIMITS):
     name: (v.name ?? "").slice(0, limits.placeNameMax),
     category: v.category ?? "",
     description: (v.description ?? "").slice(0, limits.descriptionMax),
-    descriptionEs: (v.description_es ?? "").slice(0, limits.descriptionMax),
     phone: v.phone ?? "",
     email: v.email ?? "",
     tags: (v.tags ?? []).slice(0, limits.tagsPerPlaceMax),
@@ -195,7 +192,6 @@ function boxToPatch(
       id,
       name: mesitaName.length > 0 ? mesitaName : null,
       description: nz(f.description.slice(0, limits.descriptionMax)),
-      description_es: nz(f.descriptionEs.slice(0, limits.descriptionMax)),
       tags: f.tags.slice(0, limits.tagsPerPlaceMax),
       // decision: Pato (MESITA-469) — admin may set category (Enricher + Admin + Business).
       category: nz(f.category) || "undefined",
@@ -232,7 +228,6 @@ function mergeBoxSlice(base: Form, from: Form, box: PlaceBox): Form {
       ...base,
       name: from.name,
       description: from.description,
-      descriptionEs: from.descriptionEs,
       tags: from.tags,
       category: from.category,
     };
@@ -273,14 +268,12 @@ export function PlaceSection({
         {
           name: form.name,
           description: form.description,
-          descriptionEs: form.descriptionEs,
           tags: form.tags,
           category: form.category,
         },
         {
           name: saved.name,
           description: saved.description,
-          descriptionEs: saved.descriptionEs,
           tags: saved.tags,
           category: saved.category,
         },
@@ -288,12 +281,10 @@ export function PlaceSection({
     [
       form.name,
       form.description,
-      form.descriptionEs,
       form.tags,
       form.category,
       saved.name,
       saved.description,
-      saved.descriptionEs,
       saved.tags,
       saved.category,
     ],
@@ -415,10 +406,6 @@ export function PlaceSection({
         ...f,
         name: f.name.slice(0, r.data.fieldLimits.placeNameMax),
         description: f.description.slice(0, r.data.fieldLimits.descriptionMax),
-        descriptionEs: f.descriptionEs.slice(
-          0,
-          r.data.fieldLimits.descriptionMax,
-        ),
         tags: f.tags.slice(0, r.data.fieldLimits.tagsPerPlaceMax),
         photos: f.photos.slice(0, r.data.fieldLimits.photosMax),
       }));
@@ -522,7 +509,7 @@ export function PlaceSection({
         </div>
         <div className="mt-4 grid gap-4">
           <TextArea
-            label="About (English)"
+            label="About"
             labelRight={
               <span className="text-muted-foreground text-[11px] tabular-nums">
                 {form.description.length} / {limits.descriptionMax}
@@ -535,25 +522,7 @@ export function PlaceSection({
             disabled={anyPending}
           />
           <p className="text-muted-foreground -mt-2 text-[11px] leading-relaxed">
-            Mesita core language. Enricher always writes English here.
-          </p>
-          <TextArea
-            label="About (Español)"
-            labelRight={
-              <span className="text-muted-foreground text-[11px] tabular-nums">
-                {form.descriptionEs.length} / {limits.descriptionMax}
-              </span>
-            }
-            value={form.descriptionEs}
-            onChange={(x) =>
-              set("descriptionEs", x.slice(0, limits.descriptionMax))
-            }
-            rows={7}
-            maxLength={limits.descriptionMax}
-            disabled={anyPending}
-          />
-          <p className="text-muted-foreground -mt-2 text-[11px] leading-relaxed">
-            Spanish translation. Shown with English in the consumer About box.
+            English only (Mesita core). Enricher always writes English here.
           </p>
         </div>
         <div className="mt-4">
