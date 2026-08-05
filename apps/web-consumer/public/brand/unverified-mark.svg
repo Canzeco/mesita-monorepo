@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-  <!-- Pair to verified-check.svg: solid amber disc + white "?" (not ShieldAlert) -->
-  <circle cx="12" cy="12" r="12" fill="#F59E0B"/>
+  <!-- Pair to verified-check.svg: muted slate disc + white "?" (informational, not warning) -->
+  <circle cx="12" cy="12" r="12" fill="#94A3B8"/>
   <path
     d="M9.2 9.1c0-1.85 1.35-3.1 2.9-3.1 1.55 0 2.85 1.15 2.85 2.75 0 1.2-.55 1.85-1.55 2.55-.9.6-1.25 1.05-1.25 1.9v.35"
     stroke="#FFFFFF"
