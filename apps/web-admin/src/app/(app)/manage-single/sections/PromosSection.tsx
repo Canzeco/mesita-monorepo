@@ -638,9 +638,10 @@ function Step({
 
 // The v7 Strategy × Class matrix at this strategy (MESITA-862, replaces the
 // retired 2×2): rows = guest classes, columns = None (standing) + the four
-// rewarded actions, read live from rewards_config. Story is Influencer-only —
-// other rows show "—" regardless of stored value, mirroring the eligibility
-// gate (a class gate, not a price). Rates live in HTML text, never artwork.
+// rewarded actions, read live from rewards_config. Story is universal
+// (MESITA-909) — every class row shows its priced cell; eligibility is
+// Instagram-connected at the consumer EF layer. Rates live in HTML text,
+// never artwork.
 function RewardsMatrix({
   matrix,
   strategy }: {
@@ -686,14 +687,9 @@ function RewardsMatrix({
             {ACTION_KEYS.map((a) => (
               <span
                 key={a}
-                className={cx(
-                  "border-border/60 border-t px-1 py-1.5 text-center font-bold tabular-nums",
-                  a === "story" && cls !== "influencer"
-                    ? "text-muted-foreground/50"
-                    : "text-foreground/80",
-                )}
+                className="text-foreground/80 border-border/60 border-t px-1 py-1.5 text-center font-bold tabular-nums"
               >
-                {(a === "story" && cls !== "influencer") || !paidStrategy
+                {!paidStrategy
                   ? "—"
                   : cell(rateFromRules(matrix.rules, paidStrategy, cls, a))}
               </span>

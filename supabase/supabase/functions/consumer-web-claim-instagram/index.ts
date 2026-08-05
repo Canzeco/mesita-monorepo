@@ -16,9 +16,10 @@
 //     consumer at premium/'subscription' (they are paying), else
 //     standard/'default'.
 //
-// The Story rung is the Influencer class's exclusive action (resolveTicketRate
-// + consumer-web-submit-story gate on the class), so follower count alone sets
-// both the class and story access.
+// Story access follows the connected handle (MESITA-909), not the Influencer
+// class: claiming Instagram (persisting `instagram_handle`) unlocks the Story
+// action for any class; crossing the follower threshold separately grants
+// the Influencer class and its class-step rate bump.
 //
 // Body: { followers: number, handle?: string }
 // Response: { ok: true, tier: string, followers: number, handle: string | null }

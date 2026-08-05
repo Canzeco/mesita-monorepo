@@ -134,7 +134,8 @@ export const ACTION_META: Record<
   story: {
     name: "Instagram Story",
     emoji: "📸",
-    blurb: "Influencer-only — tagged story, self-attested (MESITA-849).",
+    blurb:
+      "Any connected Instagram — tagged story, self-attested (MESITA-909).",
   },
   welcome: {
     name: "Welcome Visit",

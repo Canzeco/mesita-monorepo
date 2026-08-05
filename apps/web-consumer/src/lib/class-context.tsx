@@ -67,14 +67,22 @@ function isClassKey(value: unknown): value is ClassKey {
   );
 }
 
-function normalize(c: ConsumerClass | null | undefined): ConsumerClassState {
-  if (!c) return STANDARD_CLASS;
+function normalize(
+  c: ConsumerClass | null | undefined,
+  instagramHandle: string | null = null,
+): ConsumerClassState {
+  if (!c) {
+    return {
+      ...STANDARD_CLASS,
+      handle: instagramHandle,
+    };
+  }
   return {
     key: isClassKey(c.key) ? c.key : "standard",
     origin: c.origin ?? "default",
     renewsAt: c.subscription?.current_period_end ?? c.expires_at ?? null,
     followers: c.followers ?? 0,
-    handle: null,
+    handle: instagramHandle,
   };
 }
 
@@ -271,12 +279,18 @@ function mockAccountState(
 
 export function ClassProvider({
   consumerClass,
+  instagramHandle = null,
   children,
 }: {
   consumerClass: ConsumerClass | null;
+  /** Real `consumers.instagram_handle` — Story Bonus gate (MESITA-909). */
+  instagramHandle?: string | null;
   children: ReactNode;
 }) {
-  const base = useMemo(() => normalize(consumerClass), [consumerClass]);
+  const base = useMemo(
+    () => normalize(consumerClass, instagramHandle?.trim() || null),
+    [consumerClass, instagramHandle],
+  );
 
   // Client-only mock flags, read SSR-safe so the upgrade UX is demoable. The
   // first (hydration) render sees the server-seeded class; the real

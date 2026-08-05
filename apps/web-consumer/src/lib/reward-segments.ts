@@ -10,7 +10,8 @@
 // defaults so it needs no new consumer Edge Function.
 //
 // Segments v6: four classes (Standard / Premium / Influencer / Aura) + three
-// actions. Story is the Influencer class's EXCLUSIVE action; Review and
+// actions. Story is a universal action gated on connected Instagram
+// (MESITA-909); Review and
 // Welcome are universal.
 
 import type { ConsumerClass } from "@/lib/mock/place";
@@ -77,7 +78,7 @@ export const REWARD_SEGMENTS: readonly RewardSegment[] = [
     name: "Influencer",
     nameEs: "Influencer",
     kind: "class",
-    blurb: "1,000+ Instagram followers — and the Story bonus is yours.",
+    blurb: "1,000+ Instagram followers — automatic class upgrade.",
     rates: { zero: 0, conservative: 5, aggressive: 15, dominant: 25 },
   },
   {
@@ -95,7 +96,7 @@ export const REWARD_SEGMENTS: readonly RewardSegment[] = [
     name: "Instagram Story",
     nameEs: "Historia de Instagram",
     kind: "action",
-    blurb: "Influencers only — post a story tagging the place, any visit.",
+    blurb: "Connect Instagram, post a tagged story — any class, any visit.",
     rates: { zero: 0, conservative: 15, aggressive: 25, dominant: 35 },
   },
   {
@@ -132,19 +133,15 @@ export function segmentKeyForClass(classKey: ConsumerClass): RewardSegmentKey {
   return classKey;
 }
 
-// The rungs a given consumer can actually reach: their own class rung, the two
-// universal rungs any class can unlock at the table (a first visit, a Google
-// review), and — for Influencers only — the Story action. Returned worst→best.
-// Exported because the Rewards pass renders exactly this set: the v6 story gate
-// lives here and must never be re-derived in a component.
+// The rungs a given consumer can actually reach: their own class rung plus
+// the universal actions (Welcome, Google review, Instagram Story —
+// MESITA-909). Story's Instagram-connected gate is enforced at create /
+// submit, not here — this set drives "up to" quotes. Returned worst→best.
 export function reachableSegments(classKey: ConsumerClass): RewardSegment[] {
   const mine = segmentKeyForClass(classKey);
-  const universal: RewardSegmentKey[] = ["welcome", "review"];
+  const universal: RewardSegmentKey[] = ["welcome", "review", "story"];
   return REWARD_SEGMENTS.filter(
-    (s) =>
-      s.key === mine ||
-      universal.includes(s.key) ||
-      (s.key === "story" && classKey === "influencer"),
+    (s) => s.key === mine || universal.includes(s.key),
   );
 }
 

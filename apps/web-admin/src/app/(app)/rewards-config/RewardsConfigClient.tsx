@@ -37,12 +37,8 @@ import {
 // Adding a future action — TikTok, Referral, Birthday, Spend $X — is rows in
 // that table plus one entry in ACTION_KEYS, and a column appears here.
 //
-// Story stays Influencer-only: the cell renders "—" for the other three
-// classes because eligibility is a CLASS GATE, not a price, and an editable
-// cell there would imply the gate could be priced away.
-
-const isStoryLocked = (action: ActionKey, cls: ClassKey) =>
-  action === "story" && cls !== "influencer";
+// Story is a universal action (MESITA-909) — every class row is editable.
+// Eligibility is Instagram-connected at the consumer EF layer, not a price.
 
 const cx = (...c: (string | false | null | undefined)[]) =>
   c.filter(Boolean).join(" ");
@@ -233,15 +229,7 @@ export function RewardsConfigClient({
                       {ACTION_KEYS.map((action) => {
                         const value =
                           rateByKey.get(ruleKey(strategy, cls, action)) ?? 0;
-                        return isStoryLocked(action, cls) ? (
-                          <span
-                            key={action}
-                            title="Influencer-only — eligibility is a class gate, not a price"
-                            className="text-muted-foreground/50 text-center text-[13px] font-semibold"
-                          >
-                            —
-                          </span>
-                        ) : (
+                        return (
                           <RateSelect
                             key={action}
                             value={value}

@@ -99,9 +99,9 @@ export function HelpModal({
             <span className="text-foreground font-semibold">
               Actions beat your class.
             </span>{" "}
-            A first visit or a Google review at the table pays more than your
-            class rate — and the Instagram Story reward belongs to Influencers.
-            You always keep your single best one, never a sum.
+            A first visit, a Google review, or an Instagram story (with
+            Instagram connected) can pay more than your class rate. You always
+            keep your single best one, never a sum.
           </p>
         </div>
 

@@ -44,16 +44,17 @@ import { useAuth } from '@/providers/auth';
 // is now purely the DOOR: tapping a partner in New creates the ticket and
 // navigates straight to THE ticket screen (/rewards/ticket/[id]); Pending and
 // History are compact rows into the same screen. The venue pass modal and the
-// in-list QR card died with MESITA-857 — one object, one surface. Influencers
-// get the one create-time interstitial (wantsStory can't be added later).
+// in-list QR card died with MESITA-857 — one object, one surface. Guests with
+// Instagram connected get the one create-time Story interstitial (MESITA-909;
+// wantsStory can't be added later).
 
 type Tab = 'new' | 'pending' | 'history';
 
 export function PayClient({ userId }: { userId: string }) {
   const router = useRouter();
   const tickets = useConsumerTickets(userId);
-  const { consumerClass } = useAuth();
-  const classKey = consumerClass?.class ?? 'standard';
+  const { profile } = useAuth();
+  const igConnected = Boolean(profile?.instagram_handle?.trim());
 
   // Default tab is DERIVED, not effect-set: Pending while a live ticket
   // exists, New otherwise. A manual tap pins the choice for the session.
@@ -124,14 +125,14 @@ export function PayClient({ userId }: { userId: string }) {
         openTicket(existing.id);
         return;
       }
-      if (classKey === 'influencer') {
+      if (igConnected) {
         setWantsStory(false);
         setStoryPlace(place);
         return;
       }
       void startTicket(place, false);
     },
-    [tickets.active, classKey, openTicket, startTicket],
+    [tickets.active, igConnected, openTicket, startTicket],
   );
 
   // The paid beat (MESITA-808, 4A).
@@ -314,12 +315,12 @@ export function PayClient({ userId }: { userId: string }) {
         )}
       </ScrollView>
 
-      {/* Influencer interstitial — the ONE create-time choice (wantsStory). */}
+      {/* Story interstitial — the ONE create-time choice (wantsStory). */}
       <FullScreenSheet
         visible={storyPlace !== null}
         onClose={() => setStoryPlace(null)}
         title="Add the Story bonus?"
-        subtitle="Yours alone as an Influencer — decide before the ticket opens."
+        subtitle="Available with your connected Instagram — decide before the ticket opens."
       >
         <View className="flex-1 px-4 pt-4" style={{ gap: 16 }}>
           <Pressable
