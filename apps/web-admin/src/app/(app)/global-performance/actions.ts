@@ -17,7 +17,7 @@ export type NotificationType =
   | "consumer.place_saved"
   | "rewards.ticket_created"
   | "rewards.ticket_visit"
-  | "rewards.ticket_paid"
+  | "rewards.ticket_closed"
   | "rewards.review_submitted"
   // v3c (MESITA-851): a guest filed a complaint about a visit.
   | "rewards.ticket_reported"

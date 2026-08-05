@@ -6,8 +6,9 @@
 // support it. Nothing else.
 //
 //   stats        — REAL aggregates over the whole place, not a sample. Counts
-//     run server-side (head + exact count); the two money sums read only the
-//     two integer columns of this place's paid tickets.
+//     run server-side (head + exact count); the money sums drain every closed
+//     ticket's two integer columns past PostgREST's default page (MESITA-890),
+//     matching business-web-get-performance.
 //
 //     This replaced deriving the headline numbers from a page of the
 //     notification feed. That feed is capped (default 150 events), so
@@ -46,8 +47,15 @@ import {
   requireSuperAdmin,
 } from "../_shared/auth.ts";
 import { consumerFromNumber, reservationFromNumber } from "../_shared/elevenlabs.ts";
+import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 
 type Body = { placeId?: string; projectId?: string; limit?: number };
+
+// A ticket counts as CLOSED once staff marked the visit done (v3b /
+// MESITA-850). Matches business-web-get-performance. paid_at is still stamped
+// by informal close, but vocabulary and predicates follow status=revealed.
+const CLOSED_STATUS = "revealed";
+const CLOSED_PAGE = 1000;
 
 // supabase-js types a to-one embed as T | T[]; normalise.
 function one<T>(rel: T | T[] | null | undefined): T | null {
@@ -72,6 +80,35 @@ function guestName(c: GuestShape | null): string {
   return "Guest";
 }
 
+type MoneyRow = {
+  check_subtotal_cents: number | null;
+  discount_cents: number | null;
+};
+
+/** Drain every closed ticket's money columns for this place. */
+async function fetchAllClosedMoney(
+  admin: SupabaseClient,
+  projectId: string,
+): Promise<{ ok: true; rows: MoneyRow[] } | { ok: false; error: string }> {
+  const rows: MoneyRow[] = [];
+  let from = 0;
+  for (;;) {
+    const { data, error } = await admin
+      .from("tickets")
+      .select("check_subtotal_cents, discount_cents")
+      .eq("project_id", projectId)
+      .eq("status", CLOSED_STATUS)
+      .order("created_at", { ascending: false })
+      .range(from, from + CLOSED_PAGE - 1);
+    if (error) return { ok: false, error: error.message };
+    const page = (data ?? []) as unknown as MoneyRow[];
+    rows.push(...page);
+    if (page.length < CLOSED_PAGE) break;
+    from += CLOSED_PAGE;
+  }
+  return { ok: true, rows };
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
   if (req.method !== "POST") {
@@ -94,15 +131,14 @@ Deno.serve(async (req) => {
   const limit = clampIntRange(Number(bodyRes.body.limit ?? 8), 1, 50);
 
   // A visit = the guest's QR met the venue (first_scanned_at stamped).
-  // A paid check = the ticket was closed and honored (paid_at stamped) —
-  // paid_at rather than status so a later status change can't rewrite history.
+  // A close = status revealed (v3b — "marks as done", not a payment).
   const [
     savesRes,
     ticketsRes,
     visitsRes,
-    paidRes,
+    closedRes,
     resvCountRes,
-    moneyRes,
+    moneyDrain,
     resvListRes,
   ] = await Promise.all([
     admin
@@ -122,18 +158,12 @@ Deno.serve(async (req) => {
       .from("tickets")
       .select("id", { count: "exact", head: true })
       .eq("project_id", projectId)
-      .not("paid_at", "is", null),
+      .eq("status", CLOSED_STATUS),
     admin
       .from("reservations")
       .select("id", { count: "exact", head: true })
       .eq("project_id", projectId),
-    // Only two integer columns, only this place's paid tickets — small even
-    // for a busy venue, and exact (no sampling).
-    admin
-      .from("tickets")
-      .select("check_subtotal_cents, discount_cents")
-      .eq("project_id", projectId)
-      .not("paid_at", "is", null),
+    fetchAllClosedMoney(admin, projectId),
     admin
       .from("reservations")
       .select(
@@ -149,23 +179,20 @@ Deno.serve(async (req) => {
     ["saves", savesRes],
     ["tickets", ticketsRes],
     ["visits", visitsRes],
-    ["paid", paidRes],
+    ["closed", closedRes],
     ["reservation_count", resvCountRes],
-    ["money", moneyRes],
     ["reservations", resvListRes],
   ] as const) {
     if (r.error) return json({ ok: false, error: `${label}: ${r.error.message}` }, 500);
+  }
+  if (!moneyDrain.ok) {
+    return json({ ok: false, error: `money: ${moneyDrain.error}` }, 500);
   }
 
   let influencedCents = 0;
   let discountCents = 0;
   let withAmount = 0;
-  for (
-    const row of (moneyRes.data ?? []) as Array<{
-      check_subtotal_cents: number | null;
-      discount_cents: number | null;
-    }>
-  ) {
+  for (const row of moneyDrain.rows) {
     const sub = row.check_subtotal_cents ?? 0;
     if (sub > 0) {
       influencedCents += sub;
@@ -176,7 +203,7 @@ Deno.serve(async (req) => {
 
   const saves = savesRes.count ?? 0;
   const visits = visitsRes.count ?? 0;
-  const paid = paidRes.count ?? 0;
+  const closed = closedRes.count ?? 0;
 
   type ResvRow = {
     id: string;
@@ -201,7 +228,9 @@ Deno.serve(async (req) => {
       saves,
       tickets: ticketsRes.count ?? 0,
       visits,
-      paid,
+      closed,
+      // Compat alias — older admin clients read `paid`. Same integer.
+      paid: closed,
       reservations: resvCountRes.count ?? 0,
       influencedCents,
       discountCents,
@@ -210,7 +239,7 @@ Deno.serve(async (req) => {
       avgTicketCents: withAmount > 0 ? Math.round(influencedCents / withAmount) : null,
       // The two conversions the funnel annotates.
       visitRate: saves > 0 ? Math.round((visits / saves) * 100) : null,
-      closeRate: visits > 0 ? Math.round((paid / visits) * 100) : null,
+      closeRate: visits > 0 ? Math.round((closed / visits) * 100) : null,
     },
     reservations,
     reservationTotal: resvCountRes.count ?? 0,

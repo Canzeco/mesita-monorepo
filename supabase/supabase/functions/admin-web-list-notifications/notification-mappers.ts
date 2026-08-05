@@ -14,7 +14,8 @@ export type NotificationType =
   | "consumer.place_saved"
   | "rewards.ticket_created"
   | "rewards.ticket_visit"
-  | "rewards.ticket_paid"
+  // v3b (MESITA-850/890): the close is "marks as done", not a payment.
+  | "rewards.ticket_closed"
   | "rewards.review_submitted"
   // v3c (MESITA-851): the guest filed a complaint about a visit. The one
   // event here that asks the operator to DO something.

@@ -237,12 +237,13 @@ export type PlaceStats = {
   saves: number;
   tickets: number;
   visits: number;
-  paid: number;
+  /** Visits marked done (status=revealed). EF also echoes as `paid` for compat. */
+  closed: number;
   reservations: number;
   influencedCents: number;
   discountCents: number;
   avgTicketCents: number | null;
-  /** visits ÷ saves, and paid ÷ visits — the funnel's two conversions. */
+  /** visits ÷ saves, and closed ÷ visits — the funnel's two conversions. */
   visitRate: number | null;
   closeRate: number | null;
 };
@@ -268,11 +269,33 @@ export type PlaceActivity = {
 export async function getPlaceActivity(
   projectId: string,
 ): Promise<Result<PlaceActivity>> {
-  const r = await efInvoke<PlaceActivity>("admin-web-get-place-activity", {
-    placeId: projectId,
-  });
+  // EF returns `closed` (canonical) and may still echo `paid` as a compat alias.
+  type EfStats = PlaceStats & { paid?: number };
+  const r = await efInvoke<Omit<PlaceActivity, "stats"> & { stats: EfStats }>(
+    "admin-web-get-place-activity",
+    { placeId: projectId },
+  );
   if (!r.ok) return { ok: false, error: r.error };
-  return { ok: true, data: r.data };
+  const s = r.data.stats;
+  const closed = typeof s.closed === "number" ? s.closed : (s.paid ?? 0);
+  return {
+    ok: true,
+    data: {
+      ...r.data,
+      stats: {
+        saves: s.saves,
+        tickets: s.tickets,
+        visits: s.visits,
+        closed,
+        reservations: s.reservations,
+        influencedCents: s.influencedCents,
+        discountCents: s.discountCents,
+        avgTicketCents: s.avgTicketCents,
+        visitRate: s.visitRate,
+        closeRate: s.closeRate,
+      },
+    },
+  };
 }
 
 // ── Atlas tag catalog (for Place tags picker) ────────────────────────────
