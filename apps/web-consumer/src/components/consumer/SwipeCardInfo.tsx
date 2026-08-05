@@ -48,8 +48,8 @@ export function SwipeCardInfo({
       : null;
   const statusLabel = getOpeningStatusLabel(place);
   const isOpen = place.open_now === true;
-  // decision: Pato — no Verified/Not Verified tag on swipe; partners get an
-  // IG-style blue check beside the name (asset: /brand/verified-check.svg).
+  // decision: Pato — no Verified/Not Verified tag on swipe; always a disc
+  // beside the name — blue check (partner) or amber "?" (unverified).
   const isVerified = place.listing_type === "partner";
 
   return (
@@ -65,16 +65,18 @@ export function SwipeCardInfo({
         <span className={cn("min-w-0", compact && "truncate")}>
           {place.name}
         </span>
-        {isVerified && (
-          // eslint-disable-next-line @next/next/no-img-element -- static brand SVG asset
-          <img
-            src="/brand/verified-check.svg"
-            alt="Verified Partner"
-            width={18}
-            height={18}
-            className="h-[18px] w-[18px] shrink-0 drop-shadow-[0_1px_4px_rgba(0,0,0,0.45)]"
-          />
-        )}
+        {/* eslint-disable-next-line @next/next/no-img-element -- static brand SVG asset */}
+        <img
+          src={
+            isVerified
+              ? "/brand/verified-check.svg"
+              : "/brand/unverified-mark.svg"
+          }
+          alt={isVerified ? "Verified Partner" : "Not verified"}
+          width={18}
+          height={18}
+          className="h-[18px] w-[18px] shrink-0 drop-shadow-[0_1px_4px_rgba(0,0,0,0.45)]"
+        />
       </h2>
 
       <div
