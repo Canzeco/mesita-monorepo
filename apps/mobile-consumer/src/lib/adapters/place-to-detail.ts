@@ -210,6 +210,7 @@ export function placeRowToDetail(
     requires_story: row.requires_story === true,
     long_description:
       str(row.description) ?? str(row.story) ?? str(row.pitch) ?? '',
+    long_description_es: str(row.description_es) ?? '',
     hours_table: hoursTable(row.hours),
     popular_times: popularTimes.map((p) => ({
       day: str(p.day) ?? '',

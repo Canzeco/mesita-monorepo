@@ -126,6 +126,8 @@ export type AdminPlace = {
   city: string | null;
   timezone: string | null;
   description: string | null;
+  /** Spanish About translation (MESITA-926). */
+  description_es?: string | null;
   phone: string | null;
   email: string | null;
   hours: Record<string, { open: string; close: string }[]> | null;

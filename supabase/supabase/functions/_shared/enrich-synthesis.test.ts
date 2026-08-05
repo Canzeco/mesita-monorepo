@@ -75,6 +75,16 @@ Deno.test("applyProfileToUpdate: happy path unchanged (trimmed, capped, typed)",
   assertEquals(update.popular_times, [{ day: "Fri", range: "8-11pm" }]);
 });
 
+Deno.test("applyProfileToUpdate: description_es written alongside English About", () => {
+  const update: Record<string, unknown> = {};
+  applyProfileToUpdate(update, {
+    description: "A warm brunch spot.",
+    description_es: "Un rincón cálido para brunch.",
+  } as ProfileResult);
+  assertEquals(update.description, "A warm brunch spot.");
+  assertEquals(update.description_es, "Un rincón cálido para brunch.");
+});
+
 Deno.test("applyProfileToUpdate: native Google zone/city win — synthesis never overwrites them", () => {
   // The Google spine seeds zone/city onto `update` before synthesis runs.
   const update: Record<string, unknown> = { zone: "Roma Norte", city: "Ciudad de México" };

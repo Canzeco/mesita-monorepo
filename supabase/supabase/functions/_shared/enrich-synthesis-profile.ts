@@ -6,7 +6,10 @@ export type ProfileResult = {
   established_year?: number | null;
   executive_chef?: string | null;
   editorial_summary?: string | null;
+  /** Canonical About — always English (Mesita core language). */
   description?: string | null;
+  /** Spanish translation of About (MESITA-926). */
+  description_es?: string | null;
   details?: Record<string, unknown> | null;
   popular_times?: unknown[] | null;
 };
@@ -97,11 +100,18 @@ export function applyProfileToUpdate(
   if (chef) update.executive_chef = chef;
   const editorial = asProfileText(parsed.editorial_summary);
   if (editorial) update.editorial_summary = editorial;
-  // The place's public About — hard cap at ~1000 words. Only overwrite when
-  // synthesis actually produced text. Always normalize into blank-line paragraphs.
+  // Canonical About — English. Hard cap at ~1000 words. Normalize paragraphs.
   const description = asProfileText(parsed.description);
   if (description) {
     update.description = formatAboutParagraphs(description).slice(0, ENRICH_DESCRIPTION_MAX);
+  }
+  // Spanish translation of the same About (MESITA-926).
+  const descriptionEs = asProfileText(parsed.description_es);
+  if (descriptionEs) {
+    update.description_es = formatAboutParagraphs(descriptionEs).slice(
+      0,
+      ENRICH_DESCRIPTION_MAX,
+    );
   }
   if (parsed.details && typeof parsed.details === "object" && !Array.isArray(parsed.details)) {
     update.details = parsed.details;
