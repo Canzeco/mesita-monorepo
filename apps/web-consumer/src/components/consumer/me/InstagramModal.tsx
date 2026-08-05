@@ -280,7 +280,16 @@ function InstagramEmulator() {
             role="switch"
             aria-checked={igOn}
             aria-label="Preview connected Instagram"
-            onClick={() => setMockAccount({ instagram: !igOn })}
+            onClick={() =>
+              setMockAccount(
+                igOn
+                  ? { instagram: false }
+                  : {
+                      instagram: true,
+                      followers: DEMO_INSTAGRAM_FOLLOWERS,
+                    },
+              )
+            }
             className={cn(
               "relative inline-flex h-6 w-10 shrink-0 items-center rounded-full transition",
               igOn ? "bg-primary" : "bg-muted",

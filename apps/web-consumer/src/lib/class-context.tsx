@@ -270,10 +270,10 @@ function mockAccountState(
     key,
     origin,
     renewsAt,
+    // Mock IG always surfaces the demo profile (@mock / 5k) so the Me card
+    // preview is deterministic (MESITA-935).
     followers: mock.instagram ? mock.followers : base.followers,
-    handle: mock.instagram
-      ? (base.handle ?? DEMO_INSTAGRAM_HANDLE)
-      : base.handle,
+    handle: mock.instagram ? DEMO_INSTAGRAM_HANDLE : base.handle,
   };
 }
 

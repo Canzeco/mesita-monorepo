@@ -79,13 +79,13 @@ function applyMock(
       return { ...base, key: 'standard', origin: 'default' };
     case 'influencer':
       // Instagram reach (≥ 2,000 followers) is the door into Influencer.
+      // Mock always uses the demo profile (@mock / 5k) — MESITA-935.
       return {
         ...base,
         key: 'influencer',
         origin: 'instagram',
-        followers:
-          base.followers > 0 ? base.followers : DEMO_INSTAGRAM_FOLLOWERS,
-        handle: base.handle ?? DEMO_INSTAGRAM_HANDLE,
+        followers: DEMO_INSTAGRAM_FOLLOWERS,
+        handle: DEMO_INSTAGRAM_HANDLE,
       };
     case 'premium':
       return {

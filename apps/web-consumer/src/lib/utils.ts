@@ -1,5 +1,6 @@
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
+import { COUNTRIES } from "@/lib/consumer-data";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -142,4 +143,22 @@ export function formatPhoneDisplay(
     return `${digits.slice(0, 3)} ${digits.slice(3, 6)} ${digits.slice(6)}`;
   }
   return `+${digits}`;
+}
+
+/**
+ * Flag emoji for the phone's dial code (longest match). Bare 10-digit MX
+ * locals get 🇲🇽. Null when we can't map. Used on the Me card dial row.
+ */
+export function phoneCountryFlag(
+  phone: string | null | undefined,
+): string | null {
+  if (!phone) return null;
+  const digits = phone.replace(/\D/g, "");
+  if (!digits) return null;
+  if (digits.length === 10) return "🇲🇽";
+  const sorted = [...COUNTRIES].sort((a, b) => b.dial.length - a.dial.length);
+  for (const c of sorted) {
+    if (digits.startsWith(c.dial)) return c.flag;
+  }
+  return null;
 }
