@@ -59,10 +59,12 @@ export function FaqsBox({
 
         <Faq q={`What exactly does the ${price}/year buy?`}>
           <p>
-            One Mesita Membership — a commitment filter, not a feature tier. It
-            keeps half-hearted restaurants out of the rewards program. Being a
-            member unlocks the paid strategies and turns on your discounts.
-            Being listed on Mesita never costs anything.
+            The right to leave Zero. Membership unlocks Conservative,
+            Aggressive, and Dominant — pick any, switch free anytime while
+            you&apos;re a member. Zero stays free with no discounts. Being
+            listed on Mesita never costs anything. The fee is a commitment
+            filter (keeps half-hearted places out of rewards), not a feature
+            tier and not a rank you can buy.
           </p>
         </Faq>
 
