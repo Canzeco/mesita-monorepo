@@ -1,0 +1,49 @@
+name: supabase deploy
+
+# Deploy Edge Functions to the singleton Supabase project on every merge to
+# main that touches them. Without this, prod EFs silently drift behind main
+# until someone hand-redeploys — which has bitten us repeatedly (whole batches
+# of admin/consumer/business functions left weeks stale on old _shared code).
+#
+# Deploys ALL functions (not just changed dirs) because nearly every function
+# bundles files from _shared/, so a single _shared change can stale dozens of
+# functions at once — a full deploy is the only way to guarantee cloud == repo.
+# `supabase functions deploy` honours each function's verify_jwt from
+# config.toml, so webhooks/public endpoints keep their intended auth posture.
+#
+# REQUIRES repo secret SUPABASE_ACCESS_TOKEN (Settings → Secrets and variables
+# → Actions). Runs only on main, after supabase CI (lint · test) has gated the PR.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "supabase/supabase/functions/**"
+      - "supabase/supabase/config.toml"
+      - ".github/workflows/supabase-deploy.yml"
+
+concurrency:
+  group: supabase-deploy
+  cancel-in-progress: false
+
+defaults:
+  run:
+    working-directory: supabase
+
+jobs:
+  deploy:
+    name: deploy edge functions
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Deploy all edge functions
+        run: supabase functions deploy --project-ref yjalywfzdelacdzccpgb
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
