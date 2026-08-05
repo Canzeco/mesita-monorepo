@@ -51,6 +51,9 @@ export type CheckPayload = {
   /** The place set a staff PIN (MESITA-823) — write actions must carry one.
    *  Boolean only; the digits never leave the server. */
   pin_required?: boolean;
+  /** MESITA-898: the place requires the bill on record before the close —
+   *  the subtotal step is mandatory and the close waits for it. */
+  bill_required?: boolean;
 };
 
 /** A failed call. `status` is the HTTP status, or 0 when the request never
@@ -111,6 +114,8 @@ async function callCheckEF<T>(
 const FAILURE_CODE_COPY: Record<string, string> = {
   pin_required: "Este lugar pide un PIN del personal para continuar.",
   pin_invalid: "PIN incorrecto — inténtalo de nuevo.",
+  bill_required:
+    "Este lugar requiere registrar la cuenta antes de cerrar el ticket.",
 };
 
 export function checkErrorMessage(res: EFFailure): string {
