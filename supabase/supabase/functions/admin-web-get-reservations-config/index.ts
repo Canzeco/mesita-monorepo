@@ -4,8 +4,9 @@
 //
 // Returns the reservation-endpoint policy from the public.app_settings singleton
 // for the admin console's Reservations Config page: the ordered channel priority
-// (phone / whatsapp / instagram), the parked channels, and whether an operator's
-// hand-picked channel survives a re-enrich. See 20260715120000_reservations_config.sql.
+// (phone only — MESITA-842; voice-reachable), the parked channels, and whether
+// an operator's hand-picked channel survives a re-enrich. See
+// 20260715120000_reservations_config.sql + 20260805105000_reservations_phone_only.
 //
 // Auth: caller's JWT email must be in public.super_admins.
 

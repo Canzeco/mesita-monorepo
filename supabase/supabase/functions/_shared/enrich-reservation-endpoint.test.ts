@@ -15,60 +15,33 @@ import {
   valueForReservationChannel,
 } from "./enrich-reservation-endpoint.ts";
 
-Deno.test("default policy is phone > whatsapp > instagram, nothing parked", () => {
-  assertEquals([...RESERVATION_CHANNELS], ["phone", "whatsapp", "instagram"]);
-  assertEquals([...DEFAULT_RESERVATIONS_POLICY.priority], ["phone", "whatsapp", "instagram"]);
+Deno.test("default policy is phone-only, nothing parked (MESITA-842)", () => {
+  assertEquals([...RESERVATION_CHANNELS], ["phone"]);
+  assertEquals([...DEFAULT_RESERVATIONS_POLICY.priority], ["phone"]);
   assertEquals([...DEFAULT_RESERVATIONS_POLICY.disabled], []);
   assertEquals(DEFAULT_RESERVATIONS_POLICY.respectAdminOverride, true);
 });
 
-Deno.test("availableReservationChannels: only non-empty values in priority order", () => {
+Deno.test("availableReservationChannels: phone when present, else empty", () => {
   assertEquals(
     availableReservationChannels({
       phone: "  +1 703-858-1102 ",
-      whatsapp_url: "",
-      instagram_url: null,
     }),
     ["phone"],
   );
-  assertEquals(
-    availableReservationChannels({
-      phone: null,
-      whatsapp_url: "https://wa.me/52155",
-      instagram_url: "https://instagram.com/cafe",
-    }),
-    ["whatsapp", "instagram"],
-  );
-  // Instagram listed first in input still yields priority order in output.
-  assertEquals(
-    availableReservationChannels({
-      instagram_url: "https://instagram.com/cafe",
-      whatsapp_url: "https://wa.me/52155",
-      phone: "+52 55",
-    }),
-    ["phone", "whatsapp", "instagram"],
-  );
+  assertEquals(availableReservationChannels({ phone: null }), []);
+  assertEquals(availableReservationChannels({ phone: "  " }), []);
   assertEquals(availableReservationChannels({}), []);
 });
 
-Deno.test("preferReservationChannel: phone > whatsapp > instagram", () => {
-  assertEquals(
-    preferReservationChannel(["instagram", "whatsapp", "phone"]),
-    "phone",
-  );
-  assertEquals(preferReservationChannel(["instagram", "whatsapp"]), "whatsapp");
-  assertEquals(preferReservationChannel(["instagram"]), "instagram");
+Deno.test("preferReservationChannel: phone when available", () => {
+  assertEquals(preferReservationChannel(["phone"]), "phone");
   assertEquals(preferReservationChannel([]), null);
 });
 
 Deno.test("valueForReservationChannel / buildReservationTarget", () => {
-  const c = {
-    phone: "+52 55 0000 0000",
-    whatsapp_url: "https://wa.me/5255",
-    instagram_url: "https://instagram.com/x",
-  };
+  const c = { phone: "+52 55 0000 0000" };
   assertEquals(valueForReservationChannel(c, "phone"), "+52 55 0000 0000");
-  assertEquals(valueForReservationChannel(c, "whatsapp"), "https://wa.me/5255");
   assertEquals(
     buildReservationTarget("phone", c),
     { channel: "phone", value: "+52 55 0000 0000" },
@@ -76,10 +49,13 @@ Deno.test("valueForReservationChannel / buildReservationTarget", () => {
   assertEquals(buildReservationTarget("phone", { phone: "  " }), null);
 });
 
-Deno.test("hasReservationTarget: detects admin-selected channel", () => {
+Deno.test("hasReservationTarget: only phone counts as a serving override", () => {
   assertEquals(hasReservationTarget(null), false);
   assertEquals(hasReservationTarget({ menu: [] }), false);
   assertEquals(hasReservationTarget({ reservations: { channel: "phone", value: "+1" } }), true);
+  // Legacy picks were never dialed — not overrides (MESITA-842).
+  assertEquals(hasReservationTarget({ reservations: { channel: "whatsapp", value: "https://wa.me/1" } }), false);
+  assertEquals(hasReservationTarget({ reservations: { channel: "instagram" } }), false);
   assertEquals(hasReservationTarget({ reservations: { channel: "email" } }), false);
   assertEquals(hasReservationTarget({ reservations: null }), false);
 });
@@ -87,13 +63,13 @@ Deno.test("hasReservationTarget: detects admin-selected channel", () => {
 Deno.test("mergeProductsReservations: preserves menu and other keys", () => {
   const merged = mergeProductsReservations(
     { menu: [{ name: "Dinner" }], other: 1 },
-    { channel: "whatsapp", value: "https://wa.me/1" },
+    { channel: "phone", value: "+52 55" },
   );
   assertEquals(merged.menu, [{ name: "Dinner" }]);
   assertEquals(merged.other, 1);
   assertEquals(merged.reservations, {
-    channel: "whatsapp",
-    value: "https://wa.me/1",
+    channel: "phone",
+    value: "+52 55",
   });
   assertEquals(
     mergeProductsReservations(null, { channel: "phone", value: "+1" }),
@@ -101,99 +77,53 @@ Deno.test("mergeProductsReservations: preserves menu and other keys", () => {
   );
 });
 
-Deno.test("selectReservationEndpoint: deterministic phone > whatsapp > instagram", () => {
+Deno.test("selectReservationEndpoint: phone when present, else null", () => {
   assertEquals(
     selectReservationEndpoint({ candidates: {} }),
     { target: null, diag: { ok: false, reason: "no_candidates", disabled: [] } },
   );
 
   const phoneWins = selectReservationEndpoint({
-    candidates: {
-      phone: "+52 55 1111",
-      whatsapp_url: "https://wa.me/5255",
-      instagram_url: "https://instagram.com/x",
-    },
+    candidates: { phone: "+52 55 1111" },
   });
   assertEquals(phoneWins.target, { channel: "phone", value: "+52 55 1111" });
-  assertEquals(phoneWins.diag.via, "priority_phone_whatsapp_instagram");
+  assertEquals(phoneWins.diag.via, "sole_candidate");
   assertEquals(phoneWins.diag.channel, "phone");
 
-  const whatsappNext = selectReservationEndpoint({
-    candidates: {
-      phone: "  ",
-      whatsapp_url: "https://wa.me/5255",
-      instagram_url: "https://instagram.com/x",
-    },
+  const noPhone = selectReservationEndpoint({
+    candidates: { phone: "  " },
   });
-  assertEquals(whatsappNext.target, {
-    channel: "whatsapp",
-    value: "https://wa.me/5255",
-  });
-
-  const igOnly = selectReservationEndpoint({
-    candidates: { instagram_url: "https://instagram.com/solo" },
-  });
-  assertEquals(igOnly.target, {
-    channel: "instagram",
-    value: "https://instagram.com/solo",
-  });
-  assertEquals(igOnly.diag.via, "sole_candidate");
+  assertEquals(noPhone.target, null);
+  assertEquals(noPhone.diag.reason, "no_candidates");
 });
 
-// ── Reservations Config policy (MESITA-623) — the order is an operator knob ──
+// ── Reservations Config policy (MESITA-623 / MESITA-842) ──
 
-Deno.test("coerceReservationsPolicy: malformed rows fall back, never throw", () => {
+Deno.test("coerceReservationsPolicy: malformed rows fall back; legacy channels drop", () => {
   assertEquals(coerceReservationsPolicy(null), DEFAULT_RESERVATIONS_POLICY);
   assertEquals(coerceReservationsPolicy("nope"), DEFAULT_RESERVATIONS_POLICY);
   assertEquals(coerceReservationsPolicy([]), DEFAULT_RESERVATIONS_POLICY);
 
-  // Unknown channels are dropped; unranked ones are appended so they stay reachable.
-  const partial = coerceReservationsPolicy({
-    priority: ["instagram", "email", "instagram"],
-    disabled: ["phone", "sms"],
+  // Legacy whatsapp/instagram are dropped; phone is appended so it stays reachable.
+  const legacy = coerceReservationsPolicy({
+    priority: ["instagram", "whatsapp", "email", "phone"],
+    disabled: ["whatsapp", "instagram", "sms"],
     respectAdminOverride: false,
   });
-  assertEquals([...partial.priority], ["instagram", "phone", "whatsapp"]);
-  assertEquals([...partial.disabled], ["phone"]);
-  assertEquals(partial.respectAdminOverride, false);
+  assertEquals([...legacy.priority], ["phone"]);
+  assertEquals([...legacy.disabled], []);
+  assertEquals(legacy.respectAdminOverride, false);
 
   // A row missing respectAdminOverride keeps the operator-wins default.
   assertEquals(coerceReservationsPolicy({ priority: [], disabled: [] }).respectAdminOverride, true);
 });
 
-Deno.test("selectReservationEndpoint: a reordered policy changes the winner", () => {
-  const candidates = {
-    phone: "+52 55 1111",
-    whatsapp_url: "https://wa.me/5255",
-    instagram_url: "https://instagram.com/x",
-  };
-  const waFirst = selectReservationEndpoint({
-    candidates,
-    policy: {
-      priority: ["whatsapp", "phone", "instagram"],
-      disabled: [],
-      respectAdminOverride: true,
-    },
-  });
-  assertEquals(waFirst.target, { channel: "whatsapp", value: "https://wa.me/5255" });
-  assertEquals(waFirst.diag.via, "priority_whatsapp_phone_instagram");
-  assertEquals(waFirst.diag.available, ["whatsapp", "phone", "instagram"]);
-});
-
-Deno.test("selectReservationEndpoint: a parked channel never wins", () => {
+Deno.test("selectReservationEndpoint: a parked phone never wins", () => {
   const policy = {
-    priority: ["phone", "whatsapp", "instagram"] as const,
+    priority: ["phone"] as const,
     disabled: ["phone"] as const,
     respectAdminOverride: true,
   };
-  // Phone is top-ranked but parked, so the next available channel takes it.
-  const skipped = selectReservationEndpoint({
-    candidates: { phone: "+52 55 1111", whatsapp_url: "https://wa.me/5255" },
-    policy,
-  });
-  assertEquals(skipped.target, { channel: "whatsapp", value: "https://wa.me/5255" });
-
-  // Parked even as the sole contact — the place gets no endpoint at all.
   const onlyParked = selectReservationEndpoint({
     candidates: { phone: "+52 55 1111" },
     policy,

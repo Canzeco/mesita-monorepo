@@ -7,7 +7,7 @@
 //   S7  synthesis (About/details, grounded ONLY in gathered material — Google
 //       spine + reviews + SERP blurb + IG bio; no website/menu) + category
 //       inference + tag inference (closed vocabularies) + Selected Reservation
-//       Endpoint (phone > whatsapp > instagram → products.reservations)
+//       Endpoint (phone → products.reservations; voice-only, MESITA-842)
 //   S8  persist the enriched profile onto the places row (direct UPDATE — this
 //       EF is already the DB layer; no HTTP hop) + content_status='ready'
 //   S9  store images via supabase-edgefunc-store-place-images (kept as an EF call
@@ -120,15 +120,14 @@ serveEnrichStage("contents", async (admin, env, row) => {
   sources.category = { ok: !!inferredCategory, slug: inferredCategory, candidates: realCategories.length };
   sources.tags = { ok: inferredTags.length > 0, count: inferredTags.length, vocabulary: tagVocabulary.length };
 
-  // Selected Reservation Endpoint (Product Rules §G / MESITA-597) — seed
-  // products.reservations { channel, value } for the Reservationist.
-  // Channel priority + parked channels are the operator's, read live off
-  // app_settings.reservations_config (admin console → Reservations Config,
-  // MESITA-623); the default is phone > whatsapp > instagram.
-  // Phone is stripped from gathered.place (research-only write), and
-  // whatsapp_url is not discovered by channel search, so read live contacts +
-  // products from places. Skip when admin already picked a channel — unless the
-  // operator turned respectAdminOverride off, which re-seeds every run.
+  // Selected Reservation Endpoint (Product Rules §G / MESITA-597 / MESITA-842) —
+  // seed products.reservations { channel, value } for the Reservationist.
+  // Voice-only: phone is the sole serving channel (WhatsApp unreachable since
+  // MESITA-839). Priority / parked knobs still live on reservations_config, but
+  // the eligible set is phone. Phone is stripped from gathered.place
+  // (research-only write), so read the live places.phone. Skip when admin
+  // already picked phone — unless respectAdminOverride is off. Legacy
+  // whatsapp/instagram picks are NOT overrides (hasReservationTarget).
   const { data: settingsRow } = await admin
     .from("app_settings")
     .select("reservations_config")
@@ -138,7 +137,7 @@ serveEnrichStage("contents", async (admin, env, row) => {
 
   const { data: liveContacts } = await admin
     .from("places")
-    .select("phone, whatsapp_url, instagram_url, products")
+    .select("phone, products")
     .eq("id", projectId)
     .maybeSingle();
   const liveProducts = liveContacts?.products ?? null;
@@ -152,11 +151,6 @@ serveEnrichStage("contents", async (admin, env, row) => {
   } else {
     const candidates = {
       phone: (liveContacts?.phone as string | null | undefined) ?? null,
-      whatsapp_url: (liveContacts?.whatsapp_url as string | null | undefined) ?? null,
-      // Prefer the just-verified IG from this run; fall back to the live column.
-      instagram_url:
-        ((place.instagram_url as string | null | undefined) ?? null) ||
-        ((liveContacts?.instagram_url as string | null | undefined) ?? null),
     };
     const { target, diag: reservationDiag } = selectReservationEndpoint({
       candidates,

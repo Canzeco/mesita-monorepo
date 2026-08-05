@@ -1,20 +1,17 @@
 // Selected Reservation Endpoint — policy helpers.
-// Notion Enricher Enrich-Analysis S4 / Product Rules §G.
+// Notion Enricher Enrich-Analysis S4 / Product Rules §G / MESITA-842.
 //
-// Priority among available profile contacts is an OPERATOR KNOB, not a constant:
-// it lives at app_settings.reservations_config and is authored on the admin
-// console's Reservations Config page (MESITA-623). Callers pass the policy in;
-// DEFAULT_RESERVATIONS_POLICY (phone > whatsapp > instagram) is the fallback when
-// the row hasn't been read — the order this file hardcoded before MESITA-623.
+// The Reservationist is voice-only (Twilio + ElevenLabs). WhatsApp was dropped
+// fleet-wide (MESITA-839) — nothing calls Messages.json — so the only serving
+// channel is phone. Priority / disabled remain operator knobs on
+// app_settings.reservations_config, but the eligible set is phone alone.
+// Legacy stored rows that still list whatsapp/instagram are coerced away.
 
-export type ReservationChannel = "phone" | "whatsapp" | "instagram";
+/** Channels a reservation endpoint may use. Voice-reachable only (MESITA-842). */
+export type ReservationChannel = "phone";
 
 /** Every channel a reservation endpoint may use. The config must rank all of them. */
-export const RESERVATION_CHANNELS: readonly ReservationChannel[] = [
-  "phone",
-  "whatsapp",
-  "instagram",
-] as const;
+export const RESERVATION_CHANNELS: readonly ReservationChannel[] = ["phone"] as const;
 
 export type ReservationsPolicy = {
   /** Ordered, most-preferred first. Order IS the rule. */
@@ -25,7 +22,7 @@ export type ReservationsPolicy = {
   respectAdminOverride: boolean;
 };
 
-/** Used when no config row was read. Matches the migration's column default. */
+/** Used when no config row was read. Matches the phone-only column default. */
 export const DEFAULT_RESERVATIONS_POLICY: ReservationsPolicy = {
   priority: RESERVATION_CHANNELS,
   disabled: [],
@@ -39,18 +36,17 @@ export type ReservationTarget = {
 
 export type ReservationCandidates = {
   phone?: string | null;
-  whatsapp_url?: string | null;
-  instagram_url?: string | null;
 };
 
 function isReservationChannel(v: unknown): v is ReservationChannel {
-  return v === "phone" || v === "whatsapp" || v === "instagram";
+  return v === "phone";
 }
 
 /**
  * Coerce the app_settings.reservations_config jsonb into a usable policy.
  * Anything malformed falls back to the default rather than throwing — a bad row
- * must never stop the Enricher from seeding an endpoint.
+ * must never stop the Enricher from seeding an endpoint. Legacy whatsapp /
+ * instagram entries are dropped (not serving paths since MESITA-839/842).
  */
 export function coerceReservationsPolicy(raw: unknown): ReservationsPolicy {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
@@ -114,8 +110,7 @@ export function valueForReservationChannel(
   channel: ReservationChannel,
 ): string | null {
   if (channel === "phone") return trimOrNull(candidates.phone);
-  if (channel === "whatsapp") return trimOrNull(candidates.whatsapp_url);
-  return trimOrNull(candidates.instagram_url);
+  return null;
 }
 
 export function buildReservationTarget(
@@ -127,7 +122,11 @@ export function buildReservationTarget(
   return { channel, value };
 }
 
-/** True when products.reservations already has a selected channel (admin override). */
+/**
+ * True when products.reservations already has a selected *serving* channel
+ * (admin override). Legacy whatsapp/instagram picks are NOT overrides — they
+ * were never dialed (MESITA-842) — so the Enricher re-seeds phone.
+ */
 export function hasReservationTarget(products: unknown): boolean {
   if (!products || typeof products !== "object" || Array.isArray(products)) {
     return false;

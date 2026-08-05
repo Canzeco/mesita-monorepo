@@ -4,25 +4,20 @@
 // ElevenLabs voice agent with the venue + the guest's parameters, then the agent
 // phones the place over Twilio and holds the table. This page is where an operator
 // tunes that agent — the number it calls while we test, how hard it retries, and
-// which contact channel it books through.
+// the booking channel (phone — voice-only since MESITA-842 / MESITA-839).
 //
 // Every place carries ONE selected reservation endpoint at
 // products.reservations = { channel, value } — the address the Reservationist
-// dials. The Enricher picks it from an ordered channel priority. TODAY only phone
-// is live; WhatsApp + Instagram are reserved for verified partners and switched on
-// per-venue from the business console, so the priority list is kept (for that
-// launch) but the agent only ever calls a phone.
+// dials. The Enricher seeds phone from places.phone. WhatsApp / Instagram are
+// not serving paths (no Twilio Messages.json; fleet is voice-only).
 //
 // The channel keys are the contract shared with the Edge Functions
 // (admin-web-{get,update}-reservations-config) and with
 // supabase/functions/_shared/enrich-reservation-endpoint.ts — keep them in
-// lock-step. The testCall + attempts knobs are read by the (future) calling
+// lock-step. The testCall + attempts knobs are read by the calling
 // orchestration; they persist through the same whole-blob save.
 
-export type ReservationChannel = "phone" | "whatsapp" | "instagram";
-
-/** Live today, or held for a future launch (verified partners only). */
-type ChannelStatus = "live" | "soon";
+export type ReservationChannel = "phone";
 
 export type ReservationsConfig = {
   /** Ordered, most preferred first. Order IS the rule. Always ranks every channel. */
@@ -91,7 +86,7 @@ export const LIMITS_SEED = {
   killSwitch: false,
 };
 
-const CHANNEL_KEYS: ReservationChannel[] = ["phone", "whatsapp", "instagram"];
+const CHANNEL_KEYS: ReservationChannel[] = ["phone"];
 
 const ATTEMPTS = 2;
 
@@ -101,8 +96,6 @@ export type Channel = {
   emoji: string;
   /** The places column the endpoint value is read from. */
   source: string;
-  /** Whether the agent can book through this channel today. */
-  status: ChannelStatus;
   blurb: string;
 };
 
@@ -112,27 +105,8 @@ export const CHANNELS: Channel[] = [
     label: "Phone",
     emoji: "☎️",
     source: "places.phone",
-    status: "live",
     blurb:
-      "A call to the place's line. The one channel the Reservationist books through today — nearly every place has one, and it reaches a human (or their AI receptionist) who can hold a table.",
-  },
-  {
-    key: "whatsapp",
-    label: "WhatsApp",
-    emoji: "💬",
-    source: "places.whatsapp_url",
-    status: "soon",
-    blurb:
-      "A WhatsApp thread with the place. Coming later for verified partners — a partner switches their bookings to WhatsApp from the business console. Not used for the 99% of places that stay phone-first.",
-  },
-  {
-    key: "instagram",
-    label: "Instagram",
-    emoji: "📸",
-    source: "places.instagram_url",
-    status: "soon",
-    blurb:
-      "A DM to the place's IG. Coming later for verified partners, set on the business console. Never used automatically — DMs get missed, and most places publish no reservation IG.",
+      "A voice call to the place's line — the only channel the Reservationist books through. Nearly every place has one, and it reaches a human (or their AI receptionist) who can hold a table. WhatsApp and Instagram are not booking channels (voice fleet only).",
   },
 ];
 
@@ -144,10 +118,8 @@ export const CHANNELS: Channel[] = [
 const TEST_CALL_SEED = { enabled: true, number: "+524445499597", consumerNumber: "" };
 
 export const DEFAULT_CONFIG: ReservationsConfig = {
-  priority: ["phone", "whatsapp", "instagram"],
-  // Phone is the only bookable channel today; WhatsApp + Instagram are parked
-  // until their verified-partner launch, so the Enricher only ever seeds a phone.
-  disabled: ["whatsapp", "instagram"],
+  priority: ["phone"],
+  disabled: [],
   respectAdminOverride: true,
   testCall: { ...TEST_CALL_SEED },
   attempts: ATTEMPTS,
@@ -156,7 +128,7 @@ export const DEFAULT_CONFIG: ReservationsConfig = {
 };
 
 function isChannel(v: unknown): v is ReservationChannel {
-  return v === "phone" || v === "whatsapp" || v === "instagram";
+  return v === "phone";
 }
 
 /**
@@ -171,6 +143,7 @@ export function looksLikePhone(v: string): boolean {
  * Coerce whatever the row holds into a renderable config. Anything malformed
  * resolves to the default — the page must always be usable, never a blank screen.
  * Mirrors normalizeConfig in the update EF (which is the strict gate on save).
+ * Legacy whatsapp/instagram entries are dropped (MESITA-842).
  */
 export function coerceConfig(raw: unknown): ReservationsConfig {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) return DEFAULT_CONFIG;
@@ -231,4 +204,3 @@ function coerceLimits(raw: unknown): ReservationsConfig["limits"] {
     killSwitch: l.killSwitch === true,
   };
 }
-

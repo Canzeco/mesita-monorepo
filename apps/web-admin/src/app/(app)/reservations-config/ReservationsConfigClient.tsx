@@ -12,7 +12,6 @@ import {
   // Aliased: the lucide export is named `Infinity`, which would shadow the
   // global of the same name for this whole module.
   Infinity as InfinityIcon,
-  Lock,
   OctagonPause,
   Phone,
   PhoneCall,
@@ -31,13 +30,11 @@ import {
   type ReservationsConfig,
 } from "./catalog";
 
-// While only phone is bookable, the stored channel shape is fixed: phone ranked,
-// WhatsApp + Instagram parked. Kept out of the UI (nothing to reorder with one
-// live channel) but written on every save so the Enricher never seeds a channel
-// the agent can't yet call.
+// Phone-only eligible set (MESITA-842). Written on every save so the Enricher
+// and the update EF stay aligned with the voice-only serving path.
 const PHONE_ONLY_CHANNELS: Pick<ReservationsConfig, "priority" | "disabled"> = {
-  priority: ["phone", "whatsapp", "instagram"],
-  disabled: ["whatsapp", "instagram"],
+  priority: ["phone"],
+  disabled: [],
 };
 
 const STEPS = [
@@ -410,53 +407,40 @@ export function ReservationsConfigClient({
         </div>
       </SectionCard>
 
-      {/* Channels — phone live, the rest held for verified partners. */}
+      {/* Channels — phone only (voice fleet; MESITA-842). */}
       <SectionCard
         icon={<CalendarCheck className="text-secondary h-4 w-4" />}
         title="Booking channels"
-        subtitle="The contact the agent books through. Today that's the phone, for every place. WhatsApp and Instagram are held for verified partners."
+        subtitle="The contact the agent books through. Voice-only: every place is booked by phone."
       >
         <ul className="mt-5 space-y-2">
-          {CHANNELS.map((ch) => {
-            const live = ch.status === "live";
-            return (
-              <li
-                key={ch.key}
-                className={
-                  "border-border bg-card flex items-center gap-3 rounded-2xl border p-3 " +
-                  (live ? "" : "opacity-60")
-                }
-              >
-                <span className="text-lg" aria-hidden>
-                  {ch.emoji}
-                </span>
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-semibold">{ch.label}</span>
-                    {live ? (
-                      <span className="bg-secondary/10 text-secondary rounded-full px-1.5 py-0.5 text-[10px] font-medium">
-                        live
-                      </span>
-                    ) : (
-                      <span className="text-muted-foreground bg-muted inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-medium">
-                        <Lock className="h-2.5 w-2.5" />
-                        coming soon
-                      </span>
-                    )}
-                  </div>
-                  <p className="text-muted-foreground mt-0.5 text-xs">{ch.blurb}</p>
-                  <p className="text-muted-foreground/70 mt-0.5 font-mono text-[10px]">
-                    {ch.source}
-                  </p>
+          {CHANNELS.map((ch) => (
+            <li
+              key={ch.key}
+              className="border-border bg-card flex items-center gap-3 rounded-2xl border p-3"
+            >
+              <span className="text-lg" aria-hidden>
+                {ch.emoji}
+              </span>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-semibold">{ch.label}</span>
+                  <span className="bg-secondary/10 text-secondary rounded-full px-1.5 py-0.5 text-[10px] font-medium">
+                    live
+                  </span>
                 </div>
-              </li>
-            );
-          })}
+                <p className="text-muted-foreground mt-0.5 text-xs">{ch.blurb}</p>
+                <p className="text-muted-foreground/70 mt-0.5 font-mono text-[10px]">
+                  {ch.source}
+                </p>
+              </div>
+            </li>
+          ))}
         </ul>
         <p className="text-muted-foreground mt-3 text-xs">
-          99% of places are booked by phone. WhatsApp and Instagram unlock per-venue
-          for verified partners from the business console — they don’t switch on
-          here, and the agent never falls back to them on its own.
+          WhatsApp and Instagram are not reservation channels — the Reservationist
+          has no messaging path (MESITA-839). Profile links for those stay on Place
+          → Channels for discovery; they never drive a booking call.
         </p>
       </SectionCard>
 
