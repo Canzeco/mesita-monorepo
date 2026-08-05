@@ -1,6 +1,8 @@
 import { AlertTriangle, Minus, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
+  BOOKING_HORIZON_MONTHS,
+  bookingWindowDays,
   buildSlots,
   hoursLabelForDate,
   isDateSpent,
@@ -44,20 +46,20 @@ type DateOption = {
 };
 
 /**
- * The next `count` days on the VENUE's calendar — not the device's. A guest in
- * Tokyo and a guest in CDMX must see the same "Today", or they'd disagree
- * about which slots are still bookable.
+ * Every bookable day on the VENUE's calendar — not the device's. A guest in
+ * Tokyo and a guest in CDMX must see the same "Today", or they'd disagree about
+ * which slots are still bookable.
+ *
+ * The row spans today → BOOKING_HORIZON_MONTHS ahead and takes no count: the
+ * one-month cap is not a caller's choice.
  *
  * `hours` only widens the day: a place open past midnight has slots the
  * baseline window doesn't cover, so a day is "spent" only when none of ITS
  * slots are left. Omit it and the answer is the baseline window's.
  */
-export function buildDateOptions(
-  count: number,
-  hours?: WeeklyHours | null,
-): DateOption[] {
+export function buildDateOptions(hours?: WeeklyHours | null): DateOption[] {
   const out: DateOption[] = [];
-  for (let i = 0; i < count; i += 1) {
+  for (let i = 0; i < bookingWindowDays(); i += 1) {
     const iso = venueDateIso(i);
     const { weekday, day, month } = venueDateParts(iso);
     out.push({
@@ -78,7 +80,7 @@ export function firstOpenDate(options: DateOption[]): string {
   return options.find((d) => !d.disabled)?.iso ?? "";
 }
 
-/** Date row — horizontally scrollable pills, two weeks out. */
+/** Date row — horizontally scrollable pills, one month out. */
 export function ReservationDatePicker({
   options,
   value,
@@ -92,6 +94,9 @@ export function ReservationDatePicker({
     <div className="mt-5">
       <p className="text-muted-foreground text-[11px] font-medium tracking-[0.14em] uppercase">
         Date
+      </p>
+      <p className="text-muted-foreground mt-1 text-[11px]">
+        Up to {BOOKING_HORIZON_MONTHS} month ahead
       </p>
       <div className="scrollbar-hide -mx-5 mt-2 flex gap-2 overflow-x-auto px-5 pb-1">
         {options.map((d) => {

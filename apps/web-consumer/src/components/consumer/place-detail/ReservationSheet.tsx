@@ -25,7 +25,6 @@ import { SHEET_BODY_CLASS, SHEET_TITLE_CLASS } from "@/lib/ui-classes";
 import { cn, guestNoun } from "@/lib/utils";
 import { MX_OFFSET, venueDateTime } from "@/lib/venue-time";
 
-const DATE_WINDOW = 14; // two weeks of pills
 const DEFAULT_PARTY = 2;
 
 // MX_OFFSET (and everything else about the venue's clock) lives in
@@ -88,10 +87,11 @@ export function ReservationSheet({
     [place.hours_table],
   );
 
-  // Recomputed every render (14 tiny objects) rather than memoised: the sheet
-  // can sit mounted across midnight, and a stale "Today" pill would offer
-  // slots that are a day gone.
-  const dateOptions = buildDateOptions(DATE_WINDOW, hours);
+  // Recomputed every render (one month of tiny objects) rather than memoised:
+  // the sheet can sit mounted across midnight, and a stale "Today" pill would
+  // offer slots that are a day gone — and a stale last pill would sit a day
+  // beyond the one-month horizon.
+  const dateOptions = buildDateOptions(hours);
 
   const [dateChoice, setDateChoice] = useState("");
   // Null = "no explicit pick yet", so the default lands on a slot the place is

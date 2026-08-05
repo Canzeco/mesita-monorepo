@@ -12,6 +12,8 @@ import {
   type EFReservationRow,
 } from '@/lib/api/reservations';
 import {
+  BOOKING_HORIZON_MONTHS,
+  bookingWindowDays,
   buildSlots,
   hoursLabelForDate,
   isDateSpent,
@@ -31,7 +33,6 @@ import {
   venueDateTime,
 } from '@/lib/venue-time';
 
-const DATE_WINDOW = 14; // two weeks of pills
 const DEFAULT_PARTY = 2;
 const MIN_PARTY_SIZE = 1;
 const MAX_PARTY_SIZE = 20;
@@ -60,12 +61,9 @@ type DateOption = {
  * baseline window doesn't cover, so a day is "spent" only when none of ITS
  * slots are left.
  */
-function buildDateOptions(
-  count: number,
-  hours: WeeklyHours | null,
-): DateOption[] {
+function buildDateOptions(hours: WeeklyHours | null): DateOption[] {
   const out: DateOption[] = [];
-  for (let i = 0; i < count; i += 1) {
+  for (let i = 0; i < bookingWindowDays(); i += 1) {
     const iso = venueDateIso(i);
     const { weekday, day } = venueDateParts(iso);
     out.push({
@@ -130,10 +128,11 @@ export function ReservationSheet({
     [place.hours_table],
   );
 
-  // Recomputed every render (14 tiny objects) rather than memoised: the sheet
-  // can sit mounted across midnight, and a stale "Today" pill would offer
-  // slots that are a day gone.
-  const dateOptions = buildDateOptions(DATE_WINDOW, hours);
+  // Recomputed every render (one month of tiny objects) rather than memoised:
+  // the sheet can sit mounted across midnight, and a stale "Today" pill would
+  // offer slots that are a day gone — and a stale last pill would sit a day
+  // beyond the one-month horizon.
+  const dateOptions = buildDateOptions(hours);
 
   const [dateChoice, setDateChoice] = useState('');
   // Null = "no explicit pick yet", so the default lands on a slot the place is
@@ -308,10 +307,13 @@ export function ReservationSheet({
             />
           ) : null}
 
-          {/* Date pills */}
+          {/* Date pills — today through the one-month horizon */}
           <View>
-            <Text className="mb-2 text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
+            <Text className="mb-1 text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
               Date
+            </Text>
+            <Text className="mb-2 text-[11px] text-muted-foreground">
+              Up to {BOOKING_HORIZON_MONTHS} month ahead
             </Text>
             <ScrollView
               horizontal

@@ -19,7 +19,23 @@
 // offset describe the same wall clock.
 // Mirror: apps/mobile-consumer/src/lib/reservation-slots.ts (keep in sync).
 
-import { isSlotPast, slotMinutes, venueDateParts } from "@/lib/venue-time";
+import {
+  isSlotPast,
+  slotMinutes,
+  venueDateIso,
+  venueDateParts,
+} from "@/lib/venue-time";
+
+/**
+ * How far ahead a table can be requested: ONE calendar month, and no more.
+ *
+ * Product constraint (Pato, 2026-08-04) — mirrored in Notion → Reservations.
+ * Mesita books by phoning the place, and no venue will hold a table further out
+ * than a month; scraped hours aren't meaningful that far ahead either. The pill
+ * count is DERIVED from this rather than passed in, so no surface can widen its
+ * own window.
+ */
+export const BOOKING_HORIZON_MONTHS = 1;
 
 /** 30-min slots from 6pm to 11pm — the realistic dinner window. */
 export const BASELINE_SLOTS = [
@@ -95,6 +111,37 @@ function pad(n: number): string {
 function toHhmm(minutes: number): string {
   const m = ((minutes % 1440) + 1440) % 1440;
   return `${pad(Math.floor(m / 60))}:${pad(m % 60)}`;
+}
+
+/**
+ * The last venue date a guest may book: today + BOOKING_HORIZON_MONTHS, with the
+ * day clamped to the target month's length so Jan 31 lands on Feb 28/29 instead
+ * of overflowing into March.
+ */
+export function horizonDateIso(at: number = Date.now()): string {
+  const [y, m, d] = venueDateIso(0, at).split("-").map(Number);
+  const total = m - 1 + BOOKING_HORIZON_MONTHS;
+  const year = y + Math.floor(total / 12);
+  const month = (total % 12) + 1;
+  // Day 0 of the following month == the last day of `month`.
+  const lastDay = new Date(Date.UTC(year, month, 0)).getUTCDate();
+  return `${year}-${pad(month)}-${pad(Math.min(d, lastDay))}`;
+}
+
+/** Day pills to render: today through the horizon, inclusive. */
+export function bookingWindowDays(at: number = Date.now()): number {
+  const start = Date.parse(`${venueDateIso(0, at)}T00:00:00Z`);
+  const end = Date.parse(`${horizonDateIso(at)}T00:00:00Z`);
+  return Math.round((end - start) / 86_400_000) + 1;
+}
+
+/** Is `dateIso` inside the bookable window? ISO dates sort lexicographically. */
+export function isWithinHorizon(
+  dateIso: string,
+  at: number = Date.now(),
+): boolean {
+  if (!dateIso) return false;
+  return dateIso >= venueDateIso(0, at) && dateIso <= horizonDateIso(at);
 }
 
 function parseHhmm(t: string | undefined): number | null {

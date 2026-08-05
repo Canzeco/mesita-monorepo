@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { CalendarClock, Loader2, MapPin, XCircle } from "lucide-react";
 
@@ -38,7 +38,6 @@ import { MX_OFFSET, venueDateTime } from "@/lib/venue-time";
 // venue again. `onChanged` lets the detail view refetch so the phase, banner
 // and available actions update in place.
 
-const DATE_WINDOW = 14;
 const DEFAULT_TIME = "20:00";
 
 // The venue's wall clock (CDMX) — the pickers speak local date + HH:mm, and
@@ -59,7 +58,10 @@ export function ReservationActions({
   onChanged?: () => void;
 }) {
   const supabase = useBrowserSupabase();
-  const dateOptions = useMemo(() => buildDateOptions(DATE_WINDOW), []);
+  // Not memoised: the sheet can sit mounted across midnight, and both ends of
+  // the row would go stale — a dead "Today" pill and a last pill a day past the
+  // one-month horizon.
+  const dateOptions = buildDateOptions();
 
   const [sheetOpen, setSheetOpen] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
