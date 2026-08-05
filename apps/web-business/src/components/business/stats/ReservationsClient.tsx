@@ -1,10 +1,10 @@
 "use client";
 
-import { PhoneCall } from "lucide-react";
 import type { PlaceReservations } from "@/lib/api/reservations";
 
 // Business Reservations tab — Mesita bookings only (MESITA-894).
-// Mirrors admin ReservationsList: read-only + AI dial lines.
+// Mirrors admin ReservationsList: read-only list. The reservation line moved
+// to the per-place Settings tab as passive info (MESITA-897).
 
 const STATUS: Record<string, { label: string; chip: string }> = {
   pending: { label: "Pending", chip: "bg-amber-500/10 text-amber-700" },
@@ -33,26 +33,8 @@ function when(iso: string | null): string {
   });
 }
 
-function tel(n: string): string {
-  return `tel:${n.replace(/[^\d+]/g, "")}`;
-}
-
-function LineLink({ number, who }: { number: string; who: string }) {
-  return (
-    <a
-      href={tel(number)}
-      className="border-border bg-background hover:border-foreground/30 flex flex-1 items-center gap-3 rounded-xl border px-4 py-3 transition"
-    >
-      <PhoneCall className="text-secondary h-4 w-4 shrink-0" />
-      <span className="text-sm font-semibold">{number}</span>
-      <span className="text-muted-foreground truncate text-xs">{who}</span>
-    </a>
-  );
-}
-
 export function ReservationsClient({ data }: { data: PlaceReservations }) {
   const rows = data.reservations;
-  const shared = data.lines.guest === data.lines.venue;
 
   return (
     <section className="border-border bg-card shadow-card rounded-2xl border p-5 sm:p-6">
@@ -62,20 +44,6 @@ export function ReservationsClient({ data }: { data: PlaceReservations }) {
       <p className="text-muted-foreground mt-1 text-sm">
         Mesita bookings only. Read-only — call the AI to reschedule or cancel.
       </p>
-
-      <div className="mt-4 flex flex-col gap-2 sm:flex-row">
-        {shared ? (
-          <LineLink
-            number={data.lines.guest}
-            who="Guests & places · one shared line"
-          />
-        ) : (
-          <>
-            <LineLink number={data.lines.guest} who="Guests" />
-            <LineLink number={data.lines.venue} who="Places" />
-          </>
-        )}
-      </div>
 
       {rows.length === 0 ? (
         <p className="text-muted-foreground border-border mt-4 rounded-xl border border-dashed px-4 py-7 text-center text-sm">
