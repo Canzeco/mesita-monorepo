@@ -307,7 +307,7 @@ export function PromosSection({
           ) : undefined
         }
       >
-        <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
           {STRATEGIES.map((s) => (
             <StrategyCard
               key={s.id}
@@ -604,7 +604,7 @@ function StrategyCard({
           src={art.src}
           alt=""
           fill
-          sizes="(min-width:1280px) 25vw, (min-width:640px) 50vw, 100vw"
+          sizes="(min-width:640px) 50vw, 100vw"
           className="object-cover"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/45 via-black/5 to-transparent" />
