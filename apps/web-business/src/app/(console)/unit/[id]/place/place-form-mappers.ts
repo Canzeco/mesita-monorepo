@@ -1,6 +1,9 @@
 import type { MyPlace } from "@/lib/api/places";
 import type { PlaceFormState } from "@/components/business/place";
-import { MAX_PHOTOS } from "@/components/business/place/place-upload-utils";
+import {
+  isDriveMenuUrl,
+  MAX_PHOTOS,
+} from "@/components/business/place/place-upload-utils";
 import { placeHoursToForm } from "./place-hours";
 
 export function nullableUrl(v: string): string | null {
@@ -43,13 +46,31 @@ export function placeToFormState(place: MyPlace): PlaceFormState {
                     : "";
               const name = typeof row.name === "string" ? row.name : "";
               if (!url && !name) return null;
-              return { name, url };
+              return {
+                name,
+                url,
+                source: url
+                  ? isDriveMenuUrl(url)
+                    ? ("drive" as const)
+                    : ("upload" as const)
+                  : null,
+              };
             })
-            .filter((m): m is { name: string; url: string } => m != null)
+            .filter(
+              (m): m is { name: string; url: string; source: "upload" | "drive" | null } =>
+                m != null,
+            )
         : [];
       if (fromProducts.length > 0) return fromProducts;
       if (place.menu_pdf_url) {
-        return [{ name: place.menu_pdf_name ?? "", url: place.menu_pdf_url }];
+        const url = place.menu_pdf_url;
+        return [
+          {
+            name: place.menu_pdf_name ?? "",
+            url,
+            source: isDriveMenuUrl(url) ? "drive" : "upload",
+          },
+        ];
       }
       // Empty — the Media menu editor shows "No menus yet" + New menu.
       return [];

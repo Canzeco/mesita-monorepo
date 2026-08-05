@@ -1,6 +1,14 @@
 import type { DayKey, DayShifts } from "./place-hours";
 
-export type MenuEntry = { name: string; url: string };
+/** Form-only source for the Upload XOR Drive picker — never persisted. */
+export type MenuSource = "upload" | "drive";
+
+export type MenuEntry = {
+  name: string;
+  url: string;
+  /** Exclusive source in the editor; stripped before save. */
+  source?: MenuSource | null;
+};
 
 export type PlaceFormState = {
   name: string;

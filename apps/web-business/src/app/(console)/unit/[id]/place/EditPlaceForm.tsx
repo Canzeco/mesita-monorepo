@@ -26,7 +26,10 @@ import {
   PLACE_SUB_TABS,
   type PlaceSubTab,
 } from "@/components/business/place/place-subtabs";
-import { MAX_PHOTOS } from "@/components/business/place/place-upload-utils";
+import {
+  isDriveMenuUrl,
+  MAX_PHOTOS,
+} from "@/components/business/place/place-upload-utils";
 import { ERROR_BOX_CLASS } from "@/lib/ui-classes";
 import { cn, errMsg } from "@/lib/utils";
 import { formHoursToPlace } from "./place-hours";
@@ -106,12 +109,32 @@ export function EditPlaceForm({
 
     for (const m of v.menu_links) {
       const trimmed = m.url.trim();
-      if (!trimmed) continue;
+      if (!trimmed) {
+        // Draft rows with a source but no file/link yet — block save so we
+        // don't silently drop them (matches admin Products posture).
+        if (m.source) {
+          setError(
+            m.source === "drive"
+              ? "Each Drive menu needs a Google Drive or Docs share link."
+              : "Each uploaded menu needs a file.",
+          );
+          return;
+        }
+        continue;
+      }
       const normalized = nullableUrl(trimmed);
       if (!normalized || !/^https:\/\//i.test(normalized)) {
         setError(
           "Each menu needs a valid https:// URL (Drive link or uploaded file).",
         );
+        return;
+      }
+      if (m.source === "drive" && !isDriveMenuUrl(normalized)) {
+        setError("Drive menus need a Google Drive or Docs link.");
+        return;
+      }
+      if (!m.source) {
+        setError("Each menu needs a source — Upload file or Google Drive.");
         return;
       }
     }
