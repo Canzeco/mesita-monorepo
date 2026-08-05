@@ -3,11 +3,13 @@ import { cn } from "@/lib/utils";
 import {
   BOOKING_HORIZON_MONTHS,
   bookingWindowDays,
+  buildHourColumns,
   buildSlots,
   hoursLabelForDate,
   isDateSpent,
   slotState,
   weekdayName,
+  type ReservationSlot,
   type WeeklyHours,
 } from "@/lib/reservation-slots";
 import {
@@ -98,7 +100,7 @@ export function ReservationDatePicker({
       <p className="text-muted-foreground mt-1 text-[11px]">
         Up to {BOOKING_HORIZON_MONTHS} month ahead
       </p>
-      <div className="scrollbar-hide -mx-5 mt-2 flex gap-2 overflow-x-auto px-5 pb-1">
+      <div className="scrollbar-hide -mx-5 mt-2 flex flex-nowrap gap-2 overflow-x-auto px-5 pb-1">
         {options.map((d) => {
           const active = d.iso === value;
           return (
@@ -148,13 +150,13 @@ export function ReservationDatePicker({
 }
 
 /**
- * Time grid — 4 columns of 30-min slots for the selected venue day. Slots
- * behind the venue's clock render muted + unclickable; they stay in the grid so
- * the layout never jumps.
+ * Time picker — horizontal scroll, exactly two rows (:00 on top, :30 on
+ * bottom). Slots behind the venue's clock render muted + unclickable; they
+ * stay in the strip so the layout never jumps.
  *
- * Slots the place's hours don't cover stay TAPPABLE and render amber: hours are
- * scraped and often wrong, and Mesita books by phone, so the guest decides —
- * the sheet warns via ClosedSlotNotice.
+ * Slots the place's hours don't cover stay TAPPABLE and render dashed/amber:
+ * hours are scraped and often wrong, and Mesita books by phone, so the guest
+ * decides — the sheet warns via ClosedSlotNotice.
  */
 export function ReservationTimePicker({
   value,
@@ -167,7 +169,7 @@ export function ReservationTimePicker({
   date?: string;
   hours?: WeeklyHours | null;
 }) {
-  const slots = buildSlots(date ?? "", hours);
+  const columns = buildHourColumns(buildSlots(date ?? "", hours));
   const dayHours = date ? hoursLabelForDate(date, hours) : null;
   return (
     <div className="mt-4">
@@ -178,46 +180,77 @@ export function ReservationTimePicker({
         Times shown in {VENUE_TZ_LABEL}
         {dayHours ? ` · open ${dayHours}` : ""}
       </p>
-      <div className="mt-2 grid grid-cols-4 gap-2">
-        {slots.map((slot) => {
-          const past = date ? isSlotPast(date, slot.time) : false;
-          const active = slot.time === value && !past;
-          const closed = slot.state === "closed";
-          return (
-            <button
-              key={slot.time}
-              type="button"
-              onClick={() => onChange(slot.time)}
-              disabled={past}
-              aria-disabled={past}
-              title={
-                past
-                  ? "This time has already passed"
-                  : closed
-                    ? "The place looks closed at this time — you can still request it"
-                    : slot.afterMidnight
-                      ? "After midnight"
-                      : undefined
-              }
-              className={cn(
-                "rounded-xl border py-2 text-sm font-semibold tabular-nums transition",
-                past
-                  ? "border-border bg-muted/40 text-muted-foreground cursor-not-allowed opacity-45"
-                  : closed
-                    ? active
-                      ? "text-foreground border-amber-500/70 bg-amber-500/15"
-                      : "border-border bg-card text-muted-foreground hover:text-foreground border-dashed"
-                    : active
-                      ? "text-foreground border-pink-500/40 bg-pink-500/10"
-                      : "border-border bg-card text-muted-foreground hover:text-foreground",
-              )}
-            >
-              {slot.time}
-            </button>
-          );
-        })}
+      <div className="scrollbar-hide -mx-5 mt-2 overflow-x-auto px-5 pb-1">
+        <div className="inline-flex flex-nowrap gap-2">
+          {columns.map((col) => (
+            <div key={col.hour} className="flex w-[4.5rem] shrink-0 flex-col gap-2">
+              <TimeSlotButton
+                slot={col.onHour}
+                date={date}
+                value={value}
+                onChange={onChange}
+              />
+              <TimeSlotButton
+                slot={col.onHalf}
+                date={date}
+                value={value}
+                onChange={onChange}
+              />
+            </div>
+          ))}
+        </div>
       </div>
     </div>
+  );
+}
+
+function TimeSlotButton({
+  slot,
+  date,
+  value,
+  onChange,
+}: {
+  slot: ReservationSlot | null;
+  date?: string;
+  value: string | null;
+  onChange: (slot: string) => void;
+}) {
+  if (!slot) {
+    return <div className="h-[42px] w-full" aria-hidden />;
+  }
+  const past = date ? isSlotPast(date, slot.time) : false;
+  const active = slot.time === value && !past;
+  const closed = slot.state === "closed";
+  return (
+    <button
+      type="button"
+      onClick={() => onChange(slot.time)}
+      disabled={past}
+      aria-disabled={past}
+      title={
+        past
+          ? "This time has already passed"
+          : closed
+            ? "The place looks closed at this time — you can still request it"
+            : slot.afterMidnight
+              ? "After midnight"
+              : undefined
+      }
+      className={cn(
+        "h-[42px] w-full rounded-xl border text-sm font-semibold tabular-nums transition",
+        past
+          ? "border-border bg-muted/40 text-muted-foreground cursor-not-allowed opacity-45"
+          : closed
+            ? active
+              ? "text-foreground border-amber-500/70 bg-amber-500/15"
+              : "border-border bg-card text-muted-foreground hover:text-foreground border-dashed"
+            : active
+              ? "text-foreground border-pink-500/40 bg-pink-500/10"
+              : "border-border bg-card text-muted-foreground hover:text-foreground",
+      )}
+    >
+      {slot.time}
+    </button>
   );
 }
 

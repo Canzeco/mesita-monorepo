@@ -14,6 +14,7 @@ import {
 import {
   BOOKING_HORIZON_MONTHS,
   bookingWindowDays,
+  buildHourColumns,
   buildSlots,
   hoursLabelForDate,
   isDateSpent,
@@ -21,6 +22,7 @@ import {
   resolveSlot,
   slotState,
   weekdayName,
+  type ReservationSlot,
   type WeeklyHours,
 } from '@/lib/reservation-slots';
 import { errMsg, guestNoun } from '@/lib/utils';
@@ -366,10 +368,9 @@ export function ReservationSheet({
             </ScrollView>
           </View>
 
-          {/* Time slots — past ones stay in the grid, muted, so it never jumps.
-              Slots the place's hours don't cover stay TAPPABLE and render amber:
-              hours are scraped and often wrong, and Mesita books by phone, so
-              the guest decides — ClosedSlotNotice below warns. */}
+          {/* Time — horizontal scroll, 2 rows (:00 top / :30 bottom). Past
+              slots stay muted so the strip never jumps. Out-of-hours stay
+              tappable (dashed/amber); ClosedSlotNotice warns. */}
           <View>
             <Text className="mb-1 text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
               Time
@@ -380,65 +381,28 @@ export function ReservationSheet({
                 ? ` · open ${hoursLabelForDate(date, hours)}`
                 : ''}
             </Text>
-            <View className="flex-row flex-wrap gap-2">
-              {buildSlots(date, hours).map((slot) => {
-                const past = isSlotPast(date, slot.time);
-                const active = slot.time === time && !past;
-                const closed = slot.state === 'closed';
-                return (
-                  <Pressable
-                    key={slot.time}
-                    onPress={() => setTimeChoice(slot.time)}
-                    disabled={past}
-                    accessibilityRole="button"
-                    accessibilityState={{ selected: active, disabled: past }}
-                    accessibilityHint={
-                      past
-                        ? 'This time has already passed'
-                        : closed
-                          ? 'The place looks closed at this time — you can still request it'
-                          : slot.afterMidnight
-                            ? 'After midnight'
-                            : undefined
-                    }
-                    style={
-                      past
-                        ? { opacity: 0.45 }
-                        : closed && !active
-                          ? { borderStyle: 'dashed' }
-                          : undefined
-                    }
-                    className={`rounded-xl border px-3 py-2 ${
-                      past
-                        ? 'border-border bg-muted'
-                        : closed
-                          ? active
-                            ? 'border-amber-500 bg-amber-500/15'
-                            : 'border-border bg-card'
-                          : active
-                            ? 'border-primary bg-primary'
-                            : 'border-border bg-card'
-                    }`}
-                  >
-                    <Text
-                      className={`text-[13px] font-semibold ${
-                        past
-                          ? 'text-muted-foreground'
-                          : closed
-                            ? active
-                              ? 'text-foreground'
-                              : 'text-muted-foreground'
-                            : active
-                              ? 'text-primary-foreground'
-                              : 'text-foreground'
-                      }`}
-                    >
-                      {timeLabel(slot.time)}
-                    </Text>
-                  </Pressable>
-                );
-              })}
-            </View>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={{ gap: 8, paddingRight: 8 }}
+            >
+              {buildHourColumns(buildSlots(date, hours)).map((col) => (
+                <View key={col.hour} style={{ width: 72, gap: 8 }}>
+                  <TimeSlotButton
+                    slot={col.onHour}
+                    date={date}
+                    selected={time}
+                    onSelect={setTimeChoice}
+                  />
+                  <TimeSlotButton
+                    slot={col.onHalf}
+                    date={date}
+                    selected={time}
+                    onSelect={setTimeChoice}
+                  />
+                </View>
+              ))}
+            </ScrollView>
           </View>
 
           <ClosedSlotNotice
@@ -510,6 +474,77 @@ export function ReservationSheet({
         </>
       )}
     </FullScreenSheet>
+  );
+}
+
+function TimeSlotButton({
+  slot,
+  date,
+  selected,
+  onSelect,
+}: {
+  slot: ReservationSlot | null;
+  date: string;
+  selected: string | null;
+  onSelect: (time: string) => void;
+}) {
+  if (!slot) {
+    return <View style={{ height: 42 }} />;
+  }
+  const past = isSlotPast(date, slot.time);
+  const active = slot.time === selected && !past;
+  const closed = slot.state === 'closed';
+  return (
+    <Pressable
+      onPress={() => onSelect(slot.time)}
+      disabled={past}
+      accessibilityRole="button"
+      accessibilityState={{ selected: active, disabled: past }}
+      accessibilityHint={
+        past
+          ? 'This time has already passed'
+          : closed
+            ? 'The place looks closed at this time — you can still request it'
+            : slot.afterMidnight
+              ? 'After midnight'
+              : undefined
+      }
+      style={[
+        { height: 42, justifyContent: 'center', alignItems: 'center' },
+        past
+          ? { opacity: 0.45 }
+          : closed && !active
+            ? { borderStyle: 'dashed' }
+            : undefined,
+      ]}
+      className={`rounded-xl border ${
+        past
+          ? 'border-border bg-muted'
+          : closed
+            ? active
+              ? 'border-amber-500 bg-amber-500/15'
+              : 'border-border bg-card'
+            : active
+              ? 'border-primary bg-primary'
+              : 'border-border bg-card'
+      }`}
+    >
+      <Text
+        className={`text-[13px] font-semibold ${
+          past
+            ? 'text-muted-foreground'
+            : closed
+              ? active
+                ? 'text-foreground'
+                : 'text-muted-foreground'
+              : active
+                ? 'text-primary-foreground'
+                : 'text-foreground'
+        }`}
+      >
+        {timeLabel(slot.time)}
+      </Text>
+    </Pressable>
   );
 }
 

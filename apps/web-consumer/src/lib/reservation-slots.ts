@@ -229,9 +229,34 @@ export function slotState(
 }
 
 /**
+ * Fill holes between sorted slot minutes so brunch+dinner doesn't skip
+ * mid-afternoon (MESITA-934). Caps the fill so overnight venues (23:00–02:00)
+ * don't inflate into a full-day strip — gaps longer than 8h stay as breaks.
+ */
+const MAX_GAP_FILL_MINUTES = 8 * 60;
+
+function fillSlotGaps(sorted: number[]): number[] {
+  if (sorted.length === 0) return [];
+  const out: number[] = [sorted[0]!];
+  for (let i = 1; i < sorted.length; i += 1) {
+    const prev = sorted[i - 1]!;
+    const next = sorted[i]!;
+    const gap = next - prev;
+    if (gap > STEP_MINUTES && gap <= MAX_GAP_FILL_MINUTES) {
+      for (let m = prev + STEP_MINUTES; m < next; m += STEP_MINUTES) {
+        out.push(m);
+      }
+    }
+    out.push(next);
+  }
+  return out;
+}
+
+/**
  * Every slot offerable on `dateIso`, ascending. The baseline window plus the
  * place's real open windows, so the grid is never empty and never hides a time
- * the place is genuinely open.
+ * the place is genuinely open. Gaps between those windows (≤8h) are filled so
+ * the picker scrolls continuously (MESITA-934).
  */
 export function buildSlots(
   dateIso: string,
@@ -243,16 +268,39 @@ export function buildSlots(
       for (let m = w.from; m < w.to; m += STEP_MINUTES) minutes.add(m);
     }
   }
-  return [...minutes]
-    .sort((a, b) => a - b)
-    .map((m) => {
-      const time = toHhmm(m);
-      return {
-        time,
-        state: slotState(dateIso, time, hours),
-        afterMidnight: m < 6 * 60,
-      };
-    });
+  return fillSlotGaps([...minutes].sort((a, b) => a - b)).map((m) => {
+    const time = toHhmm(m);
+    return {
+      time,
+      state: slotState(dateIso, time, hours),
+      afterMidnight: m < 6 * 60,
+    };
+  });
+}
+
+/** One hour column for the 2-row picker — `:00` on top, `:30` on bottom. */
+export type HourColumn = {
+  hour: number;
+  onHour: ReservationSlot | null;
+  onHalf: ReservationSlot | null;
+};
+
+/**
+ * Group flat slots into hour columns for the horizontal 2-row time scroll.
+ * Hour order follows first appearance in the (ascending) slot list.
+ */
+export function buildHourColumns(slots: ReservationSlot[]): HourColumn[] {
+  const byTime = new Map(slots.map((s) => [s.time, s]));
+  const hourOrder: number[] = [];
+  for (const s of slots) {
+    const h = Math.floor(slotMinutes(s.time) / 60);
+    if (!hourOrder.includes(h)) hourOrder.push(h);
+  }
+  return hourOrder.map((hour) => ({
+    hour,
+    onHour: byTime.get(toHhmm(hour * 60)) ?? null,
+    onHalf: byTime.get(toHhmm(hour * 60 + 30)) ?? null,
+  }));
 }
 
 /** Slots still ahead of the venue's clock. */
