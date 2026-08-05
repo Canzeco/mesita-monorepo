@@ -105,11 +105,18 @@ export function PlaceSwipeCard({ place: rawPlace }: { place: Place }) {
           >
             {place.name}
           </Text>
-          {isVerified ? (
-            <View className="size-[18px] items-center justify-center rounded-full bg-[#3897f0]">
-              <Text className="text-[10px] font-bold text-white">✓</Text>
-            </View>
-          ) : null}
+          {/* decision: Pato — always a disc beside the name: blue ✓ partner,
+              amber ? unverified (pair to web verified-check / unverified-mark). */}
+          <View
+            className={`size-[18px] items-center justify-center rounded-full ${
+              isVerified ? 'bg-[#0EA5E9]' : 'bg-[#F59E0B]'
+            }`}
+            accessibilityLabel={isVerified ? 'Verified Partner' : 'Not verified'}
+          >
+            <Text className="text-[10px] font-bold text-white">
+              {isVerified ? '✓' : '?'}
+            </Text>
+          </View>
         </View>
 
         <View className="flex-row flex-wrap items-center gap-1.5">
