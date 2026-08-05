@@ -3,59 +3,72 @@ import { Pressable, Text, View } from 'react-native';
 
 export function StarRatingRow({
   label,
-  hint,
   value,
   onChange,
-  emphasized = false,
+  size = 'compact',
 }: {
   label: string;
-  hint?: string;
   value: number;
   onChange: (n: number) => void;
-  emphasized?: boolean;
+  size?: 'hero' | 'compact';
 }) {
+  const starSize = size === 'hero' ? 32 : 24;
+  const isHero = size === 'hero';
+
   return (
     <View
-      style={{
-        borderRadius: 12,
-        borderWidth: 1,
-        borderColor: emphasized ? 'rgba(38,4,9,0.15)' : 'rgba(235,217,219,0.8)',
-        backgroundColor: emphasized ? 'rgba(255,247,248,0.8)' : '#ffffff',
-        paddingHorizontal: 12,
-        paddingVertical: 8,
-      }}
+      style={
+        isHero
+          ? { gap: 6, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#f0e4e6' }
+          : {
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: 12,
+              paddingVertical: 10,
+              borderBottomWidth: 1,
+              borderBottomColor: '#f0e4e6',
+            }
+      }
     >
       <View
         style={{
           flexDirection: 'row',
           alignItems: 'baseline',
-          justifyContent: 'space-between',
           gap: 8,
+          ...(isHero ? {} : { flexShrink: 1 }),
         }}
       >
         <Text
           style={{
-            fontWeight: '500',
-            fontSize: emphasized ? 14 : 13,
+            fontWeight: isHero ? '800' : '600',
+            fontSize: isHero ? 14 : 13,
             color: '#260409',
           }}
         >
           {label}
         </Text>
-        <Text style={{ color: '#775254', fontSize: 12, fontVariant: ['tabular-nums'] }}>
-          {value}/5
-        </Text>
+        {value > 0 ? (
+          <Text
+            style={{
+              color: '#775254',
+              fontSize: 11,
+              fontVariant: ['tabular-nums'],
+            }}
+          >
+            {value}
+          </Text>
+        ) : null}
       </View>
-      {hint ? (
-        <Text style={{ marginTop: 2, color: '#775254', fontSize: 11 }}>{hint}</Text>
-      ) : null}
       <View
         style={{
-          marginTop: 6,
           flexDirection: 'row',
-          justifyContent: 'space-between',
-          gap: 4,
+          ...(isHero
+            ? { justifyContent: 'space-between', width: '100%' }
+            : { gap: 2, flexShrink: 0 }),
         }}
+        accessibilityRole="adjustable"
+        accessibilityLabel={label}
       >
         {[1, 2, 3, 4, 5].map((n) => {
           const on = value >= n;
@@ -64,14 +77,16 @@ export function StarRatingRow({
               key={n}
               onPress={() => onChange(n)}
               accessibilityLabel={`${label}: ${n} star${n === 1 ? '' : 's'}`}
+              hitSlop={4}
               style={{
-                flex: 1,
                 alignItems: 'center',
                 paddingVertical: 2,
+                paddingHorizontal: isHero ? 0 : 1,
+                ...(isHero ? { flex: 1 } : {}),
               }}
             >
               <Star
-                size={28}
+                size={starSize}
                 color={on ? '#fbbf24' : 'rgba(119,82,84,0.35)'}
                 fill={on ? '#fbbf24' : 'transparent'}
                 strokeWidth={on ? 0 : 1.5}

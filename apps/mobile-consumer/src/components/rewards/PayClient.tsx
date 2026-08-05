@@ -7,7 +7,7 @@ import {
   Star,
   TicketX,
 } from 'lucide-react-native';
-import React, {
+import {
   useCallback,
   useEffect,
   useMemo,
@@ -27,7 +27,7 @@ import { FullScreenSheet } from '@/components/ui/FullScreenSheet';
 import { PlacePickList } from '@/components/rewards/PlacePickList';
 import { SavingsReveal } from '@/components/rewards/SavingsReveal';
 import { TicketRow } from '@/components/rewards/TicketRow';
-import { GRADIENT_DIAGONAL, GRADIENTS } from '@/constants/brand';
+import { COLORS, GRADIENT_DIAGONAL, GRADIENTS } from '@/constants/brand';
 import type { Place } from '@/lib/api/places';
 import {
   ACTIVE_TICKET_STATUSES,
@@ -170,8 +170,11 @@ export function PayClient({ userId }: { userId: string }) {
           />
         ) : null}
 
-        {/* Segmented control — filled track (MESITA-820). */}
-        <View className="flex-row rounded-2xl bg-muted p-1" style={{ gap: 4 }}>
+        {/* Slim muted track (MESITA-908): ~32px paint, ≥44px hit via hitSlop. */}
+        <View
+          className="flex-row rounded-[10px] bg-muted p-[3px]"
+          style={{ gap: 2 }}
+        >
           {(
             [
               { id: 'new', label: 'New' },
@@ -184,16 +187,17 @@ export function PayClient({ userId }: { userId: string }) {
               onPress={() => setTabChoice(t.id)}
               accessibilityRole="tab"
               accessibilityState={{ selected: tab === t.id }}
-              className={`flex-1 flex-row items-center justify-center gap-1.5 rounded-xl px-1 ${
+              hitSlop={{ top: 6, bottom: 6 }}
+              className={`flex-1 flex-row items-center justify-center gap-1 rounded-[8px] px-1 ${
                 tab === t.id ? 'bg-foreground' : ''
               }`}
-              style={{ minHeight: 44 }}
+              style={{ minHeight: 32 }}
             >
               <Text
                 className={`font-semibold ${
                   tab === t.id ? 'text-background' : 'text-muted-foreground'
                 }`}
-                style={{ fontSize: 12.5 }}
+                style={{ fontSize: 12 }}
               >
                 {t.label}
               </Text>
@@ -207,7 +211,7 @@ export function PayClient({ userId }: { userId: string }) {
                     className={`font-bold ${
                       tab === 'pending' ? 'text-background' : 'text-primary'
                     }`}
-                    style={{ fontSize: 10 }}
+                    style={{ fontSize: 9, lineHeight: 12 }}
                   >
                     {tickets.active.length}
                   </Text>
@@ -405,29 +409,41 @@ const PITCH_STEPS = [
 ] as const;
 
 function PitchSteps() {
+  // Connected glyph rail (MESITA-908): 28px circular nodes on one hairline.
   return (
-    <View className="flex-row items-start px-1" style={{ paddingTop: 4 }}>
+    <View className="relative flex-row items-start px-1" style={{ paddingTop: 2 }}>
+      <View
+        pointerEvents="none"
+        className="absolute bg-border"
+        style={{
+          top: 21,
+          left: '12.5%',
+          right: '12.5%',
+          height: 1,
+        }}
+      />
       {PITCH_STEPS.map(({ Icon, label }, i) => (
-        <React.Fragment key={label}>
-          <View className="flex-1 items-center" style={{ gap: 6 }}>
-            <View className="h-10 w-10 items-center justify-center rounded-xl bg-secondary/10">
-              <Icon size={18} color="#cf0360" />
-            </View>
-            <Text
-              className="text-center font-semibold text-foreground"
-              style={{ fontSize: 11, lineHeight: 14 }}
-            >
-              <Text className="font-extrabold text-primary">{i + 1}</Text>{' '}
-              {label}
-            </Text>
+        <View
+          key={label}
+          className="z-[1] flex-1 items-center"
+          style={{ gap: 4 }}
+        >
+          <Text
+            className="font-bold text-primary"
+            style={{ fontSize: 9, lineHeight: 10 }}
+          >
+            {String(i + 1).padStart(2, '0')}
+          </Text>
+          <View className="h-7 w-7 items-center justify-center rounded-full border border-secondary/25 bg-background">
+            <Icon size={14} color={COLORS.secondary} strokeWidth={2.25} />
           </View>
-          {i < PITCH_STEPS.length - 1 ? (
-            <View
-              className="bg-border"
-              style={{ height: 1, width: 12, marginTop: 20 }}
-            />
-          ) : null}
-        </React.Fragment>
+          <Text
+            className="text-center font-semibold text-foreground"
+            style={{ fontSize: 10.5, lineHeight: 13 }}
+          >
+            {label}
+          </Text>
+        </View>
       ))}
     </View>
   );

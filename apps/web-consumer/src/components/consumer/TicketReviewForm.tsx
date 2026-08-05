@@ -15,75 +15,50 @@ export type TicketReviewDraft = {
   comments: string;
 };
 
-function StarRatingRow({
+function StarGroup({
   label,
-  hint,
   value,
   onChange,
-  emphasized = false,
+  size,
 }: {
   label: string;
-  hint?: string;
   value: number;
   onChange: (n: number) => void;
-  emphasized?: boolean;
+  size: "hero" | "compact";
 }) {
+  const starClass = size === "hero" ? "h-8 w-8" : "h-6 w-6";
   return (
     <div
       className={cn(
-        "rounded-xl border px-3 py-2",
-        emphasized
-          ? "border-foreground/15 bg-muted/30"
-          : "border-border/70 bg-background",
+        "flex",
+        size === "hero" ? "w-full justify-between gap-1" : "shrink-0 gap-0.5",
       )}
+      role="group"
+      aria-label={label}
     >
-      <div className="flex items-baseline justify-between gap-2">
-        <p
-          className={cn(
-            "font-medium",
-            emphasized
-              ? "text-foreground text-sm"
-              : "text-foreground text-[13px]",
-          )}
-        >
-          {label}
-        </p>
-        <p className="text-muted-foreground shrink-0 text-xs tabular-nums">
-          {value}/5
-        </p>
-      </div>
-      {hint ? (
-        <p className="text-muted-foreground mt-0.5 text-[11px]">{hint}</p>
-      ) : null}
-      <div
-        className="mt-1.5 flex justify-between gap-1"
-        role="group"
-        aria-label={label}
-      >
-        {[1, 2, 3, 4, 5].map((n) => {
-          const on = value >= n;
-          return (
-            <button
-              key={n}
-              type="button"
-              aria-label={`${label}: ${n} star${n === 1 ? "" : "s"}`}
-              aria-pressed={value === n}
-              onClick={() => onChange(n)}
-              className="flex flex-1 items-center justify-center rounded-lg py-0.5 transition active:scale-95"
-            >
-              <Star
-                className={cn(
-                  "h-7 w-7",
-                  on
-                    ? "fill-amber-400 text-amber-400"
-                    : "text-muted-foreground/35",
-                )}
-                strokeWidth={on ? 0 : 1.5}
-              />
-            </button>
-          );
-        })}
-      </div>
+      {[1, 2, 3, 4, 5].map((n) => {
+        const on = value >= n;
+        return (
+          <button
+            key={n}
+            type="button"
+            aria-label={`${label}: ${n} star${n === 1 ? "" : "s"}`}
+            aria-pressed={value === n}
+            onClick={() => onChange(n)}
+            className="grid place-items-center rounded-md p-0.5 transition active:scale-95"
+          >
+            <Star
+              className={cn(
+                starClass,
+                on
+                  ? "fill-amber-400 text-amber-400"
+                  : "text-muted-foreground/35",
+              )}
+              strokeWidth={on ? 0 : 1.5}
+            />
+          </button>
+        );
+      })}
     </div>
   );
 }
@@ -94,14 +69,15 @@ export function TicketReviewForm({
   onSubmit,
   busy,
   placeName,
-  showIntro = true,
+  error,
 }: {
   draft: TicketReviewDraft;
   onChange: (draft: TicketReviewDraft) => void;
   onSubmit: () => void;
   busy?: boolean;
   placeName?: string | null;
-  showIntro?: boolean;
+  /** Inline destructive line above Send (MESITA-908). */
+  error?: string | null;
 }) {
   const ratingsSet =
     draft.overall > 0 &&
@@ -111,53 +87,75 @@ export function TicketReviewForm({
     draft.value > 0;
   const noteLen = draft.comments.trim().length;
   const canSubmit = ratingsSet && noteLen >= NOTE_MIN;
+
+  const dims: {
+    key: keyof Pick<
+      TicketReviewDraft,
+      "food" | "service" | "ambiance" | "value"
+    >;
+    label: string;
+  }[] = [
+    { key: "food", label: "Food" },
+    { key: "service", label: "Service" },
+    { key: "ambiance", label: "Ambiance" },
+    { key: "value", label: "Value" },
+  ];
+
   return (
-    <div className="space-y-3">
+    <div className="space-y-1">
       {placeName ? (
-        <p className="text-foreground text-sm font-medium">{placeName}</p>
-      ) : null}
-      {showIntro !== false ? (
-        <ol className="text-muted-foreground list-decimal space-y-1 pl-4 text-[13px] leading-snug">
-          <li>Tap stars on each row — 1 is bad, 5 is great.</li>
-          <li>
-            Fill in Overall first, then Food, Service, Ambiance, and Value.
-          </li>
-          <li>Add a note about your visit, then tap Send review.</li>
-        </ol>
+        <div className="mb-2">
+          <p className="text-foreground text-[15px] font-extrabold tracking-tight">
+            Rate {placeName}
+          </p>
+          <p className="text-muted-foreground mt-0.5 text-[12px]">
+            On Mesita · feeds its rating
+          </p>
+        </div>
       ) : null}
 
-      <div className="space-y-2">
-        <StarRatingRow
+      {/* Overall hero — no bordered box, no 0/5 shout (MESITA-908). */}
+      <div className="border-border/60 flex flex-col gap-1.5 border-b py-3">
+        <div className="flex items-baseline justify-between gap-2">
+          <p className="text-foreground text-sm font-extrabold">Overall</p>
+          {draft.overall > 0 ? (
+            <p className="text-muted-foreground text-[11px] tabular-nums">
+              {draft.overall}
+            </p>
+          ) : null}
+        </div>
+        <StarGroup
           label="Overall"
-          hint="How was the visit in general?"
           value={draft.overall}
           onChange={(overall) => onChange({ ...draft, overall })}
-          emphasized
-        />
-        <StarRatingRow
-          label="Food"
-          value={draft.food}
-          onChange={(food) => onChange({ ...draft, food })}
-        />
-        <StarRatingRow
-          label="Service"
-          value={draft.service}
-          onChange={(service) => onChange({ ...draft, service })}
-        />
-        <StarRatingRow
-          label="Ambiance"
-          value={draft.ambiance}
-          onChange={(ambiance) => onChange({ ...draft, ambiance })}
-        />
-        <StarRatingRow
-          label="Value"
-          value={draft.value}
-          onChange={(value) => onChange({ ...draft, value })}
+          size="hero"
         />
       </div>
 
-      <label className="block">
-        <span className="text-foreground mb-1 flex items-center justify-between text-[13px] font-medium">
+      {dims.map(({ key, label }) => (
+        <div
+          key={key}
+          className="border-border/60 flex items-center justify-between gap-3 border-b py-2.5 last:border-b-0"
+        >
+          <div className="flex min-w-0 items-baseline gap-2">
+            <p className="text-foreground text-[13px] font-semibold">{label}</p>
+            {draft[key] > 0 ? (
+              <p className="text-muted-foreground text-[11px] tabular-nums">
+                {draft[key]}
+              </p>
+            ) : null}
+          </div>
+          <StarGroup
+            label={label}
+            value={draft[key]}
+            onChange={(n) => onChange({ ...draft, [key]: n })}
+            size="compact"
+          />
+        </div>
+      ))}
+
+      <label className="mt-2 block">
+        <span className="text-foreground mb-1 flex items-center justify-between text-[12px] font-semibold">
           <span>Notes</span>
           <span
             className={cn(
@@ -182,11 +180,17 @@ export function TicketReviewForm({
         />
       </label>
 
+      {error ? (
+        <p className="bg-destructive/10 text-destructive rounded-lg px-3 py-2 text-[12px]">
+          {error}
+        </p>
+      ) : null}
+
       {!canSubmit ? (
-        <p className="text-muted-foreground text-center text-[12px]">
+        <p className="text-muted-foreground text-[12px]">
           {ratingsSet
             ? `Your note needs at least ${NOTE_MIN} characters.`
-            : "Tap a rating on every row to continue."}
+            : "Rate every row to continue."}
         </p>
       ) : null}
       <button

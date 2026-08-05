@@ -1,7 +1,6 @@
 "use client";
 
 import {
-  Fragment,
   useCallback,
   useEffect,
   useMemo,
@@ -166,44 +165,45 @@ export function RewardsClient({ userId }: { userId: string }) {
         />
       ) : null}
 
-      {/* Segmented control — a FILLED track, not a bordered card, so it
-          reads as a control and never twins with the step rail above.
-          ≥44px hit areas. */}
-      <div className="bg-muted grid grid-cols-3 gap-1 rounded-2xl p-1">
-        {(
-          [
-            { id: "new", label: "New" },
-            { id: "pending", label: "Pending" },
-            { id: "history", label: "History" },
-          ] as const
-        ).map((t) => (
-          <button
-            key={t.id}
-            type="button"
-            onClick={() => setTabChoice(t.id)}
-            aria-pressed={tab === t.id}
-            className={cn(
-              "flex min-h-11 items-center justify-center gap-1.5 rounded-xl px-1 text-center text-[12.5px] font-semibold transition",
-              tab === t.id
-                ? "bg-foreground text-background shadow-sm"
-                : "text-muted-foreground hover:text-foreground",
-            )}
-          >
-            {t.label}
-            {t.id === "pending" && tickets.active.length > 0 ? (
-              <span
-                className={cn(
-                  "rounded-full px-1.5 text-[10px] font-bold",
-                  tab === "pending"
-                    ? "bg-background/25 text-background"
-                    : "bg-primary/10 text-primary",
-                )}
-              >
-                {tickets.active.length}
-              </span>
-            ) : null}
-          </button>
-        ))}
+      {/* Slim muted track (MESITA-908): ~32px paint, ≥44px hit via vertical
+          slop so the control stays calm without sacrificing touch targets. */}
+      <div className="-my-1.5 py-1.5">
+        <div className="bg-muted grid grid-cols-3 gap-0.5 rounded-[10px] p-[3px]">
+          {(
+            [
+              { id: "new", label: "New" },
+              { id: "pending", label: "Pending" },
+              { id: "history", label: "History" },
+            ] as const
+          ).map((t) => (
+            <button
+              key={t.id}
+              type="button"
+              onClick={() => setTabChoice(t.id)}
+              aria-pressed={tab === t.id}
+              className={cn(
+                "flex min-h-8 items-center justify-center gap-1 rounded-[8px] px-1 text-center text-[12px] font-semibold transition",
+                tab === t.id
+                  ? "bg-foreground text-background"
+                  : "text-muted-foreground hover:text-foreground",
+              )}
+            >
+              {t.label}
+              {t.id === "pending" && tickets.active.length > 0 ? (
+                <span
+                  className={cn(
+                    "rounded-full px-1.5 text-[9px] font-bold leading-none",
+                    tab === "pending"
+                      ? "bg-background/25 text-background"
+                      : "bg-primary/10 text-primary",
+                  )}
+                >
+                  {tickets.active.length}
+                </span>
+              ) : null}
+            </button>
+          ))}
+        </div>
       </div>
 
       {tab === "new" ? (
@@ -350,8 +350,8 @@ export function RewardsClient({ userId }: { userId: string }) {
   );
 }
 
-// The four steps — a RAIL, not a card (MESITA-826): numbered, connected by
-// hairlines, instruction-weight. Pato's wording verbatim.
+// Connected glyph rail (MESITA-908): 28px circular nodes on one hairline —
+// not fat 40px tiles. Number is a primary micro-caption above the label.
 const PITCH_STEPS = [
   { icon: MapPin, label: "Pick place" },
   { icon: Star, label: "Post review" },
@@ -361,25 +361,27 @@ const PITCH_STEPS = [
 
 function PitchSteps() {
   return (
-    <ol className="flex items-start px-1 pt-1 pb-0.5">
+    <ol className="relative flex items-start px-1 pt-0.5 pb-0.5">
+      {/* Continuous hairline through node centers (14px into the 28px circle). */}
+      <span
+        aria-hidden="true"
+        className="bg-border absolute top-[21px] right-[12.5%] left-[12.5%] h-px"
+      />
       {PITCH_STEPS.map(({ icon: Icon, label }, i) => (
-        <Fragment key={label}>
-          <li className="flex w-0 flex-1 flex-col items-center gap-1.5">
-            <span className="bg-secondary/10 text-secondary grid size-10 place-items-center rounded-xl">
-              <Icon className="size-[18px]" />
-            </span>
-            <span className="text-foreground text-center text-[11px] leading-tight font-semibold">
-              <span className="text-primary font-extrabold">{i + 1}</span>{" "}
-              {label}
-            </span>
-          </li>
-          {i < PITCH_STEPS.length - 1 ? (
-            <span
-              aria-hidden="true"
-              className="bg-border mt-5 h-px w-3 shrink-0 sm:w-6"
-            />
-          ) : null}
-        </Fragment>
+        <li
+          key={label}
+          className="relative z-[1] flex w-0 flex-1 flex-col items-center gap-1"
+        >
+          <span className="text-primary text-[9px] leading-none font-bold tabular-nums">
+            {String(i + 1).padStart(2, "0")}
+          </span>
+          <span className="border-secondary/25 bg-background text-secondary grid size-7 place-items-center rounded-full border">
+            <Icon className="size-3.5" strokeWidth={2.25} />
+          </span>
+          <span className="text-foreground text-center text-[10.5px] leading-tight font-semibold">
+            {label}
+          </span>
+        </li>
       ))}
     </ol>
   );

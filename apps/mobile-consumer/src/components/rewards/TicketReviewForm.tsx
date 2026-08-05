@@ -19,13 +19,13 @@ export function TicketReviewForm({
   onChange,
   onSubmit,
   busy,
-  showIntro = true,
+  error,
 }: {
   draft: TicketReviewDraft;
   onChange: (draft: TicketReviewDraft) => void;
   onSubmit: () => void;
   busy?: boolean;
-  showIntro?: boolean;
+  error?: string | null;
 }) {
   const ratingsSet =
     draft.overall > 0 &&
@@ -36,53 +36,38 @@ export function TicketReviewForm({
   const noteLen = draft.comments.trim().length;
   const canSubmit = ratingsSet && noteLen >= NOTE_MIN;
 
+  const dims: {
+    key: keyof Pick<
+      TicketReviewDraft,
+      'food' | 'service' | 'ambiance' | 'value'
+    >;
+    label: string;
+  }[] = [
+    { key: 'food', label: 'Food' },
+    { key: 'service', label: 'Service' },
+    { key: 'ambiance', label: 'Ambiance' },
+    { key: 'value', label: 'Value' },
+  ];
+
   return (
-    <View style={{ gap: 12 }}>
-      {showIntro ? (
-        <View style={{ gap: 4 }}>
-          <Text style={{ color: '#775254', fontSize: 13 }}>
-            1. Tap stars on each row — 1 is bad, 5 is great.
-          </Text>
-          <Text style={{ color: '#775254', fontSize: 13 }}>
-            2. Fill in Overall first, then Food, Service, Ambiance, and Value.
-          </Text>
-          <Text style={{ color: '#775254', fontSize: 13 }}>
-            3. Add a note about your visit, then tap Send review.
-          </Text>
-        </View>
-      ) : null}
+    <View style={{ gap: 4 }}>
+      <StarRatingRow
+        label="Overall"
+        value={draft.overall}
+        onChange={(overall) => onChange({ ...draft, overall })}
+        size="hero"
+      />
+      {dims.map(({ key, label }) => (
+        <StarRatingRow
+          key={key}
+          label={label}
+          value={draft[key]}
+          onChange={(n) => onChange({ ...draft, [key]: n })}
+          size="compact"
+        />
+      ))}
 
-      <View style={{ gap: 8 }}>
-        <StarRatingRow
-          label="Overall"
-          hint="How was the visit in general?"
-          value={draft.overall}
-          onChange={(overall) => onChange({ ...draft, overall })}
-          emphasized
-        />
-        <StarRatingRow
-          label="Food"
-          value={draft.food}
-          onChange={(food) => onChange({ ...draft, food })}
-        />
-        <StarRatingRow
-          label="Service"
-          value={draft.service}
-          onChange={(service) => onChange({ ...draft, service })}
-        />
-        <StarRatingRow
-          label="Ambiance"
-          value={draft.ambiance}
-          onChange={(ambiance) => onChange({ ...draft, ambiance })}
-        />
-        <StarRatingRow
-          label="Value"
-          value={draft.value}
-          onChange={(value) => onChange({ ...draft, value })}
-        />
-      </View>
-
-      <View>
+      <View style={{ marginTop: 8 }}>
         <View
           style={{
             flexDirection: 'row',
@@ -90,7 +75,7 @@ export function TicketReviewForm({
             marginBottom: 4,
           }}
         >
-          <Text style={{ fontSize: 13, fontWeight: '500', color: '#260409' }}>
+          <Text style={{ fontSize: 12, fontWeight: '600', color: '#260409' }}>
             Notes
           </Text>
           <Text
@@ -123,11 +108,26 @@ export function TicketReviewForm({
         />
       </View>
 
+      {error ? (
+        <Text
+          style={{
+            fontSize: 12,
+            color: '#b91c1c',
+            backgroundColor: '#fef2f2',
+            paddingHorizontal: 12,
+            paddingVertical: 8,
+            borderRadius: 10,
+          }}
+        >
+          {error}
+        </Text>
+      ) : null}
+
       {!canSubmit ? (
-        <Text style={{ textAlign: 'center', color: '#775254', fontSize: 12 }}>
+        <Text style={{ color: '#775254', fontSize: 12 }}>
           {ratingsSet
             ? `Your note needs at least ${NOTE_MIN} characters.`
-            : 'Tap a rating on every row to continue.'}
+            : 'Rate every row to continue.'}
         </Text>
       ) : null}
 
