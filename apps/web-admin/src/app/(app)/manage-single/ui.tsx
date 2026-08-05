@@ -546,6 +546,7 @@ export function ReadField({
   label,
   auto,
   boxed,
+  labelRight,
   children,
 }: {
   label: string;
@@ -553,24 +554,31 @@ export function ReadField({
   /** Render label + value like a (disabled) filled input, so the field sits
    *  flush with the editable TextFields around it instead of as bare text. */
   boxed?: boolean;
+  /** Optional trailing accessory in the label row (e.g. an "Open ↗" link) —
+   *  same slot as TextField's, so a read-only field's affordances line up with
+   *  the editable fields stacked beside it instead of sitting in the box. */
+  labelRight?: React.ReactNode;
   children: React.ReactNode;
 }) {
   return (
     <div className="flex min-w-0 flex-col gap-1.5">
-      <span
-        className={
-          boxed
-            ? "text-foreground/90 flex min-h-4 items-center gap-1.5 text-[13px] font-medium"
-            : "text-muted-foreground flex min-h-4 items-center gap-1.5 text-[11px] font-semibold tracking-[0.05em] uppercase"
-        }
-      >
-        {label}
-        {auto ? (
-          <span className="text-muted-foreground/70 inline-flex items-center gap-0.5 text-[10px] font-normal tracking-normal normal-case">
-            <Lock className="h-3 w-3" />
-            auto
-          </span>
-        ) : null}
+      <span className="flex min-h-4 items-center justify-between gap-2">
+        <span
+          className={
+            boxed
+              ? "text-foreground/90 flex items-center gap-1.5 text-[13px] font-medium"
+              : "text-muted-foreground flex items-center gap-1.5 text-[11px] font-semibold tracking-[0.05em] uppercase"
+          }
+        >
+          {label}
+          {auto ? (
+            <span className="text-muted-foreground/70 inline-flex items-center gap-0.5 text-[10px] font-normal tracking-normal normal-case">
+              <Lock className="h-3 w-3" />
+              auto
+            </span>
+          ) : null}
+        </span>
+        {labelRight}
       </span>
       <div
         className={
