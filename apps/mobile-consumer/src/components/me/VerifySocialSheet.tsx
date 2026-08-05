@@ -9,6 +9,7 @@ import { Switch } from '@/components/ui/Switch';
 import { TextField } from '@/components/ui/TextField';
 import { GRADIENTS } from '@/constants/brand';
 import { apiClaimInstagram } from '@/lib/api/auth';
+import { INFLUENCER_FOLLOWER_THRESHOLD } from '@/lib/consumer-classes';
 import { DEMO_INSTAGRAM_FOLLOWERS } from '@/lib/instagram-demo';
 import { useMockClass } from '@/lib/mock-class';
 import { errMsg } from '@/lib/utils';
@@ -17,18 +18,7 @@ import { useAuth } from '@/providers/auth';
 const HANDLE_RE = /^@?[A-Za-z0-9._]{1,30}$/;
 const VERIFICATION_CODE_LENGTH = 8;
 
-const REWARD_DOORS = [
-  {
-    title: 'Influencer Class',
-    punch: 'Connect Instagram for better Rewards.',
-    soft: 'When you qualify, your class can climb.',
-  },
-  {
-    title: 'Instagram Stories',
-    punch: 'Connect Instagram and post Stories for better Rewards.',
-    soft: 'Tag Mesita at the place — bonus on that visit.',
-  },
-] as const;
+const WHY_COPY = `Add Instagram to unlock better Rewards. Optionally post Stories for even better Rewards on visits — and with ${INFLUENCER_FOLLOWER_THRESHOLD.toLocaleString('en-US')}+ followers you automatically upgrade to Influencer for free.`;
 
 type Props = {
   visible: boolean;
@@ -99,20 +89,6 @@ export function VerifySocialSheet({ visible, onClose }: Props) {
       </LinearGradient>
 
       <View style={{ gap: 12, marginTop: 4 }}>
-        {REWARD_DOORS.map((door) => (
-          <RewardDoorModule key={door.title} {...door} />
-        ))}
-
-        <ConnectModule
-          handle={handle}
-          code={code}
-          verifying={verifying}
-          canVerify={canVerify}
-          onHandleChange={setHandle}
-          onCodeChange={setCode}
-          onVerify={() => void verify()}
-        />
-
         <View
           style={{
             borderWidth: 1,
@@ -158,20 +134,24 @@ export function VerifySocialSheet({ visible, onClose }: Props) {
             accessibilityLabel="Preview connected Instagram"
           />
         </View>
+
+        <WhyConnectModule />
+
+        <ConnectModule
+          handle={handle}
+          code={code}
+          verifying={verifying}
+          canVerify={canVerify}
+          onHandleChange={setHandle}
+          onCodeChange={setCode}
+          onVerify={() => void verify()}
+        />
       </View>
     </FullScreenSheet>
   );
 }
 
-function RewardDoorModule({
-  title,
-  punch,
-  soft,
-}: {
-  title: string;
-  punch: string;
-  soft: string;
-}) {
+function WhyConnectModule() {
   return (
     <View
       style={{
@@ -190,28 +170,18 @@ function RewardDoorModule({
           letterSpacing: -0.1,
         }}
       >
-        {title}
+        Why connect
       </Text>
       <Text
         style={{
           marginTop: 8,
           fontSize: 13,
-          fontWeight: '600',
+          fontWeight: '500',
           lineHeight: 18,
           color: '#260409',
         }}
       >
-        {punch}
-      </Text>
-      <Text
-        style={{
-          marginTop: 6,
-          fontSize: 12,
-          lineHeight: 16,
-          color: '#775254',
-        }}
-      >
-        {soft}
+        {WHY_COPY}
       </Text>
     </View>
   );
