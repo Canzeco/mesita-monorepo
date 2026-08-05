@@ -9,7 +9,9 @@ import type { Href } from 'expo-router';
 //       in-screen state on mobile, not nested routes — same IA)
 //   web /search                            →  Expo /(tabs)/search
 //   web /rewards                           →  Expo /(tabs)/rewards  (also /rewards)
-//   web /saved/reservations                →  Expo /saved/reservations → /(tabs)/reservations
+//   web /reservations                      →  Expo /(tabs)/reservations
+//   web /reservation/:id                   →  Expo /reservation/[id]
+//   web /saved/reservations (legacy)       →  Expo /saved/reservations → tab
 //   web /pay (legacy)                      →  Expo /pay → /(tabs)/rewards
 //   web /me                                →  Expo /(tabs)/me
 //   web /place/:id                         →  Expo /place/[id]
@@ -37,10 +39,12 @@ export const CONSUMER_ROUTES = {
   place: {
     prefix: '/place/',
   },
+  reservations: '/(tabs)/reservations',
+  reservation: {
+    prefix: '/reservation/',
+  },
   saved: {
-    reservations: '/(tabs)/reservations',
     placePrefix: '/place/',
-    reservationPrefix: '/saved/reservation/',
   },
   rewards: {
     root: '/(tabs)/rewards',
@@ -61,15 +65,14 @@ export const CONSUMER_ROUTES = {
     inboxMine: '/inbox/my-activity',
     inboxGlobal: '/inbox/global-activity',
     placePrefix: '/place/',
-    reservationPrefix: '/reservation/',
     ticketPrefix: '/ticket/',
     pay: '/pay',
     payTicketPrefix: '/pay/ticket/',
     payTicketsPrefix: '/pay/tickets/',
+    savedReservations: '/saved/reservations',
+    savedReservationPrefix: '/saved/reservation/',
   },
 } as const;
-
-
 
 type PlaceSurface = 'place' | 'saved';
 
@@ -93,7 +96,7 @@ export function placePath(
 }
 
 export function reservationPath(id: string): Href {
-  return asHref(`${CONSUMER_ROUTES.saved.reservationPrefix}${id}`);
+  return asHref(`${CONSUMER_ROUTES.reservation.prefix}${id}`);
 }
 
 const COUPON_PATH_PREFIX = '/coupon/';
@@ -105,5 +108,3 @@ export function couponPath(id: string): Href {
 export function rewardsTicketPath(id: string): Href {
   return asHref(`${CONSUMER_ROUTES.rewards.ticketPrefix}${id}`);
 }
-
-

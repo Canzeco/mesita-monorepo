@@ -73,7 +73,7 @@ function ReservationNotFound() {
   );
 }
 
-// Body for the hard-nav /saved/reservation/[id] page — the page supplies its
+// Body for the hard-nav /reservation/[id] page — the page supplies its
 // own header around this.
 export function ReservationDetailFetcher({ id }: { id: string }) {
   const { state, reload } = useReservationById(id);

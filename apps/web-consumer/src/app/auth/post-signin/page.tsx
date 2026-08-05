@@ -8,7 +8,7 @@ import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 //   1. Call the consumer post-sign-in EF (stamps app_metadata.role,
 //      lazy-creates the profile row).
 //   2. Decide where to send the user — /onboard if the profile row is
-//      missing required fields, /discover/swipe otherwise.
+//      missing required fields, /home/swipe otherwise.
 //
 // Why a dedicated server page: it runs server-side with the session
 // cookie, so the EF call carries the freshly-issued JWT and any errors
@@ -43,6 +43,8 @@ export default async function PostSigninPage({
   }
   if (explicitNext) redirect(explicitNext);
   redirect(
-    consumerResult?.onboarded ? CONSUMER_ROUTES.home : CONSUMER_ROUTES.onboard,
+    consumerResult?.onboarded
+      ? CONSUMER_ROUTES.homeDefault
+      : CONSUMER_ROUTES.onboard,
   );
 }

@@ -28,10 +28,16 @@ export const CONSUMER_ROUTES = {
   place: {
     prefix: "/place/",
   },
+  // Reservations tab — list + singular detail. Formerly under /saved/* when
+  // "Saved" was a tab; favorites moved to /home/favorites, so the namespace
+  // was a lie. /saved/reservations + /saved/reservation/[id] redirect here.
+  reservations: "/reservations",
+  reservation: {
+    prefix: "/reservation/",
+  },
   saved: {
-    reservations: "/saved/reservations",
+    // Dual place-detail path from Favorites (collapse later). Not reservations.
     placePrefix: "/saved/place/",
-    reservationPrefix: "/saved/reservation/",
   },
   // Rewards is a single page (banner + Mesita passport + tickets). The tab
   // used to live at /pay — that whole tree now redirects here. Ticket detail
@@ -64,6 +70,9 @@ export const CONSUMER_ROUTES = {
     pay: "/pay",
     payTicketPrefix: "/pay/ticket/",
     payTicketsPrefix: "/pay/tickets/",
+    // Reservations used to live under /saved when that was a tab.
+    savedReservations: "/saved/reservations",
+    savedReservationPrefix: "/saved/reservation/",
   },
 } as const;
 
@@ -71,16 +80,16 @@ export const CONSUMER_ROUTE_PREFIX = {
   home: "/home",
   search: "/search",
   place: "/place",
-  saved: "/saved",
+  reservations: "/reservations",
   rewards: "/rewards",
   inbox: "/inbox",
   me: "/me",
+  saved: "/saved",
 } as const;
 
-// The Reservations tab surface: the singular prefix matches both the
-// /saved/reservations list and /saved/reservation/[id] details, so nav
-// highlighting and headers share one matcher instead of string literals.
-export const CONSUMER_RESERVATION_SURFACE_PREFIX = "/saved/reservation";
+// Matches both the /reservations list and /reservation/[id] details
+// (`/reservations`.startsWith(`/reservation`) is intentional).
+export const CONSUMER_RESERVATION_SURFACE_PREFIX = "/reservation";
 
 export type PlaceSurface = "place" | "saved";
 
@@ -96,7 +105,7 @@ export function placePath(
 }
 
 export function reservationPath(id: string): string {
-  return `${CONSUMER_ROUTES.saved.reservationPrefix}${id}`;
+  return `${CONSUMER_ROUTES.reservation.prefix}${id}`;
 }
 
 // Coupon detail is singular /coupon/[id] (list lives at /coupons).
@@ -118,7 +127,8 @@ export function isModalContractPath(pathname: string): boolean {
   return (
     pathname.startsWith(CONSUMER_ROUTES.place.prefix) ||
     pathname.startsWith(CONSUMER_ROUTES.saved.placePrefix) ||
-    pathname.startsWith(CONSUMER_ROUTES.saved.reservationPrefix) ||
+    pathname.startsWith(CONSUMER_ROUTES.reservation.prefix) ||
+    pathname.startsWith(CONSUMER_ROUTES.legacy.savedReservationPrefix) ||
     pathname.startsWith(CONSUMER_ROUTES.rewards.ticketPrefix) ||
     pathname.startsWith(COUPON_PATH_PREFIX)
   );

@@ -79,7 +79,7 @@ export function OnboardForm({ initial }: { initial?: OnboardInitialValues }) {
           sex,
           birthday,
         });
-        router.push(CONSUMER_ROUTES.home);
+        router.push(CONSUMER_ROUTES.homeDefault);
         router.refresh();
       } catch (err) {
         setError(errMsg(err, "Couldn't save. Try again."));

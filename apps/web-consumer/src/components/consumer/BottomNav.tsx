@@ -19,8 +19,7 @@ import {
 
 // Five top-level surfaces: Home, Search, Rewards, Reservations, Profile.
 // Home hosts the discovery routes (Swipe / Ask AI / Social / Favorites);
-// Search hosts the map + catalog search. Rewards/Reservations/Profile reuse
-// the existing pay, saved-reservations, and me surfaces unchanged.
+// Search hosts the map + catalog search.
 
 // Icon is either a lucide glyph or the Mesita brand mark (Home) — both take
 // a className and (harmlessly) a strokeWidth, so the render stays uniform.
@@ -61,10 +60,10 @@ const ITEMS: Item[] = [
     // ticket stack are built; the tab opens the real page.
   },
   {
-    href: CONSUMER_ROUTES.saved.reservations,
+    href: CONSUMER_ROUTES.reservations,
     Icon: CalendarCheck,
     label: "Reservations",
-    // Singular prefix also catches /saved/reservation/[id] detail views.
+    // Prefix `/reservation` also catches /reservation/[id] detail views.
     match: CONSUMER_RESERVATION_SURFACE_PREFIX,
     // LIVE since 2026-07-27 — the Reservationist books over the phone and the
     // Upcoming/History tabs read consumer-web-list-reservations.

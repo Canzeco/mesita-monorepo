@@ -17,16 +17,18 @@ import type { Database } from "./database.types";
 // requires an Edge Function call per request, which is too expensive.
 // Onboard pages and dashboards each do their own server-side check.
 //
-// Consumer browsing (discover, place detail, share) is deliberately public
-// so anonymous visitors can swipe before signing up. /me, /pay
-// /rewards (+ legacy /pay), /inbox, /qr (legacy → /rewards), and /saved
-// are private because they expose personal data.
+// Consumer browsing (home, place detail, share) is deliberately public
+// so anonymous visitors can swipe before signing up. /me, /rewards (+ legacy
+// /pay), /reservations (+ legacy /saved), /inbox, /qr are private because
+// they expose personal data.
 
 const PROTECTED_PREFIXES = [
   "/me",
   "/profile",
   "/rewards",
   "/pay",
+  "/reservations",
+  "/reservation",
   "/inbox",
   "/notifications",
   "/qr",
