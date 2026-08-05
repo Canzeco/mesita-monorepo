@@ -142,7 +142,7 @@ export default function MeScreen() {
           Icon={SettingsIcon}
           tint="muted"
           title="Settings"
-          summary="Preferences on this device"
+          summary="Notifications, privacy, language"
           onPress={() => setSheet('settings')}
         />
 

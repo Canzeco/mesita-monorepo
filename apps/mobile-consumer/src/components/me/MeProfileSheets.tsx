@@ -4,6 +4,7 @@ import {
   Camera,
   Download,
   Trash2,
+  Users,
 } from 'lucide-react-native';
 import { useState } from 'react';
 import { Linking, Pressable, Text, View } from 'react-native';
@@ -223,11 +224,67 @@ export function SettingsSheet({
   onClose: () => void;
   onDeleteAccount: () => void;
 }) {
+  const { profile, refreshProfile } = useAuth();
   const [push, setPush] = useStoredFlag(PREF_KEYS.push, true);
   const [location, setLocation] = useStoredFlag(PREF_KEYS.location, true);
   const [contacts, setContacts] = useStoredFlag(PREF_KEYS.contacts, false);
   const [language, setLanguage] = useStoredString(PREF_KEYS.language, 'es');
   const [city, setCity] = useStoredString(PREF_KEYS.defaultCity, 'cdmx');
+
+  // EF-backed privacy (MESITA-913). Draft overrides the profile while a write
+  // is in flight; otherwise the profile prop is the source of truth.
+  const [privacyDraft, setPrivacyDraft] = useState<{
+    privateAccount: boolean;
+    showStories: boolean;
+  } | null>(null);
+  const [savingPrivacy, setSavingPrivacy] = useState(false);
+
+  const privateAccount =
+    privacyDraft?.privateAccount ?? profile?.profile_public === false;
+  const showStories =
+    privacyDraft?.showStories ?? profile?.profile_show_stories !== false;
+
+  async function persistPrivacy(
+    draft: { privateAccount: boolean; showStories: boolean },
+    patch: {
+      profile_public?: boolean;
+      profile_show_stories?: boolean;
+    },
+  ) {
+    setPrivacyDraft(draft);
+    setSavingPrivacy(true);
+    try {
+      await apiUpdateConsumerProfile(patch);
+      await refreshProfile();
+      setPrivacyDraft(null);
+    } catch (e) {
+      setPrivacyDraft(null);
+      toast(errMsg(e, "Couldn't save privacy settings."));
+    } finally {
+      setSavingPrivacy(false);
+    }
+  }
+
+  function onPrivateToggle(nextPrivate: boolean) {
+    if (nextPrivate) {
+      void persistPrivacy(
+        { privateAccount: true, showStories: false },
+        { profile_public: false, profile_show_stories: false },
+      );
+      return;
+    }
+    void persistPrivacy(
+      { privateAccount: false, showStories },
+      { profile_public: true },
+    );
+  }
+
+  function onStoriesToggle(next: boolean) {
+    void persistPrivacy(
+      { privateAccount, showStories: next },
+      { profile_show_stories: next },
+    );
+  }
 
   return (
     <FullScreenSheet
@@ -239,22 +296,45 @@ export function SettingsSheet({
       <SectionLabel>Notifications</SectionLabel>
       <PrefRow
         title="Push notifications"
-        summary="Offers and reservation updates"
+        summary="Ticket updates and rewards"
         value={push}
         onValueChange={setPush}
+      />
+      <SectionLabel>Community</SectionLabel>
+      <BoxRow
+        Icon={Users}
+        tint="violet"
+        title="Communities"
+        summary="Connect with your community · Soon"
+        onPress={() => toast('Communities are coming soon.')}
       />
       <SectionLabel>Permissions</SectionLabel>
       <PrefRow
         title="Location"
-        summary="Better nearby recommendations"
+        summary="Recommend places near you"
         value={location}
         onValueChange={setLocation}
       />
       <PrefRow
         title="Contacts"
-        summary="Find friends on Mesita"
+        summary="Find friends already on Mesita"
         value={contacts}
         onValueChange={setContacts}
+      />
+      <SectionLabel>Privacy</SectionLabel>
+      <PrefRow
+        title="Private account"
+        summary="When on, other guests see you as anonymous in the social feed and on reviews. Your Instagram can stay public — this only affects Mesita."
+        value={privateAccount}
+        onValueChange={onPrivateToggle}
+        disabled={!profile || savingPrivacy}
+      />
+      <PrefRow
+        title="Show stories on Mesita"
+        summary="Let other Mesita guests see your story activity. Separate from posting to Instagram."
+        value={showStories}
+        onValueChange={onStoriesToggle}
+        disabled={!profile || savingPrivacy}
       />
       <SectionLabel>Preferences</SectionLabel>
       <SelectRow
@@ -271,7 +351,7 @@ export function SettingsSheet({
       />
       <SectionLabel>Legal</SectionLabel>
       <LinkRow
-        title="Terms of service"
+        title="Terms of use"
         onPress={() => void Linking.openURL(TERMS_URL)}
       />
       <LinkRow

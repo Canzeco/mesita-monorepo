@@ -11,11 +11,12 @@ export type UpdateProfileBody = {
   birthday?: string | null;
   country?: string | null;
   phone?: string | null;
-  // Profile visibility flags (MESITA-76). Sent alone or alongside the
-  // identity fields; only the keys present are patched.
+  // Profile visibility flags (MESITA-76 / MESITA-913). Sent alone or
+  // alongside the identity fields; only the keys present are patched.
   profile_public?: boolean;
   profile_show_saves?: boolean;
   profile_show_visits?: boolean;
+  profile_show_stories?: boolean;
 };
 
 // Male/Female only — "other" was dropped from the product (MESITA-727).
@@ -160,6 +161,7 @@ export function buildProfilePatch(
     "profile_public",
     "profile_show_saves",
     "profile_show_visits",
+    "profile_show_stories",
   ] as const) {
     const value = body[key];
     if (value === undefined) continue;

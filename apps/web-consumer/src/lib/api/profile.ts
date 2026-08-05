@@ -31,10 +31,13 @@ export type ConsumerProfile = {
   // initials until then. The upload/storage/EF half is a separate,
   // human-gated change. (Salvaged from the closed design-review PR #362.)
   avatar_url?: string | null;
-  // Account-level visibility flags (MESITA-76) — Settings → Social toggles.
+  // Account-level visibility flags (MESITA-76 / MESITA-913) — Settings → Privacy.
+  // profile_public=false → Private account (anonymous to other guests).
+  // profile_show_stories → Mesita story visibility (independent of Instagram).
   profile_public: boolean;
   profile_show_saves: boolean;
   profile_show_visits: boolean;
+  profile_show_stories: boolean;
 };
 
 // Class payload returned alongside the profile by consumer-web-get-profile.
@@ -120,9 +123,18 @@ type ConsumerOnboardingInput = {
   phone?: string;
 };
 
+// Visibility-only patches (MESITA-913). Name fields are omitted so the EF
+// doesn't require the first/last pair for a privacy toggle flip.
+export type ConsumerPrivacyPatch = {
+  profile_public?: boolean;
+  profile_show_saves?: boolean;
+  profile_show_visits?: boolean;
+  profile_show_stories?: boolean;
+};
+
 export async function apiUpdateConsumerProfile(
   client: SupabaseClient,
-  input: ConsumerOnboardingInput,
+  input: ConsumerOnboardingInput | ConsumerPrivacyPatch,
 ): Promise<ConsumerProfile> {
   const { consumer } = await invokeEF<{ consumer: ConsumerProfile }>(
     client,

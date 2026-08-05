@@ -56,3 +56,24 @@ Deno.test("buildProfilePatch: name pair also refreshes full_name", () => {
     full_name: "Ana Ruiz",
   });
 });
+
+Deno.test("buildProfilePatch: privacy flags alone (MESITA-913)", () => {
+  const res = buildProfilePatch(
+    { profile_public: false, profile_show_stories: false },
+    {
+      firstName: null,
+      lastName: null,
+      fullName: null,
+      sex: null,
+      birthday: null,
+      country: null,
+      phone: null,
+    },
+  );
+  assertEquals(res.ok, true);
+  if (!res.ok) return;
+  assertEquals(res.patch, {
+    profile_public: false,
+    profile_show_stories: false,
+  });
+});

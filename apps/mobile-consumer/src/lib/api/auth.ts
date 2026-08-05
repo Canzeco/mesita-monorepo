@@ -36,6 +36,11 @@ export type ConsumerProfile = {
   /** Claimed Instagram username — normalized, no leading @. */
   instagram_handle?: string | null;
   avatar_url?: string | null;
+  // Settings → Privacy (MESITA-76 / MESITA-913). Defaults true when EF omits.
+  profile_public?: boolean;
+  profile_show_saves?: boolean;
+  profile_show_visits?: boolean;
+  profile_show_stories?: boolean;
 };
 
 // Matches consumer-web-get-profile `class` payload (EF uses `key`).
@@ -109,13 +114,27 @@ export async function apiFetchConsumerMetrics(): Promise<ConsumerMetrics> {
 // 400s on one without the other. Typing them as required makes a half-name
 // patch a compile error here rather than a runtime rejection, matching
 // ConsumerOnboardingInput in apps/web-consumer/src/lib/api/profile.ts.
-export function apiUpdateConsumerProfile(patch: {
-  first_name: string;
-  last_name: string;
+export type ConsumerProfilePatch = {
+  first_name?: string;
+  last_name?: string;
   sex?: 'male' | 'female'; // Male/Female only (MESITA-727)
   birthday?: string; // YYYY-MM-DD
-}): Promise<ProfileResult> {
-  return invokeEF<ProfileResult>(supabase, 'consumer-web-update-profile', patch);
+  profile_public?: boolean;
+  profile_show_saves?: boolean;
+  profile_show_visits?: boolean;
+  profile_show_stories?: boolean;
+};
+
+// Identity writes still require first_name + last_name as a pair (EF 400s
+// otherwise). Privacy-only patches omit the name fields entirely.
+export function apiUpdateConsumerProfile(
+  patch: ConsumerProfilePatch,
+): Promise<{ consumer: ConsumerProfile }> {
+  return invokeEF<{ consumer: ConsumerProfile }>(
+    supabase,
+    'consumer-web-update-profile',
+    patch,
+  );
 }
 
 // consumer-web-claim-instagram: the social door into Influencer (segments

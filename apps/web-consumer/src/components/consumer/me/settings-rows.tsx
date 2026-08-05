@@ -87,10 +87,13 @@ function RowText({
   label,
   sub,
   destructive,
+  wrapSub,
 }: {
   label: string;
   sub?: string;
   destructive?: boolean;
+  /** When true, helper text wraps (privacy explanations). Default truncates. */
+  wrapSub?: boolean;
 }) {
   return (
     <span className="min-w-0 flex-1">
@@ -103,7 +106,12 @@ function RowText({
         {label}
       </span>
       {sub && (
-        <span className="text-muted-foreground block truncate text-[11px]">
+        <span
+          className={cn(
+            "text-muted-foreground block text-[11px]",
+            wrapSub ? "leading-snug whitespace-normal" : "truncate",
+          )}
+        >
           {sub}
         </span>
       )}
@@ -212,6 +220,42 @@ function Switch({ on }: { on: boolean }) {
         )}
       />
     </span>
+  );
+}
+
+// Controlled boolean row for EF-backed prefs (optimistic UI owned by parent).
+export function ToggleRow({
+  Icon,
+  tint,
+  label,
+  sub,
+  on,
+  onToggle,
+  disabled,
+}: {
+  Icon: LucideIcon;
+  tint: RowTint;
+  label: string;
+  sub?: string;
+  on: boolean;
+  onToggle: () => void;
+  disabled?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      disabled={disabled}
+      role="switch"
+      aria-checked={on}
+      className="hover:bg-muted flex w-full items-center gap-3 px-4 py-3 text-left transition disabled:opacity-60"
+    >
+      <IconCircle tint={tint}>
+        <Icon className="h-[18px] w-[18px]" />
+      </IconCircle>
+      <RowText label={label} sub={sub} wrapSub />
+      <Switch on={on} />
+    </button>
   );
 }
 

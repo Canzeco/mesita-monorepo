@@ -20,25 +20,34 @@ export function PrefRow({
   summary,
   value,
   onValueChange,
+  disabled,
 }: {
   title: string;
   summary: string;
   value: boolean;
   onValueChange: (next: boolean) => void;
+  disabled?: boolean;
 }) {
   return (
-    <View className="mb-2 flex-row items-center gap-3 rounded-2xl border border-border bg-card p-4">
+    <View
+      className="mb-2 flex-row items-center gap-3 rounded-2xl border border-border bg-card p-4"
+      style={disabled ? { opacity: 0.6 } : undefined}
+    >
       <View className="min-w-0 flex-1">
         <Text className="font-bold text-foreground" style={{ fontSize: 15 }}>
           {title}
         </Text>
-        <Text className="text-muted-foreground" style={{ fontSize: 12 }}>
+        <Text
+          className="text-muted-foreground"
+          style={{ fontSize: 12, lineHeight: 16 }}
+        >
           {summary}
         </Text>
       </View>
       <Switch
         value={value}
         onValueChange={onValueChange}
+        disabled={disabled}
         accessibilityLabel={title}
       />
     </View>
