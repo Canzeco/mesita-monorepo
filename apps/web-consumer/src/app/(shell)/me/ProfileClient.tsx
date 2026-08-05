@@ -50,7 +50,6 @@ export function ProfileClient({
   const [profile, setProfile] = useState<ConsumerProfile | null>(null);
   const [visits, setVisits] = useState<number | null>(null);
   const [savedCents, setSavedCents] = useState<number | null>(null);
-  const [stories, setStories] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
 
   // Modal state. Only one is meaningfully open at a time; each is a LocalSheet
@@ -78,11 +77,10 @@ export function ProfileClient({
         ]);
         if (cancelled) return;
         setProfile(consumer);
-        // Card footer prefers metrics EF (Saved / Visits / Stories). Profile
+        // Card metrics row prefers metrics EF (visits · saved). Profile
         // stats.visits is the fallback when metrics fails.
         setVisits(metrics?.places_visited ?? stats.visits);
         setSavedCents(metrics?.saved_cents ?? null);
-        setStories(metrics?.instagram_stories ?? null);
       } catch (e) {
         if (!cancelled) toast(errMsg(e, "Couldn't load your profile."));
       } finally {
@@ -126,7 +124,6 @@ export function ProfileClient({
             profile={profile}
             savedCents={savedCents}
             visits={visits}
-            stories={stories}
             loading={loading}
           />
 

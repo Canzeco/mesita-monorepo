@@ -9,8 +9,8 @@ import { formatCurrency } from '@/lib/api/pay';
 import { isElevatedClass } from '@/lib/consumer-classes';
 import { formatCompactCount } from '@/lib/utils';
 
-// ─── ID-1 membership card (MESITA-930) — web ProfileSummaryCard parity.
-// Dual badges: Cls (left) + IG (right). Class once. Footer Saved · Visits · Stories.
+// ─── Me membership card (MESITA-932) — web ProfileSummaryCard parity.
+// Centered photo + Class/IG badges, then five equal-height identity rows.
 
 const CLASS_LETTER: Record<string, string> = {
   standard: 'S',
@@ -18,6 +18,8 @@ const CLASS_LETTER: Record<string, string> = {
   influencer: 'I',
   aura: 'A',
 };
+
+const ROW_HEIGHT = 44;
 
 function classBadgeColors(classKey: string): readonly [string, string] {
   if (classKey === 'aura') return ['#fde68a', '#fb923c'] as const;
@@ -35,25 +37,20 @@ function classBadgeText(classKey: string): string {
 
 export function IdentityHeroSkeleton() {
   return (
-    <View
-      className="w-full overflow-hidden rounded-2xl border border-border bg-muted/50 px-4 py-3"
-      style={{ aspectRatio: 1.586 }}
-    >
-      <View className="flex-1 justify-between">
+    <View className="w-full overflow-hidden rounded-2xl border border-border bg-muted/50 px-4 py-4">
+      <View className="items-center gap-3">
         <View className="h-2.5 w-16 rounded bg-muted" />
-        <View className="flex-row items-center gap-3">
-          <View className="h-14 w-14 shrink-0 rounded-full bg-muted" />
-          <View className="min-w-0 flex-1 gap-2">
-            <View className="h-5 w-36 rounded bg-muted" />
-            <View className="h-3 w-24 rounded bg-muted" />
-            <View className="h-3 w-28 rounded bg-muted" />
-            <View className="h-3 w-32 rounded bg-muted" />
-          </View>
-        </View>
-        <View className="flex-row gap-2 rounded-xl bg-muted/80 p-2">
-          <View className="h-8 flex-1 rounded bg-muted" />
-          <View className="h-8 flex-1 rounded bg-muted" />
-          <View className="h-8 flex-1 rounded bg-muted" />
+        <View className="h-[72px] w-[72px] rounded-full bg-muted" />
+        <View className="w-full overflow-hidden rounded-xl bg-muted/80">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <View
+              key={i}
+              className="items-center justify-center border-b border-border/60"
+              style={{ height: ROW_HEIGHT }}
+            >
+              <View className="h-3 w-28 rounded bg-muted" />
+            </View>
+          ))}
         </View>
       </View>
     </View>
@@ -73,7 +70,6 @@ export function IdentityHero({
   classLabel,
   savedCents,
   visits,
-  stories,
 }: {
   classKey: string;
   name: string;
@@ -87,7 +83,6 @@ export function IdentityHero({
   classLabel: string;
   savedCents: number | null;
   visits: number | null;
-  stories: number | null;
 }) {
   const isElevated = isElevatedClass(classKey);
   const elevatedRing =
@@ -103,7 +98,7 @@ export function IdentityHero({
         ? (['rgba(239,68,68,0.16)', 'rgba(185,28,28,0.10)'] as const)
         : (['rgba(37,99,235,0.16)', 'rgba(96,165,250,0.12)'] as const);
 
-  const whisper = [sexLabel, age != null ? String(age) : null]
+  const identityLine = [name, sexLabel, age != null ? String(age) : null]
     .filter(Boolean)
     .join(' · ');
   const igLine = igConnected
@@ -111,12 +106,28 @@ export function IdentityHero({
         .filter(Boolean)
         .join(' · ')
     : 'Instagram not connected';
+  const metricsLine = [
+    visits == null ? '— visits' : `${visits} visits`,
+    savedCents == null ? '— saved' : `${formatCurrency(savedCents)} saved`,
+  ].join(' · ');
+
+  const rows: { key: string; text: string; tone?: 'muted' | 'secondary' }[] = [
+    { key: 'identity', text: identityLine },
+    { key: 'phone', text: phone || '—', tone: phone ? undefined : 'muted' },
+    { key: 'class', text: classLabel },
+    {
+      key: 'instagram',
+      text: igLine,
+      tone: igConnected ? 'secondary' : 'muted',
+    },
+    { key: 'metrics', text: metricsLine },
+  ];
 
   return (
     <View
       accessibilityLabel="Your Mesita membership card"
-      className="w-full overflow-hidden rounded-2xl border border-border px-4 py-3"
-      style={[SHADOW_ELEV, { aspectRatio: 1.586 }]}
+      className="w-full overflow-hidden rounded-2xl border border-border px-4 py-4"
+      style={SHADOW_ELEV}
     >
       <LinearGradient
         colors={
@@ -135,7 +146,7 @@ export function IdentityHero({
         }}
       />
 
-      <View className="flex-1 justify-between">
+      <View className="items-center">
         <Text
           className="font-display font-bold uppercase text-foreground/35"
           style={{ fontSize: 10, letterSpacing: 2.8 }}
@@ -143,186 +154,138 @@ export function IdentityHero({
           Mesita
         </Text>
 
-        <View className="flex-row items-center gap-3">
-          <View
-            className="relative shrink-0"
-            style={{ width: 56, height: 56, overflow: 'visible' }}
+        <View
+          className="relative mt-3 shrink-0"
+          style={{ width: 72, height: 72, overflow: 'visible' }}
+        >
+          <LinearGradient
+            colors={isElevated ? elevatedRing : [...GRADIENTS.pink]}
+            start={GRADIENT_DIAGONAL.start}
+            end={GRADIENT_DIAGONAL.end}
+            style={{ borderRadius: 999, padding: 2 }}
           >
-            <LinearGradient
-              colors={isElevated ? elevatedRing : [...GRADIENTS.pink]}
-              start={GRADIENT_DIAGONAL.start}
-              end={GRADIENT_DIAGONAL.end}
-              style={{ borderRadius: 999, padding: 2 }}
-            >
-              <View className="rounded-full bg-card p-[2px]">
-                <View className="h-14 w-14 items-center justify-center overflow-hidden rounded-full bg-muted">
-                  {avatarUrl ? (
-                    <Image
-                      source={{ uri: avatarUrl }}
-                      style={{ width: '100%', height: '100%' }}
-                      contentFit="cover"
-                      accessibilityLabel={name}
-                    />
-                  ) : (
-                    <DefaultAvatar size={56} />
-                  )}
-                </View>
-              </View>
-            </LinearGradient>
-
-            {/* Cls badge — class gem, left */}
-            <LinearGradient
-              colors={[...classBadgeColors(classKey)]}
-              start={GRADIENT_DIAGONAL.start}
-              end={GRADIENT_DIAGONAL.end}
-              style={{
-                position: 'absolute',
-                left: -2,
-                bottom: -2,
-                width: 22,
-                height: 22,
-                borderRadius: 999,
-                borderWidth: 2,
-                borderColor: '#fff',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-              accessibilityLabel={`Class: ${classLabel}`}
-            >
-              <Text
-                className={`font-extrabold ${classBadgeText(classKey)}`}
-                style={{ fontSize: 9 }}
-              >
-                {CLASS_LETTER[classKey] ?? 'S'}
-              </Text>
-            </LinearGradient>
-
-            {/* IG badge — ring + face / glyph, right */}
-            <LinearGradient
-              colors={
-                igConnected
-                  ? [...GRADIENTS.instagram]
-                  : (['#ebd9db', '#ebd9db'] as const)
-              }
-              start={GRADIENT_DIAGONAL.start}
-              end={GRADIENT_DIAGONAL.end}
-              style={{
-                position: 'absolute',
-                right: -2,
-                bottom: -2,
-                borderRadius: 999,
-                padding: 1.5,
-                borderWidth: 2,
-                borderColor: '#fff',
-              }}
-              accessibilityLabel={
-                igConnected
-                  ? 'Instagram connected'
-                  : 'Instagram not connected'
-              }
-            >
-              <View className="h-[18px] w-[18px] items-center justify-center overflow-hidden rounded-full bg-card">
-                {igConnected && avatarUrl ? (
+            <View className="rounded-full bg-card p-[2px]">
+              <View className="h-[72px] w-[72px] items-center justify-center overflow-hidden rounded-full bg-muted">
+                {avatarUrl ? (
                   <Image
                     source={{ uri: avatarUrl }}
                     style={{ width: '100%', height: '100%' }}
                     contentFit="cover"
+                    accessibilityLabel={name}
                   />
                 ) : (
-                  <ChannelMark
-                    channel="instagram"
-                    size={10}
-                    color={igConnected ? '#c02670' : '#775254'}
-                  />
+                  <DefaultAvatar size={72} />
                 )}
               </View>
-            </LinearGradient>
-          </View>
+            </View>
+          </LinearGradient>
 
-          <View className="min-w-0 flex-1">
+          <LinearGradient
+            colors={[...classBadgeColors(classKey)]}
+            start={GRADIENT_DIAGONAL.start}
+            end={GRADIENT_DIAGONAL.end}
+            style={{
+              position: 'absolute',
+              left: -2,
+              bottom: -2,
+              width: 22,
+              height: 22,
+              borderRadius: 999,
+              borderWidth: 2,
+              borderColor: '#fff',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+            accessibilityLabel={`Class: ${classLabel}`}
+          >
             <Text
-              className="font-display font-bold tracking-tight text-foreground"
-              style={{ fontSize: 17 }}
-              numberOfLines={1}
+              className={`font-extrabold ${classBadgeText(classKey)}`}
+              style={{ fontSize: 9 }}
             >
-              {name}
+              {CLASS_LETTER[classKey] ?? 'S'}
             </Text>
-            {whisper ? (
-              <Text
-                className="mt-0.5 font-medium text-muted-foreground"
-                style={{ fontSize: 11 }}
-                numberOfLines={1}
-              >
-                {whisper}
-              </Text>
-            ) : null}
-            {phone ? (
-              <Text
-                className="mt-0.5 font-semibold text-foreground/70"
-                style={{
-                  fontSize: 11,
-                  fontVariant: ['tabular-nums'],
-                  letterSpacing: 0.4,
-                }}
-                numberOfLines={1}
-              >
-                {phone}
-              </Text>
-            ) : null}
-            <Text
-              className={
-                igConnected
-                  ? 'mt-0.5 font-semibold text-secondary'
-                  : 'mt-0.5 font-semibold text-muted-foreground/70'
-              }
-              style={{ fontSize: 11 }}
-              numberOfLines={1}
-            >
-              {igLine}
-            </Text>
-          </View>
+          </LinearGradient>
+
+          <LinearGradient
+            colors={
+              igConnected
+                ? [...GRADIENTS.instagram]
+                : (['#ebd9db', '#ebd9db'] as const)
+            }
+            start={GRADIENT_DIAGONAL.start}
+            end={GRADIENT_DIAGONAL.end}
+            style={{
+              position: 'absolute',
+              right: -2,
+              bottom: -2,
+              borderRadius: 999,
+              padding: 1.5,
+              borderWidth: 2,
+              borderColor: '#fff',
+            }}
+            accessibilityLabel={
+              igConnected
+                ? 'Instagram connected'
+                : 'Instagram not connected'
+            }
+          >
+            <View className="h-[18px] w-[18px] items-center justify-center overflow-hidden rounded-full bg-card">
+              {igConnected && avatarUrl ? (
+                <Image
+                  source={{ uri: avatarUrl }}
+                  style={{ width: '100%', height: '100%' }}
+                  contentFit="cover"
+                />
+              ) : (
+                <ChannelMark
+                  channel="instagram"
+                  size={10}
+                  color={igConnected ? '#c02670' : '#775254'}
+                />
+              )}
+            </View>
+          </LinearGradient>
         </View>
 
         <View
-          accessibilityLabel="Your Mesita metrics"
-          className="flex-row gap-1 rounded-xl border border-border/80 bg-white/55 px-2 py-1.5"
+          accessibilityLabel="Your identity"
+          className="mt-4 w-full overflow-hidden rounded-xl border border-border/80 bg-white/55"
         >
-          <MetricCell
-            value={
-              savedCents == null ? '—' : formatCurrency(savedCents)
-            }
-            label="Saved"
-          />
-          <MetricCell
-            value={visits == null ? '—' : String(visits)}
-            label="Visits"
-          />
-          <MetricCell
-            value={stories == null ? '—' : String(stories)}
-            label="Stories"
-          />
+          {rows.map((row, i) => (
+            <View
+              key={row.key}
+              className={
+                i < rows.length - 1
+                  ? 'items-center justify-center border-b border-border/70 px-3'
+                  : 'items-center justify-center px-3'
+              }
+              style={{ height: ROW_HEIGHT }}
+            >
+              <Text
+                className={
+                  row.key === 'identity'
+                    ? 'font-display font-bold tracking-tight text-foreground'
+                    : row.tone === 'secondary'
+                      ? 'font-semibold text-secondary'
+                      : row.tone === 'muted'
+                        ? 'font-semibold text-muted-foreground'
+                        : 'font-semibold text-foreground'
+                }
+                style={{
+                  fontSize: row.key === 'identity' ? 15 : 13,
+                  fontVariant: row.key === 'phone' || row.key === 'metrics'
+                    ? ['tabular-nums']
+                    : undefined,
+                  letterSpacing: row.key === 'phone' ? 0.4 : undefined,
+                }}
+                numberOfLines={1}
+              >
+                {row.text}
+              </Text>
+            </View>
+          ))}
         </View>
       </View>
-    </View>
-  );
-}
-
-function MetricCell({ value, label }: { value: string; label: string }) {
-  return (
-    <View className="min-w-0 flex-1 items-center">
-      <Text
-        className="font-display font-bold tracking-tight text-foreground"
-        style={{ fontSize: 13, fontVariant: ['tabular-nums'] }}
-        numberOfLines={1}
-      >
-        {value}
-      </Text>
-      <Text
-        className="mt-0.5 font-bold uppercase text-muted-foreground"
-        style={{ fontSize: 8, letterSpacing: 0.6 }}
-      >
-        {label}
-      </Text>
     </View>
   );
 }
