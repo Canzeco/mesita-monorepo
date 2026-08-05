@@ -56,10 +56,13 @@ Deno.serve(async (req) => {
 
   // Dual-name (MESITA-917): consumer `name` is the display label (Mesita
   // priority). Raw google_name stays on the payload for clients that need it.
-  const row = data as { name?: string | null; google_name?: string | null };
+  const row = data as Record<string, unknown>;
   const place = {
-    ...data,
-    name: displayName(row),
+    ...row,
+    name: displayName({
+      name: (row.name as string | null | undefined) ?? null,
+      google_name: (row.google_name as string | null | undefined) ?? null,
+    }),
   };
 
   return json({ ok: true, place, tags });
