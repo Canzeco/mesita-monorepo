@@ -5,6 +5,7 @@ import { Loader2, Upload } from "lucide-react";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { INPUT_CLASS as INPUT } from "@/lib/ui-classes";
 import { cn, errMsg } from "@/lib/utils";
+import { PdfFirstPage } from "./PdfFirstPage";
 import { PlaceFormField } from "./PlaceFormField";
 import type { PlaceFormState, SetPlaceForm } from "./place-form-types";
 import {
@@ -30,6 +31,8 @@ function normalizeHttpsUrl(raw: string): string {
 function MenuFilePreview({ url }: { url: string }) {
   const kind = detectMenuFileKind(url);
   const src = normalizeHttpsUrl(url);
+  // pdf.js couldn't parse the document — fall back to the browser iframe.
+  const [pdfFailed, setPdfFailed] = useState(false);
 
   if (kind === "image") {
     return (
@@ -65,14 +68,24 @@ function MenuFilePreview({ url }: { url: string }) {
     );
   }
 
+  if (pdfFailed) {
+    return (
+      <div className="border-border/60 bg-background overflow-hidden rounded-lg border">
+        <iframe
+          title="PDF menu preview"
+          src={src}
+          className="h-52 w-full border-0 bg-white"
+        />
+      </div>
+    );
+  }
+
   return (
-    <div className="border-border/60 bg-background overflow-hidden rounded-lg border">
-      <iframe
-        title="PDF menu preview"
-        src={src}
-        className="h-52 w-full border-0 bg-white"
-      />
-    </div>
+    <PdfFirstPage
+      url={src}
+      onError={() => setPdfFailed(true)}
+      className="border-border/60 bg-background overflow-hidden rounded-lg border"
+    />
   );
 }
 
@@ -204,7 +217,8 @@ export function PlaceMenuFields({
           </button>
         ) : null}
       </div>
-      {hasUrl ? <MenuFilePreview url={link.url} /> : null}
+      {/* Keyed by URL so a failed-parse fallback resets on file replace. */}
+      {hasUrl ? <MenuFilePreview key={link.url} url={link.url} /> : null}
     </div>
   );
 }
