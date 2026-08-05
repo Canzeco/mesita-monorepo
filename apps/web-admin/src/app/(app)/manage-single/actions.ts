@@ -91,10 +91,10 @@ export type AdminMenuItem = {
   items?: unknown[] | null;
 };
 
-/** How the Reservationist reaches this place. `channel`/`value` is the 1st
- *  choice (shape the Enricher also writes — its admin-override check keys on
- *  `channel`); `fallbacks` is the ordered 2nd/3rd choices it tries next. */
-export type ReservationChannel = "instagram" | "whatsapp" | "phone";
+/** How the Reservationist reaches this place. Voice-only (MESITA-842): phone
+ *  is the sole serving channel. Shape matches the Enricher's
+ *  products.reservations = { channel, value }. */
+export type ReservationChannel = "phone";
 export type ReservationTarget = {
   channel: ReservationChannel;
   value?: string | null;

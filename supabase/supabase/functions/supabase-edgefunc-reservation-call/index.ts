@@ -36,7 +36,8 @@
 // Number resolution, per side:
 //   business — reservations.business_number when pre-resolved (test tickets),
 //     else config testCall (test mode defaults ON → never rings a real venue
-//     by accident), else the place's products.reservations phone endpoint.
+//     by accident), else products.reservations when channel=phone (MESITA-842 —
+//     voice-only; whatsapp/instagram picks ignored → places.phone fallback).
 //   consumer — reservations.consumer_number when pre-resolved, else the
 //     consumer's own phone; empty → leg 2 is skipped.
 //
@@ -1202,12 +1203,17 @@ Deno.serve(async (req) => {
       businessNumber = cfg.testCall.number;
       via = "test-mode number";
     } else {
+      // Voice-only serving path (MESITA-842): honor products.reservations only
+      // when channel is phone. Legacy whatsapp/instagram picks were never
+      // dialed — fall back to places.phone so the call still reaches a line.
       const resv = (place?.products?.reservations ?? null) as
         | { channel?: string; value?: string }
         | null;
       businessNumber =
         (resv?.channel === "phone" && resv.value ? resv.value : place?.phone ?? "")?.trim() ?? "";
-      via = "place phone endpoint";
+      via = resv?.channel === "phone" && resv.value
+        ? "place phone endpoint"
+        : "place.phone fallback";
     }
   }
   const dialsVenue = intent === "book" ||

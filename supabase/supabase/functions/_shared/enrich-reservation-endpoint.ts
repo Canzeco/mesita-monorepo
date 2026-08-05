@@ -4,8 +4,8 @@
 // Priority among available profile contacts is an OPERATOR KNOB, not a constant:
 // it lives at app_settings.reservations_config and is authored on the admin
 // console's Reservations Config page (MESITA-623). Callers pass the policy in;
-// DEFAULT_RESERVATIONS_POLICY (phone > whatsapp > instagram) is the fallback when
-// the row hasn't been read — the order this file hardcoded before MESITA-623.
+// DEFAULT_RESERVATIONS_POLICY is phone-only (MESITA-842) — the Reservationist is
+// voice-reachable only; WhatsApp/Instagram are not serving paths (MESITA-839).
 // Never writes fallbacks. No LLM — the order is the product rule.
 
 import {
@@ -37,8 +37,8 @@ export {
 /**
  * Select the reservation contact channel for Enricher seeding.
  * Priority + parked channels come from the policy (Reservations Config); the
- * default is phone > whatsapp > instagram. Sync + deterministic (no LLM). Admin
- * override is handled by the caller via hasReservationTarget before invoking this.
+ * default is phone only. Sync + deterministic (no LLM). Admin override is
+ * handled by the caller via hasReservationTarget before invoking this.
  */
 export function selectReservationEndpoint(input: {
   candidates: ReservationCandidates;

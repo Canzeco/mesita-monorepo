@@ -21,8 +21,9 @@ import { normalizeConfig } from "./reservations-config-normalize.ts";
 // cannot drift out of sync with the source of truth.
 function canonicalBlob() {
   return {
+    // Phone-only eligible set (MESITA-842) — nothing to park.
     priority: [...RESERVATION_CHANNELS],
-    disabled: [...RESERVATION_CHANNELS].slice(1), // phone live, the rest parked
+    disabled: [],
     respectAdminOverride: true,
     testCall: { enabled: false, number: "", consumerNumber: "" },
     attempts: 2,
@@ -78,8 +79,10 @@ Deno.test("normalizeConfig: unknown channels and a fully-parked set are rejected
   bogus.priority = [...RESERVATION_CHANNELS, "carrier-pigeon"];
   assert(!normalizeConfig(bogus).ok);
 
-  const allParked = canonicalBlob();
-  allParked.disabled = [...RESERVATION_CHANNELS];
+  const allParked = {
+    ...canonicalBlob(),
+    disabled: [...RESERVATION_CHANNELS] as string[],
+  };
   const r = normalizeConfig(allParked);
   assert(!r.ok);
   assertStringIncludes(r.error, "cannot park every channel");
