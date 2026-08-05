@@ -10,6 +10,7 @@ import { SectionEyebrow } from "@/components/consumer/me/settings-rows";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { apiClaimInstagram } from "@/lib/api/profile";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
+import { INFLUENCER_FOLLOWER_THRESHOLD } from "@/lib/consumer-data";
 import {
   useConsumerClass,
   useMockAccount,
@@ -22,24 +23,12 @@ import {
   SHEET_BODY_CLASS,
 } from "@/lib/ui-classes";
 
-// Instagram connect sheet (MESITA-924): Rewards-first modular boxes —
-// Influencer Class · Instagram Stories · Connect Instagram. Zero quantitative
-// claims; Class modal owns the Influencer door math.
+// Instagram connect sheet (MESITA-936): DEMO → one Why box → Connect.
+// Threshold from INFLUENCER_FOLLOWER_THRESHOLD (2,000 — MESITA-911).
 
 const HANDLE_RE = /^@?[A-Za-z0-9._]{1,30}$/;
 
-const REWARD_DOORS = [
-  {
-    title: "Influencer Class",
-    punch: "Connect Instagram for better Rewards.",
-    soft: "When you qualify, your class can climb.",
-  },
-  {
-    title: "Instagram Stories",
-    punch: "Connect Instagram and post Stories for better Rewards.",
-    soft: "Tag Mesita at the place — bonus on that visit.",
-  },
-] as const;
+const WHY_COPY = `Add Instagram to unlock better Rewards. Optionally post Stories for even better Rewards on visits — and with ${INFLUENCER_FOLLOWER_THRESHOLD.toLocaleString("en-US")}+ followers you automatically upgrade to Influencer for free.`;
 
 export function InstagramModal({
   open,
@@ -100,6 +89,8 @@ export function InstagramModal({
         </div>
 
         <div className="flex flex-col gap-3">
+          <InstagramEmulator />
+
           {connected && (
             <section className="flex flex-col gap-2">
               <SectionEyebrow>Connected</SectionEyebrow>
@@ -107,9 +98,7 @@ export function InstagramModal({
             </section>
           )}
 
-          {REWARD_DOORS.map((door) => (
-            <RewardDoorModule key={door.title} {...door} />
-          ))}
+          <WhyConnectModule />
 
           <ConnectModule
             handle={handle}
@@ -120,32 +109,19 @@ export function InstagramModal({
             onCodeChange={setCode}
             onVerify={verify}
           />
-
-          <InstagramEmulator />
         </div>
       </div>
     </LocalSheet>
   );
 }
 
-function RewardDoorModule({
-  title,
-  punch,
-  soft,
-}: {
-  title: string;
-  punch: string;
-  soft: string;
-}) {
+function WhyConnectModule() {
   return (
     <article className="border-border bg-card rounded-2xl border p-4">
       <h3 className="text-[14px] leading-tight font-extrabold tracking-tight">
-        {title}
+        Why connect
       </h3>
-      <p className="mt-2 text-[13px] leading-snug font-semibold">{punch}</p>
-      <p className="text-muted-foreground mt-1.5 text-[12px] leading-snug">
-        {soft}
-      </p>
+      <p className="mt-2 text-[13px] leading-snug font-medium">{WHY_COPY}</p>
     </article>
   );
 }
