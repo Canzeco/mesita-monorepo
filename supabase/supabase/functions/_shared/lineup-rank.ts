@@ -60,15 +60,15 @@ export function cosineById(
 }
 
 /**
- * Score the pool with Lineup v12 and return place ids in merge order.
+ * Score the pool with Lineup v12 and return merge-order slots (id + lane + score).
  * The paid lane (inorganic) only admits listing_type === "partner".
  */
-function lineupOrderIds(
+function lineupOrderSlots(
   places: readonly LineupPlace[],
   cosine: Map<string, number>,
   settings: ScoringSettings,
   ctx: LineupContext,
-): string[] {
+): ReturnType<typeof composeFinalDeck>["slots"] {
   const clock = localClock(ctx.lng);
   const day = clock?.weekday ?? "friday";
   // Quantize to the 30-min grid (hour + 0 or 0.5).
@@ -122,21 +122,23 @@ function lineupOrderIds(
     return { id: p.id, scores };
   });
 
-  return composeFinalDeck(candidates, settings.laneN).slots.map((s) => s.id);
+  return composeFinalDeck(candidates, settings.laneN).slots;
 }
 
-/** Places in Lineup merge order only (capped by laneN — no backfill). */
+/** Places in Lineup merge order only (capped by laneN — no backfill).
+ *  Each row carries the winning-lane `score` (0–1) so the swipe card can
+ *  surface it — same precision the Lineup playground uses (toFixed(3)). */
 export function lineupReorder<T extends LineupPlace>(
   places: readonly T[],
   cosine: Map<string, number>,
   settings: ScoringSettings,
   ctx: LineupContext,
-): T[] {
+): Array<T & { score: number; lane: LaneId }> {
   const byId = new Map(places.map((p) => [p.id, p]));
-  const ordered: T[] = [];
-  for (const id of lineupOrderIds(places, cosine, settings, ctx)) {
-    const p = byId.get(id);
-    if (p) ordered.push(p);
+  const ordered: Array<T & { score: number; lane: LaneId }> = [];
+  for (const slot of lineupOrderSlots(places, cosine, settings, ctx)) {
+    const p = byId.get(slot.id);
+    if (p) ordered.push({ ...p, score: slot.score, lane: slot.laneId });
   }
   return ordered;
 }
