@@ -24,8 +24,8 @@ import {
 import { PLACE_FAMILIES, type FamilyKey } from "@/lib/place-families";
 
 // v4: the v3 shape (MESITA-672 — searched zone center + km radius, when
-// union, 0–5 randomness) + `ask`, the intent's That axis (MESITA-699). Old
-// keys are simply ignored — session-scoped state needs no migration.
+// union, randomness) + `ask`, the intent's That axis (MESITA-699). Old keys
+// are ignored; randomness 5 (legacy max) clamps to 4 (MESITA-905).
 const STORAGE_KEY = "mesita_discovery_filters_v4";
 
 const KNOWN_FAMILY_KEYS = new Set<string>(PLACE_FAMILIES.map((f) => f.key));
@@ -74,12 +74,14 @@ function readPersisted(): DiscoveryFilters {
       parsed.maxKm > 0
         ? parsed.maxKm
         : null;
+    // Legacy sessions stored 0..5; clamp 5 → 4 (new max word level).
     const randomness =
       typeof parsed.randomness === "number" &&
       Number.isInteger(parsed.randomness) &&
-      parsed.randomness >= RANDOMNESS_MIN &&
-      parsed.randomness <= RANDOMNESS_MAX
-        ? (parsed.randomness as RandomnessLevel)
+      parsed.randomness >= RANDOMNESS_MIN
+        ? ((parsed.randomness > RANDOMNESS_MAX
+            ? RANDOMNESS_MAX
+            : parsed.randomness) as RandomnessLevel)
         : 0;
     return {
       familyKeys: Array.isArray(parsed.familyKeys)

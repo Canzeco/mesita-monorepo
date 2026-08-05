@@ -31,7 +31,6 @@ import { placeHref } from "@/lib/place-route";
 import { toast } from "@/lib/toast";
 import { ERROR_BOX_CLASS } from "@/lib/ui-classes";
 import { cn, errMsg } from "@/lib/utils";
-import { FilterSheet } from "@/components/consumer/FilterSheet";
 import { SearchMap } from "./SearchMap";
 import { SearchResultsPanel } from "./SearchResultsPanel";
 import { GooglePlaceSheet } from "./GooglePlaceSheet";
@@ -41,6 +40,8 @@ import {
   EmptySearchPrompt,
   SearchRailOverlay,
 } from "./search-catalog-overlays";
+import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
+import { publishFiltersHostContext } from "@/lib/filters-host-context";
 import {
   applyDiscoveryFilters,
   deriveCategoryOptions,
@@ -87,10 +88,9 @@ export function SearchClient({
   // Opened by tapping the search field — the results/suggest panel appears on
   // one tap, before any typing.
   const [searchOpen, setSearchOpen] = useState(false);
-  const [filtersOpen, setFiltersOpen] = useState(false);
   // Shared discovery filters (MESITA-646): pins + rail narrow LIVE and the
   // red tune-icon dot (MESITA-633) lights on any deviation from defaults.
-  // One global store — Swipe shows the exact same state.
+  // One global store — Swipe shows the exact same state. Open via /filters.
   const filters = useDiscoveryFilters();
   const filtersActive = discoveryFiltersAreActive(filters);
   const [predictions, setPredictions] = useState<PlacePrediction[]>([]);
@@ -137,6 +137,20 @@ export function SearchClient({
     }
     return filtered;
   }, [catalog, filters, selectedId]);
+
+  // Publish host context for the routed /filters modal (MESITA-905).
+  useEffect(() => {
+    publishFiltersHostContext({
+      surface: "search",
+      count: visible.length,
+      categoryOptions,
+      hasLocation: userLocation != null,
+    });
+  }, [visible.length, categoryOptions, userLocation]);
+
+  const openFilters = () => {
+    router.push(CONSUMER_ROUTES.filters, { scroll: false });
+  };
 
   // End the current Places autocomplete session and mint the next one.
   const resetSearchSession = useCallback(() => {
@@ -362,7 +376,7 @@ export function SearchClient({
           onQueryChange={updateQuery}
           onFocus={() => setSearchOpen(true)}
           onClear={dismissSearch}
-          onOpenFilters={() => setFiltersOpen(true)}
+          onOpenFilters={openFilters}
         />
 
         {fetchError && idle && (
@@ -411,19 +425,6 @@ export function SearchClient({
       )}
 
       {searchOpen && trimmed.length === 0 && <EmptySearchPrompt />}
-
-      {/* Randomness shows here too (MESITA-660): the store is shared, so it
-          drives the Swipe deck's order today and becomes XX's per-query
-          input once the Standard Engine wires; the map's pin set itself is
-          unaffected client-side. */}
-      <FilterSheet
-        open={filtersOpen}
-        onClose={() => setFiltersOpen(false)}
-        ariaLabel="Search filters"
-        categoryOptions={categoryOptions}
-        count={visible.length}
-        hasLocation={userLocation != null}
-      />
 
       <GooglePlaceSheet
         open={previewOpen}

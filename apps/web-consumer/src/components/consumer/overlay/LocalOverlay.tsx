@@ -11,9 +11,9 @@ import {
 import { APP_CARD_ID } from "@/components/consumer/MobileFrame";
 
 // State-driven overlays (no route change): bottom sheets and centered
-// dialogs opened by component state — filters, verify social, social
-// profiles. Same motion language as the route modals (SlideOverShell /
-// BottomSheetShell) so every layer in the app opens and closes the same way.
+// dialogs opened by component state — verify social, social profiles,
+// settings. Same motion language as the route modals (SlideOverShell /
+// BottomSheetShell). Discovery Filters moved to routed /filters (MESITA-905).
 //
 // Positioning: by default these PORTAL into the MobileFrame card
 // (APP_CARD_ID) so the backdrop covers the WHOLE app — chrome bands
@@ -26,7 +26,7 @@ import { APP_CARD_ID } from "@/components/consumer/MobileFrame";
 // Presence: the parent just flips `open`. When `open` goes false the
 // overlay plays the exit transition before unmounting (or, with
 // `keepMounted`, before going inert — use that when closed state must
-// survive, e.g. FilterSheet selections).
+// survive across close).
 
 function useLocalPresence(open: boolean) {
   // `shown` drives the CSS transition classes; `mounted` keeps the DOM alive

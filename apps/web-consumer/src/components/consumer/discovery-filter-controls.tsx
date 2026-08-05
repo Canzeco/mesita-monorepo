@@ -1,14 +1,11 @@
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
-// Shared presentational primitives for the discovery filter sheet (MESITA-672):
+// Shared presentational primitives for the discovery Filters modal (MESITA-672):
 // Pill + SectionLabel + a generic brand-filled RangeSlider driving the When
-// (hour), Distance (km) and Randomness (0–5) modules. One copy, both the sheet
-// body and the Where search field read from here.
+// (hour), Distance (km) and Random (0–4 word levels) modules.
 
-/** Group tier ABOVE SectionLabel — the sheet has exactly TWO groups: INTENT
- * (Where incl. its distance tolerance · When · What · That) and RANDOMNESS
- * (XX's luck knob). The panel configures both subscore inputs. */
+/** Group tier ABOVE SectionLabel — INTENT (Where · When · What · That). */
 export function FilterGroupLabel({
   children,
   className,

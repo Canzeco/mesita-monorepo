@@ -68,11 +68,13 @@ function parsePersisted(raw: string): DiscoveryFilters {
       parsed.maxKm > 0
         ? parsed.maxKm
         : null;
-    const randomness = ([0, 1, 2, 3, 4, 5] as const).includes(
-      parsed.randomness as RandomnessLevel,
-    )
-      ? (parsed.randomness as RandomnessLevel)
-      : 0;
+    // Legacy sessions stored 0..5; clamp 5 → 4 (new max word level).
+    const randomness =
+      typeof parsed.randomness === 'number' &&
+      Number.isInteger(parsed.randomness) &&
+      parsed.randomness >= 0
+        ? ((parsed.randomness > 4 ? 4 : parsed.randomness) as RandomnessLevel)
+        : 0;
     return {
       familyKeys: Array.isArray(parsed.familyKeys)
         ? (parsed.familyKeys as unknown[]).filter(

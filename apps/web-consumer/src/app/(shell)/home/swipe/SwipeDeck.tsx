@@ -4,7 +4,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { PlaceSwipeCardFace } from "@/components/consumer/PlaceSwipeCardFace";
 import { SWIPE_CARD_CLIP } from "@/components/consumer/swipe-card-styles";
-import { FilterSheet } from "@/components/consumer/FilterSheet";
 import { cn } from "@/lib/utils";
 import { useUserLocation } from "@/lib/use-user-location";
 import { apiRecommendDeck, type Place } from "@/lib/api/places";
@@ -14,6 +13,7 @@ import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { enrichPlaceOverview } from "@/lib/mock/enrich-overview";
 import { placeHref } from "@/lib/place-route";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
+import { publishFiltersHostContext } from "@/lib/filters-host-context";
 import {
   applyDiscoveryFilters,
   createSeededRandom,
@@ -104,7 +104,6 @@ function Deck({ places }: { places: Place[] }) {
   const [dragging, setDragging] = useState(false);
   const [exiting, setExiting] = useState<null | "left" | "right">(null);
   const [showTutorial, setShowTutorial] = useState(false);
-  const [filtersOpen, setFiltersOpen] = useState(false);
   // Reserve opens the booking sheet over the deck — the card already carries
   // the id + name the sheet needs, so there's no detour through /place/[id].
   const [reserveOpen, setReserveOpen] = useState(false);
@@ -233,9 +232,9 @@ function Deck({ places }: { places: Place[] }) {
   );
 
   // The deck the user actually swipes (MESITA-646): the shared discovery
-  // filters narrow `located` live, and the 0–5 randomness level (MESITA-672)
-  // reorders it — jittered ranks in the middle, full shuffle at 5. Category
-  // options derive from the RAW snapshot so the sheet offers everything this
+  // filters narrow `located` live, and the 0–4 randomness level (MESITA-905)
+  // reorders it — jittered ranks in the middle, full shuffle at max. Category
+  // options derive from the RAW snapshot so Filters offers everything this
   // deck actually has.
   // The seed pins the random permutation for the session: this memo also
   // re-runs when `located` merely changes identity (the geolocation fix
@@ -264,6 +263,20 @@ function Deck({ places }: { places: Place[] }) {
     () => deriveCategoryOptions(runtimeDeck),
     [runtimeDeck],
   );
+
+  // Publish host context for the routed /filters modal (MESITA-905).
+  useEffect(() => {
+    publishFiltersHostContext({
+      surface: "swipe",
+      count: deck.length,
+      categoryOptions,
+      hasLocation: coords != null,
+    });
+  }, [deck.length, categoryOptions, coords]);
+
+  const openFilters = () => {
+    router.push(CONSUMER_ROUTES.filters, { scroll: false });
+  };
 
   // Past the last card the deck is exhausted — no silent wrap. Looping
   // back to the first card with a tiny flash was reading as "the last
@@ -512,26 +525,13 @@ function Deck({ places }: { places: Place[] }) {
     }
   }, [deck, idx]);
 
-  // The sheet rides along in EVERY branch — narrowing to zero results while
-  // it's open must not unmount it mid-interaction.
-  const sheet = (
-    <FilterSheet
-      open={filtersOpen}
-      onClose={() => setFiltersOpen(false)}
-      categoryOptions={categoryOptions}
-      count={deck.length}
-      hasLocation={coords != null}
-    />
-  );
-
   if (filterEmptied) {
     return (
       <div className="relative flex h-full flex-col">
         <FilterEmptyDeck
-          onAdjustFilters={() => setFiltersOpen(true)}
+          onAdjustFilters={openFilters}
           onResetFilters={resetDiscoveryFilters}
         />
-        {sheet}
       </div>
     );
   }
@@ -542,11 +542,8 @@ function Deck({ places }: { places: Place[] }) {
         <ExhaustedDeck
           onRestart={restart}
           restarting={restarting}
-          onAdjustFilters={
-            filtersActive ? () => setFiltersOpen(true) : undefined
-          }
+          onAdjustFilters={filtersActive ? openFilters : undefined}
         />
-        {sheet}
       </div>
     );
   }
@@ -638,7 +635,7 @@ function Deck({ places }: { places: Place[] }) {
         <SwipeActionRow
           filtersActive={filtersActive}
           saved={saved}
-          onOpenFilters={() => setFiltersOpen(true)}
+          onOpenFilters={openFilters}
           onSkip={skip}
           onOpenInfo={openInfo}
           onSave={save}
@@ -653,8 +650,6 @@ function Deck({ places }: { places: Place[] }) {
           onClose={() => setReserveOpen(false)}
         />
       )}
-
-      {sheet}
     </div>
   );
 }

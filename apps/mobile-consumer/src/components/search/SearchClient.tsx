@@ -7,7 +7,6 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { FilterSheet } from '@/components/discovery/FilterSheet';
 import { GooglePlaceSheet } from '@/components/search/GooglePlaceSheet';
 import { SearchBar } from '@/components/search/SearchBar';
 import {
@@ -28,6 +27,8 @@ import {
   type PlacePrediction,
 } from '@/lib/api/place-search';
 import { apiFetchPublicPlaces, type Place } from '@/lib/api/places';
+import { filtersPath } from '@/lib/consumer-route-contract';
+import { publishFiltersHostContext } from '@/lib/filters-host-context';
 import {
   applyDiscoveryFilters,
   deriveCategoryOptions,
@@ -90,11 +91,10 @@ export function SearchClient() {
   const [preview, setPreview] = useState<PlacePrediction | null>(null);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [railCollapsed, setRailCollapsed] = useState(false);
-  const [filtersOpen, setFiltersOpen] = useState(false);
 
   // Shared discovery filters (MESITA-646/672): pins + rail narrow LIVE off the
   // ONE global store — Swipe shows the exact same state — and the red tune dot
-  // lights on any deviation from defaults.
+  // lights on any deviation from defaults. Open via routed /filters.
   const filters = useDiscoveryFilters();
   const filtersActive = discoveryFiltersAreActive(filters);
 
@@ -172,7 +172,18 @@ export function SearchClient() {
     return filtered;
   }, [catalog, filters, selectedId]);
 
-  const hasLocation = filters.zone != null || coords != null;
+  useEffect(() => {
+    publishFiltersHostContext({
+      surface: 'search',
+      count: visible.length,
+      categoryOptions,
+      hasLocation: coords != null,
+    });
+  }, [visible.length, categoryOptions, coords]);
+
+  const openFilters = useCallback(() => {
+    router.push(filtersPath());
+  }, [router]);
 
   const resetSearchSession = useCallback(() => {
     sessionTokenRef.current = newSessionToken();
@@ -334,7 +345,7 @@ export function SearchClient() {
         onChangeQuery={updateQuery}
         onFocus={() => setSearchOpen(true)}
         onClear={closeSearch}
-        onOpenFilters={() => setFiltersOpen(true)}
+        onOpenFilters={openFilters}
       />
 
       {/* Results: height fits content; max ~70% so the map stays visible */}
@@ -407,18 +418,6 @@ export function SearchClient() {
         apiKey={GMP_KEY}
         onAdd={handleAdd}
         onClose={() => setPreviewOpen(false)}
-      />
-      {/* Shared five-parameter discovery sheet (Where · Distance · When · What
-          · Randomness). Pins + rail narrow live off the same store; the sheet
-          reads/writes it itself — the host only supplies the catalog-derived
-          category options, the live post-filter count, and whether a location
-          center exists. */}
-      <FilterSheet
-        open={filtersOpen}
-        onClose={() => setFiltersOpen(false)}
-        categoryOptions={categoryOptions}
-        count={visible.length}
-        hasLocation={hasLocation}
       />
     </View>
   );
