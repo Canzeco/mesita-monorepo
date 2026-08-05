@@ -6,27 +6,20 @@ import { Text, View } from 'react-native';
 import { DefaultAvatar } from '@/components/ui/DefaultAvatar';
 import { GRADIENT_DIAGONAL, GRADIENTS, SHADOW_ELEV } from '@/constants/brand';
 import { isElevatedClass } from '@/lib/consumer-classes';
+import { formatCompactCount } from '@/lib/utils';
 
-// ─── Mesita passport v2 (MESITA-901) — web ProfileSummaryCard parity ────────
-// A presentation card: everything sits on the center axis like a physical
-// membership card. Issuer line (hairline · MESITA · hairline) on top, then a
-// centered ring avatar over a centered name / phone / meta stack, then a
-// full-width stat band of three EXACTLY equal, center-aligned columns
-// (Instagram · Class · Visits) split by hairline separators.
+// ─── Membership Face Card (MESITA-904 · Variant B) — web ProfileSummaryCard
+// parity. Issuer + Class chip header → photo + name face → Age/Sex pills →
+// band (Instagram · Followers · Visits). Phone is off-card.
 
-// One stat column: centered small-caps label over a centered value, with an
-// optional muted sub-line (followers).
 function PassportField({
   label,
   value,
-  sub,
   muted = false,
   divider = false,
 }: {
   label: string;
   value: React.ReactNode;
-  sub?: string | null;
-  /** Dim the value for absent data ("Not connected"). */
   muted?: boolean;
   divider?: boolean;
 }) {
@@ -60,50 +53,84 @@ function PassportField({
       ) : (
         <View className="mt-1">{value}</View>
       )}
-      {sub ? (
-        <Text
-          className="mt-0.5 text-center text-muted-foreground"
-          style={{ fontSize: 11 }}
-          numberOfLines={1}
-        >
-          {sub}
-        </Text>
-      ) : null}
     </View>
   );
 }
 
-// Issuer line: MESITA wordmark on the center axis, flanked by hairlines —
-// the engraved header of the card.
 function IssuerLine() {
   return (
-    <View className="flex-row items-center justify-center gap-3">
-      <View className="h-px w-9 bg-foreground/15" />
+    <View className="flex-row items-center gap-2.5">
+      <View className="h-px w-7 bg-foreground/15" />
       <Text
         className="font-display font-bold uppercase text-foreground/40"
         style={{ fontSize: 10, letterSpacing: 3 }}
       >
         Mesita
       </Text>
-      <View className="h-px w-9 bg-foreground/15" />
+      <View className="h-px w-7 bg-foreground/15" />
     </View>
+  );
+}
+
+function ClassChip({
+  label,
+  classKey,
+}: {
+  label: string;
+  classKey: string;
+}) {
+  const colors =
+    classKey === 'aura'
+      ? (['rgba(245,204,88,0.45)', 'rgba(235,136,31,0.28)'] as const)
+      : classKey === 'influencer'
+        ? (['rgba(125,211,252,0.45)', 'rgba(14,165,233,0.28)'] as const)
+        : classKey === 'premium'
+          ? (['rgba(196,181,253,0.45)', 'rgba(167,139,250,0.28)'] as const)
+          : (['rgba(251,43,123,0.22)', 'rgba(255,90,171,0.18)'] as const);
+  const textClass =
+    classKey === 'aura'
+      ? 'text-amber-900'
+      : classKey === 'influencer'
+        ? 'text-sky-900'
+        : classKey === 'premium'
+          ? 'text-violet-900'
+          : 'text-primary';
+
+  return (
+    <LinearGradient
+      colors={[...colors]}
+      start={GRADIENT_DIAGONAL.start}
+      end={GRADIENT_DIAGONAL.end}
+      style={{ borderRadius: 999, borderWidth: 1, borderColor: 'rgba(38,4,9,0.08)' }}
+    >
+      <Text
+        className={`px-2.5 py-1 font-bold uppercase ${textClass}`}
+        style={{ fontSize: 11, letterSpacing: 0.6 }}
+      >
+        {label}
+      </Text>
+    </LinearGradient>
   );
 }
 
 export function IdentityHeroSkeleton() {
   return (
-    <View className="overflow-hidden rounded-3xl border border-border bg-muted/50 px-4 pb-4 pt-4">
-      {/* Issuer-line stub, centered. */}
-      <View className="h-2.5 w-24 self-center rounded bg-muted" />
-      {/* Avatar: 76px to match the real ring avatar (66px + 2x2.5px rings). */}
-      <View className="mt-4 h-[76px] w-[76px] self-center rounded-full bg-muted" />
-      <View className="mt-3 items-center gap-2">
-        <View className="h-5 w-40 rounded bg-muted" />
-        <View className="h-3.5 w-28 rounded bg-muted" />
-        <View className="h-3.5 w-20 rounded bg-muted" />
+    <View className="overflow-hidden rounded-3xl border border-border bg-muted/50 px-4 pb-3.5 pt-4">
+      <View className="flex-row items-center justify-between">
+        <View className="h-2.5 w-24 rounded bg-muted" />
+        <View className="h-6 w-14 rounded-full bg-muted" />
       </View>
-      {/* Stat-band placeholder: three equal centered label/value stubs. */}
-      <View className="mt-4 flex-row border-t border-border/60 pt-3.5">
+      <View className="mt-3.5 flex-row items-center gap-3.5">
+        <View className="h-[72px] w-[72px] shrink-0 rounded-full bg-muted" />
+        <View className="min-w-0 flex-1 gap-2">
+          <View className="h-5 w-40 rounded bg-muted" />
+          <View className="flex-row gap-2">
+            <View className="h-5 w-12 rounded-lg bg-muted" />
+            <View className="h-5 w-10 rounded-lg bg-muted" />
+          </View>
+        </View>
+      </View>
+      <View className="mt-3.5 flex-row border-t border-border/60 pt-3.5">
         {[0, 1, 2].map((i) => (
           <View key={i} className="flex-1 items-center gap-1.5 px-2">
             <View className="h-2.5 w-14 rounded bg-muted" />
@@ -118,8 +145,8 @@ export function IdentityHeroSkeleton() {
 export function IdentityHero({
   classKey,
   name,
-  phone,
-  meta,
+  sexLabel,
+  age,
   avatarUrl,
   igConnected,
   handle,
@@ -129,8 +156,8 @@ export function IdentityHero({
 }: {
   classKey: string;
   name: string;
-  phone: string;
-  meta: string;
+  sexLabel: string | null;
+  age: number | null;
   avatarUrl?: string | null;
   igConnected: boolean;
   handle: string | null;
@@ -140,11 +167,6 @@ export function IdentityHero({
   visits: number | null;
 }) {
   const isElevated = isElevatedClass(classKey);
-  // Aura (top of the ladder) reads gold; Influencer reads sky; Premium keeps
-  // its violet gradient — the ring is the class's color signature.
-  // Keep the readonly tuple shape — LinearGradient's `colors` needs
-  // `readonly [ColorValue, ColorValue, ...]`, and spreading here would widen
-  // it to a plain array (no contextual type on a variable declaration).
   const elevatedRing =
     classKey === 'aura'
       ? GRADIENTS.gold
@@ -157,16 +179,18 @@ export function IdentityHero({
       : classKey === 'influencer'
         ? (['rgba(56,189,248,0.18)', 'rgba(2,132,199,0.12)'] as const)
         : (['rgba(139,108,232,0.18)', 'rgba(140,204,255,0.14)'] as const);
+
   return (
     <View
-      className="overflow-hidden rounded-3xl border border-border px-4 pb-4 pt-4"
+      accessibilityLabel="Your Mesita profile"
+      className="overflow-hidden rounded-3xl border border-border px-4 pb-3.5 pt-4"
       style={SHADOW_ELEV}
     >
       <LinearGradient
         colors={
           isElevated
             ? elevatedWash
-            : ['rgba(251,43,123,0.10)', 'rgba(255,90,171,0.08)']
+            : ['rgba(251,43,123,0.14)', 'rgba(255,90,171,0.09)']
         }
         start={GRADIENT_DIAGONAL.start}
         end={GRADIENT_DIAGONAL.end}
@@ -179,10 +203,12 @@ export function IdentityHero({
         }}
       />
 
-      <IssuerLine />
+      <View className="flex-row items-center justify-between gap-3">
+        <IssuerLine />
+        <ClassChip label={classLabel} classKey={classKey} />
+      </View>
 
-      {/* Story-ring avatar on the center axis: gradient → card → avatar. */}
-      <View className="mt-4 items-center">
+      <View className="mt-3.5 flex-row items-center gap-3.5">
         <LinearGradient
           colors={isElevated ? elevatedRing : [...GRADIENTS.pink]}
           start={GRADIENT_DIAGONAL.start}
@@ -190,7 +216,7 @@ export function IdentityHero({
           style={{ borderRadius: 999, padding: 2.5 }}
         >
           <View className="rounded-full bg-card p-[2.5px]">
-            <View className="relative h-[66px] w-[66px] items-center justify-center overflow-hidden rounded-full bg-muted">
+            <View className="relative h-[62px] w-[62px] items-center justify-center overflow-hidden rounded-full bg-muted">
               {avatarUrl ? (
                 <Image
                   source={{ uri: avatarUrl }}
@@ -199,48 +225,48 @@ export function IdentityHero({
                   accessibilityLabel={name}
                 />
               ) : (
-                <DefaultAvatar size={66} />
+                <DefaultAvatar size={62} />
               )}
             </View>
           </View>
         </LinearGradient>
-      </View>
 
-      {/* Centered identity stack: name over phone over sex · age. */}
-      <View className="mt-3 items-center">
-        <Text
-          className="text-center font-display font-bold tracking-tight text-foreground"
-          style={{ fontSize: 20 }}
-          numberOfLines={1}
-        >
-          {name}
-        </Text>
-        <Text
-          className={
-            phone
-              ? 'mt-1 text-center font-medium text-muted-foreground'
-              : 'mt-1 text-center text-muted-foreground/70'
-          }
-          style={{ fontSize: 14 }}
-          numberOfLines={1}
-        >
-          {phone || 'No phone added'}
-        </Text>
-        {meta ? (
+        <View className="min-w-0 flex-1">
           <Text
-            className="mt-0.5 text-center text-muted-foreground/70"
-            style={{ fontSize: 13 }}
+            className="font-display font-bold tracking-tight text-foreground"
+            style={{ fontSize: 19 }}
             numberOfLines={1}
           >
-            {meta}
+            {name}
           </Text>
-        ) : null}
+          {sexLabel || age != null ? (
+            <View className="mt-2 flex-row flex-wrap gap-2">
+              {sexLabel ? (
+                <View className="rounded-lg border border-border/60 bg-white/55 px-2 py-0.5">
+                  <Text
+                    className="font-semibold text-muted-foreground"
+                    style={{ fontSize: 11 }}
+                  >
+                    {sexLabel}
+                  </Text>
+                </View>
+              ) : null}
+              {age != null ? (
+                <View className="rounded-lg border border-border/60 bg-white/55 px-2 py-0.5">
+                  <Text
+                    className="font-semibold text-muted-foreground"
+                    style={{ fontSize: 11, fontVariant: ['tabular-nums'] }}
+                  >
+                    {age}
+                  </Text>
+                </View>
+              ) : null}
+            </View>
+          ) : null}
+        </View>
       </View>
 
-      {/* Stat band: Instagram · Class · Visits — three equal centered columns
-          split by hairlines, one deliberate band. The connect CTA lives on
-          the Instagram box below — the card states, it never nags. */}
-      <View className="mt-4 flex-row border-t border-border/60 pt-3.5">
+      <View className="mt-3.5 flex-row border-t border-border/60 pt-3.5">
         <PassportField
           label="Instagram"
           muted={!igConnected}
@@ -260,15 +286,25 @@ export function IdentityHero({
               'Not connected'
             )
           }
-          sub={
-            igConnected && followers > 0
-              ? `${followers.toLocaleString('en-US')} followers`
-              : null
+        />
+        <PassportField
+          label="Followers"
+          divider
+          muted={!igConnected}
+          value={
+            igConnected ? (
+              <Text
+                className="text-center font-semibold tracking-tight text-foreground"
+                style={{ fontSize: 14, fontVariant: ['tabular-nums'] }}
+                numberOfLines={1}
+              >
+                {formatCompactCount(followers)}
+              </Text>
+            ) : (
+              '—'
+            )
           }
         />
-        {/* Class shows only its name — how it was earned stays off the card
-            ("don't mention the class like that", MESITA-902). */}
-        <PassportField label="Class" divider value={classLabel} />
         <PassportField
           label="Visits"
           divider

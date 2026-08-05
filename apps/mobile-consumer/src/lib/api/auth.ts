@@ -78,22 +78,21 @@ export function apiFetchConsumerProfile(): Promise<ProfileResult> {
   return invokeEF<ProfileResult>(supabase, 'consumer-web-get-profile', {});
 }
 
-// Lifetime counters from consumer-web-get-metrics (MESITA-895) — the Me →
-// Metrics sheet. Fetched lazily when the sheet opens, never on boot. Mirrors
-// ConsumerMetrics in apps/web-consumer/src/lib/api/profile.ts.
+// Lifetime counters from consumer-web-get-metrics (MESITA-904) — the Me →
+// Metrics sheet (10 tiles). Fetched lazily when the sheet opens, never on
+// boot. Mirrors ConsumerMetrics in apps/web-consumer/src/lib/api/profile.ts.
+// places_visited === rewards_claimed always (same EF source).
 export type ConsumerMetrics = {
-  /** Tickets the v3 close sealed ("revealed") — completed visits. */
-  visits: number;
-  /** Distinct places among those completed visits. */
-  places: number;
-  /** Confirmed, non-test reservations (all time). */
-  reservations: number;
-  /** Saved places. */
-  saves: number;
-  /** Verified Instagram stories. */
-  stories: number;
-  /** Verified Google reviews + Mesita post-visit reviews. */
-  reviews: number;
+  places_viewed: number;
+  places_saved: number;
+  places_visited: number;
+  rewards_claimed: number;
+  reservations_booked: number;
+  mesita_reviews: number;
+  google_reviews: number;
+  instagram_stories: number;
+  spent_cents: number;
+  saved_cents: number;
 };
 
 export async function apiFetchConsumerMetrics(): Promise<ConsumerMetrics> {
