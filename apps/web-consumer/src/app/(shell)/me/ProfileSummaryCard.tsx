@@ -41,15 +41,16 @@ function ClassBadge({
           ? "bg-gradient-to-br from-blue-200 to-blue-400 text-blue-950"
           : "bg-gradient-to-br from-neutral-200 to-neutral-400 text-neutral-900";
 
+  // Same outer diameter as IgBadge (MESITA-938) — 28px, equal left/right.
   return (
     <div
       className={cn(
-        "absolute -bottom-0.5 -left-0.5 grid h-[22px] w-[22px] place-items-center rounded-full border-2 border-white shadow-sm",
+        "absolute -bottom-1 -left-1 grid h-7 w-7 place-items-center rounded-full border-2 border-white shadow-sm",
         chipClass,
       )}
       aria-label={`Class: ${label}`}
     >
-      <Icon className="h-3 w-3" strokeWidth={2.5} aria-hidden />
+      <Icon className="h-3.5 w-3.5" strokeWidth={2.5} aria-hidden />
     </div>
   );
 }
@@ -61,10 +62,11 @@ function IgBadge({
   connected: boolean;
   avatarUrl: string | null;
 }) {
+  // Same outer diameter as ClassBadge (MESITA-938) — 28px h-7 w-7.
   return (
     <div
       className={cn(
-        "absolute -right-0.5 -bottom-0.5 rounded-full border-2 border-white p-[1.5px] shadow-sm",
+        "absolute -right-1 -bottom-1 grid h-7 w-7 place-items-center rounded-full border-2 border-white p-[2px] shadow-sm",
         connected
           ? "bg-[linear-gradient(135deg,#f58529,#dd2a7b_45%,#8134af)]"
           : "bg-border",
@@ -73,19 +75,19 @@ function IgBadge({
         connected ? "Instagram connected" : "Instagram not connected"
       }
     >
-      <div className="bg-card grid h-[18px] w-[18px] place-items-center overflow-hidden rounded-full">
+      <div className="bg-card grid h-full w-full place-items-center overflow-hidden rounded-full">
         {connected && avatarUrl ? (
           <Image
             src={avatarUrl}
             alt=""
-            width={18}
-            height={18}
+            width={20}
+            height={20}
             className="h-full w-full object-cover"
           />
         ) : (
           <Instagram
             className={cn(
-              "h-2.5 w-2.5",
+              "h-3.5 w-3.5",
               connected ? "text-secondary" : "text-muted-foreground",
             )}
             aria-hidden

@@ -265,16 +265,17 @@ export function IdentityHero({
             </View>
           </LinearGradient>
 
+          {/* Avatar sub-badges — equal 28px outer diameter (MESITA-938). */}
           <LinearGradient
             colors={[...classBadgeColors(classKey)]}
             start={GRADIENT_DIAGONAL.start}
             end={GRADIENT_DIAGONAL.end}
             style={{
               position: 'absolute',
-              left: -2,
-              bottom: -2,
-              width: 22,
-              height: 22,
+              left: -4,
+              bottom: -4,
+              width: 28,
+              height: 28,
               borderRadius: 999,
               borderWidth: 2,
               borderColor: '#fff',
@@ -285,7 +286,7 @@ export function IdentityHero({
           >
             <ClassIcon
               color={classBadgeIconColor(classKey)}
-              size={11}
+              size={14}
               strokeWidth={2.5}
             />
           </LinearGradient>
@@ -300,10 +301,12 @@ export function IdentityHero({
             end={GRADIENT_DIAGONAL.end}
             style={{
               position: 'absolute',
-              right: -2,
-              bottom: -2,
+              right: -4,
+              bottom: -4,
+              width: 28,
+              height: 28,
               borderRadius: 999,
-              padding: 1.5,
+              padding: 2,
               borderWidth: 2,
               borderColor: '#fff',
             }}
@@ -313,7 +316,7 @@ export function IdentityHero({
                 : 'Instagram not connected'
             }
           >
-            <View className="h-[18px] w-[18px] items-center justify-center overflow-hidden rounded-full bg-card">
+            <View className="h-full w-full items-center justify-center overflow-hidden rounded-full bg-card">
               {igConnected && avatarUrl ? (
                 <Image
                   source={{ uri: avatarUrl }}
@@ -323,7 +326,7 @@ export function IdentityHero({
               ) : (
                 <ChannelMark
                   channel="instagram"
-                  size={10}
+                  size={14}
                   color={igConnected ? '#c02670' : '#775254'}
                 />
               )}
