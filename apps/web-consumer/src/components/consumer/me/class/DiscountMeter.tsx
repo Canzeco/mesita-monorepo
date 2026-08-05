@@ -25,12 +25,12 @@ export function DiscountMeter({ level }: { level: DiscountLevel }) {
     <div
       className="bg-muted rounded-xl p-2.5"
       role="img"
-      aria-label={`Discount level: ${level} (${filled} of 4)`}
+      aria-label={`Discount Rewards level: ${level} (${filled} of 4)`}
     >
       <div className="mb-2 flex items-baseline justify-between gap-2">
         <span className="text-[13px] font-extrabold tracking-wide">{level}</span>
         <span className="text-muted-foreground text-[10px] font-semibold">
-          Discount
+          Discount Rewards
         </span>
       </div>
       <div className="flex gap-1">

@@ -23,7 +23,7 @@ export function DiscountMeter({ level }: { level: DiscountLevel }) {
     <View
       accessible
       accessibilityRole="image"
-      accessibilityLabel={`Discount level: ${level} (${filled} of 4)`}
+      accessibilityLabel={`Discount Rewards level: ${level} (${filled} of 4)`}
       style={{
         backgroundColor: '#faeff0',
         borderRadius: 12,
