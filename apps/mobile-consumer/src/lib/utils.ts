@@ -35,6 +35,27 @@ export function formatSex(sex: string | null | undefined): string | null {
   return sex.charAt(0).toUpperCase() + sex.slice(1);
 }
 
+/**
+ * Display form of the stored phone (E.164 digits, usually without the +).
+ * MX numbers ("52" + 10 digits) get the local grouping — "+52 444 549 9597";
+ * anything else keeps its digits with a leading + so it never renders as a
+ * raw digit run on the passport card. Keep in sync with web-consumer.
+ */
+export function formatPhoneDisplay(
+  phone: string | null | undefined,
+): string | null {
+  if (!phone) return null;
+  const digits = phone.replace(/\D/g, '');
+  if (!digits) return phone;
+  if (digits.length === 12 && digits.startsWith('52')) {
+    return `+52 ${digits.slice(2, 5)} ${digits.slice(5, 8)} ${digits.slice(8)}`;
+  }
+  if (digits.length === 10) {
+    return `${digits.slice(0, 3)} ${digits.slice(3, 6)} ${digits.slice(6)}`;
+  }
+  return `+${digits}`;
+}
+
 // Guest-count noun: "person" for 1, "people" otherwise. Pair with the count
 // at the call site — `${n} ${guestNoun(n)}`. Keep in sync with web-consumer.
 export function guestNoun(n: number): string {

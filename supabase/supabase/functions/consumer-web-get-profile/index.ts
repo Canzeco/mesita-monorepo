@@ -145,5 +145,19 @@ Deno.serve(async (req) => {
     },
   };
 
-  return json({ ok: true, consumer, class: subscriptionClass });
+  // Passport stats (MESITA-888): visits = tickets the v3 close sealed
+  // ("revealed" — staff tapped done, billed or not). Best-effort like the
+  // rest of this block: a count failure degrades to 0, never a 500.
+  const { count: visitCount } = await admin
+    .from("tickets")
+    .select("id", { count: "exact", head: true })
+    .eq("consumer_id", userId)
+    .eq("status", "revealed");
+
+  return json({
+    ok: true,
+    consumer,
+    class: subscriptionClass,
+    stats: { visits: visitCount ?? 0 },
+  });
 });

@@ -61,9 +61,17 @@ export type ConsumerClass = {
   } | Record<string, unknown> | null;
 };
 
+// Passport stats returned by consumer-web-get-profile (MESITA-888).
+// `visits` = tickets the v3 close sealed ("revealed") — completed visits.
+export type ConsumerStats = {
+  visits: number;
+};
+
 type ProfileResult = {
   consumer: ConsumerProfile;
   class: ConsumerClass | null;
+  // Optional so a not-yet-redeployed EF degrades to zeroes, never a crash.
+  stats?: ConsumerStats;
 };
 
 export function apiFetchConsumerProfile(): Promise<ProfileResult> {
