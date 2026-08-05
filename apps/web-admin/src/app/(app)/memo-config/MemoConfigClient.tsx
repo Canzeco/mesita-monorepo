@@ -6,26 +6,17 @@ import { ErrorNote } from "@/components/ErrorNote";
 import { SaveRow, SectionCard, Switch, TextAreaField } from "../enricher-config/atlas-ui";
 import { getMemoConfig, updateMemoConfig } from "./actions";
 import {
+  DEFAULT_MEMO_CONFIG,
   OPENAI_MODELS,
   PERPLEXITY_MODELS,
   type MemoConfig,
 } from "./types";
 
 // Memo's config surface — kept deliberately small: the persona prose and the
-// models. These DEFAULTS are the pre-load placeholder; on mount the page loads
-// the persisted values from admin-web-get-memo-config (app_settings.memo_*).
+// models. Server-seeded from admin-web-get-memo-config (app_settings.memo_*);
+// a failed load keeps DEFAULT_MEMO_CONFIG visible but blocks Save (MESITA-737).
 // memo_instructions is read live by consumer-web-ask-memo; the model knobs are
 // persisted for the forthcoming Memo model rebuild.
-const DEFAULTS: MemoConfig = {
-  greeting:
-    "Hola ✨ I'm Memo, your Mesita concierge. Tell me what you're craving — try “rooftop date tonight under $$$” or just “tacos al pastor”.",
-  instructions:
-    "You are Memo, Mesita's warm, sharp local concierge for dining, nightlife, cafés, and experiences — deep taste for Monterrey, able to help anywhere. Reply in the user's language, plain text, 2–4 sentences, opinionated and specific. Be time-aware: prefer spots open and appropriate for the local hour. When the user is place-seeking, name the real places on the shortlist; for general questions just answer conversationally.",
-  provider: "openai",
-  openaiModel: "gpt-4o-mini",
-  webGrounding: false,
-  perplexityModel: "sonar-pro",
-};
 
 function Select<T extends string>({
   value,
@@ -69,17 +60,24 @@ function Field({
   );
 }
 
-export function MemoConfigClient() {
-  const [cfg, setCfg] = useState<MemoConfig>(DEFAULTS);
-  const [saved, setSaved] = useState<MemoConfig>(DEFAULTS);
+export function MemoConfigClient({
+  initialConfig,
+  loadError,
+}: {
+  initialConfig: MemoConfig;
+  loadError: string | null;
+}) {
+  const [cfg, setCfg] = useState<MemoConfig>(initialConfig);
+  const [saved, setSaved] = useState<MemoConfig>(initialConfig);
   const [pending, startTransition] = useTransition();
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(loadError);
+  const [blocked, setBlocked] = useState(!!loadError);
   const [ok, setOk] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  // Load the persisted config (app_settings.memo_*) on mount so the page shows
-  // the live values, not just the local DEFAULTS. On failure we keep DEFAULTS
-  // and let a Save surface the real error — the page stays usable either way.
+  // Re-fetch on mount so client-side nav shows the live row. Success clears a
+  // prior loadError; failure keeps the seed and (if still blocked) refreshes
+  // the message — never unblocks Save after a failed initial GET.
   useEffect(() => {
     let active = true;
     (async () => {
@@ -88,15 +86,20 @@ export function MemoConfigClient() {
       if (r.ok) {
         setCfg(r.data);
         setSaved(r.data);
+        setError(null);
+        setBlocked(false);
+      } else if (blocked) {
+        setError(r.error);
       }
       setLoading(false);
     })();
     return () => {
       active = false;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- seed once on mount
   }, []);
 
-  const busy = pending || loading;
+  const busy = pending || loading || blocked;
   const dirty = JSON.stringify(cfg) !== JSON.stringify(saved);
   const set = <K extends keyof MemoConfig>(key: K, value: MemoConfig[K]) => {
     setCfg((c) => ({ ...c, [key]: value }));
@@ -104,6 +107,7 @@ export function MemoConfigClient() {
   };
 
   const save = () => {
+    if (blocked) return;
     setError(null);
     startTransition(async () => {
       const r = await updateMemoConfig(cfg);
@@ -119,6 +123,8 @@ export function MemoConfigClient() {
 
   return (
     <div className="space-y-4 sm:space-y-6">
+      {error && <ErrorNote message={error} />}
+
       {/* Persona */}
       <SectionCard
         icon={<MessageSquare className="text-secondary h-4 w-4" />}
@@ -159,7 +165,7 @@ export function MemoConfigClient() {
           <Field label={<>Web grounding (Perplexity)</>}>
             <Switch
               on={cfg.webGrounding}
-              pending={pending}
+              pending={pending || blocked}
               label="Web grounding (Perplexity)"
               onClick={() => set("webGrounding", !cfg.webGrounding)}
             />
@@ -182,8 +188,16 @@ export function MemoConfigClient() {
         </div>
       </SectionCard>
 
-      <SaveRow pending={pending} dirty={dirty} ok={ok} onClick={save} />
-      {error && <ErrorNote message={error} />}
+      <SaveRow
+        pending={pending}
+        dirty={dirty}
+        ok={ok}
+        onClick={save}
+        loadError={blocked ? (error ?? "Failed to load Memo config") : null}
+      />
     </div>
   );
 }
+
+// Re-export for any caller that still wants the placeholder blob.
+export { DEFAULT_MEMO_CONFIG };

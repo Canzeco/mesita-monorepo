@@ -25,7 +25,12 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { invokeArtificialCaller } from "../_shared/internal.ts";
 import { applyProfileToUpdate, synthesisModelFor, synthesizeProfile } from "../_shared/enrich-synthesis.ts";
-import { loadEnrichConfig } from "../_shared/enrich-config.ts";
+import { COST, loadEnrichConfig } from "../_shared/enrich-config.ts";
+import {
+  costFromGathered,
+  createEnrichCostLedger,
+  synthesisRunCost,
+} from "../_shared/enrich-cost.ts";
 import { runPlaceEmbeddingsOnUpdate } from "../_shared/place-embeddings.ts";
 import { fetchPlaceCategories, inferPlaceCategory } from "../_shared/categories.ts";
 import { fetchPlaceTags, inferPlaceTags } from "../_shared/tags.ts";
@@ -62,6 +67,7 @@ serveEnrichStage("contents", async (admin, env, row) => {
     return;
   }
   const cfg = await loadEnrichConfig(admin);
+  const ledger = createEnrichCostLedger(cfg.perRunCostCapUsd, costFromGathered(gathered));
 
   const place: Record<string, unknown> = { ...gathered.place };
   const name = (place.name ?? "").toString();
@@ -71,6 +77,11 @@ serveEnrichStage("contents", async (admin, env, row) => {
   if (analysis.finalPhotos.length > 0) place.photos = analysis.finalPhotos;
 
   // ━━━ S7 — synthesis + category + tags ━━━
+  // Admin cost model: synthesis + 2 × gpt-4o-mini (category then tags).
+  const synthCost = synthesisRunCost(cfg.synthesisQuality);
+  const classifyCost = COST.sort * 2;
+  ledger.assertCanAfford(synthCost + classifyCost, "synthesis_and_classify");
+
   const { parsed, diag: synthDiag } = await synthesizeProfile({
     openaiKey: OPENAI_KEY,
     model: synthesisModelFor(cfg.synthesisQuality),
@@ -81,6 +92,7 @@ serveEnrichStage("contents", async (admin, env, row) => {
     googleReviewsText,
     serpSummary,
   });
+  ledger.charge("synthesis", synthCost);
   const sources: Record<string, unknown> = { ...gathered.sources, image_funnel: analysis.diag, synthesis: synthDiag };
   if (parsed) applyProfileToUpdate(place, parsed);
 
@@ -117,8 +129,10 @@ serveEnrichStage("contents", async (admin, env, row) => {
     serpSummary,
   });
   if (inferredTags.length > 0) place.tags = inferredTags;
+  ledger.charge("category_tags", classifyCost);
   sources.category = { ok: !!inferredCategory, slug: inferredCategory, candidates: realCategories.length };
   sources.tags = { ok: inferredTags.length > 0, count: inferredTags.length, vocabulary: tagVocabulary.length };
+  sources.cost = ledger.snapshot();
 
   // Selected Reservation Endpoint (Product Rules §G / MESITA-597 / MESITA-842) —
   // seed products.reservations { channel, value } for the Reservationist.

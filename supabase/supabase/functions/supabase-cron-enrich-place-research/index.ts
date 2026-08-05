@@ -37,7 +37,13 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { instagramHandleFromUrl } from "../_shared/apify.ts";
 import { resolveChannels } from "../_shared/enrich-channel-discovery.ts";
 import { fbSlugCandidate } from "../_shared/channels.ts";
-import { loadEnrichConfig } from "../_shared/enrich-config.ts";
+import { COST, loadEnrichConfig } from "../_shared/enrich-config.ts";
+import {
+  chargeGoogleSpine,
+  createEnrichCostLedger,
+  discoverySearchCost,
+  instagramRunCost,
+} from "../_shared/enrich-cost.ts";
 import { fetchGoogleBasics } from "../_shared/enrich-google-basics.ts";
 import { gatherGoogleMaps } from "../_shared/enrich-google.ts";
 import { stickyNamePatch } from "../_shared/place-display-name.ts";
@@ -83,6 +89,10 @@ serveEnrichStage("research", async (admin, _env, row) => {
   }
   const basics = basicsRes.basics;
   const cfg = await loadEnrichConfig(admin);
+  // MESITA-624 — accumulate estimated USD against atlas_per_run_cost_cap_usd.
+  // Throws EnrichCostCapError → serveEnrichStage hard-fails the row (no retry).
+  const ledger = createEnrichCostLedger(cfg.perRunCostCapUsd);
+  chargeGoogleSpine(ledger, basics.photos.length);
 
   const sources: Record<string, unknown> = {};
   const place: Record<string, unknown> = { ...basics };
@@ -102,9 +112,11 @@ serveEnrichStage("research", async (admin, _env, row) => {
   let googleReviewsText = "";
   let googleImages: string[] = [];
   let serpSummary: string | null = null;
+  let gmapsInvoked = false;
 
   const gmapsGather = (async () => {
     if (!APIFY_KEY || !basics.google_place_id) return;
+    gmapsInvoked = true;
     try {
       const g = await gatherGoogleMaps({
         apifyKey: APIFY_KEY,
@@ -126,9 +138,11 @@ serveEnrichStage("research", async (admin, _env, row) => {
   })();
 
   if (PERPLEXITY_KEY) {
+    ledger.assertCanAfford(COST.perplexity, "serp");
     const serp = await gatherSerpSummary({ perplexityKey: PERPLEXITY_KEY, name, locationLine, category, perplexityPreset: cfg.perplexityPreset });
     serpSummary = serp.summary;
     sources.serp = serp.diag;
+    ledger.charge("serp", COST.perplexity);
   }
 
   // ━━━ S3 — channel discovery (channels ONLY) ━━━
@@ -147,6 +161,9 @@ serveEnrichStage("research", async (admin, _env, row) => {
       !resolvedUberEats);
 
   if (needsDiscovery) {
+    const searchCost = FIRECRAWL_KEY ? discoverySearchCost(cfg) : 0;
+    const agentCost = PERPLEXITY_KEY ? COST.perplexity : 0;
+    ledger.assertCanAfford(searchCost + agentCost, "discovery");
     // S4 gather (Firecrawl Search, per-source N) → S5 Agent Y select.
     const found = await resolveChannels({
       firecrawlKey: FIRECRAWL_KEY,
@@ -177,6 +194,8 @@ serveEnrichStage("research", async (admin, _env, row) => {
       instagram: !!resolvedInstagram, facebook: !!resolvedFacebook, website: !!resolvedWebsite,
       opentable: !!resolvedOpenTable, ubereats: !!resolvedUberEats,
     };
+    if (searchCost > 0) ledger.charge("discovery_search", searchCost);
+    if (agentCost > 0) ledger.charge("discovery_agent", agentCost);
   }
 
   // Fold resolved channels into the profile. instagram_url waits for S4 verify.
@@ -271,6 +290,12 @@ serveEnrichStage("research", async (admin, _env, row) => {
   // footer scrape) → Agent Y selection.
   const runInstagram = !!APIFY_KEY && (!!igHandle || !!fbHandleCandidate || !!PERPLEXITY_KEY);
   const runFacebook = !!APIFY_KEY && !!resolvedFacebook;
+  const igCost = runInstagram ? instagramRunCost(cfg.gatherInstagramDepth) : 0;
+  const fbCost = runFacebook ? COST.facebook : 0;
+  // Reserve the in-flight GMaps spend so IG/FB don't start when the remaining
+  // budget can't cover them + the compass charge still pending.
+  const pendingGmaps = gmapsInvoked ? COST.compass : 0;
+  ledger.assertCanAfford(igCost + fbCost + pendingGmaps, "gather_sources");
 
   let ig: InstagramResult | null = null;
   let fb: FacebookResult | null = null;
@@ -295,11 +320,18 @@ serveEnrichStage("research", async (admin, _env, row) => {
   ]);
   const igR = ig as InstagramResult | null;
   const fbR = fb as FacebookResult | null;
-  if (igR) sources.apify_instagram = igR.diag;
-  if (fbR) sources.apify_facebook = fbR.diag;
+  if (igR) {
+    sources.apify_instagram = igR.diag;
+    ledger.charge("instagram", igCost);
+  }
+  if (fbR) {
+    sources.apify_facebook = fbR.diag;
+    ledger.charge("facebook", fbCost);
+  }
 
   // Collect the background Google Maps scrape — it overlapped S3 + S4.
   await gmapsGather;
+  if (gmapsInvoked) ledger.charge("compass", COST.compass);
 
   // Numeric source facts + verified IG.
   if (reviews.length > 0) {
@@ -358,6 +390,7 @@ serveEnrichStage("research", async (admin, _env, row) => {
     instagramAssetMeta: mapToObject(igR?.instagramAssetMeta),
     locationLine,
     sources,
+    cost: ledger.snapshot(),
   };
   await advanceResearchStage(admin, projectId, "analysis", { gathered });
 });

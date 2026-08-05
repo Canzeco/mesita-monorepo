@@ -82,6 +82,8 @@ type ScoringCtx = {
   revertSection: (section: SettingsSection) => void;
   /** Load ONE box's code defaults into the form (dirty until its Save). */
   resetSection: (section: SettingsSection) => void;
+  /** Failed initial GET — Save stays blocked (MESITA-737). */
+  loadError: string | null;
 };
 
 const Ctx = createContext<ScoringCtx | null>(null);
@@ -90,16 +92,20 @@ export function ScoringProvider({
   consumers,
   places,
   initialConfig,
+  loadError = null,
   children,
 }: {
   consumers: SampleConsumer[];
   places: SamplePlace[];
   /** Raw app_settings.scoring_config (null = code defaults). */
   initialConfig: unknown;
+  /** When set, per-box Save stays disabled — never overwrite from a failed load. */
+  loadError?: string | null;
   children: React.ReactNode;
 }) {
   // Seed once from the saved blob; the provider persists across tab
   // navigation and router.refresh, so knobs never reset behind the operator.
+  // When loadError is set this seed is code defaults only — Save is blocked.
   const [saved, setSaved] = useState<ScoringSettings>(() =>
     coerceScoringSettings(initialConfig),
   );
@@ -221,6 +227,7 @@ export function ScoringProvider({
   };
 
   const saveSection = (section: SettingsSection) => {
+    if (loadError) return;
     setSaveError(null);
     setSavedSection(null);
     setSavingSection(section);
@@ -270,6 +277,7 @@ export function ScoringProvider({
         saveSection,
         revertSection,
         resetSection,
+        loadError: loadError ?? null,
       }}
     >
       {children}

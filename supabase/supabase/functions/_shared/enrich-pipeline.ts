@@ -31,6 +31,7 @@ import { type SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { corsPreflight, json, readJson } from "./http.ts";
 import { adminClient, type EFEnv, readEFEnv } from "./auth.ts";
 import { requireInternalCaller } from "./internal.ts";
+import { isEnrichCostCapError } from "./enrich-cost.ts";
 import {
   advanceResearchStage,
   failResearchRow,
@@ -91,6 +92,12 @@ export type GatheredPayload = {
   }>;
   locationLine: string;
   sources: Record<string, unknown>;
+  // Accumulated estimated USD for this enrichment run (MESITA-624). Carried
+  // across research → analysis → contents so the per-run cap spans stages.
+  cost?: {
+    spentUsd: number;
+    charges: { key: string; usd: number }[];
+  };
 };
 
 export type AnalysisPayload = {
@@ -185,6 +192,15 @@ export function serveEnrichStage(
       run(admin, envRes.env, rowRes.row).catch(async (err) => {
         const msg = err instanceof Error ? err.message : String(err);
         console.error(`[supabase-cron-enrich-place-${stage}]`, msg);
+        // Cost-cap abort is terminal (MESITA-624) — retrying cannot unspend
+        // and would burn more budget. Everything else releases for retry.
+        if (isEnrichCostCapError(err)) {
+          await reportEnrichmentStep(admin, projectId, STAGE_CRASH_STEP[stage] ?? "S1",
+            `${stage}_cost_cap`, "failed",
+            `Enrichment aborted — per-run cost cap hit: ${msg}`.slice(0, 490));
+          await failResearchRow(admin, projectId, msg.slice(0, 500));
+          return;
+        }
         // Surface the crash in the admin feed — silent crashes hid a wedged
         // pipeline for hours (MESITA-123). Beacon first: release must run
         // even though reportEnrichmentStep is already best-effort inside.

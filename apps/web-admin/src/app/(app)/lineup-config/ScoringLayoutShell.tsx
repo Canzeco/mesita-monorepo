@@ -1,9 +1,11 @@
 "use client";
 
 import { usePathname } from "next/navigation";
+import { ErrorNote } from "@/components/ErrorNote";
 import { PageHeader } from "@/components/PageContainer";
 import { ConfigTabNav } from "@/components/ConfigTabNav";
 import { SCORING_SUBROUTES } from "./nav";
+import { useScoring } from "./ScoringProvider";
 
 // Lineup Config — two tabs (Config · Playground). "Lineup" is the
 // candidate-generation engine's name; the sidebar, this header and the engine
@@ -18,6 +20,7 @@ const SUBPAGE_DESCRIPTION: Record<string, string> = {
 
 export function ScoringLayoutShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const { loadError } = useScoring();
   const match = SCORING_SUBROUTES.find(
     (r) => pathname === r.href || pathname.startsWith(`${r.href}/`),
   );
@@ -28,6 +31,11 @@ export function ScoringLayoutShell({ children }: { children: React.ReactNode }) 
     <>
       <PageHeader title="Lineup Config" description={description} />
       <ConfigTabNav ariaLabel="Lineup Config" subroutes={SCORING_SUBROUTES} />
+      {loadError ? (
+        <div className="mt-4">
+          <ErrorNote message={loadError} />
+        </div>
+      ) : null}
       <div className="mt-6 sm:mt-8">{children}</div>
     </>
   );

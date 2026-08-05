@@ -1,6 +1,7 @@
 // Supabase Edge Function — business-web-invite-member
 //
-// Invite a colleague to the place as owner / editor / viewer. Two
+// Invite a colleague to the place as editor / viewer (MESITA-919: owner
+// is never invited — transfer ownership from an existing member). Two
 // paths:
 //
 //   1. Email matches an existing accounts row → link directly: insert
@@ -55,6 +56,16 @@ Deno.serve(async (req) => {
   }
   if (!isMemberRole(role)) {
     return json({ ok: false, error: "role must be owner | editor | viewer" }, 400);
+  }
+  if (role === "owner") {
+    return json(
+      {
+        ok: false,
+        code: "invite_owner_forbidden",
+        error: "Cannot invite as owner — transfer ownership from Team instead.",
+      },
+      400,
+    );
   }
 
   const admin = adminClient(envRes.env);

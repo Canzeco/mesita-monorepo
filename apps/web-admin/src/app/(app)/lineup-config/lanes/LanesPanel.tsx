@@ -33,6 +33,7 @@ export function LanesPanel() {
     saveSection,
     revertSection,
     resetSection,
+    loadError,
   } = useScoring();
   const total = laneCountsTotal(laneN);
 
@@ -147,6 +148,7 @@ export function LanesPanel() {
           saving={savingSection === "lanes"}
           savedOk={savedSection === "lanes"}
           error={savingSection === "lanes" || sectionDirty.lanes ? saveError : null}
+          loadError={loadError}
           onSave={() => saveSection("lanes")}
           onCancel={() => revertSection("lanes")}
           onReset={() => resetSection("lanes")}
