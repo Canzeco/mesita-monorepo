@@ -8,10 +8,11 @@ import type { RewardClassKey } from '@/lib/reward-segments';
 // Four-class comparison (segments v6) — a 5-column perk table, simplified to
 // the three actual perks (Pato, 2026-08-04): Discount Rewards, Places
 // Recommendations, AI-Booked Reservations. One label column + Standard /
-// Influencer / Premium / Aura. Benefit cells use qualitative levels only
-// (LOW · MEDIUM · HIGH · EXTRA · MAX — Filters Random vocabulary family;
-// MESITA-906); never % or counts. Column doors stay as tier qualification
-// labels. Mirrors web ClassComparison — keep the twins structurally identical.
+// Influencer / Premium / Aura. Cell formats differ by perk (MESITA-907):
+// Discount = qualitative levels (LOW · MEDIUM · HIGH · EXTRA · MAX);
+// Places = two-state (Basic / Personalized); Reservations = counts (2/mo ·
+// 10/mo). Column doors stay as tier qualification labels. Mirrors web
+// ClassComparison — keep the twins structurally identical.
 
 const COLS: {
   key: RewardClassKey;
@@ -56,8 +57,8 @@ const COLS: {
 ];
 
 // The three perks, in Pato's canonical order. `values` align with COLS.
-// Mapping (decision MESITA-906): Discount LOW→HIGH→EXTRA→MAX; Places +
-// Reservations Standard LOW / elevated HIGH.
+// Mapping (decision MESITA-907): Discount LOW→HIGH→EXTRA→MAX (MEDIUM unused);
+// Places Basic→Personalized; Reservations 2/mo→10/mo.
 const ROWS: { label: string; values: string[] }[] = [
   {
     label: 'Discount Rewards',
@@ -65,11 +66,11 @@ const ROWS: { label: string; values: string[] }[] = [
   },
   {
     label: 'Places Recommendations',
-    values: ['LOW', 'HIGH', 'HIGH', 'HIGH'],
+    values: ['Basic', 'Personalized', 'Personalized', 'Personalized'],
   },
   {
     label: 'AI-Booked Reservations',
-    values: ['LOW', 'HIGH', 'HIGH', 'HIGH'],
+    values: ['2/mo', '10/mo', '10/mo', '10/mo'],
   },
 ];
 
@@ -191,12 +192,12 @@ export function ClassComparison() {
                 }}
               >
                 <Text
-                  numberOfLines={1}
+                  numberOfLines={2}
                   style={{
                     fontSize: 11,
                     fontWeight: '600',
-                    letterSpacing: 0.4,
                     textAlign: 'center',
+                    fontVariant: ['tabular-nums'],
                     color: COLS[ci].textColor,
                   }}
                 >
@@ -218,7 +219,7 @@ export function ClassComparison() {
           paddingBottom: 2,
         }}
       >
-        Levels show relative benefit — every place sets its own reward.
+        Discount levels show relative benefit — every place sets its own reward.
       </Text>
     </View>
   );

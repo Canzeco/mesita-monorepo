@@ -36,7 +36,8 @@ export function ClassModal({
           <div>
             <h2 className={SHEET_TITLE_CLASS}>Your class</h2>
             <p className="text-muted-foreground text-[12px]">
-              Standard, Influencer, Premium or Aura — and how to climb
+              Mesita Standard, Mesita Influencer, Mesita Premium or Mesita Aura
+              — and how to climb
             </p>
           </div>
         </div>
