@@ -51,7 +51,8 @@ export function placeToFormState(place: MyPlace): PlaceFormState {
       if (place.menu_pdf_url) {
         return [{ name: place.menu_pdf_name ?? "", url: place.menu_pdf_url }];
       }
-      return [{ name: "", url: "" }];
+      // Empty — the Media menu editor shows "No menus yet" + New menu.
+      return [];
     })(),
     photos: (place.photos ?? []).slice(0, MAX_PHOTOS),
     tags: place.tags ?? [],

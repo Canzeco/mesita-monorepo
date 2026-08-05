@@ -59,6 +59,9 @@ export function EditPlaceForm({
   const [refreshRunning, setRefreshRunning] = useState(false);
   const [refreshNotice, setRefreshNotice] = useState<string | null>(null);
   const [isDirty, setIsDirty] = useState(false);
+  // Bumped on Discard so PlaceMenuFields remounts and rehydrates its
+  // Upload/Drive source drafts from the last-saved menu_links.
+  const [menuEditorKey, setMenuEditorKey] = useState(0);
 
   const set = <K extends keyof PlaceFormState>(
     key: K,
@@ -72,6 +75,7 @@ export function EditPlaceForm({
     if (!isDirty) return;
     if (!window.confirm("Discard your unsaved changes?")) return;
     setV(placeToFormState(place));
+    setMenuEditorKey((k) => k + 1);
     setIsDirty(false);
     setError(null);
     setSaved(false);
@@ -98,6 +102,18 @@ export function EditPlaceForm({
     if (!trimmedName) {
       setError("Name cannot be empty.");
       return;
+    }
+
+    for (const m of v.menu_links) {
+      const trimmed = m.url.trim();
+      if (!trimmed) continue;
+      const normalized = nullableUrl(trimmed);
+      if (!normalized || !/^https:\/\//i.test(normalized)) {
+        setError(
+          "Each menu needs a valid https:// URL (Drive link or uploaded file).",
+        );
+        return;
+      }
     }
 
     const menuEntries = v.menu_links
@@ -195,6 +211,7 @@ export function EditPlaceForm({
               onError={setError}
             />
             <PlaceMenuModule
+              key={menuEditorKey}
               hideHeader
               projectId={place.id}
               form={v}
