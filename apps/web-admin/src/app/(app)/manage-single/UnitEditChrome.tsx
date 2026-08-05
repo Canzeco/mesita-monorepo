@@ -60,9 +60,9 @@ export function UnitEditChrome({
   const enriching = isEnriching(enrichStatus);
   const enrichFailed = enrichStatus?.stage === "failed";
 
-  // decision: Pato (MESITA-451) — Enriching badge also lives next to the place
-  // name in this chrome. Meta card shows enriching status too (MESITA-466).
-  // Poll while open so the spinner clears when the pipeline finishes.
+  // decision: MESITA-896 — enriching status lives HERE (next to Re-enrich),
+  // not in Admin → Metadata and not as a Place body card. Poll while open
+  // so the spinner clears when the pipeline finishes.
   useEffect(() => {
     let alive = true;
     const load = () => {
@@ -149,7 +149,13 @@ export function UnitEditChrome({
                 className="inline-flex shrink-0 items-center gap-1 text-sm font-semibold text-blue-600"
                 aria-live="polite"
               >
-                <span className="whitespace-nowrap">(Enriching)</span>
+                <span className="whitespace-nowrap">
+                  {enrichStatus?.stage === "research" ||
+                  enrichStatus?.stage === "analysis" ||
+                  enrichStatus?.stage === "contents"
+                    ? `(Enriching… ${enrichStatus.stage})`
+                    : "(Enriching…)"}
+                </span>
                 <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
               </span>
             ) : enrichFailed ? (
