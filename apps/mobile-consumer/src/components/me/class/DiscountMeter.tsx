@@ -56,7 +56,7 @@ export function DiscountMeter({ level }: { level: DiscountLevel }) {
             color: '#775254',
           }}
         >
-          Discount
+          Discount Rewards
         </Text>
       </View>
       <View style={{ flexDirection: 'row', gap: 4 }}>
