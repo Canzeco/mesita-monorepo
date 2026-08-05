@@ -30,6 +30,7 @@ import {
   placeStrategy,
   resolveTicketRate,
 } from "../_shared/rewards-config.ts";
+import { ratesForBilling } from "../_shared/ticket-rate-snapshot.ts";
 import {
   assessPromoLane,
   loadMembershipRow,
@@ -77,6 +78,14 @@ Deno.serve(async (req) => {
 
   const ticket = await loadTicketByCheckCode(admin, code);
   if (!ticket) return checkNotFound(json);
+
+  const ticketRatesRes = await admin
+    .from("tickets")
+    .select(
+      "welcome_free_rate, welcome_premium_rate, free_rate, premium_rate, rates_snapshotted_at",
+    )
+    .eq("id", ticket.id)
+    .maybeSingle();
 
   // Staff PIN gate (MESITA-823) — write actions only; no-op when the place
   // has no PIN set.
@@ -145,13 +154,21 @@ Deno.serve(async (req) => {
     ),
     hasMesitaReview(admin, ticket.id),
   ]);
-  const ratePercent = resolveTicketRate(placeStrategy(place), grid, {
-    classKey: consumerRow.data.class_key,
-    isFirstVisit: firstVisit,
-    storyVerified: isActionVerified(ticket.story_status),
-    reviewVerified: isActionVerified(ticket.review_status),
-    mesitaReviewed,
-  });
+  const billingRates = ratesForBilling(
+    (ticketRatesRes.data ?? {}) as Record<string, unknown>,
+    place as Record<string, unknown>,
+  );
+  const ratePercent = resolveTicketRate(
+    placeStrategy(billingRates as Record<string, unknown>),
+    grid,
+    {
+      classKey: consumerRow.data.class_key,
+      isFirstVisit: firstVisit,
+      storyVerified: isActionVerified(ticket.story_status),
+      reviewVerified: isActionVerified(ticket.review_status),
+      mesitaReviewed,
+    },
+  );
   const capPesos = grid.cap;
 
   const billRes = computeTicketBill({ subtotal, ratePercent, capPesos });

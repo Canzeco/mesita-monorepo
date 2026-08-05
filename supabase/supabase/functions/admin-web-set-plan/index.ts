@@ -19,18 +19,19 @@
 // a refund. Same rule in reverse: granting `pro` here creates no
 // subscription and charges nobody.
 //
-// Body: { placeId | projectId, plan: "free" | "pro" | "ultra",
+// Body: { placeId | projectId, plan?: "free" | "pro" | "ultra",
 //         welcome_free_rate?, welcome_premium_rate?, free_rate?,
 //         premium_rate?, monthly_promo_cap? }
+//
+// Two modes (MESITA-912):
+//   • Join/drop — `plan` present: writes plan (+ optional rates). Join may
+//     land on Zero (paid plan + null rates); partner/lane derives from both.
+//   • Strategy switch — rates without `plan`: member-only rates write;
+//     plan untouched; logs strategy_switch.
+//
 // Response: { ok: true, plan, place }  — `place` is the same AdminPlace
 //           shape business-web-update-project returns, so the console can
 //           reconcile its optimistic state from one call.
-//
-// The rates are optional but they belong here: a membership and the discount
-// strategy that justifies it are ONE decision (MESITA-818). Sent together they
-// land in a single UPDATE, which is what lets this EF enforce the invariant
-// below — a paid plan whose rates don't match a preset would be a partner
-// giving 0%, which is worse than not being a partner at all.
 //
 // Auth: caller's JWT email must be in public.super_admins.
 
@@ -44,7 +45,12 @@ import {
 } from "../_shared/auth.ts";
 import { PLACE_BUSINESS_COLUMNS } from "../_shared/place-columns.ts";
 import { normalisePromoRate, PROMO_RATE_FIELDS } from "../_shared/promo-rates.ts";
-import { strategyForRates } from "../_shared/lineup-strategy.ts";
+import { ratesFromPlace } from "../_shared/lineup-strategy.ts";
+import {
+  applyListingTypeToPatch,
+  effectiveRatesAfterPatch,
+} from "../_shared/partner-derivation.ts";
+import { logStrategySwitch } from "../_shared/strategy-switch-log.ts";
 
 // public.membership — free | pro | ultra. `ultra` is legacy (no longer sold,
 // MESITA-541) but still grantable for the places that already carry it.
@@ -59,6 +65,42 @@ type Body = {
   plan?: unknown;
   [key: string]: unknown;
 };
+
+function hasRatesInBody(body: Body): boolean {
+  return PROMO_RATE_FIELDS.some((f) => f in body) || "monthly_promo_cap" in body;
+}
+
+function applyRatesFromBody(
+  body: Body,
+  patch: Record<string, unknown>,
+): { ok: true } | { ok: false; response: Response } {
+  for (const field of PROMO_RATE_FIELDS) {
+    if (!(field in body)) continue;
+    const rate = normalisePromoRate(field, body[field]);
+    if (!rate.ok) return { ok: false, response: json({ ok: false, error: rate.error }, 400) };
+    patch[field] = rate.value;
+  }
+  if ("monthly_promo_cap" in body) {
+    const raw = body.monthly_promo_cap;
+    if (raw == null) {
+      patch.monthly_promo_cap = null;
+    } else if (!LEGAL_CAPS.includes(Number(raw))) {
+      return {
+        ok: false,
+        response: json(
+          {
+            ok: false,
+            error: `monthly_promo_cap must be null or one of ${LEGAL_CAPS.join(", ")}`,
+          },
+          400,
+        ),
+      };
+    } else {
+      patch.monthly_promo_cap = Number(raw);
+    }
+  }
+  return { ok: true };
+}
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
@@ -83,37 +125,17 @@ Deno.serve(async (req) => {
   if (!projectId) {
     return json({ ok: false, error: "placeId is required" }, 400);
   }
-  if (!PLANS.includes(body.plan as Plan)) {
-    return json(
-      { ok: false, error: `plan must be one of ${PLANS.join(" | ")}` },
-      400,
-    );
-  }
-  const plan = body.plan as Plan;
 
-  // MESITA-818 — plan is also the VERIFIED-PARTNER switch.
-  //
-  // Until now this EF wrote `plan` and nothing else, and no other EF or UI in
-  // the repo ever wrote `listing_type` at all: `_shared/save-place.ts`
-  // hardcodes 'web' on create, and the only 'partner' anywhere was the local
-  // seed row. So every place in production was born 'web' and stayed 'web'
-  // forever — while the consumer side gates the ENTIRE reward program on
-  // `listing_type === 'partner'` (rewards New tab, consumer-web-create-ticket's
-  // 409 not_partner, the venue pass, Mesita Check). An admin could put a place
-  // on a paid strategy with real rates and the guest would still see "Soon".
-  //
-  // Entitlement and listing are therefore one decision, made here: a paid
-  // membership IS Verified Partner status. Demotion is the mirror — dropping
-  // to Zero returns the place to the plain catalog listing. 'unclaimed' is
-  // left alone on demotion: it means "we have not heard from this venue",
-  // which a plan change doesn't answer.
+  const hasPlan = body.plan !== undefined && body.plan !== null;
+  const hasRates = hasRatesInBody(body);
+  if (!hasPlan && !hasRates) {
+    return json({ ok: false, error: "plan or promo rates are required" }, 400);
+  }
+
   const { data: current, error: readCurrent } = await admin
     .from("projects")
-    // Literal, not PROMO_RATE_FIELDS.join(): supabase-js parses the select
-    // string at the TYPE level, so an interpolated one resolves to a
-    // ParserError instead of a row shape.
     .select(
-      "listing_type, welcome_free_rate, welcome_premium_rate, free_rate, premium_rate",
+      "plan, listing_type, welcome_free_rate, welcome_premium_rate, free_rate, premium_rate, membership_forfeited_at",
     )
     .eq("id", projectId)
     .maybeSingle();
@@ -124,85 +146,103 @@ Deno.serve(async (req) => {
     return json({ ok: false, error: "Place not found" }, 404);
   }
   const row = current as unknown as Record<string, unknown>;
+  const currentPlan = (row.plan as string) ?? "free";
 
-  const patch: Record<string, unknown> = { plan };
+  const patch: Record<string, unknown> = {};
+  const actor = authRes.user.email ?? authRes.user.id;
 
-  // Rates ride along when the caller sends them. Same legal set as
-  // business-web-update-project — one validator, so the two doors can't drift.
-  for (const field of PROMO_RATE_FIELDS) {
-    if (!(field in body)) continue;
-    const rate = normalisePromoRate(field, body[field]);
-    if (!rate.ok) return json({ ok: false, error: rate.error }, 400);
-    patch[field] = rate.value;
-  }
-  if ("monthly_promo_cap" in body) {
-    const raw = body.monthly_promo_cap;
-    if (raw == null) {
-      patch.monthly_promo_cap = null;
-    } else if (!LEGAL_CAPS.includes(Number(raw))) {
+  // ── Strategy switch (rates only, no plan) ───────────────────────────────
+  if (!hasPlan && hasRates) {
+    if (currentPlan === "free") {
       return json(
         {
           ok: false,
-          error: `monthly_promo_cap must be null or one of ${LEGAL_CAPS.join(", ")}`,
-        },
-        400,
-      );
-    } else {
-      patch.monthly_promo_cap = Number(raw);
-    }
-  }
-
-  // The rates this place will have AFTER this write — incoming where sent,
-  // stored otherwise. That's what the invariant has to judge, not the stored
-  // row alone: on a join the rates arrive in this very body.
-  const effectiveRates = {
-    welcome_free_rate: null,
-    welcome_premium_rate: null,
-    free_rate: null,
-    premium_rate: null,
-  } as Record<string, number | null>;
-  for (const field of PROMO_RATE_FIELDS) {
-    const v = field in patch ? patch[field] : row[field];
-    effectiveRates[field] = v == null ? null : Number(v);
-  }
-
-  // INVARIANT (MESITA-818): a paid plan must resolve to a real strategy.
-  //
-  // `placeStrategy()` matches the four rates against exact presets; anything
-  // else — all-null, or a hand-edited custom grid — falls to `zero`, i.e. 0%
-  // off. A Verified Partner at 0% is the worst outcome available: the guest
-  // sees an unlocked reward lane, opens a ticket, and gets nothing. Refuse
-  // the grant instead, and say which grid would have worked.
-  if (plan !== "free") {
-    const strategy = strategyForRates(
-      effectiveRates as unknown as Parameters<typeof strategyForRates>[0],
-    );
-    if (strategy == null || strategy === "zero") {
-      return json(
-        {
-          ok: false,
-          code: "no_strategy",
-          error:
-            "A paid plan needs a promo strategy: send the four rates with it " +
-            "(conservative 20/30/10/20 · aggressive 30/50/10/30 · dominant " +
-            "40/50/20/30). Granting it with no matching grid would make this " +
-            "a Verified Partner that gives 0%.",
+          code: "not_a_member",
+          error: "Strategy switching requires an active membership.",
         },
         409,
       );
     }
+
+    const ratesRes = applyRatesFromBody(body, patch);
+    if (!ratesRes.ok) return ratesRes.response;
+
+    const fromRates = ratesFromPlace(row);
+    applyListingTypeToPatch(patch, {
+      plan: currentPlan,
+      rates: effectiveRatesAfterPatch(row, patch),
+      currentListingType: row.listing_type as string,
+    });
+
+    const { data: updated, error } = await admin
+      .from("projects")
+      .update(patch)
+      .eq("id", projectId)
+      .select("id")
+      .maybeSingle();
+    if (error) {
+      return json({ ok: false, error: `plan_update: ${error.message}` }, 500);
+    }
+    if (!updated) {
+      return json({ ok: false, error: "Place not found" }, 404);
+    }
+
+    logStrategySwitch({
+      project: projectId,
+      from: fromRates,
+      to: effectiveRatesAfterPatch(row, patch),
+      actor,
+    });
+
+    const { data: place, error: readError } = await admin
+      .from("projects_view")
+      .select(PLACE_BUSINESS_COLUMNS)
+      .eq("id", projectId)
+      .single();
+    if (readError) {
+      return json({ ok: false, error: `place_read: ${readError.message}` }, 500);
+    }
+
+    return json({ ok: true, plan: currentPlan, place });
   }
 
-  // Verified Partner tracks the paid membership, both ways.
-  if (plan !== "free") {
-    if (row.listing_type !== "partner") patch.listing_type = "partner";
-  } else if (row.listing_type === "partner") {
-    patch.listing_type = "web";
+  // ── Join / drop (plan present) ──────────────────────────────────────────
+  if (!PLANS.includes(body.plan as Plan)) {
+    return json(
+      { ok: false, error: `plan must be one of ${PLANS.join(" | ")}` },
+      400,
+    );
+  }
+  const plan = body.plan as Plan;
+  patch.plan = plan;
+
+  const ratesRes = applyRatesFromBody(body, patch);
+  if (!ratesRes.ok) return ratesRes.response;
+
+  const effectivePlan = plan;
+  const effectiveRates = effectiveRatesAfterPatch(row, patch);
+
+  applyListingTypeToPatch(patch, {
+    plan: effectivePlan,
+    rates: effectiveRates,
+    currentListingType: row.listing_type as string,
+  });
+
+  // T10 — admin re-grant after forfeit restarts pending activation.
+  if (plan !== "free" && row.membership_forfeited_at) {
+    patch.membership_forfeited_at = null;
+    patch.strike_count = 0;
+    patch.promo_paused_until = null;
+    patch.membership_live_at = null;
+    patch.first_ticket_honored_at = null;
   }
 
-  // plan is a `projects` column — write it where the other two plan writers
-  // do (business-web-change-subscription's mock grant, stripe-webhook-handle-
-  // event), not through projects_view.
+  // T13 — voluntary drop clears activation stamps for a fresh re-join.
+  if (plan === "free") {
+    patch.membership_live_at = null;
+    patch.first_ticket_honored_at = null;
+  }
+
   const { data: updated, error } = await admin
     .from("projects")
     .update(patch)
@@ -216,8 +256,6 @@ Deno.serve(async (req) => {
     return json({ ok: false, error: "Place not found" }, 404);
   }
 
-  // Re-read through the view so the console gets the same AdminPlace shape
-  // business-web-update-project hands back.
   const { data: place, error: readError } = await admin
     .from("projects_view")
     .select(PLACE_BUSINESS_COLUMNS)

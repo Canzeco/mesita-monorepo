@@ -28,6 +28,10 @@ import {
   resolvePlanKey,
   resolveProjectId,
 } from "./subscription-resolve.ts";
+import {
+  applyListingTypeToPatch,
+} from "../_shared/partner-derivation.ts";
+import { ratesFromPlace } from "../_shared/lineup-strategy.ts";
 import { subscriptionSnapshot } from "./subscription-snapshot.ts";
 
 Deno.serve(async (req) => {
@@ -283,19 +287,54 @@ async function reconcileProjectSubscription(
   }
 
   if (isLive) {
-    // Grant the paid plan.
+    const { data: row, error: readErr } = await admin
+      .from("projects")
+      .select(
+        "listing_type, welcome_free_rate, welcome_premium_rate, free_rate, premium_rate",
+      )
+      .eq("id", projectId)
+      .maybeSingle();
+    if (readErr) throw new Error(`project_read: ${readErr.message}`);
+    if (!row) throw new Error(`project_not_found: ${projectId}`);
+
+    const patch: Record<string, unknown> = { plan: planKey };
+    applyListingTypeToPatch(patch, {
+      plan: planKey,
+      rates: ratesFromPlace(row as Record<string, unknown>),
+      currentListingType: (row as Record<string, unknown>).listing_type as string,
+    });
+
     const grant = await admin
       .from("projects")
-      .update({ plan: planKey })
+      .update(patch)
       .eq("id", projectId);
     if (grant.error) throw new Error(`project_grant: ${grant.error.message}`);
   } else {
-    // Lapsed/cancelled: only lower the plan when it matches what this
-    // subscription was paying for. A plan granted through another door
-    // (admin, partnership) is left untouched.
+    const { data: row, error: readErr } = await admin
+      .from("projects")
+      .select(
+        "plan, listing_type, welcome_free_rate, welcome_premium_rate, free_rate, premium_rate",
+      )
+      .eq("id", projectId)
+      .maybeSingle();
+    if (readErr) throw new Error(`project_read: ${readErr.message}`);
+    if (!row) return;
+
+    const current = row as Record<string, unknown>;
+    if ((current.plan as string) !== planKey) return;
+
+    const patch: Record<string, unknown> = { plan: "free" };
+    applyListingTypeToPatch(patch, {
+      plan: "free",
+      rates: ratesFromPlace(current),
+      currentListingType: current.listing_type as string,
+    });
+    patch.membership_live_at = null;
+    patch.first_ticket_honored_at = null;
+
     const revoke = await admin
       .from("projects")
-      .update({ plan: "free" })
+      .update(patch)
       .eq("id", projectId)
       .eq("plan", planKey);
     if (revoke.error) throw new Error(`project_revoke: ${revoke.error.message}`);

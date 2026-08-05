@@ -1,9 +1,13 @@
 // Promos v4 — Discount strategies (business Promos page).
 //
+// Membership (plan ≠ free) and strategy (the four rate presets) are separate
+// knobs (MESITA-912): one MX$1,000/year membership door, free strategy
+// switching anytime. Non-members are locked at Zero; members pick any preset.
+//
 // The Promos page no longer exposes four independent rate pickers or a
-// Free/Pro/Ultra subscription ladder. A business now picks ONE of four preset
-// strategies; each is a bundle of the four per-tier promo rates plus the one
-// universal ticket cap. The presets encode the product invariants directly
+// Free/Pro/Ultra subscription ladder. A member selects ONE of four preset
+// strategies — a bundle of the four per-tier promo rates plus the universal
+// ticket cap. The presets encode the product invariants directly
 // (design 2026-07-11 — "Promos v4"):
 //
 //   - Welcome ≥ Returning inside a class — winning a guest is worth more than
@@ -17,8 +21,9 @@
 //     discount as a stronger card, so visibility isn't a separate knob — just
 //     a label that rises with the strategy.
 //
-// Picking a strategy writes the four rate columns + monthly_promo_cap in a
-// single apiUpdatePlace call. Zero clears every rate (null) and the cap.
+// Switching strategy writes the four rate columns + monthly_promo_cap only
+// (rates-only path). Zero clears every rate (null) and the cap but does NOT
+// cancel membership — drop is a separate Membership-box action.
 
 // The universal, platform-wide cap: every discount applies to the first
 // MX$500 of the bill. Persisted to places.monthly_promo_cap for the bill EF

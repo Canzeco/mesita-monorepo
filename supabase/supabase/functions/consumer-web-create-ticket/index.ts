@@ -30,6 +30,7 @@ import {
   placeStrategy,
 } from "../_shared/rewards-config.ts";
 import { checkUrlFor, newCheckCode } from "../_shared/ticket-check.ts";
+import { snapshotRatesFromPlace } from "../_shared/ticket-rate-snapshot.ts";
 
 type Body = {
   placeId?: string;
@@ -166,6 +167,7 @@ Deno.serve(async (req) => {
         kind: "coupon",
         story_status: storyStatus,
         check_code: newCheckCode(),
+        ...snapshotRatesFromPlace(place as Record<string, unknown>),
       })
       .select(
         "id, status, kind, story_status, review_status, check_code, first_scanned_at, currency, created_at",

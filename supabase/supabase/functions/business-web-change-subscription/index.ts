@@ -41,6 +41,10 @@ import {
   resolvePlanPrice,
   STRIPE_API_VERSION,
 } from "../_shared/stripe-billing.ts";
+import {
+  applyListingTypeToPatch,
+} from "../_shared/partner-derivation.ts";
+import { ratesFromPlace } from "../_shared/lineup-strategy.ts";
 
 type Body = {
   /** Canonical place-row id key (MESITA-26); `projectId` kept as legacy alias. */
@@ -56,6 +60,36 @@ type Body = {
 const PAID_PLANS = new Set(["pro", "ultra"]);
 const VERIFIED_PLAN = "pro";
 const MOCK_PERIOD_DAYS = 365; // annual membership
+
+function loadProjectRow(
+  admin: ReturnType<typeof adminClient>,
+  projectId: string,
+) {
+  return admin
+    .from("projects")
+    .select(
+      "plan, listing_type, welcome_free_rate, welcome_premium_rate, free_rate, premium_rate",
+    )
+    .eq("id", projectId)
+    .maybeSingle();
+}
+
+function planPatchForRow(
+  row: Record<string, unknown>,
+  plan: string,
+): Record<string, unknown> {
+  const patch: Record<string, unknown> = { plan };
+  applyListingTypeToPatch(patch, {
+    plan,
+    rates: ratesFromPlace(row),
+    currentListingType: row.listing_type as string,
+  });
+  if (plan === "free") {
+    patch.membership_live_at = null;
+    patch.first_ticket_honored_at = null;
+  }
+  return patch;
+}
 
 // ⚠️ DEMO MOCK — same single on/off switch as consumer-web-create-subscription.
 // Set the MOCK_SUBSCRIPTION env to "false" and redeploy to require real
@@ -148,9 +182,16 @@ Deno.serve(async (req) => {
         .update({ status: "canceled", cancel_at_period_end: true })
         .eq("stripe_subscription_id", liveSubId);
     }
+    const projectRow = await loadProjectRow(admin, projectId);
+    if (projectRow.error) {
+      return json({ ok: false, error: `project_read: ${projectRow.error.message}` }, 500);
+    }
+    if (!projectRow.data) {
+      return json({ ok: false, error: "Place not found" }, 404);
+    }
     const down = await admin
       .from("projects")
-      .update({ plan: "free" })
+      .update(planPatchForRow(projectRow.data as Record<string, unknown>, "free"))
       .eq("id", projectId);
     if (down.error) {
       return json({ ok: false, error: `downgrade: ${down.error.message}` }, 500);
@@ -208,9 +249,18 @@ Deno.serve(async (req) => {
       return json({ ok: false, error: `mock_subscription: ${sub.error.message}` }, 500);
     }
 
+    const projectRow = await loadProjectRow(admin, projectId);
+    if (projectRow.error) {
+      return json({ ok: false, error: `project_read: ${projectRow.error.message}` }, 500);
+    }
+    if (!projectRow.data) {
+      return json({ ok: false, error: "Place not found" }, 404);
+    }
     const grant = await admin
       .from("projects")
-      .update({ plan: VERIFIED_PLAN })
+      .update(
+        planPatchForRow(projectRow.data as Record<string, unknown>, VERIFIED_PLAN),
+      )
       .eq("id", projectId);
     if (grant.error) {
       return json({ ok: false, error: `mock_grant: ${grant.error.message}` }, 500);
@@ -258,7 +308,19 @@ Deno.serve(async (req) => {
         cancel_at_period_end: false,
       })
       .eq("stripe_subscription_id", liveSubId);
-    await admin.from("projects").update({ plan: VERIFIED_PLAN }).eq("id", projectId);
+    const projectRow = await loadProjectRow(admin, projectId);
+    if (projectRow.error) {
+      return json({ ok: false, error: `project_read: ${projectRow.error.message}` }, 500);
+    }
+    if (!projectRow.data) {
+      return json({ ok: false, error: "Place not found" }, 404);
+    }
+    await admin
+      .from("projects")
+      .update(
+        planPatchForRow(projectRow.data as Record<string, unknown>, VERIFIED_PLAN),
+      )
+      .eq("id", projectId);
     return json({ ok: true, plan: VERIFIED_PLAN, plan_switched: true });
   }
 

@@ -11,6 +11,8 @@ import {
   placeStrategy,
   resolveTicketRate,
 } from "./rewards-config.ts";
+import { ratesForBilling } from "./ticket-rate-snapshot.ts";
+import { ratesFromPlace } from "./lineup-strategy.ts";
 import { recordFirstTicketHonored } from "./membership-enforcement.ts";
 import {
   buildConsumerBillPayload,
@@ -87,20 +89,28 @@ export async function computeInformalBill(
   // review (v9, MESITA-877) — so it can only be resolved with a ticket in
   // hand. A caller without one simply doesn't qualify for that rung.
   ticketId?: string,
+  ticketRates?: Record<string, unknown>,
 ): Promise<InformalBillCalc> {
   const total = subtotal;
-  // Promos v5 best-of (MESITA-723): strategy (from the place's v4 rate columns)
-  // × the operator grid.
+  // Promos v5 best-of (MESITA-723): strategy (from snapshotted ticket rates
+  // when present, else live place rates) × the operator grid.
   const grid = await loadRewardsGrid(admin);
   const [firstVisit, mesitaReviewed] = await Promise.all([
     isConsumerFirstVisit(admin, consumer.id, place.id),
     ticketId ? hasMesitaReview(admin, ticketId) : Promise.resolve(false),
   ]);
-  const ratePercent = resolveTicketRate(placeStrategy(place), grid, {
-    classKey: consumer.class_key,
-    isFirstVisit: firstVisit,
-    mesitaReviewed,
-  });
+  const billingRates = ticketRates
+    ? ratesForBilling(ticketRates, place as Record<string, unknown>)
+    : ratesFromPlace(place as Record<string, unknown>);
+  const ratePercent = resolveTicketRate(
+    placeStrategy(billingRates as Record<string, unknown>),
+    grid,
+    {
+      classKey: consumer.class_key,
+      isFirstVisit: firstVisit,
+      mesitaReviewed,
+    },
+  );
 
   const capPesos = grid.cap;
   const eligibleCents = promoEligibleSubtotalCents(subtotal, capPesos);

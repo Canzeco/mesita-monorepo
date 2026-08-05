@@ -131,24 +131,68 @@ export function PlacementReward({
   );
 }
 
-export function StatusPill({ subscribed }: { subscribed: boolean }) {
+export type MembershipPillState =
+  | "not_member"
+  | "pending"
+  | "live"
+  | "paused"
+  | "forfeited";
+
+export function membershipPillState(place: {
+  plan: string;
+  membership_forfeited_at?: string | null;
+  membership_live_at?: string | null;
+  promo_paused_until?: string | null;
+}): MembershipPillState {
+  if (place.membership_forfeited_at) return "forfeited";
+  if (place.plan === "free") return "not_member";
+  if (
+    place.promo_paused_until &&
+    new Date(place.promo_paused_until).getTime() > Date.now()
+  ) {
+    return "paused";
+  }
+  if (place.membership_live_at) return "live";
+  return "pending";
+}
+
+export function MembershipStatusPill({ state }: { state: MembershipPillState }) {
+  const labels: Record<MembershipPillState, string> = {
+    not_member: "Not a member",
+    pending: "Member — pending",
+    live: "Member — live",
+    paused: "Paused",
+    forfeited: "Forfeited",
+  };
+  const liveish = state === "live" || state === "pending";
   return (
     <span
       className={cn(
         "inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-bold tracking-wide uppercase",
-        subscribed
-          ? "bg-emerald-500/12 text-emerald-700"
-          : "bg-muted text-muted-foreground",
+        state === "forfeited" && "bg-destructive/10 text-destructive",
+        state === "paused" && "bg-amber-500/12 text-amber-800",
+        liveish && "bg-emerald-500/12 text-emerald-700",
+        state === "not_member" && "bg-muted text-muted-foreground",
       )}
     >
       <span
         className={cn(
           "h-1.5 w-1.5 rounded-full",
-          subscribed ? "bg-emerald-500" : "bg-muted-foreground/50",
+          state === "forfeited" && "bg-destructive",
+          state === "paused" && "bg-amber-500",
+          liveish && "bg-emerald-500",
+          state === "not_member" && "bg-muted-foreground/50",
         )}
       />
-      {subscribed ? "Member" : "Free"}
+      {labels[state]}
     </span>
+  );
+}
+
+/** @deprecated use MembershipStatusPill */
+export function StatusPill({ subscribed }: { subscribed: boolean }) {
+  return (
+    <MembershipStatusPill state={subscribed ? "live" : "not_member"} />
   );
 }
 
