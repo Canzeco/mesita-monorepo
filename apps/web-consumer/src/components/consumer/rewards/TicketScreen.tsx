@@ -30,6 +30,12 @@
 // column would then happily crush them — that shipped once and ate the place
 // name, half the QR and a task row (MESITA-869).
 //
+// Compact by design (MESITA-879): the live ticket must FIT one viewport on a
+// typical phone — hero is a slim row (not a photo card), the QR plate is
+// 190px, the strip disappears once the bill locks the real percentage. The
+// scroll container stays only as the safety valve for very short screens;
+// if a new section makes the common state scroll again, that's a regression.
+//
 // Data: the same polled list the wallet uses (one source, live updates ride
 // the existing cadence). Proof screenshots remain DEMO_SCREENSHOT_URL
 // (MESITA-824); the Mesita-review done-state is session-local until a read
@@ -141,7 +147,7 @@ function TaskRow({
       disabled={!actionable}
       onClick={onDo}
       className={cn(
-        "flex min-h-14 w-full items-center gap-3 rounded-2xl px-3.5 py-3 text-left transition",
+        "flex min-h-12 w-full items-center gap-3 rounded-2xl px-3 py-2.5 text-left transition",
         done
           ? "bg-emerald-500/8"
           : state === "checking"
@@ -171,14 +177,14 @@ function TaskRow({
       <span className="min-w-0 flex-1">
         <span
           className={cn(
-            "flex items-center gap-2 text-[13.5px] leading-tight font-bold",
+            "flex items-center gap-2 text-[13px] leading-tight font-bold",
             done ? "text-emerald-800" : "text-foreground",
           )}
         >
           {icon}
           <span className="truncate">{title}</span>
         </span>
-        <span className="text-muted-foreground mt-0.5 block truncate text-[11.5px]">
+        <span className="text-muted-foreground mt-0.5 block truncate text-[11px]">
           {state === "checking"
             ? "Sent — being checked"
             : state === "rejected"
@@ -352,7 +358,7 @@ export function TicketScreen({
   if (tickets.status === "loading" && !ticket) {
     return (
       <Shell>
-        <div className="bg-muted h-40 animate-pulse rounded-[28px]" />
+        <div className="bg-muted h-16 animate-pulse rounded-[22px]" />
         <div className="bg-muted h-72 animate-pulse rounded-[28px]" />
         <div className="bg-muted h-40 animate-pulse rounded-2xl" />
       </Shell>
@@ -415,57 +421,57 @@ export function TicketScreen({
 
   return (
     <Shell>
-      {/* ── Hero: the place this ticket is bound to ── */}
-      <section className="border-border bg-card shrink-0 overflow-hidden rounded-[28px] border">
-        <div className="relative h-32 w-full shrink-0">
+      {/* ── Hero: the place this ticket is bound to. One compact row — the
+          full-bleed photo card was eating a third of the viewport while the
+          QR + amount are this screen's actual job (MESITA-879). ── */}
+      <section className="border-border bg-card flex shrink-0 items-center gap-3 rounded-[22px] border py-2.5 pr-3.5 pl-2.5">
+        <button
+          type="button"
+          onClick={() =>
+            router.push(CONSUMER_ROUTES.rewards.root, { scroll: false })
+          }
+          aria-label="Back to Rewards"
+          className="bg-muted text-foreground grid size-9 shrink-0 place-items-center rounded-full transition active:scale-95"
+        >
+          <ArrowLeft className="size-4" />
+        </button>
+        <div className="relative size-11 shrink-0 overflow-hidden rounded-xl">
           {photo ? (
             <Image src={photo} alt="" fill className="object-cover" />
           ) : (
             <div className="bg-pink-gradient grid h-full w-full place-items-center text-white/80">
-              <Store className="size-8" />
+              <Store className="size-5" />
             </div>
           )}
-          <button
-            type="button"
-            onClick={() =>
-              router.push(CONSUMER_ROUTES.rewards.root, { scroll: false })
-            }
-            aria-label="Back to Rewards"
-            className="absolute top-3 left-3 grid size-9 place-items-center rounded-full bg-black/35 text-white backdrop-blur-sm transition active:scale-95"
-          >
-            <ArrowLeft className="size-4" />
-          </button>
         </div>
-        <div className="flex items-center justify-between gap-3 px-4 py-3">
-          <div className="min-w-0">
-            <p className="text-foreground truncate text-[16px] leading-tight font-extrabold tracking-tight">
-              {placeName}
+        <div className="min-w-0 flex-1">
+          <p className="text-foreground truncate text-[15px] leading-tight font-extrabold tracking-tight">
+            {placeName}
+          </p>
+          {category ? (
+            <p className="text-muted-foreground mt-0.5 truncate text-[11px] capitalize">
+              {category.replaceAll("_", " ")}
             </p>
-            {category ? (
-              <p className="text-muted-foreground mt-0.5 truncate text-[11.5px] capitalize">
-                {category.replaceAll("_", " ")}
-              </p>
-            ) : null}
-          </div>
-          <span
-            className={cn(
-              "shrink-0 rounded-full px-2.5 py-1 text-[10px] font-extrabold tracking-widest uppercase",
-              saved
-                ? "bg-emerald-500/10 text-emerald-700"
-                : cancelled
-                  ? "bg-muted text-muted-foreground"
-                  : "bg-primary/10 text-primary",
-            )}
-          >
-            {saved ? "Completed" : cancelled ? "Cancelled" : "Live"}
-          </span>
+          ) : null}
         </div>
+        <span
+          className={cn(
+            "shrink-0 rounded-full px-2.5 py-1 text-[10px] font-extrabold tracking-widest uppercase",
+            saved
+              ? "bg-emerald-500/10 text-emerald-700"
+              : cancelled
+                ? "bg-muted text-muted-foreground"
+                : "bg-primary/10 text-primary",
+          )}
+        >
+          {saved ? "Completed" : cancelled ? "Cancelled" : "Live"}
+        </span>
       </section>
 
       {/* ── The pass ── */}
       <section
         className={cn(
-          "shrink-0 overflow-hidden rounded-[28px] px-5 pt-5 pb-5 text-white shadow-[0_20px_44px_-22px_rgba(255,77,109,0.6)]",
+          "shrink-0 overflow-hidden rounded-[28px] px-5 pt-4 pb-4 text-white shadow-[0_20px_44px_-22px_rgba(255,77,109,0.6)]",
           passGradient(classKey),
           pulse && "animate-verified-pulse",
         )}
@@ -480,7 +486,7 @@ export function TicketScreen({
         </div>
 
         {closed ? (
-          <div className="flex flex-col items-center gap-2 py-8 text-center">
+          <div className="flex flex-col items-center gap-2 py-6 text-center">
             {saved ? (
               <>
                 <PartyPopper className="size-8" />
@@ -539,10 +545,10 @@ export function TicketScreen({
         ) : (
           <>
             {ticket.check_code ? (
-              <div className="mx-auto mt-4 w-full max-w-[min(230px,62vw)] rounded-[20px] bg-white p-3.5 shadow-[0_12px_30px_-12px_rgba(120,20,40,0.5)]">
+              <div className="mx-auto mt-3.5 w-full max-w-[min(190px,52vw)] rounded-2xl bg-white p-3 shadow-[0_12px_30px_-12px_rgba(120,20,40,0.5)]">
                 <QRCodeSVG
                   value={checkUrlForCode(ticket.check_code)}
-                  size={230}
+                  size={190}
                   className="h-auto w-full"
                   bgColor="#ffffff"
                   fgColor="#2b1233"
@@ -553,7 +559,7 @@ export function TicketScreen({
             ) : null}
             <p
               aria-live="polite"
-              className="mx-auto mt-3 flex max-w-[32ch] items-center justify-center gap-1.5 text-center text-[12px] leading-snug text-white/90"
+              className="mx-auto mt-2.5 flex max-w-[34ch] items-center justify-center gap-1.5 text-center text-[11.5px] leading-snug text-white/90"
             >
               {scanned && ticket.status === "open" ? (
                 <>
@@ -565,11 +571,11 @@ export function TicketScreen({
               )}
             </p>
             {billed ? (
-              <div className="mt-4 rounded-xl bg-white/18 p-3.5 text-center">
+              <div className="mt-3 rounded-xl bg-white/18 px-3.5 py-2.5 text-center">
                 <p className="text-[10px] font-bold tracking-[0.14em] uppercase opacity-90">
                   {ticket.discount_percent ?? 0}% off applied
                 </p>
-                <p className="font-display mt-0.5 text-2xl leading-none font-bold">
+                <p className="font-display mt-0.5 text-[22px] leading-none font-bold">
                   {formatCurrency(
                     Math.max(
                       0,
@@ -577,7 +583,7 @@ export function TicketScreen({
                     ),
                   )}
                 </p>
-                <p className="mt-1 text-[11px] opacity-90">
+                <p className="mt-0.5 text-[11px] opacity-90">
                   to pay at the table
                   {ticket.discount_cents
                     ? ` — you save ${formatCurrency(ticket.discount_cents)}`
@@ -592,7 +598,7 @@ export function TicketScreen({
       {/* ── Tasks checklist (lifecycle step 3) ── */}
       {!cancelled ? (
         <section className="border-border bg-card shrink-0 overflow-hidden rounded-2xl border">
-          <div className="flex items-baseline justify-between gap-2 px-3.5 pt-3.5 pb-1.5">
+          <div className="flex items-baseline justify-between gap-2 px-3.5 pt-3 pb-1">
             <h2 className="text-foreground text-[13px] font-bold tracking-tight">
               Your tasks
             </h2>
@@ -600,7 +606,7 @@ export function TicketScreen({
               {priced ? "Optional — each one pays" : "Optional"}
             </span>
           </div>
-          <div className="flex flex-col gap-1.5 px-2.5 pb-3">
+          <div className="flex flex-col gap-1 px-2.5 pb-2.5">
             {storyOnTicket ? (
               <TaskRow
                 icon={<Instagram className="size-4 shrink-0" />}
@@ -644,19 +650,20 @@ export function TicketScreen({
         </section>
       ) : null}
 
-      {/* ── Reward strip ── */}
-      {live ? (
-        <section className="border-border bg-card shrink-0 rounded-2xl border px-3.5 py-3">
+      {/* ── Reward strip — only while the discount is still open. Once the
+          bill locks a percentage the pass states it, and quoting the ceiling
+          next to the real number reads as a contradiction (MESITA-879). ── */}
+      {live && !billed ? (
+        <section className="border-border bg-card shrink-0 rounded-2xl border px-3.5 py-2.5">
           {priced && ceiling > 0 ? (
-            <>
-              <p className="text-foreground text-[13px] leading-snug font-bold">
-                Up to {ceiling}% — Discount for You
-              </p>
-              <p className="text-muted-foreground/80 mt-1 text-[11px] leading-snug">
-                Depending on your eligible bonuses. You always keep your single
-                best reward — never added together.
-              </p>
-            </>
+            <p className="text-[12px] leading-snug">
+              <span className="text-foreground font-bold">
+                Up to {ceiling}% — Discount for You.
+              </span>{" "}
+              <span className="text-muted-foreground/80">
+                You always keep your single best reward — never added together.
+              </span>
+            </p>
           ) : (
             <p className="text-muted-foreground text-[12px] leading-snug">
               Your discount is set by the place and applied at the table.
@@ -665,14 +672,14 @@ export function TicketScreen({
         </section>
       ) : null}
 
-      {/* ── Housekeeping ── */}
-      <div className="flex shrink-0 flex-col items-center gap-2">
+      {/* ── Housekeeping — tight footer, no dead vertical (MESITA-879) ── */}
+      <div className="flex shrink-0 flex-col items-center gap-1.5 pt-0.5">
         {ticket.status === "open" ? (
           <button
             type="button"
             onClick={() => void cancel()}
             disabled={cancelling}
-            className="text-muted-foreground hover:text-foreground flex min-h-11 items-center gap-1.5 text-[12.5px] font-semibold transition"
+            className="text-muted-foreground hover:text-foreground flex min-h-10 items-center gap-1.5 text-[12px] font-semibold transition"
           >
             {cancelling ? <Loader2 className="size-3.5 animate-spin" /> : null}
             Cancel this ticket
@@ -688,7 +695,7 @@ export function TicketScreen({
             it. Restraint lives in the color, not in the affordance. */}
         {!cancelled ? (
           reported ? (
-            <p className="border-border bg-muted/40 text-muted-foreground flex min-h-11 items-center gap-2 rounded-full border px-4 text-[12.5px] font-semibold">
+            <p className="border-border bg-muted/40 text-muted-foreground flex min-h-10 items-center gap-2 rounded-full border px-4 text-[12.5px] font-semibold">
               <Flag className="size-3.5" />
               Reported — Mesita is looking at it
             </p>
@@ -697,12 +704,12 @@ export function TicketScreen({
               <button
                 type="button"
                 onClick={() => setReportOpen(true)}
-                className="border-border bg-card text-foreground hover:bg-muted/50 flex min-h-11 items-center gap-2 rounded-full border px-4 text-[13px] font-bold transition active:scale-[0.99]"
+                className="border-border bg-card text-foreground hover:bg-muted/50 flex min-h-10 items-center gap-2 rounded-full border px-4 text-[12.5px] font-bold transition active:scale-[0.99]"
               >
                 <Flag className="text-destructive size-3.5" />
                 Report a problem
               </button>
-              <p className="text-muted-foreground/80 max-w-[17rem] text-center text-[11px] leading-snug">
+              <p className="text-muted-foreground/80 max-w-[19rem] text-center text-[10.5px] leading-snug">
                 Discount not honored, wrong total, anything off — a real person
                 at Mesita reads it.
               </p>
@@ -802,7 +809,7 @@ export function TicketScreen({
 
 function Shell({ children }: { children: React.ReactNode }) {
   return (
-    <div className="scrollbar-hide flex h-full min-h-0 flex-1 flex-col gap-3.5 overflow-y-auto px-4 pt-4 pb-6">
+    <div className="scrollbar-hide flex h-full min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-4 pt-3 pb-5">
       {children}
     </div>
   );
