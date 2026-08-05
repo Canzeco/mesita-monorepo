@@ -5,16 +5,37 @@ import { Alert, Text, View } from 'react-native';
 
 import { Button } from '@/components/ui/Button';
 import { FullScreenSheet } from '@/components/ui/FullScreenSheet';
+import { Switch } from '@/components/ui/Switch';
 import { TextField } from '@/components/ui/TextField';
 import { GRADIENTS } from '@/constants/brand';
 import { apiClaimInstagram } from '@/lib/api/auth';
-import { INFLUENCER_FOLLOWER_THRESHOLD } from '@/lib/consumer-classes';
 import { DEMO_INSTAGRAM_FOLLOWERS } from '@/lib/instagram-demo';
+import { useMockClass } from '@/lib/mock-class';
 import { errMsg } from '@/lib/utils';
 import { useAuth } from '@/providers/auth';
+import { SectionEyebrow } from './class/SectionEyebrow';
 
 const HANDLE_RE = /^@?[A-Za-z0-9._]{1,30}$/;
 const VERIFICATION_CODE_LENGTH = 8;
+
+const WHY_CONNECT_PERKS = [
+  {
+    label: 'Show up in the feed',
+    support: 'Other Mesita guests can see you in Social.',
+  },
+  {
+    label: 'Share & like stories',
+    support: 'React to guests’ stories inside Mesita.',
+  },
+  {
+    label: 'Story Bonus on visits',
+    support: 'Tag Mesita in a story at the place — bonus on that visit.',
+  },
+  {
+    label: 'Influencer, when you qualify',
+    support: 'Connecting is how reach can upgrade your class later.',
+  },
+] as const;
 
 type Props = {
   visible: boolean;
@@ -23,9 +44,12 @@ type Props = {
 
 export function VerifySocialSheet({ visible, onClose }: Props) {
   const { refreshProfile } = useAuth();
+  const [override, setMockClass] = useMockClass();
   const [handle, setHandle] = useState('');
   const [code, setCode] = useState('');
   const [verifying, setVerifying] = useState(false);
+
+  const previewConnected = override === 'influencer';
 
   const canVerify =
     HANDLE_RE.test(handle.trim()) &&
@@ -41,30 +65,18 @@ export function VerifySocialSheet({ visible, onClose }: Props) {
         handle: handle.trim().replace(/^@/, '').toLowerCase(),
       });
       await refreshProfile();
-      if (result.tier === 'influencer') {
-        Alert.alert(
-          'Connected',
-          'Instagram connected — Mesita Influencer unlocked.',
-        );
-        setHandle('');
-        setCode('');
-        onClose();
-        return;
-      }
-      // Below the 1,000-follower bar — linked, but the class stays put
-      // (`tier` echoes the resulting class key: premium or standard).
-      Alert.alert(
-        'Instagram connected',
-        `${result.followers.toLocaleString(
-          'en-US',
-        )} followers is below the ${INFLUENCER_FOLLOWER_THRESHOLD.toLocaleString(
-          'en-US',
-        )} needed for Influencer.`,
-      );
+      const message =
+        result.tier === 'influencer'
+          ? 'Connected — you’re in Social.\nYour class updated.'
+          : 'Connected — you’re in Social.';
+      Alert.alert('Connected', message);
+      setHandle('');
+      setCode('');
+      onClose();
     } catch (e) {
       Alert.alert(
         "Couldn't verify",
-        errMsg(e, "Couldn't verify your Instagram — try again."),
+        errMsg(e, "Couldn't verify — try again."),
       );
     } finally {
       setVerifying(false);
@@ -75,11 +87,9 @@ export function VerifySocialSheet({ visible, onClose }: Props) {
     <FullScreenSheet
       visible={visible}
       onClose={onClose}
-      title="Verify Instagram"
-      subtitle="via @mesita.bot · 1-minute setup"
+      title="Instagram"
+      subtitle="Connect to join Social — feed, stories, and visit bonuses."
     >
-      {/* Branded icon tile only — the sheet header already carries the title
-          and "via @mesita.bot" subtitle, so the body no longer repeats it. */}
       <LinearGradient
         colors={[...GRADIENTS.instagram]}
         start={{ x: 0, y: 0 }}
@@ -95,14 +105,80 @@ export function VerifySocialSheet({ visible, onClose }: Props) {
         <AtSign color="#fff" size={22} />
       </LinearGradient>
 
+      <SectionEyebrow>Why connect</SectionEyebrow>
+      <View
+        style={{
+          borderRadius: 16,
+          borderWidth: 1,
+          borderColor: '#ebd9db',
+          backgroundColor: '#ffffff',
+          overflow: 'hidden',
+        }}
+      >
+        {WHY_CONNECT_PERKS.map((perk, i) => (
+          <View
+            key={perk.label}
+            style={{
+              paddingHorizontal: 16,
+              paddingVertical: 12,
+              borderTopWidth: i > 0 ? 1 : 0,
+              borderTopColor: '#ebd9db',
+            }}
+          >
+            <Text
+              style={{
+                fontWeight: '700',
+                fontSize: 14,
+                color: '#260409',
+              }}
+            >
+              {perk.label}
+            </Text>
+            <Text
+              style={{
+                marginTop: 4,
+                fontSize: 12,
+                lineHeight: 16,
+                color: '#775254',
+              }}
+            >
+              {perk.support}
+            </Text>
+          </View>
+        ))}
+      </View>
+
+      <SectionEyebrow>Connect</SectionEyebrow>
       {[
-        'Follow @mesita.bot on Instagram.',
-        'DM @mesita.bot with the word VERIFY.',
-        'Mesita will reply with an 8-digit verification code. Paste it here.',
-        `${INFLUENCER_FOLLOWER_THRESHOLD.toLocaleString('en-US')}+ followers unlocks Mesita Influencer instantly.`,
-      ].map((line, i) => (
+        {
+          key: '1',
+          node: (
+            <Text style={{ flex: 1, lineHeight: 20, fontSize: 13, color: '#260409' }}>
+              DM <Text style={{ fontWeight: '700', color: '#cf0360' }}>@mesita.bot</Text>{' '}
+              the word{' '}
+              <Text
+                style={{
+                  fontWeight: '700',
+                  color: '#cf0360',
+                  fontFamily: 'monospace',
+                }}
+              >
+                VERIFY
+              </Text>
+            </Text>
+          ),
+        },
+        {
+          key: '2',
+          node: (
+            <Text style={{ flex: 1, lineHeight: 20, fontSize: 13, color: '#260409' }}>
+              Paste the 8-digit code here
+            </Text>
+          ),
+        },
+      ].map((step, i) => (
         <View
-          key={line}
+          key={step.key}
           style={{ flexDirection: 'row', gap: 12, alignItems: 'flex-start' }}
         >
           <View
@@ -110,23 +186,21 @@ export function VerifySocialSheet({ visible, onClose }: Props) {
               width: 24,
               height: 24,
               borderRadius: 999,
-              backgroundColor: 'rgba(236,0,108,0.12)',
+              backgroundColor: 'rgba(207,3,96,0.12)',
               alignItems: 'center',
               justifyContent: 'center',
             }}
           >
-            <Text style={{ color: '#ec006c', fontWeight: '800', fontSize: 11 }}>
+            <Text style={{ color: '#cf0360', fontWeight: '800', fontSize: 11 }}>
               {i + 1}
             </Text>
           </View>
-          <Text style={{ flex: 1, lineHeight: 20, fontSize: 14, color: '#260409' }}>
-            {line}
-          </Text>
+          {step.node}
         </View>
       ))}
 
       <TextField
-        label="@your.instagram"
+        label="@handle"
         value={handle}
         onChangeText={setHandle}
         autoCapitalize="none"
@@ -134,38 +208,70 @@ export function VerifySocialSheet({ visible, onClose }: Props) {
         maxLength={31}
       />
       <TextField
-        label="Paste 8-digit code"
+        label="8-digit code"
         value={code}
         onChangeText={setCode}
         keyboardType="number-pad"
         maxLength={VERIFICATION_CODE_LENGTH}
       />
 
-      <View style={{ flexDirection: 'row', gap: 8, marginTop: 4 }}>
-        <View style={{ flex: 1 }}>
-          <Button variant="outline" onPress={onClose}>
-            Cancel
-          </Button>
+      <Button
+        onPress={() => void verify()}
+        disabled={!canVerify}
+        loading={verifying}
+        accessibilityLabel="Verify Instagram"
+      >
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+          <BadgeCheck color="#fff" size={16} />
+          <Text style={{ color: '#fffafb', fontWeight: '600', fontSize: 14 }}>
+            Verify
+          </Text>
         </View>
-        <View style={{ flex: 1 }}>
-          <Button
-            onPress={() => void verify()}
-            disabled={!canVerify}
-            loading={verifying}
-            accessibilityLabel="Verify Instagram"
-          >
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-              <BadgeCheck color="#fff" size={16} />
-              <Text style={{ color: '#fffafb', fontWeight: '600', fontSize: 14 }}>
-                Verify
-              </Text>
-            </View>
-          </Button>
-        </View>
-      </View>
+      </Button>
       <Text style={{ textAlign: 'center', color: '#775254', fontSize: 12 }}>
-        We never ask for your Instagram password.
+        We never ask for your password.
       </Text>
+
+      {/* Demo chrome — footer ghost module (web InstagramModal parity). */}
+      <View
+        style={{
+          marginTop: 8,
+          borderWidth: 1,
+          borderStyle: 'dashed',
+          borderColor: 'rgba(235,217,219,0.7)',
+          borderRadius: 16,
+          padding: 12,
+          opacity: 0.85,
+          minHeight: 44,
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: 8,
+        }}
+      >
+        <Text
+          style={{
+            backgroundColor: 'rgba(245,158,11,0.15)',
+            color: '#d97706',
+            paddingHorizontal: 6,
+            paddingVertical: 2,
+            borderRadius: 4,
+            overflow: 'hidden',
+            fontWeight: '800',
+            letterSpacing: 1.2,
+            fontSize: 9,
+          }}
+        >
+          DEMO
+        </Text>
+        <Text style={{ color: '#775254', fontSize: 11, fontWeight: '500', flex: 1 }}>
+          Preview connected
+        </Text>
+        <Switch
+          value={previewConnected}
+          onValueChange={(on) => setMockClass(on ? 'influencer' : null)}
+          accessibilityLabel="Preview connected Instagram"
+        />
+      </View>
     </FullScreenSheet>
   );
 }

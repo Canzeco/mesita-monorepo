@@ -44,9 +44,7 @@ export function ClassPreviewToggle() {
         >
           DEMO
         </Text>
-        <Text style={{ color: '#775254' }}>
-          Preview class state
-        </Text>
+        <Text style={{ color: '#775254' }}>Preview</Text>
       </View>
       <View
         style={{

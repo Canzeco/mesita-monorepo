@@ -12,7 +12,7 @@ import { cn } from "@/lib/utils";
 export function CurrentClassCard() {
   const { key, origin } = useConsumerClass();
   const meta = CLASSES.find((c) => c.id === key)!;
-  const brand = `Mesita ${meta.label}`;
+  const brand = meta.label;
   const isElevated = isElevatedClass(key);
   // The class wears its canonical icon (smile / card / crown); the origin
   // only sets the "via" line.

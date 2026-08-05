@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Check, type LucideIcon } from "lucide-react";
 
 import { cn } from "@/lib/utils";
+import { DiscountMeter, type DiscountLevel } from "./DiscountMeter";
 
 type ClimbCardAction = {
   label: string;
@@ -21,10 +22,10 @@ export type ClimbCardData = {
   title: string;
   via?: string;
   accent?: boolean;
-  price: string;
-  priceNote?: string;
-  desc: string;
-  /** The class's perks, rendered as a check-list between desc and footer. */
+  /** Door one-liner under the title row (price / threshold / invite). */
+  door?: string;
+  discountLevel: DiscountLevel;
+  /** The class's perks, rendered as a check-list under the meter. */
   perks?: string[];
   reached: boolean;
   reachedLabel: string;
@@ -59,7 +60,7 @@ export function ClimbCard({ data }: { data: ClimbCardData }) {
           <div key={group[0].label} className="flex gap-2">
             {group.map((action) => {
               const cls = cn(
-                "flex flex-1 items-center justify-center rounded-lg py-2.5 text-[13px] font-semibold transition active:scale-[0.99]",
+                "flex min-h-11 flex-1 items-center justify-center rounded-lg py-2.5 text-[13px] font-semibold transition active:scale-[0.99]",
                 action.secondary
                   ? "border-border bg-card hover:bg-muted border"
                   : "bg-pink-gradient text-white shadow-sm",
@@ -85,7 +86,7 @@ export function ClimbCard({ data }: { data: ClimbCardData }) {
     );
   } else if (data.note) {
     footer = (
-      <span className="border-border bg-muted/40 text-muted-foreground flex items-center justify-center rounded-lg border py-2.5 text-[12px] font-medium">
+      <span className="border-border bg-muted/40 text-muted-foreground flex min-h-11 items-center justify-center rounded-lg border py-2.5 text-[12px] font-medium">
         {data.note}
       </span>
     );
@@ -125,19 +126,18 @@ export function ClimbCard({ data }: { data: ClimbCardData }) {
               </span>
             )}
           </div>
-          <p className="font-display text-foreground mt-2 text-xl leading-tight font-bold tracking-tight">
-            {data.price}
-          </p>
-          {data.priceNote && (
-            <p className="text-muted-foreground mt-0.5 text-[11px] leading-snug">
-              {data.priceNote}
+          {data.door && (
+            <p className="text-muted-foreground mt-1.5 text-[12px] leading-snug">
+              {data.door}
             </p>
           )}
         </div>
       </div>
-      <p className="text-muted-foreground mt-4 text-[12.5px] leading-relaxed">
-        {data.desc}
-      </p>
+
+      <div className="mt-4">
+        <DiscountMeter level={data.discountLevel} />
+      </div>
+
       {data.perks && data.perks.length > 0 && (
         <ul className="mt-3.5 flex flex-col gap-2">
           {data.perks.map((perk) => (
