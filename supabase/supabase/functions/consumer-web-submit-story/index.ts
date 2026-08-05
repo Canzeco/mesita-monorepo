@@ -17,8 +17,8 @@
 //
 // What still gates a story, because these are checkable:
 //   - The caller must be the ticket's consumer.
-//   - Influencer class only (segments v6 — the Story rung is its exclusive
-//     action; resolveTicketRate ignores a story from anyone else).
+//   - Connected Instagram (MESITA-909 — `instagram_handle` set). Class is
+//     the rate ladder; Story is a universal action gated on the account.
 //   - The place must actually run the Story rung at its strategy.
 //
 // Body:     { ticketId: string }
@@ -101,13 +101,12 @@ Deno.serve(async (req) => {
     return json({ ok: true, ticket, alreadyVerified: true });
   }
 
-  // Segments v6: the Story rung is the INFLUENCER class's exclusive action.
-  // Everyone keeps Review + Welcome; a non-influencer story earns nothing at
-  // the bill (resolveTicketRate ignores it), so reject it here where the user
-  // can still be told why.
+  // MESITA-909: Story is a universal action gated on a connected Instagram
+  // account — not on Influencer class. Class still prices the rung (the
+  // guest's own class row of the action matrix); connection is the door.
   const consumerRow = await admin
     .from("consumers")
-    .select("class_key")
+    .select("instagram_handle")
     .eq("id", userId)
     .maybeSingle();
   if (consumerRow.error) {
@@ -116,12 +115,12 @@ Deno.serve(async (req) => {
       500,
     );
   }
-  if (consumerRow.data?.class_key !== "influencer") {
+  if (!consumerRow.data?.instagram_handle?.trim()) {
     return json(
       {
         ok: false,
         error:
-          "The Instagram Story reward is for the Influencer class. Connect an Instagram with 1,000+ followers to join.",
+          "Connect your Instagram in Me to unlock the Story bonus, then try again.",
       },
       403,
     );

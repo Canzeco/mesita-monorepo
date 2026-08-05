@@ -43,8 +43,9 @@ import { cn } from "@/lib/utils";
 // creates the ticket and navigates straight to THE ticket screen
 // (/rewards/ticket/[id]); Pending and History are compact rows into the same
 // screen. The venue pass modal and the in-list QR card died with MESITA-857 —
-// one object, one surface. Influencers get the one create-time interstitial
-// (wantsStory can't be added after create).
+// one object, one surface. Guests with Instagram connected get the one
+// create-time Story interstitial (MESITA-909; wantsStory can't be added
+// after create).
 
 type Tab = "new" | "pending" | "history";
 
@@ -52,7 +53,8 @@ export function RewardsClient({ userId }: { userId: string }) {
   const supabase = useBrowserSupabase();
   const router = useRouter();
   const tickets = useConsumerTickets(userId);
-  const { key: classKey } = useConsumerClass();
+  const { handle: instagramHandle } = useConsumerClass();
+  const igConnected = Boolean(instagramHandle?.trim());
 
   // Default tab is DERIVED, not effect-set: Pending while a live ticket
   // exists, New otherwise. A manual tap pins the choice for the session.
@@ -126,15 +128,16 @@ export function RewardsClient({ userId }: { userId: string }) {
         openTicket(existing.id);
         return;
       }
-      if (classKey === "influencer") {
-        // The one create-time choice: the Story rung can't be added later.
+      if (igConnected) {
+        // Story Bonus (MESITA-909): any class with Instagram connected.
+        // The one create-time choice — can't be added later.
         setWantsStory(false);
         setStoryPlace(place);
         return;
       }
       void startTicket(place, false);
     },
-    [tickets.active, classKey, openTicket, startTicket],
+    [tickets.active, igConnected, openTicket, startTicket],
   );
 
   // The paid beat (MESITA-808, 4A): a watched ticket flipping to revealed
@@ -279,7 +282,7 @@ export function RewardsClient({ userId }: { userId: string }) {
         </div>
       )}
 
-      {/* Influencer interstitial — the ONE create-time choice (wantsStory). */}
+      {/* Story interstitial — the ONE create-time choice (wantsStory). */}
       <LocalSheet
         open={storyPlace !== null}
         onClose={() => setStoryPlace(null)}
@@ -291,7 +294,8 @@ export function RewardsClient({ userId }: { userId: string }) {
               Add the Story bonus?
             </h2>
             <p className="text-muted-foreground mt-0.5 text-[12.5px]">
-              Yours alone as an Influencer — decide before the ticket opens.
+              Available with your connected Instagram — decide before the
+              ticket opens.
             </p>
           </div>
           <button

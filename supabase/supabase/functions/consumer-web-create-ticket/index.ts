@@ -1,17 +1,18 @@
 // Supabase Edge Function — consumer-web-create-ticket (natural caller)
 //
 // Tickets v2 (MESITA-806): the guest creates their own reward ticket BEFORE
-// staff involvement. Pick the place, opt into the story rung (Influencer
-// only), get back a check_code — the QR the app renders is
-// https://mesita.ai/check/<check_code>, and everything staff-side happens on
-// that public page (check-web-*). Replaces staff-initiated creation
-// (business-web-create-ticket, retired in the same change).
+// staff involvement. Pick the place, opt into the story rung (any class with
+// a connected Instagram — MESITA-909), get back a check_code — the QR the
+// app renders is https://mesita.ai/check/<check_code>, and everything
+// staff-side happens on that public page (check-web-*). Replaces
+// staff-initiated creation (business-web-create-ticket, retired in the same
+// change).
 //
 // Welcome is NEVER asserted here: it is detected server-side at billing time
 // (isConsumerFirstVisit inside check-web-submit-bill). The story opt-in is
-// re-checked against class + the place's grid (offersAction); a non-eligible
-// opt-in silently downgrades to not_required — same posture the old staff
-// create had, and the class never leaks in the response.
+// re-checked against Instagram connection + the place's grid (offersAction);
+// a non-eligible opt-in silently downgrades to not_required — same posture
+// the old staff create had, and the class never leaks in the response.
 //
 // Body:     { placeId: string, wantsStory?: boolean }
 // Response: { ok: true, ticket: {...}, checkUrl } | { ok, error, code? }
@@ -126,20 +127,22 @@ Deno.serve(async (req) => {
     );
   }
 
-  // Story opt-in: Influencer-only (segments v6) AND the place's strategy must
-  // actually offer the rung. Anything else downgrades silently — never an
-  // error, so the response can't be used to probe class.
+  // Story opt-in (MESITA-909): any class with a connected Instagram
+  // (`instagram_handle` set) AND the place's strategy must actually offer
+  // the rung. Anything else downgrades silently — never an error, so the
+  // response can't be used to probe class or Instagram state.
   let storyStatus = "not_required";
   if (wantsStory) {
     const consumerRow = await admin
       .from("consumers")
-      .select("id, class_key")
+      .select("id, instagram_handle")
       .eq("id", consumerId)
       .maybeSingle();
     if (consumerRow.error || !consumerRow.data) {
       return json({ ok: false, error: "Consumer not found" }, 404);
     }
-    if (consumerRow.data.class_key === "influencer") {
+    const igConnected = Boolean(consumerRow.data.instagram_handle?.trim());
+    if (igConnected) {
       const grid = await loadRewardsGrid(admin);
       if (offersAction(placeStrategy(place), grid, "story")) {
         storyStatus = "pending";

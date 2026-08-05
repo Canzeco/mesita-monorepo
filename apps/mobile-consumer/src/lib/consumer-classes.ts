@@ -49,8 +49,8 @@ export const CLASSES: {
 ];
 
 // The Influencer follower bar — mirrors classes.follower_threshold in the DB
-// (the gate consumer-web-claim-instagram grants off). Segments v6: this is
-// also the Story bar — Story is Influencer-only, so the class IS the access.
+// (the gate consumer-web-claim-instagram grants off). Story Bonus is gated
+// on a connected handle (MESITA-909), not this threshold.
 export const INFLUENCER_FOLLOWER_THRESHOLD = CLASSES.find(
   (c) => c.id === 'influencer',
 )!.followerThreshold;

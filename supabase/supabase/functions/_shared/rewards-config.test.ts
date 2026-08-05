@@ -45,11 +45,11 @@ Deno.test("resolveTicketRate: a first visit ALONE pays only the standing rate", 
 });
 
 Deno.test("resolveTicketRate: a VERIFIED story always pays (eligibility settled upstream)", () => {
-  // The Influencer-only rule is enforced where a story can start
-  // (consumer-web-create-ticket seeding + consumer-web-submit-story opt-in).
-  // Once verified, the work is done and approved — it pays regardless of the
-  // live class, so a reach lapse between the post and the check can't strip an
-  // already-earned reward. The rate is read on the guest's OWN class row.
+  // The Instagram-connected gate (MESITA-909) is enforced where a story can
+  // start (consumer-web-create-ticket seeding + consumer-web-submit-story
+  // opt-in). Once verified, the work is done — it pays regardless of the
+  // live class, so a reach lapse between the post and the check can't strip
+  // an already-earned reward. The rate is read on the guest's OWN class row.
   assertEquals(
     resolveTicketRate("aggressive", GRID, { classKey: "influencer", isFirstVisit: false, storyVerified: true }),
     30,

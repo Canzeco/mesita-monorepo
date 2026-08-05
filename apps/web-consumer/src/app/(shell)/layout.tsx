@@ -54,6 +54,7 @@ export default async function ConsumerShellLayout({
   // Only the class is threaded into the shell now — the Profile TopBar
   // titles itself "me" + current class rather than the display name.
   let consumerClass: ConsumerClass | null = null;
+  let instagramHandle: string | null = null;
   try {
     const { consumer: profile, consumerClass: c } =
       await apiFetchConsumerProfile(supabase);
@@ -67,6 +68,7 @@ export default async function ConsumerShellLayout({
       !!profile.sex;
     if (!onboarded) redirect("/onboard");
     consumerClass = c;
+    instagramHandle = profile.instagram_handle?.trim() || null;
   } catch {
     redirect("/onboard");
   }
@@ -95,7 +97,10 @@ export default async function ConsumerShellLayout({
       <Suspense fallback={null}>
         <PlaceGoneNotice />
       </Suspense>
-      <ClassProvider consumerClass={consumerClass}>
+      <ClassProvider
+        consumerClass={consumerClass}
+        instagramHandle={instagramHandle}
+      >
         <div className="relative flex flex-1 flex-col overflow-hidden">
           <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
             <ShellChildrenSlot>{children}</ShellChildrenSlot>

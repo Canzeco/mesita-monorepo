@@ -30,12 +30,10 @@ export function InstagramConnectedSummary({
             ? `${followers.toLocaleString("en-US")} followers · Influencer active`
             : "Influencer active"}
         </p>
-        {/* The Instagram door grants Influencer off follower count alone (no
-            story-to-keep-it rule), but under segments v6 the Story rung is this
-            class's EXCLUSIVE action — so lead with the upside, not the opt-out. */}
+        {/* Influencer class from reach; Story Bonus from the connected
+            handle (MESITA-909) — lead with the visit upside. */}
         <p className="text-muted-foreground/80 mt-0.5 text-[11px] leading-snug">
-          The Instagram Story reward is yours alone — post one any visit for
-          more off.
+          Story Bonus unlocked — post a tagged story any visit for more off.
         </p>
       </div>
     </div>

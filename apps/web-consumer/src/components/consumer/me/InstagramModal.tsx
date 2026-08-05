@@ -199,11 +199,11 @@ export function InstagramModal({
 
 // ─── What your reach unlocks ───────────────────────────────────────────────
 
-// One bar, two payoffs (segments v6): ≥1,000 followers upgrades the WHOLE
-// ACCOUNT to Influencer automatically — and the Instagram Story action is
-// EXCLUSIVE to that class, so the same door opens both the class rung and the
-// per-visit story rung. Rates quote the reward ladder's peak (dominant)
-// column so they always match the /rewards program summary.
+// One bar, two payoffs: ≥1,000 followers upgrades the WHOLE ACCOUNT to
+// Influencer automatically; connecting Instagram (any follower count)
+// unlocks the Story Bonus for every class (MESITA-909). Rates quote the
+// reward ladder's peak (dominant) column so they always match the /rewards
+// program summary.
 function ReachCards() {
   const influencerRate = REWARD_SEGMENT_BY_KEY.influencer.rates[PEAK_STRATEGY];
   const storyRate = REWARD_SEGMENT_BY_KEY.story.rates[PEAK_STRATEGY];
@@ -240,12 +240,12 @@ function ReachCards() {
           <p className="text-[14px] leading-tight font-bold tracking-tight">
             Instagram Story Bonus{" "}
             <span className="text-muted-foreground font-semibold">
-              · Influencers only
+              · any connected account
             </span>
           </p>
           <p className="text-muted-foreground mt-1 text-[12px] leading-snug">
             Post a tagged story at your visit — up to {storyRate}% off that
-            bill, every visit.
+            bill, every visit. Connect Instagram to unlock.
           </p>
         </div>
       </div>

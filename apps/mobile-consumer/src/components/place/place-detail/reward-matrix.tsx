@@ -90,7 +90,6 @@ export function YourRewardsHere({
   classKey: RewardClassKey;
 }) {
   const mine = REWARD_SEGMENT_BY_KEY[segmentKeyForClass(classKey)];
-  const isInfluencer = classKey === 'influencer';
 
   const rows: Row[] = [
     {
@@ -106,16 +105,12 @@ export function YourRewardsHere({
       hint: 'Rate it in the app — feeds its rating',
       value: null,
     },
-    ...(isInfluencer
-      ? [
-          {
-            Icon: AtSign,
-            label: 'Instagram story',
-            hint: 'Tag the place — yours as an Influencer',
-            value: REWARD_SEGMENT_BY_KEY.story.rates[strategy],
-          } satisfies Row,
-        ]
-      : []),
+    {
+      Icon: AtSign,
+      label: 'Instagram story',
+      hint: 'Tag the place — any connected Instagram',
+      value: REWARD_SEGMENT_BY_KEY.story.rates[strategy],
+    },
     {
       Icon: DoorOpen,
       label: 'Welcome visit',

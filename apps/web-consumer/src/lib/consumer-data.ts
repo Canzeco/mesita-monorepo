@@ -125,8 +125,9 @@ export const CLASSES: {
     // Mirrors classes.follower_threshold in the DB — the EF grants off that
     // row, so this constant is display-only and must track it.
     followerThreshold: 1_000,
-    // The Story action is this class's exclusive earning engine.
-    reward: "Story bonus every visit",
+    // Class identity = reach door. Story Bonus is separate (MESITA-909):
+    // any connected Instagram unlocks it, not just Influencer.
+    reward: "HIGH discount · Story when connected",
     perk: "Better recs · 10 reservations",
   },
   {
@@ -143,8 +144,8 @@ export const CLASSES: {
 
 // The Influencer follower bar — mirrors classes.follower_threshold in the DB
 // (the gate consumer-web-claim-instagram grants off). Every surface quoting
-// or applying the bar derives from this one constant. Segments v6: this is
-// also the Story bar — Story is Influencer-only, so the class IS the access.
+// or applying the bar derives from this one constant. Story Bonus is gated
+// on a connected handle (MESITA-909), not this threshold.
 export const INFLUENCER_FOLLOWER_THRESHOLD = CLASSES.find(
   (c) => c.id === "influencer",
 )!.followerThreshold;

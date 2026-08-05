@@ -92,7 +92,7 @@ export function HelpModal({
         <ExplainRow
           icon={<Sparkles size={18} color="#cf0360" />}
           bold="Actions beat your class."
-          rest="A first visit or a Google review at the table pays more than your class rate — and the Instagram Story reward belongs to Influencers. You always keep your single best one, never a sum."
+          rest="A first visit, a Google review, or an Instagram story (with Instagram connected) can pay more than your class rate. You always keep your single best one, never a sum."
         />
 
         {/* The ladder */}

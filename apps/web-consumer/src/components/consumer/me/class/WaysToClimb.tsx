@@ -57,14 +57,14 @@ export function WaysToClimb({
       accent: true,
       price: `${influencer.followerThreshold.toLocaleString("en-US")}+ followers`,
       priceNote: "no payment — earned with reach, automatic",
-      // The Influencer class's real money is per-post: the Instagram Story
-      // action is EXCLUSIVE to this class (segments v6) and pays the story
-      // rung on any visit where a tagged story is verified. Discount stays
-      // qualitative (MESITA-907) — Story exclusivity is the message.
-      desc: `Connect an Instagram with ${influencer.followerThreshold.toLocaleString("en-US")}+ followers. The Instagram Story reward is yours alone — post a tagged story on any visit for an exclusive bonus.`,
+      // Influencer door = follower threshold → automatic class + HIGH rates.
+      // Story Bonus is separate (MESITA-909): any connected Instagram unlocks
+      // it — connecting here still opens Story as a side effect of the claim.
+      // Discount stays qualitative (MESITA-907).
+      desc: `Connect an Instagram with ${influencer.followerThreshold.toLocaleString("en-US")}+ followers. Automatic class upgrade — no payment, better rates at every Verified Partner.`,
       perks: [
         "HIGH discount rewards",
-        "Instagram Story bonus — exclusive to Influencers",
+        "Instagram Story bonus when you connect",
         ...ELEVATED_PERKS,
       ],
       reached: key === "influencer",

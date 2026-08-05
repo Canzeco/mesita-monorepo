@@ -9,12 +9,14 @@
 // (the single highest rung, never a sum). The grid is the single source of
 // truth, which keeps the admin Rewards-Config page authoritative.
 //
-// Segments v6 (2026-08-01): four classes — standard, premium, influencer
-// (Instagram ≥ 1,000 followers, automatic), aura (invite-only presence class) —
-// plus three actions. The Story rung is the Influencer class's EXCLUSIVE action;
-// Review and Welcome stay universal. Class segments resolve generically (any
-// known class key qualifies for its own grid row), so a future class/tier is a
-// classes-table INSERT + one entry here — never per-class branches.
+// Segments v6 (2026-08-01) + Story gate v2 (MESITA-909): four classes —
+// standard, premium, influencer (Instagram ≥ 1,000 followers, automatic),
+// aura (invite-only presence class) — plus actions. Story is a UNIVERSAL
+// action gated on a connected Instagram (`instagram_handle`), not on
+// Influencer class; Review / Welcome / Mesita stay universal too. Class
+// segments resolve generically (any known class key qualifies for its own
+// grid row), so a future class/tier is a classes-table INSERT + one entry
+// here — never per-class branches.
 
 import { type SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { strategyForRates, ratesFromPlace } from "./lineup-strategy.ts";
@@ -343,13 +345,14 @@ export type RateContext = {
 // from context for anyone. Returns a clamped integer percent — and ONLY that,
 // never the class (the blended-rate privacy invariant).
 //
-// Story eligibility is settled UPSTREAM, not here: the Influencer-only rule is
-// enforced where a story can start — consumer-web-create-ticket (never seeds a
-// story step for a non-Influencer) and consumer-web-submit-story (403s a
-// non-Influencer opt-in). By the time a story is VERIFIED the guest has done
-// the work, so it always pays — re-checking the live class at bill time would
-// strip an already-earned reward from someone whose reach lapsed between the
-// post and the check.
+// Story eligibility is settled UPSTREAM, not here: the Instagram-connected
+// gate (MESITA-909) is enforced where a story can start —
+// consumer-web-create-ticket (never seeds a story step without a handle) and
+// consumer-web-submit-story (403s when `instagram_handle` is empty). By the
+// time a story is VERIFIED the guest has done the work, so it always pays —
+// re-checking the live class (or handle) at bill time would strip an
+// already-earned reward from someone whose reach lapsed between the post
+// and the check.
 export function resolveTicketRate(
   strategy: GridStrategy,
   grid: RewardsGrid,
