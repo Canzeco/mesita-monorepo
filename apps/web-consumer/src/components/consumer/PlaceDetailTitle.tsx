@@ -7,8 +7,8 @@ import { cn } from "@/lib/utils";
 // off the title into a dedicated chip in the profile summary (before the
 // verification chip, see PlaceDetailBody), so the name stays clean in the
 // top chrome.
-// decision: MESITA-927 — blue/amber verify disc beside the name (swipe parity).
-// ProfileSummary Verified chip stays; this is name-chrome only.
+// decision: MESITA-933 — blue verify disc beside the name when partner only.
+// Unverified has no disc (Verification box / swipe tag carries the label).
 
 export function PlaceDetailTitle({
   placeName,
@@ -29,15 +29,11 @@ export function PlaceDetailTitle({
       )}
     >
       <span className="truncate">{placeName}</span>
-      {listingType != null && (
+      {isVerified && (
         // eslint-disable-next-line @next/next/no-img-element -- static brand SVG asset
         <img
-          src={
-            isVerified
-              ? "/brand/verified-check.svg"
-              : "/brand/unverified-mark.svg"
-          }
-          alt={isVerified ? "Verified Partner" : "Not verified"}
+          src="/brand/verified-check.svg"
+          alt="Verified Partner"
           width={16}
           height={16}
           className="h-4 w-4 shrink-0"
