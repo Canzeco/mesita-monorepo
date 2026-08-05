@@ -38,7 +38,7 @@
 // real and the artefacts don't exist.
 //
 // Closed = status "revealed" (v3b: the close is the unconditional signal).
-// Admin Performance uses paid_at for its own tab — different surface, kept.
+// Admin Performance aligned to the same close predicate in MESITA-890.
 //
 // Body:     { placeId: string, feedLimit?: number, reviewLimit?: number }
 // Response: { ok: true, summary, content, feed }

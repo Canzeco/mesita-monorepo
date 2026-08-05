@@ -7,7 +7,7 @@ import type { PlaceStats } from "../actions";
 // Pato's brief: "make the performance page simpler by far. remove lots of
 // stuff … just focus on the simple important stuff to know." The page answers
 // ONE question, so this card states it and answers it: three money numbers,
-// then the Saved → Visited → Paid funnel with the two conversions that say
+// then the Saved → Visited → Closed funnel with the two conversions that say
 // whether Mesita is actually producing visits and closes.
 //
 // Numbers come from real aggregates (admin-web-get-place-activity → stats),
@@ -15,7 +15,7 @@ import type { PlaceStats } from "../actions";
 //
 // Funnel form: one narrowing quantity, so Saved and Visited share ONE hue
 // (two different blues would imply a rank difference that isn't there) and
-// Paid is emphasized because it is the step that matters. Every bar carries
+// Closed is emphasized because it is the step that matters. Every bar carries
 // its number as a text label, so hue is never the only channel.
 
 function mxn(cents: number | null): string {
@@ -102,8 +102,8 @@ function Step({
 
 export function PerformanceHeadline({ stats }: { stats: PlaceStats }) {
   const anyActivity =
-    stats.saves > 0 || stats.visits > 0 || stats.paid > 0 || stats.tickets > 0;
-  const top = Math.max(stats.saves, stats.visits, stats.paid, 1);
+    stats.saves > 0 || stats.visits > 0 || stats.closed > 0 || stats.tickets > 0;
+  const top = Math.max(stats.saves, stats.visits, stats.closed, 1);
   const discountShare =
     stats.influencedCents > 0
       ? Math.round((stats.discountCents / stats.influencedCents) * 100)
@@ -125,15 +125,15 @@ export function PerformanceHeadline({ stats }: { stats: PlaceStats }) {
           label="Influenced spend"
           value={mxn(stats.influencedCents)}
           hint={
-            stats.paid > 0
-              ? `across ${count(stats.paid)} paid check${stats.paid === 1 ? "" : "s"}`
-              : "no paid checks yet"
+            stats.closed > 0
+              ? `across ${count(stats.closed)} closed visit${stats.closed === 1 ? "" : "s"}`
+              : "no closed visits yet"
           }
         />
         <Figure
           label="Avg ticket"
           value={mxn(stats.avgTicketCents)}
-          hint="per paid check"
+          hint="per closed visit with a bill"
         />
         <Figure
           label="Discount funded"
@@ -162,16 +162,16 @@ export function PerformanceHeadline({ stats }: { stats: PlaceStats }) {
               note={stats.visitRate != null ? `${stats.visitRate}% of saves` : null}
             />
             <Step
-              label="Paid"
-              value={stats.paid}
-              pct={(stats.paid / top) * 100}
+              label="Closed"
+              value={stats.closed}
+              pct={(stats.closed / top) * 100}
               note={stats.closeRate != null ? `${stats.closeRate}% of visits` : null}
               emphasis
             />
           </div>
         ) : (
           <p className="text-muted-foreground border-border rounded-xl border border-dashed px-4 py-7 text-center text-sm">
-            No guest activity yet. Saves, visits and paid checks appear here as they
+            No guest activity yet. Saves, visits and closed visits appear here as they
             happen.
           </p>
         )}

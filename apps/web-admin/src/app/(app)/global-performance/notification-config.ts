@@ -4,7 +4,6 @@ import {
   Bookmark,
   Building2,
   CalendarCheck,
-  CircleDollarSign,
   Compass,
   CreditCard,
   Flag,
@@ -125,10 +124,11 @@ export const TYPE_CONFIG: Record<NotificationType, TypeConfig> = {
     Icon: Footprints,
     tone: TONES.amber,
   },
-  "rewards.ticket_paid": {
-    label: "Ticket paid",
-    shortLabel: "Paid",
-    Icon: CircleDollarSign,
+  // v3b (MESITA-890): the close is "marks as done", not a payment event.
+  "rewards.ticket_closed": {
+    label: "Visit closed",
+    shortLabel: "Closed",
+    Icon: BadgeCheck,
     tone: TONES.emerald,
   },
   "rewards.review_submitted": {
@@ -169,7 +169,7 @@ export const TYPE_ORDER: NotificationType[] = [
   "consumer.place_saved",
   "rewards.ticket_created",
   "rewards.ticket_visit",
-  "rewards.ticket_paid",
+  "rewards.ticket_closed",
   "rewards.review_submitted",
   "rewards.ticket_reported",
   "reservations.reservation_created",
@@ -182,7 +182,7 @@ export const ACTIVITY_TYPE_ORDER: NotificationType[] = [
   "consumer.place_saved",
   "rewards.ticket_created",
   "rewards.ticket_visit",
-  "rewards.ticket_paid",
+  "rewards.ticket_closed",
   "rewards.review_submitted",
   "rewards.ticket_reported",
   "reservations.reservation_created",

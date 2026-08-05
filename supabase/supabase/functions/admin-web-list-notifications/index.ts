@@ -29,7 +29,8 @@
 //   consumer.place_saved                a consumer saved the place
 //   rewards.ticket_created              a reward ticket was opened in-app
 //   rewards.ticket_visit                its QR met the venue (first scan)
-//   rewards.ticket_paid                 staff marked the discounted bill paid
+//   rewards.ticket_closed               staff marked the visit done (v3b;
+//                                       status=revealed — not a payment event)
 //   rewards.review_submitted            the post-visit review landed
 //   rewards.ticket_reported             the GUEST filed a complaint about the
 //                                       visit (v3c, MESITA-851) — the one
@@ -102,7 +103,7 @@ const ALL_TYPES: NotificationType[] = [
   "consumer.place_saved",
   "rewards.ticket_created",
   "rewards.ticket_visit",
-  "rewards.ticket_paid",
+  "rewards.ticket_closed",
   "rewards.review_submitted",
   "rewards.ticket_reported",
   "reservations.reservation_created",
@@ -372,7 +373,7 @@ Deno.serve(async (req) => {
   // project → places for the profile and embeds the consumer for the actor.
   // Tickets contribute three event types from three timestamps — each gets
   // its OWN window (ordered by its own timestamp) so a burst of creates
-  // can't hide older visits/payments.
+  // can't hide older visits/closes.
   {
     type ActivityRow = {
       id: string;
@@ -386,6 +387,7 @@ Deno.serve(async (req) => {
       extraCols: string,
       orderCol: string,
       wanted: boolean,
+      eqFilters: Record<string, string> = {},
     ) =>
       wanted
         ? (() => {
@@ -398,6 +400,9 @@ Deno.serve(async (req) => {
             .limit(limit);
           if (projectId) qb = qb.eq("project_id", projectId);
           if (orderCol !== "created_at") qb = qb.not(orderCol, "is", null);
+          for (const [col, val] of Object.entries(eqFilters)) {
+            qb = qb.eq(col, val);
+          }
           return qb;
         })()
         : Promise.resolve({ data: null, error: null });
@@ -406,7 +411,7 @@ Deno.serve(async (req) => {
       savesRes,
       tCreatedRes,
       tVisitRes,
-      tPaidRes,
+      tClosedRes,
       reviewsRes,
       reportsRes,
       resvRes,
@@ -424,11 +429,15 @@ Deno.serve(async (req) => {
           "first_scanned_at",
           wantType("rewards.ticket_visit"),
         ),
+        // Close = status revealed (v3b). Order by revealed_at so a later
+        // status rewrite can't reshuffle history; paid_at is still stamped
+        // by informal close but is no longer the feed's vocabulary.
         activitySource(
           "tickets",
-          "status, kind, paid_at, check_subtotal_cents, discount_percent, discount_cents, currency, ",
-          "paid_at",
-          wantType("rewards.ticket_paid"),
+          "status, kind, revealed_at, check_subtotal_cents, discount_percent, discount_cents, currency, ",
+          "revealed_at",
+          wantType("rewards.ticket_closed"),
+          { status: "revealed" },
         ),
         activitySource(
           "ticket_reviews",
@@ -454,7 +463,7 @@ Deno.serve(async (req) => {
       ["saved_places", savesRes],
       ["tickets_created", tCreatedRes],
       ["tickets_visit", tVisitRes],
-      ["tickets_paid", tPaidRes],
+      ["tickets_closed", tClosedRes],
       ["ticket_reviews", reviewsRes],
       ["ticket_reports", reportsRes],
       ["reservations", resvRes],
@@ -509,16 +518,16 @@ Deno.serve(async (req) => {
       });
     }
 
-    for (const r of ((tPaidRes.data ?? []) as unknown[]) as Array<ActivityRow & {
+    for (const r of ((tClosedRes.data ?? []) as unknown[]) as Array<ActivityRow & {
       status: string;
       kind: string;
-      paid_at: string;
+      revealed_at: string;
       check_subtotal_cents: number | null;
       discount_percent: number | null;
       discount_cents: number | null;
       currency: string | null;
     }>) {
-      push("rewards.ticket_paid", "rewards", r, r.paid_at, null, {
+      push("rewards.ticket_closed", "rewards", r, r.revealed_at, null, {
         status: r.status,
         kind: r.kind,
         subtotalCents: r.check_subtotal_cents,

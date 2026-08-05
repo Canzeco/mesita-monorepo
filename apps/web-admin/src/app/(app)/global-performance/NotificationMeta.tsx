@@ -68,7 +68,7 @@ export function MetaRow({ item }: { item: NotificationItem }) {
     if (typeof m.status === "string") tags.push(<MetaTag key="ts">{m.status}</MetaTag>);
   }
 
-  if (item.type === "rewards.ticket_paid") {
+  if (item.type === "rewards.ticket_closed") {
     if (typeof m.subtotalCents === "number" && m.subtotalCents > 0) {
       tags.push(
         <MetaTag key="sub">
