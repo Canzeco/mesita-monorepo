@@ -46,8 +46,9 @@ export const ENRICH_DESCRIPTION_MAX = ENRICH_DESCRIPTION_TARGET_WORDS * 7;
 
 // Per-call cost estimates (USD), from each provider's PUBLISHED price list
 // (verified 2026-07-07). MIRRORS the admin cost calculator's rate card
-// (apps/web-admin `enricher-config/cost-model.ts`). Documentation only — no EF
-// reads this; approximate, not billing. Keep the two in sync.
+// (apps/web-admin `enricher-config/cost-model.ts`). Used at run time by
+// enrich-cost.ts to enforce atlas_per_run_cost_cap_usd mid-run (MESITA-624).
+// Approximate — enough to bound spend, not for billing. Keep the two in sync.
 //
 // Sources: Google Maps Platform pricing list (Places API New, first tier) ·
 // Apify Store actor pages (pay-per-event) · Firecrawl pricing · Perplexity
@@ -131,6 +132,10 @@ export type EnrichConfig = {
   analyzeInstagramImages: number;
   imageAnalysisPrompt: string;
   imageSortingPrompt: string;
+  // Hard ceiling on estimated USD spent across research→analysis→contents for
+  // one venue. Enforced mid-run by EnrichCostLedger (MESITA-624). 0 = no paid
+  // steps allowed.
+  perRunCostCapUsd: number;
 };
 
 const DEFAULT_ANALYSIS_PROMPT =
@@ -146,7 +151,7 @@ export async function loadEnrichConfig(admin: SupabaseClient): Promise<EnrichCon
   const { data: cfg } = await admin
     .from("app_settings")
     .select(
-      "atlas_synthesis_quality, atlas_vision_quality, atlas_perplexity_preset, atlas_gather_google_images, atlas_gather_instagram_depth, atlas_gather_instagram_posts, atlas_gather_reviews, atlas_save_total_images, atlas_save_images_to_storage, atlas_image_vision_enabled, atlas_analyze_google_images, atlas_analyze_instagram_images, atlas_image_analysis_prompt, atlas_image_sorting_prompt, atlas_discover_website_n, atlas_discover_instagram_n, atlas_discover_facebook_n, atlas_discover_opentable_n, atlas_discover_ubereats_n",
+      "atlas_synthesis_quality, atlas_vision_quality, atlas_perplexity_preset, atlas_gather_google_images, atlas_gather_instagram_depth, atlas_gather_instagram_posts, atlas_gather_reviews, atlas_save_total_images, atlas_save_images_to_storage, atlas_image_vision_enabled, atlas_analyze_google_images, atlas_analyze_instagram_images, atlas_image_analysis_prompt, atlas_image_sorting_prompt, atlas_per_run_cost_cap_usd, atlas_discover_website_n, atlas_discover_instagram_n, atlas_discover_facebook_n, atlas_discover_opentable_n, atlas_discover_ubereats_n",
     )
     .eq("id", 1)
     .maybeSingle();
@@ -178,5 +183,7 @@ export async function loadEnrichConfig(admin: SupabaseClient): Promise<EnrichCon
       (cfg?.atlas_image_analysis_prompt as string | undefined)?.trim() || DEFAULT_ANALYSIS_PROMPT,
     imageSortingPrompt:
       (cfg?.atlas_image_sorting_prompt as string | undefined)?.trim() || DEFAULT_SORTING_PROMPT,
+    // Default matches migration 0042 / live app_settings row.
+    perRunCostCapUsd: num(cfg?.atlas_per_run_cost_cap_usd, 1.0),
   };
 }

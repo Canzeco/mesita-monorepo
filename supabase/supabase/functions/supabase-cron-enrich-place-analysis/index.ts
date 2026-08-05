@@ -21,7 +21,12 @@
 // Deploy: supabase functions deploy supabase-cron-enrich-place-analysis
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { loadEnrichConfig, PHOTO_CEILING, visionModelFor } from "../_shared/enrich-config.ts";
+import { COST, loadEnrichConfig, PHOTO_CEILING, visionModelFor } from "../_shared/enrich-config.ts";
+import {
+  costFromGathered,
+  createEnrichCostLedger,
+  visionRunCost,
+} from "../_shared/enrich-cost.ts";
 import { runImageFunnel } from "../_shared/enrich-image-funnel.ts";
 import {
   advanceResearchStage,
@@ -42,11 +47,20 @@ serveEnrichStage("analysis", async (admin, _env, row) => {
 
   const OPENAI_KEY = Deno.env.get("OPENAI_KEY");
   const cfg = await loadEnrichConfig(admin);
+  const ledger = createEnrichCostLedger(cfg.perRunCostCapUsd, costFromGathered(gathered));
 
   const maxVisionImages = cfg.visionEnabled
     ? cfg.analyzeGoogleImages + cfg.analyzeInstagramImages
     : 0;
   const runVision = cfg.visionEnabled && !!OPENAI_KEY && maxVisionImages > 0;
+
+  // Reserve the admin analyze caps + one sort call before paying for vision.
+  if (runVision) {
+    ledger.assertCanAfford(
+      visionRunCost(maxVisionImages, cfg.visionQuality) + COST.sort,
+      "vision_and_sort",
+    );
+  }
 
   const funnel = await runImageFunnel({
     googleImages: gathered.images.google,
@@ -66,11 +80,19 @@ serveEnrichStage("analysis", async (admin, _env, row) => {
     imageSortingPrompt: cfg.imageSortingPrompt,
   });
 
+  const analyzed = typeof funnel.diag.analyzed === "number" ? funnel.diag.analyzed : 0;
+  if (analyzed > 0) {
+    ledger.charge("vision", visionRunCost(analyzed, cfg.visionQuality));
+  }
+  if (funnel.diag.sorted === true) {
+    ledger.charge("sort", COST.sort);
+  }
+
   // One beacon for the whole analysis stage (S5–S6) — one notification per function.
   const described = funnel.imageAnalysisByUrl.size;
   await reportEnrichmentStep(admin, projectId, "S5", "images", "completed",
     `Image analysis complete — described ${described} candidate photo(s), selected ${funnel.finalPhotos.length} final photo(s) for the profile.`,
-    { described, finalPhotos: funnel.finalPhotos.length });
+    { described, finalPhotos: funnel.finalPhotos.length, spentUsd: ledger.spentUsd });
 
   const analysis: AnalysisPayload = {
     finalPhotos: funnel.finalPhotos,
@@ -78,5 +100,9 @@ serveEnrichStage("analysis", async (admin, _env, row) => {
     imageAnalysisByUrl: mapToObject(funnel.imageAnalysisByUrl),
     diag: funnel.diag,
   };
-  await advanceResearchStage(admin, projectId, "contents", { analysis });
+  // Persist the running ledger so contents can enforce the same per-run cap.
+  await advanceResearchStage(admin, projectId, "contents", {
+    analysis,
+    gathered: { ...gathered, cost: ledger.snapshot() },
+  });
 });
