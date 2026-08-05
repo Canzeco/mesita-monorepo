@@ -125,15 +125,21 @@ export function PerformanceHeadline({ stats }: { stats: PlaceStats }) {
           label="Influenced spend"
           value={mxn(stats.influencedCents)}
           hint={
-            stats.closed > 0
-              ? `across ${count(stats.closed)} closed visit${stats.closed === 1 ? "" : "s"}`
+            stats.billedCount > 0
+              ? `over ${count(stats.billedCount)} recorded bill${stats.billedCount === 1 ? "" : "s"}`
+              : stats.closed > 0
+              ? `across ${count(stats.closed)} closed visit${stats.closed === 1 ? "" : "s"} (no bills yet)`
               : "no closed visits yet"
           }
         />
         <Figure
           label="Avg ticket"
           value={mxn(stats.avgTicketCents)}
-          hint="per closed visit with a bill"
+          hint={
+            stats.consumerReportedCount > 0
+              ? `${count(stats.consumerReportedCount)} typed by the guest`
+              : "per closed visit with a bill"
+          }
         />
         <Figure
           label="Discount funded"

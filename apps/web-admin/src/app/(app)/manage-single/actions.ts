@@ -242,6 +242,10 @@ export type PlaceStats = {
   reservations: number;
   influencedCents: number;
   discountCents: number;
+  /** Closed visits that carry a recorded amount (total ?? subtotal). */
+  billedCount: number;
+  /** Of billedCount, how many amounts the guest typed (v3b provenance). */
+  consumerReportedCount: number;
   avgTicketCents: number | null;
   /** visits ÷ saves, and closed ÷ visits — the funnel's two conversions. */
   visitRate: number | null;
@@ -290,6 +294,11 @@ export async function getPlaceActivity(
         reservations: s.reservations,
         influencedCents: s.influencedCents,
         discountCents: s.discountCents,
+        billedCount: typeof s.billedCount === "number" ? s.billedCount : 0,
+        consumerReportedCount:
+          typeof s.consumerReportedCount === "number"
+            ? s.consumerReportedCount
+            : 0,
         avgTicketCents: s.avgTicketCents,
         visitRate: s.visitRate,
         closeRate: s.closeRate,
