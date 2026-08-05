@@ -1,6 +1,6 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { AtSign, BadgeCheck } from 'lucide-react-native';
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { Alert, Text, View } from 'react-native';
 
 import { Button } from '@/components/ui/Button';
@@ -13,27 +13,20 @@ import { DEMO_INSTAGRAM_FOLLOWERS } from '@/lib/instagram-demo';
 import { useMockClass } from '@/lib/mock-class';
 import { errMsg } from '@/lib/utils';
 import { useAuth } from '@/providers/auth';
-import { SectionEyebrow } from './class/SectionEyebrow';
 
 const HANDLE_RE = /^@?[A-Za-z0-9._]{1,30}$/;
 const VERIFICATION_CODE_LENGTH = 8;
 
-const WHY_CONNECT_PERKS = [
+const REWARD_DOORS = [
   {
-    label: 'Show up in the feed',
-    support: 'Other Mesita guests can see you in Social.',
+    title: 'Influencer Class',
+    punch: 'Connect Instagram for better Rewards.',
+    soft: 'When you qualify, your class can climb.',
   },
   {
-    label: 'Share & like stories',
-    support: 'React to guests’ stories inside Mesita.',
-  },
-  {
-    label: 'Story Bonus on visits',
-    support: 'Tag Mesita in a story at the place — bonus on that visit.',
-  },
-  {
-    label: 'Influencer, when you qualify',
-    support: 'Connecting is how reach can upgrade your class later.',
+    title: 'Instagram Stories',
+    punch: 'Connect Instagram and post Stories for better Rewards.',
+    soft: 'Tag Mesita at the place — bonus on that visit.',
   },
 ] as const;
 
@@ -67,8 +60,8 @@ export function VerifySocialSheet({ visible, onClose }: Props) {
       await refreshProfile();
       const message =
         result.tier === 'influencer'
-          ? 'Connected — you’re in Social.\nYour class updated.'
-          : 'Connected — you’re in Social.';
+          ? 'Connected — Rewards unlocked.\nYour class updated.'
+          : 'Connected — Rewards unlocked.';
       Alert.alert('Connected', message);
       setHandle('');
       setCode('');
@@ -88,7 +81,7 @@ export function VerifySocialSheet({ visible, onClose }: Props) {
       visible={visible}
       onClose={onClose}
       title="Instagram"
-      subtitle="Connect to join Social — feed, stories, and visit bonuses."
+      subtitle="Connect Instagram for better Rewards."
     >
       <LinearGradient
         colors={[...GRADIENTS.instagram]}
@@ -105,78 +98,194 @@ export function VerifySocialSheet({ visible, onClose }: Props) {
         <AtSign color="#fff" size={22} />
       </LinearGradient>
 
-      <SectionEyebrow>Why connect</SectionEyebrow>
-      <View
-        style={{
-          borderRadius: 16,
-          borderWidth: 1,
-          borderColor: '#ebd9db',
-          backgroundColor: '#ffffff',
-          overflow: 'hidden',
-        }}
-      >
-        {WHY_CONNECT_PERKS.map((perk, i) => (
-          <View
-            key={perk.label}
+      <View style={{ gap: 12, marginTop: 4 }}>
+        {REWARD_DOORS.map((door) => (
+          <RewardDoorModule key={door.title} {...door} />
+        ))}
+
+        <ConnectModule
+          handle={handle}
+          code={code}
+          verifying={verifying}
+          canVerify={canVerify}
+          onHandleChange={setHandle}
+          onCodeChange={setCode}
+          onVerify={() => void verify()}
+        />
+
+        <View
+          style={{
+            borderWidth: 1,
+            borderStyle: 'dashed',
+            borderColor: 'rgba(235,217,219,0.7)',
+            borderRadius: 16,
+            padding: 12,
+            opacity: 0.85,
+            minHeight: 44,
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 8,
+          }}
+        >
+          <Text
             style={{
-              paddingHorizontal: 16,
-              paddingVertical: 12,
-              borderTopWidth: i > 0 ? 1 : 0,
-              borderTopColor: '#ebd9db',
+              backgroundColor: 'rgba(245,158,11,0.15)',
+              color: '#d97706',
+              paddingHorizontal: 6,
+              paddingVertical: 2,
+              borderRadius: 4,
+              overflow: 'hidden',
+              fontWeight: '800',
+              letterSpacing: 1.2,
+              fontSize: 9,
             }}
           >
-            <Text
-              style={{
-                fontWeight: '700',
-                fontSize: 14,
-                color: '#260409',
-              }}
-            >
-              {perk.label}
-            </Text>
-            <Text
-              style={{
-                marginTop: 4,
-                fontSize: 12,
-                lineHeight: 16,
-                color: '#775254',
-              }}
-            >
-              {perk.support}
-            </Text>
-          </View>
-        ))}
+            DEMO
+          </Text>
+          <Text
+            style={{
+              color: '#775254',
+              fontSize: 11,
+              fontWeight: '500',
+              flex: 1,
+            }}
+          >
+            Preview connected
+          </Text>
+          <Switch
+            value={previewConnected}
+            onValueChange={(on) => setMockClass(on ? 'influencer' : null)}
+            accessibilityLabel="Preview connected Instagram"
+          />
+        </View>
       </View>
+    </FullScreenSheet>
+  );
+}
 
-      <SectionEyebrow>Connect</SectionEyebrow>
-      {[
-        {
-          key: '1',
-          node: (
-            <Text style={{ flex: 1, lineHeight: 20, fontSize: 13, color: '#260409' }}>
-              DM <Text style={{ fontWeight: '700', color: '#cf0360' }}>@mesita.bot</Text>{' '}
-              the word{' '}
-              <Text
-                style={{
-                  fontWeight: '700',
-                  color: '#cf0360',
-                  fontFamily: 'monospace',
-                }}
-              >
-                VERIFY
-              </Text>
-            </Text>
-          ),
-        },
-        {
-          key: '2',
-          node: (
-            <Text style={{ flex: 1, lineHeight: 20, fontSize: 13, color: '#260409' }}>
-              Paste the 8-digit code here
-            </Text>
-          ),
-        },
-      ].map((step, i) => (
+function RewardDoorModule({
+  title,
+  punch,
+  soft,
+}: {
+  title: string;
+  punch: string;
+  soft: string;
+}) {
+  return (
+    <View
+      style={{
+        borderRadius: 16,
+        borderWidth: 1,
+        borderColor: '#ebd9db',
+        backgroundColor: '#ffffff',
+        padding: 16,
+      }}
+    >
+      <Text
+        style={{
+          fontWeight: '800',
+          fontSize: 14,
+          color: '#260409',
+          letterSpacing: -0.1,
+        }}
+      >
+        {title}
+      </Text>
+      <Text
+        style={{
+          marginTop: 8,
+          fontSize: 13,
+          fontWeight: '600',
+          lineHeight: 18,
+          color: '#260409',
+        }}
+      >
+        {punch}
+      </Text>
+      <Text
+        style={{
+          marginTop: 6,
+          fontSize: 12,
+          lineHeight: 16,
+          color: '#775254',
+        }}
+      >
+        {soft}
+      </Text>
+    </View>
+  );
+}
+
+function ConnectModule({
+  handle,
+  code,
+  verifying,
+  canVerify,
+  onHandleChange,
+  onCodeChange,
+  onVerify,
+}: {
+  handle: string;
+  code: string;
+  verifying: boolean;
+  canVerify: boolean;
+  onHandleChange: (v: string) => void;
+  onCodeChange: (v: string) => void;
+  onVerify: () => void;
+}) {
+  const steps: { key: string; node: ReactNode }[] = [
+    {
+      key: '1',
+      node: (
+        <Text style={{ flex: 1, lineHeight: 20, fontSize: 13, color: '#260409' }}>
+          DM <Text style={{ fontWeight: '700', color: '#cf0360' }}>@mesita.bot</Text>{' '}
+          the word{' '}
+          <Text
+            style={{
+              fontWeight: '700',
+              color: '#cf0360',
+              fontFamily: 'monospace',
+            }}
+          >
+            VERIFY
+          </Text>
+        </Text>
+      ),
+    },
+    {
+      key: '2',
+      node: (
+        <Text style={{ flex: 1, lineHeight: 20, fontSize: 13, color: '#260409' }}>
+          Paste the 8-digit code here
+        </Text>
+      ),
+    },
+  ];
+
+  return (
+    <View
+      style={{
+        borderRadius: 16,
+        borderWidth: 1,
+        borderColor: '#ebd9db',
+        backgroundColor: '#ffffff',
+        padding: 16,
+        gap: 12,
+      }}
+    >
+      <Text
+        style={{
+          fontWeight: '800',
+          fontSize: 14,
+          color: '#260409',
+          letterSpacing: -0.1,
+        }}
+      >
+        Connect Instagram
+      </Text>
+
+      {steps.map((step, i) => (
         <View
           key={step.key}
           style={{ flexDirection: 'row', gap: 12, alignItems: 'flex-start' }}
@@ -202,7 +311,7 @@ export function VerifySocialSheet({ visible, onClose }: Props) {
       <TextField
         label="@handle"
         value={handle}
-        onChangeText={setHandle}
+        onChangeText={onHandleChange}
         autoCapitalize="none"
         autoCorrect={false}
         maxLength={31}
@@ -210,13 +319,13 @@ export function VerifySocialSheet({ visible, onClose }: Props) {
       <TextField
         label="8-digit code"
         value={code}
-        onChangeText={setCode}
+        onChangeText={onCodeChange}
         keyboardType="number-pad"
         maxLength={VERIFICATION_CODE_LENGTH}
       />
 
       <Button
-        onPress={() => void verify()}
+        onPress={onVerify}
         disabled={!canVerify}
         loading={verifying}
         accessibilityLabel="Verify Instagram"
@@ -231,47 +340,6 @@ export function VerifySocialSheet({ visible, onClose }: Props) {
       <Text style={{ textAlign: 'center', color: '#775254', fontSize: 12 }}>
         We never ask for your password.
       </Text>
-
-      {/* Demo chrome — footer ghost module (web InstagramModal parity). */}
-      <View
-        style={{
-          marginTop: 8,
-          borderWidth: 1,
-          borderStyle: 'dashed',
-          borderColor: 'rgba(235,217,219,0.7)',
-          borderRadius: 16,
-          padding: 12,
-          opacity: 0.85,
-          minHeight: 44,
-          flexDirection: 'row',
-          alignItems: 'center',
-          gap: 8,
-        }}
-      >
-        <Text
-          style={{
-            backgroundColor: 'rgba(245,158,11,0.15)',
-            color: '#d97706',
-            paddingHorizontal: 6,
-            paddingVertical: 2,
-            borderRadius: 4,
-            overflow: 'hidden',
-            fontWeight: '800',
-            letterSpacing: 1.2,
-            fontSize: 9,
-          }}
-        >
-          DEMO
-        </Text>
-        <Text style={{ color: '#775254', fontSize: 11, fontWeight: '500', flex: 1 }}>
-          Preview connected
-        </Text>
-        <Switch
-          value={previewConnected}
-          onValueChange={(on) => setMockClass(on ? 'influencer' : null)}
-          accessibilityLabel="Preview connected Instagram"
-        />
-      </View>
-    </FullScreenSheet>
+    </View>
   );
 }

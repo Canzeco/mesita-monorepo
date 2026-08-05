@@ -22,28 +22,22 @@ import {
   SHEET_BODY_CLASS,
 } from "@/lib/ui-classes";
 
-// Instagram connect sheet (IB2): why-connect first, then verify, demo last.
-// Zero quantitative claims on this surface — no %, follower thresholds, or
-// rate numbers. Class modal owns the Influencer door math.
+// Instagram connect sheet (MESITA-924): Rewards-first modular boxes —
+// Influencer Class · Instagram Stories · Connect Instagram. Zero quantitative
+// claims; Class modal owns the Influencer door math.
 
 const HANDLE_RE = /^@?[A-Za-z0-9._]{1,30}$/;
 
-const WHY_CONNECT_PERKS = [
+const REWARD_DOORS = [
   {
-    label: "Show up in the feed",
-    support: "Other Mesita guests can see you in Social.",
+    title: "Influencer Class",
+    punch: "Connect Instagram for better Rewards.",
+    soft: "When you qualify, your class can climb.",
   },
   {
-    label: "Share & like stories",
-    support: "React to guests’ stories inside Mesita.",
-  },
-  {
-    label: "Story Bonus on visits",
-    support: "Tag Mesita in a story at the place — bonus on that visit.",
-  },
-  {
-    label: "Influencer, when you qualify",
-    support: "Connecting is how reach can upgrade your class later.",
+    title: "Instagram Stories",
+    punch: "Connect Instagram and post Stories for better Rewards.",
+    soft: "Tag Mesita at the place — bonus on that visit.",
   },
 ] as const;
 
@@ -64,8 +58,6 @@ export function InstagramModal({
   const canVerify =
     HANDLE_RE.test(handle.trim()) && code.length >= 8 && !verifying;
 
-  // Real claim through consumer-web-claim-instagram. Success copy stays
-  // social-first — never explain the follower bar on this sheet.
   async function verify() {
     if (!canVerify) return;
     setVerifying(true);
@@ -78,7 +70,7 @@ export function InstagramModal({
         window.location.href = `${CONSUMER_ROUTES.me}?instagram=success`;
         return;
       }
-      toast("Connected — you’re in Social.");
+      toast("Connected — Rewards unlocked.");
       setVerifying(false);
       onClose();
     } catch (e) {
@@ -102,12 +94,12 @@ export function InstagramModal({
           <div>
             <h2 className={SHEET_TITLE_CLASS}>Instagram</h2>
             <p className="text-muted-foreground text-[12px]">
-              Connect to join Social — feed, stories, and visit bonuses.
+              Connect Instagram for better Rewards.
             </p>
           </div>
         </div>
 
-        <div className="flex flex-col gap-6">
+        <div className="flex flex-col gap-3">
           {connected && (
             <section className="flex flex-col gap-2">
               <SectionEyebrow>Connected</SectionEyebrow>
@@ -115,75 +107,19 @@ export function InstagramModal({
             </section>
           )}
 
-          <section className="flex flex-col gap-2">
-            <SectionEyebrow>Why connect</SectionEyebrow>
-            <WhyConnectModule />
-          </section>
+          {REWARD_DOORS.map((door) => (
+            <RewardDoorModule key={door.title} {...door} />
+          ))}
 
-          <section className="flex flex-col gap-2">
-            <SectionEyebrow>Connect</SectionEyebrow>
-            <ol className="flex flex-col gap-3">
-              {[
-                <>
-                  DM <span className="text-secondary font-semibold">@mesita.bot</span>{" "}
-                  the word{" "}
-                  <span className="text-secondary font-mono font-semibold">
-                    VERIFY
-                  </span>
-                </>,
-                <>Paste the 8-digit code here</>,
-              ].map((line, i) => (
-                <li
-                  key={i}
-                  className="flex items-start gap-3 text-[13px] leading-snug"
-                >
-                  <span className="bg-secondary/15 text-secondary flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[11px] font-bold">
-                    {i + 1}
-                  </span>
-                  <span>{line}</span>
-                </li>
-              ))}
-            </ol>
-            <label className="text-muted-foreground mt-2 text-[11px] font-medium">
-              @handle
-            </label>
-            <input
-              value={handle}
-              onChange={(e) => setHandle(e.target.value)}
-              placeholder="@handle"
-              autoCapitalize="none"
-              autoCorrect="off"
-              spellCheck={false}
-              className="border-border bg-muted/30 placeholder:text-muted-foreground/70 h-12 w-full rounded-lg border px-5 text-center text-sm outline-none"
-              maxLength={31}
-            />
-            <label className="text-muted-foreground text-[11px] font-medium">
-              8-digit code
-            </label>
-            <input
-              value={code}
-              onChange={(e) => setCode(e.target.value)}
-              placeholder="8-digit code"
-              className="border-border bg-muted/30 placeholder:text-muted-foreground/70 h-12 w-full rounded-lg border px-5 text-center text-sm outline-none"
-              maxLength={8}
-            />
-            <button
-              type="button"
-              onClick={verify}
-              disabled={!canVerify}
-              className="bg-pink-gradient mt-1 flex min-h-11 w-full items-center justify-center gap-2 rounded-lg py-3 text-sm font-semibold text-white transition disabled:opacity-60"
-            >
-              {verifying ? (
-                <Spinner size="sm" className="border-white/40 border-t-white" />
-              ) : (
-                <BadgeCheck className="h-4 w-4" />
-              )}
-              {verifying ? "Connecting…" : "Verify"}
-            </button>
-            <p className="text-muted-foreground mt-1 text-center text-[11px]">
-              We never ask for your password.
-            </p>
-          </section>
+          <ConnectModule
+            handle={handle}
+            code={code}
+            verifying={verifying}
+            canVerify={canVerify}
+            onHandleChange={setHandle}
+            onCodeChange={setCode}
+            onVerify={verify}
+          />
 
           <InstagramEmulator />
         </div>
@@ -192,32 +128,114 @@ export function InstagramModal({
   );
 }
 
-// ─── Why connect (IB2 — zero numbers) ──────────────────────────────────────
-
-function WhyConnectModule() {
+function RewardDoorModule({
+  title,
+  punch,
+  soft,
+}: {
+  title: string;
+  punch: string;
+  soft: string;
+}) {
   return (
-    <div className="border-border bg-card overflow-hidden rounded-2xl border">
-      {WHY_CONNECT_PERKS.map((perk, i) => (
-        <div
-          key={perk.label}
-          className={cn(
-            "px-4 py-3",
-            i > 0 && "border-border border-t",
-          )}
-        >
-          <p className="text-[14px] leading-tight font-bold tracking-tight">
-            {perk.label}
-          </p>
-          <p className="text-muted-foreground mt-1 text-[12px] leading-snug">
-            {perk.support}
-          </p>
-        </div>
-      ))}
-    </div>
+    <article className="border-border bg-card rounded-2xl border p-4">
+      <h3 className="text-[14px] leading-tight font-extrabold tracking-tight">
+        {title}
+      </h3>
+      <p className="mt-2 text-[13px] leading-snug font-semibold">{punch}</p>
+      <p className="text-muted-foreground mt-1.5 text-[12px] leading-snug">
+        {soft}
+      </p>
+    </article>
   );
 }
 
-// ─── Current connection ────────────────────────────────────────────────────
+function ConnectModule({
+  handle,
+  code,
+  verifying,
+  canVerify,
+  onHandleChange,
+  onCodeChange,
+  onVerify,
+}: {
+  handle: string;
+  code: string;
+  verifying: boolean;
+  canVerify: boolean;
+  onHandleChange: (v: string) => void;
+  onCodeChange: (v: string) => void;
+  onVerify: () => void;
+}) {
+  return (
+    <section className="border-border bg-card rounded-2xl border p-4">
+      <h3 className="mb-3 text-[14px] leading-tight font-extrabold tracking-tight">
+        Connect Instagram
+      </h3>
+      <ol className="flex flex-col gap-3">
+        {[
+          <>
+            DM <span className="text-secondary font-semibold">@mesita.bot</span>{" "}
+            the word{" "}
+            <span className="text-secondary font-mono font-semibold">
+              VERIFY
+            </span>
+          </>,
+          <>Paste the 8-digit code here</>,
+        ].map((line, i) => (
+          <li
+            key={i}
+            className="flex items-start gap-3 text-[13px] leading-snug"
+          >
+            <span className="bg-secondary/15 text-secondary flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[11px] font-bold">
+              {i + 1}
+            </span>
+            <span>{line}</span>
+          </li>
+        ))}
+      </ol>
+      <label className="text-muted-foreground mt-3 block text-[11px] font-medium">
+        @handle
+      </label>
+      <input
+        value={handle}
+        onChange={(e) => onHandleChange(e.target.value)}
+        placeholder="@handle"
+        autoCapitalize="none"
+        autoCorrect="off"
+        spellCheck={false}
+        className="border-border bg-muted/30 placeholder:text-muted-foreground/70 h-12 w-full rounded-lg border px-5 text-center text-sm outline-none"
+        maxLength={31}
+      />
+      <label className="text-muted-foreground mt-2 block text-[11px] font-medium">
+        8-digit code
+      </label>
+      <input
+        value={code}
+        onChange={(e) => onCodeChange(e.target.value)}
+        placeholder="8-digit code"
+        className="border-border bg-muted/30 placeholder:text-muted-foreground/70 h-12 w-full rounded-lg border px-5 text-center text-sm outline-none"
+        maxLength={8}
+      />
+      <button
+        type="button"
+        onClick={onVerify}
+        disabled={!canVerify}
+        className="bg-pink-gradient mt-2 flex min-h-11 w-full items-center justify-center gap-2 rounded-lg py-3 text-sm font-semibold text-white transition disabled:opacity-60"
+      >
+        {verifying ? (
+          <Spinner size="sm" className="border-white/40 border-t-white" />
+        ) : (
+          <BadgeCheck className="h-4 w-4" />
+        )}
+        {verifying ? "Connecting…" : "Verify"}
+      </button>
+      <p className="text-muted-foreground mt-2 text-center text-[11px]">
+        We never ask for your password.
+      </p>
+    </section>
+  );
+}
 
 function CurrentConnectionCard() {
   const { handle } = useConsumerClass();
@@ -236,13 +254,11 @@ function CurrentConnectionCard() {
         <p className="truncate text-[14px] font-bold tracking-tight">
           {handle ? `@${handle}` : "Instagram connected"}
         </p>
-        <p className="text-muted-foreground text-[12px]">You’re in Social</p>
+        <p className="text-muted-foreground text-[12px]">Rewards unlocked</p>
       </div>
     </div>
   );
 }
-
-// ─── Demo emulator (footer ghost module) ───────────────────────────────────
 
 function InstagramEmulator() {
   const mock = useMockAccount();
