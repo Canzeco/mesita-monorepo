@@ -1,5 +1,4 @@
 import {
-  CalendarCheck,
   ChartLine,
   MapPin,
   Settings,
@@ -8,19 +7,14 @@ import {
   Tag,
 } from "lucide-react";
 
-// Tab order — Pato CEO review 2026-08-05 (MESITA-894):
-// place · promos · performance · reservations · settings · admin.
-//
-// Reservations is its own tab (Mesita Reservationist bookings + AI dial
-// lines only). Channel config stays on Settings. Performance is the
-// retrospective record (money, reputation, activity) — not booking ops.
-//
-// Admin stays fifth-and-last, admin-console-only (never port to business).
+// Tab order — Pato live 2026-08-05 (MESITA-900): place · promos ·
+// performance · settings · admin. Reservations list + AI dial lines live
+// inside Performance again (reverses MESITA-894's own-tab split). Channel
+// config stays on Settings. Admin stays last, admin-console-only.
 const UNIT_SECTIONS = [
   { id: "place", label: "Place", Icon: Store },
   { id: "promos", label: "Promos", Icon: Tag },
   { id: "performance", label: "Performance", Icon: ChartLine },
-  { id: "reservations", label: "Reservations", Icon: CalendarCheck },
   { id: "settings", label: "Settings", Icon: Settings },
   { id: "admin", label: "Admin", Icon: Shield },
 ] as const;
