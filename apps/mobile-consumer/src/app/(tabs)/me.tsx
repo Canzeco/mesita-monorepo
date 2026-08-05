@@ -39,7 +39,7 @@ import { Button } from '@/components/ui/Button';
 import { inboxPath } from '@/lib/consumer-route-contract';
 import { CLASSES } from '@/lib/consumer-classes';
 import { useEffectiveClass } from '@/lib/mock-class';
-import { ageFromBirthday, formatSex } from '@/lib/utils';
+import { ageFromBirthday, formatPhoneDisplay, formatSex } from '@/lib/utils';
 import { useAuth } from '@/providers/auth';
 
 type Sheet =
@@ -103,6 +103,7 @@ export default function MeScreen() {
             name={name}
             sexLabel={sexLabel}
             age={age}
+            phone={formatPhoneDisplay(profile?.phone)}
             avatarUrl={profile?.avatar_url}
             igConnected={igConnected}
             handle={handle ?? null}
