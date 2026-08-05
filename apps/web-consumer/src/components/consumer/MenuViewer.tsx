@@ -14,6 +14,7 @@ import {
   EmbedFallback,
   ImagePane,
 } from "@/components/consumer/menu-viewer-panes";
+import { PdfPane } from "@/components/consumer/pdf-pane";
 import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
 import { drivePreviewUrl, menuKindLabel, type MenuKind } from "@/lib/menu-url";
 import { cn } from "@/lib/utils";
@@ -58,10 +59,14 @@ function MenuViewerBody({
   const [zoom, setZoom] = useState(1);
   const [loading, setLoading] = useState(true);
   const [embedFailed, setEmbedFailed] = useState(false);
+  const [pageCount, setPageCount] = useState(0);
 
   const previewUrl =
     menu.kind === "drive" ? (drivePreviewUrl(menu.url) ?? menu.url) : menu.url;
   const kindLabel = menuKindLabel(menu.kind);
+  // Image and PDF panes render in-app and support pinch-free zoom controls;
+  // Drive stays an embed (Google's own /preview viewer handles paging).
+  const zoomable = menu.kind !== "drive" && !embedFailed;
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
@@ -79,6 +84,9 @@ function MenuViewerBody({
           </p>
           <p className="text-muted-foreground truncate text-[11px]">
             {kindLabel}
+            {menu.kind === "pdf" && pageCount > 0
+              ? ` · ${pageCount === 1 ? "1 page" : `${pageCount} pages`}`
+              : null}
             {menu.kind === "drive" ? " · reference preview" : null}
           </p>
         </div>
@@ -115,6 +123,19 @@ function MenuViewerBody({
           />
         ) : embedFailed ? (
           <EmbedFallback url={menu.url} kind={menu.kind} />
+        ) : menu.kind === "pdf" ? (
+          <PdfPane
+            url={menu.url}
+            zoom={zoom}
+            onReady={(pages) => {
+              setLoading(false);
+              setPageCount(pages);
+            }}
+            onError={() => {
+              setLoading(false);
+              setEmbedFailed(true);
+            }}
+          />
         ) : (
           <iframe
             key={previewUrl}
@@ -143,7 +164,7 @@ function MenuViewerBody({
         ) : null}
       </div>
 
-      {menu.kind === "image" && !embedFailed ? (
+      {zoomable ? (
         <div className="border-border flex shrink-0 items-center justify-center gap-3 border-t px-4 py-2.5">
           <button
             type="button"
