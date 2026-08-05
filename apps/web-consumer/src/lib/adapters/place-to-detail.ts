@@ -60,6 +60,11 @@ export function placeRowToDetail(row: Row, tags?: ResolvedTag[]): PlaceDetail {
 
   const activePremiumRate = num(row.premium_rate) ?? num(row.free_rate) ?? 0;
   const openState = computeOpenState(row.hours, str(row.timezone));
+  // Dates box: Created from created_at; Updated from enrichment (falls back
+  // to creation). last_updated_label stays an alias for lean Place / overview.
+  const createdLabel = relativeLabel(str(row.created_at)) ?? "recently";
+  const updatedLabel =
+    relativeLabel(str(row.enriched_at) ?? str(row.created_at)) ?? "recently";
 
   return {
     id: str(row.id) ?? str(row.slug) ?? "",
@@ -84,11 +89,9 @@ export function placeRowToDetail(row: Row, tags?: ResolvedTag[]): PlaceDetail {
       str(row.city) ??
       "",
     listing_type: listingType,
-    // Real freshness from the enrichment timestamp (falls back to the
-    // creation time, then to vague copy). Same formatter the card uses so
-    // "Updated 3 days ago" reads identically on the card and the detail.
-    last_updated_label:
-      relativeLabel(str(row.enriched_at) ?? str(row.created_at)) ?? "recently",
+    created_label: createdLabel,
+    updated_label: updatedLabel,
+    last_updated_label: updatedLabel,
     // Enrichment still in flight for the WHOLE pipeline (research → analysis →
     // contents). projects.content_status stays 'queued'/'generating' until the
     // contents stage lands 'ready' — never clear Enriching after research alone

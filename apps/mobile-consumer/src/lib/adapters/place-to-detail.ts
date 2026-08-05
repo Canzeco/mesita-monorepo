@@ -105,6 +105,9 @@ export function placeRowToDetail(
   const menus = menusFromRow(row);
   const zoneLabel = str(row.zone) ?? neighborhoodFromAddress(str(row.address));
   const popularTimes = arr<Record<string, unknown>>(row.popular_times);
+  const createdLabel = relativeLabel(str(row.created_at)) ?? 'recently';
+  const updatedLabel =
+    relativeLabel(str(row.enriched_at) ?? str(row.created_at)) ?? 'recently';
 
   return {
     id: str(row.id) ?? str(row.slug) ?? '',
@@ -126,8 +129,9 @@ export function placeRowToDetail(
     lng: num(row.lng) ?? null,
     zone: zoneLabel ?? str(row.city) ?? '',
     listing_type: listingType,
-    last_updated_label:
-      relativeLabel(str(row.enriched_at) ?? str(row.created_at)) ?? 'recently',
+    created_label: createdLabel,
+    updated_label: updatedLabel,
+    last_updated_label: updatedLabel,
     is_enriching:
       row.content_status === 'queued' || row.content_status === 'generating',
     photos,

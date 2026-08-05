@@ -21,10 +21,10 @@ import {
 import { RewardsBox } from "./place-detail/rewards";
 import { PlaceTabBar, type PlaceTab } from "./place-detail/tabs";
 import {
+  DatesBox,
   LinksBox,
   TagsBox,
   VerificationBox,
-  LastUpdatedBox,
 } from "./place-detail/tags-links-meta";
 
 // Pure presentation for the place detail surface, laid out like an
@@ -58,7 +58,7 @@ export function PlaceDetailBody({ place }: { place: PlaceDetail }) {
             <AboutBox text={place.long_description} name={place.name} />
             <TagsBox place={place} />
             <VerificationBox place={place} />
-            <LastUpdatedBox place={place} />
+            <DatesBox place={place} />
           </>
         )}
         {tab === "reviews" && (

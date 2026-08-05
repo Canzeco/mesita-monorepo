@@ -7,14 +7,20 @@ import { cn } from "@/lib/utils";
 // off the title into a dedicated chip in the profile summary (before the
 // verification chip, see PlaceDetailBody), so the name stays clean in the
 // top chrome.
+// decision: MESITA-927 — blue/amber verify disc beside the name (swipe parity).
+// ProfileSummary Verified chip stays; this is name-chrome only.
 
 export function PlaceDetailTitle({
   placeName,
+  listingType,
   className,
 }: {
   placeName: string;
+  listingType?: "partner" | "web";
   className?: string;
 }) {
+  const isVerified = listingType === "partner";
+
   return (
     <div
       className={cn(
@@ -23,6 +29,20 @@ export function PlaceDetailTitle({
       )}
     >
       <span className="truncate">{placeName}</span>
+      {listingType != null && (
+        // eslint-disable-next-line @next/next/no-img-element -- static brand SVG asset
+        <img
+          src={
+            isVerified
+              ? "/brand/verified-check.svg"
+              : "/brand/unverified-mark.svg"
+          }
+          alt={isVerified ? "Verified Partner" : "Not verified"}
+          width={16}
+          height={16}
+          className="h-4 w-4 shrink-0"
+        />
+      )}
     </div>
   );
 }

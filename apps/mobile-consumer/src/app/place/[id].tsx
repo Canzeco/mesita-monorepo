@@ -36,12 +36,30 @@ export default function PlaceDetailScreen() {
         >
           <ArrowLeft color="#260409" size={20} />
         </Pressable>
-        <Text
-          className="min-w-0 flex-1 font-display text-lg font-semibold text-foreground"
-          numberOfLines={1}
-        >
-          {place?.name ?? 'Place'}
-        </Text>
+        <View className="min-w-0 flex-1 flex-row items-center justify-center gap-1.5">
+          <Text
+            className="min-w-0 shrink font-display text-lg font-semibold text-foreground"
+            numberOfLines={1}
+          >
+            {place?.name ?? 'Place'}
+          </Text>
+          {place ? (
+            <View
+              className={`size-4 items-center justify-center rounded-full ${
+                place.listing_type === 'partner' ? 'bg-[#0EA5E9]' : 'bg-[#F59E0B]'
+              }`}
+              accessibilityLabel={
+                place.listing_type === 'partner'
+                  ? 'Verified Partner'
+                  : 'Not verified'
+              }
+            >
+              <Text className="text-[9px] font-bold text-white">
+                {place.listing_type === 'partner' ? '✓' : '?'}
+              </Text>
+            </View>
+          ) : null}
+        </View>
       </View>
 
       {query.isLoading ? (
