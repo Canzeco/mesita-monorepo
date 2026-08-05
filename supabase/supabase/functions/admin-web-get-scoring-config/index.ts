@@ -1,10 +1,7 @@
 // Supabase Edge Function — admin-web-get-scoring-config
 //
-// Returns the scoring model's saved hyperparameters from the
-// public.app_settings singleton (scoring_config jsonb). NULL means "following
-// code defaults" — the admin client merges with DEFAULT_SCORING_SETTINGS and
-// this EF never invents values. Shape validation lives client-side
-// (coerceScoringSettings) and on the write path; this is a plain read.
+// Compat alias of admin-web-get-lineup-config. scoring_config is NOT NULL with
+// locked v12 defaults since MESITA-737; coerce still runs client-side.
 //
 // Auth: caller's JWT email must be in public.super_admins.
 // verify_jwt = true gates non-bearer callers at the gateway.

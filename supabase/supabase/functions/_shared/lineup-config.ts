@@ -1,5 +1,6 @@
 // Load app_settings.scoring_config for Lineup (MESITA-718).
-// NULL / missing / garbage → code defaults (soft-migrate).
+// Missing / garbage / read failure → code defaults (soft-migrate).
+// Column is NOT NULL with locked defaults since MESITA-737.
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import {

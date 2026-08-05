@@ -42,24 +42,31 @@ export function SourcingConfigClient({
   const [saved, setSaved] = useState<SourcingConfig>(initialConfig);
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(loadError);
+  const [loadBlocked, setLoadBlocked] = useState(!!loadError);
   const [ok, setOk] = useState(false);
   const [updatedAt, setUpdatedAt] = useState<string | null>(initialUpdatedAt);
 
   // Re-fetch on mount so a client-side nav to the page shows the live row, not a
-  // stale server render. On failure we keep the initial/default config usable.
+  // stale server render. Success clears a failed-load Save block (MESITA-737).
   useEffect(() => {
     let active = true;
     (async () => {
       const r = await getSourcingConfig();
-      if (!active || !r.ok) return;
+      if (!active) return;
+      if (!r.ok) {
+        if (loadBlocked) setError(r.error);
+        return;
+      }
       setCfg(r.config);
       setSaved(r.config);
       setUpdatedAt(r.updatedAt);
       setError(null);
+      setLoadBlocked(false);
     })();
     return () => {
       active = false;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- seed once on mount
   }, []);
 
   const dirty = useMemo(
@@ -88,6 +95,7 @@ export function SourcingConfigClient({
   };
 
   const save = () => {
+    if (loadBlocked) return;
     setError(null);
     startTransition(async () => {
       const r = await updateSourcingConfig(cfg);
@@ -249,7 +257,13 @@ export function SourcingConfigClient({
         {enforcedLiveCopy()} Hover a channel or family chip for details.
       </p>
 
-      <SaveRow pending={pending} dirty={dirty} ok={ok} onClick={save} />
+      <SaveRow
+        pending={pending}
+        dirty={dirty}
+        ok={ok}
+        onClick={save}
+        loadError={loadBlocked ? (error ?? "Failed to load Sourcing config") : null}
+      />
       {error && <ErrorNote message={error} />}
     </SectionCard>
   );

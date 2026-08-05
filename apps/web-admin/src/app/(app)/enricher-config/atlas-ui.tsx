@@ -176,18 +176,21 @@ export function SaveRow({
   dirty,
   ok,
   onClick,
+  loadError,
 }: {
   pending: boolean;
   dirty: boolean;
   ok: boolean;
   onClick: () => void;
+  /** When set, Save stays disabled — never overwrite a live singleton from a failed load (MESITA-737). */
+  loadError?: string | null;
 }) {
   return (
     <div className="mt-5 flex items-center gap-3">
       <button
         type="button"
         onClick={onClick}
-        disabled={pending || !dirty}
+        disabled={pending || !dirty || !!loadError}
         className="bg-foreground text-background inline-flex h-10 items-center gap-2 rounded-full px-5 text-sm font-semibold transition hover:opacity-90 disabled:opacity-50"
       >
         {pending ? (

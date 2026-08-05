@@ -1,9 +1,18 @@
+import { getMemoConfig } from "../actions";
 import { MemoConfigClient } from "../MemoConfigClient";
+import { DEFAULT_MEMO_CONFIG } from "../types";
 
-// Memo Config · Config — the persona + models form. MemoConfigClient self-loads
-// on mount (no server seed today; the load-error gating is tracked in MESITA-737).
+// Memo Config · Config — persona + models. Server-seeds like the other blob
+// editors so a failed GET surfaces as loadError and Save stays blocked
+// (MESITA-737) — never silently edit code defaults over the live singleton.
 export const dynamic = "force-dynamic";
 
-export default function MemoConfigPage() {
-  return <MemoConfigClient />;
+export default async function MemoConfigPage() {
+  const res = await getMemoConfig();
+  return (
+    <MemoConfigClient
+      initialConfig={res.ok ? res.data : DEFAULT_MEMO_CONFIG}
+      loadError={res.ok ? null : res.error}
+    />
+  );
 }

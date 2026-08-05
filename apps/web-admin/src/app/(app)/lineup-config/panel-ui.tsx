@@ -327,6 +327,7 @@ export function BoxSaveBar({
   saving,
   savedOk,
   error,
+  loadError,
   onSave,
   onCancel,
   onReset,
@@ -335,10 +336,14 @@ export function BoxSaveBar({
   saving: boolean;
   savedOk: boolean;
   error?: string | null;
+  /** Failed initial GET — Save stays disabled (MESITA-737). */
+  loadError?: string | null;
   onSave: () => void;
   onCancel: () => void;
   onReset?: () => void;
 }) {
+  const blocked = !!loadError;
+  const banner = loadError ?? error ?? null;
   return (
     <div className="border-border/60 mt-4 flex min-h-8 flex-wrap items-center justify-between gap-2 border-t pt-3">
       <span className="flex items-center gap-3 text-xs" aria-live="polite">
@@ -346,30 +351,30 @@ export function BoxSaveBar({
           <button
             type="button"
             onClick={onReset}
-            disabled={saving}
+            disabled={saving || blocked}
             className="text-muted-foreground hover:text-foreground text-[12px] font-semibold underline-offset-2 transition hover:underline disabled:pointer-events-none disabled:opacity-40"
           >
             Reset to defaults
           </button>
         ) : null}
-        {dirty && !saving ? (
+        {!blocked && dirty && !saving ? (
           <span className="text-muted-foreground inline-flex items-center gap-1.5">
             <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-amber-500" aria-hidden />
             Unsaved
           </span>
-        ) : savedOk && !saving ? (
+        ) : !blocked && savedOk && !saving ? (
           <span className="text-muted-foreground">Saved ✓</span>
         ) : saving ? (
           <span className="text-muted-foreground">Saving…</span>
         ) : null}
-        {error ? <span className="font-medium text-red-600">{error}</span> : null}
+        {banner ? <span className="font-medium text-red-600">{banner}</span> : null}
       </span>
-      {dirty || saving || error ? (
+      {dirty || saving || error || blocked ? (
       <div className="flex shrink-0 items-center gap-2">
         <button
           type="button"
           onClick={onCancel}
-          disabled={saving || !dirty}
+          disabled={saving || !dirty || blocked}
           className="border-border/70 text-foreground/70 hover:bg-muted hover:text-foreground inline-flex h-8 items-center rounded-full border px-3.5 text-[13px] font-semibold transition active:scale-[0.98] disabled:pointer-events-none disabled:opacity-40"
         >
           Cancel
@@ -377,10 +382,10 @@ export function BoxSaveBar({
         <button
           type="button"
           onClick={onSave}
-          disabled={saving || !dirty}
+          disabled={saving || !dirty || blocked}
           className={
             "inline-flex h-8 items-center gap-2 rounded-full px-4 text-[13px] font-semibold transition " +
-            (saving || dirty
+            (saving || (dirty && !blocked)
               ? "bg-pink-gradient shadow-save text-white hover:brightness-105 active:scale-[0.98] disabled:opacity-80"
               : "bg-muted text-muted-foreground")
           }
