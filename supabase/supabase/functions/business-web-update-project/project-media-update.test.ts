@@ -1,7 +1,7 @@
 import { assertEquals } from "jsr:@std/assert";
 import { applyMediaUpdates } from "./project-media-update.ts";
 
-Deno.test("products.menu: sanitizes name/url and keeps sibling keys", async () => {
+Deno.test("products.menu: sanitizes name/url and keeps sibling keys", () => {
   const update: Record<string, unknown> = {};
   const res = applyMediaUpdates(
     {
@@ -25,8 +25,10 @@ Deno.test("products.menu: sanitizes name/url and keeps sibling keys", async () =
       { name: "Wine", url: "https://example.com/wine.pdf" },
     ],
   });
-  assertEquals(update.menus, update.products &&
-      (update.products as { menu: unknown }).menu);
+  assertEquals(
+    update.menus,
+    update.products && (update.products as { menu: unknown }).menu,
+  );
 });
 
 Deno.test("products.menu: rejects non-https urls", async () => {
