@@ -569,7 +569,7 @@ function MenuItemCard({
               </>
             ) : (
               <p className="text-muted-foreground text-xs">
-                JPG, PNG, WEBP, AVIF, or PDF
+                JPG, PNG, WEBP, AVIF, or PDF · max 8 MB
               </p>
             )}
           </div>
