@@ -39,7 +39,7 @@ export const RESERVATIONIST_KB_TEXT = [
   `## Qué es Mesita`,
   `Mesita es una app de IA para restaurantes, cafés y nightlife en la ciudad. Ayuda a comensales a descubrir dónde salir, reserva la mesa con un agente de IA, y en lugares Verificados ofrece descuentos en la cuenta (el comensal paga al lugar; Mesita nunca toca el dinero).`,
   ``,
-  `- Clases de comensal: Standard (gratis) · Premium (MX$100/mes) · Influencer (1,000+ seguidores en Instagram, automático) · Aura (solo por invitación de Mesita).`,
+  `- Clases de comensal: Standard (gratis) · Premium (MX$100/mes) · Influencer (2,000+ seguidores en Instagram, automático) · Aura (solo por invitación de Mesita).`,
   `- Lugares Listed = en el catálogo, reservables. Lugares Verified = membresía + programa de recompensas + consola.`,
   `- Memo recomienda; el Reservationist reserva. Atlas/Enricher/Lineup alimentan el catálogo.`,
   ``,

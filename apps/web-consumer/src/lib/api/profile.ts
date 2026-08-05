@@ -178,7 +178,7 @@ export async function apiDeleteConsumerAccount(
 // ─── Instagram claim ─────────────────────────────────────────────────────
 
 // consumer-web-claim-instagram: the social door into Influencer (segments
-// v6). Crossing classes.follower_threshold (1,000) grants Influencer with
+// v6). Crossing classes.follower_threshold (2,000) grants Influencer with
 // origin "instagram"; below the threshold an instagram-origin class falls
 // back (live subscription → premium, else standard). The handle is persisted
 // to consumers.instagram_handle. `tier` echoes the resulting class key.

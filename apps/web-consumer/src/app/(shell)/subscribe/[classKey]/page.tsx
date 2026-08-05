@@ -106,7 +106,7 @@ export default function SubscribePage() {
                 <Instagram className="h-3.5 w-3.5" />
               </span>
               <span>
-                <span className="font-semibold">Instagram</span> — 1,000+
+                <span className="font-semibold">Instagram</span> — 2,000+
                 followers. Influencer, free, automatic. Story Bonus unlocks
                 for any connected account.
               </span>

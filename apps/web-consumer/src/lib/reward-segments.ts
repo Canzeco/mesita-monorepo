@@ -78,7 +78,7 @@ export const REWARD_SEGMENTS: readonly RewardSegment[] = [
     name: "Influencer",
     nameEs: "Influencer",
     kind: "class",
-    blurb: "1,000+ Instagram followers — automatic class upgrade.",
+    blurb: "2,000+ Instagram followers — automatic class upgrade.",
     rates: { zero: 0, conservative: 5, aggressive: 15, dominant: 25 },
   },
   {

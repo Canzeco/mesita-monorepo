@@ -8,7 +8,7 @@ function Premium() {
   const doors: { title: string; body: string; Icon: LucideIcon }[] = [
     {
       title: "Instagram",
-      body: "Gratis. Verifica una cuenta con más de 1,000 seguidores y sube una historia etiquetando al lugar para liberar cada recompensa.",
+      body: "Gratis. Verifica una cuenta con más de 2,000 seguidores y sube una historia etiquetando al lugar para liberar cada recompensa.",
       Icon: Instagram,
     },
     {

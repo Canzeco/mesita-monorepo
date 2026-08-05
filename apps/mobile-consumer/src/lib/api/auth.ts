@@ -138,7 +138,7 @@ export function apiUpdateConsumerProfile(
 }
 
 // consumer-web-claim-instagram: the social door into Influencer (segments
-// v6). Crossing classes.follower_threshold (1,000) grants Influencer with
+// v6). Crossing classes.follower_threshold (2,000) grants Influencer with
 // origin "instagram"; below the threshold an instagram-origin class falls
 // back (live subscription → premium, else standard). `tier` echoes the
 // resulting class key.

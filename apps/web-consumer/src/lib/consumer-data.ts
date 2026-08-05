@@ -7,7 +7,7 @@ import {
 } from "lucide-react";
 
 // Ascending class ladder (segments v6): standard (default) < premium (paid)
-// < influencer (Instagram ≥ 1,000 followers, automatic) < aura (invite-only
+// < influencer (Instagram ≥ 2,000 followers, automatic) < aura (invite-only
 // presence class). "class" is the consumer membership axis — distinct from a
 // business's billing "plan" (free/pro/ultra).
 const CLASS_ORDER = ["standard", "premium", "influencer", "aura"] as const;
@@ -120,11 +120,11 @@ export const CLASSES: {
   {
     id: "influencer",
     label: "Influencer",
-    req: "1,000+ IG followers",
+    req: "2,000+ IG followers",
     priceMxn: 0,
     // Mirrors classes.follower_threshold in the DB — the EF grants off that
     // row, so this constant is display-only and must track it.
-    followerThreshold: 1_000,
+    followerThreshold: 2_000,
     // Class identity = reach door. Story Bonus is separate (MESITA-909):
     // any connected Instagram unlocks it, not just Influencer.
     reward: "HIGH discount · Story when connected",
