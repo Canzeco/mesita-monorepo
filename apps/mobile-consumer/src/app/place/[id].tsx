@@ -43,20 +43,12 @@ export default function PlaceDetailScreen() {
           >
             {place?.name ?? 'Place'}
           </Text>
-          {place ? (
+          {place?.listing_type === 'partner' ? (
             <View
-              className={`size-4 items-center justify-center rounded-full ${
-                place.listing_type === 'partner' ? 'bg-[#0EA5E9]' : 'bg-[#F59E0B]'
-              }`}
-              accessibilityLabel={
-                place.listing_type === 'partner'
-                  ? 'Verified Partner'
-                  : 'Not verified'
-              }
+              className="size-4 items-center justify-center rounded-full bg-[#0EA5E9]"
+              accessibilityLabel="Verified Partner"
             >
-              <Text className="text-[9px] font-bold text-white">
-                {place.listing_type === 'partner' ? '✓' : '?'}
-              </Text>
+              <Text className="text-[9px] font-bold text-white">✓</Text>
             </View>
           ) : null}
         </View>

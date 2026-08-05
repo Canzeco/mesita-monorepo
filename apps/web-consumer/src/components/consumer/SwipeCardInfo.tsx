@@ -48,9 +48,8 @@ export function SwipeCardInfo({
       : null;
   const statusLabel = getOpeningStatusLabel(place);
   const isOpen = place.open_now === true;
-  // decision: Pato — no Verified/Not Verified tag on swipe; always a disc
-  // beside the name — blue check (partner) or muted slate "?" (not verified).
-  // decision: Pato — not amber; amber read as warning (MESITA-928).
+  // decision: Pato (MESITA-933) — verified = blue check disc beside name;
+  // unverified = no disc, "Not Verified" tag in the chip row (black / gray).
   const isVerified = place.listing_type === "partner";
 
   return (
@@ -66,18 +65,16 @@ export function SwipeCardInfo({
         <span className={cn("min-w-0", compact && "truncate")}>
           {place.name}
         </span>
-        {/* eslint-disable-next-line @next/next/no-img-element -- static brand SVG asset */}
-        <img
-          src={
-            isVerified
-              ? "/brand/verified-check.svg"
-              : "/brand/unverified-mark.svg"
-          }
-          alt={isVerified ? "Verified Partner" : "Not verified"}
-          width={18}
-          height={18}
-          className="h-[18px] w-[18px] shrink-0 drop-shadow-[0_1px_4px_rgba(0,0,0,0.45)]"
-        />
+        {isVerified && (
+          // eslint-disable-next-line @next/next/no-img-element -- static brand SVG asset
+          <img
+            src="/brand/verified-check.svg"
+            alt="Verified Partner"
+            width={18}
+            height={18}
+            className="h-[18px] w-[18px] shrink-0 drop-shadow-[0_1px_4px_rgba(0,0,0,0.45)]"
+          />
+        )}
       </h2>
 
       <div
@@ -107,6 +104,18 @@ export function SwipeCardInfo({
               className="h-3 w-3 border-emerald-200/40 border-t-emerald-100"
             />
             Enriching
+          </span>
+        )}
+        {!isVerified && (
+          <span
+            className={cn(
+              "inline-flex items-center gap-1.5 rounded-md border border-white/15 bg-black font-semibold whitespace-nowrap text-neutral-300",
+              compact
+                ? "px-[9px] py-[3px] text-[11px]"
+                : "px-2.5 py-1 text-[11.5px]",
+            )}
+          >
+            Not Verified
           </span>
         )}
         {categoryLabel && (

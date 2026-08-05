@@ -105,19 +105,16 @@ export function PlaceSwipeCard({ place: rawPlace }: { place: Place }) {
           >
             {place.name}
           </Text>
-          {/* decision: Pato — always a disc beside the name: blue ✓ partner,
-              muted slate ? not verified (pair to web verified-check /
-              unverified-mark). Not amber — reads as warning (MESITA-928). */}
-          <View
-            className={`size-[18px] items-center justify-center rounded-full ${
-              isVerified ? 'bg-[#0EA5E9]' : 'bg-[#94A3B8]'
-            }`}
-            accessibilityLabel={isVerified ? 'Verified Partner' : 'Not verified'}
-          >
-            <Text className="text-[10px] font-bold text-white">
-              {isVerified ? '✓' : '?'}
-            </Text>
-          </View>
+          {/* decision: MESITA-933 — blue ✓ disc only when verified partner.
+              Unverified: no disc; "Not Verified" tag in the chip row. */}
+          {isVerified ? (
+            <View
+              className="size-[18px] items-center justify-center rounded-full bg-[#0EA5E9]"
+              accessibilityLabel="Verified Partner"
+            >
+              <Text className="text-[10px] font-bold text-white">✓</Text>
+            </View>
+          ) : null}
         </View>
 
         <View className="flex-row flex-wrap items-center gap-1.5">
@@ -131,6 +128,13 @@ export function PlaceSwipeCard({ place: rawPlace }: { place: Place }) {
               <ActivityIndicator color="#ecfdf5" size="small" />
               <Text className="text-[11px] font-semibold text-emerald-50">
                 Enriching
+              </Text>
+            </View>
+          ) : null}
+          {!isVerified ? (
+            <View className="flex-row items-center rounded-md border border-white/15 bg-black px-[9px] py-[3px]">
+              <Text className="text-[11px] font-semibold text-neutral-300">
+                Not Verified
               </Text>
             </View>
           ) : null}
