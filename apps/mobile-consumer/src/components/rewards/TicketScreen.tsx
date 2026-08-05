@@ -42,6 +42,7 @@ import {
   TicketReviewForm,
   type TicketReviewDraft,
 } from '@/components/rewards/TicketReviewForm';
+import { COLORS } from '@/constants/brand';
 import { formatCurrency, submitTicketReview } from '@/lib/api/pay';
 import {
   ACTIVE_TICKET_STATUSES,
@@ -743,14 +744,16 @@ export function TicketScreen({
 
         {/* The report button (v3c, MESITA-851) — live for the WHOLE ticket
             and after it closes. It must READ as an action: an outlined pill
-            that names what it does (web parity), not a muted caption. */}
+            that names what it does (web parity), not a muted caption. Sizes
+            track the web pill exactly — min-h-11 (44, also the iOS touch
+            floor), 13px label, max-w-[17rem] hint. */}
         {!cancelled ? (
           reported ? (
             <View
               className="flex-row items-center self-center rounded-full border border-border bg-muted/40 px-4"
-              style={{ minHeight: 40, gap: 8 }}
+              style={{ minHeight: 44, gap: 8 }}
             >
-              <Flag size={14} color="#775254" />
+              <Flag size={14} color={COLORS.mutedForeground} />
               <Text
                 className="font-semibold text-muted-foreground"
                 style={{ fontSize: 12.5 }}
@@ -759,27 +762,27 @@ export function TicketScreen({
               </Text>
             </View>
           ) : (
-            <View className="items-center" style={{ gap: 6 }}>
+            <View className="items-center" style={{ gap: 8 }}>
               <Pressable
                 onPress={() => setReportOpen(true)}
                 accessibilityRole="button"
                 className="flex-row items-center rounded-full border border-border bg-card px-4 active:scale-[0.99]"
-                style={{ minHeight: 40, gap: 8 }}
+                style={{ minHeight: 44, gap: 8 }}
               >
-                <Flag size={14} color="#e6000c" />
+                <Flag size={14} color={COLORS.destructive} />
                 <Text
                   className="font-bold text-foreground"
-                  style={{ fontSize: 12.5 }}
+                  style={{ fontSize: 13 }}
                 >
                   Report a problem
                 </Text>
               </Pressable>
               <Text
                 className="text-center text-muted-foreground"
-                style={{ fontSize: 10.5, lineHeight: 14, maxWidth: 300 }}
+                style={{ fontSize: 11, lineHeight: 15, maxWidth: 272 }}
               >
-                Discount not honored, wrong total, anything off — a real
-                person at Mesita reads it.
+                Discount not honored, wrong total, anything off — a real person
+                at Mesita reads it.
               </Text>
             </View>
           )
