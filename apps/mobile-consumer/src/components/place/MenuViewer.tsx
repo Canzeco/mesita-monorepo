@@ -19,6 +19,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { MenuWebPane } from '@/components/place/MenuWebPane';
 import {
   drivePreviewUrl,
   menuKindLabel,
@@ -55,6 +56,8 @@ function MenuViewerBody({
   const insets = useSafeAreaInsets();
   const [zoom, setZoom] = useState(1);
   const [loading, setLoading] = useState(true);
+  const [embedFailed, setEmbedFailed] = useState(false);
+  const [pageCount, setPageCount] = useState(0);
   const kindLabel = menuKindLabel(menu.kind);
 
   const openExternal = async () => {
@@ -91,6 +94,9 @@ function MenuViewerBody({
             </Text>
             <Text className="text-[11px] text-muted-foreground">
               {kindLabel}
+              {menu.kind === 'pdf' && pageCount > 0
+                ? ` · ${pageCount === 1 ? '1 page' : `${pageCount} pages`}`
+                : null}
               {menu.kind === 'drive' ? ' · reference preview' : null}
             </Text>
           </View>
@@ -131,7 +137,8 @@ function MenuViewerBody({
                 onError={() => setLoading(false)}
               />
             </ScrollView>
-          ) : (
+          ) : embedFailed ? (
+            // In-app visualization failed — the browser sheet still works.
             <View className="flex-1 items-center justify-center gap-4 px-8">
               <View className="size-14 items-center justify-center rounded-2xl bg-amber-50">
                 <FileText color="#d97706" size={24} />
@@ -154,9 +161,24 @@ function MenuViewerBody({
                 <ExternalLink color="#fffaf8" size={16} />
               </Pressable>
             </View>
+          ) : (
+            // Web MenuViewer parity — PDFs render page cards via pdf.js in a
+            // WebView shell (pinch to zoom); Drive shows Google's /preview.
+            <MenuWebPane
+              kind={menu.kind}
+              url={menu.url}
+              onReady={(pages) => {
+                setLoading(false);
+                setPageCount(pages);
+              }}
+              onError={() => {
+                setLoading(false);
+                setEmbedFailed(true);
+              }}
+            />
           )}
 
-          {loading && menu.kind === 'image' ? (
+          {loading && !embedFailed ? (
             <View className="absolute inset-0 items-center justify-center gap-2">
               <ActivityIndicator color="#fb2b7b" size="large" />
               <Text className="text-xs font-medium text-muted-foreground">

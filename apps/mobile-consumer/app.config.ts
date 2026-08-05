@@ -41,7 +41,10 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     name: 'Mesita',
     slug: 'mesita-mobile-consumer',
     owner: 'canzeco',
-    version: '1.0.0',
+    // 1.0.1: react-native-webview added (in-app menu viewer). appVersion IS
+    // the runtimeVersion — the bump keeps OTA updates that reference the new
+    // native module away from 1.0.0 binaries that don't ship it.
+    version: '1.0.1',
     orientation: 'portrait',
     icon: './assets/images/icon.png',
     scheme: 'mesita',
