@@ -11,30 +11,17 @@ import { GlobalPerformanceClient } from "../../../global-performance/GlobalPerfo
 import { ACTIVITY_TYPE_ORDER } from "../../../global-performance/notification-config";
 import { PerformanceHeadline } from "../../sections/PerformanceHeadline";
 import { ReputationStrip } from "../../sections/ReputationStrip";
-import { ReservationsList } from "../../sections/ReservationsList";
 import { SectionCard, Spinner } from "../../ui";
 import { useUnitPlace } from "../../UnitPlaceContext";
 
-// Per-place Performance. FOUR cards, in the order the question is answered
-// (Pato, 2026-08-03: "make the performance page simpler by far. remove lots of
-// stuff … just focus on the simple important stuff to know"):
+// Per-place Performance — the retrospective record (MESITA-855 + MESITA-894):
 //
-//   1. Is Mesita working here? — the money + the Saved→Visited→Paid funnel.
-//   2. Reputation             — five numbers on one strip.
-//   3. Reservations           — a plain list + the AI line to call.
-//   4. Activity               — the raw event feed, for when a number
-//                               surprises you and you want the receipts.
+//   1. Is Mesita working here? — money + Saved→Visited→Closed funnel.
+//   2. Reputation             — Mesita / Google / IG / FB scores.
+//   3. Activity               — consumer event feed (receipts).
 //
-// Removed in this pass: the 8-tile KPI grid, the three review cards, and the
-// story/review screenshot grid. What replaced the tiles matters more than the
-// tile count — the headline numbers now come from REAL aggregates
-// (admin-web-get-place-activity → stats) instead of being summed from a
-// capped page of the event feed, where "influenced spend" silently meant
-// "…of the last 150 events".
-//
-// Layout: one max-w-4xl column, one card per row. The earlier two-column
-// masonry existed to fit six cards; with four there is nothing to pack, and a
-// single column reads top-to-bottom in the order above.
+// Mesita booking ops moved to the Reservations tab (MESITA-894). Channel
+// routing stays on Settings. Layout: one max-w-4xl column.
 export default function UnitPerformancePage() {
   const { place } = useUnitPlace();
   const [feed, setFeed] = useState<NotificationsPayload | null>(null);
@@ -77,8 +64,7 @@ export default function UnitPerformancePage() {
       ) : activity ? (
         <>
           <PerformanceHeadline stats={activity.stats} />
-          <ReputationStrip place={place} stats={activity.stats} />
-          <ReservationsList activity={activity} />
+          <ReputationStrip place={place} />
         </>
       ) : (
         <Spinner label="Loading…" />

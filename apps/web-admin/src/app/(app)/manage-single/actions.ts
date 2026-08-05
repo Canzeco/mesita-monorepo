@@ -272,12 +272,13 @@ export type PlaceActivity = {
 
 export async function getPlaceActivity(
   projectId: string,
+  opts?: { limit?: number },
 ): Promise<Result<PlaceActivity>> {
   // EF returns `closed` (canonical) and may still echo `paid` as a compat alias.
   type EfStats = PlaceStats & { paid?: number };
   const r = await efInvoke<Omit<PlaceActivity, "stats"> & { stats: EfStats }>(
     "admin-web-get-place-activity",
-    { placeId: projectId },
+    { placeId: projectId, limit: opts?.limit },
   );
   if (!r.ok) return { ok: false, error: r.error };
   const s = r.data.stats;

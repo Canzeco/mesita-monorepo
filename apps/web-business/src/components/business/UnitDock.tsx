@@ -10,6 +10,7 @@ import {
   Store,
   Gift,
   BarChart3,
+  CalendarCheck,
   Settings2,
   type LucideIcon,
 } from "lucide-react";
@@ -24,19 +25,19 @@ import {
 import { resolveActiveUnitId } from "@/lib/active-unit";
 
 type NavItem = {
-  slug: "place" | "promos" | "performance" | "settings";
+  slug: "place" | "promos" | "performance" | "reservations" | "settings";
   Icon: LucideIcon;
   label: string;
 };
 
-// Four tabs, and only four (MESITA-843). There is no scan tab: Mesita Check is
-// the whole staff surface, so a check is worked on the public check page or
-// nowhere. Team, reservation routing, the Check PIN and billing all live under
-// Settings rather than each claiming a tab.
+// Five tabs (MESITA-894). Mesita Check stays off the dock (public check page).
+// Reservationist bookings get their own tab; channel routing + Check PIN +
+// team stay under Settings.
 const NAV_ITEMS: NavItem[] = [
   { slug: "place", Icon: Store, label: "Place" },
   { slug: "promos", Icon: Gift, label: "Promos" },
   { slug: "performance", Icon: BarChart3, label: "Performance" },
+  { slug: "reservations", Icon: CalendarCheck, label: "Reservations" },
   { slug: "settings", Icon: Settings2, label: "Settings" },
 ];
 
@@ -67,7 +68,13 @@ export function UnitDock() {
     if (pathname === BUSINESS_ROUTES.central) return "place";
     const match = pathname.match(/^\/unit\/[^/]+\/([^/]+)/)?.[1];
     if (match === "place" || match === "promos") return match;
-    if (match === "performance" || match === "settings") return match;
+    if (
+      match === "performance" ||
+      match === "reservations" ||
+      match === "settings"
+    ) {
+      return match;
+    }
     return null;
   }, [pathname]);
 

@@ -1,6 +1,6 @@
 "use client";
 
-import type { AdminPlace, PlaceStats } from "../actions";
+import type { AdminPlace } from "../actions";
 
 // Performance → reputation, as a single strip of numbers.
 //
@@ -14,6 +14,9 @@ import type { AdminPlace, PlaceStats } from "../actions";
 // The Google review-text cap (Apify, 100/place) went with the list it
 // described; `google_review_count` below is Google's own aggregate and has
 // never been capped.
+//
+// Reservations count left this strip in MESITA-894 — booking ops live on
+// the Reservations tab.
 
 function num(v: unknown): number | null {
   if (typeof v === "number" && Number.isFinite(v)) return v;
@@ -56,13 +59,7 @@ function Cell({
   );
 }
 
-export function ReputationStrip({
-  place,
-  stats,
-}: {
-  place: AdminPlace;
-  stats: PlaceStats;
-}) {
+export function ReputationStrip({ place }: { place: AdminPlace }) {
   const mesitaCount = num(place.mesita_review_count) ?? 0;
   // Stars only exist once a guest has actually reviewed — an unreviewed place
   // must never render a fabricated 5.0.
@@ -98,11 +95,6 @@ export function ReputationStrip({
           label="Facebook"
           value={fb != null ? compact(fb) : "—"}
           hint={fb != null ? "followers" : "not linked"}
-        />
-        <Cell
-          label="Reservations"
-          value={compact(stats.reservations)}
-          hint="requested"
         />
       </div>
     </section>
