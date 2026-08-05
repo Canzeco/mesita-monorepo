@@ -6,7 +6,7 @@ import { ProductsTab } from '@/components/place/ProductsTab';
 import type { PlaceDetail } from '@/lib/types/place-detail';
 import { HoursBox, LocationBox, MediaBox } from './place-detail/hours-location';
 import { LinksBox } from './place-detail/links';
-import { LastUpdatedBox, TagsBox, VerificationBox } from './place-detail/meta';
+import { DatesBox, TagsBox, VerificationBox } from './place-detail/meta';
 import { ProfileSummary } from './place-detail/profile';
 import { GoogleReviewsBox, MesitaReviewsBox, ReviewsSummaryBox } from './place-detail/reviews';
 import { RewardsBox } from './place-detail/rewards';
@@ -57,7 +57,7 @@ export function PlaceDetailBody({
             <AboutBox text={place.long_description} name={place.name} />
             <TagsBox place={place} />
             <VerificationBox place={place} />
-            <LastUpdatedBox place={place} />
+            <DatesBox place={place} />
           </>
         ) : null}
         {tab === 'reviews' ? (

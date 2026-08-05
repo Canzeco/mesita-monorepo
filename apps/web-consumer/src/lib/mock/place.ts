@@ -41,6 +41,11 @@ export type PlaceDetail = {
   lng: number | null;
   zone: string;
   listing_type: "partner" | "web";
+  /** Relative "Created · …" source (from places.created_at). */
+  created_label: string;
+  /** Relative "Updated · …" source (enriched_at ?? created_at). */
+  updated_label: string;
+  /** Alias of updated_label — kept for lean Place / overview callers. */
   last_updated_label: string;
   // True while the Enricher is still building this place's profile across the
   // FULL pipeline (research → analysis → contents). Driven by

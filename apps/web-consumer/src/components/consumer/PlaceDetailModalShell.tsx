@@ -21,7 +21,7 @@ export function PlaceDetailModalShell({
   children,
   placeId: _placeId,
   placeName,
-  listingType: _listingType,
+  listingType,
 }: {
   children: React.ReactNode;
   placeId: string;
@@ -31,7 +31,13 @@ export function PlaceDetailModalShell({
   return (
     <>
       <SlideOverHeader
-        title={<PlaceDetailTitle placeName={placeName} className="flex-none" />}
+        title={
+          <PlaceDetailTitle
+            placeName={placeName}
+            listingType={listingType}
+            className="flex-none"
+          />
+        }
       />
       {/*
         `min-h-0` is the load-bearing class here: without it, a flex-1 child

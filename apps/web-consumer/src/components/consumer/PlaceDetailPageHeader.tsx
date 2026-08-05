@@ -22,7 +22,7 @@ import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 export function PlaceDetailPageHeader({
   placeId: _placeId,
   placeName,
-  listingType: _listingType,
+  listingType,
   backHref = CONSUMER_ROUTES.home,
 }: {
   placeId: string;
@@ -39,7 +39,7 @@ export function PlaceDetailPageHeader({
       >
         <ArrowLeft className="h-4 w-4" />
       </Link>
-      <PlaceDetailTitle placeName={placeName} />
+      <PlaceDetailTitle placeName={placeName} listingType={listingType} />
       <div className="h-9 w-9 shrink-0" aria-hidden />
     </header>
   );
