@@ -118,6 +118,7 @@ export type Database = {
       }
       app_settings: {
         Row: {
+          agents_config: Json
           atlas_analyze_google_images: number
           atlas_analyze_instagram_images: number
           atlas_discover_facebook_n: number
@@ -141,6 +142,7 @@ export type Database = {
           auto_verify_ai_call: boolean
           auto_verify_ai_email: boolean
           auto_verify_video: boolean
+          create_places_as_verified: boolean
           id: number
           memo_greeting: string
           memo_instructions: string
@@ -148,11 +150,16 @@ export type Database = {
           memo_perplexity_model: string
           memo_provider: string
           memo_web_grounding: boolean
+          models_config: Json
+          reservations_config: Json
+          rewards_config: Json
+          scoring_config: Json
           sourcing_config: Json
           updated_at: string
           updated_by: string | null
         }
         Insert: {
+          agents_config?: Json
           atlas_analyze_google_images?: number
           atlas_analyze_instagram_images?: number
           atlas_discover_facebook_n?: number
@@ -176,6 +183,7 @@ export type Database = {
           auto_verify_ai_call?: boolean
           auto_verify_ai_email?: boolean
           auto_verify_video?: boolean
+          create_places_as_verified?: boolean
           id?: number
           memo_greeting?: string
           memo_instructions?: string
@@ -183,11 +191,16 @@ export type Database = {
           memo_perplexity_model?: string
           memo_provider?: string
           memo_web_grounding?: boolean
+          models_config?: Json
+          reservations_config?: Json
+          rewards_config?: Json
+          scoring_config?: Json
           sourcing_config?: Json
           updated_at?: string
           updated_by?: string | null
         }
         Update: {
+          agents_config?: Json
           atlas_analyze_google_images?: number
           atlas_analyze_instagram_images?: number
           atlas_discover_facebook_n?: number
@@ -211,6 +224,7 @@ export type Database = {
           auto_verify_ai_call?: boolean
           auto_verify_ai_email?: boolean
           auto_verify_video?: boolean
+          create_places_as_verified?: boolean
           id?: number
           memo_greeting?: string
           memo_instructions?: string
@@ -218,6 +232,10 @@ export type Database = {
           memo_perplexity_model?: string
           memo_provider?: string
           memo_web_grounding?: boolean
+          models_config?: Json
+          reservations_config?: Json
+          rewards_config?: Json
+          scoring_config?: Json
           sourcing_config?: Json
           updated_at?: string
           updated_by?: string | null
@@ -386,6 +404,49 @@ export type Database = {
           },
         ]
       }
+      consumer_review_claims: {
+        Row: {
+          consumer_id: string
+          created_at: string
+          project_id: string
+          ticket_id: string | null
+        }
+        Insert: {
+          consumer_id: string
+          created_at?: string
+          project_id: string
+          ticket_id?: string | null
+        }
+        Update: {
+          consumer_id?: string
+          created_at?: string
+          project_id?: string
+          ticket_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "consumer_review_claims_consumer_id_fkey"
+            columns: ["consumer_id"]
+            isOneToOne: false
+            referencedRelation: "consumers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "consumer_review_claims_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "consumer_review_claims_ticket_id_fkey"
+            columns: ["ticket_id"]
+            isOneToOne: false
+            referencedRelation: "tickets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       consumer_subscriptions: {
         Row: {
           cancel_at_period_end: boolean
@@ -456,8 +517,8 @@ export type Database = {
           phone: string | null
           profile_public: boolean
           profile_show_saves: boolean
-          profile_show_visits: boolean
           profile_show_stories: boolean
+          profile_show_visits: boolean
           sex: string | null
         }
         Insert: {
@@ -479,8 +540,8 @@ export type Database = {
           phone?: string | null
           profile_public?: boolean
           profile_show_saves?: boolean
-          profile_show_visits?: boolean
           profile_show_stories?: boolean
+          profile_show_visits?: boolean
           sex?: string | null
         }
         Update: {
@@ -502,8 +563,8 @@ export type Database = {
           phone?: string | null
           profile_public?: boolean
           profile_show_saves?: boolean
-          profile_show_visits?: boolean
           profile_show_stories?: boolean
+          profile_show_visits?: boolean
           sex?: string | null
         }
         Relationships: [
@@ -594,6 +655,71 @@ export type Database = {
             columns: ["saved_place_id"]
             isOneToOne: false
             referencedRelation: "saved_places"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      membership_strikes: {
+        Row: {
+          compensation_coupon_id: string | null
+          consumer_id: string | null
+          created_at: string
+          id: string
+          notes: string | null
+          project_id: string
+          reason: string
+          strike_number: number
+          ticket_id: string | null
+        }
+        Insert: {
+          compensation_coupon_id?: string | null
+          consumer_id?: string | null
+          created_at?: string
+          id?: string
+          notes?: string | null
+          project_id: string
+          reason: string
+          strike_number: number
+          ticket_id?: string | null
+        }
+        Update: {
+          compensation_coupon_id?: string | null
+          consumer_id?: string | null
+          created_at?: string
+          id?: string
+          notes?: string | null
+          project_id?: string
+          reason?: string
+          strike_number?: number
+          ticket_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "membership_strikes_compensation_coupon_id_fkey"
+            columns: ["compensation_coupon_id"]
+            isOneToOne: false
+            referencedRelation: "coupons"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "membership_strikes_consumer_id_fkey"
+            columns: ["consumer_id"]
+            isOneToOne: false
+            referencedRelation: "consumers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "membership_strikes_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "membership_strikes_ticket_id_fkey"
+            columns: ["ticket_id"]
+            isOneToOne: false
+            referencedRelation: "tickets"
             referencedColumns: ["id"]
           },
         ]
@@ -856,12 +982,14 @@ export type Database = {
           country: string | null
           created_at: string
           description: string | null
+          description_es: string | null
           details: Json | null
           didi_food_url: string | null
           editorial_summary: string | null
           email: string | null
           embedding: string | null
           embedding_source_hash: string | null
+          embedding_source_text: string | null
           enriched_at: string | null
           enrichment_sources: Json | null
           established_year: number | null
@@ -871,6 +999,7 @@ export type Database = {
           facebook_url: string | null
           google_business_url: string | null
           google_maps_url: string | null
+          google_name: string | null
           google_place_id: string | null
           google_review_count: number | null
           google_reviews: Json | null
@@ -883,6 +1012,7 @@ export type Database = {
           instagram_url: string | null
           lat: number | null
           lng: number | null
+          manual_priority: number
           menu_pdf_name: string | null
           menu_pdf_url: string | null
           menus: Json | null
@@ -902,6 +1032,8 @@ export type Database = {
           price_level: number | null
           products: Json | null
           reddit_url: string | null
+          reservation_contacts: Json
+          reservation_endpoint: string | null
           resy_url: string | null
           story: string | null
           tags: string[]
@@ -928,12 +1060,14 @@ export type Database = {
           country?: string | null
           created_at?: string
           description?: string | null
+          description_es?: string | null
           details?: Json | null
           didi_food_url?: string | null
           editorial_summary?: string | null
           email?: string | null
           embedding?: string | null
           embedding_source_hash?: string | null
+          embedding_source_text?: string | null
           enriched_at?: string | null
           enrichment_sources?: Json | null
           established_year?: number | null
@@ -943,6 +1077,7 @@ export type Database = {
           facebook_url?: string | null
           google_business_url?: string | null
           google_maps_url?: string | null
+          google_name?: string | null
           google_place_id?: string | null
           google_review_count?: number | null
           google_reviews?: Json | null
@@ -955,6 +1090,7 @@ export type Database = {
           instagram_url?: string | null
           lat?: number | null
           lng?: number | null
+          manual_priority?: number
           menu_pdf_name?: string | null
           menu_pdf_url?: string | null
           menus?: Json | null
@@ -974,6 +1110,8 @@ export type Database = {
           price_level?: number | null
           products?: Json | null
           reddit_url?: string | null
+          reservation_contacts?: Json
+          reservation_endpoint?: string | null
           resy_url?: string | null
           story?: string | null
           tags?: string[]
@@ -1000,12 +1138,14 @@ export type Database = {
           country?: string | null
           created_at?: string
           description?: string | null
+          description_es?: string | null
           details?: Json | null
           didi_food_url?: string | null
           editorial_summary?: string | null
           email?: string | null
           embedding?: string | null
           embedding_source_hash?: string | null
+          embedding_source_text?: string | null
           enriched_at?: string | null
           enrichment_sources?: Json | null
           established_year?: number | null
@@ -1015,6 +1155,7 @@ export type Database = {
           facebook_url?: string | null
           google_business_url?: string | null
           google_maps_url?: string | null
+          google_name?: string | null
           google_place_id?: string | null
           google_review_count?: number | null
           google_reviews?: Json | null
@@ -1027,6 +1168,7 @@ export type Database = {
           instagram_url?: string | null
           lat?: number | null
           lng?: number | null
+          manual_priority?: number
           menu_pdf_name?: string | null
           menu_pdf_url?: string | null
           menus?: Json | null
@@ -1046,6 +1188,8 @@ export type Database = {
           price_level?: number | null
           products?: Json | null
           reddit_url?: string | null
+          reservation_contacts?: Json
+          reservation_endpoint?: string | null
           resy_url?: string | null
           story?: string | null
           tags?: string[]
@@ -1219,64 +1363,91 @@ export type Database = {
       }
       projects: {
         Row: {
+          check_pin: string | null
+          check_require_bill: boolean
           content_status: Database["public"]["Enums"]["content_gen_status"]
           created_at: string
           currency: string
+          first_ticket_honored_at: string | null
           fiscal_type: Database["public"]["Enums"]["project_fiscal_type"]
           free_rate: number | null
           id: string
+          last_strike_at: string | null
           listing_type: Database["public"]["Enums"]["listing_type"]
+          membership_forfeited_at: string | null
+          membership_live_at: string | null
           monthly_promo_cap: number | null
           plan: Database["public"]["Enums"]["membership"]
           premium_rate: number | null
+          promo_paused_until: string | null
           requires_story: boolean
           reward_cap_cents: number | null
           segmentation_advanced_enabled: boolean
           segmentation_basic_enabled: boolean
           slug: string
+          staff_channel_pinged_at: string | null
           status: Database["public"]["Enums"]["project_status"]
+          strike_count: number
           updated_at: string
           welcome_free_rate: number | null
           welcome_premium_rate: number | null
         }
         Insert: {
+          check_pin?: string | null
+          check_require_bill?: boolean
           content_status?: Database["public"]["Enums"]["content_gen_status"]
           created_at?: string
           currency?: string
+          first_ticket_honored_at?: string | null
           fiscal_type?: Database["public"]["Enums"]["project_fiscal_type"]
           free_rate?: number | null
           id: string
+          last_strike_at?: string | null
           listing_type?: Database["public"]["Enums"]["listing_type"]
+          membership_forfeited_at?: string | null
+          membership_live_at?: string | null
           monthly_promo_cap?: number | null
           plan?: Database["public"]["Enums"]["membership"]
           premium_rate?: number | null
+          promo_paused_until?: string | null
           requires_story?: boolean
           reward_cap_cents?: number | null
           segmentation_advanced_enabled?: boolean
           segmentation_basic_enabled?: boolean
           slug: string
+          staff_channel_pinged_at?: string | null
           status?: Database["public"]["Enums"]["project_status"]
+          strike_count?: number
           updated_at?: string
           welcome_free_rate?: number | null
           welcome_premium_rate?: number | null
         }
         Update: {
+          check_pin?: string | null
+          check_require_bill?: boolean
           content_status?: Database["public"]["Enums"]["content_gen_status"]
           created_at?: string
           currency?: string
+          first_ticket_honored_at?: string | null
           fiscal_type?: Database["public"]["Enums"]["project_fiscal_type"]
           free_rate?: number | null
           id?: string
+          last_strike_at?: string | null
           listing_type?: Database["public"]["Enums"]["listing_type"]
+          membership_forfeited_at?: string | null
+          membership_live_at?: string | null
           monthly_promo_cap?: number | null
           plan?: Database["public"]["Enums"]["membership"]
           premium_rate?: number | null
+          promo_paused_until?: string | null
           requires_story?: boolean
           reward_cap_cents?: number | null
           segmentation_advanced_enabled?: boolean
           segmentation_basic_enabled?: boolean
           slug?: string
+          staff_channel_pinged_at?: string | null
           status?: Database["public"]["Enums"]["project_status"]
+          strike_count?: number
           updated_at?: string
           welcome_free_rate?: number | null
           welcome_premium_rate?: number | null
@@ -1298,49 +1469,169 @@ export type Database = {
           },
         ]
       }
+      reservation_call_counters: {
+        Row: {
+          calls: number
+          day: string
+          project_id: string
+        }
+        Insert: {
+          calls?: number
+          day: string
+          project_id: string
+        }
+        Update: {
+          calls?: number
+          day?: string
+          project_id?: string
+        }
+        Relationships: []
+      }
       reservations: {
         Row: {
+          alternatives: Json
+          attempts: Json
+          attempts_planned: number
+          attempts_state: string
+          business_number: string | null
+          call_attempts: number
+          callback_at: string | null
+          callback_attempts: number
+          callback_conversation_id: string | null
+          callback_next_attempt_at: string | null
+          callback_state: string
           cancelled_at: string | null
+          cancelled_by: string | null
+          claimed_at: string | null
           completed_at: string | null
           confirmed_at: string | null
           consumer_id: string
+          consumer_number: string | null
           coupon_id: string | null
           created_at: string
+          guest_confirmed_at: string | null
           id: string
+          is_test: boolean
+          last_call_status: string | null
+          last_called_at: string | null
+          last_conversation_id: string | null
+          modification_of: string | null
+          negotiation_rounds: number
+          next_attempt_at: string | null
           notes: string | null
+          notice_attempts: number
+          notice_conversation_id: string | null
+          notice_kind: string | null
+          notice_next_at: string | null
+          notice_state: string
+          outage_retries: number
+          outcome_note: string | null
           party_size: number
           project_id: string
+          reference_code: string | null
+          reported_verdict: string | null
+          reschedules_day: string | null
+          reschedules_today: number
           reserved_at: string
+          run_id: string | null
           status: Database["public"]["Enums"]["reservation_status"]
           updated_at: string
         }
         Insert: {
+          alternatives?: Json
+          attempts?: Json
+          attempts_planned?: number
+          attempts_state?: string
+          business_number?: string | null
+          call_attempts?: number
+          callback_at?: string | null
+          callback_attempts?: number
+          callback_conversation_id?: string | null
+          callback_next_attempt_at?: string | null
+          callback_state?: string
           cancelled_at?: string | null
+          cancelled_by?: string | null
+          claimed_at?: string | null
           completed_at?: string | null
           confirmed_at?: string | null
           consumer_id: string
+          consumer_number?: string | null
           coupon_id?: string | null
           created_at?: string
+          guest_confirmed_at?: string | null
           id?: string
+          is_test?: boolean
+          last_call_status?: string | null
+          last_called_at?: string | null
+          last_conversation_id?: string | null
+          modification_of?: string | null
+          negotiation_rounds?: number
+          next_attempt_at?: string | null
           notes?: string | null
+          notice_attempts?: number
+          notice_conversation_id?: string | null
+          notice_kind?: string | null
+          notice_next_at?: string | null
+          notice_state?: string
+          outage_retries?: number
+          outcome_note?: string | null
           party_size: number
           project_id: string
+          reference_code?: string | null
+          reported_verdict?: string | null
+          reschedules_day?: string | null
+          reschedules_today?: number
           reserved_at: string
+          run_id?: string | null
           status?: Database["public"]["Enums"]["reservation_status"]
           updated_at?: string
         }
         Update: {
+          alternatives?: Json
+          attempts?: Json
+          attempts_planned?: number
+          attempts_state?: string
+          business_number?: string | null
+          call_attempts?: number
+          callback_at?: string | null
+          callback_attempts?: number
+          callback_conversation_id?: string | null
+          callback_next_attempt_at?: string | null
+          callback_state?: string
           cancelled_at?: string | null
+          cancelled_by?: string | null
+          claimed_at?: string | null
           completed_at?: string | null
           confirmed_at?: string | null
           consumer_id?: string
+          consumer_number?: string | null
           coupon_id?: string | null
           created_at?: string
+          guest_confirmed_at?: string | null
           id?: string
+          is_test?: boolean
+          last_call_status?: string | null
+          last_called_at?: string | null
+          last_conversation_id?: string | null
+          modification_of?: string | null
+          negotiation_rounds?: number
+          next_attempt_at?: string | null
           notes?: string | null
+          notice_attempts?: number
+          notice_conversation_id?: string | null
+          notice_kind?: string | null
+          notice_next_at?: string | null
+          notice_state?: string
+          outage_retries?: number
+          outcome_note?: string | null
           party_size?: number
           project_id?: string
+          reference_code?: string | null
+          reported_verdict?: string | null
+          reschedules_day?: string | null
+          reschedules_today?: number
           reserved_at?: string
+          run_id?: string | null
           status?: Database["public"]["Enums"]["reservation_status"]
           updated_at?: string
         }
@@ -1367,6 +1658,33 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      reward_rules: {
+        Row: {
+          action: string
+          class: string
+          discount_percent: number
+          strategy: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          action: string
+          class: string
+          discount_percent?: number
+          strategy: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          action?: string
+          class?: string
+          discount_percent?: number
+          strategy?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
       }
       saved_places: {
         Row: {
@@ -1425,6 +1743,7 @@ export type Database = {
           created_at: string
           email: string
           note: string | null
+          phone: string | null
           user_id: string | null
         }
         Insert: {
@@ -1432,6 +1751,7 @@ export type Database = {
           created_at?: string
           email: string
           note?: string | null
+          phone?: string | null
           user_id?: string | null
         }
         Update: {
@@ -1439,9 +1759,109 @@ export type Database = {
           created_at?: string
           email?: string
           note?: string | null
+          phone?: string | null
           user_id?: string | null
         }
         Relationships: []
+      }
+      ticket_check_events: {
+        Row: {
+          created_at: string
+          event: string
+          id: string
+          ip_hash: string | null
+          self_view: boolean
+          ticket_id: string
+          user_agent: string | null
+        }
+        Insert: {
+          created_at?: string
+          event: string
+          id?: string
+          ip_hash?: string | null
+          self_view?: boolean
+          ticket_id: string
+          user_agent?: string | null
+        }
+        Update: {
+          created_at?: string
+          event?: string
+          id?: string
+          ip_hash?: string | null
+          self_view?: boolean
+          ticket_id?: string
+          user_agent?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ticket_check_events_ticket_id_fkey"
+            columns: ["ticket_id"]
+            isOneToOne: false
+            referencedRelation: "tickets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ticket_reports: {
+        Row: {
+          consumer_id: string
+          created_at: string
+          details: string | null
+          id: string
+          project_id: string
+          reason: string
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
+          ticket_id: string
+        }
+        Insert: {
+          consumer_id: string
+          created_at?: string
+          details?: string | null
+          id?: string
+          project_id: string
+          reason: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          ticket_id: string
+        }
+        Update: {
+          consumer_id?: string
+          created_at?: string
+          details?: string | null
+          id?: string
+          project_id?: string
+          reason?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          ticket_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ticket_reports_consumer_id_fkey"
+            columns: ["consumer_id"]
+            isOneToOne: false
+            referencedRelation: "consumers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ticket_reports_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ticket_reports_ticket_id_fkey"
+            columns: ["ticket_id"]
+            isOneToOne: false
+            referencedRelation: "tickets"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       ticket_reviews: {
         Row: {
@@ -1501,7 +1921,7 @@ export type Database = {
           {
             foreignKeyName: "ticket_reviews_ticket_id_fkey"
             columns: ["ticket_id"]
-            isOneToOne: true
+            isOneToOne: false
             referencedRelation: "tickets"
             referencedColumns: ["id"]
           },
@@ -1509,20 +1929,26 @@ export type Database = {
       }
       tickets: {
         Row: {
+          bill_source: string | null
           cancel_reason: string | null
           cancelled_at: string | null
+          check_code: string | null
           check_subtotal_cents: number | null
           consumer_id: string
           created_at: string
           currency: string
           discount_cents: number | null
           discount_percent: number | null
+          first_scanned_at: string | null
+          free_rate: number | null
           id: string
           kind: Database["public"]["Enums"]["ticket_kind"]
           opened_by: string
           opened_by_staff_user_id: string | null
           paid_at: string | null
+          premium_rate: number | null
           project_id: string
+          rates_snapshotted_at: string | null
           redeem_cents: number | null
           reservation_at: string | null
           reservation_channel: string | null
@@ -1532,6 +1958,12 @@ export type Database = {
             | Database["public"]["Enums"]["reservation_status"]
             | null
           revealed_at: string | null
+          review_reject_reason: string | null
+          review_screenshot_url: string | null
+          review_status: Database["public"]["Enums"]["story_status"]
+          review_submitted_at: string | null
+          review_verified_at: string | null
+          review_verified_by: string | null
           status: Database["public"]["Enums"]["ticket_status"]
           story_reject_reason: string | null
           story_screenshot_url: string | null
@@ -1542,22 +1974,30 @@ export type Database = {
           tip_cents: number | null
           total_cents: number | null
           updated_at: string
+          welcome_free_rate: number | null
+          welcome_premium_rate: number | null
         }
         Insert: {
+          bill_source?: string | null
           cancel_reason?: string | null
           cancelled_at?: string | null
+          check_code?: string | null
           check_subtotal_cents?: number | null
           consumer_id: string
           created_at?: string
           currency?: string
           discount_cents?: number | null
           discount_percent?: number | null
+          first_scanned_at?: string | null
+          free_rate?: number | null
           id?: string
           kind?: Database["public"]["Enums"]["ticket_kind"]
           opened_by: string
           opened_by_staff_user_id?: string | null
           paid_at?: string | null
+          premium_rate?: number | null
           project_id: string
+          rates_snapshotted_at?: string | null
           redeem_cents?: number | null
           reservation_at?: string | null
           reservation_channel?: string | null
@@ -1567,6 +2007,12 @@ export type Database = {
             | Database["public"]["Enums"]["reservation_status"]
             | null
           revealed_at?: string | null
+          review_reject_reason?: string | null
+          review_screenshot_url?: string | null
+          review_status?: Database["public"]["Enums"]["story_status"]
+          review_submitted_at?: string | null
+          review_verified_at?: string | null
+          review_verified_by?: string | null
           status?: Database["public"]["Enums"]["ticket_status"]
           story_reject_reason?: string | null
           story_screenshot_url?: string | null
@@ -1577,22 +2023,30 @@ export type Database = {
           tip_cents?: number | null
           total_cents?: number | null
           updated_at?: string
+          welcome_free_rate?: number | null
+          welcome_premium_rate?: number | null
         }
         Update: {
+          bill_source?: string | null
           cancel_reason?: string | null
           cancelled_at?: string | null
+          check_code?: string | null
           check_subtotal_cents?: number | null
           consumer_id?: string
           created_at?: string
           currency?: string
           discount_cents?: number | null
           discount_percent?: number | null
+          first_scanned_at?: string | null
+          free_rate?: number | null
           id?: string
           kind?: Database["public"]["Enums"]["ticket_kind"]
           opened_by?: string
           opened_by_staff_user_id?: string | null
           paid_at?: string | null
+          premium_rate?: number | null
           project_id?: string
+          rates_snapshotted_at?: string | null
           redeem_cents?: number | null
           reservation_at?: string | null
           reservation_channel?: string | null
@@ -1602,6 +2056,12 @@ export type Database = {
             | Database["public"]["Enums"]["reservation_status"]
             | null
           revealed_at?: string | null
+          review_reject_reason?: string | null
+          review_screenshot_url?: string | null
+          review_status?: Database["public"]["Enums"]["story_status"]
+          review_submitted_at?: string | null
+          review_verified_at?: string | null
+          review_verified_by?: string | null
           status?: Database["public"]["Enums"]["ticket_status"]
           story_reject_reason?: string | null
           story_screenshot_url?: string | null
@@ -1612,6 +2072,8 @@ export type Database = {
           tip_cents?: number | null
           total_cents?: number | null
           updated_at?: string
+          welcome_free_rate?: number | null
+          welcome_premium_rate?: number | null
         }
         Relationships: [
           {
@@ -1653,12 +2115,14 @@ export type Database = {
           created_at: string | null
           currency: string | null
           description: string | null
+          description_es: string | null
           details: Json | null
           didi_food_url: string | null
           editorial_summary: string | null
           email: string | null
           embedding: string | null
           embedding_source_hash: string | null
+          embedding_source_text: string | null
           enriched_at: string | null
           enrichment_sources: Json | null
           established_year: number | null
@@ -1666,10 +2130,12 @@ export type Database = {
           facebook_followers: number | null
           facebook_rating: number | null
           facebook_url: string | null
+          first_ticket_honored_at: string | null
           fiscal_type: Database["public"]["Enums"]["project_fiscal_type"] | null
           free_rate: number | null
           google_business_url: string | null
           google_maps_url: string | null
+          google_name: string | null
           google_place_id: string | null
           google_review_count: number | null
           google_reviews: Json | null
@@ -1680,9 +2146,13 @@ export type Database = {
           instagram_followers_count: number | null
           instagram_pr_urls: string[] | null
           instagram_url: string | null
+          last_strike_at: string | null
           lat: number | null
           listing_type: Database["public"]["Enums"]["listing_type"] | null
           lng: number | null
+          manual_priority: number | null
+          membership_forfeited_at: string | null
+          membership_live_at: string | null
           menu_pdf_name: string | null
           menu_pdf_url: string | null
           menus: Json | null
@@ -1704,15 +2174,20 @@ export type Database = {
           premium_rate: number | null
           price_level: number | null
           products: Json | null
+          promo_paused_until: string | null
           reddit_url: string | null
           requires_story: boolean | null
+          reservation_contacts: Json | null
+          reservation_endpoint: string | null
           resy_url: string | null
           reward_cap_cents: number | null
           segmentation_advanced_enabled: boolean | null
           segmentation_basic_enabled: boolean | null
           slug: string | null
+          staff_channel_pinged_at: string | null
           status: Database["public"]["Enums"]["project_status"] | null
           story: string | null
+          strike_count: number | null
           tags: string[] | null
           threads_url: string | null
           tiktok_url: string | null
@@ -1735,9 +2210,27 @@ export type Database = {
     }
     Functions: {
       admin_reset_database: { Args: never; Returns: Json }
+      admin_reset_storage_count: {
+        Args: { p_keep_buckets?: string[] }
+        Returns: number
+      }
+      admin_reset_storage_paths: {
+        Args: { p_keep_buckets?: string[]; p_limit?: number }
+        Returns: {
+          bucket_id: string
+          name: string
+        }[]
+      }
       admin_revoke_admin: { Args: { p_email: string }; Returns: number }
+      bump_reservation_call_counter: { Args: { pid: string }; Returns: number }
       find_user_id_by_phone: { Args: { phone_digits: string }; Returns: string }
       generate_consumer_code: { Args: never; Returns: string }
+      is_project_member: { Args: { p_project_id: string }; Returns: boolean }
+      is_super_admin: { Args: never; Returns: boolean }
+      refresh_place_mesita_reviews: {
+        Args: { p_project_id: string }
+        Returns: undefined
+      }
       run_place_enrichment_stages: { Args: never; Returns: number }
       seed_place_categories: { Args: never; Returns: undefined }
       seed_place_tags: { Args: never; Returns: undefined }
@@ -1762,6 +2255,8 @@ export type Database = {
         | "declined"
         | "no_show"
         | "cancelled"
+        | "unreachable"
+        | "unresolved"
       story_status:
         | "not_required"
         | "pending"
@@ -1770,6 +2265,7 @@ export type Database = {
         | "ai_rejected"
         | "staff_verified"
         | "staff_rejected"
+        | "self_verified"
       ticket_kind: "reservation" | "coupon"
       ticket_status:
         | "open"
@@ -1936,6 +2432,8 @@ export const Constants = {
         "declined",
         "no_show",
         "cancelled",
+        "unreachable",
+        "unresolved",
       ],
       story_status: [
         "not_required",
@@ -1945,6 +2443,7 @@ export const Constants = {
         "ai_rejected",
         "staff_verified",
         "staff_rejected",
+        "self_verified",
       ],
       ticket_kind: ["reservation", "coupon"],
       ticket_status: [
