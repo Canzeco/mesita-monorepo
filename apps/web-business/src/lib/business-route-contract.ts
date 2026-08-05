@@ -13,7 +13,7 @@ export const BUSINESS_ROUTES = {
   onboard: "/onboard",
 } as const;
 
-type UnitSection = "performance" | "reservations" | "settings";
+type UnitSection = "performance" | "settings";
 
 export function placePath(
   projectId: string,
@@ -44,7 +44,7 @@ export function pathnameUnitId(pathname: string): string | null {
 }
 
 export function dockHrefForSection(
-  section: "place" | "promos" | "performance" | "reservations" | "settings",
+  section: "place" | "promos" | "performance" | "settings",
   activeUnitId: string | null,
 ): string {
   if (section === "place") return BUSINESS_ROUTES.central;
@@ -63,10 +63,10 @@ export function placeSwitchHref(projectId: string, pathname: string): string {
   if (section === "promos") {
     return promosPath(projectId);
   }
-  if (section === "performance")
+  if (section === "performance" || section === "reservations") {
+    // MESITA-900 — old /reservations URLs land on Performance.
     return unitSectionPath(projectId, "performance");
-  if (section === "reservations")
-    return unitSectionPath(projectId, "reservations");
+  }
   if (section === "settings") return unitSectionPath(projectId, "settings");
   // The retired check surface (scan/tickets) and the old standalone team tab
   // all land back on the place when you switch places.

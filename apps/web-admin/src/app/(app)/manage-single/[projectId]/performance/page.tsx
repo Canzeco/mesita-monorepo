@@ -11,17 +11,18 @@ import { GlobalPerformanceClient } from "../../../global-performance/GlobalPerfo
 import { ACTIVITY_TYPE_ORDER } from "../../../global-performance/notification-config";
 import { PerformanceHeadline } from "../../sections/PerformanceHeadline";
 import { ReputationStrip } from "../../sections/ReputationStrip";
+import { ReservationsList } from "../../sections/ReservationsList";
 import { SectionCard, Spinner } from "../../ui";
 import { useUnitPlace } from "../../UnitPlaceContext";
 
-// Per-place Performance — the retrospective record (MESITA-855 + MESITA-894):
+// Per-place Performance (MESITA-900 — Reservations back inside this tab):
 //
 //   1. Is Mesita working here? — money + Saved→Visited→Closed funnel.
 //   2. Reputation             — Mesita / Google / IG / FB scores.
-//   3. Activity               — consumer event feed (receipts).
+//   3. Reservations           — Mesita bookings list + AI dial lines.
+//   4. Activity               — consumer event feed (receipts).
 //
-// Mesita booking ops moved to the Reservations tab (MESITA-894). Channel
-// routing stays on Settings. Layout: one max-w-4xl column.
+// Channel routing stays on Settings. Layout: one max-w-4xl column.
 export default function UnitPerformancePage() {
   const { place } = useUnitPlace();
   const [feed, setFeed] = useState<NotificationsPayload | null>(null);
@@ -33,7 +34,7 @@ export default function UnitPerformancePage() {
   // state starts null and a place switch remounts the page via the shell.
   useEffect(() => {
     let alive = true;
-    getPlaceActivity(place.id).then((r) => {
+    getPlaceActivity(place.id, { limit: 50 }).then((r) => {
       if (!alive) return;
       if (!r.ok) {
         setActivityError(r.error);
@@ -64,7 +65,8 @@ export default function UnitPerformancePage() {
       ) : activity ? (
         <>
           <PerformanceHeadline stats={activity.stats} />
-          <ReputationStrip place={place} />
+          <ReputationStrip place={place} stats={activity.stats} />
+          <ReservationsList activity={activity} />
         </>
       ) : (
         <Spinner label="Loading…" />

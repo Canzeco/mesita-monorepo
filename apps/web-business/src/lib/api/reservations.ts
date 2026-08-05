@@ -1,7 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { invokeEF, withPlaceId } from "./_invoke";
 
-// Mesita Reservationist bookings for the Reservations tab (MESITA-894).
+// Mesita Reservationist bookings for Performance (MESITA-900).
 // Never class-shaped — EF strips class_key / class_origin.
 
 export type BusinessReservation = {

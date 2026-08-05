@@ -1,11 +1,12 @@
 "use client";
 
-// v3d Performance (MESITA-852) — "the place's whole record, not a metrics
-// page". Three bands:
+// v3d Performance (MESITA-852 / MESITA-900) — "the place's whole record, not
+// a metrics page". Four bands:
 //
-//   1. Summary   what the program did, and what it cost.
-//   2. Produced  what the guests MADE — the output the discounts bought.
-//   3. Activity  the per-place feed, newest first.
+//   1. Summary       what the program did, and what it cost.
+//   2. Produced      what the guests MADE — the output the discounts bought.
+//   3. Reservations  Mesita bookings list + AI dial lines.
+//   4. Activity      the per-place feed, newest first.
 //
 // Two invariants this file must never break:
 //   • Nothing class-shaped. A place never learns which guests were Premium
@@ -41,6 +42,11 @@ import {
   type PerformanceFeedItem,
   type PlacePerformance,
 } from "@/lib/api/performance";
+import {
+  listPlaceReservations,
+  type PlaceReservations,
+} from "@/lib/api/reservations";
+import { ReservationsClient } from "@/components/business/stats/ReservationsClient";
 import { cn, errMsg } from "@/lib/utils";
 
 function money(cents: number | null | undefined, currency = "MXN"): string {
@@ -103,16 +109,22 @@ export function PerformanceClient({
   projectId,
   initialData = null,
   initialError = null,
+  initialReservations = null,
 }: {
   projectId: string;
   /** SSR-prefetched payload — kills the client waterfall on first paint. */
   initialData?: PlacePerformance | null;
   initialError?: string | null;
+  /** SSR-prefetched Mesita bookings (MESITA-900 — back on Performance). */
+  initialReservations?: PlaceReservations | null;
 }) {
   const supabase = useBrowserSupabase();
   const [data, setData] = useState<PlacePerformance | null>(initialData);
   const [error, setError] = useState<string | null>(initialError);
   const [busy, setBusy] = useState(!initialData && !initialError);
+  const [reservations, setReservations] = useState<PlaceReservations | null>(
+    initialReservations,
+  );
 
   // Only fetch on the client when the server didn't already hand us data
   // (or when projectId changes after mount). Refresh stays a handler.
@@ -137,11 +149,34 @@ export function PerformanceClient({
     };
   }, [supabase, projectId, initialData, initialError]);
 
+  useEffect(() => {
+    if (initialReservations) return;
+    let active = true;
+    listPlaceReservations(supabase, projectId, { scope: "all", limit: 50 })
+      .then((next) => {
+        if (active) setReservations(next);
+      })
+      .catch(() => {
+        // Reservations are a secondary band — leave null; page still works.
+      });
+    return () => {
+      active = false;
+    };
+  }, [supabase, projectId, initialReservations]);
+
   const load = useCallback(async () => {
     setBusy(true);
     setError(null);
     try {
-      setData(await getPlacePerformance(supabase, projectId));
+      const [perf, res] = await Promise.all([
+        getPlacePerformance(supabase, projectId),
+        listPlaceReservations(supabase, projectId, {
+          scope: "all",
+          limit: 50,
+        }).catch(() => null),
+      ]);
+      setData(perf);
+      if (res) setReservations(res);
     } catch (err) {
       setError(errMsg(err, "Could not load performance."));
     } finally {
@@ -342,10 +377,13 @@ export function PerformanceClient({
         )}
       </Section>
 
-      {/* ── Band 3 · Activity ───────────────────────────────────────── */}
+      {/* ── Band 3 · Reservations ───────────────────────────────────── */}
+      {reservations ? <ReservationsClient data={reservations} /> : null}
+
+      {/* ── Band 4 · Activity ───────────────────────────────────────── */}
       <Section
         title="Activity"
-        description="Everything guests did here, newest first. Booking ops live on Reservations."
+        description="Everything guests did here, newest first."
       >
         {feed.length === 0 ? (
           <EmptyState

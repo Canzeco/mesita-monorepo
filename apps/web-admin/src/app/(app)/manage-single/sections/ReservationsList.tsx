@@ -3,8 +3,8 @@
 import { PhoneCall } from "lucide-react";
 import type { PlaceActivity } from "../actions";
 
-// Reservations tab → Mesita Reservationist bookings, as a plain list
-// (MESITA-894). Scope is Mesita only — not Google Reserve / OpenTable.
+// Performance → Mesita Reservationist bookings, as a plain list
+// (MESITA-900). Scope is Mesita only — not Google Reserve / OpenTable.
 //
 // READ-ONLY, and that is the product decision, not a shortcut (Pato):
 // "reservations tickets cannot be directly edited. just must call the ai …

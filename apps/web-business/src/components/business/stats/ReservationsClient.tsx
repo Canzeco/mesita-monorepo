@@ -2,9 +2,9 @@
 
 import type { PlaceReservations } from "@/lib/api/reservations";
 
-// Business Reservations tab — Mesita bookings only (MESITA-894).
-// Mirrors admin ReservationsList: read-only list. The reservation line moved
-// to the per-place Settings tab as passive info (MESITA-897).
+// Performance → Reservations card (MESITA-900). Mesita bookings only.
+// Read-only list. The reservation line lives on per-place Settings as
+// passive info (MESITA-897) — not re-added here when the tab folded back.
 
 const STATUS: Record<string, { label: string; chip: string }> = {
   pending: { label: "Pending", chip: "bg-amber-500/10 text-amber-700" },

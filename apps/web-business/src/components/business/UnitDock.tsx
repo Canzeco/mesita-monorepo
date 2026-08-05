@@ -10,7 +10,6 @@ import {
   Store,
   Gift,
   BarChart3,
-  CalendarCheck,
   Settings2,
   type LucideIcon,
 } from "lucide-react";
@@ -25,19 +24,18 @@ import {
 import { resolveActiveUnitId } from "@/lib/active-unit";
 
 type NavItem = {
-  slug: "place" | "promos" | "performance" | "reservations" | "settings";
+  slug: "place" | "promos" | "performance" | "settings";
   Icon: LucideIcon;
   label: string;
 };
 
-// Five tabs (MESITA-894). Mesita Check stays off the dock (public check page).
-// Reservationist bookings get their own tab; channel routing + Check PIN +
-// team stay under Settings.
+// Four tabs (MESITA-900). Mesita Check stays off the dock (public check page).
+// Reservationist bookings + AI dial lines live inside Performance again
+// (reverses MESITA-894). Channel routing + Check PIN + team stay under Settings.
 const NAV_ITEMS: NavItem[] = [
   { slug: "place", Icon: Store, label: "Place" },
   { slug: "promos", Icon: Gift, label: "Promos" },
   { slug: "performance", Icon: BarChart3, label: "Performance" },
-  { slug: "reservations", Icon: CalendarCheck, label: "Reservations" },
   { slug: "settings", Icon: Settings2, label: "Settings" },
 ];
 
@@ -68,13 +66,9 @@ export function UnitDock() {
     if (pathname === BUSINESS_ROUTES.central) return "place";
     const match = pathname.match(/^\/unit\/[^/]+\/([^/]+)/)?.[1];
     if (match === "place" || match === "promos") return match;
-    if (
-      match === "performance" ||
-      match === "reservations" ||
-      match === "settings"
-    ) {
-      return match;
-    }
+    if (match === "performance" || match === "settings") return match;
+    // Retired Reservations tab → treat as Performance for dock highlight.
+    if (match === "reservations") return "performance";
     return null;
   }, [pathname]);
 
@@ -129,7 +123,7 @@ export function UnitDock() {
       >
         <nav
           aria-label="Place sections"
-          className="grid grid-cols-5 px-2 pt-2 pb-1"
+          className="grid grid-cols-4 px-2 pt-2 pb-1"
         >
           {NAV_ITEMS.map(({ slug, Icon, label }) => {
             const active =
