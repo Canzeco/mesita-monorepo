@@ -113,17 +113,20 @@ function ResetCard() {
         <div>
           <h2 className="text-lg font-semibold text-red-700">Reset database</h2>
           <p className="text-muted-foreground text-sm">
-            Irreversible. Everything goes except the admins.
+            Irreversible. Wipes operational data — admin configs stay.
           </p>
         </div>
       </div>
 
       <p className="text-muted-foreground text-sm leading-relaxed">
-        Permanently empties <strong>every</strong> operational table — places,
-        tickets, reservations, consumers, businesses, invites, verifications,
-        enrichment — deletes every stored image and menu file, and removes every
-        auth account that isn&apos;t an admin. The admin allowlist, app settings
-        and the category/tag/plan vocabularies are kept. This cannot be undone.
+        Permanently empties every operational table — places, tickets,
+        reservations, consumers, businesses, invites, verifications, enrichment —
+        deletes every stored image and menu file, and removes every auth account
+        that isn&apos;t an admin.{" "}
+        <strong>Preserved:</strong> admin allowlist, all admin console configs
+        (Atlas / Enricher / Memo / Sourcing / Scoring / Reservations / Rewards /
+        Models / Agents / Verification), reward payout rules, and the
+        category / tag / class / plan vocabularies. This cannot be undone.
       </p>
 
       <label className="flex flex-col gap-1.5">
