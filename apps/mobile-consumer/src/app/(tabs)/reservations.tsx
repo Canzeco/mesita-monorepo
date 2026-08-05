@@ -8,7 +8,7 @@ import { ReservationsList } from '@/components/reservations/ReservationsList';
 import { ShellWash } from '@/components/ui/HeroBackdrop';
 import { GRADIENT_DIAGONAL, GRADIENTS, SHADOW_GLOW } from '@/constants/brand';
 
-// Reservations surface — web `/saved/reservations` parity: Upcoming / History
+// Reservations surface — web `/reservations` parity: Upcoming / History
 // segment. Booking is live (MESITA-715): each tab reads
 // consumer-web-list-reservations for its scope and renders the ReservationCard
 // rows, falling back to a polished empty state.

@@ -81,10 +81,7 @@ function RootLayout() {
             {/* Place / coupon / reservation — web @modal / SlideOver peers. */}
             <Stack.Screen name="place/[id]" options={MODAL_SCREEN} />
             <Stack.Screen name="coupon/[id]" options={MODAL_SCREEN} />
-            <Stack.Screen
-              name="saved/reservation/[id]"
-              options={MODAL_SCREEN}
-            />
+            <Stack.Screen name="reservation/[id]" options={MODAL_SCREEN} />
           </Stack>
           <Toaster />
           {/* PortalHost for @rn-primitives; sheets use RN Modal. */}

@@ -55,7 +55,7 @@ export default async function ConsumerOnboardPage() {
     // surface a real error if persistence is broken.
     console.error("[consumer/onboard] consumer-get-profile:", err);
   }
-  if (onboarded) redirect(CONSUMER_ROUTES.home);
+  if (onboarded) redirect(CONSUMER_ROUTES.homeDefault);
 
   // Phone-OTP is the consumer auth method, so the identity is usually a
   // phone; fall back to email for accounts created another way. Surfacing
