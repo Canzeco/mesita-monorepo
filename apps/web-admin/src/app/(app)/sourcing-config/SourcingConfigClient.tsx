@@ -16,6 +16,19 @@ import {
   type SourcingConfig,
 } from "./catalog";
 
+/** Operator-facing summary derived from CHANNELS[].live — never hand-write which are live. */
+function enforcedLiveCopy(): string {
+  const live = CHANNELS.filter((c) => c.live);
+  const pending = CHANNELS.filter((c) => !c.live);
+  if (live.length === CHANNELS.length) {
+    return "Enforced live today: all channels. Every floor and family toggle above gates real search / add traffic.";
+  }
+  if (live.length === 0) {
+    return "No channels are marked enforced live yet.";
+  }
+  return `Enforced live today: ${live.map((c) => c.label).join(", ")}. The remaining channels (${pending.map((c) => c.label).join(", ")}) apply as their search / add paths are wired.`;
+}
+
 export function SourcingConfigClient({
   initialConfig,
   initialUpdatedAt,
@@ -233,12 +246,7 @@ export function SourcingConfigClient({
       </div>
 
       <p className="text-muted-foreground mt-3 text-xs">
-        Enforced live today:{" "}
-        {CHANNELS.filter((c) => c.live)
-          .map((c) => c.label)
-          .join(", ")}
-        . The remaining channels apply as their search / add paths are wired.
-        Hover a channel or family chip for details.
+        {enforcedLiveCopy()} Hover a channel or family chip for details.
       </p>
 
       <SaveRow pending={pending} dirty={dirty} ok={ok} onClick={save} />

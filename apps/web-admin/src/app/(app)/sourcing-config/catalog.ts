@@ -8,10 +8,11 @@
 //
 // The googleTypes arrays are the machine expansion of each family: the Google
 // `primaryType` values a place must match to count as that family. They're the
-// enforcement contract for the sourcing gate (admin discovery honours the floors
-// today; the remaining add-paths read this as they're wired). Anything NOT in an
-// enabled family is ineligible — that's how schools, hospitals, gas stations,
-// hotels, shops and transit are kept out without an explicit blocklist.
+// enforcement contract for the sourcing gate — every channel below is enforced
+// live via `_shared/sourcing.ts` (`readChannelPolicy` + `evaluatePlaceForChannel`).
+// Anything NOT in an enabled family is ineligible — that's how schools,
+// hospitals, gas stations, hotels, shops and transit are kept out without an
+// explicit blocklist.
 
 export type FamilyKey =
   | "restaurants"
@@ -223,7 +224,8 @@ export type Channel = {
   verb: ChannelVerb;
   label: string;
   description: string;
-  // Where the policy is enforced today, kept honest per the memo-config precedent.
+  // Where the policy is enforced today. Must stay honest with Edge Function
+  // callers of readChannelPolicy / evaluatePlaceForChannel (MESITA-736).
   live: boolean;
 };
 
@@ -235,6 +237,8 @@ export type Channel = {
 //   add    — what may actually be ONBOARDED into Mesita (created as a place).
 // A place can be searchable but not addable (e.g. surfaced for context yet below
 // the onboarding bar). Ordered actor-by-actor, search before add.
+//
+// All seven channels are enforced live today via `_shared/sourcing.ts`.
 export const CHANNELS: Channel[] = [
   {
     key: "admin_search",
@@ -242,7 +246,7 @@ export const CHANNELS: Channel[] = [
     verb: "search",
     label: "Admin · Search",
     description:
-      "What surfaces in the admin discovery searchbar (admin-web-discover-places), including Google places not yet in Mesita. The rating / review floors here are live today.",
+      "What surfaces in the admin discovery searchbar (admin-web-discover-places / admin-web-suggest-places), including Google places not yet in Mesita.",
     live: true,
   },
   {
@@ -252,7 +256,7 @@ export const CHANNELS: Channel[] = [
     label: "Admin · Add",
     description:
       "A super-admin onboards a place from the console (Manage Single / Multiple). Most permissive — trusted operators.",
-    live: false,
+    live: true,
   },
   {
     key: "business_search",
@@ -261,7 +265,7 @@ export const CHANNELS: Channel[] = [
     label: "Business · Search",
     description:
       "What a business owner sees when searching for their place to claim — including places not yet in Mesita. Kept broad so they can find even a brand-new listing.",
-    live: false,
+    live: true,
   },
   {
     key: "business_add",
@@ -270,7 +274,7 @@ export const CHANNELS: Channel[] = [
     label: "Business · Add",
     description:
       "A business owner claims or adds their own place. No review floor by default — you own your place even when it's brand-new.",
-    live: false,
+    live: true,
   },
   {
     key: "consumer_search",
@@ -279,7 +283,7 @@ export const CHANNELS: Channel[] = [
     label: "Consumer · Search",
     description:
       "What a consumer sees in search — including Google places not yet in Mesita, surfaced as suggestions. Gated so junk never shows up, even as an 'add' candidate.",
-    live: false,
+    live: true,
   },
   {
     key: "consumer_add",
@@ -288,7 +292,7 @@ export const CHANNELS: Channel[] = [
     label: "Consumer · Add",
     description:
       "A consumer suggests or adds a place. Quality-gated to keep junk and personal listings out.",
-    live: false,
+    live: true,
   },
   {
     key: "memo_search",
@@ -297,7 +301,7 @@ export const CHANNELS: Channel[] = [
     label: "Memo · Search",
     description:
       "What Memo, the consumer concierge, may surface or recommend. Gated to well-reviewed spots.",
-    live: false,
+    live: true,
   },
 ];
 
