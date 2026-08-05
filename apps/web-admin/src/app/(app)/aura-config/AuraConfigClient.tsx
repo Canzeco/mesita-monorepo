@@ -86,7 +86,7 @@ export function AuraConfigClient({
       <SectionCard
         icon={<Sparkles className="text-secondary h-4 w-4" />}
         title="Aura members"
-        subtitle="Everyone currently on the invite-only class. Invite by consumer id, 8-digit code, phone, @handle or name — a search that matches more than one consumer is refused rather than guessed at. Revoking recomputes the consumer's best remaining door: an active subscription lands them on Premium, 1,000+ Instagram followers on Influencer, otherwise Standard."
+        subtitle="Everyone currently on the invite-only class. Invite by consumer id, 8-digit code, phone, @handle or name — a search that matches more than one consumer is refused rather than guessed at. Revoking recomputes the consumer's best remaining door: an active subscription lands them on Premium, 2,000+ Instagram followers on Influencer, otherwise Standard."
         status={
           <span className="text-muted-foreground text-xs tabular-nums">
             {members.length} {members.length === 1 ? "member" : "members"}

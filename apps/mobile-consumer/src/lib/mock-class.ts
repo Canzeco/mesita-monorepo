@@ -78,7 +78,7 @@ function applyMock(
     case 'standard':
       return { ...base, key: 'standard', origin: 'default' };
     case 'influencer':
-      // Instagram reach (≥ 1,000 followers) is the door into Influencer.
+      // Instagram reach (≥ 2,000 followers) is the door into Influencer.
       return {
         ...base,
         key: 'influencer',

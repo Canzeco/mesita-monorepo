@@ -1,6 +1,6 @@
 // Compact class catalog — mirrored from web-consumer `lib/consumer-data.ts`.
 // Ascending ladder (segments v6): standard (default) < premium (paid) <
-// influencer (Instagram ≥ 1,000 followers, automatic) < aura (invite-only
+// influencer (Instagram ≥ 2,000 followers, automatic) < aura (invite-only
 // presence class).
 
 import {
@@ -38,7 +38,7 @@ export const CLASSES: {
     priceMxn: 0,
     // Mirrors classes.follower_threshold in the DB — the EF grants off that
     // row, so this constant is display-only and must track it.
-    followerThreshold: 1_000,
+    followerThreshold: 2_000,
   },
   {
     id: 'aura',

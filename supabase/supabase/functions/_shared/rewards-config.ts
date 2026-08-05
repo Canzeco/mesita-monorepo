@@ -10,7 +10,7 @@
 // truth, which keeps the admin Rewards-Config page authoritative.
 //
 // Segments v6 (2026-08-01) + Story gate v2 (MESITA-909): four classes —
-// standard, premium, influencer (Instagram ≥ 1,000 followers, automatic),
+// standard, premium, influencer (Instagram ≥ 2,000 followers, automatic),
 // aura (invite-only presence class) — plus actions. Story is a UNIVERSAL
 // action gated on a connected Instagram (`instagram_handle`), not on
 // Influencer class; Review / Welcome / Mesita stay universal too. Class

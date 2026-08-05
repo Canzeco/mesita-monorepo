@@ -107,7 +107,7 @@ export const CLASS_META: Record<
   influencer: {
     name: "Influencer",
     emoji: "📣",
-    blurb: "Reach class — Instagram 1,000+, automatic. Story is theirs alone.",
+    blurb: "Reach class — Instagram 2,000+, automatic.",
   },
   aura: {
     name: "Aura",

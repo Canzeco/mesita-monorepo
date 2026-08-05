@@ -35,7 +35,7 @@ export type TierConfig = {
 
 // Consumer-class perk gate: which classes clear the "Premium or better" bar.
 // Segments v6: every elevated class — Premium (paid), Influencer (Instagram
-// ≥ 1,000, automatic), Aura (invite-only) — passes; Standard / null / unknown
+// ≥ 2,000, automatic), Aura (invite-only) — passes; Standard / null / unknown
 // do not. Generic on purpose (rank > 0 in classes-table terms): a future class
 // or tier INSERT inherits the elevated perks without touching this gate.
 export function isElevatedClass(classKey: string | null | undefined): boolean {

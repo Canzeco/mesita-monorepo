@@ -2,7 +2,7 @@
 //
 // Authenticated. The Instagram "door" into the Influencer class (segments v6):
 // a consumer at or above the Influencer follower threshold (classes row,
-// 1,000) gets the Influencer class instantly, origin 'instagram'. The winning
+// 2,000) gets the Influencer class instantly, origin 'instagram'. The winning
 // tier is picked DATA-DRIVEN — the highest-ranked classes row whose
 // follower_threshold fits — so future reach tiers are INSERTs, not code.
 //
