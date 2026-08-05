@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
 import {
   BadgeCheck,
   Braces,
@@ -10,39 +9,56 @@ import {
   Mail,
   ShieldCheck,
 } from "lucide-react";
-import { listTeam, type AdminPlace } from "../actions";
+import {
+  getPlaceVerification,
+  type AdminPlace,
+} from "../actions";
 import { ManualPriorityCard } from "./ManualPriorityCard";
 import { ScoresCard } from "./ScoresCard";
 import { CopyIdButton, ReadField, SectionCard } from "../ui";
 import { formatAbsoluteUtc } from "@/lib/format";
-import { unitSectionHref } from "../nav";
 
 // Admin — the Mesita-internal tab (Pato, 2026-08-04). Manual Priority, Scores,
-// Ownership (partner verification WE grant + who claimed the place), Metadata
-// (UID + audit trail), Embeddings. Enriching status lives in unit chrome next
-// to Re-enrich (MESITA-896) — not here, not as a Place body card.
+// Verification (Verified Partner badge + immutable verified-by email),
+// Metadata (UID + audit trail), Embeddings. Enriching status lives in unit
+// chrome next to Re-enrich (MESITA-896) — not here, not as a Place body card.
 // Nothing here is business-facing; see nav.ts for why the tab can't leak to
 // web-business.
 export function AdminSection({ place }: { place: AdminPlace }) {
-  // Owner emails (project_members role=owner) — null while loading.
-  const [owners, setOwners] = useState<string[] | null>(null);
-  const [ownersError, setOwnersError] = useState<string | null>(null);
+  return (
+    // Same masonry as the Place tab — columns pack top-down (MESITA-399).
+    <div className="columns-1 gap-4 pb-8 [&>section]:mb-4 [&>section]:break-inside-avoid [&>details]:mb-4 [&>details]:break-inside-avoid lg:columns-2 lg:gap-5 lg:pb-10 lg:[&>section]:mb-5 lg:[&>details]:mb-5">
+      <ManualPriorityCard place={place} />
+      <ScoresCard place={place} />
+      {/* key remounts the loader when the operator switches units. */}
+      <VerificationCard key={place.id} place={place} />
+      <MetaCard place={place} />
+      <EmbeddingsCard place={place} />
+    </div>
+  );
+}
+
+function VerificationCard({ place }: { place: AdminPlace }) {
+  // Verified Partner badge — listing_type='partner' (membership ∧ strategy ≠ zero).
+  const verified = place.listing_type === "partner";
+  // Immutable email stamped on the approved ownership-verification row —
+  // distinct from project_members owners (those live in Settings → Team).
+  const [verifiedByEmail, setVerifiedByEmail] = useState<string | null | undefined>(
+    undefined,
+  );
+  const [verifiedByError, setVerifiedByError] = useState<string | null>(null);
 
   useEffect(() => {
     let alive = true;
-    listTeam(place.id).then((r) => {
+    getPlaceVerification(place.id).then((r) => {
       if (!alive) return;
       if (!r.ok) {
-        setOwnersError(r.error);
-        setOwners(null);
+        setVerifiedByError(r.error);
+        setVerifiedByEmail(null);
         return;
       }
-      setOwnersError(null);
-      setOwners(
-        r.data.businesses
-          .filter((m) => m.role === "owner")
-          .map((m) => m.email ?? m.fullName ?? m.userId),
-      );
+      setVerifiedByError(null);
+      setVerifiedByEmail(r.data.verifiedByEmail);
     });
     return () => {
       alive = false;
@@ -50,39 +66,14 @@ export function AdminSection({ place }: { place: AdminPlace }) {
   }, [place.id]);
 
   return (
-    // Same masonry as the Place tab — columns pack top-down (MESITA-399).
-    <div className="columns-1 gap-4 pb-8 [&>section]:mb-4 [&>section]:break-inside-avoid [&>details]:mb-4 [&>details]:break-inside-avoid lg:columns-2 lg:gap-5 lg:pb-10 lg:[&>section]:mb-5 lg:[&>details]:mb-5">
-      <ManualPriorityCard place={place} />
-      <ScoresCard place={place} />
-      <OwnershipCard place={place} owners={owners} ownersError={ownersError} />
-      <MetaCard place={place} />
-      <EmbeddingsCard place={place} />
-    </div>
-  );
-}
-
-function OwnershipCard({
-  place,
-  owners,
-  ownersError,
-}: {
-  place: AdminPlace;
-  owners: string[] | null;
-  ownersError: string | null;
-}) {
-  const verified = place.listing_type === "partner";
-  const teamHref = unitSectionHref(place.id, "settings");
-  return (
     <SectionCard
       icon={<ShieldCheck className="h-4 w-4" />}
       tint="emerald"
-      title="Ownership"
-      subtitle="Partner verification Mesita grants, plus who claimed this place. Add or remove members in Settings → Team."
+      title="Verification"
+      subtitle="Verified Partner status Mesita grants, plus the immutable email of who completed ownership proof."
     >
-      {/* Verification = Mesita grant (admin-only). Owners = read-only glance;
-          writes live on Settings → Team (MESITA-896). */}
       <div className="mt-5 grid gap-4">
-        <ReadField label="Verification status" boxed>
+        <ReadField label="Status" boxed>
           {verified ? (
             <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200/80 bg-emerald-50/80 px-2.5 py-1 text-[11px] font-semibold text-emerald-800">
               <BadgeCheck className="h-3.5 w-3.5" />
@@ -94,34 +85,24 @@ function OwnershipCard({
             </span>
           )}
         </ReadField>
-        <ReadField label="Owners" boxed>
-          {ownersError ? (
-            <span className="text-destructive text-xs">{ownersError}</span>
-          ) : owners === null ? (
+        <ReadField label="Verified by" boxed>
+          {verifiedByError ? (
+            <span className="text-destructive text-xs">{verifiedByError}</span>
+          ) : verifiedByEmail === undefined ? (
             <span className="text-muted-foreground text-xs">Checking…</span>
-          ) : owners.length === 0 ? (
+          ) : verifiedByEmail == null ? (
             <span className="text-muted-foreground text-xs italic">
-              No owners — nobody has claimed this place yet.
+              Nobody has completed ownership verification yet.
             </span>
           ) : (
-            <ul className="flex w-full flex-col gap-1.5 py-2.5">
-              {owners.map((email) => (
-                <li key={email} className="flex min-w-0 items-center gap-2 text-sm">
-                  <Mail className="text-muted-foreground h-3.5 w-3.5 shrink-0" />
-                  <span className="truncate">{email}</span>
-                </li>
-              ))}
-            </ul>
+            <span className="flex min-w-0 items-center gap-2 text-sm">
+              <Mail className="text-muted-foreground h-3.5 w-3.5 shrink-0" />
+              <span className="truncate font-mono text-[13px]">
+                {verifiedByEmail}
+              </span>
+            </span>
           )}
         </ReadField>
-        <p className="text-muted-foreground text-xs">
-          <Link
-            href={teamHref}
-            className="text-foreground font-medium underline-offset-2 hover:underline"
-          >
-            Manage team in Settings
-          </Link>
-        </p>
       </div>
     </SectionCard>
   );

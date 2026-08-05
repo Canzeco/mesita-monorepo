@@ -39,7 +39,7 @@ type UnitPlaceContextValue = {
    *
    * Lives on the context, not in UnitEditChrome, because the guard has to reach
    * every exit path — including the cross-tab links rendered deep inside
-   * PlaceSection (PromosCard, OwnershipCard and the read-only stubs). While it
+   * PlaceSection (PromosCard, VerificationCard and the read-only stubs). While it
    * was a local useCallback in the chrome, those links navigated straight past
    * it and silently dropped the operator's edits.
    */
