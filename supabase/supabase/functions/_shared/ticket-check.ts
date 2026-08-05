@@ -136,6 +136,10 @@ export function shapeCheckPayload(args: {
    *  to apply at its own POS. Live best-of blended percent; same privacy
    *  shape as discount_percent. Omit/null → no offer block. */
   offerRatePercent?: number | null;
+  /** MESITA-898: the place requires a bill on record before the close —
+   *  the page shows the subtotal step as mandatory and holds the close
+   *  button until check-web-submit-bill ran. Default false = v3b optional. */
+  billRequired?: boolean;
 }): Record<string, unknown> {
   const { ticket } = args;
   const story = collapseActionState(ticket.story_status);
@@ -190,6 +194,8 @@ export function shapeCheckPayload(args: {
     self_opened: true,
     // Staff PIN gate (MESITA-823) — flag only, never the value.
     pin_required: args.pinRequired,
+    // Bill-required gate (MESITA-898) — the close refuses until billed.
+    bill_required: args.billRequired ?? false,
   };
 }
 
@@ -267,24 +273,44 @@ export function checkNotFound(json: (b: unknown, s?: number) => Response): Respo
   return json({ ok: false, error: "Check not found" }, 404);
 }
 
-// ── Staff PIN gate (MESITA-823) ─────────────────────────────────────────
+// ── Per-place check settings (MESITA-823 · MESITA-898) ─────────────────
 //
-// Optional per-place 6-digit PIN on projects.check_pin (NULL = off). NOT a
-// waiter identity (MESITA-833 stands) — one shared secret the manager
-// briefs staff with, gating the WRITE endpoints only. get-ticket never
-// gates: it exposes a boolean `pin_required` so the page can prompt.
+// The two staff-side knobs living on projects, EF-only (never in
+// projects_view): check_pin — optional 6-digit PIN gating WRITE actions
+// (NULL = off; NOT a waiter identity, MESITA-833 stands) — and
+// check_require_bill — when true, mark-paid refuses to close an unbilled
+// ticket. get-ticket never gates; it exposes the booleans `pin_required`
+// and `bill_required` so the page can prompt.
+
+export type CheckSettings = {
+  pin: string | null;
+  requireBill: boolean;
+};
+
+export async function loadCheckSettings(
+  admin: SupabaseClient,
+  projectId: string,
+): Promise<CheckSettings> {
+  const { data } = await admin
+    .from("projects")
+    .select("check_pin, check_require_bill")
+    .eq("id", projectId)
+    .maybeSingle();
+  const row = data as
+    | { check_pin: string | null; check_require_bill: boolean | null }
+    | null;
+  const pin = row?.check_pin ?? null;
+  return {
+    pin: pin && /^[0-9]{6}$/.test(pin) ? pin : null,
+    requireBill: row?.check_require_bill === true,
+  };
+}
 
 export async function loadCheckPin(
   admin: SupabaseClient,
   projectId: string,
 ): Promise<string | null> {
-  const { data } = await admin
-    .from("projects")
-    .select("check_pin")
-    .eq("id", projectId)
-    .maybeSingle();
-  const pin = (data as { check_pin: string | null } | null)?.check_pin ?? null;
-  return pin && /^[0-9]{6}$/.test(pin) ? pin : null;
+  return (await loadCheckSettings(admin, projectId)).pin;
 }
 
 // Verify the caller's PIN against the place's. Returns the 401 to send on
@@ -300,8 +326,13 @@ export async function requireCheckPin(args: {
   ipHash: string | null;
   userAgent: string | null;
   json: (b: unknown, s?: number) => Response;
+  /** Pass when the caller already loaded the place's check settings —
+   *  skips the redundant projects read. */
+  settings?: CheckSettings;
 }): Promise<{ ok: true } | { ok: false; response: Response }> {
-  const required = await loadCheckPin(args.admin, args.projectId);
+  const required = args.settings
+    ? args.settings.pin
+    : await loadCheckPin(args.admin, args.projectId);
   if (!required) return { ok: true };
 
   const supplied = typeof args.pin === "string" ? args.pin.trim() : "";

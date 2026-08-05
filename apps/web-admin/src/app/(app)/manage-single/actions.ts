@@ -609,11 +609,12 @@ export async function createUnitFromPlaceId(placeId: string) {
   return createUnitFromPlaceIdImpl(placeId);
 }
 
-// ── Check PIN (MESITA-823) ───────────────────────────────────────────────
-// The optional shared 6-digit staff PIN gating check-page WRITE actions.
-// Read: it rides on the active place from business-web-get-overview (owner /
-// super-admin only — the column is deliberately absent from projects_view).
-// Write: its own owner-gated EF.
+// ── Check settings (MESITA-823 · MESITA-898) ─────────────────────────────
+// The optional shared 6-digit staff PIN gating check-page WRITE actions, and
+// the per-place "require bill amount" switch gating the close. Read: both
+// ride on the active place from business-web-get-overview (owner /
+// super-admin only — the columns are deliberately absent from projects_view).
+// Write: one owner-gated EF, partial updates — each card sends only its key.
 
 export async function setCheckPin(
   placeId: string,
@@ -625,4 +626,16 @@ export async function setCheckPin(
   });
   if (!r.ok) return { ok: false, error: r.error };
   return { ok: true, data: r.data.pin };
+}
+
+export async function setCheckRequireBill(
+  placeId: string,
+  requireBill: boolean,
+): Promise<Result<boolean>> {
+  const r = await efInvoke<{ requireBill: boolean }>(
+    "business-web-set-check-pin",
+    { placeId, requireBill },
+  );
+  if (!r.ok) return { ok: false, error: r.error };
+  return { ok: true, data: r.data.requireBill };
 }

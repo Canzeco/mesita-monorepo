@@ -118,6 +118,12 @@ export function CheckClient({
   };
   const scannedLine = minutesAgo(check.first_scanned_at);
   const terminal = check.status === "revealed" || check.status === "cancelled";
+  // MESITA-898: the place opted in to a mandatory bill — the subtotal step
+  // is required and the close waits until a bill is on record. Default
+  // (flag off) keeps the v3b optional bill and the direct close.
+  const billRequired = check.bill_required === true;
+  const mustBillBeforeClose =
+    billRequired && !check.bill && check.status === "open";
 
   const onSubmitBill = () => {
     const pesos = Number(subtotal.replace(/[,$\s]/g, ""));
@@ -253,16 +259,17 @@ export function CheckClient({
           </div>
         ) : null}
 
-        {/* Action: bill entry — OPTIONAL since v3b (MESITA-850). Internal
-            control only, never a gate: skipping it and closing directly is
-            equally valid. */}
+        {/* Action: bill entry — OPTIONAL since v3b (MESITA-850), unless the
+            place turned on "require bill amount" (MESITA-898): then this
+            step is mandatory and the close below waits for it. */}
         {check.status === "open" ? (
           <div className="flex flex-col gap-2">
             <label
               htmlFor="check-subtotal"
               className="text-muted-foreground text-xs font-semibold tracking-wide uppercase"
             >
-              Subtotal de la cuenta (MXN) — opcional
+              Subtotal de la cuenta (MXN) —{" "}
+              {billRequired ? "obligatorio" : "opcional"}
             </label>
             <div className="flex gap-2">
               <input
@@ -283,9 +290,9 @@ export function CheckClient({
               </Button>
             </div>
             <p className="text-muted-foreground text-[11px] leading-snug">
-              Si la escribes, Mesita calcula el total a cobrar con el descuento.
-              Si no, aplica el descuento en tu punto de venta y cierra el ticket
-              directo.
+              {billRequired
+                ? "Este lugar requiere registrar la cuenta: escríbela y Mesita calcula el total a cobrar con el descuento. Después podrás cerrar el ticket."
+                : "Si la escribes, Mesita calcula el total a cobrar con el descuento. Si no, aplica el descuento en tu punto de venta y cierra el ticket directo."}
             </p>
           </div>
         ) : null}
@@ -311,21 +318,35 @@ export function CheckClient({
           />
         ) : null}
 
-        {/* Action: the single unconditional close (v3b, MESITA-850). Works
-            with or without a bill on record — the bill is never a gate. */}
+        {/* Action: the single close (v3b, MESITA-850). Works with or without
+            a bill on record — unless the place requires the bill
+            (MESITA-898): then the button waits until it's entered, matching
+            the 409 bill_required the EF would answer anyway. */}
         {check.status === "awaiting_payment_confirm" ||
         check.status === "open" ? (
-          <Button
-            size="lg"
-            className="w-full"
-            disabled={busy != null}
-            onClick={() => void run("paid", () => markPaid(code, pin))}
-          >
-            {busy === "paid" ? <Loader2 className="animate-spin" /> : <Check />}
-            {check.bill
-              ? "Pago recibido — cerrar ticket"
-              : "Descuento aplicado — cerrar ticket"}
-          </Button>
+          <div className="flex flex-col gap-1.5">
+            <Button
+              size="lg"
+              className="w-full"
+              disabled={busy != null || mustBillBeforeClose}
+              onClick={() => void run("paid", () => markPaid(code, pin))}
+            >
+              {busy === "paid" ? (
+                <Loader2 className="animate-spin" />
+              ) : (
+                <Check />
+              )}
+              {check.bill
+                ? "Pago recibido — cerrar ticket"
+                : "Descuento aplicado — cerrar ticket"}
+            </Button>
+            {mustBillBeforeClose ? (
+              <p className="text-muted-foreground text-center text-[11px] leading-snug">
+                Registra el subtotal de la cuenta arriba para poder cerrar el
+                ticket.
+              </p>
+            ) : null}
+          </div>
         ) : null}
 
         {check.status === "revealed" ? (

@@ -135,6 +135,24 @@ Deno.test("shapeCheckPayload: pin_required is a flag — the PIN value never shi
   }
 });
 
+Deno.test("shapeCheckPayload: bill_required defaults off, flag only (MESITA-898)", () => {
+  // Same contract as pin_required: the shaper is handed a BOOLEAN; the
+  // column value stays server-side. Omitted → false (v3b optional bill).
+  assertEquals(shape().bill_required, false);
+  const required = shapeCheckPayload({
+    ticket: row(),
+    placeName: "Café Prueba",
+    placeSlug: "cafe-prueba",
+    guestDisplayName: "Ana López",
+    guestInstagramHandle: "analopez",
+    capMxn: 500,
+    pinRequired: false,
+    billRequired: true,
+  });
+  assertEquals(required.bill_required, true);
+  assertEquals(JSON.stringify(required).includes("check_require_bill"), false);
+});
+
 Deno.test("shapeCheckPayload: amount due = total minus discount (E2E regression)", () => {
   const payload = shape({
     status: "awaiting_payment_confirm",

@@ -21,7 +21,7 @@ import {
   checkNotFound,
   hashRequestIp,
   isRateLimited,
-  loadCheckPin,
+  loadCheckSettings,
   loadTicketByCheckCode,
   logCheckEvent,
   shapeCheckPayload,
@@ -55,7 +55,7 @@ Deno.serve(async (req) => {
   const ticket = await loadTicketByCheckCode(admin, code);
   if (!ticket) return checkNotFound(json);
 
-  const [placeRow, consumerRow, grid, checkPin] = await Promise.all([
+  const [placeRow, consumerRow, grid, checkSettings] = await Promise.all([
     admin
       .from("projects_view")
       .select("id, name, slug")
@@ -67,7 +67,7 @@ Deno.serve(async (req) => {
       .eq("id", ticket.consumer_id)
       .maybeSingle(),
     loadRewardsGrid(admin),
-    loadCheckPin(admin, ticket.project_id),
+    loadCheckSettings(admin, ticket.project_id),
   ]);
   if (!placeRow.data || !consumerRow.data) return checkNotFound(json);
 
@@ -122,8 +122,11 @@ Deno.serve(async (req) => {
           guest.first_name?.trim() || "Mesita guest",
         guestInstagramHandle: guest.instagram_handle ?? null,
         capMxn: grid.cap ?? null,
-        pinRequired: checkPin != null,
+        pinRequired: checkSettings.pin != null,
         offerRatePercent,
+        // MESITA-898: the place opted in to a mandatory bill — the page
+        // shows the subtotal step as required and holds the close.
+        billRequired: checkSettings.requireBill,
       }),
       scanned_before: wasScanned,
     },
