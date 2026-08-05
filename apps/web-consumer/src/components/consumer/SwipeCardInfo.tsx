@@ -12,6 +12,7 @@ import { resolveZoneLabel } from "@/lib/adapters/place-to-detail";
 import { resolvePlaceCategoryName } from "@/lib/place-category";
 import { getOpeningStatusLabel } from "@/lib/place-status";
 import { formatPlacePriceLevelSymbols } from "@/lib/place-price";
+import { Spinner } from "@/components/shared";
 import { PromoChip } from "./PromoChip";
 
 /** Place fields — padding comes from SWIPE_CARD_FIELDS_INNER on the card face. */
@@ -83,6 +84,28 @@ export function SwipeCardInfo({
           compact && "max-h-[102px] overflow-hidden",
         )}
       >
+        {/* decision: Pato — newly created / still-enriching places show the
+            Enriching chip on the swipe deck too (same signal as place detail
+            + search add-row). Leads the tag row so the in-flight state is
+            obvious before category / price / etc. */}
+        {place.is_enriching && (
+          <span
+            className={cn(
+              "inline-flex items-center gap-1.5 rounded-md border border-emerald-300/55 bg-emerald-500/35 font-semibold whitespace-nowrap text-emerald-50 backdrop-blur-md",
+              compact
+                ? "px-[9px] py-[3px] text-[11px]"
+                : "px-2.5 py-1 text-[11.5px]",
+            )}
+            aria-live="polite"
+          >
+            <Spinner
+              size="sm"
+              label="Enriching"
+              className="h-3 w-3 border-emerald-200/40 border-t-emerald-100"
+            />
+            Enriching
+          </span>
+        )}
         {categoryLabel && (
           <MetaChip compact={compact}>
             <span className="font-semibold">{categoryLabel}</span>

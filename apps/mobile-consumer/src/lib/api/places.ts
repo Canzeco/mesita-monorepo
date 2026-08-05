@@ -57,6 +57,12 @@ export type Place = {
   distance_km?: number | null;
   zone?: string | null;
   reward_cap_mxn?: number | null;
+  /**
+   * True while Enricher is still building the profile
+   * (`projects.content_status` ∈ {queued, generating}). Drives the
+   * Enriching chip on swipe cards — same signal as place detail.
+   */
+  is_enriching?: boolean;
   products?: Record<string, unknown> | null;
   is_first_visit?: boolean | null;
   welcome_free_rate?: number | null;

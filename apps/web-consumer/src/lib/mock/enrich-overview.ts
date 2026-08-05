@@ -70,6 +70,13 @@ export function enrichPlaceOverview(v: Place): Place {
     currency,
   });
 
+  // Same predicate as placeRowToDetail — content_status stays queued/
+  // generating for the full pipeline; only contents lands 'ready'.
+  const contentStatus = str(row.content_status);
+  const isEnriching =
+    v.is_enriching ??
+    (contentStatus === "queued" || contentStatus === "generating");
+
   return {
     ...v,
     google_rating: v.google_rating ?? rating ?? null,
@@ -89,6 +96,7 @@ export function enrichPlaceOverview(v: Place): Place {
     // the raw row columns — and only for Verified Partners (web-listed places
     // never offer rewards).
     reward_cap_mxn: v.reward_cap_mxn ?? rewardCapMxn ?? null,
+    is_enriching: isEnriching,
   };
 }
 

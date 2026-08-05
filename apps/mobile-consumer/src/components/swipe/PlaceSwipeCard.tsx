@@ -10,7 +10,7 @@ import {
 } from 'lucide-react-native';
 import type { ReactNode } from 'react';
 import { useCallback, useState } from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 
 import { ChannelMark } from '@/components/brand/channel-marks';
 import { GRADIENTS, GRADIENT_DIAGONAL } from '@/constants/brand';
@@ -98,6 +98,19 @@ export function PlaceSwipeCard({ place: rawPlace }: { place: Place }) {
         </View>
 
         <View className="flex-row flex-wrap items-center gap-1.5">
+          {/* decision: Pato — newly created / still-enriching places show the
+              Enriching chip on the swipe deck too (web SwipeCardInfo parity). */}
+          {place.is_enriching ? (
+            <View
+              className="flex-row items-center gap-1.5 rounded-md border border-emerald-300/55 bg-emerald-500/35 px-[9px] py-[3px]"
+              accessibilityLiveRegion="polite"
+            >
+              <ActivityIndicator color="#ecfdf5" size="small" />
+              <Text className="text-[11px] font-semibold text-emerald-50">
+                Enriching
+              </Text>
+            </View>
+          ) : null}
           {categoryLabel ? <MetaChip label={categoryLabel} /> : null}
           {priceLabel ? <MetaChip label={priceLabel} /> : null}
           {ratingLabel ? (
