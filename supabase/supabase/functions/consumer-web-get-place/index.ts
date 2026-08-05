@@ -20,6 +20,7 @@ import {
   readEFEnv,
 } from "../_shared/auth.ts";
 import { PLACE_PUBLIC_COLUMNS as PLACE_COLUMNS } from "../_shared/place-columns.ts";
+import { displayName } from "../_shared/place-display-name.ts";
 import { resolvePlaceTags } from "../_shared/tags.ts";
 import { mapTicketReviewsToVisitors } from "../_shared/mesita-review-visitors.ts";
 
@@ -85,9 +86,17 @@ Deno.serve(async (req) => {
     ? []
     : mapTicketReviewsToVisitors(reviewsRes.data ?? []);
 
-  return json({
-    ok: true,
-    place: { ...(data as Record<string, unknown>), mesita_visitors },
-    tags,
-  });
+  // Dual-name (MESITA-917): consumer `name` is the display label (Mesita
+  // priority). Raw google_name stays on the payload for clients that need it.
+  const row = data as unknown as Record<string, unknown>;
+  const place = {
+    ...row,
+    name: displayName({
+      name: (row.name as string | null | undefined) ?? null,
+      google_name: (row.google_name as string | null | undefined) ?? null,
+    }),
+    mesita_visitors,
+  };
+
+  return json({ ok: true, place, tags });
 });

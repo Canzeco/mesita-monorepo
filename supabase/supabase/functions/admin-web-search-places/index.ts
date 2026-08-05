@@ -2,10 +2,10 @@
 //
 // Super-admin place search for the admin console's "Manage Single Unit"
 // place picker. Takes a free-text query and returns matching Mesita places
-// (by name / slug, or an exact id paste). The operator picks one, and the
-// admin console then drives that place through the existing business-* EFs
-// (super-admin bypass in _shared/auth.ts grants access regardless of
-// project_members).
+// (by Mesita name / google_name / slug, or an exact id paste). The operator
+// picks one, and the admin console then drives that place through the
+// existing business-* EFs (super-admin bypass in _shared/auth.ts grants
+// access regardless of project_members).
 //
 // Auth: caller's JWT email must be in public.super_admins.
 // verify_jwt = true gates non-bearer callers at the gateway.
@@ -18,6 +18,7 @@ import {
   readEFEnv,
   requireSuperAdmin,
 } from "../_shared/auth.ts";
+import { displayName } from "../_shared/place-display-name.ts";
 
 type Body = { query?: unknown; limit?: unknown };
 
@@ -49,8 +50,8 @@ Deno.serve(async (req) => {
   // All of these already live on projects_view — no join required.
   // Keep as a single string literal so supabase-js can type the select.
   const cols =
-    "id, slug, name, category, category_label, status, address, photos, zone, google_stars_overall, google_review_count, content_status, listing_type";
-  let rows;
+    "id, slug, name, google_name, category, category_label, status, address, photos, zone, google_stars_overall, google_review_count, content_status, listing_type, updated_at";
+  let rows: Record<string, unknown>[] = [];
 
   if (q.length === 0) {
     // Empty query — browse recent units for the catalog landing state.
@@ -60,40 +61,58 @@ Deno.serve(async (req) => {
       .order("updated_at", { ascending: false })
       .limit(limit);
     if (error) return json({ ok: false, error: `search_failed: ${error.message}` }, 500);
-    rows = data ?? [];
+    rows = (data ?? []) as Record<string, unknown>[];
   } else if (UUID_RE.test(q)) {
     // Exact id paste — return that one place.
     const { data, error } = await admin.from("projects_view").select(cols).eq("id", q).maybeSingle();
     if (error) return json({ ok: false, error: `search_failed: ${error.message}` }, 500);
-    rows = data ? [data] : [];
+    rows = data ? [data as Record<string, unknown>] : [];
   } else if (q.length < 2) {
     return json({ ok: false, error: "query must be at least 2 characters" }, 400);
   } else {
-    // Free-text: match name OR slug, newest-touched first. Strip characters
-    // that break the PostgREST or() grammar (comma / parens), then escape LIKE
-    // wildcards so the remaining text matches literally.
+    // Free-text: match Mesita name OR google_name OR slug (MESITA-917).
+    // Strip characters that break the PostgREST or() grammar (comma / parens),
+    // then escape LIKE wildcards so the remaining text matches literally.
     const safe = q.replace(/[,()"]/g, " ").trim();
     const escaped = safe.replace(/[%_\\]/g, (m) => `\\${m}`);
     const pattern = `%${escaped}%`;
     const { data, error } = await admin
       .from("projects_view")
       .select(cols)
-      .or(`name.ilike."${pattern}",slug.ilike."${pattern}"`)
+      .or(
+        `name.ilike."${pattern}",google_name.ilike."${pattern}",slug.ilike."${pattern}"`,
+      )
       .order("updated_at", { ascending: false })
       .limit(limit);
     if (error) return json({ ok: false, error: `search_failed: ${error.message}` }, 500);
-    rows = data ?? [];
+    rows = (data ?? []) as Record<string, unknown>[];
+    // Prefer Mesita-name hits ahead of google-only / slug hits (one row per id).
+    const qLower = safe.toLowerCase();
+    rows.sort((a, b) => {
+      const aMesita = typeof a.name === "string" &&
+        a.name.toLowerCase().includes(qLower);
+      const bMesita = typeof b.name === "string" &&
+        b.name.toLowerCase().includes(qLower);
+      if (aMesita !== bMesita) return aMesita ? -1 : 1;
+      return 0;
+    });
   }
 
   // Trim photos to the first thumbnail to keep the payload small.
   // enriched / verified are derived for the Manage Single Unit catalog table.
-  const places = (rows ?? []).map((v) => {
+  // Label with displayName (Mesita priority) — never two rows for one place.
+  const places = rows.map((v) => {
     const contentStatus = (v.content_status as string | null) ?? null;
     const listingType = (v.listing_type as string | null) ?? null;
+    const label = displayName({
+      name: (v.name as string | null) ?? null,
+      google_name: (v.google_name as string | null) ?? null,
+    });
     return {
       id: v.id,
       slug: v.slug,
-      name: v.name,
+      name: label,
+      google_name: (v.google_name as string | null) ?? null,
       category: v.category,
       category_label: v.category_label,
       status: v.status,

@@ -100,7 +100,14 @@ export async function savePlaceData(
 
   // ── 1) places (profile). Strip caller-supplied id/timestamps so the DB owns
   // them; the category-label trigger fills category_label from category. ──
-  const { id: _dropId, created_at: _dropCreated, updated_at: _dropUpdated, ...placeInsert } = place;
+  // Dual-name (MESITA-917): create always seeds google_name from Google
+  // (basics already set both; fill google_name if a caller only sent name).
+  const { id: _dropId, created_at: _dropCreated, updated_at: _dropUpdated, ...placeRest } = place;
+  const placeInsert = {
+    ...placeRest,
+    google_name: ((place.google_name ?? name) as string).toString().trim() || name,
+    name,
+  };
   const { data: placeRow, error: placeErr } = await admin
     .from("places")
     .insert(placeInsert)

@@ -30,6 +30,7 @@ import {
   type MemoPlaceCard,
   rowToMemoPlaceCard,
 } from "../_shared/memo-place-card.ts";
+import { displayName } from "../_shared/place-display-name.ts";
 
 // Rows a browsing consumer may see by name.
 const BROWSABLE_STATUS = ["active", "lead"];
@@ -79,12 +80,14 @@ Deno.serve(async (req) => {
   const admin = adminClient(envRes.env);
 
   // Both legs are independent reads — run them together.
+  // Name leg matches Mesita name OR google_name (MESITA-917); one row per id.
+  const pattern = `%${escapeIlike(name)}%`;
   const [byName, byId] = await Promise.all([
     name.length >= 2
       ? admin
         .from("projects_view")
         .select(MEMO_PLACE_PUBLIC_SELECT)
-        .ilike("name", `%${escapeIlike(name)}%`)
+        .or(`name.ilike."${pattern}",google_name.ilike."${pattern}"`)
         .in("status", BROWSABLE_STATUS)
         .limit(limit)
       : Promise.resolve({ data: [], error: null }),
@@ -99,12 +102,30 @@ Deno.serve(async (req) => {
   if (byName.error) console.error("[search-places] name:", byName.error.message);
   if (byId.error) console.error("[search-places] placeIds:", byId.error.message);
 
-  // Name hits lead (they answered the actual question); id hits fill in. Dedupe
-  // on the catalog id so a place matching both modes appears once.
+  // Prefer Mesita-name hits, then google-only, then id hits. Dedupe on catalog id.
+  const qLower = name.toLowerCase();
+  const nameRows = [...(byName.data ?? [])] as Record<string, unknown>[];
+  nameRows.sort((a, b) => {
+    const aMesita = typeof a.name === "string" &&
+      a.name.toLowerCase().includes(qLower);
+    const bMesita = typeof b.name === "string" &&
+      b.name.toLowerCase().includes(qLower);
+    if (aMesita !== bMesita) return aMesita ? -1 : 1;
+    return 0;
+  });
+
   const seen = new Set<string>();
   const places: MemoPlaceCard[] = [];
-  for (const row of [...(byName.data ?? []), ...(byId.data ?? [])]) {
-    const card = rowToMemoPlaceCard(row as unknown as Record<string, unknown>);
+  for (const row of [...nameRows, ...(byId.data ?? [])]) {
+    const raw = row as unknown as Record<string, unknown>;
+    const card = rowToMemoPlaceCard({
+      ...raw,
+      // Card label = Mesita priority (empty Mesita name → google_name).
+      name: displayName({
+        name: (raw.name as string | null) ?? null,
+        google_name: (raw.google_name as string | null) ?? null,
+      }),
+    });
     if (!card.id || seen.has(card.id)) continue;
     seen.add(card.id);
     places.push(card);

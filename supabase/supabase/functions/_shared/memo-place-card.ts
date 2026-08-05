@@ -14,7 +14,7 @@
 // The columns the data EFs may SELECT. Kept beside the card so the projection
 // and the query can never drift apart.
 export const MEMO_PLACE_PUBLIC_SELECT =
-  "id, slug, name, address, category, listing_type, google_place_id, google_stars_overall";
+  "id, slug, name, google_name, address, category, listing_type, google_place_id, google_stars_overall";
 
 export type MemoPlaceCard = {
   id: string;

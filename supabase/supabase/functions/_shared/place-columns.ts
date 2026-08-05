@@ -14,6 +14,9 @@ const COLUMNS: readonly string[] = [
   "id",
   "slug",
   "name",
+  // Google Places displayName spine (MESITA-917) — Enricher-only; Mesita
+  // display stays in `name` (empty ⇒ UI falls back to google_name).
+  "google_name",
   "category",
   // Human-friendly category copy (emoji + natural-language label),
   // derived from category via place_categories.

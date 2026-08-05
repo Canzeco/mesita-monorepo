@@ -37,6 +37,15 @@ function isEnriching(status: PlaceEnrichmentStatus | null): boolean {
 // anything else (draft, paused, etc.) renders the amber dot.
 const POSITIVE_STATUS_LABELS = new Set(["active", "published", "live", "ready"]);
 
+/** Mesita name if set, else Google name (MESITA-917). */
+function placeDisplayName(p: AdminPlace): string {
+  const mesita = (p.name ?? "").trim();
+  if (mesita) return mesita;
+  const google = (p.google_name ?? "").trim();
+  if (google) return google;
+  return "(unnamed)";
+}
+
 export function UnitEditChrome({
   projectId,
   place,
@@ -136,14 +145,18 @@ export function UnitEditChrome({
     <div className="border-border bg-card text-foreground sticky top-0 z-30 border-b shadow-sm">
       {/* Row 1 — identity + actions */}
       <div className="flex items-center gap-3 px-4 py-3.5 sm:gap-4 sm:px-6 sm:py-4 lg:px-8">
-        <UnitThumb photo={heroPhoto} name={place.name} size="lg" tone="onLight" />
+        <UnitThumb photo={heroPhoto} name={placeDisplayName(place)} size="lg" tone="onLight" />
 
         <div className="min-w-0 flex-1">
           <p
             className="font-display flex min-w-0 items-center gap-1.5 text-base font-semibold tracking-tight sm:text-lg"
-            title={enriching ? `${place.name} (Enriching)` : place.name}
+            title={
+              enriching
+                ? `${placeDisplayName(place)} (Enriching)`
+                : placeDisplayName(place)
+            }
           >
-            <span className="truncate">{place.name}</span>
+            <span className="truncate">{placeDisplayName(place)}</span>
             {enriching ? (
               <span
                 className="inline-flex shrink-0 items-center gap-1 text-sm font-semibold text-blue-600"
@@ -175,6 +188,13 @@ export function UnitEditChrome({
               </span>
             ) : null}
           </p>
+          {(place.google_name ?? "").trim() &&
+          (place.name ?? "").trim() &&
+          (place.name ?? "").trim() !== (place.google_name ?? "").trim() ? (
+            <p className="text-muted-foreground mt-0.5 truncate text-[11px]">
+              Google: {(place.google_name ?? "").trim()}
+            </p>
+          ) : null}
           <div className="text-muted-foreground mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs">
             {statusLabel ? (
               <span className="text-foreground/80 inline-flex items-center gap-1.5 font-medium capitalize">
