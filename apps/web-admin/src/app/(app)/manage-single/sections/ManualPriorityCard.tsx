@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { Star } from "lucide-react";
 import { DEFAULT_MANUAL_PRIORITY } from "@/lib/business/scores";
 import { updatePlace, type AdminPlace } from "../actions";
+import { useUnitPlace } from "../UnitPlaceContext";
 import { GroupLabel, SectionCard } from "../ui";
 
 // Manual Priority — the one LIVE, editable per-place score (MP subscore). A
@@ -13,6 +14,7 @@ import { GroupLabel, SectionCard } from "../ui";
 // — a business must never see its own thumb-on-the-scale. Written via
 // business-web-update-project → super-admin-gated → places.manual_priority.
 export function ManualPriorityCard({ place }: { place: AdminPlace }) {
+  const { setPlace } = useUnitPlace();
   const [mp, setMp] = useState(place.manual_priority ?? DEFAULT_MANUAL_PRIORITY);
   const [savedMp, setSavedMp] = useState(place.manual_priority ?? DEFAULT_MANUAL_PRIORITY);
   const [saving, startSave] = useTransition();
@@ -28,6 +30,8 @@ export function ManualPriorityCard({ place }: { place: AdminPlace }) {
         return;
       }
       setSavedMp(r.data.manual_priority ?? mp);
+      // Keep Scores (and any other place readers) in sync without a reload.
+      setPlace(r.data);
     });
   };
 

@@ -17,15 +17,17 @@ import {
   type PlaceEnrichmentStatus,
 } from "../actions";
 import { ManualPriorityCard } from "./ManualPriorityCard";
+import { ScoresCard } from "./ScoresCard";
 import { CopyIdButton, ReadField, SectionCard } from "../ui";
 import { formatAbsoluteUtc } from "@/lib/format";
 
 // Admin — the Mesita-internal tab (Pato, 2026-08-04). Split out of Settings so
 // Settings keeps only what a business may set for itself: Manual Priority (the
-// one live editable per-place score), Ownership (the partner verification WE
-// grant + who has claimed the place), Metadata (uid + live enriching status —
-// keeps the 8s poll) and Embeddings. Nothing here is business-facing; see
-// nav.ts for why the tab can't leak to web-business.
+// one live editable per-place score), Scores (place-side Lineup subscores),
+// Ownership (the partner verification WE grant + who has claimed the place),
+// Metadata (uid + live enriching status — keeps the 8s poll) and Embeddings.
+// Nothing here is business-facing; see nav.ts for why the tab can't leak to
+// web-business.
 export function AdminSection({ place }: { place: AdminPlace }) {
   const [enrichStatus, setEnrichStatus] = useState<PlaceEnrichmentStatus | null>(
     null,
@@ -70,6 +72,7 @@ export function AdminSection({ place }: { place: AdminPlace }) {
     // Same masonry as the Place tab — columns pack top-down (MESITA-399).
     <div className="columns-1 gap-4 pb-8 [&>section]:mb-4 [&>section]:break-inside-avoid [&>details]:mb-4 [&>details]:break-inside-avoid lg:columns-2 lg:gap-5 lg:pb-10 lg:[&>section]:mb-5 lg:[&>details]:mb-5">
       <ManualPriorityCard place={place} />
+      <ScoresCard place={place} />
       <OwnershipCard place={place} owners={owners} ownersError={ownersError} />
       <MetaCard place={place} enrichStatus={enrichStatus} />
       <EmbeddingsCard place={place} />
