@@ -1,9 +1,10 @@
 // Supabase Edge Function — business-web-update-member-role
 //
-// Promote / demote a place member. Owners only. The last owner of a
-// place can never be demoted — there has to be at least one owner at
-// rest, otherwise no one can re-invite. (Removing the last owner is
-// also blocked by business-web-remove-member.)
+// Promote / demote a place member. Owners only.
+//
+// Exactly one owner per place (MESITA-919):
+//   • role → owner  = transfer ownership (previous owner becomes editor)
+//   • demoting the sole owner without a transfer → 409
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { corsPreflight, json, readJsonOr } from "../_shared/http.ts";
@@ -14,7 +15,10 @@ import {
   requireOwner,
 } from "../_shared/auth.ts";
 import { isMemberRole, type MemberRole } from "../_shared/roles.ts";
-import { isLastOwnerOfPlace } from "../_shared/place-ownership.ts";
+import {
+  isLastOwnerOfPlace,
+  transferPlaceOwnership,
+} from "../_shared/place-ownership.ts";
 
 type Body = {
   memberId?: string;
@@ -60,10 +64,32 @@ Deno.serve(async (req) => {
   );
   if (!owner.ok) return owner.response;
 
-  if (target.data.role === "owner" && role !== "owner") {
+  if (target.data.role === role) {
+    return json({ ok: true, memberId: target.data.id, role: target.data.role });
+  }
+
+  // Transfer ownership — demote any other owners, then promote this member.
+  if (role === "owner") {
+    const xfer = await transferPlaceOwnership(
+      admin,
+      target.data.project_id,
+      memberId,
+    );
+    if (!xfer.ok) {
+      return json({ ok: false, error: xfer.error }, 500);
+    }
+    return json({ ok: true, memberId, role: "owner", transferred: true });
+  }
+
+  // Demoting the sole owner leaves the place without an owner — blocked.
+  if (target.data.role === "owner") {
     if (await isLastOwnerOfPlace(admin, target.data.project_id)) {
       return json(
-        { ok: false, code: "last_owner", error: "Promote another owner first." },
+        {
+          ok: false,
+          code: "last_owner",
+          error: "Transfer ownership to another member first.",
+        },
         409,
       );
     }

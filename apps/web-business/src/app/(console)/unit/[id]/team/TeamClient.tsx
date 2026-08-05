@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 
 import {
   apiInviteEditor,
@@ -19,10 +19,9 @@ import { ConfirmDialog, type ConfirmState } from "./ConfirmDialog";
 import { ManagersTeamSection } from "./ManagersTeamSection";
 import { ROLE_LABEL, type InviteOpen } from "./team-constants";
 
-// The Team page is the BUSINESS team — owners, managers, PRs. Waiters were
-// retired (MESITA-833): staff work tickets on the public check page, where
-// possession of the check_code is the authentication, so there is no staff
-// account to invite, ping or revoke.
+// Business team — members with roles owner | editor | viewer. Exactly one
+// owner per place (MESITA-919); ownership is transferable. Waiters were
+// retired (MESITA-833).
 
 export function TeamClient({
   projectId,
@@ -34,9 +33,6 @@ export function TeamClient({
   initialSnapshot: TeamSnapshot;
 }) {
   const supabase = useBrowserSupabase();
-  // Seeded from the server fetch in page.tsx — no client-side initial
-  // load, no second loading indicator. refresh() still runs after every
-  // mutating handler to keep the list in sync.
   const [snapshot, setSnapshot] = useState<TeamSnapshot>(initialSnapshot);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
@@ -56,12 +52,17 @@ export function TeamClient({
   }, [supabase, projectId]);
 
   const isOwner = snapshot.myRole === "owner";
-  const managers = snapshot.businesses.filter((m) => m.role !== "viewer");
-  const pendingManagerInvites = snapshot.pendingBusinessInvites.filter(
-    (inv) => inv.role !== "viewer",
-  );
 
-  // Wrap any mutating action in the shared busy/error/refresh frame.
+  const members = useMemo(() => {
+    return [...snapshot.businesses].sort((a, b) => {
+      if (a.role === "owner" && b.role !== "owner") return -1;
+      if (b.role === "owner" && a.role !== "owner") return 1;
+      return (a.fullName ?? a.email ?? "").localeCompare(
+        b.fullName ?? b.email ?? "",
+      );
+    });
+  }, [snapshot.businesses]);
+
   async function runAction(
     key: string,
     fn: () => Promise<unknown>,
@@ -79,9 +80,9 @@ export function TeamClient({
     }
   }
 
-  const handleInviteManager = (email: string, role: BusinessRole) =>
+  const handleInviteMember = (email: string, role: BusinessRole) =>
     runAction(
-      "invite-manager",
+      "invite-member",
       async () => {
         await apiInviteEditor(supabase, {
           projectId,
@@ -91,7 +92,7 @@ export function TeamClient({
         });
         setInviteOpen(null);
       },
-      "Couldn't send that manager invite.",
+      "Couldn't send that invite.",
     );
 
   const handleChangeRole = (
@@ -101,6 +102,21 @@ export function TeamClient({
     name: string,
   ) => {
     if (role === currentRole) return;
+    if (role === "owner") {
+      setConfirmState({
+        title: "Transfer ownership",
+        body: `Make ${name} the owner? The current owner becomes an editor. Only one owner per place.`,
+        confirmLabel: "Transfer",
+        tone: "default",
+        onConfirm: () =>
+          runAction(
+            `role-${memberId}`,
+            () => apiUpdateMemberRole(supabase, { memberId, role }),
+            "Couldn't transfer ownership.",
+          ),
+      });
+      return;
+    }
     setConfirmState({
       title: "Change role",
       body: `Change ${name}'s role from ${ROLE_LABEL[currentRole]} to ${ROLE_LABEL[role]}?`,
@@ -115,7 +131,7 @@ export function TeamClient({
     });
   };
 
-  const handleRemoveEditor = (
+  const handleRemoveMember = (
     memberId: string,
     name: string,
     isSelf: boolean,
@@ -169,18 +185,18 @@ export function TeamClient({
       )}
 
       <ManagersTeamSection
-        managers={managers}
-        pendingManagerInvites={pendingManagerInvites}
+        members={members}
+        pendingInvites={snapshot.pendingBusinessInvites}
         isOwner={isOwner}
         currentUserId={currentUserId}
         busy={busy}
-        inviteOpen={inviteOpen === "manager"}
+        inviteOpen={inviteOpen === "member"}
         onToggleInvite={() =>
-          setInviteOpen(inviteOpen === "manager" ? null : "manager")
+          setInviteOpen(inviteOpen === "member" ? null : "member")
         }
-        onInviteManager={handleInviteManager}
+        onInviteMember={handleInviteMember}
         onChangeRole={handleChangeRole}
-        onRemoveEditor={handleRemoveEditor}
+        onRemoveMember={handleRemoveMember}
         onRemove={handleRemove}
       />
     </div>
