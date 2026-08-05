@@ -88,6 +88,12 @@ export type Place = {
   zone?: string | null;
   /** Per-visit reward ceiling in the place's currency. */
   reward_cap_mxn?: number | null;
+  /**
+   * True while Enricher is still building the profile
+   * (`projects.content_status` ∈ {queued, generating}). Drives the
+   * Enriching chip on swipe / catalog cards — same signal as place detail.
+   */
+  is_enriching?: boolean;
   // Generic product payload. Menus are carried in products.menu.
   products?: Record<string, unknown> | null;
   /**
