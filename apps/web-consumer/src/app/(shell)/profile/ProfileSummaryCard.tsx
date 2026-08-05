@@ -13,13 +13,14 @@ import {
   formatSex,
 } from "@/lib/utils";
 
-// ─── Mesita passport (MESITA-888) ──────────────────────────────────────────
-// The identity card, shaped like a document you'd own: identity zone (ring
-// avatar + name + phone + meta, MESITA wordmark top-right) over a passport
-// strip of three labeled fields — Instagram, Class, Visits. No icon tiles,
-// no list rows: labels + values, like the data page of a passport.
+// ─── Mesita passport v2 (MESITA-901) ────────────────────────────────────────
+// A presentation card: everything sits on the center axis like a physical
+// membership card. Issuer line (hairline · MESITA · hairline) on top, then a
+// centered ring avatar over a centered name / phone / meta stack, then a
+// full-width stat band of three EXACTLY equal, center-aligned columns
+// (Instagram · Class · Visits) split by hairline separators.
 
-// One passport field: small-caps label over a semibold value, with an
+// One stat column: centered small-caps label over a centered value, with an
 // optional muted sub-line (followers, class origin).
 function PassportField({
   label,
@@ -31,12 +32,12 @@ function PassportField({
   label: string;
   value: React.ReactNode;
   sub?: string | null;
-  /** Dim the value for absent data ("—"). */
+  /** Dim the value for absent data ("Not connected"). */
   muted?: boolean;
   className?: string;
 }) {
   return (
-    <div className={cn("min-w-0", className)}>
+    <div className={cn("min-w-0 px-2 text-center", className)}>
       <p className="text-muted-foreground/70 text-[10px] font-semibold tracking-[0.14em] uppercase">
         {label}
       </p>
@@ -53,6 +54,20 @@ function PassportField({
           {sub}
         </p>
       )}
+    </div>
+  );
+}
+
+// Issuer line: MESITA wordmark on the center axis, flanked by hairlines —
+// the engraved header of the card.
+function IssuerLine() {
+  return (
+    <div className="flex items-center justify-center gap-3">
+      <span aria-hidden className="bg-foreground/15 h-px w-9" />
+      <span className="font-display text-foreground/40 text-[10px] font-bold tracking-[0.3em] uppercase select-none">
+        Mesita
+      </span>
+      <span aria-hidden className="bg-foreground/15 h-px w-9" />
     </div>
   );
 }
@@ -80,22 +95,22 @@ export function ProfileSummaryCard({
 
   if (loading) {
     return (
-      <div className="border-border bg-muted/50 overflow-hidden rounded-3xl border p-4">
-        <div className="flex items-center gap-4">
-          {/* Avatar: 76px to match the real story-ring avatar (66px + 2x2.5px rings). */}
-          <div className="bg-muted h-[76px] w-[76px] shrink-0 animate-pulse rounded-full" />
-          <div className="min-w-0 flex-1 space-y-2">
-            <div className="bg-muted h-5 w-40 animate-pulse rounded" />
-            <div className="bg-muted h-3.5 w-28 animate-pulse rounded" />
-            <div className="bg-muted h-3.5 w-20 animate-pulse rounded" />
-          </div>
+      <div className="border-border bg-muted/50 overflow-hidden rounded-3xl border px-4 pt-4 pb-4">
+        {/* Issuer-line stub, centered. */}
+        <div className="bg-muted mx-auto h-2.5 w-24 animate-pulse rounded" />
+        {/* Avatar: 76px to match the real ring avatar (66px + 2x2.5px rings). */}
+        <div className="bg-muted mx-auto mt-4 h-[76px] w-[76px] animate-pulse rounded-full" />
+        <div className="mt-3 space-y-2">
+          <div className="bg-muted mx-auto h-5 w-40 animate-pulse rounded" />
+          <div className="bg-muted mx-auto h-3.5 w-28 animate-pulse rounded" />
+          <div className="bg-muted mx-auto h-3.5 w-20 animate-pulse rounded" />
         </div>
-        {/* Passport-strip placeholder: three label/value stubs. */}
-        <div className="border-border/60 mt-4 grid grid-cols-[1.35fr_1fr_0.75fr] gap-3 border-t pt-3.5">
+        {/* Stat-band placeholder: three equal centered label/value stubs. */}
+        <div className="border-border/60 mt-4 grid grid-cols-3 border-t pt-3.5">
           {[0, 1, 2].map((i) => (
-            <div key={i} className="space-y-1.5">
-              <div className="bg-muted h-2.5 w-14 animate-pulse rounded" />
-              <div className="bg-muted h-4 w-full max-w-24 animate-pulse rounded" />
+            <div key={i} className="space-y-1.5 px-2">
+              <div className="bg-muted mx-auto h-2.5 w-14 animate-pulse rounded" />
+              <div className="bg-muted mx-auto h-4 w-16 animate-pulse rounded" />
             </div>
           ))}
         </div>
@@ -131,25 +146,19 @@ export function ProfileSummaryCard({
     // reads premium and distinct from the white option boxes below.
     <section
       className={cn(
-        "border-border relative overflow-hidden rounded-3xl border p-4",
+        "border-border overflow-hidden rounded-3xl border px-4 pt-4 pb-4",
         isElevated
           ? "from-primary/[0.14] via-secondary/[0.10] to-accent/[0.12] bg-gradient-to-br"
           : "from-primary/[0.08] via-secondary/[0.06] to-accent/[0.08] bg-gradient-to-br",
       )}
     >
-      {/* Document mark — quiet, top-right, like the issuer line on a card. */}
-      <span
-        aria-hidden
-        className="font-display text-foreground/30 absolute top-4 right-4 text-[10px] font-bold tracking-[0.3em] uppercase select-none"
-      >
-        Mesita
-      </span>
+      <IssuerLine />
 
-      <div className="flex items-center gap-4">
-        {/* Story-ring avatar: class-tinted gradient ring around the photo. */}
+      {/* Story-ring avatar on the center axis: class-tinted gradient ring. */}
+      <div className="mt-4 flex justify-center">
         <div
           className={cn(
-            "shrink-0 rounded-full p-[2.5px]",
+            "rounded-full p-[2.5px]",
             isElevated ? elevatedBg : "bg-pink-gradient",
           )}
         >
@@ -169,46 +178,47 @@ export function ProfileSummaryCard({
             </div>
           </div>
         </div>
-
-        {/* Name over phone, stacked to the right of the avatar. */}
-        <div className="min-w-0 flex-1 pr-10">
-          <h2 className="font-display truncate text-[20px] leading-tight font-bold tracking-tight">
-            {name}
-          </h2>
-          <p
-            className={cn(
-              "mt-1 truncate text-[14px]",
-              phone
-                ? "text-muted-foreground font-medium"
-                : "text-muted-foreground/70",
-            )}
-          >
-            {phone || "No phone added"}
-          </p>
-          {meta && (
-            <p className="text-muted-foreground/70 mt-0.5 truncate text-[13px]">
-              {meta}
-            </p>
-          )}
-        </div>
       </div>
 
-      {/* Passport strip: Instagram · Class · Visits. The connect CTA lives on
+      {/* Centered identity stack: name over phone over sex · age. */}
+      <div className="mt-3 text-center">
+        <h2 className="font-display truncate text-[20px] leading-tight font-bold tracking-tight">
+          {name}
+        </h2>
+        <p
+          className={cn(
+            "mt-1 truncate text-[14px]",
+            phone
+              ? "text-muted-foreground font-medium"
+              : "text-muted-foreground/70",
+          )}
+        >
+          {phone || "No phone added"}
+        </p>
+        {meta && (
+          <p className="text-muted-foreground/70 mt-0.5 truncate text-[13px]">
+            {meta}
+          </p>
+        )}
+      </div>
+
+      {/* Stat band: Instagram · Class · Visits — three equal centered columns
+          split by hairlines, one deliberate band. The connect CTA lives on
           the Instagram box below — the card states, it never nags. */}
-      <div className="border-border/60 mt-4 grid grid-cols-[1.35fr_1fr_0.75fr] border-t pt-3.5">
+      <div className="border-border/60 mt-4 grid grid-cols-3 border-t pt-3.5">
         <PassportField
           label="Instagram"
           muted={!igConnected}
           value={
             igConnected ? (
-              <span className="flex min-w-0 items-center gap-1">
+              <span className="flex min-w-0 items-center justify-center gap-1">
                 <span className="truncate">
                   {handle ? `@${handle}` : "Connected"}
                 </span>
                 <BadgeCheck className="text-foreground/50 h-[14px] w-[14px] shrink-0" />
               </span>
             ) : (
-              "—"
+              "Not connected"
             )
           }
           sub={
@@ -216,19 +226,18 @@ export function ProfileSummaryCard({
               ? `${followers.toLocaleString("en-US")} followers`
               : null
           }
-          className="pr-3"
         />
         <PassportField
           label="Class"
           value={classLabel}
           sub={classVia ? `via ${classVia}` : null}
-          className="border-border/60 border-l px-3"
+          className="border-border/60 border-l"
         />
         <PassportField
           label="Visits"
           value={<span className="tabular-nums">{visits ?? "—"}</span>}
           muted={visits == null}
-          className="border-border/60 border-l pl-3"
+          className="border-border/60 border-l"
         />
       </div>
     </section>
