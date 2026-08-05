@@ -499,6 +499,33 @@ export async function listTeam(projectId: string): Promise<Result<TeamSnapshot>>
   return { ok: true, data: r.data };
 }
 
+/** Immutable email of who completed ownership verification (not team owners). */
+export type PlaceVerificationGlance = {
+  verifiedByEmail: string | null;
+  decidedAt: string | null;
+  method: string | null;
+  decidedVia: string | null;
+};
+
+export async function getPlaceVerification(
+  projectId: string,
+): Promise<Result<PlaceVerificationGlance>> {
+  const r = await efInvoke<PlaceVerificationGlance>(
+    "admin-web-get-place-verification",
+    { projectId },
+  );
+  if (!r.ok) return { ok: false, error: r.error };
+  return {
+    ok: true,
+    data: {
+      verifiedByEmail: r.data.verifiedByEmail ?? null,
+      decidedAt: r.data.decidedAt ?? null,
+      method: r.data.method ?? null,
+      decidedVia: r.data.decidedVia ?? null,
+    },
+  };
+}
+
 export async function inviteEditor(
   projectId: string,
   email: string,

@@ -471,6 +471,11 @@ verify_jwt = true
 [functions.admin-web-decide-verification]
 verify_jwt = true
 
+# Per-place ownership-verification glance (immutable verified-by email)
+# for Manage Single → Admin → Verification.
+[functions.admin-web-get-place-verification]
+verify_jwt = true
+
 [functions.admin-web-set-auto-verify]
 verify_jwt = true
 

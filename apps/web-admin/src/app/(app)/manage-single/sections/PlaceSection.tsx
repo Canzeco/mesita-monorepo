@@ -465,7 +465,7 @@ export function PlaceSection({
       {/* Box order (MESITA-547 / MESITA-720 / MESITA-834): edit-first —
           Basics → Hours → Channels → Photos → Location →
           Promos summary. The Mesita-internal cards (Manual Priority,
-          Ownership, Metadata, Embeddings) live on the Admin tab. */}
+          Verification, Metadata, Embeddings) live on the Admin tab. */}
       {/* Basics — editable identity. Price stays Enricher/Google-derived
           read-only; category is Enricher + Admin + Business (MESITA-469). */}
       <SectionCard
