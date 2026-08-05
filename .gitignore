@@ -11,3 +11,14 @@ node_modules/
 # agent worktrees parked inside the repo
 .worktrees/
 .gstack/
+
+# gstack runtime links (install script symlinks these into the committed
+# .cursor/skills/gstack/ tree so skill preambles' GSTACK_ROOT resolves bins;
+# never commit absolute VM/Mac symlinks)
+.cursor/skills/gstack/bin
+.cursor/skills/gstack/browse
+.cursor/skills/gstack/review
+.cursor/skills/gstack/gstack-upgrade
+.cursor/skills/gstack/ETHOS.md
+.cursor/skills/gstack/design
+.cursor/skills/gstack/VERSION
