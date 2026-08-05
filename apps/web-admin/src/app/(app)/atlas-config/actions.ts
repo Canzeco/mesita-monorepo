@@ -34,7 +34,7 @@ type AtlasTagFacet = {
 type AtlasFieldLimit = {
   max: number;
   min?: number;
-  unit: "chars" | "count" | "range";
+  unit: "chars" | "words" | "count" | "range";
   note: string;
 };
 

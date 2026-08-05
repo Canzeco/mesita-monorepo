@@ -286,8 +286,13 @@ function parseEmbeddingVector(raw: AdminPlace["embedding"]): number[] | null {
 // human-readable profile copy; the synthesis is a separate, super-concise text
 // purpose-built for semantic search. Written on create + on profile update.
 // Open by default; collapsible like Metadata.
+// Hard ceiling for Place Synthesis blurbs — must stay in lockstep with
+// ENRICH_FIELD_LIMITS.embeddingSourceText (Atlas Config → Field limits).
+const EMBEDDING_SOURCE_TEXT_MAX_WORDS = 60;
+
 function EmbeddingsCard({ place }: { place: AdminPlace }) {
   const text = (place.embedding_source_text ?? "").trim();
+  const wordCount = text ? text.split(/\s+/).filter(Boolean).length : 0;
   const vector = parseEmbeddingVector(place.embedding);
   const preview = vector?.slice(0, 24) ?? null;
   const dims = vector?.length ?? 0;
@@ -305,8 +310,9 @@ function EmbeddingsCard({ place }: { place: AdminPlace }) {
             Embeddings
           </h2>
           <p className="text-muted-foreground mt-0.5 text-xs leading-relaxed">
-            The Place Synthesis — a super-concise text built FOR semantic search (not the
-            human About), and the vector OpenAI embeds it into.
+            The Place Synthesis — a super-concise text (≤{EMBEDDING_SOURCE_TEXT_MAX_WORDS}{" "}
+            words) built FOR semantic search (not the human About), and the vector
+            OpenAI embeds it into. Cap lives in Atlas Config → Field limits.
           </p>
         </div>
         <ChevronDown
@@ -315,7 +321,10 @@ function EmbeddingsCard({ place }: { place: AdminPlace }) {
         />
       </summary>
       <div className="border-border/60 flex flex-col gap-4 border-t px-5 pb-6 sm:px-6 sm:pb-8">
-        <ReadField label="Place Synthesis as Text" boxed>
+        <ReadField
+          label={`Place Synthesis as Text${text ? ` · ${wordCount}/${EMBEDDING_SOURCE_TEXT_MAX_WORDS} words` : ""}`}
+          boxed
+        >
           {text ? (
             <span className="text-sm leading-relaxed whitespace-pre-wrap">{text}</span>
           ) : (
