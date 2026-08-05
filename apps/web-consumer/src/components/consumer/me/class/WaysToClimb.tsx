@@ -13,11 +13,16 @@ import { toast } from "@/lib/toast";
 import { ClimbCard, type ClimbCardData } from "./ClimbCard";
 import { InstagramConnectedSummary } from "./InstagramConnectedSummary";
 
-// Every elevated class (Premium / Influencer / Aura) shares ONE core perk set —
-// they differ in the door (paid / reach / invited) and in how their money is
-// made (flat rate vs the Story action vs the highest flat rate). Keep the
-// shared lines a single constant so the cards can never drift apart.
-const ELEVATED_PERKS = ["Better recommendations", "10 reservations a month"];
+// Every elevated class (Influencer / Premium / Aura) shares ONE core perk set —
+// they differ in the door (reach / paid / invited) and in how their money is
+// made (the Story action vs flat rate vs the highest flat rate). Keep the
+// shared lines a single constant so the cards can never drift apart. Wording
+// matches the three canonical perks: Discount Rewards, Places Recommendations,
+// AI-Booked Reservations.
+const ELEVATED_PERKS = [
+  "Better places recommendations",
+  "10 AI-booked reservations a month",
+];
 
 export function WaysToClimb({
   onConnectInstagram,
@@ -40,32 +45,12 @@ export function WaysToClimb({
       desc: "Your default account at no cost — every guest starts here.",
       perks: [
         `Up to ${baseRateForClass("standard")}% discount rewards at Verified Partners`,
-        "Standard recommendations",
-        "2 reservations a month",
+        "Basic places recommendations",
+        "2 AI-booked reservations a month",
       ],
       reached: isStandard,
       reachedLabel: "Current class",
       note: isStandard ? undefined : "Included in every account",
-    },
-    {
-      key: "premium",
-      icon: CLASS_ICONS.premium,
-      iconBg: "bg-tier-premium text-white",
-      title: "Premium",
-      via: "Subscription",
-      accent: true,
-      price: `$${premium.priceMxn} MXN`,
-      priceNote: "per month · cancel anytime",
-      desc: "Subscribe and unlock full Premium instantly. No follower count needed; cancel whenever you want.",
-      perks: [
-        `Up to ${baseRateForClass("premium")}% discount rewards — double Standard's`,
-        ...ELEVATED_PERKS,
-      ],
-      reached: key === "premium",
-      reachedLabel: "Active",
-      actions: [
-        { label: "Join with subscription", href: "/subscribe/premium" },
-      ],
     },
     {
       key: "influencer",
@@ -84,13 +69,33 @@ export function WaysToClimb({
       // number the story alone never pays.
       desc: `Connect an Instagram with ${influencer.followerThreshold.toLocaleString("en-US")}+ followers. The Instagram Story reward is yours alone — post a tagged story on any visit and take up to ${REWARD_SEGMENT_BY_KEY.story.rates[PEAK_STRATEGY]}% off.`,
       perks: [
-        `Up to ${baseRateForClass("influencer")}% base discount`,
+        `Up to ${baseRateForClass("influencer")}% discount rewards`,
         "Instagram Story bonus — exclusive to Influencers",
         ...ELEVATED_PERKS,
       ],
       reached: key === "influencer",
       reachedLabel: origin === "instagram" ? "Connected" : "Active",
       actions: [{ label: "Join with Instagram", onClick: onConnectInstagram }],
+    },
+    {
+      key: "premium",
+      icon: CLASS_ICONS.premium,
+      iconBg: "bg-tier-premium text-white",
+      title: "Premium",
+      via: "Subscription",
+      accent: true,
+      price: `$${premium.priceMxn} MXN`,
+      priceNote: "per month · cancel anytime",
+      desc: "Subscribe and unlock full Premium instantly. No follower count needed; cancel whenever you want.",
+      perks: [
+        `Up to ${baseRateForClass("premium")}% discount rewards`,
+        ...ELEVATED_PERKS,
+      ],
+      reached: key === "premium",
+      reachedLabel: "Active",
+      actions: [
+        { label: "Join with subscription", href: "/subscribe/premium" },
+      ],
     },
     {
       key: "aura",
@@ -105,7 +110,7 @@ export function WaysToClimb({
       // up. No follower count, no posting — the invite is the whole door.
       desc: `Mesita's invite-only class. The highest base discount — up to ${baseRateForClass("aura")}% on every visit — just for being you. No followers required, nothing to post.`,
       perks: [
-        `Up to ${baseRateForClass("aura")}% base discount — the highest of any class`,
+        `Up to ${baseRateForClass("aura")}% discount rewards — the highest of any class`,
         ...ELEVATED_PERKS,
       ],
       reached: key === "aura",

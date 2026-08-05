@@ -8,20 +8,20 @@ import {
 import { cn } from "@/lib/utils";
 
 // Dev/demo affordance — flip the signed-in consumer between the four class
-// states (Standard / Premium via subscription / Influencer via Instagram /
-// Aura via invitation) so every surface that reads useConsumerClass() can be
-// previewed without real billing or Instagram reach. Writes the client-only
-// MOCK_ACCOUNT override (class axis) and switches the Instagram emulation off
-// so the picked class always shows (a qualifying IG emulation would otherwise
-// win, like the real claim EF). Remove with the MOCK_ paths once the states
-// can be produced with real data.
+// states (Standard / Influencer via Instagram / Premium via subscription /
+// Aura via invitation, rate-ladder order) so every surface that reads
+// useConsumerClass() can be previewed without real billing or Instagram
+// reach. Writes the client-only MOCK_ACCOUNT override (class axis) and
+// switches the Instagram emulation off so the picked class always shows (a
+// qualifying IG emulation would otherwise win, like the real claim EF).
+// Remove with the MOCK_ paths once the states can be produced with real data.
 const CLASS_PREVIEW_OPTIONS: {
   value: NonNullable<MockAccount["class"]>;
   label: string;
 }[] = [
   { value: "standard", label: "Standard" },
-  { value: "premium", label: "Premium" },
   { value: "influencer", label: "Influencer" },
+  { value: "premium", label: "Premium" },
   { value: "aura", label: "Aura" },
 ];
 
