@@ -1,12 +1,10 @@
-import { AlertTriangle, QrCode, ShieldCheck, Ticket } from "lucide-react";
+import { ChevronDown } from "lucide-react";
 import { Section } from "@/components/shared";
 import type { MyPlace } from "@/lib/api/places";
 import { cn, formatMoney } from "@/lib/utils";
 import { PRODUCT_PRICE_MXN } from "./promoConstants";
 import {
-  ActivationStep,
   MembershipStatusPill,
-  SubHeading,
   type MembershipPillState,
 } from "./promoShared";
 
@@ -34,11 +32,19 @@ export function MembershipBox({
   onDrop: () => void;
 }) {
   const statusNote = describeMembershipStatus(place, pillState);
+  const price = formatMoney(PRODUCT_PRICE_MXN, currency);
+  const notMember = pillState === "not_member";
+  const canDrop = pillState !== "not_member" && pillState !== "forfeited";
+  // Surface the honor rules when something is wrong; otherwise keep them tucked.
+  const rulesOpen =
+    pillState === "paused" ||
+    pillState === "forfeited" ||
+    ((place.strike_count ?? 0) > 0 && pillState === "live");
 
   return (
     <Section
       title="Mesita Membership"
-      description="One annual fee — the commitment filter. Strategy switching is free."
+      description={`${price}/year unlocks paid strategies. Zero stays free.`}
       right={<MembershipStatusPill state={pillState} />}
     >
       {statusNote && (
@@ -54,75 +60,91 @@ export function MembershipBox({
         </p>
       )}
 
-      <div className="border-border bg-muted/25 flex items-start gap-3 rounded-xl border p-3">
-        <ShieldCheck className="text-primary mt-0.5 h-5 w-5 shrink-0" />
-        <div className="flex flex-col gap-0.5">
-          <p className="text-sm font-semibold">
-            {formatMoney(PRODUCT_PRICE_MXN, currency)}{" "}
-            <span className="text-muted-foreground text-[11px] font-normal">
-              / year
-            </span>
+      <div className="flex flex-col gap-1.5">
+        <p className="font-display text-2xl font-semibold tracking-tight">
+          {price}{" "}
+          <span className="text-muted-foreground text-[12px] font-normal">
+            / year
+          </span>
+        </p>
+        <p className="text-foreground/85 text-[13px] leading-snug">
+          Unlocks <span className="font-semibold">Conservative</span>,{" "}
+          <span className="font-semibold">Aggressive</span>, and{" "}
+          <span className="font-semibold">Dominant</span>. Zero stays free.
+          Switch strategies anytime while membership is active.
+        </p>
+        {notMember ? (
+          <p className="text-muted-foreground text-[12px] leading-snug">
+            <span className="text-foreground font-semibold">
+              Choose a paid strategy below to join.
+            </span>{" "}
+            Rank is never for sale — visibility rises with what you give.
           </p>
-          <p className="text-muted-foreground text-[11px] leading-snug">
-            A commitment filter, not a feature tier — it keeps half-hearted
-            restaurants out of the rewards program. Rank is never for sale;
-            strategy switching is free once you&apos;re a member.
+        ) : (
+          <p className="text-muted-foreground text-[12px] leading-snug">
+            Membership stays on while you switch strategies, including Zero
+            (pauses discounts). Drop membership separately if you want out.
+          </p>
+        )}
+      </div>
+
+      {canDrop && (
+        <button
+          type="button"
+          disabled={billingBusy}
+          onClick={onDrop}
+          className="border-border text-foreground/75 hover:bg-muted inline-flex h-10 items-center justify-center self-start rounded-full border px-4 text-[12px] font-bold transition disabled:opacity-60"
+        >
+          Drop membership
+        </button>
+      )}
+
+      <details
+        open={rulesOpen}
+        className="border-border group border-t pt-2"
+      >
+        <summary className="text-foreground flex min-h-10 cursor-pointer list-none items-center justify-between gap-2 text-[12px] font-semibold [&::-webkit-details-marker]:hidden">
+          How it works
+          <ChevronDown className="text-muted-foreground h-4 w-4 shrink-0 transition group-open:rotate-180" />
+        </summary>
+        <div className="text-muted-foreground flex flex-col gap-3 pb-1 pt-1 text-[12px] leading-snug">
+          <div className="flex flex-col gap-1">
+            <p className="text-[10px] font-bold tracking-[0.16em] uppercase">
+              Activation
+            </p>
+            <p>
+              Staff scan a guest&apos;s QR on Mesita Check — no app, no account.
+              The first guest ticket honored at the bill makes you live.
+            </p>
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <p className="text-[10px] font-bold tracking-[0.16em] uppercase">
+              If you turn a guest away
+            </p>
+            <ol className="flex flex-col gap-1">
+              {STRIKES.map((s) => (
+                <li key={s.n} className="flex items-start gap-2">
+                  <span
+                    className={cn(
+                      "mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-bold",
+                      s.n === "3"
+                        ? "bg-destructive/10 text-destructive"
+                        : "bg-amber-500/15 text-amber-700",
+                    )}
+                  >
+                    {s.n}
+                  </span>
+                  <span className="text-foreground/80">{s.consequence}</span>
+                </li>
+              ))}
+            </ol>
+          </div>
+          <p>
+            Strikes decay after 6 months clean, and a guest who&apos;s turned
+            away is compensated instantly.
           </p>
         </div>
-      </div>
-
-      {pillState !== "not_member" &&
-        pillState !== "forfeited" && (
-          <button
-            type="button"
-            disabled={billingBusy}
-            onClick={onDrop}
-            className="border-border text-foreground/75 hover:bg-muted inline-flex h-10 items-center justify-center self-start rounded-full border px-4 text-[12px] font-bold transition disabled:opacity-60"
-          >
-            Drop membership
-          </button>
-        )}
-
-      <SubHeading icon={Ticket}>Activation</SubHeading>
-      <div className="flex flex-col gap-1.5">
-        <ActivationStep icon={QrCode}>
-          Your staff scan a guest&apos;s QR on Mesita Check — no app, no account.
-        </ActivationStep>
-        <ActivationStep icon={Ticket}>
-          The first guest ticket is honored at the bill — then you&apos;re live.
-        </ActivationStep>
-      </div>
-
-      <SubHeading icon={AlertTriangle}>If you turn a guest away</SubHeading>
-      <div className="border-border overflow-hidden rounded-xl border">
-        {STRIKES.map((s, i) => (
-          <div
-            key={s.n}
-            className={cn(
-              "flex items-center gap-3 px-3 py-2.5",
-              i > 0 && "border-border border-t",
-            )}
-          >
-            <span
-              className={cn(
-                "inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[11px] font-bold",
-                s.n === "3"
-                  ? "bg-destructive/10 text-destructive"
-                  : "bg-amber-500/15 text-amber-700",
-              )}
-            >
-              {s.n}
-            </span>
-            <span className="text-foreground/80 text-[11px] leading-snug">
-              {s.consequence}
-            </span>
-          </div>
-        ))}
-      </div>
-      <p className="text-muted-foreground text-[11px] leading-snug">
-        Strikes decay after 6 months clean, and a guest who&apos;s turned away is
-        compensated instantly.
-      </p>
+      </details>
     </Section>
   );
 }

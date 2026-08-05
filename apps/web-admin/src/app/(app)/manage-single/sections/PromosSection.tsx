@@ -3,16 +3,12 @@
 import { useEffect, useState, useTransition } from "react";
 import Image from "next/image";
 import {
-  AlertTriangle,
   Check,
   ChevronDown,
   CircleHelp,
   Crown,
   Loader2,
   Percent,
-  QrCode,
-  ShieldCheck,
-  Ticket,
   TrendingUp,
   X } from "lucide-react";
 import {
@@ -44,11 +40,10 @@ import {SectionCard} from "../ui";
 import { ErrorNote } from "@/components/ErrorNote";
 
 // Admin Promos — three boxes (MESITA-912 membership unbundle):
-//   1. Membership — MX$1,000/year fee, status pill, join/drop, activation,
-//      strikes. Admin writes plan directly — no Stripe charge from here.
-//   2. Strategy — four cards (give/receive, no price). Non-members: cards
-//      locked, tap routes to join with that strategy preselected. Members:
-//      switch = rates-only write (setPlaceStrategy).
+//   1. Membership — MX$1,000/year unlocks paid strategies (Zero stays free).
+//      Status pill, drop, rules in disclosure. Admin writes plan — no Stripe.
+//   2. Strategy — four cards in 2×2 (give/receive). Non-members: tap Join on a
+//      paid card to start membership with that posture. Members: free switch.
 //   3. FAQs — how the model works, Premium worked example under CURRENT
 //      strategy.
 
@@ -384,13 +379,21 @@ function MembershipBox({
   onDrop: () => void;
 }) {
   const statusNote = describeMembershipStatus(place, pillState);
+  const price = formatMoney(MEMBERSHIP_PRICE_MXN, place.currency);
+  const notMember = pillState === "not_member";
+  const canDrop = pillState !== "not_member" && pillState !== "forfeited";
+  const strikes = (place.strike_count as number | null) ?? 0;
+  const rulesOpen =
+    pillState === "paused" ||
+    pillState === "forfeited" ||
+    (strikes > 0 && pillState === "live");
 
   return (
     <SectionCard
       icon={<Percent className="h-4 w-4" />}
       tint="pink"
       title="Mesita Membership"
-      subtitle="One annual fee — the commitment filter. Strategy switching is free."
+      subtitle={`${price}/year unlocks paid strategies. Zero stays free.`}
       action={<MembershipStatusPill state={pillState} />}
     >
       <div className="mt-4 flex flex-col gap-4">
@@ -408,24 +411,35 @@ function MembershipBox({
           </p>
         )}
 
-        <div className="border-border bg-muted/25 flex items-start gap-3 rounded-xl border p-3">
-          <ShieldCheck className="text-primary mt-0.5 h-5 w-5 shrink-0" />
-          <div className="flex flex-col gap-0.5">
-            <p className="text-sm font-semibold">
-              {formatMoney(MEMBERSHIP_PRICE_MXN, place.currency)}{" "}
-              <span className="text-muted-foreground text-[11px] font-normal">
-                / year
-              </span>
+        <div className="flex flex-col gap-1.5">
+          <p className="font-display text-2xl font-semibold tracking-tight">
+            {price}{" "}
+            <span className="text-muted-foreground text-[12px] font-normal">
+              / year
+            </span>
+          </p>
+          <p className="text-foreground/85 text-[13px] leading-snug">
+            Unlocks <span className="font-semibold">Conservative</span>,{" "}
+            <span className="font-semibold">Aggressive</span>, and{" "}
+            <span className="font-semibold">Dominant</span>. Zero stays free.
+            Switch strategies anytime while membership is active.
+          </p>
+          {notMember ? (
+            <p className="text-muted-foreground text-[12px] leading-snug">
+              <span className="text-foreground font-semibold">
+                Choose a paid strategy below to join.
+              </span>{" "}
+              Rank is never for sale — visibility rises with what you give.
             </p>
-            <p className="text-muted-foreground text-[11px] leading-snug">
-              A commitment filter, not a feature tier — it keeps half-hearted
-              restaurants out of the rewards program. Rank is never for sale;
-              strategy switching is free once you&apos;re a member.
+          ) : (
+            <p className="text-muted-foreground text-[12px] leading-snug">
+              Membership stays on while you switch strategies, including Zero
+              (pauses discounts). Drop membership separately if you want out.
             </p>
-          </div>
+          )}
         </div>
 
-        {pillState !== "not_member" && pillState !== "forfeited" && (
+        {canDrop && (
           <button
             type="button"
             disabled={pending}
@@ -436,49 +450,50 @@ function MembershipBox({
           </button>
         )}
 
-        <MembershipSubHeading icon={Ticket}>Activation</MembershipSubHeading>
-        <div className="flex flex-col gap-1.5">
-          <MembershipActivationStep icon={QrCode}>
-            Staff scan a guest&apos;s QR on Mesita Check — no app, no account.
-          </MembershipActivationStep>
-          <MembershipActivationStep icon={Ticket}>
-            The first guest ticket is honored at the bill — then you&apos;re
-            live.
-          </MembershipActivationStep>
-        </div>
-
-        <MembershipSubHeading icon={AlertTriangle}>
-          If a guest is turned away
-        </MembershipSubHeading>
-        <div className="border-border overflow-hidden rounded-xl border">
-          {STRIKES.map((s, i) => (
-            <div
-              key={s.n}
-              className={cx(
-                "flex items-center gap-3 px-3 py-2.5",
-                i > 0 && "border-border border-t",
-              )}
-            >
-              <span
-                className={cx(
-                  "inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[11px] font-bold",
-                  s.n === "3"
-                    ? "bg-destructive/10 text-destructive"
-                    : "bg-amber-500/15 text-amber-700",
-                )}
-              >
-                {s.n}
-              </span>
-              <span className="text-foreground/80 text-[11px] leading-snug">
-                {s.consequence}
-              </span>
+        <details open={rulesOpen} className="border-border group border-t pt-2">
+          <summary className="text-foreground flex min-h-10 cursor-pointer list-none items-center justify-between gap-2 text-[12px] font-semibold [&::-webkit-details-marker]:hidden">
+            How it works
+            <ChevronDown className="text-muted-foreground h-4 w-4 shrink-0 transition group-open:rotate-180" />
+          </summary>
+          <div className="text-muted-foreground flex flex-col gap-3 pb-1 pt-1 text-[12px] leading-snug">
+            <div className="flex flex-col gap-1">
+              <p className="text-[10px] font-bold tracking-[0.16em] uppercase">
+                Activation
+              </p>
+              <p>
+                Staff scan a guest&apos;s QR on Mesita Check — no app, no
+                account. The first guest ticket honored at the bill makes you
+                live.
+              </p>
             </div>
-          ))}
-        </div>
-        <p className="text-muted-foreground text-[11px] leading-snug">
-          Admin writes plan directly — no Stripe charge from here. Strikes decay
-          after 6 months clean.
-        </p>
+            <div className="flex flex-col gap-1.5">
+              <p className="text-[10px] font-bold tracking-[0.16em] uppercase">
+                If a guest is turned away
+              </p>
+              <ol className="flex flex-col gap-1">
+                {STRIKES.map((s) => (
+                  <li key={s.n} className="flex items-start gap-2">
+                    <span
+                      className={cx(
+                        "mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-bold",
+                        s.n === "3"
+                          ? "bg-destructive/10 text-destructive"
+                          : "bg-amber-500/15 text-amber-700",
+                      )}
+                    >
+                      {s.n}
+                    </span>
+                    <span className="text-foreground/80">{s.consequence}</span>
+                  </li>
+                ))}
+              </ol>
+            </div>
+            <p>
+              Admin writes plan directly — no Stripe charge from here. Strikes
+              decay after 6 months clean.
+            </p>
+          </div>
+        </details>
       </div>
     </SectionCard>
   );
@@ -517,42 +532,6 @@ function describeMembershipStatus(
       "Member — pending activation. Honor the first guest check to go live.",
     tone: "warn",
   };
-}
-
-function MembershipSubHeading({
-  icon: Icon,
-  children,
-}: {
-  icon: typeof Ticket;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="mt-1 flex items-center gap-1.5">
-      <Icon className="text-muted-foreground h-3.5 w-3.5" />
-      <span className="text-muted-foreground text-[10px] font-bold tracking-[0.16em] uppercase">
-        {children}
-      </span>
-    </div>
-  );
-}
-
-function MembershipActivationStep({
-  icon: Icon,
-  children,
-}: {
-  icon: typeof Ticket;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="border-border bg-card flex items-center gap-2.5 rounded-xl border px-3 py-2">
-      <span className="bg-muted/70 text-foreground/70 inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full">
-        <Icon className="h-3.5 w-3.5" />
-      </span>
-      <span className="text-foreground/80 text-[12px] leading-snug">
-        {children}
-      </span>
-    </div>
-  );
 }
 
 // ─── Strategy card — give/receive only; price lives in Membership box ──────
@@ -1066,11 +1045,12 @@ function FaqsBox({
 
         <Faq q={`What exactly does the ${price}/year buy?`}>
           <p>
-            One Mesita Membership — a commitment filter, not a feature tier. It
-            keeps half-hearted restaurants out of the rewards program and guests
-            away from dead coupons. Being a member unlocks the paid strategies
-            and turns on your discounts. Being listed on Mesita never costs
-            anything, member or not.
+            The right to leave Zero. Membership unlocks Conservative,
+            Aggressive, and Dominant — pick any, switch free anytime while
+            you&apos;re a member. Zero stays free with no discounts. Being
+            listed on Mesita never costs anything, member or not. The fee is a
+            commitment filter (keeps half-hearted places out of rewards), not a
+            feature tier and not a rank you can buy.
           </p>
         </Faq>
 
