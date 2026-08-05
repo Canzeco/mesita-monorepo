@@ -1,13 +1,13 @@
 import { Skeleton } from "@/components/shared/Skeleton";
 
-// The Rewards page's ONE skeleton language. PayTabLoading is the dynamic()
+// The Rewards page's ONE skeleton language. RewardsTabLoading is the dynamic()
 // fallback for the whole page client (banner + passport card + tickets);
 // TicketCardSkeleton mirrors the TicketVisitShell silhouette and is reused
-// by PayTickets' pending state and PayClient's tickets fallback, so every
+// by the tickets pending state and RewardsClient's tickets fallback, so every
 // loading frame on this page looks like the content it becomes.
 //
-// This module stays a leaf (Skeleton only) on purpose: both PayClient and
-// PayTickets import from it, and pulling anything heavier in here would
+// This module stays a leaf (Skeleton only) on purpose: RewardsClient and the
+// ticket stack import from it, and pulling anything heavier in here would
 // drag the ticket stack into the statically-bundled page chunk and defeat
 // the dynamic() splits.
 
@@ -31,7 +31,7 @@ export function TicketCardSkeleton() {
 }
 
 /** Tickets list placeholder: section header line + two ticket cards. */
-function PayTicketListSkeleton() {
+function TicketListSkeleton() {
   return (
     <div className="flex flex-col gap-3">
       <div className="flex items-baseline justify-between gap-2 px-0.5">
@@ -44,7 +44,7 @@ function PayTicketListSkeleton() {
   );
 }
 
-export function PayTabLoading() {
+export function RewardsTabLoading() {
   // Silhouette of the single Rewards page: the Mesita passport card (QR +
   // how-it-works, two columns), then the tickets stack. The per-section
   // skeletons take over once the client mounts.
@@ -54,7 +54,7 @@ export function PayTabLoading() {
       <Skeleton className="h-[300px] rounded-[24px]" />
       {/* Tickets stack */}
       <div className="mt-4">
-        <PayTicketListSkeleton />
+        <TicketListSkeleton />
       </div>
     </div>
   );

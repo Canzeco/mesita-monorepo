@@ -123,7 +123,7 @@ export function ReservationActions({
   return (
     <section className="flex flex-col gap-2">
       <Link
-        href={placeHref(r.projectId, "saved")}
+        href={placeHref(r.projectId)}
         className="border-border bg-card hover:bg-muted flex items-center justify-between gap-3 rounded-2xl border px-4 py-3 transition"
       >
         <span className="flex items-center gap-3">

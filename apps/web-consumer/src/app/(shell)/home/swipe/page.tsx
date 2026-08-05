@@ -1,6 +1,6 @@
 "use client";
 
-import { SwipeDeck } from "@/app/(shell)/discover/swipe/SwipeDeck";
+import { SwipeDeck } from "./SwipeDeck";
 import { useHomeDeck } from "@/components/consumer/home/HomeDeckContext";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 

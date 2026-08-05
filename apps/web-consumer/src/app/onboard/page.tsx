@@ -11,7 +11,7 @@ import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 // between sign-up and the actual app, so it has its own checks:
 //
 //   - signed out          → / (with next=/onboard)
-//   - already onboarded   → /discover/swipe (don't re-collect data)
+//   - already onboarded   → /home/swipe (don't re-collect data)
 //   - signed in, no name  → render the form
 export const dynamic = "force-dynamic";
 
@@ -25,7 +25,7 @@ export default async function ConsumerOnboardPage() {
   // Completeness predicate is the same one the (shell) layout uses to
   // gate every authed surface — first + last name + birthday + sex. If we
   // only checked full_name here, a partially-onboarded user would loop:
-  //   onboard → discover/swipe (full_name truthy) → shell sees missing
+  //   onboard → home/swipe (full_name truthy) → shell sees missing
   //   birthday/sex → bounces back to onboard. Strict here too.
   // Consumers onboarded before the last-name requirement land back here
   // once (full_name is first-name-only for them, and reservations need

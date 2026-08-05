@@ -3,17 +3,17 @@ import Link from "next/link";
 import { ChevronLeft } from "lucide-react";
 import { CouponDetailBody } from "@/components/consumer/CouponDetailBody";
 import { getMockCouponById } from "@/lib/mock/coupons-mock";
+import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 
 export const dynamic = "force-dynamic";
 
 // Hard-nav landing for /coupon/[id] (refresh, direct URL, new tab).
-// Soft-nav from inside (shell) — tapping a card on /coupons — hits the
+// Soft-nav from inside (shell) — tapping a coupon card — hits the
 // intercepted variant at (shell)/@modal/(.)coupon/[id]/page.tsx which
 // renders inside a modal on top of the underlying surface.
 //
-// Note the singular path: the list lives at /coupons (plural) and a
-// single entry at /coupon/[id] (singular). Matches /places + /place/...
-// style and /reservations + /reservation/[id] in this repo.
+// There is deliberately NO /coupons list route: coupons are reached from
+// reservations/tickets, so the back affordance targets Rewards (MESITA-899).
 //
 // Mocked: ids resolve through getMockCouponById; unknown ids 404.
 
@@ -30,8 +30,8 @@ export default async function CouponDetailPage({
     <div className="relative flex h-full flex-col">
       <header className="bg-background/85 z-20 flex shrink-0 items-center gap-2 px-3 py-3 backdrop-blur">
         <Link
-          href="/coupons"
-          aria-label="Back to coupons"
+          href={CONSUMER_ROUTES.rewards.root}
+          aria-label="Back to rewards"
           className="border-border bg-card text-foreground hover:bg-muted flex h-9 w-9 shrink-0 items-center justify-center rounded-full border transition"
         >
           <ChevronLeft className="h-5 w-5" strokeWidth={2.25} />

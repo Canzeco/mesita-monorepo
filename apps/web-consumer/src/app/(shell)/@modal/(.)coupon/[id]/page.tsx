@@ -6,8 +6,8 @@ import { getMockCouponById } from "@/lib/mock/coupons-mock";
 export const dynamic = "force-dynamic";
 
 // Intercepted /coupon/[id]. Fires only on soft navigation from inside
-// (shell) — e.g. tapping a coupon card on /coupons. The underlying list
-// stays mounted; this renders inside the @modal slot on top.
+// (shell) — e.g. tapping a coupon card on a reservation or ticket. The
+// underlying surface stays mounted; this renders inside the @modal slot.
 //
 // Hard navigation (refresh, direct URL, new tab) bypasses the
 // interceptor and lands on src/app/(shell)/coupon/[id]/page.tsx — the

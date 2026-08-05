@@ -180,7 +180,7 @@ export function classBadgeClass(classKey: Class): string {
 }
 
 // Compact Title-Case label per class. Used by the swipe overlay, the
-// promo chip, the /coupons promo card, and the place detail rewards
+// promo chip, the coupon promo card, and the place detail rewards
 // box — anywhere we render "Mesita Standard" / "Mesita Premium" /
 // "Mesita Influencer" / "Mesita Aura" alongside the lower-case class id.
 //

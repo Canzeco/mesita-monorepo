@@ -23,7 +23,7 @@ import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
 import { PlacePickList } from "@/components/consumer/rewards/PlacePickList";
 import { SavingsReveal } from "@/components/consumer/rewards/SavingsReveal";
 import { TicketRow } from "@/components/consumer/rewards/TicketRow";
-import { TicketCardSkeleton } from "./PayTabLoading";
+import { TicketCardSkeleton } from "./RewardsTabLoading";
 import { EFError } from "@/lib/api/_invoke";
 import {
   ACTIVE_TICKET_STATUSES,
@@ -48,7 +48,7 @@ import { cn } from "@/lib/utils";
 
 type Tab = "new" | "pending" | "history";
 
-export function PayClient({ userId }: { userId: string }) {
+export function RewardsClient({ userId }: { userId: string }) {
   const supabase = useBrowserSupabase();
   const router = useRouter();
   const tickets = useConsumerTickets(userId);

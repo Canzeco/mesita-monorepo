@@ -1,4 +1,8 @@
 // Passthrough — the /rewards page owns its own server fetch + UI.
-export default function PayLayout({ children }: { children: React.ReactNode }) {
+export default function RewardsLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   return children;
 }

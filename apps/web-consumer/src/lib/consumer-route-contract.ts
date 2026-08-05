@@ -1,6 +1,11 @@
 // Consumer route contract (canonical surface paths + modal paths).
 // Keep this as the single source of truth so nav, headers, middleware, and
 // route handlers don't drift into stringly-typed mismatches.
+//
+// DRIFT GUARD: apps/mobile-consumer/src/lib/consumer-route-contract.ts is the
+// hand-mirrored mobile port of this file (same convention as ef.ts / tokens).
+// Any change to routes or helpers here MUST update the mobile copy in the
+// same PR — web/mobile IA parity is a product rule.
 
 export const CONSUMER_ROUTES = {
   onboard: "/onboard",
@@ -35,10 +40,6 @@ export const CONSUMER_ROUTES = {
   reservation: {
     prefix: "/reservation/",
   },
-  saved: {
-    // Dual place-detail path from Favorites (collapse later). Not reservations.
-    placePrefix: "/saved/place/",
-  },
   // Rewards is a single page (banner + Mesita passport + tickets). The tab
   // used to live at /pay — that whole tree now redirects here. Ticket detail
   // is /rewards/ticket/[id].
@@ -50,6 +51,11 @@ export const CONSUMER_ROUTES = {
     mine: "/inbox/mine",
     global: "/inbox/global",
   },
+  // Premium checkout (Stripe). The [classKey] segment exists for URL clarity
+  // but only "premium" is valid — other classes are earned, not bought.
+  // Auth-walled in middleware. Mobile deliberately has NO subscribe route
+  // (Apple review): the iOS app links out to this web URL.
+  subscribe: "/subscribe/premium",
   // The Me tab is a single flat page — identity hero + modular boxes that open
   // as modals (Class, Settings, …). There are NO nested tab routes; /me is the
   // whole surface. Legacy /me/class, /me/settings, and /me/plan redirect here.
@@ -73,6 +79,9 @@ export const CONSUMER_ROUTES = {
     // Reservations used to live under /saved when that was a tab.
     savedReservations: "/saved/reservations",
     savedReservationPrefix: "/saved/reservation/",
+    // Place detail briefly had a dual path under /saved (Favorites-era).
+    // Canonical is /place/[id]; this redirects there (MESITA-899).
+    savedPlacePrefix: "/saved/place/",
   },
 } as const;
 
@@ -84,6 +93,7 @@ export const CONSUMER_ROUTE_PREFIX = {
   rewards: "/rewards",
   inbox: "/inbox",
   me: "/me",
+  subscribe: "/subscribe",
   saved: "/saved",
 } as const;
 
@@ -91,24 +101,16 @@ export const CONSUMER_ROUTE_PREFIX = {
 // (`/reservations`.startsWith(`/reservation`) is intentional).
 export const CONSUMER_RESERVATION_SURFACE_PREFIX = "/reservation";
 
-export type PlaceSurface = "place" | "saved";
-
-export function placePath(
-  idOrSlug: string,
-  surface: PlaceSurface = "place",
-): string {
-  const prefix =
-    surface === "saved"
-      ? CONSUMER_ROUTES.saved.placePrefix
-      : CONSUMER_ROUTES.place.prefix;
-  return `${prefix}${idOrSlug}`;
+export function placePath(idOrSlug: string): string {
+  return `${CONSUMER_ROUTES.place.prefix}${idOrSlug}`;
 }
 
 export function reservationPath(id: string): string {
   return `${CONSUMER_ROUTES.reservation.prefix}${id}`;
 }
 
-// Coupon detail is singular /coupon/[id] (list lives at /coupons).
+// Coupon detail is singular /coupon/[id]. There is deliberately NO /coupons
+// list route — coupons are reached from reservations/tickets (MESITA-899 D6).
 const COUPON_PATH_PREFIX = "/coupon/";
 
 export function couponPath(id: string): string {
@@ -126,7 +128,7 @@ export function ticketPath(id: string): string {
 export function isModalContractPath(pathname: string): boolean {
   return (
     pathname.startsWith(CONSUMER_ROUTES.place.prefix) ||
-    pathname.startsWith(CONSUMER_ROUTES.saved.placePrefix) ||
+    pathname.startsWith(CONSUMER_ROUTES.legacy.savedPlacePrefix) ||
     pathname.startsWith(CONSUMER_ROUTES.reservation.prefix) ||
     pathname.startsWith(CONSUMER_ROUTES.legacy.savedReservationPrefix) ||
     pathname.startsWith(CONSUMER_ROUTES.rewards.ticketPrefix) ||

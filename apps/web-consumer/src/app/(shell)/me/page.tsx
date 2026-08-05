@@ -1,4 +1,4 @@
-import { ProfileClient } from "../profile/ProfileClient";
+import { ProfileClient } from "./ProfileClient";
 
 // /me is the whole Me surface — identity hero + modular boxes (Class,
 // Settings, …) that open as modals. No nested tab routes. A `?settings`

@@ -1,4 +1,4 @@
-import { placePath, type PlaceSurface } from "@/lib/consumer-route-contract";
+import { placePath } from "@/lib/consumer-route-contract";
 
 const RESERVED_PLACE_SEGMENTS = new Set([
   "discover",
@@ -10,23 +10,16 @@ const RESERVED_PLACE_SEGMENTS = new Set([
   "saved",
   "place",
   "places",
-  "place",
 ]);
 
-export function toCanonicalPlaceHrefOrNull(
-  idOrSlug: string,
-  surface: PlaceSurface = "place",
-): string | null {
+export function toCanonicalPlaceHrefOrNull(idOrSlug: string): string | null {
   const normalized = idOrSlug.trim().toLowerCase();
   if (!normalized || RESERVED_PLACE_SEGMENTS.has(normalized)) return null;
-  return placeHref(idOrSlug, surface);
+  return placeHref(idOrSlug);
 }
 
-export function placeHref(
-  idOrSlug: string,
-  surface: PlaceSurface = "place",
-): string {
-  return placePath(idOrSlug, surface);
+export function placeHref(idOrSlug: string): string {
+  return placePath(idOrSlug);
 }
 
 // Fallback href for a place-detail route whose place resolved to null
