@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useCallback, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Check, Loader2, Save } from "lucide-react";
 import { SubTabs } from "@/components/business/SubTabs";
+import type { MenuSessionUploadsHandle } from "@/components/business/place/PlaceMenuFields";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { placePath } from "@/lib/business-route-contract";
 import {
@@ -29,6 +30,7 @@ import {
 import {
   isDriveMenuUrl,
   MAX_PHOTOS,
+  removeOrphanMenuStorageObjects,
 } from "@/components/business/place/place-upload-utils";
 import { ERROR_BOX_CLASS } from "@/lib/ui-classes";
 import { cn, errMsg } from "@/lib/utils";
@@ -65,6 +67,13 @@ export function EditPlaceForm({
   // Bumped on Discard so PlaceMenuFields remounts and rehydrates its
   // Upload/Drive source drafts from the last-saved menu_links.
   const [menuEditorKey, setMenuEditorKey] = useState(0);
+  const menuSessionUploadsRef = useRef<MenuSessionUploadsHandle | null>(null);
+  const registerMenuSessionUploads = useCallback(
+    (handle: MenuSessionUploadsHandle | null) => {
+      menuSessionUploadsRef.current = handle;
+    },
+    [],
+  );
 
   const set = <K extends keyof PlaceFormState>(
     key: K,
@@ -77,6 +86,9 @@ export function EditPlaceForm({
   const handleDiscard = () => {
     if (!isDirty) return;
     if (!window.confirm("Discard your unsaved changes?")) return;
+    const keep = placeToFormState(place).menu_links.map((m) => m.url);
+    const session = menuSessionUploadsRef.current?.drain() ?? [];
+    void removeOrphanMenuStorageObjects(supabase, session, keep);
     setV(placeToFormState(place));
     setMenuEditorKey((k) => k + 1);
     setIsDirty(false);
@@ -185,9 +197,20 @@ export function EditPlaceForm({
       didi_food_url: nullableUrl(v.didi_food_url),
     };
 
+    const previousMenuUrls = placeToFormState(place).menu_links.map(
+      (m) => m.url,
+    );
+    const keepMenuUrls = menuEntries.map((m) => m.url);
+
     startTransition(async () => {
       try {
         await apiUpdatePlace(supabase, payload);
+        const session = menuSessionUploadsRef.current?.drain() ?? [];
+        void removeOrphanMenuStorageObjects(
+          supabase,
+          [...previousMenuUrls, ...session],
+          keepMenuUrls,
+        );
         setSaved(true);
         setIsDirty(false);
         router.refresh();
@@ -240,6 +263,7 @@ export function EditPlaceForm({
               form={v}
               set={set}
               onError={setError}
+              registerSessionUploads={registerMenuSessionUploads}
             />
           </div>
         ) : null}

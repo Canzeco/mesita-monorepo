@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   ExternalLink,
   FileText,
@@ -28,8 +28,14 @@ import {
   drivePreviewUrl,
   isDriveMenuUrl,
   placeMenuObjectPath,
+  removeOrphanMenuStorageObjects,
   validateMenuUploadFile,
 } from "./place-upload-utils";
+
+export type MenuSessionUploadsHandle = {
+  /** Drain never-saved upload URLs so the parent can delete them. */
+  drain: () => string[];
+};
 
 const MENU_NAME_MAX_LENGTH = 80;
 
@@ -88,11 +94,14 @@ export function PlaceMenuFields({
   form,
   set,
   onError,
+  registerSessionUploads,
 }: {
   projectId: string;
   form: PlaceFormState;
   set: SetPlaceForm;
   onError: (msg: string | null) => void;
+  /** Lets EditPlaceForm drain never-saved uploads on Discard / after Save. */
+  registerSessionUploads?: (handle: MenuSessionUploadsHandle | null) => void;
 }) {
   const supabase = useBrowserSupabase();
   // Local drafts carry the exclusive Upload/Drive source; form.menu_links
@@ -107,6 +116,19 @@ export function PlaceMenuFields({
   const [uploadingKey, setUploadingKey] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const uploadTargetKey = useRef<string | null>(null);
+  const sessionUploadsRef = useRef<Set<string>>(new Set());
+
+  useEffect(() => {
+    if (!registerSessionUploads) return;
+    registerSessionUploads({
+      drain: () => {
+        const urls = [...sessionUploadsRef.current];
+        sessionUploadsRef.current = new Set();
+        return urls;
+      },
+    });
+    return () => registerSessionUploads(null);
+  }, [registerSessionUploads]);
 
   const commit = (updater: (prev: MenuDraft[]) => MenuDraft[]) => {
     const next = updater(itemsRef.current);
@@ -185,6 +207,8 @@ export function PlaceMenuFields({
         .replace(/\.[^.]+$/, "")
         .trim()
         .slice(0, MENU_NAME_MAX_LENGTH);
+      const prevUrl =
+        itemsRef.current.find((m) => m.key === key)?.url.trim() ?? "";
       commit((prev) =>
         prev.map((m) =>
           m.key === key
@@ -197,6 +221,12 @@ export function PlaceMenuFields({
             : m,
         ),
       );
+      sessionUploadsRef.current.add(data.publicUrl);
+      // Replacing a never-saved upload — drop the previous object now.
+      if (prevUrl && sessionUploadsRef.current.has(prevUrl)) {
+        sessionUploadsRef.current.delete(prevUrl);
+        void removeOrphanMenuStorageObjects(supabase, [prevUrl], []);
+      }
       onError(null);
     } catch (err) {
       onError(errMsg(err, "Couldn't upload catalog file."));

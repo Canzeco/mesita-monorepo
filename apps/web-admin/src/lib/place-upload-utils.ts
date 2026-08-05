@@ -152,3 +152,71 @@ export function placeMenuObjectPath(placeId: string, file: File): string {
   const ext = extForMenuFile(file);
   return `business/${placeId}/catalog/${Date.now()}-${crypto.randomUUID()}.${ext}`;
 }
+
+/** Parse a public menu-pdfs / menu-images URL into bucket + object path. */
+export function parseMenuStorageRef(
+  url: string,
+): { bucket: string; path: string } | null {
+  const trimmed = url.trim();
+  if (!trimmed) return null;
+  try {
+    const parsed = new URL(
+      /^[a-z]+:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`,
+    );
+    const match = parsed.pathname.match(
+      /\/storage\/v1\/object\/public\/(menu-pdfs|menu-images)\/(.+)$/,
+    );
+    if (!match?.[1] || !match[2]) return null;
+    return { bucket: match[1], path: decodeURIComponent(match[2]) };
+  } catch {
+    return null;
+  }
+}
+
+type MenuStorageClient = {
+  storage: {
+    from: (bucket: string) => {
+      remove: (
+        paths: string[],
+      ) => Promise<{ error: { message: string } | null }>;
+    };
+  };
+};
+
+/**
+ * Best-effort delete of a menu Storage object. No-ops for Drive links and
+ * non-Mesita URLs; never throws — cleanup must not block the editor.
+ */
+export async function removeMenuStorageObject(
+  supabase: MenuStorageClient,
+  url: string,
+): Promise<void> {
+  const ref = parseMenuStorageRef(url);
+  if (!ref) return;
+  try {
+    await supabase.storage.from(ref.bucket).remove([ref.path]);
+  } catch {
+    // ignore
+  }
+}
+
+/** Delete every Mesita menu Storage URL in `urls` that isn't in `keep`. */
+export async function removeOrphanMenuStorageObjects(
+  supabase: MenuStorageClient,
+  urls: Iterable<string>,
+  keep: Iterable<string>,
+): Promise<void> {
+  const keepSet = new Set(
+    [...keep].map((u) => u.trim()).filter(Boolean),
+  );
+  const seen = new Set<string>();
+  await Promise.all(
+    [...urls].map(async (raw) => {
+      const url = raw.trim();
+      if (!url || keepSet.has(url) || seen.has(url)) return;
+      if (!parseMenuStorageRef(url)) return;
+      seen.add(url);
+      await removeMenuStorageObject(supabase, url);
+    }),
+  );
+}
