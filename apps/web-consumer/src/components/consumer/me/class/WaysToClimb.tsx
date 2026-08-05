@@ -5,11 +5,6 @@ import { Fragment } from "react";
 import { CLASSES, CLASS_ICONS } from "@/lib/consumer-data";
 import { useConsumerClass } from "@/lib/class-context";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
-import {
-  baseRateForClass,
-  PEAK_STRATEGY,
-  REWARD_SEGMENT_BY_KEY,
-} from "@/lib/reward-segments";
 import { toast } from "@/lib/toast";
 import { ClimbCard, type ClimbCardData } from "./ClimbCard";
 import { InstagramConnectedSummary } from "./InstagramConnectedSummary";
@@ -17,12 +12,12 @@ import { InstagramConnectedSummary } from "./InstagramConnectedSummary";
 // Every elevated class (Influencer / Premium / Aura) shares ONE core perk set —
 // they differ in the door (reach / paid / invited) and in how their money is
 // made (the Story action vs flat rate vs the highest flat rate). Keep the
-// shared lines a single constant so the cards can never drift apart. Wording
-// matches the three canonical perks: Discount Rewards, Places Recommendations,
-// AI-Booked Reservations.
+// shared lines a single constant so the cards can never drift apart. Perk
+// wording echoes ClassComparison qualitative levels (MESITA-906) — no % or
+// counts in benefit bullets.
 const ELEVATED_PERKS = [
-  "Better places recommendations",
-  "10 AI-booked reservations a month",
+  "HIGH places recommendations",
+  "HIGH AI-booked reservations",
 ];
 
 export function WaysToClimb({
@@ -45,9 +40,9 @@ export function WaysToClimb({
       priceNote: "always free",
       desc: "Your default account at no cost — every guest starts here.",
       perks: [
-        `Up to ${baseRateForClass("standard")}% discount rewards at Verified Partners`,
-        "Basic places recommendations",
-        "2 AI-booked reservations a month",
+        "LOW discount rewards at Verified Partners",
+        "LOW places recommendations",
+        "LOW AI-booked reservations",
       ],
       reached: isStandard,
       reachedLabel: "Current class",
@@ -64,13 +59,11 @@ export function WaysToClimb({
       priceNote: "no payment — earned with reach, automatic",
       // The Influencer class's real money is per-post: the Instagram Story
       // action is EXCLUSIVE to this class (segments v6) and pays the story
-      // rung on any visit where a tagged story is verified.
-      // Quote the STORY rung's own peak (30) — not peakRateForClass, which
-      // returns the universal Google-Review ceiling (50) and would promise a
-      // number the story alone never pays.
-      desc: `Connect an Instagram with ${influencer.followerThreshold.toLocaleString("en-US")}+ followers. The Instagram Story reward is yours alone — post a tagged story on any visit and take up to ${REWARD_SEGMENT_BY_KEY.story.rates[PEAK_STRATEGY]}% off.`,
+      // rung on any visit where a tagged story is verified. No % in Class
+      // detail copy (MESITA-906) — Story exclusivity is the message.
+      desc: `Connect an Instagram with ${influencer.followerThreshold.toLocaleString("en-US")}+ followers. The Instagram Story reward is yours alone — post a tagged story on any visit for an exclusive bonus.`,
       perks: [
-        `Up to ${baseRateForClass("influencer")}% discount rewards`,
+        "HIGH discount rewards",
         "Instagram Story bonus — exclusive to Influencers",
         ...ELEVATED_PERKS,
       ],
@@ -89,7 +82,7 @@ export function WaysToClimb({
       priceNote: "per month · cancel anytime",
       desc: "Subscribe and unlock full Premium instantly. No follower count needed; cancel whenever you want.",
       perks: [
-        `Up to ${baseRateForClass("premium")}% discount rewards`,
+        "EXTRA discount rewards",
         ...ELEVATED_PERKS,
       ],
       reached: key === "premium",
@@ -109,9 +102,10 @@ export function WaysToClimb({
       priceNote: "no payment — Mesita curates Aura personally",
       // Aura is the presence class: the highest flat rate, paid for showing
       // up. No follower count, no posting — the invite is the whole door.
-      desc: `Mesita's invite-only class. The highest base discount — up to ${baseRateForClass("aura")}% on every visit — just for being you. No followers required, nothing to post.`,
+      // Qualitative MAX (MESITA-906) — no % in Class detail copy.
+      desc: "Mesita's invite-only class. MAX discount rewards on every visit — just for being you. No followers required, nothing to post.",
       perks: [
-        `Up to ${baseRateForClass("aura")}% discount rewards — the highest of any class`,
+        "MAX discount rewards — the highest of any class",
         ...ELEVATED_PERKS,
       ],
       reached: key === "aura",
