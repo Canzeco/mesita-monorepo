@@ -80,7 +80,8 @@ export default function MeScreen() {
 
   const classLabel =
     CLASSES.find((c) => c.id === effective.key)?.label ?? 'Standard';
-  const handle = profile?.instagram_handle ?? effective.handle;
+  // Prefer effective handle so IG mock (@mock) wins over a stale profile.
+  const handle = effective.handle ?? profile?.instagram_handle ?? null;
   const igConnected = effective.origin === 'instagram' || Boolean(handle);
 
   // Card metrics row: visits · saved from consumer-web-get-metrics.
@@ -126,9 +127,10 @@ export default function MeScreen() {
             sexLabel={sexLabel}
             age={age}
             phone={formatPhoneDisplay(profile?.phone)}
+            phoneRaw={profile?.phone}
             avatarUrl={profile?.avatar_url}
             igConnected={igConnected}
-            handle={handle ?? null}
+            handle={handle}
             followers={effective.followers}
             classLabel={classLabel}
             savedCents={savedCents}

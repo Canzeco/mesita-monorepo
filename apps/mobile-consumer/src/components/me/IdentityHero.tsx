@@ -1,23 +1,18 @@
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
+import type { ReactNode } from 'react';
 import { Text, View } from 'react-native';
 
 import { ChannelMark } from '@/components/brand/channel-marks';
 import { DefaultAvatar } from '@/components/ui/DefaultAvatar';
 import { GRADIENT_DIAGONAL, GRADIENTS, SHADOW_ELEV } from '@/constants/brand';
 import { formatCurrency } from '@/lib/api/pay';
-import { isElevatedClass } from '@/lib/consumer-classes';
-import { formatCompactCount } from '@/lib/utils';
+import { CLASS_ICONS, isElevatedClass } from '@/lib/consumer-classes';
+import { formatCompactCount, phoneCountryFlag } from '@/lib/utils';
 
-// ─── Me membership card (MESITA-932) — web ProfileSummaryCard parity.
+// ─── Me membership card (MESITA-932 / MESITA-935) — web ProfileSummaryCard parity.
 // Centered photo + Class/IG badges, then five equal-height identity rows.
-
-const CLASS_LETTER: Record<string, string> = {
-  standard: 'S',
-  premium: 'P',
-  influencer: 'I',
-  aura: 'A',
-};
+// Phone shows dial flag; class row + badge use CLASS_ICONS.
 
 const ROW_HEIGHT = 44;
 
@@ -28,11 +23,11 @@ function classBadgeColors(classKey: string): readonly [string, string] {
   return ['#e5e7eb', '#9ca3af'] as const;
 }
 
-function classBadgeText(classKey: string): string {
-  if (classKey === 'aura') return 'text-amber-950';
-  if (classKey === 'influencer') return 'text-red-950';
-  if (classKey === 'premium') return 'text-blue-950';
-  return 'text-neutral-900';
+function classBadgeIconColor(classKey: string): string {
+  if (classKey === 'aura') return '#78350f';
+  if (classKey === 'influencer') return '#7f1d1d';
+  if (classKey === 'premium') return '#1e3a8a';
+  return '#171717';
 }
 
 export function IdentityHeroSkeleton() {
@@ -63,6 +58,7 @@ export function IdentityHero({
   sexLabel,
   age,
   phone,
+  phoneRaw,
   avatarUrl,
   igConnected,
   handle,
@@ -76,6 +72,8 @@ export function IdentityHero({
   sexLabel: string | null;
   age: number | null;
   phone: string | null;
+  /** Raw E.164 digits for flag lookup (MESITA-935). */
+  phoneRaw?: string | null;
   avatarUrl?: string | null;
   igConnected: boolean;
   handle: string | null;
@@ -111,16 +109,103 @@ export function IdentityHero({
     savedCents == null ? '— saved' : `${formatCurrency(savedCents)} saved`,
   ].join(' · ');
 
-  const rows: { key: string; text: string; tone?: 'muted' | 'secondary' }[] = [
-    { key: 'identity', text: identityLine },
-    { key: 'phone', text: phone || '—', tone: phone ? undefined : 'muted' },
-    { key: 'class', text: classLabel },
+  const flag = phoneCountryFlag(phoneRaw ?? phone);
+  const classId = (
+    Object.hasOwn(CLASS_ICONS, classKey)
+      ? classKey
+      : 'standard'
+  ) as keyof typeof CLASS_ICONS;
+  const ClassIcon = CLASS_ICONS[classId];
+
+  const rows: {
+    key: string;
+    content: ReactNode;
+    tone?: 'muted' | 'secondary';
+  }[] = [
+    {
+      key: 'identity',
+      content: (
+        <Text
+          className="font-display font-bold tracking-tight text-foreground"
+          style={{ fontSize: 15 }}
+          numberOfLines={1}
+        >
+          {identityLine}
+        </Text>
+      ),
+    },
+    {
+      key: 'phone',
+      tone: phone ? undefined : 'muted',
+      content: (
+        <View className="flex-row items-center gap-1.5">
+          {flag ? (
+            <Text style={{ fontSize: 14 }} accessibilityElementsHidden>
+              {flag}
+            </Text>
+          ) : null}
+          <Text
+            className={
+              phone
+                ? 'font-semibold text-foreground'
+                : 'font-semibold text-muted-foreground'
+            }
+            style={{
+              fontSize: 13,
+              fontVariant: ['tabular-nums'],
+              letterSpacing: 0.4,
+            }}
+            numberOfLines={1}
+          >
+            {phone || '—'}
+          </Text>
+        </View>
+      ),
+    },
+    {
+      key: 'class',
+      content: (
+        <View className="flex-row items-center gap-1.5">
+          <ClassIcon color="#260409B3" size={14} strokeWidth={2.25} />
+          <Text
+            className="font-semibold text-foreground"
+            style={{ fontSize: 13 }}
+            numberOfLines={1}
+          >
+            {classLabel}
+          </Text>
+        </View>
+      ),
+    },
     {
       key: 'instagram',
-      text: igLine,
       tone: igConnected ? 'secondary' : 'muted',
+      content: (
+        <Text
+          className={
+            igConnected
+              ? 'font-semibold text-secondary'
+              : 'font-semibold text-muted-foreground'
+          }
+          style={{ fontSize: 13 }}
+          numberOfLines={1}
+        >
+          {igLine}
+        </Text>
+      ),
     },
-    { key: 'metrics', text: metricsLine },
+    {
+      key: 'metrics',
+      content: (
+        <Text
+          className="font-semibold text-foreground"
+          style={{ fontSize: 13, fontVariant: ['tabular-nums'] }}
+          numberOfLines={1}
+        >
+          {metricsLine}
+        </Text>
+      ),
+    },
   ];
 
   return (
@@ -198,12 +283,11 @@ export function IdentityHero({
             }}
             accessibilityLabel={`Class: ${classLabel}`}
           >
-            <Text
-              className={`font-extrabold ${classBadgeText(classKey)}`}
-              style={{ fontSize: 9 }}
-            >
-              {CLASS_LETTER[classKey] ?? 'S'}
-            </Text>
+            <ClassIcon
+              color={classBadgeIconColor(classKey)}
+              size={11}
+              strokeWidth={2.5}
+            />
           </LinearGradient>
 
           <LinearGradient
@@ -261,27 +345,7 @@ export function IdentityHero({
               }
               style={{ height: ROW_HEIGHT }}
             >
-              <Text
-                className={
-                  row.key === 'identity'
-                    ? 'font-display font-bold tracking-tight text-foreground'
-                    : row.tone === 'secondary'
-                      ? 'font-semibold text-secondary'
-                      : row.tone === 'muted'
-                        ? 'font-semibold text-muted-foreground'
-                        : 'font-semibold text-foreground'
-                }
-                style={{
-                  fontSize: row.key === 'identity' ? 15 : 13,
-                  fontVariant: row.key === 'phone' || row.key === 'metrics'
-                    ? ['tabular-nums']
-                    : undefined,
-                  letterSpacing: row.key === 'phone' ? 0.4 : undefined,
-                }}
-                numberOfLines={1}
-              >
-                {row.text}
-              </Text>
+              {row.content}
             </View>
           ))}
         </View>

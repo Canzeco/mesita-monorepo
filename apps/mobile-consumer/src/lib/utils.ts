@@ -1,6 +1,8 @@
 // Display helpers — ported from apps/web-consumer/src/lib/utils.ts
 // (subset needed by swipe + future ports). Keep in sync when web changes.
 
+import { COUNTRIES } from '@/lib/countries';
+
 export function errMsg(err: unknown, fallback: string): string {
   return err instanceof Error ? err.message : fallback;
 }
@@ -54,6 +56,24 @@ export function formatPhoneDisplay(
     return `${digits.slice(0, 3)} ${digits.slice(3, 6)} ${digits.slice(6)}`;
   }
   return `+${digits}`;
+}
+
+/**
+ * Flag emoji for the phone's dial code (longest match). Bare 10-digit MX
+ * locals get 🇲🇽. Null when we can't map. Web parity (MESITA-935).
+ */
+export function phoneCountryFlag(
+  phone: string | null | undefined,
+): string | null {
+  if (!phone) return null;
+  const digits = phone.replace(/\D/g, '');
+  if (!digits) return null;
+  if (digits.length === 10) return '🇲🇽';
+  const sorted = [...COUNTRIES].sort((a, b) => b.dial.length - a.dial.length);
+  for (const c of sorted) {
+    if (digits.startsWith(c.dial)) return c.flag;
+  }
+  return null;
 }
 
 // Guest-count noun: "person" for 1, "people" otherwise. Pair with the count

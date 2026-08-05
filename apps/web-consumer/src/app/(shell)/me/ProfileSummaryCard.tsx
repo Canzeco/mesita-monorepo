@@ -2,11 +2,11 @@
 
 import type { ReactNode } from "react";
 import Image from "next/image";
-import { Instagram } from "lucide-react";
+import { Instagram, type LucideIcon } from "lucide-react";
 import type { ConsumerProfile } from "@/lib/api/profile";
 import { formatCurrency } from "@/lib/api/profile";
 import { DefaultAvatar } from "@/components/consumer/DefaultAvatar";
-import { CLASSES, isElevatedClass } from "@/lib/consumer-data";
+import { CLASSES, CLASS_ICONS, isElevatedClass } from "@/lib/consumer-data";
 import { useConsumerClass } from "@/lib/class-context";
 import {
   ageFromBirthday,
@@ -14,29 +14,24 @@ import {
   formatCompactCount,
   formatPhoneDisplay,
   formatSex,
+  phoneCountryFlag,
 } from "@/lib/utils";
 
-// ─── Me membership card (MESITA-932) ────────────────────────────────────────
+// ─── Me membership card (MESITA-932 / MESITA-935) ───────────────────────────
 // Centered photo + Class/IG badges, then five equal-height identity rows:
-// name·sex·age / phone / class / IG handle·followers / visits·saved.
-
-const CLASS_LETTER: Record<string, string> = {
-  standard: "S",
-  premium: "P",
-  influencer: "I",
-  aura: "A",
-};
+// name·sex·age / 🇲🇽 phone / [icon] class / IG handle·followers / visits·saved.
 
 const ROW_CLASS =
-  "flex h-11 items-center justify-center px-3 text-center";
+  "flex h-11 items-center justify-center gap-1.5 px-3 text-center";
 
 function ClassBadge({
   classKey,
   label,
 }: {
-  classKey: string;
+  classKey: keyof typeof CLASS_ICONS;
   label: string;
 }) {
+  const Icon = CLASS_ICONS[classKey];
   const chipClass =
     classKey === "aura"
       ? "bg-gradient-to-br from-amber-200 to-orange-300 text-amber-950"
@@ -49,12 +44,12 @@ function ClassBadge({
   return (
     <div
       className={cn(
-        "absolute -bottom-0.5 -left-0.5 grid h-[22px] w-[22px] place-items-center rounded-full border-2 border-white text-[9px] font-extrabold shadow-sm",
+        "absolute -bottom-0.5 -left-0.5 grid h-[22px] w-[22px] place-items-center rounded-full border-2 border-white shadow-sm",
         chipClass,
       )}
       aria-label={`Class: ${label}`}
     >
-      {CLASS_LETTER[classKey] ?? "S"}
+      <Icon className="h-3 w-3" strokeWidth={2.5} aria-hidden />
     </div>
   );
 }
@@ -98,6 +93,27 @@ function IgBadge({
         )}
       </div>
     </div>
+  );
+}
+
+function RowWithIcon({
+  Icon,
+  children,
+  iconClassName,
+}: {
+  Icon: LucideIcon;
+  children: ReactNode;
+  iconClassName?: string;
+}) {
+  return (
+    <>
+      <Icon
+        className={cn("h-3.5 w-3.5 shrink-0", iconClassName)}
+        strokeWidth={2.25}
+        aria-hidden
+      />
+      {children}
+    </>
   );
 }
 
@@ -152,8 +168,11 @@ export function ProfileSummaryCard({
   const age = ageFromBirthday(profile?.birthday);
   const sexLabel = formatSex(profile?.sex);
   const phone = formatPhoneDisplay(profile?.phone);
+  const flag = phoneCountryFlag(profile?.phone);
   const classLabel = CLASSES.find((c) => c.id === key)?.label ?? "Standard";
-  const handle = profile?.instagram_handle ?? classHandle;
+  const ClassIcon = CLASS_ICONS[key];
+  // Prefer class-context handle so IG mock (@mock) wins over a stale profile.
+  const handle = classHandle ?? profile?.instagram_handle ?? null;
   const igConnected = origin === "instagram" || Boolean(handle);
 
   const identityLine = [name, sexLabel, age != null ? String(age) : null]
@@ -181,16 +200,27 @@ export function ProfileSummaryCard({
     {
       key: "phone",
       content: (
-        <span className="truncate font-mono text-[13px] font-semibold tracking-wide tabular-nums">
-          {phone || "—"}
-        </span>
+        <>
+          {flag ? (
+            <span className="text-[14px] leading-none" aria-hidden>
+              {flag}
+            </span>
+          ) : null}
+          <span className="truncate font-mono text-[13px] font-semibold tracking-wide tabular-nums">
+            {phone || "—"}
+          </span>
+        </>
       ),
       muted: !phone,
     },
     {
       key: "class",
       content: (
-        <span className="truncate text-[13px] font-semibold">{classLabel}</span>
+        <RowWithIcon Icon={ClassIcon} iconClassName="text-foreground/70">
+          <span className="truncate text-[13px] font-semibold">
+            {classLabel}
+          </span>
+        </RowWithIcon>
       ),
     },
     {
