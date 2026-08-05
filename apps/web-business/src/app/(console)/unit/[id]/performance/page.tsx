@@ -56,17 +56,15 @@ export default async function PerformancePage({
     );
   }
 
+  // Prefetch used the route id. Only pass it through when that is the place
+  // we render — otherwise the client re-fetches for active.id.
+  const prefetchMatches = active.id === id;
   const initialData =
-    perfSettled.status === "fulfilled" && perfSettled.value &&
-      // Only hand the payload through when it matches the place we render —
-      // a stale/mismatched id would paint the wrong numbers.
-      active.id === id
+    prefetchMatches && perfSettled.status === "fulfilled"
       ? perfSettled.value
       : null;
   const initialError =
-    initialData
-      ? null
-      : perfSettled.status === "rejected"
+    prefetchMatches && perfSettled.status === "rejected"
       ? errMsg(perfSettled.reason, "Could not load performance.")
       : null;
 
