@@ -328,6 +328,11 @@ verify_jwt = true
 [functions.consumer-web-get-profile]
 verify_jwt = true
 
+# Me → Metrics sheet (MESITA-895): lifetime counters, fetched lazily when the
+# sheet opens — deliberately not part of get-profile (which runs every load).
+[functions.consumer-web-get-metrics]
+verify_jwt = true
+
 [functions.consumer-web-update-profile]
 verify_jwt = true
 
