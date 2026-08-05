@@ -109,7 +109,7 @@ Deno.serve(async (req) => {
     .update(patch)
     .eq("id", userId)
     .select(
-      "id, code, full_name, first_name, last_name, sex, birthday, country, phone, profile_public, profile_show_saves, profile_show_visits",
+      "id, code, full_name, first_name, last_name, sex, birthday, country, phone, profile_public, profile_show_saves, profile_show_visits, profile_show_stories",
     )
     .single();
   if (update.error) {
