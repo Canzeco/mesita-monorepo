@@ -37,7 +37,7 @@ import { TAB_SCROLL_PADDING_BOTTOM } from '@/lib/tab-layout';
 import { BoxRow } from '@/components/ui/BoxRow';
 import { Button } from '@/components/ui/Button';
 import { inboxPath } from '@/lib/consumer-route-contract';
-import { CLASSES, isElevatedClass } from '@/lib/consumer-classes';
+import { CLASSES } from '@/lib/consumer-classes';
 import { useEffectiveClass } from '@/lib/mock-class';
 import {
   ageFromBirthday,
@@ -70,7 +70,6 @@ export default function MeScreen() {
     consumerClass,
     profile?.instagram_handle ?? null,
   );
-  const isElevated = isElevatedClass(effective.key);
   const [sheet, setSheet] = useState<Sheet>(null);
 
   const name =
@@ -87,8 +86,6 @@ export default function MeScreen() {
 
   const classLabel =
     CLASSES.find((c) => c.id === effective.key)?.label ?? 'Standard';
-  const classVia =
-    isElevated && effective.origin !== 'default' ? effective.origin : null;
   const handle = profile?.instagram_handle ?? effective.handle;
   const igConnected = effective.origin === 'instagram' || Boolean(handle);
 
@@ -120,7 +117,6 @@ export default function MeScreen() {
             handle={handle ?? null}
             followers={effective.followers}
             classLabel={classLabel}
-            classVia={classVia}
             visits={stats?.visits ?? null}
           />
         )}
