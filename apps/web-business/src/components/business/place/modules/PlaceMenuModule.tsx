@@ -2,7 +2,10 @@
 
 import { PlaceBox } from "../PlaceBox";
 import { PlaceKvField } from "../PlaceKvField";
-import { PlaceMenuFields } from "../PlaceMenuFields";
+import {
+  PlaceMenuFields,
+  type MenuSessionUploadsHandle,
+} from "../PlaceMenuFields";
 import { PlaceModule } from "../PlaceModule";
 import type { PlaceFormState, SetPlaceForm } from "../place-form-types";
 
@@ -12,12 +15,14 @@ export function PlaceMenuModule({
   set,
   onError,
   hideHeader = false,
+  registerSessionUploads,
 }: {
   projectId: string;
   form: PlaceFormState;
   set: SetPlaceForm;
   onError: (msg: string | null) => void;
   hideHeader?: boolean;
+  registerSessionUploads?: (handle: MenuSessionUploadsHandle | null) => void;
 }) {
   if (hideHeader) {
     return (
@@ -28,6 +33,7 @@ export function PlaceMenuModule({
             form={form}
             set={set}
             onError={onError}
+            registerSessionUploads={registerSessionUploads}
           />
         </PlaceKvField>
       </PlaceBox>
@@ -41,6 +47,7 @@ export function PlaceMenuModule({
         form={form}
         set={set}
         onError={onError}
+        registerSessionUploads={registerSessionUploads}
       />
     </PlaceModule>
   );

@@ -62,8 +62,6 @@ function pdfShellHtml(url: string): string {
     pdfjs.GlobalWorkerOptions.workerSrc =
       'https://cdn.jsdelivr.net/npm/pdfjs-dist@${PDFJS_VERSION}/build/pdf.worker.min.mjs';
     const doc = await pdfjs.getDocument({ url: ${src} }).promise;
-    post({ type: 'ready', pages: doc.numPages });
-
     const container = document.getElementById('pages');
     const chip = document.getElementById('chip');
     const total = doc.numPages;
@@ -86,6 +84,10 @@ function pdfShellHtml(url: string): string {
       canvases.push(canvas);
       await page.render({ canvas, viewport }).promise;
     }
+    // Ready only after every page is painted — posting earlier let late
+    // render failures flip the sheet to the external-open fallback even
+    // after pages were already visible.
+    post({ type: 'ready', pages: total });
 
     if (total > 1) {
       chip.hidden = false;

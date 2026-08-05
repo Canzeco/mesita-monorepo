@@ -20,6 +20,7 @@ import {
   drivePreviewUrl,
   isDriveMenuUrl,
   placeMenuObjectPath,
+  removeOrphanMenuStorageObjects,
   validateMenuUploadFile,
 } from "@/lib/place-upload-utils";
 import { updatePlace, type AdminMenuItem, type AdminPlace } from "../actions";
@@ -133,6 +134,9 @@ export function ProductsSection({
   const [ok, setOk] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const uploadTargetKey = useRef<string | null>(null);
+  // Public URLs uploaded this editing session but not yet in the last-saved
+  // set — cleaned up on Cancel/Discard, or if Save drops them.
+  const sessionUploadsRef = useRef<Set<string>>(new Set());
 
   const dirty = useMemo(() => {
     const a = serializeMenus(items);
@@ -152,6 +156,14 @@ export function ProductsSection({
   useEffect(() => {
     registerDiscardHandler("products", () => {
       const next = menusFromPlace(place);
+      const keep = next.map((m) => m.url);
+      const orphans = [...sessionUploadsRef.current];
+      sessionUploadsRef.current = new Set();
+      void removeOrphanMenuStorageObjects(
+        createBrowserSupabase(),
+        orphans,
+        keep,
+      );
       setItems(next);
       setSaved(next);
       setOk(false);
@@ -237,6 +249,8 @@ export function ProductsSection({
         throw new Error("Upload succeeded but no public URL was returned.");
       }
       const baseName = file.name.replace(/\.[^.]+$/, "").trim().slice(0, MENU_NAME_MAX);
+      const prevUrl =
+        items.find((m) => m.key === key)?.url.trim() ?? "";
       setItems((prev) =>
         prev.map((m) =>
           m.key === key
@@ -249,6 +263,12 @@ export function ProductsSection({
             : m,
         ),
       );
+      sessionUploadsRef.current.add(data.publicUrl);
+      // Replacing a never-saved upload — drop the previous object now.
+      if (prevUrl && sessionUploadsRef.current.has(prevUrl)) {
+        sessionUploadsRef.current.delete(prevUrl);
+        void removeOrphanMenuStorageObjects(supabase, [prevUrl], []);
+      }
       setOk(false);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Couldn't upload that file.");
@@ -257,9 +277,16 @@ export function ProductsSection({
     }
   };
 
-  // Cancel — drop the draft menus back to the last-saved set. Files already
-  // uploaded to the bucket stay there; they're only referenced once saved.
+  // Cancel — restore last-saved menus and delete never-saved uploads.
   const cancel = () => {
+    const keep = saved.map((m) => m.url);
+    const orphans = [...sessionUploadsRef.current];
+    sessionUploadsRef.current = new Set();
+    void removeOrphanMenuStorageObjects(
+      createBrowserSupabase(),
+      orphans,
+      keep,
+    );
     setItems(saved);
     setError(null);
     setOk(false);
@@ -307,6 +334,15 @@ export function ProductsSection({
         return;
       }
       const next = menusFromPlace(r.data);
+      const keep = next.map((m) => m.url);
+      const previous = saved.map((m) => m.url);
+      const session = [...sessionUploadsRef.current];
+      sessionUploadsRef.current = new Set();
+      void removeOrphanMenuStorageObjects(
+        createBrowserSupabase(),
+        [...previous, ...session],
+        keep,
+      );
       setItems(next);
       setSaved(next);
       onSaved(r.data);

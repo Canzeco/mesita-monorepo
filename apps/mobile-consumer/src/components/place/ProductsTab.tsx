@@ -25,13 +25,6 @@ export function ProductsTab({ menus }: { menus: PlaceMenuItem[] }) {
           </Text>
         </View>
 
-        <View className="mb-3 flex-row items-start gap-2 rounded-xl border border-amber-400/40 bg-amber-50 px-3 py-2.5">
-          <Info color="#d97706" size={14} style={{ marginTop: 1 }} />
-          <Text className="flex-1 text-[11px] leading-snug font-medium text-amber-950">
-            Reference only — current product prices may differ at the place.
-          </Text>
-        </View>
-
         {menus.length === 0 ? (
           <View className="items-center gap-2 py-4">
             <View className="size-12 items-center justify-center rounded-full bg-muted">
@@ -41,11 +34,18 @@ export function ProductsTab({ menus }: { menus: PlaceMenuItem[] }) {
               No menu available yet
             </Text>
             <Text className="px-4 text-center text-xs leading-snug text-muted-foreground">
-              This place has not uploaded a menu or product catalog.
+              This place hasn{"'"}t uploaded a menu or product catalog.
             </Text>
           </View>
         ) : (
           <View className="gap-2">
+            <View className="mb-1 flex-row items-start gap-2 rounded-xl border border-amber-400/40 bg-amber-50 px-3 py-2.5">
+              <Info color="#d97706" size={14} style={{ marginTop: 1 }} />
+              <Text className="flex-1 text-[11px] leading-snug font-medium text-amber-950">
+                Reference only — current product prices may differ at the
+                place.
+              </Text>
+            </View>
             {menus.map((m) => (
               <Pressable
                 key={`${m.name}-${m.url}`}
