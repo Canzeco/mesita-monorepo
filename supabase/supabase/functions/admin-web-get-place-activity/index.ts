@@ -7,8 +7,10 @@
 //
 //   stats        — REAL aggregates over the whole place, not a sample. Counts
 //     run server-side (head + exact count); the money sums drain every closed
-//     ticket's two integer columns past PostgREST's default page (MESITA-890),
-//     matching business-web-get-performance.
+//     ticket's amount columns past PostgREST's default page (MESITA-890).
+//     Amount = total_cents ?? check_subtotal_cents — same formula as
+//     business-web-get-performance, so admin and business never disagree on
+//     "influenced spend" for the same place.
 //
 //     This replaced deriving the headline numbers from a page of the
 //     notification feed. That feed is capped (default 150 events), so
@@ -82,7 +84,9 @@ function guestName(c: GuestShape | null): string {
 
 type MoneyRow = {
   check_subtotal_cents: number | null;
+  total_cents: number | null;
   discount_cents: number | null;
+  bill_source: string | null;
 };
 
 /** Drain every closed ticket's money columns for this place. */
@@ -95,7 +99,7 @@ async function fetchAllClosedMoney(
   for (;;) {
     const { data, error } = await admin
       .from("tickets")
-      .select("check_subtotal_cents, discount_cents")
+      .select("check_subtotal_cents, total_cents, discount_cents, bill_source")
       .eq("project_id", projectId)
       .eq("status", CLOSED_STATUS)
       .order("created_at", { ascending: false })
@@ -191,12 +195,16 @@ Deno.serve(async (req) => {
 
   let influencedCents = 0;
   let discountCents = 0;
-  let withAmount = 0;
+  let billedCount = 0;
+  let consumerReportedCount = 0;
   for (const row of moneyDrain.rows) {
-    const sub = row.check_subtotal_cents ?? 0;
-    if (sub > 0) {
-      influencedCents += sub;
-      withAmount += 1;
+    // Same amount resolution as business-web-get-performance — v3b made the
+    // bill optional and total_cents the preferred recorded amount.
+    const amount = row.total_cents ?? row.check_subtotal_cents ?? 0;
+    if (amount > 0) {
+      influencedCents += amount;
+      billedCount += 1;
+      if (row.bill_source === "consumer") consumerReportedCount += 1;
     }
     discountCents += row.discount_cents ?? 0;
   }
@@ -234,9 +242,14 @@ Deno.serve(async (req) => {
       reservations: resvCountRes.count ?? 0,
       influencedCents,
       discountCents,
-      // Averaged over the tickets that actually carry a subtotal, so one
+      billedCount,
+      // Of billedCount, how many amounts the GUEST typed (v3b provenance).
+      consumerReportedCount,
+      // Averaged over tickets that actually carry an amount, so one
       // un-billed close can't drag the average down.
-      avgTicketCents: withAmount > 0 ? Math.round(influencedCents / withAmount) : null,
+      avgTicketCents: billedCount > 0
+        ? Math.round(influencedCents / billedCount)
+        : null,
       // The two conversions the funnel annotates.
       visitRate: saves > 0 ? Math.round((visits / saves) * 100) : null,
       closeRate: visits > 0 ? Math.round((closed / visits) * 100) : null,
