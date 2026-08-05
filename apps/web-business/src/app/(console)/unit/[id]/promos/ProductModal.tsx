@@ -11,6 +11,7 @@ export function ProductModal({
   currency,
   isCurrent,
   subscribed,
+  joinDisabled,
   billingBusy,
   onCommit,
   onClose,
@@ -19,6 +20,7 @@ export function ProductModal({
   currency: string;
   isCurrent: boolean;
   subscribed: boolean;
+  joinDisabled?: boolean;
   billingBusy: boolean;
   onCommit: () => void;
   onClose: () => void;
@@ -34,18 +36,31 @@ export function ProductModal({
   const art = CARD_ART[strategy.id];
   const paid = strategy.id !== "zero";
   const r = strategy.rates;
-  const needsJoin = paid && !subscribed;
+  const needsJoin = !subscribed;
+  const isZeroSwitch = subscribed && strategy.id === "zero";
 
   const primaryLabel = isCurrent
     ? "Current Strategy"
-    : paid
-      ? subscribed
-        ? `Switch to ${strategy.name}`
+    : needsJoin
+      ? joinDisabled
+        ? "Join unavailable"
         : `Join — ${formatMoney(PRODUCT_PRICE_MXN, currency)}/year`
-      : "Drop to Zero";
+      : paid
+        ? `Switch to ${strategy.name}`
+        : "Switch to Zero";
+
+  const footerNote = isCurrent
+    ? ""
+    : needsJoin
+      ? joinDisabled
+        ? "Membership was forfeited — contact Mesita to re-join."
+        : `Starts Verified membership at ${formatMoney(PRODUCT_PRICE_MXN, currency)}/year with ${strategy.name} rates. Goes live when you honor your first guest check.`
+      : isZeroSwitch
+        ? "Membership stays active; discounts pause. Promo lane closes until you pick a paid strategy again."
+        : "Applies to new tickets only — open tickets keep the rates they were created with.";
 
   const onPrimary = () => {
-    if (isCurrent || billingBusy) return;
+    if (isCurrent || billingBusy || joinDisabled) return;
     onCommit();
   };
 
@@ -63,7 +78,6 @@ export function ProductModal({
         aria-labelledby="product-modal-title"
         className="border-border bg-card relative z-10 flex max-h-[88vh] w-full max-w-md flex-col overflow-hidden rounded-2xl border shadow-xl"
       >
-        {/* Art header */}
         <div
           className={cn(
             "relative h-32 shrink-0 bg-gradient-to-br",
@@ -102,20 +116,9 @@ export function ProductModal({
               </span>
               {strategy.name}
             </p>
-            <p className="text-[12px] font-semibold text-white/90 drop-shadow-sm">
-              {paid ? (
-                <>
-                  {formatMoney(PRODUCT_PRICE_MXN, currency)}{" "}
-                  <span className="font-normal text-white/80">/ year</span>
-                </>
-              ) : (
-                "Free"
-              )}
-            </p>
           </div>
         </div>
 
-        {/* Detail */}
         <div className="flex flex-col gap-4 overflow-y-auto p-5">
           <p className="text-muted-foreground text-[13px] leading-snug">
             {strategy.tagline}
@@ -134,7 +137,7 @@ export function ProductModal({
               </>
             ) : (
               <p className="text-muted-foreground text-[12px] leading-snug">
-                Nothing — Zero is free. No discounts.
+                Nothing — Zero means no discounts.
               </p>
             )}
           </div>
@@ -147,63 +150,47 @@ export function ProductModal({
           {paid ? (
             <div className="flex flex-col gap-3">
               <ModalLabel>How it works</ModalLabel>
-              <Step n={1} title="Pay the membership">
-                {formatMoney(PRODUCT_PRICE_MXN, currency)}/year Verified
-                membership — one Strategy at a time; switching later is a new
-                membership.
+              <Step n={1} title="Join the membership">
+                {formatMoney(PRODUCT_PRICE_MXN, currency)}/year — one fee, switch
+                strategies free anytime.
               </Step>
               <Step n={2} title="Tell your staff to scan the guest's QR">
-                Nothing to install: any phone camera opens the check page. No
-                app, no account, no training.
+                Nothing to install: any phone camera opens the check page.
               </Step>
               <Step n={3} title="Redeem your first guest reward">
                 Honor the first ticket at the bill and you&apos;re live.
               </Step>
               <p className="text-muted-foreground text-[10px] leading-snug">
                 Turn a guest away and it&apos;s a strike — 1 warning · 2
-                discounts paused 30 days · 3 removed. Strikes decay after 6
-                months clean.
+                discounts paused 30 days · 3 removed.
               </p>
             </div>
           ) : (
             <div className="flex flex-col gap-2">
               <ModalLabel>How it works</ModalLabel>
               <p className="text-muted-foreground text-[12px] leading-snug">
-                No membership, nothing to set up — Zero is free and you stay
-                listed on Mesita. Join a Strategy any time.
+                {subscribed
+                  ? "Zero pauses discounts — membership stays active. Drop membership separately if you want to leave."
+                  : "Non-members stay at Zero — no discounts. Join membership to unlock the paid strategies."}
               </p>
             </div>
           )}
         </div>
 
-        {/* Action footer */}
         <div className="border-border flex flex-col gap-2 border-t p-4">
-          <div className="flex items-center justify-between gap-3">
-            <span className="text-sm font-bold">
-              {paid ? (
-                <>
-                  {formatMoney(PRODUCT_PRICE_MXN, currency)}
-                  <span className="text-muted-foreground text-[11px] font-normal">
-                    {" "}
-                    / year
-                  </span>
-                </>
-              ) : (
-                "Free"
-              )}
-            </span>
+          <div className="flex items-center justify-end gap-3">
             <button
               type="button"
-              disabled={isCurrent || billingBusy}
+              disabled={isCurrent || billingBusy || joinDisabled}
               onClick={onPrimary}
               className={cn(
                 "inline-flex h-11 items-center justify-center rounded-full px-5 text-[13px] font-bold transition",
-                isCurrent
+                isCurrent || joinDisabled
                   ? "border-border text-muted-foreground border"
-                  : paid
+                  : needsJoin || paid
                     ? cn(
                         "bg-gradient-to-r text-white hover:brightness-105 active:scale-[0.99]",
-                        art.cta,
+                        art.cta || "from-slate-600 to-slate-500",
                       )
                     : "border-border text-foreground hover:bg-muted border",
                 billingBusy && "opacity-70",
@@ -217,15 +204,11 @@ export function ProductModal({
               {billingBusy ? "Working…" : primaryLabel}
             </button>
           </div>
-          <p className="text-muted-foreground text-[10px] leading-snug">
-            {needsJoin
-              ? "Starts Verified membership billing. It goes live when you honor your first guest check."
-              : subscribed && paid && !isCurrent
-                ? "Rates change now — Mesita follows up on the billing."
-                : subscribed && !paid
-                  ? "Cancels Verified membership (keeps listing on Mesita)."
-                  : ""}
-          </p>
+          {footerNote && (
+            <p className="text-muted-foreground text-[10px] leading-snug">
+              {footerNote}
+            </p>
+          )}
         </div>
       </div>
     </div>

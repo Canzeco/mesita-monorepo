@@ -28,6 +28,12 @@ import {
   type UrlField,
 } from "./project-urls.ts";
 import { normalisePromoRate, PROMO_RATE_FIELDS } from "../_shared/promo-rates.ts";
+import { ratesFromPlace } from "../_shared/lineup-strategy.ts";
+import {
+  applyListingTypeToPatch,
+  effectiveRatesAfterPatch,
+} from "../_shared/partner-derivation.ts";
+import { logStrategySwitch } from "../_shared/strategy-switch-log.ts";
 import {
   isMissingCategoryLabelColumnError,
   optString,
@@ -494,6 +500,40 @@ Deno.serve(async (req) => {
     return json({ ok: false, error: "No editable fields provided" }, 400);
   }
 
+  const writingRates = PROMO_RATE_FIELDS.some((f) => f in update) ||
+    "monthly_promo_cap" in update;
+  let currentRow: Record<string, unknown> | null = null;
+  if (writingRates) {
+    const { data: row, error: readErr } = await admin
+      .from("projects")
+      .select(
+        "plan, listing_type, welcome_free_rate, welcome_premium_rate, free_rate, premium_rate",
+      )
+      .eq("id", projectId)
+      .maybeSingle();
+    if (readErr) {
+      return json({ ok: false, error: `place_read: ${readErr.message}` }, 500);
+    }
+    if (!row) return json({ ok: false, error: "Place not found" }, 404);
+    currentRow = row as Record<string, unknown>;
+    const plan = (currentRow.plan as string) ?? "free";
+    if (plan === "free") {
+      return json(
+        {
+          ok: false,
+          code: "not_a_member",
+          error: "Strategy switching requires an active membership.",
+        },
+        409,
+      );
+    }
+    applyListingTypeToPatch(update, {
+      plan,
+      rates: effectiveRatesAfterPatch(currentRow, update),
+      currentListingType: currentRow.listing_type as string,
+    });
+  }
+
   // Follower counts follow the account (indirect edit, MESITA-416): a changed
   // instagram_url/facebook_url triggers an Apify follower refresh after the
   // response. Snapshot the current URLs first — clients resubmit whole forms,
@@ -558,6 +598,15 @@ Deno.serve(async (req) => {
       placeId: projectId,
       apiKey: Deno.env.get("OPENAI_KEY")?.trim(),
       logPrefix: "business-web-update-project/on-update",
+    });
+  }
+
+  if (writingRates && currentRow) {
+    logStrategySwitch({
+      project: projectId,
+      from: ratesFromPlace(currentRow),
+      to: effectiveRatesAfterPatch(currentRow, update),
+      actor: authRes.user.email ?? authRes.user.id,
     });
   }
 

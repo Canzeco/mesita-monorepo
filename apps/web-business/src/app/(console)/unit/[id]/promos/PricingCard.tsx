@@ -12,6 +12,7 @@ export function PricingCard({
   selected,
   pending,
   subscribed,
+  joinDisabled,
   onOpen,
 }: {
   strategy: Strategy;
@@ -19,6 +20,7 @@ export function PricingCard({
   selected: boolean;
   pending: boolean;
   subscribed: boolean;
+  joinDisabled?: boolean;
   onOpen: () => void;
 }) {
   const art = CARD_ART[strategy.id];
@@ -30,12 +32,14 @@ export function PricingCard({
       type="button"
       onClick={onOpen}
       aria-haspopup="dialog"
-      aria-label={`${strategy.name} — details${selected ? " (current)" : ""}`}
+      aria-label={`${strategy.name} — details${selected ? " (current)" : ""}${!subscribed ? " (locked)" : ""}`}
       className={cn(
         "bg-card relative flex flex-col overflow-hidden rounded-2xl border text-left transition",
         selected
           ? "border-foreground/70 ring-foreground/70 ring-2"
           : "border-border hover:shadow-[0_18px_32px_-20px_rgba(236,72,153,0.35)] motion-safe:hover:-translate-y-0.5",
+        !subscribed && !selected && "opacity-75",
+        joinDisabled && "pointer-events-none opacity-50",
       )}
     >
       {/* Art band — gradient behind the image is the loading/404 fallback;
@@ -70,16 +74,6 @@ export function PricingCard({
               {strategy.emoji}
             </span>
             {strategy.name}
-          </p>
-          <p className="text-[11px] font-semibold text-white/90 drop-shadow-sm">
-            {paid ? (
-              <>
-                {formatMoney(PRODUCT_PRICE_MXN, currency)}{" "}
-                <span className="font-normal text-white/80">/ year</span>
-              </>
-            ) : (
-              "Free"
-            )}
           </p>
         </div>
       </div>
@@ -118,18 +112,25 @@ export function PricingCard({
               <Check className="h-3.5 w-3.5" />
               Current
             </span>
-          ) : paid ? (
+          ) : !subscribed ? (
             <span
               className={cn(
-                "inline-flex h-11 w-full items-center justify-center rounded-full bg-gradient-to-r text-[12px] font-bold text-white",
-                art.cta,
+                "inline-flex h-11 w-full items-center justify-center rounded-full text-[12px] font-bold text-white",
+                paid ? cn("bg-gradient-to-r", art.cta) : "border-border border bg-transparent text-foreground/75",
               )}
             >
-              {subscribed ? "Switch" : "Join"}
+              Join
             </span>
           ) : (
-            <span className="border-border text-foreground/75 inline-flex h-11 w-full items-center justify-center rounded-full border text-[12px] font-bold">
-              Drop to Zero
+            <span
+              className={cn(
+                "inline-flex h-11 w-full items-center justify-center rounded-full text-[12px] font-bold",
+                paid
+                  ? cn("bg-gradient-to-r text-white", art.cta)
+                  : "border-border text-foreground/75 border",
+              )}
+            >
+              {paid ? "Switch" : "Switch to Zero"}
             </span>
           )}
         </div>

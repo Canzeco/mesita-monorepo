@@ -22,6 +22,7 @@ import {
   placeStrategy,
   resolveTicketRate,
 } from "../_shared/rewards-config.ts";
+import { ratesForBilling } from "../_shared/ticket-rate-snapshot.ts";
 import {
   assessPromoLane,
   loadMembershipRow,
@@ -65,7 +66,7 @@ Deno.serve(async (req) => {
   const ticketRow = await admin
     .from("tickets")
     .select(
-      "id, project_id, consumer_id, kind, story_status, review_status, status, check_subtotal_cents, total_cents, currency",
+      "id, project_id, consumer_id, kind, story_status, review_status, status, check_subtotal_cents, total_cents, currency, welcome_free_rate, welcome_premium_rate, free_rate, premium_rate, rates_snapshotted_at",
     )
     .eq("id", ticketId)
     .maybeSingle();
@@ -141,12 +142,20 @@ Deno.serve(async (req) => {
     ticket.project_id,
     ticketId,
   );
-  const ratePercent = resolveTicketRate(placeStrategy(place), grid, {
-    classKey: consumerRow.data.class_key,
-    isFirstVisit: firstVisit,
-    storyVerified: isActionVerified(ticket.story_status),
-    reviewVerified: isActionVerified(ticket.review_status),
-  });
+  const billingRates = ratesForBilling(
+    ticket as Record<string, unknown>,
+    place as Record<string, unknown>,
+  );
+  const ratePercent = resolveTicketRate(
+    placeStrategy(billingRates as Record<string, unknown>),
+    grid,
+    {
+      classKey: consumerRow.data.class_key,
+      isFirstVisit: firstVisit,
+      storyVerified: isActionVerified(ticket.story_status),
+      reviewVerified: isActionVerified(ticket.review_status),
+    },
+  );
   const capPesos = grid.cap;
 
   const billRes = computeTicketBill({ subtotal, ratePercent, capPesos });

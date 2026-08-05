@@ -48,11 +48,12 @@ Deno.serve(async (req) => {
 
   const admin = adminClient(envRes.env);
 
+  // Literal select string — supabase-js parses it at the TYPE level;
+  // concatenation yields GenericStringError and breaks deno check.
   const ticketRow = await admin
     .from("tickets")
     .select(
-      "id, consumer_id, project_id, status, story_status, review_status, " +
-        "check_subtotal_cents, total_cents, discount_percent",
+      "id, consumer_id, project_id, status, story_status, review_status, check_subtotal_cents, total_cents, discount_percent",
     )
     .eq("id", ticketId)
     .maybeSingle();

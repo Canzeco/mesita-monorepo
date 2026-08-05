@@ -1,3 +1,5 @@
+import { deriveListingType } from "./partner-derivation.ts";
+
 export const PROMO_PAUSE_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
 
 export function buildStrikePatch(
@@ -22,20 +24,30 @@ export function buildStrikePatch(
     // Strike 3: remove paid posture, forfeit fee stamp, keep catalog listing.
     //
     // "Keep catalog listing" means the place stays browsable — it does NOT
-    // mean it keeps running rewards. Verified Partner tracks the paid
-    // membership (MESITA-818: admin-web-set-plan promotes on a paid plan and
-    // demotes on Zero), so forfeiting the membership demotes here too;
+    // mean it keeps running rewards. Verified Partner tracks membership +
+    // strategy (MESITA-912), so forfeiting the membership demotes here too;
     // otherwise a struck-out place would keep an openable ticket lane with
-    // every rate nulled. Unconditional 'web' is safe: only a partner can
-    // reach strike 3.
+    // every rate nulled.
     patch.plan = "free";
-    patch.listing_type = "web";
+    const zeroRates = {
+      welcome_free_rate: null,
+      welcome_premium_rate: null,
+      free_rate: null,
+      premium_rate: null,
+    };
     patch.welcome_free_rate = null;
     patch.welcome_premium_rate = null;
     patch.free_rate = null;
     patch.premium_rate = null;
     patch.monthly_promo_cap = null;
+    const listing = deriveListingType({
+      plan: "free",
+      rates: zeroRates,
+      currentListingType: "partner",
+    });
+    if (listing !== undefined) patch.listing_type = listing;
     patch.membership_live_at = null;
+    patch.first_ticket_honored_at = null;
     patch.membership_forfeited_at = iso;
     patch.promo_paused_until = null;
   }

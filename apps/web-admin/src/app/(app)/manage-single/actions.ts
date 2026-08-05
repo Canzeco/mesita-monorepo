@@ -228,6 +228,20 @@ export async function setPlacePlan(
   return { ok: true, data: r.data.place };
 }
 
+/** Rates-only strategy switch — no plan write (MESITA-912).
+ *  Plan-less body on admin-web-set-plan (one-caller ACL; never business-web). */
+export async function setPlaceStrategy(
+  placeId: string,
+  rates: Record<string, number | null>,
+): Promise<Result<AdminPlace>> {
+  const r = await efInvoke<{ place: AdminPlace }>("admin-web-set-plan", {
+    placeId,
+    ...rates,
+  });
+  if (!r.ok) return { ok: false, error: r.error };
+  return { ok: true, data: r.data.place };
+}
+
 // ── Performance: per-place activity (read-only) ──────────────────────────
 // Real aggregates + a short reservation list + the two inbound AI phone
 // lines. Deliberately read-only: a booking is changed by CALLING a3/a4, never

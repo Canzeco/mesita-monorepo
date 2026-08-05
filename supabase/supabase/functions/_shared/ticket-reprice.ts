@@ -15,6 +15,7 @@ import {
   placeStrategy,
   resolveTicketRate,
 } from "./rewards-config.ts";
+import { ratesForBilling } from "./ticket-rate-snapshot.ts";
 import { placeInstagramHandleForPayload } from "./ticket-bill-payload.ts";
 
 type RepriceTicketRow = {
@@ -77,13 +78,31 @@ export async function resolveLiveTicketRate(
   if (consumerRes.error || !consumerRes.data) {
     return { ok: false, error: "consumer not found" };
   }
-  const ratePercent = resolveTicketRate(placeStrategy(placeRes.data), grid, {
-    classKey: consumerRes.data.class_key,
-    isFirstVisit: firstVisit,
-    storyVerified: isActionVerified(ticket.story_status),
-    reviewVerified: isActionVerified(ticket.review_status),
-    mesitaReviewed,
-  });
+
+  const ticketRatesRes = await admin
+    .from("tickets")
+    .select(
+      "welcome_free_rate, welcome_premium_rate, free_rate, premium_rate, rates_snapshotted_at",
+    )
+    .eq("id", ticket.id)
+    .maybeSingle();
+  const ticketRatesRow = ticketRatesRes.data ?? {};
+
+  const billingRates = ratesForBilling(
+    ticketRatesRow as Record<string, unknown>,
+    placeRes.data as Record<string, unknown>,
+  );
+  const ratePercent = resolveTicketRate(
+    placeStrategy(billingRates as Record<string, unknown>),
+    grid,
+    {
+      classKey: consumerRes.data.class_key,
+      isFirstVisit: firstVisit,
+      storyVerified: isActionVerified(ticket.story_status),
+      reviewVerified: isActionVerified(ticket.review_status),
+      mesitaReviewed,
+    },
+  );
   return { ok: true, ratePercent, capPesos: grid.cap };
 }
 

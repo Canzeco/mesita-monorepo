@@ -9,41 +9,37 @@ import { useBrowserSupabase } from "@/lib/supabase/browser";
 import {
   STRATEGIES,
   STRATEGY_BY_ID,
-  UNIVERSAL_CAP_MXN,
   strategyForPlace,
   type StrategyId,
 } from "@/lib/business/strategies";
-import { errMsg, formatMoney } from "@/lib/utils";
+import { errMsg } from "@/lib/utils";
 import { ERROR_BOX_CLASS } from "@/lib/ui-classes";
-import { PremiumExampleBox } from "./PremiumExampleBox";
+import { FaqsBox } from "./FaqsBox";
+import { MembershipBox } from "./MembershipBox";
 import { PricingCard } from "./PricingCard";
 import { ProductModal } from "./ProductModal";
-import { PRODUCT_PRICE_MXN } from "./promoConstants";
-import { StatusPill } from "./promoShared";
-import { SubscriptionBox } from "./SubscriptionBox";
+import { membershipPillState } from "./promoShared";
 
-// Promos — v4.1 pricing cards + product modal (mirrors admin MESITA-584).
-//   1. Subscription — FOUR pricing cards with generated art bands. The whole
-//      card is the click target: it opens a product modal with the full
-//      detail (what you give / what you get back / the commitment) and the
-//      action footer — the modal IS the confirm-and-pay step. Four products
-//      cost the SAME MX$1,000/year Verified membership; switching Strategies
-//      later is a NEW membership (the lock-in).
-//   2. The subscription — fee framing, activation steps, strikes ladder.
-//   3. Premium example — what the current rates feel like at the bill.
-//
-// Plan is billing-locked: Join calls business-web-change-subscription
-// (Verified = plan=pro, MX$1,000/yr). Mock mode grants instantly; real mode
-// redirects to Stripe Checkout (MOCK_SUBSCRIPTION flip = MESITA-37). After
-// pay, the membership still has to activate — the first honored guest check
-// is the whole gate (MESITA-542; the staff WhatsApp ping went with the
-// waiter identity). A subscribed
-// place switches rates directly (rates + cap only, never plan). Drop to Zero
-// downgrades membership via the same billing EF.
+// Promos — three boxes (MESITA-912 membership unbundle):
+//   1. Membership — fee, status pill, join/drop, activation, strikes.
+//   2. Strategy — four cards (give/receive, no price). Non-members: locked,
+//      tap routes to join with that strategy preselected. Members: switch =
+//      rates-only (apiUpdatePlace).
+//   3. FAQs — how the model works, Premium worked example under CURRENT strategy.
 
-// A place on any product carries a subscription (plan != free).
 function isSubscribed(place: MyPlace): boolean {
   return place.plan !== "free";
+}
+
+function strategyRates(target: StrategyId) {
+  const strat = STRATEGY_BY_ID[target];
+  return {
+    welcome_free_rate: strat.rates.welcome_free_rate,
+    welcome_premium_rate: strat.rates.welcome_premium_rate,
+    free_rate: strat.rates.free_rate,
+    premium_rate: strat.rates.premium_rate,
+    monthly_promo_cap: strat.cap,
+  };
 }
 
 export function PromosClient({ place }: { place: MyPlace }) {
@@ -51,15 +47,16 @@ export function PromosClient({ place }: { place: MyPlace }) {
   const supabase = useBrowserSupabase();
 
   const subscribed = isSubscribed(place);
+  const pillState = membershipPillState(place);
+  const forfeited = pillState === "forfeited";
+  const joinDisabled = forfeited;
 
-  // The product the stored rates currently reflect (null = custom/legacy).
   const storedStrategy = strategyForPlace(place);
   const [selectedId, setSelectedId] = useState<StrategyId | null>(
     storedStrategy,
   );
   const [pendingId, setPendingId] = useState<StrategyId | null>(null);
   const [modalId, setModalId] = useState<StrategyId | null>(null);
-  // Paid product joined by a not-yet-subscribed place → WhatsApp activation notice.
   const [activationFor, setActivationFor] = useState<StrategyId | null>(null);
   const [billingBusy, setBillingBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -67,24 +64,14 @@ export function PromosClient({ place }: { place: MyPlace }) {
   const promosOrigin =
     typeof window !== "undefined" ? window.location.origin : "";
 
-  // Writes the four rate columns + the cap atomically (never plan — that is
-  // billing). Optimistic: the card flips immediately and reverts on failure.
-  const commitStrategy = (target: StrategyId) => {
+  const commitSwitch = (target: StrategyId) => {
     setModalId(null);
-    if (pendingId || target === selectedId) return;
-    const strat = STRATEGY_BY_ID[target];
+    if (pendingId || !subscribed || target === selectedId) return;
     const previous = selectedId;
     setSelectedId(target);
     setPendingId(target);
     setError(null);
-    void apiUpdatePlace(supabase, {
-      id: place.id,
-      welcome_free_rate: strat.rates.welcome_free_rate,
-      welcome_premium_rate: strat.rates.welcome_premium_rate,
-      free_rate: strat.rates.free_rate,
-      premium_rate: strat.rates.premium_rate,
-      monthly_promo_cap: strat.cap,
-    })
+    void apiUpdatePlace(supabase, { id: place.id, ...strategyRates(target) })
       .then(() => router.refresh())
       .catch((err) => {
         setSelectedId(previous);
@@ -93,70 +80,81 @@ export function PromosClient({ place }: { place: MyPlace }) {
       .finally(() => setPendingId(null));
   };
 
-  // Join Verified (or drop to Free) via billing EF, then write rates.
-  const runBillingThenRates = async (
-    target: StrategyId,
-    plan: "pro" | "free",
-  ) => {
-    if (billingBusy || pendingId) return;
+  const commitJoin = async (target: StrategyId) => {
+    if (billingBusy || pendingId || subscribed || joinDisabled) return;
     setBillingBusy(true);
     setError(null);
     const previous = selectedId;
     try {
       const result = await apiChangeSubscription(supabase, {
         projectId: place.id,
-        plan,
+        plan: "pro",
         successUrl: `${promosOrigin}/unit/${place.id}/promos?subscription=success`,
         cancelUrl: `${promosOrigin}/unit/${place.id}/promos?subscription=cancelled`,
       });
-      // Real Stripe Checkout — leave the page; rates land after webhook + return.
       if (
         result.checkout_url &&
         !result.mock &&
         !result.already_subscribed &&
         !result.plan_switched &&
-        !result.scheduled_downgrade &&
-        plan === "pro"
+        !result.scheduled_downgrade
       ) {
         window.location.href = result.checkout_url;
         return;
       }
-      if (plan === "pro") setActivationFor(target);
+      setActivationFor(target);
       setModalId(null);
-      // Force rate write even when selectedId already matches (first Join).
-      const strat = STRATEGY_BY_ID[target];
       setSelectedId(target);
       setPendingId(target);
-      await apiUpdatePlace(supabase, {
-        id: place.id,
-        welcome_free_rate: strat.rates.welcome_free_rate,
-        welcome_premium_rate: strat.rates.welcome_premium_rate,
-        free_rate: strat.rates.free_rate,
-        premium_rate: strat.rates.premium_rate,
-        monthly_promo_cap: strat.cap,
-      });
+      await apiUpdatePlace(supabase, { id: place.id, ...strategyRates(target) });
       router.refresh();
-      setPendingId(null);
     } catch (err) {
       setSelectedId(previous);
-      setError(errMsg(err, "Couldn't update the membership."));
-      setPendingId(null);
+      setError(errMsg(err, "Couldn't start membership."));
     } finally {
+      setPendingId(null);
       setBillingBusy(false);
     }
   };
 
-  const onJoinOrSwitch = (target: StrategyId) => {
-    const paid = target !== "zero";
-    if (paid && !subscribed) {
-      void runBillingThenRates(target, "pro");
+  const commitDrop = async () => {
+    if (billingBusy || pendingId || !subscribed) return;
+    setBillingBusy(true);
+    setError(null);
+    const previous = selectedId;
+    try {
+      const result = await apiChangeSubscription(supabase, {
+        projectId: place.id,
+        plan: "free",
+        successUrl: `${promosOrigin}/unit/${place.id}/promos?subscription=success`,
+        cancelUrl: `${promosOrigin}/unit/${place.id}/promos?subscription=cancelled`,
+      });
+      if (result.checkout_url && !result.mock) {
+        window.location.href = result.checkout_url;
+        return;
+      }
+      setSelectedId("zero");
+      setPendingId("zero");
+      await apiUpdatePlace(supabase, {
+        id: place.id,
+        ...strategyRates("zero"),
+      });
+      router.refresh();
+    } catch (err) {
+      setSelectedId(previous);
+      setError(errMsg(err, "Couldn't drop membership."));
+    } finally {
+      setPendingId(null);
+      setBillingBusy(false);
+    }
+  };
+
+  const onModalConfirm = (target: StrategyId) => {
+    if (!subscribed) {
+      void commitJoin(target);
       return;
     }
-    if (!paid && subscribed) {
-      void runBillingThenRates(target, "free");
-      return;
-    }
-    commitStrategy(target);
+    commitSwitch(target);
   };
 
   const modalStrategy = modalId ? STRATEGY_BY_ID[modalId] : null;
@@ -171,16 +169,22 @@ export function PromosClient({ place }: { place: MyPlace }) {
           Promos
         </h2>
         <p className="text-muted-foreground text-[13px] leading-snug">
-          Four memberships, one price — what changes is the discounts you give,
-          and the visibility the algorithm gives back.
+          One membership, four strategies — switch your discount posture free
+          anytime.
         </p>
       </header>
 
-      {/* ── Box 1 · Subscription (four pricing cards) ─────────────────── */}
+      <MembershipBox
+        currency={place.currency}
+        place={place}
+        pillState={pillState}
+        billingBusy={billingBusy}
+        onDrop={() => void commitDrop()}
+      />
+
       <Section
-        title="Mesita Membership"
-        description={`${formatMoney(PRODUCT_PRICE_MXN, place.currency)}/year each for the paid three — tap a card for the full detail. Every discount applies to the first ${formatMoney(UNIVERSAL_CAP_MXN, place.currency)} of the bill.`}
-        right={<StatusPill subscribed={subscribed} />}
+        title="Strategy"
+        description="Four discount postures — switch free anytime while membership is active."
       >
         <div className="grid grid-cols-1 gap-3 min-[480px]:grid-cols-2">
           {STRATEGIES.map((s) => (
@@ -191,44 +195,44 @@ export function PromosClient({ place }: { place: MyPlace }) {
               selected={s.id === selectedId}
               pending={pendingId === s.id}
               subscribed={subscribed}
-              onOpen={() => setModalId(s.id)}
+              joinDisabled={joinDisabled}
+              onOpen={() => !joinDisabled && setModalId(s.id)}
             />
           ))}
         </div>
 
         {activationStrategy && (
           <p className="rounded-xl bg-emerald-50 p-3 text-[12px] leading-snug text-emerald-800">
-            Verified membership started for{" "}
+            Membership started with{" "}
             <span className="font-semibold">
               {activationStrategy.emoji} {activationStrategy.name}
-            </span>{" "}
-            ({formatMoney(PRODUCT_PRICE_MXN, place.currency)}/year). It
-            activates the first time your staff honor a guest check at the table
-            — nothing to install, nothing to wait for.
+            </span>
+            . It activates the first time your staff honor a guest check at the
+            table.
           </p>
         )}
 
-        {selectedId === null && (
+        {selectedId === null && subscribed && (
           <p className="text-muted-foreground text-[11px]">
             Your current rates don&apos;t match a Strategy — pick one to
             standardize them.
           </p>
         )}
 
-        <p className="text-muted-foreground text-[11px] leading-snug">
-          Same price on every Strategy keeps rank off the market — you buy a
-          commitment to give, not placement. Switching Strategies later is a new{" "}
-          {formatMoney(PRODUCT_PRICE_MXN, place.currency)}/year membership.
-        </p>
+        {!subscribed && !forfeited && (
+          <p className="text-muted-foreground text-[11px] leading-snug">
+            Join membership first — tap any strategy to start with that posture.
+          </p>
+        )}
 
         {error && <p className={ERROR_BOX_CLASS}>{error}</p>}
       </Section>
 
-      {/* ── Box 2 · The subscription (fee, activation, strikes) ──────── */}
-      <SubscriptionBox currency={place.currency} place={place} />
-
-      {/* ── Box 3 · Premium guest example ─────────────────────────────── */}
-      <PremiumExampleBox place={place} storedStrategy={storedStrategy} />
+      <FaqsBox
+        place={place}
+        storedStrategy={storedStrategy}
+        member={subscribed}
+      />
 
       {modalStrategy && (
         <ProductModal
@@ -236,8 +240,9 @@ export function PromosClient({ place }: { place: MyPlace }) {
           currency={place.currency}
           isCurrent={modalStrategy.id === selectedId}
           subscribed={subscribed}
+          joinDisabled={joinDisabled}
           billingBusy={billingBusy || pendingId === modalStrategy.id}
-          onCommit={() => onJoinOrSwitch(modalStrategy.id)}
+          onCommit={() => onModalConfirm(modalStrategy.id)}
           onClose={() => setModalId(null)}
         />
       )}

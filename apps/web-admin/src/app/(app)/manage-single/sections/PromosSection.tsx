@@ -3,12 +3,16 @@
 import { useEffect, useState, useTransition } from "react";
 import Image from "next/image";
 import {
+  AlertTriangle,
   Check,
   ChevronDown,
   CircleHelp,
   Crown,
   Loader2,
   Percent,
+  QrCode,
+  ShieldCheck,
+  Ticket,
   TrendingUp,
   X } from "lucide-react";
 import {
@@ -31,21 +35,22 @@ import {
   type ActionKey,
   type ClassKey,
   type RewardsConfig } from "@/app/(app)/rewards-config/catalog";
-import { setPlacePlan, type AdminPlace } from "../actions";
+import {
+  setPlacePlan,
+  setPlaceStrategy,
+  type AdminPlace,
+} from "../actions";
 import {SectionCard} from "../ui";
 import { ErrorNote } from "@/components/ErrorNote";
 
-// Admin Promos — Mesita Membership (MESITA-585, card shape MESITA-590).
-//   1. Mesita Membership — FOUR pricing cards, each a plain give/receive
-//      pitch: YOU GIVE the MX$1,000/year membership + the discounts as the
-//      v7 Strategy × Class matrix (classes × None/actions, capped per bill,
-//      read LIVE from rewards_config — MESITA-862) → YOU RECEIVE
-//      {Low/Mid/High/Max} algorithm placement → Join. The whole card
-//      opens the product modal (full detail + the action); switching is a
-//      NEW membership (the lock-in). One tap in the modal writes rates +
-//      cap + paying plan flags atomically.
-//   2. FAQs — how the membership works, with real numbers: the Premium-guest
-//      worked examples live in the first (default-open) item.
+// Admin Promos — three boxes (MESITA-912 membership unbundle):
+//   1. Membership — MX$1,000/year fee, status pill, join/drop, activation,
+//      strikes. Admin writes plan directly — no Stripe charge from here.
+//   2. Strategy — four cards (give/receive, no price). Non-members: cards
+//      locked, tap routes to join with that strategy preselected. Members:
+//      switch = rates-only write (setPlaceStrategy).
+//   3. FAQs — how the model works, Premium worked example under CURRENT
+//      strategy.
 
 const MEMBERSHIP_PRICE_MXN = 1000;
 
@@ -115,9 +120,39 @@ function formatMoney(amount: number, currency: string | null): string {
   return `${prefix}${amount.toLocaleString("en-US")}`;
 }
 
-// A place on any paid strategy carries a membership (plan != free).
+// A place on any paid plan carries a membership (plan != free).
 function isMember(place: AdminPlace): boolean {
   return !!place.plan && place.plan !== "free";
+}
+
+type MembershipPillState =
+  | "not_member"
+  | "pending"
+  | "live"
+  | "paused"
+  | "forfeited";
+
+function membershipPillState(place: AdminPlace): MembershipPillState {
+  if (place.membership_forfeited_at) return "forfeited";
+  if (!isMember(place)) return "not_member";
+  if (
+    place.promo_paused_until &&
+    new Date(String(place.promo_paused_until)).getTime() > Date.now()
+  ) {
+    return "paused";
+  }
+  if (place.membership_live_at) return "live";
+  return "pending";
+}
+
+function strategyRates(s: Strategy) {
+  return {
+    welcome_free_rate: s.rates.welcome_free_rate,
+    welcome_premium_rate: s.rates.welcome_premium_rate,
+    free_rate: s.rates.free_rate,
+    premium_rate: s.rates.premium_rate,
+    monthly_promo_cap: s.cap,
+  };
 }
 
 export function PromosSection({
@@ -147,96 +182,158 @@ export function PromosSection({
   }, []);
 
   const member = isMember(v);
+  const pillState = membershipPillState(v);
   const storedStrategy = strategyForPlace(v);
+  const forfeited = pillState === "forfeited";
 
-  // The modal is the confirm step: its footer action commits the strategy.
-  //
-  // A strategy is rates + cap + plan, and all three go through admin-web-set-
-  // plan in ONE call. It used to be two — business-web-update-project for the
-  // rates, admin-web-set-plan for the plan — ordered so a partial failure
-  // never left discounts running without the membership that pays for them.
-  // But two calls can't be atomic, and the gap between them was a state the
-  // backend couldn't validate: mid-join the place carried a paid plan with
-  // the OLD rates. Now that the plan door takes rates too (MESITA-818), the
-  // whole strategy lands in a single UPDATE and the EF can enforce "a paid
-  // plan must resolve to a real preset" — no partial state to reason about,
-  // and no partner stuck at 0%.
-  const commitStrategy = (target: StrategyId) => {
+  const applyPlace = (next: AdminPlace) => {
+    setV(next);
+    onSaved(next);
+  };
+
+  const revertPlace = (prev: AdminPlace) => {
+    setV(prev);
+    onSaved(prev);
+  };
+
+  const commitJoin = (target: StrategyId) => {
     setModalId(null);
-    if (pending || target === storedStrategy) return;
+    if (pending || member) return;
     const s = STRATEGY_BY_ID[target];
-    const leaving = target === ZERO_STRATEGY_ID;
-    const plan = planForSubscription(leaving ? "free" : "pro_discount");
-    const rates = {
-      welcome_free_rate: s.rates.welcome_free_rate,
-      welcome_premium_rate: s.rates.welcome_premium_rate,
-      free_rate: s.rates.free_rate,
-      premium_rate: s.rates.premium_rate,
-      monthly_promo_cap: s.cap };
+    const rates = strategyRates(s);
+    const plan = planForSubscription("pro_discount");
 
     const prev = v;
     const optimistic: AdminPlace = { ...v, ...rates, plan };
-    setV(optimistic);
-    onSaved(optimistic);
+    applyPlace(optimistic);
     setError(null);
 
     start(async () => {
       const r = await setPlacePlan(prev.id, plan, rates);
       if (!r.ok) {
-        // Show the truth, not the optimistic guess.
-        setV(prev);
-        onSaved(prev);
+        revertPlace(prev);
         setError(r.error);
         return;
       }
-      setV(r.data);
-      onSaved(r.data);
+      applyPlace(r.data);
     });
+  };
+
+  const commitDrop = () => {
+    if (pending || !member) return;
+    const zero = STRATEGY_BY_ID[ZERO_STRATEGY_ID];
+    const rates = strategyRates(zero);
+    const plan = planForSubscription("free");
+
+    const prev = v;
+    const optimistic: AdminPlace = { ...v, ...rates, plan };
+    applyPlace(optimistic);
+    setError(null);
+
+    start(async () => {
+      const r = await setPlacePlan(prev.id, plan, rates);
+      if (!r.ok) {
+        revertPlace(prev);
+        setError(r.error);
+        return;
+      }
+      applyPlace(r.data);
+    });
+  };
+
+  const commitSwitch = (target: StrategyId) => {
+    setModalId(null);
+    if (pending || !member || target === storedStrategy) return;
+    const s = STRATEGY_BY_ID[target];
+    const rates = strategyRates(s);
+
+    const prev = v;
+    const optimistic: AdminPlace = { ...v, ...rates };
+    applyPlace(optimistic);
+    setError(null);
+
+    start(async () => {
+      const r = await setPlaceStrategy(prev.id, rates);
+      if (!r.ok) {
+        revertPlace(prev);
+        setError(r.error);
+        return;
+      }
+      applyPlace(r.data);
+    });
+  };
+
+  const onCardOpen = (id: StrategyId) => {
+    if (!member) {
+      setModalId(id);
+      return;
+    }
+    if (id === storedStrategy) {
+      setModalId(id);
+      return;
+    }
+    setModalId(id);
+  };
+
+  const onModalConfirm = (target: StrategyId) => {
+    if (!member) {
+      commitJoin(target);
+      return;
+    }
+    commitSwitch(target);
   };
 
   const modalStrategy = modalId ? STRATEGY_BY_ID[modalId] : null;
 
   return (
     <div className="flex flex-col gap-5">
-      {/* ── Box 1 · Mesita Membership (four cards) ───────────────────────── */}
+      {/* ── Box 1 · Membership ─────────────────────────────────────────── */}
+      <MembershipBox
+        place={v}
+        pillState={pillState}
+        pending={pending}
+        onDrop={commitDrop}
+      />
+
+      {/* ── Box 2 · Strategy ───────────────────────────────────────────── */}
       <SectionCard
-        icon={<Percent className="h-4 w-4" />}
-        tint="pink"
-        title="Mesita Membership"
-        subtitle={`Four strategies, one price for the paid three — ${formatMoney(MEMBERSHIP_PRICE_MXN, v.currency)}/year each. Tap a card for the full detail.`}
+        icon={<TrendingUp className="h-4 w-4" />}
+        tint="violet"
+        title="Strategy"
+        subtitle="Four discount postures — switch free anytime while membership is active."
         action={
-          <span className="flex items-center gap-2">
-            {pending && (
-              <Loader2 className="text-muted-foreground h-4 w-4 animate-spin" />
-            )}
-            <StatusPill member={member} />
-          </span>
+          pending ? (
+            <Loader2 className="text-muted-foreground h-4 w-4 animate-spin" />
+          ) : undefined
         }
       >
         <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
           {STRATEGIES.map((s) => (
-            <PricingCard
+            <StrategyCard
               key={s.id}
               strategy={s}
               matrix={matrix}
               currency={v.currency}
               selected={s.id === storedStrategy}
               member={member}
+              locked={!member && !forfeited}
               pending={pending && s.id === storedStrategy}
-              onOpen={() => setModalId(s.id)}
+              onOpen={() => onCardOpen(s.id)}
             />
           ))}
         </div>
 
-        {storedStrategy === null && (
+        {storedStrategy === null && member && (
           <p className="text-muted-foreground mt-2.5 text-[11px]">
             Current rates don&apos;t match a strategy — pick one to standardize.
           </p>
         )}
 
-        <p className="text-muted-foreground mt-3 text-[11px] leading-snug">
-          Admin writes plan + rates directly — no Stripe charge from here.
-        </p>
+        {!member && !forfeited && (
+          <p className="text-muted-foreground mt-3 text-[11px] leading-snug">
+            Join membership first — tap any strategy to start with that posture.
+          </p>
+        )}
 
         {error && (
           <div className="mt-3">
@@ -245,8 +342,8 @@ export function PromosSection({
         )}
       </SectionCard>
 
-      {/* ── Box 2 · FAQs ─────────────────────────────────────────────────── */}
-      <FaqsBox place={v} storedStrategy={storedStrategy} />
+      {/* ── Box 3 · FAQs ───────────────────────────────────────────────── */}
+      <FaqsBox place={v} storedStrategy={storedStrategy} member={member} />
 
       {modalStrategy && (
         <ProductModal
@@ -255,7 +352,7 @@ export function PromosSection({
           currency={v.currency}
           isCurrent={modalStrategy.id === storedStrategy}
           member={member}
-          onConfirm={() => commitStrategy(modalStrategy.id)}
+          onConfirm={() => onModalConfirm(modalStrategy.id)}
           onClose={() => setModalId(null)}
         />
       )}
@@ -263,14 +360,210 @@ export function PromosSection({
   );
 }
 
-// ─── Pricing card — simplified face; the modal carries the detail ──────────
+// ─── Membership box ────────────────────────────────────────────────────────
 
-function PricingCard({
+const STRIKES: { n: string; consequence: string }[] = [
+  { n: "1", consequence: "A warning — your discounts keep running." },
+  { n: "2", consequence: "Your discounts are paused for 30 days." },
+  {
+    n: "3",
+    consequence:
+      "Membership forfeited — promos off, place stays listed on Mesita.",
+  },
+];
+
+function MembershipBox({
+  place,
+  pillState,
+  pending,
+  onDrop,
+}: {
+  place: AdminPlace;
+  pillState: MembershipPillState;
+  pending: boolean;
+  onDrop: () => void;
+}) {
+  const statusNote = describeMembershipStatus(place, pillState);
+
+  return (
+    <SectionCard
+      icon={<Percent className="h-4 w-4" />}
+      tint="pink"
+      title="Mesita Membership"
+      subtitle="One annual fee — the commitment filter. Strategy switching is free."
+      action={<MembershipStatusPill state={pillState} />}
+    >
+      <div className="mt-4 flex flex-col gap-4">
+        {statusNote && (
+          <p
+            className={cx(
+              "rounded-xl p-3 text-[12px] leading-snug",
+              statusNote.tone === "live" && "bg-emerald-500/10 text-emerald-800",
+              statusNote.tone === "warn" && "bg-amber-500/10 text-amber-900",
+              statusNote.tone === "blocked" &&
+                "bg-destructive/10 text-destructive",
+            )}
+          >
+            {statusNote.label}
+          </p>
+        )}
+
+        <div className="border-border bg-muted/25 flex items-start gap-3 rounded-xl border p-3">
+          <ShieldCheck className="text-primary mt-0.5 h-5 w-5 shrink-0" />
+          <div className="flex flex-col gap-0.5">
+            <p className="text-sm font-semibold">
+              {formatMoney(MEMBERSHIP_PRICE_MXN, place.currency)}{" "}
+              <span className="text-muted-foreground text-[11px] font-normal">
+                / year
+              </span>
+            </p>
+            <p className="text-muted-foreground text-[11px] leading-snug">
+              A commitment filter, not a feature tier — it keeps half-hearted
+              restaurants out of the rewards program. Rank is never for sale;
+              strategy switching is free once you&apos;re a member.
+            </p>
+          </div>
+        </div>
+
+        {pillState !== "not_member" && pillState !== "forfeited" && (
+          <button
+            type="button"
+            disabled={pending}
+            onClick={onDrop}
+            className="border-border text-foreground/75 hover:bg-muted inline-flex h-10 items-center justify-center self-start rounded-full border px-4 text-[12px] font-bold transition disabled:opacity-60"
+          >
+            Drop membership
+          </button>
+        )}
+
+        <MembershipSubHeading icon={Ticket}>Activation</MembershipSubHeading>
+        <div className="flex flex-col gap-1.5">
+          <MembershipActivationStep icon={QrCode}>
+            Staff scan a guest&apos;s QR on Mesita Check — no app, no account.
+          </MembershipActivationStep>
+          <MembershipActivationStep icon={Ticket}>
+            The first guest ticket is honored at the bill — then you&apos;re
+            live.
+          </MembershipActivationStep>
+        </div>
+
+        <MembershipSubHeading icon={AlertTriangle}>
+          If a guest is turned away
+        </MembershipSubHeading>
+        <div className="border-border overflow-hidden rounded-xl border">
+          {STRIKES.map((s, i) => (
+            <div
+              key={s.n}
+              className={cx(
+                "flex items-center gap-3 px-3 py-2.5",
+                i > 0 && "border-border border-t",
+              )}
+            >
+              <span
+                className={cx(
+                  "inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[11px] font-bold",
+                  s.n === "3"
+                    ? "bg-destructive/10 text-destructive"
+                    : "bg-amber-500/15 text-amber-700",
+                )}
+              >
+                {s.n}
+              </span>
+              <span className="text-foreground/80 text-[11px] leading-snug">
+                {s.consequence}
+              </span>
+            </div>
+          ))}
+        </div>
+        <p className="text-muted-foreground text-[11px] leading-snug">
+          Admin writes plan directly — no Stripe charge from here. Strikes decay
+          after 6 months clean.
+        </p>
+      </div>
+    </SectionCard>
+  );
+}
+
+function describeMembershipStatus(
+  place: AdminPlace,
+  pillState: MembershipPillState,
+): { label: string; tone: "live" | "warn" | "blocked" } | null {
+  if (pillState === "forfeited") {
+    return {
+      label:
+        "Membership forfeited after 3 strikes — re-join is an admin decision.",
+      tone: "blocked",
+    };
+  }
+  if (pillState === "not_member") return null;
+  if (pillState === "paused") {
+    return {
+      label: `Promo lane paused until ${String(place.promo_paused_until).slice(0, 10)} (strike 2).`,
+      tone: "blocked",
+    };
+  }
+  if (pillState === "live") {
+    const strikes = (place.strike_count as number | null) ?? 0;
+    return {
+      label:
+        strikes > 0
+          ? `Membership live · ${strikes} active strike${strikes === 1 ? "" : "s"}.`
+          : "Membership live — promo lane open.",
+      tone: strikes > 0 ? "warn" : "live",
+    };
+  }
+  return {
+    label:
+      "Member — pending activation. Honor the first guest check to go live.",
+    tone: "warn",
+  };
+}
+
+function MembershipSubHeading({
+  icon: Icon,
+  children,
+}: {
+  icon: typeof Ticket;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="mt-1 flex items-center gap-1.5">
+      <Icon className="text-muted-foreground h-3.5 w-3.5" />
+      <span className="text-muted-foreground text-[10px] font-bold tracking-[0.16em] uppercase">
+        {children}
+      </span>
+    </div>
+  );
+}
+
+function MembershipActivationStep({
+  icon: Icon,
+  children,
+}: {
+  icon: typeof Ticket;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="border-border bg-card flex items-center gap-2.5 rounded-xl border px-3 py-2">
+      <span className="bg-muted/70 text-foreground/70 inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full">
+        <Icon className="h-3.5 w-3.5" />
+      </span>
+      <span className="text-foreground/80 text-[12px] leading-snug">
+        {children}
+      </span>
+    </div>
+  );
+}
+
+// ─── Strategy card — give/receive only; price lives in Membership box ──────
+
+function StrategyCard({
   strategy,
   matrix,
   currency,
   selected,
   member,
+  locked,
   pending,
   onOpen }: {
   strategy: Strategy;
@@ -278,6 +571,7 @@ function PricingCard({
   currency: string | null;
   selected: boolean;
   member: boolean;
+  locked: boolean;
   pending: boolean;
   onOpen: () => void;
 }) {
@@ -289,12 +583,13 @@ function PricingCard({
       type="button"
       onClick={onOpen}
       aria-haspopup="dialog"
-      aria-label={`${strategy.name} — details${selected ? " (current)" : ""}`}
+      aria-label={`${strategy.name} — details${selected ? " (current)" : ""}${locked ? " (locked)" : ""}`}
       className={cx(
         "bg-card relative flex flex-col overflow-hidden rounded-2xl border text-left transition",
         selected
           ? "border-foreground/70 ring-foreground/70 ring-2"
           : "border-border/60 motion-safe:hover:-translate-y-0.5 hover:shadow-[0_18px_32px_-20px_rgba(0,0,0,0.35)]",
+        locked && !selected && "opacity-75",
       )}
     >
       {/* Art band — gradient behind the image is the loading/404 fallback;
@@ -329,16 +624,6 @@ function PricingCard({
               {strategy.emoji}
             </span>
             {strategy.name}
-          </p>
-          <p className="text-[11px] font-semibold text-white/90 drop-shadow-sm">
-            {paid ? (
-              <>
-                {formatMoney(MEMBERSHIP_PRICE_MXN, currency)}{" "}
-                <span className="font-normal text-white/80">/ year</span>
-              </>
-            ) : (
-              "Free"
-            )}
           </p>
         </div>
       </div>
@@ -377,20 +662,27 @@ function PricingCard({
               <Check className="h-3.5 w-3.5" />
               Current
             </span>
-          ) : paid ? (
+          ) : locked ? (
             <span
               className={cx(
                 "inline-flex h-11 w-full items-center justify-center rounded-full bg-gradient-to-r text-[12px] font-bold text-white",
-                art.cta,
+                paid ? art.cta : "border-border text-foreground/75 border bg-transparent",
               )}
             >
-              {member ? "Switch" : "Join"}
+              Join
             </span>
-          ) : (
-            <span className="border-border text-foreground/75 inline-flex h-11 w-full items-center justify-center rounded-full border text-[12px] font-bold">
-              Drop to Zero
+          ) : member ? (
+            <span
+              className={cx(
+                "inline-flex h-11 w-full items-center justify-center rounded-full text-[12px] font-bold",
+                paid
+                  ? cx("bg-gradient-to-r text-white", art.cta)
+                  : "border-border text-foreground/75 border",
+              )}
+            >
+              {paid ? "Switch" : "Switch to Zero"}
             </span>
-          )}
+          ) : null}
         </div>
       </div>
     </button>
@@ -425,14 +717,23 @@ function ProductModal({
 
   const art = CARD_ART[strategy.id];
   const paid = strategy.id !== ZERO_STRATEGY_ID;
+  const isZeroSwitch = member && strategy.id === ZERO_STRATEGY_ID;
 
   const primaryLabel = isCurrent
     ? "Current strategy"
-    : paid
-      ? member
+    : !member
+      ? `Join — ${formatMoney(MEMBERSHIP_PRICE_MXN, currency)}/year`
+      : paid
         ? `Switch to ${strategy.name}`
-        : `Join — ${formatMoney(MEMBERSHIP_PRICE_MXN, currency)}/year`
-      : "Drop to Zero";
+        : "Switch to Zero";
+
+  const footerNote = isCurrent
+    ? ""
+    : !member
+      ? `Starts membership at ${formatMoney(MEMBERSHIP_PRICE_MXN, currency)}/year with ${strategy.name} rates. Admin write — no Stripe charge.`
+      : isZeroSwitch
+        ? "Membership stays active; discounts pause. Promo lane closes until you pick a paid strategy again."
+        : "Applies to new tickets only — open tickets keep the rates they were created with.";
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center p-4 sm:items-center">
@@ -481,16 +782,6 @@ function ProductModal({
               </span>
               {strategy.name}
             </p>
-            <p className="text-[12px] font-semibold text-white/90 drop-shadow-sm">
-              {paid ? (
-                <>
-                  {formatMoney(MEMBERSHIP_PRICE_MXN, currency)}{" "}
-                  <span className="font-normal text-white/80">/ year</span>
-                </>
-              ) : (
-                "Free"
-              )}
-            </p>
           </div>
         </div>
 
@@ -527,9 +818,9 @@ function ProductModal({
           {paid ? (
             <div className="flex flex-col gap-3">
               <ModalLabel>How it works</ModalLabel>
-              <Step n={1} title="Pay the membership">
-                {formatMoney(MEMBERSHIP_PRICE_MXN, currency)}/year — one strategy
-                at a time; switching later is a new membership.
+              <Step n={1} title="Join the membership">
+                {formatMoney(MEMBERSHIP_PRICE_MXN, currency)}/year — one fee,
+                switch strategies free anytime.
               </Step>
               <Step n={2} title="Set up your staff on WhatsApp">
                 We send a test ping so your team can receive guest tickets.
@@ -547,8 +838,9 @@ function ProductModal({
             <div className="flex flex-col gap-2">
               <ModalLabel>How it works</ModalLabel>
               <p className="text-muted-foreground text-[12px] leading-snug">
-                No membership, nothing to set up — Zero is free and you stay
-                listed on Mesita. Join a strategy any time.
+                {member
+                  ? "Zero pauses discounts — membership stays active. Drop membership separately if you want to leave."
+                  : "Non-members stay at Zero — no discounts. Join membership to unlock the paid strategies."}
               </p>
             </div>
           )}
@@ -556,20 +848,7 @@ function ProductModal({
 
         {/* Action footer */}
         <div className="border-border flex flex-col gap-2 border-t p-4">
-          <div className="flex items-center justify-between gap-3">
-            <span className="text-sm font-bold">
-              {paid ? (
-                <>
-                  {formatMoney(MEMBERSHIP_PRICE_MXN, currency)}
-                  <span className="text-muted-foreground text-[11px] font-normal">
-                    {" "}
-                    / year
-                  </span>
-                </>
-              ) : (
-                "Free"
-              )}
-            </span>
+          <div className="flex items-center justify-end gap-3">
             <button
               type="button"
               disabled={isCurrent}
@@ -578,10 +857,10 @@ function ProductModal({
                 "inline-flex h-11 items-center justify-center rounded-full px-5 text-[13px] font-bold transition",
                 isCurrent
                   ? "border-border text-muted-foreground border"
-                  : paid
+                  : !member || paid
                     ? cx(
                         "bg-gradient-to-r text-white hover:brightness-105 active:scale-[0.99]",
-                        art.cta,
+                        art.cta || "from-slate-600 to-slate-500",
                       )
                     : "border-border text-foreground hover:bg-muted border",
               )}
@@ -590,10 +869,11 @@ function ProductModal({
               {primaryLabel}
             </button>
           </div>
-          <p className="text-muted-foreground text-[10px] leading-snug">
-            Admin write — sets plan + rates directly, no Stripe charge from
-            here.
-          </p>
+          {footerNote && (
+            <p className="text-muted-foreground text-[10px] leading-snug">
+              {footerNote}
+            </p>
+          )}
         </div>
       </div>
     </div>
@@ -761,14 +1041,15 @@ function PlacementReward({
 
 function FaqsBox({
   place,
-  storedStrategy }: {
+  storedStrategy,
+  member }: {
   place: AdminPlace;
   storedStrategy: StrategyId | null;
+  member: boolean;
 }) {
   const currency = place.currency;
   const price = formatMoney(MEMBERSHIP_PRICE_MXN, currency);
   const cap = formatMoney(UNIVERSAL_CAP_MXN, currency);
-  // 50% off, the FAQ's worked example rate — applied to the capped portion.
   const exampleSavesMxn = UNIVERSAL_CAP_MXN * 0.5;
 
   return (
@@ -776,30 +1057,38 @@ function FaqsBox({
       icon={<CircleHelp className="h-4 w-4" />}
       tint="sky"
       title="FAQs"
-      subtitle="How the Mesita Membership works — with real numbers."
+      subtitle="How membership and strategy work — with real numbers."
     >
       <div className="mt-4 flex flex-col gap-2">
         <Faq q="What does a Premium guest actually get?" defaultOpen>
           <PremiumExamples place={place} storedStrategy={storedStrategy} />
         </Faq>
 
-        <Faq q="Why do all four memberships cost the same?">
-          <p>
-            Because rank is never for sale. The {price}/year is identical on
-            Conservative, Aggressive and Dominant — what you buy is a
-            commitment to give, not placement. The only thing that changes
-            between strategies is the discount schedule you promise your guests,
-            and the visibility that generosity earns back.
-          </p>
-        </Faq>
-
         <Faq q={`What exactly does the ${price}/year buy?`}>
           <p>
-            It is a commitment filter, not a feature tier — it keeps
-            half-hearted restaurants out of the rewards program and guests
+            One Mesita Membership — a commitment filter, not a feature tier. It
+            keeps half-hearted restaurants out of the rewards program and guests
             away from dead coupons. Being a member unlocks the paid strategies
             and turns on your discounts. Being listed on Mesita never costs
             anything, member or not.
+          </p>
+        </Faq>
+
+        <Faq q="Can I switch strategies?">
+          <p>
+            Yes — free, anytime, while your membership is active. Strategy is
+            the discount posture you promise guests; switching only changes
+            your rates. New tickets pick up the new rates; open tickets keep
+            what they were created with.
+          </p>
+        </Faq>
+
+        <Faq q="What is Zero for members?">
+          <p>
+            Zero pauses discounts — your membership stays active, activation
+            state and strikes carry on, but the promo lane closes and visibility
+            drops to Low. Cancelling membership is a separate action in the
+            Membership box.
           </p>
         </Faq>
 
@@ -832,12 +1121,10 @@ function FaqsBox({
           </p>
         </Faq>
 
-        <Faq q="Can a place switch strategies or cancel?">
+        <Faq q="How do I cancel membership?">
           <p>
-            Switching strategies is a NEW {price}/year membership — that is the
-            lock-in: places pick a strategy and live it. Dropping to Zero is
-            free and instant; it clears the rates and paid promos stop, but
-            the place stays listed on Mesita.
+            Use Drop membership in the Membership box — it clears your plan
+            and rates. {member ? "You are currently a member." : "You are not currently a member."}
           </p>
         </Faq>
 
@@ -845,9 +1132,9 @@ function FaqsBox({
           <p>
             A refused or ignored QR is a strike: 1 — warning and the
             activation test re-runs · 2 — your discounts pause for 30 days ·
-            3 — removed from the paid strategies and the fee is forfeited (the
-            place stays listed on Mesita). Strikes decay after 6 months clean,
-            and the turned-away guest is compensated instantly.
+            3 — membership forfeited (the place stays listed on Mesita). Strikes
+            decay after 6 months clean, and the turned-away guest is compensated
+            instantly.
           </p>
         </Faq>
       </div>
@@ -899,7 +1186,7 @@ function PremiumExamples({
       <div className="border-border/60 bg-muted/20 rounded-xl border border-dashed px-4 py-4 text-center">
         <p className="text-muted-foreground text-[12px] leading-snug">
           No promos right now — Premium guests see this place in the catalog
-          with no discount card. Join a strategy above to preview the deal.
+          with no discount card. Pick a strategy above to preview the deal.
         </p>
       </div>
     );
@@ -1007,23 +1294,35 @@ function ExampleCard({
 
 // ─── Shared bits ────────────────────────────────────────────────────────────
 
-function StatusPill({ member }: { member: boolean }) {
+function MembershipStatusPill({ state }: { state: MembershipPillState }) {
+  const labels: Record<MembershipPillState, string> = {
+    not_member: "Not a member",
+    pending: "Member — pending",
+    live: "Member — live",
+    paused: "Paused",
+    forfeited: "Forfeited",
+  };
+  const liveish = state === "live" || state === "pending";
   return (
     <span
       className={cx(
         "inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[10px] font-bold tracking-wide uppercase",
-        member
-          ? "bg-emerald-500/12 text-emerald-700"
-          : "bg-muted text-muted-foreground",
+        state === "forfeited" && "bg-destructive/10 text-destructive",
+        state === "paused" && "bg-amber-500/12 text-amber-800",
+        liveish && "bg-emerald-500/12 text-emerald-700",
+        state === "not_member" && "bg-muted text-muted-foreground",
       )}
     >
       <span
         className={cx(
           "h-1.5 w-1.5 rounded-full",
-          member ? "bg-emerald-500" : "bg-muted-foreground/50",
+          state === "forfeited" && "bg-destructive",
+          state === "paused" && "bg-amber-500",
+          liveish && "bg-emerald-500",
+          state === "not_member" && "bg-muted-foreground/50",
         )}
       />
-      {member ? "Member" : "Free"}
+      {labels[state]}
     </span>
   );
 }
