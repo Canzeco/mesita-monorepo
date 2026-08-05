@@ -15,7 +15,7 @@ import { isElevatedClass } from '@/lib/consumer-classes';
 // (Instagram · Class · Visits) split by hairline separators.
 
 // One stat column: centered small-caps label over a centered value, with an
-// optional muted sub-line (followers, class origin).
+// optional muted sub-line (followers).
 function PassportField({
   label,
   value,
@@ -125,7 +125,6 @@ export function IdentityHero({
   handle,
   followers,
   classLabel,
-  classVia,
   visits,
 }: {
   classKey: string;
@@ -137,7 +136,6 @@ export function IdentityHero({
   handle: string | null;
   followers: number;
   classLabel: string;
-  classVia: string | null;
   /** Completed visits (revealed tickets) — null until the profile read lands. */
   visits: number | null;
 }) {
@@ -268,12 +266,9 @@ export function IdentityHero({
               : null
           }
         />
-        <PassportField
-          label="Class"
-          divider
-          value={classLabel}
-          sub={classVia ? `via ${classVia}` : null}
-        />
+        {/* Class shows only its name — how it was earned stays off the card
+            ("don't mention the class like that", MESITA-902). */}
+        <PassportField label="Class" divider value={classLabel} />
         <PassportField
           label="Visits"
           divider

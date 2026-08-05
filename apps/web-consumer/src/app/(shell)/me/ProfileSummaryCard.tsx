@@ -21,7 +21,7 @@ import {
 // (Instagram · Class · Visits) split by hairline separators.
 
 // One stat column: centered small-caps label over a centered value, with an
-// optional muted sub-line (followers, class origin).
+// optional muted sub-line (followers).
 function PassportField({
   label,
   value,
@@ -135,7 +135,6 @@ export function ProfileSummaryCard({
     .join(" · ");
 
   const classLabel = CLASSES.find((c) => c.id === key)?.label ?? "Standard";
-  const classVia = isElevated && origin !== "default" ? origin : null;
   // Real handle lives on the profile; fall back to the class-context handle
   // (carries the demo handle for the Instagram preview state).
   const handle = profile?.instagram_handle ?? classHandle;
@@ -227,10 +226,11 @@ export function ProfileSummaryCard({
               : null
           }
         />
+        {/* Class shows only its name — how it was earned stays off the card
+            ("don't mention the class like that", MESITA-902). */}
         <PassportField
           label="Class"
           value={classLabel}
-          sub={classVia ? `via ${classVia}` : null}
           className="border-border/60 border-l"
         />
         <PassportField
