@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useRef, useState, useTransition } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Check, Loader2, Save } from "lucide-react";
 import { SubTabs } from "@/components/business/SubTabs";
@@ -67,13 +67,38 @@ export function EditPlaceForm({
   // Bumped on Discard so PlaceMenuFields remounts and rehydrates its
   // Upload/Drive source drafts from the last-saved menu_links.
   const [menuEditorKey, setMenuEditorKey] = useState(0);
-  const menuSessionUploadsRef = useRef<MenuSessionUploadsHandle | null>(null);
-  const registerMenuSessionUploads = useCallback(
-    (handle: MenuSessionUploadsHandle | null) => {
-      menuSessionUploadsRef.current = handle;
-    },
-    [],
+  // Parent-owned so Media tab unmounts don't lose never-saved upload URLs.
+  const menuSessionUrlsRef = useRef<Set<string>>(new Set());
+  const menuSessionUploads = useMemo<MenuSessionUploadsHandle>(
+    () => ({
+      track: (url: string) => {
+        const trimmed = url.trim();
+        if (trimmed) menuSessionUrlsRef.current.add(trimmed);
+      },
+      release: (url: string) => {
+        const trimmed = url.trim();
+        if (!trimmed || !menuSessionUrlsRef.current.has(trimmed)) return;
+        menuSessionUrlsRef.current.delete(trimmed);
+        void removeOrphanMenuStorageObjects(supabase, [trimmed], []);
+      },
+      drain: () => {
+        const urls = [...menuSessionUrlsRef.current];
+        menuSessionUrlsRef.current = new Set();
+        return urls;
+      },
+    }),
+    [supabase],
   );
+
+  useEffect(() => {
+    if (!isDirty) return;
+    const onBeforeUnload = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = "";
+    };
+    window.addEventListener("beforeunload", onBeforeUnload);
+    return () => window.removeEventListener("beforeunload", onBeforeUnload);
+  }, [isDirty]);
 
   const set = <K extends keyof PlaceFormState>(
     key: K,
@@ -87,7 +112,7 @@ export function EditPlaceForm({
     if (!isDirty) return;
     if (!window.confirm("Discard your unsaved changes?")) return;
     const keep = placeToFormState(place).menu_links.map((m) => m.url);
-    const session = menuSessionUploadsRef.current?.drain() ?? [];
+    const session = menuSessionUploads.drain();
     void removeOrphanMenuStorageObjects(supabase, session, keep);
     setV(placeToFormState(place));
     setMenuEditorKey((k) => k + 1);
@@ -205,7 +230,7 @@ export function EditPlaceForm({
     startTransition(async () => {
       try {
         await apiUpdatePlace(supabase, payload);
-        const session = menuSessionUploadsRef.current?.drain() ?? [];
+        const session = menuSessionUploads.drain();
         void removeOrphanMenuStorageObjects(
           supabase,
           [...previousMenuUrls, ...session],
@@ -263,7 +288,7 @@ export function EditPlaceForm({
               form={v}
               set={set}
               onError={setError}
-              registerSessionUploads={registerMenuSessionUploads}
+              sessionUploads={menuSessionUploads}
             />
           </div>
         ) : null}

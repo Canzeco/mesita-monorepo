@@ -15,14 +15,14 @@ export function PlaceMenuModule({
   set,
   onError,
   hideHeader = false,
-  registerSessionUploads,
+  sessionUploads,
 }: {
   projectId: string;
   form: PlaceFormState;
   set: SetPlaceForm;
   onError: (msg: string | null) => void;
   hideHeader?: boolean;
-  registerSessionUploads?: (handle: MenuSessionUploadsHandle | null) => void;
+  sessionUploads?: MenuSessionUploadsHandle;
 }) {
   if (hideHeader) {
     return (
@@ -33,7 +33,7 @@ export function PlaceMenuModule({
             form={form}
             set={set}
             onError={onError}
-            registerSessionUploads={registerSessionUploads}
+            sessionUploads={sessionUploads}
           />
         </PlaceKvField>
       </PlaceBox>
@@ -47,7 +47,7 @@ export function PlaceMenuModule({
         form={form}
         set={set}
         onError={onError}
-        registerSessionUploads={registerSessionUploads}
+        sessionUploads={sessionUploads}
       />
     </PlaceModule>
   );

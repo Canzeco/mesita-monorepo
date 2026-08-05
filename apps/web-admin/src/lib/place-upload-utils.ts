@@ -2,6 +2,9 @@
 
 const MAX_UPLOAD_BYTES = 8 * 1024 * 1024;
 
+/** Mirrors business-web-update-project `MENU_MAX_COUNT`. */
+export const MENU_MAX_COUNT = 20;
+
 const ALLOWED_IMAGE_MIME_TYPES = new Set([
   "image/jpeg",
   "image/png",

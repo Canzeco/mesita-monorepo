@@ -117,7 +117,33 @@ function MenuViewerBody({
         </View>
 
         <View className="relative min-h-0 flex-1 bg-muted/40">
-          {menu.kind === 'image' ? (
+          {embedFailed ? (
+            // In-app visualization failed — the browser sheet still works.
+            <View className="flex-1 items-center justify-center gap-4 px-8">
+              <View className="size-14 items-center justify-center rounded-2xl bg-amber-50">
+                <FileText color="#d97706" size={24} />
+              </View>
+              <Text className="text-center font-display text-lg font-semibold text-foreground">
+                {menu.name}
+              </Text>
+              <Text className="text-center text-sm leading-relaxed text-muted-foreground">
+                {menu.kind === 'drive'
+                  ? 'Open the Google Drive preview in a secure browser sheet.'
+                  : menu.kind === 'image'
+                    ? 'Open the image in a secure browser sheet.'
+                    : 'Open the PDF in a secure browser sheet for the best reading experience.'}
+              </Text>
+              <Pressable
+                onPress={() => void openExternal()}
+                className="mt-2 flex-row items-center gap-2 rounded-full bg-foreground px-5 py-3 active:opacity-90"
+              >
+                <Text className="text-sm font-semibold text-background">
+                  Open menu
+                </Text>
+                <ExternalLink color="#fffaf8" size={16} />
+              </Pressable>
+            </View>
+          ) : menu.kind === 'image' ? (
             <ScrollView
               contentContainerClassName="min-h-full items-center justify-center p-4"
               showsVerticalScrollIndicator={false}
@@ -134,33 +160,12 @@ function MenuViewerBody({
                 }}
                 contentFit="contain"
                 onLoad={() => setLoading(false)}
-                onError={() => setLoading(false)}
+                onError={() => {
+                  setLoading(false);
+                  setEmbedFailed(true);
+                }}
               />
             </ScrollView>
-          ) : embedFailed ? (
-            // In-app visualization failed — the browser sheet still works.
-            <View className="flex-1 items-center justify-center gap-4 px-8">
-              <View className="size-14 items-center justify-center rounded-2xl bg-amber-50">
-                <FileText color="#d97706" size={24} />
-              </View>
-              <Text className="text-center font-display text-lg font-semibold text-foreground">
-                {menu.name}
-              </Text>
-              <Text className="text-center text-sm leading-relaxed text-muted-foreground">
-                {menu.kind === 'drive'
-                  ? 'Open the Google Drive preview in a secure browser sheet.'
-                  : 'Open the PDF in a secure browser sheet for the best reading experience.'}
-              </Text>
-              <Pressable
-                onPress={() => void openExternal()}
-                className="mt-2 flex-row items-center gap-2 rounded-full bg-foreground px-5 py-3 active:opacity-90"
-              >
-                <Text className="text-sm font-semibold text-background">
-                  Open menu
-                </Text>
-                <ExternalLink color="#fffaf8" size={16} />
-              </Pressable>
-            </View>
           ) : (
             // Web MenuViewer parity — PDFs render page cards via pdf.js in a
             // WebView shell (pinch to zoom); Drive shows Google's /preview.
@@ -188,7 +193,7 @@ function MenuViewerBody({
           ) : null}
         </View>
 
-        {menu.kind === 'image' ? (
+        {menu.kind === 'image' && !embedFailed ? (
           <View
             className="flex-row items-center justify-center gap-3 border-t border-border px-4 py-2.5"
             style={{ paddingBottom: Math.max(insets.bottom, 12) }}

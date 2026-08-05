@@ -91,6 +91,8 @@ type Place = {
   menu_pdf_name: string | null;
   // Generic products payload. Menus are carried in products.menu.
   products: Record<string, unknown> | null;
+  // Legacy parallel array; prefer products.menu when present.
+  menus?: Array<{ name?: string | null; url?: string | null }> | null;
   tags: string[];
   website_url: string | null;
   instagram_url: string | null;
