@@ -7,19 +7,17 @@
 
 import type { LucideIcon } from "lucide-react";
 import {
-  Crown,
   DoorOpen,
   Info,
   Instagram,
-  Megaphone,
   Percent,
   Sparkles,
   Star,
-  User,
 } from "lucide-react";
 
 import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
 import { useConsumerClass } from "@/lib/class-context";
+import { CLASS_ICONS, CLASS_MARK_ICON } from "@/lib/consumer-data";
 import {
   PEAK_STRATEGY,
   REWARD_SEGMENTS,
@@ -29,10 +27,10 @@ import {
 import { cn } from "@/lib/utils";
 
 const SEGMENT_ICON: Record<RewardSegmentKey, LucideIcon> = {
-  standard: User,
-  premium: Crown,
-  influencer: Megaphone,
-  aura: Sparkles,
+  standard: CLASS_ICONS.standard,
+  premium: CLASS_ICONS.premium,
+  influencer: CLASS_ICONS.influencer,
+  aura: CLASS_ICONS.aura,
   story: Instagram,
   welcome: DoorOpen,
   review: Star,
@@ -79,7 +77,7 @@ export function HelpModal({
 
         <div className="flex items-start gap-3">
           <span className="bg-tier-premium grid size-9 shrink-0 place-items-center rounded-xl text-white">
-            <Crown className="size-[18px] fill-current" />
+            <CLASS_MARK_ICON className="size-[18px]" />
           </span>
           <p className="text-muted-foreground text-[13px] leading-relaxed">
             <span className="text-foreground font-semibold">

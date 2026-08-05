@@ -25,8 +25,8 @@ export const COLORS = {
 export const GRADIENTS = {
   // --gradient-pink · the primary CTA/brand surface (web class bg-pink-gradient)
   pink: ['#ff5aab', '#ec006c'] as const,
-  // --gradient-premium (web class bg-tier-premium)
-  premium: ['#8b6ce8', '#8cccff'] as const,
+  // --gradient-premium (web class bg-tier-premium) — Premium = blue
+  premium: ['#2563eb', '#60a5fa'] as const,
   // --gradient-hero vertical wash; use <HeroBackdrop /> for the full
   // radial-blob approximation (two soft pink blobs + this wash).
   hero: ['#fff9fa', '#f5e6e8'] as const,
@@ -36,9 +36,10 @@ export const GRADIENTS = {
   // Instagram brand gradient (social verify + IG-connected chrome)
   instagram: ['#f58529', '#dd2a7b', '#8134af'] as const,
   gold: ['#f5cc58', '#eb881f'] as const,
-  // Influencer class identity — web renders flat bg-sky-600 (#0284c7); the
-  // mobile tile keeps the house gradient idiom with a sky pair.
-  sky: ['#38bdf8', '#0284c7'] as const,
+  // Influencer class identity — web bg-tier-influencer (red).
+  influencer: ['#ef4444', '#b91c1c'] as const,
+  /** @deprecated Use `influencer` — kept as alias for any stale imports. */
+  sky: ['#ef4444', '#b91c1c'] as const,
   free: ['#ced9e5', '#9ba6b1'] as const,
 } as const;
 

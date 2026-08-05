@@ -31,7 +31,7 @@ export function WaysToClimb({
     {
       key: "standard",
       icon: CLASS_ICONS.standard,
-      iconBg: "bg-muted text-foreground",
+      iconBg: "bg-tier-free text-foreground",
       title: "Standard",
       via: "Free",
       discountLevel: "LOW",
@@ -43,7 +43,7 @@ export function WaysToClimb({
     {
       key: "influencer",
       icon: CLASS_ICONS.influencer,
-      iconBg: "bg-sky-600 text-white",
+      iconBg: "bg-tier-influencer text-white",
       title: "Influencer",
       via: "Instagram",
       accent: true,

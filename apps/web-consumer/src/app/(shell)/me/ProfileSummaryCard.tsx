@@ -37,10 +37,17 @@ function ClassBadge({
     classKey === "aura"
       ? "bg-gradient-to-br from-amber-200 to-orange-300 text-amber-950"
       : classKey === "influencer"
+<<<<<<< HEAD
         ? "bg-gradient-to-br from-sky-200 to-sky-400 text-sky-950"
         : classKey === "premium"
           ? "bg-gradient-to-br from-violet-200 to-fuchsia-300 text-violet-950"
           : "bg-gradient-to-br from-primary/80 to-secondary/80 text-white";
+=======
+        ? "border-red-400/40 bg-gradient-to-br from-red-200/45 to-red-300/30 text-red-900"
+        : classKey === "premium"
+          ? "border-blue-400/40 bg-gradient-to-br from-blue-200/45 to-blue-300/30 text-blue-900"
+          : "border-neutral-400/40 bg-gradient-to-br from-neutral-200/55 to-neutral-300/35 text-neutral-800";
+>>>>>>> 11c8de23 (feat(consumer): class icons Smile/Megaphone/CreditCard/Crown + Pyramid mark)
 
   return (
     <div
@@ -116,7 +123,7 @@ export function ProfileSummaryCard({
     key === "aura"
       ? "bg-tier-gold"
       : key === "influencer"
-        ? "bg-sky-600"
+        ? "bg-tier-influencer"
         : "bg-tier-premium";
 
   if (loading) {

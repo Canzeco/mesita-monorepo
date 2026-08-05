@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Image from "next/image";
-import { Crown, Instagram, Megaphone, X } from "lucide-react";
+import { CreditCard, Instagram, Megaphone, X } from "lucide-react";
 import type { SocialPerson } from "./social-feed-data";
 import { LocalDialog } from "@/components/consumer/overlay/LocalOverlay";
 import { INSTAGRAM_BADGE_GRADIENT_CLASS } from "@/lib/ui-classes";
@@ -68,13 +68,13 @@ export function SocialProfileModal({
                 className="ring-background h-20 w-20 rounded-full object-cover ring-4"
               />
               {shown.plan === "influencer" && (
-                <span className="ring-background absolute -bottom-0.5 -left-0.5 grid h-6 w-6 place-items-center rounded-full bg-sky-600 text-white ring-2">
+                <span className="bg-tier-influencer ring-background absolute -bottom-0.5 -left-0.5 grid h-6 w-6 place-items-center rounded-full text-white ring-2">
                   <Megaphone className="h-3.5 w-3.5" />
                 </span>
               )}
               {shown.plan === "premium" && (
                 <span className="bg-tier-premium ring-background absolute -bottom-0.5 -left-0.5 grid h-6 w-6 place-items-center rounded-full text-white ring-2">
-                  <Crown className="h-3.5 w-3.5 fill-current" />
+                  <CreditCard className="h-3.5 w-3.5" />
                 </span>
               )}
               <span
@@ -107,7 +107,7 @@ export function SocialProfileModal({
                   className={cn(
                     "inline-flex h-7 items-center gap-1 rounded-full px-2.5 text-[11px] font-semibold text-white",
                     shown.plan === "influencer"
-                      ? "bg-sky-600"
+                      ? "bg-tier-influencer"
                       : "bg-tier-premium",
                   )}
                 >
@@ -117,7 +117,7 @@ export function SocialProfileModal({
                     </>
                   ) : (
                     <>
-                      <Crown className="h-3 w-3 fill-current" /> Premium
+                      <CreditCard className="h-3 w-3" /> Premium
                     </>
                   )}
                 </span>

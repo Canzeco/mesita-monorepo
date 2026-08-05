@@ -59,9 +59,9 @@ export function PromoChip({
   const iconSize = size === "md" ? "h-3 w-3" : "h-2.5 w-2.5";
   const emptyTone =
     tone === "light"
-      ? "border border-violet-200 bg-violet-50 text-violet-700"
+      ? "border border-blue-200 bg-blue-50 text-blue-700"
       : "border border-white/35 bg-black/45 text-white";
-  const emptyIconTone = tone === "light" ? "text-violet-500" : undefined;
+  const emptyIconTone = tone === "light" ? "text-blue-500" : undefined;
 
   // Hard gate: only Verified Partners can offer rewards. Web-listed places
   // never resolve a rate; a Verified Partner may also choose not to set one.

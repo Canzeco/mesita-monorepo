@@ -12,12 +12,38 @@ import { formatCompactCount } from '@/lib/utils';
 // ─── ID-1 membership card (MESITA-930) — web ProfileSummaryCard parity.
 // Dual badges: Cls (left) + IG (right). Class once. Footer Saved · Visits · Stories.
 
+<<<<<<< HEAD
 const CLASS_LETTER: Record<string, string> = {
   standard: 'S',
   premium: 'P',
   influencer: 'I',
   aura: 'A',
 };
+=======
+function ClassChip({
+  label,
+  classKey,
+}: {
+  label: string;
+  classKey: string;
+}) {
+  const colors =
+    classKey === 'aura'
+      ? (['rgba(245,204,88,0.45)', 'rgba(235,136,31,0.28)'] as const)
+      : classKey === 'influencer'
+        ? (['rgba(252,165,165,0.55)', 'rgba(239,68,68,0.30)'] as const)
+        : classKey === 'premium'
+          ? (['rgba(147,197,253,0.55)', 'rgba(37,99,235,0.28)'] as const)
+          : (['rgba(206,217,229,0.70)', 'rgba(155,166,177,0.40)'] as const);
+  const textClass =
+    classKey === 'aura'
+      ? 'text-amber-900'
+      : classKey === 'influencer'
+        ? 'text-red-900'
+        : classKey === 'premium'
+          ? 'text-blue-900'
+          : 'text-foreground';
+>>>>>>> 11c8de23 (feat(consumer): class icons Smile/Megaphone/CreditCard/Crown + Pyramid mark)
 
 function classBadgeColors(classKey: string): readonly [string, string] {
   if (classKey === 'aura') return ['#fde68a', '#fb923c'] as const;
@@ -94,14 +120,14 @@ export function IdentityHero({
     classKey === 'aura'
       ? GRADIENTS.gold
       : classKey === 'influencer'
-        ? GRADIENTS.sky
+        ? GRADIENTS.influencer
         : GRADIENTS.premium;
   const elevatedWash =
     classKey === 'aura'
       ? (['rgba(245,204,88,0.18)', 'rgba(235,136,31,0.10)'] as const)
       : classKey === 'influencer'
-        ? (['rgba(56,189,248,0.16)', 'rgba(2,132,199,0.10)'] as const)
-        : (['rgba(139,108,232,0.16)', 'rgba(140,204,255,0.12)'] as const);
+        ? (['rgba(239,68,68,0.16)', 'rgba(185,28,28,0.10)'] as const)
+        : (['rgba(37,99,235,0.16)', 'rgba(96,165,250,0.12)'] as const);
 
   const whisper = [sexLabel, age != null ? String(age) : null]
     .filter(Boolean)

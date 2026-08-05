@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { Crown, Instagram, Megaphone } from "lucide-react";
+import { CreditCard, Instagram, Megaphone } from "lucide-react";
 import type { Place } from "@/lib/api/places";
 import { INSTAGRAM_BADGE_GRADIENT_CLASS } from "@/lib/ui-classes";
 import { cn, firstInitial } from "@/lib/utils";
@@ -39,13 +39,13 @@ export function SocialActivityRow({
             className="h-11 w-11 rounded-full object-cover"
           />
           {person.plan === "influencer" && (
-            <span className="ring-background absolute -bottom-0.5 -left-0.5 grid h-4 w-4 place-items-center rounded-full bg-sky-600 text-white ring-2">
+            <span className="bg-tier-influencer ring-background absolute -bottom-0.5 -left-0.5 grid h-4 w-4 place-items-center rounded-full text-white ring-2">
               <Megaphone className="h-2.5 w-2.5" />
             </span>
           )}
           {person.plan === "premium" && (
             <span className="bg-tier-premium ring-background absolute -bottom-0.5 -left-0.5 grid h-4 w-4 place-items-center rounded-full text-white ring-2">
-              <Crown className="h-2.5 w-2.5 fill-current" />
+              <CreditCard className="h-2.5 w-2.5" />
             </span>
           )}
           <span

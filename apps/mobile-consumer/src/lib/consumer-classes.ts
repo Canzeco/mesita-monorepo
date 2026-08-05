@@ -4,10 +4,11 @@
 // presence class).
 
 import {
+  CreditCard,
   Crown,
-  Gem,
-  Radar,
-  UserRound,
+  Megaphone,
+  Pyramid,
+  Smile,
   type LucideIcon,
 } from 'lucide-react-native';
 
@@ -55,15 +56,17 @@ export const INFLUENCER_FOLLOWER_THRESHOLD = CLASSES.find(
   (c) => c.id === 'influencer',
 )!.followerThreshold;
 
-// Canonical class icon set (MESITA-921): Standard = guest, Influencer =
-// reach radar, Premium = gem, Aura = crown (invite-only apex). Mirrors
-// web CLASS_ICONS.
+// Canonical class icon set (MESITA-929): Smile gray · Megaphone red ·
+// CreditCard blue · Crown yellow. Mirrors web CLASS_ICONS.
 export const CLASS_ICONS: Record<ClassId, LucideIcon> = {
-  standard: UserRound,
-  premium: Gem,
-  influencer: Radar,
+  standard: Smile,
+  premium: CreditCard,
+  influencer: Megaphone,
   aura: Crown,
 };
+
+/** Sheet / section mark for the Classes surface (not a membership class). */
+export const CLASS_MARK_ICON: LucideIcon = Pyramid;
 
 // Premium-perk gate: everything above Standard unlocks the same elevated perk
 // set. Generic on purpose: a future class joins the ladder by joining

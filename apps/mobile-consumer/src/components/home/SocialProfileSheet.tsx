@@ -1,6 +1,6 @@
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
-import { AtSign, Crown, Megaphone, X } from 'lucide-react-native';
+import { AtSign, CreditCard, Megaphone, X } from 'lucide-react-native';
 import { useState } from 'react';
 import { Linking, Modal, Pressable, Text, View } from 'react-native';
 
@@ -85,16 +85,19 @@ export function SocialProfileSheet({
                     contentFit="cover"
                   />
                   {shown.plan === 'influencer' ? (
-                    <View className="absolute -bottom-0.5 -left-0.5 size-6 items-center justify-center rounded-full bg-sky-600">
+                    <View
+                      className="absolute -bottom-0.5 -left-0.5 size-6 items-center justify-center rounded-full"
+                      style={{ backgroundColor: '#dc2626' }}
+                    >
                       <Megaphone color="#fff" size={14} />
                     </View>
                   ) : null}
                   {shown.plan === 'premium' ? (
                     <View
                       className="absolute -bottom-0.5 -left-0.5 size-6 items-center justify-center rounded-full"
-                      style={{ backgroundColor: '#8b6ce8' }}
+                      style={{ backgroundColor: '#2563eb' }}
                     >
-                      <Crown color="#fff" size={14} fill="#fff" />
+                      <CreditCard color="#fff" size={14} />
                     </View>
                   ) : null}
                   <LinearGradient
@@ -131,8 +134,13 @@ export function SocialProfileSheet({
                   <View className="mt-3 flex-row">
                     {shown.plan === 'influencer' ? (
                       <View
-                        className="flex-row items-center rounded-full bg-sky-600"
-                        style={{ height: 28, paddingHorizontal: 10, gap: 4 }}
+                        className="flex-row items-center rounded-full"
+                        style={{
+                          height: 28,
+                          paddingHorizontal: 10,
+                          gap: 4,
+                          backgroundColor: '#dc2626',
+                        }}
                       >
                         <Megaphone color="#fff" size={12} />
                         <Text className="text-[11px] font-semibold text-white">
@@ -153,7 +161,7 @@ export function SocialProfileSheet({
                           gap: 4,
                         }}
                       >
-                        <Crown color="#fff" size={12} fill="#fff" />
+                        <CreditCard color="#fff" size={12} />
                         <Text className="text-[11px] font-semibold text-white">
                           Premium
                         </Text>

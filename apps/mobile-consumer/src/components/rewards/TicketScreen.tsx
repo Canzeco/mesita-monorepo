@@ -73,8 +73,8 @@ const PASS_GRADIENTS: Record<string, [string, string, string]> = {
 
 const CLASS_CHIP: Record<string, { bg: string; fg: string }> = {
   standard: { bg: '#ced9e5', fg: '#260409' },
-  premium: { bg: '#8b6ce8', fg: '#ffffff' },
-  influencer: { bg: '#0284c7', fg: '#ffffff' },
+  premium: { bg: '#2563eb', fg: '#ffffff' },
+  influencer: { bg: '#dc2626', fg: '#ffffff' },
   aura: { bg: '#f5cc58', fg: '#ffffff' },
 };
 

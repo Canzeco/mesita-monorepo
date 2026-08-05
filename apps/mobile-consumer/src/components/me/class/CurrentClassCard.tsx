@@ -14,17 +14,16 @@ export function CurrentClassCard() {
   );
   const meta = CLASSES.find((c) => c.id === key)!;
   const isElevated = isElevatedClass(key);
-  // Aura (top of the ladder) inherits the gold treatment; Influencer reads
-  // sky; Premium keeps its violet gradient.
+  // Aura = gold, Influencer = red, Premium = blue (MESITA-929).
   // Keep the readonly tuple shape (see IdentityHero) — spreading into a
   // variable widens it past LinearGradient's `colors` tuple type.
   const elevatedColors =
     key === 'aura'
       ? GRADIENTS.gold
       : key === 'influencer'
-        ? GRADIENTS.sky
+        ? GRADIENTS.influencer
         : GRADIENTS.premium;
-  // The class wears its canonical icon (smile / card / megaphone / sparkles);
+  // The class wears its canonical icon (smile / megaphone / card / crown);
   // the origin only sets the "via" line.
   const Icon = CLASS_ICONS[key];
   const via =

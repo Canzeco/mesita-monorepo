@@ -10,7 +10,7 @@ const LEVEL_META: Record<
   { filled: number; colors: readonly [string, string] }
 > = {
   LOW: { filled: 1, colors: GRADIENTS.pink },
-  HIGH: { filled: 2, colors: GRADIENTS.sky },
+  HIGH: { filled: 2, colors: GRADIENTS.influencer },
   EXTRA: { filled: 3, colors: GRADIENTS.premium },
   MAX: { filled: 4, colors: ['#f59e0b', '#fbbf24'] },
 };
