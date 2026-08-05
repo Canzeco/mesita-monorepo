@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 
 import { useConsumerClass } from "@/lib/class-context";
+import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import type { PlaceDetail } from "@/lib/mock/place";
 import {
   placeOffersMesitaRewards,
@@ -161,7 +162,7 @@ export function RewardsBox({ place }: { place: PlaceDetail }) {
               <Ticket className="h-4 w-4" />
               Get my ticket
             </Link>
-            <Link href="/subscribe/premium" className={REWARD_UPGRADE_BTN}>
+            <Link href={CONSUMER_ROUTES.subscribe} className={REWARD_UPGRADE_BTN}>
               <Crown className="h-4 w-4" />
               Go Premium
             </Link>

@@ -27,7 +27,7 @@ export function CouponDetailActions({
   return (
     <section className="flex flex-col gap-2">
       <Link
-        href={placeHref(projectId, "saved")}
+        href={placeHref(projectId)}
         className="border-border bg-card hover:bg-muted flex items-center justify-between gap-3 rounded-2xl border px-4 py-3 transition"
       >
         <span className="flex items-center gap-3">

@@ -1,8 +1,8 @@
-import { PayTabLoading } from "./PayTabLoading";
+import { RewardsTabLoading } from "./RewardsTabLoading";
 
-// Route-level fallback for /rewards: the page awaits getUser + the profile EF
-// server-side before PayClient mounts. Reusing the PayClient dynamic()
+// Route-level fallback for /rewards: the page awaits getUser server-side
+// before RewardsClient mounts. Reusing the RewardsClient dynamic()
 // fallback makes the whole wait read as one continuous frame.
-export default function PayRouteLoading() {
-  return <PayTabLoading />;
+export default function RewardsRouteLoading() {
+  return <RewardsTabLoading />;
 }

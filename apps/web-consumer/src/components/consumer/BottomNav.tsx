@@ -105,11 +105,9 @@ export function BottomNav({ userId }: { userId?: string }) {
             const { href, Icon, label, match, soon } = item;
             const active =
               pathname.startsWith(match) ||
-              // Legacy deep links still hit /profile; keep the Profile tab lit
-              // while those routes redirect.
-              (match === CONSUMER_ROUTE_PREFIX.me &&
-                pathname.startsWith(CONSUMER_ROUTES.legacy.profile)) ||
               // Place detail modals opened from Home keep the Home tab lit.
+              // (Legacy /profile no longer needs a match branch — it 308s to
+              // /me in next.config before any client render.)
               (match === CONSUMER_ROUTE_PREFIX.home &&
                 pathname.startsWith(CONSUMER_ROUTE_PREFIX.place));
             // The Me tab carries the live class suffix; every other tab keeps

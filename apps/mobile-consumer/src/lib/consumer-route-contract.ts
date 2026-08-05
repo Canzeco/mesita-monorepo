@@ -4,6 +4,10 @@ import type { Href } from 'expo-router';
 // Canonical surface paths for agents + deep links. Expo Router file paths differ
 // from web hrefs where noted; helpers below return Expo-navigable hrefs.
 //
+// DRIFT GUARD: this file hand-mirrors the web contract (same convention as
+// ef.ts / tokens). Any change to routes or helpers on either side MUST update
+// both files in the same PR — web/mobile IA parity is a product rule.
+//
 // Expo Router ↔ web href map (agents):
 //   web /home[/swipe|ai|social|favorites]  →  Expo /(tabs)/home  (modes are
 //       in-screen state on mobile, not nested routes — same IA)
@@ -43,9 +47,6 @@ export const CONSUMER_ROUTES = {
   reservation: {
     prefix: '/reservation/',
   },
-  saved: {
-    placePrefix: '/place/',
-  },
   rewards: {
     root: '/(tabs)/rewards',
     ticketPrefix: '/rewards/ticket/',
@@ -55,6 +56,9 @@ export const CONSUMER_ROUTES = {
     global: '/inbox/global',
   },
   me: '/(tabs)/me',
+  // Premium checkout deliberately has NO mobile route (Apple review — the
+  // sole sanctioned web/mobile divergence): subscribing happens on web at
+  // https://consumer.mesita.ai/subscribe/premium.
   legacy: {
     profile: '/profile',
     invite: '/invite',
@@ -74,8 +78,6 @@ export const CONSUMER_ROUTES = {
   },
 } as const;
 
-type PlaceSurface = 'place' | 'saved';
-
 /** Cast dynamic Expo paths for typed router.push (typed routes regenerate lag). */
 function asHref(path: string): Href {
   return path as Href;
@@ -86,12 +88,7 @@ export function inboxPath(which: 'mine' | 'global' = 'mine'): Href {
   return asHref(CONSUMER_ROUTES.inbox[which]);
 }
 
-export function placePath(
-  idOrSlug: string,
-  _surface: PlaceSurface = 'place',
-): Href {
-  // Mobile has a single place detail route (no /saved/place duplicate).
-  void _surface;
+export function placePath(idOrSlug: string): Href {
   return asHref(`${CONSUMER_ROUTES.place.prefix}${idOrSlug}`);
 }
 

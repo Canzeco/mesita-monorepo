@@ -7,7 +7,7 @@ import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 
 // Header for the hard-nav /place/[id] page (refresh / direct URL / new
 // tab). Mirrors the modal shell's header but with an ArrowLeft Link back
-// to /discover/swipe instead of a router.back() X close — the modal can
+// to /home/swipe instead of a router.back() X close — the modal can
 // route home because there's always a previous shell route; the hard-nav
 // page can't trust browser history.
 //

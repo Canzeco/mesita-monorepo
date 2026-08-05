@@ -4,6 +4,7 @@ import { Fragment } from "react";
 
 import { CLASSES, CLASS_ICONS } from "@/lib/consumer-data";
 import { useConsumerClass } from "@/lib/class-context";
+import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import {
   baseRateForClass,
   PEAK_STRATEGY,
@@ -94,7 +95,7 @@ export function WaysToClimb({
       reached: key === "premium",
       reachedLabel: "Active",
       actions: [
-        { label: "Join with subscription", href: "/subscribe/premium" },
+        { label: "Join with subscription", href: CONSUMER_ROUTES.subscribe },
       ],
     },
     {

@@ -195,7 +195,7 @@ export type PlacePrediction = {
 
 /**
  * Google Places autocomplete + Mesita merge for the consumer
- * /discover/search picker. Calls consumer-suggest-places, which
+ * /search picker. Calls consumer-suggest-places, which
  * forwards to atlas-suggest-places. Mirrors the business /add page
  * mechanic — same shape, same atlas pipeline — so a consumer can
  * find places that haven't onboarded to Mesita yet.

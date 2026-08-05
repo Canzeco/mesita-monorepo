@@ -20,8 +20,14 @@ const nextConfig: NextConfig = {
     // strict provenance.
     remotePatterns: [{ protocol: "https", hostname: "**" }],
   },
+  // Static legacy → canonical redirects live here as zero-render 308s
+  // (MESITA-899). Redirects with logic (query/tab mapping — /home, /me/[tab],
+  // /inbox aliases, /saved/*) stay as server pages. Query strings are
+  // preserved automatically. The redirect table is pinned by
+  // src/lib/__tests__/consumer-route-contract.test.ts.
   async redirects() {
     return [
+      // Explore era (pre-Home).
       { source: "/explore", destination: "/home", permanent: true },
       { source: "/explore/swipe", destination: "/home", permanent: true },
       { source: "/explore/map", destination: "/search", permanent: true },
@@ -31,6 +37,29 @@ const nextConfig: NextConfig = {
         destination: "/place/:id",
         permanent: true,
       },
+      // Pay era (the Rewards surface used to live at /pay).
+      {
+        source: "/pay/ticket/:id",
+        destination: "/rewards/ticket/:id",
+        permanent: true,
+      },
+      {
+        source: "/pay/tickets/:id",
+        destination: "/rewards/ticket/:id",
+        permanent: true,
+      },
+      { source: "/pay/:tab", destination: "/rewards", permanent: true },
+      { source: "/pay", destination: "/rewards", permanent: true },
+      { source: "/qr", destination: "/rewards", permanent: true },
+      {
+        source: "/ticket/:id",
+        destination: "/rewards/ticket/:id",
+        permanent: true,
+      },
+      // Renamed surfaces.
+      { source: "/invite", destination: "/share", permanent: true },
+      { source: "/profile", destination: "/me", permanent: true },
+      { source: "/notifications", destination: "/inbox/mine", permanent: true },
     ];
   },
 };

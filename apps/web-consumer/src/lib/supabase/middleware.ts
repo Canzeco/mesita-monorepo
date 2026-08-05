@@ -18,20 +18,21 @@ import type { Database } from "./database.types";
 // Onboard pages and dashboards each do their own server-side check.
 //
 // Consumer browsing (home, place detail, share) is deliberately public
-// so anonymous visitors can swipe before signing up. /me, /rewards (+ legacy
-// /pay), /reservations (+ legacy /saved), /inbox, /qr are private because
-// they expose personal data.
+// so anonymous visitors can swipe before signing up. /me, /rewards,
+// /reservations (+ legacy /saved), /inbox, /subscribe are private because
+// they expose personal data / checkout state.
+//
+// Legacy static paths (/pay, /qr, /profile, /notifications, /ticket, /invite)
+// are NOT listed: next.config.ts redirects() 308s them to their canonical
+// destination BEFORE middleware runs, and the destination is walled here.
 
 const PROTECTED_PREFIXES = [
   "/me",
-  "/profile",
   "/rewards",
-  "/pay",
   "/reservations",
   "/reservation",
   "/inbox",
-  "/notifications",
-  "/qr",
+  "/subscribe",
   "/saved",
 ];
 
@@ -40,7 +41,8 @@ const PROTECTED_PREFIXES = [
 // removed once external callers (landing page) were updated to `/`.
 const SIGNED_IN_BOUNCE = new Set(["/"]);
 
-function shouldGate(pathname: string): boolean {
+// Exported for the route-contract test suite (gate matrix).
+export function shouldGate(pathname: string): boolean {
   return PROTECTED_PREFIXES.some(
     (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
   );

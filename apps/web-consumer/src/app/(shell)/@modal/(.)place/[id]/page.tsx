@@ -14,7 +14,7 @@ export default async function PlaceModalPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  if (!toCanonicalPlaceHrefOrNull(id, "place")) {
+  if (!toCanonicalPlaceHrefOrNull(id)) {
     redirect(CONSUMER_ROUTES.home);
   }
   const supabase = await createServerSupabase();

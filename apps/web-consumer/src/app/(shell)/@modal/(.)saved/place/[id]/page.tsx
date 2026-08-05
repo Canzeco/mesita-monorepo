@@ -1,36 +1,15 @@
 import { redirect } from "next/navigation";
-import { PlaceDetailBody } from "@/components/consumer/PlaceDetailBody";
-import { PlaceDetailModalShell } from "@/components/consumer/PlaceDetailModalShell";
-import { createServerSupabase } from "@/lib/supabase/server";
-import { apiFetchPlaceDetail } from "@/lib/api/places";
-import { placeGoneHref, toCanonicalPlaceHrefOrNull } from "@/lib/place-route";
-import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
+import { placePath } from "@/lib/consumer-route-contract";
 
 export const dynamic = "force-dynamic";
 
-export default async function SavedPlaceModalPage({
+// Legacy intercept — soft-nav to /saved/place/[id] lands on the canonical
+// /place/[id] hard route (which may then re-intercept as a modal).
+export default async function LegacySavedPlaceModalPage({
   params,
 }: {
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  if (!toCanonicalPlaceHrefOrNull(id, "saved")) {
-    redirect(CONSUMER_ROUTES.favorites);
-  }
-  const supabase = await createServerSupabase();
-  const place = await apiFetchPlaceDetail(supabase, id);
-  if (!place) {
-    // Dead id (reset-away row, stale localStorage favorite, old bookmark).
-    // Bounce, but say so — see <PlaceGoneNotice />.
-    redirect(placeGoneHref(CONSUMER_ROUTES.favorites, id));
-  }
-  return (
-    <PlaceDetailModalShell
-      placeId={place.id}
-      placeName={place.name}
-      listingType={place.listing_type}
-    >
-      <PlaceDetailBody place={place} />
-    </PlaceDetailModalShell>
-  );
+  redirect(placePath(id));
 }

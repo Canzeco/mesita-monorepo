@@ -2,11 +2,11 @@ import nextDynamic from "next/dynamic";
 import { redirect } from "next/navigation";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { CONSUMER_ROUTE_PREFIX } from "@/lib/consumer-route-contract";
-import { PayTabLoading } from "./PayTabLoading";
+import { RewardsTabLoading } from "./RewardsTabLoading";
 
-const PayClient = nextDynamic(
-  () => import("./PayClient").then((mod) => mod.PayClient),
-  { loading: () => <PayTabLoading /> },
+const RewardsClient = nextDynamic(
+  () => import("./RewardsClient").then((mod) => mod.RewardsClient),
+  { loading: () => <RewardsTabLoading /> },
 );
 
 export const dynamic = "force-dynamic";
@@ -30,7 +30,7 @@ export default async function RewardsPage() {
 
   return (
     <div className="flex h-full min-h-0 flex-1 flex-col">
-      <PayClient userId={user.id} />
+      <RewardsClient userId={user.id} />
     </div>
   );
 }
