@@ -1,33 +1,82 @@
 "use client";
 
 import Image from "next/image";
-import { BadgeCheck, Instagram } from "lucide-react";
+import { BadgeCheck } from "lucide-react";
 import type { ConsumerProfile } from "@/lib/api/profile";
 import { DefaultAvatar } from "@/components/consumer/DefaultAvatar";
-import { CLASSES, CLASS_ICONS, isElevatedClass } from "@/lib/consumer-data";
+import { CLASSES, isElevatedClass } from "@/lib/consumer-data";
 import { useConsumerClass } from "@/lib/class-context";
-import { ageFromBirthday, cn, formatSex } from "@/lib/utils";
+import {
+  ageFromBirthday,
+  cn,
+  formatPhoneDisplay,
+  formatSex,
+} from "@/lib/utils";
 
-// ─── Profile summary (static, not clickable) ──────────────────────────────
+// ─── Mesita passport (MESITA-888) ──────────────────────────────────────────
+// The identity card, shaped like a document you'd own: identity zone (ring
+// avatar + name + phone + meta, MESITA wordmark top-right) over a passport
+// strip of three labeled fields — Instagram, Class, Visits. No icon tiles,
+// no list rows: labels + values, like the data page of a passport.
+
+// One passport field: small-caps label over a semibold value, with an
+// optional muted sub-line (followers, class origin).
+function PassportField({
+  label,
+  value,
+  sub,
+  muted = false,
+  className,
+}: {
+  label: string;
+  value: React.ReactNode;
+  sub?: string | null;
+  /** Dim the value for absent data ("—"). */
+  muted?: boolean;
+  className?: string;
+}) {
+  return (
+    <div className={cn("min-w-0", className)}>
+      <p className="text-muted-foreground/70 text-[10px] font-semibold tracking-[0.14em] uppercase">
+        {label}
+      </p>
+      <div
+        className={cn(
+          "mt-1 truncate text-[14px] leading-tight font-semibold tracking-tight",
+          muted && "text-muted-foreground/60 font-medium",
+        )}
+      >
+        {value}
+      </div>
+      {sub && (
+        <p className="text-muted-foreground mt-0.5 truncate text-[11px]">
+          {sub}
+        </p>
+      )}
+    </div>
+  );
+}
 
 export function ProfileSummaryCard({
   profile,
+  visits,
   loading,
 }: {
   profile: ConsumerProfile | null;
+  /** Completed visits (revealed tickets) from consumer-web-get-profile. */
+  visits: number | null;
   loading: boolean;
 }) {
   const { key, origin, followers, handle: classHandle } = useConsumerClass();
   const isElevated = isElevatedClass(key);
   // Aura (top of the ladder) reads gold, Influencer reads sky, Premium its
-  // violet token. The icon is the canonical class set.
+  // violet token — the ring is the class's color signature on the card.
   const elevatedBg =
     key === "aura"
       ? "bg-tier-gold"
       : key === "influencer"
         ? "bg-sky-600"
         : "bg-tier-premium";
-  const ClassIcon = CLASS_ICONS[key];
 
   if (loading) {
     return (
@@ -41,17 +90,14 @@ export function ProfileSummaryCard({
             <div className="bg-muted h-3.5 w-20 animate-pulse rounded" />
           </div>
         </div>
-        {/* Two identical icon-rows mirror the real Instagram + class rows so the
-            placeholders share one size instead of two mismatched bars. */}
-        <div className="border-border/60 mt-4 flex flex-col gap-2.5 border-t pt-3.5">
-          <div className="flex items-center gap-2.5">
-            <div className="bg-muted h-7 w-7 shrink-0 animate-pulse rounded-lg" />
-            <div className="bg-muted h-4 w-40 animate-pulse rounded" />
-          </div>
-          <div className="flex items-center gap-2.5">
-            <div className="bg-muted h-7 w-7 shrink-0 animate-pulse rounded-lg" />
-            <div className="bg-muted h-4 w-40 animate-pulse rounded" />
-          </div>
+        {/* Passport-strip placeholder: three label/value stubs. */}
+        <div className="border-border/60 mt-4 grid grid-cols-[1.35fr_1fr_0.75fr] gap-3 border-t pt-3.5">
+          {[0, 1, 2].map((i) => (
+            <div key={i} className="space-y-1.5">
+              <div className="bg-muted h-2.5 w-14 animate-pulse rounded" />
+              <div className="bg-muted h-4 w-full max-w-24 animate-pulse rounded" />
+            </div>
+          ))}
         </div>
       </div>
     );
@@ -64,7 +110,7 @@ export function ProfileSummaryCard({
     profile?.full_name ||
     "Mesita member";
   const avatarUrl = profile?.avatar_url ?? null;
-  const phone = profile?.phone ?? null;
+  const phone = formatPhoneDisplay(profile?.phone);
 
   // Sex + age on one line under the phone — country is intentionally omitted.
   const age = ageFromBirthday(profile?.birthday);
@@ -73,9 +119,6 @@ export function ProfileSummaryCard({
     .filter(Boolean)
     .join(" · ");
 
-  // Every piece of the member's actual data lives here in the card — name,
-  // phone, class, Instagram. The boxes below are pure action buttons and carry
-  // no user data (so "why class?" is answered once, here).
   const classLabel = CLASSES.find((c) => c.id === key)?.label ?? "Standard";
   const classVia = isElevated && origin !== "default" ? origin : null;
   // Real handle lives on the profile; fall back to the class-context handle
@@ -84,17 +127,24 @@ export function ProfileSummaryCard({
   const igConnected = origin === "instagram" || Boolean(handle);
 
   return (
-    // Branded tinted panel — a soft class-tinted gradient so the identity card
-    // reads as premium and distinct from the white option boxes below (richer
-    // for Premium).
+    // Branded tinted panel — a soft class-tinted gradient so the passport
+    // reads premium and distinct from the white option boxes below.
     <section
       className={cn(
-        "border-border overflow-hidden rounded-3xl border p-4",
+        "border-border relative overflow-hidden rounded-3xl border p-4",
         isElevated
           ? "from-primary/[0.14] via-secondary/[0.10] to-accent/[0.12] bg-gradient-to-br"
           : "from-primary/[0.08] via-secondary/[0.06] to-accent/[0.08] bg-gradient-to-br",
       )}
     >
+      {/* Document mark — quiet, top-right, like the issuer line on a card. */}
+      <span
+        aria-hidden
+        className="font-display text-foreground/30 absolute top-4 right-4 text-[10px] font-bold tracking-[0.3em] uppercase select-none"
+      >
+        Mesita
+      </span>
+
       <div className="flex items-center gap-4">
         {/* Story-ring avatar: class-tinted gradient ring around the photo. */}
         <div
@@ -121,7 +171,7 @@ export function ProfileSummaryCard({
         </div>
 
         {/* Name over phone, stacked to the right of the avatar. */}
-        <div className="min-w-0 flex-1">
+        <div className="min-w-0 flex-1 pr-10">
           <h2 className="font-display truncate text-[20px] leading-tight font-bold tracking-tight">
             {name}
           </h2>
@@ -143,52 +193,43 @@ export function ProfileSummaryCard({
         </div>
       </div>
 
-      {/* Data block: Instagram + class, the member's real state — all of it,
-          right here so the buttons below stay data-agnostic. */}
-      <div className="border-border/60 mt-4 flex flex-col gap-2.5 border-t pt-3.5">
-        <div className="flex items-center gap-2.5">
-          <span className="bg-pink-gradient flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-white shadow-sm">
-            <Instagram className="h-[15px] w-[15px]" />
-          </span>
-          {igConnected ? (
-            <>
-              <span className="truncate text-[13px] font-semibold tracking-tight">
-                {handle ? `@${handle}` : "Connected"}
-              </span>
-              {followers > 0 && (
-                <span className="text-muted-foreground shrink-0 text-[12px]">
-                  {followers.toLocaleString("en-US")} followers
+      {/* Passport strip: Instagram · Class · Visits. The connect CTA lives on
+          the Instagram box below — the card states, it never nags. */}
+      <div className="border-border/60 mt-4 grid grid-cols-[1.35fr_1fr_0.75fr] border-t pt-3.5">
+        <PassportField
+          label="Instagram"
+          muted={!igConnected}
+          value={
+            igConnected ? (
+              <span className="flex min-w-0 items-center gap-1">
+                <span className="truncate">
+                  {handle ? `@${handle}` : "Connected"}
                 </span>
-              )}
-              <BadgeCheck className="text-foreground/60 ml-auto h-[18px] w-[18px] shrink-0" />
-            </>
-          ) : (
-            <span className="text-muted-foreground/80 text-[13px]">
-              Not connected
-            </span>
-          )}
-        </div>
-
-        <div className="flex items-center gap-2.5">
-          <span
-            className={cn(
-              "flex h-7 w-7 shrink-0 items-center justify-center rounded-lg shadow-sm",
-              isElevated
-                ? `${elevatedBg} text-white`
-                : "bg-amber-400/20 text-amber-700",
-            )}
-          >
-            <ClassIcon className="h-[15px] w-[15px]" />
-          </span>
-          <span className="text-[13px] font-semibold tracking-tight">
-            Mesita {classLabel}
-          </span>
-          {classVia && (
-            <span className="text-muted-foreground text-[12px]">
-              via {classVia}
-            </span>
-          )}
-        </div>
+                <BadgeCheck className="text-foreground/50 h-[14px] w-[14px] shrink-0" />
+              </span>
+            ) : (
+              "—"
+            )
+          }
+          sub={
+            igConnected && followers > 0
+              ? `${followers.toLocaleString("en-US")} followers`
+              : null
+          }
+          className="pr-3"
+        />
+        <PassportField
+          label="Class"
+          value={classLabel}
+          sub={classVia ? `via ${classVia}` : null}
+          className="border-border/60 border-l px-3"
+        />
+        <PassportField
+          label="Visits"
+          value={<span className="tabular-nums">{visits ?? "—"}</span>}
+          muted={visits == null}
+          className="border-border/60 border-l pl-3"
+        />
       </div>
     </section>
   );

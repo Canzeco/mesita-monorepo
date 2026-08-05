@@ -1,24 +1,75 @@
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
-import { AtSign, BadgeCheck, type LucideIcon } from 'lucide-react-native';
+import { BadgeCheck } from 'lucide-react-native';
 import { Text, View } from 'react-native';
 
 import { DefaultAvatar } from '@/components/ui/DefaultAvatar';
 import { GRADIENT_DIAGONAL, GRADIENTS, SHADOW_ELEV } from '@/constants/brand';
-import { CLASS_ICONS, isElevatedClass } from '@/lib/consumer-classes';
+import { isElevatedClass } from '@/lib/consumer-classes';
 
-// Shared by the IG and class icon badges below (28px tile, soft drop shadow).
-const ICON_BADGE_STYLE = {
-  width: 28,
-  height: 28,
-  borderRadius: 8,
-  alignItems: 'center',
-  justifyContent: 'center',
-  shadowColor: '#000',
-  shadowOpacity: 0.08,
-  shadowRadius: 2,
-  shadowOffset: { width: 0, height: 1 },
-} as const;
+// ─── Mesita passport (MESITA-888) — web ProfileSummaryCard parity ──────────
+// Identity zone (ring avatar + name + phone + meta, MESITA wordmark
+// top-right) over a passport strip of three labeled fields — Instagram,
+// Class, Visits. No icon tiles, no list rows: labels + values, like the
+// data page of a passport.
+
+// One passport field: small-caps label over a semibold value, with an
+// optional muted sub-line (followers, class origin).
+function PassportField({
+  label,
+  value,
+  sub,
+  muted = false,
+  flex,
+  divider = false,
+}: {
+  label: string;
+  value: React.ReactNode;
+  sub?: string | null;
+  /** Dim the value for absent data ("—"). */
+  muted?: boolean;
+  flex: number;
+  divider?: boolean;
+}) {
+  return (
+    <View
+      className={divider ? 'min-w-0 border-l border-border/60 pl-3' : 'min-w-0'}
+      style={{ flex }}
+    >
+      <Text
+        className="font-semibold uppercase text-muted-foreground/70"
+        style={{ fontSize: 10, letterSpacing: 1.4 }}
+        numberOfLines={1}
+      >
+        {label}
+      </Text>
+      {typeof value === 'string' ? (
+        <Text
+          className={
+            muted
+              ? 'mt-1 font-medium text-muted-foreground/60'
+              : 'mt-1 font-semibold tracking-tight text-foreground'
+          }
+          style={{ fontSize: 14 }}
+          numberOfLines={1}
+        >
+          {value}
+        </Text>
+      ) : (
+        <View className="mt-1">{value}</View>
+      )}
+      {sub ? (
+        <Text
+          className="mt-0.5 text-muted-foreground"
+          style={{ fontSize: 11 }}
+          numberOfLines={1}
+        >
+          {sub}
+        </Text>
+      ) : null}
+    </View>
+  );
+}
 
 export function IdentityHeroSkeleton() {
   return (
@@ -31,15 +82,14 @@ export function IdentityHeroSkeleton() {
           <View className="h-3.5 w-20 rounded bg-muted" />
         </View>
       </View>
-      <View className="mt-4 gap-2.5 border-t border-border/60 pt-3.5">
-        <View className="flex-row items-center gap-2.5">
-          <View className="h-7 w-7 rounded-lg bg-muted" />
-          <View className="h-4 w-40 rounded bg-muted" />
-        </View>
-        <View className="flex-row items-center gap-2.5">
-          <View className="h-7 w-7 rounded-lg bg-muted" />
-          <View className="h-4 w-40 rounded bg-muted" />
-        </View>
+      {/* Passport-strip placeholder: three label/value stubs. */}
+      <View className="mt-4 flex-row gap-3 border-t border-border/60 pt-3.5">
+        {[1.35, 1, 0.75].map((flex, i) => (
+          <View key={i} className="gap-1.5" style={{ flex }}>
+            <View className="h-2.5 w-14 rounded bg-muted" />
+            <View className="h-4 w-full max-w-24 rounded bg-muted" />
+          </View>
+        ))}
       </View>
     </View>
   );
@@ -56,6 +106,7 @@ export function IdentityHero({
   followers,
   classLabel,
   classVia,
+  visits,
 }: {
   classKey: string;
   name: string;
@@ -67,10 +118,12 @@ export function IdentityHero({
   followers: number;
   classLabel: string;
   classVia: string | null;
+  /** Completed visits (revealed tickets) — null until the profile read lands. */
+  visits: number | null;
 }) {
   const isElevated = isElevatedClass(classKey);
   // Aura (top of the ladder) reads gold; Influencer reads sky; Premium keeps
-  // its violet gradient.
+  // its violet gradient — the ring is the class's color signature.
   // Keep the readonly tuple shape — LinearGradient's `colors` needs
   // `readonly [ColorValue, ColorValue, ...]`, and spreading here would widen
   // it to a plain array (no contextual type on a variable declaration).
@@ -86,12 +139,7 @@ export function IdentityHero({
       : classKey === 'influencer'
         ? (['rgba(56,189,248,0.18)', 'rgba(2,132,199,0.12)'] as const)
         : (['rgba(139,108,232,0.18)', 'rgba(140,204,255,0.14)'] as const);
-  // The class wears its canonical icon (smile / card / megaphone / sparkles).
-  const ClassIcon: LucideIcon =
-    (CLASS_ICONS as Record<string, LucideIcon>)[classKey] ??
-    CLASS_ICONS.standard;
   return (
-    // Identity hero — web ProfileSummaryCard DNA (no "Me" H1, no Chip).
     <View
       className="overflow-hidden rounded-3xl border border-border p-4"
       style={SHADOW_ELEV}
@@ -112,6 +160,21 @@ export function IdentityHero({
           left: 0,
         }}
       />
+
+      {/* Document mark — quiet, top-right, like the issuer line on a card. */}
+      <Text
+        className="font-display font-bold uppercase text-foreground/30"
+        style={{
+          position: 'absolute',
+          top: 16,
+          right: 16,
+          fontSize: 10,
+          letterSpacing: 3,
+        }}
+      >
+        Mesita
+      </Text>
+
       <View className="flex-row items-center gap-4">
         {/* Double story-ring: gradient → card → avatar (web parity). */}
         <LinearGradient
@@ -135,7 +198,7 @@ export function IdentityHero({
             </View>
           </View>
         </LinearGradient>
-        <View className="min-w-0 flex-1">
+        <View className="min-w-0 flex-1 pr-10">
           <Text
             className="font-display font-bold tracking-tight text-foreground"
             style={{ fontSize: 20 }}
@@ -166,76 +229,49 @@ export function IdentityHero({
         </View>
       </View>
 
-      <View className="mt-4 gap-2.5 border-t border-border/60 pt-3.5">
-        <View className="flex-row items-center gap-2.5">
-          <LinearGradient
-            colors={[...GRADIENTS.pink]}
-            start={GRADIENT_DIAGONAL.start}
-            end={GRADIENT_DIAGONAL.end}
-            style={ICON_BADGE_STYLE}
-          >
-            {/* lucide-react-native has no Instagram glyph — AtSign + IG gradient. */}
-            <AtSign color="#ffffff" size={15} />
-          </LinearGradient>
-          {igConnected ? (
-            <>
-              <Text
-                className="font-semibold tracking-tight text-foreground"
-                style={{ fontSize: 13 }}
-                numberOfLines={1}
-              >
-                {handle ? `@${handle}` : 'Connected'}
-              </Text>
-              {followers > 0 ? (
+      {/* Passport strip: Instagram · Class · Visits. The connect CTA lives on
+          the Instagram box below — the card states, it never nags. */}
+      <View className="mt-4 flex-row border-t border-border/60 pt-3.5">
+        <PassportField
+          label="Instagram"
+          flex={1.35}
+          muted={!igConnected}
+          value={
+            igConnected ? (
+              <View className="min-w-0 flex-row items-center gap-1 pr-3">
                 <Text
-                  className="shrink-0 text-muted-foreground"
-                  style={{ fontSize: 12 }}
+                  className="shrink font-semibold tracking-tight text-foreground"
+                  style={{ fontSize: 14 }}
+                  numberOfLines={1}
                 >
-                  {followers.toLocaleString('en-US')} followers
+                  {handle ? `@${handle}` : 'Connected'}
                 </Text>
-              ) : null}
-              <BadgeCheck
-                color="rgba(38,4,9,0.6)"
-                size={18}
-                style={{ marginLeft: 'auto' }}
-              />
-            </>
-          ) : (
-            <Text
-              className="text-muted-foreground/80"
-              style={{ fontSize: 13 }}
-            >
-              Not connected
-            </Text>
-          )}
-        </View>
-        <View className="flex-row items-center gap-2.5">
-          {isElevated ? (
-            <LinearGradient
-              colors={elevatedRing}
-              start={GRADIENT_DIAGONAL.start}
-              end={GRADIENT_DIAGONAL.end}
-              style={ICON_BADGE_STYLE}
-            >
-              <ClassIcon color="#ffffff" size={15} />
-            </LinearGradient>
-          ) : (
-            <View className="h-7 w-7 items-center justify-center rounded-lg bg-amber-400/20">
-              <ClassIcon color="#b45309" size={15} />
-            </View>
-          )}
-          <Text
-            className="font-semibold tracking-tight text-foreground"
-            style={{ fontSize: 13 }}
-          >
-            Mesita {classLabel}
-          </Text>
-          {classVia ? (
-            <Text className="text-muted-foreground" style={{ fontSize: 12 }}>
-              via {classVia}
-            </Text>
-          ) : null}
-        </View>
+                <BadgeCheck color="rgba(38,4,9,0.5)" size={14} />
+              </View>
+            ) : (
+              '—'
+            )
+          }
+          sub={
+            igConnected && followers > 0
+              ? `${followers.toLocaleString('en-US')} followers`
+              : null
+          }
+        />
+        <PassportField
+          label="Class"
+          flex={1}
+          divider
+          value={classLabel}
+          sub={classVia ? `via ${classVia}` : null}
+        />
+        <PassportField
+          label="Visits"
+          flex={0.75}
+          divider
+          muted={visits == null}
+          value={visits != null ? `${visits}` : '—'}
+        />
       </View>
     </View>
   );

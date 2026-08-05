@@ -7,6 +7,7 @@ import {
   isOnboarded,
   type ConsumerClass,
   type ConsumerProfile,
+  type ConsumerStats,
 } from '@/lib/api/auth';
 import { supabase } from '@/lib/supabase';
 
@@ -39,6 +40,8 @@ type AuthState = {
   session: Session | null;
   profile: ConsumerProfile | null;
   consumerClass: ConsumerClass | null;
+  /** Passport stats (MESITA-888) — null until the first profile read lands. */
+  stats: ConsumerStats | null;
   onboarded: boolean;
   refreshProfile: () => Promise<void>;
   signOut: () => Promise<void>;
@@ -51,6 +54,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<ConsumerProfile | null>(null);
   const [consumerClass, setConsumerClass] = useState<ConsumerClass | null>(null);
+  const [stats, setStats] = useState<ConsumerStats | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -61,6 +65,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (!active) return;
         setProfile(result.consumer);
         setConsumerClass(normalizeClass(result.class));
+        setStats(result.stats ?? { visits: 0 });
       } catch {
         // Keep the last-known-good profile on a transient EF/network failure.
         // Nulling it here would flip `onboarded` to false and, via the (tabs)
@@ -90,6 +95,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       } else {
         setProfile(null);
         setConsumerClass(null);
+        setStats(null);
       }
     });
 
@@ -103,6 +109,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const result = await apiFetchConsumerProfile();
     setProfile(result.consumer);
     setConsumerClass(normalizeClass(result.class));
+    setStats(result.stats ?? { visits: 0 });
   };
 
   const signOut = async () => {
@@ -124,6 +131,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         session,
         profile,
         consumerClass,
+        stats,
         onboarded: isOnboarded(profile),
         refreshProfile,
         signOut,

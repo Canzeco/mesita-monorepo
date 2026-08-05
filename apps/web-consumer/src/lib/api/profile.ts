@@ -61,6 +61,12 @@ export type ConsumerClass = {
   };
 };
 
+// Passport stats returned by consumer-web-get-profile (MESITA-888).
+// `visits` = tickets the v3 close sealed ("revealed") — completed visits.
+export type ConsumerStats = {
+  visits: number;
+};
+
 type ConsumerOnboardingInput = {
   // First + last name are both required everywhere the consumer writes their
   // name: the EF joins them into full_name, which is the name the reservation
@@ -89,14 +95,23 @@ export async function apiUpdateConsumerProfile(
   return consumer;
 }
 
-export async function apiFetchConsumerProfile(
-  client: SupabaseClient,
-): Promise<{ consumer: ConsumerProfile; consumerClass: ConsumerClass }> {
-  const { consumer, class: consumerClass } = await invokeEF<{
+export async function apiFetchConsumerProfile(client: SupabaseClient): Promise<{
+  consumer: ConsumerProfile;
+  consumerClass: ConsumerClass;
+  stats: ConsumerStats;
+}> {
+  // `stats` is optional in the response type so a not-yet-redeployed EF
+  // degrades to zeroes instead of breaking the profile read.
+  const {
+    consumer,
+    class: consumerClass,
+    stats,
+  } = await invokeEF<{
     consumer: ConsumerProfile;
     class: ConsumerClass;
+    stats?: ConsumerStats;
   }>(client, "consumer-web-get-profile", {});
-  return { consumer, consumerClass };
+  return { consumer, consumerClass, stats: stats ?? { visits: 0 } };
 }
 
 // ─── Account deletion ────────────────────────────────────────────────────

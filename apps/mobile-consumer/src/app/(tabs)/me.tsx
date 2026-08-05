@@ -39,6 +39,7 @@ import { CLASSES, isElevatedClass } from '@/lib/consumer-classes';
 import { useEffectiveClass } from '@/lib/mock-class';
 import {
   ageFromBirthday,
+  formatPhoneDisplay,
   formatSex,
 } from '@/lib/utils';
 import { useAuth } from '@/providers/auth';
@@ -60,7 +61,7 @@ type Sheet =
 // decision: conversion rows LIVE (design lock profile-premium-20260720); no Stripe.
 export default function MeScreen() {
   const router = useRouter();
-  const { profile, consumerClass, session, refreshProfile, signOut } =
+  const { profile, consumerClass, stats, session, refreshProfile, signOut } =
     useAuth();
   const effective = useEffectiveClass(
     consumerClass,
@@ -73,7 +74,8 @@ export default function MeScreen() {
     [profile?.first_name, profile?.last_name].filter(Boolean).join(' ') ||
     profile?.full_name ||
     'Mesita member';
-  const phone = profile?.phone ?? session?.user.phone ?? '';
+  const phone =
+    formatPhoneDisplay(profile?.phone ?? session?.user.phone) ?? '';
   const age = ageFromBirthday(profile?.birthday);
   const sexLabel = formatSex(profile?.sex);
   const meta = [sexLabel, age != null ? `${age}` : null]
@@ -116,6 +118,7 @@ export default function MeScreen() {
             followers={effective.followers}
             classLabel={classLabel}
             classVia={classVia}
+            visits={stats?.visits ?? null}
           />
         )}
 

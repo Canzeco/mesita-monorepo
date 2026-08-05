@@ -47,6 +47,7 @@ export function ProfileClient({
   // One consumer-web-get-profile read per visit; the (shell) layout already
   // guarantees the row is complete (onboarding gate).
   const [profile, setProfile] = useState<ConsumerProfile | null>(null);
+  const [visits, setVisits] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
 
   // Modal state. Only one is meaningfully open at a time; each is a LocalSheet
@@ -67,9 +68,10 @@ export function ProfileClient({
     let cancelled = false;
     (async () => {
       try {
-        const { consumer } = await apiFetchConsumerProfile(supabase);
+        const { consumer, stats } = await apiFetchConsumerProfile(supabase);
         if (cancelled) return;
         setProfile(consumer);
+        setVisits(stats.visits);
       } catch (e) {
         if (!cancelled) toast(errMsg(e, "Couldn't load your profile."));
       } finally {
@@ -109,7 +111,11 @@ export function ProfileClient({
     <div className="flex h-full flex-col">
       <div className="scrollbar-hide flex-1 overflow-y-auto px-4 pt-5 pb-8">
         <div className="flex flex-col gap-3">
-          <ProfileSummaryCard profile={profile} loading={loading} />
+          <ProfileSummaryCard
+            profile={profile}
+            visits={visits}
+            loading={loading}
+          />
 
           {/* Demo emulation lives INSIDE the modals now: the class preview
               toggle on the Class modal, the Instagram toggle + follower input
