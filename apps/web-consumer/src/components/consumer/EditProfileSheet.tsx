@@ -4,14 +4,9 @@ import { useState } from "react";
 import Image from "next/image";
 import { Camera } from "lucide-react";
 import { toast } from "@/lib/toast";
-import {
-  ageFromBirthday,
-  cn,
-  errMsg,
-  firstInitial,
-  MIN_SIGNUP_AGE,
-} from "@/lib/utils";
+import { ageFromBirthday, cn, errMsg, MIN_SIGNUP_AGE } from "@/lib/utils";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
+import { DefaultAvatar } from "@/components/consumer/DefaultAvatar";
 import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
 import { Spinner } from "@/components/shared/Spinner";
 import { BirthdayPicker } from "@/components/shared/BirthdayPicker";
@@ -68,8 +63,6 @@ export function EditProfileSheet({
     sex !== (profile.sex ?? "") ||
     birthday !== (profile.birthday ?? "");
 
-  const initials = firstInitial(firstName, "M");
-
   async function save() {
     if (!dirty || saving) return;
     if (!firstName.trim() || !lastName.trim()) {
@@ -121,20 +114,21 @@ export function EditProfileSheet({
             className="group relative"
             aria-label="Change profile photo"
           >
-            <span className="bg-pink-gradient relative flex h-20 w-20 items-center justify-center overflow-hidden rounded-full text-white shadow-sm">
-              {profile.avatar_url ? (
-                <Image
-                  src={profile.avatar_url}
-                  alt="Profile photo"
-                  fill
-                  sizes="80px"
-                  className="object-cover"
-                />
-              ) : (
-                <span className="font-display text-2xl font-bold tracking-tight">
-                  {initials}
-                </span>
-              )}
+            {/* Story-ring around the photo, matching the profile hero. */}
+            <span className="bg-pink-gradient flex h-20 w-20 rounded-full p-[2.5px] shadow-sm">
+              <span className="bg-card relative flex-1 overflow-hidden rounded-full">
+                {profile.avatar_url ? (
+                  <Image
+                    src={profile.avatar_url}
+                    alt="Profile photo"
+                    fill
+                    sizes="80px"
+                    className="object-cover"
+                  />
+                ) : (
+                  <DefaultAvatar className="h-full w-full" />
+                )}
+              </span>
             </span>
             <span className="border-background bg-foreground text-background absolute -right-0.5 -bottom-0.5 flex h-7 w-7 items-center justify-center rounded-full border-2 shadow-sm transition group-active:scale-95">
               <Camera className="h-3.5 w-3.5" />

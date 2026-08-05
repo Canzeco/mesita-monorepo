@@ -3,9 +3,10 @@
 import Image from "next/image";
 import { BadgeCheck, Instagram } from "lucide-react";
 import type { ConsumerProfile } from "@/lib/api/profile";
+import { DefaultAvatar } from "@/components/consumer/DefaultAvatar";
 import { CLASSES, CLASS_ICONS, isElevatedClass } from "@/lib/consumer-data";
 import { useConsumerClass } from "@/lib/class-context";
-import { ageFromBirthday, cn, firstInitials, formatSex } from "@/lib/utils";
+import { ageFromBirthday, cn, formatSex } from "@/lib/utils";
 
 // ─── Profile summary (static, not clickable) ──────────────────────────────
 
@@ -62,7 +63,6 @@ export function ProfileSummaryCard({
     [first, last].filter(Boolean).join(" ") ||
     profile?.full_name ||
     "Mesita member";
-  const initials = firstInitials(name);
   const avatarUrl = profile?.avatar_url ?? null;
   const phone = profile?.phone ?? null;
 
@@ -96,7 +96,7 @@ export function ProfileSummaryCard({
       )}
     >
       <div className="flex items-center gap-4">
-        {/* Story-ring avatar: class-tinted gradient ring around initials. */}
+        {/* Story-ring avatar: class-tinted gradient ring around the photo. */}
         <div
           className={cn(
             "shrink-0 rounded-full p-[2.5px]",
@@ -114,9 +114,7 @@ export function ProfileSummaryCard({
                   className="object-cover"
                 />
               ) : (
-                <span className="font-display text-foreground/70 text-2xl font-bold tracking-tight">
-                  {initials}
-                </span>
+                <DefaultAvatar className="h-full w-full" />
               )}
             </div>
           </div>

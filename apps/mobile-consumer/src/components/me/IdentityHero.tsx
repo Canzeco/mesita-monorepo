@@ -3,9 +3,9 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { AtSign, BadgeCheck, type LucideIcon } from 'lucide-react-native';
 import { Text, View } from 'react-native';
 
+import { DefaultAvatar } from '@/components/ui/DefaultAvatar';
 import { GRADIENT_DIAGONAL, GRADIENTS, SHADOW_ELEV } from '@/constants/brand';
 import { CLASS_ICONS, isElevatedClass } from '@/lib/consumer-classes';
-import { firstInitials } from '@/lib/utils';
 
 // Shared by the IG and class icon badges below (28px tile, soft drop shadow).
 const ICON_BADGE_STYLE = {
@@ -130,12 +130,7 @@ export function IdentityHero({
                   accessibilityLabel={name}
                 />
               ) : (
-                <Text
-                  className="font-display font-bold tracking-tight text-foreground/70"
-                  style={{ fontSize: 24 }}
-                >
-                  {firstInitials(name)}
-                </Text>
+                <DefaultAvatar size={66} />
               )}
             </View>
           </View>
