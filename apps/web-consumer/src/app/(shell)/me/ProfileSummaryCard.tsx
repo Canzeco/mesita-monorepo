@@ -1,5 +1,6 @@
 "use client";
 
+import type { ReactNode } from "react";
 import Image from "next/image";
 import { Instagram } from "lucide-react";
 import type { ConsumerProfile } from "@/lib/api/profile";
@@ -15,9 +16,9 @@ import {
   formatSex,
 } from "@/lib/utils";
 
-// ─── ID-1 membership card (MESITA-930) ──────────────────────────────────────
-// Dual badges under photo: Cls (class gem) + IG (ring + face). Class once —
-// no header ClassChip. Right stack = identity. Footer = Saved · Visits · Stories.
+// ─── Me membership card (MESITA-932) ────────────────────────────────────────
+// Centered photo + Class/IG badges, then five equal-height identity rows:
+// name·sex·age / phone / class / IG handle·followers / visits·saved.
 
 const CLASS_LETTER: Record<string, string> = {
   standard: "S",
@@ -25,6 +26,9 @@ const CLASS_LETTER: Record<string, string> = {
   influencer: "I",
   aura: "A",
 };
+
+const ROW_CLASS =
+  "flex h-11 items-center justify-center px-3 text-center";
 
 function ClassBadge({
   classKey,
@@ -101,13 +105,11 @@ export function ProfileSummaryCard({
   profile,
   savedCents,
   visits,
-  stories,
   loading,
 }: {
   profile: ConsumerProfile | null;
   savedCents: number | null;
   visits: number | null;
-  stories: number | null;
   loading: boolean;
 }) {
   const { key, origin, followers, handle: classHandle } = useConsumerClass();
@@ -121,22 +123,19 @@ export function ProfileSummaryCard({
 
   if (loading) {
     return (
-      <div className="border-border bg-muted/50 aspect-[1.586/1] w-full overflow-hidden rounded-2xl border px-4 py-3">
-        <div className="flex h-full flex-col justify-between">
+      <div className="border-border bg-muted/50 w-full overflow-hidden rounded-2xl border px-4 py-4">
+        <div className="flex flex-col items-center gap-3">
           <div className="bg-muted h-2.5 w-16 animate-pulse rounded" />
-          <div className="flex items-center gap-3">
-            <div className="bg-muted h-14 w-14 shrink-0 animate-pulse rounded-full" />
-            <div className="min-w-0 flex-1 space-y-2">
-              <div className="bg-muted h-5 w-36 animate-pulse rounded" />
-              <div className="bg-muted h-3 w-24 animate-pulse rounded" />
-              <div className="bg-muted h-3 w-28 animate-pulse rounded" />
-              <div className="bg-muted h-3 w-32 animate-pulse rounded" />
-            </div>
-          </div>
-          <div className="bg-muted/80 grid grid-cols-3 gap-2 rounded-xl p-2">
-            <div className="bg-muted h-8 animate-pulse rounded" />
-            <div className="bg-muted h-8 animate-pulse rounded" />
-            <div className="bg-muted h-8 animate-pulse rounded" />
+          <div className="bg-muted h-[72px] w-[72px] animate-pulse rounded-full" />
+          <div className="bg-muted/80 w-full overflow-hidden rounded-xl">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <div
+                key={i}
+                className="border-border/60 flex h-11 items-center justify-center border-b last:border-b-0"
+              >
+                <div className="bg-muted h-3 w-28 animate-pulse rounded" />
+              </div>
+            ))}
           </div>
         </div>
       </div>
@@ -156,7 +155,8 @@ export function ProfileSummaryCard({
   const classLabel = CLASSES.find((c) => c.id === key)?.label ?? "Standard";
   const handle = profile?.instagram_handle ?? classHandle;
   const igConnected = origin === "instagram" || Boolean(handle);
-  const whisper = [sexLabel, age != null ? String(age) : null]
+
+  const identityLine = [name, sexLabel, age != null ? String(age) : null]
     .filter(Boolean)
     .join(" · ");
   const igLine = igConnected
@@ -164,108 +164,120 @@ export function ProfileSummaryCard({
         .filter(Boolean)
         .join(" · ")
     : "Instagram not connected";
+  const metricsLine = [
+    visits == null ? "— visits" : `${visits} visits`,
+    savedCents == null ? "— saved" : `${formatCurrency(savedCents)} saved`,
+  ].join(" · ");
+
+  const rows: { key: string; content: ReactNode; muted?: boolean }[] = [
+    {
+      key: "identity",
+      content: (
+        <span className="font-display truncate text-[15px] font-bold tracking-tight">
+          {identityLine}
+        </span>
+      ),
+    },
+    {
+      key: "phone",
+      content: (
+        <span className="truncate font-mono text-[13px] font-semibold tracking-wide tabular-nums">
+          {phone || "—"}
+        </span>
+      ),
+      muted: !phone,
+    },
+    {
+      key: "class",
+      content: (
+        <span className="truncate text-[13px] font-semibold">{classLabel}</span>
+      ),
+    },
+    {
+      key: "instagram",
+      content: (
+        <span
+          className={cn(
+            "truncate text-[13px] font-semibold",
+            igConnected ? "text-secondary" : "text-muted-foreground",
+          )}
+        >
+          {igLine}
+        </span>
+      ),
+    },
+    {
+      key: "metrics",
+      content: (
+        <span className="truncate text-[13px] font-semibold tabular-nums">
+          {metricsLine}
+        </span>
+      ),
+    },
+  ];
 
   return (
     <section
       aria-label="Your Mesita membership card"
       className={cn(
-        "border-border aspect-[1.586/1] w-full overflow-hidden rounded-2xl border px-4 py-3",
+        "border-border w-full overflow-hidden rounded-2xl border px-4 py-4",
         isElevated
           ? "from-primary/[0.14] via-secondary/[0.08] to-accent/[0.10] bg-gradient-to-br"
           : "from-primary/[0.10] via-secondary/[0.06] to-accent/[0.07] bg-gradient-to-br",
       )}
     >
-      <div className="flex h-full flex-col justify-between">
+      <div className="flex flex-col items-center">
         <span className="font-display text-foreground/35 text-[10px] font-bold tracking-[0.28em] uppercase select-none">
           Mesita
         </span>
 
-        <div className="flex min-w-0 items-center gap-3">
-          <div className="relative shrink-0">
-            <div
-              className={cn(
-                "rounded-full p-[2px]",
-                isElevated ? elevatedBg : "bg-pink-gradient",
-              )}
-            >
-              <div className="bg-card rounded-full p-[2px]">
-                <div className="bg-muted relative h-14 w-14 overflow-hidden rounded-full">
-                  {avatarUrl ? (
-                    <Image
-                      src={avatarUrl}
-                      alt={name}
-                      fill
-                      sizes="56px"
-                      className="object-cover"
-                    />
-                  ) : (
-                    <DefaultAvatar className="h-full w-full" />
-                  )}
-                </div>
+        <div className="relative mt-3 shrink-0">
+          <div
+            className={cn(
+              "rounded-full p-[2px]",
+              isElevated ? elevatedBg : "bg-pink-gradient",
+            )}
+          >
+            <div className="bg-card rounded-full p-[2px]">
+              <div className="bg-muted relative h-[72px] w-[72px] overflow-hidden rounded-full">
+                {avatarUrl ? (
+                  <Image
+                    src={avatarUrl}
+                    alt={name}
+                    fill
+                    sizes="72px"
+                    className="object-cover"
+                  />
+                ) : (
+                  <DefaultAvatar className="h-full w-full" />
+                )}
               </div>
             </div>
-            <ClassBadge classKey={key} label={classLabel} />
-            <IgBadge connected={igConnected} avatarUrl={avatarUrl} />
           </div>
-
-          <div className="min-w-0 flex-1">
-            <h2 className="font-display truncate text-[17px] leading-tight font-bold tracking-tight">
-              {name}
-            </h2>
-            {whisper ? (
-              <p className="text-muted-foreground mt-0.5 truncate text-[11px] font-medium">
-                {whisper}
-              </p>
-            ) : null}
-            {phone ? (
-              <p className="text-foreground/70 mt-0.5 truncate font-mono text-[11px] font-semibold tracking-wide tabular-nums">
-                {phone}
-              </p>
-            ) : null}
-            <p
-              className={cn(
-                "mt-0.5 truncate text-[11px] font-semibold",
-                igConnected ? "text-secondary" : "text-muted-foreground/70",
-              )}
-            >
-              {igLine}
-            </p>
-          </div>
+          <ClassBadge classKey={key} label={classLabel} />
+          <IgBadge connected={igConnected} avatarUrl={avatarUrl} />
         </div>
 
         <div
-          className="border-border/80 grid grid-cols-3 gap-1 rounded-xl border bg-white/55 px-2 py-1.5"
-          aria-label="Your Mesita metrics"
+          className="border-border/80 mt-4 w-full overflow-hidden rounded-xl border bg-white/55"
+          role="list"
+          aria-label="Your identity"
         >
-          <MetricCell
-            value={
-              savedCents == null ? "—" : formatCurrency(savedCents)
-            }
-            label="Saved"
-          />
-          <MetricCell
-            value={visits == null ? "—" : String(visits)}
-            label="Visits"
-          />
-          <MetricCell
-            value={stories == null ? "—" : String(stories)}
-            label="Stories"
-          />
+          {rows.map((row, i) => (
+            <div
+              key={row.key}
+              role="listitem"
+              className={cn(
+                ROW_CLASS,
+                i < rows.length - 1 && "border-border/70 border-b",
+                row.muted && "text-muted-foreground",
+              )}
+            >
+              {row.content}
+            </div>
+          ))}
         </div>
       </div>
     </section>
-  );
-}
-
-function MetricCell({ value, label }: { value: string; label: string }) {
-  return (
-    <div className="min-w-0 text-center">
-      <div className="font-display truncate text-[13px] font-bold tracking-tight tabular-nums">
-        {value}
-      </div>
-      <div className="text-muted-foreground mt-0.5 text-[8px] font-bold tracking-[0.06em] uppercase">
-        {label}
-      </div>
-    </div>
   );
 }

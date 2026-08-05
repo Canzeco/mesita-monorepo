@@ -70,7 +70,6 @@ export default function MeScreen() {
   const [sheet, setSheet] = useState<Sheet>(null);
   const [savedCents, setSavedCents] = useState<number | null>(null);
   const [visits, setVisits] = useState<number | null>(null);
-  const [stories, setStories] = useState<number | null>(null);
 
   const name =
     [profile?.first_name, profile?.last_name].filter(Boolean).join(' ') ||
@@ -84,7 +83,7 @@ export default function MeScreen() {
   const handle = profile?.instagram_handle ?? effective.handle;
   const igConnected = effective.origin === 'instagram' || Boolean(handle);
 
-  // Card footer: Saved · Visits · Stories from consumer-web-get-metrics.
+  // Card metrics row: visits · saved from consumer-web-get-metrics.
   // Profile stats.visits is the fallback when metrics fails.
   useEffect(() => {
     let cancelled = false;
@@ -94,7 +93,6 @@ export default function MeScreen() {
         if (cancelled) return;
         setSavedCents(metrics.saved_cents);
         setVisits(metrics.places_visited);
-        setStories(metrics.instagram_stories);
       } catch {
         if (!cancelled) setVisits(stats?.visits ?? null);
       }
@@ -135,7 +133,6 @@ export default function MeScreen() {
             classLabel={classLabel}
             savedCents={savedCents}
             visits={visits ?? stats?.visits ?? null}
-            stories={stories}
           />
         )}
 
