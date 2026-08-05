@@ -46,6 +46,7 @@ export function SubscoreBox({
     saveSection,
     revertSection,
     resetSection,
+    loadError,
   } = useScoring();
 
   // Collapsible (Pato 2026-07-26): a chevron toggle folds each box. Default
@@ -91,6 +92,7 @@ export function SubscoreBox({
             saving={savingSection === save}
             savedOk={savedSection === save}
             error={savingSection === save || sectionDirty[save] ? saveError : null}
+            loadError={loadError}
             onSave={() => saveSection(save)}
             onCancel={() => revertSection(save)}
             onReset={() => resetSection(save)}

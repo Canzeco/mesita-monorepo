@@ -8,10 +8,10 @@
 // to the recommender-*→lineup-* backend batch.
 //
 // Returns Lineup's saved hyperparameters from the public.app_settings
-// singleton (scoring_config jsonb). NULL means "following code defaults" —
-// the admin client merges with DEFAULT_SCORING_SETTINGS and this EF never
-// invents values. Shape validation lives client-side (coerceScoringSettings)
-// and on the write path; this is a plain read.
+// singleton (scoring_config jsonb, NOT NULL with locked v12 defaults since
+// MESITA-737). The admin client still runs coerceScoringSettings; this EF
+// never invents values. Shape validation lives client-side and on the write
+// path; this is a plain read.
 //
 // Auth: caller's JWT email must be in public.super_admins.
 // verify_jwt = true gates non-bearer callers at the gateway.

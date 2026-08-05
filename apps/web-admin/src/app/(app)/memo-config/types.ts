@@ -20,6 +20,18 @@ export type MemoConfig = {
   updatedAt?: string;
 };
 
+/** Pre-load / failed-load placeholder — never Save this over a failed GET (MESITA-737). */
+export const DEFAULT_MEMO_CONFIG: MemoConfig = {
+  greeting:
+    "Hola ✨ I'm Memo, your Mesita concierge. Tell me what you're craving — try “rooftop date tonight under $$$” or just “tacos al pastor”.",
+  instructions:
+    "You are Memo, Mesita's warm, sharp local concierge for dining, nightlife, cafés, and experiences — deep taste for Monterrey, able to help anywhere. Reply in the user's language, plain text, 2–4 sentences, opinionated and specific. Be time-aware: prefer spots open and appropriate for the local hour. When the user is place-seeking, name the real places on the shortlist; for general questions just answer conversationally.",
+  provider: "openai",
+  openaiModel: "gpt-4o-mini",
+  webGrounding: false,
+  perplexityModel: "sonar-pro",
+};
+
 // Selectable model ids surfaced in the admin picker (kept here so the page and
 // any future EF share one list).
 export const OPENAI_MODELS = [
