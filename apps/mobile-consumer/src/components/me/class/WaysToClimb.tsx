@@ -14,8 +14,8 @@ import { ClimbCard, type ClimbCardData } from './ClimbCard';
 import { InstagramConnectedSummary } from './InstagramConnectedSummary';
 
 // Elevated classes share core perks; the meter carries the discount signal
-// (MESITA-907 qualitative). Story Bonus is gated on Instagram connected
-// (MESITA-909), not Influencer class alone.
+// (MESITA-907 qualitative). Story Bonus is not a class perk — it lives on
+// Instagram connect / Rewards (MESITA-909).
 const ELEVATED_PERKS = [
   'Personalized picks',
   '10 reservations / mo',
@@ -56,10 +56,7 @@ export function WaysToClimb({
       accent: true,
       door: `${influencer.followerThreshold.toLocaleString('en-US')}+ followers · automatic`,
       discountLevel: 'HIGH',
-      perks: [
-        'Story Bonus when connected',
-        ...ELEVATED_PERKS,
-      ],
+      perks: [...ELEVATED_PERKS],
       reached: classKey === 'influencer',
       reachedLabel: origin === 'instagram' ? 'Connected' : 'Active',
       action: { label: 'Join with Instagram', onPress: onConnectInstagram },
