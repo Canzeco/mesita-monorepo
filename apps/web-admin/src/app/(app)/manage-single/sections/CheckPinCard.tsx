@@ -5,7 +5,7 @@ import { KeyRound } from "lucide-react";
 import { setCheckPin, type AdminPlace } from "../actions";
 import { SaveBar, SectionCard } from "../ui";
 
-// Check PIN — the optional staff gate on the public check page (MESITA-823).
+// Rewards Check PIN — optional staff gate on the public check page (MESITA-823).
 //
 // Pato: "you scan a qr, and you need some 6 digits PIN to mark ticket as
 // done. optional. but maybe big companies want that so there you have it."
@@ -53,7 +53,7 @@ export function CheckPinCard({ place }: { place: AdminPlace }) {
     <SectionCard
       icon={<KeyRound className="h-4 w-4" />}
       tint="amber"
-      title="Check PIN"
+      title="Rewards Check PIN"
       subtitle="Optional 6-digit code staff must enter on the check page before billing or closing a ticket."
       action={
         <span
@@ -73,34 +73,32 @@ export function CheckPinCard({ place }: { place: AdminPlace }) {
         ticket. Turn this on and the place&apos;s staff also need a shared code,
         so a guest (or a passer-by who photographed the QR) can&apos;t self-bill.
         Scanning and viewing never ask for it; only bill, story/review verdicts
-        and &ldquo;paid received&rdquo; do. Leave blank to keep the two-tap close.
+        and &ldquo;paid received&rdquo; do. Clear all six digits to keep the
+        two-tap close.
       </p>
       <div className="mt-4 flex flex-col gap-1.5">
-        <label
-          htmlFor="check-pin"
-          className="text-foreground/90 flex min-h-4 items-center text-[13px] font-medium"
-        >
+        <span className="text-foreground/90 flex min-h-4 items-center text-[13px] font-medium">
           PIN
-        </label>
-        <input
-          id="check-pin"
-          inputMode="numeric"
-          autoComplete="off"
-          placeholder="empty = no PIN"
+        </span>
+        <PinDigits
           value={pin}
+          onChange={setPin}
           disabled={pending}
-          onChange={(e) => setPin(e.target.value.replace(/\D/g, "").slice(0, 6))}
-          className="border-border bg-card focus:border-foreground h-11 w-40 rounded-xl border px-3.5 font-mono text-lg tracking-[0.3em] tabular-nums outline-none disabled:opacity-50"
+          hasError={pin !== "" && !valid}
         />
         {pin !== "" && !valid ? (
           <span className="text-xs font-medium text-amber-700">
             Needs all 6 digits.
           </span>
-        ) : null}
+        ) : (
+          <span className="text-muted-foreground text-[11px]">
+            Six digits turns the gate on · clear all to turn it off.
+          </span>
+        )}
       </div>
       <SaveBar
         pending={pending}
-        dirtyLabel="Check PIN · unsaved"
+        dirtyLabel="Rewards Check PIN · unsaved"
         dirty={dirty}
         ok={ok}
         error={error}
@@ -108,5 +106,71 @@ export function CheckPinCard({ place }: { place: AdminPlace }) {
         onCancel={() => setPin(current)}
       />
     </SectionCard>
+  );
+}
+
+// 6-cell digit input (same pattern as web-business OtpInput). Native <input>
+// sits invisibly over the cells so paste + numeric keypad keep working.
+function PinDigits({
+  value,
+  onChange,
+  disabled,
+  hasError,
+}: {
+  value: string;
+  onChange: (next: string) => void;
+  disabled: boolean;
+  hasError: boolean;
+}) {
+  const cells = Array.from({ length: 6 }, (_, i) => value[i] ?? "");
+  const focusIndex = value.length < 6 ? value.length : -1;
+
+  return (
+    <div className="relative max-w-xs">
+      <input
+        id="check-pin"
+        type="text"
+        inputMode="numeric"
+        autoComplete="off"
+        maxLength={6}
+        value={value}
+        onChange={(e) =>
+          onChange(e.target.value.replace(/\D/g, "").slice(0, 6))
+        }
+        disabled={disabled}
+        aria-label="6-digit rewards check PIN"
+        aria-invalid={hasError}
+        className="absolute inset-0 z-10 w-full cursor-text bg-transparent text-transparent caret-transparent outline-none disabled:cursor-not-allowed"
+      />
+      <div className="grid grid-cols-6 gap-1.5">
+        {cells.map((char, i) => {
+          const filled = char !== "";
+          const focused = !disabled && i === focusIndex;
+          return (
+            <div
+              key={i}
+              aria-hidden
+              className={
+                "bg-background flex h-12 items-center justify-center rounded-xl border font-mono text-xl font-semibold tabular-nums transition " +
+                (hasError
+                  ? "border-destructive/50"
+                  : focused
+                    ? "border-amber-500 ring-2 ring-amber-500/20"
+                    : filled
+                      ? "border-foreground/20"
+                      : "border-border") +
+                (disabled ? " opacity-60" : "")
+              }
+            >
+              {char || (
+                <span className="text-muted-foreground/35 text-base font-normal">
+                  ·
+                </span>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
   );
 }
