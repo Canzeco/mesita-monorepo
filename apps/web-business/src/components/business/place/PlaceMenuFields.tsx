@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import {
   ExternalLink,
   FileText,
@@ -27,12 +27,17 @@ import {
   detectMenuFileKind,
   drivePreviewUrl,
   isDriveMenuUrl,
+  MENU_MAX_COUNT,
   placeMenuObjectPath,
   removeOrphanMenuStorageObjects,
   validateMenuUploadFile,
 } from "./place-upload-utils";
 
+/** Parent-owned session upload ledger — survives Media tab unmounts. */
 export type MenuSessionUploadsHandle = {
+  track: (url: string) => void;
+  /** Untrack + delete Storage when the URL was uploaded this session. */
+  release: (url: string) => void;
   /** Drain never-saved upload URLs so the parent can delete them. */
   drain: () => string[];
 };
@@ -94,14 +99,14 @@ export function PlaceMenuFields({
   form,
   set,
   onError,
-  registerSessionUploads,
+  sessionUploads,
 }: {
   projectId: string;
   form: PlaceFormState;
   set: SetPlaceForm;
   onError: (msg: string | null) => void;
-  /** Lets EditPlaceForm drain never-saved uploads on Discard / after Save. */
-  registerSessionUploads?: (handle: MenuSessionUploadsHandle | null) => void;
+  /** Parent-owned ledger — EditPlaceForm drains on Discard / after Save. */
+  sessionUploads?: MenuSessionUploadsHandle;
 }) {
   const supabase = useBrowserSupabase();
   // Local drafts carry the exclusive Upload/Drive source; form.menu_links
@@ -116,19 +121,24 @@ export function PlaceMenuFields({
   const [uploadingKey, setUploadingKey] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const uploadTargetKey = useRef<string | null>(null);
-  const sessionUploadsRef = useRef<Set<string>>(new Set());
-
-  useEffect(() => {
-    if (!registerSessionUploads) return;
-    registerSessionUploads({
-      drain: () => {
-        const urls = [...sessionUploadsRef.current];
-        sessionUploadsRef.current = new Set();
-        return urls;
-      },
-    });
-    return () => registerSessionUploads(null);
-  }, [registerSessionUploads]);
+  // Fallback ledger when parent doesn't pass one (tests / isolated use).
+  const localSessionRef = useRef<Set<string>>(new Set());
+  const session = sessionUploads ?? {
+    track: (url: string) => {
+      localSessionRef.current.add(url);
+    },
+    release: (url: string) => {
+      const trimmed = url.trim();
+      if (!trimmed || !localSessionRef.current.has(trimmed)) return;
+      localSessionRef.current.delete(trimmed);
+      void removeOrphanMenuStorageObjects(supabase, [trimmed], []);
+    },
+    drain: () => {
+      const urls = [...localSessionRef.current];
+      localSessionRef.current = new Set();
+      return urls;
+    },
+  };
 
   const commit = (updater: (prev: MenuDraft[]) => MenuDraft[]) => {
     const next = updater(itemsRef.current);
@@ -146,22 +156,37 @@ export function PlaceMenuFields({
     );
   };
 
+  const clearUpload = (key: string) => {
+    const prevUrl =
+      itemsRef.current.find((m) => m.key === key)?.url.trim() ?? "";
+    session.release(prevUrl);
+    patchItem(key, { url: "" });
+  };
+
   const setSource = (key: string, source: MenuSource) => {
-    commit((prev) =>
-      prev.map((m) => {
-        if (m.key !== key) return m;
-        if (m.source === source) return m;
-        // Switching path clears the other — upload XOR drive, never both.
-        return { ...m, source, url: "" };
-      }),
+    const prev = itemsRef.current.find((m) => m.key === key);
+    if (!prev || prev.source === source) return;
+    // Switching path clears the other — upload XOR drive, never both.
+    session.release(prev.url);
+    commit((list) =>
+      list.map((m) =>
+        m.key === key ? { ...m, source, url: "" } : m,
+      ),
     );
   };
 
   const removeItem = (key: string) => {
+    const prevUrl =
+      itemsRef.current.find((m) => m.key === key)?.url.trim() ?? "";
+    session.release(prevUrl);
     commit((prev) => prev.filter((m) => m.key !== key));
   };
 
   const addMenu = () => {
+    if (itemsRef.current.length >= MENU_MAX_COUNT) {
+      onError(`At most ${MENU_MAX_COUNT} menus per place.`);
+      return;
+    }
     commit((prev) => [
       ...prev,
       { key: newKey(), name: "", url: "", source: null },
@@ -221,12 +246,9 @@ export function PlaceMenuFields({
             : m,
         ),
       );
-      sessionUploadsRef.current.add(data.publicUrl);
+      session.track(data.publicUrl);
       // Replacing a never-saved upload — drop the previous object now.
-      if (prevUrl && sessionUploadsRef.current.has(prevUrl)) {
-        sessionUploadsRef.current.delete(prevUrl);
-        void removeOrphanMenuStorageObjects(supabase, [prevUrl], []);
-      }
+      if (prevUrl && prevUrl !== data.publicUrl) session.release(prevUrl);
       onError(null);
     } catch (err) {
       onError(errMsg(err, "Couldn't upload catalog file."));
@@ -255,7 +277,7 @@ export function PlaceMenuFields({
           <p className="text-muted-foreground text-[13px]">No menus yet.</p>
           <button
             type="button"
-            disabled={uploadingKey != null}
+            disabled={uploadingKey != null || items.length >= MENU_MAX_COUNT}
             onClick={addMenu}
             className="border-border hover:border-primary/50 hover:text-primary inline-flex h-9 items-center gap-1.5 rounded-lg border px-3 text-[13px] font-medium transition disabled:opacity-50"
           >
@@ -272,6 +294,7 @@ export function PlaceMenuFields({
               item={item}
               uploading={uploadingKey === item.key}
               onPatch={(patch) => patchItem(item.key, patch)}
+              onClearUpload={() => clearUpload(item.key)}
               onSource={(source) => setSource(item.key, source)}
               onRemove={() => removeItem(item.key)}
               onUpload={() => startUpload(item.key)}
@@ -279,7 +302,7 @@ export function PlaceMenuFields({
           ))}
           <button
             type="button"
-            disabled={uploadingKey != null}
+            disabled={uploadingKey != null || items.length >= MENU_MAX_COUNT}
             onClick={addMenu}
             className="border-border hover:border-primary/50 hover:text-primary inline-flex h-9 w-fit items-center gap-1.5 rounded-lg border px-3 text-[13px] font-medium transition disabled:opacity-50"
           >
@@ -297,6 +320,7 @@ function MenuItemCard({
   item,
   uploading,
   onPatch,
+  onClearUpload,
   onSource,
   onRemove,
   onUpload,
@@ -305,6 +329,7 @@ function MenuItemCard({
   item: MenuDraft;
   uploading: boolean;
   onPatch: (patch: Partial<Pick<MenuDraft, "name" | "url">>) => void;
+  onClearUpload: () => void;
   onSource: (source: MenuSource) => void;
   onRemove: () => void;
   onUpload: () => void;
@@ -410,7 +435,7 @@ function MenuItemCard({
                 <button
                   type="button"
                   disabled={uploading}
-                  onClick={() => onPatch({ url: "" })}
+                  onClick={onClearUpload}
                   className="text-muted-foreground hover:text-destructive text-[11px] font-medium"
                 >
                   Clear file

@@ -110,7 +110,9 @@ function MenuViewerBody({
       </header>
 
       <div className="bg-muted/40 relative min-h-0 flex-1 overflow-hidden">
-        {menu.kind === "image" ? (
+        {embedFailed ? (
+          <EmbedFallback url={menu.url} kind={menu.kind} />
+        ) : menu.kind === "image" ? (
           <ImagePane
             url={menu.url}
             zoom={zoom}
@@ -121,8 +123,6 @@ function MenuViewerBody({
               setEmbedFailed(true);
             }}
           />
-        ) : embedFailed ? (
-          <EmbedFallback url={menu.url} kind={menu.kind} />
         ) : menu.kind === "pdf" ? (
           <PdfPane
             url={menu.url}

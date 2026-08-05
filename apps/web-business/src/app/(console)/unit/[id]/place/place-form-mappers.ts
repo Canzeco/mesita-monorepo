@@ -27,41 +27,50 @@ export function placeToFormState(place: MyPlace): PlaceFormState {
     description: place.description ?? "",
     hours: placeHoursToForm(place.hours),
     menu_links: (() => {
-      // Prefer products.menu (canonical); fall back to legacy menu_pdf_*.
-      const raw = place.products?.menu;
-      const fromProducts = Array.isArray(raw)
-        ? raw
-            .map((m) => {
-              if (!m || typeof m !== "object") return null;
-              const row = m as {
-                name?: unknown;
-                url?: unknown;
-                pdf_url?: unknown;
-              };
-              const url =
-                typeof row.url === "string"
-                  ? row.url.trim()
-                  : typeof row.pdf_url === "string"
-                    ? row.pdf_url.trim()
+      // Prefer products.menu (canonical); then legacy menus[]; then menu_pdf_*.
+      const mapRows = (raw: unknown): PlaceFormState["menu_links"] => {
+        if (!Array.isArray(raw)) return [];
+        return raw
+          .map((m) => {
+            if (!m || typeof m !== "object") return null;
+            const row = m as {
+              name?: unknown;
+              url?: unknown;
+              pdf_url?: unknown;
+              source_url?: unknown;
+            };
+            const url =
+              typeof row.url === "string"
+                ? row.url.trim()
+                : typeof row.pdf_url === "string"
+                  ? row.pdf_url.trim()
+                  : typeof row.source_url === "string"
+                    ? row.source_url.trim()
                     : "";
-              const name = typeof row.name === "string" ? row.name : "";
-              if (!url && !name) return null;
-              return {
-                name,
-                url,
-                source: url
-                  ? isDriveMenuUrl(url)
-                    ? ("drive" as const)
-                    : ("upload" as const)
-                  : null,
-              };
-            })
-            .filter(
-              (m): m is { name: string; url: string; source: "upload" | "drive" | null } =>
-                m != null,
-            )
-        : [];
+            const name = typeof row.name === "string" ? row.name : "";
+            if (!url && !name) return null;
+            return {
+              name,
+              url,
+              source: url
+                ? isDriveMenuUrl(url)
+                  ? ("drive" as const)
+                  : ("upload" as const)
+                : null,
+            };
+          })
+          .filter(
+            (m): m is {
+              name: string;
+              url: string;
+              source: "upload" | "drive" | null;
+            } => m != null,
+          );
+      };
+      const fromProducts = mapRows(place.products?.menu);
       if (fromProducts.length > 0) return fromProducts;
+      const fromLegacy = mapRows(place.menus);
+      if (fromLegacy.length > 0) return fromLegacy;
       if (place.menu_pdf_url) {
         const url = place.menu_pdf_url;
         return [

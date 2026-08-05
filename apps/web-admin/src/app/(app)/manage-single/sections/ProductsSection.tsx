@@ -19,6 +19,7 @@ import {
   detectMenuFileKind,
   drivePreviewUrl,
   isDriveMenuUrl,
+  MENU_MAX_COUNT,
   placeMenuObjectPath,
   removeOrphanMenuStorageObjects,
   validateMenuUploadFile,
@@ -75,12 +76,15 @@ function menusFromPlace(place: AdminPlace): MenuDraft[] {
   const fromJson = source
     .map((m): MenuDraft | null => {
       const legacyPdfUrl = (m as { pdf_url?: unknown })?.pdf_url;
+      const legacySourceUrl = (m as { source_url?: unknown })?.source_url;
       const url =
         typeof m?.url === "string"
           ? m.url.trim()
           : typeof legacyPdfUrl === "string"
             ? legacyPdfUrl.trim()
-            : "";
+            : typeof legacySourceUrl === "string"
+              ? legacySourceUrl.trim()
+              : "";
       const name = typeof m?.name === "string" ? m.name.trim() : "";
       if (!url && !name) return null;
       return { key: newKey(), name, url, source: sourceFromUrl(url) };
@@ -139,6 +143,13 @@ export function ProductsSection({
   const sessionUploadsRef = useRef<Set<string>>(new Set());
 
   const dirty = useMemo(() => {
+    // Incomplete drafts (source chosen, no file/link yet) count as dirty so
+    // the nav guard still runs and can drain session uploads.
+    if (items.some((m) => m.source != null && !m.url.trim())) return true;
+    if (items.some((m) => !m.source && !m.url.trim() && !m.name.trim())) {
+      // Brand-new empty rows — dirty until removed or filled.
+      if (items.length !== saved.length) return true;
+    }
     const a = serializeMenus(items);
     const b = serializeMenus(saved);
     if (a.length !== b.length) return true;
@@ -172,6 +183,18 @@ export function ProductsSection({
     return () => registerDiscardHandler("products", null);
   }, [registerDiscardHandler, place]);
 
+  /** Drop a never-saved Storage object immediately (Clear / Remove / switch). */
+  const releaseSessionUrl = (url: string) => {
+    const trimmed = url.trim();
+    if (!trimmed || !sessionUploadsRef.current.has(trimmed)) return;
+    sessionUploadsRef.current.delete(trimmed);
+    void removeOrphanMenuStorageObjects(
+      createBrowserSupabase(),
+      [trimmed],
+      [],
+    );
+  };
+
   const patchItem = (
     key: string,
     patch: Partial<Pick<MenuDraft, "name" | "url" | "source">>,
@@ -182,24 +205,37 @@ export function ProductsSection({
     setOk(false);
   };
 
+  const clearUpload = (key: string) => {
+    const prevUrl = items.find((m) => m.key === key)?.url.trim() ?? "";
+    releaseSessionUrl(prevUrl);
+    patchItem(key, { url: "" });
+  };
+
   const setSource = (key: string, source: MenuSource) => {
-    setItems((prev) =>
-      prev.map((m) => {
-        if (m.key !== key) return m;
-        if (m.source === source) return m;
-        // Switching path clears the other — upload XOR drive, never both.
-        return { ...m, source, url: "" };
-      }),
+    const prev = items.find((m) => m.key === key);
+    if (!prev || prev.source === source) return;
+    // Switching path clears the other — upload XOR drive, never both.
+    releaseSessionUrl(prev.url);
+    setItems((list) =>
+      list.map((m) =>
+        m.key === key ? { ...m, source, url: "" } : m,
+      ),
     );
     setOk(false);
   };
 
   const removeItem = (key: string) => {
+    const prevUrl = items.find((m) => m.key === key)?.url.trim() ?? "";
+    releaseSessionUrl(prevUrl);
     setItems((prev) => prev.filter((m) => m.key !== key));
     setOk(false);
   };
 
   const addMenu = () => {
+    if (items.length >= MENU_MAX_COUNT) {
+      setError(`At most ${MENU_MAX_COUNT} menus per place.`);
+      return;
+    }
     setItems((prev) => [
       ...prev,
       { key: newKey(), name: "", url: "", source: null },
@@ -296,7 +332,18 @@ export function ProductsSection({
     if (!dirty) return;
     for (const m of items) {
       const trimmed = m.url.trim();
-      if (!trimmed) continue;
+      if (!trimmed) {
+        // Block incomplete drafts — don't silently drop a chosen source.
+        if (m.source) {
+          setError(
+            m.source === "drive"
+              ? "Each Drive menu needs a Google Drive or Docs share link."
+              : "Each uploaded menu needs a file.",
+          );
+          return;
+        }
+        continue;
+      }
       const normalized = normalizeHttpsUrl(trimmed);
       if (!/^https:\/\//i.test(normalized)) {
         setError("Each menu needs a valid https:// URL (Drive link or uploaded file).");
@@ -389,6 +436,7 @@ export function ProductsSection({
               pending={pending}
               uploading={uploadingKey === item.key}
               onPatch={(patch) => patchItem(item.key, patch)}
+              onClearUpload={() => clearUpload(item.key)}
               onSource={(source) => setSource(item.key, source)}
               onRemove={() => removeItem(item.key)}
               onUpload={() => startUpload(item.key)}
@@ -398,7 +446,11 @@ export function ProductsSection({
             open={pickerOpen}
             onOpenChange={setPickerOpen}
             onPick={onPickKind}
-            disabled={pending || uploadingKey != null}
+            disabled={
+              pending ||
+              uploadingKey != null ||
+              items.length >= MENU_MAX_COUNT
+            }
           />
         </div>
       )}
@@ -488,6 +540,7 @@ function MenuItemCard({
   pending,
   uploading,
   onPatch,
+  onClearUpload,
   onSource,
   onRemove,
   onUpload,
@@ -497,6 +550,7 @@ function MenuItemCard({
   pending: boolean;
   uploading: boolean;
   onPatch: (patch: Partial<Pick<MenuDraft, "name" | "url">>) => void;
+  onClearUpload: () => void;
   onSource: (source: MenuSource) => void;
   onRemove: () => void;
   onUpload: () => void;
@@ -597,7 +651,7 @@ function MenuItemCard({
                 <button
                   type="button"
                   disabled={pending || uploading}
-                  onClick={() => onPatch({ url: "" })}
+                  onClick={onClearUpload}
                   className="text-muted-foreground hover:text-destructive text-xs font-medium"
                 >
                   Clear file

@@ -1,6 +1,9 @@
 export const MAX_PHOTOS = 10;
 const MAX_UPLOAD_BYTES = 8 * 1024 * 1024;
 
+/** Mirrors business-web-update-project `MENU_MAX_COUNT`. */
+export const MENU_MAX_COUNT = 20;
+
 // Gallery photos live in place-images; menu uploads go to their own buckets,
 // split by kind — images to menu-images, PDFs to menu-pdfs (see supabase
 // migrations 20260711182000_menu_images_bucket + 20260711190000_menu_pdfs_bucket).
