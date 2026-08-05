@@ -11,6 +11,7 @@ import {
   Upload,
   UtensilsCrossed,
 } from "lucide-react";
+import { PdfFirstPage } from "@/components/PdfFirstPage";
 import { createBrowserSupabase } from "@/lib/supabase/browser";
 import {
   ALLOWED_MENU_ACCEPT,
@@ -572,7 +573,8 @@ function MenuItemCard({
               </p>
             )}
           </div>
-          {hasFile ? <MenuFilePreview url={item.url} /> : null}
+          {/* Keyed by URL so a failed-parse fallback resets on file replace. */}
+          {hasFile ? <MenuFilePreview key={item.url} url={item.url} /> : null}
         </div>
       ) : item.source === "drive" ? (
         <div className="border-border bg-muted/20 mt-3 rounded-xl border border-dashed p-4">
@@ -610,6 +612,8 @@ function MenuItemCard({
 function MenuFilePreview({ url }: { url: string }) {
   const kind = detectMenuFileKind(url);
   const src = normalizeHttpsUrl(url);
+  // pdf.js couldn't parse the document — fall back to the browser iframe.
+  const [pdfFailed, setPdfFailed] = useState(false);
 
   if (kind === "image") {
     return (
@@ -645,14 +649,24 @@ function MenuFilePreview({ url }: { url: string }) {
     );
   }
 
+  if (pdfFailed) {
+    return (
+      <div className="border-border/60 bg-background mt-3 overflow-hidden rounded-lg border">
+        <iframe
+          title="PDF menu preview"
+          src={src}
+          className="h-52 w-full border-0 bg-white"
+        />
+      </div>
+    );
+  }
+
   return (
-    <div className="border-border/60 bg-background mt-3 overflow-hidden rounded-lg border">
-      <iframe
-        title="PDF menu preview"
-        src={src}
-        className="h-52 w-full border-0 bg-white"
-      />
-    </div>
+    <PdfFirstPage
+      url={src}
+      onError={() => setPdfFailed(true)}
+      className="border-border/60 bg-background mt-3 overflow-hidden rounded-lg border"
+    />
   );
 }
 
