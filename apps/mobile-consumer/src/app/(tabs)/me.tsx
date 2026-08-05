@@ -11,7 +11,7 @@ import {
   Share2,
   UserRound,
 } from 'lucide-react-native';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -36,6 +36,7 @@ import { ShellWash } from '@/components/ui/HeroBackdrop';
 import { TAB_SCROLL_PADDING_BOTTOM } from '@/lib/tab-layout';
 import { BoxRow } from '@/components/ui/BoxRow';
 import { Button } from '@/components/ui/Button';
+import { apiFetchConsumerMetrics } from '@/lib/api/auth';
 import { inboxPath } from '@/lib/consumer-route-contract';
 import { CLASSES } from '@/lib/consumer-classes';
 import { useEffectiveClass } from '@/lib/mock-class';
@@ -67,6 +68,9 @@ export default function MeScreen() {
     profile?.instagram_handle ?? null,
   );
   const [sheet, setSheet] = useState<Sheet>(null);
+  const [savedCents, setSavedCents] = useState<number | null>(null);
+  const [visits, setVisits] = useState<number | null>(null);
+  const [stories, setStories] = useState<number | null>(null);
 
   const name =
     [profile?.first_name, profile?.last_name].filter(Boolean).join(' ') ||
@@ -79,6 +83,26 @@ export default function MeScreen() {
     CLASSES.find((c) => c.id === effective.key)?.label ?? 'Standard';
   const handle = profile?.instagram_handle ?? effective.handle;
   const igConnected = effective.origin === 'instagram' || Boolean(handle);
+
+  // Card footer: Saved · Visits · Stories from consumer-web-get-metrics.
+  // Profile stats.visits is the fallback when metrics fails.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const metrics = await apiFetchConsumerMetrics();
+        if (cancelled) return;
+        setSavedCents(metrics.saved_cents);
+        setVisits(metrics.places_visited);
+        setStories(metrics.instagram_stories);
+      } catch {
+        if (!cancelled) setVisits(stats?.visits ?? null);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [stats?.visits, profile?.id]);
 
   function openVerify() {
     // Close Class before Verify — two FullScreenSheets must not stack.
@@ -109,7 +133,9 @@ export default function MeScreen() {
             handle={handle ?? null}
             followers={effective.followers}
             classLabel={classLabel}
-            visits={stats?.visits ?? null}
+            savedCents={savedCents}
+            visits={visits ?? stats?.visits ?? null}
+            stories={stories}
           />
         )}
 

@@ -2,53 +2,35 @@ import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Text, View } from 'react-native';
 
+import { ChannelMark } from '@/components/brand/channel-marks';
 import { DefaultAvatar } from '@/components/ui/DefaultAvatar';
 import { GRADIENT_DIAGONAL, GRADIENTS, SHADOW_ELEV } from '@/constants/brand';
+import { formatCurrency } from '@/lib/api/pay';
 import { isElevatedClass } from '@/lib/consumer-classes';
 import { formatCompactCount } from '@/lib/utils';
 
-// ─── Simple ID-1 membership card (MESITA-918) — web ProfileSummaryCard parity.
-// Face + name + class · whisper · phone · one footer line. No metric columns.
+// ─── ID-1 membership card (MESITA-930) — web ProfileSummaryCard parity.
+// Dual badges: Cls (left) + IG (right). Class once. Footer Saved · Visits · Stories.
 
-function ClassChip({
-  label,
-  classKey,
-}: {
-  label: string;
-  classKey: string;
-}) {
-  const colors =
-    classKey === 'aura'
-      ? (['rgba(245,204,88,0.45)', 'rgba(235,136,31,0.28)'] as const)
-      : classKey === 'influencer'
-        ? (['rgba(125,211,252,0.45)', 'rgba(14,165,233,0.28)'] as const)
-        : classKey === 'premium'
-          ? (['rgba(196,181,253,0.45)', 'rgba(167,139,250,0.28)'] as const)
-          : (['rgba(251,43,123,0.22)', 'rgba(255,90,171,0.18)'] as const);
-  const textClass =
-    classKey === 'aura'
-      ? 'text-amber-900'
-      : classKey === 'influencer'
-        ? 'text-sky-900'
-        : classKey === 'premium'
-          ? 'text-violet-900'
-          : 'text-primary';
+const CLASS_LETTER: Record<string, string> = {
+  standard: 'S',
+  premium: 'P',
+  influencer: 'I',
+  aura: 'A',
+};
 
-  return (
-    <LinearGradient
-      colors={[...colors]}
-      start={GRADIENT_DIAGONAL.start}
-      end={GRADIENT_DIAGONAL.end}
-      style={{ borderRadius: 999, borderWidth: 1, borderColor: 'rgba(38,4,9,0.08)' }}
-    >
-      <Text
-        className={`px-2.5 py-1 font-bold uppercase ${textClass}`}
-        style={{ fontSize: 10, letterSpacing: 0.6 }}
-      >
-        {label}
-      </Text>
-    </LinearGradient>
-  );
+function classBadgeColors(classKey: string): readonly [string, string] {
+  if (classKey === 'aura') return ['#fde68a', '#fb923c'] as const;
+  if (classKey === 'influencer') return ['#bae6fd', '#38bdf8'] as const;
+  if (classKey === 'premium') return ['#ddd6fe', '#c084fc'] as const;
+  return ['rgba(251,43,123,0.85)', 'rgba(255,90,171,0.85)'] as const;
+}
+
+function classBadgeText(classKey: string): string {
+  if (classKey === 'standard') return 'text-white';
+  if (classKey === 'aura') return 'text-amber-950';
+  if (classKey === 'influencer') return 'text-sky-950';
+  return 'text-violet-950';
 }
 
 export function IdentityHeroSkeleton() {
@@ -58,19 +40,21 @@ export function IdentityHeroSkeleton() {
       style={{ aspectRatio: 1.586 }}
     >
       <View className="flex-1 justify-between">
-        <View className="flex-row items-center justify-between">
-          <View className="h-2.5 w-16 rounded bg-muted" />
-          <View className="h-5 w-14 rounded-full bg-muted" />
-        </View>
+        <View className="h-2.5 w-16 rounded bg-muted" />
         <View className="flex-row items-center gap-3">
           <View className="h-14 w-14 shrink-0 rounded-full bg-muted" />
           <View className="min-w-0 flex-1 gap-2">
             <View className="h-5 w-36 rounded bg-muted" />
             <View className="h-3 w-24 rounded bg-muted" />
             <View className="h-3 w-28 rounded bg-muted" />
+            <View className="h-3 w-32 rounded bg-muted" />
           </View>
         </View>
-        <View className="h-3 w-40 rounded bg-muted" />
+        <View className="flex-row gap-2 rounded-xl bg-muted/80 p-2">
+          <View className="h-8 flex-1 rounded bg-muted" />
+          <View className="h-8 flex-1 rounded bg-muted" />
+          <View className="h-8 flex-1 rounded bg-muted" />
+        </View>
       </View>
     </View>
   );
@@ -87,7 +71,9 @@ export function IdentityHero({
   handle,
   followers,
   classLabel,
+  savedCents,
   visits,
+  stories,
 }: {
   classKey: string;
   name: string;
@@ -99,7 +85,9 @@ export function IdentityHero({
   handle: string | null;
   followers: number;
   classLabel: string;
+  savedCents: number | null;
   visits: number | null;
+  stories: number | null;
 }) {
   const isElevated = isElevatedClass(classKey);
   const elevatedRing =
@@ -118,7 +106,7 @@ export function IdentityHero({
   const whisper = [sexLabel, age != null ? String(age) : null]
     .filter(Boolean)
     .join(' · ');
-  const footerLeft = igConnected
+  const igLine = igConnected
     ? [handle ? `@${handle}` : 'Connected', formatCompactCount(followers)]
         .filter(Boolean)
         .join(' · ')
@@ -148,18 +136,18 @@ export function IdentityHero({
       />
 
       <View className="flex-1 justify-between">
-        <View className="flex-row items-center justify-between gap-3">
-          <Text
-            className="font-display font-bold uppercase text-foreground/35"
-            style={{ fontSize: 10, letterSpacing: 2.8 }}
-          >
-            Mesita
-          </Text>
-          <ClassChip label={classLabel} classKey={classKey} />
-        </View>
+        <Text
+          className="font-display font-bold uppercase text-foreground/35"
+          style={{ fontSize: 10, letterSpacing: 2.8 }}
+        >
+          Mesita
+        </Text>
 
         <View className="flex-row items-center gap-3">
-          <View className="relative shrink-0">
+          <View
+            className="relative shrink-0"
+            style={{ width: 56, height: 56, overflow: 'visible' }}
+          >
             <LinearGradient
               colors={isElevated ? elevatedRing : [...GRADIENTS.pink]}
               start={GRADIENT_DIAGONAL.start}
@@ -181,6 +169,35 @@ export function IdentityHero({
                 </View>
               </View>
             </LinearGradient>
+
+            {/* Cls badge — class gem, left */}
+            <LinearGradient
+              colors={[...classBadgeColors(classKey)]}
+              start={GRADIENT_DIAGONAL.start}
+              end={GRADIENT_DIAGONAL.end}
+              style={{
+                position: 'absolute',
+                left: -2,
+                bottom: -2,
+                width: 22,
+                height: 22,
+                borderRadius: 999,
+                borderWidth: 2,
+                borderColor: '#fff',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+              accessibilityLabel={`Class: ${classLabel}`}
+            >
+              <Text
+                className={`font-extrabold ${classBadgeText(classKey)}`}
+                style={{ fontSize: 9 }}
+              >
+                {CLASS_LETTER[classKey] ?? 'S'}
+              </Text>
+            </LinearGradient>
+
+            {/* IG badge — ring + face / glyph, right */}
             <LinearGradient
               colors={
                 igConnected
@@ -195,9 +212,16 @@ export function IdentityHero({
                 bottom: -2,
                 borderRadius: 999,
                 padding: 1.5,
+                borderWidth: 2,
+                borderColor: '#fff',
               }}
+              accessibilityLabel={
+                igConnected
+                  ? 'Instagram connected'
+                  : 'Instagram not connected'
+              }
             >
-              <View className="h-5 w-5 overflow-hidden rounded-full bg-card">
+              <View className="h-[18px] w-[18px] items-center justify-center overflow-hidden rounded-full bg-card">
                 {igConnected && avatarUrl ? (
                   <Image
                     source={{ uri: avatarUrl }}
@@ -205,7 +229,11 @@ export function IdentityHero({
                     contentFit="cover"
                   />
                 ) : (
-                  <View className="h-full w-full bg-muted" />
+                  <ChannelMark
+                    channel="instagram"
+                    size={10}
+                    color={igConnected ? '#c02670' : '#775254'}
+                  />
                 )}
               </View>
             </LinearGradient>
@@ -214,15 +242,15 @@ export function IdentityHero({
           <View className="min-w-0 flex-1">
             <Text
               className="font-display font-bold tracking-tight text-foreground"
-              style={{ fontSize: 18 }}
+              style={{ fontSize: 17 }}
               numberOfLines={1}
             >
               {name}
             </Text>
             {whisper ? (
               <Text
-                className="mt-1 font-medium text-muted-foreground"
-                style={{ fontSize: 12 }}
+                className="mt-0.5 font-medium text-muted-foreground"
+                style={{ fontSize: 11 }}
                 numberOfLines={1}
               >
                 {whisper}
@@ -230,9 +258,9 @@ export function IdentityHero({
             ) : null}
             {phone ? (
               <Text
-                className="mt-1 font-semibold text-foreground/70"
+                className="mt-0.5 font-semibold text-foreground/70"
                 style={{
-                  fontSize: 12,
+                  fontSize: 11,
                   fontVariant: ['tabular-nums'],
                   letterSpacing: 0.4,
                 }}
@@ -241,29 +269,60 @@ export function IdentityHero({
                 {phone}
               </Text>
             ) : null}
+            <Text
+              className={
+                igConnected
+                  ? 'mt-0.5 font-semibold text-secondary'
+                  : 'mt-0.5 font-semibold text-muted-foreground/70'
+              }
+              style={{ fontSize: 11 }}
+              numberOfLines={1}
+            >
+              {igLine}
+            </Text>
           </View>
         </View>
 
-        <View className="flex-row items-baseline justify-between gap-3">
-          <Text
-            className={
-              igConnected
-                ? 'min-w-0 shrink font-semibold text-secondary'
-                : 'min-w-0 shrink font-semibold text-muted-foreground/70'
+        <View
+          accessibilityLabel="Your Mesita metrics"
+          className="flex-row gap-1 rounded-xl border border-border/80 bg-white/55 px-2 py-1.5"
+        >
+          <MetricCell
+            value={
+              savedCents == null ? '—' : formatCurrency(savedCents)
             }
-            style={{ fontSize: 12 }}
-            numberOfLines={1}
-          >
-            {footerLeft}
-          </Text>
-          <Text
-            className="shrink-0 font-semibold text-muted-foreground"
-            style={{ fontSize: 12, fontVariant: ['tabular-nums'] }}
-          >
-            Visits {visits ?? '—'}
-          </Text>
+            label="Saved"
+          />
+          <MetricCell
+            value={visits == null ? '—' : String(visits)}
+            label="Visits"
+          />
+          <MetricCell
+            value={stories == null ? '—' : String(stories)}
+            label="Stories"
+          />
         </View>
       </View>
+    </View>
+  );
+}
+
+function MetricCell({ value, label }: { value: string; label: string }) {
+  return (
+    <View className="min-w-0 flex-1 items-center">
+      <Text
+        className="font-display font-bold tracking-tight text-foreground"
+        style={{ fontSize: 13, fontVariant: ['tabular-nums'] }}
+        numberOfLines={1}
+      >
+        {value}
+      </Text>
+      <Text
+        className="mt-0.5 font-bold uppercase text-muted-foreground"
+        style={{ fontSize: 8, letterSpacing: 0.6 }}
+      >
+        {label}
+      </Text>
     </View>
   );
 }
