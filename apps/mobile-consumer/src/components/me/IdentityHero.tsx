@@ -10,9 +10,10 @@ import { formatCurrency } from '@/lib/api/pay';
 import { CLASS_ICONS, isElevatedClass } from '@/lib/consumer-classes';
 import { formatCompactCount, phoneCountryFlag } from '@/lib/utils';
 
-// ─── Me membership card (MESITA-932 / MESITA-935) — web ProfileSummaryCard parity.
+// ─── Me membership card (MESITA-932 / MESITA-935 / MESITA-937) — web parity.
 // Centered photo + Class/IG badges, then five equal-height identity rows.
 // Phone shows dial flag; class row + badge use CLASS_ICONS.
+// Typography: Fraunces only on MESITA wordmark; all identity rows = Inter.
 
 const ROW_HEIGHT = 44;
 
@@ -126,7 +127,7 @@ export function IdentityHero({
       key: 'identity',
       content: (
         <Text
-          className="font-display font-bold tracking-tight text-foreground"
+          className="font-bold tracking-tight text-foreground"
           style={{ fontSize: 15 }}
           numberOfLines={1}
         >
@@ -233,7 +234,7 @@ export function IdentityHero({
 
       <View className="items-center">
         <Text
-          className="font-display font-bold uppercase text-foreground/35"
+          className="font-display-bold uppercase text-foreground/35"
           style={{ fontSize: 10, letterSpacing: 2.8 }}
         >
           Mesita
