@@ -41,7 +41,7 @@ function Figure({
 }) {
   const empty = value === "—";
   return (
-    <div className="border-border flex-1 px-0 sm:border-l sm:px-6 sm:first:border-l-0 sm:first:pl-0">
+    <div className="border-border bg-muted/40 min-w-[11rem] flex-1 snap-start rounded-xl border px-4 py-3.5 sm:min-w-[12.5rem]">
       <p className="text-muted-foreground text-xs font-medium">{label}</p>
       {/* Proportional figures: tabular-nums is for columns of numbers and
           makes a display value look loose. */}
@@ -120,7 +120,7 @@ export function PerformanceHeadline({ stats }: { stats: PlaceStats }) {
         </span>
       </div>
 
-      <div className="flex flex-col gap-5 sm:flex-row sm:gap-0">
+      <div className="flex snap-x snap-mandatory gap-3 overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         <Figure
           label="Influenced spend"
           value={mxn(stats.influencedCents)}

@@ -2,7 +2,7 @@
 
 import type { AdminPlace, PlaceStats } from "../actions";
 
-// Performance → reputation, as a single strip of numbers.
+// Performance → reputation as discrete boxes in a Stories-style rail.
 //
 // This replaced three cards (Reviews summary + the Google list + the Mesita
 // list). Pato: "the 3 review cards → 2 numbers." Reading individual reviews
@@ -15,8 +15,10 @@ import type { AdminPlace, PlaceStats } from "../actions";
 // described; `google_review_count` below is Google's own aggregate and has
 // never been capped.
 //
-// Reservations count sits on this strip again (MESITA-900) — the list + dial
-// lines are the card below.
+// Reservations count sits on this rail again (MESITA-900) — the list + dial
+// lines are the card below. Layout: each metric is its own card; the row
+// scrolls horizontally with snap (Instagram Stories peek) so five peers stay
+// readable instead of compressing into one divider strip.
 
 function num(v: unknown): number | null {
   if (typeof v === "number" && Number.isFinite(v)) return v;
@@ -44,17 +46,17 @@ function Cell({
 }) {
   const empty = value === "—";
   return (
-    <div className="border-border min-w-[7.5rem] flex-1 px-0 sm:border-l sm:px-5 sm:first:border-l-0 sm:first:pl-0">
+    <div className="border-border bg-card shadow-card w-[9.75rem] shrink-0 snap-start rounded-2xl border p-4 sm:w-[10.5rem]">
       <p className="text-muted-foreground text-[11px]">{label}</p>
       <p
         className={
-          "mt-1 text-xl font-semibold " +
+          "mt-1.5 text-2xl leading-none font-semibold tracking-tight " +
           (empty ? "text-muted-foreground" : "text-foreground")
         }
       >
         {value}
       </p>
-      <p className="text-muted-foreground mt-0.5 text-[11px]">{hint}</p>
+      <p className="text-muted-foreground mt-1.5 text-[11px]">{hint}</p>
     </div>
   );
 }
@@ -76,38 +78,39 @@ export function ReputationStrip({
   const fb = num(place.facebook_followers);
 
   return (
-    <section className="border-border bg-card shadow-card rounded-2xl border p-5 sm:p-6">
-      <div className="flex flex-wrap gap-y-4">
-        <Cell
-          label="Mesita"
-          value={mesitaStars != null ? mesitaStars.toFixed(1) : "—"}
-          hint={
-            mesitaCount > 0
-              ? `${compact(mesitaCount)} review${mesitaCount === 1 ? "" : "s"}`
-              : "no reviews yet"
-          }
-        />
-        <Cell
-          label="Google"
-          value={googleStars != null ? googleStars.toFixed(1) : "—"}
-          hint={googleCount > 0 ? `${compact(googleCount)} reviews` : "not scraped yet"}
-        />
-        <Cell
-          label="Instagram"
-          value={ig != null ? compact(ig) : "—"}
-          hint={ig != null ? "followers" : "not linked"}
-        />
-        <Cell
-          label="Facebook"
-          value={fb != null ? compact(fb) : "—"}
-          hint={fb != null ? "followers" : "not linked"}
-        />
-        <Cell
-          label="Reservations"
-          value={compact(stats.reservations)}
-          hint="requested"
-        />
-      </div>
+    <section
+      aria-label="Reputation"
+      className="flex snap-x snap-mandatory gap-3 overflow-x-auto pb-0.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+    >
+      <Cell
+        label="Mesita"
+        value={mesitaStars != null ? mesitaStars.toFixed(1) : "—"}
+        hint={
+          mesitaCount > 0
+            ? `${compact(mesitaCount)} review${mesitaCount === 1 ? "" : "s"}`
+            : "no reviews yet"
+        }
+      />
+      <Cell
+        label="Google"
+        value={googleStars != null ? googleStars.toFixed(1) : "—"}
+        hint={googleCount > 0 ? `${compact(googleCount)} reviews` : "not scraped yet"}
+      />
+      <Cell
+        label="Instagram"
+        value={ig != null ? compact(ig) : "—"}
+        hint={ig != null ? "followers" : "not linked"}
+      />
+      <Cell
+        label="Facebook"
+        value={fb != null ? compact(fb) : "—"}
+        hint={fb != null ? "followers" : "not linked"}
+      />
+      <Cell
+        label="Reservations"
+        value={compact(stats.reservations)}
+        hint="requested"
+      />
     </section>
   );
 }
