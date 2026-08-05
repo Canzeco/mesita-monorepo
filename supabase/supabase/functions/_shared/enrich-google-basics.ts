@@ -96,6 +96,9 @@ type GoogleDetails = {
 // generates the unique slug and applies entity defaults.
 export type GoogleBasics = {
   google_place_id: string;
+  /** Google Places displayName — Enricher spine (MESITA-917). */
+  google_name: string;
+  /** Seeds Mesita display on create; sticky-synced until customized. */
   name: string;
   category: string | null;
   category_label: string | null;
