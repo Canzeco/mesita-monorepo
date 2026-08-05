@@ -5,10 +5,11 @@ import type { ConsumerClass } from "@/lib/mock/place";
 // Four-class comparison (segments v6) — a 5-column perk table, simplified to
 // the three actual perks (Pato, 2026-08-04): Discount Rewards, Places
 // Recommendations, AI-Booked Reservations. One label column + Standard /
-// Influencer / Premium / Aura. Benefit cells use qualitative levels only
-// (LOW · MEDIUM · HIGH · EXTRA · MAX — Filters Random vocabulary family;
-// MESITA-906); never % or counts. Column doors (Free / 1K+ IG / $100/mo /
-// Invite) stay as tier qualification labels.
+// Influencer / Premium / Aura. Cell formats differ by perk (MESITA-907):
+// Discount = qualitative levels (LOW · MEDIUM · HIGH · EXTRA · MAX);
+// Places = two-state (Basic / Personalized); Reservations = counts (2/mo ·
+// 10/mo). Column doors (Free / 1K+ IG / $100/mo / Invite) stay as tier
+// qualification labels.
 
 const COLS: {
   key: ConsumerClass;
@@ -48,8 +49,8 @@ const COLS: {
 ];
 
 // The three perks, in Pato's canonical order. `values` align with COLS.
-// Mapping (decision MESITA-906): Discount LOW→HIGH→EXTRA→MAX; Places +
-// Reservations Standard LOW / elevated HIGH.
+// Mapping (decision MESITA-907): Discount LOW→HIGH→EXTRA→MAX (MEDIUM unused);
+// Places Basic→Personalized; Reservations 2/mo→10/mo.
 const ROWS: { label: string; values: string[] }[] = [
   {
     label: "Discount Rewards",
@@ -57,11 +58,11 @@ const ROWS: { label: string; values: string[] }[] = [
   },
   {
     label: "Places Recommendations",
-    values: ["LOW", "HIGH", "HIGH", "HIGH"],
+    values: ["Basic", "Personalized", "Personalized", "Personalized"],
   },
   {
     label: "AI-Booked Reservations",
-    values: ["LOW", "HIGH", "HIGH", "HIGH"],
+    values: ["2/mo", "10/mo", "10/mo", "10/mo"],
   },
 ];
 
@@ -127,7 +128,7 @@ export function ClassComparison() {
               <span
                 key={COLS[ci].key}
                 className={cn(
-                  "flex min-h-9 items-center justify-center px-0.5 text-center text-[11px] leading-tight font-semibold tracking-wide",
+                  "flex min-h-9 items-center justify-center px-0.5 text-center text-[11px] leading-tight font-semibold tabular-nums",
                   COLS[ci].tint,
                   COLS[ci].text,
                   last && "rounded-b-lg",
@@ -141,7 +142,7 @@ export function ClassComparison() {
       })}
 
       <p className="text-muted-foreground/80 px-1.5 pt-2 pb-0.5 text-[10px] leading-snug">
-        Levels show relative benefit — every place sets its own reward.
+        Discount levels show relative benefit — every place sets its own reward.
       </p>
     </div>
   );

@@ -13,11 +13,11 @@ import { InstagramConnectedSummary } from "./InstagramConnectedSummary";
 // they differ in the door (reach / paid / invited) and in how their money is
 // made (the Story action vs flat rate vs the highest flat rate). Keep the
 // shared lines a single constant so the cards can never drift apart. Perk
-// wording echoes ClassComparison qualitative levels (MESITA-906) — no % or
-// counts in benefit bullets.
+// wording echoes ClassComparison (MESITA-907): Discount stays qualitative;
+// Places = Personalized; Reservations = monthly count.
 const ELEVATED_PERKS = [
-  "HIGH places recommendations",
-  "HIGH AI-booked reservations",
+  "Personalized places recommendations",
+  "10 AI-booked reservations a month",
 ];
 
 export function WaysToClimb({
@@ -35,14 +35,14 @@ export function WaysToClimb({
       key: "standard",
       icon: CLASS_ICONS.standard,
       iconBg: "bg-muted text-foreground",
-      title: "Standard",
+      title: "Mesita Standard",
       price: "$0",
       priceNote: "always free",
       desc: "Your default account at no cost — every guest starts here.",
       perks: [
         "LOW discount rewards at Verified Partners",
-        "LOW places recommendations",
-        "LOW AI-booked reservations",
+        "Basic places recommendations",
+        "2 AI-booked reservations a month",
       ],
       reached: isStandard,
       reachedLabel: "Current class",
@@ -52,15 +52,15 @@ export function WaysToClimb({
       key: "influencer",
       icon: CLASS_ICONS.influencer,
       iconBg: "bg-sky-600 text-white",
-      title: "Influencer",
+      title: "Mesita Influencer",
       via: "Instagram",
       accent: true,
       price: `${influencer.followerThreshold.toLocaleString("en-US")}+ followers`,
       priceNote: "no payment — earned with reach, automatic",
       // The Influencer class's real money is per-post: the Instagram Story
       // action is EXCLUSIVE to this class (segments v6) and pays the story
-      // rung on any visit where a tagged story is verified. No % in Class
-      // detail copy (MESITA-906) — Story exclusivity is the message.
+      // rung on any visit where a tagged story is verified. Discount stays
+      // qualitative (MESITA-907) — Story exclusivity is the message.
       desc: `Connect an Instagram with ${influencer.followerThreshold.toLocaleString("en-US")}+ followers. The Instagram Story reward is yours alone — post a tagged story on any visit for an exclusive bonus.`,
       perks: [
         "HIGH discount rewards",
@@ -75,7 +75,7 @@ export function WaysToClimb({
       key: "premium",
       icon: CLASS_ICONS.premium,
       iconBg: "bg-tier-premium text-white",
-      title: "Premium",
+      title: "Mesita Premium",
       via: "Subscription",
       accent: true,
       price: `$${premium.priceMxn} MXN`,
@@ -95,14 +95,14 @@ export function WaysToClimb({
       key: "aura",
       icon: CLASS_ICONS.aura,
       iconBg: "bg-tier-gold text-white",
-      title: "Aura",
+      title: "Mesita Aura",
       via: "Invitation",
       accent: true,
       price: "By invitation only",
       priceNote: "no payment — Mesita curates Aura personally",
       // Aura is the presence class: the highest flat rate, paid for showing
       // up. No follower count, no posting — the invite is the whole door.
-      // Qualitative MAX (MESITA-906) — no % in Class detail copy.
+      // Qualitative MAX discount (MESITA-907) — no % in Class detail copy.
       desc: "Mesita's invite-only class. MAX discount rewards on every visit — just for being you. No followers required, nothing to post.",
       perks: [
         "MAX discount rewards — the highest of any class",
