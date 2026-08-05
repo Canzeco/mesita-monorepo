@@ -1,20 +1,17 @@
-import { Check, Minus } from "lucide-react";
-
 import { CLASS_ICONS, classBadgeClass } from "@/lib/consumer-data";
-import {
-  baseRateForClass,
-  PEAK_STRATEGY,
-  REWARD_SEGMENT_BY_KEY,
-} from "@/lib/reward-segments";
+import { baseRateForClass } from "@/lib/reward-segments";
 import { cn } from "@/lib/utils";
 import type { ConsumerClass } from "@/lib/mock/place";
 
-// Four-class comparison (segments v6) — a 5-column perk table (Pato,
-// 2026-08-02): one label column + Standard / Premium / Influencer / Aura in
-// ladder order, one row per perk. Cells stay tiny (10–12px, tabular) so the
-// full table fits a phone width; each class column carries its identity tint
-// end to end (violet / sky / gold). Values derive from reward-segments so the
-// table can never drift from the grid the bill engine reads.
+// Four-class comparison (segments v6) — a 5-column perk table, simplified to
+// the three actual perks (Pato, 2026-08-04): Discount Rewards, Places
+// Recommendations, AI-Booked Reservations. One label column + Standard /
+// Influencer / Premium / Aura in rate-ladder order (25/30/35/40 — the
+// discount row reads ascending left to right). Cells stay tiny (10–12px,
+// tabular) so the full table fits a phone width; each class column carries
+// its identity tint end to end (sky / violet / gold). Values derive from
+// reward-segments so the table can never drift from the grid the bill
+// engine reads.
 
 const COLS: {
   key: ConsumerClass;
@@ -31,18 +28,18 @@ const COLS: {
     tint: "bg-muted/40",
   },
   {
-    key: "premium",
-    label: "Premium",
-    door: "$100/mo",
-    text: "text-premium",
-    tint: "bg-tier-premium/[0.07]",
-  },
-  {
     key: "influencer",
     label: "Influencer",
     door: "1K+ IG",
     text: "text-sky-700",
     tint: "bg-sky-500/10",
+  },
+  {
+    key: "premium",
+    label: "Premium",
+    door: "$100/mo",
+    text: "text-premium",
+    tint: "bg-tier-premium/[0.07]",
   },
   {
     key: "aura",
@@ -53,24 +50,18 @@ const COLS: {
   },
 ];
 
-const STORY_RATE = REWARD_SEGMENT_BY_KEY.story.rates[PEAK_STRATEGY];
-
-// One row per perk. `values` align with COLS; null renders the muted dash.
-const ROWS: { label: string; values: (string | null)[] }[] = [
+// The three perks, in Pato's canonical order. `values` align with COLS.
+const ROWS: { label: string; values: string[] }[] = [
   {
-    label: "Base discount",
+    label: "Discount Rewards",
     values: COLS.map((c) => `${baseRateForClass(c.key)}%`),
   },
   {
-    label: "Story bonus",
-    values: [null, null, `+${STORY_RATE}%`, null],
-  },
-  {
-    label: "Recommendations",
+    label: "Places Recommendations",
     values: ["Basic", "Better", "Better", "Better"],
   },
   {
-    label: "Reservations",
+    label: "AI-Booked Reservations",
     values: ["2/mo", "10/mo", "10/mo", "10/mo"],
   },
 ];
@@ -143,16 +134,7 @@ export function ClassComparison() {
                   last && "rounded-b-lg",
                 )}
               >
-                {v == null ? (
-                  <Minus
-                    className="text-muted-foreground/50 h-3 w-3"
-                    aria-label="Not included"
-                  />
-                ) : v === "✓" ? (
-                  <Check className="h-3.5 w-3.5" />
-                ) : (
-                  v
-                )}
+                {v}
               </span>
             ))}
           </div>
@@ -160,9 +142,7 @@ export function ClassComparison() {
       })}
 
       <p className="text-muted-foreground/80 px-1.5 pt-2 pb-0.5 text-[10px] leading-snug">
-        Rates are the top of each range — every place sets its own level. First
-        visits and Google reviews can beat any class rate; you always keep your
-        single best discount.
+        Rates are the top of each range — every place sets its own level.
       </p>
     </div>
   );

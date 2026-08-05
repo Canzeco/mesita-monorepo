@@ -62,8 +62,8 @@ export function ClassPreviewToggle() {
         {(
           [
             { value: 'standard', label: 'Standard' },
-            { value: 'premium', label: 'Premium' },
             { value: 'influencer', label: 'Influencer' },
+            { value: 'premium', label: 'Premium' },
             { value: 'aura', label: 'Aura' },
           ] as const
         ).map((opt) => {

@@ -1,27 +1,19 @@
 import { LinearGradient } from 'expo-linear-gradient';
-import { Minus } from 'lucide-react-native';
 import { Text, View } from 'react-native';
 
 import { GRADIENT_DIAGONAL, GRADIENTS } from '@/constants/brand';
 import { CLASS_ICONS } from '@/lib/consumer-classes';
-import {
-  baseRateForClass,
-  PEAK_STRATEGY,
-  REWARD_SEGMENTS,
-  type RewardClassKey,
-} from '@/lib/reward-segments';
+import { baseRateForClass, type RewardClassKey } from '@/lib/reward-segments';
 
-// Four-class comparison (segments v6) — a 5-column perk table (Pato,
-// 2026-08-02): one label column + Standard / Premium / Influencer / Aura in
-// ladder order, one row per perk. Cells stay tiny (10–12px) so the full table
-// fits a phone width; each class column carries its identity tint end to end
-// (violet / sky / gold). Values derive from reward-segments so the table can
-// never drift from the grid the bill engine reads. Mirrors web
-// ClassComparison — keep the twins structurally identical.
-
-const STORY_RATE = REWARD_SEGMENTS.find((s) => s.key === 'story')!.rates[
-  PEAK_STRATEGY
-];
+// Four-class comparison (segments v6) — a 5-column perk table, simplified to
+// the three actual perks (Pato, 2026-08-04): Discount Rewards, Places
+// Recommendations, AI-Booked Reservations. One label column + Standard /
+// Influencer / Premium / Aura in rate-ladder order (25/30/35/40 — the
+// discount row reads ascending left to right). Cells stay tiny (10–12px) so
+// the full table fits a phone width; each class column carries its identity
+// tint end to end (sky / violet / gold). Values derive from reward-segments
+// so the table can never drift from the grid the bill engine reads. Mirrors
+// web ClassComparison — keep the twins structurally identical.
 
 const COLS: {
   key: RewardClassKey;
@@ -40,20 +32,20 @@ const COLS: {
     iconColors: null,
   },
   {
-    key: 'premium',
-    label: 'Premium',
-    door: '$100/mo',
-    textColor: '#6d4fd8',
-    tintBg: 'rgba(139,108,232,0.07)',
-    iconColors: GRADIENTS.premium,
-  },
-  {
     key: 'influencer',
     label: 'Influencer',
     door: '1K+ IG',
     textColor: '#0369a1',
     tintBg: 'rgba(14,165,233,0.10)',
     iconColors: GRADIENTS.sky,
+  },
+  {
+    key: 'premium',
+    label: 'Premium',
+    door: '$100/mo',
+    textColor: '#6d4fd8',
+    tintBg: 'rgba(139,108,232,0.07)',
+    iconColors: GRADIENTS.premium,
   },
   {
     key: 'aura',
@@ -65,15 +57,20 @@ const COLS: {
   },
 ];
 
-// One row per perk. `values` align with COLS; null renders the muted dash.
-const ROWS: { label: string; values: (string | null)[] }[] = [
+// The three perks, in Pato's canonical order. `values` align with COLS.
+const ROWS: { label: string; values: string[] }[] = [
   {
-    label: 'Base discount',
+    label: 'Discount Rewards',
     values: COLS.map((c) => `${baseRateForClass(c.key)}%`),
   },
-  { label: 'Story bonus', values: [null, null, `+${STORY_RATE}%`, null] },
-  { label: 'Recommendations', values: ['Basic', 'Better', 'Better', 'Better'] },
-  { label: 'Reservations', values: ['2/mo', '10/mo', '10/mo', '10/mo'] },
+  {
+    label: 'Places Recommendations',
+    values: ['Basic', 'Better', 'Better', 'Better'],
+  },
+  {
+    label: 'AI-Booked Reservations',
+    values: ['2/mo', '10/mo', '10/mo', '10/mo'],
+  },
 ];
 
 // Flex weights: label column + four equal class columns (web GRID_COLS twin).
@@ -193,22 +190,18 @@ export function ClassComparison() {
                   borderBottomRightRadius: last ? 8 : 0,
                 }}
               >
-                {v == null ? (
-                  <Minus color="rgba(119,82,84,0.5)" size={12} />
-                ) : (
-                  <Text
-                    numberOfLines={1}
-                    style={{
-                      fontSize: 11,
-                      fontWeight: '600',
-                      textAlign: 'center',
-                      fontVariant: ['tabular-nums'],
-                      color: COLS[ci].textColor,
-                    }}
-                  >
-                    {v}
-                  </Text>
-                )}
+                <Text
+                  numberOfLines={1}
+                  style={{
+                    fontSize: 11,
+                    fontWeight: '600',
+                    textAlign: 'center',
+                    fontVariant: ['tabular-nums'],
+                    color: COLS[ci].textColor,
+                  }}
+                >
+                  {v}
+                </Text>
               </View>
             ))}
           </View>
@@ -225,9 +218,7 @@ export function ClassComparison() {
           paddingBottom: 2,
         }}
       >
-        Rates are the top of each range — every place sets its own level. First
-        visits and Google reviews can beat any class rate; you always keep your
-        single best discount.
+        Rates are the top of each range — every place sets its own level.
       </Text>
     </View>
   );
