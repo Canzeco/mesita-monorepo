@@ -1,0 +1,20 @@
+-- LEDGER STAMP — no DDL. Deliberately empty.
+--
+-- The live singleton's schema_migrations carries version 20260804170740 with
+-- no file behind it. It is the server-side stamp the Supabase MCP writes when
+-- an agent calls apply_migration (the caveat in supabase/CLAUDE.md: the stamp
+-- is minted server-side and never equals the repo filename). Its statements
+-- are the Rewards v8 work already mirrored in
+-- 20260804170553_reward_rules_normalized.sql, applied ~2 minutes earlier by
+-- filename; public.reward_rules in the cloud matches that file column for
+-- column (strategy, class, action, discount_percent, updated_at, updated_by —
+-- and nothing else), so there is no unmirrored schema delta hiding here.
+--
+-- This file exists so `supabase db push` stops refusing every future
+-- migration with "Remote migration versions not found in local migrations
+-- directory". Filing the stamp is the non-destructive half of that fix:
+-- `migration repair --status reverted` would delete the remote row instead,
+-- erasing the record that the apply ever happened. A replay from zero is
+-- unaffected — 20260804170553 builds the same objects.
+
+-- (no statements)

@@ -1,0 +1,14 @@
+-- LEDGER STAMP — no DDL. Deliberately empty. Same story as
+-- 20260804170740_stamp_reward_rules_normalized.sql: a server-side
+-- apply_migration stamp with no file behind it.
+--
+-- Its statements are 20260804173500_ticket_reports.sql (v3c, MESITA-851).
+-- Verified against the live singleton before filing this: public.ticket_reports
+-- exists there and answers PostgREST, while the repo-named version 173500 was
+-- still missing from schema_migrations — the signature of an MCP apply whose
+-- stamp was never reconciled. 173500 is idempotent end to end (create table /
+-- create index / enable rls, all `if not exists`), so it is pushed by
+-- filename in the same batch as this file lands, which both records it under
+-- the name the repo uses and repairs anything the MCP apply left half-done.
+
+-- (no statements)
