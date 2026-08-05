@@ -7,8 +7,10 @@
 // real rows:
 //   • places   — the profile (Google identity, geo, channels, signals, photos)
 //   • projects — the owned Mesita entity (shared PK with the place), landing
-//     status='active', listing_type='web', and a caller-supplied
-//     content_status (the async create path passes 'generating').
+//     status='active', listing_type from Verification Config
+//     (create_places_as_verified → 'partner', else 'web'), and a
+//     caller-supplied content_status (the async create path passes
+//     'generating').
 //
 // Idempotent on google_place_id (place_already_exists). Slug is made unique
 // against the live catalog. Inserts are sequenced places→projects (shared id);
@@ -16,7 +18,9 @@
 // never leave an orphan profile. Media is NOT handled here.
 //
 // Ownership (project_members) is intentionally NOT created here — ownership
-// only lands when admin-web-decide-verification approves a claim.
+// only lands when admin-web-decide-verification approves a claim. Listing
+// type 'partner' here is the consumer Verified Partner badge only — it does
+// not grant plan, ownership, or a promo strategy.
 
 import { type SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { ensureUniqueSlug, slugify } from "./place-slug.ts";
@@ -80,6 +84,20 @@ export async function savePlaceData(
   // ── Unique slug against the live catalog ──
   const slug = await ensureUniqueSlug(admin, slugify(name));
 
+  // ── Verification Config: create as Verified Partner? ──
+  // decision: Pato (live, 2026-08-05) — admin Verification Config toggle
+  // create_places_as_verified. When on, new places land as listing_type=
+  // 'partner' (consumer "Verified Partner" badge) even without phone OTP
+  // ownership proof. Default off → 'web' / "Not Verified". Does not grant
+  // plan, ownership, or promo strategy (those stay on their own paths).
+  const { data: settingsRow } = await admin
+    .from("app_settings")
+    .select("create_places_as_verified")
+    .eq("id", 1)
+    .maybeSingle();
+  const listingType =
+    settingsRow?.create_places_as_verified === true ? "partner" : "web";
+
   // ── 1) places (profile). Strip caller-supplied id/timestamps so the DB owns
   // them; the category-label trigger fills category_label from category. ──
   const { id: _dropId, created_at: _dropCreated, updated_at: _dropUpdated, ...placeInsert } = place;
@@ -115,7 +133,7 @@ export async function savePlaceData(
       id: placeRow.id,
       slug,
       status: "active",
-      listing_type: "web",
+      listing_type: listingType,
       content_status: status,
     })
     .select("id, slug, status")

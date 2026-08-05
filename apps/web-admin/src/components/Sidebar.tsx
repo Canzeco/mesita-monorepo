@@ -20,6 +20,7 @@ import { RESERVATIONS_PARENT } from "@/app/(app)/reservations-config/nav";
 import { REWARDS_PARENT } from "@/app/(app)/rewards-config/nav";
 import { SCORING_PARENT } from "@/app/(app)/lineup-config/nav";
 import { SOURCING_PARENT } from "@/app/(app)/sourcing-config/nav";
+import { VERIFICATION_PARENT } from "@/app/(app)/verification-config/nav";
 import {
   parseUnitId,
   TOOL_ROUTES,
@@ -67,6 +68,7 @@ const CONFIGS_NAV: NavItem[] = [
   MODELS_PARENT,
   ATLAS_PARENT,
   SOURCING_PARENT,
+  VERIFICATION_PARENT,
   ENRICHER_PARENT,
   SCORING_PARENT,
   REWARDS_PARENT,

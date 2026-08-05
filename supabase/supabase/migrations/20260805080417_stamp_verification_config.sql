@@ -1,0 +1,13 @@
+-- LEDGER STAMP — no DDL. Deliberately empty.
+--
+-- The live singleton's schema_migrations carries version 20260805080417 with
+-- no file behind it. It is the server-side stamp the Supabase MCP writes when
+-- an agent calls apply_migration (the caveat in supabase/CLAUDE.md: the stamp
+-- is minted server-side and never equals the repo filename). Its statements
+-- are the Verification Config work already mirrored in
+-- 20260805080000_verification_config.sql (create_places_as_verified on
+-- app_settings). Filing the stamp keeps `supabase db push` from refusing
+-- future migrations with "Remote migration versions not found in local
+-- migrations directory".
+
+-- (no statements)
