@@ -5,17 +5,16 @@ import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
 import { SectionEyebrow } from "@/components/consumer/me/settings-rows";
 import { ClassPreviewToggle } from "@/components/consumer/me/class/ClassPreviewToggle";
 import { CurrentClassCard } from "@/components/consumer/me/class/CurrentClassCard";
-import { ClassComparison } from "@/components/consumer/me/class/ClassComparison";
 import { WaysToClimb } from "@/components/consumer/me/class/WaysToClimb";
 import { SHEET_TITLE_CLASS, SHEET_BODY_CLASS } from "@/lib/ui-classes";
 
 // The full class surface, lifted out of the old Class tab into a bottom sheet
-// the Me page opens from the Class box. Three labeled sections top to bottom:
-// current class, the four-class comparison (Standard / Influencer / Premium / Aura),
-// and the class cards with each ladder's door (subscribe / connect Instagram).
-// `onConnectInstagram` bubbles up so the parent can close this sheet before
-// opening the verify sheet (two LocalSheets must never stack at the same
-// z-layer).
+// the Me page opens from the Class box. Two labeled sections top to bottom:
+// current class, and the class cards with each ladder's door (subscribe /
+// connect Instagram). ClimbCard detail bullets carry perk info (comparison
+// table removed — MESITA-910). `onConnectInstagram` bubbles up so the parent
+// can close this sheet before opening the verify sheet (two LocalSheets must
+// never stack at the same z-layer).
 
 export function ClassModal({
   open,
@@ -47,10 +46,6 @@ export function ClassModal({
           <section className="flex flex-col gap-2">
             <SectionEyebrow>Current class</SectionEyebrow>
             <CurrentClassCard />
-          </section>
-          <section className="flex flex-col gap-2">
-            <SectionEyebrow>Comparison</SectionEyebrow>
-            <ClassComparison />
           </section>
           <section className="flex flex-col gap-2">
             <SectionEyebrow>Classes</SectionEyebrow>

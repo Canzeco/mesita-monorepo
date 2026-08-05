@@ -123,8 +123,8 @@ export function ProfileClient({
               on the Instagram modal. */}
 
           {/* Conversion cluster — membership first, then the free upgrade
-              path. Un-parked: Class opens the full ladder (perks comparison +
-              class cards), Instagram opens the verify sheet. */}
+              path. Un-parked: Class opens the ladder (current class + class
+              cards), Instagram opens the verify sheet. */}
           <BoxRow
             Icon={Crown}
             tint="amber"

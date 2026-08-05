@@ -17,8 +17,8 @@ import { InstagramConnectedSummary } from './InstagramConnectedSummary';
 // they differ in the door (reach / paid / invited) and in how their money is
 // made (the Story action vs flat rate vs the highest flat rate). Keep the
 // shared lines a single constant so the cards can never drift apart. Perk
-// wording echoes ClassComparison (MESITA-907): Discount stays qualitative;
-// Places = Personalized; Reservations = monthly count.
+// wording (MESITA-907): Discount stays qualitative; Places = Personalized;
+// Reservations = monthly count.
 const ELEVATED_PERKS = [
   'Personalized places recommendations',
   '10 AI-booked reservations a month',
