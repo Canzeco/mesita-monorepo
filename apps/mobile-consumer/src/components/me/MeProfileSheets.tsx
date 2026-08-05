@@ -17,6 +17,7 @@ import {
 import { BirthdayPicker } from '@/components/ui/BirthdayPicker';
 import { BoxRow } from '@/components/ui/BoxRow';
 import { Button } from '@/components/ui/Button';
+import { DefaultAvatar } from '@/components/ui/DefaultAvatar';
 import { FullScreenSheet } from '@/components/ui/FullScreenSheet';
 import { SexSelector, toSexValue, type SexValue } from '@/components/ui/SexSelector';
 import { TextField } from '@/components/ui/TextField';
@@ -24,12 +25,7 @@ import { GRADIENT_DIAGONAL, GRADIENTS } from '@/constants/brand';
 import { apiUpdateConsumerProfile } from '@/lib/api/auth';
 import { PREF_KEYS, useStoredFlag, useStoredString } from '@/lib/local-store';
 import { toast } from '@/lib/toast';
-import {
-  ageFromBirthday,
-  errMsg,
-  firstInitial,
-  MIN_SIGNUP_AGE,
-} from '@/lib/utils';
+import { ageFromBirthday, errMsg, MIN_SIGNUP_AGE } from '@/lib/utils';
 import { useAuth } from '@/providers/auth';
 
 const TERMS_URL = 'https://www.mesita.ai/terms';
@@ -71,7 +67,6 @@ export function PersonalDetailsSheet({
   const [error, setError] = useState<string | null>(null);
 
   const avatarUrl = profile?.avatar_url ?? null;
-  const initials = firstInitial(firstName, 'M');
 
   const save = async () => {
     // Both halves are required — the EF re-derives full_name from them and
@@ -124,6 +119,7 @@ export function PersonalDetailsSheet({
           hitSlop={8}
           style={{ position: 'relative' }}
         >
+          {/* Story-ring around the photo, matching the identity hero. */}
           <LinearGradient
             colors={[...GRADIENTS.pink]}
             start={GRADIENT_DIAGONAL.start}
@@ -132,26 +128,21 @@ export function PersonalDetailsSheet({
               width: 80,
               height: 80,
               borderRadius: 999,
-              alignItems: 'center',
-              justifyContent: 'center',
-              overflow: 'hidden',
+              padding: 2.5,
             }}
           >
-            {avatarUrl ? (
-              <Image
-                source={{ uri: avatarUrl }}
-                style={{ width: '100%', height: '100%' }}
-                contentFit="cover"
-                accessibilityLabel="Profile photo"
-              />
-            ) : (
-              <Text
-                className="font-display font-bold"
-                style={{ fontSize: 28, color: '#ffffff' }}
-              >
-                {initials}
-              </Text>
-            )}
+            <View className="flex-1 overflow-hidden rounded-full bg-card">
+              {avatarUrl ? (
+                <Image
+                  source={{ uri: avatarUrl }}
+                  style={{ width: '100%', height: '100%' }}
+                  contentFit="cover"
+                  accessibilityLabel="Profile photo"
+                />
+              ) : (
+                <DefaultAvatar size={75} />
+              )}
+            </View>
           </LinearGradient>
           <View
             style={{

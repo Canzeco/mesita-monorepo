@@ -9,15 +9,6 @@ export function firstInitial(name: string, fallback = '·'): string {
   return name.trim().slice(0, 1).toUpperCase() || fallback;
 }
 
-export function firstInitials(name: string, fallback = 'M'): string {
-  const parts = name.trim().split(/\s+/).filter(Boolean);
-  if (parts.length === 0) return fallback;
-  const first = firstInitial(parts[0] ?? '', '');
-  const last =
-    parts.length > 1 ? firstInitial(parts[parts.length - 1] ?? '', '') : '';
-  return first + last || fallback;
-}
-
 /**
  * Minimum age to sign up / use Mesita. Pato: "13 or below restricted"
  * (MESITA-727) → require >= 14. The backend EF enforces the same floor.
