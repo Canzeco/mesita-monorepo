@@ -18,7 +18,7 @@ import { useUnitPlace } from "../../UnitPlaceContext";
 // Per-place Performance (MESITA-900 — Reservations back inside this tab):
 //
 //   1. Is Mesita working here? — money + Saved→Visited→Closed funnel.
-//   2. Reputation             — Mesita / Google / IG / FB scores.
+//   2. Reputation             — Mesita / Google / IG / FB / reservations boxes (Stories rail).
 //   3. Reservations           — Mesita bookings list + AI dial lines.
 //   4. Activity               — consumer event feed (receipts).
 //
