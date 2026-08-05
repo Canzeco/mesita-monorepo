@@ -15,20 +15,23 @@ import { INPUT_CLASS as INPUT } from "@/lib/ui-classes";
 import { errMsg } from "@/lib/utils";
 import { PdfFirstPage } from "./PdfFirstPage";
 import { PlaceFormField } from "./PlaceFormField";
-import type { MenuEntry, PlaceFormState, SetPlaceForm } from "./place-form-types";
+import type {
+  MenuEntry,
+  MenuSource,
+  PlaceFormState,
+  SetPlaceForm,
+} from "./place-form-types";
 import {
   ALLOWED_MENU_ACCEPT,
   bucketForMenuFile,
   detectMenuFileKind,
   drivePreviewUrl,
-  extForMenuFile,
   isDriveMenuUrl,
+  placeMenuObjectPath,
   validateMenuUploadFile,
 } from "./place-upload-utils";
 
 const MENU_NAME_MAX_LENGTH = 80;
-
-type MenuSource = "upload" | "drive";
 
 type MenuDraft = {
   key: string;
@@ -58,19 +61,22 @@ function draftsFromLinks(links: MenuEntry[]): MenuDraft[] {
     .map((m): MenuDraft | null => {
       const name = m.name.trim();
       const url = m.url.trim();
-      if (!name && !url) return null;
+      // Keep source-only drafts (picker chosen, file/link not yet set).
+      if (!name && !url && !m.source) return null;
       return {
         key: newKey(),
         name: m.name,
         url: m.url,
-        source: url ? sourceFromUrl(url) : null,
+        source: m.source ?? (url ? sourceFromUrl(url) : null),
       };
     })
     .filter((m): m is MenuDraft => m != null);
 }
 
 function linksFromDrafts(items: MenuDraft[]): MenuEntry[] {
-  return items.map((m) => ({ name: m.name, url: m.url }));
+  // Source rides along in form state so Save can validate Drive rows;
+  // EditPlaceForm strips it before calling the EF.
+  return items.map((m) => ({ name: m.name, url: m.url, source: m.source }));
 }
 
 function menuNumberSuffix(index: number): string {
@@ -90,16 +96,21 @@ export function PlaceMenuFields({
 }) {
   const supabase = useBrowserSupabase();
   // Local drafts carry the exclusive Upload/Drive source; form.menu_links
-  // stays the save payload ({ name, url }). Parent remounts this component
-  // (via key) on Discard so drafts always rehydrate from the last-saved set.
+  // mirrors them (including source for Save validation). Parent remounts
+  // this component (via key) on Discard so drafts rehydrate cleanly.
   const [items, setItems] = useState<MenuDraft[]>(() =>
     draftsFromLinks(form.menu_links),
   );
+  // Updated only inside commit() so rapid New menu / patch clicks never
+  // race on a stale render-scoped `items` snapshot (and never during render).
+  const itemsRef = useRef(items);
   const [uploadingKey, setUploadingKey] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const uploadTargetKey = useRef<string | null>(null);
 
-  const commit = (next: MenuDraft[]) => {
+  const commit = (updater: (prev: MenuDraft[]) => MenuDraft[]) => {
+    const next = updater(itemsRef.current);
+    itemsRef.current = next;
     setItems(next);
     set("menu_links", linksFromDrafts(next));
   };
@@ -108,12 +119,14 @@ export function PlaceMenuFields({
     key: string,
     patch: Partial<Pick<MenuDraft, "name" | "url" | "source">>,
   ) => {
-    commit(items.map((m) => (m.key === key ? { ...m, ...patch } : m)));
+    commit((prev) =>
+      prev.map((m) => (m.key === key ? { ...m, ...patch } : m)),
+    );
   };
 
   const setSource = (key: string, source: MenuSource) => {
-    commit(
-      items.map((m) => {
+    commit((prev) =>
+      prev.map((m) => {
         if (m.key !== key) return m;
         if (m.source === source) return m;
         // Switching path clears the other — upload XOR drive, never both.
@@ -123,11 +136,14 @@ export function PlaceMenuFields({
   };
 
   const removeItem = (key: string) => {
-    commit(items.filter((m) => m.key !== key));
+    commit((prev) => prev.filter((m) => m.key !== key));
   };
 
   const addMenu = () => {
-    commit([...items, { key: newKey(), name: "", url: "", source: null }]);
+    commit((prev) => [
+      ...prev,
+      { key: newKey(), name: "", url: "", source: null },
+    ]);
   };
 
   const startUpload = (key: string) => {
@@ -151,9 +167,8 @@ export function PlaceMenuFields({
     setUploadingKey(key);
     onError(null);
     try {
-      const ext = extForMenuFile(file);
       const bucket = bucketForMenuFile(file);
-      const path = `business/${projectId}/catalog/${Date.now()}-${crypto.randomUUID()}.${ext}`;
+      const path = placeMenuObjectPath(projectId, file);
       const { error: uploadError } = await supabase.storage
         .from(bucket)
         .upload(path, file, {
@@ -170,20 +185,18 @@ export function PlaceMenuFields({
         .replace(/\.[^.]+$/, "")
         .trim()
         .slice(0, MENU_NAME_MAX_LENGTH);
-      setItems((prev) => {
-        const next = prev.map((m) =>
+      commit((prev) =>
+        prev.map((m) =>
           m.key === key
             ? {
                 ...m,
-                source: "upload" as const,
+                source: "upload",
                 url: data.publicUrl,
                 name: m.name.trim() || baseName,
               }
             : m,
-        );
-        set("menu_links", linksFromDrafts(next));
-        return next;
-      });
+        ),
+      );
       onError(null);
     } catch (err) {
       onError(errMsg(err, "Couldn't upload catalog file."));

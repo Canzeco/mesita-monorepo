@@ -8,8 +8,64 @@ type MediaUpdateBody = {
   menu_pdf_name?: unknown;
   product_catalog_url?: unknown;
   product_catalog_name?: unknown;
-  products?: { menu?: unknown } | null;
+  products?: (Record<string, unknown> & { menu?: unknown }) | null;
 };
+
+const MENU_NAME_MAX = 80;
+const MENU_MAX_COUNT = 20;
+
+type MenuRow = { name: string | null; url: string };
+
+/** Normalize products.menu to [{ name, url }] with https URLs only. */
+function normalizeMenuEntries(
+  menu: unknown[],
+): { ok: true; value: MenuRow[] } | { ok: false; error: string } {
+  if (menu.length > MENU_MAX_COUNT) {
+    return {
+      ok: false,
+      error: `products.menu accepts at most ${MENU_MAX_COUNT} entries`,
+    };
+  }
+  const cleaned: MenuRow[] = [];
+  for (const item of menu) {
+    if (item == null) continue;
+    if (typeof item !== "object" || Array.isArray(item)) {
+      return {
+        ok: false,
+        error: "each products.menu entry must be an object",
+      };
+    }
+    const row = item as {
+      name?: unknown;
+      url?: unknown;
+      pdf_url?: unknown;
+      source_url?: unknown;
+    };
+    const rawUrl =
+      typeof row.url === "string"
+        ? row.url.trim()
+        : typeof row.pdf_url === "string"
+        ? row.pdf_url.trim()
+        : typeof row.source_url === "string"
+        ? row.source_url.trim()
+        : "";
+    if (!rawUrl) {
+      // Empty draft rows are dropped (clients filter the same way).
+      continue;
+    }
+    if (!isUrl(rawUrl)) {
+      return {
+        ok: false,
+        error: "each products.menu entry needs a valid https:// url",
+      };
+    }
+    cleaned.push({
+      name: optString(row.name, MENU_NAME_MAX),
+      url: rawUrl,
+    });
+  }
+  return { ok: true, value: cleaned };
+}
 
 export function applyMediaUpdates(
   body: MediaUpdateBody,
@@ -53,10 +109,10 @@ export function applyMediaUpdates(
     }
   }
   if ("menu_pdf_name" in body) {
-    update.menu_pdf_name = optString(body.menu_pdf_name, 80);
+    update.menu_pdf_name = optString(body.menu_pdf_name, MENU_NAME_MAX);
   }
   if ("product_catalog_name" in body) {
-    update.menu_pdf_name = optString(body.product_catalog_name, 80);
+    update.menu_pdf_name = optString(body.product_catalog_name, MENU_NAME_MAX);
   }
 
   if ("products" in body) {
@@ -76,9 +132,18 @@ export function applyMediaUpdates(
           error: "products.menu must be an array or null",
         }, 400);
       }
-      update.products = p;
-      // Keep legacy menus in sync while consumers/business migrate.
-      if (Array.isArray(menu)) update.menus = menu;
+      if (Array.isArray(menu)) {
+        const normalized = normalizeMenuEntries(menu);
+        if (!normalized.ok) {
+          return json({ ok: false, error: normalized.error }, 400);
+        }
+        // Rewrite products with the sanitized menu so sibling keys
+        // (e.g. reservations) stay intact and garbage entries never land.
+        update.products = { ...p, menu: normalized.value };
+        update.menus = normalized.value;
+      } else {
+        update.products = p;
+      }
     }
   }
 

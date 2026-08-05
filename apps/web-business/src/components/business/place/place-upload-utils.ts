@@ -152,3 +152,9 @@ export function drivePreviewUrl(url: string): string | null {
     return null;
   }
 }
+
+/** Storage object path for a menu / catalog PDF (or image) upload. */
+export function placeMenuObjectPath(projectId: string, file: File): string {
+  const ext = extForMenuFile(file);
+  return `business/${projectId}/catalog/${Date.now()}-${crypto.randomUUID()}.${ext}`;
+}
