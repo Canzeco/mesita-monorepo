@@ -49,7 +49,8 @@ export function SwipeCardInfo({
   const statusLabel = getOpeningStatusLabel(place);
   const isOpen = place.open_now === true;
   // decision: Pato — no Verified/Not Verified tag on swipe; always a disc
-  // beside the name — blue check (partner) or amber "?" (unverified).
+  // beside the name — blue check (partner) or muted slate "?" (not verified).
+  // decision: Pato — not amber; amber read as warning (MESITA-928).
   const isVerified = place.listing_type === "partner";
 
   return (
