@@ -3,17 +3,15 @@ import { Text, View } from 'react-native';
 
 import { GRADIENT_DIAGONAL, GRADIENTS } from '@/constants/brand';
 import { CLASS_ICONS } from '@/lib/consumer-classes';
-import { baseRateForClass, type RewardClassKey } from '@/lib/reward-segments';
+import type { RewardClassKey } from '@/lib/reward-segments';
 
 // Four-class comparison (segments v6) — a 5-column perk table, simplified to
 // the three actual perks (Pato, 2026-08-04): Discount Rewards, Places
 // Recommendations, AI-Booked Reservations. One label column + Standard /
-// Influencer / Premium / Aura in rate-ladder order (25/30/35/40 — the
-// discount row reads ascending left to right). Cells stay tiny (10–12px) so
-// the full table fits a phone width; each class column carries its identity
-// tint end to end (sky / violet / gold). Values derive from reward-segments
-// so the table can never drift from the grid the bill engine reads. Mirrors
-// web ClassComparison — keep the twins structurally identical.
+// Influencer / Premium / Aura. Benefit cells use qualitative levels only
+// (LOW · MEDIUM · HIGH · EXTRA · MAX — Filters Random vocabulary family;
+// MESITA-906); never % or counts. Column doors stay as tier qualification
+// labels. Mirrors web ClassComparison — keep the twins structurally identical.
 
 const COLS: {
   key: RewardClassKey;
@@ -58,18 +56,20 @@ const COLS: {
 ];
 
 // The three perks, in Pato's canonical order. `values` align with COLS.
+// Mapping (decision MESITA-906): Discount LOW→HIGH→EXTRA→MAX; Places +
+// Reservations Standard LOW / elevated HIGH.
 const ROWS: { label: string; values: string[] }[] = [
   {
     label: 'Discount Rewards',
-    values: COLS.map((c) => `${baseRateForClass(c.key)}%`),
+    values: ['LOW', 'HIGH', 'EXTRA', 'MAX'],
   },
   {
     label: 'Places Recommendations',
-    values: ['Basic', 'Better', 'Better', 'Better'],
+    values: ['LOW', 'HIGH', 'HIGH', 'HIGH'],
   },
   {
     label: 'AI-Booked Reservations',
-    values: ['2/mo', '10/mo', '10/mo', '10/mo'],
+    values: ['LOW', 'HIGH', 'HIGH', 'HIGH'],
   },
 ];
 
@@ -195,8 +195,8 @@ export function ClassComparison() {
                   style={{
                     fontSize: 11,
                     fontWeight: '600',
+                    letterSpacing: 0.4,
                     textAlign: 'center',
-                    fontVariant: ['tabular-nums'],
                     color: COLS[ci].textColor,
                   }}
                 >
@@ -218,7 +218,7 @@ export function ClassComparison() {
           paddingBottom: 2,
         }}
       >
-        Rates are the top of each range — every place sets its own level.
+        Levels show relative benefit — every place sets its own reward.
       </Text>
     </View>
   );
