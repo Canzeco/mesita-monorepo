@@ -1,9 +1,6 @@
-// Metrics — the Me screen's lifetime counters sheet (MESITA-895), mobile
-// mirror of web MetricsModal: everything the guest has done on Mesita, as
-// plain numbers. No charts, no time ranges — the passport aesthetic carried
-// into analytics: a big tabular number over a small-caps label, six tiles.
-// Data comes from consumer-web-get-metrics, fetched once per screen visit
-// when the sheet first opens.
+// Metrics — Me screen lifetime counters (MESITA-904), mobile mirror of web
+// MetricsModal: 10 tiles in funnel → value order. Places Visited and Rewards
+// Claimed share one EF source. Money tiles use formatCurrency (MXN).
 
 import { useEffect, useRef, useState } from 'react';
 import { ScrollView, Text, View } from 'react-native';
@@ -13,15 +10,31 @@ import {
   apiFetchConsumerMetrics,
   type ConsumerMetrics,
 } from '@/lib/api/auth';
+import { formatCurrency } from '@/lib/api/pay';
 
-const TILES: { key: keyof ConsumerMetrics; label: string }[] = [
-  { key: 'visits', label: 'Visits' },
-  { key: 'places', label: 'Places visited' },
-  { key: 'reservations', label: 'Reservations' },
-  { key: 'saves', label: 'Saved places' },
-  { key: 'stories', label: 'Stories posted' },
-  { key: 'reviews', label: 'Reviews left' },
+type Tile =
+  | { key: keyof ConsumerMetrics; label: string; money?: false }
+  | { key: 'spent_cents' | 'saved_cents'; label: string; money: true };
+
+// decision: funnel then value pair at the end — view → save → visit/claim →
+// book → reviews → stories → Total Spent → Total Saved (web parity).
+const TILES: Tile[] = [
+  { key: 'places_viewed', label: 'Places viewed' },
+  { key: 'places_saved', label: 'Places saved' },
+  { key: 'places_visited', label: 'Places visited' },
+  { key: 'rewards_claimed', label: 'Rewards claimed' },
+  { key: 'reservations_booked', label: 'Reservations booked' },
+  { key: 'mesita_reviews', label: 'Mesita reviews' },
+  { key: 'google_reviews', label: 'Google reviews' },
+  { key: 'instagram_stories', label: 'Instagram stories' },
+  { key: 'spent_cents', label: 'Total spent', money: true },
+  { key: 'saved_cents', label: 'Total saved', money: true },
 ];
+
+function formatTileValue(metrics: ConsumerMetrics, tile: Tile): string {
+  if (tile.money) return formatCurrency(metrics[tile.key]);
+  return String(metrics[tile.key]);
+}
 
 export function MetricsModal({
   visible,
@@ -31,9 +44,6 @@ export function MetricsModal({
   onClose: () => void;
 }) {
   const [metrics, setMetrics] = useState<ConsumerMetrics | null>(null);
-  // Render-free latch (a ref, so the effect never sets state synchronously):
-  // first open triggers the fetch, reopening reuses the result, an error
-  // re-arms it so the next open retries.
   const requestedRef = useRef(false);
 
   useEffect(() => {
@@ -66,26 +76,32 @@ export function MetricsModal({
         showsVerticalScrollIndicator={false}
       >
         <View className="flex-row flex-wrap justify-between">
-          {TILES.map(({ key, label }) => (
+          {TILES.map((tile) => (
             <View
-              key={key}
+              key={tile.key}
               className="mb-2.5 w-[48.5%] rounded-2xl border border-border/60 bg-muted/30 px-4 py-3.5"
             >
               {metrics ? (
                 <Text
                   className="font-extrabold text-foreground"
-                  style={{ fontSize: 22, lineHeight: 24, fontVariant: ['tabular-nums'] }}
+                  style={{
+                    fontSize: tile.money ? 18 : 22,
+                    lineHeight: tile.money ? 22 : 24,
+                    fontVariant: ['tabular-nums'],
+                  }}
+                  numberOfLines={1}
+                  adjustsFontSizeToFit
                 >
-                  {metrics[key]}
+                  {formatTileValue(metrics, tile)}
                 </Text>
               ) : (
-                <View className="h-6 w-10 rounded-md bg-muted" />
+                <View className="h-6 w-14 rounded-md bg-muted" />
               )}
               <Text
                 className="mt-1.5 font-semibold uppercase text-muted-foreground/80"
                 style={{ fontSize: 10, letterSpacing: 1.2 }}
               >
-                {label}
+                {tile.label}
               </Text>
             </View>
           ))}

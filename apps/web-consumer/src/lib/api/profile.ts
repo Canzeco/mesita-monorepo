@@ -67,21 +67,30 @@ export type ConsumerStats = {
   visits: number;
 };
 
-// Lifetime counters from consumer-web-get-metrics (MESITA-895) — the Me →
-// Metrics sheet. Fetched lazily when the sheet opens, never on shell load.
+// Lifetime counters from consumer-web-get-metrics (MESITA-904) — the Me →
+// Metrics sheet (10 tiles). Fetched lazily when the sheet opens, never on
+// shell load. places_visited === rewards_claimed always (same EF source).
 export type ConsumerMetrics = {
-  /** Tickets the v3 close sealed ("revealed") — completed visits. */
-  visits: number;
-  /** Distinct places among those completed visits. */
-  places: number;
-  /** Confirmed, non-test reservations (all time). */
-  reservations: number;
+  /** Place-detail opens — not tracked yet; EF returns 0. */
+  places_viewed: number;
   /** Saved places. */
-  saves: number;
-  /** Verified Instagram stories. */
-  stories: number;
-  /** Verified Google reviews + Mesita post-visit reviews. */
-  reviews: number;
+  places_saved: number;
+  /** Revealed tickets — same value as rewards_claimed. */
+  places_visited: number;
+  /** Revealed tickets (reward claims). */
+  rewards_claimed: number;
+  /** Confirmed, non-test reservations (all time). */
+  reservations_booked: number;
+  /** Mesita post-visit reviews (ticket_reviews). */
+  mesita_reviews: number;
+  /** Verified Google reviews on tickets. */
+  google_reviews: number;
+  /** Verified Instagram stories on tickets. */
+  instagram_stories: number;
+  /** Guest-paid cents on revealed tickets (bill − discount). */
+  spent_cents: number;
+  /** Discount cents earned on revealed tickets. */
+  saved_cents: number;
 };
 
 export async function apiFetchConsumerMetrics(

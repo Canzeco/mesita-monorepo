@@ -1,18 +1,23 @@
 // Supabase Edge Function — consumer-web-get-metrics
 //
-// Authenticated. The Me → Metrics sheet (MESITA-895): lifetime counters of
-// everything the signed-in guest has done. Deliberately NOT part of
-// consumer-web-get-profile — that EF runs on every shell load, this one only
-// when the sheet opens.
+// Authenticated. The Me → Metrics sheet (MESITA-895 / MESITA-904): lifetime
+// counters of everything the signed-in guest has done. Deliberately NOT part
+// of consumer-web-get-profile — that EF runs on every shell load, this one
+// only when the sheet opens.
 //
-// Counters:
-//   visits        tickets the v3 close sealed ("revealed")
-//   places        distinct projects among those revealed tickets
-//   reservations  confirmed, non-test reservations (all time; "passed" is
-//                 derived from confirmed, so this covers past tables too)
-//   saves         saved places
-//   stories       tickets with a verified story
-//   reviews       verified Google reviews + Mesita post-visit reviews
+// Counters (10 tiles, funnel → value):
+//   places_viewed       place-detail opens — not tracked yet → always 0
+//   places_saved        saved_places rows
+//   places_visited      = rewards_claimed (revealed tickets). A visit is a
+//                       reward claim; the two tiles MUST never diverge.
+//   rewards_claimed     tickets the v3 close sealed ("revealed")
+//   reservations_booked confirmed, non-test reservations (all time)
+//   mesita_reviews      ticket_reviews rows
+//   google_reviews      tickets with a verified Google review
+//   instagram_stories   tickets with a verified Instagram story
+//   spent_cents         sum of guest-paid cents on revealed tickets
+//                       (pre-discount bill − discount; 0 when no bill)
+//   saved_cents         sum of discount_cents on revealed tickets
 //
 // Self-contained: verifies the JWT, reads through the service role. Every
 // read is best-effort — a failed count degrades to 0, never a 500.
@@ -40,13 +45,13 @@ Deno.serve(async (req) => {
 
   const admin = adminClient(envRes.env);
 
-  // One tickets read covers four counters (visits, places, stories, the
-  // Google-review half of reviews); the rest are head counts.
   const [ticketsRes, reservationsRes, savesRes, mesitaReviewsRes] =
     await Promise.all([
       admin
         .from("tickets")
-        .select("project_id, status, story_status, review_status")
+        .select(
+          "status, story_status, review_status, check_subtotal_cents, total_cents, discount_cents",
+        )
         .eq("consumer_id", userId),
       admin
         .from("reservations")
@@ -66,25 +71,39 @@ Deno.serve(async (req) => {
 
   const tickets = ticketsRes.data ?? [];
   const revealed = tickets.filter((t) => t.status === "revealed");
-  const places = new Set(
-    revealed.map((t) => t.project_id).filter(Boolean),
-  ).size;
-  const stories = tickets.filter((t) =>
-    isActionVerified(t.story_status)
-  ).length;
+  // Product lock (MESITA-904): a place visit IS a reward claim — same source.
+  const rewardsClaimed = revealed.length;
   const googleReviews = tickets.filter((t) =>
     isActionVerified(t.review_status)
   ).length;
+  const instagramStories = tickets.filter((t) =>
+    isActionVerified(t.story_status)
+  ).length;
+
+  let spentCents = 0;
+  let savedCents = 0;
+  for (const t of revealed) {
+    const bill = t.total_cents ?? t.check_subtotal_cents ?? 0;
+    const discount = t.discount_cents ?? 0;
+    savedCents += discount;
+    // Guest-paid = pre-discount bill minus discount (never negative).
+    if (bill > 0) spentCents += Math.max(0, bill - discount);
+  }
 
   return json({
     ok: true,
     metrics: {
-      visits: revealed.length,
-      places,
-      reservations: reservationsRes.count ?? 0,
-      saves: savesRes.count ?? 0,
-      stories,
-      reviews: googleReviews + (mesitaReviewsRes.count ?? 0),
+      // No place-detail view ledger yet — honest zero until tracked.
+      places_viewed: 0,
+      places_saved: savesRes.count ?? 0,
+      places_visited: rewardsClaimed,
+      rewards_claimed: rewardsClaimed,
+      reservations_booked: reservationsRes.count ?? 0,
+      mesita_reviews: mesitaReviewsRes.count ?? 0,
+      google_reviews: googleReviews,
+      instagram_stories: instagramStories,
+      spent_cents: spentCents,
+      saved_cents: savedCents,
     },
   });
 });

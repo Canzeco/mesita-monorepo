@@ -1,10 +1,8 @@
 "use client";
 
-// Metrics — the Me page's lifetime counters sheet (MESITA-895): everything
-// the guest has done on Mesita, as plain numbers. No charts, no time ranges —
-// the passport aesthetic carried into analytics: a big tabular number over a
-// small-caps label, six tiles, done. Data comes from consumer-web-get-metrics,
-// fetched once per page visit when the sheet first opens.
+// Metrics — Me page lifetime counters (MESITA-904): 10 tiles in funnel →
+// value order. Places Visited and Rewards Claimed share one EF source so
+// they can never diverge. Money tiles use formatCurrency (MXN).
 
 import { useEffect, useRef, useState } from "react";
 import { Activity } from "lucide-react";
@@ -12,20 +10,40 @@ import { Activity } from "lucide-react";
 import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
 import {
   apiFetchConsumerMetrics,
+  formatCurrency,
   type ConsumerMetrics,
 } from "@/lib/api/profile";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { errMsg } from "@/lib/utils";
 import { toast } from "@/lib/toast";
 
-const TILES: { key: keyof ConsumerMetrics; label: string }[] = [
-  { key: "visits", label: "Visits" },
-  { key: "places", label: "Places visited" },
-  { key: "reservations", label: "Reservations" },
-  { key: "saves", label: "Saved places" },
-  { key: "stories", label: "Stories posted" },
-  { key: "reviews", label: "Reviews left" },
+type Tile =
+  | { key: keyof ConsumerMetrics; label: string; money?: false }
+  | { key: "spent_cents" | "saved_cents"; label: string; money: true };
+
+// decision: funnel then value pair at the end — view → save → visit/claim →
+// book → reviews → stories → Total Spent → Total Saved. Money last so the
+// activity scan stays clean and the payoff pair reads as a closing beat.
+const TILES: Tile[] = [
+  { key: "places_viewed", label: "Places viewed" },
+  { key: "places_saved", label: "Places saved" },
+  { key: "places_visited", label: "Places visited" },
+  { key: "rewards_claimed", label: "Rewards claimed" },
+  { key: "reservations_booked", label: "Reservations booked" },
+  { key: "mesita_reviews", label: "Mesita reviews" },
+  { key: "google_reviews", label: "Google reviews" },
+  { key: "instagram_stories", label: "Instagram stories" },
+  { key: "spent_cents", label: "Total spent", money: true },
+  { key: "saved_cents", label: "Total saved", money: true },
 ];
+
+function formatTileValue(
+  metrics: ConsumerMetrics,
+  tile: Tile,
+): string {
+  if (tile.money) return formatCurrency(metrics[tile.key]);
+  return String(metrics[tile.key]);
+}
 
 export function MetricsModal({
   open,
@@ -78,20 +96,20 @@ export function MetricsModal({
         </div>
 
         <div className="grid grid-cols-2 gap-2.5">
-          {TILES.map(({ key, label }) => (
+          {TILES.map((tile) => (
             <div
-              key={key}
+              key={tile.key}
               className="border-border/60 bg-muted/30 rounded-2xl border px-4 py-3.5"
             >
               {metrics ? (
                 <p className="text-foreground text-[22px] leading-none font-extrabold tracking-tight tabular-nums">
-                  {metrics[key]}
+                  {formatTileValue(metrics, tile)}
                 </p>
               ) : (
-                <div className="bg-muted h-[22px] w-10 animate-pulse rounded-md" />
+                <div className="bg-muted h-[22px] w-14 animate-pulse rounded-md" />
               )}
               <p className="text-muted-foreground/80 mt-1.5 text-[10px] font-semibold tracking-[0.12em] uppercase">
-                {label}
+                {tile.label}
               </p>
             </div>
           ))}

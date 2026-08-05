@@ -33,12 +33,10 @@ import {
 import { BoxRow } from "./profile-sections";
 import { ProfileSummaryCard } from "./ProfileSummaryCard";
 
-// The Me surface — a static identity summary followed by a stack of modular
-// boxes, each opening its own bottom-sheet modal, ordered conversion →
-// account → support: Class, Instagram, Personal details, Settings, Share,
-// AI, and Contact. This is a single flat page at /me
-// (the old two-tab /me/class · /me/settings layout is retired); `openSettings`
-// opens the Settings box on arrival for the legacy /me/settings deep link.
+// The Me surface — Membership Face Card + modular boxes (MESITA-904), ordered
+// Class → Instagram → Personal details → Settings → Metrics → Share → AI →
+// Help → Contact → Sign out. Flat page at /me; `openSettings` opens Settings
+// on arrival for the legacy /me/settings deep link.
 export function ProfileClient({
   openSettings = false,
 }: {
@@ -143,17 +141,6 @@ export function ProfileClient({
             onClick={() => setVerifyOpen(true)}
           />
 
-          {/* Metrics — lifetime counters (MESITA-895): the passport's
-              analytics annex. Sits after the conversion cluster: it's about
-              what you've done, not what you can unlock. */}
-          <BoxRow
-            Icon={Activity}
-            tint="violet"
-            title="Metrics"
-            summary="Visits, places, reviews — your numbers"
-            onClick={() => setMetricsOpen(true)}
-          />
-
           {/* Account management. */}
           <BoxRow
             Icon={UserRound}
@@ -170,6 +157,16 @@ export function ProfileClient({
             title="Settings"
             summary="Notifications, permissions, language"
             onClick={() => setSettingsOpen(true)}
+          />
+
+          {/* Metrics — lifetime counters (MESITA-904). After account cluster,
+              before outward/SOON cluster — retrospective, not conversion. */}
+          <BoxRow
+            Icon={Activity}
+            tint="violet"
+            title="Metrics"
+            summary="Visits, places, reviews — your numbers"
+            onClick={() => setMetricsOpen(true)}
           />
 
           {/* Secondary / support — least-frequent, outward-facing. */}

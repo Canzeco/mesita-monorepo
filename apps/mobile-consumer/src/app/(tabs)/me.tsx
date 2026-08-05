@@ -39,11 +39,7 @@ import { Button } from '@/components/ui/Button';
 import { inboxPath } from '@/lib/consumer-route-contract';
 import { CLASSES } from '@/lib/consumer-classes';
 import { useEffectiveClass } from '@/lib/mock-class';
-import {
-  ageFromBirthday,
-  formatPhoneDisplay,
-  formatSex,
-} from '@/lib/utils';
+import { ageFromBirthday, formatSex } from '@/lib/utils';
 import { useAuth } from '@/providers/auth';
 
 type Sheet =
@@ -60,12 +56,12 @@ type Sheet =
   | null;
 
 // Me screen — 583 chrome (NativeWind BoxRow) + 568 conversion modals.
-// Order: identity → Instagram → Class → Inbox → Personal → Settings → Share → AI → Contact.
+// Order (MESITA-904): Class → Instagram → Personal → Settings → Metrics →
+// Inbox → Share → AI → Help → Contact → Sign out.
 // decision: conversion rows LIVE (design lock profile-premium-20260720); no Stripe.
 export default function MeScreen() {
   const router = useRouter();
-  const { profile, consumerClass, stats, session, refreshProfile, signOut } =
-    useAuth();
+  const { profile, consumerClass, stats, refreshProfile, signOut } = useAuth();
   const effective = useEffectiveClass(
     consumerClass,
     profile?.instagram_handle ?? null,
@@ -76,13 +72,8 @@ export default function MeScreen() {
     [profile?.first_name, profile?.last_name].filter(Boolean).join(' ') ||
     profile?.full_name ||
     'Mesita member';
-  const phone =
-    formatPhoneDisplay(profile?.phone ?? session?.user.phone) ?? '';
   const age = ageFromBirthday(profile?.birthday);
   const sexLabel = formatSex(profile?.sex);
-  const meta = [sexLabel, age != null ? `${age}` : null]
-    .filter(Boolean)
-    .join(' · ');
 
   const classLabel =
     CLASSES.find((c) => c.id === effective.key)?.label ?? 'Standard';
@@ -110,8 +101,8 @@ export default function MeScreen() {
           <IdentityHero
             classKey={effective.key}
             name={name}
-            phone={phone}
-            meta={meta}
+            sexLabel={sexLabel}
+            age={age}
             avatarUrl={profile?.avatar_url}
             igConnected={igConnected}
             handle={handle ?? null}
@@ -124,37 +115,18 @@ export default function MeScreen() {
         <MockControls />
 
         <BoxRow
+          Icon={Crown}
+          tint="amber"
+          title="Class"
+          summary="Standard · Premium · Influencer · Aura"
+          onPress={() => setSheet('class')}
+        />
+        <BoxRow
           Icon={AtSign}
           tint="pink"
           title="Instagram"
           summary="Connect Instagram to upgrade your class"
           onPress={() => setSheet('verify')}
-        />
-        <BoxRow
-          Icon={Crown}
-          tint="amber"
-          title="Class"
-          summary="Upgrade your class for better rewards"
-          onPress={() => setSheet('class')}
-        />
-
-        {/* Metrics — lifetime counters (MESITA-895): the passport's
-            analytics annex. Sits after the conversion cluster: it's about
-            what you've done, not what you can unlock. */}
-        <BoxRow
-          Icon={Activity}
-          tint="violet"
-          title="Metrics"
-          summary="Visits, places, reviews — your numbers"
-          onPress={() => setSheet('metrics')}
-        />
-
-        <BoxRow
-          Icon={Bell}
-          tint="pink"
-          title="Inbox"
-          summary="Notifications and activity"
-          onPress={() => router.push(inboxPath('mine'))}
         />
 
         <BoxRow
@@ -171,6 +143,23 @@ export default function MeScreen() {
           title="Settings"
           summary="Preferences on this device"
           onPress={() => setSheet('settings')}
+        />
+
+        {/* Metrics — after account cluster, before outward/support (MESITA-904). */}
+        <BoxRow
+          Icon={Activity}
+          tint="violet"
+          title="Metrics"
+          summary="Visits, places, reviews — your numbers"
+          onPress={() => setSheet('metrics')}
+        />
+
+        <BoxRow
+          Icon={Bell}
+          tint="pink"
+          title="Inbox"
+          summary="Notifications and activity"
+          onPress={() => router.push(inboxPath('mine'))}
         />
 
         <BoxRow
