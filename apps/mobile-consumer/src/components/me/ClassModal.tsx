@@ -4,7 +4,6 @@ import { View } from 'react-native';
 
 import { FullScreenSheet } from '@/components/ui/FullScreenSheet';
 import { GRADIENT_DIAGONAL, GRADIENTS } from '@/constants/brand';
-import { ClassComparison } from './class/ClassComparison';
 import { ClassPreviewToggle } from './class/ClassPreviewToggle';
 import { CurrentClassCard } from './class/CurrentClassCard';
 import { SectionEyebrow } from './class/SectionEyebrow';
@@ -54,8 +53,6 @@ export function ClassModal({
       <ClassPreviewToggle />
       <SectionEyebrow>Current class</SectionEyebrow>
       <CurrentClassCard />
-      <SectionEyebrow>Comparison</SectionEyebrow>
-      <ClassComparison />
       <SectionEyebrow>Classes</SectionEyebrow>
       <WaysToClimb onConnectInstagram={onConnectInstagram} />
     </FullScreenSheet>
