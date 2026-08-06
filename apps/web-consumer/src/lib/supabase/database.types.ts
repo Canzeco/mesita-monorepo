@@ -116,6 +116,21 @@ export type Database = {
         }
         Relationships: []
       }
+      admin_reset_preserve: {
+        Row: {
+          reason: string
+          table_name: string
+        }
+        Insert: {
+          reason: string
+          table_name: string
+        }
+        Update: {
+          reason?: string
+          table_name?: string
+        }
+        Relationships: []
+      }
       app_settings: {
         Row: {
           agents_config: Json

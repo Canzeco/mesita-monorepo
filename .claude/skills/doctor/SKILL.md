@@ -65,10 +65,17 @@ The singleton rule is the one that silently breaks. Check it first.
     the dangerous one) · version ordering anomalies.
 1.4 **Schema drift.** Live tables/columns/enums/views/functions vs what the migrations
     reconstruct. Any object in the DB that no migration creates = drift.
-1.5 **`admin_reset_database` coverage.** Diff the live function body (`pg_get_functiondef`)
-    against the current table list. Every new table since the last audit that is not in the
-    truncate set is a finding. (Known-accepted: the inaccurate `preserved_media_assets:true`
-    flag — do not re-report it.)
+1.5 **`admin_reset_database` / `admin_reset_preserve` coverage.** Survivors are DATA in
+    `public.admin_reset_preserve` (read at run time — not an inlined array). Check:
+    (a) live function body still `SELECT`s from `admin_reset_preserve` and still asserts the
+    required core (`app_settings`, `super_admins`, `reward_rules`, vocabularies) before
+    truncate; (b) every row in `admin_reset_preserve` names a real `public` base table;
+    (c) required admin-config survivors are present in the registry (`app_settings`,
+    `super_admins`, `reward_rules` at minimum); (d) every *other* public base table is in
+    the wipe set (new operational tables must NOT land in the registry by accident). A
+    CREATE OR REPLACE that re-inlines a stale keep-list is a P0 — the function must read
+    the registry. (The old `preserved_media_assets:true` return flag is gone — do not
+    re-report it.)
 1.6 **Known-intentional exceptions** — assert they still hold, and report if flipped:
     `projects_view` must be `security_invoker = true`.
 
@@ -102,7 +109,8 @@ The business-truth layer. These are the "and shit" checks — pairs of facts tha
 3.3 **Taxonomy congruence.** Every `category` ∈ the canonical 100 · every tag ∈ the canonical
     200 · all snake_case · no free-text leakage.
 3.4 **Nomenclature lock.** Business `plan` ∈ {free, pro, ultra} · consumer `class` ∈
-    {standard, premium, magnetic}. Any other value = finding, including legacy 2-class rows.
+    {standard, premium, influencer, aura}. Any other value = finding (incl. retired
+    `magnetic` / legacy 2-class rows).
 3.5 **Reservations shape.** `products.reservations` = primary `{channel, value}` + `fallbacks[]`;
     shape is load-bearing. Channels must be members of the order in
     `app_settings.reservations_config`. Malformed blobs, empty primaries, unknown channels.
