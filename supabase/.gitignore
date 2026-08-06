@@ -19,3 +19,4 @@
 # Logs
 *.log
 .env.twilio.local.save
+SESSION.md

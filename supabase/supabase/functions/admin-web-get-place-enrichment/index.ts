@@ -1,4 +1,4 @@
-// Supabase Edge Function — admin-web-get-place-enrichment (natural caller / admin)
+// Supabase Edge Function — admin-web-get-place-enrichment (product caller / admin)
 //
 // Read-only per-place Enricher inspector for the admin console. Given a
 // project_id, returns:
@@ -19,7 +19,7 @@
 // Deploy: supabase functions deploy admin-web-get-place-enrichment
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, json, readJson } from "../_shared/http.ts";
+import { corsPreflight, json, methodNotAllowed, readJson } from "../_shared/http.ts";
 import {
   adminClient,
   getAuthedUser,
@@ -35,7 +35,7 @@ type Body = { projectId?: string; placeId?: string };
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
-  if (req.method !== "POST") return json({ ok: false, error: "Method not allowed" }, 405);
+  if (req.method !== "POST") return methodNotAllowed();
 
   const envRes = readEFEnv();
   if (!envRes.ok) return envRes.response;

@@ -16,7 +16,7 @@
 // Auth: any signed-in user. Only the original requester can redeem.
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, json, readJson } from "../_shared/http.ts";
+import { corsPreflight, json, methodNotAllowed, readJson } from "../_shared/http.ts";
 import {
   adminClient,
   getAuthedUser,
@@ -28,9 +28,7 @@ type Body = { verificationId?: string; code?: string };
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
-  if (req.method !== "POST") {
-    return json({ ok: false, error: "Method not allowed" }, 405);
-  }
+  if (req.method !== "POST") return methodNotAllowed();
 
   const envRes = readEFEnv();
   if (!envRes.ok) return envRes.response;

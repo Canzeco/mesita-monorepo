@@ -1,7 +1,7 @@
 // Supabase Edge Function — business-web-get-overview
 //
 // Authenticated. Returns *everything* the business / validator surfaces
-// need for the active unit in one round trip:
+// need for the active place in one round trip:
 //   - the signed-in user (id + email)
 //   - every place they're a member of (sidebar picker)
 //   - the active place's full row + recent tickets
@@ -10,7 +10,7 @@
 // never calls another Edge Function.
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, json, readJsonOr, readPlaceIdAlias } from "../_shared/http.ts";
+import { corsPreflight, json, methodNotAllowed, readJsonOr, readPlaceIdAlias } from "../_shared/http.ts";
 import {
   adminClient,
   checkSuperAdmin,
@@ -31,7 +31,7 @@ type Body = { placeId?: string; activeUnitId?: string; ticketsLimit?: number };
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
-  if (req.method !== "POST") return json({ ok: false, error: "Method not allowed" }, 405);
+  if (req.method !== "POST") return methodNotAllowed();
 
   const envRes = readEFEnv();
   if (!envRes.ok) return envRes.response;
@@ -47,26 +47,28 @@ Deno.serve(async (req) => {
   const isSuperAdmin = await checkSuperAdmin(admin, authRes.user);
 
   const body = await readJsonOr<Body>(req, {});
-  const requestedUnitId = readPlaceIdAlias(body) || null;
+  const requestedPlaceId = readPlaceIdAlias(body) || null;
   // 0 means "don't fetch tickets at all" — the sidebar layout doesn't need
   // them, only the active page does.
   const ticketsLimit = clampTicketsLimit(body.ticketsLimit);
 
-  // Super-admin path: skip project_members. Require an explicit activeUnitId
-  // (the link generator always supplies one) and return a single-row list.
+  // Super-admin path: skip project_members. Require an explicit placeId
+  // (legacy body keys projectId/activeUnitId still accepted via
+  // readPlaceIdAlias; the link generator always supplies one) and return
+  // a single-row list.
   type PlaceRow = Record<string, unknown> & { id: string };
   let places: PlaceRow[];
   if (isSuperAdmin) {
-    if (!requestedUnitId) {
+    if (!requestedPlaceId) {
       return json(
-        { ok: false, error: "super-admin overview requires activeUnitId" },
+        { ok: false, error: "super-admin overview requires placeId" },
         400,
       );
     }
     const placeRow = await admin
       .from("projects_view")
       .select(PLACE_COLUMNS + PLACE_ADMIN_EMBEDDING_COLUMNS)
-      .eq("id", requestedUnitId)
+      .eq("id", requestedPlaceId)
       .maybeSingle();
     if (placeRow.error) {
       return json({ ok: false, error: placeRow.error.message }, 500);
@@ -118,11 +120,11 @@ Deno.serve(async (req) => {
     }
   }
 
-  // Pick the active unit. Honour the requested id when it matches a
+  // Pick the active place. Honour the requested id when it matches a
   // membership; otherwise fall back to the first place.
   const active = places.length === 0
     ? null
-    : (requestedUnitId && places.find((v) => (v as { id: string }).id === requestedUnitId)) ||
+    : (requestedPlaceId && places.find((v) => (v as { id: string }).id === requestedPlaceId)) ||
         places[0];
 
   // Staff check settings — the PIN (MESITA-823) and the require-bill switch

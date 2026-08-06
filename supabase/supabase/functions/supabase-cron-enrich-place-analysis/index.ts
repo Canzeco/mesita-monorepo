@@ -1,4 +1,4 @@
-// Supabase Edge Function — supabase-cron-enrich-place-analysis (artificial caller / cron)
+// Supabase Edge Function — supabase-cron-enrich-place-analysis (internal / cron)
 //
 // Stage 2 of the Enricher pipeline (the Enricher is a PROCESS — a cron-driven
 // pipeline of three EFs — not an agent). The pg_cron poller claims

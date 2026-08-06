@@ -4,8 +4,8 @@
 // that code into operator-friendly copy. Error classification lives in
 // google-places-errors.ts; re-exported here so existing imports keep working.
 //
-// The actual endpoint calls (Autocomplete, Text Search, Place Details)
-// live in the artificial-caller `places-*` EFs that import from here.
+// Autocomplete / Text Search / Place Details live in `_shared/suggest-places.ts`,
+// `supabase-edgefunc-discover-places`, and related product EFs that import here.
 
 import { json } from "./http.ts";
 
@@ -27,9 +27,9 @@ export const GOOGLE_PLACES_TEXT_SEARCH_URL =
 const GOOGLE_PLACES_DETAILS_BASE =
   "https://places.googleapis.com/v1/places";
 
-// Reads SUPA_GMP_KEY, returning a typed error envelope when missing so the
-// EF can early-return. Wire status is always 200 — supabase-js's invoke
-// helper swallows non-2xx bodies and surfaces a generic message, hiding
+// Reads GMP_KEY (SUPA_GMP_KEY fallback), returning a typed error envelope when
+// missing so the EF can early-return. Wire status is always 200 — supabase-js's
+// invoke helper swallows non-2xx bodies and surfaces a generic message, hiding
 // the real problem from operators.
 export function readGooglePlacesKey():
   | { ok: true; key: string }

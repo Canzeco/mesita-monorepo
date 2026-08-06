@@ -16,7 +16,7 @@
 // Caller must be an owner of the place (super-admins pass through).
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, json, readJsonOr, readPlaceIdAlias } from "../_shared/http.ts";
+import { corsPreflight, json, methodNotAllowed, readJsonOr, readPlaceIdAlias } from "../_shared/http.ts";
 import {
   adminClient,
   getAuthedUser,
@@ -38,7 +38,7 @@ type Body = {
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
-  if (req.method !== "POST") return json({ ok: false, error: "Method not allowed" }, 405);
+  if (req.method !== "POST") return methodNotAllowed();
 
   const envRes = readEFEnv();
   if (!envRes.ok) return envRes.response;
@@ -77,7 +77,7 @@ Deno.serve(async (req) => {
   );
   if (!owner.ok) return owner.response;
 
-  // Already on the team? Two parallel lookups: existing businesses row
+  // Already on the team? Two parallel lookups: existing accounts row
   // (drives the link-directly path), and any pending invite for the
   // same address (so we can short-circuit with a friendly error).
   const [existingBusiness, existingInvite] = await Promise.all([

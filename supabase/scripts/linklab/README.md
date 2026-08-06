@@ -34,7 +34,7 @@ per the "don't search what you already know" rule.
 ## Run
 
 ```bash
-cd mesita-supabase
+cd supabase   # package root inside mesita-monorepo
 
 # small subset while iterating (cache ON by default → re-runs don't re-bill)
 deno run --allow-env --allow-net --allow-read --allow-write scripts/linklab/run.ts --limit 10

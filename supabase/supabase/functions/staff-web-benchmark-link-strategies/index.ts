@@ -10,15 +10,10 @@
 // Keys come from EF secrets: FIRECRAWL_KEY, PERPLEXITY_KEY, GMP_KEY.
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+import { corsPreflight, json, methodNotAllowed, readJson } from "../_shared/http.ts";
 import { assembleContext } from "../_shared/linklab/context.ts";
 import type { Keys } from "../_shared/linklab/providers.ts";
 import { runAllStrategies, STRATEGIES } from "../_shared/linklab/strategies.ts";
-
-const CORS = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
 
 type Place = { name: string; city: string; country?: string };
 type Body = {
@@ -30,16 +25,9 @@ type Body = {
   country?: string;
 };
 
-function json(body: unknown, status = 200): Response {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { ...CORS, "Content-Type": "application/json" },
-  });
-}
-
 Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response(null, { headers: CORS });
-  if (req.method !== "POST") return json({ ok: false, error: "POST only" }, 405);
+  if (req.method === "OPTIONS") return corsPreflight();
+  if (req.method !== "POST") return methodNotAllowed();
 
   const keys: Keys = {
     firecrawl: Deno.env.get("FIRECRAWL_KEY") ?? "",
@@ -50,12 +38,9 @@ Deno.serve(async (req) => {
     return json({ ok: false, error: "Missing FIRECRAWL_KEY / PERPLEXITY_KEY / GMP_KEY secret" }, 500);
   }
 
-  let body: Body;
-  try {
-    body = (await req.json()) as Body;
-  } catch {
-    return json({ ok: false, error: "Invalid JSON" }, 400);
-  }
+  const bodyRes = await readJson<Body>(req);
+  if (!bodyRes.ok) return bodyRes.response;
+  const body = bodyRes.body;
 
   const listed = body.places?.length
     ? body.places

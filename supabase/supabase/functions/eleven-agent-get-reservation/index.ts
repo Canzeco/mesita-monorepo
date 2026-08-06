@@ -23,7 +23,7 @@
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
-import { corsPreflight, json, readJsonOr } from "../_shared/http.ts";
+import { corsPreflight, json, methodNotAllowed, readJsonOr } from "../_shared/http.ts";
 import { adminClient, readEFEnv } from "../_shared/auth.ts";
 import { timingSafeEqual } from "../_shared/timing-safe-equal.ts";
 
@@ -187,9 +187,7 @@ async function searchReservations(
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
-  if (req.method !== "POST") {
-    return json({ ok: false, error: "Method not allowed" }, 405);
-  }
+  if (req.method !== "POST") return methodNotAllowed();
 
   const envRes = readEFEnv();
   if (!envRes.ok) return envRes.response;

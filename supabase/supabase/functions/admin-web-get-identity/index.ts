@@ -1,4 +1,4 @@
-// Supabase Edge Function — admin-web-get-identity (natural caller)
+// Supabase Edge Function — admin-web-get-identity (product caller)
 //
 // Tiny session-check called by the admin app shell. Thin per-caller door
 // over _shared/identity.ts — split from the old multi-caller

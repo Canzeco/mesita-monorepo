@@ -13,7 +13,7 @@
 // naming convention.)
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, json, readJson } from "../_shared/http.ts";
+import { corsPreflight, json, methodNotAllowed, readJson } from "../_shared/http.ts";
 import {
   adminClient,
   anonClient,
@@ -31,7 +31,7 @@ type Body = { id?: string; slug?: string };
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
-  if (req.method !== "POST") return json({ ok: false, error: "Method not allowed" }, 405);
+  if (req.method !== "POST") return methodNotAllowed();
 
   // Service role is required for the privacy-shaped review join; place browse
   // still goes through the anon client + projects_view RLS.

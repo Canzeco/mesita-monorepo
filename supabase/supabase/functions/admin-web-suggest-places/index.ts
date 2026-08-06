@@ -1,6 +1,6 @@
-// Supabase Edge Function — admin-web-suggest-places (natural caller)
+// Supabase Edge Function — admin-web-suggest-places (product caller)
 //
-// Google Places autocomplete for the admin console's Create Single Unit
+// Google Places autocomplete for the admin console's Create Single Place
 // flow. Gates the request to super_admins, then runs the shared
 // Google + Mesita merge in-process (_shared/suggest-places.ts; the
 // enricher suggest-places HTTP hop was absorbed in MESITA-55) for the
@@ -9,7 +9,7 @@
 // Auth: caller's JWT email must be in public.super_admins.
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, json, readJson } from "../_shared/http.ts";
+import { corsPreflight, methodNotAllowed, readJson } from "../_shared/http.ts";
 import {
   adminClient,
   getAuthedUser,
@@ -22,7 +22,7 @@ type Body = { input?: string; sessionToken?: string };
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
-  if (req.method !== "POST") return json({ ok: false, error: "Method not allowed" }, 405);
+  if (req.method !== "POST") return methodNotAllowed();
 
   const envRes = readEFEnv();
   if (!envRes.ok) return envRes.response;

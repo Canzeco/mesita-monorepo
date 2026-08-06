@@ -1,4 +1,4 @@
-// Supabase Edge Function — consumer-web-update-reservation (natural caller)
+// Supabase Edge Function — consumer-web-update-reservation (product caller)
 //
 // The guest RESCHEDULES their own reservation from the app — new slot, party
 // size, or note:
@@ -23,9 +23,9 @@
 // Deploy: supabase functions deploy consumer-web-update-reservation
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, json, readJson } from "../_shared/http.ts";
+import { corsPreflight, json, methodNotAllowed, readJson } from "../_shared/http.ts";
 import { adminClient, getAuthedUser, readEFEnv } from "../_shared/auth.ts";
-import { invokeArtificialCaller } from "../_shared/internal.ts";
+import { invokeInternalCaller } from "../_shared/internal.ts";
 import { coerceReservationsCallConfig } from "../_shared/reservations-config.ts";
 
 type Body = {
@@ -40,7 +40,7 @@ const MAX_PARTY = 20;
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
-  if (req.method !== "POST") return json({ ok: false, error: "Method not allowed" }, 405);
+  if (req.method !== "POST") return methodNotAllowed();
 
   const envRes = readEFEnv();
   if (!envRes.ok) return envRes.response;
@@ -167,7 +167,7 @@ Deno.serve(async (req) => {
 
   // Ask the venue again. The engine acks early and runs the legs in the
   // background, updating this row as it goes.
-  const fired = await invokeArtificialCaller(
+  const fired = await invokeInternalCaller(
     envRes.env,
     "consumer-web-update-reservation",
     "supabase-edgefunc-reservation-call",

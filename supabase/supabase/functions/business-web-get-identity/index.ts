@@ -1,4 +1,4 @@
-// Supabase Edge Function — business-web-get-identity (natural caller)
+// Supabase Edge Function — business-web-get-identity (product caller)
 //
 // Tiny session-check called by the business console shell (drives the
 // super-admin banner). Thin per-caller door over _shared/identity.ts —

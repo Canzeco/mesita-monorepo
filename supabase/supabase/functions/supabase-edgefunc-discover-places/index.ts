@@ -18,7 +18,7 @@
 // SKU, so surfacing them does not change the per-call price.
 //
 // Returned places are enriched with Mesita-side existence + timestamps so
-// the natural caller can render "already on Mesita" badges without a
+// the product caller can render "already on Mesita" badges without a
 // second round-trip.
 //
 // Auth: internal caller — verify_jwt = true, so the gateway verifies the
@@ -27,7 +27,7 @@
 // Deploy: supabase functions deploy supabase-edgefunc-discover-places
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, json, readJson } from "../_shared/http.ts";
+import { corsPreflight, json, methodNotAllowed, readJson } from "../_shared/http.ts";
 import { adminClient, readEFEnv } from "../_shared/auth.ts";
 import { requireInternalCaller } from "../_shared/internal.ts";
 import { readGooglePlacesKey } from "../_shared/google-places.ts";
@@ -74,7 +74,7 @@ type QueryResult = {
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
-  if (req.method !== "POST") return json({ ok: false, error: "Method not allowed" }, 405);
+  if (req.method !== "POST") return methodNotAllowed();
 
   const envRes = readEFEnv();
   if (!envRes.ok) return envRes.response;

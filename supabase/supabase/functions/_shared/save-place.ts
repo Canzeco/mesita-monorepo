@@ -1,6 +1,6 @@
 // Shared persist half of the create pipeline (formerly the
 // enricher-agent-save-place-data EF — folded in-process per the caller
-// doctrine: artificial callers survive only as shared code; the HTTP hop no
+// doctrine: internal callers survive only as shared code; the HTTP hop no
 // longer earned its cost once create-place.ts became the single call site).
 //
 // Takes the `place` JSON produced by fetchGoogleBasics and writes it as the

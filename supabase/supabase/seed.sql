@@ -1,5 +1,10 @@
 -- seed.sql — applied by `supabase db reset` after every migration.
 -- Idempotent: safe to re-run.
+--
+-- Inserts go through `projects_view` so INSTEAD OF triggers create the
+-- underlying projects + places rows (same path as production create EFs).
+-- Do not insert into `places`/`projects` directly here — the view is the
+-- supported local-seed surface.
 
 insert into public.projects_view (slug, name, category, vibe, price_level, listing_type, status, closes_at, free_rate, premium_rate)
 values

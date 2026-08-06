@@ -1,4 +1,4 @@
-// Supabase Edge Function — supabase-cron-reservation-retries (artificial caller)
+// Supabase Edge Function — supabase-cron-reservation-retries (internal)
 //
 // THE waker for every parked reservation leg (RESERVATIONS-PROTOCOL.md). The
 // call engine can't sleep (the edge runtime dies at ~400s), so anything that
@@ -33,9 +33,9 @@
 // Deploy: supabase functions deploy supabase-cron-reservation-retries
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, json, readJsonOr } from "../_shared/http.ts";
+import { corsPreflight, json, methodNotAllowed, readJsonOr } from "../_shared/http.ts";
 import { adminClient, readEFEnv } from "../_shared/auth.ts";
-import { invokeArtificialCaller, requireInternalCaller } from "../_shared/internal.ts";
+import { invokeInternalCaller, requireInternalCaller } from "../_shared/internal.ts";
 
 const DEFAULT_LIMIT = 25;
 const MAX_LIMIT = 100;
@@ -44,7 +44,7 @@ const STALE_CLAIM_MS = 10 * 60_000; // any leg's longest legal run is < 5 min
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
-  if (req.method !== "POST") return json({ ok: false, error: "Method not allowed" }, 405);
+  if (req.method !== "POST") return methodNotAllowed();
 
   const envRes = readEFEnv();
   if (!envRes.ok) return envRes.response;
@@ -130,7 +130,7 @@ Deno.serve(async (req) => {
   const wake = async (ids: string[], intent: "book" | "callback_retry" | "cancel_notice") => {
     let woken = 0;
     for (const id of ids) {
-      const res = await invokeArtificialCaller(
+      const res = await invokeInternalCaller(
         envRes.env,
         "supabase-cron-reservation-retries",
         "supabase-edgefunc-reservation-call",

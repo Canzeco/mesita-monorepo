@@ -4,7 +4,7 @@
 //
 //   1. Validate the invite token (exists, unexpired, unclaimed,
 //      addressed to the caller's email).
-//   2. Ensure a `businesses` profile exists for the caller — the
+//   2. Ensure an `accounts` profile exists for the caller — the
 //      Supabase invite flow creates the auth.users row but never
 //      writes our domain table.
 //   3. Insert project_members at the stored role (upsert is idempotent
@@ -13,7 +13,7 @@
 //   5. Stamp app_metadata.role = 'business' so future JWTs carry it.
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, json, readJsonOr } from "../_shared/http.ts";
+import { corsPreflight, json, methodNotAllowed, readJsonOr } from "../_shared/http.ts";
 import {
   adminClient,
   getAuthedUser,
@@ -24,7 +24,7 @@ type Body = { token?: string | null };
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
-  if (req.method !== "POST") return json({ ok: false, error: "Method not allowed" }, 405);
+  if (req.method !== "POST") return methodNotAllowed();
 
   const envRes = readEFEnv();
   if (!envRes.ok) return envRes.response;

@@ -1,4 +1,4 @@
-// Supabase Edge Function — consumer-web-claim-instagram (natural caller)
+// Supabase Edge Function — consumer-web-claim-instagram (product caller)
 //
 // Authenticated. The Instagram "door" into the Influencer class (segments v6):
 // a consumer at or above the Influencer follower threshold (classes row,
@@ -29,7 +29,7 @@
 // show @handle instead of just the follower count (MESITA-74).
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, json, readJson } from "../_shared/http.ts";
+import { corsPreflight, json, methodNotAllowed, readJson } from "../_shared/http.ts";
 import { adminClient, getAuthedUser, readEFEnv } from "../_shared/auth.ts";
 
 type Body = { followers?: number; handle?: string };
@@ -42,9 +42,7 @@ type ClassRow = {
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
-  if (req.method !== "POST") {
-    return json({ ok: false, error: "Method not allowed" }, 405);
-  }
+  if (req.method !== "POST") return methodNotAllowed();
 
   const envRes = readEFEnv();
   if (!envRes.ok) return envRes.response;

@@ -1,4 +1,4 @@
-// Supabase Edge Function — consumer-web-cancel-reservation (natural caller)
+// Supabase Edge Function — consumer-web-cancel-reservation (product caller)
 //
 // The guest cancels their OWN reservation from the app — the in-app half of
 // the cancel paths (the other two are voice: eleven-a2-cancel-reservation on
@@ -18,10 +18,9 @@
 // Deploy: supabase functions deploy consumer-web-cancel-reservation
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, json, readJson } from "../_shared/http.ts";
+import { corsPreflight, json, methodNotAllowed, readJson } from "../_shared/http.ts";
 import { adminClient, getAuthedUser, readEFEnv } from "../_shared/auth.ts";
-import { invokeArtificialCaller } from "../_shared/internal.ts";
-import { cancelTicket } from "../_shared/agent-tools.ts";
+import { cancelTicket, fireCancelNotice } from "../_shared/agent-tools.ts";
 
 type Body = { reservation_id?: string; reason?: string };
 
@@ -31,7 +30,7 @@ const PASSED_GRACE_MS = 4 * 3600_000;
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
-  if (req.method !== "POST") return json({ ok: false, error: "Method not allowed" }, 405);
+  if (req.method !== "POST") return methodNotAllowed();
 
   const envRes = readEFEnv();
   if (!envRes.ok) return envRes.response;
@@ -82,12 +81,7 @@ Deno.serve(async (req) => {
   // consequence. The engine acks early, and the retry cron sweeps any notice
   // left 'pending' if this invoke is lost.
   if (notice) {
-    await invokeArtificialCaller(
-      envRes.env,
-      "consumer-web-cancel-reservation",
-      "supabase-edgefunc-reservation-call",
-      { reservation_id: id, intent: "cancel_notice" },
-    );
+    await fireCancelNotice(envRes.env, "consumer-web-cancel-reservation", id);
   }
 
   return json({

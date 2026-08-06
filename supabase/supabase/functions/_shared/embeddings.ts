@@ -1,13 +1,11 @@
 // Shared embedding + ranking helpers for any EF that runs RAG over places.
 //
-// Lives in _shared/ rather than an artificial-caller EF because the helpers
-// are pure or near-pure (a SHA-1 digest, a cosine, an OpenAI HTTP call). The
-// orchestration that ties them together — candidate-pool query, lazy backfill
-// loop, intent composition, diversity trim — lives in the `recommender-*`
-// artificial-caller EFs that import this module.
+// Lives in _shared/ (not a separate EF) because the helpers are pure or
+// near-pure (a SHA-1 digest, a cosine, an OpenAI HTTP call). Candidate-pool
+// query, lazy backfill, intent composition, and diversity trim live in
+// `_shared/recommender-*.ts` and are called in-process from the product EFs.
 //
-// Used by: consumer-web-recommend-swipe, consumer-web-recommend-map, and any future
-// recommender-* artificial caller.
+// Used by: consumer-web-recommend-swipe, consumer-web-recommend-map.
 //
 // MESITA-720: place vectors are produced from a short synthesized blurb
 // (embedding_source_text), never from tags. Prefer On-Update synthesis; the

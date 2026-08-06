@@ -1,4 +1,4 @@
-// Supabase Edge Function — business-web-suggest-places (natural caller)
+// Supabase Edge Function — business-web-suggest-places (product caller)
 //
 // Thin facade for the business /add page picker. Resolves the caller's
 // user id (so the suggest engine can flag verified_partner_self vs _other
@@ -15,7 +15,7 @@
 // Deploy: supabase functions deploy business-web-suggest-places
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, json, readJson } from "../_shared/http.ts";
+import { corsPreflight, methodNotAllowed, readJson } from "../_shared/http.ts";
 import { getOptionalAuthedUser, readEFEnv } from "../_shared/auth.ts";
 import { suggestPlaces } from "../_shared/suggest-places.ts";
 
@@ -23,7 +23,7 @@ type Body = { input?: string; sessionToken?: string };
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
-  if (req.method !== "POST") return json({ ok: false, error: "Method not allowed" }, 405);
+  if (req.method !== "POST") return methodNotAllowed();
 
   const envRes = readEFEnv();
   if (!envRes.ok) return envRes.response;

@@ -1,4 +1,4 @@
-// Supabase Edge Function — admin-web-discover-places (natural caller)
+// Supabase Edge Function — admin-web-discover-places (product caller)
 //
 // Thin facade for the admin bulk-search UI. Gates the request to
 // super_admins, then forwards the query batch to the supabase-edgefunc-discover-places
@@ -11,14 +11,14 @@
 // is not on public.super_admins. efInvoke surfaces the error body to the UI.
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, json, readJson } from "../_shared/http.ts";
+import { corsPreflight, json, methodNotAllowed, readJson } from "../_shared/http.ts";
 import {
   adminClient,
   getAuthedUser,
   readEFEnv,
   requireSuperAdmin,
 } from "../_shared/auth.ts";
-import { invokeArtificialCaller } from "../_shared/internal.ts";
+import { invokeInternalCaller } from "../_shared/internal.ts";
 
 type RequestBody = {
   queries?: string[];
@@ -30,7 +30,7 @@ type RequestBody = {
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
-  if (req.method !== "POST") return json({ ok: false, error: "Method not allowed" }, 405);
+  if (req.method !== "POST") return methodNotAllowed();
 
   const envRes = readEFEnv();
   if (!envRes.ok) return envRes.response;
@@ -46,7 +46,7 @@ Deno.serve(async (req) => {
   if (!bodyRes.ok) return bodyRes.response;
   const body = bodyRes.body;
 
-  const result = await invokeArtificialCaller(
+  const result = await invokeInternalCaller(
     env,
     "admin-web-discover-places",
     "supabase-edgefunc-discover-places",

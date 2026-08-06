@@ -19,7 +19,7 @@
 // Deploy: supabase functions deploy consumer-web-schedule-project-creation
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, json, readJson } from "../_shared/http.ts";
+import { corsPreflight, json, methodNotAllowed, readJson } from "../_shared/http.ts";
 import { adminClient, getAuthedUser, readEFEnv } from "../_shared/auth.ts";
 import { createMinimalPlace } from "../_shared/create-place.ts";
 import { consumeConsumerCreateQuota } from "../_shared/create-quota.ts";
@@ -28,7 +28,7 @@ type Body = { googlePlaceId?: string; placeId?: string; exec_at?: string };
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
-  if (req.method !== "POST") return json({ ok: false, error: "Method not allowed" }, 405);
+  if (req.method !== "POST") return methodNotAllowed();
 
   const envRes = readEFEnv();
   if (!envRes.ok) return envRes.response;

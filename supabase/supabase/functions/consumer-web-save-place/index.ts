@@ -1,4 +1,4 @@
-// Supabase Edge Function — consumer-web-save-place (natural caller)
+// Supabase Edge Function — consumer-web-save-place (product caller)
 //
 // Toggle a place's bookmark state for the calling consumer. Inserting a
 // saved_places row fires the `tg_saved_places_issue_coupon` trigger which
@@ -14,7 +14,7 @@
 // Deploy: supabase functions deploy consumer-web-save-place
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, json, readJson } from "../_shared/http.ts";
+import { corsPreflight, json, methodNotAllowed, readJson } from "../_shared/http.ts";
 import { adminClient, getAuthedUser, readEFEnv } from "../_shared/auth.ts";
 
 type Body = {
@@ -24,9 +24,7 @@ type Body = {
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
-  if (req.method !== "POST") {
-    return json({ ok: false, error: "Method not allowed" }, 405);
-  }
+  if (req.method !== "POST") return methodNotAllowed();
 
   const envRes = readEFEnv();
   if (!envRes.ok) return envRes.response;

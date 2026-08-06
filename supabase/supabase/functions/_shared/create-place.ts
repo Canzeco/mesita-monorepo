@@ -55,7 +55,7 @@ export type CreatePlaceOutcome =
 
 export async function createMinimalPlace(opts: {
   admin: SupabaseClient;
-  // The natural caller's EF name — recorded as place_research.created_by.
+  // The product caller's EF name — recorded as place_research.created_by.
   callerName: string;
   googlePlaceId: string;
   // Caller-specific copy for the 409 (e.g. the business app adds claim advice).

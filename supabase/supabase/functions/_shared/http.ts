@@ -1,7 +1,6 @@
 // HTTP helpers shared by all Mesita Edge Functions: JSON response builder
 // + the canonical OPTIONS pre-flight handler. Pure utilities; no DB calls,
-// no fetches, no auth — safe to import from any natural-caller or
-// artificial-caller EF.
+// no fetches, no auth — safe to import from any product or internal EF.
 
 import { CORS } from "./cors.ts";
 
@@ -16,6 +15,19 @@ export function json(body: unknown, status = 200): Response {
 //   if (req.method === "OPTIONS") return corsPreflight();
 export function corsPreflight(): Response {
   return new Response(null, { headers: CORS });
+}
+
+/** Canonical 405 for every Mesita EF that only accepts POST (+ OPTIONS). */
+export function methodNotAllowed(): Response {
+  return json({ ok: false, error: "Method not allowed" }, 405);
+}
+
+/** Return a 405 unless `req.method` is one of `allowed` (OPTIONS handled separately). */
+export function rejectUnlessMethods(
+  req: Request,
+  ...allowed: string[]
+): Response | null {
+  return allowed.includes(req.method) ? null : methodNotAllowed();
 }
 
 // Parse a JSON request body for endpoints where the body is REQUIRED.

@@ -1,4 +1,4 @@
-// Supabase Edge Function — consumer-web-submit-ticket-total (natural caller)
+// Supabase Edge Function — consumer-web-submit-ticket-total (product caller)
 //
 // v3b (MESITA-850): the amount fallback. The bill is optional for staff, but
 // Performance still needs a peso figure — so when the business skipped it,
@@ -14,7 +14,7 @@
 // Response: { ok: true, ticket: {…bill snapshot} } | 400 | 404 | 409
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, json, readJson } from "../_shared/http.ts";
+import { corsPreflight, json, methodNotAllowed, readJson } from "../_shared/http.ts";
 import { adminClient, getAuthedUser, readEFEnv } from "../_shared/auth.ts";
 import { computeTicketBill } from "../_shared/business-ticket-billing.ts";
 import { resolveLiveTicketRate } from "../_shared/ticket-reprice.ts";
@@ -24,9 +24,7 @@ type Body = { ticketId?: string; totalCents?: number };
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
-  if (req.method !== "POST") {
-    return json({ ok: false, error: "Method not allowed" }, 405);
-  }
+  if (req.method !== "POST") return methodNotAllowed();
 
   const envRes = readEFEnv();
   if (!envRes.ok) return envRes.response;
