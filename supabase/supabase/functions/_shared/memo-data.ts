@@ -23,7 +23,7 @@
 // logs — the concierge stays up.
 
 import type { EFEnv } from "./auth.ts";
-import { invokeArtificialCaller } from "./internal.ts";
+import { invokeInternalCaller } from "./internal.ts";
 import { type ChannelPolicy, coerceChannelPolicy } from "./sourcing.ts";
 import { type MemoPlaceCard, parseMemoPlaceCards } from "./memo-place-card.ts";
 import { createTtlCache } from "./memo-cache.ts";
@@ -118,7 +118,7 @@ export function createMemoData(
     fn: string,
     body: unknown,
   ): Promise<T | null> {
-    const res = await invokeArtificialCaller<T>(env, callerName, fn, body);
+    const res = await invokeInternalCaller<T>(env, callerName, fn, body);
     if (!res.ok) {
       console.error(`[memo-data] ${fn}: ${res.error}`);
       return null;

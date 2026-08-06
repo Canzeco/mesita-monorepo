@@ -1,4 +1,4 @@
-// Supabase Edge Function — supabase-edgefunc-reservation-call (internal / artificial caller)
+// Supabase Edge Function — supabase-edgefunc-reservation-call (internal)
 //
 // THE Reservationist call engine — the sandbox AND the admin Playground are
 // retired (2026-07-27): every ticket is a real public.reservations row and
@@ -57,7 +57,7 @@
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
-import { corsPreflight, json, readJson } from "../_shared/http.ts";
+import { corsPreflight, json, methodNotAllowed, readJson } from "../_shared/http.ts";
 import { adminClient, readEFEnv } from "../_shared/auth.ts";
 import { requireInternalCaller } from "../_shared/internal.ts";
 import { coerceReservationsCallConfig } from "../_shared/reservations-config.ts";
@@ -1084,9 +1084,7 @@ async function runIntents(input: {
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
-  if (req.method !== "POST") {
-    return json({ ok: false, error: "Method not allowed" }, 405);
-  }
+  if (req.method !== "POST") return methodNotAllowed();
 
   const envRes = readEFEnv();
   if (!envRes.ok) return envRes.response;

@@ -1,4 +1,4 @@
-// Supabase Edge Function — consumer-web-list-saved-places (natural caller)
+// Supabase Edge Function — consumer-web-list-saved-places (product caller)
 //
 // Authenticated read of the caller's bookmarks. Returns saved_places
 // joined with the place summary the saved card needs (name, slug,
@@ -7,7 +7,7 @@
 // Deploy: supabase functions deploy consumer-web-list-saved-places
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { clampIntRange, corsPreflight, json, readJsonOr } from "../_shared/http.ts";
+import { clampIntRange, corsPreflight, json, rejectUnlessMethods, readJsonOr } from "../_shared/http.ts";
 import { adminClient, getAuthedUser, readEFEnv } from "../_shared/auth.ts";
 import { attachPlaces } from "../_shared/reservation-places.ts";
 
@@ -16,9 +16,8 @@ const MAX_LIMIT = 200;
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
-  if (req.method !== "GET" && req.method !== "POST") {
-    return json({ ok: false, error: "Method not allowed" }, 405);
-  }
+  const _methodGuard = rejectUnlessMethods(req, "GET", "POST");
+  if (_methodGuard) return _methodGuard;
 
   const envRes = readEFEnv();
   if (!envRes.ok) return envRes.response;

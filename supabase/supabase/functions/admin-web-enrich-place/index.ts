@@ -1,4 +1,4 @@
-// Supabase Edge Function — admin-web-enrich-place (natural caller / admin)
+// Supabase Edge Function — admin-web-enrich-place (product caller / admin)
 //
 // Manual re-enrich trigger for a single existing place. Given a project_id and a
 // `mode`, it reseeds the Enricher pipeline row (place_research) so the pg_cron
@@ -30,7 +30,7 @@
 // Deploy: supabase functions deploy admin-web-enrich-place
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, json, readJson } from "../_shared/http.ts";
+import { corsPreflight, json, methodNotAllowed, readJson } from "../_shared/http.ts";
 import { adminClient, getAuthedUser, readEFEnv, requireSuperAdmin } from "../_shared/auth.ts";
 import { advanceResearchStage, markProjectGenerating, seedPlaceResearch } from "../_shared/enrich-pipeline.ts";
 
@@ -42,7 +42,7 @@ const MODES: ReenrichMode[] = ["full", "analysis", "contents"];
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
-  if (req.method !== "POST") return json({ ok: false, error: "Method not allowed" }, 405);
+  if (req.method !== "POST") return methodNotAllowed();
 
   const envRes = readEFEnv();
   if (!envRes.ok) return envRes.response;

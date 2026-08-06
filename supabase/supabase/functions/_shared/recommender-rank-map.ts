@@ -1,8 +1,8 @@
 // In-process ranking pipeline for the consumer catalog (map) view.
 //
-// Absorbed from the former `recommender-rank-map` artificial-caller EF
+// Absorbed from the former `recommender-rank-map` internal EF
 // (MESITA-54): the HTTP hop was a synchronous 1:1 forward with a single
-// natural caller, so per the actor-origin grammar the pipeline now runs
+// product caller, so per the actor-origin grammar the pipeline now runs
 // in-process inside `consumer-web-recommend-map`. Any future surface that
 // needs the same ranking imports this module — no endpoint required.
 //

@@ -1,6 +1,6 @@
 // Shared suggest-places engine (Google + Mesita merge).
 //
-// Formerly the enricher suggest-places artificial-caller EF. It was only
+// Formerly the enricher suggest-places internal EF. It was only
 // ever invoked by the three thin suggest facades (consumer-web-,
 // business-web-, admin-web-suggest-places), so per the caller-nomenclature
 // grammar (one endpoint = one caller) the HTTP hop didn't earn its cost on
@@ -68,7 +68,7 @@ export type SuggestPlacesArgs = {
 
 // Runs the merge and returns the full HTTP response for the facade to
 // send verbatim. `callerName` is echoed in the success envelope exactly
-// like the old artificial caller did, so the client-visible shape is
+// like the old internal caller did, so the client-visible shape is
 // unchanged.
 export async function suggestPlaces(
   env: EFEnv,

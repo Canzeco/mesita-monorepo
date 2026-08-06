@@ -1,4 +1,4 @@
-// Supabase Edge Function — consumer-web-list-reservations (natural caller)
+// Supabase Edge Function — consumer-web-list-reservations (product caller)
 //
 // Authenticated read of the caller's reservations. Returns booking
 // metadata joined with the place summary — NO discount /
@@ -14,7 +14,7 @@
 // Deploy: supabase functions deploy consumer-web-list-reservations
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { clampIntRange, corsPreflight, json, readJsonOr } from "../_shared/http.ts";
+import { clampIntRange, corsPreflight, json, rejectUnlessMethods, readJsonOr } from "../_shared/http.ts";
 import { adminClient, getAuthedUser, readEFEnv } from "../_shared/auth.ts";
 import { attachPlaces } from "../_shared/reservation-places.ts";
 
@@ -40,9 +40,8 @@ type Body = { limit?: number; scope?: Scope };
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
-  if (req.method !== "GET" && req.method !== "POST") {
-    return json({ ok: false, error: "Method not allowed" }, 405);
-  }
+  const _methodGuard = rejectUnlessMethods(req, "GET", "POST");
+  if (_methodGuard) return _methodGuard;
 
   const envRes = readEFEnv();
   if (!envRes.ok) return envRes.response;

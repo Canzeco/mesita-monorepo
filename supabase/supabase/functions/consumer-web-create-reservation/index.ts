@@ -1,4 +1,4 @@
-// Supabase Edge Function — consumer-web-create-reservation (natural caller)
+// Supabase Edge Function — consumer-web-create-reservation (product caller)
 //
 // Authenticated. Creates a reservation row for the caller and, if the
 // consumer already has an active coupon for the same place (because
@@ -15,10 +15,10 @@
 // Deploy: supabase functions deploy consumer-web-create-reservation
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, json, readJson } from "../_shared/http.ts";
+import { corsPreflight, json, methodNotAllowed, readJson } from "../_shared/http.ts";
 import { adminClient, getAuthedUser, readEFEnv } from "../_shared/auth.ts";
 import { getTierConfig } from "../_shared/membership.ts";
-import { invokeArtificialCaller } from "../_shared/internal.ts";
+import { invokeInternalCaller } from "../_shared/internal.ts";
 import { generateReservationCode, isUniqueViolation } from "../_shared/reservation-code.ts";
 import { attachPlaces } from "../_shared/reservation-places.ts";
 
@@ -31,9 +31,7 @@ type Body = {
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
-  if (req.method !== "POST") {
-    return json({ ok: false, error: "Method not allowed" }, 405);
-  }
+  if (req.method !== "POST") return methodNotAllowed();
 
   const envRes = readEFEnv();
   if (!envRes.ok) return envRes.response;
@@ -199,7 +197,7 @@ Deno.serve(async (req) => {
   // Attempt 1 is immediate: hand off to the Reservationist to phone the venue.
   // Best-effort — the reservation already exists, so a call-trigger failure must
   // NOT fail the request (the call EF returns 503 until ELEVENLABS_KEY is set).
-  const call = await invokeArtificialCaller(
+  const call = await invokeInternalCaller(
     envRes.env,
     "consumer-web-create-reservation",
     "supabase-edgefunc-reservation-call",

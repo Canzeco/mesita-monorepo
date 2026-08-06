@@ -16,7 +16,7 @@
 // Deploy: supabase functions deploy eleven-a4-cancel-reservation
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, json, readJsonOr } from "../_shared/http.ts";
+import { corsPreflight, json, methodNotAllowed, readJsonOr } from "../_shared/http.ts";
 import { adminClient, readEFEnv } from "../_shared/auth.ts";
 import {
   cancelTicket,
@@ -24,12 +24,12 @@ import {
   requireAgentSecret,
   sameLine,
   ticketByCode,
+  fireCancelNotice,
 } from "../_shared/agent-tools.ts";
-import { invokeArtificialCaller } from "../_shared/internal.ts";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
-  if (req.method !== "POST") return json({ ok: false, error: "Method not allowed" }, 405);
+  if (req.method !== "POST") return methodNotAllowed();
 
   const envRes = readEFEnv();
   if (!envRes.ok) return envRes.response;
@@ -75,12 +75,7 @@ Deno.serve(async (req) => {
   const err = await cancelTicket(admin, ticket.id, "business", cleanNote(body.reason), "guest_cancel");
   if (err) return json({ ok: false, error: err }, 500);
 
-  await invokeArtificialCaller(
-    envRes.env,
-    "eleven-a4-cancel-reservation",
-    "supabase-edgefunc-reservation-call",
-    { reservation_id: ticket.id, intent: "cancel_notice" },
-  );
+  await fireCancelNotice(envRes.env, "eleven-a4-cancel-reservation", ticket.id);
 
   return json({
     ok: true,

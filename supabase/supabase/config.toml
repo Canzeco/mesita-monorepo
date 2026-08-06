@@ -501,7 +501,7 @@ verify_jwt = true
 [functions.admin-web-discover-places]
 verify_jwt = true
 
-# Google Places autocomplete for Create Single Unit (admin console).
+# Google Places autocomplete for Create Single Place (admin console).
 [functions.admin-web-suggest-places]
 verify_jwt = true
 
@@ -511,7 +511,7 @@ verify_jwt = true
 verify_jwt = true
 
 # Super-admin free-text place search (name / slug / id) for the admin
-# console's Manage Single Unit place picker.
+# console's Manage Single Place place picker.
 [functions.admin-web-get-scoring-config]
 verify_jwt = true
 
@@ -556,8 +556,6 @@ verify_jwt = true
 [functions.admin-web-grant-class]
 verify_jwt = true
 
-# Atlas configuration — place research/enrichment knobs on app_settings,
-# owned by admins.
 # Read-only per-place activity for the admin Performance tab: reservations +
 # their Reservationist call lifecycle, story/review screenshots, review text,
 # and the two inbound AI lines. No writes — a booking is changed by phoning
@@ -565,13 +563,18 @@ verify_jwt = true
 [functions.admin-web-get-place-activity]
 verify_jwt = true
 
+# Atlas / Enricher configuration — place research knobs on app_settings.
 [functions.admin-web-get-settings]
 verify_jwt = true
 
 [functions.admin-web-update-atlas-config]
 verify_jwt = true
 
-# Re-run the profile enricher on an existing place (super-admin only).
+# Re-run the Enricher on an existing place (super-admin only).
+[functions.admin-web-enrich-place]
+verify_jwt = true
+
+# Consumer Premium Checkout session creator.
 [functions.consumer-web-create-subscription]
 verify_jwt = true
 
@@ -581,6 +584,75 @@ verify_jwt = true
 
 [functions.stripe-webhook-handle-event]
 verify_jwt = false
+
+# --- Admin config surfaces (Atlas / Enricher / Sourcing / Memo / Reservations /
+# Lineup / Rewards / Models) — each re-checks super_admins. Listed explicitly so
+# the ACL ledger matches the folders on disk (defaults were already verify_jwt=true).
+[functions.admin-web-get-memo-config]
+verify_jwt = true
+[functions.admin-web-update-memo-config]
+verify_jwt = true
+[functions.admin-web-get-lineup-config]
+verify_jwt = true
+[functions.admin-web-update-lineup-config]
+verify_jwt = true
+[functions.admin-web-get-sourcing-config]
+verify_jwt = true
+[functions.admin-web-update-sourcing-config]
+verify_jwt = true
+[functions.admin-web-get-reservations-config]
+verify_jwt = true
+[functions.admin-web-update-reservations-config]
+verify_jwt = true
+[functions.admin-web-get-rewards-config]
+verify_jwt = true
+[functions.admin-web-update-rewards-config]
+verify_jwt = true
+[functions.admin-web-get-models-config]
+verify_jwt = true
+[functions.admin-web-update-models-config]
+verify_jwt = true
+[functions.admin-web-get-place-enrichment]
+verify_jwt = true
+[functions.admin-web-check-api-health]
+verify_jwt = true
+[functions.admin-web-set-plan]
+verify_jwt = true
+
+# Reservationist product + cron companions not previously listed.
+[functions.consumer-web-cancel-reservation]
+verify_jwt = true
+[functions.consumer-web-update-reservation]
+verify_jwt = true
+[functions.consumer-web-suggest-places]
+verify_jwt = true
+[functions.business-web-list-reservations]
+verify_jwt = true
+[functions.business-web-confirm-reservation]
+verify_jwt = true
+[functions.supabase-edgefunc-sync-reservationist]
+verify_jwt = true
+
+# ElevenLabs Reservationist tools — gateway accepts the project anon JWT;
+# each EF still requires x-agent-secret (see _shared/agent-tools.ts).
+[functions.eleven-a1-report-outcome]
+verify_jwt = true
+[functions.eleven-a2-cancel-reservation]
+verify_jwt = true
+[functions.eleven-a2-confirm-reservation]
+verify_jwt = true
+[functions.eleven-a3-cancel-reservation]
+verify_jwt = true
+[functions.eleven-a3-verify-caller]
+verify_jwt = true
+[functions.eleven-a4-cancel-reservation]
+verify_jwt = true
+[functions.eleven-a4-find-reservation]
+verify_jwt = true
+[functions.eleven-a4-verify-caller]
+verify_jwt = true
+[functions.eleven-agent-get-reservation]
+verify_jwt = true
 
 # --- Twilio ---
 #

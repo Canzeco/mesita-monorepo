@@ -1,6 +1,6 @@
 // Supabase Edge Function — admin-web-search-places
 //
-// Super-admin place search for the admin console's "Manage Single Unit"
+// Super-admin place search for the admin console's "Manage Single Place"
 // place picker. Takes a free-text query and returns matching Mesita places
 // (by Mesita name / google_name / slug, or an exact id paste). The operator
 // picks one, and the admin console then drives that place through the
@@ -11,7 +11,7 @@
 // verify_jwt = true gates non-bearer callers at the gateway.
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, json, readJson } from "../_shared/http.ts";
+import { corsPreflight, json, methodNotAllowed, readJson } from "../_shared/http.ts";
 import {
   adminClient,
   getAuthedUser,
@@ -27,7 +27,7 @@ const UUID_RE =
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
-  if (req.method !== "POST") return json({ ok: false, error: "Method not allowed" }, 405);
+  if (req.method !== "POST") return methodNotAllowed();
 
   const envRes = readEFEnv();
   if (!envRes.ok) return envRes.response;
@@ -54,7 +54,7 @@ Deno.serve(async (req) => {
   let rows: Record<string, unknown>[] = [];
 
   if (q.length === 0) {
-    // Empty query — browse recent units for the catalog landing state.
+    // Empty query — browse recent places for the catalog landing state.
     const { data, error } = await admin
       .from("projects_view")
       .select(cols)
@@ -99,7 +99,7 @@ Deno.serve(async (req) => {
   }
 
   // Trim photos to the first thumbnail to keep the payload small.
-  // enriched / verified are derived for the Manage Single Unit catalog table.
+  // enriched / verified are derived for the Manage Single Place catalog table.
   // Label with displayName (Mesita priority) — never two rows for one place.
   const places = rows.map((v) => {
     const contentStatus = (v.content_status as string | null) ?? null;

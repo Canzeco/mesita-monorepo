@@ -18,7 +18,9 @@
 // belongs to that verified caller.
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
+import type { EFEnv } from "./auth.ts";
 import { json } from "./http.ts";
+import { invokeInternalCaller } from "./internal.ts";
 import { timingSafeEqual } from "./timing-safe-equal.ts";
 
 // ── Auth ─────────────────────────────────────────────────────────────────────
@@ -292,4 +294,22 @@ export async function cancelTicket(
 
 export function cleanNote(v: unknown, max = 300): string {
   return typeof v === "string" ? v.trim().slice(0, max) : "";
+}
+
+/**
+ * Fire-and-forget cancel-notice hop to `supabase-edgefunc-reservation-call`.
+ * Callers that set notice_state='pending' via `cancelTicket` should invoke this
+ * once; the reservation-retries cron is the safety net if the hop is lost.
+ */
+export async function fireCancelNotice(
+  env: EFEnv,
+  callerName: string,
+  reservationId: string,
+): Promise<void> {
+  await invokeInternalCaller(
+    env,
+    callerName,
+    "supabase-edgefunc-reservation-call",
+    { reservation_id: reservationId, intent: "cancel_notice" },
+  );
 }

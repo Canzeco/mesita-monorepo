@@ -36,7 +36,7 @@
 // Platform, shared with the enricher). Neither key ever leaves Supabase.
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, json, readJson } from "../_shared/http.ts";
+import { corsPreflight, json, methodNotAllowed, readJson } from "../_shared/http.ts";
 import { getOptionalAuthedUser, readEFEnv } from "../_shared/auth.ts";
 import { readGooglePlacesKey } from "../_shared/google-places.ts";
 import type { ChannelPolicy } from "../_shared/sourcing.ts";
@@ -82,9 +82,7 @@ const CONFIG_CACHE_MS = 30_000;
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
-  if (req.method !== "POST") {
-    return json({ ok: false, error: "Method not allowed" }, 405);
-  }
+  if (req.method !== "POST") return methodNotAllowed();
 
   const envRes = readEFEnv();
   if (!envRes.ok) return envRes.response;

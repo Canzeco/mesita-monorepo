@@ -1,10 +1,11 @@
 // Supabase Edge Function — business-web-list-team
 //
 // Returns the active team of a place in one round trip:
-//   - businesses : project_members joined to businesses (email-pool roles)
+//   - businesses : project_members joined to accounts (email-pool roles;
+//     response key stays `businesses` for the business console)
 //   - pendingBusinessInvites
 //   - myRole : caller's role on this place (or "super_admin"), so the
-//     UI doesn't have to derive owner-ness from the businesses list and
+//     UI doesn't have to derive owner-ness from the member list and
 //     gets the right answer for super-admins who skipped project_members
 //
 // The team is the BUSINESS team only. Waiters were retired (MESITA-833):
@@ -15,7 +16,7 @@
 // (public.super_admins) bypass the membership check.
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, json, readJsonOr, readPlaceIdAlias } from "../_shared/http.ts";
+import { corsPreflight, json, methodNotAllowed, readJsonOr, readPlaceIdAlias } from "../_shared/http.ts";
 import {
   adminClient,
   getAuthedUser,
@@ -27,7 +28,7 @@ type Body = { placeId?: string; projectId?: string };
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
-  if (req.method !== "POST") return json({ ok: false, error: "Method not allowed" }, 405);
+  if (req.method !== "POST") return methodNotAllowed();
 
   const envRes = readEFEnv();
   if (!envRes.ok) return envRes.response;
@@ -95,7 +96,7 @@ Deno.serve(async (req) => {
   }));
 
   // `myRole` lets the client gate UI without re-deriving from the
-  // businesses list (super-admins aren't always in project_members).
+  // member list (super-admins aren't always in project_members).
   const myRole = memberRes.membership.isSuperAdmin
     ? "super_admin"
     : memberRes.membership.role;

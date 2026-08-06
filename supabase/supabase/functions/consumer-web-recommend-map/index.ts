@@ -1,9 +1,9 @@
-// Supabase Edge Function — consumer-web-recommend-map (natural caller)
+// Supabase Edge Function — consumer-web-recommend-map (product caller)
 //
 // Consumer catalog view. Resolves the caller's profile (anonymous OK) and
 // runs the catalog-ranking pipeline in-process via
 // _shared/recommender-rank-map.ts. The pipeline used to live behind the
-// recommender-rank-map artificial-caller EF; the HTTP hop was a synchronous
+// recommender-rank-map internal EF; the HTTP hop was a synchronous
 // 1:1 forward, so it was absorbed here (MESITA-54). Any future surface —
 // business, admin, scheduled refresh — imports the same _shared module.
 //
@@ -11,7 +11,7 @@
 // Deploy: supabase functions deploy consumer-web-recommend-map
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, json, readJsonOr } from "../_shared/http.ts";
+import { corsPreflight, json, methodNotAllowed, readJsonOr } from "../_shared/http.ts";
 import { adminClient, getOptionalAuthedUser, readEFEnv } from "../_shared/auth.ts";
 import { clampPositive, type ConsumerProfile } from "../_shared/recommender-pool.ts";
 import { rankMapCatalog } from "../_shared/recommender-rank-map.ts";
@@ -28,7 +28,7 @@ type Body = {
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
-  if (req.method !== "POST") return json({ ok: false, error: "Method not allowed" }, 405);
+  if (req.method !== "POST") return methodNotAllowed();
 
   const envRes = readEFEnv();
   if (!envRes.ok) return envRes.response;

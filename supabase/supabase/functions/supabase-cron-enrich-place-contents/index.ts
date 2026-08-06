@@ -1,4 +1,4 @@
-// Supabase Edge Function — supabase-cron-enrich-place-contents (artificial caller / cron)
+// Supabase Edge Function — supabase-cron-enrich-place-contents (internal / cron)
 //
 // Stage 3 (final) of the Enricher pipeline. The pg_cron poller claims
 // place_research rows at stage='contents' and fires this EF with { project_id }.
@@ -23,7 +23,7 @@
 // Deploy: supabase functions deploy supabase-cron-enrich-place-contents
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { invokeArtificialCaller } from "../_shared/internal.ts";
+import { invokeInternalCaller } from "../_shared/internal.ts";
 import { applyProfileToUpdate, synthesisModelFor, synthesizeProfile } from "../_shared/enrich-synthesis.ts";
 import { COST, loadEnrichConfig } from "../_shared/enrich-config.ts";
 import {
@@ -257,7 +257,7 @@ serveEnrichStage("contents", async (admin, env, row) => {
     imagesSummary = "image storage disabled (admin)";
     imagesMeta.images = "disabled";
   } else if (assets.length > 0) {
-    const storeRes = await invokeArtificialCaller<{ queued?: number }>(
+    const storeRes = await invokeInternalCaller<{ queued?: number }>(
       env,
       "supabase-cron-enrich-place-contents",
       "supabase-edgefunc-store-place-images",

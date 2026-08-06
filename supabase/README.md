@@ -10,30 +10,30 @@
 ## Architectural rules
 
 1. **Clients never touch the database.** Edge Functions are the only write path (service role inside EFs).
-2. **Edge Functions do not call each other.** Each function owns an end-to-end workflow.
+2. **Default modularization is in-process `_shared/` imports.** EF→EF hops exist only where they earn their cost (`supabase-edgefunc-*` / `supabase-cron-*`, gated by `requireInternalCaller` + `X-Internal-Caller`). Product callers may invoke internal ones, never the reverse.
 3. **Integration config lives in git** (`integrations/`) and is applied with `scripts/` — not ad-hoc Console clicks.
-4. **Workflow logic lives in Edge Functions**, not in Twilio Studio or ElevenLabs prompts alone (except reservation voice agent, post-MVP).
+4. **Workflow logic lives in Edge Functions**, not in Twilio Studio or ElevenLabs prompts alone (Reservationist voice agents are the deliberate exception for mid-call tool calls).
 
 ---
 
 ## Repository layout
 
 ```
-mesita-supabase/
+supabase/                     # package root inside mesita-monorepo
 ├── README.md                 # you are here
+├── ARCHITECTURE.md           # system map
 ├── integrations/             # declarative config (git = source of truth)
 │   ├── twilio/
 │   │   ├── numbers.json      # the number inventory — owner + releasable
 │   │   └── twiml/            # voice TwiML (recording, etc.)
 │   └── elevenlabs/           # the Reservationist fleet (a1–a4)
 ├── scripts/
-│   ├── deploy.sh             # db push + regen types for web repos
+│   ├── deploy.sh             # db push + regen types for web apps
 │   └── setup-twilio-call-recording.sh
-├── supabase/
+├── supabase/                 # CLI project dir (run `supabase` from package root)
 │   ├── config.toml           # CLI config, per-function JWT flags
-│   ├── functions/            # Edge Functions (runtime)
-│   ├── migrations/
-│   └── seed.sql
+│   ├── functions/            # Edge Functions (runtime) + `_shared/`
+│   └── migrations/
 └── .env.twilio.local.example # local Twilio scripts only (gitignored)
 ```
 
@@ -44,7 +44,7 @@ mesita-supabase/
 | **App logic** (tickets, reservations, auth) | `supabase/functions/` | `supabase functions deploy` |
 | **Stripe** | `stripe-webhook-handle-event` | same |
 | **Twilio numbers, TwiML** | `integrations/twilio/` + `scripts/` | run scripts locally |
-| **ElevenLabs agents** (later) | `integrations/elevenlabs/` | API scripts + Supabase webhook EF |
+| **ElevenLabs agents** (a1–a4 live) | `integrations/elevenlabs/` + `eleven-a*` EFs | API scripts + mid-call tool EFs |
 
 ---
 
@@ -158,13 +158,15 @@ RLS: clients read only what they may see; writes go through Edge Functions.
 
 ---
 
-## Related repos
+## Related packages (same monorepo)
 
-| Repo | Role |
+| Path | Role |
 |---|---|
-| `mesita-web-consumer` | Diner app |
-| `mesita-web-business` | Place dashboard |
-| `mesita-web-admin` | Internal admin |
-| **mesita-supabase** | **Backend + integrations** |
+| `apps/web-consumer` | Diner app |
+| `apps/web-business` | Place dashboard |
+| `apps/web-admin` | Internal admin |
+| `apps/mobile-consumer` | Native diner app |
+| **`supabase/` (this package)** | **Backend + integrations** |
 
-No separate `mesita-twilio` or `mesita-elevenlabs` repos — config and runtime stay here.
+The six former standalone repos are frozen history. No separate `mesita-twilio` or
+`mesita-elevenlabs` packages — config and runtime stay here.

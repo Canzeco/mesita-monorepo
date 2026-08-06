@@ -1,20 +1,23 @@
-// Shared helpers for invoking *artificial-caller* EFs from *natural-caller*
-// EFs (and authenticating those calls on the receiving end).
+// Shared helpers for EF→EF hops: authenticating internal callers and invoking
+// `supabase-edgefunc-*` / `supabase-cron-*` endpoints from product EFs.
 //
-// Background: natural callers (admin/business/consumer/check) are
-// invoked by web clients and authenticate end users. Artificial callers
-// (recommender/enricher/…) are reusable internal services with no end
-// user — they exist so multiple natural callers can share expensive
-// pipelines (RAG, Google Places, Enricher Storage IO) without duplicating
-// hundreds of lines of code per natural EF.
+// Background: product callers (admin-web / business-web / consumer-web /
+// check-web / staff-web / reservationist-agent / stripe-webhook) authenticate
+// end users or vendors. Internal endpoints (`supabase-edgefunc-*`,
+// `supabase-cron-*`) are reusable services with no end-user session — they
+// exist so multiple product callers can share expensive pipelines without
+// duplicating hundreds of lines per product EF. Default modularization is
+// still in-process `_shared/` imports; use an EF hop only when it earns its
+// cost (async ack, separate deploy boundary, cron claim).
 //
-// Wire protocol between the two:
-//   1. The natural caller sends `Authorization: Bearer <a service_role JWT>`
-//      and `X-Internal-Caller: <natural-EF-name>` to the artificial caller.
-//   2. The artificial caller has `verify_jwt = true` in supabase/config.toml,
+// Wire protocol:
+//   1. The product caller sends `Authorization: Bearer <service_role JWT or
+//      sb_secret_…>` and `X-Internal-Caller: <product-EF-name>` to the
+//      internal endpoint.
+//   2. The internal endpoint has `verify_jwt = true` in supabase/config.toml,
 //      so Supabase's gateway VERIFIES THE JWT SIGNATURE before the function
 //      runs — a forged/unsigned token never reaches our code.
-//   3. Inside the artificial caller, `requireInternalCaller(req, env)` decodes
+//   3. Inside the internal endpoint, `requireInternalCaller(req, env)` decodes
 //      the (already-signature-verified) JWT and requires `role === 'service_role'`.
 //      Anything else gets a 403.
 //
@@ -57,8 +60,9 @@ function decodeJwtPayload(token: string): Record<string, unknown> | null {
 }
 
 // Verifies that a request was made by another EF (or the pg_cron poller) with a
-// service-role credential. Use this at the top of every artificial-caller EF —
-// and ONLY on EFs that are `verify_jwt = true` (see the invariant above).
+// service-role credential. Use this at the top of every `supabase-edgefunc-*`
+// / `supabase-cron-*` EF — and ONLY on EFs that are `verify_jwt = true`
+// (see the invariant above).
 //
 // Two accepted bearer shapes (the platform migrated EF env to the NEW API
 // keys on 2026-07-05, so both circulate):
@@ -67,7 +71,7 @@ function decodeJwtPayload(token: string): Record<string, unknown> | null {
 //      secret, dashboard key.)
 //   2. New secret API key (sb_secret_…) — this is what the platform now
 //      injects as SUPABASE_SERVICE_ROLE_KEY into EF env, so it's what
-//      invokeArtificialCaller sends. Not a JWT, so no payload to check;
+//      invokeInternalCaller sends. Not a JWT, so no payload to check;
 //      instead we constant-time compare against our own env.serviceKey
 //      (both sides read the same injected secret). The publishable key
 //      (sb_publishable_…) never matches.
@@ -98,23 +102,23 @@ export function requireInternalCaller(
   return { ok: true, callerName };
 }
 
-// Invokes an artificial-caller EF from a natural-caller EF. Returns the
-// parsed body verbatim — the artificial caller's response shape is the
-// natural caller's response shape minus auth/shaping concerns.
+// Invokes an internal (`supabase-edgefunc-*` / `supabase-cron-*`) EF from a
+// product caller. Returns the parsed body verbatim — the internal endpoint's
+// response shape is the product caller's response shape minus auth/shaping.
 //
 // We use the gateway URL (env.url + "/functions/v1/<name>") directly
 // instead of supabase-js's functions.invoke so we can pass through arbitrary
 // headers without supabase-js layering its own auth on top.
-export async function invokeArtificialCaller<T = unknown>(
+export async function invokeInternalCaller<T = unknown>(
   env: EFEnv,
-  callerName: string, // who the natural caller is, e.g. "consumer-web-recommend-swipe"
-  artificialName: string, // who we're calling, e.g. "supabase-edgefunc-store-place-images"
+  callerName: string, // who the product caller is, e.g. "consumer-web-recommend-swipe"
+  internalName: string, // who we're calling, e.g. "supabase-edgefunc-store-place-images"
   body: unknown,
 ): Promise<
   | { ok: true; data: T }
   | { ok: false; error: string; status: number }
 > {
-  const url = `${env.url}/functions/v1/${artificialName}`;
+  const url = `${env.url}/functions/v1/${internalName}`;
   let r: Response;
   try {
     r = await fetch(url, {
@@ -129,7 +133,7 @@ export async function invokeArtificialCaller<T = unknown>(
   } catch (err) {
     return {
       ok: false,
-      error: err instanceof Error ? err.message : `network error calling ${artificialName}`,
+      error: err instanceof Error ? err.message : `network error calling ${internalName}`,
       status: 0,
     };
   }
@@ -139,14 +143,14 @@ export async function invokeArtificialCaller<T = unknown>(
   } catch {
     return {
       ok: false,
-      error: `${artificialName} returned non-JSON (HTTP ${r.status})`,
+      error: `${internalName} returned non-JSON (HTTP ${r.status})`,
       status: r.status,
     };
   }
   if (!r.ok) {
     const msg =
       (parsed as { error?: string } | null)?.error ??
-      `${artificialName} returned HTTP ${r.status}`;
+      `${internalName} returned HTTP ${r.status}`;
     return { ok: false, error: msg, status: r.status };
   }
   return { ok: true, data: parsed as T };

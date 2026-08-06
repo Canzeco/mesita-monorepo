@@ -1,4 +1,4 @@
-// Supabase Edge Function — business-web-change-subscription (natural caller)
+// Supabase Edge Function — business-web-change-subscription (product caller)
 //
 // Authenticated, owner-only. The paid door into a place's plan:
 //   Free  — no membership
@@ -34,7 +34,7 @@
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import Stripe from "npm:stripe@17";
-import { corsPreflight, json, readJson, readPlaceIdAlias } from "../_shared/http.ts";
+import { corsPreflight, json, methodNotAllowed, readJson, readPlaceIdAlias } from "../_shared/http.ts";
 import { adminClient, getAuthedUser, readEFEnv, requireOwner } from "../_shared/auth.ts";
 import {
   ensureWholeCatalog,
@@ -99,9 +99,7 @@ const MOCK_SUBSCRIPTION =
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
-  if (req.method !== "POST") {
-    return json({ ok: false, error: "Method not allowed" }, 405);
-  }
+  if (req.method !== "POST") return methodNotAllowed();
 
   const envRes = readEFEnv();
   if (!envRes.ok) return envRes.response;

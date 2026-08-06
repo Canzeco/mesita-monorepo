@@ -8,18 +8,18 @@
 #
 # Edge Functions are deployed individually (or via `supabase functions
 # deploy <name>`) when their code actually changes — we don't redeploy
-# all 52 on every push. The deploy step lives in CI / per-EF commits.
+# every EF (~137 folders) on every push. The deploy step lives in CI /
+# per-EF commits.
 
 set -euo pipefail
 
 PROJECT_REF="yjalywfzdelacdzccpgb"
 
-# Types are copied into each app package's generated types file, when it has one
-# (web-admin has no database.types.ts and is skipped below).
+# Types are copied into each app package that keeps a generated
+# `database.types.ts` (web-admin / web-landing / web-check / mobile do not).
 WEB_REPOS=(
   "../apps/web-business"
   "../apps/web-consumer"
-  "../apps/web-admin"
 )
 
 cd "$(dirname "$0")/.."

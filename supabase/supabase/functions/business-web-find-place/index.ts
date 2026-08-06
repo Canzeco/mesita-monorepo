@@ -25,14 +25,13 @@
 //                     host matches the website_url host, ±www. and
 //                     subdomain).
 //
-// The third "Talk to us" option (WhatsApp deep-link) is always shown
-// by the UI and doesn't need a server hint — it's a static fallback
-// channel handled entirely on the FE.
+// A third "Talk to us" ops contact path (when enabled in the FE) does not
+// need a server hint — it's a static fallback channel handled on the client.
 //
 // Auth: any signed-in user.
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, json, readJson } from "../_shared/http.ts";
+import { corsPreflight, json, methodNotAllowed, readJson } from "../_shared/http.ts";
 import {
   adminClient,
   getAuthedUser,
@@ -51,9 +50,7 @@ const PLACE_COLUMNS =
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
-  if (req.method !== "POST") {
-    return json({ ok: false, error: "Method not allowed" }, 405);
-  }
+  if (req.method !== "POST") return methodNotAllowed();
 
   const envRes = readEFEnv();
   if (!envRes.ok) return envRes.response;

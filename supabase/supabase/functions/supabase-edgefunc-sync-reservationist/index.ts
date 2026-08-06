@@ -1,4 +1,4 @@
-// Supabase Edge Function — supabase-edgefunc-sync-reservationist (internal / artificial caller)
+// Supabase Edge Function — supabase-edgefunc-sync-reservationist (internal)
 //
 // Config-as-code for the ElevenLabs Reservationist FLEET: makes the LIVE
 // workspace match Mesita's spec via the ElevenLabs management API — the
@@ -41,7 +41,7 @@
 // Deploy: supabase functions deploy supabase-edgefunc-sync-reservationist
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, json, readJsonOr } from "../_shared/http.ts";
+import { corsPreflight, json, methodNotAllowed, readJsonOr } from "../_shared/http.ts";
 import { adminClient, readEFEnv } from "../_shared/auth.ts";
 import { requireInternalCaller } from "../_shared/internal.ts";
 import {
@@ -210,9 +210,7 @@ async function upsertTool(
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
-  if (req.method !== "POST") {
-    return json({ ok: false, error: "Method not allowed" }, 405);
-  }
+  if (req.method !== "POST") return methodNotAllowed();
 
   const envRes = readEFEnv();
   if (!envRes.ok) return envRes.response;

@@ -1,4 +1,4 @@
-// Supabase Edge Function — check-web-submit-bill (natural caller: the public
+// Supabase Edge Function — check-web-submit-bill (product caller: the public
 // check page)
 //
 // verify_jwt = FALSE — code-possession auth (see _shared/ticket-check.ts).
@@ -20,7 +20,7 @@
 // Response: { ok: true, check: {bill…} } | 404 | 409 | 429
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, json, readJson } from "../_shared/http.ts";
+import { corsPreflight, json, methodNotAllowed, readJson } from "../_shared/http.ts";
 import { adminClient, getOptionalAuthedUser, readEFEnv } from "../_shared/auth.ts";
 import { computeTicketBill } from "../_shared/business-ticket-billing.ts";
 import { hasMesitaReview, isConsumerFirstVisit } from "../_shared/membership.ts";
@@ -50,9 +50,7 @@ type Body = { code?: string; checkSubtotalCents?: number; pin?: string };
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
-  if (req.method !== "POST") {
-    return json({ ok: false, error: "Method not allowed" }, 405);
-  }
+  if (req.method !== "POST") return methodNotAllowed();
 
   const envRes = readEFEnv();
   if (!envRes.ok) return envRes.response;
