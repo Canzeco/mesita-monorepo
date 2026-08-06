@@ -4,7 +4,7 @@
 import type { PlaceCategory } from "./categories.ts";
 
 const OPENAI_URL = "https://api.openai.com/v1/chat/completions";
-const CLASSIFIER_MODEL = "gpt-4o-mini";
+const DEFAULT_CLASSIFIER_MODEL = "gpt-4o-mini";
 
 // Signals fed to the classifier. All optional except name — the more present,
 // the sharper the pick, but the place name alone already yields a sane guess.
@@ -30,6 +30,7 @@ export async function inferPlaceCategory(
   openaiKey: string | undefined,
   categories: PlaceCategory[],
   signals: CategorySignals,
+  model = DEFAULT_CLASSIFIER_MODEL,
 ): Promise<string | null> {
   if (!openaiKey || categories.length === 0) return null;
   const valid = new Set(categories.map((c) => c.slug));
@@ -76,7 +77,7 @@ export async function inferPlaceCategory(
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: CLASSIFIER_MODEL,
+        model,
         temperature: 0,
         response_format: { type: "json_object" },
         messages: [

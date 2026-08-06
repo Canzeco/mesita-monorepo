@@ -16,7 +16,7 @@
 // Response: { ok: true, answer, suggestions[], model, source }
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, json, methodNotAllowed, readJson, readPlaceIdAlias } from "../_shared/http.ts";
+import { corsPreflight, json, readJson, readPlaceIdAlias, rejectUnlessMethods } from "../_shared/http.ts";
 import {
   adminClient,
   getAuthedUser,
@@ -24,6 +24,7 @@ import {
   requireMembership,
 } from "../_shared/auth.ts";
 import { createMemoData } from "../_shared/memo-data.ts";
+import { loadModelsConfig } from "../_shared/models-config.ts";
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 
 const OPENAI_CHAT_URL = "https://api.openai.com/v1/chat/completions";
@@ -126,7 +127,8 @@ type PerfContext = {
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
-  if (req.method !== "POST") return methodNotAllowed();
+  const methodReject = rejectUnlessMethods(req, "POST");
+  if (methodReject) return methodReject;
 
   const envRes = readEFEnv();
   if (!envRes.ok) return envRes.response;
@@ -149,11 +151,16 @@ Deno.serve(async (req) => {
   const ctxRes = await loadPerfContext(admin, projectId);
   if (!ctxRes.ok) return json({ ok: false, error: ctxRes.error }, 500);
 
-  // Memo Config supplies the brain (model). This EF owns place reads itself —
-  // Memo's airlock never gets a service-role client.
+  // models_config.supabase.model (Models page) with Memo Config fallback.
+  // This EF owns place reads itself — Memo's airlock never gets a service-role client.
   const memo = createMemoData(envRes.env, "business-web-suggest-promo");
-  const cfg = await memo.config();
-  const model = (cfg.model && cfg.model.trim()) || DEFAULT_MODEL;
+  const [cfg, models] = await Promise.all([
+    memo.config(),
+    loadModelsConfig(admin),
+  ]);
+  const model = models.supabaseModel ||
+    (cfg.model && cfg.model.trim()) ||
+    DEFAULT_MODEL;
   const openaiKey = (Deno.env.get("OPENAI_KEY") ?? "").trim();
 
   let suggestions: Suggestion[] = [];

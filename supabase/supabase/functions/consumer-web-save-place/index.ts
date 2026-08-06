@@ -14,7 +14,7 @@
 // Deploy: supabase functions deploy consumer-web-save-place
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, json, methodNotAllowed, readJson } from "../_shared/http.ts";
+import { corsPreflight, json, readJson, rejectUnlessMethods } from "../_shared/http.ts";
 import { adminClient, getAuthedUser, readEFEnv } from "../_shared/auth.ts";
 
 type Body = {
@@ -24,7 +24,8 @@ type Body = {
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
-  if (req.method !== "POST") return methodNotAllowed();
+  const methodReject = rejectUnlessMethods(req, "POST");
+  if (methodReject) return methodReject;
 
   const envRes = readEFEnv();
   if (!envRes.ok) return envRes.response;

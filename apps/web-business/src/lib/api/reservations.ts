@@ -16,7 +16,7 @@ export type BusinessReservation = {
 export type PlaceReservations = {
   reservations: BusinessReservation[];
   reservationTotal: number;
-  lines: { guest: string; venue: string };
+  lines: { guest: string; place: string };
 };
 
 export async function listPlaceReservations(

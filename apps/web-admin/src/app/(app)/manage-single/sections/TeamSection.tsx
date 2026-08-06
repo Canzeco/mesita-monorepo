@@ -98,7 +98,7 @@ export function TeamSection({ place }: { place: AdminPlace }) {
 
   const members = useMemo(() => {
     if (!snap) return [];
-    return [...snap.businesses].sort((a, b) => {
+    return [...snap.members].sort((a, b) => {
       if (a.role === "owner" && b.role !== "owner") return -1;
       if (b.role === "owner" && a.role !== "owner") return 1;
       return (a.fullName ?? a.email ?? "").localeCompare(

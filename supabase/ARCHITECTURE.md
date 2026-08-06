@@ -96,6 +96,8 @@ Base tables were renamed in the 2026 "R2" pass — the current canonical names:
 RLS note: many tables are deliberately `rls_enabled_no_policy` — that is the
 EF-only lockdown, *not* a missing-policy bug. Adding policies would *open* access.
 
+DEFINER helpers `is_super_admin` / `is_project_member` keep authenticated EXECUTE on purpose (Storage RLS); mutators and trigger-only RPCs are service_role-only (MESITA-940/941).
+
 ## The Enricher (place intelligence)
 
 Legacy-branded "Atlas" (hence `atlas_*` columns / `atlas-config` routes). It is a

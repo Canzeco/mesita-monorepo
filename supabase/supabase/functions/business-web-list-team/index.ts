@@ -1,8 +1,8 @@
 // Supabase Edge Function — business-web-list-team
 //
 // Returns the active team of a place in one round trip:
-//   - businesses : project_members joined to accounts (email-pool roles;
-//     response key stays `businesses` for the business console)
+//   - members : project_members joined to accounts (email-pool roles;
+//     response key is `members`)
 //   - pendingBusinessInvites
 //   - myRole : caller's role on this place (or "super_admin"), so the
 //     UI doesn't have to derive owner-ness from the member list and
@@ -16,7 +16,7 @@
 // (public.super_admins) bypass the membership check.
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, json, methodNotAllowed, readJsonOr, readPlaceIdAlias } from "../_shared/http.ts";
+import { corsPreflight, json, readJsonOr, readPlaceIdAlias, rejectUnlessMethods } from "../_shared/http.ts";
 import {
   adminClient,
   getAuthedUser,
@@ -28,7 +28,8 @@ type Body = { placeId?: string; projectId?: string };
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
-  if (req.method !== "POST") return methodNotAllowed();
+  const methodReject = rejectUnlessMethods(req, "POST");
+  if (methodReject) return methodReject;
 
   const envRes = readEFEnv();
   if (!envRes.ok) return envRes.response;
@@ -75,7 +76,7 @@ Deno.serve(async (req) => {
     created_at: string;
     business: { id: string; full_name: string | null; email: string | null } | null;
   };
-  const businesses = ((memberRows.data ?? []) as unknown as BusinessJoin[])
+  const members = ((memberRows.data ?? []) as unknown as BusinessJoin[])
     .filter((r) => r.business != null)
     .map((r) => ({
       memberId: r.id,
@@ -104,7 +105,7 @@ Deno.serve(async (req) => {
   return json({
     ok: true,
     myRole,
-    businesses,
+    members,
     pendingBusinessInvites,
   });
 });

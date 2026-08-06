@@ -27,7 +27,7 @@
 // Auth: caller's JWT email must be in public.super_admins.
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, json, methodNotAllowed, readJson } from "../_shared/http.ts";
+import { corsPreflight, json, readJson, rejectUnlessMethods } from "../_shared/http.ts";
 import {
   adminClient,
   getAuthedUser,
@@ -42,7 +42,8 @@ import { buildHiddenMemoContext } from "../_shared/memo-hidden-context.ts";
 import { answerWithAgent } from "../_shared/memo-agent.ts";
 import type { TraceSink } from "../_shared/memo-trace.ts";
 
-const DEFAULT_MODEL = "gpt-4o";
+// Fallback when models_config + memo_openai_model are both unset.
+const DEFAULT_MODEL = "gpt-4o-mini";
 // The same picker the admin Memo Config offers (types.ts OPENAI_MODELS) — an
 // override outside this set is ignored in favour of the saved/default model.
 const OPENAI_MODELS = new Set([
@@ -72,7 +73,8 @@ type Body = {
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
-  if (req.method !== "POST") return methodNotAllowed();
+  const methodReject = rejectUnlessMethods(req, "POST");
+  if (methodReject) return methodReject;
 
   const envRes = readEFEnv();
   if (!envRes.ok) return envRes.response;

@@ -48,9 +48,9 @@ export default async function UnitSettingsPage({
     initialError = errMsg(teamSettled.reason, "Couldn't load the team.");
   }
 
-  const venueLine =
+  const placeLine =
     linesSettled.status === "fulfilled"
-      ? linesSettled.value.lines.venue
+      ? linesSettled.value.lines.place
       : null;
 
   if (!initialSnapshot) {
@@ -72,7 +72,7 @@ export default async function UnitSettingsPage({
           initialSnapshot={initialSnapshot}
         />
 
-        {venueLine ? (
+        {placeLine ? (
           <section className="bg-card border-border flex items-start gap-3 rounded-2xl border p-4">
             <span className="bg-muted text-muted-foreground flex h-9 w-9 shrink-0 items-center justify-center rounded-full">
               <PhoneCall className="h-4 w-4" />
@@ -84,7 +84,7 @@ export default async function UnitSettingsPage({
               <p className="text-muted-foreground mt-0.5 text-[13px] leading-snug">
                 Mesita&apos;s reservation AI calls your place from{" "}
                 <span className="text-foreground font-medium whitespace-nowrap">
-                  {formatLine(venueLine)}
+                  {formatLine(placeLine)}
                 </span>
                 . It&apos;s also the number to call about any Mesita booking —
                 save it so your team recognizes it.

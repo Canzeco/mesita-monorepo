@@ -54,14 +54,14 @@ export function TeamClient({
   const isOwner = snapshot.myRole === "owner";
 
   const members = useMemo(() => {
-    return [...snapshot.businesses].sort((a, b) => {
+    return [...snapshot.members].sort((a, b) => {
       if (a.role === "owner" && b.role !== "owner") return -1;
       if (b.role === "owner" && a.role !== "owner") return 1;
       return (a.fullName ?? a.email ?? "").localeCompare(
         b.fullName ?? b.email ?? "",
       );
     });
-  }, [snapshot.businesses]);
+  }, [snapshot.members]);
 
   async function runAction(
     key: string,

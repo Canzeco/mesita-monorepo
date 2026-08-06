@@ -70,7 +70,7 @@
 // Deploy: supabase functions deploy admin-web-list-notifications
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { clampIntRange, corsPreflight, json, methodNotAllowed, readJsonOr, readPlaceIdAlias } from "../_shared/http.ts";
+import { clampIntRange, corsPreflight, json, readJsonOr, readPlaceIdAlias, rejectUnlessMethods } from "../_shared/http.ts";
 import {
   adminClient,
   getAuthedUser,
@@ -136,7 +136,8 @@ type Body = {
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
-  if (req.method !== "POST") return methodNotAllowed();
+  const methodReject = rejectUnlessMethods(req, "POST");
+  if (methodReject) return methodReject;
 
   const envRes = readEFEnv();
   if (!envRes.ok) return envRes.response;

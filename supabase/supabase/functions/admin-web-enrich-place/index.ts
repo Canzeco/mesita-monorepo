@@ -30,7 +30,7 @@
 // Deploy: supabase functions deploy admin-web-enrich-place
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, json, methodNotAllowed, readJson } from "../_shared/http.ts";
+import { corsPreflight, json, readJson, rejectUnlessMethods, readPlaceIdAlias } from "../_shared/http.ts";
 import { adminClient, getAuthedUser, readEFEnv, requireSuperAdmin } from "../_shared/auth.ts";
 import { advanceResearchStage, markProjectGenerating, seedPlaceResearch } from "../_shared/enrich-pipeline.ts";
 
@@ -42,7 +42,8 @@ const MODES: ReenrichMode[] = ["full", "analysis", "contents"];
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
-  if (req.method !== "POST") return methodNotAllowed();
+  const methodReject = rejectUnlessMethods(req, "POST");
+  if (methodReject) return methodReject;
 
   const envRes = readEFEnv();
   if (!envRes.ok) return envRes.response;
@@ -55,7 +56,7 @@ Deno.serve(async (req) => {
 
   const bodyRes = await readJson<Body>(req);
   if (!bodyRes.ok) return bodyRes.response;
-  const projectId = (bodyRes.body.projectId ?? bodyRes.body.placeId ?? "").toString().trim();
+  const projectId = readPlaceIdAlias(bodyRes.body);
   if (!projectId) return json({ ok: false, error: "Missing projectId" }, 400);
 
   // Default to 'full' so legacy callers (no mode) keep the old behaviour.

@@ -16,7 +16,7 @@
 // Deploy: supabase functions deploy consumer-web-delete-account
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, json, methodNotAllowed } from "../_shared/http.ts";
+import { corsPreflight, json, rejectUnlessMethods } from "../_shared/http.ts";
 import {
   adminClient,
   getAuthedUser,
@@ -25,7 +25,8 @@ import {
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
-  if (req.method !== "POST") return methodNotAllowed();
+  const methodReject = rejectUnlessMethods(req, "POST");
+  if (methodReject) return methodReject;
 
   // Account deletion is self-only — the JWT identifies which row to
   // drop. No body needed.

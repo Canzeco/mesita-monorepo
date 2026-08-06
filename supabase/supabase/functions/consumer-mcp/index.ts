@@ -15,7 +15,7 @@
 // Deploy: supabase functions deploy consumer-mcp
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, json, methodNotAllowed } from "../_shared/http.ts";
+import { corsPreflight, json, rejectUnlessMethods } from "../_shared/http.ts";
 import { adminClient, readEFEnv } from "../_shared/auth.ts";
 import { resolveMcpBearer } from "../_shared/mcp-tokens.ts";
 import { PLACE_PUBLIC_COLUMNS } from "../_shared/place-columns.ts";
@@ -302,7 +302,8 @@ Deno.serve(async (req) => {
     });
   }
 
-  if (req.method !== "POST") return methodNotAllowed();
+  const methodReject = rejectUnlessMethods(req, "POST");
+  if (methodReject) return methodReject;
 
   const envRes = readEFEnv();
   if (!envRes.ok) return envRes.response;

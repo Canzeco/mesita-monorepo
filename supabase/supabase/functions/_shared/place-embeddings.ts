@@ -16,12 +16,16 @@ import {
   placeEmbeddingFacts,
   vectorLiteral,
 } from "./embeddings-vector.ts";
+import {
+  DEFAULT_EMBEDDING_MODEL,
+  EMBEDDING_DIMS,
+  embedSingle,
+} from "./embeddings-http.ts";
 import { OPENAI_URL } from "./enrich-config.ts";
 import { ENRICH_FIELD_LIMITS } from "./enrich-field-limits.ts";
+import { loadModelsConfig } from "./models-config.ts";
 
-const SYNTH_MODEL = "gpt-4o-mini";
-const EMBEDDING_MODEL = "text-embedding-3-small";
-const EMBEDDING_DIMS = 1536;
+const DEFAULT_SYNTH_MODEL = "gpt-4o-mini";
 /** Hard ceiling for Place Synthesis blurbs — Atlas Config Field limits. */
 export const MAX_BLURB_WORDS = ENRICH_FIELD_LIMITS.embeddingSourceText.max;
 
@@ -38,22 +42,6 @@ export function countWords(text: string): number {
   const normalized = text.replace(/\s+/g, " ").trim();
   if (!normalized) return 0;
   return normalized.split(" ").length;
-}
-
-async function embedBlurb(text: string, apiKey: string): Promise<number[]> {
-  const r = await fetch("https://api.openai.com/v1/embeddings", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ model: EMBEDDING_MODEL, input: text }),
-  });
-  if (!r.ok) throw new Error(`embed HTTP ${r.status}`);
-  const data = (await r.json()) as { data?: { embedding: number[] }[] };
-  const v = data.data?.[0]?.embedding;
-  if (!v || v.length !== EMBEDDING_DIMS) throw new Error("embed: bad shape");
-  return v;
 }
 
 const EMBEDDING_RELEVANT_KEYS = [
@@ -91,6 +79,7 @@ export function composeEmbeddingBlurb(v: EmbeddablePlace): string {
 export async function synthesizePlaceEmbeddingText(
   v: EmbeddablePlace,
   apiKey: string,
+  synthModel = DEFAULT_SYNTH_MODEL,
 ): Promise<string> {
   const facts = placeEmbeddingFacts(v);
   if (!facts.trim()) return composeEmbeddingBlurb(v);
@@ -103,7 +92,7 @@ export async function synthesizePlaceEmbeddingText(
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: SYNTH_MODEL,
+        model: synthModel,
         temperature: 0,
         max_tokens: 160,
         messages: [
@@ -170,10 +159,19 @@ async function computeAndPersistPlaceEmbedding(
     };
   }
 
-  const text = await synthesizePlaceEmbeddingText(place, apiKey);
+  const models = await loadModelsConfig(admin);
+  const text = await synthesizePlaceEmbeddingText(
+    place,
+    apiKey,
+    models.enricherModel || DEFAULT_SYNTH_MODEL,
+  );
   let vector: number[];
   try {
-    vector = await embedBlurb(text, apiKey);
+    vector = await embedSingle(
+      text,
+      apiKey,
+      models.lineupModel || DEFAULT_EMBEDDING_MODEL,
+    );
   } catch (err) {
     console.error(`[${logPrefix}] embed failed:`, err);
     return null;

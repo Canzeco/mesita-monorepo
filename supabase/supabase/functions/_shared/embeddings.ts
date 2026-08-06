@@ -10,6 +10,8 @@
 // MESITA-720: place vectors are produced from a short synthesized blurb
 // (embedding_source_text), never from tags. Prefer On-Update synthesis; the
 // lazy path here synthesizes when the stored blurb is missing.
+//
+// Model: app_settings.models_config.lineup.model (admin Models page).
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import {
@@ -18,43 +20,25 @@ import {
   placeEmbeddingFacts,
   vectorLiteral,
 } from "./embeddings-vector.ts";
+import {
+  callEmbeddings,
+  embedBatch,
+  embedSingle,
+  EMBEDDING_DIMS,
+  DEFAULT_EMBEDDING_MODEL,
+} from "./embeddings-http.ts";
+import { loadModelsConfig } from "./models-config.ts";
 import { synthesizePlaceEmbeddingText } from "./place-embeddings.ts";
 
 export { rankByCosine, shouldEmbed } from "./embeddings-vector.ts";
+export { embedBatch, embedSingle, EMBEDDING_DIMS, DEFAULT_EMBEDDING_MODEL };
 
-const EMBEDDING_MODEL = "text-embedding-3-small";
-export const EMBEDDING_DIMS = 1536;
-
-// Single point that constructs the OpenAI embeddings HTTP request. Centralised
-// so the URL, method, headers, and body shape live in exactly one place; every
-// caller keeps its own post-fetch validation / error handling.
-function callEmbeddings(input: string | string[], apiKey: string): Promise<Response> {
-  return fetch("https://api.openai.com/v1/embeddings", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ model: EMBEDDING_MODEL, input }),
-  });
-}
-
-export async function embedSingle(text: string, apiKey: string): Promise<number[]> {
-  const r = await callEmbeddings(text, apiKey);
-  if (!r.ok) throw new Error(`embed HTTP ${r.status}`);
-  const data = (await r.json()) as { data?: { embedding: number[] }[] };
-  const v = data.data?.[0]?.embedding;
-  if (!v || v.length !== EMBEDDING_DIMS) throw new Error("embed: bad shape");
-  return v;
-}
-
-export async function embedBatch(texts: string[], apiKey: string): Promise<number[][]> {
-  const r = await callEmbeddings(texts, apiKey);
-  if (!r.ok) throw new Error(`embedBatch HTTP ${r.status}`);
-  const data = (await r.json()) as { data?: { embedding: number[]; index: number }[] };
-  const out: number[][] = new Array(texts.length);
-  for (const d of data.data ?? []) out[d.index] = d.embedding;
-  return out;
+/** Resolve the Lineup embedding model from models_config (with default). */
+export async function resolveLineupEmbeddingModel(
+  admin: SupabaseClient,
+): Promise<string> {
+  const cfg = await loadModelsConfig(admin);
+  return cfg.lineupModel || DEFAULT_EMBEDDING_MODEL;
 }
 
 // Lazy-embeds + persists a slice of places. Returns a map of place.id →
@@ -65,11 +49,16 @@ export async function embedAndPersistPlaces<T extends EmbeddablePlace>(
   admin: SupabaseClient,
   apiKey: string,
   logPrefix: string,
+  embeddingModel?: string,
 ): Promise<Map<string, { embedding: number[]; hash: string; text: string }>> {
+  const models = await loadModelsConfig(admin);
+  const model = embeddingModel ??
+    (models.lineupModel || DEFAULT_EMBEDDING_MODEL);
+  const synthModel = models.enricherModel;
   const inputs = await Promise.all(rows.map(async (r) => {
     const text = r.embedding_source_text?.trim()
       ? r.embedding_source_text.trim()
-      : await synthesizePlaceEmbeddingText(r, apiKey);
+      : await synthesizePlaceEmbeddingText(r, apiKey, synthModel);
     // Same contract as On-Update: hash the FACTS that produced the blurb so
     // profile edits invalidate, not LLM wording drift.
     const hash = await digest(placeEmbeddingFacts(r));
@@ -77,7 +66,7 @@ export async function embedAndPersistPlaces<T extends EmbeddablePlace>(
   }));
   const out = new Map<string, { embedding: number[]; hash: string; text: string }>();
   try {
-    const r = await callEmbeddings(inputs.map((i) => i.text), apiKey);
+    const r = await callEmbeddings(inputs.map((i) => i.text), apiKey, model);
     if (!r.ok) {
       console.error(`[${logPrefix}] batch-embed HTTP`, r.status, (await r.text()).slice(0, 240));
       return out;

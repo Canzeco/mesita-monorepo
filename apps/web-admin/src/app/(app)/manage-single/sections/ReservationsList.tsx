@@ -64,7 +64,7 @@ export function ReservationsList({ activity }: { activity: PlaceActivity }) {
   const rows = activity.reservations;
   // Both audiences share one number until ELEVENLABS_CONSUMER_FROM_NUMBER is
   // set; rendering it twice would read as a bug rather than as a fact.
-  const shared = activity.lines.guest === activity.lines.venue;
+  const shared = activity.lines.guest === activity.lines.place;
 
   return (
     <section className="border-border bg-card shadow-card rounded-2xl border p-5 sm:p-6">
@@ -84,7 +84,7 @@ export function ReservationsList({ activity }: { activity: PlaceActivity }) {
         ) : (
           <>
             <LineLink number={activity.lines.guest} who="Guests" />
-            <LineLink number={activity.lines.venue} who="Places" />
+            <LineLink number={activity.lines.place} who="Places" />
           </>
         )}
       </div>

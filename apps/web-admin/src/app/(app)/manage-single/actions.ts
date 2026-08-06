@@ -284,7 +284,7 @@ export type PlaceActivity = {
   reservations: PlaceReservation[];
   reservationTotal: number;
   /** The only way to change a booking — a3 answers guests, a4 answers venues. */
-  lines: { guest: string; venue: string };
+  lines: { guest: string; place: string };
   generatedAt: string;
 };
 
@@ -479,7 +479,7 @@ export async function enrichPlace(
 
 export type TeamSnapshot = {
   myRole: string | null;
-  businesses: {
+  members: {
     memberId: string;
     userId: string;
     role: string;

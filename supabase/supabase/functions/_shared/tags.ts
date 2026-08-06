@@ -12,7 +12,7 @@ import { selectTopPlaceTags } from "./tags-sanitize.ts";
 export { sanitizePlaceTags, selectTopPlaceTags } from "./tags-sanitize.ts";
 
 const OPENAI_URL = "https://api.openai.com/v1/chat/completions";
-const TAGGER_MODEL = "gpt-4o-mini";
+const DEFAULT_TAGGER_MODEL = "gpt-4o-mini";
 const MAX_INFERRED_TAGS = ENRICH_FIELD_LIMITS.tagsPerPlace.max;
 
 export type PlaceTag = {
@@ -107,6 +107,7 @@ export async function inferPlaceTags(
   openaiKey: string | undefined,
   vocabulary: PlaceTag[],
   signals: TagSignals,
+  model = DEFAULT_TAGGER_MODEL,
 ): Promise<string[]> {
   if (!openaiKey || vocabulary.length === 0) return [];
   const valid = new Set(vocabulary.map((t) => t.slug));
@@ -144,7 +145,7 @@ export async function inferPlaceTags(
       method: "POST",
       headers: { Authorization: `Bearer ${openaiKey}`, "Content-Type": "application/json" },
       body: JSON.stringify({
-        model: TAGGER_MODEL,
+        model,
         temperature: 0,
         response_format: { type: "json_object" },
         messages: [

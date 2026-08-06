@@ -29,13 +29,12 @@ type PendingEditorInvite = {
   expiresAt: string;
 };
 
-// Note on field naming: the EF returns `businesses` / `pendingBusinessInvites`
-// because those rows are joined from the `businesses` (platform-account)
-// table. The team UI labels them as "Editors" — that's the per-place tier
-// (member_role) name, distinct from the source table name.
+// Note on field naming: the EF returns `members` / `pendingBusinessInvites`.
+// The team UI labels members as "Editors" — that's the per-place tier
+// (member_role) name, distinct from the accounts table.
 export type TeamSnapshot = {
   myRole: BusinessRole | null;
-  businesses: TeamEditor[];
+  members: TeamEditor[];
   pendingBusinessInvites: PendingEditorInvite[];
 };
 
