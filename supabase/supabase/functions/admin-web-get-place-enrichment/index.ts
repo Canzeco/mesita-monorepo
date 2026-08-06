@@ -19,7 +19,7 @@
 // Deploy: supabase functions deploy admin-web-get-place-enrichment
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, json, methodNotAllowed, readJson } from "../_shared/http.ts";
+import { corsPreflight, json, readJson, rejectUnlessMethods, readPlaceIdAlias } from "../_shared/http.ts";
 import {
   adminClient,
   getAuthedUser,
@@ -35,7 +35,8 @@ type Body = { projectId?: string; placeId?: string };
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
-  if (req.method !== "POST") return methodNotAllowed();
+  const methodReject = rejectUnlessMethods(req, "POST");
+  if (methodReject) return methodReject;
 
   const envRes = readEFEnv();
   if (!envRes.ok) return envRes.response;
@@ -49,7 +50,7 @@ Deno.serve(async (req) => {
   const bodyRes = await readJson<Body>(req);
   if (!bodyRes.ok) return bodyRes.response;
   // placeId is the MESITA-26 alias for the place-row id (== project_id here).
-  const projectId = (bodyRes.body.projectId ?? bodyRes.body.placeId ?? "").trim();
+  const projectId = readPlaceIdAlias(bodyRes.body);
   if (!projectId) return json({ ok: false, error: "Missing projectId" }, 400);
 
   const [mediaRes, projectRes, researchRes] = await Promise.all([

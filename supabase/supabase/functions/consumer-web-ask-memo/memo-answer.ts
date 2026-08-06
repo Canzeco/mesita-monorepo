@@ -22,6 +22,7 @@ export async function answerWithPerplexity(
   profileCtx: string | null,
   history: MemoHistory,
   candidates: Prediction[],
+  perplexityModel = "sonar-pro",
 ): Promise<{ text: string; related: string[]; citations: string[] } | null> {
   if (!key) return null;
 
@@ -52,7 +53,7 @@ export async function answerWithPerplexity(
   });
 
   const res = await callPerplexityChat(key, messages, {
-    model: "sonar-pro",
+    model: perplexityModel,
     maxTokens: 700,
     temperature: 0.3,
     returnRelated: true,

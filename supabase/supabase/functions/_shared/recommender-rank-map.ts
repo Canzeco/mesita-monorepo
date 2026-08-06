@@ -31,6 +31,7 @@ import {
   embedBatch,
   shouldEmbed,
 } from "./embeddings.ts";
+import { loadModelsConfig } from "./models-config.ts";
 import {
   type ConsumerProfile,
   fetchCandidatePool,
@@ -56,7 +57,7 @@ const MAX_PER_CATEGORY_CAP = 20;
 const LAZY_EMBED_BATCH = 80;
 const MAX_PLACE_REUSE = 2;
 
-const CATEGORY_MODEL = "gpt-4o-mini";
+const DEFAULT_CATEGORY_MODEL = "gpt-4o-mini";
 
 export type RankMapInput = {
   lat: number | null;
@@ -135,6 +136,7 @@ export async function rankMapCatalog(
   let proposed: ProposedCategory[];
   if (openaiKey) {
     try {
+      const models = await loadModelsConfig(admin);
       proposed = await proposeCategories({
         candidates,
         profile,
@@ -142,6 +144,7 @@ export async function rankMapCatalog(
         lng,
         maxCategories,
         apiKey: openaiKey,
+        model: models.supabaseModel || DEFAULT_CATEGORY_MODEL,
       });
     } catch (err) {
       console.error(`[${callerName}] propose failed:`, err);
@@ -233,6 +236,7 @@ async function proposeCategories({
   lng,
   maxCategories,
   apiKey,
+  model = DEFAULT_CATEGORY_MODEL,
 }: {
   candidates: PlaceRow[];
   profile: ConsumerProfile | null;
@@ -240,6 +244,7 @@ async function proposeCategories({
   lng: number | null;
   maxCategories: number;
   apiKey: string;
+  model?: string;
 }): Promise<ProposedCategory[]> {
   // We give the model a compact view of the pool so its categories are
   // grounded in places that actually exist (not generic taxonomy). Keep
@@ -297,7 +302,7 @@ async function proposeCategories({
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      model: CATEGORY_MODEL,
+      model,
       temperature: 0.7,
       response_format: { type: "json_object" },
       messages: [

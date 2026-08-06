@@ -16,8 +16,8 @@ Staff-initiated creation
 the business console carries a story/review verdict any more
 (`check-web-verify-action`, `business-web-verify-story`, `business-web-verify-review` and the
 `awaiting_story` park are all gone). The ticket's QR is `https://mesita.ai/check/<check_code>`
-(public page — canonical home `apps/web-checkout`, checkout.mesita.ai pending; `apps/web-landing`
-still serves live QRs until the URL flip, MESITA-813), and the staff side of the flow happens on
+(public page — canonical home `apps/web-check`, check.mesita.ai; `apps/web-landing`
+still serves live QRs until the `CHECK_URL_BASE` flip, MESITA-814), and the staff side of the flow happens on
 that page via the `check-web-*` EFs — `verify_jwt = false`; possession of the 128-bit
 `check_code` IS the authentication (security model: `_shared/ticket-check.ts`).
 

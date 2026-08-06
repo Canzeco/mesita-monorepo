@@ -28,7 +28,7 @@
 // live in gathered->sources, not the feed (the judge reads those, never beacons).
 
 import { type SupabaseClient } from "jsr:@supabase/supabase-js@2";
-import { corsPreflight, json, readJson } from "./http.ts";
+import { corsPreflight, json, readJson, rejectUnlessMethods } from "./http.ts";
 import { adminClient, type EFEnv, readEFEnv } from "./auth.ts";
 import { requireInternalCaller } from "./internal.ts";
 import { isEnrichCostCapError } from "./enrich-cost.ts";
@@ -172,7 +172,8 @@ export function serveEnrichStage(
 ): void {
   Deno.serve(async (req) => {
     if (req.method === "OPTIONS") return corsPreflight();
-    if (req.method !== "POST") return json({ ok: false, error: "Method not allowed" }, 405);
+    const methodReject = rejectUnlessMethods(req, "POST");
+    if (methodReject) return methodReject;
 
     const envRes = readEFEnv();
     if (!envRes.ok) return envRes.response;

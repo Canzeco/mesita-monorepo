@@ -17,7 +17,7 @@
 // create (the same DB being down would fail savePlaceData moments later
 // anyway).
 //
-// Callers: consumer-web-create-place, consumer-web-schedule-project-creation
+// Callers: consumer-web-create-place (schedule-project-creation is a thin alias)
 // (the compat alias — same privilege, must not be a bypass). Admin/business
 // creates are intentionally NOT quota'd.
 

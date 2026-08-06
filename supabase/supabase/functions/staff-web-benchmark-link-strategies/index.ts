@@ -10,7 +10,7 @@
 // Keys come from EF secrets: FIRECRAWL_KEY, PERPLEXITY_KEY, GMP_KEY.
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, json, methodNotAllowed, readJson } from "../_shared/http.ts";
+import { corsPreflight, json, readJson, rejectUnlessMethods } from "../_shared/http.ts";
 import { assembleContext } from "../_shared/linklab/context.ts";
 import type { Keys } from "../_shared/linklab/providers.ts";
 import { runAllStrategies, STRATEGIES } from "../_shared/linklab/strategies.ts";
@@ -27,7 +27,8 @@ type Body = {
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
-  if (req.method !== "POST") return methodNotAllowed();
+  const methodReject = rejectUnlessMethods(req, "POST");
+  if (methodReject) return methodReject;
 
   const keys: Keys = {
     firecrawl: Deno.env.get("FIRECRAWL_KEY") ?? "",

@@ -35,7 +35,7 @@ export function ManagersTeamSection({
   onRemoveMember,
   onRemove,
 }: {
-  members: TeamSnapshot["businesses"];
+  members: TeamSnapshot["members"];
   pendingInvites: TeamSnapshot["pendingBusinessInvites"];
   isOwner: boolean;
   currentUserId: string;

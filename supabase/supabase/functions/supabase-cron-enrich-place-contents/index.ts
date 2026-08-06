@@ -34,6 +34,7 @@ import {
 import { runPlaceEmbeddingsOnUpdate } from "../_shared/place-embeddings.ts";
 import { fetchPlaceCategories, inferPlaceCategory } from "../_shared/categories.ts";
 import { fetchPlaceTags, inferPlaceTags } from "../_shared/tags.ts";
+import { loadModelsConfig } from "../_shared/models-config.ts";
 import {
   coerceReservationsPolicy,
   hasReservationTarget,
@@ -98,14 +99,16 @@ serveEnrichStage("contents", async (admin, env, row) => {
 
   // About first (above), then category, then tags — each step feeds the next.
   // Category + tags both ground primarily on the synthesized About.
-  const [categoryList, tagVocabulary] = await Promise.all([
+  const [categoryList, tagVocabulary, models] = await Promise.all([
     fetchPlaceCategories(admin),
     fetchPlaceTags(admin),
+    loadModelsConfig(admin),
   ]);
   // 'undefined' is the create-path placeholder, not a real category — never
   // offer it to the classifier (thin-signal places would land there).
   const realCategories = categoryList.filter((c) => c.slug !== "undefined");
   const aboutText = ((place.description ?? null) as string | null)?.slice(0, 1500) || null;
+  const enricherModel = models.enricherModel;
   const inferredCategory = await inferPlaceCategory(OPENAI_KEY, realCategories, {
     name,
     address: (place.address ?? null) as string | null,
@@ -113,7 +116,7 @@ serveEnrichStage("contents", async (admin, env, row) => {
     // Prefer the About we just synthesized; fall back to IG bio when synthesis
     // produced nothing (thin harvest).
     description: aboutText || igBio || null,
-  });
+  }, enricherModel);
   if (inferredCategory) {
     place.category = inferredCategory;
     place.category_label =
@@ -127,7 +130,7 @@ serveEnrichStage("contents", async (admin, env, row) => {
     description: aboutText,
     googleReviewsText,
     serpSummary,
-  });
+  }, enricherModel);
   if (inferredTags.length > 0) place.tags = inferredTags;
   ledger.charge("category_tags", classifyCost);
   sources.category = { ok: !!inferredCategory, slug: inferredCategory, candidates: realCategories.length };

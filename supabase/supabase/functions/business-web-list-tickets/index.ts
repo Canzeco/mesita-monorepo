@@ -5,7 +5,7 @@
 // validator UI. Self-contained.
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, json, methodNotAllowed, readJson, readPlaceIdAlias, clampIntRange } from "../_shared/http.ts";
+import { corsPreflight, json, readJson, readPlaceIdAlias, clampIntRange, rejectUnlessMethods } from "../_shared/http.ts";
 import {
   adminClient,
   getAuthedUser,
@@ -20,7 +20,8 @@ type Body = { placeId?: string; projectId?: string; limit?: number };
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
-  if (req.method !== "POST") return methodNotAllowed();
+  const methodReject = rejectUnlessMethods(req, "POST");
+  if (methodReject) return methodReject;
 
   const envRes = readEFEnv();
   if (!envRes.ok) return envRes.response;

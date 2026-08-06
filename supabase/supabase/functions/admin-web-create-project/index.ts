@@ -22,7 +22,7 @@
 // Deploy: supabase functions deploy admin-web-create-project
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, json, methodNotAllowed, readJson } from "../_shared/http.ts";
+import { corsPreflight, json, readJson, rejectUnlessMethods } from "../_shared/http.ts";
 import { adminClient, getAuthedUser, readEFEnv, requireSuperAdmin } from "../_shared/auth.ts";
 import { createMinimalPlace } from "../_shared/create-place.ts";
 
@@ -30,7 +30,8 @@ type Body = { placeId?: string };
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
-  if (req.method !== "POST") return methodNotAllowed();
+  const methodReject = rejectUnlessMethods(req, "POST");
+  if (methodReject) return methodReject;
 
   const envRes = readEFEnv();
   if (!envRes.ok) return envRes.response;
@@ -59,7 +60,7 @@ Deno.serve(async (req) => {
 
   // `venue` is the legacy alias for pre-rename admin-web builds.
   return json(
-    { ok: true, place: created.place, venue: created.place, enrichment: created.enrichment },
+    { ok: true, place: created.place, enrichment: created.enrichment },
     201,
   );
 });

@@ -39,6 +39,8 @@ export type MemoConfigResult = {
   instructions: string | null;
   // Saved OpenAI model, or null for the caller's default.
   model: string | null;
+  // Perplexity leg from models_config.memo.perplexity; null when "off"/unset.
+  perplexity: string | null;
   // The `memo_search` sourcing slice, already coerced (falls back to the
   // launch policy when the config row is unreadable).
   searchPolicy: ChannelPolicy;
@@ -174,6 +176,7 @@ export function createMemoData(
       const data = await call<{
         instructions?: unknown;
         model?: unknown;
+        perplexity?: unknown;
         searchPolicy?: unknown;
       }>("supabase-edgefunc-get-memo-config", {});
 
@@ -181,9 +184,13 @@ export function createMemoData(
         ? data.instructions.trim()
         : "";
       const model = typeof data?.model === "string" ? data.model.trim() : "";
+      const perplexity = typeof data?.perplexity === "string"
+        ? data.perplexity.trim()
+        : "";
       const result: MemoConfigResult = {
         instructions: instructions.length > 0 ? instructions : null,
         model: model.length > 0 ? model : null,
+        perplexity: perplexity.length > 0 ? perplexity : null,
         // coerce (not trust) — and it doubles as the fallback when the read failed.
         searchPolicy: coerceChannelPolicy(data?.searchPolicy ?? null, "memo_search"),
       };

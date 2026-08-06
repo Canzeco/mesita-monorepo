@@ -36,7 +36,7 @@
 // Platform, shared with the enricher). Neither key ever leaves Supabase.
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, json, methodNotAllowed, readJson } from "../_shared/http.ts";
+import { corsPreflight, json, readJson, rejectUnlessMethods } from "../_shared/http.ts";
 import { getOptionalAuthedUser, readEFEnv } from "../_shared/auth.ts";
 import { readGooglePlacesKey } from "../_shared/google-places.ts";
 import type { ChannelPolicy } from "../_shared/sourcing.ts";
@@ -82,7 +82,8 @@ const CONFIG_CACHE_MS = 30_000;
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
-  if (req.method !== "POST") return methodNotAllowed();
+  const methodReject = rejectUnlessMethods(req, "POST");
+  if (methodReject) return methodReject;
 
   const envRes = readEFEnv();
   if (!envRes.ok) return envRes.response;
@@ -159,7 +160,8 @@ Deno.serve(async (req) => {
           perplexity: perplexityKey,
           google: gp.ok ? gp.key : "",
         },
-        model: (Deno.env.get("MEMO_MODEL") ?? "gpt-4o").trim(),
+        // models_config.memo.model via get-memo-config (MEMO_MODEL env retired).
+        model: (cfg.model ?? "gpt-4o-mini").trim(),
       });
       return json({
         ok: true,
@@ -217,6 +219,7 @@ Deno.serve(async (req) => {
     profileCtx,
     body.history,
     predictions,
+    cfg.perplexity ?? "sonar-pro",
   );
 
   const answer = toPlainText(

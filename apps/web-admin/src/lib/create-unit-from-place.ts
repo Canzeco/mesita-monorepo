@@ -81,7 +81,7 @@ export async function createUnitFromPlaceId(
     return { ok: false, error: r.error };
   }
 
-  const v = r.data.place ?? r.data.venue;
+  const v = r.data.place;
   if (!v?.id) return { ok: false, error: "No unit returned" };
   return {
     ok: true,

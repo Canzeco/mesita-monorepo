@@ -8,16 +8,16 @@
 // means "no blob yet → the client falls back to its DEFAULTS". See
 // 20260726000000_models_config.sql for the column + shape.
 //
-// STAGED: this is a plain read. The subsystems are pointed at the blob in a
-// follow-up; shape validation lives on the write path
-// (admin-web-update-models-config). Deliberately overlaps the Memo Config model
-// knob by design.
+// Live binding (MESITA-941): Enricher/Memo/Lineup/embeddings read models_config
+// via _shared/models-config.ts. Shape validation lives on the write path
+// (admin-web-update-models-config). Memo Config's legacy memo_openai_model is a
+// one-release fallback behind models_config.memo.model.
 //
 // Auth: caller's JWT email must be in public.super_admins. verify_jwt defaults
 // to true at the gateway (no config.toml entry, mirroring the memo/lineup pair).
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, json, methodNotAllowed } from "../_shared/http.ts";
+import { corsPreflight, json, rejectUnlessMethods } from "../_shared/http.ts";
 import {
   adminClient,
   getAuthedUser,
@@ -27,7 +27,8 @@ import {
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
-  if (req.method !== "POST") return methodNotAllowed();
+  const methodReject = rejectUnlessMethods(req, "POST");
+  if (methodReject) return methodReject;
 
   const envRes = readEFEnv();
   if (!envRes.ok) return envRes.response;

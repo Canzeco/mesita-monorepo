@@ -9,7 +9,7 @@
 // That is exactly what MESITA-804 hit — `rp.dominant` went missing client-side
 // in #497 and `/lineup-config` could not save anything for a week.
 //
-// The required-key contract is pinned by lineup-config-validate.test.ts, which
+// The required-key contract is pinned by the lineup-config-validate tests, which
 // holds the canonical blob and deletes each required key in turn to prove it is
 // load-bearing. If you add a required key here, the client's coercer
 // (web-admin lib/business/scores.ts `coerceScoringSettings`) MUST emit it in

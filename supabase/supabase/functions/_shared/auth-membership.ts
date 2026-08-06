@@ -8,9 +8,9 @@ import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import type { AuthedUser } from "./auth.ts";
 import { json } from "./http.ts";
 
-// Mirrors the public.member_role enum (see migration 0025). 'staff' is
-// legacy — only present on project_members rows created before project_roles
-// existed; the Team UI speaks owner / editor / viewer.
+// Mirrors public.member_role. Team surface speaks owner/editor/viewer only
+// (_shared/roles.ts). 'staff' remains in this union so old rows still type-
+// check; waiter identity was retired (MESITA-833) — 0 live staff rows expected.
 type MembershipRole = "owner" | "editor" | "viewer" | "staff";
 
 type Membership = {

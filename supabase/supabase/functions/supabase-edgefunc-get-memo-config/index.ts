@@ -9,7 +9,9 @@
 //                    the admin console's Memo Config page. Null when blank, so
 //                    the caller falls back to the in-code SYSTEM_PROMPT and a
 //                    config hiccup never costs Memo its voice.
-//   • model        — memo_openai_model, the configured brain.
+//   • model        — models_config.memo.model (admin Models page), falling
+//                    back to legacy memo_openai_model when unset.
+//   • perplexity   — models_config.memo.perplexity ("off" = skip Perplexity).
 //   • searchPolicy — the `memo_search` slice of sourcing_config, coerced
 //                    against the launch policy.
 //
@@ -25,17 +27,19 @@
 // Auth: verify_jwt = true + requireInternalCaller (service-role bearer).
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, json, methodNotAllowed, readJson } from "../_shared/http.ts";
+import { corsPreflight, json, readJson, rejectUnlessMethods } from "../_shared/http.ts";
 import { adminClient, readEFEnv } from "../_shared/auth.ts";
 import { requireInternalCaller } from "../_shared/internal.ts";
 import {
   coerceChannelPolicy,
   type SourcingConfigRow,
 } from "../_shared/sourcing.ts";
+import { loadModelsConfig } from "../_shared/models-config.ts";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
-  if (req.method !== "POST") return methodNotAllowed();
+  const methodReject = rejectUnlessMethods(req, "POST");
+  if (methodReject) return methodReject;
 
   const envRes = readEFEnv();
   if (!envRes.ok) return envRes.response;
@@ -54,30 +58,38 @@ Deno.serve(async (req) => {
     ok: true,
     instructions: null,
     model: null,
+    perplexity: null,
     searchPolicy: coerceChannelPolicy(null, "memo_search"),
     caller: callerRes.callerName,
   };
 
   try {
     const admin = adminClient(envRes.env);
-    const { data, error } = await admin
-      .from("app_settings")
-      .select("memo_instructions, memo_openai_model, sourcing_config")
-      .eq("id", 1)
-      .maybeSingle();
+    const [{ data, error }, models] = await Promise.all([
+      admin
+        .from("app_settings")
+        .select("memo_instructions, memo_openai_model, sourcing_config")
+        .eq("id", 1)
+        .maybeSingle(),
+      loadModelsConfig(admin),
+    ]);
     if (error || !data) {
       if (error) console.error("[get-memo-config] read:", error.message);
       return json(fallback);
     }
 
     const instructions = (data.memo_instructions ?? "").toString().trim();
-    const model = (data.memo_openai_model ?? "").toString().trim();
+    // Models page is SoT; legacy memo_openai_model remains a one-release fallback.
+    const legacyModel = (data.memo_openai_model ?? "").toString().trim();
+    const model = models.memoModel || legacyModel;
+    const perplexity = models.memoPerplexity;
     const sourcing = data.sourcing_config as SourcingConfigRow | null;
 
     return json({
       ok: true,
       instructions: instructions.length > 0 ? instructions : null,
       model: model.length > 0 ? model : null,
+      perplexity: perplexity.length > 0 && perplexity !== "off" ? perplexity : null,
       searchPolicy: coerceChannelPolicy(sourcing?.memo_search ?? null, "memo_search"),
       caller: callerRes.callerName,
     });
