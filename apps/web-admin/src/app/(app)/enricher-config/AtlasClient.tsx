@@ -22,6 +22,7 @@ export function AtlasConfigurationClient(props: {
   initialGatherGoogleImages: number;
   initialGatherInstagramDepth: number;
   initialGatherReviews: number;
+  initialImageVisionEnabled: boolean;
   initialSaveImagesToStorage: boolean;
   initialSaveTotalImages: number;
   initialAnalyzeGoogleImages: number;
@@ -76,6 +77,7 @@ export function AtlasConfigurationClient(props: {
         initialAnalyzeGoogleImages={props.initialAnalyzeGoogleImages}
         initialAnalyzeInstagramImages={props.initialAnalyzeInstagramImages}
         initialSaveTotalImages={props.initialSaveTotalImages}
+        initialImageVisionEnabled={props.initialImageVisionEnabled}
         initialSaveImagesToStorage={props.initialSaveImagesToStorage}
         initialImageAnalysisPrompt={props.initialImageAnalysisPrompt}
         initialImageSortingPrompt={props.initialImageSortingPrompt}
