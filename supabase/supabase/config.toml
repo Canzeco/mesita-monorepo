@@ -35,6 +35,14 @@ port = 54324
 enabled = true
 file_size_limit = "50MiB"
 
+# LOCAL STACK ONLY. This block configures `supabase start`, not production —
+# note the localhost site_url. The hosted project's auth settings (provider
+# credentials, SMS OTP length, rate limits, captcha) live in the Supabase
+# dashboard and are NOT represented here, so do not run `supabase config
+# push` to "sync" them: it would push this file over production, pointing
+# site_url at localhost. Auth changes on the hosted project are a human step.
+# To check what production actually has, probe it — see ARCHITECTURE.md
+# § Identity & sign-in.
 [auth]
 enabled = true
 site_url = "http://127.0.0.1:3000"
@@ -59,8 +67,12 @@ max_frequency = "1s"
 otp_length = 6
 otp_expiry = 3600
 
-# Phone — Twilio Verify, Mexico template at signup. Consumers + staff sign
-# in here; businesses + admins never see this provider.
+# Phone — Twilio Programmable Messaging (NOT Twilio Verify, which an earlier
+# version of this comment claimed): Supabase sends the code itself through
+# the Messaging Service on +16282784122, so the template below is ours.
+# Consumers + staff sign in here; businesses + admins never see this
+# provider. Twilio Verify is the standing fallback if Mexican carriers
+# filter the US long code — see ARCHITECTURE.md § Identity & sign-in.
 [auth.sms]
 enable_signup = true
 enable_confirmations = true
