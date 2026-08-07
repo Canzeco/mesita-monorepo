@@ -49,9 +49,7 @@ export default async function UnitSettingsPage({
   }
 
   const placeLine =
-    linesSettled.status === "fulfilled"
-      ? linesSettled.value.lines.place
-      : null;
+    linesSettled.status === "fulfilled" ? linesSettled.value.lines.place : null;
 
   if (!initialSnapshot) {
     return (

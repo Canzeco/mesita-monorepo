@@ -215,9 +215,7 @@ export async function removeOrphanMenuStorageObjects(
   urls: Iterable<string>,
   keep: Iterable<string>,
 ): Promise<void> {
-  const keepSet = new Set(
-    [...keep].map((u) => u.trim()).filter(Boolean),
-  );
+  const keepSet = new Set([...keep].map((u) => u.trim()).filter(Boolean));
   const seen = new Set<string>();
   await Promise.all(
     [...urls].map(async (raw) => {

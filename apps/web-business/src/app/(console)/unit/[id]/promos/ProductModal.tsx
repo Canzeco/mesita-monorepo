@@ -151,8 +151,8 @@ export function ProductModal({
             <div className="flex flex-col gap-3">
               <ModalLabel>How it works</ModalLabel>
               <Step n={1} title="Join the membership">
-                {formatMoney(PRODUCT_PRICE_MXN, currency)}/year — one fee, switch
-                strategies free anytime.
+                {formatMoney(PRODUCT_PRICE_MXN, currency)}/year — one fee,
+                switch strategies free anytime.
               </Step>
               <Step n={2} title="Tell your staff to scan the guest's QR">
                 Nothing to install: any phone camera opens the check page.

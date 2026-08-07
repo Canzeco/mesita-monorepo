@@ -18,7 +18,12 @@ const STATUS: Record<string, { label: string; chip: string }> = {
 };
 
 function statusOf(s: string | null) {
-  return STATUS[s ?? ""] ?? { label: s ?? "—", chip: "bg-muted text-muted-foreground" };
+  return (
+    STATUS[s ?? ""] ?? {
+      label: s ?? "—",
+      chip: "bg-muted text-muted-foreground",
+    }
+  );
 }
 
 function when(iso: string | null): string {

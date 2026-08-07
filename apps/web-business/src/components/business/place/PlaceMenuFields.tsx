@@ -151,9 +151,7 @@ export function PlaceMenuFields({
     key: string,
     patch: Partial<Pick<MenuDraft, "name" | "url" | "source">>,
   ) => {
-    commit((prev) =>
-      prev.map((m) => (m.key === key ? { ...m, ...patch } : m)),
-    );
+    commit((prev) => prev.map((m) => (m.key === key ? { ...m, ...patch } : m)));
   };
 
   const clearUpload = (key: string) => {
@@ -169,9 +167,7 @@ export function PlaceMenuFields({
     // Switching path clears the other — upload XOR drive, never both.
     session.release(prev.url);
     commit((list) =>
-      list.map((m) =>
-        m.key === key ? { ...m, source, url: "" } : m,
-      ),
+      list.map((m) => (m.key === key ? { ...m, source, url: "" } : m)),
     );
   };
 
@@ -576,7 +572,7 @@ function SourceCard({
       className={
         "flex items-start gap-3 rounded-xl border p-3.5 text-left transition disabled:opacity-50 " +
         (active
-          ? "border-pink-400/60 bg-card ring-1 ring-pink-400/30"
+          ? "bg-card border-pink-400/60 ring-1 ring-pink-400/30"
           : "border-border bg-card hover:border-foreground/40")
       }
     >
