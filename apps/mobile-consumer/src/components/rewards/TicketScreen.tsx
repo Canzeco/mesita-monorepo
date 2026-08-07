@@ -1,6 +1,7 @@
-// THE TICKET (MESITA-857 · MESITA-908) — mobile mirror of web TicketScreen.
-// Locked order: Place → Consumer → Reward → Tasks → QR (scannable) →
-// Results (closed) → Report. Task sheets are FullScreenSheets on this route.
+// THE TICKET (MESITA-857 · MESITA-908 · MESITA-886) — mobile mirror of web
+// TicketScreen. Locked order: Place → Consumer → Reward → Tasks → QR
+// (gated / scannable) → Results (closed) → Report. Priced tasks unlock the
+// QR (MESITA-886). Task sheets are FullScreenSheets on this route.
 
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
@@ -10,6 +11,7 @@ import {
   Camera,
   Check,
   Flag,
+  Lock,
   PartyPopper,
   Star,
   Store,
@@ -83,7 +85,8 @@ function statusLine(t: ConsumerTicketRow): string {
     case 'open':
       return 'Show this QR — staff scan it to start your visit.';
     case 'awaiting_payment_confirm':
-      return 'All set — pay the discounted total at the table.';
+      // MESITA-886: bill is optional — never promise a table total.
+      return 'Scanned — staff closes your visit at the table.';
     default:
       return t.status;
   }
@@ -373,6 +376,20 @@ export function TicketScreen({
     Boolean(ticket.check_code) &&
     (ticket.status === 'open' || ticket.status === 'awaiting_payment_confirm');
 
+  // ── The QR gate (MESITA-886) — mirror of web TicketScreen ───────────
+  const gateStates: TaskState[] = [];
+  if (storyOnTicket) gateStates.push(taskStateFor(ticket.story_status));
+  gateStates.push(taskStateFor(ticket.review_status));
+  const gateTotal = priced ? gateStates.length : 0;
+  const gateDone = gateStates.filter((s) => s === 'done').length;
+  const qrLocked =
+    ticket.status === 'open' &&
+    !scanned &&
+    gateTotal > 0 &&
+    gateDone < gateTotal;
+  const gateLeft = gateTotal - gateDone;
+  const showPassCard = live && (qrLocked || scannable);
+
   const showIgHandle =
     (classKey === 'influencer' || storyOnTicket) && Boolean(igHandle);
   const mapsUrl = googleMapsSearchUrl(placeName, ticket.place?.address);
@@ -553,8 +570,15 @@ export function TicketScreen({
               <Text className="font-bold text-foreground" style={{ fontSize: 12.5 }}>
                 Your tasks
               </Text>
-              <Text className="text-muted-foreground" style={{ fontSize: 10 }}>
-                {priced ? 'Optional — each one pays' : 'Optional'}
+              <Text
+                className={qrLocked ? 'font-bold text-primary' : 'text-muted-foreground'}
+                style={{ fontSize: 10 }}
+              >
+                {qrLocked
+                  ? `${gateDone}/${gateTotal} — they unlock your QR`
+                  : priced
+                    ? 'Optional — each one pays'
+                    : 'Optional'}
               </Text>
             </View>
             <View className="px-2 pb-2" style={{ gap: 2 }}>
@@ -619,8 +643,8 @@ export function TicketScreen({
           </View>
         ) : null}
 
-        {/* 5 · QR scannable only */}
-        {scannable ? (
+        {/* 5 · Pass / QR — gated until priced tasks done (MESITA-886). */}
+        {showPassCard ? (
           <View className="overflow-hidden rounded-3xl">
             <LinearGradient
               colors={PASS_GRADIENTS[classKey] ?? PASS_GRADIENTS.standard}
@@ -635,77 +659,117 @@ export function TicketScreen({
                 >
                   Show to waiter
                 </Text>
-                <View className="rounded-full bg-white/25 px-2 py-0.5">
-                  <Text
-                    className="font-extrabold uppercase text-white"
-                    style={{ fontSize: 9, letterSpacing: 1 }}
+                {qrLocked ? (
+                  <View
+                    className="flex-row items-center rounded-full bg-white/25 px-2 py-0.5"
+                    style={{ gap: 4 }}
                   >
-                    QR
-                  </Text>
-                </View>
-              </View>
-              <View
-                className="mt-2.5 self-center rounded-2xl bg-white"
-                style={{ padding: 10 }}
-              >
-                <QRCode
-                  value={checkUrlForCode(ticket.check_code!)}
-                  size={qrSize}
-                  color="#2b1233"
-                  backgroundColor="#ffffff"
-                />
-              </View>
-              <View
-                accessibilityLiveRegion="polite"
-                className="mt-2 flex-row items-center justify-center"
-                style={{ gap: 6 }}
-              >
-                {scanned && ticket.status === 'open' ? (
-                  <>
-                    <BadgeCheck size={14} color="#fff" />
-                    <Text className="text-white/90" style={{ fontSize: 11 }}>
-                      Verified by {placeName}
+                    <Lock size={10} color="#fff" />
+                    <Text
+                      className="font-extrabold uppercase text-white"
+                      style={{ fontSize: 9, letterSpacing: 1 }}
+                    >
+                      Locked
                     </Text>
-                  </>
+                  </View>
                 ) : (
-                  <Text
-                    className="text-center text-white/90"
-                    style={{ fontSize: 11, maxWidth: 260 }}
-                  >
-                    {statusLine(ticket)}
-                  </Text>
+                  <View className="rounded-full bg-white/25 px-2 py-0.5">
+                    <Text
+                      className="font-extrabold uppercase text-white"
+                      style={{ fontSize: 9, letterSpacing: 1 }}
+                    >
+                      QR
+                    </Text>
+                  </View>
                 )}
               </View>
-              {billed ? (
-                <View
-                  className="mt-2.5 items-center rounded-xl bg-white/20"
-                  style={{ paddingHorizontal: 12, paddingVertical: 8 }}
-                >
-                  <Text
-                    className="font-bold uppercase text-white/90"
-                    style={{ fontSize: 9, letterSpacing: 1.4 }}
+              {qrLocked ? (
+                <>
+                  <View
+                    className="mt-2.5 self-center items-center justify-center rounded-2xl border-2 border-dashed border-white/45 bg-white/15"
+                    style={{ width: qrSize + 20, height: qrSize + 20 }}
                   >
-                    {ticket.discount_percent ?? 0}% off applied
+                    <Lock size={32} color="rgba(255,255,255,0.9)" />
+                  </View>
+                  <Text
+                    accessibilityLiveRegion="polite"
+                    className="mt-2 self-center text-center text-white/90"
+                    style={{ fontSize: 11, maxWidth: 260 }}
+                  >
+                    Finish your {gateLeft === 1 ? 'task' : 'tasks'} above to
+                    unlock your QR — {gateLeft} to go.
                   </Text>
-                  <Text
-                    className="mt-0.5 font-extrabold text-white"
-                    style={{ fontSize: 20 }}
+                </>
+              ) : (
+                <>
+                  <View
+                    className="mt-2.5 self-center rounded-2xl bg-white"
+                    style={{ padding: 10 }}
                   >
-                    {formatCurrency(
-                      Math.max(
-                        0,
-                        (ticket.total_cents ?? 0) - (ticket.discount_cents ?? 0),
-                      ),
+                    <QRCode
+                      value={checkUrlForCode(ticket.check_code!)}
+                      size={qrSize}
+                      color="#2b1233"
+                      backgroundColor="#ffffff"
+                    />
+                  </View>
+                  <View
+                    accessibilityLiveRegion="polite"
+                    className="mt-2 flex-row items-center justify-center"
+                    style={{ gap: 6 }}
+                  >
+                    {scanned && ticket.status === 'open' ? (
+                      <>
+                        <BadgeCheck size={14} color="#fff" />
+                        <Text className="text-white/90" style={{ fontSize: 11 }}>
+                          Verified by {placeName}
+                        </Text>
+                      </>
+                    ) : (
+                      <Text
+                        className="text-center text-white/90"
+                        style={{ fontSize: 11, maxWidth: 260 }}
+                      >
+                        {statusLine(ticket)}
+                      </Text>
                     )}
-                  </Text>
-                  <Text className="mt-0.5 text-white/90" style={{ fontSize: 10.5 }}>
-                    to pay at the table
-                    {ticket.discount_cents
-                      ? ` — you save ${formatCurrency(ticket.discount_cents)}`
-                      : ''}
-                  </Text>
-                </View>
-              ) : null}
+                  </View>
+                  {billed ? (
+                    <View
+                      className="mt-2.5 items-center rounded-xl bg-white/20"
+                      style={{ paddingHorizontal: 12, paddingVertical: 8 }}
+                    >
+                      <Text
+                        className="font-bold uppercase text-white/90"
+                        style={{ fontSize: 9, letterSpacing: 1.4 }}
+                      >
+                        {ticket.discount_percent ?? 0}% off applied
+                      </Text>
+                      <Text
+                        className="mt-0.5 font-extrabold text-white"
+                        style={{ fontSize: 20 }}
+                      >
+                        {formatCurrency(
+                          Math.max(
+                            0,
+                            (ticket.total_cents ?? 0) -
+                              (ticket.discount_cents ?? 0),
+                          ),
+                        )}
+                      </Text>
+                      <Text
+                        className="mt-0.5 text-white/90"
+                        style={{ fontSize: 10.5 }}
+                      >
+                        to pay at the table
+                        {ticket.discount_cents
+                          ? ` — you save ${formatCurrency(ticket.discount_cents)}`
+                          : ''}
+                      </Text>
+                    </View>
+                  ) : null}
+                </>
+              )}
             </LinearGradient>
           </View>
         ) : null}

@@ -1,9 +1,10 @@
 "use client";
 
-// THE TICKET (MESITA-857 · MESITA-908) — one full-screen object for the whole
-// lifecycle. Locked block order (rewards-chrome-20260805):
-//   Place → Consumer → Reward → Tasks → QR (scannable only) → Results
-//   (closed only) → Report. Task sheets are LocalSheets on this route.
+// THE TICKET (MESITA-857 · MESITA-908 · MESITA-886) — one full-screen object
+// for the whole lifecycle. Locked block order:
+//   Place → Consumer → Reward → Tasks → QR (gated / scannable) → Results
+//   (closed only) → Report. Priced tasks unlock the QR (MESITA-886). Task
+//   sheets are LocalSheets on this route.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
@@ -17,6 +18,7 @@ import {
   Flag,
   Instagram,
   Loader2,
+  Lock,
   PartyPopper,
   Star,
   Store,
@@ -76,7 +78,8 @@ function statusLine(t: ConsumerTicketRow): string {
     case "open":
       return "Show this QR — staff scan it to start your visit.";
     case "awaiting_payment_confirm":
-      return "All set — pay the discounted total at the table.";
+      // MESITA-886: bill is optional — never promise a table total.
+      return "Scanned — staff closes your visit at the table.";
     default:
       return t.status;
   }
@@ -371,6 +374,23 @@ export function TicketScreen({
     Boolean(ticket.check_code) &&
     (ticket.status === "open" || ticket.status === "awaiting_payment_confirm");
 
+  // ── The QR gate (MESITA-886) ────────────────────────────────────────
+  // Priced tasks unlock the pass: Story (when on the ticket) + Google
+  // review. Mesita ★ never gates. Strategy "zero" places don't gate.
+  // Once scanned, the gate is moot — never re-lock mid-visit.
+  const gateStates: TaskState[] = [];
+  if (storyOnTicket) gateStates.push(taskStateFor(ticket.story_status));
+  gateStates.push(taskStateFor(ticket.review_status));
+  const gateTotal = priced ? gateStates.length : 0;
+  const gateDone = gateStates.filter((s) => s === "done").length;
+  const qrLocked =
+    ticket.status === "open" &&
+    !scanned &&
+    gateTotal > 0 &&
+    gateDone < gateTotal;
+  const gateLeft = gateTotal - gateDone;
+  const showPassCard = live && (qrLocked || scannable);
+
   const showIgHandle =
     (classKey === "influencer" || storyOnTicket) && Boolean(igHandle);
 
@@ -501,8 +521,17 @@ export function TicketScreen({
             <h2 className="text-foreground text-[12.5px] font-bold tracking-tight">
               Your tasks
             </h2>
-            <span className="text-muted-foreground text-[10px]">
-              {priced ? "Optional — each one pays" : "Optional"}
+            <span
+              className={cn(
+                "text-[10px]",
+                qrLocked ? "text-primary font-bold" : "text-muted-foreground",
+              )}
+            >
+              {qrLocked
+                ? `${gateDone}/${gateTotal} — they unlock your QR`
+                : priced
+                  ? "Optional — each one pays"
+                  : "Optional"}
             </span>
           </div>
           <div className="flex flex-col gap-0.5 px-2 pb-2">
@@ -564,8 +593,8 @@ export function TicketScreen({
         </section>
       ) : null}
 
-      {/* 5 · QR for waiter — scannable only */}
-      {scannable ? (
+      {/* 5 · Pass / QR — gated until priced tasks done (MESITA-886). */}
+      {showPassCard ? (
         <section
           className={cn(
             "shrink-0 overflow-hidden rounded-[24px] px-4 pt-3 pb-3.5 text-white shadow-[0_16px_36px_-20px_rgba(255,77,109,0.55)]",
@@ -577,55 +606,81 @@ export function TicketScreen({
             <p className="text-[9px] font-bold tracking-[0.14em] text-white/80 uppercase">
               Show to waiter
             </p>
-            <span className="rounded-full bg-white/22 px-2 py-0.5 text-[9px] font-extrabold tracking-widest uppercase">
-              QR
-            </span>
-          </div>
-          <div className="mx-auto mt-2.5 w-full max-w-[min(170px,48vw)] rounded-2xl bg-white p-2.5 shadow-[0_12px_30px_-12px_rgba(120,20,40,0.5)]">
-            <QRCodeSVG
-              value={checkUrlForCode(ticket.check_code!)}
-              size={170}
-              className="h-auto w-full"
-              bgColor="#ffffff"
-              fgColor="#2b1233"
-              level="M"
-              marginSize={0}
-            />
-          </div>
-          <p
-            aria-live="polite"
-            className="mx-auto mt-2 flex max-w-[34ch] items-center justify-center gap-1.5 text-center text-[11px] leading-snug text-white/90"
-          >
-            {scanned && ticket.status === "open" ? (
-              <>
-                <BadgeCheck className="size-3.5 shrink-0" /> Verified by{" "}
-                {placeName}
-              </>
+            {qrLocked ? (
+              <span className="flex items-center gap-1 rounded-full bg-white/22 px-2 py-0.5 text-[9px] font-extrabold tracking-widest uppercase">
+                <Lock className="size-2.5" />
+                Locked
+              </span>
             ) : (
-              statusLine(ticket)
+              <span className="rounded-full bg-white/22 px-2 py-0.5 text-[9px] font-extrabold tracking-widest uppercase">
+                QR
+              </span>
             )}
-          </p>
-          {billed ? (
-            <div className="mt-2.5 rounded-xl bg-white/18 px-3 py-2 text-center">
-              <p className="text-[9px] font-bold tracking-[0.14em] uppercase opacity-90">
-                {ticket.discount_percent ?? 0}% off applied
+          </div>
+          {qrLocked ? (
+            <>
+              {/* Locked plate — same footprint as the QR so unlock is a swap. */}
+              <div className="mx-auto mt-2.5 grid aspect-square w-full max-w-[min(170px,48vw)] place-items-center rounded-2xl border-2 border-dashed border-white/45 bg-white/12">
+                <Lock className="size-8 text-white/90" />
+              </div>
+              <p
+                aria-live="polite"
+                className="mx-auto mt-2 max-w-[34ch] text-center text-[11px] leading-snug text-white/90"
+              >
+                Finish your {gateLeft === 1 ? "task" : "tasks"} above to unlock
+                your QR — {gateLeft} to go.
               </p>
-              <p className="font-display mt-0.5 text-[20px] leading-none font-bold">
-                {formatCurrency(
-                  Math.max(
-                    0,
-                    (ticket.total_cents ?? 0) - (ticket.discount_cents ?? 0),
-                  ),
+            </>
+          ) : (
+            <>
+              <div className="mx-auto mt-2.5 w-full max-w-[min(170px,48vw)] rounded-2xl bg-white p-2.5 shadow-[0_12px_30px_-12px_rgba(120,20,40,0.5)]">
+                <QRCodeSVG
+                  value={checkUrlForCode(ticket.check_code!)}
+                  size={170}
+                  className="h-auto w-full"
+                  bgColor="#ffffff"
+                  fgColor="#2b1233"
+                  level="M"
+                  marginSize={0}
+                />
+              </div>
+              <p
+                aria-live="polite"
+                className="mx-auto mt-2 flex max-w-[34ch] items-center justify-center gap-1.5 text-center text-[11px] leading-snug text-white/90"
+              >
+                {scanned && ticket.status === "open" ? (
+                  <>
+                    <BadgeCheck className="size-3.5 shrink-0" /> Verified by{" "}
+                    {placeName}
+                  </>
+                ) : (
+                  statusLine(ticket)
                 )}
               </p>
-              <p className="mt-0.5 text-[10.5px] opacity-90">
-                to pay at the table
-                {ticket.discount_cents
-                  ? ` — you save ${formatCurrency(ticket.discount_cents)}`
-                  : ""}
-              </p>
-            </div>
-          ) : null}
+              {billed ? (
+                <div className="mt-2.5 rounded-xl bg-white/18 px-3 py-2 text-center">
+                  <p className="text-[9px] font-bold tracking-[0.14em] uppercase opacity-90">
+                    {ticket.discount_percent ?? 0}% off applied
+                  </p>
+                  <p className="font-display mt-0.5 text-[20px] leading-none font-bold">
+                    {formatCurrency(
+                      Math.max(
+                        0,
+                        (ticket.total_cents ?? 0) -
+                          (ticket.discount_cents ?? 0),
+                      ),
+                    )}
+                  </p>
+                  <p className="mt-0.5 text-[10.5px] opacity-90">
+                    to pay at the table
+                    {ticket.discount_cents
+                      ? ` — you save ${formatCurrency(ticket.discount_cents)}`
+                      : ""}
+                  </p>
+                </div>
+              ) : null}
+            </>
+          )}
         </section>
       ) : null}
 
