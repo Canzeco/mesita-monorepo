@@ -156,7 +156,11 @@ export function membershipPillState(place: {
   return "pending";
 }
 
-export function MembershipStatusPill({ state }: { state: MembershipPillState }) {
+export function MembershipStatusPill({
+  state,
+}: {
+  state: MembershipPillState;
+}) {
   const labels: Record<MembershipPillState, string> = {
     not_member: "Not a member",
     pending: "Member — pending",
@@ -191,9 +195,7 @@ export function MembershipStatusPill({ state }: { state: MembershipPillState }) 
 
 /** @deprecated use MembershipStatusPill */
 export function StatusPill({ subscribed }: { subscribed: boolean }) {
-  return (
-    <MembershipStatusPill state={subscribed ? "live" : "not_member"} />
-  );
+  return <MembershipStatusPill state={subscribed ? "live" : "not_member"} />;
 }
 
 export function SubHeading({

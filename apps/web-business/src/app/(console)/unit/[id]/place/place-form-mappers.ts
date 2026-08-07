@@ -60,7 +60,9 @@ export function placeToFormState(place: MyPlace): PlaceFormState {
             };
           })
           .filter(
-            (m): m is {
+            (
+              m,
+            ): m is {
               name: string;
               url: string;
               source: "upload" | "drive" | null;

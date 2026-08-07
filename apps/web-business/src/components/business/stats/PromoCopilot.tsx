@@ -60,7 +60,7 @@ export function PromoCopilot({ projectId }: { projectId: string }) {
             if (e.key === "Enter" && !busy) void run();
           }}
           placeholder="Optional: ask about Welcome, stories, rates…"
-          className="border-border bg-background text-foreground placeholder:text-muted-foreground h-9 flex-1 rounded-lg border px-3 text-xs outline-none focus:border-foreground/40"
+          className="border-border bg-background text-foreground placeholder:text-muted-foreground focus:border-foreground/40 h-9 flex-1 rounded-lg border px-3 text-xs outline-none"
           disabled={busy}
         />
         <button
@@ -124,7 +124,7 @@ function SuggestionRow({ suggestion }: { suggestion: PromoSuggestion }) {
         </p>
         <span
           className={cn(
-            "text-muted-foreground rounded-md bg-muted/50 px-1.5 py-0.5 text-[10px] font-semibold tracking-wide uppercase",
+            "text-muted-foreground bg-muted/50 rounded-md px-1.5 py-0.5 text-[10px] font-semibold tracking-wide uppercase",
           )}
         >
           {FOCUS_LABEL[suggestion.focus]}

@@ -1,13 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
-import {
-  ArrowRight,
-  Check,
-  LifeBuoy,
-  PlayCircle,
-  Plus,
-} from "lucide-react";
+import { ArrowRight, Check, LifeBuoy, PlayCircle, Plus } from "lucide-react";
 import { PageErrorState } from "@/components/business/PageErrorState";
 import { SignOutButton } from "@/components/auth/SignOutButton";
 import { createServerSupabase } from "@/lib/supabase/server";

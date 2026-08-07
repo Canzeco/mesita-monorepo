@@ -245,9 +245,11 @@ export function PerformanceClient({
             Icon={Ticket}
             label="Average ticket"
             value={money(summary.avgTicketCents, cur)}
-            meta={softAmounts
-              ? `${summary.consumerReportedCount} typed by the guest`
-              : "from your entered bills"}
+            meta={
+              softAmounts
+                ? `${summary.consumerReportedCount} typed by the guest`
+                : "from your entered bills"
+            }
           />
           <Stat
             Icon={BadgeCheck}
@@ -264,9 +266,11 @@ export function PerformanceClient({
           <Stat
             Icon={Repeat}
             label="Repeat rate"
-            value={summary.guests > 0
-              ? `${Math.round((summary.repeatGuests / summary.guests) * 100)}%`
-              : "—"}
+            value={
+              summary.guests > 0
+                ? `${Math.round((summary.repeatGuests / summary.guests) * 100)}%`
+                : "—"
+            }
             meta="guests with more than one visit"
           />
           <Stat
@@ -298,9 +302,21 @@ export function PerformanceClient({
 
         {/* "Redemption by segment" — by ACTION. Never by class. */}
         <div className="flex flex-wrap gap-2">
-          <Pill Icon={Footprints} label="First visits" value={summary.byAction.welcome} />
-          <Pill Icon={Camera} label="With a story" value={summary.byAction.story} />
-          <Pill Icon={Star} label="With a Google review" value={summary.byAction.review} />
+          <Pill
+            Icon={Footprints}
+            label="First visits"
+            value={summary.byAction.welcome}
+          />
+          <Pill
+            Icon={Camera}
+            label="With a story"
+            value={summary.byAction.story}
+          />
+          <Pill
+            Icon={Star}
+            label="With a Google review"
+            value={summary.byAction.review}
+          />
         </div>
       </Section>
 
@@ -313,8 +329,16 @@ export function PerformanceClient({
         description="The output the discounts bought."
       >
         <div className="flex flex-wrap gap-2">
-          <Pill Icon={Camera} label="Instagram stories" value={content.storiesPosted} />
-          <Pill Icon={Star} label="Google reviews" value={content.googleReviews} />
+          <Pill
+            Icon={Camera}
+            label="Instagram stories"
+            value={content.storiesPosted}
+          />
+          <Pill
+            Icon={Star}
+            label="Google reviews"
+            value={content.googleReviews}
+          />
           <Pill
             Icon={UtensilsCrossed}
             label="Mesita reviews"
@@ -367,7 +391,7 @@ export function PerformanceClient({
                           {v}
                         </span>
                       </span>
-                    )
+                    ),
                   )}
                 </div>
                 {r.comments?.trim() ? (
