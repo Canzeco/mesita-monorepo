@@ -16,7 +16,7 @@ import {
 import type { SampleConsumer, SamplePlace } from "@/lib/business/cip";
 import { updateScoringSettings } from "./settings-actions";
 
-// Shared state for the Lineup Config tabs (v10 blob). The layout mounts
+// Shared state for the Lineup Config tabs (v12 blob). The layout mounts
 // this ONCE, so knobs set on Subscores carry into Scores & Lanes live and
 // survive tab switches — both playgrounds compute from the SAME form state.
 //
