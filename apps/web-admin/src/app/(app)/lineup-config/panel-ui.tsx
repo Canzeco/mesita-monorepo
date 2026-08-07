@@ -63,10 +63,15 @@ export function Slider({
   step: number;
   v: number;
   onChange: (v: number) => void;
-  /** GREEN class — a CONSUMER-OVERRIDABLE DEFAULT (the where tolerance,
-   * XX's control): the admin sets the fallback here, the consumer's own
-   * filter overrides it per query. Plain (pink) sliders are pure
-   * hyperparameters the consumer never touches. */
+  /** GREEN class — a value the consumer is MEANT to override per query (the
+   * where tolerance, XX's control), as opposed to plain (pink) sliders which
+   * are pure hyperparameters they never touch.
+   *
+   * NOT YET LIVE (MESITA-738, verified 2026-08-07): the swipe/map EFs accept no
+   * tolKm/randomness argument, so today every green value acts as a flat global
+   * default and no consumer filter can override it. The dot marks intent, and
+   * its tooltip says so — do not restore "their filter wins" until the EFs
+   * actually take the parameter. */
   consumer?: boolean;
 }) {
   return (
@@ -76,7 +81,7 @@ export function Slider({
           {consumer ? (
             <span
               className="h-2 w-2 shrink-0 rounded-full bg-emerald-500"
-              title="consumer-overridable default — their filter wins per query"
+              title="meant to be consumer-overridable — not live: the EFs take no per-query value, so this acts as a flat default"
               aria-hidden
             />
           ) : null}

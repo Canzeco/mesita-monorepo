@@ -65,8 +65,9 @@ type ScoringCtx = {
   setGp: React.Dispatch<React.SetStateAction<GpParams>>;
   rp: RpRungs;
   setRp: React.Dispatch<React.SetStateAction<RpRungs>>;
-  /** XX — the DEFAULT control: the consumer's Randomness filter overrides
-   * it per query; this is what Lineup uses with no filter set. */
+  /** XX — the control knob. Intended as a consumer-overridable default, but the
+   * Randomness filter is not plumbed to the swipe/map EFs yet (MESITA-738), so
+   * today this value applies to EVERY query, not just unfiltered ones. */
   xx: XxParams;
   setXx: React.Dispatch<React.SetStateAction<XxParams>>;
   /** Current form as a settings blob (the playgrounds compute from this). */

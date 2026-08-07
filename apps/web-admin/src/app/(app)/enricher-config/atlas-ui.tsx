@@ -8,6 +8,45 @@ import type { SynthesisQuality } from "./actions";
 // config sections, the read-only catalog and the cost calculator all share the
 // exact same card / control / disclosure chrome.
 
+// Per-knob enforcement status (MESITA-738). The console is the operator's model
+// of the product, so a control that persists but changes nothing has to SAY so
+// next to itself — prose at the top of a card gets skipped, and worse, goes
+// stale silently when the backend catches up. Three honest states:
+//
+//   enforced  — a live consumer reads this value; changing it changes behavior
+//   fallback  — read only when a higher-precedence source is unset
+//   not-wired — persisted, but no consumer reads it yet
+//
+// Keep the reason one clause and name the reader (or the thing that wins), so
+// the claim is checkable against the code rather than taken on faith.
+export type KnobEnforcement = "enforced" | "fallback" | "not-wired";
+
+const KNOB_STATUS: Record<KnobEnforcement, { label: string; className: string }> = {
+  enforced: { label: "Enforced", className: "border-border text-foreground" },
+  fallback: { label: "Fallback", className: "border-border text-muted-foreground" },
+  "not-wired": { label: "Not wired", className: "border-border text-muted-foreground" },
+};
+
+export function KnobStatus({
+  kind,
+  reason,
+}: {
+  kind: KnobEnforcement;
+  reason: string;
+}) {
+  const s = KNOB_STATUS[kind];
+  return (
+    <span className="inline-flex flex-wrap items-center gap-1.5">
+      <span
+        className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold tracking-wide uppercase ${s.className}`}
+      >
+        {s.label}
+      </span>
+      <span className="text-muted-foreground text-[11px] font-normal">{reason}</span>
+    </span>
+  );
+}
+
 // Uniform config card: icon + title + one-line subtitle + optional status,
 // then the controls. The single wrapper keeps every section consistent.
 export function SectionCard({

@@ -3,7 +3,7 @@
 import { useEffect, useState, useTransition } from "react";
 import { Bot, Globe, MessageSquare } from "lucide-react";
 import { ErrorNote } from "@/components/ErrorNote";
-import { SaveRow, SectionCard, Switch, TextAreaField } from "../enricher-config/atlas-ui";
+import { KnobStatus, SaveRow, SectionCard, Switch, TextAreaField } from "../enricher-config/atlas-ui";
 import { getMemoConfig, updateMemoConfig } from "./actions";
 import {
   DEFAULT_MEMO_CONFIG,
@@ -15,8 +15,25 @@ import {
 // Memo's config surface — kept deliberately small: the persona prose and the
 // models. Server-seeded from admin-web-get-memo-config (app_settings.memo_*);
 // a failed load keeps DEFAULT_MEMO_CONFIG visible but blocks Save (MESITA-737).
-// memo_instructions is read live by consumer-web-ask-memo; the model knobs are
-// persisted for the forthcoming Memo model rebuild.
+//
+// Enforcement is stated PER KNOB via <KnobStatus>, not in card prose (MESITA-738).
+// Verified against consumer-web-ask-memo on 2026-08-07:
+//
+//   instructions    enforced  — resolveMemoSystemPrompt(cfg.instructions) is the
+//                               live persona on every turn
+//   greeting        not wired — no consumer reads memo_greeting; the greeting the
+//                               user sees is a client thread constant
+//                               (apps/web-consumer/.../ask-ai-thread.ts)
+//   openaiModel     fallback  — models_config.memo.model wins; memo_openai_model
+//                               is only read when that is unset
+//   webGrounding    not wired — the Perplexity leg is not optional. It IS Memo's
+//                               answer engine (step 2 of 2) and runs on every
+//                               turn regardless of this switch
+//   perplexityModel not wired — the live model comes from
+//                               models_config.memo.perplexity, not this field
+//
+// When one of these gets wired, change its chip in the same PR — a stale chip is
+// the exact failure this replaced.
 
 function Select<T extends string>({
   value,
@@ -54,7 +71,7 @@ function Field({
 }) {
   return (
     <label className="border-border bg-background flex flex-col gap-2 rounded-xl border p-4">
-      <span className="flex items-center gap-2 text-sm font-medium">{label}</span>
+      <span className="flex flex-wrap items-center gap-2 text-sm font-medium">{label}</span>
       {children}
     </label>
   );
@@ -129,21 +146,30 @@ export function MemoConfigClient({
       <SectionCard
         icon={<MessageSquare className="text-secondary h-4 w-4" />}
         title="Persona"
-        subtitle="How Memo greets and how it talks — the biggest levers on how the concierge feels."
+        subtitle="How Memo talks. Instructions is the live system prompt on every turn."
       >
         <div className="mt-4 grid gap-3">
-          <TextAreaField
-            label="Greeting"
-            value={cfg.greeting}
-            disabled={busy}
-            onChange={(v) => set("greeting", v)}
-          />
-          <TextAreaField
-            label="Instructions (system prompt)"
-            value={cfg.instructions}
-            disabled={busy}
-            onChange={(v) => set("instructions", v)}
-          />
+          <div className="grid gap-2">
+            <KnobStatus
+              kind="not-wired"
+              reason="no consumer reads this — the greeting users see is a client constant"
+            />
+            <TextAreaField
+              label="Greeting"
+              value={cfg.greeting}
+              disabled={busy}
+              onChange={(v) => set("greeting", v)}
+            />
+          </div>
+          <div className="grid gap-2">
+            <KnobStatus kind="enforced" reason="live system prompt in consumer-web-ask-memo" />
+            <TextAreaField
+              label="Instructions (system prompt)"
+              value={cfg.instructions}
+              disabled={busy}
+              onChange={(v) => set("instructions", v)}
+            />
+          </div>
         </div>
       </SectionCard>
 
@@ -151,10 +177,17 @@ export function MemoConfigClient({
       <SectionCard
         icon={<Bot className="text-secondary h-4 w-4" />}
         title="Models"
-        subtitle="OpenAI is Memo's brain. Perplexity is an optional web-grounding leg for live color + citations — off by default."
+        subtitle="Perplexity is Memo's answer engine, not an optional add-on — it runs on every turn. The live model picks come from Models Config; these fields are legacy."
       >
         <div className="mt-4 grid gap-3 sm:grid-cols-2">
-          <Field label={<>OpenAI model (brain)</>}>
+          <Field
+            label={
+              <>
+                OpenAI model
+                <KnobStatus kind="fallback" reason="models_config.memo.model wins when set" />
+              </>
+            }
+          >
             <Select
               value={cfg.openaiModel}
               options={OPENAI_MODELS}
@@ -162,7 +195,17 @@ export function MemoConfigClient({
               onChange={(v) => set("openaiModel", v)}
             />
           </Field>
-          <Field label={<>Web grounding (Perplexity)</>}>
+          <Field
+            label={
+              <>
+                Web grounding (Perplexity)
+                <KnobStatus
+                  kind="not-wired"
+                  reason="Perplexity answers every turn regardless of this switch"
+                />
+              </>
+            }
+          >
             <Switch
               on={cfg.webGrounding}
               pending={pending || blocked}
@@ -175,13 +218,14 @@ export function MemoConfigClient({
               <>
                 <Globe className="text-muted-foreground h-4 w-4" />
                 Perplexity model
+                <KnobStatus kind="not-wired" reason="live pick is models_config.memo.perplexity" />
               </>
             }
           >
             <Select
               value={cfg.perplexityModel}
               options={PERPLEXITY_MODELS}
-              disabled={busy || !cfg.webGrounding}
+              disabled={busy}
               onChange={(v) => set("perplexityModel", v)}
             />
           </Field>
