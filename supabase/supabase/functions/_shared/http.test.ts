@@ -1,5 +1,10 @@
 import { assertEquals } from "jsr:@std/assert@1";
-import { methodNotAllowed, rejectUnlessMethods } from "./http.ts";
+import {
+  jsonError,
+  jsonOk,
+  methodNotAllowed,
+  rejectUnlessMethods,
+} from "./http.ts";
 
 Deno.test("methodNotAllowed returns 405 + canonical body", async () => {
   const res = methodNotAllowed();
@@ -17,4 +22,16 @@ Deno.test("rejectUnlessMethods rejects others", async () => {
   const res = rejectUnlessMethods(req, "GET", "POST");
   assertEquals(res?.status, 405);
   assertEquals(await res!.json(), { ok: false, error: "Method not allowed" });
+});
+
+Deno.test("jsonOk wraps ok:true", async () => {
+  const res = jsonOk({ email: "a@b.c" });
+  assertEquals(res.status, 200);
+  assertEquals(await res.json(), { ok: true, email: "a@b.c" });
+});
+
+Deno.test("jsonError wraps ok:false", async () => {
+  const res = jsonError("nope", 403);
+  assertEquals(res.status, 403);
+  assertEquals(await res.json(), { ok: false, error: "nope" });
 });

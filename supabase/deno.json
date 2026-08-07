@@ -1,5 +1,11 @@
 {
   "tasks": {
+    "lint": "deno lint --rules-exclude=no-unversioned-import,no-import-prefix supabase/functions/",
     "test": "deno test --allow-env --allow-net --allow-read supabase/functions/"
+  },
+  "lint": {
+    "rules": {
+      "exclude": ["no-unversioned-import", "no-import-prefix"]
+    }
   }
 }

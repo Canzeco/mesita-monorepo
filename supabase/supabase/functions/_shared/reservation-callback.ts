@@ -1,10 +1,10 @@
 // WHEN Mesita may ring the HUMAN GUEST again — the guest-side twin of
-// reservation-retry.ts (which paces the venue side by its opening hours).
+// reservation-retry.ts (which paces the place side by its opening hours).
 //
 // A guest call is an annoyance budget, so the ladder is deliberately short and
 // deliberately deaf after the cap:
 //
-//   attempt 1  immediately, when the venue verdict (or cancellation) lands
+//   attempt 1  immediately, when the place verdict (or cancellation) lands
 //   attempt 2  +10 minutes
 //   attempt 3  +1 hour
 //   then       NEVER again — the app is the fallback, not a fourth ring
@@ -18,8 +18,8 @@
 //                guest is on their way or the slot is gone either way, and a
 //                call that lands after the table time is worse than none.
 //
-// Pure scheduling math — no clock, no DB — so it's testable like the venue
-// twin. The venue-side cancellation notice does NOT use this module: venues
+// Pure scheduling math — no clock, no DB — so it's testable like the place
+// twin. The venue-side cancellation notice does NOT use this module: places
 // are paced by their opening hours (nextAttemptAt), not by politeness windows.
 
 import { mexicoZone } from "./local-time.ts";
@@ -34,7 +34,7 @@ const QUIET_CLOSES = 22; // first NON-callable hour
 const URGENT_WINDOW_MS = 6 * 3600_000;
 const CUTOFF_BEFORE_SLOT_MS = 30 * 60_000;
 
-/** Venue-local hour (0–23) at a given instant; UTC hour when Intl fails. */
+/** Place-local hour (0–23) at a given instant; UTC hour when Intl fails. */
 function hourAt(at: Date, lng: number | null): number {
   try {
     const h = new Intl.DateTimeFormat("en-US", {

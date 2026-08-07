@@ -22,7 +22,8 @@ import type { MemoPlaceCard } from "./memo-place-card.ts";
 import type { Prediction } from "./memo-types.ts";
 
 const TOOL_CARDS = 4;
-const PERPLEXITY_MODEL = "sonar-pro";
+/** Fallback only — prefer ctx.perplexityModel from models_config.memo. */
+const DEFAULT_PERPLEXITY_MODEL = "sonar-pro";
 
 // Public card → public Prediction card (the existing frontend contract).
 export function cardToPrediction(card: MemoPlaceCard): Prediction {
@@ -119,7 +120,12 @@ const webSearchTool: AirlockTool = {
         { role: "system", content: "Answer concisely and factually, with sources." },
         { role: "user", content: query },
       ],
-      { model: PERPLEXITY_MODEL, maxTokens: 500, temperature: 0.2, returnRelated: true },
+      {
+        model: ctx.perplexityModel?.trim() || DEFAULT_PERPLEXITY_MODEL,
+        maxTokens: 500,
+        temperature: 0.2,
+        returnRelated: true,
+      },
     );
     if (!res) return { text: "Couldn't reach the web just now." };
     return { text: res.text, citations: res.citations, related: res.related };

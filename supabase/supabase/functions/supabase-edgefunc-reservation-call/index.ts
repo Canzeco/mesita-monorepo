@@ -91,8 +91,8 @@ import {
   guestLegPrompt,
   legDynamicVariables,
   type ReservationLegVars,
-  venueCancelNoticeFirstMessage,
-  venueCancelNoticePrompt,
+  placeCancelNoticeFirstMessage,
+  placeCancelNoticePrompt,
 } from "../_shared/reservation-legs.ts";
 
 // intent: "book" (default) = the two-leg booking run · "callback_retry" =
@@ -274,7 +274,7 @@ async function watchVerdict(
 // degrades to the business one rather than dropping a call that may matter.
 async function resolveLines(
   key: string,
-): Promise<{ ok: true; venueLineId: string; guestLineId: string } | { ok: false; error: string }> {
+): Promise<{ ok: true; placeLineId: string; guestLineId: string } | { ok: false; error: string }> {
   const phoneRes = await resolvePhoneNumberId(key, reservationFromNumber());
   if (!phoneRes.ok) return { ok: false, error: phoneRes.error };
   let guestLineId = phoneRes.id;
@@ -290,7 +290,7 @@ async function resolveLines(
       );
     }
   }
-  return { ok: true, venueLineId: phoneRes.id, guestLineId };
+  return { ok: true, placeLineId: phoneRes.id, guestLineId };
 }
 
 // Leg 2/3 · business → consumer — ONE Confirmer call to the human, plus the
@@ -381,7 +381,7 @@ async function callGuest(input: {
     toNumber: input.consumerNumber,
     dynamicVariables: legDynamicVariables("guest_confirmation", input.legVars, {
       callContext: input.context,
-      venueAlternatives: input.alternativesText,
+      placeAlternatives: input.alternativesText,
     }),
     overrides: {
       prompt: guestLegPrompt(input.legVars),
@@ -486,8 +486,8 @@ async function runCancelNotice(input: {
   const { admin, reservationId } = input;
   const record = (patch: Record<string, unknown>) =>
     guardedRecord(admin, reservationId, input.runId, patch);
-  const isVenue = input.kind === "venue_cancel";
-  const who = isVenue ? "venue" : "guest";
+  const isPlaceSide = input.kind === "venue_cancel"; // wire kind keeps venue_cancel
+  const who = isPlaceSide ? "place" : "guest";
   const n = input.attemptsDone + 1;
   const reservedAt = input.reservedAtIso ? new Date(input.reservedAtIso) : null;
   const park = async (failNote: string) => {
@@ -532,7 +532,7 @@ async function runCancelNotice(input: {
     }
   };
   try {
-    if (isVenue) {
+    if (isPlaceSide) {
       const calls = await bumpVenueCalls(admin, input.projectId);
       if (calls !== null && calls > input.venueCallCap) {
         await record({
@@ -552,19 +552,19 @@ async function runCancelNotice(input: {
     }
     const call = await placeOutboundCall(input.key, {
       agentId: input.agentId,
-      agentPhoneNumberId: isVenue ? lines.venueLineId : lines.guestLineId,
+      agentPhoneNumberId: isPlaceSide ? lines.placeLineId : lines.guestLineId,
       toNumber: input.toNumber,
       dynamicVariables: legDynamicVariables(
-        isVenue ? "business_booking" : "guest_confirmation",
+        isPlaceSide ? "business_booking" : "guest_confirmation",
         input.legVars,
-        { callContext: isVenue ? "cancellation" : "cancelled_by_venue", venueAlternatives: "" },
+        { callContext: isPlaceSide ? "cancellation" : "cancelled_by_venue", placeAlternatives: "" },
       ),
       overrides: {
-        prompt: isVenue
-          ? venueCancelNoticePrompt(input.legVars)
+        prompt: isPlaceSide
+          ? placeCancelNoticePrompt(input.legVars)
           : guestCancelNoticePrompt(input.legVars),
-        firstMessage: isVenue
-          ? venueCancelNoticeFirstMessage(input.legVars)
+        firstMessage: isPlaceSide
+          ? placeCancelNoticeFirstMessage(input.legVars)
           : guestCancelNoticeFirstMessage(input.legVars),
         language: "es",
       },
@@ -588,7 +588,7 @@ async function runCancelNotice(input: {
       // Guest side: wait for the call to END and check whether a VOICEMAIL
       // answered — a message on a machine is not a told guest. One more rung
       // (if the ladder allows) before delivery is claimed.
-      if (!isVenue && call.conversationId) {
+      if (!isPlaceSide && call.conversationId) {
         const finalState = await waitForVoicemailVerdict(input.key, call.conversationId);
         if (finalState === "voicemail") {
           const next = noticeNextAt(
@@ -790,7 +790,7 @@ async function runIntents(input: {
 
       const call = await placeOutboundCall(key, {
         agentId: input.bookerAgentId,
-        agentPhoneNumberId: lines.venueLineId,
+        agentPhoneNumberId: lines.placeLineId,
         toNumber: input.businessNumber,
         dynamicVariables: legDynamicVariables("business_booking", legVars, {
           callContext: input.modificationOfIso ? "modification" : "booking",
@@ -1240,7 +1240,7 @@ Deno.serve(async (req) => {
   const runId = crypto.randomUUID();
   const modificationOfIso = typeof r.modification_of === "string" ? r.modification_of : null;
   const legVars: ReservationLegVars = {
-    venueName: place?.name?.trim() || "el lugar",
+    placeName: place?.name?.trim() || "el lugar",
     guestName: guestName(consumer),
     guestPhone: consumerNumber,
     referenceCode: (r.reference_code ?? "").trim(),

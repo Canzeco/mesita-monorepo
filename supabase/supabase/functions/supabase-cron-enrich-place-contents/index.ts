@@ -78,7 +78,8 @@ serveEnrichStage("contents", async (admin, env, row) => {
   if (analysis.finalPhotos.length > 0) place.photos = analysis.finalPhotos;
 
   // ━━━ S7 — synthesis + category + tags ━━━
-  // Admin cost model: synthesis + 2 × gpt-4o-mini (category then tags).
+  // Admin cost model: synthesis + 2 × classify calls (category then tags);
+  // classify model = models_config.enricher.model (MESITA-941/942).
   const synthCost = synthesisRunCost(cfg.synthesisQuality);
   const classifyCost = COST.sort * 2;
   ledger.assertCanAfford(synthCost + classifyCost, "synthesis_and_classify");

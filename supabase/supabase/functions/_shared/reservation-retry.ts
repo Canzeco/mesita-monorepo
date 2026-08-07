@@ -1,9 +1,9 @@
 // WHEN the Reservationist's second try fires — the open-hours-aware retry,
 // straight from the protocol:
 //
-//   try 1  immediately, whatever the hour (many venues run a 24/7 AI
+//   try 1  immediately, whatever the hour (many places run a 24/7 AI
 //          receptionist, and a closed line still tells us something)
-//   try 2  +5 minutes if the venue is OPEN right now
+//   try 2  +5 minutes if the place is OPEN right now
 //          ~30 minutes AFTER it next opens if it's closed
 //
 // A run can't sleep that long (the edge runtime dies at ~400s), so the engine
@@ -43,7 +43,7 @@ const OPEN_RETRY_MINUTES = 5;
 const AFTER_OPENING_MINUTES = 30;
 
 /**
- * Minutes from now until the venue's next opening, scanning up to a week
+ * Minutes from now until the place's next opening, scanning up to a week
  * ahead. 0 when it's open right now; null when the hours are unusable or the
  * place never opens.
  *
@@ -88,7 +88,7 @@ function minutesUntilNextOpening(
  *   open now (or hours unknown) → +5 min
  *   closed                      → next opening + 30 min
  *
- * Unknown hours deliberately behave like "open": we'd rather try a venue than
+ * Unknown hours deliberately behave like "open": we'd rather try a place than
  * park a guest's table on missing data.
  */
 export function nextAttemptAt(

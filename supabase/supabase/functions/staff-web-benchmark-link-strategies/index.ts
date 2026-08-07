@@ -6,7 +6,7 @@
 //
 // Not wired to any client; invoke with a service-role JWT for ad-hoc evaluation, e.g.
 //   POST { "places": [{ "name": "Pujol", "city": "Ciudad de México" }] }
-// Legacy body key `venues` is still accepted as an alias.
+// Legacy body key `venues` still accepted (ad-hoc only; remove after MESITA-942+1).
 // Keys come from EF secrets: FIRECRAWL_KEY, PERPLEXITY_KEY, GMP_KEY.
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";

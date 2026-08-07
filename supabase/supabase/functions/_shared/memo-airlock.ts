@@ -62,6 +62,8 @@ export type AirlockContext = {
   lng: number | null;
   keys: { openai: string; perplexity: string; google: string };
   model: string;
+  /** models_config.memo.perplexity — web_search tool binding (MESITA-942). */
+  perplexityModel?: string;
   // OPTIONAL admin-only reasoning trace. Absent on the consumer path.
   trace?: TraceSink;
 };

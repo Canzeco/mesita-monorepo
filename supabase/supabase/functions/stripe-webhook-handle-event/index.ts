@@ -22,7 +22,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import Stripe from "npm:stripe@17";
 import { adminClient, readEFEnv } from "../_shared/auth.ts";
-import { json, methodNotAllowed } from "../_shared/http.ts";
+import { jsonError, rejectUnlessMethods } from "../_shared/http.ts";
 import { STRIPE_API_VERSION } from "../_shared/stripe-billing.ts";
 import {
   resolveConsumerId,
@@ -36,7 +36,9 @@ import { ratesFromPlace } from "../_shared/lineup-strategy.ts";
 import { subscriptionSnapshot } from "./subscription-snapshot.ts";
 
 Deno.serve(async (req) => {
-  if (req.method !== "POST") return methodNotAllowed();
+  // Vendor webhook — no CORS preflight; POST-only.
+  const methodReject = rejectUnlessMethods(req, "POST");
+  if (methodReject) return methodReject;
 
   const envRes = readEFEnv();
   if (!envRes.ok) return envRes.response;
@@ -44,12 +46,12 @@ Deno.serve(async (req) => {
   const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
   const webhookSecret = Deno.env.get("STRIPE_WEBHOOK_SECRET");
   if (!stripeKey || !webhookSecret) {
-    return json({ ok: false, error: "Stripe not configured" }, 500);
+    return jsonError("Stripe not configured", 500);
   }
   const stripe = new Stripe(stripeKey, { apiVersion: STRIPE_API_VERSION });
 
   const sig = req.headers.get("stripe-signature");
-  if (!sig) return json({ ok: false, error: "Missing signature" }, 400);
+  if (!sig) return jsonError("Missing signature", 400);
 
   const raw = await req.text();
   let event: Stripe.Event;
@@ -57,7 +59,7 @@ Deno.serve(async (req) => {
     event = await stripe.webhooks.constructEventAsync(raw, sig, webhookSecret);
   } catch (err) {
     console.error("[stripe-webhook-handle-event] signature verification failed:", err);
-    return json({ ok: false, error: "Invalid signature" }, 400);
+    return jsonError("Invalid signature", 400);
   }
 
   const admin = adminClient(envRes.env);
@@ -85,7 +87,7 @@ Deno.serve(async (req) => {
     // Roll back the dedupe marker so Stripe's retry re-processes this event
     // instead of hitting the replay short-circuit and dropping it forever.
     await admin.from("stripe_events").delete().eq("event_id", event.id);
-    return json({ ok: false, error: "Handler error" }, 500);
+    return jsonError("Handler error", 500);
   }
 
   return new Response(JSON.stringify({ received: true }), {

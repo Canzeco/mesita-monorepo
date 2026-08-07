@@ -1,6 +1,6 @@
 // The 8-digit reference code every reservation ticket carries (Product rule,
 // 2026-07-27): human-readable, speakable over the phone, and safe to expose —
-// it identifies a ticket to venues and guests without leaking the row id.
+// it identifies a ticket to places and guests without leaking the row id.
 // Range 10000000–99999999 so it is always exactly 8 digits with no leading
 // zero. Uniqueness is enforced by a unique index on each ticket table; the
 // creator EFs retry with a fresh code on the (astronomically rare) collision.
