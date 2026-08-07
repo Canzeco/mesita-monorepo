@@ -36,7 +36,7 @@ Deno.test("normalize: a bad time is rejected, not coerced", () => {
   assertEquals(normalizeAlternatives([{ time: "abc" }]).length, 0);
 });
 
-Deno.test("match: the venue's own offer, same day", () => {
+Deno.test("match: the place's own offer, same day", () => {
   const alts = normalizeAlternatives([{ time: "21:30" }]);
   assertEquals(matchesOffer(alts, TICKET_DATE, "21:30", TICKET_DATE), true);
   // Zero-padding only — "9:30" is 09:30, NOT half past nine at night. Guessing
@@ -52,7 +52,7 @@ Deno.test("match: a brand-new proposal is NOT an offer", () => {
   const alts = normalizeAlternatives([{ time: "21:30" }]);
   // right time, wrong day
   assertEquals(matchesOffer(alts, "2026-08-11", "21:30", TICKET_DATE), false);
-  // time the venue never offered
+  // time the place never offered
   assertEquals(matchesOffer(alts, TICKET_DATE, "19:00", TICKET_DATE), false);
 });
 
@@ -63,7 +63,7 @@ Deno.test("match: an offer for another day matches only on that day", () => {
 });
 
 Deno.test("match: prose-only entries never auto-confirm", () => {
-  // "solo barra" has no time — we must not skip the venue call on a guess.
+  // "solo barra" has no time — we must not skip the place call on a guess.
   const alts = normalizeAlternatives(["solo barra"]);
   assertEquals(matchesOffer(alts, TICKET_DATE, "21:30", TICKET_DATE), false);
 });

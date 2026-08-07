@@ -11,11 +11,12 @@
 // caller still gets a 200 with `isSuperAdmin: false`; the shell handles the
 // rendering. The privileged EFs are the real auth gate.
 
-import { json, methodNotAllowed } from "./http.ts";
+import { jsonOk, rejectUnlessMethods } from "./http.ts";
 import { adminClient, checkSuperAdmin, getAuthedUser, readEFEnv } from "./auth.ts";
 
 export async function handleGetIdentity(req: Request): Promise<Response> {
-  if (req.method !== "POST") return methodNotAllowed();
+  const methodReject = rejectUnlessMethods(req, "POST");
+  if (methodReject) return methodReject;
 
   const envRes = readEFEnv();
   if (!envRes.ok) return envRes.response;
@@ -25,5 +26,5 @@ export async function handleGetIdentity(req: Request): Promise<Response> {
   const admin = adminClient(envRes.env);
   const isSuperAdmin = await checkSuperAdmin(admin, authRes.user);
 
-  return json({ ok: true, email: authRes.user.email, isSuperAdmin });
+  return jsonOk({ email: authRes.user.email, isSuperAdmin });
 }

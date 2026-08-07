@@ -25,9 +25,14 @@ import { withDisplayName } from "../_shared/place-display-name.ts";
 const PLACE_ADMIN_EMBEDDING_COLUMNS =
   ", embedding, embedding_source_hash, embedding_source_text, manual_priority";
 
-// `placeId` is the canonical place-row id key (MESITA-26); `activeUnitId`
+// `placeId` is the canonical place-row id key (MESITA-26); `activeUnitId` (legacy)
 // is this EF's legacy alias, kept working during the client migration window.
-type Body = { placeId?: string; activeUnitId?: string; ticketsLimit?: number };
+type Body = {
+  placeId?: string;
+  /** @deprecated MESITA-26; prefer placeId (MESITA-942). */
+  activeUnitId?: string;
+  ticketsLimit?: number;
+};
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();

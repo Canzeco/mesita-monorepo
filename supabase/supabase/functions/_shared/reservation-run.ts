@@ -6,14 +6,14 @@
 // the VENUE doesn't pick up (a real protocol event — burn an attempt) and when
 // ELEVENLABS ITSELF kills it (quota error 1002, 5xx — our outage, not their
 // silence). The engine used to charge both against the ticket, so one credit
-// dip marked live reservations "unreachable" while blaming the venue. Now a
+// dip marked live reservations "unreachable" while blaming the place. Now a
 // platform failure parks on ITS OWN backoff (outage_retries) and the protocol
 // ladder resumes untouched once the platform recovers.
 
 import { nextAttemptAt } from "./reservation-retry.ts";
 import { nextGuestCallAt } from "./reservation-callback.ts";
 
-/** Attempts a1 gets to deliver a venue-release notice (leg 5). */
+/** Attempts a1 gets to deliver a place-release notice (leg 5). */
 export const VENUE_NOTICE_ATTEMPTS = 2;
 
 /** Outage backoff: 15 min doubling to a 4 h ceiling, capped at 8 parks. */
@@ -73,9 +73,9 @@ export function outageRetryAt(
 
 /**
  * When the next cancel-notice call may fire (RESERVATIONS-PROTOCOL.md legs
- * 5/6) — the venue side paces by the venue's own opening hours with a hard
+ * 5/6) — the place side paces by the place's own opening hours with a hard
  * cap, the guest side rides the guest ladder. Extracted from the engine so
- * the one decision that dials real venues is provable without a phone.
+ * the one decision that dials real places is provable without a phone.
  */
 export function noticeNextAt(
   kind: "venue_cancel" | "guest_cancel",

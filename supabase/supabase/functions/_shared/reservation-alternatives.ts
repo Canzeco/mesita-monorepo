@@ -1,11 +1,11 @@
-// The alternatives a venue offers when it can't take the requested slot.
+// The alternatives a place offers when it can't take the requested slot.
 //
 // WHY THIS EXISTS: they used to be stored as `string[]` of speakable prose
 // ("afuera a las 10"). That reads fine to a human and is useless to code —
-// nothing could tell whether the guest's answer was one of the venue's OWN
+// nothing could tell whether the guest's answer was one of the place's OWN
 // offers or a brand-new idea. So both were treated the same: re-call the
-// venue, then call the guest back. A guest who simply accepted 21:30 —
-// a slot the venue had itself just volunteered — got TWO calls and the venue
+// place, then call the guest back. A guest who simply accepted 21:30 —
+// a slot the place had itself just volunteered — got TWO calls and the place
 // got a second call asking for something it had already offered. Four calls
 // for one booking.
 //
@@ -14,13 +14,13 @@
 //
 // Legacy rows hold plain strings. Everything here accepts both shapes.
 
-/** One option the venue volunteered. `date` omitted = same day as the ticket. */
-export type VenueAlternative = {
-  /** Venue-local 24h "HH:mm". */
+/** One option the place volunteered. `date` omitted = same day as the ticket. */
+export type PlaceAlternative = {
+  /** Place-local 24h "HH:mm". */
   time: string;
-  /** Venue-local "YYYY-MM-DD". Absent means the ticket's existing date. */
+  /** Place-local "YYYY-MM-DD". Absent means the ticket's existing date. */
   date?: string;
-  /** Anything else the venue said about it: "en la terraza", "sin ventana". */
+  /** Anything else the place said about it: "en la terraza", "sin ventana". */
   note?: string;
 };
 
@@ -39,9 +39,9 @@ function padTime(t: string): string | null {
  * entries. Unparseable items survive as a `note` with no time — they still
  * read back to the guest, they just can't be matched against.
  */
-export function normalizeAlternatives(raw: unknown): VenueAlternative[] {
+export function normalizeAlternatives(raw: unknown): PlaceAlternative[] {
   if (!Array.isArray(raw)) return [];
-  const out: VenueAlternative[] = [];
+  const out: PlaceAlternative[] = [];
   for (const item of raw.slice(0, 8)) {
     if (typeof item === "string") {
       // Legacy prose. Pull a time out of it when there is one so old rows
@@ -68,7 +68,7 @@ export function normalizeAlternatives(raw: unknown): VenueAlternative[] {
 }
 
 /** One speakable line for the a2 leg's `venue_alternatives` variable. */
-export function alternativesToSpeech(alts: VenueAlternative[]): string {
+export function alternativesToSpeech(alts: PlaceAlternative[]): string {
   return alts
     .map((a) => {
       const when = [a.date, a.time].filter(Boolean).join(" ");
@@ -79,17 +79,17 @@ export function alternativesToSpeech(alts: VenueAlternative[]): string {
 }
 
 /**
- * Did the guest pick one of the venue's OWN offers?
+ * Did the guest pick one of the place's OWN offers?
  *
- * That is the whole question. If yes, the venue has already said that slot is
+ * That is the whole question. If yes, the place has already said that slot is
  * available, so Mesita does not need to phone it again to ask — and does not
  * need to phone the guest back to report an answer they just gave. If no (a
- * genuinely new proposal), the venue has never agreed and must be asked.
+ * genuinely new proposal), the place has never agreed and must be asked.
  *
  * `ticketDate` supplies the day for entries that only carried a time.
  */
 export function matchesOffer(
-  alts: VenueAlternative[],
+  alts: PlaceAlternative[],
   wantDate: string,
   wantTime: string,
   ticketDate: string,

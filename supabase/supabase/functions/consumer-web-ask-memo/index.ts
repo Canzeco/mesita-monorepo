@@ -162,6 +162,7 @@ Deno.serve(async (req) => {
         },
         // models_config.memo.model via get-memo-config (MEMO_MODEL env retired).
         model: (cfg.model ?? "gpt-4o-mini").trim(),
+        perplexityModel: (cfg.perplexity ?? "sonar-pro").trim(),
       });
       return json({
         ok: true,

@@ -164,6 +164,7 @@ Deno.serve(async (req) => {
         google: gp.ok ? gp.key : "",
       },
       model,
+      perplexityModel: (cfg.perplexity ?? "sonar-pro").trim(),
       trace,
     });
 

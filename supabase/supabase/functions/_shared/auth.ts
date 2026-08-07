@@ -1,5 +1,5 @@
-// Auth helpers shared by every business-* Edge Function on the Team
-// surface (and reusable anywhere else that needs env/user/client setup).
+// Auth helpers shared by product Edge Functions (admin/business/consumer/
+// check/staff) — env, JWT user, and service-role client setup.
 //
 // The three EF entry-points always look the same:
 //

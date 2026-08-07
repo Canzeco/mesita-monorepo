@@ -11,6 +11,7 @@ export const OPENAI_URL = "https://api.openai.com/v1/chat/completions";
 
 // Vision + sort always run on the cheap multimodal model — image work doesn't
 // need the synthesis-quality setting (which governs only the profile text model).
+/** Default vision/sort model when models_config.enricher.model is unavailable. */
 export const VISION_MODEL = "gpt-4o-mini";
 
 // Synthesis model by the admin 'synthesis quality' param. Synthesis reads only

@@ -11,6 +11,19 @@ export function json(body: unknown, status = 200): Response {
   });
 }
 
+/** Canonical success envelope `{ ok: true, ... }`. */
+export function jsonOk(
+  body: Record<string, unknown> = {},
+  status = 200,
+): Response {
+  return json({ ok: true, ...body }, status);
+}
+
+/** Canonical error envelope `{ ok: false, error }`. */
+export function jsonError(error: string, status = 400): Response {
+  return json({ ok: false, error }, status);
+}
+
 // Use as the first line of every Deno.serve handler:
 //   if (req.method === "OPTIONS") return corsPreflight();
 export function corsPreflight(): Response {

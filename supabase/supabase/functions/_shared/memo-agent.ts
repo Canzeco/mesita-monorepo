@@ -47,6 +47,8 @@ export type AgentOpts = {
   history?: { role?: unknown; content?: unknown }[];
   keys: { openai: string; perplexity: string; google: string };
   model: string;
+  /** models_config.memo.perplexity for airlock web_search (MESITA-942). */
+  perplexityModel?: string;
   // OPTIONAL admin-only reasoning trace. Absent on the consumer path.
   trace?: TraceSink;
 };
@@ -59,6 +61,7 @@ export async function answerWithAgent(opts: AgentOpts): Promise<AgentAnswer> {
     lng: opts.lng,
     keys: opts.keys,
     model: opts.model,
+    perplexityModel: opts.perplexityModel,
     trace: opts.trace,
   };
   const airlock = new Airlock(buildMemoTools(), ctx);

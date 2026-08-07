@@ -7,6 +7,8 @@
 // Only ELEVENLABS_KEY is strictly required — the agent id and the outbound line
 // default to the Reservationist wiring and are env-overridable.
 
+import { phoneDigits } from "./phone.ts";
+
 const EL_BASE = "https://api.elevenlabs.io";
 
 // Fallback agent = eleven-a1 (es-mx) · c2b outbound booker. The old single
@@ -14,10 +16,10 @@ const EL_BASE = "https://api.elevenlabs.io";
 // is the only agents in the workspace.
 const DEFAULT_AGENT_ID = "agent_0101kyjcfjecfk69ty20rmcf12gn";
 
-// ONE LINE PER AUDIENCE. The fleet has two inbound agents — a4 answers venues,
+// ONE LINE PER AUDIENCE. The fleet has two inbound agents — a4 answers places,
 // a3 answers guests — and an imported ElevenLabs number binds to exactly one
 // of them, so a single shared line can only ever serve one side (the other
-// hears "no Mesita account with this number"). Two lines also mean a venue and
+// hears "no Mesita account with this number"). Two lines also mean a place and
 // a guest each save a DIFFERENT caller ID, so a callback routes on the dialed
 // number instead of a caller-ID lookup that can't resolve an owner who is also
 // a Mesita consumer on the same handset.
@@ -38,7 +40,7 @@ export function reservationAgentId(): string {
   return Deno.env.get("ELEVENLABS_AGENT_ID")?.trim() || DEFAULT_AGENT_ID;
 }
 
-/** The venue-facing line — a1 dials venues from it, a4 answers venues on it. */
+/** The venue-facing line — a1 dials venues from it, a4 answers places on it. */
 export function reservationFromNumber(): string {
   return Deno.env.get("ELEVENLABS_FROM_NUMBER")?.trim() || DEFAULT_FROM_NUMBER;
 }
@@ -54,9 +56,9 @@ function headers(key: string): HeadersInit {
   return { "xi-api-key": key, "Content-Type": "application/json" };
 }
 
-// Digits (+ leading +) only, so "+1 (628) 296-0710" and "+16282960710" compare equal.
+/** Compare key for imported ElevenLabs numbers — digits only (shared phone.ts). */
 function normalizeNumber(s: string): string {
-  return s.replace(/[^\d+]/g, "");
+  return phoneDigits(s);
 }
 
 /**

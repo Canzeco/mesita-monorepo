@@ -21,7 +21,8 @@
 // Deploy: supabase functions deploy supabase-cron-enrich-place-analysis
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { COST, loadEnrichConfig, PHOTO_CEILING, visionModelFor } from "../_shared/enrich-config.ts";
+import { COST, loadEnrichConfig, PHOTO_CEILING, VISION_MODEL, visionModelFor } from "../_shared/enrich-config.ts";
+import { loadModelsConfig } from "../_shared/models-config.ts";
 import {
   costFromGathered,
   createEnrichCostLedger,
@@ -47,6 +48,7 @@ serveEnrichStage("analysis", async (admin, _env, row) => {
 
   const OPENAI_KEY = Deno.env.get("OPENAI_KEY");
   const cfg = await loadEnrichConfig(admin);
+  const models = await loadModelsConfig(admin);
   const ledger = createEnrichCostLedger(cfg.perRunCostCapUsd, costFromGathered(gathered));
 
   const maxVisionImages = cfg.visionEnabled
@@ -71,7 +73,11 @@ serveEnrichStage("analysis", async (admin, _env, row) => {
     photoCeiling: PHOTO_CEILING,
     runVision,
     openaiKey: OPENAI_KEY,
-    visionModel: visionModelFor(cfg.visionQuality),
+    // Prefer models_config.enricher.model when quality resolves to the cheap default.
+    visionModel: (() => {
+      const q = visionModelFor(cfg.visionQuality);
+      return q === VISION_MODEL ? models.enricherModel : q;
+    })(),
     analyze: {
       google: cfg.analyzeGoogleImages,
       instagram: cfg.analyzeInstagramImages,

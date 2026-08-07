@@ -9,10 +9,12 @@
 // Deploy: supabase functions deploy business-web-get-identity
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight } from "../_shared/http.ts";
+import { corsPreflight, rejectUnlessMethods } from "../_shared/http.ts";
 import { handleGetIdentity } from "../_shared/identity.ts";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
+  const methodReject = rejectUnlessMethods(req, "POST");
+  if (methodReject) return methodReject;
   return await handleGetIdentity(req);
 });

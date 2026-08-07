@@ -74,7 +74,7 @@ Each endpoint encodes exactly one authorized caller from a **closed set**. The n
   `twilio-webhook` is retired (WhatsApp rail removed 2026-08-03).
 - Product callers may invoke internal ones, never the reverse.
 
-Roughly 137 EFs today (folders under `supabase/functions/`, excl. `_shared`).
+Roughly 137 EFs today (folders under `supabase/supabase/functions/`, excl. `_shared`).
 `_shared/` holds internal helpers (free-form naming).
 
 ## Data layer (Postgres)
@@ -95,6 +95,12 @@ Base tables were renamed in the 2026 "R2" pass — the current canonical names:
 
 RLS note: many tables are deliberately `rls_enabled_no_policy` — that is the
 EF-only lockdown, *not* a missing-policy bug. Adding policies would *open* access.
+
+Grant posture (MESITA-942): EF-only tables revoke **all** privileges from
+`anon`/`authenticated` (defense in depth on top of zero policies). Browse /
+vocabulary tables (`places`, `projects`, `classes`, `place_categories`,
+`place_tags`, `consumers`, `projects_view`) are **SELECT-only** for client
+roles — DML/TRUNCATE/TRIGGER/REFERENCES revoked. Sequences are service_role-only.
 
 DEFINER helpers `is_super_admin` / `is_project_member` keep authenticated EXECUTE on purpose (Storage RLS); mutators and trigger-only RPCs are service_role-only (MESITA-940/941).
 
