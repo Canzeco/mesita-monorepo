@@ -49,29 +49,42 @@ export default async function ConsumerShellLayout({
   }
 
   // consumer-get-profile lazily creates the row, so a brand-new account still
-  // reads back successfully (just with null fields). If the EF throws, we
-  // surface the error route — better than rendering a half-broken shell.
-  // Only the class is threaded into the shell now — the Profile TopBar
-  // titles itself "me" + current class rather than the display name.
+  // reads back successfully (just with null fields). Only the class is
+  // threaded into the shell now — the Profile TopBar titles itself "me" +
+  // current class rather than the display name.
+  //
+  // "The EF threw" is NOT the same as "the profile is incomplete": a cold
+  // start, a 500 or a dropped connection would otherwise eject a fully
+  // onboarded consumer to /onboard (where the form's own fetch fails the
+  // same way, so they'd be asked to re-enter data they already gave us —
+  // and on the next success they'd bounce back here). On a throw we render
+  // the shell degraded (no class styling) and let each page surface its own
+  // error; the session is intact and nothing here is security-relevant.
+  // Mobile made the same call in providers/auth.tsx.
+  //
+  // redirect() throws NEXT_REDIRECT, so it MUST stay outside the try —
+  // otherwise the catch swallows it and reports a redirect as a failure.
   let consumerClass: ConsumerClass | null = null;
   let instagramHandle: string | null = null;
+  let needsOnboarding = false;
   try {
     const { consumer: profile, consumerClass: c } =
       await apiFetchConsumerProfile(supabase);
     // First + last name are both required: reservations are booked with the
     // venue under the guest's full name, so a first-name-only profile can't
     // reserve. Consumers from before that rule get bounced to /onboard once.
-    const onboarded =
+    needsOnboarding = !(
       !!profile.first_name &&
       !!profile.last_name &&
       !!profile.birthday &&
-      !!profile.sex;
-    if (!onboarded) redirect("/onboard");
+      !!profile.sex
+    );
     consumerClass = c;
     instagramHandle = profile.instagram_handle?.trim() || null;
-  } catch {
-    redirect("/onboard");
+  } catch (err) {
+    console.error("[consumer/shell] consumer-get-profile:", err);
   }
+  if (needsOnboarding) redirect("/onboard");
 
   // Two-box layout strategy (per user spec):
   //   - Bottom: BottomNav (shrink-0).

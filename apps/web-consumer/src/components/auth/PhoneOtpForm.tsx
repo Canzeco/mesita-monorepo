@@ -1,12 +1,17 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, MessageCircle } from "lucide-react";
 import { Spinner } from "@/components/shared";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
-import { COUNTRY_BY_CODE } from "@/lib/consumer-data";
 import { PhoneInputWithCountry } from "./PhoneInputWithCountry";
+import {
+  OTP_LENGTH,
+  RESEND_COOLDOWN_SECONDS,
+  otpErrorMessage,
+  parsePhone,
+} from "@/lib/phone-otp";
 import {
   ERROR_BOX_CLASS,
   INFO_BOX_CLASS,
@@ -19,6 +24,10 @@ import { cn } from "@/lib/utils";
 // vs "sign in" anymore; first verify on a number creates the auth.user,
 // subsequent verifies sign that user in. Single flow for both consumer and
 // business surfaces — the parent passes the post-verify redirect.
+//
+// The number is normalized + length-checked before it leaves the browser
+// (see lib/phone-otp.ts): every send is a real SMS we pay Twilio for, and
+// a malformed one comes back as an unreadable provider string.
 
 type Step = "phone" | "code";
 
@@ -33,38 +42,69 @@ export function PhoneOtpForm({ redirectAfter }: { redirectAfter: string }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
+  // Seconds left on Supabase's per-number send window. Ticked by the effect
+  // below so "Resend" states the wait instead of failing into a raw
+  // "you can only request this after 60 seconds" from the API.
+  const [cooldown, setCooldown] = useState(0);
 
-  const e164 = useMemo(
-    () => buildE164(countryCode, localPhone),
+  const parsed = useMemo(
+    () => parsePhone(countryCode, localPhone),
     [countryCode, localPhone],
   );
+  const e164 = parsed.ok ? parsed.e164 : "";
+
+  useEffect(() => {
+    if (cooldown <= 0) return;
+    const timer = setTimeout(() => setCooldown((s) => s - 1), 1000);
+    return () => clearTimeout(timer);
+  }, [cooldown]);
 
   const sendCode = async () => {
     setError(null);
     setInfo(null);
-    if (!e164) {
-      setError("Enter your phone number.");
-      return;
+    if (!parsed.ok) {
+      setError(parsed.error);
+      return false;
+    }
+    if (cooldown > 0) {
+      setError(`Hold on — you can ask for a new code in ${cooldown}s.`);
+      return false;
     }
     setLoading(true);
     const { error: sendError } = await supabase.auth.signInWithOtp({
-      phone: e164,
+      phone: parsed.e164,
     });
     setLoading(false);
     if (sendError) {
-      setError(sendError.message);
-      return;
+      setError(otpErrorMessage(sendError));
+      return false;
     }
-    setStep("code");
-    setInfo("We just sent you a 6-digit code.");
+    setCooldown(RESEND_COOLDOWN_SECONDS);
+    return true;
+  };
+
+  const startVerification = async () => {
+    if (await sendCode()) {
+      setStep("code");
+      setInfo(`We just sent you a ${OTP_LENGTH}-digit code.`);
+    }
+  };
+
+  // Resend stays on the code step and confirms inline, so the user never
+  // loses the digits they already typed.
+  const resendCode = async () => {
+    if (await sendCode()) {
+      setCode("");
+      setInfo("We sent you a new code.");
+    }
   };
 
   const verifyCode = async () => {
     setError(null);
     setInfo(null);
     const token = code.replace(/\D/g, "");
-    if (token.length !== 6) {
-      setError("Enter the 6-digit code we sent you.");
+    if (token.length !== OTP_LENGTH) {
+      setError(`Enter the ${OTP_LENGTH}-digit code we sent you.`);
       return;
     }
     setLoading(true);
@@ -75,7 +115,7 @@ export function PhoneOtpForm({ redirectAfter }: { redirectAfter: string }) {
     });
     if (verifyError) {
       setLoading(false);
-      setError(verifyError.message);
+      setError(otpErrorMessage(verifyError));
       return;
     }
     // Force a server-side re-render so SSR pages see the new cookie.
@@ -88,7 +128,7 @@ export function PhoneOtpForm({ redirectAfter }: { redirectAfter: string }) {
       <form
         onSubmit={(e) => {
           e.preventDefault();
-          void sendCode();
+          void startVerification();
         }}
         className="flex flex-col gap-3"
       >
@@ -107,14 +147,15 @@ export function PhoneOtpForm({ redirectAfter }: { redirectAfter: string }) {
         </label>
 
         <p className="text-muted-foreground text-[11px]">
-          We&apos;ll text you a 6-digit code. Standard SMS rates may apply.
+          We&apos;ll text you a {OTP_LENGTH}-digit code. Standard SMS rates may
+          apply.
         </p>
 
         {error && <p className={ERROR_BOX_CLASS}>{error}</p>}
 
         <button
           type="submit"
-          disabled={loading || !localPhone.trim()}
+          disabled={loading || !parsed.ok}
           className={cn(PRIMARY_BUTTON_CLASS, "mt-2")}
         >
           {loading ? (
@@ -157,13 +198,13 @@ export function PhoneOtpForm({ redirectAfter }: { redirectAfter: string }) {
 
       <label className="block">
         <span className="text-muted-foreground mb-1.5 block text-xs font-medium">
-          6-digit code
+          {OTP_LENGTH}-digit code
         </span>
         <input
           type="text"
           inputMode="numeric"
           autoComplete="one-time-code"
-          maxLength={6}
+          maxLength={OTP_LENGTH}
           value={code}
           onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
           placeholder="123456"
@@ -178,7 +219,7 @@ export function PhoneOtpForm({ redirectAfter }: { redirectAfter: string }) {
 
       <button
         type="submit"
-        disabled={loading || code.length !== 6}
+        disabled={loading || code.length !== OTP_LENGTH}
         className={cn(PRIMARY_BUTTON_CLASS, "mt-2")}
       >
         {loading ? (
@@ -190,22 +231,14 @@ export function PhoneOtpForm({ redirectAfter }: { redirectAfter: string }) {
 
       <button
         type="button"
-        onClick={() => void sendCode()}
-        disabled={loading}
+        onClick={() => void resendCode()}
+        disabled={loading || cooldown > 0}
         className="text-muted-foreground hover:text-foreground h-9 text-center text-xs font-semibold transition disabled:opacity-50"
       >
-        Didn&apos;t get it? Resend code
+        {cooldown > 0
+          ? `Resend code in ${cooldown}s`
+          : "Didn't get it? Resend code"}
       </button>
     </form>
   );
-}
-
-// Supabase Auth requires strict E.164 (no spaces, no dashes, leading +).
-// PhoneInputWithCountry keeps the dial code separate, so we re-combine it
-// here from the country meta + the local subscriber digits.
-function buildE164(countryCode: string, local: string): string {
-  const country = COUNTRY_BY_CODE[countryCode] ?? COUNTRY_BY_CODE.MX;
-  const digits = local.replace(/\D/g, "");
-  if (!digits) return "";
-  return `+${country.dial}${digits}`;
 }
