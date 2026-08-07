@@ -35,7 +35,7 @@
 // Deploy: supabase functions deploy admin-web-get-place-activity
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { clampIntRange, corsPreflight, json, readJson, readPlaceIdAlias, rejectUnlessMethods } from "../_shared/http.ts";
+import { clampIntRange, corsPreflight, json, jsonError, readJson, readPlaceIdAlias, rejectUnlessMethods } from "../_shared/http.ts";
 import {
   adminClient,
   getAuthedUser,
