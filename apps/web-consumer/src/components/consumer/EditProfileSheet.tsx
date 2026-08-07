@@ -1,11 +1,16 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import Image from "next/image";
 import { Camera } from "lucide-react";
 import { toast } from "@/lib/toast";
 import { ageFromBirthday, cn, errMsg, MIN_SIGNUP_AGE } from "@/lib/utils";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
+import {
+  ALLOWED_AVATAR_ACCEPT,
+  uploadConsumerAvatar,
+  validateAvatarFile,
+} from "@/lib/avatar-upload";
 import { DefaultAvatar } from "@/components/consumer/DefaultAvatar";
 import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
 import { Spinner } from "@/components/shared/Spinner";
@@ -34,6 +39,9 @@ import {
 // birthday, the same set onboarding collects. Both name halves are required
 // and always sent together: the EF re-derives full_name from them, and that's
 // the name reservations are booked under.
+//
+// Photo upload (MESITA-953) is immediate on pick: Storage → EF avatar_url
+// patch → parent refresh. Name/sex/birthday still save via the Save button.
 
 export function EditProfileSheet({
   profile,
@@ -47,6 +55,7 @@ export function EditProfileSheet({
   onSaved: (updated: ConsumerProfile) => void;
 }) {
   const supabase = useBrowserSupabase();
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [firstName, setFirstName] = useState(profile.first_name ?? "");
   const [lastName, setLastName] = useState(profile.last_name ?? "");
   // Male/Female only (MESITA-727). "" = nothing stored yet, which is why the
@@ -56,12 +65,52 @@ export function EditProfileSheet({
   // birthday is stored as YYYY-MM-DD; the BirthdayPicker round-trips it.
   const [birthday, setBirthday] = useState(profile.birthday ?? "");
   const [saving, setSaving] = useState(false);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  // Local preview while upload runs; falls back to the saved avatar_url.
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+
+  const displayAvatarUrl = previewUrl ?? profile.avatar_url ?? null;
 
   const dirty =
     firstName.trim() !== (profile.first_name ?? "") ||
     lastName.trim() !== (profile.last_name ?? "") ||
     sex !== (profile.sex ?? "") ||
     birthday !== (profile.birthday ?? "");
+
+  async function onPhotoPicked(file: File | undefined) {
+    if (!file || uploadingPhoto) return;
+    const validationError = validateAvatarFile(file);
+    if (validationError) {
+      toast(validationError);
+      return;
+    }
+
+    const localPreview = URL.createObjectURL(file);
+    setPreviewUrl(localPreview);
+    setUploadingPhoto(true);
+    try {
+      const {
+        data: { user },
+        error: userError,
+      } = await supabase.auth.getUser();
+      if (userError || !user) {
+        throw new Error("Sign in again to change your photo.");
+      }
+      const publicUrl = await uploadConsumerAvatar(supabase, user.id, file);
+      const updated = await apiUpdateConsumerProfile(supabase, {
+        avatar_url: publicUrl,
+      });
+      toast("Photo updated.");
+      onSaved(updated);
+      setPreviewUrl(null);
+    } catch (e) {
+      setPreviewUrl(null);
+      toast(errMsg(e, "Couldn't upload your photo."));
+    } finally {
+      URL.revokeObjectURL(localPreview);
+      setUploadingPhoto(false);
+    }
+  }
 
   async function save() {
     if (!dirty || saving) return;
@@ -105,28 +154,48 @@ export function EditProfileSheet({
           How you appear across Mesita
         </p>
 
-        {/* Tappable avatar — photo upload isn't wired to storage yet, so it
-            surfaces a coming-soon toast rather than a dead control. */}
         <div className="mt-5 flex justify-center">
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept={ALLOWED_AVATAR_ACCEPT}
+            className="sr-only"
+            tabIndex={-1}
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              e.target.value = "";
+              void onPhotoPicked(file);
+            }}
+          />
           <button
             type="button"
-            onClick={() => toast("Photo uploads are coming soon.")}
-            className="group relative"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={uploadingPhoto}
+            className="group relative disabled:opacity-70"
             aria-label="Change profile photo"
           >
             {/* Story-ring around the photo, matching the profile hero. */}
             <span className="bg-pink-gradient flex h-20 w-20 rounded-full p-[2.5px] shadow-sm">
               <span className="bg-card relative flex-1 overflow-hidden rounded-full">
-                {profile.avatar_url ? (
+                {displayAvatarUrl ? (
                   <Image
-                    src={profile.avatar_url}
+                    src={displayAvatarUrl}
                     alt="Profile photo"
                     fill
                     sizes="80px"
                     className="object-cover"
+                    unoptimized={Boolean(previewUrl)}
                   />
                 ) : (
                   <DefaultAvatar className="h-full w-full" />
+                )}
+                {uploadingPhoto && (
+                  <span className="absolute inset-0 flex items-center justify-center bg-black/35">
+                    <Spinner
+                      size="sm"
+                      className="border-white/40 border-t-white"
+                    />
+                  </span>
                 )}
               </span>
             </span>
@@ -135,6 +204,9 @@ export function EditProfileSheet({
             </span>
           </button>
         </div>
+        <p className="text-muted-foreground mt-2 text-center text-[11px]">
+          JPG, PNG, or WEBP · max 2 MB
+        </p>
 
         <div className="mt-5 flex flex-col gap-3">
           <SheetField
@@ -182,10 +254,10 @@ export function EditProfileSheet({
           <button
             type="button"
             onClick={() => void save()}
-            disabled={!dirty || saving}
+            disabled={!dirty || saving || uploadingPhoto}
             className={cn(
               "bg-pink-gradient flex flex-1 items-center justify-center gap-2 rounded-lg py-3 text-sm font-semibold text-white transition",
-              (!dirty || saving) && "opacity-60",
+              (!dirty || saving || uploadingPhoto) && "opacity-60",
             )}
           >
             {saving && (

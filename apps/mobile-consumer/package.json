@@ -1,7 +1,7 @@
 {
   "name": "mesita-mobile-consumer",
   "main": "expo-router/entry",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "dependencies": {
     "@expo-google-fonts/fraunces": "^0.4.1",
     "@expo-google-fonts/inter": "^0.4.2",
@@ -20,6 +20,7 @@
     "expo-dev-client": "~57.0.5",
     "expo-font": "~57.0.0",
     "expo-image": "~57.0.0",
+    "expo-image-picker": "^57.0.8",
     "expo-linear-gradient": "~57.0.0",
     "expo-linking": "~57.0.2",
     "expo-router": "~57.0.4",

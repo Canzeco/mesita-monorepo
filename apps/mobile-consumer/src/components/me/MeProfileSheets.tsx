@@ -1,4 +1,5 @@
 import { Image } from 'expo-image';
+import * as ImagePicker from 'expo-image-picker';
 import { LinearGradient } from 'expo-linear-gradient';
 import {
   Camera,
@@ -7,7 +8,13 @@ import {
   Users,
 } from 'lucide-react-native';
 import { useState } from 'react';
-import { Linking, Pressable, Text, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Linking,
+  Pressable,
+  Text,
+  View,
+} from 'react-native';
 
 import {
   LinkRow,
@@ -24,7 +31,13 @@ import { SexSelector, toSexValue, type SexValue } from '@/components/ui/SexSelec
 import { TextField } from '@/components/ui/TextField';
 import { GRADIENT_DIAGONAL, GRADIENTS } from '@/constants/brand';
 import { apiUpdateConsumerProfile } from '@/lib/api/auth';
+import {
+  mimeFromUri,
+  uploadConsumerAvatar,
+  validateAvatarBytes,
+} from '@/lib/avatar-upload';
 import { PREF_KEYS, useStoredFlag, useStoredString } from '@/lib/local-store';
+import { supabase } from '@/lib/supabase';
 import { toast } from '@/lib/toast';
 import { ageFromBirthday, errMsg, MIN_SIGNUP_AGE } from '@/lib/utils';
 import { useAuth } from '@/providers/auth';
@@ -65,9 +78,72 @@ export function PersonalDetailsSheet({
   const [sex, setSex] = useState<SexValue | null>(toSexValue(profile?.sex));
   const [birthday, setBirthday] = useState(profile?.birthday ?? '');
   const [saving, setSaving] = useState(false);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const avatarUrl = profile?.avatar_url ?? null;
+  const avatarUrl = previewUrl ?? profile?.avatar_url ?? null;
+
+  const pickPhoto = async () => {
+    if (uploadingPhoto) return;
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permission.granted) {
+      toast('Photo library access is needed to set your profile picture.');
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.85,
+    });
+    if (result.canceled || !result.assets[0]) return;
+
+    const asset = result.assets[0];
+    const mime = mimeFromUri(asset.uri, asset.mimeType);
+    const validationError = validateAvatarBytes(asset.fileSize, mime);
+    if (validationError) {
+      toast(validationError);
+      return;
+    }
+    if (!mime) {
+      toast('Unsupported file type. Use JPG, PNG, or WEBP.');
+      return;
+    }
+
+    setPreviewUrl(asset.uri);
+    setUploadingPhoto(true);
+    try {
+      const {
+        data: { user },
+        error: userError,
+      } = await supabase.auth.getUser();
+      if (userError || !user) {
+        throw new Error('Sign in again to change your photo.');
+      }
+      const response = await fetch(asset.uri);
+      const buffer = await response.arrayBuffer();
+      // Re-check size from the fetched bytes when the picker omitted fileSize.
+      const sizeError = validateAvatarBytes(buffer.byteLength, mime);
+      if (sizeError) throw new Error(sizeError);
+
+      const publicUrl = await uploadConsumerAvatar(
+        supabase,
+        user.id,
+        buffer,
+        mime,
+      );
+      await apiUpdateConsumerProfile({ avatar_url: publicUrl });
+      toast('Photo updated.');
+      onSaved();
+      setPreviewUrl(null);
+    } catch (e) {
+      setPreviewUrl(null);
+      toast(errMsg(e, "Couldn't upload your photo."));
+    } finally {
+      setUploadingPhoto(false);
+    }
+  };
 
   const save = async () => {
     // Both halves are required — the EF re-derives full_name from them and
@@ -110,15 +186,14 @@ export function PersonalDetailsSheet({
       title="Personal details"
       subtitle="How you appear across Mesita"
     >
-      {/* Tappable avatar — photo upload isn't wired to storage yet, so it
-          surfaces a coming-soon toast rather than a dead control (web parity). */}
       <View style={{ alignItems: 'center' }}>
         <Pressable
-          onPress={() => toast('Photo uploads are coming soon.')}
+          onPress={() => void pickPhoto()}
+          disabled={uploadingPhoto}
           accessibilityRole="button"
           accessibilityLabel="Change profile photo"
           hitSlop={8}
-          style={{ position: 'relative' }}
+          style={{ position: 'relative', opacity: uploadingPhoto ? 0.7 : 1 }}
         >
           {/* Story-ring around the photo, matching the identity hero. */}
           <LinearGradient
@@ -143,6 +218,19 @@ export function PersonalDetailsSheet({
               ) : (
                 <DefaultAvatar size={75} />
               )}
+              {uploadingPhoto ? (
+                <View
+                  style={{
+                    position: 'absolute',
+                    inset: 0,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    backgroundColor: 'rgba(0,0,0,0.35)',
+                  }}
+                >
+                  <ActivityIndicator color="#fff" />
+                </View>
+              ) : null}
             </View>
           </LinearGradient>
           <View
@@ -163,6 +251,12 @@ export function PersonalDetailsSheet({
             <Camera color="#fff7f8" size={14} />
           </View>
         </Pressable>
+        <Text
+          className="text-muted-foreground"
+          style={{ fontSize: 11, marginTop: 8 }}
+        >
+          JPG, PNG, or WEBP · max 2 MB
+        </Text>
       </View>
 
       <TextField

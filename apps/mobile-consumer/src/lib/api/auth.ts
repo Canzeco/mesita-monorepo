@@ -119,6 +119,8 @@ export type ConsumerProfilePatch = {
   last_name?: string;
   sex?: 'male' | 'female'; // Male/Female only (MESITA-727)
   birthday?: string; // YYYY-MM-DD
+  // Public URL after Storage upload, or null to clear (MESITA-953).
+  avatar_url?: string | null;
   profile_public?: boolean;
   profile_show_saves?: boolean;
   profile_show_visits?: boolean;
