@@ -97,17 +97,26 @@ function SubHeading({
 }
 
 // One "Images" box: the whole photo funnel (Collection → Analysis → Selection)
-// as three subsections in a single card, plus the S9 Storage-mirror binary.
-// Image analysis is ALWAYS on — there is no vision toggle — so every analyze
-// count is live. The per-source lock still holds (analyze ≤ collect, keep ≤
-// analyzed total); the numeric knobs batch under one Save, and the Storage
-// binary saves on the spot like a feature switch.
+// as three subsections in a single card, plus two binaries.
+//
+// Vision is a REAL kill-switch (app_settings.atlas_image_vision_enabled): the
+// analysis stage reads it and skips the whole describe+rank pass when it's off
+// (supabase-cron-enrich-place-analysis). Off does NOT mean "no photos" — the
+// funnel still collects and still keeps saveTotalImages, just in source order
+// (Google relevance, then Instagram likes) with no quality ranking and no image
+// descriptions. So the analyze counts only drive anything while vision is on,
+// and this box disables them when it isn't rather than asserting they're live.
+//
+// The per-source lock still holds (analyze ≤ collect, keep ≤ analyzed total);
+// the numeric knobs batch under one Save, and both binaries — Vision and
+// Storage — save on the spot like feature switches.
 export function ImageFunnelSection({
   initialGatherGoogleImages,
   initialGatherInstagramDepth,
   initialAnalyzeGoogleImages,
   initialAnalyzeInstagramImages,
   initialSaveTotalImages,
+  initialImageVisionEnabled,
   initialSaveImagesToStorage,
   initialImageAnalysisPrompt,
   initialImageSortingPrompt,
@@ -118,6 +127,7 @@ export function ImageFunnelSection({
   initialAnalyzeGoogleImages: number;
   initialAnalyzeInstagramImages: number;
   initialSaveTotalImages: number;
+  initialImageVisionEnabled: boolean;
   initialSaveImagesToStorage: boolean;
   initialImageAnalysisPrompt: string;
   initialImageSortingPrompt: string;
@@ -133,6 +143,7 @@ export function ImageFunnelSection({
   const [f, setF] = useState<Funnel>(init);
   const [analysisPrompt, setAnalysisPrompt] = useState(initialImageAnalysisPrompt);
   const [sortingPrompt, setSortingPrompt] = useState(initialImageSortingPrompt);
+  const [vision, setVision] = useState(initialImageVisionEnabled);
   const [storage, setStorage] = useState(initialSaveImagesToStorage);
   const [saved, setSaved] = useState({
     ...init,
@@ -140,6 +151,7 @@ export function ImageFunnelSection({
     sortingPrompt: initialImageSortingPrompt,
   });
   const [savePending, startSave] = useTransition();
+  const [visionPending, startVision] = useTransition();
   const [storagePending, startStorage] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [ok, setOk] = useState(false);
@@ -161,6 +173,25 @@ export function ImageFunnelSection({
     f.save !== saved.save ||
     analysisPrompt !== saved.analysisPrompt ||
     sortingPrompt !== saved.sortingPrompt;
+
+  // Vision is a feature switch, not a numeric knob — persist it on the spot and
+  // roll the optimistic flip back if the EF rejects it. Nothing else in this box
+  // is re-fetched: the analyze counts keep their values while vision is off so
+  // turning it back on restores the operator's caps unchanged.
+  const flipVision = () => {
+    setError(null);
+    const next = !vision;
+    setVision(next);
+    startVision(async () => {
+      const r = await updateAtlasConfig({ imageVisionEnabled: next });
+      if (!r.ok) {
+        setVision(!next);
+        setError(r.error);
+        return;
+      }
+      onSaved(r.data.updatedAt);
+    });
+  };
 
   // Storage mirroring is a feature switch — persist it on the spot.
   const flipStorage = () => {
@@ -248,19 +279,42 @@ export function ImageFunnelSection({
         <SubHeading
           icon={<Eye className="text-muted-foreground h-4 w-4" />}
           title="Analysis"
-          hint="always on · largest cost driver"
-          status={<StageTotal label="analyzed" n={aSum} />}
+          hint={vision ? "on · largest cost driver" : "off · no vision spend"}
+          status={<StageTotal label="analyzed" n={vision ? aSum : 0} />}
         />
-        <div className="mt-3 grid gap-4 sm:grid-cols-2">
-          <NumberField icon={<ImageIcon className="text-muted-foreground h-4 w-4" />} label="Analyze Google images (≤ Google collect)" value={f.ag} min={1} max={f.gg} onChange={(v) => patch({ ag: v })} disabled={savePending} />
-          <NumberField icon={<Instagram className="text-muted-foreground h-4 w-4" />} label="Analyze Instagram images (≤ Instagram collect)" value={f.ai} min={1} max={f.depth} onChange={(v) => patch({ ai: v })} disabled={savePending} />
+
+        <div className="border-border bg-background mt-3 flex flex-col gap-3 rounded-xl border p-4 xl:flex-row xl:items-center xl:justify-between">
+          <span className="flex flex-wrap items-center gap-2 text-sm font-medium">
+            <Eye className="text-muted-foreground h-4 w-4" />
+            Analyze images with the vision model
+            <span className="text-muted-foreground text-[11px]">off = keep photos in source order, unranked</span>
+          </span>
+          <Switch on={vision} pending={visionPending} onClick={flipVision} label="Toggle image vision" />
+        </div>
+
+        <div className="mt-4 grid gap-4 sm:grid-cols-2">
+          <NumberField icon={<ImageIcon className="text-muted-foreground h-4 w-4" />} label="Analyze Google images (≤ Google collect)" value={f.ag} min={1} max={f.gg} onChange={(v) => patch({ ag: v })} disabled={savePending || !vision} />
+          <NumberField icon={<Instagram className="text-muted-foreground h-4 w-4" />} label="Analyze Instagram images (≤ Instagram collect)" value={f.ai} min={1} max={f.depth} onChange={(v) => patch({ ai: v })} disabled={savePending || !vision} />
         </div>
         <p className="text-muted-foreground mt-3 text-xs leading-relaxed">
-          The vision model describes the first N of each pool — Google&apos;s most-relevant and Instagram&apos;s most-liked — then re-ranks all of them by photo quality for the final gallery. The number you analyze is the number you keep — Google ≤ <span className="text-foreground font-semibold tabular-nums">{f.gg}</span>, Instagram ≤ <span className="text-foreground font-semibold tabular-nums">{f.depth}</span>.
+          {vision ? (
+            <>
+              The vision model describes the first N of each pool — Google&apos;s most-relevant and Instagram&apos;s most-liked — then re-ranks all of them by photo quality for the final gallery. The number you analyze is the number you keep — Google ≤ <span className="text-foreground font-semibold tabular-nums">{f.gg}</span>, Instagram ≤ <span className="text-foreground font-semibold tabular-nums">{f.depth}</span>.
+            </>
+          ) : (
+            <>
+              Vision is off, so nothing is described or re-ranked and the counts above drive nothing — they keep their values for when you turn it back on. Photos are still collected and still saved: the top <span className="text-foreground font-semibold tabular-nums">{f.save}</span> in source order (Google by relevance, Instagram by likes), just without a quality ranking.
+            </>
+          )}
         </p>
 
         <Collapsible summary="Edit photo analysis prompts">
           <div className="space-y-4">
+            {!vision && (
+              <p className="text-muted-foreground text-xs leading-relaxed">
+                These prompts are saved but unused while vision is off.
+              </p>
+            )}
             <TextAreaField label="Image analysis prompt" value={analysisPrompt} onChange={(v) => { setOk(false); setAnalysisPrompt(v); }} disabled={savePending} />
             <TextAreaField label="Image sorting prompt" value={sortingPrompt} onChange={(v) => { setOk(false); setSortingPrompt(v); }} disabled={savePending} />
           </div>
@@ -287,7 +341,15 @@ export function ImageFunnelSection({
           />
         </div>
         <p className="text-muted-foreground mt-3 text-xs leading-relaxed">
-          After ranking, the top <span className="text-foreground font-semibold tabular-nums">{f.save}</span> across all sources are saved to the profile — capped at the analysis total (<span className="tabular-nums">{aSum}</span>), up to 10.
+          {vision ? (
+            <>
+              After ranking, the top <span className="text-foreground font-semibold tabular-nums">{f.save}</span> across all sources are saved to the profile — capped at the analysis total (<span className="tabular-nums">{aSum}</span>), up to 10.
+            </>
+          ) : (
+            <>
+              The first <span className="text-foreground font-semibold tabular-nums">{f.save}</span> across all sources are saved to the profile in source order. The ceiling still follows the analyze caps (<span className="tabular-nums">{aSum}</span>) so the number survives turning vision back on.
+            </>
+          )}
         </p>
       </div>
 
@@ -309,9 +371,16 @@ export function ImageFunnelSection({
           <span className="text-muted-foreground">Funnel</span>{" "}
           Collect <span className="font-semibold">{cSum}</span>
           <span className="text-muted-foreground"> ≥ </span>
-          Analyze <span className="font-semibold">{aSum}</span>
-          <span className="text-muted-foreground"> ≥ </span>
+          {vision && (
+            <>
+              Analyze <span className="font-semibold">{aSum}</span>
+              <span className="text-muted-foreground"> ≥ </span>
+            </>
+          )}
           Keep <span className="font-semibold">{f.save}</span>
+          {!vision && (
+            <span className="text-muted-foreground font-normal"> · unranked</span>
+          )}
         </p>
         <SaveRow pending={savePending} dirty={dirty} ok={ok} onClick={save} />
       </div>

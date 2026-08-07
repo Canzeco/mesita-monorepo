@@ -13,6 +13,7 @@ export default async function EnricherConfigPage() {
       initialGatherGoogleImages={result.data.atlasGatherGoogleImages}
       initialGatherInstagramDepth={result.data.atlasGatherInstagramDepth}
       initialGatherReviews={result.data.atlasGatherReviews}
+      initialImageVisionEnabled={result.data.atlasImageVisionEnabled}
       initialSaveImagesToStorage={result.data.atlasSaveImagesToStorage}
       initialSaveTotalImages={result.data.atlasSaveTotalImages}
       initialAnalyzeGoogleImages={result.data.atlasAnalyzeGoogleImages}
