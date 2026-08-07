@@ -205,7 +205,11 @@ describe("middleware auth wall (shouldGate)", () => {
     "/saved/reservation/r1",
     "/saved/place/abc",
   ];
-  const publicPaths = [
+  // "Ungated at middleware" — NOT "public". Everything under app/(shell)
+  // (/home, /search, /place, /coupon, /share) is still walled by that
+  // layout's own getUser() check; middleware just doesn't pay for an SSR
+  // render first. Only "/" and "/onboard" are reachable signed-out.
+  const ungatedAtMiddleware = [
     "/",
     "/home",
     "/home/swipe",
@@ -229,7 +233,7 @@ describe("middleware auth wall (shouldGate)", () => {
     expect(shouldGate(p)).toBe(true);
   });
 
-  it.each(publicPaths)("%s passes middleware ungated", (p) => {
+  it.each(ungatedAtMiddleware)("%s passes middleware ungated", (p) => {
     expect(shouldGate(p)).toBe(false);
   });
 

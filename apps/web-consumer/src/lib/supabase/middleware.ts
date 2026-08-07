@@ -11,16 +11,24 @@ import type { Database } from "./database.types";
 // 2. "Already-signed-in bounce" — / hosts the auth surface; signed-in
 //    visitors should not see it. We bounce them through
 //    /auth/post-signin which forwards to onboard or the app depending
-//    on whether the profile has both name halves (first + last).
+//    on whether the profile is complete.
 //
 // The onboarded-vs-not check is intentionally NOT in middleware — that
 // requires an Edge Function call per request, which is too expensive.
 // Onboard pages and dashboards each do their own server-side check.
 //
-// Consumer browsing (home, place detail, share) is deliberately public
-// so anonymous visitors can swipe before signing up. /me, /rewards,
-// /reservations (+ legacy /saved), /inbox, /subscribe are private because
-// they expose personal data / checkout state.
+// PROTECTED_PREFIXES is a fast path, NOT the security boundary. Every route
+// under app/(shell) — which is all of these plus /home, /search, /place,
+// /share, /coupon, /filters — is walled by that layout's own getUser()
+// check. Listing the personal-data routes here just means we redirect at
+// the edge instead of paying for an SSR render first.
+//
+// So there is no anonymous browsing today: a shared /place/<id> link is a
+// sign-in wall. An earlier version of this comment claimed the opposite
+// ("deliberately public so anonymous visitors can swipe before signing
+// up"), which was aspirational, not true. Opening that up is a product
+// decision — it means exempting the browse routes in the (shell) layout,
+// not editing this list.
 //
 // Legacy static paths (/pay, /qr, /profile, /notifications, /ticket, /invite)
 // are NOT listed: next.config.ts redirects() 308s them to their canonical

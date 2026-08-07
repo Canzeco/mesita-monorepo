@@ -158,6 +158,59 @@ Apify/Perplexity/Firecrawl budget** — deploying/arming the cron is money-gated
   [`RESERVATIONS-PROTOCOL.md`](./RESERVATIONS-PROTOCOL.md). Read it before
   changing anything about when a call fires.
 
+## Identity & sign-in
+
+Three audiences, three doors, one `auth.users` pool:
+
+| Audience | Door | Post-sign-in EF |
+| --- | --- | --- |
+| Consumer | **Phone OTP only** (Twilio SMS) — no email, no OAuth, no guest | `consumer-web-signin-phone` |
+| Business | Email + password | `business-web-signin-email` |
+| Admin | Email / OAuth, gated by `public.super_admins` | — |
+
+The post-sign-in EF is housekeeping, not authentication: Supabase Auth has
+already issued the session by the time it runs. It stamps
+`app_metadata.role`, lazy-creates the profile row, and returns an
+`onboarded` hint for routing. That hint uses ONE predicate — first + last
+name, birthday, sex — mirrored by hand in
+`apps/web-consumer/src/lib/consumer-onboarding.ts` and
+`apps/mobile-consumer/src/lib/api/auth.ts`. Change one, change all three, or
+consumers ping-pong between the app and `/onboard`.
+
+**Consumer OTP wiring.** Supabase Auth's phone provider sends through Twilio
+Programmable Messaging, using the Messaging Service attached to
+`+16282784122` ("Mesita Verifications (Consumers)" — `integrations/twilio/
+numbers.json` is the inventory of record). No Edge Function touches that
+number; if it goes dark, nobody can sign in.
+
+**Probing it without sending an SMS**, and without any secret:
+
+```
+curl -s https://<ref>.supabase.co/auth/v1/settings -H "apikey: <publishable>"
+# → sms_provider, external.phone
+
+curl -s -X POST https://<ref>.supabase.co/auth/v1/otp -H "apikey: <publishable>" \
+  -H "Content-Type: application/json" -d '{"phone":"+10000000000"}'
+# Twilio 21211 ("'To' not valid") = our credentials authenticate, pipe is live.
+# Twilio 20003                    = the credentials are wrong.
+```
+
+A 200 on a *valid* number sends a real SMS and creates an unconfirmed
+`auth.users` row — delete it after probing.
+
+**What is NOT in this repo.** The hosted project's auth settings — SMS
+provider credentials, OTP length, rate limits, captcha — are dashboard-only.
+`config.toml`'s `[auth]` block configures the LOCAL stack and is never
+pushed (its `site_url` is localhost; `supabase config push` would clobber
+production). Work in this area is a human step, not an agent one.
+
+**Known risk.** The sender is a US long code and the market is Mexico, where
+carriers filter foreign A2P traffic hard. If delivery to `+52` numbers
+fails, the fix is switching the provider to **Twilio Verify** — Supabase
+supports it as a distinct provider and it exists for exactly this
+routing/compliance problem. Dashboard change only: the client code in both
+apps is identical either way.
+
 ## Billing
 
 Stripe subscriptions only (no money held). Business `pro` / `ultra`, consumer
