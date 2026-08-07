@@ -68,7 +68,10 @@ Deno.serve(async (req) => {
     (data as { tags?: string[] | null }).tags,
   );
 
-  const placeId = (data as { id: string }).id;
+  // via unknown: the nested-embed select widens `data` to supabase-js's
+  // GenericStringError union, which doesn't overlap the row shape enough for a
+  // direct assertion.
+  const placeId = (data as unknown as { id: string }).id;
   const admin = adminClient(envRes.env);
   const reviewsRes = await admin
     .from("ticket_reviews")
@@ -85,7 +88,9 @@ Deno.serve(async (req) => {
   // the aggregates on the place row still render; the cards just stay empty.
   const mesita_visitors = reviewsRes.error
     ? []
-    : mapTicketReviewsToVisitors(reviewsRes.data ?? []);
+    : mapTicketReviewsToVisitors(
+      (reviewsRes.data ?? []) as unknown as Parameters<typeof mapTicketReviewsToVisitors>[0],
+    );
 
   // Dual-name (MESITA-917/925): consumer `name` is the display label.
   // Raw google_name stays on the payload for clients that need it.
