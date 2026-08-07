@@ -11,6 +11,9 @@ export type UpdateProfileBody = {
   birthday?: string | null;
   country?: string | null;
   phone?: string | null;
+  // Public URL of a photo the caller already uploaded to consumer-avatars
+  // (MESITA-953). null/"" clears. Foreign hosts are rejected.
+  avatar_url?: string | null;
   // Profile visibility flags (MESITA-76 / MESITA-913). Sent alone or
   // alongside the identity fields; only the keys present are patched.
   profile_public?: boolean;
@@ -18,6 +21,53 @@ export type UpdateProfileBody = {
   profile_show_visits?: boolean;
   profile_show_stories?: boolean;
 };
+
+export const AVATAR_BUCKET = "consumer-avatars";
+
+export type ParseAvatarResult =
+  | { ok: true; avatarUrl: string | null | undefined }
+  | { ok: false; response: Response };
+
+// avatar_url must be omitted, null (clear), or a public object URL under
+// this caller's folder in consumer-avatars. Blocks arbitrary remote URLs.
+export function parseAvatarUrl(
+  raw: string | null | undefined,
+  userId: string,
+  supabaseUrl: string,
+): ParseAvatarResult {
+  if (raw === undefined) return { ok: true, avatarUrl: undefined };
+  if (raw === null || raw === "") return { ok: true, avatarUrl: null };
+  const trimmed = raw.trim();
+  const base = supabaseUrl.replace(/\/+$/, "");
+  const prefix = `${base}/storage/v1/object/public/${AVATAR_BUCKET}/${userId}/`;
+  if (!trimmed.startsWith(prefix)) {
+    return {
+      ok: false,
+      response: json(
+        {
+          ok: false,
+          error: "avatar_url must be a Mesita avatar upload for this account",
+        },
+        400,
+      ),
+    };
+  }
+  // No query/hash tricks, and the remainder must stay a single object path.
+  const rest = trimmed.slice(prefix.length);
+  if (
+    !rest ||
+    rest.includes("..") ||
+    rest.includes("?") ||
+    rest.includes("#") ||
+    rest.includes("//")
+  ) {
+    return {
+      ok: false,
+      response: json({ ok: false, error: "avatar_url path is invalid" }, 400),
+    };
+  }
+  return { ok: true, avatarUrl: trimmed };
+}
 
 // Male/Female only — "other" was dropped from the product (MESITA-727).
 const SEX_VALUES = new Set(["male", "female"]);
@@ -129,6 +179,8 @@ export type ProfileFieldValues = {
   birthday: string | null;
   country: string | null;
   phone: string | null;
+  // undefined = not in this patch; null = clear; string = set.
+  avatarUrl?: string | null;
 };
 
 export type ProfilePatchResult =
@@ -157,6 +209,7 @@ export function buildProfilePatch(
   if (body.birthday !== undefined) patch.birthday = fields.birthday;
   if (body.country !== undefined) patch.country = fields.country;
   if (body.phone !== undefined) patch.phone = fields.phone;
+  if (body.avatar_url !== undefined) patch.avatar_url = fields.avatarUrl ?? null;
   for (const key of [
     "profile_public",
     "profile_show_saves",

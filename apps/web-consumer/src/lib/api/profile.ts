@@ -26,10 +26,8 @@ export type ConsumerProfile = {
   phone: string | null;
   // Claimed Instagram username (MESITA-74) — normalized, no leading @.
   instagram_handle: string | null;
-  // Consumer avatar. Optional + forward-compatible: the Me page renders it the
-  // moment consumer-web-get-profile starts returning it, and falls back to
-  // initials until then. The upload/storage/EF half is a separate,
-  // human-gated change. (Salvaged from the closed design-review PR #362.)
+  // Consumer avatar public URL (consumer-avatars bucket). Optional — missing
+  // falls back to DefaultAvatar on Me / Personal details (MESITA-880/953).
   avatar_url?: string | null;
   // Account-level visibility flags (MESITA-76 / MESITA-913) — Settings → Privacy.
   // profile_public=false → Private account (anonymous to other guests).
@@ -132,9 +130,14 @@ export type ConsumerPrivacyPatch = {
   profile_show_stories?: boolean;
 };
 
+// Avatar-only patch after a Storage upload (MESITA-953). null clears.
+export type ConsumerAvatarPatch = {
+  avatar_url: string | null;
+};
+
 export async function apiUpdateConsumerProfile(
   client: SupabaseClient,
-  input: ConsumerOnboardingInput | ConsumerPrivacyPatch,
+  input: ConsumerOnboardingInput | ConsumerPrivacyPatch | ConsumerAvatarPatch,
 ): Promise<ConsumerProfile> {
   const { consumer } = await invokeEF<{ consumer: ConsumerProfile }>(
     client,

@@ -21,6 +21,13 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     ],
     'expo-secure-store',
     'expo-dev-client',
+    [
+      'expo-image-picker',
+      {
+        photosPermission:
+          'Allow Mesita to access your photos for your profile picture.',
+      },
+    ],
   ];
 
   // Sentry plugin only when org/project are known — source maps upload on EAS
@@ -41,10 +48,10 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     name: 'Mesita',
     slug: 'mesita-mobile-consumer',
     owner: 'canzeco',
-    // 1.0.1: react-native-webview added (in-app menu viewer). appVersion IS
-    // the runtimeVersion — the bump keeps OTA updates that reference the new
-    // native module away from 1.0.0 binaries that don't ship it.
-    version: '1.0.1',
+    // 1.0.2: expo-image-picker for profile photo upload (MESITA-953).
+    // appVersion IS the runtimeVersion — bump keeps OTA that needs the new
+    // native module away from older binaries.
+    version: '1.0.2',
     orientation: 'portrait',
     icon: './assets/images/icon.png',
     scheme: 'mesita',

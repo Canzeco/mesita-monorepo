@@ -17,11 +17,15 @@ import {
 import { clean } from "../_shared/input.ts";
 import {
   buildProfilePatch,
+  parseAvatarUrl,
   parseBirthday,
   parseName,
   parseSex,
   type UpdateProfileBody,
 } from "./update-profile-fields.ts";
+
+const CONSUMER_PROFILE_SELECT =
+  "id, code, full_name, first_name, last_name, sex, birthday, country, phone, avatar_url, profile_public, profile_show_saves, profile_show_visits, profile_show_stories";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
@@ -63,6 +67,10 @@ Deno.serve(async (req) => {
   if (!birthdayRes.ok) return birthdayRes.response;
   const { birthday } = birthdayRes;
 
+  const avatarRes = parseAvatarUrl(body.avatar_url, userId, envRes.env.url);
+  if (!avatarRes.ok) return avatarRes.response;
+  const { avatarUrl } = avatarRes;
+
   const admin = adminClient(envRes.env);
 
   // Ensure a consumer row exists. If not, create it with a generated code so
@@ -101,6 +109,7 @@ Deno.serve(async (req) => {
     birthday,
     country,
     phone,
+    avatarUrl,
   });
   if (!built.ok) return built.response;
   const patch = built.patch;
@@ -109,9 +118,7 @@ Deno.serve(async (req) => {
     .from("consumers")
     .update(patch)
     .eq("id", userId)
-    .select(
-      "id, code, full_name, first_name, last_name, sex, birthday, country, phone, profile_public, profile_show_saves, profile_show_visits, profile_show_stories",
-    )
+    .select(CONSUMER_PROFILE_SELECT)
     .single();
   if (update.error) {
     if (update.error.code === "23505") {
