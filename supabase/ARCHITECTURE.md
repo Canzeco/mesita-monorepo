@@ -104,6 +104,13 @@ roles — DML/TRUNCATE/TRIGGER/REFERENCES revoked. Sequences are service_role-on
 
 DEFINER helpers `is_super_admin` / `is_project_member` keep authenticated EXECUTE on purpose (Storage RLS); mutators and trigger-only RPCs are service_role-only (MESITA-940/941).
 
+**Admin Reset survivors** live in `public.admin_reset_preserve` (EF-only registry).
+`admin_reset_database()` discovers every `public` base table at run time and
+truncates all except those rows — admin configs (`app_settings`), `super_admins`,
+`reward_rules`, and vocabularies survive; operational data does not. A table that
+must survive a wipe is an `INSERT` into the registry, never a keep-list paste
+into the function body.
+
 ## The Enricher (place intelligence)
 
 Legacy-branded "Atlas" (hence `atlas_*` columns / `atlas-config` routes). It is a
