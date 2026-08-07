@@ -10,6 +10,7 @@ import {
   whereScore,
   type SmParams,
 } from "@/lib/business/scores";
+import { KnobStatus } from "../../enricher-config/atlas-ui";
 import { useScoring } from "../ScoringProvider";
 import { ContextCols, Slider, SubHead } from "../panel-ui";
 import { CurvePlot, LadderPlot } from "../plots";
@@ -86,6 +87,12 @@ export function SmBox() {
           </div>
           <div>
             <SubHead>what · one category tolerance</SubHead>
+            <div className="mt-2">
+              <KnobStatus
+                kind="not-wired"
+                reason={'engine hardcodes whatRel:"none" — whatScore is 1 for any t'}
+              />
+            </div>
             <div className="mt-3">
               <Slider
                 label="Tolerance t"
@@ -115,8 +122,13 @@ export function SmBox() {
               extremes
             </p>
             <p>
-              what ladder: same → 1 · super → {sm.what.tol.toFixed(2)} · none → {none.toFixed(2)}{" "}
-              (= t²) · nothing asked → 1
+              what ladder (spec): same → 1 · super → {sm.what.tol.toFixed(2)} · none →{" "}
+              {none.toFixed(2)} (= t²) · nothing asked → 1.{" "}
+              <span className="text-muted-foreground">
+                Not live: the EFs carry no category-relation input, so the engine passes
+                whatRel:&quot;none&quot; and what = 1 on every card. The ladder above is what this
+                knob will do once relations reach the EF.
+              </span>
             </p>
           </ProcessSteps>
           <div className="mt-3 grid gap-4 sm:grid-cols-3">

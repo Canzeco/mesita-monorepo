@@ -43,7 +43,7 @@ export function XxBox() {
               (xx.control === 0
                 ? "off — every card draws XX = 1"
                 : `median XX ${median.toFixed(3)} · ~${buriedPct}% of cards land below 0.1`) +
-              " · the consumer's Randomness filter overrides this per query"
+              " · applies to every card: the Randomness filter is not on the EFs yet, so this is a flat default, not a per-query fallback"
             }
           />
         </KnobGrid>
