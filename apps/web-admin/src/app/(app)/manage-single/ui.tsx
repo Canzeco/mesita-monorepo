@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import Link from "next/link";
 import {
   ArrowRight,
@@ -417,7 +417,12 @@ export function SaveBar({
 }
 
 
-/** Shared confirm modal — focus Escape + backdrop cancel. */
+/** Shared confirm modal — native <dialog>: showModal() renders the page
+ *  behind inert and handles Escape (fired as `cancel`, blocked while `busy`
+ *  so a mid-write confirm can't be dismissed — the old `Escape && !busy`
+ *  guard, preserved). Focus returns to the trigger on unmount; React
+ *  unmounting skips the `close` event, so restore runs in effect cleanup.
+ *  `error` renders as an in-dialog alert for pessimistic writes. */
 export function ConfirmDialog({
   open,
   title,
@@ -426,6 +431,7 @@ export function ConfirmDialog({
   cancelLabel = "Cancel",
   danger,
   busy,
+  error,
   onConfirm,
   onCancel,
 }: {
@@ -436,43 +442,53 @@ export function ConfirmDialog({
   cancelLabel?: string;
   danger?: boolean;
   busy?: boolean;
+  error?: string | null;
   onConfirm: () => void;
   onCancel: () => void;
 }) {
   const titleId = useId();
+  const dialogRef = useRef<HTMLDialogElement | null>(null);
 
   useEffect(() => {
     if (!open) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && !busy) onCancel();
-    };
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, [open, busy, onCancel]);
+    const opener =
+      document.activeElement instanceof HTMLElement
+        ? document.activeElement
+        : null;
+    const d = dialogRef.current;
+    if (d && !d.open) d.showModal();
+    return () => opener?.focus();
+  }, [open]);
 
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center p-4 sm:items-center">
-      <button
-        type="button"
-        aria-label="Dismiss"
-        disabled={busy}
-        className="absolute inset-0 bg-black/40"
-        onClick={() => {
-          if (!busy) onCancel();
-        }}
-      />
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby={titleId}
-        className="border-border bg-card relative z-10 w-full max-w-md rounded-2xl border p-5 shadow-lg"
-      >
+    <dialog
+      ref={dialogRef}
+      aria-labelledby={titleId}
+      onCancel={(e) => {
+        if (busy) e.preventDefault();
+      }}
+      onClose={() => {
+        if (!busy) onCancel();
+      }}
+      onClick={(e) => {
+        // p-0 + inner padded wrapper: a click targeting the <dialog> element
+        // itself can only be the ::backdrop.
+        if (!busy && e.target === e.currentTarget) onCancel();
+      }}
+      className="border-border bg-card m-auto hidden w-[min(28rem,calc(100vw-2rem))] rounded-2xl border p-0 shadow-lg backdrop:bg-black/40 open:block"
+    >
+      <div className="p-5">
         <h2 id={titleId} className="font-display text-base font-semibold tracking-tight">
           {title}
         </h2>
         <div className="text-muted-foreground mt-2 text-sm leading-relaxed">{body}</div>
+        {error ? (
+          <p role="alert" className="text-destructive mt-3 text-xs font-medium">
+            {error}
+          </p>
+        ) : null}
         <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
           <button
             type="button"
@@ -498,7 +514,7 @@ export function ConfirmDialog({
           </button>
         </div>
       </div>
-    </div>
+    </dialog>
   );
 }
 

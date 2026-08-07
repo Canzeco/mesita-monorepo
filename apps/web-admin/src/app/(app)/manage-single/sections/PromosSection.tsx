@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import Image from "next/image";
 import {
   Check,
@@ -36,8 +36,17 @@ import {
   setPlaceStrategy,
   type AdminPlace,
 } from "../actions";
-import {SectionCard} from "../ui";
+import { ConfirmDialog, SectionCard } from "../ui";
 import { ErrorNote } from "@/components/ErrorNote";
+import {
+  describeMembershipStatus,
+  effectiveStrikeCount,
+  isMemberPlan,
+  membershipPillState,
+  promoCardState,
+  type CardState,
+  type MembershipPillState,
+} from "./promo-state";
 
 // Admin Promos — three boxes (MESITA-912 membership unbundle):
 //   1. Membership — MX$1,000/year unlocks paid strategies (Zero stays free).
@@ -115,30 +124,8 @@ function formatMoney(amount: number, currency: string | null): string {
   return `${prefix}${amount.toLocaleString("en-US")}`;
 }
 
-// A place on any paid plan carries a membership (plan != free).
-function isMember(place: AdminPlace): boolean {
-  return !!place.plan && place.plan !== "free";
-}
-
-type MembershipPillState =
-  | "not_member"
-  | "pending"
-  | "live"
-  | "paused"
-  | "forfeited";
-
-function membershipPillState(place: AdminPlace): MembershipPillState {
-  if (place.membership_forfeited_at) return "forfeited";
-  if (!isMember(place)) return "not_member";
-  if (
-    place.promo_paused_until &&
-    new Date(String(place.promo_paused_until)).getTime() > Date.now()
-  ) {
-    return "paused";
-  }
-  if (place.membership_live_at) return "live";
-  return "pending";
-}
+// Membership/pill/card state derivations live in ./promo-state (pure module,
+// unit-tested — see promo-state.test.ts).
 
 function strategyRates(s: Strategy) {
   return {
@@ -157,26 +144,41 @@ export function PromosSection({
   onSaved: (v: AdminPlace) => void;
 }) {
   const [v, setV] = useState(place);
-  const [pending, start] = useTransition();
-  const [error, setError] = useState<string | null>(null);
+  // Strategy SWITCH stays optimistic (rates-only; the moving ring is the
+  // feedback). Membership writes — join, reinstate, drop — are PESSIMISTIC:
+  // they apply on EF success only, so the pill and cards never render a
+  // half-state mid-write. Errors follow the gesture: switch failures land
+  // under the grid, join/reinstate failures inside the modal, drop failures
+  // inside the confirm dialog.
+  const [switchPending, startSwitch] = useTransition();
+  const [switchError, setSwitchError] = useState<string | null>(null);
   const [modalId, setModalId] = useState<StrategyId | null>(null);
+  const [modalBusy, setModalBusy] = useState(false);
+  const [modalError, setModalError] = useState<string | null>(null);
+  const [dropOpen, setDropOpen] = useState(false);
+  const [dropBusy, setDropBusy] = useState(false);
+  const [dropError, setDropError] = useState<string | null>(null);
   // The v7 matrix, read LIVE from rewards_config (rates are never cached in
   // code — MESITA-859). Identity defaults render until the fetch lands, so
-  // the cards never flash empty; on failure they simply keep the defaults.
+  // the cards never flash empty; on failure they keep the defaults and the
+  // grid carries a quiet "showing defaults" note.
   const [matrix, setMatrix] = useState<RewardsConfig>(DEFAULT_CONFIG);
+  const [matrixFailed, setMatrixFailed] = useState(false);
 
   useEffect(() => {
     let active = true;
     (async () => {
       const r = await getRewardsConfig();
-      if (active && r.ok) setMatrix(r.config);
+      if (!active) return;
+      if (r.ok) setMatrix(r.config);
+      else setMatrixFailed(true);
     })();
     return () => {
       active = false;
     };
   }, []);
 
-  const member = isMember(v);
+  const member = isMemberPlan(v.plan);
   const pillState = membershipPillState(v);
   const storedStrategy = strategyForPlace(v);
   const forfeited = pillState === "forfeited";
@@ -191,67 +193,60 @@ export function PromosSection({
     onSaved(prev);
   };
 
-  const commitJoin = (target: StrategyId) => {
-    setModalId(null);
-    if (pending || member) return;
+  // Join and Reinstate share the same door (setPlacePlan; the EF clears the
+  // forfeit stamp + strikes on re-grant). The modal stays open with a busy
+  // primary until the write settles.
+  const commitJoin = async (target: StrategyId) => {
+    if (modalBusy || member) return;
     const s = STRATEGY_BY_ID[target];
     const rates = strategyRates(s);
     const plan = planForSubscription("pro_discount");
 
-    const prev = v;
-    const optimistic: AdminPlace = { ...v, ...rates, plan };
-    applyPlace(optimistic);
-    setError(null);
-
-    start(async () => {
-      const r = await setPlacePlan(prev.id, plan, rates);
-      if (!r.ok) {
-        revertPlace(prev);
-        setError(r.error);
-        return;
-      }
-      applyPlace(r.data);
-    });
+    setModalBusy(true);
+    setModalError(null);
+    const r = await setPlacePlan(v.id, plan, rates);
+    setModalBusy(false);
+    if (!r.ok) {
+      setModalError(r.error);
+      return;
+    }
+    applyPlace(r.data);
+    setModalId(null);
   };
 
-  const commitDrop = () => {
-    if (pending || !member) return;
-    const zero = STRATEGY_BY_ID[ZERO_STRATEGY_ID];
-    const rates = strategyRates(zero);
+  const commitDrop = async () => {
+    if (dropBusy || !member) return;
+    const rates = strategyRates(STRATEGY_BY_ID[ZERO_STRATEGY_ID]);
     const plan = planForSubscription("free");
 
-    const prev = v;
-    const optimistic: AdminPlace = { ...v, ...rates, plan };
-    applyPlace(optimistic);
-    setError(null);
-
-    start(async () => {
-      const r = await setPlacePlan(prev.id, plan, rates);
-      if (!r.ok) {
-        revertPlace(prev);
-        setError(r.error);
-        return;
-      }
-      applyPlace(r.data);
-    });
+    setDropBusy(true);
+    setDropError(null);
+    const r = await setPlacePlan(v.id, plan, rates);
+    setDropBusy(false);
+    if (!r.ok) {
+      setDropError(r.error);
+      return;
+    }
+    applyPlace(r.data);
+    setDropOpen(false);
   };
 
   const commitSwitch = (target: StrategyId) => {
     setModalId(null);
-    if (pending || !member || target === storedStrategy) return;
+    if (switchPending || !member || target === storedStrategy) return;
     const s = STRATEGY_BY_ID[target];
     const rates = strategyRates(s);
 
     const prev = v;
     const optimistic: AdminPlace = { ...v, ...rates };
     applyPlace(optimistic);
-    setError(null);
+    setSwitchError(null);
 
-    start(async () => {
+    startSwitch(async () => {
       const r = await setPlaceStrategy(prev.id, rates);
       if (!r.ok) {
         revertPlace(prev);
-        setError(r.error);
+        setSwitchError(r.error);
         return;
       }
       applyPlace(r.data);
@@ -259,23 +254,22 @@ export function PromosSection({
   };
 
   const onCardOpen = (id: StrategyId) => {
-    if (!member) {
-      setModalId(id);
-      return;
-    }
-    if (id === storedStrategy) {
-      setModalId(id);
-      return;
-    }
+    setModalError(null);
     setModalId(id);
   };
 
   const onModalConfirm = (target: StrategyId) => {
     if (!member) {
-      commitJoin(target);
+      void commitJoin(target);
       return;
     }
     commitSwitch(target);
+  };
+
+  const onModalClose = () => {
+    if (modalBusy) return;
+    setModalId(null);
+    setModalError(null);
   };
 
   const modalStrategy = modalId ? STRATEGY_BY_ID[modalId] : null;
@@ -286,8 +280,10 @@ export function PromosSection({
       <MembershipBox
         place={v}
         pillState={pillState}
-        pending={pending}
-        onDrop={commitDrop}
+        onDropClick={() => {
+          setDropError(null);
+          setDropOpen(true);
+        }}
       />
 
       {/* ── Box 2 · Strategy ───────────────────────────────────────────── */}
@@ -297,7 +293,7 @@ export function PromosSection({
         title="Strategy"
         subtitle="Four discount postures — switch free anytime while membership is active."
         action={
-          pending ? (
+          switchPending ? (
             <Loader2 className="text-muted-foreground h-4 w-4 animate-spin" />
           ) : undefined
         }
@@ -309,14 +305,24 @@ export function PromosSection({
               strategy={s}
               matrix={matrix}
               currency={v.currency}
-              selected={s.id === storedStrategy}
-              member={member}
-              locked={!member && !forfeited}
-              pending={pending && s.id === storedStrategy}
+              state={promoCardState({
+                member,
+                forfeited,
+                storedStrategy,
+                cardId: s.id,
+                paid: s.id !== ZERO_STRATEGY_ID,
+              })}
+              pending={switchPending && s.id === storedStrategy}
               onOpen={() => onCardOpen(s.id)}
             />
           ))}
         </div>
+
+        {matrixFailed && (
+          <p className="text-muted-foreground mt-2.5 text-[11px]">
+            Live rates unavailable — showing defaults.
+          </p>
+        )}
 
         {storedStrategy === null && member && (
           <p className="text-muted-foreground mt-2.5 text-[11px]">
@@ -324,17 +330,16 @@ export function PromosSection({
           </p>
         )}
 
-        {!member && !forfeited && (
-          <p className="text-muted-foreground mt-3 text-[11px] leading-snug">
-            Join membership first — tap any strategy to start with that posture.
-          </p>
-        )}
-
-        {error && (
-          <div className="mt-3">
-            <ErrorNote message={error} />
-          </div>
-        )}
+        {/* Always-mounted live region: a region that mounts together with its
+            message does not announce. Switch errors land here, beside the
+            gesture; join/drop errors live in their modal/dialog. */}
+        <div aria-live="polite">
+          {switchError && (
+            <div className="mt-3">
+              <ErrorNote message={switchError} />
+            </div>
+          )}
+        </div>
       </SectionCard>
 
       {/* ── Box 3 · FAQs ───────────────────────────────────────────────── */}
@@ -345,12 +350,37 @@ export function PromosSection({
           strategy={modalStrategy}
           matrix={matrix}
           currency={v.currency}
-          isCurrent={modalStrategy.id === storedStrategy}
+          state={promoCardState({
+            member,
+            forfeited,
+            storedStrategy,
+            cardId: modalStrategy.id,
+            paid: modalStrategy.id !== ZERO_STRATEGY_ID,
+          })}
           member={member}
+          busy={modalBusy}
+          error={modalError}
           onConfirm={() => onModalConfirm(modalStrategy.id)}
-          onClose={() => setModalId(null)}
+          onClose={onModalClose}
         />
       )}
+
+      <ConfirmDialog
+        open={dropOpen}
+        danger
+        busy={dropBusy}
+        error={dropError}
+        title="Drop membership?"
+        body="Ends the membership and clears activation — re-joining restarts pending activation. Strikes and any active pause carry over if the place re-joins."
+        confirmLabel="Drop membership"
+        onConfirm={() => void commitDrop()}
+        onCancel={() => {
+          if (!dropBusy) {
+            setDropOpen(false);
+            setDropError(null);
+          }
+        }}
+      />
     </div>
   );
 }
@@ -370,19 +400,20 @@ const STRIKES: { n: string; consequence: string }[] = [
 function MembershipBox({
   place,
   pillState,
-  pending,
-  onDrop,
+  onDropClick,
 }: {
   place: AdminPlace;
   pillState: MembershipPillState;
-  pending: boolean;
-  onDrop: () => void;
+  onDropClick: () => void;
 }) {
   const statusNote = describeMembershipStatus(place, pillState);
   const price = formatMoney(MEMBERSHIP_PRICE_MXN, place.currency);
   const notMember = pillState === "not_member";
-  const canDrop = pillState !== "not_member" && pillState !== "forfeited";
-  const strikes = (place.strike_count as number | null) ?? 0;
+  const forfeited = pillState === "forfeited";
+  const canDrop = !notMember && !forfeited;
+  // Decay-aware: raw strike_count keeps stale values until the EF lazily
+  // rewrites it; the disclosure must not auto-open over phantom strikes.
+  const strikes = effectiveStrikeCount(place);
   const rulesOpen =
     pillState === "paused" ||
     pillState === "forfeited" ||
@@ -427,9 +458,17 @@ function MembershipBox({
           {notMember ? (
             <p className="text-muted-foreground text-[12px] leading-snug">
               <span className="text-foreground font-semibold">
-                Choose a paid strategy below to join.
+                Choose a strategy below to join.
               </span>{" "}
               Rank is never for sale — visibility rises with what you give.
+            </p>
+          ) : forfeited ? (
+            <p className="text-muted-foreground text-[12px] leading-snug">
+              <span className="text-foreground font-semibold">
+                Re-join by picking a strategy below.
+              </span>{" "}
+              Reinstating clears the forfeit and strikes; activation is earned
+              again.
             </p>
           ) : (
             <p className="text-muted-foreground text-[12px] leading-snug">
@@ -442,9 +481,8 @@ function MembershipBox({
         {canDrop && (
           <button
             type="button"
-            disabled={pending}
-            onClick={onDrop}
-            className="border-border text-foreground/75 hover:bg-muted inline-flex h-10 items-center justify-center self-start rounded-full border px-4 text-[12px] font-bold transition disabled:opacity-60"
+            onClick={onDropClick}
+            className="border-border text-foreground/75 hover:bg-muted inline-flex h-11 items-center justify-center self-start rounded-full border px-4 text-[12px] font-bold transition"
           >
             Drop membership
           </button>
@@ -499,76 +537,43 @@ function MembershipBox({
   );
 }
 
-function describeMembershipStatus(
-  place: AdminPlace,
-  pillState: MembershipPillState,
-): { label: string; tone: "live" | "warn" | "blocked" } | null {
-  if (pillState === "forfeited") {
-    return {
-      label:
-        "Membership forfeited after 3 strikes — re-join is an admin decision.",
-      tone: "blocked",
-    };
-  }
-  if (pillState === "not_member") return null;
-  if (pillState === "paused") {
-    return {
-      label: `Promo lane paused until ${String(place.promo_paused_until).slice(0, 10)} (strike 2).`,
-      tone: "blocked",
-    };
-  }
-  if (pillState === "live") {
-    const strikes = (place.strike_count as number | null) ?? 0;
-    return {
-      label:
-        strikes > 0
-          ? `Membership live · ${strikes} active strike${strikes === 1 ? "" : "s"}.`
-          : "Membership live — promo lane open.",
-      tone: strikes > 0 ? "warn" : "live",
-    };
-  }
-  return {
-    label:
-      "Member — pending activation. Honor the first guest check to go live.",
-    tone: "warn",
-  };
-}
-
 // ─── Strategy card — give/receive only; price lives in Membership box ──────
 
 function StrategyCard({
   strategy,
   matrix,
   currency,
-  selected,
-  member,
-  locked,
+  state,
   pending,
   onOpen }: {
   strategy: Strategy;
   matrix: RewardsConfig;
   currency: string | null;
-  selected: boolean;
-  member: boolean;
-  locked: boolean;
+  state: CardState;
   pending: boolean;
   onOpen: () => void;
 }) {
   const art = CARD_ART[strategy.id];
   const paid = strategy.id !== ZERO_STRATEGY_ID;
+  const { selected, cta } = state;
+  const ariaState =
+    selected
+      ? " (current)"
+      : cta === "reinstate"
+        ? " (forfeited — reinstate)"
+        : "";
 
   return (
     <button
       type="button"
       onClick={onOpen}
       aria-haspopup="dialog"
-      aria-label={`${strategy.name} — details${selected ? " (current)" : ""}${locked ? " (locked)" : ""}`}
+      aria-label={`${strategy.name} — details${ariaState}`}
       className={cx(
         "bg-card relative flex flex-col overflow-hidden rounded-2xl border text-left transition",
         selected
           ? "border-foreground/70 ring-foreground/70 ring-2"
           : "border-border/60 motion-safe:hover:-translate-y-0.5 hover:shadow-[0_18px_32px_-20px_rgba(0,0,0,0.35)]",
-        locked && !selected && "opacity-75",
       )}
     >
       {/* Art band — gradient behind the image is the loading/404 fallback;
@@ -634,23 +639,16 @@ function StrategyCard({
         </div>
 
         {/* Presentational CTA — the whole card is the button; the modal
-            carries the real action. */}
+            carries the real action. Every state names one honestly:
+            Join (non-member, Zero included) · Reinstate (forfeited) ·
+            Switch / Switch to Zero (member) · Current. */}
         <div className="mt-auto pt-1">
-          {selected ? (
+          {cta === "current" ? (
             <span className="border-border text-muted-foreground inline-flex h-11 w-full items-center justify-center gap-1.5 rounded-full border text-[12px] font-bold">
               <Check className="h-3.5 w-3.5" />
               Current
             </span>
-          ) : locked ? (
-            <span
-              className={cx(
-                "inline-flex h-11 w-full items-center justify-center rounded-full bg-gradient-to-r text-[12px] font-bold text-white",
-                paid ? art.cta : "border-border text-foreground/75 border bg-transparent",
-              )}
-            >
-              Join
-            </span>
-          ) : member ? (
+          ) : (
             <span
               className={cx(
                 "inline-flex h-11 w-full items-center justify-center rounded-full text-[12px] font-bold",
@@ -659,9 +657,15 @@ function StrategyCard({
                   : "border-border text-foreground/75 border",
               )}
             >
-              {paid ? "Switch" : "Switch to Zero"}
+              {cta === "join"
+                ? "Join"
+                : cta === "reinstate"
+                  ? "Reinstate"
+                  : paid
+                    ? "Switch"
+                    : "Switch to Zero"}
             </span>
-          ) : null}
+          )}
         </div>
       </div>
     </button>
@@ -674,60 +678,84 @@ function ProductModal({
   strategy,
   matrix,
   currency,
-  isCurrent,
+  state,
   member,
+  busy,
+  error,
   onConfirm,
   onClose }: {
   strategy: Strategy;
   matrix: RewardsConfig;
   currency: string | null;
-  isCurrent: boolean;
+  state: CardState;
   member: boolean;
+  busy: boolean;
+  error: string | null;
   onConfirm: () => void;
   onClose: () => void;
 }) {
+  const dialogRef = useRef<HTMLDialogElement | null>(null);
+
+  // Native <dialog> (WCAG 2.4.3): showModal() renders the page behind inert
+  // and handles Escape natively — Escape fires `cancel`, blocked while a
+  // pessimistic write is in flight. React unmounts this component on close,
+  // which skips the `close` event, so focus-restore to the opening card runs
+  // in the effect cleanup instead.
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-    };
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, [onClose]);
+    const opener =
+      document.activeElement instanceof HTMLElement
+        ? document.activeElement
+        : null;
+    const d = dialogRef.current;
+    if (d && !d.open) d.showModal();
+    return () => opener?.focus();
+  }, []);
 
   const art = CARD_ART[strategy.id];
   const paid = strategy.id !== ZERO_STRATEGY_ID;
-  const isZeroSwitch = member && strategy.id === ZERO_STRATEGY_ID;
+  const kind = state.cta;
+  const isCurrent = kind === "current";
+  const price = formatMoney(MEMBERSHIP_PRICE_MXN, currency);
 
-  const primaryLabel = isCurrent
-    ? "Current strategy"
-    : !member
-      ? `Join — ${formatMoney(MEMBERSHIP_PRICE_MXN, currency)}/year`
-      : paid
-        ? `Switch to ${strategy.name}`
-        : "Switch to Zero";
+  const primaryLabel =
+    kind === "current"
+      ? "Current strategy"
+      : kind === "join"
+        ? `Join — ${price}/year`
+        : kind === "reinstate"
+          ? `Reinstate — ${price}/year`
+          : kind === "switch"
+            ? `Switch to ${strategy.name}`
+            : "Switch to Zero";
 
-  const footerNote = isCurrent
-    ? ""
-    : !member
-      ? `Starts membership at ${formatMoney(MEMBERSHIP_PRICE_MXN, currency)}/year with ${strategy.name} rates. Admin write — no Stripe charge.`
-      : isZeroSwitch
-        ? "Membership stays active; discounts pause. Promo lane closes until you pick a paid strategy again."
-        : "Applies to new tickets only — open tickets keep the rates they were created with.";
+  const footerNote =
+    kind === "current"
+      ? ""
+      : kind === "join"
+        ? `Starts membership at ${price}/year with ${strategy.name} rates. Admin write — no Stripe charge.`
+        : kind === "reinstate"
+          ? paid
+            ? "Clears the forfeit and strikes; membership restarts in pending activation."
+            : "Clears the forfeit and strikes; reinstates the membership with no discounts — promo lane stays closed until a paid strategy is picked."
+          : kind === "switch_zero"
+            ? "Membership stays active; discounts pause. Promo lane closes until you pick a paid strategy again."
+            : "Applies to new tickets only — open tickets keep the rates they were created with.";
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center p-4 sm:items-center">
-      <button
-        type="button"
-        aria-label="Dismiss"
-        className="absolute inset-0 bg-black/45 backdrop-blur-sm"
-        onClick={onClose}
-      />
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="product-modal-title"
-        className="border-border bg-card relative z-10 flex max-h-[88vh] w-full max-w-md flex-col overflow-hidden rounded-2xl border shadow-xl"
-      >
+    <dialog
+      ref={dialogRef}
+      aria-labelledby="product-modal-title"
+      onCancel={(e) => {
+        if (busy) e.preventDefault();
+      }}
+      onClose={onClose}
+      onClick={(e) => {
+        // p-0 + inner content wrapper: a click whose target is the <dialog>
+        // itself can only be the ::backdrop.
+        if (!busy && e.target === e.currentTarget) onClose();
+      }}
+      className="border-border bg-card m-auto hidden max-h-[88vh] w-[min(28rem,calc(100vw-2rem))] flex-col overflow-hidden rounded-2xl border p-0 shadow-xl backdrop:bg-black/45 backdrop:backdrop-blur-sm open:flex max-sm:mt-auto max-sm:mb-4"
+    >
         {/* Art header */}
         <div
           className={cx(
@@ -740,8 +768,9 @@ function ProductModal({
           <button
             type="button"
             onClick={onClose}
+            disabled={busy}
             aria-label="Close"
-            className="absolute top-2.5 right-2.5 inline-flex h-7 w-7 items-center justify-center rounded-full bg-black/30 text-white transition hover:bg-black/50"
+            className="absolute top-2.5 right-2.5 inline-flex h-7 w-7 items-center justify-center rounded-full bg-black/30 text-white transition hover:bg-black/50 disabled:opacity-50"
           >
             <X className="h-4 w-4" />
           </button>
@@ -798,8 +827,7 @@ function ProductModal({
             <div className="flex flex-col gap-3">
               <ModalLabel>How it works</ModalLabel>
               <Step n={1} title="Join the membership">
-                {formatMoney(MEMBERSHIP_PRICE_MXN, currency)}/year — one fee,
-                switch strategies free anytime.
+                {price}/year — one fee, switch strategies free anytime.
               </Step>
               <Step n={2} title="Set up your staff on WhatsApp">
                 We send a test ping so your team can receive guest tickets.
@@ -825,15 +853,21 @@ function ProductModal({
           )}
         </div>
 
-        {/* Action footer */}
+        {/* Action footer — pessimistic membership writes keep the dialog
+            open with a busy primary; failures render here as an alert. */}
         <div className="border-border flex flex-col gap-2 border-t p-4">
+          {error && (
+            <p role="alert" className="text-destructive text-[11px] font-medium">
+              {error}
+            </p>
+          )}
           <div className="flex items-center justify-end gap-3">
             <button
               type="button"
-              disabled={isCurrent}
+              disabled={isCurrent || busy}
               onClick={onConfirm}
               className={cx(
-                "inline-flex h-11 items-center justify-center rounded-full px-5 text-[13px] font-bold transition",
+                "inline-flex h-11 items-center justify-center gap-1.5 rounded-full px-5 text-[13px] font-bold transition disabled:opacity-70",
                 isCurrent
                   ? "border-border text-muted-foreground border"
                   : !member || paid
@@ -844,7 +878,11 @@ function ProductModal({
                     : "border-border text-foreground hover:bg-muted border",
               )}
             >
-              {isCurrent && <Check className="mr-1.5 h-3.5 w-3.5" />}
+              {busy ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                isCurrent && <Check className="mr-1.5 h-3.5 w-3.5" />
+              )}
               {primaryLabel}
             </button>
           </div>
@@ -854,8 +892,7 @@ function ProductModal({
             </p>
           )}
         </div>
-      </div>
-    </div>
+    </dialog>
   );
 }
 
