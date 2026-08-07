@@ -213,11 +213,11 @@ export async function updatePlace(
 // carrying a `plan` key. The admin grants it through its own door instead —
 // no Stripe, no money (admin-web-set-plan).
 //
-// `rates` rides along on purpose (MESITA-818). A membership and the strategy
-// that justifies it are one decision, and sending them together makes it ONE
-// atomic write — which is what lets the EF refuse a paid plan whose rates
-// don't match a preset (409 `no_strategy`), instead of leaving a Verified
-// Partner that gives 0%.
+// `rates` rides along on purpose (MESITA-818/912). A membership and the
+// strategy that justifies it are one decision, and sending them together
+// makes it ONE atomic write. Join may land on Zero (paid plan + null rates) —
+// the old 409 `no_strategy` guard is retired; a 0% Verified Partner is
+// prevented by the shared listing_type derivation in the EF instead.
 export async function setPlacePlan(
   placeId: string,
   plan: PlanKey,
