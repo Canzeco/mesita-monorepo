@@ -5,6 +5,8 @@ import { apiFetchConsumerProfile } from "@/lib/api/profile";
 import { SignOutButton } from "@/components/auth/SignOutButton";
 import { OnboardForm, type OnboardInitialValues } from "./OnboardForm";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
+import { isConsumerOnboarded } from "@/lib/consumer-onboarding";
+import { safeNextPath, withNext } from "@/lib/auth-redirect";
 
 // Consumer onboarding — server-side gated. The middleware already blocks
 // signed-out users from /profile and friends, but onboard sits
@@ -15,18 +17,25 @@ import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 //   - signed in, no name  → render the form
 export const dynamic = "force-dynamic";
 
-export default async function ConsumerOnboardPage() {
+export default async function ConsumerOnboardPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ next?: string }>;
+}) {
+  // Where the guest was actually heading before the profile gate caught
+  // them (a shared place link, a reservation, a ticket). Threaded through
+  // the form so finishing onboarding resumes the journey.
+  const nextTarget = safeNextPath((await searchParams).next);
   const supabase = await createServerSupabase();
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) redirect("/?next=/onboard");
+  if (!user) redirect(withNext("/", withNext("/onboard", nextTarget)));
 
-  // Completeness predicate is the same one the (shell) layout uses to
-  // gate every authed surface — first + last name + birthday + sex. If we
-  // only checked full_name here, a partially-onboarded user would loop:
-  //   onboard → home/swipe (full_name truthy) → shell sees missing
-  //   birthday/sex → bounces back to onboard. Strict here too.
+  // Completeness predicate is `isConsumerOnboarded` — the same one the
+  // (shell) layout gates on. If we only checked full_name here, a
+  // partially-onboarded user would loop: onboard → home/swipe (full_name
+  // truthy) → shell sees missing birthday/sex → bounces back to onboard.
   // Consumers onboarded before the last-name requirement land back here
   // once (full_name is first-name-only for them, and reservations need
   // both); `initial` prefills what they already gave us.
@@ -37,11 +46,7 @@ export default async function ConsumerOnboardPage() {
   let initial: OnboardInitialValues | undefined;
   try {
     const { consumer: profile } = await apiFetchConsumerProfile(supabase);
-    onboarded =
-      !!profile.first_name &&
-      !!profile.last_name &&
-      !!profile.birthday &&
-      !!profile.sex;
+    onboarded = isConsumerOnboarded(profile);
     initial = {
       // Legacy rows predate the first/last split: full_name holds whatever
       // the old single field captured (usually just the first name).
@@ -55,7 +60,7 @@ export default async function ConsumerOnboardPage() {
     // surface a real error if persistence is broken.
     console.error("[consumer/onboard] consumer-get-profile:", err);
   }
-  if (onboarded) redirect(CONSUMER_ROUTES.homeDefault);
+  if (onboarded) redirect(nextTarget ?? CONSUMER_ROUTES.homeDefault);
 
   // Phone-OTP is the consumer auth method, so the identity is usually a
   // phone; fall back to email for accounts created another way. Surfacing
@@ -94,7 +99,7 @@ export default async function ConsumerOnboardPage() {
           </p>
         </div>
 
-        <OnboardForm initial={initial} />
+        <OnboardForm initial={initial} next={nextTarget} />
       </div>
     </MobileFrame>
   );

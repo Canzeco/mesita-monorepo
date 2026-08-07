@@ -168,6 +168,11 @@ export async function apiDeleteConsumerAccount(): Promise<void> {
 // reservations are booked with the venue under the guest's full name, so a
 // first-name-only profile isn't onboarded (consumers from before that rule
 // get sent back to /onboard once).
+// The onboarded predicate — hand-mirrored from web
+// apps/web-consumer/src/lib/consumer-onboarding.ts and from the routing
+// hint in supabase/functions/consumer-web-signin-phone. Change one, change
+// all three: a drifting copy is how a consumer ends up ping-ponging
+// between the tabs and /onboard.
 export function isOnboarded(profile: ConsumerProfile | null | undefined): boolean {
   return Boolean(
     profile?.first_name &&

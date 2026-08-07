@@ -11,6 +11,12 @@ import {
   ticketPath,
 } from "@/lib/consumer-route-contract";
 import { shouldGate } from "@/lib/supabase/middleware";
+import {
+  consumerAuthDestination,
+  safeNextPath,
+  withNext,
+} from "@/lib/auth-redirect";
+import { isConsumerOnboarded } from "@/lib/consumer-onboarding";
 import nextConfig from "../../../next.config";
 
 // Routing is contract, not implementation detail: five tabs, flat /me,
@@ -230,5 +236,81 @@ describe("middleware auth wall (shouldGate)", () => {
   it("does not gate by loose prefix (\u201c/mesita\u201d is not \u201c/me\u201d)", () => {
     expect(shouldGate("/mesita")).toBe(false);
     expect(shouldGate("/rewardsy")).toBe(false);
+  });
+});
+
+// The destination a guest opened has to survive three hops — the auth wall,
+// /auth/post-signin, and /onboard — or a shared place link silently becomes
+// "welcome to the home tab". These pin the plumbing and the open-redirect
+// guard that every hop shares.
+describe("?next= threading (safeNextPath / withNext)", () => {
+  it("accepts in-app paths, with params", () => {
+    expect(safeNextPath("/place/abc")).toBe("/place/abc");
+    expect(safeNextPath("/place/abc?ref=ig")).toBe("/place/abc?ref=ig");
+  });
+
+  it("rejects anything that could leave our origin", () => {
+    for (const hostile of [
+      "//evil.com",
+      "https://evil.com",
+      "http://evil.com",
+      "evil.com",
+      "",
+      undefined,
+      null,
+    ]) {
+      expect(safeNextPath(hostile)).toBeNull();
+    }
+  });
+
+  it("appends an encoded next, or nothing when there's no safe target", () => {
+    expect(withNext("/onboard", "/place/abc?ref=ig")).toBe(
+      "/onboard?next=%2Fplace%2Fabc%3Fref%3Dig",
+    );
+    expect(withNext("/onboard", null)).toBe("/onboard");
+    expect(withNext("/onboard", "//evil.com")).toBe("/onboard");
+  });
+
+  it("survives the wall → post-signin → onboard round trip", () => {
+    // (shell) gate on a signed-out deep link…
+    const wall = withNext("/", "/place/abc?ref=ig");
+    expect(wall).toBe("/?next=%2Fplace%2Fabc%3Fref%3Dig");
+    // …root page hands it to post-signin…
+    const afterAuth = consumerAuthDestination(
+      new URL(wall, "https://consumer.mesita.ai").searchParams.get("next") ??
+        undefined,
+    );
+    expect(afterAuth).toBe("/auth/post-signin?next=%2Fplace%2Fabc%3Fref%3Dig");
+    // …which parks it on /onboard for an unfinished profile…
+    const target = new URL(afterAuth, "https://consumer.mesita.ai").searchParams.get(
+      "next",
+    );
+    expect(withNext(CONSUMER_ROUTES.onboard, target)).toBe(
+      "/onboard?next=%2Fplace%2Fabc%3Fref%3Dig",
+    );
+    // …and the form finally lands on the original link.
+    expect(safeNextPath(target)).toBe("/place/abc?ref=ig");
+  });
+});
+
+describe("isConsumerOnboarded (one predicate, three call sites)", () => {
+  const complete = {
+    first_name: "Ana",
+    last_name: "Ruiz",
+    birthday: "1995-04-02",
+    sex: "female",
+  };
+
+  it("requires all four fields", () => {
+    expect(isConsumerOnboarded(complete)).toBe(true);
+    for (const key of Object.keys(complete) as (keyof typeof complete)[]) {
+      expect(isConsumerOnboarded({ ...complete, [key]: null })).toBe(false);
+      expect(isConsumerOnboarded({ ...complete, [key]: "" })).toBe(false);
+    }
+  });
+
+  it("treats a missing profile as not onboarded", () => {
+    expect(isConsumerOnboarded(null)).toBe(false);
+    expect(isConsumerOnboarded(undefined)).toBe(false);
   });
 });
