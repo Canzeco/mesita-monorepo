@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { apiConsumerSigninPhone } from "@/lib/api/auth";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
+import { safeNextPath, withNext } from "@/lib/auth-redirect";
 
 // Post-sign-in router. The sign-in surface redirects here. We:
 //
@@ -28,10 +29,7 @@ export default async function PostSigninPage({
   if (!user) redirect("/");
 
   const params = await searchParams;
-  const explicitNext =
-    params.next?.startsWith("/") && !params.next.startsWith("//")
-      ? params.next
-      : null;
+  const explicitNext = safeNextPath(params.next);
 
   let consumerResult: Awaited<
     ReturnType<typeof apiConsumerSigninPhone>
@@ -41,10 +39,12 @@ export default async function PostSigninPage({
   } catch (err) {
     console.error("[post-signin] consumer-signin-phone:", err);
   }
-  if (explicitNext) redirect(explicitNext);
-  redirect(
-    consumerResult?.onboarded
-      ? CONSUMER_ROUTES.homeDefault
-      : CONSUMER_ROUTES.onboard,
-  );
+  // Onboarding wins over the deep link, but doesn't eat it: an unfinished
+  // profile goes to /onboard carrying the target, and the form sends them
+  // on once it's saved. Sending them to the target first only bounced them
+  // back off the (shell) gate with the destination already lost.
+  if (!consumerResult?.onboarded) {
+    redirect(withNext(CONSUMER_ROUTES.onboard, explicitNext));
+  }
+  redirect(explicitNext ?? CONSUMER_ROUTES.homeDefault);
 }

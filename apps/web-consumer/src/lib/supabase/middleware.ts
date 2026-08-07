@@ -59,6 +59,11 @@ export async function updateSupabaseSession(request: NextRequest) {
   function nextWithPathname(req: NextRequest = request) {
     const requestHeaders = new Headers(req.headers);
     requestHeaders.set("x-pathname", pathname);
+    // Server Components can't read the query string of their own request.
+    // The (shell) layout needs it to build a `?next=` that survives sign-in
+    // with its params intact (a shared /place/<id>?ref=ig link is worthless
+    // if the ref dies at the auth wall).
+    requestHeaders.set("x-search", request.nextUrl.search);
     return NextResponse.next({ request: { headers: requestHeaders } });
   }
 

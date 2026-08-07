@@ -13,6 +13,8 @@ import { Toaster } from "@/components/consumer/Toaster";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { apiFetchConsumerProfile, type ConsumerClass } from "@/lib/api/profile";
 import { ClassProvider } from "@/lib/class-context";
+import { isConsumerOnboarded } from "@/lib/consumer-onboarding";
+import { withNext } from "@/lib/auth-redirect";
 
 // Every route under /(shell) calls supabase.auth.getUser() via this layout
 // and therefore can never be prerendered to static HTML. Mark the segment
@@ -39,13 +41,18 @@ export default async function ConsumerShellLayout({
   children: React.ReactNode;
   modal: React.ReactNode;
 }) {
-  const pathname = (await headers()).get("x-pathname") ?? "";
+  const requestHeaders = await headers();
+  // Middleware stamps both halves — a Server Component can't read its own
+  // URL. `here` is what the guest actually asked for, params included, and
+  // it rides every redirect below so nothing is lost at the wall.
+  const pathname = requestHeaders.get("x-pathname") ?? "";
+  const here = pathname ? `${pathname}${requestHeaders.get("x-search") ?? ""}` : "";
   const supabase = await createServerSupabase();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) {
-    redirect(pathname ? `/?next=${encodeURIComponent(pathname)}` : "/");
+    redirect(withNext("/", here));
   }
 
   // consumer-get-profile lazily creates the row, so a brand-new account still
@@ -70,21 +77,15 @@ export default async function ConsumerShellLayout({
   try {
     const { consumer: profile, consumerClass: c } =
       await apiFetchConsumerProfile(supabase);
-    // First + last name are both required: reservations are booked with the
-    // venue under the guest's full name, so a first-name-only profile can't
-    // reserve. Consumers from before that rule get bounced to /onboard once.
-    needsOnboarding = !(
-      !!profile.first_name &&
-      !!profile.last_name &&
-      !!profile.birthday &&
-      !!profile.sex
-    );
+    needsOnboarding = !isConsumerOnboarded(profile);
     consumerClass = c;
     instagramHandle = profile.instagram_handle?.trim() || null;
   } catch (err) {
     console.error("[consumer/shell] consumer-get-profile:", err);
   }
-  if (needsOnboarding) redirect("/onboard");
+  // Carry the destination into onboarding so finishing the form lands the
+  // guest on what they originally opened, not a generic home tab.
+  if (needsOnboarding) redirect(withNext("/onboard", here));
 
   // Two-box layout strategy (per user spec):
   //   - Bottom: BottomNav (shrink-0).

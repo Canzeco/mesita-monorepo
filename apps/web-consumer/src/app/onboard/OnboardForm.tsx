@@ -7,6 +7,7 @@ import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { apiUpdateConsumerProfile } from "@/lib/api/profile";
 import { ageFromBirthday, errMsg, MIN_SIGNUP_AGE } from "@/lib/utils";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
+import { safeNextPath } from "@/lib/auth-redirect";
 import { BirthdayPicker, Field, Spinner } from "@/components/shared";
 import {
   ERROR_BOX_CLASS,
@@ -35,7 +36,15 @@ export type OnboardInitialValues = {
   birthday: string;
 };
 
-export function OnboardForm({ initial }: { initial?: OnboardInitialValues }) {
+export function OnboardForm({
+  initial,
+  // Where the guest was heading when the profile gate caught them. Null
+  // for a plain sign-up, which lands on the default home tab.
+  next,
+}: {
+  initial?: OnboardInitialValues;
+  next?: string | null;
+}) {
   const router = useRouter();
   const supabase = useBrowserSupabase();
   const [firstName, setFirstName] = useState(initial?.firstName ?? "");
@@ -79,7 +88,7 @@ export function OnboardForm({ initial }: { initial?: OnboardInitialValues }) {
           sex,
           birthday,
         });
-        router.push(CONSUMER_ROUTES.homeDefault);
+        router.push(safeNextPath(next) ?? CONSUMER_ROUTES.homeDefault);
         router.refresh();
       } catch (err) {
         setError(errMsg(err, "Couldn't save. Try again."));
