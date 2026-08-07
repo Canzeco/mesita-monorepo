@@ -42,8 +42,10 @@ import { buildHiddenMemoContext } from "../_shared/memo-hidden-context.ts";
 import { answerWithAgent } from "../_shared/memo-agent.ts";
 import type { TraceSink } from "../_shared/memo-trace.ts";
 
+import { DEFAULT_MODELS_CONFIG } from "../_shared/models-config.ts";
+
 // Fallback when models_config + memo_openai_model are both unset.
-const DEFAULT_MODEL = "gpt-4o-mini";
+const DEFAULT_MODEL = DEFAULT_MODELS_CONFIG.memo.model!;
 // The same picker the admin Memo Config offers (types.ts OPENAI_MODELS) — an
 // override outside this set is ignored in favour of the saved/default model.
 const OPENAI_MODELS = new Set([
@@ -164,7 +166,7 @@ Deno.serve(async (req) => {
         google: gp.ok ? gp.key : "",
       },
       model,
-      perplexityModel: (cfg.perplexity ?? "sonar-pro").trim(),
+      perplexityModel: (cfg.perplexity ?? DEFAULT_MODELS_CONFIG.memo.perplexity!).trim(),
       trace,
     });
 

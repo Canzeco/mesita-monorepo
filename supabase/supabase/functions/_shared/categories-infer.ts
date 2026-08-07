@@ -2,9 +2,11 @@
 // Extracted from categories.ts.
 
 import type { PlaceCategory } from "./categories.ts";
+import { DEFAULT_MODELS_CONFIG } from "./models-config.ts";
 
 const OPENAI_URL = "https://api.openai.com/v1/chat/completions";
-const DEFAULT_CLASSIFIER_MODEL = "gpt-4o-mini";
+/** Fallback when caller omits models_config.enricher.model. */
+const DEFAULT_CLASSIFIER_MODEL = DEFAULT_MODELS_CONFIG.enricher.model!;
 
 // Signals fed to the classifier. All optional except name — the more present,
 // the sharper the pick, but the place name alone already yields a sane guess.

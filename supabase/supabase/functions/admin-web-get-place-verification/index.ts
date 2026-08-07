@@ -9,7 +9,7 @@
 // Deploy: supabase functions deploy admin-web-get-place-verification
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, json, readJson, readPlaceIdAlias, rejectUnlessMethods } from "../_shared/http.ts";
+import { corsPreflight, jsonError, jsonOk, readJson, readPlaceIdAlias, rejectUnlessMethods } from "../_shared/http.ts";
 import {
   adminClient,
   getAuthedUser,
@@ -37,7 +37,7 @@ Deno.serve(async (req) => {
   if (!bodyRes.ok) return bodyRes.response;
   const projectId = readPlaceIdAlias(bodyRes.body);
   if (!projectId) {
-    return json({ ok: false, error: "projectId is required" }, 400);
+    return jsonError("projectId is required", 400);
   }
 
   // Latest approved ownership proof — requester_email is immutable on the row.
@@ -52,10 +52,7 @@ Deno.serve(async (req) => {
     .maybeSingle();
 
   if (error) {
-    return json(
-      { ok: false, error: `verification_lookup: ${error.message}` },
-      500,
-    );
+    return jsonError(`verification_lookup: ${error.message}`, 500);
   }
 
   const email =
@@ -63,8 +60,7 @@ Deno.serve(async (req) => {
       ? data.requester_email.trim().toLowerCase()
       : null;
 
-  return json({
-    ok: true,
+  return jsonOk({
     verifiedByEmail: email,
     decidedAt: data?.decided_at ?? null,
     method: data?.method ?? null,

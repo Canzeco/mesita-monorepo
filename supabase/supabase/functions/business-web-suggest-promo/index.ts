@@ -24,11 +24,12 @@ import {
   requireMembership,
 } from "../_shared/auth.ts";
 import { createMemoData } from "../_shared/memo-data.ts";
-import { loadModelsConfig } from "../_shared/models-config.ts";
+import { DEFAULT_MODELS_CONFIG, loadModelsConfig } from "../_shared/models-config.ts";
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 
 const OPENAI_CHAT_URL = "https://api.openai.com/v1/chat/completions";
-const DEFAULT_MODEL = "gpt-4o-mini";
+/** Fallback when models_config.supabase.model is unset. */
+const DEFAULT_MODEL = DEFAULT_MODELS_CONFIG.supabase.model!;
 const CLOSED_STATUS = "revealed";
 const REVIEW_SNIPPET_LIMIT = 5;
 

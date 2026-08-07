@@ -6,20 +6,21 @@
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { ENRICH_FIELD_LIMITS } from "./enrich-field-limits.ts";
+import { DEFAULT_MODELS_CONFIG } from "./models-config.ts";
 
 export const OPENAI_URL = "https://api.openai.com/v1/chat/completions";
 
 // Vision + sort always run on the cheap multimodal model — image work doesn't
 // need the synthesis-quality setting (which governs only the profile text model).
 /** Default vision/sort model when models_config.enricher.model is unavailable. */
-export const VISION_MODEL = "gpt-4o-mini";
+export const VISION_MODEL = DEFAULT_MODELS_CONFIG.enricher.model!;
 
 // Synthesis model by the admin 'synthesis quality' param. Synthesis reads only
 // the gathered source material (no web) — that's why it's OpenAI, not Perplexity
 // (which would re-search and drift). GPT-5.x not yet on the API, so 'high' maps
 // to the best available today.
 export const QUALITY_MODEL: Record<string, string> = {
-  economy: "gpt-4o-mini",
+  economy: VISION_MODEL,
   standard: "gpt-4o",
   high: "gpt-4o",
 };

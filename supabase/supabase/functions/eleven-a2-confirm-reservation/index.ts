@@ -30,11 +30,11 @@ import {
   cleanNote,
   esDate,
   esTime,
-  parseVenueLocal,
+  parsePlaceLocal,
+  placeLocalDate,
+  placeLocalTime,
   requireAgentSecret,
   ticketByCode,
-  venueLocalDate,
-  venueLocalTime,
 } from "../_shared/agent-tools.ts";
 
 const MAX_NEGOTIATION_ROUNDS = 2;
@@ -105,15 +105,15 @@ Deno.serve(async (req) => {
   // "solo cambia la hora" works without the agent re-stating the date.
   const date = typeof body.new_date === "string" && body.new_date.trim()
     ? body.new_date
-    : venueLocalDate(ticket.reserved_at);
+    : placeLocalDate(ticket.reserved_at);
   const time = typeof body.new_time === "string" && body.new_time.trim()
     ? body.new_time
-    : venueLocalTime(ticket.reserved_at);
-  const next = parseVenueLocal(date, time);
+    : placeLocalTime(ticket.reserved_at);
+  const next = parsePlaceLocal(date, time);
   if (!next) {
     return json({
       ok: false,
-      error: "new_date must be YYYY-MM-DD and new_time HH:mm (venue-local)",
+      error: "new_date must be YYYY-MM-DD and new_time HH:mm (place-local)",
     }, 400);
   }
 
@@ -125,7 +125,7 @@ Deno.serve(async (req) => {
   // counter-offer close asks the venue to hold what it offered, so acting on
   // it here is a promise the venue already made, not an assumption.
   const offered = normalizeAlternatives(ticket.alternatives);
-  if (matchesOffer(offered, date, time, venueLocalDate(ticket.reserved_at))) {
+  if (matchesOffer(offered, date, time, placeLocalDate(ticket.reserved_at))) {
     const nowIso = new Date().toISOString();
     const patch: Record<string, unknown> = {
       reserved_at: next.toISOString(),

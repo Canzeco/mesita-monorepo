@@ -68,7 +68,7 @@ Deno.serve(async (req) => {
       "id, name, category, tags, zone, city, description, lat, lng, timezone, hours, google_stars_overall, google_review_count, manual_priority",
     )
     .limit(200);
-  if (pErr) return json({ ok: false, error: `places_failed: ${pErr.message}` }, 500);
+  if (pErr) return jsonError(`places_failed: ${pErr.message}`, 500);
 
   const places = shuffle(placeRows ?? []).slice(0, nPlaces);
   const placeIds = places.map((p) => p.id);
@@ -77,7 +77,7 @@ Deno.serve(async (req) => {
     .from("projects")
     .select("id, welcome_free_rate, welcome_premium_rate, free_rate, premium_rate")
     .in("id", placeIds);
-  if (rErr) return json({ ok: false, error: `rates_failed: ${rErr.message}` }, 500);
+  if (rErr) return jsonError(`rates_failed: ${rErr.message}`, 500);
   const rates = new Map((rateRows ?? []).map((r) => [r.id, r]));
 
   const placesOut = places.map((p) => ({
@@ -99,7 +99,7 @@ Deno.serve(async (req) => {
       "id, first_name, full_name, class_key, consumer_instagram_followers_count, sex, birthday, country",
     )
     .limit(200);
-  if (cErr) return json({ ok: false, error: `consumers_failed: ${cErr.message}` }, 500);
+  if (cErr) return jsonError(`consumers_failed: ${cErr.message}`, 500);
 
   const consumers = shuffle(consumerRows ?? []).slice(0, nConsumers);
   const consumerIds = consumers.map((c) => c.id);
@@ -121,8 +121,8 @@ Deno.serve(async (req) => {
         .not("paid_at", "is", null)
         .limit(300),
     ]);
-    if (sErr) return json({ ok: false, error: `saves_failed: ${sErr.message}` }, 500);
-    if (vErr) return json({ ok: false, error: `visits_failed: ${vErr.message}` }, 500);
+    if (sErr) return jsonError(`saves_failed: ${sErr.message}`, 500);
+    if (vErr) return jsonError(`visits_failed: ${vErr.message}`, 500);
 
     const refIds = [
       ...new Set([...(saves ?? []), ...(visits ?? [])].map((r) => r.project_id)),
@@ -133,7 +133,7 @@ Deno.serve(async (req) => {
         .from("places")
         .select("id, category, tags")
         .in("id", refIds);
-      if (fErr) return json({ ok: false, error: `taste_failed: ${fErr.message}` }, 500);
+      if (fErr) return jsonError(`taste_failed: ${fErr.message}`, 500);
       for (const rp of refPlaces ?? []) {
         tasteMeta.set(rp.id, {
           category: rp.category ?? null,

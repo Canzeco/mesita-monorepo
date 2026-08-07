@@ -3,6 +3,7 @@ import {
   type PplxMessage,
 } from "../_shared/perplexity-chat.ts";
 import { localMoment } from "../_shared/memo-local-moment.ts";
+import { DEFAULT_MODELS_CONFIG } from "../_shared/models-config.ts";
 import {
   candidateBlock,
 } from "./memo-catalog-helpers.ts";
@@ -10,6 +11,7 @@ import type { Prediction } from "./memo-google-text-search.ts";
 
 const MAX_HISTORY = 8;
 const MAX_CARDS = 3;
+const DEFAULT_PERPLEXITY = DEFAULT_MODELS_CONFIG.memo.perplexity!;
 
 type MemoHistory = { role?: unknown; content?: unknown }[] | undefined;
 
@@ -22,7 +24,7 @@ export async function answerWithPerplexity(
   profileCtx: string | null,
   history: MemoHistory,
   candidates: Prediction[],
-  perplexityModel = "sonar-pro",
+  perplexityModel = DEFAULT_PERPLEXITY,
 ): Promise<{ text: string; related: string[]; citations: string[] } | null> {
   if (!key) return null;
 

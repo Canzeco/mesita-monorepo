@@ -1,8 +1,11 @@
 // Low-level OpenAI embeddings HTTP — shared by embeddings.ts (lazy RAG path)
 // and place-embeddings.ts (On-Update path) so model/dims/request shape cannot
 // drift. No DB imports; safe for either side of the synth↔embed cycle.
+// Default model string mirrors models_config.lineup.model (MESITA-941/943).
 
-export const DEFAULT_EMBEDDING_MODEL = "text-embedding-3-small";
+import { DEFAULT_MODELS_CONFIG } from "./models-config.ts";
+
+export const DEFAULT_EMBEDDING_MODEL = DEFAULT_MODELS_CONFIG.lineup.model!;
 export const EMBEDDING_DIMS = 1536;
 
 export function callEmbeddings(

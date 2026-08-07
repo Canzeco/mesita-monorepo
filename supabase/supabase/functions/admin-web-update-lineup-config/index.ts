@@ -31,7 +31,7 @@
 // Auth: caller's JWT email must be in public.super_admins.
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, json, readJson, rejectUnlessMethods } from "../_shared/http.ts";
+import { corsPreflight, json, jsonError, readJson, rejectUnlessMethods } from "../_shared/http.ts";
 import {
   adminClient,
   getAuthedUser,
@@ -61,7 +61,7 @@ Deno.serve(async (req) => {
   if (!bodyRes.ok) return bodyRes.response;
 
   const v = validate(bodyRes.body.config);
-  if (!v.ok) return json({ ok: false, error: v.error }, 400);
+  if (!v.ok) return jsonError(v.error, 400);
 
   const { data, error } = await admin
     .from("app_settings")
@@ -70,7 +70,7 @@ Deno.serve(async (req) => {
     .select("scoring_config")
     .single();
   if (error) {
-    return json({ ok: false, error: `scoring_config_update: ${error.message}` }, 500);
+    return jsonError(`scoring_config_update: ${error.message}`, 500);
   }
 
   return json({ ok: true, config: data.scoring_config });

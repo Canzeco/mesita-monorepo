@@ -31,7 +31,7 @@ import {
   embedBatch,
   shouldEmbed,
 } from "./embeddings.ts";
-import { loadModelsConfig } from "./models-config.ts";
+import { DEFAULT_MODELS_CONFIG, loadModelsConfig } from "./models-config.ts";
 import {
   type ConsumerProfile,
   fetchCandidatePool,
@@ -57,7 +57,8 @@ const MAX_PER_CATEGORY_CAP = 20;
 const LAZY_EMBED_BATCH = 80;
 const MAX_PLACE_REUSE = 2;
 
-const DEFAULT_CATEGORY_MODEL = "gpt-4o-mini";
+/** Fallback when models_config.supabase.model is unset. */
+const DEFAULT_CATEGORY_MODEL = DEFAULT_MODELS_CONFIG.supabase.model!;
 
 export type RankMapInput = {
   lat: number | null;

@@ -21,7 +21,7 @@
 // Auth: caller's JWT email must be in public.super_admins.
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, json, readJson, rejectUnlessMethods } from "../_shared/http.ts";
+import { corsPreflight, json, jsonError, readJson, rejectUnlessMethods } from "../_shared/http.ts";
 import {
   adminClient,
   getAuthedUser,
@@ -102,7 +102,7 @@ Deno.serve(async (req) => {
   if (body.gatherGoogleImages !== undefined) {
     const n = intInRange(body.gatherGoogleImages, 1, 10);
     if (n === null) {
-      return json({ ok: false, error: "gatherGoogleImages must be an integer 1-10" }, 400);
+      return jsonError("gatherGoogleImages must be an integer 1-10", 400);
     }
     patch.atlas_gather_google_images = n;
   }
@@ -110,7 +110,7 @@ Deno.serve(async (req) => {
   if (body.gatherInstagramDepth !== undefined) {
     const n = intInRange(body.gatherInstagramDepth, 1, 50);
     if (n === null) {
-      return json({ ok: false, error: "gatherInstagramDepth must be an integer 1-50" }, 400);
+      return jsonError("gatherInstagramDepth must be an integer 1-50", 400);
     }
     patch.atlas_gather_instagram_depth = n;
   }
@@ -118,7 +118,7 @@ Deno.serve(async (req) => {
   if (body.gatherInstagramPosts !== undefined) {
     const n = intInRange(body.gatherInstagramPosts, 1, 50);
     if (n === null) {
-      return json({ ok: false, error: "gatherInstagramPosts must be an integer 1-50" }, 400);
+      return jsonError("gatherInstagramPosts must be an integer 1-50", 400);
     }
     patch.atlas_gather_instagram_posts = n;
   }
@@ -126,10 +126,7 @@ Deno.serve(async (req) => {
   if (body.gatherReviews !== undefined) {
     const n = intInRange(body.gatherReviews, 0, GOOGLE_REVIEWS_MAX);
     if (n === null) {
-      return json(
-        { ok: false, error: `gatherReviews must be an integer 0-${GOOGLE_REVIEWS_MAX}` },
-        400,
-      );
+      return jsonError(`gatherReviews must be an integer 0-${GOOGLE_REVIEWS_MAX}`, 400);
     }
     patch.atlas_gather_reviews = n;
   }
@@ -137,7 +134,7 @@ Deno.serve(async (req) => {
   // ── Analysis ──────────────────────────────────────────────────────────
   if (body.imageVisionEnabled !== undefined) {
     if (typeof body.imageVisionEnabled !== "boolean") {
-      return json({ ok: false, error: "imageVisionEnabled must be a boolean" }, 400);
+      return jsonError("imageVisionEnabled must be a boolean", 400);
     }
     patch.atlas_image_vision_enabled = body.imageVisionEnabled;
   }
@@ -145,14 +142,14 @@ Deno.serve(async (req) => {
   if (body.saveTotalImages !== undefined) {
     const n = intInRange(body.saveTotalImages, 1, 10);
     if (n === null) {
-      return json({ ok: false, error: "saveTotalImages must be an integer 1-10" }, 400);
+      return jsonError("saveTotalImages must be an integer 1-10", 400);
     }
     patch.atlas_save_total_images = n;
   }
 
   if (body.saveImagesToStorage !== undefined) {
     if (typeof body.saveImagesToStorage !== "boolean") {
-      return json({ ok: false, error: "saveImagesToStorage must be a boolean" }, 400);
+      return jsonError("saveImagesToStorage must be a boolean", 400);
     }
     patch.atlas_save_images_to_storage = body.saveImagesToStorage;
   }
@@ -160,21 +157,21 @@ Deno.serve(async (req) => {
   if (body.analyzeGoogleImages !== undefined) {
     const n = intInRange(body.analyzeGoogleImages, 1, 10);
     if (n === null) {
-      return json({ ok: false, error: "analyzeGoogleImages must be an integer 1-10" }, 400);
+      return jsonError("analyzeGoogleImages must be an integer 1-10", 400);
     }
     patch.atlas_analyze_google_images = n;
   }
 
   if (body.imageAnalysisPrompt !== undefined) {
     if (typeof body.imageAnalysisPrompt !== "string" || body.imageAnalysisPrompt.length > 4000) {
-      return json({ ok: false, error: "imageAnalysisPrompt must be a string up to 4000 chars" }, 400);
+      return jsonError("imageAnalysisPrompt must be a string up to 4000 chars", 400);
     }
     patch.atlas_image_analysis_prompt = body.imageAnalysisPrompt;
   }
 
   if (body.imageSortingPrompt !== undefined) {
     if (typeof body.imageSortingPrompt !== "string" || body.imageSortingPrompt.length > 4000) {
-      return json({ ok: false, error: "imageSortingPrompt must be a string up to 4000 chars" }, 400);
+      return jsonError("imageSortingPrompt must be a string up to 4000 chars", 400);
     }
     patch.atlas_image_sorting_prompt = body.imageSortingPrompt;
   }
@@ -182,7 +179,7 @@ Deno.serve(async (req) => {
   if (body.analyzeInstagramImages !== undefined) {
     const n = intInRange(body.analyzeInstagramImages, 1, 50);
     if (n === null) {
-      return json({ ok: false, error: "analyzeInstagramImages must be an integer 1-50" }, 400);
+      return jsonError("analyzeInstagramImages must be an integer 1-50", 400);
     }
     patch.atlas_analyze_instagram_images = n;
   }
@@ -192,10 +189,7 @@ Deno.serve(async (req) => {
       typeof body.synthesisQuality !== "string" ||
       !QUALITY_VALUES.has(body.synthesisQuality)
     ) {
-      return json(
-        { ok: false, error: "synthesisQuality must be economy, standard, or high" },
-        400,
-      );
+      return jsonError("synthesisQuality must be economy, standard, or high", 400);
     }
     patch.atlas_synthesis_quality = body.synthesisQuality;
   }
@@ -205,10 +199,7 @@ Deno.serve(async (req) => {
       typeof body.visionQuality !== "string" ||
       !QUALITY_VALUES.has(body.visionQuality)
     ) {
-      return json(
-        { ok: false, error: "visionQuality must be economy, standard, or high" },
-        400,
-      );
+      return jsonError("visionQuality must be economy, standard, or high", 400);
     }
     patch.atlas_vision_quality = body.visionQuality;
   }
@@ -218,12 +209,8 @@ Deno.serve(async (req) => {
       typeof body.perplexityPreset !== "string" ||
       !PERPLEXITY_PRESETS.has(body.perplexityPreset)
     ) {
-      return json(
-        {
-          ok: false,
-          error:
-            "perplexityPreset must be fast-search, pro-search, deep-research, or advanced-deep-research",
-        },
+      return jsonError(
+        "perplexityPreset must be fast-search, pro-search, deep-research, or advanced-deep-research",
         400,
       );
     }
@@ -232,10 +219,7 @@ Deno.serve(async (req) => {
 
   if (body.perRunCostCapUsd !== undefined) {
     if (typeof body.perRunCostCapUsd !== "number" || body.perRunCostCapUsd < 0) {
-      return json(
-        { ok: false, error: "perRunCostCapUsd must be a number >= 0" },
-        400,
-      );
+      return jsonError("perRunCostCapUsd must be a number >= 0", 400);
     }
     // Cap precision to 2 decimals to match numeric(8,2).
     patch.atlas_per_run_cost_cap_usd = Math.round(body.perRunCostCapUsd * 100) / 100;
@@ -254,7 +238,7 @@ Deno.serve(async (req) => {
     if (raw === undefined) continue;
     const n = intInRange(raw, 0, 10);
     if (n === null) {
-      return json({ ok: false, error: `${bodyKey} must be an integer 0-10` }, 400);
+      return jsonError(`${bodyKey} must be an integer 0-10`, 400);
     }
     patch[col] = n;
   }
@@ -289,11 +273,11 @@ Deno.serve(async (req) => {
       igAnalyze,
       save,
     );
-    if (lockErr) return json({ ok: false, error: lockErr }, 400);
+    if (lockErr) return jsonError(lockErr, 400);
   }
 
   if (Object.keys(patch).length === 0) {
-    return json({ ok: false, error: "Nothing to update" }, 400);
+    return jsonError("Nothing to update", 400);
   }
   patch.updated_by = userId;
 
@@ -306,10 +290,7 @@ Deno.serve(async (req) => {
     )
     .single();
   if (error) {
-    return json(
-      { ok: false, error: `settings_update: ${error.message}` },
-      500,
-    );
+    return jsonError(`settings_update: ${error.message}`, 500);
   }
 
   return json({

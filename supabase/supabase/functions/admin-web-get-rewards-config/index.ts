@@ -13,7 +13,7 @@
 // Auth: caller's JWT email must be in public.super_admins.
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, json, rejectUnlessMethods } from "../_shared/http.ts";
+import { corsPreflight, jsonError, jsonOk, rejectUnlessMethods } from "../_shared/http.ts";
 import {
   adminClient,
   getAuthedUser,
@@ -50,16 +50,10 @@ Deno.serve(async (req) => {
   ]);
 
   if (settings.error) {
-    return json(
-      { ok: false, error: `rewards_config_read: ${settings.error.message}` },
-      500,
-    );
+    return jsonError(`rewards_config_read: ${settings.error.message}`, 500);
   }
   if (rules.error) {
-    return json(
-      { ok: false, error: `reward_rules_read: ${rules.error.message}` },
-      500,
-    );
+    return jsonError(`reward_rules_read: ${rules.error.message}`, 500);
   }
 
   // The cap is the only thing still read out of the blob.
@@ -75,9 +69,7 @@ Deno.serve(async (req) => {
   ].filter((v): v is string => typeof v === "string");
   const updatedAt = stamps.length > 0 ? (stamps.sort().at(-1) ?? null) : null;
 
-  return json({
-    ok: true,
-    rules: (rules.data ?? []).map((r) => {
+  return jsonOk({ rules: (rules.data ?? []).map((r) => {
       const row = r as Record<string, unknown>;
       return {
         strategy: row.strategy,
@@ -87,6 +79,5 @@ Deno.serve(async (req) => {
       };
     }),
     cap,
-    updatedAt,
-  });
+    updatedAt, });
 });

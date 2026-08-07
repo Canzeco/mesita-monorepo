@@ -16,8 +16,11 @@
 // Best-effort: any non-2xx / network / parse failure returns null so the
 // caller degrades gracefully (Memo still ships place cards without prose).
 
+import { DEFAULT_MODELS_CONFIG } from "./models-config.ts";
+
 const PERPLEXITY_CHAT_URL = "https://api.perplexity.ai/chat/completions";
-const DEFAULT_MODEL = "sonar-pro";
+/** Fallback when caller omits models_config.memo/enricher.perplexity. */
+const DEFAULT_MODEL = DEFAULT_MODELS_CONFIG.memo.perplexity!;
 
 export type PplxMessage = {
   role: "system" | "user" | "assistant";
