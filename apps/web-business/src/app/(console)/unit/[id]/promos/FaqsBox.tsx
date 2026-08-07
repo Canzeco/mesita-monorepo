@@ -6,7 +6,7 @@ import {
   UNIVERSAL_CAP_MXN,
   type StrategyId,
 } from "@/lib/business/strategies";
-import { cn, formatMoney } from "@/lib/utils";
+import { formatMoney } from "@/lib/utils";
 import { EXAMPLE_BILL_MXN, PRODUCT_PRICE_MXN } from "./promoConstants";
 
 function Faq({
@@ -71,9 +71,9 @@ export function FaqsBox({
         <Faq q="Can I switch strategies?">
           <p>
             Yes — free, anytime, while your membership is active. Strategy is
-            the discount posture you promise guests; switching only changes
-            your rates. New tickets pick up the new rates; open tickets keep
-            what they were created with.
+            the discount posture you promise guests; switching only changes your
+            rates. New tickets pick up the new rates; open tickets keep what
+            they were created with.
           </p>
         </Faq>
 
@@ -88,8 +88,8 @@ export function FaqsBox({
         <Faq q="How does visibility work?">
           <p>
             Zero sits at Low, Conservative at Mid, Aggressive at High and
-            Dominant at Max. Visibility rises with what you give — it is never
-            a separate knob you can buy.
+            Dominant at Max. Visibility rises with what you give — it is never a
+            separate knob you can buy.
           </p>
         </Faq>
 
@@ -105,7 +105,9 @@ export function FaqsBox({
         <Faq q="How do I cancel membership?">
           <p>
             Use Drop membership in the Membership box.{" "}
-            {member ? "You are currently a member." : "You are not currently a member."}
+            {member
+              ? "You are currently a member."
+              : "You are not currently a member."}
           </p>
         </Faq>
 
@@ -151,9 +153,7 @@ function PremiumExamples({
           {formatMoney(EXAMPLE_BILL_MXN, place.currency)} ticket:
         </p>
         <span className="bg-muted text-foreground/70 inline-flex shrink-0 items-center gap-1 rounded-md px-2 py-0.5 text-[10px] font-bold tracking-wide uppercase">
-          {strategy
-            ? `${strategy.emoji} ${strategy.name}`
-            : "Custom rates"}
+          {strategy ? `${strategy.emoji} ${strategy.name}` : "Custom rates"}
         </span>
       </div>
       <div className="grid grid-cols-1 gap-3 min-[480px]:grid-cols-2">

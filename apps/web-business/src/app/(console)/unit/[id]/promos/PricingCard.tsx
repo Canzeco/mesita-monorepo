@@ -2,7 +2,7 @@ import Image from "next/image";
 import { Check, Loader2 } from "lucide-react";
 import { UNIVERSAL_CAP_MXN, type Strategy } from "@/lib/business/strategies";
 import { cn, formatMoney } from "@/lib/utils";
-import { CARD_ART, PRODUCT_PRICE_MXN } from "./promoConstants";
+import { CARD_ART } from "./promoConstants";
 import { ModalLabel, PlacementReward, RateMatrix } from "./promoShared";
 
 // Whole card opens the product modal.
@@ -32,13 +32,12 @@ export function PricingCard({
       type="button"
       onClick={onOpen}
       aria-haspopup="dialog"
-      aria-label={`${strategy.name} — details${selected ? " (current)" : ""}${!subscribed ? " (locked)" : ""}`}
+      aria-label={`${strategy.name} — details${selected ? " (current)" : ""}${joinDisabled ? " (unavailable — membership forfeited)" : ""}`}
       className={cn(
         "bg-card relative flex flex-col overflow-hidden rounded-2xl border text-left transition",
         selected
           ? "border-foreground/70 ring-foreground/70 ring-2"
           : "border-border hover:shadow-[0_18px_32px_-20px_rgba(236,72,153,0.35)] motion-safe:hover:-translate-y-0.5",
-        !subscribed && !selected && "opacity-75",
         joinDisabled && "pointer-events-none opacity-50",
       )}
     >
@@ -116,7 +115,9 @@ export function PricingCard({
             <span
               className={cn(
                 "inline-flex h-11 w-full items-center justify-center rounded-full text-[12px] font-bold text-white",
-                paid ? cn("bg-gradient-to-r", art.cta) : "border-border border bg-transparent text-foreground/75",
+                paid
+                  ? cn("bg-gradient-to-r", art.cta)
+                  : "border-border text-foreground/75 border bg-transparent",
               )}
             >
               Join
