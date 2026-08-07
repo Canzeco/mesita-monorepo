@@ -45,9 +45,6 @@ export const COUNTRY_BY_CODE: Record<string, Country> = Object.fromEntries(
   COUNTRIES.map((c) => [c.code, c]),
 );
 
-export function combinePhoneE164(countryCode: string, local: string): string {
-  const country = COUNTRY_BY_CODE[countryCode] ?? COUNTRY_BY_CODE.MX;
-  const digits = local.replace(/\D/g, '');
-  if (!digits) return '';
-  return `+${country.dial}${digits}`;
-}
+// E.164 assembly moved to lib/phone-otp.ts (`parsePhone`), which also
+// strips national trunk prefixes and validates length before we pay Twilio
+// for a lookup.

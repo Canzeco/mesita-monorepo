@@ -1,6 +1,6 @@
 import { ChevronDown } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   KeyboardAvoidingView,
   Platform,
@@ -15,16 +15,18 @@ import { CountryCodePicker } from '@/components/auth/CountryCodePicker';
 import { Button } from '@/components/ui/Button';
 import { HeroBackdrop } from '@/components/ui/HeroBackdrop';
 import { apiConsumerSigninPhone } from '@/lib/api/auth';
+import { COUNTRY_BY_CODE, type Country } from '@/lib/countries';
 import {
-  combinePhoneE164,
-  COUNTRY_BY_CODE,
-  type Country,
-} from '@/lib/countries';
+  OTP_LENGTH,
+  RESEND_COOLDOWN_SECONDS,
+  otpErrorMessage,
+  parsePhone,
+} from '@/lib/phone-otp';
 import { supabase } from '@/lib/supabase';
 
 // Phone OTP with country dial picker — web PhoneInputWithCountry parity.
-
-const OTP_LENGTH = 6;
+// Number normalization, length validation and error copy come from
+// lib/phone-otp.ts, hand-mirrored with the web form.
 
 export default function SignIn() {
   const router = useRouter();
@@ -36,31 +38,53 @@ export default function SignIn() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
+  const [cooldown, setCooldown] = useState(0);
 
   const country: Country = COUNTRY_BY_CODE[countryCode] ?? COUNTRY_BY_CODE.MX;
-  const e164 = useMemo(
-    () => combinePhoneE164(countryCode, localNumber),
+  const parsed = useMemo(
+    () => parsePhone(countryCode, localNumber),
     [countryCode, localNumber],
   );
-  const phoneOk = localNumber.replace(/\D/g, '').length >= 8;
+  const e164 = parsed.ok ? parsed.e164 : '';
+  const phoneOk = parsed.ok;
   const codeOk = token.trim().length === OTP_LENGTH;
+
+  // Seconds left on Supabase's per-number send window, so "Resend" states
+  // the wait instead of failing into a raw provider string.
+  useEffect(() => {
+    if (cooldown <= 0) return;
+    const timer = setTimeout(() => setCooldown((s) => s - 1), 1000);
+    return () => clearTimeout(timer);
+  }, [cooldown]);
 
   const requestOtp = async () => {
     setError(null);
     setInfo(null);
-    setBusy(true);
-    const { error: err } = await supabase.auth.signInWithOtp({ phone: e164 });
-    setBusy(false);
-    if (err) {
-      setError(err.message);
+    if (!parsed.ok) {
+      setError(parsed.error);
       return false;
     }
+    if (cooldown > 0) {
+      setError(`Hold on — you can ask for a new code in ${cooldown}s.`);
+      return false;
+    }
+    setBusy(true);
+    const { error: err } = await supabase.auth.signInWithOtp({
+      phone: parsed.e164,
+    });
+    setBusy(false);
+    if (err) {
+      setError(otpErrorMessage(err));
+      return false;
+    }
+    setCooldown(RESEND_COOLDOWN_SECONDS);
     return true;
   };
 
   const sendCode = async () => {
     if (await requestOtp()) {
       setStep('code');
+      setInfo(`We just sent you a ${OTP_LENGTH}-digit code.`);
     }
   };
 
@@ -68,12 +92,14 @@ export default function SignIn() {
   // confirms inline (web PhoneOtpForm parity).
   const resendCode = async () => {
     if (await requestOtp()) {
+      setToken('');
       setInfo('We sent you a new code.');
     }
   };
 
   const verifyCode = async () => {
     setError(null);
+    setInfo(null);
     setBusy(true);
     const { error: err } = await supabase.auth.verifyOtp({
       phone: e164,
@@ -82,7 +108,7 @@ export default function SignIn() {
     });
     if (err) {
       setBusy(false);
-      setError(err.message);
+      setError(otpErrorMessage(err));
       return;
     }
     try {
@@ -241,21 +267,23 @@ export default function SignIn() {
                 </View>
                 <Pressable
                   onPress={() => void resendCode()}
-                  disabled={busy}
+                  disabled={busy || cooldown > 0}
                   accessibilityRole="button"
                   accessibilityLabel="Resend code"
                   style={{
                     minHeight: 44,
                     alignItems: 'center',
                     justifyContent: 'center',
-                    opacity: busy ? 0.5 : 1,
+                    opacity: busy || cooldown > 0 ? 0.5 : 1,
                   }}
                 >
                   <Text
                     className="font-semibold text-muted-foreground"
                     style={{ fontSize: 12 }}
                   >
-                    Didn&apos;t get it? Resend code
+                    {cooldown > 0
+                      ? `Resend code in ${cooldown}s`
+                      : "Didn't get it? Resend code"}
                   </Text>
                 </Pressable>
                 <Button
