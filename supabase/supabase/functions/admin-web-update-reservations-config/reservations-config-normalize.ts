@@ -1,4 +1,7 @@
 import { RESERVATION_CHANNELS } from "../_shared/enrich-reservation-endpoint.ts";
+// Single source of truth for the safe test-call default, shared with the
+// read-path coercion so both directions agree (MESITA-739).
+import { TEST_CALL_SEED } from "../_shared/reservations-config.ts";
 
 type ReservationsConfig = {
   priority: string[];
@@ -81,11 +84,20 @@ export function normalizeConfig(
     return { ok: false, error: "config.respectAdminOverride must be a boolean" };
   }
 
-  // testCall — optional. Default off/empty. When present it must be well-formed,
-  // and an ENABLED override must carry a plausible number (so we can't ship a
-  // "route every call to nowhere" state). consumerNumber is the Playground's
-  // guest-side test line: optional, and E.164 when non-empty ('' = unset).
-  let testCall = { enabled: false, number: "", consumerNumber: "" };
+  // testCall — optional. An ABSENT testCall falls back to TEST_CALL_SEED (test
+  // mode ON, the test line), matching coerceReservationsCallConfig's read-path
+  // rule that a missing value must never resolve into ringing a real venue
+  // (MESITA-739). This used to default `enabled:false`, so a payload that simply
+  // omitted the field silently disarmed test mode and pointed the agent at real
+  // restaurant phone numbers — the write path undoing the read path's invariant.
+  // The admin client always sends testCall, so this is defence for partial or
+  // external writers, not a change to the console's behavior.
+  //
+  // When PRESENT it must be well-formed, and an ENABLED override must carry a
+  // plausible number (so we can't ship a "route every call to nowhere" state).
+  // consumerNumber is the Playground's guest-side test line: optional, and
+  // E.164 when non-empty ('' = unset).
+  let testCall = { ...TEST_CALL_SEED };
   if (c.testCall !== undefined) {
     if (!c.testCall || typeof c.testCall !== "object" || Array.isArray(c.testCall)) {
       return { ok: false, error: "config.testCall must be an object" };
