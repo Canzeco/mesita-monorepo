@@ -17,7 +17,7 @@
 // to true at the gateway (no config.toml entry, mirroring the memo/lineup pair).
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, json, rejectUnlessMethods } from "../_shared/http.ts";
+import { corsPreflight, jsonError, jsonOk, rejectUnlessMethods } from "../_shared/http.ts";
 import {
   adminClient,
   getAuthedUser,
@@ -45,8 +45,8 @@ Deno.serve(async (req) => {
     .eq("id", 1)
     .single();
   if (error) {
-    return json({ ok: false, error: `models_config_get: ${error.message}` }, 500);
+    return jsonError(`models_config_get: ${error.message}`, 500);
   }
 
-  return json({ ok: true, config: data?.models_config ?? null });
+  return jsonOk({ config: data?.models_config ?? null });
 });

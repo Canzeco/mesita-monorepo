@@ -124,7 +124,7 @@ Deno.serve(async (req) => {
   const bodyRes = await readJson<Body>(req);
   if (!bodyRes.ok) return bodyRes.response;
   const projectId = readPlaceIdAlias(bodyRes.body);
-  if (!projectId) return json({ ok: false, error: "placeId is required" }, 400);
+  if (!projectId) return jsonError("placeId is required", 400);
   const limit = clampIntRange(Number(bodyRes.body.limit ?? 8), 1, 50);
 
   // A visit = the guest's QR met the venue (first_scanned_at stamped).
@@ -180,10 +180,10 @@ Deno.serve(async (req) => {
     ["reservation_count", resvCountRes],
     ["reservations", resvListRes],
   ] as const) {
-    if (r.error) return json({ ok: false, error: `${label}: ${r.error.message}` }, 500);
+    if (r.error) return jsonError(`${label}: ${r.error.message}`, 500);
   }
   if (!moneyDrain.ok) {
-    return json({ ok: false, error: `money: ${moneyDrain.error}` }, 500);
+    return jsonError(`money: ${moneyDrain.error}`, 500);
   }
 
   let influencedCents = 0;

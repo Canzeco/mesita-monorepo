@@ -45,6 +45,7 @@ import { isPlaceSeeking } from "../_shared/memo-intent.ts";
 import { resolveMemoSystemPrompt } from "../_shared/memo-prompt.ts";
 import { answerWithPerplexity } from "./memo-answer.ts";
 import { createMemoData, type MemoData } from "../_shared/memo-data.ts";
+import { DEFAULT_MODELS_CONFIG } from "../_shared/models-config.ts";
 import { cardToPrediction } from "../_shared/memo-airlock-tools.ts";
 import {
   googleTextSearch,
@@ -161,8 +162,8 @@ Deno.serve(async (req) => {
           google: gp.ok ? gp.key : "",
         },
         // models_config.memo.model via get-memo-config (MEMO_MODEL env retired).
-        model: (cfg.model ?? "gpt-4o-mini").trim(),
-        perplexityModel: (cfg.perplexity ?? "sonar-pro").trim(),
+        model: (cfg.model ?? DEFAULT_MODELS_CONFIG.memo.model!).trim(),
+        perplexityModel: (cfg.perplexity ?? DEFAULT_MODELS_CONFIG.memo.perplexity!).trim(),
       });
       return json({
         ok: true,
@@ -220,7 +221,7 @@ Deno.serve(async (req) => {
     profileCtx,
     body.history,
     predictions,
-    cfg.perplexity ?? "sonar-pro",
+    cfg.perplexity ?? DEFAULT_MODELS_CONFIG.memo.perplexity!,
   );
 
   const answer = toPlainText(

@@ -9,7 +9,7 @@
 // Auth: caller's JWT email must be in public.super_admins.
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, json, readJson, rejectUnlessMethods } from "../_shared/http.ts";
+import { corsPreflight, jsonError, jsonOk, readJson, rejectUnlessMethods } from "../_shared/http.ts";
 import {
   adminClient,
   getAuthedUser,
@@ -42,10 +42,7 @@ Deno.serve(async (req) => {
   if (!bodyRes.ok) return bodyRes.response;
   const flag = bodyRes.body.config?.createPlacesAsVerified;
   if (typeof flag !== "boolean") {
-    return json(
-      { ok: false, error: "config.createPlacesAsVerified must be a boolean" },
-      400,
-    );
+    return jsonError("config.createPlacesAsVerified must be a boolean", 400);
   }
 
   const { data, error } = await admin
@@ -58,14 +55,10 @@ Deno.serve(async (req) => {
     .select("create_places_as_verified, updated_at")
     .single();
   if (error) {
-    return json(
-      { ok: false, error: `verification_config_update: ${error.message}` },
-      500,
-    );
+    return jsonError(`verification_config_update: ${error.message}`, 500);
   }
 
-  return json({
-    ok: true,
+  return jsonOk({
     config: {
       createPlacesAsVerified: data.create_places_as_verified === true,
     },

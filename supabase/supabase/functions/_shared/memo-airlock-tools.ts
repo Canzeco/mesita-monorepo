@@ -20,10 +20,11 @@ import { callPerplexityChat } from "./perplexity-chat.ts";
 import type { AirlockContext, AirlockTool, ToolResult } from "./memo-airlock.ts";
 import type { MemoPlaceCard } from "./memo-place-card.ts";
 import type { Prediction } from "./memo-types.ts";
+import { DEFAULT_MODELS_CONFIG } from "./models-config.ts";
 
 const TOOL_CARDS = 4;
 /** Fallback only — prefer ctx.perplexityModel from models_config.memo. */
-const DEFAULT_PERPLEXITY_MODEL = "sonar-pro";
+const DEFAULT_PERPLEXITY_MODEL = DEFAULT_MODELS_CONFIG.memo.perplexity!;
 
 // Public card → public Prediction card (the existing frontend contract).
 export function cardToPrediction(card: MemoPlaceCard): Prediction {

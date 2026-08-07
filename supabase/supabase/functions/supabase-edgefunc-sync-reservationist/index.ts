@@ -18,7 +18,7 @@
 //              onto each agent's Main branch (?branch_id + version_description).
 //              Workflows only — Procedures stay unused (Alpha).
 //   phones     Import the two Twilio reservation lines into ElevenLabs and bind
-//              each to its INBOUND agent: the venue-facing line → a4, the
+//              each to its INBOUND agent: the place-facing line → a4, the
 //              guest-facing line → a3. An imported number binds to exactly ONE
 //              agent, which is why the two audiences cannot share a line — on a
 //              single line one side always hears "no Mesita account with this

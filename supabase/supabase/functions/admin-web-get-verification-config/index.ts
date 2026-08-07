@@ -11,7 +11,7 @@
 // Auth: caller's JWT email must be in public.super_admins.
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, json, rejectUnlessMethods } from "../_shared/http.ts";
+import { corsPreflight, jsonError, jsonOk, rejectUnlessMethods } from "../_shared/http.ts";
 import {
   adminClient,
   getAuthedUser,
@@ -39,20 +39,14 @@ Deno.serve(async (req) => {
     .eq("id", 1)
     .maybeSingle();
   if (error) {
-    return json(
-      { ok: false, error: `verification_config_read: ${error.message}` },
-      500,
-    );
+    return jsonError(`verification_config_read: ${error.message}`, 500);
   }
   if (!data) {
-    return json({ ok: false, error: "app_settings missing" }, 500);
+    return jsonError("app_settings missing", 500);
   }
 
-  return json({
-    ok: true,
-    config: {
+  return jsonOk({ config: {
       createPlacesAsVerified: data.create_places_as_verified === true,
     },
-    updatedAt: data.updated_at,
-  });
+    updatedAt: data.updated_at, });
 });

@@ -7,12 +7,14 @@
 
 import { type SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { ENRICH_FIELD_LIMITS } from "./enrich-field-limits.ts";
+import { DEFAULT_MODELS_CONFIG } from "./models-config.ts";
 import { selectTopPlaceTags } from "./tags-sanitize.ts";
 
 export { sanitizePlaceTags, selectTopPlaceTags } from "./tags-sanitize.ts";
 
 const OPENAI_URL = "https://api.openai.com/v1/chat/completions";
-const DEFAULT_TAGGER_MODEL = "gpt-4o-mini";
+/** Fallback when caller omits models_config.enricher.model. */
+const DEFAULT_TAGGER_MODEL = DEFAULT_MODELS_CONFIG.enricher.model!;
 const MAX_INFERRED_TAGS = ENRICH_FIELD_LIMITS.tagsPerPlace.max;
 
 export type PlaceTag = {

@@ -11,7 +11,7 @@
 // Auth: caller's JWT email must be in public.super_admins.
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, json, readJson, rejectUnlessMethods } from "../_shared/http.ts";
+import { corsPreflight, json, jsonError, readJson, rejectUnlessMethods } from "../_shared/http.ts";
 import {
   adminClient,
   getAuthedUser,
@@ -56,7 +56,7 @@ Deno.serve(async (req) => {
     )
     .single();
   if (error) {
-    return json({ ok: false, error: `memo_config_update: ${error.message}` }, 500);
+    return jsonError(`memo_config_update: ${error.message}`, 500);
   }
 
   return json({

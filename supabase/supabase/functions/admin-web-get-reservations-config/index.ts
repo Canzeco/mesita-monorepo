@@ -11,7 +11,7 @@
 // Auth: caller's JWT email must be in public.super_admins.
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, json, rejectUnlessMethods } from "../_shared/http.ts";
+import { corsPreflight, jsonError, jsonOk, rejectUnlessMethods } from "../_shared/http.ts";
 import {
   adminClient,
   getAuthedUser,
@@ -39,10 +39,10 @@ Deno.serve(async (req) => {
     .eq("id", 1)
     .maybeSingle();
   if (error) {
-    return json({ ok: false, error: `reservations_config_read: ${error.message}` }, 500);
+    return jsonError(`reservations_config_read: ${error.message}`, 500);
   }
   if (!data) {
-    return json({ ok: false, error: "app_settings missing" }, 500);
+    return jsonError("app_settings missing", 500);
   }
 
   // ── Needs attention (eng-review 2026-08-04) ────────────────────────────────
@@ -70,10 +70,7 @@ Deno.serve(async (req) => {
     .order("reserved_at", { ascending: false })
     .limit(30);
 
-  return json({
-    ok: true,
-    config: data.reservations_config,
+  return jsonOk({ config: data.reservations_config,
     updatedAt: data.updated_at,
-    needs_attention: attention ?? [],
-  });
+    needs_attention: attention ?? [], });
 });

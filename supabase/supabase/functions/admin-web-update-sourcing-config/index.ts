@@ -11,7 +11,7 @@
 // Auth: caller's JWT email must be in public.super_admins.
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, json, readJson, rejectUnlessMethods } from "../_shared/http.ts";
+import { corsPreflight, json, jsonError, readJson, rejectUnlessMethods } from "../_shared/http.ts";
 import {
   adminClient,
   getAuthedUser,
@@ -106,21 +106,21 @@ Deno.serve(async (req) => {
   if (!bodyRes.ok) return bodyRes.response;
   const incoming = bodyRes.body.config;
   if (!incoming || typeof incoming !== "object") {
-    return json({ ok: false, error: "config must be an object keyed by channel" }, 400);
+    return jsonError("config must be an object keyed by channel", 400);
   }
 
   // Validate every channel the caller sent before touching the row.
   const validated: Record<string, ChannelPolicy> = {};
   for (const [key, raw] of Object.entries(incoming as Record<string, unknown>)) {
     if (!CHANNELS.has(key)) {
-      return json({ ok: false, error: `unknown channel "${key}"` }, 400);
+      return jsonError(`unknown channel "${key}"`, 400);
     }
     const norm = normalizeChannel(key, raw);
-    if (!norm.ok) return json({ ok: false, error: norm.error }, 400);
+    if (!norm.ok) return jsonError(norm.error, 400);
     validated[key] = norm.value;
   }
   if (Object.keys(validated).length === 0) {
-    return json({ ok: false, error: "Nothing to update" }, 400);
+    return jsonError("Nothing to update", 400);
   }
 
   // Merge onto the persisted config so partial saves and any future channels
@@ -131,7 +131,7 @@ Deno.serve(async (req) => {
     .eq("id", 1)
     .maybeSingle();
   if (readErr) {
-    return json({ ok: false, error: `sourcing_config_read: ${readErr.message}` }, 500);
+    return jsonError(`sourcing_config_read: ${readErr.message}`, 500);
   }
   const base =
     current?.sourcing_config && typeof current.sourcing_config === "object"
@@ -146,7 +146,7 @@ Deno.serve(async (req) => {
     .select("sourcing_config, updated_at")
     .single();
   if (error) {
-    return json({ ok: false, error: `sourcing_config_update: ${error.message}` }, 500);
+    return jsonError(`sourcing_config_update: ${error.message}`, 500);
   }
 
   return json({

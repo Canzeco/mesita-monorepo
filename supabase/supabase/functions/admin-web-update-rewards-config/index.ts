@@ -19,7 +19,7 @@
 // Auth: caller's JWT email must be in public.super_admins.
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, json, readJson, rejectUnlessMethods } from "../_shared/http.ts";
+import { corsPreflight, jsonError, jsonOk, readJson, rejectUnlessMethods } from "../_shared/http.ts";
 import {
   adminClient,
   getAuthedUser,
@@ -73,7 +73,7 @@ Deno.serve(async (req) => {
     : bodyRes.body.config;
 
   const norm = normalizeRewards(payload);
-  if (!norm.ok) return json({ ok: false, error: norm.error }, 400);
+  if (!norm.ok) return jsonError(norm.error, 400);
 
   const now = new Date().toISOString();
   const upsert = await admin
@@ -84,10 +84,7 @@ Deno.serve(async (req) => {
     )
     .select("strategy, class, action, discount_percent");
   if (upsert.error) {
-    return json(
-      { ok: false, error: `reward_rules_update: ${upsert.error.message}` },
-      500,
-    );
+    return jsonError(`reward_rules_update: ${upsert.error.message}`, 500);
   }
 
   const settings = await admin
@@ -100,14 +97,10 @@ Deno.serve(async (req) => {
     .select("updated_at")
     .single();
   if (settings.error) {
-    return json(
-      { ok: false, error: `rewards_cap_update: ${settings.error.message}` },
-      500,
-    );
+    return jsonError(`rewards_cap_update: ${settings.error.message}`, 500);
   }
 
-  return json({
-    ok: true,
+  return jsonOk({
     rules: upsert.data ?? norm.value.rules,
     cap: norm.value.cap,
     updatedAt: settings.data.updated_at,

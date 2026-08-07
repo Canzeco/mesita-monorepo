@@ -10,7 +10,7 @@
 // Auth: caller's JWT email must be in public.super_admins.
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, json, rejectUnlessMethods } from "../_shared/http.ts";
+import { corsPreflight, jsonError, jsonOk, rejectUnlessMethods } from "../_shared/http.ts";
 import {
   adminClient,
   getAuthedUser,
@@ -40,18 +40,13 @@ Deno.serve(async (req) => {
     .eq("id", 1)
     .maybeSingle();
   if (error) {
-    return json(
-      { ok: false, error: `settings_read: ${error.message}` },
-      500,
-    );
+    return jsonError(`settings_read: ${error.message}`, 500);
   }
   if (!data) {
-    return json({ ok: false, error: "app_settings missing" }, 500);
+    return jsonError("app_settings missing", 500);
   }
 
-  return json({
-    ok: true,
-    autoVerifyAiCall: data.auto_verify_ai_call,
+  return jsonOk({ autoVerifyAiCall: data.auto_verify_ai_call,
     autoVerifyAiEmail: data.auto_verify_ai_email,
     autoVerifyVideo: data.auto_verify_video,
     atlasGatherGoogleImages: data.atlas_gather_google_images,
@@ -74,6 +69,5 @@ Deno.serve(async (req) => {
     atlasDiscoverFacebookN: data.atlas_discover_facebook_n,
     atlasDiscoverOpentableN: data.atlas_discover_opentable_n,
     atlasDiscoverUbereatsN: data.atlas_discover_ubereats_n,
-    updatedAt: data.updated_at,
-  });
+    updatedAt: data.updated_at, });
 });

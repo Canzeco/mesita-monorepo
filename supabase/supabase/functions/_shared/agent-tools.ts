@@ -21,6 +21,7 @@ import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import type { EFEnv } from "./auth.ts";
 import { json } from "./http.ts";
 import { invokeInternalCaller } from "./internal.ts";
+import { phoneDigits } from "./phone.ts";
 import { timingSafeEqual } from "./timing-safe-equal.ts";
 
 // ── Auth ─────────────────────────────────────────────────────────────────────
@@ -50,7 +51,7 @@ export async function requireAgentSecret(
 
 /** Last 10 digits — MX numbers compare equal across +52 / +521 / bare forms. */
 export function phoneTail(v: unknown): string {
-  const digits = typeof v === "string" ? v.replace(/\D/g, "") : "";
+  const digits = typeof v === "string" ? phoneDigits(v) : "";
   return digits.slice(-10);
 }
 
@@ -87,8 +88,8 @@ export function esTime(iso: string): string {
   }
 }
 
-/** Venue-local "YYYY-MM-DD" + "HH:mm" → Date (Mexico City, fixed UTC-6). */
-export function parseVenueLocal(date: unknown, time: unknown): Date | null {
+/** Place-local "YYYY-MM-DD" + "HH:mm" → Date (Mexico City, fixed UTC-6). */
+export function parsePlaceLocal(date: unknown, time: unknown): Date | null {
   if (typeof date !== "string" || typeof time !== "string") return null;
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date.trim())) return null;
   if (!/^\d{2}:\d{2}$/.test(time.trim())) return null;
@@ -96,8 +97,11 @@ export function parseVenueLocal(date: unknown, time: unknown): Date | null {
   return Number.isNaN(d.getTime()) ? null : d;
 }
 
-/** ISO instant → venue-local "YYYY-MM-DD" (CDMX) — defaulting for partial changes. */
-export function venueLocalDate(iso: string): string {
+/** @deprecated Use parsePlaceLocal. */
+export const parseVenueLocal = parsePlaceLocal;
+
+/** ISO instant → place-local "YYYY-MM-DD" (CDMX) — defaulting for partial changes. */
+export function placeLocalDate(iso: string): string {
   return new Intl.DateTimeFormat("en-CA", {
     timeZone: "America/Mexico_City",
     year: "numeric",
@@ -106,8 +110,8 @@ export function venueLocalDate(iso: string): string {
   }).format(new Date(iso));
 }
 
-/** ISO instant → venue-local "HH:mm" (CDMX, 24h). */
-export function venueLocalTime(iso: string): string {
+/** ISO instant → place-local "HH:mm" (CDMX, 24h). */
+export function placeLocalTime(iso: string): string {
   return new Intl.DateTimeFormat("en-GB", {
     timeZone: "America/Mexico_City",
     hour: "2-digit",
@@ -115,6 +119,11 @@ export function venueLocalTime(iso: string): string {
     hour12: false,
   }).format(new Date(iso));
 }
+
+/** @deprecated Use placeLocalDate — kept for one-release import compatibility. */
+export const venueLocalDate = placeLocalDate;
+/** @deprecated Use placeLocalTime — kept for one-release import compatibility. */
+export const venueLocalTime = placeLocalTime;
 
 // ── Guest-name matching (the PRIMARY lookup key — the code is secondary) ─────
 
@@ -202,7 +211,7 @@ export async function ticketByCode(
   admin: SupabaseClient,
   codeRaw: unknown,
 ): Promise<TicketRow | null> {
-  const digits = typeof codeRaw === "string" ? codeRaw.replace(/\D/g, "") : "";
+  const digits = typeof codeRaw === "string" ? phoneDigits(codeRaw) : "";
   if (!/^\d{8}$/.test(digits)) return null;
   const { data } = await admin
     .from("reservations")

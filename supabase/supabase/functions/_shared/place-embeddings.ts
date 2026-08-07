@@ -23,9 +23,10 @@ import {
 } from "./embeddings-http.ts";
 import { OPENAI_URL } from "./enrich-config.ts";
 import { ENRICH_FIELD_LIMITS } from "./enrich-field-limits.ts";
-import { loadModelsConfig } from "./models-config.ts";
+import { DEFAULT_MODELS_CONFIG, loadModelsConfig } from "./models-config.ts";
 
-const DEFAULT_SYNTH_MODEL = "gpt-4o-mini";
+/** Fallback when models_config.enricher.model is unset. */
+const DEFAULT_SYNTH_MODEL = DEFAULT_MODELS_CONFIG.enricher.model!;
 /** Hard ceiling for Place Synthesis blurbs — Atlas Config Field limits. */
 export const MAX_BLURB_WORDS = ENRICH_FIELD_LIMITS.embeddingSourceText.max;
 

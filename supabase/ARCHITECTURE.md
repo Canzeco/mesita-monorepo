@@ -96,13 +96,15 @@ Base tables were renamed in the 2026 "R2" pass — the current canonical names:
 RLS note: many tables are deliberately `rls_enabled_no_policy` — that is the
 EF-only lockdown, *not* a missing-policy bug. Adding policies would *open* access.
 
-Grant posture (MESITA-942): EF-only tables revoke **all** privileges from
+Grant posture (MESITA-942/943): EF-only tables revoke **all** privileges from
 `anon`/`authenticated` (defense in depth on top of zero policies). Browse /
 vocabulary tables (`places`, `projects`, `classes`, `place_categories`,
 `place_tags`, `consumers`, `projects_view`) are **SELECT-only** for client
 roles — DML/TRUNCATE/TRIGGER/REFERENCES revoked. Sequences are service_role-only.
+Browse RLS policies target `anon`/`authenticated` explicitly (not `PUBLIC`);
+`consumers_select_self` is `authenticated`-only (MESITA-943).
 
-DEFINER helpers `is_super_admin` / `is_project_member` keep authenticated EXECUTE on purpose (Storage RLS); mutators and trigger-only RPCs are service_role-only (MESITA-940/941).
+DEFINER helpers `is_super_admin` / `is_project_member` keep authenticated EXECUTE on purpose (Storage RLS); mutators and trigger-only RPCs are service_role-only (MESITA-940/941). Model string defaults across EFs resolve through `_shared/models-config.ts` (`DEFAULT_MODELS_CONFIG`) so hardcoded fallbacks cannot drift from the Models page seed.
 
 **Admin Reset survivors** live in `public.admin_reset_preserve` (EF-only registry).
 `admin_reset_database()` discovers every `public` base table at run time and

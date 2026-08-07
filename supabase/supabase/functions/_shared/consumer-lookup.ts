@@ -56,7 +56,7 @@ export function classifyConsumerLookup(raw: unknown): ConsumerLookup | null {
   }
 
   if (NUMERICISH_RE.test(s)) {
-    const digits = s.replace(/\D/g, "");
+    const digits = phoneDigits(s);
     // A code never carries a country prefix, so a leading `+` rules it out.
     if (!s.includes("+") && digits.length === 8) {
       return {

@@ -51,7 +51,7 @@ Deno.serve(async (req) => {
   if (!bodyRes.ok) return bodyRes.response;
   // placeId is the MESITA-26 alias for the place-row id (== project_id here).
   const projectId = readPlaceIdAlias(bodyRes.body);
-  if (!projectId) return json({ ok: false, error: "Missing projectId" }, 400);
+  if (!projectId) return jsonError("Missing projectId", 400);
 
   const [mediaRes, projectRes, researchRes] = await Promise.all([
     admin
@@ -74,13 +74,13 @@ Deno.serve(async (req) => {
   ]);
 
   if (mediaRes.error) {
-    return json({ ok: false, error: `place_media_assets: ${mediaRes.error.message}` }, 500);
+    return jsonError(`place_media_assets: ${mediaRes.error.message}`, 500);
   }
   if (projectRes.error) {
-    return json({ ok: false, error: `projects: ${projectRes.error.message}` }, 500);
+    return jsonError(`projects: ${projectRes.error.message}`, 500);
   }
   if (researchRes.error) {
-    return json({ ok: false, error: `place_research: ${researchRes.error.message}` }, 500);
+    return jsonError(`place_research: ${researchRes.error.message}`, 500);
   }
 
   const rows = (mediaRes.data ?? []) as MediaRow[];

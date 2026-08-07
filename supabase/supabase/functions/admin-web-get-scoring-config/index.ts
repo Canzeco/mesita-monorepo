@@ -7,7 +7,7 @@
 // verify_jwt = true gates non-bearer callers at the gateway.
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, json, rejectUnlessMethods } from "../_shared/http.ts";
+import { corsPreflight, jsonError, jsonOk, rejectUnlessMethods } from "../_shared/http.ts";
 import {
   adminClient,
   getAuthedUser,
@@ -35,8 +35,8 @@ Deno.serve(async (req) => {
     .eq("id", 1)
     .single();
   if (error) {
-    return json({ ok: false, error: `scoring_config_get: ${error.message}` }, 500);
+    return jsonError(`scoring_config_get: ${error.message}`, 500);
   }
 
-  return json({ ok: true, config: data?.scoring_config ?? null });
+  return jsonOk({ config: data?.scoring_config ?? null });
 });

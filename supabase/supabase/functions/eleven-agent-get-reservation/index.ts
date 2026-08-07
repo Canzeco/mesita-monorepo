@@ -25,6 +25,7 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { corsPreflight, json, readJsonOr, rejectUnlessMethods } from "../_shared/http.ts";
 import { adminClient, readEFEnv } from "../_shared/auth.ts";
+import { phoneDigits } from "../_shared/phone.ts";
 import { timingSafeEqual } from "../_shared/timing-safe-equal.ts";
 
 type Body = {
@@ -211,7 +212,7 @@ Deno.serve(async (req) => {
 
   const body = await readJsonOr<Body>(req, {});
   const codeDigits = typeof body.reference_code === "string"
-    ? body.reference_code.replace(/\D/g, "")
+    ? phoneDigits(body.reference_code)
     : "";
   const code = /^\d{8}$/.test(codeDigits) ? codeDigits : null;
   const terms = [cleanTerm(body.first_name), cleanTerm(body.last_name)].filter(Boolean);

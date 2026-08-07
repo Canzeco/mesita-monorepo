@@ -61,7 +61,7 @@ export async function readJson<T>(
   } catch {
     return {
       ok: false,
-      response: json({ ok: false, error: "Invalid JSON" }, 400),
+      response: jsonError("Invalid JSON", 400),
     };
   }
 }
