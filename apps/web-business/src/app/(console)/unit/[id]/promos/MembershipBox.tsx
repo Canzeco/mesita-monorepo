@@ -3,10 +3,8 @@ import { Section } from "@/components/shared";
 import type { MyPlace } from "@/lib/api/places";
 import { cn, formatMoney } from "@/lib/utils";
 import { PRODUCT_PRICE_MXN } from "./promoConstants";
-import {
-  MembershipStatusPill,
-  type MembershipPillState,
-} from "./promoShared";
+import { MembershipStatusPill, type MembershipPillState } from "./promoShared";
+import { effectiveStrikeCount } from "./promo-state";
 
 const STRIKES: { n: string; consequence: string }[] = [
   { n: "1", consequence: "A warning — your discounts keep running." },
@@ -35,11 +33,13 @@ export function MembershipBox({
   const price = formatMoney(PRODUCT_PRICE_MXN, currency);
   const notMember = pillState === "not_member";
   const canDrop = pillState !== "not_member" && pillState !== "forfeited";
-  // Surface the honor rules when something is wrong; otherwise keep them tucked.
+  // Surface the honor rules when something is wrong; otherwise keep them
+  // tucked. Decay-aware: raw strike_count keeps stale values until the EF
+  // lazily rewrites it — never auto-open over phantom strikes.
   const rulesOpen =
     pillState === "paused" ||
     pillState === "forfeited" ||
-    ((place.strike_count ?? 0) > 0 && pillState === "live");
+    (effectiveStrikeCount(place) > 0 && pillState === "live");
 
   return (
     <Section
@@ -53,7 +53,8 @@ export function MembershipBox({
             "rounded-xl p-3 text-[12px] leading-snug",
             statusNote.tone === "live" && "bg-emerald-50 text-emerald-800",
             statusNote.tone === "warn" && "bg-amber-50 text-amber-900",
-            statusNote.tone === "blocked" && "bg-destructive/10 text-destructive",
+            statusNote.tone === "blocked" &&
+              "bg-destructive/10 text-destructive",
           )}
         >
           {statusNote.label}
@@ -76,7 +77,7 @@ export function MembershipBox({
         {notMember ? (
           <p className="text-muted-foreground text-[12px] leading-snug">
             <span className="text-foreground font-semibold">
-              Choose a paid strategy below to join.
+              Choose a strategy below to join.
             </span>{" "}
             Rank is never for sale — visibility rises with what you give.
           </p>
@@ -99,15 +100,12 @@ export function MembershipBox({
         </button>
       )}
 
-      <details
-        open={rulesOpen}
-        className="border-border group border-t pt-2"
-      >
+      <details open={rulesOpen} className="border-border group border-t pt-2">
         <summary className="text-foreground flex min-h-10 cursor-pointer list-none items-center justify-between gap-2 text-[12px] font-semibold [&::-webkit-details-marker]:hidden">
           How it works
           <ChevronDown className="text-muted-foreground h-4 w-4 shrink-0 transition group-open:rotate-180" />
         </summary>
-        <div className="text-muted-foreground flex flex-col gap-3 pb-1 pt-1 text-[12px] leading-snug">
+        <div className="text-muted-foreground flex flex-col gap-3 pt-1 pb-1 text-[12px] leading-snug">
           <div className="flex flex-col gap-1">
             <p className="text-[10px] font-bold tracking-[0.16em] uppercase">
               Activation
@@ -161,18 +159,20 @@ function describeMembershipStatus(
     };
   }
   if (pillState === "not_member") return null;
+  // Paused is a recoverable 30-day state → warn (amber), matching its pill;
+  // destructive red is reserved for forfeited.
   if (pillState === "paused") {
     return {
-      label: `Promo lane paused until ${place.promo_paused_until!.slice(0, 10)} (strike 2).`,
-      tone: "blocked",
+      label: `Promo lane paused until ${place.promo_paused_until!.slice(0, 10)} (strike 2 of 3).`,
+      tone: "warn",
     };
   }
   if (pillState === "live") {
-    const strikes = place.strike_count ?? 0;
+    const strikes = effectiveStrikeCount(place);
     return {
       label:
         strikes > 0
-          ? `Membership live · ${strikes} active strike${strikes === 1 ? "" : "s"}.`
+          ? `Membership live · ${strikes} active strike${strikes === 1 ? "" : "s"} (of 3).`
           : "Membership live — promo lane open.",
       tone: strikes > 0 ? "warn" : "live",
     };

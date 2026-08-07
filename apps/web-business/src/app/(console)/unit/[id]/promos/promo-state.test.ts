@@ -1,0 +1,95 @@
+import { describe, expect, it } from "vitest";
+import { STRATEGIES, strategyForPlace } from "@/lib/business/strategies";
+import {
+  STRIKE_DECAY_DAYS,
+  effectiveStrikeCount,
+  isCardCurrent,
+} from "./promo-state";
+
+const DAY_MS = 86_400_000;
+const NOW = Date.parse("2026-08-07T12:00:00Z");
+const daysAgo = (d: number) => new Date(NOW - d * DAY_MS).toISOString();
+
+describe("isCardCurrent — the F1 gate", () => {
+  it("unsubscribed: NEVER current, Zero included (join-onto-Zero stays open)", () => {
+    for (const cardId of [
+      "zero",
+      "conservative",
+      "aggressive",
+      "dominant",
+    ] as const) {
+      // A fresh place has all-null rates → strategyForPlace seeds
+      // selectedId with "zero"; the gate must ignore it.
+      expect(isCardCurrent(false, "zero", cardId)).toBe(false);
+    }
+  });
+
+  it("subscribed member on Zero (null rates): Zero is honestly Current", () => {
+    expect(isCardCurrent(true, "zero", "zero")).toBe(true);
+    expect(isCardCurrent(true, "zero", "conservative")).toBe(false);
+  });
+
+  it("subscribed with custom rates (null selection): nothing current", () => {
+    expect(isCardCurrent(true, null, "conservative")).toBe(false);
+  });
+});
+
+describe("effectiveStrikeCount (mirrors EF lazy decay)", () => {
+  it("returns 0 for no strikes", () => {
+    expect(effectiveStrikeCount({}, NOW)).toBe(0);
+    expect(effectiveStrikeCount({ strike_count: 0 }, NOW)).toBe(0);
+  });
+
+  it("keeps fresh strikes", () => {
+    expect(
+      effectiveStrikeCount(
+        { strike_count: 2, last_strike_at: daysAgo(100) },
+        NOW,
+      ),
+    ).toBe(2);
+  });
+
+  it("all-or-nothing decay at the boundary", () => {
+    expect(
+      effectiveStrikeCount(
+        { strike_count: 2, last_strike_at: daysAgo(STRIKE_DECAY_DAYS - 1) },
+        NOW,
+      ),
+    ).toBe(2);
+    expect(
+      effectiveStrikeCount(
+        { strike_count: 2, last_strike_at: daysAgo(STRIKE_DECAY_DAYS) },
+        NOW,
+      ),
+    ).toBe(0);
+  });
+
+  it("trusts the raw count when last_strike_at is missing", () => {
+    expect(effectiveStrikeCount({ strike_count: 1 }, NOW)).toBe(1);
+  });
+});
+
+describe("strategyForPlace contract (locks the documented trap)", () => {
+  it("all-null rates match Zero — the reason the gate exists", () => {
+    expect(
+      strategyForPlace({
+        welcome_free_rate: null,
+        welcome_premium_rate: null,
+        free_rate: null,
+        premium_rate: null,
+      }),
+    ).toBe("zero");
+  });
+
+  it("every preset's own rates round-trip to its id", () => {
+    for (const s of STRATEGIES) {
+      expect(strategyForPlace(s.rates)).toBe(s.id);
+    }
+  });
+
+  it("off-preset rates match null (custom state)", () => {
+    const paid = STRATEGIES.find((s) => s.id !== "zero")!;
+    // 33 is outside the legal 10..50-by-10 set, so no preset can carry it.
+    expect(strategyForPlace({ ...paid.rates, premium_rate: 33 })).toBe(null);
+  });
+});

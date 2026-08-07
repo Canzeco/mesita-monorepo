@@ -19,6 +19,7 @@ import { MembershipBox } from "./MembershipBox";
 import { PricingCard } from "./PricingCard";
 import { ProductModal } from "./ProductModal";
 import { membershipPillState } from "./promoShared";
+import { isCardCurrent } from "./promo-state";
 
 // Promos — three boxes (MESITA-912 membership unbundle):
 //   1. Membership — fee, status pill, join/drop, activation, strikes.
@@ -106,7 +107,10 @@ export function PromosClient({ place }: { place: MyPlace }) {
       setModalId(null);
       setSelectedId(target);
       setPendingId(target);
-      await apiUpdatePlace(supabase, { id: place.id, ...strategyRates(target) });
+      await apiUpdatePlace(supabase, {
+        id: place.id,
+        ...strategyRates(target),
+      });
       router.refresh();
     } catch (err) {
       setSelectedId(previous);
@@ -192,7 +196,10 @@ export function PromosClient({ place }: { place: MyPlace }) {
               key={s.id}
               strategy={s}
               currency={place.currency}
-              selected={s.id === selectedId}
+              // Member-gated (MESITA-948): strategyForPlace maps all-null
+              // rates to "zero", so an unsubscribed place would otherwise
+              // ring Zero as "Current" and block join-onto-Zero.
+              selected={isCardCurrent(subscribed, selectedId, s.id)}
               pending={pendingId === s.id}
               subscribed={subscribed}
               joinDisabled={joinDisabled}
@@ -219,12 +226,6 @@ export function PromosClient({ place }: { place: MyPlace }) {
           </p>
         )}
 
-        {!subscribed && !forfeited && (
-          <p className="text-muted-foreground text-[11px] leading-snug">
-            Join membership first — tap any strategy to start with that posture.
-          </p>
-        )}
-
         {error && <p className={ERROR_BOX_CLASS}>{error}</p>}
       </Section>
 
@@ -238,7 +239,7 @@ export function PromosClient({ place }: { place: MyPlace }) {
         <ProductModal
           strategy={modalStrategy}
           currency={place.currency}
-          isCurrent={modalStrategy.id === selectedId}
+          isCurrent={isCardCurrent(subscribed, selectedId, modalStrategy.id)}
           subscribed={subscribed}
           joinDisabled={joinDisabled}
           billingBusy={billingBusy || pendingId === modalStrategy.id}
