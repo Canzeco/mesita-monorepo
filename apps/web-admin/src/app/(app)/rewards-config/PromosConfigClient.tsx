@@ -224,7 +224,7 @@ export function PromosConfigClient({
       >
         <div className="mt-4">
           <p className="text-muted-foreground pt-1 pb-1 text-[10px] font-bold tracking-[0.12em] uppercase">
-            Special bonus
+            Automatic bonus
           </p>
           <BonusRow
             label={BONUS_META.welcome.name}
