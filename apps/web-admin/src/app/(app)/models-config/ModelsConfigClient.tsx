@@ -19,9 +19,9 @@ import {
 // Models Config — a MAP of which model each subsystem uses, not a parallel
 // control panel. Only the Supabase Edge Functions general default is edited
 // here; every other row is read-only and links to the page that actually owns
-// the model (Enricher Config, Memo Config), because those knobs already exist,
-// are richer, and — for the Enricher — run live. STAGED: the one editable knob
-// persists to app_settings.models_config but no EF reads it yet.
+// the richer knobs (Enricher Config quality/preset, Memo Config instructions).
+// Live binding (MESITA-941): loadModelsConfig reads the blob for Enricher,
+// Memo, Lineup embeddings, suggest-promo, and recommender-rank-map.
 
 const STATUS_STYLE: Record<ModelStatus, { label: string; className: string }> = {
   live: {

@@ -13,8 +13,8 @@
 // a missing/garbage key falls back to the migration default so the blob is
 // always complete). See 20260726010000_models_config_reshape.sql.
 //
-// STAGED: persisted ahead of the wiring; the subsystems read the blob in a
-// follow-up. When they do, this blob is their model source.
+// Live binding (MESITA-941): Enricher/Memo/Lineup/embeddings/suggest-promo/
+// recommender-rank-map read this blob via _shared/models-config.ts.
 //
 // Auth: caller's JWT email must be in public.super_admins. verify_jwt defaults
 // to true at the gateway (no config.toml entry, mirroring the memo/lineup pair).
