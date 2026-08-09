@@ -1,4 +1,3 @@
-export { PlaceBasicsModule } from "./PlaceBasicsModule";
 export { PlaceChannelsModule } from "./PlaceChannelsModule";
 export { PlaceMediaModule } from "./PlaceMediaModule";
 export { PlaceMenuModule } from "./PlaceMenuModule";

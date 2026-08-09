@@ -15,7 +15,7 @@ import {
 import {
   PLACE_DESCRIPTION_MAX,
   PLACE_NAME_MAX,
-  PlaceBasicsModule,
+  PlaceBasicsSection,
   PlaceChannelsModule,
   PlaceMediaModule,
   PlaceMenuModule,
@@ -268,7 +268,7 @@ export function EditPlaceForm({
         ) : null}
 
         {tab === "basics" ? (
-          <PlaceBasicsModule place={place} form={v} set={set} />
+          <PlaceBasicsSection place={place} form={v} set={set} />
         ) : null}
 
         {tab === "media" ? (
