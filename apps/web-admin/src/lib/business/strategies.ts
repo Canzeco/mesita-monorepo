@@ -33,9 +33,6 @@ export type DiscountCapMxn = (typeof DISCOUNT_CAPS_MXN)[number];
 /** Default when a place leaves Zero or has no cap yet. */
 export const DEFAULT_DISCOUNT_CAP_MXN: DiscountCapMxn = 500;
 
-/** @deprecated Use DEFAULT_DISCOUNT_CAP_MXN / DISCOUNT_CAPS_MXN — cap is no longer universal. */
-export const UNIVERSAL_CAP_MXN = DEFAULT_DISCOUNT_CAP_MXN;
-
 export type StrategyId = "zero" | "conservative" | "aggressive";
 
 // Three rungs — Aggressive is the peak.
