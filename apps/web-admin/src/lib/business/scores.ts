@@ -17,10 +17,11 @@
 //                                   — star mass with a rating exponent
 //                                   (default 1, max 2), log-squashed.
 //   RP  Rewards Promotions   [0,1]  the membership strategy as a rung —
-//                                   0.1 · 0.4 · 0.7. No literal 0:
-//                                   non-members never ENTER the paid lanes
-//                                   (a lane filter, not a score); the zero-
-//                                   strategy member keeps a 0.1 whisper.
+//                                   0 · 0.5 · 1. Non-members never ENTER
+//                                   the paid lanes at all (a lane filter,
+//                                   separate from this score); a member on
+//                                   the zero rung earns nothing there either
+//                                   — the paid lane is strictly pay-to-play.
 //   XX  Random Number        [0,1)  U^control, U ~ Uniform[0,1) drawn per
 //                                   card per lane; control ∈ [0,5] is one
 //                                   deck-wide knob. control 0 → XX ≡ 1 (off,
