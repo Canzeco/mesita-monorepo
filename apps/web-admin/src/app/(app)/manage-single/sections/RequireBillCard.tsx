@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useCallback, useState, useTransition } from "react";
 import { Banknote } from "lucide-react";
 import { setCheckRequireBill, type AdminPlace } from "../actions";
+import { useSectionDirty } from "../useSectionDirty";
 import { SaveBar, SectionCard } from "../ui";
 
 // Require bill amount (MESITA-898) — the per-place opt-out of the v3b
@@ -22,6 +23,13 @@ export function RequireBillCard({ place }: { place: AdminPlace }) {
   const [ok, setOk] = useState(false);
 
   const dirty = on !== current;
+
+  const resetDraft = useCallback(() => {
+    setOn(current);
+    setError(null);
+    setOk(false);
+  }, [current]);
+  useSectionDirty("require-bill", dirty, resetDraft);
 
   const save = () => {
     setError(null);

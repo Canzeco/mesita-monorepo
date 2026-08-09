@@ -53,6 +53,7 @@ const TINT_CHIP: Record<Tint, string> = {
 };
 
 export function SectionCard({
+  id,
   icon,
   tint = "slate",
   title,
@@ -60,6 +61,8 @@ export function SectionCard({
   action,
   children,
 }: {
+  /** Optional scroll/focus target (e.g. completeness Menu → Products). */
+  id?: string;
   icon?: React.ReactNode;
   /** Icon-chip hue — keep sibling cards on different tints. */
   tint?: Tint;
@@ -69,7 +72,10 @@ export function SectionCard({
   children: React.ReactNode;
 }) {
   return (
-    <section className="border-border bg-card shadow-card rounded-2xl border p-5 sm:p-6">
+    <section
+      id={id}
+      className="border-border bg-card shadow-card rounded-2xl border p-5 sm:p-6"
+    >
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="flex min-w-0 items-center gap-3">
           {icon != null && (
@@ -530,25 +536,26 @@ export function Spinner({ label }: { label?: string }) {
 // ── Read-only display primitives (shared by Place + Settings cards) ──────
 
 // Link out to another unit tab, routed through the discard guard.
-//
-// These used to be bare <Link>s. `guardNav` lived as a local useCallback inside
-// UnitEditChrome, so the chrome's own tabs were guarded but these were not:
-// editing Basics and clicking "Edit on Promos" navigated away and dropped the
-// edits with no dialog and no warning. The guard now lives on UnitPlaceContext
-// precisely so every cross-tab link can reach it — use this, never a raw <Link>.
+// Use this for cross-tab jumps (e.g. completeness Reservations → Settings).
+// Same-tab scroll targets use a plain button + scrollIntoView instead.
 export function CrossTabLink({
   href,
   children,
+  className,
 }: {
   href: string;
   children: React.ReactNode;
+  className?: string;
 }) {
   const { guardNav } = useUnitPlace();
   return (
     <Link
       href={href}
       onClick={(e) => guardNav(href, e)}
-      className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1 text-xs font-medium transition"
+      className={
+        className ??
+        "text-muted-foreground hover:text-foreground inline-flex items-center gap-1 text-xs font-medium transition"
+      }
     >
       {children}
       <ArrowRight className="h-3 w-3" />

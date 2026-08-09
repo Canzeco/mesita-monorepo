@@ -400,6 +400,7 @@ export function ProductsSection({
 
   return (
     <SectionCard
+      id="unit-products"
       icon={<UtensilsCrossed className="h-4 w-4" />}
       tint="orange"
       title="Products"

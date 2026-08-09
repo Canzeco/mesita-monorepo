@@ -177,7 +177,20 @@ export function TeamSection({ place }: { place: AdminPlace }) {
       title="Team"
       subtitle={`Members of ${place.name} — one owner, plus editors and viewers. Actions save immediately.`}
     >
-      {error && <ErrorNote message={error} />}
+      {error && (
+        <div className="mt-4 flex flex-wrap items-center gap-2">
+          <ErrorNote message={error} />
+          {!snap && !loading ? (
+            <button
+              type="button"
+              onClick={() => void load()}
+              className="bg-foreground text-background inline-flex h-9 items-center rounded-full px-4 text-sm font-semibold transition hover:opacity-90"
+            >
+              Retry
+            </button>
+          ) : null}
+        </div>
+      )}
 
       <div className="border-border bg-muted/20 mt-5 flex flex-wrap items-end gap-3 rounded-xl border p-4">
         <div className="min-w-[12rem] flex-1">

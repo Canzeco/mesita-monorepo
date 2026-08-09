@@ -148,61 +148,61 @@ Completeness chips   | Inert spans; Menu hint doesn't route/scroll
 > **Do not implement Promos draft-dirty.** Promos is write-through/optimistic.
 > Critical silent-loss gap is **Settings SaveBar cards**.
 
-- [ ] **E-R1 (P1, human: ~2h / CC: ~25min)** — Wire Settings SaveBar cards into UnitPlaceContext dirtyMap
+- [x] **E-R1 (P1, human: ~2h / CC: ~25min)** — Wire Settings SaveBar cards into UnitPlaceContext dirtyMap
   - Surfaced by: Design+Eng re-verification — `ReservationsCard` / `CheckPinCard` / `RequireBillCard` have local `dirty` + SaveBar but never call `setSectionDirty`
   - Files: `sections/ReservationsCard.tsx`, `CheckPinCard.tsx`, `RequireBillCard.tsx`, optionally shared hook; `UnitPlaceContext.tsx`
   - Keys: `reservations` | `check-pin` | `require-bill` + `registerDiscardHandler` to reset local drafts
   - Verify: edit Check PIN → switch to Place → discard dialog; Cancel keeps PIN draft; Confirm resets
 
-- [ ] **E-R2 (P1, human: ~45min / CC: ~10min)** — Dirty dialog names dirty section(s)
+- [x] **E-R2 (P1, human: ~45min / CC: ~10min)** — Dirty dialog names dirty section(s)
   - Surfaced by: `UnitPlaceContext.tsx:166` hardcodes "Unsaved Place edits"
   - Spec: title/body from dirty keys (`place`, `products`, `reservations`, `check-pin`, `require-bill`); multi → list labels
   - Files: `UnitPlaceContext.tsx` (extract pure `dirtySectionLabels` helper for unit tests)
   - Verify: Products-only dirty → "Unsaved Products edits"; Settings PIN dirty → names Check PIN
 
-- [ ] **E-R3 (P1, human: ~3h / CC: ~35min)** — History guard (`popstate`) compatible with section unmount
+- [x] **E-R3 (P1, human: ~3h / CC: ~35min)** — History guard (`popstate`) compatible with section unmount
   - Surfaced by: Eng — Place/Products clear dirty on unmount; naive listener sees `isDirty===false` after Back
   - Spec: while dirty, maintain `pushState` sentinel; on `popstate`, re-assert URL + open discard dialog **before** relying on mounted section state; Cancel → `history.forward()`; Confirm → discard then allow
   - Files: `UnitPlaceContext.tsx` (preferred) and/or `UnitEditChrome.tsx`
   - Verify: dirty Place + browser Back → dialog; Cancel restores; Confirm leaves
 
-- [ ] **E-R4 (P2, human: ~1h / CC: ~15min)** — Enrich poll backoff + pause when hidden
+- [x] **E-R4 (P2, human: ~1h / CC: ~15min)** — Enrich poll backoff + pause when hidden
   - Files: `UnitEditChrome.tsx:75-94`
   - Spec: while enriching keep ≤8s; else backoff ~60s or stop; `visibilitychange` pause + immediate fetch on visible
   - Verify: hidden tab stops; idle cost drops
 
-- [ ] **E-R5 (P2, human: ~30min / CC: ~5min)** — Team load error Retry
+- [x] **E-R5 (P2, human: ~30min / CC: ~5min)** — Team load error Retry
   - Files: `sections/TeamSection.tsx:179` — call existing `load()` (`:70-80`)
   - Verify: mirrors `UnitEditShell` Retry; action errors stay ErrorNote-only
 
-- [ ] **E-R6 (P2, human: ~1h / CC: ~15min)** — Tab strip overflow + honest a11y
+- [x] **E-R6 (P2, human: ~1h / CC: ~15min)** — Tab strip overflow + honest a11y
   - Files: `UnitEditChrome.tsx:251-288`
   - Spec: overflow cue at 375px (edge fade or visible scrollbar). A11y: either keep `tablist` (matches `ConfigTabNav`) **or** demote both manage-single + ConfigTabNav to plain `<nav>` + `aria-current="page"` — do not cite ConfigTabNav as plain-nav today
   - Verify: Admin tab reachable at 375px
 
-- [ ] **E-R7 (P2, human: ~1.5h / CC: ~20min)** — Completeness chips: Menu scroll + Reservations cross-tab
+- [x] **E-R7 (P2, human: ~1.5h / CC: ~20min)** — Completeness chips: Menu scroll + Reservations cross-tab
   - Files: `ProfileCompleteness.tsx`, `ProductsSection.tsx` / `ui.tsx` SectionCard `id`, `CrossTabLink`
   - Menu (same-tab): add Products scroll target → chip `scrollIntoView`+focus (**not** CrossTabLink)
   - Reservations: `CrossTabLink` / `guardNav` → Settings
   - Other chips: defer (document in NOT in scope) unless cheap scroll ids land
   - Verify: missing Menu scrolls to Products; missing Reservations navigates to Settings (guarded if dirty)
 
-- [ ] **E-R8 (P1, human: ~3h / CC: ~45min)** — Tests for E-R1–E-R3 under real Vitest capabilities
+- [x] **E-R8 (P1, human: ~3h / CC: ~45min)** — Tests for E-R1–E-R3 under real Vitest capabilities
   - Surfaced by: Eng — `environment: "node"`, no `@testing-library` / jsdom today
   - Prefer pure unit tests of `dirtySectionLabels` + history-sentinel state machine
   - Add jsdom+RTL only if component mounts are mandatory; do not claim RTL infra already exists
   - Files: new `*.test.ts` next to helpers; CI already runs `pnpm run test`
   - Verify: Settings dirty keys → dialog labels; sentinel Cancel/Confirm transitions
 
-- [ ] **E-R9 (P3, human: ~10min / CC: ~3min)** — Delete unreachable PageHeader branch
+- [x] **E-R9 (P3, human: ~10min / CC: ~3min)** — Delete unreachable PageHeader branch
   - Files: `ManageSingleLayoutShell.tsx:32-40`
   - Verify: unit + select hubs still full-bleed
 
-- [ ] **E-R10 (P3, human: ~20min / CC: ~5min)** — Scrub stale comments
+- [x] **E-R10 (P3, human: ~20min / CC: ~5min)** — Scrub stale comments
   - Files: `PlaceSection.tsx` ("Promos summary"), `UnitPlaceContext.tsx` (PromosCard)
   - Verify: comments match MESITA-900
 
-- [ ] **E-R0 (docs)** — One-line comment on PromosSection: write-through, no draft dirtyMap
+- [x] **E-R0 (docs)** — One-line comment on PromosSection: write-through, no draft dirtyMap
   - Do **not** invent Promos draft dirty
 
 ### Build order
