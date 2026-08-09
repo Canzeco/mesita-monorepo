@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Star } from "lucide-react";
 import type { MyPlace } from "@/lib/api/places";
 import { cn, formatRating, initialLetter } from "@/lib/utils";
-import { formatPlaceCategoryName } from "@/lib/place-category";
+import { resolvePlaceCategoryName } from "@/lib/place-category";
 import { PlaceModule } from "../PlaceModule";
 import { PlaceProfileProgressModule } from "./PlaceProfileProgressModule";
 import { PlaceRefreshModule } from "./PlaceRefreshModule";
@@ -15,7 +15,7 @@ import { placeCategoryName } from "../place-utils";
 function previewMeta(place: MyPlace, v: PlaceFormState) {
   const name = v.name || place.name || "Place name";
   const category =
-    (v.category && formatPlaceCategoryName(v.category)) ||
+    resolvePlaceCategoryName({ category: v.category }) ||
     placeCategoryName(place) ||
     null;
   const googleRating = formatRating(place.google_stars_overall);
