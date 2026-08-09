@@ -6,7 +6,12 @@ import {
   Star,
   Users,
 } from "lucide-react";
-import { cn, formatCompactCount, formatRating } from "@/lib/utils";
+import {
+  cn,
+  formatCompactCount,
+  formatDistanceKm,
+  formatRating,
+} from "@/lib/utils";
 import type { Place } from "@/lib/api/places";
 import { resolveZoneLabel } from "@/lib/adapters/place-to-detail";
 import { resolvePlaceCategoryName } from "@/lib/place-category";
@@ -28,11 +33,7 @@ export function SwipeCardInfo({
   const ratingLabel = formatRating(place.google_rating);
   const ratingCountLabel =
     place.google_count != null ? formatCompactCount(place.google_count) : null;
-  // distance_km === 0 is the "couldn't calculate" placeholder — show "- km".
-  const distanceLabel =
-    place.distance_km == null || place.distance_km <= 0
-      ? "- km"
-      : `${place.distance_km} km`;
+  const distanceLabel = formatDistanceKm(place.distance_km);
   const zoneLabel = resolveZoneLabel({
     zone: place.zone,
     address: place.address,
@@ -144,12 +145,10 @@ export function SwipeCardInfo({
             <Users className="h-3 w-3 shrink-0 text-white/70" />
           </MetaChip>
         )}
-        {distanceLabel && (
-          <MetaChip compact={compact}>
-            <Navigation className="h-3 w-3 shrink-0 text-white/70" />
-            <span className="font-semibold">{distanceLabel}</span>
-          </MetaChip>
-        )}
+        <MetaChip compact={compact}>
+          <Navigation className="h-3 w-3 shrink-0 text-white/70" />
+          <span className="font-semibold">{distanceLabel}</span>
+        </MetaChip>
         <MetaChip compact={compact}>
           <MapPin className="h-3 w-3 shrink-0 text-white/70" />
           <span
