@@ -70,7 +70,7 @@ Deno.serve(async (req) => {
       // attempts_state / call_attempts let the app separate `created` (no dial
       // yet) from `booking` (agent working it) — see the lifecycle in the
       // consumer adapter.
-      "id, reserved_at, party_size, status, reference_code, notes, confirmed_at, completed_at, cancelled_at, coupon_id, created_at, project_id, attempts_state, call_attempts, guest_notify, guest_confirmed_at, alternatives",
+      "id, reserved_at, party_size, status, reference_code, notes, confirmed_at, completed_at, cancelled_at, coupon_id, created_at, project_id, attempts_state, next_attempt_at, call_attempts, guest_notify, guest_confirmed_at, alternatives",
     )
     .eq("consumer_id", consumerId)
     // Operator test tickets (is_test) reference real consumers — never surface

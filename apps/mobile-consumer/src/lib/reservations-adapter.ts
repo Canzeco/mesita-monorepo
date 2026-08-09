@@ -8,6 +8,12 @@ import type {
   ReservationStatus,
 } from '@/lib/mock/reservations-mock';
 
+const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const MONTHS = [
+  'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+  'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+];
+
 // The card models three visual states. pending = still booking, confirmed =
 // booked; every terminal outcome collapses to the muted "cancelled" look.
 function toCardStatus(status: EFReservationRow['status']): ReservationStatus {
@@ -16,18 +22,48 @@ function toCardStatus(status: EFReservationRow['status']): ReservationStatus {
   return 'cancelled';
 }
 
+function formatNextAttempt(iso: string | null | undefined): string | null {
+  if (!iso) return null;
+  const parsed = new Date(iso);
+  if (Number.isNaN(parsed.getTime())) return null;
+  const mx = new Date(parsed.getTime() - 6 * 60 * 60 * 1000);
+  const weekday = WEEKDAYS[mx.getUTCDay()];
+  const month = MONTHS[mx.getUTCMonth()];
+  const day = mx.getUTCDate();
+  let hours = mx.getUTCHours();
+  const minutes = mx.getUTCMinutes().toString().padStart(2, '0');
+  const ampm = hours >= 12 ? 'PM' : 'AM';
+  hours = hours % 12 || 12;
+  return `${weekday} ${month} ${day} · ${hours}:${minutes} ${ampm}`;
+}
+
 function noteFor(
-  status: EFReservationRow['status'],
+  row: EFReservationRow,
   counterOffer: boolean,
 ): string | undefined {
   if (counterOffer) {
     return 'The place offered other times — pick one below, or reschedule.';
   }
-  switch (status) {
+  switch (row.status) {
     case 'pending':
-      return 'Mesita is calling the place to confirm your table.';
+      // MESITA-954 — honest copy while leg 1 is parked waiting for hours.
+      if (row.attempts_state === 'scheduled') {
+        const when = formatNextAttempt(row.next_attempt_at);
+        return when
+          ? `Mesita will call the place when it opens — next try ${when}.`
+          : "Mesita will call the place when it opens — you'll see the answer here.";
+      }
+      if (row.attempts_state === 'exhausted') {
+        return "The place didn't answer Mesita's calls. Try again or pick another time.";
+      }
+      if (row.attempts_state === 'running' || (row.call_attempts ?? 0) > 0) {
+        return "Mesita is on the phone with the place — you'll see the answer here.";
+      }
+      return 'Mesita is about to call the place to book your table.';
     case 'declined':
       return "The place couldn't take this booking.";
+    case 'unreachable':
+      return "The place didn't answer Mesita's calls.";
     case 'no_show':
       return 'Marked as a no-show.';
     case 'cancelled':
@@ -36,12 +72,6 @@ function noteFor(
       return undefined;
   }
 }
-
-const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-const MONTHS = [
-  'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-  'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
-];
 
 // Mexico City is UTC-6 year-round (no DST since 2022). We shift the instant by
 // the fixed offset and read the UTC parts, so the venue's wall-clock renders
@@ -99,7 +129,7 @@ export function toReservationItem(row: EFReservationRow): ReservationItem {
     when: formatReservationWhen(row.reserved_at),
     partySize: row.party_size,
     status: toCardStatus(row.status),
-    statusNote: noteFor(row.status, counterOffer),
+    statusNote: noteFor(row, counterOffer),
     guestNotify: row.guest_notify === 'app' ? 'app' : 'call',
     guestConfirmedAt: row.guest_confirmed_at ?? null,
     alternatives,

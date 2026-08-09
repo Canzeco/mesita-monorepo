@@ -99,6 +99,8 @@ export type EFReservationRow = {
   reference_code: string | null;
   /** Run state — the app reads these to tell `created` from `booking`. */
   attempts_state: string | null;
+  /** When leg 1 is parked (`attempts_state=scheduled`), the next dial time. */
+  next_attempt_at?: string | null;
   call_attempts: number | null;
   notes: string | null;
   confirmed_at: string | null;

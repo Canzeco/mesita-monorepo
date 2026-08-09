@@ -95,6 +95,10 @@ export type EFReservationRow = {
   cancelled_at: string | null;
   coupon_id: string | null;
   created_at: string;
+  /** Run state — parked vs mid-call (MESITA-954). */
+  attempts_state?: string | null;
+  next_attempt_at?: string | null;
+  call_attempts?: number | null;
   /** MESITA-787 — whether a2 may ring the guest. */
   guest_notify?: GuestNotify | null;
   guest_confirmed_at?: string | null;

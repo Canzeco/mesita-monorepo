@@ -56,6 +56,28 @@ function reservationPhase(row: EFReservationRow): ReservationStatus {
   }
 }
 
+/** Format a parked retry instant in Mexico City wall-clock (MESITA-954). */
+function formatNextAttempt(iso: string | null | undefined): string | null {
+  if (!iso) return null;
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return null;
+  const weekday = d.toLocaleDateString("en-US", {
+    weekday: "short",
+    timeZone: TZ,
+  });
+  const monthDay = d.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    timeZone: TZ,
+  });
+  const time = d.toLocaleTimeString("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+    timeZone: TZ,
+  });
+  return `${weekday} ${monthDay} · ${time}`;
+}
+
 function noteFor(
   phase: ReservationStatus,
   row: EFReservationRow,
@@ -63,8 +85,20 @@ function noteFor(
   switch (phase) {
     case "created":
       return "Mesita is about to call the place to book your table.";
-    case "booking":
+    case "booking": {
+      // Leg 1 park states — don't say "on the phone" while waiting for hours.
+      if (row.attempts_state === "scheduled") {
+        const when = formatNextAttempt(row.next_attempt_at);
+        return when
+          ? `Mesita will call the place when it opens — next try ${when}.`
+          : "Mesita will call the place when it opens — you'll see the answer here.";
+      }
+      if (row.attempts_state === "exhausted") {
+        return "The place didn't answer Mesita's calls. Try again or pick another time.";
+      }
+      // running / answered / null-with-attempts → actively working the ticket.
       return "Mesita is on the phone with the place — you'll see the answer here.";
+    }
     case "passed":
       return "Hope it was great. This table has come and gone.";
     case "cancelled":
