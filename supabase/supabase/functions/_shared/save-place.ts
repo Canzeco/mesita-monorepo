@@ -100,13 +100,21 @@ export async function savePlaceData(
 
   // ── 1) places (profile). Strip caller-supplied id/timestamps so the DB owns
   // them; the category-label trigger fills category_label from category. ──
-  // Dual-name (MESITA-917): create always seeds google_name from Google
-  // (basics already set both; fill google_name if a caller only sent name).
-  const { id: _dropId, created_at: _dropCreated, updated_at: _dropUpdated, ...placeRest } = place;
+  // Names: `name` is a GENERATED display column — never insert it. Create seeds
+  // the Google observation only; `mesita_name` stays NULL so the place follows
+  // Google until an operator sets an override. A caller that only sent `name`
+  // is supplying the Google label, so it lands in google_name.
+  const {
+    id: _dropId,
+    created_at: _dropCreated,
+    updated_at: _dropUpdated,
+    name: _dropName,
+    mesita_name: _dropMesitaName,
+    ...placeRest
+  } = place;
   const placeInsert = {
     ...placeRest,
     google_name: ((place.google_name ?? name) as string).toString().trim() || name,
-    name,
   };
   const { data: placeRow, error: placeErr } = await admin
     .from("places")

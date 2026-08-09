@@ -30,7 +30,6 @@
 // strategyForPromoMatrix) — no rates blob, no extra EF, no extra query.
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
-import { displayName } from "./place-display-name.ts";
 
 export type PlaceSummary = {
   id: string;
@@ -101,12 +100,8 @@ export async function attachPlaces<T extends RowWithProject>(
         | null;
     };
     for (const p of (data ?? []) as unknown as Row[]) {
-      const placeName = p.place
-        ? displayName({
-          name: p.place.name,
-          google_name: p.place.google_name,
-        })
-        : null;
+      // `name` is the generated display column (mesita_name → google_name).
+      const placeName = p.place?.name ?? null;
       byId.set(p.id, {
         id: p.id,
         slug: p.slug ?? null,

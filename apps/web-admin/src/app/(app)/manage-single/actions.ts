@@ -107,9 +107,17 @@ export type ReservationTarget = {
 export type AdminPlace = {
   id: string;
   slug: string | null;
-  /** Mesita display name (editable). Empty/null ⇒ fall back to google_name. */
+  /**
+   * Resolved display label. GENERATED in Postgres as
+   * coalesce(mesita_name, google_name) — read-only, never send it in a patch.
+   */
   name: string;
-  /** Google Places displayName — Enricher spine; not admin-editable (MESITA-917). */
+  /** Operator override. Null/empty ⇒ the place follows google_name. Editable. */
+  mesita_name?: string | null;
+  /**
+   * Cached Google Places displayName. Not an identity spine (google_place_id
+   * is) — it changes whenever the Google listing does. Enricher-only write.
+   */
   google_name?: string | null;
   category: string | null;
   category_label: string | null;

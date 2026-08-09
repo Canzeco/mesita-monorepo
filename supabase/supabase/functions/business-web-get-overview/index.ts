@@ -18,7 +18,6 @@ import {
   readEFEnv,
 } from "../_shared/auth.ts";
 import { PLACE_BUSINESS_COLUMNS as PLACE_COLUMNS } from "../_shared/place-columns.ts";
-import { type PlaceNameRow, withDisplayName } from "../_shared/place-display-name.ts";
 
 // Super-admin manage-single Embeddings card (MESITA-720) — keep vectors off
 // the business overview payload; only elevate when the caller is a super-admin.
@@ -85,16 +84,14 @@ Deno.serve(async (req) => {
     // Tag as owner so any downstream UI that gates on role still works —
     // super-admin gets the broadest permission set the place role enum
     // can express. (The frontend MyPlace type only knows owner|business|staff.)
-    // PlaceRow is a loose bag (Record<string, unknown> & { id }), so it shares
-    // no DECLARED properties with PlaceNameRow and the generic constraint
-    // rejects it — even though PLACE_COLUMNS does select name/google_name and
-    // the row carries them at run time. Assert to the constraint: withDisplayName
-    // spreads the whole row, so every other column survives untouched.
-    const soleRow = {
-      ...(placeRow.data as unknown as Record<string, unknown>),
-      my_role: "owner",
-    } as unknown as PlaceNameRow;
-    places = [withDisplayName(soleRow) as unknown as PlaceRow];
+    // `name` arrives already resolved — it is a generated column
+    // (mesita_name → google_name), so no display pass is needed here.
+    places = [
+      {
+        ...(placeRow.data as unknown as Record<string, unknown>),
+        my_role: "owner",
+      } as unknown as PlaceRow,
+    ];
   } else {
     // Pull every place the caller is a member of, with the role on each row.
     // Read via projects_view so Promos v4 membership columns (MESITA-542) and
@@ -121,14 +118,10 @@ Deno.serve(async (req) => {
       if (placeRows.error) {
         return json({ ok: false, error: placeRows.error.message }, 500);
       }
-      places = ((placeRows.data ?? []) as unknown as PlaceRow[]).map((p) => {
-        // Asserted to the helper's constraint — see the sole-place branch above.
-        const row = {
-          ...p,
-          my_role: roleById.get(p.id) ?? "viewer",
-        } as unknown as PlaceNameRow;
-        return withDisplayName(row) as unknown as PlaceRow;
-      });
+      places = ((placeRows.data ?? []) as unknown as PlaceRow[]).map((p) => ({
+        ...p,
+        my_role: roleById.get(p.id) ?? "viewer",
+      } as unknown as PlaceRow));
     }
   }
 

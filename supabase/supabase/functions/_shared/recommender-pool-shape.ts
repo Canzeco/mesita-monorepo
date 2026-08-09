@@ -4,7 +4,6 @@
 // Supabase query path.
 
 import type { WeeklyHours } from "./local-time.ts";
-import { withDisplayName } from "./place-display-name.ts";
 import { withFamilyKeys } from "./place-family-keys.ts";
 
 // Shape of a candidate place row as projected by RECOMMENDER_PLACE_COLUMNS.
@@ -83,5 +82,6 @@ export function stripInternal(
     manual_priority: _mp,
     ...rest
   } = v;
-  return withFamilyKeys(withDisplayName(rest));
+  // `name` is already the resolved display label (generated column).
+  return withFamilyKeys(rest);
 }

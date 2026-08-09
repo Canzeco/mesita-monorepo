@@ -37,13 +37,12 @@ function isEnriching(status: PlaceEnrichmentStatus | null): boolean {
 // anything else (draft, paused, etc.) renders the amber dot.
 const POSITIVE_STATUS_LABELS = new Set(["active", "published", "live", "ready"]);
 
-/** Mesita name if set, else Google name (MESITA-917). */
+/**
+ * `name` is resolved in Postgres (generated: mesita_name → google_name) and is
+ * NOT NULL, so there is nothing to coalesce here.
+ */
 function placeDisplayName(p: AdminPlace): string {
-  const mesita = (p.name ?? "").trim();
-  if (mesita) return mesita;
-  const google = (p.google_name ?? "").trim();
-  if (google) return google;
-  return "(unnamed)";
+  return (p.name ?? "").trim() || "(unnamed)";
 }
 
 export function UnitEditChrome({
@@ -226,9 +225,8 @@ export function UnitEditChrome({
               </span>
             ) : null}
           </p>
-          {(place.google_name ?? "").trim() &&
-          (place.name ?? "").trim() &&
-          (place.name ?? "").trim() !== (place.google_name ?? "").trim() ? (
+          {/* Show what Google calls it only when an operator override hides it. */}
+          {(place.mesita_name ?? "").trim() && (place.google_name ?? "").trim() ? (
             <p className="text-muted-foreground mt-0.5 truncate text-[11px]">
               Google: {(place.google_name ?? "").trim()}
             </p>

@@ -30,7 +30,6 @@ import {
   type MemoPlaceCard,
   rowToMemoPlaceCard,
 } from "../_shared/memo-place-card.ts";
-import { displayName } from "../_shared/place-display-name.ts";
 
 // Rows a browsing consumer may see by name.
 const BROWSABLE_STATUS = ["active", "lead"];
@@ -117,14 +116,8 @@ Deno.serve(async (req) => {
   const places: MemoPlaceCard[] = [];
   for (const row of [...nameRows, ...(byId.data ?? [])]) {
     const raw = row as unknown as Record<string, unknown>;
-    const card = rowToMemoPlaceCard({
-      ...raw,
-      // Card label = Mesita priority (empty Mesita name → google_name).
-      name: displayName({
-        name: (raw.name as string | null) ?? null,
-        google_name: (raw.google_name as string | null) ?? null,
-      }),
-    });
+    // Card label comes straight from the generated `name` column.
+    const card = rowToMemoPlaceCard(raw);
     if (!card.id || seen.has(card.id)) continue;
     seen.add(card.id);
     places.push(card);

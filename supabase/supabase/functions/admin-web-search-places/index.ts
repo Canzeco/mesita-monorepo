@@ -2,7 +2,7 @@
 //
 // Super-admin place search for the admin console's "Manage Single Place"
 // place picker. Takes a free-text query and returns matching Mesita places
-// (by Mesita name / google_name / slug, or an exact id paste). The operator
+// (by display name / cached Google name / slug, or an exact id paste). The operator
 // picks one, and the admin console then drives that place through the
 // existing business-* EFs (super-admin bypass in _shared/auth.ts grants
 // access regardless of project_members).
@@ -18,7 +18,6 @@ import {
   readEFEnv,
   requireSuperAdmin,
 } from "../_shared/auth.ts";
-import { displayName } from "../_shared/place-display-name.ts";
 
 type Body = { query?: unknown; limit?: unknown };
 
@@ -71,7 +70,10 @@ Deno.serve(async (req) => {
   } else if (q.length < 2) {
     return json({ ok: false, error: "query must be at least 2 characters" }, 400);
   } else {
-    // Free-text: match Mesita name OR google_name OR slug (MESITA-917).
+    // Free-text: match the display name OR the cached Google label OR the slug.
+    // `name` is generated from mesita_name → google_name, so the first leg
+    // already covers an operator override; the google_name leg is what still
+    // finds a place by the Google string after an operator renamed it.
     // Strip characters that break the PostgREST or() grammar (comma / parens),
     // then escape LIKE wildcards so the remaining text matches literally.
     const safe = q.replace(/[,()"]/g, " ").trim();
@@ -101,14 +103,12 @@ Deno.serve(async (req) => {
 
   // Trim photos to the first thumbnail to keep the payload small.
   // enriched / verified are derived for the Manage Single Place catalog table.
-  // Label with displayName (Mesita priority) — never two rows for one place.
+  // `name` is the generated display column (mesita_name → google_name), so the
+  // label needs no resolution here — never two rows for one place.
   const places = rows.map((v) => {
     const contentStatus = (v.content_status as string | null) ?? null;
     const listingType = (v.listing_type as string | null) ?? null;
-    const label = displayName({
-      name: (v.name as string | null) ?? null,
-      google_name: (v.google_name as string | null) ?? null,
-    });
+    const label = String(v.name ?? "");
     return {
       id: v.id,
       slug: v.slug,

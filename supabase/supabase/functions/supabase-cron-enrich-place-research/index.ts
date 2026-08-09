@@ -24,7 +24,8 @@
 // Output: place_research.gathered (partial place update + grounding + candidate
 // image pools + per-image metadata) → stage='analysis'. The profile persists once,
 // at the contents stage — exceptions written directly here (research-only):
-// `phone`, and dual names (`google_name` + sticky Mesita `name`, MESITA-917).
+// `phone`, and the cached Google label (`google_name`; `places.name` is a
+// generated column and `mesita_name` belongs to the operator).
 // They must land only when research re-runs (full re-enrich), never on a lighter
 // analysis/contents-only re-run.
 //
@@ -46,7 +47,7 @@ import {
 } from "../_shared/enrich-cost.ts";
 import { fetchGoogleBasics } from "../_shared/enrich-google-basics.ts";
 import { gatherGoogleMaps } from "../_shared/enrich-google.ts";
-import { stickyNamePatch } from "../_shared/place-display-name.ts";
+import { ENRICH_FIELD_LIMITS } from "../_shared/enrich-field-limits.ts";
 import { gatherSerpSummary } from "../_shared/enrich-serp.ts";
 import { gatherInstagram, type InstagramResult } from "../_shared/enrich-instagram.ts";
 import { type FacebookResult, gatherFacebook } from "../_shared/enrich-facebook.ts";
@@ -96,7 +97,9 @@ serveEnrichStage("research", async (admin, _env, row) => {
 
   const sources: Record<string, unknown> = {};
   const place: Record<string, unknown> = { ...basics };
-  const name = basics.name;
+  // Search term for SERP / channel discovery: always the Google label, since
+  // that is what the rest of the web indexes this place under.
+  const name = basics.google_name;
   const locationLine = [basics.address, basics.city].filter(Boolean).join(", ");
   const category = basics.category;
 
@@ -224,58 +227,46 @@ serveEnrichStage("research", async (admin, _env, row) => {
   delete place.phone;
   delete place.email;
 
-  // ━━━ Names — google_name + sticky Mesita name (MESITA-917) ━━━
-  // Same pattern as phone: write in research only (fresh Google spine), strip
-  // from gathered so contents never clobbers an admin/business Mesita name.
-  // Sticky: empty Mesita name OR name still equal to previous google_name →
-  // update both; customized Mesita name → only google_name moves.
+  // ━━━ Names — refresh the cached Google label, nothing else ━━━
+  // Same pattern as phone: write in research only (a fresh Google read), strip
+  // from `gathered` so the contents stage can never replay a stale name.
+  //
+  //   google_place_id ── identity spine, never changes here
+  //   google_name     ── THIS write: what Google calls the place right now
+  //   mesita_name     ── operator's override; the Enricher must never touch it
+  //   name            ── GENERATED display column, not writable at all
+  //
+  // There is no sticky/equality check any more. It compared the operator's name
+  // against the PREVIOUS google_name, a value that moves on every re-enrich, so
+  // a place whose Google listing caught up to its Mesita label silently
+  // re-entered tracking and lost that label on the next rename.
   {
-    const googleName =
-      typeof basics.google_name === "string" && basics.google_name.trim()
-        ? basics.google_name
-        : typeof basics.name === "string"
-        ? basics.name
-        : "";
+    const googleName = typeof basics.google_name === "string"
+      ? basics.google_name.trim()
+      : "";
     if (googleName) {
-      const { data: existingNames } = await admin
-        .from("places")
-        .select("name, google_name")
-        .eq("id", projectId)
-        .maybeSingle();
-      const patch = stickyNamePatch({
-        newGoogleName: googleName,
-        currentName: (existingNames?.name as string | null | undefined) ?? null,
-        previousGoogleName:
-          (existingNames?.google_name as string | null | undefined) ?? null,
-      });
-      const nameUpdate: Record<string, string> = {
-        google_name: patch.google_name,
-      };
-      if (patch.sticky && patch.name != null) nameUpdate.name = patch.name;
+      const next = googleName.slice(0, ENRICH_FIELD_LIMITS.placeName.max);
       const { error: nameErr } = await admin
         .from("places")
-        .update(nameUpdate)
+        .update({ google_name: next })
         .eq("id", projectId);
       sources.name_sync = {
-        sticky: patch.sticky,
-        google_name: patch.google_name,
-        name_before: existingNames?.name ?? null,
+        google_name: next,
         ok: !nameErr,
         ...(nameErr ? { error: nameErr.message } : {}),
       };
       console.log(
         JSON.stringify({
-          event: "enrich_name_sync",
+          event: "enrich_google_name_sync",
           project_id: projectId,
-          sticky: patch.sticky,
-          google_name: patch.google_name,
-          name_before: existingNames?.name ?? null,
+          google_name: next,
         }),
       );
     }
   }
   delete place.name;
   delete place.google_name;
+  delete place.mesita_name;
 
   const resolvedCount = ["facebook_url", "website_url", "opentable_url", "uber_eats_url"]
     .filter((k) => !!place[k]).length + (resolvedInstagram ? 1 : 0) + (basics.phone ? 1 : 0);
