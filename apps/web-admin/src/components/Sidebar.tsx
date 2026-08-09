@@ -12,7 +12,7 @@ import {
 import { ATLAS_PARENT } from "@/app/(app)/atlas-config/nav";
 import { AURA_CONSUMERS_PARENT } from "@/app/(app)/aura-consumers/nav";
 import { BILLING_TEST_PARENT } from "@/app/(app)/billing-test/nav";
-import { DB_PARENT } from "@/app/(app)/db-config/nav";
+import { DB_PARENT } from "@/app/(app)/manage-database/nav";
 import { ENRICHER_PARENT } from "@/app/(app)/enricher-config/nav";
 import { MEMO_PARENT } from "@/app/(app)/memo-config/nav";
 import { MODELS_PARENT } from "@/app/(app)/models-config/nav";
@@ -64,7 +64,6 @@ const ALERTS_NAV: NavItem[] = [
 
 const CONFIGS_NAV: NavItem[] = [
   { href: "/admin-config", label: "Admin Config", Icon: ShieldCheck },
-  DB_PARENT,
   MODELS_PARENT,
   ATLAS_PARENT,
   SOURCING_PARENT,
@@ -76,9 +75,11 @@ const CONFIGS_NAV: NavItem[] = [
   RESERVATIONS_PARENT,
 ];
 
-// Manage — the records of real things: the units Mesita lists, and the
-// consumers who walk into them. Not Configs; nothing here is a policy blob.
+// Manage — the records of real things, widest scope first: the backend itself,
+// then the units Mesita lists, then the consumers who walk into them. Not
+// Configs; nothing here is a policy blob.
 const MANAGE_NAV: NavItem[] = [
+  DB_PARENT,
   { href: "/manage-multiple", label: "Manage Multiple Units", Icon: Building2 },
   ...TOOL_ROUTES,
   AURA_CONSUMERS_PARENT,
