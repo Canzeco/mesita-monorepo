@@ -5,9 +5,11 @@ this doc names the sequence and points at the modules; don't mirror payload shap
 rate numbers here.
 
 **No staff account exists.** The waiter identity was retired (MESITA-833): there are no
-waiter invites, no phone-pool onboarding and no PIN. Whoever holds the check URL can work
-the ticket — that is the whole staff surface. The business console rail below is for
-BUSINESS members (owner/editor/viewer), which is a different thing.
+waiter invites and no phone-pool onboarding. Whoever holds the check URL can work the
+ticket — that is the whole staff surface (`check.mesita.ai/<code>`). An optional
+**Check PIN** (MESITA-823) may gate write actions when the place turns it on
+(`business-web-set-check-pin`); it is a shared place secret, not a waiter identity.
+The business console tickets/scan rail is retired (MESITA-843) — see below.
 
 **The inversion (v3, MESITA-849):** the CONSUMER creates the ticket AND completes every
 task before any staff involvement — the floor never adjudicates a story or a review.
@@ -66,11 +68,13 @@ that page via the `check-web-*` EFs — `verify_jwt = false`; possession of the 
    post-visit epilogue — it is open from the moment the ticket exists and stays open
    through the close. One review per account per place (MESITA-825), updatable.
 
-## Other rails (still live alongside the check page)
+## Other rails
 
-- **Business console** (`unit/[id]/tickets`): ticket list, bill form, cancel, mark-paid —
-  `business-web-{list-tickets,submit-ticket-bill,mark-ticket-paid,cancel-ticket}`. Signed-in
-  business members only — not a staff rail.
+- **Business console tickets/scan — retired** (MESITA-843 / Tickets v3 MESITA-849):
+  `unit/[id]/tickets` and `unit/[id]/scan` redirect to the place page. Staff work
+  happens only on Mesita Check. Do not re-add a secondary console check rail.
+  Legacy `business-web-{list-tickets,submit-ticket-bill,mark-ticket-paid,cancel-ticket}`
+  endpoints may still exist in the repo; the console UI no longer surfaces them.
 
 There is no staff WhatsApp rail. It identified the waiter by phone against
 `project_roles`, and that identity no longer exists — don't re-add it.
@@ -80,10 +84,10 @@ There is no staff WhatsApp rail. It identified the waiter by phone against
 | Surface | Module |
 |---------|--------|
 | Consumer create + stepper | `consumer-web-create-ticket` · `apps/web-consumer/src/lib/ticket-flow-steps.ts` (mobile mirror in `apps/mobile-consumer`) |
-| Consumer tasks | `consumer-web-{submit-story,submit-review,submit-ticket-review}` · `apps/web-consumer/.../rewards/VenuePassModal.tsx` |
-| Public check page | `apps/web-check/src/app/[code]/` (legacy `/check` + landing 308 for old `mesita.ai/check/<code>` QRs) · `check-web-{get-ticket,submit-bill,mark-paid}` |
-| Shared security/billing | `_shared/ticket-check.ts` · `_shared/business-ticket-billing.ts` · `_shared/rewards-config.ts` |
-| Business console | `apps/web-business/.../unit/[id]/tickets/` |
+| Consumer tasks | `consumer-web-{submit-story,submit-review,submit-ticket-review}` · `apps/web-consumer/src/components/consumer/rewards/TicketScreen.tsx` |
+| Public check page | `apps/web-check/src/app/[code]/` (live QR host `check.mesita.ai`; legacy `/check` + landing 308 for old `mesita.ai/check/<code>` QRs) · `check-web-{get-ticket,submit-bill,mark-paid}` |
+| Shared security/billing | `_shared/ticket-check.ts` · `_shared/business-ticket-billing.ts` · `_shared/rewards-config.ts` · optional Check PIN (`business-web-set-check-pin`, MESITA-823) |
+| Business console (retired) | `apps/web-business/.../unit/[id]/tickets/` + `.../scan/` — redirect only (MESITA-843) |
 
 Ticket kinds/statuses: the `ticket_kind` / `ticket_status` / `story_status` enums in the
 DB are the taxonomy SoT; consumer-visible milestones live in `ticket-flow-steps.ts`.

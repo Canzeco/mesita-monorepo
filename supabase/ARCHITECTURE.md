@@ -85,7 +85,9 @@ Each endpoint encodes exactly one authorized caller from a **closed set**. The n
   support) · `eleven-a4-*` (business inbound support), with `eleven-agent-*` as
   the transitional single-agent caller. The product agent Reservationist runs
   as these `eleven-*` tools; there is no `reservationist-agent` folder prefix
-  (code folders are SoT until Notion's closed-set catches up). ElevenLabs tools
+  (code folders under `supabase/supabase/functions/` are SoT for live folder
+  names; Notion Product Rules §A lists the closed-set ACL, including
+  `check-web` and `eleven-a*`). ElevenLabs tools
   share the same locks: anon-key bearer for the gateway + `x-agent-secret`
   matched against `app_settings.agents_config` (impl in `_shared/agent-tools.ts`).
   `twilio-webhook` / `business-whats` / `guest-web` are retired
