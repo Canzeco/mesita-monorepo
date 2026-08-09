@@ -14,11 +14,9 @@ type SecondaryChannelKey =
 export function PlaceChannelsModule({
   form,
   set,
-  hideHeader = false,
 }: {
   form: PlaceFormState;
   set: SetPlaceForm;
-  hideHeader?: boolean;
 }) {
   const [secondaryNotAvailable, setSecondaryNotAvailable] = useState<
     Record<SecondaryChannelKey, boolean>
@@ -68,7 +66,7 @@ export function PlaceChannelsModule({
   ];
 
   return (
-    <PlaceModule id="channels" hideHeader={hideHeader}>
+    <PlaceModule id="channels" hideHeader>
       <PlaceUrlField
         label="Website"
         placeholder="https://yourplace.com"
