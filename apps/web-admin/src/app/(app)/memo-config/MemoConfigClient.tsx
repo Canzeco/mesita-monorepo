@@ -20,7 +20,8 @@ import {
 //
 //   instructions    enforced  — resolveMemoSystemPrompt(cfg.instructions) is the
 //                               live persona on every turn
-//   greeting        not wired — no consumer reads memo_greeting; the greeting the
+//   greeting        not wired (Ask AI parked) — client constants mirror DB/Product
+//                   Rules §E; wire a consumer fetch when Ask AI unparks. The greeting the
 //                               user sees is a client thread constant
 //                               (apps/web-consumer/.../ask-ai-thread.ts)
 //   openaiModel     fallback  — models_config.memo.model wins; memo_openai_model
