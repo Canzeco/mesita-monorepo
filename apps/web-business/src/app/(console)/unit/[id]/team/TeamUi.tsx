@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
-import { Check, Copy, Loader2, Send, Trash2 } from "lucide-react";
+import { Check, Copy, Loader2, Trash2 } from "lucide-react";
 
 import type { BusinessRole } from "@/lib/api/team";
 import { ICON_BUTTON_CLASS } from "@/lib/ui-classes";
@@ -169,29 +169,6 @@ export function RemoveButton({
       )}
     >
       <BusyIcon busy={busy} icon={<Trash2 className="h-3.5 w-3.5" />} />
-    </button>
-  );
-}
-
-export function PingButton({
-  busy,
-  onClick,
-  label = "Send test ping",
-}: {
-  busy: boolean;
-  onClick: () => void;
-  label?: string;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={busy}
-      aria-label={label}
-      title={label}
-      className={ICON_BUTTON_CLASS}
-    >
-      <BusyIcon busy={busy} icon={<Send className="h-3.5 w-3.5" />} />
     </button>
   );
 }

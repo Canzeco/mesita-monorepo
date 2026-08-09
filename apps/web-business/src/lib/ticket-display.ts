@@ -32,9 +32,3 @@ export function ticketOpenedMetaLine(ticket: BusinessTicket): string {
     : d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
   return `${code ? `Code ${code}` : "No code"} · ${date} · ${time}`;
 }
-
-export function formatConsumerCodeInput(raw: string): string {
-  const digits = raw.replace(/\D/g, "").slice(0, 8);
-  if (digits.length <= 4) return digits;
-  return `${digits.slice(0, 4)}-${digits.slice(4)}`;
-}
