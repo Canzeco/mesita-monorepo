@@ -17,7 +17,9 @@ import { errMsg } from "@/lib/utils";
 
 import { ConfirmDialog, type ConfirmState } from "./ConfirmDialog";
 import { ManagersTeamSection } from "./ManagersTeamSection";
-import { ROLE_LABEL, type InviteOpen } from "./team-constants";
+import { ROLE_LABEL } from "./team-constants";
+
+type InviteOpen = null | "member";
 
 // Business team — members with roles owner | editor | viewer. Exactly one
 // owner per place (MESITA-919); ownership is transferable. Waiters were

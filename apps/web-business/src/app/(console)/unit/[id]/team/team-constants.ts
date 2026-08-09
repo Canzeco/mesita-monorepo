@@ -11,5 +11,3 @@ export const ROLE_LABEL: Record<BusinessRole, string> = {
 export const ROLE_CHOICES: BusinessRole[] = ["owner", "editor", "viewer"];
 /** Invite never creates an owner — transfer from Team instead. */
 export const INVITE_ROLE_CHOICES: BusinessRole[] = ["editor", "viewer"];
-
-export type InviteOpen = null | "member";
