@@ -72,7 +72,7 @@ export type ConsumerClass = {
 
 // Passport stats returned by consumer-web-get-profile (MESITA-888).
 // `visits` = tickets the v3 close sealed ("revealed") — completed visits.
-export type ConsumerStats = {
+type ConsumerStats = {
   visits: number;
 };
 
@@ -131,7 +131,7 @@ type ConsumerOnboardingInput = {
 
 // Visibility-only patches (MESITA-913). Name fields are omitted so the EF
 // doesn't require the first/last pair for a privacy toggle flip.
-export type ConsumerPrivacyPatch = {
+type ConsumerPrivacyPatch = {
   profile_public?: boolean;
   profile_show_saves?: boolean;
   profile_show_visits?: boolean;
@@ -139,7 +139,7 @@ export type ConsumerPrivacyPatch = {
 };
 
 // Avatar-only patch after a Storage upload (MESITA-953). null clears.
-export type ConsumerAvatarPatch = {
+type ConsumerAvatarPatch = {
   avatar_url: string | null;
 };
 
