@@ -209,15 +209,14 @@ function matchesDiscoveryFilters(place: Place, f: DiscoveryFilters): boolean {
   // Now = the current moment; At = a specific weekday + hour. No hours table =
   // can't confirm open = excluded (same as the old hour filter).
   if (f.when.mode !== "anytime") {
-    const row = place as unknown as Record<string, unknown>;
-    const hours = row.hours;
+    const hours = place.hours;
     const hasHours =
       !!hours &&
       typeof hours === "object" &&
       !Array.isArray(hours) &&
       Object.keys(hours as object).length > 0;
     if (!hasHours) return false;
-    const tz = typeof row.timezone === "string" ? row.timezone : undefined;
+    const tz = place.timezone ?? undefined;
     const open =
       f.when.mode === "at"
         ? computeOpenState(hours, tz, f.when.hour * 60, f.when.day).open_now
