@@ -1,8 +1,8 @@
 "use client";
 
 // Mesita Check home. Staff normally never see this page — scanning a
-// guest's QR lands them straight on /check/<code>. This is the fallback
-// door: a hand-typed check code (camera trouble, broken screen) and a
+// guest's QR lands them straight on /<code>. This is the fallback door:
+// a hand-typed check code (camera trouble, broken screen) and a
 // one-glance explanation of what the app is.
 
 import { useState } from "react";
@@ -16,8 +16,13 @@ import { Button } from "@/components/ui/button";
 // the stray spaces a phone keyboard adds.
 function normalizeCode(raw: string): string {
   const trimmed = raw.trim();
-  const fromUrl = trimmed.match(/\/check\/([^/?#\s]+)/i);
-  return (fromUrl ? fromUrl[1] : trimmed).replace(/\s+/g, "");
+  // Accept bare codes plus pasted URLs — old mesita.ai/check/<code> and
+  // the post-flip check.mesita.ai/<code> (MESITA-814).
+  const fromLegacy = trimmed.match(/\/check\/([^/?#\s]+)/i);
+  if (fromLegacy) return fromLegacy[1].replace(/\s+/g, "");
+  const fromRoot = trimmed.match(/check\.mesita\.ai\/([^/?#\s]+)/i);
+  if (fromRoot) return fromRoot[1].replace(/\s+/g, "");
+  return trimmed.replace(/\s+/g, "");
 }
 
 export default function CheckHome() {
@@ -26,7 +31,7 @@ export default function CheckHome() {
   const trimmed = normalizeCode(code);
 
   const go = () => {
-    if (trimmed) router.push(`/check/${encodeURIComponent(trimmed)}`);
+    if (trimmed) router.push(`/${encodeURIComponent(trimmed)}`);
   };
 
   return (

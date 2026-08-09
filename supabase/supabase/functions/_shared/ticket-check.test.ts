@@ -65,7 +65,7 @@ Deno.test("newCheckCode: 22-char base64url, unique across draws", () => {
     seen.add(code);
   }
   assertEquals(seen.size, 200);
-  assertEquals(checkUrlFor("abc"), "https://mesita.ai/check/abc");
+  assertEquals(checkUrlFor("abc"), "https://check.mesita.ai/abc");
 });
 
 Deno.test("isPlausibleCheckCode: rejects consumer codes, UUIDs, junk", () => {

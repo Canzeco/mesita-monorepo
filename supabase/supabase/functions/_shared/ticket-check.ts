@@ -17,7 +17,7 @@
 import { type SupabaseClient } from "jsr:@supabase/supabase-js@2";
 
 // Canonical public URL of a check — the QR encodes exactly this.
-export const CHECK_URL_BASE = "https://mesita.ai/check/";
+export const CHECK_URL_BASE = "https://check.mesita.ai/";
 
 export function checkUrlFor(code: string): string {
   return `${CHECK_URL_BASE}${code}`;
