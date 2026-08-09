@@ -120,7 +120,7 @@ function ResetCard() {
 
       <p className="text-muted-foreground text-sm leading-relaxed">
         Permanently empties every operational table — places, tickets,
-        reservations, consumers, businesses, invites, verifications, enrichment —
+        reservations, consumers, accounts, invites, verifications, enrichment —
         deletes every stored image and menu file, and removes every auth account
         that isn&apos;t an admin.{" "}
         <strong>Preserved:</strong> admin allowlist, all admin console configs
