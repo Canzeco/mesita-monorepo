@@ -5,6 +5,7 @@ import { FullScreenSheet } from '@/components/ui/FullScreenSheet';
 import { GRADIENT_DIAGONAL, GRADIENTS } from '@/constants/brand';
 import { CLASS_MARK_ICON } from '@/lib/consumer-classes';
 import { ClassPreviewToggle } from './class/ClassPreviewToggle';
+import { ClassRail } from './class/ClassRail';
 import { CurrentClassCard } from './class/CurrentClassCard';
 import { SectionEyebrow } from './class/SectionEyebrow';
 import { WaysToClimb } from './class/WaysToClimb';
@@ -50,11 +51,12 @@ export function ClassModal({
           <CLASS_MARK_ICON color="#fff" size={22} />
         </LinearGradient>
       </View>
-      <ClassPreviewToggle />
+      <ClassRail />
       <SectionEyebrow>You</SectionEyebrow>
       <CurrentClassCard />
       <SectionEyebrow>Classes</SectionEyebrow>
       <WaysToClimb onConnectInstagram={onConnectInstagram} />
+      <ClassPreviewToggle />
     </FullScreenSheet>
   );
 }

@@ -1,7 +1,8 @@
 // Compact class catalog — mirrored from web-consumer `lib/consumer-data.ts`.
-// Ascending ladder (segments v6): standard (default) < premium (paid) <
-// influencer (Instagram ≥ 2,000 followers, automatic) < aura (invite-only
-// presence class).
+// Ascending ladder (segments v6, canonical order MESITA-972): standard
+// (default) < influencer (Instagram ≥ 2,000 followers, automatic) < premium
+// (paid) < aura (invite-only presence class) — mirrors classes.rank in the DB
+// and the money ladder (class steps +5 influencer / +10 premium / +15 aura).
 
 import {
   CreditCard,
@@ -12,7 +13,7 @@ import {
   type LucideIcon,
 } from 'lucide-react-native';
 
-const CLASS_ORDER = ['standard', 'premium', 'influencer', 'aura'] as const;
+const CLASS_ORDER = ['standard', 'influencer', 'premium', 'aura'] as const;
 type ClassId = (typeof CLASS_ORDER)[number];
 
 export const CLASSES: {
@@ -28,18 +29,18 @@ export const CLASSES: {
     followerThreshold: 0,
   },
   {
-    id: 'premium',
-    label: 'Premium',
-    priceMxn: 100,
-    followerThreshold: 0,
-  },
-  {
     id: 'influencer',
     label: 'Influencer',
     priceMxn: 0,
     // Mirrors classes.follower_threshold in the DB — the EF grants off that
     // row, so this constant is display-only and must track it.
     followerThreshold: 2_000,
+  },
+  {
+    id: 'premium',
+    label: 'Premium',
+    priceMxn: 100,
+    followerThreshold: 0,
   },
   {
     id: 'aura',

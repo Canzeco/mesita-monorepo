@@ -7,11 +7,13 @@ import {
   type LucideIcon,
 } from "lucide-react";
 
-// Ascending class ladder (segments v6): standard (default) < premium (paid)
-// < influencer (Instagram ≥ 2,000 followers, automatic) < aura (invite-only
-// presence class). "class" is the consumer membership axis — distinct from a
-// business's billing "plan" (free/pro/ultra).
-const CLASS_ORDER = ["standard", "premium", "influencer", "aura"] as const;
+// Ascending class ladder (segments v6, canonical order MESITA-972): standard
+// (default) < influencer (Instagram ≥ 2,000 followers, automatic) < premium
+// (paid) < aura (invite-only presence class) — mirrors classes.rank in the DB
+// and the money ladder (class steps +5 influencer / +10 premium / +15 aura).
+// "class" is the consumer membership axis — distinct from a business's
+// billing "plan" (free/pro/ultra).
+const CLASS_ORDER = ["standard", "influencer", "premium", "aura"] as const;
 type Class = (typeof CLASS_ORDER)[number];
 
 // Premium-perk gate: everything above Standard unlocks the same elevated perk
@@ -110,15 +112,6 @@ export const CLASSES: {
     perk: "Welcome to the club",
   },
   {
-    id: "premium",
-    label: "Premium",
-    req: "$100 MXN / mo",
-    priceMxn: 100,
-    followerThreshold: 0,
-    reward: "Higher discount",
-    perk: "Better recs · 10 reservations",
-  },
-  {
     id: "influencer",
     label: "Influencer",
     req: "2,000+ IG followers",
@@ -129,6 +122,15 @@ export const CLASSES: {
     // Class identity = reach door. Story Bonus is separate (MESITA-909):
     // any connected Instagram unlocks it, not just Influencer.
     reward: "HIGH discount · Story when connected",
+    perk: "Better recs · 10 reservations",
+  },
+  {
+    id: "premium",
+    label: "Premium",
+    req: "$100 MXN / mo",
+    priceMxn: 100,
+    followerThreshold: 0,
+    reward: "Higher discount",
     perk: "Better recs · 10 reservations",
   },
   {

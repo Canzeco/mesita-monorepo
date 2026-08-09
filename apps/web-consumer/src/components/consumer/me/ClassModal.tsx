@@ -3,13 +3,15 @@
 import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
 import { SectionEyebrow } from "@/components/consumer/me/settings-rows";
 import { ClassPreviewToggle } from "@/components/consumer/me/class/ClassPreviewToggle";
+import { ClassRail } from "@/components/consumer/me/class/ClassRail";
 import { CurrentClassCard } from "@/components/consumer/me/class/CurrentClassCard";
 import { WaysToClimb } from "@/components/consumer/me/class/WaysToClimb";
 import { CLASS_MARK_ICON } from "@/lib/consumer-data";
 import { SHEET_TITLE_CLASS, SHEET_BODY_CLASS } from "@/lib/ui-classes";
 
 // The full class surface — bottom sheet from the Me Class box.
-// IA: header → demo preview → You → Classes (Comparison removed MESITA-910/914).
+// IA (MESITA-972): header → class rail (real door states) → You → Classes →
+// demo preview at the bottom (Comparison removed MESITA-910/914).
 // `onConnectInstagram` bubbles up so the parent can close this sheet before
 // opening the verify sheet (two LocalSheets must never stack at the same
 // z-layer).
@@ -39,7 +41,7 @@ export function ClassModal({
         </div>
 
         <div className="flex flex-col gap-6">
-          <ClassPreviewToggle />
+          <ClassRail />
           <section className="flex flex-col gap-2">
             <SectionEyebrow>You</SectionEyebrow>
             <CurrentClassCard />
@@ -48,6 +50,7 @@ export function ClassModal({
             <SectionEyebrow>Classes</SectionEyebrow>
             <WaysToClimb onConnectInstagram={onConnectInstagram} />
           </section>
+          <ClassPreviewToggle />
         </div>
       </div>
     </LocalSheet>

@@ -110,6 +110,8 @@ Deno.test("toConsumerSummary: maps the row, blanks become null", () => {
       class_key: "aura",
       class_origin: "invitation",
       class_granted_at: "2026-08-04T00:00:00Z",
+      invitation_class_key: "aura",
+      invitation_granted_at: "2026-08-04T00:00:00Z",
     }),
     {
       id: "a1b2c3d4-1111-2222-3333-444455556666",
@@ -121,6 +123,8 @@ Deno.test("toConsumerSummary: maps the row, blanks become null", () => {
       classKey: "aura",
       classOrigin: "invitation",
       grantedAt: "2026-08-04T00:00:00Z",
+      invitationClassKey: "aura",
+      invitationGrantedAt: "2026-08-04T00:00:00Z",
     },
   );
 });

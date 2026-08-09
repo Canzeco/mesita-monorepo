@@ -51,8 +51,9 @@ export type RewardSegment = {
 };
 
 // The canonical ladder, stored worst→best (rank order — the class ladder is
-// standard < premium ≤ influencer < aura; {Premium, Influencer} tie on rates
-// today, as do {Story, Welcome} — best-of makes ties harmless).
+// standard < influencer < premium < aura, per classes.rank and the CLASS_STEP
+// money below (+5 influencer / +10 premium / +15 aura); the class BASE rows
+// tie on rates, the step breaks the tie — best-of makes ties harmless).
 export const REWARD_SEGMENTS: readonly RewardSegment[] = [
   {
     rank: 1,

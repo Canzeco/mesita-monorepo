@@ -15,6 +15,7 @@ import {
   readEFEnv,
 } from "../_shared/auth.ts";
 import { getTierConfig } from "../_shared/membership.ts";
+import { recomputeConsumerClass } from "../_shared/class-doors.ts";
 import { isCanonicalConsumerCode } from "../_shared/consumer-code.ts";
 
 Deno.serve(async (req) => {
@@ -85,18 +86,38 @@ Deno.serve(async (req) => {
   }
 
   // ── Membership payload ─────────────────────────────────────────────────
-  // Surfaces the consumer's class, how they earned it, their Instagram
-  // follower count, current subscription (if any), and this month's
-  // reservation usage vs their cap. The UI uses this to render the Class tab
-  // and gate the "upgrade" affordances.
+  // Surfaces the consumer's class, how they earned it, their open DOORS
+  // (MESITA-972), their Instagram follower count, current subscription (if
+  // any), and this month's reservation usage vs their cap. The UI uses this
+  // to render the Class tab (rail chips = doors) and the "upgrade"
+  // affordances.
   //
-  // Everything below is best-effort: a missing `classes` row, a transient
-  // lookup failure, or a stray duplicate subscription row must degrade to
-  // sensible free-class defaults, never surface as a 500 on the user-facing
-  // Profile tab. `getTierConfig` already returns null for an unknown
-  // class_key; we additionally guard the await so a transient throw can't
-  // take the whole response down.
-  const classKey = consumer.class_key ?? "standard";
+  // Self-healing: the effective class is recomputed from the door facts on
+  // every profile read, so a missed webhook or admin edit can never leave the
+  // Class tab on a stale slot. Everything below is best-effort: a transient
+  // recompute failure falls back to the stored slot, a missing `classes` row
+  // degrades to Free defaults — never a 500 on the user-facing Profile tab.
+  let classKey = consumer.class_key ?? "standard";
+  let classOrigin = consumer.class_origin ?? "default";
+  let classExpiresAt = consumer.class_expires_at ?? null;
+  let doors = {
+    influencer: false,
+    premium: false,
+    aura: classOrigin === "invitation",
+  };
+  try {
+    const effective = await recomputeConsumerClass(admin, userId);
+    classKey = effective.classKey;
+    classOrigin = effective.origin;
+    classExpiresAt = effective.expiresAt;
+    doors = effective.doors;
+    // Keep the embedded consumer blob consistent with the healed slot.
+    consumer.class_key = classKey;
+    consumer.class_origin = classOrigin;
+    consumer.class_expires_at = classExpiresAt;
+  } catch (_err) {
+    // stored slot stands
+  }
   let tier = null;
   try {
     tier = await getTierConfig(admin, classKey);
@@ -132,11 +153,14 @@ Deno.serve(async (req) => {
   used = count ?? 0;
 
   const subscriptionClass = {
-    key: consumer.class_key ?? "standard",
-    origin: consumer.class_origin ?? "default",
+    key: classKey,
+    origin: classOrigin,
     label: tier?.label ?? "Standard",
     followers: consumer.consumer_instagram_followers_count ?? null,
-    expires_at: consumer.class_expires_at ?? null,
+    expires_at: classExpiresAt,
+    // Open doors, independent of which one currently wins the slot — the
+    // Class rail renders unlocked-vs-locked off this (MESITA-972).
+    doors,
     subscription: subscription ?? null,
     usage: {
       reservations_used: used,

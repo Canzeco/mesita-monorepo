@@ -2,6 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import type { ConsumerClass } from '@/lib/api/auth';
+import { INFLUENCER_FOLLOWER_THRESHOLD } from '@/lib/consumer-classes';
 import {
   DEMO_INSTAGRAM_FOLLOWERS,
   DEMO_INSTAGRAM_HANDLE,
@@ -31,11 +32,21 @@ function notify(): void {
   listeners.forEach((l) => l());
 }
 
+/** Open doors, independent of which one wins the class slot (MESITA-972).
+ *  Standard is always open, so only the three earned/paid doors are carried.
+ *  The class rail renders unlocked-vs-locked off this. */
+export type ClassDoors = {
+  influencer: boolean;
+  premium: boolean;
+  aura: boolean;
+};
+
 type ConsumerClassState = {
   key: 'standard' | 'premium' | 'influencer' | 'aura';
   origin: 'default' | 'instagram' | 'subscription' | 'invitation';
   followers: number;
   handle: string | null;
+  doors: ClassDoors;
 };
 
 // The known class keys — an unknown/stale server key (e.g. the retired
@@ -52,6 +63,7 @@ const STANDARD: ConsumerClassState = {
   origin: 'default',
   followers: 0,
   handle: null,
+  doors: { influencer: false, premium: false, aura: false },
 };
 
 function normalize(
@@ -60,13 +72,23 @@ function normalize(
 ): ConsumerClassState {
   if (!c) return { ...STANDARD, handle: profileHandle };
   const raw = c.key ?? c.class ?? 'standard';
+  const key = (KNOWN_CLASS_KEYS as readonly string[]).includes(raw)
+    ? (raw as ConsumerClassState['key'])
+    : 'standard';
+  const followers = c.followers ?? 0;
   return {
-    key: (KNOWN_CLASS_KEYS as readonly string[]).includes(raw)
-      ? (raw as ConsumerClassState['key'])
-      : 'standard',
+    key,
     origin: (c.origin as ConsumerClassState['origin']) ?? 'default',
-    followers: c.followers ?? 0,
+    followers,
     handle: profileHandle,
+    // Server-computed doors when the EF ships them; otherwise derive from
+    // what the payload already proves (reach from followers, the paid door
+    // from the live subscription, Aura only when it holds the slot).
+    doors: c.doors ?? {
+      influencer: followers >= INFLUENCER_FOLLOWER_THRESHOLD,
+      premium: c.subscription != null,
+      aura: key === 'aura',
+    },
   };
 }
 
@@ -74,9 +96,17 @@ function applyMock(
   mock: MockClass,
   base: ConsumerClassState,
 ): ConsumerClassState {
+  // Preview doors mirror ONLY the mocked class so each demo state is
+  // deterministic (a Standard preview shows every door locked, regardless of
+  // the real account underneath) — same rule as web's mockAccountState.
+  const doors: ClassDoors = {
+    influencer: mock === 'influencer',
+    premium: mock === 'premium',
+    aura: mock === 'aura',
+  };
   switch (mock) {
     case 'standard':
-      return { ...base, key: 'standard', origin: 'default' };
+      return { ...base, key: 'standard', origin: 'default', doors };
     case 'influencer':
       // Instagram reach (≥ 2,000 followers) is the door into Influencer.
       // Mock always uses the demo profile (@mock / 5k) — MESITA-935.
@@ -86,12 +116,14 @@ function applyMock(
         origin: 'instagram',
         followers: DEMO_INSTAGRAM_FOLLOWERS,
         handle: DEMO_INSTAGRAM_HANDLE,
+        doors,
       };
     case 'premium':
       return {
         ...base,
         key: 'premium',
         origin: 'subscription',
+        doors,
       };
     case 'aura':
       // The invite-only presence class — the manual-invitation door.
@@ -99,6 +131,7 @@ function applyMock(
         ...base,
         key: 'aura',
         origin: 'invitation',
+        doors,
       };
   }
 }
