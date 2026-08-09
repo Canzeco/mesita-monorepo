@@ -156,7 +156,7 @@ export function AtlasFieldsClient({ data }: { data: AtlasFieldsPayload }) {
           </p>
         </div>
         <p className="text-muted-foreground mt-1 text-sm">
-          Canonical slugs in <code className="text-xs">place_categories</code>. ADEA
+          Canonical slugs in <code className="text-xs">place_categories</code>. Enricher
           inference picks from this list.
         </p>
         <Collapsible summary={`Show ${data.counts.categories} categories`}>

@@ -113,7 +113,7 @@ export function CreateTab() {
       <p className="text-muted-foreground max-w-xl text-sm leading-relaxed">
         Paste Google Place IDs (one per line) or upload a CSV. Each create does
         the Google lookup and catalog listing, then hands off to the Enricher —
-        deep ADEA research runs in the background.
+        deep Enricher research runs in the background.
         Caps, levels, and photo analysis are configured in{" "}
         <Link
           href="/enricher-config/config"
