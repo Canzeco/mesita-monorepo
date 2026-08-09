@@ -1,4 +1,4 @@
-import { Skeleton } from "@/components/shared/Skeleton";
+import { Skeleton } from "@/components/shared";
 import { SlideOverHeader } from "@/components/consumer/overlay/SlideOverShell";
 
 // Skeleton bodies for the detail modals' loading.tsx files. These render

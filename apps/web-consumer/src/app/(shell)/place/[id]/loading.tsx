@@ -1,5 +1,5 @@
 import { PlaceBodySkeleton } from "@/components/consumer/overlay/DetailSkeletons";
-import { Skeleton } from "@/components/shared/Skeleton";
+import { Skeleton } from "@/components/shared";
 
 // Hard-nav place page: in-band skeleton in the shell body (chrome stays put).
 export default function PlacePageLoading() {

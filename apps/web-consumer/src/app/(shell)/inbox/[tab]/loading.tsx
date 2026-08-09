@@ -1,4 +1,4 @@
-import { Skeleton, SkeletonRow } from "@/components/shared/Skeleton";
+import { Skeleton, SkeletonRow } from "@/components/shared";
 
 // In-band route skeleton for /inbox/[tab]: the page awaits a server-side
 // auth round trip before NotificationsClient renders, so mirror its frame —

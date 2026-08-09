@@ -2,4 +2,4 @@
 export { Field } from "./Field";
 export { BirthdayPicker } from "./BirthdayPicker";
 export { Spinner, LoadingFill } from "./Spinner";
-export { Skeleton } from "./Skeleton";
+export { Skeleton, SkeletonRow } from "./Skeleton";

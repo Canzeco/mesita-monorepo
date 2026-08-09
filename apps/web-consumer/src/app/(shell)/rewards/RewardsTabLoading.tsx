@@ -1,4 +1,4 @@
-import { Skeleton } from "@/components/shared/Skeleton";
+import { Skeleton } from "@/components/shared";
 
 // The Rewards page's ONE skeleton language. RewardsTabLoading is the dynamic()
 // fallback for the whole page client (banner + passport card + tickets);

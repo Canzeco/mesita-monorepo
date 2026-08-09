@@ -20,7 +20,7 @@ import {
   InboxSegmentTabs,
 } from "@/components/consumer/ConsumerActivityList";
 import { NotificationRow } from "@/components/consumer/notification-row";
-import { SkeletonRow } from "@/components/shared/Skeleton";
+import { SkeletonRow } from "@/components/shared";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 
 export type InboxTab = "mine" | "global";
