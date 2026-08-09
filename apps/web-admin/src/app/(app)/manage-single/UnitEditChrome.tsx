@@ -291,9 +291,28 @@ export function UnitEditChrome({
           aria-label="Unit sections"
           className="flex items-stretch justify-center gap-0.5 overflow-x-auto"
         >
-          {UNIT_TAB_SECTIONS.map(({ id, label, Icon }) => {
+          {UNIT_TAB_SECTIONS.map(({ id, label, Icon, soon }) => {
             const href = unitSectionHref(projectId, id);
             const active = pathname === href || pathname.startsWith(`${href}/`);
+
+            // Parked tab — not a link at all, so the section can't be reached
+            // from the chrome (the route itself also serves the Soon page).
+            if (soon) {
+              return (
+                <span
+                  key={id}
+                  aria-disabled
+                  title={`${label} — coming soon`}
+                  className="text-muted-foreground/50 relative inline-flex min-h-12 shrink-0 cursor-not-allowed items-center gap-2 px-3.5 text-sm font-semibold sm:min-h-[3.25rem] sm:px-4"
+                >
+                  <Icon className="h-4 w-4 shrink-0 opacity-70" aria-hidden />
+                  <span>{label}</span>
+                  <span className="bg-muted text-muted-foreground rounded-full px-1.5 py-0 text-[9px] font-bold tracking-wider uppercase">
+                    Soon
+                  </span>
+                </span>
+              );
+            }
 
             return (
               <Link
