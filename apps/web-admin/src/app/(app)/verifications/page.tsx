@@ -13,7 +13,7 @@ export default async function VerificationsPage() {
       <PageHeader
         eyebrow="Units · Verification queue"
         title="Unit verification requests"
-        description="Businesses prove ownership via phone OTP (auto-confirmed by default, so it never lands here) or a walkthrough video (queued for review by default). Toggle either to flip the policy."
+        description="Claims that need a human decision. Auto-confirm policy lives under Configs → Verification Config — when auto-confirm is on for a method, successful proofs never land here."
       />
       {!result.ok ? (
         <div className="border-destructive/40 bg-destructive/5 text-destructive mt-6 flex items-start gap-3 rounded-2xl border p-4 text-sm sm:mt-8">
@@ -23,9 +23,6 @@ export default async function VerificationsPage() {
       ) : (
         <VerificationsClient
           initialVerifications={result.data.verifications}
-          initialAutoVerifyAiCall={result.data.autoVerifyAiCall}
-          initialAutoVerifyVideo={result.data.autoVerifyVideo}
-          initialAutoVerifyUpdatedAt={result.data.autoVerifyUpdatedAt}
         />
       )}
     </PageContainer>

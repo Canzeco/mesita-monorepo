@@ -1,9 +1,9 @@
 import { BadgeCheck } from "lucide-react";
 
-// One sidebar entry — "Verification Config". A single flat page. Controls
-// whether newly created places land as Verified Partner (listing_type=
-// partner) without phone ownership proof. Distinct from the Alerts
-// Verification Queue (ownership OTP / video claims).
+// One sidebar entry — "Verification Config". A single flat page for every
+// verification policy: create-as-Verified-Partner badge + ownership
+// auto-confirm (phone / email / video). Distinct from the Alerts
+// Verification Queue (manual review of claims).
 export const VERIFICATION_PARENT = {
   href: "/verification-config",
   label: "Verification Config",

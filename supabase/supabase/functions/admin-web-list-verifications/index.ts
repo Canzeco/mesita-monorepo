@@ -128,20 +128,11 @@ Deno.serve(async (req) => {
     };
   });
 
-  // Auto-mode flags piggyback on this call so the admin web doesn't
-  // need a second round-trip just to render the toggles' current
-  // state.
-  const { data: settings } = await admin
-    .from("app_settings")
-    .select("auto_verify_ai_call, auto_verify_video, updated_at")
-    .eq("id", 1)
-    .maybeSingle();
-
+  // Auto-confirm policy lives on Verification Config
+  // (admin-web-get/update-verification-config) — this endpoint is the
+  // queue only.
   return json({
     ok: true,
     verifications,
-    autoVerifyAiCall: settings?.auto_verify_ai_call ?? true,
-    autoVerifyVideo: settings?.auto_verify_video ?? false,
-    autoVerifyUpdatedAt: settings?.updated_at ?? null,
   });
 });
