@@ -1,6 +1,6 @@
 "use server";
 
-// Server actions for Aura Users. Thin wrappers over the admin-web-*
+// Server actions for Aura Consumers. Thin wrappers over the admin-web-*
 // Edge Functions via the Result-style efInvoke (never throws) — same contract
 // as the Rewards / Reservations / Sourcing config actions.
 //

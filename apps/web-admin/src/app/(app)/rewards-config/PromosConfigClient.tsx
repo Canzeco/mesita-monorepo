@@ -429,8 +429,8 @@ export function PromosConfigClient({
           <p className="text-muted-foreground text-xs">
             The live engine pays best-of until MESITA-992 ships; every save
             keeps its rules in sync. Who is on Aura is decided in{" "}
-            <Link href="/aura-users" className="underline underline-offset-2">
-              Aura Users
+            <Link href="/aura-consumers" className="underline underline-offset-2">
+              Aura Consumers
             </Link>
             .
           </p>
