@@ -919,7 +919,7 @@ export const PIPELINE_CONTEXT: Record<FixedSubscoreId, SubscoreContext> = {
     consumer: [{ field: "— (never; rates stay blended)", status: "live" }],
     intent: [{ field: "—", status: "live" }],
     place: [
-      { field: "welcome/returning × free/premium rates (projects)", status: "live" },
+      { field: "welcome/returning × Standard / Influencer / Premium / Aura rates (rewards grid)", status: "live" },
     ],
   },
   xx: {
