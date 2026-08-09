@@ -102,7 +102,7 @@ export function ManagersTeamSection({
                 </p>
               </div>
               <RoleSelect
-                role={(m.role as BusinessRole) ?? "editor"}
+                role={m.role}
                 choices={ROLE_CHOICES}
                 disabled={
                   !isOwner ||
@@ -113,7 +113,7 @@ export function ManagersTeamSection({
                   onChangeRole(
                     m.memberId,
                     r,
-                    (m.role as BusinessRole) ?? "editor",
+                    m.role,
                     m.fullName ?? m.email ?? "this member",
                   )
                 }
@@ -141,7 +141,7 @@ export function ManagersTeamSection({
               key={inv.id}
               icon={<Mail className="text-muted-foreground h-3.5 w-3.5" />}
               title={inv.email}
-              subtitle={`${ROLE_LABEL[(inv.role as BusinessRole) ?? "editor"]} · ${formatRelative(inv.expiresAt)}`}
+              subtitle={`${ROLE_LABEL[inv.role]} · ${formatRelative(inv.expiresAt)}`}
             >
               <CopyButton
                 text={buildAcceptUrl(inv.token)}
