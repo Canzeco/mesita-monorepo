@@ -33,9 +33,6 @@ export type AdminVerification = {
 
 type ListResponse = {
   verifications: AdminVerification[];
-  autoVerifyAiCall: boolean;
-  autoVerifyVideo: boolean;
-  autoVerifyUpdatedAt: string | null;
 };
 
 type ListResult =
@@ -45,7 +42,7 @@ type ListResult =
 export async function listVerifications(): Promise<ListResult> {
   const r = await efInvoke<ListResponse>("admin-web-list-verifications", {});
   if (!r.ok) return { ok: false, error: r.error };
-  return { ok: true, data: r.data };
+  return { ok: true, data: { verifications: r.data.verifications } };
 }
 
 type DecideResult =
@@ -64,33 +61,4 @@ export async function decideVerification(
   });
   if (!r.ok) return { ok: false, error: r.error };
   return { ok: true };
-}
-
-export type AutoVerifyMethod = "ai_call" | "video";
-
-type SetAutoVerifyResult =
-  | {
-      ok: true;
-      autoVerifyAiCall: boolean;
-      autoVerifyVideo: boolean;
-      autoVerifyUpdatedAt: string | null;
-    }
-  | { ok: false; error: string };
-
-export async function setAutoVerify(
-  method: AutoVerifyMethod,
-  enabled: boolean,
-): Promise<SetAutoVerifyResult> {
-  const r = await efInvoke<{
-    autoVerifyAiCall: boolean;
-    autoVerifyVideo: boolean;
-    autoVerifyUpdatedAt: string | null;
-  }>("admin-web-set-auto-verify", { method, enabled });
-  if (!r.ok) return { ok: false, error: r.error };
-  return {
-    ok: true,
-    autoVerifyAiCall: r.data.autoVerifyAiCall,
-    autoVerifyVideo: r.data.autoVerifyVideo,
-    autoVerifyUpdatedAt: r.data.autoVerifyUpdatedAt,
-  };
 }

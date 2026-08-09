@@ -1,7 +1,8 @@
 import { ConfigPageLayout } from "@/components/ConfigPageLayout";
 
-// Verification Config — a single flat page (no sub-tabs). Governs whether
-// newly created places start as Verified Partner on the consumer surface.
+// Verification Config — a single flat page (no sub-tabs). Owns every
+// verification policy knob: catalog Verified Partner badge at create time,
+// plus per-method ownership auto-confirm (phone / email / video).
 export default function VerificationConfigLayout({
   children,
 }: {
@@ -11,7 +12,7 @@ export default function VerificationConfigLayout({
     <ConfigPageLayout
       eyebrow="Operations · Verification"
       title="Verification Config"
-      description="Verified vs Not Verified on place profiles is the Verified Partner badge (projects.listing_type). Real ownership proof is entering the place's phone number (OTP). This page only controls whether new places are created already showing as Verified Partner — even when nobody has proven ownership yet."
+      description="Two layers, one page. The Verified Partner badge on place profiles is projects.listing_type — separate from ownership proof. Ownership is phone/email OTP or a video walkthrough; these toggles decide whether a successful proof grants ownership immediately or waits on the Verification Queue under Alerts."
     >
       {children}
     </ConfigPageLayout>

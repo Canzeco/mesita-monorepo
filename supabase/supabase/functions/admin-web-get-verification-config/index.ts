@@ -2,11 +2,13 @@
 //
 // Naming: caller-verb-words. Caller = admin, verb = get, words = verification-config.
 //
-// Returns the Verification Config knobs from the public.app_settings singleton
-// for the admin console's Verification Config page. Today: one flag —
-// create_places_as_verified — that decides whether newly created places land
-// as listing_type='partner' (Verified Partner) without phone ownership proof.
-// See 20260805080000_verification_config.sql.
+// Returns every Verification Config knob from the public.app_settings singleton
+// for the admin console's Verification Config page:
+//
+//   create_places_as_verified — catalog Verified Partner badge at create time
+//   auto_verify_ai_call       — phone OTP auto-grants ownership
+//   auto_verify_ai_email      — email OTP auto-grants ownership
+//   auto_verify_video         — video walkthrough auto-grants ownership
 //
 // Auth: caller's JWT email must be in public.super_admins.
 
@@ -35,7 +37,9 @@ Deno.serve(async (req) => {
 
   const { data, error } = await admin
     .from("app_settings")
-    .select("create_places_as_verified, updated_at")
+    .select(
+      "create_places_as_verified, auto_verify_ai_call, auto_verify_ai_email, auto_verify_video, updated_at",
+    )
     .eq("id", 1)
     .maybeSingle();
   if (error) {
@@ -45,8 +49,13 @@ Deno.serve(async (req) => {
     return jsonError("app_settings missing", 500);
   }
 
-  return jsonOk({ config: {
+  return jsonOk({
+    config: {
       createPlacesAsVerified: data.create_places_as_verified === true,
+      autoVerifyAiCall: data.auto_verify_ai_call !== false,
+      autoVerifyAiEmail: data.auto_verify_ai_email !== false,
+      autoVerifyVideo: data.auto_verify_video === true,
     },
-    updatedAt: data.updated_at, });
+    updatedAt: data.updated_at,
+  });
 });

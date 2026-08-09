@@ -2,30 +2,51 @@
 
 // Server actions for Verification Config. Thin wrappers over the admin-web-*
 // Edge Functions via the Result-style efInvoke (never throws). Backed by
-// admin-web-get/update-verification-config on app_settings.create_places_as_verified.
+// admin-web-get/update-verification-config on app_settings verification knobs.
 // No client ever touches the DB.
 
 import { efInvoke } from "@/lib/supabase-ef";
 
 export type VerificationConfig = {
   createPlacesAsVerified: boolean;
+  autoVerifyAiCall: boolean;
+  autoVerifyAiEmail: boolean;
+  autoVerifyVideo: boolean;
 };
+
+export const DEFAULT_VERIFICATION_CONFIG: VerificationConfig = {
+  createPlacesAsVerified: false,
+  autoVerifyAiCall: true,
+  autoVerifyAiEmail: true,
+  autoVerifyVideo: false,
+};
+
+type ConfigPayload = {
+  config: Partial<Record<keyof VerificationConfig, unknown>>;
+  updatedAt: string | null;
+};
+
+function normalizeConfig(
+  raw: Partial<Record<keyof VerificationConfig, unknown>> | undefined,
+): VerificationConfig {
+  return {
+    createPlacesAsVerified: raw?.createPlacesAsVerified === true,
+    autoVerifyAiCall: raw?.autoVerifyAiCall !== false,
+    autoVerifyAiEmail: raw?.autoVerifyAiEmail !== false,
+    autoVerifyVideo: raw?.autoVerifyVideo === true,
+  };
+}
 
 type GetResult =
   | { ok: true; config: VerificationConfig; updatedAt: string | null }
   | { ok: false; error: string };
 
 export async function getVerificationConfig(): Promise<GetResult> {
-  const r = await efInvoke<{
-    config: { createPlacesAsVerified?: unknown };
-    updatedAt: string | null;
-  }>("admin-web-get-verification-config", {});
+  const r = await efInvoke<ConfigPayload>("admin-web-get-verification-config", {});
   if (!r.ok) return { ok: false, error: r.error };
   return {
     ok: true,
-    config: {
-      createPlacesAsVerified: r.data.config?.createPlacesAsVerified === true,
-    },
+    config: normalizeConfig(r.data.config),
     updatedAt: r.data.updatedAt ?? null,
   };
 }
@@ -35,18 +56,15 @@ type UpdateResult =
   | { ok: false; error: string };
 
 export async function updateVerificationConfig(
-  config: VerificationConfig,
+  patch: Partial<VerificationConfig>,
 ): Promise<UpdateResult> {
-  const r = await efInvoke<{
-    config: { createPlacesAsVerified?: unknown };
-    updatedAt: string | null;
-  }>("admin-web-update-verification-config", { config });
+  const r = await efInvoke<ConfigPayload>("admin-web-update-verification-config", {
+    config: patch,
+  });
   if (!r.ok) return { ok: false, error: r.error };
   return {
     ok: true,
-    config: {
-      createPlacesAsVerified: r.data.config?.createPlacesAsVerified === true,
-    },
+    config: normalizeConfig(r.data.config),
     updatedAt: r.data.updatedAt ?? null,
   };
 }
