@@ -17,12 +17,28 @@ type PromoMatrix = {
   is_first_visit: boolean;
 };
 
-function positiveRate(v: unknown): number | null {
+/** Columns needed to resolve a place's promo rate / strategy. */
+export type PromoRateFields = {
+  listing_type?: string | null;
+  is_first_visit?: boolean | null;
+  welcome_free_rate?: number | null;
+  welcome_premium_rate?: number | null;
+  free_rate?: number | null;
+  premium_rate?: number | null;
+};
+
+/** Place-shaped input for PromoChip (rates + cap/currency for the tooltip). */
+export type PromoChipPlace = PromoRateFields & {
+  currency?: string | null;
+  reward_cap_mxn?: number | null;
+};
+
+function positiveRate(v: number | null | undefined): number | null {
   if (typeof v !== "number" || !Number.isFinite(v) || v <= 0) return null;
   return v;
 }
 
-export function hasExplicitClassRates(row: Record<string, unknown>): boolean {
+export function hasExplicitClassRates(row: PromoRateFields): boolean {
   return (
     positiveRate(row.welcome_free_rate) != null ||
     positiveRate(row.welcome_premium_rate) != null ||
@@ -33,7 +49,7 @@ export function hasExplicitClassRates(row: Record<string, unknown>): boolean {
 
 /** Map places row → promo matrix from the per-class rate columns. */
 export function buildPromoMatrixFromRow(
-  row: Record<string, unknown>,
+  row: PromoRateFields,
   _listingType: "partner" | "web",
 ): PromoMatrix {
   const welcome = {
@@ -135,14 +151,14 @@ export function placeOffersMesitaRewards(input: {
  * the caller shows no percentage rather than a wrong one.
  */
 export function strategyForPlaceRow(
-  row: Record<string, unknown> | null | undefined,
+  row: PromoRateFields | null | undefined,
 ): PlaceStrategy {
   if (!row) return "zero";
   return strategyForPromoMatrix(buildPromoMatrixFromRow(row, "partner"));
 }
 
 export function resolvePromoRateFromPlaceRow(
-  row: Record<string, unknown>,
+  row: PromoRateFields,
   isFirstVisit: boolean,
   premium: boolean,
 ): number | null {

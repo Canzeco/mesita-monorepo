@@ -3,8 +3,10 @@
 import { Gift } from "lucide-react";
 import { isElevatedClass } from "@/lib/consumer-data";
 import { useConsumerClass } from "@/lib/class-context";
-import { resolvePromoRateFromPlaceRow } from "@/lib/promo-rates";
-import type { Place } from "@/lib/api/places";
+import {
+  resolvePromoRateFromPlaceRow,
+  type PromoChipPlace,
+} from "@/lib/promo-rates";
 
 // Tiny shared building block for the place-card promo callout.
 //
@@ -43,7 +45,7 @@ export function PromoChip({
   showWhenEmpty = false,
   tone = "dark",
 }: {
-  place: Place;
+  place: PromoChipPlace;
   size?: "sm" | "md";
   /** When the place has no reward, render a neutral "No reward for you" pill
    *  instead of nothing. Off by default so the catalog/saved tile stays
@@ -67,7 +69,7 @@ export function PromoChip({
   // never resolve a rate; a Verified Partner may also choose not to set one.
   const isFirstVisit = place.is_first_visit !== false;
   const promoPercent = resolvePromoRateFromPlaceRow(
-    place as unknown as Record<string, unknown>,
+    place,
     isFirstVisit,
     isElevatedClass(classKey),
   );
