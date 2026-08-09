@@ -15,7 +15,7 @@
 export const MX_OFFSET = "-06:00";
 
 /** Shown to the guest so the slot list is never ambiguous. */
-export const VENUE_TZ_LABEL = "Mexico City time (GMT-6)";
+export const PLACE_TZ_LABEL = "Mexico City time (GMT-6)";
 
 /** MX_OFFSET as signed minutes east of UTC — parsed, never re-typed. */
 const OFFSET_MINUTES = (() => {
