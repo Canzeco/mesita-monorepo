@@ -3,8 +3,8 @@
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 
-export const AVATAR_BUCKET = 'consumer-avatars';
-export const MAX_AVATAR_BYTES = 2 * 1024 * 1024;
+const AVATAR_BUCKET = 'consumer-avatars';
+const MAX_AVATAR_BYTES = 2 * 1024 * 1024;
 
 const ALLOWED_AVATAR_MIME_TYPES = new Set([
   'image/jpeg',
