@@ -10,7 +10,6 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { clampIntRange, corsPreflight, json, rejectUnlessMethods, readJsonOr } from "../_shared/http.ts";
 import { anonClient, readAnonEnv } from "../_shared/auth.ts";
 import { PLACE_PUBLIC_COLUMNS } from "../_shared/place-columns.ts";
-import { withDisplayNames } from "../_shared/place-display-name.ts";
 import { withFamilyKeysList } from "../_shared/place-family-keys.ts";
 
 const DEFAULT_LIMIT = 50;
@@ -54,14 +53,14 @@ Deno.serve(async (req) => {
     return json({ ok: false, error: error.message }, 500);
   }
 
+  // `name` arrives already resolved — it is a generated column
+  // (mesita_name → google_name), so there is nothing to coalesce here.
   const places = withFamilyKeysList(
-    withDisplayNames(
-      (data ?? []) as Array<{
-        name?: string | null;
-        google_name?: string | null;
-        category?: string | null;
-      }>,
-    ),
+    (data ?? []) as Array<{
+      name?: string | null;
+      google_name?: string | null;
+      category?: string | null;
+    }>,
   );
   return json({ ok: true, places });
 });

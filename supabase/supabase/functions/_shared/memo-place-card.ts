@@ -11,7 +11,6 @@
 // contact endpoints, billing, and every user-scoped field. What survives is
 // exactly what a place card shows a stranger.
 
-import { displayName } from "./place-display-name.ts";
 
 // The columns the data EFs may SELECT. Kept beside the card so the projection
 // and the query can never drift apart.
@@ -43,11 +42,8 @@ export function rowToMemoPlaceCard(row: Record<string, unknown>): MemoPlaceCard 
   return {
     id: String(row.id ?? ""),
     slug: String(row.slug ?? ""),
-    // Dual-name (MESITA-925): empty Mesita name falls back to google_name.
-    name: displayName({
-      name: typeof row.name === "string" ? row.name : null,
-      google_name: typeof row.google_name === "string" ? row.google_name : null,
-    }),
+    // `name` is the generated display column (mesita_name → google_name).
+    name: String(row.name ?? ""),
     address: str(row.address),
     category: str(row.category),
     listingType: str(row.listing_type),

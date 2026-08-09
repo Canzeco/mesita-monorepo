@@ -19,7 +19,6 @@ import { corsPreflight, json, rejectUnlessMethods } from "../_shared/http.ts";
 import { adminClient, readEFEnv } from "../_shared/auth.ts";
 import { resolveMcpBearer } from "../_shared/mcp-tokens.ts";
 import { PLACE_PUBLIC_COLUMNS } from "../_shared/place-columns.ts";
-import { withDisplayName } from "../_shared/place-display-name.ts";
 import { withFamilyKeys } from "../_shared/place-family-keys.ts";
 import { getTierConfig, isElevatedClass } from "../_shared/membership.ts";
 import { generateReservationCode, isUniqueViolation } from "../_shared/reservation-code.ts";
@@ -146,13 +145,11 @@ async function runTool(
       return toolText({
         ok: true,
         place: withFamilyKeys(
-          withDisplayName(
-            data as {
-              name?: string | null;
-              google_name?: string | null;
-              category?: string | null;
-            },
-          ),
+          data as {
+            name?: string | null;
+            google_name?: string | null;
+            category?: string | null;
+          },
         ),
       });
     }

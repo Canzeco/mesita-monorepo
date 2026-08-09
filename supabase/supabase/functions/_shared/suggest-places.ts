@@ -51,7 +51,6 @@ import {
   sortMesitaPredictionsFirst,
 } from "./suggest-places-helpers.ts";
 import { statusesForPlaces } from "./suggest-place-status.ts";
-import { displayName } from "./place-display-name.ts";
 
 export type SuggestPlacesArgs = {
   input?: string;
@@ -292,7 +291,7 @@ async function fetchMesitaPredictions(
   const statuses = await statusesForPlaces(admin, rows, callerId);
   return rows.map<Prediction>((v) => ({
     placeId: v.google_place_id,
-    mainText: displayName(v),
+    mainText: String(v.name ?? ""),
     secondaryText: v.address ?? "Already on Mesita",
     status: statuses.get(v.google_place_id) ?? "web_listed",
     mesitaId: v.id,

@@ -13,10 +13,15 @@
 const COLUMNS: readonly string[] = [
   "id",
   "slug",
+  // Generated display column: coalesce(mesita_name, google_name). Read-only —
+  // Postgres rejects any write. Every audience reads this one.
   "name",
-  // Google Places displayName spine (MESITA-917) — Enricher-only; Mesita
-  // display stays in `name` (empty ⇒ UI falls back to google_name).
+  // Cached Google Places displayName. NOT an identity spine (google_place_id
+  // is) — it changes whenever the Google listing does. Enricher-only write.
   "google_name",
+  // Operator's display override. NULL ⇒ the place follows google_name.
+  // Admin/business writable; the Enricher never touches it.
+  "mesita_name",
   // `description_es` exists in DB (dormant) for a future Spanish TMS —
   // not selected until that ships (MESITA-939).
   "category",

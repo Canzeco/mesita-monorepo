@@ -215,11 +215,12 @@ export async function fetchGoogleBasics(
     primaryType: details.primaryType ?? null,
     basics: {
       google_place_id: placeIdSpine,
-      // Dual identity (MESITA-917): google_name is the Enricher spine;
-      // name seeds Mesita display on create (sticky sync keeps them aligned
-      // until an operator customizes name).
+      // google_name is a CACHED OBSERVATION of Google's display name, not an
+      // identity spine (google_place_id is). The Enricher never writes `name`
+      // or `mesita_name`: `name` is a generated display column
+      // (coalesce(mesita_name, google_name)) and `mesita_name` belongs to the
+      // operator. Writing either would clobber an editorial label.
       google_name: placeName,
-      name: placeName,
       category: categorySlug,
       category_label: categoryLabel ?? humanizeCategorySlug(categorySlug ?? ""),
       price_level: priceLevelFromGoogle(details.priceLevel),

@@ -1019,6 +1019,7 @@ export type Database = {
           menu_pdf_name: string | null
           menu_pdf_url: string | null
           menus: Json | null
+          mesita_name: string | null
           mesita_review_count: number | null
           mesita_stars_ambience: number | null
           mesita_stars_food: number | null
@@ -1097,6 +1098,7 @@ export type Database = {
           menu_pdf_name?: string | null
           menu_pdf_url?: string | null
           menus?: Json | null
+          mesita_name?: string | null
           mesita_review_count?: number | null
           mesita_stars_ambience?: number | null
           mesita_stars_food?: number | null
@@ -1104,7 +1106,7 @@ export type Database = {
           mesita_stars_service?: number | null
           mesita_stars_value?: number | null
           mesita_visitor_count?: number | null
-          name: string
+          name?: string
           opentable_url?: string | null
           phone?: string | null
           photos?: string[]
@@ -1175,6 +1177,7 @@ export type Database = {
           menu_pdf_name?: string | null
           menu_pdf_url?: string | null
           menus?: Json | null
+          mesita_name?: string | null
           mesita_review_count?: number | null
           mesita_stars_ambience?: number | null
           mesita_stars_food?: number | null
@@ -2162,6 +2165,7 @@ export type Database = {
           menu_pdf_name: string | null
           menu_pdf_url: string | null
           menus: Json | null
+          mesita_name: string | null
           mesita_review_count: number | null
           mesita_stars_ambience: number | null
           mesita_stars_food: number | null
@@ -2240,6 +2244,7 @@ export type Database = {
       run_place_enrichment_stages: { Args: never; Returns: number }
       seed_place_categories: { Args: never; Returns: undefined }
       seed_place_tags: { Args: never; Returns: undefined }
+      service_elevenlabs_api_key: { Args: never; Returns: string }
     }
     Enums: {
       content_gen_status: "queued" | "generating" | "ready" | "failed"

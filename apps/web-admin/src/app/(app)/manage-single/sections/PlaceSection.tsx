@@ -130,7 +130,8 @@ type DayHours = { closed: boolean; open: string; close: string };
 // Address is deliberately absent: it is native (Google/Enricher-sourced) and
 // business-web-update-project rejects manual writes — Location renders read-only.
 type Form = {
-  name: string;
+  /** Operator override → places.mesita_name. Blank ⇒ the place follows Google. */
+  mesitaName: string;
   category: string;
   /** Canonical About — English (Mesita core). */
   description: string;
@@ -162,7 +163,7 @@ function placeToForm(v: AdminPlace, limits: PlaceFieldLimits = FALLBACK_LIMITS):
   const channels: Record<string, string> = {};
   for (const c of CHANNELS) channels[c.key as string] = str(v[c.key]);
   return {
-    name: (v.name ?? "").slice(0, limits.placeNameMax),
+    mesitaName: (v.mesita_name ?? "").slice(0, limits.placeNameMax),
     category: v.category ?? "",
     description: (v.description ?? "").slice(0, limits.descriptionMax),
     phone: v.phone ?? "",
@@ -187,10 +188,10 @@ function boxToPatch(
   const nz = (s: string) => (s.trim() ? s.trim() : null);
   if (box === "basics") {
     // Empty Mesita name clears the override → UI falls back to google_name.
-    const mesitaName = f.name.trim().slice(0, limits.placeNameMax);
+    const mesitaName = f.mesitaName.trim().slice(0, limits.placeNameMax);
     return {
       id,
-      name: mesitaName.length > 0 ? mesitaName : null,
+      mesita_name: mesitaName.length > 0 ? mesitaName : null,
       description: nz(f.description.slice(0, limits.descriptionMax)),
       tags: f.tags.slice(0, limits.tagsPerPlaceMax),
       // decision: Pato (MESITA-469) — admin may set category (Enricher + Admin + Business).
@@ -226,7 +227,7 @@ function mergeBoxSlice(base: Form, from: Form, box: PlaceBox): Form {
   if (box === "basics") {
     return {
       ...base,
-      name: from.name,
+      mesitaName: from.mesitaName,
       description: from.description,
       tags: from.tags,
       category: from.category,
@@ -266,24 +267,24 @@ export function PlaceSection({
     () =>
       !sliceEqual(
         {
-          name: form.name,
+          mesitaName: form.mesitaName,
           description: form.description,
           tags: form.tags,
           category: form.category,
         },
         {
-          name: saved.name,
+          mesitaName: saved.mesitaName,
           description: saved.description,
           tags: saved.tags,
           category: saved.category,
         },
       ),
     [
-      form.name,
+      form.mesitaName,
       form.description,
       form.tags,
       form.category,
-      saved.name,
+      saved.mesitaName,
       saved.description,
       saved.tags,
       saved.category,
@@ -404,7 +405,7 @@ export function PlaceSection({
       setLimits(r.data.fieldLimits);
       setForm((f) => ({
         ...f,
-        name: f.name.slice(0, r.data.fieldLimits.placeNameMax),
+        mesitaName: f.mesitaName.slice(0, r.data.fieldLimits.placeNameMax),
         description: f.description.slice(0, r.data.fieldLimits.descriptionMax),
         tags: f.tags.slice(0, r.data.fieldLimits.tagsPerPlaceMax),
         photos: f.photos.slice(0, r.data.fieldLimits.photosMax),
@@ -429,7 +430,7 @@ export function PlaceSection({
   };
 
   const saveBox = (box: PlaceBox) => {
-    // Mesita name may be blank — falls back to Google name (MESITA-917).
+    // Mesita name may be blank — the place then follows the Google name.
     setErrors((e) => ({ ...e, [box]: undefined }));
     setOks((o) => ({ ...o, [box]: false }));
     setPendingBox(box);
@@ -479,20 +480,21 @@ export function PlaceSection({
             {(place.google_name ?? "").trim() || "—"}
           </ReadField>
           <p className="text-muted-foreground -mt-2 text-[11px] leading-relaxed">
-            From Google Places. Updates on Re-enrich. Not editable here — change
-            it on Google Business Profile if the Google listing is wrong.
+            What Google calls this place right now. Refreshes on every
+            Re-enrich, so it can change on its own. Not editable here — fix it
+            on the Google Business Profile if the listing is wrong.
           </p>
           <TextField
             label="Mesita name"
-            value={form.name}
-            onChange={(x) => set("name", x.slice(0, limits.placeNameMax))}
+            value={form.mesitaName}
+            onChange={(x) => set("mesitaName", x.slice(0, limits.placeNameMax))}
             maxLength={limits.placeNameMax}
             disabled={anyPending}
             placeholder={(place.google_name ?? "").trim() || undefined}
           />
           <p className="text-muted-foreground -mt-2 text-[11px] leading-relaxed">
-            Shown everywhere in Mesita. Leave blank to use the Google name.
-            Search matches both.
+            Shown everywhere in Mesita, and never touched by Re-enrich. Leave
+            blank to follow the Google name. Search matches both.
           </p>
         </div>
         {/* One field per row — the whole card is a single column. */}

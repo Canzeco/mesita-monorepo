@@ -117,6 +117,39 @@ Base tables were renamed in the 2026 "R2" pass — the current canonical names:
   consumer), billing (Stripe subscriptions), verifications, invites, and the
   Enricher's `place_research` staging + `app_settings` config singleton.
 
+**Place identity — one spine, one cache, one override.** `google_place_id` is
+the ONLY identity spine: it is what the Enricher matches on and what dedupes a
+create. Everything else about a place's name is derived:
+
+```
+  google_place_id   identity. immutable. the join key.
+        │
+        ▼
+  google_name       CACHED OBSERVATION of Google's label. Enricher-only write.
+        │           Changes whenever the Google listing changes.
+        ▼
+  mesita_name       operator override. NULL ⇒ follow Google.
+        │           Admin/business writable; the Enricher never touches it.
+        ▼
+  name              GENERATED STORED: coalesce(mesita_name, google_name).
+                    NOT NULL. Postgres REJECTS any write. Read this everywhere.
+```
+
+`google_name` is **not** a spine — treating it as one is what broke the first
+attempt (MESITA-917). The old design inferred "did an operator customize this?"
+by comparing `name` against the *previous* `google_name`, a value that moves on
+every re-enrich, so a place whose Google listing caught up to its Mesita label
+silently re-entered tracking and lost that label on the next rename. Intent is
+now stored (`mesita_name is not null`), not inferred.
+
+Resolution lives in the generated column rather than a TypeScript helper because
+only 8 of ~40 place-reading modules ever called the helper; the rest read `name`
+raw. Reading `name` is now correct by construction. Guarded by
+`_shared/place-name-writes.test.ts` (no EF may write `name`) and by assertions
+inside `20260809203000_place_name_generated_phase2.sql`, which run on every
+`db push`. Note `supabase gen types` does NOT mark generated columns read-only,
+so TypeScript will not catch a `name` write — that guard and Postgres will.
+
 RLS note: many tables are deliberately `rls_enabled_no_policy` — that is the
 EF-only lockdown, *not* a missing-policy bug. Adding policies would *open* access.
 

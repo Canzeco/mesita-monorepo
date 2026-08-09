@@ -20,7 +20,6 @@ import {
   readEFEnv,
 } from "../_shared/auth.ts";
 import { PLACE_PUBLIC_COLUMNS as PLACE_COLUMNS } from "../_shared/place-columns.ts";
-import { withDisplayName } from "../_shared/place-display-name.ts";
 import { withFamilyKeys } from "../_shared/place-family-keys.ts";
 import { resolvePlaceTags } from "../_shared/tags.ts";
 import { mapTicketReviewsToVisitors } from "../_shared/mesita-review-visitors.ts";
@@ -94,13 +93,11 @@ Deno.serve(async (req) => {
       (reviewsRes.data ?? []) as unknown as Parameters<typeof mapTicketReviewsToVisitors>[0],
     );
 
-  // Dual-name (MESITA-917/925): consumer `name` is the display label.
-  // Raw google_name stays on the payload for clients that need it.
+  // `name` is the generated display column (mesita_name → google_name); raw
+  // google_name and mesita_name stay on the payload for clients that need them.
   // family_keys (MESITA-679): computed from category for discovery filters.
   const place = {
-    ...withFamilyKeys(
-      withDisplayName(data as unknown as Record<string, unknown>),
-    ),
+    ...withFamilyKeys(data as unknown as Record<string, unknown>),
     mesita_visitors,
   };
 

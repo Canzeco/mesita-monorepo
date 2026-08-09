@@ -188,14 +188,18 @@ Deno.serve(async (req) => {
   // Build the update payload from the whitelist. Missing keys are not
   // touched. Explicit null clears the field.
   const update: Record<string, unknown> = {};
-  if ("name" in body) {
-    // Mesita display name (MESITA-917). Empty/whitespace clears the override
-    // so UI falls back to google_name. Reject google_name writes — Enricher only.
-    const n = (body.name ?? "").toString().trim();
+  // Operator name override → places.mesita_name. `name` itself is a GENERATED
+  // display column (coalesce(mesita_name, google_name)) and is not writable, so
+  // a caller sending `name` is expressing "label this place", which is exactly
+  // mesita_name. Both spellings are accepted; `mesita_name` wins if both arrive.
+  // Empty/whitespace CLEARS the override so the place falls back to Google.
+  if ("mesita_name" in body || "name" in body) {
+    const raw = "mesita_name" in body ? body.mesita_name : body.name;
+    const n = (raw ?? "").toString().trim();
     if (n.length > ENRICH_FIELD_LIMITS.placeName.max) {
       return json({ ok: false, error: "name too long" }, 400);
     }
-    update.name = n.length > 0 ? n : null;
+    update.mesita_name = n.length > 0 ? n : null;
   }
   if ("google_name" in body) {
     return json(
@@ -203,7 +207,7 @@ Deno.serve(async (req) => {
         ok: false,
         code: "google_name_via_enrich",
         error:
-          "google_name is set by the Enricher from Google Places and cannot be updated manually.",
+          "google_name is the cached Google Places label, refreshed by the Enricher. Change it on the Google Business Profile, then re-enrich. To label the place inside Mesita, set mesita_name.",
       },
       400,
     );
