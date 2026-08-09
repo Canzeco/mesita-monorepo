@@ -71,8 +71,8 @@ const ITEMS: Item[] = [
   {
     href: CONSUMER_ROUTES.me,
     Icon: User,
-    // Base label; the live class ("Me · Premium" / "Me · Free") is stitched in
-    // at render from the server-seeded class context — see BottomNav below.
+    // Base label; the live class ("Me · Premium" / "Me · Standard") is stitched
+    // in at render from the server-seeded class context — see BottomNav below.
     label: "Me",
     match: CONSUMER_ROUTE_PREFIX.me,
   },

@@ -5,6 +5,6 @@
 - **Deploys via the Vercel `mesita-web-business` project**, pointed at `Canzeco/mesita-monorepo` with Root Directory `apps/web-business` (cutover landed 2026-07-11). The frozen standalone repos — especially `mesita-web-business-legacy` — are decoys; a wrong connection = silent no-deploy.
 - Light theme + semantic tokens. Business surfaces stay **calm and high-density** — don't ornament them.
 - **Layout convention:** page container `mx-auto max-w-6xl` + section cards `grid grid-cols-1 gap-4 md:grid-cols-2`; constrain the Topbar to the same `max-w-6xl` so the title shares the cards' left edge; wide sections span the full row; global save = a small floating chip bottom-right. Reference implementation: the Place page (`EditPlaceForm.tsx`).
-- Nomenclature: businesses subscribe to a **plan** (`free`/`pro`/`ultra`, labels Free/Pro/Ultra — "Promote" retired). Per-project member roles: `owner`/`editor`/`viewer`.
+- Nomenclature: businesses subscribe to a **plan**. Sold SKUs in the console are **Free** + **Verified** (`plan=pro`, yearly membership — Promos v4 / MESITA-541). Enum/DB still has `ultra` (and Notion pricing history may list Free/Pro/Ultra); the console folds Ultra onto Verified — "Promote" is retired. Per-project member roles: `owner`/`editor`/`viewer`.
 - Clients never call the DB — everything via `business-web-*` Edge Functions.
 - CI: `web-business.yml` — lint · typecheck · build, all blocking (Node 22+), path-filtered to `apps/web-business/**`.
