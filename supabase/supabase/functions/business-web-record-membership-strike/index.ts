@@ -10,7 +10,7 @@ import {
   adminClient,
   getAuthedUser,
   readEFEnv,
-  requireMembership,
+  requireEditor,
 } from "../_shared/auth.ts";
 import {
   isStrikeReason,
@@ -51,7 +51,7 @@ Deno.serve(async (req) => {
   }
 
   const admin = adminClient(envRes.env);
-  const membership = await requireMembership(admin, authRes.user, projectId);
+  const membership = await requireEditor(admin, authRes.user, projectId);
   if (!membership.ok) return membership.response;
 
   // Prefer consumer from the ticket when ticketId is supplied.

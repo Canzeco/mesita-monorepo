@@ -9,9 +9,10 @@
 // by looking up each qualifying segment in the grid at the place's strategy
 // and paying BEST-OF (the single highest rung, never a sum).
 //
-// Segments v6 (2026-08-01) + Story gate v2 (MESITA-909): four classes —
-// standard, premium, influencer (Instagram ≥ 2,000 followers, automatic),
-// aura (invite-only presence class) — plus actions. Story is a UNIVERSAL
+// Segments v6 (2026-08-01) + Story gate v2 (MESITA-909) + doors rank flip
+// (MESITA-972): four classes — standard, influencer (Instagram ≥ 2,000
+// followers, automatic), premium (paid), aura (invite-only) — plus actions.
+// Story is a UNIVERSAL
 // action gated on a connected Instagram (`instagram_handle`), not on
 // Influencer class; Review / Welcome / Mesita stay universal too. Class
 // segments resolve generically (any known class key qualifies for its own
@@ -21,11 +22,12 @@
 import { type SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { strategyForRates, ratesFromPlace } from "./lineup-strategy.ts";
 
-// Class segments in rank order (mirrors public.classes: rank 0..3).
+// Class segments in rank order (mirrors public.classes: rank 0..3 —
+// MESITA-972: standard < influencer < premium < aura).
 export const CLASS_SEGMENTS = [
   "standard",
-  "premium",
   "influencer",
+  "premium",
   "aura",
 ] as const;
 export type ClassSegment = (typeof CLASS_SEGMENTS)[number];

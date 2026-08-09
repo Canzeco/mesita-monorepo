@@ -10,7 +10,7 @@ import {
   adminClient,
   getAuthedUser,
   readEFEnv,
-  requireMembership,
+  requireEditor,
 } from "../_shared/auth.ts";
 import {
   isStrikeReason,
@@ -48,7 +48,7 @@ Deno.serve(async (req) => {
   }
   if (!ticket.data) return json({ ok: false, error: "Ticket not found" }, 404);
 
-  const membership = await requireMembership(admin, authRes.user, ticket.data.project_id);
+  const membership = await requireEditor(admin, authRes.user, ticket.data.project_id);
   if (!membership.ok) return membership.response;
 
   if (ticket.data.status === "cancelled") {
