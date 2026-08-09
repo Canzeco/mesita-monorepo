@@ -43,7 +43,8 @@ single enrichment poll are already shipped.
 | Enrich poll | Only `UnitEditChrome` @ 8s (`:75-94`). PlaceSection one-shot media fetch |
 | Tests | Vitest + CI `pnpm run test` exist; manage-single has `promo-state.test.ts` only |
 | Dirty dialog | Hardcodes "Unsaved Place edits" (`UnitPlaceContext.tsx:166`) |
-| Promos dirty | **Not** wired to `UnitPlaceContext` (nav discard won't catch unsaved promo edits) |
+| Promos | Write-through / optimistic — **no draft dirtyMap** (do not invent one) |
+| Settings dirty | Reservations / Check PIN / Require bill have SaveBar drafts but **never** call `setSectionDirty` |
 | Tab ARIA | `role="tablist"`/`tab` without tabpanels (`UnitEditChrome.tsx:252-265`) |
 | Overflow | `overflow-x-auto` + hidden scrollbars (`:254`) |
 | Team error | `ErrorNote` shown; **no Retry** (`TeamSection.tsx:179`) |
