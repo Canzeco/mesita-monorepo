@@ -14,13 +14,6 @@ export type VerificationConfig = {
   autoVerifyVideo: boolean;
 };
 
-export const DEFAULT_VERIFICATION_CONFIG: VerificationConfig = {
-  createPlacesAsVerified: false,
-  autoVerifyAiCall: true,
-  autoVerifyAiEmail: true,
-  autoVerifyVideo: false,
-};
-
 type ConfigPayload = {
   config: Partial<Record<keyof VerificationConfig, unknown>>;
   updatedAt: string | null;
