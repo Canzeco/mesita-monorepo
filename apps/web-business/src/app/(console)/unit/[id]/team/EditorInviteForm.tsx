@@ -7,12 +7,12 @@ import type { BusinessRole } from "@/lib/api/team";
 import { cn } from "@/lib/utils";
 import { PILL_BUTTON_CLASS } from "@/lib/ui-classes";
 
-import { ROLE_CHOICES, ROLE_LABEL } from "./team-constants";
+import { INVITE_ROLE_CHOICES, ROLE_LABEL } from "./team-constants";
 
 export function EditorInviteForm({
   busy,
   onSubmit,
-  roleChoices = ROLE_CHOICES,
+  roleChoices = INVITE_ROLE_CHOICES,
   defaultRole = "editor",
   submitLabel = "Send invite",
 }: {
