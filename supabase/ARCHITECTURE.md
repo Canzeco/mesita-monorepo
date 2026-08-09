@@ -252,8 +252,9 @@ apps is identical either way.
 Stripe subscriptions only (no money held). Business membership SKU is
 `business_verified_yearly` (MX$1,000/year → `plan=pro`; `ultra` is a legacy
 alias). Consumer Premium is the paid class door (`consumer_premium_monthly`).
-Webhook: `stripe-webhook-handle-event`. `MOCK_SUBSCRIPTION` (EF env + web
-subscribe page constant) gates go-live — human-gated.
+Webhook: `stripe-webhook-handle-event`. `MOCK_SUBSCRIPTION` (EF env only;
+subscribe pages always call the create-subscription EF) gates go-live —
+human-gated.
 
 ## Working conventions (see the Rules quickstart in every CLAUDE.md)
 
