@@ -1,13 +1,19 @@
-// Promos v6 — the grid-authoritative bill engine (MESITA-723, segments v6).
+// Promos bill engine — v10 additive (MESITA-992) over the legacy v6/v13
+// best-of grid (MESITA-723).
 //
-// The reward grid is operator config on app_settings.rewards_config (#474):
-//   { cap, grid: { <segment>: { zero, conservative, aggressive } } }
+// Source of truth when present: app_settings.rewards_config.v10
+//   { version: 10, base, bonuses, cap }
+// A bill pays base (strategy × class) + welcome (first verified ticket at
+// the place, D3-A) + each earned action bonus (mesita / story±influencer
+// override / google), applied to the first cap-pesos.
+//
+// Fallback (no v10 blob yet): the legacy reward_rules table / v13 grid
+// blob, priced BEST-OF. Cap is a SEPARATE per-place param
+// (monthly_promo_cap); the config `cap` is the platform fallback.
+//
 // A place's STRATEGY (zero/conservative/aggressive) is derived from its
-// v4 rate columns via strategyForRates — so no per-place strategy column
-// exists. Cap is a SEPARATE per-place param (monthly_promo_cap); the grid's
-// `cap` is the platform fallback. This module resolves a ticket's discount
-// by looking up each qualifying segment in the grid at the place's strategy
-// and paying BEST-OF (the single highest rung, never a sum).
+// v4 rate columns via strategyForRates. Dominant (40/50/20/30) coerces to
+// aggressive (D5) — never the silent-underpay-to-zero path.
 //
 // Segments v6 (2026-08-01) + Story gate v2 (MESITA-909) + doors rank flip
 // (MESITA-972): four classes — standard, influencer (Instagram ≥ 2,000
@@ -20,7 +26,14 @@
 // here — never per-class branches.
 
 import { type SupabaseClient } from "jsr:@supabase/supabase-js@2";
-import { strategyForRates, ratesFromPlace } from "./lineup-strategy.ts";
+import { strategyForRates, ratesFromPlace, type PromoRates } from "./lineup-strategy.ts";
+import {
+  legacyRulesFromV10,
+  normalizePromosV10,
+  type PromosConfigV10,
+} from "../admin-web-update-rewards-config/promos-v10-normalize.ts";
+
+export type { PromosConfigV10 };
 
 // Class segments in rank order (mirrors public.classes: rank 0..3 —
 // MESITA-972: standard < influencer < premium < aura).
@@ -74,6 +87,8 @@ export type RewardsGrid = {
   grid: Record<ClassSegment, SegmentRates>;
   actions: ActionMatrix;
   cap: number;
+  /** When set, resolveTicketRate uses additive v10 math (MESITA-992). */
+  v10?: PromosConfigV10;
 };
 
 // The defaults (v9, MESITA-877) — the LAST-RESORT fallback, used only when
@@ -289,19 +304,64 @@ export async function loadRewardsGrid(
   ]);
 
   const blob = settingsRes.data?.rewards_config;
-  const cap = blob ? coerceRewardsGrid(blob).cap : DEFAULT_REWARDS_GRID.cap;
+  const raw =
+    blob && typeof blob === "object" && !Array.isArray(blob)
+      ? (blob as Record<string, unknown>)
+      : {};
 
+  // v10 additive SoT (MESITA-992). reward_rules stays frozen as a mirror
+  // written on save; the live engine no longer prices from it once v10 exists.
+  if (raw.v10 && typeof raw.v10 === "object" && !Array.isArray(raw.v10)) {
+    const norm = normalizePromosV10(raw.v10);
+    if (norm.ok) {
+      const legacy = gridFromRuleRows(legacyRulesFromV10(norm.value), norm.value.cap);
+      return { ...legacy, v10: norm.value };
+    }
+  }
+
+  const cap = blob ? coerceRewardsGrid(blob).cap : DEFAULT_REWARDS_GRID.cap;
   const rows = (rulesRes.data ?? []) as RewardRuleRow[];
   if (rows.length > 0) return gridFromRuleRows(rows, cap);
 
   return blob ? coerceRewardsGrid(blob) : DEFAULT_REWARDS_GRID;
 }
 
+// Retired Dominant rate tuple (pre-2026-08-09). Migration remapped live
+// rows; this catch keeps any leftover from silently underpaying as Zero.
+const RETIRED_DOMINANT_RATES: PromoRates = {
+  welcome_free_rate: 40,
+  welcome_premium_rate: 50,
+  free_rate: 20,
+  premium_rate: 30,
+};
+
+let dominantCoerceLogged = false;
+
+function ratesEqual(a: PromoRates, b: PromoRates): boolean {
+  return (
+    a.welcome_free_rate === b.welcome_free_rate &&
+    a.welcome_premium_rate === b.welcome_premium_rate &&
+    a.free_rate === b.free_rate &&
+    a.premium_rate === b.premium_rate
+  );
+}
+
 // A place's strategy from its v4 rate columns → the three grid keys.
 export function placeStrategy(place: Record<string, unknown>): GridStrategy {
-  const p = strategyForRates(ratesFromPlace(place));
+  const rates = ratesFromPlace(place);
+  const p = strategyForRates(rates);
   if (p === "conservative") return "conservative";
   if (p === "aggressive") return "aggressive";
+  // D5 (MESITA-992): Dominant → Aggressive. Log once per isolate.
+  if (ratesEqual(rates, RETIRED_DOMINANT_RATES)) {
+    if (!dominantCoerceLogged) {
+      console.log(
+        "placeStrategy: coercing retired Dominant rates → aggressive (D5)",
+      );
+      dominantCoerceLogged = true;
+    }
+    return "aggressive";
+  }
   return "zero"; // zero, null (custom/legacy)
 }
 
@@ -337,27 +397,45 @@ export type RateContext = {
   mesitaReviewed?: boolean;
 };
 
-// Best-of resolution over the seven-segment grid at the place's strategy.
-// Everyone inherits the Standard floor; the guest's class segment resolves
-// GENERICALLY (its own grid row — no per-class branches); Welcome/Review join
-// from context for anyone. Returns a clamped integer percent — and ONLY that,
-// never the class (the blended-rate privacy invariant).
-//
-// Story eligibility is settled UPSTREAM, not here: the Instagram-connected
-// gate (MESITA-909) is enforced where a story can start —
-// consumer-web-create-ticket (never seeds a story step without a handle) and
-// consumer-web-submit-story (403s when `instagram_handle` is empty). By the
-// time a story is VERIFIED the guest has done the work, so it always pays —
-// re-checking the live class (or handle) at bill time would strip an
-// already-earned reward from someone whose reach lapsed between the post
-// and the check.
-export function resolveTicketRate(
+function clampPercent(n: number): number {
+  return Math.max(0, Math.min(100, n));
+}
+
+/**
+ * v10 additive resolution (MESITA-992 / D1-A / D3-A).
+ * total = base(strategy×class) + welcome(first ticket) + each earned bonus.
+ */
+function resolveAdditiveRate(
+  strategy: Exclude<GridStrategy, "zero">,
+  cfg: PromosConfigV10,
+  ctx: RateContext,
+): number {
+  const cls: ClassSegment = isClassSegment(ctx.classKey)
+    ? ctx.classKey
+    : "standard";
+  let total = cfg.base[strategy][cls];
+  // D3-A: Welcome grants on the first verified ticket at the place — not
+  // gated on a Google review (that was the v9 coupling).
+  if (ctx.isFirstVisit) total += cfg.bonuses.welcome;
+  if (ctx.storyVerified) {
+    total += cls === "influencer" && cfg.bonuses.story_influencer !== null
+      ? cfg.bonuses.story_influencer
+      : cfg.bonuses.story;
+  }
+  if (ctx.reviewVerified) total += cfg.bonuses.google;
+  if (ctx.mesitaReviewed) total += cfg.bonuses.mesita;
+  return clampPercent(total);
+}
+
+/**
+ * Legacy best-of over the v13 grid. Kept as the fallback when no v10 blob
+ * has been saved yet. Story eligibility is settled UPSTREAM (MESITA-909).
+ */
+function resolveBestOfRate(
   strategy: GridStrategy,
   grid: RewardsGrid,
   ctx: RateContext,
 ): number {
-  // v7: an action's rate depends on WHO performs it — the guest's class row
-  // of the action matrix, falling back to standard for unknown/stale keys.
   const cls: ClassSegment = isClassSegment(ctx.classKey)
     ? ctx.classKey
     : "standard";
@@ -366,32 +444,48 @@ export function resolveTicketRate(
     grid.grid.standard[strategy],
     grid.grid[cls][strategy],
   ];
-  // v9 (MESITA-877): the Welcome Bonus is NOT an independent action — it is
-  // UNLOCKED BY the Google review on a first visit. The guest is told exactly
-  // that ("leave a Google review to unlock your welcome bonus"), and the
-  // business gets both value props from one mechanism: a first-time customer
-  // acquired AND a permanent public review. A first visit on its own still
-  // pays the guest's standing rate; it just doesn't pay the welcome rung.
+  // v9 coupling kept for the legacy path only.
   if (ctx.isFirstVisit && ctx.reviewVerified) {
     qualifying.push(a.welcome[cls][strategy]);
   }
   if (ctx.storyVerified) qualifying.push(a.story[cls][strategy]);
   if (ctx.reviewVerified) qualifying.push(a.review[cls][strategy]);
   if (ctx.mesitaReviewed) qualifying.push(a.mesita_review[cls][strategy]);
-  const best = qualifying.reduce((m, r) => (r > m ? r : m), 0);
-  return Math.max(0, Math.min(100, best));
+  return clampPercent(qualifying.reduce((m, r) => (r > m ? r : m), 0));
 }
 
-// Whether the place's program offers a given action rung at its strategy for
-// ANY class — the capability gate the consumer opt-in EFs check before
-// accepting a submission. Per-class differentiation happens at rate
-// resolution, not here: zeroing an action for one class shouldn't block the
-// submission door for everyone (the class rung still applies via best-of).
+// Resolve a ticket's discount percent — and ONLY that (blended-rate privacy).
+// Prefers v10 additive when loadRewardsGrid attached a v10 blob.
+export function resolveTicketRate(
+  strategy: GridStrategy,
+  grid: RewardsGrid,
+  ctx: RateContext,
+): number {
+  if (strategy === "zero") return 0;
+  if (grid.v10) return resolveAdditiveRate(strategy, grid.v10, ctx);
+  return resolveBestOfRate(strategy, grid, ctx);
+}
+
+// Whether the place's program offers a given action rung at its strategy.
 export function offersAction(
   strategy: GridStrategy,
   grid: RewardsGrid,
   action: ActionSegment,
 ): boolean {
+  if (strategy === "zero") return false;
+  if (grid.v10) {
+    const b = grid.v10.bonuses;
+    switch (action) {
+      case "welcome":
+        return b.welcome > 0;
+      case "mesita_review":
+        return b.mesita > 0;
+      case "story":
+        return b.story > 0 || (b.story_influencer ?? 0) > 0;
+      case "review":
+        return b.google > 0;
+    }
+  }
   return CLASS_SEGMENTS.some(
     (cls) => grid.actions[action][cls][strategy] > 0,
   );

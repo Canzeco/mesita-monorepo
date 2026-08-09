@@ -3,10 +3,9 @@
 // web-admin app/(app)/rewards-config/promos.ts — keep them in lock-step.
 //
 // v10 is the ADDITIVE model: a bill pays base (strategy × class) + welcome +
-// each earned action bonus, on the first cap-pesos. Until the engine flip
-// (MESITA-992) the live bill still prices best-of from reward_rules, so the
-// writer derives those 40 cells from the v10 knobs on every save
-// (legacyRulesFromV10) — the engine keeps tracking operator edits.
+// each earned action bonus, on the first cap-pesos (MESITA-992 engine). The
+// writer still derives the 40 legacy reward_rules cells on every save
+// (legacyRulesFromV10) as a frozen mirror / empty-v10 fallback.
 //
 // Lenient by design (the MESITA-804 lesson): unknown keys drop, gaps fall
 // back to the v10 launch defaults, every rate snaps to the 5% grid. The only
@@ -166,7 +165,7 @@ function bonusForAction(
 /**
  * Derive the complete 40-cell legacy best-of rule set from the v10 knobs —
  * cell = base + that action's bonus, clamped to the engine's 70% ceiling.
- * This is what keeps the LIVE engine tracking edits until MESITA-992.
+ * Frozen mirror for empty-v10 fallback after MESITA-992.
  */
 export function legacyRulesFromV10(cfg: PromosConfigV10): LegacyRuleRow[] {
   const rules: LegacyRuleRow[] = [];

@@ -15,6 +15,7 @@ import {
   placeStrategy,
   resolveTicketRate,
 } from "./rewards-config.ts";
+import { DEFAULT_PROMOS_V10 } from "../admin-web-update-rewards-config/promos-v10-normalize.ts";
 
 const GRID = DEFAULT_REWARDS_GRID;
 
@@ -122,10 +123,10 @@ Deno.test("placeStrategy: derives from v4 columns, all three strategies", () => 
     placeStrategy({ welcome_free_rate: 30, welcome_premium_rate: 50, free_rate: 10, premium_rate: 30 }),
     "aggressive",
   );
-  // The retired 40/50/20/30 tuple is no longer a preset; migration remaps live rows.
+  // D5: leftover Dominant (40/50/20/30) coerces to Aggressive — never Zero.
   assertEquals(
     placeStrategy({ welcome_free_rate: 40, welcome_premium_rate: 50, free_rate: 20, premium_rate: 30 }),
-    "zero",
+    "aggressive",
   );
   // Custom / all-null → zero.
   assertEquals(
@@ -364,4 +365,68 @@ Deno.test("v9: the Welcome bonus is UNLOCKED BY the Google review, never on its 
     }),
     GRID.actions.review.standard.aggressive,
   );
+});
+
+
+// ── v10 additive (MESITA-992) ────────────────────────────────────────────
+
+function withV10(grid = DEFAULT_REWARDS_GRID) {
+  return { ...grid, v10: structuredClone(DEFAULT_PROMOS_V10), cap: DEFAULT_PROMOS_V10.cap };
+}
+
+Deno.test("resolveTicketRate: v10 additive — base alone", () => {
+  const g = withV10();
+  assertEquals(resolveTicketRate("conservative", g, { classKey: "standard", isFirstVisit: false }), 10);
+  assertEquals(resolveTicketRate("aggressive", g, { classKey: "standard", isFirstVisit: false }), 20);
+  assertEquals(resolveTicketRate("aggressive", g, { classKey: "aura", isFirstVisit: false }), 50);
+});
+
+Deno.test("resolveTicketRate: v10 additive — welcome on first visit alone (D3-A)", () => {
+  const g = withV10();
+  // Welcome is NOT gated on Google review under v10.
+  assertEquals(resolveTicketRate("aggressive", g, { classKey: "standard", isFirstVisit: true }), 30); // 20+10
+  assertEquals(
+    resolveTicketRate("aggressive", g, {
+      classKey: "standard",
+      isFirstVisit: true,
+      reviewVerified: true,
+    }),
+    40, // 20+10+10
+  );
+});
+
+Deno.test("resolveTicketRate: v10 additive — bonuses stack", () => {
+  const g = withV10();
+  assertEquals(
+    resolveTicketRate("aggressive", g, {
+      classKey: "influencer",
+      isFirstVisit: true,
+      storyVerified: true,
+      reviewVerified: true,
+      mesitaReviewed: true,
+    }),
+    // base 30 + welcome 10 + story_influencer 30 + google 10 + mesita 5 = 85
+    85,
+  );
+});
+
+Deno.test("resolveTicketRate: v10 additive — zero still pays nothing", () => {
+  const g = withV10();
+  assertEquals(
+    resolveTicketRate("zero", g, {
+      classKey: "aura",
+      isFirstVisit: true,
+      storyVerified: true,
+      reviewVerified: true,
+      mesitaReviewed: true,
+    }),
+    0,
+  );
+});
+
+Deno.test("offersAction: v10 reads flat bonuses", () => {
+  const g = withV10();
+  assertEquals(offersAction("aggressive", g, "story"), true);
+  assertEquals(offersAction("aggressive", g, "review"), true);
+  assertEquals(offersAction("zero", g, "story"), false);
 });
