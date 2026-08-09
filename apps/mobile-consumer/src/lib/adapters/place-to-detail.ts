@@ -2,6 +2,7 @@
 
 import { detectMenuKind } from '@/lib/menu-url';
 import { resolvePlaceCategoryName } from '@/lib/place-category';
+import { displayPlaceTagLabel } from '@/lib/place-tag-label';
 import {
   buildPromoMatrixFromRow,
   hasExplicitClassRates,
@@ -135,9 +136,10 @@ export function placeRowToDetail(
     is_enriching:
       row.content_status === 'queued' || row.content_status === 'generating',
     photos,
+    // English default (MESITA-963) — label_es stays dormant for future TMS.
     tags: arr<ResolvedTag>(tags).map((t) => ({
       slug: t.slug,
-      label: t.label_es || t.label_en,
+      label: displayPlaceTagLabel(t),
       facet: t.facet,
     })),
     menus,

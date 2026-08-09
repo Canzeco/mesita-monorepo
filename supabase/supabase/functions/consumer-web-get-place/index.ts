@@ -63,7 +63,8 @@ Deno.serve(async (req) => {
 
   // Resolve the place's tag slugs (places.tags) into ordered, labelled catalog
   // entries so the detail modal can render chips without a second round-trip or
-  // a client-side tag dictionary. Unknown slugs are dropped.
+  // a client-side tag dictionary. Unknown slugs are dropped. Clients must
+  // display label_en (MESITA-963); label_es is dormant until a TMS.
   const tags = await resolvePlaceTags(
     supabase,
     (data as { tags?: string[] | null }).tags,
