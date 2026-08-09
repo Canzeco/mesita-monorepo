@@ -14,10 +14,10 @@
 //   1. BASELINE_SLOTS — the normal service window, always offered so a request
 //      is possible even when the place is closed all day or has no hours.
 //   2. The place's own open windows for that date, sampled every 30 min. This
-//      is what lets a 23:00–02:00 venue be booked at 00:30 at all.
+//      is what lets a 23:00–02:00 place be booked at 00:30 at all.
 //
 // Times are place-local wall clock, judged against the place clock in
-// @/lib/place-time. Every Mesita venue is in Mexico (Monterrey and CDMX are
+// @/lib/place-time. Every Mesita place is in Mexico (Monterrey and CDMX are
 // both UTC-6 year round), so place-local hours and the fixed GMT-6 reservation
 // offset describe the same wall clock.
 
@@ -32,7 +32,7 @@ import {
  * How far ahead a table can be requested: ONE calendar month, and no more.
  *
  * Product constraint (Pato, 2026-08-04) — mirrored in Notion → Reservations.
- * Mesita books by phoning the place, and no venue will hold a table further out
+ * Mesita books by phoning the place, and no place will hold a table further out
  * than a month; scraped hours aren't meaningful that far ahead either. The pill
  * count is DERIVED from this rather than passed in, so no surface can widen its
  * own window.
@@ -53,7 +53,7 @@ export const BASELINE_SLOTS = [
 
 /**
  * The hour a guest most likely means. When their pick is gone (or they haven't
- * picked), the nearest slot to this wins — so a 23:00–02:00 venue defaults to
+ * picked), the nearest slot to this wins — so a 23:00–02:00 place defaults to
  * 23:00, not to 00:00 in the small hours of the same date.
  */
 const ANCHOR_MINUTES = slotMinutes('20:00');
@@ -113,7 +113,7 @@ function toHhmm(minutes: number): string {
 }
 
 /**
- * The last venue date a guest may book: today + BOOKING_HORIZON_MONTHS, with the
+ * The last place date a guest may book: today + BOOKING_HORIZON_MONTHS, with the
  * day clamped to the target month's length so Jan 31 lands on Feb 28/29 instead
  * of overflowing into March.
  */
@@ -229,7 +229,7 @@ export function slotState(
 
 /**
  * Fill holes between sorted slot minutes so brunch+dinner doesn't skip
- * mid-afternoon (MESITA-934). Caps the fill so overnight venues (23:00–02:00)
+ * mid-afternoon (MESITA-934). Caps the fill so overnight places (23:00–02:00)
  * don't inflate into a full-day strip — gaps longer than 8h stay as breaks.
  */
 const MAX_GAP_FILL_MINUTES = 8 * 60;
