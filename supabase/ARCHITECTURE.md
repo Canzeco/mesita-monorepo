@@ -199,6 +199,11 @@ Three audiences, three doors, one `auth.users` pool:
 | Admin | Email / OAuth, gated by `public.super_admins` | — |
 | Check (staff) | **No account** — possession of `tickets.check_code` | `check-web-*` (`verify_jwt=false`) |
 
+**Tickets staff path = Check only.** Business-console scan/tickets UI is
+retired. Leftover `business-web-{list,cancel,mark-paid,submit-bill}-ticket*`
+EFs remain in the tree but are not the product staff path — do not rebuild
+console ticket UI on them. Guests create tickets via `consumer-web-create-ticket`.
+
 The post-sign-in EF is housekeeping, not authentication: Supabase Auth has
 already issued the session by the time it runs. It stamps
 `app_metadata.role`, lazy-creates the profile row, and returns an
