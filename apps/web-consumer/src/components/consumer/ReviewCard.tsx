@@ -4,7 +4,8 @@ import { useState } from "react";
 import { GoogleLogo, MesitaSourceBadge } from "./BrandLogos";
 import { Header, Quote, StarRow, Thumbnail } from "./review-card-parts";
 import { cn, firstInitial } from "@/lib/utils";
-import type { ConsumerClass, PlaceDetail } from "@/lib/mock/place";
+import type { ClassKey } from "@/lib/consumer-data";
+import type { PlaceDetail } from "@/lib/mock/place";
 import { CLASS_AVATAR_BG, CLASS_TEXT } from "@/lib/class-styles";
 
 // Individual review card — same skeleton for Mesita and Google, with the
@@ -21,7 +22,7 @@ import { CLASS_AVATAR_BG, CLASS_TEXT } from "@/lib/class-styles";
 
 const LONG_QUOTE_THRESHOLD = 220;
 
-const CLASS_LABEL: Record<ConsumerClass, string> = {
+const CLASS_LABEL: Record<ClassKey, string> = {
   standard: "STANDARD",
   premium: "PREMIUM",
   influencer: "INFLUENCER",

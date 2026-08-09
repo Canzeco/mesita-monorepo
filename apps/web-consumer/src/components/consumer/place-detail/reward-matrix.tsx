@@ -2,7 +2,7 @@ import type { LucideIcon } from "lucide-react";
 import { DoorOpen, Instagram, Star, User, UtensilsCrossed } from "lucide-react";
 
 import { classProperLabel } from "@/lib/consumer-data";
-import type { ConsumerClass } from "@/lib/mock/place";
+import type { ClassKey } from "@/lib/consumer-data";
 import type { PlaceStrategy } from "@/lib/promo-rates";
 import {
   REWARD_SEGMENT_BY_KEY,
@@ -82,7 +82,7 @@ export function YourRewardsHere({
   classKey,
 }: {
   strategy: PlaceStrategy;
-  classKey: ConsumerClass;
+  classKey: ClassKey;
 }) {
   const mine = REWARD_SEGMENT_BY_KEY[segmentKeyForClass(classKey)];
 

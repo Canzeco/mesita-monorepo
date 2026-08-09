@@ -14,7 +14,7 @@
 // (MESITA-909); Review and
 // Welcome are universal.
 
-import type { ConsumerClass } from "@/lib/mock/place";
+import type { ClassKey } from "@/lib/consumer-data";
 
 // The business discount strategy that sets how generous a place's grid is:
 // Zero / Conservative / Aggressive (aggressive = peak).
@@ -130,7 +130,7 @@ export const PEAK_STRATEGY: GridStrategy = "aggressive";
 
 // Which class rung a consumer sits on. Consumer classes map one-to-one onto
 // their same-named ladder rungs.
-export function segmentKeyForClass(classKey: ConsumerClass): RewardSegmentKey {
+export function segmentKeyForClass(classKey: ClassKey): RewardSegmentKey {
   return classKey;
 }
 
@@ -138,7 +138,7 @@ export function segmentKeyForClass(classKey: ConsumerClass): RewardSegmentKey {
 // the universal actions (Welcome, Google review, Instagram Story —
 // MESITA-909). Story's Instagram-connected gate is enforced at create /
 // submit, not here — this set drives "up to" quotes. Returned worst→best.
-export function reachableSegments(classKey: ConsumerClass): RewardSegment[] {
+export function reachableSegments(classKey: ClassKey): RewardSegment[] {
   const mine = segmentKeyForClass(classKey);
   const universal: RewardSegmentKey[] = ["welcome", "review", "story"];
   return REWARD_SEGMENTS.filter(
@@ -157,7 +157,7 @@ export function reachableSegments(classKey: ConsumerClass): RewardSegment[] {
 // Keeping the step here rather than baking four copies of every rung into
 // the table is what lets this file stay a flat ladder while still matching
 // the engine cell for cell.
-const CLASS_STEP: Record<ConsumerClass, number> = {
+const CLASS_STEP: Record<ClassKey, number> = {
   standard: 0,
   influencer: 5,
   premium: 10,
@@ -167,7 +167,7 @@ const CLASS_STEP: Record<ConsumerClass, number> = {
 /** One rung's rate for a specific guest — the number they'd actually be paid. */
 export function rateForSegment(
   key: RewardSegmentKey,
-  classKey: ConsumerClass,
+  classKey: ClassKey,
   strategy: GridStrategy = PEAK_STRATEGY,
 ): number {
   const base = REWARD_SEGMENT_BY_KEY[key].rates[strategy];
@@ -175,7 +175,7 @@ export function rateForSegment(
 }
 
 export function baseRateForClass(
-  classKey: ConsumerClass,
+  classKey: ClassKey,
   strategy: GridStrategy = PEAK_STRATEGY,
 ): number {
   return rateForSegment(segmentKeyForClass(classKey), classKey, strategy);
@@ -188,7 +188,7 @@ export function baseRateForClass(
  * any class, so this is 50% today; the class rung still shows below it.
  */
 export function peakRateForClass(
-  classKey: ConsumerClass,
+  classKey: ClassKey,
   strategy: GridStrategy = PEAK_STRATEGY,
 ): number {
   return reachableSegments(classKey).reduce(
