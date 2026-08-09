@@ -492,17 +492,18 @@ export function gpParts(
 
 // ── RP — Rewards Promotions ────────────────────────────────────────────
 // Strategies come from ./strategies (the promo presets). The rung each
-// strategy earns is CONFIG (the blob's rp block). No literal 0: non-members
-// never enter the paid lanes at all (lane filter); custom/legacy rates that
-// match no preset land on the zero rung.
+// strategy earns is CONFIG (the blob's rp block). Non-members never enter the
+// paid lanes at all (lane filter, separate from this score); custom/legacy
+// rates that match no preset land on the zero rung — which defaults to a
+// literal 0, so a partner running no promo earns nothing in the paid lane.
 
 type RpStrategy = "zero" | "conservative" | "aggressive";
 
 export type RpRungs = Record<RpStrategy, number>;
 
 const DEFAULT_RP_RUNGS: RpRungs = {
-  zero: 0.1,
-  conservative: 0.4,
+  zero: 0,
+  conservative: 0.5,
   aggressive: 1.0,
 };
 

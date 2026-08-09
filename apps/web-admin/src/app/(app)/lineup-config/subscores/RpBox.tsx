@@ -62,8 +62,8 @@ export function RpBox() {
       outputs={
         <Prose>
           <b className="text-foreground/80">RP ∈ [0,1]</b> — multiplies the Inorganic lane;
-          non-members never enter it at all (a lane filter, not a score), and the zero-strategy
-          member keeps the whisper.
+          non-members never enter it at all (a lane filter, not a score), and at the default
+          zero rung a member running no promo earns nothing there either.
         </Prose>
       }
     />
