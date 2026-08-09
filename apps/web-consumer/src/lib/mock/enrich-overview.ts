@@ -28,6 +28,7 @@ import {
   computeOpenState,
   neighborhoodFromAddress,
 } from "@/lib/adapters/place-to-detail";
+import { num, str } from "@/lib/adapters/place-to-detail-helpers";
 import { formatPlacePriceChip } from "@/lib/place-price";
 import { relativeLabel } from "@/lib/utils";
 
@@ -98,15 +99,4 @@ export function enrichPlaceOverview(v: Place): Place {
     reward_cap_mxn: v.reward_cap_mxn ?? rewardCapMxn ?? null,
     is_enriching: isEnriching,
   };
-}
-
-// ── local readers ─────────────────────────────────────────────────────
-// Tiny defensive accessors for the raw row (same shape as the ones in
-// place-to-detail.ts). Kept local so this module doesn't widen that file's
-// export surface just to read two scalars.
-function str(v: unknown): string | undefined {
-  return typeof v === "string" && v.trim() ? v : undefined;
-}
-function num(v: unknown): number | undefined {
-  return typeof v === "number" && Number.isFinite(v) ? v : undefined;
 }
