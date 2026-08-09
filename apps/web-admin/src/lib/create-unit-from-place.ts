@@ -30,8 +30,6 @@ type CreatedPlace = {
 
 type CreateUnitResponse = {
   place?: CreatedPlace;
-  /** Legacy alias of `place` — same object. */
-  venue?: CreatedPlace;
   enrichment?: {
     enrichmentTriggered?: boolean;
     enrichmentAsync?: boolean;
@@ -81,13 +79,13 @@ export async function createUnitFromPlaceId(
     return { ok: false, error: r.error };
   }
 
-  const v = r.data.place;
-  if (!v?.id) return { ok: false, error: "No unit returned" };
+  const place = r.data.place;
+  if (!place?.id) return { ok: false, error: "No place returned" };
   return {
     ok: true,
-    projectId: v.id,
-    name: v.name ?? "(unnamed)",
-    slug: v.slug ?? null,
+    projectId: place.id,
+    name: place.name ?? "(unnamed)",
+    slug: place.slug ?? null,
     photoCount: r.data.enrichment?.photoCount ?? 0,
     enrichmentTriggered: r.data.enrichment?.enrichmentTriggered ?? false,
     enrichmentError: r.data.enrichment?.enrichmentError ?? null,
