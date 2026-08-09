@@ -111,7 +111,7 @@ advancing places through the `place_research` stage table
 poller `run_place_enrichment_stages` drives the stages. n8n is fully out of
 the stack (the Reservationist will be ElevenLabs-based).
 
-Reward ticket sequences (create, scan, billing, story, payment, review) are documented in [docs/TICKET_SEQUENCES.md](docs/TICKET_SEQUENCES.md). Tickets v2 (MESITA-806): the CONSUMER creates the ticket (`consumer-web-create-ticket`); staff work it on the public check page `check.mesita.ai/<code>` (`check-web-*`, `verify_jwt=false`), with the business console as the only secondary rail. Consumer step order lives in each app's `ticket-flow-steps.ts`.
+Reward ticket sequences (create, scan, billing, story, payment, review) are documented in [docs/TICKET_SEQUENCES.md](docs/TICKET_SEQUENCES.md). Tickets v2/v3 (MESITA-806 / MESITA-849): the CONSUMER creates the ticket (`consumer-web-create-ticket`); staff work it only on Mesita Check `check.mesita.ai/<code>` (`check-web-*`, `verify_jwt=false`). The business console tickets/scan surface is retired (MESITA-843). Consumer step order lives in each app's `ticket-flow-steps.ts`.
 
 ---
 

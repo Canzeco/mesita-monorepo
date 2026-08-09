@@ -33,7 +33,7 @@ export function WaysToClimb({
       icon: CLASS_ICONS.standard,
       iconBg: "bg-tier-free text-foreground",
       title: "Standard",
-      via: "Free",
+      via: "Default",
       discountLevel: "LOW",
       perks: ["Basic place picks", "2 AI reservations / mo"],
       reached: isStandard,

@@ -38,7 +38,7 @@ export async function getProfileTool(
     class: {
       key: classKey,
       origin: consumer.class_origin ?? "default",
-      label: tier?.label ?? "Free",
+      label: tier?.label ?? "Standard",
       followers: consumer.consumer_instagram_followers_count ?? null,
       expires_at: consumer.class_expires_at ?? null,
       usage: {
