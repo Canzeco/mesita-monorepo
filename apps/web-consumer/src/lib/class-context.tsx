@@ -12,7 +12,11 @@ import {
   DEMO_INSTAGRAM_FOLLOWERS,
   DEMO_INSTAGRAM_HANDLE,
 } from "@/lib/instagram-demo";
-import { INFLUENCER_FOLLOWER_THRESHOLD } from "@/lib/consumer-data";
+import {
+  CLASS_ORDER,
+  INFLUENCER_FOLLOWER_THRESHOLD,
+  type ClassKey,
+} from "@/lib/consumer-data";
 
 // Real, server-sourced class for the signed-in consumer, shared with
 // every client surface under the (shell) layout: the Profile Class tab, the
@@ -23,8 +27,6 @@ import { INFLUENCER_FOLLOWER_THRESHOLD } from "@/lib/consumer-data";
 // Premium — key now reflects the real consumers.class_key, so the instant-
 // Premium mock subscription flow becomes visible the moment the post-checkout
 // redirect reloads the shell.
-
-type ClassKey = "standard" | "premium" | "influencer" | "aura";
 
 /** Open doors, independent of which one wins the class slot (MESITA-972).
  *  Standard is always open, so only the three earned/paid doors are carried.
@@ -62,19 +64,12 @@ const STANDARD_CLASS: ConsumerClassState = {
   doors: { influencer: false, premium: false, aura: false },
 };
 
-// The known class keys — an unknown/stale server key (e.g. the retired
-// "magnetic") renders as Standard instead of crashing a Record lookup.
-const CLASS_KEYS: readonly ClassKey[] = [
-  "standard",
-  "premium",
-  "influencer",
-  "aura",
-];
-
+// Unknown/stale server keys (e.g. retired "magnetic") render as Standard
+// instead of crashing a Record lookup.
 function isClassKey(value: unknown): value is ClassKey {
   return (
     typeof value === "string" &&
-    (CLASS_KEYS as readonly string[]).includes(value)
+    (CLASS_ORDER as readonly string[]).includes(value)
   );
 }
 

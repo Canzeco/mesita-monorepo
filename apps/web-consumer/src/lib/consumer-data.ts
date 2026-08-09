@@ -13,14 +13,19 @@ import {
 // and the money ladder (class steps +5 influencer / +10 premium / +15 aura).
 // "class" is the consumer membership axis — distinct from a business's
 // billing "plan" (free/pro/ultra).
-const CLASS_ORDER = ["standard", "influencer", "premium", "aura"] as const;
-type Class = (typeof CLASS_ORDER)[number];
+export const CLASS_ORDER = [
+  "standard",
+  "influencer",
+  "premium",
+  "aura",
+] as const;
+export type ClassKey = (typeof CLASS_ORDER)[number];
 
 // Premium-perk gate: everything above Standard unlocks the same elevated perk
 // set — better recommendations, higher discount rewards, 10 reservations a
 // month. Generic on purpose: a future class joins the ladder by joining
 // CLASS_ORDER, never by another branch here.
-export function isElevatedClass(classKey: Class | string): boolean {
+export function isElevatedClass(classKey: ClassKey | string): boolean {
   return (
     classKey !== "standard" &&
     (CLASS_ORDER as readonly string[]).includes(classKey)
@@ -86,7 +91,7 @@ export const COUNTRY_BY_CODE: Record<string, Country> = Object.fromEntries(
 );
 
 export const CLASSES: {
-  id: Class;
+  id: ClassKey;
   label: string;
   req: string;
   /** Monthly subscription price in MXN. 0 for Standard (the default),
@@ -156,7 +161,7 @@ export const INFLUENCER_FOLLOWER_THRESHOLD = CLASSES.find(
 // Canonical class icon set (MESITA-929): one mark + one color per class.
 // Standard = smile (gray), Influencer = megaphone (red), Premium = card
 // (blue), Aura = crown (yellow/gold). The Classes sheet mark is the pyramid.
-export const CLASS_ICONS: Record<Class, LucideIcon> = {
+export const CLASS_ICONS: Record<ClassKey, LucideIcon> = {
   standard: Smile,
   premium: CreditCard,
   influencer: Megaphone,
@@ -169,7 +174,7 @@ export const CLASS_MARK_ICON: LucideIcon = Pyramid;
 // Canonical bg + text class per class. Used wherever a class needs the
 // brand-color chip treatment (avatars, pills, hero rows). Compose with
 // cn() at the call site when extra modifiers (size, rounding) are needed.
-export function classBadgeClass(classKey: Class): string {
+export function classBadgeClass(classKey: ClassKey): string {
   switch (classKey) {
     case "standard":
       return "bg-tier-free text-foreground";
@@ -187,16 +192,16 @@ export function classBadgeClass(classKey: Class): string {
 // box — anywhere we render "Mesita Standard" / "Mesita Premium" /
 // "Mesita Influencer" / "Mesita Aura" alongside the lower-case class id.
 //
-// Accepts a strictly-typed Class or a plain string so callers can hand us
+// Accepts a strictly-typed ClassKey or a plain string so callers can hand us
 // either (e.g. a server-sourced class_key that flows as string) without an
 // extra cast; unknown values fall back to the "Mesita" brand word.
-const CLASS_LABELS: Record<Class, string> = {
+const CLASS_LABELS: Record<ClassKey, string> = {
   standard: "Standard",
   premium: "Premium",
   influencer: "Influencer",
   aura: "Aura",
 };
 
-export function classProperLabel(classKey: Class | string): string {
-  return CLASS_LABELS[classKey as Class] ?? "Mesita";
+export function classProperLabel(classKey: ClassKey | string): string {
+  return CLASS_LABELS[classKey as ClassKey] ?? "Mesita";
 }
