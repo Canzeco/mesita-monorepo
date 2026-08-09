@@ -4,7 +4,7 @@
 // verify_jwt = FALSE — code-possession auth (see _shared/ticket-check.ts).
 // The OPTIONAL billing step (v3b, MESITA-850 — internal control, never a
 // gate): staff (whoever holds the scanned QR) may enter the check subtotal
-// on mesita.ai/check/<code>; skipping it and closing directly is equally
+// on check.mesita.ai/<code>; skipping it and closing directly is equally
 // valid — the ticket then states the offer for the place's own POS. Pricing is IDENTICAL to the
 // retired business-web-submit-ticket-bill path — same grid, same best-of
 // resolveTicketRate, same computeTicketBill, same bill notification — minus

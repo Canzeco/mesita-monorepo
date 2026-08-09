@@ -3,7 +3,7 @@
 // Tickets v2 (MESITA-806): the guest creates their own reward ticket BEFORE
 // staff involvement. Pick the place, opt into the story rung (any class with
 // a connected Instagram — MESITA-909), get back a check_code — the QR the
-// app renders is https://mesita.ai/check/<check_code>, and everything
+// app renders is https://check.mesita.ai/<check_code>, and everything
 // staff-side happens on that public page (check-web-*). Replaces
 // staff-initiated creation (business-web-create-ticket, retired in the same
 // change).
