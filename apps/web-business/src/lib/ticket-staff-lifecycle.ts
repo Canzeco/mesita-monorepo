@@ -46,16 +46,6 @@ const STORY_VERIFIED = new Set<StoryStatus | string>([
 // (now "reservation" | "coupon"), so they are typed as plain strings.
 const STORY_KINDS = new Set<string>(["s_dp_sf", "r_s_dp_sf"]);
 
-export const TICKET_KIND_BY_FLOW_TYPE: Record<TicketFlowType, string> = {
-  A: "dp",
-  B: "s_dp_sf",
-};
-
-export const FLOW_TYPE_LABELS: Record<TicketFlowType, string> = {
-  A: "Discount · No story",
-  B: "Discount · With story",
-};
-
 // Short, distinguishing label for the scan picker chips. Both flows are a
 // discount; the only difference is whether the guest posts an IG story, so
 // the chip leads with that.
