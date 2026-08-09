@@ -31,6 +31,7 @@ import {
   MAP_WEB_PIN_COLOR,
   MAP_SELECTED_PIN_COLOR,
 } from "@/lib/map-defaults";
+import type { Coords } from "@/lib/use-user-location";
 
 function placeIcon(isSelected: boolean) {
   return {
@@ -52,8 +53,6 @@ const USER_ICON = {
   scale: 1,
 };
 
-export type LatLng = { lat: number; lng: number };
-
 export function SearchMap({
   apiKey,
   places,
@@ -65,7 +64,7 @@ export function SearchMap({
 }: {
   apiKey: string;
   places: Place[];
-  userLocation: LatLng | null;
+  userLocation: Coords | null;
   selectedId: string | null;
   onSelectPlace: (place: Place) => void;
   onOpenPlace: (place: Place) => void;
@@ -152,7 +151,7 @@ function SearchMapCanvas({
   onReady,
 }: {
   places: Place[];
-  userLocation: LatLng | null;
+  userLocation: Coords | null;
   selectedId: string | null;
   onSelectPlace: (place: Place) => void;
   onOpenPlace: (place: Place) => void;
@@ -214,7 +213,7 @@ function SearchMapCanvas({
 // the consumer's own framing back out).
 function panAndEnsureZoom(
   map: NonNullable<ReturnType<typeof useMap>>,
-  target: LatLng,
+  target: Coords,
 ) {
   map.panTo(target);
   if ((map.getZoom() ?? MAP_DEFAULT_ZOOM) < MAP_USER_ZOOM) {
@@ -223,7 +222,7 @@ function panAndEnsureZoom(
 }
 
 // Pan to the consumer once geolocation resolves.
-function Recentre({ target }: { target: LatLng | null }) {
+function Recentre({ target }: { target: Coords | null }) {
   const map = useMap();
   useEffect(() => {
     if (!map || !target) return;
