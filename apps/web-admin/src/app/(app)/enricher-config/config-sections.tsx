@@ -48,7 +48,11 @@ type Funnel = { gg: number; depth: number; ag: number; ai: number; save: number 
 // and the input's max never disagree about the funnel's invariant.
 const MAX_GOOGLE_COLLECT = 10;
 const MAX_INSTAGRAM_COLLECT = 50;
-const MAX_SAVE_IMAGES = 10;
+// Matches DB CHECK app_settings_atlas_save_total_images_range (0–20) and the
+// admin-web-update-atlas-config / ENRICH_FIELD_LIMITS.photos contract. UI min
+// stays 1 (a zero-save gallery is not useful from this knob). Separate from
+// PHOTO_CEILING=50 in enrich-config.ts (S9 storage-mirror hard cap).
+const MAX_SAVE_IMAGES = 20;
 
 const clampN = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, Math.round(v)));
 
@@ -343,13 +347,14 @@ export function ImageFunnelSection({
         <p className="text-muted-foreground mt-3 text-xs leading-relaxed">
           {vision ? (
             <>
-              After ranking, the top <span className="text-foreground font-semibold tabular-nums">{f.save}</span> across all sources are saved to the profile — capped at the analysis total (<span className="tabular-nums">{aSum}</span>), up to 10.
+              After ranking, the top <span className="text-foreground font-semibold tabular-nums">{f.save}</span> across all sources are saved to the profile — capped at the analysis total (<span className="tabular-nums">{aSum}</span>), up to {MAX_SAVE_IMAGES}.
             </>
           ) : (
             <>
               The first <span className="text-foreground font-semibold tabular-nums">{f.save}</span> across all sources are saved to the profile in source order. The ceiling still follows the analyze caps (<span className="tabular-nums">{aSum}</span>) so the number survives turning vision back on.
             </>
-          )}
+          )}{" "}
+          Storage mirror uses a separate pipeline constant (<span className="font-mono">PHOTO_CEILING</span>=50), not this knob.
         </p>
       </div>
 

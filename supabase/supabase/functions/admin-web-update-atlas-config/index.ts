@@ -12,7 +12,8 @@
 //   gatherReviews (0–100) → atlas_gather_reviews (Apify Google reviews pulled)
 //   analyzeGoogleImages (1–10, ≤ gatherGoogleImages) /
 //     analyzeInstagramImages (1–50, ≤ gatherInstagramPosts)
-//   saveTotalImages (1–10, ≤ analyzeGoogle + analyzeInstagram) → atlas_save_total_images
+//   saveTotalImages (1–20, ≤ analyzeGoogle + analyzeInstagram) → atlas_save_total_images
+//     (DB CHECK 0–20; PHOTO_CEILING=50 is a separate S9 storage-mirror constant)
 //   saveImagesToStorage (boolean) → atlas_save_images_to_storage (S9 Storage-mirror gate)
 //   discover{Website,Instagram,Facebook,Opentable,Ubereats}N (0–10, per-source
 //     Firecrawl Search candidate counts for link discovery)
@@ -37,6 +38,7 @@ import {
 } from "./atlas-config-validate.ts";
 
 const GOOGLE_REVIEWS_MAX = ENRICH_FIELD_LIMITS.googleReviews.max;
+const SAVE_TOTAL_IMAGES_MAX = ENRICH_FIELD_LIMITS.photos.max;
 
 type Body = {
   // Image funnel — GATHER. Google: single pre-sorted cap (1–10). Instagram: split
@@ -47,7 +49,7 @@ type Body = {
   // Google reviews pulled by the Apify Maps scrape (0–100).
   gatherReviews?: number;
   // Image funnel — ANALYZE (per source: Google ≤ its keep, IG ≤ its keep) +
-  // final SAVE (1–10, ≤ analyzed total, all sources).
+  // final SAVE (1–20, ≤ analyzed total, all sources).
   imageVisionEnabled?: boolean;
   analyzeGoogleImages?: number;
   analyzeInstagramImages?: number;
@@ -140,9 +142,9 @@ Deno.serve(async (req) => {
   }
 
   if (body.saveTotalImages !== undefined) {
-    const n = intInRange(body.saveTotalImages, 1, 10);
+    const n = intInRange(body.saveTotalImages, 1, SAVE_TOTAL_IMAGES_MAX);
     if (n === null) {
-      return jsonError("saveTotalImages must be an integer 1-10", 400);
+      return jsonError(`saveTotalImages must be an integer 1-${SAVE_TOTAL_IMAGES_MAX}`, 400);
     }
     patch.atlas_save_total_images = n;
   }
