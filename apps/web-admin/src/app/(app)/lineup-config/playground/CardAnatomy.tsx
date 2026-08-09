@@ -213,7 +213,7 @@ export function CardAnatomy({
           icon={Dices}
           tint="violet"
           title="XX · Random Number"
-          note={`U^${xxControl.toFixed(1)} · per card per lane · seeded`}
+          note={`U^${xxControl} · per card per lane · seeded`}
           result={xxControl === 0 ? "1.00 (off)" : undefined}
           className="lg:col-span-2"
         >
@@ -222,7 +222,7 @@ export function CardAnatomy({
               key={l.id}
               name={l.label}
               inputs={`U = ${parts.draws[l.id].toFixed(3)}`}
-              math={`U^${xxControl.toFixed(1)}`}
+              math={`U^${xxControl}`}
               value={parts.xxVals[l.id]}
             />
           ))}

@@ -48,6 +48,8 @@ export type RankSwipeInput = {
   radiusKm: number;
   limit: number;
   profile: ConsumerProfile | null;
+  /** Consumer Randomness rung, 0 low … 4 max; null → the blob's `low` row. */
+  randomness?: number | null;
 };
 
 export type RankSwipeResult =
@@ -130,6 +132,7 @@ export async function rankSwipeDeck(
       lat,
       lng,
       xxSeed,
+      randomness: input.randomness ?? null,
     });
   } else {
     // No usable embeddings → partner-first fallback (pre-Lineup path).

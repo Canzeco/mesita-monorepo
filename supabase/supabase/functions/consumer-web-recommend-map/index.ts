@@ -15,6 +15,7 @@ import { corsPreflight, json, readJsonOr, rejectUnlessMethods } from "../_shared
 import { adminClient, getOptionalAuthedUser, readEFEnv } from "../_shared/auth.ts";
 import { clampPositive, type ConsumerProfile } from "../_shared/recommender-pool.ts";
 import { rankMapCatalog } from "../_shared/recommender-rank-map.ts";
+import { parseRandomnessLevel } from "../_shared/lineup-scoring.ts";
 
 const DEFAULT_RADIUS_KM = 25;
 
@@ -24,6 +25,9 @@ type Body = {
   radiusKm?: number;
   maxCategories?: number;
   perCategory?: number;
+  /** Randomness filter rung, 0 low … 4 max (the consumer's word ladder).
+   * Omitted = untouched filter = the XX table's `low` row. */
+  randomness?: number;
 };
 
 Deno.serve(async (req) => {
@@ -66,6 +70,7 @@ Deno.serve(async (req) => {
     maxCategories: Number(body.maxCategories),
     perCategory: Number(body.perCategory),
     profile,
+    randomness: parseRandomnessLevel(body.randomness),
   });
   if (!ranked.ok) {
     return json({ ok: false, error: ranked.error }, 502);
