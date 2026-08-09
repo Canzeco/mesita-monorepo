@@ -2,7 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/supabase/database.types";
 import { invokeEF } from "./_invoke";
 
-export type PayNotificationRow =
+type PayNotificationRow =
   Database["public"]["Tables"]["consumer_pay_notifications"]["Row"];
 
 /** Stored on consumer_pay_notifications.payload for Pay → Tickets. */
