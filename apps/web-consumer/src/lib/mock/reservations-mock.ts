@@ -25,6 +25,12 @@ export type LinkedCouponSummary = {
   state: "active" | "pending";
 };
 
+export type ReservationAlternative = {
+  time: string;
+  date?: string;
+  note?: string;
+};
+
 export type ReservationItem = {
   id: string;
   projectId: string;
@@ -43,4 +49,9 @@ export type ReservationItem = {
   canCancel?: boolean;
   canReschedule?: boolean;
   linkedCoupon?: LinkedCouponSummary;
+  /** MESITA-787 */
+  guestNotify?: "call" | "app";
+  guestConfirmedAt?: string | null;
+  /** Venue counter-offers the guest can accept in-app. */
+  alternatives?: ReservationAlternative[];
 };

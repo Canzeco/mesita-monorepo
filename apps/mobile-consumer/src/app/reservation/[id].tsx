@@ -22,6 +22,7 @@ export default function ReservationDetailScreen() {
   const params = useLocalSearchParams<{ id: string }>();
   const id = typeof params.id === 'string' ? params.id : (params.id?.[0] ?? '');
   const [fetched, setFetched] = useState<State>({ status: 'loading' });
+  const [reloadTick, setReloadTick] = useState(0);
   // An absent id can never resolve to a row, so it reads as missing without
   // ever entering the loading state.
   const state: State = id ? fetched : { status: 'missing' };
@@ -52,7 +53,7 @@ export default function ReservationDetailScreen() {
     return () => {
       cancelled = true;
     };
-  }, [id]);
+  }, [id, reloadTick]);
 
   if (state.status === 'loading') {
     return (
@@ -95,7 +96,10 @@ export default function ReservationDetailScreen() {
         contentContainerClassName="pb-10"
         showsVerticalScrollIndicator={false}
       >
-        <ReservationDetailBody r={state.r} />
+        <ReservationDetailBody
+          r={state.r}
+          onChanged={() => setReloadTick((n) => n + 1)}
+        />
       </ScrollView>
     </ReservationDetailModalShell>
   );

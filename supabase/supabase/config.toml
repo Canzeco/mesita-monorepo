@@ -634,6 +634,8 @@ verify_jwt = true
 # Reservationist product + cron companions not previously listed.
 [functions.consumer-web-cancel-reservation]
 verify_jwt = true
+[functions.consumer-web-confirm-reservation]
+verify_jwt = true
 [functions.consumer-web-update-reservation]
 verify_jwt = true
 [functions.consumer-web-suggest-places]

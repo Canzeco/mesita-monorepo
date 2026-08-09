@@ -99,6 +99,7 @@ export function ReservationSheet({
   const [timeChoice, setTimeChoice] = useState<string | null>(null);
   const [party, setParty] = useState(DEFAULT_PARTY);
   const [notes, setNotes] = useState("");
+  const [guestNotify, setGuestNotify] = useState<"call" | "app">("call");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState(false);
@@ -200,6 +201,7 @@ export function ReservationSheet({
           reservedAt,
           partySize: party,
           notes,
+          guestNotify,
         });
       }
       setDone(true);
@@ -318,6 +320,35 @@ export function ReservationSheet({
               />
             </div>
 
+            {!rescheduling && (
+              <div className="mt-4">
+                <p className="text-muted-foreground text-[11px] font-medium tracking-[0.14em] uppercase">
+                  When Mesita has news
+                </p>
+                <div className="border-border mt-2 grid grid-cols-2 gap-2 rounded-2xl border p-1">
+                  {(
+                    [
+                      ["call", "Call me"],
+                      ["app", "App only"],
+                    ] as const
+                  ).map(([key, label]) => (
+                    <button
+                      key={key}
+                      type="button"
+                      onClick={() => setGuestNotify(key)}
+                      className={
+                        guestNotify === key
+                          ? "bg-primary text-primary-foreground rounded-xl px-3 py-2 text-sm font-semibold"
+                          : "text-muted-foreground rounded-xl px-3 py-2 text-sm font-medium"
+                      }
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {error && (
               <p className="mt-3 rounded-xl bg-red-500/10 px-3 py-2 text-[13px] font-medium text-red-600">
                 {error}
@@ -340,8 +371,9 @@ export function ReservationSheet({
               )}
             </button>
             <p className="text-muted-foreground mt-2 text-center text-[11px]">
-              Mesita&apos;s AI agent calls the place to book — you&apos;ll be
-              notified.
+              {guestNotify === "app"
+                ? "Mesita's AI agent calls the place to book — you'll see the answer here."
+                : "Mesita's AI agent calls the place to book — then calls you to confirm."}
             </p>
           </>
         )}

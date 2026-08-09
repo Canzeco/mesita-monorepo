@@ -7,7 +7,8 @@
 // info — the linked coupon owns the discount surface.
 //
 // Body:
-//   { project_id: uuid, reserved_at: iso8601, party_size: int, notes?: string }
+//   { project_id: uuid, reserved_at: iso8601, party_size: int, notes?: string,
+//     guest_notify?: "call" | "app" }  // default "call" (MESITA-787)
 //
 // Response:
 //   { ok: true, reservation: {…}, linked_coupon_id: uuid|null }
@@ -27,6 +28,7 @@ type Body = {
   reserved_at?: string;
   party_size?: number;
   notes?: string;
+  guest_notify?: string;
 };
 
 Deno.serve(async (req) => {
@@ -65,6 +67,7 @@ Deno.serve(async (req) => {
   if (!Number.isFinite(partySize) || partySize < 1 || partySize > 50) {
     return json({ ok: false, error: "party_size must be 1..50" }, 400);
   }
+  const guestNotify = body.guest_notify === "app" ? "app" : "call";
 
   const admin = adminClient(envRes.env);
 
@@ -167,6 +170,7 @@ Deno.serve(async (req) => {
         reserved_at: reservedAt.toISOString(),
         party_size: partySize,
         notes: (body.notes ?? "").trim() || null,
+        guest_notify: guestNotify,
         status: "pending",
       })
       // NO `place:places(...)` embed here — reservations→places is a two-hop FK
@@ -175,7 +179,7 @@ Deno.serve(async (req) => {
       // in the schema cache". Select project_id and stitch via attachPlaces,
       // exactly like the list EFs (#518/#523).
       .select(
-        "id, reference_code, reserved_at, party_size, status, notes, coupon_id, created_at, project_id",
+        "id, reference_code, reserved_at, party_size, status, notes, guest_notify, coupon_id, created_at, project_id",
       )
       .single();
     if (!ins.error) {

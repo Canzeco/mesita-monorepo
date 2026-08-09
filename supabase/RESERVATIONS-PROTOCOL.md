@@ -110,6 +110,13 @@ A **console confirm** (`business-web-confirm-reservation`) seeds this same
 ladder (~10 min out, quiet-hours safe) — both confirm doors converge on the
 identical guest experience. Fresh errand = fresh ladder.
 
+**Guest notify preference (MESITA-787):** `reservations.guest_notify` is
+`call` (default) or `app`. When `app`, every a2 guest-facing errand is skipped
+(confirm, counter-offer, cancel notice, callback_retry) and the ticket is the
+notification; console confirm does not seed the ladder. Guests accept
+confirmations / venue alternatives in-app via
+`consumer-web-confirm-reservation`.
+
 ## Leg 4 · Expiry ✅
 
 `pending` 4 h past `reserved_at` → `unresolved` in the cron (never touching a

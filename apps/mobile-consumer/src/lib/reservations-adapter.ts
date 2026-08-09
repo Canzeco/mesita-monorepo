@@ -16,7 +16,13 @@ function toCardStatus(status: EFReservationRow['status']): ReservationStatus {
   return 'cancelled';
 }
 
-function noteFor(status: EFReservationRow['status']): string | undefined {
+function noteFor(
+  status: EFReservationRow['status'],
+  counterOffer: boolean,
+): string | undefined {
+  if (counterOffer) {
+    return 'The place offered other times — pick one below, or reschedule.';
+  }
   switch (status) {
     case 'pending':
       return 'Mesita is calling the place to confirm your table.';
@@ -54,7 +60,37 @@ function formatReservationWhen(iso: string): string {
   return `${weekday} ${month} ${day} · ${hours}:${minutes} ${ampm}`;
 }
 
+function normalizeClientAlternatives(
+  raw: EFReservationRow['alternatives'],
+): ReservationItem['alternatives'] {
+  if (!Array.isArray(raw)) return undefined;
+  const out: NonNullable<ReservationItem['alternatives']> = [];
+  for (const item of raw.slice(0, 8)) {
+    if (typeof item === 'string') {
+      const t = /\b([01]?\d|2[0-3]):([0-5]\d)\b/.exec(item);
+      out.push(
+        t
+          ? { time: `${t[1].padStart(2, '0')}:${t[2]}`, note: item.trim() }
+          : { time: '', note: item.trim() },
+      );
+      continue;
+    }
+    if (item && typeof item === 'object') {
+      const time = typeof item.time === 'string' ? item.time : '';
+      const date = typeof item.date === 'string' ? item.date : undefined;
+      const note = typeof item.note === 'string' ? item.note : undefined;
+      if (time || note) {
+        out.push({ time, ...(date ? { date } : {}), ...(note ? { note } : {}) });
+      }
+    }
+  }
+  return out.length ? out : undefined;
+}
+
 export function toReservationItem(row: EFReservationRow): ReservationItem {
+  const alternatives = normalizeClientAlternatives(row.alternatives);
+  const counterOffer =
+    row.status === 'pending' && (alternatives?.length ?? 0) > 0;
   return {
     id: row.id,
     projectId: row.place?.id ?? '',
@@ -63,7 +99,11 @@ export function toReservationItem(row: EFReservationRow): ReservationItem {
     when: formatReservationWhen(row.reserved_at),
     partySize: row.party_size,
     status: toCardStatus(row.status),
-    statusNote: noteFor(row.status),
+    statusNote: noteFor(row.status, counterOffer),
+    guestNotify: row.guest_notify === 'app' ? 'app' : 'call',
+    guestConfirmedAt: row.guest_confirmed_at ?? null,
+    alternatives,
+    dbStatus: row.status,
     // linkedCoupon intentionally omitted: the list EF exposes the coupon by
     // id only, and cross-looking it up is out of scope for MESITA-715.
   };

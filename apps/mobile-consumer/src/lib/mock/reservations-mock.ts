@@ -16,6 +16,12 @@ export type LinkedCouponSummary = {
   state: "active" | "pending";
 };
 
+export type ReservationAlternative = {
+  time: string;
+  date?: string;
+  note?: string;
+};
+
 export type ReservationItem = {
   id: string;
   projectId: string;
@@ -26,4 +32,10 @@ export type ReservationItem = {
   status: ReservationStatus;
   statusNote?: string;
   linkedCoupon?: LinkedCouponSummary;
+  /** MESITA-787 */
+  guestNotify?: "call" | "app";
+  guestConfirmedAt?: string | null;
+  alternatives?: ReservationAlternative[];
+  /** Raw DB status — needed for counter-offer accept gating. */
+  dbStatus?: "pending" | "confirmed" | "declined" | "no_show" | "cancelled" | "unreachable" | "unresolved";
 };

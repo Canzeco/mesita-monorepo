@@ -142,6 +142,7 @@ export function ReservationSheet({
   const [timeChoice, setTimeChoice] = useState<string | null>(null);
   const [party, setParty] = useState(DEFAULT_PARTY);
   const [notes, setNotes] = useState('');
+  const [guestNotify, setGuestNotify] = useState<'call' | 'app'>('call');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState(false);
@@ -243,6 +244,7 @@ export function ReservationSheet({
           reservedAt,
           partySize: party,
           notes,
+          guestNotify,
         });
       }
       setDone(true);
@@ -449,6 +451,42 @@ export function ReservationSheet({
             maxLength={280}
           />
 
+          {!rescheduling ? (
+            <View>
+              <Text className="mb-2 text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
+                When Mesita has news
+              </Text>
+              <View className="flex-row gap-2 rounded-2xl border border-border p-1">
+                {(
+                  [
+                    ['call', 'Call me'],
+                    ['app', 'App only'],
+                  ] as const
+                ).map(([key, label]) => (
+                  <Pressable
+                    key={key}
+                    onPress={() => setGuestNotify(key)}
+                    className={
+                      guestNotify === key
+                        ? 'flex-1 items-center rounded-xl bg-primary px-3 py-2'
+                        : 'flex-1 items-center rounded-xl px-3 py-2'
+                    }
+                  >
+                    <Text
+                      className={
+                        guestNotify === key
+                          ? 'text-sm font-semibold text-primary-foreground'
+                          : 'text-sm font-medium text-muted-foreground'
+                      }
+                    >
+                      {label}
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
+            </View>
+          ) : null}
+
           {error ? (
             <View className="rounded-xl bg-red-500/10 px-3 py-2">
               <Text className="text-[13px] font-medium text-red-600">
@@ -469,7 +507,9 @@ export function ReservationSheet({
               : submitLabel}
           </Button>
           <Text className="text-center text-[11px] text-muted-foreground">
-            Mesita&apos;s AI agent calls the place to book — you&apos;ll be notified.
+            {guestNotify === 'app'
+              ? "Mesita's AI agent calls the place to book — you'll see the answer here."
+              : "Mesita's AI agent calls the place to book — then calls you to confirm."}
           </Text>
         </>
       )}

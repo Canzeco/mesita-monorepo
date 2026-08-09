@@ -19,6 +19,14 @@ type CreatedReservation = {
   call_triggered?: boolean;
 };
 
+export type GuestNotify = 'call' | 'app';
+
+export type PlaceAlternative = {
+  time: string;
+  date?: string;
+  note?: string;
+};
+
 export function apiCreateReservation(args: {
   /** places.id == projects.id — the place being booked. */
   projectId: string;
@@ -26,6 +34,8 @@ export function apiCreateReservation(args: {
   reservedAt: string;
   partySize: number;
   notes?: string;
+  /** MESITA-787 — default "call". */
+  guestNotify?: GuestNotify;
 }): Promise<CreatedReservation> {
   const notes = args.notes?.trim();
   return invokeEF<CreatedReservation>(
@@ -36,8 +46,27 @@ export function apiCreateReservation(args: {
       reserved_at: args.reservedAt,
       party_size: args.partySize,
       ...(notes ? { notes } : {}),
+      guest_notify: args.guestNotify === 'app' ? 'app' : 'call',
     },
     "Couldn't create the reservation",
+  );
+}
+
+/** Accept confirmation or a venue alternative without an a2 call (MESITA-787). */
+export function apiConfirmReservation(args: {
+  reservationId: string;
+  newDate?: string;
+  newTime?: string;
+}): Promise<{ guest_confirmed: boolean; confirmed_on_the_spot?: boolean }> {
+  return invokeEF<{ guest_confirmed: boolean; confirmed_on_the_spot?: boolean }>(
+    supabase,
+    'consumer-web-confirm-reservation',
+    {
+      reservation_id: args.reservationId,
+      ...(args.newDate ? { new_date: args.newDate } : {}),
+      ...(args.newTime ? { new_time: args.newTime } : {}),
+    },
+    "Couldn't confirm the reservation",
   );
 }
 
@@ -66,6 +95,10 @@ export type EFReservationRow = {
   cancelled_at: string | null;
   coupon_id: string | null;
   created_at: string;
+  /** MESITA-787 — whether a2 may ring the guest. */
+  guest_notify?: GuestNotify | null;
+  guest_confirmed_at?: string | null;
+  alternatives?: PlaceAlternative[] | string[] | null;
   place: {
     id: string;
     slug: string | null;

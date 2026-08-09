@@ -187,7 +187,7 @@ async function runTool(
     case "create_reservation": {
       const parsed = parseReservationArgs(args);
       if (!parsed.ok) return toolError(parsed.error);
-      const { placeId, reservedAt, partySize, notes } = parsed;
+      const { placeId, reservedAt, partySize, notes, guestNotify } = parsed;
 
       const { data: consumerRow } = await admin
         .from("consumers")
@@ -244,11 +244,12 @@ async function runTool(
             reserved_at: reservedAt.toISOString(),
             party_size: partySize,
             notes,
+            guest_notify: guestNotify,
             status: "pending",
           })
           // No places embed — two-hop FK (_shared/reservation-places.ts).
           .select(
-            "id, reference_code, reserved_at, party_size, status, notes, coupon_id, created_at, project_id",
+            "id, reference_code, reserved_at, party_size, status, notes, guest_notify, coupon_id, created_at, project_id",
           )
           .single();
         if (!ins.error) {
