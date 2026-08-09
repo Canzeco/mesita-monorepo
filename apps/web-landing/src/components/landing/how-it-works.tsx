@@ -16,7 +16,7 @@ function HowItWorks() {
     {
       n: "2",
       title: "Reserva",
-      body: "Elige hora y personas. Nuestro asistente llama, manda mensaje o correo al lugar y te confirma la mesa en minutos.",
+      body: "Elige hora y personas. Nuestro asistente llama al lugar por teléfono y te confirma la mesa en minutos.",
       Icon: CalendarCheck,
     },
     {

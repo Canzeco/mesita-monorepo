@@ -14,7 +14,7 @@ function FAQ() {
     },
     {
       q: "¿Puedo reservar en cualquier lugar?",
-      a: "Sí — el asistente reserva en todos los lugares de la ciudad, no solo en los verificados. Pon hora y personas y contacta al lugar por teléfono, WhatsApp, Instagram o correo, por donde conteste.",
+      a: "Sí — el asistente reserva en todos los lugares de la ciudad, no solo en los verificados. Pon hora y personas; Mesita llama al lugar por teléfono y te confirma la mesa.",
     },
     {
       q: "Tengo un lugar — ¿cuánto cuesta?",
