@@ -2,19 +2,21 @@
 //
 // Naming: caller-verb-words. Caller = admin, verb = update, words = rewards-config.
 //
-// Writes the v8 NORMALIZED reward rules (MESITA-873): 40 rows, one per
-// (strategy × class × action), upserted in ONE call, plus the universal cap
-// on the app_settings singleton (one platform constant, not a rule).
+// v10 (MESITA-991): the payload is the ADDITIVE Promos config — base
+// (strategy × class) + bonuses (welcome / mesita / story with a nullable
+// Influencer override / google) + the default cap. It is written as the
+// `v10` key on app_settings.rewards_config, MERGE-preserving the blob's other
+// keys. A WHOLE-BLOB write: the caller always sends the complete config and
+// normalizePromosV10 always returns a complete one.
 //
-// A WHOLE-TABLE write: the payout table is one coherent thing, so the caller
-// always sends every rule and normalizeRewards always returns the complete
-// 40 — a partial body can never leave the table half-written. Every cell is
-// snapped to the 5% grid (5–70%, MESITA-866/872) and the cap onto its
-// categorical ladder, so a malformed price can never land.
+// Until the engine flips additive (MESITA-992), the LIVE bill still prices
+// best-of from public.reward_rules — so every v10 save also derives and
+// upserts those 40 cells (cell = base + that action's bonus, clamped to 70).
+// The legacy v13 grid/actions keys keep receiving the same numbers as the
+// engine's empty-table fallback. See 20260804170553_reward_rules_normalized.sql.
 //
-// The legacy blob keeps receiving the same numbers in v13 shape so the engine
-// has something to fall back to if the rules table is ever empty. See
-// 20260804170553_reward_rules_normalized.sql.
+// A legacy {rules, cap} body (older client mid-deploy) still writes through
+// the v8 path unchanged — delete that path with MESITA-992.
 //
 // Auth: caller's JWT email must be in public.super_admins.
 
@@ -27,6 +29,11 @@ import {
   requireSuperAdmin,
 } from "../_shared/auth.ts";
 import { normalizeRewards, type RewardRule } from "./rewards-config-normalize.ts";
+import {
+  legacyRulesFromV10,
+  normalizePromosV10,
+  type PromosConfigV10,
+} from "./promos-v10-normalize.ts";
 
 // Mirror the rules into the v13 blob shape. Belt and braces: loadRewardsGrid
 // prefers the rules table, and only falls back here if that read ever comes
@@ -64,22 +71,41 @@ Deno.serve(async (req) => {
   const saRes = await requireSuperAdmin(admin, authRes.user);
   if (!saRes.ok) return saRes.response;
 
-  // Accept the payload at the top level; `config` is still read as a wrapper
-  // so an older client mid-deploy doesn't 400.
   const bodyRes = await readJson<{ rules?: unknown; cap?: unknown; config?: unknown }>(req);
   if (!bodyRes.ok) return bodyRes.response;
-  const payload = bodyRes.body.rules !== undefined || bodyRes.body.cap !== undefined
-    ? bodyRes.body
-    : bodyRes.body.config;
 
-  const norm = normalizeRewards(payload);
-  if (!norm.ok) return jsonError(norm.error, 400);
+  // v10 body: {config: {version: 10, base, bonuses, cap}}. Anything else
+  // falls through to the legacy v8 {rules, cap} path.
+  const rawConfig = bodyRes.body.config;
+  const isV10 = !!rawConfig && typeof rawConfig === "object" &&
+    !Array.isArray(rawConfig) &&
+    (rawConfig as Record<string, unknown>).version === 10;
+
+  let rules: RewardRule[];
+  let cap: number;
+  let v10Config: PromosConfigV10 | null = null;
+
+  if (isV10) {
+    const norm = normalizePromosV10(rawConfig);
+    if (!norm.ok) return jsonError(norm.error, 400);
+    v10Config = norm.value;
+    rules = legacyRulesFromV10(norm.value);
+    cap = norm.value.cap;
+  } else {
+    const payload = bodyRes.body.rules !== undefined || bodyRes.body.cap !== undefined
+      ? bodyRes.body
+      : bodyRes.body.config;
+    const norm = normalizeRewards(payload);
+    if (!norm.ok) return jsonError(norm.error, 400);
+    rules = norm.value.rules;
+    cap = norm.value.cap;
+  }
 
   const now = new Date().toISOString();
   const upsert = await admin
     .from("reward_rules")
     .upsert(
-      norm.value.rules.map((r) => ({ ...r, updated_at: now, updated_by: userId })),
+      rules.map((r) => ({ ...r, updated_at: now, updated_by: userId })),
       { onConflict: "strategy,class,action" },
     )
     .select("strategy, class, action, discount_percent");
@@ -87,10 +113,28 @@ Deno.serve(async (req) => {
     return jsonError(`reward_rules_update: ${upsert.error.message}`, 500);
   }
 
+  // MERGE-preserve the blob: the v13 grid/actions fallback and the cap are
+  // refreshed, the v10 key is written only on a v10 save, and any other keys
+  // riding the blob survive untouched.
+  const current = await admin
+    .from("app_settings")
+    .select("rewards_config")
+    .eq("id", 1)
+    .maybeSingle();
+  if (current.error) {
+    return jsonError(`rewards_config_read: ${current.error.message}`, 500);
+  }
+  const existing =
+    (current.data?.rewards_config ?? {}) as Record<string, unknown>;
+
   const settings = await admin
     .from("app_settings")
     .update({
-      rewards_config: blobFromRules(norm.value.rules, norm.value.cap),
+      rewards_config: {
+        ...existing,
+        ...blobFromRules(rules, cap),
+        ...(v10Config ? { v10: v10Config } : {}),
+      },
       updated_by: userId,
     })
     .eq("id", 1)
@@ -101,8 +145,9 @@ Deno.serve(async (req) => {
   }
 
   return jsonOk({
-    rules: upsert.data ?? norm.value.rules,
-    cap: norm.value.cap,
+    config: v10Config,
+    rules: upsert.data ?? rules,
+    cap,
     updatedAt: settings.data.updated_at,
   });
 });

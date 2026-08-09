@@ -26,18 +26,18 @@ import {
   type StrategyId,
 } from "@/lib/business/strategies";
 import { planForSubscription } from "@/lib/business/plans";
-import { getRewardsConfig } from "@/app/(app)/rewards-config/actions";
+import { getPromosConfig } from "@/app/(app)/rewards-config/actions";
 import {
   ACTION_KEYS,
   ACTION_META,
   CLASS_KEYS,
   CLASS_META,
-  DEFAULT_CONFIG,
-  rateFromRules,
+  DEFAULT_PROMOS,
+  totalFor,
   type ActionKey,
   type ClassKey,
-  type RewardsConfig,
-} from "@/app/(app)/rewards-config/catalog";
+  type PromosConfig,
+} from "@/app/(app)/rewards-config/promos";
 import { setPlacePlan, setPlaceStrategy, type AdminPlace } from "../actions";
 import { ConfirmDialog, SectionCard } from "../ui";
 import { ErrorNote } from "@/components/ErrorNote";
@@ -187,17 +187,18 @@ export function PromosSection({
   const [dropOpen, setDropOpen] = useState(false);
   const [dropBusy, setDropBusy] = useState(false);
   const [dropError, setDropError] = useState<string | null>(null);
-  // The v7 matrix, read LIVE from rewards_config (rates are never cached in
-  // code — MESITA-859). Identity defaults render until the fetch lands, so
-  // the cards never flash empty; on failure they keep the defaults and the
-  // grid carries a quiet "showing defaults" note.
-  const [matrix, setMatrix] = useState<RewardsConfig>(DEFAULT_CONFIG);
+  // The promos matrix, read LIVE from rewards_config (rates are never cached
+  // in code — MESITA-859), v10 shape since MESITA-991. Identity defaults
+  // render until the fetch lands, so the cards never flash empty; on failure
+  // they keep the defaults and the grid carries a quiet "showing defaults"
+  // note.
+  const [matrix, setMatrix] = useState<PromosConfig>(DEFAULT_PROMOS);
   const [matrixFailed, setMatrixFailed] = useState(false);
 
   useEffect(() => {
     let active = true;
     (async () => {
-      const r = await getRewardsConfig();
+      const r = await getPromosConfig();
       if (!active) return;
       if (r.ok) setMatrix(r.config);
       else setMatrixFailed(true);
@@ -805,7 +806,7 @@ function StrategyCard({
   onOpen,
 }: {
   strategy: Strategy;
-  matrix: RewardsConfig;
+  matrix: PromosConfig;
   currency: string | null;
   capMxn: DiscountCapMxn;
   state: CardState;
@@ -944,7 +945,7 @@ function ProductModal({
   onClose,
 }: {
   strategy: Strategy;
-  matrix: RewardsConfig;
+  matrix: PromosConfig;
   currency: string | null;
   capMxn: DiscountCapMxn;
   state: CardState;
@@ -1209,7 +1210,7 @@ function RewardsMatrix({
   matrix,
   strategy,
 }: {
-  matrix: RewardsConfig;
+  matrix: PromosConfig;
   strategy: StrategyId;
 }) {
   const cell = (v: number) => (v > 0 ? `${v}%` : "—");
@@ -1257,7 +1258,7 @@ function RewardsMatrix({
               >
                 {!paidStrategy
                   ? "—"
-                  : cell(rateFromRules(matrix.rules, paidStrategy, cls, a))}
+                  : cell(Math.min(70, totalFor(matrix, paidStrategy, cls, a)))}
               </span>
             ))}
           </div>

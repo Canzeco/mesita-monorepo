@@ -6,7 +6,7 @@ import { Instagram, Loader2, Sparkles, UserMinus, UserPlus } from "lucide-react"
 import { ErrorNote } from "@/components/ErrorNote";
 import { formatAbsoluteUtc } from "@/lib/format";
 import { SectionCard } from "../enricher-config/atlas-ui";
-import { CLASS_META } from "../rewards-config/catalog";
+import { CLASS_META } from "../rewards-config/promos";
 import { setAura, type AuraMember } from "./actions";
 
 // The Aura roster. One card, one list: who is in, plus the two writes that
