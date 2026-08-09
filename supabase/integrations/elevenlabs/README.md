@@ -12,10 +12,10 @@ below); every other page (Tools, Workflow, Knowledge Base) is repo-owned.
 
 | Key | Agent | Direction |
 | --- | --- | --- |
-| a1 | `eleven-a1 (es-mx) · c2b outbound booker` | calls the venue for the guest |
+| a1 | `eleven-a1 (es-mx) · c2b outbound booker` | calls the place for the guest |
 | a2 | `eleven-a2 (es-mx) · b2c outbound confirmer` | calls the guest back |
 | a3 | `eleven-a3 (es-mx) · consumer inbound` | guest phones Mesita (support) |
-| a4 | `eleven-a4 (es-mx) · business inbound` | venue phones Mesita (support) |
+| a4 | `eleven-a4 (es-mx) · business inbound` | place phones Mesita (support) |
 
 Live agent ids, `toolSecret`, and KB doc ids live in
 `app_settings.agents_config` (`agents.a1..a4`, `knowledgeDocIds`) — the call
@@ -55,7 +55,7 @@ pg_net with the vault `scheduler_service_role_key`, body `{ "mode": … }`.
 - `prune` — delete non-fleet agents (never touches fleet tools).
 
 Per-call dynamic variables ride from `_shared/reservation-legs.ts`
-(venue/guest/date/time/party, `reference_code`, `call_context`,
+(place/guest/date/time/party, `reference_code`, `call_context`,
 `venue_alternatives`, …); inbound identity is bound to `system__caller_id`.
 **Renaming an agent, a variable, or the number on one side breaks the other —
 change repo and workspace in the same session.**
@@ -69,11 +69,11 @@ change repo and workspace in the same session.**
 - Twilio **voice geo-permissions must allow Mexico** (low-risk) or every +52
   dial fails at 0s with a "failed" conversation and no Twilio call record.
 - **Two lines, one per audience** — an imported number binds to exactly ONE
-  inbound agent, so a3 (guests) and a4 (venues) cannot share one. The
-  venue-facing line is `ELEVENLABS_FROM_NUMBER` (default `+1 628 296 0710`,
+  inbound agent, so a3 (guests) and a4 (places) cannot share one. The
+  place-facing line is `ELEVENLABS_FROM_NUMBER` (default `+1 628 296 0710`,
   inbound → a4); the guest-facing line is `ELEVENLABS_CONSUMER_FROM_NUMBER`
-  (inbound → a3), and it falls back to the venue line until set. Outbound
-  pairs the same way: a1 dials venues from the venue line, a2 dials guests
+  (inbound → a3), and it falls back to the place line until set. Outbound
+  pairs the same way: a1 dials places from the place line, a2 dials guests
   from the guest line, so each side saves a different caller ID and a callback
   routes on the dialed number.
 - **Only import numbers marked `owner: elevenlabs`** in

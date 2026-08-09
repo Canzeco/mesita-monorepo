@@ -182,7 +182,7 @@ Apify/Perplexity/Firecrawl budget** — deploying/arming the cron is money-gated
     Memo Config → **Data Access** tab in the same PR; that page is the
     operator-facing mirror of this set.
 - **Reservationist** — voice reservations on ElevenLabs (config under
-  `integrations/elevenlabs`). Every timing rule — when a1 retries the venue,
+  `integrations/elevenlabs`). Every timing rule — when a1 retries the place,
   the negotiation cap, and the two legs that have **no** protocol yet (the
   guest callback and ticket expiry) — is written down in
   [`RESERVATIONS-PROTOCOL.md`](./RESERVATIONS-PROTOCOL.md). Read it before

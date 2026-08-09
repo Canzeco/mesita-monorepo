@@ -60,7 +60,7 @@ no Twilio webhook reaches an Edge Function.
    ([config.toml](supabase/config.toml) `[auth.sms.twilio]`). This is the ONLY consumer
    sign-in there is; no Edge Function is in the path.
 2. **Voice — the Reservationist.** Two ElevenLabs-owned lines, one per audience: a
-   venue-facing line (a1 dials out, a4 answers) and a guest-facing line (a2 dials out,
+   place-facing line (a1 dials out, a4 answers) and a guest-facing line (a2 dials out,
    a3 answers). An ElevenLabs number binds to ONE inbound agent, which is why they
    cannot share. Their Twilio webhooks point at ElevenLabs — never overwrite them.
 
@@ -88,7 +88,7 @@ Webhook: `stripe-webhook-handle-event` (public, signature-verified). Membership 
 
 ### ElevenLabs (post-MVP)
 
-AI voice for **phone reservations** on its own **two** Twilio lines (venue-facing + guest-facing). See [integrations/elevenlabs/README.md](integrations/elevenlabs/README.md).
+AI voice for **phone reservations** on its own **two** Twilio lines (place-facing + guest-facing). See [integrations/elevenlabs/README.md](integrations/elevenlabs/README.md).
 
 ---
 
