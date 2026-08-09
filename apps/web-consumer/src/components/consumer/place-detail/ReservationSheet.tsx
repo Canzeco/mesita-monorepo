@@ -23,12 +23,12 @@ import { parseHoursTable, resolveSlot } from "@/lib/reservation-slots";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { SHEET_BODY_CLASS, SHEET_TITLE_CLASS } from "@/lib/ui-classes";
 import { cn, guestNoun } from "@/lib/utils";
-import { MX_OFFSET, venueDateTime } from "@/lib/venue-time";
+import { MX_OFFSET, venueDateTime } from "@/lib/place-time";
 
 const DEFAULT_PARTY = 2;
 
 // MX_OFFSET (and everything else about the venue's clock) lives in
-// @/lib/venue-time — the single source of truth. The picked slot is the
+// @/lib/place-time — the single source of truth. The picked slot is the
 // venue's wall-clock, so we stamp that offset: the agent reads the time back
 // in America/Mexico_City and it matches what the guest chose.
 

@@ -30,7 +30,7 @@ import {
   SHEET_TITLE_CLASS,
 } from "@/lib/ui-classes";
 import { cn, errMsg, guestNoun } from "@/lib/utils";
-import { MX_OFFSET, venueDateTime } from "@/lib/venue-time";
+import { MX_OFFSET, venueDateTime } from "@/lib/place-time";
 
 // Action cluster for reservation detail. The two that MOVE the ticket —
 // reschedule and cancel — are live: each hits its consumer-web-* EF, and a
@@ -41,7 +41,7 @@ import { MX_OFFSET, venueDateTime } from "@/lib/venue-time";
 const DEFAULT_TIME = "20:00";
 
 // The venue's wall clock (CDMX) — the pickers speak local date + HH:mm, and
-// @/lib/venue-time owns the offset for the whole app.
+// @/lib/place-time owns the offset for the whole app.
 function localDate(iso: string | undefined): string {
   return (iso ? venueDateTime(iso)?.date : "") ?? "";
 }

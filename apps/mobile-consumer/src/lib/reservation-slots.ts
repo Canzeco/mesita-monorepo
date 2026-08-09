@@ -17,7 +17,7 @@
 //      is what lets a 23:00–02:00 venue be booked at 00:30 at all.
 //
 // Times are place-local wall clock, judged against the venue clock in
-// @/lib/venue-time. Every Mesita venue is in Mexico (Monterrey and CDMX are
+// @/lib/place-time. Every Mesita venue is in Mexico (Monterrey and CDMX are
 // both UTC-6 year round), so place-local hours and the fixed GMT-6 reservation
 // offset describe the same wall clock.
 
@@ -26,7 +26,7 @@ import {
   slotMinutes,
   venueDateIso,
   venueDateParts,
-} from '@/lib/venue-time';
+} from '@/lib/place-time';
 
 /**
  * How far ahead a table can be requested: ONE calendar month, and no more.
