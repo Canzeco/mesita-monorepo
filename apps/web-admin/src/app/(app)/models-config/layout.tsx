@@ -1,10 +1,11 @@
 import { ConfigPageLayout } from "@/components/ConfigPageLayout";
 
-// Models Config — a single flat page (no sub-tabs). A MAP of which AI model
-// each subsystem uses and where each is actually controlled. The blob on
-// app_settings.models_config is LIVE (MESITA-941) via loadModelsConfig. This
-// page owns the editable supabase.model knob; Enricher quality/preset and Memo
-// instructions stay on their own pages. See models-config/types.ts SUBSYSTEMS.
+// Models Config — a single flat page (no sub-tabs). SoT for
+// app_settings.models_config (MESITA-941 loadModelsConfig): supabase + memo
+// picks are edited here and read live by EFs; Enricher quality / Perplexity
+// Agent preset and Lineup embeddings are controlled on Enricher Config.
+// models_config.enricher.perplexity remains staged (unread —
+// atlas_perplexity_preset wins). See types.ts SUBSYSTEMS.
 export default function ModelsConfigLayout({
   children,
 }: {
@@ -14,7 +15,7 @@ export default function ModelsConfigLayout({
     <ConfigPageLayout
       eyebrow="Platform · Models"
       title="Models Config"
-      description="A map of which AI model each part of Mesita uses — and where each is controlled. The models_config blob is read live by Enricher, Memo, Lineup embeddings, suggest-promo, and recommender-rank-map. This page owns the Supabase Edge Functions general default; Enricher and Memo keep their richer knobs on their own pages."
+      description="Source of truth for models_config. Supabase and Memo model picks here are read live by Edge Functions. Enricher quality tiers and Perplexity Agent preset live on Enricher Config; Lineup embeddings are locked. Only models_config.enricher.perplexity is staged (unread)."
     >
       {children}
     </ConfigPageLayout>

@@ -10,18 +10,18 @@ import {
   DEFAULT_MODELS_CONFIG,
   OPENAI_CHAT_MODELS,
   OPENAI_MODEL_INFO,
+  PERPLEXITY_OPTIONS,
   SUBSYSTEMS,
   type ModelChip,
   type ModelsConfig,
   type ModelStatus,
 } from "./types";
 
-// Models Config — a MAP of which model each subsystem uses, not a parallel
-// control panel. Only the Supabase Edge Functions general default is edited
-// here; every other row is read-only and links to the page that actually owns
-// the richer knobs (Enricher Config quality/preset, Memo Config instructions).
-// Live binding (MESITA-941): loadModelsConfig reads the blob for Enricher,
-// Memo, Lineup embeddings, suggest-promo, and recommender-rank-map.
+// Models Config — SoT for app_settings.models_config. supabase + memo are
+// edited here and read live by EFs (MESITA-941 loadModelsConfig). Enricher /
+// Lineup cards map to Enricher Config (plus a staged note for
+// models_config.enricher.perplexity). Failed GET blocks Save (MESITA-737) —
+// never persist DEFAULTS over a live blob.
 
 const STATUS_STYLE: Record<ModelStatus, { label: string; className: string }> = {
   live: {
@@ -99,7 +99,7 @@ function ModelChips({ items }: { items: ModelChip[] }) {
   return (
     <div className="mt-4 flex flex-col gap-2">
       {items.map((m) => (
-        <div key={m.id} className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+        <div key={m.id + (m.note ?? "")} className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
           <code className="border-border bg-muted text-foreground rounded-md border px-1.5 py-0.5 font-mono text-xs">
             {m.id}
           </code>
@@ -117,11 +117,13 @@ export function ModelsConfigClient() {
   const [saved, setSaved] = useState<ModelsConfig>(DEFAULT_MODELS_CONFIG);
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const [loadBlocked, setLoadBlocked] = useState(false);
   const [ok, setOk] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  // Load the persisted blob on mount so the editable default reflects the saved
-  // value. On failure we keep DEFAULTS and a Save surfaces the real error.
+  // Load the persisted blob on mount. On failure keep DEFAULTS visible but
+  // block Save so we never overwrite a live singleton from a failed GET
+  // (MESITA-737 — same pattern as Sourcing / Memo / Lineup).
   useEffect(() => {
     let active = true;
     (async () => {
@@ -130,6 +132,11 @@ export function ModelsConfigClient() {
       if (r.ok) {
         setCfg(r.data);
         setSaved(r.data);
+        setError(null);
+        setLoadBlocked(false);
+      } else {
+        setError(r.error);
+        setLoadBlocked(true);
       }
       setLoading(false);
     })();
@@ -138,16 +145,29 @@ export function ModelsConfigClient() {
     };
   }, []);
 
-  const busy = pending || loading;
-  // Only the Supabase general default is editable here.
-  const dirty = cfg.supabase.model !== saved.supabase.model;
+  const busy = pending || loading || loadBlocked;
+  const dirty =
+    cfg.supabase.model !== saved.supabase.model ||
+    cfg.memo.model !== saved.memo.model ||
+    cfg.memo.perplexity !== saved.memo.perplexity;
 
   const setSupabaseModel = (model: string) => {
     setOk(false);
     setCfg((c) => ({ ...c, supabase: { model } }));
   };
 
+  const setMemoModel = (model: string) => {
+    setOk(false);
+    setCfg((c) => ({ ...c, memo: { ...c.memo, model } }));
+  };
+
+  const setMemoPerplexity = (perplexity: string) => {
+    setOk(false);
+    setCfg((c) => ({ ...c, memo: { ...c.memo, perplexity } }));
+  };
+
   const save = () => {
+    if (loadBlocked) return;
     setError(null);
     startTransition(async () => {
       const r = await updateModelsConfig(cfg);
@@ -163,17 +183,18 @@ export function ModelsConfigClient() {
 
   return (
     <div className="space-y-4 sm:space-y-6">
-      {/* Ownership note — why most rows are read-only. */}
+      {/* Ownership note — what is live vs staged in this blob. */}
       <div className="border-border bg-muted/40 rounded-2xl border p-4 sm:p-5">
         <p className="text-sm leading-relaxed">
           <span className="text-foreground font-medium">
-            This is a map, not a second control panel.
+            This page owns <code className="font-mono text-xs">models_config</code>.
           </span>{" "}
           <span className="text-muted-foreground">
-            Most subsystems already pick their model on their own page, and those
-            knobs are richer and (for the Enricher) live. Only the Supabase
-            general default is editable here; editing it never overrides a live
-            per-page setting.
+            Supabase and Memo picks here are read live by Edge Functions. Enricher
+            quality / Perplexity Agent preset and Lineup embeddings are controlled
+            on Enricher Config — only <code className="font-mono text-xs">enricher.perplexity</code>{" "}
+            in this blob is staged (unread; Enricher uses{" "}
+            <code className="font-mono text-xs">atlas_perplexity_preset</code>).
           </span>
         </p>
         <div className="text-muted-foreground mt-3 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs">
@@ -189,6 +210,8 @@ export function ModelsConfigClient() {
         </div>
       </div>
 
+      {error && <ErrorNote message={error} />}
+
       {SUBSYSTEMS.map((meta) => (
         <SectionCard
           key={meta.key}
@@ -197,8 +220,7 @@ export function ModelsConfigClient() {
           subtitle={meta.detail}
           status={<StatusBadge status={meta.status} />}
         >
-          {/* Model(s) up front — the id chip + what it is. */}
-          {meta.editableHere ? (
+          {meta.key === "supabase" ? (
             <ModelChips
               items={[
                 {
@@ -207,12 +229,24 @@ export function ModelsConfigClient() {
                 },
               ]}
             />
+          ) : meta.key === "memo" ? (
+            <ModelChips
+              items={[
+                {
+                  id: cfg.memo.model,
+                  note: "OpenAI brain · models_config.memo.model",
+                },
+                {
+                  id: cfg.memo.perplexity,
+                  note: "Perplexity grounding · models_config.memo.perplexity",
+                },
+              ]}
+            />
           ) : meta.models ? (
             <ModelChips items={meta.models} />
           ) : null}
 
-          {/* Editable knob (Supabase) or a link to the owning page. */}
-          {meta.editableHere ? (
+          {meta.key === "supabase" ? (
             <div className="mt-4 grid gap-3 sm:grid-cols-2">
               <label className="border-border bg-background flex flex-col gap-2 rounded-xl border p-4">
                 <span className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
@@ -229,14 +263,47 @@ export function ModelsConfigClient() {
                 />
               </label>
             </div>
+          ) : meta.key === "memo" ? (
+            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+              <label className="border-border bg-background flex flex-col gap-2 rounded-xl border p-4">
+                <span className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
+                  OpenAI model
+                </span>
+                <Select
+                  value={cfg.memo.model}
+                  options={OPENAI_CHAT_MODELS}
+                  disabled={busy}
+                  onChange={setMemoModel}
+                  labelFor={(id) =>
+                    OPENAI_MODEL_INFO[id] ? `${id} — ${OPENAI_MODEL_INFO[id]}` : id
+                  }
+                />
+              </label>
+              <label className="border-border bg-background flex flex-col gap-2 rounded-xl border p-4">
+                <span className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
+                  Perplexity model
+                </span>
+                <Select
+                  value={cfg.memo.perplexity}
+                  options={PERPLEXITY_OPTIONS}
+                  disabled={busy}
+                  onChange={setMemoPerplexity}
+                />
+              </label>
+            </div>
           ) : meta.owner ? (
             <OwnerLink label={meta.owner.label} href={meta.owner.href} />
           ) : null}
         </SectionCard>
       ))}
 
-      <SaveRow pending={pending} dirty={dirty} ok={ok} onClick={save} />
-      {error && <ErrorNote message={error} />}
+      <SaveRow
+        pending={pending}
+        dirty={dirty}
+        ok={ok}
+        onClick={save}
+        loadError={loadBlocked ? (error ?? "Failed to load Models config") : null}
+      />
     </div>
   );
 }

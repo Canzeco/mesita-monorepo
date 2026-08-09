@@ -305,9 +305,10 @@ export const CHANNELS: Channel[] = [
   },
 ];
 
-// Must match EF `_shared/sourcing.ts` DEFAULT_POLICY (and live
-// app_settings.sourcing_config). Used as the pre-load placeholder and as the
-// fallback if the config read fails.
+// Fail-closed placeholder / coerce seed — must match live app_settings +
+// `_shared/sourcing.ts` DEFAULT_POLICY (shipped code > historical migration
+// seed). Used as the pre-load placeholder and as the fallback if the config
+// read fails. consumer_search minRating is 1★ (not the old migration 3.5).
 export const DEFAULT_CONFIG: SourcingConfig = {
   admin_search: { enabled: true, families: [...ALL_FAMILY_KEYS], minRating: 0, minReviews: 0 },
   admin_add: { enabled: true, families: [...ALL_FAMILY_KEYS], minRating: 0, minReviews: 0 },

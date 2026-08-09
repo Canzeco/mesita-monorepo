@@ -9,26 +9,33 @@
 export type MemoConfig = {
   greeting: string;
   instructions: string;
-  // OpenAI is Memo's brain (intent + orchestration + prose).
+  // Staged — memo_provider is unread (serving path is OpenAI-fixed).
   provider: "openai";
+  // Legacy fallback behind models_config.memo.model (Models Config).
   openaiModel: string;
-  // Perplexity is the OPTIONAL web-grounding leg (live editorial color +
-  // citations). Off by default — Google Places + the catalog do place
-  // grounding. When on, Memo calls this Perplexity model for web color.
+  // Staged — memo_web_grounding unread; Perplexity is bound via
+  // models_config.memo.perplexity, not this switch.
   webGrounding: boolean;
+  // Staged — live pick is models_config.memo.perplexity (Models Config).
   perplexityModel: string;
   updatedAt?: string;
 };
 
 /** Pre-load / failed-load placeholder — never Save this over a failed GET (MESITA-737). */
 export const DEFAULT_MEMO_CONFIG: MemoConfig = {
+  // Staged only — consumers hardcode the Ask AI opener in ask-ai-thread.ts
+  // (web + mobile). Keep this aligned with that constant for operator honesty;
+  // changing it here does not change what users see until consumers are wired.
   greeting:
     "Hola, soy Don Memo, la IA de Mesita. Dime qué se te antoja — prueba “rooftop date tonight” o “tacos al pastor”.",
   instructions:
     "You are Memo, Mesita's warm, sharp local concierge for dining, nightlife, cafés, and experiences — deep taste for Monterrey, able to help anywhere. Reply in the user's language, plain text, 2–4 sentences, opinionated and specific. Be time-aware: prefer spots open and appropriate for the local hour. When the user is place-seeking, name the real places on the shortlist; for general questions just answer conversationally.",
+  // Staged — no serving path branches on memo_provider today (OpenAI is fixed).
   provider: "openai",
   openaiModel: "gpt-4o-mini",
+  // Staged — Perplexity is not optional on the serving path.
   webGrounding: false,
+  // Staged — live pick is models_config.memo.perplexity (Models Config).
   perplexityModel: "sonar-pro",
 };
 

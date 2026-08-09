@@ -6,9 +6,10 @@
 //
 // Backed by admin-web-get-memo-config / admin-web-update-memo-config, which read
 // and write the memo_* columns on the public.app_settings singleton. Memo's
-// system prompt (instructions) is consumed live by consumer-web-ask-memo; the
-// model knobs are persisted for the forthcoming Memo model rebuild. No client
-// ever touches the DB.
+// system prompt (instructions) is consumed live by consumer-web-ask-memo. Live
+// model picks come from models_config.memo (Models Config) via get-memo-config;
+// greeting / provider / webGrounding / perplexityModel on this page are staged.
+// No client ever touches the DB.
 //
 // Types + model catalogs live in ./types (not here) — "use server" modules may
 // only export async functions to the client.

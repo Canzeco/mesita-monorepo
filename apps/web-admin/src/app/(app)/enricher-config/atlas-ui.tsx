@@ -253,7 +253,14 @@ export function SaveRow({
 
 
 // Shared economy/standard/high segmented picker used by the calculator and the
-// inline cost card.
+// inline cost card. High is identical to Standard in enrich-config.ts
+// (both gpt-4o) — label it so the calculator doesn't imply a third tier.
+const QUALITY_PICKER_LABEL: Record<SynthesisQuality, string> = {
+  economy: "economy",
+  standard: "standard",
+  high: "high (=std)",
+};
+
 export function QualityPicker({
   value,
   onChange,
@@ -268,13 +275,14 @@ export function QualityPicker({
           key={q}
           type="button"
           onClick={() => onChange(q)}
-          className={`h-8 flex-1 rounded-lg border px-2 text-xs font-semibold capitalize transition ${
+          title={q === "high" ? "Identical to Standard (gpt-4o) — no-op tier" : undefined}
+          className={`h-8 flex-1 rounded-lg border px-2 text-xs font-semibold transition ${
             value === q
               ? "border-foreground bg-foreground text-background"
               : "border-border bg-card hover:border-foreground/40"
           }`}
         >
-          {q}
+          {QUALITY_PICKER_LABEL[q]}
         </button>
       ))}
     </div>

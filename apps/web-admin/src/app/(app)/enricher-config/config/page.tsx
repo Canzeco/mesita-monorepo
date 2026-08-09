@@ -23,6 +23,7 @@ export default async function EnricherConfigPage() {
       initialSynthesisQuality={result.data.atlasSynthesisQuality}
       initialVisionQuality={result.data.atlasVisionQuality ?? "economy"}
       initialPerplexityPreset={result.data.atlasPerplexityPreset ?? "pro-search"}
+      initialPerRunCostCapUsd={result.data.atlasPerRunCostCapUsd ?? 1}
       initialDiscoverWebsiteN={result.data.atlasDiscoverWebsiteN}
       initialDiscoverInstagramN={result.data.atlasDiscoverInstagramN}
       initialDiscoverFacebookN={result.data.atlasDiscoverFacebookN}

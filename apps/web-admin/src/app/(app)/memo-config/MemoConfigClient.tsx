@@ -12,25 +12,29 @@ import {
 } from "./types";
 
 // Memo's config surface — kept deliberately small: the persona prose and the
-// models. Server-seeded from admin-web-get-memo-config (app_settings.memo_*);
-// a failed load keeps DEFAULT_MEMO_CONFIG visible but blocks Save (MESITA-737).
+// legacy model fields. Server-seeded from admin-web-get-memo-config
+// (app_settings.memo_*); a failed load keeps DEFAULT_MEMO_CONFIG visible but
+// blocks Save (MESITA-737).
 //
 // Enforcement is stated PER KNOB via <KnobStatus>, not in card prose (MESITA-738).
-// Verified against consumer-web-ask-memo on 2026-08-07:
+// Ownership: live model picks are Models Config → models_config.memo.* →
+// supabase-edgefunc-get-memo-config. This page owns instructions; greeting /
+// provider / webGrounding / perplexityModel are staged. Verified 2026-08-09:
 //
 //   instructions    enforced  — resolveMemoSystemPrompt(cfg.instructions) is the
 //                               live persona on every turn
-//   greeting        not wired (Ask AI parked) — client constants mirror DB/Product
-//                   Rules §E; wire a consumer fetch when Ask AI unparks. The greeting the
-//                               user sees is a client thread constant
-//                               (apps/web-consumer/.../ask-ai-thread.ts)
+//   greeting        not wired (Ask AI parked) — consumers hardcode Ask AI opener
+//                               in ask-ai-thread.ts (web + mobile); memo_greeting
+//                               is unread by the serving path. Client constants
+//                               mirror DB/Product Rules §E until fetch is wired.
+//   provider        not wired — memo_provider is persisted but unused (OpenAI
+//                               is fixed on the serving path)
 //   openaiModel     fallback  — models_config.memo.model wins; memo_openai_model
 //                               is only read when that is unset
-//   webGrounding    not wired — the Perplexity leg is not optional. It IS Memo's
-//                               answer engine (step 2 of 2) and runs on every
-//                               turn regardless of this switch
-//   perplexityModel not wired — the live model comes from
-//                               models_config.memo.perplexity, not this field
+//   webGrounding    not wired — memo_web_grounding unread; Perplexity runs from
+//                               models_config.memo.perplexity regardless
+//   perplexityModel not wired — live pick is models_config.memo.perplexity
+//                               (Models Config), not memo_perplexity_model
 //
 // When one of these gets wired, change its chip in the same PR — a stale chip is
 // the exact failure this replaced.
@@ -152,10 +156,10 @@ export function MemoConfigClient({
           <div className="grid gap-2">
             <KnobStatus
               kind="not-wired"
-              reason="Ask AI parked — web/mobile client constants mirror this string (Product Rules §E); fetch live on unpark"
+              reason="staged — Ask AI opener is hardcoded in web/mobile ask-ai-thread.ts (Ask AI parked; Product Rules §E)"
             />
             <TextAreaField
-              label="Greeting"
+              label="Greeting (staged)"
               value={cfg.greeting}
               disabled={busy}
               onChange={(v) => set("greeting", v)}
@@ -173,18 +177,21 @@ export function MemoConfigClient({
         </div>
       </SectionCard>
 
-      {/* Models */}
+      {/* Models — legacy fields; live picks are Models Config */}
       <SectionCard
         icon={<Bot className="text-secondary h-4 w-4" />}
-        title="Models"
-        subtitle="Perplexity is Memo's answer engine, not an optional add-on — it runs on every turn. The live model picks come from Models Config; these fields are legacy."
+        title="Models (legacy fields)"
+        subtitle="Live OpenAI + Perplexity picks come from Models Config → models_config.memo → get-memo-config. Fields below persist on memo_* columns but are fallback or unread on the serving path. Edit live models on Models Config."
       >
         <div className="mt-4 grid gap-3 sm:grid-cols-2">
           <Field
             label={
               <>
                 OpenAI model
-                <KnobStatus kind="fallback" reason="models_config.memo.model wins when set" />
+                <KnobStatus
+                  kind="fallback"
+                  reason="live pick is models_config.memo.model (Models Config)"
+                />
               </>
             }
           >
@@ -198,10 +205,28 @@ export function MemoConfigClient({
           <Field
             label={
               <>
+                Provider
+                <KnobStatus
+                  kind="not-wired"
+                  reason="memo_provider unread — serving path is OpenAI-fixed"
+                />
+              </>
+            }
+          >
+            <Select
+              value={cfg.provider}
+              options={["openai"] as const}
+              disabled={busy}
+              onChange={(v) => set("provider", v)}
+            />
+          </Field>
+          <Field
+            label={
+              <>
                 Web grounding (Perplexity)
                 <KnobStatus
                   kind="not-wired"
-                  reason="Perplexity answers every turn regardless of this switch"
+                  reason="memo_web_grounding unread — Perplexity runs from models_config.memo.perplexity"
                 />
               </>
             }
@@ -218,7 +243,10 @@ export function MemoConfigClient({
               <>
                 <Globe className="text-muted-foreground h-4 w-4" />
                 Perplexity model
-                <KnobStatus kind="not-wired" reason="live pick is models_config.memo.perplexity" />
+                <KnobStatus
+                  kind="not-wired"
+                  reason="live pick is models_config.memo.perplexity (Models Config)"
+                />
               </>
             }
           >
