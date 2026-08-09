@@ -12,8 +12,11 @@ export type AiMessage = {
   predictions?: PlacePrediction[];
 };
 
+// Product Rules §E canonical Don Memo greeting (Spanish-first AI voice).
+// Must stay in lockstep with app_settings.memo_greeting + admin Memo Config
+// DEFAULT until Ask AI unparks and clients fetch the admin value live.
 const GREETING =
-  "Hello 👋 I'm Memo, the AI of Mesita. Tell me what you're craving — try “rooftop date tonight” or just “tacos al pastor”.";
+  "Hola, soy Don Memo, la IA de Mesita. Dime qué se te antoja — prueba “rooftop date tonight” o “tacos al pastor”.";
 
 const AI_ERROR =
   "Hmm, my line dropped for a second — give it another try in a moment.";

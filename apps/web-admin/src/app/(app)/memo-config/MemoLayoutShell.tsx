@@ -9,7 +9,7 @@ import { MEMO_SUBROUTES } from "./nav";
 // Enricher / Lineup config shells; the description switches per active tab.
 const SUBPAGE_DESCRIPTION: Record<string, string> = {
   "/memo-config/config":
-    "Memo is Mesita's consumer AI concierge (the Ask AI tab on Home, powered by consumer-web-ask-memo). Tune its persona and models. Only the system prompt (instructions) is read live today; the greeting and model knobs persist ahead of the Memo model rebuild.",
+    "Memo is Mesita's consumer AI concierge (Home Ask AI is parked; engine + Playground live via consumer-web-ask-memo / admin-web-ask-memo). Instructions are read live; models come from Models Config; greeting is mirrored into parked client constants until Ask AI unparks.",
   "/memo-config/playground":
     "Chat with Memo's reasoning agent as a real consumer, a mock persona, or a guest — pick who and where, start a session, and talk turn-by-turn. Every reply expands into Memo's full trace: the RAG-first Lineup recall, each OpenAI reasoning round, and every tool call (Lineup · Perplexity · Mesita catalog). Reads the saved persona — save Config edits first.",
   "/memo-config/data-access":

@@ -151,7 +151,7 @@ export function MemoConfigClient({
           <div className="grid gap-2">
             <KnobStatus
               kind="not-wired"
-              reason="no consumer reads this — the greeting users see is a client constant"
+              reason="Ask AI parked — web/mobile client constants mirror this string (Product Rules §E); fetch live on unpark"
             />
             <TextAreaField
               label="Greeting"
