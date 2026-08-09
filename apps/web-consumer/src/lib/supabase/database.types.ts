@@ -12,31 +12,6 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "14.5"
   }
-  graphql_public: {
-    Tables: {
-      [_ in never]: never
-    }
-    Views: {
-      [_ in never]: never
-    }
-    Functions: {
-      graphql: {
-        Args: {
-          extensions?: Json
-          operationName?: string
-          query?: string
-          variables?: Json
-        }
-        Returns: Json
-      }
-    }
-    Enums: {
-      [_ in never]: never
-    }
-    CompositeTypes: {
-      [_ in never]: never
-    }
-  }
   public: {
     Tables: {
       account_invites: {
@@ -528,6 +503,8 @@ export type Database = {
           full_name: string | null
           id: string
           instagram_handle: string | null
+          invitation_class_key: string | null
+          invitation_granted_at: string | null
           last_name: string | null
           phone: string | null
           profile_public: boolean
@@ -551,6 +528,8 @@ export type Database = {
           full_name?: string | null
           id: string
           instagram_handle?: string | null
+          invitation_class_key?: string | null
+          invitation_granted_at?: string | null
           last_name?: string | null
           phone?: string | null
           profile_public?: boolean
@@ -574,6 +553,8 @@ export type Database = {
           full_name?: string | null
           id?: string
           instagram_handle?: string | null
+          invitation_class_key?: string | null
+          invitation_granted_at?: string | null
           last_name?: string | null
           phone?: string | null
           profile_public?: boolean
@@ -583,6 +564,13 @@ export type Database = {
           sex?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "consumers_invitation_class_key_fkey"
+            columns: ["invitation_class_key"]
+            isOneToOne: false
+            referencedRelation: "classes"
+            referencedColumns: ["key"]
+          },
           {
             foreignKeyName: "consumers_tier_key_fkey"
             columns: ["class_key"]
@@ -1469,14 +1457,14 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "units_place_fk"
+            foreignKeyName: "projects_place_fk"
             columns: ["id"]
             isOneToOne: true
             referencedRelation: "places"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "units_place_fk"
+            foreignKeyName: "projects_place_fk"
             columns: ["id"]
             isOneToOne: true
             referencedRelation: "projects_view"
@@ -1525,6 +1513,7 @@ export type Database = {
           coupon_id: string | null
           created_at: string
           guest_confirmed_at: string | null
+          guest_notify: string
           id: string
           is_test: boolean
           last_call_status: string | null
@@ -1574,6 +1563,7 @@ export type Database = {
           coupon_id?: string | null
           created_at?: string
           guest_confirmed_at?: string | null
+          guest_notify?: string
           id?: string
           is_test?: boolean
           last_call_status?: string | null
@@ -1623,6 +1613,7 @@ export type Database = {
           coupon_id?: string | null
           created_at?: string
           guest_confirmed_at?: string | null
+          guest_notify?: string
           id?: string
           is_test?: boolean
           last_call_status?: string | null
@@ -2422,9 +2413,6 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
-  graphql_public: {
-    Enums: {},
-  },
   public: {
     Enums: {
       content_gen_status: ["queued", "generating", "ready", "failed"],
