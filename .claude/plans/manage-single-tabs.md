@@ -1,273 +1,493 @@
-# Manage Single Unit — 4 tabs → 5
+<!-- /autoplan restore point: /home/ubuntu/.gstack/projects/canzeco-mesita-monorepo/main-autoplan-restore-20260809-143833.md -->
+# Manage Single Unit — residual polish (MESITA-900 shell)
 
 Admin console, `apps/web-admin/src/app/(app)/manage-single/`.
 
-**Today:** Place · Promos · Scores · Team. The Place tab carries a completeness
-banner plus an 11-card masonry, with Products (704 lines) and Reviews (557
-lines, 3 cards) slotted in as `children`. ~15 cards on one tab. `Scores` renders
-the literal string `"Soon."`.
+> **SUPERSEDED IA TARGET.** The prior plan proposed Place · Products · Promos ·
+> Reviews · Team. Live main (Pato, 2026-08-05, MESITA-900) is already
+> **Place · Promos · Performance · Settings · Admin**. Products stay nested on
+> Place; Reviews live in Performance (`ReputationStrip`); Team lives in
+> Settings; Scores is a real Admin card, not a `"Soon."` tab. Implementing the
+> old tab reshuffle would **regress** a settled product decision.
+>
+> This document is the /autoplan rewrite: kill the IA migration; ship residual
+> polish/hardening against the current 5-tab shell.
 
-**After:** Place · Products · Promos · Reviews · Team. Scores retired.
+## Verified against main (2026-08-09)
 
-Reviewed by `/plan-design-review` (2/10 → 8/10) and `/plan-eng-review`
-(9 findings, 3 cross-model tensions). T1 shipped separately in #571.
+| Check | Live |
+|---|---|
+| `UNIT_TAB_SECTIONS` | `place · promos · performance · settings · admin` (`nav.ts:15-21`) |
+| Products | Nested in Place (`place/page.tsx:18-19`) |
+| Reviews | Performance via `ReputationStrip` |
+| Team | Settings (`SettingsSection.tsx:29`) |
+| Scores | `ScoresCard` on Admin — no Scores tab |
+| Legacy routes | `[...slug]/page.tsx` redirects team→settings, reviews/reservations→performance, else→place |
+| `guardNav` | Already in `UnitPlaceContext` + `CrossTabLink` |
+| Vitest | Exists (`vitest.config.ts`, CI `pnpm test`) — no RTL yet |
+| Enricher polls | One 8s poll in `UnitEditChrome.tsx:75-94` (Place second poll gone) |
 
 ## Decisions
 
 | # | Decision | Choice |
 |---|----------|--------|
-| 1 | Team's fate | Own tab. 292 lines of EF-backed UI; folding it into Place re-bloats the page we're splitting. |
-| 2 | Scores' fate | Retired. It renders `"Soon."`, and `nav.ts:11` already says dead tabs dilute IA. |
-| 3 | Place stubs | Read-only Menus card + Ratings row, matching `PromosCard` / `OwnershipCard`. |
-| 4 | Fifth tab name | **Reviews**, route `/reviews`. Rename to Performance when analytics ship. |
-| 5 | Empty-state depth | Generic. "Never enriched" vs "no reviews" deferred. |
-| 6 | ProductsSection remount | Keep `key={place.id}`, moved to the Products page. Its draft state is a `useState` initializer. |
-| 7 | Stub card location | New `sections/place-cards/` module; move `PromosCard` + `OwnershipCard` there too. |
-| 8 | Per-tab page width | A `width` field on each `UNIT_SECTIONS` entry, read by a shared wrapper. |
-| 9 | Tests | Vitest + RTL, added in this PR. The lifted nav guard (E1) is the first real behavior worth pinning. |
-| 10 | Nav guard | Lifted into `UnitPlaceContext` **before** the stubs land. Also guards `popstate`. |
-| 11 | Tab count | 5, not 4. Outside voice argued for folding Products back into Place; rejected. |
-| 12 | PR shape | **One PR.** The by-cause split collapsed: T10/T12 edit the same files as T4/T11. |
+| 1 | Tab IA | **Frozen to MESITA-900.** No Products/Reviews/Team/Scores top-level tabs. |
+| 2 | Old plan status | Superseded. Prior Eng CLEAR / Design 8/10 applied to a dead target — void. |
+| 3 | Scope mode | **SCOPE REDUCTION** → residual polish only (autoplan default SELECTIVE EXPANSION collapsed here because the baseline target was invalid). |
+| 4 | Place density | **Out of this PR.** Higher leverage, but a separate IA/density project (see NOT in scope / TODOS). |
+| 5 | Dirty dialog | Name dirty section(s) from `dirtyMap` (Place and Products can both be dirty on `/place`). |
+| 6 | History guard | Add `popstate` / `pushState` sentinel while dirty — Link + `beforeunload` only today. |
+| 7 | Enricher poll | Back off when idle/not enriching; pause on `document.hidden`. One poll only. |
+| 8 | Tab a11y | Fake `role="tablist"` → plain `<nav>` + `aria-current="page"`. |
+| 9 | Tests | Extend existing Vitest. Pin redirect map + section helpers. Add RTL only if needed for guard transitions — do not invent “first infra.” |
+| 10 | PR shape | One small PR for residual polish. |
 
-## Information architecture
+## Information architecture (LIVE — do not change)
 
 ```
-┌─ STICKY CHROME (unchanged) ─────────────────────────────────┐
-│ [img] Strana Guadalajara         [Switch place] [Re-enrich]  │
-│       ● Active · Nightclub                                   │
+┌─ STICKY CHROME ─────────────────────────────────────────────┐
+│ [img] Place name              [Switch place] [Re-enrich]     │
 ├──────────────────────────────────────────────────────────────┤
-│    Place    Products    Promos    Reviews    Team            │
+│   Place    Promos    Performance    Settings    Admin        │
 └──────────────────────────────────────────────────────────────┘
+
+Place        — profile masonry + Products child card + completeness banner
+Promos       — membership / strategy / rates
+Performance  — headline · reputation strip · event boxes · reservations
+Settings     — channel · check PIN · require bill · Team
+Admin        — Mesita-internal (ScoresCard, metadata, embeddings, …)
 ```
 
-**Place** (`max-w-7xl`, masonry) — completeness banner, editable spine, then
-read-only zone:
+## Build order
 
 ```
-Manual Priority → Basics → Hours → Channels → Reservations → Photos → Location
-── read-only ──
-Menus (stub) → Ratings (stub) → Ownership → Promos → Metadata → Embeddings
+R2 popstate guard (dirtyRef) ──> R1 dirty dialog names ──> R6 tests
+R3 poll backoff
+R4 tablist → nav ──> R5 overflow affordance
+R7 Team Retry
+R8 completeness chips (chip→action table)
+R9 dead PageHeader
 ```
 
-Both stubs go in the read-only zone at the tail, not the old `children` slot
-between Photos and Location. Dropping them in place interleaves read-only cards
-among editable ones and throws away the split's IA win.
+**Hard order:** R2 before R1 (same `ConfirmDialog` block; R2 owns the intercept
+contract). R2 before R6 (do not freeze “unmount clears dirty ⇒ allow leave”).
+R4 before R5 (same nav). Never edit `UNIT_TAB_SECTIONS`.
 
-**Products** (`max-w-3xl`, single column) · **Promos** (`max-w-6xl`) ·
-**Reviews** (`max-w-5xl`, single column) · **Team** (`max-w-6xl`).
-
-New pages need an explicit gap: `SectionCard` (`ui.tsx:61`) has **no margin** of
-its own. Today's spacing comes entirely from the masonry parent's
-`[&>section]:mb-4`. A bare `<div className="mx-auto max-w-5xl">` ships three
-flush-stacked cards on Reviews.
-
-## Build order (sequence is load-bearing)
+## Interaction states (residual)
 
 ```
-E1  guard lift ──┐
-T3  routes ──────┼──> T2 nav ──> E2 perf-id ──> T4 PlaceSection ──> T5, T6
-                 │                                                    │
-                 └────────────────────────────────────────────────────┘
-                                    then: T7–T14, E3–E5
+FEATURE              | LOADING | EMPTY              | ERROR              | PARTIAL
+---------------------|---------|--------------------|--------------------|--------
+Dirty dialog         | n/a     | n/a                | n/a                | multi-section names
+Browser Back dirty   | n/a     | n/a                | dialog (NEW)       | n/a
+Enricher chrome poll | spinner | idle               | poll error flag    | backoff (NEW)
+Team (Settings)      | Checking| No owners          | ErrorNote+Retry NEW| ✓
+Completeness chips   | n/a     | n/a                | n/a                | scroll/focus (NEW)
+Tab chrome           | n/a     | n/a                | n/a                | overflow cue (NEW)
 ```
 
-Two orderings will bite if ignored:
+## What already exists (reuse)
 
-- **T3 before T2.** `products/page.tsx` and `reviews/page.tsx` are currently
-  server `redirect()`s *to* `/place`. Ship the nav first and clicking Products
-  bounces back to Place — and with dirty state it's worse: dialog → "Discard &
-  leave" → `requestDiscard()` wipes the form → push → redirect home. The
-  operator loses edits and lands where they started.
-- **E1 before T4.** T4 adds two more cross-tab links to the dirtiest surface in
-  the app. They must be guarded when they land, not after.
-
-## Interaction states
-
-```
-TAB/FEATURE        | LOADING      | EMPTY                        | ERROR             | PARTIAL
--------------------|--------------|------------------------------|-------------------|------------------
-Shell (all tabs)   | Spinner ✓    | n/a                          | ErrorNote+Retry ✓ | n/a
-Place cards        | inherits     | per-field "—" ✓              | per-box ✓         | ✓
-Products           | inherits     | page-level first-run (NEW)   | SaveBar ✓         | legacy menu note
-Reviews: Mesita    | inherits     | "—" + "No Mesita reviews yet" | none             | n/a  (shipped #571)
-Reviews: Google    | inherits     | card renders empty, not hidden | none            | Apify cap note
-Team               | "Checking…" ✓| "No owners" ✓                | add Retry         | ✓
-```
-
-## What already exists (reuse, do not rebuild)
-
-- `SectionCard`, `SaveBar`, `ReadField` (`ui.tsx`) — the whole vocabulary. Zero
-  new components beyond the two stubs.
-- `PromosCard` (`PlaceSection.tsx:1451`) and `OwnershipCard` (`:1565`) — the
-  read-only-stub pattern. `OwnershipCard`'s loading/error/empty triple is the
-  reference implementation.
-- `menusFromPlace` (`ProductsSection.tsx:65`) — **the Menus stub must import
-  this**, not read `place.products?.menu` directly. Menu presence has a
-  three-source precedence ladder (`products.menu` → `menus[]` →
-  `menu_pdf_url`) and `ProfileCompleteness.tsx:75-78` checks all three. A stub
-  that reimplements it will say "no menus" on legacy places while the banner
-  8px above says Menu ✓.
-- `UnitPlaceContext` keys dirty state per section and lives in `UnitEditShell`
-  above the tab pages, so the guard survives the split.
-- `products` / `reviews` routes already exist as redirects; `soon` gating in
-  `nav.ts:24` stays for `scan`.
+- `guardNav` / `guardIntent` / `ConfirmDialog` in `UnitPlaceContext.tsx`
+- `CrossTabLink` in `ui.tsx:539` (uses context `guardNav`)
+- Vitest + CI test step (`package.json`, `.github/workflows/web-admin.yml`)
+- Legacy redirect map in `[...slug]/page.tsx`
+- `ErrorNote` + `UnitEditShell` Retry pattern for Team parity
+- `ProfileCompleteness` chip list + `menusFromPlace` three-source ladder
 
 ## NOT in scope
 
-- **Place tab density.** 15 cards → 13. The split buys per-tab focus, not
-  decluttering. Do not sell it as decluttering.
-- **Lifting `enrichStatus` into context** so Reviews can distinguish "never
-  enriched" from "no reviews" (decision 5). Note this makes E5 harder: the poll
-  backoff has to be implemented in two components instead of one.
-- **Analytics widgets** on Reviews. That is what triggers the rename.
-- **Place masonry redesign.** Reordering only.
-- **`products` blob lost update.** `ProductsSection.tsx:299` and
-  `PlaceSection.tsx:353` both read-modify-write the same JSON column from their
-  own copy of `place`. Harmless within one UI tab (only one section mounts at a
-  time, context updates on save). Two *browser* tabs on the same place will
-  clobber each other's sub-key. Accepted: pre-existing, internal tool, small
-  operator count. Documented so it isn't rediscovered as a mystery bug.
-- **Server-side narrowing of the `products` patch.** Would close the above, but
-  it's an Edge Function change inside a frontend refactor, and the backend is a
-  singleton.
+- **Any tab IA change** (Products/Reviews/Team/Scores as top-level tabs).
+- **Place masonry declutter / card extraction to Admin.** Separate project; higher leverage than chrome polish — deferred to TODOS.md.
+- **`products` JSON lost-update** across browser tabs (pre-existing; accepted).
+- **Server-side products patch narrowing** (EF change; backend singleton).
+- **Performance activity ErrorNote Retry** — optional follow-on, not this PR.
+- **Adding `@testing-library/react` greenfield ceremony** unless R2 genuinely needs it.
 
 ## Failure modes
 
-| New codepath | Realistic production failure | Test? | Error handling? | Silent? |
-|---|---|---|---|---|
-| Guard lift (E1) | Guard swallows a legitimate nav; operator stuck on Place | E3 | dialog Cancel path | no |
-| Route flip (T3) | `/scores` bookmark 404s instead of redirecting | E3 | — | **yes → critical** |
-| Nav catalog (T2) | `?section=scores` resolves to nothing, blank page | E3 | falls back to `place` | no |
-| Menus stub (T4) | Reads `products.menu` only; contradicts banner on legacy places | E3 | — | **yes → critical** |
-| Ratings stub (T4) | Reproduces the 5.0 default killed in #571 | E3 | — | **yes → critical** |
-| popstate guard (E4) | Cleanup clears the dirty flag before the listener reads it | E3 | — | **yes → critical** |
-| Poll backoff (E5) | Backoff applied to one of two polls; cost halves, not drops | — | — | yes |
-
-**4 critical gaps** — all silent-failure paths. Each is covered by the E3 test
-work; none has error handling today.
-
-## Parallelization
-
-Sequential implementation, minimal parallelization opportunity. E1 → T3 → T2 →
-T4 is a hard chain through shared files (`UnitPlaceContext`, `nav.ts`,
-`PlaceSection`). Two genuinely independent lanes exist once T4 lands:
-
-| Lane | Tasks | Modules | Depends on |
+| New codepath | Realistic failure | Test? | Silent? |
 |---|---|---|---|
-| A | E1, T3, T2, E2, T4, T5, T6 | context, nav, routes, sections/place-cards | — (sequential chain) |
-| B | T7, T8, T9 | sections/ReviewsSection, ProductsSection, routes | T3 |
-| C | T10, T11, T13, T14 | UnitEditChrome, TeamSection, layout shell | — |
-
-Lanes B and C are independent of each other and of lane A after T3. **Conflict
-flag:** lane C's T10/T11 both edit the same `<nav>` block in
-`UnitEditChrome.tsx:257-271` — keep them sequential within the lane.
+| popstate guard (R2) | Cleanup clears dirty before listener reads it | R6 | **yes → critical** |
+| Dirty dialog names (R1) | Shows “Place” when only Products dirty | R6 | yes |
+| Poll backoff (R3) | Stays at 8s while enriching ends → wasted EF calls | — | yes |
+| Tab nav a11y (R4) | Breaks keyboard expectations if half-migrated | smoke | no |
+| Overflow cue (R5) | Still clips a tab at 375px | visual | **yes → critical** |
+| Team Retry (R7) | Button no-ops if `load` closed over stale id | — | no |
+| Completeness chips (R8) | Scroll target missing (`id` absent on card) | R6 | yes |
 
 ## Implementation Tasks
 
-- [ ] **E1 (P1, human: ~3h / CC: ~30min)** — UnitPlaceContext — lift the nav guard, fix two bare links
-  - Surfaced by: Outside voice #1, verified — `guardNav` is local to `UnitEditChrome:102`; `PlaceSection.tsx:1478` and `:1583` are unguarded `<Link>`s that lose unsaved edits today
-  - Files: `UnitPlaceContext.tsx`, `UnitEditChrome.tsx`, `sections/PlaceSection.tsx`
-  - Verify: edit Basics, click "Edit on Promos" → discard dialog appears
-  - **Must land before T4.**
+- [ ] **R2 (P1, CC: ~35min)** — Guard browser Back/Forward (**first**)
+  - Files: `UnitPlaceContext.tsx` only (Provider owns trap — **not** Chrome)
+  - Keep `dirtyRef` (+ key snapshot) synced from `dirtyMap`
+  - On `popstate`: **synchronously** `history.pushState` back to current unit URL, then open existing ConfirmDialog from the ref — never gate on post-unmount React `isDirty`
+  - **Cancel** → stay on unit, dialog closes, sentinel remains while dirty
+  - **Discard** → `requestDiscard()` then allow the history step
+  - Sections still clear dirty on unmount — that is why the ref exists
+  - Verify (manual Friday-2am): dirty Place + browser Back → dialog; Cancel stays; Discard leaves
 
-- [ ] **T3 (P1, human: ~1h / CC: ~10min)** — routes — flip three files
-  - Surfaced by: Architecture — `products/page.tsx` and `reviews/page.tsx` currently redirect *to* `/place`; they are `async` server components and need full rewrites to `"use client"` for `useUnitPlace`
-  - Files: `[projectId]/{products,reviews,scores}/page.tsx`
-  - Verify: `/products` and `/reviews` render; `/scores` redirects and never 404s
-  - **Must land before T2.**
+- [ ] **R1 (P1, CC: ~15min)** — Dirty dialog names the dirty section(s)
+  - Files: `UnitPlaceContext.tsx` ConfirmDialog (~L166–L177)
+  - Live dirty keys are exactly `"place"` and `"products"` (verified)
+  - Pure helper `dirtySectionLabels`: `place`→`Place`, `products`→`Products`
+  - One key → title `Unsaved {Label} edits`; many → `Unsaved edits` + body lists labels
+  - Re-enrich body reuses the same label list
+  - Verify: dirty Products only → title uses Products, not Place alone
 
-- [ ] **T2 (P1, human: ~1h / CC: ~10min)** — nav.ts — 5-tab catalog with per-section width
-  - Surfaced by: Pass 1 IA; Code Quality finding 4 (five hardcoded widths)
-  - Files: `nav.ts`
-  - Verify: tablist renders 5 tabs; `?section=scores` falls back to `place`
+- [ ] **R3 (P2, CC: ~20min)** — Enricher poll backoff + pause when hidden
+  - Files: `UnitEditChrome.tsx:75-94`
+  - Single scheduler: cadence = enriching (running/queued/generating) ? 8s : ~60s
+  - Clear+reschedule when enriching or `visibilitychange` flips
+  - No poll while `document.hidden`; resume on visible
+  - Verify: Network shows 8s while enriching, ~60s idle, zero while hidden
 
-- [ ] **E2 (P1, human: ~20min / CC: ~5min)** — nav.ts — resolve the `performance` id collision
-  - Surfaced by: Outside voice #6 — `nav.ts:19` still holds `{id:"performance", soon:true}` plus a live route, colliding with decision 4's future rename
-  - Files: `nav.ts`, `[projectId]/performance/page.tsx`
-  - Verify: catalog has one future-analytics concept, not two
+- [ ] **R4 (P2, CC: ~10min)** — Tab chrome is a nav, not an ARIA tab widget
+  - Files: `UnitEditChrome.tsx:251-288`
+  - Drop `role="tablist"` / `role="tab"`; `<nav>` + `aria-current="page"` on active only
+  - Keep Link + `guardNav` + existing underline indicator
+  - Verify: axe — no orphan tablist without tabpanels
 
-- [ ] **T4 (P1, human: ~3h / CC: ~25min)** — PlaceSection — extract place-cards, add stubs, reorder
-  - Surfaced by: Pass 1 findings 1–2; Code Quality finding 3
-  - Files: `sections/PlaceSection.tsx`, new `sections/place-cards/`, `[projectId]/place/page.tsx`
-  - Verify: no `children` prop remains; Menus stub imports `menusFromPlace`; Ratings stub shows `—` at zero reviews
+- [ ] **R5 (P2, CC: ~15min)** — Overflow affordance at ~375px
+  - Files: `UnitEditChrome.tsx` nav (~L254)
+  - Right-edge fade over the nav (`pointer-events-none`, ~24–32px, `from-background` → transparent)
+  - Hide fade when `scrollLeft + clientWidth >= scrollWidth - 1`
+  - No chevron button
+  - Verify: 375px — Admin tab discoverable via scroll+fade
 
-- [ ] **T5 (P1, human: ~45min / CC: ~10min)** — dirty dialog names the dirty section
-  - Surfaced by: Design Pass 2 — `UnitEditChrome.tsx:299` hardcodes "Unsaved Place edits"
-  - Files: `UnitEditChrome.tsx`, `UnitPlaceContext.tsx`
-  - Verify: unsaved menu → dialog reads "Unsaved Products edits"
+- [ ] **R6 (P1, CC: ~45min)** — Vitest pins pure helpers (node env — no RTL)
+  - Extract `legacyTabTarget(head)` used by `[...slug]/page.tsx` (team→settings, reviews|reservations→performance, else→place)
+  - Pin `isUnitSection` / `parseUnitId` / frozen `UNIT_TAB_SECTIONS` ids
+  - Pin `dirtySectionLabels` + `shouldTrapPopstate(dirtyRef)` decision helpers
+  - **Do not** add jsdom/RTL to claim popstate coverage — Back→dialog stays manual
+  - Verify: `pnpm test` green in CI
 
-- [ ] **T6 (P2, human: ~2h / CC: ~20min)** — completeness chips become actionable
-  - Surfaced by: Design Pass 3; rescoped by outside voice #10 — only 1 of 10 checks is cross-tab (Menu → Products); the other 9 target cards on the same page and no `SectionCard` has an `id`
-  - Files: `sections/ProfileCompleteness.tsx`, `ui.tsx`
-  - Verify: "Add a menu" routes to Products; the other nine scroll to their card
+- [ ] **R7 (P3, CC: ~10min)** — Team load error gets Retry
+  - Files: `TeamSection.tsx` (~L179)
+  - ErrorNote + Retry calling `load()`; Spinner while retrying; hide invite/list until snap when errored
+  - Verify: forced load failure → Retry re-invokes `load()`
 
-- [ ] **T7 (P2, human: ~1h / CC: ~10min)** — Google reviews card renders empty instead of vanishing
-  - Surfaced by: Design Pass 2 — hidden at `ReviewsSection.tsx:498`, taking the Apify-cap subtitle with it
-  - Files: `sections/ReviewsSection.tsx`
-  - Verify: 0 scraped reviews still shows the card and the cap explanation
+- [ ] **R8 (P2, CC: ~35min)** — Completeness chips actionable (chip→action table)
+  - Files: `ProfileCompleteness.tsx`, `ui.tsx` (`SectionCard` optional `id`), Place card wrappers
+  - Chips = `<button type="button">` keeping amber styles; `aria-label` = hint
+  - **Chip → action (locked):**
+    | Chip | Action |
+    |---|---|
+    | Basics / Hours / Channels / Photos / … on Place | `scrollIntoView` + focus card heading; `scroll-margin-top` ≥ sticky chrome |
+    | Menu | in-page focus Products `#products` on `/place` — **never** navigate to `/products` |
+    | Reservations | `guardNav` / `CrossTabLink` → Settings (editor is `ReservationsCard`) |
+    | Missing target | no silent no-op — `aria-live` “Section unavailable” |
+  - Verify: Menu → Products in view; Reservations → Settings (guarded if dirty)
 
-- [ ] **T8 (P2, human: ~1h / CC: ~10min)** — Products page-level empty state
-  - Surfaced by: Design Pass 2 — `ProductsSection.tsx:328` is a card-sized empty alone on a page
-  - Files: `[projectId]/products/page.tsx`, `sections/ProductsSection.tsx`
-  - Verify: no menus → real first-run state at `max-w-3xl`
+- [ ] **R9 (P3, CC: ~5min)** — Delete unreachable PageHeader branch
+  - Files: `ManageSingleLayoutShell.tsx:32-40`
+  - Verify: unit/select/create/add still covered by early returns
 
-- [ ] **T9 (P2, human: ~30min / CC: ~5min)** — Reviews page single column, explicit gap
-  - Surfaced by: Design Pass 5; outside voice #8 — `SectionCard` has no margin of its own
-  - Files: `[projectId]/reviews/page.tsx`
-  - Verify: three cards are spaced, not flush; `w-72` rails don't strand dead space
+---
 
-- [ ] **T10 (P2, human: ~30min / CC: ~5min)** — tablist is a nav, not an ARIA tab widget
-  - Surfaced by: Design Pass 6 — `role="tablist"`/`role="tab"` with no tabpanel, `aria-controls`, or arrow keys
-  - Files: `UnitEditChrome.tsx:257-271`
-  - Verify: matches `UnitDock.tsx:126` (plain `<nav>` + `aria-current="page"`)
+# /autoplan — CEO Review (Phase 1)
 
-- [ ] **T11 (P2, human: ~45min / CC: ~10min)** — overflow affordance for the fifth tab
-  - Surfaced by: Design Pass 6 — `overflow-x-auto` with hidden scrollbars clips silently
-  - Files: `UnitEditChrome.tsx:260`
-  - Verify: at 375px no tab is invisible
+**Mode:** SELECTIVE EXPANSION requested by /autoplan → **executed as SCOPE REDUCTION** because the plan’s baseline target was invalid (USER CHALLENGE). Hierarchy: Pato live MESITA-900 > prior eng/design clearance of obsolete IA.
 
-- [ ] **E3 (P1, human: ~1d / CC: ~1.5h)** — Vitest + RTL, first test infra in web-admin
-  - Surfaced by: Test review — zero test files, CI is lint/typecheck/build only, 4 silent-failure paths
-  - Files: `vitest.config.ts`, `package.json`, `.github/workflows/web-admin.yml`, new `__tests__/`
-  - Verify: covers nav resolution, redirect map, stub states, guard transitions; CI runs it
+**Premise gate (auto-decided under Mesita NEVER-ask + Pato live instruction):**
+- Reject premises that assume Scores/Team tabs or Products/Reviews top-level routes.
+- Accept rewrite to residual polish against live `UNIT_TAB_SECTIONS`.
+- Log: `decision: plan manage-single-tabs superseded by live nav; residual = polish only`.
 
-- [ ] **E4 (P2, human: ~2h / CC: ~20min)** — guard browser back/forward
-  - Surfaced by: Test review finding 6 — no `popstate` handling; only Link `onClick` and `beforeunload`
-  - Files: `UnitPlaceContext.tsx`
-  - Verify: dirty Place edits + browser Back → dialog, not silent loss
-  - Note: sections clear their dirty flag on unmount (`PlaceSection:469`), so a naive listener reads `false`. Needs a `pushState` sentinel installed while dirty.
+## 0A. Premise challenge
 
-- [ ] **E5 (P2, human: ~1.5h / CC: ~20min)** — back off the enrichment poll, pause on hidden
-  - Surfaced by: Performance review; outside voice #5 — **two** polls exist (`UnitEditChrome.tsx:84` and `PlaceSection.tsx:597`), 900 EF invocations/hour on Place
-  - Files: `UnitEditChrome.tsx`, `sections/PlaceSection.tsx`
-  - Verify: idle backs off to ~60s; hidden tab stops; both polls covered
+| Premise | Verdict | Notes |
+|---|---|---|
+| Today = Place·Promos·Scores·Team | **FALSE** | Live = Place·Promos·Performance·Settings·Admin |
+| Scores = `"Soon."` | **FALSE** | `ScoresCard` is real Admin UI |
+| Need Products/Reviews page flip | **FALSE** | Nested/folded; catch-all redirects exist |
+| E1 guard lift still needed | **FALSE** | Already in context + `CrossTabLink` |
+| E2 performance id collision | **FALSE** | `performance` is live |
+| E3 first Vitest infra | **FALSE** | Vitest + CI already ship |
+| Tab reshuffle improves ops | **CHALLENGED** | Admits no declutter; fights Pato IA |
 
-- [ ] **T12 (P3, human: ~30min / CC: ~5min)** — re-derive card tints after the reorder
-  - Surfaced by: Design Pass 4 — `ui.tsx:53` rule already violated twice
-  - Files: `sections/PlaceSection.tsx`, `sections/place-cards/`, `sections/ManualPriorityCard.tsx`
-  - Verify: no two cards share a tint in source order. Note: true *visual* adjacency is unverifiable under CSS `columns` and changes per breakpoint — source order is the only checkable proxy.
+## 0B. Existing code leverage
 
-- [ ] **T13 (P3, human: ~20min / CC: ~5min)** — Team load error gets a Retry
-  - Surfaced by: Design Pass 2 — `TeamSection.tsx:42-45` sets error and stops
-  - Files: `sections/TeamSection.tsx`
-  - Verify: matches `UnitEditShell.tsx:75-84`
+| Sub-problem | Existing code |
+|---|---|
+| Dirty nav intercept | `UnitPlaceContext.guardNav` / `guardIntent` / `ConfirmDialog` |
+| Cross-tab links | `CrossTabLink` |
+| Legacy URLs | `[...slug]/page.tsx` |
+| Tests | `promo-state.test.ts` pattern + CI |
+| Team errors | `ErrorNote`; shell Retry as reference |
+| Completeness | `ProfileCompleteness` + `menusFromPlace` |
 
-- [ ] **T14 (P3, human: ~10min / CC: ~3min)** — delete the unreachable PageHeader branch
-  - Surfaced by: Outside voice #11 — `ManageSingleLayoutShell.tsx:32-40` is dead; every route matches an earlier branch. Its stale copy was going to be "fixed" rather than removed.
-  - Files: `ManageSingleLayoutShell.tsx`
-  - Verify: no route renders it
+## 0C. Dream state
+
+```
+CURRENT (MESITA-900 shell, residual gaps)
+  → THIS PLAN (edit-loss + poll cost + a11y + small empty/error polish)
+  → 12-MONTH IDEAL (Place density solved; completeness drives enrichment;
+     Performance truthfulness; business-console parity; DESIGN.md)
+```
+
+Delta after this plan: operators stop losing edits on Back; Enricher EF burn drops when idle; chrome a11y honest; Team Retry works. Place density unchanged.
+
+## 0C-bis. Implementation alternatives
+
+| Approach | Effort | Risk | Pros | Cons |
+|---|---|---|---|---|
+| A. Residual polish only (chosen) | CC ~2–3h | Low | Honors Pato IA; ships real gaps | Doesn’t fix Place density |
+| B. Re-split Products/Reviews tabs | CC ~1–2d | High | Matches obsolete plan | Regresses MESITA-900 |
+| C. Place declutter project | CC ~1d+ | Med | Highest ops leverage | Separate scope; needs own design pass |
+
+**Choice: A** (P1 completeness of *valid* problem + P5 explicit + Pato hierarchy). B rejected. C → TODOS.
+
+## 0D–0F. Mode / temporal
+
+- Hour 1: R1+R4+R9 (small, safe).
+- Hour 2–3: R2+R6 (guard + tests — load-bearing).
+- Hour 4: R3+R5+R7+R8.
+- Hour 6+: if still itching for density → stop; open Place declutter issue, don’t widen this PR.
+
+## CEO dual voices
+
+### CLAUDE SUBAGENT (CEO — strategic independence)
+8 findings. Verdict: **KILL IA reshuffle.** Critical: stale premises, wrong problem, would undo MESITA-900. Residual list matches R1–R9 above.
+
+### CODEX SAYS (CEO — strategy challenge)
+`[codex-unavailable: binary not found]` — single-model mode (`[subagent-only]`).
+
+### CEO DUAL VOICES — CONSENSUS TABLE
+```
+═══════════════════════════════════════════════════════════════
+  Dimension                            Claude  Codex  Consensus
+  ──────────────────────────────────── ─────── ─────── ─────────
+  1. Premises valid?                   NO      N/A    REJECTED
+  2. Right problem to solve?           NO*     N/A    REFRAME
+  3. Scope calibration correct?        NO      N/A    REDUCE
+  4. Alternatives explored?            WEAK    N/A    FIXED via rewrite
+  5. Competitive/market risks covered? OK      N/A    OK (internal tool)
+  6. 6-month trajectory sound?         NO if shipped as-was / YES if residual
+═══════════════════════════════════════════════════════════════
+* Right residual problem: edit-loss + poll cost + a11y — not tab count.
+USER CHALLENGE: both-would-agree (Claude alone) — do not ship old IA.
+Resolved by Pato live MESITA-900 (hierarchy), not by taste.
+```
+
+## Section 1: Architecture
+
+Residual work stays inside existing shell. No new routes, EFs, or schema.
+
+```
+UnitEditShell
+  └─ UnitPlaceProvider (dirtyMap, guardNav, dialog)
+        ├─ UnitEditChrome (tabs nav, enrich poll, beforeunload)
+        └─ page routes
+              place → PlaceSection + ProductsSection + ProfileCompleteness
+              promos → PromosSection
+              performance → Headline + ReputationStrip + Events + Reservations
+              settings → SettingsSection (+ TeamSection)
+              admin → AdminSection (+ ScoresCard, …)
+```
+
+Coupling: R1/R2 deepen context responsibility (correct — guard already lives there).
+Rollback: git revert; no migrations.
+
+## Section 2: Error & Rescue Registry
+
+| Codepath | Can go wrong | Rescued? | User sees |
+|---|---|---|---|
+| Enrich poll `getPlaceEnrichment` | EF error | Partial (`enrichPollError`) | Existing chrome flag |
+| Team `load()` | EF error | ErrorNote today; **Retry GAP → R7** | Message + Retry |
+| popstate while dirty | Silent loss today | **GAP → R2** | Dialog |
+| Completeness chip click | Missing scroll target | **GAP → R8** | No-op chip |
+
+## Section 3: Security
+
+No new attack surface. Admin-only console; existing EF ACLs unchanged. No new deps required for R1–R5/R7–R9. Optional RTL is test-only. **No issues beyond standard XSS hygiene already in place.**
+
+## Section 4: Interaction edge cases
+
+| Interaction | Edge | Plan |
+|---|---|---|
+| Browser Back | Dirty form | R2 dialog |
+| Tab click | Dirty form | Existing `guardNav` |
+| Refresh/close | Dirty form | Existing `beforeunload` |
+| Hidden tab | Enrich poll | R3 pause |
+| 375px width | 5th tab clipped | R5 cue |
+| Completeness chip | Card has no `id` | R8 add ids |
+
+## Section 5: Code quality
+
+- Prefer extending `UnitPlaceContext` over re-adding local `guardNav` in Chrome.
+- Dirty title: don’t hardcode “Place”; read `dirtyMap`.
+- Avoid new `place-cards/` module — that served the dead split.
+- Don’t reintroduce `soon` gates.
+
+## Section 6: Test review
+
+```
+NEW UX: popstate dirty dialog; named dirty sections; Team Retry; chip scroll
+NEW CODEPATHS: pushState sentinel; poll backoff scheduler; nav a11y roles
+NEW TESTS: redirect map; parseUnitId/isUnitSection; dirty label helper; popstate decision
+```
+
+Friday-2am test: dirty Place → Back → dialog appears; Discard leaves; Cancel stays.
+Hostile QA: dirty clears on unmount before popstate — R2 must document sentinel.
+
+## Section 7: Performance
+
+R3 is the performance win (cut idle Enricher EF chatter). No N+1 / index work. EventSuperBoxes intervals unrelated — leave alone.
+
+## Section 8: Observability
+
+Admin internal tool. No new dashboards. Rely on existing EF logs for enrich poll. Optional: `console.debug` gated — skip; not Mesita style.
+
+## Section 9: Deployment
+
+Frontend-only. Vercel web-admin path filter. No feature flag needed. Rollback = revert PR.
+
+## Section 10: Spec completeness
+
+Residual tasks R1–R9 are file-concrete with verify steps. Place density explicitly deferred with rationale.
+
+## Section 11: Design (CEO pass)
+
+Hierarchy already set by MESITA-900. Residual design work is a11y honesty (R4), overflow discoverability (R5), and actionable completeness (R8). No new visual language.
+
+## CEO Completion Summary
+
+| Item | Result |
+|---|---|
+| Premises | Rejected / rewritten |
+| Mode | Scope reduction to residual polish |
+| Expansions accepted | None (density → TODOS) |
+| Expansions deferred | Place declutter; Performance Retry; products lost-update |
+| Ready for Design/Eng/DX on residual plan? | Yes |
+
+**Phase 1 complete.** Codex: unavailable. Claude subagent: 8 issues (IA kill). Consensus: reframe. Premise gate: passed via Pato live IA + Mesita autonomy.
+
+---
+
+# /autoplan — Design Review (Phase 2)
+
+## Focus
+Chrome a11y, overflow, dirty-dialog copy, completeness chips — against live shell.
+
+## CLAUDE SUBAGENT (Design) — 8 findings
+1. **critical** — Completeness chips need locked chip→action table (Reservations → Settings, not Place).
+2. **critical** — Browser Back journey UX blank (Cancel/Discard/sentinel) — now specified in R2.
+3. **high** — Dirty dialog label map + multi-section body — locked in R1 (`place`/`products`).
+4. **high** — Chips must be real `<button>`s with scroll-margin under sticky chrome.
+5. **high** — Overflow fade must specify side, size, hide-when-scrolled — locked in R5.
+6. **medium** — State matrix gaps (chip miss, cross-tab dirty) — folded into R8.
+7. **medium** — Team Retry composition with invite UI — tightened in R7.
+8. **medium** — R4 must keep Link+guardNav + scroll-margin for chip focus — in R4/R8.
+
+## CODEX SAYS (Design)
+`[codex-unavailable]`
+
+## Design dimensions (post-fix)
+
+1. **Information hierarchy** — Tabs frozen. Completeness banner stays secondary; chips become actionable without inventing a sixth tab.
+2. **States** — R1/R2/R5/R7/R8 now specify Cancel/Discard, fade hide rule, Team retry, chip miss.
+3. **Responsive** — R5 right-edge fade at 375px.
+4. **A11y** — R4 honest nav; R8 buttons + aria-live miss path.
+5. **Specificity** — Label map and chip→action table locked.
+6. **Taste** — Edge fade (not chevron) — TASTE, default accepted.
+7. **DESIGN.md** — Still missing (TODOS); does not block.
+
+**Design score (residual plan): 8.5/10** after incorporating dual-voice fixes into R1/R2/R5/R8.
+
+**Phase 2 complete.**
+
+---
+
+# /autoplan — Eng Review (Phase 3)
+
+## CLAUDE SUBAGENT (Eng) — 8 findings
+1. **critical** — popstate needs `dirtyRef` + sync pushState in Provider (not Chrome) — R2 rewritten.
+2. **high** — R8 must not create Products navigation — chip table locked; Reservations → Settings.
+3. **high** — Dirty keys are exactly `place`/`products` — R1 locked.
+4. **high** — Sentinel must not live in Chrome — R2 Provider-only.
+5. **medium** — R6 node Vitest: pure helpers only; popstate manual — R6 rewritten.
+6. **medium** — Order R2 before R1/R6 — build order updated.
+7. **medium** — Poll scheduler must reschedule on enriching/visibility — R3 tightened.
+8. **medium** — Freeze `UNIT_TAB_SECTIONS` + `legacyTabTarget` in tests — R6.
+
+## CODEX SAYS (Eng)
+`[codex-unavailable]`
+
+## Eng findings (merged)
+
+| # | Finding | Severity | Decision |
+|---|---|---|---|
+| E1 | popstate vs unmount dirty clear | critical | R2: dirtyRef + sync pushState in Provider |
+| E2 | Dirty keys `place`/`products` | high | R1 helper locked |
+| E3 | Poll backoff while enriching | high | R3: 8s while enriching only |
+| E4 | R8 Reservations is Settings | high | Chip→action table |
+| E5 | No RTL for popstate claims | medium | R6 pure helpers + manual |
+| E6 | R2 before R1/R6 | medium | Build order |
+| E7 | Keep Link guardNav on R4 | medium | Spec’d |
+| E8 | Freeze tab catalog in tests | medium | R6 |
+
+**Eng verdict: CLEAR (residual plan)** — implementable after R2/R8 hardenings landed in the plan text.
+
+**Phase 3 complete.**
+
+---
+
+# /autoplan — DX Review (Phase 3.5)
+
+| Finding | Decision |
+|---|---|
+| “First Vitest” narrative would mislead | Kill; extend existing |
+| Extract `legacyTabTarget()` for testability | Accept (P5) |
+| Don’t claim popstate covered without jsdom | Accept — manual verify |
+| Comments already document MESITA-900 | Leave; freeze in tests |
+
+**DX verdict: CLEAR**
+
+**Phase 3.5 complete.**
+
+---
+
+## Decision Audit Trail (/autoplan)
+
+| ID | Phase | Decision | Principle | Type |
+|---|---|---|---|---|
+| D1 | CEO | Kill IA reshuffle; freeze MESITA-900 tabs | Pato hierarchy + P1/P5 | USER CHALLENGE → resolved by live instruction |
+| D2 | CEO | Choose residual polish (alt A) over re-split (B) | P3/P5 | Mechanical |
+| D3 | CEO | Defer Place density to TODOS | P3 | Mechanical |
+| D4 | CEO | Skip /office-hours (no design doc) | P6 + Mesita never-ask | Mechanical |
+| D5 | Design | Overflow = right-edge fade (not chevron) | P5 | Taste |
+| D6 | Design | Chip→action table incl. Reservations→Settings | P1 | Mechanical |
+| D7 | Eng | dirtyRef + Provider-owned popstate trap | P1/P5 | Mechanical |
+| D8 | Eng | Extract `legacyTabTarget` + pure dirty helpers | P5 | Mechanical |
+| D9 | Eng | R2 before R1/R6 | P3 | Mechanical |
+| D10 | DX | No greenfield Vitest/RTL ceremony | P4 | Mechanical |
+
+---
 
 ## GSTACK REVIEW REPORT
 
 | Review | Trigger | Why | Runs | Status | Findings |
 |--------|---------|-----|------|--------|----------|
-| CEO Review | `/plan-ceo-review` | Scope & strategy | 0 | — | — |
-| Codex Review | `/codex review` | Independent 2nd opinion | 0 | — | — |
-| Eng Review | `/plan-eng-review` | Architecture & tests (required) | 1 | CLEAR (PLAN) | 9 issues, 4 critical gaps |
-| Design Review | `/plan-design-review` | UI/UX gaps | 1 | CLEAR (FULL) | score: 2/10 → 8/10, 5 decisions |
-| DX Review | `/plan-devex-review` | Developer experience gaps | 0 | — | — |
+| CEO Review | `/autoplan` Phase 1 | Scope & strategy | 1 | **REFRAME** | Stale IA killed; residual R1–R9 |
+| Codex Review | dual voice | Independent 2nd opinion | 0 | `[codex-unavailable]` | — |
+| Design Review | `/autoplan` Phase 2 | UI residual | 1 | CLEAR | 8 dual-voice findings → plan fixes |
+| Eng Review | `/autoplan` Phase 3 | Architecture & tests | 1 | CLEAR | 8 dual-voice findings → plan fixes |
+| DX Review | `/autoplan` Phase 3.5 | Test/redirect DX | 1 | CLEAR | extend Vitest; extract redirect helper |
 
-- **CROSS-MODEL:** Outside voice ran as a Claude subagent (Codex not installed). Three of its findings were verified against source and confirmed: the unguarded cross-tab links, the duplicate enrichment poll, and `SectionCard`'s missing margin. Three tensions were raised and put to the user: 4-vs-5 tabs (kept 5), Vitest timing (kept in this PR), and the PR split (accepted — collapsed to one PR).
-- **VERDICT:** ENG + DESIGN CLEARED — ready to implement.
+- **CROSS-MODEL:** Codex CLI missing — `[subagent-only]`. Claude CEO/Design/Eng voices ran; primary review verified against `nav.ts` + route tree + dirty keys.
+- **USER CHALLENGE:** Do not ship Place·Products·Promos·Reviews·Team. Resolved by Pato MESITA-900 (2026-08-05).
+- **TASTE at gate:** Overflow = right-edge fade (D5). Accept unless overridden.
+- **VERDICT:** Residual polish plan ready to implement. Old Eng/Design clearance of the tab reshuffle is **void**.
 
-NO UNRESOLVED DECISIONS
+NO UNRESOLVED DECISIONS (relative to residual plan)
+
+---
+
+## Degradation matrix
+
+| Voice | Status |
+|---|---|
+| Codex CEO / Design / Eng | `[codex-unavailable: binary not found]` |
+| Claude CEO / Design / Eng subagents | ran |
+| Mode | `[subagent-only]` |
