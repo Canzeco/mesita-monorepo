@@ -15,9 +15,9 @@ Staff-initiated creation
 (`business-web-create-ticket`) is retired — never re-add it, and neither the check page nor
 the business console carries a story/review verdict any more
 (`check-web-verify-action`, `business-web-verify-story`, `business-web-verify-review` and the
-`awaiting_story` park are all gone). The ticket's QR is `https://mesita.ai/check/<check_code>`
-(public page — canonical home `apps/web-check`, check.mesita.ai; `apps/web-landing`
-still serves live QRs until the `CHECK_URL_BASE` flip, MESITA-814), and the staff side of the flow happens on
+`awaiting_story` park are all gone). The ticket's QR is `https://check.mesita.ai/<check_code>`
+(public page — canonical home `apps/web-check`; `CHECK_URL_BASE` flipped MESITA-814;
+old `mesita.ai/check/<code>` QRs permanently redirect via web-landing), and the staff side of the flow happens on
 that page via the `check-web-*` EFs — `verify_jwt = false`; possession of the 128-bit
 `check_code` IS the authentication (security model: `_shared/ticket-check.ts`).
 
@@ -26,7 +26,7 @@ that page via the `check-web-*` EFs — `verify_jwt = false`; possession of the 
 ### Create (consumer, in-app)
 1. Guest picks the place and opts into the story rung (Influencer only — a non-eligible
    opt-in silently downgrades; the class never leaks). `consumer-web-create-ticket`.
-2. App renders the QR → `mesita.ai/check/<code>`.
+2. App renders the QR → `check.mesita.ai/<code>`.
 
 ### Tasks (consumer, in-app — BEFORE any staff involvement)
 1. The guest completes their tasks on the pass: Instagram story
@@ -80,7 +80,7 @@ There is no staff WhatsApp rail. It identified the waiter by phone against
 |---------|--------|
 | Consumer create + stepper | `consumer-web-create-ticket` · `apps/web-consumer/src/lib/ticket-flow-steps.ts` (mobile mirror in `apps/mobile-consumer`) |
 | Consumer tasks | `consumer-web-{submit-story,submit-review,submit-ticket-review}` · `apps/web-consumer/.../rewards/VenuePassModal.tsx` |
-| Public check page | `apps/web-check/src/app/check/[code]/` (landing mirror until MESITA-814) · `check-web-{get-ticket,submit-bill,mark-paid}` |
+| Public check page | `apps/web-check/src/app/[code]/` (legacy `/check` + landing 308 for old `mesita.ai/check/<code>` QRs) · `check-web-{get-ticket,submit-bill,mark-paid}` |
 | Shared security/billing | `_shared/ticket-check.ts` · `_shared/business-ticket-billing.ts` · `_shared/rewards-config.ts` |
 | Business console | `apps/web-business/.../unit/[id]/tickets/` |
 

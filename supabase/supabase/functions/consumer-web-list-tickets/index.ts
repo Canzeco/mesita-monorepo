@@ -30,7 +30,7 @@ Deno.serve(async (req) => {
   // Tickets v2 (MESITA-806): the Rewards New/History tabs read this EF
   // directly (the list used to be notification-derived). `scope` splits the
   // two tabs server-side; check_code is returned to the OWNER only — it is
-  // their ticket, and the New tab renders the mesita.ai/check QR from it.
+  // their ticket, and the New tab renders the check.mesita.ai QR from it.
   let limit = DEFAULT_LIMIT;
   let scope: "active" | "history" | null = null;
   if (req.method === "POST") {
