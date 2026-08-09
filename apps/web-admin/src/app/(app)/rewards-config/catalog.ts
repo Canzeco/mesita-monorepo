@@ -29,7 +29,7 @@ export type ActionKey =
   | "welcome"
   | "review";
 
-export type RewardRule = {
+type RewardRule = {
   strategy: StrategyKey;
   class: ClassKey;
   action: ActionKey;
@@ -209,7 +209,7 @@ const STRATEGY_STEP: Record<StrategyKey, number> = {
   dominant: 20,
 };
 
-export function defaultRateFor(
+function defaultRateFor(
   strategy: StrategyKey,
   cls: ClassKey,
   action: ActionKey,
@@ -226,7 +226,7 @@ export const ruleKey = (
 ) => `${strategy}|${cls}|${action}`;
 
 /** The complete rule list in canonical order, at launch prices. */
-export function defaultRules(): RewardRule[] {
+function defaultRules(): RewardRule[] {
   const rules: RewardRule[] = [];
   for (const strategy of STRATEGY_KEYS) {
     for (const cls of CLASS_KEYS) {

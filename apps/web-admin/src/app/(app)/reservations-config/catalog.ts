@@ -17,7 +17,7 @@
 // lock-step. The testCall + attempts knobs are read by the calling
 // orchestration; they persist through the same whole-blob save.
 
-export type ReservationChannel = "phone";
+type ReservationChannel = "phone";
 
 export type ReservationsConfig = {
   /** Ordered, most preferred first. Order IS the rule. Always ranks every channel. */
@@ -80,7 +80,7 @@ export type NeedsAttentionRow = {
   is_test: boolean | null;
 };
 
-export const LIMITS_SEED = {
+const LIMITS_SEED = {
   reschedulesPerTicketPerDay: 3,
   venueCallsPerPlacePerDay: 10,
   killSwitch: false,
@@ -90,7 +90,7 @@ const CHANNEL_KEYS: ReservationChannel[] = ["phone"];
 
 const ATTEMPTS = 2;
 
-export type Channel = {
+type Channel = {
   key: ReservationChannel;
   label: string;
   emoji: string;

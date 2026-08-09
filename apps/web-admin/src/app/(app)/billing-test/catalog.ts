@@ -3,7 +3,7 @@
 // half-shaped EF response renders instead of throwing.
 
 export type Verdict = "ok" | "degraded" | "down" | "unconfigured";
-export type Cost = "free" | "paid";
+type Cost = "free" | "paid";
 
 export type ProbeResult = {
   id: string;
