@@ -96,7 +96,7 @@ type UpdateBody = {
   fiscal_type?: "formal" | "informal";
   // NOTE: `plan` is deliberately NOT editable here. Plan changes are billing
   // and go through business-web-change-subscription (Stripe), so a client can't
-  // grant itself Pro/Ultra with a plain profile update.
+  // grant itself Verified (plan=pro; ultra legacy) with a plain profile update.
   // NOTE: `address` is native (Google/Enricher-sourced) and deliberately NOT
   // editable here — kept in the type only so stale clients get the reject.
   address?: string | null;
