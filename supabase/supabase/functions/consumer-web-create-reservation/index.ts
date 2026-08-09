@@ -63,9 +63,12 @@ Deno.serve(async (req) => {
   if (reservedAt.getTime() < Date.now()) {
     return json({ ok: false, error: "Pick a time in the future." }, 400);
   }
+  // Keep in lock-step with consumer-web-update-reservation (MAX_PARTY=20)
+  // and both consumer UIs — create must not accept sizes update rejects.
+  const MAX_PARTY = 20;
   const partySize = Math.trunc(Number(body.party_size));
-  if (!Number.isFinite(partySize) || partySize < 1 || partySize > 50) {
-    return json({ ok: false, error: "party_size must be 1..50" }, 400);
+  if (!Number.isFinite(partySize) || partySize < 1 || partySize > MAX_PARTY) {
+    return json({ ok: false, error: `party_size must be 1..${MAX_PARTY}` }, 400);
   }
   const guestNotify = body.guest_notify === "app" ? "app" : "call";
 

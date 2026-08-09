@@ -94,7 +94,7 @@ Deno.serve(async (req) => {
   if (scope === "upcoming") {
     q = q.in("status", ["pending", "confirmed"]);
   } else if (scope === "past") {
-    q = q.in("status", ["declined", "no_show", "cancelled", "completed"]);
+    q = q.in("status", ["declined", "no_show", "cancelled", "unreachable", "unresolved"]);
   }
 
   const { data, error, count } = await q;
