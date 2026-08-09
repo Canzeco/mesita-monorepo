@@ -16,7 +16,6 @@ import {
 } from "@/lib/discovery-filters-engine";
 import {
   resetDiscoveryFilters,
-  setDiscoveryAsk,
   setDiscoveryMaxKm,
   setDiscoveryRandomness,
   setDiscoveryWhen,
@@ -34,8 +33,9 @@ import {
 } from "./discovery-filter-controls";
 
 // Shared body of the discovery Filters route modal (Home Swipe + Search) —
-// MESITA-905 simplify + routed /filters. INTENT (Where · When · What · That)
-// + Random (word levels low→max), each in a modular box. State in
+// MESITA-905 simplify + routed /filters. INTENT (Where · When · What) +
+// Random (word levels low→max), each in a modular box. That — the ask — is
+// Memo's, not a filter: it rides Memo's own Lineup call. State in
 // use-discovery-filters; dismiss via onClose → router.back().
 
 export function DiscoveryFilters({
@@ -99,7 +99,7 @@ export function DiscoveryFilters({
       </div>
 
       <div className="scrollbar-hide min-h-0 flex-1 overflow-y-auto px-4 pb-4">
-        <FilterGroupLabel>Intent · where when what that</FilterGroupLabel>
+        <FilterGroupLabel>Intent · where when what</FilterGroupLabel>
 
         <div className="flex flex-col gap-3">
           <FilterModule label="Where">
@@ -196,7 +196,7 @@ export function DiscoveryFilters({
           </FilterModule>
 
           <FilterModule label="What">
-            <div className="scrollbar-hide flex gap-1.5 overflow-x-auto pb-0.5">
+            <div className="flex flex-wrap gap-1.5">
               {PLACE_FAMILIES.map((family) => (
                 <Pill
                   key={family.key}
@@ -212,7 +212,7 @@ export function DiscoveryFilters({
                 <SectionLabel className="mt-3" sub>
                   Categories
                 </SectionLabel>
-                <div className="scrollbar-hide flex gap-1.5 overflow-x-auto pb-0.5">
+                <div className="flex flex-wrap gap-1.5">
                   {categoryOptions.map((option) => (
                     <Pill
                       key={option.slug}
@@ -234,22 +234,6 @@ export function DiscoveryFilters({
                 </div>
               </>
             )}
-          </FilterModule>
-
-          <FilterModule label="That · the ask">
-            <input
-              type="text"
-              value={filters.ask}
-              maxLength={200}
-              onChange={(e) => setDiscoveryAsk(e.target.value)}
-              placeholder='what are you craving? — "mezcal cocktails for a date"'
-              aria-label="The ask — free text, shapes your lineup"
-              className="border-border/70 bg-muted/40 placeholder:text-muted-foreground/60 focus:border-primary/50 w-full rounded-xl border px-3.5 py-2.5 text-sm transition outline-none"
-            />
-            <p className="text-muted-foreground/70 mt-1.5 text-[11px]">
-              Shapes your lineup once the engine reads it — doesn&apos;t narrow
-              the list yet.
-            </p>
           </FilterModule>
 
           <FilterModule label="Random">

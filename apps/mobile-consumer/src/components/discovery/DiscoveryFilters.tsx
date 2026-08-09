@@ -1,11 +1,5 @@
 import { Clock, SlidersHorizontal, X } from 'lucide-react-native';
-import {
-  Pressable,
-  ScrollView,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
+import { Pressable, ScrollView, Text, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 
 import {
@@ -33,7 +27,6 @@ import {
 import { PLACE_FAMILIES } from '@/lib/place-families';
 import {
   resetDiscoveryFilters,
-  setDiscoveryAsk,
   setDiscoveryMaxKm,
   setDiscoveryRandomness,
   setDiscoveryWhen,
@@ -44,7 +37,8 @@ import {
 
 // Shared body of the discovery Filters route modal — RN port of web
 // DiscoveryFilters (MESITA-905 simplify + routed /filters). Each INTENT /
-// Random section sits in a FilterModule box (MESITA-957).
+// Random section sits in a FilterModule box (MESITA-957). That — the ask — is
+// Memo's, not a filter: it rides Memo's own Lineup call.
 
 export function DiscoveryFilters({
   onClose,
@@ -111,7 +105,7 @@ export function DiscoveryFilters({
         nestedScrollEnabled
         horizontal={false}
       >
-        <FilterGroupLabel>Intent · where when what that</FilterGroupLabel>
+        <FilterGroupLabel>Intent · where when what</FilterGroupLabel>
 
         <View className="gap-3">
         <FilterModule label="Where">
@@ -214,12 +208,7 @@ export function DiscoveryFilters({
         </FilterModule>
 
         <FilterModule label="What">
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            className="flex-grow-0"
-            contentContainerStyle={{ gap: 6 }}
-          >
+          <View className="flex-row flex-wrap gap-1.5">
             {PLACE_FAMILIES.map((family) => (
               <Pill
                 key={family.key}
@@ -229,18 +218,13 @@ export function DiscoveryFilters({
                 {family.emoji} {family.label}
               </Pill>
             ))}
-          </ScrollView>
+          </View>
           {categoryOptions.length > 1 || staleCategories.length > 0 ? (
             <>
               <SectionLabel className="mt-3" sub>
                 Categories
               </SectionLabel>
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                className="flex-grow-0"
-                contentContainerStyle={{ gap: 6 }}
-              >
+              <View className="flex-row flex-wrap gap-1.5">
                 {categoryOptions.map((option) => (
                   <Pill
                     key={option.slug}
@@ -259,25 +243,9 @@ export function DiscoveryFilters({
                     {slug}
                   </Pill>
                 ))}
-              </ScrollView>
+              </View>
             </>
           ) : null}
-        </FilterModule>
-
-        <FilterModule label="That · the ask">
-          <TextInput
-            value={filters.ask}
-            maxLength={200}
-            onChangeText={setDiscoveryAsk}
-            placeholder='what are you craving? — "mezcal cocktails for a date"'
-            placeholderTextColor="#77525466"
-            accessibilityLabel="The ask — free text, shapes your lineup"
-            className="w-full rounded-xl border border-border/70 bg-muted/40 px-3.5 py-2.5 text-sm text-foreground"
-          />
-          <Text className="mt-1.5 text-[11px] text-muted-foreground/70">
-            Shapes your lineup once the engine reads it — doesn&apos;t narrow
-            the list yet.
-          </Text>
         </FilterModule>
 
         <FilterModule label="Random">
