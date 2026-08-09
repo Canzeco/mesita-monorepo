@@ -1,7 +1,7 @@
 // Frontend API surface for the business profile.
 //
-// Same constraints as api/places + api/tickets: client calls exactly one
-// Edge Function per helper, helpers never compose multiple Edge Functions.
+// Same constraints as api/places: client calls exactly one Edge Function
+// per helper, helpers never compose multiple Edge Functions.
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { invokeEF } from "./_invoke";
