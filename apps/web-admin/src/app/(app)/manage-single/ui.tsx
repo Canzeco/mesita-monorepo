@@ -1,9 +1,7 @@
 "use client";
 
 import { useEffect, useId, useRef, useState } from "react";
-import Link from "next/link";
 import {
-  ArrowRight,
   Check,
   CheckCircle2,
   ChevronDown,
@@ -13,7 +11,6 @@ import {
   Lock,
 } from "lucide-react";
 import { ErrorNote } from "@/components/ErrorNote";
-import { useUnitPlace } from "./UnitPlaceContext";
 import {
   COUNTRIES,
   COUNTRY_BY_CODE,
@@ -27,7 +24,7 @@ import {
 // display titles, filled inputs, and a brand-gradient save pill.
 
 /** Fixed tint palette for card icon chips — differentiated, never loud. */
-export type Tint =
+type Tint =
   | "rose"
   | "pink"
   | "amber"
@@ -528,33 +525,6 @@ export function Spinner({ label }: { label?: string }) {
 }
 
 // ── Read-only display primitives (shared by Place + Settings cards) ──────
-
-// Link out to another unit tab, routed through the discard guard.
-//
-// These used to be bare <Link>s. `guardNav` lived as a local useCallback inside
-// UnitEditChrome, so the chrome's own tabs were guarded but these were not:
-// editing Basics and clicking "Edit on Promos" navigated away and dropped the
-// edits with no dialog and no warning. The guard now lives on UnitPlaceContext
-// precisely so every cross-tab link can reach it — use this, never a raw <Link>.
-export function CrossTabLink({
-  href,
-  children,
-}: {
-  href: string;
-  children: React.ReactNode;
-}) {
-  const { guardNav } = useUnitPlace();
-  return (
-    <Link
-      href={href}
-      onClick={(e) => guardNav(href, e)}
-      className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1 text-xs font-medium transition"
-    >
-      {children}
-      <ArrowRight className="h-3 w-3" />
-    </Link>
-  );
-}
 
 // Labelled read-only value used inside editable cards (Price, Category). The
 // `auto` pill signals the value is Enricher-owned and not hand-edited.
