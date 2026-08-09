@@ -5,7 +5,7 @@ import { Trash2 } from "lucide-react";
 import { cn, errMsg } from "@/lib/utils";
 import { toast } from "@/lib/toast";
 import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
-import { Spinner } from "@/components/shared/Spinner";
+import { Spinner } from "@/components/shared";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { apiDeleteConsumerAccount } from "@/lib/api/profile";
 import { SHEET_TITLE_CLASS, SHEET_BODY_CLASS } from "@/lib/ui-classes";

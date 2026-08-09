@@ -3,28 +3,27 @@
 import { useRef, useState } from "react";
 import Image from "next/image";
 import { Camera } from "lucide-react";
-import { toast } from "@/lib/toast";
-import { ageFromBirthday, cn, errMsg, MIN_SIGNUP_AGE } from "@/lib/utils";
-import { useBrowserSupabase } from "@/lib/supabase/browser";
+import { BirthdayPicker, Spinner } from "@/components/shared";
+import { DefaultAvatar } from "@/components/consumer/DefaultAvatar";
+import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
+import {
+  apiUpdateConsumerProfile,
+  type ConsumerProfile,
+} from "@/lib/api/profile";
 import {
   ALLOWED_AVATAR_ACCEPT,
   uploadConsumerAvatar,
   validateAvatarFile,
 } from "@/lib/avatar-upload";
-import { DefaultAvatar } from "@/components/consumer/DefaultAvatar";
-import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
-import { Spinner } from "@/components/shared/Spinner";
-import { BirthdayPicker } from "@/components/shared/BirthdayPicker";
+import { useBrowserSupabase } from "@/lib/supabase/browser";
+import { toast } from "@/lib/toast";
 import {
   INPUT_CLASS,
   SHEET_BODY_CLASS,
   SHEET_CANCEL_BUTTON_CLASS,
   SHEET_TITLE_CLASS,
 } from "@/lib/ui-classes";
-import {
-  apiUpdateConsumerProfile,
-  type ConsumerProfile,
-} from "@/lib/api/profile";
+import { ageFromBirthday, cn, errMsg, MIN_SIGNUP_AGE } from "@/lib/utils";
 
 // Bottom-sheet identity editor — opened from the profile hero's "Edit
 // profile" button and the Settings → Account row. Writes through

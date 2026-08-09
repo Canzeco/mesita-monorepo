@@ -5,7 +5,7 @@ import { CalendarX } from "lucide-react";
 
 import { ReservationDetailBody } from "@/components/consumer/ReservationDetailBody";
 import { ReservationDetailModalShell } from "@/components/consumer/ReservationDetailModalShell";
-import { LoadingFill } from "@/components/shared/Spinner";
+import { LoadingFill } from "@/components/shared";
 import { apiListReservations } from "@/lib/api/reservations";
 import type { ReservationItem } from "@/lib/mock/reservations-mock";
 import { toReservationItem } from "@/lib/reservations-adapter";
