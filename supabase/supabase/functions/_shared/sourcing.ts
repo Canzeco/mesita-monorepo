@@ -123,19 +123,20 @@ export function familyForGoogleType(primaryType: string | null | undefined): Fam
   return familiesForGoogleType(primaryType)[0] ?? null;
 }
 
-// The launch policy — must match 20260708120000_sourcing_config.sql and the
-// admin catalog's DEFAULT_CONFIG. Used as the fallback when the app_settings
-// read fails or a channel key is absent, so a transient error still enforces
-// the intended floors rather than failing open to "allow anything".
+// The launch policy — must match the admin catalog's DEFAULT_CONFIG. Used as
+// the fallback when the app_settings read fails or a channel key is absent, so
+// a transient error still enforces the intended floors rather than failing open
+// to "allow anything". Live floors are authored in app_settings; historical
+// migration seeds (20260708120000_sourcing_config.sql) may differ.
 const DEFAULT_POLICY: Record<ChannelKey, ChannelPolicy> = {
   admin_search: { enabled: true, families: [...ALL_FAMILY_KEYS], minRating: 0, minReviews: 0 },
   admin_add: { enabled: true, families: [...ALL_FAMILY_KEYS], minRating: 0, minReviews: 0 },
   business_search: { enabled: true, families: [...ALL_FAMILY_KEYS], minRating: 0, minReviews: 0 },
   business_add: { enabled: true, families: [...ALL_FAMILY_KEYS], minRating: 0, minReviews: 0 },
-  // Live admin default for consumer Search is 1★ / 50 reviews (floors are
-  // authored in app_settings.sourcing_config; this is the read-fail fallback).
+  // Live admin defaults (floors authored in app_settings.sourcing_config;
+  // these are the read-fail fallback — not the old migration seed 3.5★ / 100).
   consumer_search: { enabled: true, families: [...ALL_FAMILY_KEYS], minRating: 1, minReviews: 50 },
-  consumer_add: { enabled: true, families: [...ALL_FAMILY_KEYS], minRating: 3.5, minReviews: 100 },
+  consumer_add: { enabled: true, families: [...ALL_FAMILY_KEYS], minRating: 2, minReviews: 50 },
   memo_search: { enabled: true, families: [...ALL_FAMILY_KEYS], minRating: 4.0, minReviews: 50 },
 };
 
