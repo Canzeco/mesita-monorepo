@@ -1,11 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { STRATEGIES, strategyForPlace } from "@/lib/business/strategies";
-import {
-  STRIKE_DECAY_DAYS,
-  effectiveStrikeCount,
-  isCardCurrent,
-} from "./promo-state";
+import { effectiveStrikeCount, isCardCurrent } from "./promo-state";
 
+/** Mirrors file-private STRIKE_DECAY_DAYS in promo-state.ts. */
+const STRIKE_DECAY_DAYS = 183;
 const DAY_MS = 86_400_000;
 const NOW = Date.parse("2026-08-07T12:00:00Z");
 const daysAgo = (d: number) => new Date(NOW - d * DAY_MS).toISOString();
