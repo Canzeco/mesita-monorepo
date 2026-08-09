@@ -75,14 +75,16 @@ export function AiConnectModal({
     }
   }, [supabase]);
 
-  // Load active tokens when the sheet opens. Fresh plaintext lives only in
-  // this mount cycle — closing the sheet unmounts LocalSheet content via
-  // `open`, and we clear `fresh` on the next mint instead of in an effect
-  // (react-hooks/set-state-in-effect).
+  // Load active tokens when the sheet opens. Schedule the fetch on rAF so
+  // setState from `refresh` stays out of the effect body (same pattern as
+  // LocalOverlay's presence flips). Fresh plaintext is cleared on the next
+  // mint, not in an effect.
   useEffect(() => {
     if (!open) return;
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    void refresh();
+    const raf = requestAnimationFrame(() => {
+      void refresh();
+    });
+    return () => cancelAnimationFrame(raf);
   }, [open, refresh]);
 
   async function mint() {
