@@ -215,10 +215,9 @@ checklist.
 Consumer-facing phases: created → booking → confirmed → passed
 (or cancelled / not booked).
 
-## The UI overstates a parked ticket
+## Parked-ticket copy (MESITA-954)
 
-While leg 1 is parked, the consumer app says *"Mesita is on the phone with the
-place — you'll see the answer here."* It may actually be waiting 37 hours for
-the venue to open. The copy should reflect `attempts_state`: `running` = on
-the phone · `scheduled` = waiting for the venue to open, with the time ·
-`exhausted` = we couldn't reach them. (Known cosmetic gap, unbuilt.)
+Consumer adapters read `attempts_state` (+ `next_attempt_at` from the list EF):
+`running` = on the phone · `scheduled` = waiting for the venue to open (with
+the next-try time when known) · `exhausted` = couldn't reach them. Counter-offer
+copy still wins when structured alternatives are present.
