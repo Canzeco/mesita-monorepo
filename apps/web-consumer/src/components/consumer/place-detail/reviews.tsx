@@ -52,7 +52,7 @@ export function ReviewsSummaryBox({ place }: { place: PlaceDetail }) {
               pills. */}
       <div className="bg-background flex flex-col gap-4 rounded-xl p-4">
         <div className="flex items-center gap-2">
-          <MesitaMark variant="sm" />
+          <MesitaSourceBadge variant="sm" />
           <p className="text-foreground text-sm font-semibold">Mesita</p>
           <span className="text-muted-foreground ml-auto text-[11px]">
             {place.mesita_reviews.total} reviews
