@@ -1,4 +1,4 @@
-import { Spinner } from "@/components/shared/Spinner";
+import { Spinner } from "@/components/shared";
 
 // Slot-level fallback. Every modal segment ships its own layout + skeleton
 // loading, so this only covers the beat before a segment resolves. Subtle

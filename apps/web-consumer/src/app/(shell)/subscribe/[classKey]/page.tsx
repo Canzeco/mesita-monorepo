@@ -5,7 +5,7 @@ import Link from "next/link";
 import { notFound, useParams } from "next/navigation";
 import { ArrowLeft, Check, Instagram, Mail, Sparkles } from "lucide-react";
 import { CLASSES } from "@/lib/consumer-data";
-import { Spinner } from "@/components/shared/Spinner";
+import { Spinner } from "@/components/shared";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { apiCreateSubscriptionCheckout } from "@/lib/api/subscription";
 import { MOCK_PREMIUM_KEY } from "@/lib/class-context";

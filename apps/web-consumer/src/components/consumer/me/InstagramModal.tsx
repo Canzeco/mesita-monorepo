@@ -5,7 +5,7 @@ import { BadgeCheck, Instagram } from "lucide-react";
 import { cn, errMsg } from "@/lib/utils";
 import { toast } from "@/lib/toast";
 import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
-import { Spinner } from "@/components/shared/Spinner";
+import { Spinner } from "@/components/shared";
 import { SectionEyebrow } from "@/components/consumer/me/settings-rows";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { apiClaimInstagram } from "@/lib/api/profile";

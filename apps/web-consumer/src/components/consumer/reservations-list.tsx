@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
 
 import { ReservationCard } from "@/components/consumer/ReservationCard";
-import { LoadingFill } from "@/components/shared/Spinner";
+import { LoadingFill } from "@/components/shared";
 import {
   apiListReservations,
   type ReservationScope,
