@@ -16,6 +16,7 @@ import { Spinner } from "@/components/shared";
 import type { Place } from "@/lib/api/places";
 import type { PlaceDetail } from "@/lib/mock/place";
 import { formatPlacePriceChip } from "@/lib/place-price";
+import { getOpeningStatusLabel } from "@/lib/place-status";
 import {
   cn,
   formatCompactCount,
@@ -52,9 +53,8 @@ export function ProfileSummary({ place }: { place: PlaceDetail }) {
       priceLevel: place.price_level,
       currency: place.currency,
     }) ?? null;
-  const statusValue = place.open_now
-    ? `Open · until ${place.closes_at}`
-    : `Closed · opens ${place.opens_at}`;
+  const statusValue = getOpeningStatusLabel(place);
+  const isOpen = place.open_now === true;
   const promoPlace = placeDetailAsPromoPlace(place);
   const isPartner = place.listing_type === "partner";
 
@@ -145,22 +145,24 @@ export function ProfileSummary({ place }: { place: PlaceDetail }) {
             {formatDistanceKm(place.distance_km)}
           </span>
         </ProfileMetaChip>
-        <ProfileMetaChip>
-          <Clock
-            className={cn(
-              "h-3 w-3 shrink-0",
-              place.open_now ? "text-emerald-600" : "text-muted-foreground",
-            )}
-          />
-          <span
-            className={cn(
-              "font-semibold",
-              place.open_now ? "text-emerald-700" : undefined,
-            )}
-          >
-            {statusValue}
-          </span>
-        </ProfileMetaChip>
+        {statusValue && (
+          <ProfileMetaChip>
+            <Clock
+              className={cn(
+                "h-3 w-3 shrink-0",
+                isOpen ? "text-emerald-600" : "text-muted-foreground",
+              )}
+            />
+            <span
+              className={cn(
+                "font-semibold",
+                isOpen ? "text-emerald-700" : undefined,
+              )}
+            >
+              {statusValue}
+            </span>
+          </ProfileMetaChip>
+        )}
         <PromoChip place={promoPlace} size="md" showWhenEmpty tone="light" />
       </div>
 
