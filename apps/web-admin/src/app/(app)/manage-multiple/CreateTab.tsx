@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import { Loader2, Play, Upload } from "lucide-react";
 import { createUnitFromPlaceId } from "./actions";
 import { StatusIcon } from "./StatusIcon";
@@ -114,12 +115,12 @@ export function CreateTab() {
         the Google lookup and catalog listing, then hands off to the Enricher —
         deep ADEA research runs in the background.
         Caps, levels, and photo analysis are configured in{" "}
-        <a
+        <Link
           href="/enricher-config/config"
           className="text-foreground font-medium underline underline-offset-2"
         >
           Enricher Config
-        </a>
+        </Link>
         .
       </p>
 
