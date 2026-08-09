@@ -67,6 +67,8 @@ export type RankMapInput = {
   maxCategories: number;
   perCategory: number;
   profile: ConsumerProfile | null;
+  /** Consumer Randomness rung, 0 low … 4 max; null → the blob's `low` row. */
+  randomness?: number | null;
 };
 
 type BuiltCategory = {
@@ -187,6 +189,7 @@ export async function rankMapCatalog(
         lat,
         lng,
         xxSeed: `${xxSeedBase}:${p.key}`,
+        randomness: input.randomness ?? null,
       });
     } else {
       // No vec → simple text-match fallback so the row still shows up.

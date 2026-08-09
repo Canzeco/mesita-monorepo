@@ -152,11 +152,40 @@ export function rpScore(strategy: RpStrategy | null, rungs: RpRungs = DEFAULT_RP
   return clamp01(rungs[strategy ?? "zero"]);
 }
 
-export type XxParams = { control: number };
-export const DEFAULT_XX_PARAMS: XxParams = { control: 1 };
+// XX is a TABLE, not a dial (Pato 2026-08-09). The consumer's Randomness
+// filter is a word ladder (low · medium · high · extra · max — the consumer
+// apps' `RANDOMNESS_LABELS`, level index 0–4); this config says what each word
+// MEANS: one integer control 0–5 per rung. A request with no level = the
+// consumer never touched the filter = the `low` rung, which is exactly what
+// the old flat `xx.control` was.
+export const RANDOMNESS_LEVELS = ["low", "medium", "high", "extra", "max"] as const;
+export type RandomnessLevelKey = (typeof RANDOMNESS_LEVELS)[number];
+export const XX_CONTROL_MIN = 0;
+export const XX_CONTROL_MAX = 5;
+
+export type XxParams = { levels: Record<RandomnessLevelKey, number> };
+export const DEFAULT_XX_PARAMS: XxParams = {
+  levels: { low: 0, medium: 1, high: 2, extra: 3, max: 5 },
+};
+
+/** The control for a 0–4 level index; out of range / absent → the `low` rung. */
+export function xxControlForLevel(p: XxParams, level?: number | null): number {
+  const i = typeof level === "number" && Number.isFinite(level)
+    ? Math.min(RANDOMNESS_LEVELS.length - 1, Math.max(0, Math.round(level)))
+    : 0;
+  const key = RANDOMNESS_LEVELS[i];
+  const v = p.levels?.[key];
+  return typeof v === "number" && Number.isFinite(v) ? v : DEFAULT_XX_PARAMS.levels[key];
+}
+
+/** Read a request's Randomness rung (0–4); anything else → null (= `low`). */
+export function parseRandomnessLevel(v: unknown): number | null {
+  if (typeof v !== "number" || !Number.isFinite(v)) return null;
+  return Math.min(RANDOMNESS_LEVELS.length - 1, Math.max(0, Math.round(v)));
+}
 
 export function xxScore(u: number, control: number): number {
-  const c = Math.max(0, Math.min(5, control));
+  const c = Math.max(XX_CONTROL_MIN, Math.min(XX_CONTROL_MAX, control));
   return clamp01(Math.pow(clamp01(u), c));
 }
 
@@ -298,6 +327,28 @@ export function coerceScoringSettings(raw: unknown): ScoringSettings {
       conservative: num(rp.conservative, d.rp.conservative, 0, 1),
       aggressive: num(rp.aggressive, d.rp.aggressive, 0, 1),
     },
-    xx: { control: num(xx.control, d.xx.control, 0, 5) },
+    xx: { levels: coerceXxLevels(xx, d.xx) },
   };
+}
+
+/**
+ * The XX word→control table. Integers only, 0–5. A pre-table blob carried ONE
+ * flat `xx.control` (the no-filter default) — it becomes the `low` rung, since
+ * that is the rung an untouched filter selects; the other rungs seed from code
+ * defaults.
+ */
+function coerceXxLevels(
+  raw: Record<string, unknown>,
+  fallback: XxParams,
+): Record<RandomnessLevelKey, number> {
+  const levels = (raw.levels ?? {}) as Record<string, unknown>;
+  const legacy = raw.control;
+  const out = {} as Record<RandomnessLevelKey, number>;
+  for (const key of RANDOMNESS_LEVELS) {
+    const v = levels[key] ?? (key === "low" ? legacy : undefined);
+    out[key] = Math.round(
+      num(v, fallback.levels[key], XX_CONTROL_MIN, XX_CONTROL_MAX),
+    );
+  }
+  return out;
 }

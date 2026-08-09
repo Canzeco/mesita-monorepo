@@ -24,8 +24,10 @@ import {
 import { PLACE_FAMILIES, type FamilyKey } from "@/lib/place-families";
 
 // v4: the v3 shape (MESITA-672 — searched zone center + km radius, when
-// union, randomness) + `ask`, the intent's That axis (MESITA-699). Old keys
-// are ignored; randomness 5 (legacy max) clamps to 4 (MESITA-905).
+// union, randomness). `ask` (the That axis, MESITA-699) was dropped — Memo
+// owns it and passes it to Lineup itself. The key stays v4 because ignoring a
+// removed field is backward-safe; bumping would wipe live zone/when/distance.
+// Old keys are ignored; randomness 5 (legacy max) clamps to 4 (MESITA-905).
 const STORAGE_KEY = "mesita_discovery_filters_v4";
 
 const KNOWN_FAMILY_KEYS = new Set<string>(PLACE_FAMILIES.map((f) => f.key));
@@ -98,7 +100,6 @@ function readPersisted(): DiscoveryFilters {
       zone: readZone(parsed.zone),
       maxKm,
       when: readWhen(parsed.when),
-      ask: typeof parsed.ask === "string" ? parsed.ask.slice(0, 200) : "",
       randomness,
     };
   } catch {
@@ -181,11 +182,6 @@ export function setDiscoveryWhen(when: DiscoveryWhen) {
 
 export function setDiscoveryMaxKm(maxKm: number | null) {
   patchDiscoveryFilters({ maxKm });
-}
-
-/** That — the free-text ask (the intent's 4th axis). Capped at 200 chars. */
-export function setDiscoveryAsk(ask: string) {
-  patchDiscoveryFilters({ ask: ask.slice(0, 200) });
 }
 
 export function setDiscoveryRandomness(randomness: RandomnessLevel) {

@@ -23,15 +23,17 @@
 //                                   the zero rung earns nothing there either
 //                                   — the paid lane is strictly pay-to-play.
 //   XX  Random Number        [0,1)  U^control, U ~ Uniform[0,1) drawn per
-//                                   card per lane; control ∈ [0,5] is one
-//                                   deck-wide knob. control 0 → XX ≡ 1 (off,
-//                                   pure merit) · 5 → near-total chaos.
-//                                   Higher control never changes WHO is
-//                                   luckiest, only how much luck beats merit.
-//                                   Meant as a consumer-overridable default;
-//                                   NOT YET (MESITA-738) — the EFs take no
-//                                   per-query randomness, so it is a flat
-//                                   global today.
+//                                   card per lane. control ∈ [0,5] is a WHOLE
+//                                   number PER RUNG of the consumer's
+//                                   Randomness ladder (low…max, MESITA-1008)
+//                                   — a table, not one deck-wide dial.
+//                                   control 0 → XX ≡ 1 (off, pure merit) ·
+//                                   5 → near-total chaos. Higher control never
+//                                   changes WHO is luckiest, only how much luck
+//                                   beats merit. The EFs take the rung; the
+//                                   consumer apps don't send it yet
+//                                   (MESITA-738), so every live query reads the
+//                                   `low` row.
 //   MP  Manual Priority       [0,1]  the operator's thumb on the scale for ONE
 //                                   place (places.manual_priority, default
 //                                   0.1) — it multiplies BOTH lanes, trailing
@@ -71,9 +73,11 @@
 //     else a POINT at GPS. tol is MEANT to be the CONSUMER'S
 //     distance-tolerance input (the Where filter slider), with the admin's
 //     defaultTolKm knob as the fallback — a CONSUMER-OVERRIDABLE DEFAULT
-//     (GREEN in the console, like XX's control; when/what have no consumer
-//     override). NOT YET LIVE (MESITA-738, re-verified 2026-08-09): no
-//     caller sets LineupContext.tolKm, so defaultTolKm is the ONLY tolerance
+//     (GREEN in the console; when/what have no consumer override). NOT YET
+//     LIVE (MESITA-1006, re-verified 2026-08-09 against the post-MESITA-1008
+//     ranker): LineupContext.tolKm exists and smScore reads it, but no caller
+//     sets it — randomness got plumbed, tolKm did not. So defaultTolKm is the
+//     ONLY tolerance
 //     in production and nothing overrides it. A named zone reuses 30%
 //     (ZONE_SPILL_FRAC — a typed zone is a constraint, not a vibe), also
 //     unreachable today: lineup-rank passes zoneMode:false unconditionally,
@@ -535,16 +539,40 @@ export function rpScore(strategy: RpStrategy | null, rungs: RpRungs = DEFAULT_RP
 
 // ── XX — Random Number ─────────────────────────────────────────────────
 
+// XX is a TABLE, not a dial (Pato 2026-08-09). The consumer's Randomness
+// filter is a word ladder — low · medium · high · extra · max (the consumer
+// apps' RANDOMNESS_LABELS, level index 0–4) — and this config is what each
+// word MEANS: one WHOLE control 0–5 per rung. A request with no rung (the
+// filter untouched, and every request until the apps send it) reads `low`,
+// which is exactly what the old flat `xx.control` was.
+export const RANDOMNESS_LEVELS = ["low", "medium", "high", "extra", "max"] as const;
+export type RandomnessLevelKey = (typeof RANDOMNESS_LEVELS)[number];
+export const XX_CONTROL_MIN = 0;
+export const XX_CONTROL_MAX = 5;
+
 export type XxParams = {
-  /** Deck-wide randomness, 0 (off — pure merit) … 5 (near-total chaos). */
-  control: number;
+  /** Randomness rung → control: 0 (off — pure merit) … 5 (near-total chaos). */
+  levels: Record<RandomnessLevelKey, number>;
 };
 
-const DEFAULT_XX_PARAMS: XxParams = { control: 1 };
+const DEFAULT_XX_PARAMS: XxParams = {
+  levels: { low: 0, medium: 1, high: 2, extra: 3, max: 5 },
+};
+
+/** The control for a 0–4 level index; out of range / absent → the `low` rung. */
+export function xxControlForLevel(p: XxParams, level?: number | null): number {
+  const i =
+    typeof level === "number" && Number.isFinite(level)
+      ? Math.min(RANDOMNESS_LEVELS.length - 1, Math.max(0, Math.round(level)))
+      : 0;
+  const key = RANDOMNESS_LEVELS[i];
+  const v = p.levels?.[key];
+  return typeof v === "number" && Number.isFinite(v) ? v : DEFAULT_XX_PARAMS.levels[key];
+}
 
 /** XX from a unit draw — U^control. control 0 → 1 for every card. */
 export function xxScore(u: number, control: number): number {
-  const c = Math.max(0, Math.min(5, control));
+  const c = Math.max(XX_CONTROL_MIN, Math.min(XX_CONTROL_MAX, control));
   return clamp01(Math.pow(clamp01(u), c));
 }
 
@@ -807,7 +835,10 @@ export const CONTEXT_FIELDS: readonly ContextFieldDef[] = [
 //   gp.lnCeiling          5–15
 //   gp.ratingPow          1–2   (0.1 steps; default 1)
 //   rp.*                  0–1
-//   xx.control            0–5   (GREEN default only — not a hyperparam)
+//   xx.levels.{low,medium,high,extra,max}
+//                         0–5 INT each (GREEN — the consumer's Randomness
+//                         word ladder → control; a pre-table `xx.control`
+//                         soft-migrates onto the `low` rung)
 //   (dataAccess + context are GONE — v10: inputs are FIXED documentation)
 
 export type ScoringSettings = {
@@ -902,10 +933,29 @@ export function coerceScoringSettings(raw: unknown): ScoringSettings {
       conservative: num(rp.conservative, d.rp.conservative, 0, 1),
       aggressive: num(rp.aggressive, d.rp.aggressive, 0, 1),
     },
-    xx: {
-      control: num(xx.control, d.xx.control, 0, 5),
-    },
+    xx: { levels: coerceXxLevels(xx, d.xx) },
   };
+}
+
+/**
+ * The XX word→control table — whole numbers, 0–5. A pre-table blob carried ONE
+ * flat `xx.control` (the no-filter default): it becomes the `low` rung, the one
+ * an untouched filter selects, and the other rungs seed from code defaults.
+ */
+function coerceXxLevels(
+  raw: Record<string, unknown>,
+  fallback: XxParams,
+): Record<RandomnessLevelKey, number> {
+  const levels = (raw.levels ?? {}) as Record<string, unknown>;
+  const legacy = raw.control;
+  const out = {} as Record<RandomnessLevelKey, number>;
+  for (const key of RANDOMNESS_LEVELS) {
+    const v = levels[key] ?? (key === "low" ? legacy : undefined);
+    out[key] = Math.round(
+      num(v, fallback.levels[key], XX_CONTROL_MIN, XX_CONTROL_MAX),
+    );
+  }
+  return out;
 }
 
 // ── PIPELINE CONTEXT — the fixed input contracts, per subscore ──────────

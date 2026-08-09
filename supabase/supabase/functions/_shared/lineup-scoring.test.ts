@@ -6,6 +6,7 @@ import {
   emScore,
   gpScore,
   whenFromOpenness,
+  xxControlForLevel,
   xxScore,
 } from "./lineup-scoring.ts";
 
@@ -28,6 +29,30 @@ Deno.test("whenFromOpenness open-now with patience", () => {
 
 Deno.test("xxScore control 0 → 1", () => {
   assertEquals(xxScore(0.3, 0), 1);
+});
+
+Deno.test("xxControlForLevel reads the rung the consumer picked", () => {
+  const xx = { levels: { low: 0, medium: 1, high: 2, extra: 3, max: 5 } };
+  assertEquals(xxControlForLevel(xx, 0), 0);
+  assertEquals(xxControlForLevel(xx, 4), 5);
+  // No level in the request = untouched filter = the low rung.
+  assertEquals(xxControlForLevel(xx, null), 0);
+  assertEquals(xxControlForLevel(xx, undefined), 0);
+  // Out of range clamps onto the ladder rather than falling off it.
+  assertEquals(xxControlForLevel(xx, 9), 5);
+  assertEquals(xxControlForLevel(xx, -2), 0);
+});
+
+Deno.test("coerceScoringSettings: XX rungs are ints 0–5, legacy control → low", () => {
+  const table = coerceScoringSettings({
+    xx: { levels: { low: 0, medium: 1.6, high: 9, extra: -1, max: 5 } },
+  });
+  assertEquals(table.xx.levels, { low: 0, medium: 2, high: 5, extra: 0, max: 5 });
+
+  // Pre-table blob: the flat control was the no-filter value → the low rung.
+  const legacy = coerceScoringSettings({ xx: { control: 0.1 } });
+  assertEquals(legacy.xx.levels, DEFAULT_SCORING_SETTINGS.xx.levels);
+  assertEquals(legacy.xx.levels.low, 0);
 });
 
 Deno.test("composeFinalDeck keep-lane-on-dupe (MESITA-717)", () => {

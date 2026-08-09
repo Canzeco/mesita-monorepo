@@ -30,7 +30,10 @@ const CANONICAL_BLOB = {
   },
   gp: { lnCeiling: 10, ratingPow: 1 },
   rp: { zero: 0.1, conservative: 0.4, aggressive: 1 },
-  xx: { control: 0.1 },
+  // XX is the Randomness TABLE (Pato 2026-08-09): the consumer's word ladder
+  // → one integer control 0–5 per rung. The pre-table flat `xx.control` is
+  // still accepted (see the compat test below) so draining admin builds save.
+  xx: { levels: { low: 0, medium: 1, high: 2, extra: 3, max: 5 } },
 };
 
 // Every key the gate REQUIRES, as a path into the blob. Deleting any one of
@@ -46,7 +49,12 @@ const REQUIRED_PATHS: readonly string[][] = [
   ["rp", "conservative"],
   ["rp", "aggressive"],
   ["xx"],
-  ["xx", "control"],
+  ["xx", "levels"],
+  ["xx", "levels", "low"],
+  ["xx", "levels", "medium"],
+  ["xx", "levels", "high"],
+  ["xx", "levels", "extra"],
+  ["xx", "levels", "max"],
 ];
 
 function withoutPath(path: readonly string[]): unknown {
@@ -127,11 +135,39 @@ Deno.test("validate: out-of-range numbers clamp rather than reject", () => {
   const wild = structuredClone(CANONICAL_BLOB);
   wild.laneN.organic = 9_999;
   wild.rp.aggressive = 42;
-  wild.xx.control = -3;
+  wild.xx.levels.max = 42;
+  wild.xx.levels.low = -3;
   const r = validate(wild);
   assert(r.ok);
   const c = r.config as typeof CANONICAL_BLOB;
   assertEquals(c.laneN.organic, 50); // LANE_N_MAX
   assertEquals(c.rp.aggressive, 1);
-  assertEquals(c.xx.control, 0);
+  assertEquals(c.xx.levels.max, 5);
+  assertEquals(c.xx.levels.low, 0);
+});
+
+Deno.test("validate: XX rungs are whole numbers 0–5 — decimals round", () => {
+  const decimal = structuredClone(CANONICAL_BLOB);
+  decimal.xx.levels.medium = 1.4;
+  decimal.xx.levels.high = 2.6;
+  const r = validate(decimal);
+  assert(r.ok);
+  const c = r.config as typeof CANONICAL_BLOB;
+  assertEquals(c.xx.levels.medium, 1);
+  assertEquals(c.xx.levels.high, 3);
+});
+
+Deno.test("validate: a pre-table blob's flat xx.control becomes the low rung", () => {
+  // An admin build from before the table posts `xx: { control: 0.1 }`. It must
+  // still save — a 400 here wedges EVERY section for that build (MESITA-804).
+  const legacy = { ...structuredClone(CANONICAL_BLOB), xx: { control: 0.1 } };
+  const r = validate(legacy);
+  assert(r.ok, `legacy blob rejected: ${r.ok ? "" : r.error}`);
+  assertEquals((r.config as typeof CANONICAL_BLOB).xx.levels, {
+    low: 0, // round(0.1) — the flat default WAS the no-filter value
+    medium: 1,
+    high: 2,
+    extra: 3,
+    max: 5,
+  });
 });

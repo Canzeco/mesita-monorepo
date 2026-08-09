@@ -21,6 +21,17 @@
 const STRATEGY_IDS = ["zero", "conservative", "aggressive"] as const;
 const LANE_N_MAX = 50;
 
+// XX is a TABLE: the consumer's Randomness word ladder (low … max) → one
+// INTEGER control 0–5 per rung. Mirrors _shared/lineup-scoring.ts.
+const RANDOMNESS_LEVELS = ["low", "medium", "high", "extra", "max"] as const;
+const XX_DEFAULT_LEVELS: Record<string, number> = {
+  low: 0,
+  medium: 1,
+  high: 2,
+  extra: 3,
+  max: 5,
+};
+
 function num(v: unknown, lo: number, hi: number): number | null {
   if (typeof v !== "number" || !Number.isFinite(v)) return null;
   return Math.min(hi, Math.max(lo, v));
@@ -90,10 +101,31 @@ export function validate(raw: unknown): { ok: true; config: unknown } | { ok: fa
     rp[p] = v;
   }
 
-  // XX — the deck-wide randomness control (green default only).
+  // XX — the Randomness table: one integer control 0–5 per consumer rung.
+  // A pre-table blob (an admin build still draining) posts a single flat
+  // `xx.control` instead: it lands on the `low` rung — the rung an untouched
+  // filter selects — and the other rungs seed from defaults. Rejecting it
+  // would 400 EVERY section for those builds (MESITA-804's lesson).
   const xxIn = r.xx as Record<string, unknown> | undefined;
-  const control = num(xxIn?.control, 0, 5);
-  if (control == null) return { ok: false, error: "xx.control must be a number 0–5" };
+  const xxLevelsIn = xxIn?.levels;
+  const hasTable = !!xxLevelsIn && typeof xxLevelsIn === "object";
+  if (!hasTable && num(xxIn?.control, 0, 5) == null) {
+    return {
+      ok: false,
+      error: "xx.levels must map low/medium/high/extra/max to numbers 0–5",
+    };
+  }
+  const levels: Record<string, number> = {};
+  for (const key of RANDOMNESS_LEVELS) {
+    const raw = hasTable
+      ? (xxLevelsIn as Record<string, unknown>)[key]
+      : key === "low"
+      ? xxIn?.control
+      : XX_DEFAULT_LEVELS[key];
+    const v = num(raw, 0, 5);
+    if (v == null) return { ok: false, error: `xx.levels.${key} must be a number 0–5` };
+    levels[key] = Math.round(v);
+  }
 
   return {
     ok: true,
@@ -110,7 +142,7 @@ export function validate(raw: unknown): { ok: true; config: unknown } | { ok: fa
       },
       gp: { lnCeiling, ratingPow },
       rp,
-      xx: { control },
+      xx: { levels },
     },
   };
 }
