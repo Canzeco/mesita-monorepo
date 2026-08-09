@@ -40,9 +40,10 @@ Deno.test("evaluatePlaceForChannel rejects ineligible family", () => {
 
 Deno.test("evaluatePlaceForChannel rejects below rating floor", () => {
   const policy = coerceChannelPolicy(null, "consumer_add");
+  assertEquals(policy.minRating, 2);
   const verdict = evaluatePlaceForChannel(policy, {
     primaryType: "restaurant",
-    rating: 3.0,
+    rating: 1.5,
     reviewCount: 200,
   });
   assertEquals(verdict.eligible, false);
@@ -51,10 +52,11 @@ Deno.test("evaluatePlaceForChannel rejects below rating floor", () => {
 
 Deno.test("evaluatePlaceForChannel rejects below review floor", () => {
   const policy = coerceChannelPolicy(null, "consumer_add");
+  assertEquals(policy.minReviews, 50);
   const verdict = evaluatePlaceForChannel(policy, {
     primaryType: "restaurant",
     rating: 4.5,
-    reviewCount: 50,
+    reviewCount: 49,
   });
   assertEquals(verdict.eligible, false);
   if (!verdict.eligible) assertEquals(verdict.code, "below_min_reviews");
