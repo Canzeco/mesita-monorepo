@@ -10,7 +10,7 @@ export type ConsumerNotification = ConsumerNotificationRow & {
   bill: TicketBillPayload;
 };
 
-export type PayTicketMeta = {
+type PayTicketMeta = {
   kind?: string;
   status?: string;
   story_status?: string;
@@ -48,44 +48,4 @@ export async function fetchConsumerNotifications(
     { limit },
   );
   return (data.notifications ?? []).map(enrichNotification);
-}
-
-export async function fetchPayTicketBundle(
-  client: SupabaseClient<Database>,
-  ticketId: string,
-): Promise<{
-  notifications: ConsumerNotificationRow[];
-  ticketMeta: PayTicketMeta | null;
-  placeInstagramUrl: string | null;
-}> {
-  const data = await invokeEF<ListPayNotificationsResult>(
-    client,
-    "consumer-web-list-pay-notifications",
-    { ticketId },
-  );
-  return {
-    notifications: data.notifications ?? [],
-    ticketMeta: data.tickets?.[ticketId] ?? null,
-    placeInstagramUrl: data.placeInstagramUrl ?? null,
-  };
-}
-
-export async function fetchPayTicketList(
-  client: SupabaseClient<Database>,
-): Promise<{
-  notifications: ConsumerNotificationRow[];
-  ticketMetaById: Map<string, PayTicketMeta>;
-}> {
-  const data = await invokeEF<ListPayNotificationsResult>(
-    client,
-    "consumer-web-list-pay-notifications",
-    {},
-  );
-  const ticketMetaById = new Map<string, PayTicketMeta>(
-    Object.entries(data.tickets ?? {}),
-  );
-  return {
-    notifications: data.notifications ?? [],
-    ticketMetaById,
-  };
 }
