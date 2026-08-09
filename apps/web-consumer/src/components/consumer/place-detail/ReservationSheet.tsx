@@ -42,7 +42,7 @@ const DEFAULT_PARTY = 2;
  * card doesn't) — that's what turns the slot grid hours-aware. Absent, the sheet
  * behaves exactly as before: baseline window, no closed-hours warning.
  */
-export type ReservationSheetPlace = {
+type ReservationSheetPlace = {
   id: string;
   name: string;
   hours_table?: Array<{ day: string; range: string }>;

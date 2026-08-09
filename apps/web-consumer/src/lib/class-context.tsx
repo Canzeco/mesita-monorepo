@@ -31,7 +31,7 @@ import {
 /** Open doors, independent of which one wins the class slot (MESITA-972).
  *  Standard is always open, so only the three earned/paid doors are carried.
  *  The class rail renders unlocked-vs-locked off this. */
-export type ClassDoors = {
+type ClassDoors = {
   influencer: boolean;
   premium: boolean;
   aura: boolean;

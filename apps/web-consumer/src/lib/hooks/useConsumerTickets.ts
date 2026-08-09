@@ -15,7 +15,7 @@ import { useBrowserSupabase } from "@/lib/supabase/browser";
 // cadence; New/History split client-side so a status change moves a card
 // across tabs without a refetch.
 
-export type ConsumerTicketsState = {
+type ConsumerTicketsState = {
   active: ConsumerTicketRow[];
   history: ConsumerTicketRow[];
   status: "loading" | "ready" | "error";

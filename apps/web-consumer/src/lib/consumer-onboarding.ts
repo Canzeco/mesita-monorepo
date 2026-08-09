@@ -12,7 +12,7 @@
 //   • apps/mobile-consumer/src/lib/api/auth.ts → isOnboarded
 // Change one, change all three.
 
-export type OnboardableProfile = {
+type OnboardableProfile = {
   first_name?: string | null;
   last_name?: string | null;
   birthday?: string | null;
