@@ -1,28 +1,17 @@
 import { cn } from "@/lib/utils";
 import { INPUT_CLASS as INPUT } from "@/lib/ui-classes";
-import { PlaceKvField } from "./PlaceKvField";
 
 export function PlaceFormField({
   label,
   hint,
   children,
   className,
-  kv = false,
 }: {
   label: string;
   hint?: string;
   children: React.ReactNode;
   className?: string;
-  kv?: boolean;
 }) {
-  if (kv) {
-    return (
-      <PlaceKvField label={label} hint={hint} className={className}>
-        {children}
-      </PlaceKvField>
-    );
-  }
-
   return (
     <label className={cn("block", className)}>
       <span className="text-muted-foreground mb-1.5 block text-[11px] font-medium">
