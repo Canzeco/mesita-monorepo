@@ -316,11 +316,26 @@ async function callGuest(input: {
   outageRetries: number;
   placeLng: number | null;
   reservedAtIso: string;
+  /** MESITA-787 — app = skip a2; ticket is the notification. */
+  guestNotify: "call" | "app";
 }): Promise<void> {
   const { admin, reservationId } = input;
   const record = (patch: Record<string, unknown>) =>
     guardedRecord(admin, reservationId, input.runId, patch);
   const label = input.context === "confirmation" ? "confirmed" : "counter-offer";
+  if (input.guestNotify === "app") {
+    await record({
+      callback_state: "skipped",
+      callback_next_attempt_at: null,
+      // Plain venue confirm: in-app status IS the ack. Counter-offers stay
+      // open for the guest to pick an alternative in the app.
+      ...(input.context === "confirmation"
+        ? { guest_confirmed_at: new Date().toISOString() }
+        : {}),
+      last_call_status: `${label} — guest prefers app-only; no call`,
+    });
+    return;
+  }
   if (!input.consumerNumber) {
     await record({
       callback_state: "skipped",
@@ -440,6 +455,7 @@ async function runCallbackRetry(input: {
   outageRetries: number;
   placeLng: number | null;
   reservedAtIso: string;
+  guestNotify: "call" | "app";
 }): Promise<void> {
   try {
     const lines = await resolveLines(input.key);
@@ -482,12 +498,22 @@ async function runCancelNotice(input: {
   reservedAtIso: string;
   projectId: string;
   venueCallCap: number;
+  guestNotify: "call" | "app";
 }): Promise<void> {
   const { admin, reservationId } = input;
   const record = (patch: Record<string, unknown>) =>
     guardedRecord(admin, reservationId, input.runId, patch);
   const isPlaceSide = input.kind === "venue_cancel"; // wire kind keeps venue_cancel
   const who = isPlaceSide ? "place" : "guest";
+  // guest_cancel wire kind = tell the GUEST the venue cancelled (leg 6).
+  if (!isPlaceSide && input.guestNotify === "app") {
+    await record({
+      notice_state: "skipped",
+      notice_next_at: null,
+      last_call_status: "cancel notice (guest) — guest prefers app-only; no call",
+    });
+    return;
+  }
   const n = input.attemptsDone + 1;
   const reservedAt = input.reservedAtIso ? new Date(input.reservedAtIso) : null;
   const park = async (failNote: string) => {
@@ -700,6 +726,7 @@ async function runIntents(input: {
   venueCallCap: number;
   /** Old reserved_at when this run MODIFIES a confirmed booking (T3/eng-review). */
   modificationOfIso: string | null;
+  guestNotify: "call" | "app";
 }): Promise<void> {
   const { admin, reservationId, attemptsPlanned, legVars } = input;
   // Prior runs' entries stay in the log; this run appends to them.
@@ -734,6 +761,7 @@ async function runIntents(input: {
       outageRetries: 0,
       placeLng: input.placeLng,
       reservedAtIso: input.reservedAtIso,
+      guestNotify: input.guestNotify,
     });
 
   try {
@@ -1113,12 +1141,13 @@ Deno.serve(async (req) => {
   const { data: r, error: rErr } = await admin
     .from("reservations")
     .select(
-      "id, reference_code, reserved_at, party_size, notes, status, project_id, is_test, business_number, consumer_number, attempts_state, attempts, call_attempts, callback_attempts, guest_confirmed_at, alternatives, notice_kind, notice_state, notice_attempts, outage_retries, modification_of, consumer:consumers(full_name, first_name, last_name, phone)",
+      "id, reference_code, reserved_at, party_size, notes, status, project_id, is_test, business_number, consumer_number, attempts_state, attempts, call_attempts, callback_attempts, guest_confirmed_at, guest_notify, alternatives, notice_kind, notice_state, notice_attempts, outage_retries, modification_of, consumer:consumers(full_name, first_name, last_name, phone)",
     )
     .eq("id", reservationId)
     .maybeSingle();
   if (rErr) return json({ ok: false, error: rErr.message }, 500);
   if (!r) return json({ ok: false, error: "reservation not found" }, 404);
+  const guestNotify: "call" | "app" = r.guest_notify === "app" ? "app" : "call";
   // Per-intent gates — each errand has its own idea of a live ticket.
   if (intent === "book") {
     if (r.status !== "pending") {
@@ -1306,12 +1335,24 @@ Deno.serve(async (req) => {
         reservedAtIso: r.reserved_at,
         projectId: r.project_id,
         venueCallCap: cfg.limits.venueCallsPerPlacePerDay,
+        guestNotify,
       }),
     );
     return json({ ok: true, started: true, intent, reservation_id: reservationId });
   }
 
   if (intent === "callback_retry") {
+    if (guestNotify === "app") {
+      await admin
+        .from("reservations")
+        .update({
+          callback_state: "skipped",
+          callback_next_attempt_at: null,
+          last_call_status: "callback retry — guest prefers app-only; no call",
+        })
+        .eq("id", reservationId);
+      return json({ ok: true, skipped: "guest prefers app-only" });
+    }
     if (!consumerNumber) {
       await admin
         .from("reservations")
@@ -1353,6 +1394,7 @@ Deno.serve(async (req) => {
         outageRetries: typeof r.outage_retries === "number" ? r.outage_retries : 0,
         placeLng,
         reservedAtIso: r.reserved_at,
+        guestNotify,
       }),
     );
     return json({ ok: true, started: true, intent, reservation_id: reservationId });
@@ -1407,6 +1449,7 @@ Deno.serve(async (req) => {
       outageRetries: typeof r.outage_retries === "number" ? r.outage_retries : 0,
       venueCallCap: cfg.limits.venueCallsPerPlacePerDay,
       modificationOfIso,
+      guestNotify,
     }),
   );
 

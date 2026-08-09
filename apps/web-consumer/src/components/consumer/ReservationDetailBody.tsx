@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import { Calendar, Hash, Users } from "lucide-react";
+import { useState } from "react";
 
 import type { ReservationItem } from "@/lib/mock/reservations-mock";
 import { cn, guestNoun } from "@/lib/utils";
@@ -11,6 +12,8 @@ import {
   MetaRow,
 } from "@/components/consumer/reservation-detail-ui";
 import { ReservationActions } from "@/components/consumer/reservation-actions";
+import { apiConfirmReservation } from "@/lib/api/reservations";
+import { useBrowserSupabase } from "@/lib/supabase/browser";
 
 // Shared body for /reservation/[id]. Used by both the intercepted modal
 // (ReservationDetailModalShell) and the hard-nav page. Stays narrow on
@@ -68,6 +71,29 @@ export function ReservationDetailBody({
 }) {
   const meta = statusMeta(r.status);
   const banner = r.statusNote ?? meta.banner;
+  const supabase = useBrowserSupabase();
+  const [confirmBusy, setConfirmBusy] = useState(false);
+  const [confirmError, setConfirmError] = useState<string | null>(null);
+  const offers = (r.alternatives ?? []).filter((a) => a.time);
+  const showOffers = r.status === "booking" && offers.length > 0;
+  const showAck =
+    r.status === "confirmed" && !r.guestConfirmedAt && r.guestNotify === "app";
+
+  async function confirm(args?: { newDate?: string; newTime?: string }) {
+    setConfirmBusy(true);
+    setConfirmError(null);
+    try {
+      await apiConfirmReservation(supabase, {
+        reservationId: r.id,
+        ...args,
+      });
+      onChanged?.();
+    } catch (e) {
+      setConfirmError(e instanceof Error ? e.message : "Couldn't confirm");
+    } finally {
+      setConfirmBusy(false);
+    }
+  }
 
   return (
     <div className="flex flex-col gap-4 px-4 pt-4 pb-8">
@@ -150,6 +176,45 @@ export function ReservationDetailBody({
 
       {r.linkedCoupon && !meta.spent && (
         <LinkedCouponCard coupon={r.linkedCoupon} />
+      )}
+
+      {showOffers && (
+        <section className="border-border bg-card flex flex-col gap-2 rounded-2xl border p-3">
+          <p className="text-[12.5px] font-semibold">Pick an offered time</p>
+          {offers.map((alt) => {
+            const label = [alt.date, alt.time, alt.note].filter(Boolean).join(" · ");
+            return (
+              <button
+                key={`${alt.date ?? ""}-${alt.time}-${alt.note ?? ""}`}
+                type="button"
+                disabled={confirmBusy}
+                onClick={() =>
+                  confirm({
+                    ...(alt.date ? { newDate: alt.date } : {}),
+                    newTime: alt.time,
+                  })
+                }
+                className="border-border hover:bg-muted rounded-xl border px-3 py-2.5 text-left text-sm font-medium disabled:opacity-60"
+              >
+                {label}
+              </button>
+            );
+          })}
+          {confirmError && (
+            <p className="text-[12px] font-medium text-red-600">{confirmError}</p>
+          )}
+        </section>
+      )}
+
+      {showAck && (
+        <button
+          type="button"
+          disabled={confirmBusy}
+          onClick={() => confirm()}
+          className="bg-primary text-primary-foreground inline-flex h-11 w-full items-center justify-center rounded-full text-sm font-semibold disabled:opacity-60"
+        >
+          {confirmBusy ? "Confirming…" : "Got it — confirm in app"}
+        </button>
       )}
 
       <ReservationActions r={r} onChanged={onChanged} />

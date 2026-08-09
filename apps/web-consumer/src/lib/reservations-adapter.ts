@@ -107,11 +107,41 @@ function formatReservationWhen(iso: string): string {
   return `${weekday} ${monthDay} · ${time}`;
 }
 
+function normalizeClientAlternatives(
+  raw: EFReservationRow["alternatives"],
+): ReservationItem["alternatives"] {
+  if (!Array.isArray(raw)) return undefined;
+  const out: NonNullable<ReservationItem["alternatives"]> = [];
+  for (const item of raw.slice(0, 8)) {
+    if (typeof item === "string") {
+      const t = /\b([01]?\d|2[0-3]):([0-5]\d)\b/.exec(item);
+      out.push(
+        t
+          ? { time: `${t[1].padStart(2, "0")}:${t[2]}`, note: item.trim() }
+          : { time: "", note: item.trim() },
+      );
+      continue;
+    }
+    if (item && typeof item === "object") {
+      const time = typeof item.time === "string" ? item.time : "";
+      const date = typeof item.date === "string" ? item.date : undefined;
+      const note = typeof item.note === "string" ? item.note : undefined;
+      if (time || note) {
+        out.push({ time, ...(date ? { date } : {}), ...(note ? { note } : {}) });
+      }
+    }
+  }
+  return out.length ? out : undefined;
+}
+
 export function toReservationItem(row: EFReservationRow): ReservationItem {
   const status = reservationPhase(row);
   // A ticket is still yours to move while it's live and ahead of us.
   const live =
     status === "created" || status === "booking" || status === "confirmed";
+  const alternatives = normalizeClientAlternatives(row.alternatives);
+  const counterOffer =
+    row.status === "pending" && (alternatives?.length ?? 0) > 0;
   return {
     id: row.id,
     projectId: row.place?.id ?? "",
@@ -121,12 +151,17 @@ export function toReservationItem(row: EFReservationRow): ReservationItem {
     reservedAt: row.reserved_at,
     partySize: row.party_size,
     status,
-    statusNote: noteFor(status, row),
+    statusNote: counterOffer
+      ? "The place offered other times — pick one below, or reschedule."
+      : noteFor(status, row),
     // The 8-digit code the agents speak on calls — the guest's ticket handle.
     referenceCode: row.reference_code ?? undefined,
     notes: row.notes ?? undefined,
     canCancel: live,
     canReschedule: live,
+    guestNotify: row.guest_notify === "app" ? "app" : "call",
+    guestConfirmedAt: row.guest_confirmed_at ?? null,
+    alternatives,
     // linkedCoupon intentionally omitted: the list EF exposes the coupon by
     // id only (rates/class live on the coupon row).
   };

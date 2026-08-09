@@ -6,13 +6,16 @@ import {
   X,
   type LucideIcon,
 } from 'lucide-react-native';
-import { Image, Text, View } from 'react-native';
+import { useState } from 'react';
+import { Image, Pressable, Text, View } from 'react-native';
 
 import { ReservationActions } from '@/components/reservations/reservation-actions';
 import {
   LinkedCouponCard,
   MetaRow,
 } from '@/components/reservations/reservation-detail-ui';
+import { Button } from '@/components/ui/Button';
+import { apiConfirmReservation } from '@/lib/api/reservations';
 import type {
   ReservationItem,
   ReservationStatus,
@@ -58,9 +61,39 @@ const STATUS_META: Record<
   },
 };
 
-export function ReservationDetailBody({ r }: { r: ReservationItem }) {
+export function ReservationDetailBody({
+  r,
+  onChanged,
+}: {
+  r: ReservationItem;
+  onChanged?: () => void;
+}) {
   const meta = STATUS_META[r.status];
   const cancelled = r.status === 'cancelled';
+  const [confirmBusy, setConfirmBusy] = useState(false);
+  const [confirmError, setConfirmError] = useState<string | null>(null);
+  const offers = (r.alternatives ?? []).filter((a) => a.time);
+  const showOffers = r.dbStatus === 'pending' && offers.length > 0;
+  const showAck =
+    r.dbStatus === 'confirmed' &&
+    !r.guestConfirmedAt &&
+    r.guestNotify === 'app';
+
+  async function confirm(args?: { newDate?: string; newTime?: string }) {
+    setConfirmBusy(true);
+    setConfirmError(null);
+    try {
+      await apiConfirmReservation({
+        reservationId: r.id,
+        ...args,
+      });
+      onChanged?.();
+    } catch (e) {
+      setConfirmError(e instanceof Error ? e.message : "Couldn't confirm");
+    } finally {
+      setConfirmBusy(false);
+    }
+  }
 
   return (
     <View className="gap-4 px-4 pb-8 pt-4">
@@ -94,7 +127,7 @@ export function ReservationDetailBody({ r }: { r: ReservationItem }) {
         </View>
       </View>
 
-      {meta.banner ? (
+      {meta.banner || r.statusNote ? (
         <View
           className={`rounded-2xl px-3 py-2.5 ${
             r.status === 'booking'
@@ -131,6 +164,47 @@ export function ReservationDetailBody({ r }: { r: ReservationItem }) {
 
       {r.linkedCoupon && !cancelled ? (
         <LinkedCouponCard coupon={r.linkedCoupon} />
+      ) : null}
+
+      {showOffers ? (
+        <View className="gap-2 rounded-2xl border border-border bg-card p-3">
+          <Text className="text-[12.5px] font-semibold text-foreground">
+            Pick an offered time
+          </Text>
+          {offers.map((alt) => {
+            const label = [alt.date, alt.time, alt.note]
+              .filter(Boolean)
+              .join(' · ');
+            return (
+              <Pressable
+                key={`${alt.date ?? ''}-${alt.time}-${alt.note ?? ''}`}
+                disabled={confirmBusy}
+                onPress={() =>
+                  confirm({
+                    ...(alt.date ? { newDate: alt.date } : {}),
+                    newTime: alt.time,
+                  })
+                }
+                className="rounded-xl border border-border px-3 py-2.5"
+              >
+                <Text className="text-sm font-medium text-foreground">
+                  {label}
+                </Text>
+              </Pressable>
+            );
+          })}
+          {confirmError ? (
+            <Text className="text-[12px] font-medium text-red-600">
+              {confirmError}
+            </Text>
+          ) : null}
+        </View>
+      ) : null}
+
+      {showAck ? (
+        <Button loading={confirmBusy} onPress={() => confirm()}>
+          {confirmBusy ? 'Confirming…' : 'Got it — confirm in app'}
+        </Button>
       ) : null}
 
       <ReservationActions projectId={r.projectId} cancelled={cancelled} />

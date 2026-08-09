@@ -6,6 +6,7 @@ export function parseReservationArgs(args: Record<string, unknown>): {
   reservedAt: Date;
   partySize: number;
   notes: string | null;
+  guestNotify: "call" | "app";
 } | { ok: false; error: string } {
   const placeId = String(args.place_id ?? "");
   const reservedAtRaw = String(args.reserved_at ?? "");
@@ -13,6 +14,7 @@ export function parseReservationArgs(args: Record<string, unknown>): {
   const notes = typeof args.notes === "string"
     ? args.notes.trim() || null
     : null;
+  const guestNotify = args.guest_notify === "app" ? "app" : "call";
 
   if (!UUID_RE.test(placeId)) return { ok: false, error: "place_id must be a UUID" };
   const reservedAt = new Date(reservedAtRaw);
@@ -23,5 +25,5 @@ export function parseReservationArgs(args: Record<string, unknown>): {
     return { ok: false, error: "party_size must be 1..50" };
   }
 
-  return { ok: true, placeId, reservedAt, partySize, notes };
+  return { ok: true, placeId, reservedAt, partySize, notes, guestNotify };
 }
