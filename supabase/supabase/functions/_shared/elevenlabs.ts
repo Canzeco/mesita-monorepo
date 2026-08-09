@@ -31,9 +31,14 @@ const DEFAULT_FROM_NUMBER = "+16282960710";
 
 export function elevenLabsKey(): string | null {
   // Canonical name ELEVENLABS_KEY; ELEVEN_KEY accepted (the name the secret was
-  // first created under in the dashboard).
-  const k = Deno.env.get("ELEVENLABS_KEY") ?? Deno.env.get("ELEVEN_KEY");
-  return k && k.trim() ? k.trim() : null;
+  // first created under in the dashboard). Prefer a value that looks like a
+  // real API key (sk_…) over a key *id* — operators have pasted the id into
+  // one of the two names while the sk_ lived in the other.
+  const candidates = ["ELEVENLABS_KEY", "ELEVEN_KEY"]
+    .map((n) => Deno.env.get(n)?.trim())
+    .filter((v): v is string => !!v);
+  if (candidates.length === 0) return null;
+  return candidates.find((v) => v.startsWith("sk_")) ?? candidates[0];
 }
 
 export function reservationAgentId(): string {
