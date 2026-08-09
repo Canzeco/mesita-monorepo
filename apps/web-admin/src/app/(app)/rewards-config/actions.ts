@@ -10,11 +10,11 @@
 // engine tracks operator edits until the additive flip ships (MESITA-992).
 // No client ever touches the DB.
 
+import { snapDiscountCap } from "@/lib/business/strategies";
 import { efInvoke } from "@/lib/supabase-ef";
 import {
   coercePromosConfig,
   seedFromLegacyRules,
-  snapCap,
   type PromosConfig,
 } from "./promos";
 
@@ -50,7 +50,7 @@ export async function getPromosConfig(): Promise<GetPromosConfigResult> {
   // rules (exact for formula-shaped tables) and the cap from the blob scalar.
   const seeded = seedFromLegacyRules(r.data.rules);
   const config = seeded
-    ? { ...seeded, cap: snapCap(r.data.cap) }
+    ? { ...seeded, cap: snapDiscountCap(r.data.cap) }
     : coercePromosConfig({ cap: r.data.cap });
   return {
     ok: true,
