@@ -52,6 +52,26 @@ export function SectionLabel({
   );
 }
 
+/** Bordered module box for Where / When / What / That / Random. */
+export function FilterModule({
+  label,
+  children,
+  className,
+}: {
+  label: ReactNode;
+  children: ReactNode;
+  className?: string;
+}) {
+  return (
+    <View
+      className={`rounded-2xl border border-border bg-card p-4 ${className ?? ''}`}
+    >
+      <SectionLabel>{label}</SectionLabel>
+      {children}
+    </View>
+  );
+}
+
 /** Pill children rendered as raw string/number need a Text wrapper for RN. */
 function renderPillLabel(children: ReactNode, textClassName: string) {
   if (typeof children === 'string' || typeof children === 'number') {

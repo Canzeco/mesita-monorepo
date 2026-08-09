@@ -48,6 +48,29 @@ export function SectionLabel({
   );
 }
 
+/** Bordered module box for Where / When / What / That / Random. */
+export function FilterModule({
+  label,
+  children,
+  className,
+}: {
+  label: ReactNode;
+  children: ReactNode;
+  className?: string;
+}) {
+  return (
+    <section
+      className={cn(
+        "border-border bg-card rounded-2xl border p-4",
+        className,
+      )}
+    >
+      <SectionLabel>{label}</SectionLabel>
+      {children}
+    </section>
+  );
+}
+
 // Soft borderless pill — muted at rest, brand gradient when selected.
 // min-h-11 keeps every filter control at the 44px touch floor.
 export function Pill({
