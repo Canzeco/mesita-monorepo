@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { FlaskConical, Info, Users } from "lucide-react";
+import { FlaskConical, Users } from "lucide-react";
 
 import { ErrorNote } from "@/components/ErrorNote";
 import { SectionCard } from "../enricher-config/atlas-ui";
@@ -11,7 +11,7 @@ import {
   distributionFor,
   type Assumptions,
   type StrategyDistribution,
-} from "./distribution";
+} from "./distribution-model";
 import {
   CLASS_KEYS,
   CLASS_META,
@@ -22,12 +22,16 @@ import {
   type StrategyKey,
 } from "./promos";
 
-// Promos Playground (MESITA-991) — the reward-distribution simulator. The
-// operator sets assumptions; the chart shows the EXACT expected distribution
-// (every class × visit-type × action combination enumerated and weighted —
-// no random sampling, so nothing jitters). One small-multiple chart per
-// strategy on a shared 0–100% axis; strategy hues match the console's
-// Conservative/Aggressive identity.
+// Promos · Distribution (MESITA-991, cleaned up MESITA-996) — the reward
+// distribution simulator. The operator sets assumptions; the chart shows the
+// EXACT expected distribution (every class × visit-type × action combination
+// enumerated and weighted — no random sampling, so nothing jitters).
+//
+// Chart grammar, chosen so labels can NEVER collide (MESITA-996): no text is
+// positioned at a data x. The quartiles read as a shaded IQR band plus one
+// median rule; their numbers live in the chips above, which are the single
+// source. A smoothed curve over the bars carries the distribution's shape,
+// which is what the operator actually reads at a glance.
 
 // Single-hue lightness ramp per strategy — darker = fewer bonuses stacked.
 // Index matches DistributionPoint.byBonusCount: [base only, 1 bonus, 2+].
@@ -38,7 +42,7 @@ const STRATEGY_RAMP: Record<StrategyKey, [string, string, string]> = {
 
 const BONUS_SEGMENT_LABEL = ["Base only", "+1 bonus", "+2 or more"] as const;
 
-export function PromosPlaygroundClient({
+export function PromosDistributionClient({
   initialConfig,
   loadError,
 }: {
@@ -56,16 +60,10 @@ export function PromosPlaygroundClient({
     return out;
   }, [initialConfig, assumptions]);
 
-  const classSum = CLASS_KEYS.reduce(
-    (t, c) => t + assumptions.classPct[c],
-    0,
-  );
+  const classSum = CLASS_KEYS.reduce((t, c) => t + assumptions.classPct[c], 0);
 
   const setClassPct = (cls: ClassKey, v: number) =>
-    setAssumptions((a) => ({
-      ...a,
-      classPct: { ...a.classPct, [cls]: v },
-    }));
+    setAssumptions((a) => ({ ...a, classPct: { ...a.classPct, [cls]: v } }));
 
   return (
     <div className="space-y-6">
@@ -78,21 +76,17 @@ export function PromosPlaygroundClient({
       <div className="grid gap-6 lg:grid-cols-2">
         <SectionCard
           icon={<FlaskConical className="text-secondary h-4 w-4" />}
-          title="Visit & action assumptions"
-          subtitle="Per-visit probabilities. First visits earn the Welcome bonus; each action is independent."
+          title="Visit assumptions"
+          subtitle="Share of visits that earn each bonus."
         >
-          <div className="mt-4 space-y-1">
+          <div className="mt-4">
             <PctField
               label="First visits"
-              hint="Guest's first verified ticket at the place"
               value={assumptions.welcomePct}
-              onChange={(v) =>
-                setAssumptions((a) => ({ ...a, welcomePct: v }))
-              }
+              onChange={(v) => setAssumptions((a) => ({ ...a, welcomePct: v }))}
             />
             <PctField
               label="Mesita Review"
-              hint="Leaves an in-app rating"
               value={assumptions.actionPct.mesita}
               onChange={(v) =>
                 setAssumptions((a) => ({
@@ -103,7 +97,6 @@ export function PromosPlaygroundClient({
             />
             <PctField
               label="Instagram Story"
-              hint="Posts a tagged story"
               value={assumptions.actionPct.story}
               onChange={(v) =>
                 setAssumptions((a) => ({
@@ -114,7 +107,6 @@ export function PromosPlaygroundClient({
             />
             <PctField
               label="Google Review"
-              hint="Leaves a Google review"
               value={assumptions.actionPct.google}
               onChange={(v) =>
                 setAssumptions((a) => ({
@@ -129,9 +121,9 @@ export function PromosPlaygroundClient({
         <SectionCard
           icon={<Users className="text-secondary h-4 w-4" />}
           title="Class mix"
-          subtitle="Share of the 1,000 visits per class."
+          subtitle="Share of visits per class."
         >
-          <div className="mt-4 space-y-1">
+          <div className="mt-4">
             {CLASS_KEYS.map((cls) => (
               <PctField
                 key={cls}
@@ -141,18 +133,11 @@ export function PromosPlaygroundClient({
               />
             ))}
           </div>
-          <p
-            className={
-              "mt-3 text-[11px] " +
-              (classSum === 100
-                ? "text-muted-foreground"
-                : "text-secondary font-semibold")
-            }
-          >
-            {classSum === 100
-              ? "Class mix sums to 100%."
-              : `Class mix sums to ${classSum}% — shares are normalized proportionally.`}
-          </p>
+          {classSum !== 100 && (
+            <p className="text-secondary mt-3 text-[11px] font-semibold">
+              Sums to {classSum}% — normalized proportionally.
+            </p>
+          )}
         </SectionCard>
       </div>
 
@@ -165,12 +150,10 @@ export function PromosPlaygroundClient({
         />
       ))}
 
-      <p className="text-muted-foreground/80 flex items-start gap-1.5 text-[11px] leading-snug">
-        <Info className="mt-0.5 h-3 w-3 shrink-0" />
-        Simulates the v10 ADDITIVE model over the saved Config (base + welcome
-        + each earned action bonus, capped at 100%). The live engine pays
-        best-of until MESITA-992 ships, so real bills today can only pay less
-        than this simulation.
+      <p className="text-muted-foreground/80 text-[11px] leading-snug">
+        Exact expected distribution of {SIMULATED_VISITS.toLocaleString("en-US")}{" "}
+        visits under the saved Config — no sampling. The live engine still pays
+        best-of until MESITA-992, so real bills today pay less than this.
       </p>
     </div>
   );
@@ -178,23 +161,16 @@ export function PromosPlaygroundClient({
 
 function PctField({
   label,
-  hint,
   value,
   onChange,
 }: {
   label: string;
-  hint?: string;
   value: number;
   onChange: (v: number) => void;
 }) {
   return (
-    <div className="border-border/60 flex items-center justify-between gap-4 border-b py-2 last:border-0">
-      <div className="min-w-0">
-        <p className="text-foreground text-[13px] font-semibold">{label}</p>
-        {hint ? (
-          <p className="text-muted-foreground truncate text-[11px]">{hint}</p>
-        ) : null}
-      </div>
+    <div className="border-border/60 flex items-center justify-between gap-4 border-b py-2.5 last:border-0">
+      <span className="text-foreground text-[13px] font-medium">{label}</span>
       <label className="flex shrink-0 items-center gap-1.5">
         <input
           type="number"
@@ -202,7 +178,7 @@ function PctField({
           max={100}
           step={1}
           value={value}
-          aria-label={`${label} percentage`}
+          aria-label={`${label} — share of visits`}
           onChange={(e) => {
             const raw = Number(e.target.value);
             if (Number.isNaN(raw)) return;
@@ -241,12 +217,12 @@ function DistributionCard({
           Expected discount{" "}
           <span className="text-foreground font-mono font-bold tabular-nums">
             {result.mean.toFixed(1)}%
-          </span>{" "}
-          of every capped bill
+          </span>
         </span>
       </div>
 
-      <div className="mt-2 flex flex-wrap gap-1.5">
+      {/* The quartile numbers live HERE, once — never on the plot. */}
+      <div className="text-muted-foreground mt-2.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px]">
         {(
           [
             ["Min", result.min],
@@ -256,10 +232,7 @@ function DistributionCard({
             ["Max", result.max],
           ] as const
         ).map(([label, v]) => (
-          <span
-            key={label}
-            className="border-border text-muted-foreground rounded-full border px-2.5 py-0.5 text-[11px]"
-          >
+          <span key={label}>
             {label}{" "}
             <span className="text-foreground font-mono font-semibold tabular-nums">
               {v}%
@@ -268,8 +241,9 @@ function DistributionCard({
         ))}
       </div>
 
-      {/* Segment legend — how many bonuses the visits in each shade stack. */}
-      <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1">
+      <DistributionChart strategy={strategy} result={result} ramp={ramp} />
+
+      <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1">
         {BONUS_SEGMENT_LABEL.map((label, i) => (
           <span
             key={label}
@@ -277,71 +251,104 @@ function DistributionCard({
           >
             <span
               aria-hidden
-              className="border-border/60 inline-block h-2.5 w-2.5 rounded-[3px] border"
+              className="inline-block h-2.5 w-2.5 rounded-[3px]"
               style={{ backgroundColor: ramp[i] }}
             />
             {label}
           </span>
         ))}
+        <span className="text-muted-foreground/70 ml-auto text-[11px]">
+          Shaded band = middle half of visits (Q1–Q3)
+        </span>
       </div>
 
-      <DistributionChart strategy={strategy} result={result} ramp={ramp} />
-
-      <details className="mt-2">
+      <details className="mt-3">
         <summary className="text-muted-foreground hover:text-foreground cursor-pointer text-[11px] select-none">
           View as table
         </summary>
-        <table className="mt-2 w-full max-w-lg border-collapse text-[12px]">
-          <thead>
-            <tr className="border-border border-b-2">
-              <th
-                scope="col"
-                className="text-muted-foreground pb-1 text-left text-[10px] font-bold tracking-[0.1em] uppercase"
-              >
-                Reward
-              </th>
-              <th
-                scope="col"
-                className="text-muted-foreground pb-1 text-right text-[10px] font-bold tracking-[0.1em] uppercase"
-              >
-                Visits of {SIMULATED_VISITS.toLocaleString("en-US")}
-              </th>
-              {BONUS_SEGMENT_LABEL.map((label) => (
+        <div className="overflow-x-auto">
+          <table className="mt-2 w-full max-w-lg border-collapse text-[12px]">
+            <thead>
+              <tr className="border-border border-b-2">
                 <th
-                  key={label}
+                  scope="col"
+                  className="text-muted-foreground pb-1 text-left text-[10px] font-bold tracking-[0.1em] uppercase"
+                >
+                  Reward
+                </th>
+                <th
                   scope="col"
                   className="text-muted-foreground pb-1 text-right text-[10px] font-bold tracking-[0.1em] uppercase"
                 >
-                  {label}
+                  Visits
                 </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {result.dist.map((d) => (
-              <tr key={d.value} className="border-border border-b last:border-0">
-                <td className="py-1 font-mono tabular-nums">{d.value}%</td>
-                <td className="py-1 text-right font-mono font-semibold tabular-nums">
-                  {Math.round(d.visits)}
-                </td>
-                {d.byBonusCount.map((v, i) => (
-                  <td key={i} className="py-1 text-right font-mono tabular-nums">
-                    {Math.round(v)}
-                  </td>
+                {BONUS_SEGMENT_LABEL.map((label) => (
+                  <th
+                    key={label}
+                    scope="col"
+                    className="text-muted-foreground pb-1 text-right text-[10px] font-bold tracking-[0.1em] uppercase"
+                  >
+                    {label}
+                  </th>
                 ))}
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {result.dist.map((d) => (
+                <tr
+                  key={d.value}
+                  className="border-border border-b last:border-0"
+                >
+                  <td className="py-1 font-mono tabular-nums">{d.value}%</td>
+                  <td className="py-1 text-right font-mono font-semibold tabular-nums">
+                    {Math.round(d.visits)}
+                  </td>
+                  {d.byBonusCount.map((v, i) => (
+                    <td
+                      key={i}
+                      className="py-1 text-right font-mono tabular-nums"
+                    >
+                      {Math.round(v)}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </details>
     </div>
   );
 }
 
-// One small-multiple histogram: bars per 5% reward value on a fixed 0–100%
-// axis (shared across strategies so the two charts compare), each bar STACKED
-// by bonus count (base only → 2+, dark → light), dashed Q1 / Median / Q3
-// markers, per-bar <title> tooltips with the composition.
+/**
+ * A smooth path through the points via Catmull-Rom → cubic Bézier. Tension
+ * 0.5 is the standard centripetal-ish feel; endpoints are duplicated so the
+ * curve starts and ends on real data rather than drifting.
+ */
+function smoothPath(pts: Array<{ x: number; y: number }>): string {
+  if (pts.length === 0) return "";
+  if (pts.length < 3) {
+    return pts.map((p, i) => `${i === 0 ? "M" : "L"}${p.x},${p.y}`).join(" ");
+  }
+  let d = `M${pts[0].x},${pts[0].y}`;
+  for (let i = 0; i < pts.length - 1; i++) {
+    const p0 = pts[i - 1] ?? pts[i];
+    const p1 = pts[i];
+    const p2 = pts[i + 1];
+    const p3 = pts[i + 2] ?? p2;
+    const c1x = p1.x + (p2.x - p0.x) / 6;
+    const c1y = p1.y + (p2.y - p0.y) / 6;
+    const c2x = p2.x - (p3.x - p1.x) / 6;
+    const c2y = p2.y - (p3.y - p1.y) / 6;
+    d += ` C${c1x},${c1y} ${c2x},${c2y} ${p2.x},${p2.y}`;
+  }
+  return d;
+}
+
+// Bars stacked by bonus count under a smoothed shape curve, on a fixed
+// 0–100% axis shared by both strategies. Quartiles are a shaded band + a
+// median rule; NO text sits inside the plot, so nothing can ever overlap.
 function DistributionChart({
   strategy,
   result,
@@ -352,13 +359,14 @@ function DistributionChart({
   ramp: [string, string, string];
 }) {
   const W = 720;
-  const H = 190;
-  const padL = 40;
-  const padR = 10;
-  const padT = 24;
-  const padB = 24;
+  const H = 180;
+  const padL = 34;
+  const padR = 12;
+  const padT = 12;
+  const padB = 22;
   const plotW = W - padL - padR;
   const plotH = H - padT - padB;
+  const baseline = padT + plotH;
 
   const xFor = (v: number) => padL + (v / 100) * plotW;
   const yMaxRaw = Math.max(...result.dist.map((d) => d.visits), 1);
@@ -366,28 +374,39 @@ function DistributionChart({
   const yFor = (n: number) => padT + plotH - (n / yMax) * plotH;
 
   const slotW = plotW / 21;
-  const barW = Math.max(6, slotW - 3);
+  const barW = Math.max(5, slotW - 4);
 
-  const quartiles: Array<[string, number, boolean]> = [
-    ["Q1", result.q1, false],
-    ["Med", result.median, true],
-    ["Q3", result.q3, false],
+  // The shape curve rides the bar tops, padded with a zero at each end so it
+  // resolves to the baseline instead of hanging in the air.
+  const curvePts = [
+    { x: xFor(Math.max(0, result.min - 5)), y: baseline },
+    ...result.dist.map((d) => ({ x: xFor(d.value), y: yFor(d.visits) })),
+    { x: xFor(Math.min(100, result.max + 5)), y: baseline },
   ];
 
   return (
     <div className="mt-3 overflow-x-auto">
       <svg
         viewBox={`0 0 ${W} ${H}`}
-        className="block h-auto w-full min-w-[560px]"
+        className="block h-auto w-full min-w-[520px]"
         role="img"
-        aria-label={`${STRATEGY_META[strategy].name}: expected visits by total reward across ${SIMULATED_VISITS} visits`}
+        aria-label={`${STRATEGY_META[strategy].name}: expected visits by total reward. Median ${result.median}%, middle half ${result.q1}% to ${result.q3}%.`}
       >
-        {/* gridlines + y labels */}
-        {[0, 1, 2, 3, 4].map((i) => {
-          const n = (yMax / 4) * i;
-          const y = yFor(n);
+        {/* IQR band — the middle half of visits, behind everything. */}
+        <rect
+          x={xFor(result.q1)}
+          y={padT}
+          width={Math.max(xFor(result.q3) - xFor(result.q1), 1)}
+          height={plotH}
+          fill="var(--muted-foreground)"
+          opacity={0.07}
+        />
+
+        {/* Two gridlines only — the shape carries the reading, not the ticks. */}
+        {[0.5, 1].map((f) => {
+          const y = yFor(yMax * f);
           return (
-            <g key={i}>
+            <g key={f}>
               <line
                 x1={padL}
                 x2={W - padR}
@@ -400,32 +419,27 @@ function DistributionChart({
                 x={padL - 6}
                 y={y + 3}
                 textAnchor="end"
-                fontSize={10}
+                fontSize={9}
                 fill="var(--muted-foreground)"
               >
-                {n}
+                {yMax * f}
               </text>
             </g>
           );
         })}
-        {/* x ticks every 20% */}
-        {[0, 20, 40, 60, 80, 100].map((v) => (
-          <text
-            key={v}
-            x={xFor(v)}
-            y={H - 6}
-            textAnchor="middle"
-            fontSize={10}
-            fill="var(--muted-foreground)"
-          >
-            {v}%
-          </text>
-        ))}
-        {/* bars — stacked by bonus count, base-only at the bottom */}
+        <line
+          x1={padL}
+          x2={W - padR}
+          y1={baseline}
+          y2={baseline}
+          stroke="var(--border)"
+          strokeWidth={1}
+        />
+
+        {/* Bars — stacked by bonus count, base-only at the bottom. */}
         {result.dist.map((d) => {
           const x = xFor(d.value) - barW / 2;
-          const baseline = padT + plotH;
-          const tooltip = `${d.value}% reward — ${Math.round(d.visits)} visits (${(d.visits / (SIMULATED_VISITS / 100)).toFixed(1)}%) · base only ${Math.round(d.byBonusCount[0])} · 1 bonus ${Math.round(d.byBonusCount[1])} · 2+ ${Math.round(d.byBonusCount[2])}`;
+          const tooltip = `${d.value}% — ${Math.round(d.visits)} visits · base only ${Math.round(d.byBonusCount[0])} · 1 bonus ${Math.round(d.byBonusCount[1])} · 2+ ${Math.round(d.byBonusCount[2])}`;
           let cum = 0;
           return (
             <g key={d.value}>
@@ -434,8 +448,6 @@ function DistributionChart({
                 const y0 = yFor(cum);
                 cum += seg;
                 const y1 = yFor(cum);
-                // 1.5px surface gap between stacked segments (not below the
-                // bottom one), so composition reads without a stroke.
                 const gap = y0 < baseline - 0.1 ? 1.5 : 0;
                 return (
                   <rect
@@ -443,9 +455,10 @@ function DistributionChart({
                     x={x}
                     y={y1}
                     width={barW}
-                    height={Math.max(y0 - y1 - gap, 1)}
+                    height={Math.max(y0 - y1 - gap, 0.75)}
                     rx={1.5}
                     fill={ramp[i]}
+                    opacity={0.55}
                   >
                     <title>{tooltip}</title>
                   </rect>
@@ -454,29 +467,41 @@ function DistributionChart({
             </g>
           );
         })}
-        {/* quartile markers */}
-        {quartiles.map(([label, v, emphasized]) => (
-          <g key={label}>
-            <line
-              x1={xFor(v)}
-              x2={xFor(v)}
-              y1={padT - 2}
-              y2={padT + plotH}
-              stroke="var(--muted-foreground)"
-              strokeWidth={emphasized ? 1.5 : 1}
-              strokeDasharray="3 3"
-            />
-            <text
-              x={xFor(v)}
-              y={padT - 8}
-              textAnchor="middle"
-              fontSize={10}
-              fontWeight={emphasized ? 700 : 500}
-              fill="var(--muted-foreground)"
-            >
-              {label} {v}%
-            </text>
-          </g>
+
+        {/* The shape curve — what the eye actually reads. */}
+        <path
+          d={smoothPath(curvePts)}
+          fill="none"
+          stroke={ramp[0]}
+          strokeWidth={2}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+
+        {/* Median rule — the only vertical marker, and it carries no text. */}
+        <line
+          x1={xFor(result.median)}
+          x2={xFor(result.median)}
+          y1={padT}
+          y2={baseline}
+          stroke="var(--foreground)"
+          strokeWidth={1.25}
+          strokeDasharray="4 3"
+          opacity={0.55}
+        />
+
+        {/* x ticks every 20% — the only text, safely below the plot. */}
+        {[0, 20, 40, 60, 80, 100].map((v) => (
+          <text
+            key={v}
+            x={xFor(v)}
+            y={H - 5}
+            textAnchor="middle"
+            fontSize={9}
+            fill="var(--muted-foreground)"
+          >
+            {v}%
+          </text>
         ))}
       </svg>
     </div>

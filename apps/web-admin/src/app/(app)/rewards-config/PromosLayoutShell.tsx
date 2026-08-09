@@ -9,9 +9,9 @@ import { PROMOS_SUBROUTES } from "./nav";
 // the Memo / Enricher config shells; the description switches per active tab.
 const SUBPAGE_DESCRIPTION: Record<string, string> = {
   "/rewards-config/config":
-    "Prices every promo a guest can earn. The v10 model is additive: a bill pays the class base + the Welcome bonus (first verified ticket) + each earned action bonus, on the first cap-pesos. The live engine still pays best-of (single highest cell) until the additive flip ships (MESITA-992) — every save keeps its rule table in sync.",
-  "/rewards-config/playground":
-    "Hypothetical distribution of rewards. Set the assumptions — visit mix, class mix, how often guests do each action — and see the exact expected spread of the total reward across 1,000 visits, per strategy, with quartiles. Uses the saved Config: save your edits first.",
+    "Prices every promo a guest can earn. A bill pays the class base + the Welcome bonus + each earned action bonus, on the first cap-pesos.",
+  "/rewards-config/distribution":
+    "How those prices spread across 1,000 visits. Set the assumptions; the chart is the exact expected distribution, per strategy. Reads the saved Config — save your edits first.",
 };
 
 export function PromosLayoutShell({ children }: { children: React.ReactNode }) {

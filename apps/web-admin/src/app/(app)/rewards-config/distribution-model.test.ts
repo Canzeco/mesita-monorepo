@@ -4,7 +4,7 @@ import {
   DEFAULT_ASSUMPTIONS,
   SIMULATED_VISITS,
   distributionFor,
-} from "./distribution";
+} from "./distribution-model";
 import { DEFAULT_PROMOS } from "./promos";
 
 describe("distributionFor", () => {
