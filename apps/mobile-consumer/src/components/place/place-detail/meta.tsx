@@ -124,6 +124,3 @@ export function DatesBox({ place }: { place: PlaceDetail }) {
     </Box>
   );
 }
-
-/** @deprecated Use DatesBox — kept as a name alias during the rename. */
-export const LastUpdatedBox = DatesBox;
