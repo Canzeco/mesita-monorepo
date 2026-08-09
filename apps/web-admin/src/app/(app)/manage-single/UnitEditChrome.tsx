@@ -145,7 +145,7 @@ export function UnitEditChrome({
     <div className="border-border bg-card text-foreground sticky top-0 z-30 border-b shadow-sm">
       {/* Row 1 — identity + actions */}
       <div className="flex items-center gap-3 px-4 py-3.5 sm:gap-4 sm:px-6 sm:py-4 lg:px-8">
-        <UnitThumb photo={heroPhoto} name={placeDisplayName(place)} size="lg" tone="onLight" />
+        <UnitThumb photo={heroPhoto} name={placeDisplayName(place)} size="lg" />
 
         <div className="min-w-0 flex-1">
           <p
@@ -419,29 +419,21 @@ export function UnitThumb({
   photo,
   name,
   size = "sm",
-  tone = "onLight",
 }: {
   photo: string | null;
   name: string;
   size?: "sm" | "lg";
-  /** onDark kept for any future dark surfaces; chrome + catalog use onLight. */
-  tone?: "onLight" | "onDark";
 }) {
   const dim =
     size === "lg" ? "h-11 w-11 rounded-xl shadow-sm" : "h-8 w-8 rounded-md";
   const icon = size === "lg" ? "h-4 w-4" : "h-3.5 w-3.5";
-  const border =
-    tone === "onDark" ? "border-background/20" : "border-border";
-  const empty =
-    tone === "onDark"
-      ? "bg-background/10 text-background/50"
-      : "bg-muted/40 text-muted-foreground";
 
   if (!photo) {
     return (
       <div
         className={
-          "flex shrink-0 items-center justify-center border " + border + " " + empty + " " + dim
+          "border-border bg-muted/40 text-muted-foreground flex shrink-0 items-center justify-center border " +
+          dim
         }
       >
         <ImageOff className={icon} />
@@ -453,7 +445,7 @@ export function UnitThumb({
     <img
       src={photo}
       alt={name}
-      className={"shrink-0 border object-cover " + border + " " + dim}
+      className={"border-border shrink-0 border object-cover " + dim}
     />
   );
 }
