@@ -1,16 +1,7 @@
-import { getRewardsConfig } from "./actions";
-import { RewardsConfigClient } from "./RewardsConfigClient";
-import { DEFAULT_CONFIG } from "./catalog";
+import { redirect } from "next/navigation";
 
-export const dynamic = "force-dynamic";
-
-export default async function RewardsConfigPage() {
-  const res = await getRewardsConfig();
-  return (
-    <RewardsConfigClient
-      initialConfig={res.ok ? res.config : DEFAULT_CONFIG}
-      initialUpdatedAt={res.ok ? res.updatedAt : null}
-      loadError={res.ok ? null : res.error}
-    />
-  );
+// Promos Config parent route → default to the Config tab. Subpages: config,
+// playground.
+export default function PromosConfigIndex() {
+  redirect("/rewards-config/config");
 }

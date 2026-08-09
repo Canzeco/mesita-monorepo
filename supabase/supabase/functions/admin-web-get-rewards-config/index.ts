@@ -2,10 +2,12 @@
 //
 // Naming: caller-verb-words. Caller = admin, verb = get, words = rewards-config.
 //
-// Returns the v8 NORMALIZED reward rules (MESITA-873) — one row per
-// (strategy × class × action), 60 of them — plus the universal cap, which
-// stays a scalar on app_settings because it is one platform constant rather
-// than a rule. "standing" is the None column.
+// Returns the Promos config: the v10 ADDITIVE blob (MESITA-991) when one has
+// been saved (`config`, from app_settings.rewards_config.v10), plus the v8
+// legacy rule rows and the cap scalar. The admin client prefers `config` and
+// seeds its knobs from the rows on the first load before any v10 save; the
+// rows also keep an older client mid-deploy rendering. "standing" is the
+// None column.
 //
 // Rows are returned as stored. The admin catalog fills any gap from the
 // launch defaults, so a partially-seeded table still renders a full table.
@@ -56,9 +58,13 @@ Deno.serve(async (req) => {
     return jsonError(`reward_rules_read: ${rules.error.message}`, 500);
   }
 
-  // The cap is the only thing still read out of the blob.
   const cfg = (settings.data?.rewards_config ?? {}) as Record<string, unknown>;
   const cap = typeof cfg.cap === "number" ? cfg.cap : null;
+  // The v10 additive config — null until the first v10 save (MESITA-991);
+  // the client seeds from the legacy rows in that case.
+  const v10 = cfg.v10 && typeof cfg.v10 === "object" && !Array.isArray(cfg.v10)
+    ? cfg.v10
+    : null;
 
   // Freshest write across both stores — the page shows one "Updated" stamp.
   const stamps = [
@@ -69,7 +75,9 @@ Deno.serve(async (req) => {
   ].filter((v): v is string => typeof v === "string");
   const updatedAt = stamps.length > 0 ? (stamps.sort().at(-1) ?? null) : null;
 
-  return jsonOk({ rules: (rules.data ?? []).map((r) => {
+  return jsonOk({
+    config: v10,
+    rules: (rules.data ?? []).map((r) => {
       const row = r as Record<string, unknown>;
       return {
         strategy: row.strategy,
@@ -79,5 +87,6 @@ Deno.serve(async (req) => {
       };
     }),
     cap,
-    updatedAt, });
+    updatedAt,
+  });
 });
