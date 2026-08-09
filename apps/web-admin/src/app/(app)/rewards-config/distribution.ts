@@ -33,7 +33,16 @@ export const DEFAULT_ASSUMPTIONS: Assumptions = {
 
 export const SIMULATED_VISITS = 1000;
 
-export type DistributionPoint = { value: number; visits: number };
+export type DistributionPoint = {
+  value: number;
+  visits: number;
+  /**
+   * Composition of those visits by how many bonuses they stack on the base —
+   * [base only, exactly 1 bonus, 2 or more]. Welcome (the automatic bonus)
+   * and each action bonus count alike; the three segments sum to `visits`.
+   */
+  byBonusCount: [number, number, number];
+};
 
 export type StrategyDistribution = {
   /** Reward % → expected visits, ascending by value, visits sum to N. */
@@ -85,7 +94,9 @@ export function distributionFor(
   const ps = clampPct(assumptions.actionPct.story) / 100;
   const pg = clampPct(assumptions.actionPct.google) / 100;
 
-  const probByValue = new Map<number, number>();
+  // Per total value: overall probability + its split by bonus count
+  // (0 = base only, 1, 2+) — Welcome and action bonuses count alike.
+  const probByValue = new Map<number, [number, number, number]>();
   for (const cls of CLASS_KEYS) {
     const pc = clampPct(assumptions.classPct[cls]) / classSum;
     if (pc === 0) continue;
@@ -101,7 +112,13 @@ export function distributionFor(
               (g ? pg : 1 - pg);
             if (p === 0) continue;
             const value = visitTotal(cfg, strategy, cls, w, m, s, g);
-            probByValue.set(value, (probByValue.get(value) ?? 0) + p);
+            const bonusCount = Math.min(
+              2,
+              Number(w) + Number(m) + Number(s) + Number(g),
+            );
+            const split = probByValue.get(value) ?? [0, 0, 0];
+            split[bonusCount] += p;
+            probByValue.set(value, split);
           }
         }
       }
@@ -109,10 +126,18 @@ export function distributionFor(
   }
 
   const values = [...probByValue.keys()].sort((a, b) => a - b);
-  const dist = values.map((value) => ({
-    value,
-    visits: (probByValue.get(value) ?? 0) * visits,
-  }));
+  const dist: DistributionPoint[] = values.map((value) => {
+    const split = probByValue.get(value) ?? [0, 0, 0];
+    return {
+      value,
+      visits: (split[0] + split[1] + split[2]) * visits,
+      byBonusCount: [
+        split[0] * visits,
+        split[1] * visits,
+        split[2] * visits,
+      ],
+    };
+  });
 
   let mean = 0;
   for (const d of dist) mean += d.value * d.visits;

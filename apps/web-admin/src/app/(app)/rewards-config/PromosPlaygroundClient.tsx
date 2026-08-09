@@ -29,10 +29,14 @@ import {
 // strategy on a shared 0–100% axis; strategy hues match the console's
 // Conservative/Aggressive identity.
 
-const STRATEGY_HUE: Record<StrategyKey, string> = {
-  conservative: "#3E63DD",
-  aggressive: "#CE4444",
+// Single-hue lightness ramp per strategy — darker = fewer bonuses stacked.
+// Index matches DistributionPoint.byBonusCount: [base only, 1 bonus, 2+].
+const STRATEGY_RAMP: Record<StrategyKey, [string, string, string]> = {
+  conservative: ["#3E63DD", "#7C96EB", "#B6C4F4"],
+  aggressive: ["#CE4444", "#E08383", "#F2C0C0"],
 };
+
+const BONUS_SEGMENT_LABEL = ["Base only", "+1 bonus", "+2 or more"] as const;
 
 export function PromosPlaygroundClient({
   initialConfig,
@@ -157,7 +161,7 @@ export function PromosPlaygroundClient({
           key={s}
           strategy={s}
           result={results[s]}
-          hue={STRATEGY_HUE[s]}
+          ramp={STRATEGY_RAMP[s]}
         />
       ))}
 
@@ -215,11 +219,11 @@ function PctField({
 function DistributionCard({
   strategy,
   result,
-  hue,
+  ramp,
 }: {
   strategy: StrategyKey;
   result: StrategyDistribution;
-  hue: string;
+  ramp: [string, string, string];
 }) {
   const meta = STRATEGY_META[strategy];
   return (
@@ -229,7 +233,7 @@ function DistributionCard({
           <span
             aria-hidden
             className="mr-2 inline-block h-2.5 w-2.5 rounded-full align-baseline"
-            style={{ backgroundColor: hue }}
+            style={{ backgroundColor: ramp[0] }}
           />
           {meta.emoji} {meta.name}
         </h3>
@@ -264,13 +268,30 @@ function DistributionCard({
         ))}
       </div>
 
-      <DistributionChart strategy={strategy} result={result} hue={hue} />
+      {/* Segment legend — how many bonuses the visits in each shade stack. */}
+      <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1">
+        {BONUS_SEGMENT_LABEL.map((label, i) => (
+          <span
+            key={label}
+            className="text-muted-foreground inline-flex items-center gap-1.5 text-[11px]"
+          >
+            <span
+              aria-hidden
+              className="border-border/60 inline-block h-2.5 w-2.5 rounded-[3px] border"
+              style={{ backgroundColor: ramp[i] }}
+            />
+            {label}
+          </span>
+        ))}
+      </div>
+
+      <DistributionChart strategy={strategy} result={result} ramp={ramp} />
 
       <details className="mt-2">
         <summary className="text-muted-foreground hover:text-foreground cursor-pointer text-[11px] select-none">
           View as table
         </summary>
-        <table className="mt-2 w-full max-w-sm border-collapse text-[12px]">
+        <table className="mt-2 w-full max-w-lg border-collapse text-[12px]">
           <thead>
             <tr className="border-border border-b-2">
               <th
@@ -285,15 +306,29 @@ function DistributionCard({
               >
                 Visits of {SIMULATED_VISITS.toLocaleString("en-US")}
               </th>
+              {BONUS_SEGMENT_LABEL.map((label) => (
+                <th
+                  key={label}
+                  scope="col"
+                  className="text-muted-foreground pb-1 text-right text-[10px] font-bold tracking-[0.1em] uppercase"
+                >
+                  {label}
+                </th>
+              ))}
             </tr>
           </thead>
           <tbody>
             {result.dist.map((d) => (
               <tr key={d.value} className="border-border border-b last:border-0">
                 <td className="py-1 font-mono tabular-nums">{d.value}%</td>
-                <td className="py-1 text-right font-mono tabular-nums">
+                <td className="py-1 text-right font-mono font-semibold tabular-nums">
                   {Math.round(d.visits)}
                 </td>
+                {d.byBonusCount.map((v, i) => (
+                  <td key={i} className="py-1 text-right font-mono tabular-nums">
+                    {Math.round(v)}
+                  </td>
+                ))}
               </tr>
             ))}
           </tbody>
@@ -304,16 +339,17 @@ function DistributionCard({
 }
 
 // One small-multiple histogram: bars per 5% reward value on a fixed 0–100%
-// axis (shared across strategies so the two charts compare), dashed Q1 /
-// Median / Q3 markers, per-bar <title> tooltips.
+// axis (shared across strategies so the two charts compare), each bar STACKED
+// by bonus count (base only → 2+, dark → light), dashed Q1 / Median / Q3
+// markers, per-bar <title> tooltips with the composition.
 function DistributionChart({
   strategy,
   result,
-  hue,
+  ramp,
 }: {
   strategy: StrategyKey;
   result: StrategyDistribution;
-  hue: string;
+  ramp: [string, string, string];
 }) {
   const W = 720;
   const H = 190;
@@ -385,25 +421,37 @@ function DistributionChart({
             {v}%
           </text>
         ))}
-        {/* bars */}
+        {/* bars — stacked by bonus count, base-only at the bottom */}
         {result.dist.map((d) => {
           const x = xFor(d.value) - barW / 2;
-          const y = yFor(d.visits);
-          const h = padT + plotH - y;
+          const baseline = padT + plotH;
+          const tooltip = `${d.value}% reward — ${Math.round(d.visits)} visits (${(d.visits / (SIMULATED_VISITS / 100)).toFixed(1)}%) · base only ${Math.round(d.byBonusCount[0])} · 1 bonus ${Math.round(d.byBonusCount[1])} · 2+ ${Math.round(d.byBonusCount[2])}`;
+          let cum = 0;
           return (
-            <rect
-              key={d.value}
-              x={x}
-              y={y}
-              width={barW}
-              height={Math.max(h, d.visits > 0 ? 1.5 : 0)}
-              rx={2}
-              fill={hue}
-            >
-              <title>
-                {`${d.value}% reward — ${Math.round(d.visits)} visits (${(d.visits / (SIMULATED_VISITS / 100)).toFixed(1)}%)`}
-              </title>
-            </rect>
+            <g key={d.value}>
+              {d.byBonusCount.map((seg, i) => {
+                if (seg <= 0) return null;
+                const y0 = yFor(cum);
+                cum += seg;
+                const y1 = yFor(cum);
+                // 1.5px surface gap between stacked segments (not below the
+                // bottom one), so composition reads without a stroke.
+                const gap = y0 < baseline - 0.1 ? 1.5 : 0;
+                return (
+                  <rect
+                    key={i}
+                    x={x}
+                    y={y1}
+                    width={barW}
+                    height={Math.max(y0 - y1 - gap, 1)}
+                    rx={1.5}
+                    fill={ramp[i]}
+                  >
+                    <title>{tooltip}</title>
+                  </rect>
+                );
+              })}
+            </g>
           );
         })}
         {/* quartile markers */}
