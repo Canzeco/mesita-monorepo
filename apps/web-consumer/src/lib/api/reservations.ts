@@ -18,9 +18,9 @@ type CreatedReservation = {
   call_triggered?: boolean;
 };
 
-export type GuestNotify = "call" | "app";
+type GuestNotify = "call" | "app";
 
-export type PlaceAlternative = {
+type PlaceAlternative = {
   time: string;
   date?: string;
   note?: string;
