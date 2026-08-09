@@ -305,15 +305,15 @@ export const CHANNELS: Channel[] = [
   },
 ];
 
-// The launch policy — must match the migration default
-// (20260708120000_sourcing_config.sql). Used as the pre-load placeholder and as
-// the fallback if the config read fails.
+// Must match EF `_shared/sourcing.ts` DEFAULT_POLICY (and live
+// app_settings.sourcing_config). Used as the pre-load placeholder and as the
+// fallback if the config read fails.
 export const DEFAULT_CONFIG: SourcingConfig = {
   admin_search: { enabled: true, families: [...ALL_FAMILY_KEYS], minRating: 0, minReviews: 0 },
   admin_add: { enabled: true, families: [...ALL_FAMILY_KEYS], minRating: 0, minReviews: 0 },
   business_search: { enabled: true, families: [...ALL_FAMILY_KEYS], minRating: 0, minReviews: 0 },
   business_add: { enabled: true, families: [...ALL_FAMILY_KEYS], minRating: 0, minReviews: 0 },
-  consumer_search: { enabled: true, families: [...ALL_FAMILY_KEYS], minRating: 3.5, minReviews: 50 },
+  consumer_search: { enabled: true, families: [...ALL_FAMILY_KEYS], minRating: 1, minReviews: 50 },
   consumer_add: { enabled: true, families: [...ALL_FAMILY_KEYS], minRating: 3.5, minReviews: 100 },
   memo_search: { enabled: true, families: [...ALL_FAMILY_KEYS], minRating: 4.0, minReviews: 50 },
 };

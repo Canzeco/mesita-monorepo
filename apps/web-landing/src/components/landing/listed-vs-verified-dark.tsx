@@ -35,9 +35,9 @@ function ListedVsVerifiedDark() {
           </Badge>
         </div>
         <p className="text-background/70 mt-3 text-[13px] leading-relaxed">
-          Reclama tu perfil para dar recompensas, configurar descuentos por tipo
-          de cliente y bonos por historia, ganar colocación prioritaria y abrir
-          el tablero completo.
+          Membresía Mesita (MX$1,000/año): reclama tu perfil, da recompensas,
+          elige tu Strategy de descuentos y abre el tablero. El Rank no se
+          vende — la Strategy gana la visibilidad.
         </p>
       </div>
     </div>
