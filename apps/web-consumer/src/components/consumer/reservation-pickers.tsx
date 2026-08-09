@@ -15,8 +15,8 @@ import {
 import {
   isSlotPast,
   PLACE_TZ_LABEL,
-  venueDateIso,
-  venueDateParts,
+  placeDateIso,
+  placeDateParts,
 } from "@/lib/place-time";
 
 const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -43,7 +43,7 @@ type DateOption = {
   weekday: string;
   day: number;
   month: string;
-  /** Every slot on this day is already behind the venue's clock. */
+  /** Every slot on this day is already behind the place's clock. */
   disabled: boolean;
 };
 
@@ -62,8 +62,8 @@ type DateOption = {
 export function buildDateOptions(hours?: WeeklyHours | null): DateOption[] {
   const out: DateOption[] = [];
   for (let i = 0; i < bookingWindowDays(); i += 1) {
-    const iso = venueDateIso(i);
-    const { weekday, day, month } = venueDateParts(iso);
+    const iso = placeDateIso(i);
+    const { weekday, day, month } = placeDateParts(iso);
     out.push({
       iso,
       weekday: i === 0 ? "Today" : i === 1 ? "Tom." : DAY_NAMES[weekday],
@@ -151,7 +151,7 @@ export function ReservationDatePicker({
 
 /**
  * Time picker — horizontal scroll, exactly two rows (:00 on top, :30 on
- * bottom). Slots behind the venue's clock render muted + unclickable; they
+ * bottom). Slots behind the place's clock render muted + unclickable; they
  * stay in the strip so the layout never jumps.
  *
  * Slots the place's hours don't cover stay TAPPABLE and render dashed/amber:

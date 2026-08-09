@@ -16,7 +16,7 @@
 //   2. The place's own open windows for that date, sampled every 30 min. This
 //      is what lets a 23:00–02:00 venue be booked at 00:30 at all.
 //
-// Times are place-local wall clock, judged against the venue clock in
+// Times are place-local wall clock, judged against the place clock in
 // @/lib/place-time. Every Mesita venue is in Mexico (Monterrey and CDMX are
 // both UTC-6 year round), so place-local hours and the fixed GMT-6 reservation
 // offset describe the same wall clock.
@@ -24,8 +24,8 @@
 import {
   isSlotPast,
   slotMinutes,
-  venueDateIso,
-  venueDateParts,
+  placeDateIso,
+  placeDateParts,
 } from '@/lib/place-time';
 
 /**
@@ -60,7 +60,7 @@ const ANCHOR_MINUTES = slotMinutes('20:00');
 
 const STEP_MINUTES = 30;
 
-/** Sunday-first to match `venueDateParts().weekday` / JS `getDay()`. */
+/** Sunday-first to match `placeDateParts().weekday` / JS `getDay()`. */
 const WEEK_KEYS = [
   'sunday',
   'monday',
@@ -118,7 +118,7 @@ function toHhmm(minutes: number): string {
  * of overflowing into March.
  */
 export function horizonDateIso(at: number = Date.now()): string {
-  const [y, m, d] = venueDateIso(0, at).split('-').map(Number);
+  const [y, m, d] = placeDateIso(0, at).split('-').map(Number);
   const total = m - 1 + BOOKING_HORIZON_MONTHS;
   const year = y + Math.floor(total / 12);
   const month = (total % 12) + 1;
@@ -129,7 +129,7 @@ export function horizonDateIso(at: number = Date.now()): string {
 
 /** Day pills to render: today through the horizon, inclusive. */
 export function bookingWindowDays(at: number = Date.now()): number {
-  const start = Date.parse(`${venueDateIso(0, at)}T00:00:00Z`);
+  const start = Date.parse(`${placeDateIso(0, at)}T00:00:00Z`);
   const end = Date.parse(`${horizonDateIso(at)}T00:00:00Z`);
   return Math.round((end - start) / 86_400_000) + 1;
 }
@@ -140,7 +140,7 @@ export function isWithinHorizon(
   at: number = Date.now(),
 ): boolean {
   if (!dateIso) return false;
-  return dateIso >= venueDateIso(0, at) && dateIso <= horizonDateIso(at);
+  return dateIso >= placeDateIso(0, at) && dateIso <= horizonDateIso(at);
 }
 
 function parseHhmm(t: string | undefined): number | null {
@@ -190,7 +190,7 @@ function windowsForDate(
   dateIso: string,
   hours: WeeklyHours,
 ): { from: number; to: number }[] {
-  const { weekday } = venueDateParts(dateIso);
+  const { weekday } = placeDateParts(dateIso);
   const todayKey = WEEK_KEYS[weekday];
   const yesterdayKey = WEEK_KEYS[(weekday + 6) % 7];
   const out: { from: number; to: number }[] = [];
@@ -302,7 +302,7 @@ export function buildHourColumns(slots: ReservationSlot[]): HourColumn[] {
   }));
 }
 
-/** Slots still ahead of the venue's clock. */
+/** Slots still ahead of the place's clock. */
 function futureSlots(
   dateIso: string,
   hours: WeeklyHours | null | undefined,
@@ -310,7 +310,7 @@ function futureSlots(
   return buildSlots(dateIso, hours).filter((s) => !isSlotPast(dateIso, s.time));
 }
 
-/** Is every slot on this date behind the venue's clock? */
+/** Is every slot on this date behind the place's clock? */
 export function isDateSpent(
   dateIso: string,
   hours: WeeklyHours | null | undefined,
@@ -350,7 +350,7 @@ export function hoursLabelForDate(
   hours: WeeklyHours | null | undefined,
 ): string | null {
   if (!hours || !dateIso) return null;
-  const { weekday } = venueDateParts(dateIso);
+  const { weekday } = placeDateParts(dateIso);
   const ranges = hours[WEEK_KEYS[weekday]] ?? [];
   if (ranges.length === 0) return null;
   return ranges.map((r) => `${r.open}–${r.close}`).join(', ');
@@ -358,6 +358,6 @@ export function hoursLabelForDate(
 
 /** Full weekday name for `dateIso` — used in the closed-slot warning. */
 export function weekdayName(dateIso: string): string {
-  const key = WEEK_KEYS[venueDateParts(dateIso).weekday];
+  const key = WEEK_KEYS[placeDateParts(dateIso).weekday];
   return key.charAt(0).toUpperCase() + key.slice(1);
 }

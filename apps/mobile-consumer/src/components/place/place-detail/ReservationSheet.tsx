@@ -30,16 +30,16 @@ import {
   isSlotPast,
   MX_OFFSET,
   PLACE_TZ_LABEL,
-  venueDateIso,
-  venueDateParts,
-  venueDateTime,
+  placeDateIso,
+  placeDateParts,
+  placeDateTime,
 } from '@/lib/place-time';
 
 const DEFAULT_PARTY = 2;
 const MIN_PARTY_SIZE = 1;
 const MAX_PARTY_SIZE = 20;
 
-// MX_OFFSET (and everything else about the venue's clock) lives in
+// MX_OFFSET (and everything else about the place's clock) lives in
 // @/lib/place-time — the single source of truth. The picked slot is the
 // venue's wall-clock; stamping the offset lets the agent read it back in
 // America/Mexico_City and match what the guest chose.
@@ -50,7 +50,7 @@ type DateOption = {
   iso: string;
   weekday: string;
   day: number;
-  /** Every slot on this day is already behind the venue's clock. */
+  /** Every slot on this day is already behind the place's clock. */
   disabled: boolean;
 };
 
@@ -66,8 +66,8 @@ type DateOption = {
 function buildDateOptions(hours: WeeklyHours | null): DateOption[] {
   const out: DateOption[] = [];
   for (let i = 0; i < bookingWindowDays(); i += 1) {
-    const iso = venueDateIso(i);
-    const { weekday, day } = venueDateParts(iso);
+    const iso = placeDateIso(i);
+    const { weekday, day } = placeDateParts(iso);
     out.push({
       iso,
       weekday: i === 0 ? 'Today' : i === 1 ? 'Tom.' : WEEKDAYS[weekday],
@@ -154,7 +154,7 @@ export function ReservationSheet({
 
   // Selection is DERIVED, not stored: if the guest's pick has since passed (or
   // they switched to today late at night), we fall through to the first slot
-  // that's still ahead of the venue's clock. No effect, nothing to desync.
+  // that's still ahead of the place's clock. No effect, nothing to desync.
   const date =
     dateOptions.find((d) => d.iso === dateChoice && !d.disabled)?.iso ??
     firstOpenDate(dateOptions);
@@ -215,7 +215,7 @@ export function ReservationSheet({
   /** Move the existing table: seed the pickers from what's already booked. */
   function chooseReschedule() {
     if (!existing) return;
-    const seed = venueDateTime(existing.reserved_at);
+    const seed = placeDateTime(existing.reserved_at);
     if (seed) {
       setDateChoice(seed.date);
       setTimeChoice(seed.time);
@@ -645,7 +645,7 @@ function DuplicateBanner({
   onAnother: () => void;
   onReset: () => void;
 }) {
-  const seed = venueDateTime(existing.reserved_at);
+  const seed = placeDateTime(existing.reserved_at);
   const when = seed
     ? `${seed.date} · ${timeLabel(seed.time)}`
     : 'an upcoming slot';
