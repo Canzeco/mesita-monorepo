@@ -7,19 +7,25 @@
 
 ## What Mesita is
 
-Mesita is a dining/experiences platform for Mexico with three audiences, each its
-own Next.js app, over one shared Supabase backend:
+Mesita is a dining/experiences platform for Mexico with four web audiences plus
+mobile, over one shared Supabase backend:
 
-- **Consumer** (`consumer.mesita.ai`) — discovery (swipe / map / AI concierge),
-  reservations, an at-the-bill instant discount, and a Free/**Premium** class.
-- **Business** (`business.mesita.ai`) — the business console: manage places, team,
-  promos, tickets, and a `free`/`pro`/`ultra` **plan**.
-- **Admin** (internal) — super-admin console: settings, verifications, the
-  Enricher (place-intelligence) config, per-place inspection.
+- **Consumer** (`consumer.mesita.ai` + `apps/mobile-consumer`) — discovery
+  (swipe / map; Ask AI / Memo parked on Home), reservations, at-the-bill
+  discounts, and a **class** ladder Standard / Premium / Influencer / Aura
+  (doors model MESITA-972 — slot is the highest open door).
+- **Business** (`business.mesita.ai`) — console: places, team, promos, tickets,
+  reservations; **plan** `free`/`pro`/`ultra` (product copy: Listed vs Verified
+  / Mesita Membership — `business_verified_yearly`, MESITA-912).
+- **Check** (`check.mesita.ai` — `apps/web-check`) — public staff check page for
+  Tickets v2; QR capability-URL auth (`check-web-*`, `verify_jwt=false`).
+- **Admin** (`admin.mesita.ai`) — super-admin console: binding configs (Atlas /
+  Enricher / Sourcing / Memo / Reservations / Lineup / Models / Rewards /
+  Verification), verifications, per-place inspection.
 
-Plus a **landing** site. The platform sells **experiences**, never holds money
-(instant discount at the bill — discounts-only, no wallet), and Mesita only ever
-earns via subscriptions (Stripe).
+Plus a **landing** site and scaffold-only `apps/mobile-business`. The platform
+never holds money (discounts-only); Mesita earns via subscriptions (Stripe) —
+consumer Premium is the revenue stream; place membership is legitimacy/framing.
 
 ## Repo topology (GitHub org: Canzeco)
 
@@ -28,12 +34,14 @@ history imported from the six former standalone repos (MESITA-455).
 
 | Package | Role | Stack | Deploy |
 |------|------|-------|--------|
-| `supabase/` | **Source of truth**: DB schema, RLS, ~93 Edge Functions, migrations | Deno / SQL | Supabase cloud |
+| `supabase/` | **Source of truth**: DB schema, RLS, ~138 Edge Functions, migrations | Deno / SQL | Supabase cloud |
 | `apps/web-consumer` | Consumer app | Next.js (Node 22+) | Vercel |
 | `apps/web-business` | Business console | Next.js (Node 22+) | Vercel |
 | `apps/web-admin` | Admin console | Next.js (Node 22+) | Vercel |
 | `apps/web-landing` | Marketing site | Next.js | Vercel |
-| `apps/mobile-consumer` | Native consumer app | Expo SDK 57 / React Native | EAS (human-gated); agents verify via web export |
+| `apps/web-check` | Mesita Check (staff) | Next.js (Node 22+) | Vercel → check.mesita.ai |
+| `apps/mobile-consumer` | Native consumer app | Expo SDK 57 / React Native | EAS (human-gated); agents verify via Metro web + `expo export` |
+| `apps/mobile-business` | Native business app | Expo SDK 57 | Scaffold only (EAS wired, no screens) |
 
 The six former standalone repos (`mesita-supabase`,
 `mesita-web-{admin,business,consumer,landing}`, `mesita-mobile-consumer`) are
@@ -58,9 +66,14 @@ Each endpoint encodes exactly one authorized caller from a **closed set**. The n
 
 - **Natural callers** (a real audience): `admin` · `business` · `consumer` · `staff`
   · `check` (Tickets v2, MESITA-806 — the PUBLIC check page at
-  `mesita.ai/check/<code>`; audience = whoever holds a freshly scanned ticket QR,
+  `check.mesita.ai/<code>`; audience = whoever holds a freshly scanned ticket QR,
   nominally staff. `check-web-*` EFs are `verify_jwt=false`: the 128-bit
-  `tickets.check_code` is the whole authentication — see `_shared/ticket-check.ts`).
+  `tickets.check_code` is the whole authentication — see `_shared/ticket-check.ts`.
+  Old `mesita.ai/check/<code>` QRs permanently redirect via web-landing — MESITA-814).
+  Closed-set ACL names use the `*-web` / `eleven-a*` / `stripe-webhook` /
+  `consumer-mcp` / `staff-web` prefixes from Product Rules §A; mobile apps call
+  `consumer-web-*` / (future) `business-web-*` — there are no `consumer-mobile-*`
+  endpoints today.
 - **Origin** segment: usually `web` (e.g. `consumer-web-get-profile`).
 - **Internal callers** (machine origins): `supabase-cron-*` (the Enricher
   pipeline), `supabase-edgefunc-*` (internal EF→EF, gated by `X-Internal-Caller`).
@@ -71,10 +84,10 @@ Each endpoint encodes exactly one authorized caller from a **closed set**. The n
   `eleven-agent-*` as the transitional single-agent caller. ElevenLabs tools
   share the same locks: anon-key bearer for the gateway + `x-agent-secret`
   matched against `app_settings.agents_config` (impl in `_shared/agent-tools.ts`).
-  `twilio-webhook` is retired (WhatsApp rail removed 2026-08-03).
+  `twilio-webhook` / `business-whats` / `guest-web` are retired.
 - Product callers may invoke internal ones, never the reverse.
 
-Roughly 137 EFs today (folders under `supabase/supabase/functions/`, excl. `_shared`).
+Roughly 138 EFs today (folders under `supabase/supabase/functions/`, excl. `_shared`).
 `_shared/` holds internal helpers (free-form naming).
 
 ## Data layer (Postgres)
@@ -115,29 +128,35 @@ into the function body.
 
 ## The Enricher (place intelligence)
 
-Legacy-branded "Atlas" (hence `atlas_*` columns / `atlas-config` routes). It is a
-**process, not an agent** — a cron-driven pipeline of three EFs over the
-`place_research` stage table, judged by DB effects (not green beacons):
+Legacy-branded "Atlas" (hence `atlas_*` columns and the writer EF
+`admin-web-update-atlas-config`). **Atlas Config** (`/atlas-config`) is the
+profile-spec (fields, vocabularies, who-can-edit). **Enricher Config**
+(`/enricher-config`) is the pipeline behavior. The Enricher is a **process, not
+an agent** — a cron-driven pipeline of three EFs over `place_research`, judged by
+DB effects (not green beacons). Canonical stage order (code SoT —
+`_shared/enrich-pipeline.ts`): **research → analysis → contents → done**.
 
 1. **`supabase-cron-enrich-place-research`** — S1 Google identity gate → S2 Apify
    Google Maps reviews/images ‖ Perplexity SERP summary (**Agent X**) → S3 channel
    discovery: per-source Firecrawl **Search** gather (S4) → single Perplexity
    **Agent Y** "Review & Select Links" pass (S5), leniency FP > FN, phone/email
    folded in → Instagram/Facebook gather.
-2. **`supabase-cron-enrich-place-contents`** — download verified links' material
-   (Apify) + mirror images to storage.
-3. **`supabase-cron-enrich-place-analysis`** — vision-describe → rank → synthesize
+2. **`supabase-cron-enrich-place-analysis`** — vision-describe → rank → synthesize
    the About / category / tags.
+3. **`supabase-cron-enrich-place-contents`** — download verified links' material
+   (Apify) + mirror images to storage + seed Selected Reservation Endpoint.
 
-A `pg_cron` poller claims staged rows and fires each EF. Config knobs live in
-`app_settings` (`atlas_*`), edited from the admin console. **Full runs burn real
+A `pg_cron` poller claims staged rows and fires each EF. Pipeline knobs live in
+`app_settings` (`atlas_*`), edited from Enricher Config. **Full runs burn real
 Apify/Perplexity/Firecrawl budget** — deploying/arming the cron is money-gated.
 
 ## Agents (distinct from the Enricher process)
 
-- **Memo** — consumer AI concierge (`consumer-web-ask-memo`), the Home "Ask AI"
-  tab. Perplexity `sonar-pro` + Google Places + the Mesita catalog. Persona
-  "Don Memo" (Spanish-first voice). Dogfooded from the admin Playground via
+- **Memo** — consumer AI concierge (`consumer-web-ask-memo`). Home Ask AI / Memo
+  tab is currently **parked** (`soon: true` on web + mobile); engine + admin
+  Playground remain live. Perplexity `sonar-pro` + Google Places + the Mesita
+  catalog. Persona "Don Memo" (Spanish-first voice — Product Rules greeting;
+  client hardcode may lag). Dogfooded from the admin Playground via
   `admin-web-ask-memo`, which runs the identical shared engine (`_shared/memo-*`).
   - **INVARIANT: Memo holds no database client.** Every Mesita read — on the
     reasoning-agent engine AND the legacy pipeline — goes through
@@ -167,6 +186,7 @@ Three audiences, three doors, one `auth.users` pool:
 | Consumer | **Phone OTP only** (Twilio SMS) — no email, no OAuth, no guest | `consumer-web-signin-phone` |
 | Business | Email + password | `business-web-signin-email` |
 | Admin | Email / OAuth, gated by `public.super_admins` | — |
+| Check (staff) | **No account** — possession of `tickets.check_code` | `check-web-*` (`verify_jwt=false`) |
 
 The post-sign-in EF is housekeeping, not authentication: Supabase Auth has
 already issued the session by the time it runs. It stamps
@@ -213,9 +233,11 @@ apps is identical either way.
 
 ## Billing
 
-Stripe subscriptions only (no money held). Business `pro` / `ultra`, consumer
-`premium`. Webhook handled by `stripe-webhook-handle-event`. Going fully live
-(real charges, live-mode) is human-gated.
+Stripe subscriptions only (no money held). Business membership SKU is
+`business_verified_yearly` (MX$1,000/year → `plan=pro`; `ultra` is a legacy
+alias). Consumer Premium is the paid class door (`consumer_premium_monthly`).
+Webhook: `stripe-webhook-handle-event`. `MOCK_SUBSCRIPTION` (EF env + web
+subscribe page constant) gates go-live — human-gated.
 
 ## Working conventions (see the Rules quickstart in every CLAUDE.md)
 
@@ -225,6 +247,8 @@ Stripe subscriptions only (no money held). Business `pro` / `ultra`, consumer
   clobbered prod).
 - Run all `supabase` commands from inside `supabase/` (single migration
   ledger). Prod EF deploys + sensitive DDL are gated.
-- **No local dev servers** — verify web apps via their Vercel deploy.
+- **No local WEB dev servers** — verify web apps via Vercel. Mobile: Metro web
+  preview (`mobile-consumer` :8081 / `mobile-business` :8082) +
+  `npx expo export --platform web`.
 - Light theme + semantic tokens across every web app.
 - CI: web apps `lint · typecheck · build` (Node 22+); supabase `deno lint · test`.
