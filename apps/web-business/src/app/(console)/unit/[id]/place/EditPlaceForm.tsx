@@ -282,7 +282,6 @@ export function EditPlaceForm({
             />
             <PlaceMenuModule
               key={menuEditorKey}
-              hideHeader
               projectId={place.id}
               form={v}
               set={set}
