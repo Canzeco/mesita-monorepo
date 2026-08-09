@@ -11,7 +11,8 @@ import {
 // performance · settings · admin. Reservations list + AI dial lines live
 // inside Performance again (reverses MESITA-894's own-tab split). Channel
 // config stays on Settings. Admin stays last, admin-console-only.
-const UNIT_SECTIONS = [
+/** Tabs shown in UnitEditChrome — every section is live (no `soon` gate). */
+export const UNIT_TAB_SECTIONS = [
   { id: "place", label: "Place", Icon: Store },
   { id: "promos", label: "Promos", Icon: Tag },
   { id: "performance", label: "Performance", Icon: ChartLine },
@@ -19,10 +20,7 @@ const UNIT_SECTIONS = [
   { id: "admin", label: "Admin", Icon: Shield },
 ] as const;
 
-/** Tabs shown in UnitEditChrome — every section is live (no `soon` gate). */
-export const UNIT_TAB_SECTIONS = UNIT_SECTIONS;
-
-type UnitSection = (typeof UNIT_SECTIONS)[number]["id"];
+type UnitSection = (typeof UNIT_TAB_SECTIONS)[number]["id"];
 
 export const TOOL_ROUTES = [
   {
@@ -37,7 +35,7 @@ export function unitSectionHref(projectId: string, section: UnitSection): string
 }
 
 export function isUnitSection(value: string | null | undefined): value is UnitSection {
-  return UNIT_SECTIONS.some((s) => s.id === value);
+  return UNIT_TAB_SECTIONS.some((s) => s.id === value);
 }
 
 export function parseUnitId(pathname: string): string | null {

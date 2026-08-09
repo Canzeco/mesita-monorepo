@@ -15,7 +15,7 @@ export default async function ReservationsConfigPage() {
       <PageHeader
         eyebrow="Operations · Reservations"
         title="Reservations Config"
-        description="The Reservationist is a voice agent, not a form: a Supabase function briefs the ElevenLabs fleet and it phones the venue over Twilio. Tune the number it dials while testing and the channel it books through — then test end-to-end by reserving in the consumer app."
+        description="The Reservationist is a voice agent, not a form: a Supabase function briefs the ElevenLabs fleet and it phones the place over Twilio. Tune the number it dials while testing and the channel it books through — then test end-to-end by reserving in the consumer app."
       />
       <div className="mt-6 sm:mt-8">
         <ReservationsConfigClient

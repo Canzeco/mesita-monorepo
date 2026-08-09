@@ -16,6 +16,12 @@
 // (admin-web-update-rewards-config/promos-v10-normalize.ts) — keep them in
 // lock-step.
 
+import {
+  DEFAULT_DISCOUNT_CAP_MXN,
+  DISCOUNT_CAPS_MXN,
+  snapDiscountCap,
+} from "@/lib/business/strategies";
+
 export type StrategyKey = "conservative" | "aggressive";
 export type ClassKey = "standard" | "premium" | "influencer" | "aura";
 export type ActionKey =
@@ -159,9 +165,11 @@ export const ALLOWED_RATES: readonly number[] = [
   0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70,
 ];
 
-// Default cap ladder — a place's own monthly_promo_cap wins at bill time (#816).
-export const ALLOWED_CAPS: readonly number[] = [200, 500, 1000];
-const CAP_DEFAULT = 500;
+// Default cap ladder — ONE ladder with the place-level monthly_promo_cap
+// (#839): a place's own cap wins at bill time (#816); this knob is only the
+// fallback. ALLOWED_CAPS stays as the client-facing alias.
+export const ALLOWED_CAPS: readonly number[] = DISCOUNT_CAPS_MXN;
+const CAP_DEFAULT = DEFAULT_DISCOUNT_CAP_MXN;
 
 // ── The v10 launch defaults (Pato, 2026-08-09 — MESITA-991) ──────────────
 // The numbers Pato wrote in the planning sheet: base doubles Conservative →
@@ -191,14 +199,9 @@ export function snapRate(v: unknown, fallback: number): number {
   return Math.max(RATE_FLOOR, Math.min(RATE_MAX, stepped));
 }
 
-/** Snap the cap onto the categorical ladder — nearest allowed option. */
+/** Snap the cap onto the shared categorical ladder (#839). */
 export function snapCap(v: unknown): number {
-  if (typeof v !== "number" || !Number.isFinite(v)) return CAP_DEFAULT;
-  let best = ALLOWED_CAPS[0];
-  for (const option of ALLOWED_CAPS) {
-    if (Math.abs(option - v) < Math.abs(best - v)) best = option;
-  }
-  return best;
+  return snapDiscountCap(v);
 }
 
 const isStrategy = (v: unknown): v is StrategyKey =>

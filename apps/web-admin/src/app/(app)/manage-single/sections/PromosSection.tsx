@@ -72,7 +72,7 @@ const MEMBERSHIP_PRICE_MXN = 1000;
 // throughout this file.
 const ZERO_STRATEGY_ID: StrategyId = "zero";
 
-// Sample ticket for the worked example — deliberately above the universal cap
+// Sample ticket for the worked example — deliberately above the discount cap
 // so the "first MX$500" rule is visible in the math.
 const EXAMPLE_BILL_MXN = 700;
 

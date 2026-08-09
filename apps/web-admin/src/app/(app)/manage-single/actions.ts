@@ -283,7 +283,7 @@ export type PlaceActivity = {
   stats: PlaceStats;
   reservations: PlaceReservation[];
   reservationTotal: number;
-  /** The only way to change a booking — a3 answers guests, a4 answers venues. */
+  /** The only way to change a booking — a3 answers guests, a4 answers places. */
   lines: { guest: string; place: string };
   generatedAt: string;
 };

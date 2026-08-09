@@ -5,7 +5,7 @@
 // Layout: rounded card with a header row (title + optional description on
 // the left, optional `right` element opposite) and the children stacked
 // below. The outer `gap-3` on the flex column means children inherit
-// vertical rhythm; pass `bodyClassName` to override.
+// vertical rhythm.
 //
 // Pages compose multiple sections in a `<div className="flex flex-col
 // gap-4">` so the inter-section spacing stays consistent.
@@ -18,14 +18,12 @@ export function Section({
   right,
   children,
   className,
-  contentClassName,
 }: {
   title: string;
   description?: string;
   right?: React.ReactNode;
   children: React.ReactNode;
   className?: string;
-  contentClassName?: string;
 }) {
   return (
     <section
@@ -47,11 +45,7 @@ export function Section({
         </div>
         {right && <div className="shrink-0">{right}</div>}
       </div>
-      {contentClassName ? (
-        <div className={contentClassName}>{children}</div>
-      ) : (
-        children
-      )}
+      {children}
     </section>
   );
 }
