@@ -62,13 +62,20 @@ const ALERTS_NAV: NavItem[] = [
   { href: "/verifications", label: "Verification Queue", Icon: BadgeCheck },
 ];
 
+// Configs — ordered as the product flows, not alphabetically or by age:
+//   platform  who operates the console, then which model everything runs on
+//   supply    a place's life: eligible to enter (Sourcing) → what its profile
+//             must contain (Atlas) → the pipeline that fills it (Enricher) →
+//             how it gets sealed (Verification)
+//   demand    what consumers are shown (Lineup) and what it pays (Promos)
+//   agents    the two conversational agents that sit on top of all of it
 const CONFIGS_NAV: NavItem[] = [
   { href: "/admin-config", label: "Admin Config", Icon: ShieldCheck },
   MODELS_PARENT,
-  ATLAS_PARENT,
   SOURCING_PARENT,
-  VERIFICATION_PARENT,
+  ATLAS_PARENT,
   ENRICHER_PARENT,
+  VERIFICATION_PARENT,
   SCORING_PARENT,
   REWARDS_PARENT,
   MEMO_PARENT,
