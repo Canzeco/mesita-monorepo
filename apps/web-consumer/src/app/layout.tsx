@@ -17,7 +17,7 @@ const fraunces = Fraunces({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://mesita.ai"),
+  metadataBase: new URL("https://consumer.mesita.ai"),
   title: {
     default: "Mesita — smart hospitality rewards",
     template: "%s · Mesita",

@@ -89,6 +89,8 @@ export type EFReservationRow = {
     // Engine outcomes: the place never answered / the call ended unclear.
     | 'unreachable'
     | 'unresolved';
+  /** The ticket's 8-digit reference code (null only on pre-code rows). */
+  reference_code?: string | null;
   notes: string | null;
   confirmed_at: string | null;
   completed_at: string | null;

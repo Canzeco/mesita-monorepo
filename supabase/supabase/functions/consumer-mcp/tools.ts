@@ -29,7 +29,7 @@ export const TOOLS: ToolDef[] = [
   {
     name: "save_place",
     description:
-      "Save or unsave a place. Saving a Verified Partner also issues a reward coupon when eligible.",
+      "Save or unsave a place to the consumer's favorites. Rewards are earned via tickets/check actions, not by saving.",
     inputSchema: {
       type: "object",
       properties: {
@@ -80,7 +80,7 @@ export const TOOLS: ToolDef[] = [
   {
     name: "create_reservation",
     description:
-      "Book a table at a place. Requires place_id, ISO reserved_at, and party_size.",
+      "Book a table at a place. Requires place_id, ISO reserved_at, and party_size (1–20).",
     inputSchema: {
       type: "object",
       properties: {
@@ -89,8 +89,14 @@ export const TOOLS: ToolDef[] = [
           type: "string",
           description: "ISO 8601 datetime for the reservation",
         },
-        party_size: { type: "number", minimum: 1, maximum: 50 },
+        party_size: { type: "number", minimum: 1, maximum: 20 },
         notes: { type: "string" },
+        guest_notify: {
+          type: "string",
+          enum: ["call", "app"],
+          description:
+            "How Mesita confirms with the guest after the place answers (default call).",
+        },
       },
       required: ["place_id", "reserved_at", "party_size"],
       additionalProperties: false,
