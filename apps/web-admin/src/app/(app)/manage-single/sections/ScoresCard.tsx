@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { Gauge } from "lucide-react";
 import {
   DEFAULT_MANUAL_PRIORITY,
@@ -159,12 +160,12 @@ export function ScoresCard({ place }: { place: AdminPlace }) {
           Lane scores (Organic = EM·SM·GP·MP·XX · Inorganic = EM·SM·RP·MP·XX) need
           the full call — only the place-side factors above are honest without a
           consumer. Knobs live in{" "}
-          <a
+          <Link
             href="/lineup-config"
             className="text-foreground underline-offset-2 hover:underline"
           >
             Lineup Config
-          </a>
+          </Link>
           .
         </p>
       </div>
