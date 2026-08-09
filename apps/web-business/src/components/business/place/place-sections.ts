@@ -11,7 +11,7 @@ export type PlaceSectionId =
   | "reviews"
   | "progress";
 
-export const PLACE_SECTIONS: readonly {
+const PLACE_SECTIONS: readonly {
   id: PlaceSectionId;
   label: string;
   description?: string;

@@ -5,7 +5,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { invokeEF, withPlaceId } from "./_invoke";
 
-export type PromoSuggestionFocus =
+type PromoSuggestionFocus =
   | "rates"
   | "welcome"
   | "story"

@@ -15,7 +15,7 @@ export const STRIKE_DECAY_DAYS = 183;
 
 const DAY_MS = 86_400_000;
 
-export type StrikeSnapshot = {
+type StrikeSnapshot = {
   strike_count?: number | null;
   last_strike_at?: string | null;
 };
