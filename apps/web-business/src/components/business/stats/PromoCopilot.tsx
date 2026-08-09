@@ -15,7 +15,7 @@ import {
   type PromoSuggestion,
 } from "@/lib/api/promo-copilot";
 import { promosPath } from "@/lib/business-route-contract";
-import { STRATEGY_BY_ID, type StrategyId } from "@/lib/business/strategies";
+import { STRATEGY_BY_ID } from "@/lib/business/strategies";
 import { cn, errMsg } from "@/lib/utils";
 
 const FOCUS_LABEL: Record<PromoSuggestion["focus"], string> = {
@@ -111,10 +111,9 @@ export function PromoCopilot({ projectId }: { projectId: string }) {
 }
 
 function SuggestionRow({ suggestion }: { suggestion: PromoSuggestion }) {
-  const strategy =
-    suggestion.strategyId && suggestion.strategyId in STRATEGY_BY_ID
-      ? STRATEGY_BY_ID[suggestion.strategyId as StrategyId]
-      : null;
+  const strategy = suggestion.strategyId
+    ? STRATEGY_BY_ID[suggestion.strategyId]
+    : null;
 
   return (
     <div className="border-border/60 rounded-xl border px-3.5 py-3">
