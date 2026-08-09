@@ -129,9 +129,6 @@ export function DatesBox({ place }: { place: PlaceDetail }) {
   );
 }
 
-/** @deprecated Use DatesBox — kept as a name alias during the rename. */
-export const LastUpdatedBox = DatesBox;
-
 type LinkChipDef = {
   key: string;
   label: string;
