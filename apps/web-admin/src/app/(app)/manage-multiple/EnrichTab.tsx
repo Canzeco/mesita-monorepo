@@ -1,13 +1,7 @@
 "use client";
 
 import { useMemo, useRef, useState } from "react";
-import {
-  CheckCircle2,
-  Loader2,
-  Play,
-  Upload,
-  XCircle,
-} from "lucide-react";
+import { Loader2, Play, Upload } from "lucide-react";
 import {
   computeEnrichmentCost,
   fmtTime,
@@ -16,6 +10,7 @@ import {
 } from "../enricher-config/cost-model";
 import type { SynthesisQuality } from "../enricher-config/actions";
 import { enrichPlace, type ReenrichMode } from "../manage-single/actions";
+import { StatusIcon } from "./StatusIcon";
 
 const PROJECT_ID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -329,17 +324,5 @@ export function EnrichTab({ costSeed }: { costSeed: EnrichCostSeed | null }) {
         </div>
       )}
     </div>
-  );
-}
-
-function StatusIcon({ status }: { status: RowStatus["status"] }) {
-  if (status === "ok")
-    return <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" />;
-  if (status === "error")
-    return <XCircle className="text-destructive h-4 w-4 shrink-0" />;
-  if (status === "running")
-    return <Loader2 className="text-muted-foreground h-4 w-4 shrink-0 animate-spin" />;
-  return (
-    <span className="border-border bg-background h-4 w-4 shrink-0 rounded-full border" />
   );
 }
