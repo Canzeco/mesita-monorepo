@@ -1,9 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { STRATEGIES, strategyForPlace } from "@/lib/business/strategies";
-import { effectiveStrikeCount, isCardCurrent } from "./promo-state";
+import {
+  effectiveStrikeCount,
+  isCardCurrent,
+  lifecycleView,
+  STRIKE_DECAY_DAYS,
+} from "./promo-state";
 
-/** Mirrors file-private STRIKE_DECAY_DAYS in promo-state.ts. */
-const STRIKE_DECAY_DAYS = 183;
+/** Strike decay window — re-exported from promo-state for assertions. */
 const DAY_MS = 86_400_000;
 const NOW = Date.parse("2026-08-07T12:00:00Z");
 const daysAgo = (d: number) => new Date(NOW - d * DAY_MS).toISOString();
@@ -95,5 +99,122 @@ describe("strategyForPlace contract (locks the documented trap)", () => {
         premium_rate: 30,
       }),
     ).toBe("aggressive");
+  });
+});
+
+describe("lifecycleView — the Box 0 stepper state machine", () => {
+  it("not_member: step 1 current, rest upcoming (Zero match ignored via gate)", () => {
+    expect(lifecycleView({ plan: "free" }, "zero", NOW)).toEqual({
+      kind: "rail",
+      join: "current",
+      strategy: "upcoming",
+      honor: "upcoming",
+    });
+  });
+
+  it("pending on a paid strategy: steps 1-2 done, step 3 current", () => {
+    expect(lifecycleView({ plan: "pro" }, "conservative", NOW)).toEqual({
+      kind: "rail",
+      join: "done",
+      strategy: "done",
+      honor: "current",
+    });
+  });
+
+  it("pending on Zero or custom rates: step 2 regresses to current", () => {
+    expect(lifecycleView({ plan: "pro" }, "zero", NOW)).toEqual({
+      kind: "rail",
+      join: "done",
+      strategy: "current",
+      honor: "upcoming",
+    });
+    expect(lifecycleView({ plan: "pro" }, null, NOW)).toEqual({
+      kind: "rail",
+      join: "done",
+      strategy: "current",
+      honor: "upcoming",
+    });
+  });
+
+  it("live on a paid strategy: collapses to the strip, tone by strikes", () => {
+    expect(
+      lifecycleView(
+        { plan: "pro", membership_live_at: daysAgo(30) },
+        "aggressive",
+        NOW,
+      ),
+    ).toEqual({ kind: "strip", tone: "live", strikes: 0 });
+    expect(
+      lifecycleView(
+        {
+          plan: "pro",
+          membership_live_at: daysAgo(60),
+          strike_count: 1,
+          last_strike_at: daysAgo(10),
+        },
+        "aggressive",
+        NOW,
+      ),
+    ).toEqual({ kind: "strip", tone: "warn", strikes: 1 });
+  });
+
+  it("strip uses EFFECTIVE strikes — decayed strikes read clean", () => {
+    expect(
+      lifecycleView(
+        {
+          plan: "pro",
+          membership_live_at: daysAgo(400),
+          strike_count: 2,
+          last_strike_at: daysAgo(STRIKE_DECAY_DAYS),
+        },
+        "aggressive",
+        NOW,
+      ),
+    ).toEqual({ kind: "strip", tone: "live", strikes: 0 });
+  });
+
+  it("live but parked on Zero: rail returns with step 2 current, step 3 done", () => {
+    expect(
+      lifecycleView(
+        { plan: "pro", membership_live_at: daysAgo(30) },
+        "zero",
+        NOW,
+      ),
+    ).toEqual({
+      kind: "rail",
+      join: "done",
+      strategy: "current",
+      honor: "done",
+    });
+  });
+
+  it("paused: step 3 blocked", () => {
+    expect(
+      lifecycleView(
+        {
+          plan: "pro",
+          membership_live_at: daysAgo(60),
+          promo_paused_until: daysAgo(-10),
+        },
+        "conservative",
+        NOW,
+      ),
+    ).toEqual({
+      kind: "rail",
+      join: "done",
+      strategy: "done",
+      honor: "blocked",
+    });
+  });
+
+  it("forfeited: step 3 blocked, strategy resets (re-join re-picks)", () => {
+    expect(
+      lifecycleView({ membership_forfeited_at: daysAgo(1) }, "zero", NOW),
+    ).toEqual({
+      kind: "rail",
+      join: "done",
+      strategy: "upcoming",
+      honor: "blocked",
+    });
   });
 });

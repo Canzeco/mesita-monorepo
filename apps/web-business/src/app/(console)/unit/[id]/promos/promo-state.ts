@@ -3,7 +3,7 @@
 // ZERO React/Next imports on purpose — vitest imports this file under plain
 // node (see promo-state.test.ts). Admin twin:
 // apps/web-admin/src/app/(app)/manage-single/sections/promo-state.ts —
-// keep the decay constant in lockstep with both it and the EF.
+// keep the decay constant + lifecycleView in lockstep with both it and the EF.
 
 import type { StrategyId } from "@/lib/business/strategies";
 
@@ -11,7 +11,7 @@ import type { StrategyId } from "@/lib/business/strategies";
 // decay is ALL-OR-NOTHING — once the last strike is ≥ STRIKE_DECAY_DAYS old
 // the whole count reads 0. The EF only rewrites the raw column lazily, so a
 // UI that renders raw `strike_count` shows phantom strikes.
-const STRIKE_DECAY_DAYS = 183;
+export const STRIKE_DECAY_DAYS = 183;
 
 const DAY_MS = 86_400_000;
 
@@ -45,4 +45,101 @@ export function isCardCurrent(
   cardId: StrategyId,
 ): boolean {
   return subscribed && selectedId === cardId;
+}
+
+// ── Lifecycle stepper (MESITA-959 — port of admin MESITA-958) ─────────────
+//
+// Canonical three steps: join → pick a strategy → honor guest checks.
+// storedStrategy is member-gated HERE (the strategyForPlace all-null→Zero
+// trap): a non-member's "zero" match must not render step 2 as done.
+
+type MembershipSnapshot = {
+  plan?: unknown;
+  membership_forfeited_at?: unknown;
+  promo_paused_until?: unknown;
+  membership_live_at?: unknown;
+  strike_count?: number | null;
+  last_strike_at?: string | null;
+};
+
+export type LifecycleStepState = "done" | "current" | "upcoming" | "blocked";
+
+export type LifecycleView =
+  | { kind: "strip"; tone: "live" | "warn"; strikes: number }
+  | {
+      kind: "rail";
+      join: LifecycleStepState;
+      strategy: LifecycleStepState;
+      honor: LifecycleStepState;
+    };
+
+function isMemberPlan(plan: unknown): boolean {
+  return !!plan && plan !== "free";
+}
+
+type PillState =
+  | "not_member"
+  | "pending"
+  | "live"
+  | "paused"
+  | "forfeited";
+
+function pillFromSnap(snap: MembershipSnapshot, now: number): PillState {
+  if (snap.membership_forfeited_at) return "forfeited";
+  if (!isMemberPlan(snap.plan)) return "not_member";
+  if (
+    snap.promo_paused_until &&
+    new Date(String(snap.promo_paused_until)).getTime() > now
+  ) {
+    return "paused";
+  }
+  if (snap.membership_live_at) return "live";
+  return "pending";
+}
+
+export function lifecycleView(
+  snap: MembershipSnapshot,
+  storedStrategy: StrategyId | null,
+  now: number = Date.now(),
+): LifecycleView {
+  const pillState = pillFromSnap(snap, now);
+  const member = isMemberPlan(snap.plan);
+  const onPaid = member && storedStrategy !== null && storedStrategy !== "zero";
+
+  if (pillState === "forfeited") {
+    return {
+      kind: "rail",
+      join: "done",
+      strategy: "upcoming",
+      honor: "blocked",
+    };
+  }
+  if (pillState === "not_member") {
+    return {
+      kind: "rail",
+      join: "current",
+      strategy: "upcoming",
+      honor: "upcoming",
+    };
+  }
+  if (pillState === "paused") {
+    return { kind: "rail", join: "done", strategy: "done", honor: "blocked" };
+  }
+  if (pillState === "live") {
+    if (!onPaid) {
+      return { kind: "rail", join: "done", strategy: "current", honor: "done" };
+    }
+    const strikes = effectiveStrikeCount(snap, now);
+    return { kind: "strip", tone: strikes > 0 ? "warn" : "live", strikes };
+  }
+  // pending
+  if (!onPaid) {
+    return {
+      kind: "rail",
+      join: "done",
+      strategy: "current",
+      honor: "upcoming",
+    };
+  }
+  return { kind: "rail", join: "done", strategy: "done", honor: "current" };
 }
