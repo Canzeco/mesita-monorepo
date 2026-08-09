@@ -7,7 +7,7 @@ import { supabase } from '@/lib/supabase';
 
 // Mirrors _shared/reservation-places.ts attachPlaces — the EF returns the
 // full summary; fields the wallet didn't need were previously under-declared.
-export type ConsumerTicketPlace = {
+type ConsumerTicketPlace = {
   id: string;
   name: string | null;
   photos: string[] | null;
@@ -68,7 +68,7 @@ export async function apiListConsumerTickets(
   return tickets ?? [];
 }
 
-export type CreatedTicket = {
+type CreatedTicket = {
   id: string;
   status: string;
   check_code: string;
