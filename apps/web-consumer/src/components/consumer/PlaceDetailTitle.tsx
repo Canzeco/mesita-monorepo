@@ -2,6 +2,8 @@
 
 import { cn } from "@/lib/utils";
 
+import { VerifiedCheck } from "./VerifiedCheck";
+
 // Centered place-name title for the detail header (page + modal).
 // decision: Pato (MESITA-451, revised) — the live "Enriching" state moved
 // off the title into a dedicated chip in the profile summary (before the
@@ -29,16 +31,7 @@ export function PlaceDetailTitle({
       )}
     >
       <span className="truncate">{placeName}</span>
-      {isVerified && (
-        // eslint-disable-next-line @next/next/no-img-element -- static brand SVG asset
-        <img
-          src="/brand/verified-check.svg"
-          alt="Verified Partner"
-          width={16}
-          height={16}
-          className="h-4 w-4 shrink-0"
-        />
-      )}
+      {isVerified && <VerifiedCheck className="h-4 w-4 shrink-0" />}
     </div>
   );
 }
