@@ -81,7 +81,7 @@ export function UnitPlaceProvider({
   const [dirtyMap, setDirtyMap] = useState<Record<string, boolean>>({});
   const discardHandlers = useRef<Record<string, () => void>>({});
   const historyRef = useRef<HistoryGuardState>(INITIAL_HISTORY_GUARD);
-  const [, bumpHistory] = useState(0);
+  const isDirtyRef = useRef(false);
 
   const setSectionDirty = useCallback((section: string, dirty: boolean) => {
     setDirtyMap((prev) => {
@@ -136,21 +136,21 @@ export function UnitPlaceProvider({
         window.history.back();
       }
     }
-    bumpHistory((n) => n + 1);
     return state;
   }, []);
 
-  // History trap while any section is dirty (E-R3).
+  // Sync history trap to dirty flips (pushState is an external system).
   useEffect(() => {
-    if (isDirty) {
-      applyHistory({ type: "dirty-on" });
-    } else {
-      applyHistory({ type: "dirty-off" });
-    }
+    isDirtyRef.current = isDirty;
+    if (isDirty) applyHistory({ type: "dirty-on" });
+    else applyHistory({ type: "dirty-off" });
   }, [isDirty, applyHistory]);
 
   useEffect(() => {
     const onPopState = () => {
+      // Prefer the ref so a just-unmounted section's cleanup hasn't raced us
+      // into thinking we're clean before the trap can reassert.
+      if (!isDirtyRef.current && !historyRef.current.trapping) return;
       const next = applyHistory({ type: "popstate" });
       if (next.dialogOpen) {
         // Stay on this URL (already reasserted). Confirm only discards drafts —

@@ -69,7 +69,9 @@ export function UnitEditChrome({
   const enriching = isEnriching(enrichStatus);
   const enrichFailed = enrichStatus?.stage === "failed";
   const enrichingRef = useRef(enriching);
-  enrichingRef.current = enriching;
+  useEffect(() => {
+    enrichingRef.current = enriching;
+  }, [enriching]);
 
   // decision: MESITA-896 — enriching status lives HERE (next to Re-enrich).
   // Poll while enriching (~8s); back off to ~60s when idle; pause when the
