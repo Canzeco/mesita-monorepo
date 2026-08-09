@@ -2,7 +2,26 @@
 //   deno test supabase/functions/_shared/tags.test.ts
 
 import { assertEquals } from "jsr:@std/assert@1";
-import { sanitizePlaceTags, selectTopPlaceTags } from "./tags.ts";
+import {
+  displayPlaceTagLabel,
+  sanitizePlaceTags,
+  selectTopPlaceTags,
+} from "./tags.ts";
+
+Deno.test("displayPlaceTagLabel: English is the default (ignores Spanish)", () => {
+  assertEquals(
+    displayPlaceTagLabel({
+      slug: "cash",
+      label_en: "Cash",
+      label_es: "Efectivo",
+    }),
+    "Cash",
+  );
+  assertEquals(
+    displayPlaceTagLabel({ slug: "outdoor_seating", label_en: "" }),
+    "outdoor seating",
+  );
+});
 
 Deno.test("sanitizePlaceTags: keeps first exclusive pole, drops the rest", () => {
   assertEquals(

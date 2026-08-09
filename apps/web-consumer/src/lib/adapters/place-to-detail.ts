@@ -12,6 +12,11 @@
 import type { PlaceDetail } from "@/lib/mock/place";
 import { detectMenuKind } from "@/lib/menu-url";
 import { resolvePlaceCategoryName } from "@/lib/place-category";
+import { displayPlaceTagLabel } from "@/lib/place-tag-label";
+import {
+  buildPromoMatrixFromRow,
+  hasExplicitClassRates,
+} from "@/lib/promo-rates";
 import { relativeLabel } from "@/lib/utils";
 import type { Row } from "./place-to-detail-helpers";
 import {
@@ -24,10 +29,6 @@ import {
   obj,
   str,
 } from "./place-to-detail-helpers";
-import {
-  buildPromoMatrixFromRow,
-  hasExplicitClassRates,
-} from "@/lib/promo-rates";
 
 export {
   computeOpenState,
@@ -36,8 +37,8 @@ export {
 } from "./place-to-detail-helpers";
 
 // Resolved tag as returned by consumer-get-place's `tags` array: only the
-// place's selected tags, already ordered by sort_order. We render label_es
-// (Spanish-first); facet drives the per-facet chip tint in the modal.
+// place's selected tags, already ordered by sort_order. Display uses
+// label_en (MESITA-963); facet drives the per-facet chip tint in the modal.
 export type ResolvedTag = {
   slug: string;
   label_es: string;
@@ -101,11 +102,11 @@ export function placeRowToDetail(row: Row, tags?: ResolvedTag[]): PlaceDetail {
 
     photos: arr<string>(row.photos),
 
-    // Curated taxonomy chips — Spanish-first (label_es), ordered by the EF's
-    // sort_order. Null-safe: missing/non-array tags collapse to [].
+    // Curated taxonomy chips — English default (MESITA-963), ordered by the
+    // EF's sort_order. Null-safe: missing/non-array tags collapse to [].
     tags: arr<ResolvedTag>(tags).map((t) => ({
       slug: t.slug,
-      label: t.label_es,
+      label: displayPlaceTagLabel(t),
       facet: t.facet,
     })),
 

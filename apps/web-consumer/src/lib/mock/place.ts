@@ -58,10 +58,10 @@ export type PlaceDetail = {
 
   // Place tags — the curated taxonomy chips the business selected (cocktails,
   // rooftop, date night, …). Sourced from consumer-get-place's resolved
-  // `tags` array, already ordered by sort_order and Spanish-first (label is
-  // label_es). `facet` is one of 17 taxonomy groups (payment, vibe, drinks,
-  // …) and drives the per-facet chip tint in the detail modal. Empty when the
-  // place has none — the Details box renders nothing for tags in that case.
+  // `tags` array, already ordered by sort_order. Chip `label` is English
+  // (label_en) until a TMS lands (MESITA-963). `facet` is one of 17 taxonomy
+  // groups (payment, vibe, drinks, …) and drives the per-facet chip tint.
+  // Empty when the place has none — the Details box renders nothing for tags.
   tags: Array<{
     slug: string;
     label: string;

@@ -4,6 +4,13 @@
 // (business-web-list-tags) and the consumer detail enrichment (consumer-web-get-place)
 // resolve slugs → labelled catalog entries through here, so a place's tags are
 // always canonical catalog entries (snake_case slugs) and never free text.
+//
+// Locale contract (MESITA-963, parallel to MESITA-939 About):
+//   - slug       = stable identity + future TMS key
+//   - label_en   = Mesita core / default display language (source of truth)
+//   - label_es   = dormant translation pack until a TMS lands — do NOT prefer
+//                  it in consumer UI, and do NOT bind chips to
+//                  mesita:pref:language yet (that pref still defaults to es).
 
 import { type SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { ENRICH_FIELD_LIMITS } from "./enrich-field-limits.ts";
@@ -25,6 +32,15 @@ export type PlaceTag = {
   section: string;
   sort_order: number;
 };
+
+/** Consumer/default chip text: English first; slug title-case as last resort. */
+export function displayPlaceTagLabel(
+  tag: Pick<PlaceTag, "slug" | "label_en"> & { label_es?: string },
+): string {
+  const en = typeof tag.label_en === "string" ? tag.label_en.trim() : "";
+  if (en) return en;
+  return tag.slug.replace(/_/g, " ");
+}
 
 // The 17 tag facets, in display order, with the emoji + bilingual group label
 // the picker renders as section headers. Kept here (not in the DB) because it is
