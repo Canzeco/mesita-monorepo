@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { AlertTriangle } from "lucide-react";
+import { AlertTriangle, ChartLine } from "lucide-react";
 import { getPlaceActivity, type PlaceActivity } from "../../actions";
+import { isSectionSoon } from "../../nav";
 import { EventSuperBoxes } from "../../sections/EventSuperBoxes";
 import { PerformanceHeadline } from "../../sections/PerformanceHeadline";
 import { ReputationStrip } from "../../sections/ReputationStrip";
@@ -18,7 +19,41 @@ import { useUnitPlace } from "../../UnitPlaceContext";
 //   4. Reservations           — Mesita bookings list + AI dial lines.
 //
 // Channel routing stays on Settings. Layout: one max-w-4xl column.
+//
+// PARKED (Pato live 2026-08-09): the whole tab is behind the Soon gate in
+// `nav.ts`. The chrome renders it disabled and this route serves the
+// placeholder below — the feed underneath is untouched, so flipping
+// `soon: false` in nav.ts brings it all back.
 export default function UnitPerformancePage() {
+  if (isSectionSoon("performance")) return <PerformanceSoon />;
+  return <PerformanceFeed />;
+}
+
+function PerformanceSoon() {
+  return (
+    <div className="mx-auto flex w-full max-w-4xl flex-col gap-5 pb-10">
+      <div className="border-border bg-card flex flex-col items-center gap-3 rounded-2xl border border-dashed px-6 py-16 text-center">
+        <span className="bg-muted/60 text-muted-foreground flex h-11 w-11 items-center justify-center rounded-full">
+          <ChartLine className="h-5 w-5" />
+        </span>
+        <p className="font-display text-foreground text-lg font-semibold tracking-tight">
+          Performance is coming soon
+        </p>
+        <p className="text-muted-foreground max-w-md text-sm leading-relaxed">
+          Per-place numbers — influenced spend, the Saved → Visited → Closed
+          funnel, reputation and reservations — are parked while the feed is
+          rebuilt. Nothing here is lost; the tab comes back with real numbers.
+        </p>
+        <span className="bg-muted text-muted-foreground mt-1 rounded-full px-2 py-0.5 text-[10px] font-bold tracking-wider uppercase">
+          Soon
+        </span>
+      </div>
+    </div>
+  );
+}
+
+/** The live feed — parked behind the Soon gate above, not deleted. */
+function PerformanceFeed() {
   const { place } = useUnitPlace();
   const [activity, setActivity] = useState<PlaceActivity | null>(null);
   const [activityError, setActivityError] = useState<string | null>(null);
