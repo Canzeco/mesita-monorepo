@@ -175,19 +175,6 @@ export const TYPE_ORDER: NotificationType[] = [
   "reservations.reservation_created",
 ];
 
-// Consumer-activity types only — the per-place Performance tab's filter row
-// (atlas/enricher events have their own home on Global Monitor; a per-place
-// operator cares about what CONSUMERS did to this place).
-export const ACTIVITY_TYPE_ORDER: NotificationType[] = [
-  "consumer.place_saved",
-  "rewards.ticket_created",
-  "rewards.ticket_visit",
-  "rewards.ticket_closed",
-  "rewards.review_submitted",
-  "rewards.ticket_reported",
-  "reservations.reservation_created",
-];
-
 type CategoryDef = {
   key: string;
   label: string;
