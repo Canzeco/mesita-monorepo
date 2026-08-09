@@ -4,7 +4,7 @@
 // market), Latam + Iberian world next, then a short tail of common origin
 // countries. `dial` is the E.164 country calling code (no leading "+"); the
 // picker re-adds the plus visually.
-export type Country = {
+type Country = {
   code: string;
   name: string;
   flag: string;
