@@ -1,6 +1,7 @@
 "use client";
 
 import { PIPELINE_CONTEXT } from "@/lib/business/scores";
+import { KnobStatus } from "../../enricher-config/atlas-ui";
 import { useScoring } from "../ScoringProvider";
 import { ContextCols, Slider } from "../panel-ui";
 import { CurvePlot } from "../plots";
@@ -21,31 +22,39 @@ export function XxBox() {
       save="xx"
       tint="violet"
       title="XX · Random Number"
-      pill={xx.control === 0 ? "default: off — pure merit" : `default control ${xx.control.toFixed(1)}`}
+      pill={xx.control === 0 ? "off — pure merit" : `control ${xx.control.toFixed(1)}`}
       overview={
         <Prose>
-          The luck knob — how much randomness beats merit; the CONSUMER&apos;s Randomness filter
-          is the real control, this green knob only its no-filter default.
+          The luck knob — how much randomness beats merit. The CONSUMER&apos;s Randomness filter
+          is MEANT to be the real control, with this green knob as its no-filter default; until
+          that filter reaches the EFs the knob is the whole story.
         </Prose>
       }
       hyperparams={
         <KnobGrid>
-          <Slider
-            consumer
-            label="Default control · no-filter value"
-            value={xx.control.toFixed(1)}
-            min={0}
-            max={5}
-            step={0.1}
-            v={xx.control}
-            onChange={(v) => setXx({ control: v })}
-            hint={
-              (xx.control === 0
-                ? "off — every card draws XX = 1"
-                : `median XX ${median.toFixed(3)} · ~${buriedPct}% of cards land below 0.1`) +
-              " · applies to every card: the Randomness filter is not on the EFs yet, so this is a flat default, not a per-query fallback"
-            }
-          />
+          <div>
+            <KnobStatus
+              kind="enforced"
+              reason="the EFs take no per-query randomness (MESITA-738) — this applies to every card on every query, not just unfiltered ones"
+            />
+            <div className="mt-3">
+              <Slider
+                consumer
+                label="Control · every query"
+                value={xx.control.toFixed(1)}
+                min={0}
+                max={5}
+                step={0.1}
+                v={xx.control}
+                onChange={(v) => setXx({ control: v })}
+                hint={
+                  xx.control === 0
+                    ? "off — every card draws XX = 1"
+                    : `median XX ${median.toFixed(3)} · ~${buriedPct}% of cards land below 0.1`
+                }
+              />
+            </div>
+          </div>
         </KnobGrid>
       }
       inputs={<ContextCols ctx={PIPELINE_CONTEXT.xx} />}

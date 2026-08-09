@@ -28,6 +28,10 @@
 //                                   pure merit) · 5 → near-total chaos.
 //                                   Higher control never changes WHO is
 //                                   luckiest, only how much luck beats merit.
+//                                   Meant as a consumer-overridable default;
+//                                   NOT YET (MESITA-738) — the EFs take no
+//                                   per-query randomness, so it is a flat
+//                                   global today.
 //   MP  Manual Priority       [0,1]  the operator's thumb on the scale for ONE
 //                                   place (places.manual_priority, default
 //                                   0.1) — it multiplies BOTH lanes, trailing
@@ -64,12 +68,16 @@
 //   where = 1 / (1 + (km / tol)^exp) — CONTINUOUS, never a bucket.
 //     km measured to the consumer's W: a REGION SET if zones/anchors were
 //     named (inside any → 0; outside → distance from the nearest border),
-//     else a POINT at GPS. tol is the CONSUMER'S distance-tolerance input
-//     (the Where filter slider); unset → the admin's defaultTolKm knob —
-//     a CONSUMER-OVERRIDABLE DEFAULT (GREEN in the console, like XX's
-//     control: the admin sets the fallback, the user overrides per query;
-//     when/what knobs have no consumer override). A named zone reuses 30%
-//     (ZONE_SPILL_FRAC — a typed zone is a constraint, not a vibe). The
+//     else a POINT at GPS. tol is MEANT to be the CONSUMER'S
+//     distance-tolerance input (the Where filter slider), with the admin's
+//     defaultTolKm knob as the fallback — a CONSUMER-OVERRIDABLE DEFAULT
+//     (GREEN in the console, like XX's control; when/what have no consumer
+//     override). NOT YET LIVE (MESITA-738, re-verified 2026-08-09): no
+//     caller sets LineupContext.tolKm, so defaultTolKm is the ONLY tolerance
+//     in production and nothing overrides it. A named zone reuses 30%
+//     (ZONE_SPILL_FRAC — a typed zone is a constraint, not a vibe), also
+//     unreachable today: lineup-rank passes zoneMode:false unconditionally,
+//     so every live request is point mode. The
 //     admin's ONE where knob is the exponent: exp = 3 → doubling distance
 //     beyond tolerance costs 8× — the tail is honestly a soft gate. Zones
 //     registry / metro sets are the backend build (MESITA-644 review,
@@ -94,7 +102,7 @@
 // the Lineup Config page and the per-place Scores tab derive from this
 // module and never restate a knob.
 
-// ── THE FIVE SUBSCORES — the model's spine ─────────────────────────────
+// ── THE SIX SUBSCORES — the model's spine ──────────────────────────────
 // Blob keys, playground labels and the fixed-contract registry all key off
 // these ids, so a subscore can never be renamed on screen without its
 // storage following.
@@ -129,9 +137,10 @@ export const SUBSCORE_BY_ID = Object.fromEntries(SUBSCORES.map((s) => [s.id, s])
   SubscoreDef
 >;
 
-/** SM · GP · RP · XX — the subscores whose input contract PIPELINE_CONTEXT
- * documents; EM's fields live in the richer CONTEXT_FIELDS registry. Every
- * subscore's inputs are FIXED — tuned by knobs, never by field selection. */
+/** SM · GP · RP · XX · MP — the subscores whose input contract
+ * PIPELINE_CONTEXT documents; EM's fields live in the richer CONTEXT_FIELDS
+ * registry. Every subscore's inputs are FIXED — tuned by knobs, never by
+ * field selection. */
 type FixedSubscoreId = Exclude<SubscoreId, "em">;
 
 // ── THE TWO LANES ──────────────────────────────────────────────────────
@@ -365,7 +374,18 @@ export function whenFromOpenness(bits: readonly boolean[], patience: number): nu
 }
 
 /** The category ladder's rungs — how the place's one category sits against
- * the intent's SET of categories and/or mega categories. */
+ * the intent's SET of categories and/or mega categories.
+ *
+ * CAREFUL — "none" is overloaded against the spec prose above, which names the
+ * rungs listed / super / none. The mapping is:
+ *   "exact"    spec "listed" (or mega listed) → 1
+ *   "sibling"  spec "super"                   → t
+ *   "mismatch" spec "none"   (no rung matched) → t²
+ *   "none"     NOTHING ASKED (empty intent)   → 1
+ * So spec-none is code-"mismatch", and code-"none" is the opposite case. The
+ * engine currently passes "none" unconditionally (lineup-rank.ts), which is the
+ * nothing-asked branch — what = 1 on every card. Renaming the union is a
+ * cross-runtime change; filed rather than done in a docs pass. */
 export type WhatRelation = "exact" | "sibling" | "mismatch" | "none";
 
 /** none rung = t² — derived from the single what tolerance. */
@@ -597,7 +617,7 @@ export type DeckCandidate = { id: string; scores: Record<LaneId, number> };
  * The locked merge, per-lane counts (MESITA-659 · MESITA-717): each lane
  * ranks the pool by its own score (ties by id — deterministic), drops
  * score ≤ 0, takes its OWN top-N (a lane at 0 contributes nothing).
- * Round-robin O → I → H. On a lane's turn: walk its ranked list from a
+ * Round-robin O → I. On a lane's turn: walk its ranked list from a
  * cursor; if the next card is already in the final deck, SKIP it and keep
  * pulling from the SAME lane until a non-duplicate lands (or the lane is
  * exhausted) — then rotate. First occurrence wins. NO backfill.
@@ -661,30 +681,46 @@ export function composeFinalDeck(
 // Lineup is the candidate-generation engine: consumer + intent → scored
 // candidates → the deck. There is exactly ONE engine — the two lanes,
 // Organic · Inorganic, merged O → I (dedupe on insert, no backfill; Hybrid
-// removed 2026-07-22). It has three CALLERS, not surfaces: Swipe and Map (the
-// consumer hits Lineup directly from Home and the Map) and Memo (the RAG
-// concierge calls Lineup as a TOOL, then reasons over what it returns). Callers
-// differ only in where the intent-data comes from (prebuilt taste embedding ·
-// taste + viewport · synthesized from the question).
+// removed 2026-07-22).
+//
+// THREE CALLERS, and they do NOT all run the engine (verified against the EFs
+// 2026-08-09). Swipe and Map do: consumer-web-recommend-{swipe,map} run
+// _shared/recommender-rank-* in-process, which load the live blob and call
+// lineupReorder. Memo does NOT: supabase-edgefunc-recall-lineup — Lineup's RAG
+// leg — cosine-ranks the pool with rankByCosine and never reads scoring_config,
+// so Memo's cards are EM ONLY: no SM/GP/RP/XX/MP, no lanes, no laneN. Every
+// knob on this page is inert for Memo. The name is aspirational; wiring it to
+// the real engine is open work, not a description of today.
+//
+// `runs` is the field that carries that distinction to the console — keep it
+// honest, and delete it only when every caller actually runs the engine.
 
 export const LINEUP_ENGINE = {
   name: "Lineup",
   composition: "Organic + Inorganic, merged O → I · on dupe keep pulling same lane · no backfill",
   callers: [
-    { caller: "Swipe", intent: "prebuilt taste embedding" },
-    { caller: "Map",   intent: "taste embedding + viewport" },
-    { caller: "Memo",  intent: "synthesized from the question — Lineup as a tool" },
+    { caller: "Swipe", intent: "prebuilt taste embedding",  runs: "full engine" },
+    { caller: "Map",   intent: "taste embedding + viewport", runs: "full engine" },
+    { caller: "Memo",  intent: "synthesized from the question", runs: "EM cosine only — no lanes, no knobs" },
   ],
 } as const;
 
-// NO RECALL CAP IN LINEUP (Pato 2026-07-21, REVERSING the 2026-07-17
-// "recallTopK stays" decision): EM compares the query against ALL vectors —
-// Lineup scores the whole catalog, filtered only by the consumer's METRO
-// (city set — an identity fact, not a distance gate; the curve does all
+// NO RECALL CAP IN LINEUP — the INTENT (Pato 2026-07-21, REVERSING the
+// 2026-07-17 "recallTopK stays" decision): EM should compare the query against
+// ALL vectors, Lineup scoring the whole catalog filtered only by the consumer's
+// METRO (city set — an identity fact, not a distance gate; the curve does all
 // demotion within a metro). The deck is capped later by the per-lane counts.
-// Retrieval-capping is MEMO's business (its own config at /memo-config) —
-// and even Memo simply calls Lineup, takes the deck, and analyzes the cards.
 // The old retrieval.recallTopK blob key is ignored on read.
+//
+// NOT WHAT SHIPS (verified 2026-08-09). _shared/recommender-pool.ts
+// fetchCandidatePool takes a lat/lng BOUNDING BOX, trims by exact haversine
+// <= radiusKm, and .limit()s to poolSize — so production has BOTH a distance
+// gate and a recall cap, and no metro/city filter anywhere. The caps:
+//   swipe  CANDIDATE_POOL 200, radius from the request
+//   map    same pool, per-category
+//   memo   RECALL_POOL 200 @ RECALL_RADIUS_KM 25 (recall-lineup's own consts)
+// A place outside the radius is never scored, whatever its EM would have been.
+// Closing this gap is backend work; until then the metro claim is a goal.
 
 // ── CONTEXT FIELD REGISTRY — EM's inputs, FIXED ─────────────────────────
 // Every TEXT field EM reads, with a stable key. Inputs are NOT configurable
@@ -924,7 +960,10 @@ export const PIPELINE_CONTEXT: Record<FixedSubscoreId, SubscoreContext> = {
     consumer: [{ field: "— (never; rates stay blended)", status: "live" }],
     intent: [{ field: "—", status: "live" }],
     place: [
-      { field: "welcome/returning × Standard / Influencer / Premium / Aura rates (rewards grid)", status: "live" },
+      // FOUR rate columns, not the 4-rung class ladder: welcome_free_rate ·
+      // welcome_premium_rate · free_rate · premium_rate. Influencer and Aura
+      // have no rate columns of their own (blended-rate privacy).
+      { field: "welcome/returning × free/premium rates (4 columns) → strategy preset", status: "live" },
     ],
   },
   xx: {

@@ -50,6 +50,12 @@ export function SmBox() {
         <div className="grid gap-x-8 gap-y-5 lg:grid-cols-3">
           <div>
             <SubHead>where · distance tolerance</SubHead>
+            <div className="mt-2">
+              <KnobStatus
+                kind="enforced"
+                reason="no caller sets LineupContext.tolKm — this is the only tolerance in production, not a default the consumer's Where slider overrides"
+              />
+            </div>
             <div className="mt-3">
               <Slider
                 consumer
@@ -60,7 +66,7 @@ export function SmBox() {
                 step={0.5}
                 v={sm.where.defaultTolKm}
                 onChange={(v) => setWhere("defaultTolKm", v)}
-                hint={`the consumer's Where slider overrides this · falloff frozen at ${DIST_EXP} · 8 km → ${whereScore(8, sm.where.defaultTolKm).toFixed(2)}`}
+                hint={`applies to every query · falloff frozen at ${DIST_EXP} · 8 km → ${whereScore(8, sm.where.defaultTolKm).toFixed(2)}`}
               />
             </div>
           </div>
@@ -113,8 +119,13 @@ export function SmBox() {
         <>
           <ProcessSteps>
             <p>
-              where = 1/(1+(km/tol)^{DIST_EXP}) · tol = the consumer&apos;s Where slider (unset →
-              green default {sm.where.defaultTolKm.toFixed(1)} km) · falloff frozen
+              where = 1/(1+(km/tol)^{DIST_EXP}) · tol = {sm.where.defaultTolKm.toFixed(1)} km ·
+              falloff frozen.{" "}
+              <span className="text-muted-foreground">
+                Spec: the consumer&apos;s Where slider supplies tol and this is only its fallback,
+                and a named zone reuses 30% of it. Neither is live — the EFs pass no tolKm and
+                always run point mode (zoneMode:false), so every request uses the knob above.
+              </span>
             </p>
             <p>
               when = wait × fit over a binary openness array ({OPENNESS_SLOTS} half-hour slots =
