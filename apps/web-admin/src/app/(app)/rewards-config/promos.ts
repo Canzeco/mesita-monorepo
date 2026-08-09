@@ -31,7 +31,7 @@ export type ActionKey =
   | "welcome"
   | "review";
 
-export type PromosBonuses = {
+type PromosBonuses = {
   welcome: number;
   mesita: number;
   story: number;
@@ -122,7 +122,7 @@ export const ACTION_META: Record<
   review: { name: "Google Review", emoji: "⭐" },
 };
 
-export type BonusKey = keyof PromosBonuses;
+type BonusKey = keyof PromosBonuses;
 
 export const BONUS_META: Record<
   BonusKey,
@@ -263,7 +263,7 @@ type LegacyRule = {
 };
 
 /** The bonus an action adds for a class (standing = 0). */
-export function bonusForAction(
+function bonusForAction(
   cfg: PromosConfig,
   cls: ClassKey,
   action: ActionKey,
