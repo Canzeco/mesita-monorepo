@@ -21,22 +21,24 @@ This package intentionally uses **Inter** for body UI. Generic “avoid Inter”
 - **Calm and dense.** Internal tool: high information density, low ornament.
 - **Light theme only.** Semantic tokens (`bg-background`, `bg-card`, `text-foreground`, …). Content stays light; only the sidebar / auth marketing pane invert.
 - **Pink is accent, not canvas.** Brand chroma on CTAs, marks, and rare highlights. Canvas / borders / body text keep chroma ≤ ~0.012 (see `globals.css` comment).
-- **Don’t invent a fourth lake.** Prefer the canonical path for the page type (below). Existing forks are **debt** — document, don’t copy.
+- **One kit root.** Import from `@/components/admin-ui` (or `/config` · `/manage` · `/lineup`). Route-local `atlas-ui` / `manage-single/ui` / `panel-ui` are thin re-export shims — don’t grow them.
+- **Don’t invent a fourth lake.** Prefer the canonical path for the page type (below).
 
 ## 3. Page templates + canonical decision tree
 
-Use this first when adding UI:
+Use this first when adding UI. **Kit root:** `@/components/admin-ui`.
 
 | Page type | Shell | Card | Save | Error |
 | --- | --- | --- | --- | --- |
-| **Flat config** (new) | `ConfigPageLayout` → `PageContainer` (default `6xl`) + `PageHeader` | Import `SectionCard` from `enricher-config/atlas-ui.tsx` | `SaveRow` (ink pill) from same | `ErrorNote` (inline) · `AtlasSettingsError` (page load) |
-| **Tabbed config** (new) | `PageContainer` + `PageHeader` + `ConfigTabNav` + `mt-6 sm:mt-8` | same as flat config | `SaveRow` | same |
-| **Manage / records (single unit)** | `ManageSingleLayoutShell` (full-bleed; no max-width container) | `SectionCard` from `manage-single/ui.tsx` (tinted chip + `shadow-card`) | `SaveBar` (pink gradient + Cancel) | `ErrorNote` · manage ConfirmDialog for destructive |
-| **Manage multiple / search** | `PageContainer size="5xl"` + tabs | list / map patterns (not SectionCard) | N/A (actions in rows) | `ErrorNote` or destructive banner |
+| **Flat config** (new) | `ConfigPageLayout` → `PageContainer` (default `6xl`) + `PageHeader` | `SectionCard` from `@/components/admin-ui` (or `/config`) | `SaveRow` (ink pill) | `ErrorNote` · `AtlasSettingsError` |
+| **Tabbed config** (new) | `PageContainer` + `PageHeader` + `ConfigTabNav` + `mt-6 sm:mt-8` | same | `SaveRow` | same |
+| **Manage / records (single unit)** | `ManageSingleLayoutShell` (full-bleed) | `ManageSectionCard` / manage `SectionCard` (tinted chip + `shadow-card`) from `/manage` | `SaveBar` (pink + Cancel) | `ErrorNote` · `ConfirmDialog` |
+| **Manage multiple / search** | `PageContainer size="5xl"` + tabs | list / map patterns (not SectionCard) | N/A | `ErrorNote` or destructive banner |
 | **Auth / gate** | `EnterpriseAuthLayout` or centered `bg-hero` + `bg-card shadow-elev rounded-2xl` | — | Google CTA `rounded-full` | `ERROR_BOX_CLASS` |
+| **Lineup / scoring** | scoring shells | `PanelCard` / `BoxSection` from `/lineup` | `BoxSaveBar` | inline error in `BoxSaveBar` |
 
-**Canonical for greenfield config work:** `atlas-ui` `SectionCard` + ink `SaveRow` + shared `ErrorNote`.  
-**Do not** start a new Lineup-style `panel-ui` lake outside Lineup/Scoring.
+**Canonical for greenfield config:** `SectionCard` + ink `SaveRow` + `ErrorNote` from `@/components/admin-ui`.  
+**Do not** use lineup MiniTile/Chip/Slider outside Lineup/Scoring.
 
 Width cheatsheet: `3xl` (narrow ops), `5xl` (manage-multiple / monitors), `6xl` (default configs), full-bleed (manage-single editor).
 
@@ -87,28 +89,28 @@ There is no formal type scale beyond these roles — don’t invent one in PRs.
 
 | Name | Path | When to use |
 | --- | --- | --- |
+| **Admin UI kit** | `src/components/admin-ui/` | **One import root** — `index` · `config` · `manage` · `lineup` |
 | `AppShell` | `src/components/AppShell.tsx` | Authenticated chrome |
 | `Sidebar` | `src/components/Sidebar.tsx` | Dark rail (`bg-foreground text-background`) |
 | `PageContainer` / `PageHeader` | `src/components/PageContainer.tsx` | Page gutters + title block |
 | `ConfigPageLayout` | `src/components/ConfigPageLayout.tsx` | Flat config pages |
 | `ConfigTabNav` | `src/components/ConfigTabNav.tsx` | Underline sub-tabs |
-| `SectionCard` + `SaveRow` + knobs | `src/app/(app)/enricher-config/atlas-ui.tsx` | **Canonical config** sections/controls |
-| `SectionCard` + `SaveBar` + fields | `src/app/(app)/manage-single/ui.tsx` | Unit/records editor only |
-| `PanelCard` / `BoxSection` / `BoxSaveBar` | `src/app/(app)/lineup-config/panel-ui.tsx` | Lineup / scoring panels only |
-| `ErrorNote` | `src/components/ErrorNote.tsx` | Inline form/section errors |
-| `AtlasSettingsError` | `src/components/AtlasSettingsError.tsx` | Full-page Enricher/Atlas load failure |
-| `ERROR_BOX_CLASS` | `src/lib/ui-classes.ts` | Auth-only compact error |
-| `PlacesMap` | `src/components/PlacesMap.tsx` | Result maps (`rounded-2xl border shadow-elev`) |
+| `SectionCard` + `SaveRow` + knobs | `admin-ui/config.tsx` | **Canonical config** |
+| `ManageSectionCard` + `SaveBar` + fields | `admin-ui/manage.tsx` | Unit/records editor only |
+| `PanelCard` / `BoxSection` / `BoxSaveBar` | `admin-ui/lineup.tsx` | Lineup / scoring only |
+| `ErrorNote` / `AtlasSettingsError` / `ERROR_BOX_CLASS` | re-exported from kit barrel | Errors |
+| `PlacesMap` | `src/components/PlacesMap.tsx` | Result maps |
 | `EnterpriseAuthLayout` / `GoogleSignInButton` | `src/components/auth/*` | Sign-in |
+| Legacy shims | `enricher-config/atlas-ui`, `manage-single/ui`, `lineup-config/panel-ui` | Re-exports only (+ `CrossTabLink` in manage-single/ui) |
 
 ### Controls (config)
 
-Prefer `atlas-ui` primitives: `Switch`, `NumberField`, `TextAreaField`, `QualityPicker`, `Collapsible`, `KnobStatus`.  
-Knob enforcement status sits **next to** the control (`KnobStatus`). Switch track is ink/neutral — not pink.
+`Switch`, `NumberField`, `TextAreaField`, `QualityPicker`, `Collapsible`, `KnobStatus` from `admin-ui/config`.  
+Knob enforcement sits **next to** the control. Switch track is ink/neutral — not pink.
 
-### Controls (manage-single)
+### Controls (manage)
 
-Filled inputs (`bg-muted/60 … rounded-xl`), `TextField` / `TextArea` / `SelectField` / `PhoneField` / `ReadField` / `GroupLabel` / `ConfirmDialog` / `Spinner`.
+Filled inputs (`bg-muted/60 … rounded-xl`), `TextField` / `TextArea` / `SelectField` / `PhoneField` / `ReadField` / `GroupLabel` / `ConfirmDialog` / `Spinner` from `admin-ui/manage`.
 
 ## 7. Interaction state matrix
 
@@ -138,21 +140,19 @@ Filled inputs (`bg-muted/60 … rounded-xl`), `TextField` / `TextArea` / `Select
 
 - `bg-zinc-900` / dark app content surfaces (sidebar invert is the exception).
 - Rose-wash the whole canvas; pink is accent only.
-- Copy manage-single tint chips or `shadow-card` into new config pages.
-- Copy `panel-ui` MiniTile/Chip/Slider recipes outside Lineup.
+- Copy manage tint chips or `shadow-card` into new config pages.
+- Copy lineup MiniTile/Chip/Slider recipes outside Lineup.
 - Hand-edit `AGENTS.md` (regenerate via `deno task sync-rules`).
-- Treat debt lakes as equally good for greenfield work.
+- Grow the legacy route-local shim files — add chrome in `admin-ui/` instead.
 
-## 9. Known debt (do not extend)
+## 9. Surface variants (one kit, three skins)
 
-Three UI lakes coexist. They are **not** three blessed systems — they are unfinished consolidation.
+Implementation is centralized under `src/components/admin-ui/`. Visual variants remain on purpose:
 
-| Lake | Module | Patterns | Status |
+| Surface | Module | Patterns | New work |
 | --- | --- | --- | --- |
-| Config | `enricher-config/atlas-ui.tsx` | `SectionCard` (no shadow) · ink `SaveRow` | **Canonical for new config** |
-| Manage | `manage-single/ui.tsx` | tinted `SectionCard` + `shadow-card` · pink `SaveBar` | Keep for records editor; don’t export into config |
-| Lineup | `lineup-config/panel-ui.tsx` | `PanelCard` / `BoxSection` · `BoxSaveBar` | Lineup-only; don’t start lake #4 |
+| Config | `admin-ui/config.tsx` | `SectionCard` (no shadow) · ink `SaveRow` | **Default** |
+| Manage | `admin-ui/manage.tsx` | tinted card + `shadow-card` · pink `SaveBar` | Records editor only |
+| Lineup | `admin-ui/lineup.tsx` | `PanelCard` / `BoxSection` · `BoxSaveBar` | Scoring only |
 
-Also debt: no shared `EmptyState` / `Button` / `Input`; uneven `shadow-card` on config cards; scattered raw `bg-red-*` / tint chip hues outside semantic tokens; local `ErrorNote` leftovers in a few pages.
-
-**Follow-up (TODOS):** extract a shared admin UI kit, then shrink this section to a pointer.
+Remaining debt: no shared `EmptyState` / `Button` / `Input`; uneven tint chips vs semantic tokens; local `ErrorNote` leftovers in a few pages; callers still import via legacy shims (migrate opportunistically to `@/components/admin-ui`).
