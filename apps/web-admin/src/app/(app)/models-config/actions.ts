@@ -15,8 +15,6 @@
 import { efInvoke } from "@/lib/supabase-ef";
 import { coerceModelsConfig, type ModelsConfig } from "./types";
 
-export type { ModelsConfig } from "./types";
-
 type GetModelsConfigResult =
   | { ok: true; data: ModelsConfig }
   | { ok: false; error: string };
