@@ -29,7 +29,7 @@ import { errMsg, guestNoun } from '@/lib/utils';
 import {
   isSlotPast,
   MX_OFFSET,
-  VENUE_TZ_LABEL,
+  PLACE_TZ_LABEL,
   venueDateIso,
   venueDateParts,
   venueDateTime,
@@ -378,7 +378,7 @@ export function ReservationSheet({
               Time
             </Text>
             <Text className="mb-2 text-[11px] text-muted-foreground">
-              Times shown in {VENUE_TZ_LABEL}
+              Times shown in {PLACE_TZ_LABEL}
               {hoursLabelForDate(date, hours)
                 ? ` · open ${hoursLabelForDate(date, hours)}`
                 : ''}

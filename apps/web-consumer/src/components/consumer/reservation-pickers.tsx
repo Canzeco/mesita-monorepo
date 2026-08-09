@@ -14,7 +14,7 @@ import {
 } from "@/lib/reservation-slots";
 import {
   isSlotPast,
-  VENUE_TZ_LABEL,
+  PLACE_TZ_LABEL,
   venueDateIso,
   venueDateParts,
 } from "@/lib/place-time";
@@ -177,7 +177,7 @@ export function ReservationTimePicker({
         Time
       </p>
       <p className="text-muted-foreground mt-1 text-[11px]">
-        Times shown in {VENUE_TZ_LABEL}
+        Times shown in {PLACE_TZ_LABEL}
         {dayHours ? ` · open ${dayHours}` : ""}
       </p>
       <div className="scrollbar-hide -mx-5 mt-2 overflow-x-auto px-5 pb-1">
