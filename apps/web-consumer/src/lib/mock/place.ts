@@ -6,7 +6,10 @@
 // When wiring real data, write an adapter that maps the EF response →
 // PlaceDetail; the view stays untouched.
 
-export type ConsumerClass = "standard" | "premium" | "influencer" | "aura";
+import type { ClassKey } from "@/lib/consumer-data";
+
+/** @deprecated Prefer `ClassKey` from `@/lib/consumer-data` — alias kept for call sites. */
+export type ConsumerClass = ClassKey;
 
 export type PlaceDetail = {
   // Stable identifier — matches public.places.id once the real fetch lands.
