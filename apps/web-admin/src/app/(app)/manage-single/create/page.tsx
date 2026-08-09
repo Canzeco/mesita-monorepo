@@ -1,5 +1,6 @@
-import { redirect } from "next/navigation";
+import { permanentRedirect } from "next/navigation";
 
-export default function ManageSingleCreateRedirectPage() {
-  redirect("/manage-single/select");
+// Legacy /manage-single/create → select (create lives in the select flow).
+export default function ManageSingleSelectRedirectPage() {
+  permanentRedirect("/manage-single/select");
 }

@@ -1,5 +1,2 @@
-import { redirect } from "next/navigation";
-
-export default function ManageSingleAddRedirectPage() {
-  redirect("/manage-single/select");
-}
+// Legacy /manage-single/add → same select landing as /create.
+export { default } from "../create/page";
