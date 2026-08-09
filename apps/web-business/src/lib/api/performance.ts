@@ -14,7 +14,7 @@ import { invokeEF, withPlaceId } from "./_invoke";
 // Headline counts are exact aggregates from the EF (not feed-derived). The
 // review list stays capped; `mesitaReviewCount` is the true total.
 
-export type PerformanceSummary = {
+type PerformanceSummary = {
   saved: number;
   ticketsOpened: number;
   visits: number;
@@ -32,7 +32,7 @@ export type PerformanceSummary = {
   currency: string;
 };
 
-export type PerformanceReview = {
+type PerformanceReview = {
   id: string;
   food: number | null;
   service: number | null;
@@ -44,7 +44,7 @@ export type PerformanceReview = {
   guestFirstName: string | null;
 };
 
-export type PerformanceContent = {
+type PerformanceContent = {
   mesitaReviews: PerformanceReview[];
   /** Exact total of Mesita reviews for this place (list may be capped). */
   mesitaReviewCount: number;
