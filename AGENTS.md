@@ -33,7 +33,7 @@ Where things live: **Linear** (team Mesita, `MESITA-`) = work state · **Notion*
 | `apps/web-business` | `mesita-web-business` | Business console · business.mesita.ai (Next.js · Vercel) |
 | `apps/web-consumer` | `mesita-web-consumer` | Consumer app · consumer.mesita.ai (Next.js · Vercel) |
 | `apps/web-landing` | `mesita-web-landing` | Marketing landing · mesita.ai (Next.js · Vercel) |
-| `apps/web-check` | — | Mesita Check (staff) · check.mesita.ai (Next.js · Vercel) — the Tickets-v2 check page's new home; web-landing still serves live QRs until the `CHECK_URL_BASE` flip (MESITA-814) |
+| `apps/web-check` | — | Mesita Check (staff) · check.mesita.ai (Next.js · Vercel) — Tickets-v2 check page; QRs encode `check.mesita.ai/<code>` (MESITA-814); `mesita.ai/check/<code>` permanently redirects |
 | `apps/mobile-consumer` | `mesita-mobile-consumer` | Native consumer app (Expo SDK 57 · RN · NativeWind) |
 | `apps/mobile-business` | — | Native business app (Expo SDK 57 · **scaffold only**, EAS wired, no screens yet) |
 | `supabase` | `mesita-supabase` | DB · RLS · Edge Functions — source of truth (Supabase CLI · Deno) |
