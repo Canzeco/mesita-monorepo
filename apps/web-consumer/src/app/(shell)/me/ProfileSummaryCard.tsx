@@ -18,8 +18,8 @@ import {
 } from "@/lib/utils";
 
 // ─── Me membership card (MESITA-932 / MESITA-935 / MESITA-937) ──────────────
-// Centered photo + Class/IG badges, then five equal-height identity rows:
-// name·sex·age / 🇲🇽 phone / [icon] class / IG handle·followers / visits·saved.
+// Centered photo + IG/Class badges (IG leading/left — MESITA-956), then five
+// equal-height identity rows: name·sex·age / 🇲🇽 phone / IG / class / visits·saved.
 // Typography: Fraunces only on MESITA wordmark; all identity rows = Inter.
 
 const ROW_CLASS =
@@ -42,11 +42,12 @@ function ClassBadge({
           ? "bg-gradient-to-br from-blue-200 to-blue-400 text-blue-950"
           : "bg-gradient-to-br from-neutral-200 to-neutral-400 text-neutral-900";
 
-  // Same outer diameter as IgBadge (MESITA-938) — 28px, equal left/right.
+  // Trailing (right) badge — Instagram leads on the left (MESITA-956).
+  // Same outer diameter as IgBadge (MESITA-938) — 28px.
   return (
     <div
       className={cn(
-        "absolute -bottom-1 -left-1 grid h-7 w-7 place-items-center rounded-full border-2 border-white shadow-sm",
+        "absolute -right-1 -bottom-1 grid h-7 w-7 place-items-center rounded-full border-2 border-white shadow-sm",
         chipClass,
       )}
       aria-label={`Class: ${label}`}
@@ -63,11 +64,12 @@ function IgBadge({
   connected: boolean;
   avatarUrl: string | null;
 }) {
+  // Leading (left) badge — Instagram above Class everywhere (MESITA-956).
   // Same outer diameter as ClassBadge (MESITA-938) — 28px h-7 w-7.
   return (
     <div
       className={cn(
-        "absolute -right-1 -bottom-1 grid h-7 w-7 place-items-center rounded-full border-2 border-white p-[2px] shadow-sm",
+        "absolute -bottom-1 -left-1 grid h-7 w-7 place-items-center rounded-full border-2 border-white p-[2px] shadow-sm",
         connected
           ? "bg-[linear-gradient(135deg,#f58529,#dd2a7b_45%,#8134af)]"
           : "bg-border",
@@ -217,16 +219,6 @@ export function ProfileSummaryCard({
       muted: !phone,
     },
     {
-      key: "class",
-      content: (
-        <RowWithIcon Icon={ClassIcon} iconClassName="text-foreground/70">
-          <span className="truncate text-[13px] font-semibold">
-            {classLabel}
-          </span>
-        </RowWithIcon>
-      ),
-    },
-    {
       key: "instagram",
       content: (
         <span
@@ -237,6 +229,16 @@ export function ProfileSummaryCard({
         >
           {igLine}
         </span>
+      ),
+    },
+    {
+      key: "class",
+      content: (
+        <RowWithIcon Icon={ClassIcon} iconClassName="text-foreground/70">
+          <span className="truncate text-[13px] font-semibold">
+            {classLabel}
+          </span>
+        </RowWithIcon>
       ),
     },
     {
@@ -287,8 +289,8 @@ export function ProfileSummaryCard({
               </div>
             </div>
           </div>
-          <ClassBadge classKey={key} label={classLabel} />
           <IgBadge connected={igConnected} avatarUrl={avatarUrl} />
+          <ClassBadge classKey={key} label={classLabel} />
         </div>
 
         <div
