@@ -8,6 +8,7 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { invokeEF } from "./_invoke";
+import type { BusinessRole } from "./team";
 
 type PlaceListingType = "partner" | "web";
 type PlaceStatus =
@@ -126,7 +127,7 @@ type Place = {
 };
 
 export type MyPlace = Place & {
-  my_role: "owner" | "editor" | "staff" | "viewer";
+  my_role: BusinessRole;
   updated_at?: string;
 };
 
