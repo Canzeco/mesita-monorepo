@@ -21,7 +21,7 @@
       "status": "active",
       "releasable": false,
       "recordIncoming": false,
-      "purpose": "Venue-facing reservation line. a1 dials venues from it; a4 answers venues on it. Imported into ElevenLabs; its Twilio voice + messaging webhooks belong to ElevenLabs. Code default: ELEVENLABS_FROM_NUMBER in _shared/elevenlabs.ts."
+      "purpose": "Place-facing reservation line. a1 dials places from it; a4 answers places on it. Imported into ElevenLabs; its Twilio voice + messaging webhooks belong to ElevenLabs. Code default: ELEVENLABS_FROM_NUMBER in _shared/elevenlabs.ts."
     },
     {
       "e164": "+16282968794",

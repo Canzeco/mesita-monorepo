@@ -35,12 +35,12 @@ import { MX_OFFSET, placeDateTime } from "@/lib/place-time";
 // Action cluster for reservation detail. The two that MOVE the ticket —
 // reschedule and cancel — are live: each hits its consumer-web-* EF, and a
 // reschedule sends the ticket back to `booking` because Mesita has to ask the
-// venue again. `onChanged` lets the detail view refetch so the phase, banner
+// place again. `onChanged` lets the detail view refetch so the phase, banner
 // and available actions update in place.
 
 const DEFAULT_TIME = "20:00";
 
-// The venue's wall clock (CDMX) — the pickers speak local date + HH:mm, and
+// The place's wall clock (CDMX) — the pickers speak local date + HH:mm, and
 // @/lib/place-time owns the offset for the whole app.
 function localDate(iso: string | undefined): string {
   return (iso ? placeDateTime(iso)?.date : "") ?? "";
@@ -73,7 +73,7 @@ export function ReservationActions({
   const [timeChoice, setTimeChoice] = useState(() => localTime(r.reservedAt));
   const [party, setParty] = useState(r.partySize);
 
-  // Derived, never stored: the seeded slot can already be behind the venue's
+  // Derived, never stored: the seeded slot can already be behind the place's
   // clock (tonight's table, rescheduled inside the 4h grace), so fall through
   // to the first slot that's still ahead of it.
   const date =

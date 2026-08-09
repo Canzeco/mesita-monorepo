@@ -52,7 +52,7 @@ export function apiCreateReservation(args: {
   );
 }
 
-/** Accept confirmation or a venue alternative without an a2 call (MESITA-787). */
+/** Accept confirmation or a place alternative without an a2 call (MESITA-787). */
 export function apiConfirmReservation(args: {
   reservationId: string;
   newDate?: string;
@@ -86,7 +86,7 @@ export type EFReservationRow = {
     | 'declined'
     | 'no_show'
     | 'cancelled'
-    // Engine outcomes: the venue never answered / the call ended unclear.
+    // Engine outcomes: the place never answered / the call ended unclear.
     | 'unreachable'
     | 'unresolved';
   notes: string | null;
@@ -115,7 +115,7 @@ export type EFReservationRow = {
 
 /**
  * Reschedule (or resize) the caller's own reservation. New terms send the
- * ticket back to `booking` and Mesita calls the venue again. Web parity:
+ * ticket back to `booking` and Mesita calls the place again. Web parity:
  * apps/web-consumer/src/lib/api/reservations.ts.
  */
 export function apiUpdateReservation(args: {
