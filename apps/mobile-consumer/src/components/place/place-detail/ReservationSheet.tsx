@@ -33,14 +33,14 @@ import {
   venueDateIso,
   venueDateParts,
   venueDateTime,
-} from '@/lib/venue-time';
+} from '@/lib/place-time';
 
 const DEFAULT_PARTY = 2;
 const MIN_PARTY_SIZE = 1;
 const MAX_PARTY_SIZE = 20;
 
 // MX_OFFSET (and everything else about the venue's clock) lives in
-// @/lib/venue-time — the single source of truth. The picked slot is the
+// @/lib/place-time — the single source of truth. The picked slot is the
 // venue's wall-clock; stamping the offset lets the agent read it back in
 // America/Mexico_City and match what the guest chose.
 

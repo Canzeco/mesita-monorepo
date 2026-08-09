@@ -1,31 +1,32 @@
-// The venue's clock — the ONE place the consumer app decides what "now" means
-// for a reservation.
+// The venue's clock — the ONE place the app decides what "now" means for a
+// reservation. Ported verbatim from
+// apps/web-consumer/src/lib/place-time.ts; when one changes, update the other
+// in the same PR (web/mobile parity is a hard constraint).
 //
 // Every Mesita venue is in Mexico City, which sits at UTC-6 all year (no DST
-// since 2022), so a fixed offset is exact: no Intl timezone database, no
-// per-device drift, and the same answer for a guest sitting in Tokyo as for
-// one sitting in Roma Norte. That matters — "is this slot in the past?" must
-// be judged against the venue's wall clock, never the device's.
+// since 2022), so a fixed offset is exact: no Intl timezone database (Hermes
+// can't be relied on for one), no per-device drift, and the same answer for a
+// guest in Tokyo as for one in Roma Norte. That matters — "is this slot in the
+// past?" must be judged against the venue's wall clock, never the device's.
 //
-// Everything below is derived from MX_OFFSET. Do NOT introduce a second
-// offset constant anywhere; import this one.
-// Mirror: apps/mobile-consumer/src/lib/venue-time.ts (keep the two in sync).
+// Everything below is derived from MX_OFFSET. Do NOT introduce a second offset
+// constant anywhere; import this one.
 
 /** Wall-clock offset stamped onto every `reserved_at` the app sends. */
-export const MX_OFFSET = "-06:00";
+export const MX_OFFSET = '-06:00';
 
 /** Shown to the guest so the slot list is never ambiguous. */
-export const VENUE_TZ_LABEL = "Mexico City time (GMT-6)";
+export const VENUE_TZ_LABEL = 'Mexico City time (GMT-6)';
 
 /** MX_OFFSET as signed minutes east of UTC — parsed, never re-typed. */
 const OFFSET_MINUTES = (() => {
   const m = /^([+-])(\d{2}):(\d{2})$/.exec(MX_OFFSET);
   if (!m) return 0;
-  return (m[1] === "-" ? -1 : 1) * (Number(m[2]) * 60 + Number(m[3]));
+  return (m[1] === '-' ? -1 : 1) * (Number(m[2]) * 60 + Number(m[3]));
 })();
 
 function pad(n: number): string {
-  return String(n).padStart(2, "0");
+  return String(n).padStart(2, '0');
 }
 
 /** Shift an instant into venue wall-clock, readable through the UTC getters. */
@@ -75,7 +76,7 @@ export function venueDateParts(iso: string): {
 
 /** Minutes since midnight for an `HH:mm` slot. */
 export function slotMinutes(hhmm: string): number {
-  const [h, m] = hhmm.split(":");
+  const [h, m] = hhmm.split(':');
   return Number(h) * 60 + Number(m);
 }
 

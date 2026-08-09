@@ -17,7 +17,7 @@ import {
   VENUE_TZ_LABEL,
   venueDateIso,
   venueDateParts,
-} from "@/lib/venue-time";
+} from "@/lib/place-time";
 
 const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const MONTH_NAMES = [
