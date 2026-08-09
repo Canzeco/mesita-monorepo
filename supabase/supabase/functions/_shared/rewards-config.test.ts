@@ -19,10 +19,9 @@ import {
 const GRID = DEFAULT_REWARDS_GRID;
 
 Deno.test("resolveTicketRate: every dimension steps up (v9 spot-checks)", () => {
-  // Strategy: same guest, same rung, three strategies.
+  // Strategy: same guest, same rung, two paid strategies.
   assertEquals(resolveTicketRate("conservative", GRID, { classKey: "standard", isFirstVisit: false }), 5);
   assertEquals(resolveTicketRate("aggressive", GRID, { classKey: "standard", isFirstVisit: false }), 15);
-  assertEquals(resolveTicketRate("dominant", GRID, { classKey: "standard", isFirstVisit: false }), 25);
   // Class: standard < influencer < premium < aura, strictly (MESITA-877).
   assertEquals(resolveTicketRate("aggressive", GRID, { classKey: "influencer", isFirstVisit: false }), 20);
   assertEquals(resolveTicketRate("aggressive", GRID, { classKey: "premium", isFirstVisit: false }), 25);
@@ -112,7 +111,7 @@ Deno.test("isClassSegment: the four classes and nothing else", () => {
   assertEquals(isClassSegment(undefined), false);
 });
 
-Deno.test("placeStrategy: derives from v4 columns, all four strategies", () => {
+Deno.test("placeStrategy: derives from v4 columns, all three strategies", () => {
   // Conservative preset (v4 tens grid).
   assertEquals(
     placeStrategy({ welcome_free_rate: 20, welcome_premium_rate: 30, free_rate: 10, premium_rate: 20 }),
@@ -123,10 +122,10 @@ Deno.test("placeStrategy: derives from v4 columns, all four strategies", () => {
     placeStrategy({ welcome_free_rate: 30, welcome_premium_rate: 50, free_rate: 10, premium_rate: 30 }),
     "aggressive",
   );
-  // Dominant preset — restored in v6.1; no longer coerced to aggressive.
+  // The retired 40/50/20/30 tuple is no longer a preset; migration remaps live rows.
   assertEquals(
     placeStrategy({ welcome_free_rate: 40, welcome_premium_rate: 50, free_rate: 20, premium_rate: 30 }),
-    "dominant",
+    "zero",
   );
   // Custom / all-null → zero.
   assertEquals(
@@ -140,7 +139,6 @@ Deno.test("coerceRewardsGrid: partial blob snaps to locked defaults (v13)", () =
   assertEquals(g.grid.standard.conservative, 25);
   assertEquals(g.actions.review.standard.aggressive, 30); // filled from defaults
   assertEquals(g.grid.aura.aggressive, 30); // class filled from defaults
-  assertEquals(g.grid.standard.dominant, 25); // dominant column filled
   assertEquals(g.grid.standard.zero, 0); // off by definition
   assertEquals(g.cap, 500);
 });
@@ -151,19 +149,19 @@ Deno.test("coerceRewardsGrid: v12 blob migrates by IDENTITY — flat action rows
   const g = coerceRewardsGrid({
     cap: 500,
     grid: {
-      standard: { conservative: 10, aggressive: 10, dominant: 20 },
-      review: { conservative: 33, aggressive: 44, dominant: 55 },
-      story: { conservative: 20, aggressive: 30, dominant: 40 },
+      standard: { conservative: 10, aggressive: 10 },
+      review: { conservative: 33, aggressive: 44 },
+      story: { conservative: 20, aggressive: 30 },
     },
   });
   // The flat legacy value lands on EVERY class of the action.
   assertEquals(g.actions.review.standard.aggressive, 44);
   assertEquals(g.actions.review.premium.aggressive, 44);
-  assertEquals(g.actions.review.aura.dominant, 55);
+  assertEquals(g.actions.review.aura.aggressive, 44);
   assertEquals(g.actions.story.influencer.conservative, 20);
   // mesita_review didn't exist in v12, so it takes today's DEFAULTS rather
   // than a legacy value — it is priced now (MESITA-876), not 0.
-  assertEquals(g.actions.mesita_review.standard.dominant, 30);
+  assertEquals(g.actions.mesita_review.standard.aggressive, 20);
   assertEquals(g.actions.mesita_review.aura.aggressive, 35);
 });
 
@@ -171,8 +169,8 @@ Deno.test("resolveTicketRate: v7 per-class action rates resolve on the guest's r
   const g = coerceRewardsGrid({
     actions: {
       review: {
-        standard: { conservative: 30, aggressive: 50, dominant: 50 },
-        premium: { conservative: 35, aggressive: 50, dominant: 50 },
+        standard: { conservative: 30, aggressive: 50 },
+        premium: { conservative: 35, aggressive: 50 },
       },
     },
   });
@@ -203,7 +201,7 @@ Deno.test("resolveTicketRate: the Mesita review rung pays only when priced", () 
   const unpriced = coerceRewardsGrid({
     actions: {
       mesita_review: {
-        standard: { conservative: 0, aggressive: 0, dominant: 0 },
+        standard: { conservative: 0, aggressive: 0 },
       },
     },
   });
@@ -253,7 +251,7 @@ Deno.test("isActionVerified: verified states only", () => {
 // best-of pays exactly ONE cell, so a rung worth what the guest already had
 // pays nothing for reaching it.
 
-const STRATEGY_ORDER = ["conservative", "aggressive", "dominant"] as const;
+const STRATEGY_ORDER = ["conservative", "aggressive"] as const;
 // Worst → best.
 const CLASS_ORDER = ["standard", "influencer", "premium", "aura"] as const;
 // Worst → best, by the business value each creates.

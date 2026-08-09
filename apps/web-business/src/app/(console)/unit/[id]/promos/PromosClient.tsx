@@ -2,17 +2,22 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { Loader2 } from "lucide-react";
 import { Section } from "@/components/shared";
 import { apiUpdatePlace, type MyPlace } from "@/lib/api/places";
 import { apiChangeSubscription } from "@/lib/api/subscription";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import {
+  DEFAULT_DISCOUNT_CAP_MXN,
+  DISCOUNT_CAPS_MXN,
   STRATEGIES,
   STRATEGY_BY_ID,
+  snapDiscountCap,
   strategyForPlace,
+  type DiscountCapMxn,
   type StrategyId,
 } from "@/lib/business/strategies";
-import { errMsg } from "@/lib/utils";
+import { cn, errMsg, formatMoney } from "@/lib/utils";
 import { ERROR_BOX_CLASS } from "@/lib/ui-classes";
 import { FaqsBox } from "./FaqsBox";
 import { MembershipBox } from "./MembershipBox";
@@ -23,24 +28,38 @@ import { isCardCurrent } from "./promo-state";
 
 // Promos — three boxes (MESITA-912 membership unbundle):
 //   1. Membership — fee, status pill, join/drop, activation, strikes.
-//   2. Strategy — four cards (give/receive, no price). Non-members: locked,
+//   2. Strategy — three cards (give/receive, no price). Non-members: locked,
 //      tap routes to join with that strategy preselected. Members: switch =
 //      rates-only (apiUpdatePlace).
-//   3. FAQs — how the model works, Premium worked example under CURRENT strategy.
+//   3. Discount cap — independent 200 / 500 / 1000 (paid strategies only).
+//   4. FAQs — how the model works, Premium worked example under CURRENT strategy.
 
 function isSubscribed(place: MyPlace): boolean {
   return place.plan !== "free";
 }
 
-function strategyRates(target: StrategyId) {
+function buildStrategyPayload(
+  place: MyPlace,
+  target: StrategyId,
+  fromId: StrategyId | null,
+) {
   const strat = STRATEGY_BY_ID[target];
-  return {
+  const payload = {
     welcome_free_rate: strat.rates.welcome_free_rate,
     welcome_premium_rate: strat.rates.welcome_premium_rate,
     free_rate: strat.rates.free_rate,
     premium_rate: strat.rates.premium_rate,
-    monthly_promo_cap: strat.cap,
   };
+  if (target === "zero") {
+    return { ...payload, monthly_promo_cap: null };
+  }
+  if (fromId === "zero" || fromId === null) {
+    return {
+      ...payload,
+      monthly_promo_cap: place.monthly_promo_cap ?? DEFAULT_DISCOUNT_CAP_MXN,
+    };
+  }
+  return payload;
 }
 
 export function PromosClient({ place }: { place: MyPlace }) {
@@ -60,10 +79,16 @@ export function PromosClient({ place }: { place: MyPlace }) {
   const [modalId, setModalId] = useState<StrategyId | null>(null);
   const [activationFor, setActivationFor] = useState<StrategyId | null>(null);
   const [billingBusy, setBillingBusy] = useState(false);
+  const [pendingCap, setPendingCap] = useState<DiscountCapMxn | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const promosOrigin =
     typeof window !== "undefined" ? window.location.origin : "";
+
+  const currentCap = snapDiscountCap(place.monthly_promo_cap);
+  const showDiscountCap =
+    subscribed && selectedId !== null && selectedId !== "zero";
+  const displayCapMxn = showDiscountCap ? currentCap : undefined;
 
   const commitSwitch = (target: StrategyId) => {
     setModalId(null);
@@ -72,7 +97,10 @@ export function PromosClient({ place }: { place: MyPlace }) {
     setSelectedId(target);
     setPendingId(target);
     setError(null);
-    void apiUpdatePlace(supabase, { id: place.id, ...strategyRates(target) })
+    void apiUpdatePlace(supabase, {
+      id: place.id,
+      ...buildStrategyPayload(place, target, previous),
+    })
       .then(() => router.refresh())
       .catch((err) => {
         setSelectedId(previous);
@@ -109,7 +137,7 @@ export function PromosClient({ place }: { place: MyPlace }) {
       setPendingId(target);
       await apiUpdatePlace(supabase, {
         id: place.id,
-        ...strategyRates(target),
+        ...buildStrategyPayload(place, target, previous),
       });
       router.refresh();
     } catch (err) {
@@ -141,7 +169,7 @@ export function PromosClient({ place }: { place: MyPlace }) {
       setPendingId("zero");
       await apiUpdatePlace(supabase, {
         id: place.id,
-        ...strategyRates("zero"),
+        ...buildStrategyPayload(place, "zero", previous),
       });
       router.refresh();
     } catch (err) {
@@ -151,6 +179,18 @@ export function PromosClient({ place }: { place: MyPlace }) {
       setPendingId(null);
       setBillingBusy(false);
     }
+  };
+
+  const commitCapChange = (cap: DiscountCapMxn) => {
+    if (pendingCap || cap === currentCap) return;
+    setPendingCap(cap);
+    setError(null);
+    void apiUpdatePlace(supabase, { id: place.id, monthly_promo_cap: cap })
+      .then(() => router.refresh())
+      .catch((err) => {
+        setError(errMsg(err, "Couldn't save the discount cap."));
+      })
+      .finally(() => setPendingCap(null));
   };
 
   const onModalConfirm = (target: StrategyId) => {
@@ -173,7 +213,7 @@ export function PromosClient({ place }: { place: MyPlace }) {
           Promos
         </h2>
         <p className="text-muted-foreground text-[13px] leading-snug">
-          One membership, four strategies — switch your discount posture free
+          One membership, three strategies — switch your discount posture free
           anytime.
         </p>
       </header>
@@ -188,7 +228,7 @@ export function PromosClient({ place }: { place: MyPlace }) {
 
       <Section
         title="Strategy"
-        description="Four discount postures — switch free anytime while membership is active."
+        description="Three discount postures — switch free anytime while membership is active."
       >
         <div className="grid grid-cols-1 gap-3 min-[480px]:grid-cols-2">
           {STRATEGIES.map((s) => (
@@ -196,6 +236,7 @@ export function PromosClient({ place }: { place: MyPlace }) {
               key={s.id}
               strategy={s}
               currency={place.currency}
+              capMxn={s.id !== "zero" ? displayCapMxn : undefined}
               // Member-gated (MESITA-948): strategyForPlace maps all-null
               // rates to "zero", so an unsubscribed place would otherwise
               // ring Zero as "Current" and block join-onto-Zero.
@@ -225,9 +266,46 @@ export function PromosClient({ place }: { place: MyPlace }) {
             standardize them.
           </p>
         )}
-
-        {error && <p className={ERROR_BOX_CLASS}>{error}</p>}
       </Section>
+
+      {showDiscountCap && (
+        <Section
+          title="Discount cap"
+          description="How much of each bill your discounts can touch — independent of strategy."
+        >
+          <div className="flex flex-wrap gap-2">
+            {DISCOUNT_CAPS_MXN.map((cap) => {
+              const active = cap === currentCap;
+              const busy = pendingCap === cap;
+              return (
+                <button
+                  key={cap}
+                  type="button"
+                  disabled={!!pendingCap}
+                  onClick={() => commitCapChange(cap)}
+                  className={cn(
+                    "inline-flex h-9 min-w-[5.5rem] items-center justify-center gap-1.5 rounded-full border px-4 text-[12px] font-bold tabular-nums transition",
+                    active
+                      ? "border-foreground bg-foreground text-background"
+                      : "border-border text-foreground/80 hover:bg-muted",
+                    pendingCap && !busy && "opacity-60",
+                  )}
+                >
+                  {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
+                  {formatMoney(cap, place.currency)}
+                </button>
+              );
+            })}
+          </div>
+          <p className="text-muted-foreground text-[11px] leading-snug">
+            Every discount applies only to the first{" "}
+            {formatMoney(currentCap, place.currency)} of the bill. Guests always
+            see this cap on your offer.
+          </p>
+        </Section>
+      )}
+
+      {error && <p className={ERROR_BOX_CLASS}>{error}</p>}
 
       <FaqsBox
         place={place}
@@ -239,6 +317,9 @@ export function PromosClient({ place }: { place: MyPlace }) {
         <ProductModal
           strategy={modalStrategy}
           currency={place.currency}
+          capMxn={
+            modalStrategy.id !== "zero" ? displayCapMxn : undefined
+          }
           isCurrent={isCardCurrent(subscribed, selectedId, modalStrategy.id)}
           subscribed={subscribed}
           joinDisabled={joinDisabled}

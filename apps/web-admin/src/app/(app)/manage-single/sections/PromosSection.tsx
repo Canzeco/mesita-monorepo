@@ -6,6 +6,7 @@ import {
   Check,
   ChevronDown,
   CircleHelp,
+  Coins,
   Crown,
   Loader2,
   Percent,
@@ -13,11 +14,14 @@ import {
   X,
 } from "lucide-react";
 import {
+  DISCOUNT_CAPS_MXN,
+  DEFAULT_DISCOUNT_CAP_MXN,
   STRATEGIES,
   STRATEGY_BY_ID,
   STRATEGY_VISIBILITY_LADDER,
-  UNIVERSAL_CAP_MXN,
+  snapDiscountCap,
   strategyForPlace,
+  type DiscountCapMxn,
   type Strategy,
   type StrategyId,
 } from "@/lib/business/strategies";
@@ -57,7 +61,7 @@ import {
 //   1. Membership — MX$1,000/year unlocks paid strategies (Zero stays free).
 //      Status pill, drop, rules in disclosure. Admin writes plan — no Stripe.
 //      Its pending statusNote is absorbed by stepper step 3.
-//   2. Strategy — four cards in 2×2 (give/receive). Non-members: tap Join on a
+//   2. Strategy — three cards (give/receive). Non-members: tap Join on a
 //      paid card to start membership with that posture. Members: free switch.
 //   3. FAQs — how the model works, Premium worked example under CURRENT
 //      strategy.
@@ -116,15 +120,6 @@ const CARD_ART: Record<
     recvBg: "bg-orange-500/[0.07]",
     recvBorder: "border-orange-500/25",
   },
-  dominant: {
-    src: "/promos/strategy-dominant.jpg",
-    fallback: "from-purple-950 to-amber-500",
-    cta: "from-purple-700 via-fuchsia-600 to-amber-500",
-    meter: "bg-purple-500",
-    recvText: "text-purple-600",
-    recvBg: "bg-purple-500/[0.07]",
-    recvBorder: "border-purple-500/25",
-  },
 };
 
 const cx = (...c: (string | false | null | undefined)[]) =>
@@ -138,14 +133,35 @@ function formatMoney(amount: number, currency: string | null): string {
 // Membership/pill/card state derivations live in ./promo-state (pure module,
 // unit-tested — see promo-state.test.ts).
 
-function strategyRates(s: Strategy) {
+function strategyRatesOnly(s: Strategy) {
   return {
     welcome_free_rate: s.rates.welcome_free_rate,
     welcome_premium_rate: s.rates.welcome_premium_rate,
     free_rate: s.rates.free_rate,
     premium_rate: s.rates.premium_rate,
-    monthly_promo_cap: s.cap,
   };
+}
+
+/** Strategy writes the four rate columns; Zero clears cap; leaving Zero seeds default cap when null. */
+function strategySwitchPatch(
+  target: StrategyId,
+  place: AdminPlace,
+  storedStrategy: StrategyId | null,
+): Record<string, number | null> {
+  const rates = strategyRatesOnly(STRATEGY_BY_ID[target]);
+  if (target === ZERO_STRATEGY_ID) {
+    return { ...rates, monthly_promo_cap: null };
+  }
+  const fromZero =
+    storedStrategy === ZERO_STRATEGY_ID || strategyForPlace(place) === ZERO_STRATEGY_ID;
+  if (fromZero && place.monthly_promo_cap == null) {
+    return { ...rates, monthly_promo_cap: DEFAULT_DISCOUNT_CAP_MXN };
+  }
+  return rates;
+}
+
+function displayCapMxn(place: AdminPlace): DiscountCapMxn {
+  return snapDiscountCap(place.monthly_promo_cap);
 }
 
 export function PromosSection({
@@ -163,6 +179,7 @@ export function PromosSection({
   // under the grid, join/reinstate failures inside the modal, drop failures
   // inside the confirm dialog.
   const [switchPending, startSwitch] = useTransition();
+  const [capPending, startCap] = useTransition();
   const [switchError, setSwitchError] = useState<string | null>(null);
   const [modalId, setModalId] = useState<StrategyId | null>(null);
   const [modalBusy, setModalBusy] = useState(false);
@@ -194,6 +211,9 @@ export function PromosSection({
   const pillState = membershipPillState(v);
   const storedStrategy = strategyForPlace(v);
   const forfeited = pillState === "forfeited";
+  const placeCap = displayCapMxn(v);
+  const showCapPicker =
+    member && !forfeited && storedStrategy !== ZERO_STRATEGY_ID;
 
   const applyPlace = (next: AdminPlace) => {
     setV(next);
@@ -210,8 +230,7 @@ export function PromosSection({
   // primary until the write settles.
   const commitJoin = async (target: StrategyId) => {
     if (modalBusy || member) return;
-    const s = STRATEGY_BY_ID[target];
-    const rates = strategyRates(s);
+    const rates = strategySwitchPatch(target, v, storedStrategy);
     const plan = planForSubscription("pro_discount");
 
     setModalBusy(true);
@@ -228,7 +247,7 @@ export function PromosSection({
 
   const commitDrop = async () => {
     if (dropBusy || !member) return;
-    const rates = strategyRates(STRATEGY_BY_ID[ZERO_STRATEGY_ID]);
+    const rates = strategySwitchPatch(ZERO_STRATEGY_ID, v, storedStrategy);
     const plan = planForSubscription("free");
 
     setDropBusy(true);
@@ -246,8 +265,7 @@ export function PromosSection({
   const commitSwitch = (target: StrategyId) => {
     setModalId(null);
     if (switchPending || !member || target === storedStrategy) return;
-    const s = STRATEGY_BY_ID[target];
-    const rates = strategyRates(s);
+    const rates = strategySwitchPatch(target, v, storedStrategy);
 
     const prev = v;
     const optimistic: AdminPlace = { ...v, ...rates };
@@ -256,6 +274,24 @@ export function PromosSection({
 
     startSwitch(async () => {
       const r = await setPlaceStrategy(prev.id, rates);
+      if (!r.ok) {
+        revertPlace(prev);
+        setSwitchError(r.error);
+        return;
+      }
+      applyPlace(r.data);
+    });
+  };
+
+  const commitCap = (cap: DiscountCapMxn) => {
+    if (capPending || !showCapPicker || cap === placeCap) return;
+    const prev = v;
+    const optimistic: AdminPlace = { ...v, monthly_promo_cap: cap };
+    applyPlace(optimistic);
+    setSwitchError(null);
+
+    startCap(async () => {
+      const r = await setPlaceStrategy(prev.id, { monthly_promo_cap: cap });
       if (!r.ok) {
         revertPlace(prev);
         setSwitchError(r.error);
@@ -311,20 +347,21 @@ export function PromosSection({
         icon={<TrendingUp className="h-4 w-4" />}
         tint="violet"
         title="Strategy"
-        subtitle="Four discount postures — switch free anytime while membership is active."
+        subtitle="Three discount postures — switch free anytime while membership is active."
         action={
-          switchPending ? (
+          switchPending || capPending ? (
             <Loader2 className="text-muted-foreground h-4 w-4 animate-spin" />
           ) : undefined
         }
       >
-        <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {STRATEGIES.map((s) => (
             <StrategyCard
               key={s.id}
               strategy={s}
               matrix={matrix}
               currency={v.currency}
+              capMxn={placeCap}
               state={promoCardState({
                 member,
                 forfeited,
@@ -337,6 +374,15 @@ export function PromosSection({
             />
           ))}
         </div>
+
+        {showCapPicker && (
+          <DiscountCapPicker
+            cap={placeCap}
+            currency={v.currency}
+            pending={capPending}
+            onSelect={commitCap}
+          />
+        )}
 
         {matrixFailed && (
           <p className="text-muted-foreground mt-2.5 text-[11px]">
@@ -363,13 +409,14 @@ export function PromosSection({
       </SectionCard>
 
       {/* ── Box 3 · FAQs ───────────────────────────────────────────────── */}
-      <FaqsBox place={v} storedStrategy={storedStrategy} member={member} />
+      <FaqsBox place={v} storedStrategy={storedStrategy} member={member} capMxn={placeCap} />
 
       {modalStrategy && (
         <ProductModal
           strategy={modalStrategy}
           matrix={matrix}
           currency={v.currency}
+          capMxn={placeCap}
           state={promoCardState({
             member,
             forfeited,
@@ -476,7 +523,7 @@ function LifecycleStepper({
         ? storedStrategy === ZERO_STRATEGY_ID
           ? "Zero pauses discounts — pick a paid strategy to reopen the lane."
           : "Custom rates — pick a strategy to standardize."
-        : "Four discount postures — switch free anytime.";
+        : "Three discount postures — switch free anytime.";
   const honorDetail =
     view.honor === "blocked"
       ? forfeited
@@ -668,9 +715,8 @@ function MembershipBox({
             </span>
           </p>
           <p className="text-foreground/85 text-[13px] leading-snug">
-            Unlocks <span className="font-semibold">Conservative</span>,{" "}
-            <span className="font-semibold">Aggressive</span>, and{" "}
-            <span className="font-semibold">Dominant</span>. Zero stays free.
+            Unlocks <span className="font-semibold">Conservative</span> and{" "}
+            <span className="font-semibold">Aggressive</span>. Zero stays free.
             Switch strategies anytime while membership is active.
           </p>
           {notMember ? (
@@ -753,6 +799,7 @@ function StrategyCard({
   strategy,
   matrix,
   currency,
+  capMxn,
   state,
   pending,
   onOpen,
@@ -760,6 +807,7 @@ function StrategyCard({
   strategy: Strategy;
   matrix: RewardsConfig;
   currency: string | null;
+  capMxn: DiscountCapMxn;
   state: CardState;
   pending: boolean;
   onOpen: () => void;
@@ -831,8 +879,7 @@ function StrategyCard({
             <>
               <p className="text-muted-foreground text-[11px] leading-snug">
                 These discounts, capped at{" "}
-                {formatMoney(strategy.cap ?? UNIVERSAL_CAP_MXN, currency)} per
-                bill:
+                {formatMoney(capMxn, currency)} per bill:
               </p>
               <RewardsMatrix matrix={matrix} strategy={strategy.id} />
             </>
@@ -888,6 +935,7 @@ function ProductModal({
   strategy,
   matrix,
   currency,
+  capMxn,
   state,
   member,
   busy,
@@ -898,6 +946,7 @@ function ProductModal({
   strategy: Strategy;
   matrix: RewardsConfig;
   currency: string | null;
+  capMxn: DiscountCapMxn;
   state: CardState;
   member: boolean;
   busy: boolean;
@@ -1020,9 +1069,9 @@ function ProductModal({
               <RewardsMatrix matrix={matrix} strategy={strategy.id} />
               <p className="text-muted-foreground text-[11px] leading-snug">
                 Every discount applies to the first{" "}
-                {formatMoney(strategy.cap ?? UNIVERSAL_CAP_MXN, currency)} of
-                the bill — a platform-wide cap, always shown to guests. A guest
-                gets their single best qualifying rate, never a sum.
+                {formatMoney(capMxn, currency)} of the bill — the place&apos;s
+                chosen cap, always shown to guests. A guest gets their single
+                best qualifying rate, never a sum.
               </p>
             </>
           ) : (
@@ -1281,15 +1330,17 @@ function FaqsBox({
   place,
   storedStrategy,
   member,
+  capMxn,
 }: {
   place: AdminPlace;
   storedStrategy: StrategyId | null;
   member: boolean;
+  capMxn: DiscountCapMxn;
 }) {
   const currency = place.currency;
   const price = formatMoney(MEMBERSHIP_PRICE_MXN, currency);
-  const cap = formatMoney(UNIVERSAL_CAP_MXN, currency);
-  const exampleSavesMxn = UNIVERSAL_CAP_MXN * 0.5;
+  const cap = formatMoney(capMxn, currency);
+  const exampleSavesMxn = capMxn * 0.5;
 
   return (
     <SectionCard
@@ -1305,12 +1356,12 @@ function FaqsBox({
 
         <Faq q={`What exactly does the ${price}/year buy?`}>
           <p>
-            The right to leave Zero. Membership unlocks Conservative,
-            Aggressive, and Dominant — pick any, switch free anytime while
-            you&apos;re a member. Zero stays free with no discounts. Being
-            listed on Mesita never costs anything, member or not. The fee is a
-            commitment filter (keeps half-hearted places out of rewards), not a
-            feature tier and not a rank you can buy.
+            The right to leave Zero. Membership unlocks Conservative and
+            Aggressive — pick either, switch free anytime while you&apos;re a
+            member. Zero stays free with no discounts. Being listed on Mesita
+            never costs anything, member or not. The fee is a commitment filter
+            (keeps half-hearted places out of rewards), not a feature tier and
+            not a rank you can buy.
           </p>
         </Faq>
 
@@ -1335,16 +1386,17 @@ function FaqsBox({
         <Faq q="How does visibility work?">
           <p>
             The ranking algorithm reads a stronger discount as a stronger card:
-            Zero sits at Low, Conservative at Mid, Aggressive at High and
-            Dominant at Max. Visibility is never a separate knob you can buy —
-            it rises with what you give.
+            Zero sits at Low, Conservative at Mid, Aggressive at High.
+            Visibility is never a separate knob you can buy — it rises with
+            what you give.
           </p>
         </Faq>
 
         <Faq q={`What is the ${cap} cap?`}>
           <p>
             Every discount applies only to the first {cap} of the bill — a
-            platform-wide constant, always shown to guests. Example: 50% off a{" "}
+            per-place choice (MX$200, MX$500, or MX$1,000), always shown to
+            guests. Example: 50% off a{" "}
             {formatMoney(EXAMPLE_BILL_MXN, currency)} bill touches the first{" "}
             {cap}, so the guest saves {formatMoney(exampleSavesMxn, currency)}{" "}
             and pays {formatMoney(EXAMPLE_BILL_MXN - exampleSavesMxn, currency)}
@@ -1422,7 +1474,7 @@ function PremiumExamples({
   const hasPromo =
     place.welcome_premium_rate != null || place.premium_rate != null;
   const strategy = storedStrategy ? STRATEGY_BY_ID[storedStrategy] : null;
-  const cap = place.monthly_promo_cap ?? UNIVERSAL_CAP_MXN;
+  const cap = place.monthly_promo_cap ?? DEFAULT_DISCOUNT_CAP_MXN;
 
   if (!hasPromo) {
     return (
@@ -1533,6 +1585,61 @@ function ExampleCard({
           </p>
         </>
       )}
+    </div>
+  );
+}
+
+// ─── Discount cap picker — independent of strategy ─────────────────────────
+
+function DiscountCapPicker({
+  cap,
+  currency,
+  pending,
+  onSelect,
+}: {
+  cap: DiscountCapMxn;
+  currency: string | null;
+  pending: boolean;
+  onSelect: (cap: DiscountCapMxn) => void;
+}) {
+  return (
+    <div className="border-border/60 mt-4 rounded-xl border p-3.5">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div>
+          <p className="text-foreground/90 text-[12px] font-semibold">
+            Discount cap
+          </p>
+          <p className="text-muted-foreground text-[11px] leading-snug">
+            Every discount applies to the first N pesos of the bill — separate
+            from strategy.
+          </p>
+        </div>
+        {pending && (
+          <Loader2 className="text-muted-foreground h-4 w-4 animate-spin" />
+        )}
+      </div>
+      <div className="mt-3 flex flex-wrap gap-2">
+        {DISCOUNT_CAPS_MXN.map((option) => {
+          const active = cap === option;
+          return (
+            <button
+              key={option}
+              type="button"
+              disabled={pending}
+              onClick={() => onSelect(option)}
+              aria-pressed={active}
+              className={
+                active
+                  ? "bg-foreground text-background inline-flex h-9 items-center rounded-lg px-3.5 text-[13px] font-bold tabular-nums transition disabled:opacity-50"
+                  : "border-border text-muted-foreground hover:text-foreground hover:bg-muted inline-flex h-9 items-center rounded-lg border px-3.5 text-[13px] font-semibold tabular-nums transition disabled:opacity-50"
+              }
+            >
+              <Coins className="mr-1.5 h-3.5 w-3.5" />
+              {formatMoney(option, currency)}
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
 }

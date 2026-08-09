@@ -2,8 +2,9 @@ import { ChevronDown, Crown } from "lucide-react";
 import { Section } from "@/components/shared";
 import type { MyPlace } from "@/lib/api/places";
 import {
+  DEFAULT_DISCOUNT_CAP_MXN,
+  DISCOUNT_CAPS_MXN,
   STRATEGY_BY_ID,
-  UNIVERSAL_CAP_MXN,
   type StrategyId,
 } from "@/lib/business/strategies";
 import { formatMoney } from "@/lib/utils";
@@ -44,8 +45,12 @@ export function FaqsBox({
   member: boolean;
 }) {
   const price = formatMoney(PRODUCT_PRICE_MXN, place.currency);
-  const cap = formatMoney(UNIVERSAL_CAP_MXN, place.currency);
-  const exampleSavesMxn = UNIVERSAL_CAP_MXN * 0.5;
+  const capMxn = place.monthly_promo_cap ?? DEFAULT_DISCOUNT_CAP_MXN;
+  const cap = formatMoney(capMxn, place.currency);
+  const exampleSavesMxn = capMxn * 0.5;
+  const capOptions = DISCOUNT_CAPS_MXN.map((n) =>
+    formatMoney(n, place.currency),
+  ).join(" / ");
 
   return (
     <Section
@@ -59,12 +64,12 @@ export function FaqsBox({
 
         <Faq q={`What exactly does the ${price}/year buy?`}>
           <p>
-            The right to leave Zero. Membership unlocks Conservative,
-            Aggressive, and Dominant — pick any, switch free anytime while
-            you&apos;re a member. Zero stays free with no discounts. Being
-            listed on Mesita never costs anything. The fee is a commitment
-            filter (keeps half-hearted places out of rewards), not a feature
-            tier and not a rank you can buy.
+            The right to leave Zero. Membership unlocks Conservative and
+            Aggressive — pick either, switch free anytime while you&apos;re a
+            member. Zero stays free with no discounts. Being listed on Mesita
+            never costs anything. The fee is a commitment filter (keeps
+            half-hearted places out of rewards), not a feature tier and not a rank
+            you can buy.
           </p>
         </Faq>
 
@@ -87,17 +92,19 @@ export function FaqsBox({
 
         <Faq q="How does visibility work?">
           <p>
-            Zero sits at Low, Conservative at Mid, Aggressive at High and
-            Dominant at Max. Visibility rises with what you give — it is never a
-            separate knob you can buy.
+            Zero sits at Low, Conservative at Mid, Aggressive at High.
+            Visibility rises with what you give — it is never a separate knob
+            you can buy.
           </p>
         </Faq>
 
-        <Faq q={`What is the ${cap} cap?`}>
+        <Faq q="What is the discount cap?">
           <p>
-            Every discount applies only to the first {cap} of the bill. Example:
-            50% off a {formatMoney(EXAMPLE_BILL_MXN, place.currency)} bill
-            touches the first {cap}, so the guest saves{" "}
+            Independent of strategy — choose {capOptions}. Every discount
+            applies only to the first portion of the bill, up to your cap.
+            Example on your current {cap} cap: 50% off a{" "}
+            {formatMoney(EXAMPLE_BILL_MXN, place.currency)} bill touches the
+            first {cap}, so the guest saves{" "}
             {formatMoney(exampleSavesMxn, place.currency)}.
           </p>
         </Faq>
@@ -132,7 +139,7 @@ function PremiumExamples({
   const hasPromo =
     place.welcome_premium_rate != null || place.premium_rate != null;
   const strategy = storedStrategy ? STRATEGY_BY_ID[storedStrategy] : null;
-  const cap = place.monthly_promo_cap ?? UNIVERSAL_CAP_MXN;
+  const cap = place.monthly_promo_cap ?? DEFAULT_DISCOUNT_CAP_MXN;
 
   if (!hasPromo) {
     return (

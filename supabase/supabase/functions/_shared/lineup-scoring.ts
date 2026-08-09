@@ -140,13 +140,12 @@ export function gpScore(
   return clamp01(Math.log(1 + raw) / Math.max(1, p.lnCeiling));
 }
 
-export type RpStrategy = "zero" | "conservative" | "aggressive" | "dominant";
+export type RpStrategy = "zero" | "conservative" | "aggressive";
 export type RpRungs = Record<RpStrategy, number>;
 export const DEFAULT_RP_RUNGS: RpRungs = {
   zero: 0.1,
   conservative: 0.4,
-  aggressive: 0.7,
-  dominant: 1.0,
+  aggressive: 1.0, // peak — Dominant retired 2026-08-09
 };
 
 export function rpScore(strategy: RpStrategy | null, rungs: RpRungs = DEFAULT_RP_RUNGS): number {
@@ -298,7 +297,6 @@ export function coerceScoringSettings(raw: unknown): ScoringSettings {
       zero: num(rp.zero, d.rp.zero, 0, 1),
       conservative: num(rp.conservative, d.rp.conservative, 0, 1),
       aggressive: num(rp.aggressive, d.rp.aggressive, 0, 1),
-      dominant: num(rp.dominant, d.rp.dominant, 0, 1),
     },
     xx: { control: num(xx.control, d.xx.control, 0, 5) },
   };

@@ -24,9 +24,9 @@ const ACTIONS = [
   "review",
   "welcome",
 ] as const;
-const STRATEGIES = ["conservative", "aggressive", "dominant"] as const;
+const STRATEGIES = ["conservative", "aggressive"] as const;
 
-const RULE_COUNT = STRATEGIES.length * CLASSES.length * ACTIONS.length; // 60
+const RULE_COUNT = STRATEGIES.length * CLASSES.length * ACTIONS.length; // 40
 
 function rateOf(
   rules: { strategy: string; class: string; action: string; discount_percent: number }[],
@@ -41,7 +41,7 @@ function rateOf(
   return hit.discount_percent;
 }
 
-Deno.test("normalizeRewards: an empty object still yields all 60 rules", () => {
+Deno.test("normalizeRewards: an empty object still yields all 40 rules", () => {
   const r = normalizeRewards({});
   assert(r.ok);
   assertEquals(r.value.rules.length, RULE_COUNT);
@@ -50,7 +50,7 @@ Deno.test("normalizeRewards: an empty object still yields all 60 rules", () => {
     r.value.rules.map((x) => `${x.strategy}|${x.class}|${x.action}`),
   );
   assertEquals(keys.size, RULE_COUNT);
-  // Defaults survive, and all THREE ladders are in them (v9, MESITA-877):
+  // Defaults survive, and both paid strategy ladders are in them (v9, MESITA-877):
   // rate = 5 + type + class + strategy.
   assertEquals(rateOf(r.value.rules, "conservative", "standard", "standing"), 5);
   assertEquals(rateOf(r.value.rules, "conservative", "aura", "standing"), 20);
@@ -62,23 +62,28 @@ Deno.test("normalizeRewards: an empty object still yields all 60 rules", () => {
   // Every action beats its class's standing rate, or it would be a dead
   // rung under best-of.
   for (const cls of CLASSES) {
-    const mesita = rateOf(r.value.rules, "dominant", cls, "mesita_review");
-    const standing = rateOf(r.value.rules, "dominant", cls, "standing");
+    const mesita = rateOf(r.value.rules, "aggressive", cls, "mesita_review");
+    const standing = rateOf(r.value.rules, "aggressive", cls, "standing");
     assertEquals(mesita > standing, true, `${cls}: ${mesita} must beat ${standing}`);
   }
 });
 
-Deno.test("normalizeRewards: zero strategy never gets rows — it is off by definition", () => {
+Deno.test("normalizeRewards: zero and dominant never get rows", () => {
   const r = normalizeRewards({
     rules: [
       { strategy: "zero", class: "standard", action: "standing", discount_percent: 45 },
+      { strategy: "dominant", class: "standard", action: "standing", discount_percent: 45 },
     ],
   });
   assert(r.ok);
   assertEquals(r.value.rules.length, RULE_COUNT);
-  // Cast: the return TYPE already excludes "zero"; this guards the runtime.
+  // Cast: the return TYPE already excludes these; this guards the runtime.
   assertEquals(
     r.value.rules.some((x) => (x.strategy as string) === "zero"),
+    false,
+  );
+  assertEquals(
+    r.value.rules.some((x) => (x.strategy as string) === "dominant"),
     false,
   );
 });
@@ -104,7 +109,7 @@ Deno.test("normalizeRewards: rates snap to the 5% grid, floor 5, ceiling 70", ()
       { strategy: "aggressive", class: "premium", action: "standing", discount_percent: 999 },
       { strategy: "aggressive", class: "influencer", action: "standing", discount_percent: 3 },
       { strategy: "aggressive", class: "aura", action: "standing", discount_percent: -5 },
-      { strategy: "dominant", class: "standard", action: "story", discount_percent: 70 },
+      { strategy: "conservative", class: "standard", action: "story", discount_percent: 70 },
     ],
   });
   assert(r.ok);
@@ -112,7 +117,7 @@ Deno.test("normalizeRewards: rates snap to the 5% grid, floor 5, ceiling 70", ()
   assertEquals(rateOf(r.value.rules, "aggressive", "premium", "standing"), 70); // ceiling (MESITA-872)
   assertEquals(rateOf(r.value.rules, "aggressive", "influencer", "standing"), 5); // floor (MESITA-866)
   assertEquals(rateOf(r.value.rules, "aggressive", "aura", "standing"), 0); // ≤ 0 = off
-  assertEquals(rateOf(r.value.rules, "dominant", "standard", "story"), 70); // 70 survives
+  assertEquals(rateOf(r.value.rules, "conservative", "standard", "story"), 70); // 70 survives
 });
 
 Deno.test("normalizeRewards: unknown keys are dropped, not written", () => {
@@ -121,6 +126,7 @@ Deno.test("normalizeRewards: unknown keys are dropped, not written", () => {
       { strategy: "conservative", class: "vip", action: "standing", discount_percent: 50 },
       { strategy: "conservative", class: "standard", action: "tiktok", discount_percent: 50 },
       { strategy: "reckless", class: "standard", action: "standing", discount_percent: 50 },
+      { strategy: "dominant", class: "standard", action: "standing", discount_percent: 50 },
       "not an object",
       null,
     ],
@@ -137,18 +143,18 @@ Deno.test("normalizeRewards: unknown keys are dropped, not written", () => {
 });
 
 Deno.test("normalizeRewards: cap snaps to the nearest allowed option", () => {
-  // Categorical cap: {100, 200, 500, 1000}. A cap of 0 ("no ceiling") can no
+  // Categorical cap: {200, 500, 1000}. A cap of 0 ("no ceiling") can no
   // longer be written, and an off-ladder value lands on its nearest neighbour.
   const cases: [unknown, number][] = [
-    [100, 100],
+    [100, 200],
     [200, 200],
     [500, 500],
     [1000, 1000],
     [237, 200],
     [400, 500],
     [999_999, 1000],
-    [-1, 100],
-    [0, 100],
+    [-1, 200],
+    [0, 200],
     ["500", 500], // non-numeric → default
     [undefined, 500],
   ];

@@ -6,8 +6,10 @@
 // STRICT BY DESIGN, and that has teeth: the admin page posts the WHOLE blob on
 // every section save (ScoringProvider.blobFor spreads the last-saved blob), so
 // a single key the client stops sending 400s EVERY section, not just its own.
-// That is exactly what MESITA-804 hit — `rp.dominant` went missing client-side
-// in #497 and `/lineup-config` could not save anything for a week.
+// That is exactly what MESITA-804 hit — a required `rp.*` key went missing
+// client-side and `/lineup-config` could not save anything for a week. The
+// retired peak strategy is no longer required, so only
+// zero/conservative/aggressive are load-bearing.
 //
 // The required-key contract is pinned by the lineup-config-validate tests, which
 // holds the canonical blob and deletes each required key in turn to prove it is
@@ -16,7 +18,7 @@
 // the same change — the two are separate literals in separate runtimes, and
 // nothing but that test connects them.
 
-const STRATEGY_IDS = ["zero", "conservative", "aggressive", "dominant"] as const;
+const STRATEGY_IDS = ["zero", "conservative", "aggressive"] as const;
 const LANE_N_MAX = 50;
 
 function num(v: unknown, lo: number, hi: number): number | null {

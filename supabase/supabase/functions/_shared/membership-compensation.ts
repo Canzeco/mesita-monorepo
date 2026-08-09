@@ -1,14 +1,14 @@
 import { type SupabaseClient } from "jsr:@supabase/supabase-js@2";
 
-/** Dominant-like compensation rates for a burned guest (same Promos v4 grid). */
+/** Aggressive-rate compensation for a burned guest (peak strategy after Dominant retired). */
 export const COMPENSATION_RATES = {
-  welcome_free_rate: 40,
+  welcome_free_rate: 30,
   welcome_premium_rate: 50,
-  free_rate: 20,
+  free_rate: 10,
   premium_rate: 30,
 } as const;
 
-/** Issue a Dominant-rate compensation coupon at another live partner place. */
+/** Issue an Aggressive-rate compensation coupon at another live partner place. */
 export async function compensateBurnedGuest(
   admin: SupabaseClient,
   opts: { burnedProjectId: string; consumerId: string },
@@ -53,7 +53,7 @@ export async function compensateBurnedGuest(
       welcome_premium_rate: COMPENSATION_RATES.welcome_premium_rate,
       free_rate: COMPENSATION_RATES.free_rate,
       premium_rate: COMPENSATION_RATES.premium_rate,
-      cap_cents: 50000, // MX$500 universal cap in cents
+      cap_cents: 50000, // MX$500 default discount cap in cents
       currency: (pick as { currency?: string }).currency ?? "MXN",
     })
     .select("id")

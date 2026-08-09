@@ -1,13 +1,13 @@
 // Promos v6 — the grid-authoritative bill engine (MESITA-723, segments v6).
 //
 // The reward grid is operator config on app_settings.rewards_config (#474):
-//   { cap, grid: { <segment>: { zero, conservative, aggressive, dominant } } }
-// A place's STRATEGY (zero/conservative/aggressive/dominant) is derived from its
-// v4 rate columns via strategyForRates — exactly as #474 left it — so no
-// per-place v5 columns exist. This module resolves a ticket's discount by looking up each
-// qualifying segment in the grid at the place's strategy and paying BEST-OF
-// (the single highest rung, never a sum). The grid is the single source of
-// truth, which keeps the admin Rewards-Config page authoritative.
+//   { cap, grid: { <segment>: { zero, conservative, aggressive } } }
+// A place's STRATEGY (zero/conservative/aggressive) is derived from its
+// v4 rate columns via strategyForRates — so no per-place strategy column
+// exists. Cap is a SEPARATE per-place param (monthly_promo_cap); the grid's
+// `cap` is the platform fallback. This module resolves a ticket's discount
+// by looking up each qualifying segment in the grid at the place's strategy
+// and paying BEST-OF (the single highest rung, never a sum).
 //
 // Segments v6 (2026-08-01) + Story gate v2 (MESITA-909): four classes —
 // standard, premium, influencer (Instagram ≥ 2,000 followers, automatic),
@@ -55,11 +55,10 @@ export function isClassSegment(
   return key != null && (CLASS_SEGMENTS as readonly string[]).includes(key);
 }
 
-// The four strategies. Dominant was retired in v5 and RESTORED in v6.1
-// (2026-08-02): its v4 rate tuple never left lineup-strategy.ts, so places
-// carrying it stopped coercing to aggressive and resolve to their own column
-// again. Anything unrecognised (custom/legacy) still coerces to zero.
-export type GridStrategy = "zero" | "conservative" | "aggressive" | "dominant";
+// Three strategies (2026-08-09): Dominant retired for good. Anything
+// unrecognised (custom/legacy, including a leftover Dominant rate tuple)
+// coerces to zero.
+export type GridStrategy = "zero" | "conservative" | "aggressive";
 export type SegmentRates = Record<GridStrategy, number>;
 
 // v13 (v7 matrix, MESITA-859): `grid` holds the four STANDING class rows (the
@@ -93,7 +92,7 @@ export type RewardsGrid = {
 //               < Story (social reach)
 //               < Google & Welcome (acquisition + permanent public proof)
 //   class     Standard < Influencer < Premium < Aura
-//   strategy  Zero < Conservative < Aggressive < Dominant
+//   strategy  Zero < Conservative < Aggressive
 //
 // The two groupings Pato wrote as ties are made STRICT by one step each —
 // Mesita = Base + 5, Welcome = Google + 5. Under best-of a tie is a DEAD
@@ -117,7 +116,7 @@ const CLASS_STEP: Record<ClassSegment, number> = {
   aura: 15,
 };
 
-const STRATEGY_STEP = { conservative: 0, aggressive: 10, dominant: 20 } as const;
+const STRATEGY_STEP = { conservative: 0, aggressive: 10 } as const;
 
 function defaultCell(
   type: keyof typeof TYPE_STEP,
@@ -134,7 +133,6 @@ const defaultRow = (
   zero: 0, // off by definition
   conservative: defaultCell(type, cls, "conservative"),
   aggressive: defaultCell(type, cls, "aggressive"),
-  dominant: defaultCell(type, cls, "dominant"),
 });
 
 const defaultMatrix = (
@@ -188,7 +186,6 @@ export function coerceRewardsGrid(raw: unknown): RewardsGrid {
       zero: 0, // off by definition
       conservative: num(r.conservative, d.conservative),
       aggressive: num(r.aggressive, d.aggressive),
-      dominant: num(r.dominant, d.dominant),
     };
   };
 
@@ -240,20 +237,20 @@ export function gridFromRuleRows(
 ): RewardsGrid {
   const grid = {} as Record<ClassSegment, SegmentRates>;
   for (const cls of CLASS_SEGMENTS) {
-    grid[cls] = { ...DEFAULT_REWARDS_GRID.grid[cls], conservative: 0, aggressive: 0, dominant: 0 };
+    grid[cls] = { ...DEFAULT_REWARDS_GRID.grid[cls], conservative: 0, aggressive: 0 };
   }
   const actions = {} as ActionMatrix;
   for (const action of ACTION_SEGMENTS) {
     const perClass = {} as Record<ClassSegment, SegmentRates>;
     for (const cls of CLASS_SEGMENTS) {
-      perClass[cls] = { zero: 0, conservative: 0, aggressive: 0, dominant: 0 };
+      perClass[cls] = { zero: 0, conservative: 0, aggressive: 0 };
     }
     actions[action] = perClass;
   }
 
   for (const row of rows) {
     const strategy = row.strategy;
-    if (strategy !== "conservative" && strategy !== "aggressive" && strategy !== "dominant") {
+    if (strategy !== "conservative" && strategy !== "aggressive") {
       continue;
     }
     const cls = CLASS_SEGMENTS.find((c) => c === row.class);
@@ -298,12 +295,11 @@ export async function loadRewardsGrid(
   return blob ? coerceRewardsGrid(blob) : DEFAULT_REWARDS_GRID;
 }
 
-// A place's strategy from its v4 rate columns → the four grid keys.
+// A place's strategy from its v4 rate columns → the three grid keys.
 export function placeStrategy(place: Record<string, unknown>): GridStrategy {
   const p = strategyForRates(ratesFromPlace(place));
   if (p === "conservative") return "conservative";
   if (p === "aggressive") return "aggressive";
-  if (p === "dominant") return "dominant";
   return "zero"; // zero, null (custom/legacy)
 }
 

@@ -113,7 +113,7 @@ type UpdateBody = {
   free_rate?: number | null;
   premium_rate?: number | null;
   // Place-level monthly promo spend cap (migration 0038), in the place's
-  // currency. One of 200, 500, 1000, 2000 or null (no cap).
+  // currency. One of 200, 500, 1000 or null (no cap).
   monthly_promo_cap?: number | null;
   // Lineup MP subscore — operator priority [0,1]. SUPER-ADMIN ONLY (a business
   // must not lift its own place); silently ignored for non-super-admins.
@@ -357,19 +357,19 @@ Deno.serve(async (req) => {
   }
 
   // Monthly promo spend cap. Nullable (null clears the ceiling) or one of
-  // {200, 500, 1000, 2000}. DB CHECK mirrors this; this is the friendly 400.
+  // {200, 500, 1000}. DB CHECK mirrors this; this is the friendly 400.
   if ("monthly_promo_cap" in body) {
     const raw = body.monthly_promo_cap;
     if (raw == null) {
       update.monthly_promo_cap = null;
     } else {
       const v = Number(raw);
-      if (![200, 500, 1000, 2000].includes(v)) {
+      if (![200, 500, 1000].includes(v)) {
         return json(
           {
             ok: false,
             error:
-              "monthly_promo_cap must be null or one of 200, 500, 1000, 2000",
+              "monthly_promo_cap must be null or one of 200, 500, 1000",
           },
           400,
         );

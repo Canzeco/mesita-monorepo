@@ -27,6 +27,7 @@ import {
   shapeCheckPayload,
 } from "../_shared/ticket-check.ts";
 import { loadRewardsGrid } from "../_shared/rewards-config.ts";
+import { resolveBillCapPesos } from "../_shared/discount-cap.ts";
 import { resolveLiveTicketRate } from "../_shared/ticket-reprice.ts";
 
 type Body = { code?: string };
@@ -57,7 +58,7 @@ Deno.serve(async (req) => {
   const [placeRow, consumerRow, grid, checkSettings] = await Promise.all([
     admin
       .from("projects_view")
-      .select("id, name, slug")
+      .select("id, name, slug, monthly_promo_cap")
       .eq("id", ticket.project_id)
       .maybeSingle(),
     admin
@@ -102,11 +103,15 @@ Deno.serve(async (req) => {
   // page will actually show it; a failed resolve degrades to no offer block
   // rather than failing the scan.
   let offerRatePercent: number | null = null;
+  let liveCapPesos: number | null = null;
   const unbilled = (ticket.total_cents ?? 0) <= 0 &&
     (ticket.check_subtotal_cents ?? 0) <= 0;
   if (unbilled && ticket.status === "open") {
     const live = await resolveLiveTicketRate(admin, ticket);
-    if (live.ok) offerRatePercent = live.ratePercent;
+    if (live.ok) {
+      offerRatePercent = live.ratePercent;
+      liveCapPesos = live.capPesos;
+    }
   }
 
   const guest = consumerRow.data;
@@ -120,7 +125,11 @@ Deno.serve(async (req) => {
         guestDisplayName: guest.full_name?.trim() ||
           guest.first_name?.trim() || "Mesita guest",
         guestInstagramHandle: guest.instagram_handle ?? null,
-        capMxn: grid.cap ?? null,
+        capMxn: liveCapPesos ??
+          resolveBillCapPesos(
+            placeRow.data as Record<string, unknown>,
+            grid.cap,
+          ),
         pinRequired: checkSettings.pin != null,
         offerRatePercent,
         // MESITA-898: the place opted in to a mandatory bill — the page

@@ -69,9 +69,8 @@ export function MembershipBox({
           </span>
         </p>
         <p className="text-foreground/85 text-[13px] leading-snug">
-          Unlocks <span className="font-semibold">Conservative</span>,{" "}
-          <span className="font-semibold">Aggressive</span>, and{" "}
-          <span className="font-semibold">Dominant</span>. Zero stays free.
+          Unlocks <span className="font-semibold">Conservative</span> and{" "}
+          <span className="font-semibold">Aggressive</span>. Zero stays free.
           Switch strategies anytime while membership is active.
         </p>
         {notMember ? (
