@@ -74,20 +74,29 @@ Each endpoint encodes exactly one authorized caller from a **closed set**. The n
   `consumer-mcp` / `staff-web` prefixes from Product Rules §A; mobile apps call
   `consumer-web-*` / (future) `business-web-*` — there are no `consumer-mobile-*`
   endpoints today.
-- **Origin** segment: usually `web` (e.g. `consumer-web-get-profile`).
+- **Origin** segment: usually `web` (e.g. `consumer-web-get-profile`); also
+  `mcp` for the live `consumer-mcp` endpoint.
 - **Internal callers** (machine origins): `supabase-cron-*` (the Enricher
   pipeline), `supabase-edgefunc-*` (internal EF→EF, gated by `X-Internal-Caller`).
-- **Vendor callers**: `stripe-webhook-*`, and the four Reservationist agents'
-  mid-call server tools — one caller per agent: `eleven-a1-*` (c2b outbound
-  Booker) · `eleven-a2-*` (b2c outbound Confirmer) · `eleven-a3-*` (consumer
-  inbound support) · `eleven-a4-*` (business inbound support), with
-  `eleven-agent-*` as the transitional single-agent caller. ElevenLabs tools
+- **Vendor callers**: `stripe-webhook-handle-event` (Stripe; folder slug, not a
+  bare `stripe-webhook` prefix), and the four Reservationist agents' mid-call
+  server tools — one caller per agent: `eleven-a1-*` (c2b outbound Booker) ·
+  `eleven-a2-*` (b2c outbound Confirmer) · `eleven-a3-*` (consumer inbound
+  support) · `eleven-a4-*` (business inbound support), with `eleven-agent-*` as
+  the transitional single-agent caller. The product agent Reservationist runs
+  as these `eleven-*` tools; there is no `reservationist-agent` folder prefix
+  (code folders are SoT until Notion's closed-set catches up). ElevenLabs tools
   share the same locks: anon-key bearer for the gateway + `x-agent-secret`
   matched against `app_settings.agents_config` (impl in `_shared/agent-tools.ts`).
-  `twilio-webhook` / `business-whats` / `guest-web` are retired.
+  `twilio-webhook` / `business-whats` / `guest-web` are retired
+  (`twilio-webhook` WhatsApp rail removed 2026-08-03).
+- **Active folder prefixes (LIVE census):** `admin-web` · `business-web` ·
+  `consumer-web` · `check-web` · `staff-web` · `consumer-mcp` · `eleven-a1` ·
+  `eleven-a2` · `eleven-a3` · `eleven-a4` · `eleven-agent` · `supabase-cron` ·
+  `supabase-edgefunc` · `stripe-webhook-handle-event`.
 - Product callers may invoke internal ones, never the reverse.
 
-Roughly 138 EFs today (folders under `supabase/supabase/functions/`, excl. `_shared`).
+138 EFs today (folders under `supabase/supabase/functions/`, excl. `_shared`).
 `_shared/` holds internal helpers (free-form naming).
 
 ## Data layer (Postgres)

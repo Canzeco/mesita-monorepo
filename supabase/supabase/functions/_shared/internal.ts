@@ -1,14 +1,20 @@
 // Shared helpers for EF→EF hops: authenticating internal callers and invoking
 // `supabase-edgefunc-*` / `supabase-cron-*` endpoints from product EFs.
 //
-// Background: product callers (admin-web / business-web / consumer-web /
-// check-web / staff-web / reservationist-agent / stripe-webhook) authenticate
-// end users or vendors. Internal endpoints (`supabase-edgefunc-*`,
-// `supabase-cron-*`) are reusable services with no end-user session — they
-// exist so multiple product callers can share expensive pipelines without
-// duplicating hundreds of lines per product EF. Default modularization is
-// still in-process `_shared/` imports; use an EF hop only when it earns its
-// cost (async ack, separate deploy boundary, cron claim).
+// Background: product / vendor callers authenticate end users or vendors via
+// these LIVE folder prefixes (code is SoT; Notion closed-set may lag):
+//   admin-web · business-web · consumer-web · check-web · staff-web ·
+//   consumer-mcp · eleven-a1 · eleven-a2 · eleven-a3 · eleven-a4 ·
+//   eleven-agent · stripe-webhook-handle-event
+// The product agent Reservationist runs as eleven-* mid-call tools — there is
+// no `reservationist-agent` folder prefix. Bare `stripe-webhook` is also not a
+// prefix; the deployed slug is `stripe-webhook-handle-event`.
+// Internal endpoints (`supabase-edgefunc-*`, `supabase-cron-*`) are reusable
+// services with no end-user session — they exist so multiple product callers
+// can share expensive pipelines without duplicating hundreds of lines per
+// product EF. Default modularization is still in-process `_shared/` imports;
+// use an EF hop only when it earns its cost (async ack, separate deploy
+// boundary, cron claim).
 //
 // Wire protocol:
 //   1. The product caller sends `Authorization: Bearer <service_role JWT or

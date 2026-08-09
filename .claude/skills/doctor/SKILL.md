@@ -54,13 +54,13 @@ Each check: run it, record `OK` / `FINDING` / `SKIPPED (reason)`. Never leave a 
 The singleton rule is the one that silently breaks. Check it first.
 
 1.1 **Edge Functions inventory.** `list_edge_functions` vs `supabase/supabase/functions/*`
-    (124 in repo at time of writing). Report: in repo not deployed · deployed not in repo
+    (138 in repo at time of writing). Report: in repo not deployed · deployed not in repo
     (ghosts) · name mismatches.
 1.2 **EF body drift.** For every EF, `get_edge_function` vs the repo source. Flag any where
     cloud ≠ repo. Two known killers: (a) a deploy that shipped a **stub** over real code,
     (b) a deploy from clean main that **reverted cloud-only** edits (EFs bundle their own
     `_shared/*`). Both look fine in the dashboard.
-1.3 **Migration ledger.** `list_migrations` vs `supabase/supabase/migrations/*` (186 files).
+1.3 **Migration ledger.** `list_migrations` vs `supabase/supabase/migrations/*` (242 files).
     Flag: file with no ledger row (unapplied) · ledger row with no file (applied off-repo,
     the dangerous one) · version ordering anomalies.
 1.4 **Schema drift.** Live tables/columns/enums/views/functions vs what the migrations
@@ -145,9 +145,11 @@ For each admin config page — `adea` · `admin` · `atlas` · `db` · `enricher
 ## Scope 5 — Callers, agents & boundaries · P2
 
 5.1 **EF naming.** `<caller>-<verb>-<name>`; caller prefix ∈ the registered set
-    (`admin` · `business` · `consumer` · `staff` · `eleven` · `stripe` · `twilio` ·
-    `supabase` · `_shared`). Current census: admin 36 · business 36 · consumer 31 · eleven 9 ·
-    supabase 8 · others 1 each — report drift from that shape.
+    (`admin` · `business` · `consumer` · `staff` · `check` · `eleven` · `stripe` ·
+    `supabase` · `_shared`; retired: `twilio`). Current census: admin 43 · business 33 ·
+    consumer 36 · check 3 · eleven 9 · supabase 12 · stripe 1 · staff 1 — report drift
+    from that shape. Reservationist ships as `eleven-a{1–4}` / `eleven-agent`, not
+    `reservationist-agent`.
 5.2 **Direction rule.** Natural callers may invoke artificial callers, never the reverse.
 5.3 **Clients never touch the DB.** Grep app code for direct `supabase.from(` / `.rpc(`
     outside sanctioned layers. Include stale-table names (`businesses` / `units` / `venues` →
