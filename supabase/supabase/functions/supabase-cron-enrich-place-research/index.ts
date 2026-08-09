@@ -24,7 +24,8 @@
 // Output: place_research.gathered (partial place update + grounding + candidate
 // image pools + per-image metadata) → stage='analysis'. The profile persists once,
 // at the contents stage — exceptions written directly here (research-only):
-// `phone`, and dual names (`google_name` + sticky Mesita `name`, MESITA-917).
+// `phone`, and the cached Google label (`google_name`; `places.name` is a
+// generated column and `mesita_name` belongs to the operator).
 // They must land only when research re-runs (full re-enrich), never on a lighter
 // analysis/contents-only re-run.
 //
@@ -96,7 +97,9 @@ serveEnrichStage("research", async (admin, _env, row) => {
 
   const sources: Record<string, unknown> = {};
   const place: Record<string, unknown> = { ...basics };
-  const name = basics.name;
+  // Search term for SERP / channel discovery: always the Google label, since
+  // that is what the rest of the web indexes this place under.
+  const name = basics.google_name;
   const locationLine = [basics.address, basics.city].filter(Boolean).join(", ");
   const category = basics.category;
 
@@ -238,12 +241,9 @@ serveEnrichStage("research", async (admin, _env, row) => {
   // a place whose Google listing caught up to its Mesita label silently
   // re-entered tracking and lost that label on the next rename.
   {
-    const googleName =
-      typeof basics.google_name === "string" && basics.google_name.trim()
-        ? basics.google_name.trim()
-        : typeof basics.name === "string"
-        ? basics.name.trim()
-        : "";
+    const googleName = typeof basics.google_name === "string"
+      ? basics.google_name.trim()
+      : "";
     if (googleName) {
       const next = googleName.slice(0, ENRICH_FIELD_LIMITS.placeName.max);
       const { error: nameErr } = await admin

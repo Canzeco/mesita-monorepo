@@ -96,10 +96,13 @@ type GoogleDetails = {
 // generates the unique slug and applies entity defaults.
 export type GoogleBasics = {
   google_place_id: string;
-  /** Google Places displayName — Enricher spine (MESITA-917). */
+  /**
+   * Google Places displayName — a cached observation, not an identity spine
+   * (google_place_id is). There is deliberately no `name` here: `places.name`
+   * is a generated column and `mesita_name` belongs to the operator, so the
+   * Enricher has nothing to say about either.
+   */
   google_name: string;
-  /** Seeds Mesita display on create; sticky-synced until customized. */
-  name: string;
   category: string | null;
   category_label: string | null;
   price_level: number | null;
