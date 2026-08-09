@@ -16,7 +16,7 @@ const PAGE_SIZE = 20;
 const PRICE_PER_REQUEST_USD = 0.032;
 const FREE_PRO_REQUESTS_PER_MONTH = 5000;
 
-export type SearchCostEstimate = {
+type SearchCostEstimate = {
   pagesPerQuery: number;
   totalCalls: number;
   totalCostUsd: number;

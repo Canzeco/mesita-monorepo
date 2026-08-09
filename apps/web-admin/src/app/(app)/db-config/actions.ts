@@ -27,7 +27,7 @@ type ResetResponse = {
   };
 };
 
-export type ResetResult =
+type ResetResult =
   | {
     ok: true;
     truncatedTables: number | null;

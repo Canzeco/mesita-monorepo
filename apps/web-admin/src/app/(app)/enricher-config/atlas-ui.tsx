@@ -19,7 +19,7 @@ import type { SynthesisQuality } from "./actions";
 //
 // Keep the reason one clause and name the reader (or the thing that wins), so
 // the claim is checkable against the code rather than taken on faith.
-export type KnobEnforcement = "enforced" | "fallback" | "not-wired";
+type KnobEnforcement = "enforced" | "fallback" | "not-wired";
 
 const KNOB_STATUS: Record<KnobEnforcement, { label: string; className: string }> = {
   enforced: { label: "Enforced", className: "border-border text-foreground" },
