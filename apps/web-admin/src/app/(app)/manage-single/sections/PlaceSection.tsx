@@ -462,10 +462,10 @@ export function PlaceSection({
     // [&>section]; the fixed photo dialog is a <div>, exempt and out of flow.
     // lg (not xl): admin content + sidebar rarely reaches 1280px of free width.
     <div className="columns-1 gap-4 pb-8 [&>section]:mb-4 [&>section]:break-inside-avoid [&>details]:mb-4 [&>details]:break-inside-avoid lg:columns-2 lg:gap-5 lg:pb-10 lg:[&>section]:mb-5 lg:[&>details]:mb-5">
-      {/* Box order (MESITA-547 / MESITA-720 / MESITA-834): edit-first —
-          Basics → Hours → Channels → Photos → Location →
-          Promos summary. The Mesita-internal cards (Manual Priority,
-          Verification, Metadata, Embeddings) live on the Admin tab. */}
+      {/* Box order (MESITA-547 / MESITA-720 / MESITA-834 / MESITA-900):
+          Basics → Hours → Channels → Photos → Products (children) →
+          Location. Mesita-internal cards live on Admin; Team on Settings;
+          reputation on Performance. */}
       {/* Basics — editable identity. Price stays Enricher/Google-derived
           read-only; category is Enricher + Admin + Business (MESITA-469). */}
       <SectionCard

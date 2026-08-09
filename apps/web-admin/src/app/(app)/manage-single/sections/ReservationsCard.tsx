@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useCallback, useMemo, useState, useTransition } from "react";
 import { CalendarCheck, Phone } from "lucide-react";
 import {
   updatePlace,
@@ -8,6 +8,7 @@ import {
   type ReservationChannel,
   type ReservationTarget,
 } from "../actions";
+import { useSectionDirty } from "../useSectionDirty";
 import { SaveBar, SectionCard } from "../ui";
 
 // Reservations — which Place → Channels contact the Reservationist uses.
@@ -125,6 +126,13 @@ export function ReservationsCard({
 
   const dirty = channel !== saved;
   const active = channel === "phone";
+
+  const resetDraft = useCallback(() => {
+    setChannel(saved || (hasPhone ? "phone" : ""));
+    setError(null);
+    setOk(false);
+  }, [saved, hasPhone]);
+  useSectionDirty("reservations", dirty, resetDraft);
 
   const save = () => {
     if (!channel) {

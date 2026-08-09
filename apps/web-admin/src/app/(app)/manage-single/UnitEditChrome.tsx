@@ -68,13 +68,24 @@ export function UnitEditChrome({
   const [enrichPollError, setEnrichPollError] = useState(false);
   const enriching = isEnriching(enrichStatus);
   const enrichFailed = enrichStatus?.stage === "failed";
+  const enrichingRef = useRef(enriching);
+  enrichingRef.current = enriching;
 
-  // decision: MESITA-896 — enriching status lives HERE (next to Re-enrich),
-  // not in Admin → Metadata and not as a Place body card. Poll while open
-  // so the spinner clears when the pipeline finishes.
+  // decision: MESITA-896 — enriching status lives HERE (next to Re-enrich).
+  // Poll while enriching (~8s); back off to ~60s when idle; pause when the
+  // document is hidden (E-R4).
   useEffect(() => {
     let alive = true;
-    const load = () => {
+    let timeoutId: number | null = null;
+
+    const clear = () => {
+      if (timeoutId != null) {
+        window.clearTimeout(timeoutId);
+        timeoutId = null;
+      }
+    };
+
+    const load = () =>
       getPlaceEnrichment(projectId).then((r) => {
         if (!alive) return;
         if (!r.ok) {
@@ -84,14 +95,39 @@ export function UnitEditChrome({
         setEnrichPollError(false);
         setEnrichStatus(r.data.status);
       });
+
+    const scheduleNext = () => {
+      clear();
+      if (!alive || document.hidden) return;
+      const delay = enrichingRef.current ? 8_000 : 60_000;
+      timeoutId = window.setTimeout(() => {
+        void load().finally(() => {
+          if (alive) scheduleNext();
+        });
+      }, delay);
     };
-    load();
-    const id = window.setInterval(load, 8_000);
+
+    void load().finally(() => {
+      if (alive) scheduleNext();
+    });
+
+    const onVisibility = () => {
+      if (document.hidden) {
+        clear();
+        return;
+      }
+      void load().finally(() => {
+        if (alive) scheduleNext();
+      });
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+
     return () => {
       alive = false;
-      window.clearInterval(id);
+      clear();
+      document.removeEventListener("visibilitychange", onVisibility);
     };
-  }, [projectId]);
+  }, [projectId, enriching]);
 
   // Warn on tab close / refresh when Place edits are dirty.
   useEffect(() => {
@@ -246,12 +282,12 @@ export function UnitEditChrome({
         </div>
       </div>
 
-      {/* Row 2 — centered section tabs (shipped sections only — MESITA-547) */}
+      {/* Row 2 — section nav (plain nav + aria-current; scrollbar visible so
+          the fifth tab stays discoverable at ~375px — E-R6). */}
       <div className="border-border border-t px-2 sm:px-4 lg:px-6">
         <nav
-          role="tablist"
           aria-label="Unit sections"
-          className="flex items-stretch justify-center gap-0.5 overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          className="flex items-stretch justify-center gap-0.5 overflow-x-auto"
         >
           {UNIT_TAB_SECTIONS.map(({ id, label, Icon }) => {
             const href = unitSectionHref(projectId, id);
@@ -261,8 +297,7 @@ export function UnitEditChrome({
               <Link
                 key={id}
                 href={href}
-                role="tab"
-                aria-selected={active}
+                aria-current={active ? "page" : undefined}
                 onClick={(e) => {
                   if (active) return;
                   guardNav(href, e);

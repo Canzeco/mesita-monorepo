@@ -2,6 +2,9 @@
 
 import { CheckCircle2, Gauge } from "lucide-react";
 import type { AdminPlace } from "../actions";
+import { unitSectionHref } from "../nav";
+import { useUnitPlace } from "../UnitPlaceContext";
+import { CrossTabLink } from "../ui";
 
 // Profile completeness banner (MESITA-586) — the one full-width element above
 // the Place-tab masonry. The score is computed ENTIRELY on the client from
@@ -13,12 +16,19 @@ import type { AdminPlace } from "../actions";
 const cx = (...c: (string | false | null | undefined)[]) =>
   c.filter(Boolean).join(" ");
 
+const CHIP_CLASS =
+  "rounded-full bg-amber-500/10 px-2 py-0.5 text-[10px] font-semibold text-amber-700 transition hover:bg-amber-500/20";
+
 type CompletenessCheck = {
   label: string;
   // Chip copy when the item is missing — imperative, actionable.
   hint: string;
   weight: number;
   done: (p: AdminPlace) => boolean;
+  /** Same-page scroll target id (Place tab). */
+  scrollId?: string;
+  /** Cross-tab section id under manage-single. */
+  tab?: "settings";
 };
 
 // Weights sum to exactly 100. Photos weigh most — they carry the consumer
@@ -76,12 +86,14 @@ const CHECKS: readonly CompletenessCheck[] = [
       (p.products?.menu?.length ?? 0) > 0 ||
       (p.menus?.length ?? 0) > 0 ||
       !!p.menu_pdf_url,
+    scrollId: "unit-products",
   },
   {
     label: "Reservations",
     hint: "Pick a reservation channel",
     weight: 10,
     done: (p) => !!p.products?.reservations?.channel,
+    tab: "settings",
   },
   {
     label: "Tags",
@@ -91,7 +103,18 @@ const CHECKS: readonly CompletenessCheck[] = [
   },
 ];
 
+function scrollToSection(id: string) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.scrollIntoView({ behavior: "smooth", block: "start" });
+  if (el instanceof HTMLElement) {
+    el.setAttribute("tabindex", "-1");
+    el.focus({ preventScroll: true });
+  }
+}
+
 export function ProfileCompleteness({ place }: { place: AdminPlace }) {
+  const { projectId } = useUnitPlace();
   const missing = CHECKS.filter((c) => !c.done(place));
   const pct = 100 - missing.reduce((sum, c) => sum + c.weight, 0);
   const complete = missing.length === 0;
@@ -159,14 +182,36 @@ export function ProfileCompleteness({ place }: { place: AdminPlace }) {
               <span className="text-muted-foreground text-[10px] font-semibold tracking-wide uppercase">
                 Missing:
               </span>
-              {missing.slice(0, 5).map((c) => (
-                <span
-                  key={c.label}
-                  className="rounded-full bg-amber-500/10 px-2 py-0.5 text-[10px] font-semibold text-amber-700"
-                >
-                  {c.hint}
-                </span>
-              ))}
+              {missing.slice(0, 5).map((c) => {
+                if (c.scrollId) {
+                  return (
+                    <button
+                      key={c.label}
+                      type="button"
+                      className={CHIP_CLASS}
+                      onClick={() => scrollToSection(c.scrollId!)}
+                    >
+                      {c.hint}
+                    </button>
+                  );
+                }
+                if (c.tab === "settings") {
+                  return (
+                    <CrossTabLink
+                      key={c.label}
+                      href={unitSectionHref(projectId, "settings")}
+                      className={CHIP_CLASS + " inline-flex items-center gap-1"}
+                    >
+                      {c.hint}
+                    </CrossTabLink>
+                  );
+                }
+                return (
+                  <span key={c.label} className={CHIP_CLASS}>
+                    {c.hint}
+                  </span>
+                );
+              })}
               {missing.length > 5 && (
                 <span className="text-muted-foreground text-[10px]">
                   +{missing.length - 5} more

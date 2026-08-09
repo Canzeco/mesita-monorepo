@@ -2,6 +2,7 @@
 
 import {
   forwardRef,
+  useCallback,
   useMemo,
   useRef,
   useState,
@@ -9,6 +10,7 @@ import {
 } from "react";
 import { KeyRound } from "lucide-react";
 import { setCheckPin, type AdminPlace } from "../actions";
+import { useSectionDirty } from "../useSectionDirty";
 import { SaveBar, SectionCard } from "../ui";
 
 // Rewards Check PIN — optional staff gate on the public check page (MESITA-823).
@@ -34,6 +36,13 @@ export function CheckPinCard({ place }: { place: AdminPlace }) {
 
   const dirty = pin !== current;
   const valid = pin === "" || /^[0-9]{6}$/.test(pin);
+
+  const resetDraft = useCallback(() => {
+    setPin(current);
+    setError(null);
+    setOk(false);
+  }, [current]);
+  useSectionDirty("check-pin", dirty, resetDraft);
 
   const focusPin = () => {
     window.requestAnimationFrame(() => pinInputRef.current?.focus());

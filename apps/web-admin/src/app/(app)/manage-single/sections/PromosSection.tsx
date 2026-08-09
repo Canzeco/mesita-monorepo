@@ -172,12 +172,14 @@ export function PromosSection({
   onSaved: (v: AdminPlace) => void;
 }) {
   const [v, setV] = useState(place);
-  // Strategy SWITCH stays optimistic (rates-only; the moving ring is the
-  // feedback). Membership writes — join, reinstate, drop — are PESSIMISTIC:
-  // they apply on EF success only, so the pill and cards never render a
-  // half-state mid-write. Errors follow the gesture: switch failures land
-  // under the grid, join/reinstate failures inside the modal, drop failures
-  // inside the confirm dialog.
+  // Write-through / optimistic — no draft dirtyMap (E-R0). Strategy SWITCH
+  // stays optimistic (rates-only; the moving ring is the feedback).
+  // Membership writes — join, reinstate, drop — are PESSIMISTIC: they apply
+  // on EF success only, so the pill and cards never render a half-state
+  // mid-write. Errors follow the gesture: switch failures land under the
+  // grid, join/reinstate failures inside the modal, drop failures inside
+  // the confirm dialog.
+
   const [switchPending, startSwitch] = useTransition();
   const [capPending, startCap] = useTransition();
   const [switchError, setSwitchError] = useState<string | null>(null);

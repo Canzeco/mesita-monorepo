@@ -4,6 +4,7 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
   useRef,
   useState,
@@ -11,12 +12,23 @@ import {
 } from "react";
 import { useRouter } from "next/navigation";
 import type { AdminPlace } from "./actions";
+import {
+  dirtyDialogNavBody,
+  dirtyDialogReenrichBody,
+  dirtyDialogTitle,
+  dirtySectionLabels,
+} from "./dirtySections";
+import {
+  INITIAL_HISTORY_GUARD,
+  reduceHistoryGuard,
+  type HistoryGuardState,
+} from "./historyGuard";
 import { ConfirmDialog } from "./ui";
 
 /** Something that would throw away unsaved edits if it ran right now. */
 type GuardedIntent = {
   /** Picks the confirm copy. */
-  kind: "nav" | "reenrich";
+  kind: "nav" | "reenrich" | "back";
   /** Runs only after the operator confirms the discard. */
   run: () => void;
 };
@@ -26,7 +38,7 @@ type UnitPlaceContextValue = {
   place: AdminPlace;
   setPlace: (place: AdminPlace) => void;
   reload: () => void;
-  /** Any Place/Products box has unsaved edits. */
+  /** Any registered section has unsaved drafts. */
   isDirty: boolean;
   setSectionDirty: (section: string, dirty: boolean) => void;
   /** Register a reset callback invoked when the operator discards dirty edits. */
@@ -37,11 +49,8 @@ type UnitPlaceContextValue = {
    * was intercepted (a confirm dialog is now open) and false when the caller
    * should just proceed.
    *
-   * Lives on the context, not in UnitEditChrome, because the guard has to reach
-   * every exit path — including the cross-tab links rendered deep inside
-   * PlaceSection (PromosCard, VerificationCard and the read-only stubs). While it
-   * was a local useCallback in the chrome, those links navigated straight past
-   * it and silently dropped the operator's edits.
+   * Lives on the context, not in UnitEditChrome, so every exit path can reach
+   * it — including CrossTabLink and completeness chips.
    */
   guardIntent: (intent: GuardedIntent) => boolean;
   /** guardIntent for the common case: following a link. */
@@ -49,6 +58,12 @@ type UnitPlaceContextValue = {
 };
 
 const UnitPlaceContext = createContext<UnitPlaceContextValue | null>(null);
+
+const HISTORY_MARKER = { __mesitaUnitDirty: true as const };
+
+function pushSentinel() {
+  window.history.pushState(HISTORY_MARKER, "", window.location.href);
+}
 
 export function UnitPlaceProvider({
   projectId,
@@ -65,6 +80,8 @@ export function UnitPlaceProvider({
 }) {
   const [dirtyMap, setDirtyMap] = useState<Record<string, boolean>>({});
   const discardHandlers = useRef<Record<string, () => void>>({});
+  const historyRef = useRef<HistoryGuardState>(INITIAL_HISTORY_GUARD);
+  const [, bumpHistory] = useState(0);
 
   const setSectionDirty = useCallback((section: string, dirty: boolean) => {
     setDirtyMap((prev) => {
@@ -101,8 +118,54 @@ export function UnitPlaceProvider({
     [dirtyMap],
   );
 
+  const dirtyLabels = useMemo(
+    () => dirtySectionLabels(dirtyMap),
+    [dirtyMap],
+  );
+
   const router = useRouter();
   const [pending, setPending] = useState<GuardedIntent | null>(null);
+
+  const applyHistory = useCallback((event: Parameters<typeof reduceHistoryGuard>[1]) => {
+    const { state, effects } = reduceHistoryGuard(historyRef.current, event);
+    historyRef.current = state;
+    for (const effect of effects) {
+      if (effect === "push-sentinel" || effect === "reassert") {
+        pushSentinel();
+      } else if (effect === "back") {
+        window.history.back();
+      }
+    }
+    bumpHistory((n) => n + 1);
+    return state;
+  }, []);
+
+  // History trap while any section is dirty (E-R3).
+  useEffect(() => {
+    if (isDirty) {
+      applyHistory({ type: "dirty-on" });
+    } else {
+      applyHistory({ type: "dirty-off" });
+    }
+  }, [isDirty, applyHistory]);
+
+  useEffect(() => {
+    const onPopState = () => {
+      const next = applyHistory({ type: "popstate" });
+      if (next.dialogOpen) {
+        // Stay on this URL (already reasserted). Confirm only discards drafts —
+        // navigating away via history.back() races App Router unmount cleanup.
+        setPending({
+          kind: "back",
+          run: () => {
+            applyHistory({ type: "cancel-leave" });
+          },
+        });
+      }
+    };
+    window.addEventListener("popstate", onPopState);
+    return () => window.removeEventListener("popstate", onPopState);
+  }, [applyHistory]);
 
   const guardIntent = useCallback(
     (intent: GuardedIntent) => {
@@ -131,6 +194,13 @@ export function UnitPlaceProvider({
     intent.run();
   }, [pending, requestDiscard]);
 
+  const cancelPending = useCallback(() => {
+    if (pending?.kind === "back") {
+      applyHistory({ type: "cancel-leave" });
+    }
+    setPending(null);
+  }, [pending, applyHistory]);
+
   const value = useMemo(
     () => ({
       projectId,
@@ -158,31 +228,29 @@ export function UnitPlaceProvider({
     ],
   );
 
+  const title = dirtyDialogTitle(dirtyLabels);
+  const bodyText =
+    pending?.kind === "reenrich"
+      ? dirtyDialogReenrichBody(dirtyLabels)
+      : dirtyDialogNavBody(dirtyLabels);
+
   return (
     <UnitPlaceContext.Provider value={value}>
       {children}
       <ConfirmDialog
         open={pending != null}
-        title="Unsaved Place edits"
-        body={
-          pending?.kind === "reenrich" ? (
-            <p>
-              Re-enrich can overwrite fields you&apos;re editing. Discard unsaved
-              changes and queue the Enricher, or cancel and save first.
-            </p>
-          ) : (
-            <p>
-              You have unsaved Place edits. Discard them to leave this page, or
-              cancel and save first.
-            </p>
-          )
-        }
+        title={title}
+        body={<p>{bodyText}</p>}
         confirmLabel={
-          pending?.kind === "reenrich" ? "Discard & re-enrich" : "Discard & leave"
+          pending?.kind === "reenrich"
+            ? "Discard & re-enrich"
+            : pending?.kind === "back"
+              ? "Discard changes"
+              : "Discard & leave"
         }
         danger
         onConfirm={confirmDiscard}
-        onCancel={() => setPending(null)}
+        onCancel={cancelPending}
       />
     </UnitPlaceContext.Provider>
   );
