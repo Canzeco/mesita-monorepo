@@ -8,7 +8,7 @@ import type { Place } from "@/lib/api/places";
 import { PromoChip } from "@/components/consumer/PromoChip";
 import { getOpeningStatusLabel } from "@/lib/place-status";
 import { placeHref } from "@/lib/place-route";
-import { firstInitial } from "@/lib/utils";
+import { firstInitial, formatDistanceKm } from "@/lib/utils";
 import { LocalDialog } from "@/components/consumer/overlay/LocalOverlay";
 
 // Confirm before unsaving — one tap opens this, a second (Yes) actually
@@ -73,11 +73,11 @@ export function FavoriteRow({
   onRemove: () => void;
 }) {
   const photo = place.photos[0];
-  // distance_km === 0 is the SwipeDeck's "couldn't calculate" placeholder —
-  // treat it as unknown here so the row never claims a fake 0 km.
+  // Favorites omit the chip when unknown; formatDistanceKm's "- km" would
+  // clutter the subtitle, so only pass through a real distance.
   const distanceLabel =
     place.distance_km != null && place.distance_km > 0
-      ? `${place.distance_km} km`
+      ? formatDistanceKm(place.distance_km)
       : null;
   const subtitle = [place.zone, distanceLabel].filter(Boolean).join(" · ");
   const openingLabel = getOpeningStatusLabel(place);
