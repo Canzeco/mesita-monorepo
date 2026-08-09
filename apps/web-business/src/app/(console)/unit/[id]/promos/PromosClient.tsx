@@ -20,6 +20,7 @@ import {
 import { cn, errMsg, formatMoney } from "@/lib/utils";
 import { ERROR_BOX_CLASS } from "@/lib/ui-classes";
 import { FaqsBox } from "./FaqsBox";
+import { LifecycleStepper } from "./LifecycleStepper";
 import { MembershipBox } from "./MembershipBox";
 import { PricingCard } from "./PricingCard";
 import { ProductModal } from "./ProductModal";
@@ -217,6 +218,13 @@ export function PromosClient({ place }: { place: MyPlace }) {
           anytime.
         </p>
       </header>
+
+      <LifecycleStepper
+        place={place}
+        pillState={pillState}
+        storedStrategy={storedStrategy}
+        member={subscribed}
+      />
 
       <MembershipBox
         currency={place.currency}
