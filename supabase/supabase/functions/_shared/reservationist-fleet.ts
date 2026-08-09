@@ -508,7 +508,7 @@ export function fleetWorkflows(toolIdByName: Map<string, string>): Record<FleetA
         // a1 has none: the only transitions leave this node once the place has
         // actually answered.
         book: talkNode({
-          label: "Book with venue",
+          label: "Book with place",
           position: pos(340, 0),
           entryBehavior: "generate_immediately",
           additionalPrompt:
@@ -724,7 +724,7 @@ export function fleetWorkflows(toolIdByName: Map<string, string>): Record<FleetA
           "end_node",
           llm(
             "El contexto era cancelled_by_venue: ya avisaste la cancelación al comensal, te despediste y colgaste.",
-            "venue-cancel notice done",
+            "place-cancel notice done",
           ),
         ),
         e_talk_confirm: edge(
@@ -899,7 +899,7 @@ export function fleetWorkflows(toolIdByName: Map<string, string>): Record<FleetA
         start_node: { type: "start", position: pos(0, 0), edge_order: ["e_start_verify"] },
         verify: toolNode(a4Verify, pos(280, 0), ["e_verify_ok", "e_verify_fail"]),
         triage: talkNode({
-          label: "Triage venue",
+          label: "Triage place",
           position: pos(580, -160),
           entryBehavior: "generate_immediately",
           additionalPrompt:
@@ -950,7 +950,7 @@ export function fleetWorkflows(toolIdByName: Map<string, string>): Record<FleetA
           edgeOrder: ["e_redirect_end"],
         }),
         deny: talkNode({
-          label: "Unknown venue line",
+          label: "Unknown place line",
           position: pos(580, 300),
           entryBehavior: "generate_immediately",
           additionalPrompt:

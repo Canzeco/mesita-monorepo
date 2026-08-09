@@ -14,7 +14,7 @@ same session you find it.
 - Engine: `functions/supabase-edgefunc-reservation-call/index.ts` — intents
   `book` · `callback_retry` · `cancel_notice`
 - Waker: `functions/supabase-cron-reservation-retries/index.ts` (pg_cron, 1 min)
-- Venue pacing: `functions/_shared/reservation-retry.ts` (opening hours)
+- Place pacing: `functions/_shared/reservation-retry.ts` (opening hours)
 - Guest pacing: `functions/_shared/reservation-callback.ts` (the ladder)
 - Run discipline: `functions/_shared/reservation-run.ts` (platform failures,
   outage backoff, notice caps)
@@ -52,12 +52,12 @@ attempts intact. Zombies self-heal within a minute of going stale.
 
 **Sweep order is load-bearing.** The cron buries dead work before waking live
 work: 1) expiry, 2) moot notices, 3) reaper, 4) wakes — and every wake is
-`reserved_at`-bounded, so recovery after a cron outage can never dial a venue
+`reserved_at`-bounded, so recovery after a cron outage can never dial a place
 about a slot that already passed.
 
 **Abuse & cost guards** (`reservations_config.limits`, admin-tunable): every
 unit of abuse here is a metered phone call. Reschedules: **3 per ticket per
-day** (each one resets `call_attempts` = buys venue calls). Venue calls:
+day** (each one resets `call_attempts` = buys place calls). Place calls:
 **10 per place per day** (bookings + notices share the meter,
 `reservation_call_counters` + an atomic bump function). **Kill switch**: a
 hard stop on ALL outbound reservation calls — everything parks and resumes
@@ -71,15 +71,15 @@ silently; that sentence is why this file exists.
 
 ---
 
-## Leg 1 · Booking — a1 phones the venue ✅
+## Leg 1 · Booking — a1 phones the place ✅
 
 | | |
 | --- | --- |
-| **Attempt 1** | Immediately when the guest taps Reserve, **whatever the hour** — many venues run a 24/7 AI receptionist, and a closed line is itself information. |
-| **Attempt 2** | **+5 min** if the venue is open right now · **~30 min after it next opens** if closed. |
+| **Attempt 1** | Immediately when the guest taps Reserve, **whatever the hour** — many places run a 24/7 AI receptionist, and a closed line is itself information. |
+| **Attempt 2** | **+5 min** if the place is open right now · **~30 min after it next opens** if closed. |
 | **Cap** | **2** (`ATTEMPTS`, fixed by protocol — the admin config accepts an `attempts` value and deliberately ignores it). |
 | **How it waits** | Parks: `attempts_state='scheduled'` + `next_attempt_at`; the minute cron wakes it. |
-| **Hours source** | `places.hours` + longitude → venue-local clock (`_shared/local-time.ts`), the recommenders' interpretation. |
+| **Hours source** | `places.hours` + longitude → place-local clock (`_shared/local-time.ts`), the recommenders' interpretation. |
 | **Terminal** | Cap with no answer → `status='unreachable'`. |
 
 Verdicts a1 reports (`a1_report_outcome`): `confirmed` · `counter_offer` ·
@@ -91,9 +91,9 @@ spoken path funnels through exactly one report node.
 ## Leg 2 · Negotiation — the counter-offer loop ✅
 
 **2 rounds** (`MAX_NEGOTIATION_ROUNDS`), then parked in-app. Shortcut: a slot
-the venue ITSELF offered confirms on the spot (`matchesOffer`, structured
-`{time, date?, note?}` alternatives) — no second venue call, no round burned;
-a1's close asks the venue to hold its offers so this acts on a promise
+the place ITSELF offered confirms on the spot (`matchesOffer`, structured
+`{time, date?, note?}` alternatives) — no second place call, no round burned;
+a1's close asks the place to hold its offers so this acts on a promise
 already made. Genuinely new proposals re-fire leg 1.
 
 ## Leg 3 · Confirmation — a2 phones the guest ✅
@@ -101,7 +101,7 @@ already made. Genuinely new proposals re-fire leg 1.
 | | |
 | --- | --- |
 | **Ladder** | Immediately when the verdict lands · **+10 min** · **+1 h** · **cap 3** — never a fourth ring. |
-| **Quiet hours** | No guest call outside **09:00–22:00 venue-local**, waived when the slot is **< 6 h** away. |
+| **Quiet hours** | No guest call outside **09:00–22:00 place-local**, waived when the slot is **< 6 h** away. |
 | **Cutoff** | Nothing past `reserved_at − 30 min`. |
 | **How it waits** | `callback_state='scheduled'` + `callback_next_attempt_at` → cron → intent `callback_retry`. |
 | **Answered-undecided** | Deliberately NOT retried — an undecided guest is not an unreached one. |
@@ -114,7 +114,7 @@ identical guest experience. Fresh errand = fresh ladder.
 `call` (default) or `app`. When `app`, every a2 guest-facing errand is skipped
 (confirm, counter-offer, cancel notice, callback_retry) and the ticket is the
 notification; console confirm does not seed the ladder. Guests accept
-confirmations / venue alternatives in-app via
+confirmations / place alternatives in-app via
 `consumer-web-confirm-reservation`.
 
 ## Leg 4 · Expiry ✅
@@ -123,39 +123,39 @@ confirmations / venue alternatives in-app via
 mid-flight run). `passed` stays **derived** in the app — don't add a writer.
 `confirmed` is never expired; `no_show` stays unwritten until leg 8 exists.
 
-## Leg 5 · Guest cancels a table the venue is HOLDING ✅
+## Leg 5 · Guest cancels a table the place is HOLDING ✅
 
 All four cancel doors (`consumer-web-cancel-reservation` +
-`eleven-a2/a3-cancel-reservation`, all through `cancelTicket`) owe the venue a
-call when — and only when — the ticket was **`confirmed`**: never ring a venue
+`eleven-a2/a3-cancel-reservation`, all through `cancelTicket`) owe the place a
+call when — and only when — the ticket was **`confirmed`**: never ring a place
 to cancel what it never agreed to.
 
 | | |
 | --- | --- |
-| **Who calls** | **a1**, `call_context="cancellation"` — an aviso: no booking, no tools, voicemail counts (it's the venue's own line). |
+| **Who calls** | **a1**, `call_context="cancellation"` — an aviso: no booking, no tools, voicemail counts (it's the place's own line). |
 | **State** | `notice_kind='venue_cancel'`, `notice_state` pending → running → done/failed. Engine intent `cancel_notice`. |
-| **Pacing** | Attempt 1 immediately; retry by the venue's hours, cap **2** (`noticeNextAt`); exhausted → `failed`, badge-visible. |
+| **Pacing** | Attempt 1 immediately; retry by the place's hours, cap **2** (`noticeNextAt`); exhausted → `failed`, badge-visible. |
 | **Never blocks** | The cancel is instant and local; the call is a background consequence. A lost invoke is swept as `notice_state='pending'`. |
 
-## Leg 6 · Venue cancels — telling the guest ✅
+## Leg 6 · Place cancels — telling the guest ✅
 
 `eleven-a4-cancel-reservation` owes `notice_kind='guest_cancel'`; **a2** rings
 the guest with `call_context="cancelled_by_venue"` — identity before any
 detail, the news with tact, an apology, the app for rebooking. Pacing: the
 guest ladder. **A guest VOICEMAIL is not a told guest**: a voicemail-answered
-notice takes one more ladder rung before delivery is claimed (the venue side
+notice takes one more ladder rung before delivery is claimed (the place side
 keeps voicemail=delivered — their own line, message stands). The *"business
 never calls the consumer"* rule has its relay.
 
 ## Reschedule of a CONFIRMED table = a MODIFICATION
 
-The venue holds a live table, so a1 doesn't ask like a stranger: `call_context
+The place holds a live table, so a1 doesn't ask like a stranger: `call_context
 ="modification"` — *move the existing booking* (old slot rides
-`modification_of` + dynamic vars). If the venue can't do the change, a1 asks
+`modification_of` + dynamic vars). If the place can't do the change, a1 asks
 them to cancel the old booking too (→ `declined`, both slots settled). If the
 run **exhausts unreachable**, the old hold is released through leg 5's
 machinery (`notice_kind='venue_cancel'` speaking the OLD slot). A confirmed
-modification clears `modification_of` — the venue moved it on that very call.
+modification clears `modification_of` — the place moved it on that very call.
 Reschedules are capped (guards above) and rotate `run_id`.
 
 ---
@@ -173,7 +173,7 @@ a reminder that can't fit the window is skipped, not deferred past the slot.
 Cap 1 — a reminder is never retried; the app is the fallback.
 
 **Leg 8 · No-show attestation** — the only honest writer of `no_show`. The
-venue attests after the slot: a console tap on the reservation (business app)
+place attests after the slot: a console tap on the reservation (business app)
 or the a4 inbound line ("no llegó"). Writes `no_show` + `attested_by`;
 `passed` stays derived for unattested tickets. Consumers of the status:
 admin analytics (no-show rate per place) and the future guest-reliability
@@ -197,10 +197,10 @@ Four agents, two outbound directions, `call_context` names the errand:
 
 | Direction | Agent | `call_context` values |
 | --- | --- | --- |
-| Mesita → venue | **a1** | `booking` · `modification` · `cancellation` |
+| Mesita → place | **a1** | `booking` · `modification` · `cancellation` |
 | Mesita → guest | **a2** | `confirmation` · `counter_offer` · `cancelled_by_venue` · *(leg 7: `reminder`)* |
 | guest → Mesita | **a3** | inbound support |
-| venue → Mesita | **a4** | inbound support |
+| place → Mesita | **a4** | inbound support |
 
 Every outbound leg answers the same four questions: **when does attempt 1
 fire · when does a retry fire · how many attempts · what happens at the
@@ -218,6 +218,6 @@ Consumer-facing phases: created → booking → confirmed → passed
 ## Parked-ticket copy (MESITA-954)
 
 Consumer adapters read `attempts_state` (+ `next_attempt_at` from the list EF):
-`running` = on the phone · `scheduled` = waiting for the venue to open (with
+`running` = on the phone · `scheduled` = waiting for the place to open (with
 the next-try time when known) · `exhausted` = couldn't reach them. Counter-offer
 copy still wins when structured alternatives are present.
