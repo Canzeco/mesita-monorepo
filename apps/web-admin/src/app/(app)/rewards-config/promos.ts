@@ -160,7 +160,8 @@ export const BONUS_META: Record<
 // The 5% grid: off, then 5 → 70 in steps of 5.
 const RATE_STEP = 5;
 const RATE_FLOOR = 5;
-const RATE_MAX = 70;
+/** The ceiling the engine pays on any single additive total. */
+export const RATE_MAX = 70;
 export const ALLOWED_RATES: readonly number[] = [
   0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70,
 ];

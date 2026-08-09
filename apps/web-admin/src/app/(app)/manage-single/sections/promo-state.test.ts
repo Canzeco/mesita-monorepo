@@ -1,12 +1,22 @@
 import { describe, expect, it } from "vitest";
 import { STRATEGIES, strategyForPlace } from "@/lib/business/strategies";
 import {
+  ACTION_KEYS,
+  CLASS_KEYS,
+  DEFAULT_PROMOS,
+  totalFor,
+  type PromosConfig,
+} from "@/app/(app)/rewards-config/promos";
+import {
+  METER_SEGMENTS,
   STRIKE_DECAY_DAYS,
   describeMembershipStatus,
   effectiveStrikeCount,
+  giveLevel,
   lifecycleView,
   membershipPillState,
   promoCardState,
+  visibilityDots,
 } from "./promo-state";
 
 const DAY_MS = 86_400_000;
@@ -154,6 +164,59 @@ describe("describeMembershipStatus", () => {
     expect(
       describeMembershipStatus({ plan: "pro" }, "pending", NOW)?.tone,
     ).toBe("warn");
+  });
+});
+
+describe("giveLevel — the abstract card meter", () => {
+  it("Zero is empty; the top posture fills the rail", () => {
+    expect(giveLevel(DEFAULT_PROMOS, "zero").dots).toBe(0);
+    expect(giveLevel(DEFAULT_PROMOS, "zero").label).toBe("None");
+    expect(giveLevel(DEFAULT_PROMOS, "aggressive").dots).toBe(METER_SEGMENTS);
+    // Defaults double Conservative → Aggressive, so Conservative sits mid-rail.
+    expect(giveLevel(DEFAULT_PROMOS, "conservative").dots).toBe(3);
+  });
+
+  it("the range spans exactly the min/max cells of the detail matrix", () => {
+    for (const id of ["conservative", "aggressive"] as const) {
+      const cells = CLASS_KEYS.flatMap((c) =>
+        ACTION_KEYS.map((a) => Math.min(70, totalFor(DEFAULT_PROMOS, id, c, a))),
+      );
+      const lvl = giveLevel(DEFAULT_PROMOS, id);
+      expect(lvl.minRate).toBe(Math.min(...cells));
+      expect(lvl.maxRate).toBe(Math.max(...cells));
+    }
+  });
+
+  it("a paying posture never rounds down to an empty meter", () => {
+    // Conservative shaved to a single point against a 50-point Aggressive
+    // rounds to 0.1 segments — it must still light one.
+    const lopsided: PromosConfig = {
+      ...DEFAULT_PROMOS,
+      base: {
+        conservative: { standard: 1, influencer: 1, premium: 1, aura: 1 },
+        aggressive: { standard: 50, influencer: 50, premium: 50, aura: 50 },
+      },
+    };
+    expect(giveLevel(lopsided, "conservative").dots).toBe(1);
+  });
+
+  it("an all-zero config lights nothing (no divide-by-zero)", () => {
+    const off: PromosConfig = {
+      ...DEFAULT_PROMOS,
+      base: {
+        conservative: { standard: 0, influencer: 0, premium: 0, aura: 0 },
+        aggressive: { standard: 0, influencer: 0, premium: 0, aura: 0 },
+      },
+    };
+    expect(giveLevel(off, "aggressive").dots).toBe(0);
+  });
+});
+
+describe("visibilityDots", () => {
+  it("spreads the three rungs across the five-segment rail", () => {
+    expect(visibilityDots("Low")).toBe(1);
+    expect(visibilityDots("Mid")).toBe(3);
+    expect(visibilityDots("High")).toBe(METER_SEGMENTS);
   });
 });
 
