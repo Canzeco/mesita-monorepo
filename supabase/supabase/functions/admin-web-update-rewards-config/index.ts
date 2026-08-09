@@ -9,14 +9,13 @@
 // keys. A WHOLE-BLOB write: the caller always sends the complete config and
 // normalizePromosV10 always returns a complete one.
 //
-// Until the engine flips additive (MESITA-992), the LIVE bill still prices
-// best-of from public.reward_rules — so every v10 save also derives and
-// upserts those 40 cells (cell = base + that action's bonus, clamped to 70).
-// The legacy v13 grid/actions keys keep receiving the same numbers as the
-// engine's empty-table fallback. See 20260804170553_reward_rules_normalized.sql.
+// MESITA-992: the LIVE bill prices additive from rewards_config.v10. Every
+// v10 save still derives and upserts the 40 reward_rules cells as a frozen
+// mirror (rollback / empty-v10 fallback) and refreshes the legacy v13
+// grid/actions blob keys. See 20260804170553_reward_rules_normalized.sql.
 //
 // A legacy {rules, cap} body (older client mid-deploy) still writes through
-// the v8 path unchanged — delete that path with MESITA-992.
+// the v8 path unchanged.
 //
 // Auth: caller's JWT email must be in public.super_admins.
 
@@ -36,8 +35,7 @@ import {
 } from "./promos-v10-normalize.ts";
 
 // Mirror the rules into the v13 blob shape. Belt and braces: loadRewardsGrid
-// prefers the rules table, and only falls back here if that read ever comes
-// back empty — at which point stale prices beat no prices.
+// prefers v10, then the rules table, then this blob fallback.
 function blobFromRules(rules: RewardRule[], cap: number): Record<string, unknown> {
   const grid: Record<string, Record<string, number>> = {};
   const actions: Record<string, Record<string, Record<string, number>>> = {};

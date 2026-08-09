@@ -141,7 +141,7 @@ Deno.serve(async (req) => {
     .maybeSingle();
   if (consumerRow.error || !consumerRow.data) return checkNotFound(json);
 
-  // Best-of over the grid at the place's strategy — the ticket already
+  // v10 additive (or legacy best-of fallback) at the place's strategy — the ticket already
   // exists, so exclude it from the first-visit count (Welcome must fire on
   // the create → bill path exactly as it did on scan → bill).
   const grid = await loadRewardsGrid(admin);

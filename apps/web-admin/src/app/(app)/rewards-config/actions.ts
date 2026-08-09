@@ -7,7 +7,7 @@
 // Backed by admin-web-get-rewards-config / admin-web-update-rewards-config.
 // The v10 blob in app_settings.rewards_config is the source of truth; the EF
 // keeps the legacy best-of reward_rules in sync on every save so the LIVE
-// engine tracks operator edits until the additive flip ships (MESITA-992).
+// engine tracks operator edits after the additive flip (MESITA-992).
 // No client ever touches the DB.
 
 import { snapDiscountCap } from "@/lib/business/strategies";

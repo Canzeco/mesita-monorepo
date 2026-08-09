@@ -5,8 +5,8 @@
 // per (strategy × class), one special bonus (Welcome), three action bonuses
 // (Mesita / Story / Google) universal across strategies and classes, plus a
 // single Influencer override on Story. A bill pays base + welcome + each
-// earned action bonus (additive — the engine flip is MESITA-992; until it
-// ships, saves keep the legacy best-of rules in sync via legacyRulesFrom).
+// earned action bonus (additive — engine flipped in MESITA-992; saves still
+// keep the legacy best-of rules in sync via legacyRulesFrom as a mirror).
 //
 // The cap stays what #816 made it: the platform DEFAULT a place inherits
 // when it has not picked its own monthly_promo_cap.
@@ -248,7 +248,7 @@ export function coercePromosConfig(raw: unknown): PromosConfig {
   return { version: 10, base, bonuses, cap: snapDiscountCap(r.cap) };
 }
 
-// ── Legacy bridge (until MESITA-992 flips the engine) ────────────────────
+// ── Legacy bridge (frozen mirror after MESITA-992) ───────────────────────
 
 type LegacyRule = {
   strategy: StrategyKey;
@@ -295,9 +295,8 @@ export function totalFor(
 }
 
 /**
- * Derive the 40 legacy best-of rules from the v10 knobs so the LIVE engine
- * keeps tracking operator edits until MESITA-992 ships the additive flip.
- * Cells clamp to the engine's 70% ceiling and stay on the 5% grid.
+ * Derive the 40 legacy best-of rules from the v10 knobs as a frozen mirror
+ * / empty-v10 fallback after MESITA-992. Cells clamp to the 70% ceiling.
  */
 export function legacyRulesFrom(cfg: PromosConfig): LegacyRule[] {
   const rules: LegacyRule[] = [];
