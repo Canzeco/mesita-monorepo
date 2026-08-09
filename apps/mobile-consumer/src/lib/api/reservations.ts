@@ -114,6 +114,27 @@ export type EFReservationRow = {
 };
 
 /**
+ * Cancel the caller's own reservation. Idempotent server-side; a slot that
+ * already passed is refused. Web parity:
+ * apps/web-consumer/src/lib/api/reservations.ts.
+ */
+export function apiCancelReservation(args: {
+  reservationId: string;
+  reason?: string;
+}): Promise<{ cancelled?: boolean; already?: boolean }> {
+  const reason = args.reason?.trim();
+  return invokeEF<{ cancelled?: boolean; already?: boolean }>(
+    supabase,
+    'consumer-web-cancel-reservation',
+    {
+      reservation_id: args.reservationId,
+      ...(reason ? { reason } : {}),
+    },
+    "Couldn't cancel the reservation",
+  );
+}
+
+/**
  * Reschedule (or resize) the caller's own reservation. New terms send the
  * ticket back to `booking` and Mesita calls the place again. Web parity:
  * apps/web-consumer/src/lib/api/reservations.ts.

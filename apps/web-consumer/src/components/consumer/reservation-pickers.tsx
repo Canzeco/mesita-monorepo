@@ -36,7 +36,7 @@ const MONTH_NAMES = [
 ];
 
 const MIN_PARTY = 1;
-const MAX_PARTY = 12;
+const MAX_PARTY = 20;
 
 type DateOption = {
   iso: string;

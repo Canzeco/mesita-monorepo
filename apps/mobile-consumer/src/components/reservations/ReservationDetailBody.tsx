@@ -207,7 +207,12 @@ export function ReservationDetailBody({
         </Button>
       ) : null}
 
-      <ReservationActions projectId={r.projectId} cancelled={cancelled} />
+      <ReservationActions
+        reservationId={r.id}
+        projectId={r.projectId}
+        cancelled={cancelled}
+        onChanged={onChanged}
+      />
     </View>
   );
 }
