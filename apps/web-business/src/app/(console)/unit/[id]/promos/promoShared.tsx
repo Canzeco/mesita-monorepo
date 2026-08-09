@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { TrendingUp, type LucideIcon } from "lucide-react";
+import { TrendingUp } from "lucide-react";
 import {
   STRATEGY_VISIBILITY_LADDER,
   type Strategy,
@@ -190,46 +190,5 @@ export function MembershipStatusPill({
       />
       {labels[state]}
     </span>
-  );
-}
-
-/** @deprecated use MembershipStatusPill */
-export function StatusPill({ subscribed }: { subscribed: boolean }) {
-  return <MembershipStatusPill state={subscribed ? "live" : "not_member"} />;
-}
-
-export function SubHeading({
-  icon: Icon,
-  children,
-}: {
-  icon: LucideIcon;
-  children: ReactNode;
-}) {
-  return (
-    <div className="mt-1 flex items-center gap-1.5">
-      <Icon className="text-muted-foreground h-3.5 w-3.5" />
-      <span className="text-muted-foreground text-[10px] font-bold tracking-[0.16em] uppercase">
-        {children}
-      </span>
-    </div>
-  );
-}
-
-export function ActivationStep({
-  icon: Icon,
-  children,
-}: {
-  icon: LucideIcon;
-  children: ReactNode;
-}) {
-  return (
-    <div className="border-border bg-card flex items-center gap-2.5 rounded-xl border px-3 py-2">
-      <span className="bg-muted/70 text-foreground/70 inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full">
-        <Icon className="h-3.5 w-3.5" />
-      </span>
-      <span className="text-foreground/80 text-[12px] leading-snug">
-        {children}
-      </span>
-    </div>
   );
 }
