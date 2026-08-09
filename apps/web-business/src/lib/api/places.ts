@@ -111,6 +111,10 @@ type Place = {
   google_stars_overall: number | null;
   google_review_count: number | null;
   google_visitor_count: number | null;
+  /** Raw Google review rows (JSONB); Performance extracts display items. */
+  google_reviews?: unknown;
+  /** Raw Mesita visitor/review rows; Performance extracts display items. */
+  mesita_visitors?: unknown;
   mesita_stars_overall: number | null;
   mesita_stars_food: number | null;
   mesita_stars_service: number | null;
