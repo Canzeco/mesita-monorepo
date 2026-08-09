@@ -14,7 +14,18 @@
 // a non-eligible opt-in silently downgrades to not_required — same posture
 // the old staff create had, and the class never leaks in the response.
 //
-// Body:     { placeId: string, wantsStory?: boolean }
+// Pick-one (MESITA wizard, D6): `chosenReward` names the ONE action that
+// gates the QR — the chosen action opens at 'pending', the other stays
+// 'not_required', and clients render/gate only non-'not_required' tasks.
+// 'base' opens no task at all (QR scannable at the class base rate).
+// Legacy callers without `chosenReward` keep the old wantsStory behavior
+// byte-for-byte (review_status stays at its 'not_required' default).
+// Best-of billing is untouched: a guest who later completes a non-chosen
+// action anyway still gets it counted (resolveLiveTicketRate reads verified
+// statuses, not 'pending' markers).
+//
+// Body:     { placeId: string, wantsStory?: boolean,
+//             chosenReward?: "story" | "review" | "base" }
 // Response: { ok: true, ticket: {...}, checkUrl } | { ok, error, code? }
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
@@ -36,7 +47,10 @@ type Body = {
   placeId?: string;
   projectId?: string;
   wantsStory?: boolean;
+  chosenReward?: string;
 };
+
+const CHOSEN_REWARDS = new Set(["story", "review", "base"]);
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
@@ -55,7 +69,17 @@ Deno.serve(async (req) => {
 
   const placeId = readPlaceIdAlias(body);
   if (!placeId) return json({ ok: false, error: "placeId is required" }, 400);
-  const wantsStory = body.wantsStory === true;
+  const chosenRaw = body.chosenReward;
+  if (chosenRaw !== undefined && !CHOSEN_REWARDS.has(chosenRaw)) {
+    return json(
+      { ok: false, error: "chosenReward must be story, review, or base" },
+      400,
+    );
+  }
+  const chosen = chosenRaw as "story" | "review" | "base" | undefined;
+  // Legacy path (no chosenReward): wantsStory keeps its old meaning; the
+  // pick-one path maps story-choice onto the same eligibility check.
+  const wantsStory = chosen ? chosen === "story" : body.wantsStory === true;
 
   const admin = adminClient(envRes.env);
 
@@ -150,6 +174,22 @@ Deno.serve(async (req) => {
     }
   }
 
+  // Pick-one (D6): the chosen action opens 'pending'; the other stays
+  // 'not_required'. A story choice that failed eligibility above falls back
+  // to the review rung (same silent-downgrade posture) so the ticket is
+  // never gate-less by accident. Zero-strategy places offer no rungs — both
+  // stay 'not_required' and the QR is scannable at whatever the table gives.
+  let reviewStatus = "not_required";
+  if (
+    chosen === "review" ||
+    (chosen === "story" && storyStatus === "not_required")
+  ) {
+    const grid = await loadRewardsGrid(admin);
+    if (offersAction(placeStrategy(place), grid, "review")) {
+      reviewStatus = "pending";
+    }
+  }
+
   // Insert with a fresh 128-bit code; regenerate once on the astronomically
   // unlikely collision. The consumer×place race lands here too (23505 on the
   // partial index) and maps to the friendly 409 above.
@@ -165,6 +205,7 @@ Deno.serve(async (req) => {
         status: "open",
         kind: "coupon",
         story_status: storyStatus,
+        review_status: reviewStatus,
         check_code: newCheckCode(),
         ...snapshotRatesFromPlace(place as Record<string, unknown>),
       })

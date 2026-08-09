@@ -9,8 +9,6 @@ import {
 } from "react";
 import { useRouter } from "next/navigation";
 import {
-  Instagram,
-  Loader2,
   MapPin,
   QrCode,
   Sparkles,
@@ -18,10 +16,13 @@ import {
   TicketX,
 } from "lucide-react";
 
-import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
 import { PlacePickList } from "@/components/consumer/rewards/PlacePickList";
 import { SavingsReveal } from "@/components/consumer/rewards/SavingsReveal";
 import { TicketRow } from "@/components/consumer/rewards/TicketRow";
+import {
+  TicketWizard,
+  bornTicketPath,
+} from "@/components/consumer/rewards/TicketWizard";
 import { TicketCardSkeleton } from "./RewardsTabLoading";
 import { EFError } from "@/lib/api/_invoke";
 import {
@@ -32,19 +33,19 @@ import {
 } from "@/lib/api/tickets";
 import type { Place } from "@/lib/api/places";
 import { ticketPath } from "@/lib/consumer-route-contract";
-import { useConsumerClass } from "@/lib/class-context";
 import { useConsumerTickets } from "@/lib/hooks/useConsumerTickets";
+import { strategyForPlaceRow } from "@/lib/promo-rates";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { cn } from "@/lib/utils";
 
-// Rewards Wallet (MESITA-811 · 820 · 857) — the four steps → New / Pending /
-// History. The wallet is now purely the DOOR: tapping a partner in New
-// creates the ticket and navigates straight to THE ticket screen
-// (/rewards/ticket/[id]); Pending and History are compact rows into the same
-// screen. The venue pass modal and the in-list QR card died with MESITA-857 —
-// one object, one surface. Guests with Instagram connected get the one
-// create-time Story interstitial (MESITA-909; wantsStory can't be added
-// after create).
+// Rewards Wallet (MESITA-811 · 820 · 857) — New / Pending / History. The
+// wallet is the DOOR: tapping a partner in New opens the 2-step TicketWizard
+// (Pick reward → Do it, plan ticket-flow-20260809), which creates the ticket
+// and lands on THE ticket screen (/rewards/ticket/[id]?born=1). Pending and
+// History are compact rows into the same screen. The venue pass modal and
+// in-list QR cards died with MESITA-857 — one object, one surface. The old
+// wantsStory interstitial died with the wizard (D6: chosenReward subsumes
+// it). Zero-strategy partners skip the wizard (D9): create at "base", go.
 
 type Tab = "new" | "pending" | "history";
 
@@ -52,8 +53,6 @@ export function RewardsClient({ userId }: { userId: string }) {
   const supabase = useBrowserSupabase();
   const router = useRouter();
   const tickets = useConsumerTickets(userId);
-  const { handle: instagramHandle } = useConsumerClass();
-  const igConnected = Boolean(instagramHandle?.trim());
 
   // Default tab is DERIVED, not effect-set: Pending while a live ticket
   // exists, New otherwise. A manual tap pins the choice for the session.
@@ -65,11 +64,10 @@ export function RewardsClient({ userId }: { userId: string }) {
     [tickets.active],
   );
 
-  // ── Ticket creation: tap → create → navigate. ──
+  // ── Ticket creation: tap → wizard (or the D9 zero-strategy fast path). ──
   const [startingId, setStartingId] = useState<string | null>(null);
   const [startError, setStartError] = useState<string | null>(null);
-  const [storyPlace, setStoryPlace] = useState<Place | null>(null);
-  const [wantsStory, setWantsStory] = useState(false);
+  const [wizardPlace, setWizardPlace] = useState<Place | null>(null);
 
   const openTicket = useCallback(
     (id: string) => {
@@ -79,14 +77,17 @@ export function RewardsClient({ userId }: { userId: string }) {
     [router],
   );
 
-  const startTicket = useCallback(
-    async (place: Place, withStory: boolean) => {
+  // D9 fast path: zero/null-strategy partners have nothing to pick and
+  // nothing gates — create at "base" and land on THE TICKET directly.
+  const startBaseTicket = useCallback(
+    async (place: Place) => {
       setStartingId(place.id);
       setStartError(null);
       try {
-        const res = await apiCreateTicket(supabase, place.id, withStory);
+        const res = await apiCreateTicket(supabase, place.id, "base");
         void tickets.refresh();
-        openTicket(res.ticket.id);
+        setTabChoice("pending");
+        router.push(bornTicketPath(res.ticket.id), { scroll: false });
       } catch (err) {
         if (err instanceof EFError && err.code === "already_open") {
           // Another device/tab won the race — open the existing ticket. The
@@ -117,26 +118,24 @@ export function RewardsClient({ userId }: { userId: string }) {
         setStartingId(null);
       }
     },
-    [supabase, tickets, openTicket],
+    [supabase, tickets, router, openTicket],
   );
 
   const onPick = useCallback(
     (place: Place) => {
       const existing = tickets.active.find((t) => t.project_id === place.id);
       if (existing) {
+        // Live ticket → bypass the wizard, open THE TICKET (D5).
         openTicket(existing.id);
         return;
       }
-      if (igConnected) {
-        // Story Bonus (MESITA-909): any class with Instagram connected.
-        // The one create-time choice — can't be added later.
-        setWantsStory(false);
-        setStoryPlace(place);
+      if (strategyForPlaceRow(place) === "zero") {
+        void startBaseTicket(place);
         return;
       }
-      void startTicket(place, false);
+      setWizardPlace(place);
     },
-    [tickets.active, igConnected, openTicket, startTicket],
+    [tickets.active, openTicket, startBaseTicket],
   );
 
   // The paid beat (MESITA-808, 4A): a watched ticket flipping to revealed
@@ -282,70 +281,16 @@ export function RewardsClient({ userId }: { userId: string }) {
         </div>
       )}
 
-      {/* Story interstitial — the ONE create-time choice (wantsStory). */}
-      <LocalSheet
-        open={storyPlace !== null}
-        onClose={() => setStoryPlace(null)}
-        ariaLabel="Add the Story bonus?"
-      >
-        <div className="flex flex-col gap-4 px-5 pt-4 pb-8">
-          <div>
-            <h2 className="text-foreground text-lg leading-tight font-bold tracking-tight">
-              Add the Story bonus?
-            </h2>
-            <p className="text-muted-foreground mt-0.5 text-[12.5px]">
-              Available with your connected Instagram — decide before the
-              ticket opens.
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={() => setWantsStory((v) => !v)}
-            aria-pressed={wantsStory}
-            className={cn(
-              "flex items-start gap-3 rounded-2xl border px-3.5 py-3 text-left transition",
-              wantsStory
-                ? "border-secondary/40 bg-secondary/5"
-                : "border-border",
-            )}
-          >
-            <span className="bg-secondary/10 text-secondary grid size-8 shrink-0 place-items-center rounded-lg">
-              <Instagram className="size-4" />
-            </span>
-            <span className="min-w-0 flex-1">
-              <span className="text-foreground block text-[13px] font-semibold">
-                Post a tagged story at the table
-              </span>
-              <span className="text-muted-foreground block text-[12px] leading-snug">
-                A bigger reward than your class rate — verified before it pays.
-              </span>
-            </span>
-            <span
-              className={cn(
-                "mt-0.5 grid size-5 shrink-0 place-items-center rounded-full border text-[10px] font-bold",
-                wantsStory
-                  ? "border-secondary bg-secondary text-white"
-                  : "border-border text-transparent",
-              )}
-            >
-              ✓
-            </span>
-          </button>
-          <button
-            type="button"
-            disabled={startingId !== null}
-            onClick={() => {
-              const p = storyPlace;
-              setStoryPlace(null);
-              if (p) void startTicket(p, wantsStory);
-            }}
-            className="bg-pink-gradient shadow-glow flex items-center justify-center gap-2 rounded-xl px-4 py-3.5 text-sm font-semibold text-white transition active:scale-[0.99] disabled:opacity-50"
-          >
-            {startingId ? <Loader2 className="size-4 animate-spin" /> : null}
-            Open my ticket
-          </button>
-        </div>
-      </LocalSheet>
+      {/* The 2-step generation ceremony — Pick reward → Do it (D5–D11). */}
+      <TicketWizard
+        place={wizardPlace}
+        activeTickets={tickets.active}
+        onClose={() => setWizardPlace(null)}
+        onCreated={() => {
+          setTabChoice("pending");
+          void tickets.refresh();
+        }}
+      />
     </div>
   );
 }
@@ -354,9 +299,9 @@ export function RewardsClient({ userId }: { userId: string }) {
 // not fat 40px tiles. Number is a primary micro-caption above the label.
 const PITCH_STEPS = [
   { icon: MapPin, label: "Pick place" },
-  { icon: Star, label: "Post review" },
+  { icon: Sparkles, label: "Pick reward" },
+  { icon: Star, label: "Do it" },
   { icon: QrCode, label: "Show QR" },
-  { icon: Sparkles, label: "Pay less" },
 ] as const;
 
 function PitchSteps() {

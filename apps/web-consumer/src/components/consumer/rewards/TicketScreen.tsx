@@ -1,10 +1,13 @@
 "use client";
 
-// THE TICKET (MESITA-857 · MESITA-908 · MESITA-886) — one full-screen object
-// for the whole lifecycle. Locked block order:
-//   Place → Consumer → Reward → Tasks → QR (gated / scannable) → Results
-//   (closed only) → Report. Priced tasks unlock the QR (MESITA-886). Task
-//   sheets are LocalSheets on this route.
+// THE TICKET (MESITA-857 · 908 · 886 · plan ticket-flow-20260809) — one
+// full-screen object for the whole lifecycle, redesigned around the pass:
+//   Chrome row (back · place · status) → THE PASS (guest + rate lockup +
+//   QR/locked plate + stub) → chosen task row (pre-scan only) → Rate your
+//   visit (★, post-scan only, D12) → Results (closed only) → Report.
+// Pick-one (D6): exactly ONE action gates — the one whose status isn't
+// 'not_required'. Rejected proof drops the headline to the class base (D7).
+// Arriving with ?born=1 plays the one-time pass entrance, then strips it.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
@@ -51,14 +54,11 @@ import {
   type ConsumerTicketRow,
   type ReportReason,
 } from "@/lib/api/tickets";
-import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
+import { CONSUMER_ROUTES, ticketPath } from "@/lib/consumer-route-contract";
 import { useConsumerClass } from "@/lib/class-context";
-import {
-  classBadgeClass,
-  classProperLabel,
-} from "@/lib/consumer-data";
+import { classProperLabel } from "@/lib/consumer-data";
 import { strategyForPlaceRow } from "@/lib/promo-rates";
-import { peakRateForClass, rateForSegment } from "@/lib/reward-segments";
+import { baseRateForClass, rateForSegment } from "@/lib/reward-segments";
 import { useConsumerTickets } from "@/lib/hooks/useConsumerTickets";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { cn } from "@/lib/utils";
@@ -92,87 +92,6 @@ function taskStateFor(v: string | null | undefined): TaskState {
   if (v === "submitted") return "checking";
   if (v === "ai_rejected" || v === "staff_rejected") return "rejected";
   return "done";
-}
-
-function TaskRow({
-  icon,
-  title,
-  hint,
-  reward,
-  state,
-  onDo,
-}: {
-  icon: React.ReactNode;
-  title: string;
-  hint: string;
-  reward: string;
-  state: TaskState;
-  onDo?: () => void;
-}) {
-  const done = state === "done";
-  const actionable = (state === "todo" || state === "rejected") && onDo;
-  return (
-    <button
-      type="button"
-      disabled={!actionable}
-      onClick={onDo}
-      className={cn(
-        "flex min-h-11 w-full items-center gap-2.5 rounded-xl px-2.5 py-2 text-left transition",
-        done
-          ? "bg-emerald-500/8"
-          : state === "checking"
-            ? "bg-muted/50"
-            : "bg-muted/40 active:scale-[0.99]",
-      )}
-    >
-      <span
-        className={cn(
-          "grid size-5 shrink-0 place-items-center rounded-full border-2 transition",
-          done
-            ? "border-emerald-500 bg-emerald-500 text-white"
-            : state === "checking" || state === "busy"
-              ? "border-border text-muted-foreground"
-              : "border-border",
-        )}
-      >
-        {state === "busy" ? (
-          <Loader2 className="size-3 animate-spin" />
-        ) : done ? (
-          <Check className="size-3" strokeWidth={3} />
-        ) : state === "checking" ? (
-          <Loader2 className="size-2.5 animate-spin opacity-60" />
-        ) : null}
-      </span>
-      <span className="min-w-0 flex-1">
-        <span
-          className={cn(
-            "flex items-center gap-1.5 text-[12.5px] leading-tight font-bold",
-            done ? "text-emerald-800" : "text-foreground",
-          )}
-        >
-          {icon}
-          <span className="truncate">{title}</span>
-        </span>
-        <span className="text-muted-foreground mt-0.5 block truncate text-[10.5px]">
-          {state === "checking"
-            ? "Sent — being checked"
-            : state === "rejected"
-              ? "Not accepted — try again"
-              : done
-                ? "Done"
-                : hint}
-        </span>
-      </span>
-      <span
-        className={cn(
-          "font-display shrink-0 text-[14px] leading-none font-extrabold tabular-nums",
-          done ? "text-emerald-700" : "text-foreground/80",
-        )}
-      >
-        {reward}
-      </span>
-    </button>
-  );
 }
 
 type TaskSheet = "mesita" | "google" | "instagram" | "report" | null;
@@ -212,6 +131,21 @@ export function TicketScreen({
     }
     wasScannedRef.current = scanned;
   }, [scanned]);
+
+  // ?born=1 — the wizard handoff (D5): play the pass entrance once, then
+  // strip the flag so reloads and back-navigation stay calm.
+  const [born, setBorn] = useState(false);
+  useEffect(() => {
+    if (!window.location.search.includes("born=1")) return;
+    const raf = requestAnimationFrame(() => setBorn(true));
+    const t = window.setTimeout(() => {
+      router.replace(ticketPath(ticketId), { scroll: false });
+    }, 700);
+    return () => {
+      cancelAnimationFrame(raf);
+      window.clearTimeout(t);
+    };
+  }, [router, ticketId]);
 
   const [sheet, setSheet] = useState<TaskSheet>(null);
   const openSheet = useCallback((next: TaskSheet) => setSheet(next), []);
@@ -313,11 +247,9 @@ export function TicketScreen({
   if (tickets.status === "loading" && !ticket) {
     return (
       <Shell>
-        <div className="bg-muted h-14 animate-pulse rounded-[18px]" />
         <div className="bg-muted h-12 animate-pulse rounded-[18px]" />
-        <div className="bg-muted h-12 animate-pulse rounded-[18px]" />
-        <div className="bg-muted h-36 animate-pulse rounded-2xl" />
-        <div className="bg-muted h-52 animate-pulse rounded-[28px]" />
+        <div className="bg-muted h-72 animate-pulse rounded-[28px]" />
+        <div className="bg-muted h-12 animate-pulse rounded-2xl" />
       </Shell>
     );
   }
@@ -354,52 +286,79 @@ export function TicketScreen({
   const placeName = ticket.place?.name ?? "Partner place";
   const photo = ticket.place?.photos?.[0] ?? null;
   const category = ticket.place?.category ?? null;
-  const storyOnTicket =
-    ticket.story_status != null && ticket.story_status !== "not_required";
 
   const strategy = strategyForPlaceRow(ticket.place);
   const priced = strategy !== "zero";
-  const rate = (key: "story" | "review") =>
-    rateForSegment(key, classKey, strategy);
-  const pct = (v: number) => (priced && v > 0 ? `${v}%` : "—");
-  const ceiling = peakRateForClass(classKey, strategy);
-  const firstVisit = !billed && ticket.first_scanned_at == null;
-  const firstVisitHint = firstVisit
-    ? "Unlocks your Welcome Bonus — the biggest one"
-    : "At the table, once per place";
+  const base = baseRateForClass(classKey, strategy);
 
-  // QR only when scannable (MESITA-908).
+  // Pick-one (D6): the ONE gating action is the one that isn't
+  // 'not_required'. Story wins the tie for legacy wantsStory tickets;
+  // "base" tickets (and legacy no-story tickets) have none.
+  const storyOnTicket =
+    ticket.story_status != null && ticket.story_status !== "not_required";
+  const reviewOnTicket =
+    ticket.review_status != null && ticket.review_status !== "not_required";
+  const chosenTask: "story" | "review" | null = storyOnTicket
+    ? "story"
+    : reviewOnTicket
+      ? "review"
+      : null;
+  const chosenStatus =
+    chosenTask === "story" ? ticket.story_status : ticket.review_status;
+  const chosenState = taskStateFor(chosenStatus);
+  const chosenRate =
+    chosenTask && priced ? rateForSegment(chosenTask, classKey, strategy) : 0;
+
+  // The headline number + its honesty clause. Billed truth wins; a rejected
+  // proof falls back to the class base (D7); everything else quotes the
+  // chosen action, conditionally until done.
+  const headlinePercent = billed
+    ? (ticket.discount_percent ?? 0)
+    : chosenTask && chosenState !== "rejected"
+      ? chosenRate
+      : base;
+  const actionNoun = chosenTask === "story" ? "story" : "review";
+  const headlineSuffix = billed
+    ? "applied at the table"
+    : !priced
+      ? ""
+      : chosenTask === null
+        ? `your ${classProperLabel(classKey)} base — no task needed`
+        : chosenState === "done"
+          ? `with your ${actionNoun} ✓`
+          : chosenState === "rejected"
+            ? `${actionNoun} not accepted — your base holds`
+            : `unlocks with your ${actionNoun}`;
+
+  // QR gate (MESITA-886, recomputed for pick-one): only the chosen action
+  // gates, only while open and unscanned, only on priced venues.
   const scannable =
     live &&
     Boolean(ticket.check_code) &&
     (ticket.status === "open" || ticket.status === "awaiting_payment_confirm");
-
-  // ── The QR gate (MESITA-886) ────────────────────────────────────────
-  // Priced tasks unlock the pass: Story (when on the ticket) + Google
-  // review. Mesita ★ never gates. Strategy "zero" places don't gate.
-  // Once scanned, the gate is moot — never re-lock mid-visit.
-  const gateStates: TaskState[] = [];
-  if (storyOnTicket) gateStates.push(taskStateFor(ticket.story_status));
-  gateStates.push(taskStateFor(ticket.review_status));
-  const gateTotal = priced ? gateStates.length : 0;
-  const gateDone = gateStates.filter((s) => s === "done").length;
   const qrLocked =
     ticket.status === "open" &&
     !scanned &&
-    gateTotal > 0 &&
-    gateDone < gateTotal;
-  const gateLeft = gateTotal - gateDone;
+    priced &&
+    chosenTask !== null &&
+    chosenState !== "done";
   const showPassCard = live && (qrLocked || scannable);
+  const showTaskRow = live && chosenTask !== null && chosenState !== "done";
+  // ★ never gates, never pays — it belongs to the visit, not the unlock
+  // (D12): post-scan and completed visits only.
+  const showMesitaStar = !cancelled && (scanned || saved);
 
   const showIgHandle =
     (classKey === "influencer" || storyOnTicket) && Boolean(igHandle);
-
   const mapsUrl = googleMapsSearchUrl(placeName, ticket.place?.address);
+  const stubCode = ticket.check_code
+    ? `#${ticket.check_code.slice(0, 4).toUpperCase()}`
+    : "";
 
   return (
     <Shell>
-      {/* 1 · Place Info */}
-      <section className="border-border bg-card flex shrink-0 items-center gap-2.5 rounded-[18px] border py-2 pr-3 pl-2">
+      {/* 1 · Chrome row — place identity as chrome, not a card stack. */}
+      <div className="flex shrink-0 items-center gap-2.5 px-0.5 py-1">
         <button
           type="button"
           onClick={() =>
@@ -410,7 +369,7 @@ export function TicketScreen({
         >
           <ArrowLeft className="size-3.5" />
         </button>
-        <div className="relative size-10 shrink-0 overflow-hidden rounded-xl">
+        <div className="relative size-9 shrink-0 overflow-hidden rounded-xl">
           {photo ? (
             <Image src={photo} alt="" fill className="object-cover" />
           ) : (
@@ -424,7 +383,7 @@ export function TicketScreen({
             {placeName}
           </p>
           {category ? (
-            <p className="text-muted-foreground mt-0.5 truncate text-[10.5px] capitalize">
+            <p className="text-muted-foreground truncate text-[10.5px] capitalize">
               {category.replaceAll("_", " ")}
             </p>
           ) : null}
@@ -441,182 +400,68 @@ export function TicketScreen({
         >
           {saved ? "Completed" : cancelled ? "Cancelled" : "Live"}
         </span>
-      </section>
+      </div>
 
-      {/* 2 · Consumer Info — class label only, no ladder % (MESITA-908). */}
-      <section className="border-border bg-card flex shrink-0 items-center gap-2.5 rounded-[18px] border px-3 py-2">
-        <div className="size-9 shrink-0 overflow-hidden rounded-full">
-          {avatarUrl ? (
-            <Image
-              src={avatarUrl}
-              alt=""
-              width={36}
-              height={36}
-              className="size-9 object-cover"
-            />
-          ) : (
-            <DefaultAvatar className="size-9" />
-          )}
-        </div>
-        <div className="min-w-0 flex-1">
-          <p className="text-foreground truncate text-[13px] leading-tight font-bold">
-            {guestName ?? "Mesita guest"}
-          </p>
-          {showIgHandle ? (
-            <p className="text-muted-foreground mt-0.5 truncate text-[10.5px]">
-              @{igHandle!.replace(/^@/, "")}
-            </p>
-          ) : null}
-        </div>
-        <span
-          className={cn(
-            "shrink-0 rounded-full px-2 py-0.5 text-[9px] font-extrabold tracking-widest uppercase",
-            classBadgeClass(classKey),
-          )}
-        >
-          {classProperLabel(classKey)}
-        </span>
-      </section>
-
-      {/* 3 · Reward Info — promise while open; utility when custom/zero. */}
-      <section className="border-border bg-card shrink-0 rounded-[18px] border px-3 py-2">
-        {cancelled ? (
-          <p className="text-muted-foreground text-[12px] leading-snug">
-            No reward on this visit — the ticket was cancelled.
-          </p>
-        ) : live && billed ? (
-          <p className="text-[12px] leading-snug">
-            <span className="text-foreground font-bold">
-              {ticket.discount_percent ?? 0}% off applied
-            </span>
-            <span className="text-muted-foreground">
-              {" "}
-              — amount to pay shows under the QR.
-            </span>
-          </p>
-        ) : closed ? (
-          <p className="text-muted-foreground text-[12px] leading-snug">
-            Visit closed — applied rate lives in Results below.
-          </p>
-        ) : priced && ceiling > 0 ? (
-          <p className="text-[12px] leading-snug">
-            <span className="text-foreground font-bold">
-              Up to {ceiling}% — Discount for You.
-            </span>{" "}
-            <span className="text-muted-foreground/80">
-              You always keep your single best reward — never added together.
-            </span>
-          </p>
-        ) : (
-          <p className="text-muted-foreground text-[12px] leading-snug">
-            Your discount is set by the place and applied at the table.
-          </p>
-        )}
-      </section>
-
-      {/* 4 · Tasks Todo */}
-      {!cancelled ? (
-        <section className="border-border bg-card shrink-0 overflow-hidden rounded-2xl border">
-          <div className="flex items-baseline justify-between gap-2 px-3 pt-2.5 pb-1">
-            <h2 className="text-foreground text-[12.5px] font-bold tracking-tight">
-              Your tasks
-            </h2>
-            <span
-              className={cn(
-                "text-[10px]",
-                qrLocked ? "text-primary font-bold" : "text-muted-foreground",
-              )}
-            >
-              {qrLocked
-                ? `${gateDone}/${gateTotal} — they unlock your QR`
-                : priced
-                  ? "Optional — each one pays"
-                  : "Optional"}
-            </span>
-          </div>
-          <div className="flex flex-col gap-0.5 px-2 pb-2">
-            {storyOnTicket ? (
-              <TaskRow
-                icon={<Instagram className="size-3.5 shrink-0" />}
-                title="Post an Instagram story"
-                hint="Tag the place — then confirm here"
-                reward={pct(rate("story"))}
-                state={taskStateFor(ticket.story_status)}
-                onDo={
-                  live
-                    ? () => {
-                        const st = taskStateFor(ticket.story_status);
-                        if (st === "todo" || st === "rejected")
-                          openSheet("instagram");
-                      }
-                    : undefined
-                }
-              />
-            ) : null}
-            <TaskRow
-              icon={<Star className="size-3.5 shrink-0" />}
-              title="Leave a Google review"
-              hint={firstVisitHint}
-              reward={pct(rate("review"))}
-              state={taskStateFor(ticket.review_status)}
-              onDo={
-                live
-                  ? () => {
-                      const st = taskStateFor(ticket.review_status);
-                      if (st === "todo" || st === "rejected")
-                        openSheet("google");
-                    }
-                  : undefined
-              }
-            />
-            <TaskRow
-              icon={<UtensilsCrossed className="size-3.5 shrink-0" />}
-              title="Rate it on Mesita"
-              hint="Food · service · ambiance — feeds its rating"
-              reward="★"
-              state={reviewDone ? "done" : "todo"}
-              onDo={
-                reviewDone
-                  ? undefined
-                  : () => {
-                      setReviewError(null);
-                      openSheet("mesita");
-                    }
-              }
-            />
-          </div>
-          {actionError ? (
-            <p className="bg-destructive/10 text-destructive mx-3 mb-2.5 rounded-lg px-3 py-2 text-[12px]">
-              {actionError}
-            </p>
-          ) : null}
-        </section>
-      ) : null}
-
-      {/* 5 · Pass / QR — gated until priced tasks done (MESITA-886). */}
+      {/* 2 · THE PASS — the hero. Guest identity + rate lockup + QR. */}
       {showPassCard ? (
         <section
           className={cn(
-            "shrink-0 overflow-hidden rounded-[24px] px-4 pt-3 pb-3.5 text-white shadow-[0_16px_36px_-20px_rgba(255,77,109,0.55)]",
+            "shrink-0 overflow-hidden rounded-[24px] px-4 pt-3.5 pb-3.5 text-white shadow-[0_16px_36px_-20px_rgba(255,77,109,0.55)]",
             passGradient(classKey),
             pulse && "animate-verified-pulse",
+            born && "animate-pass-born",
           )}
         >
           <div className="flex items-center justify-between gap-3">
-            <p className="text-[9px] font-bold tracking-[0.14em] text-white/80 uppercase">
-              Show to waiter
-            </p>
-            {qrLocked ? (
-              <span className="flex items-center gap-1 rounded-full bg-white/22 px-2 py-0.5 text-[9px] font-extrabold tracking-widest uppercase">
-                <Lock className="size-2.5" />
-                Locked
+            <span className="flex min-w-0 items-center gap-2">
+              <span className="size-6 shrink-0 overflow-hidden rounded-full ring-1 ring-white/40">
+                {avatarUrl ? (
+                  <Image
+                    src={avatarUrl}
+                    alt=""
+                    width={24}
+                    height={24}
+                    className="size-6 object-cover"
+                  />
+                ) : (
+                  <DefaultAvatar className="size-6" />
+                )}
               </span>
+              <span className="min-w-0">
+                <span className="block truncate text-[11.5px] leading-tight font-bold">
+                  {guestName ?? "Mesita guest"}
+                </span>
+                {showIgHandle ? (
+                  <span className="block truncate text-[9px] leading-tight text-white/80">
+                    @{igHandle!.replace(/^@/, "")}
+                  </span>
+                ) : null}
+              </span>
+            </span>
+            <span className="shrink-0 rounded-full bg-white/22 px-2 py-0.5 text-[9px] font-extrabold tracking-widest uppercase">
+              {classProperLabel(classKey)}
+            </span>
+          </div>
+
+          <div aria-live="polite" className="mt-2 text-center">
+            {priced && headlinePercent > 0 ? (
+              <>
+                <p className="font-display text-[clamp(30px,9vw,38px)] leading-none font-extrabold tracking-tight">
+                  {headlinePercent}% off
+                </p>
+                {headlineSuffix ? (
+                  <p className="mt-1 text-[11px] leading-snug font-semibold text-white/90">
+                    {headlineSuffix}
+                  </p>
+                ) : null}
+              </>
             ) : (
-              <span className="rounded-full bg-white/22 px-2 py-0.5 text-[9px] font-extrabold tracking-widest uppercase">
-                QR
-              </span>
+              <p className="mx-auto max-w-[30ch] text-[12px] leading-snug font-semibold text-white/90">
+                Your discount is set by the place and applied at the table.
+              </p>
             )}
           </div>
+
           {qrLocked ? (
             <>
               {/* Locked plate — same footprint as the QR so unlock is a swap. */}
@@ -627,8 +472,7 @@ export function TicketScreen({
                 aria-live="polite"
                 className="mx-auto mt-2 max-w-[34ch] text-center text-[11px] leading-snug text-white/90"
               >
-                Finish your {gateLeft === 1 ? "task" : "tasks"} above to unlock
-                your QR — {gateLeft} to go.
+                Do your {actionNoun} below to unlock your QR.
               </p>
             </>
           ) : (
@@ -681,10 +525,122 @@ export function TicketScreen({
               ) : null}
             </>
           )}
+
+          {/* Stub row — perforation + the small print. */}
+          <div className="mt-3 border-t-2 border-dashed border-white/35 pt-2">
+            <div className="flex items-center justify-between gap-3 text-[9.5px] font-semibold text-white/90">
+              <span>Ticket {stubCode}</span>
+              <span>
+                {chosenTask
+                  ? chosenState === "done"
+                    ? `${actionNoun === "story" ? "Story" : "Review"} ✓`
+                    : chosenState === "rejected"
+                      ? `${actionNoun === "story" ? "Story" : "Review"} not accepted`
+                      : `${actionNoun === "story" ? "Story" : "Review"} pending`
+                  : "No task — base rate"}
+              </span>
+            </div>
+          </div>
         </section>
       ) : null}
 
-      {/* 6 · Results — closed only */}
+      {/* 3 · The chosen task — exactly one, pre-scan, never ★ (D12). */}
+      {showTaskRow ? (
+        <section className="border-border bg-card shrink-0 overflow-hidden rounded-2xl border px-2.5 py-2">
+          <button
+            type="button"
+            onClick={() =>
+              openSheet(chosenTask === "story" ? "instagram" : "google")
+            }
+            className="bg-muted/40 flex min-h-11 w-full items-center gap-2.5 rounded-xl px-2.5 py-2 text-left transition active:scale-[0.99]"
+          >
+            <span
+              className={cn(
+                "grid size-8 shrink-0 place-items-center rounded-lg",
+                chosenState === "rejected"
+                  ? "bg-destructive/10 text-destructive"
+                  : "bg-secondary/10 text-secondary",
+              )}
+            >
+              {chosenTask === "story" ? (
+                <Instagram className="size-4" />
+              ) : (
+                <Star className="size-4" />
+              )}
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="text-foreground block text-[13px] leading-tight font-bold">
+                {chosenTask === "story"
+                  ? "Post your tagged story"
+                  : "Leave your Google review"}
+              </span>
+              <span className="text-muted-foreground mt-0.5 block text-[11px] leading-snug">
+                {chosenState === "rejected"
+                  ? `Not accepted — you still keep your ${base}% base. Try again?`
+                  : chosenState === "checking"
+                    ? "Sent — being checked"
+                    : "Order first — do this while your food comes."}
+              </span>
+            </span>
+            <span className="font-display text-foreground/80 shrink-0 text-[15px] leading-none font-extrabold tabular-nums">
+              {priced && chosenRate > 0 ? `${chosenRate}%` : ""}
+            </span>
+          </button>
+        </section>
+      ) : null}
+
+      {/* 4 · Rate your visit (★) — post-scan / completed only (D12). */}
+      {showMesitaStar ? (
+        <section className="border-border bg-card shrink-0 overflow-hidden rounded-2xl border px-2.5 py-2">
+          <button
+            type="button"
+            disabled={reviewDone}
+            onClick={() => {
+              setReviewError(null);
+              openSheet("mesita");
+            }}
+            className={cn(
+              "flex min-h-11 w-full items-center gap-2.5 rounded-xl px-2.5 py-2 text-left transition",
+              reviewDone ? "bg-emerald-500/8" : "bg-muted/40 active:scale-[0.99]",
+            )}
+          >
+            <span
+              className={cn(
+                "grid size-8 shrink-0 place-items-center rounded-lg",
+                reviewDone
+                  ? "bg-emerald-500/15 text-emerald-700"
+                  : "bg-secondary/10 text-secondary",
+              )}
+            >
+              {reviewDone ? (
+                <Check className="size-4" strokeWidth={3} />
+              ) : (
+                <UtensilsCrossed className="size-4" />
+              )}
+            </span>
+            <span className="min-w-0 flex-1">
+              <span
+                className={cn(
+                  "block text-[13px] leading-tight font-bold",
+                  reviewDone ? "text-emerald-800" : "text-foreground",
+                )}
+              >
+                {reviewDone ? "Thanks — visit rated" : "Rate your visit"}
+              </span>
+              <span className="text-muted-foreground mt-0.5 block text-[11px] leading-snug">
+                {reviewDone
+                  ? "It feeds this place's Mesita rating."
+                  : "Food · service · ambiance — feeds its rating"}
+              </span>
+            </span>
+            {!reviewDone ? (
+              <Star className="text-foreground/60 size-4 shrink-0" />
+            ) : null}
+          </button>
+        </section>
+      ) : null}
+
+      {/* 5 · Results — closed only */}
       {closed ? (
         <section
           className={cn(
@@ -744,6 +700,11 @@ export function TicketScreen({
                         )}
                       </button>
                     </div>
+                    {actionError ? (
+                      <p className="mt-1.5 text-[10px] font-semibold text-white/90">
+                        {actionError}
+                      </p>
+                    ) : null}
                   </div>
                 ) : null}
               </>
@@ -759,7 +720,7 @@ export function TicketScreen({
         </section>
       ) : null}
 
-      {/* 7 · Report (+ cancel housekeeping) */}
+      {/* 6 · Report (+ cancel housekeeping) */}
       <div className="flex shrink-0 flex-col items-center gap-1 pt-0.5">
         {ticket.status === "open" ? (
           <button

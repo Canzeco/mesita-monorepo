@@ -80,15 +80,20 @@ export type CreatedTicket = {
   place_slug: string | null;
 };
 
+// Pick-one (D6): the ONE action that gates the QR. The EF opens the chosen
+// action at 'pending', leaves the other 'not_required', and 'base' opens no
+// task at all. wantsStory is derived server-side from the choice.
+export type ChosenReward = "story" | "review" | "base";
+
 export async function apiCreateTicket(
   client: SupabaseClient,
   placeId: string,
-  wantsStory: boolean,
+  chosenReward: ChosenReward,
 ): Promise<{ ticket: CreatedTicket; checkUrl: string }> {
   return await invokeEF<{ ticket: CreatedTicket; checkUrl: string }>(
     client,
     "consumer-web-create-ticket",
-    { placeId, wantsStory },
+    { placeId, chosenReward },
   );
 }
 
