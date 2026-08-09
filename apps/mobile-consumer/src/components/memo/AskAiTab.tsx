@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { AskAiPanel } from '@/components/memo/AskAiPanel';
 import type { AddState } from '@/components/memo/types';
-import { apiAskMemo, type MemoTurn } from '@/lib/api/memo';
+import { apiAskMemo, apiMemoGreeting, type MemoTurn } from '@/lib/api/memo';
 import { apiCreateProject, type PlacePrediction } from '@/lib/api/place-search';
 import {
   apiFetchPublicPlaces,
@@ -59,6 +59,8 @@ export function AskAiTab() {
     [coords],
   );
 
+  const loadGreeting = useCallback(() => apiMemoGreeting(supabase), []);
+
   const resolvePlace = useCallback(
     (prediction: PlacePrediction) => matchPredictionToPlace(prediction, places),
     [places],
@@ -111,6 +113,7 @@ export function AskAiTab() {
   return (
     <AskAiPanel
       ask={askMemo}
+      loadGreeting={loadGreeting}
       addStates={addStates}
       resolvePlace={resolvePlace}
       onInfo={handleInfo}

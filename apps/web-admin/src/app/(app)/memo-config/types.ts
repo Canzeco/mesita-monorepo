@@ -23,9 +23,9 @@ export type MemoConfig = {
 
 /** Pre-load / failed-load placeholder — never Save this over a failed GET (MESITA-737). */
 export const DEFAULT_MEMO_CONFIG: MemoConfig = {
-  // Staged only — consumers hardcode the Ask AI opener in ask-ai-thread.ts
-  // (web + mobile). Keep this aligned with that constant for operator honesty;
-  // changing it here does not change what users see until consumers are wired.
+  // Live via get-memo-config → ask-memo bootstrap / turn metadata. Keep aligned
+  // with the web/mobile client FALLBACK_GREETING (Product Rules §E) for the
+  // rare path where the server greeting is missing.
   greeting:
     "Hola, soy Don Memo, la IA de Mesita. Dime qué se te antoja — prueba “rooftop date tonight” o “tacos al pastor”.",
   instructions:
