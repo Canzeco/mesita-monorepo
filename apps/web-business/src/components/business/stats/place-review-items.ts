@@ -9,11 +9,10 @@ type ReviewItem = {
 };
 
 export function extractRelevantReviews(place: MyPlace): ReviewItem[] {
-  const raw = place as unknown as Record<string, unknown>;
   const out: ReviewItem[] = [];
 
-  const mesita = toReviewItems(raw["mesita_visitors"], "Mesita");
-  const google = toReviewItems(raw["google_reviews"], "Google");
+  const mesita = toReviewItems(place.mesita_visitors, "Mesita");
+  const google = toReviewItems(place.google_reviews, "Google");
   const max = Math.max(mesita.length, google.length);
   for (let i = 0; i < max; i += 1) {
     if (mesita[i]) out.push(mesita[i]);
