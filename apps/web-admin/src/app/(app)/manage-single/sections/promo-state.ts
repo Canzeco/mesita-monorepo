@@ -10,7 +10,7 @@ import type { StrategyId } from "@/lib/business/strategies";
 // Structural snapshot of the AdminPlace fields this module reads. Fields stay
 // `unknown` because place rows arrive loosely typed from the EF; every reader
 // coerces exactly like the component used to.
-export type MembershipSnapshot = {
+type MembershipSnapshot = {
   plan?: unknown;
   membership_forfeited_at?: unknown;
   promo_paused_until?: unknown;
@@ -66,7 +66,7 @@ export function membershipPillState(
   return "pending";
 }
 
-export type MembershipStatusNote = {
+type MembershipStatusNote = {
   label: string;
   tone: "live" | "warn" | "blocked";
 };
@@ -118,7 +118,7 @@ export function describeMembershipStatus(
 
 export type LifecycleStepState = "done" | "current" | "upcoming" | "blocked";
 
-export type LifecycleView =
+type LifecycleView =
   // Live on a paid strategy: the teaching job is over — collapse to one line.
   | { kind: "strip"; tone: "live" | "warn"; strikes: number }
   | {
@@ -178,7 +178,7 @@ export function lifecycleView(
   return { kind: "rail", join: "done", strategy: "done", honor: "current" };
 }
 
-export type CardCta =
+type CardCta =
   "current" | "join" | "reinstate" | "switch" | "switch_zero";
 
 export type CardState = { selected: boolean; cta: CardCta };

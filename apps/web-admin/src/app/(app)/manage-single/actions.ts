@@ -13,7 +13,7 @@ import type { PlanKey } from "@/lib/business/plans";
 // rejects it — it's the paid door's field, so admin gets its own).
 // ════════════════════════════════════════════════════════════════════════
 
-export type Result<T> = { ok: true; data: T } | { ok: false; error: string };
+type Result<T> = { ok: true; data: T } | { ok: false; error: string };
 
 // ── Place search + load ──────────────────────────────────────────────────
 
@@ -270,7 +270,7 @@ export type PlaceStats = {
   closeRate: number | null;
 };
 
-export type PlaceReservation = {
+type PlaceReservation = {
   id: string;
   reservedAt: string | null;
   partySize: number | null;
@@ -504,7 +504,7 @@ export async function listTeam(projectId: string): Promise<Result<TeamSnapshot>>
 }
 
 /** Immutable email of who completed ownership verification (not team owners). */
-export type PlaceVerificationGlance = {
+type PlaceVerificationGlance = {
   verifiedByEmail: string | null;
   decidedAt: string | null;
   method: string | null;
