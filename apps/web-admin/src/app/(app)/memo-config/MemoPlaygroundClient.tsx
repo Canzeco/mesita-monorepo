@@ -44,7 +44,8 @@ const EXAMPLES = [
   "¿a dónde llevo a unos amigos de fuera por mezcal?",
 ];
 
-const DEFAULT_GREETING = "¡Hola! Soy Memo 👋 ¿Qué se te antoja hoy?";
+const DEFAULT_GREETING =
+  "Hola, soy Don Memo, la IA de Mesita. Dime qué se te antoja — prueba “rooftop date tonight” o “tacos al pastor”.";
 
 // Mirrors admin-web-ask-memo's own minimum (see actions.ts) so the button
 // disables in step with what the server would actually reject.
