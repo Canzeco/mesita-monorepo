@@ -6,7 +6,6 @@ import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { cn, errMsg } from "@/lib/utils";
 import { PlaceBox } from "../PlaceBox";
 import { PlaceKvField } from "../PlaceKvField";
-import { PlaceModule } from "../PlaceModule";
 import {
   ALLOWED_IMAGE_ACCEPT,
   MAX_PHOTOS,
@@ -259,40 +258,24 @@ export function PlaceMediaModule({
   projectId,
   placeName,
   onError,
-  hideHeader = false,
 }: {
   photos: string[];
   onChange: (photos: string[]) => void;
   projectId: string;
   placeName: string;
   onError: (msg: string | null) => void;
-  hideHeader?: boolean;
 }) {
-  if (hideHeader) {
-    return (
-      <PlaceBox>
-        <PlaceKvField label="Photos">
-          <MediaSection
-            photos={photos}
-            onChange={onChange}
-            projectId={projectId}
-            placeName={placeName}
-            onError={onError}
-          />
-        </PlaceKvField>
-      </PlaceBox>
-    );
-  }
-
   return (
-    <PlaceModule id="media" hideHeader={hideHeader}>
-      <MediaSection
-        photos={photos}
-        onChange={onChange}
-        projectId={projectId}
-        placeName={placeName}
-        onError={onError}
-      />
-    </PlaceModule>
+    <PlaceBox>
+      <PlaceKvField label="Photos">
+        <MediaSection
+          photos={photos}
+          onChange={onChange}
+          projectId={projectId}
+          placeName={placeName}
+          onError={onError}
+        />
+      </PlaceKvField>
+    </PlaceBox>
   );
 }

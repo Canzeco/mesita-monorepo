@@ -274,7 +274,6 @@ export function EditPlaceForm({
         {tab === "media" ? (
           <div className="flex flex-col gap-4">
             <PlaceMediaModule
-              hideHeader
               photos={v.photos}
               onChange={(photos) => set("photos", photos)}
               projectId={place.id}
