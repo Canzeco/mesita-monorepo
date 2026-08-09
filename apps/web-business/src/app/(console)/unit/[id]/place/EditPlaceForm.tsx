@@ -292,11 +292,11 @@ export function EditPlaceForm({
         ) : null}
 
         {tab === "channels" ? (
-          <PlaceChannelsModule form={v} set={set} hideHeader />
+          <PlaceChannelsModule form={v} set={set} />
         ) : null}
 
         {tab === "reviews" ? (
-          <PlaceReviewsModule place={place} hideHeader />
+          <PlaceReviewsModule place={place} />
         ) : null}
       </div>
 
