@@ -16,6 +16,7 @@ import {
   resolveTicketRate,
 } from "./rewards-config.ts";
 import { ratesForBilling } from "./ticket-rate-snapshot.ts";
+import { resolveBillCapPesos } from "./discount-cap.ts";
 import { placeInstagramHandleForPayload } from "./ticket-bill-payload.ts";
 
 type RepriceTicketRow = {
@@ -54,7 +55,7 @@ export async function resolveLiveTicketRate(
       admin
         .from("projects_view")
         .select(
-          "id, welcome_free_rate, welcome_premium_rate, free_rate, premium_rate",
+          "id, welcome_free_rate, welcome_premium_rate, free_rate, premium_rate, monthly_promo_cap",
         )
         .eq("id", ticket.project_id)
         .maybeSingle(),
@@ -103,7 +104,14 @@ export async function resolveLiveTicketRate(
       mesitaReviewed,
     },
   );
-  return { ok: true, ratePercent, capPesos: grid.cap };
+  return {
+    ok: true,
+    ratePercent,
+    capPesos: resolveBillCapPesos(
+      placeRes.data as Record<string, unknown>,
+      grid.cap,
+    ),
+  };
 }
 
 // Recompute the ticket's discount after an action verification. No-ops when

@@ -1,6 +1,6 @@
 // Rewards Config catalog — the v8 NORMALIZED rule list (MESITA-873).
 //
-// One rule per (strategy × class × action) — 3 × 4 × 5 = 60 rows, listed
+// One rule per (strategy × class × action) — 2 × 4 × 5 = 40 rows, listed
 // Strategy → Class → Action → Discount, exactly the table Pato wrote out.
 // "standing" is the None column: v7 stored the standing discount and the
 // action rates in two different shapes for the same fact, and collapsing
@@ -20,7 +20,7 @@
 // the fold in _shared/rewards-config.ts gridFromRuleRows — keep them in
 // lock-step (MESITA-805 pins this with tests on the EF side).
 
-export type StrategyKey = "conservative" | "aggressive" | "dominant";
+export type StrategyKey = "conservative" | "aggressive";
 export type ClassKey = "standard" | "premium" | "influencer" | "aura";
 export type ActionKey =
   | "standing"
@@ -45,7 +45,6 @@ export type RewardsConfig = {
 export const STRATEGY_KEYS: readonly StrategyKey[] = [
   "conservative",
   "aggressive",
-  "dominant",
 ];
 // Worst → best, and the order rows render in. Influencer sits BELOW Premium
 // (v9, MESITA-877): they used to tie, which left the ladder ambiguous.
@@ -67,7 +66,7 @@ export const ACTION_KEYS: readonly ActionKey[] = [
 ];
 
 export const RULE_COUNT =
-  STRATEGY_KEYS.length * CLASS_KEYS.length * ACTION_KEYS.length; // 60
+  STRATEGY_KEYS.length * CLASS_KEYS.length * ACTION_KEYS.length; // 40
 
 export const STRATEGY_META: Record<
   StrategyKey,
@@ -82,11 +81,6 @@ export const STRATEGY_META: Record<
     name: "Aggressive",
     emoji: "⚡",
     blurb: "Bold headlines to pull a crowd.",
-  },
-  dominant: {
-    name: "Dominant",
-    emoji: "👑",
-    blurb: "Raises the floor — a strong deal for every guest.",
   },
 };
 
@@ -160,7 +154,7 @@ export const ALLOWED_RATES: readonly number[] = [
 // The universal cap is CATEGORICAL: four round options. A free number field
 // allowed both a meaningless cap (MX$37) and MX$0 — which silently meant NO
 // ceiling, the opposite of the promise this knob makes.
-export const ALLOWED_CAPS: readonly number[] = [100, 200, 500, 1000];
+export const ALLOWED_CAPS: readonly number[] = [200, 500, 1000];
 const CAP_DEFAULT = 500;
 
 // ── The defaults (v9, Pato 2026-08-04 — MESITA-877) ─────────────────────
@@ -179,7 +173,7 @@ const CAP_DEFAULT = 500;
 //               < Story (social reach)
 //               < Google & Welcome (acquisition + permanent public proof)
 //   class     Standard < Influencer < Premium < Aura
-//   strategy  Zero < Conservative < Aggressive < Dominant
+//   strategy  Conservative < Aggressive (Zero has no rules)
 //
 // The two groupings Pato wrote as ties are made STRICT by one step each —
 // Mesita = Base + 5, Welcome = Google + 5. Under best-of a tie is a DEAD
@@ -206,7 +200,6 @@ const CLASS_STEP: Record<ClassKey, number> = {
 const STRATEGY_STEP: Record<StrategyKey, number> = {
   conservative: 0,
   aggressive: 10,
-  dominant: 20,
 };
 
 function defaultRateFor(
@@ -293,7 +286,7 @@ const isAction = (v: unknown): v is ActionKey =>
 
 /**
  * Coerce whatever the EF returned into a COMPLETE, renderable rule set —
- * always all 60, in canonical order. A partially-seeded table, an unknown
+ * always all 40, in canonical order. A partially-seeded table, an unknown
  * key, or a stale shape all resolve to launch defaults for the gap rather
  * than rendering a hole. Mirrors normalizeRewards in the update EF.
  */

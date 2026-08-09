@@ -2,13 +2,13 @@
 //
 // Naming: caller-verb-words. Caller = admin, verb = update, words = rewards-config.
 //
-// Writes the v8 NORMALIZED reward rules (MESITA-873): 60 rows, one per
+// Writes the v8 NORMALIZED reward rules (MESITA-873): 40 rows, one per
 // (strategy × class × action), upserted in ONE call, plus the universal cap
 // on the app_settings singleton (one platform constant, not a rule).
 //
 // A WHOLE-TABLE write: the payout table is one coherent thing, so the caller
 // always sends every rule and normalizeRewards always returns the complete
-// 60 — a partial body can never leave the table half-written. Every cell is
+// 40 — a partial body can never leave the table half-written. Every cell is
 // snapped to the 5% grid (5–70%, MESITA-866/872) and the cap onto its
 // categorical ladder, so a malformed price can never land.
 //

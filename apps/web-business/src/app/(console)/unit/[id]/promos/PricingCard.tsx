@@ -1,6 +1,10 @@
 import Image from "next/image";
 import { Check, Loader2 } from "lucide-react";
-import { UNIVERSAL_CAP_MXN, type Strategy } from "@/lib/business/strategies";
+import {
+  DEFAULT_DISCOUNT_CAP_MXN,
+  DISCOUNT_CAPS_MXN,
+  type Strategy,
+} from "@/lib/business/strategies";
 import { cn, formatMoney } from "@/lib/utils";
 import { CARD_ART } from "./promoConstants";
 import { ModalLabel, PlacementReward, RateMatrix } from "./promoShared";
@@ -9,6 +13,7 @@ import { ModalLabel, PlacementReward, RateMatrix } from "./promoShared";
 export function PricingCard({
   strategy,
   currency,
+  capMxn,
   selected,
   pending,
   subscribed,
@@ -17,6 +22,7 @@ export function PricingCard({
 }: {
   strategy: Strategy;
   currency: string;
+  capMxn?: number;
   selected: boolean;
   pending: boolean;
   subscribed: boolean;
@@ -26,6 +32,10 @@ export function PricingCard({
   const art = CARD_ART[strategy.id];
   const paid = strategy.id !== "zero";
   const r = strategy.rates;
+  const capLabel = capMxn ?? DEFAULT_DISCOUNT_CAP_MXN;
+  const capOptionsLabel = DISCOUNT_CAPS_MXN.map((n) =>
+    formatMoney(n, currency),
+  ).join(" / ");
 
   return (
     <button
@@ -85,9 +95,9 @@ export function PricingCard({
           {paid ? (
             <>
               <p className="text-muted-foreground text-[11px] leading-snug">
-                These discounts, capped at{" "}
-                {formatMoney(strategy.cap ?? UNIVERSAL_CAP_MXN, currency)} per
-                bill:
+                {capMxn != null
+                  ? `These discounts, capped at ${formatMoney(capLabel, currency)} per bill:`
+                  : `These discounts, capped per bill at your chosen discount cap (${capOptionsLabel}):`}
               </p>
               <RateMatrix rates={r} />
             </>

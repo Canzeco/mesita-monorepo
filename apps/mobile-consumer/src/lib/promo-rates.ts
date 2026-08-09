@@ -110,11 +110,11 @@ export function resolvePromoRateFromPlaceRow(
 }
 
 // ── Strategy derivation (v7, MESITA-861) ────────────────────────────────
-// The four place rate columns ARE the strategy (a membership writes them as
-// one preset), so the client recovers it by exact match — mirroring
-// _shared/lineup-strategy.ts. Custom/null coerces to "zero", same as the
-// bill engine.
-export type PlaceStrategy = 'zero' | 'conservative' | 'aggressive' | 'dominant';
+// Three strategies — zero / conservative / aggressive. The four place rate
+// columns ARE the strategy (a membership writes them as one preset), so the
+// client recovers it by exact match — mirroring _shared/lineup-strategy.ts.
+// Custom/null coerces to "zero", same as the bill engine.
+export type PlaceStrategy = 'zero' | 'conservative' | 'aggressive';
 
 const STRATEGY_PRESETS: {
   id: PlaceStrategy;
@@ -126,7 +126,6 @@ const STRATEGY_PRESETS: {
   { id: 'zero', wFree: null, wPrem: null, free: null, prem: null },
   { id: 'conservative', wFree: 20, wPrem: 30, free: 10, prem: 20 },
   { id: 'aggressive', wFree: 30, wPrem: 50, free: 10, prem: 30 },
-  { id: 'dominant', wFree: 40, wPrem: 50, free: 20, prem: 30 },
 ];
 
 export function strategyForPromoMatrix(matrix: {

@@ -16,7 +16,7 @@ type PromoSuggestionFocus =
 export type PromoSuggestion = {
   headline: string;
   rationale: string;
-  strategyId: "zero" | "conservative" | "aggressive" | "dominant" | null;
+  strategyId: "zero" | "conservative" | "aggressive" | null;
   focus: PromoSuggestionFocus;
 };
 

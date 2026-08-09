@@ -76,7 +76,7 @@ type Place = {
   free_rate: number | null;
   premium_rate: number | null;
   // Place-level monthly promo spend cap (DB migration 0038), in `currency`.
-  // One of 200 / 500 / 1000 / 2000 or null (no cap).
+  // One of 200 / 500 / 1000 or null (no cap).
   monthly_promo_cap: number | null;
   // Promos v4 membership / strikes (MESITA-542).
   first_ticket_honored_at?: string | null;
@@ -241,7 +241,7 @@ export type UpdatePlaceInput = {
   welcome_premium_rate?: number | null;
   free_rate?: number | null;
   premium_rate?: number | null;
-  // Monthly promo spend cap. One of 200 / 500 / 1000 / 2000 or null to clear.
+  // Monthly promo spend cap. One of 200 / 500 / 1000 or null to clear.
   monthly_promo_cap?: number | null;
   photos?: string[];
   website_url?: string | null;

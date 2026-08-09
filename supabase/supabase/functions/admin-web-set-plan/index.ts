@@ -57,7 +57,7 @@ import { logStrategySwitch } from "../_shared/strategy-switch-log.ts";
 const PLANS = ["free", "pro", "ultra"] as const;
 type Plan = (typeof PLANS)[number];
 
-const LEGAL_CAPS = [200, 500, 1000, 2000];
+const LEGAL_CAPS = [200, 500, 1000];
 
 type Body = {
   placeId?: unknown;

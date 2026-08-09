@@ -28,7 +28,7 @@ import {
 // The v8 rewards editor. STORAGE is normalized — one row per (strategy ×
 // class × action) in public.reward_rules, PK on the triple (MESITA-873) — but
 // the EDITOR is wide: 12 rows of Strategy × Class, one column per action
-// (MESITA-874). Sixty selects in a list is a scroll; sixty in a grid is a
+// (MESITA-874). Forty selects in a list is a scroll; forty in a grid is a
 // table you can read across, which is how the pricing decision is actually
 // made ("what does Premium get here versus Standard").
 //
@@ -273,11 +273,11 @@ export function RewardsConfigClient({
         </div>
       </SectionCard>
 
-      {/* Universal cap — a scalar, not a rule. */}
+      {/* Platform default/fallback cap — place monthly_promo_cap is bill SoT. */}
       <SectionCard
         icon={<Coins className="text-secondary h-4 w-4" />}
-        title="Universal cap"
-        subtitle="Every discount applies only to the first N pesos of the bill — a platform-wide constant, always shown to guests. Bounded, predictable cost."
+        title="Default discount cap"
+        subtitle="Fallback when a place has no cap set. Businesses pick their own cap (MX$200 / 500 / 1000) on Promos — that place value wins at bill time."
       >
         <div className="mt-5 flex flex-wrap items-center gap-2">
           {ALLOWED_CAPS.map((c) => {

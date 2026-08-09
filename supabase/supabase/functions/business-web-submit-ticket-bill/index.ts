@@ -23,6 +23,7 @@ import {
   resolveTicketRate,
 } from "../_shared/rewards-config.ts";
 import { ratesForBilling } from "../_shared/ticket-rate-snapshot.ts";
+import { resolveBillCapPesos } from "../_shared/discount-cap.ts";
 import {
   assessPromoLane,
   loadMembershipRow,
@@ -155,7 +156,7 @@ Deno.serve(async (req) => {
       reviewVerified: isActionVerified(ticket.review_status),
     },
   );
-  const capPesos = grid.cap;
+  const capPesos = resolveBillCapPesos(place as Record<string, unknown>, grid.cap);
 
   const billRes = computeTicketBill({ subtotal, ratePercent, capPesos });
   if (!billRes.ok) {

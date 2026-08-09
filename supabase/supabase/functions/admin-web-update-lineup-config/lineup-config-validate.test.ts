@@ -2,9 +2,9 @@
 //
 // WHY THIS FILE EXISTS. `/lineup-config` could not save ANY section for a week
 // (2026-07-26 → 2026-08-02) and nothing caught it. The admin page posts the
-// WHOLE blob on every section save, the client's coercer stopped emitting
-// `rp.dominant` when #497 retired the Dominant strategy, and this validator
-// hard-400s on the first missing key. No typecheck, lint or CI signal fired,
+// WHOLE blob on every section save, the client's coercer stopped emitting a
+// required `rp.*` key, and this validator hard-400s on the first missing key.
+// No typecheck, lint or CI signal fired,
 // because the client's key list and this one are separate literals in separate
 // runtimes.
 //
@@ -29,7 +29,7 @@ const CANONICAL_BLOB = {
     what: { tol: 0.5 },
   },
   gp: { lnCeiling: 10, ratingPow: 1 },
-  rp: { zero: 0.1, conservative: 0.4, aggressive: 0.7, dominant: 1 },
+  rp: { zero: 0.1, conservative: 0.4, aggressive: 1 },
   xx: { control: 0.1 },
 };
 
@@ -45,7 +45,6 @@ const REQUIRED_PATHS: readonly string[][] = [
   ["rp", "zero"],
   ["rp", "conservative"],
   ["rp", "aggressive"],
-  ["rp", "dominant"], // the one that broke the page — MESITA-804
   ["xx"],
   ["xx", "control"],
 ];
@@ -87,10 +86,23 @@ Deno.test("validate: every required key is load-bearing", () => {
   }
 });
 
-Deno.test("validate: the MESITA-804 regression, named", () => {
-  const r = validate(withoutPath(["rp", "dominant"]));
+Deno.test("validate: the MESITA-804 regression still catches a missing required RP key", () => {
+  const r = validate(withoutPath(["rp", "aggressive"]));
   assert(!r.ok);
-  assertStringIncludes(r.error, "rp.dominant");
+  assertStringIncludes(r.error, "rp.aggressive");
+});
+
+Deno.test("validate: retired dominant is ignored when stale clients include it", () => {
+  const stale = structuredClone(CANONICAL_BLOB) as typeof CANONICAL_BLOB & {
+    rp: typeof CANONICAL_BLOB.rp & { dominant: number };
+  };
+  stale.rp.dominant = 0.9;
+  const r = validate(stale);
+  assert(r.ok);
+  assertEquals(
+    "dominant" in ((r.config as { rp: Record<string, number> }).rp),
+    false,
+  );
 });
 
 Deno.test("validate: non-object bodies are rejected", () => {
@@ -114,12 +126,12 @@ Deno.test("validate: laneN accepts the scalar shorthand, both lanes off is rejec
 Deno.test("validate: out-of-range numbers clamp rather than reject", () => {
   const wild = structuredClone(CANONICAL_BLOB);
   wild.laneN.organic = 9_999;
-  wild.rp.dominant = 42;
+  wild.rp.aggressive = 42;
   wild.xx.control = -3;
   const r = validate(wild);
   assert(r.ok);
   const c = r.config as typeof CANONICAL_BLOB;
   assertEquals(c.laneN.organic, 50); // LANE_N_MAX
-  assertEquals(c.rp.dominant, 1);
+  assertEquals(c.rp.aggressive, 1);
   assertEquals(c.xx.control, 0);
 });

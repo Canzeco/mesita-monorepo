@@ -10,12 +10,7 @@ const daysAgo = (d: number) => new Date(NOW - d * DAY_MS).toISOString();
 
 describe("isCardCurrent — the F1 gate", () => {
   it("unsubscribed: NEVER current, Zero included (join-onto-Zero stays open)", () => {
-    for (const cardId of [
-      "zero",
-      "conservative",
-      "aggressive",
-      "dominant",
-    ] as const) {
+    for (const cardId of ["zero", "conservative", "aggressive"] as const) {
       // A fresh place has all-null rates → strategyForPlace seeds
       // selectedId with "zero"; the gate must ignore it.
       expect(isCardCurrent(false, "zero", cardId)).toBe(false);

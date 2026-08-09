@@ -13,6 +13,7 @@ import {
 } from "./rewards-config.ts";
 import { ratesForBilling } from "./ticket-rate-snapshot.ts";
 import { ratesFromPlace } from "./lineup-strategy.ts";
+import { resolveBillCapPesos } from "./discount-cap.ts";
 import { recordFirstTicketHonored } from "./membership-enforcement.ts";
 import {
   buildConsumerBillPayload,
@@ -112,7 +113,7 @@ export async function computeInformalBill(
     },
   );
 
-  const capPesos = grid.cap;
+  const capPesos = resolveBillCapPesos(place as Record<string, unknown>, grid.cap);
   const eligibleCents = promoEligibleSubtotalCents(subtotal, capPesos);
 
   const discountPercent = ratePercent;

@@ -163,7 +163,6 @@ describe("promoCardState — the F1 regression class", () => {
       "zero",
       "conservative",
       "aggressive",
-      "dominant",
     ] as const) {
       const st = promoCardState({
         member: false,
@@ -210,7 +209,7 @@ describe("promoCardState — the F1 regression class", () => {
         member: true,
         forfeited: false,
         storedStrategy: "conservative",
-        cardId: "dominant",
+        cardId: "aggressive",
         paid: true,
       }),
     ).toEqual({ selected: false, cta: "switch" });
@@ -305,7 +304,7 @@ describe("lifecycleView — the Box 0 stepper state machine", () => {
           strike_count: 2,
           last_strike_at: daysAgo(STRIKE_DECAY_DAYS),
         },
-        "dominant",
+        "aggressive",
         NOW,
       ),
     ).toEqual({ kind: "strip", tone: "live", strikes: 0 });

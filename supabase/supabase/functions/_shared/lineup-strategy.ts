@@ -1,5 +1,9 @@
 // Promo rates → RP strategy (MESITA-718).
 // Mirrors apps/web-admin/src/lib/business/strategies.ts strategyForPlace.
+//
+// Product (2026-08-09): three strategies only — Zero / Conservative /
+// Aggressive. Dominant retired; its old rate tuple (40/50/20/30) no longer
+// matches a preset (migration remaps live rows to Aggressive).
 
 import type { RpStrategy } from "./lineup-scoring.ts";
 
@@ -35,15 +39,6 @@ const PRESETS: { id: RpStrategy; rates: PromoRates }[] = [
       welcome_free_rate: 30,
       welcome_premium_rate: 50,
       free_rate: 10,
-      premium_rate: 30,
-    },
-  },
-  {
-    id: "dominant",
-    rates: {
-      welcome_free_rate: 40,
-      welcome_premium_rate: 50,
-      free_rate: 20,
       premium_rate: 30,
     },
   },

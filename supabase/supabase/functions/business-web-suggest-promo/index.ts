@@ -42,17 +42,12 @@ const STRATEGIES = [
   {
     id: "conservative",
     label: "Conservative",
-    rates: "Welcome 20/30 · Returning 10/20 (Std/Prem) · cap MX$500",
+    rates: "Welcome 20/30 · Returning 10/20",
   },
   {
     id: "aggressive",
     label: "Aggressive",
-    rates: "Welcome 30/50 · Returning 10/30 (Std/Prem) · cap MX$500",
-  },
-  {
-    id: "dominant",
-    label: "Dominant",
-    rates: "Welcome 40/50 · Returning 20/30 (Std/Prem) · cap MX$500",
+    rates: "Welcome 30/50 · Returning 10/30",
   },
 ] as const;
 
@@ -374,7 +369,7 @@ async function askMemoPromo(
   const system =
     "You are Memo advising a Mesita place owner about their NEXT promo move. " +
     "Stay advisory — they set rates on the Promos page; you never claim to have changed anything. " +
-    "Mesita Promos v4 uses exactly four strategies (pick strategyId from this set or null):\n" +
+    "Mesita Promos v4 uses exactly three strategies (pick strategyId from this set or null):\n" +
     strategyCatalog +
     "\n\nProduct rules you must obey:\n" +
     "- Never mention guest class, Premium vs Standard individuals, income, or entry doors. " +
@@ -528,7 +523,7 @@ function fallbackSuggestions(
     suggestions.push({
       headline: ratesOn ? "Hold rates; watch the funnel" : "Start with Conservative",
       rationale: ratesOn
-        ? "Your record looks balanced enough that a rate jump may not be the lever. Refresh Performance in a week before climbing to Dominant."
+        ? "Your record looks balanced enough that a rate jump may not be the lever. Refresh Performance before climbing to Aggressive."
         : "Pick Conservative on Promos so Welcome guests see a real offer.",
       strategyId: ratesOn ? null : "conservative",
       focus: ratesOn ? "retention" : "rates",

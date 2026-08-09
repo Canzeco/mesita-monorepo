@@ -14,7 +14,7 @@
 // client↔EF key drift that broke /lineup-config for a week (MESITA-804).
 //
 // Rate grid: 5% steps, floor 5%, ceiling 70% (0 = off) — MESITA-866/872.
-// Cap: categorical, one of {100, 200, 500, 1000} MXN.
+// Cap: categorical, one of {200, 500, 1000} MXN.
 
 // Worst → best. Influencer sits BELOW Premium (v9, MESITA-877); they used to
 // tie, which left the ladder ambiguous.
@@ -33,7 +33,7 @@ const ACTION_KEYS = [
 type ActionKey = (typeof ACTION_KEYS)[number];
 
 // Zero is off by definition and has no rows.
-const STRATEGY_KEYS = ["conservative", "aggressive", "dominant"] as const;
+const STRATEGY_KEYS = ["conservative", "aggressive"] as const;
 type StrategyKey = (typeof STRATEGY_KEYS)[number];
 
 export type RewardRule = {
@@ -49,10 +49,10 @@ const RATE_STEP = 5;
 const RATE_FLOOR = 5;
 const RATE_MAX = 70;
 
-// The cap is categorical (MESITA-872, narrowed to four steps 2026-08-04):
+// The cap is categorical (MESITA-872, narrowed to three steps 2026-08-09):
 // a free number allowed both a meaningless cap (MX$37) and MX$0, which
 // silently meant NO ceiling — the opposite of what this knob promises.
-const ALLOWED_CAPS = [100, 200, 500, 1000] as const;
+const ALLOWED_CAPS = [200, 500, 1000] as const;
 const CAP_DEFAULT = 500;
 
 // The defaults (v9, MESITA-877). Only cells a caller omits fall back here —
@@ -60,7 +60,7 @@ const CAP_DEFAULT = 500;
 // and the engine's DEFAULT_REWARDS_GRID, or a saved table and a re-rendered
 // one disagree (MESITA-805).
 //
-// One formula for all 60 cells, which is what makes the model's monotonicity
+// One formula for all 40 cells, which is what makes the model's monotonicity
 // provable: rate = floor + type step + class step + strategy step. Moving up
 // any dimension can only raise a reward, and the dimensions are ordered by
 // the BUSINESS VALUE created, not the guest's effort.
@@ -84,7 +84,6 @@ const CLASS_STEP: Record<ClassKey, number> = {
 const STRATEGY_STEP: Record<StrategyKey, number> = {
   conservative: 0,
   aggressive: 10,
-  dominant: 20,
 };
 
 function defaultFor(
@@ -126,7 +125,7 @@ function isStrategy(v: unknown): v is StrategyKey {
 }
 
 /**
- * Always returns the COMPLETE 60-rule set in canonical order, so an upsert
+ * Always returns the COMPLETE 40-rule set in canonical order, so an upsert
  * can never leave the table half-written. Sent rules win; anything missing
  * or unrecognised falls back to its launch default.
  */

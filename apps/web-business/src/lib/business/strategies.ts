@@ -1,41 +1,47 @@
-// Promos v4 — Discount strategies (business Promos page).
+// Promos — Discount strategies + independent discount cap.
 //
-// Membership (plan ≠ free) and strategy (the four rate presets) are separate
-// knobs (MESITA-912): one MX$1,000/year membership door, free strategy
-// switching anytime. Non-members are locked at Zero; members pick any preset.
+// Membership (plan ≠ free) and strategy (rate presets) are separate knobs
+// (MESITA-912): one MX$1,000/year membership door, free strategy switching
+// anytime. Non-members are locked at Zero; members pick any preset.
 //
-// The Promos page no longer exposes four independent rate pickers or a
-// Free/Pro/Ultra subscription ladder. A member selects ONE of four preset
-// strategies — a bundle of the four per-tier promo rates plus the universal
-// ticket cap. The presets encode the product invariants directly
-// (design 2026-07-11 — "Promos v4"):
+// Product (2026-08-09, Pato): THREE strategies only — Zero / Conservative /
+// Aggressive. There is NO Dominant. Discount cap is a SEPARATE parameter
+// with three options: MX$200 / MX$500 / MX$1000 (not bundled into strategy).
+//
+// A member selects ONE strategy (rate bundle) and independently ONE discount
+// cap. The presets encode:
 //
 //   - Welcome ≥ Returning inside a class — winning a guest is worth more than
 //     keeping one (retention discounts are partly deadweight).
 //   - Premium ≥ Standard in every row — Premium guests always get more.
 //   - Rates live on a tens grid, max 50% — "half off" is the strongest
-//     credible headline; 70 was retired on margin math.
-//   - Every discount applies to the first MX$500 of the bill — one
-//     platform-wide constant, always displayed, bounded + predictable cost.
+//     credible headline.
+//   - Every discount applies to the first N pesos of the bill — N is the
+//     place's chosen cap (200 / 500 / 1000), persisted to
+//     projects.monthly_promo_cap.
 //   - Visibility follows generosity: the ranking judge reads a stronger
-//     discount as a stronger card, so visibility isn't a separate knob — just
-//     a label that rises with the strategy.
+//     discount as a stronger card.
 //
-// Switching strategy writes the four rate columns + monthly_promo_cap only
-// (rates-only path). Zero clears every rate (null) and the cap but does NOT
-// cancel membership — drop is a separate Membership-box action.
+// Switching strategy writes the four rate columns only (and clears cap on
+// Zero / seeds the default cap when leaving Zero). Cap changes write
+// monthly_promo_cap alone. Drop membership is a separate Membership-box action.
 
-// The universal, platform-wide cap: every discount applies to the first
-// MX$500 of the bill. Persisted to places.monthly_promo_cap for the bill EF
-// (computeTicketBill → promoEligibleSubtotalCents reads it), and always shown.
-export const UNIVERSAL_CAP_MXN = 500;
+/** Legal per-place discount caps (MXN). Zero strategy clears the cap. */
+export const DISCOUNT_CAPS_MXN = [200, 500, 1000] as const;
+export type DiscountCapMxn = (typeof DISCOUNT_CAPS_MXN)[number];
 
-export type StrategyId = "zero" | "conservative" | "aggressive" | "dominant";
+/** Default when a place leaves Zero or has no cap yet. */
+export const DEFAULT_DISCOUNT_CAP_MXN: DiscountCapMxn = 500;
 
-// Four rungs, distinct from the plan visibility of the old model.
-type StrategyVisibility = "Low" | "Mid" | "High" | "Max";
+/** @deprecated Use DEFAULT_DISCOUNT_CAP_MXN / DISCOUNT_CAPS_MXN — cap is no longer universal. */
+export const UNIVERSAL_CAP_MXN = DEFAULT_DISCOUNT_CAP_MXN;
 
-// The four discount cells, keyed by the exact places column each maps to.
+export type StrategyId = "zero" | "conservative" | "aggressive";
+
+// Three rungs — Aggressive is the peak.
+type StrategyVisibility = "Low" | "Mid" | "High";
+
+// The four discount cells, keyed by the exact projects column each maps to.
 //   welcome_* → first visit at the place · unprefixed → every visit after.
 //   *_free_*  → Standard guests         · *_premium_* → Premium guests.
 type StrategyRates = {
@@ -53,21 +59,17 @@ export type Strategy = {
   tagline: string;
   visibility: StrategyVisibility;
   rates: StrategyRates;
-  // Cap written alongside the rates. Null for Zero (no promo → no cap).
-  cap: number | null;
 };
 
-// Ordered ascending in generosity so the picker reads Zero → Dominant.
-// The rate tuples are the canonical Promos table (four Strategies):
+// Ordered ascending in generosity so the picker reads Zero → Aggressive.
+// Cap is NOT part of the strategy — it is an independent place param.
 //
-//   Level          FR  PR  FW  PW   Cap   Visibility
-//   ⭕ Zero        off off off off   —     Low
-//   🌿 Conservative 10  20  20  30   500   Mid
-//   ⚡ Aggressive   10  30  30  50   500   High
-//   👑 Dominant     20  30  40  50   500   Max
+//   Level          FR  PR  FW  PW   Visibility
+//   ⭕ Zero        off off off off   Low
+//   🌿 Conservative 10  20  20  30   Mid
+//   ⚡ Aggressive   10  30  30  50   High
 //
-// Aggressive is Conservative stretched ×2 on the Premium/Welcome side;
-// Dominant raises the floor (FR/FW), not the ceiling (PW stays 50).
+// Aggressive is Conservative stretched on the Premium/Welcome side.
 export const STRATEGIES: readonly Strategy[] = [
   {
     id: "zero",
@@ -82,7 +84,6 @@ export const STRATEGIES: readonly Strategy[] = [
       free_rate: null,
       premium_rate: null,
     },
-    cap: null,
   },
   {
     id: "conservative",
@@ -97,14 +98,13 @@ export const STRATEGIES: readonly Strategy[] = [
       free_rate: 10,
       premium_rate: 20,
     },
-    cap: UNIVERSAL_CAP_MXN,
   },
   {
     id: "aggressive",
     name: "Aggressive",
     nameEs: "Agresivo",
     emoji: "⚡",
-    tagline: "Conservative doubled — bold headlines to pull a crowd.",
+    tagline: "Conservative stretched — bold headlines to pull a crowd.",
     visibility: "High",
     rates: {
       welcome_free_rate: 30,
@@ -112,22 +112,6 @@ export const STRATEGIES: readonly Strategy[] = [
       free_rate: 10,
       premium_rate: 30,
     },
-    cap: UNIVERSAL_CAP_MXN,
-  },
-  {
-    id: "dominant",
-    name: "Dominant",
-    nameEs: "Dominante",
-    emoji: "👑",
-    tagline: "Raise the floor — every guest walks in to a strong deal.",
-    visibility: "Max",
-    rates: {
-      welcome_free_rate: 40,
-      welcome_premium_rate: 50,
-      free_rate: 20,
-      premium_rate: 30,
-    },
-    cap: UNIVERSAL_CAP_MXN,
   },
 ];
 
@@ -140,14 +124,25 @@ export const STRATEGY_VISIBILITY_LADDER: readonly StrategyVisibility[] = [
   "Low",
   "Mid",
   "High",
-  "Max",
 ];
 
+/** Snap any number onto the legal discount-cap ladder (nearest option). */
+export function snapDiscountCap(v: unknown): DiscountCapMxn {
+  if (typeof v !== "number" || !Number.isFinite(v)) {
+    return DEFAULT_DISCOUNT_CAP_MXN;
+  }
+  let best: DiscountCapMxn = DISCOUNT_CAPS_MXN[0];
+  for (const option of DISCOUNT_CAPS_MXN) {
+    if (Math.abs(option - v) < Math.abs(best - v)) best = option;
+  }
+  return best;
+}
+
 // Which strategy a place's stored rates currently reflect. Matched on the four
-// rate columns (the cap is derived, not part of identity). Returns null when
-// the rates match no preset — e.g. a legacy place still carrying a retired 70,
-// or hand-tuned values — so the UI shows a neutral "custom" state rather than
-// mislabeling. A fresh place (all nulls) matches Zero, which is correct.
+// rate columns (cap is independent, not part of identity). Returns null when
+// the rates match no preset — e.g. a legacy place still carrying Dominant
+// (40/50/20/30) or a retired 70 — so the UI shows a neutral "custom" state.
+// A fresh place (all nulls) matches Zero, which is correct.
 export function strategyForPlace(rates: StrategyRates): StrategyId | null {
   const match = STRATEGIES.find(
     (s) =>

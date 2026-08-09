@@ -55,8 +55,8 @@ const COLUMNS: readonly string[] = [
   "welcome_premium_rate",
   "free_rate",
   "premium_rate",
-  // Place-level monthly promo spend ceiling (migration 0038), in the place's
-  // currency. One of 200, 500, 1000, 2000 or null (no cap).
+  // Per-visit discount cap (independent of strategy), in the place's
+  // currency. One of 200, 500, 1000 or null (Zero / no promo).
   "monthly_promo_cap",
   "photos",
   "menu_pdf_url",

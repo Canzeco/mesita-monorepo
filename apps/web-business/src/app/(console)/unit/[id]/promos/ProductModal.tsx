@@ -1,7 +1,11 @@
 import { useEffect } from "react";
 import Image from "next/image";
 import { Check, Loader2, X } from "lucide-react";
-import { UNIVERSAL_CAP_MXN, type Strategy } from "@/lib/business/strategies";
+import {
+  DEFAULT_DISCOUNT_CAP_MXN,
+  DISCOUNT_CAPS_MXN,
+  type Strategy,
+} from "@/lib/business/strategies";
 import { cn, formatMoney } from "@/lib/utils";
 import { CARD_ART, PRODUCT_PRICE_MXN } from "./promoConstants";
 import { ModalLabel, PlacementReward, RateMatrix, Step } from "./promoShared";
@@ -9,6 +13,7 @@ import { ModalLabel, PlacementReward, RateMatrix, Step } from "./promoShared";
 export function ProductModal({
   strategy,
   currency,
+  capMxn,
   isCurrent,
   subscribed,
   joinDisabled,
@@ -18,6 +23,7 @@ export function ProductModal({
 }: {
   strategy: Strategy;
   currency: string;
+  capMxn?: number;
   isCurrent: boolean;
   subscribed: boolean;
   joinDisabled?: boolean;
@@ -38,6 +44,10 @@ export function ProductModal({
   const r = strategy.rates;
   const needsJoin = !subscribed;
   const isZeroSwitch = subscribed && strategy.id === "zero";
+  const capLabel = capMxn ?? DEFAULT_DISCOUNT_CAP_MXN;
+  const capOptionsLabel = DISCOUNT_CAPS_MXN.map((n) =>
+    formatMoney(n, currency),
+  ).join(" / ");
 
   const primaryLabel = isCurrent
     ? "Current Strategy"
@@ -130,9 +140,9 @@ export function ProductModal({
               <>
                 <RateMatrix rates={r} />
                 <p className="text-muted-foreground text-[11px] leading-snug">
-                  Every discount applies to the first{" "}
-                  {formatMoney(strategy.cap ?? UNIVERSAL_CAP_MXN, currency)} of
-                  the bill — a platform-wide cap, always shown to guests.
+                  {capMxn != null
+                    ? `Every discount applies to the first ${formatMoney(capLabel, currency)} of the bill — your chosen discount cap, shown to guests.`
+                    : `Every discount applies to the first portion of the bill, capped at your chosen discount cap (${capOptionsLabel}) — shown to guests.`}
                 </p>
               </>
             ) : (
