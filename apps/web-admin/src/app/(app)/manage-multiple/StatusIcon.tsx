@@ -1,6 +1,6 @@
 import { CheckCircle2, Loader2, XCircle } from "lucide-react";
 
-export type BatchRowStatus = "pending" | "running" | "ok" | "error";
+type BatchRowStatus = "pending" | "running" | "ok" | "error";
 
 /** Shared pending/running/ok/error glyph for Create + Enrich batch tables. */
 export function StatusIcon({ status }: { status: BatchRowStatus }) {
