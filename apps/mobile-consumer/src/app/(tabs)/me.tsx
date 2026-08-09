@@ -40,7 +40,12 @@ import { apiFetchConsumerMetrics } from '@/lib/api/auth';
 import { inboxPath } from '@/lib/consumer-route-contract';
 import { CLASSES } from '@/lib/consumer-classes';
 import { useEffectiveClass } from '@/lib/mock-class';
-import { ageFromBirthday, formatPhoneDisplay, formatSex } from '@/lib/utils';
+import {
+  ageFromBirthday,
+  formatCompactCount,
+  formatPhoneDisplay,
+  formatSex,
+} from '@/lib/utils';
 import { useAuth } from '@/providers/auth';
 
 type Sheet =
@@ -57,8 +62,9 @@ type Sheet =
   | null;
 
 // Me screen — 583 chrome (NativeWind BoxRow) + 568 conversion modals.
-// Order (MESITA-904): Class → Instagram → Personal → Settings → Metrics →
+// Order (MESITA-955): Instagram → Class → Personal → Settings → Metrics →
 // Inbox → Share → AI → Help → Contact → Sign out.
+// Box summaries mirror the card's live IG / Class status.
 // decision: conversion rows LIVE (design lock profile-premium-20260720); no Stripe.
 export default function MeScreen() {
   const router = useRouter();
@@ -83,6 +89,11 @@ export default function MeScreen() {
   // Prefer effective handle so IG mock (@mock) wins over a stale profile.
   const handle = effective.handle ?? profile?.instagram_handle ?? null;
   const igConnected = effective.origin === 'instagram' || Boolean(handle);
+  const igSummary = igConnected
+    ? [handle ? `@${handle}` : 'Connected', formatCompactCount(effective.followers)]
+        .filter(Boolean)
+        .join(' · ')
+    : 'Instagram not connected';
 
   // Card metrics row: visits · saved from consumer-web-get-metrics.
   // Profile stats.visits is the fallback when metrics fails.
@@ -141,18 +152,18 @@ export default function MeScreen() {
         <MockControls />
 
         <BoxRow
-          Icon={Crown}
-          tint="amber"
-          title="Class"
-          summary="Standard · Premium · Influencer · Aura"
-          onPress={() => setSheet('class')}
-        />
-        <BoxRow
           Icon={AtSign}
           tint="pink"
           title="Instagram"
-          summary="Connect Instagram to upgrade your class"
+          summary={igSummary}
           onPress={() => setSheet('verify')}
+        />
+        <BoxRow
+          Icon={Crown}
+          tint="amber"
+          title="Class"
+          summary={classLabel}
+          onPress={() => setSheet('class')}
         />
 
         <BoxRow

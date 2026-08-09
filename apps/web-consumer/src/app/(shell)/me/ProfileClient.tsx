@@ -23,7 +23,7 @@ import { ContactModal } from "@/components/consumer/me/ContactModal";
 import { HelpModal } from "@/components/consumer/me/HelpModal";
 import { MetricsModal } from "@/components/consumer/me/MetricsModal";
 import { AiConnectModal } from "@/components/consumer/me/AiConnectModal";
-import { errMsg } from "@/lib/utils";
+import { errMsg, formatCompactCount } from "@/lib/utils";
 import { toast } from "@/lib/toast";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import {
@@ -31,19 +31,28 @@ import {
   apiFetchConsumerProfile,
   type ConsumerProfile,
 } from "@/lib/api/profile";
+import { CLASSES } from "@/lib/consumer-data";
+import { useConsumerClass } from "@/lib/class-context";
 import { BoxRow } from "./profile-sections";
 import { ProfileSummaryCard } from "./ProfileSummaryCard";
 
 // The Me surface — Membership Face Card + modular boxes (MESITA-904), ordered
-// Class → Instagram → Personal details → Settings → Metrics → Share → AI →
-// Help → Contact → Sign out. Flat page at /me; `openSettings` opens Settings
-// on arrival for the legacy /me/settings deep link.
+// Instagram → Class → Personal details → Settings → Metrics → Share → AI →
+// Help → Contact → Sign out (MESITA-955: IG above Class; box summaries mirror
+// the card's live IG / Class status). Flat page at /me; `openSettings` opens
+// Settings on arrival for the legacy /me/settings deep link.
 export function ProfileClient({
   openSettings = false,
 }: {
   openSettings?: boolean;
 }) {
   const supabase = useBrowserSupabase();
+  const {
+    key: classKey,
+    origin,
+    followers,
+    handle: classHandle,
+  } = useConsumerClass();
 
   // One consumer-web-get-profile read per visit; the (shell) layout already
   // guarantees the row is complete (onboarding gate).
@@ -116,6 +125,17 @@ export function ProfileClient({
     setVerifyOpen(true);
   }
 
+  // Same live lines as ProfileSummaryCard identity rows (MESITA-955).
+  const classLabel =
+    CLASSES.find((c) => c.id === classKey)?.label ?? "Standard";
+  const handle = classHandle ?? profile?.instagram_handle ?? null;
+  const igConnected = origin === "instagram" || Boolean(handle);
+  const igSummary = igConnected
+    ? [handle ? `@${handle}` : "Connected", formatCompactCount(followers)]
+        .filter(Boolean)
+        .join(" · ")
+    : "Instagram not connected";
+
   return (
     <div className="flex h-full flex-col">
       <div className="scrollbar-hide flex-1 overflow-y-auto px-4 pt-5 pb-8">
@@ -131,23 +151,22 @@ export function ProfileClient({
               toggle on the Class modal, the Instagram toggle + follower input
               on the Instagram modal. */}
 
-          {/* Conversion cluster — membership first, then the free upgrade
-              path. Un-parked: Class opens the ladder (current class + class
-              cards), Instagram opens the verify sheet. */}
-          <BoxRow
-            Icon={Crown}
-            tint="amber"
-            title="Class"
-            summary="Standard · Premium · Influencer · Aura"
-            onClick={() => setClassOpen(true)}
-          />
-
+          {/* Conversion cluster — Instagram first (connect path), then Class
+              ladder. Box summaries mirror the card's live status. */}
           <BoxRow
             Icon={Instagram}
             tint="pink"
             title="Instagram"
-            summary="Connect Instagram to upgrade your class"
+            summary={loading ? "…" : igSummary}
             onClick={() => setVerifyOpen(true)}
+          />
+
+          <BoxRow
+            Icon={Crown}
+            tint="amber"
+            title="Class"
+            summary={loading ? "…" : classLabel}
+            onClick={() => setClassOpen(true)}
           />
 
           {/* Account management. */}
