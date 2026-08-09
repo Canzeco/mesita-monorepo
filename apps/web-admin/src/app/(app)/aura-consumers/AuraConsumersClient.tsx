@@ -25,7 +25,7 @@ function invitedOn(iso: string | null): string | null {
   return iso ? iso.slice(0, 10) : null;
 }
 
-export function AuraUsersClient({
+export function AuraConsumersClient({
   initialMembers,
   loadError,
 }: {

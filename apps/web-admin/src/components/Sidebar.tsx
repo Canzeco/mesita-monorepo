@@ -10,9 +10,9 @@ import {
   UserRound,
 } from "lucide-react";
 import { ATLAS_PARENT } from "@/app/(app)/atlas-config/nav";
-import { AURA_USERS_PARENT } from "@/app/(app)/aura-users/nav";
+import { AURA_CONSUMERS_PARENT } from "@/app/(app)/aura-consumers/nav";
 import { BILLING_TEST_PARENT } from "@/app/(app)/billing-test/nav";
-import { DB_PARENT } from "@/app/(app)/db-config/nav";
+import { DB_PARENT } from "@/app/(app)/manage-database/nav";
 import { ENRICHER_PARENT } from "@/app/(app)/enricher-config/nav";
 import { MEMO_PARENT } from "@/app/(app)/memo-config/nav";
 import { MODELS_PARENT } from "@/app/(app)/models-config/nav";
@@ -64,7 +64,6 @@ const ALERTS_NAV: NavItem[] = [
 
 const CONFIGS_NAV: NavItem[] = [
   { href: "/admin-config", label: "Admin Config", Icon: ShieldCheck },
-  DB_PARENT,
   MODELS_PARENT,
   ATLAS_PARENT,
   SOURCING_PARENT,
@@ -76,15 +75,15 @@ const CONFIGS_NAV: NavItem[] = [
   RESERVATIONS_PARENT,
 ];
 
+// Manage — the records of real things, widest scope first: the backend itself,
+// then the units Mesita lists, then the consumers who walk into them. Not
+// Configs; nothing here is a policy blob.
 const MANAGE_NAV: NavItem[] = [
+  DB_PARENT,
   { href: "/manage-multiple", label: "Manage Multiple Units", Icon: Building2 },
   ...TOOL_ROUTES,
+  AURA_CONSUMERS_PARENT,
 ];
-
-// Users — the people side of the console: consumer rosters and the writes that
-// move someone between classes. Deliberately not under Configs; these pages
-// edit records of real consumers, not policy blobs.
-const USERS_NAV: NavItem[] = [AURA_USERS_PARENT];
 
 // Testing — operator tools that probe live systems rather than configure them.
 const TESTING_NAV: NavItem[] = [
@@ -99,7 +98,6 @@ const SIDEBAR_SECTIONS = [
   { label: "Account", items: ACCOUNT_NAV },
   { label: "Alerts", items: ALERTS_NAV },
   { label: "Manage", items: MANAGE_NAV },
-  { label: "Users", items: USERS_NAV },
   { label: "Configs", items: CONFIGS_NAV },
   { label: "Testing", items: TESTING_NAV },
 ] as const;

@@ -5,8 +5,8 @@ import { AlertTriangle, CheckCircle2, Loader2 } from "lucide-react";
 import { PageContainer, PageHeader } from "@/components/PageContainer";
 import { continueStoragePurge, resetDatabase } from "./actions";
 
-// DB Config — database-wide operator actions. Today: reset the environment
-// (moved here from Admin Config 2026-07-26). Super-admins only.
+// Manage Database — database-wide operator actions. Today: reset the
+// environment (moved here from Admin Config 2026-07-26). Super-admins only.
 
 // Must match the EF's CONFIRM_PHRASE.
 const CONFIRM_PHRASE = "RESET";
@@ -17,12 +17,12 @@ const CONFIRM_PHRASE = "RESET";
 // catalog, and it means a bucket that somehow refills can't spin forever.
 const MAX_PURGE_PASSES = 60;
 
-export function DbConfigClient() {
+export function ManageDatabaseClient() {
   return (
     <PageContainer size="3xl" className="flex flex-col gap-6 sm:gap-8">
       <PageHeader
-        eyebrow="Operations · Database"
-        title="DB Config"
+        eyebrow="Manage · Database"
+        title="Database"
         description="Database-wide operator actions. Handle with care — these run against the live singleton backend. Super-admins only."
       />
       <ResetCard />
