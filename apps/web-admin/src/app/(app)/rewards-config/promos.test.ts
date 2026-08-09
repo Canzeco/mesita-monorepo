@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 
+import { snapDiscountCap } from "@/lib/business/strategies";
 import {
   ACTION_KEYS,
   ALLOWED_RATES,
@@ -9,7 +10,6 @@ import {
   coercePromosConfig,
   legacyRulesFrom,
   seedFromLegacyRules,
-  snapCap,
   snapRate,
   totalFor,
 } from "./promos";
@@ -68,11 +68,11 @@ describe("snap helpers", () => {
     expect(snapRate("x", 15)).toBe(15);
   });
 
-  it("snapCap lands on the categorical ladder", () => {
-    expect(snapCap(480)).toBe(500);
-    expect(snapCap(50)).toBe(200);
-    expect(snapCap(99999)).toBe(1000);
-    expect(snapCap(undefined)).toBe(500);
+  it("snapDiscountCap lands on the categorical ladder", () => {
+    expect(snapDiscountCap(480)).toBe(500);
+    expect(snapDiscountCap(50)).toBe(200);
+    expect(snapDiscountCap(99999)).toBe(1000);
+    expect(snapDiscountCap(undefined)).toBe(500);
   });
 });
 

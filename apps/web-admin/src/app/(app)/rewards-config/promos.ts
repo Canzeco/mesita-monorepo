@@ -199,11 +199,6 @@ export function snapRate(v: unknown, fallback: number): number {
   return Math.max(RATE_FLOOR, Math.min(RATE_MAX, stepped));
 }
 
-/** Snap the cap onto the shared categorical ladder (#839). */
-export function snapCap(v: unknown): number {
-  return snapDiscountCap(v);
-}
-
 const isStrategy = (v: unknown): v is StrategyKey =>
   (STRATEGY_KEYS as readonly unknown[]).includes(v);
 const isClass = (v: unknown): v is ClassKey =>
@@ -250,7 +245,7 @@ export function coercePromosConfig(raw: unknown): PromosConfig {
     google: snapRate(b.google, d.google),
   };
 
-  return { version: 10, base, bonuses, cap: snapCap(r.cap) };
+  return { version: 10, base, bonuses, cap: snapDiscountCap(r.cap) };
 }
 
 // ── Legacy bridge (until MESITA-992 flips the engine) ────────────────────
