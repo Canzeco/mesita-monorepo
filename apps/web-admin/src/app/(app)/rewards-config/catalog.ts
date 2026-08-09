@@ -1,3 +1,9 @@
+import {
+  DEFAULT_DISCOUNT_CAP_MXN,
+  DISCOUNT_CAPS_MXN,
+  snapDiscountCap,
+} from "@/lib/business/strategies";
+
 // Rewards Config catalog — the v8 NORMALIZED rule list (MESITA-873).
 //
 // One rule per (strategy × class × action) — 2 × 4 × 5 = 40 rows, listed
@@ -13,8 +19,9 @@
 //
 // Rate grid: 5% steps, floor 5%, ceiling 70% (0 = off) — MESITA-866/872.
 // Zero strategy has no rules; it is off by definition.
-// The cap is NOT a rule — it is one platform-wide scalar, still on
-// app_settings.rewards_config.cap, and categorical (see ALLOWED_CAPS).
+// The cap is NOT a rule — it is one platform scalar on
+// app_settings.rewards_config.cap, categorical on the same ladder as
+// place-level monthly_promo_cap (DISCOUNT_CAPS_MXN).
 //
 // Keys are the contract shared with admin-web-{get,update}-rewards-config and
 // the fold in _shared/rewards-config.ts gridFromRuleRows — keep them in
@@ -151,11 +158,10 @@ export const ALLOWED_RATES: readonly number[] = [
   0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70,
 ];
 
-// The universal cap is CATEGORICAL: four round options. A free number field
-// allowed both a meaningless cap (MX$37) and MX$0 — which silently meant NO
-// ceiling, the opposite of the promise this knob makes.
-export const ALLOWED_CAPS: readonly number[] = [200, 500, 1000];
-const CAP_DEFAULT = 500;
+// Discount cap is CATEGORICAL: three round options (same ladder as place
+// monthly_promo_cap). A free number field allowed both a meaningless cap
+// (MX$37) and MX$0 — which silently meant NO ceiling.
+export const ALLOWED_CAPS: readonly number[] = DISCOUNT_CAPS_MXN;
 
 // ── The defaults (v9, Pato 2026-08-04 — MESITA-877) ─────────────────────
 //
@@ -238,7 +244,7 @@ function defaultRules(): RewardRule[] {
 
 export const DEFAULT_CONFIG: RewardsConfig = {
   rules: defaultRules(),
-  cap: CAP_DEFAULT,
+  cap: DEFAULT_DISCOUNT_CAP_MXN,
 };
 
 /**
@@ -265,16 +271,6 @@ function snapRate(v: unknown, fallback: number): number {
   if (v <= 0) return 0;
   const stepped = Math.round(v / RATE_STEP) * RATE_STEP;
   return Math.max(RATE_FLOOR, Math.min(RATE_MAX, stepped));
-}
-
-/** Snap the cap onto the categorical ladder — nearest allowed option. */
-function snapCap(v: unknown): number {
-  if (typeof v !== "number" || !Number.isFinite(v)) return CAP_DEFAULT;
-  let best = ALLOWED_CAPS[0];
-  for (const option of ALLOWED_CAPS) {
-    if (Math.abs(option - v) < Math.abs(best - v)) best = option;
-  }
-  return best;
 }
 
 const isStrategy = (v: unknown): v is StrategyKey =>
@@ -325,5 +321,5 @@ export function coerceRules(rawRules: unknown, rawCap: unknown): RewardsConfig {
     }
   }
 
-  return { rules, cap: snapCap(rawCap) };
+  return { rules, cap: snapDiscountCap(rawCap) };
 }
