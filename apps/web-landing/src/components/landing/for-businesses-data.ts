@@ -16,7 +16,7 @@ type BusinessBenefit = {
 export const BUSINESS_BENEFITS: BusinessBenefit[] = [
   {
     title: "Aparece primero",
-    body: "Colocación prioritaria justo en el momento en que la gente decide a dónde ir. El descuento de bienvenida convierte esa visibilidad en primeras visitas.",
+    body: "La Strategy que eliges gana la visibilidad justo cuando la gente decide a dónde ir — el Rank no se vende. El descuento de bienvenida convierte esa visibilidad en primeras visitas.",
     Icon: TrendingUp,
   },
   {

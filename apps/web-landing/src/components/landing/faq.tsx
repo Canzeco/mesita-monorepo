@@ -18,7 +18,7 @@ function FAQ() {
     },
     {
       q: "Tengo un lugar — ¿cuánto cuesta?",
-      a: "Seguramente ya estás listado gratis. Los planes de paga (Pro $100 MXN/mes · Ultra $5,000 MXN/mes) compran visibilidad; tú defines y financias tus propios descuentos, y Mesita nunca toca el pago. Listo en 10 minutos, sin equipo especial ni punto de venta.",
+      a: "Seguramente ya estás listado gratis. La Membresía Mesita (Verificado, MX$1,000/año) desbloquea Strategies de descuento, el tablero y el control del perfil; el Rank no se vende — la Strategy gana la visibilidad. Tú defines y financias tus propios descuentos, y Mesita nunca toca el pago. Listo en 10 minutos, sin equipo especial ni punto de venta.",
     },
     {
       q: "¿Mesita mueve o guarda dinero?",
