@@ -4,10 +4,12 @@ import { CircleUser, PhoneCall } from "lucide-react";
 import { PageErrorState } from "@/components/business/PageErrorState";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { apiListTeam, type TeamSnapshot } from "@/lib/api/team";
+import { getUnitOverview } from "@/lib/api/unit";
 import { listPlaceReservations } from "@/lib/api/reservations";
 import { BUSINESS_ROUTES } from "@/lib/business-route-contract";
 import { errMsg } from "@/lib/utils";
 import { TeamClient } from "../team/TeamClient";
+import { CheckPinCard } from "./CheckPinCard";
 
 export const dynamic = "force-dynamic";
 
@@ -18,9 +20,9 @@ function formatLine(e164: string): string {
 }
 
 // The per-place Settings tab (MESITA-843). Everything operational that used to
-// claim its own tab collapses here: the team today, and reservation channel
-// routing + the Check PIN next. Account-level billing stays at /settings —
-// it belongs to the account, not to one place.
+// claim its own tab collapses here: team, reservation line, and the owner-only
+// Check PIN. Account-level billing stays at /settings — it belongs to the
+// account, not to one place.
 export default async function UnitSettingsPage({
   params,
 }: {
@@ -33,10 +35,11 @@ export default async function UnitSettingsPage({
   } = await supabase.auth.getUser();
   if (!user) redirect(`/?next=/unit/${id}/settings`);
 
-  // The reservation line rides on the reservations EF (limit 1 — we only
-  // need `lines`). Purely informational: if it fails, the block just hides.
-  const [teamSettled, linesSettled] = await Promise.allSettled([
+  // Overview carries owner-only check_pin on the active place. Reservation
+  // line is informational — if it fails, that block just hides.
+  const [teamSettled, overviewSettled, linesSettled] = await Promise.allSettled([
     apiListTeam(supabase, id),
+    getUnitOverview(supabase, id),
     listPlaceReservations(supabase, id, { limit: 1 }),
   ]);
 
@@ -47,6 +50,27 @@ export default async function UnitSettingsPage({
   } else {
     initialError = errMsg(teamSettled.reason, "Couldn't load the team.");
   }
+
+  const overview =
+    overviewSettled.status === "fulfilled" ? overviewSettled.value : null;
+  if (overviewSettled.status === "rejected") {
+    console.error(
+      "[settings] business-web-get-overview:",
+      overviewSettled.reason,
+    );
+  }
+  // check_pin is attached only to overview.active for owners — never on the
+  // places[] rows. Role can still come from the team snapshot if overview
+  // degraded, so owners keep the card even when the PIN seed is missing.
+  const activePlace = overview?.active?.place ?? null;
+  const myRole =
+    activePlace?.my_role ??
+    overview?.places.find((p) => p.id === id)?.my_role ??
+    initialSnapshot?.myRole ??
+    null;
+  const isOwner = myRole === "owner";
+  const checkPin =
+    typeof activePlace?.check_pin === "string" ? activePlace.check_pin : null;
 
   const placeLine =
     linesSettled.status === "fulfilled" ? linesSettled.value.lines.place : null;
@@ -69,6 +93,10 @@ export default async function UnitSettingsPage({
           currentUserId={user.id}
           initialSnapshot={initialSnapshot}
         />
+
+        {isOwner ? (
+          <CheckPinCard projectId={id} initialPin={checkPin} />
+        ) : null}
 
         {placeLine ? (
           <section className="bg-card border-border flex items-start gap-3 rounded-2xl border p-4">
