@@ -270,7 +270,7 @@ export function buildSlots(
 }
 
 /** One hour column for the 2-row picker — `:00` on top, `:30` on bottom. */
-export type HourColumn = {
+type HourColumn = {
   hour: number;
   onHour: ReservationSlot | null;
   onHalf: ReservationSlot | null;
