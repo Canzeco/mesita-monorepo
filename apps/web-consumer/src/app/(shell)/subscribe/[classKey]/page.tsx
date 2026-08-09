@@ -8,7 +8,6 @@ import { CLASSES } from "@/lib/consumer-data";
 import { Spinner } from "@/components/shared";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { apiCreateSubscriptionCheckout } from "@/lib/api/subscription";
-import { MOCK_PREMIUM_KEY } from "@/lib/class-context";
 import { toast } from "@/lib/toast";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import { INSTAGRAM_ICON_GRADIENT_CLASS } from "@/lib/ui-classes";
@@ -146,11 +145,9 @@ export default function SubscribePage() {
   );
 }
 
-// While billing is mocked, the button skips Stripe and flips the client-side
-// Premium flag instead. Set false to restore the real
-// consumer-create-subscription → Stripe Checkout flow below.
-const MOCK_SUBSCRIPTION = true;
-
+// Single toggle lives on the Edge Function (`MOCK_SUBSCRIPTION` env on
+// consumer-web-create-subscription). Mock mode upserts a real subscription
+// row and returns successUrl as checkout_url — the page always calls the EF.
 function PremiumCheckoutButton() {
   const supabase = useBrowserSupabase();
   const [loading, setLoading] = useState(false);
@@ -173,18 +170,10 @@ function PremiumCheckoutButton() {
     }
   }
 
-  // Mock path: no Stripe, no DB write. Persist the Premium flag and hard-reload
-  // into the profile success state so the class provider re-seeds Premium.
-  function mockSubscribe() {
-    setLoading(true);
-    window.localStorage.setItem(MOCK_PREMIUM_KEY, "1");
-    window.location.href = `${CONSUMER_ROUTES.me}?subscription=success`;
-  }
-
   return (
     <button
       type="button"
-      onClick={MOCK_SUBSCRIPTION ? mockSubscribe : startCheckout}
+      onClick={() => void startCheckout()}
       disabled={loading}
       className="bg-pink-gradient shadow-glow inline-flex h-12 items-center justify-center gap-2 rounded-lg px-6 text-sm font-semibold text-white disabled:opacity-70"
     >
