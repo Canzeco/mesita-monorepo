@@ -61,7 +61,7 @@ function promoMatrixHasAnyRate(matrix: PromoMatrix): boolean {
   );
 }
 
-export function resolveActivePromoRate(
+function resolveActivePromoRate(
   matrix: PromoMatrix,
   classKey: ConsumerClass,
   isFirstVisit = matrix.is_first_visit,
