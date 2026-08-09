@@ -49,6 +49,14 @@ export type ConsumerClass = {
   followers: number | null;
   /** consumers.class_expires_at — when a non-default class lapses. */
   expires_at: string | null;
+  /** Open doors, independent of which one wins the slot (MESITA-972). The
+   *  class rail renders unlocked-vs-locked off this. Optional so a
+   *  not-yet-redeployed EF degrades to client-side derivation. */
+  doors?: {
+    influencer: boolean;
+    premium: boolean;
+    aura: boolean;
+  } | null;
   subscription: {
     status: string;
     price_cents: number;

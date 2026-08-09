@@ -19,6 +19,7 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import Stripe from "npm:stripe@17";
 import { corsPreflight, json, readJsonOr, rejectUnlessMethods } from "../_shared/http.ts";
 import { adminClient, getAuthedUser, readEFEnv } from "../_shared/auth.ts";
+import { recomputeConsumerClass } from "../_shared/class-doors.ts";
 import { getTierConfig } from "../_shared/membership.ts";
 import {
   ensureWholeCatalog,
@@ -92,23 +93,14 @@ Deno.serve(async (req) => {
       return json({ ok: false, error: `mock_subscription: ${sub.error.message}` }, 500);
     }
 
-    // Grant Premium via the subscription door — but never downgrade a
-    // higher-ranked earned class (Influencer/Aura ride on instagram/invitation
-    // origins, both rank above Premium). The subscription row above is always
-    // recorded; if reach later lapses, claim-instagram's fallback lands the
-    // paying consumer on premium, not standard.
-    const grant = await admin
-      .from("consumers")
-      .update({
-        class_key: "premium",
-        class_origin: "subscription",
-        class_granted_at: new Date().toISOString(),
-        class_expires_at: periodEnd,
-      })
-      .eq("id", consumerId)
-      .in("class_origin", ["default", "subscription"]);
-    if (grant.error) {
-      return json({ ok: false, error: `mock_grant: ${grant.error.message}` }, 500);
+    // The paid-door fact is the mock subscription row above; the slot is
+    // derived. The shared recompute lands the highest-ranked open door
+    // (MESITA-972) — an Aura member who subscribes stays Aura while the
+    // subscription keeps running as an open door.
+    try {
+      await recomputeConsumerClass(admin, consumerId);
+    } catch (err) {
+      return json({ ok: false, error: `mock_grant: ${String(err)}` }, 500);
     }
 
     return json({ ok: true, checkout_url: successUrl, mock: true });

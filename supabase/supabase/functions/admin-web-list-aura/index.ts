@@ -2,14 +2,15 @@
 //
 // Naming: caller-verb-words. Caller = admin, verb = list, words = aura.
 //
-// The Aura roster: every consumer currently sitting on the invite-only class.
-// Read-only — the console's Aura Config page renders this list, and every
-// membership write still goes through admin-web-grant-class.
+// The Aura roster: every consumer holding the INVITATION DOOR to Aura
+// (consumers.invitation_class_key — the door fact, MESITA-972). Read-only —
+// the console's Aura Config page renders this list, and every membership
+// write still goes through admin-web-grant-class.
 //
-// Aura is admin-granted (origin 'invitation'), but this lists the class, not
-// the origin: if a future door ever seats someone on Aura another way, the
-// roster must show them rather than quietly hide a member the operator can
-// see everywhere else. Each row carries its origin so the difference is legible.
+// The roster keys off the door, not the slot: an Aura member always wins the
+// slot today (nothing outranks Aura), but the list must mean "who is on the
+// Aura list", not "whose computed class happens to read aura". Each row still
+// carries the slot class/origin so the difference stays legible.
 //
 // Body: {}   (none)
 // Response: { ok: true, members: ConsumerSummary[] }
@@ -46,12 +47,12 @@ Deno.serve(async (req) => {
   if (!saRes.ok) return saRes.response;
 
   // Newest invitation first — the roster reads as a log of who was let in.
-  // Rows predating class_granted_at (null) sort last rather than vanishing.
+  // Rows predating invitation_granted_at (null) sort last rather than vanishing.
   const { data, error } = await admin
     .from("consumers")
     .select(CONSUMER_SUMMARY_COLUMNS)
-    .eq("class_key", AURA_CLASS_KEY)
-    .order("class_granted_at", { ascending: false, nullsFirst: false });
+    .eq("invitation_class_key", AURA_CLASS_KEY)
+    .order("invitation_granted_at", { ascending: false, nullsFirst: false });
   if (error) {
     return json({ ok: false, error: `list_failed: ${error.message}` }, 500);
   }

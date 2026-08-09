@@ -32,6 +32,7 @@ import {
 import {
   applyListingTypeToPatch,
 } from "../_shared/partner-derivation.ts";
+import { recomputeConsumerClass } from "../_shared/class-doors.ts";
 import { ratesFromPlace } from "../_shared/lineup-strategy.ts";
 import { subscriptionSnapshot } from "./subscription-snapshot.ts";
 
@@ -200,37 +201,12 @@ async function reconcileConsumerSubscription(
     throw new Error(`consumer_subscription_mirror: ${mirror.error.message}`);
   }
 
-  if (isLive) {
-    // Grant Premium via the subscription door — but never downgrade a
-    // higher-ranked earned class (Influencer/Aura ride on instagram/invitation
-    // origins, both rank above Premium). The subscription mirror above is
-    // always recorded; if reach later lapses, claim-instagram's fallback lands
-    // the paying consumer on premium, not standard.
-    const grant = await admin
-      .from("consumers")
-      .update({
-        class_key: "premium",
-        class_origin: "subscription",
-        class_granted_at: new Date().toISOString(),
-        class_expires_at: periodEnd,
-      })
-      .eq("id", consumerId)
-      .in("class_origin", ["default", "subscription"]);
-    if (grant.error) throw new Error(`consumer_grant: ${grant.error.message}`);
-  } else {
-    // Lapsed/cancelled: only downgrade if Premium came through the paid door.
-    // An Instagram/invitation Premium is left untouched.
-    const revoke = await admin
-      .from("consumers")
-      .update({
-        class_key: "standard",
-        class_origin: "default",
-        class_expires_at: null,
-      })
-      .eq("id", consumerId)
-      .eq("class_origin", "subscription");
-    if (revoke.error) throw new Error(`consumer_revoke: ${revoke.error.message}`);
-  }
+  // The paid-door fact is the mirror row above; the slot is derived. The
+  // shared recompute lands the highest-ranked open door either way: a live
+  // sub grants Premium unless Aura outranks it, and a lapse falls back to the
+  // best remaining door (reach → Influencer, else Standard) instead of the
+  // old hardcoded standard. Throws propagate → 500 → Stripe retries.
+  await recomputeConsumerClass(admin, consumerId);
 }
 
 // ─── Business side ──────────────────────────────────────────────────────────

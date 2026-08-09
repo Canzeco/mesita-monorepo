@@ -26,6 +26,15 @@ import { INFLUENCER_FOLLOWER_THRESHOLD } from "@/lib/consumer-data";
 
 type ClassKey = "standard" | "premium" | "influencer" | "aura";
 
+/** Open doors, independent of which one wins the class slot (MESITA-972).
+ *  Standard is always open, so only the three earned/paid doors are carried.
+ *  The class rail renders unlocked-vs-locked off this. */
+export type ClassDoors = {
+  influencer: boolean;
+  premium: boolean;
+  aura: boolean;
+};
+
 type ConsumerClassState = {
   key: ClassKey;
   origin: "default" | "instagram" | "subscription" | "invitation";
@@ -37,6 +46,7 @@ type ConsumerClassState = {
    *  consumers.instagram_handle (read off the profile); this carries the
    *  demo handle for the Instagram preview state where no profile exists. */
   handle: string | null;
+  doors: ClassDoors;
 };
 
 // Safe default for any tree rendered without a provider: a plain Standard
@@ -49,6 +59,7 @@ const STANDARD_CLASS: ConsumerClassState = {
   renewsAt: null,
   followers: 0,
   handle: null,
+  doors: { influencer: false, premium: false, aura: false },
 };
 
 // The known class keys — an unknown/stale server key (e.g. the retired
@@ -77,12 +88,22 @@ function normalize(
       handle: instagramHandle,
     };
   }
+  const key = isClassKey(c.key) ? c.key : "standard";
+  const followers = c.followers ?? 0;
   return {
-    key: isClassKey(c.key) ? c.key : "standard",
+    key,
     origin: c.origin ?? "default",
     renewsAt: c.subscription?.current_period_end ?? c.expires_at ?? null,
-    followers: c.followers ?? 0,
+    followers,
     handle: instagramHandle,
+    // Server-computed doors when the EF ships them; otherwise derive from
+    // what the payload already proves (reach from followers, the paid door
+    // from the live subscription, Aura only when it holds the slot).
+    doors: c.doors ?? {
+      influencer: followers >= INFLUENCER_FOLLOWER_THRESHOLD,
+      premium: c.subscription != null,
+      aura: key === "aura",
+    },
   };
 }
 
@@ -274,6 +295,14 @@ function mockAccountState(
     // preview is deterministic (MESITA-935).
     followers: mock.instagram ? mock.followers : base.followers,
     handle: mock.instagram ? DEMO_INSTAGRAM_HANDLE : base.handle,
+    // Preview doors mirror ONLY the mocked axes so each demo state is
+    // deterministic (a Standard preview shows every door locked, regardless
+    // of the real account underneath).
+    doors: {
+      influencer: igInfluencer || mock.class === "influencer",
+      premium: mock.class === "premium",
+      aura: mock.class === "aura",
+    },
   };
 }
 
@@ -313,6 +342,7 @@ export function ClassProvider({
         key: "premium",
         origin: "subscription",
         renewsAt: renews.toISOString(),
+        doors: { ...base.doors, premium: true },
       };
     }
     return base;

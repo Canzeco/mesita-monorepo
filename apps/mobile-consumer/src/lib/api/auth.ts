@@ -53,6 +53,13 @@ export type ConsumerClass = {
   label?: string;
   followers?: number | null;
   expires_at?: string | null;
+  /** Open doors, independent of which one wins the slot (MESITA-972).
+   *  Optional so a not-yet-redeployed EF degrades to client derivation. */
+  doors?: {
+    influencer: boolean;
+    premium: boolean;
+    aura: boolean;
+  } | null;
   subscription?: {
     status: string;
     price_cents: number;

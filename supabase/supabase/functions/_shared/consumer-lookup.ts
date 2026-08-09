@@ -91,7 +91,7 @@ export function safeOrFilterValue(value: string): string {
 
 /** The consumer columns every admin identity surface reads. */
 export const CONSUMER_SUMMARY_COLUMNS =
-  "id, code, full_name, first_name, last_name, phone, instagram_handle, consumer_instagram_followers_count, class_key, class_origin, class_granted_at";
+  "id, code, full_name, first_name, last_name, phone, instagram_handle, consumer_instagram_followers_count, class_key, class_origin, class_granted_at, invitation_class_key, invitation_granted_at";
 
 export type ConsumerSummary = {
   id: string;
@@ -103,6 +103,9 @@ export type ConsumerSummary = {
   classKey: string | null;
   classOrigin: string | null;
   grantedAt: string | null;
+  /** Invitation door fact (MESITA-972) — the Aura roster keys off this. */
+  invitationClassKey: string | null;
+  invitationGrantedAt: string | null;
 };
 
 type ConsumerRow = Record<string, unknown>;
@@ -133,6 +136,8 @@ export function toConsumerSummary(row: ConsumerRow): ConsumerSummary {
     classKey: str(row.class_key),
     classOrigin: str(row.class_origin),
     grantedAt: str(row.class_granted_at),
+    invitationClassKey: str(row.invitation_class_key),
+    invitationGrantedAt: str(row.invitation_granted_at),
   };
 }
 
