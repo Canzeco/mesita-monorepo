@@ -85,4 +85,15 @@ describe("strategyForPlace contract (locks the documented trap)", () => {
     // 33 is outside the legal 10..50-by-10 set, so no preset can carry it.
     expect(strategyForPlace({ ...paid.rates, premium_rate: 33 })).toBe(null);
   });
+
+  it("leftover Dominant rates (40/50/20/30) display as Aggressive (MESITA-993)", () => {
+    expect(
+      strategyForPlace({
+        welcome_free_rate: 40,
+        welcome_premium_rate: 50,
+        free_rate: 20,
+        premium_rate: 30,
+      }),
+    ).toBe("aggressive");
+  });
 });

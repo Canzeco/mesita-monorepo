@@ -135,18 +135,37 @@ export function snapDiscountCap(v: unknown): DiscountCapMxn {
   return best;
 }
 
+
+/** Retired Dominant rate tuple (pre-2026-08-09). Migration remapped live rows
+ * to Aggressive; this catch stays so any leftover row displays/pays as
+ * Aggressive rather than falling through to the null/custom → Zero path
+ * (MESITA-993 / engine D5). */
+export const RETIRED_DOMINANT_RATES: StrategyRates = {
+  welcome_free_rate: 40,
+  welcome_premium_rate: 50,
+  free_rate: 20,
+  premium_rate: 30,
+};
+
+function ratesMatch(a: StrategyRates, b: StrategyRates): boolean {
+  return (
+    a.welcome_free_rate === b.welcome_free_rate &&
+    a.welcome_premium_rate === b.welcome_premium_rate &&
+    a.free_rate === b.free_rate &&
+    a.premium_rate === b.premium_rate
+  );
+}
+
 // Which strategy a place's stored rates currently reflect. Matched on the four
 // rate columns (cap is independent, not part of identity). Returns null when
-// the rates match no preset — e.g. a legacy place still carrying Dominant
-// (40/50/20/30) or a retired 70 — so the UI shows a neutral "custom" state.
+// the rates match no preset (e.g. a retired 70) — so the UI shows a
+// neutral "custom" state. Leftover Dominant (40/50/20/30) coerces to
+// Aggressive (MESITA-993).
 // A fresh place (all nulls) matches Zero, which is correct.
 export function strategyForPlace(rates: StrategyRates): StrategyId | null {
-  const match = STRATEGIES.find(
-    (s) =>
-      s.rates.welcome_free_rate === rates.welcome_free_rate &&
-      s.rates.welcome_premium_rate === rates.welcome_premium_rate &&
-      s.rates.free_rate === rates.free_rate &&
-      s.rates.premium_rate === rates.premium_rate,
-  );
-  return match?.id ?? null;
+  const match = STRATEGIES.find((s) => ratesMatch(s.rates, rates));
+  if (match) return match.id;
+  // D5 / MESITA-993: leftover Dominant rates display as Aggressive.
+  if (ratesMatch(rates, RETIRED_DOMINANT_RATES)) return "aggressive";
+  return null;
 }
