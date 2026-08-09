@@ -8,7 +8,7 @@ function Premium() {
   const doors: { title: string; body: string; Icon: LucideIcon }[] = [
     {
       title: "Instagram",
-      body: "Gratis. Verifica una cuenta con más de 2,000 seguidores y sube una historia etiquetando al lugar para liberar cada recompensa.",
+      body: "Gratis. Conecta Instagram con 2,000+ seguidores — Influencer, automático. La Historia es recompensa extra en cada visita, no la puerta a la clase.",
       Icon: Instagram,
     },
     {
@@ -42,7 +42,7 @@ function Premium() {
           ))}
         </div>
         <SectionFooter
-          note="Gratis para siempre. Premium se gana gratis con Instagram, o cuesta $100 MXN al mes."
+          note="Gratis para siempre. Influencer con Instagram (2,000+ seguidores); Premium cuesta $100 MXN al mes."
           cta={{ href: CONSUMER_URL, label: "Descargar app" }}
           variant="primary"
         />

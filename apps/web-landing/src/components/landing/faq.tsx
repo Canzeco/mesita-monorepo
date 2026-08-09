@@ -2,7 +2,7 @@ function FAQ() {
   const items: { q: string; a: string }[] = [
     {
       q: "¿Mesita es gratis?",
-      a: "Sí. Descubre, reserva y consigue descuentos sin pagar nada. Premium sube los descuentos en todos lados y se gana gratis con Instagram, o cuesta $100 MXN al mes.",
+      a: "Sí. Descubre, reserva y consigue descuentos sin pagar nada. Premium sube los descuentos en todos lados por $100 MXN al mes; Influencer es gratis con 2,000+ seguidores en Instagram.",
     },
     {
       q: "¿Cómo uso un descuento?",
@@ -10,7 +10,7 @@ function FAQ() {
     },
     {
       q: "¿Tengo que subir una historia?",
-      a: "Solo si tu Premium viene por Instagram: subes una historia etiquetando al lugar para liberar la recompensa. Mesita la verifica sola para cuentas públicas; las privadas mandan una captura que el mesero confirma. Suscriptores e invitados nunca suben nada.",
+      a: "Solo si activas la recompensa de Historia con Instagram conectado: subes una historia etiquetando al lugar y completas la tarea en la app. La página de check es informativa — nadie en el lugar confirma ni aprueba. Premium e invitados Aura no suben historia.",
     },
     {
       q: "¿Puedo reservar en cualquier lugar?",
