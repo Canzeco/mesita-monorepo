@@ -32,7 +32,7 @@ Native consumer app (Expo SDK 57 · React Native · Expo Router · NativeWind) �
 ## Structure
 - `src/app/` — Expo Router: `index.tsx` (auth gate) · `sign-in` · `onboard` · `(tabs)/{home,search,rewards,reservations,me}` (mirrors web BottomNav). Rewards is live (QR passport + tickets + ticket detail, MESITA-566; no Stripe subscribe UI). Reservations is live (`parked-flags.ts` `reservations.soon: false`, unparked MESITA-715) — Upcoming/History, not a coming-soon dialog.
 - `src/lib/` — `supabase.ts` (client) · `storage.ts` · `ef.ts` · `api/` (EF helpers, mirror `apps/web-consumer/src/lib/api/*`).
-- `src/providers/auth.tsx` — session + profile + `onboarded` predicate (`first_name && last_name && birthday && sex`, same as the web shell layout). Both name halves are required because reservations are booked with the venue under the guest's full name.
+- `src/providers/auth.tsx` — session + profile + `onboarded` predicate (`first_name && last_name && birthday && sex`, same as the web shell layout). Both name halves are required because reservations are booked with the place under the guest's full name.
 - Home hub modes: **Swipe** · **Favorites** live; **Memo** · **Social** parked behind `ComingSoonModal` (web HomeModeNav parity, MESITA-383/565 — no Soon pills). Ask AI + Social code remains in tree for one-flag unpark.
 - Place detail: `src/app/place/[id].tsx` via `consumer-web-get-place` (MESITA-435). Me tab = modular boxes + device prefs in AsyncStorage; Premium = **status only** (no subscribe/payment UI).
 - Brand mark: `src/components/brand/MesitaMark.tsx` (Home tab icon). App icons/splash sourced from monorepo `assets/brand` (MESITA-436).

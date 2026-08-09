@@ -41,7 +41,7 @@ export function WaysToClimb({
       icon: CLASS_ICONS.standard,
       iconColors: GRADIENTS.free,
       title: 'Standard',
-      via: 'Free',
+      via: 'Default',
       discountLevel: 'LOW',
       perks: ['Basic place picks', '2 AI reservations / mo'],
       reached: isStandard,
