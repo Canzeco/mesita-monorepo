@@ -13,16 +13,16 @@
 // their original names — the class nomenclature rename covers data +
 // labels, not the color-token vocabulary.
 
-import type { ConsumerClass } from "@/lib/mock/place";
+import type { ClassKey } from "@/lib/consumer-data";
 
-export const CLASS_AVATAR_BG: Record<ConsumerClass, string> = {
+export const CLASS_AVATAR_BG: Record<ClassKey, string> = {
   standard: "bg-tier-free",
   premium: "bg-tier-premium",
   influencer: "bg-tier-influencer",
   aura: "bg-tier-gold",
 };
 
-export const CLASS_TEXT: Record<ConsumerClass, string> = {
+export const CLASS_TEXT: Record<ClassKey, string> = {
   standard: "text-muted-foreground",
   premium: "text-premium",
   influencer: "text-influencer",

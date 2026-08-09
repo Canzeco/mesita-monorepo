@@ -1,4 +1,4 @@
-import type { ConsumerClass } from "@/lib/mock/place";
+import type { ClassKey } from "@/lib/consumer-data";
 
 // Per-class promo rates. The `free`/`premium` keys mirror the v4 places
 // columns (welcome_free_rate / free_rate / …) — the DB column vocabulary is
@@ -63,7 +63,7 @@ function promoMatrixHasAnyRate(matrix: PromoMatrix): boolean {
 
 function resolveActivePromoRate(
   matrix: PromoMatrix,
-  classKey: ConsumerClass,
+  classKey: ClassKey,
   isFirstVisit = matrix.is_first_visit,
 ): number | null {
   // Standard reads the `free` column; every elevated class (Premium /
