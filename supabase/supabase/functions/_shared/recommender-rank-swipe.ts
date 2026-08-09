@@ -11,12 +11,12 @@
 // are valid — discovery is public until sign-up, so the caller passes
 // profile=null when there's no session.
 //
-// Pipeline (MESITA-718 — live Lineup v11):
+// Pipeline (MESITA-718 — live Lineup v12):
 //   1. Pull a bounded candidate pool by bounding-box radius (cheap).
 //   2. Lazy-embed any candidates missing an embedding (batched, capped).
 //   3. Compose a one-sentence intent query; embed once → EM cosines.
 //   4. Load app_settings.scoring_config; score EM·SM·GP·RP·XX per lane;
-//      merge Organic → Inorganic → Hybrid (keep-lane-on-dupe).
+//      merge Organic → Inorganic (keep-lane-on-dupe).
 //   5. Trim to limit (laneN usually caps first).
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
@@ -119,7 +119,7 @@ export async function rankSwipeDeck(
     }
   }
 
-  // ── 4. Lineup v11 (live scoring_config) ────────────────────────────
+  // ── 4. Lineup v12 (live scoring_config) ────────────────────────────
   const settings = await loadScoringSettings(admin);
   const xxSeed = `${callerName}:${lat?.toFixed(3) ?? "x"}:${lng?.toFixed(3) ?? "x"}`;
 
