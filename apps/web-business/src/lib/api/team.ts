@@ -14,7 +14,7 @@ export type BusinessRole = "owner" | "editor" | "viewer";
 type TeamEditor = {
   memberId: string;
   userId: string;
-  role: BusinessRole | string;
+  role: BusinessRole;
   fullName: string | null;
   email: string | null;
   createdAt: string;
@@ -23,7 +23,7 @@ type TeamEditor = {
 type PendingEditorInvite = {
   id: string;
   email: string;
-  role: BusinessRole | string;
+  role: BusinessRole;
   token: string;
   createdAt: string;
   expiresAt: string;
