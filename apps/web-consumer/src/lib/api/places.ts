@@ -122,6 +122,25 @@ export type Place = {
    * copy so a fresh consumer sees the welcome framing.
    */
   is_first_visit?: boolean | null;
+
+  // ── Raw EF columns (optional) ─────────────────────────────────────
+  //
+  // Discover EFs return the full public places projection; these ride on
+  // every Place at runtime and feed enrichPlaceOverview / discovery
+  // filters. Declared here so call sites don't cast through Record.
+  /** Google Places overall stars (source for `google_rating`). */
+  google_stars_overall?: number | null;
+  /** Google review count (source for `google_count`). */
+  google_review_count?: number | null;
+  /** Weekly hours jsonb — same shape `computeOpenState` reads. */
+  hours?: unknown;
+  timezone?: string | null;
+  city?: string | null;
+  enriched_at?: string | null;
+  /** Per-visit promo cap in major currency units (source for `reward_cap_mxn`). */
+  monthly_promo_cap?: number | null;
+  /** Enricher pipeline status (`queued` / `generating` / `ready` / …). */
+  content_status?: string | null;
 };
 
 // Discover surfaces (swipe + catalog) — both go through dedicated EFs

@@ -6,11 +6,9 @@
 // selects the same set. So each Place the client receives already carries
 // the raw signal columns — google_stars_overall, google_review_count,
 // instagram_followers_count, price_level, hours, timezone, zone, city,
-// address, enriched_at. They just aren't on the `Place` *type*, so nothing
-// mapped them onto the derived overview names (google_rating, open_now,
-// last_updated_label, …) that the card reads. Result: real cards stayed
-// sparse while the detail modal — which DID derive them via
-// placeRowToDetail — was rich.
+// address, enriched_at — declared on the Place type. This mapper turns them
+// into the derived overview names (google_rating, open_now,
+// last_updated_label, …) that the card reads.
 //
 // `enrichPlaceOverview` closes that gap. It derives the overview-parity
 // fields from the raw columns already on the row, running the SAME
@@ -32,17 +30,15 @@ import { num, str } from "@/lib/adapters/place-to-detail-helpers";
 import { formatPlacePriceChip } from "@/lib/place-price";
 import { relativeLabel } from "@/lib/utils";
 
-// Derives the overview-parity fields from the raw places columns that ride
-// along on every Place at runtime (present even though they're absent from
-// the `Place` type). Mirrors placeRowToDetail so the card and the detail
-// modal compute identical rating / status / zone / freshness.
+// Derives the overview-parity fields from the raw places columns on Place.
+// Mirrors placeRowToDetail so the card and the detail modal compute
+// identical rating / status / zone / freshness.
 export function enrichPlaceOverview(v: Place): Place {
-  const row = v as unknown as Record<string, unknown>;
-  const rating = num(row.google_stars_overall);
-  const count = num(row.google_review_count);
-  const igFollowers = num(row.instagram_followers_count);
-  const priceLevel = num(row.price_level);
-  const currency = str(row.currency) ?? "MXN";
+  const rating = num(v.google_stars_overall);
+  const count = num(v.google_review_count);
+  const igFollowers = num(v.instagram_followers_count);
+  const priceLevel = num(v.price_level);
+  const currency = str(v.currency) ?? "MXN";
   // Neighborhood (zone) priority: the real zone column → the colonia
   // parsed out of the formatted address → the city. Most places have no
   // zone column yet but DO carry the colonia inside `address`
@@ -50,30 +46,32 @@ export function enrichPlaceOverview(v: Place): Place {
   // neighborhood chip without a DB backfill, and degrades to city when the
   // address has none (e.g. US places).
   const zone =
-    str(row.zone) ?? neighborhoodFromAddress(str(row.address)) ?? str(row.city);
-  const freshness = relativeLabel(str(row.enriched_at) ?? str(row.created_at));
+    str(v.zone) ?? neighborhoodFromAddress(str(v.address)) ?? str(v.city);
+  const freshness = relativeLabel(str(v.enriched_at) ?? str(v.created_at));
   // Ticket cap, in pesos — the promo applies to the first `monthly_promo_cap`
   // of the bill, the same column the business sets on the Promos page.
-  const rewardCapMxn = num(row.monthly_promo_cap);
+  const rewardCapMxn = num(v.monthly_promo_cap);
 
   // Only trust the live open/closed math when the row actually carries an
   // hours table — otherwise leave the fields null so the status chip hides.
   const hasHours =
-    !!row.hours &&
-    typeof row.hours === "object" &&
-    !Array.isArray(row.hours) &&
-    Object.keys(row.hours as object).length > 0;
-  const open = hasHours ? computeOpenState(row.hours, str(row.timezone)) : null;
+    !!v.hours &&
+    typeof v.hours === "object" &&
+    !Array.isArray(v.hours) &&
+    Object.keys(v.hours as object).length > 0;
+  const open = hasHours
+    ? computeOpenState(v.hours, str(v.timezone))
+    : null;
 
   const derivedPriceRange = formatPlacePriceChip({
-    priceRange: v.price_range ?? str(row.price_range),
+    priceRange: v.price_range ?? undefined,
     priceLevel: v.price_level ?? priceLevel,
     currency,
   });
 
   // Same predicate as placeRowToDetail — content_status stays queued/
   // generating for the full pipeline; only contents lands 'ready'.
-  const contentStatus = str(row.content_status);
+  const contentStatus = str(v.content_status);
   const isEnriching =
     v.is_enriching ??
     (contentStatus === "queued" || contentStatus === "generating");
