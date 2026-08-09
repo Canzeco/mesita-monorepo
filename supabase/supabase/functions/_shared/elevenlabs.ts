@@ -40,7 +40,7 @@ export function reservationAgentId(): string {
   return Deno.env.get("ELEVENLABS_AGENT_ID")?.trim() || DEFAULT_AGENT_ID;
 }
 
-/** The venue-facing line — a1 dials venues from it, a4 answers places on it. */
+/** The place-facing line — a1 dials places from it, a4 answers places on it. */
 export function reservationFromNumber(): string {
   return Deno.env.get("ELEVENLABS_FROM_NUMBER")?.trim() || DEFAULT_FROM_NUMBER;
 }
@@ -109,7 +109,7 @@ export type ConversationStatusResult =
     /**
      * The post-call verdict, once `status` is done: analysis.call_successful
      * ("success" | "failure" | "unknown"). null until the analysis exists —
-     * "success" is what the intent loop reads as "the venue CONFIRMED".
+     * "success" is what the intent loop reads as "the place CONFIRMED".
      */
     callSuccessful: string | null;
     /**

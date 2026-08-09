@@ -54,7 +54,7 @@ export function apiCreateReservation(
   );
 }
 
-/** Accept confirmation or a venue alternative without an a2 call (MESITA-787). */
+/** Accept confirmation or a place alternative without an a2 call (MESITA-787). */
 export function apiConfirmReservation(
   client: SupabaseClient,
   args: {
@@ -92,7 +92,7 @@ export type EFReservationRow = {
     | "declined"
     | "no_show"
     | "cancelled"
-    // Engine outcomes: the venue never answered / the call ended unclear.
+    // Engine outcomes: the place never answered / the call ended unclear.
     | "unreachable"
     | "unresolved";
   /** The ticket's 8-digit reference code (null only on pre-code rows). */
@@ -141,7 +141,7 @@ export function apiCancelReservation(
 
 /**
  * Reschedule (or resize) the caller's own reservation. New terms send the
- * ticket back to `booking` and Mesita calls the venue again.
+ * ticket back to `booking` and Mesita calls the place again.
  */
 export function apiUpdateReservation(
   client: SupabaseClient,

@@ -1,9 +1,9 @@
 // The Reservationist FLEET — the four ElevenLabs agents, config-as-code.
 //
-//   eleven-a1 (es-mx) · c2b outbound booker      calls the venue for the guest
+//   eleven-a1 (es-mx) · c2b outbound booker      calls the place for the guest
 //   eleven-a2 (es-mx) · b2c outbound confirmer   calls the human guest back
 //   eleven-a3 (es-mx) · consumer inbound         guest phones Mesita (support)
-//   eleven-a4 (es-mx) · business inbound         venue phones Mesita (support)
+//   eleven-a4 (es-mx) · business inbound         place phones Mesita (support)
 //
 // One EF caller family per agent (eleven-a1-* … eleven-a4-*): every capability
 // is a plain webhook tool over HTTPS — anon bearer for the gateway +
@@ -242,7 +242,7 @@ export function fleetToolConfigs(
         },
         // STRUCTURED, not prose. A bare string can't be compared against what
         // the guest later picks, so every pick looked like a brand-new
-        // proposal and cost the venue a second call. Each property object
+        // proposal and cost the place a second call. Each property object
         // still sets exactly one of description/dynamic_variable/constant_value.
         alternatives: {
           type: "array",
@@ -468,7 +468,7 @@ function requireTool(ids: Map<string, string>, name: string): string {
  *   through exactly one report tool node before the farewell — including the
  *   weird ones. Voicemail / IVR dead-end / "call back later" report
  *   `unreachable`, which the engine retries exactly like a no-answer; a line
- *   that isn't the venue reports `wrong_number`, which is terminal on the spot
+ *   that isn't the place reports `wrong_number`, which is terminal on the spot
  *   because redialling would only ring the same stranger again.
  * - a2: tools fire only on explicit guest action; a voicemail message with no
  *   tool call is safe (ticket state simply doesn't move — same as no answer).
@@ -496,7 +496,7 @@ export function fleetWorkflows(toolIdByName: Map<string, string>): Record<FleetA
       prevent_subagent_loops: true,
       nodes: {
         start_node: { type: "start", position: pos(0, 0), edge_order: ["e_start_book"] },
-        // ONE talk node for the whole conversation with the venue.
+        // ONE talk node for the whole conversation with the place.
         //
         // There used to be a separate "gatekeeper" node in front of this one.
         // It broke real calls (conv_1201kz2cg6…, 2026-08-02): the agent
@@ -505,7 +505,7 @@ export function fleetWorkflows(toolIdByName: Map<string, string>): Record<FleetA
         // died 4s later. Reaching the right person is a conversational nuance,
         // not a state — splitting it put a machine boundary inside one human
         // speech act. Every talk→talk hop is a chance to cut the agent off, so
-        // a1 has none: the only transitions leave this node once the venue has
+        // a1 has none: the only transitions leave this node once the place has
         // actually answered.
         book: talkNode({
           label: "Book with venue",
@@ -891,7 +891,7 @@ export function fleetWorkflows(toolIdByName: Map<string, string>): Record<FleetA
       },
     },
 
-    // a4 · verify venue → triage (upcoming / find-by-name / code lookup /
+    // a4 · verify place → triage (upcoming / find-by-name / code lookup /
     // redirect) → shared results node → cancel with confirmation → close.
     a4: {
       prevent_subagent_loops: true,

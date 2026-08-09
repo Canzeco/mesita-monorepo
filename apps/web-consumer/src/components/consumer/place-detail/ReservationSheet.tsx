@@ -29,7 +29,7 @@ const DEFAULT_PARTY = 2;
 
 // MX_OFFSET (and everything else about the place's clock) lives in
 // @/lib/place-time — the single source of truth. The picked slot is the
-// venue's wall-clock, so we stamp that offset: the agent reads the time back
+// place's wall-clock, so we stamp that offset: the agent reads the time back
 // in America/Mexico_City and it matches what the guest chose.
 
 /**

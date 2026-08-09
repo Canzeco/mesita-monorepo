@@ -41,7 +41,7 @@ const MAX_PARTY_SIZE = 20;
 
 // MX_OFFSET (and everything else about the place's clock) lives in
 // @/lib/place-time — the single source of truth. The picked slot is the
-// venue's wall-clock; stamping the offset lets the agent read it back in
+// place's wall-clock; stamping the offset lets the agent read it back in
 // America/Mexico_City and match what the guest chose.
 
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -55,7 +55,7 @@ type DateOption = {
 };
 
 /**
- * The next `count` days on the VENUE's calendar — not the device's. A guest in
+ * The next `count` days on the place's calendar — not the device's. A guest in
  * Tokyo and a guest in CDMX must see the same "Today", or they'd disagree
  * about which slots are still bookable.
  *

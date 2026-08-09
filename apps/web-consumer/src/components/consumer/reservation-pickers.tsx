@@ -48,7 +48,7 @@ type DateOption = {
 };
 
 /**
- * Every bookable day on the VENUE's calendar — not the device's. A guest in
+ * Every bookable day on the place's calendar — not the device's. A guest in
  * Tokyo and a guest in CDMX must see the same "Today", or they'd disagree about
  * which slots are still bookable.
  *

@@ -52,6 +52,6 @@ export type ReservationItem = {
   /** MESITA-787 */
   guestNotify?: "call" | "app";
   guestConfirmedAt?: string | null;
-  /** Venue counter-offers the guest can accept in-app. */
+  /** Place counter-offers the guest can accept in-app. */
   alternatives?: ReservationAlternative[];
 };

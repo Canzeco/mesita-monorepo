@@ -5,11 +5,11 @@
 // THE TICKET LIFECYCLE (the app's model, derived here and nowhere else):
 //
 //   created   → the ticket exists, the agent hasn't dialed yet
-//   booking   → eleven-a1 is calling the venue (incl. counter-offer rounds)
+//   booking   → eleven-a1 is calling the place (incl. counter-offer rounds)
 //   confirmed → both sides agreed, the table is yours, slot still ahead
 //   passed    → it was confirmed and the slot has come and gone
-//   cancelled → called off by the guest, the venue, or an agent
-//   failed    → the venue said no, never answered, or the call ended unclear
+//   cancelled → called off by the guest, the place, or an agent
+//   failed    → the place said no, never answered, or the call ended unclear
 //
 // `passed` is DERIVED (confirmed + slot behind us), never stored — no cron to
 // keep honest, and the list EF filters Upcoming/History on the same rule.
@@ -21,7 +21,7 @@ import type {
 } from "@/lib/mock/reservations-mock";
 
 // Mexico City is UTC-6 year-round (no DST since 2022). reserved_at is stored
-// with an explicit offset; we render it back in the venue's wall-clock so the
+// with an explicit offset; we render it back in the place's wall-clock so the
 // guest sees the slot they picked.
 const TZ = "America/Mexico_City";
 

@@ -74,7 +74,7 @@ function noteFor(
 }
 
 // Mexico City is UTC-6 year-round (no DST since 2022). We shift the instant by
-// the fixed offset and read the UTC parts, so the venue's wall-clock renders
+// the fixed offset and read the UTC parts, so the place's wall-clock renders
 // the same on any device without depending on Hermes Intl timezone support.
 function formatReservationWhen(iso: string): string {
   const parsed = new Date(iso);
