@@ -1,10 +1,11 @@
-// check.mesita.ai/<code> — the public check page (Tickets v2, MESITA-806/814).
+// check.mesita.ai/<code> — the public check page (Tickets v2/v3, MESITA-806/814).
 //
 // This URL is what every ticket QR encodes. ANYONE who scans it lands here,
 // no login: the page proves the ticket is a real, live Mesita check on the
-// official domain, and gives staff the three actions of the visit — enter
-// the bill, approve a submitted story/review, confirm payment. Staff-facing,
-// so the copy is Spanish (es-MX).
+// official domain, and gives staff the visit actions — enter the bill
+// (optional unless the place requires it) and mark paid / close the ticket.
+// Story and review rows are informational only (MESITA-849); staff never
+// approve or reject. Staff-facing, so the copy is Spanish (es-MX).
 
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";

@@ -1,9 +1,10 @@
 "use client";
 
-// The live check card + the three staff actions (bill · story/review
-// verdicts · paid received). One client component: takes the RSC-fetched
-// initial payload, re-fetches after every mutation so the card always shows
-// the server's truth, never an optimistic guess.
+// The live check card + staff actions (bill · mark paid / close). Story and
+// review rows are read-only status (MESITA-849) — not verdicts. One client
+// component: takes the RSC-fetched initial payload, re-fetches after every
+// mutation so the card always shows the server's truth, never an optimistic
+// guess.
 //
 // Privacy note honored by construction: the payload only ever carries the
 // blended final percent — this component has no concept of classes or rungs.
@@ -74,7 +75,7 @@ export function CheckClient({
   const [subtotal, setSubtotal] = useState("");
   // Staff PIN (MESITA-823) — only asked for when the place turned the gate
   // on. Held in component state for the session, so one entry covers the
-  // whole visit (bill → verdict → paid) and the close stays two-tap.
+  // whole visit (bill → mark paid) and the close stays two-tap.
   const [pin, setPin] = useState("");
   const [pinOpen, setPinOpen] = useState(false);
 

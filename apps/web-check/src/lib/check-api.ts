@@ -1,4 +1,4 @@
-// Tickets v2 (MESITA-806) — plain-fetch client for the public check-web-*
+// Tickets v2/v3 (MESITA-806/849/850) — plain-fetch client for the public check-web-*
 // Edge Functions. web-landing deliberately has NO supabase-js dependency:
 // these endpoints are verify_jwt=false and the 128-bit check code in the URL
 // is the whole authentication, so a bare fetch is the entire integration.
