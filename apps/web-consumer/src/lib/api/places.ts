@@ -28,6 +28,8 @@ export type Place = {
   slug: string;
   name: string;
   category: string | null;
+  /** Super-categories from the EF (MESITA-679); dual-family types list both. */
+  family_keys?: string[];
   category_label?: string | null;
   vibe: string | null;
   price_level: number | null;

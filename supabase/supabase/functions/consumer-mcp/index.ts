@@ -20,6 +20,7 @@ import { adminClient, readEFEnv } from "../_shared/auth.ts";
 import { resolveMcpBearer } from "../_shared/mcp-tokens.ts";
 import { PLACE_PUBLIC_COLUMNS } from "../_shared/place-columns.ts";
 import { withDisplayName } from "../_shared/place-display-name.ts";
+import { withFamilyKeys } from "../_shared/place-family-keys.ts";
 import { getTierConfig, isElevatedClass } from "../_shared/membership.ts";
 import { generateReservationCode, isUniqueViolation } from "../_shared/reservation-code.ts";
 import { attachPlaces } from "../_shared/reservation-places.ts";
@@ -144,8 +145,14 @@ async function runTool(
       if (!data) return toolError("Place not found");
       return toolText({
         ok: true,
-        place: withDisplayName(
-          data as { name?: string | null; google_name?: string | null },
+        place: withFamilyKeys(
+          withDisplayName(
+            data as {
+              name?: string | null;
+              google_name?: string | null;
+              category?: string | null;
+            },
+          ),
         ),
       });
     }

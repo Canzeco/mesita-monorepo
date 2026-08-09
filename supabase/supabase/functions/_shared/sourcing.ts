@@ -97,12 +97,25 @@ const GOOGLE_TYPE_TO_FAMILIES: Record<string, FamilyKey[]> = (() => {
   return m;
 })();
 
-/** Every family a Google type belongs to. Empty = not a Mesita type. */
-function familiesForGoogleType(
+/**
+ * Every family a Google type (or places.category slug) belongs to.
+ * Empty = not a Mesita type. Dual-family types return every match
+ * (MESITA-631). The `_restaurant` alias covers truncated taxonomy
+ * slugs (fine_dining → fine_dining_restaurant) so consumer payloads
+ * stay classifiable when category drops Google's suffix.
+ */
+export function familiesForGoogleType(
   primaryType: string | null | undefined,
 ): FamilyKey[] {
   if (!primaryType) return [];
-  return GOOGLE_TYPE_TO_FAMILIES[primaryType] ?? [];
+  const slug = primaryType.trim().toLowerCase();
+  if (!slug) return [];
+  const direct = GOOGLE_TYPE_TO_FAMILIES[slug];
+  if (direct) return direct;
+  if (!slug.endsWith("_restaurant")) {
+    return GOOGLE_TYPE_TO_FAMILIES[`${slug}_restaurant`] ?? [];
+  }
+  return [];
 }
 
 /** The primary (catalog-order first) family a Google type belongs to. */

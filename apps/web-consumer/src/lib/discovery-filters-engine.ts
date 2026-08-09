@@ -33,7 +33,7 @@
 import type { Place } from "@/lib/api/places";
 import { computeOpenState } from "@/lib/adapters/place-to-detail-helpers";
 import { resolvePlaceCategoryName } from "@/lib/place-category";
-import { familyKeysOfCategory, type FamilyKey } from "@/lib/place-families";
+import { type FamilyKey } from "@/lib/place-families";
 
 // ── Randomness ────────────────────────────────────────────────────────────
 export type RandomnessLevel = 0 | 1 | 2 | 3 | 4;
@@ -192,9 +192,7 @@ function matchesDiscoveryFilters(place: Place, f: DiscoveryFilters): boolean {
       f.categories.includes(place.category);
     const familyHit =
       f.familyKeys.length > 0 &&
-      familyKeysOfCategory(place.category).some((key) =>
-        f.familyKeys.includes(key),
-      );
+      f.familyKeys.some((key) => (place.family_keys ?? []).includes(key));
     if (!categoryHit && !familyHit) return false;
   }
 
