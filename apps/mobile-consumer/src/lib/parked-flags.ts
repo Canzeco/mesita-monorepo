@@ -2,8 +2,9 @@
 // Mirrors web BottomNav + HomeModeNav (MESITA-383 / MESITA-565). Unpark =
 // flip `soon: false` here — TabBar / SegmentNav read this table only.
 //
-// Memo (Ask AI) stays parked on web HomeModeNav (`soon: true`) — mobile has
-// no separate Memo parked flag; Home hub copy tracks web until both unpark.
+// Memo (Ask AI) is parked on web HomeModeNav too (`soon: true` → ComingSoon
+// dialog). Mobile parks Memo in `home.tsx` SegmentNav the same way; Social
+// is the homeMode row in this table.
 
 export const PARKED = {
   tabs: {
