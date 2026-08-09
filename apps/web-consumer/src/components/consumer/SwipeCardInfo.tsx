@@ -19,6 +19,7 @@ import { getOpeningStatusLabel } from "@/lib/place-status";
 import { formatPlacePriceLevelSymbols } from "@/lib/place-price";
 import { Spinner } from "@/components/shared";
 import { PromoChip } from "./PromoChip";
+import { VerifiedCheck } from "./VerifiedCheck";
 
 /** Place fields — padding comes from SWIPE_CARD_FIELDS_INNER on the card face. */
 export function SwipeCardInfo({
@@ -67,14 +68,7 @@ export function SwipeCardInfo({
           {place.name}
         </span>
         {isVerified && (
-          // eslint-disable-next-line @next/next/no-img-element -- static brand SVG asset
-          <img
-            src="/brand/verified-check.svg"
-            alt="Verified Partner"
-            width={18}
-            height={18}
-            className="h-[18px] w-[18px] shrink-0 drop-shadow-[0_1px_4px_rgba(0,0,0,0.45)]"
-          />
+          <VerifiedCheck className="h-[18px] w-[18px] shrink-0 drop-shadow-[0_1px_4px_rgba(0,0,0,0.45)]" />
         )}
       </h2>
 
