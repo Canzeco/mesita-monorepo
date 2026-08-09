@@ -27,6 +27,7 @@ import {
 import { DiscoveryZoneField } from "./discovery-zone-field";
 import {
   FilterGroupLabel,
+  FilterModule,
   Pill,
   RangeSlider,
   SectionLabel,
@@ -34,8 +35,8 @@ import {
 
 // Shared body of the discovery Filters route modal (Home Swipe + Search) —
 // MESITA-905 simplify + routed /filters. INTENT (Where · When · What · That)
-// + Random (word levels low→max). State in use-discovery-filters; dismiss
-// via onClose → router.back().
+// + Random (word levels low→max), each in a modular box. State in
+// use-discovery-filters; dismiss via onClose → router.back().
 
 export function DiscoveryFilters({
   onClose,
@@ -100,174 +101,181 @@ export function DiscoveryFilters({
       <div className="scrollbar-hide min-h-0 flex-1 overflow-y-auto px-4 pb-4">
         <FilterGroupLabel>Intent · where when what that</FilterGroupLabel>
 
-        <SectionLabel>Where</SectionLabel>
-        <DiscoveryZoneField zone={filters.zone} hasLocation={hasLocation} />
+        <div className="flex flex-col gap-3">
+          <FilterModule label="Where">
+            <DiscoveryZoneField zone={filters.zone} hasLocation={hasLocation} />
 
-        <SectionLabel className="mt-3" sub>
-          Distance tolerance
-        </SectionLabel>
-        {hasCenter ? (
-          <>
-            <div className="mb-1 flex justify-end">
-              <span className="text-foreground text-sm font-semibold tabular-nums">
-                {filters.maxKm === null
-                  ? "Any"
-                  : `within ${filters.maxKm} km`}
-              </span>
-            </div>
-            <RangeSlider
-              className="mt-2"
-              min={DISTANCE_MIN_KM}
-              max={DISTANCE_MAX_KM}
-              value={distanceKm}
-              ariaLabel="Distance tolerance in kilometres"
-              onChange={(km) =>
-                setDiscoveryMaxKm(km >= DISTANCE_MAX_KM ? null : km)
-              }
-            />
-            <div className="text-muted-foreground mt-1 flex justify-between text-[10px]">
-              <span>{DISTANCE_MIN_KM} km</span>
-              <span>Any</span>
-            </div>
-          </>
-        ) : (
-          <p className="text-muted-foreground/70 text-[11px]">
-            Pick a location above or turn on device location to filter by
-            distance.
-          </p>
-        )}
+            <SectionLabel className="mt-3" sub>
+              Distance tolerance
+            </SectionLabel>
+            {hasCenter ? (
+              <>
+                <div className="mb-1 flex justify-end">
+                  <span className="text-foreground text-sm font-semibold tabular-nums">
+                    {filters.maxKm === null
+                      ? "Any"
+                      : `within ${filters.maxKm} km`}
+                  </span>
+                </div>
+                <RangeSlider
+                  className="mt-2"
+                  min={DISTANCE_MIN_KM}
+                  max={DISTANCE_MAX_KM}
+                  value={distanceKm}
+                  ariaLabel="Distance tolerance in kilometres"
+                  onChange={(km) =>
+                    setDiscoveryMaxKm(km >= DISTANCE_MAX_KM ? null : km)
+                  }
+                />
+                <div className="text-muted-foreground mt-1 flex justify-between text-[10px]">
+                  <span>{DISTANCE_MIN_KM} km</span>
+                  <span>Any</span>
+                </div>
+              </>
+            ) : (
+              <p className="text-muted-foreground/70 text-[11px]">
+                Pick a location above or turn on device location to filter by
+                distance.
+              </p>
+            )}
+          </FilterModule>
 
-        <SectionLabel className="mt-5">When</SectionLabel>
-        <div className="flex flex-wrap gap-1.5">
-          <Pill
-            active={when.mode === "now"}
-            onClick={() => setDiscoveryWhen({ mode: "now" })}
-          >
-            <Clock className="h-3.5 w-3.5" /> Now
-          </Pill>
-          <Pill
-            active={when.mode === "anytime"}
-            onClick={() => setDiscoveryWhen({ mode: "anytime" })}
-          >
-            Anytime
-          </Pill>
-          <Pill active={when.mode === "at"} onClick={startAt}>
-            Pick a time
-          </Pill>
-        </div>
-        {when.mode === "at" && (
-          <div className="mt-3">
+          <FilterModule label="When">
             <div className="flex flex-wrap gap-1.5">
-              {WEEKDAY_LABELS.map((label, day) => (
+              <Pill
+                active={when.mode === "now"}
+                onClick={() => setDiscoveryWhen({ mode: "now" })}
+              >
+                <Clock className="h-3.5 w-3.5" /> Now
+              </Pill>
+              <Pill
+                active={when.mode === "anytime"}
+                onClick={() => setDiscoveryWhen({ mode: "anytime" })}
+              >
+                Anytime
+              </Pill>
+              <Pill active={when.mode === "at"} onClick={startAt}>
+                Pick a time
+              </Pill>
+            </div>
+            {when.mode === "at" && (
+              <div className="mt-3">
+                <div className="flex flex-wrap gap-1.5">
+                  {WEEKDAY_LABELS.map((label, day) => (
+                    <Pill
+                      key={label}
+                      active={when.day === day}
+                      onClick={() =>
+                        setDiscoveryWhen({ mode: "at", day, hour: when.hour })
+                      }
+                    >
+                      {label}
+                    </Pill>
+                  ))}
+                </div>
+                <div className="mt-3 flex items-center">
+                  <span className="text-muted-foreground text-[11px] font-semibold tracking-wide">
+                    Open at
+                  </span>
+                  <span className="font-display ml-auto text-base font-semibold tabular-nums">
+                    {formatHourLabel(when.hour)}
+                  </span>
+                </div>
+                <RangeSlider
+                  className="mt-3"
+                  min={0}
+                  max={23}
+                  value={when.hour}
+                  ariaLabel="Hour of day"
+                  onChange={(hour) =>
+                    setDiscoveryWhen({ mode: "at", day: when.day, hour })
+                  }
+                />
+              </div>
+            )}
+          </FilterModule>
+
+          <FilterModule label="What">
+            <div className="scrollbar-hide flex gap-1.5 overflow-x-auto pb-0.5">
+              {PLACE_FAMILIES.map((family) => (
                 <Pill
+                  key={family.key}
+                  active={filters.familyKeys.includes(family.key)}
+                  onClick={() => toggleDiscoveryFamily(family.key)}
+                >
+                  {family.emoji} {family.label}
+                </Pill>
+              ))}
+            </div>
+            {(categoryOptions.length > 1 || staleCategories.length > 0) && (
+              <>
+                <SectionLabel className="mt-3" sub>
+                  Categories
+                </SectionLabel>
+                <div className="scrollbar-hide flex gap-1.5 overflow-x-auto pb-0.5">
+                  {categoryOptions.map((option) => (
+                    <Pill
+                      key={option.slug}
+                      active={filters.categories.includes(option.slug)}
+                      onClick={() => toggleDiscoveryCategory(option.slug)}
+                    >
+                      {option.label}
+                    </Pill>
+                  ))}
+                  {staleCategories.map((slug) => (
+                    <Pill
+                      key={slug}
+                      active
+                      onClick={() => toggleDiscoveryCategory(slug)}
+                    >
+                      {slug}
+                    </Pill>
+                  ))}
+                </div>
+              </>
+            )}
+          </FilterModule>
+
+          <FilterModule label="That · the ask">
+            <input
+              type="text"
+              value={filters.ask}
+              maxLength={200}
+              onChange={(e) => setDiscoveryAsk(e.target.value)}
+              placeholder='what are you craving? — "mezcal cocktails for a date"'
+              aria-label="The ask — free text, shapes your lineup"
+              className="border-border/70 bg-muted/40 placeholder:text-muted-foreground/60 focus:border-primary/50 w-full rounded-xl border px-3.5 py-2.5 text-sm transition outline-none"
+            />
+            <p className="text-muted-foreground/70 mt-1.5 text-[11px]">
+              Shapes your lineup once the engine reads it — doesn&apos;t narrow
+              the list yet.
+            </p>
+          </FilterModule>
+
+          <FilterModule label="Random">
+            <div className="text-muted-foreground mb-1 flex items-center justify-between text-[11px] font-medium">
+              {RANDOMNESS_LABELS.map((label, i) => (
+                <span
                   key={label}
-                  active={when.day === day}
-                  onClick={() =>
-                    setDiscoveryWhen({ mode: "at", day, hour: when.hour })
+                  className={
+                    filters.randomness === i
+                      ? "text-foreground font-semibold"
+                      : undefined
                   }
                 >
                   {label}
-                </Pill>
+                </span>
               ))}
-            </div>
-            <div className="mt-3 flex items-center">
-              <span className="text-muted-foreground text-[11px] font-semibold tracking-wide">
-                Open at
-              </span>
-              <span className="font-display ml-auto text-base font-semibold tabular-nums">
-                {formatHourLabel(when.hour)}
-              </span>
             </div>
             <RangeSlider
-              className="mt-3"
-              min={0}
-              max={23}
-              value={when.hour}
-              ariaLabel="Hour of day"
-              onChange={(hour) =>
-                setDiscoveryWhen({ mode: "at", day: when.day, hour })
-              }
+              min={RANDOMNESS_MIN}
+              max={RANDOMNESS_MAX}
+              value={filters.randomness}
+              ariaLabel="Random level"
+              onChange={(n) => setDiscoveryRandomness(n as RandomnessLevel)}
             />
-          </div>
-        )}
-
-        <SectionLabel className="mt-5">What</SectionLabel>
-        <div className="scrollbar-hide flex gap-1.5 overflow-x-auto pb-0.5">
-          {PLACE_FAMILIES.map((family) => (
-            <Pill
-              key={family.key}
-              active={filters.familyKeys.includes(family.key)}
-              onClick={() => toggleDiscoveryFamily(family.key)}
-            >
-              {family.emoji} {family.label}
-            </Pill>
-          ))}
+          </FilterModule>
         </div>
-        {(categoryOptions.length > 1 || staleCategories.length > 0) && (
-          <>
-            <SectionLabel className="mt-3" sub>
-              Categories
-            </SectionLabel>
-            <div className="scrollbar-hide flex gap-1.5 overflow-x-auto pb-0.5">
-              {categoryOptions.map((option) => (
-                <Pill
-                  key={option.slug}
-                  active={filters.categories.includes(option.slug)}
-                  onClick={() => toggleDiscoveryCategory(option.slug)}
-                >
-                  {option.label}
-                </Pill>
-              ))}
-              {staleCategories.map((slug) => (
-                <Pill
-                  key={slug}
-                  active
-                  onClick={() => toggleDiscoveryCategory(slug)}
-                >
-                  {slug}
-                </Pill>
-              ))}
-            </div>
-          </>
-        )}
-
-        <SectionLabel className="mt-5">That · the ask</SectionLabel>
-        <input
-          type="text"
-          value={filters.ask}
-          maxLength={200}
-          onChange={(e) => setDiscoveryAsk(e.target.value)}
-          placeholder='what are you craving? — "mezcal cocktails for a date"'
-          aria-label="The ask — free text, shapes your lineup"
-          className="border-border/70 bg-muted/40 placeholder:text-muted-foreground/60 focus:border-primary/50 w-full rounded-xl border px-3.5 py-2.5 text-sm transition outline-none"
-        />
-        <p className="text-muted-foreground/70 mt-1.5 text-[11px]">
-          Shapes your lineup once the engine reads it — doesn&apos;t narrow the
-          list yet.
-        </p>
-
-        <SectionLabel className="mt-6">Random</SectionLabel>
-        <div className="text-muted-foreground mb-1 flex items-center justify-between text-[11px] font-medium">
-          {RANDOMNESS_LABELS.map((label, i) => (
-            <span
-              key={label}
-              className={
-                filters.randomness === i
-                  ? "text-foreground font-semibold"
-                  : undefined
-              }
-            >
-              {label}
-            </span>
-          ))}
-        </div>
-        <RangeSlider
-          min={RANDOMNESS_MIN}
-          max={RANDOMNESS_MAX}
-          value={filters.randomness}
-          ariaLabel="Random level"
-          onChange={(n) => setDiscoveryRandomness(n as RandomnessLevel)}
-        />
       </div>
 
       <div className="border-border/60 shrink-0 border-t p-4">
