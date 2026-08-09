@@ -24,9 +24,7 @@ import {
 //
 // Seeded once per request by the layout's consumer-web-get-profile read. This
 // replaces the old hardcoded CURRENT_USER mock that pinned everyone to
-// Premium — key now reflects the real consumers.class_key, so the instant-
-// Premium mock subscription flow becomes visible the moment the post-checkout
-// redirect reloads the shell.
+// Premium — key now reflects the real consumers.class_key from the profile EF.
 
 /** Open doors, independent of which one wins the class slot (MESITA-972).
  *  Standard is always open, so only the three earned/paid doors are carried.
@@ -104,13 +102,6 @@ function normalize(
 
 const ClassContext = createContext<ConsumerClassState>(STANDARD_CLASS);
 
-// Client-side mock upgrade. The Premium "Continue to checkout" button sets this
-// localStorage flag instead of running Stripe, so the full upgrade UX is
-// demoable before consumer-web-create-subscription is live. Remove together
-// with the MOCK_SUBSCRIPTION path in subscribe/[classKey] once real billing
-// ships.
-export const MOCK_PREMIUM_KEY = "mesita:mock-premium";
-
 // (The old MOCK_INSTAGRAM_KEY path is gone — the Verify Instagram sheet now
 // calls consumer-web-claim-instagram for a real server-side grant, MESITA-74.)
 
@@ -157,18 +148,6 @@ function subscribeToStore(onChange: () => void): () => void {
 
 function notifyStore(): void {
   storeListeners.forEach((l) => l());
-}
-
-// SSR-safe localStorage flag read. useSyncExternalStore returns the server
-// snapshot (always false) for the hydration render so server and client markup
-// match, then swaps in the real localStorage value — no cascading effect render
-// and no hydration mismatch.
-function useLocalStorageFlag(key: string): boolean {
-  return useSyncExternalStore(
-    subscribeToStore,
-    () => window.localStorage.getItem(key) === "1",
-    () => false,
-  );
 }
 
 // Parse + validate the stored blob. The snapshot is CACHED on the raw string:
@@ -316,32 +295,14 @@ export function ClassProvider({
     [consumerClass, instagramHandle],
   );
 
-  // Client-only mock flags, read SSR-safe so the upgrade UX is demoable. The
-  // first (hydration) render sees the server-seeded class; the real
-  // localStorage values fold in immediately after.
-  const mockPremium = useLocalStorageFlag(MOCK_PREMIUM_KEY);
   const mockAccount = useMockAccount();
 
   const value = useMemo<ConsumerClassState>(() => {
     // Demo/design override (Me-page demo toggles) wins over everything so
     // every account state is previewable regardless of the real class.
     if (mockAccount) return mockAccountState(mockAccount, base);
-    // A real server-seeded elevated class always wins — never downgrade or
-    // relabel it.
-    if (base.key !== "standard") return base;
-    if (mockPremium) {
-      const renews = new Date();
-      renews.setMonth(renews.getMonth() + 1);
-      return {
-        ...base,
-        key: "premium",
-        origin: "subscription",
-        renewsAt: renews.toISOString(),
-        doors: { ...base.doors, premium: true },
-      };
-    }
     return base;
-  }, [base, mockPremium, mockAccount]);
+  }, [base, mockAccount]);
 
   return (
     <ClassContext.Provider value={value}>{children}</ClassContext.Provider>
