@@ -12,7 +12,7 @@
 import { efInvoke } from "@/lib/supabase-ef";
 import { coerceResults, type ProbeResult } from "./catalog";
 
-export type RunProbesResult =
+type RunProbesResult =
   | { ok: true; checkedAt: string; results: ProbeResult[] }
   | { ok: false; error: string; notDeployed: boolean };
 
