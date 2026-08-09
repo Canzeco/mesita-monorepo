@@ -54,10 +54,7 @@ const TRUNK_PREFIX_ZERO = new Set(["UK", "DE", "FR", "NL", "AU", "AR"]);
  * Strip formatting and national trunk prefixes so what's left is the true
  * subscriber number. Pure digits out.
  */
-export function normalizeNationalDigits(
-  countryCode: string,
-  raw: string,
-): string {
+function normalizeNationalDigits(countryCode: string, raw: string): string {
   let digits = raw.replace(/\D/g, "");
   if (countryCode === "MX") {
     // 045 / 044 <10-digit mobile>, and the legacy "1" long-distance prefix.
@@ -70,7 +67,7 @@ export function normalizeNationalDigits(
   return digits;
 }
 
-export type PhoneParseResult =
+type PhoneParseResult =
   | { ok: true; e164: string; digits: string }
   | { ok: false; error: string };
 
@@ -104,11 +101,6 @@ export function parsePhone(countryCode: string, raw: string): PhoneParseResult {
     };
   }
   return { ok: true, e164: `+${country.dial}${digits}`, digits };
-}
-
-/** True once the typed number could plausibly be sent — gates the button. */
-export function isSendablePhone(countryCode: string, raw: string): boolean {
-  return parsePhone(countryCode, raw).ok;
 }
 
 // Supabase surfaces the provider's failure verbatim; Twilio's numeric code
