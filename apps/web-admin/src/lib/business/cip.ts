@@ -16,7 +16,7 @@
 //       ladder — where × when × what.
 //   GP  from the real place — ln(1 + rating^pow × reviews) / ceiling.
 //   RP  from the real place — strategy derived from its live promo rates.
-//   XX  a seeded unit draw per card per lane (scores.unitDraw), U^control.
+//   XX  a seeded unit draw per (seed, place, lane) (scores.unitDraw), U^control.
 //
 // HONESTY RULES. Consumers and places come from the DB (via
 // admin-web-get-scoring-sample) — never invented here. Intent is

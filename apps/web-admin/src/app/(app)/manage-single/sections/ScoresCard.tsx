@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Gauge } from "lucide-react";
 import {
   DEFAULT_MANUAL_PRIORITY,
+  PLAYGROUND_XX_SEED,
   SUBSCORE_BY_ID,
   coerceScoringSettings,
   gpParts,
@@ -54,11 +55,14 @@ function placeScoreRows(
     strategyId != null
       ? `${STRATEGY_BY_ID[strategyId].emoji} ${STRATEGY_BY_ID[strategyId].name}`
       : "Custom / unmatched rates → zero rung";
-  // Same seed the playground uses (roll=1) — a stable preview at the current
+  // Same seed the playground uses — a stable preview at the current
   // xx.control, not the live per-request Lineup draw.
-  const xxOrganic = xxScore(unitDraw(place.id, "organic", 1), cfg.xx.control);
+  const xxOrganic = xxScore(
+    unitDraw(PLAYGROUND_XX_SEED, place.id, "organic"),
+    cfg.xx.control,
+  );
   const xxInorganic = xxScore(
-    unitDraw(place.id, "inorganic", 1),
+    unitDraw(PLAYGROUND_XX_SEED, place.id, "inorganic"),
     cfg.xx.control,
   );
 

@@ -19,6 +19,7 @@ import {
   laneCountsTotal,
   LANES,
   laneScore,
+  PLAYGROUND_XX_SEED,
   rpScore,
   smParts,
   unitDraw,
@@ -161,7 +162,7 @@ export function PlaygroundShell() {
       });
       const rpVal = rpScore(placeStrategy, current.rp);
       const mp = p.manual_priority ?? DEFAULT_MANUAL_PRIORITY;
-      const draws = laneRecord((l) => unitDraw(p.id, l.id, 1));
+      const draws = laneRecord((l) => unitDraw(PLAYGROUND_XX_SEED, p.id, l.id));
       const xxVals = laneRecord((l) => xxScore(draws[l.id], xxControl));
       const laneScores = laneRecord((l) =>
         laneScore(l, { em, sm: smP.sm, gp: gpP.gp, rp: rpVal, xx: xxVals[l.id], mp }),

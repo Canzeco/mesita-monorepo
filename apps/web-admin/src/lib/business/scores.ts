@@ -528,17 +528,20 @@ export function xxScore(u: number, control: number): number {
 
 // A small FNV-1a string hash, shared with cip.ts (synthetic taste tokens,
 // the toy embedding encoder) — here it seeds XX's deterministic unit draws
-// so the same (card, lane, roll) always lands the same U until the operator
-// re-rolls.
+// so the same (seed, place, lane) always lands the same U. Arity matches
+// production EF `_shared/lineup-scoring.ts` (seed · placeId · laneId).
 export function hash32(s: string): number {
   let h = 2166136261;
   for (let i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 16777619);
   return h >>> 0;
 }
 
-/** U ~ Uniform[0,1), stable per (place, lane, roll). */
-export function unitDraw(placeId: string, laneId: LaneId, roll: number): number {
-  return hash32(`${placeId}·${laneId}·${roll}`) / 4294967296;
+/** Stable seed for admin playground / place-side XX previews (not a live request). */
+export const PLAYGROUND_XX_SEED = "playground";
+
+/** Deterministic U ~ Uniform[0,1) per (seed, place, lane) — EF SoT arity. */
+export function unitDraw(seed: string, placeId: string, laneId: LaneId): number {
+  return hash32(`${seed}·${placeId}·${laneId}`) / 4294967296;
 }
 
 // ── THE FINAL DECK — two lanes, round-robin, dedupe, no backfill ──────
