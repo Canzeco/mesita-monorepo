@@ -34,7 +34,7 @@ export function BigRateLockup({
       ) : null}
       <p
         className={cn(
-          "font-display bg-pink-gradient bg-clip-text leading-[0.95] font-extrabold tracking-tight text-transparent transition-transform duration-150 motion-reduce:transition-none",
+          "font-display text-pink-gradient leading-[0.95] font-extrabold tracking-tight transition-transform duration-150 motion-reduce:transition-none",
           size === "hero"
             ? "text-[clamp(56px,18vw,72px)]"
             : "text-[clamp(36px,11vw,44px)]",

@@ -326,6 +326,18 @@
   }
 }
 
+/* Gradient-filled text — self-contained so the background shorthand can't
+   reset background-clip out from under a separate utility. Composing
+   `bg-pink-gradient bg-clip-text text-transparent` by hand does NOT work:
+   `background:` resets background-clip to border-box, so the gradient paints
+   the whole box and the glyphs stay invisible. Mirrors web-admin. */
+@utility text-pink-gradient {
+  background: var(--gradient-pink);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
 /* Verified pulse — the Tickets-v2 scan handshake (MESITA-808, motion budget
    4A): one emerald ring sweep when the waiter first opens the check page.
    Fires once from CheckTicketCard; the savings count-up in SavingsReveal is
