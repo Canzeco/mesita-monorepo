@@ -23,7 +23,7 @@ export default async function ConsoleLayout({
   if (!user) redirect("/");
 
   const [overviewResult, profileResult] = await Promise.allSettled([
-    getUnitOverview(supabase, null, 0),
+    getUnitOverview(supabase, null),
     apiGetBusinessProfile(supabase),
   ]);
 

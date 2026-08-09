@@ -38,7 +38,7 @@ export default async function CentralPage() {
 
   let overview: Awaited<ReturnType<typeof getUnitOverview>> | null = null;
   try {
-    overview = await getUnitOverview(supabase, null, 0);
+    overview = await getUnitOverview(supabase, null);
   } catch (err) {
     console.error("[central] business-web-get-overview:", errMsg(err, ""));
   }

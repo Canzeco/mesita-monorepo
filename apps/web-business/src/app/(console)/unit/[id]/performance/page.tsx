@@ -26,7 +26,7 @@ export default async function PerformancePage({
   // Overview + performance + reservations in parallel — the route id IS the
   // project id, so we don't need to wait on the overview to know what to fetch.
   const [overviewSettled, perfSettled, resSettled] = await Promise.allSettled([
-    getUnitOverview(supabase, id, 0),
+    getUnitOverview(supabase, id),
     getPlacePerformance(supabase, id),
     listPlaceReservations(supabase, id, { scope: "all", limit: 50 }),
   ]);

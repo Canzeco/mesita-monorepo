@@ -27,7 +27,7 @@ export default async function BusinessPromosPage({
   let overview: Awaited<ReturnType<typeof getUnitOverview>> | null = null;
   let overviewError: string | null = null;
   try {
-    overview = await getUnitOverview(supabase, id, 0);
+    overview = await getUnitOverview(supabase, id);
   } catch (err) {
     overviewError = errMsg(err, "Could not load your places.");
   }
