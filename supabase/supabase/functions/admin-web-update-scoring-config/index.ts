@@ -20,7 +20,9 @@
 //             what:  { tol } — super = t, none = t²
 //   gp        { lnCeiling, ratingPow } — ratingPow ∈ [1,2], default 1
 //   rp        Rewards Promotions rungs per strategy, [0,1]
-//   xx        { control } ∈ [0,5] — GREEN default only
+//   xx        { levels } — the consumer Randomness ladder (low · medium ·
+//             high · extra · max) → one WHOLE control 0–5 per rung; GREEN.
+//             A pre-table flat `control` migrates onto the `low` rung.
 // Soft-migrate: patience ← waitFloor · tol ← sibling · ratingPow defaults to 1.
 // Stray pre-v11 keys (distExp · sessionH · sibling · dataAccess · context ·
 // retrieval · em) are ignored. See web-admin lib/business/scores.ts RANGE TABLE.
