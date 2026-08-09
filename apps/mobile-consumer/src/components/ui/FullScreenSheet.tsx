@@ -11,9 +11,9 @@ import {
 import { X } from 'lucide-react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-// Form sheet (issue called this BottomSheet). RN Modal for keyboard + Android
-// back — more reliable than absolute Portal overlays for long forms.
-// PortalHost stays mounted in root for lightweight portals (MESITA-583).
+// Form sheet: RN Modal for keyboard + Android back — more reliable than
+// absolute Portal overlays for long forms. PortalHost stays mounted in root
+// for lightweight portals (MESITA-583).
 export function FullScreenSheet({
   visible,
   onClose,
@@ -78,6 +78,3 @@ export function FullScreenSheet({
     </Modal>
   );
 }
-
-/** Alias for issue MESITA-583 naming (form sheets). */
-export { FullScreenSheet as BottomSheet };
