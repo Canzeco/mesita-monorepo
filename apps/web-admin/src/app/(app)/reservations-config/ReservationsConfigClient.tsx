@@ -39,7 +39,7 @@ const PHONE_ONLY_CHANNELS: Pick<ReservationsConfig, "priority" | "disabled"> = {
 
 const STEPS = [
   "A guest taps Reserve in the app and sets the details — date & time, party size, occasion, a note.",
-  "A Supabase function takes the request and briefs the Reservationist, an ElevenLabs voice agent, with the venue and the guest's parameters.",
+  "A Supabase function takes the request and briefs the Reservationist, an ElevenLabs voice agent, with the place and the guest's parameters.",
   "The agent phones the place over Twilio and books the table, speaking naturally.",
   "It retries on the schedule below until it holds a table or runs out of attempts — then the guest's reservation flips from Pending to Confirmed.",
 ];
@@ -134,12 +134,12 @@ export function ReservationsConfigClient({
   const whyAttention = (row: NeedsAttentionRow): string => {
     if (row.notice_state === "failed") {
       return row.notice_kind === "venue_cancel"
-        ? "Venue release NOT delivered — the place may still hold a cancelled table"
+        ? "Place release NOT delivered — the place may still hold a cancelled table"
         : "Guest was never told their table was cancelled";
     }
     if (row.attempts_state === "error") return "Booking run died — see status below";
     if (row.callback_state === "failed") return "Guest call could not be placed";
-    return "Venue confirmed but the guest never picked up — table exists, owner unaware";
+    return "Place confirmed but the guest never picked up — table exists, owner unaware";
   };
 
   return (
@@ -189,7 +189,7 @@ export function ReservationsConfigClient({
       <SectionCard
         icon={<Bot className="text-secondary h-4 w-4" />}
         title="How a reservation happens"
-        subtitle="The Reservationist is a voice agent, not a form. A Supabase function briefs it and it calls the venue on the guest's behalf."
+        subtitle="The Reservationist is a voice agent, not a form. A Supabase function briefs it and it calls the place on the guest's behalf."
         status={
           updatedAt ? (
             <span className="text-muted-foreground text-xs">
@@ -214,19 +214,19 @@ export function ReservationsConfigClient({
         </p>
       </SectionCard>
 
-      {/* Test mode — while we're not ringing real venues, the agent calls one
+      {/* Test mode — while we're not ringing real places, the agent calls one
           fixed test number for every reservation. */}
       <SectionCard
         icon={<FlaskConical className="text-secondary h-4 w-4" />}
         title="Test mode"
-        subtitle="While test mode is on, every reservation call dials the test number below instead of the place's real line — whichever venue the guest booked. So we can run the whole flow end to end without ringing a single business."
+        subtitle="While test mode is on, every reservation call dials the test number below instead of the place's real line — whichever place the guest booked. So we can run the whole flow end to end without ringing a single business."
       >
         <div className="mt-5 flex items-start justify-between gap-4">
           <div className="min-w-0">
             <p className="text-sm font-semibold">Test mode</p>
             <p className="text-muted-foreground mt-0.5 text-xs">
               {cfg.testCall.enabled
-                ? "On — the agent ignores each place's real phone and dials the test number below. Keep this on until we're ready to call real venues."
+                ? "On — the agent ignores each place's real phone and dials the test number below. Keep this on until we're ready to call real places."
                 : "Off — the agent calls each place's actual reservation line. Only turn test mode off when you mean to reach real businesses."}
             </p>
           </div>
@@ -266,8 +266,8 @@ export function ReservationsConfigClient({
           ) : (
             <span className="text-muted-foreground text-xs">
               E.164 format (leading +, country code). Stands in for the
-              venue&apos;s line: the only number the agent dials while test mode
-              is on — reserve from the consumer app and the venue leg rings
+              place&apos;s line: the only number the agent dials while test mode
+              is on — reserve from the consumer app and the place leg rings
               here instead of a real place.
             </span>
           )}
@@ -278,7 +278,7 @@ export function ReservationsConfigClient({
       <SectionCard
         icon={<RotateCcw className="text-secondary h-4 w-4" />}
         title="Call attempts"
-        subtitle="Fixed by protocol — two attempts per reservation, then the guest is told the venue couldn't be reached. Not configurable."
+        subtitle="Fixed by protocol — two attempts per reservation, then the guest is told the place couldn't be reached. Not configurable."
       >
         <div className="border-border bg-card mt-5 inline-flex items-center gap-3 rounded-xl border px-4 py-3">
           <RotateCcw className="text-muted-foreground h-4 w-4" />
@@ -294,7 +294,7 @@ export function ReservationsConfigClient({
             <Clock className="text-secondary mt-0.5 h-3.5 w-3.5 shrink-0" />
             <span>
               <span className="text-foreground font-medium">Attempt 1 is immediate</span>{" "}
-              — the moment a guest taps Reserve, whatever the hour. Plenty of venues
+              — the moment a guest taps Reserve, whatever the hour. Plenty of places
               run a 24/7 AI receptionist, so a 3 a.m. call can still land a table.
             </span>
           </p>
@@ -304,9 +304,9 @@ export function ReservationsConfigClient({
               <span className="text-foreground font-medium">
                 Attempt 2 waits for opening hours
               </span>{" "}
-              — five minutes after the first miss if the venue is open right now,
+              — five minutes after the first miss if the place is open right now,
               otherwise 30 minutes after it next opens, today or tomorrow. It waits
-              on the venue’s hours, never the guest. Still no answer → the ticket
+              on the place’s hours, never the guest. Still no answer → the ticket
               lands unreachable and the guest is informed.
             </span>
           </p>
@@ -330,7 +330,7 @@ export function ReservationsConfigClient({
               The guest sets place, date, hour, party size and any requests. The
               ticket is created that instant with its 8-digit reference code —
               and opening hours never block an intent: a Thursday ask at a
-              Friday–Saturday venue still gets tried.
+              Friday–Saturday place still gets tried.
             </p>
           </li>
           <li className="relative pb-6 pl-9">
@@ -339,7 +339,7 @@ export function ReservationsConfigClient({
             </span>
             <span className="bg-border absolute top-7 bottom-1 left-3 w-px" />
             <p className="text-sm font-medium">
-              The Booker calls the venue{" "}
+              The Booker calls the place{" "}
               <span className="text-muted-foreground text-xs font-normal">
                 · consumer → business
               </span>
@@ -379,7 +379,7 @@ export function ReservationsConfigClient({
               By default the guest gets a call explaining the outcome; with the
               app-only preference the ticket just updates silently in the consumer
               app. A counter-offer — “outside only at 10, inside at 9” — is put to
-              the guest, and their pick triggers a fresh Booker call to the venue.
+              the guest, and their pick triggers a fresh Booker call to the place.
               Two negotiation rounds max, then the ticket parks in the app for the
               guest to decide.
             </p>
@@ -391,7 +391,7 @@ export function ReservationsConfigClient({
             <p className="text-sm font-medium">Both sides confirmed</p>
             <p className="text-muted-foreground mt-1 text-xs">
               Calls keep happening only while the two sides disagree. The moment
-              venue and guest match, the ticket closes confirmed — otherwise it
+              place and guest match, the ticket closes confirmed — otherwise it
               lands declined, unreachable or cancelled, and the guest always ends
               up informed.
             </p>
@@ -410,7 +410,7 @@ export function ReservationsConfigClient({
             <PhoneCall className="text-secondary mt-0.5 h-3.5 w-3.5 shrink-0" />
             <span>
               <span className="text-foreground font-medium">Future</span> — inbound
-              lines for guests and venues (agents 3 and 4), callers auto-verified
+              lines for guests and places (agents 3 and 4), callers auto-verified
               by phone number against the Mesita database.
             </span>
           </p>
@@ -524,7 +524,7 @@ export function ReservationsConfigClient({
       <SectionCard
         icon={<Gauge className="text-secondary h-4 w-4" />}
         title="Call limits & kill switch"
-        subtitle="Abuse and cost guards. Reschedules reset the venue-call budget, so both doors are capped; the kill switch holds every outbound reservation call until it's flipped back."
+        subtitle="Abuse and cost guards. Reschedules reset the place-call budget, so both doors are capped; the kill switch holds every outbound reservation call until it's flipped back."
       >
         <div className="mt-5 grid gap-4 sm:grid-cols-2">
           <label className="flex flex-col gap-2">
@@ -550,12 +550,12 @@ export function ReservationsConfigClient({
             />
             <span className="text-muted-foreground text-xs">
               Each reschedule resets the ticket&apos;s call attempts — i.e. buys
-              fresh venue calls. Over the cap the app says &quot;try again
+              fresh place calls. Over the cap the app says &quot;try again
               tomorrow&quot;.
             </span>
           </label>
           <label className="flex flex-col gap-2">
-            <span className="text-sm font-medium">Venue calls per place per day</span>
+            <span className="text-sm font-medium">Outbound place calls per day</span>
             <input
               type="number"
               min={1}
@@ -591,7 +591,7 @@ export function ReservationsConfigClient({
             <p className="text-muted-foreground mt-0.5 text-xs">
               {cfg.limits.killSwitch
                 ? "ON — no outbound reservation call of any kind is being placed. Everything parks and resumes within a minute of turning this off."
-                : "Off — calls flow normally. Flip this on to stop ALL outbound reservation calls instantly (runaway loop, credit emergency, venue complaint)."}
+                : "Off — calls flow normally. Flip this on to stop ALL outbound reservation calls instantly (runaway loop, credit emergency, place complaint)."}
             </p>
           </div>
           <Switch
@@ -605,7 +605,7 @@ export function ReservationsConfigClient({
         </div>
         {cfg.limits.killSwitch && (
           <p className="mt-3 text-xs font-medium text-red-600">
-            While this is on, NO venue is called and NO guest is called — bookings
+            While this is on, NO place is called and NO guest is called — bookings
             park as scheduled and retry after you turn it off. Don&apos;t forget it.
           </p>
         )}
