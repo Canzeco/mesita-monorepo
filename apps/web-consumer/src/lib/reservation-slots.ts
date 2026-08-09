@@ -38,7 +38,7 @@ import {
 export const BOOKING_HORIZON_MONTHS = 1;
 
 /** 30-min slots from 6pm to 11pm — the realistic dinner window. */
-export const BASELINE_SLOTS = [
+const BASELINE_SLOTS = [
   "18:00",
   "18:30",
   "19:00",
@@ -72,10 +72,10 @@ const WEEK_KEYS = [
   "saturday",
 ] as const;
 
-export type DayKey = (typeof WEEK_KEYS)[number];
+type DayKey = (typeof WEEK_KEYS)[number];
 
 /** One shift, `HH:mm`. `close <= open` means it closes the NEXT day. */
-export type HourRange = { open: string; close: string };
+type HourRange = { open: string; close: string };
 
 /** The `hours` jsonb shape: day key → shifts. Missing key = closed that day. */
 export type WeeklyHours = Partial<Record<DayKey, HourRange[]>>;
@@ -85,7 +85,7 @@ export type WeeklyHours = Partial<Record<DayKey, HourRange[]>>;
  * `closed`  — we have hours for this place and they do NOT cover it.
  * `unknown` — no usable hours; say nothing rather than guess.
  */
-export type SlotState = "open" | "closed" | "unknown";
+type SlotState = "open" | "closed" | "unknown";
 
 export type ReservationSlot = {
   time: string;
@@ -118,7 +118,7 @@ function toHhmm(minutes: number): string {
  * day clamped to the target month's length so Jan 31 lands on Feb 28/29 instead
  * of overflowing into March.
  */
-export function horizonDateIso(at: number = Date.now()): string {
+function horizonDateIso(at: number = Date.now()): string {
   const [y, m, d] = placeDateIso(0, at).split("-").map(Number);
   const total = m - 1 + BOOKING_HORIZON_MONTHS;
   const year = y + Math.floor(total / 12);
@@ -133,15 +133,6 @@ export function bookingWindowDays(at: number = Date.now()): number {
   const start = Date.parse(`${placeDateIso(0, at)}T00:00:00Z`);
   const end = Date.parse(`${horizonDateIso(at)}T00:00:00Z`);
   return Math.round((end - start) / 86_400_000) + 1;
-}
-
-/** Is `dateIso` inside the bookable window? ISO dates sort lexicographically. */
-export function isWithinHorizon(
-  dateIso: string,
-  at: number = Date.now(),
-): boolean {
-  if (!dateIso) return false;
-  return dateIso >= placeDateIso(0, at) && dateIso <= horizonDateIso(at);
 }
 
 function parseHhmm(t: string | undefined): number | null {
