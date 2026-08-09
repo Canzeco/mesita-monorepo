@@ -753,6 +753,28 @@ Deno.serve(async (req) => {
   const keys: Record<string, string | undefined> = {};
   for (const n of keyNames) keys[n] = Deno.env.get(n);
 
+  // ElevenLabs: EF secrets often hold the key *id* (hex), not sk_. Prefer env
+  // sk_, else Vault via service_elevenlabs_api_key (same fallback as product EFs).
+  {
+    const elEnv = firstKeyedSecret(
+      keys,
+      ["ELEVENLABS_KEY", "ELEVEN_KEY"],
+      (v) => v.startsWith("sk_"),
+    );
+    if (!elEnv?.startsWith("sk_")) {
+      const { data: vaultKey, error: vaultErr } = await admin.rpc(
+        "service_elevenlabs_api_key",
+      );
+      if (
+        !vaultErr &&
+        typeof vaultKey === "string" &&
+        vaultKey.startsWith("sk_")
+      ) {
+        keys.ELEVENLABS_KEY = vaultKey;
+      }
+    }
+  }
+
   // Probes are mutually independent by construction — run them concurrently so
   // one slow vendor cannot stretch the whole sweep.
   const results = await Promise.all(selected.map((p) => runProbe(p, keys)));
