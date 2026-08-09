@@ -17,7 +17,6 @@ import {
   TeamModule,
 } from "./TeamUi";
 import {
-  INVITE_ROLE_CHOICES,
   ROLE_CHOICES,
   ROLE_LABEL,
 } from "./team-constants";
@@ -72,7 +71,6 @@ export function ManagersTeamSection({
         <EditorInviteForm
           busy={busy === "invite-member"}
           onSubmit={onInviteMember}
-          roleChoices={INVITE_ROLE_CHOICES}
           defaultRole="editor"
           submitLabel="Send invite"
         />
