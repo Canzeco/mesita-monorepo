@@ -1,7 +1,7 @@
 // Reservations Config catalog — the human-facing names behind the reservation agent.
 //
 // Mesita books tables with the Reservationist: a Supabase function briefs an
-// ElevenLabs voice agent with the venue + the guest's parameters, then the agent
+// ElevenLabs voice agent with the place + the guest's parameters, then the agent
 // phones the place over Twilio and holds the table. This page is where an operator
 // tunes that agent — the number it calls while we test, how hard it retries, and
 // the booking channel (phone — voice-only since MESITA-842 / MESITA-839).
@@ -28,7 +28,7 @@ export type ReservationsConfig = {
   respectAdminOverride: boolean;
   /**
    * Testing override. While enabled, EVERY reservation call dials `number`
-   * instead of the place's real line — no matter which venue the guest booked —
+   * instead of the place's real line — no matter which place the guest booked —
    * so we never ring a real business during testing (reserve from the consumer
    * app to test end-to-end). `consumerNumber` is legacy from the retired admin
    * Playground — never read by the calling path, kept only so stored rows stay
@@ -37,8 +37,8 @@ export type ReservationsConfig = {
   testCall: { enabled: boolean; number: string; consumerNumber: string };
   /**
    * FIXED at 2 by protocol — not configurable. Attempt 1 always fires
-   * immediately when the guest taps Reserve (many venues run a 24/7 AI
-   * receptionist); attempt 2 fires 5 minutes later if the venue is open, else
+   * immediately when the guest taps Reserve (many places run a 24/7 AI
+   * receptionist); attempt 2 fires 5 minutes later if the place is open, else
    * 30 minutes after it next opens. Coerce pins this to ATTEMPTS regardless of
    * what the stored row says.
    */
@@ -53,8 +53,8 @@ export type ReservationsConfig = {
   /**
    * Abuse/cost guards (eng-review 2026-08-04). Every unit of abuse in this
    * system is a REAL metered phone call, so the doors are capped: reschedules
-   * per ticket per day (each one resets call_attempts = buys venue calls),
-   * outbound venue calls per place per day (booking + notices share the
+   * per ticket per day (each one resets call_attempts = buys place calls),
+   * outbound place calls per place per day (booking + notices share the
    * meter), and the kill switch — a hard stop on ALL outbound reservation
    * calls, parked (not dropped) so flipping it back resumes within a minute.
    */
@@ -111,7 +111,7 @@ export const CHANNELS: Channel[] = [
 ];
 
 // Current testing seed (Pato, 2026-07-17): while the agent is under test it dials
-// this one number for EVERY reservation instead of any real venue. Fully editable
+// this one number for EVERY reservation instead of any real place. Fully editable
 // from the admin page — this is only what the page (and a fresh/reset config row)
 // starts from. Ships ON so a missing config can never fall through to a real place.
 // consumerNumber is legacy (retired Playground) and stays empty.
