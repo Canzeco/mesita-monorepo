@@ -83,7 +83,7 @@ export function validateMenuUploadFile(file: File): string | null {
   return null;
 }
 
-export function extForMenuFile(file: File): string {
+function extForMenuFile(file: File): string {
   if (file.type === "application/pdf") return "pdf";
   return extForFile(file);
 }
@@ -163,7 +163,7 @@ export function placeMenuObjectPath(projectId: string, file: File): string {
 }
 
 /** Parse a public menu-pdfs / menu-images URL into bucket + object path. */
-export function parseMenuStorageRef(
+function parseMenuStorageRef(
   url: string,
 ): { bucket: string; path: string } | null {
   const trimmed = url.trim();
@@ -196,7 +196,7 @@ type MenuStorageClient = {
  * Best-effort delete of a menu Storage object. No-ops for Drive links and
  * non-Mesita URLs; never throws — cleanup must not block the editor.
  */
-export async function removeMenuStorageObject(
+async function removeMenuStorageObject(
   supabase: MenuStorageClient,
   url: string,
 ): Promise<void> {
