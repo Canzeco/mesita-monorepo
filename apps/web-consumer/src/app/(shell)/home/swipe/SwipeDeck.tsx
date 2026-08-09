@@ -149,27 +149,26 @@ function Deck({ places }: { places: Place[] }) {
   const advanceTimerRef = useRef<number | null>(null);
 
   // Restore progress AFTER mount (client-only), so the hydration render stays
-  // identical to the server's.
+  // identical to the server's. Schedule on rAF so setState stays out of the
+  // effect body (same pattern as LocalOverlay / AiConnectModal).
   useEffect(() => {
     const progress = readSwipeProgress();
-    if (progress?.seenIds.length) {
-      // Post-mount setState is intentional: the server has no sessionStorage,
-      // so restoring here (rather than during render) is what keeps SSR and
-      // hydration identical.
-      /* eslint-disable react-hooks/set-state-in-effect */
+    if (!progress?.seenIds.length) return;
+    const raf = requestAnimationFrame(() => {
       setSeenIds(progress.seenIds);
-      /* eslint-enable react-hooks/set-state-in-effect */
-    }
+    });
+    return () => cancelAnimationFrame(raf);
   }, []);
 
   // A fresh server deck replaces the runtime one outright — same reason as
   // above: content always comes from the latest Lineup run, never from a
   // previous render's copy.
   useEffect(() => {
-    /* eslint-disable react-hooks/set-state-in-effect */
-    setRuntimeDeck(places);
-    setIdx(0);
-    /* eslint-enable react-hooks/set-state-in-effect */
+    const raf = requestAnimationFrame(() => {
+      setRuntimeDeck(places);
+      setIdx(0);
+    });
+    return () => cancelAnimationFrame(raf);
   }, [places]);
 
   // Persist on change — but skip the initial mount so the empty seed doesn't
@@ -224,13 +223,17 @@ function Deck({ places }: { places: Place[] }) {
   useEffect(() => {
     if (typeof window === "undefined") return;
     if (readTutorialSeen()) return;
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setShowTutorial(true);
+    const raf = requestAnimationFrame(() => {
+      setShowTutorial(true);
+    });
     const t = window.setTimeout(() => {
       setShowTutorial(false);
       writeTutorialSeen();
     }, TUTORIAL_AUTO_DISMISS_MS);
-    return () => window.clearTimeout(t);
+    return () => {
+      cancelAnimationFrame(raf);
+      window.clearTimeout(t);
+    };
   }, []);
 
   const dismissTutorial = () => {
