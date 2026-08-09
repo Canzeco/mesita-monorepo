@@ -11,7 +11,7 @@ import type { StrategyId } from "@/lib/business/strategies";
 // decay is ALL-OR-NOTHING — once the last strike is ≥ STRIKE_DECAY_DAYS old
 // the whole count reads 0. The EF only rewrites the raw column lazily, so a
 // UI that renders raw `strike_count` shows phantom strikes.
-export const STRIKE_DECAY_DAYS = 183;
+const STRIKE_DECAY_DAYS = 183;
 
 const DAY_MS = 86_400_000;
 
