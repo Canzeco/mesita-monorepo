@@ -18,6 +18,7 @@ import {
   type LaneId,
   type ScoringSettings,
   unitDraw,
+  xxControlForLevel,
   xxScore,
   type DeckCandidate,
 } from "./lineup-scoring.ts";
@@ -44,6 +45,9 @@ export type LineupContext = {
   xxSeed: string;
   /** Optional consumer distance tolerance km; null → blob defaultTolKm. */
   tolKm?: number | null;
+  /** Consumer Randomness rung, 0 low … 4 max; null/absent → the `low` row of
+   * the blob's XX table (an untouched filter). */
+  randomness?: number | null;
 };
 
 /** Cosine per place id (−1 = missing embedding). */
@@ -75,6 +79,10 @@ function lineupOrderSlots(
   const hour = clock
     ? clock.hour + (clock.minutes % 60 >= 30 ? 0.5 : 0)
     : 18;
+
+  // One table lookup per request — every card in this deck shares the rung the
+  // consumer picked (the draw stays per card per lane).
+  const xxControl = xxControlForLevel(settings.xx, ctx.randomness);
 
   const candidates: DeckCandidate[] = places.map((p) => {
     const em = emScore(cosine.get(p.id) ?? -1);
@@ -110,7 +118,7 @@ function lineupOrderSlots(
 
     const scores = {} as Record<LaneId, number>;
     for (const lane of LANES) {
-      const xx = xxScore(unitDraw(ctx.xxSeed, p.id, lane.id), settings.xx.control);
+      const xx = xxScore(unitDraw(ctx.xxSeed, p.id, lane.id), xxControl);
       const subs = { em, sm, gp, rp, xx, mp };
       // Paid lanes: force 0 for non-partners even if RP whisper would be >0.
       if (lane.id === "inorganic" && !isPartner) {

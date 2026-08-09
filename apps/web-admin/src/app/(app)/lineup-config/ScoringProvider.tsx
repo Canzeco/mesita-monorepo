@@ -49,7 +49,7 @@ function fromSettings(s: ScoringSettings): {
     sm: { where: { ...s.sm.where }, when: { ...s.sm.when }, what: { ...s.sm.what } },
     gp: { ...s.gp },
     rp: { ...s.rp },
-    xx: { ...s.xx },
+    xx: { levels: { ...s.xx.levels } },
   };
 }
 
@@ -65,9 +65,9 @@ type ScoringCtx = {
   setGp: React.Dispatch<React.SetStateAction<GpParams>>;
   rp: RpRungs;
   setRp: React.Dispatch<React.SetStateAction<RpRungs>>;
-  /** XX — the control knob. Intended as a consumer-overridable default, but the
-   * Randomness filter is not plumbed to the swipe/map EFs yet (MESITA-738), so
-   * today this value applies to EVERY query, not just unfiltered ones. */
+  /** XX — the Randomness TABLE: one control per rung of the consumer's word
+   * ladder (low … max). The swipe/map EFs now take the rung, but the consumer
+   * apps don't send it yet (MESITA-738), so today every query reads `low`. */
   xx: XxParams;
   setXx: React.Dispatch<React.SetStateAction<XxParams>>;
   /** Current form as a settings blob (the playgrounds compute from this). */
@@ -151,7 +151,17 @@ export function ScoringProvider({
         conservative: rp.conservative,
         aggressive: rp.aggressive,
       },
-      xx: { control: xx.control },
+      // Same rung order coerceXxLevels emits — the dirty diff is
+      // JSON.stringify equality.
+      xx: {
+        levels: {
+          low: xx.levels.low,
+          medium: xx.levels.medium,
+          high: xx.levels.high,
+          extra: xx.levels.extra,
+          max: xx.levels.max,
+        },
+      },
     }),
     [laneN, sm, gp, rp, xx],
   );

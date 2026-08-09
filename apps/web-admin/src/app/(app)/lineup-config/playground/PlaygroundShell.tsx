@@ -20,9 +20,11 @@ import {
   LANES,
   laneScore,
   PLAYGROUND_XX_SEED,
+  RANDOMNESS_LEVELS,
   rpScore,
   smParts,
   unitDraw,
+  xxControlForLevel,
   xxScore,
   type DeckCandidate,
   type DeckSlot,
@@ -62,8 +64,9 @@ import { CardAnatomy, type CardParts } from "./CardAnatomy";
 // afterwards marks the result stale instead of silently recomputing.
 
 const HOUR_OPTIONS = Array.from({ length: 48 }, (_, i) => i / 2);
-// 0.1 steps (0.0 … 5.0) — decimal-by-decimal randomness, matching the XX knob.
-const RANDOMNESS_OPTIONS = Array.from({ length: 51 }, (_, i) => i / 10);
+// The consumer's Randomness rungs — the SAME word ladder the filter shows, and
+// the rows of XX's table. The control comes from the table, never typed here.
+const RANDOMNESS_OPTIONS = RANDOMNESS_LEVELS.map((label, level) => ({ label, level }));
 
 function fmtHour(h: number): string {
   const hh = Math.floor(h);
@@ -97,8 +100,8 @@ export function PlaygroundShell() {
   const [day, setDay] = useState<string>("friday");
   const [hour, setHour] = useState(20.5);
   const [catAsk, setCatAsk] = useState<string | null>(null);
-  /** null = the admin default (XX's green knob). */
-  const [randomness, setRandomness] = useState<number | null>(null);
+  /** The consumer's Randomness rung, 0 low … 4 max — 0 is the untouched filter. */
+  const [randomness, setRandomness] = useState(0);
 
   const [run, setRun] = useState<Run | null>(null);
   const [open, setOpen] = useState<string | null>(null);
@@ -130,7 +133,7 @@ export function PlaygroundShell() {
     const profile = buildConsumerProfile(consumers[consumerIdx] ?? null);
     const ciDoc = buildCiDoc(profile, intent);
     const ciVec = embedText(ciDoc, EM_ENCODER.dims);
-    const xxControl = randomness ?? current.xx.control;
+    const xxControl = xxControlForLevel(current.xx, randomness);
 
     const parts = new Map<string, CardParts>();
     const candidates: DeckCandidate[] = places.map((p) => {
@@ -291,17 +294,15 @@ export function PlaygroundShell() {
           </SpecimenCell>
           <SpecimenCell icon={Dices} tone="bg-emerald-600 text-white" label="Randomness">
             <select
-              aria-label="Randomness — XX control override (green consumer input)"
+              aria-label="Randomness — the consumer's rung (green consumer input)"
               className={selectCls}
-              value={randomness ?? ""}
-              onChange={(e) =>
-                setRandomness(e.target.value === "" ? null : Number(e.target.value))
-              }
+              value={randomness}
+              onChange={(e) => setRandomness(Number(e.target.value))}
             >
-              <option value="">admin default · {current.xx.control.toFixed(1)}</option>
-              {RANDOMNESS_OPTIONS.map((v) => (
-                <option key={v} value={v}>
-                  {v.toFixed(1)}
+              {RANDOMNESS_OPTIONS.map(({ label, level }) => (
+                <option key={label} value={level}>
+                  {label} · control {xxControlForLevel(current.xx, level)}
+                  {level === 0 ? " (no filter)" : ""}
                 </option>
               ))}
             </select>

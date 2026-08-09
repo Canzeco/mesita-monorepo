@@ -11,6 +11,7 @@ import {
   gpParts,
   rpScore,
   unitDraw,
+  xxControlForLevel,
   xxScore,
   type ScoringSettings,
   type SubscoreId,
@@ -55,16 +56,11 @@ function placeScoreRows(
     strategyId != null
       ? `${STRATEGY_BY_ID[strategyId].emoji} ${STRATEGY_BY_ID[strategyId].name}`
       : "Custom / unmatched rates → zero rung";
-  // Same seed the playground uses — a stable preview at the current
-  // xx.control, not the live per-request Lineup draw.
-  const xxOrganic = xxScore(
-    unitDraw(PLAYGROUND_XX_SEED, place.id, "organic"),
-    cfg.xx.control,
-  );
-  const xxInorganic = xxScore(
-    unitDraw(PLAYGROUND_XX_SEED, place.id, "inorganic"),
-    cfg.xx.control,
-  );
+  // Same seed the playground uses — a stable preview at the `low` rung of the
+  // XX table (an untouched Randomness filter), not the live per-request draw.
+  const xxControl = xxControlForLevel(cfg.xx, 0);
+  const xxOrganic = xxScore(unitDraw(PLAYGROUND_XX_SEED, place.id, "organic"), xxControl);
+  const xxInorganic = xxScore(unitDraw(PLAYGROUND_XX_SEED, place.id, "inorganic"), xxControl);
 
   const byId: Record<SubscoreId, Row> = {
     gp: {
@@ -91,7 +87,7 @@ function placeScoreRows(
     xx: {
       id: "xx",
       value: `${fmt01(xxOrganic)} / ${fmt01(xxInorganic)}`,
-      detail: `Organic / Inorganic · control ${cfg.xx.control} · seeded preview (roll 1)`,
+      detail: `Organic / Inorganic · low rung → control ${xxControl} · seeded preview (roll 1)`,
     },
     em: {
       id: "em",
