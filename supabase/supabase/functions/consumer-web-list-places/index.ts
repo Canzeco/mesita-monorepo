@@ -11,6 +11,7 @@ import { clampIntRange, corsPreflight, json, rejectUnlessMethods, readJsonOr } f
 import { anonClient, readAnonEnv } from "../_shared/auth.ts";
 import { PLACE_PUBLIC_COLUMNS } from "../_shared/place-columns.ts";
 import { withDisplayNames } from "../_shared/place-display-name.ts";
+import { withFamilyKeysList } from "../_shared/place-family-keys.ts";
 
 const DEFAULT_LIMIT = 50;
 const MAX_LIMIT = 200;
@@ -53,8 +54,14 @@ Deno.serve(async (req) => {
     return json({ ok: false, error: error.message }, 500);
   }
 
-  const places = withDisplayNames(
-    (data ?? []) as Array<{ name?: string | null; google_name?: string | null }>,
+  const places = withFamilyKeysList(
+    withDisplayNames(
+      (data ?? []) as Array<{
+        name?: string | null;
+        google_name?: string | null;
+        category?: string | null;
+      }>,
+    ),
   );
   return json({ ok: true, places });
 });

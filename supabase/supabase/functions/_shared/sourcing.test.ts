@@ -2,6 +2,7 @@ import { assertEquals } from "jsr:@std/assert";
 import {
   coerceChannelPolicy,
   evaluatePlaceForChannel,
+  familiesForGoogleType,
   familyForGoogleType,
 } from "./sourcing.ts";
 
@@ -9,6 +10,18 @@ Deno.test("familyForGoogleType maps known types", () => {
   assertEquals(familyForGoogleType("mexican_restaurant"), "restaurants");
   assertEquals(familyForGoogleType("night_club"), "bars_nightlife");
   assertEquals(familyForGoogleType("gas_station"), null);
+});
+
+Deno.test("familiesForGoogleType returns dual-family keys for gastropub", () => {
+  assertEquals(familiesForGoogleType("gastropub"), [
+    "restaurants",
+    "bars_nightlife",
+  ]);
+});
+
+Deno.test("familiesForGoogleType accepts _restaurant alias", () => {
+  assertEquals(familiesForGoogleType("fine_dining"), ["restaurants"]);
+  assertEquals(familiesForGoogleType("FINE_DINING"), ["restaurants"]);
 });
 
 Deno.test("evaluatePlaceForChannel rejects ineligible family", () => {

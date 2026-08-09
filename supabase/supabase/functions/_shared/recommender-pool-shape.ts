@@ -5,6 +5,7 @@
 
 import type { WeeklyHours } from "./local-time.ts";
 import { withDisplayName } from "./place-display-name.ts";
+import { withFamilyKeys } from "./place-family-keys.ts";
 
 // Shape of a candidate place row as projected by RECOMMENDER_PLACE_COLUMNS.
 // Both rankers (recommender-rank-swipe.ts, recommender-rank-map.ts) cast the
@@ -68,10 +69,13 @@ export function clampPositive(v: unknown, def: number, max: number): number {
 // Drops ranker-internal embedding columns so the row is safe to return to the
 // client. The leading-underscore rest-omit destructuring discards them.
 // Also resolves dual-name `name` (MESITA-925) so cleared Mesita overrides
-// fall back to google_name on swipe/map decks.
+// fall back to google_name on swipe/map decks, and attaches computed
+// `family_keys` from category (MESITA-679) for discovery filters.
 export function stripInternal(
   v: PlaceRow,
-): Omit<PlaceRow, "embedding" | "embedding_source_hash" | "embedding_source_text" | "manual_priority"> {
+): Omit<PlaceRow, "embedding" | "embedding_source_hash" | "embedding_source_text" | "manual_priority"> & {
+  family_keys: string[];
+} {
   const {
     embedding: _e,
     embedding_source_hash: _h,
@@ -79,5 +83,5 @@ export function stripInternal(
     manual_priority: _mp,
     ...rest
   } = v;
-  return withDisplayName(rest);
+  return withFamilyKeys(withDisplayName(rest));
 }
