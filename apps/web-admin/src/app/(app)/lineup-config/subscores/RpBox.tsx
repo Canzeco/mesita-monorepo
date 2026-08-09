@@ -45,7 +45,7 @@ export function RpBox() {
       process={
         <>
           <ProcessSteps>
-            <p>live rates (welcome/returning × Standard / Influencer / Premium / Aura) → strategy (Zero · Conservative · Aggressive)</p>
+            <p>live rates (welcome/returning × free/premium — four columns, not the class ladder) → strategy (Zero · Conservative · Aggressive)</p>
             <p>strategy → its rung above · custom/legacy rates that match no preset → the zero rung</p>
           </ProcessSteps>
           <LadderPlot

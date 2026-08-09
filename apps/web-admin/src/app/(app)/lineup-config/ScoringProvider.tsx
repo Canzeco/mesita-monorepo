@@ -17,8 +17,8 @@ import type { SampleConsumer, SamplePlace } from "@/lib/business/cip";
 import { updateScoringSettings } from "./settings-actions";
 
 // Shared state for the Lineup Config tabs (v12 blob). The layout mounts
-// this ONCE, so knobs set on Subscores carry into Scores & Lanes live and
-// survive tab switches — both playgrounds compute from the SAME form state.
+// this ONCE, so knobs set on Config carry into the Playground live and
+// survive tab switches — both compute from the SAME form state.
 //
 // SAVE IS PER-BOX (Pato 2026-07-16: "each individual box must have its own
 // save changes / cancel button, not for the whole page"). Each box owns a
@@ -35,7 +35,7 @@ export type SettingsSection =
   | "gp"
   | "rp"
   | "xx"
-  | "lanes"; // laneN — lives on the Scores & Lanes page
+  | "lanes"; // laneN — the composition card at the bottom of Config
 
 function fromSettings(s: ScoringSettings): {
   laneN: LaneCounts;

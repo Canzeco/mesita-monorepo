@@ -87,6 +87,11 @@ export function LanesPanel() {
           <p className="text-muted-foreground mt-2 font-mono text-[10.5px]">
             multiply, never blend — a dead factor kills the card
           </p>
+          <p className="text-muted-foreground mt-1 text-[11px] leading-snug">
+            These formulas run only when the pool has usable embeddings. If the intent embed fails
+            or no candidate is embedded, Swipe falls back to partner-first and Map to a category
+            substring match — both skip every knob on this page.
+          </p>
         </div>
 
         {/* Deck counts + the merge — the one knob on this card. */}
@@ -180,14 +185,29 @@ export function LanesPanel() {
         <div className="border-border/40 mt-4 border-t pt-3">
           <SubHead>Callers</SubHead>
           <div className="mt-2 grid gap-2 sm:grid-cols-3">
-            {LINEUP_ENGINE.callers.map((s) => (
-              <MiniTile key={s.caller} label={s.caller}>
-                <p className="text-muted-foreground mt-0.5 text-[11px] leading-snug">
-                  intent: {s.intent}
-                </p>
-              </MiniTile>
-            ))}
+            {LINEUP_ENGINE.callers.map((s) => {
+              const full = s.runs === "full engine";
+              return (
+                <MiniTile key={s.caller} label={s.caller}>
+                  <p
+                    className={`mt-0.5 font-mono text-[10px] font-bold ${
+                      full ? "text-muted-foreground" : "text-amber-700"
+                    }`}
+                  >
+                    {s.runs}
+                  </p>
+                  <p className="text-muted-foreground mt-1 text-[11px] leading-snug">
+                    intent: {s.intent}
+                  </p>
+                </MiniTile>
+              );
+            })}
           </div>
+          <p className="text-muted-foreground mt-2 text-[11px] leading-snug">
+            Memo reaches Lineup through <span className="font-mono">recall-lineup</span>, which
+            cosine-ranks its pool and never reads this config — so nothing on this page changes
+            what Memo returns. Wiring it to the engine is open work.
+          </p>
         </div>
         <div className="border-border/40 mt-4 border-t pt-3">
           <SubHead>Consumer inputs · Where · When · What · That · Randomness</SubHead>

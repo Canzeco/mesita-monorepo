@@ -13,7 +13,7 @@ import { MpBox } from "./MpBox";
 // Hyperparams · Inputs · Process · Outputs — Pato 2026-07-21), the
 // per-subscore accent spine (sky · emerald · amber · rose · teal · violet),
 // the anchor id and the per-box save bar. Values set in any box drive the
-// Scores tab's live definitions and both playgrounds (shared provider) and
+// composition card below them and the Playground tab (shared provider) and
 // persist to app_settings.scoring_config.
 
 export function SubscoresPanel() {

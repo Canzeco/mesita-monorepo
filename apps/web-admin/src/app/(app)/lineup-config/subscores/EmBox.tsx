@@ -1,12 +1,15 @@
 "use client";
 
 import { EMBEDDING_SYNTHESIS, EM_ENCODER } from "@/lib/business/scores";
+import { KnobStatus } from "../../enricher-config/atlas-ui";
 import { Chip, EmContextCols } from "../panel-ui";
 import { CurvePlot } from "../plots";
 import { KnobGrid, ProcessSteps, Prose, SubscoreBox } from "./SubscoreBox";
 
 // EM · Embeddings Match — the semantic gate (sky). Fully FIXED (v10): one
 // encoder chip, no recall, inputs are documentation — no `save`, no save bar.
+// The recall-cap chip is not a knob: it marks the gap between the spec's
+// "whole metro catalog" and the 200-place radius pool the EFs actually recall.
 
 export function EmBox() {
   return (
@@ -35,8 +38,14 @@ export function EmBox() {
           <ProcessSteps>
             <p>1 · both sides become TEXT documents from the fields above — every live field, always</p>
             <p>2 · the encoder embeds each into a {EM_ENCODER.dims}-d UNIT vector</p>
-            <p>3 · EM = max(0, cos(A, B)) against EVERY place in the consumer&apos;s metro — no recall cap; retrieval caps are Memo&apos;s config, never Lineup&apos;s</p>
+            <p>3 · EM = max(0, cos(A, B)) against every place in the recalled pool</p>
           </ProcessSteps>
+          <div className="mt-2">
+            <KnobStatus
+              kind="not-wired"
+              reason="goal is the whole metro catalog, no recall cap — today the EFs recall a 200-place pool inside the request radius, so places outside it are never scored"
+            />
+          </div>
           <CurvePlot
             tone="sky"
             title="EM = max(0, cos)"

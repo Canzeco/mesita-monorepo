@@ -4,11 +4,11 @@ import { getScoringSettings } from "./settings-actions";
 import { ScoringLayoutShell } from "./ScoringLayoutShell";
 import { ScoringProvider } from "./ScoringProvider";
 
-// Lineup Config — tabbed (Subscores · Scores & Lanes). The layout
-// fetches the DB sample ONCE and mounts the shared knob provider, so knobs set
-// on Subscores drive the Scores & Lanes tab live and survive tab switches (the
-// layout persists across child navigation). Resample = router.refresh() → this
-// re-fetches; knob state is untouched because the provider isn't remounted.
+// Lineup Config — tabbed (Config · Playground). The layout fetches the DB
+// sample ONCE and mounts the shared knob provider, so knobs set on Config
+// drive the Playground live and survive tab switches (the layout persists
+// across child navigation). Resample = router.refresh() → this re-fetches;
+// knob state is untouched because the provider isn't remounted.
 //
 // A failed settings GET threads loadError into the provider so Save stays
 // blocked — never silently edit code defaults over the live singleton (MESITA-737).
