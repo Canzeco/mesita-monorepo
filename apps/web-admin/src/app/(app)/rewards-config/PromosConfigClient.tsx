@@ -148,15 +148,15 @@ export function PromosConfigClient({
       {seeded && !loadBlocked && (
         <p className="border-border bg-muted/50 text-muted-foreground flex items-start gap-1.5 rounded-lg border px-3 py-2 text-xs">
           <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-          No v10 promos blob exists yet — these knobs were derived from the
-          stored legacy rule table. Review them, then Save to write v10.
+          These knobs were derived from the old rule table — review them, then
+          Save.
         </p>
       )}
 
       <SectionCard
         icon={<Percent className="text-secondary h-4 w-4" />}
         title="Base reward"
-        subtitle="The standing discount every guest gets — by class, per strategy. Rates snap to the 5% grid (5–70%); 0 = off. Zero strategy has no knobs: it is off by definition."
+        subtitle="The standing discount every guest gets, by class."
         status={
           updatedAt ? (
             <span className="text-muted-foreground text-xs">
@@ -220,7 +220,7 @@ export function PromosConfigClient({
       <SectionCard
         icon={<Gift className="text-secondary h-4 w-4" />}
         title="Bonuses"
-        subtitle="Added on top of the base — the same for every strategy and class, except the one Influencer override on Story."
+        subtitle="Added on top of the base — same for every strategy and class, except the one override."
       >
         <div className="mt-4">
           <p className="text-muted-foreground pt-1 pb-1 text-[10px] font-bold tracking-[0.12em] uppercase">
@@ -315,8 +315,7 @@ export function PromosConfigClient({
       <details className="border-border group rounded-xl border">
         <summary className="text-muted-foreground hover:text-foreground flex cursor-pointer items-center gap-2 px-4 py-3 text-sm font-medium select-none">
           <ChevronDown className="h-4 w-4 transition-transform group-open:rotate-180" />
-          Preview all totals — base + each single action, per strategy and
-          class
+          Preview all totals
         </summary>
         <div className="overflow-x-auto px-4 pb-4">
           <table className="w-full min-w-[640px] border-collapse text-[12.5px]">
@@ -380,12 +379,8 @@ export function PromosConfigClient({
               )}
             </tbody>
           </table>
-          <p className="text-muted-foreground/80 mt-2 flex items-start gap-1.5 text-[11px] leading-snug">
-            <Info className="mt-0.5 h-3 w-3 shrink-0" />
-            Each cell is base + that single action. Under v10 a bill stacks
-            several bonuses on one base; until MESITA-992 ships, the live
-            engine pays the single best cell (values above 70% are stored as
-            70%).
+          <p className="text-muted-foreground/80 mt-2 text-[11px] leading-snug">
+            Base + that single action. A real bill can stack several bonuses.
           </p>
         </div>
       </details>
@@ -394,7 +389,7 @@ export function PromosConfigClient({
       <SectionCard
         icon={<Coins className="text-secondary h-4 w-4" />}
         title="Default discount cap"
-        subtitle="Fallback when a place has no cap set. Businesses pick their own cap (MX$200 / 500 / 1000) on Promos — that place value wins at bill time."
+        subtitle="Fallback when a place has not picked its own cap."
       >
         <div className="mt-5 flex flex-wrap items-center gap-2">
           {ALLOWED_CAPS.map((c) => {
@@ -432,11 +427,8 @@ export function PromosConfigClient({
       <div>
         <div className="flex items-start justify-between gap-3">
           <p className="text-muted-foreground text-xs">
-            Persisted as the v10 blob on{" "}
-            <code className="font-mono">app_settings.rewards_config</code>;
-            every save also refreshes the legacy best-of rules the live engine
-            reads until the additive flip (MESITA-992). Who is on Aura is
-            decided in{" "}
+            The live engine pays best-of until MESITA-992 ships; every save
+            keeps its rules in sync. Who is on Aura is decided in{" "}
             <Link href="/aura-config" className="underline underline-offset-2">
               Aura Config
             </Link>
