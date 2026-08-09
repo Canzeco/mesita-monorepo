@@ -35,6 +35,7 @@ import {
   type ActionKey,
   type ClassKey,
   type PromosConfig,
+  type StrategyKey,
 } from "@/app/(app)/rewards-config/promos";
 import { setPlacePlan, setPlaceStrategy, type AdminPlace } from "../actions";
 import { ConfirmDialog, SectionCard } from "../ui";
@@ -395,7 +396,13 @@ export function PromosSection({
       </SectionCard>
 
       {/* ── Box 3 · FAQs ───────────────────────────────────────────────── */}
-      <FaqsBox place={v} storedStrategy={storedStrategy} member={member} capMxn={placeCap} />
+      <FaqsBox
+        place={v}
+        storedStrategy={storedStrategy}
+        member={member}
+        capMxn={placeCap}
+        matrix={matrix}
+      />
 
       {modalStrategy && (
         <ProductModal
@@ -835,13 +842,13 @@ function StrategyCard({
       <div className="flex w-full flex-1 flex-col gap-3.5 p-4">
         <MeterStat
           label="You give"
-          value={give.label}
+          value={paid ? `~${give.mean}%` : "0%"}
           valueClass={paid ? art.accent : "text-muted-foreground"}
           dots={give.dots}
           meterClass={art.meter}
           note={
             paid
-              ? `${give.minRate}–${give.maxRate}% off, by guest class and action`
+              ? `Projected average · 9 in 10 bills land ${give.p10}–${give.p90}%`
               : "No discounts — Zero is free."
           }
         />
@@ -1102,11 +1109,11 @@ function ProductModal({
         <div className="grid grid-cols-2 gap-4">
           <MeterStat
             label="You give"
-            value={give.label}
+            value={paid ? `~${give.mean}%` : "0%"}
             valueClass={paid ? art.accent : "text-muted-foreground"}
             dots={give.dots}
             meterClass={art.meter}
-            note={paid ? `${give.minRate}–${give.maxRate}% off` : "No discounts"}
+            note={paid ? "Projected avg / bill" : "No discounts"}
           />
           <MeterStat
             label="You get"
@@ -1329,11 +1336,13 @@ function FaqsBox({
   storedStrategy,
   member,
   capMxn,
+  matrix,
 }: {
   place: AdminPlace;
   storedStrategy: StrategyId | null;
   member: boolean;
   capMxn: DiscountCapMxn;
+  matrix: PromosConfig;
 }) {
   const currency = place.currency;
   const price = formatMoney(MEMBERSHIP_PRICE_MXN, currency);
@@ -1352,7 +1361,11 @@ function FaqsBox({
           that shows this place's own numbers. */}
       <div className="border-border/60 divide-border/60 mt-4 divide-y overflow-hidden rounded-xl border">
         <Faq q="What does a Premium guest actually get?" defaultOpen>
-          <PremiumExamples place={place} storedStrategy={storedStrategy} />
+          <PremiumExamples
+            place={place}
+            storedStrategy={storedStrategy}
+            matrix={matrix}
+          />
         </Faq>
 
         <Faq q={`What exactly does the ${price}/year buy?`}>
@@ -1456,22 +1469,40 @@ function Faq({
   );
 }
 
-// The Premium-guest worked examples — computed from the place's LIVE rate
-// columns, so custom or legacy rates preview exactly what the bill EF would
-// apply today.
+// The Premium-guest worked example.
+//
+// MESITA-1001: this used to compute from the place's `*_rate` COLUMNS. Since
+// the engine went additive-v10 (MESITA-992) `resolveTicketRate` never reads
+// those columns — they only carry strategy IDENTITY now — so the example was
+// quoting pre-v10 numbers. On Aggressive that under-reported returning visits
+// by 10 points (Standard 10 vs the 20 the engine pays, Premium 30 vs 40).
+// Read the live v10 config instead, exactly like the engine does.
 function PremiumExamples({
   place,
   storedStrategy,
+  matrix,
 }: {
   place: AdminPlace;
   storedStrategy: StrategyId | null;
+  matrix: PromosConfig;
 }) {
-  const hasPromo =
-    place.welcome_premium_rate != null || place.premium_rate != null;
+  const paidStrategy =
+    storedStrategy && storedStrategy !== ZERO_STRATEGY_ID
+      ? (storedStrategy as StrategyKey)
+      : null;
   const strategy = storedStrategy ? STRATEGY_BY_ID[storedStrategy] : null;
   const cap = place.monthly_promo_cap ?? DEFAULT_DISCOUNT_CAP_MXN;
 
-  if (!hasPromo) {
+  // Welcome is the automatic first-ticket bonus; returning is the bare base.
+  const rate = (cls: ClassKey, welcome: boolean) =>
+    paidStrategy
+      ? Math.min(
+          RATE_MAX,
+          matrix.base[paidStrategy][cls] + (welcome ? matrix.bonuses.welcome : 0),
+        )
+      : null;
+
+  if (!paidStrategy) {
     return (
       <p className="text-muted-foreground leading-snug">
         No promos right now — Premium guests see this place in the catalog with
@@ -1496,22 +1527,23 @@ function PremiumExamples({
       <div className="border-border/60 divide-border/60 divide-y rounded-lg border">
         <ExampleRow
           visit="Welcome"
-          premiumRate={place.welcome_premium_rate}
-          freeRate={place.welcome_free_rate}
+          premiumRate={rate("premium", true)}
+          freeRate={rate("standard", true)}
           cap={cap}
           currency={place.currency}
         />
         <ExampleRow
           visit="Returning"
-          premiumRate={place.premium_rate}
-          freeRate={place.free_rate}
+          premiumRate={rate("premium", false)}
+          freeRate={rate("standard", false)}
           cap={cap}
           currency={place.currency}
         />
       </div>
       <p>
         Premium ≥ Standard in every strategy — Premium guests always get the
-        better deal. They are what the membership buys.
+        better deal. They are what the membership buys. Action bonuses (story,
+        reviews) stack on top of these.
       </p>
     </>
   );

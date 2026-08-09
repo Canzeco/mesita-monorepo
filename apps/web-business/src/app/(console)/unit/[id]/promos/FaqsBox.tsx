@@ -7,9 +7,16 @@ import {
   STRATEGY_BY_ID,
   type StrategyId,
 } from "@/lib/business/strategies";
+import {
+  RATE_MAX,
+  type ClassKey,
+  type PromosConfig,
+  type StrategyKey,
+} from "@/lib/business/promos-v10";
 import { formatMoney } from "@/lib/utils";
 import { EXAMPLE_BILL_MXN, PRODUCT_PRICE_MXN } from "./promoConstants";
 
+// Native details/summary accordion row — no state, keyboard-accessible.
 function Faq({
   q,
   defaultOpen,
@@ -20,15 +27,12 @@ function Faq({
   children: React.ReactNode;
 }) {
   return (
-    <details
-      open={defaultOpen}
-      className="border-border/60 group rounded-xl border"
-    >
-      <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-3.5 py-2.5 text-[13px] font-semibold [&::-webkit-details-marker]:hidden">
+    <details open={defaultOpen} className="group">
+      <summary className="hover:bg-muted/40 flex cursor-pointer list-none items-center justify-between gap-3 px-3.5 py-2.5 text-[12.5px] font-semibold transition [&::-webkit-details-marker]:hidden">
         {q}
         <ChevronDown className="text-muted-foreground h-4 w-4 shrink-0 transition group-open:rotate-180" />
       </summary>
-      <div className="text-muted-foreground flex flex-col gap-2.5 px-3.5 pb-3.5 text-[12px] leading-relaxed">
+      <div className="text-muted-foreground flex flex-col gap-2 px-3.5 pb-3.5 text-[12px] leading-relaxed">
         {children}
       </div>
     </details>
@@ -39,10 +43,12 @@ export function FaqsBox({
   place,
   storedStrategy,
   member,
+  cfg,
 }: {
   place: MyPlace;
   storedStrategy: StrategyId | null;
   member: boolean;
+  cfg: PromosConfig;
 }) {
   const price = formatMoney(PRODUCT_PRICE_MXN, place.currency);
   const capMxn = place.monthly_promo_cap ?? DEFAULT_DISCOUNT_CAP_MXN;
@@ -57,9 +63,16 @@ export function FaqsBox({
       title="FAQs"
       description="How membership and strategy work — with real numbers."
     >
-      <div className="flex flex-col gap-2">
+      {/* One divided list, everything closed: the answers are reference, not
+          reading. The worked example opens first because it is the only one
+          that shows this place's own numbers. */}
+      <div className="border-border/60 divide-border/60 divide-y overflow-hidden rounded-xl border">
         <Faq q="What does a Premium guest actually get?" defaultOpen>
-          <PremiumExamples place={place} storedStrategy={storedStrategy} />
+          <PremiumExamples
+            place={place}
+            storedStrategy={storedStrategy}
+            cfg={cfg}
+          />
         </Faq>
 
         <Faq q={`What exactly does the ${price}/year buy?`}>
@@ -73,20 +86,17 @@ export function FaqsBox({
           </p>
         </Faq>
 
-        <Faq q="Can I switch strategies?">
+        <Faq q="Can I switch strategies — or move to Zero?">
           <p>
             Yes — free, anytime, while your membership is active. Strategy is
             the discount posture you promise guests; switching only changes your
             rates. New tickets pick up the new rates; open tickets keep what
             they were created with.
           </p>
-        </Faq>
-
-        <Faq q="What is Zero for members?">
           <p>
-            Zero pauses discounts — your membership stays active, but the promo
-            lane closes and visibility drops to Low. Cancelling membership is a
-            separate action in the Membership box.
+            Switching to Zero pauses discounts: your membership stays active,
+            but the promo lane closes and visibility drops to Low. Cancelling
+            membership is a separate action in the Membership box.
           </p>
         </Faq>
 
@@ -129,19 +139,37 @@ export function FaqsBox({
   );
 }
 
+// MESITA-1001: this used to compute from the place's `*_rate` COLUMNS. The
+// engine went additive-v10 (MESITA-992) and stopped reading them — they only
+// carry strategy IDENTITY now — so the example quoted pre-v10 numbers. On
+// Aggressive that under-reported returning visits by 10 points. Read the live
+// config, exactly like the engine does.
 function PremiumExamples({
   place,
   storedStrategy,
+  cfg,
 }: {
   place: MyPlace;
   storedStrategy: StrategyId | null;
+  cfg: PromosConfig;
 }) {
-  const hasPromo =
-    place.welcome_premium_rate != null || place.premium_rate != null;
+  const paidStrategy =
+    storedStrategy && storedStrategy !== "zero"
+      ? (storedStrategy as StrategyKey)
+      : null;
   const strategy = storedStrategy ? STRATEGY_BY_ID[storedStrategy] : null;
   const cap = place.monthly_promo_cap ?? DEFAULT_DISCOUNT_CAP_MXN;
 
-  if (!hasPromo) {
+  // Welcome is the automatic first-ticket bonus; returning is the bare base.
+  const rate = (cls: ClassKey, welcome: boolean) =>
+    paidStrategy
+      ? Math.min(
+          RATE_MAX,
+          cfg.base[paidStrategy][cls] + (welcome ? cfg.bonuses.welcome : 0),
+        )
+      : null;
+
+  if (!paidStrategy) {
     return (
       <div className="border-border bg-muted/20 rounded-xl border border-dashed px-4 py-4 text-center">
         <p className="text-[12px] leading-snug">
@@ -166,22 +194,22 @@ function PremiumExamples({
       <div className="grid grid-cols-1 gap-3 min-[480px]:grid-cols-2">
         <ExampleCard
           visit="Welcome"
-          premiumRate={place.welcome_premium_rate}
-          freeRate={place.welcome_free_rate}
+          premiumRate={rate("premium", true)}
+          freeRate={rate("standard", true)}
           cap={cap}
           currency={place.currency}
         />
         <ExampleCard
           visit="Returning"
-          premiumRate={place.premium_rate}
-          freeRate={place.free_rate}
+          premiumRate={rate("premium", false)}
+          freeRate={rate("standard", false)}
           cap={cap}
           currency={place.currency}
         />
       </div>
       <p>
         Premium ≥ Standard in every strategy — Premium guests always get the
-        better deal.
+        better deal. Action bonuses (story, reviews) stack on top of these.
       </p>
     </>
   );

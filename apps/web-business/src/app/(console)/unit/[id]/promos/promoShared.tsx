@@ -1,9 +1,17 @@
 import type { ReactNode } from "react";
-import { TrendingUp } from "lucide-react";
+import { type Strategy } from "@/lib/business/strategies";
 import {
-  STRATEGY_VISIBILITY_LADDER,
-  type Strategy,
-} from "@/lib/business/strategies";
+  ACTION_KEYS,
+  ACTION_META,
+  CLASS_KEYS,
+  CLASS_META,
+  METER_SEGMENTS,
+  giveLevel,
+  totalFor,
+  visibilityDots,
+  type PromosConfig,
+  type StrategyKey,
+} from "@/lib/business/promos-v10";
 import { cn } from "@/lib/utils";
 import type { CardArt } from "./promoConstants";
 
@@ -44,90 +52,167 @@ export function Step({
   );
 }
 
-// The 2x2 discount matrix — Welcome/Returning x Standard/Premium. Pato-sanctioned
-// per-card matrix (MESITA-590); rates live in HTML text, never in the artwork.
-export function RateMatrix({ rates }: { rates: Strategy["rates"] }) {
-  const cell = (v: number | null) => (v == null ? "—" : `${v}%`);
+// Every rate this posture pays — rows are guest classes, columns are what the
+// guest did. Modal-only since MESITA-1001 (the card face abstracts it into the
+// give meter), and read from the LIVE v10 config rather than the frozen
+// `strategies.ts` presets: the engine went additive-v10 in MESITA-992 and
+// stopped consulting those presets, so the old 2×2 under-reported returning
+// visits on Aggressive by 10 points. Rates live in HTML text, never artwork.
+export function RateMatrix({
+  cfg,
+  strategy,
+}: {
+  cfg: PromosConfig;
+  strategy: StrategyKey;
+}) {
+  const cell = (v: number) => (v > 0 ? `${v}%` : "—");
+  const shortAction: Record<string, string> = {
+    standing: "None",
+    mesita_review: ACTION_META.mesita_review.emoji,
+    story: ACTION_META.story.emoji,
+    welcome: ACTION_META.welcome.emoji,
+    review: ACTION_META.review.emoji,
+  };
   return (
-    <div className="border-border grid grid-cols-[auto_1fr_1fr] overflow-hidden rounded-lg border text-[11px]">
-      <span className="bg-muted/40 px-2.5 py-1.5" aria-hidden />
-      <span className="text-muted-foreground bg-muted/40 px-2.5 py-1.5 text-center font-semibold">
-        Standard
-      </span>
-      <span className="bg-tier-premium/10 text-tier-premium px-2.5 py-1.5 text-center font-semibold">
-        Premium
-      </span>
-
-      <span className="text-muted-foreground border-border border-t px-2.5 py-1.5 font-medium">
-        Welcome
-      </span>
-      <span className="text-foreground/80 border-border border-t px-2.5 py-1.5 text-center font-bold tabular-nums">
-        {cell(rates.welcome_free_rate)}
-      </span>
-      <span className="border-border bg-tier-premium/[0.06] text-tier-premium border-t px-2.5 py-1.5 text-center font-bold tabular-nums">
-        {cell(rates.welcome_premium_rate)}
-      </span>
-
-      <span className="text-muted-foreground border-border border-t px-2.5 py-1.5 font-medium">
-        Returning
-      </span>
-      <span className="text-foreground/80 border-border border-t px-2.5 py-1.5 text-center font-bold tabular-nums">
-        {cell(rates.free_rate)}
-      </span>
-      <span className="border-border bg-tier-premium/[0.06] text-tier-premium border-t px-2.5 py-1.5 text-center font-bold tabular-nums">
-        {cell(rates.premium_rate)}
-      </span>
+    <div className="flex flex-col gap-1">
+      <div className="border-border grid grid-cols-[minmax(0,1.4fr)_repeat(5,minmax(0,1fr))] overflow-hidden rounded-lg border text-[10.5px]">
+        <span className="bg-muted/40 px-2 py-1.5" aria-hidden />
+        {ACTION_KEYS.map((a) => (
+          <span
+            key={a}
+            title={ACTION_META[a].name}
+            className="text-muted-foreground bg-muted/40 px-1 py-1.5 text-center font-semibold"
+          >
+            {shortAction[a]}
+          </span>
+        ))}
+        {CLASS_KEYS.map((cls) => (
+          <div key={cls} className="contents">
+            <span
+              className="text-muted-foreground border-border truncate border-t px-2 py-1.5 font-medium"
+              title={CLASS_META[cls].name}
+            >
+              {CLASS_META[cls].emoji} {CLASS_META[cls].name}
+            </span>
+            {ACTION_KEYS.map((a) => (
+              <span
+                key={a}
+                className="text-foreground/80 border-border border-t px-1 py-1.5 text-center font-bold tabular-nums"
+              >
+                {cell(totalFor(cfg, strategy, cls, a))}
+              </span>
+            ))}
+          </div>
+        ))}
+      </div>
+      <p className="text-muted-foreground/80 text-[10px] leading-snug">
+        {ACTION_KEYS.map(
+          (a, i) =>
+            `${i > 0 ? " · " : ""}${ACTION_META[a].emoji} ${ACTION_META[a].name}`,
+        ).join("")}
+      </p>
     </div>
   );
 }
 
-// The "You receive" reward — the payoff, made the card's second visual anchor
-// (MESITA-592): the placement level big in the strategy's own accent + a
-// filled ladder, so what the membership BUYS reads louder than the mechanics.
-export function PlacementReward({
-  strategy,
-  art,
+/** Label · value · three-segment rail · one grounding line. */
+export function MeterStat({
+  label,
+  value,
+  valueClass,
+  dots,
+  meterClass,
+  note,
 }: {
-  strategy: Strategy;
-  art: CardArt;
+  label: string;
+  value: string;
+  valueClass: string;
+  dots: number;
+  meterClass: string;
+  note: string;
 }) {
-  const idx = STRATEGY_VISIBILITY_LADDER.indexOf(strategy.visibility);
   return (
-    <div
-      className={cn(
-        "flex flex-col gap-2 rounded-xl border p-3",
-        art.recvBg,
-        art.recvBorder,
-      )}
-    >
-      <div className="flex items-center gap-2">
-        <TrendingUp className={cn("h-4 w-4 shrink-0", art.recvText)} />
+    <div className="flex flex-col gap-1.5">
+      <div className="flex items-baseline justify-between gap-2">
+        <span className="text-muted-foreground text-[10px] font-bold tracking-[0.14em] uppercase">
+          {label}
+        </span>
         <span
           className={cn(
-            "font-display text-xl leading-none font-bold tracking-tight",
-            art.recvText,
+            "font-display truncate text-[15px] leading-none font-bold tracking-tight",
+            valueClass,
           )}
         >
-          {strategy.visibility}
-        </span>
-        <span className="text-muted-foreground text-[11px] leading-tight">
-          algorithm
-          <br />
-          placement
+          {value}
         </span>
       </div>
       <div className="flex gap-1" aria-hidden>
-        {STRATEGY_VISIBILITY_LADDER.map((lvl, i) => (
+        {Array.from({ length: METER_SEGMENTS }, (_, i) => (
           <span
-            key={lvl}
+            key={i}
             className={cn(
               "h-1.5 flex-1 rounded-full",
-              i <= idx ? art.meter : "bg-muted",
+              i < dots ? meterClass : "bg-muted",
             )}
           />
         ))}
       </div>
+      <p className="text-muted-foreground text-[11px] leading-snug">{note}</p>
     </div>
+  );
+}
+
+/**
+ * The two meters that replaced the table on the card face — give (how much
+ * you discount) and get (algorithm placement), on one shared rail. `compact`
+ * is the modal's side-by-side variant, which drops the longer notes.
+ */
+export function StrategyMeters({
+  strategy,
+  art,
+  cfg,
+  compact,
+}: {
+  strategy: Strategy;
+  art: CardArt;
+  cfg: PromosConfig;
+  compact?: boolean;
+}) {
+  const paid = strategy.id !== "zero";
+  const give = giveLevel(cfg, strategy.id);
+  const valueClass = paid ? art.accent : "text-muted-foreground";
+
+  return (
+    <>
+      <MeterStat
+        label="You give"
+        value={paid ? `~${give.mean}%` : "0%"}
+        valueClass={valueClass}
+        dots={give.dots}
+        meterClass={art.meter}
+        note={
+          !paid
+            ? compact
+              ? "No discounts"
+              : "Nothing — Zero is free."
+            : compact
+              ? "Projected avg / bill"
+              : `Projected average · 9 in 10 bills land ${give.p10}–${give.p90}%`
+        }
+      />
+      <MeterStat
+        label="You get"
+        value={compact ? strategy.visibility : `${strategy.visibility} visibility`}
+        valueClass={valueClass}
+        dots={visibilityDots(strategy.visibility)}
+        meterClass={art.meter}
+        note={
+          compact
+            ? "Algorithm placement"
+            : "Placement in the discovery algorithm"
+        }
+      />
+    </>
   );
 }
 

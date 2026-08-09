@@ -41,16 +41,21 @@ export function MembershipBox({
     pillState === "forfeited" ||
     (effectiveStrikeCount(place) > 0 && pillState === "live");
 
+  // One contextual line — the price and what it unlocks are stated once above
+  // it; this only says what to do next.
+  const nextLine = notMember
+    ? "Choose a strategy below to join. Rank is never for sale — visibility rises with what you give."
+    : "Switching to Zero pauses discounts without ending the membership. Dropping is separate.";
+
   return (
     <Section
       title="Mesita Membership"
-      description={`${price}/year unlocks paid strategies. Zero stays free.`}
       right={<MembershipStatusPill state={pillState} />}
     >
       {statusNote && (
         <p
           className={cn(
-            "rounded-xl p-3 text-[12px] leading-snug",
+            "rounded-xl px-3 py-2 text-[12px] leading-snug",
             statusNote.tone === "live" && "bg-emerald-50 text-emerald-800",
             statusNote.tone === "warn" && "bg-amber-50 text-amber-900",
             statusNote.tone === "blocked" &&
@@ -61,87 +66,71 @@ export function MembershipBox({
         </p>
       )}
 
-      <div className="flex flex-col gap-1.5">
-        <p className="font-display text-2xl font-semibold tracking-tight">
-          {price}{" "}
+      <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+        <p className="font-display text-2xl leading-none font-semibold tracking-tight">
+          {price}
           <span className="text-muted-foreground text-[12px] font-normal">
+            {" "}
             / year
           </span>
         </p>
-        <p className="text-foreground/85 text-[13px] leading-snug">
-          Unlocks <span className="font-semibold">Conservative</span> and{" "}
-          <span className="font-semibold">Aggressive</span>. Zero stays free.
-          Switch strategies anytime while membership is active.
+        <p className="text-muted-foreground text-[12.5px] leading-snug">
+          Unlocks{" "}
+          <span className="text-foreground font-semibold">Conservative</span>{" "}
+          and <span className="text-foreground font-semibold">Aggressive</span>{" "}
+          — switch free anytime. Zero stays free.
         </p>
-        {notMember ? (
-          <p className="text-muted-foreground text-[12px] leading-snug">
-            <span className="text-foreground font-semibold">
-              Choose a strategy below to join.
-            </span>{" "}
-            Rank is never for sale — visibility rises with what you give.
-          </p>
-        ) : (
-          <p className="text-muted-foreground text-[12px] leading-snug">
-            Membership stays on while you switch strategies, including Zero
-            (pauses discounts). Drop membership separately if you want out.
-          </p>
-        )}
       </div>
 
-      {canDrop && (
-        <button
-          type="button"
-          disabled={billingBusy}
-          onClick={onDrop}
-          className="border-border text-foreground/75 hover:bg-muted inline-flex h-10 items-center justify-center self-start rounded-full border px-4 text-[12px] font-bold transition disabled:opacity-60"
-        >
-          Drop membership
-        </button>
-      )}
+      <p className="text-muted-foreground text-[12px] leading-snug">
+        {nextLine}
+      </p>
 
-      <details open={rulesOpen} className="border-border group border-t pt-2">
-        <summary className="text-foreground flex min-h-10 cursor-pointer list-none items-center justify-between gap-2 text-[12px] font-semibold [&::-webkit-details-marker]:hidden">
+      <details open={rulesOpen} className="border-border group border-t">
+        <summary className="text-muted-foreground hover:text-foreground flex min-h-10 cursor-pointer list-none items-center gap-1.5 text-[12px] font-semibold transition [&::-webkit-details-marker]:hidden">
           How it works
-          <ChevronDown className="text-muted-foreground h-4 w-4 shrink-0 transition group-open:rotate-180" />
+          <ChevronDown className="h-3.5 w-3.5 shrink-0 transition group-open:rotate-180" />
         </summary>
-        <div className="text-muted-foreground flex flex-col gap-3 pt-1 pb-1 text-[12px] leading-snug">
-          <div className="flex flex-col gap-1">
-            <p className="text-[10px] font-bold tracking-[0.16em] uppercase">
-              Activation
-            </p>
-            <p>
-              Staff scan a guest&apos;s QR on Mesita Check — no app, no account.
-              The first guest ticket honored at the bill makes you live.
-            </p>
-          </div>
-          <div className="flex flex-col gap-1.5">
-            <p className="text-[10px] font-bold tracking-[0.16em] uppercase">
-              If you turn a guest away
-            </p>
-            <ol className="flex flex-col gap-1">
-              {STRIKES.map((s) => (
-                <li key={s.n} className="flex items-start gap-2">
-                  <span
-                    className={cn(
-                      "mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-bold",
-                      s.n === "3"
-                        ? "bg-destructive/10 text-destructive"
-                        : "bg-amber-500/15 text-amber-700",
-                    )}
-                  >
-                    {s.n}
-                  </span>
-                  <span className="text-foreground/80">{s.consequence}</span>
-                </li>
-              ))}
-            </ol>
-          </div>
+        {/* Activation lives in the lifecycle banner above — only the strikes
+            ladder is unique to this disclosure. */}
+        <div className="text-muted-foreground flex flex-col gap-2.5 pb-3 text-[12px] leading-snug">
+          <p className="text-[10px] font-bold tracking-[0.16em] uppercase">
+            If you turn a guest away
+          </p>
+          <ol className="flex flex-col gap-1">
+            {STRIKES.map((s) => (
+              <li key={s.n} className="flex items-start gap-2">
+                <span
+                  className={cn(
+                    "mt-px inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-bold",
+                    s.n === "3"
+                      ? "bg-destructive/10 text-destructive"
+                      : "bg-amber-500/15 text-amber-700",
+                  )}
+                >
+                  {s.n}
+                </span>
+                <span className="text-foreground/80">{s.consequence}</span>
+              </li>
+            ))}
+          </ol>
           <p>
             Strikes decay after 6 months clean, and a guest who&apos;s turned
             away is compensated instantly.
           </p>
         </div>
       </details>
+
+      {canDrop && (
+        <button
+          type="button"
+          disabled={billingBusy}
+          onClick={onDrop}
+          className="text-muted-foreground hover:text-destructive self-start text-[12px] font-semibold underline underline-offset-4 transition disabled:opacity-60"
+        >
+          Drop membership
+        </button>
+      )}
     </Section>
   );
 }

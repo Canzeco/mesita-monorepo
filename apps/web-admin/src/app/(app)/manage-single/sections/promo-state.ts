@@ -11,14 +11,14 @@ import {
   type StrategyVisibility,
 } from "@/lib/business/strategies";
 import {
-  ACTION_KEYS,
-  CLASS_KEYS,
-  RATE_MAX,
   STRATEGY_KEYS,
-  totalFor,
   type PromosConfig,
   type StrategyKey,
 } from "@/app/(app)/rewards-config/promos";
+import {
+  DEFAULT_ASSUMPTIONS,
+  distributionFor,
+} from "@/app/(app)/rewards-config/distribution-model";
 
 // Structural snapshot of the AdminPlace fields this module reads. Fields stay
 // `unknown` because place rows arrive loosely typed from the EF; every reader
@@ -191,84 +191,72 @@ export function lifecycleView(
   return { kind: "rail", join: "done", strategy: "done", honor: "current" };
 }
 
-// ── Card-face meters: give / get ───────────────────────────────────────────
+// ── Card-face meters: give / get (MESITA-1001) ─────────────────────────────
 //
 // The strategy card stopped printing the 4×5 rate matrix — that moved into the
-// detail modal. The face carries two five-segment meters instead: how much you
-// GIVE, how much placement you GET.
+// detail modal. The face carries two meters — how much you GIVE, how much
+// placement you GET — plus ONE number.
 //
-// Give dots are RELATIVE to the most generous posture in the LIVE config, so
-// the top strategy always fills the rail and an edit in Promos Config moves
-// the others. Absolute honesty stays on the range line beside the meter, whose
-// endpoints are exactly the min/max cells of the modal's matrix — same numbers,
-// same 70% ceiling, so the abstract face and the detail table can't disagree.
+// THREE segments, not five. The visibility ladder has exactly three rungs
+// (Low/Mid/High) and there are exactly three postures; a five-segment rail
+// rendered three-of-five, which reads as "two more rungs exist that I could
+// buy". A meter gets as many segments as its ladder has rungs.
+//
+// The number is the EXPECTED discount per bill — the figure an owner budgets
+// against — read from the same enumerated model the Promos Playground charts.
+// The face used to print min–max of the matrix cells, which was the wrong
+// statistic twice over: the top cell lands on ~1.5% of visits, and it also
+// UNDERSTATES the true ceiling, because the engine stacks bonuses while the
+// table only ever shows one action at a time.
+//
+// Everything here is a PROJECTION from DEFAULT_ASSUMPTIONS, not a measurement.
+// The copy beside it says so, and must keep saying so until real tickets back
+// it (there were zero in production when this shipped).
 
-export const METER_SEGMENTS = 5;
-
-// Indexed by dot count (0…METER_SEGMENTS).
-const GIVE_LABELS = [
-  "None",
-  "Light",
-  "Modest",
-  "Moderate",
-  "Strong",
-  "Maximum",
-] as const;
+export const METER_SEGMENTS = 3;
 
 export type GiveLevel = {
   dots: number;
-  label: string;
-  /** Lowest / highest cell of this strategy's matrix, in percent. */
-  minRate: number;
-  maxRate: number;
+  /** Expected discount per bill, whole percent. */
+  mean: number;
+  /** The typical band — p10..p90, about nine visits in ten. */
+  p10: number;
+  p90: number;
 };
-
-function averageBase(cfg: PromosConfig, s: StrategyKey): number {
-  const row = cfg.base[s];
-  return CLASS_KEYS.reduce((sum, c) => sum + row[c], 0) / CLASS_KEYS.length;
-}
 
 export function giveLevel(cfg: PromosConfig, id: StrategyId): GiveLevel {
   // Zero is the absence of the product, not the bottom of the ladder.
-  if (id === "zero") {
-    return { dots: 0, label: GIVE_LABELS[0], minRate: 0, maxRate: 0 };
-  }
-  const key = id as StrategyKey;
-  const mine = averageBase(cfg, key);
-  const top = Math.max(...STRATEGY_KEYS.map((s) => averageBase(cfg, s)));
+  if (id === "zero") return { dots: 0, mean: 0, p10: 0, p90: 0 };
 
-  // A strategy that gives anything at all keeps at least one lit segment —
-  // rounding must never render a paying posture as empty.
+  const key = id as StrategyKey;
+  const mine = distributionFor(cfg, DEFAULT_ASSUMPTIONS, key);
+  const top = Math.max(
+    ...STRATEGY_KEYS.map(
+      (s) => distributionFor(cfg, DEFAULT_ASSUMPTIONS, s).mean,
+    ),
+  );
+
+  // Dots are RELATIVE to the most generous posture, so the top strategy always
+  // fills the rail and an edit in Promos Config moves the others. A posture
+  // that pays anything keeps at least one lit segment.
   const dots =
-    mine <= 0 || top <= 0
+    mine.mean <= 0 || top <= 0
       ? 0
       : Math.max(
           1,
-          Math.min(METER_SEGMENTS, Math.round((mine / top) * METER_SEGMENTS)),
+          Math.min(
+            METER_SEGMENTS,
+            Math.round((mine.mean / top) * METER_SEGMENTS),
+          ),
         );
 
-  let minRate = Infinity;
-  let maxRate = 0;
-  for (const cls of CLASS_KEYS) {
-    for (const action of ACTION_KEYS) {
-      const cell = Math.min(RATE_MAX, totalFor(cfg, key, cls, action));
-      if (cell < minRate) minRate = cell;
-      if (cell > maxRate) maxRate = cell;
-    }
-  }
-
-  return {
-    dots,
-    label: GIVE_LABELS[dots],
-    minRate: Number.isFinite(minRate) ? minRate : 0,
-    maxRate,
-  };
+  return { dots, mean: Math.round(mine.mean), p10: mine.p10, p90: mine.p90 };
 }
 
-/** Visibility on the same five-segment rail: Low 1 · Mid 3 · High 5. */
+/** Visibility on the same three-segment rail: Low 1 · Mid 2 · High 3. */
 export function visibilityDots(v: StrategyVisibility): number {
   const idx = STRATEGY_VISIBILITY_LADDER.indexOf(v);
-  return idx < 0 ? 1 : idx * 2 + 1;
+  return idx < 0 ? 1 : idx + 1;
 }
 
 type CardCta =

@@ -1,19 +1,21 @@
 import Image from "next/image";
 import { Check, Loader2 } from "lucide-react";
-import {
-  DEFAULT_DISCOUNT_CAP_MXN,
-  DISCOUNT_CAPS_MXN,
-  type Strategy,
-} from "@/lib/business/strategies";
-import { cn, formatMoney } from "@/lib/utils";
+import { type Strategy } from "@/lib/business/strategies";
+import type { PromosConfig } from "@/lib/business/promos-v10";
+import { cn } from "@/lib/utils";
 import { CARD_ART } from "./promoConstants";
-import { ModalLabel, PlacementReward, RateMatrix } from "./promoShared";
+import { StrategyMeters } from "./promoShared";
 
 // Whole card opens the product modal.
+//
+// MESITA-1001: the face used to carry the 2×2 rate table on every card, which
+// made the grid a spreadsheet you had to read before you could choose. It now
+// answers the only two questions a posture has — how much do I give, what do I
+// get — on one shared three-segment rail, with the expected cost per bill as
+// the number. Every rate behind them is one tap away in the modal.
 export function PricingCard({
   strategy,
-  currency,
-  capMxn,
+  cfg,
   selected,
   pending,
   subscribed,
@@ -21,8 +23,7 @@ export function PricingCard({
   onOpen,
 }: {
   strategy: Strategy;
-  currency: string;
-  capMxn?: number;
+  cfg: PromosConfig;
   selected: boolean;
   pending: boolean;
   subscribed: boolean;
@@ -31,11 +32,6 @@ export function PricingCard({
 }) {
   const art = CARD_ART[strategy.id];
   const paid = strategy.id !== "zero";
-  const r = strategy.rates;
-  const capLabel = capMxn ?? DEFAULT_DISCOUNT_CAP_MXN;
-  const capOptionsLabel = DISCOUNT_CAPS_MXN.map((n) =>
-    formatMoney(n, currency),
-  ).join(" / ");
 
   return (
     <button
@@ -44,7 +40,7 @@ export function PricingCard({
       aria-haspopup="dialog"
       aria-label={`${strategy.name} — details${selected ? " (current)" : ""}${joinDisabled ? " (unavailable — membership forfeited)" : ""}`}
       className={cn(
-        "bg-card relative flex flex-col overflow-hidden rounded-2xl border text-left transition",
+        "bg-card group relative flex flex-col overflow-hidden rounded-2xl border text-left transition",
         selected
           ? "border-foreground/70 ring-foreground/70 ring-2"
           : "border-border hover:shadow-[0_18px_32px_-20px_rgba(236,72,153,0.35)] motion-safe:hover:-translate-y-0.5",
@@ -52,10 +48,10 @@ export function PricingCard({
       )}
     >
       {/* Art band — gradient behind the image is the loading/404 fallback;
-          the scrim keeps the white name/price legible. */}
+          the scrim keeps the white name legible. */}
       <div
         className={cn(
-          "relative h-28 w-full shrink-0 bg-gradient-to-br",
+          "relative h-24 w-full shrink-0 bg-gradient-to-br",
           art.fallback,
         )}
       >
@@ -77,60 +73,24 @@ export function PricingCard({
             Current
           </span>
         )}
-        <div className="absolute inset-x-3.5 bottom-2.5">
-          <p className="font-display truncate text-sm font-bold tracking-wide text-white uppercase drop-shadow-sm">
-            <span className="mr-1" aria-hidden>
-              {strategy.emoji}
-            </span>
-            {strategy.name}
-          </p>
-        </div>
+        <p className="font-display absolute inset-x-4 bottom-2.5 truncate text-sm font-bold tracking-wide text-white uppercase drop-shadow-sm">
+          <span className="mr-1" aria-hidden>
+            {strategy.emoji}
+          </span>
+          {strategy.name}
+        </p>
       </div>
 
-      {/* Give → receive → join (MESITA-590). No hero — the matrix IS the
-          pitch, Welcome-first, capped, super simple. */}
-      <div className="flex w-full flex-1 flex-col gap-3 p-3.5">
-        <div className="flex flex-col gap-1.5">
-          <ModalLabel>You give</ModalLabel>
-          {paid ? (
-            <>
-              <p className="text-muted-foreground text-[11px] leading-snug">
-                {capMxn != null
-                  ? `These discounts, capped at ${formatMoney(capLabel, currency)} per bill:`
-                  : `These discounts, capped per bill at your chosen discount cap (${capOptionsLabel}):`}
-              </p>
-              <RateMatrix rates={r} />
-            </>
-          ) : (
-            <p className="text-muted-foreground text-[12px] leading-snug">
-              Nothing — Zero is free. No discounts.
-            </p>
-          )}
-        </div>
+      <div className="flex w-full flex-1 flex-col gap-3.5 p-4">
+        <StrategyMeters strategy={strategy} art={art} cfg={cfg} />
 
-        <div className="flex flex-col gap-1.5">
-          <ModalLabel>You receive</ModalLabel>
-          <PlacementReward strategy={strategy} art={art} />
-        </div>
-
-        <div className="mt-auto pt-1">
-          {/* Presentational CTA — the whole card is the button; the modal
-              carries the real action. */}
+        {/* Presentational CTA — the whole card is the button; the modal
+            carries the real action. */}
+        <div className="mt-auto flex flex-col gap-1.5 pt-1">
           {selected ? (
             <span className="border-border text-muted-foreground inline-flex h-11 w-full items-center justify-center gap-1.5 rounded-full border text-[12px] font-bold">
               <Check className="h-3.5 w-3.5" />
               Current
-            </span>
-          ) : !subscribed ? (
-            <span
-              className={cn(
-                "inline-flex h-11 w-full items-center justify-center rounded-full text-[12px] font-bold text-white",
-                paid
-                  ? cn("bg-gradient-to-r", art.cta)
-                  : "border-border text-foreground/75 border bg-transparent",
-              )}
-            >
-              Join
             </span>
           ) : (
             <span
@@ -141,9 +101,12 @@ export function PricingCard({
                   : "border-border text-foreground/75 border",
               )}
             >
-              {paid ? "Switch" : "Switch to Zero"}
+              {!subscribed ? "Join" : paid ? "Switch" : "Switch to Zero"}
             </span>
           )}
+          <span className="text-muted-foreground group-hover:text-foreground text-center text-[10.5px] font-medium transition">
+            See full rates &amp; rules
+          </span>
         </div>
       </div>
     </button>

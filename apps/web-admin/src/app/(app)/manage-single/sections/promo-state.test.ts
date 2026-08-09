@@ -167,29 +167,53 @@ describe("describeMembershipStatus", () => {
   });
 });
 
-describe("giveLevel — the abstract card meter", () => {
+describe("giveLevel — the card's number and meter", () => {
   it("Zero is empty; the top posture fills the rail", () => {
-    expect(giveLevel(DEFAULT_PROMOS, "zero").dots).toBe(0);
-    expect(giveLevel(DEFAULT_PROMOS, "zero").label).toBe("None");
+    expect(giveLevel(DEFAULT_PROMOS, "zero")).toEqual({
+      dots: 0,
+      mean: 0,
+      p10: 0,
+      p90: 0,
+    });
     expect(giveLevel(DEFAULT_PROMOS, "aggressive").dots).toBe(METER_SEGMENTS);
-    // Defaults double Conservative → Aggressive, so Conservative sits mid-rail.
-    expect(giveLevel(DEFAULT_PROMOS, "conservative").dots).toBe(3);
+    expect(giveLevel(DEFAULT_PROMOS, "conservative").dots).toBe(2);
   });
 
-  it("the range spans exactly the min/max cells of the detail matrix", () => {
+  it("quotes the EXPECTED rate, not a matrix extreme (MESITA-1001)", () => {
+    const cons = giveLevel(DEFAULT_PROMOS, "conservative");
+    const aggr = giveLevel(DEFAULT_PROMOS, "aggressive");
+    // Straight off distribution-model, the same numbers the Playground charts.
+    expect(cons.mean).toBe(19);
+    expect(aggr.mean).toBe(32);
+    expect([cons.p10, cons.p90]).toEqual([10, 30]);
+    expect([aggr.p10, aggr.p90]).toEqual([20, 50]);
+  });
+
+  it("the mean sits inside the quoted band", () => {
     for (const id of ["conservative", "aggressive"] as const) {
-      const cells = CLASS_KEYS.flatMap((c) =>
-        ACTION_KEYS.map((a) => Math.min(70, totalFor(DEFAULT_PROMOS, id, c, a))),
-      );
-      const lvl = giveLevel(DEFAULT_PROMOS, id);
-      expect(lvl.minRate).toBe(Math.min(...cells));
-      expect(lvl.maxRate).toBe(Math.max(...cells));
+      const g = giveLevel(DEFAULT_PROMOS, id);
+      expect(g.mean).toBeGreaterThanOrEqual(g.p10);
+      expect(g.mean).toBeLessThanOrEqual(g.p90);
     }
+  });
+
+  it("the band excludes the rare extremes the old range headlined", () => {
+    // The old card printed min–max of the matrix cells. The true ceiling is
+    // higher than any single cell (bonuses stack) AND lands on ~0.01% of
+    // visits — the band must sit well below it.
+    const cells = CLASS_KEYS.flatMap((c) =>
+      ACTION_KEYS.map((a) =>
+        Math.min(70, totalFor(DEFAULT_PROMOS, "aggressive", c, a)),
+      ),
+    );
+    expect(giveLevel(DEFAULT_PROMOS, "aggressive").p90).toBeLessThan(
+      Math.max(...cells),
+    );
   });
 
   it("a paying posture never rounds down to an empty meter", () => {
     // Conservative shaved to a single point against a 50-point Aggressive
-    // rounds to 0.1 segments — it must still light one.
+    // rounds below half a segment — it must still light one.
     const lopsided: PromosConfig = {
       ...DEFAULT_PROMOS,
       base: {
@@ -207,16 +231,24 @@ describe("giveLevel — the abstract card meter", () => {
         conservative: { standard: 0, influencer: 0, premium: 0, aura: 0 },
         aggressive: { standard: 0, influencer: 0, premium: 0, aura: 0 },
       },
+      bonuses: {
+        welcome: 0,
+        mesita: 0,
+        story: 0,
+        story_influencer: 0,
+        google: 0,
+      },
     };
     expect(giveLevel(off, "aggressive").dots).toBe(0);
   });
 });
 
 describe("visibilityDots", () => {
-  it("spreads the three rungs across the five-segment rail", () => {
+  it("gives the rail exactly as many rungs as the ladder has", () => {
     expect(visibilityDots("Low")).toBe(1);
-    expect(visibilityDots("Mid")).toBe(3);
+    expect(visibilityDots("Mid")).toBe(2);
     expect(visibilityDots("High")).toBe(METER_SEGMENTS);
+    expect(METER_SEGMENTS).toBe(3);
   });
 });
 
