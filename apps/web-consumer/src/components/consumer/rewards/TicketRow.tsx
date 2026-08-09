@@ -12,12 +12,23 @@ import { formatCurrency } from "@/lib/api/profile";
 import type { ConsumerTicketRow } from "@/lib/api/tickets";
 import { cn } from "@/lib/utils";
 
+// A parked ticket (D8: "I'll finish this in a bit") still owes its one
+// chosen task — say so, or the guest reaches bill time with a locked QR.
+function hasPendingTask(t: ConsumerTicketRow): boolean {
+  const gating = (v: string | null) =>
+    v === "pending" || v === "submitted" ||
+    v === "ai_rejected" || v === "staff_rejected";
+  return gating(t.story_status) || gating(t.review_status);
+}
+
 function caption(t: ConsumerTicketRow): string {
   switch (t.status) {
     case "open":
       return t.first_scanned_at
         ? "Scanned — visit started"
-        : "Open — show your QR";
+        : hasPendingTask(t)
+          ? "1 task to go — it unlocks your QR"
+          : "Open — show your QR";
     case "awaiting_payment_confirm":
       return "Pay the discounted total";
     case "revealed":

@@ -51,6 +51,13 @@ export type Place = {
   pitch: string | null;
   story: string | null;
   photos: string[];
+  // v4 per-class rate columns (PLACE_PUBLIC_COLUMNS ships them; the type
+  // under-declared until the ticket wizard needed strategyForPlaceRow on a
+  // public place row — MESITA wizard, D9).
+  welcome_free_rate?: number | null;
+  welcome_premium_rate?: number | null;
+  free_rate?: number | null;
+  premium_rate?: number | null;
   website_url: string | null;
   instagram_url: string | null;
   facebook_url: string | null;
