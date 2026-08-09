@@ -1,5 +1,5 @@
 // Supabase Edge Function — check-web-get-ticket (product caller: the public
-// check page at mesita.ai/check/<code> — nominally staff, really whoever
+// check page at check.mesita.ai/<code> — nominally staff, really whoever
 // holds the freshly scanned QR)
 //
 // verify_jwt = FALSE. The 128-bit check_code IS the authentication; see the
