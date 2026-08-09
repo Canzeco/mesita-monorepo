@@ -24,6 +24,8 @@ import {
   greetingThread,
   msgId,
   saveThreadCache,
+  setConfiguredGreeting,
+  withServerGreeting,
   type AiMessage,
 } from '@/components/memo/ask-ai-thread';
 import { GRADIENTS, GRADIENT_DIAGONAL } from '@/constants/brand';
@@ -35,12 +37,15 @@ const DRAFT_KEY = 'mesita:memo-draft';
 
 export function AskAiPanel({
   ask,
+  loadGreeting,
   addStates,
   resolvePlace,
   onInfo,
   onAdd,
 }: {
   ask: (text: string, history: MemoTurn[]) => Promise<MemoAnswer>;
+  /** Empty-query ask-memo bootstrap for the configured opener. */
+  loadGreeting?: () => Promise<string | null>;
   addStates: Record<string, AddState>;
   resolvePlace: (prediction: PlacePrediction) => Place | null;
   onInfo: (prediction: PlacePrediction) => void;
@@ -86,6 +91,25 @@ export function AskAiPanel({
     }, 50);
     return () => clearTimeout(t);
   }, [messages, thinking, related]);
+
+  // Pull memo_greeting from ask-memo bootstrap; keep FALLBACK on failure.
+  useEffect(() => {
+    if (!loadGreeting) return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const greeting = await loadGreeting();
+        if (cancelled || !greeting) return;
+        setConfiguredGreeting(greeting);
+        setMessages((m) => withServerGreeting(m));
+      } catch {
+        // Keep the in-code English fallback.
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [loadGreeting]);
 
   const clearThread = () => {
     setMessages(greetingThread());

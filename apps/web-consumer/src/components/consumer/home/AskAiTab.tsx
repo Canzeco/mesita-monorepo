@@ -11,7 +11,7 @@ import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { useUserLocation } from "@/lib/use-user-location";
 import type { Place } from "@/lib/api/places";
 import { apiCreateProject, type PlacePrediction } from "@/lib/api/place-search";
-import { apiAskMemo, type MemoTurn } from "@/lib/api/memo";
+import { apiAskMemo, apiMemoGreeting, type MemoTurn } from "@/lib/api/memo";
 import { placeHref } from "@/lib/place-route";
 import { toast } from "@/lib/toast";
 import { errMsg } from "@/lib/utils";
@@ -29,6 +29,11 @@ export function AskAiTab({ places }: { places: Place[] }) {
     (text: string, history: MemoTurn[]) =>
       apiAskMemo(supabase, { query: text, location: userLocation, history }),
     [supabase, userLocation],
+  );
+
+  const loadGreeting = useCallback(
+    () => apiMemoGreeting(supabase),
+    [supabase],
   );
 
   const resolvePlace = useCallback(
@@ -87,6 +92,7 @@ export function AskAiTab({ places }: { places: Place[] }) {
     <AskAiPanel
       layout="inline"
       ask={askMemo}
+      loadGreeting={loadGreeting}
       addStates={addStates}
       resolvePlace={resolvePlace}
       onInfo={handleInfo}

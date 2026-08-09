@@ -18,15 +18,14 @@ import {
 //
 // Enforcement is stated PER KNOB via <KnobStatus>, not in card prose (MESITA-738).
 // Ownership: live model picks are Models Config → models_config.memo.* →
-// supabase-edgefunc-get-memo-config. This page owns instructions; greeting /
+// supabase-edgefunc-get-memo-config. This page owns instructions + greeting;
 // provider / webGrounding / perplexityModel are staged. Verified 2026-08-09:
 //
 //   instructions    enforced  — resolveMemoSystemPrompt(cfg.instructions) is the
 //                               live persona on every turn
-//   greeting        not wired (Ask AI parked) — consumers hardcode Ask AI opener
-//                               in ask-ai-thread.ts (web + mobile); memo_greeting
-//                               is unread by the serving path. Client constants
-//                               mirror DB/Product Rules §E until fetch is wired.
+//   greeting        enforced  — memo_greeting via get-memo-config → ask-memo
+//                               (empty-query bootstrap + turn metadata); clients
+//                               fall back to local Product Rules §E constant
 //   provider        not wired — memo_provider is persisted but unused (OpenAI
 //                               is fixed on the serving path)
 //   openaiModel     fallback  — models_config.memo.model wins; memo_openai_model
@@ -155,11 +154,11 @@ export function MemoConfigClient({
         <div className="mt-4 grid gap-3">
           <div className="grid gap-2">
             <KnobStatus
-              kind="not-wired"
-              reason="staged — Ask AI opener is hardcoded in web/mobile ask-ai-thread.ts (Ask AI parked; Product Rules §E)"
+              kind="enforced"
+              reason="live opener via consumer-web-ask-memo (memo_greeting); clients keep a local fallback"
             />
             <TextAreaField
-              label="Greeting (staged)"
+              label="Greeting"
               value={cfg.greeting}
               disabled={busy}
               onChange={(v) => set("greeting", v)}

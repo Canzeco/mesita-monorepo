@@ -3,10 +3,9 @@ import type { MemoAnswer, MemoTurn } from '@/lib/api/memo';
 
 export type { AiMessage } from '@/components/memo/types';
 
-// Product Rules §E canonical Don Memo greeting (Spanish-first AI voice).
-// Must stay in lockstep with app_settings.memo_greeting + admin Memo Config
-// DEFAULT until Ask AI unparks and clients fetch the admin value live.
-const GREETING =
+// In-code fallback when ask-memo bootstrap / turn metadata has no greeting.
+// Product Rules §E Spanish-first — keep aligned with admin Memo Config DEFAULT.
+const FALLBACK_GREETING =
   "Hola, soy Don Memo, la IA de Mesita. Dime qué se te antoja — prueba “rooftop date tonight” o “tacos al pastor”.";
 
 export const AI_ERROR =
@@ -20,6 +19,18 @@ let nextId = 0;
 export function msgId(): string {
   nextId += 1;
   return `ai-msg-${nextId}`;
+}
+
+// Session-scoped configured opener from consumer-web-ask-memo (`greeting`).
+let configuredGreeting: string | null = null;
+
+export function setConfiguredGreeting(greeting: string | null | undefined) {
+  const trimmed = (greeting ?? '').trim();
+  if (trimmed.length > 0) configuredGreeting = trimmed;
+}
+
+export function greetingText(): string {
+  return configuredGreeting ?? FALLBACK_GREETING;
 }
 
 // Thread persistence — Home keep-alive usually keeps AskAiTab mounted; the
@@ -45,7 +56,15 @@ export function clearThreadCache() {
 }
 
 export function greetingThread(): AiMessage[] {
-  return [{ id: msgId(), role: 'ai', kind: 'text', text: GREETING }];
+  return [{ id: msgId(), role: 'ai', kind: 'text', text: greetingText() }];
+}
+
+/** Replace the lone opener when the server greeting arrives (fresh thread). */
+export function withServerGreeting(messages: AiMessage[]): AiMessage[] {
+  if (messages.length !== 1 || messages[0]?.role !== 'ai') return messages;
+  const text = greetingText();
+  if (messages[0].text === text) return messages;
+  return [{ ...messages[0], text }];
 }
 
 export function buildMemoHistory(messages: AiMessage[]): MemoTurn[] {
@@ -61,6 +80,7 @@ export function buildAiReply(reply: MemoAnswer | null): {
   message: AiMessage;
   related: string[];
 } {
+  if (reply?.greeting) setConfiguredGreeting(reply.greeting);
   const shown = (reply?.predictions ?? []).slice(0, MAX_CARDS);
   return {
     message: {

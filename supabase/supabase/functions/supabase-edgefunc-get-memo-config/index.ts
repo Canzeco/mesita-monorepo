@@ -4,7 +4,9 @@
 // up Memo's entire data surface (see _shared/memo-data.ts); Memo itself holds
 // no database client.
 //
-// Three slices of the `app_settings` singleton in ONE read:
+// Four slices of the `app_settings` singleton in ONE read:
+//   • greeting     — memo_greeting, the consumer Ask AI opener. Null when blank
+//                    so clients keep their in-code fallback.
 //   • instructions — memo_instructions, the operator-tunable persona written by
 //                    the admin console's Memo Config page. Null when blank, so
 //                    the caller falls back to the in-code SYSTEM_PROMPT and a
@@ -56,6 +58,7 @@ Deno.serve(async (req) => {
   // launch sourcing policy) instead of failing the turn.
   const fallback = {
     ok: true,
+    greeting: null,
     instructions: null,
     model: null,
     perplexity: null,
@@ -68,7 +71,9 @@ Deno.serve(async (req) => {
     const [{ data, error }, models] = await Promise.all([
       admin
         .from("app_settings")
-        .select("memo_instructions, memo_openai_model, sourcing_config")
+        .select(
+          "memo_greeting, memo_instructions, memo_openai_model, sourcing_config",
+        )
         .eq("id", 1)
         .maybeSingle(),
       loadModelsConfig(admin),
@@ -78,6 +83,7 @@ Deno.serve(async (req) => {
       return json(fallback);
     }
 
+    const greeting = (data.memo_greeting ?? "").toString().trim();
     const instructions = (data.memo_instructions ?? "").toString().trim();
     // Models page is SoT; legacy memo_openai_model remains a one-release fallback.
     const legacyModel = (data.memo_openai_model ?? "").toString().trim();
@@ -87,6 +93,7 @@ Deno.serve(async (req) => {
 
     return json({
       ok: true,
+      greeting: greeting.length > 0 ? greeting : null,
       instructions: instructions.length > 0 ? instructions : null,
       model: model.length > 0 ? model : null,
       perplexity: perplexity.length > 0 && perplexity !== "off" ? perplexity : null,

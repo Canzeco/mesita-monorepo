@@ -95,9 +95,6 @@ Deno.serve(async (req) => {
   const body = bodyRes.body;
 
   const query = (body.query ?? "").toString().trim();
-  if (query.length < 2) {
-    return json({ ok: false, error: "Ask me something first." }, 400);
-  }
 
   const lat = typeof body.latitude === "number" ? body.latitude : null;
   const lng = typeof body.longitude === "number" ? body.longitude : null;
@@ -118,15 +115,34 @@ Deno.serve(async (req) => {
   });
   const perplexityKey = Deno.env.get("PERPLEXITY_KEY") ?? "";
 
-  // Only look up places when the ask is actually place-seeking — a definition
-  // or general question gets a text-only reply (no forced cards).
-  const placeSeeking = isPlaceSeeking(query);
-
   // Memo's persona + the memo_search sourcing policy are operator-tunable from
   // the admin console (Memo Config). One hop fetches both; kick it off now so
   // it overlaps the Google leg. Every field degrades to a default, so a config
   // hiccup never costs Memo its voice.
   const configPromise = data.config();
+
+  // Empty query = thread bootstrap: return the configured opener only (no AI
+  // spend). Consumers use this so memo_greeting is not a dead admin knob.
+  // A 1-char query is still rejected — that is not a real ask.
+  if (query.length === 0) {
+    const cfg = await configPromise;
+    return json({
+      ok: true,
+      greeting: cfg.greeting,
+      answer: "",
+      predictions: [],
+      related: [],
+      citations: [],
+      userId: user?.id ?? null,
+    });
+  }
+  if (query.length < 2) {
+    return json({ ok: false, error: "Ask me something first." }, 400);
+  }
+
+  // Only look up places when the ask is actually place-seeking — a definition
+  // or general question gets a text-only reply (no forced cards).
+  const placeSeeking = isPlaceSeeking(query);
 
   // Signed-in users get a personalised concierge: Memo learns their first name,
   // age and sex as a ready-made clause (the raw profile never leaves the
@@ -167,6 +183,7 @@ Deno.serve(async (req) => {
       });
       return json({
         ok: true,
+        greeting: cfg.greeting,
         answer: agent.answer,
         predictions: agent.predictions,
         related: agent.related,
@@ -232,6 +249,7 @@ Deno.serve(async (req) => {
 
   return json({
     ok: true,
+    greeting: cfg.greeting,
     answer,
     predictions,
     related: perplexity?.related ?? [],

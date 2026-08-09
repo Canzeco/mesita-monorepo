@@ -35,6 +35,8 @@ export type LineupRecallResult = {
 };
 
 export type MemoConfigResult = {
+  // Consumer Ask AI opener from memo_greeting, or null when blank/unreadable.
+  greeting: string | null;
   // Saved persona override, or null to use the in-code default (memo-prompt.ts).
   instructions: string | null;
   // Saved OpenAI model, or null for the caller's default.
@@ -68,7 +70,7 @@ export type MemoData = {
   // name and sex never cross this wire at all.
   consumerContext(userId: string): Promise<string | null>;
 
-  // Operator-tunable persona + model + the memo_search sourcing policy.
+  // Operator-tunable greeting + persona + model + the memo_search policy.
   config(): Promise<MemoConfigResult>;
 };
 
@@ -174,12 +176,16 @@ export function createMemoData(
       if (cached.hit) return cached.value;
 
       const data = await call<{
+        greeting?: unknown;
         instructions?: unknown;
         model?: unknown;
         perplexity?: unknown;
         searchPolicy?: unknown;
       }>("supabase-edgefunc-get-memo-config", {});
 
+      const greeting = typeof data?.greeting === "string"
+        ? data.greeting.trim()
+        : "";
       const instructions = typeof data?.instructions === "string"
         ? data.instructions.trim()
         : "";
@@ -188,6 +194,7 @@ export function createMemoData(
         ? data.perplexity.trim()
         : "";
       const result: MemoConfigResult = {
+        greeting: greeting.length > 0 ? greeting : null,
         instructions: instructions.length > 0 ? instructions : null,
         model: model.length > 0 ? model : null,
         perplexity: perplexity.length > 0 ? perplexity : null,
