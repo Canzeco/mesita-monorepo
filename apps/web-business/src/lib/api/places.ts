@@ -165,7 +165,7 @@ type EnrichmentReport = {
   photoRanked?: boolean;
   /** Short reason when photoRanked is false: no_openai_key,
    *  openai_http_<status>, parse:<msg>, exception:<msg>. Useful for
-   *  ops triage; never surfaced to businesses. */
+   *  ops triage; never surfaced to operators. */
   photoRankError?: string | null;
   firecrawl: boolean;
   perplexity: boolean;

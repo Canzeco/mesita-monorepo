@@ -7,7 +7,7 @@ import { isEmail } from "@/lib/validators";
 
 // Business auth: email + password (these actions) plus Google / Apple OAuth
 // (handled by OAuthButtons + /auth/callback). No magic link, no password
-// reset (businesses will self-serve via a dedicated flow once we ship it).
+// reset (operators will self-serve via a dedicated flow once we ship it).
 // Sign-in / sign-up are server actions so the session cookie lands on the
 // SSR client; the role stamping + profile creation happens on
 // /auth/post-signin which calls business-web-signin-email.
