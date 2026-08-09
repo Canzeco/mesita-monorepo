@@ -8,10 +8,8 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { MyPlace } from "./places";
 import { invokeEF } from "./_invoke";
 
-// The business app never renders a ticket list today — every call site
-// passes ticketsLimit = 0, so this stays as an opaque placeholder shape
-// matching the EF response. If we ever surface tickets here, replace this
-// with the full Ticket type and re-introduce the ticket helpers EF wrappers.
+// The business app never renders a ticket list — request zero tickets.
+// recentTickets stays an opaque placeholder matching the EF response.
 type PlaceTicketStub = Record<string, unknown>;
 
 type UnitOverview = {
@@ -24,7 +22,6 @@ type UnitOverview = {
 async function fetchUnitOverview(
   client: SupabaseClient,
   activeUnitId: string | null,
-  ticketsLimit = 20,
 ): Promise<UnitOverview> {
   return invokeEF<UnitOverview>(
     client,
@@ -32,7 +29,7 @@ async function fetchUnitOverview(
     {
       // Canonical payload key is `placeId` (MESITA-26); local naming unchanged.
       placeId: activeUnitId ?? undefined,
-      ticketsLimit,
+      ticketsLimit: 0,
     },
     "Couldn't load your overview.",
   );

@@ -25,7 +25,7 @@ export default async function SettingsPage() {
   const cookieUnitId = cookieStore.get(ACTIVE_UNIT_COOKIE)?.value ?? null;
 
   const [overviewResult, profileResult] = await Promise.allSettled([
-    getUnitOverview(supabase, cookieUnitId, 0),
+    getUnitOverview(supabase, cookieUnitId),
     apiGetBusinessProfile(supabase),
   ]);
 

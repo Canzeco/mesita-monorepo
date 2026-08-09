@@ -28,7 +28,7 @@ export default async function CreateUnitPage() {
   // we just render an empty places list in that case.
   let places: HeaderPlace[] = [];
   try {
-    const overview = await getUnitOverview(supabase, null, 0);
+    const overview = await getUnitOverview(supabase, null);
     places = (overview?.places ?? []).map((v) => ({ id: v.id, name: v.name }));
   } catch (err) {
     console.error("[add] business-web-get-overview:", err);
