@@ -26,12 +26,12 @@ export const BUSINESS_BENEFITS: BusinessBenefit[] = [
   },
   {
     title: "Alcance en Instagram garantizado",
-    body: "Las recompensas con historia se verifican antes de liberar el descuento — automático para cuentas públicas, captura y un toque del mesero para las privadas. Primero la exposición, siempre.",
+    body: "Las recompensas con historia se completan en la app del comensal antes del check — la página de personal es informativa, sin aprobar ni rechazar. Primero la exposición, siempre.",
     Icon: Instagram,
   },
   {
     title: "Reservas sin instalar nada",
-    body: "Nuestro asistente reserva por los canales que ya usas — teléfono, WhatsApp, Instagram, correo. Ves cuántas personas y qué tipo de cliente antes de la visita.",
+    body: "Nuestro asistente reserva por teléfono — la línea que ya contestas. Ves cuántas personas y qué tipo de cliente antes de la visita.",
     Icon: CalendarCheck,
   },
   {

@@ -12,23 +12,21 @@ function AIReservations() {
             Nunca vuelvas a llamar a un restaurante.
           </h2>
           <p className="text-muted-foreground max-w-xl text-base leading-relaxed">
-            Pon hora y personas — el asistente de Mesita reserva por teléfono,
-            WhatsApp, Instagram o correo, por donde el lugar conteste. Funciona
-            en todos los lugares de la ciudad, no solo en los que son socios.
-            Confirmación al instante y ticket en la app.
+            Pon hora y personas — el asistente de Mesita llama al lugar por
+            teléfono y amarra la mesa. Funciona en todos los lugares de la
+            ciudad, no solo en los que son socios. Confirmación al instante y
+            ticket en la app.
           </p>
           <div className="flex flex-wrap gap-2">
-            {["Teléfono", "WhatsApp", "Instagram", "Correo", "Formulario"].map(
-              (ch) => (
-                <span
-                  key={ch}
-                  className="border-border bg-background text-muted-foreground inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium"
-                >
-                  <CheckCircle2 className="text-secondary h-3.5 w-3.5" />
-                  {ch}
-                </span>
-              ),
-            )}
+            {["Teléfono"].map((ch) => (
+              <span
+                key={ch}
+                className="border-border bg-background text-muted-foreground inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium"
+              >
+                <CheckCircle2 className="text-secondary h-3.5 w-3.5" />
+                {ch}
+              </span>
+            ))}
           </div>
         </div>
         <div className="border-border bg-hero shadow-elev flex flex-col gap-4 rounded-3xl border p-8">
