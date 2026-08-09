@@ -5,8 +5,8 @@
 // and queues the consumer's review. Single confirmation — the consumer never
 // confirms payment, and Mesita never touches the money.
 //
-// Authorisation: a place_member of the ticket's place (super-admins bypass via
-// requireMembership). Self-contained: own auth, service-role writes.
+// Authorisation: editor/owner of the ticket's place (super-admins bypass via
+// requireEditor). Self-contained: own auth, service-role writes.
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { corsPreflight, json, readJson, rejectUnlessMethods } from "../_shared/http.ts";
@@ -14,7 +14,7 @@ import {
   adminClient,
   getAuthedUser,
   readEFEnv,
-  requireMembership,
+  requireEditor,
 } from "../_shared/auth.ts";
 import { closeTicketAndEnqueueReview } from "../_shared/ticket-informal.ts";
 
@@ -51,7 +51,7 @@ Deno.serve(async (req) => {
   if (!ticketRow.data) return json({ ok: false, error: "Ticket not found" }, 404);
   const ticket = ticketRow.data;
 
-  const memberRes = await requireMembership(admin, authRes.user, ticket.project_id);
+  const memberRes = await requireEditor(admin, authRes.user, ticket.project_id);
   if (!memberRes.ok) return memberRes.response;
 
   // Idempotent: already closed.

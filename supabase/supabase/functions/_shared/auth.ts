@@ -168,5 +168,6 @@ export {
   checkSuperAdmin,
   requireSuperAdmin,
   requireMembership,
+  requireEditor,
   requireOwner,
 } from "./auth-membership.ts";

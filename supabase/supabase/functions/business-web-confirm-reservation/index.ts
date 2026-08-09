@@ -20,7 +20,7 @@ import {
   adminClient,
   getAuthedUser,
   readEFEnv,
-  requireMembership,
+  requireEditor,
 } from "../_shared/auth.ts";
 import { RESERVATION_SELECT } from "../_shared/reservation-columns.ts";
 import { nextGuestCallAt } from "../_shared/reservation-callback.ts";
@@ -53,7 +53,7 @@ Deno.serve(async (req) => {
   }
 
   const admin = adminClient(envRes.env);
-  const memberRes = await requireMembership(admin, authRes.user, projectId);
+  const memberRes = await requireEditor(admin, authRes.user, projectId);
   if (!memberRes.ok) return memberRes.response;
 
   // The guest-callback seed needs the slot + the venue's longitude (quiet

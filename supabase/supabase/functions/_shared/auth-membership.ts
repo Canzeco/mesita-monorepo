@@ -159,3 +159,25 @@ export async function requireOwner(
   }
   return { ok: true, membership: m };
 }
+
+// 403s unless the caller is an editor or owner (or super-admin).
+// Viewers are read-only on the Team surface — mutation EFs must use this
+// (or requireOwner), never bare requireMembership.
+export async function requireEditor(
+  admin: SupabaseClient,
+  user: AuthedUser,
+  projectId: string,
+  errorMessage = "Editors and owners only.",
+): Promise<
+  | { ok: true; membership: Membership }
+  | { ok: false; response: Response }
+> {
+  const m = await checkMembership(admin, user, projectId);
+  if (!m.isSuperAdmin && m.role !== "owner" && m.role !== "editor") {
+    return {
+      ok: false,
+      response: json({ ok: false, error: errorMessage }, 403),
+    };
+  }
+  return { ok: true, membership: m };
+}

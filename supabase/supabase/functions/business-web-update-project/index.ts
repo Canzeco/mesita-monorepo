@@ -14,7 +14,7 @@ import {
   adminClient,
   getAuthedUser,
   readEFEnv,
-  requireMembership,
+  requireEditor,
 } from "../_shared/auth.ts";
 import { isEmailish } from "../_shared/input.ts";
 import { PLACE_BUSINESS_COLUMNS } from "../_shared/place-columns.ts";
@@ -180,9 +180,9 @@ Deno.serve(async (req) => {
   const projectId = (body.id ?? "").toString().trim();
   if (!projectId) return json({ ok: false, error: "id is required" }, 400);
 
-  // Auth: caller must be a member of this place. Super-admins bypass via
-  // the super_admins allowlist baked into requireMembership.
-  const memberRes = await requireMembership(admin, authRes.user, projectId);
+  // Auth: editors/owners only (viewers are read-only). Super-admins bypass
+  // via the super_admins allowlist baked into requireEditor.
+  const memberRes = await requireEditor(admin, authRes.user, projectId);
   if (!memberRes.ok) return memberRes.response;
 
   // Build the update payload from the whitelist. Missing keys are not

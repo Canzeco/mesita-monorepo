@@ -12,7 +12,7 @@ import {
   adminClient,
   getAuthedUser,
   readEFEnv,
-  requireMembership,
+  requireEditor,
 } from "../_shared/auth.ts";
 import { computeTicketBill } from "../_shared/business-ticket-billing.ts";
 import { isConsumerFirstVisit } from "../_shared/membership.ts";
@@ -81,7 +81,7 @@ Deno.serve(async (req) => {
   }
   const ticket = ticketRow.data;
 
-  const memberRes = await requireMembership(admin, authRes.user, ticket.project_id);
+  const memberRes = await requireEditor(admin, authRes.user, ticket.project_id);
   if (!memberRes.ok) return memberRes.response;
 
   if (ticket.status !== "open") {
