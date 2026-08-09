@@ -6,8 +6,6 @@ import {
   Check,
   ChevronDown,
   CircleHelp,
-  Coins,
-  Crown,
   Loader2,
   Percent,
   TrendingUp,
@@ -18,7 +16,6 @@ import {
   DEFAULT_DISCOUNT_CAP_MXN,
   STRATEGIES,
   STRATEGY_BY_ID,
-  STRATEGY_VISIBILITY_LADDER,
   snapDiscountCap,
   strategyForPlace,
   type DiscountCapMxn,
@@ -33,6 +30,7 @@ import {
   CLASS_KEYS,
   CLASS_META,
   DEFAULT_PROMOS,
+  RATE_MAX,
   totalFor,
   type ActionKey,
   type ClassKey,
@@ -42,27 +40,33 @@ import { setPlacePlan, setPlaceStrategy, type AdminPlace } from "../actions";
 import { ConfirmDialog, SectionCard } from "../ui";
 import { ErrorNote } from "@/components/ErrorNote";
 import {
+  METER_SEGMENTS,
   describeMembershipStatus,
   effectiveStrikeCount,
+  giveLevel,
   isMemberPlan,
   lifecycleView,
   membershipPillState,
   promoCardState,
+  visibilityDots,
   type CardState,
   type LifecycleStepState,
   type MembershipPillState,
 } from "./promo-state";
 
-// Admin Promos — stepper banner + three boxes (MESITA-912 membership unbundle):
-//   0. Lifecycle stepper — the canonical three steps (join → pick a strategy →
-//      honor guest checks) as a live rail; collapses to a slim strip once the
-//      place is live on a paid strategy. THE one numbered lifecycle story on
-//      the page — the modal steps mirror its titles, never fork them.
+// Admin Promos — banner + three boxes (MESITA-912 membership unbundle,
+// re-cut for density 2026-08-09):
+//   0. Lifecycle banner — the canonical three steps (join → pick a strategy →
+//      honor guest checks) as a one-line rail plus ONE detail line for the
+//      step you're actually on; collapses to a slim strip once the place is
+//      live on a paid strategy. THE one numbered lifecycle story on the page —
+//      the modal steps mirror its titles, never fork them.
 //   1. Membership — MX$1,000/year unlocks paid strategies (Zero stays free).
 //      Status pill, drop, rules in disclosure. Admin writes plan — no Stripe.
-//      Its pending statusNote is absorbed by stepper step 3.
-//   2. Strategy — three cards (give/receive). Non-members: tap Join on a
-//      paid card to start membership with that posture. Members: free switch.
+//   2. Strategy — three ABSTRACT cards: a give meter and a placement meter,
+//      nothing else. The 4×5 rate matrix and every rule live one tap deeper,
+//      in the card's modal. Non-members: tap a paid card to join with that
+//      posture. Members: free switch.
 //   3. FAQs — how the model works, Premium worked example under CURRENT
 //      strategy.
 
@@ -78,47 +82,32 @@ const EXAMPLE_BILL_MXN = 700;
 
 // Per-strategy visual identity. Art = generated 1:1 abstract waves (no text
 // in pixels — copy stays HTML); the gradient paints behind the image so a
-// slow or missing asset still renders a branded band.
-// `meter`/`recvText`/`recvBg`/`recvBorder` also drive the "You receive" reward
-// panel — the payoff, colored in the strategy's own accent (MESITA-592).
+// slow or missing asset still renders a branded band. `meter`/`accent` carry
+// the identity into the two card meters.
 const CARD_ART: Record<
   StrategyId,
-  {
-    src: string;
-    fallback: string;
-    cta: string;
-    meter: string;
-    recvText: string;
-    recvBg: string;
-    recvBorder: string;
-  }
+  { src: string; fallback: string; cta: string; meter: string; accent: string }
 > = {
   zero: {
     src: "/promos/strategy-zero.jpg",
     fallback: "from-slate-800 to-slate-500",
     cta: "",
     meter: "bg-slate-400",
-    recvText: "text-slate-500",
-    recvBg: "bg-muted/40",
-    recvBorder: "border-border/60",
+    accent: "text-slate-500",
   },
   conservative: {
     src: "/promos/strategy-conservative.jpg",
     fallback: "from-emerald-900 to-teal-500",
     cta: "from-emerald-600 to-teal-500",
     meter: "bg-emerald-500",
-    recvText: "text-emerald-600",
-    recvBg: "bg-emerald-500/[0.07]",
-    recvBorder: "border-emerald-500/25",
+    accent: "text-emerald-600",
   },
   aggressive: {
     src: "/promos/strategy-aggressive.jpg",
     fallback: "from-red-800 to-orange-500",
     cta: "from-red-600 to-orange-500",
     meter: "bg-orange-500",
-    recvText: "text-orange-600",
-    recvBg: "bg-orange-500/[0.07]",
-    recvBorder: "border-orange-500/25",
+    accent: "text-orange-600",
   },
 };
 
@@ -130,7 +119,7 @@ function formatMoney(amount: number, currency: string | null): string {
   return `${prefix}${amount.toLocaleString("en-US")}`;
 }
 
-// Membership/pill/card state derivations live in ./promo-state (pure module,
+// Membership/pill/card/meter derivations live in ./promo-state (pure module,
 // unit-tested — see promo-state.test.ts).
 
 function strategyRatesOnly(s: Strategy) {
@@ -326,9 +315,9 @@ export function PromosSection({
   const modalStrategy = modalId ? STRATEGY_BY_ID[modalId] : null;
 
   return (
-    <div className="flex flex-col gap-5">
-      {/* ── Box 0 · Lifecycle stepper ──────────────────────────────────── */}
-      <LifecycleStepper
+    <div className="flex flex-col gap-4">
+      {/* ── Box 0 · Lifecycle banner ───────────────────────────────────── */}
+      <LifecycleBanner
         place={v}
         pillState={pillState}
         storedStrategy={storedStrategy}
@@ -350,7 +339,7 @@ export function PromosSection({
         icon={<TrendingUp className="h-4 w-4" />}
         tint="violet"
         title="Strategy"
-        subtitle="Three discount postures — switch free anytime while membership is active."
+        subtitle="What you give, what the algorithm gives back. Tap a card for the full rates."
         action={
           switchPending || capPending ? (
             <Loader2 className="text-muted-foreground h-4 w-4 animate-spin" />
@@ -363,8 +352,6 @@ export function PromosSection({
               key={s.id}
               strategy={s}
               matrix={matrix}
-              currency={v.currency}
-              capMxn={placeCap}
               state={promoCardState({
                 member,
                 forfeited,
@@ -387,15 +374,11 @@ export function PromosSection({
           />
         )}
 
-        {matrixFailed && (
+        {(matrixFailed || (storedStrategy === null && member)) && (
           <p className="text-muted-foreground mt-2.5 text-[11px]">
-            Live rates unavailable — showing defaults.
-          </p>
-        )}
-
-        {storedStrategy === null && member && (
-          <p className="text-muted-foreground mt-2.5 text-[11px]">
-            Current rates don&apos;t match a strategy — pick one to standardize.
+            {matrixFailed
+              ? "Live rates unavailable — showing defaults."
+              : "Current rates don't match a strategy — pick one to standardize."}
           </p>
         )}
 
@@ -455,15 +438,17 @@ export function PromosSection({
   );
 }
 
-// ─── Box 0 · Lifecycle stepper — the canonical three-step story ────────────
+// ─── Box 0 · Lifecycle banner — the canonical three-step story ─────────────
 //
-// Approved design: editorial rail (Variant C, plan-design-review 2026-08-09) —
-// serif heading, per-step markers with a progress track, state chips. Live on
-// a paid strategy collapses to a slim strip (the teaching job is done; strikes
-// keep it honest). Non-interactive on purpose: the actionable controls stay in
-// the Membership box and strategy cards. decision: the stepper does NOT repeat
-// the MembershipStatusPill — the Membership box header keeps the only pill in
-// the viewport.
+// One rail of three markers + ONE detail line for the step you're on. The
+// earlier three-column stepper printed all three details at once, which read
+// as a wall of 11px next to the boxes that carry the actual controls; every
+// rail state has exactly one current-or-blocked step, so a single line says
+// the same thing. Live on a paid strategy collapses to a slim strip (the
+// teaching job is done; strikes keep it honest). Non-interactive on purpose:
+// the actionable controls stay in the Membership box and strategy cards.
+// decision: the banner does NOT repeat the MembershipStatusPill — the
+// Membership box header keeps the only pill in the viewport.
 
 const STEP_TITLES = {
   join: "Join the membership",
@@ -471,7 +456,7 @@ const STEP_TITLES = {
   honor: "Honor guest checks",
 } as const;
 
-function LifecycleStepper({
+function LifecycleBanner({
   place,
   pillState,
   storedStrategy,
@@ -490,7 +475,7 @@ function LifecycleStepper({
   if (view.kind === "strip") {
     const warn = view.tone === "warn";
     return (
-      <section className="border-border bg-card shadow-card rounded-2xl border px-5 py-3.5 sm:px-6">
+      <section className="border-border bg-card shadow-card rounded-2xl border px-5 py-3 sm:px-6">
         <p className="flex flex-wrap items-baseline gap-x-2 gap-y-1 text-[13px]">
           <span
             aria-hidden
@@ -514,7 +499,8 @@ function LifecycleStepper({
 
   const forfeited = pillState === "forfeited";
 
-  // Helper copy per step, keyed off the derived state + pill.
+  // Helper copy per step, keyed off the derived state + pill. Only the active
+  // step's line renders.
   const joinDetail =
     view.join === "current"
       ? `${price}/year — join by picking a strategy below.`
@@ -548,70 +534,71 @@ function LifecycleStepper({
     { key: "honor", state: view.honor, detail: honorDetail },
   ];
 
+  // Exactly one step is blocked-or-current in every rail state (see
+  // lifecycleView) — that one carries the line.
+  const active =
+    steps.find((s) => s.state === "blocked") ??
+    steps.find((s) => s.state === "current");
+
   return (
-    <section className="border-border bg-card shadow-card rounded-2xl border p-5 sm:p-6">
-      <h2 className="font-display text-base font-semibold tracking-tight">
-        How promos go live
-      </h2>
-      <ol className="mt-4 flex flex-col gap-5 sm:grid sm:grid-cols-3 sm:gap-6">
+    <section className="border-border bg-card shadow-card rounded-2xl border px-5 py-4 sm:px-6">
+      {/* The rail replaced a visible "How promos go live" heading — the steps
+          say it. Keep the label for screen readers. */}
+      <h2 className="sr-only">How promos go live</h2>
+      <ol className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:gap-3">
         {steps.map((s, i) => (
           <li
             key={s.key}
             aria-current={s.state === "current" ? "step" : undefined}
-            className="relative pl-9 sm:pl-0 sm:pt-9"
+            // The connector rides inside its step so the row stays a plain
+            // <ol>/<li> (no display:contents, which drops list semantics in
+            // some screen readers); the last step doesn't stretch.
+            className="flex min-w-0 items-center gap-2 sm:flex-1 sm:last:flex-none"
           >
-            {/* Marker */}
-            <span className="absolute top-0 left-0">
-              <StepMarker n={i + 1} state={s.state} danger={forfeited} />
-            </span>
-            {/* Connector — vertical on mobile, horizontal track on sm+ */}
-            {i < steps.length - 1 && (
-              <>
-                <span
-                  aria-hidden
-                  className={cx(
-                    "absolute top-7 -bottom-4 left-[11px] w-px sm:hidden",
-                    steps[i + 1].state === "upcoming"
-                      ? "bg-border"
-                      : "bg-emerald-500/60",
-                  )}
-                />
-                <span
-                  aria-hidden
-                  className={cx(
-                    "absolute top-[11px] left-8 hidden h-0.5 w-[calc(100%-2.5rem)] rounded-full sm:block",
-                    steps[i + 1].state === "upcoming"
-                      ? "bg-border"
-                      : "bg-emerald-500/60",
-                  )}
-                />
-              </>
-            )}
-            <p className="text-foreground/90 text-[13px] leading-snug font-semibold">
-              {STEP_TITLES[s.key]}
-            </p>
-            <p
+            <StepMarker n={i + 1} state={s.state} danger={forfeited} />
+            <span
               className={cx(
-                "mt-0.5 text-[11px] leading-snug",
-                s.state === "blocked"
-                  ? forfeited
-                    ? "text-destructive"
-                    : "text-amber-800"
-                  : s.state === "current"
-                    ? "text-amber-800"
-                    : "text-muted-foreground",
+                "truncate text-[12.5px] leading-none",
+                s.state === "current" || s.state === "blocked"
+                  ? "text-foreground font-semibold"
+                  : "text-muted-foreground font-medium",
               )}
             >
-              {s.detail}
-            </p>
+              {STEP_TITLES[s.key]}
+            </span>
+            {i < steps.length - 1 && (
+              <span
+                aria-hidden
+                className={cx(
+                  "ml-1 hidden h-px flex-1 sm:block",
+                  steps[i + 1].state === "upcoming"
+                    ? "bg-border"
+                    : "bg-emerald-500/50",
+                )}
+              />
+            )}
           </li>
         ))}
       </ol>
+      {active && (
+        <p
+          className={cx(
+            "mt-2.5 text-[12px] leading-snug",
+            // `active` is blocked-or-current by construction; only forfeiture
+            // earns destructive red.
+            active.state === "blocked" && forfeited
+              ? "text-destructive"
+              : "text-amber-800",
+          )}
+        >
+          {active.detail}
+        </p>
+      )}
     </section>
   );
 }
 
-// One stepper marker: done ✓ (emerald) · current (amber ring) · blocked
+// One banner marker: done ✓ (emerald) · current (amber ring) · blocked
 // (amber, or red when forfeited) · upcoming (muted outline).
 function StepMarker({
   n,
@@ -624,8 +611,8 @@ function StepMarker({
 }) {
   if (state === "done") {
     return (
-      <span className="inline-flex h-[22px] w-[22px] items-center justify-center rounded-full bg-emerald-500 text-white">
-        <Check className="h-3 w-3" aria-hidden />
+      <span className="inline-flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full bg-emerald-500 text-white">
+        <Check className="h-2.5 w-2.5" aria-hidden />
         <span className="sr-only">Step {n} done</span>
       </span>
     );
@@ -633,7 +620,7 @@ function StepMarker({
   return (
     <span
       className={cx(
-        "inline-flex h-[22px] w-[22px] items-center justify-center rounded-full border text-[11px] font-bold tabular-nums",
+        "inline-flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full border text-[10px] font-bold tabular-nums",
         state === "current" &&
           "border-amber-500 bg-amber-500/12 text-amber-800",
         state === "blocked" &&
@@ -648,7 +635,7 @@ function StepMarker({
   );
 }
 
-// ─── Membership box ────────────────────────────────────────────────────────
+// ─── Box 1 · Membership ────────────────────────────────────────────────────
 
 const STRIKES: { n: string; consequence: string }[] = [
   { n: "1", consequence: "A warning — your discounts keep running." },
@@ -669,9 +656,10 @@ function MembershipBox({
   pillState: MembershipPillState;
   onDropClick: () => void;
 }) {
-  // Pending's note lives in stepper step 3 now (absorption rule) — repeating
-  // it here would put two identical amber banners in the same viewport. The
-  // paused/forfeited/strike notes stay: they carry dates and consequences.
+  // Pending's note lives in the lifecycle banner now (absorption rule) —
+  // repeating it here would put two identical amber banners in the same
+  // viewport. The paused/forfeited/strike notes stay: they carry dates and
+  // consequences.
   const statusNote =
     pillState === "pending" ? null : describeMembershipStatus(place, pillState);
   const price = formatMoney(MEMBERSHIP_PRICE_MXN, place.currency);
@@ -686,19 +674,26 @@ function MembershipBox({
     pillState === "forfeited" ||
     (strikes > 0 && pillState === "live");
 
+  // One contextual line — the price and what it unlocks are already stated
+  // once above it; this only says what to do next.
+  const nextLine = notMember
+    ? "Choose a strategy below to join. Rank is never for sale — visibility rises with what you give."
+    : forfeited
+      ? "Re-join by picking a strategy below — reinstating clears the forfeit and strikes; activation is earned again."
+      : "Switching to Zero pauses discounts without ending the membership. Dropping is separate.";
+
   return (
     <SectionCard
       icon={<Percent className="h-4 w-4" />}
       tint="pink"
       title="Mesita Membership"
-      subtitle={`${price}/year unlocks paid strategies. Zero stays free.`}
       action={<MembershipStatusPill state={pillState} />}
     >
-      <div className="mt-4 flex flex-col gap-4">
+      <div className="mt-4 flex flex-col gap-3">
         {statusNote && (
           <p
             className={cx(
-              "rounded-xl p-3 text-[12px] leading-snug",
+              "rounded-xl px-3 py-2 text-[12px] leading-snug",
               statusNote.tone === "live" &&
                 "bg-emerald-500/10 text-emerald-800",
               statusNote.tone === "warn" && "bg-amber-500/10 text-amber-900",
@@ -710,107 +705,93 @@ function MembershipBox({
           </p>
         )}
 
-        <div className="flex flex-col gap-1.5">
-          <p className="font-display text-2xl font-semibold tracking-tight">
-            {price}{" "}
+        <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+          <p className="font-display text-2xl leading-none font-semibold tracking-tight">
+            {price}
             <span className="text-muted-foreground text-[12px] font-normal">
+              {" "}
               / year
             </span>
           </p>
-          <p className="text-foreground/85 text-[13px] leading-snug">
-            Unlocks <span className="font-semibold">Conservative</span> and{" "}
-            <span className="font-semibold">Aggressive</span>. Zero stays free.
-            Switch strategies anytime while membership is active.
+          <p className="text-muted-foreground text-[12.5px] leading-snug">
+            Unlocks{" "}
+            <span className="text-foreground font-semibold">Conservative</span>{" "}
+            and{" "}
+            <span className="text-foreground font-semibold">Aggressive</span> —
+            switch free anytime. Zero stays free.
           </p>
-          {notMember ? (
-            <p className="text-muted-foreground text-[12px] leading-snug">
-              <span className="text-foreground font-semibold">
-                Choose a strategy below to join.
-              </span>{" "}
-              Rank is never for sale — visibility rises with what you give.
-            </p>
-          ) : forfeited ? (
-            <p className="text-muted-foreground text-[12px] leading-snug">
-              <span className="text-foreground font-semibold">
-                Re-join by picking a strategy below.
-              </span>{" "}
-              Reinstating clears the forfeit and strikes; activation is earned
-              again.
-            </p>
-          ) : (
-            <p className="text-muted-foreground text-[12px] leading-snug">
-              Membership stays on while you switch strategies, including Zero
-              (pauses discounts). Drop membership separately if you want out.
-            </p>
-          )}
         </div>
 
-        {canDrop && (
-          <button
-            type="button"
-            onClick={onDropClick}
-            className="border-border text-foreground/75 hover:bg-muted inline-flex h-11 items-center justify-center self-start rounded-full border px-4 text-[12px] font-bold transition"
-          >
-            Drop membership
-          </button>
-        )}
+        <p className="text-muted-foreground text-[12px] leading-snug">
+          {nextLine}
+        </p>
 
-        <details open={rulesOpen} className="border-border group border-t pt-2">
-          <summary className="text-foreground flex min-h-10 cursor-pointer list-none items-center justify-between gap-2 text-[12px] font-semibold [&::-webkit-details-marker]:hidden">
+        <details open={rulesOpen} className="border-border group border-t">
+          <summary className="text-muted-foreground hover:text-foreground flex min-h-10 cursor-pointer list-none items-center gap-1.5 text-[12px] font-semibold transition [&::-webkit-details-marker]:hidden">
             How it works
-            <ChevronDown className="text-muted-foreground h-4 w-4 shrink-0 transition group-open:rotate-180" />
+            <ChevronDown className="h-3.5 w-3.5 shrink-0 transition group-open:rotate-180" />
           </summary>
-          {/* Activation lives in stepper step 3 (Box 0) — only the strikes
-              ladder and the admin-write note are unique to this disclosure. */}
-          <div className="text-muted-foreground flex flex-col gap-3 pb-1 pt-1 text-[12px] leading-snug">
-            <div className="flex flex-col gap-1.5">
-              <p className="text-[10px] font-bold tracking-[0.16em] uppercase">
-                If a guest is turned away
-              </p>
-              <ol className="flex flex-col gap-1">
-                {STRIKES.map((s) => (
-                  <li key={s.n} className="flex items-start gap-2">
-                    <span
-                      className={cx(
-                        "mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-bold",
-                        s.n === "3"
-                          ? "bg-destructive/10 text-destructive"
-                          : "bg-amber-500/15 text-amber-700",
-                      )}
-                    >
-                      {s.n}
-                    </span>
-                    <span className="text-foreground/80">{s.consequence}</span>
-                  </li>
-                ))}
-              </ol>
-            </div>
+          {/* Activation lives in the lifecycle banner (Box 0) — only the
+              strikes ladder and the admin-write note are unique here. */}
+          <div className="text-muted-foreground flex flex-col gap-2.5 pb-3 text-[12px] leading-snug">
+            <p className="text-[10px] font-bold tracking-[0.16em] uppercase">
+              If a guest is turned away
+            </p>
+            <ol className="flex flex-col gap-1">
+              {STRIKES.map((s) => (
+                <li key={s.n} className="flex items-start gap-2">
+                  <span
+                    className={cx(
+                      "mt-px inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-bold",
+                      s.n === "3"
+                        ? "bg-destructive/10 text-destructive"
+                        : "bg-amber-500/15 text-amber-700",
+                    )}
+                  >
+                    {s.n}
+                  </span>
+                  <span className="text-foreground/80">{s.consequence}</span>
+                </li>
+              ))}
+            </ol>
             <p>
               Admin writes plan directly — no Stripe charge from here. Strikes
               decay after 6 months clean.
             </p>
           </div>
         </details>
+
+        {canDrop && (
+          <button
+            type="button"
+            onClick={onDropClick}
+            className="text-muted-foreground hover:text-destructive self-start text-[12px] font-semibold underline underline-offset-4 transition"
+          >
+            Drop membership
+          </button>
+        )}
       </div>
     </SectionCard>
   );
 }
 
-// ─── Strategy card — give/receive only; price lives in Membership box ──────
+// ─── Box 2 · Strategy card — two meters, nothing else ──────────────────────
+//
+// MESITA-999: the face used to carry the whole 4×5 rate matrix, three times
+// over, which made the grid a spreadsheet you had to read before you could
+// choose. It now answers the only two questions a posture has — how much do I
+// give, what do I get — on one shared five-segment rail. Every number behind
+// them is one tap away in the modal.
 
 function StrategyCard({
   strategy,
   matrix,
-  currency,
-  capMxn,
   state,
   pending,
   onOpen,
 }: {
   strategy: Strategy;
   matrix: PromosConfig;
-  currency: string | null;
-  capMxn: DiscountCapMxn;
   state: CardState;
   pending: boolean;
   onOpen: () => void;
@@ -818,6 +799,7 @@ function StrategyCard({
   const art = CARD_ART[strategy.id];
   const paid = strategy.id !== ZERO_STRATEGY_ID;
   const { selected, cta } = state;
+  const give = giveLevel(matrix, strategy.id);
   const ariaState = selected
     ? " (current)"
     : cta === "reinstate"
@@ -831,28 +813,13 @@ function StrategyCard({
       aria-haspopup="dialog"
       aria-label={`${strategy.name} — details${ariaState}`}
       className={cx(
-        "bg-card relative flex flex-col overflow-hidden rounded-2xl border text-left transition",
+        "bg-card group relative flex flex-col overflow-hidden rounded-2xl border text-left transition",
         selected
           ? "border-foreground/70 ring-foreground/70 ring-2"
           : "border-border/60 motion-safe:hover:-translate-y-0.5 hover:shadow-[0_18px_32px_-20px_rgba(0,0,0,0.35)]",
       )}
     >
-      {/* Art band — gradient behind the image is the loading/404 fallback;
-          the scrim keeps the white name/price legible. */}
-      <div
-        className={cx(
-          "relative h-28 w-full shrink-0 bg-gradient-to-br",
-          art.fallback,
-        )}
-      >
-        <Image
-          src={art.src}
-          alt=""
-          fill
-          sizes="(min-width:640px) 50vw, 100vw"
-          className="object-cover"
-        />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/45 via-black/5 to-transparent" />
+      <ArtBand strategy={strategy} art={art} height="h-24">
         {selected && (
           <span className="text-foreground absolute top-2 right-2 inline-flex items-center gap-1 rounded-full bg-white/90 px-2 py-0.5 text-[10px] font-bold tracking-wide uppercase shadow-sm">
             {pending ? (
@@ -863,46 +830,36 @@ function StrategyCard({
             Current
           </span>
         )}
-        <div className="absolute inset-x-3.5 bottom-2.5">
-          <p className="font-display truncate text-sm font-bold tracking-wide text-white uppercase drop-shadow-sm">
-            <span className="mr-1" aria-hidden>
-              {strategy.emoji}
-            </span>
-            {strategy.name}
-          </p>
-        </div>
-      </div>
+      </ArtBand>
 
-      {/* Give → receive → join (MESITA-590). No hero — the matrix IS the
-          pitch, Welcome-first, capped, super simple. */}
-      <div className="flex w-full flex-1 flex-col gap-3 p-3.5">
-        <div className="flex flex-col gap-1.5">
-          <ModalLabel>You give</ModalLabel>
-          {paid ? (
-            <>
-              <p className="text-muted-foreground text-[11px] leading-snug">
-                These discounts, capped at{" "}
-                {formatMoney(capMxn, currency)} per bill:
-              </p>
-              <RewardsMatrix matrix={matrix} strategy={strategy.id} />
-            </>
-          ) : (
-            <p className="text-muted-foreground text-[12px] leading-snug">
-              Nothing — Zero is free. No discounts.
-            </p>
-          )}
-        </div>
+      <div className="flex w-full flex-1 flex-col gap-3.5 p-4">
+        <MeterStat
+          label="You give"
+          value={give.label}
+          valueClass={paid ? art.accent : "text-muted-foreground"}
+          dots={give.dots}
+          meterClass={art.meter}
+          note={
+            paid
+              ? `${give.minRate}–${give.maxRate}% off, by guest class and action`
+              : "No discounts — Zero is free."
+          }
+        />
 
-        <div className="flex flex-col gap-1.5">
-          <ModalLabel>You receive</ModalLabel>
-          <PlacementReward strategy={strategy} art={art} />
-        </div>
+        <MeterStat
+          label="You get"
+          value={`${strategy.visibility} visibility`}
+          valueClass={paid ? art.accent : "text-muted-foreground"}
+          dots={visibilityDots(strategy.visibility)}
+          meterClass={art.meter}
+          note="Placement in the discovery algorithm"
+        />
 
         {/* Presentational CTA — the whole card is the button; the modal
             carries the real action. Every state names one honestly:
             Join (non-member, Zero included) · Reinstate (forfeited) ·
             Switch / Switch to Zero (member) · Current. */}
-        <div className="mt-auto pt-1">
+        <div className="mt-auto flex flex-col gap-1.5 pt-1">
           {cta === "current" ? (
             <span className="border-border text-muted-foreground inline-flex h-11 w-full items-center justify-center gap-1.5 rounded-full border text-[12px] font-bold">
               <Check className="h-3.5 w-3.5" />
@@ -926,9 +883,101 @@ function StrategyCard({
                     : "Switch to Zero"}
             </span>
           )}
+          <span className="text-muted-foreground group-hover:text-foreground text-center text-[10.5px] font-medium transition">
+            See full rates & rules
+          </span>
         </div>
       </div>
     </button>
+  );
+}
+
+/** The strategy's art header — shared by the card and its modal. */
+function ArtBand({
+  strategy,
+  art,
+  height,
+  sizes = "(min-width:640px) 50vw, 100vw",
+  titleId,
+  children,
+}: {
+  strategy: Strategy;
+  art: (typeof CARD_ART)[StrategyId];
+  height: string;
+  sizes?: string;
+  titleId?: string;
+  children?: React.ReactNode;
+}) {
+  return (
+    <div
+      className={cx(
+        "relative w-full shrink-0 bg-gradient-to-br",
+        height,
+        art.fallback,
+      )}
+    >
+      {/* Gradient behind the image is the loading/404 fallback; the scrim
+          keeps the white name legible. */}
+      <Image src={art.src} alt="" fill sizes={sizes} className="object-cover" />
+      <div className="absolute inset-0 bg-gradient-to-t from-black/45 via-black/5 to-transparent" />
+      {children}
+      <p
+        id={titleId}
+        className="font-display absolute inset-x-4 bottom-2.5 truncate text-sm font-bold tracking-wide text-white uppercase drop-shadow-sm"
+      >
+        <span className="mr-1" aria-hidden>
+          {strategy.emoji}
+        </span>
+        {strategy.name}
+      </p>
+    </div>
+  );
+}
+
+/** Label · level · five-segment rail · one grounding line. */
+function MeterStat({
+  label,
+  value,
+  valueClass,
+  dots,
+  meterClass,
+  note,
+}: {
+  label: string;
+  value: string;
+  valueClass: string;
+  dots: number;
+  meterClass: string;
+  note: string;
+}) {
+  return (
+    <div className="flex flex-col gap-1.5">
+      <div className="flex items-baseline justify-between gap-2">
+        <span className="text-muted-foreground text-[10px] font-bold tracking-[0.14em] uppercase">
+          {label}
+        </span>
+        <span
+          className={cx(
+            "font-display truncate text-[15px] leading-none font-bold tracking-tight",
+            valueClass,
+          )}
+        >
+          {value}
+        </span>
+      </div>
+      <div className="flex gap-1" aria-hidden>
+        {Array.from({ length: METER_SEGMENTS }, (_, i) => (
+          <span
+            key={i}
+            className={cx(
+              "h-1.5 flex-1 rounded-full",
+              i < dots ? meterClass : "bg-muted",
+            )}
+          />
+        ))}
+      </div>
+      <p className="text-muted-foreground text-[11px] leading-snug">{note}</p>
+    </div>
   );
 }
 
@@ -979,6 +1028,7 @@ function ProductModal({
   const kind = state.cta;
   const isCurrent = kind === "current";
   const price = formatMoney(MEMBERSHIP_PRICE_MXN, currency);
+  const give = giveLevel(matrix, strategy.id);
 
   const primaryLabel =
     kind === "current"
@@ -1019,24 +1069,19 @@ function ProductModal({
       }}
       className="border-border bg-card m-auto hidden max-h-[88vh] w-[min(28rem,calc(100vw-2rem))] flex-col overflow-hidden rounded-2xl border p-0 shadow-xl backdrop:bg-black/45 backdrop:backdrop-blur-sm open:flex max-sm:mt-auto max-sm:mb-4"
     >
-      {/* Art header */}
-      <div
-        className={cx("relative h-32 shrink-0 bg-gradient-to-br", art.fallback)}
+      <ArtBand
+        strategy={strategy}
+        art={art}
+        height="h-28"
+        sizes="28rem"
+        titleId="product-modal-title"
       >
-        <Image
-          src={art.src}
-          alt=""
-          fill
-          sizes="28rem"
-          className="object-cover"
-        />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-black/5 to-transparent" />
         <button
           type="button"
           onClick={onClose}
           disabled={busy}
           aria-label="Close"
-          className="absolute top-2.5 right-2.5 inline-flex h-7 w-7 items-center justify-center rounded-full bg-black/30 text-white transition hover:bg-black/50 disabled:opacity-50"
+          className="absolute top-2.5 right-2.5 z-10 inline-flex h-7 w-7 items-center justify-center rounded-full bg-black/30 text-white transition hover:bg-black/50 disabled:opacity-50"
         >
           <X className="h-4 w-4" />
         </button>
@@ -1046,70 +1091,68 @@ function ProductModal({
             Current
           </span>
         )}
-        <div className="absolute inset-x-4 bottom-3">
-          <p
-            id="product-modal-title"
-            className="font-display text-lg font-bold tracking-wide text-white uppercase drop-shadow-sm"
-          >
-            <span className="mr-1.5" aria-hidden>
-              {strategy.emoji}
-            </span>
-            {strategy.name}
-          </p>
-        </div>
-      </div>
+      </ArtBand>
 
-      {/* Detail */}
+      {/* Detail — everything the card abstracts away. */}
       <div className="flex flex-col gap-4 overflow-y-auto p-5">
         <p className="text-muted-foreground text-[13px] leading-snug">
           {strategy.tagline}
         </p>
 
-        <div className="flex flex-col gap-2">
-          <ModalLabel>You give</ModalLabel>
-          {paid ? (
-            <>
-              <RewardsMatrix matrix={matrix} strategy={strategy.id} />
-              <p className="text-muted-foreground text-[11px] leading-snug">
-                Every discount applies to the first{" "}
-                {formatMoney(capMxn, currency)} of the bill — the place&apos;s
-                chosen cap, always shown to guests. A guest gets their single
-                best qualifying rate, never a sum.
-              </p>
-            </>
-          ) : (
-            <p className="text-muted-foreground text-[12px] leading-snug">
-              Nothing — Zero is free. No discounts.
-            </p>
-          )}
-        </div>
-
-        <div className="flex flex-col gap-2">
-          <ModalLabel>You receive</ModalLabel>
-          <PlacementReward strategy={strategy} art={art} />
+        <div className="grid grid-cols-2 gap-4">
+          <MeterStat
+            label="You give"
+            value={give.label}
+            valueClass={paid ? art.accent : "text-muted-foreground"}
+            dots={give.dots}
+            meterClass={art.meter}
+            note={paid ? `${give.minRate}–${give.maxRate}% off` : "No discounts"}
+          />
+          <MeterStat
+            label="You get"
+            value={strategy.visibility}
+            valueClass={paid ? art.accent : "text-muted-foreground"}
+            dots={visibilityDots(strategy.visibility)}
+            meterClass={art.meter}
+            note="Algorithm placement"
+          />
         </div>
 
         {paid ? (
-          <div className="flex flex-col gap-3">
-            {/* Canonical step titles — mirror the page stepper (Box 0),
+          <>
+            <div className="flex flex-col gap-2">
+              <ModalLabel>Every rate</ModalLabel>
+              <RewardsMatrix matrix={matrix} strategy={strategy.id} />
+              <p className="text-muted-foreground text-[11px] leading-snug">
+                Rows are guest classes, columns are what the guest did. Bonuses
+                stack on the base, and every discount applies to the first{" "}
+                {formatMoney(capMxn, currency)} of the bill — the place&apos;s
+                chosen cap, always shown to guests.
+              </p>
+            </div>
+
+            <div className="flex flex-col gap-3">
+              {/* Canonical step titles — mirror the page banner (Box 0),
                   with per-strategy detail lines. Never fork the wording. */}
-            <ModalLabel>How it works</ModalLabel>
-            <Step n={1} title="Join the membership">
-              {price}/year — one fee, switch strategies free anytime.
-            </Step>
-            <Step n={2} title="Pick a strategy">
-              Confirming makes {strategy.name} your posture — switch free
-              anytime.
-            </Step>
-            <Step n={3} title="Honor guest checks">
-              We ping your staff WhatsApp, then honoring the first guest check
-              at the bill makes you live.
-            </Step>
-            <p className="text-muted-foreground text-[10px] leading-snug">
-              Turn a guest away and it&apos;s a strike — 1 warning · 2 discounts
-              paused 30 days · 3 removed. Strikes decay after 6 months clean.
-            </p>
-          </div>
+              <ModalLabel>How it works</ModalLabel>
+              <Step n={1} title="Join the membership">
+                {price}/year — one fee, switch strategies free anytime.
+              </Step>
+              <Step n={2} title="Pick a strategy">
+                Confirming makes {strategy.name} your posture — switch free
+                anytime.
+              </Step>
+              <Step n={3} title="Honor guest checks">
+                We ping your staff WhatsApp, then honoring the first guest check
+                at the bill makes you live.
+              </Step>
+              <p className="text-muted-foreground text-[10px] leading-snug">
+                Turn a guest away and it&apos;s a strike — 1 warning · 2
+                discounts paused 30 days · 3 removed. Strikes decay after 6
+                months clean.
+              </p>
+            </div>
+          </>
         ) : (
           <div className="flex flex-col gap-2">
             <ModalLabel>How it works</ModalLabel>
@@ -1207,7 +1250,8 @@ function Step({
 // rewarded actions, read live from rewards_config. Story is universal
 // (MESITA-909) — every class row shows its priced cell; eligibility is
 // Instagram-connected at the consumer EF layer. Rates live in HTML text,
-// never artwork.
+// never artwork. Modal-only since MESITA-999 — the card face abstracts it
+// into the give meter.
 function RewardsMatrix({
   matrix,
   strategy,
@@ -1222,7 +1266,7 @@ function RewardsMatrix({
     influencer: "Influencer",
     aura: "Aura",
   };
-  // Zero has no rules — it is off by definition, and this card is only shown
+  // Zero has no rules — it is off by definition, and this table is only shown
   // for the paid strategies anyway.
   const paidStrategy = strategy === "zero" ? null : strategy;
   const shortAction: Record<ActionKey, string> = {
@@ -1260,7 +1304,9 @@ function RewardsMatrix({
               >
                 {!paidStrategy
                   ? "—"
-                  : cell(Math.min(70, totalFor(matrix, paidStrategy, cls, a)))}
+                  : cell(
+                      Math.min(RATE_MAX, totalFor(matrix, paidStrategy, cls, a)),
+                    )}
               </span>
             ))}
           </div>
@@ -1270,64 +1316,13 @@ function RewardsMatrix({
         {ACTION_KEYS.map(
           (a, i) =>
             `${i > 0 ? " · " : ""}${ACTION_META[a].emoji} ${ACTION_META[a].name}`,
-        ).join("")}{" "}
-        · best rate wins
+        ).join("")}
       </p>
     </div>
   );
 }
 
-// The "You receive" reward — the payoff, made the card's second visual anchor
-// (MESITA-592): the placement level big in the strategy's own accent + a
-// filled ladder, so what the membership BUYS reads louder than the mechanics.
-function PlacementReward({
-  strategy,
-  art,
-}: {
-  strategy: Strategy;
-  art: (typeof CARD_ART)[StrategyId];
-}) {
-  const idx = STRATEGY_VISIBILITY_LADDER.indexOf(strategy.visibility);
-  return (
-    <div
-      className={cx(
-        "flex flex-col gap-2 rounded-xl border p-3",
-        art.recvBg,
-        art.recvBorder,
-      )}
-    >
-      <div className="flex items-center gap-2">
-        <TrendingUp className={cx("h-4 w-4 shrink-0", art.recvText)} />
-        <span
-          className={cx(
-            "font-display text-xl leading-none font-bold tracking-tight",
-            art.recvText,
-          )}
-        >
-          {strategy.visibility}
-        </span>
-        <span className="text-muted-foreground text-[11px] leading-tight">
-          algorithm
-          <br />
-          placement
-        </span>
-      </div>
-      <div className="flex gap-1" aria-hidden>
-        {STRATEGY_VISIBILITY_LADDER.map((lvl, i) => (
-          <span
-            key={lvl}
-            className={cx(
-              "h-1.5 flex-1 rounded-full",
-              i <= idx ? art.meter : "bg-muted",
-            )}
-          />
-        ))}
-      </div>
-    </div>
-  );
-}
-
-// ─── Box 2 · FAQs — how the membership works, with real numbers ─────────────
+// ─── Box 3 · FAQs — how the membership works, with real numbers ────────────
 
 function FaqsBox({
   place,
@@ -1352,7 +1347,10 @@ function FaqsBox({
       title="FAQs"
       subtitle="How membership and strategy work — with real numbers."
     >
-      <div className="mt-4 flex flex-col gap-2">
+      {/* One divided list, everything closed: the answers are reference, not
+          reading. The worked example opens first because it is the only one
+          that shows this place's own numbers. */}
+      <div className="border-border/60 divide-border/60 mt-4 divide-y overflow-hidden rounded-xl border">
         <Faq q="What does a Premium guest actually get?" defaultOpen>
           <PremiumExamples place={place} storedStrategy={storedStrategy} />
         </Faq>
@@ -1368,21 +1366,18 @@ function FaqsBox({
           </p>
         </Faq>
 
-        <Faq q="Can I switch strategies?">
+        <Faq q="Can I switch strategies — or move to Zero?">
           <p>
             Yes — free, anytime, while your membership is active. Strategy is
             the discount posture you promise guests; switching only changes your
             rates. New tickets pick up the new rates; open tickets keep what
             they were created with.
           </p>
-        </Faq>
-
-        <Faq q="What is Zero for members?">
           <p>
-            Zero pauses discounts — your membership stays active, activation
-            state and strikes carry on, but the promo lane closes and visibility
-            drops to Low. Cancelling membership is a separate action in the
-            Membership box.
+            Switching to Zero pauses discounts: membership stays active,
+            activation state and strikes carry on, but the promo lane closes and
+            visibility drops to Low. Cancelling membership is a separate action
+            in the Membership box.
           </p>
         </Faq>
 
@@ -1390,8 +1385,8 @@ function FaqsBox({
           <p>
             The ranking algorithm reads a stronger discount as a stronger card:
             Zero sits at Low, Conservative at Mid, Aggressive at High.
-            Visibility is never a separate knob you can buy — it rises with
-            what you give.
+            Visibility is never a separate knob you can buy — it rises with what
+            you give.
           </p>
         </Faq>
 
@@ -1415,6 +1410,15 @@ function FaqsBox({
           </p>
         </Faq>
 
+        <Faq q="What happens if a guest is turned away?">
+          <p>
+            A refused or ignored QR is a strike: 1 — warning and the activation
+            test re-runs · 2 — your discounts pause for 30 days · 3 — membership
+            forfeited (the place stays listed on Mesita). Strikes decay after 6
+            months clean, and the turned-away guest is compensated instantly.
+          </p>
+        </Faq>
+
         <Faq q="How do I cancel membership?">
           <p>
             Use Drop membership in the Membership box — it clears your plan and
@@ -1424,21 +1428,12 @@ function FaqsBox({
               : "You are not currently a member."}
           </p>
         </Faq>
-
-        <Faq q="What happens if a guest is turned away?">
-          <p>
-            A refused or ignored QR is a strike: 1 — warning and the activation
-            test re-runs · 2 — your discounts pause for 30 days · 3 — membership
-            forfeited (the place stays listed on Mesita). Strikes decay after 6
-            months clean, and the turned-away guest is compensated instantly.
-          </p>
-        </Faq>
       </div>
     </SectionCard>
   );
 }
 
-// Native details/summary accordion item — no state, keyboard-accessible.
+// Native details/summary accordion row — no state, keyboard-accessible.
 function Faq({
   q,
   defaultOpen,
@@ -1449,24 +1444,21 @@ function Faq({
   children: React.ReactNode;
 }) {
   return (
-    <details
-      open={defaultOpen}
-      className="border-border/60 group rounded-xl border"
-    >
-      <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-3.5 py-2.5 text-[13px] font-semibold [&::-webkit-details-marker]:hidden">
+    <details open={defaultOpen} className="group">
+      <summary className="hover:bg-muted/40 flex cursor-pointer list-none items-center justify-between gap-3 px-3.5 py-2.5 text-[12.5px] font-semibold transition [&::-webkit-details-marker]:hidden">
         {q}
         <ChevronDown className="text-muted-foreground h-4 w-4 shrink-0 transition group-open:rotate-180" />
       </summary>
-      <div className="text-muted-foreground flex flex-col gap-2.5 px-3.5 pb-3.5 text-[12px] leading-relaxed">
+      <div className="text-muted-foreground flex flex-col gap-2 px-3.5 pb-3.5 text-[12px] leading-relaxed">
         {children}
       </div>
     </details>
   );
 }
 
-// The Premium-guest worked examples (FAQ #1) — computed from the place's LIVE
-// rate columns, so custom or legacy rates preview exactly what the bill EF
-// would apply today.
+// The Premium-guest worked examples — computed from the place's LIVE rate
+// columns, so custom or legacy rates preview exactly what the bill EF would
+// apply today.
 function PremiumExamples({
   place,
   storedStrategy,
@@ -1481,37 +1473,35 @@ function PremiumExamples({
 
   if (!hasPromo) {
     return (
-      <div className="border-border/60 bg-muted/20 rounded-xl border border-dashed px-4 py-4 text-center">
-        <p className="text-muted-foreground text-[12px] leading-snug">
-          No promos right now — Premium guests see this place in the catalog
-          with no discount card. Pick a strategy above to preview the deal.
-        </p>
-      </div>
+      <p className="text-muted-foreground leading-snug">
+        No promos right now — Premium guests see this place in the catalog with
+        no discount card. Pick a strategy above to preview the deal.
+      </p>
     );
   }
 
   return (
     <>
-      <div className="flex items-center justify-between gap-2">
+      <div className="flex flex-wrap items-baseline justify-between gap-x-2 gap-y-1">
         <p className="text-foreground/80">
-          The current rates worked on a sample{" "}
+          Current rates on a sample{" "}
           {formatMoney(EXAMPLE_BILL_MXN, place.currency)} ticket:
         </p>
-        <span className="bg-muted text-foreground/70 inline-flex shrink-0 items-center gap-1 rounded-md px-2 py-0.5 text-[10px] font-bold tracking-wide uppercase">
+        <span className="text-muted-foreground text-[10px] font-bold tracking-wide uppercase">
           {strategy && strategy.id !== ZERO_STRATEGY_ID
             ? `${strategy.emoji} ${strategy.name}`
             : "Custom rates"}
         </span>
       </div>
-      <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-        <ExampleCard
+      <div className="border-border/60 divide-border/60 divide-y rounded-lg border">
+        <ExampleRow
           visit="Welcome"
           premiumRate={place.welcome_premium_rate}
           freeRate={place.welcome_free_rate}
           cap={cap}
           currency={place.currency}
         />
-        <ExampleCard
+        <ExampleRow
           visit="Returning"
           premiumRate={place.premium_rate}
           freeRate={place.free_rate}
@@ -1527,7 +1517,7 @@ function PremiumExamples({
   );
 }
 
-function ExampleCard({
+function ExampleRow({
   visit,
   premiumRate,
   freeRate,
@@ -1548,45 +1538,29 @@ function ExampleCard({
   const freeSaves = freeRate == null ? 0 : Math.round((base * freeRate) / 100);
 
   return (
-    <div className="border-border/60 rounded-xl border bg-violet-500/[0.03] p-3.5">
-      <div className="flex items-center justify-between gap-2">
-        <span className="text-muted-foreground text-[11px] font-semibold tracking-wide uppercase">
-          {visit}
-        </span>
-        <span className="inline-flex items-center gap-1 rounded-full bg-violet-500/10 px-2 py-0.5 text-[10px] font-bold text-violet-600">
-          <Crown className="h-3 w-3" />
-          Premium
-        </span>
-      </div>
-
+    <div className="flex items-baseline justify-between gap-3 px-3 py-2">
+      <span className="text-muted-foreground shrink-0 text-[11px] font-bold tracking-wide uppercase">
+        {visit}
+      </span>
       {premiumRate == null ? (
-        <p className="text-muted-foreground mt-3 text-[12px]">
+        <span className="text-muted-foreground text-[11px]">
           No discount for this visit type.
-        </p>
+        </span>
       ) : (
-        <>
-          <div className="mt-2.5 flex items-baseline gap-1.5">
-            <span className="text-2xl leading-none font-bold text-violet-600 tabular-nums">
-              {premiumRate}%
-            </span>
-            <span className="text-muted-foreground text-[11px]">
-              off the first {formatMoney(cap, currency)}
-            </span>
-          </div>
-          <p className="text-foreground/80 mt-2 text-[12px]">
-            {formatMoney(EXAMPLE_BILL_MXN, currency)} bill → pays{" "}
-            <span className="font-bold">{formatMoney(pays, currency)}</span>
-            <span className="text-muted-foreground">
-              {" "}
-              · saves {formatMoney(saves, currency)}
-            </span>
+        <div className="text-right">
+          <p className="text-foreground/85 text-[12px]">
+            Premium{" "}
+            <span className="font-bold tabular-nums">{premiumRate}%</span> →
+            pays{" "}
+            <span className="font-bold">{formatMoney(pays, currency)}</span>,
+            saves {formatMoney(saves, currency)}
           </p>
-          <p className="text-muted-foreground mt-1 text-[11px]">
+          <p className="text-muted-foreground text-[11px]">
             {freeRate == null
-              ? "A Standard guest gets no discount on this visit."
-              : `A Standard guest saves ${formatMoney(freeSaves, currency)} (${freeRate}%).`}
+              ? "Standard gets no discount on this visit."
+              : `Standard ${freeRate}% → saves ${formatMoney(freeSaves, currency)}`}
           </p>
-        </>
+        </div>
       )}
     </div>
   );
@@ -1606,22 +1580,20 @@ function DiscountCapPicker({
   onSelect: (cap: DiscountCapMxn) => void;
 }) {
   return (
-    <div className="border-border/60 mt-4 rounded-xl border p-3.5">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <div>
-          <p className="text-foreground/90 text-[12px] font-semibold">
-            Discount cap
-          </p>
-          <p className="text-muted-foreground text-[11px] leading-snug">
-            Every discount applies to the first N pesos of the bill — separate
-            from strategy.
-          </p>
-        </div>
+    <div className="border-border/60 mt-3 flex flex-wrap items-center justify-between gap-x-4 gap-y-2.5 rounded-xl border px-3.5 py-3">
+      <div className="min-w-0">
+        <p className="text-foreground/90 text-[12px] font-semibold">
+          Discount cap
+        </p>
+        <p className="text-muted-foreground text-[11px] leading-snug">
+          Every discount applies to the first N pesos of the bill — separate
+          from strategy.
+        </p>
+      </div>
+      <div className="flex items-center gap-2">
         {pending && (
           <Loader2 className="text-muted-foreground h-4 w-4 animate-spin" />
         )}
-      </div>
-      <div className="mt-3 flex flex-wrap gap-2">
         {DISCOUNT_CAPS_MXN.map((option) => {
           const active = cap === option;
           return (
@@ -1631,13 +1603,13 @@ function DiscountCapPicker({
               disabled={pending}
               onClick={() => onSelect(option)}
               aria-pressed={active}
-              className={
+              className={cx(
+                "inline-flex h-9 items-center rounded-lg px-3 text-[12.5px] tabular-nums transition disabled:opacity-50",
                 active
-                  ? "bg-foreground text-background inline-flex h-9 items-center rounded-lg px-3.5 text-[13px] font-bold tabular-nums transition disabled:opacity-50"
-                  : "border-border text-muted-foreground hover:text-foreground hover:bg-muted inline-flex h-9 items-center rounded-lg border px-3.5 text-[13px] font-semibold tabular-nums transition disabled:opacity-50"
-              }
+                  ? "bg-foreground text-background font-bold"
+                  : "border-border text-muted-foreground hover:text-foreground hover:bg-muted border font-semibold",
+              )}
             >
-              <Coins className="mr-1.5 h-3.5 w-3.5" />
               {formatMoney(option, currency)}
             </button>
           );

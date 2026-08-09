@@ -36,7 +36,7 @@ export const DEFAULT_DISCOUNT_CAP_MXN: DiscountCapMxn = 500;
 export type StrategyId = "zero" | "conservative" | "aggressive";
 
 // Three rungs — Aggressive is the peak.
-type StrategyVisibility = "Low" | "Mid" | "High";
+export type StrategyVisibility = "Low" | "Mid" | "High";
 
 // The four discount cells, keyed by the exact projects column each maps to.
 //   welcome_* → first visit at the place · unprefixed → every visit after.

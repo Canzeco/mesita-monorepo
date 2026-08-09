@@ -5,7 +5,20 @@
 // must live here instead — vitest imports this file under plain node
 // (see promo-state.test.ts).
 
-import type { StrategyId } from "@/lib/business/strategies";
+import {
+  STRATEGY_VISIBILITY_LADDER,
+  type StrategyId,
+  type StrategyVisibility,
+} from "@/lib/business/strategies";
+import {
+  ACTION_KEYS,
+  CLASS_KEYS,
+  RATE_MAX,
+  STRATEGY_KEYS,
+  totalFor,
+  type PromosConfig,
+  type StrategyKey,
+} from "@/app/(app)/rewards-config/promos";
 
 // Structural snapshot of the AdminPlace fields this module reads. Fields stay
 // `unknown` because place rows arrive loosely typed from the EF; every reader
@@ -176,6 +189,86 @@ export function lifecycleView(
     };
   }
   return { kind: "rail", join: "done", strategy: "done", honor: "current" };
+}
+
+// ── Card-face meters: give / get ───────────────────────────────────────────
+//
+// The strategy card stopped printing the 4×5 rate matrix — that moved into the
+// detail modal. The face carries two five-segment meters instead: how much you
+// GIVE, how much placement you GET.
+//
+// Give dots are RELATIVE to the most generous posture in the LIVE config, so
+// the top strategy always fills the rail and an edit in Promos Config moves
+// the others. Absolute honesty stays on the range line beside the meter, whose
+// endpoints are exactly the min/max cells of the modal's matrix — same numbers,
+// same 70% ceiling, so the abstract face and the detail table can't disagree.
+
+export const METER_SEGMENTS = 5;
+
+// Indexed by dot count (0…METER_SEGMENTS).
+const GIVE_LABELS = [
+  "None",
+  "Light",
+  "Modest",
+  "Moderate",
+  "Strong",
+  "Maximum",
+] as const;
+
+export type GiveLevel = {
+  dots: number;
+  label: string;
+  /** Lowest / highest cell of this strategy's matrix, in percent. */
+  minRate: number;
+  maxRate: number;
+};
+
+function averageBase(cfg: PromosConfig, s: StrategyKey): number {
+  const row = cfg.base[s];
+  return CLASS_KEYS.reduce((sum, c) => sum + row[c], 0) / CLASS_KEYS.length;
+}
+
+export function giveLevel(cfg: PromosConfig, id: StrategyId): GiveLevel {
+  // Zero is the absence of the product, not the bottom of the ladder.
+  if (id === "zero") {
+    return { dots: 0, label: GIVE_LABELS[0], minRate: 0, maxRate: 0 };
+  }
+  const key = id as StrategyKey;
+  const mine = averageBase(cfg, key);
+  const top = Math.max(...STRATEGY_KEYS.map((s) => averageBase(cfg, s)));
+
+  // A strategy that gives anything at all keeps at least one lit segment —
+  // rounding must never render a paying posture as empty.
+  const dots =
+    mine <= 0 || top <= 0
+      ? 0
+      : Math.max(
+          1,
+          Math.min(METER_SEGMENTS, Math.round((mine / top) * METER_SEGMENTS)),
+        );
+
+  let minRate = Infinity;
+  let maxRate = 0;
+  for (const cls of CLASS_KEYS) {
+    for (const action of ACTION_KEYS) {
+      const cell = Math.min(RATE_MAX, totalFor(cfg, key, cls, action));
+      if (cell < minRate) minRate = cell;
+      if (cell > maxRate) maxRate = cell;
+    }
+  }
+
+  return {
+    dots,
+    label: GIVE_LABELS[dots],
+    minRate: Number.isFinite(minRate) ? minRate : 0,
+    maxRate,
+  };
+}
+
+/** Visibility on the same five-segment rail: Low 1 · Mid 3 · High 5. */
+export function visibilityDots(v: StrategyVisibility): number {
+  const idx = STRATEGY_VISIBILITY_LADDER.indexOf(v);
+  return idx < 0 ? 1 : idx * 2 + 1;
 }
 
 type CardCta =
