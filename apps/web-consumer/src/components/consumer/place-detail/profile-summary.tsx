@@ -13,10 +13,10 @@ import {
 
 import { PromoChip } from "@/components/consumer/PromoChip";
 import { Spinner } from "@/components/shared";
-import type { Place } from "@/lib/api/places";
 import type { PlaceDetail } from "@/lib/mock/place";
 import { formatPlacePriceChip } from "@/lib/place-price";
 import { getOpeningStatusLabel } from "@/lib/place-status";
+import type { PromoChipPlace } from "@/lib/promo-rates";
 import {
   cn,
   formatCompactCount,
@@ -171,11 +171,9 @@ export function ProfileSummary({ place }: { place: PlaceDetail }) {
   );
 }
 
-/** Shim PlaceDetail → Place shape PromoChip / resolvePromoRateFromPlaceRow expect. */
-function placeDetailAsPromoPlace(place: PlaceDetail): Place {
+/** Shim PlaceDetail → PromoChipPlace for the header reward chip. */
+function placeDetailAsPromoPlace(place: PlaceDetail): PromoChipPlace {
   return {
-    id: place.id,
-    name: place.name,
     listing_type: place.listing_type,
     is_first_visit: place.promo_matrix.is_first_visit,
     welcome_free_rate: place.promo_matrix.welcome.free,
@@ -184,5 +182,5 @@ function placeDetailAsPromoPlace(place: PlaceDetail): Place {
     premium_rate: place.promo_matrix.default.premium,
     reward_cap_mxn: place.reward_cap_mxn,
     currency: place.currency,
-  } as unknown as Place;
+  };
 }

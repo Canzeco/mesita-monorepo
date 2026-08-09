@@ -16,6 +16,7 @@ import { displayPlaceTagLabel } from "@/lib/place-tag-label";
 import {
   buildPromoMatrixFromRow,
   hasExplicitClassRates,
+  type PromoRateFields,
 } from "@/lib/promo-rates";
 import { relativeLabel } from "@/lib/utils";
 import type { Row } from "./place-to-detail-helpers";
@@ -48,6 +49,19 @@ export type ResolvedTag = {
   sort_order: number;
 };
 
+function promoRateFieldsFromRow(row: Row): PromoRateFields {
+  return {
+    listing_type:
+      typeof row.listing_type === "string" ? row.listing_type : null,
+    is_first_visit:
+      typeof row.is_first_visit === "boolean" ? row.is_first_visit : null,
+    welcome_free_rate: num(row.welcome_free_rate) ?? null,
+    welcome_premium_rate: num(row.welcome_premium_rate) ?? null,
+    free_rate: num(row.free_rate) ?? null,
+    premium_rate: num(row.premium_rate) ?? null,
+  };
+}
+
 export function placeRowToDetail(row: Row, tags?: ResolvedTag[]): PlaceDetail {
   const categoryName =
     resolvePlaceCategoryName({
@@ -57,6 +71,7 @@ export function placeRowToDetail(row: Row, tags?: ResolvedTag[]): PlaceDetail {
   const currency = str(row.currency) ?? "MXN";
   const priceLevel = (num(row.price_level) ?? 2) as 1 | 2 | 3 | 4;
   const listingType = row.listing_type === "partner" ? "partner" : "web";
+  const promoRates = promoRateFieldsFromRow(row);
   const details = obj(row.details);
 
   const activePremiumRate = num(row.premium_rate) ?? num(row.free_rate) ?? 0;
@@ -219,8 +234,8 @@ export function placeRowToDetail(row: Row, tags?: ResolvedTag[]): PlaceDetail {
       reward_value: activePremiumRate,
     },
 
-    promo_matrix: buildPromoMatrixFromRow(row, listingType),
-    promo_configured: hasExplicitClassRates(row),
+    promo_matrix: buildPromoMatrixFromRow(promoRates, listingType),
+    promo_configured: hasExplicitClassRates(promoRates),
     // Ticket cap — the promo applies to the first `monthly_promo_cap` of the
     // bill (a peso amount in the place's currency), then full price. 0 = no
     // cap. Reads the same column the business sets on the Promos page.
