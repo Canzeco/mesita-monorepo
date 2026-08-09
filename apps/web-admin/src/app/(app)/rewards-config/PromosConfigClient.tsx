@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ChevronDown, Coins, Gift, Info, Percent, RotateCcw } from "lucide-react";
 
 import { ErrorNote } from "@/components/ErrorNote";
+import { formatShortDate } from "@/lib/format";
 import { SaveRow, SectionCard } from "../enricher-config/atlas-ui";
 import { getPromosConfig, updatePromosConfig } from "./actions";
 import {
@@ -160,7 +161,7 @@ export function PromosConfigClient({
         status={
           updatedAt ? (
             <span className="text-muted-foreground text-xs">
-              Updated {new Date(updatedAt).toLocaleDateString()}
+              Updated {formatShortDate(updatedAt)}
             </span>
           ) : null
         }

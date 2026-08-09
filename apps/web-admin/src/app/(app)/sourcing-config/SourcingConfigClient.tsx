@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { Layers, Star, Users } from "lucide-react";
 import { ErrorNote } from "@/components/ErrorNote";
+import { formatShortDate } from "@/lib/format";
 import { SaveRow, SectionCard, Switch } from "../enricher-config/atlas-ui";
 import {
   getSourcingConfig,
@@ -118,7 +119,7 @@ export function SourcingConfigClient({
       status={
         updatedAt ? (
           <span className="text-muted-foreground text-xs">
-            Updated {new Date(updatedAt).toLocaleDateString()}
+            Updated {formatShortDate(updatedAt)}
           </span>
         ) : null
       }

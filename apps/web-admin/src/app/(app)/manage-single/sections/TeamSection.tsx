@@ -18,6 +18,7 @@ import {
   TextField,
 } from "../ui";
 import { ErrorNote } from "@/components/ErrorNote";
+import { formatShortDate } from "@/lib/format";
 
 /** All three place roles — owner is unique & transferable (MESITA-919). */
 const MEMBER_ROLES = ["owner", "editor", "viewer"] as const;
@@ -293,7 +294,7 @@ export function TeamSection({ place }: { place: AdminPlace }) {
                     <p className="truncate text-sm font-medium">{p.email}</p>
                     <p className="text-muted-foreground truncate text-xs capitalize">
                       {ROLE_LABEL[(p.role as MemberRole) ?? "editor"] ?? p.role} ·
-                      expires {new Date(p.expiresAt).toLocaleDateString()}
+                      expires {formatShortDate(p.expiresAt)}
                     </p>
                   </div>
                 </div>
