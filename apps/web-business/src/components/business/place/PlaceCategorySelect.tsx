@@ -17,13 +17,11 @@ export function PlaceCategorySelect({
   onChange,
   googleCategoryLabel,
   googleCategorySlug,
-  bare = false,
 }: {
   value: string;
   onChange: (slug: string) => void;
   googleCategoryLabel?: string | null;
   googleCategorySlug?: string | null;
-  bare?: boolean;
 }) {
   const supabase = useBrowserSupabase();
   const [categories, setCategories] = useState<PlaceCategoryOption[]>([]);
@@ -68,69 +66,44 @@ export function PlaceCategorySelect({
 
   if (loading) {
     return (
-      <div
-        className={cn(
-          "text-muted-foreground flex h-10 items-center gap-1.5 text-[12px]",
-          bare && "border-border/60 bg-muted/40 rounded-xl border px-3 py-2.5",
-        )}
-      >
+      <div className="text-muted-foreground border-border/60 bg-muted/40 flex h-10 items-center gap-1.5 rounded-xl border px-3 py-2.5 text-[12px]">
         <Loader2 className="h-3.5 w-3.5 animate-spin" />
         Loading…
       </div>
     );
   }
 
-  const select = (
-    <select
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      className={cn(
-        INPUT,
-        "h-10 text-[13px]",
-        !value && "text-muted-foreground",
-      )}
-      aria-label="Category"
-    >
-      <option value="">Select category</option>
-      {value && !categories.some((c) => c.slug === value) ? (
-        <option value={value}>{deslugify(value)}</option>
-      ) : null}
-      {sections.map(([section, rows]) => (
-        <optgroup key={section} label={section}>
-          {rows.map((row) => (
-            <option key={row.slug} value={row.slug}>
-              {row.label}
-            </option>
-          ))}
-        </optgroup>
-      ))}
-    </select>
-  );
-
-  if (bare) {
-    return (
-      <div className="flex flex-col gap-1">
-        {showGoogleHint ? (
-          <p className="text-muted-foreground/70 text-[10px]">
-            From Google · {googleHint}
-          </p>
-        ) : null}
-        {select}
-      </div>
-    );
-  }
-
   return (
-    <div>
-      <p className="text-muted-foreground mb-1 text-[11px] font-medium">
-        Category
-      </p>
+    <div className="flex flex-col gap-1">
       {showGoogleHint ? (
-        <p className="text-muted-foreground/70 mb-1.5 text-[10px]">
+        <p className="text-muted-foreground/70 text-[10px]">
           From Google · {googleHint}
         </p>
       ) : null}
-      {select}
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className={cn(
+          INPUT,
+          "h-10 text-[13px]",
+          !value && "text-muted-foreground",
+        )}
+        aria-label="Category"
+      >
+        <option value="">Select category</option>
+        {value && !categories.some((c) => c.slug === value) ? (
+          <option value={value}>{deslugify(value)}</option>
+        ) : null}
+        {sections.map(([section, rows]) => (
+          <optgroup key={section} label={section}>
+            {rows.map((row) => (
+              <option key={row.slug} value={row.slug}>
+                {row.label}
+              </option>
+            ))}
+          </optgroup>
+        ))}
+      </select>
     </div>
   );
 }

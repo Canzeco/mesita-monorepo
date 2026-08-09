@@ -46,7 +46,6 @@ export function PlaceBasicsSection({
         />
         <PlaceKvField label="Category">
           <PlaceCategorySelect
-            bare
             value={form.category}
             onChange={(category) => set("category", category)}
             googleCategoryLabel={place.category_label}
