@@ -35,7 +35,7 @@ export type RewardSegmentKey =
   | "welcome"
   | "review";
 
-export type RewardSegment = {
+type RewardSegment = {
   /** Pato's worst→best ladder rank (1 Standard … 7 Google Review). */
   rank: number;
   key: RewardSegmentKey;
@@ -138,7 +138,7 @@ export function segmentKeyForClass(classKey: ClassKey): RewardSegmentKey {
 // the universal actions (Welcome, Google review, Instagram Story —
 // MESITA-909). Story's Instagram-connected gate is enforced at create /
 // submit, not here — this set drives "up to" quotes. Returned worst→best.
-export function reachableSegments(classKey: ClassKey): RewardSegment[] {
+function reachableSegments(classKey: ClassKey): RewardSegment[] {
   const mine = segmentKeyForClass(classKey);
   const universal: RewardSegmentKey[] = ["welcome", "review", "story"];
   return REWARD_SEGMENTS.filter(

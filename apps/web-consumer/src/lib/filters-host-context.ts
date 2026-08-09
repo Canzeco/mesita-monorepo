@@ -9,9 +9,9 @@
 import { useSyncExternalStore } from "react";
 import type { CategoryOption } from "@/lib/discovery-filters-engine";
 
-export type FiltersHostSurface = "swipe" | "search";
+type FiltersHostSurface = "swipe" | "search";
 
-export type FiltersHostContext = {
+type FiltersHostContext = {
   count: number | null;
   categoryOptions: CategoryOption[];
   hasLocation: boolean;
