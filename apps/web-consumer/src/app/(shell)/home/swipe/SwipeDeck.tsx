@@ -47,8 +47,33 @@ const SWIPE_VELOCITY = 0.35; // px/ms — a quick flick commits even with small 
 const MIN_FLICK_DISTANCE = 16;
 const MAX_FLICK_DURATION_MS = 250; // time since the last recorded move for a release to still count as a flick
 const EXIT_ANIMATION_MS = 300;
-const TUTORIAL_STORAGE_KEY = "mesita_swipe_tutorial_seen";
+const TUTORIAL_STORAGE_KEY = "mesita:swipe-tutorial-seen";
+const TUTORIAL_STORAGE_KEY_LEGACY = "mesita_swipe_tutorial_seen";
 const TUTORIAL_AUTO_DISMISS_MS = 5500;
+
+/** Read the tutorial flag; one-shot migrate the pre-colon legacy key. */
+function readTutorialSeen(): boolean {
+  try {
+    if (window.localStorage.getItem(TUTORIAL_STORAGE_KEY)) return true;
+    if (window.localStorage.getItem(TUTORIAL_STORAGE_KEY_LEGACY)) {
+      window.localStorage.setItem(TUTORIAL_STORAGE_KEY, "1");
+      window.localStorage.removeItem(TUTORIAL_STORAGE_KEY_LEGACY);
+      return true;
+    }
+  } catch {
+    /* private mode / blocked storage */
+  }
+  return false;
+}
+
+function writeTutorialSeen(): void {
+  try {
+    window.localStorage.setItem(TUTORIAL_STORAGE_KEY, "1");
+    window.localStorage.removeItem(TUTORIAL_STORAGE_KEY_LEGACY);
+  } catch {
+    /* best-effort */
+  }
+}
 // How many upcoming cards' cover photos to pre-warm ahead of the active card.
 const PRELOAD_CARDS_AHEAD = 3;
 const DECISION_BADGE_THRESHOLD = 30; // px of drag before the Skip/Save badge lights up
@@ -198,12 +223,12 @@ function Deck({ places }: { places: Place[] }) {
   // short timer — whichever happens first.
   useEffect(() => {
     if (typeof window === "undefined") return;
-    if (window.localStorage.getItem(TUTORIAL_STORAGE_KEY)) return;
+    if (readTutorialSeen()) return;
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setShowTutorial(true);
     const t = window.setTimeout(() => {
       setShowTutorial(false);
-      window.localStorage.setItem(TUTORIAL_STORAGE_KEY, "1");
+      writeTutorialSeen();
     }, TUTORIAL_AUTO_DISMISS_MS);
     return () => window.clearTimeout(t);
   }, []);
@@ -211,9 +236,7 @@ function Deck({ places }: { places: Place[] }) {
   const dismissTutorial = () => {
     if (!showTutorial) return;
     setShowTutorial(false);
-    if (typeof window !== "undefined") {
-      window.localStorage.setItem(TUTORIAL_STORAGE_KEY, "1");
-    }
+    if (typeof window !== "undefined") writeTutorialSeen();
   };
 
   // Real "X km" distances. The SSR deck fetch has no user location, so
