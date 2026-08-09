@@ -6,7 +6,7 @@
 //
 // Backed by admin-web-get-rewards-config / admin-web-update-rewards-config,
 // which read and write the NORMALIZED public.reward_rules table (v8,
-// MESITA-873) plus the universal cap scalar on app_settings. No client ever
+// MESITA-873) plus the discount cap scalar on app_settings. No client ever
 // touches the DB.
 
 import { efInvoke } from "@/lib/supabase-ef";
