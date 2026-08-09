@@ -10,7 +10,7 @@ import {
   UserRound,
 } from "lucide-react";
 import { ATLAS_PARENT } from "@/app/(app)/atlas-config/nav";
-import { AURA_PARENT } from "@/app/(app)/aura-config/nav";
+import { AURA_USERS_PARENT } from "@/app/(app)/aura-users/nav";
 import { BILLING_TEST_PARENT } from "@/app/(app)/billing-test/nav";
 import { DB_PARENT } from "@/app/(app)/db-config/nav";
 import { ENRICHER_PARENT } from "@/app/(app)/enricher-config/nav";
@@ -72,7 +72,6 @@ const CONFIGS_NAV: NavItem[] = [
   ENRICHER_PARENT,
   SCORING_PARENT,
   REWARDS_PARENT,
-  AURA_PARENT,
   MEMO_PARENT,
   RESERVATIONS_PARENT,
 ];
@@ -81,6 +80,11 @@ const MANAGE_NAV: NavItem[] = [
   { href: "/manage-multiple", label: "Manage Multiple Units", Icon: Building2 },
   ...TOOL_ROUTES,
 ];
+
+// Users — the people side of the console: consumer rosters and the writes that
+// move someone between classes. Deliberately not under Configs; these pages
+// edit records of real consumers, not policy blobs.
+const USERS_NAV: NavItem[] = [AURA_USERS_PARENT];
 
 // Testing — operator tools that probe live systems rather than configure them.
 const TESTING_NAV: NavItem[] = [
@@ -95,6 +99,7 @@ const SIDEBAR_SECTIONS = [
   { label: "Account", items: ACCOUNT_NAV },
   { label: "Alerts", items: ALERTS_NAV },
   { label: "Manage", items: MANAGE_NAV },
+  { label: "Users", items: USERS_NAV },
   { label: "Configs", items: CONFIGS_NAV },
   { label: "Testing", items: TESTING_NAV },
 ] as const;

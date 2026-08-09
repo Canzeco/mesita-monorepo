@@ -1,12 +1,12 @@
 import { listAura } from "./actions";
-import { AuraConfigClient } from "./AuraConfigClient";
+import { AuraUsersClient } from "./AuraUsersClient";
 
 export const dynamic = "force-dynamic";
 
-export default async function AuraConfigPage() {
+export default async function AuraUsersPage() {
   const res = await listAura();
   return (
-    <AuraConfigClient
+    <AuraUsersClient
       initialMembers={res.ok ? res.members : []}
       loadError={res.ok ? null : res.error}
     />
