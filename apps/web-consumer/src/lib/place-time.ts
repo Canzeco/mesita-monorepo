@@ -38,7 +38,7 @@ function venueClock(at: number): Date {
  * since its midnight. Built by shifting the epoch and reading UTC parts, so
  * the caller's own timezone can't leak into the answer.
  */
-export function venueNow(at: number = Date.now()): {
+function venueNow(at: number = Date.now()): {
   iso: string;
   minutes: number;
 } {
