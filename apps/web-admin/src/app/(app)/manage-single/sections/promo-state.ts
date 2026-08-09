@@ -20,11 +20,7 @@ export type MembershipSnapshot = {
 };
 
 export type MembershipPillState =
-  | "not_member"
-  | "pending"
-  | "live"
-  | "paused"
-  | "forfeited";
+  "not_member" | "pending" | "live" | "paused" | "forfeited";
 
 // A place on any paid plan carries a membership (plan != free).
 export function isMemberPlan(plan: unknown): boolean {
@@ -113,7 +109,77 @@ export function describeMembershipStatus(
   };
 }
 
-export type CardCta = "current" | "join" | "reinstate" | "switch" | "switch_zero";
+// ── Lifecycle stepper (top-of-page banner) ─────────────────────────────────
+//
+// The canonical three steps: join → pick a strategy → honor guest checks.
+// Pure derivation from the same snapshot the pill reads, plus storedStrategy.
+// storedStrategy is member-gated HERE (the strategyForPlace all-null-rates→Zero
+// trap): a non-member's "zero" match must not render step 2 as done.
+
+export type LifecycleStepState = "done" | "current" | "upcoming" | "blocked";
+
+export type LifecycleView =
+  // Live on a paid strategy: the teaching job is over — collapse to one line.
+  | { kind: "strip"; tone: "live" | "warn"; strikes: number }
+  | {
+      kind: "rail";
+      join: LifecycleStepState;
+      strategy: LifecycleStepState;
+      honor: LifecycleStepState;
+    };
+
+export function lifecycleView(
+  snap: MembershipSnapshot,
+  storedStrategy: StrategyId | null,
+  now: number = Date.now(),
+): LifecycleView {
+  const pill = membershipPillState(snap, now);
+  const member = isMemberPlan(snap.plan);
+  const onPaid = member && storedStrategy !== null && storedStrategy !== "zero";
+
+  if (pill === "forfeited") {
+    // Strike 3 broke step 3; strategy resets because re-join re-picks one.
+    return {
+      kind: "rail",
+      join: "done",
+      strategy: "upcoming",
+      honor: "blocked",
+    };
+  }
+  if (pill === "not_member") {
+    return {
+      kind: "rail",
+      join: "current",
+      strategy: "upcoming",
+      honor: "upcoming",
+    };
+  }
+  if (pill === "paused") {
+    return { kind: "rail", join: "done", strategy: "done", honor: "blocked" };
+  }
+  if (pill === "live") {
+    if (!onPaid) {
+      // Activated but sitting on Zero (or custom rates): the promo lane is
+      // closed, so step 2 regresses to current while step 3 stays done.
+      return { kind: "rail", join: "done", strategy: "current", honor: "done" };
+    }
+    const strikes = effectiveStrikeCount(snap, now);
+    return { kind: "strip", tone: strikes > 0 ? "warn" : "live", strikes };
+  }
+  // pending
+  if (!onPaid) {
+    return {
+      kind: "rail",
+      join: "done",
+      strategy: "current",
+      honor: "upcoming",
+    };
+  }
+  return { kind: "rail", join: "done", strategy: "done", honor: "current" };
+}
+
+export type CardCta =
+  "current" | "join" | "reinstate" | "switch" | "switch_zero";
 
 export type CardState = { selected: boolean; cta: CardCta };
 
