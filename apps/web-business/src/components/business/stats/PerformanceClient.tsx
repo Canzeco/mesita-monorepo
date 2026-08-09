@@ -48,12 +48,11 @@ import {
   type PlaceReservations,
 } from "@/lib/api/reservations";
 import { ReservationsClient } from "@/components/business/stats/ReservationsClient";
-import { cn, errMsg } from "@/lib/utils";
+import { cn, errMsg, formatMoney } from "@/lib/utils";
 
 function money(cents: number | null | undefined, currency = "MXN"): string {
   if (cents == null) return "—";
-  const prefix = currency === "MXN" ? "MX$" : "$";
-  return `${prefix}${Math.round(cents / 100).toLocaleString("en-US")}`;
+  return formatMoney(Math.round(cents / 100), currency);
 }
 
 const FEED_META: Record<
