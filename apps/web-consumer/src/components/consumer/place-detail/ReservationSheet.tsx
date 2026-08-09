@@ -23,11 +23,11 @@ import { parseHoursTable, resolveSlot } from "@/lib/reservation-slots";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { SHEET_BODY_CLASS, SHEET_TITLE_CLASS } from "@/lib/ui-classes";
 import { cn, guestNoun } from "@/lib/utils";
-import { MX_OFFSET, venueDateTime } from "@/lib/place-time";
+import { MX_OFFSET, placeDateTime } from "@/lib/place-time";
 
 const DEFAULT_PARTY = 2;
 
-// MX_OFFSET (and everything else about the venue's clock) lives in
+// MX_OFFSET (and everything else about the place's clock) lives in
 // @/lib/place-time — the single source of truth. The picked slot is the
 // venue's wall-clock, so we stamp that offset: the agent reads the time back
 // in America/Mexico_City and it matches what the guest chose.
@@ -111,7 +111,7 @@ export function ReservationSheet({
 
   // Selection is DERIVED, not stored: if the guest's pick has since passed (or
   // they switched to today late at night), we fall through to the first slot
-  // that's still ahead of the venue's clock. No effect, nothing to desync.
+  // that's still ahead of the place's clock. No effect, nothing to desync.
   const date =
     dateOptions.find((d) => d.iso === dateChoice && !d.disabled)?.iso ??
     firstOpenDate(dateOptions);
@@ -172,7 +172,7 @@ export function ReservationSheet({
   /** Move the existing table: seed the pickers from what's already booked. */
   function chooseReschedule() {
     if (!existing) return;
-    const seed = venueDateTime(existing.reserved_at);
+    const seed = placeDateTime(existing.reserved_at);
     if (seed) {
       setDateChoice(seed.date);
       setTimeChoice(seed.time);
@@ -400,7 +400,7 @@ function DuplicateBanner({
   onAnother: () => void;
   onReset: () => void;
 }) {
-  const seed = venueDateTime(existing.reserved_at);
+  const seed = placeDateTime(existing.reserved_at);
   const when = seed ? `${seed.date} · ${seed.time}` : "an upcoming slot";
 
   return (
