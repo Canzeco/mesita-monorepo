@@ -80,6 +80,21 @@ type ProbeSpec = {
   }>;
 };
 
+/** Strip paste noise operators often leave in dashboard secrets. */
+function cleanSecret(raw: string): string {
+  let s = raw.trim();
+  if (
+    (s.startsWith('"') && s.endsWith('"')) ||
+    (s.startsWith("'") && s.endsWith("'"))
+  ) {
+    s = s.slice(1, -1).trim();
+  }
+  // BOM / zero-width / newlines that survive a dashboard paste.
+  s = s.replace(/^\uFEFF/, "").replace(/[\u200B-\u200D\uFEFF]/g, "");
+  s = s.replace(/\r?\n/g, "").trim();
+  return s;
+}
+
 /** First non-empty env var among `names` — tolerates the ELEVEN_KEY/ELEVENLABS_KEY drift. */
 function firstKey(
   keys: Record<string, string | undefined>,
@@ -87,9 +102,28 @@ function firstKey(
 ): string | undefined {
   for (const n of names) {
     const v = keys[n];
-    if (v && v.trim()) return v.trim();
+    if (v && v.trim()) return cleanSecret(v);
   }
   return undefined;
+}
+
+/**
+ * Prefer a secret that looks like a real vendor API key over a key *id*.
+ * ElevenLabs in particular rejects key ids with "API key ID used as API key"
+ * when ELEVENLABS_KEY holds the id and ELEVEN_KEY holds the sk_ value (or
+ * the other way around) — take the sk_ one.
+ */
+function firstKeyedSecret(
+  keys: Record<string, string | undefined>,
+  names: string[],
+  looksLikeKey: (v: string) => boolean,
+): string | undefined {
+  const candidates: string[] = [];
+  for (const n of names) {
+    const v = keys[n];
+    if (v && v.trim()) candidates.push(cleanSecret(v));
+  }
+  return candidates.find(looksLikeKey) ?? candidates[0];
 }
 
 function num(body: unknown, ...path: string[]): number | null {
@@ -99,6 +133,18 @@ function num(body: unknown, ...path: string[]): number | null {
     cur = (cur as Record<string, unknown>)[seg];
   }
   return typeof cur === "number" ? cur : null;
+}
+
+/** First numeric hit across alternate paths (snake_case vs camelCase drift). */
+function numAny(
+  body: unknown,
+  paths: string[][],
+): number | null {
+  for (const path of paths) {
+    const v = num(body, ...path);
+    if (v !== null) return v;
+  }
+  return null;
 }
 
 function str(body: unknown, ...path: string[]): string | null {
@@ -140,13 +186,22 @@ const PROBES: ProbeSpec[] = [
         "https://api.firecrawl.dev/v2/team/credit-usage",
         { headers: { Authorization: `Bearer ${key}` } },
       );
+      // Firecrawl v2 docs ship camelCase (`remainingCredits`); older payloads
+      // and some internal commits still use snake_case. Accept either — the
+      // page's whole job is the balance, so a shape miss must not read as
+      // "Throttled / UNVERIFIED" on a healthy account.
+      const remainingOf = (b: unknown) =>
+        numAny(b, [
+          ["data", "remainingCredits"],
+          ["data", "remaining_credits"],
+        ]);
       return {
         res,
         // "Key accepted" is not a balance. If the credit number is missing the
         // page cannot answer the question it exists to answer, so say so.
-        verdict: (b) => (num(b, "data", "remaining_credits") === null ? "degraded" : null),
+        verdict: (b) => (remainingOf(b) === null ? "degraded" : null),
         detail: (b) => {
-          const remaining = num(b, "data", "remaining_credits");
+          const remaining = remainingOf(b);
           return remaining === null
             ? "Key accepted, but balance UNVERIFIED — no credit figure in the response."
             : `${remaining.toLocaleString()} credits remaining.`;
@@ -271,7 +326,32 @@ const PROBES: ProbeSpec[] = [
     cost: "free",
     envKeys: ["ELEVENLABS_KEY", "ELEVEN_KEY"],
     run: async (keys) => {
-      const key = firstKey(keys, ["ELEVENLABS_KEY", "ELEVEN_KEY"])!;
+      // ElevenLabs API keys start with `sk_`. A common dashboard mistake is
+      // pasting the key *id* (shown in the table) into ELEVENLABS_KEY while
+      // the real sk_ value lives under ELEVEN_KEY (or vice versa) — prefer
+      // the one that looks like a key so the probe matches the product.
+      const key = firstKeyedSecret(
+        keys,
+        ["ELEVENLABS_KEY", "ELEVEN_KEY"],
+        (v) => v.startsWith("sk_"),
+      )!;
+      if (!key.startsWith("sk_")) {
+        // Don't bother the vendor — the secret is the wrong kind of string.
+        // Surface a synthetic 400 that the page already knows how to render.
+        return {
+          res: new Response(
+            JSON.stringify({
+              detail: {
+                type: "authentication_error",
+                message:
+                  "Secret looks like an API key ID, not an API key. ElevenLabs keys start with 'sk_' — paste the secret value shown when the key was created/rotated into ELEVENLABS_KEY (or ELEVEN_KEY).",
+              },
+            }),
+            { status: 400 },
+          ),
+          detail: (b) => errorLine(b, ""),
+        };
+      }
       const headers = { "xi-api-key": key };
 
       // Probe the capability Mesita actually depends on — the ConvAI agent
@@ -444,6 +524,25 @@ const PROBES: ProbeSpec[] = [
     envKeys: ["STRIPE_SECRET_KEY"],
     run: async (keys) => {
       const key = firstKey(keys, ["STRIPE_SECRET_KEY"])!;
+      // Restricted keys (rk_…) can't hit /v1/balance; secret keys are sk_*.
+      // Catch the wrong kind before Stripe's opaque "Invalid API Key".
+      if (!/^sk_(live|test)_/.test(key)) {
+        return {
+          res: new Response(
+            JSON.stringify({
+              error: {
+                message: key.startsWith("rk_")
+                  ? "STRIPE_SECRET_KEY holds a restricted key (rk_…). Billing Test needs the secret key (sk_live_… / sk_test_…)."
+                  : key.startsWith("pk_")
+                  ? "STRIPE_SECRET_KEY holds a publishable key (pk_…). Paste the secret key (sk_live_… / sk_test_…)."
+                  : "STRIPE_SECRET_KEY does not look like a Stripe secret key (expected sk_live_… or sk_test_…).",
+              },
+            }),
+            { status: 401 },
+          ),
+          detail: (b) => errorLine(b, ""),
+        };
+      }
       const res = await timedFetch("https://api.stripe.com/v1/balance", {
         headers: { Authorization: `Bearer ${key}` },
       });
@@ -469,7 +568,9 @@ const PROBES: ProbeSpec[] = [
     run: async (keys) => {
       const key = firstKey(keys, ["PERPLEXITY_KEY"])!;
       // No unbilled auth endpoint exists — the cheapest honest proof that the
-      // key still works is a 1-token completion. Fractions of a cent.
+      // key still works is a tiny completion. Sonar rejects max_tokens < 16
+      // with HTTP 400, so 16 is the floor; disable_search keeps the spend to
+      // the completion itself (no web search unit).
       const res = await timedFetch(
         "https://api.perplexity.ai/chat/completions",
         {
@@ -480,7 +581,8 @@ const PROBES: ProbeSpec[] = [
           },
           body: JSON.stringify({
             model: "sonar",
-            max_tokens: 1,
+            max_tokens: 16,
+            disable_search: true,
             messages: [{ role: "user", content: "ping" }],
           }),
         },
@@ -531,7 +633,9 @@ const PROBES: ProbeSpec[] = [
 
 /** Squeeze a vendor's error body into one readable line. */
 function errorLine(body: unknown, raw: string): string {
+  // ElevenLabs nests under detail.message; Stripe/OpenAI under error.message.
   const msg = str(body, "error", "message") ??
+    str(body, "detail", "message") ??
     str(body, "error") ??
     str(body, "message") ??
     str(body, "detail");
