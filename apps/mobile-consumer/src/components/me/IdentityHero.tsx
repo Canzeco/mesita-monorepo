@@ -11,7 +11,8 @@ import { CLASS_ICONS, isElevatedClass } from '@/lib/consumer-classes';
 import { formatCompactCount, phoneCountryFlag } from '@/lib/utils';
 
 // ─── Me membership card (MESITA-932 / MESITA-935 / MESITA-937) — web parity.
-// Centered photo + Class/IG badges, then five equal-height identity rows.
+// Centered photo + IG/Class badges (IG leading/left — MESITA-956), then five
+// equal-height identity rows: name·sex·age / phone / IG / class / visits·saved.
 // Phone shows dial flag; class row + badge use CLASS_ICONS.
 // Typography: Fraunces only on MESITA wordmark; all identity rows = Inter.
 
@@ -164,21 +165,6 @@ export function IdentityHero({
       ),
     },
     {
-      key: 'class',
-      content: (
-        <View className="flex-row items-center gap-1.5">
-          <ClassIcon color="#260409B3" size={14} strokeWidth={2.25} />
-          <Text
-            className="font-semibold text-foreground"
-            style={{ fontSize: 13 }}
-            numberOfLines={1}
-          >
-            {classLabel}
-          </Text>
-        </View>
-      ),
-    },
-    {
       key: 'instagram',
       tone: igConnected ? 'secondary' : 'muted',
       content: (
@@ -193,6 +179,21 @@ export function IdentityHero({
         >
           {igLine}
         </Text>
+      ),
+    },
+    {
+      key: 'class',
+      content: (
+        <View className="flex-row items-center gap-1.5">
+          <ClassIcon color="#260409B3" size={14} strokeWidth={2.25} />
+          <Text
+            className="font-semibold text-foreground"
+            style={{ fontSize: 13 }}
+            numberOfLines={1}
+          >
+            {classLabel}
+          </Text>
+        </View>
       ),
     },
     {
@@ -266,32 +267,8 @@ export function IdentityHero({
             </View>
           </LinearGradient>
 
-          {/* Avatar sub-badges — equal 28px outer diameter (MESITA-938). */}
-          <LinearGradient
-            colors={[...classBadgeColors(classKey)]}
-            start={GRADIENT_DIAGONAL.start}
-            end={GRADIENT_DIAGONAL.end}
-            style={{
-              position: 'absolute',
-              left: -4,
-              bottom: -4,
-              width: 28,
-              height: 28,
-              borderRadius: 999,
-              borderWidth: 2,
-              borderColor: '#fff',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-            accessibilityLabel={`Class: ${classLabel}`}
-          >
-            <ClassIcon
-              color={classBadgeIconColor(classKey)}
-              size={14}
-              strokeWidth={2.5}
-            />
-          </LinearGradient>
-
+          {/* Avatar sub-badges — equal 28px (MESITA-938). IG left / Class
+              right so Instagram leads Class everywhere (MESITA-956). */}
           <LinearGradient
             colors={
               igConnected
@@ -302,7 +279,7 @@ export function IdentityHero({
             end={GRADIENT_DIAGONAL.end}
             style={{
               position: 'absolute',
-              right: -4,
+              left: -4,
               bottom: -4,
               width: 28,
               height: 28,
@@ -332,6 +309,31 @@ export function IdentityHero({
                 />
               )}
             </View>
+          </LinearGradient>
+
+          <LinearGradient
+            colors={[...classBadgeColors(classKey)]}
+            start={GRADIENT_DIAGONAL.start}
+            end={GRADIENT_DIAGONAL.end}
+            style={{
+              position: 'absolute',
+              right: -4,
+              bottom: -4,
+              width: 28,
+              height: 28,
+              borderRadius: 999,
+              borderWidth: 2,
+              borderColor: '#fff',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+            accessibilityLabel={`Class: ${classLabel}`}
+          >
+            <ClassIcon
+              color={classBadgeIconColor(classKey)}
+              size={14}
+              strokeWidth={2.5}
+            />
           </LinearGradient>
         </View>
 
