@@ -4,11 +4,11 @@
 // SUBSYSTEMS from there would hand the client stubs and crash the picker. Same
 // footgun the Memo Config types file documents.
 //
-// This page is a MODEL MAP, not a second control panel. Almost every subsystem
-// already chooses its model on its own page (Enricher Config, Memo Config), and
-// those knobs are richer + live. The only thing this page owns is the Supabase
-// Edge Functions general default — every other row is read-only and links to
-// the page that actually controls it. See SUBSYSTEMS below for the ownership.
+// Live binding (MESITA-941): `_shared/models-config.ts::loadModelsConfig` is
+// read by Enricher analysis/contents, Memo get-config, Lineup embeddings,
+// business-web-suggest-promo, and recommender-rank-map. This page owns the
+// editable `supabase.model` knob; enricher/lineup/memo rows mirror the blob
+// and link to the richer owner pages where those exist.
 
 import type { LucideIcon } from "lucide-react";
 import { Database, Layers, MessagesSquare, Sparkles } from "lucide-react";
@@ -17,8 +17,8 @@ type SubsystemKey = "supabase" | "enricher" | "lineup" | "memo";
 
 // The persisted blob (app_settings.models_config). Only `supabase.model` is
 // edited on this page today; the enricher/lineup/memo entries are retained in
-// the shape (the EF contract) but are informational — their real, live model
-// settings live on their own pages. STAGED: nothing reads the blob yet.
+// the shape (the EF contract) and are READ LIVE via loadModelsConfig — their
+// richer quality/preset UI lives on Enricher / Memo Config where noted.
 export type ModelsConfig = {
   v: number;
   supabase: { model: string };
@@ -94,9 +94,9 @@ export const SUBSYSTEMS: readonly SubsystemMeta[] = [
     key: "supabase",
     label: "Supabase Edge Functions",
     Icon: Database,
-    status: "staged",
+    status: "live",
     detail:
-      "General default for Edge Functions that call an LLM without a model of their own. The only knob this page owns — nothing reads it yet.",
+      "General default for Edge Functions that call an LLM without a model of their own. Read live by business-web-suggest-promo and recommender-rank-map (MESITA-941).",
     editableHere: true,
     owner: null,
   },
@@ -110,7 +110,8 @@ export const SUBSYSTEMS: readonly SubsystemMeta[] = [
       { id: "gpt-4o", note: "vision" },
       { id: "perplexity", note: "web search preset" },
     ],
-    detail: "Set on, and read live by, Enricher Config.",
+    detail:
+      "models_config.enricher is read live by the Enricher pipeline; synthesis quality + Perplexity preset knobs live on Enricher Config.",
     editableHere: false,
     owner: { label: "Enricher Config", href: "/enricher-config" },
   },
@@ -123,21 +124,21 @@ export const SUBSYSTEMS: readonly SubsystemMeta[] = [
       { id: "text-embedding-3-small", note: "1536-d — place ↔ intent" },
     ],
     detail:
-      "Fixed by design — changing it re-vectors the whole catalog. Shown read-only on Enricher Config.",
+      "Fixed by design — changing it re-vectors the whole catalog. Read live as models_config.lineup.model by _shared/embeddings.ts.",
     editableHere: false,
-    owner: { label: "Enricher Config", href: "/enricher-config" },
+    owner: null,
   },
   {
     key: "memo",
     label: "Memo",
     Icon: MessagesSquare,
-    status: "staged",
+    status: "live",
     models: [
       { id: "gpt-4o-mini", note: "OpenAI brain" },
-      { id: "sonar-pro", note: "Perplexity grounding — optional" },
+      { id: "sonar-pro", note: "Perplexity — required every turn" },
     ],
     detail:
-      "Model knob owned by Memo Config (also staged — Memo's instructions run live).",
+      "models_config.memo.{model,perplexity} are read live by get-memo-config / ask-memo. Memo Config owns the system prompt; its model fields are legacy fallbacks.",
     editableHere: false,
     owner: { label: "Memo Config", href: "/memo-config" },
   },
