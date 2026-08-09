@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import { Loader2, Play, Upload } from "lucide-react";
 import {
   computeEnrichmentCost,
@@ -157,12 +158,12 @@ export function EnrichTab({ costSeed }: { costSeed: EnrichCostSeed | null }) {
         Paste project IDs (one per line) or upload a list. Each row queues the
         same re-enrich pipeline as the single-place control — the Enricher cron
         runs async after trigger. Caps and models live in{" "}
-        <a
+        <Link
           href="/enricher-config/config"
           className="text-foreground font-medium underline underline-offset-2"
         >
           Enricher Config
-        </a>
+        </Link>
         .
       </p>
 
@@ -242,12 +243,12 @@ export function EnrichTab({ costSeed }: { costSeed: EnrichCostSeed | null }) {
               rates
               {mode !== "full" ? " (scaled for lighter mode)" : ""}. Approximate
               — not a bill. Full calculator:{" "}
-              <a
+              <Link
                 href="/enricher-config/calculator"
                 className="text-foreground font-medium underline underline-offset-2"
               >
                 Enricher Calculator
-              </a>
+              </Link>
               .
             </p>
           </div>
