@@ -4,21 +4,22 @@
 // SUBSYSTEMS from there would hand the client stubs and crash the picker. Same
 // footgun the Memo Config types file documents.
 //
-// Live binding (MESITA-941): `_shared/models-config.ts::loadModelsConfig` is
-// read by Enricher analysis/contents, Memo get-config, Lineup embeddings,
-// business-web-suggest-promo, and recommender-rank-map. This page owns the
-// editable `supabase.model` knob; enricher/lineup/memo rows mirror the blob
-// and link to the richer owner pages where those exist.
+// This page is the SoT for app_settings.models_config (MESITA-941). Live readers
+// (_shared/models-config.ts → get-memo-config, Enricher stages, embeddings,
+// business-web-suggest-promo, recommender-rank-map) bind supabase / enricher.model
+// / lineup / memo.*. Enricher Perplexity is NOT read from this blob — Enricher
+// Config's atlas_perplexity_preset is the live search preset (enricher.perplexity
+// here is staged). Synthesis / vision quality tiers stay on Enricher Config.
 
 import type { LucideIcon } from "lucide-react";
 import { Database, Layers, MessagesSquare, Sparkles } from "lucide-react";
 
 type SubsystemKey = "supabase" | "enricher" | "lineup" | "memo";
 
-// The persisted blob (app_settings.models_config). Only `supabase.model` is
-// edited on this page today; the enricher/lineup/memo entries are retained in
-// the shape (the EF contract) and are READ LIVE via loadModelsConfig — their
-// richer quality/preset UI lives on Enricher / Memo Config where noted.
+// The persisted blob (app_settings.models_config). supabase + memo are edited
+// here; enricher.model is informational (Enricher Config quality tiers pick the
+// live OpenAI model, with models_config.enricher.model as the cheap/default
+// binding); enricher.perplexity is staged (unread — atlas_perplexity_preset wins).
 export type ModelsConfig = {
   v: number;
   supabase: { model: string };
@@ -27,7 +28,7 @@ export type ModelsConfig = {
   memo: { model: string; perplexity: string };
 };
 
-// OpenAI chat catalog for the one editable knob (the Supabase general default).
+// OpenAI chat catalog for editable OpenAI knobs on this page.
 // The gpt-5.6 family (Sol / Terra / Luna — GA 2026-07-09) is included; treat
 // those ids as PROVISIONAL until confirmed against platform.openai.com. Model is
 // stored as a free string, so editing this list never breaks a saved blob.
@@ -55,9 +56,7 @@ export const OPENAI_MODEL_INFO: Record<string, string> = {
 };
 
 // Perplexity values accepted in the blob's enricher/memo legs ("off" = none).
-// Kept for the EF contract + coercion; the page no longer edits them (Enricher
-// Config / Memo Config own those legs).
-const PERPLEXITY_OPTIONS = [
+export const PERPLEXITY_OPTIONS = [
   "off",
   "sonar",
   "sonar-pro",
@@ -66,8 +65,8 @@ const PERPLEXITY_OPTIONS = [
 ] as const;
 
 // ── Subsystem map ──────────────────────────────────────────────────────────
-// Drives the page. `editableHere` is true for exactly one row (Supabase); every
-// other row shows its status + a link to the page that actually owns the model.
+// Drives the page. `editableHere` is true for rows this page owns (supabase +
+// memo). Enricher / Lineup stay read-only with links to Enricher Config.
 export type ModelStatus = "live" | "staged" | "locked";
 
 // A model shown "up front" on a card — the id (rendered as a mono chip) plus a
@@ -80,7 +79,7 @@ type SubsystemMeta = {
   Icon: LucideIcon;
   status: ModelStatus;
   // The model(s) this subsystem uses, shown as chips at the top of the card.
-  // Omitted for the editable Supabase row — it renders its selected model live.
+  // Omitted when the card renders live picks from cfg instead.
   models?: ModelChip[];
   // One line of context under the title.
   detail: string;
@@ -96,7 +95,7 @@ export const SUBSYSTEMS: readonly SubsystemMeta[] = [
     Icon: Database,
     status: "live",
     detail:
-      "General default for Edge Functions that call an LLM without a model of their own. Read live by business-web-suggest-promo and recommender-rank-map (MESITA-941).",
+      "General OpenAI default for EFs without their own model (e.g. business-web-suggest-promo, recommender-rank-map). Read live via models_config.supabase.model (MESITA-941).",
     editableHere: true,
     owner: null,
   },
@@ -106,12 +105,15 @@ export const SUBSYSTEMS: readonly SubsystemMeta[] = [
     Icon: Sparkles,
     status: "live",
     models: [
-      { id: "gpt-4o-mini · gpt-4o", note: "text — by synthesis quality" },
-      { id: "gpt-4o", note: "vision" },
-      { id: "perplexity", note: "web search preset" },
+      { id: "gpt-4o-mini · gpt-4o", note: "text — by synthesis quality on Enricher Config" },
+      { id: "gpt-4o-mini · gpt-4o", note: "vision — by image quality on Enricher Config" },
+      {
+        id: "atlas_perplexity_preset",
+        note: "live search preset on Enricher Config — models_config.enricher.perplexity is staged (unread)",
+      },
     ],
     detail:
-      "models_config.enricher is read live by the Enricher pipeline; synthesis quality + Perplexity preset knobs live on Enricher Config.",
+      "OpenAI quality tiers + Perplexity Agent preset live on Enricher Config. models_config.enricher.model binds the cheap/default OpenAI id; enricher.perplexity in this blob is staged.",
     editableHere: false,
     owner: { label: "Enricher Config", href: "/enricher-config" },
   },
@@ -121,10 +123,10 @@ export const SUBSYSTEMS: readonly SubsystemMeta[] = [
     Icon: Layers,
     status: "locked",
     models: [
-      { id: "text-embedding-3-small", note: "1536-d — place ↔ intent" },
+      { id: "text-embedding-3-small", note: "1536-d — place ↔ intent · models_config.lineup.model" },
     ],
     detail:
-      "Fixed by design — changing it re-vectors the whole catalog. Read live as models_config.lineup.model by _shared/embeddings.ts.",
+      "Fixed by design — changing it re-vectors the whole catalog. Read live as models_config.lineup.model by _shared/embeddings.ts; shown read-only on Enricher Config.",
     editableHere: false,
     owner: null,
   },
@@ -133,14 +135,10 @@ export const SUBSYSTEMS: readonly SubsystemMeta[] = [
     label: "Memo",
     Icon: MessagesSquare,
     status: "live",
-    models: [
-      { id: "gpt-4o-mini", note: "OpenAI brain" },
-      { id: "sonar-pro", note: "Perplexity — required every turn" },
-    ],
     detail:
-      "models_config.memo.{model,perplexity} are read live by get-memo-config / ask-memo. Memo Config owns the system prompt; its model fields are legacy fallbacks.",
-    editableHere: false,
-    owner: { label: "Memo Config", href: "/memo-config" },
+      "Live OpenAI + Perplexity picks for Memo. Served by supabase-edgefunc-get-memo-config from models_config.memo.* (Memo Config's openai/perplexity fields are legacy fallback / not wired).",
+    editableHere: true,
+    owner: null,
   },
 ];
 

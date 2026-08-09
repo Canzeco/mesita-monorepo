@@ -6,8 +6,10 @@
 //
 // Backed by admin-web-get-models-config / admin-web-update-models-config, which
 // read and write the models_config jsonb blob on the public.app_settings
-// singleton. Live binding (MESITA-941): subsystems read via
-// _shared/models-config.ts. No client ever touches the DB.
+// singleton. Live binding (MESITA-941): readers bind supabase / enricher.model /
+// lineup / memo.* via _shared/models-config.ts; enricher.perplexity in the blob
+// is still staged (Enricher uses atlas_perplexity_preset). No client ever
+// touches the DB.
 //
 // Types + catalogs live in ./types (not here) — "use server" modules may only
 // export async functions to the client.

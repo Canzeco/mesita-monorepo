@@ -6,6 +6,7 @@ import {
   CalendarClock,
   CheckCheck,
   Database,
+  DollarSign,
   Eye,
   Facebook,
   Globe,
@@ -549,10 +550,13 @@ export function ReviewsSection({
   );
 }
 
+// High maps to the same model as Standard in enrich-config.ts QUALITY_MODEL
+// (gpt-4o) — kept as a stored enum value so existing rows don't break, but the
+// UI must say it's identical / a no-op tier (not a third capability level).
 const QUALITY_OPTIONS: { value: SynthesisQuality; label: string; hint: string }[] = [
   { value: "economy", label: "Economy", hint: "gpt-4o-mini" },
   { value: "standard", label: "Standard", hint: "gpt-4o" },
-  { value: "high", label: "High", hint: "gpt-4o" },
+  { value: "high", label: "High", hint: "same as Standard · gpt-4o (no-op)" },
 ];
 
 // Perplexity Agent presets — the "search model" for S2 (SERP) + S3 (links).
@@ -575,26 +579,34 @@ export function ModelsSection({
   initialSynthesisQuality,
   initialVisionQuality,
   initialPerplexityPreset,
+  initialPerRunCostCapUsd,
   onSaved,
 }: {
   initialSynthesisQuality: SynthesisQuality;
   initialVisionQuality: SynthesisQuality;
   initialPerplexityPreset: PerplexityPreset;
+  initialPerRunCostCapUsd: number;
   onSaved: (updatedAt: string | null) => void;
 }) {
   const [text, setText] = useState<SynthesisQuality>(initialSynthesisQuality);
   const [image, setImage] = useState<SynthesisQuality>(initialVisionQuality);
   const [search, setSearch] = useState<PerplexityPreset>(initialPerplexityPreset);
+  const [costCap, setCostCap] = useState(initialPerRunCostCapUsd);
   const [saved, setSaved] = useState({
     text: initialSynthesisQuality,
     image: initialVisionQuality,
     search: initialPerplexityPreset,
+    costCap: initialPerRunCostCapUsd,
   });
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [ok, setOk] = useState(false);
 
-  const dirty = text !== saved.text || image !== saved.image || search !== saved.search;
+  const dirty =
+    text !== saved.text ||
+    image !== saved.image ||
+    search !== saved.search ||
+    costCap !== saved.costCap;
 
   const save = () => {
     if (!dirty) return;
@@ -605,6 +617,7 @@ export function ModelsSection({
         synthesisQuality: text,
         visionQuality: image,
         perplexityPreset: search,
+        perRunCostCapUsd: costCap,
       });
       if (!r.ok) {
         setError(r.error);
@@ -614,10 +627,12 @@ export function ModelsSection({
         text: r.data.atlasSynthesisQuality,
         image: r.data.atlasVisionQuality,
         search: r.data.atlasPerplexityPreset,
+        costCap: r.data.atlasPerRunCostCapUsd,
       });
       setText(r.data.atlasSynthesisQuality);
       setImage(r.data.atlasVisionQuality);
       setSearch(r.data.atlasPerplexityPreset);
+      setCostCap(r.data.atlasPerRunCostCapUsd);
       onSaved(r.data.updatedAt);
       setOk(true);
     });
@@ -626,8 +641,8 @@ export function ModelsSection({
   return (
     <SectionCard
       icon={<Sparkles className="text-muted-foreground h-4 w-4" />}
-      title="Models"
-      subtitle="Text and image quality, Perplexity Search preset (Agent X SERP + Agent Y link select), and the locked embeddings model used by the Recommender."
+      title="Models & cost"
+      subtitle="Text and image quality, Perplexity Search preset (Agent X SERP + Agent Y link select), per-run USD cost cap (enforced mid-run by the Enricher), and the locked embeddings model. High quality is identical to Standard today (both gpt-4o)."
     >
       <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <ModelSelect
@@ -664,6 +679,23 @@ export function ModelsSection({
           value={EMBEDDINGS_MODEL_LABEL}
           detail={EMBEDDINGS_MODEL_DETAIL}
         />
+      </div>
+
+      <div className="mt-4 sm:max-w-xs">
+        <NumberField
+          icon={<DollarSign className="text-muted-foreground h-4 w-4" />}
+          label="Per-run cost cap (USD)"
+          value={costCap}
+          min={0}
+          max={100}
+          decimals
+          onChange={setCostCap}
+          disabled={pending}
+        />
+        <p className="text-muted-foreground mt-2 text-[11px] leading-snug">
+          Enforced mid-run by EnrichCostLedger against{" "}
+          <code className="font-mono">atlas_per_run_cost_cap_usd</code>. 0 blocks paid steps.
+        </p>
       </div>
 
       <SaveRow pending={pending} dirty={dirty} ok={ok} onClick={save} />

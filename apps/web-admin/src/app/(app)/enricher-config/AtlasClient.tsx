@@ -32,6 +32,7 @@ export function AtlasConfigurationClient(props: {
   initialSynthesisQuality: SynthesisQuality;
   initialVisionQuality: SynthesisQuality;
   initialPerplexityPreset: PerplexityPreset;
+  initialPerRunCostCapUsd: number;
   initialDiscoverWebsiteN: number;
   initialDiscoverInstagramN: number;
   initialDiscoverFacebookN: number;
@@ -57,6 +58,7 @@ export function AtlasConfigurationClient(props: {
         initialSynthesisQuality={props.initialSynthesisQuality}
         initialVisionQuality={props.initialVisionQuality}
         initialPerplexityPreset={props.initialPerplexityPreset}
+        initialPerRunCostCapUsd={props.initialPerRunCostCapUsd}
         onSaved={setUpdatedAt}
       />
       <DiscoverySection
