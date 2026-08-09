@@ -7,7 +7,7 @@ import {
   FacebookLogo,
   GoogleLogo,
   InstagramLogo,
-  MesitaMark,
+  MesitaSourceBadge,
 } from "@/components/consumer/BrandLogos";
 import { ReviewCard } from "@/components/consumer/ReviewCard";
 import type { PlaceDetail } from "@/lib/mock/place";

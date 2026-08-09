@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { GoogleLogo, MesitaMark } from "./BrandLogos";
+import { GoogleLogo, MesitaSourceBadge } from "./BrandLogos";
 import { Header, Quote, StarRow, Thumbnail } from "./review-card-parts";
 import { cn, firstInitial } from "@/lib/utils";
 import type { ConsumerClass, PlaceDetail } from "@/lib/mock/place";
@@ -69,7 +69,7 @@ export function ReviewCard(props: MesitaPayload | GooglePayload) {
               {CLASS_LABEL[v.class_key]}
             </span>
           }
-          sourceLogo={<MesitaMark />}
+          sourceLogo={<MesitaSourceBadge />}
         />
         <StarRow rating={overall} />
         <p className="text-muted-foreground text-[10px] leading-snug">
@@ -131,7 +131,7 @@ export function ReviewCard(props: MesitaPayload | GooglePayload) {
   );
 }
 
-// Brand source badges (MesitaMark, GoogleLogo) live in BrandLogos.tsx —
+// Brand source badges (MesitaSourceBadge, GoogleLogo) live in BrandLogos.tsx —
 // shared with the place detail page so the SVG and pink-gradient mark
 // don't drift between surfaces.
 
