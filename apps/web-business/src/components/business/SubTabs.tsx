@@ -11,8 +11,6 @@ export type SubTabItem<T extends string = string> = {
   id: T;
   label: string;
   Icon?: LucideIcon;
-  // Optional count badge (e.g. tickets per status). Hidden when undefined.
-  count?: number;
 };
 
 export function SubTabs<T extends string>({
@@ -35,7 +33,7 @@ export function SubTabs<T extends string>({
 
   const tabList = (
     <>
-      {tabs.map(({ id, label, Icon, count }) => {
+      {tabs.map(({ id, label, Icon }) => {
         const isActive = id === active;
         return (
           <button
@@ -102,20 +100,6 @@ export function SubTabs<T extends string>({
             >
               {label}
             </span>
-            {count !== undefined && (
-              <span
-                className={cn(
-                  "rounded-full px-1.5 text-[11px] font-bold tabular-nums",
-                  isActive
-                    ? isSegmented || variant === "default"
-                      ? "bg-muted text-muted-foreground"
-                      : "bg-background/20 text-background"
-                    : "bg-muted text-muted-foreground",
-                )}
-              >
-                {count}
-              </span>
-            )}
           </button>
         );
       })}
