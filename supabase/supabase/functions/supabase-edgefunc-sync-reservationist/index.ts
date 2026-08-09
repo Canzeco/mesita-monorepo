@@ -46,7 +46,7 @@ import { adminClient, readEFEnv } from "../_shared/auth.ts";
 import { requireInternalCaller } from "../_shared/internal.ts";
 import {
   consumerFromNumber,
-  elevenLabsKey,
+  resolveElevenLabsKey,
   reservationAgentId,
   reservationFromNumber,
 } from "../_shared/elevenlabs.ts";
@@ -218,8 +218,10 @@ Deno.serve(async (req) => {
   const authRes = requireInternalCaller(req, envRes.env);
   if (!authRes.ok) return authRes.response;
 
-  const key = elevenLabsKey();
-  if (!key) return json({ ok: false, error: "ELEVENLABS_KEY not configured" }, 503);
+  const key = await resolveElevenLabsKey();
+  if (!key?.startsWith("sk_")) {
+    return json({ ok: false, error: "ELEVENLABS_KEY not configured" }, 503);
+  }
   const fallbackAgentId = reservationAgentId();
 
   const body = await readJsonOr<{

@@ -63,7 +63,7 @@ import { requireInternalCaller } from "../_shared/internal.ts";
 import { coerceReservationsCallConfig } from "../_shared/reservations-config.ts";
 import {
   consumerFromNumber,
-  elevenLabsKey,
+  resolveElevenLabsKey,
   getConversationStatus,
   placeOutboundCall,
   reservationAgentId,
@@ -765,8 +765,8 @@ async function runIntents(input: {
     });
 
   try {
-    const key = elevenLabsKey();
-    if (!key) {
+    const key = await resolveElevenLabsKey();
+    if (!key?.startsWith("sk_")) {
       await record({
         attempts_state: "error",
         callback_state: "skipped",
@@ -1130,7 +1130,8 @@ Deno.serve(async (req) => {
     ? bodyRes.body.intent
     : "book";
 
-  if (!elevenLabsKey()) {
+  const elevenKey = await resolveElevenLabsKey();
+  if (!elevenKey?.startsWith("sk_")) {
     return json({ ok: false, error: "ELEVENLABS_KEY not configured" }, 503);
   }
 
@@ -1323,7 +1324,7 @@ Deno.serve(async (req) => {
         admin,
         reservationId,
         runId,
-        key: elevenLabsKey()!,
+        key: elevenKey,
         kind,
         attemptsDone: typeof r.notice_attempts === "number" ? r.notice_attempts : 0,
         outageRetries: typeof r.outage_retries === "number" ? r.outage_retries : 0,
@@ -1382,7 +1383,7 @@ Deno.serve(async (req) => {
         admin,
         reservationId,
         runId,
-        key: elevenLabsKey()!,
+        key: elevenKey,
         context,
         alternativesText: context === "counter_offer"
           ? alternativesToSpeech(normalizeAlternatives(r.alternatives))

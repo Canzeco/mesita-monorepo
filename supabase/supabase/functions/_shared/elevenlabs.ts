@@ -41,6 +41,43 @@ export function elevenLabsKey(): string | null {
   return candidates.find((v) => v.startsWith("sk_")) ?? candidates[0];
 }
 
+/** Vault fallback when EF secrets hold an ElevenLabs key *id* instead of sk_. */
+async function elevenLabsKeyFromVault(): Promise<string | null> {
+  const url = Deno.env.get("SUPABASE_URL")?.replace(/\/$/, "");
+  const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  if (!url || !serviceKey) return null;
+  try {
+    const r = await fetch(`${url}/rest/v1/rpc/service_elevenlabs_api_key`, {
+      method: "POST",
+      headers: {
+        apikey: serviceKey,
+        Authorization: `Bearer ${serviceKey}`,
+        "Content-Type": "application/json",
+      },
+      body: "{}",
+    });
+    if (!r.ok) return null;
+    const data: unknown = await r.json();
+    return typeof data === "string" && data.startsWith("sk_") ? data : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Resolve a usable ElevenLabs API key. Prefers Deno.env sk_ values, then the
+ * `elevenlabs_api_key` Vault secret via `service_elevenlabs_api_key()` (service
+ * role only). Use this at call sites — sync `elevenLabsKey()` alone will return
+ * a key id when that's all EF secrets contain.
+ */
+export async function resolveElevenLabsKey(): Promise<string | null> {
+  const envKey = elevenLabsKey();
+  if (envKey?.startsWith("sk_")) return envKey;
+  const fromVault = await elevenLabsKeyFromVault();
+  if (fromVault) return fromVault;
+  return envKey;
+}
+
 export function reservationAgentId(): string {
   return Deno.env.get("ELEVENLABS_AGENT_ID")?.trim() || DEFAULT_AGENT_ID;
 }
