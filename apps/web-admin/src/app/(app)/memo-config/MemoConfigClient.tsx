@@ -6,7 +6,6 @@ import { ErrorNote } from "@/components/ErrorNote";
 import { KnobStatus, SaveRow, SectionCard, Switch, TextAreaField } from "../enricher-config/atlas-ui";
 import { getMemoConfig, updateMemoConfig } from "./actions";
 import {
-  DEFAULT_MEMO_CONFIG,
   OPENAI_MODELS,
   PERPLEXITY_MODELS,
   type MemoConfig,
@@ -242,6 +241,3 @@ export function MemoConfigClient({
     </div>
   );
 }
-
-// Re-export for any caller that still wants the placeholder blob.
-export { DEFAULT_MEMO_CONFIG };
