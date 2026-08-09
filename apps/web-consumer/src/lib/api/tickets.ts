@@ -97,6 +97,35 @@ export async function apiCreateTicket(
   );
 }
 
+// The guest's REAL reward breakdown for one place, resolved by the live engine
+// config (MESITA-992 v10 additive). `reward-segments.ts` is the PROGRAM ladder
+// — education about the shape of the program — and its static numbers stopped
+// matching the bill when v10 shipped. Anything that quotes a guest a rate for a
+// SPECIFIC place must use this, never the static table.
+export type RewardQuote = {
+  strategy: "zero" | "conservative" | "aggressive";
+  classKey: string;
+  /** False = engine is still on legacy best-of; the client must not stack. */
+  additive: boolean;
+  isFirstVisit: boolean;
+  base: number;
+  /** `welcome` already reports 0 when this isn't the guest's first visit. */
+  bonuses: { welcome: number; story: number; google: number; mesita: number };
+  storyEligible: boolean;
+  cap: number;
+};
+
+export async function apiGetRewardQuote(
+  client: SupabaseClient,
+  placeId: string,
+): Promise<{ quote: RewardQuote }> {
+  return await invokeEF<{ quote: RewardQuote }>(
+    client,
+    "consumer-web-get-reward-quote",
+    { placeId },
+  );
+}
+
 export async function apiCancelTicket(
   client: SupabaseClient,
   ticketId: string,

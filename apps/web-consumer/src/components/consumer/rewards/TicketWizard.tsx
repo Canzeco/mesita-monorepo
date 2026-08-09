@@ -25,6 +25,7 @@ import {
   ExternalLink,
   Instagram,
   Loader2,
+  Sparkles,
   Star,
   UtensilsCrossed,
 } from "lucide-react";
@@ -38,16 +39,16 @@ import { EFError } from "@/lib/api/_invoke";
 import {
   ACTIVE_TICKET_STATUSES,
   apiCreateTicket,
+  apiGetRewardQuote,
   apiSubmitReview,
   apiSubmitStory,
   type ChosenReward,
   type ConsumerTicketRow,
+  type RewardQuote,
 } from "@/lib/api/tickets";
 import type { Place } from "@/lib/api/places";
 import { ticketPath } from "@/lib/consumer-route-contract";
 import { useConsumerClass } from "@/lib/class-context";
-import { strategyForPlaceRow } from "@/lib/promo-rates";
-import { baseRateForClass, rateForSegment } from "@/lib/reward-segments";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { cn } from "@/lib/utils";
 
@@ -84,6 +85,22 @@ export function TicketWizard({
   const [ticketId, setTicketId] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
+  // The engine's own numbers (MESITA-992 v10). Null until they land — we show a
+  // spinner rather than the static ladder, because quoting a rate the bill
+  // won't honor is the bug this replaced.
+  //
+  // Both are STAMPED WITH THE PLACE they describe and read back through a
+  // match, instead of being cleared in the effect. That keeps the fetch out of
+  // the set-state-in-effect trap and, more importantly, makes it impossible to
+  // show place A's rate for one frame after the sheet reopens on place B.
+  const [quoteRes, setQuoteRes] = useState<{
+    placeId: string;
+    quote: RewardQuote;
+  } | null>(null);
+  const [quoteErr, setQuoteErr] = useState<{
+    placeId: string;
+    message: string;
+  } | null>(null);
 
   // Reset when a different place opens so a reopened wizard never carries
   // stale step/choice state.
@@ -103,6 +120,34 @@ export function TicketWizard({
     });
     return () => cancelAnimationFrame(raf);
   }, [placeId]);
+
+  // Pull the guest's real breakdown for THIS place every time the sheet opens
+  // on a new one. Deliberately not cached across places: base, Welcome and the
+  // story override all vary by place strategy and by whether they've been here.
+  useEffect(() => {
+    if (placeId === null) return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const res = await apiGetRewardQuote(supabase, placeId);
+        if (!cancelled) setQuoteRes({ placeId, quote: res.quote });
+      } catch (err) {
+        if (cancelled) return;
+        setQuoteErr({
+          placeId,
+          message:
+            err instanceof Error ? err.message : "Couldn't load your rate.",
+        });
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [placeId, supabase]);
+
+  // Only this place's answer counts — anything older reads as "still loading".
+  const quote = quoteRes?.placeId === placeId ? quoteRes.quote : null;
+  const quoteError = quoteErr?.placeId === placeId ? quoteErr.message : null;
 
   const go = useCallback(
     (id: string) => {
@@ -168,20 +213,49 @@ export function TicketWizard({
     onClose();
   }, [step, ticketId, go, onClose]);
 
-  const strategy = place ? strategyForPlaceRow(place) : "zero";
-  const base = baseRateForClass(classKey, strategy);
-  const storyRate = rateForSegment("story", classKey, strategy);
-  const reviewRate = rateForSegment("review", classKey, strategy);
+  // Every number below comes from the ENGINE (v10 additive), never from the
+  // static program ladder — that table is program education and stopped
+  // matching the bill when MESITA-992 shipped.
+  //
+  // Base and Welcome are AUTOMATIC: Welcome is a state of the visit, not a task
+  // the guest picks. Together they are the floor the guest already has before
+  // choosing anything, and each task stacks on top of that floor.
+  const additive = quote?.additive ?? false;
+  const clamp = (n: number) => Math.max(0, Math.min(100, n));
+  const welcomeBonus = quote?.bonuses.welcome ?? 0;
+  const floor = quote
+    ? additive
+      ? clamp(quote.base + welcomeBonus)
+      : quote.base
+    : 0;
+  // A legacy best-of engine pays the single best rung, so stacking there would
+  // over-promise — the one direction a discount quote must never err.
+  const withBonus = (bonus: number) =>
+    !quote
+      ? 0
+      : additive
+        ? clamp(floor + bonus)
+        : clamp(Math.max(floor, bonus));
+  const base = floor;
+  const storyRate = withBonus(quote?.bonuses.story ?? 0);
+  const reviewRate = withBonus(quote?.bonuses.google ?? 0);
   const shownRate =
     chosen === "review" ? reviewRate : chosen === "story" ? storyRate : base;
   const classLabel =
     classKey.charAt(0).toUpperCase() + classKey.slice(1);
+  const welcomeOn = additive && welcomeBonus > 0;
+  // "+N% on top" only means something when the engine actually stacks, so it
+  // stays off on the legacy best-of path.
+  const deltaLabel = (bonus: number) =>
+    additive && bonus > 0 ? `+${bonus}% on top` : undefined;
   const suffix =
     chosen === "review"
       ? "— with a Google review"
       : chosen === "story"
         ? "— with a tagged story"
-        : `— your ${classLabel} base, no task`;
+        : welcomeOn
+          ? `— your ${classLabel} base + Welcome visit`
+          : `— your ${classLabel} base, no task`;
   const ctaLabel =
     chosen === "review"
       ? `Do the review → unlock ${reviewRate}%`
@@ -198,39 +272,60 @@ export function TicketWizard({
       {place === null ? null : step === "pick" ? (
         <div className="flex flex-col gap-3.5 px-5 pt-3 pb-8">
           <StepRail step={1} />
-          <BigRateLockup
-            caption={`Your discount at ${place.name}`}
-            percent={shownRate}
-            suffix={suffix}
-          />
-          <div className="flex flex-col gap-2">
-            <RewardChip
-              label="Just my base"
-              percent={base}
-              selected={chosen === "base"}
-              onSelect={() => setChosen("base")}
-            />
-            <RewardChip
-              icon={<Instagram className="size-4" />}
-              label="Post a tagged story"
-              subLabel={igConnected ? undefined : "+ Connect Instagram"}
-              percent={storyRate}
-              selected={chosen === "story"}
-              disabled={!igConnected}
-              onSelect={() => setChosen("story")}
-            />
-            <RewardChip
-              icon={<Star className="size-4" />}
-              label="Leave a Google review"
-              percent={reviewRate}
-              selected={chosen === "review"}
-              onSelect={() => setChosen("review")}
-            />
-          </div>
-          <p className="text-muted-foreground/80 text-center text-[10.5px] leading-snug">
-            One action, one discount — you always keep your single best. First
-            time here? Your Welcome rate may apply — it shows on your pass.
-          </p>
+          {quote === null ? (
+            <QuoteLoading error={quoteError} />
+          ) : (
+            <>
+              <BigRateLockup
+                caption={`Your discount at ${place.name}`}
+                percent={shownRate}
+                suffix={suffix}
+              />
+              {additive ? (
+                <IncludedStrip
+                  classLabel={classLabel}
+                  base={quote.base}
+                  welcome={welcomeBonus}
+                />
+              ) : null}
+              <div className="flex flex-col gap-2">
+                <RewardChip
+                  label={welcomeOn ? "Base + Welcome — no task" : "Just my base"}
+                  percent={base}
+                  selected={chosen === "base"}
+                  onSelect={() => setChosen("base")}
+                />
+                <RewardChip
+                  icon={<Instagram className="size-4" />}
+                  label="Post a tagged story"
+                  subLabel={
+                    !igConnected
+                      ? "+ Connect Instagram"
+                      : !quote.storyEligible
+                        ? "Not offered here"
+                        : deltaLabel(quote.bonuses.story)
+                  }
+                  percent={storyRate}
+                  selected={chosen === "story"}
+                  disabled={!quote.storyEligible}
+                  onSelect={() => setChosen("story")}
+                />
+                <RewardChip
+                  icon={<Star className="size-4" />}
+                  label="Leave a Google review"
+                  subLabel={deltaLabel(quote.bonuses.google)}
+                  percent={reviewRate}
+                  selected={chosen === "review"}
+                  onSelect={() => setChosen("review")}
+                />
+              </div>
+              <p className="text-muted-foreground/80 text-center text-[10.5px] leading-snug">
+                {additive
+                  ? "Your base and Welcome are already counted above — a task adds on top of them."
+                  : "One action, one discount — you always keep your single best."}
+              </p>
+            </>
+          )}
           {createError ? (
             <p className="bg-destructive/10 text-destructive rounded-lg px-3 py-2 text-[12px]">
               {createError}
@@ -238,7 +333,7 @@ export function TicketWizard({
           ) : null}
           <button
             type="button"
-            disabled={creating}
+            disabled={creating || quote === null}
             onClick={() => void create()}
             className="bg-pink-gradient shadow-glow flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl text-[14px] font-bold text-white transition active:scale-[0.99] disabled:opacity-50"
           >
@@ -258,6 +353,75 @@ export function TicketWizard({
         />
       )}
     </LocalSheet>
+  );
+}
+
+// What the guest already has before choosing anything. Welcome used to live in
+// a footnote ("may apply — it shows on your pass"), which buried a real +N% at
+// the exact moment they decide; at a conservative place that footnote was
+// hiding half the offer. It is automatic money, so it reads as already-banked
+// rather than as another option to weigh.
+function IncludedStrip({
+  classLabel,
+  base,
+  welcome,
+}: {
+  classLabel: string;
+  base: number;
+  welcome: number;
+}) {
+  return (
+    <div className="flex flex-wrap items-center justify-center gap-1.5">
+      <IncludedPill label={`${classLabel} base`} percent={base} />
+      {welcome > 0 ? (
+        <IncludedPill label="Welcome visit" percent={welcome} accent />
+      ) : null}
+    </div>
+  );
+}
+
+function IncludedPill({
+  label,
+  percent,
+  accent = false,
+}: {
+  label: string;
+  percent: number;
+  accent?: boolean;
+}) {
+  return (
+    <span
+      className={cn(
+        "inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-bold",
+        accent
+          ? "border-secondary/25 bg-secondary/10 text-secondary"
+          : "border-border bg-muted/40 text-muted-foreground",
+      )}
+    >
+      {accent ? <Sparkles className="size-3" /> : <Check className="size-3" />}
+      {label}
+      <span className="tabular-nums">+{percent}%</span>
+    </span>
+  );
+}
+
+// The rate is the whole point of this screen, so it never renders a guessed
+// number while the engine's answer is in flight.
+function QuoteLoading({ error }: { error: string | null }) {
+  if (error) {
+    return (
+      <p className="bg-destructive/10 text-destructive rounded-lg px-3 py-2 text-center text-[12px]">
+        {error}
+      </p>
+    );
+  }
+  return (
+    <div className="flex min-h-[128px] flex-col items-center justify-center gap-2">
+      <Loader2 className="text-primary size-5 animate-spin" />
+      <p className="text-muted-foreground text-[12px] font-semibold">
+        Checking your rate here…
+      </p>
+    </div>
   );
 }
 
