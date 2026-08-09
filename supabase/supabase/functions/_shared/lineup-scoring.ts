@@ -143,8 +143,8 @@ export function gpScore(
 export type RpStrategy = "zero" | "conservative" | "aggressive";
 export type RpRungs = Record<RpStrategy, number>;
 export const DEFAULT_RP_RUNGS: RpRungs = {
-  zero: 0.1,
-  conservative: 0.4,
+  zero: 0, // literal 0 — the paid lane is strictly pay-to-play (no whisper)
+  conservative: 0.5,
   aggressive: 1.0, // peak — Dominant retired 2026-08-09
 };
 
