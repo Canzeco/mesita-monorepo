@@ -16,6 +16,12 @@ type UnitOverview = {
   user: { id: string; email: string | null };
   // EF may still return isSuperAdmin for admin Manage flows; business UI ignores it.
   places: MyPlace[];
+  /**
+   * The live v10 promos blob (MESITA-1001). Raw off the wire — callers run it
+   * through `coercePromosConfig`. Null when the read failed; the client then
+   * falls back to bundled defaults and says so.
+   */
+  rewardsConfig: unknown;
   active: { place: MyPlace; recentTickets: PlaceTicketStub[] } | null;
 };
 

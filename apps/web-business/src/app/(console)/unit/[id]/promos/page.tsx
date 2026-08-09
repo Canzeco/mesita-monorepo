@@ -66,7 +66,7 @@ export default async function BusinessPromosPage({
   return (
     <div className="flex-1 overflow-y-auto">
       <div className="mx-auto w-full max-w-lg pb-6">
-        <PromosClient place={active} />
+        <PromosClient place={active} rewardsConfig={overview.rewardsConfig} />
       </div>
     </div>
   );

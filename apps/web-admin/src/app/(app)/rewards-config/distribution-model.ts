@@ -54,6 +54,13 @@ export type StrategyDistribution = {
   q3: number;
   min: number;
   max: number;
+  /**
+   * The typical band — what all but the tails actually pay. The strategy
+   * cards headline `mean` and quote p10–p90 (MESITA-1001): `min`/`max` are
+   * the wrong statistic for a card because the extremes are ~0.01% of visits.
+   */
+  p10: number;
+  p90: number;
 };
 
 const clampPct = (v: number) => Math.max(0, Math.min(100, v));
@@ -160,5 +167,7 @@ export function distributionFor(
     q3: percentile(0.75),
     min: values[0] ?? 0,
     max: values[values.length - 1] ?? 0,
+    p10: percentile(0.1),
+    p90: percentile(0.9),
   };
 }

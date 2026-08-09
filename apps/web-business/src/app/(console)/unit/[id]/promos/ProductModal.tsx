@@ -6,12 +6,14 @@ import {
   DISCOUNT_CAPS_MXN,
   type Strategy,
 } from "@/lib/business/strategies";
+import type { PromosConfig, StrategyKey } from "@/lib/business/promos-v10";
 import { cn, formatMoney } from "@/lib/utils";
 import { CARD_ART, PRODUCT_PRICE_MXN } from "./promoConstants";
-import { ModalLabel, PlacementReward, RateMatrix, Step } from "./promoShared";
+import { ModalLabel, RateMatrix, Step, StrategyMeters } from "./promoShared";
 
 export function ProductModal({
   strategy,
+  cfg,
   currency,
   capMxn,
   isCurrent,
@@ -22,6 +24,7 @@ export function ProductModal({
   onClose,
 }: {
   strategy: Strategy;
+  cfg: PromosConfig;
   currency: string;
   capMxn?: number;
   isCurrent: boolean;
@@ -41,7 +44,6 @@ export function ProductModal({
 
   const art = CARD_ART[strategy.id];
   const paid = strategy.id !== "zero";
-  const r = strategy.rates;
   const needsJoin = !subscribed;
   const isZeroSwitch = subscribed && strategy.id === "zero";
   const capLabel = capMxn ?? DEFAULT_DISCOUNT_CAP_MXN;
@@ -134,28 +136,22 @@ export function ProductModal({
             {strategy.tagline}
           </p>
 
-          <div className="flex flex-col gap-2">
-            <ModalLabel>You give</ModalLabel>
-            {paid ? (
-              <>
-                <RateMatrix rates={r} />
-                <p className="text-muted-foreground text-[11px] leading-snug">
-                  {capMxn != null
-                    ? `Every discount applies to the first ${formatMoney(capLabel, currency)} of the bill — your chosen discount cap, shown to guests.`
-                    : `Every discount applies to the first portion of the bill, capped at your chosen discount cap (${capOptionsLabel}) — shown to guests.`}
-                </p>
-              </>
-            ) : (
-              <p className="text-muted-foreground text-[12px] leading-snug">
-                Nothing — Zero means no discounts.
-              </p>
-            )}
+          {/* The card's two meters, then everything they abstract away. */}
+          <div className="grid grid-cols-2 gap-4">
+            <StrategyMeters strategy={strategy} art={art} cfg={cfg} compact />
           </div>
 
-          <div className="flex flex-col gap-2">
-            <ModalLabel>You receive</ModalLabel>
-            <PlacementReward strategy={strategy} art={art} />
-          </div>
+          {paid && (
+            <div className="flex flex-col gap-2">
+              <ModalLabel>Every rate</ModalLabel>
+              <RateMatrix cfg={cfg} strategy={strategy.id as StrategyKey} />
+              <p className="text-muted-foreground text-[11px] leading-snug">
+                {capMxn != null
+                  ? `Every discount applies to the first ${formatMoney(capLabel, currency)} of the bill — your chosen discount cap, shown to guests.`
+                  : `Every discount applies to the first portion of the bill, capped at your chosen discount cap (${capOptionsLabel}) — shown to guests.`}
+              </p>
+            </div>
+          )}
 
           {paid ? (
             <div className="flex flex-col gap-3">

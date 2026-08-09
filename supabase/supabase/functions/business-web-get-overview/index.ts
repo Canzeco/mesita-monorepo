@@ -182,12 +182,35 @@ Deno.serve(async (req) => {
     }
   }
 
+  // The v10 promos config, so the console's Promos page quotes the SAME
+  // numbers the bill engine pays (MESITA-1001). Before this, the console
+  // derived its rate table from the frozen `strategies.ts` presets, which
+  // the engine stopped reading when it went additive-v10 (MESITA-992) —
+  // on Aggressive that under-reported returning visits by 10 points.
+  // Product terms, not sensitive: every guest sees these rates at the bill.
+  let rewardsConfig: unknown = null;
+  {
+    const cfg = await admin
+      .from("app_settings")
+      .select("rewards_config")
+      .maybeSingle();
+    if (cfg.error) {
+      // Non-fatal — the client falls back to its bundled defaults and says so.
+      console.error("[business-web-get-overview] rewards_config:", cfg.error.message);
+    } else {
+      const blob = (cfg.data as { rewards_config?: Record<string, unknown> } | null)
+        ?.rewards_config;
+      rewardsConfig = blob?.v10 ?? null;
+    }
+  }
+
   return json({
     ok: true,
     user: { id: userId, email: userEmail },
     // Drives the business web's Topbar "Super-admin mode" banner.
     isSuperAdmin,
     places,
+    rewardsConfig,
     active: active
       ? {
           place: active,

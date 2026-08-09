@@ -17,6 +17,10 @@ import {
   type DiscountCapMxn,
   type StrategyId,
 } from "@/lib/business/strategies";
+import {
+  coercePromosConfig,
+  type PromosConfig,
+} from "@/lib/business/promos-v10";
 import { cn, errMsg, formatMoney } from "@/lib/utils";
 import { ERROR_BOX_CLASS } from "@/lib/ui-classes";
 import { FaqsBox } from "./FaqsBox";
@@ -63,9 +67,22 @@ function buildStrategyPayload(
   return payload;
 }
 
-export function PromosClient({ place }: { place: MyPlace }) {
+export function PromosClient({
+  place,
+  rewardsConfig,
+}: {
+  place: MyPlace;
+  /** Live v10 blob off business-web-get-overview; null when the read failed. */
+  rewardsConfig: unknown;
+}) {
   const router = useRouter();
   const supabase = useBrowserSupabase();
+
+  // The rates every card and the modal quote. Coerced once here so a partial
+  // or missing blob degrades to the launch defaults instead of blanking the
+  // page (MESITA-1001).
+  const cfg: PromosConfig = coercePromosConfig(rewardsConfig);
+  const ratesAreDefaults = rewardsConfig == null;
 
   const subscribed = isSubscribed(place);
   const pillState = membershipPillState(place);
@@ -243,8 +260,7 @@ export function PromosClient({ place }: { place: MyPlace }) {
             <PricingCard
               key={s.id}
               strategy={s}
-              currency={place.currency}
-              capMxn={s.id !== "zero" ? displayCapMxn : undefined}
+              cfg={cfg}
               // Member-gated (MESITA-948): strategyForPlace maps all-null
               // rates to "zero", so an unsubscribed place would otherwise
               // ring Zero as "Current" and block join-onto-Zero.
@@ -265,6 +281,12 @@ export function PromosClient({ place }: { place: MyPlace }) {
             </span>
             . It activates the first time your staff honor a guest check at the
             table.
+          </p>
+        )}
+
+        {ratesAreDefaults && (
+          <p className="text-muted-foreground text-[11px]">
+            Live rates unavailable — showing standard rates.
           </p>
         )}
 
@@ -319,11 +341,13 @@ export function PromosClient({ place }: { place: MyPlace }) {
         place={place}
         storedStrategy={storedStrategy}
         member={subscribed}
+        cfg={cfg}
       />
 
       {modalStrategy && (
         <ProductModal
           strategy={modalStrategy}
+          cfg={cfg}
           currency={place.currency}
           capMxn={
             modalStrategy.id !== "zero" ? displayCapMxn : undefined

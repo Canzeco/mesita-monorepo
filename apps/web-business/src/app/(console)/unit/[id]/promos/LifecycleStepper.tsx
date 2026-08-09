@@ -22,7 +22,17 @@ const STEP_TITLES = {
   honor: "Honor guest checks",
 } as const;
 
-/** Owner-facing twin of admin LifecycleStepper (MESITA-959 ← MESITA-958). */
+/**
+ * Owner-facing twin of the admin lifecycle banner (MESITA-959 ← MESITA-958,
+ * re-cut in MESITA-1001 ← MESITA-999).
+ *
+ * One rail of three markers + ONE detail line for the step you're actually on.
+ * The earlier three-column stepper printed all three details at once, which
+ * read as a wall of 11px above the boxes that carry the actual controls; every
+ * rail state has exactly one current-or-blocked step, so a single line says the
+ * same thing. Non-interactive on purpose — the controls stay in the Membership
+ * box and strategy cards.
+ */
 export function LifecycleStepper({
   place,
   pillState,
@@ -99,63 +109,66 @@ export function LifecycleStepper({
     { key: "honor", state: view.honor, detail: honorDetail },
   ];
 
+  // Exactly one step is blocked-or-current in every rail state (see
+  // lifecycleView) — that one carries the line.
+  const active =
+    steps.find((s) => s.state === "blocked") ??
+    steps.find((s) => s.state === "current");
+
   return (
-    <section className="border-border bg-card shadow-card rounded-2xl border p-5 sm:p-6">
-      <h2 className="font-display text-base font-semibold tracking-tight">
-        How promos go live
-      </h2>
-      <ol className="mt-4 flex flex-col gap-5 sm:grid sm:grid-cols-3 sm:gap-6">
+    <section className="border-border bg-card shadow-card rounded-2xl border px-4 py-4 sm:px-5">
+      {/* The rail replaced a visible "How promos go live" heading — the steps
+          say it. Keep the label for screen readers. */}
+      <h2 className="sr-only">How promos go live</h2>
+      <ol className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:gap-3">
         {steps.map((s, i) => (
           <li
             key={s.key}
             aria-current={s.state === "current" ? "step" : undefined}
-            className="relative pl-9 sm:pl-0 sm:pt-9"
+            // The connector rides inside its step so the row stays a plain
+            // <ol>/<li> (no display:contents, which drops list semantics in
+            // some screen readers); the last step doesn't stretch.
+            className="flex min-w-0 items-center gap-2 sm:flex-1 sm:last:flex-none"
           >
-            <span className="absolute top-0 left-0">
-              <StepMarker n={i + 1} state={s.state} danger={forfeited} />
-            </span>
-            {i < steps.length - 1 && (
-              <>
-                <span
-                  aria-hidden
-                  className={cn(
-                    "absolute top-7 -bottom-4 left-[11px] w-px sm:hidden",
-                    steps[i + 1].state === "upcoming"
-                      ? "bg-border"
-                      : "bg-emerald-500/60",
-                  )}
-                />
-                <span
-                  aria-hidden
-                  className={cn(
-                    "absolute top-[11px] left-8 hidden h-0.5 w-[calc(100%-2.5rem)] rounded-full sm:block",
-                    steps[i + 1].state === "upcoming"
-                      ? "bg-border"
-                      : "bg-emerald-500/60",
-                  )}
-                />
-              </>
-            )}
-            <p className="text-foreground/90 text-[13px] leading-snug font-semibold">
-              {STEP_TITLES[s.key]}
-            </p>
-            <p
+            <StepMarker n={i + 1} state={s.state} danger={forfeited} />
+            <span
               className={cn(
-                "mt-0.5 text-[11px] leading-snug",
-                s.state === "blocked"
-                  ? forfeited
-                    ? "text-destructive"
-                    : "text-amber-800"
-                  : s.state === "current"
-                    ? "text-amber-800"
-                    : "text-muted-foreground",
+                "truncate text-[12.5px] leading-none",
+                s.state === "current" || s.state === "blocked"
+                  ? "text-foreground font-semibold"
+                  : "text-muted-foreground font-medium",
               )}
             >
-              {s.detail}
-            </p>
+              {STEP_TITLES[s.key]}
+            </span>
+            {i < steps.length - 1 && (
+              <span
+                aria-hidden
+                className={cn(
+                  "ml-1 hidden h-px flex-1 sm:block",
+                  steps[i + 1].state === "upcoming"
+                    ? "bg-border"
+                    : "bg-emerald-500/50",
+                )}
+              />
+            )}
           </li>
         ))}
       </ol>
+      {active && (
+        <p
+          className={cn(
+            "mt-2.5 text-[12px] leading-snug",
+            // `active` is blocked-or-current by construction; only forfeiture
+            // earns destructive red.
+            active.state === "blocked" && forfeited
+              ? "text-destructive"
+              : "text-amber-800",
+          )}
+        >
+          {active.detail}
+        </p>
+      )}
     </section>
   );
 }
@@ -171,8 +184,8 @@ function StepMarker({
 }) {
   if (state === "done") {
     return (
-      <span className="inline-flex h-[22px] w-[22px] items-center justify-center rounded-full bg-emerald-500 text-white">
-        <Check className="h-3 w-3" aria-hidden />
+      <span className="inline-flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full bg-emerald-500 text-white">
+        <Check className="h-2.5 w-2.5" aria-hidden />
         <span className="sr-only">Step {n} done</span>
       </span>
     );
@@ -180,7 +193,7 @@ function StepMarker({
   return (
     <span
       className={cn(
-        "inline-flex h-[22px] w-[22px] items-center justify-center rounded-full border text-[11px] font-bold tabular-nums",
+        "inline-flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full border text-[10px] font-bold tabular-nums",
         state === "current" &&
           "border-amber-500 bg-amber-500/12 text-amber-800",
         state === "blocked" &&
