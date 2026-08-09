@@ -4,7 +4,7 @@ import {
   isDriveMenuUrl,
   MAX_PHOTOS,
 } from "@/components/business/place/place-upload-utils";
-import { placeHoursToForm } from "./place-hours";
+import { placeHoursToForm } from "@/components/business/place/place-hours";
 
 export function nullableUrl(v: string): string | null {
   const t = v.trim();

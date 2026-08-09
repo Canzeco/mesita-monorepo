@@ -34,7 +34,7 @@ import {
 } from "@/components/business/place/place-upload-utils";
 import { ERROR_BOX_CLASS } from "@/lib/ui-classes";
 import { cn, errMsg } from "@/lib/utils";
-import { formHoursToPlace } from "./place-hours";
+import { formHoursToPlace } from "@/components/business/place/place-hours";
 import { nullable, nullableUrl, placeToFormState } from "./place-form-mappers";
 
 const SAVED_TOAST_MS = 2200;
