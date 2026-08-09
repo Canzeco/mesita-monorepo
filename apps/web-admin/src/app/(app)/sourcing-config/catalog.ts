@@ -40,7 +40,7 @@ type ChannelPolicy = {
 
 export type SourcingConfig = Record<ChannelKey, ChannelPolicy>;
 
-export type Family = {
+type Family = {
   key: FamilyKey;
   label: string;
   emoji: string;
@@ -218,7 +218,7 @@ const ALL_FAMILY_KEYS: FamilyKey[] = FAMILIES.map((f) => f.key);
 
 type ChannelVerb = "search" | "add";
 
-export type Channel = {
+type Channel = {
   key: ChannelKey;
   actor: "Admin" | "Business" | "Consumer" | "Memo";
   verb: ChannelVerb;
