@@ -8,9 +8,8 @@
   - **Context:** surfaced by /plan-design-review of the Promos Config rebuild
     (2026-08-09) — Pass 5 flagged the missing DESIGN.md.
 
-- [ ] **Admin shared UI kit** — extract one SectionCard / Save / Error / control set from the three lakes (`atlas-ui`, `manage-single/ui`, `panel-ui`), then shrink the debt section in `apps/web-admin/DESIGN.md` to a pointer.
-  - **Why:** DESIGN.md documents forks as debt; without extraction, greenfield still drifts toward the nearest sibling.
-  - **Pros:** one import path for new pages; reviews argue less. **Cons:** multi-file migrate; Lineup panel idioms may stay specialized.
+- [x] **Admin shared UI kit** — extract config/manage/lineup chrome into `apps/web-admin/src/components/admin-ui/`; route-local files are re-export shims; DESIGN.md points at the kit.
+  - **Done (2026-08-09):** `@/components/admin-ui` (`config` · `manage` · `lineup` + barrel). Visual variants kept; one import root.
   - **Depends on:** Admin console DESIGN.md (done).
 
 - [ ] **Manage Single — Products own tab (deferred)** — only if Place density
