@@ -25,10 +25,13 @@ import {
   ExternalLink,
   Instagram,
   Loader2,
+  MapPin,
+  QrCode,
   Sparkles,
   Star,
   UtensilsCrossed,
 } from "lucide-react";
+import { QRCodeSVG } from "qrcode.react";
 
 import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
 import { BigRateLockup } from "@/components/consumer/rewards/BigRateLockup";
@@ -57,7 +60,18 @@ export function bornTicketPath(id: string): string {
   return `${ticketPath(id)}?born=1`;
 }
 
-type Step = "pick" | "do";
+// One modal, every step. The sheet is a FIXED height and only its body
+// scrolls, because a sheet that resizes per step reads as a different modal
+// each time — which is exactly what made this flow feel like three products
+// stitched together (page rail → wizard sheet → full-page pass route).
+type Step = "pick" | "do" | "pass";
+
+const STEP_INDEX: Record<Step, number> = { pick: 2, do: 3, pass: 4 };
+
+// A FIXED height is the whole point. Percentage rather than dvh because the
+// panel sits inside the app frame and already carries max-h-[85%] of that same
+// box, so a viewport unit would fight it.
+const SHEET_HEIGHT = "h-[75%]";
 
 export function TicketWizard({
   place,
@@ -83,6 +97,9 @@ export function TicketWizard({
   // "highest-rate reachable action" selection (Pass 4 anatomy).
   const [chosen, setChosen] = useState<ChosenReward>("review");
   const [ticketId, setTicketId] = useState<string | null>(null);
+  // Captured at create so the QR can render in THIS sheet instead of sending
+  // the guest to a different-looking page mid-flow.
+  const [checkUrl, setCheckUrl] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
   // The engine's own numbers (MESITA-992 v10). Null until they land — we show a
@@ -116,6 +133,7 @@ export function TicketWizard({
       setStep("pick");
       setChosen("review");
       setTicketId(null);
+      setCheckUrl(null);
       setCreateError(null);
     });
     return () => cancelAnimationFrame(raf);
@@ -172,11 +190,10 @@ export function TicketWizard({
       const res = await apiCreateTicket(supabase, place.id, chosen);
       onCreated();
       setTicketId(res.ticket.id);
-      if (chosen === "base") {
-        go(res.ticket.id);
-        return;
-      }
-      setStep("do");
+      setCheckUrl(res.checkUrl);
+      // Stay in this sheet either way — "base" has no task, so it goes
+      // straight to the QR.
+      setStep(chosen === "base" ? "pass" : "do");
     } catch (err) {
       if (err instanceof EFError && err.code === "already_open") {
         const fromBody = err.body?.ticketId;
@@ -199,19 +216,17 @@ export function TicketWizard({
     else await apiSubmitReview(supabase, ticketId);
   }, [supabase, ticketId, chosen]);
 
-  const park = useCallback(() => {
-    if (ticketId) go(ticketId);
-  }, [ticketId, go]);
+  // "I'll finish this in a bit" and a finished proof both land on the QR step
+  // in THIS sheet. The ticket is already real by then, so there is nothing to
+  // navigate to — the pass is right here.
+  const toPass = useCallback(() => setStep("pass"), []);
 
   const close = useCallback(() => {
-    // Pick step: nothing exists yet — plain dismiss. Do step: the ticket is
-    // real — park on THE TICKET, never silently cancel (D5).
-    if (step === "do" && ticketId) {
-      go(ticketId);
-      return;
-    }
+    // The ticket is real from the "do" step onward, and it stays open and
+    // visible under Pending — closing the sheet never cancels it (D5). The
+    // full-page pass remains its permanent home for deep links.
     onClose();
-  }, [step, ticketId, go, onClose]);
+  }, [onClose]);
 
   // Every number below comes from the ENGINE (v10 additive), never from the
   // static program ladder — that table is program education and stopped
@@ -268,10 +283,19 @@ export function TicketWizard({
       open={place !== null}
       onClose={close}
       ariaLabel={place ? `Get your ticket at ${place.name}` : "Get your ticket"}
+      panelClassName={SHEET_HEIGHT}
     >
-      {place === null ? null : step === "pick" ? (
-        <div className="flex flex-col gap-3.5 px-5 pt-3 pb-8">
-          <StepRail step={1} />
+      {place === null ? null : (
+        <div className="flex h-full flex-col">
+          {/* Persistent chrome. The rail never unmounts and the sheet never
+              changes height, so moving between steps reads as ONE object
+              rather than a new modal each time. */}
+          <div className="border-border/60 shrink-0 border-b px-4 pt-1 pb-2.5">
+            <JourneyRail current={STEP_INDEX[step]} />
+          </div>
+          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+      {step === "pick" ? (
+        <div className="flex flex-col gap-3.5 px-5 pt-3 pb-6">
           {quote === null ? (
             <QuoteLoading error={quoteError} />
           ) : (
@@ -341,16 +365,29 @@ export function TicketWizard({
             {creating ? "Opening your ticket…" : ctaLabel}
           </button>
         </div>
-      ) : (
+      ) : step === "do" ? (
         <DoItStep
           placeName={place.name}
           placeAddress={place.address}
           isReview={chosen !== "story"}
           rate={shownRate}
           onConfirm={confirmProof}
-          onConfirmed={park}
-          onPark={park}
+          onConfirmed={toPass}
+          onPark={toPass}
         />
+      ) : (
+        <PassStep
+          placeName={place.name}
+          percent={shownRate}
+          checkUrl={checkUrl}
+          ticketId={ticketId}
+          onOpenFullPass={() => {
+            if (ticketId) go(ticketId);
+          }}
+        />
+      )}
+          </div>
+        </div>
       )}
     </LocalSheet>
   );
@@ -425,19 +462,108 @@ function QuoteLoading({ error }: { error: string | null }) {
   );
 }
 
-function StepRail({ step }: { step: 1 | 2 }) {
+// The journey rail, now INSIDE the sheet and reflecting real progress. It used
+// to sit on the Rewards page as a static four-step pitch while the sheet
+// separately claimed "Step 1 · 2" — two different step counts for one flow,
+// in two different containers.
+const JOURNEY = [
+  { n: 1, label: "Place", icon: MapPin },
+  { n: 2, label: "Reward", icon: Sparkles },
+  { n: 3, label: "Do it", icon: Star },
+  { n: 4, label: "Show QR", icon: QrCode },
+] as const;
+
+function JourneyRail({ current }: { current: number }) {
   return (
-    <div className="flex items-center gap-2">
-      <span className="text-muted-foreground text-[9px] font-extrabold tracking-[0.1em] uppercase">
-        Step {step} · 2
-      </span>
-      <span className="bg-primary h-1 flex-1 rounded-full" />
+    <ol className="relative flex items-start">
       <span
-        className={cn(
-          "h-1 flex-1 rounded-full",
-          step === 2 ? "bg-primary" : "bg-border",
-        )}
+        aria-hidden="true"
+        className="bg-border absolute top-[13px] right-[12.5%] left-[12.5%] h-px"
       />
+      {JOURNEY.map(({ n, label, icon: Icon }) => {
+        const done = n < current;
+        const now = n === current;
+        return (
+          <li
+            key={n}
+            className="relative z-[1] flex w-0 flex-1 flex-col items-center gap-1"
+            aria-current={now ? "step" : undefined}
+          >
+            <span
+              className={cn(
+                "grid size-[26px] place-items-center rounded-full border transition",
+                now
+                  ? "bg-pink-gradient border-transparent text-white"
+                  : done
+                    ? "border-secondary/30 bg-secondary/10 text-secondary"
+                    : "border-border bg-background text-muted-foreground/50",
+              )}
+            >
+              {done ? (
+                <Check className="size-3.5" strokeWidth={3} />
+              ) : (
+                <Icon className="size-3.5" strokeWidth={2.25} />
+              )}
+            </span>
+            <span
+              className={cn(
+                "text-center text-[9.5px] leading-tight font-semibold",
+                now ? "text-foreground" : "text-muted-foreground",
+              )}
+            >
+              {label}
+            </span>
+          </li>
+        );
+      })}
+    </ol>
+  );
+}
+
+// Step 4, in the SAME sheet. The full-page pass stays the ticket's permanent
+// home for deep links and notification targets (D4) — this shows the same
+// object without throwing the guest out of the flow to reach it.
+function PassStep({
+  placeName,
+  percent,
+  checkUrl,
+  ticketId,
+  onOpenFullPass,
+}: {
+  placeName: string;
+  percent: number;
+  checkUrl: string | null;
+  ticketId: string | null;
+  onOpenFullPass: () => void;
+}) {
+  return (
+    <div className="flex flex-col gap-3 px-5 pt-4 pb-6">
+      <p className="text-muted-foreground text-center text-[12px] font-semibold">
+        Your ticket at {placeName}
+      </p>
+      <div className="bg-pink-gradient shadow-glow rounded-3xl px-5 py-5 text-center text-white">
+        <p className="font-display text-[40px] leading-none font-extrabold tracking-tight">
+          {percent}% off
+        </p>
+        <span className="mx-auto mt-4 block w-fit rounded-2xl bg-white p-3">
+          {checkUrl ? (
+            <QRCodeSVG value={checkUrl} size={164} />
+          ) : (
+            <span className="bg-muted block size-[164px] animate-pulse rounded-lg" />
+          )}
+        </span>
+        <p className="mt-3 text-[12.5px] leading-snug font-semibold text-white/90">
+          Show this QR — staff scan it to start your visit.
+        </p>
+      </div>
+      <button
+        type="button"
+        onClick={onOpenFullPass}
+        disabled={!ticketId}
+        className="border-border bg-card text-foreground flex min-h-11 w-full items-center justify-center rounded-2xl border text-[13px] font-bold transition active:scale-[0.99] disabled:opacity-50"
+      >
+        Open full pass
+      </button>
     </div>
   );
 }
@@ -495,8 +621,7 @@ function DoItStep({
   }, [onConfirm, onConfirmed]);
 
   return (
-    <div className="flex flex-col gap-3 px-5 pt-3 pb-8">
-      <StepRail step={2} />
+    <div className="flex flex-col gap-3 px-5 pt-3 pb-6">
       <BigRateLockup
         percent={rate}
         suffix={isReview ? "unlocks with your review" : "unlocks with your story"}
