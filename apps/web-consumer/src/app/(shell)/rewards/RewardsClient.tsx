@@ -154,7 +154,10 @@ export function RewardsClient({ userId }: { userId: string }) {
 
   return (
     <div className="scrollbar-hide flex h-full min-h-0 flex-1 flex-col gap-3.5 overflow-y-auto px-4 pt-4 pb-6">
-      <PitchSteps />
+      {/* New only. The rail describes how a ticket gets MADE — Pending holds
+          tickets already generated and History holds finished ones, so showing
+          it over those tabs claims a journey the guest has already walked. */}
+      {tab === "new" ? <PitchSteps /> : null}
 
       {justPaid ? (
         <SavingsReveal
