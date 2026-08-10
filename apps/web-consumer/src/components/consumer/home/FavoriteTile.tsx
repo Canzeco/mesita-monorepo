@@ -50,7 +50,7 @@ export function FavoriteTile({
           href={placeHref(place.slug || place.id)}
           className="focus-visible:ring-primary flex min-w-0 flex-1 flex-col rounded-2xl transition outline-none focus-visible:ring-2 active:scale-[0.99]"
         >
-          <div className="bg-muted relative aspect-[4/3] w-full shrink-0 overflow-hidden">
+          <div className="bg-muted relative aspect-[3/4] w-full shrink-0 overflow-hidden">
             {photo ? (
               <Image
                 src={photo}

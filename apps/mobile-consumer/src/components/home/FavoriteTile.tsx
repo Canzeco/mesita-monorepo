@@ -51,7 +51,7 @@ export function FavoriteTile({
         accessibilityLabel={`Open ${place.name}`}
         className="flex-1 active:opacity-90"
       >
-        <View className="w-full bg-muted" style={{ aspectRatio: 4 / 3 }}>
+        <View className="w-full bg-muted" style={{ aspectRatio: 3 / 4 }}>
           {photo ? (
             <Image
               source={{ uri: photo }}
