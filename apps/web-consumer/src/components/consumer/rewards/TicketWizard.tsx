@@ -25,8 +25,6 @@ import {
   ExternalLink,
   Instagram,
   Loader2,
-  MapPin,
-  QrCode,
   Sparkles,
   Star,
   UtensilsCrossed,
@@ -35,6 +33,7 @@ import { QRCodeSVG } from "qrcode.react";
 
 import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
 import { BigRateLockup } from "@/components/consumer/rewards/BigRateLockup";
+import { JourneyRail } from "@/components/consumer/rewards/JourneyRail";
 import { RewardChip } from "@/components/consumer/rewards/RewardChip";
 import { googleMapsSearchUrl } from "@/components/consumer/rewards/GoogleReviewSheet";
 import { instagramOpenUrl } from "@/components/consumer/rewards/InstagramStorySheet";
@@ -459,64 +458,6 @@ function QuoteLoading({ error }: { error: string | null }) {
         Checking your rate here…
       </p>
     </div>
-  );
-}
-
-// The journey rail, now INSIDE the sheet and reflecting real progress. It used
-// to sit on the Rewards page as a static four-step pitch while the sheet
-// separately claimed "Step 1 · 2" — two different step counts for one flow,
-// in two different containers.
-const JOURNEY = [
-  { n: 1, label: "Place", icon: MapPin },
-  { n: 2, label: "Reward", icon: Sparkles },
-  { n: 3, label: "Do it", icon: Star },
-  { n: 4, label: "Show QR", icon: QrCode },
-] as const;
-
-function JourneyRail({ current }: { current: number }) {
-  return (
-    <ol className="relative flex items-start">
-      <span
-        aria-hidden="true"
-        className="bg-border absolute top-[13px] right-[12.5%] left-[12.5%] h-px"
-      />
-      {JOURNEY.map(({ n, label, icon: Icon }) => {
-        const done = n < current;
-        const now = n === current;
-        return (
-          <li
-            key={n}
-            className="relative z-[1] flex w-0 flex-1 flex-col items-center gap-1"
-            aria-current={now ? "step" : undefined}
-          >
-            <span
-              className={cn(
-                "grid size-[26px] place-items-center rounded-full border transition",
-                now
-                  ? "bg-pink-gradient border-transparent text-white"
-                  : done
-                    ? "border-secondary/30 bg-secondary/10 text-secondary"
-                    : "border-border bg-background text-muted-foreground/50",
-              )}
-            >
-              {done ? (
-                <Check className="size-3.5" strokeWidth={3} />
-              ) : (
-                <Icon className="size-3.5" strokeWidth={2.25} />
-              )}
-            </span>
-            <span
-              className={cn(
-                "text-center text-[9.5px] leading-tight font-semibold",
-                now ? "text-foreground" : "text-muted-foreground",
-              )}
-            >
-              {label}
-            </span>
-          </li>
-        );
-      })}
-    </ol>
   );
 }
 

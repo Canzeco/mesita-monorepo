@@ -1,4 +1,4 @@
-import { Heart } from 'lucide-react-native';
+import { ArrowUpDown, Heart } from 'lucide-react-native';
 import { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
@@ -9,6 +9,8 @@ import {
   View,
 } from 'react-native';
 
+import { EmptyState } from '@/components/ui/EmptyState';
+import { requestHomeMode } from '@/components/swipe/home-mode-intent';
 import { useHomeDeck } from '@/hooks/use-home-deck';
 import type { Place } from '@/lib/api/places';
 import { enrichPlaceOverview } from '@/lib/place-overview';
@@ -20,19 +22,40 @@ import {
 } from '@/lib/saved-places';
 import { toast } from '@/lib/toast';
 
-import { FavoriteRow } from './FavoriteRow';
+import { FavoriteTile } from './FavoriteTile';
+
+// Favorites mode — mirror of web components/consumer/home/FavoritesList.tsx.
+//
+// Layout: a two-column photo grid, not a list of thumbnail rows. One saved
+// place used to fill about a quarter of the screen and leave the rest blank.
+// Tiles alone don't fix that (one card can't fill a phone screen no matter how
+// it's cropped), so the screen has a second job: "More like your saves", built
+// from the deck already in context. No extra fetches, and the way to get more
+// saves is to be shown more places.
+//
+// RN has no CSS grid, so rows are chunked into pairs — that yields exact halves
+// with a real gap, which percentage widths can't do without calc().
+
+/** Saves past this count earn a sort control; below it, it's chrome. */
+const SORT_CONTROL_MIN = 4;
+
+type Sort = 'recent' | 'open';
+
+function pairs<T>(items: T[]): T[][] {
+  const out: T[][] = [];
+  for (let i = 0; i < items.length; i += 2) out.push(items.slice(i, i + 2));
+  return out;
+}
 
 export function FavoritesTab() {
   const deckQuery = useHomeDeck();
-  const deckPlaces = useMemo(
-    () => deckQuery.data ?? [],
-    [deckQuery.data],
-  );
-  const { savedIds, setSaved } = useSavedPlaces();
+  const deckPlaces = useMemo(() => deckQuery.data ?? [], [deckQuery.data]);
+  const { savedIds, hydrated, setSaved } = useSavedPlaces();
   const [previewCatalog, setPreviewCatalog] = useState<Map<string, Place>>(
     () => new Map(),
   );
   const [pendingRemove, setPendingRemove] = useState<Place | null>(null);
+  const [sort, setSort] = useState<Sort>('recent');
 
   useEffect(() => {
     let cancelled = false;
@@ -51,14 +74,56 @@ export function FavoritesTab() {
     return merged;
   }, [deckPlaces, previewCatalog]);
 
+  // Newest first. The store appends on save, so insertion order is
+  // oldest-first — reversing puts the save you just made in the hero slot,
+  // which is where you look for it.
   const places = useMemo(
     () =>
       [...savedIds]
+        .reverse()
         .map((id) => catalog.get(id))
         .filter((v): v is Place => v != null)
         .map((v) => enrichPlaceOverview(v)),
     [savedIds, catalog],
   );
+
+  // Saved ids that resolved to neither the deck nor a preview. These used to
+  // vanish silently — you saved three places and the screen showed two with no
+  // explanation.
+  const unresolved = Math.max(0, savedIds.size - places.length);
+  const openNow = places.filter((p) => p.open_now === true).length;
+
+  const ordered = useMemo(() => {
+    if (sort === 'recent') return places;
+    // Open first, each group keeping its recency order (Array.sort is stable).
+    return [...places].sort(
+      (a, b) => Number(b.open_now === true) - Number(a.open_now === true),
+    );
+  }, [places, sort]);
+
+  // Candidates for "More like your saves": everything in the deck the consumer
+  // hasn't saved, ranked by overlap with what they DO save — same category
+  // counts double, same zone counts once.
+  const suggestions = useMemo(() => {
+    if (places.length === 0) return [] as Place[];
+    const categories = new Set(
+      places.map((p) => p.category).filter((v): v is string => v != null),
+    );
+    const zones = new Set(
+      places.map((p) => p.zone).filter((v): v is string => v != null),
+    );
+    return deckPlaces
+      .filter((p) => !savedIds.has(p.id))
+      .map((p) => ({
+        place: p,
+        hit:
+          (p.category && categories.has(p.category) ? 2 : 0) +
+          (p.zone && zones.has(p.zone) ? 1 : 0),
+      }))
+      .sort((a, b) => b.hit - a.hit)
+      .slice(0, 6)
+      .map((s) => enrichPlaceOverview(s.place));
+  }, [places, deckPlaces, savedIds]);
 
   const confirmRemove = (place: Place) => {
     setSaved(place.id, false);
@@ -73,7 +138,16 @@ export function FavoritesTab() {
     });
   };
 
-  if (deckQuery.isLoading && places.length === 0 && savedIds.size === 0) {
+  // Saving from the suggestions strip is one tap with no dialog — it's the
+  // non-destructive direction.
+  const saveSuggestion = (place: Place) => {
+    upsertSavedPlacePreview(place);
+    setSaved(place.id, true);
+  };
+
+  // savedIds is empty until AsyncStorage is read, so branching on length before
+  // `hydrated` flashes "nothing saved" at everyone who has saves.
+  if (!hydrated || (deckQuery.isLoading && places.length === 0)) {
     return (
       <View className="flex-1 items-center justify-center">
         <ActivityIndicator color="#fb2b7b" />
@@ -81,47 +155,96 @@ export function FavoritesTab() {
     );
   }
 
+  // Gate the zero state on what was SAVED, not on what resolved. A consumer
+  // with three saves and a failed deck resolves to zero places — telling them
+  // "nothing saved yet" would be the silent drop wearing a different hat. With
+  // saves on record we fall through and the notice explains the gap.
+  if (savedIds.size === 0) {
+    return (
+      <EmptyState
+        icon={Heart}
+        title="Nothing saved yet"
+        description="Swipe right on a place and it lands here — with its discount attached."
+        action={{
+          label: 'Start swiping',
+          onPress: () => requestHomeMode('swipe'),
+        }}
+      />
+    );
+  }
+
   return (
     <View className="flex-1">
-      <ScrollView
-        className="flex-1"
-        contentContainerClassName="px-4 pt-4 pb-6"
-      >
-        {places.length === 0 ? (
-          <View className="mt-6 items-center rounded-3xl border border-dashed border-border bg-card/60 p-8">
-            <View className="size-14 items-center justify-center rounded-2xl bg-primary/10">
-              <Heart color="#fb2b7b" size={28} />
-            </View>
-            <Text className="mt-3 font-display text-lg font-semibold text-foreground">
-              No saves yet
-            </Text>
-            <Text className="mt-1 text-center text-sm text-muted-foreground">
-              Swipe right on a place to save it for later.
+      <ScrollView className="flex-1" contentContainerClassName="px-4 pt-4 pb-6">
+        <View className="mb-3 flex-row items-center justify-between gap-2 px-1">
+          <Text className="text-xs font-semibold text-muted-foreground">
+            <Text className="text-foreground">{savedIds.size} saved</Text>
+            {openNow > 0 ? ` · ${openNow} open now` : ''}
+          </Text>
+          {places.length >= SORT_CONTROL_MIN ? (
+            <Pressable
+              onPress={() => setSort((s) => (s === 'recent' ? 'open' : 'recent'))}
+              accessibilityLabel="Change sort order"
+              className="flex-row items-center gap-1 rounded-full border border-border bg-card px-2.5 py-1"
+            >
+              <ArrowUpDown color="#775254" size={12} />
+              <Text className="text-[11px] font-semibold text-muted-foreground">
+                {sort === 'recent' ? 'Recent' : 'Open first'}
+              </Text>
+            </Pressable>
+          ) : null}
+        </View>
+
+        {unresolved > 0 ? (
+          <View className="mb-3 rounded-lg bg-muted px-3 py-2">
+            <Text className="text-[11.5px] leading-snug text-muted-foreground">
+              {unresolved} saved {unresolved === 1 ? 'place' : 'places'} couldn
+              &apos;t be loaded right now.
             </Text>
           </View>
-        ) : (
-          <>
-            <View className="mb-3 flex-row items-center justify-between px-1">
-              <Text className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
-                Saved
-              </Text>
-              <View className="rounded-full bg-primary/10 px-2 py-0.5">
-                <Text className="text-[10px] font-bold text-primary">
-                  {places.length}
-                </Text>
-              </View>
-            </View>
-            <View className="gap-2.5">
-              {places.map((place) => (
-                <FavoriteRow
+        ) : null}
+
+        <View className="gap-2.5">
+          {pairs(ordered).map((row) => (
+            <View key={row[0].id} className="flex-row gap-2.5">
+              {row.map((place) => (
+                <FavoriteTile
                   key={place.id}
                   place={place}
-                  onRemove={() => setPendingRemove(place)}
+                  saved
+                  onToggle={() => setPendingRemove(place)}
                 />
+              ))}
+              {row.length === 1 ? <View className="flex-1" /> : null}
+            </View>
+          ))}
+        </View>
+
+        {suggestions.length > 0 ? (
+          <>
+            <View className="mt-6 mb-3 flex-row items-center gap-3 px-1">
+              <Text className="font-display text-[15px] font-semibold tracking-tight text-foreground">
+                More like your saves
+              </Text>
+              <View className="h-px flex-1 bg-border" />
+            </View>
+            <View className="gap-2.5">
+              {pairs(suggestions).map((row) => (
+                <View key={row[0].id} className="flex-row gap-2.5">
+                  {row.map((place) => (
+                    <FavoriteTile
+                      key={place.id}
+                      place={place}
+                      saved={false}
+                      onToggle={() => saveSuggestion(place)}
+                    />
+                  ))}
+                  {row.length === 1 ? <View className="flex-1" /> : null}
+                </View>
               ))}
             </View>
           </>
-        )}
+        ) : null}
       </ScrollView>
 
       <Modal

@@ -59,6 +59,18 @@ function getSnapshot(): ReadonlySet<string> {
   return cache;
 }
 
+// Whether the AsyncStorage read has landed yet, as a subscribable value.
+//
+// Load-bearing for empty states: hydration is async, so the cache is empty on
+// first paint and any surface branching on `savedIds.size === 0` flashes its
+// "nothing saved" state to every consumer who actually HAS saves. Branch on
+// `hydrated` first and show a skeleton until it flips. hydrate() emit()s in its
+// finally block, so the false → true transition always re-renders.
+// Mirrors web lib/saved-places.ts.
+function getHydratedSnapshot(): boolean {
+  return hydrated;
+}
+
 function setPlaceSaved(placeId: string, saved: boolean): void {
   void hydrate().then(() => {
     const has = cache.has(placeId);
@@ -134,10 +146,17 @@ export function useSavedPlaces() {
   }, []);
 
   const savedIds = useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
+  // `false` until the AsyncStorage read lands. Gate empty states on this or
+  // they flash to everyone who has saves — see getHydratedSnapshot above.
+  const hydrated = useSyncExternalStore(
+    subscribe,
+    getHydratedSnapshot,
+    getHydratedSnapshot,
+  );
   const isSaved = useCallback((id: string) => savedIds.has(id), [savedIds]);
   const setSaved = useCallback(
     (id: string, saved: boolean) => setPlaceSaved(id, saved),
     [],
   );
-  return { savedIds, isSaved, setSaved };
+  return { savedIds, hydrated, isSaved, setSaved };
 }

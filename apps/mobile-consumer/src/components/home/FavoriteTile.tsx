@@ -5,23 +5,37 @@ import { Heart, Navigation } from 'lucide-react-native';
 import { Pressable, Text, View } from 'react-native';
 
 import { PromoChip } from '@/components/swipe/PromoChip';
-import { GRADIENTS, GRADIENT_DIAGONAL } from '@/constants/brand';
+import { COLORS, GRADIENTS, GRADIENT_DIAGONAL } from '@/constants/brand';
 import type { Place } from '@/lib/api/places';
 import { placePath } from '@/lib/consumer-route-contract';
 import { getOpeningStatusLabel } from '@/lib/place-status';
 import { firstInitial } from '@/lib/utils';
 
-export function FavoriteRow({
+// One place tile in the Favorites grid — mirror of web FavoriteTile.tsx.
+//
+// Replaces the old 64px-thumbnail row. A place is chosen by what the room looks
+// like, so the photo is the content: a tile gives it roughly 8x the area at
+// slightly better vertical density. Two columns is a DISCOVERY pattern — it
+// belongs here and on nothing in the rewards tab, where a ticket is scanned for
+// state, not browsed for looks.
+//
+// Every tile is the SAME size (Pato, 2026-08-10): a plain 2-column grid, no
+// hero span on odd counts. An earlier pass gave the first tile a full-width
+// 16:9 crop to avoid the trailing gap — that's out, the even rhythm wins.
+export function FavoriteTile({
   place,
-  onRemove,
+  saved,
+  onToggle,
 }: {
   place: Place;
-  onRemove: () => void;
+  /** Filled heart (in your saves) vs outline (a suggestion you can save). */
+  saved: boolean;
+  onToggle: () => void;
 }) {
   const router = useRouter();
   const photo = place.photos[0];
   // distance_km === 0 is the SwipeDeck's "couldn't calculate" placeholder —
-  // treat it as unknown here so the row never claims a fake 0 km.
+  // treat it as unknown here so the tile never claims a fake 0 km.
   const distanceLabel =
     place.distance_km != null && place.distance_km > 0
       ? `${place.distance_km} km`
@@ -31,13 +45,13 @@ export function FavoriteRow({
   const isOpen = place.open_now === true;
 
   return (
-    <View className="flex-row items-center gap-3 rounded-2xl border border-border bg-card p-3">
+    <View className="flex-1 overflow-hidden rounded-2xl border border-border bg-card">
       <Pressable
-        className="min-w-0 flex-1 flex-row items-center gap-3 active:opacity-90"
         onPress={() => router.push(placePath(place.slug || place.id))}
         accessibilityLabel={`Open ${place.name}`}
+        className="flex-1 active:opacity-90"
       >
-        <View className="size-16 overflow-hidden rounded-xl bg-muted">
+        <View className="w-full bg-muted" style={{ aspectRatio: 4 / 3 }}>
           {photo ? (
             <Image
               source={{ uri: photo }}
@@ -49,20 +63,18 @@ export function FavoriteRow({
               colors={[...GRADIENTS.pink]}
               start={GRADIENT_DIAGONAL.start}
               end={GRADIENT_DIAGONAL.end}
-              style={{
-                flex: 1,
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
+              style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}
             >
-              <Text className="font-display text-xl font-bold text-white/85">
+              <Text className="font-display text-3xl font-bold text-white/85">
                 {firstInitial(place.name)}
               </Text>
             </LinearGradient>
           )}
         </View>
 
-        <View className="min-w-0 flex-1">
+        {/* No fixed heights in here — at large Dynamic Type the tile grows a
+            row instead of clipping one. */}
+        <View className="min-w-0 flex-1 p-2.5">
           <Text
             className="font-display text-[15px] font-semibold tracking-tight text-foreground"
             numberOfLines={1}
@@ -71,9 +83,9 @@ export function FavoriteRow({
           </Text>
           {subtitle ? (
             <View className="mt-0.5 flex-row items-center gap-1">
-              <Navigation color="#775254" size={12} />
+              <Navigation color={COLORS.mutedForeground} size={12} />
               <Text
-                className="flex-1 text-xs text-muted-foreground"
+                className="flex-1 text-[11.5px] text-muted-foreground"
                 numberOfLines={1}
               >
                 {subtitle}
@@ -98,12 +110,25 @@ export function FavoriteRow({
         </View>
       </Pressable>
 
+      {/* 44pt hit area around a 32pt visual circle. The old row shipped a bare
+          size-8 target — under every touch guideline, and putting it over a
+          photo makes it worse. hitSlop buys the difference without growing the
+          artwork. */}
       <Pressable
-        onPress={onRemove}
-        accessibilityLabel={`Remove ${place.name} from saved`}
-        className="size-8 items-center justify-center rounded-full bg-rose-500/10 active:scale-90"
+        onPress={onToggle}
+        hitSlop={6}
+        accessibilityLabel={
+          saved ? `Remove ${place.name} from saved` : `Save ${place.name}`
+        }
+        className={`absolute right-2 top-2 size-8 items-center justify-center rounded-full active:scale-90 ${
+          saved ? 'bg-white/90' : 'bg-black/35'
+        }`}
       >
-        <Heart color="#f43f5e" fill="#f43f5e" size={16} />
+        <Heart
+          color={saved ? '#f43f5e' : '#ffffff'}
+          fill={saved ? '#f43f5e' : 'transparent'}
+          size={16}
+        />
       </Pressable>
     </View>
   );
