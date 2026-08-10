@@ -11,17 +11,14 @@ import {
   Ticket,
 } from "lucide-react";
 
+import { useEffect, useState } from "react";
+
+import { apiGetRewardQuote, type RewardQuote } from "@/lib/api/tickets";
 import { useConsumerClass } from "@/lib/class-context";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import type { PlaceDetail } from "@/lib/mock/place";
-import {
-  placeOffersMesitaRewards,
-  strategyForPromoMatrix,
-} from "@/lib/promo-rates";
-import {
-  REWARD_SEGMENT_BY_KEY,
-  segmentKeyForClass,
-} from "@/lib/reward-segments";
+import { placeOffersMesitaRewards } from "@/lib/promo-rates";
+import { useBrowserSupabase } from "@/lib/supabase/browser";
 
 import { Box, BoxLabel } from "./box";
 import { RewardStep, YourRewardsHere } from "./reward-matrix";
@@ -45,6 +42,31 @@ import { RewardStep, YourRewardsHere } from "./reward-matrix";
 export function RewardsBox({ place }: { place: PlaceDetail }) {
   const consumerClass = useConsumerClass();
   const classKey = consumerClass.key;
+  const supabase = useBrowserSupabase();
+
+  // The guest's real numbers for THIS place, from the engine. Must run before
+  // the offersRewards early return below — hooks can't be conditional.
+  const placeId = place.id;
+  const [quoteRes, setQuoteRes] = useState<{
+    placeId: string;
+    quote: RewardQuote;
+  } | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const res = await apiGetRewardQuote(supabase, placeId);
+        if (!cancelled) setQuoteRes({ placeId, quote: res.quote });
+      } catch {
+        // Non-fatal: the hero and matrix stay in their loading shape rather
+        // than quoting a rate the bill won't honor.
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [placeId, supabase]);
+  const quote = quoteRes?.placeId === placeId ? quoteRes.quote : null;
 
   const offersRewards = placeOffersMesitaRewards({
     listing_type: place.listing_type,
@@ -77,20 +99,28 @@ export function RewardsBox({ place }: { place: PlaceDetail }) {
     );
   }
 
-  // The place's strategy, recovered from its four rate columns (a membership
-  // writes them as one preset), then the guest's ceiling here: the best of
-  // their standing rate and every action they can perform (story only for
-  // Influencers, per segments v6 — the gate is upstream, not here).
-  const strategy = strategyForPromoMatrix(place.promo_matrix);
-  const mineRate =
-    REWARD_SEGMENT_BY_KEY[segmentKeyForClass(classKey)].rates[strategy];
-  const candidates = [
-    mineRate,
-    REWARD_SEGMENT_BY_KEY.welcome.rates[strategy],
-    REWARD_SEGMENT_BY_KEY.review.rates[strategy],
-    REWARD_SEGMENT_BY_KEY.story.rates[strategy],
-  ];
-  const upTo = Math.max(...candidates);
+  // The guest's ceiling here, from the ENGINE (MESITA-1017). This was
+  // Math.max() over the static ladder — best-of — but the v10 engine ADDS
+  // base + welcome + every earned bonus, so the max understated the hero by
+  // ~20 points (Standard/conservative advertised 25% against a real 45%).
+  // The most persuasive number on the page was the most wrong.
+  const upTo = quote
+    ? quote.additive
+      ? Math.min(
+          100,
+          quote.base +
+            quote.bonuses.welcome +
+            quote.bonuses.story +
+            quote.bonuses.google +
+            quote.bonuses.mesita,
+        )
+      : Math.max(
+          quote.base,
+          quote.bonuses.welcome,
+          quote.bonuses.story,
+          quote.bonuses.google,
+        )
+    : null;
 
   const capLabel =
     place.reward_cap_mxn != null && place.reward_cap_mxn > 0
@@ -104,7 +134,11 @@ export function RewardsBox({ place }: { place: PlaceDetail }) {
       {/* Hero — what you can get. Never why (MESITA-860). */}
       <div className="bg-pink-gradient shadow-glow rounded-xl p-4 text-white">
         <p className="font-display text-3xl leading-none font-semibold">
-          Up to {upTo}%
+          {upTo == null ? (
+            <span className="inline-block h-7 w-28 animate-pulse rounded bg-white/25 align-middle" />
+          ) : (
+            `Up to ${upTo}%`
+          )}
         </p>
         <p className="mt-1.5 text-xs leading-snug text-white/90">
           Discount for You — depending on your eligible bonuses
@@ -148,7 +182,7 @@ export function RewardsBox({ place }: { place: PlaceDetail }) {
       {/* The guest's own row of the big table. */}
       <div className="flex flex-col gap-3">
         <BoxLabel>Your rewards here</BoxLabel>
-        <YourRewardsHere strategy={strategy} classKey={classKey} />
+        <YourRewardsHere quote={quote} classKey={classKey} />
       </div>
 
       {/* CTAs — the ticket flow lives in the wallet (including the

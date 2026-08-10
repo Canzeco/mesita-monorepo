@@ -3,11 +3,7 @@ import { DoorOpen, Instagram, Star, User, UtensilsCrossed } from "lucide-react";
 
 import { classProperLabel } from "@/lib/consumer-data";
 import type { ClassKey } from "@/lib/consumer-data";
-import type { PlaceStrategy } from "@/lib/promo-rates";
-import {
-  REWARD_SEGMENT_BY_KEY,
-  segmentKeyForClass,
-} from "@/lib/reward-segments";
+import type { RewardQuote } from "@/lib/api/tickets";
 import { cn } from "@/lib/utils";
 
 // One numbered step in the "How it works" sequence. The badge carries the
@@ -72,51 +68,76 @@ type Row = {
   icon: LucideIcon;
   label: string;
   hint: string;
-  /** null = show ★ (the Mesita review, unpriced today); number = percent. */
+  /** null = show ★ (an action the operator hasn't priced); number = percent. */
   value: number | null;
+  /** Bonuses read as "+N%" increments; the standing class row is absolute. */
+  plus?: boolean;
   mine?: boolean;
 };
 
+// Values come from the ENGINE (consumer-web-get-reward-quote), never from the
+// static ladder: this used to render REWARD_SEGMENT_BY_KEY[...].rates[strategy]
+// — raw table rows without even the class step — while the bill paid v10
+// additive (MESITA-1017).
 export function YourRewardsHere({
-  strategy,
+  quote,
   classKey,
 }: {
-  strategy: PlaceStrategy;
+  quote: RewardQuote | null;
   classKey: ClassKey;
 }) {
-  const mine = REWARD_SEGMENT_BY_KEY[segmentKeyForClass(classKey)];
+  if (!quote) {
+    return (
+      <div className="flex flex-col gap-1.5">
+        {[0, 1, 2, 3].map((i) => (
+          <div key={i} className="bg-muted h-11 animate-pulse rounded-xl" />
+        ))}
+      </div>
+    );
+  }
 
+  const b = quote.bonuses;
   const rows: Row[] = [
     {
       icon: User,
       label: `${classProperLabel(classKey)} — always on`,
       hint: "Your standing discount, every visit",
-      value: mine.rates[strategy],
+      value: quote.base,
       mine: true,
     },
+    // Welcome only exists on a first visit; once it's spent, advertising it
+    // as a "+0%" row would be worse than not showing it.
+    ...(quote.isFirstVisit && b.welcome > 0
+      ? [
+          {
+            icon: DoorOpen,
+            label: "Welcome visit",
+            hint: "Automatic on your first visit here",
+            value: b.welcome,
+            plus: true,
+          },
+        ]
+      : []),
     {
       icon: UtensilsCrossed,
       label: "Mesita review",
       hint: "Rate it in the app — feeds its rating",
-      value: null,
+      value: b.mesita > 0 ? b.mesita : null,
+      plus: b.mesita > 0,
     },
     {
       icon: Instagram,
       label: "Instagram story",
       hint: "Tag the place — any connected Instagram",
-      value: REWARD_SEGMENT_BY_KEY.story.rates[strategy],
-    },
-    {
-      icon: DoorOpen,
-      label: "Welcome visit",
-      hint: "Automatic on your first visit here",
-      value: REWARD_SEGMENT_BY_KEY.welcome.rates[strategy],
+      value: b.story,
+      plus: true,
     },
     {
       icon: Star,
       label: "Google review",
       hint: "At the table, once per place",
-      value: REWARD_SEGMENT_BY_KEY.review.rates[strategy],
+      value: b.google,
+      plus: true,
     },
   ];
 
@@ -154,7 +175,7 @@ export function YourRewardsHere({
             </span>
           </span>
           <span className="font-display text-foreground/85 shrink-0 text-[15px] leading-none font-extrabold tabular-nums">
-            {r.value == null ? "★" : `${r.value}%`}
+            {r.value == null ? "★" : `${r.plus ? "+" : ""}${r.value}%`}
           </span>
         </div>
       ))}
