@@ -919,10 +919,21 @@ export function TicketScreen({
   );
 }
 
+// THE TICKET sits as an 80%-tall panel anchored to the bottom, not full-bleed
+// (Pato, 2026-08-10). It stays a real route — the @modal interceptor is dead
+// and stays dead (MESITA-857) — but a full-height page made the QR read as
+// "the app" rather than as one object you hold up and put away. Leaving the top
+// 20% as page ground gives it an edge, and the rounded top + card fill make the
+// gap read as a sheet rather than as content that failed to reach the top.
+//
+// Height is a percentage of the app frame, matching TicketWizard's SHEET_HEIGHT
+// language. Scroll lives inside the panel so the shape never grows.
 function Shell({ children }: { children: React.ReactNode }) {
   return (
-    <div className="scrollbar-hide flex h-full min-h-0 flex-1 flex-col gap-2.5 overflow-y-auto px-4 pt-2.5 pb-5">
-      {children}
+    <div className="flex h-full min-h-0 flex-1 flex-col justify-end">
+      <div className="border-border bg-card shadow-elev scrollbar-hide flex h-[80%] min-h-0 flex-col gap-2.5 overflow-y-auto rounded-t-3xl border-x border-t px-4 pt-3 pb-5">
+        {children}
+      </div>
     </div>
   );
 }
