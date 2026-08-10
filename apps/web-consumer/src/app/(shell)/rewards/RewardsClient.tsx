@@ -154,12 +154,19 @@ export function RewardsClient({ userId }: { userId: string }) {
             History hold tickets already made. The steps are the wallet's
             masthead, not a per-tab progress indicator: they say what this tab
             IS, and a header that appears and disappears as you switch tabs is
-            worse than one that simply stays. Do not re-gate this. */}
-        <PitchSteps />
+            worse than one that simply stays. Do not re-gate this.
+
+            Boxed as its own module so the header reads as two clean controls
+            stacked — the steps say what this surface is, the track below says
+            which slice you're looking at — instead of loose marks floating over
+            a band. */}
+        <div className="border-border bg-card rounded-xl border px-2 py-2.5">
+          <PitchSteps />
+        </div>
 
         {/* Slim muted track (MESITA-908): ~32px paint, ≥44px hit via vertical
             slop so the control stays calm without sacrificing touch targets. */}
-        <div className="-mb-1.5 pt-2.5 pb-1.5">
+        <div className="-mb-1.5 pt-2 pb-1.5">
           <div className="bg-muted grid grid-cols-3 gap-0.5 rounded-[10px] p-[3px]">
             {(
               [
