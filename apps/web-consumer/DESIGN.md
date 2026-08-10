@@ -34,8 +34,8 @@ Mobile (`apps/mobile-consumer`) must **look very alike** — same IA, tokens, br
 | **Tab shell** | BottomNav + page content | Five tabs: Home / Search / Rewards / Reservations / Profile (`/me`) |
 | **Home swipe** | Full-bleed place cards | Photo-first; info layer overlays media carefully |
 | **Search** | Map + results panel | Results modal **height fits content** (header + rows); `max-height` for scroll — never a fixed tall empty panel |
-| **Favorites** | Two-column photo tile grid + "More like your saves" | Tiles, not thumbnail rows — the photo IS the content. **Every tile the same size**, 4:3, no hero span on odd counts (Pato, 2026-08-10 — the even rhythm wins over closing the trailing gap). The suggestions section exists so the screen is full at 1 save, not just at 5 |
-| **Rewards wallet** | `shrink-0` header (`PitchSteps` on New + the tab switcher) over **one column** of ticket rows | Steps show on **New only** (MESITA-1018) — they describe how a ticket gets made, and Pending/History hold ones already made. Header never scrolls: an orientation control that scrolls away has stopped orienting. Tickets are scanned for state and QR at arm's length — never gridded |
+| **Favorites** | Two-column photo tile grid + "More like your saves" | Tiles, not thumbnail rows — the photo IS the content. **Every tile the same size**, 3:4 portrait, no hero span on odd counts (Pato, 2026-08-10 — the even rhythm wins over closing the trailing gap). The suggestions section exists so the screen is full at 1 save, not just at 5 |
+| **Rewards wallet** | `shrink-0` header (`PitchSteps` + the tab switcher) over **one column** of ticket rows | The four steps are the wallet's **masthead — always visible, on every tab, never gated** (Pato, 2026-08-10; supersedes MESITA-1018's New-only scoping). Header never scrolls: an orientation control that scrolls away has stopped orienting. Tickets are scanned for state and QR at arm's length — never gridded |
 | **Route modals** | `@modal` via `SlideOverShell` / `BottomSheetShell` from **segment `layout.tsx`** | Never mount route modals from `page.tsx` |
 | **Local overlays** | `LocalSheet` / `LocalDialog` | Never bare `fixed inset-0` / ad-hoc `absolute` overlays |
 | **Profile** | Flat `/me` | Class & Settings open as modals, not sub-routes |
@@ -88,7 +88,7 @@ Don’t invent a parallel type scale in PRs — extend these roles.
 | **Gift / share cards** | `share/GiftCardDeck.tsx` | Differentiated gradients per audience; gloss overlay OK |
 | **Reservation / ticket rows** | list components | Interactive rows — not decorative card stacks |
 | **ComingSoonModal** | parked tabs/modes | Tab stays visible; tap opens modal (don’t hide IA) |
-| **FavoriteTile** | `components/consumer/home/FavoriteTile.tsx` | Place tile in a photo grid (Favorites + its suggestions). Uniform 4:3 — no size variants. Discovery surfaces only, never for tickets |
+| **FavoriteTile** | `components/consumer/home/FavoriteTile.tsx` | Place tile in a photo grid (Favorites + its suggestions). Uniform 3:4 portrait — no size variants. Discovery surfaces only, never for tickets |
 | **JourneyRail** | `components/consumer/rewards/JourneyRail.tsx` | The four ticket steps as **live progress** inside the wizard sheet. Import it if another surface ever needs the same rail — re-implementing it is what produced two disagreeing counters before MESITA-1015. The wallet's New tab shows `PitchSteps` instead: a pitch, not a progress bar |
 | **EmptyState** | `@/components/shared` | Zero states — centres in its space, carries one action. No dashed decorative box |
 | **Spinner / Skeleton** | `@/components/shared` | Loading — never invent a third spinner. Skeletons mirror the destination's shape (grid → grid) |

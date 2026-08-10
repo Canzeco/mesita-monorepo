@@ -241,10 +241,10 @@ function SavedGridSkeleton() {
     <div className="px-4 pt-4 pb-6">
       <Skeleton className="mb-3 ml-1 h-3.5 w-24" />
       <div className="grid grid-cols-1 gap-2.5 min-[360px]:grid-cols-2">
-        <Skeleton className="aspect-[4/3] w-full rounded-2xl" />
-        <Skeleton className="aspect-[4/3] w-full rounded-2xl" />
-        <Skeleton className="aspect-[4/3] w-full rounded-2xl" />
-        <Skeleton className="aspect-[4/3] w-full rounded-2xl" />
+        <Skeleton className="aspect-[3/4] w-full rounded-2xl" />
+        <Skeleton className="aspect-[3/4] w-full rounded-2xl" />
+        <Skeleton className="aspect-[3/4] w-full rounded-2xl" />
+        <Skeleton className="aspect-[3/4] w-full rounded-2xl" />
       </div>
     </div>
   );

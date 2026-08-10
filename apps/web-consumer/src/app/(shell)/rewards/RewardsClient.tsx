@@ -147,15 +147,19 @@ export function RewardsClient({ userId }: { userId: string }) {
           body: the steps and the tab switcher are what tell you where you are,
           and an orientation control that scrolls away has stopped orienting. */}
       <div className="border-border bg-background/90 shrink-0 border-b px-4 pt-3 pb-2.5 backdrop-blur-xl">
-        {/* New only (MESITA-1018). The rail describes how a ticket gets MADE —
-            Pending holds tickets already generated and History holds finished
-            ones, so showing it over those tabs claims a journey the guest has
-            already walked. */}
-        {tab === "new" ? <PitchSteps /> : null}
+        {/* ALWAYS. On every tab, no gate.
+            decision: Pato, 2026-08-10 — "always leave the 4 steps, never
+            remove them, those are the header." This supersedes MESITA-1018,
+            which had scoped them to New on the reasoning that Pending and
+            History hold tickets already made. The steps are the wallet's
+            masthead, not a per-tab progress indicator: they say what this tab
+            IS, and a header that appears and disappears as you switch tabs is
+            worse than one that simply stays. Do not re-gate this. */}
+        <PitchSteps />
 
         {/* Slim muted track (MESITA-908): ~32px paint, ≥44px hit via vertical
             slop so the control stays calm without sacrificing touch targets. */}
-        <div className={cn("-mb-1.5 pb-1.5", tab === "new" && "pt-2.5")}>
+        <div className="-mb-1.5 pt-2.5 pb-1.5">
           <div className="bg-muted grid grid-cols-3 gap-0.5 rounded-[10px] p-[3px]">
             {(
               [
