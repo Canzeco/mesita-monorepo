@@ -9,7 +9,10 @@ import {
 } from "react";
 import { useRouter } from "next/navigation";
 import {
+  MapPin,
   QrCode,
+  Sparkles,
+  Star,
   TicketX,
 } from "lucide-react";
 
@@ -151,6 +154,7 @@ export function RewardsClient({ userId }: { userId: string }) {
 
   return (
     <div className="scrollbar-hide flex h-full min-h-0 flex-1 flex-col gap-3.5 overflow-y-auto px-4 pt-4 pb-6">
+      <PitchSteps />
 
       {justPaid ? (
         <SavingsReveal
@@ -291,6 +295,42 @@ export function RewardsClient({ userId }: { userId: string }) {
   );
 }
 
+// Connected glyph rail (MESITA-908): 28px circular nodes on one hairline —
+// not fat 40px tiles. Number is a primary micro-caption above the label.
+const PITCH_STEPS = [
+  { icon: MapPin, label: "Pick place" },
+  { icon: Sparkles, label: "Pick reward" },
+  { icon: Star, label: "Do it" },
+  { icon: QrCode, label: "Show QR" },
+] as const;
+
+function PitchSteps() {
+  return (
+    <ol className="relative flex items-start px-1 pt-0.5 pb-0.5">
+      {/* Continuous hairline through node centers (14px into the 28px circle). */}
+      <span
+        aria-hidden="true"
+        className="bg-border absolute top-[21px] right-[12.5%] left-[12.5%] h-px"
+      />
+      {PITCH_STEPS.map(({ icon: Icon, label }, i) => (
+        <li
+          key={label}
+          className="relative z-[1] flex w-0 flex-1 flex-col items-center gap-1"
+        >
+          <span className="text-primary text-[9px] leading-none font-bold tabular-nums">
+            {String(i + 1).padStart(2, "0")}
+          </span>
+          <span className="border-secondary/25 bg-background text-secondary grid size-7 place-items-center rounded-full border">
+            <Icon className="size-3.5" strokeWidth={2.25} />
+          </span>
+          <span className="text-foreground text-center text-[10.5px] leading-tight font-semibold">
+            {label}
+          </span>
+        </li>
+      ))}
+    </ol>
+  );
+}
 
 function ErrorBox({ retry }: { retry: () => void }) {
   return (
