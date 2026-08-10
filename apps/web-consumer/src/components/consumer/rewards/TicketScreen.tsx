@@ -49,16 +49,17 @@ import {
   apiReportTicket,
   apiSubmitReview,
   apiSubmitStory,
+  apiGetRewardQuote,
   apiSubmitTicketTotal,
   checkUrlForCode,
   type ConsumerTicketRow,
   type ReportReason,
+  type RewardQuote,
 } from "@/lib/api/tickets";
 import { CONSUMER_ROUTES, ticketPath } from "@/lib/consumer-route-contract";
 import { useConsumerClass } from "@/lib/class-context";
 import { classProperLabel } from "@/lib/consumer-data";
 import { strategyForPlaceRow } from "@/lib/promo-rates";
-import { baseRateForClass, rateForSegment } from "@/lib/reward-segments";
 import { useConsumerTickets } from "@/lib/hooks/useConsumerTickets";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { cn } from "@/lib/utils";
@@ -119,6 +120,36 @@ export function TicketScreen({
       null,
     [tickets.active, tickets.history, ticketId],
   );
+
+  // The pass quotes the ENGINE's number, not the static v6 ladder (MESITA-1013
+  // / 1014). Before this, everything up to the bill showed a best-of rung from
+  // reward-segments.ts while the bill paid base + welcome + each earned bonus —
+  // so the screen the waiter scans was the one showing the wrong rate.
+  //
+  // Stamped with the place it describes and read back through a match, so a
+  // quote can never be attributed to a different ticket's place.
+  const quotePlaceId = ticket?.place?.id ?? null;
+  const [quoteRes, setQuoteRes] = useState<{
+    placeId: string;
+    quote: RewardQuote;
+  } | null>(null);
+  useEffect(() => {
+    if (quotePlaceId === null) return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const res = await apiGetRewardQuote(supabase, quotePlaceId);
+        if (!cancelled) setQuoteRes({ placeId: quotePlaceId, quote: res.quote });
+      } catch {
+        // Non-fatal: the headline stays hidden rather than showing a number
+        // the bill won't honor. The billed truth still renders once settled.
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [quotePlaceId, supabase]);
+  const quote = quoteRes?.placeId === quotePlaceId ? quoteRes.quote : null;
 
   const scanned = ticket?.first_scanned_at != null;
   const [pulse, setPulse] = useState(false);
@@ -287,9 +318,22 @@ export function TicketScreen({
   const photo = ticket.place?.photos?.[0] ?? null;
   const category = ticket.place?.category ?? null;
 
+  // Strategy still comes from the place's rate columns: those carry strategy
+  // IDENTITY, not price. Keeping it synchronous means the structural gates
+  // below (priced venue, QR lock) can't flicker while the quote is in flight.
   const strategy = strategyForPlaceRow(ticket.place);
   const priced = strategy !== "zero";
-  const base = baseRateForClass(classKey, strategy);
+
+  // PRICES come from the engine. 0 until the quote lands — the headline is
+  // guarded on `> 0`, so a loading pass shows no number rather than a wrong
+  // one. Welcome is automatic, so it belongs in the floor, not in a task.
+  const clamp = (n: number) => Math.max(0, Math.min(100, n));
+  const additive = quote?.additive ?? false;
+  const base = !quote
+    ? 0
+    : additive
+      ? clamp(quote.base + quote.bonuses.welcome)
+      : quote.base;
 
   // Pick-one (D6): the ONE gating action is the one that isn't
   // 'not_required'. Story wins the tie for legacy wantsStory tickets;
@@ -306,8 +350,19 @@ export function TicketScreen({
   const chosenStatus =
     chosenTask === "story" ? ticket.story_status : ticket.review_status;
   const chosenState = taskStateFor(chosenStatus);
+  const chosenBonus = !quote
+    ? 0
+    : chosenTask === "story"
+      ? quote.bonuses.story
+      : quote.bonuses.google;
+  // Additive stacks on the floor; a legacy best-of engine pays the single best
+  // rung, so stacking there would over-promise.
   const chosenRate =
-    chosenTask && priced ? rateForSegment(chosenTask, classKey, strategy) : 0;
+    !quote || !chosenTask || !priced
+      ? 0
+      : additive
+        ? clamp(base + chosenBonus)
+        : clamp(Math.max(base, chosenBonus));
 
   // The headline number + its honesty clause. Billed truth wins; a rejected
   // proof falls back to the class base (D7); everything else quotes the
@@ -323,7 +378,9 @@ export function TicketScreen({
     : !priced
       ? ""
       : chosenTask === null
-        ? `your ${classProperLabel(classKey)} base — no task needed`
+        ? additive && (quote?.bonuses.welcome ?? 0) > 0
+          ? `your ${classProperLabel(classKey)} base + Welcome visit`
+          : `your ${classProperLabel(classKey)} base — no task needed`
         : chosenState === "done"
           ? `with your ${actionNoun} ✓`
           : chosenState === "rejected"
