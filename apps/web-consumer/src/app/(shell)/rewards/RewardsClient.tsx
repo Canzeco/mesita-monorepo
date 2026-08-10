@@ -1,20 +1,8 @@
 "use client";
 
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import {
-  MapPin,
-  QrCode,
-  Sparkles,
-  Star,
-  TicketX,
-} from "lucide-react";
+import { MapPin, QrCode, Sparkles, Star, TicketX } from "lucide-react";
 
 import { PlacePickList } from "@/components/consumer/rewards/PlacePickList";
 import { SavingsReveal } from "@/components/consumer/rewards/SavingsReveal";
@@ -34,6 +22,7 @@ import {
 import type { Place } from "@/lib/api/places";
 import { ticketPath } from "@/lib/consumer-route-contract";
 import { useConsumerTickets } from "@/lib/hooks/useConsumerTickets";
+import { EmptyState } from "@/components/shared";
 import { strategyForPlaceRow } from "@/lib/promo-rates";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { cn } from "@/lib/utils";
@@ -153,147 +142,147 @@ export function RewardsClient({ userId }: { userId: string }) {
   }, [tickets.status, tickets.active, tickets.history]);
 
   return (
-    <div className="scrollbar-hide flex h-full min-h-0 flex-1 flex-col gap-3.5 overflow-y-auto px-4 pt-4 pb-6">
-      {/* New only. The rail describes how a ticket gets MADE — Pending holds
-          tickets already generated and History holds finished ones, so showing
-          it over those tabs claims a journey the guest has already walked. */}
-      {tab === "new" ? <PitchSteps /> : null}
+    <div className="flex h-full min-h-0 flex-1 flex-col">
+      {/* Page-level orientation lives in a shrink-0 header, OUTSIDE the scroll
+          body: the steps and the tab switcher are what tell you where you are,
+          and an orientation control that scrolls away has stopped orienting. */}
+      <div className="border-border bg-background/90 shrink-0 border-b px-4 pt-3 pb-2.5 backdrop-blur-xl">
+        {/* New only (MESITA-1018). The rail describes how a ticket gets MADE —
+            Pending holds tickets already generated and History holds finished
+            ones, so showing it over those tabs claims a journey the guest has
+            already walked. */}
+        {tab === "new" ? <PitchSteps /> : null}
 
-      {justPaid ? (
-        <SavingsReveal
-          placeName={justPaid.place?.name ?? "the place"}
-          savedCents={justPaid.discount_cents ?? 0}
-          onDone={() => setJustPaid(null)}
-        />
-      ) : null}
-
-      {/* Slim muted track (MESITA-908): ~32px paint, ≥44px hit via vertical
-          slop so the control stays calm without sacrificing touch targets. */}
-      <div className="-my-1.5 py-1.5">
-        <div className="bg-muted grid grid-cols-3 gap-0.5 rounded-[10px] p-[3px]">
-          {(
-            [
-              { id: "new", label: "New" },
-              { id: "pending", label: "Pending" },
-              { id: "history", label: "History" },
-            ] as const
-          ).map((t) => (
-            <button
-              key={t.id}
-              type="button"
-              onClick={() => setTabChoice(t.id)}
-              aria-pressed={tab === t.id}
-              className={cn(
-                "flex min-h-8 items-center justify-center gap-1 rounded-[8px] px-1 text-center text-[12px] font-semibold transition",
-                tab === t.id
-                  ? "bg-foreground text-background"
-                  : "text-muted-foreground hover:text-foreground",
-              )}
-            >
-              {t.label}
-              {t.id === "pending" && tickets.active.length > 0 ? (
-                <span
-                  className={cn(
-                    "rounded-full px-1.5 text-[9px] font-bold leading-none",
-                    tab === "pending"
-                      ? "bg-background/25 text-background"
-                      : "bg-primary/10 text-primary",
-                  )}
-                >
-                  {tickets.active.length}
-                </span>
-              ) : null}
-            </button>
-          ))}
+        {/* Slim muted track (MESITA-908): ~32px paint, ≥44px hit via vertical
+            slop so the control stays calm without sacrificing touch targets. */}
+        <div className={cn("-mb-1.5 pb-1.5", tab === "new" && "pt-2.5")}>
+          <div className="bg-muted grid grid-cols-3 gap-0.5 rounded-[10px] p-[3px]">
+            {(
+              [
+                { id: "new", label: "New" },
+                { id: "pending", label: "Pending" },
+                { id: "history", label: "History" },
+              ] as const
+            ).map((t) => (
+              <button
+                key={t.id}
+                type="button"
+                onClick={() => setTabChoice(t.id)}
+                aria-pressed={tab === t.id}
+                className={cn(
+                  "flex min-h-8 items-center justify-center gap-1 rounded-[8px] px-1 text-center text-[12px] font-semibold transition",
+                  tab === t.id
+                    ? "bg-foreground text-background"
+                    : "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                {t.label}
+                {t.id === "pending" && tickets.active.length > 0 ? (
+                  <span
+                    className={cn(
+                      "rounded-full px-1.5 text-[9px] leading-none font-bold",
+                      tab === "pending"
+                        ? "bg-background/25 text-background"
+                        : "bg-primary/10 text-primary",
+                    )}
+                  >
+                    {tickets.active.length}
+                  </span>
+                ) : null}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
-      {tab === "new" ? (
-        <>
-          {startError ? (
-            <p className="bg-destructive/10 text-destructive rounded-lg px-3 py-2 text-[12.5px]">
-              {startError}
-            </p>
-          ) : null}
-          <PlacePickList
-            activePlaceIds={activePlaceIds}
-            busyPlaceId={startingId}
-            onPick={onPick}
+      <div className="scrollbar-hide flex min-h-0 flex-1 flex-col gap-3.5 overflow-y-auto px-4 pt-4 pb-6">
+        {justPaid ? (
+          <SavingsReveal
+            placeName={justPaid.place?.name ?? "the place"}
+            savedCents={justPaid.discount_cents ?? 0}
+            onDone={() => setJustPaid(null)}
           />
-        </>
-      ) : tab === "pending" ? (
-        <div className="flex flex-col gap-2.5">
-          {tickets.status === "loading" ? (
-            <TicketCardSkeleton />
-          ) : tickets.status === "error" ? (
-            <ErrorBox retry={tickets.retry} />
-          ) : tickets.active.length === 0 ? (
-            <div className="surface-card flex flex-col items-center gap-3 rounded-2xl px-6 py-10 text-center">
-              <span className="bg-primary/10 text-primary grid size-12 place-items-center rounded-2xl">
-                <QrCode className="size-6" />
-              </span>
-              <p className="text-foreground text-[14px] font-semibold">
-                No live ticket
-              </p>
-              <p className="text-muted-foreground max-w-[280px] text-[12.5px] leading-relaxed">
-                Pick the place you&apos;re visiting in New and your ticket opens
-                with its QR.
-              </p>
-              <button
-                type="button"
-                onClick={() => setTabChoice("new")}
-                className="bg-pink-gradient shadow-glow mt-1 rounded-xl px-5 py-2.5 text-[13px] font-semibold text-white transition active:scale-[0.99]"
-              >
-                Browse places
-              </button>
-            </div>
-          ) : (
-            tickets.active.map((t) => (
-              <TicketRow
-                key={t.id}
-                ticket={t}
-                onOpen={() => openTicket(t.id)}
-              />
-            ))
-          )}
-        </div>
-      ) : (
-        <div className="flex flex-col gap-2.5">
-          {tickets.status === "loading" ? (
-            <TicketCardSkeleton />
-          ) : tickets.status === "error" ? (
-            <ErrorBox retry={tickets.retry} />
-          ) : tickets.history.length === 0 ? (
-            <div className="flex flex-col items-center gap-2 px-2 py-8 text-center">
-              <span className="bg-muted text-muted-foreground grid size-11 place-items-center rounded-full">
-                <TicketX className="size-5" />
-              </span>
-              <p className="text-muted-foreground text-[12.5px]">
-                Your closed visits will land here.
-              </p>
-            </div>
-          ) : (
-            tickets.history.map((t) => (
-              <TicketRow
-                key={t.id}
-                ticket={t}
-                onOpen={() => openTicket(t.id)}
-              />
-            ))
-          )}
-        </div>
-      )}
+        ) : null}
 
-      {/* The 2-step generation ceremony — Pick reward → Do it (D5–D11). */}
-      <TicketWizard
-        place={wizardPlace}
-        activeTickets={tickets.active}
-        onClose={() => setWizardPlace(null)}
-        onCreated={() => {
-          setTabChoice("pending");
-          void tickets.refresh();
-        }}
-      />
+        {tab === "new" ? (
+          <>
+            {startError ? (
+              <p className="bg-destructive/10 text-destructive rounded-lg px-3 py-2 text-[12.5px]">
+                {startError}
+              </p>
+            ) : null}
+            <PlacePickList
+              activePlaceIds={activePlaceIds}
+              busyPlaceId={startingId}
+              onPick={onPick}
+            />
+          </>
+        ) : tab === "pending" ? (
+          // Tickets stay ONE column, always. A ticket is scanned for its state
+          // and its QR at arm's length in a dark venue — halving its width to
+          // match the Favorites grid would shrink the only thing that has to be
+          // legible. The two-column grid is a discovery pattern; /rewards is
+          // single-column by design, not by omission.
+          <div className="flex min-h-0 flex-1 flex-col gap-2.5">
+            {tickets.status === "loading" ? (
+              <TicketCardSkeleton />
+            ) : tickets.status === "error" ? (
+              <ErrorBox retry={tickets.retry} />
+            ) : tickets.active.length === 0 ? (
+              <EmptyState
+                icon={QrCode}
+                title="No live ticket"
+                description="Pick the place you're visiting in New and your ticket opens with its QR."
+                action={{
+                  label: "Browse places",
+                  onClick: () => setTabChoice("new"),
+                }}
+              />
+            ) : (
+              tickets.active.map((t) => (
+                <TicketRow
+                  key={t.id}
+                  ticket={t}
+                  onOpen={() => openTicket(t.id)}
+                />
+              ))
+            )}
+          </div>
+        ) : (
+          <div className="flex min-h-0 flex-1 flex-col gap-2.5">
+            {tickets.status === "loading" ? (
+              <TicketCardSkeleton />
+            ) : tickets.status === "error" ? (
+              <ErrorBox retry={tickets.retry} />
+            ) : tickets.history.length === 0 ? (
+              <EmptyState
+                icon={TicketX}
+                title="No closed visits yet"
+                description="Once you use a ticket, it lands here with what you saved."
+              />
+            ) : (
+              tickets.history.map((t) => (
+                <TicketRow
+                  key={t.id}
+                  ticket={t}
+                  onOpen={() => openTicket(t.id)}
+                />
+              ))
+            )}
+          </div>
+        )}
+
+        {/* The 2-step generation ceremony — Pick reward → Do it (D5–D11). */}
+        <TicketWizard
+          place={wizardPlace}
+          activeTickets={tickets.active}
+          onClose={() => setWizardPlace(null)}
+          onCreated={() => {
+            setTabChoice("pending");
+            void tickets.refresh();
+          }}
+        />
+      </div>
     </div>
   );
 }

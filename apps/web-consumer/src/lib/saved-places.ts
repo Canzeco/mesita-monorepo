@@ -82,6 +82,26 @@ function getServerSnapshot(): ReadonlySet<string> {
 
 const EMPTY: ReadonlySet<string> = new Set();
 
+// Whether the localStorage read has happened yet, as a subscribable value.
+//
+// Load-bearing for empty states: because getServerSnapshot() is an empty set
+// BY DESIGN (SSR and first client paint must agree), any surface that branches
+// on `savedIds.size === 0` paints its "nothing saved" state for one frame to
+// every consumer who actually has saves. Branch on `hydrated` first and show a
+// skeleton until it flips.
+//
+// The flip is driven by subscribe(): React re-reads every snapshot right after
+// subscribing, and subscribe() calls ensureHydrated() before returning — so
+// the false → true transition always produces exactly one re-render.
+function getHydratedSnapshot(): boolean {
+  ensureHydrated();
+  return hydrated;
+}
+
+function getHydratedServerSnapshot(): boolean {
+  return false;
+}
+
 function readPreviewStorage<T extends { id: string }>(): Map<string, T> {
   if (typeof window === "undefined") return new Map();
   try {
@@ -208,11 +228,18 @@ export function useSavedPlaces() {
     getSnapshot,
     getServerSnapshot,
   );
+  // `false` until the localStorage read lands. Gate empty states on this or
+  // they flash to everyone who has saves — see getHydratedSnapshot above.
+  const hydrated = useSyncExternalStore(
+    subscribe,
+    getHydratedSnapshot,
+    getHydratedServerSnapshot,
+  );
   const isSaved = useCallback((id: string) => savedIds.has(id), [savedIds]);
   const toggle = useCallback((id: string) => toggleSavedPlace(id), []);
   const setSaved = useCallback(
     (id: string, saved: boolean) => setPlaceSaved(id, saved),
     [],
   );
-  return { savedIds, isSaved, toggle, setSaved };
+  return { savedIds, hydrated, isSaved, toggle, setSaved };
 }

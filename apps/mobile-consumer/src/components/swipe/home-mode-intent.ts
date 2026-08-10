@@ -11,7 +11,10 @@
 //   useEffect(() => subscribeHomeMode((m) => m === 'favorites' && setMode('favorites')), []);
 // which completes the "View" jump. Everything else here is self-contained.
 
-type HomeMode = 'favorites';
+// Both directions now: the Swipe toast asks for 'favorites', and the Favorites
+// empty state asks for 'swipe' ("Start swiping" needs somewhere to send you —
+// an empty state that names the gesture without offering it is a dead end).
+type HomeMode = 'favorites' | 'swipe';
 
 const listeners = new Set<(mode: HomeMode) => void>();
 

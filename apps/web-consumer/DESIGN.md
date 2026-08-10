@@ -34,6 +34,8 @@ Mobile (`apps/mobile-consumer`) must **look very alike** — same IA, tokens, br
 | **Tab shell** | BottomNav + page content | Five tabs: Home / Search / Rewards / Reservations / Profile (`/me`) |
 | **Home swipe** | Full-bleed place cards | Photo-first; info layer overlays media carefully |
 | **Search** | Map + results panel | Results modal **height fits content** (header + rows); `max-height` for scroll — never a fixed tall empty panel |
+| **Favorites** | Two-column photo tile grid + "More like your saves" | Tiles, not thumbnail rows — the photo IS the content. **Every tile the same size**, 4:3, no hero span on odd counts (Pato, 2026-08-10 — the even rhythm wins over closing the trailing gap). The suggestions section exists so the screen is full at 1 save, not just at 5 |
+| **Rewards wallet** | `shrink-0` header (`PitchSteps` on New + the tab switcher) over **one column** of ticket rows | Steps show on **New only** (MESITA-1018) — they describe how a ticket gets made, and Pending/History hold ones already made. Header never scrolls: an orientation control that scrolls away has stopped orienting. Tickets are scanned for state and QR at arm's length — never gridded |
 | **Route modals** | `@modal` via `SlideOverShell` / `BottomSheetShell` from **segment `layout.tsx`** | Never mount route modals from `page.tsx` |
 | **Local overlays** | `LocalSheet` / `LocalDialog` | Never bare `fixed inset-0` / ad-hoc `absolute` overlays |
 | **Profile** | Flat `/me` | Class & Settings open as modals, not sub-routes |
@@ -86,7 +88,10 @@ Don’t invent a parallel type scale in PRs — extend these roles.
 | **Gift / share cards** | `share/GiftCardDeck.tsx` | Differentiated gradients per audience; gloss overlay OK |
 | **Reservation / ticket rows** | list components | Interactive rows — not decorative card stacks |
 | **ComingSoonModal** | parked tabs/modes | Tab stays visible; tap opens modal (don’t hide IA) |
-| **Spinner / Skeleton** | `@/components/shared` | Loading — never invent a third spinner |
+| **FavoriteTile** | `components/consumer/home/FavoriteTile.tsx` | Place tile in a photo grid (Favorites + its suggestions). Uniform 4:3 — no size variants. Discovery surfaces only, never for tickets |
+| **JourneyRail** | `components/consumer/rewards/JourneyRail.tsx` | The four ticket steps as **live progress** inside the wizard sheet. Import it if another surface ever needs the same rail — re-implementing it is what produced two disagreeing counters before MESITA-1015. The wallet's New tab shows `PitchSteps` instead: a pitch, not a progress bar |
+| **EmptyState** | `@/components/shared` | Zero states — centres in its space, carries one action. No dashed decorative box |
+| **Spinner / Skeleton** | `@/components/shared` | Loading — never invent a third spinner. Skeletons mirror the destination's shape (grid → grid) |
 | **Toaster** | `components/consumer/Toaster.tsx` | Transient feedback at z-140 |
 
 **Icon circles:** tinted soft backgrounds (`bg-*-500/10` + matching text) for feature glyphs — differentiate siblings; don’t wash the whole canvas.
@@ -108,8 +113,9 @@ Don’t add parallax, multi-layer shadows, or perpetual glow loops on content su
 
 | State | Expected UI |
 | --- | --- |
-| Loading | `Spinner` / `Skeleton` / `DeckSkeleton` |
-| Empty | Calm muted copy in-place (or parked ComingSoon) |
+| Loading | `Spinner` / `Skeleton` / `DeckSkeleton`. **Anything reading `useSavedPlaces` must gate on `hydrated`** — the store is empty until localStorage is read, so branching on count first flashes the empty state at everyone who has saves |
+| Empty | `EmptyState` — centred in the space, one action. Never a box pinned to the top of a tall container |
+| Partial | State it. A list that silently drops rows it couldn't resolve reads as data loss; count them and say so |
 | Error | Shared error note / toast — don’t fork one-off banners |
 | Parked surface | Visible IA + `ComingSoonModal` |
 | Destructive | Explicit confirm sheet (`DeleteAccountSheet` pattern) |
@@ -130,12 +136,21 @@ Don’t add parallax, multi-layer shadows, or perpetual glow loops on content su
 - `bg-zinc-900` app canvases; dark-mode defaults; purple glow themes.
 - Mount route modals from `page.tsx`.
 - Bare `fixed inset-0` overlays bypassing LocalSheet/Dialog.
-- Fixed tall empty search results panels.
+- Fixed tall empty panels on **any** surface — a screen whose content fills a
+  quarter of its height reads as broken, not restrained. If a layout can't fill
+  the space at the count users actually have, the screen needs a second job, not
+  a bigger card. (Search results were the first case; Favorites was the second.)
+- Two-column grids outside discovery. Tickets and task queues stay one column.
 - Delete parked building blocks without checking park intent.
 - Hand-edit `AGENTS.md` (regenerate via `deno task sync-rules`).
 
 ## 10. Debt / known gaps
 
-- No shared EmptyState primitive yet — muted in-place copy is the norm.
+- `PromoChip` still resolves its rate from the legacy per-class place columns
+  rather than the v10 engine (MESITA-1019). It renders on the swipe card, the
+  Favorites tile and the place profile — don't add a fourth reader of those
+  columns.
+- Mobile has no ticket wizard, so `JourneyRail` has no twin there yet; the
+  rewards flows are structurally divergent between web and mobile.
 - Some on-media chrome still uses raw `bg-black/60` (intentional for photo contrast); don’t spread that to page canvases.
 - Ask AI (`/home/ai`) and Social remain parked behind redirects / ComingSoon until explicitly un-parked.
