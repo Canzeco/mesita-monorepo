@@ -1,9 +1,9 @@
 "use client";
 
 // THE TICKET (MESITA-857 · 908 · 886 · plan ticket-flow-20260809) — the whole
-// ticket lifecycle in one 80%-tall bottom panel, organised as a FOUR-STEP
-// MODAL (Pato, 2026-08-11: "so you open a modal — the modal has multiple
-// steps: 1. select rewards/tasks, 2. do tasks, 3. show qr, 4. results page"):
+// ticket lifecycle on ONE FULL PAGE, organised as a FOUR-STEP MODAL (Pato,
+// 2026-08-11: "so you open a modal — the modal has multiple steps: 1. select
+// rewards/tasks, 2. do tasks, 3. show qr, 4. results page"):
 //
 //   chrome (back · place · status) → rail → step body → footer
 //   1 Reward  · pick the rung, with the engine's live numbers
@@ -1197,21 +1197,25 @@ function RateVisitRow({ done, onOpen }: { done: boolean; onOpen: () => void }) {
   );
 }
 
-// THE TICKET sits as an 80%-tall panel anchored to the bottom, not full-bleed
-// (Pato, 2026-08-10). It stays a real route — the @modal interceptor is dead
-// and stays dead (MESITA-857) — but a full-height page made the QR read as
-// "the app" rather than as one object you hold up and put away. Leaving the top
-// 20% as page ground gives it an edge, and the rounded top + card fill make the
-// gap read as a sheet rather than as content that failed to reach the top.
+// THE TICKET is a FULL PAGE (Pato, 2026-08-11: "better make the modal full
+// page, not 80% tall"). This reverses MESITA-1022's 80% bottom panel, which
+// reserved the top 20% as page ground so the ticket would read as a sheet you
+// hold up and put away. With four steps inside it (MESITA-1026) that reasoning
+// inverted: the panel had to carry chrome + rail + a scrolling step body + a
+// pinned footer in 80% of the frame, so step 1's chips and step 3's QR both
+// scrolled inside a box that was itself floating. It is a real route — the
+// @modal interceptor is dead and stays dead (MESITA-857) — so it gets to be a
+// real page.
 //
-// Height is a percentage of the app frame. Scroll lives in the STEP BODY, not
-// here, so the chrome, the rail and the footer stay put while a step changes.
+// Ground is bg-background, like every other consumer surface: the step body's
+// rows are `bg-card`, and a card fill here would erase their edges.
+//
+// Scroll lives in the STEP BODY, not here, so the chrome, the rail and the
+// footer stay put while a step changes.
 function Shell({ children }: { children: React.ReactNode }) {
   return (
-    <div className="flex h-full min-h-0 flex-1 flex-col justify-end">
-      <div className="border-border bg-card shadow-elev flex h-[80%] min-h-0 flex-col rounded-t-3xl border-x border-t px-4 pt-3 pb-4">
-        {children}
-      </div>
+    <div className="flex h-full min-h-0 flex-1 flex-col px-4 pt-3 pb-3">
+      {children}
     </div>
   );
 }
