@@ -1,13 +1,35 @@
 "use client";
 
-// THE TICKET (MESITA-857 · 908 · 886 · plan ticket-flow-20260809) — one
-// full-screen object for the whole lifecycle, redesigned around the pass:
-//   Chrome row (back · place · status) → THE PASS (guest + rate lockup +
-//   QR/locked plate + stub) → chosen task row (pre-scan only) → Rate your
-//   visit (★, post-scan only, D12) → Results (closed only) → Report.
-// Pick-one (D6): exactly ONE action gates — the one whose status isn't
-// 'not_required'. Rejected proof drops the headline to the class base (D7).
-// Arriving with ?born=1 plays the one-time pass entrance, then strips it.
+// THE TICKET (MESITA-857 · 908 · 886 · plan ticket-flow-20260809) — the whole
+// ticket lifecycle in one 80%-tall bottom panel, organised as a FOUR-STEP
+// MODAL (Pato, 2026-08-11: "so you open a modal — the modal has multiple
+// steps: 1. select rewards/tasks, 2. do tasks, 3. show qr, 4. results page"):
+//
+//   chrome (back · place · status) → rail → step body → footer
+//   1 Reward  · pick the rung, with the engine's live numbers
+//   2 Do it   · the chosen proof, self-attested
+//   3 Show QR · THE PASS — guest + rate lockup + QR + stub
+//   4 Results · what the visit paid, the ★, the bill capture
+//
+// These steps used to live in TWO containers: the TicketWizard sheet on
+// /rewards owned "pick reward" and "do it", this route owned the QR and the
+// results. One flow, two shapes, two step counts. The wizard is DELETED —
+// /rewards is now a bare list of places, tapping one creates the ticket and
+// lands here, and everything after "which place?" happens in this panel.
+//
+// THE RATE IS NO LONGER A CREATE-TIME BOUNDARY. The ticket is created at
+// "base", and consumer-web-submit-review / -submit-story accept any OPEN
+// ticket — they never required a 'pending' status — with
+// _shared/ticket-reprice bumping the rate upward when a task lands late. So
+// the QR is live from the first frame and a task is pure upside. That also
+// kills the dead end the old boundary created: a guest who didn't want to
+// leave a review was stuck holding a QR locked behind one.
+//
+// The step-1 pick is therefore a LOCAL preference (useStoredString) until a
+// proof lands — nothing on a ticket records "intends to review". Only the
+// ticket's own status can lock the QR, so a pick can never gate anything;
+// tickets created before this change (review/story 'pending') keep their lock
+// and land straight on step 2.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
@@ -23,6 +45,7 @@ import {
   Loader2,
   Lock,
   PartyPopper,
+  Sparkles,
   Star,
   Store,
   UtensilsCrossed,
@@ -35,11 +58,10 @@ import {
   TicketReviewForm,
   type TicketReviewDraft,
 } from "@/components/consumer/TicketReviewForm";
-import {
-  GoogleReviewSheet,
-  googleMapsSearchUrl,
-} from "@/components/consumer/rewards/GoogleReviewSheet";
-import { InstagramStorySheet } from "@/components/consumer/rewards/InstagramStorySheet";
+import { BigRateLockup } from "@/components/consumer/rewards/BigRateLockup";
+import { JourneyRail } from "@/components/consumer/rewards/JourneyRail";
+import { RewardChip } from "@/components/consumer/rewards/RewardChip";
+import { TaskProof, type TaskKind } from "@/components/consumer/rewards/TaskProof";
 import { submitTicketReview } from "@/lib/api/pay";
 import { formatCurrency } from "@/lib/api/profile";
 import {
@@ -52,6 +74,7 @@ import {
   apiGetRewardQuote,
   apiSubmitTicketTotal,
   checkUrlForCode,
+  type ChosenReward,
   type ConsumerTicketRow,
   type ReportReason,
   type RewardQuote,
@@ -59,6 +82,7 @@ import {
 import { CONSUMER_ROUTES, ticketPath } from "@/lib/consumer-route-contract";
 import { useConsumerClass } from "@/lib/class-context";
 import { classProperLabel } from "@/lib/consumer-data";
+import { useStoredString } from "@/lib/local-store";
 import { strategyForPlaceRow } from "@/lib/promo-rates";
 import { useConsumerTickets } from "@/lib/hooks/useConsumerTickets";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
@@ -95,7 +119,13 @@ function taskStateFor(v: string | null | undefined): TaskState {
   return "done";
 }
 
-type TaskSheet = "mesita" | "google" | "instagram" | "report" | null;
+/** Where the guest's step-1 pick lives until a proof makes it real. */
+function pickStorageKey(ticketId: string): string {
+  return `mesita.ticket.reward.${ticketId}`;
+}
+
+type Step = 1 | 2 | 3 | 4;
+type TaskSheet = "mesita" | "report" | null;
 
 export function TicketScreen({
   userId,
@@ -151,6 +181,17 @@ export function TicketScreen({
   }, [quotePlaceId, supabase]);
   const quote = quoteRes?.placeId === quotePlaceId ? quoteRes.quote : null;
 
+  // Step 1's pick. useStoredString keeps the hydration render on the SSR
+  // snapshot, so no setState-in-effect and no mismatch.
+  const [storedPick, setStoredPick] = useStoredString(
+    pickStorageKey(ticketId),
+    "",
+  );
+  // Chip selection while the guest is still deciding — writing straight to the
+  // store would advance the derived step out from under the tap.
+  const [draftPick, setDraftPick] = useState<ChosenReward | null>(null);
+  const [stepChoice, setStepChoice] = useState<Step | null>(null);
+
   const scanned = ticket?.first_scanned_at != null;
   const [pulse, setPulse] = useState(false);
   const wasScannedRef = useRef(scanned);
@@ -163,8 +204,9 @@ export function TicketScreen({
     wasScannedRef.current = scanned;
   }, [scanned]);
 
-  // ?born=1 — the wizard handoff (D5): play the pass entrance once, then
-  // strip the flag so reloads and back-navigation stay calm.
+  // ?born=1 — the handoff from the place list: play the pass entrance the
+  // first time the QR renders, then strip the flag so reloads and
+  // back-navigation stay calm.
   const [born, setBorn] = useState(false);
   useEffect(() => {
     if (!window.location.search.includes("born=1")) return;
@@ -278,9 +320,11 @@ export function TicketScreen({
   if (tickets.status === "loading" && !ticket) {
     return (
       <Shell>
-        <div className="bg-muted h-12 animate-pulse rounded-[18px]" />
-        <div className="bg-muted h-72 animate-pulse rounded-[28px]" />
-        <div className="bg-muted h-12 animate-pulse rounded-2xl" />
+        <div className="flex flex-col gap-2.5">
+          <div className="bg-muted h-12 animate-pulse rounded-[18px]" />
+          <div className="bg-muted h-72 animate-pulse rounded-[28px]" />
+          <div className="bg-muted h-12 animate-pulse rounded-2xl" />
+        </div>
       </Shell>
     );
   }
@@ -329,40 +373,48 @@ export function TicketScreen({
   // one. Welcome is automatic, so it belongs in the floor, not in a task.
   const clamp = (n: number) => Math.max(0, Math.min(100, n));
   const additive = quote?.additive ?? false;
-  const base = !quote
-    ? 0
-    : additive
-      ? clamp(quote.base + quote.bonuses.welcome)
-      : quote.base;
+  const welcomeBonus = quote?.bonuses.welcome ?? 0;
+  const base = !quote ? 0 : additive ? clamp(quote.base + welcomeBonus) : quote.base;
+  // A legacy best-of engine pays the single best rung, so stacking there would
+  // over-promise — the one direction a discount quote must never err.
+  const withBonus = (bonus: number) =>
+    !quote ? 0 : additive ? clamp(base + bonus) : clamp(Math.max(base, bonus));
+  const storyRate = withBonus(quote?.bonuses.story ?? 0);
+  const reviewRate = withBonus(quote?.bonuses.google ?? 0);
 
-  // Pick-one (D6): the ONE gating action is the one that isn't
-  // 'not_required'. Story wins the tie for legacy wantsStory tickets;
-  // "base" tickets (and legacy no-story tickets) have none.
+  // What the TICKET records beats what the guest merely picked. Only a
+  // persisted task can gate the QR (D6, pick-one); a local pick is an
+  // intention and gates nothing.
   const storyOnTicket =
     ticket.story_status != null && ticket.story_status !== "not_required";
   const reviewOnTicket =
     ticket.review_status != null && ticket.review_status !== "not_required";
-  const chosenTask: "story" | "review" | null = storyOnTicket
+  const persistedTask: TaskKind | null = storyOnTicket
     ? "story"
     : reviewOnTicket
       ? "review"
       : null;
-  const chosenStatus =
-    chosenTask === "story" ? ticket.story_status : ticket.review_status;
-  const chosenState = taskStateFor(chosenStatus);
+  const persistedState: TaskState | null = persistedTask
+    ? taskStateFor(
+        persistedTask === "story" ? ticket.story_status : ticket.review_status,
+      )
+    : null;
+
+  const localPick: ChosenReward | null =
+    storedPick === "base" || storedPick === "story" || storedPick === "review"
+      ? storedPick
+      : null;
+  const pick: ChosenReward | null = persistedTask ?? localPick;
+  const chosenTask: TaskKind | null =
+    pick === "story" || pick === "review" ? pick : null;
+  const chosenState: TaskState = persistedState ?? "todo";
   const chosenBonus = !quote
     ? 0
     : chosenTask === "story"
       ? quote.bonuses.story
       : quote.bonuses.google;
-  // Additive stacks on the floor; a legacy best-of engine pays the single best
-  // rung, so stacking there would over-promise.
   const chosenRate =
-    !quote || !chosenTask || !priced
-      ? 0
-      : additive
-        ? clamp(base + chosenBonus)
-        : clamp(Math.max(base, chosenBonus));
+    !quote || !chosenTask || !priced ? 0 : withBonus(chosenBonus);
 
   // The headline number + its honesty clause. Billed truth wins; a rejected
   // proof falls back to the class base (D7); everything else quotes the
@@ -378,7 +430,7 @@ export function TicketScreen({
     : !priced
       ? ""
       : chosenTask === null
-        ? additive && (quote?.bonuses.welcome ?? 0) > 0
+        ? additive && welcomeBonus > 0
           ? `your ${classProperLabel(classKey)} base + Welcome visit`
           : `your ${classProperLabel(classKey)} base — no task needed`
         : chosenState === "done"
@@ -387,8 +439,10 @@ export function TicketScreen({
             ? `${actionNoun} not accepted — your base holds`
             : `unlocks with your ${actionNoun}`;
 
-  // QR gate (MESITA-886, recomputed for pick-one): only the chosen action
-  // gates, only while open and unscanned, only on priced venues.
+  // QR gate (MESITA-886, recomputed for pick-one): only a task the TICKET
+  // carries gates, only while open and unscanned, only on priced venues.
+  // Tickets created at "base" — every ticket made after 2026-08-11 — have no
+  // gate at all, which is the point: the QR works before any task.
   const scannable =
     live &&
     Boolean(ticket.check_code) &&
@@ -397,24 +451,69 @@ export function TicketScreen({
     ticket.status === "open" &&
     !scanned &&
     priced &&
-    chosenTask !== null &&
-    chosenState !== "done";
+    persistedTask !== null &&
+    persistedState !== "done";
   const showPassCard = live && (qrLocked || scannable);
-  const showTaskRow = live && chosenTask !== null && chosenState !== "done";
   // ★ never gates, never pays — it belongs to the visit, not the unlock
   // (D12): post-scan and completed visits only.
   const showMesitaStar = !cancelled && (scanned || saved);
+  // Upside still on the table: the guest is holding a working QR but hasn't
+  // done a task that would pay more. Only REACHABLE rungs count — a story
+  // rate quoted to someone with no connected Instagram is a promise the
+  // submit EF will refuse, and over-promising a discount is the one direction
+  // this screen must never err.
+  const igConnected = Boolean(igHandle?.trim());
+  const reachableStoryRate =
+    igConnected && quote?.storyEligible ? storyRate : 0;
+  const bestReachableRate = Math.max(reviewRate, reachableStoryRate, chosenRate);
+  const upsideLeft =
+    live && priced && chosenState !== "done" && bestReachableRate > base;
 
   const showIgHandle =
     (classKey === "influencer" || storyOnTicket) && Boolean(igHandle);
-  const mapsUrl = googleMapsSearchUrl(placeName, ticket.place?.address);
   const stubCode = ticket.check_code
     ? `#${ticket.check_code.slice(0, 4).toUpperCase()}`
     : "";
 
+  // ── Step machine ───────────────────────────────────────────────────────
+  // Where the ticket naturally IS, overridden by wherever the guest tapped.
+  // A closed ticket is pinned to Results: there is nothing else left to do.
+  const naturalStep: Step = closed
+    ? 4
+    : !priced || pick === "base"
+      ? 3
+      : chosenTask === null
+        ? 1
+        : chosenState === "done"
+          ? 3
+          : 2;
+  let step: Step = closed ? 4 : (stepChoice ?? naturalStep);
+  if (step === 2 && chosenTask === null) step = 1;
+  if (step === 1 && !priced) step = 3;
+
+  const stepReachable = (n: number): boolean =>
+    n === 4 ? closed : n === 1 ? live && priced : n === 2 ? live && chosenTask !== null : live;
+
+  const selectedPick: ChosenReward = draftPick ?? pick ?? "review";
+  const selectedRate =
+    selectedPick === "story"
+      ? storyRate
+      : selectedPick === "review"
+        ? reviewRate
+        : base;
+  const pickLocked = persistedTask !== null;
+  const deltaLabel = (bonus: number) =>
+    additive && bonus > 0 ? `+${bonus}% on top` : undefined;
+
+  const confirmChosen = chosenTask === "story" ? confirmStory : confirmGoogle;
+
+  const goToStep = (n: number) => {
+    setStepChoice(n as Step);
+  };
+
   return (
     <Shell>
-      {/* 1 · Chrome row — place identity as chrome, not a card stack. */}
+      {/* Chrome row — place identity as chrome, not a card stack. */}
       <div className="flex shrink-0 items-center gap-2.5 px-0.5 py-1">
         <button
           type="button"
@@ -459,361 +558,445 @@ export function TicketScreen({
         </span>
       </div>
 
-      {/* 2 · THE PASS — the hero. Guest identity + rate lockup + QR. */}
-      {showPassCard ? (
-        <section
-          className={cn(
-            "shrink-0 overflow-hidden rounded-[24px] px-4 pt-3.5 pb-3.5 text-white shadow-[0_16px_36px_-20px_rgba(255,77,109,0.55)]",
-            passGradient(classKey),
-            pulse && "animate-verified-pulse",
-            born && "animate-pass-born",
-          )}
-        >
-          <div className="flex items-center justify-between gap-3">
-            <span className="flex min-w-0 items-center gap-2">
-              <span className="size-6 shrink-0 overflow-hidden rounded-full ring-1 ring-white/40">
-                {avatarUrl ? (
-                  <Image
-                    src={avatarUrl}
-                    alt=""
-                    width={24}
-                    height={24}
-                    className="size-6 object-cover"
-                  />
-                ) : (
-                  <DefaultAvatar className="size-6" />
-                )}
-              </span>
-              <span className="min-w-0">
-                <span className="block truncate text-[11.5px] leading-tight font-bold">
-                  {guestName ?? "Mesita guest"}
-                </span>
-                {showIgHandle ? (
-                  <span className="block truncate text-[9px] leading-tight text-white/80">
-                    @{igHandle!.replace(/^@/, "")}
-                  </span>
-                ) : null}
-              </span>
-            </span>
-            <span className="shrink-0 rounded-full bg-white/22 px-2 py-0.5 text-[9px] font-extrabold tracking-widest uppercase">
-              {classProperLabel(classKey)}
-            </span>
-          </div>
+      {/* The rail — this ticket's real progress, tappable wherever it's
+          reachable so changing your mind is one tap, not a back-out. */}
+      <div className="border-border shrink-0 border-b pt-1 pb-2.5">
+        <JourneyRail
+          current={step}
+          onSelect={goToStep}
+          isReachable={stepReachable}
+        />
+      </div>
 
-          <div aria-live="polite" className="mt-2 text-center">
-            {priced && headlinePercent > 0 ? (
-              <>
-                <p className="font-display text-[clamp(30px,9vw,38px)] leading-none font-extrabold tracking-tight">
-                  {headlinePercent}% off
-                </p>
-                {headlineSuffix ? (
-                  <p className="mt-1 text-[11px] leading-snug font-semibold text-white/90">
-                    {headlineSuffix}
-                  </p>
-                ) : null}
-              </>
-            ) : (
-              <p className="mx-auto max-w-[30ch] text-[12px] leading-snug font-semibold text-white/90">
-                Your discount is set by the place and applied at the table.
-              </p>
-            )}
-          </div>
-
-          {qrLocked ? (
-            <>
-              {/* Locked plate — same footprint as the QR so unlock is a swap. */}
-              <div className="mx-auto mt-2.5 grid aspect-square w-full max-w-[min(170px,48vw)] place-items-center rounded-2xl border-2 border-dashed border-white/45 bg-white/12">
-                <Lock className="size-8 text-white/90" />
-              </div>
-              <p
-                aria-live="polite"
-                className="mx-auto mt-2 max-w-[34ch] text-center text-[11px] leading-snug text-white/90"
-              >
-                Do your {actionNoun} below to unlock your QR.
-              </p>
-            </>
+      {/* Step body — the only part that scrolls, so the panel never changes
+          shape as you move between steps. */}
+      <div className="scrollbar-hide flex min-h-0 flex-1 flex-col gap-2.5 overflow-y-auto pt-3">
+        {step === 1 ? (
+          quote === null ? (
+            <QuoteLoading />
           ) : (
             <>
-              <div className="mx-auto mt-2.5 w-full max-w-[min(170px,48vw)] rounded-2xl bg-white p-2.5 shadow-[0_12px_30px_-12px_rgba(120,20,40,0.5)]">
-                <QRCodeSVG
-                  value={checkUrlForCode(ticket.check_code!)}
-                  size={170}
-                  className="h-auto w-full"
-                  bgColor="#ffffff"
-                  fgColor="#2b1233"
-                  level="M"
-                  marginSize={0}
+              <BigRateLockup
+                caption={`Your discount at ${placeName}`}
+                percent={selectedRate}
+                suffix={
+                  selectedPick === "review"
+                    ? "— with a Google review"
+                    : selectedPick === "story"
+                      ? "— with a tagged story"
+                      : additive && welcomeBonus > 0
+                        ? `— your ${classProperLabel(classKey)} base + Welcome visit`
+                        : `— your ${classProperLabel(classKey)} base, no task`
+                }
+              />
+              {additive ? (
+                <IncludedStrip
+                  classLabel={classProperLabel(classKey)}
+                  base={quote.base}
+                  welcome={welcomeBonus}
+                />
+              ) : null}
+              <div className="flex flex-col gap-2">
+                <RewardChip
+                  label={
+                    additive && welcomeBonus > 0
+                      ? "Base + Welcome — no task"
+                      : "Just my base"
+                  }
+                  percent={base}
+                  selected={selectedPick === "base"}
+                  disabled={pickLocked}
+                  onSelect={() => setDraftPick("base")}
+                />
+                <RewardChip
+                  icon={<Instagram className="size-4" />}
+                  label="Post a tagged story"
+                  subLabel={
+                    !igConnected
+                      ? "+ Connect Instagram"
+                      : !quote.storyEligible
+                        ? "Not offered here"
+                        : deltaLabel(quote.bonuses.story)
+                  }
+                  percent={storyRate}
+                  selected={selectedPick === "story"}
+                  disabled={pickLocked || !quote.storyEligible || !igConnected}
+                  onSelect={() => setDraftPick("story")}
+                />
+                <RewardChip
+                  icon={<Star className="size-4" />}
+                  label="Leave a Google review"
+                  subLabel={deltaLabel(quote.bonuses.google)}
+                  percent={reviewRate}
+                  selected={selectedPick === "review"}
+                  disabled={pickLocked}
+                  onSelect={() => setDraftPick("review")}
                 />
               </div>
-              <p
-                aria-live="polite"
-                className="mx-auto mt-2 flex max-w-[34ch] items-center justify-center gap-1.5 text-center text-[11px] leading-snug text-white/90"
+              <p className="text-muted-foreground/80 text-center text-[10.5px] leading-snug">
+                {pickLocked
+                  ? "This ticket already carries its task — finish it to unlock the higher rate."
+                  : additive
+                    ? "Your base and Welcome are already counted above — a task adds on top of them. Your QR works either way."
+                    : "One action, one discount — you always keep your single best."}
+              </p>
+            </>
+          )
+        ) : step === 2 && chosenTask ? (
+          <TaskProof
+            kind={chosenTask}
+            placeName={placeName}
+            placeAddress={ticket.place?.address}
+            rate={chosenRate}
+            rejected={chosenState === "rejected"}
+            onConfirm={confirmChosen}
+            onDone={() => goToStep(3)}
+            onSkip={() => goToStep(3)}
+          />
+        ) : step === 3 ? (
+          <>
+            {showPassCard ? (
+              <section
+                className={cn(
+                  "shrink-0 overflow-hidden rounded-[24px] px-4 pt-3.5 pb-3.5 text-white shadow-[0_16px_36px_-20px_rgba(255,77,109,0.55)]",
+                  passGradient(classKey),
+                  pulse && "animate-verified-pulse",
+                  born && "animate-pass-born",
+                )}
               >
-                {scanned && ticket.status === "open" ? (
+                <div className="flex items-center justify-between gap-3">
+                  <span className="flex min-w-0 items-center gap-2">
+                    <span className="size-6 shrink-0 overflow-hidden rounded-full ring-1 ring-white/40">
+                      {avatarUrl ? (
+                        <Image
+                          src={avatarUrl}
+                          alt=""
+                          width={24}
+                          height={24}
+                          className="size-6 object-cover"
+                        />
+                      ) : (
+                        <DefaultAvatar className="size-6" />
+                      )}
+                    </span>
+                    <span className="min-w-0">
+                      <span className="block truncate text-[11.5px] leading-tight font-bold">
+                        {guestName ?? "Mesita guest"}
+                      </span>
+                      {showIgHandle ? (
+                        <span className="block truncate text-[9px] leading-tight text-white/80">
+                          @{igHandle!.replace(/^@/, "")}
+                        </span>
+                      ) : null}
+                    </span>
+                  </span>
+                  <span className="shrink-0 rounded-full bg-white/22 px-2 py-0.5 text-[9px] font-extrabold tracking-widest uppercase">
+                    {classProperLabel(classKey)}
+                  </span>
+                </div>
+
+                <div aria-live="polite" className="mt-2 text-center">
+                  {priced && headlinePercent > 0 ? (
+                    <>
+                      <p className="font-display text-[clamp(30px,9vw,38px)] leading-none font-extrabold tracking-tight">
+                        {headlinePercent}% off
+                      </p>
+                      {headlineSuffix ? (
+                        <p className="mt-1 text-[11px] leading-snug font-semibold text-white/90">
+                          {headlineSuffix}
+                        </p>
+                      ) : null}
+                    </>
+                  ) : (
+                    <p className="mx-auto max-w-[30ch] text-[12px] leading-snug font-semibold text-white/90">
+                      Your discount is set by the place and applied at the table.
+                    </p>
+                  )}
+                </div>
+
+                {qrLocked ? (
                   <>
-                    <BadgeCheck className="size-3.5 shrink-0" /> Verified by{" "}
-                    {placeName}
+                    {/* Locked plate — same footprint as the QR so unlock is a
+                        swap. Only pre-2026-08-11 tickets can land here. */}
+                    <div className="mx-auto mt-2.5 grid aspect-square w-full max-w-[min(170px,48vw)] place-items-center rounded-2xl border-2 border-dashed border-white/45 bg-white/12">
+                      <Lock className="size-8 text-white/90" />
+                    </div>
+                    <p
+                      aria-live="polite"
+                      className="mx-auto mt-2 max-w-[34ch] text-center text-[11px] leading-snug text-white/90"
+                    >
+                      Do your {actionNoun} to unlock your QR.
+                    </p>
                   </>
                 ) : (
-                  statusLine(ticket)
-                )}
-              </p>
-              {billed ? (
-                <div className="mt-2.5 rounded-xl bg-white/18 px-3 py-2 text-center">
-                  <p className="text-[9px] font-bold tracking-[0.14em] uppercase opacity-90">
-                    {ticket.discount_percent ?? 0}% off applied
-                  </p>
-                  <p className="font-display mt-0.5 text-[20px] leading-none font-bold">
-                    {formatCurrency(
-                      Math.max(
-                        0,
-                        (ticket.total_cents ?? 0) -
-                          (ticket.discount_cents ?? 0),
-                      ),
-                    )}
-                  </p>
-                  <p className="mt-0.5 text-[10.5px] opacity-90">
-                    to pay at the table
-                    {ticket.discount_cents
-                      ? ` — you save ${formatCurrency(ticket.discount_cents)}`
-                      : ""}
-                  </p>
-                </div>
-              ) : null}
-            </>
-          )}
-
-          {/* Stub row — perforation + the small print. */}
-          <div className="mt-3 border-t-2 border-dashed border-white/35 pt-2">
-            <div className="flex items-center justify-between gap-3 text-[9.5px] font-semibold text-white/90">
-              <span>Ticket {stubCode}</span>
-              <span>
-                {chosenTask
-                  ? chosenState === "done"
-                    ? `${actionNoun === "story" ? "Story" : "Review"} ✓`
-                    : chosenState === "rejected"
-                      ? `${actionNoun === "story" ? "Story" : "Review"} not accepted`
-                      : `${actionNoun === "story" ? "Story" : "Review"} pending`
-                  : "No task — base rate"}
-              </span>
-            </div>
-          </div>
-        </section>
-      ) : null}
-
-      {/* 3 · The chosen task — exactly one, pre-scan, never ★ (D12). */}
-      {showTaskRow ? (
-        <section className="border-border bg-card shrink-0 overflow-hidden rounded-2xl border px-2.5 py-2">
-          <button
-            type="button"
-            onClick={() =>
-              openSheet(chosenTask === "story" ? "instagram" : "google")
-            }
-            className="bg-muted/40 flex min-h-11 w-full items-center gap-2.5 rounded-xl px-2.5 py-2 text-left transition active:scale-[0.99]"
-          >
-            <span
-              className={cn(
-                "grid size-8 shrink-0 place-items-center rounded-lg",
-                chosenState === "rejected"
-                  ? "bg-destructive/10 text-destructive"
-                  : "bg-secondary/10 text-secondary",
-              )}
-            >
-              {chosenTask === "story" ? (
-                <Instagram className="size-4" />
-              ) : (
-                <Star className="size-4" />
-              )}
-            </span>
-            <span className="min-w-0 flex-1">
-              <span className="text-foreground block text-[13px] leading-tight font-bold">
-                {chosenTask === "story"
-                  ? "Post your tagged story"
-                  : "Leave your Google review"}
-              </span>
-              <span className="text-muted-foreground mt-0.5 block text-[11px] leading-snug">
-                {chosenState === "rejected"
-                  ? `Not accepted — you still keep your ${base}% base. Try again?`
-                  : chosenState === "checking"
-                    ? "Sent — being checked"
-                    : "Order first — do this while your food comes."}
-              </span>
-            </span>
-            <span className="font-display text-foreground/80 shrink-0 text-[15px] leading-none font-extrabold tabular-nums">
-              {priced && chosenRate > 0 ? `${chosenRate}%` : ""}
-            </span>
-          </button>
-        </section>
-      ) : null}
-
-      {/* 4 · Rate your visit (★) — post-scan / completed only (D12). */}
-      {showMesitaStar ? (
-        <section className="border-border bg-card shrink-0 overflow-hidden rounded-2xl border px-2.5 py-2">
-          <button
-            type="button"
-            disabled={reviewDone}
-            onClick={() => {
-              setReviewError(null);
-              openSheet("mesita");
-            }}
-            className={cn(
-              "flex min-h-11 w-full items-center gap-2.5 rounded-xl px-2.5 py-2 text-left transition",
-              reviewDone ? "bg-emerald-500/8" : "bg-muted/40 active:scale-[0.99]",
-            )}
-          >
-            <span
-              className={cn(
-                "grid size-8 shrink-0 place-items-center rounded-lg",
-                reviewDone
-                  ? "bg-emerald-500/15 text-emerald-700"
-                  : "bg-secondary/10 text-secondary",
-              )}
-            >
-              {reviewDone ? (
-                <Check className="size-4" strokeWidth={3} />
-              ) : (
-                <UtensilsCrossed className="size-4" />
-              )}
-            </span>
-            <span className="min-w-0 flex-1">
-              <span
-                className={cn(
-                  "block text-[13px] leading-tight font-bold",
-                  reviewDone ? "text-emerald-800" : "text-foreground",
-                )}
-              >
-                {reviewDone ? "Thanks — visit rated" : "Rate your visit"}
-              </span>
-              <span className="text-muted-foreground mt-0.5 block text-[11px] leading-snug">
-                {reviewDone
-                  ? "It feeds this place's Mesita rating."
-                  : "Food · service · ambiance — feeds its rating"}
-              </span>
-            </span>
-            {!reviewDone ? (
-              <Star className="text-foreground/60 size-4 shrink-0" />
-            ) : null}
-          </button>
-        </section>
-      ) : null}
-
-      {/* 5 · Results — closed only */}
-      {closed ? (
-        <section
-          className={cn(
-            "shrink-0 overflow-hidden rounded-[24px] px-4 pt-3.5 pb-4 text-white shadow-[0_16px_36px_-20px_rgba(255,77,109,0.55)]",
-            passGradient(classKey),
-          )}
-        >
-          <div className="flex items-center justify-between gap-3">
-            <p className="text-[9px] font-bold tracking-[0.14em] text-white/80 uppercase">
-              Mesita Pass
-            </p>
-            <span className="rounded-full bg-white/22 px-2 py-0.5 text-[9px] font-extrabold tracking-widest uppercase">
-              {classProperLabel(classKey)}
-            </span>
-          </div>
-          <div className="flex flex-col items-center gap-1.5 py-5 text-center">
-            {saved ? (
-              <>
-                <PartyPopper className="size-7" />
-                <p className="text-[15px] font-extrabold">
-                  {ticket.discount_cents
-                    ? `You saved ${formatCurrency(ticket.discount_cents)}`
-                    : "Visit complete"}
-                </p>
-                <p className="text-[11.5px] text-white/85">
-                  {ticket.discount_percent
-                    ? `${ticket.discount_percent}% off at ${placeName}`
-                    : placeName}
-                </p>
-                {!billed ? (
-                  <div className="mt-2.5 w-full max-w-[260px] rounded-xl bg-white/18 p-2.5 text-left">
-                    <p className="text-[10px] font-bold tracking-wide uppercase opacity-90">
-                      How much was the bill?
-                    </p>
-                    <p className="mt-0.5 text-[10px] leading-snug opacity-80">
-                      Optional — it records what you saved.
-                    </p>
-                    <div className="mt-2 flex gap-1.5">
-                      <input
-                        inputMode="decimal"
-                        placeholder="850"
-                        value={totalDraft}
-                        onChange={(e) => setTotalDraft(e.target.value)}
-                        className="h-9 w-full min-w-0 rounded-lg border-0 bg-white/90 px-2.5 text-[13px] font-semibold text-neutral-900 outline-none placeholder:text-neutral-400"
+                  <>
+                    <div className="mx-auto mt-2.5 w-full max-w-[min(170px,48vw)] rounded-2xl bg-white p-2.5 shadow-[0_12px_30px_-12px_rgba(120,20,40,0.5)]">
+                      <QRCodeSVG
+                        value={checkUrlForCode(ticket.check_code!)}
+                        size={170}
+                        className="h-auto w-full"
+                        bgColor="#ffffff"
+                        fgColor="#2b1233"
+                        level="M"
+                        marginSize={0}
                       />
-                      <button
-                        type="button"
-                        disabled={totalBusy}
-                        onClick={() => void submitTotal()}
-                        className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-white/90 text-neutral-900 transition active:scale-95 disabled:opacity-60"
-                        aria-label="Save bill total"
-                      >
-                        {totalBusy ? (
-                          <Loader2 className="size-4 animate-spin" />
-                        ) : (
-                          <Check className="size-4" strokeWidth={3} />
-                        )}
-                      </button>
                     </div>
-                    {actionError ? (
-                      <p className="mt-1.5 text-[10px] font-semibold text-white/90">
-                        {actionError}
-                      </p>
+                    <p
+                      aria-live="polite"
+                      className="mx-auto mt-2 flex max-w-[34ch] items-center justify-center gap-1.5 text-center text-[11px] leading-snug text-white/90"
+                    >
+                      {scanned && ticket.status === "open" ? (
+                        <>
+                          <BadgeCheck className="size-3.5 shrink-0" /> Verified
+                          by {placeName}
+                        </>
+                      ) : (
+                        statusLine(ticket)
+                      )}
+                    </p>
+                    {billed ? (
+                      <div className="mt-2.5 rounded-xl bg-white/18 px-3 py-2 text-center">
+                        <p className="text-[9px] font-bold tracking-[0.14em] uppercase opacity-90">
+                          {ticket.discount_percent ?? 0}% off applied
+                        </p>
+                        <p className="font-display mt-0.5 text-[20px] leading-none font-bold">
+                          {formatCurrency(
+                            Math.max(
+                              0,
+                              (ticket.total_cents ?? 0) -
+                                (ticket.discount_cents ?? 0),
+                            ),
+                          )}
+                        </p>
+                        <p className="mt-0.5 text-[10.5px] opacity-90">
+                          to pay at the table
+                          {ticket.discount_cents
+                            ? ` — you save ${formatCurrency(ticket.discount_cents)}`
+                            : ""}
+                        </p>
+                      </div>
                     ) : null}
-                  </div>
-                ) : null}
-              </>
-            ) : (
-              <>
-                <p className="text-[15px] font-extrabold">Ticket cancelled</p>
-                <p className="text-[11.5px] text-white/85">
-                  Start a fresh one from Rewards whenever you&apos;re back.
-                </p>
-              </>
-            )}
-          </div>
-        </section>
-      ) : null}
+                  </>
+                )}
 
-      {/* 6 · Report (+ cancel housekeeping) */}
-      <div className="flex shrink-0 flex-col items-center gap-1 pt-0.5">
-        {ticket.status === "open" ? (
+                {/* Stub row — perforation + the small print. */}
+                <div className="mt-3 border-t-2 border-dashed border-white/35 pt-2">
+                  <div className="flex items-center justify-between gap-3 text-[9.5px] font-semibold text-white/90">
+                    <span>Ticket {stubCode}</span>
+                    <span>
+                      {chosenTask
+                        ? chosenState === "done"
+                          ? `${actionNoun === "story" ? "Story" : "Review"} ✓`
+                          : chosenState === "rejected"
+                            ? `${actionNoun === "story" ? "Story" : "Review"} not accepted`
+                            : `${actionNoun === "story" ? "Story" : "Review"} pending`
+                        : "No task — base rate"}
+                    </span>
+                  </div>
+                </div>
+              </section>
+            ) : null}
+
+            {/* Money still on the table. The QR already works, so this is an
+                offer, not a gate — it sends you back to step 2 (or 1 if the
+                pick was never made). */}
+            {upsideLeft ? (
+              <button
+                type="button"
+                onClick={() => goToStep(chosenTask ? 2 : 1)}
+                className="border-border bg-card flex min-h-11 w-full shrink-0 items-center gap-2.5 rounded-2xl border px-3 py-2 text-left transition active:scale-[0.99]"
+              >
+                <span className="bg-secondary/10 text-secondary grid size-8 shrink-0 place-items-center rounded-lg">
+                  {chosenTask === "story" ? (
+                    <Instagram className="size-4" />
+                  ) : chosenTask === "review" ? (
+                    <Star className="size-4" />
+                  ) : (
+                    <Sparkles className="size-4" />
+                  )}
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="text-foreground block text-[13px] leading-tight font-bold">
+                    {chosenTask === "story"
+                      ? "Post your tagged story"
+                      : chosenTask === "review"
+                        ? "Leave your Google review"
+                        : "Earn a bigger discount"}
+                  </span>
+                  <span className="text-muted-foreground mt-0.5 block text-[11px] leading-snug">
+                    {chosenState === "rejected"
+                      ? `Not accepted — you still keep your ${base}%. Try again?`
+                      : "Order first — do this while your food comes."}
+                  </span>
+                </span>
+                <span className="font-display text-foreground/80 shrink-0 text-[15px] leading-none font-extrabold tabular-nums">
+                  {bestReachableRate}%
+                </span>
+              </button>
+            ) : null}
+
+            {showMesitaStar ? (
+              <RateVisitRow
+                done={reviewDone}
+                onOpen={() => {
+                  setReviewError(null);
+                  openSheet("mesita");
+                }}
+              />
+            ) : null}
+          </>
+        ) : (
+          /* Step 4 — Results */
+          <>
+            <section
+              className={cn(
+                "shrink-0 overflow-hidden rounded-[24px] px-4 pt-3.5 pb-4 text-white shadow-[0_16px_36px_-20px_rgba(255,77,109,0.55)]",
+                passGradient(classKey),
+              )}
+            >
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-[9px] font-bold tracking-[0.14em] text-white/80 uppercase">
+                  Mesita Pass
+                </p>
+                <span className="rounded-full bg-white/22 px-2 py-0.5 text-[9px] font-extrabold tracking-widest uppercase">
+                  {classProperLabel(classKey)}
+                </span>
+              </div>
+              <div className="flex flex-col items-center gap-1.5 py-5 text-center">
+                {saved ? (
+                  <>
+                    <PartyPopper className="size-7" />
+                    <p className="text-[15px] font-extrabold">
+                      {ticket.discount_cents
+                        ? `You saved ${formatCurrency(ticket.discount_cents)}`
+                        : "Visit complete"}
+                    </p>
+                    <p className="text-[11.5px] text-white/85">
+                      {ticket.discount_percent
+                        ? `${ticket.discount_percent}% off at ${placeName}`
+                        : placeName}
+                    </p>
+                    {!billed ? (
+                      <div className="mt-2.5 w-full max-w-[260px] rounded-xl bg-white/18 p-2.5 text-left">
+                        <p className="text-[10px] font-bold tracking-wide uppercase opacity-90">
+                          How much was the bill?
+                        </p>
+                        <p className="mt-0.5 text-[10px] leading-snug opacity-80">
+                          Optional — it records what you saved.
+                        </p>
+                        <div className="mt-2 flex gap-1.5">
+                          <input
+                            inputMode="decimal"
+                            placeholder="850"
+                            value={totalDraft}
+                            onChange={(e) => setTotalDraft(e.target.value)}
+                            className="h-9 w-full min-w-0 rounded-lg border-0 bg-white/90 px-2.5 text-[13px] font-semibold text-neutral-900 outline-none placeholder:text-neutral-400"
+                          />
+                          <button
+                            type="button"
+                            disabled={totalBusy}
+                            onClick={() => void submitTotal()}
+                            className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-white/90 text-neutral-900 transition active:scale-95 disabled:opacity-60"
+                            aria-label="Save bill total"
+                          >
+                            {totalBusy ? (
+                              <Loader2 className="size-4 animate-spin" />
+                            ) : (
+                              <Check className="size-4" strokeWidth={3} />
+                            )}
+                          </button>
+                        </div>
+                        {actionError ? (
+                          <p className="mt-1.5 text-[10px] font-semibold text-white/90">
+                            {actionError}
+                          </p>
+                        ) : null}
+                      </div>
+                    ) : null}
+                  </>
+                ) : cancelled ? (
+                  <>
+                    <p className="text-[15px] font-extrabold">Ticket cancelled</p>
+                    <p className="text-[11.5px] text-white/85">
+                      Start a fresh one from Rewards whenever you&apos;re back.
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-[15px] font-extrabold">Visit in progress</p>
+                    <p className="text-[11.5px] text-white/85">
+                      Your result lands here once {placeName} closes the visit.
+                    </p>
+                  </>
+                )}
+              </div>
+            </section>
+
+            {showMesitaStar ? (
+              <RateVisitRow
+                done={reviewDone}
+                onOpen={() => {
+                  setReviewError(null);
+                  openSheet("mesita");
+                }}
+              />
+            ) : null}
+          </>
+        )}
+      </div>
+
+      {/* Footer — the step's one commitment, then housekeeping. Pinned so a
+          long chip list can never push the decision off-screen. */}
+      <div className="shrink-0 pt-2.5">
+        {step === 1 ? (
           <button
             type="button"
-            onClick={() => void cancel()}
-            disabled={cancelling}
-            className="text-muted-foreground hover:text-foreground flex min-h-9 items-center gap-1.5 text-[12px] font-semibold transition"
+            disabled={quote === null}
+            onClick={() => {
+              if (!pickLocked) setStoredPick(selectedPick);
+              goToStep(selectedPick === "base" ? 3 : 2);
+            }}
+            className="bg-pink-gradient shadow-glow flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl text-[14px] font-bold text-white transition active:scale-[0.99] disabled:opacity-50"
           >
-            {cancelling ? <Loader2 className="size-3.5 animate-spin" /> : null}
-            Cancel this ticket
+            {selectedPick === "review"
+              ? `Do the review → unlock ${reviewRate}%`
+              : selectedPick === "story"
+                ? `Post a story → unlock ${storyRate}%`
+                : `Show my QR at ${base}%`}
           </button>
         ) : null}
 
-        {!cancelled ? (
-          reported ? (
-            <p className="border-border bg-muted/40 text-muted-foreground flex min-h-10 items-center gap-2 rounded-full border px-4 text-[12px] font-semibold">
-              <Flag className="size-3.5" />
-              Reported — Mesita is looking at it
-            </p>
-          ) : (
-            <>
+        <div className="flex flex-col items-center gap-1 pt-1.5">
+          {ticket.status === "open" ? (
+            <button
+              type="button"
+              onClick={() => void cancel()}
+              disabled={cancelling}
+              className="text-muted-foreground hover:text-foreground flex min-h-9 items-center gap-1.5 text-[12px] font-semibold transition"
+            >
+              {cancelling ? <Loader2 className="size-3.5 animate-spin" /> : null}
+              Cancel this ticket
+            </button>
+          ) : null}
+
+          {!cancelled ? (
+            reported ? (
+              <p className="border-border bg-muted/40 text-muted-foreground flex min-h-9 items-center gap-2 rounded-full border px-4 text-[12px] font-semibold">
+                <Flag className="size-3.5" />
+                Reported — Mesita is looking at it
+              </p>
+            ) : (
               <button
                 type="button"
                 onClick={() => openSheet("report")}
-                className="border-border bg-card text-foreground hover:bg-muted/50 flex min-h-10 items-center gap-2 rounded-full border px-4 text-[12.5px] font-bold transition active:scale-[0.99]"
+                className="text-muted-foreground hover:text-foreground flex min-h-9 items-center gap-1.5 text-[12px] font-semibold transition"
               >
                 <Flag className="text-destructive size-3.5" />
                 Report a problem
               </button>
-              <p className="text-muted-foreground/80 max-w-[19rem] text-center text-[10px] leading-snug">
-                Discount not honored, wrong total, anything off — a real person
-                at Mesita reads it.
-              </p>
-            </>
-          )
-        ) : null}
+            )
+          ) : null}
+        </div>
       </div>
 
       <LocalSheet
@@ -832,21 +1015,6 @@ export function TicketScreen({
           />
         </div>
       </LocalSheet>
-
-      <GoogleReviewSheet
-        open={sheet === "google"}
-        onClose={() => setSheet(null)}
-        placeName={placeName}
-        mapsUrl={mapsUrl}
-        onConfirm={confirmGoogle}
-      />
-
-      <InstagramStorySheet
-        open={sheet === "instagram"}
-        onClose={() => setSheet(null)}
-        placeName={placeName}
-        onConfirm={confirmStory}
-      />
 
       <LocalSheet
         open={sheet === "report"}
@@ -919,6 +1087,116 @@ export function TicketScreen({
   );
 }
 
+// What the guest already has before choosing anything. Welcome used to live in
+// a footnote ("may apply — it shows on your pass"), which buried a real +N% at
+// the exact moment they decide; at a conservative place that footnote was
+// hiding half the offer. It is automatic money, so it reads as already-banked
+// rather than as another option to weigh.
+function IncludedStrip({
+  classLabel,
+  base,
+  welcome,
+}: {
+  classLabel: string;
+  base: number;
+  welcome: number;
+}) {
+  return (
+    <div className="flex flex-wrap items-center justify-center gap-1.5">
+      <IncludedPill label={`${classLabel} base`} percent={base} />
+      {welcome > 0 ? (
+        <IncludedPill label="Welcome visit" percent={welcome} accent />
+      ) : null}
+    </div>
+  );
+}
+
+function IncludedPill({
+  label,
+  percent,
+  accent = false,
+}: {
+  label: string;
+  percent: number;
+  accent?: boolean;
+}) {
+  return (
+    <span
+      className={cn(
+        "inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-bold",
+        accent
+          ? "border-secondary/25 bg-secondary/10 text-secondary"
+          : "border-border bg-muted/40 text-muted-foreground",
+      )}
+    >
+      {accent ? <Sparkles className="size-3" /> : <Check className="size-3" />}
+      {label}
+      <span className="tabular-nums">+{percent}%</span>
+    </span>
+  );
+}
+
+// The rate is the whole point of step 1, so it never renders a guessed number
+// while the engine's answer is in flight.
+function QuoteLoading() {
+  return (
+    <div className="flex min-h-[128px] flex-col items-center justify-center gap-2">
+      <Loader2 className="text-primary size-5 animate-spin" />
+      <p className="text-muted-foreground text-[12px] font-semibold">
+        Checking your rate here…
+      </p>
+    </div>
+  );
+}
+
+// ★ — belongs to the visit, never to the unlock (D12).
+function RateVisitRow({ done, onOpen }: { done: boolean; onOpen: () => void }) {
+  return (
+    <section className="border-border bg-card shrink-0 overflow-hidden rounded-2xl border px-2.5 py-2">
+      <button
+        type="button"
+        disabled={done}
+        onClick={onOpen}
+        className={cn(
+          "flex min-h-11 w-full items-center gap-2.5 rounded-xl px-2.5 py-2 text-left transition",
+          done ? "bg-emerald-500/8" : "bg-muted/40 active:scale-[0.99]",
+        )}
+      >
+        <span
+          className={cn(
+            "grid size-8 shrink-0 place-items-center rounded-lg",
+            done
+              ? "bg-emerald-500/15 text-emerald-700"
+              : "bg-secondary/10 text-secondary",
+          )}
+        >
+          {done ? (
+            <Check className="size-4" strokeWidth={3} />
+          ) : (
+            <UtensilsCrossed className="size-4" />
+          )}
+        </span>
+        <span className="min-w-0 flex-1">
+          <span
+            className={cn(
+              "block text-[13px] leading-tight font-bold",
+              done ? "text-emerald-800" : "text-foreground",
+            )}
+          >
+            {done ? "Thanks — visit rated" : "Rate your visit"}
+          </span>
+          <span className="text-muted-foreground mt-0.5 block text-[11px] leading-snug">
+            {done
+              ? "It feeds this place's Mesita rating."
+              : "Food · service · ambiance — feeds its rating"}
+          </span>
+        </span>
+        {!done ? <Star className="text-foreground/60 size-4 shrink-0" /> : null}
+      </button>
+    </section>
+  );
+}
+
 // THE TICKET sits as an 80%-tall panel anchored to the bottom, not full-bleed
 // (Pato, 2026-08-10). It stays a real route — the @modal interceptor is dead
 // and stays dead (MESITA-857) — but a full-height page made the QR read as
@@ -926,12 +1204,12 @@ export function TicketScreen({
 // 20% as page ground gives it an edge, and the rounded top + card fill make the
 // gap read as a sheet rather than as content that failed to reach the top.
 //
-// Height is a percentage of the app frame, matching TicketWizard's SHEET_HEIGHT
-// language. Scroll lives inside the panel so the shape never grows.
+// Height is a percentage of the app frame. Scroll lives in the STEP BODY, not
+// here, so the chrome, the rail and the footer stay put while a step changes.
 function Shell({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex h-full min-h-0 flex-1 flex-col justify-end">
-      <div className="border-border bg-card shadow-elev scrollbar-hide flex h-[80%] min-h-0 flex-col gap-2.5 overflow-y-auto rounded-t-3xl border-x border-t px-4 pt-3 pb-5">
+      <div className="border-border bg-card shadow-elev flex h-[80%] min-h-0 flex-col rounded-t-3xl border-x border-t px-4 pt-3 pb-4">
         {children}
       </div>
     </div>

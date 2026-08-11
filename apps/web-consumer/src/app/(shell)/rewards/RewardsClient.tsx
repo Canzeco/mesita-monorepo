@@ -7,10 +7,6 @@ import { MapPin, QrCode, Sparkles, Star, TicketX } from "lucide-react";
 import { PlacePickList } from "@/components/consumer/rewards/PlacePickList";
 import { SavingsReveal } from "@/components/consumer/rewards/SavingsReveal";
 import { TicketRow } from "@/components/consumer/rewards/TicketRow";
-import {
-  TicketWizard,
-  bornTicketPath,
-} from "@/components/consumer/rewards/TicketWizard";
 import { TicketCardSkeleton } from "./RewardsTabLoading";
 import { EFError } from "@/lib/api/_invoke";
 import {
@@ -23,29 +19,47 @@ import type { Place } from "@/lib/api/places";
 import { ticketPath } from "@/lib/consumer-route-contract";
 import { useConsumerTickets } from "@/lib/hooks/useConsumerTickets";
 import { EmptyState } from "@/components/shared";
-import { strategyForPlaceRow } from "@/lib/promo-rates";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { cn } from "@/lib/utils";
 
 // Rewards Wallet — TWO tabs: New / History (MESITA-1024, Pato: "just two
 // pages"; Pending died — a status bucket that almost always held one row or
-// none). The wallet is the DOOR: tapping a partner in New opens the 2-step
-// TicketWizard (Pick reward → Do it), which creates the ticket and lands on
-// THE ticket screen (/rewards/ticket/[id]?born=1). A LIVE ticket is a
-// TicketRow pinned at the top of New, above the place list — the current
-// visit leads the tab you start visits from. History is compact rows into
-// the same screen. The venue pass modal and in-list QR cards died with
-// MESITA-857 — one object, one surface. Zero-strategy partners skip the
-// wizard (D9): create at "base", go.
+// none).
+//
+// NEW IS A PLACE LIST AND NOTHING ELSE (Pato, 2026-08-11: "you don't see the
+// tickets… you only see places, step 1 — list all the places in Mesita,
+// that's it"). The live ticket no longer pins above the list: New is the
+// question "where are you?", and a ticket sitting in the answer slot made the
+// tab look like two products. Tickets live on THE TICKET and in History.
+//
+// ONE TAP CREATES THE TICKET (Pato, same session: "you select a place, a
+// ticket is automatically created — only by clicking a place. create ticket,
+// then id… so you open a modal, the modal has multiple steps"). The 2-step
+// TicketWizard sheet is GONE: there is no pre-create screen at all. Every
+// ticket is created at "base" and THE TICKET — a four-step modal at
+// /rewards/ticket/[id] — owns reward → task → QR → results.
+//
+// "base" is what makes the reward stop being a create-time boundary: the
+// submit-review / submit-story EFs accept any OPEN ticket, and a late task
+// re-prices upward, so the QR works from the first frame and the rung is
+// picked afterwards inside the modal.
+//
+// Tapping a place that already holds a live ticket re-opens that ticket
+// instead of 409-ing on `already_open` (D5).
 
 type Tab = "new" | "history";
+
+/** THE TICKET path with the one-time entrance flag (TicketScreen strips it). */
+function bornTicketPath(id: string): string {
+  return `${ticketPath(id)}?born=1`;
+}
 
 export function RewardsClient({ userId }: { userId: string }) {
   const supabase = useBrowserSupabase();
   const router = useRouter();
   const tickets = useConsumerTickets(userId);
 
-  // New is always the default: it holds the live ticket too, so there is no
+  // New is always the default: it is where every visit starts, so there is no
   // state to route to. A manual tap pins the choice for the session.
   const [tabChoice, setTabChoice] = useState<Tab | null>(null);
   const tab: Tab = tabChoice ?? "new";
@@ -55,10 +69,9 @@ export function RewardsClient({ userId }: { userId: string }) {
     [tickets.active],
   );
 
-  // ── Ticket creation: tap → wizard (or the D9 zero-strategy fast path). ──
+  // ── Ticket creation: tap a place, that's it. ──
   const [startingId, setStartingId] = useState<string | null>(null);
   const [startError, setStartError] = useState<string | null>(null);
-  const [wizardPlace, setWizardPlace] = useState<Place | null>(null);
 
   const openTicket = useCallback(
     (id: string) => {
@@ -67,12 +80,12 @@ export function RewardsClient({ userId }: { userId: string }) {
     [router],
   );
 
-  // D9 fast path: zero/null-strategy partners have nothing to pick and
-  // nothing gates — create at "base" and land on THE TICKET directly.
-  const startBaseTicket = useCallback(
+  const startTicket = useCallback(
     async (place: Place) => {
       setStartingId(place.id);
       setStartError(null);
+      // ALWAYS "base": no task attached, nothing gating the QR. The rung is
+      // the modal's step 1, not this tap's decision.
       try {
         const res = await apiCreateTicket(supabase, place.id, "base");
         void tickets.refresh();
@@ -114,17 +127,13 @@ export function RewardsClient({ userId }: { userId: string }) {
     (place: Place) => {
       const existing = tickets.active.find((t) => t.project_id === place.id);
       if (existing) {
-        // Live ticket → bypass the wizard, open THE TICKET (D5).
+        // Live ticket → open it rather than making a second one (D5).
         openTicket(existing.id);
         return;
       }
-      if (strategyForPlaceRow(place) === "zero") {
-        void startBaseTicket(place);
-        return;
-      }
-      setWizardPlace(place);
+      void startTicket(place);
     },
-    [tickets.active, openTicket, startBaseTicket],
+    [tickets.active, openTicket, startTicket],
   );
 
   // The paid beat (MESITA-808, 4A): a watched ticket flipping to revealed
@@ -209,23 +218,7 @@ export function RewardsClient({ userId }: { userId: string }) {
                 {startError}
               </p>
             ) : null}
-            {/* The live ticket leads the tab (MESITA-1024) — Pending's only
-                content, folded in here. Rows stay ONE column: a ticket is
-                scanned for its state at arm's length in a dark venue. Silent
-                while loading (PlacePickList carries the tab's skeleton) and
-                silent on error — the place list is still usable and the
-                History tab reports ticket-load failures. */}
-            {tickets.active.length > 0 ? (
-              <div className="flex flex-col gap-2.5">
-                {tickets.active.map((t) => (
-                  <TicketRow
-                    key={t.id}
-                    ticket={t}
-                    onOpen={() => openTicket(t.id)}
-                  />
-                ))}
-              </div>
-            ) : null}
+            {/* Step 1, and only step 1: every place on Mesita. */}
             <PlacePickList
               activePlaceIds={activePlaceIds}
               busyPlaceId={startingId}
@@ -255,16 +248,6 @@ export function RewardsClient({ userId }: { userId: string }) {
             )}
           </div>
         )}
-
-        {/* The 2-step generation ceremony — Pick reward → Do it (D5–D11). */}
-        <TicketWizard
-          place={wizardPlace}
-          activeTickets={tickets.active}
-          onClose={() => setWizardPlace(null)}
-          onCreated={() => {
-            void tickets.refresh();
-          }}
-        />
       </div>
     </div>
   );
