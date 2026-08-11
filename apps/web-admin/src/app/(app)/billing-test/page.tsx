@@ -3,8 +3,9 @@ import { BillingTestClient } from "./BillingTestClient";
 
 // Billing Test — Testing section. Probes each paid third-party API on its own
 // so an outage can be attributed to a vendor rather than inferred from a
-// degraded pipeline. Nothing is fetched on load: every probe costs a round trip
-// (two of them cost money), so the operator presses the button.
+// degraded pipeline. Nothing is fetched on load: the operator presses the
+// button, and that one button runs every vendor — two of them bill a token per
+// run, which is not worth a second button or a split UI.
 export const dynamic = "force-dynamic";
 
 export default function BillingTestPage() {

@@ -15,10 +15,11 @@
 // key is indistinguishable from "no results". Probing one vendor at a time is
 // the only way to attribute the failure.
 //
-// COST: probes are tagged free | paid. Free probes hit an account/metadata
-// endpoint that vendors do not bill for. Paid probes have no such endpoint and
-// must spend a token or a request unit to prove the key works — those NEVER run
-// unless the caller names them explicitly, so "run everything" stays free.
+// COST: most probes hit an account/metadata endpoint that vendors do not bill
+// for. Perplexity and Google Places expose no such endpoint and must spend a
+// token / a request unit to prove the key works. They used to be gated behind
+// their own buttons so a sweep stayed free; that gate is gone — a few cents is
+// nothing against an unattributed outage, and one button now runs the lot.
 //
 // Local:  supabase functions serve admin-web-check-api-health
 // Deploy: supabase functions deploy admin-web-check-api-health
@@ -42,14 +43,12 @@ const PROBE_TIMEOUT_MS = 8_000;
 const STALE_CALL_MINS = 30;
 
 type Verdict = "ok" | "degraded" | "down" | "unconfigured";
-type Cost = "free" | "paid";
 
 type ProbeResult = {
   id: string;
   label: string;
   /** What breaks in the product when this provider is down. */
   impact: string;
-  cost: Cost;
   verdict: Verdict;
   /** Env var names this probe read, so a missing secret is self-describing. */
   envKeys: string[];
@@ -63,7 +62,6 @@ type ProbeSpec = {
   id: string;
   label: string;
   impact: string;
-  cost: Cost;
   envKeys: string[];
   run: (
     keys: Record<string, string | undefined>,
@@ -178,7 +176,6 @@ const PROBES: ProbeSpec[] = [
     label: "Firecrawl",
     impact:
       "Enricher link discovery (S4 gather) — fails SOFT, returns no links",
-    cost: "free",
     envKeys: ["FIRECRAWL_KEY"],
     run: async (keys) => {
       const key = firstKey(keys, ["FIRECRAWL_KEY"])!;
@@ -213,7 +210,6 @@ const PROBES: ProbeSpec[] = [
     id: "apify",
     label: "Apify",
     impact: "Enricher Instagram/actor scraping",
-    cost: "free",
     envKeys: ["APIFY_KEY"],
     run: async (keys) => {
       const key = firstKey(keys, ["APIFY_KEY"])!;
@@ -263,7 +259,6 @@ const PROBES: ProbeSpec[] = [
     id: "twilio",
     label: "Twilio",
     impact: "Phone OTP — the ONLY consumer sign-in. Dead key = nobody logs in",
-    cost: "free",
     envKeys: ["TWILIO_ACCOUNT_SID", "TWILIO_AUTH_TOKEN"],
     run: async (keys) => {
       const sid = firstKey(keys, ["TWILIO_ACCOUNT_SID"])!;
@@ -323,7 +318,6 @@ const PROBES: ProbeSpec[] = [
     id: "elevenlabs",
     label: "ElevenLabs",
     impact: "Reservationist voice agents (a1–a4)",
-    cost: "free",
     envKeys: ["ELEVENLABS_KEY", "ELEVEN_KEY"],
     run: async (keys) => {
       // ElevenLabs API keys start with `sk_`. A common dashboard mistake is
@@ -495,7 +489,6 @@ const PROBES: ProbeSpec[] = [
     id: "openai",
     label: "OpenAI",
     impact: "Memo airlock (parked) — not yet load-bearing",
-    cost: "free",
     envKeys: ["OPENAI_KEY"],
     run: async (keys) => {
       const key = firstKey(keys, ["OPENAI_KEY"])!;
@@ -520,7 +513,6 @@ const PROBES: ProbeSpec[] = [
     id: "stripe",
     label: "Stripe",
     impact: "Business plans + consumer Premium subscriptions",
-    cost: "free",
     envKeys: ["STRIPE_SECRET_KEY"],
     run: async (keys) => {
       const key = firstKey(keys, ["STRIPE_SECRET_KEY"])!;
@@ -563,7 +555,6 @@ const PROBES: ProbeSpec[] = [
     id: "perplexity",
     label: "Perplexity",
     impact: "Memo answers + Enricher S5 (Agent Y link select)",
-    cost: "paid",
     envKeys: ["PERPLEXITY_KEY"],
     run: async (keys) => {
       const key = firstKey(keys, ["PERPLEXITY_KEY"])!;
@@ -600,7 +591,6 @@ const PROBES: ProbeSpec[] = [
     id: "google-places",
     label: "Google Places",
     impact: "Identity spine for Atlas, Enricher and Lineup",
-    cost: "paid",
     envKeys: ["GMP_KEY", "SUPA_GMP_KEY"],
     run: async (keys) => {
       const key = firstKey(keys, ["GMP_KEY", "SUPA_GMP_KEY"])!;
@@ -653,7 +643,6 @@ async function runProbe(
     id: spec.id,
     label: spec.label,
     impact: spec.impact,
-    cost: spec.cost,
     envKeys: spec.envKeys,
   };
 
@@ -737,11 +726,11 @@ Deno.serve(async (req) => {
     ? body.providers.filter((p): p is string => typeof p === "string")
     : null;
 
-  // No explicit list → every FREE probe. Paid probes are opt-in by name only,
-  // so the default "run everything" button can never surprise anyone with a bill.
+  // No explicit list → EVERY probe, billed ones included. The page's one Run
+  // button names them all anyway; this is the same answer for any other caller.
   const selected = requested
     ? PROBES.filter((p) => requested.includes(p.id))
-    : PROBES.filter((p) => p.cost === "free");
+    : PROBES;
 
   if (selected.length === 0) {
     return json({ ok: false, error: "No known providers selected." }, 400);

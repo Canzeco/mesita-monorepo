@@ -19,15 +19,17 @@ type RunProbesResult =
 /**
  * Run health probes.
  *
- * @param providers Explicit provider ids, or null for "every free probe".
- *   Paid probes are never included implicitly — the EF requires them by name.
+ * @param providers Explicit provider ids. The page always names them — one
+ *   card's id, or every id behind the single Run button — so the sweep is
+ *   identical whether or not the EF has shipped its own "no list = all"
+ *   default yet.
  */
 export async function runApiHealthProbes(
-  providers: string[] | null,
+  providers: string[],
 ): Promise<RunProbesResult> {
   const r = await efInvoke<{ checkedAt?: string; results?: unknown }>(
     "admin-web-check-api-health",
-    providers ? { providers } : {},
+    { providers },
   );
 
   if (!r.ok) {
