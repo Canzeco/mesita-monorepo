@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { MesitaLogo } from "@/components/brand/MesitaLogo";
 import { BUSINESS_SIGNIN_URL } from "@/components/landing/urls";
 
 function Footer() {
@@ -6,11 +7,8 @@ function Footer() {
   return (
     <footer className="bg-background">
       <div className="mx-auto flex w-full max-w-6xl flex-col gap-4 px-5 py-10 md:flex-row md:items-center md:justify-between">
-        <div className="font-display flex items-center gap-2 text-base font-semibold tracking-tight">
-          <span aria-hidden className="text-lg">
-            🌲
-          </span>
-          mesita<span className="text-primary">.</span>
+        <div className="text-foreground flex items-center">
+          <MesitaLogo variant="horizontal" className="h-6 w-auto" />
         </div>
         <p className="text-muted-foreground text-[12px]">
           © Mesita · {year} · Hospitalidad inteligente desde 2026 · Hecho en

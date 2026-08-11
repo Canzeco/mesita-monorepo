@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { MesitaLogo } from "@/components/brand/MesitaLogo";
 import { BUSINESS_SIGNUP_URL, CONSUMER_URL } from "@/components/landing/urls";
 
 const NAV_LINKS = [
@@ -14,15 +15,8 @@ function Nav() {
   return (
     <header className="border-border bg-background/85 supports-[backdrop-filter]:bg-background/70 sticky top-0 z-30 w-full border-b backdrop-blur-md">
       <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-5 py-3.5">
-        <Link
-          href="/"
-          className="font-display flex items-center gap-2 text-lg font-semibold tracking-tight"
-        >
-          <span aria-hidden className="text-xl">
-            🌲
-          </span>
-          mesita
-          <span className="text-primary">.</span>
+        <Link href="/" className="text-primary flex items-center">
+          <MesitaLogo variant="horizontal" className="h-7 w-auto" />
         </Link>
         <nav className="text-muted-foreground hidden items-center gap-7 text-sm md:flex">
           {NAV_LINKS.map((link) => (

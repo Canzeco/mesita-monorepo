@@ -6,7 +6,7 @@
 
 ## ALWAYS
 - Clients call **Edge Functions only** — never the DB (mirror the consumer EF client `apps/mobile-consumer/src/lib/ef.ts` when you add one).
-- **Light theme only.** Semantic tokens live in [tailwind.config.js](tailwind.config.js) — currently PLACEHOLDER values copied from mobile-consumer; re-derive from `apps/web-business/src/app/globals.css` when building (the business console may diverge from consumer).
+- **Light theme only.** Semantic tokens live in [tailwind.config.js](tailwind.config.js) — currently PLACEHOLDER values copied from mobile-consumer; re-derive from `apps/web-business/src/app/globals.css` when building (the business console may diverge from consumer). The `BRAND-TOKENS` block there, `src/constants/brand.ts`, and `src/components/brand/*` are **generated** from `assets/brand/brand.json` (`deno task sync-brand`) — never hand-edit them, and the brand never diverges from consumer.
 - Reply in English. Mirror shipped architecture changes to Notion Product Rules same session.
 
 ## Verification (same as mobile-consumer)

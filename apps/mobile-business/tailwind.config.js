@@ -12,6 +12,24 @@ module.exports = {
   theme: {
     extend: {
       colors: {
+        // BRAND-TOKENS:START (generated — do not hand-edit; run: deno task sync-brand)
+        'brand-pink-50': '#fef2f4',
+        'brand-pink-100': '#fee4e9',
+        'brand-pink-200': '#ffccd6',
+        'brand-pink-300': '#ffa9bc',
+        'brand-pink-400': '#ff789d',
+        'brand-pink-500': '#fb2b7b',
+        'brand-pink-600': '#e10069',
+        'brand-pink-700': '#bb0056',
+        'brand-pink-800': '#940543',
+        'brand-pink-900': '#710b34',
+        'brand-pink-950': '#47071f',
+        // THE Mesita pink (== web --primary / --brand-pink-500).
+        'brand-pink': '#fb2b7b',
+        // Pink text at body size — clears AA (4.77:1). brand-pink does NOT (3.66:1).
+        'brand-pink-text': '#e10069',
+        'brand-pink-deep': '#bb0056',
+        // BRAND-TOKENS:END
         background: '#fff7f8',
         foreground: '#260409',
         card: { DEFAULT: '#ffffff', foreground: '#260409' },
