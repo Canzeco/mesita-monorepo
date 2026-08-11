@@ -35,6 +35,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { QRCodeSVG } from "qrcode.react";
 import {
+  AlertTriangle,
   ArrowLeft,
   BadgeCheck,
   Check,
@@ -50,7 +51,10 @@ import {
 } from "lucide-react";
 
 import { DefaultAvatar } from "@/components/consumer/DefaultAvatar";
-import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
+import {
+  LocalDialog,
+  LocalSheet,
+} from "@/components/consumer/overlay/LocalOverlay";
 import {
   TicketReviewForm,
   type TicketReviewDraft,
@@ -223,6 +227,9 @@ export function TicketScreen({ ticketId }: { ticketId: string }) {
   // store would advance the derived step out from under the tap.
   const [draftPick, setDraftPick] = useState<RewardPick | null>(null);
   const [stepChoice, setStepChoice] = useState<Step | null>(null);
+  // A switch the guest asked for but hasn't confirmed yet (only raised when
+  // there is real work behind the current pick).
+  const [pendingSwitch, setPendingSwitch] = useState<ActionKind | null>(null);
 
   const scanned = ticket?.first_scanned_at != null;
   const [pulse, setPulse] = useState(false);
@@ -429,14 +436,11 @@ export function TicketScreen({ ticketId }: { ticketId: string }) {
   const clamp = (n: number) => Math.max(0, Math.min(100, n));
   const additive = quote?.additive ?? false;
   const welcomeBonus = quote?.bonuses.welcome ?? 0;
-  const base = !quote ? 0 : additive ? clamp(quote.base + welcomeBonus) : quote.base;
-  // A legacy best-of engine pays the single best rung, so stacking there would
-  // over-promise — the one direction a discount quote must never err.
-  const withBonus = (bonus: number) =>
-    !quote ? 0 : additive ? clamp(base + bonus) : clamp(Math.max(base, bonus));
-  const storyRate = withBonus(quote?.bonuses.story ?? 0);
-  const reviewRate = withBonus(quote?.bonuses.google ?? 0);
-  const mesitaRate = withBonus(quote?.bonuses.mesita ?? 0);
+  const classBase = !quote
+    ? 0
+    : additive
+      ? clamp(quote.base + welcomeBonus)
+      : quote.base;
 
   // What the TICKET records beats what the guest merely picked. Only a
   // persisted task can gate the QR (D6, pick-one); a local pick is an
@@ -469,14 +473,43 @@ export function TicketScreen({ ticketId }: { ticketId: string }) {
           storedPick === "mesita"
         ? storedPick
         : null;
-  const pick: RewardPick | null = persistedTask ?? localPick;
+  // The guest's pick WINS over what the ticket already carries (Pato,
+  // 2026-08-11: "i can change the reward but only if the ticket isn't
+  // terminated yet"). The ticket's own task is only the fallback, for a
+  // ticket the guest never chose on (legacy 'pending' creates). Switching is
+  // confirmed first — see ChangeBonusDialog.
+  const pick: RewardPick | null = localPick ?? persistedTask;
   const chosenAction: ActionKind | null = pick === "base" ? null : pick;
+  // Per-rung truth, independent of what's currently selected. The ENGINE is
+  // additive over every verified action (_shared/rewards-config
+  // resolveAdditiveRate adds story + google + mesita independently), so an
+  // action the guest already completed keeps paying no matter what they pick
+  // afterwards. "Pick one" is this screen's rule, not the bill's.
+  const storyVerified = taskStateFor(ticket.story_status) === "done";
+  const googleVerified = taskStateFor(ticket.review_status) === "done";
+  const mesitaVerified = reviewDone;
+  const verifiedActions: ActionKind[] = [
+    ...(storyVerified ? (["story"] as const) : []),
+    ...(googleVerified ? (["google"] as const) : []),
+    ...(mesitaVerified ? (["mesita"] as const) : []),
+  ];
+  const isVerified = (a: ActionKind): boolean =>
+    a === "story" ? storyVerified : a === "google" ? googleVerified : mesitaVerified;
+
   const chosenState: TaskState =
-    chosenAction === "mesita"
-      ? reviewDone
-        ? "done"
-        : "todo"
-      : (persistedState ?? "todo");
+    chosenAction === null
+      ? "todo"
+      : chosenAction === "mesita"
+        ? reviewDone
+          ? "done"
+          : "todo"
+        : chosenAction === persistedTask
+          ? (persistedState ?? "todo")
+          : taskStateFor(
+              chosenAction === "story"
+                ? ticket.story_status
+                : ticket.review_status,
+            );
   const actionBonus = (a: ActionKind | null): number =>
     !quote || a === null
       ? 0
@@ -485,8 +518,33 @@ export function TicketScreen({ ticketId }: { ticketId: string }) {
         : a === "google"
           ? quote.bonuses.google
           : quote.bonuses.mesita;
+
+  // The FLOOR the guest already holds: class base + Welcome + every action
+  // they have ALREADY completed. Counting earned actions here is what makes
+  // switching honest — the bill adds them whatever the current pick is, so
+  // the screen must not quietly drop one when the guest changes their mind.
+  // A legacy best-of engine pays the single best rung, so it never stacks —
+  // over-promising is the one direction a discount quote must never err.
+  const earnedExcept = (a: ActionKind | null): number =>
+    !additive
+      ? 0
+      : verifiedActions
+          .filter((v) => v !== a)
+          .reduce((sum, v) => sum + actionBonus(v), 0);
+  const floorRate = !quote ? 0 : clamp(classBase + earnedExcept(null));
+  const rateWith = (a: ActionKind): number =>
+    !quote
+      ? 0
+      : additive
+        ? clamp(classBase + earnedExcept(a) + actionBonus(a))
+        : clamp(Math.max(classBase, actionBonus(a)));
+  // `base` = what you get with no NEW action (earned ones still counted).
+  const base = floorRate;
+  const storyRate = rateWith("story");
+  const reviewRate = rateWith("google");
+  const mesitaRate = rateWith("mesita");
   const chosenRate =
-    !quote || !chosenAction || !priced ? 0 : withBonus(actionBonus(chosenAction));
+    !quote || !chosenAction || !priced ? 0 : rateWith(chosenAction);
 
   // The headline number + its honesty clause. Billed truth wins; a rejected
   // proof falls back to the class base (D7); everything else quotes the
@@ -524,12 +582,16 @@ export function TicketScreen({ ticketId }: { ticketId: string }) {
     live &&
     Boolean(ticket.check_code) &&
     (ticket.status === "open" || ticket.status === "awaiting_payment_confirm");
+  // ...and ANY completed action releases it: the gate exists to make the
+  // guest do a task, so a legacy 'pending' review can't hold the QR hostage
+  // after they switched to the story and finished that instead.
   const qrLocked =
     ticket.status === "open" &&
     !scanned &&
     priced &&
     persistedTask !== null &&
-    persistedState !== "done";
+    persistedState !== "done" &&
+    verifiedActions.length === 0;
   const showPassCard = live && (qrLocked || scannable);
   // ★ post-scan row: rating the visit belongs to the visit (D12). When the
   // guest PICKED mesita as their action bonus it's already done (or offered
@@ -589,8 +651,11 @@ export function TicketScreen({ ticketId }: { ticketId: string }) {
           ? live && chosenAction !== null
           : live;
 
-  // A ticket that already carries a persisted task (pre-1026) locks the pick.
-  const pickLocked = persistedTask !== null;
+  // The pick is editable for the WHOLE life of the ticket (Pato, 2026-08-11:
+  // "i can change the reward but only if the ticket isn't terminated yet").
+  // Terminated = revealed / cancelled — the reward is settled and nothing can
+  // move it. Switching away from work in flight confirms first.
+  const pickLocked = closed;
   // Which action rows can actually be picked. A rung the engine prices at 0
   // is displayed (Pato: "display all bonuses") but inert — selecting it would
   // promise nothing.
@@ -612,16 +677,38 @@ export function TicketScreen({ ticketId }: { ticketId: string }) {
   const selectedTotal = !quote
     ? 0
     : selectedAction
-      ? withBonus(actionBonus(selectedAction))
+      ? rateWith(selectedAction)
       : base;
   // Tap the selected action again to drop back to base-only — one action max,
-  // zero actions always allowed.
-  const toggleAction = (a: ActionKind) =>
-    setDraftPick(selectedPick === a ? "base" : a);
+  // zero actions always allowed. Switching AWAY from an action the guest has
+  // actually completed confirms first (Pato: "throw an alert that progress is
+  // going to be lost").
+  const commitAction = (a: ActionKind | "base") => {
+    setDraftPick(a);
+    if (!pickLocked) setStoredPick(a);
+  };
+  const requestAction = (a: ActionKind) => {
+    const next: ActionKind | "base" = selectedPick === a ? "base" : a;
+    const leavingRealWork =
+      selectedAction !== null &&
+      next !== selectedAction &&
+      (chosenState === "done" || chosenState === "checking");
+    if (leavingRealWork) {
+      setPendingSwitch(a);
+      return;
+    }
+    commitAction(next);
+  };
   // Per-row rate caption: additive stacks (+N%), legacy best-of shows the
   // resulting rate instead — never a "+" it won't honor.
   const bonusAmount = (bonus: number): string =>
-    additive ? `+${bonus}%` : `${withBonus(bonus)}%`;
+    additive ? `+${bonus}%` : `${clamp(Math.max(classBase, bonus))}%`;
+  const actionLabel = (a: ActionKind): string =>
+    a === "story"
+      ? "Instagram story"
+      : a === "google"
+        ? "Google review"
+        : "Mesita review";
 
   const confirmChosen = chosenAction === "story" ? confirmStory : confirmGoogle;
 
@@ -746,149 +833,126 @@ export function TicketScreen({ ticketId }: { ticketId: string }) {
               </div>
             ) : (
               <>
-                {/* Approved board B ("grouped automatics"): what's yours
-                    automatically is ONE card; the decision list stands alone.
-                    The CTA lives in the pinned footer so it can never scroll
-                    off-screen again. */}
-                <SectionLabel>Yours automatically</SectionLabel>
-                <div className="border-border bg-card divide-border divide-y rounded-2xl border-[1.5px]">
-                  <div className="flex min-h-12 items-center gap-2.5 px-3 py-2.5">
-                    <span className="bg-muted text-muted-foreground grid size-7 shrink-0 place-items-center rounded-lg">
-                      <BadgeCheck className="size-4" />
-                    </span>
-                    <span className="min-w-0 flex-1">
-                      <span className="text-foreground block truncate text-[12.5px] leading-tight font-bold">
-                        Base reward
-                      </span>
-                      <span className="text-muted-foreground mt-0.5 block truncate text-[10px] font-semibold">
-                        {classProperLabel(classKey)} class
-                      </span>
-                    </span>
-                    <span className="font-display text-foreground shrink-0 text-[17px] leading-none font-extrabold tabular-nums">
-                      {quote.base}%
-                    </span>
-                    <span className="bg-muted text-muted-foreground shrink-0 rounded-full px-2 py-0.5 text-[8.5px] font-extrabold tracking-wide uppercase">
-                      Auto
-                    </span>
-                  </div>
-                  {welcomeBonus > 0 ? (
-                    <div className="flex min-h-10 items-center gap-2.5 px-3 py-2">
-                      <span className="bg-muted text-muted-foreground grid size-7 shrink-0 place-items-center rounded-lg">
-                        <Sparkles className="size-3.5" />
-                      </span>
-                      <span className="text-foreground min-w-0 flex-1 truncate text-[12px] font-bold">
-                        Welcome visit bonus
-                        <span className="text-muted-foreground ml-1.5 text-[10px] font-semibold">
-                          your first visit here
-                        </span>
-                      </span>
-                      <span className="font-display text-foreground shrink-0 text-[15px] leading-none font-extrabold tabular-nums">
-                        {bonusAmount(welcomeBonus)}
-                      </span>
-                    </div>
-                  ) : (
-                    <div className="text-muted-foreground flex min-h-9 items-baseline gap-1.5 px-3 py-1.5 opacity-80">
-                      <span className="truncate text-[11.5px] font-bold">
-                        Welcome visit bonus
-                      </span>
-                      <span className="min-w-0 truncate text-[10.5px] font-semibold">
-                        —{" "}
-                        {quote.isFirstVisit
-                          ? "not offered here"
-                          : "first visit only"}
-                      </span>
-                    </div>
-                  )}
-                </div>
+                {/* ONE receipt. Every rung is the same row grid — icon,
+                    name, amount, control — so nothing sits ragged, and the
+                    total lands under a rule like a bill. Three stacked cards
+                    with three different row shapes was the mess; a receipt is
+                    what this screen actually is. */}
+                <div className="border-border bg-card divide-border divide-y overflow-hidden rounded-2xl border">
+                  <ReceiptRow
+                    icon={<BadgeCheck className="size-4" />}
+                    label="Base reward"
+                    sub={`${classProperLabel(classKey)} class`}
+                    amount={`${quote.base}%`}
+                    trailing={<AutoChip />}
+                  />
+                  <ReceiptRow
+                    icon={<Sparkles className="size-4" />}
+                    label="Welcome visit bonus"
+                    sub={
+                      welcomeBonus > 0
+                        ? "Your first visit here"
+                        : quote.isFirstVisit
+                          ? "Not offered here"
+                          : "First visit only"
+                    }
+                    amount={welcomeBonus > 0 ? bonusAmount(welcomeBonus) : null}
+                    trailing={welcomeBonus > 0 ? <AutoChip /> : null}
+                    dim={welcomeBonus === 0}
+                  />
 
-                <SectionLabel>Pick one bonus</SectionLabel>
-                <div
-                  role="radiogroup"
-                  aria-label="Action bonus"
-                  className="flex flex-col gap-2"
-                >
-                  {quote.storyEligible ? (
-                    <BonusRow
-                      state="action"
+                  <p className="bg-muted/40 text-muted-foreground px-3 py-1.5 text-[9.5px] font-extrabold tracking-[0.12em] uppercase">
+                    Pick one bonus
+                  </p>
+
+                  <div
+                    role="radiogroup"
+                    aria-label="Action bonus"
+                    className="divide-border divide-y"
+                  >
+                    <ReceiptRow
                       icon={<Instagram className="size-4" />}
                       label="Instagram story bonus"
-                      subLabel={
-                        !igConnected ? "+ Connect Instagram" : "Post a tagged story"
+                      sub={
+                        !quote.storyEligible
+                          ? "Not offered here"
+                          : !igConnected
+                            ? "Connect Instagram in Me"
+                            : "Post a tagged story"
                       }
-                      amount={bonusAmount(quote.bonuses.story)}
+                      amount={
+                        quote.storyEligible
+                          ? bonusAmount(quote.bonuses.story)
+                          : null
+                      }
                       selected={selectedPick === "story"}
-                      disabled={!storySelectable}
-                      onSelect={() => toggleAction("story")}
+                      selectable={storySelectable}
+                      dim={!quote.storyEligible}
+                      earned={storyVerified}
+                      onSelect={() => requestAction("story")}
                     />
-                  ) : (
-                    <InertRow label="Instagram story bonus" reason="not offered here" />
-                  )}
-                  {quote.bonuses.google > 0 ? (
-                    <BonusRow
-                      state="action"
+                    <ReceiptRow
                       icon={<Star className="size-4" />}
                       label="Google review bonus"
-                      subLabel="Leave a Google review"
-                      amount={bonusAmount(quote.bonuses.google)}
+                      sub={
+                        quote.bonuses.google > 0
+                          ? "Leave a Google review"
+                          : "Not offered here"
+                      }
+                      amount={
+                        quote.bonuses.google > 0
+                          ? bonusAmount(quote.bonuses.google)
+                          : null
+                      }
                       selected={selectedPick === "google"}
-                      disabled={!googleSelectable}
-                      onSelect={() => toggleAction("google")}
+                      selectable={googleSelectable}
+                      dim={quote.bonuses.google === 0}
+                      earned={googleVerified}
+                      onSelect={() => requestAction("google")}
                     />
-                  ) : (
-                    <InertRow label="Google review bonus" reason="not offered here" />
-                  )}
-                  {reviewDone ? (
-                    // Already rated — banked, not an option to weigh.
-                    <BonusRow
-                      state="included"
+                    <ReceiptRow
                       icon={<UtensilsCrossed className="size-4" />}
                       label="Mesita review bonus"
-                      subLabel="Visit rated — counted at the bill"
-                      amount={bonusAmount(quote.bonuses.mesita)}
-                    />
-                  ) : quote.bonuses.mesita > 0 ? (
-                    <BonusRow
-                      state="action"
-                      icon={<UtensilsCrossed className="size-4" />}
-                      label="Mesita review bonus"
-                      subLabel="Rate your visit on Mesita"
-                      amount={bonusAmount(quote.bonuses.mesita)}
+                      sub={
+                        quote.bonuses.mesita === 0
+                          ? "Not offered here"
+                          : reviewDone
+                            ? "Visit rated"
+                            : "Rate your visit on Mesita"
+                      }
+                      amount={
+                        quote.bonuses.mesita > 0
+                          ? bonusAmount(quote.bonuses.mesita)
+                          : null
+                      }
                       selected={selectedPick === "mesita"}
-                      disabled={!mesitaSelectable}
-                      onSelect={() => toggleAction("mesita")}
+                      selectable={mesitaSelectable}
+                      dim={quote.bonuses.mesita === 0}
+                      earned={mesitaVerified}
+                      onSelect={() => requestAction("mesita")}
                     />
-                  ) : (
-                    <InertRow label="Mesita review bonus" reason="not offered here" />
-                  )}
-                </div>
+                  </div>
 
-                {/* The sum, one line — the math stays visible without a hero. */}
-                <p className="pt-0.5 text-center">
-                  <span className="text-muted-foreground text-[10.5px] font-semibold">
-                    {additive
-                      ? `${quote.base}% base` +
-                        (welcomeBonus > 0 ? ` + ${welcomeBonus}% welcome` : "") +
-                        (selectedAction
-                          ? ` + ${actionBonus(selectedAction)}% ${
-                              selectedAction === "story"
-                                ? "story"
-                                : selectedAction === "google"
-                                  ? "review"
-                                  : "Mesita review"
-                            }`
-                          : "") +
-                        " ="
-                      : "Your best single reward ="}
-                  </span>{" "}
-                  <span className="font-display text-pink-gradient text-[22px] leading-none font-extrabold tracking-tight">
-                    {selectedTotal}% off
-                  </span>
-                </p>
+                  {/* Total — the receipt's bottom line. */}
+                  <div className="bg-muted/40 flex items-center gap-3 px-3 py-2.5">
+                    <span className="text-muted-foreground min-w-0 flex-1 truncate text-[11px] font-semibold">
+                      {additive
+                        ? `${quote.base}% base` +
+                          (welcomeBonus > 0 ? ` + ${welcomeBonus}%` : "") +
+                          (selectedAction
+                            ? ` + ${actionBonus(selectedAction)}%`
+                            : "")
+                        : "Your best single reward"}
+                    </span>
+                    <span className="font-display text-pink-gradient shrink-0 text-[24px] leading-none font-extrabold tracking-tight">
+                      {selectedTotal}% off
+                    </span>
+                  </div>
+                </div>
 
                 {pickLocked ? (
                   <p className="text-muted-foreground/80 text-center text-[10.5px] leading-snug">
-                    This ticket already carries its action — finish it to
-                    unlock the higher rate.
+                    This visit is closed — your reward is settled.
                   </p>
                 ) : null}
               </>
@@ -1289,6 +1353,19 @@ export function TicketScreen({ ticketId }: { ticketId: string }) {
         ) : null}
       </div>
 
+      {pendingSwitch && selectedAction ? (
+        <ChangeBonusDialog
+          from={actionLabel(selectedAction)}
+          to={actionLabel(pendingSwitch)}
+          earned={isVerified(selectedAction)}
+          onCancel={() => setPendingSwitch(null)}
+          onConfirm={() => {
+            commitAction(pendingSwitch);
+            setPendingSwitch(null);
+          }}
+        />
+      ) : null}
+
       <LocalSheet
         open={sheet === "mesita"}
         onClose={() => setSheet(null)}
@@ -1377,41 +1454,46 @@ export function TicketScreen({ ticketId }: { ticketId: string }) {
   );
 }
 
-// Tiny uppercase group caption — the modular sheet's section voice.
-function SectionLabel({ children }: { children: React.ReactNode }) {
+// AUTO chip — automatic money, never tappable, never pink.
+function AutoChip() {
   return (
-    <p className="text-muted-foreground/80 px-1 pt-1 text-[10px] font-extrabold tracking-[0.12em] uppercase">
-      {children}
-    </p>
+    <span className="bg-muted text-muted-foreground shrink-0 rounded-full px-1.5 py-0.5 text-[8.5px] font-extrabold tracking-wide uppercase">
+      Auto
+    </span>
   );
 }
 
-// One rung of the modular reward sheet (restyled per the approved cleanup
-// board, 2026-08-11 — "one pink"): SELECTION is the only pink on the page.
-//   included — automatic money (base, an already-earned ★): NEUTRAL white
-//              card, muted icon, dark Fraunces amount, gray AUTO chip.
-//              `--secondary` is the same pink family as `--primary`, which is
-//              exactly why it must not appear here — tinting automatics pink
-//              was the wash Pato flagged.
-//   action   — selectable, radio semantics (pick one, retap to unpick).
-function BonusRow({
-  state,
+// One line of the reward receipt. ONE grid for every rung — 28px icon, name +
+// sub, amount, trailing control — so automatic, selectable and unavailable
+// rungs all sit on the same rails. Selection is the only pink on the screen
+// (`--secondary` is the same pink family as `--primary`, which is exactly why
+// nothing else may tint).
+function ReceiptRow({
   icon,
   label,
-  subLabel,
+  sub,
   amount,
+  trailing,
   selected = false,
-  disabled = false,
+  selectable = false,
+  dim = false,
+  earned = false,
   onSelect,
 }: {
-  state: "included" | "action";
   icon: React.ReactNode;
   label: string;
-  subLabel?: string;
+  sub?: string;
   /** "+10%" (additive) or "12%" (best-of) — null hides the number. */
   amount: string | null;
+  /** Right-hand element for non-selectable rows (the AUTO chip). */
+  trailing?: React.ReactNode;
   selected?: boolean;
-  disabled?: boolean;
+  /** Renders the radio and makes the row a button. */
+  selectable?: boolean;
+  /** Rung the guest can't have here — displayed, greyed, no control. */
+  dim?: boolean;
+  /** Already completed: the bill counts it whatever is picked next. */
+  earned?: boolean;
   onSelect?: () => void;
 }) {
   const body = (
@@ -1419,18 +1501,25 @@ function BonusRow({
       <span
         className={cn(
           "grid size-7 shrink-0 place-items-center rounded-lg",
-          selected ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground",
+          selected
+            ? "bg-primary/10 text-primary"
+            : "bg-muted text-muted-foreground",
         )}
       >
         {icon}
       </span>
       <span className="min-w-0 flex-1">
-        <span className="text-foreground block truncate text-[12.5px] leading-tight font-bold">
-          {label}
+        <span className="text-foreground flex items-center gap-1.5 text-[12.5px] leading-tight font-bold">
+          <span className="truncate">{label}</span>
+          {earned ? (
+            <span className="shrink-0 rounded-full bg-emerald-500/12 px-1.5 py-0.5 text-[8.5px] font-extrabold tracking-wide text-emerald-700 uppercase">
+              Done
+            </span>
+          ) : null}
         </span>
-        {subLabel ? (
-          <span className="text-muted-foreground mt-0.5 block truncate text-[10px] font-semibold">
-            {subLabel}
+        {sub ? (
+          <span className="text-muted-foreground mt-0.5 block truncate text-[10.5px] font-semibold">
+            {sub}
           </span>
         ) : null}
       </span>
@@ -1439,16 +1528,14 @@ function BonusRow({
           className={cn(
             "font-display shrink-0 leading-none font-extrabold tabular-nums",
             selected
-              ? "text-pink-gradient text-[21px]"
-              : state === "included"
-                ? "text-foreground text-[17px]"
-                : "text-muted-foreground text-[15px]",
+              ? "text-pink-gradient text-[19px]"
+              : "text-foreground text-[16px]",
           )}
         >
           {amount}
         </span>
       ) : null}
-      {state === "action" ? (
+      {selectable ? (
         <span
           aria-hidden="true"
           className={cn(
@@ -1461,52 +1548,93 @@ function BonusRow({
           {selected ? <Check className="size-2.5" strokeWidth={4} /> : null}
         </span>
       ) : (
-        <span className="bg-muted text-muted-foreground shrink-0 rounded-full px-2 py-0.5 text-[8.5px] font-extrabold tracking-wide uppercase">
-          Auto
-        </span>
+        trailing
       )}
     </>
   );
   const shell = cn(
-    "flex min-h-12 w-full items-center gap-2.5 rounded-2xl border-[1.5px] px-3 py-2.5 text-left",
-    selected ? "border-primary bg-primary/5" : "border-border bg-card",
-    state === "action" && disabled && "opacity-55",
+    "flex min-h-[52px] w-full items-center gap-2.5 px-3 py-2.5 text-left",
+    selected && "bg-primary/[0.06]",
+    dim && "opacity-45",
   );
-  if (state === "action" && !disabled) {
+  if (selectable) {
     return (
       <button
         type="button"
         role="radio"
         aria-checked={selected}
         onClick={onSelect}
-        className={cn(shell, "transition active:scale-[0.99]")}
+        className={cn(shell, "hover:bg-muted/40 transition")}
       >
         {body}
       </button>
     );
   }
   return (
-    <div aria-disabled={state === "action" ? true : undefined} className={shell}>
+    <div aria-disabled={dim || undefined} className={shell}>
       {body}
     </div>
   );
 }
 
-// A rung that exists but can't do anything here (not offered / not this
-// visit): a quiet one-line footnote row, not a full dead card. Per the
-// cleanup board, these keep the "display all bonuses" contract without
-// stacking dashed boxes.
-function InertRow({ label, reason }: { label: string; reason: string }) {
+// Switching away from work the guest actually did. The warning is TRUE, not
+// scary: the engine is additive over every verified action, so an earned
+// bonus keeps paying whatever they pick next — what changes is the task in
+// front of them. Never claim money is lost when it isn't.
+function ChangeBonusDialog({
+  from,
+  to,
+  earned,
+  onCancel,
+  onConfirm,
+}: {
+  from: string;
+  to: string;
+  earned: boolean;
+  onCancel: () => void;
+  onConfirm: () => void;
+}) {
   return (
-    <div
-      aria-disabled="true"
-      className="border-border/80 text-muted-foreground flex min-h-9 items-baseline gap-1.5 rounded-xl border-[1.5px] border-dashed px-3 py-1.5 opacity-80"
-    >
-      <span className="truncate text-[11.5px] font-bold">{label}</span>
-      <span className="min-w-0 truncate text-[10.5px] font-semibold">
-        — {reason}
-      </span>
-    </div>
+    <LocalDialog open onClose={onCancel} ariaLabel="Change your bonus">
+      <div className="flex flex-col gap-3 px-5 pt-5 pb-5">
+        <span className="bg-secondary/10 text-secondary grid size-10 place-items-center rounded-2xl">
+          <AlertTriangle className="size-5" />
+        </span>
+        <div>
+          <p className="text-foreground text-[15px] font-extrabold tracking-tight">
+            Switch to the {to}?
+          </p>
+          <p className="text-muted-foreground mt-1 text-[12.5px] leading-snug">
+            {earned ? (
+              <>
+                You already finished the {from} — that bonus stays on this
+                ticket and still counts at the bill. Switching only changes
+                what you do next.
+              </>
+            ) : (
+              <>
+                Your {from} is still being checked. Switching drops it and
+                starts the {to} from scratch.
+              </>
+            )}
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={onConfirm}
+          className="bg-pink-gradient shadow-glow flex min-h-11 w-full items-center justify-center rounded-2xl text-[13.5px] font-bold text-white transition active:scale-[0.99]"
+        >
+          Switch to the {to}
+        </button>
+        <button
+          type="button"
+          onClick={onCancel}
+          className="text-muted-foreground hover:text-foreground mx-auto flex min-h-10 items-center text-[12.5px] font-semibold transition"
+        >
+          Keep the {from}
+        </button>
+      </div>
+    </LocalDialog>
   );
 }
 
