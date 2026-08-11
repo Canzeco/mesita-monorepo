@@ -458,9 +458,16 @@ export function TicketScreen({
   // (D12): post-scan and completed visits only.
   const showMesitaStar = !cancelled && (scanned || saved);
   // Upside still on the table: the guest is holding a working QR but hasn't
-  // done a task that would pay more.
+  // done a task that would pay more. Only REACHABLE rungs count — a story
+  // rate quoted to someone with no connected Instagram is a promise the
+  // submit EF will refuse, and over-promising a discount is the one direction
+  // this screen must never err.
+  const igConnected = Boolean(igHandle?.trim());
+  const reachableStoryRate =
+    igConnected && quote?.storyEligible ? storyRate : 0;
+  const bestReachableRate = Math.max(reviewRate, reachableStoryRate, chosenRate);
   const upsideLeft =
-    live && priced && chosenState !== "done" && Math.max(storyRate, reviewRate) > base;
+    live && priced && chosenState !== "done" && bestReachableRate > base;
 
   const showIgHandle =
     (classKey === "influencer" || storyOnTicket) && Boolean(igHandle);
@@ -487,7 +494,6 @@ export function TicketScreen({
   const stepReachable = (n: number): boolean =>
     n === 4 ? closed : n === 1 ? live && priced : n === 2 ? live && chosenTask !== null : live;
 
-  const igConnected = Boolean(igHandle?.trim());
   const selectedPick: ChosenReward = draftPick ?? pick ?? "review";
   const selectedRate =
     selectedPick === "story"
@@ -824,7 +830,7 @@ export function TicketScreen({
                   </span>
                 </span>
                 <span className="font-display text-foreground/80 shrink-0 text-[15px] leading-none font-extrabold tabular-nums">
-                  {Math.max(storyRate, reviewRate, chosenRate)}%
+                  {bestReachableRate}%
                 </span>
               </button>
             ) : null}
