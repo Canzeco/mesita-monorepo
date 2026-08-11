@@ -746,85 +746,99 @@ export function TicketScreen({ ticketId }: { ticketId: string }) {
               </div>
             ) : (
               <>
-                <SectionLabel>Your base</SectionLabel>
-                <BonusRow
-                  state="included"
-                  icon={<BadgeCheck className="size-4" />}
-                  label="Base reward"
-                  subLabel={`${classProperLabel(classKey)} class`}
-                  amount={`${quote.base}%`}
-                />
+                {/* Approved board B ("grouped automatics"): what's yours
+                    automatically is ONE card; the decision list stands alone.
+                    The CTA lives in the pinned footer so it can never scroll
+                    off-screen again. */}
+                <SectionLabel>Yours automatically</SectionLabel>
+                <div className="border-border bg-card divide-border divide-y rounded-2xl border-[1.5px]">
+                  <div className="flex min-h-12 items-center gap-2.5 px-3 py-2.5">
+                    <span className="bg-muted text-muted-foreground grid size-7 shrink-0 place-items-center rounded-lg">
+                      <BadgeCheck className="size-4" />
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="text-foreground block truncate text-[12.5px] leading-tight font-bold">
+                        Base reward
+                      </span>
+                      <span className="text-muted-foreground mt-0.5 block truncate text-[10px] font-semibold">
+                        {classProperLabel(classKey)} class
+                      </span>
+                    </span>
+                    <span className="font-display text-foreground shrink-0 text-[17px] leading-none font-extrabold tabular-nums">
+                      {quote.base}%
+                    </span>
+                    <span className="bg-muted text-muted-foreground shrink-0 rounded-full px-2 py-0.5 text-[8.5px] font-extrabold tracking-wide uppercase">
+                      Auto
+                    </span>
+                  </div>
+                  {welcomeBonus > 0 ? (
+                    <div className="flex min-h-10 items-center gap-2.5 px-3 py-2">
+                      <span className="bg-muted text-muted-foreground grid size-7 shrink-0 place-items-center rounded-lg">
+                        <Sparkles className="size-3.5" />
+                      </span>
+                      <span className="text-foreground min-w-0 flex-1 truncate text-[12px] font-bold">
+                        Welcome visit bonus
+                        <span className="text-muted-foreground ml-1.5 text-[10px] font-semibold">
+                          your first visit here
+                        </span>
+                      </span>
+                      <span className="font-display text-foreground shrink-0 text-[15px] leading-none font-extrabold tabular-nums">
+                        {bonusAmount(welcomeBonus)}
+                      </span>
+                    </div>
+                  ) : (
+                    <div className="text-muted-foreground flex min-h-9 items-baseline gap-1.5 px-3 py-1.5 opacity-80">
+                      <span className="truncate text-[11.5px] font-bold">
+                        Welcome visit bonus
+                      </span>
+                      <span className="min-w-0 truncate text-[10.5px] font-semibold">
+                        —{" "}
+                        {quote.isFirstVisit
+                          ? "not offered here"
+                          : "first visit only"}
+                      </span>
+                    </div>
+                  )}
+                </div>
 
-                <SectionLabel>Automatic bonus</SectionLabel>
-                {welcomeBonus > 0 ? (
-                  <BonusRow
-                    state="included"
-                    icon={<Sparkles className="size-4" />}
-                    label="Welcome visit bonus"
-                    subLabel="Your first visit here"
-                    amount={bonusAmount(welcomeBonus)}
-                  />
-                ) : (
-                  <BonusRow
-                    state="off"
-                    icon={<Sparkles className="size-4" />}
-                    label="Welcome visit bonus"
-                    subLabel={
-                      quote.isFirstVisit
-                        ? "Not offered here"
-                        : "First visit only — you've been here"
-                    }
-                    amount={null}
-                  />
-                )}
-
-                <SectionLabel>Action bonuses — pick one</SectionLabel>
+                <SectionLabel>Pick one bonus</SectionLabel>
                 <div
                   role="radiogroup"
                   aria-label="Action bonus"
                   className="flex flex-col gap-2"
                 >
-                  <BonusRow
-                    state={quote.storyEligible ? "action" : "off"}
-                    icon={<Instagram className="size-4" />}
-                    label="Instagram story bonus"
-                    subLabel={
-                      !quote.storyEligible
-                        ? "Not offered here"
-                        : !igConnected
-                          ? "+ Connect Instagram"
-                          : "Post a tagged story"
-                    }
-                    amount={
-                      quote.storyEligible
-                        ? bonusAmount(quote.bonuses.story)
-                        : null
-                    }
-                    selected={selectedPick === "story"}
-                    disabled={!storySelectable}
-                    onSelect={() => toggleAction("story")}
-                  />
-                  <BonusRow
-                    state={quote.bonuses.google > 0 ? "action" : "off"}
-                    icon={<Star className="size-4" />}
-                    label="Google review bonus"
-                    subLabel={
-                      quote.bonuses.google > 0
-                        ? "Leave a Google review"
-                        : "Not offered here"
-                    }
-                    amount={
-                      quote.bonuses.google > 0
-                        ? bonusAmount(quote.bonuses.google)
-                        : null
-                    }
-                    selected={selectedPick === "google"}
-                    disabled={!googleSelectable}
-                    onSelect={() => toggleAction("google")}
-                  />
+                  {quote.storyEligible ? (
+                    <BonusRow
+                      state="action"
+                      icon={<Instagram className="size-4" />}
+                      label="Instagram story bonus"
+                      subLabel={
+                        !igConnected ? "+ Connect Instagram" : "Post a tagged story"
+                      }
+                      amount={bonusAmount(quote.bonuses.story)}
+                      selected={selectedPick === "story"}
+                      disabled={!storySelectable}
+                      onSelect={() => toggleAction("story")}
+                    />
+                  ) : (
+                    <InertRow label="Instagram story bonus" reason="not offered here" />
+                  )}
+                  {quote.bonuses.google > 0 ? (
+                    <BonusRow
+                      state="action"
+                      icon={<Star className="size-4" />}
+                      label="Google review bonus"
+                      subLabel="Leave a Google review"
+                      amount={bonusAmount(quote.bonuses.google)}
+                      selected={selectedPick === "google"}
+                      disabled={!googleSelectable}
+                      onSelect={() => toggleAction("google")}
+                    />
+                  ) : (
+                    <InertRow label="Google review bonus" reason="not offered here" />
+                  )}
                   {reviewDone ? (
-                    // Already rated — the engine counts it automatically now,
-                    // so it reads as banked, not as an option to weigh.
+                    // Already rated — banked, not an option to weigh.
                     <BonusRow
                       state="included"
                       icon={<UtensilsCrossed className="size-4" />}
@@ -832,78 +846,51 @@ export function TicketScreen({ ticketId }: { ticketId: string }) {
                       subLabel="Visit rated — counted at the bill"
                       amount={bonusAmount(quote.bonuses.mesita)}
                     />
-                  ) : (
+                  ) : quote.bonuses.mesita > 0 ? (
                     <BonusRow
-                      state={quote.bonuses.mesita > 0 ? "action" : "off"}
+                      state="action"
                       icon={<UtensilsCrossed className="size-4" />}
                       label="Mesita review bonus"
-                      subLabel={
-                        quote.bonuses.mesita > 0
-                          ? "Rate your visit on Mesita"
-                          : "Not offered here"
-                      }
-                      amount={
-                        quote.bonuses.mesita > 0
-                          ? bonusAmount(quote.bonuses.mesita)
-                          : null
-                      }
+                      subLabel="Rate your visit on Mesita"
+                      amount={bonusAmount(quote.bonuses.mesita)}
                       selected={selectedPick === "mesita"}
                       disabled={!mesitaSelectable}
                       onSelect={() => toggleAction("mesita")}
                     />
-                  )}
-                </div>
-
-                {/* The sum, spelled out — modular means the math is visible. */}
-                <div className="pt-0.5 text-center">
-                  {additive ? (
-                    <p className="text-muted-foreground text-[11px] font-semibold">
-                      {quote.base}% base
-                      {welcomeBonus > 0 ? ` + ${welcomeBonus}% welcome` : ""}
-                      {selectedAction
-                        ? ` + ${actionBonus(selectedAction)}% ${
-                            selectedAction === "story"
-                              ? "story"
-                              : selectedAction === "google"
-                                ? "review"
-                                : "Mesita review"
-                          }`
-                        : ""}
-                    </p>
                   ) : (
-                    <p className="text-muted-foreground text-[11px] font-semibold">
-                      Your best single reward
-                    </p>
+                    <InertRow label="Mesita review bonus" reason="not offered here" />
                   )}
-                  <p className="font-display text-pink-gradient text-[30px] leading-none font-extrabold tracking-tight">
-                    = {selectedTotal}% off
-                  </p>
                 </div>
 
-                <p className="text-muted-foreground/80 text-center text-[10.5px] leading-snug">
-                  {pickLocked
-                    ? "This ticket already carries its action — finish it to unlock the higher rate."
-                    : "One action bonus per ticket — tap it again to skip it. Your QR works either way."}
+                {/* The sum, one line — the math stays visible without a hero. */}
+                <p className="pt-0.5 text-center">
+                  <span className="text-muted-foreground text-[10.5px] font-semibold">
+                    {additive
+                      ? `${quote.base}% base` +
+                        (welcomeBonus > 0 ? ` + ${welcomeBonus}% welcome` : "") +
+                        (selectedAction
+                          ? ` + ${actionBonus(selectedAction)}% ${
+                              selectedAction === "story"
+                                ? "story"
+                                : selectedAction === "google"
+                                  ? "review"
+                                  : "Mesita review"
+                            }`
+                          : "") +
+                        " ="
+                      : "Your best single reward ="}
+                  </span>{" "}
+                  <span className="font-display text-pink-gradient text-[22px] leading-none font-extrabold tracking-tight">
+                    {selectedTotal}% off
+                  </span>
                 </p>
 
-                {/* CTA right where the eye already is (D2), naming the deal
-                    (7.1A): the ONE number repeat that's confirmation. */}
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (!pickLocked) setStoredPick(selectedPick);
-                    goToStep(selectedAction ? 2 : 3);
-                  }}
-                  className="bg-pink-gradient shadow-glow flex min-h-12 w-full shrink-0 items-center justify-center gap-2 rounded-2xl text-[14px] font-bold text-white transition active:scale-[0.99]"
-                >
-                  {selectedAction === "google"
-                    ? `Do the review → unlock ${selectedTotal}%`
-                    : selectedAction === "story"
-                      ? `Post a story → unlock ${selectedTotal}%`
-                      : selectedAction === "mesita"
-                        ? `Rate on Mesita → unlock ${selectedTotal}%`
-                        : `Show my QR at ${base}%`}
-                </button>
+                {pickLocked ? (
+                  <p className="text-muted-foreground/80 text-center text-[10.5px] leading-snug">
+                    This ticket already carries its action — finish it to
+                    unlock the higher rate.
+                  </p>
+                ) : null}
               </>
             )}
           </>
@@ -1240,9 +1227,34 @@ export function TicketScreen({ ticketId }: { ticketId: string }) {
         )}
       </div>
 
-      {/* Utility row — housekeeping only, ONE quiet line at the true bottom,
-          physically far from any CTA (D2). Destructive and rare actions don't
-          get button chrome next to the commit path. */}
+      {/* Pinned footer: step 1's commit + the utility row. The CTA moved back
+          here from the body (cleanup board, 2026-08-11) — with five rungs the
+          body outgrew the viewport and the commit clipped off-screen; pinned,
+          it is always visible and the rows scroll under it. */}
+      {step === 1 && quote !== null && !quoteError ? (
+        <div className="shrink-0 pt-2">
+          <button
+            type="button"
+            onClick={() => {
+              if (!pickLocked) setStoredPick(selectedPick);
+              goToStep(selectedAction ? 2 : 3);
+            }}
+            className="bg-pink-gradient shadow-glow flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl text-[14px] font-bold text-white transition active:scale-[0.99]"
+          >
+            {selectedAction === "google"
+              ? `Do the review → unlock ${selectedTotal}%`
+              : selectedAction === "story"
+                ? `Post a story → unlock ${selectedTotal}%`
+                : selectedAction === "mesita"
+                  ? `Rate on Mesita → unlock ${selectedTotal}%`
+                  : `Show my QR at ${base}%`}
+          </button>
+        </div>
+      ) : null}
+
+      {/* Utility row — housekeeping only, ONE quiet line at the true bottom.
+          Destructive and rare actions don't get button chrome next to the
+          commit path. */}
       <div className="flex shrink-0 items-center justify-center gap-2.5 pt-2">
         {ticket.status === "open" ? (
           <button
@@ -1374,12 +1386,14 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
   );
 }
 
-// One rung of the modular reward sheet. Three states:
-//   included — automatic money (base, welcome, an already-earned ★): tinted,
-//              AUTO badge, never tappable.
+// One rung of the modular reward sheet (restyled per the approved cleanup
+// board, 2026-08-11 — "one pink"): SELECTION is the only pink on the page.
+//   included — automatic money (base, an already-earned ★): NEUTRAL white
+//              card, muted icon, dark Fraunces amount, gray AUTO chip.
+//              `--secondary` is the same pink family as `--primary`, which is
+//              exactly why it must not appear here — tinting automatics pink
+//              was the wash Pato flagged.
 //   action   — selectable, radio semantics (pick one, retap to unpick).
-//   off      — displayed but inert (rung priced 0 / not eligible): dashed.
-// The rate is the row's own number, Fraunces, gradient when selected.
 function BonusRow({
   state,
   icon,
@@ -1390,7 +1404,7 @@ function BonusRow({
   disabled = false,
   onSelect,
 }: {
-  state: "included" | "action" | "off";
+  state: "included" | "action";
   icon: React.ReactNode;
   label: string;
   subLabel?: string;
@@ -1404,27 +1418,18 @@ function BonusRow({
     <>
       <span
         className={cn(
-          "grid size-8 shrink-0 place-items-center rounded-lg",
-          state === "included"
-            ? "bg-secondary/10 text-secondary"
-            : selected
-              ? "bg-primary/10 text-primary"
-              : "bg-muted text-muted-foreground",
+          "grid size-7 shrink-0 place-items-center rounded-lg",
+          selected ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground",
         )}
       >
         {icon}
       </span>
       <span className="min-w-0 flex-1">
-        <span className="text-foreground block truncate text-[13px] leading-tight font-bold">
+        <span className="text-foreground block truncate text-[12.5px] leading-tight font-bold">
           {label}
         </span>
         {subLabel ? (
-          <span
-            className={cn(
-              "mt-0.5 block truncate text-[10.5px] font-bold",
-              state === "included" ? "text-secondary" : "text-muted-foreground",
-            )}
-          >
+          <span className="text-muted-foreground mt-0.5 block truncate text-[10px] font-semibold">
             {subLabel}
           </span>
         ) : null}
@@ -1434,10 +1439,10 @@ function BonusRow({
           className={cn(
             "font-display shrink-0 leading-none font-extrabold tabular-nums",
             selected
-              ? "text-pink-gradient text-[24px]"
+              ? "text-pink-gradient text-[21px]"
               : state === "included"
-                ? "text-secondary text-[18px]"
-                : "text-muted-foreground text-[18px]",
+                ? "text-foreground text-[17px]"
+                : "text-muted-foreground text-[15px]",
           )}
         >
           {amount}
@@ -1447,29 +1452,24 @@ function BonusRow({
         <span
           aria-hidden="true"
           className={cn(
-            "grid size-5 shrink-0 place-items-center rounded-full border-[1.5px]",
+            "grid size-[18px] shrink-0 place-items-center rounded-full border-[1.5px]",
             selected
               ? "border-primary bg-primary text-white"
               : "border-border bg-card",
           )}
         >
-          {selected ? <Check className="size-3" strokeWidth={3.5} /> : null}
+          {selected ? <Check className="size-2.5" strokeWidth={4} /> : null}
         </span>
-      ) : state === "included" ? (
-        <span className="bg-secondary/10 text-secondary shrink-0 rounded-full px-2 py-0.5 text-[9px] font-extrabold tracking-wide uppercase">
+      ) : (
+        <span className="bg-muted text-muted-foreground shrink-0 rounded-full px-2 py-0.5 text-[8.5px] font-extrabold tracking-wide uppercase">
           Auto
         </span>
-      ) : null}
+      )}
     </>
   );
   const shell = cn(
-    "flex min-h-[52px] w-full items-center gap-2.5 rounded-2xl border-[1.5px] px-3 py-2.5 text-left",
-    state === "included"
-      ? "border-secondary/25 bg-secondary/[0.06]"
-      : selected
-        ? "border-primary bg-primary/5"
-        : "border-border bg-card",
-    state === "off" && "border-dashed opacity-55",
+    "flex min-h-12 w-full items-center gap-2.5 rounded-2xl border-[1.5px] px-3 py-2.5 text-left",
+    selected ? "border-primary bg-primary/5" : "border-border bg-card",
     state === "action" && disabled && "opacity-55",
   );
   if (state === "action" && !disabled) {
@@ -1486,8 +1486,26 @@ function BonusRow({
     );
   }
   return (
-    <div aria-disabled={state !== "included" ? true : undefined} className={shell}>
+    <div aria-disabled={state === "action" ? true : undefined} className={shell}>
       {body}
+    </div>
+  );
+}
+
+// A rung that exists but can't do anything here (not offered / not this
+// visit): a quiet one-line footnote row, not a full dead card. Per the
+// cleanup board, these keep the "display all bonuses" contract without
+// stacking dashed boxes.
+function InertRow({ label, reason }: { label: string; reason: string }) {
+  return (
+    <div
+      aria-disabled="true"
+      className="border-border/80 text-muted-foreground flex min-h-9 items-baseline gap-1.5 rounded-xl border-[1.5px] border-dashed px-3 py-1.5 opacity-80"
+    >
+      <span className="truncate text-[11.5px] font-bold">{label}</span>
+      <span className="min-w-0 truncate text-[10.5px] font-semibold">
+        — {reason}
+      </span>
     </div>
   );
 }
