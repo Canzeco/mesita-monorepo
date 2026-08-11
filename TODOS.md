@@ -19,6 +19,17 @@
   - **Pros:** Focused Place. **Cons:** Extra tab / catch-all churn.
   - **Depends on:** residual E-R1–E-R10 (shipped).
 
+- [ ] **Consumer app DESIGN.md** — document the live `apps/web-consumer` system
+  (globals.css tokens, Fraunces/Inter type roles, chip/card/CTA vocabulary,
+  overlay standard) and point the root `DESIGN.md` row at it.
+  - **Why:** design reviews of the consumer app calibrate against an implicit
+    system read from `globals.css`; the admin console paid this same debt
+    2026-08-09 and its reviews got sharper.
+  - **Pros:** consistent new screens, faster reviews. **Cons:** doc upkeep.
+  - **Context:** /plan-design-review of THE TICKET (2026-08-11) flagged the
+    gap (Pass 5); mobile-consumer must "look alike to web-consumer", so the
+    doc doubles as the mobile parity reference.
+
 ## Data debt
 
 - [ ] **Retain prior Google names for search recall** — keep superseded

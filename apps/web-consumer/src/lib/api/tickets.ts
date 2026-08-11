@@ -72,9 +72,20 @@ export async function apiListConsumerTickets(
   return tickets ?? [];
 }
 
-type CreatedTicket = {
+// Exported for the seed cache (MESITA-1029 S3): RewardsClient synthesizes a
+// ConsumerTicketRow out of this + the tapped Place so THE TICKET paints
+// without waiting for list-tickets. The EF returns the full inserted row —
+// these optional fields were simply under-declared before the seed needed
+// them.
+export type CreatedTicket = {
   id: string;
   status: string;
+  kind?: string;
+  story_status?: string | null;
+  review_status?: string | null;
+  first_scanned_at?: string | null;
+  currency?: string | null;
+  created_at?: string;
   check_code: string;
   place_name: string | null;
   place_slug: string | null;

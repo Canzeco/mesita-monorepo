@@ -1,46 +1,18 @@
-import { redirect } from "next/navigation";
-import { createServerSupabase } from "@/lib/supabase/server";
 import { TicketScreen } from "@/components/consumer/rewards/TicketScreen";
-import { apiFetchConsumerProfile } from "@/lib/api/profile";
-import { rewardsTicketPath } from "@/lib/consumer-route-contract";
 
-export const dynamic = "force-dynamic";
-
-// THE ticket (MESITA-857 · MESITA-908): Place → Consumer → Reward → Tasks →
-// QR / Results → Report. Profile seeds the Consumer Info block.
+// THE TICKET route is deliberately THIN (MESITA-1029 S1). Middleware + the
+// shell layout own the auth wall, and identity (userId, name, avatar) rides
+// ClassProvider from the layout's one per-request profile fetch. Everything
+// this page used to do server-side — auth.getUser() plus its own
+// consumer-get-profile call — duplicated that work, and because the layout
+// does NOT re-run on soft navigation, those two round trips were pure added
+// latency on every ticket open: the biggest chunk of the "tap feels frozen"
+// delay. Do not add fetches here.
 export default async function RewardsTicketPage({
   params,
 }: {
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const supabase = await createServerSupabase();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect(`/?next=${encodeURIComponent(rewardsTicketPath(id))}`);
-
-  let guestName: string | null = null;
-  let avatarUrl: string | null = null;
-  try {
-    const { consumer } = await apiFetchConsumerProfile(supabase);
-    const first = consumer.first_name?.trim() ?? "";
-    const last = consumer.last_name?.trim() ?? "";
-    guestName =
-      [first, last].filter(Boolean).join(" ") ||
-      consumer.full_name?.trim() ||
-      null;
-    avatarUrl = consumer.avatar_url ?? null;
-  } catch {
-    // Consumer bar falls back to "Mesita guest" + DefaultAvatar.
-  }
-
-  return (
-    <TicketScreen
-      userId={user.id}
-      ticketId={id}
-      guestName={guestName}
-      avatarUrl={avatarUrl}
-    />
-  );
+  return <TicketScreen ticketId={id} />;
 }
