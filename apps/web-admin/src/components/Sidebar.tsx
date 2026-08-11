@@ -16,6 +16,7 @@ import { DB_PARENT } from "@/app/(app)/manage-database/nav";
 import { ENRICHER_PARENT } from "@/app/(app)/enricher-config/nav";
 import { MEMO_PARENT } from "@/app/(app)/memo-config/nav";
 import { MODELS_PARENT } from "@/app/(app)/models-config/nav";
+import { OJO_PARENT } from "@/app/(app)/ojo-config/nav";
 import { RESERVATIONS_PARENT } from "@/app/(app)/reservations-config/nav";
 import { REWARDS_PARENT } from "@/app/(app)/rewards-config/nav";
 import { SCORING_PARENT } from "@/app/(app)/lineup-config/nav";
@@ -76,6 +77,7 @@ const CONFIGS_NAV: NavItem[] = [
   ATLAS_PARENT,
   ENRICHER_PARENT,
   VERIFICATION_PARENT,
+  OJO_PARENT,
   SCORING_PARENT,
   REWARDS_PARENT,
   MEMO_PARENT,
@@ -127,14 +129,14 @@ function NavLink({
       href={href}
       onClick={onNavigate}
       className={
-        "pl-2.5 lg:pl-3 " +
-        " flex items-center gap-2.5 rounded-2xl py-2 pr-2.5 text-[13px] font-medium transition lg:gap-3 lg:py-2.5 lg:pr-3 lg:text-sm " +
+        "pl-2 lg:pl-2.5 " +
+        " flex items-center gap-2 rounded-xl py-1.5 pr-2 text-[12px] font-medium transition lg:gap-2.5 lg:py-2 lg:pr-2.5 lg:text-[12.5px] " +
         (active
           ? "bg-secondary text-secondary-foreground"
           : "text-background/60 hover:bg-background/10 hover:text-background")
       }
     >
-      <Icon className="h-4 w-4 shrink-0" />
+      <Icon className="h-3.5 w-3.5 shrink-0" />
       <span className="truncate">{label}</span>
     </Link>
   );
@@ -142,8 +144,8 @@ function NavLink({
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
-    <div className="px-2.5 pt-3 pb-1.5 lg:px-3">
-      <span className="text-background/35 text-[10px] font-medium tracking-[0.14em] uppercase">
+    <div className="px-2 pt-2 pb-1 lg:px-2.5">
+      <span className="text-background/35 text-[9px] font-medium tracking-[0.14em] uppercase">
         {children}
       </span>
     </div>
@@ -151,7 +153,7 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
 }
 
 function SectionGap() {
-  return <div className="py-2" />;
+  return <div className="py-1" />;
 }
 
 function SidebarNav({ onNavigate }: SidebarProps) {
@@ -185,7 +187,7 @@ function SidebarNav({ onNavigate }: SidebarProps) {
 export function Sidebar({ onNavigate }: SidebarProps) {
   // Dark lateral rail — only the main menu is inverted; content stays light.
   return (
-    <aside className="bg-foreground text-background flex h-full w-56 shrink-0 flex-col overflow-hidden border-r border-background/10 px-2.5 pt-5 pb-4 lg:w-64 lg:px-3">
+    <aside className="bg-foreground text-background flex h-full w-52 shrink-0 flex-col overflow-hidden border-r border-background/10 px-2 pt-4 pb-3 lg:w-60 lg:px-2.5">
       <Link
         href="/central"
         onClick={onNavigate}

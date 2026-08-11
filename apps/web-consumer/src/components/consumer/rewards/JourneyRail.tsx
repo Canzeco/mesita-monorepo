@@ -50,7 +50,7 @@ export function JourneyRail({
     <ol className="relative flex items-start" aria-label="Ticket steps">
       <span
         aria-hidden="true"
-        className="bg-border absolute top-[13px] right-[12.5%] left-[12.5%] h-px"
+        className="bg-border absolute top-[11px] right-[12.5%] left-[12.5%] h-px"
       />
       {steps.map(({ n, label, icon: Icon }) => {
         const done = n < current;
@@ -60,23 +60,23 @@ export function JourneyRail({
           <>
             <span
               className={cn(
-                "grid size-[26px] place-items-center rounded-full border transition",
+                "grid size-[22px] place-items-center rounded-full border transition",
                 now
-                  ? "bg-pink-gradient border-transparent text-white"
+                  ? "bg-foreground border-transparent text-background"
                   : done
-                    ? "border-secondary/30 bg-secondary/10 text-secondary"
+                    ? "border-foreground/25 bg-foreground/8 text-foreground/70"
                     : "border-border bg-background text-muted-foreground/50",
               )}
             >
               {done ? (
-                <Check className="size-3.5" strokeWidth={3} />
+                <Check className="size-3" strokeWidth={3} />
               ) : (
-                <Icon className="size-3.5" strokeWidth={2.25} />
+                <Icon className="size-3" strokeWidth={2.25} />
               )}
             </span>
             <span
               className={cn(
-                "text-center text-[9.5px] leading-tight font-semibold",
+                "text-center text-[9px] leading-tight font-semibold",
                 now ? "text-foreground" : "text-muted-foreground",
               )}
             >
