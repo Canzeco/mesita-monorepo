@@ -39,7 +39,6 @@ import {
   ArrowLeft,
   BadgeCheck,
   Check,
-  Instagram,
   Loader2,
   Lock,
   PartyPopper,
@@ -61,6 +60,11 @@ import {
 } from "@/components/consumer/TicketReviewForm";
 import { JourneyRail } from "@/components/consumer/rewards/JourneyRail";
 import { TaskProof } from "@/components/consumer/rewards/TaskProof";
+import {
+  GoogleGlyph,
+  InstagramGlyph,
+  MesitaGlyph,
+} from "@/components/consumer/rewards/BrandGlyph";
 import { submitTicketReview } from "@/lib/api/pay";
 import { formatCurrency } from "@/lib/api/profile";
 import {
@@ -718,8 +722,9 @@ export function TicketScreen({ ticketId }: { ticketId: string }) {
 
   return (
     <Shell>
-      {/* Chrome row — place identity as chrome, not a card stack. */}
-      <div className="flex shrink-0 items-center gap-2.5 px-0.5 py-1">
+      {/* Chrome row — place identity as chrome, not a card stack. It is the
+          page's ONLY title: nothing below repeats the place name. */}
+      <div className="flex shrink-0 items-center gap-2.5 px-0.5 pt-0.5 pb-1">
         <button
           type="button"
           onClick={() =>
@@ -756,7 +761,7 @@ export function TicketScreen({ ticketId }: { ticketId: string }) {
               ? "bg-emerald-500/10 text-emerald-700"
               : cancelled
                 ? "bg-muted text-muted-foreground"
-                : "bg-primary/10 text-primary",
+                : "bg-foreground/8 text-foreground/70",
           )}
         >
           {saved ? "Completed" : cancelled ? "Cancelled" : "Live"}
@@ -765,7 +770,9 @@ export function TicketScreen({ ticketId }: { ticketId: string }) {
 
       {/* The rail — this ticket's real progress, tappable wherever it's
           reachable so changing your mind is one tap, not a back-out. */}
-      <div className="border-border shrink-0 border-b pt-1 pb-2.5">
+      {/* No divider rule, no panel: the rail sits IN the page rather than in a
+          header box (board C). */}
+      <div className="shrink-0 pt-0.5 pb-2">
         {/* Step swaps re-render in place; announce them (Pass 6 / T7). */}
         <p className="sr-only" aria-live="polite">
           Step {step} of 4 — {STEP_LABELS[step - 1]}
@@ -782,18 +789,11 @@ export function TicketScreen({ ticketId }: { ticketId: string }) {
       <div className="scrollbar-hide flex min-h-0 flex-1 flex-col gap-2.5 overflow-y-auto pt-3">
         {step === 1 ? (
           <>
-            {/* Modular reward sheet (Pato, 2026-08-11): base first, then EVERY
-                bonus — the automatic one marked AUTO, the three actions as a
-                pick-one set. Each rung is a row, each row carries its own
-                number, and the sum is spelled out under the list. */}
-            <div className="pt-1 text-center">
-              <p className="text-foreground text-[15px] font-extrabold tracking-tight">
-                Your reward at {placeName}
-              </p>
-              <p className="text-muted-foreground mt-0.5 text-[11px] leading-snug">
-                Base is yours already — bonuses stack on top.
-              </p>
-            </div>
+            {/* NO page headline here. "Your reward at {place}" repeated the
+                place name the chrome row already carries two rows above, and
+                the rail already says which step you're on — three title
+                blocks stacked to say one thing (board C, 2026-08-11). The
+                receipt starts straight under the rail. */}
             {quoteError ? (
               // Rates unavailable ≠ ticket unavailable: the QR stays one tap
               // away at the guest's base while the quote retries.
@@ -871,7 +871,7 @@ export function TicketScreen({ ticketId }: { ticketId: string }) {
                     className="divide-border divide-y"
                   >
                     <ReceiptRow
-                      icon={<Instagram className="size-4" />}
+                      icon={<InstagramGlyph className="size-4" />}
                       label="Instagram story bonus"
                       sub={
                         !quote.storyEligible
@@ -892,7 +892,7 @@ export function TicketScreen({ ticketId }: { ticketId: string }) {
                       onSelect={() => requestAction("story")}
                     />
                     <ReceiptRow
-                      icon={<Star className="size-4" />}
+                      icon={<GoogleGlyph className="size-4" />}
                       label="Google review bonus"
                       sub={
                         quote.bonuses.google > 0
@@ -911,7 +911,7 @@ export function TicketScreen({ ticketId }: { ticketId: string }) {
                       onSelect={() => requestAction("google")}
                     />
                     <ReceiptRow
-                      icon={<UtensilsCrossed className="size-4" />}
+                      icon={<MesitaGlyph className="size-4" />}
                       label="Mesita review bonus"
                       sub={
                         quote.bonuses.mesita === 0
@@ -944,7 +944,7 @@ export function TicketScreen({ ticketId }: { ticketId: string }) {
                             : "")
                         : "Your best single reward"}
                     </span>
-                    <span className="font-display text-pink-gradient shrink-0 text-[24px] leading-none font-extrabold tracking-tight">
+                    <span className="font-display text-foreground shrink-0 text-[24px] leading-none font-extrabold tracking-tight">
                       {selectedTotal}% off
                     </span>
                   </div>
@@ -1148,13 +1148,13 @@ export function TicketScreen({ ticketId }: { ticketId: string }) {
                 onClick={() => goToStep(chosenAction ? 2 : 1)}
                 className="border-border bg-card flex min-h-11 w-full shrink-0 items-center gap-2.5 rounded-2xl border px-3 py-2 text-left transition active:scale-[0.99]"
               >
-                <span className="bg-secondary/10 text-secondary grid size-8 shrink-0 place-items-center rounded-lg">
+                <span className="bg-muted/60 text-muted-foreground grid size-8 shrink-0 place-items-center rounded-lg">
                   {chosenAction === "story" ? (
-                    <Instagram className="size-4" />
+                    <InstagramGlyph className="size-4" />
                   ) : chosenAction === "google" ? (
-                    <Star className="size-4" />
+                    <GoogleGlyph className="size-4" />
                   ) : chosenAction === "mesita" ? (
-                    <UtensilsCrossed className="size-4" />
+                    <MesitaGlyph className="size-4" />
                   ) : (
                     <Sparkles className="size-4" />
                   )}
@@ -1498,14 +1498,9 @@ function ReceiptRow({
 }) {
   const body = (
     <>
-      <span
-        className={cn(
-          "grid size-7 shrink-0 place-items-center rounded-lg",
-          selected
-            ? "bg-primary/10 text-primary"
-            : "bg-muted text-muted-foreground",
-        )}
-      >
+      {/* Brand marks keep their own colours; house icons stay neutral. The
+          tile itself never tints — this screen is white, not pink. */}
+      <span className="bg-muted/60 text-muted-foreground grid size-8 shrink-0 place-items-center rounded-lg [&>svg]:size-4">
         {icon}
       </span>
       <span className="min-w-0 flex-1">
@@ -1526,10 +1521,8 @@ function ReceiptRow({
       {amount ? (
         <span
           className={cn(
-            "font-display shrink-0 leading-none font-extrabold tabular-nums",
-            selected
-              ? "text-pink-gradient text-[19px]"
-              : "text-foreground text-[16px]",
+            "font-display text-foreground shrink-0 leading-none font-extrabold tabular-nums",
+            selected ? "text-[19px]" : "text-[16px]",
           )}
         >
           {amount}
@@ -1541,7 +1534,7 @@ function ReceiptRow({
           className={cn(
             "grid size-[18px] shrink-0 place-items-center rounded-full border-[1.5px]",
             selected
-              ? "border-primary bg-primary text-white"
+              ? "border-foreground bg-foreground text-background"
               : "border-border bg-card",
           )}
         >
@@ -1553,8 +1546,10 @@ function ReceiptRow({
     </>
   );
   const shell = cn(
-    "flex min-h-[52px] w-full items-center gap-2.5 px-3 py-2.5 text-left",
-    selected && "bg-primary/[0.06]",
+    "flex min-h-[52px] w-full items-center gap-2.5 px-3 py-2.5 text-left transition",
+    // Selection reads as WEIGHT, not hue: a faint neutral wash and a filled
+    // dark radio. Pink is spent once on this page, on the CTA.
+    selected && "bg-foreground/[0.04]",
     dim && "opacity-45",
   );
   if (selectable) {
@@ -1656,7 +1651,7 @@ function RateVisitRow({ done, onOpen }: { done: boolean; onOpen: () => void }) {
             "grid size-8 shrink-0 place-items-center rounded-lg",
             done
               ? "bg-emerald-500/15 text-emerald-700"
-              : "bg-secondary/10 text-secondary",
+              : "bg-muted/60 text-muted-foreground",
           )}
         >
           {done ? (

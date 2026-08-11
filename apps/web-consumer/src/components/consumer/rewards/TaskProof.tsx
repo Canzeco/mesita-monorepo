@@ -18,16 +18,18 @@ import {
   Camera,
   Check,
   ExternalLink,
-  Instagram,
   Loader2,
   RefreshCw,
-  Star,
   UtensilsCrossed,
 } from "lucide-react";
 
 import { uploadTicketProof } from "@/lib/ticket-proofs";
 import { useConsumerIdentity } from "@/lib/class-context";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
+import {
+  GoogleGlyph,
+  InstagramGlyph,
+} from "@/components/consumer/rewards/BrandGlyph";
 import { cn } from "@/lib/utils";
 
 export type TaskKind = "review" | "story";
@@ -133,8 +135,12 @@ export function TaskProof({
       </p>
 
       <div className="surface-card rounded-2xl px-4 py-4 text-center">
-        <span className="bg-secondary/10 text-secondary mx-auto grid size-11 place-items-center rounded-xl">
-          {isReview ? <Star className="size-5" /> : <Instagram className="size-5" />}
+        <span className="bg-muted/60 mx-auto grid size-11 place-items-center rounded-xl">
+          {isReview ? (
+            <GoogleGlyph className="size-6" />
+          ) : (
+            <InstagramGlyph className="size-6" />
+          )}
         </span>
         <p className="text-foreground mt-2 text-[14.5px] font-extrabold tracking-tight">
           {isReview ? "Leave your Google review" : "Post your tagged story"}
@@ -145,7 +151,7 @@ export function TaskProof({
             : `Tag ${placeName} in your story, screenshot it, post it here.`}
         </p>
         {rate > 0 ? (
-          <p className="text-primary mt-2 text-[12.5px] font-bold">
+          <p className="text-foreground mt-2 text-[12.5px] font-bold">
             Unlocks {rate}% off
           </p>
         ) : null}
@@ -162,7 +168,7 @@ export function TaskProof({
         type="button"
         onClick={openTarget}
         disabled={phase === "confirming"}
-        className="bg-pink-gradient shadow-glow flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl text-[14px] font-bold text-white transition active:scale-[0.99] disabled:opacity-50"
+        className="bg-foreground text-background flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl text-[14px] font-bold transition active:scale-[0.99] disabled:opacity-50"
       >
         {phase === "opening" ? (
           <Loader2 className="size-4 animate-spin" />
