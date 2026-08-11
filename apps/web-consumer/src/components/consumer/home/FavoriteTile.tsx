@@ -20,6 +20,10 @@ import { cn, firstInitial, formatDistanceKm } from "@/lib/utils";
 // Every tile is the SAME size (Pato, 2026-08-10): a plain 2-column grid, no
 // hero span on odd counts. An earlier pass gave the first tile a full-width
 // 16:9 crop to avoid the trailing gap — that's out, the even rhythm wins.
+//
+// 3:4 is the WHOLE CARD, not the photo (Pato, 2026-08-10). Ratio on the photo
+// alone stacked the caption underneath and the tile read far too tall; now the
+// card is 3:4 and the photo takes whatever the caption leaves.
 export function FavoriteTile({
   place,
   saved,
@@ -43,14 +47,14 @@ export function FavoriteTile({
 
   return (
     <li className="min-w-0">
-      <div className="border-border bg-card relative flex h-full flex-col overflow-hidden rounded-2xl border transition hover:shadow-md">
+      <div className="border-border bg-card relative flex aspect-[3/4] flex-col overflow-hidden rounded-2xl border transition hover:shadow-md">
         {/* Photo + text navigate to the place; the heart is a separate control
             (interactive elements can't nest inside an <a>). */}
         <Link
           href={placeHref(place.slug || place.id)}
           className="focus-visible:ring-primary flex min-w-0 flex-1 flex-col rounded-2xl transition outline-none focus-visible:ring-2 active:scale-[0.99]"
         >
-          <div className="bg-muted relative aspect-[3/4] w-full shrink-0 overflow-hidden">
+          <div className="bg-muted relative min-h-0 w-full flex-1 overflow-hidden">
             {photo ? (
               <Image
                 src={photo}
@@ -68,9 +72,11 @@ export function FavoriteTile({
             )}
           </div>
 
-          {/* No fixed height anywhere in here — at 200% text the tile grows a
-              row instead of clipping one. */}
-          <div className="flex min-w-0 flex-1 flex-col p-2.5">
+          {/* The text block keeps its natural height; the photo absorbs what's
+              left. At 200% text the block outgrows the ratio and the card
+              grows with it (an aspect-ratio box never shrinks below its
+              content) instead of clipping a row. */}
+          <div className="flex min-w-0 shrink-0 flex-col p-2.5">
             <p className="font-display text-foreground truncate text-[15px] font-semibold tracking-tight">
               {place.name}
             </p>
