@@ -1,24 +1,37 @@
 "use client";
 
-// The New tab (Wallet v3, MESITA-811 · MESITA-817): EVERY Mesita place —
-// deliberately no searchbar yet, per Pato ("just list all the places; then we
-// see how we can solve the searchbar").
+// The New tab (Wallet v3, MESITA-811 · MESITA-817): EVERY Mesita place, listed
+// flat — deliberately no searchbar yet, per Pato ("just list all the places;
+// then we see how we can solve the searchbar").
 //
-// SQUARE TILES, 2 per row (MESITA-1025, Pato: "show squares, not bars"). This
-// list does ONE job — pick the place you're standing in — so the photo is the
-// content: you recognize the room before you read the name. The whole tile is
-// the square (not just its photo), name and zone ride a scrim inside it, so
-// the grid keeps one rhythm no matter how long a name runs.
+// ROWS, one column (Pato, 2026-08-11: "no squares neither — you only see
+// places, step 1"). This reverses MESITA-1025's 2-col square grid: squares put
+// the photo first, but this list does not sell a place — you are already
+// standing in it, and you are scanning for its NAME. A name is what a row
+// reads first, at full width, unabbreviated.
+//
+// ONE TAP IS THE WHOLE INTERACTION: tapping a partner creates the ticket and
+// lands on THE TICKET (/rewards/ticket/[id]). No wizard, no confirm — hence
+// the ghost QR on every actionable row, which is the row's promise made
+// visible.
 //
 // Non-partners are shown, not hidden (MESITA-817). Hiding them meant a guest
 // whose catalog is all `web` listings saw an empty tab and concluded the page
 // was broken. They get a LOCKED treatment instead (MESITA-819) — padlock pill,
-// desaturated photo, no tap target — because consumer-web-create-ticket 409s
-// `not_partner`, so a tap is a dead end. Partners sort first.
+// desaturated thumbnail, muted name, no tap target — because
+// consumer-web-create-ticket 409s `not_partner`, so a tap is a dead end.
+// Partners sort first.
 
 import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
-import { Loader2, Lock, MapPin, QrCode, Store } from "lucide-react";
+import {
+  ChevronRight,
+  Loader2,
+  Lock,
+  MapPin,
+  QrCode,
+  Store,
+} from "lucide-react";
 
 import { apiFetchPublicPlaces, type Place } from "@/lib/api/places";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
@@ -73,15 +86,18 @@ export function PlacePickList({
   const anyLocked = sorted.some((p) => p.listing_type !== "partner");
 
   if (status === "loading") {
-    // Skeleton mirrors the grid, not a list — a row skeleton resolving into
-    // tiles reads as a layout jump.
+    // Skeleton mirrors the row silhouette — a grid resolving into rows reads
+    // as a layout jump.
     return (
-      <div className="grid grid-cols-2 gap-3">
+      <div className="border-border bg-card divide-border divide-y overflow-hidden rounded-2xl border">
         {[0, 1, 2, 3].map((i) => (
-          <div
-            key={i}
-            className="border-border bg-muted aspect-square animate-pulse rounded-2xl border"
-          />
+          <div key={i} className="flex items-center gap-3 px-3.5 py-3">
+            <div className="bg-muted size-12 animate-pulse rounded-xl" />
+            <div className="flex-1 space-y-2">
+              <div className="bg-muted h-3.5 w-2/5 animate-pulse rounded" />
+              <div className="bg-muted h-3 w-3/5 animate-pulse rounded" />
+            </div>
+          </div>
         ))}
       </div>
     );
@@ -121,11 +137,11 @@ export function PlacePickList({
   }
 
   return (
-    <div className="flex flex-col gap-3">
-      <ul className="grid grid-cols-2 gap-3">
+    <div className="flex flex-col gap-2">
+      <ul className="border-border bg-card divide-border divide-y overflow-hidden rounded-2xl border">
         {sorted.map((p) => (
-          <li key={p.id} className="min-w-0">
-            <PlaceTile
+          <li key={p.id}>
+            <PlaceRow
               place={p}
               hasOpen={activePlaceIds.has(p.id)}
               busy={busyPlaceId === p.id}
@@ -144,7 +160,7 @@ export function PlacePickList({
   );
 }
 
-function PlaceTile({
+function PlaceRow({
   place,
   hasOpen,
   busy = false,
@@ -168,73 +184,83 @@ function PlaceTile({
         <Image
           src={photo}
           alt=""
-          fill
-          sizes="(max-width: 448px) 50vw, 208px"
-          // The PHOTO carries the inactive state, not the whole tile — blanket
-          // opacity reads as a rendering glitch and costs legibility.
-          // Desaturated says "real place, not live".
-          className={cn("object-cover", !isPartner && "opacity-70 grayscale")}
+          width={48}
+          height={48}
+          // The THUMBNAIL carries the inactive state, not the whole row —
+          // blanket row opacity reads as a rendering glitch and costs
+          // legibility. Desaturated + dimmed says "real place, not live".
+          className={cn(
+            "size-12 shrink-0 rounded-xl object-cover",
+            !isPartner && "opacity-60 grayscale",
+          )}
         />
       ) : (
         <span
           className={cn(
-            "absolute inset-0 grid place-items-center",
+            "grid size-12 shrink-0 place-items-center rounded-xl",
             isPartner
-              ? "bg-pink-gradient text-white/85"
+              ? "bg-secondary/10 text-secondary"
               : "bg-muted text-muted-foreground",
           )}
         >
-          <Store className="size-7" />
+          <Store className="size-5" />
         </span>
       )}
-
-      {/* Scrim only under the text — a full-tile wash would mute the photo,
-          which is the reason the tile is a photo. */}
-      <span className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/45 to-transparent p-2.5 pt-8">
-        <span className="font-display block truncate text-[14px] leading-tight font-bold text-white">
+      <span className="min-w-0 flex-1">
+        <span
+          className={cn(
+            "block truncate text-[13.5px] leading-tight font-bold",
+            isPartner ? "text-foreground" : "text-muted-foreground",
+          )}
+        >
           {place.name}
         </span>
-        <span className="mt-0.5 block truncate text-[11px] text-white/75">
+        <span className="text-muted-foreground/80 mt-0.5 block truncate text-[11.5px]">
           {subtitle}
         </span>
       </span>
-
       {!isPartner ? (
         // One unambiguous locked signal, in one place.
-        <span className="absolute top-2 left-2 flex items-center gap-1 rounded-full bg-black/55 px-2 py-0.5 text-[9.5px] font-extrabold tracking-wide text-white/90 uppercase backdrop-blur">
+        <span className="bg-muted text-muted-foreground flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-extrabold tracking-wide uppercase">
           <Lock className="size-2.5" />
           Soon
         </span>
       ) : hasOpen ? (
-        <span className="bg-primary absolute top-2 left-2 rounded-full px-2 py-0.5 text-[9.5px] font-extrabold tracking-wide text-white uppercase">
+        // The one place-row state worth showing: this place already holds a
+        // live ticket, so the tap re-opens it instead of making a second one.
+        <span className="bg-primary/10 text-primary shrink-0 rounded-full px-2 py-0.5 text-[10px] font-extrabold tracking-wide uppercase">
           Open
         </span>
       ) : (
-        // Ghost QR — the tile's promise, made visible. A dashed placeholder
-        // reads "your QR comes from here, tap it". Deliberately NOT a
-        // scannable code: nothing exists until the ticket is created. While
-        // the ticket is being created it becomes the spinner, in place.
-        <span
-          aria-hidden="true"
-          className="absolute top-2 right-2 grid size-8 place-items-center rounded-lg border border-dashed border-white/50 bg-black/35 text-white backdrop-blur"
-        >
-          {busy ? (
-            <Loader2 className="size-4 animate-spin" />
-          ) : (
-            <QrCode className="size-4" />
-          )}
-        </span>
+        <>
+          {/* Ghost QR — the row's promise, made visible. A dashed placeholder
+              reads "your QR comes from here, tap it", which a bare chevron
+              never says. Deliberately NOT a scannable code: nothing exists
+              until the ticket is created. While the ticket is being created
+              it becomes the spinner, in place. */}
+          <span
+            aria-hidden="true"
+            className="border-primary/30 bg-primary/5 text-primary/70 grid size-9 shrink-0 place-items-center rounded-lg border border-dashed"
+          >
+            {busy ? (
+              <Loader2 className="size-[18px] animate-spin" />
+            ) : (
+              <QrCode className="size-[18px]" />
+            )}
+          </span>
+          <ChevronRight className="text-muted-foreground size-4 shrink-0" />
+        </>
       )}
     </>
   );
 
-  const shell =
-    "border-border bg-muted relative block aspect-square w-full overflow-hidden rounded-2xl border text-left";
-
   // Non-partners are visible but inert: create-ticket would 409 `not_partner`.
   if (!isPartner) {
     return (
-      <div aria-disabled="true" className={shell}>
+      <div
+        aria-disabled="true"
+        className="flex w-full items-center gap-3 px-3.5 py-3 text-left"
+      >
         {body}
       </div>
     );
@@ -244,10 +270,7 @@ function PlaceTile({
     <button
       type="button"
       onClick={() => onPick(place)}
-      className={cn(
-        shell,
-        "focus-visible:ring-primary transition outline-none focus-visible:ring-2 active:scale-[0.99]",
-      )}
+      className="hover:bg-muted/50 flex w-full items-center gap-3 px-3.5 py-3 text-left transition"
     >
       {body}
     </button>
