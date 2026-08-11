@@ -3,13 +3,11 @@
 // half-shaped EF response renders instead of throwing.
 
 export type Verdict = "ok" | "degraded" | "down" | "unconfigured";
-type Cost = "free" | "paid";
 
 export type ProbeResult = {
   id: string;
   label: string;
   impact: string;
-  cost: Cost;
   verdict: Verdict;
   envKeys: string[];
   httpStatus: number | null;
@@ -21,58 +19,58 @@ export type ProbeResult = {
  * The providers the page can offer before it has ever heard from the EF.
  * Kept in sync with the PROBES registry in the Edge Function by hand — the
  * page must be able to render its cards (and its Run buttons) while the probe
- * backend is unreachable, which is exactly the state it is shipped in.
+ * backend is unreachable.
+ *
+ * There is no free/paid split here on purpose: two of these vendors expose no
+ * unbilled endpoint that proves a key still works, so probing them costs a
+ * token or a request unit — a rounding error against not knowing which vendor
+ * went dark. One button runs the lot.
  */
 export const KNOWN_PROBES: ReadonlyArray<{
   id: string;
   label: string;
   impact: string;
-  cost: Cost;
 }> = [
   {
     id: "firecrawl",
     label: "Firecrawl",
     impact: "Enricher link discovery (S4 gather) — fails SOFT, returns no links",
-    cost: "free",
   },
-  { id: "apify", label: "Apify", impact: "Enricher Instagram/actor scraping", cost: "free" },
+  { id: "apify", label: "Apify", impact: "Enricher Instagram/actor scraping" },
   {
     id: "twilio",
     label: "Twilio",
     impact: "Phone OTP — the ONLY consumer sign-in. Dead key = nobody logs in",
-    cost: "free",
   },
   {
     id: "elevenlabs",
     label: "ElevenLabs",
     impact: "Reservationist voice agents (a1–a4)",
-    cost: "free",
   },
   {
     id: "openai",
     label: "OpenAI",
     impact: "Memo airlock (parked) — not yet load-bearing",
-    cost: "free",
   },
   {
     id: "stripe",
     label: "Stripe",
     impact: "Business plans + consumer Premium subscriptions",
-    cost: "free",
   },
   {
     id: "perplexity",
     label: "Perplexity",
     impact: "Memo answers + Enricher S5 (Agent Y link select)",
-    cost: "paid",
   },
   {
     id: "google-places",
     label: "Google Places",
     impact: "Identity spine for Atlas, Enricher and Lineup",
-    cost: "paid",
   },
 ];
+
+/** Every probe id, in registry order — what the one Run button sends. */
+export const ALL_PROBE_IDS: readonly string[] = KNOWN_PROBES.map((p) => p.id);
 
 const VERDICTS: ReadonlySet<string> = new Set([
   "ok",
@@ -108,7 +106,6 @@ export function coerceResults(raw: unknown): ProbeResult[] {
       id,
       label: pickString(row, "label", known?.label ?? id),
       impact: pickString(row, "impact", known?.impact ?? ""),
-      cost: row.cost === "paid" ? "paid" : "free",
       verdict,
       envKeys: Array.isArray(row.envKeys)
         ? row.envKeys.filter((k): k is string => typeof k === "string")

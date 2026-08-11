@@ -5,7 +5,6 @@ import {
   AlertTriangle,
   CircleDashed,
   CircleSlash,
-  Coins,
   Loader2,
   Play,
   ShieldCheck,
@@ -13,7 +12,7 @@ import {
 } from "lucide-react";
 import { ErrorNote } from "@/components/ErrorNote";
 import { runApiHealthProbes } from "./actions";
-import { KNOWN_PROBES, type ProbeResult, type Verdict } from "./catalog";
+import { ALL_PROBE_IDS, KNOWN_PROBES, type ProbeResult, type Verdict } from "./catalog";
 
 const VERDICT_STYLE: Record<
   Verdict,
@@ -56,14 +55,12 @@ function VerdictChip({ verdict }: { verdict: Verdict }) {
 function ProbeCard({
   label,
   impact,
-  cost,
   result,
   busy,
   onRun,
 }: {
   label: string;
   impact: string;
-  cost: "free" | "paid";
   result: ProbeResult | undefined;
   busy: boolean;
   onRun: () => void;
@@ -72,17 +69,9 @@ function ProbeCard({
     <div className="border-border bg-card shadow-elev flex flex-col gap-3 rounded-2xl border p-4">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <div className="flex items-center gap-2">
-            <h3 className="font-display truncate text-sm font-semibold tracking-tight">
-              {label}
-            </h3>
-            {cost === "paid" ? (
-              <span className="border-border text-muted-foreground inline-flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-[10px] font-medium">
-                <Coins className="h-2.5 w-2.5" />
-                billed
-              </span>
-            ) : null}
-          </div>
+          <h3 className="font-display truncate text-sm font-semibold tracking-tight">
+            {label}
+          </h3>
           <p className="text-muted-foreground mt-1 text-xs leading-relaxed">
             {impact}
           </p>
@@ -121,7 +110,7 @@ function ProbeCard({
         ) : (
           <Play className="h-3 w-3" />
         )}
-        {cost === "paid" ? "Run (spends)" : "Run"}
+        Run
       </button>
     </div>
   );
@@ -135,13 +124,13 @@ export function BillingTestClient() {
   const [notDeployed, setNotDeployed] = useState(false);
   const [checkedAt, setCheckedAt] = useState<string | null>(null);
 
-  async function run(providers: string[] | null) {
-    const ids = providers ?? KNOWN_PROBES.filter((p) => p.cost === "free").map((p) => p.id);
-    if (providers === null) setSweeping(true);
+  /** @param sweep true when this is the "run everything" button, not one card. */
+  async function run(ids: string[], sweep = false) {
+    if (sweep) setSweeping(true);
     setRunning((prev) => new Set([...prev, ...ids]));
     setError(null);
 
-    const res = await runApiHealthProbes(providers);
+    const res = await runApiHealthProbes(ids);
 
     if (res.ok) {
       setResults((prev) => {
@@ -161,19 +150,18 @@ export function BillingTestClient() {
       for (const id of ids) next.delete(id);
       return next;
     });
-    if (providers === null) setSweeping(false);
+    if (sweep) setSweeping(false);
   }
-
-  const free = KNOWN_PROBES.filter((p) => p.cost === "free");
-  const paid = KNOWN_PROBES.filter((p) => p.cost === "paid");
 
   return (
     <div className="flex flex-col gap-6">
       <div className="border-border bg-card shadow-elev flex flex-wrap items-center justify-between gap-3 rounded-2xl border p-4">
         <div>
-          <p className="text-sm font-semibold">Run every free probe</p>
+          <p className="text-sm font-semibold">Run every probe</p>
           <p className="text-muted-foreground mt-0.5 text-xs">
-            Account and balance endpoints only — vendors don&apos;t bill for these.
+            All {KNOWN_PROBES.length} vendors at once. Two of them (Perplexity,
+            Google Places) bill a token per run — pennies against not knowing
+            who went dark.
             {checkedAt
               ? ` Last sweep ${new Date(checkedAt).toLocaleString()}.`
               : ""}
@@ -181,7 +169,7 @@ export function BillingTestClient() {
         </div>
         <button
           type="button"
-          onClick={() => run(null)}
+          onClick={() => run([...ALL_PROBE_IDS], true)}
           disabled={sweeping}
           className="bg-foreground text-background inline-flex h-9 items-center justify-center gap-2 rounded-full px-4 text-xs font-semibold transition hover:opacity-90 disabled:opacity-50"
         >
@@ -190,7 +178,7 @@ export function BillingTestClient() {
           ) : (
             <Play className="h-3.5 w-3.5" />
           )}
-          Run free sweep
+          Run all tests
         </button>
       </div>
 
@@ -201,10 +189,13 @@ export function BillingTestClient() {
             <span className="font-semibold">
               admin-web-check-api-health is not deployed.
             </span>{" "}
-            The Supabase org is on the free plan and already carries more Edge
-            Functions than that plan allows, so every deploy — including this
-            one — is rejected with a 402. This page works the moment the org
-            moves to Pro and the function ships; nothing else is required.
+            Every card on this page is served by that one Edge Function, so
+            nothing here can run until it ships:{" "}
+            <code className="font-mono">
+              supabase functions deploy admin-web-check-api-health
+            </code>{" "}
+            from the repo&apos;s <code className="font-mono">supabase/</code>{" "}
+            package.
           </p>
         </div>
       ) : error ? (
@@ -213,39 +204,16 @@ export function BillingTestClient() {
 
       <section>
         <h2 className="text-muted-foreground text-[11px] font-medium tracking-[0.14em] uppercase">
-          Free probes
+          Vendors
         </h2>
+        {/* Per-card Run stays: attributing an outage to one vendor is the whole
+            point of the page, and after a key fix you want to retest that one. */}
         <div className="mt-3 grid gap-3 md:grid-cols-2">
-          {free.map((p) => (
+          {KNOWN_PROBES.map((p) => (
             <ProbeCard
               key={p.id}
               label={p.label}
               impact={p.impact}
-              cost={p.cost}
-              result={results[p.id]}
-              busy={running.has(p.id)}
-              onRun={() => run([p.id])}
-            />
-          ))}
-        </div>
-      </section>
-
-      <section>
-        <h2 className="text-muted-foreground text-[11px] font-medium tracking-[0.14em] uppercase">
-          Billed probes
-        </h2>
-        <p className="text-muted-foreground mt-1 text-xs leading-relaxed">
-          These vendors expose no unbilled endpoint that proves a key still
-          works, so each run spends a token or a request unit. They are excluded
-          from the sweep above and only run when you press their own button.
-        </p>
-        <div className="mt-3 grid gap-3 md:grid-cols-2">
-          {paid.map((p) => (
-            <ProbeCard
-              key={p.id}
-              label={p.label}
-              impact={p.impact}
-              cost={p.cost}
               result={results[p.id]}
               busy={running.has(p.id)}
               onRun={() => run([p.id])}
