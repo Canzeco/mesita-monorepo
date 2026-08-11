@@ -12,10 +12,12 @@ import { EFError } from "@/lib/api/_invoke";
 import {
   ACTIVE_TICKET_STATUSES,
   apiCreateTicket,
+  apiGetRewardQuote,
   apiListConsumerTickets,
   type ConsumerTicketRow,
 } from "@/lib/api/tickets";
 import type { Place } from "@/lib/api/places";
+import { seedTicket, ticketRowFromCreate } from "@/lib/ticket-seed";
 import { ticketPath } from "@/lib/consumer-route-contract";
 import { useConsumerTickets } from "@/lib/hooks/useConsumerTickets";
 import { EmptyState } from "@/components/shared";
@@ -49,11 +51,6 @@ import { cn } from "@/lib/utils";
 
 type Tab = "new" | "history";
 
-/** THE TICKET path with the one-time entrance flag (TicketScreen strips it). */
-function bornTicketPath(id: string): string {
-  return `${ticketPath(id)}?born=1`;
-}
-
 export function RewardsClient({ userId }: { userId: string }) {
   const supabase = useBrowserSupabase();
   const router = useRouter();
@@ -84,12 +81,22 @@ export function RewardsClient({ userId }: { userId: string }) {
     async (place: Place) => {
       setStartingId(place.id);
       setStartError(null);
+      // The quote starts NOW, in parallel with the create (MESITA-1029 S4),
+      // so step 1's numbers are ready at arrival instead of after two chained
+      // fetches on the ticket screen. Resolves null on failure — the screen
+      // falls back to its own fetch + retry.
+      const quotePromise = apiGetRewardQuote(supabase, place.id)
+        .then((r) => r.quote)
+        .catch(() => null);
       // ALWAYS "base": no task attached, nothing gating the QR. The rung is
       // the modal's step 1, not this tap's decision.
       try {
         const res = await apiCreateTicket(supabase, place.id, "base");
+        // Seed BEFORE navigating (S3): THE TICKET paints QR-and-all on its
+        // first frame from this row; list-tickets reconciles in background.
+        seedTicket(ticketRowFromCreate(res.ticket, place), quotePromise);
         void tickets.refresh();
-        router.push(bornTicketPath(res.ticket.id), { scroll: false });
+        router.push(ticketPath(res.ticket.id), { scroll: false });
       } catch (err) {
         if (err instanceof EFError && err.code === "already_open") {
           // Another device/tab won the race — open the existing ticket. The

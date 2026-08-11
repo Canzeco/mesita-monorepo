@@ -1,0 +1,91 @@
+"use client";
+
+// Ticket seed cache (MESITA-1029 S3/S4). The tap that creates a ticket
+// already holds everything THE TICKET needs for its first paint: the create
+// response carries the row (id, status, check_code, task statuses), the
+// tapped Place carries the photo, category and rate columns, and the reward
+// quote can START at create time instead of after two chained fetches on the
+// ticket screen. RewardsClient writes here right before router.push;
+// TicketScreen peeks on mount.
+//
+// Module-level on purpose: the seed must survive the route transition but
+// never the tab — a reload or deep link falls back to the normal fetch path
+// (loading.tsx silhouette → list-tickets). Never a source of truth: the
+// polled list overrides the seed the moment it lands.
+
+import type {
+  ConsumerTicketRow,
+  CreatedTicket,
+  RewardQuote,
+} from "@/lib/api/tickets";
+import type { Place } from "@/lib/api/places";
+
+type TicketSeed = {
+  ticket: ConsumerTicketRow;
+  /** Resolves null on failure — consumers fall back to their own fetch. */
+  quote: Promise<RewardQuote | null> | null;
+};
+
+const seeds = new Map<string, TicketSeed>();
+
+export function seedTicket(
+  ticket: ConsumerTicketRow,
+  quote: Promise<RewardQuote | null> | null = null,
+): void {
+  seeds.set(ticket.id, { ticket, quote });
+  // A session only ever creates a handful of tickets; cap the map so a
+  // long-lived tab can't grow it unbounded.
+  if (seeds.size > 8) {
+    const oldest = seeds.keys().next().value;
+    if (oldest !== undefined && oldest !== ticket.id) seeds.delete(oldest);
+  }
+}
+
+export function peekTicketSeed(id: string): TicketSeed | null {
+  return seeds.get(id) ?? null;
+}
+
+/** The freshly created ticket as a list row, filled from what the tap knew. */
+export function ticketRowFromCreate(
+  t: CreatedTicket,
+  place: Place,
+): ConsumerTicketRow {
+  return {
+    id: t.id,
+    kind: t.kind ?? "coupon",
+    status: t.status,
+    story_status: t.story_status ?? null,
+    story_submitted_at: null,
+    story_verified_at: null,
+    story_reject_reason: null,
+    review_status: t.review_status ?? null,
+    review_submitted_at: null,
+    check_code: t.check_code,
+    first_scanned_at: t.first_scanned_at ?? null,
+    check_subtotal_cents: null,
+    total_cents: null,
+    discount_percent: null,
+    discount_cents: null,
+    bill_source: null,
+    currency: t.currency ?? place.currency ?? null,
+    created_at: t.created_at ?? new Date().toISOString(),
+    revealed_at: null,
+    cancelled_at: null,
+    cancel_reason: null,
+    project_id: place.id,
+    place: {
+      id: place.id,
+      name: place.name,
+      photos: place.photos ?? [],
+      category: place.category ?? null,
+      address: place.address ?? null,
+      price_level: place.price_level ?? null,
+      slug: place.slug ?? null,
+      listing_type: place.listing_type ?? null,
+      welcome_free_rate: place.welcome_free_rate ?? null,
+      welcome_premium_rate: place.welcome_premium_rate ?? null,
+      free_rate: place.free_rate ?? null,
+      premium_rate: place.premium_rate ?? null,
+    },
+  };
+}

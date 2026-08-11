@@ -1,35 +1,33 @@
 "use client";
 
-// THE TICKET (MESITA-857 · 908 · 886 · plan ticket-flow-20260809) — the whole
-// ticket lifecycle on ONE FULL PAGE, organised as a FOUR-STEP MODAL (Pato,
-// 2026-08-11: "so you open a modal — the modal has multiple steps: 1. select
+// THE TICKET (MESITA-857 · 908 · 886 · 1029) — the whole ticket lifecycle on
+// ONE FULL PAGE, organised as a FOUR-STEP MODAL (Pato, 2026-08-11: "1. select
 // rewards/tasks, 2. do tasks, 3. show qr, 4. results page"):
 //
-//   chrome (back · place · status) → rail → step body → footer
-//   1 Reward  · pick the rung, with the engine's live numbers
+//   chrome (back · place · status) → rail → step body → utility row
+//   1 Reward  · direction C, plan ticket-open-fast-20260811: NO hero number —
+//               the three chips ARE the screen, each carrying its engine rate
+//               big in Fraunces (selected = gradient); CTA right under them
 //   2 Do it   · the chosen proof, self-attested
-//   3 Show QR · THE PASS — guest + rate lockup + QR + stub
+//   3 Show QR · THE PASS — guest + rate lockup + QR + stub (the big Fraunces
+//               % moment lives HERE, not on step 1)
 //   4 Results · what the visit paid, the ★, the bill capture
 //
-// These steps used to live in TWO containers: the TicketWizard sheet on
-// /rewards owned "pick reward" and "do it", this route owned the QR and the
-// results. One flow, two shapes, two step counts. The wizard is DELETED —
-// /rewards is now a bare list of places, tapping one creates the ticket and
-// lands here, and everything after "which place?" happens in this panel.
+// SPEED CONTRACT (MESITA-1029): this screen renders from what the tap already
+// knew. Identity comes from useConsumerIdentity() (the shell layout's one
+// profile fetch — never re-fetch it here); a fresh ticket comes from the seed
+// cache (ticket-seed.ts) so the QR paints on the FIRST frame; the quote
+// promise starts at create time and is consumed here. list-tickets reconciles
+// everything in the background. The born entrance died with this (7.2B):
+// instant IS the delight, and the animation fired on a screen where the pass
+// wasn't even visible. The scanned verified-pulse stays.
 //
-// THE RATE IS NO LONGER A CREATE-TIME BOUNDARY. The ticket is created at
-// "base", and consumer-web-submit-review / -submit-story accept any OPEN
-// ticket — they never required a 'pending' status — with
-// _shared/ticket-reprice bumping the rate upward when a task lands late. So
-// the QR is live from the first frame and a task is pure upside. That also
-// kills the dead end the old boundary created: a guest who didn't want to
-// leave a review was stuck holding a QR locked behind one.
-//
-// The step-1 pick is therefore a LOCAL preference (useStoredString) until a
-// proof lands — nothing on a ticket records "intends to review". Only the
-// ticket's own status can lock the QR, so a pick can never gate anything;
-// tickets created before this change (review/story 'pending') keep their lock
-// and land straight on step 2.
+// THE RATE IS NOT A CREATE-TIME BOUNDARY. Tickets are created at "base";
+// submit-review / submit-story accept any OPEN ticket and ticket-reprice
+// bumps late tasks upward, so the QR never waits on a task and a task is
+// pure upside. The step-1 pick is a LOCAL preference (useStoredString) until
+// a proof lands; only the ticket's own status can lock the QR. Pre-1026
+// tickets with a 'pending' task keep their lock and land on step 2.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
@@ -40,7 +38,6 @@ import {
   ArrowLeft,
   BadgeCheck,
   Check,
-  Flag,
   Instagram,
   Loader2,
   Lock,
@@ -58,10 +55,8 @@ import {
   TicketReviewForm,
   type TicketReviewDraft,
 } from "@/components/consumer/TicketReviewForm";
-import { BigRateLockup } from "@/components/consumer/rewards/BigRateLockup";
 import { JourneyRail } from "@/components/consumer/rewards/JourneyRail";
-import { RewardChip } from "@/components/consumer/rewards/RewardChip";
-import { TaskProof, type TaskKind } from "@/components/consumer/rewards/TaskProof";
+import { TaskProof } from "@/components/consumer/rewards/TaskProof";
 import { submitTicketReview } from "@/lib/api/pay";
 import { formatCurrency } from "@/lib/api/profile";
 import {
@@ -74,16 +69,16 @@ import {
   apiGetRewardQuote,
   apiSubmitTicketTotal,
   checkUrlForCode,
-  type ChosenReward,
   type ConsumerTicketRow,
   type ReportReason,
   type RewardQuote,
 } from "@/lib/api/tickets";
-import { CONSUMER_ROUTES, ticketPath } from "@/lib/consumer-route-contract";
-import { useConsumerClass } from "@/lib/class-context";
+import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
+import { useConsumerClass, useConsumerIdentity } from "@/lib/class-context";
 import { classProperLabel } from "@/lib/consumer-data";
 import { useStoredString } from "@/lib/local-store";
 import { strategyForPlaceRow } from "@/lib/promo-rates";
+import { peekTicketSeed } from "@/lib/ticket-seed";
 import { useConsumerTickets } from "@/lib/hooks/useConsumerTickets";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { cn } from "@/lib/utils";
@@ -124,31 +119,50 @@ function pickStorageKey(ticketId: string): string {
   return `mesita.ticket.reward.${ticketId}`;
 }
 
+function stubNoun(a: ActionKind): string {
+  return a === "story" ? "Story" : a === "mesita" ? "Mesita ★" : "Review";
+}
+
 type Step = 1 | 2 | 3 | 4;
 type TaskSheet = "mesita" | "report" | null;
 
-export function TicketScreen({
-  userId,
-  ticketId,
-  guestName = null,
-  avatarUrl = null,
-}: {
-  userId: string;
-  ticketId: string;
-  guestName?: string | null;
-  avatarUrl?: string | null;
-}) {
+const STEP_LABELS = ["Reward", "Do it", "Show QR", "Results"] as const;
+
+// The modular reward model (Pato, 2026-08-11: "you have your base and you can
+// select your bonuses… display all bonuses, automatic and action; automatic
+// is automatic but still display it; action bonuses you can only select one"):
+//   base reward            — always yours, shown first
+//   welcome visit bonus    — AUTOMATIC (displayed, never selectable)
+//   instagram story bonus  — action ┐
+//   google review bonus    — action ├ pick ONE (or none — base always works)
+//   mesita review bonus    — action ┘
+// story/google map to the ticket's story_status/review_status columns; the
+// Mesita ★ lives in ticket_reviews and the engine's resolveLiveTicketRate
+// counts it via hasMesitaReview at billing time, so all three actions PAY.
+type ActionKind = "story" | "google" | "mesita";
+/** "base" = no action selected — the QR at the guest's floor. */
+type RewardPick = ActionKind | "base";
+
+export function TicketScreen({ ticketId }: { ticketId: string }) {
   const supabase = useBrowserSupabase();
   const router = useRouter();
+  // Identity rides the shell layout's one profile fetch (S1) — this screen
+  // adds ZERO server work of its own.
+  const { userId, displayName: guestName, avatarUrl } = useConsumerIdentity();
   const tickets = useConsumerTickets(userId);
   const { key: classKey, handle: igHandle } = useConsumerClass();
 
+  // The seed (S3) covers the gap between arrival and the first list-tickets
+  // response — a freshly created ticket paints QR-and-all on frame 1. The
+  // polled list wins the moment it has the row.
+  const seed = useMemo(() => peekTicketSeed(ticketId), [ticketId]);
   const ticket = useMemo(
     () =>
       tickets.active.find((t) => t.id === ticketId) ??
       tickets.history.find((t) => t.id === ticketId) ??
+      seed?.ticket ??
       null,
-    [tickets.active, tickets.history, ticketId],
+    [tickets.active, tickets.history, ticketId, seed],
   );
 
   // The pass quotes the ENGINE's number, not the static v6 ladder (MESITA-1013
@@ -163,23 +177,41 @@ export function TicketScreen({
     placeId: string;
     quote: RewardQuote;
   } | null>(null);
+  const [quoteFail, setQuoteFail] = useState<string | null>(null);
+  const [quoteReload, setQuoteReload] = useState(0);
   useEffect(() => {
     if (quotePlaceId === null) return;
     let cancelled = false;
     void (async () => {
       try {
-        const res = await apiGetRewardQuote(supabase, quotePlaceId);
-        if (!cancelled) setQuoteRes({ placeId: quotePlaceId, quote: res.quote });
+        // S4: a create-time prefetch may already hold the answer — consume it
+        // instead of starting cold. It resolves null on failure, and a manual
+        // retry (quoteReload > 0) always goes to the network.
+        const seeded =
+          quoteReload === 0 &&
+          seed?.quote &&
+          seed.ticket.project_id === quotePlaceId
+            ? await seed.quote
+            : null;
+        const quote =
+          seeded ?? (await apiGetRewardQuote(supabase, quotePlaceId)).quote;
+        if (!cancelled) {
+          setQuoteRes({ placeId: quotePlaceId, quote });
+          setQuoteFail(null);
+        }
       } catch {
-        // Non-fatal: the headline stays hidden rather than showing a number
-        // the bill won't honor. The billed truth still renders once settled.
+        // The QR NEVER waits on the quote — only step 1's numbers do. The
+        // failure renders as an inline retry + a "base" escape hatch there,
+        // and the pass headline stays hidden rather than guessing a number.
+        if (!cancelled) setQuoteFail(quotePlaceId);
       }
     })();
     return () => {
       cancelled = true;
     };
-  }, [quotePlaceId, supabase]);
+  }, [quotePlaceId, supabase, seed, quoteReload]);
   const quote = quoteRes?.placeId === quotePlaceId ? quoteRes.quote : null;
+  const quoteError = quoteFail === quotePlaceId && quote === null;
 
   // Step 1's pick. useStoredString keeps the hydration render on the SSR
   // snapshot, so no setState-in-effect and no mismatch.
@@ -187,9 +219,9 @@ export function TicketScreen({
     pickStorageKey(ticketId),
     "",
   );
-  // Chip selection while the guest is still deciding — writing straight to the
+  // Row selection while the guest is still deciding — writing straight to the
   // store would advance the derived step out from under the tap.
-  const [draftPick, setDraftPick] = useState<ChosenReward | null>(null);
+  const [draftPick, setDraftPick] = useState<RewardPick | null>(null);
   const [stepChoice, setStepChoice] = useState<Step | null>(null);
 
   const scanned = ticket?.first_scanned_at != null;
@@ -203,22 +235,6 @@ export function TicketScreen({
     }
     wasScannedRef.current = scanned;
   }, [scanned]);
-
-  // ?born=1 — the handoff from the place list: play the pass entrance the
-  // first time the QR renders, then strip the flag so reloads and
-  // back-navigation stay calm.
-  const [born, setBorn] = useState(false);
-  useEffect(() => {
-    if (!window.location.search.includes("born=1")) return;
-    const raf = requestAnimationFrame(() => setBorn(true));
-    const t = window.setTimeout(() => {
-      router.replace(ticketPath(ticketId), { scroll: false });
-    }, 700);
-    return () => {
-      cancelAnimationFrame(raf);
-      window.clearTimeout(t);
-    };
-  }, [router, ticketId]);
 
   const [sheet, setSheet] = useState<TaskSheet>(null);
   const openSheet = useCallback((next: TaskSheet) => setSheet(next), []);
@@ -244,17 +260,19 @@ export function TicketScreen({
     overall: 0,
     comments: "",
   });
-  const submitMesitaReview = useCallback(async () => {
+  const submitMesitaReview = useCallback(async (): Promise<boolean> => {
     setReviewBusy(true);
     setReviewError(null);
     try {
       await submitTicketReview(supabase, { ticketId, ...reviewDraft });
       setReviewDone(true);
       setSheet(null);
+      return true;
     } catch (err) {
       setReviewError(
         err instanceof Error ? err.message : "Couldn't save your review.",
       );
+      return false;
     } finally {
       setReviewBusy(false);
     }
@@ -329,6 +347,35 @@ export function TicketScreen({
     );
   }
 
+  // A failed list call is NOT a missing ticket (Pass 2): telling a guest at
+  // the table that their ticket "may have been cancelled" because the network
+  // blipped is the worst possible misread. Error gets a retry; only a
+  // successful list that lacks the row gets "not found".
+  if (!ticket && tickets.status === "error") {
+    return (
+      <Shell>
+        <div className="surface-card flex flex-col items-center gap-3 rounded-2xl px-6 py-12 text-center">
+          <span className="bg-muted text-muted-foreground grid size-12 place-items-center rounded-2xl">
+            <XCircle className="size-6" />
+          </span>
+          <p className="text-foreground text-[15px] font-semibold">
+            Couldn&apos;t load your ticket
+          </p>
+          <p className="text-muted-foreground max-w-[280px] text-[12.5px] leading-relaxed">
+            Check your connection — your ticket is safe.
+          </p>
+          <button
+            type="button"
+            onClick={tickets.retry}
+            className="bg-pink-gradient shadow-glow mt-1 rounded-xl px-5 py-2.5 text-[13px] font-semibold text-white"
+          >
+            Retry
+          </button>
+        </div>
+      </Shell>
+    );
+  }
+
   if (!ticket) {
     return (
       <Shell>
@@ -381,18 +428,22 @@ export function TicketScreen({
     !quote ? 0 : additive ? clamp(base + bonus) : clamp(Math.max(base, bonus));
   const storyRate = withBonus(quote?.bonuses.story ?? 0);
   const reviewRate = withBonus(quote?.bonuses.google ?? 0);
+  const mesitaRate = withBonus(quote?.bonuses.mesita ?? 0);
 
   // What the TICKET records beats what the guest merely picked. Only a
   // persisted task can gate the QR (D6, pick-one); a local pick is an
-  // intention and gates nothing.
+  // intention and gates nothing. story_status/review_status name the
+  // Instagram and GOOGLE rungs; the Mesita ★ lives in ticket_reviews, so its
+  // done-state is session-local (reviewDone) — the engine still counts it at
+  // billing time via hasMesitaReview.
   const storyOnTicket =
     ticket.story_status != null && ticket.story_status !== "not_required";
   const reviewOnTicket =
     ticket.review_status != null && ticket.review_status !== "not_required";
-  const persistedTask: TaskKind | null = storyOnTicket
+  const persistedTask: ActionKind | null = storyOnTicket
     ? "story"
     : reviewOnTicket
-      ? "review"
+      ? "google"
       : null;
   const persistedState: TaskState | null = persistedTask
     ? taskStateFor(
@@ -400,36 +451,54 @@ export function TicketScreen({
       )
     : null;
 
-  const localPick: ChosenReward | null =
-    storedPick === "base" || storedPick === "story" || storedPick === "review"
-      ? storedPick
-      : null;
-  const pick: ChosenReward | null = persistedTask ?? localPick;
-  const chosenTask: TaskKind | null =
-    pick === "story" || pick === "review" ? pick : null;
-  const chosenState: TaskState = persistedState ?? "todo";
-  const chosenBonus = !quote
-    ? 0
-    : chosenTask === "story"
-      ? quote.bonuses.story
-      : quote.bonuses.google;
+  // Stored "review" predates the google/mesita split — read it as google.
+  const localPick: RewardPick | null =
+    storedPick === "review"
+      ? "google"
+      : storedPick === "base" ||
+          storedPick === "story" ||
+          storedPick === "google" ||
+          storedPick === "mesita"
+        ? storedPick
+        : null;
+  const pick: RewardPick | null = persistedTask ?? localPick;
+  const chosenAction: ActionKind | null = pick === "base" ? null : pick;
+  const chosenState: TaskState =
+    chosenAction === "mesita"
+      ? reviewDone
+        ? "done"
+        : "todo"
+      : (persistedState ?? "todo");
+  const actionBonus = (a: ActionKind | null): number =>
+    !quote || a === null
+      ? 0
+      : a === "story"
+        ? quote.bonuses.story
+        : a === "google"
+          ? quote.bonuses.google
+          : quote.bonuses.mesita;
   const chosenRate =
-    !quote || !chosenTask || !priced ? 0 : withBonus(chosenBonus);
+    !quote || !chosenAction || !priced ? 0 : withBonus(actionBonus(chosenAction));
 
   // The headline number + its honesty clause. Billed truth wins; a rejected
   // proof falls back to the class base (D7); everything else quotes the
   // chosen action, conditionally until done.
   const headlinePercent = billed
     ? (ticket.discount_percent ?? 0)
-    : chosenTask && chosenState !== "rejected"
+    : chosenAction && chosenState !== "rejected"
       ? chosenRate
       : base;
-  const actionNoun = chosenTask === "story" ? "story" : "review";
+  const actionNoun =
+    chosenAction === "story"
+      ? "story"
+      : chosenAction === "mesita"
+        ? "Mesita review"
+        : "review";
   const headlineSuffix = billed
     ? "applied at the table"
     : !priced
       ? ""
-      : chosenTask === null
+      : chosenAction === null
         ? additive && welcomeBonus > 0
           ? `your ${classProperLabel(classKey)} base + Welcome visit`
           : `your ${classProperLabel(classKey)} base — no task needed`
@@ -454,20 +523,32 @@ export function TicketScreen({
     persistedTask !== null &&
     persistedState !== "done";
   const showPassCard = live && (qrLocked || scannable);
-  // ★ never gates, never pays — it belongs to the visit, not the unlock
-  // (D12): post-scan and completed visits only.
+  // ★ post-scan row: rating the visit belongs to the visit (D12). When the
+  // guest PICKED mesita as their action bonus it's already done (or offered
+  // on step 2), so this row is the catch-all for everyone else.
   const showMesitaStar = !cancelled && (scanned || saved);
   // Upside still on the table: the guest is holding a working QR but hasn't
-  // done a task that would pay more. Only REACHABLE rungs count — a story
+  // done an action that would pay more. Only REACHABLE rungs count — a story
   // rate quoted to someone with no connected Instagram is a promise the
   // submit EF will refuse, and over-promising a discount is the one direction
-  // this screen must never err.
+  // this screen must never err. Post-scan the ★ row takes over.
   const igConnected = Boolean(igHandle?.trim());
   const reachableStoryRate =
     igConnected && quote?.storyEligible ? storyRate : 0;
-  const bestReachableRate = Math.max(reviewRate, reachableStoryRate, chosenRate);
+  const reachableMesitaRate =
+    !reviewDone && (quote?.bonuses.mesita ?? 0) > 0 ? mesitaRate : 0;
+  const bestReachableRate = Math.max(
+    reviewRate,
+    reachableStoryRate,
+    reachableMesitaRate,
+    chosenRate,
+  );
   const upsideLeft =
-    live && priced && chosenState !== "done" && bestReachableRate > base;
+    live &&
+    priced &&
+    !scanned &&
+    chosenState !== "done" &&
+    bestReachableRate > base;
 
   const showIgHandle =
     (classKey === "influencer" || storyOnTicket) && Boolean(igHandle);
@@ -482,30 +563,59 @@ export function TicketScreen({
     ? 4
     : !priced || pick === "base"
       ? 3
-      : chosenTask === null
+      : chosenAction === null
         ? 1
         : chosenState === "done"
           ? 3
           : 2;
   let step: Step = closed ? 4 : (stepChoice ?? naturalStep);
-  if (step === 2 && chosenTask === null) step = 1;
+  if (step === 2 && chosenAction === null) step = 1;
   if (step === 1 && !priced) step = 3;
 
   const stepReachable = (n: number): boolean =>
-    n === 4 ? closed : n === 1 ? live && priced : n === 2 ? live && chosenTask !== null : live;
+    n === 4
+      ? closed
+      : n === 1
+        ? live && priced
+        : n === 2
+          ? live && chosenAction !== null
+          : live;
 
-  const selectedPick: ChosenReward = draftPick ?? pick ?? "review";
-  const selectedRate =
-    selectedPick === "story"
-      ? storyRate
-      : selectedPick === "review"
-        ? reviewRate
-        : base;
+  // A ticket that already carries a persisted task (pre-1026) locks the pick.
   const pickLocked = persistedTask !== null;
-  const deltaLabel = (bonus: number) =>
-    additive && bonus > 0 ? `+${bonus}% on top` : undefined;
+  // Which action rows can actually be picked. A rung the engine prices at 0
+  // is displayed (Pato: "display all bonuses") but inert — selecting it would
+  // promise nothing.
+  const storySelectable =
+    Boolean(quote?.storyEligible) && igConnected && !pickLocked;
+  const googleSelectable = (quote?.bonuses.google ?? 0) > 0 && !pickLocked;
+  const mesitaSelectable =
+    (quote?.bonuses.mesita ?? 0) > 0 && !reviewDone && !pickLocked;
+  const defaultPick: RewardPick = googleSelectable
+    ? "google"
+    : mesitaSelectable
+      ? "mesita"
+      : storySelectable
+        ? "story"
+        : "base";
+  const selectedPick: RewardPick = draftPick ?? pick ?? defaultPick;
+  const selectedAction: ActionKind | null =
+    selectedPick === "base" ? null : selectedPick;
+  const selectedTotal = !quote
+    ? 0
+    : selectedAction
+      ? withBonus(actionBonus(selectedAction))
+      : base;
+  // Tap the selected action again to drop back to base-only — one action max,
+  // zero actions always allowed.
+  const toggleAction = (a: ActionKind) =>
+    setDraftPick(selectedPick === a ? "base" : a);
+  // Per-row rate caption: additive stacks (+N%), legacy best-of shows the
+  // resulting rate instead — never a "+" it won't honor.
+  const bonusAmount = (bonus: number): string =>
+    additive ? `+${bonus}%` : `${withBonus(bonus)}%`;
 
-  const confirmChosen = chosenTask === "story" ? confirmStory : confirmGoogle;
+  const confirmChosen = chosenAction === "story" ? confirmStory : confirmGoogle;
 
   const goToStep = (n: number) => {
     setStepChoice(n as Step);
@@ -561,6 +671,10 @@ export function TicketScreen({
       {/* The rail — this ticket's real progress, tappable wherever it's
           reachable so changing your mind is one tap, not a back-out. */}
       <div className="border-border shrink-0 border-b pt-1 pb-2.5">
+        {/* Step swaps re-render in place; announce them (Pass 6 / T7). */}
+        <p className="sr-only" aria-live="polite">
+          Step {step} of 4 — {STEP_LABELS[step - 1]}
+        </p>
         <JourneyRail
           current={step}
           onSelect={goToStep}
@@ -572,79 +686,248 @@ export function TicketScreen({
           shape as you move between steps. */}
       <div className="scrollbar-hide flex min-h-0 flex-1 flex-col gap-2.5 overflow-y-auto pt-3">
         {step === 1 ? (
-          quote === null ? (
-            <QuoteLoading />
-          ) : (
-            <>
-              <BigRateLockup
-                caption={`Your discount at ${placeName}`}
-                percent={selectedRate}
-                suffix={
-                  selectedPick === "review"
-                    ? "— with a Google review"
-                    : selectedPick === "story"
-                      ? "— with a tagged story"
-                      : additive && welcomeBonus > 0
-                        ? `— your ${classProperLabel(classKey)} base + Welcome visit`
-                        : `— your ${classProperLabel(classKey)} base, no task`
-                }
-              />
-              {additive ? (
-                <IncludedStrip
-                  classLabel={classProperLabel(classKey)}
-                  base={quote.base}
-                  welcome={welcomeBonus}
-                />
-              ) : null}
-              <div className="flex flex-col gap-2">
-                <RewardChip
-                  label={
-                    additive && welcomeBonus > 0
-                      ? "Base + Welcome — no task"
-                      : "Just my base"
-                  }
-                  percent={base}
-                  selected={selectedPick === "base"}
-                  disabled={pickLocked}
-                  onSelect={() => setDraftPick("base")}
-                />
-                <RewardChip
-                  icon={<Instagram className="size-4" />}
-                  label="Post a tagged story"
-                  subLabel={
-                    !igConnected
-                      ? "+ Connect Instagram"
-                      : !quote.storyEligible
-                        ? "Not offered here"
-                        : deltaLabel(quote.bonuses.story)
-                  }
-                  percent={storyRate}
-                  selected={selectedPick === "story"}
-                  disabled={pickLocked || !quote.storyEligible || !igConnected}
-                  onSelect={() => setDraftPick("story")}
-                />
-                <RewardChip
-                  icon={<Star className="size-4" />}
-                  label="Leave a Google review"
-                  subLabel={deltaLabel(quote.bonuses.google)}
-                  percent={reviewRate}
-                  selected={selectedPick === "review"}
-                  disabled={pickLocked}
-                  onSelect={() => setDraftPick("review")}
-                />
-              </div>
-              <p className="text-muted-foreground/80 text-center text-[10.5px] leading-snug">
-                {pickLocked
-                  ? "This ticket already carries its task — finish it to unlock the higher rate."
-                  : additive
-                    ? "Your base and Welcome are already counted above — a task adds on top of them. Your QR works either way."
-                    : "One action, one discount — you always keep your single best."}
+          <>
+            {/* Modular reward sheet (Pato, 2026-08-11): base first, then EVERY
+                bonus — the automatic one marked AUTO, the three actions as a
+                pick-one set. Each rung is a row, each row carries its own
+                number, and the sum is spelled out under the list. */}
+            <div className="pt-1 text-center">
+              <p className="text-foreground text-[15px] font-extrabold tracking-tight">
+                Your reward at {placeName}
               </p>
-            </>
-          )
-        ) : step === 2 && chosenTask ? (
+              <p className="text-muted-foreground mt-0.5 text-[11px] leading-snug">
+                Base is yours already — bonuses stack on top.
+              </p>
+            </div>
+            {quoteError ? (
+              // Rates unavailable ≠ ticket unavailable: the QR stays one tap
+              // away at the guest's base while the quote retries.
+              <div className="flex flex-col items-center gap-2 pt-1">
+                <p className="bg-destructive/10 text-destructive w-full rounded-lg px-3 py-2 text-center text-[12px]">
+                  Couldn&apos;t load your rates here.
+                </p>
+                <div className="flex items-center gap-5">
+                  <button
+                    type="button"
+                    onClick={() => setQuoteReload((k) => k + 1)}
+                    className="text-primary flex min-h-9 items-center text-[12.5px] font-semibold"
+                  >
+                    Retry
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (!pickLocked) setStoredPick("base");
+                      goToStep(3);
+                    }}
+                    className="text-muted-foreground hover:text-foreground flex min-h-9 items-center text-[12.5px] font-semibold"
+                  >
+                    Show my QR anyway
+                  </button>
+                </div>
+              </div>
+            ) : quote === null ? (
+              // Row-shaped skeletons — the headline paints, the rates pulse.
+              <div className="flex flex-col gap-2 pt-1">
+                {[0, 1, 2, 3, 4].map((i) => (
+                  <div
+                    key={i}
+                    className="border-border bg-card h-[52px] animate-pulse rounded-2xl border"
+                  />
+                ))}
+              </div>
+            ) : (
+              <>
+                <SectionLabel>Your base</SectionLabel>
+                <BonusRow
+                  state="included"
+                  icon={<BadgeCheck className="size-4" />}
+                  label="Base reward"
+                  subLabel={`${classProperLabel(classKey)} class`}
+                  amount={`${quote.base}%`}
+                />
+
+                <SectionLabel>Automatic bonus</SectionLabel>
+                {welcomeBonus > 0 ? (
+                  <BonusRow
+                    state="included"
+                    icon={<Sparkles className="size-4" />}
+                    label="Welcome visit bonus"
+                    subLabel="Your first visit here"
+                    amount={bonusAmount(welcomeBonus)}
+                  />
+                ) : (
+                  <BonusRow
+                    state="off"
+                    icon={<Sparkles className="size-4" />}
+                    label="Welcome visit bonus"
+                    subLabel={
+                      quote.isFirstVisit
+                        ? "Not offered here"
+                        : "First visit only — you've been here"
+                    }
+                    amount={null}
+                  />
+                )}
+
+                <SectionLabel>Action bonuses — pick one</SectionLabel>
+                <div
+                  role="radiogroup"
+                  aria-label="Action bonus"
+                  className="flex flex-col gap-2"
+                >
+                  <BonusRow
+                    state={quote.storyEligible ? "action" : "off"}
+                    icon={<Instagram className="size-4" />}
+                    label="Instagram story bonus"
+                    subLabel={
+                      !quote.storyEligible
+                        ? "Not offered here"
+                        : !igConnected
+                          ? "+ Connect Instagram"
+                          : "Post a tagged story"
+                    }
+                    amount={
+                      quote.storyEligible
+                        ? bonusAmount(quote.bonuses.story)
+                        : null
+                    }
+                    selected={selectedPick === "story"}
+                    disabled={!storySelectable}
+                    onSelect={() => toggleAction("story")}
+                  />
+                  <BonusRow
+                    state={quote.bonuses.google > 0 ? "action" : "off"}
+                    icon={<Star className="size-4" />}
+                    label="Google review bonus"
+                    subLabel={
+                      quote.bonuses.google > 0
+                        ? "Leave a Google review"
+                        : "Not offered here"
+                    }
+                    amount={
+                      quote.bonuses.google > 0
+                        ? bonusAmount(quote.bonuses.google)
+                        : null
+                    }
+                    selected={selectedPick === "google"}
+                    disabled={!googleSelectable}
+                    onSelect={() => toggleAction("google")}
+                  />
+                  {reviewDone ? (
+                    // Already rated — the engine counts it automatically now,
+                    // so it reads as banked, not as an option to weigh.
+                    <BonusRow
+                      state="included"
+                      icon={<UtensilsCrossed className="size-4" />}
+                      label="Mesita review bonus"
+                      subLabel="Visit rated — counted at the bill"
+                      amount={bonusAmount(quote.bonuses.mesita)}
+                    />
+                  ) : (
+                    <BonusRow
+                      state={quote.bonuses.mesita > 0 ? "action" : "off"}
+                      icon={<UtensilsCrossed className="size-4" />}
+                      label="Mesita review bonus"
+                      subLabel={
+                        quote.bonuses.mesita > 0
+                          ? "Rate your visit on Mesita"
+                          : "Not offered here"
+                      }
+                      amount={
+                        quote.bonuses.mesita > 0
+                          ? bonusAmount(quote.bonuses.mesita)
+                          : null
+                      }
+                      selected={selectedPick === "mesita"}
+                      disabled={!mesitaSelectable}
+                      onSelect={() => toggleAction("mesita")}
+                    />
+                  )}
+                </div>
+
+                {/* The sum, spelled out — modular means the math is visible. */}
+                <div className="pt-0.5 text-center">
+                  {additive ? (
+                    <p className="text-muted-foreground text-[11px] font-semibold">
+                      {quote.base}% base
+                      {welcomeBonus > 0 ? ` + ${welcomeBonus}% welcome` : ""}
+                      {selectedAction
+                        ? ` + ${actionBonus(selectedAction)}% ${
+                            selectedAction === "story"
+                              ? "story"
+                              : selectedAction === "google"
+                                ? "review"
+                                : "Mesita review"
+                          }`
+                        : ""}
+                    </p>
+                  ) : (
+                    <p className="text-muted-foreground text-[11px] font-semibold">
+                      Your best single reward
+                    </p>
+                  )}
+                  <p className="font-display text-pink-gradient text-[30px] leading-none font-extrabold tracking-tight">
+                    = {selectedTotal}% off
+                  </p>
+                </div>
+
+                <p className="text-muted-foreground/80 text-center text-[10.5px] leading-snug">
+                  {pickLocked
+                    ? "This ticket already carries its action — finish it to unlock the higher rate."
+                    : "One action bonus per ticket — tap it again to skip it. Your QR works either way."}
+                </p>
+
+                {/* CTA right where the eye already is (D2), naming the deal
+                    (7.1A): the ONE number repeat that's confirmation. */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!pickLocked) setStoredPick(selectedPick);
+                    goToStep(selectedAction ? 2 : 3);
+                  }}
+                  className="bg-pink-gradient shadow-glow flex min-h-12 w-full shrink-0 items-center justify-center gap-2 rounded-2xl text-[14px] font-bold text-white transition active:scale-[0.99]"
+                >
+                  {selectedAction === "google"
+                    ? `Do the review → unlock ${selectedTotal}%`
+                    : selectedAction === "story"
+                      ? `Post a story → unlock ${selectedTotal}%`
+                      : selectedAction === "mesita"
+                        ? `Rate on Mesita → unlock ${selectedTotal}%`
+                        : `Show my QR at ${base}%`}
+                </button>
+              </>
+            )}
+          </>
+        ) : step === 2 && chosenAction === "mesita" ? (
+          // The Mesita ★ as the chosen action — the form IS the task, inline.
+          <div className="flex flex-col gap-3 pt-1">
+            <div className="surface-card rounded-2xl px-4 py-4">
+              <TicketReviewForm
+                draft={reviewDraft}
+                onChange={setReviewDraft}
+                onSubmit={() =>
+                  void (async () => {
+                    const ok = await submitMesitaReview();
+                    if (ok) goToStep(3);
+                  })()
+                }
+                busy={reviewBusy}
+                placeName={placeName}
+                error={reviewError}
+              />
+            </div>
+            <button
+              type="button"
+              onClick={() => goToStep(3)}
+              className="text-muted-foreground hover:text-foreground mx-auto flex min-h-11 items-center text-[12.5px] font-semibold transition"
+            >
+              I&apos;ll finish this in a bit — show my QR
+            </button>
+          </div>
+        ) : step === 2 && chosenAction ? (
           <TaskProof
-            kind={chosenTask}
+            kind={chosenAction === "story" ? "story" : "review"}
             placeName={placeName}
             placeAddress={ticket.place?.address}
             rate={chosenRate}
@@ -661,7 +944,6 @@ export function TicketScreen({
                   "shrink-0 overflow-hidden rounded-[24px] px-4 pt-3.5 pb-3.5 text-white shadow-[0_16px_36px_-20px_rgba(255,77,109,0.55)]",
                   passGradient(classKey),
                   pulse && "animate-verified-pulse",
-                  born && "animate-pass-born",
                 )}
               >
                 <div className="flex items-center justify-between gap-3">
@@ -784,13 +1066,13 @@ export function TicketScreen({
                   <div className="flex items-center justify-between gap-3 text-[9.5px] font-semibold text-white/90">
                     <span>Ticket {stubCode}</span>
                     <span>
-                      {chosenTask
+                      {chosenAction
                         ? chosenState === "done"
-                          ? `${actionNoun === "story" ? "Story" : "Review"} ✓`
+                          ? `${stubNoun(chosenAction)} ✓`
                           : chosenState === "rejected"
-                            ? `${actionNoun === "story" ? "Story" : "Review"} not accepted`
-                            : `${actionNoun === "story" ? "Story" : "Review"} pending`
-                        : "No task — base rate"}
+                            ? `${stubNoun(chosenAction)} not accepted`
+                            : `${stubNoun(chosenAction)} pending`
+                        : "No action — base rate"}
                     </span>
                   </div>
                 </div>
@@ -803,25 +1085,29 @@ export function TicketScreen({
             {upsideLeft ? (
               <button
                 type="button"
-                onClick={() => goToStep(chosenTask ? 2 : 1)}
+                onClick={() => goToStep(chosenAction ? 2 : 1)}
                 className="border-border bg-card flex min-h-11 w-full shrink-0 items-center gap-2.5 rounded-2xl border px-3 py-2 text-left transition active:scale-[0.99]"
               >
                 <span className="bg-secondary/10 text-secondary grid size-8 shrink-0 place-items-center rounded-lg">
-                  {chosenTask === "story" ? (
+                  {chosenAction === "story" ? (
                     <Instagram className="size-4" />
-                  ) : chosenTask === "review" ? (
+                  ) : chosenAction === "google" ? (
                     <Star className="size-4" />
+                  ) : chosenAction === "mesita" ? (
+                    <UtensilsCrossed className="size-4" />
                   ) : (
                     <Sparkles className="size-4" />
                   )}
                 </span>
                 <span className="min-w-0 flex-1">
                   <span className="text-foreground block text-[13px] leading-tight font-bold">
-                    {chosenTask === "story"
+                    {chosenAction === "story"
                       ? "Post your tagged story"
-                      : chosenTask === "review"
+                      : chosenAction === "google"
                         ? "Leave your Google review"
-                        : "Earn a bigger discount"}
+                        : chosenAction === "mesita"
+                          ? "Rate your visit on Mesita"
+                          : "Add an action bonus"}
                   </span>
                   <span className="text-muted-foreground mt-0.5 block text-[11px] leading-snug">
                     {chosenState === "rejected"
@@ -945,58 +1231,41 @@ export function TicketScreen({
         )}
       </div>
 
-      {/* Footer — the step's one commitment, then housekeeping. Pinned so a
-          long chip list can never push the decision off-screen. */}
-      <div className="shrink-0 pt-2.5">
-        {step === 1 ? (
+      {/* Utility row — housekeeping only, ONE quiet line at the true bottom,
+          physically far from any CTA (D2). Destructive and rare actions don't
+          get button chrome next to the commit path. */}
+      <div className="flex shrink-0 items-center justify-center gap-2.5 pt-2">
+        {ticket.status === "open" ? (
           <button
             type="button"
-            disabled={quote === null}
-            onClick={() => {
-              if (!pickLocked) setStoredPick(selectedPick);
-              goToStep(selectedPick === "base" ? 3 : 2);
-            }}
-            className="bg-pink-gradient shadow-glow flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl text-[14px] font-bold text-white transition active:scale-[0.99] disabled:opacity-50"
+            onClick={() => void cancel()}
+            disabled={cancelling}
+            className="text-muted-foreground hover:text-foreground flex min-h-9 items-center gap-1.5 text-[12px] font-semibold transition"
           >
-            {selectedPick === "review"
-              ? `Do the review → unlock ${reviewRate}%`
-              : selectedPick === "story"
-                ? `Post a story → unlock ${storyRate}%`
-                : `Show my QR at ${base}%`}
+            {cancelling ? <Loader2 className="size-3.5 animate-spin" /> : null}
+            Cancel ticket
           </button>
         ) : null}
-
-        <div className="flex flex-col items-center gap-1 pt-1.5">
-          {ticket.status === "open" ? (
+        {ticket.status === "open" && !cancelled ? (
+          <span aria-hidden="true" className="text-muted-foreground/40 text-[12px]">
+            ·
+          </span>
+        ) : null}
+        {!cancelled ? (
+          reported ? (
+            <p className="text-muted-foreground flex min-h-9 items-center text-[12px] font-semibold">
+              Reported — Mesita is looking at it
+            </p>
+          ) : (
             <button
               type="button"
-              onClick={() => void cancel()}
-              disabled={cancelling}
-              className="text-muted-foreground hover:text-foreground flex min-h-9 items-center gap-1.5 text-[12px] font-semibold transition"
+              onClick={() => openSheet("report")}
+              className="text-muted-foreground hover:text-foreground flex min-h-9 items-center text-[12px] font-semibold transition"
             >
-              {cancelling ? <Loader2 className="size-3.5 animate-spin" /> : null}
-              Cancel this ticket
+              Report a problem
             </button>
-          ) : null}
-
-          {!cancelled ? (
-            reported ? (
-              <p className="border-border bg-muted/40 text-muted-foreground flex min-h-9 items-center gap-2 rounded-full border px-4 text-[12px] font-semibold">
-                <Flag className="size-3.5" />
-                Reported — Mesita is looking at it
-              </p>
-            ) : (
-              <button
-                type="button"
-                onClick={() => openSheet("report")}
-                className="text-muted-foreground hover:text-foreground flex min-h-9 items-center gap-1.5 text-[12px] font-semibold transition"
-              >
-                <Flag className="text-destructive size-3.5" />
-                Report a problem
-              </button>
-            )
-          ) : null}
-        </div>
+          )
+        ) : null}
       </div>
 
       <LocalSheet
@@ -1087,64 +1356,129 @@ export function TicketScreen({
   );
 }
 
-// What the guest already has before choosing anything. Welcome used to live in
-// a footnote ("may apply — it shows on your pass"), which buried a real +N% at
-// the exact moment they decide; at a conservative place that footnote was
-// hiding half the offer. It is automatic money, so it reads as already-banked
-// rather than as another option to weigh.
-function IncludedStrip({
-  classLabel,
-  base,
-  welcome,
-}: {
-  classLabel: string;
-  base: number;
-  welcome: number;
-}) {
+// Tiny uppercase group caption — the modular sheet's section voice.
+function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
-    <div className="flex flex-wrap items-center justify-center gap-1.5">
-      <IncludedPill label={`${classLabel} base`} percent={base} />
-      {welcome > 0 ? (
-        <IncludedPill label="Welcome visit" percent={welcome} accent />
-      ) : null}
-    </div>
+    <p className="text-muted-foreground/80 px-1 pt-1 text-[10px] font-extrabold tracking-[0.12em] uppercase">
+      {children}
+    </p>
   );
 }
 
-function IncludedPill({
+// One rung of the modular reward sheet. Three states:
+//   included — automatic money (base, welcome, an already-earned ★): tinted,
+//              AUTO badge, never tappable.
+//   action   — selectable, radio semantics (pick one, retap to unpick).
+//   off      — displayed but inert (rung priced 0 / not eligible): dashed.
+// The rate is the row's own number, Fraunces, gradient when selected.
+function BonusRow({
+  state,
+  icon,
   label,
-  percent,
-  accent = false,
+  subLabel,
+  amount,
+  selected = false,
+  disabled = false,
+  onSelect,
 }: {
+  state: "included" | "action" | "off";
+  icon: React.ReactNode;
   label: string;
-  percent: number;
-  accent?: boolean;
+  subLabel?: string;
+  /** "+10%" (additive) or "12%" (best-of) — null hides the number. */
+  amount: string | null;
+  selected?: boolean;
+  disabled?: boolean;
+  onSelect?: () => void;
 }) {
-  return (
-    <span
-      className={cn(
-        "inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-bold",
-        accent
-          ? "border-secondary/25 bg-secondary/10 text-secondary"
-          : "border-border bg-muted/40 text-muted-foreground",
-      )}
-    >
-      {accent ? <Sparkles className="size-3" /> : <Check className="size-3" />}
-      {label}
-      <span className="tabular-nums">+{percent}%</span>
-    </span>
+  const body = (
+    <>
+      <span
+        className={cn(
+          "grid size-8 shrink-0 place-items-center rounded-lg",
+          state === "included"
+            ? "bg-secondary/10 text-secondary"
+            : selected
+              ? "bg-primary/10 text-primary"
+              : "bg-muted text-muted-foreground",
+        )}
+      >
+        {icon}
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="text-foreground block truncate text-[13px] leading-tight font-bold">
+          {label}
+        </span>
+        {subLabel ? (
+          <span
+            className={cn(
+              "mt-0.5 block truncate text-[10.5px] font-bold",
+              state === "included" ? "text-secondary" : "text-muted-foreground",
+            )}
+          >
+            {subLabel}
+          </span>
+        ) : null}
+      </span>
+      {amount ? (
+        <span
+          className={cn(
+            "font-display shrink-0 leading-none font-extrabold tabular-nums",
+            selected
+              ? "text-pink-gradient text-[24px]"
+              : state === "included"
+                ? "text-secondary text-[18px]"
+                : "text-muted-foreground text-[18px]",
+          )}
+        >
+          {amount}
+        </span>
+      ) : null}
+      {state === "action" ? (
+        <span
+          aria-hidden="true"
+          className={cn(
+            "grid size-5 shrink-0 place-items-center rounded-full border-[1.5px]",
+            selected
+              ? "border-primary bg-primary text-white"
+              : "border-border bg-card",
+          )}
+        >
+          {selected ? <Check className="size-3" strokeWidth={3.5} /> : null}
+        </span>
+      ) : state === "included" ? (
+        <span className="bg-secondary/10 text-secondary shrink-0 rounded-full px-2 py-0.5 text-[9px] font-extrabold tracking-wide uppercase">
+          Auto
+        </span>
+      ) : null}
+    </>
   );
-}
-
-// The rate is the whole point of step 1, so it never renders a guessed number
-// while the engine's answer is in flight.
-function QuoteLoading() {
+  const shell = cn(
+    "flex min-h-[52px] w-full items-center gap-2.5 rounded-2xl border-[1.5px] px-3 py-2.5 text-left",
+    state === "included"
+      ? "border-secondary/25 bg-secondary/[0.06]"
+      : selected
+        ? "border-primary bg-primary/5"
+        : "border-border bg-card",
+    state === "off" && "border-dashed opacity-55",
+    state === "action" && disabled && "opacity-55",
+  );
+  if (state === "action" && !disabled) {
+    return (
+      <button
+        type="button"
+        role="radio"
+        aria-checked={selected}
+        onClick={onSelect}
+        className={cn(shell, "transition active:scale-[0.99]")}
+      >
+        {body}
+      </button>
+    );
+  }
   return (
-    <div className="flex min-h-[128px] flex-col items-center justify-center gap-2">
-      <Loader2 className="text-primary size-5 animate-spin" />
-      <p className="text-muted-foreground text-[12px] font-semibold">
-        Checking your rate here…
-      </p>
+    <div aria-disabled={state !== "included" ? true : undefined} className={shell}>
+      {body}
     </div>
   );
 }

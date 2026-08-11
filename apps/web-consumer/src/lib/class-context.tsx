@@ -102,6 +102,27 @@ function normalize(
 
 const ClassContext = createContext<ConsumerClassState>(STANDARD_CLASS);
 
+// ── Server-seeded identity (MESITA-1029 S1) ────────────────────────────────
+// The shell layout fetches the profile ONCE per request and does NOT re-run on
+// soft navigation — so pages must never re-fetch what this context already
+// carries. THE TICKET's server page used to duplicate auth.getUser() + the
+// profile EF on every open; that duplication was the single biggest chunk of
+// the "tap feels frozen" delay. Identity rides here instead.
+
+export type ConsumerIdentity = {
+  /** auth.users id — always present under /(shell) (the layout gates). */
+  userId: string;
+  /** "First Last" > full_name > null (renders as "Mesita guest"). */
+  displayName: string | null;
+  avatarUrl: string | null;
+};
+
+const IdentityContext = createContext<ConsumerIdentity>({
+  userId: "",
+  displayName: null,
+  avatarUrl: null,
+});
+
 // (The old MOCK_INSTAGRAM_KEY path is gone — the Verify Instagram sheet now
 // calls consumer-web-claim-instagram for a real server-side grant, MESITA-74.)
 
@@ -283,11 +304,18 @@ function mockAccountState(
 export function ClassProvider({
   consumerClass,
   instagramHandle = null,
+  userId = "",
+  displayName = null,
+  avatarUrl = null,
   children,
 }: {
   consumerClass: ConsumerClass | null;
   /** Real `consumers.instagram_handle` — Story Bonus gate (MESITA-909). */
   instagramHandle?: string | null;
+  /** Seeded by the shell layout; identity for every client surface below. */
+  userId?: string;
+  displayName?: string | null;
+  avatarUrl?: string | null;
   children: ReactNode;
 }) {
   const base = useMemo(
@@ -304,11 +332,22 @@ export function ClassProvider({
     return base;
   }, [base, mockAccount]);
 
+  const identity = useMemo<ConsumerIdentity>(
+    () => ({ userId, displayName, avatarUrl }),
+    [userId, displayName, avatarUrl],
+  );
+
   return (
-    <ClassContext.Provider value={value}>{children}</ClassContext.Provider>
+    <IdentityContext.Provider value={identity}>
+      <ClassContext.Provider value={value}>{children}</ClassContext.Provider>
+    </IdentityContext.Provider>
   );
 }
 
 export function useConsumerClass(): ConsumerClassState {
   return useContext(ClassContext);
+}
+
+export function useConsumerIdentity(): ConsumerIdentity {
+  return useContext(IdentityContext);
 }

@@ -73,6 +73,8 @@ export default async function ConsumerShellLayout({
   // otherwise the catch swallows it and reports a redirect as a failure.
   let consumerClass: ConsumerClass | null = null;
   let instagramHandle: string | null = null;
+  let displayName: string | null = null;
+  let avatarUrl: string | null = null;
   let needsOnboarding = false;
   try {
     const { consumer: profile, consumerClass: c } =
@@ -80,6 +82,15 @@ export default async function ConsumerShellLayout({
     needsOnboarding = !isConsumerOnboarded(profile);
     consumerClass = c;
     instagramHandle = profile.instagram_handle?.trim() || null;
+    // Identity for the whole shell (MESITA-1029 S1): THE TICKET's pass bar
+    // reads this from context instead of re-fetching the profile per open.
+    const first = profile.first_name?.trim() ?? "";
+    const last = profile.last_name?.trim() ?? "";
+    displayName =
+      [first, last].filter(Boolean).join(" ") ||
+      profile.full_name?.trim() ||
+      null;
+    avatarUrl = profile.avatar_url ?? null;
   } catch (err) {
     console.error("[consumer/shell] consumer-get-profile:", err);
   }
@@ -114,6 +125,9 @@ export default async function ConsumerShellLayout({
       <ClassProvider
         consumerClass={consumerClass}
         instagramHandle={instagramHandle}
+        userId={user.id}
+        displayName={displayName}
+        avatarUrl={avatarUrl}
       >
         <div className="relative flex flex-1 flex-col overflow-hidden">
           <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
