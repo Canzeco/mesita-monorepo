@@ -27,26 +27,28 @@ import { strategyForPlaceRow } from "@/lib/promo-rates";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { cn } from "@/lib/utils";
 
-// Rewards Wallet (MESITA-811 · 820 · 857) — New / Pending / History. The
-// wallet is the DOOR: tapping a partner in New opens the 2-step TicketWizard
-// (Pick reward → Do it, plan ticket-flow-20260809), which creates the ticket
-// and lands on THE ticket screen (/rewards/ticket/[id]?born=1). Pending and
-// History are compact rows into the same screen. The venue pass modal and
-// in-list QR cards died with MESITA-857 — one object, one surface. The old
-// wantsStory interstitial died with the wizard (D6: chosenReward subsumes
-// it). Zero-strategy partners skip the wizard (D9): create at "base", go.
+// Rewards Wallet — TWO tabs: New / History (MESITA-1024, Pato: "just two
+// pages"; Pending died — a status bucket that almost always held one row or
+// none). The wallet is the DOOR: tapping a partner in New opens the 2-step
+// TicketWizard (Pick reward → Do it), which creates the ticket and lands on
+// THE ticket screen (/rewards/ticket/[id]?born=1). A LIVE ticket is a
+// TicketRow pinned at the top of New, above the place list — the current
+// visit leads the tab you start visits from. History is compact rows into
+// the same screen. The venue pass modal and in-list QR cards died with
+// MESITA-857 — one object, one surface. Zero-strategy partners skip the
+// wizard (D9): create at "base", go.
 
-type Tab = "new" | "pending" | "history";
+type Tab = "new" | "history";
 
 export function RewardsClient({ userId }: { userId: string }) {
   const supabase = useBrowserSupabase();
   const router = useRouter();
   const tickets = useConsumerTickets(userId);
 
-  // Default tab is DERIVED, not effect-set: Pending while a live ticket
-  // exists, New otherwise. A manual tap pins the choice for the session.
+  // New is always the default: it holds the live ticket too, so there is no
+  // state to route to. A manual tap pins the choice for the session.
   const [tabChoice, setTabChoice] = useState<Tab | null>(null);
-  const tab: Tab = tabChoice ?? (tickets.active.length > 0 ? "pending" : "new");
+  const tab: Tab = tabChoice ?? "new";
 
   const activePlaceIds = useMemo(
     () => new Set(tickets.active.map((t) => t.project_id)),
@@ -60,7 +62,6 @@ export function RewardsClient({ userId }: { userId: string }) {
 
   const openTicket = useCallback(
     (id: string) => {
-      setTabChoice("pending");
       router.push(ticketPath(id), { scroll: false });
     },
     [router],
@@ -75,7 +76,6 @@ export function RewardsClient({ userId }: { userId: string }) {
       try {
         const res = await apiCreateTicket(supabase, place.id, "base");
         void tickets.refresh();
-        setTabChoice("pending");
         router.push(bornTicketPath(res.ticket.id), { scroll: false });
       } catch (err) {
         if (err instanceof EFError && err.code === "already_open") {
@@ -167,11 +167,10 @@ export function RewardsClient({ userId }: { userId: string }) {
         {/* Slim muted track (MESITA-908): ~32px paint, ≥44px hit via vertical
             slop so the control stays calm without sacrificing touch targets. */}
         <div className="-mb-1.5 pt-2 pb-1.5">
-          <div className="bg-muted grid grid-cols-3 gap-0.5 rounded-[10px] p-[3px]">
+          <div className="bg-muted grid grid-cols-2 gap-0.5 rounded-[10px] p-[3px]">
             {(
               [
                 { id: "new", label: "New" },
-                { id: "pending", label: "Pending" },
                 { id: "history", label: "History" },
               ] as const
             ).map((t) => (
@@ -188,18 +187,6 @@ export function RewardsClient({ userId }: { userId: string }) {
                 )}
               >
                 {t.label}
-                {t.id === "pending" && tickets.active.length > 0 ? (
-                  <span
-                    className={cn(
-                      "rounded-full px-1.5 text-[9px] leading-none font-bold",
-                      tab === "pending"
-                        ? "bg-background/25 text-background"
-                        : "bg-primary/10 text-primary",
-                    )}
-                  >
-                    {tickets.active.length}
-                  </span>
-                ) : null}
               </button>
             ))}
           </div>
@@ -222,43 +209,29 @@ export function RewardsClient({ userId }: { userId: string }) {
                 {startError}
               </p>
             ) : null}
+            {/* The live ticket leads the tab (MESITA-1024) — Pending's only
+                content, folded in here. Rows stay ONE column: a ticket is
+                scanned for its state at arm's length in a dark venue. Silent
+                while loading (PlacePickList carries the tab's skeleton) and
+                silent on error — the place list is still usable and the
+                History tab reports ticket-load failures. */}
+            {tickets.active.length > 0 ? (
+              <div className="flex flex-col gap-2.5">
+                {tickets.active.map((t) => (
+                  <TicketRow
+                    key={t.id}
+                    ticket={t}
+                    onOpen={() => openTicket(t.id)}
+                  />
+                ))}
+              </div>
+            ) : null}
             <PlacePickList
               activePlaceIds={activePlaceIds}
               busyPlaceId={startingId}
               onPick={onPick}
             />
           </>
-        ) : tab === "pending" ? (
-          // Tickets stay ONE column, always. A ticket is scanned for its state
-          // and its QR at arm's length in a dark venue — halving its width to
-          // match the Favorites grid would shrink the only thing that has to be
-          // legible. The two-column grid is a discovery pattern; /rewards is
-          // single-column by design, not by omission.
-          <div className="flex min-h-0 flex-1 flex-col gap-2.5">
-            {tickets.status === "loading" ? (
-              <TicketCardSkeleton />
-            ) : tickets.status === "error" ? (
-              <ErrorBox retry={tickets.retry} />
-            ) : tickets.active.length === 0 ? (
-              <EmptyState
-                icon={QrCode}
-                title="No live ticket"
-                description="Pick the place you're visiting in New and your ticket opens with its QR."
-                action={{
-                  label: "Browse places",
-                  onClick: () => setTabChoice("new"),
-                }}
-              />
-            ) : (
-              tickets.active.map((t) => (
-                <TicketRow
-                  key={t.id}
-                  ticket={t}
-                  onOpen={() => openTicket(t.id)}
-                />
-              ))
-            )}
-          </div>
         ) : (
           <div className="flex min-h-0 flex-1 flex-col gap-2.5">
             {tickets.status === "loading" ? (
@@ -289,7 +262,6 @@ export function RewardsClient({ userId }: { userId: string }) {
           activeTickets={tickets.active}
           onClose={() => setWizardPlace(null)}
           onCreated={() => {
-            setTabChoice("pending");
             void tickets.refresh();
           }}
         />

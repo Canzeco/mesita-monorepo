@@ -1,9 +1,10 @@
 "use client";
 
-// Compact ticket row (MESITA-857) — the wallet's Pending and History lists
-// are just doors into THE ticket screen now, so one row serves both: thumb,
-// place, one-line status, and the money once there is money. The big in-list
-// QR card died with the modal; the QR lives on the ticket.
+// Compact ticket row (MESITA-857) — the wallet's ticket lists are just doors
+// into THE ticket screen, so one row serves both the live rows pinned atop
+// New and the History list (MESITA-1024): thumb, place, one-line status, and
+// the money once there is money. The big in-list QR card died with the
+// modal; the QR lives on the ticket.
 
 import Image from "next/image";
 import { ChevronRight, ScanLine } from "lucide-react";
