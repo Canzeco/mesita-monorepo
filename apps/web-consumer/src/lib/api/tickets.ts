@@ -160,11 +160,13 @@ export async function apiCancelTicket(
 export async function apiSubmitStory(
   client: SupabaseClient,
   ticketId: string,
+  /** Public ticket-proofs URL (MESITA-1030) — the screenshot IS the proof. */
+  screenshotUrl?: string,
 ): Promise<{ repricedPercent: number | null }> {
   const res = await invokeEF<{ repricedPercent?: number | null }>(
     client,
     "consumer-web-submit-story",
-    { ticketId },
+    { ticketId, screenshotUrl },
   );
   return { repricedPercent: res.repricedPercent ?? null };
 }
@@ -172,11 +174,13 @@ export async function apiSubmitStory(
 export async function apiSubmitReview(
   client: SupabaseClient,
   ticketId: string,
+  /** Public ticket-proofs URL (MESITA-1030) — the screenshot IS the proof. */
+  screenshotUrl?: string,
 ): Promise<{ repricedPercent: number | null }> {
   const res = await invokeEF<{ repricedPercent?: number | null }>(
     client,
     "consumer-web-submit-review",
-    { ticketId },
+    { ticketId, screenshotUrl },
   );
   return { repricedPercent: res.repricedPercent ?? null };
 }

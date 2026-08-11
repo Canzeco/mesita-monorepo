@@ -1,19 +1,33 @@
 "use client";
 
-// Step 2 of THE TICKET — "do tasks". One panel for both rungs: open the
-// target app, come back, say you did it. Proofs SELF-ATTEST (MESITA-849):
-// confirming writes `self_verified` straight away, no screenshot and no staff
-// approval, so the rate moves the moment the guest says it moved.
+// Step 2 of THE TICKET — "do tasks". One panel for both external rungs: open
+// the target app, do the thing, come back and POST THE SCREENSHOT (MESITA-1030,
+// Pato: "the screenshot is the way to validate — just post whatever screenshot
+// and it's done"). The screenshot is the proof artifact: it uploads to the
+// ticket-proofs bucket and rides the submit EF onto the ticket row. Nothing
+// inspects it — the submission still self-attests (`self_verified`,
+// MESITA-849) — but the confirm button requires one attached.
 //
 // This was two near-identical LocalSheets (GoogleReviewSheet /
 // InstagramStorySheet) stacked on top of the ticket panel. A sheet over a
-// stepped modal is a stack — the step IS the surface now, so the body renders
+// stepped modal is a stack — the step IS the surface, so the body renders
 // inline and the two copies collapsed into one component.
 
-import { useCallback, useState } from "react";
-import { Check, ExternalLink, Instagram, Loader2, Star } from "lucide-react";
-import { UtensilsCrossed } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  Camera,
+  Check,
+  ExternalLink,
+  Instagram,
+  Loader2,
+  RefreshCw,
+  Star,
+  UtensilsCrossed,
+} from "lucide-react";
 
+import { uploadTicketProof } from "@/lib/ticket-proofs";
+import { useConsumerIdentity } from "@/lib/class-context";
+import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { cn } from "@/lib/utils";
 
 export type TaskKind = "review" | "story";
@@ -33,6 +47,7 @@ type Phase = "idle" | "opening" | "confirming" | "success" | "error";
 
 export function TaskProof({
   kind,
+  ticketId,
   placeName,
   placeAddress,
   rate,
@@ -42,21 +57,38 @@ export function TaskProof({
   onSkip,
 }: {
   kind: TaskKind;
+  ticketId: string;
   placeName: string;
   placeAddress?: string | null;
   /** The rate this task unlocks — 0 hides the number rather than guess one. */
   rate: number;
   /** A proof that came back rejected: the base still holds, retry is allowed. */
   rejected?: boolean;
-  onConfirm: () => Promise<void>;
+  /** Called with the uploaded screenshot's public URL. */
+  onConfirm: (screenshotUrl: string) => Promise<void>;
   /** Fired after a confirmed proof — the caller advances to the QR. */
   onDone: () => void;
   /** "I'll do it later" — the QR is never gated on this, so leaving is free. */
   onSkip: () => void;
 }) {
+  const supabase = useBrowserSupabase();
+  const { userId } = useConsumerIdentity();
   const [phase, setPhase] = useState<Phase>("idle");
   const [error, setError] = useState<string | null>(null);
   const isReview = kind === "review";
+
+  // The attached screenshot. Preview via object URL, revoked on replace.
+  const [shot, setShot] = useState<File | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const previewUrl = useMemo(
+    () => (shot ? URL.createObjectURL(shot) : null),
+    [shot],
+  );
+  useEffect(() => {
+    return () => {
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
+    };
+  }, [previewUrl]);
 
   const openTarget = useCallback(() => {
     setPhase("opening");
@@ -69,10 +101,18 @@ export function TaskProof({
   }, [isReview, placeName, placeAddress]);
 
   const confirm = useCallback(async () => {
+    if (!shot) return;
     setPhase("confirming");
     setError(null);
     try {
-      await onConfirm();
+      const url = await uploadTicketProof(
+        supabase,
+        userId,
+        ticketId,
+        isReview ? "review" : "story",
+        shot,
+      );
+      await onConfirm(url);
       setPhase("success");
       window.setTimeout(() => onDone(), 400);
     } catch (err) {
@@ -81,7 +121,7 @@ export function TaskProof({
       );
       setPhase("error");
     }
-  }, [onConfirm, onDone]);
+  }, [shot, supabase, userId, ticketId, isReview, onConfirm, onDone]);
 
   return (
     <div className="flex flex-col gap-3">
@@ -101,8 +141,8 @@ export function TaskProof({
         </p>
         <p className="text-muted-foreground mt-1 text-[12px] leading-snug">
           {isReview
-            ? "Rate your visit on Google — you can edit it later."
-            : `Tag ${placeName} in your story, then confirm below.`}
+            ? "Rate your visit on Google, screenshot it, post it here."
+            : `Tag ${placeName} in your story, screenshot it, post it here.`}
         </p>
         {rate > 0 ? (
           <p className="text-primary mt-2 text-[12.5px] font-bold">
@@ -132,10 +172,52 @@ export function TaskProof({
         {isReview ? "Open Google" : "Open Instagram"}
       </button>
 
+      {/* The proof slot — the screenshot IS the confirmation. */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={(e) => {
+          const f = e.target.files?.[0] ?? null;
+          if (f) setShot(f);
+          e.target.value = "";
+        }}
+      />
+      {previewUrl ? (
+        <div className="border-border bg-card relative overflow-hidden rounded-2xl border">
+          {/* Plain <img>: a blob object URL — next/image adds nothing here. */}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={previewUrl}
+            alt="Your screenshot"
+            className="mx-auto max-h-44 w-auto object-contain py-2"
+          />
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={phase === "confirming"}
+            className="text-foreground absolute top-2 right-2 flex items-center gap-1 rounded-full bg-white/90 px-2.5 py-1 text-[11px] font-bold shadow-sm transition active:scale-95"
+          >
+            <RefreshCw className="size-3" />
+            Replace
+          </button>
+        </div>
+      ) : (
+        <button
+          type="button"
+          onClick={() => fileInputRef.current?.click()}
+          className="border-primary/35 bg-primary/[0.04] text-primary flex min-h-14 w-full items-center justify-center gap-2 rounded-2xl border-2 border-dashed text-[13px] font-bold transition active:scale-[0.99]"
+        >
+          <Camera className="size-4" />
+          Add your screenshot
+        </button>
+      )}
+
       <button
         type="button"
         onClick={() => void confirm()}
-        disabled={phase === "confirming" || phase === "opening"}
+        disabled={!shot || phase === "confirming" || phase === "opening"}
         className={cn(
           "border-border bg-card text-foreground flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl border text-[14px] font-bold transition active:scale-[0.99] disabled:opacity-50",
         )}
@@ -146,10 +228,12 @@ export function TaskProof({
           <Check className="size-4 text-emerald-600" strokeWidth={3} />
         ) : null}
         {phase === "confirming"
-          ? "Confirming…"
+          ? "Sending your proof…"
           : phase === "success"
             ? "Done — opening your QR"
-            : "I posted it"}
+            : shot
+              ? "Post it — I'm done"
+              : "Add the screenshot to finish"}
       </button>
 
       {error ? (

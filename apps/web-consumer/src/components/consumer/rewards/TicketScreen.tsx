@@ -239,15 +239,23 @@ export function TicketScreen({ ticketId }: { ticketId: string }) {
   const [sheet, setSheet] = useState<TaskSheet>(null);
   const openSheet = useCallback((next: TaskSheet) => setSheet(next), []);
 
-  const confirmGoogle = useCallback(async () => {
-    await apiSubmitReview(supabase, ticketId);
-    await tickets.refresh();
-  }, [supabase, ticketId, tickets]);
+  // The screenshot URL is the proof artifact (MESITA-1030) — TaskProof
+  // uploads it, these pin it to the ticket via the submit EFs.
+  const confirmGoogle = useCallback(
+    async (screenshotUrl: string) => {
+      await apiSubmitReview(supabase, ticketId, screenshotUrl);
+      await tickets.refresh();
+    },
+    [supabase, ticketId, tickets],
+  );
 
-  const confirmStory = useCallback(async () => {
-    await apiSubmitStory(supabase, ticketId);
-    await tickets.refresh();
-  }, [supabase, ticketId, tickets]);
+  const confirmStory = useCallback(
+    async (screenshotUrl: string) => {
+      await apiSubmitStory(supabase, ticketId, screenshotUrl);
+      await tickets.refresh();
+    },
+    [supabase, ticketId, tickets],
+  );
 
   const [reviewBusy, setReviewBusy] = useState(false);
   const [reviewDone, setReviewDone] = useState(false);
@@ -928,6 +936,7 @@ export function TicketScreen({ ticketId }: { ticketId: string }) {
         ) : step === 2 && chosenAction ? (
           <TaskProof
             kind={chosenAction === "story" ? "story" : "review"}
+            ticketId={ticketId}
             placeName={placeName}
             placeAddress={ticket.place?.address}
             rate={chosenRate}

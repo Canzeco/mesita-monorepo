@@ -21,7 +21,14 @@
 //     the rate ladder; Story is a universal action gated on the account.
 //   - The place must actually run the Story rung at its strategy.
 //
-// Body:     { ticketId: string }
+// The SCREENSHOT (MESITA-1030): the guest attaches a screenshot of the story
+// as the proof artifact — uploaded client-side to the ticket-proofs bucket
+// (RLS: own folder only), URL persisted on tickets.story_screenshot_url,
+// which check-web already surfaces to staff. Nothing inspects the image; the
+// declaration still verifies. Optional at the EF so older deployed clients
+// keep working — the web UI requires it.
+//
+// Body:     { ticketId: string, screenshotUrl?: string }
 // Response: { ok: true, ticket: {...}, repricedPercent } | { ok, error }
 //
 // Self-contained: own auth, own DB writes via service role.
@@ -33,6 +40,7 @@ import {
   getAuthedUser,
   readEFEnv,
 } from "../_shared/auth.ts";
+import { parseProofScreenshotUrl } from "../_shared/ticket-proofs.ts";
 import {
   isActionVerified,
   loadRewardsGrid,
@@ -41,7 +49,7 @@ import {
 } from "../_shared/rewards-config.ts";
 import { repriceTicketAfterAction } from "../_shared/ticket-reprice.ts";
 
-type Body = { ticketId?: string };
+type Body = { ticketId?: string; screenshotUrl?: string };
 
 // Ticket states that can still take a task. A closed ticket can't — the
 // reward is already settled.
@@ -62,6 +70,12 @@ Deno.serve(async (req) => {
   if (!bodyRes.ok) return bodyRes.response;
   const ticketId = (bodyRes.body.ticketId ?? "").toString().trim();
   if (!ticketId) return json({ ok: false, error: "ticketId is required" }, 400);
+  const shotRes = parseProofScreenshotUrl(
+    bodyRes.body.screenshotUrl,
+    envRes.env.url,
+    userId,
+  );
+  if (!shotRes.ok) return json({ ok: false, error: shotRes.error }, 400);
 
   const admin = adminClient(envRes.env);
 
@@ -157,6 +171,9 @@ Deno.serve(async (req) => {
       // id can't go here, and self-verification has no approver anyway.
       story_verified_by: null,
       story_reject_reason: null,
+      // The proof artifact (MESITA-1030). Only set when supplied so an older
+      // client's retry can never blank a stored screenshot.
+      ...(shotRes.url ? { story_screenshot_url: shotRes.url } : {}),
     })
     .eq("id", ticketId)
     .select("id, kind, status, story_status, story_submitted_at")

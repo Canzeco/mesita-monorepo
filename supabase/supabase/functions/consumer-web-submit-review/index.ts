@@ -20,7 +20,13 @@
 //   - Sentiment-blind by design: nothing here reads or gates on the review's
 //     rating. Any rating qualifies. Keep it that way.
 //
-// Body:     { ticketId: string }
+// The SCREENSHOT (MESITA-1030): the guest attaches a screenshot of the review
+// as the proof artifact — uploaded client-side to the ticket-proofs bucket
+// (RLS: own folder only), URL persisted on tickets.review_screenshot_url.
+// Nothing inspects the image; the declaration still verifies. Optional at the
+// EF so older deployed clients keep working — the web UI requires it.
+//
+// Body:     { ticketId: string, screenshotUrl?: string }
 // Response: { ok: true, ticket: {...}, repricedPercent } | { ok, error, code? }
 //
 // Self-contained: own auth, own DB writes via service role.
@@ -29,6 +35,7 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { corsPreflight, json, readJson, rejectUnlessMethods } from "../_shared/http.ts";
 import { adminClient, getAuthedUser, readEFEnv } from "../_shared/auth.ts";
 import { hasClaimedReview } from "../_shared/membership.ts";
+import { parseProofScreenshotUrl } from "../_shared/ticket-proofs.ts";
 import {
   isActionVerified,
   loadRewardsGrid,
@@ -37,7 +44,7 @@ import {
 } from "../_shared/rewards-config.ts";
 import { repriceTicketAfterAction } from "../_shared/ticket-reprice.ts";
 
-type Body = { ticketId?: string };
+type Body = { ticketId?: string; screenshotUrl?: string };
 
 // Ticket states that can still take a task. A closed ticket can't — the
 // reward is already settled.
@@ -64,6 +71,12 @@ Deno.serve(async (req) => {
   if (!bodyRes.ok) return bodyRes.response;
   const ticketId = (bodyRes.body.ticketId ?? "").toString().trim();
   if (!ticketId) return json({ ok: false, error: "ticketId is required" }, 400);
+  const shotRes = parseProofScreenshotUrl(
+    bodyRes.body.screenshotUrl,
+    envRes.env.url,
+    userId,
+  );
+  if (!shotRes.ok) return json({ ok: false, error: shotRes.error }, 400);
 
   const admin = adminClient(envRes.env);
 
@@ -150,6 +163,9 @@ Deno.serve(async (req) => {
       // FKs to accounts (business-side); self-verification has no approver.
       review_verified_by: null,
       review_reject_reason: null,
+      // The proof artifact (MESITA-1030). Only set when supplied so an older
+      // client's retry can never blank a stored screenshot.
+      ...(shotRes.url ? { review_screenshot_url: shotRes.url } : {}),
     })
     .eq("id", ticketId)
     .select("id, kind, status, review_status, review_submitted_at")
