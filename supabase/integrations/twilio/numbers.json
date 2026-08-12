@@ -10,8 +10,18 @@
     "Twilio-side webhook at a number owned by elevenlabs — its voice URL is",
     "ElevenLabs' and overwriting it silently kills the Reservationist.",
     "",
+    "smsWebhook is the INTENDED inbound-SMS handler, read by",
+    "scripts/setup-twilio-messaging-webhooks.sh. Only 'none' (clear the field",
+    "— inbound is still received and logged, Twilio just calls nobody) or an",
+    "https:// URL are ours to set; 'elevenlabs' and 'messaging-service' mean",
+    "the handler is configured elsewhere and the script refuses to touch it.",
+    "Numbers bought from Twilio arrive pointing at demo.twilio.com/welcome/*,",
+    "which no longer answers — every inbound message then logs as Failed",
+    "(error 11200) even though the message itself was received and stored.",
+    "",
     "releasable=false means releasing it breaks something live. Releasing is",
-    "irreversible: Twilio does not give a number back."
+    "irreversible: Twilio does not give a number back. A number holding a",
+    "third-party login counts as live — see +16282964968."
   ],
   "numbers": [
     {
@@ -21,6 +31,7 @@
       "status": "active",
       "releasable": false,
       "recordIncoming": false,
+      "smsWebhook": "elevenlabs",
       "purpose": "Place-facing reservation line. a1 dials places from it; a4 answers places on it. Imported into ElevenLabs; its Twilio voice + messaging webhooks belong to ElevenLabs. Code default: ELEVENLABS_FROM_NUMBER in _shared/elevenlabs.ts."
     },
     {
@@ -30,6 +41,7 @@
       "status": "active",
       "releasable": false,
       "recordIncoming": false,
+      "smsWebhook": "elevenlabs",
       "purpose": "Guest-facing reservation line. a2 dials guests from it; a3 answers guests on it. REUSED 2026-08-03 — this was the retired staff WhatsApp sender, renamed and repurposed instead of buying a new number, so anything that still calls it 'Mesita Ops' or lists it as releasable is stale. Imported into ElevenLabs; its Twilio webhooks now belong to ElevenLabs. EF secret: ELEVENLABS_CONSUMER_FROM_NUMBER."
     },
     {
@@ -39,6 +51,7 @@
       "status": "active",
       "releasable": false,
       "recordIncoming": false,
+      "smsWebhook": "messaging-service",
       "purpose": "Phone-OTP sign-in — the ONLY consumer auth path there is. Attached to a Twilio Messaging Service; Supabase Auth sends through it directly via config.toml [auth.sms.twilio] (TWILIO_MESSAGE_SERVICE_SID). No Edge Function touches it. If this number goes dark, nobody can sign in."
     },
     {
@@ -48,16 +61,18 @@
       "status": "active",
       "releasable": false,
       "recordIncoming": false,
-      "purpose": "Not Mesita — the company's general US line. Do NOT release without checking whether it is the number on file with Stripe Atlas, Mercury, or the registered agent; releasing it could lock you out of bank 2FA."
+      "smsWebhook": "none",
+      "purpose": "Not Mesita — the company's general US line, and the number Pato hands to US services that demand one. Inbound codes are read from the messaging logs. Do NOT release without checking whether it is the number on file with Stripe Atlas, Mercury, or the registered agent; releasing it could lock you out of bank 2FA."
     },
     {
       "e164": "+16282964968",
       "name": "Mesita Notifications (Consumers)",
-      "owner": "none",
-      "status": "pending-release",
-      "releasable": true,
+      "owner": "canzeco",
+      "status": "active",
+      "releasable": false,
       "recordIncoming": false,
-      "purpose": "RETIRED — was the consumer WhatsApp sender. Nothing sends WhatsApp: there is no call to Twilio's Messages.json anywhere in the codebase. Safe to release."
+      "smsWebhook": "none",
+      "purpose": "No longer a Mesita sender — was the consumer WhatsApp number, and nothing sends WhatsApp (no call to Twilio's Messages.json anywhere in the codebase). NOT releasable as of 2026-08-12: it is the phone number on file for the inKind account used for competitor research, so releasing it forfeits that login and any future recovery code sent to it. Inbound codes are read from the messaging logs. Anything still calling this 'pending-release' or 'safe to release' is stale."
     }
   ]
 }
