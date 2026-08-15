@@ -1,7 +1,9 @@
-// Place field edit matrix — documents who may write each place profile field.
+// Place field edit rules — documents who may write each place profile field.
+// Atlas Config renders these as prose, one sentence per field; the flags below
+// are what that sentence is generated from.
 //
 // Rows are grouped by OWNERSHIP, so each block reads as one consistent
-// Yes/No pattern instead of a checkerboard:
+// writer/editor pattern instead of a checkerboard:
 //
 //   Google native → owned by the Google identity spine (createMinimalPlace
 //                   seed + re-stamped on every enrich). Where a manual edit
@@ -12,7 +14,7 @@
 //   Signals       → machine-written metrics; read-only everywhere.
 //   Lifecycle     → row state + billing, not profile content.
 //
-// Column contracts (shipped code, not a DB ACL):
+// Writer/editor contracts (shipped code, not a DB ACL):
 //   Enricher  → research/analysis/contents pipeline writes to public.places
 //   Admin     → Manage Single Unit Place UI (admin → business-web-update-project)
 //   Business  → business Place editor + business-web-update-project whitelist/rejects
@@ -22,10 +24,8 @@
 // Promos domain) and legacy text fields (pitch, story, vibe, currency,
 // closes_at) that the EF still accepts but no current surface renders.
 //
-// Read-only in Atlas Config. Changing a cell here does not change permissions —
-// update the Place UIs / EF / Enricher, then mirror the matrix.
-
-export type FieldEditRole = "native" | "enricher" | "admin" | "business";
+// Read-only in Atlas Config. Changing a flag here does not change permissions —
+// update the Place UIs / EF / Enricher, then mirror it here.
 
 export type PlaceFieldPermission = {
   /** Stable key (matches places column or logical field). */
@@ -44,8 +44,4 @@ export type PlaceFieldPermission = {
 
 export { PLACE_FIELD_PERMISSIONS } from "./place-field-permission-rows";
 
-export {
-  PLACE_FIELD_EDIT_ROLE_LABELS,
-  PLACE_FIELD_EDIT_ROLES,
-  PLACE_FIELD_PERMISSION_GROUP_DESCRIPTIONS,
-} from "./place-field-permission-metadata";
+export { PLACE_FIELD_PERMISSION_GROUP_DESCRIPTIONS } from "./place-field-permission-metadata";
