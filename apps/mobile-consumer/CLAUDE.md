@@ -30,6 +30,7 @@ Native consumer app (Expo SDK 57 · React Native · Expo Router · NativeWind) �
 
 ## Structure
 - `src/app/` — Expo Router: `index.tsx` (auth gate) · `sign-in` · `onboard` · `(tabs)/{home,search,rewards,reservations,me}` (mirrors web BottomNav). Rewards is live (QR passport + tickets + ticket detail, MESITA-566; no Stripe subscribe UI). Reservations is live (`parked-flags.ts` `reservations.soon: false`, unparked MESITA-715) — Upcoming/History, not a coming-soon dialog.
+- **Known parity gap — the Rewards wallet.** This screen still renders the OLD web `PayClient` (QR passport + ticket list). Web rebuilt it in 2026-08 (MESITA-1024/1026/1029/1033): two tabs (New = bare place list · History), one tap creates the ticket at `base`, and THE TICKET is a full-page four-step modal at `/rewards/ticket/[id]`. Port that shape when you next touch this tab — parity is the standing rule, so don't treat the current screen as the target.
 - `src/lib/` — `supabase.ts` (client) · `storage.ts` · `ef.ts` · `api/` (EF helpers, mirror `apps/web-consumer/src/lib/api/*`).
 - `src/providers/auth.tsx` — session + profile + `onboarded` predicate (`first_name && last_name && birthday && sex`, same as the web shell layout). Both name halves are required because reservations are booked with the place under the guest's full name.
 - Home hub modes: **Swipe** · **Favorites** live; **Memo** · **Social** parked behind `ComingSoonModal` (web HomeModeNav parity, MESITA-383/565 — no Soon pills). Ask AI + Social code remains in tree for one-flag unpark.

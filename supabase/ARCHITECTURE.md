@@ -14,14 +14,18 @@ mobile, over one shared Supabase backend:
   (swipe / map; Ask AI / Memo parked on Home), reservations, at-the-bill
   discounts, and a **class** ladder Standard / Premium / Influencer / Aura
   (doors model MESITA-972 — slot is the highest open door).
-- **Business** (`business.mesita.ai`) — console: places, team, promos, tickets,
-  reservations; **plan** `free`/`pro`/`ultra` (product copy: Listed vs Verified
-  / Mesita Membership — `business_verified_yearly`, MESITA-912).
+- **Business** (`business.mesita.ai`) — console, four tabs: Place · Promos ·
+  Performance · Settings (team + channel routing + Check PIN live under
+  Settings; no scan/tickets surface — MESITA-843/900); **plan**
+  `free`/`pro`/`ultra` (product copy: Listed vs Verified / Mesita Membership —
+  `business_verified_yearly`, MESITA-912).
 - **Check** (`check.mesita.ai` — `apps/web-check`) — public staff check page for
   Tickets v2; QR capability-URL auth (`check-web-*`, `verify_jwt=false`).
-- **Admin** (`admin.mesita.ai`) — super-admin console: binding configs (Atlas /
-  Enricher / Sourcing / Memo / Reservations / Lineup / Models / Rewards /
-  Verification), verifications, per-place inspection.
+- **Admin** (`admin.mesita.ai`) — super-admin console: binding configs (Admin /
+  Models / Sourcing / Atlas / Enricher / Verification / Ojo / Lineup / Promos /
+  Memo / Reservations — Ojo's knobs are staged until its engine ships,
+  MESITA-1034), the verification queue, per-place inspection, and a read-only
+  `/brand` reference.
 
 Plus a **landing** site and scaffold-only `apps/mobile-business`. The platform
 never holds money (discounts-only); Mesita earns via subscriptions (Stripe) —

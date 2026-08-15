@@ -4,11 +4,13 @@ One repository for the whole Mesita product — assembled 2026-07-11 from the si
 
 | Path | Was | What |
 | --- | --- | --- |
-| `apps/web-admin` | `mesita-web-admin` | Internal admin console (Next.js · Vercel) |
+| `apps/web-admin` | `mesita-web-admin` | Internal admin console · admin.mesita.ai (Next.js · Vercel) |
 | `apps/web-business` | `mesita-web-business` | Business console · business.mesita.ai (Next.js · Vercel) |
 | `apps/web-consumer` | `mesita-web-consumer` | Consumer app · consumer.mesita.ai (Next.js · Vercel) |
-| `apps/web-landing` | `mesita-web-landing` | Marketing landing (Next.js · Vercel) |
+| `apps/web-landing` | `mesita-web-landing` | Marketing landing · mesita.ai (Next.js · Vercel) |
+| `apps/web-check` | — | Mesita Check, the staff check page · check.mesita.ai (Next.js · Vercel) |
 | `apps/mobile-consumer` | `mesita-mobile-consumer` | Native consumer app (Expo SDK 57 · React Native) |
+| `apps/mobile-business` | — | Native business app (Expo SDK 57 · scaffold only) |
 | `supabase` | `mesita-supabase` | DB · RLS · Edge Functions — source of truth (Supabase CLI · Deno) |
 | `assets` | workspace `logos/` | Brand source of truth — `brand.json` tokens + generated SVG/PNG/PDF marks ([assets/brand](./assets/brand)); regenerate with `deno task sync-brand` |
 
