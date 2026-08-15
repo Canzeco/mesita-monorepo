@@ -1,0 +1,55 @@
+name: brand
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "assets/brand/**"
+      - "apps/*/src/app/globals.css"
+      - "apps/*/src/app/icon.svg"
+      - "apps/*/src/components/brand/**"
+      - "apps/*/public/brand/**"
+      - "apps/*/src/constants/brand.ts"
+      - "apps/*/tailwind.config.js"
+      - "scripts/sync-brand.ts"
+      - "deno.json"
+      - ".github/workflows/brand.yml"
+  pull_request:
+    paths:
+      - "assets/brand/**"
+      - "apps/*/src/app/globals.css"
+      - "apps/*/src/app/icon.svg"
+      - "apps/*/src/components/brand/**"
+      - "apps/*/public/brand/**"
+      - "apps/*/src/constants/brand.ts"
+      - "apps/*/tailwind.config.js"
+      - "scripts/sync-brand.ts"
+      - "deno.json"
+      - ".github/workflows/brand.yml"
+
+concurrency:
+  group: brand-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: brand assets in sync
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Deno
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.9.1
+
+      # Every logo asset, token block, and brand component across the seven
+      # apps is generated from assets/brand/brand.json. This fails the build if
+      # any of them was hand-edited or left stale — the same contract sync-rules
+      # enforces for the instruction files.
+      #
+      # png/ and pdf/ are NOT checked: they come from
+      # scripts/render-brand-raster.mjs, which needs a local browser.
+      - name: Check
+        run: deno task sync-brand:check

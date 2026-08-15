@@ -20,7 +20,7 @@ export default function NotFound() {
   return (
     <main className="bg-hero flex min-h-dvh w-full flex-col items-center justify-center px-6 py-16 text-center">
       <div className="border-border bg-card/90 w-full max-w-sm rounded-3xl border px-6 py-10 shadow-[0_20px_48px_-24px_rgba(15,10,40,0.35)] backdrop-blur">
-        <div className="bg-peacock shadow-glow mx-auto mb-6 flex h-14 w-14 items-center justify-center rounded-2xl text-white">
+        <div className="bg-brand shadow-glow mx-auto mb-6 flex h-14 w-14 items-center justify-center rounded-2xl text-white">
           <Compass className="h-6 w-6" />
         </div>
         <p className="text-muted-foreground text-xs font-bold tracking-[0.2em] uppercase">

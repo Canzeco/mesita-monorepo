@@ -6,7 +6,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, type ComponentType } from "react";
 import { Search, QrCode, CalendarCheck, User } from "lucide-react";
-import { MesitaMark } from "./MesitaMark";
+import { MesitaMark } from "@/components/brand/MesitaMark";
 import { ComingSoonModal } from "./ComingSoonModal";
 import { cn } from "@/lib/utils";
 import { useConsumerClass } from "@/lib/class-context";

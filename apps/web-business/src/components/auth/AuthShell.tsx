@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { MesitaLogo } from "@/components/brand/MesitaLogo";
 
 // Centered card chrome shared by sign-in, sign-up, and onboard. Renders
 // the hero gradient, the soft pink glow behind the card, the brandmark,
@@ -45,14 +46,9 @@ export function AuthCard({
       <div className="mb-6 text-center">
         <Link
           href="/"
-          className="text-foreground inline-flex items-center gap-2 no-underline"
+          className="text-primary inline-flex items-center no-underline"
         >
-          <span className="bg-peacock shadow-glow flex h-9 w-9 items-center justify-center rounded-full text-base">
-            🦚
-          </span>
-          <span className="font-display text-[21px] font-semibold tracking-[-0.02em]">
-            mesita.
-          </span>
+          <MesitaLogo variant="horizontal" className="h-8 w-auto" />
         </Link>
         <h1 className="font-display mt-5 text-[28px] font-semibold tracking-[-0.02em]">
           {title}

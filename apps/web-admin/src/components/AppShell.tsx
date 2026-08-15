@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Menu, X } from "lucide-react";
+import { MesitaLogo } from "@/components/brand/MesitaLogo";
 import { SidebarWithSuspense } from "@/components/SidebarWithSuspense";
 
 type AppShellProps = {
@@ -93,15 +94,12 @@ export function AppShell({ children }: AppShellProps) {
             href="/central"
             className="inline-flex items-center gap-2 truncate"
           >
-            <span className="bg-peacock shadow-glow flex h-6 w-6 items-center justify-center rounded-full text-xs">
-              🦚
-            </span>
-            <span className="font-display text-sm font-semibold tracking-tight">
-              mesita
-              <span className="text-primary">.</span>
-              <span className="text-muted-foreground ml-1.5 text-[10px] font-medium tracking-[0.16em] uppercase">
-                admin
-              </span>
+            <MesitaLogo
+              variant="horizontal"
+              className="text-primary h-5 w-auto"
+            />
+            <span className="text-muted-foreground text-[10px] font-medium tracking-[0.16em] uppercase">
+              admin
             </span>
           </Link>
         </header>

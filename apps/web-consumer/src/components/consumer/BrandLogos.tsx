@@ -8,7 +8,7 @@
 
 import { Facebook, Instagram } from "lucide-react";
 
-import { MesitaMark } from "./MesitaMark";
+import { MesitaMark } from "@/components/brand/MesitaMark";
 
 // Multi-color Google "G" inside a white circle. h-8 w-8 to align with the
 // other source badges (Instagram / Facebook / Mesita) on the reviews

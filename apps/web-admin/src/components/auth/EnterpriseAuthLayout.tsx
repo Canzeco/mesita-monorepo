@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Database, Eye, ShieldCheck, Wrench } from "lucide-react";
+import { MesitaLogo } from "@/components/brand/MesitaLogo";
 
 // Two-column enterprise auth shell for the admin subdomain.
 //
@@ -51,13 +52,8 @@ function LandingPane() {
     <aside className="bg-foreground text-background relative hidden flex-col justify-between overflow-hidden p-10 lg:flex">
       <SoftGlow />
       <div className="relative z-10 flex items-center justify-between">
-        <Link href="/" className="inline-flex items-center gap-2 no-underline">
-          <span className="flex h-9 w-9 items-center justify-center rounded-full bg-white/15 text-base backdrop-blur">
-            🦚
-          </span>
-          <span className="font-display text-[20px] font-semibold tracking-[-0.02em]">
-            mesita.
-          </span>
+        <Link href="/" className="inline-flex items-center no-underline">
+          <MesitaLogo variant="horizontal" className="h-7 w-auto" />
         </Link>
         <span className="text-[10px] font-bold tracking-[0.2em] text-background/70 uppercase">
           Admin

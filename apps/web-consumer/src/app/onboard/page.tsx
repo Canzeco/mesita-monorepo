@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { MobileFrame } from "@/components/consumer/MobileFrame";
+import { MesitaMark } from "@/components/brand/MesitaMark";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { apiFetchConsumerProfile } from "@/lib/api/profile";
 import { SignOutButton } from "@/components/auth/SignOutButton";
@@ -88,8 +89,8 @@ export default async function ConsumerOnboardPage({
         </div>
 
         <div className="mb-6">
-          <div className="bg-peacock shadow-glow mb-4 flex h-12 w-12 items-center justify-center rounded-2xl text-xl">
-            🦚
+          <div className="bg-pink-gradient shadow-glow mb-4 flex h-12 w-12 items-center justify-center rounded-2xl">
+            <MesitaMark className="h-6 w-6 text-white" />
           </div>
           <h1 className="font-display text-3xl font-semibold tracking-tight">
             Tell us about you

@@ -44,7 +44,7 @@ export default function NotFound() {
             }}
           >
             <LinearGradient
-              colors={[...GRADIENTS.peacock]}
+              colors={[...GRADIENTS.brand]}
               start={GRADIENT_DIAGONAL.start}
               end={GRADIENT_DIAGONAL.end}
               style={{

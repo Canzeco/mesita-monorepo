@@ -9,6 +9,8 @@ import {
   ShieldCheck,
   UserRound,
 } from "lucide-react";
+import { MesitaLogo } from "@/components/brand/MesitaLogo";
+import { BRAND_PARENT } from "@/app/(app)/brand/nav";
 import { ATLAS_PARENT } from "@/app/(app)/atlas-config/nav";
 import { AURA_CONSUMERS_PARENT } from "@/app/(app)/aura-consumers/nav";
 import { BILLING_TEST_PARENT } from "@/app/(app)/billing-test/nav";
@@ -103,12 +105,18 @@ const TESTING_NAV: NavItem[] = [
   },
 ];
 
+// Reference — reading surfaces with no knobs. The brand page renders the
+// shipped tokens and logo components, so drift between the guide and the
+// product shows up the moment you open it.
+const REFERENCE_NAV: NavItem[] = [BRAND_PARENT];
+
 const SIDEBAR_SECTIONS = [
   { label: "Account", items: ACCOUNT_NAV },
   { label: "Alerts", items: ALERTS_NAV },
   { label: "Manage", items: MANAGE_NAV },
   { label: "Configs", items: CONFIGS_NAV },
   { label: "Testing", items: TESTING_NAV },
+  { label: "Reference", items: REFERENCE_NAV },
 ] as const;
 
 function NavLink({
@@ -193,15 +201,9 @@ export function Sidebar({ onNavigate }: SidebarProps) {
         onClick={onNavigate}
         className="inline-flex shrink-0 items-center gap-2 px-2"
       >
-        <span className="bg-peacock shadow-glow flex h-7 w-7 items-center justify-center rounded-full text-sm">
-          🦚
-        </span>
-        <span className="font-display text-base font-semibold tracking-tight">
-          mesita
-          <span className="text-primary">.</span>
-          <span className="text-background/50 ml-1.5 text-[10px] font-medium tracking-[0.16em] uppercase">
-            admin
-          </span>
+        <MesitaLogo variant="horizontal" className="h-5 w-auto" />
+        <span className="text-background/50 text-[10px] font-medium tracking-[0.16em] uppercase">
+          admin
         </span>
       </Link>
 

@@ -23,7 +23,7 @@ This is **ASDM** — the Agentic Software Development Methodology: one protocol,
 - **NEVER ask.** Reversible → decide, log a `decision:` comment, ship. Only two `needs-human` cases: a secret you can't enter, or one irreversible money/publish trigger.
 - **When in doubt**, hierarchy wins: Pato's live instruction > the Linear issue > Notion > memory.
 
-Where things live: **Linear** (team Mesita, `MESITA-`) = work state · **Notion** = knowledge · **GitHub** = code (`Canzeco/mesita-monorepo`). Instruction files chain to their master: package `CLAUDE.md`/`AGENTS.md` (package rules only) → root `CLAUDE.md` (this quickstart) → Notion; every `AGENTS.md` is generated from its sibling `CLAUDE.md` — never hand-edit; `deno task sync-rules` regenerates, CI enforces (Development Rules §C).
+Where things live: **Linear** (team Mesita, `MESITA-`) = work state · **Notion** = knowledge · **GitHub** = code (`Canzeco/mesita-monorepo`). Instruction files chain to their master: package `CLAUDE.md`/`AGENTS.md` (package rules only) → root `CLAUDE.md` (this quickstart) → Notion; every `AGENTS.md` is generated from its sibling `CLAUDE.md` — never hand-edit; `deno task sync-rules` regenerates, CI enforces (Development Rules §C). **The brand is generated the same way:** `assets/brand/brand.json` is the source for the logo, the pink ramp, and the type across all 7 apps — logo assets, the `BRAND-TOKENS` block in each `globals.css`, `src/components/brand/*`, favicons and the mobile blocks are all output. Never hand-edit a generated brand file; edit `brand.json`, run `deno task sync-brand`, CI enforces (`brand.yml`). Guide: `assets/brand/BRAND.md`.
 <!-- RULES-QUICKSTART:END -->
 ## This repo — mesita-monorepo (root)
 
@@ -37,7 +37,7 @@ Where things live: **Linear** (team Mesita, `MESITA-`) = work state · **Notion*
 | `apps/mobile-consumer` | `mesita-mobile-consumer` | Native consumer app (Expo SDK 57 · RN · NativeWind) |
 | `apps/mobile-business` | — | Native business app (Expo SDK 57 · **scaffold only**, EAS wired, no screens yet) |
 | `supabase` | `mesita-supabase` | DB · RLS · Edge Functions — source of truth (Supabase CLI · Deno) |
-| `assets` | — | Shared brand assets (`assets/brand` = canonical marks; update here first, propagate to apps same PR) |
+| `assets` | — | The brand (`assets/brand/brand.json` = source of truth for logo, pink ramp, type; `BRAND.md` = the guide). Edit there, then `deno task sync-brand` — it writes the logo assets, every app's `BRAND-TOKENS` block, `src/components/brand/*`, and the favicons |
 
 - **Packages are independent install roots** (own `pnpm-workspace.yaml` + lockfile; **no root pnpm workspace on purpose** — mobile needs `nodeLinker: hoisted`, web apps use the default isolated linker). `cd` into a package and use it as before; `supabase/` is Deno + the Supabase CLI (run every `supabase` command from `supabase/`).
 - **All web apps deploy from this one monorepo** — each `apps/web-*` is its own Vercel project (canzeco team) linked to `Canzeco/mesita-monorepo` with **Root Directory `apps/web-<app>`**; a push to `main` auto-deploys only the app(s) that changed (Vercel "skip unaffected" on). One repo → per-app Vercel projects → domains: web-landing→mesita.ai · web-admin→admin.mesita.ai · web-business→business.mesita.ai · web-consumer→consumer.mesita.ai · web-check→check.mesita.ai. The frozen standalone `mesita-web-*` repos no longer deploy anything.
