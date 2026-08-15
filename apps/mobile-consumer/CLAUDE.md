@@ -6,7 +6,7 @@ Native consumer app (Expo SDK 57 · React Native · Expo Router · NativeWind) �
 
 ## ALWAYS
 - Clients call **Edge Functions only** — never the DB. The EF client is [src/lib/ef.ts](src/lib/ef.ts), ported **verbatim** from `apps/web-consumer/src/lib/api/_invoke.ts`; when one changes, update the other **in the same PR** (they live in the same repo now).
-- **Light theme only.** Semantic tokens live in [tailwind.config.js](tailwind.config.js) + [src/constants/brand.ts](src/constants/brand.ts) — copied VALUES from `apps/web-consumer/src/app/globals.css` (web is Tailwind v4 CSS-first, this package is NativeWind 4 + Tailwind 3.4; they cannot share config). If web tokens change, re-copy here **in the same PR**.
+- **Light theme only.** Semantic tokens live in [tailwind.config.js](tailwind.config.js) + [src/constants/brand.ts](src/constants/brand.ts) — copied VALUES from `apps/web-consumer/src/app/globals.css` (web is Tailwind v4 CSS-first, this package is NativeWind 4 + Tailwind 3.4; they cannot share config). If web tokens change, re-copy here **in the same PR** — EXCEPT the `BRAND-TOKENS` blocks in both files and `src/components/brand/*`, which are **generated** from `assets/brand/brand.json` (`deno task sync-brand`, enforced by `brand.yml`). Never hand-edit those; the brand pink, its ramp, and the logo come from there.
 - Reply in English. Mirror shipped architecture changes to Notion Product Rules same session.
 - Premium visual bar: branded gradients (expo-linear-gradient + `GRADIENTS`), tinted icon circles, no wireframe stacks.
 

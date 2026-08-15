@@ -8,6 +8,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { MesitaLogo } from "@/components/brand/MesitaLogo";
 import { authSignOut } from "@/app/auth/actions";
 import { placePath } from "@/lib/business-route-contract";
 
@@ -43,13 +44,11 @@ export function AppHeader({
 
 function Brandmark() {
   return (
-    <Link href="/" className="inline-flex items-center gap-2 no-underline">
-      <span className="bg-peacock shadow-glow flex h-8 w-8 items-center justify-center rounded-full text-[15px]">
-        🦚
-      </span>
-      <span className="font-display text-[19px] font-semibold tracking-[-0.02em]">
-        mesita.
-      </span>
+    <Link
+      href="/"
+      className="text-primary inline-flex items-center no-underline"
+    >
+      <MesitaLogo variant="horizontal" className="h-7 w-auto" />
     </Link>
   );
 }
@@ -65,7 +64,7 @@ function AccountMenu({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger className="border-border bg-card hover:bg-muted inline-flex items-center gap-2 rounded-full border py-1.5 pr-3 pl-1.5 text-sm font-medium transition">
-        <span className="bg-peacock flex h-7 w-7 items-center justify-center rounded-full text-[12px] font-bold text-white">
+        <span className="bg-brand flex h-7 w-7 items-center justify-center rounded-full text-[12px] font-bold text-white">
           {initial}
         </span>
         <span className="text-foreground hidden max-w-[180px] truncate sm:inline">

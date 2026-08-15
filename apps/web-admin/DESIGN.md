@@ -63,7 +63,7 @@ Common: cards `rounded-2xl`, fields `rounded-xl`, CTAs `rounded-full`.
 | Utility | Use |
 | --- | --- |
 | `bg-hero` | Auth / gate empty atmospheres |
-| `bg-peacock` | Brand mark chip |
+| `bg-brand` | Brand mark chip |
 | `bg-pink-gradient` / `text-pink-gradient` | Premium dirty-save CTAs / gradient text |
 | `shadow-glow` | Brand mark |
 | `shadow-elev` | Elevated shells (map, gate cards, drawer) |
