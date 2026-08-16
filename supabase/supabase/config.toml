@@ -41,7 +41,7 @@ file_size_limit = "50MiB"
 # dashboard and are NOT represented here, so do not run `supabase config
 # push` to "sync" them: it would push this file over production, pointing
 # site_url at localhost. Auth changes on the hosted project are a human step.
-# To check what production actually has, probe it — see ARCHITECTURE.md
+# To check what production actually has, probe it — see Notion Product Rules §I
 # § Identity & sign-in.
 [auth]
 enabled = true
@@ -72,7 +72,7 @@ otp_expiry = 3600
 # the Messaging Service on +16282784122, so the template below is ours.
 # Consumers + staff sign in here; businesses + admins never see this
 # provider. Twilio Verify is the standing fallback if Mexican carriers
-# filter the US long code — see ARCHITECTURE.md § Identity & sign-in.
+# filter the US long code — see Notion Product Rules §I.
 [auth.sms]
 enable_signup = true
 enable_confirmations = true

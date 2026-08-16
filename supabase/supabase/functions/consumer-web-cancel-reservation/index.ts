@@ -68,7 +68,7 @@ Deno.serve(async (req) => {
   }
 
   // A CONFIRMED table means the venue is holding it — it must HEAR about the
-  // cancel or this becomes a Mesita-made no-show (RESERVATIONS-PROTOCOL.md
+  // cancel or this becomes a Mesita-made no-show (Product Rules §J
   // leg 5). Pending tickets owe nothing: never ring a venue to cancel what it
   // never agreed to.
   const notice = row.status === "confirmed" ? "venue_cancel" as const : null;

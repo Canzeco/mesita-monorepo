@@ -4,8 +4,8 @@ import Link from "next/link";
 import type { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-// Shared empty state — closes the DESIGN.md §10 debt note ("no shared
-// EmptyState primitive yet").
+// Shared empty state — closes the design-map debt note ("no shared
+// EmptyState primitive yet"; web-consumer design map: Notion Product Rules §F).
 //
 // Two rules the old ad-hoc versions kept getting wrong:
 //
@@ -17,7 +17,7 @@ import { cn } from "@/lib/utils";
 //     to do without giving you a way to do it — the reader has to go find the
 //     tab themselves. An empty state without a next step is a dead end.
 //
-// No dashed decorative box: DESIGN.md §2 is "cards only when interactive", and
+// No dashed decorative box: the design map's rule is "cards only when interactive", and
 // a zero state isn't. Tinted icon circle + display title + muted copy + one CTA
 // is the whole vocabulary.
 export function EmptyState({

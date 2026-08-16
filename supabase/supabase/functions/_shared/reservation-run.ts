@@ -1,5 +1,5 @@
 // Run discipline for the Reservationist engine — the pure decisions behind
-// RESERVATIONS-PROTOCOL.md's "platform failures never burn attempts" and the
+// Product Rules §J's "platform failures never burn attempts" and the
 // per-leg notice cap. No clock, no DB, no fetch — testable like the ladder.
 //
 // WHY the platform/target split exists: a call reads status=failed both when
@@ -72,7 +72,7 @@ export function outageRetryAt(
 }
 
 /**
- * When the next cancel-notice call may fire (RESERVATIONS-PROTOCOL.md legs
+ * When the next cancel-notice call may fire (Product Rules §J legs
  * 5/6) — the place side paces by the place's own opening hours with a hard
  * cap, the guest side rides the guest ladder. Extracted from the engine so
  * the one decision that dials real places is provable without a phone.
