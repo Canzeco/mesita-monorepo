@@ -13,10 +13,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MesitaMark } from '@/components/brand/MesitaMark';
 import { ComingSoonModal } from '@/components/ui/ComingSoonModal';
 import { COLORS } from '@/constants/brand';
-import { classProperLabel } from '@/lib/consumer-classes';
 import { isTabParked, PARKED, type ParkedTabKey } from '@/lib/parked-flags';
 import { useReduceMotion } from '@/lib/useReduceMotion';
-import { useAuth } from '@/providers/auth';
 
 type IconComponent = ComponentType<{
   color?: string;
@@ -74,14 +72,17 @@ const LABELS: Record<string, string> = {
 };
 
 // Custom tab bar — RN port of web BottomNav: card/95 + blur, active top
-// pill + tinted icon circle + stroke-weight swap, dynamic `Me · <class>`.
+// pill + tinted icon circle + stroke-weight swap.
+//
+// Every tab shows its plain label. Me used to append the live class ("Me ·
+// Standard") — dropped 2026-08-16 (Pato: "only write me, its cleaner"). A tab
+// label names a DESTINATION; the class is status, and it belongs on the Me
+// screen where it can be read and acted on, not in the chrome of every screen.
 // Parked flags/copy live in parked-flags.ts (flip `soon` to unpark).
 // Deep-linked parked routes stay live; tab tap always opens ComingSoonModal.
 export function ConsumerTabBar({ state, navigation }: ConsumerTabBarProps) {
   const insets = useSafeAreaInsets();
   const reduceMotion = useReduceMotion();
-  const { consumerClass } = useAuth();
-  const classLabel = classProperLabel(consumerClass?.key ?? 'standard');
   const [soonKey, setSoonKey] = useState<ParkedTabKey | null>(null);
   const soon = soonKey ? PARKED.tabs[soonKey] : null;
   const SoonIcon = soonKey ? SOON_ICONS[soonKey] : undefined;
@@ -115,9 +116,7 @@ export function ConsumerTabBar({ state, navigation }: ConsumerTabBarProps) {
             const name = route.name;
             const Icon = ICONS[name] ?? User;
             const parked = isTabParked(name);
-            const baseLabel = LABELS[name] ?? name;
-            const displayLabel =
-              name === 'me' ? `${baseLabel} · ${classLabel}` : baseLabel;
+            const displayLabel = LABELS[name] ?? name;
             // Parked tabs never show focused chrome (web BottomNav soon buttons).
             const showActive = focused && !parked;
             const tint = showActive ? COLORS.primary : COLORS.mutedForeground;

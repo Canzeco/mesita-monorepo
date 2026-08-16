@@ -9,17 +9,21 @@ import { Search, QrCode, Inbox, User } from "lucide-react";
 import { MesitaMark } from "@/components/brand/MesitaMark";
 import { ComingSoonModal } from "./ComingSoonModal";
 import { cn } from "@/lib/utils";
-import { useConsumerClass } from "@/lib/class-context";
-import { classProperLabel } from "@/lib/consumer-data";
 import {
   CONSUMER_RESERVATION_SURFACE_PREFIX,
   CONSUMER_ROUTES,
   CONSUMER_ROUTE_PREFIX,
 } from "@/lib/consumer-route-contract";
 
-// Five top-level surfaces: Home, Search, Rewards, Inbox, Profile.
-// Home hosts the discovery routes (Swipe / Ask AI / Social / Favorites);
-// Search hosts the map + catalog search.
+// Five top-level surfaces: Home, Search, Rewards, Inbox, Me.
+// Home hosts the discovery routes (Swipe / Catalog / Chat / Social /
+// Favorites); Search hosts the map + catalog search.
+//
+// Every tab shows its plain label. Me used to append the live class ("Me ·
+// Standard") — dropped 2026-08-16 (Pato: "only write me, its cleaner"). A tab
+// label names a DESTINATION; the class is status, and status belongs on the Me
+// page where it can be read and acted on, not stamped into the chrome of every
+// screen.
 
 // Icon is either a lucide glyph or the Mesita brand mark (Home) — both take
 // a className and (harmlessly) a strokeWidth, so the render stays uniform.
@@ -81,8 +85,6 @@ const ITEMS: Item[] = [
   {
     href: CONSUMER_ROUTES.me,
     Icon: User,
-    // Base label; the live class ("Me · Premium" / "Me · Standard") is stitched
-    // in at render from the server-seeded class context — see BottomNav below.
     label: "Me",
     match: CONSUMER_ROUTE_PREFIX.me,
   },
@@ -94,12 +96,6 @@ export function BottomNav({ userId }: { userId?: string }) {
   // site doesn't churn while other agents work this tree.
   void userId;
   const pathname = usePathname();
-  // Real, server-seeded class → the Me tab reads "Me · Premium" / "Me ·
-  // Aura" / "Me · Standard" instead of a literal "Class". Defaults to
-  // Standard before the shell seeds the profile (harmless: an elevated member is
-  // shown Standard for one paint at most).
-  const { key: classKey } = useConsumerClass();
-  const classLabel = classProperLabel(classKey);
   const [soonItem, setSoonItem] = useState<Item | null>(null);
 
   return (
@@ -121,12 +117,6 @@ export function BottomNav({ userId }: { userId?: string }) {
               // /me in next.config before any client render.)
               (match === CONSUMER_ROUTE_PREFIX.home &&
                 pathname.startsWith(CONSUMER_ROUTE_PREFIX.place));
-            // The Me tab carries the live class suffix; every other tab keeps
-            // its static label.
-            const displayLabel =
-              match === CONSUMER_ROUTE_PREFIX.me
-                ? `${label} · ${classLabel}`
-                : label;
             // Parked surfaces stay tappable — open ComingSoonModal (no Soon pill).
             if (soon) {
               return (
@@ -141,7 +131,7 @@ export function BottomNav({ userId }: { userId?: string }) {
                     <Icon className="h-5 w-5" strokeWidth={1.75} />
                   </span>
                   <span className="w-full truncate text-center">
-                    {displayLabel}
+                    {label}
                   </span>
                 </button>
               );
@@ -174,7 +164,7 @@ export function BottomNav({ userId }: { userId?: string }) {
                   />
                 </span>
                 <span className="w-full truncate text-center">
-                  {displayLabel}
+                  {label}
                 </span>
               </Link>
             );

@@ -2,12 +2,11 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { MapPin, QrCode, Sparkles, Star, TicketX } from "lucide-react";
+import Link from "next/link";
+import { ChevronRight, MapPin, QrCode, Sparkles, Star } from "lucide-react";
 
 import { PlacePickList } from "@/components/consumer/rewards/PlacePickList";
 import { SavingsReveal } from "@/components/consumer/rewards/SavingsReveal";
-import { TicketRow } from "@/components/consumer/rewards/TicketRow";
-import { TicketCardSkeleton } from "./RewardsTabLoading";
 import { EFError } from "@/lib/api/_invoke";
 import {
   ACTIVE_TICKET_STATUSES,
@@ -18,21 +17,27 @@ import {
 } from "@/lib/api/tickets";
 import type { Place } from "@/lib/api/places";
 import { seedTicket, ticketRowFromCreate } from "@/lib/ticket-seed";
-import { ticketPath } from "@/lib/consumer-route-contract";
+import {
+  CONSUMER_ROUTES,
+  ticketPath,
+} from "@/lib/consumer-route-contract";
 import { useConsumerTickets } from "@/lib/hooks/useConsumerTickets";
-import { EmptyState } from "@/components/shared";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
-import { cn } from "@/lib/utils";
 
-// Rewards Wallet — TWO tabs: New / History (MESITA-1024, Pato: "just two
-// pages"; Pending died — a status bucket that almost always held one row or
-// none).
+// Rewards Wallet — ONE job: pick a place and start a visit.
 //
-// NEW IS A PLACE LIST AND NOTHING ELSE (Pato, 2026-08-11: "you don't see the
+// History MOVED to Inbox > Visits (Pato, 2026-08-16: "move the visits history
+// there"), which retired the last tab and the switcher with it — a one-tab tab
+// bar is chrome pretending to be a control. Rewards is now where a visit
+// STARTS and where you pay; Inbox is where you watch the ones in flight. The
+// ticket lists are gone from this file entirely; `tickets` stays only to
+// detect a just-paid reveal and to know which places already hold a live one.
+//
+// IT IS A PLACE LIST AND NOTHING ELSE (Pato, 2026-08-11: "you don't see the
 // tickets… you only see places, step 1 — list all the places in Mesita,
 // that's it"). The live ticket no longer pins above the list: New is the
 // question "where are you?", and a ticket sitting in the answer slot made the
-// tab look like two products. Tickets live on THE TICKET and in History.
+// surface look like two products. Tickets live on THE TICKET and in Inbox.
 //
 // ONE TAP CREATES THE TICKET (Pato, same session: "you select a place, a
 // ticket is automatically created — only by clicking a place. create ticket,
@@ -49,17 +54,10 @@ import { cn } from "@/lib/utils";
 // Tapping a place that already holds a live ticket re-opens that ticket
 // instead of 409-ing on `already_open` (D5).
 
-type Tab = "new" | "history";
-
 export function RewardsClient({ userId }: { userId: string }) {
   const supabase = useBrowserSupabase();
   const router = useRouter();
   const tickets = useConsumerTickets(userId);
-
-  // New is always the default: it is where every visit starts, so there is no
-  // state to route to. A manual tap pins the choice for the session.
-  const [tabChoice, setTabChoice] = useState<Tab | null>(null);
-  const tab: Tab = tabChoice ?? "new";
 
   const activePlaceIds = useMemo(
     () => new Set(tickets.active.map((t) => t.project_id)),
@@ -160,17 +158,13 @@ export function RewardsClient({ userId }: { userId: string }) {
   return (
     <div className="flex h-full min-h-0 flex-1 flex-col">
       {/* Page-level orientation lives in a shrink-0 header, OUTSIDE the scroll
-          body: the steps and the tab switcher are what tell you where you are,
-          and an orientation control that scrolls away has stopped orienting. */}
+          body: the steps are what tell you where you are, and an orientation
+          control that scrolls away has stopped orienting. */}
       <div className="border-border bg-background/90 shrink-0 border-b px-4 pt-3 pb-2.5 backdrop-blur-xl">
-        {/* ALWAYS. On every tab, no gate.
+        {/* ALWAYS, no gate.
             decision: Pato, 2026-08-10 — "always leave the 4 steps, never
-            remove them, those are the header." This supersedes MESITA-1018,
-            which had scoped them to New on the reasoning that Pending and
-            History hold tickets already made. The steps are the wallet's
-            masthead, not a per-tab progress indicator: they say what this tab
-            IS, and a header that appears and disappears as you switch tabs is
-            worse than one that simply stays. Do not re-gate this.
+            remove them, those are the header." The steps are the wallet's
+            masthead: they say what this surface IS. Do not re-gate this.
 
             Boxed as its own module so the header reads as two clean controls
             stacked — the steps say what this surface is, the track below says
@@ -180,33 +174,21 @@ export function RewardsClient({ userId }: { userId: string }) {
           <PitchSteps />
         </div>
 
-        {/* Slim muted track (MESITA-908): ~32px paint, ≥44px hit via vertical
-            slop so the control stays calm without sacrificing touch targets. */}
-        <div className="-mb-1.5 pt-2 pb-1.5">
-          <div className="bg-muted grid grid-cols-2 gap-0.5 rounded-[10px] p-[3px]">
-            {(
-              [
-                { id: "new", label: "New" },
-                { id: "history", label: "History" },
-              ] as const
-            ).map((t) => (
-              <button
-                key={t.id}
-                type="button"
-                onClick={() => setTabChoice(t.id)}
-                aria-pressed={tab === t.id}
-                className={cn(
-                  "flex min-h-8 items-center justify-center gap-1 rounded-[8px] px-1 text-center text-[12px] font-semibold transition",
-                  tab === t.id
-                    ? "bg-foreground text-background"
-                    : "text-muted-foreground hover:text-foreground",
-                )}
-              >
-                {t.label}
-              </button>
-            ))}
-          </div>
-        </div>
+        {/* The tab track is GONE (Pato, 2026-08-16: "move the visits history
+            there"). History moved to Inbox › Visits, which leaves Rewards with
+            exactly one job — pick a place and start a visit — and no switcher
+            to justify. A one-tab tab bar is chrome pretending to be a control.
+
+            The pointer stays because a feature that MOVED needs a forwarding
+            address; anyone who knew History lived here has to be told where it
+            went, once, in the place they'll look. */}
+        <Link
+          href={CONSUMER_ROUTES.inbox.visits}
+          className="text-muted-foreground hover:text-foreground mt-2 flex items-center justify-center gap-1 text-[11.5px] font-semibold transition"
+        >
+          Your visits live in Inbox
+          <ChevronRight className="h-3.5 w-3.5" />
+        </Link>
       </div>
 
       <div className="scrollbar-hide flex min-h-0 flex-1 flex-col gap-3.5 overflow-y-auto px-4 pt-4 pb-6">
@@ -218,43 +200,17 @@ export function RewardsClient({ userId }: { userId: string }) {
           />
         ) : null}
 
-        {tab === "new" ? (
-          <>
-            {startError ? (
-              <p className="bg-destructive/10 text-destructive rounded-lg px-3 py-2 text-[12.5px]">
-                {startError}
-              </p>
-            ) : null}
-            {/* Step 1, and only step 1: every place on Mesita. */}
-            <PlacePickList
-              activePlaceIds={activePlaceIds}
-              busyPlaceId={startingId}
-              onPick={onPick}
-            />
-          </>
-        ) : (
-          <div className="flex min-h-0 flex-1 flex-col gap-2.5">
-            {tickets.status === "loading" ? (
-              <TicketCardSkeleton />
-            ) : tickets.status === "error" ? (
-              <ErrorBox retry={tickets.retry} />
-            ) : tickets.history.length === 0 ? (
-              <EmptyState
-                icon={TicketX}
-                title="No closed visits yet"
-                description="Once you use a ticket, it lands here with what you saved."
-              />
-            ) : (
-              tickets.history.map((t) => (
-                <TicketRow
-                  key={t.id}
-                  ticket={t}
-                  onOpen={() => openTicket(t.id)}
-                />
-              ))
-            )}
-          </div>
-        )}
+        {startError ? (
+          <p className="bg-destructive/10 text-destructive rounded-lg px-3 py-2 text-[12.5px]">
+            {startError}
+          </p>
+        ) : null}
+        {/* Step 1, and only step 1: every place on Mesita. */}
+        <PlacePickList
+          activePlaceIds={activePlaceIds}
+          busyPlaceId={startingId}
+          onPick={onPick}
+        />
       </div>
     </div>
   );
@@ -294,22 +250,5 @@ function PitchSteps() {
         </li>
       ))}
     </ol>
-  );
-}
-
-function ErrorBox({ retry }: { retry: () => void }) {
-  return (
-    <div className="border-border bg-card flex items-center justify-between gap-3 rounded-2xl border px-4 py-3">
-      <p className="text-muted-foreground text-[12.5px]">
-        Couldn&apos;t load your tickets.
-      </p>
-      <button
-        type="button"
-        onClick={retry}
-        className="text-primary text-[12.5px] font-semibold"
-      >
-        Retry
-      </button>
-    </div>
   );
 }
