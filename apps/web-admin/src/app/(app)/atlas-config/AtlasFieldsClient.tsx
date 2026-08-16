@@ -3,15 +3,28 @@
 import { useMemo } from "react";
 import { Collapsible } from "../enricher-config/atlas-ui";
 import type { AtlasFieldsPayload } from "./actions";
+import type { PlaceFieldPermission } from "./place-field-permissions";
 import {
   PLACE_FIELD_PERMISSIONS,
-  PLACE_FIELD_EDIT_ROLES,
-  PLACE_FIELD_EDIT_ROLE_LABELS,
   PLACE_FIELD_PERMISSION_GROUP_DESCRIPTIONS,
 } from "./place-field-permissions";
 
 export function AtlasFieldsClient({ data }: { data: AtlasFieldsPayload }) {
   const { categories, tags } = data;
+
+  // Rows arrive grouped by ownership — keep that order rather than sorting.
+  const permissionsByGroup = useMemo(() => {
+    const map = new Map<
+      PlaceFieldPermission["group"],
+      PlaceFieldPermission[]
+    >();
+    for (const row of PLACE_FIELD_PERMISSIONS) {
+      const list = map.get(row.group) ?? [];
+      list.push(row);
+      map.set(row.group, list);
+    }
+    return map;
+  }, []);
 
   const categoriesBySection = useMemo(() => {
     const map = new Map<string, typeof categories>();
@@ -40,75 +53,37 @@ export function AtlasFieldsClient({ data }: { data: AtlasFieldsPayload }) {
           Who can edit
         </h2>
         <p className="text-muted-foreground mt-1 text-sm">
-          Place profile fields grouped by owner — who may write each one
-          today. Native = Google-sourced and re-stamped on every enrich, so
-          manual edits there don&apos;t stick. Read-only matrix (not a live ACL
-          toggle).
+          Place profile fields grouped by owner — who writes each one and who
+          may correct it. Google-native fields are re-stamped on every enrich,
+          so manual edits there don&apos;t stick. Read-only reference (not a
+          live ACL toggle).
         </p>
         <Collapsible
           summary={`Show ${PLACE_FIELD_PERMISSIONS.length} fields · who can edit`}
         >
-          <div className="-mx-4 overflow-x-auto sm:mx-0">
-            <table className="w-full min-w-[720px] border-separate border-spacing-0 px-4 sm:px-0">
-              <thead>
-                <tr className="text-muted-foreground text-left text-xs">
-                  <th className="border-border border-b pb-2 pl-1 font-medium">
-                    Category
-                  </th>
-                  <th className="border-border border-b pb-2 font-medium">
-                    Field
-                  </th>
-                  {PLACE_FIELD_EDIT_ROLES.map((role, i) => (
-                    <th
-                      key={role}
-                      className={
-                        i === PLACE_FIELD_EDIT_ROLES.length - 1
-                          ? "border-border border-b pb-2 pr-1 text-center font-medium"
-                          : "border-border border-b pb-2 text-center font-medium"
-                      }
-                    >
-                      {PLACE_FIELD_EDIT_ROLE_LABELS[role]}
-                    </th>
+          <div className="flex max-w-3xl flex-col gap-6">
+            {Array.from(permissionsByGroup.entries()).map(([group, rows]) => (
+              <div key={group}>
+                <h3 className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
+                  {group}
+                </h3>
+                <p className="text-muted-foreground mt-1 text-sm leading-relaxed">
+                  {PLACE_FIELD_PERMISSION_GROUP_DESCRIPTIONS[group]}
+                </p>
+                <ul className="mt-3 flex flex-col gap-2.5">
+                  {rows.map((row) => (
+                    <li key={row.key} className="text-sm leading-relaxed">
+                      <span className="font-medium">{row.label}</span>
+                      <span className="text-muted-foreground">
+                        {" "}
+                        — {describePermission(row)}
+                        {row.note ? ` ${row.note}` : ""}
+                      </span>
+                    </li>
                   ))}
-                </tr>
-              </thead>
-              <tbody>
-                {PLACE_FIELD_PERMISSIONS.map((row) => (
-                  <tr key={row.key} className="align-top">
-                    <td
-                      className="border-border/60 border-b py-2.5 pr-3 pl-1 align-top"
-                      title={
-                        PLACE_FIELD_PERMISSION_GROUP_DESCRIPTIONS[row.group]
-                      }
-                    >
-                      <div className="text-muted-foreground text-[10px] font-semibold tracking-wide uppercase whitespace-nowrap">
-                        {row.group}
-                      </div>
-                    </td>
-                    <td className="border-border/60 border-b py-2.5">
-                      <div className="text-sm font-medium">{row.label}</div>
-                      {row.note ? (
-                        <div className="text-muted-foreground mt-0.5 max-w-md text-xs leading-snug">
-                          {row.note}
-                        </div>
-                      ) : null}
-                    </td>
-                    {PLACE_FIELD_EDIT_ROLES.map((role, i) => (
-                      <td
-                        key={role}
-                        className={
-                          i === PLACE_FIELD_EDIT_ROLES.length - 1
-                            ? "border-border/60 border-b py-2.5 pr-1 text-center"
-                            : "border-border/60 border-b py-2.5 text-center"
-                        }
-                      >
-                        <PermissionCell allowed={row[role]} />
-                      </td>
-                    ))}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                </ul>
+              </div>
+            ))}
           </div>
         </Collapsible>
       </section>
@@ -231,19 +206,27 @@ export function AtlasFieldsClient({ data }: { data: AtlasFieldsPayload }) {
   );
 }
 
-function PermissionCell({ allowed }: { allowed: boolean }) {
-  return (
-    <span
-      className={
-        allowed
-          ? "bg-emerald-500/10 text-emerald-700 inline-flex min-w-[2.25rem] items-center justify-center rounded-md px-2 py-0.5 text-xs font-semibold"
-          : "bg-muted text-muted-foreground inline-flex min-w-[2.25rem] items-center justify-center rounded-md px-2 py-0.5 text-xs font-medium"
-      }
-      title={allowed ? "Can edit" : "Cannot edit"}
-    >
-      {allowed ? "Yes" : "No"}
-    </span>
-  );
+/** Turn the four writer/editor flags into one plain sentence pair. */
+function describePermission(row: PlaceFieldPermission): string {
+  const writer =
+    row.native && row.enricher
+      ? "Google seeds it and the Enricher refines it."
+      : row.native
+        ? "Google writes it."
+        : row.enricher
+          ? "The Enricher writes it."
+          : "No automatic writer.";
+
+  const editor =
+    row.admin && row.business
+      ? "Admin and business can edit it."
+      : row.admin
+        ? "Admin can edit it, business cannot."
+        : row.business
+          ? "Business can edit it, admin cannot."
+          : "Read-only in both Place UIs.";
+
+  return `${writer} ${editor}`;
 }
 
 function humanizeKey(key: string): string {
