@@ -1,4 +1,4 @@
-import { Flame, Heart, Sparkles, Users } from 'lucide-react-native';
+import { Flame, Heart, LayoutGrid, Sparkles, Users } from 'lucide-react-native';
 import type { ComponentType } from 'react';
 import { useEffect, useState } from 'react';
 import { View } from 'react-native';
@@ -11,24 +11,30 @@ import { ShellWash } from '@/components/ui/HeroBackdrop';
 import { ComingSoonModal } from '@/components/ui/ComingSoonModal';
 import { SegmentNav, type SegmentItem } from '@/components/ui/SegmentNav';
 
-// Mirrors web HomeModeNav: Swipe + Favorites live; Memo + Social parked.
-// Parked modes stay tappable and open a coming-soon modal (MESITA-601).
+// Mirrors web HomeModeNav: Swipe + Favorites live; Catalog + Memo + Social
+// parked. Parked modes stay tappable and open a coming-soon modal (MESITA-601).
 // AskAiTab / SocialTab stay on disk for a one-flag unpark.
 type Mode = 'swipe' | 'favorites';
 
 const MODES: (SegmentItem & {
-  key: Mode | 'ai' | 'social';
+  key: Mode | SoonMode;
   Icon: ComponentType<{ color?: string; size?: number; strokeWidth?: number }>;
 })[] = [
   { key: 'swipe', title: 'Swipe', Icon: Flame },
+  { key: 'catalog', title: 'Catalog', Icon: LayoutGrid, soon: true },
   { key: 'ai', title: 'Memo', Icon: Sparkles, soon: true },
   { key: 'social', title: 'Social', Icon: Users, soon: true },
   { key: 'favorites', title: 'Favorites', Icon: Heart },
 ];
 
-type SoonMode = 'ai' | 'social';
+type SoonMode = 'catalog' | 'ai' | 'social';
 
 const SOON_META = {
+  catalog: {
+    title: 'Catalog',
+    body: 'The full Mesita catalog — every place, browsable and filterable, without swiping. Coming soon.',
+    Icon: LayoutGrid,
+  },
   ai: {
     title: 'Memo',
     body: "Don Memo, your AI concierge, is almost ready — tell him the vibe you want and he'll find your spot.",
@@ -68,7 +74,8 @@ export default function HomeScreen() {
                 setMode(v);
                 return;
               }
-              if (v === 'ai' || v === 'social') setSoonMode(v);
+              if (v === 'catalog' || v === 'ai' || v === 'social')
+                setSoonMode(v);
             }}
           />
         </View>

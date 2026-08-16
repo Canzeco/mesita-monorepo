@@ -12,11 +12,12 @@ export const CONSUMER_ROUTES = {
   // The referral page is named Share — /share is canonical. /invite is the
   // legacy path (redirects here).
   share: "/share",
-  // Discovery hub. The modes are REAL nested routes (/home/{swipe,ai,social,
-  // favorites}); bare /home redirects to the default (swipe).
+  // Discovery hub. The modes are REAL nested routes (/home/{swipe,catalog,ai,
+  // social,favorites}); bare /home redirects to the default (swipe).
   home: "/home",
   homeTabs: {
     swipe: "/home/swipe",
+    catalog: "/home/catalog",
     ai: "/home/ai",
     social: "/home/social",
     favorites: "/home/favorites",

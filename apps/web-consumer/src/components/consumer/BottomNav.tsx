@@ -17,7 +17,7 @@ import {
   CONSUMER_ROUTE_PREFIX,
 } from "@/lib/consumer-route-contract";
 
-// Five top-level surfaces: Home, Search, Rewards, Reservations, Profile.
+// Five top-level surfaces: Home, Search, Rewards, Inbox, Profile.
 // Home hosts the discovery routes (Swipe / Ask AI / Social / Favorites);
 // Search hosts the map + catalog search.
 
@@ -62,7 +62,15 @@ const ITEMS: Item[] = [
   {
     href: CONSUMER_ROUTES.reservations,
     Icon: CalendarCheck,
-    label: "Reservations",
+    // "Inbox" is the container, not the function (Pato, 2026-08-15): the tab
+    // holds Reservations today, Orders next, and Notifications — so it can't
+    // be named after any one of them, and naming it for the mechanism
+    // ("Agent") would break the day places integrate directly. The routes
+    // stay /reservations — a booking is still a reservation, and renaming the
+    // tab doesn't rename the object.
+    // NOTE: notifications still live at their own /inbox/* routes, reached
+    // from Me. Folding them in here is the outstanding half of this rename.
+    label: "Inbox",
     // Prefix `/reservation` also catches /reservation/[id] detail views.
     match: CONSUMER_RESERVATION_SURFACE_PREFIX,
     // LIVE since 2026-07-27 — the Reservationist books over the phone and the

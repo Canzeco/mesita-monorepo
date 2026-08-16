@@ -37,6 +37,7 @@ describe("CONSUMER_ROUTES (canonical surface map)", () => {
       home: "/home",
       homeTabs: {
         swipe: "/home/swipe",
+        catalog: "/home/catalog",
         ai: "/home/ai",
         social: "/home/social",
         favorites: "/home/favorites",

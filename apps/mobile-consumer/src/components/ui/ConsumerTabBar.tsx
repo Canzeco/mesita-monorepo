@@ -55,11 +55,16 @@ const ICONS: Record<string, IconComponent> = {
   me: User,
 };
 
+// The `reservations` route keeps its name; the TAB is labelled "Inbox" (Pato,
+// 2026-08-15) — a container for Reservations, Orders and Notifications, so it
+// can't be named after any one of them. Web BottomNav parity.
+// NOTE: notifications still live at their own /inbox/* routes, reached from
+// Me. Folding them in here is the outstanding half of this rename.
 const LABELS: Record<string, string> = {
   home: 'Home',
   search: 'Search',
   rewards: 'Rewards',
-  reservations: 'Reservations',
+  reservations: 'Inbox',
   me: 'Me',
 };
 
