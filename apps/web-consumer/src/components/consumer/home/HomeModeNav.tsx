@@ -41,14 +41,7 @@ type Tab = {
 
 const TABS: Tab[] = [
   { href: CONSUMER_ROUTES.homeTabs.swipe, label: "Swipe", Icon: Flame },
-  {
-    href: CONSUMER_ROUTES.homeTabs.catalog,
-    label: "Catalog",
-    Icon: LayoutGrid,
-    soon: true,
-    blurb:
-      "The full Mesita catalog — every place, browsable and filterable, without swiping. Coming soon.",
-  },
+  { href: CONSUMER_ROUTES.homeTabs.catalog, label: "Catalog", Icon: LayoutGrid },
   {
     href: CONSUMER_ROUTES.homeTabs.ai,
     label: "Memo",

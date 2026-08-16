@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { CatalogTab } from '@/components/home/CatalogTab';
 import { FavoritesTab } from '@/components/home/FavoritesTab';
 import { SwipeDeck } from '@/components/swipe/SwipeDeck';
 import { subscribeHomeMode } from '@/components/swipe/home-mode-intent';
@@ -11,30 +12,25 @@ import { ShellWash } from '@/components/ui/HeroBackdrop';
 import { ComingSoonModal } from '@/components/ui/ComingSoonModal';
 import { SegmentNav, type SegmentItem } from '@/components/ui/SegmentNav';
 
-// Mirrors web HomeModeNav: Swipe + Favorites live; Catalog + Memo + Social
+// Mirrors web HomeModeNav: Swipe + Catalog + Favorites live; Memo + Social
 // parked. Parked modes stay tappable and open a coming-soon modal (MESITA-601).
 // AskAiTab / SocialTab stay on disk for a one-flag unpark.
-type Mode = 'swipe' | 'favorites';
+type Mode = 'swipe' | 'catalog' | 'favorites';
 
 const MODES: (SegmentItem & {
   key: Mode | SoonMode;
   Icon: ComponentType<{ color?: string; size?: number; strokeWidth?: number }>;
 })[] = [
   { key: 'swipe', title: 'Swipe', Icon: Flame },
-  { key: 'catalog', title: 'Catalog', Icon: LayoutGrid, soon: true },
+  { key: 'catalog', title: 'Catalog', Icon: LayoutGrid },
   { key: 'ai', title: 'Memo', Icon: Sparkles, soon: true },
   { key: 'social', title: 'Social', Icon: Users, soon: true },
   { key: 'favorites', title: 'Favorites', Icon: Heart },
 ];
 
-type SoonMode = 'catalog' | 'ai' | 'social';
+type SoonMode = 'ai' | 'social';
 
 const SOON_META = {
-  catalog: {
-    title: 'Catalog',
-    body: 'The full Mesita catalog — every place, browsable and filterable, without swiping. Coming soon.',
-    Icon: LayoutGrid,
-  },
   ai: {
     title: 'Memo',
     body: "Don Memo, your AI concierge, is almost ready — tell him the vibe you want and he'll find your spot.",
@@ -70,18 +66,23 @@ export default function HomeScreen() {
             items={MODES}
             value={mode}
             onChange={(v) => {
-              if (v === 'swipe' || v === 'favorites') {
+              if (v === 'swipe' || v === 'catalog' || v === 'favorites') {
                 setMode(v);
                 return;
               }
-              if (v === 'catalog' || v === 'ai' || v === 'social')
-                setSoonMode(v);
+              if (v === 'ai' || v === 'social') setSoonMode(v);
             }}
           />
         </View>
 
         <View style={{ flex: 1, minHeight: 0 }}>
-          {mode === 'swipe' ? <SwipeDeck /> : <FavoritesTab />}
+          {mode === 'swipe' ? (
+            <SwipeDeck />
+          ) : mode === 'catalog' ? (
+            <CatalogTab />
+          ) : (
+            <FavoritesTab />
+          )}
         </View>
 
         <ComingSoonModal
