@@ -1,14 +1,26 @@
 "use client";
 
-// Home mode nav — the sticky pill row that switches between the four Home
+// Home mode nav — the sticky pill row that switches between the five Home
 // sub-routes. Real <Link> navigation between siblings under the shared /home
 // layout, so the fetched deck (HomeDeckBoundary) is reused, not re-fetched.
 // The shell renders no TopBar for /home, so this band IS the page's top chrome.
+//
+// The pills are content-width in a scrollbar-hidden horizontal scroller, not
+// flex-1: five icon+label pills can't share the max-w-md frame without
+// truncating "Favorites", so the tail scrolls instead of squeezing. Swipe
+// through Social read at rest; Favorites is the one that peeks.
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
-import { Flame, Heart, Sparkles, Users, type LucideIcon } from "lucide-react";
+import {
+  Flame,
+  Heart,
+  LayoutGrid,
+  Sparkles,
+  Users,
+  type LucideIcon,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import { SHEET_TITLE_CLASS } from "@/lib/ui-classes";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
@@ -29,6 +41,14 @@ type Tab = {
 
 const TABS: Tab[] = [
   { href: CONSUMER_ROUTES.homeTabs.swipe, label: "Swipe", Icon: Flame },
+  {
+    href: CONSUMER_ROUTES.homeTabs.catalog,
+    label: "Catalog",
+    Icon: LayoutGrid,
+    soon: true,
+    blurb:
+      "The full Mesita catalog — every place, browsable and filterable, without swiping. Coming soon.",
+  },
   {
     href: CONSUMER_ROUTES.homeTabs.ai,
     label: "Memo",
@@ -53,11 +73,11 @@ export function HomeModeNav() {
   const [soonTab, setSoonTab] = useState<Tab | null>(null);
 
   const baseClass =
-    "flex flex-1 items-center justify-center gap-1.5 rounded-full px-2 py-2 text-xs font-semibold transition active:scale-[0.98]";
+    "flex shrink-0 items-center justify-center gap-1.5 rounded-full px-3 py-2 text-xs font-semibold whitespace-nowrap transition active:scale-[0.98]";
 
   return (
     <div className="border-border bg-background/90 sticky top-0 z-20 shrink-0 border-b backdrop-blur-xl">
-      <div className="flex items-center gap-1.5 px-3 py-2.5">
+      <div className="scrollbar-hide flex items-center gap-1.5 overflow-x-auto px-3 py-2.5">
         {TABS.map((tab) => {
           const { href, label, Icon, soon } = tab;
           const active = pathname === href || pathname.startsWith(`${href}/`);

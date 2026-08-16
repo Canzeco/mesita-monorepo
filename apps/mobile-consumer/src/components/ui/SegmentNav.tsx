@@ -1,5 +1,5 @@
 import type { ComponentType } from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { Pressable, ScrollView, Text, View } from 'react-native';
 
 import { COLORS, SHADOW_GLOW } from '@/constants/brand';
 import { useReduceMotion } from '@/lib/useReduceMotion';
@@ -14,6 +14,10 @@ export type SegmentItem = {
 
 // Pink-pill segment nav — RN port of web-consumer HomeModeNav:
 // active = solid primary + shadow-glow; idle/soon = muted text only (no fill).
+//
+// Pills are content-width inside a horizontal scroller (web parity): five
+// icon+label pills can't share a phone-width row without truncating the longest
+// label, so the tail scrolls instead of squeezing.
 export function SegmentNav({
   items,
   value,
@@ -25,9 +29,11 @@ export function SegmentNav({
 }) {
   const reduceMotion = useReduceMotion();
   return (
-    <View
+    <ScrollView
       accessibilityRole="tablist"
-      className="flex-row items-center gap-1.5"
+      horizontal
+      showsHorizontalScrollIndicator={false}
+      contentContainerStyle={{ alignItems: 'center', gap: 6 }}
     >
       {items.map(({ key, title, Icon, soon }) => {
         const active = !soon && key === value;
@@ -40,7 +46,7 @@ export function SegmentNav({
             accessibilityRole="tab"
             accessibilityState={soon ? undefined : { selected: active }}
             accessibilityLabel={soon ? `${title}, coming soon` : title}
-            className="min-h-[44px] flex-1"
+            className="min-h-[44px]"
             style={({ pressed }) => [
               {
                 transform: [
@@ -53,8 +59,8 @@ export function SegmentNav({
             <View
               className={
                 active
-                  ? 'min-h-[44px] flex-row items-center justify-center gap-1.5 rounded-full bg-primary px-2 py-2'
-                  : 'min-h-[44px] flex-row items-center justify-center gap-1.5 rounded-full px-2 py-2'
+                  ? 'min-h-[44px] flex-row items-center justify-center gap-1.5 rounded-full bg-primary px-3 py-2'
+                  : 'min-h-[44px] flex-row items-center justify-center gap-1.5 rounded-full px-3 py-2'
               }
             >
               {Icon ? (
@@ -75,6 +81,6 @@ export function SegmentNav({
           </Pressable>
         );
       })}
-    </View>
+    </ScrollView>
   );
 }

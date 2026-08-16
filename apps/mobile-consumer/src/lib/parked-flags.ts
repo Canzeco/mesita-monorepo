@@ -19,7 +19,9 @@ export const PARKED = {
     // Upcoming/History screen instead of a coming-soon dialog.
     reservations: {
       soon: false,
-      title: 'Reservations coming soon',
+      // Dormant copy (soon: false), but it names the SECTION, so it follows the
+      // tab label: "Inbox", not "Reservations".
+      title: 'Inbox coming soon',
       body: 'Your bookings will live here. For now, reach places from Contact on a place.',
     },
   },

@@ -9,7 +9,8 @@ import type { Href } from 'expo-router';
 // both files in the same PR — web/mobile IA parity is a product rule.
 //
 // Expo Router ↔ web href map (agents):
-//   web /home[/swipe|ai|social|favorites]  →  Expo /(tabs)/home  (modes are
+//   web /home[/swipe|catalog|ai|social|favorites]
+//                                          →  Expo /(tabs)/home  (modes are
 //       in-screen state on mobile, not nested routes — same IA)
 //   web /search                            →  Expo /(tabs)/search
 //   web /rewards                           →  Expo /(tabs)/rewards  (also /rewards)
@@ -33,6 +34,7 @@ export const CONSUMER_ROUTES = {
   home: '/(tabs)/home',
   homeTabs: {
     swipe: '/(tabs)/home',
+    catalog: '/(tabs)/home',
     ai: '/(tabs)/home',
     social: '/(tabs)/home',
     favorites: '/(tabs)/home',
