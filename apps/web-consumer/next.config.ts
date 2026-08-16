@@ -59,7 +59,11 @@ const nextConfig: NextConfig = {
       // Renamed surfaces.
       { source: "/invite", destination: "/share", permanent: true },
       { source: "/profile", destination: "/me", permanent: true },
-      { source: "/notifications", destination: "/inbox/mine", permanent: true },
+      {
+        source: "/notifications",
+        destination: "/inbox/notifications",
+        permanent: true,
+      },
     ];
   },
 };

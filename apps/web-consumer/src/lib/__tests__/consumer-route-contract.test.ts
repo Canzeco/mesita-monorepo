@@ -47,16 +47,23 @@ describe("CONSUMER_ROUTES (canonical surface map)", () => {
       filters: "/filters",
       favorites: "/home/favorites",
       place: { prefix: "/place/" },
-      reservations: "/reservations",
       reservation: { prefix: "/reservation/" },
       rewards: {
         root: "/rewards",
         ticketPrefix: "/rewards/ticket/",
       },
+      // Four sections, and the ORDER is load-bearing: Visits · Orders ·
+      // Reservations · Notifications runs from what you're doing right now
+      // out to the passive feed. Object key order is asserted separately
+      // below, since toEqual ignores it.
       inbox: {
-        mine: "/inbox/mine",
-        global: "/inbox/global",
+        root: "/inbox",
+        visits: "/inbox/visits",
+        orders: "/inbox/orders",
+        reservations: "/inbox/reservations",
+        notifications: "/inbox/notifications",
       },
+      inboxDefault: "/inbox/visits",
       subscribe: "/subscribe/premium",
       me: "/me",
       legacy: {
@@ -68,6 +75,9 @@ describe("CONSUMER_ROUTES (canonical surface map)", () => {
         notifications: "/notifications",
         inboxMine: "/inbox/my-activity",
         inboxGlobal: "/inbox/global-activity",
+        inboxMineTab: "/inbox/mine",
+        inboxGlobalTab: "/inbox/global",
+        reservations: "/reservations",
         placePrefix: "/place/",
         reservationPrefix: "/reservation/",
         ticketPrefix: "/ticket/",
@@ -94,6 +104,24 @@ describe("CONSUMER_ROUTES (canonical surface map)", () => {
       saved: "/saved",
     });
     expect(CONSUMER_RESERVATION_SURFACE_PREFIX).toBe("/reservation");
+  });
+
+  // toEqual compares keys as a set, so the section ORDER — which is the
+  // product decision (Pato, 2026-08-16), running from the thing you're doing
+  // right now out to the passive feed — needs its own assertion or a
+  // well-meaning alphabetical re-sort would pass CI.
+  it("pins the Inbox section order: visits → orders → reservations → notifications", () => {
+    const sections = Object.keys(CONSUMER_ROUTES.inbox).filter(
+      (k) => k !== "root",
+    );
+    expect(sections).toEqual([
+      "visits",
+      "orders",
+      "reservations",
+      "notifications",
+    ]);
+    // The default section is the first one, not an arbitrary pick.
+    expect(CONSUMER_ROUTES.inboxDefault).toBe(CONSUMER_ROUTES.inbox.visits);
   });
 });
 
@@ -175,7 +203,11 @@ describe("next.config redirects (static legacy → canonical, 308)", () => {
       // Renamed surfaces.
       { source: "/invite", destination: "/share", permanent: true },
       { source: "/profile", destination: "/me", permanent: true },
-      { source: "/notifications", destination: "/inbox/mine", permanent: true },
+      {
+        source: "/notifications",
+        destination: "/inbox/notifications",
+        permanent: true,
+      },
     ]);
   });
 
@@ -183,8 +215,10 @@ describe("next.config redirects (static legacy → canonical, 308)", () => {
   //   /home              → /home/swipe        (default mode)
   //   /home/ai|social    → /home/swipe        (parked modes)
   //   /me/[tab]          → /me (+?settings=1) (tab → modal mapping)
-  //   /inbox/my-activity → /inbox/mine        (alias inside [tab] page)
-  //   /saved             → /reservations      (legacy tab)
+  //   /inbox             → /inbox/visits      (default section)
+  //   /inbox/[tab]       → /inbox/notifications (mine, global + old aliases)
+  //   /reservations      → /inbox/reservations (list moved into Inbox)
+  //   /saved             → /inbox/reservations (legacy tab)
   //   /saved/reservation(s)/… → /reservation(s)/…
   //   /saved/place/[id]  → /place/[id]
   // Their targets are pinned via CONSUMER_ROUTES above; the pages themselves

@@ -1,5 +1,10 @@
 import { BlurView } from 'expo-blur';
-import { CalendarCheck, QrCode, Search, User } from 'lucide-react-native';
+import {
+  Inbox as InboxIcon,
+  QrCode,
+  Search,
+  User,
+} from 'lucide-react-native';
 import type { ComponentType } from 'react';
 import { useState } from 'react';
 import { Platform, Pressable, Text, View } from 'react-native';
@@ -44,27 +49,27 @@ type ConsumerTabBarProps = {
 
 const SOON_ICONS: Record<ParkedTabKey, IconComponent> = {
   rewards: QrCode,
-  reservations: CalendarCheck,
+  inbox: InboxIcon,
 };
 
 const ICONS: Record<string, IconComponent> = {
   home: MesitaMark as IconComponent,
   search: Search,
   rewards: QrCode,
-  reservations: CalendarCheck,
+  inbox: InboxIcon,
   me: User,
 };
 
-// The `reservations` route keeps its name; the TAB is labelled "Inbox" (Pato,
-// 2026-08-15) — a container for Reservations, Orders and Notifications, so it
-// can't be named after any one of them. Web BottomNav parity.
-// NOTE: notifications still live at their own /inbox/* routes, reached from
-// Me. Folding them in here is the outstanding half of this rename.
+// The route is now named `inbox` too — it used to be `reservations`, the tab
+// wearing a container's name while holding exactly one thing. It holds four
+// sections (Visits · Orders · Reservations · Notifications), so it can't be
+// named after any one of them. Icon is an inbox tray, not a calendar: a
+// calendar named RESERVATIONS. Web BottomNav parity.
 const LABELS: Record<string, string> = {
   home: 'Home',
   search: 'Search',
   rewards: 'Rewards',
-  reservations: 'Inbox',
+  inbox: 'Inbox',
   me: 'Me',
 };
 

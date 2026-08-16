@@ -5,7 +5,7 @@ import { Z_BOTTOM_NAV } from "@/lib/z-index";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, type ComponentType } from "react";
-import { Search, QrCode, CalendarCheck, User } from "lucide-react";
+import { Search, QrCode, Inbox, User } from "lucide-react";
 import { MesitaMark } from "@/components/brand/MesitaMark";
 import { ComingSoonModal } from "./ComingSoonModal";
 import { cn } from "@/lib/utils";
@@ -28,6 +28,8 @@ type Item = {
   Icon: ComponentType<{ className?: string; strokeWidth?: number }>;
   label: string;
   match: string;
+  /** Second prefix that also lights this tab (Inbox: /reservation detail). */
+  alsoMatch?: string;
   // Surface is parked. Tab stays visible and tappable; tap opens
   // ComingSoonModal instead of navigating (MESITA-383 — no "Soon" pills).
   soon?: boolean;
@@ -60,21 +62,21 @@ const ITEMS: Item[] = [
     // ticket stack are built; the tab opens the real page.
   },
   {
-    href: CONSUMER_ROUTES.reservations,
-    Icon: CalendarCheck,
-    // "Inbox" is the container, not the function (Pato, 2026-08-15): the tab
-    // holds Reservations today, Orders next, and Notifications — so it can't
-    // be named after any one of them, and naming it for the mechanism
-    // ("Agent") would break the day places integrate directly. The routes
-    // stay /reservations — a booking is still a reservation, and renaming the
-    // tab doesn't rename the object.
-    // NOTE: notifications still live at their own /inbox/* routes, reached
-    // from Me. Folding them in here is the outstanding half of this rename.
+    href: CONSUMER_ROUTES.inboxDefault,
+    // An inbox tray, not a calendar. CalendarCheck named RESERVATIONS — fine
+    // when the tab was the reservations surface wearing a container's name,
+    // wrong now that the container actually holds four things and a booking
+    // is only one of them (Pato, 2026-08-16).
+    Icon: Inbox,
+    // "Inbox" is the container, not the function (Pato, 2026-08-15): it holds
+    // Visits · Orders · Reservations · Notifications, so it can't be named
+    // after any one of them, and naming it for the mechanism ("Agent") would
+    // break the day places integrate directly.
     label: "Inbox",
-    // Prefix `/reservation` also catches /reservation/[id] detail views.
-    match: CONSUMER_RESERVATION_SURFACE_PREFIX,
-    // LIVE since 2026-07-27 — the Reservationist books over the phone and the
-    // Upcoming/History tabs read consumer-web-list-reservations.
+    // Matched on TWO prefixes: /inbox for the sections, and /reservation for
+    // the detail view that deliberately stayed outside the tab's namespace.
+    match: CONSUMER_ROUTE_PREFIX.inbox,
+    alsoMatch: CONSUMER_RESERVATION_SURFACE_PREFIX,
   },
   {
     href: CONSUMER_ROUTES.me,
@@ -110,9 +112,10 @@ export function BottomNav({ userId }: { userId?: string }) {
       >
         <div className="flex items-end justify-around">
           {ITEMS.map((item) => {
-            const { href, Icon, label, match, soon } = item;
+            const { href, Icon, label, match, alsoMatch, soon } = item;
             const active =
               pathname.startsWith(match) ||
+              (alsoMatch != null && pathname.startsWith(alsoMatch)) ||
               // Place detail modals opened from Home keep the Home tab lit.
               // (Legacy /profile no longer needs a match branch — it 308s to
               // /me in next.config before any client render.)
@@ -184,7 +187,11 @@ export function BottomNav({ userId }: { userId?: string }) {
         onClose={() => setSoonItem(null)}
         title={soonItem?.soonTitle ?? "Coming soon"}
         body={soonItem?.soonBody}
-        icon={soonItem?.Icon === CalendarCheck ? CalendarCheck : QrCode}
+        // Item.Icon is deliberately wider than LucideIcon (Home renders the
+        // brand mark), so it can't be forwarded here. No tab is parked today;
+        // when one is, give it a real lucide glyph rather than widening the
+        // modal's prop.
+        icon={QrCode}
       />
     </>
   );

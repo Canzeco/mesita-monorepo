@@ -38,10 +38,10 @@ export const CONSUMER_ROUTES = {
   place: {
     prefix: "/place/",
   },
-  // Reservations tab — list + singular detail. Formerly under /saved/* when
-  // "Saved" was a tab; favorites moved to /home/favorites, so the namespace
-  // was a lie. /saved/reservations + /saved/reservation/[id] redirect here.
-  reservations: "/reservations",
+  // The reservations LIST is now an Inbox section (/inbox/reservations);
+  // /reservations redirects there. The singular DETAIL stays at
+  // /reservation/[id] — moving the list didn't rename the object, a booking
+  // is still a reservation. /saved/* redirects here from the "Saved"-tab era.
   reservation: {
     prefix: "/reservation/",
   },
@@ -52,10 +52,30 @@ export const CONSUMER_ROUTES = {
     root: "/rewards",
     ticketPrefix: "/rewards/ticket/",
   },
+  // Inbox — the container tab, and now genuinely ONE surface. It holds four
+  // sections in this fixed order (Pato, 2026-08-16):
+  //
+  //   Visits · Orders · Reservations · Notifications
+  //
+  // The order is the point: it runs from the thing you're doing RIGHT NOW
+  // (a visit in progress) out to the passive feed. Sections are real nested
+  // routes so a section is linkable and the back button works between them;
+  // bare /inbox redirects to the default (visits).
+  //
+  // This closes the half-state MESITA-1046 left behind: notifications used to
+  // live at their own /inbox/mine + /inbox/global reached from Me, so "Inbox"
+  // named two different things. Both now redirect into the notifications
+  // section and the tab is the only Inbox there is.
   inbox: {
-    mine: "/inbox/mine",
-    global: "/inbox/global",
+    root: "/inbox",
+    visits: "/inbox/visits",
+    orders: "/inbox/orders",
+    reservations: "/inbox/reservations",
+    notifications: "/inbox/notifications",
   },
+  // Default landing for the Inbox tab — link straight here so the bare /inbox
+  // redirect hop is only hit by direct URLs / legacy deep links.
+  inboxDefault: "/inbox/visits",
   // Premium checkout (Stripe). The [classKey] segment exists for URL clarity
   // but only "premium" is valid — other classes are earned, not bought.
   // Auth-walled in middleware. Mobile deliberately has NO subscribe route
@@ -74,6 +94,12 @@ export const CONSUMER_ROUTES = {
     notifications: "/notifications",
     inboxMine: "/inbox/my-activity",
     inboxGlobal: "/inbox/global-activity",
+    // The notifications pair reached from Me, before Inbox became one surface
+    // with four sections. Both fold into /inbox/notifications.
+    inboxMineTab: "/inbox/mine",
+    inboxGlobalTab: "/inbox/global",
+    // The reservations LIST used to be its own top-level tab route.
+    reservations: "/reservations",
     placePrefix: "/place/",
     reservationPrefix: "/reservation/",
     ticketPrefix: "/ticket/",
