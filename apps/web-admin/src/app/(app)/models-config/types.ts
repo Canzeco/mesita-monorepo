@@ -6,8 +6,8 @@
 //
 // This page is the SoT for app_settings.models_config (MESITA-941). Live readers
 // (_shared/models-config.ts → get-memo-config, Enricher stages, embeddings,
-// business-web-suggest-promo, recommender-rank-map) bind supabase / enricher.model
-// / lineup / memo.*. Enricher Perplexity is NOT read from this blob — Enricher
+// business-web-suggest-promo) bind supabase / enricher.model / lineup / memo.*.
+// Enricher Perplexity is NOT read from this blob — Enricher
 // Config's atlas_perplexity_preset is the live search preset (enricher.perplexity
 // here is staged). Synthesis / vision quality tiers stay on Enricher Config.
 
@@ -66,7 +66,7 @@ export const PERPLEXITY_OPTIONS = [
 
 // ── Subsystem map ──────────────────────────────────────────────────────────
 // Drives the page. `editableHere` is true for rows this page owns (supabase +
-// memo). Enricher / Lineup stay read-only with links to Enricher Config.
+// memo). Enricher / Embeddings stay read-only with links to Enricher Config.
 export type ModelStatus = "live" | "staged" | "locked";
 
 // A model shown "up front" on a card — the id (rendered as a mono chip) plus a
@@ -95,7 +95,7 @@ export const SUBSYSTEMS: readonly SubsystemMeta[] = [
     Icon: Database,
     status: "live",
     detail:
-      "General OpenAI default for EFs without their own model (e.g. business-web-suggest-promo, recommender-rank-map). Read live via models_config.supabase.model (MESITA-941).",
+      "General OpenAI default for EFs without their own model (today: business-web-suggest-promo). Read live via models_config.supabase.model (MESITA-941).",
     editableHere: true,
     owner: null,
   },
@@ -119,14 +119,14 @@ export const SUBSYSTEMS: readonly SubsystemMeta[] = [
   },
   {
     key: "lineup",
-    label: "Lineup",
+    label: "Embeddings",
     Icon: Layers,
     status: "locked",
     models: [
       { id: "text-embedding-3-small", note: "1536-d — place ↔ intent · models_config.lineup.model" },
     ],
     detail:
-      "Fixed by design — changing it re-vectors the whole catalog. Read live as models_config.lineup.model by _shared/embeddings.ts; shown read-only on Enricher Config.",
+      "Place vectors behind Memo recall. Fixed by design — changing it re-vectors the whole catalog. Read live as models_config.lineup.model by _shared/embeddings.ts (the blob key keeps its old name); shown read-only on Enricher Config.",
     editableHere: false,
     owner: null,
   },

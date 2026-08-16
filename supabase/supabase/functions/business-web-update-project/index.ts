@@ -28,7 +28,7 @@ import {
   type UrlField,
 } from "./project-urls.ts";
 import { normalisePromoRate, PROMO_RATE_FIELDS } from "../_shared/promo-rates.ts";
-import { ratesFromPlace } from "../_shared/lineup-strategy.ts";
+import { ratesFromPlace } from "../_shared/promo-strategy.ts";
 import {
   applyListingTypeToPatch,
   effectiveRatesAfterPatch,
@@ -115,7 +115,7 @@ type UpdateBody = {
   // Place-level monthly promo spend cap (migration 0038), in the place's
   // currency. One of 200, 500, 1000 or null (no cap).
   monthly_promo_cap?: number | null;
-  // Lineup MP subscore — operator priority [0,1]. SUPER-ADMIN ONLY (a business
+  // Operator priority [0,1]. SUPER-ADMIN ONLY (a business
   // must not lift its own place); silently ignored for non-super-admins.
   manual_priority?: number | null;
   photos?: string[];
@@ -497,11 +497,15 @@ Deno.serve(async (req) => {
     update.reservation_contacts = cleaned;
   }
 
-  // Manual Priority (MP subscore) — the operator's per-place override on every
-  // lane. SUPER-ADMIN ONLY: a business owner lifting their own place would
-  // defeat the point, so for non-super-admins the field is silently dropped
-  // (not a 403 — the rest of the form still saves). Written to the place via
-  // the projects_view INSTEAD OF trigger (routed to places.manual_priority).
+  // Manual Priority — the operator's per-place override. SUPER-ADMIN ONLY: a
+  // business owner lifting their own place would defeat the point, so for
+  // non-super-admins the field is silently dropped (not a 403 — the rest of the
+  // form still saves). Written to the place via the projects_view INSTEAD OF
+  // trigger (routed to places.manual_priority).
+  //
+  // Currently INERT: MESITA-1048 deleted the ranking engine that consumed it.
+  // The column, this write and the admin editor stay so operator intent
+  // survives until a rebuilt engine reads it again.
   if ("manual_priority" in body && memberRes.membership.isSuperAdmin) {
     const raw = body.manual_priority;
     const v = raw == null ? 0.1 : Number(raw);

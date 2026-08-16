@@ -2,8 +2,8 @@
 //
 // The Memo Config Playground's engine: run Memo's v-next REASONING AGENT for a
 // super-admin from the admin console, returning a full TRACE of how it thought —
-// the RAG-first Lineup recall, each OpenAI reasoning round, and every tool call
-// (Lineup engine / Perplexity / Mesita catalog).
+// the RAG-first catalog recall, each OpenAI reasoning round, and every tool
+// call (Mesita catalog / Perplexity / place lookup).
 //
 // This is the dedicated admin door the old playground's comment promised. It:
 //   • fixes the ACL bend — the playground was calling consumer-web-ask-memo

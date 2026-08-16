@@ -11,7 +11,7 @@ import {
 // of Edge Functions Memo may read through (it holds no database client).
 // MEMO_PARENT is the single Sidebar entry (Configs group); MEMO_SUBROUTES are
 // the in-page tabs and are never added to the Sidebar (mirrors
-// enricher-config / lineup-config).
+// enricher-config / atlas-config).
 export const MEMO_PARENT = {
   href: "/memo-config",
   label: "Memo Config",

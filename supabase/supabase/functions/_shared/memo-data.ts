@@ -4,7 +4,7 @@
 // airlock tools, not the legacy Perplexity pipeline, not the admin playground.
 // Every read goes over this client to a dedicated internal Edge Function:
 //
-//   recallLineup()     → supabase-edgefunc-recall-lineup
+//   recallPlaces()     → supabase-edgefunc-recall-places
 //   searchPlaces()     → supabase-edgefunc-search-places
 //   consumerContext()  → supabase-edgefunc-get-consumer-context
 //   config()           → supabase-edgefunc-get-memo-config
@@ -28,7 +28,7 @@ import { type ChannelPolicy, coerceChannelPolicy } from "./sourcing.ts";
 import { type MemoPlaceCard, parseMemoPlaceCards } from "./memo-place-card.ts";
 import { createTtlCache } from "./memo-cache.ts";
 
-export type LineupRecallResult = {
+export type PlaceRecallResult = {
   cards: MemoPlaceCard[];
   poolSize: number;
   embedded: boolean;
@@ -49,14 +49,14 @@ export type MemoConfigResult = {
 };
 
 export type MemoData = {
-  // Lineup's RAG leg: recall a pool near the caller, embed the intent, cosine
+  // Memo's RAG leg: recall a pool near the caller, embed the intent, cosine
   // rank, return the top public cards. One hop replaces query + embed + rank.
-  recallLineup(opts: {
+  recallPlaces(opts: {
     intent: string;
     lat: number | null;
     lng: number | null;
     limit?: number;
-  }): Promise<LineupRecallResult>;
+  }): Promise<PlaceRecallResult>;
 
   // Public catalog lookup by name and/or by Google place id.
   searchPlaces(opts: {
@@ -85,8 +85,8 @@ export type MemoData = {
 //                       after turn for the SAME user, so this is the read most
 //                       likely to repeat inside a warm isolate.
 //
-// Deliberately NOT cached: recallLineup and searchPlaces. Those are the answer —
-// caching them would serve a stale lineup, and they vary by intent anyway.
+// Deliberately NOT cached: recallPlaces and searchPlaces. Those are the answer —
+// caching them would serve stale recommendations, and they vary by intent anyway.
 //
 // Module scope, so entries survive across requests in a warm isolate and vanish
 // with it. Opt-in per caller (see MemoDataOptions.cacheMs): the admin Playground
@@ -131,12 +131,12 @@ export function createMemoData(
   }
 
   return {
-    async recallLineup({ intent, lat, lng, limit }) {
+    async recallPlaces({ intent, lat, lng, limit }) {
       const data = await call<{
         cards?: unknown;
         poolSize?: unknown;
         embedded?: unknown;
-      }>("supabase-edgefunc-recall-lineup", { intent, lat, lng, limit });
+      }>("supabase-edgefunc-recall-places", { intent, lat, lng, limit });
       if (!data) return { cards: [], poolSize: 0, embedded: false };
       return {
         cards: parseMemoPlaceCards(data.cards),

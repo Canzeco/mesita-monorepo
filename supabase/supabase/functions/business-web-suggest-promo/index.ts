@@ -4,7 +4,7 @@
 //
 // MESITA-892: advisory "next promo" copilot on business Performance.
 // Memo-backed = uses Memo Config's OpenAI model (via supabase-edgefunc-get-memo-config)
-// and a calm Memo-adjacent voice. It does NOT run the consumer airlock / Lineup
+// and a calm Memo-adjacent voice. It does NOT run the consumer airlock / RAG
 // tools — those are place-seeking for guests. This EF is place-scoped ops advice.
 //
 // Hard constraints:

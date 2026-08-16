@@ -18,8 +18,8 @@ import {
 } from "./types";
 
 // Models Config — SoT for app_settings.models_config. supabase + memo are
-// edited here and read live by EFs (MESITA-941 loadModelsConfig). Enricher /
-// Lineup cards map to Enricher Config (plus a staged note for
+// edited here and read live by EFs (MESITA-941 loadModelsConfig). The Enricher
+// and embedding cards map to Enricher Config (plus a staged note for
 // models_config.enricher.perplexity). Failed GET blocks Save (MESITA-737) —
 // never persist DEFAULTS over a live blob.
 
@@ -123,7 +123,7 @@ export function ModelsConfigClient() {
 
   // Load the persisted blob on mount. On failure keep DEFAULTS visible but
   // block Save so we never overwrite a live singleton from a failed GET
-  // (MESITA-737 — same pattern as Sourcing / Memo / Lineup).
+  // (MESITA-737 — same pattern as Sourcing / Memo).
   useEffect(() => {
     let active = true;
     (async () => {
@@ -191,8 +191,8 @@ export function ModelsConfigClient() {
           </span>{" "}
           <span className="text-muted-foreground">
             Supabase and Memo picks here are read live by Edge Functions. Enricher
-            quality / Perplexity Agent preset and Lineup embeddings are controlled
-            on Enricher Config — only <code className="font-mono text-xs">enricher.perplexity</code>{" "}
+            quality / Perplexity Agent preset and the embedding model are
+            controlled on Enricher Config — only <code className="font-mono text-xs">enricher.perplexity</code>{" "}
             in this blob is staged (unread; Enricher uses{" "}
             <code className="font-mono text-xs">atlas_perplexity_preset</code>).
           </span>

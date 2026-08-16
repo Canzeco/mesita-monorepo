@@ -38,7 +38,7 @@ import {
 // Shared body of the discovery Filters route modal — RN port of web
 // DiscoveryFilters (MESITA-905 simplify + routed /filters). Each INTENT /
 // Random section sits in a FilterModule box (MESITA-957). That — the ask — is
-// Memo's, not a filter: it rides Memo's own Lineup call.
+// Memo's, not a filter: it rides Memo's own recall call.
 
 export function DiscoveryFilters({
   onClose,

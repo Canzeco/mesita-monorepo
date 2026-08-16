@@ -1,9 +1,9 @@
 // Unit tests — the Reservations Config strict save gate (MESITA-805).
 //
 // The second of the two STRICT whole-blob config gates (the other is
-// admin-web-update-lineup-config). Strict + whole-blob means any key the admin
+// the since-deleted admin-web-update-lineup-config). Strict + whole-blob means any key the admin
 // page stops sending 400s the entire page — the failure mode MESITA-804 hit on
-// /lineup-config. These tests pin the contract so the same drift is caught here
+// /lineup-config (MESITA-804). These tests pin the contract so the same drift is caught here
 // by CI instead of by an operator clicking Save.
 //
 // The live tripwire: `priority` must rank EVERY channel in RESERVATION_CHANNELS.

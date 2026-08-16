@@ -1,25 +1,29 @@
-// Supabase Edge Function — supabase-edgefunc-recall-lineup (internal caller)
+// Supabase Edge Function — supabase-edgefunc-recall-places (internal caller)
 //
-// Lineup's RAG leg, served to Memo. One of the four endpoints that make up
-// Memo's entire data surface (see _shared/memo-data.ts); Memo itself holds no
-// database client.
+// Memo's RAG leg. One of the four endpoints that make up Memo's entire data
+// surface (see _shared/memo-data.ts); Memo itself holds no database client.
 //
 // Recall a candidate pool near the caller, embed the intent, cosine-rank the
 // catalog, return the top PUBLIC cards. Doing the whole leg here means one hop
 // replaces a query + an embedding call + a rank on Memo's side — and the
-// embedding vectors, ranker internals and OPENAI_KEY never leave this function.
+// embedding vectors and OPENAI_KEY never leave this function.
 //
-// Read-only and non-persisting BY DESIGN: unlike the swipe recommender this
-// deliberately does NOT lazy-embed and write back. Memo never writes.
+// Was `supabase-edgefunc-recall-lineup` until MESITA-1048. Only the name
+// changed: this endpoint never ran the deleted Lineup scoring engine, it runs
+// plain cosine relevance over place embeddings, which is a live product
+// feature and stays exactly as it was.
 //
-// Naming: actor-origin-verb-noun → supabase · edgefunc · recall · lineup.
+// Read-only and non-persisting BY DESIGN: it deliberately does NOT lazy-embed
+// and write back. Memo never writes.
+//
+// Naming: actor-origin-verb-noun -> supabase . edgefunc . recall . places.
 // Auth: verify_jwt = true + requireInternalCaller (service-role bearer).
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { corsPreflight, json, readJson, rejectUnlessMethods } from "../_shared/http.ts";
 import { adminClient, readEFEnv } from "../_shared/auth.ts";
 import { requireInternalCaller } from "../_shared/internal.ts";
-import { fetchCandidatePool, type PlaceRow } from "../_shared/recommender-pool.ts";
+import { fetchCandidatePool, type PlaceRow } from "../_shared/place-pool.ts";
 import { embedSingle, rankByCosine } from "../_shared/embeddings.ts";
 import { rowToMemoPlaceCard } from "../_shared/memo-place-card.ts";
 
@@ -68,7 +72,7 @@ Deno.serve(async (req) => {
     poolSize: RECALL_POOL,
   });
   if (!pool.ok) {
-    console.error("[recall-lineup] pool:", pool.error);
+    console.error("[recall-places] pool:", pool.error);
     return json({ ok: true, cards: [], poolSize: 0, embedded: false });
   }
   if (pool.rows.length === 0) {
@@ -86,12 +90,12 @@ Deno.serve(async (req) => {
       ranked = rankByCosine(pool.rows, vec);
       embedded = true;
     } catch (e) {
-      console.error("[recall-lineup] embed:", (e as Error).message);
+      console.error("[recall-places] embed:", (e as Error).message);
     }
   }
 
-  // Project to public cards — this is where embeddings and ranker internals
-  // stop. Nothing past this line carries a column Memo shouldn't see.
+  // Project to public cards — this is where the embedding column stops.
+  // Nothing past this line carries a field Memo shouldn't see.
   const cards = ranked
     .slice(0, limit)
     .map((r) => rowToMemoPlaceCard(r as unknown as Record<string, unknown>));

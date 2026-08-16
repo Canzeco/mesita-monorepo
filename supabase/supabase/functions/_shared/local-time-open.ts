@@ -1,4 +1,4 @@
-// Open/closed helpers for recommender ranking ("demote, don't hide").
+// Open/closed helpers for place ranking ("demote, don't hide").
 // Extracted from local-time.ts (pure open-state logic over weekly hours).
 
 import { localClock, type WeeklyHours } from "./local-time.ts";

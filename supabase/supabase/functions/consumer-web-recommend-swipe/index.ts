@@ -1,34 +1,60 @@
 // Supabase Edge Function — consumer-web-recommend-swipe (product caller)
 //
-// Consumer swipe view. Resolves the caller's profile (anonymous OK — the
-// discover surface is public until sign-up) and runs the deck-ranking
-// pipeline in-process via _shared/recommender-rank-swipe.ts. The pipeline
-// used to live behind the recommender-rank-swipe internal EF; the
-// HTTP hop was a synchronous 1:1 forward, so it was absorbed here
-// (MESITA-54). Any future surface imports the same _shared module.
+// Consumer swipe deck. DELIBERATE PLACEHOLDER (MESITA-1048): the Lineup
+// scoring engine was deleted — subscores, lanes, the openness table, the
+// scoring_config blob and both admin config pages are gone — and nothing has
+// replaced it yet. Until a rebuilt engine ships, this function returns every
+// ACTIVE place in uniformly random (Fisher–Yates) order. That is the whole
+// algorithm. There is no ranking, no personalisation, no embedding, no
+// distance weighting. Do not read intent into the order.
+//
+// The SLUG and the RESPONSE SHAPE are frozen on purpose: deployed Expo
+// binaries call this endpoint and cannot be redeployed atomically. A changed
+// shape throws inside the client helper and every caller silently falls back
+// forever. Keep returning { ok, deck, summary: { candidates, embedded } }.
+//
+// COMPAT BODY FIELDS: `lat`, `lng`, `radiusKm` and `randomness` are still
+// accepted so old clients keep working, but they NO LONGER AFFECT SELECTION —
+// they are read and discarded. Only `limit` still does anything (it caps the
+// deck). `summary.embedded` is always 0 because nothing embeds here anymore.
 //
 // Local:  supabase functions serve consumer-web-recommend-swipe
 // Deploy: supabase functions deploy consumer-web-recommend-swipe
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { corsPreflight, json, readJsonOr, rejectUnlessMethods } from "../_shared/http.ts";
-import { adminClient, getOptionalAuthedUser, readEFEnv } from "../_shared/auth.ts";
-import { clampPositive, type ConsumerProfile } from "../_shared/recommender-pool.ts";
-import { rankSwipeDeck } from "../_shared/recommender-rank-swipe.ts";
-import { parseRandomnessLevel } from "../_shared/lineup-scoring.ts";
+import { adminClient, readEFEnv } from "../_shared/auth.ts";
+import { clampPositive, stripInternal } from "../_shared/place-pool-shape.ts";
+import type { PlaceRow } from "../_shared/place-pool-shape.ts";
+import { PLACE_PUBLIC_COLUMNS } from "../_shared/place-columns.ts";
 
-const DEFAULT_RADIUS_KM = 25;
 const DEFAULT_LIMIT = 50;
+const MAX_LIMIT = 50;
+// Hard ceiling on the rows we pull before shuffling. The catalog is far
+// smaller than this today; it exists so the query can never grow unbounded.
+const POOL_CAP = 1000;
 
 type Body = {
+  /** Accepted for wire compatibility. Ignored — see the header. */
   lat?: number;
+  /** Accepted for wire compatibility. Ignored — see the header. */
   lng?: number;
+  /** Accepted for wire compatibility. Ignored — see the header. */
   radiusKm?: number;
   limit?: number;
-  /** Randomness filter rung, 0 low … 4 max (the consumer's word ladder).
-   * Omitted = untouched filter = the XX table's `low` row. */
+  /** Accepted for wire compatibility. Ignored — see the header. */
   randomness?: number;
 };
+
+/** In-place Fisher–Yates over a copy. Uniform, unbiased, no ordering bias. */
+function shuffle<T>(rows: T[]): T[] {
+  const a = [...rows];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
@@ -39,42 +65,29 @@ Deno.serve(async (req) => {
   if (!envRes.ok) return envRes.response;
   const env = envRes.env;
 
-  // Honour the bearer if present so we can read the signed-in consumer's
-  // profile for personalisation, but anonymous is the common path. RLS-aware
-  // reads through the user-scoped client.
-  const { user, userClient } = await getOptionalAuthedUser(req, env);
-  let profile: ConsumerProfile | null = null;
-  if (user && userClient) {
-    const { data } = await userClient
-      .from("consumers")
-      .select("full_name, country, birthday, sex, class_key")
-      .eq("id", user.id)
-      .maybeSingle();
-    if (data) {
-      const { class_key, ...rest } = data as Record<string, unknown>;
-      profile = { ...(rest as ConsumerProfile), tier: (class_key as string) ?? "standard" };
-    }
-  }
-
   const body = await readJsonOr<Body>(req, {});
-  const lat = typeof body.lat === "number" && Number.isFinite(body.lat) ? body.lat : null;
-  const lng = typeof body.lng === "number" && Number.isFinite(body.lng) ? body.lng : null;
-  const radiusKm = clampPositive(body.radiusKm, DEFAULT_RADIUS_KM, 200);
-  const limit = clampPositive(body.limit, DEFAULT_LIMIT, 50);
+  const limit = clampPositive(body.limit, DEFAULT_LIMIT, MAX_LIMIT);
 
   const admin = adminClient(env);
-  const OPENAI_KEY = Deno.env.get("OPENAI_KEY");
+  const { data, error } = await admin
+    .from("projects_view")
+    .select(PLACE_PUBLIC_COLUMNS)
+    .eq("status", "active")
+    .limit(POOL_CAP);
 
-  const ranked = await rankSwipeDeck(admin, OPENAI_KEY, "consumer-web-recommend-swipe", {
-    lat,
-    lng,
-    radiusKm,
-    limit,
-    profile,
-    randomness: parseRandomnessLevel(body.randomness),
-  });
-  if (!ranked.ok) {
-    return json({ ok: false, error: ranked.error }, 502);
+  if (error) {
+    console.error("[recommend-swipe] pool:", error.message);
+    return json({ ok: false, error: error.message }, 502);
   }
-  return json(ranked);
+
+  const rows = (data ?? []) as unknown as PlaceRow[];
+  // stripInternal also attaches computed `family_keys` (MESITA-679), which the
+  // consumer "What" discovery filter reads straight off the wire. Keep it.
+  const deck = shuffle(rows).slice(0, limit).map(stripInternal);
+
+  return json({
+    ok: true,
+    deck,
+    summary: { candidates: rows.length, embedded: 0 },
+  });
 });

@@ -39,7 +39,7 @@ export function placeEmbeddingFacts(v: EmbeddablePlace): string {
 }
 
 // Prefer the persisted on-update blurb; fall back to the facts block so a
-// cold place can still be embedded by the recommender lazy path.
+// cold place can still be embedded by the lazy embed path.
 export function placeSourceText(v: EmbeddablePlace): string {
   const stored = v.embedding_source_text?.trim();
   if (stored) return stored;

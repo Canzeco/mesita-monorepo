@@ -21,8 +21,8 @@ This package intentionally uses **Inter** for body UI. Generic “avoid Inter”
 - **Calm and dense.** Internal tool: high information density, low ornament.
 - **Light theme only.** Semantic tokens (`bg-background`, `bg-card`, `text-foreground`, …). Content stays light; only the sidebar / auth marketing pane invert.
 - **Pink is accent, not canvas.** Brand chroma on CTAs, marks, and rare highlights. Canvas / borders / body text keep chroma ≤ ~0.012 (see `globals.css` comment).
-- **One kit root.** Import from `@/components/admin-ui` (or `/config` · `/manage` · `/lineup`). Route-local `atlas-ui` / `manage-single/ui` / `panel-ui` are thin re-export shims — don’t grow them.
-- **Don’t invent a fourth lake.** Prefer the canonical path for the page type (below).
+- **One kit root.** Import from `@/components/admin-ui` (or `/config` · `/manage`). Route-local `atlas-ui` / `manage-single/ui` are thin re-export shims — don’t grow them.
+- **Don’t invent a third lake.** Prefer the canonical path for the page type (below).
 
 ## 3. Page templates + canonical decision tree
 
@@ -35,10 +35,8 @@ Use this first when adding UI. **Kit root:** `@/components/admin-ui`.
 | **Manage / records (single unit)** | `ManageSingleLayoutShell` (full-bleed) | `ManageSectionCard` / manage `SectionCard` (tinted chip + `shadow-card`) from `/manage` | `SaveBar` (pink + Cancel) | `ErrorNote` · `ConfirmDialog` |
 | **Manage multiple / search** | `PageContainer size="5xl"` + tabs | list / map patterns (not SectionCard) | N/A | `ErrorNote` or destructive banner |
 | **Auth / gate** | `EnterpriseAuthLayout` or centered `bg-hero` + `bg-card shadow-elev rounded-2xl` | — | Google CTA `rounded-full` | `ERROR_BOX_CLASS` |
-| **Lineup / scoring** | scoring shells | `PanelCard` / `BoxSection` from `/lineup` | `BoxSaveBar` | inline error in `BoxSaveBar` |
 
-**Canonical for greenfield config:** `SectionCard` + ink `SaveRow` + `ErrorNote` from `@/components/admin-ui`.  
-**Do not** use lineup MiniTile/Chip/Slider outside Lineup/Scoring.
+**Canonical for greenfield config:** `SectionCard` + ink `SaveRow` + `ErrorNote` from `@/components/admin-ui`.
 
 Width cheatsheet: `3xl` (narrow ops), `5xl` (manage-multiple / monitors), `6xl` (default configs), full-bleed (manage-single editor).
 
@@ -67,7 +65,7 @@ Common: cards `rounded-2xl`, fields `rounded-xl`, CTAs `rounded-full`.
 | `bg-pink-gradient` / `text-pink-gradient` | Premium dirty-save CTAs / gradient text |
 | `shadow-glow` | Brand mark |
 | `shadow-elev` | Elevated shells (map, gate cards, drawer) |
-| `shadow-card` | Manage-single / lineup card rest elevation |
+| `shadow-card` | Manage-single card rest elevation |
 | `shadow-save` | Pink-gradient CTA glow |
 
 ## 5. Typography (observed)
@@ -77,7 +75,7 @@ Common: cards `rounded-2xl`, fields `rounded-xl`, CTAs `rounded-full`.
 | Page title | `font-display text-2xl font-semibold tracking-tight sm:text-3xl md:text-4xl` |
 | Card / panel title | `font-display text-base font-semibold tracking-tight` |
 | Eyebrow | `text-muted-foreground text-xs font-medium tracking-[0.14em] uppercase` |
-| Group label | `text-[11px] font-semibold tracking-[0.12em] uppercase` (manage) · denser `text-[10px]` in lineup |
+| Group label | `text-[11px] font-semibold tracking-[0.12em] uppercase` (manage) |
 | Field label | `text-sm font-medium` (config) · `text-[13px] font-medium` (manage filled) |
 | Body / help | `text-sm leading-relaxed text-muted-foreground` |
 | Dense meta / knobs | `text-[10px]`–`text-[11px]`, often `font-mono tabular-nums` |
@@ -89,7 +87,7 @@ There is no formal type scale beyond these roles — don’t invent one in PRs.
 
 | Name | Path | When to use |
 | --- | --- | --- |
-| **Admin UI kit** | `src/components/admin-ui/` | **One import root** — `index` · `config` · `manage` · `lineup` |
+| **Admin UI kit** | `src/components/admin-ui/` | **One import root** — `index` · `config` · `manage` |
 | `AppShell` | `src/components/AppShell.tsx` | Authenticated chrome |
 | `Sidebar` | `src/components/Sidebar.tsx` | Dark rail (`bg-foreground text-background`) |
 | `PageContainer` / `PageHeader` | `src/components/PageContainer.tsx` | Page gutters + title block |
@@ -97,11 +95,10 @@ There is no formal type scale beyond these roles — don’t invent one in PRs.
 | `ConfigTabNav` | `src/components/ConfigTabNav.tsx` | Underline sub-tabs |
 | `SectionCard` + `SaveRow` + knobs | `admin-ui/config.tsx` | **Canonical config** |
 | `ManageSectionCard` + `SaveBar` + fields | `admin-ui/manage.tsx` | Unit/records editor only |
-| `PanelCard` / `BoxSection` / `BoxSaveBar` | `admin-ui/lineup.tsx` | Lineup / scoring only |
 | `ErrorNote` / `AtlasSettingsError` / `ERROR_BOX_CLASS` | re-exported from kit barrel | Errors |
 | `PlacesMap` | `src/components/PlacesMap.tsx` | Result maps |
 | `EnterpriseAuthLayout` / `GoogleSignInButton` | `src/components/auth/*` | Sign-in |
-| Legacy shims | `enricher-config/atlas-ui`, `manage-single/ui`, `lineup-config/panel-ui` | Re-exports only (+ `CrossTabLink` in manage-single/ui) |
+| Legacy shims | `enricher-config/atlas-ui`, `manage-single/ui` | Re-exports only (+ `CrossTabLink` in manage-single/ui) |
 
 ### Controls (config)
 
@@ -133,7 +130,7 @@ Filled inputs (`bg-muted/60 … rounded-xl`), `TextField` / `TextArea` / `Select
 
 - Use semantic tokens and the canonical tree for the page type.
 - Keep config cards flat (`rounded-2xl border bg-card`) without inventing new chrome.
-- Cite this file in design reviews; fail PRs that invent a fourth Save/SectionCard/Error without updating DESIGN.md.
+- Cite this file in design reviews; fail PRs that invent a third Save/SectionCard/Error without updating DESIGN.md.
 - Update DESIGN.md in the same PR as token or pattern changes.
 
 **DON’T**
@@ -141,11 +138,10 @@ Filled inputs (`bg-muted/60 … rounded-xl`), `TextField` / `TextArea` / `Select
 - `bg-zinc-900` / dark app content surfaces (sidebar invert is the exception).
 - Rose-wash the whole canvas; pink is accent only.
 - Copy manage tint chips or `shadow-card` into new config pages.
-- Copy lineup MiniTile/Chip/Slider recipes outside Lineup.
 - Hand-edit `AGENTS.md` (regenerate via `deno task sync-rules`).
 - Grow the legacy route-local shim files — add chrome in `admin-ui/` instead.
 
-## 9. Surface variants (one kit, three skins)
+## 9. Surface variants (one kit, two skins)
 
 Implementation is centralized under `src/components/admin-ui/`. Visual variants remain on purpose:
 
@@ -153,6 +149,5 @@ Implementation is centralized under `src/components/admin-ui/`. Visual variants 
 | --- | --- | --- | --- |
 | Config | `admin-ui/config.tsx` | `SectionCard` (no shadow) · ink `SaveRow` | **Default** |
 | Manage | `admin-ui/manage.tsx` | tinted card + `shadow-card` · pink `SaveBar` | Records editor only |
-| Lineup | `admin-ui/lineup.tsx` | `PanelCard` / `BoxSection` · `BoxSaveBar` | Scoring only |
 
 Remaining debt: no shared `EmptyState` / `Button` / `Input`; uneven tint chips vs semantic tokens; local `ErrorNote` leftovers in a few pages; callers still import via legacy shims (migrate opportunistically to `@/components/admin-ui`).

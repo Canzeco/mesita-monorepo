@@ -49,6 +49,7 @@ import { filtersPath } from '@/lib/consumer-route-contract';
 import { publishFiltersHostContext } from '@/lib/filters-host-context';
 import {
   applyDiscoveryFilters,
+  createSeededRandom,
   deriveCategoryOptions,
   discoveryFiltersAreActive,
   orderByRandomness,
@@ -74,12 +75,18 @@ const DIRECTION_VELOCITY_MIN = 120;
 const EXIT_MS = 280;
 const SCREEN_W = Dimensions.get('window').width;
 
+// The deck EF returns a random sample of active places — there is no server
+// ranking. Partner-first is applied HERE, on the client, on both the deck and
+// the catalog fallback so the two paths order identically.
 async function fetchSwipeDeck(): Promise<Place[]> {
   try {
     const result = await apiRecommendDeck(supabase, { limit: 50 });
     return sortPartnersFirst(result.deck);
   } catch (err) {
-    console.warn('[swipe] recommend-swipe failed, falling back:', err);
+    console.warn(
+      '[swipe] consumer-web-recommend-swipe failed, falling back:',
+      err,
+    );
     const fallback = await apiFetchPublicPlaces(supabase);
     return sortPartnersFirst(fallback);
   }
@@ -138,13 +145,19 @@ export function SwipeDeck() {
   // The deck the user actually swipes: the shared filters narrow `located` live
   // and the randomness level reorders it. Category options derive from the RAW
   // snapshot so the sheet always offers everything this deck actually has.
+  // The seed pins the random permutation for the session (web parity): this
+  // memo also re-runs when `located` merely changes identity (the geolocation
+  // fix arriving, a zone recenter), and an unseeded shuffle would visibly swap
+  // the top card mid-swipe.
+  const [orderSeed] = useState(() => Math.floor(Math.random() * 0x7fffffff));
   const deck = useMemo(
     () =>
       orderByRandomness(
         applyDiscoveryFilters(located, filters),
         filters.randomness,
+        createSeededRandom(orderSeed),
       ),
-    [located, filters],
+    [located, filters, orderSeed],
   );
   const categoryOptions = useMemo(
     () => deriveCategoryOptions(places),

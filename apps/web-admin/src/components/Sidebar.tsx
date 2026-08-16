@@ -21,7 +21,6 @@ import { MODELS_PARENT } from "@/app/(app)/models-config/nav";
 import { OJO_PARENT } from "@/app/(app)/ojo-config/nav";
 import { RESERVATIONS_PARENT } from "@/app/(app)/reservations-config/nav";
 import { REWARDS_PARENT } from "@/app/(app)/rewards-config/nav";
-import { SCORING_PARENT } from "@/app/(app)/lineup-config/nav";
 import { SOURCING_PARENT } from "@/app/(app)/sourcing-config/nav";
 import { VERIFICATION_PARENT } from "@/app/(app)/verification-config/nav";
 import {
@@ -70,7 +69,7 @@ const ALERTS_NAV: NavItem[] = [
 //   supply    a place's life: eligible to enter (Sourcing) → what its profile
 //             must contain (Atlas) → the pipeline that fills it (Enricher) →
 //             how it gets sealed (Verification)
-//   demand    what consumers are shown (Lineup) and what it pays (Promos)
+//   demand    what a visit pays out (Promos)
 //   agents    the two conversational agents that sit on top of all of it
 const CONFIGS_NAV: NavItem[] = [
   { href: "/admin-config", label: "Admin Config", Icon: ShieldCheck },
@@ -80,7 +79,6 @@ const CONFIGS_NAV: NavItem[] = [
   ENRICHER_PARENT,
   VERIFICATION_PARENT,
   OJO_PARENT,
-  SCORING_PARENT,
   REWARDS_PARENT,
   MEMO_PARENT,
   RESERVATIONS_PARENT,

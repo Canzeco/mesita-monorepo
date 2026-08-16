@@ -12,7 +12,7 @@ import {
   resolveTicketRate,
 } from "./rewards-config.ts";
 import { ratesForBilling } from "./ticket-rate-snapshot.ts";
-import { ratesFromPlace } from "./lineup-strategy.ts";
+import { ratesFromPlace } from "./promo-strategy.ts";
 import { resolveBillCapPesos } from "./discount-cap.ts";
 import { recordFirstTicketHonored } from "./membership-enforcement.ts";
 import {

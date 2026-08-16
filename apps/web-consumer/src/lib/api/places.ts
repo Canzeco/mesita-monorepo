@@ -95,14 +95,6 @@ export type Place = {
   opens_at?: string | null;
   distance_km?: number | null;
   zone?: string | null;
-  /**
-   * Winning-lane Lineup score (0–1) from `consumer-web-recommend-swipe`.
-   * Presentational only — the deck is already ordered by this; the swipe
-   * card surfaces it as a top-left pill mirrored with the photo counter.
-   */
-  score?: number | null;
-  /** Lane that produced `score` (`organic` | `inorganic`). */
-  lane?: "organic" | "inorganic" | null;
   /** Per-visit reward ceiling in the place's currency. */
   reward_cap_mxn?: number | null;
   /**
@@ -143,10 +135,11 @@ export type Place = {
   content_status?: string | null;
 };
 
-// Discover surfaces (swipe + catalog) — both go through dedicated EFs
-// that do bounding-box prefiltering + lazy embedding + RAG ranking. The
-// helpers below are thin invokers; all the curation logic lives in the
-// EFs so we can iterate on it without redeploying the web app.
+// Discover surfaces (swipe + catalog) go through dedicated EFs. The deck
+// EF returns a random sample of active places — there is no ranking
+// engine behind it. The helpers below are thin invokers; whatever
+// selection logic exists lives in the EFs so we can iterate on it
+// without redeploying the web app.
 type RecommendDeckInput = {
   lat?: number;
   lng?: number;

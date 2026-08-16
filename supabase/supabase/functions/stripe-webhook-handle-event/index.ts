@@ -33,7 +33,7 @@ import {
   applyListingTypeToPatch,
 } from "../_shared/partner-derivation.ts";
 import { recomputeConsumerClass } from "../_shared/class-doors.ts";
-import { ratesFromPlace } from "../_shared/lineup-strategy.ts";
+import { ratesFromPlace } from "../_shared/promo-strategy.ts";
 import { subscriptionSnapshot } from "./subscription-snapshot.ts";
 
 Deno.serve(async (req) => {

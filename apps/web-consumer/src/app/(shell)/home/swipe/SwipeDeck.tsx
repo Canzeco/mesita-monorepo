@@ -116,9 +116,10 @@ function Deck({ places }: { places: Place[] }) {
   const supabase = useBrowserSupabase();
   const { isSaved, setSaved } = useSavedPlaces();
   // The server-provided deck is ALWAYS the source of truth for card content:
-  // every load re-runs Lineup, so an enrichment that landed since the last
-  // visit shows up immediately. Stored progress only hides cards already
-  // swiped (applied after mount, below) — it never supplies card data.
+  // every load fetches a fresh random sample of active places, so an
+  // enrichment that landed since the last visit shows up immediately. Stored
+  // progress only hides cards already swiped (applied after mount, below) —
+  // it never supplies card data.
   const [runtimeDeck, setRuntimeDeck] = useState<Place[]>(places);
   // Ids swiped past this session. Seeded empty so the hydration render matches
   // the server's, then filled from sessionStorage after mount.
@@ -161,8 +162,8 @@ function Deck({ places }: { places: Place[] }) {
   }, []);
 
   // A fresh server deck replaces the runtime one outright — same reason as
-  // above: content always comes from the latest Lineup run, never from a
-  // previous render's copy.
+  // above: content always comes from the latest fetch, never from a previous
+  // render's copy.
   useEffect(() => {
     const raf = requestAnimationFrame(() => {
       setRuntimeDeck(places);
@@ -268,9 +269,10 @@ function Deck({ places }: { places: Place[] }) {
   // the top card mid-swipe.
   const [orderSeed] = useState(() => Math.floor(Math.random() * 0x7fffffff));
   // Cards already swiped this session drop out here rather than being skipped
-  // by index: a re-run of Lineup can return a different order (or different
-  // places entirely), which makes a stored position meaningless but leaves
-  // "don't show me this again" perfectly well-defined.
+  // by index: the server deck is a random sample, so each fetch can return a
+  // different order (or different places entirely), which makes a stored
+  // position meaningless but leaves "don't show me this again" perfectly
+  // well-defined.
   const seenSet = useMemo(() => new Set(seenIds), [seenIds]);
   const filtered = useMemo(
     () => applyDiscoveryFilters(located, filters),

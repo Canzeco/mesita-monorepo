@@ -9,15 +9,16 @@ import { enrichPlaceOverview } from "@/lib/mock/enrich-overview";
 import { errMsg } from "@/lib/utils";
 import { HomeDeckProvider } from "./HomeDeckContext";
 
-// Async server component that fetches the Home recommendation deck ONCE and
-// hands it to every /home sub-route via context. It lives inside the /home
-// layout's Suspense boundary, so the pill nav paints immediately while this
-// resolves, and — because it's part of the layout subtree — it is NOT re-run
-// when navigating between sibling tabs (only the leaf page segment changes).
+// Async server component that fetches the Home deck ONCE and hands it to
+// every /home sub-route via context. It lives inside the /home layout's
+// Suspense boundary, so the pill nav paints immediately while this resolves,
+// and — because it's part of the layout subtree — it is NOT re-run when
+// navigating between sibling tabs (only the leaf page segment changes).
 //
-// Fetch mirrors the swipe deck: recommender deck first, public catalog as the
-// fallback, partner rows floated to the top, overview enrichment applied so
-// cards carry rating / zone / open-state.
+// Fetch mirrors the swipe deck: the deck EF (a random sample of active
+// places) first, public catalog as the fallback, partner rows floated to the
+// top HERE on the client, overview enrichment applied so cards carry
+// rating / zone / open-state.
 export async function HomeDeckBoundary({ children }: { children: ReactNode }) {
   const supabase = await createServerSupabase();
 
@@ -27,7 +28,10 @@ export async function HomeDeckBoundary({ children }: { children: ReactNode }) {
     const result = await apiRecommendDeck(supabase, { limit: 50 });
     places = result.deck;
   } catch (err) {
-    console.warn("[home] consumer-recommend-swipe failed, falling back:", err);
+    console.warn(
+      "[home] consumer-web-recommend-swipe failed, falling back:",
+      err,
+    );
     try {
       places = await apiFetchPublicPlaces(supabase);
     } catch (err2) {

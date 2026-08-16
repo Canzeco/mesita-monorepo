@@ -1,7 +1,7 @@
 // memo-agent.ts — Memo v-next entry point (shared engine).
 //
 // Assembles the airlock (fixed read-only tools), seeds the loop RAG-first with
-// a Lineup recall so the model always reasons over real Mesita candidates, runs
+// a catalog recall so the model always reasons over real Mesita candidates, runs
 // the OpenAI tool-calling loop, and returns the SAME response shape the legacy
 // Perplexity pipeline did — so the (already-enabled) frontend is unchanged.
 //
@@ -17,7 +17,7 @@ import {
   type ChatMessage,
   runAgent,
 } from "./memo-airlock.ts";
-import { buildMemoTools, lineupRecall } from "./memo-airlock-tools.ts";
+import { buildMemoTools, placesRecall } from "./memo-airlock-tools.ts";
 import { buildAgentSystemPrompt } from "./memo-airlock-prompt.ts";
 import { isPlaceSeeking } from "./memo-intent.ts";
 import { fallbackAnswer } from "./memo-fallback.ts";
@@ -71,14 +71,14 @@ export async function answerWithAgent(opts: AgentOpts): Promise<AgentAnswer> {
     ...clampHistory(opts.history),
   ];
 
-  // RAG-first: for place-seeking asks, recall the Lineup once up front so the
+  // RAG-first: for place-seeking asks, recall the catalog once up front so the
   // model's very first turn already has real Mesita candidates to reason over
   // (Pato: "RAG is the central methodology"). The recall's cards also become
   // the base of the rail, so even a text-only model turn shows relevant places.
   const placeSeeking = isPlaceSeeking(opts.query);
   let seed: Prediction[] = [];
   if (placeSeeking) {
-    const recall = await lineupRecall(ctx, opts.query, { traceKind: "recall" });
+    const recall = await placesRecall(ctx, opts.query, { traceKind: "recall" });
     seed = recall.predictions ?? [];
     const userContent = recall.text && seed.length > 0
       ? `${opts.query}\n\n[${recall.text}\nRecommend from these when they fit — they show as cards, so reference them naturally and never list them mechanically.]`
