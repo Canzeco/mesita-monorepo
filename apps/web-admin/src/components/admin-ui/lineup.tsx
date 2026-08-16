@@ -4,7 +4,7 @@ import { CONTEXT_FIELDS, type ContextSide } from "@/lib/business/scores";
 
 // Shared admin lineup/scoring kit — `@/components/admin-ui/lineup`.
 // Lineup-only atoms (MiniTile / Chip / Slider / BoxSaveBar). Do not start a
-// fourth lake outside scoring — see apps/web-admin/DESIGN.md.
+// fourth lake outside scoring — see the web-admin design map (Notion Product Rules §F).
 
 export function SubHead({ children }: { children: React.ReactNode }) {
   return <p className="text-foreground/80 text-[12px] font-semibold tracking-tight">{children}</p>;

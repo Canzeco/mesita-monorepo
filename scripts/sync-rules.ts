@@ -114,6 +114,49 @@ for (const { label, dir, quickstart } of targets) {
   await reconcile(join(dir, "AGENTS.md"), `${AGENTS_NOTICE}\n${nextClaude}`, `${label}/AGENTS.md`);
 }
 
+// ── Markdown allowlist (ASDM §C, 2026-08-16) ────────────────────────────────
+// The repo holds NO knowledge markdown: knowledge lives in Notion (the Rules
+// tree), task/commit context lives in Linear, code explanation lives in code
+// comments. The ONLY tracked .md files allowed are the instruction pairs, this
+// script's quickstart source, and agent tooling config. Anything else fails CI.
+const MD_ALLOW_DIRS = [".claude/", ".cursor/", ".codex/", ".github/"];
+const MD_ALLOW_FILES = new Set<string>([
+  "scripts/rules-quickstart.md",
+  ...TARGETS.flatMap(({ dir }) => {
+    const rel = dir === repoRoot ? "" : dir.slice(repoRoot.length + 1) + "/";
+    return [`${rel}CLAUDE.md`, `${rel}AGENTS.md`];
+  }),
+]);
+
+try {
+  const ls = new Deno.Command("git", {
+    args: ["ls-files", "*.md", "*.MD", "*.mdx"],
+    cwd: repoRoot,
+    stdout: "piped",
+    stderr: "piped",
+  });
+  const out = await ls.output();
+  if (out.success) {
+    const tracked = new TextDecoder().decode(out.stdout).split("\n").filter(Boolean);
+    const strays = tracked.filter((f) =>
+      !MD_ALLOW_FILES.has(f) && !MD_ALLOW_DIRS.some((d) => f.startsWith(d))
+    );
+    for (const f of strays) {
+      console.error(
+        `STRAY MARKDOWN: ${f} — the repo holds no knowledge/docs markdown. ` +
+          `Knowledge → Notion Rules tree; task context → Linear; code notes → code comments (ASDM §C).`,
+      );
+    }
+    failed += strays.length;
+  } else {
+    console.error("markdown allowlist: `git ls-files` failed — check skipped (not a git checkout?)");
+    if (check) failed++;
+  }
+} catch (err) {
+  console.error(`markdown allowlist: could not run git (${err}) — check skipped`);
+  if (check) failed++;
+}
+
 console.log(`\nsync-rules: ${updated} updated, ${drifted} drifted, ${failed} failed.`);
 if (failed > 0 || (check && drifted > 0)) {
   Deno.exit(1);

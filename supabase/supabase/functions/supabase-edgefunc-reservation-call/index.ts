@@ -294,7 +294,7 @@ async function resolveLines(
 }
 
 // Leg 2/3 · business → consumer — ONE Confirmer call to the human, plus the
-// retry ladder (RESERVATIONS-PROTOCOL.md leg 3): a missed call parks
+// retry ladder (Product Rules §J leg 3): a missed call parks
 // callback_state='scheduled' + callback_next_attempt_at per nextGuestCallAt
 // (+10 min, then +1 h, cap 3, quiet hours 09:00–22:00 venue-local, nothing
 // within 30 min of the slot) and the retry cron re-fires this engine with

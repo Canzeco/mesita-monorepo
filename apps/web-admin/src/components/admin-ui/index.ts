@@ -1,6 +1,6 @@
 // Admin shared UI kit — one import root for console chrome.
 //
-// Surfaces (see apps/web-admin/DESIGN.md):
+// Surfaces (see the web-admin design map (Notion Product Rules §F)):
 //   config  — flat/tabbed config pages (canonical for greenfield)
 //   manage  — single-unit records editor
 //   lineup  — scoring / lineup panels only

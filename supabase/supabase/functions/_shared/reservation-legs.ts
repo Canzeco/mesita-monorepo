@@ -89,7 +89,7 @@ export function guestLegFirstMessage(v: ReservationLegVars): string {
   return `¡Hola ${v.guestName}! Te llamo de parte de ${v.placeName}: tu reservación está confirmada.`;
 }
 
-// ── Cancellation notices (RESERVATIONS-PROTOCOL.md legs 5 & 6) ───────────────
+// ── Cancellation notices (Product Rules §J legs 5 & 6) ───────────────
 // Same two directions, different errand: nobody is booking anything — one side
 // cancelled and the OTHER side must hear it. call_context rides as
 // "cancellation" (a1 → place) / "cancelled_by_venue" (a2 → guest); the fleet

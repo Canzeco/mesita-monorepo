@@ -1,26 +1,23 @@
 name: rules
 
+# Any markdown change anywhere triggers this workflow: sync-rules:check also
+# enforces the ASDM §C markdown allowlist (knowledge → Notion, task context →
+# Linear; the repo carries only CLAUDE.md/AGENTS.md + tooling config).
 on:
   push:
     branches: [main]
     paths:
-      - "CLAUDE.md"
-      - "AGENTS.md"
-      - "apps/*/CLAUDE.md"
-      - "apps/*/AGENTS.md"
-      - "supabase/CLAUDE.md"
-      - "supabase/AGENTS.md"
+      - "**/*.md"
+      - "**/*.MD"
+      - "**/*.mdx"
       - "scripts/**"
       - "deno.json"
       - ".github/workflows/rules.yml"
   pull_request:
     paths:
-      - "CLAUDE.md"
-      - "AGENTS.md"
-      - "apps/*/CLAUDE.md"
-      - "apps/*/AGENTS.md"
-      - "supabase/CLAUDE.md"
-      - "supabase/AGENTS.md"
+      - "**/*.md"
+      - "**/*.MD"
+      - "**/*.mdx"
       - "scripts/**"
       - "deno.json"
       - ".github/workflows/rules.yml"

@@ -1,6 +1,6 @@
 ---
 name: doctor
-description: Daily read-only health + congruence audit of the Mesita stack (Supabase DB, Edge Functions, configs, repo, deploys, ledger). Produces a dated report and files P0/P1 findings to Linear. Never fixes anything.
+description: Daily read-only health + congruence audit of the Mesita stack (Supabase DB, Edge Functions, configs, repo, deploys, ledger). Publishes a dated report as a Linear document and files P0/P1 findings as Linear issues. Never fixes anything, never writes repo files.
 ---
 
 # Doctor — daily stack audit
@@ -13,8 +13,9 @@ and **decay** (things that were healthy and no longer are), and write one report
 
 1. **READ-ONLY.** No `INSERT`/`UPDATE`/`DELETE`/DDL, no EF deploys, no migrations, no
    `supabase db push`, no writes to `app_settings`, no config edits, no code fixes, no
-   `main` pushes. If a fix is obvious, describe it in the report — do not apply it.
-   The only writes you are allowed: the report file, and Linear issues/comments.
+   `main` pushes, **no repo files — the repo carries no reports** (ASDM §C markdown law).
+   If a fix is obvious, describe it in the report — do not apply it.
+   The only writes you are allowed: Linear documents, issues, and comments.
 2. **Evidence or it didn't happen.** Every finding carries the query, command, or file:line
    that produced it, plus the two values that disagree. No "looks like", no inference from
    memory, no findings copied from a previous report without re-running the check.
@@ -33,7 +34,7 @@ and **decay** (things that were healthy and no longer are), and write one report
 - Supabase: MCP (`list_tables`, `list_edge_functions`, `get_edge_function`, `list_migrations`,
   `get_advisors`, `get_logs`, `execute_sql` — **SELECT only**).
 - Linear: team Mesita (`MESITA-`).
-- Vercel MCP: 4 projects (web-admin, web-business, web-consumer, web-landing).
+- Vercel MCP: 5 projects (web-admin, web-business, web-consumer, web-landing, web-check).
 - GitHub via `gh`.
 
 ## Standard
@@ -54,13 +55,13 @@ Each check: run it, record `OK` / `FINDING` / `SKIPPED (reason)`. Never leave a 
 The singleton rule is the one that silently breaks. Check it first.
 
 1.1 **Edge Functions inventory.** `list_edge_functions` vs `supabase/supabase/functions/*`
-    (138 in repo at time of writing). Report: in repo not deployed · deployed not in repo
+    (142 in repo at time of writing). Report: in repo not deployed · deployed not in repo
     (ghosts) · name mismatches.
 1.2 **EF body drift.** For every EF, `get_edge_function` vs the repo source. Flag any where
     cloud ≠ repo. Two known killers: (a) a deploy that shipped a **stub** over real code,
     (b) a deploy from clean main that **reverted cloud-only** edits (EFs bundle their own
     `_shared/*`). Both look fine in the dashboard.
-1.3 **Migration ledger.** `list_migrations` vs `supabase/supabase/migrations/*` (242 files).
+1.3 **Migration ledger.** `list_migrations` vs `supabase/supabase/migrations/*` (249 files).
     Flag: file with no ledger row (unapplied) · ledger row with no file (applied off-repo,
     the dangerous one) · version ordering anomalies.
 1.4 **Schema drift.** Live tables/columns/enums/views/functions vs what the migrations
@@ -170,7 +171,7 @@ For each admin config page — `adea` · `admin` · `atlas` · `db` · `enricher
 6.4 **Env parity.** Required env keys per app vs what each Vercel project has ·
     every `Deno.env.get(...)` in EFs vs the Supabase secrets that exist. Names only —
     **never read, print, or log a secret value.**
-6.5 **Vercel wiring.** All 4 projects → `Canzeco/mesita-monorepo`, Root Directory
+6.5 **Vercel wiring.** All 5 projects → `Canzeco/mesita-monorepo`, Root Directory
     `apps/web-<app>`, "skip unaffected" on, last production deploy green. A wrong Git
     connection produces a *silent no-deploy*, which is why this is checked daily.
 6.6 **Build/runtime errors.** Latest deploy build logs + runtime errors per project.
@@ -200,14 +201,17 @@ For each admin config page — `adea` · `admin` · `atlas` · `db` · `enricher
 # Procedure
 
 1. `git fetch origin && git log -1 origin/main` — audit `origin/main`, never a dirty tree.
-2. Load the previous report from `docs/doctor/` (most recent file). If none, mark this run
+2. Load the previous report: the most recent Linear **document** titled `Doctor — YYYY-MM-DD`
+   (team Mesita — find via the Linear MCP document list/search). If none, mark this run
    `BASELINE` and skip the diff section.
 3. Run scopes **1 → 8 in order**. Scopes are independent — parallelize freely inside a scope.
 4. For every finding, capture: scope · check id · severity · the two disagreeing values ·
    the exact query/command/`file:line` · suggested fix (one line) · blast radius.
 5. **Verify before reporting.** Re-run the underlying check for every P0/P1. A false P0 costs
    more than a missed P2 — if a finding does not reproduce, drop it and say nothing.
-6. Write the report to `docs/doctor/YYYY-MM-DD.md` (see shape below).
+6. Publish the report as a Linear **document** titled `Doctor — YYYY-MM-DD` (team Mesita,
+   `save_document`; see shape below). Never write it into the repo — the repo carries no
+   reports (ASDM §C markdown law).
 7. Linear: one issue per **NEW P0/P1**, titled `doctor: <one-line symptom>`, body = the
    finding block verbatim. **Dedupe** — if an open issue already covers it, comment the new
    occurrence count instead of opening a second one. P2/P3 stay in the report only.
