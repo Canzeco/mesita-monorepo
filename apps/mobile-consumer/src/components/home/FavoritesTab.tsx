@@ -13,6 +13,7 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { requestHomeMode } from '@/components/swipe/home-mode-intent';
 import { useHomeDeck } from '@/hooks/use-home-deck';
 import type { Place } from '@/lib/api/places';
+import { pairs } from '@/lib/grid-pairs';
 import { enrichPlaceOverview } from '@/lib/place-overview';
 import {
   readSavedPlacePreviews,
@@ -33,19 +34,14 @@ import { FavoriteTile } from './FavoriteTile';
 // from the deck already in context. No extra fetches, and the way to get more
 // saves is to be shown more places.
 //
-// RN has no CSS grid, so rows are chunked into pairs — that yields exact halves
-// with a real gap, which percentage widths can't do without calc().
+// RN has no CSS grid, so rows are chunked into pairs (see lib/grid-pairs) —
+// that yields exact halves with a real gap, which percentage widths can't do
+// without calc().
 
 /** Saves past this count earn a sort control; below it, it's chrome. */
 const SORT_CONTROL_MIN = 4;
 
 type Sort = 'recent' | 'open';
-
-function pairs<T>(items: T[]): T[][] {
-  const out: T[][] = [];
-  for (let i = 0; i < items.length; i += 2) out.push(items.slice(i, i + 2));
-  return out;
-}
 
 export function FavoritesTab() {
   const deckQuery = useHomeDeck();

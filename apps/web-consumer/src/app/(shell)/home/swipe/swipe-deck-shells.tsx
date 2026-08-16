@@ -3,8 +3,6 @@
 import Link from "next/link";
 import { Compass, RotateCcw, SlidersHorizontal } from "lucide-react";
 import { Spinner } from "@/components/shared";
-import { haversineKm } from "@/lib/utils";
-import type { Coords } from "@/lib/use-user-location";
 import type { Place } from "@/lib/api/places";
 
 export function EmptyDeck({
@@ -152,20 +150,7 @@ export function shuffleDeck(input: Place[]): Place[] {
 // distance it already had, otherwise drop in a "0 km" placeholder so the
 // chip still renders. Real readings floor at 0.1 km, so "0 km" is
 // unambiguously the "couldn't calculate" case and never a true distance.
-export function withUserDistance(place: Place, coords: Coords | null): Place {
-  if (coords) {
-    const lat = toCoord(place.lat);
-    const lng = toCoord(place.lng);
-    if (lat != null && lng != null) {
-      const km = haversineKm(coords.lat, coords.lng, lat, lng);
-      const rounded = km < 10 ? Math.round(km * 10) / 10 : Math.round(km);
-      return { ...place, distance_km: Math.max(rounded, 0.1) };
-    }
-  }
-  return place.distance_km != null ? place : { ...place, distance_km: 0 };
-}
-
-function toCoord(v: unknown): number | null {
-  const n = typeof v === "number" ? v : typeof v === "string" ? Number(v) : NaN;
-  return Number.isFinite(n) ? n : null;
-}
+// withUserDistance moved to @/lib/place-distance when Catalog un-parked —
+// both discovery surfaces measure from the same center. Re-exported here so
+// the swipe route's existing import sites keep working.
+export { withUserDistance } from "@/lib/place-distance";

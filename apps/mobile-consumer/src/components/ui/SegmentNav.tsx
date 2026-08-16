@@ -15,9 +15,11 @@ export type SegmentItem = {
 // Pink-pill segment nav — RN port of web-consumer HomeModeNav:
 // active = solid primary + shadow-glow; idle/soon = muted text only (no fill).
 //
-// Pills are content-width inside a horizontal scroller (web parity): five
-// icon+label pills can't share a phone-width row without truncating the longest
-// label, so the tail scrolls instead of squeezing.
+// Pills are content-width inside a horizontal scroller, but all five fit a
+// phone-width row at rest (web parity, 2026-08-16): tighter padding, a tighter
+// icon/label gap and 14px icons buy back the width that used to leave the last
+// pill clipped mid-word. The scroller stays as the fallback for large
+// accessibility text, not as the resting state.
 export function SegmentNav({
   items,
   value,
@@ -59,12 +61,12 @@ export function SegmentNav({
             <View
               className={
                 active
-                  ? 'min-h-[44px] flex-row items-center justify-center gap-1.5 rounded-full bg-primary px-3 py-2'
-                  : 'min-h-[44px] flex-row items-center justify-center gap-1.5 rounded-full px-3 py-2'
+                  ? 'min-h-[44px] flex-row items-center justify-center gap-1 rounded-full bg-primary px-2.5 py-2'
+                  : 'min-h-[44px] flex-row items-center justify-center gap-1 rounded-full px-2.5 py-2'
               }
             >
               {Icon ? (
-                <Icon color={tint} size={16} strokeWidth={2.2} />
+                <Icon color={tint} size={14} strokeWidth={2.2} />
               ) : null}
               <Text
                 numberOfLines={1}

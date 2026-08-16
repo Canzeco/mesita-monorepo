@@ -6,7 +6,7 @@
 import { useSyncExternalStore } from 'react';
 import type { CategoryOption } from '@/lib/discovery-filters-engine';
 
-export type FiltersHostSurface = 'swipe' | 'search';
+export type FiltersHostSurface = 'swipe' | 'catalog' | 'search';
 
 export type FiltersHostContext = {
   count: number | null;
