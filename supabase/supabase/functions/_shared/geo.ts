@@ -1,4 +1,4 @@
-// Geo helpers shared by recommender, search, and distance EFs.
+// Geo helpers shared by the place-pool, search, and distance EFs.
 
 // Haversine distance in km between two lat/lng pairs. Returns +Infinity if
 // either point is missing so the caller's `<= radius` filter cleanly drops it.

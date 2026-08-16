@@ -67,24 +67,9 @@ export function PlaceSwipeCard({ place: rawPlace }: { place: Place }) {
         )
       : null;
 
-  const scoreLabel = formatLaneScore(place.score);
-
   return (
     <View className="absolute inset-0 overflow-hidden rounded-2xl bg-card">
       <CardPhotos photos={place.photos} name={place.name} />
-
-      {/* Top-left lane score — symmetrical with the photo counter (top-right). */}
-      {scoreLabel ? (
-        <View
-          className="absolute top-3 left-3 z-10 rounded-full bg-black/60 px-2 py-0.5"
-          pointerEvents="none"
-          accessibilityLabel={`Score ${scoreLabel}`}
-        >
-          <Text className="text-[10px] font-semibold text-white">
-            {scoreLabel}
-          </Text>
-        </View>
-      ) : null}
 
       <LinearGradient
         colors={['transparent', 'rgba(0,0,0,0.15)', 'rgba(0,0,0,0.78)']}
@@ -312,12 +297,6 @@ function CardPhotos({ photos, name }: { photos: string[]; name: string }) {
       ) : null}
     </>
   );
-}
-
-/** Lineup playground parity — three decimal places on the 0–1 lane score. */
-function formatLaneScore(score: number | null | undefined): string | null {
-  if (score == null || !Number.isFinite(score)) return null;
-  return score.toFixed(3);
 }
 
 function MetaChip({

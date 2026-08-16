@@ -1,16 +1,22 @@
 // memo-trace.ts — an OPTIONAL, admin-only trace of Memo's reasoning process.
 //
 // When a `trace` sink is attached to the AirlockContext, the agent records each
-// step it takes: the RAG-first Lineup recall, every OpenAI reasoning round (the
-// model's thought + which tools it chose to call), and every tool dispatch
-// (which source it hit — the Lineup engine, Perplexity, or the Mesita catalog —
-// with args and a public-safe result summary).
+// step it takes: the RAG-first catalog recall, every OpenAI reasoning round
+// (the model's thought + which tools it chose to call), and every tool dispatch
+// (which source it hit, with args and a public-safe result summary).
 //
 // This powers the admin Memo Playground's "how Memo thought" inspector. It is
 // NEVER attached on the consumer path (the trace field is simply absent), so
 // the live concierge is byte-for-byte unchanged and pays zero overhead.
 
 // The upstream source a step read from — the label the playground shows.
+//
+// "Lineup engine" is a WIRE LABEL, not a live subsystem: MESITA-1048 deleted
+// the Lineup engine, but this exact string (and the `lineup_recommend` tool
+// name that maps to it) is mirrored in apps/web-admin's own TraceSource union
+// and its badge colour map. Renaming it here alone breaks that inspector, so
+// both flip together in a follow-up. It labels Memo's cosine recall over the
+// place catalog — which is alive and unchanged.
 export type TraceSource =
   | "OpenAI"
   | "Lineup engine"

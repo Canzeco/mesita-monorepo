@@ -6,18 +6,22 @@
 // singleton (models_config). Whole-blob writes only — the Models Config page
 // always saves its full form, so partial patches would only invite drift.
 //
-// The MAIN model is always OpenAI (a chat model, or an embedding model for
-// Lineup). Perplexity is NEVER a main model — it's an optional web-grounding
-// leg, and ONLY Enricher and Memo have one ("off" disables it). Model is a free
+// The MAIN model is always OpenAI (a chat model, or an embedding model under
+// the legacy `lineup` key). Perplexity is NEVER a main model — it's an optional
+// web-grounding leg, and ONLY Enricher and Memo have one ("off" disables it).
+// The `lineup` KEY outlived the engine MESITA-1048 deleted: it now selects the
+// place-embedding model and nothing else. Renaming it needs a data migration —
+// see _shared/models-config.ts. Model is a free
 // string (the web-admin catalogs evolve, so only the STRUCTURE is enforced —
 // a missing/garbage key falls back to the migration default so the blob is
 // always complete). See 20260726010000_models_config_reshape.sql.
 //
-// Live binding (MESITA-941): Enricher/Memo/Lineup/embeddings/suggest-promo/
-// recommender-rank-map read this blob via _shared/models-config.ts.
+// Live binding (MESITA-941): Enricher/Memo/embeddings/suggest-promo read this
+// blob via _shared/models-config.ts. (Until MESITA-1048 the Lineup rankers read
+// it too — recommender-rank-map is deleted, so don't look for it.)
 //
 // Auth: caller's JWT email must be in public.super_admins. verify_jwt defaults
-// to true at the gateway (no config.toml entry, mirroring the memo/lineup pair).
+// to true at the gateway (no config.toml entry, mirroring the memo pair).
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { corsPreflight, jsonError, jsonOk, readJson, rejectUnlessMethods } from "../_shared/http.ts";

@@ -1,9 +1,9 @@
 // Overview enrichment for place cards — REAL data only.
 //
 // The discover EFs return the FULL public places projection on every row:
-// consumer-recommend-swipe → recommender-rank-swipe pulls PLACE_PUBLIC_COLUMNS
-// (only the two embedding columns are stripped), and consumer-list-places
-// selects the same set. So each Place the client receives already carries
+// consumer-web-recommend-swipe pulls PLACE_PUBLIC_COLUMNS (only the two
+// embedding columns are stripped), and consumer-web-list-places selects the
+// same set. So each Place the client receives already carries
 // the raw signal columns — google_stars_overall, google_review_count,
 // instagram_followers_count, price_level, hours, timezone, zone, city,
 // address, enriched_at — declared on the Place type. This mapper turns them

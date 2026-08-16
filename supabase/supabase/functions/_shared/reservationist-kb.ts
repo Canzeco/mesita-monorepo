@@ -41,7 +41,7 @@ export const RESERVATIONIST_KB_TEXT = [
   ``,
   `- Clases de comensal: Standard (gratis) · Premium (MX$100/mes) · Influencer (2,000+ seguidores en Instagram, automático) · Aura (solo por invitación de Mesita).`,
   `- Lugares Listed = en el catálogo, reservables. Lugares Verified = membresía + programa de recompensas + consola.`,
-  `- Memo recomienda; el Reservationist reserva. Atlas/Enricher/Lineup alimentan el catálogo.`,
+  `- Memo recomienda; el Reservationist reserva. Atlas y el Enricher alimentan el catálogo.`,
   ``,
   `## Regla dura de enrutamiento`,
   `El negocio NUNCA llama al comensal directamente y el comensal NUNCA llama al negocio. Siempre: comensal → agente Mesita → negocio, y negocio → agente Mesita → comensal. Las líneas entrantes (a3, a4) existen para que llamen a Mesita.`,

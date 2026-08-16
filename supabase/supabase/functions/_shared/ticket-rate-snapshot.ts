@@ -1,6 +1,6 @@
 // Ticket rate snapshot — frozen at creation, preferred at bill time (MESITA-912 T9).
 
-import { type PromoRates, ratesFromPlace } from "./lineup-strategy.ts";
+import { type PromoRates, ratesFromPlace } from "./promo-strategy.ts";
 
 const RATE_FIELDS = [
   "welcome_free_rate",

@@ -25,7 +25,7 @@ import { PLACE_FAMILIES, type FamilyKey } from "@/lib/place-families";
 
 // v4: the v3 shape (MESITA-672 — searched zone center + km radius, when
 // union, randomness). `ask` (the That axis, MESITA-699) was dropped — Memo
-// owns it and passes it to Lineup itself. The key stays v4 because ignoring a
+// owns it and carries it on its own call. The key stays v4 because ignoring a
 // removed field is backward-safe; bumping would wipe live zone/when/distance.
 // Old keys are ignored; randomness 5 (legacy max) clamps to 4 (MESITA-905).
 const STORAGE_KEY = "mesita_discovery_filters_v4";

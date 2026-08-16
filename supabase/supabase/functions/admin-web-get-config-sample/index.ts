@@ -1,10 +1,13 @@
-// Supabase Edge Function — admin-web-get-scoring-sample
+// Supabase Edge Function — admin-web-get-config-sample
 //
-// Feeds the Scoring Config Cards + Decks tabs: a random sample of REAL
-// consumers and REAL places, with everything the frontend scoring draft needs
-// to compute the four Subscores — ES (consumer+intent doc × place doc), GP
-// (google review count × rating), IC (geo + hours vs a synthetic query time)
-// and RP (strategy from the live promo rates on projects).
+// A random sample of REAL consumers and REAL places, with enough context for
+// an admin config page to preview its draft against live data instead of
+// fixtures. Shared surface: it feeds the Memo Config playground.
+//
+// Was `admin-web-get-scoring-sample` until MESITA-1048. The Lineup scoring
+// engine it was first written for is deleted (subscores, lanes, the
+// scoring_config blob and both /lineup-config pages went with it); the sampler
+// itself is generic and survives under a name that doesn't lie.
 //
 // Consumer taste comes from what they actually saved/visited (saved_places /
 // paid tickets → place categories+tags). Empty history returns empty arrays —
@@ -65,7 +68,7 @@ Deno.serve(async (req) => {
   const { data: placeRows, error: pErr } = await admin
     .from("places")
     .select(
-      "id, name, category, tags, zone, city, description, lat, lng, timezone, hours, google_stars_overall, google_review_count, manual_priority",
+      "id, name, category, tags, zone, city, description, lat, lng, timezone, hours, google_stars_overall, google_review_count",
     )
     .limit(200);
   if (pErr) return jsonError(`places_failed: ${pErr.message}`, 500);

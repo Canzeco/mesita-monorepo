@@ -1,12 +1,12 @@
-// Local-time + open-now helpers shared by the consumer recommenders.
+// Local-time + open-now helpers shared by the consumer place surfaces.
 //
 // The Edge runtime clock is UTC. Deriving a daypart or an "is it open" signal
 // from UTC is wrong for our users: at 5am in Mexico (UTC−6) `getUTCHours()`
-// reads ~11am and the recommender pitches brunch. This module gives the
-// recommenders the user's LOCAL wall-clock and a live open/closed signal
-// computed from the stored weekly hours — the same "when" fix consumer-web-
-// ask-memo shipped in PR #211, extracted here so the swipe and map rankers
-// share one implementation instead of each re-deriving it.
+// reads ~11am and a surface pitches brunch. This module gives callers the
+// user's LOCAL wall-clock and a live open/closed signal computed from the
+// stored weekly hours — the same "when" fix consumer-web-ask-memo shipped in
+// PR #211, extracted here so every reader shares one implementation instead of
+// re-deriving it.
 //
 // Timezone is a coarse Mexico-centric mapping by longitude (the market). We do
 // NOT read the DB `timezone` column here on purpose — memo established the

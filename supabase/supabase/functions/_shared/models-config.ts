@@ -5,10 +5,17 @@
 // Shape (20260726010000_models_config_reshape):
 //   supabase : { model }              OpenAI chat (general EF default)
 //   enricher : { model, perplexity }  OpenAI main + Perplexity leg
-//   lineup   : { model }              OpenAI embedding
+//   lineup   : { model }              OpenAI embedding (see the note below)
 //   memo     : { model, perplexity }  OpenAI main + Perplexity leg
 //
 // "off" on a perplexity leg means skip Perplexity for that subsystem.
+//
+// LEGACY KEY: the blob key is still `lineup` even though MESITA-1048 deleted
+// the Lineup engine. It selects the PLACE-EMBEDDING model and nothing else —
+// the vectors, and Memo's RAG recall over them, are very much alive. Renaming
+// the key means a data migration plus a matching change to the admin Models
+// page, so it stays; the derived field below is called `embeddingModel` so
+// reading code says what it means.
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 
@@ -40,7 +47,8 @@ export async function loadModelsConfig(
   supabaseModel: string;
   enricherModel: string;
   enricherPerplexity: string;
-  lineupModel: string;
+  /** From the legacy `lineup` blob key. The place-embedding model. */
+  embeddingModel: string;
   memoModel: string;
   memoPerplexity: string;
   raw: ModelsConfig | null;
@@ -67,7 +75,7 @@ export async function loadModelsConfig(
       raw?.enricher?.perplexity,
       DEFAULT_MODELS_CONFIG.enricher.perplexity!,
     ),
-    lineupModel: nonEmpty(
+    embeddingModel: nonEmpty(
       raw?.lineup?.model,
       DEFAULT_MODELS_CONFIG.lineup.model!,
     ),

@@ -143,7 +143,6 @@ export type Database = {
           models_config: Json
           reservations_config: Json
           rewards_config: Json
-          scoring_config: Json
           sourcing_config: Json
           updated_at: string
           updated_by: string | null
@@ -184,7 +183,6 @@ export type Database = {
           models_config?: Json
           reservations_config?: Json
           rewards_config?: Json
-          scoring_config?: Json
           sourcing_config?: Json
           updated_at?: string
           updated_by?: string | null
@@ -225,7 +223,6 @@ export type Database = {
           models_config?: Json
           reservations_config?: Json
           rewards_config?: Json
-          scoring_config?: Json
           sourcing_config?: Json
           updated_at?: string
           updated_by?: string | null

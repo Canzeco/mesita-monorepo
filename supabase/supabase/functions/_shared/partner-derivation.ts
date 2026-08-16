@@ -7,7 +7,7 @@ import {
   type PromoRates,
   ratesFromPlace,
   strategyForRates,
-} from "./lineup-strategy.ts";
+} from "./promo-strategy.ts";
 
 export type ListingType = "partner" | "web" | "unclaimed";
 

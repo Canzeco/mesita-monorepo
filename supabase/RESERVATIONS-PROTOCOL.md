@@ -79,7 +79,7 @@ silently; that sentence is why this file exists.
 | **Attempt 2** | **+5 min** if the place is open right now · **~30 min after it next opens** if closed. |
 | **Cap** | **2** (`ATTEMPTS`, fixed by protocol — the admin config accepts an `attempts` value and deliberately ignores it). |
 | **How it waits** | Parks: `attempts_state='scheduled'` + `next_attempt_at`; the minute cron wakes it. |
-| **Hours source** | `places.hours` + longitude → place-local clock (`_shared/local-time.ts`), the recommenders' interpretation. |
+| **Hours source** | `places.hours` + longitude → place-local clock (`_shared/local-time.ts` + `local-time-open.ts`) — the one open-now reading every caller shares (Memo reads the same helpers). |
 | **Terminal** | Cap with no answer → `status='unreachable'`. |
 
 Verdicts a1 reports (`a1_report_outcome`): `confirmed` · `counter_offer` ·

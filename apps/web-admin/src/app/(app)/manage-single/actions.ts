@@ -163,8 +163,6 @@ export type AdminPlace = {
   menus?: AdminMenuItem[] | null;
   plan: string | null;
   fiscal_type: string | null;
-  // Lineup MP subscore — operator priority [0,1], default 0.1 (super-admin set).
-  manual_priority: number | null;
   welcome_free_rate: number | null;
   welcome_premium_rate: number | null;
   free_rate: number | null;

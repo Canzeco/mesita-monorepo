@@ -46,12 +46,12 @@ const ENDPOINTS: Endpoint[] = [
       "The profile row itself. Full name, birthday and sex are read, reduced to that sentence, and dropped; age is derived, never the birthday. No Memo tool can call this — the user id comes from the authenticated caller, never from the model.",
   },
   {
-    name: "supabase-edgefunc-recall-lineup",
+    name: "supabase-edgefunc-recall-places",
     Icon: MapPinned,
     serves:
-      "Lineup's RAG leg: a candidate pool near the user, ranked against the embedded intent, returned as public place cards. This is what seeds every place-seeking turn.",
+      "Memo's RAG leg: a candidate pool near the user, ranked by cosine relevance against the embedded intent, returned as public place cards. This is what seeds every place-seeking turn.",
     withholds:
-      "Embedding vectors, ranker internals and OPENAI_KEY — all stay inside the function. It also never persists: unlike the swipe recommender it does not lazy-embed and write back, because Memo never writes.",
+      "Embedding vectors, ranker internals and OPENAI_KEY — all stay inside the function. It also never persists: it does not lazy-embed and write back, because Memo never writes.",
   },
   {
     name: "supabase-edgefunc-search-places",

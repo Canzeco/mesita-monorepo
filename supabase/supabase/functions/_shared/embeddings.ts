@@ -1,17 +1,21 @@
 // Shared embedding + ranking helpers for any EF that runs RAG over places.
 //
 // Lives in _shared/ (not a separate EF) because the helpers are pure or
-// near-pure (a SHA-1 digest, a cosine, an OpenAI HTTP call). Candidate-pool
-// query, lazy backfill, intent composition, and diversity trim live in
-// `_shared/recommender-*.ts` and are called in-process from the product EFs.
+// near-pure (a SHA-1 digest, a cosine, an OpenAI HTTP call). The candidate-pool
+// query lives in `_shared/place-pool.ts`.
 //
-// Used by: consumer-web-recommend-swipe, consumer-web-recommend-map.
+// Used by: supabase-edgefunc-recall-places (Memo's RAG leg) and the Enricher's
+// On-Update synthesis. MESITA-1048 deleted the swipe/map rankers that were the
+// other callers; these helpers stay — the vectors are paid data, not the
+// algorithm, and the rebuilt engine wants them.
 //
 // MESITA-720: place vectors are produced from a short synthesized blurb
 // (embedding_source_text), never from tags. Prefer On-Update synthesis; the
 // lazy path here synthesizes when the stored blurb is missing.
 //
-// Model: app_settings.models_config.lineup.model (admin Models page).
+// Model: app_settings.models_config.lineup.model (admin Models page). The
+// `lineup` blob KEY is legacy naming kept for wire compatibility with the
+// admin Models page — it selects the place-embedding model, nothing else.
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import {
@@ -33,12 +37,12 @@ import { synthesizePlaceEmbeddingText } from "./place-embeddings.ts";
 export { rankByCosine, shouldEmbed } from "./embeddings-vector.ts";
 export { embedBatch, embedSingle, EMBEDDING_DIMS, DEFAULT_EMBEDDING_MODEL };
 
-/** Resolve the Lineup embedding model from models_config (with default). */
-export async function resolveLineupEmbeddingModel(
+/** Resolve the place-embedding model from models_config (with default). */
+export async function resolveEmbeddingModel(
   admin: SupabaseClient,
 ): Promise<string> {
   const cfg = await loadModelsConfig(admin);
-  return cfg.lineupModel || DEFAULT_EMBEDDING_MODEL;
+  return cfg.embeddingModel || DEFAULT_EMBEDDING_MODEL;
 }
 
 // Lazy-embeds + persists a slice of places. Returns a map of place.id →
@@ -53,7 +57,7 @@ export async function embedAndPersistPlaces<T extends EmbeddablePlace>(
 ): Promise<Map<string, { embedding: number[]; hash: string; text: string }>> {
   const models = await loadModelsConfig(admin);
   const model = embeddingModel ??
-    (models.lineupModel || DEFAULT_EMBEDDING_MODEL);
+    (models.embeddingModel || DEFAULT_EMBEDDING_MODEL);
   const synthModel = models.enricherModel;
   const inputs = await Promise.all(rows.map(async (r) => {
     const text = r.embedding_source_text?.trim()

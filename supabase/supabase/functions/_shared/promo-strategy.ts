@@ -1,11 +1,16 @@
-// Promo rates → RP strategy (MESITA-718).
+// Promo rates → strategy preset.
 // Mirrors apps/web-admin/src/lib/business/strategies.ts strategyForPlace.
 //
 // Product (2026-08-09): three strategies only — Zero / Conservative /
 // Aggressive. Dominant retired; its old rate tuple (40/50/20/30) no longer
 // matches a preset (migration remaps live rows to Aggressive).
+//
+// Was `lineup-strategy.ts` until MESITA-1048. The name was a trap: only one of
+// its ten importers was ever Lineup (the RP subscore borrowed these ids). The
+// other nine are billing — the additive v10 bill engine, ticket pricing, plan
+// changes and the Stripe webhook — so this module outlived the engine.
 
-import type { RpStrategy } from "./lineup-scoring.ts";
+export type PromoStrategy = "zero" | "conservative" | "aggressive";
 
 export type PromoRates = {
   welcome_free_rate: number | null;
@@ -14,7 +19,7 @@ export type PromoRates = {
   premium_rate: number | null;
 };
 
-const PRESETS: { id: RpStrategy; rates: PromoRates }[] = [
+const PRESETS: { id: PromoStrategy; rates: PromoRates }[] = [
   {
     id: "zero",
     rates: {
@@ -45,7 +50,7 @@ const PRESETS: { id: RpStrategy; rates: PromoRates }[] = [
 ];
 
 /** Match stored rates to a preset; null = custom/legacy → zero rung. */
-export function strategyForRates(rates: PromoRates): RpStrategy | null {
+export function strategyForRates(rates: PromoRates): PromoStrategy | null {
   const match = PRESETS.find(
     (s) =>
       s.rates.welcome_free_rate === rates.welcome_free_rate &&

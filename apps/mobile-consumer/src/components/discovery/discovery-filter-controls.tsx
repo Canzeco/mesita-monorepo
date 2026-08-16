@@ -13,9 +13,7 @@ const SLIDER_THUMB_SIZE = 20;
 // Pill + SectionLabel + brand-filled RangeSlider. RN port of web
 // discovery-filter-controls.tsx.
 
-/** Group tier ABOVE SectionLabel — the sheet has exactly TWO groups: INTENT
- * (Where incl. its distance tolerance · When · What · That) and RANDOMNESS
- * (XX's luck knob). The panel configures both subscore inputs. */
+/** Group tier ABOVE SectionLabel — INTENT (Where · When · What · That). */
 export function FilterGroupLabel({
   children,
   className,

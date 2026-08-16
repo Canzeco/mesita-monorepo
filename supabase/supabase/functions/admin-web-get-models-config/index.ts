@@ -6,15 +6,18 @@
 // the admin console's Models Config page (admin.mesita.ai/models-config). One
 // { provider, model } per subsystem (supabase / enricher / lineup / memo). NULL
 // means "no blob yet → the client falls back to its DEFAULTS". See
-// 20260726000000_models_config.sql for the column + shape.
+// 20260726000000_models_config.sql for the column + shape. `lineup` is a LEGACY
+// KEY — MESITA-1048 deleted the engine it was named for; it now selects the
+// place-embedding model and nothing else, and renaming it needs a data
+// migration (see _shared/models-config.ts).
 //
-// Live binding (MESITA-941): Enricher/Memo/Lineup/embeddings read models_config
+// Live binding (MESITA-941): Enricher/Memo/embeddings read models_config
 // via _shared/models-config.ts. Shape validation lives on the write path
 // (admin-web-update-models-config). Memo Config's legacy memo_openai_model is a
 // one-release fallback behind models_config.memo.model.
 //
 // Auth: caller's JWT email must be in public.super_admins. verify_jwt defaults
-// to true at the gateway (no config.toml entry, mirroring the memo/lineup pair).
+// to true at the gateway (no config.toml entry, mirroring the memo pair).
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { corsPreflight, jsonError, jsonOk, rejectUnlessMethods } from "../_shared/http.ts";

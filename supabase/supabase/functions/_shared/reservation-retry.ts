@@ -12,7 +12,7 @@
 // scheduling math so it's testable without a clock or a DB.
 //
 // Hours come from `places.hours` (the normalised WeeklyHours jsonb) and the
-// local wall clock from the place's longitude, exactly like the recommenders —
+// local wall clock from the place's longitude, exactly like place recall —
 // one interpretation of "open", never two.
 
 import { localClock, type WeeklyHours } from "./local-time.ts";

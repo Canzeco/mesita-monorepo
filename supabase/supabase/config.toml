@@ -166,9 +166,10 @@ verify_jwt = true
 # read-only — there is deliberately no write endpoint here to add a tool for.
 # Documented for operators at admin.mesita.ai/memo-config (Data Access).
 
-# Lineup's RAG leg: pool near the caller → embed intent → cosine rank → public
-# cards. Embeddings, ranker internals and OPENAI_KEY never leave this function.
-[functions.supabase-edgefunc-recall-lineup]
+# Memo's RAG leg: pool near the caller → embed intent → cosine rank → public
+# cards. Embedding vectors and OPENAI_KEY never leave this function. Renamed
+# from -recall-lineup by MESITA-1048; the cosine relevance itself is unchanged.
+[functions.supabase-edgefunc-recall-places]
 verify_jwt = true
 
 # Public catalog lookup by name (status ∈ active,lead) and/or by Google place id
@@ -223,20 +224,12 @@ verify_jwt = false
 [functions.consumer-web-ask-memo]
 verify_jwt = false
 
-# Personalised discovery surfaces. JWT required so we can read the
-# consumer's class + history; the recommendation logic still respects
-# RLS for place visibility.
-[functions.consumer-web-recommend-map]
-verify_jwt = true
-
+# Consumer swipe deck. MESITA-1048 deleted the Lineup engine behind it: this
+# now returns active places in random order and ignores lat/lng/radius. The
+# slug and the {ok, deck, summary} shape are frozen because deployed Expo
+# binaries call it. JWT still required.
 [functions.consumer-web-recommend-swipe]
 verify_jwt = true
-
-# The former recommender-rank-map / recommender-rank-swipe artificial
-# callers were absorbed into consumer-web-recommend-* as in-process
-# _shared/recommender-rank-*.ts modules (MESITA-54) — the HTTP hop was a
-# synchronous 1:1 forward that didn't earn its cost. Their cloud slugs
-# stay live until the MESITA-59 cleanup.
 
 # Consumer "Add to Mesita": creates the place inline (MESITA-128; MESITA-127
 # dropped the staggered creation queue — only enrichment is scheduled now).
@@ -524,13 +517,9 @@ verify_jwt = true
 
 # Super-admin free-text place search (name / slug / id) for the admin
 # console's Manage Single Place place picker.
-[functions.admin-web-get-scoring-config]
-verify_jwt = true
-
-[functions.admin-web-get-scoring-sample]
-verify_jwt = true
-
-[functions.admin-web-update-scoring-config]
+# Random sample of real consumers + places for admin config previews (Memo
+# Config playground). Renamed from admin-web-get-scoring-sample (MESITA-1048).
+[functions.admin-web-get-config-sample]
 verify_jwt = true
 
 # Memo Config Playground engine — runs Memo's reasoning agent for a super-admin
@@ -598,15 +587,11 @@ verify_jwt = true
 verify_jwt = false
 
 # --- Admin config surfaces (Atlas / Enricher / Sourcing / Memo / Reservations /
-# Lineup / Rewards / Models) — each re-checks super_admins. Listed explicitly so
+# Rewards / Models) — each re-checks super_admins. Listed explicitly so
 # the ACL ledger matches the folders on disk (defaults were already verify_jwt=true).
 [functions.admin-web-get-memo-config]
 verify_jwt = true
 [functions.admin-web-update-memo-config]
-verify_jwt = true
-[functions.admin-web-get-lineup-config]
-verify_jwt = true
-[functions.admin-web-update-lineup-config]
 verify_jwt = true
 [functions.admin-web-get-sourcing-config]
 verify_jwt = true

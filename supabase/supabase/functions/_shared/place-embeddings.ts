@@ -6,7 +6,7 @@
 //   3. Embed with text-embedding-3-small and persist text + hash + vector
 //
 // Called after enrich-contents publish and after business-web-update-project
-// when embedding-relevant fields change. The recommender lazy path also uses
+// when embedding-relevant fields change. The lazy embed path also uses
 // synthesizePlaceEmbeddingText via embedAndPersistPlaces.
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
@@ -171,7 +171,7 @@ async function computeAndPersistPlaceEmbedding(
     vector = await embedSingle(
       text,
       apiKey,
-      models.lineupModel || DEFAULT_EMBEDDING_MODEL,
+      models.embeddingModel || DEFAULT_EMBEDDING_MODEL,
     );
   } catch (err) {
     console.error(`[${logPrefix}] embed failed:`, err);

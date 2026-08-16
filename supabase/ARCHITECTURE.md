@@ -13,7 +13,13 @@ mobile, over one shared Supabase backend:
 - **Consumer** (`consumer.mesita.ai` + `apps/mobile-consumer`) — discovery
   (swipe / map; Ask AI / Memo parked on Home), reservations, at-the-bill
   discounts, and a **class** ladder Standard / Premium / Influencer / Aura
-  (doors model MESITA-972 — slot is the highest open door).
+  (doors model MESITA-972 — slot is the highest open door). The swipe deck is
+  **unranked**: `consumer-web-recommend-swipe` returns every active place in
+  uniformly random order (MESITA-1048 — the Lineup scoring engine was deleted
+  and nothing has replaced it yet). The slug and the `{ ok, deck, summary }`
+  response shape are frozen because deployed Expo binaries call it; `lat` /
+  `lng` / `radiusKm` / `randomness` are still accepted and ignored. Map and
+  search read `consumer-web-list-places`.
 - **Business** (`business.mesita.ai`) — console, four tabs: Place · Promos ·
   Performance · Settings (team + channel routing + Check PIN live under
   Settings; no scan/tickets surface — MESITA-843/900); **plan**
@@ -22,7 +28,7 @@ mobile, over one shared Supabase backend:
 - **Check** (`check.mesita.ai` — `apps/web-check`) — public staff check page for
   Tickets v2; QR capability-URL auth (`check-web-*`, `verify_jwt=false`).
 - **Admin** (`admin.mesita.ai`) — super-admin console: binding configs (Admin /
-  Models / Sourcing / Atlas / Enricher / Verification / Ojo / Lineup / Promos /
+  Models / Sourcing / Atlas / Enricher / Verification / Ojo / Promos /
   Memo / Reservations — Ojo's knobs are staged until its engine ships,
   MESITA-1034), the verification queue, per-place inspection, and a read-only
   `/brand` reference.
@@ -38,7 +44,7 @@ history imported from the six former standalone repos (MESITA-455).
 
 | Package | Role | Stack | Deploy |
 |------|------|-------|--------|
-| `supabase/` | **Source of truth**: DB schema, RLS, ~138 Edge Functions, migrations | Deno / SQL | Supabase cloud |
+| `supabase/` | **Source of truth**: DB schema, RLS, ~136 Edge Functions, migrations | Deno / SQL | Supabase cloud |
 | `apps/web-consumer` | Consumer app | Next.js (Node 22+) | Vercel |
 | `apps/web-business` | Business console | Next.js (Node 22+) | Vercel |
 | `apps/web-admin` | Admin console | Next.js (Node 22+) | Vercel |
@@ -102,7 +108,7 @@ Each endpoint encodes exactly one authorized caller from a **closed set**. The n
   `supabase-edgefunc` · `stripe-webhook-handle-event`.
 - Product callers may invoke internal ones, never the reverse.
 
-138 EFs today (folders under `supabase/supabase/functions/`, excl. `_shared`).
+136 EFs today (folders under `supabase/supabase/functions/`, excl. `_shared`).
 `_shared/` holds internal helpers (free-form naming).
 
 ## Data layer (Postgres)
@@ -209,7 +215,7 @@ Apify/Perplexity/Firecrawl budget** — deploying/arming the cron is money-gated
   - **INVARIANT: Memo holds no database client.** Every Mesita read — on the
     reasoning-agent engine AND the legacy pipeline — goes through
     `_shared/memo-data.ts` to a closed set of four read-only internal EFs:
-    `supabase-edgefunc-{recall-lineup, search-places, get-consumer-context,
+    `supabase-edgefunc-{recall-places, search-places, get-consumer-context,
     get-memo-config}`. Each owns its own SELECT and projects to a public shape,
     so the column whitelist lives at the source, not in the agent. This is the
     reach half of the airlock (`_shared/memo-airlock.ts` is the capability half):
