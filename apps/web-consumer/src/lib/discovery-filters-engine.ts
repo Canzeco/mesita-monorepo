@@ -136,9 +136,9 @@ export type DiscoveryFilters = {
   maxKm: number | null;
   /** When to go — now / anytime / a specific weekday + hour. */
   when: DiscoveryWhen;
-  // That — the intent's 4th axis — lives with Memo, which passes the ask to
-  // Lineup on its own call. It is NOT a consumer filter control: the sheet
-  // shipped one in MESITA-699 but never sent it anywhere, so it's gone.
+  // That — the intent's 4th axis — lives with Memo, which carries the ask
+  // through its own recall call. It is NOT a consumer filter control: the
+  // sheet shipped one in MESITA-699 but never sent it anywhere, so it's gone.
   /** Deck ordering level, 0 low → 4 max (full shuffle). */
   randomness: RandomnessLevel;
 };

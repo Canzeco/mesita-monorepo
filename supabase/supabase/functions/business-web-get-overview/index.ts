@@ -19,8 +19,13 @@ import {
 } from "../_shared/auth.ts";
 import { PLACE_BUSINESS_COLUMNS as PLACE_COLUMNS } from "../_shared/place-columns.ts";
 
-// Super-admin manage-single Embeddings card (MESITA-720) — keep vectors off
-// the business overview payload; only elevate when the caller is a super-admin.
+// Super-admin manage-single extras: the Embeddings card (MESITA-720) and the
+// per-place manual_priority override. Keep both off the business overview
+// payload; only elevate when the caller is a super-admin.
+//
+// manual_priority no longer feeds anything (MESITA-1048 deleted the Lineup
+// engine that read it) — the column and this editor stay so operator intent
+// survives the rebuild.
 const PLACE_ADMIN_EMBEDDING_COLUMNS =
   ", embedding, embedding_source_hash, embedding_source_text, manual_priority";
 

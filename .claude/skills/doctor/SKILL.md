@@ -55,13 +55,13 @@ Each check: run it, record `OK` / `FINDING` / `SKIPPED (reason)`. Never leave a 
 The singleton rule is the one that silently breaks. Check it first.
 
 1.1 **Edge Functions inventory.** `list_edge_functions` vs `supabase/supabase/functions/*`
-    (142 in repo at time of writing). Report: in repo not deployed · deployed not in repo
+    (136 in repo at time of writing). Report: in repo not deployed · deployed not in repo
     (ghosts) · name mismatches.
 1.2 **EF body drift.** For every EF, `get_edge_function` vs the repo source. Flag any where
     cloud ≠ repo. Two known killers: (a) a deploy that shipped a **stub** over real code,
     (b) a deploy from clean main that **reverted cloud-only** edits (EFs bundle their own
     `_shared/*`). Both look fine in the dashboard.
-1.3 **Migration ledger.** `list_migrations` vs `supabase/supabase/migrations/*` (249 files).
+1.3 **Migration ledger.** `list_migrations` vs `supabase/supabase/migrations/*` (250 files).
     Flag: file with no ledger row (unapplied) · ledger row with no file (applied off-repo,
     the dangerous one) · version ordering anomalies.
 1.4 **Schema drift.** Live tables/columns/enums/views/functions vs what the migrations
@@ -78,7 +78,12 @@ The singleton rule is the one that silently breaks. Check it first.
     the registry. (The old `preserved_media_assets:true` return flag is gone — do not
     re-report it.)
 1.6 **Known-intentional exceptions** — assert they still hold, and report if flipped:
-    `projects_view` must be `security_invoker = true`.
+    `projects_view` must be `security_invoker = true`. Two things that look broken and
+    are not (MESITA-1048, until a new engine ships): `consumer-web-recommend-swipe`
+    returns active places in random order and reads-then-discards `lat` / `lng` /
+    `radiusKm` / `randomness` — slug and response shape are frozen for deployed Expo
+    binaries; and `places.manual_priority` has no reader, kept because dropping it means
+    rebuilding `projects_view` and both INSTEAD OF triggers.
 
 ## Scope 2 — Postgres health (imported standard) · P1
 
@@ -129,12 +134,13 @@ The business-truth layer. These are the "and shit" checks — pairs of facts tha
 
 ## Scope 4 — Config enforcement ("unenforced config = bug") · P1
 
-For each admin config page — `adea` · `admin` · `atlas` · `db` · `enricher` · `lineup` ·
-`memo` · `models` · `reservations` · `rewards` · `scoring` · `sourcing`:
+For each admin config page — `adea` · `admin` · `atlas` · `db` · `enricher` ·
+`memo` · `models` · `reservations` · `rewards` · `sourcing`:
 
 4.1 **Blob exists and parses** in `app_settings`, and validates against the TS schema the
-    admin page and the consuming EFs expect (e.g. `scoring_config` is blob **v12** — column
-    name intentionally kept).
+    admin page and the consuming EFs expect (e.g. `rewards_config` carries the **v10**
+    additive bill engine; the page reads "Promos Config" but the column and the
+    `/rewards-config` route keep the older name on purpose).
 4.2 **Shape skew.** Stored blob shape older/newer than its reader → the reader is silently
     falling back to defaults. This is the single most common invisible bug class here.
 4.3 **Dead knobs.** Every field in the blob: grep for a reader in EFs/apps. No reader = dead knob.
@@ -147,9 +153,9 @@ For each admin config page — `adea` · `admin` · `atlas` · `db` · `enricher
 
 5.1 **EF naming.** `<caller>-<verb>-<name>`; caller prefix ∈ the registered set
     (`admin` · `business` · `consumer` · `staff` · `check` · `eleven` · `stripe` ·
-    `supabase` · `_shared`; retired: `twilio`). Current census: admin 43 · business 33 ·
-    consumer 36 · check 3 · eleven 9 · supabase 12 · stripe 1 · staff 1 — report drift
-    from that shape. Reservationist ships as `eleven-a{1–4}` / `eleven-agent`, not
+    `supabase` · `_shared`; retired: `twilio`). Current census: admin 41 · business 33 ·
+    consumer 36 (35 `consumer-web` + 1 `consumer-mcp`) · check 3 · eleven 9 · supabase 12 ·
+    stripe 1 · staff 1 — report drift from that shape. Reservationist ships as `eleven-a{1–4}` / `eleven-agent`, not
     `reservationist-agent`.
 5.2 **Direction rule.** Natural callers may invoke artificial callers, never the reverse.
 5.3 **Clients never touch the DB.** Grep app code for direct `supabase.from(` / `.rpc(`

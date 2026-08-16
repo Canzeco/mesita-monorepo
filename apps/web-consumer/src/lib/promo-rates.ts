@@ -99,7 +99,7 @@ function resolveActivePromoRate(
 // Three strategies — zero / conservative / aggressive. The four place rate
 // columns ARE the strategy (a membership writes them as one preset — admin-
 // web-set-plan refuses partial grids), so the client recovers it by exact
-// preset match, mirroring _shared/lineup-strategy.ts. null/custom coerces to
+// preset match, mirroring _shared/promo-strategy.ts. null/custom coerces to
 // "zero", same as the bill engine.
 export type PlaceStrategy = "zero" | "conservative" | "aggressive";
 

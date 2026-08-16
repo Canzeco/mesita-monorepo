@@ -19,6 +19,9 @@ import { errMsg } from '@/lib/utils';
 
 type Coords = { lat: number; lng: number };
 
+// Local catalog Memo resolves its place mentions against. The deck EF is just
+// a cheap random sample of active places — Memo does its own retrieval
+// server-side; this list is only for matching names back to rows.
 async function fetchCatalogPlaces(): Promise<Place[]> {
   try {
     const result = await apiRecommendDeck(supabase, { limit: 50 });

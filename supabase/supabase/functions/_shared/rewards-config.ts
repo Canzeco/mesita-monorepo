@@ -26,7 +26,7 @@
 // here — never per-class branches.
 
 import { type SupabaseClient } from "jsr:@supabase/supabase-js@2";
-import { strategyForRates, ratesFromPlace, type PromoRates } from "./lineup-strategy.ts";
+import { strategyForRates, ratesFromPlace, type PromoRates } from "./promo-strategy.ts";
 import {
   legacyRulesFromV10,
   normalizePromosV10,

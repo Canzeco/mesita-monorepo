@@ -7,8 +7,8 @@
 // its pre-enrichment values — an "Undefined" category on a place that had long
 // since been enriched, surviving every reload for the life of the tab.
 //
-// v2 stores ids only. The deck is re-fetched (Lineup re-run) on every load and
-// is the single source of truth for what a card says; the snapshot only skips
+// v2 stores ids only. A fresh random deck is re-fetched on every load and is
+// the single source of truth for what a card says; the snapshot only skips
 // what the guest already swiped, so their position survives a refresh without
 // freezing the data behind it.
 

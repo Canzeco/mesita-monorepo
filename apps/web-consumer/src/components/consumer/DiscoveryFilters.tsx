@@ -35,7 +35,7 @@ import {
 // Shared body of the discovery Filters route modal (Home Swipe + Search) —
 // MESITA-905 simplify + routed /filters. INTENT (Where · When · What) +
 // Random (word levels low→max), each in a modular box. That — the ask — is
-// Memo's, not a filter: it rides Memo's own Lineup call. State in
+// Memo's, not a filter: it rides Memo's own recall call. State in
 // use-discovery-filters; dismiss via onClose → router.back().
 
 export function DiscoveryFilters({

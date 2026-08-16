@@ -45,7 +45,7 @@ import {
 } from "../_shared/auth.ts";
 import { PLACE_BUSINESS_COLUMNS } from "../_shared/place-columns.ts";
 import { normalisePromoRate, PROMO_RATE_FIELDS } from "../_shared/promo-rates.ts";
-import { ratesFromPlace } from "../_shared/lineup-strategy.ts";
+import { ratesFromPlace } from "../_shared/promo-strategy.ts";
 import {
   applyListingTypeToPatch,
   effectiveRatesAfterPatch,

@@ -142,7 +142,7 @@ export type AskMemoResult =
   | { ok: false; error: string };
 
 // ── Playground · session ────────────────────────────────────────────────
-// A real consumer sampled from the DB (admin-web-get-scoring-sample) for the
+// A real consumer sampled from the DB (admin-web-get-config-sample) for the
 // "talk as a real user" picker. First name only + coarse demographics — the
 // same signals Memo itself reasons over.
 export type SampleConsumer = {

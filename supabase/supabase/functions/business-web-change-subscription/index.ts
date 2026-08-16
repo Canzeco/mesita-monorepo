@@ -44,7 +44,7 @@ import {
 import {
   applyListingTypeToPatch,
 } from "../_shared/partner-derivation.ts";
-import { ratesFromPlace } from "../_shared/lineup-strategy.ts";
+import { ratesFromPlace } from "../_shared/promo-strategy.ts";
 
 type Body = {
   /** Canonical place-row id key (MESITA-26); `projectId` kept as legacy alias. */

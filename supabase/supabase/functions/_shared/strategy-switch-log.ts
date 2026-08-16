@@ -1,6 +1,6 @@
 // Structured audit log for free strategy switches (MESITA-912 T6).
 
-import { strategyForRates, type PromoRates } from "./lineup-strategy.ts";
+import { strategyForRates, type PromoRates } from "./promo-strategy.ts";
 
 export function logStrategySwitch(params: {
   project: string;

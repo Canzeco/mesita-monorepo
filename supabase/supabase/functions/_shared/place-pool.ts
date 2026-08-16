@@ -1,33 +1,41 @@
-// Candidate-pool query shared by every recommender pipeline.
+// Bounded candidate-pool query over the active place catalog.
 //
-// Recommender pipelines (_shared/recommender-rank-swipe.ts and
-// _shared/recommender-rank-map.ts, run in-process by the
-// consumer-web-recommend-* EFs) all start the same way: pull a bounded set
-// of active places — by bounding-box if the caller has a location,
-// otherwise newest-first — then hand the rows to the ranker.
-// Keeping the SELECT in one place means new columns flow into every
-// recommender without per-EF edits.
+// Was `recommender-pool.ts` until MESITA-1048. The Lineup scoring engine that
+// named it is gone; the query survived because Memo's RAG leg
+// (supabase-edgefunc-recall-places) genuinely needs it: pull a bounded set of
+// ACTIVE places — by bounding box when the caller has a location, otherwise
+// newest-first — then cosine-rank them against an embedded intent.
+//
+// Keeping the SELECT in one place means a new place column flows into every
+// reader without per-EF edits.
 //
 // Place/consumer shapes + clampPositive/stripInternal live in
-// recommender-pool-shape.ts; re-exported here so existing imports keep working.
+// place-pool-shape.ts; re-exported here so callers can import either.
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { PLACE_PUBLIC_COLUMNS } from "./place-columns.ts";
 import { haversineKm, radiusBoundingBox } from "./geo.ts";
 
 export {
-  type PlaceRow,
-  type ConsumerProfile,
   clampPositive,
+  type ConsumerProfile,
+  type PlaceRow,
   stripInternal,
-} from "./recommender-pool-shape.ts";
+} from "./place-pool-shape.ts";
 
-// Same projection as PLACE_PUBLIC_COLUMNS but with the two ranker-internal
-// columns appended. Both columns are stripped by the ranker before the row
-// crosses back over the wire to the client.
-const RECOMMENDER_PLACE_COLUMNS =
-  PLACE_PUBLIC_COLUMNS +
-  ", embedding, embedding_source_hash, embedding_source_text, manual_priority";
+// The public projection plus ONE extra column: `embedding`, the paid OpenAI
+// vector cosine ranking reads. The other three columns this projection used to
+// carry died with the Lineup engine (MESITA-1048):
+//   • manual_priority           — the MP subscore's input. The COLUMN stays in
+//                                 the database (dropping it means rebuilding
+//                                 projects_view and both INSTEAD OF triggers,
+//                                 which reopened an anon-browse RLS hole once
+//                                 before), but no code reads it anymore.
+//   • embedding_source_hash     — only the lazy-embed writeback needed these,
+//   • embedding_source_text       and nothing on this path writes.
+// `embedding` is stripped by stripInternal before a row crosses back over the
+// wire to a client.
+const POOL_PLACE_COLUMNS = PLACE_PUBLIC_COLUMNS + ", embedding";
 
 type CandidatePoolOptions = {
   lat: number | null;
@@ -42,9 +50,7 @@ type CandidatePoolResult<T> =
 
 // Returns the rows trimmed to radius (when location is supplied) and capped
 // at poolSize. Callers cast the result to their local PlaceRow type so they
-// can keep stricter typing — the rows always satisfy EmbeddablePlace at
-// minimum because RECOMMENDER_PLACE_COLUMNS includes everything embeddings.ts
-// needs.
+// can keep stricter typing.
 export async function fetchCandidatePool<T extends { lat: number | null; lng: number | null }>(
   admin: SupabaseClient,
   { lat, lng, radiusKm, poolSize }: CandidatePoolOptions,
@@ -53,7 +59,7 @@ export async function fetchCandidatePool<T extends { lat: number | null; lng: nu
     const { latDelta, lngDelta } = radiusBoundingBox(lat, radiusKm);
     const { data, error } = await admin
       .from("projects_view")
-      .select(RECOMMENDER_PLACE_COLUMNS)
+      .select(POOL_PLACE_COLUMNS)
       .eq("status", "active")
       .gte("lat", lat - latDelta)
       .lte("lat", lat + latDelta)
@@ -71,7 +77,7 @@ export async function fetchCandidatePool<T extends { lat: number | null; lng: nu
 
   const { data, error } = await admin
     .from("projects_view")
-    .select(RECOMMENDER_PLACE_COLUMNS)
+    .select(POOL_PLACE_COLUMNS)
     .eq("status", "active")
     .order("created_at", { ascending: false })
     .limit(poolSize);

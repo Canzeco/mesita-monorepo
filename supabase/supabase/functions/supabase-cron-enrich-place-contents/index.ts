@@ -239,7 +239,7 @@ serveEnrichStage("contents", async (admin, env, row) => {
 
   // On-Update S2/S3 — synthesize short embedding blurb (no tags) + vector.
   // Best-effort: profile is already ready; a failed embed leaves lazy
-  // recommender backfill as the safety net.
+  // lazy embedding backfill as the safety net.
   const openaiKey = Deno.env.get("OPENAI_KEY")?.trim();
   await runPlaceEmbeddingsOnUpdate(
     admin,

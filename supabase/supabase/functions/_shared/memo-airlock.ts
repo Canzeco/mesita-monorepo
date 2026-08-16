@@ -255,7 +255,7 @@ export type AgentOutput = {
 // (public-safe) results, and finally answers in natural language. We collect
 // place-card predictions + citations from whatever tools it used along the
 // way. `messages` lets the caller prime the loop RAG-first (e.g. with a
-// Lineup recall already in context) per Pato's "RAG is central". Each round
+// catalog recall already in context) per Pato's "RAG is central". Each round
 // and the final answer are recorded to ctx.trace when one is attached.
 export async function runAgent(
   airlock: Airlock,

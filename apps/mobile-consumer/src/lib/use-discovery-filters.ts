@@ -19,7 +19,7 @@ import {
 import { PLACE_FAMILIES, type FamilyKey } from '@/lib/place-families';
 
 // v4 = v3 + `ask` (the intent's That axis, MESITA-699), since dropped — Memo
-// owns the ask and passes it to Lineup itself. The key stays v4 because
+// owns the ask and carries it on its own call. The key stays v4 because
 // ignoring a removed field is backward-safe; bumping would wipe live
 // zone/when/distance. Old keys ignored.
 const STORAGE_KEY = 'mesita_discovery_filters_v4';

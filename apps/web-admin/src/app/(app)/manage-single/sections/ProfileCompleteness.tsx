@@ -32,7 +32,7 @@ type CompletenessCheck = {
 };
 
 // Weights sum to exactly 100. Photos weigh most — they carry the consumer
-// card; the rest are the fields a guest (or the recommender) actually reads.
+// card; the rest are the fields a guest actually reads.
 const CHECKS: readonly CompletenessCheck[] = [
   {
     label: "Name",

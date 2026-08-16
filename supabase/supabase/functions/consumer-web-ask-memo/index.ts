@@ -6,7 +6,7 @@
 //
 // MEMO HOLDS NO DATABASE CLIENT. Every Mesita read on both engines below goes
 // through _shared/memo-data.ts to one of four named, read-only internal EFs
-// (recall-lineup · search-places · get-consumer-context · get-memo-config).
+// (recall-places · search-places · get-consumer-context · get-memo-config).
 // This EF authenticates the consumer and shapes the reply; it does not query.
 // See memo-data.ts for why, and admin.mesita.ai/memo-config (Data Access) for
 // the operator-facing map of that surface.
@@ -152,7 +152,7 @@ Deno.serve(async (req) => {
     ? data.consumerContext(user.id)
     : Promise.resolve<string | null>(null);
 
-  // Memo v-next: the OpenAI reasoning airlock (sources: Perplexity · Lineup RAG
+  // Memo v-next: the OpenAI reasoning airlock (sources: Perplexity · catalog RAG
   // · passive public catalog reads). Gated behind MEMO_ENGINE=agent so this
   // ships dark until flipped; returns the exact same response contract as below,
   // so the (already-enabled) frontend is untouched either way.

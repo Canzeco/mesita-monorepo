@@ -100,12 +100,12 @@ export async function askMemoAdmin(input: {
 }
 
 // Sample real consumers for the "talk as a real user" picker. Reuses the
-// scoring-sample EF (super-admin gated) which already returns a random sample
+// config-sample EF (super-admin gated) which already returns a random sample
 // of real consumers with first name + coarse demographics — the same signals
 // Memo reasons over. `places: 1` is the EF's minimum; we only read consumers.
 export async function sampleConsumers(): Promise<SampleConsumersResult> {
   const r = await efInvoke<{ consumers?: SampleConsumer[] }>(
-    "admin-web-get-scoring-sample",
+    "admin-web-get-config-sample",
     { consumers: 10, places: 1 },
   );
   if (!r.ok) return { ok: false, error: r.error };

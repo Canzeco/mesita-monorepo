@@ -2,8 +2,9 @@ import { describe, expect, it } from "vitest";
 import { enrichPlaceOverview } from "@/lib/mock/enrich-overview";
 import type { Place } from "@/lib/api/places";
 
-// Pins the Enriching signal for swipe / catalog cards. recommend-swipe already
-// returns content_status via PLACE_PUBLIC_COLUMNS; enrichPlaceOverview must
+// Pins the Enriching signal for swipe / catalog cards.
+// consumer-web-recommend-swipe already returns content_status via
+// PLACE_PUBLIC_COLUMNS; enrichPlaceOverview must
 // map it to is_enriching so SwipeCardInfo can lead the tag row (parity with
 // place detail). Regressions here hide the chip on newly created places.
 

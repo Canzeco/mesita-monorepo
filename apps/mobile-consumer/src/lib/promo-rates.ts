@@ -112,7 +112,7 @@ export function resolvePromoRateFromPlaceRow(
 // ── Strategy derivation (v7, MESITA-861) ────────────────────────────────
 // Three strategies — zero / conservative / aggressive. The four place rate
 // columns ARE the strategy (a membership writes them as one preset), so the
-// client recovers it by exact match — mirroring _shared/lineup-strategy.ts.
+// client recovers it by exact match — mirroring _shared/promo-strategy.ts.
 // Custom/null coerces to "zero", same as the bill engine.
 export type PlaceStrategy = 'zero' | 'conservative' | 'aggressive';
 

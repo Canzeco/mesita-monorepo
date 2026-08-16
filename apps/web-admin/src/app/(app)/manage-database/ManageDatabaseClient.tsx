@@ -124,8 +124,8 @@ function ResetCard() {
         deletes every stored image and menu file, and removes every auth account
         that isn&apos;t an admin.{" "}
         <strong>Preserved:</strong> admin allowlist, all admin console configs
-        (Atlas / Enricher / Memo / Sourcing / Scoring / Reservations / Rewards /
-        Models / Agents / Verification), reward payout rules, and the
+        (Atlas / Enricher / Memo / Sourcing / Reservations / Rewards / Models /
+        Agents / Verification), reward payout rules, and the
         category / tag / class / plan vocabularies. This cannot be undone.
       </p>
 

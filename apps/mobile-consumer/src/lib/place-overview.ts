@@ -2,8 +2,8 @@
 // apps/web-consumer/src/lib/mock/enrich-overview.ts).
 //
 // The discover EFs return the FULL public places projection on every row:
-// consumer-web-recommend-swipe → recommender-rank-swipe pulls
-// PLACE_PUBLIC_COLUMNS (only the two embedding columns are stripped), and
+// consumer-web-recommend-swipe pulls PLACE_PUBLIC_COLUMNS (only the two
+// embedding columns are stripped), and
 // consumer-web-list-places selects the same set. So each Place the client
 // receives already carries the raw signal columns — google_stars_overall,
 // google_review_count, instagram_followers_count, price_level, hours,

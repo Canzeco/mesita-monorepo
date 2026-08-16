@@ -1,4 +1,4 @@
-// Unit tests for the recommender local-time / open-now helpers. Pure, no
+// Unit tests for the local-time / open-now helpers. Pure, no
 // network/DB. The wall-clock functions (localClock/isOpenNow) delegate to the
 // pure isOpenAt, which is what we pin down here.
 //   deno test supabase/functions/_shared/local-time.test.ts

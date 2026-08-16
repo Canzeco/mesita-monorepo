@@ -65,7 +65,7 @@ export const KNOWN_PROBES: ReadonlyArray<{
   {
     id: "google-places",
     label: "Google Places",
-    impact: "Identity spine for Atlas, Enricher and Lineup",
+    impact: "Identity spine for Atlas and the Enricher",
   },
 ];
 

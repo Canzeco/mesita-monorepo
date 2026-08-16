@@ -6,7 +6,7 @@ import { ConfigTabNav } from "@/components/ConfigTabNav";
 import { MEMO_SUBROUTES } from "./nav";
 
 // Memo Config shell — the header + the Config/Playground tab strip. Mirrors the
-// Enricher / Lineup config shells; the description switches per active tab.
+// Enricher / Atlas config shells; the description switches per active tab.
 const SUBPAGE_DESCRIPTION: Record<string, string> = {
   "/memo-config/config":
     "Memo is Mesita's consumer AI concierge (Home Ask AI is parked; engine + Playground live via consumer-web-ask-memo / admin-web-ask-memo). Instructions and greeting are live here (ask-memo bootstrap). Live OpenAI + Perplexity model picks come from Models Config (models_config.memo via get-memo-config). Web grounding and the legacy model fields on this page are staged / not wired.",

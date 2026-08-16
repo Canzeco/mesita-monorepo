@@ -30,7 +30,7 @@ export const ENRICH_FIELD_LIMITS = {
   embeddingSourceText: {
     max: 60,
     unit: "words",
-    note: "places.embedding_source_text — Place Synthesis blurb for semantic search (On-Create / On-Update / lazy recommender). Hard 60-word ceiling, truncated on word boundaries.",
+    note: "places.embedding_source_text — Place Synthesis blurb for semantic search (On-Create / On-Update / lazy backfill). Hard 60-word ceiling, truncated on word boundaries.",
   },
   tagsPerPlace: {
     max: 20,
