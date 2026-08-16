@@ -23,7 +23,9 @@ const MODES: (SegmentItem & {
 })[] = [
   { key: 'swipe', title: 'Swipe', Icon: Flame },
   { key: 'catalog', title: 'Catalog', Icon: LayoutGrid },
-  { key: 'ai', title: 'Memo', Icon: Sparkles, soon: true },
+  // "Chat" names what the mode does; Don Memo stays the persona you meet
+  // inside it, so the coming-soon body still introduces him by name.
+  { key: 'ai', title: 'Chat', Icon: Sparkles, soon: true },
   { key: 'social', title: 'Social', Icon: Users, soon: true },
   { key: 'favorites', title: 'Favorites', Icon: Heart },
 ];
@@ -32,7 +34,7 @@ type SoonMode = 'ai' | 'social';
 
 const SOON_META = {
   ai: {
-    title: 'Memo',
+    title: 'Chat',
     body: "Don Memo, your AI concierge, is almost ready — tell him the vibe you want and he'll find your spot.",
     Icon: Sparkles,
   },

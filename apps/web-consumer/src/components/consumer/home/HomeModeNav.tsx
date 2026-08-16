@@ -5,10 +5,17 @@
 // layout, so the fetched deck (HomeDeckBoundary) is reused, not re-fetched.
 // The shell renders no TopBar for /home, so this band IS the page's top chrome.
 //
-// The pills are content-width in a scrollbar-hidden horizontal scroller, not
-// flex-1: five icon+label pills can't share the max-w-md frame without
-// truncating "Favorites", so the tail scrolls instead of squeezing. Swipe
-// through Social read at rest; Favorites is the one that peeks.
+// All FIVE labels fit the max-w-md frame at rest (Pato, 2026-08-16). They used
+// to overflow: the row scrolled and "Favorites" sat clipped mid-word at the
+// right edge, which reads as a broken render rather than an affordance — and
+// once Catalog un-parked, the clipped pill was hiding a LIVE mode. The fix is
+// metrics, not fewer modes: tighter pill padding, a tighter icon/label gap and
+// 14px icons buy back the ~50px needed, with the labels left intact.
+//
+// The horizontal scroller stays as the fallback, not the resting state: at
+// large accessibility text sizes the row overflows again and scrolling is the
+// correct degradation. Adding a sixth mode, or a label longer than
+// "Favorites", puts it back over budget — measure before adding either.
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -30,7 +37,10 @@ import { LocalDialog } from "@/components/consumer/overlay/LocalOverlay";
 // instead of routing (their routes still redirect to swipe, so direct URLs
 // can't reach the parked content). Kept visible + tappable so the surface
 // reads as intentional; un-parking is `soon: false` + restoring the page.
-// ("Memo" = the Ask AI concierge.)
+//
+// The AI mode's pill reads "Chat", not "Memo" (Pato, 2026-08-16): the label
+// names what the mode DOES, and Don Memo stays the persona you meet inside it
+// — so the blurb still introduces him by name. The route is still /home/ai.
 type Tab = {
   href: string;
   label: string;
@@ -44,7 +54,7 @@ const TABS: Tab[] = [
   { href: CONSUMER_ROUTES.homeTabs.catalog, label: "Catalog", Icon: LayoutGrid },
   {
     href: CONSUMER_ROUTES.homeTabs.ai,
-    label: "Memo",
+    label: "Chat",
     Icon: Sparkles,
     soon: true,
     blurb:
@@ -66,11 +76,11 @@ export function HomeModeNav() {
   const [soonTab, setSoonTab] = useState<Tab | null>(null);
 
   const baseClass =
-    "flex shrink-0 items-center justify-center gap-1.5 rounded-full px-3 py-2 text-xs font-semibold whitespace-nowrap transition active:scale-[0.98]";
+    "flex shrink-0 items-center justify-center gap-1 rounded-full px-2.5 py-2 text-xs font-semibold whitespace-nowrap transition active:scale-[0.98]";
 
   return (
     <div className="border-border bg-background/90 sticky top-0 z-20 shrink-0 border-b backdrop-blur-xl">
-      <div className="scrollbar-hide flex items-center gap-1.5 overflow-x-auto px-3 py-2.5">
+      <div className="scrollbar-hide flex items-center gap-1 overflow-x-auto px-2 py-2.5">
         {TABS.map((tab) => {
           const { href, label, Icon, soon } = tab;
           const active = pathname === href || pathname.startsWith(`${href}/`);
@@ -86,7 +96,7 @@ export function HomeModeNav() {
                   "text-muted-foreground hover:text-foreground",
                 )}
               >
-                <Icon className="h-4 w-4" strokeWidth={2.2} />
+                <Icon className="h-3.5 w-3.5" strokeWidth={2.2} />
                 <span>{label}</span>
               </button>
             );
@@ -104,7 +114,7 @@ export function HomeModeNav() {
                   : "text-muted-foreground hover:text-foreground",
               )}
             >
-              <Icon className="h-4 w-4" strokeWidth={2.2} />
+              <Icon className="h-3.5 w-3.5" strokeWidth={2.2} />
               <span>{label}</span>
             </Link>
           );
