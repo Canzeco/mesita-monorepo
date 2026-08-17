@@ -18,6 +18,7 @@ import { AURA_CONSUMERS_PARENT } from "@/app/(app)/aura-consumers/nav";
 import { BILLING_TEST_PARENT } from "@/app/(app)/billing-test/nav";
 import { DB_PARENT } from "@/app/(app)/manage-database/nav";
 import { ENRICHER_PARENT } from "@/app/(app)/enricher-config/nav";
+import { FILTERS_PARENT } from "@/app/(app)/filters-config/nav";
 import { MEMO_PARENT } from "@/app/(app)/memo-config/nav";
 import { MODELS_PARENT } from "@/app/(app)/models-config/nav";
 import { OJO_PARENT } from "@/app/(app)/ojo-config/nav";
@@ -100,6 +101,9 @@ const CONFIGURATIONS_NAV: NavItem[] = [
   ENRICHER_PARENT,
   VERIFICATION_PARENT,
   OJO_PARENT,
+  // Discovery sits between "is this place real" and "what does a visit pay":
+  // Filters is how demand finds the supply the pages above it admitted.
+  FILTERS_PARENT,
   REWARDS_PARENT,
   MEMO_PARENT,
   RESERVATIONS_PARENT,
