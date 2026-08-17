@@ -269,7 +269,7 @@ export function SettingsModal({
             />
           </SettingsGroup>
 
-          <SettingsGroup title="Privacy & data">
+          <SettingsGroup title="Your data">
             <SettingsLinkRow
               Icon={Download}
               tint="emerald"

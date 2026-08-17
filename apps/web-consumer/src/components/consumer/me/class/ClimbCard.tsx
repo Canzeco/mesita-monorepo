@@ -21,6 +21,9 @@ export type ClimbCardData = {
   iconBg: string;
   title: string;
   via?: string;
+  /** Marks an ELEVATED class (anything above Bronze). Paints in brand pink —
+   *  never `tier-premium`, which is the PLAN's colour: a class wearing the
+   *  subscription's blue is the axis merge v2 removed (MESITA-1122). */
   accent?: boolean;
   /** Door one-liner under the title row (price / threshold / invite). */
   door?: string;
@@ -97,7 +100,7 @@ export function ClimbCard({ data }: { data: ClimbCardData }) {
       className={cn(
         "relative overflow-hidden rounded-2xl border p-5",
         data.accent
-          ? "border-tier-premium/30 bg-tier-premium/[0.03]"
+          ? "border-primary/25 bg-primary/[0.03]"
           : "border-border bg-card",
       )}
     >
@@ -115,7 +118,7 @@ export function ClimbCard({ data }: { data: ClimbCardData }) {
             <span
               className={cn(
                 "font-display text-[16px] leading-none font-bold tracking-tight",
-                data.accent && "text-premium",
+                data.accent && "text-primary",
               )}
             >
               {data.title}
@@ -149,7 +152,7 @@ export function ClimbCard({ data }: { data: ClimbCardData }) {
                 className={cn(
                   "mt-[1px] flex h-4.5 w-4.5 shrink-0 items-center justify-center rounded-full",
                   data.accent
-                    ? "bg-tier-premium/15 text-premium"
+                    ? "bg-primary/12 text-primary"
                     : "bg-emerald-500/15 text-emerald-700",
                 )}
               >

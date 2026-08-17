@@ -1,6 +1,6 @@
 "use client";
 
-import { HelpCircle, Instagram, Mail, MessageCircle } from "lucide-react";
+import { HelpCircle, Instagram, Mail } from "lucide-react";
 import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
 import { SHEET_TITLE_CLASS, SHEET_BODY_CLASS } from "@/lib/ui-classes";
 import {
@@ -27,7 +27,7 @@ export function ContactModal({
       <div className={SHEET_BODY_CLASS}>
         <div className="flex items-center gap-3">
           <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-sky-500/10 text-sky-600">
-            <MessageCircle className="h-5 w-5" />
+            <Mail className="h-5 w-5" />
           </span>
           <div>
             <h2 className={SHEET_TITLE_CLASS}>Contact us</h2>
