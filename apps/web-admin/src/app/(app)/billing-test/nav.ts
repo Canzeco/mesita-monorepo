@@ -6,6 +6,6 @@ import { Activity } from "lucide-react";
 // degraded pipeline. TESTING_PARENT is the Sidebar entry.
 export const BILLING_TEST_PARENT = {
   href: "/billing-test",
-  label: "Billing Test",
+  label: "Billing",
   Icon: Activity,
 } as const;

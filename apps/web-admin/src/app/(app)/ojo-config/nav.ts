@@ -7,6 +7,6 @@ import { Eye } from "lucide-react";
 // subject, same "is this real?" family.
 export const OJO_PARENT = {
   href: "/ojo-config",
-  label: "Ojo Config",
+  label: "Ojo",
   Icon: Eye,
 } as const;
