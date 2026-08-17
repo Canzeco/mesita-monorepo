@@ -264,7 +264,8 @@ For each admin config page — `adea` · `admin` · `atlas` · `db` · `enricher
 
 ## Metrics (trendable)
 DB size · largest tables · EF count vs cap · deploy-drift count · advisor counts ·
-error rate · orphan-row counts · dead-knob count
+error rate · orphan-row counts · dead-knob count · instruction-file word counts
+(quickstart + every CLAUDE.md — growth is doc cancer; over budget = flag a rewrite)
 ```
 
 Keep the metrics block byte-identical in structure every day — it is the time series that

@@ -1,46 +1,53 @@
 <!-- RULES-QUICKSTART:START (generated — do not hand-edit; run: deno task sync-rules) -->
 # Mesita — agent quickstart (you're ~90% correct after this)
 
-Stable mirror of the top of the Notion **Rules** page (the master — Notion wins on any conflict). Full page + appendix: https://www.notion.so/Rules-395a9bf37a528081b2c1dacc445bb6c8
+Stable mirror of Notion **Rules** §0 — the master; Notion wins on any conflict: https://www.notion.so/Rules-395a9bf37a528081b2c1dacc445bb6c8
 
-This is **ASDM** — the Agentic Software Development Methodology: one protocol, two domains. **Product Rules** define WHAT Mesita is (Pato owns it; mirror shipped architecture changes there same session) · **ASDM (the Development Rules)** defines HOW agents build it. Same rules, one Linear ledger, on every platform and in every environment — local or cloud; only your **platform protocol** (isolation, branch naming, connectors) differs. Find yours: **Development Rules §K**.
+**ASDM** is the one protocol for all agent work, on every platform and environment: 🏛️ **Product Rules** = WHAT Mesita is (Pato owns it; mirror shipped architecture changes there same session) · ⚙️ **Development Rules** = HOW agents build it. Your platform's ramp (isolation, branch naming, connectors): **Development Rules §K**.
 
 | You're reading | You are |
 | --- | --- |
 | `CLAUDE.md` | Claude Code (local · cloud · subagent) or Claude Cowork |
 | `AGENTS.md` | Cursor, Codex, or any open-standard agent — generated from `CLAUDE.md`; hand edits go there |
 
-- **ONE repo (since 2026-07-11): `Canzeco/mesita-monorepo`** — the whole product, one `.git`, one history: `apps/{web-admin,web-business,web-consumer,web-landing,web-check,mobile-consumer,mobile-business}` + `supabase/`. The six former standalone repos are frozen read-only history — never work in them. Package rules: each package's `CLAUDE.md`.
-- **Agents never talk to each other.** Coordination is written state on two surfaces: **Linear** carries intent (issues, claims, `decision:` comments, statuses) · **git/GitHub** carries the work (branches, squash PRs; `Closes <ID>` is the join). Commits document code, they don't coordinate; chat is ephemeral — durable things land in the ledger or the docs, same session.
-- **ASDM mode — solo (alone on the repo)?** → branch off fresh main, work, squash-PR, merge it yourself, create the one-line issue at merge time (Ops & maintenance). That's the whole loop.
-- **ASDM mode — multi-agent (other agents live on the repo)?** → same loop, plus coordinate: pick → claim (`claimed: <platform>:<session-slug> · branch:<actual-branch>`) → isolated worktree → merge.
-- **Local vs cloud — same ledger; capability follows connectors, not location (v6.1).** Local (Pato's Mac) = full peer: personal connectors, shell secrets, CLI deploys. Cloud (fresh VM clone) = full peer too when claude.ai connectors ride the session — probe at BOOT (one Linear read), then own your loop: ledger ops, squash-merge, Supabase via MCP (deploy guard applies). Missing a connector → hand off only that residue launch-supervised (pushed branch + PR; the dispatching session finishes, noted in the claim). Secrets never travel; mixed local/cloud fleets are normal.
-- **The backend is a singleton.** One Supabase project, ONE live version of the schema and every Edge Function — Supabase branching deliberately unused. Git isolates code, never the cloud: schema/EF changes are claimed footprint; deploy at merge time; keep cloud == repo same session.
-- **One issue = one branch = one worktree = ONE squash PR** (`Closes <ID>`), even when the change spans packages — worktrees scale with issues, never per whim (parallelism = child issues + subagents, ≤5, each in its own; the old same-branch-across-repos / PR-per-repo ceremony is dead). Canonical branch `agent/<ISSUE-ID>-<slug>`; plain CLI: `git worktree add ../mesita-monorepo-<ISSUE-ID> -b agent/<ISSUE-ID>-<slug> origin/main`, then copy the gitignored local state listed in `.worktreeinclude` (Claude Code and Cursor do this automatically). Platform-forced names (e.g. `cursor/*`): declare the real branch in your claim.
-- **Cowork never opens a live repo checkout** — `cowork`-label issues (docs/research/analysis) in non-repo folders only.
-- **ALWAYS:** reply in English · clients call Edge Functions, never the DB · never push to `main` (platform-enforced since 2026-08-16: a GitHub ruleset requires PRs and blocks force-push; squash is the only enabled merge method) · mirror every Supabase cloud change into `supabase/` same session · set terminal status same session · no local WEB dev servers for verification — web verifies via Vercel; mobile verifies via `npx expo export --platform web` + the sanctioned Metro web preview (launch configs `mobile-consumer` :8081 / `mobile-business` :8082) · comply with admin-console configs (Admin / Models / Sourcing / Atlas / Enricher / Verification / Ojo / Promos / Memo / Reservations bind every EF, app & agent — unenforced config = bug; staged knobs must be labeled staged, as Ojo's are until its engine ships).
-- **NEVER ask.** Reversible → decide, log a `decision:` comment, ship. Only two `needs-human` cases: a secret you can't enter, or one irreversible money/publish trigger.
-- **When in doubt**, hierarchy wins: Pato's live instruction > the Linear issue > Notion > memory.
+**The repo.** `Canzeco/mesita-monorepo` is the whole product: `apps/{web-admin,web-business,web-consumer,web-landing,web-check,mobile-consumer,mobile-business}` + `supabase/` + `assets/`. The six former standalone repos are frozen read-only history — never work in them. Package-specific rules: that package's `CLAUDE.md`.
 
-Where things live: **Linear** (team Mesita, `MESITA-`) = work state · **Notion** = knowledge · **GitHub** = code (`Canzeco/mesita-monorepo`). Instruction files chain to their master: package `CLAUDE.md`/`AGENTS.md` (package rules only) → root `CLAUDE.md` (this quickstart) → Notion; every `AGENTS.md` is generated from its sibling `CLAUDE.md` — never hand-edit; `deno task sync-rules` regenerates, CI enforces (Development Rules §C). **The repo holds NO other markdown (2026-08-16):** knowledge → Notion (the Rules tree) · task/commit context → Linear (or the commit message) · code explanation → comments in the code. Allowlist = the `CLAUDE.md`/`AGENTS.md` pairs, `scripts/rules-quickstart.md`, and agent tooling under `.claude/` · `.cursor/` · `.codex/` · `.github/`; `sync-rules:check` fails CI on any other tracked `.md` — never write READMEs, DESIGN/ARCHITECTURE docs, TODO files, or reports into the repo. **The brand is generated the same way:** `assets/brand/brand.json` is the source for the logo, the pink ramp, and the type across all 7 apps — logo assets, the `BRAND-TOKENS` block in each `globals.css`, `src/components/brand/*`, favicons and the mobile blocks are all output. Never hand-edit a generated brand file; edit `brand.json`, run `deno task sync-brand`, CI enforces (`brand.yml`). Guide: Product Rules §F.
+**The blackboard.** Agents never talk to each other. **Linear** (team Mesita, `MESITA-`) carries intent — issues, claims, `decision:` comments, statuses; issues + comments ONLY, Linear documents are prohibited. **git/GitHub** carries the work — branches and squash PRs; `Closes <ID>` is the join. Chat is ephemeral: durable state → Linear, durable knowledge → Notion, same session.
+
+**The loop.**
+
+- Solo (no other live claim on the repo): branch off fresh main → work → squash-PR → merge it yourself → one-line issue at merge time (Ops & maintenance).
+- Multi-agent (anyone else live, or in doubt): PICK an unblocked issue whose footprint doesn't overlap an active claim → CLAIM (`claimed: <platform>:<session-slug> · branch:<actual-branch>`) → work isolated → squash-merge yourself.
+- **One issue = one branch = one worktree = one squash PR**, however many packages it spans. Parallelism = child issues + subagents (≤5), each in its own worktree. Branch `agent/<ISSUE-ID>-<slug>`: `git worktree add ../mesita-monorepo-<ISSUE-ID> -b agent/<ISSUE-ID>-<slug> origin/main`, then copy the gitignored state in `.worktreeinclude` (Claude Code and Cursor do this automatically). Platform-forced names: declare the real branch in your claim.
+- Capability follows connectors, not location. Local Mac = full peer. Cloud VM = full peer when claude.ai connectors ride the session — probe at BOOT (one Linear read). A missing connector demotes only that surface: hand off the residue (pushed branch + PR; the dispatching session finishes it, noted in the claim). Secrets never travel.
+- Cowork never opens a live repo checkout — `cowork` issues in non-repo folders only.
+
+**The backend is a singleton.** One Supabase project, ONE live schema and EF set — Supabase branching deliberately unused; schema/EF surface is claimed footprint. Merging to main auto-deploys every EF, so a cloud-only edit dies at the next merge: mirror every cloud change into `supabase/` the same session; migrations apply via MCP/CLI, then reconcile the ledger (Development Rules §B).
+
+**ALWAYS:** reply in English · clients call Edge Functions, never the DB · never push to `main` (enforced: a ruleset requires squash PRs and blocks force-push) · terminal statuses same session · no local web dev servers — web verifies on Vercel, mobile via `npx expo export --platform web` + the Metro web preview (:8081 consumer · :8082 business) · admin-console configs bind every EF, app and agent (Admin · Models · Sourcing · Atlas · Enricher · Verification · Ojo · Promos · Memo · Reservations — unenforced config = bug; staged knobs are labeled staged).
+
+**Generated output is never hand-edited.** `AGENTS.md` ← its sibling `CLAUDE.md` (`deno task sync-rules`) · brand assets, `BRAND-TOKENS` blocks, `src/components/brand/*`, favicons ← `assets/brand/brand.json` (`deno task sync-brand`; guide: Product Rules §F). Both CI-gated. **The repo holds no other markdown:** knowledge → Notion Rules · task context → Linear · code notes → code comments; the allowlist (`CLAUDE.md`/`AGENTS.md` pairs, `scripts/rules-quickstart.md`, `.claude/` `.cursor/` `.codex/` `.github/`) is CI-enforced. **Docs are rewritten, not amended** — present law only, no history trails; word budgets CI-enforced (Development Rules §C).
+
+**NEVER ask.** Reversible → decide, log a `decision:` comment, ship. `needs-human` = only a secret you can't enter, or one irreversible money/publish trigger.
+
+**Hierarchy:** Pato's live instruction > the Linear issue > Notion > memory.
 <!-- RULES-QUICKSTART:END -->
 ## This repo — mesita-monorepo (root)
 
-| Path | Was | What |
-| --- | --- | --- |
-| `apps/web-admin` | `mesita-web-admin` | Internal admin console · admin.mesita.ai (Next.js · Vercel) |
-| `apps/web-business` | `mesita-web-business` | Business console · business.mesita.ai (Next.js · Vercel) |
-| `apps/web-consumer` | `mesita-web-consumer` | Consumer app · consumer.mesita.ai (Next.js · Vercel) |
-| `apps/web-landing` | `mesita-web-landing` | Marketing landing · mesita.ai (Next.js · Vercel) |
-| `apps/web-check` | — | Mesita Check (staff) · check.mesita.ai (Next.js · Vercel) — Tickets-v2 check page; QRs encode `check.mesita.ai/<code>` (MESITA-814); `mesita.ai/check/<code>` permanently redirects |
-| `apps/mobile-consumer` | `mesita-mobile-consumer` | Native consumer app (Expo SDK 57 · RN · NativeWind) |
-| `apps/mobile-business` | — | Native business app (Expo SDK 57 · **scaffold only**, EAS wired, no screens yet) |
-| `supabase` | `mesita-supabase` | DB · RLS · Edge Functions — source of truth (Supabase CLI · Deno) |
-| `assets` | — | The brand (`assets/brand/brand.json` = source of truth for logo, pink ramp, type; guide = Notion Product Rules §F). Edit there, then `deno task sync-brand` — it writes the logo assets, every app's `BRAND-TOKENS` block, `src/components/brand/*`, and the favicons |
+| Path | What |
+| --- | --- |
+| `apps/web-admin` | Admin console · admin.mesita.ai (Next.js · Vercel) |
+| `apps/web-business` | Business console · business.mesita.ai (Next.js · Vercel) |
+| `apps/web-consumer` | Consumer app · consumer.mesita.ai (Next.js · Vercel) |
+| `apps/web-landing` | Marketing landing · mesita.ai (Next.js · Vercel) |
+| `apps/web-check` | Mesita Check, the staff ticket page · check.mesita.ai (Next.js · Vercel) — QRs encode `check.mesita.ai/<code>` |
+| `apps/mobile-consumer` | Native consumer app (Expo SDK 57 · RN · NativeWind) |
+| `apps/mobile-business` | Native business app (Expo SDK 57 · **scaffold only**) |
+| `supabase` | DB · RLS · Edge Functions — source of truth (Supabase CLI · Deno) |
+| `assets` | The brand: edit `assets/brand/brand.json`, run `deno task sync-brand` — it writes every brand output (guide: Notion Product Rules §F) |
 
-- **Packages are independent install roots** (own `pnpm-workspace.yaml` + lockfile; **no root pnpm workspace on purpose** — mobile needs `nodeLinker: hoisted`, web apps use the default isolated linker). `cd` into a package and use it as before; `supabase/` is Deno + the Supabase CLI (run every `supabase` command from `supabase/`).
-- **All web apps deploy from this one monorepo** — each `apps/web-*` is its own Vercel project (canzeco team) linked to `Canzeco/mesita-monorepo` with **Root Directory `apps/web-<app>`**; a push to `main` auto-deploys only the app(s) that changed (Vercel "skip unaffected" on). One repo → per-app Vercel projects → domains: web-landing→mesita.ai · web-admin→admin.mesita.ai · web-business→business.mesita.ai · web-consumer→consumer.mesita.ai · web-check→check.mesita.ai. The frozen standalone `mesita-web-*` repos no longer deploy anything.
-- **CI is path-filtered per package** (`.github/workflows/{web-admin,web-business,web-consumer,web-landing,web-check,mobile-consumer,mobile-business,supabase}.yml` + `rules.yml`) — a PR only runs the pipelines of what it touches.
-- **Instruction files are generated:** root `CLAUDE.md` = quickstart block (markers) + this tail; package `CLAUDE.md` = package rules only (no quickstart block); every `AGENTS.md` = generated mirror — never hand-edit one. Edit `scripts/rules-quickstart.md` (quickstart) or a `CLAUDE.md` tail, then run `deno task sync-rules`; strict `--check` runs in CI (`rules.yml`).
-- **Worktrees:** `.worktreeinclude` lists the gitignored local state every new worktree needs (Claude Code copies it automatically; Cursor via `.cursor/worktrees.json`; otherwise copy those paths manually).
-- **Preview servers** (`.claude/launch.json`): web-admin :3001 · web-business :3002 · web-consumer :3003 · web-landing :3004 · web-check :3005 · mobile-consumer :8081 · mobile-business :8082 (`expo start --web`).
+- **Packages are independent install roots** (own `pnpm-workspace.yaml` + lockfile; no root pnpm workspace — mobile needs `nodeLinker: hoisted`). `cd` into a package to work; run every `supabase` command from `supabase/`.
+- **Vercel:** each `apps/web-*` is its own Vercel project (canzeco team) on this repo, Root Directory `apps/web-<app>`, "skip unaffected" on — a push to `main` deploys only what changed.
+- **CI is path-filtered per package** (`.github/workflows/*.yml`) plus two repo-wide gates: `rules.yml` (instruction-file sync + markdown allowlist + quickstart word budget) and `brand.yml` (brand sync).
+- **Instruction files:** root `CLAUDE.md` = generated quickstart block + this tail · package `CLAUDE.md` = package rules only (markers forbidden) · every `AGENTS.md` = generated. Edit `scripts/rules-quickstart.md` or a `CLAUDE.md`, then `deno task sync-rules`; strict `--check` gates CI.
+- **Worktrees:** `.worktreeinclude` lists the gitignored state every new worktree needs. **Preview servers** (`.claude/launch.json`): web-admin :3001 · web-business :3002 · web-consumer :3003 · web-landing :3004 · web-check :3005 · mobile-consumer :8081 · mobile-business :8082.

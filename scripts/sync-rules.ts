@@ -114,6 +114,22 @@ for (const { label, dir, quickstart } of targets) {
   await reconcile(join(dir, "AGENTS.md"), `${AGENTS_NOTICE}\n${nextClaude}`, `${label}/AGENTS.md`);
 }
 
+// ── Quickstart word budget (ASDM §C — docs are rewritten, not amended) ──────
+// Instruction files die of accretion: each session appends a clause and agents
+// replicate the mutations at machine speed. The budget is the forcing function:
+// over it, the fix is a from-scratch rewrite (present law only, no history),
+// never another appended parenthetical. Package CLAUDE.md budgets arrive with
+// their rewrite pass (MESITA-1060).
+const QUICKSTART_WORD_BUDGET = 700;
+const quickstartWords = canonical.split(/\s+/).filter(Boolean).length;
+if (quickstartWords > QUICKSTART_WORD_BUDGET) {
+  console.error(
+    `QUICKSTART OVER BUDGET: ${quickstartWords} words > ${QUICKSTART_WORD_BUDGET} — ` +
+      `rewrite scripts/rules-quickstart.md from scratch (ASDM §C); don't trim around the edges.`,
+  );
+  failed++;
+}
+
 // ── Markdown allowlist (ASDM §C, 2026-08-16) ────────────────────────────────
 // The repo holds NO knowledge markdown: knowledge lives in Notion (the Rules
 // tree), task/commit context lives in Linear, code explanation lives in code
