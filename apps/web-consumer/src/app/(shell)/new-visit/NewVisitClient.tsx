@@ -2,10 +2,11 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { ChevronRight, MapPin, QrCode, Sparkles, Star } from "lucide-react";
+import { ChevronRight } from "lucide-react";
 
 import { PlacePickList } from "@/components/consumer/rewards/PlacePickList";
 import { SavingsReveal } from "@/components/consumer/rewards/SavingsReveal";
+import { SearchBar } from "@/components/consumer/search/SearchBar";
 import { type ConsumerTicketRow } from "@/lib/api/tickets";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import { useConsumerTickets } from "@/lib/hooks/useConsumerTickets";
@@ -26,6 +27,15 @@ import { useStartVisit } from "@/lib/hooks/useStartVisit";
 // question "where are you?", and a ticket sitting in the answer slot made the
 // surface look like two products. Tickets live on THE TICKET and in Inbox.
 //
+// A SEARCH FIELD IS THE HEADER (Pato, 2026-08-16: "remove the stupid banner on
+// top displaying the steps" + "replace that with a searchbar"). This overturns
+// the 2026-08-10 "always leave the 4 steps" ruling, and the steps rail is gone
+// with it — four glyphs that never moved and never reflected state spent the
+// header's whole budget explaining a flow the guest is already inside. The
+// header now DOES the surface's job instead of narrating it: this list answers
+// "where are you?", and typing is how you answer it in one move rather than
+// scrolling a hundred rows. Do not restore the rail.
+//
 // ONE TAP CREATES THE TICKET (Pato, same session: "you select a place, a
 // ticket is automatically created — only by clicking a place. create ticket,
 // then id… so you open a modal, the modal has multiple steps"). The 2-step
@@ -43,6 +53,12 @@ import { useStartVisit } from "@/lib/hooks/useStartVisit";
 
 export function NewVisitClient({ userId }: { userId: string }) {
   const tickets = useConsumerTickets(userId);
+
+  // The query lives HERE, not in PlacePickList: the field renders in the
+  // shrink-0 header and the list renders in the scroll body, so the only
+  // common owner is this component. PlacePickList still owns the rows and
+  // does the matching — this holds the string and nothing else.
+  const [query, setQuery] = useState("");
 
   const activePlaceIds = useMemo(
     () => new Set(tickets.active.map((t) => t.project_id)),
@@ -82,22 +98,20 @@ export function NewVisitClient({ userId }: { userId: string }) {
 
   return (
     <div className="flex h-full min-h-0 flex-1 flex-col">
-      {/* Page-level orientation lives in a shrink-0 header, OUTSIDE the scroll
-          body: the steps are what tell you where you are, and an orientation
-          control that scrolls away has stopped orienting. */}
+      {/* The search field lives in a shrink-0 header, OUTSIDE the scroll body:
+          a filter that scrolls away has stopped filtering — you would have to
+          scroll back up to correct a query whose results you are looking at. */}
       <div className="border-border bg-background/90 shrink-0 border-b px-4 pt-3 pb-2.5 backdrop-blur-xl">
-        {/* ALWAYS, no gate.
-            decision: Pato, 2026-08-10 — "always leave the 4 steps, never
-            remove them, those are the header." The steps are the wallet's
-            masthead: they say what this surface IS. Do not re-gate this.
-
-            Boxed as its own module so the header reads as two clean controls
-            stacked — the steps say what this surface is, the track below says
-            which slice you're looking at — instead of loose marks floating over
-            a band. */}
-        <div className="border-border bg-card rounded-xl border px-2 py-2.5">
-          <PitchSteps />
-        </div>
+        {/* The SAME bar Search uses, minus the filter affordance (the wallet
+            has no discovery filters). Two hand-rolled search inputs on two tabs
+            drift apart; one component cannot. */}
+        <SearchBar
+          query={query}
+          showClear={query.length > 0}
+          onQueryChange={setQuery}
+          onClear={() => setQuery("")}
+          placeholder="Find the place you're at…"
+        />
 
         {/* The tab track is GONE (Pato, 2026-08-16: "move the visits history
             there"). History moved to Inbox › Visits, which leaves this tab with
@@ -130,50 +144,16 @@ export function NewVisitClient({ userId }: { userId: string }) {
             {startError}
           </p>
         ) : null}
-        {/* Step 1, and only step 1: every place on Mesita. */}
+        {/* Step 1, and only step 1: every place on Mesita, narrowed to what
+            the header's query matches. */}
         <PlacePickList
           activePlaceIds={activePlaceIds}
           busyPlaceId={startingId}
           onPick={onPick}
+          query={query}
+          onClearQuery={() => setQuery("")}
         />
       </div>
     </div>
-  );
-}
-
-// Connected glyph rail (MESITA-908): 28px circular nodes on one hairline —
-// not fat 40px tiles. Number is a primary micro-caption above the label.
-const PITCH_STEPS = [
-  { icon: MapPin, label: "Pick place" },
-  { icon: Sparkles, label: "Pick reward" },
-  { icon: Star, label: "Do it" },
-  { icon: QrCode, label: "Show QR" },
-] as const;
-
-function PitchSteps() {
-  return (
-    <ol className="relative flex items-start px-1 pt-0.5 pb-0.5">
-      {/* Continuous hairline through node centers (14px into the 28px circle). */}
-      <span
-        aria-hidden="true"
-        className="bg-border absolute top-[21px] right-[12.5%] left-[12.5%] h-px"
-      />
-      {PITCH_STEPS.map(({ icon: Icon, label }, i) => (
-        <li
-          key={label}
-          className="relative z-[1] flex w-0 flex-1 flex-col items-center gap-1"
-        >
-          <span className="text-primary text-[9px] leading-none font-bold tabular-nums">
-            {String(i + 1).padStart(2, "0")}
-          </span>
-          <span className="border-secondary/25 bg-background text-secondary grid size-7 place-items-center rounded-full border">
-            <Icon className="size-3.5" strokeWidth={2.25} />
-          </span>
-          <span className="text-foreground text-center text-[10.5px] leading-tight font-semibold">
-            {label}
-          </span>
-        </li>
-      ))}
-    </ol>
   );
 }

@@ -5,7 +5,7 @@
 // response carries the row (id, status, check_code, task statuses), the
 // tapped Place carries the photo, category and rate columns, and the reward
 // quote can START at create time instead of after two chained fetches on the
-// ticket screen. RewardsClient writes here right before router.push;
+// ticket screen. NewVisitClient writes here right before router.push;
 // TicketScreen peeks on mount.
 //
 // Module-level on purpose: the seed must survive the route transition but
