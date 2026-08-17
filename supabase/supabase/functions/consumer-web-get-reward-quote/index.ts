@@ -34,6 +34,8 @@ import {
 import { adminClient, getAuthedUser, readEFEnv } from "../_shared/auth.ts";
 import { isConsumerFirstVisit } from "../_shared/membership.ts";
 import {
+  CLASS_SEGMENTS,
+  type ClassSegment,
   isClassSegment,
   loadRewardsGrid,
   offersAction,
@@ -100,6 +102,31 @@ Deno.serve(async (req) => {
     (consumerRes.data.instagram_handle ?? "").toString().trim(),
   );
 
+  const v10 = grid.v10;
+
+  // EVERY class's standing rate at this place, not just the caller's
+  // (MESITA-1068). The place-detail Rewards tab shows the whole ladder so a
+  // guest can see what the classes above them are worth here — and it has to
+  // come from the SAME live config that prices the bill. The consumer app
+  // owns a static `CLASS_STEP` ladder (+5/+10/+15) that could reproduce these
+  // numbers arithmetically, and that is precisely the drift MESITA-1017 was:
+  // a client table quoting rates the till doesn't honor. Reading them here
+  // costs nothing — the grid is already loaded for the caller's own quote.
+  //
+  // Blended-rate privacy is untouched: this is the program's public shape
+  // (the same ladder the pricing page states), not any other guest's data,
+  // and nothing here is reachable by a business.
+  const ladder = Object.fromEntries(
+    CLASS_SEGMENTS.map((cls) => [
+      cls,
+      strategy === "zero"
+        ? 0
+        : v10
+          ? v10.base[strategy][cls]
+          : grid.grid[cls][strategy],
+    ]),
+  ) as Record<ClassSegment, number>;
+
   // A zero-strategy place runs no program at all — every component is 0 and
   // the client shows the no-discount path rather than a 0% ladder.
   if (strategy === "zero") {
@@ -112,13 +139,12 @@ Deno.serve(async (req) => {
         isFirstVisit,
         base: 0,
         bonuses: { welcome: 0, story: 0, google: 0, mesita: 0 },
+        ladder,
         storyEligible: false,
         cap: grid.cap,
       },
     });
   }
-
-  const v10 = grid.v10;
 
   // Legacy best-of fallback (no v10 blob saved yet). `additive: false` tells
   // the client to keep the pick-one presentation — showing stacked bonuses
@@ -140,6 +166,7 @@ Deno.serve(async (req) => {
           google: grid.actions.review[cls][strategy],
           mesita: grid.actions.mesita_review[cls][strategy],
         },
+        ladder,
         storyEligible:
           igConnected && offersAction(strategy, grid, "story"),
         cap: grid.cap,
@@ -171,6 +198,7 @@ Deno.serve(async (req) => {
         google: v10.bonuses.google,
         mesita: v10.bonuses.mesita,
       },
+      ladder,
       storyEligible: igConnected && offersAction(strategy, grid, "story"),
       cap: grid.cap,
     },

@@ -1,43 +1,46 @@
 "use client";
 
-import Link from "next/link";
-import {
-  Crown,
-  Gift,
-  MapPin,
-  QrCode,
-  Sparkles,
-  Star,
-  Ticket,
-} from "lucide-react";
+import { Gift, Sparkles } from "lucide-react";
 
 import { useEffect, useState } from "react";
 
 import { apiGetRewardQuote, type RewardQuote } from "@/lib/api/tickets";
 import { useConsumerClass } from "@/lib/class-context";
-import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import type { PlaceDetail } from "@/lib/mock/place";
 import { placeOffersMesitaRewards } from "@/lib/promo-rates";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 
 import { Box, BoxLabel } from "./box";
-import { RewardStep, YourRewardsHere } from "./reward-matrix";
+import {
+  BonusList,
+  ClassLadder,
+  RateSheetSkeleton,
+  RewardTotal,
+} from "./reward-matrix";
 
-// ── Rewards tab (v7, MESITA-861) ─────────────────────────────────────────
+// ── Rewards tab (v8, MESITA-1068) ────────────────────────────────────────
 //
-// Rebuilt against the Strategy × Class matrix (Notion §4.4) and the ticket
-// lifecycle:
-//   hero   — "Up to N%" and NOTHING about why (MESITA-860: the ribbon says
-//            what you can get, never the reason). N = the guest's best
-//            eligible rate at THIS place's strategy.
-//   steps  — the wallet's own four steps, with "Pick place" pre-checked:
-//            you're standing on it.
-//   list   — the guest's OWN row of the big table, action by action. The
-//            old Standard-vs-Premium comparison died: it classified the
-//            guest and only knew first/returning (the v6 model).
-//   CTAs   — "Get my ticket" routes to the wallet (the create flow lives
-//            there, including the Influencer story interstitial); Standard
-//            also sees "Go Premium".
+// Pato, live 2026-08-17: "simply mention all the tiers for different
+// segments. and the total and the cap. not buttons there. buttons are already
+// below."
+//
+// THIS TAB IS A RATE SHEET. v7 was a brochure — an "Up to N%" hero, a
+// four-step how-it-works tutorial, the guest's own row, then two CTAs. Three
+// of those four blocks were answering questions the guest didn't ask on a tab
+// literally labelled "Rewards", and the tutorial duplicated the wallet's own
+// steps at the moment the guest is furthest from using them.
+//
+//   hero    — "Up to N%", the total, and the cap. Still no reason (MESITA-860).
+//   classes — EVERY class's standing rate here, the guest's marked. Reverses
+//             MESITA-861, which showed the guest only their own row: a rate
+//             sheet that hides the rungs above you can't say what a class is
+//             worth, and the classes are the product.
+//   bonuses — the actions, priced, with the ones you can't do today muted.
+//   total   — the number that lands on the bill, and the cap it applies to.
+//
+// NO BUTTONS. Visit · Order · Reserve are pinned in the action bar below
+// (MESITA-1065), so a "Get my ticket" CTA here was a second door to a place
+// the guest can already reach without scrolling.
 
 export function RewardsBox({ place }: { place: PlaceDetail }) {
   const consumerClass = useConsumerClass();
@@ -58,8 +61,8 @@ export function RewardsBox({ place }: { place: PlaceDetail }) {
         const res = await apiGetRewardQuote(supabase, placeId);
         if (!cancelled) setQuoteRes({ placeId, quote: res.quote });
       } catch {
-        // Non-fatal: the hero and matrix stay in their loading shape rather
-        // than quoting a rate the bill won't honor.
+        // Non-fatal: the sheet stays in its loading shape rather than quoting
+        // a rate the bill won't honor.
       }
     })();
     return () => {
@@ -127,8 +130,6 @@ export function RewardsBox({ place }: { place: PlaceDetail }) {
       ? `MX$${place.reward_cap_mxn.toLocaleString("en-US")}`
       : null;
 
-  const isStandard = classKey === "standard";
-
   return (
     <Box title="Reward" icon={Sparkles} iconColor="text-pink-400">
       {/* Hero — what you can get. Never why (MESITA-860). */}
@@ -146,77 +147,26 @@ export function RewardsBox({ place }: { place: PlaceDetail }) {
         </p>
       </div>
 
-      {/* How it works — the wallet's four steps, step 1 already done. */}
+      {/* Every class's standing rate here, the guest's own marked. */}
       <div className="flex flex-col gap-3">
-        <BoxLabel>How it works</BoxLabel>
-        <ol className="flex flex-col gap-3">
-          <RewardStep
-            n={1}
-            icon={MapPin}
-            title="Pick the place"
-            body="Done — you're looking at it. Open your ticket from Rewards."
-            done
-          />
-          <RewardStep
-            n={2}
-            icon={Star}
-            title="Post your review"
-            body="Do your bonuses before staff scan — a Google review, your Mesita rating, a story if Instagram is connected."
-            accent
-          />
-          <RewardStep
-            n={3}
-            icon={QrCode}
-            title="Show your QR"
-            body="Staff scan your ticket QR with any phone — no app on their side."
-          />
-          <RewardStep
-            n={4}
-            icon={Sparkles}
-            title="Pay less"
-            body={`Your best discount comes off the bill${capLabel ? ` — on the first ${capLabel}` : ""}. You pay the place directly.`}
-          />
-        </ol>
-      </div>
-
-      {/* The guest's own row of the big table. */}
-      <div className="flex flex-col gap-3">
-        <BoxLabel>Your rewards here</BoxLabel>
-        <YourRewardsHere quote={quote} classKey={classKey} />
-      </div>
-
-      {/* CTAs — the ticket flow lives in the wallet (including the
-          Influencer story interstitial), so both buttons are honest doors. */}
-      <div className="flex flex-col gap-2">
-        {isStandard ? (
-          <div className="flex gap-2">
-            <Link href="/rewards" className={REWARD_PAY_BTN}>
-              <Ticket className="h-4 w-4" />
-              Get my ticket
-            </Link>
-            <Link href={CONSUMER_ROUTES.subscribe} className={REWARD_UPGRADE_BTN}>
-              <Crown className="h-4 w-4" />
-              Go Premium
-            </Link>
-          </div>
+        <BoxLabel>Rate by class</BoxLabel>
+        {quote ? (
+          <ClassLadder quote={quote} classKey={classKey} />
         ) : (
-          <Link href="/rewards" className={REWARD_PAY_BTN}>
-            <Ticket className="h-4 w-4" />
-            Get my ticket
-          </Link>
+          <RateSheetSkeleton />
         )}
-        <p className="text-muted-foreground text-center text-[11px] leading-snug">
-          Open your ticket in Rewards — your best bonus applies on its own.
-        </p>
       </div>
+
+      {/* The actions, priced. */}
+      <div className="flex flex-col gap-3">
+        <BoxLabel>Bonuses you can add</BoxLabel>
+        {quote ? <BonusList quote={quote} /> : <RateSheetSkeleton />}
+      </div>
+
+      {/* The total and the cap — the two numbers the guest acts on. */}
+      {quote && upTo != null ? (
+        <RewardTotal quote={quote} total={upTo} capLabel={capLabel} />
+      ) : null}
     </Box>
   );
 }
-
-// Shared CTA button classes for the Reward box. Primary = pink-gradient pill;
-// secondary = outlined pill. Both grow to fill their row so the single-button
-// and two-button layouts line up.
-const REWARD_PAY_BTN =
-  "bg-pink-gradient shadow-glow flex flex-1 items-center justify-center gap-2 rounded-lg px-4 py-3 text-sm font-semibold text-white";
-const REWARD_UPGRADE_BTN =
-  "border-border bg-card text-foreground hover:bg-muted flex flex-1 items-center justify-center gap-2 rounded-lg border px-4 py-3 text-sm font-semibold transition";
