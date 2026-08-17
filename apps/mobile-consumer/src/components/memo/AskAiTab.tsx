@@ -1,8 +1,10 @@
 import { useQuery } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { View } from 'react-native';
 
 import { AskAiPanel } from '@/components/memo/AskAiPanel';
+import { MemoModeHeader } from '@/components/memo/MemoModeHeader';
 import type { AddState } from '@/components/memo/types';
 import { apiAskMemo, apiMemoGreeting, type MemoTurn } from '@/lib/api/memo';
 import { apiCreateProject, type PlacePrediction } from '@/lib/api/place-search';
@@ -113,14 +115,21 @@ export function AskAiTab() {
     [addStates],
   );
 
+  // Header (shrink-0) + panel (flex-1): the thread scrolls under a pinned
+  // header rather than pushing it off. Mirrors web AskAiTab.
   return (
-    <AskAiPanel
-      ask={askMemo}
-      loadGreeting={loadGreeting}
-      addStates={addStates}
-      resolvePlace={resolvePlace}
-      onInfo={handleInfo}
-      onAdd={handleAdd}
-    />
+    <View className="min-h-0 flex-1">
+      <MemoModeHeader />
+      <View className="min-h-0 flex-1">
+        <AskAiPanel
+          ask={askMemo}
+          loadGreeting={loadGreeting}
+          addStates={addStates}
+          resolvePlace={resolvePlace}
+          onInfo={handleInfo}
+          onAdd={handleAdd}
+        />
+      </View>
+    </View>
   );
 }
