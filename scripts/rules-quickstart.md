@@ -2,7 +2,7 @@
 
 Stable mirror of Notion **Rules** §0 — the master; Notion wins on any conflict: https://www.notion.so/Rules-395a9bf37a528081b2c1dacc445bb6c8
 
-**ASDM** is the one protocol for all agent work — full text: 🤖 **ASDM Rules**; your platform's ramp (isolation, branch naming, connectors): **ASDM Rules §K**. 🏛️ **Product Rules** = WHAT Mesita is, extended by 🎨 **Design** · 🎁 **Promos** · 🗺️ **Atlas** · ✨ **Enrichment** · 🪑 **Visits** · 🛒 **Orders** · 📞 **Reservations** — Pato owns them; mirror shipped architecture changes there same session. ⚙️ **Development Rules** = engineering law: tooling gotchas + the knowledge chain.
+**ASDM** is the one protocol for all agent work — full text: 🤖 **ASDM Rules**; your platform's ramp (isolation, branch naming, connectors): **ASDM Rules §K**. 🏛️ **Product Rules** = WHAT Mesita is. ⚙️ **Development Rules** = engineering law: tooling gotchas + the knowledge chain. Domain knowledge — one page per subsystem — lives in 📚 **Docs**: mirror shipped changes there same session, and **Rules beat Docs on any conflict**.
 
 | You're reading | You are |
 | --- | --- |
@@ -29,4 +29,4 @@ Stable mirror of Notion **Rules** §0 — the master; Notion wins on any conflic
 
 **NEVER ask.** Reversible → decide, log a `decision:` comment, ship. `needs-human` = only a secret you can't enter, or one irreversible money/publish trigger.
 
-**Hierarchy:** Pato's live instruction > the Linear issue > Notion > memory.
+**Hierarchy:** Pato's live instruction > the Linear issue > Rules > Docs > memory.
