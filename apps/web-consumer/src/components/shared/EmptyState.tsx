@@ -5,7 +5,7 @@ import type { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 // Shared empty state — closes the design-map debt note ("no shared
-// EmptyState primitive yet"; web-consumer design map: Notion Design Rules).
+// EmptyState primitive yet"; web-consumer design map: Notion Docs › Design).
 //
 // Two rules the old ad-hoc versions kept getting wrong:
 //

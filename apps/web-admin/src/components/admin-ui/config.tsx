@@ -4,7 +4,7 @@ import { CheckCircle2, ChevronRight, Loader2 } from "lucide-react";
 
 // Shared admin config kit — `@/components/admin-ui/config`.
 // Light-themed; semantic tokens only. Canonical for new config pages
-// (see the web-admin design map (Notion Design Rules)). Enricher/Atlas/Memo/Promos/… import from here
+// (see the web-admin design map (Notion Docs › Design)). Enricher/Atlas/Memo/Promos/… import from here
 // (or via the thin `enricher-config/atlas-ui` re-export shim).
 
 /** Matches enricher `SynthesisQuality` — kept local so the kit does not import app routes. */
