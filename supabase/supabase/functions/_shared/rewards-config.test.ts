@@ -416,7 +416,7 @@ Deno.test("resolveTicketRate: v11 additive — welcome on first visit alone (D3-
       isFirstVisit: true,
       reviewVerified: true,
     }),
-    40, // 20+10+10
+    45, // 20 + welcome 10 + google 15
   );
 });
 
@@ -430,10 +430,10 @@ Deno.test("resolveTicketRate: v11 additive — bonuses stack", () => {
       reviewVerified: true,
       mesitaReviewed: true,
     }),
-    // influencer → silver·free base 30 + welcome 10 + story 10 + google 10
-    // + mesita 5 = 65. Under v10 this cell paid 85, because the retired
+    // influencer → silver·free base 30 + welcome 10 + story 10 + google 15
+    // + mesita 5 = 70. Under v10 this cell paid 85, because the retired
     // per-class story override added 30 instead of the universal 10.
-    65,
+    70,
   );
 });
 

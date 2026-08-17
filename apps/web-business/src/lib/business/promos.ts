@@ -99,14 +99,14 @@ export const DEFAULT_PROMOS: PromosConfig = {
         diamond: { free: 50, premium: 70 },
       },
     },
-    bonuses: { welcome: 10, mesita: 5, story: 10, google: 10 },
+    bonuses: { welcome: 10, mesita: 5, story: 10, google: 15 },
   },
   orders: {
     base: {
       conservative: { free: 5, premium: 10 },
       aggressive: { free: 10, premium: 15 },
     },
-    bonuses: { welcome: 5, mesita: 5, story: 5, google: 5 },
+    bonuses: { welcome: 5, mesita: 5, story: 5, google: 10 },
     soon: true,
   },
   cap: 500,
@@ -420,8 +420,19 @@ export function distributionFor(
   }
 
   const values = [...probByValue.keys()].sort((a, b) => a - b);
+  // Accumulate over SIMULATED_VISITS-scaled counts, exactly as the admin twin
+  // does, then divide back. Mathematically identical to summing `v * p`, but
+  // NOT bit-identical: summing probabilities directly lands the Conservative
+  // default on 20.499999999999996 where the true mean is exactly 20.5, so the
+  // two consoles rounded to 20 and 21 and the drift alarm fired on a value
+  // neither of them had actually changed. Same accumulation order = same
+  // double, and the lockstep test compares like with like.
+  const SIMULATED_VISITS = 1000;
   let mean = 0;
-  for (const v of values) mean += v * (probByValue.get(v) ?? 0);
+  for (const v of values) {
+    mean += v * ((probByValue.get(v) ?? 0) * SIMULATED_VISITS);
+  }
+  mean /= SIMULATED_VISITS;
 
   const percentile = (target: number): number => {
     let cum = 0;
