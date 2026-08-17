@@ -5,6 +5,6 @@ import { Filter } from "lucide-react";
 // which Google places are eligible to enter Mesita, per sourcing channel.
 export const SOURCING_PARENT = {
   href: "/sourcing-config",
-  label: "Sourcing Config",
+  label: "Sourcing",
   Icon: Filter,
 } as const;

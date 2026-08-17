@@ -1,11 +1,11 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
-import { Calendar, Gift, Instagram, Users } from "lucide-react";
+
+import Image from "next/image";
+import { Calendar, Users } from "lucide-react";
 import type {
   ReservationItem,
-  LinkedCouponSummary,
 } from "@/lib/mock/reservations-mock";
 import { statusMeta } from "@/lib/reservation-status";
 import { cn, guestNoun } from "@/lib/utils";
@@ -107,43 +107,7 @@ export function ReservationCard({ r }: { r: ReservationItem }) {
           "perforated edge" metaphor; the inline ticket icon + the
           small percent badge keep the stub visually distinct from
           the main reservation surface above. */}
-      {r.linkedCoupon && !spent && <LinkedCouponStub coupon={r.linkedCoupon} />}
     </Link>
   );
 }
 
-function LinkedCouponStub({ coupon }: { coupon: LinkedCouponSummary }) {
-  const ig = coupon.kind === "instagram";
-  return (
-    <div className="border-border/70 -mx-3 -mb-3 flex items-center gap-2.5 border-t border-dashed bg-pink-500/[0.04] px-3 py-2.5">
-      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-pink-500/15 ring-1 ring-pink-500/20">
-        {ig ? (
-          <Instagram className="h-4 w-4 text-pink-600" strokeWidth={2} />
-        ) : (
-          <Gift className="h-4 w-4 text-pink-600" strokeWidth={2} />
-        )}
-      </div>
-      <div className="min-w-0 flex-1">
-        <p className="text-muted-foreground text-[9px] font-bold tracking-[0.18em] uppercase">
-          Reward tied
-        </p>
-        <p className="text-foreground mt-0.5 text-[13px] leading-tight font-semibold">
-          <span className="text-pink-600">{coupon.percent}%</span> discount{" "}
-          <span className="text-muted-foreground font-normal">
-            · {coupon.classLabel}
-          </span>
-        </p>
-      </div>
-      <span
-        className={cn(
-          "inline-flex shrink-0 items-center gap-1 rounded-md border px-2 py-0.5 text-[10px] font-semibold",
-          coupon.state === "active"
-            ? "border-emerald-500/30 bg-emerald-50 text-emerald-800"
-            : "border-amber-500/30 bg-amber-50 text-amber-800",
-        )}
-      >
-        {coupon.state === "active" ? "Active" : "Pending"}
-      </span>
-    </div>
-  );
-}

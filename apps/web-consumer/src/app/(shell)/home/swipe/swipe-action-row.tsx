@@ -1,16 +1,37 @@
 "use client";
 
 import type { LucideIcon } from "lucide-react";
-import {
-  CalendarCheck,
-  Heart,
-  SlidersHorizontal,
-  Store,
-  X,
-} from "lucide-react";
+import { Heart, SlidersHorizontal, Store, X, Zap } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 // The deck's action rail: circular, centred under the card.
+//
+// Five buttons, and five is the budget: Filter · Skip · Place · Save · Go.
+//
+// THE LAST ONE IS A GATEWAY, NOT A VERB (MESITA-1072). It used to be Reserve,
+// wired straight to ReservationSheet — one verb, and the narrowest of the
+// three the product offers. It now opens GoSheet, which carries all three
+// (Visit · Order · Reserve), the same set place detail pins in a bar.
+//
+// WHY "GO". It completes the rail's verb ladder — Skip → Save → Go, three
+// verdicts on one card at escalating commitment — and it is the only
+// affirmative that doesn't name one of its own children the way Book, Order
+// or Visit would. Known imperfection, accepted: "go" means travel and Order
+// comes to you; the colloquial "go for it" carries the commitment, and the
+// sheet disambiguates on the first tap.
+//
+// WHY `Zap`. The rail is icon-only, so the glyph carries the whole load, and
+// the obvious candidates are spoken for. `DoorOpen` already means WELCOME
+// BONUS (reward-matrix, HelpModal). Right-pointing arrows and chevrons
+// collide with the save gesture. `QrCode`/`ShoppingBag`/`CalendarCheck` are
+// the three children — a parent wearing a child's glyph claims to BE that
+// child. A checkmark competes with the heart, which already owns "yes".
+// `Compass`/`Navigation`/`Route` all say travel, which lies about Order.
+// `Zap` says NOW — the one property all three share and the one Save lacks
+// (Save = later, Go = now) — and it is the only solid-reading glyph in a rail
+// of four thin outline shapes. Cost, flagged not designed around: `Flame`
+// marks the Swipe pill and the Home tab on this same screen, so there are two
+// energy glyphs; those sit tinted in chrome bands, this one on a white circle.
 //
 // COLOUR IS NOT DECORATION HERE. The first pass gave each button its own hue
 // (amber / rose / sky / pink / violet) and it read cheap for three measurable
@@ -42,6 +63,7 @@ function SwipeActionButton({
   disabled,
   filled,
   showDot,
+  haspopup,
 }: {
   label: string;
   Icon: LucideIcon;
@@ -55,6 +77,8 @@ function SwipeActionButton({
   filled?: boolean;
   /** Red status dot: filters deviate from defaults (MESITA-633). */
   showDot?: boolean;
+  /** Announces that this button opens a dialog instead of acting (Go). */
+  haspopup?: boolean;
 }) {
   const big = variant !== "utility";
   return (
@@ -63,6 +87,7 @@ function SwipeActionButton({
       onClick={onClick}
       disabled={disabled}
       aria-label={label}
+      aria-haspopup={haspopup ? "dialog" : undefined}
       title={label}
       className={cn(
         "relative grid shrink-0 place-items-center rounded-full border-2 transition",
@@ -101,7 +126,7 @@ type SwipeActionRowProps = {
   onSkip: () => void;
   onOpenInfo: () => void;
   onSave: () => void;
-  onReserve: () => void;
+  onGo: () => void;
 };
 
 export function SwipeActionRow({
@@ -111,7 +136,7 @@ export function SwipeActionRow({
   onSkip,
   onOpenInfo,
   onSave,
-  onReserve,
+  onGo,
 }: SwipeActionRowProps) {
   return (
     <div className="mt-3 flex items-center justify-center gap-3.5">
@@ -143,11 +168,15 @@ export function SwipeActionRow({
         onClick={onSave}
         filled={saved}
       />
+      {/* The gateway. `aria-haspopup` because the tap opens a sheet rather
+          than acting — the label alone ("Go") doesn't say that, and this is
+          the one button in the rail whose tap isn't final. */}
       <SwipeActionButton
-        label="Reserve a table"
-        Icon={CalendarCheck}
+        label="Go — visit, order or reserve"
+        Icon={Zap}
         variant="utility"
-        onClick={onReserve}
+        onClick={onGo}
+        haspopup
       />
     </div>
   );

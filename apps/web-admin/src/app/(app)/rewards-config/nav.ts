@@ -12,7 +12,7 @@ import { BarChart3, Gift, Settings2 } from "lucide-react";
 // "Promos Config" is copy-only.
 export const REWARDS_PARENT = {
   href: "/rewards-config",
-  label: "Promos Config",
+  label: "Promos",
   Icon: Gift,
 } as const;
 

@@ -18,11 +18,11 @@ import { useRouter } from "next/navigation";
 import { QrCode, TicketX } from "lucide-react";
 
 import { TicketRow } from "@/components/consumer/rewards/TicketRow";
-import { TicketCardSkeleton } from "@/app/(shell)/rewards/RewardsTabLoading";
+import { TicketCardSkeleton } from "@/app/(shell)/new-visit/NewVisitLoading";
 import { EmptyState } from "@/components/shared";
 import { useConsumerTickets } from "@/lib/hooks/useConsumerTickets";
 import {
-  CONSUMER_ROUTE_PREFIX,
+  CONSUMER_ROUTES,
   ticketPath,
 } from "@/lib/consumer-route-contract";
 
@@ -68,8 +68,8 @@ export function InboxVisitsClient({ userId }: { userId: string }) {
       <EmptyState
         icon={QrCode}
         title="No visits yet"
-        description="Start a visit from Rewards and it shows up here — with its QR and whatever you saved."
-        action={{ label: "Start a visit", href: CONSUMER_ROUTE_PREFIX.rewards }}
+        description="Start a visit from the Visit tab and it shows up here — with its QR and whatever you saved."
+        action={{ label: "Start a visit", href: CONSUMER_ROUTES.newVisit.root }}
       />
     );
   }

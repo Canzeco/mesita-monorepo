@@ -5,17 +5,25 @@ import Link from "next/link";
 import { Menu, X } from "lucide-react";
 import { MesitaLogo } from "@/components/brand/MesitaLogo";
 import { SidebarWithSuspense } from "@/components/SidebarWithSuspense";
+import { SIDEBAR_COLLAPSED_COOKIE } from "@/lib/sidebar-prefs";
 
 type AppShellProps = {
   children: React.ReactNode;
+  /** Read from the cookie by the server layout, so the rail paints correctly first frame. */
+  defaultCollapsed?: boolean;
 };
 
 // Admin shell wrapper: desktop renders the Sidebar in a static column,
 // mobile/tablet (< lg) collapses it into a slide-in drawer triggered from a
 // topbar hamburger. Drawer closes on link navigation (onNavigate passed
 // to Sidebar), backdrop click, the close button, or Esc.
-export function AppShell({ children }: AppShellProps) {
+//
+// Two independent pieces of state, easy to confuse: `open` is the mobile
+// drawer, `collapsed` is the desktop rail's icon-only width. The drawer never
+// collapses — at that size the whole rail is already hidden by default.
+export function AppShell({ children, defaultCollapsed = false }: AppShellProps) {
   const [open, setOpen] = useState(false);
+  const [collapsed, setCollapsed] = useState(defaultCollapsed);
 
   // Lock body scroll while drawer is open, and close on Esc.
   useEffect(() => {
@@ -34,11 +42,27 @@ export function AppShell({ children }: AppShellProps) {
 
   const close = () => setOpen(false);
 
+  const toggleCollapsed = () => {
+    const next = !collapsed;
+    setCollapsed(next);
+    // A year-long cookie rather than localStorage: the server layout reads it
+    // during render, so a reload comes back at the width you left it.
+    document.cookie = `${SIDEBAR_COLLAPSED_COOKIE}=${next ? "1" : "0"}; path=/; max-age=31536000; samesite=lax`;
+  };
+
   return (
     <div className="flex h-dvh overflow-hidden">
-      {/* Desktop sidebar — visible lg+ */}
-      <div className="hidden shrink-0 lg:flex">
-        <SidebarWithSuspense />
+      {/* Desktop sidebar — visible lg+. The column owns the width; the rail fills it. */}
+      <div
+        className={
+          "hidden shrink-0 transition-[width] duration-200 ease-out lg:flex " +
+          (collapsed ? "w-16" : "w-60")
+        }
+      >
+        <SidebarWithSuspense
+          collapsed={collapsed}
+          onToggleCollapse={toggleCollapsed}
+        />
       </div>
 
       {/* Mobile / tablet drawer */}
@@ -58,7 +82,9 @@ export function AppShell({ children }: AppShellProps) {
         />
         <div
           className={
-            "relative h-full w-64 max-w-[85vw] shadow-elev transition-transform duration-200 ease-out " +
+            // w-60 matches the expanded rail — at w-64 the rail underfilled the
+            // panel and the close button floated off its edge.
+            "relative h-full w-60 max-w-[85vw] shadow-elev transition-transform duration-200 ease-out " +
             (open ? "translate-x-0" : "-translate-x-full")
           }
           role="dialog"

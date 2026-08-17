@@ -35,7 +35,7 @@ export function isSectionSoon(section: UnitSection): boolean {
 export const TOOL_ROUTES = [
   {
     href: "/manage-single/select",
-    label: "Manage Single Unit",
+    label: "Single Unit",
     Icon: MapPin,
   },
 ] as const;

@@ -3,11 +3,10 @@ import {
   CONSUMER_ROUTES,
   CONSUMER_ROUTE_PREFIX,
   CONSUMER_RESERVATION_SURFACE_PREFIX,
-  couponPath,
   isModalContractPath,
   placePath,
   reservationPath,
-  rewardsTicketPath,
+  visitPath,
   ticketPath,
 } from "@/lib/consumer-route-contract";
 import { shouldGate } from "@/lib/supabase/middleware";
@@ -38,7 +37,7 @@ describe("CONSUMER_ROUTES (canonical surface map)", () => {
       homeTabs: {
         swipe: "/home/swipe",
         catalog: "/home/catalog",
-        ai: "/home/ai",
+        chat: "/home/chat",
         social: "/home/social",
         favorites: "/home/favorites",
       },
@@ -48,10 +47,8 @@ describe("CONSUMER_ROUTES (canonical surface map)", () => {
       favorites: "/home/favorites",
       place: { prefix: "/place/" },
       reservation: { prefix: "/reservation/" },
-      rewards: {
-        root: "/rewards",
-        ticketPrefix: "/rewards/ticket/",
-      },
+      newVisit: { root: "/new-visit" },
+      visit: { prefix: "/visit/" },
       // Four sections, and the ORDER is load-bearing: Visits · Orders ·
       // Reservations · Notifications runs from what you're doing right now
       // out to the passive feed. Object key order is asserted separately
@@ -69,6 +66,9 @@ describe("CONSUMER_ROUTES (canonical surface map)", () => {
       legacy: {
         profile: "/profile",
         invite: "/invite",
+        homeAi: "/home/ai",
+        rewards: "/rewards",
+        rewardsTicketPrefix: "/rewards/ticket/",
         meClass: "/me/class",
         meSettings: "/me/settings",
         mePlan: "/me/plan",
@@ -97,7 +97,8 @@ describe("CONSUMER_ROUTES (canonical surface map)", () => {
       search: "/search",
       place: "/place",
       reservations: "/reservations",
-      rewards: "/rewards",
+      newVisit: "/new-visit",
+      visit: "/visit",
       inbox: "/inbox",
       me: "/me",
       subscribe: "/subscribe",
@@ -129,10 +130,11 @@ describe("path helpers", () => {
   it("builds detail paths from ids/slugs", () => {
     expect(placePath("abc-123")).toBe("/place/abc-123");
     expect(reservationPath("r1")).toBe("/reservation/r1");
-    expect(couponPath("c1")).toBe("/coupon/c1");
-    expect(rewardsTicketPath("t1")).toBe("/rewards/ticket/t1");
-    // ticketPath is the legacy-named alias of rewardsTicketPath.
-    expect(ticketPath("t1")).toBe("/rewards/ticket/t1");
+    expect(visitPath("t1")).toBe("/visit/t1");
+    // ticketPath stays as the alias: below the URL the object is still a
+    // ticket (the DB column, the EFs and the row types all say ticket), so
+    // call sites talking about the OBJECT keep reading naturally.
+    expect(ticketPath("t1")).toBe("/visit/t1");
   });
 });
 
@@ -143,8 +145,6 @@ describe("isModalContractPath (intercepted detail overlays)", () => {
     "/saved/place/abc", // legacy — redirects, but still intercepts first
     "/reservation/r1",
     "/saved/reservation/r1", // legacy
-    "/rewards/ticket/t1",
-    "/coupon/c1",
   ];
   const notModal = [
     "/",
@@ -152,7 +152,12 @@ describe("isModalContractPath (intercepted detail overlays)", () => {
     "/home/swipe",
     "/search",
     "/reservations",
-    "/rewards",
+    "/new-visit",
+    // THE TICKET is a full page, not a routed modal — /rewards/ticket/ used to
+    // sit in the predicate with no intercept behind it (inert). Removed with
+    // the rename rather than carried forward as an inert /visit/ branch.
+    "/visit/t1",
+    "/home/chat",
     "/me",
     "/inbox/mine",
     "/subscribe/premium",
@@ -181,26 +186,28 @@ describe("next.config redirects (static legacy → canonical, 308)", () => {
         destination: "/place/:id",
         permanent: true,
       },
-      // Pay era.
+      // The centre tab: /pay -> /rewards -> /new-visit. BOTH eras forward
+      // here. /rewards was the LIVE url until routing v2, so it needs the
+      // forwarding address most — everything below used to chain through it.
+      { source: "/rewards", destination: "/new-visit", permanent: true },
+      { source: "/pay", destination: "/new-visit", permanent: true },
+      { source: "/pay/:tab", destination: "/new-visit", permanent: true },
+      { source: "/qr", destination: "/new-visit", permanent: true },
+      // A single visit. The OBJECT is still a ticket; only the URL says visit.
       {
-        source: "/pay/ticket/:id",
-        destination: "/rewards/ticket/:id",
+        source: "/rewards/ticket/:id",
+        destination: "/visit/:id",
         permanent: true,
       },
+      { source: "/pay/ticket/:id", destination: "/visit/:id", permanent: true },
       {
         source: "/pay/tickets/:id",
-        destination: "/rewards/ticket/:id",
+        destination: "/visit/:id",
         permanent: true,
       },
-      { source: "/pay/:tab", destination: "/rewards", permanent: true },
-      { source: "/pay", destination: "/rewards", permanent: true },
-      { source: "/qr", destination: "/rewards", permanent: true },
-      {
-        source: "/ticket/:id",
-        destination: "/rewards/ticket/:id",
-        permanent: true,
-      },
+      { source: "/ticket/:id", destination: "/visit/:id", permanent: true },
       // Renamed surfaces.
+      { source: "/home/ai", destination: "/home/chat", permanent: true },
       { source: "/invite", destination: "/share", permanent: true },
       { source: "/profile", destination: "/me", permanent: true },
       {
@@ -225,23 +232,32 @@ describe("next.config redirects (static legacy → canonical, 308)", () => {
   // are one-line redirect() calls checked by build + typecheck.
 });
 
+describe("the AI mode is reachable by both names", () => {
+  it("308s /home/ai to /home/chat and keeps the legacy key", async () => {
+    const redirects = await nextConfig.redirects!();
+    const hop = redirects.find((r) => r.source === CONSUMER_ROUTES.legacy.homeAi);
+    expect(hop?.destination).toBe(CONSUMER_ROUTES.homeTabs.chat);
+    // /home?mode=ai and ?mode=askAi build `/home/${MODE_SEGMENT[mode]}` from a
+    // BARE segment string, so `grep -rn "home/ai"` never finds them. Pin the
+    // mapping here or that rename gets missed.
+    expect(CONSUMER_ROUTES.homeTabs.chat).toBe("/home/chat");
+  });
+});
+
 describe("middleware auth wall (shouldGate)", () => {
   const walled = [
     "/me",
     "/me/anything",
-    "/rewards",
-    "/rewards/ticket/t1",
+    "/new-visit",
+    "/visit/t1",
     "/reservations",
     "/reservation/r1",
     "/inbox/mine",
     "/inbox/global",
     "/subscribe/premium",
-    "/saved/reservations",
-    "/saved/reservation/r1",
-    "/saved/place/abc",
   ];
   // "Ungated at middleware" — NOT "public". Everything under app/(shell)
-  // (/home, /search, /place, /coupon, /share) is still walled by that
+  // (/home, /search, /place, /share) is still walled by that
   // layout's own getUser() check; middleware just doesn't pay for an SSR
   // render first. Only "/" and "/onboard" are reachable signed-out.
   const ungatedAtMiddleware = [
@@ -251,13 +267,14 @@ describe("middleware auth wall (shouldGate)", () => {
     "/home/favorites",
     "/search",
     "/place/abc",
-    "/coupon/c1",
     "/share",
     "/onboard",
     // Not gated but also unreachable as pages — next.config 308s them to a
     // canonical destination that IS gated:
     "/pay",
     "/qr",
+    "/rewards",
+    "/rewards/ticket/t1",
     "/profile",
     "/notifications",
     "/ticket/t1",

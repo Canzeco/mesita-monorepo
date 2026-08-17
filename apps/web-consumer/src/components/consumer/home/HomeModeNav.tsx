@@ -67,7 +67,7 @@ const TABS: Tab[] = [
       "The full Mesita catalog — every place, browsable and filterable, without swiping. Coming soon.",
   },
   {
-    href: CONSUMER_ROUTES.homeTabs.ai,
+    href: CONSUMER_ROUTES.homeTabs.chat,
     label: "Chat",
     Icon: Sparkles,
     soon: true,
