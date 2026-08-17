@@ -7,29 +7,18 @@ import { cn } from "@/lib/utils";
 
 // ─── Modular boxes ─────────────────────────────────────────────────────────
 
-type BoxTint =
-  | "pink"
-  | "sky"
-  | "emerald"
-  | "violet"
-  | "amber"
-  | "muted"
-  | "premium";
-
-// Each option-box icon gets its own tinted circle so the Me page reads as a
-// premium, colorful surface (never a flat gray stack).
-const BOX_TINT: Record<BoxTint, string> = {
-  pink: "bg-pink-gradient text-white",
-  sky: "bg-sky-500/15 text-sky-600",
-  emerald: "bg-emerald-500/15 text-emerald-600",
-  violet: "bg-violet-500/15 text-violet-600",
-  amber: "bg-amber-400/20 text-amber-700",
-  muted: "bg-muted text-foreground/70",
-  premium: "bg-tier-premium text-white",
-};
+// COLOUR LIVES ON THE PASSPORT, NOWHERE ELSE ON THIS PAGE (decision: Pato,
+// MESITA-1132). Every box used to carry its own tinted icon chip — pink
+// Instagram, amber Class, blue Plan, violet AI, sky Profile — on the theory
+// that colour made the surface read premium. Seven accents in a vertical stack
+// did the opposite: they gave equal emphasis to seven things, so nothing led,
+// and they competed with the one place colour carries meaning. The passport
+// says the class in a metal; the list underneath is a list.
+//
+// There is no `tint` prop any more, deliberately. A neutral chip cannot drift
+// back one box at a time.
 
 function BoxShell({
-  iconTint,
   icon,
   title,
   summary,
@@ -38,7 +27,6 @@ function BoxShell({
   disabled,
   soon = false,
 }: {
-  iconTint: BoxTint;
   icon: ReactNode;
   title: string;
   summary: string;
@@ -64,10 +52,7 @@ function BoxShell({
       )}
     >
       <span
-        className={cn(
-          "flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl shadow-sm",
-          BOX_TINT[iconTint],
-        )}
+        className="bg-muted text-foreground/70 flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl"
       >
         {icon}
       </span>
@@ -94,7 +79,6 @@ function BoxShell({
 
 export function BoxRow({
   Icon,
-  tint,
   title,
   summary,
   onClick,
@@ -102,7 +86,6 @@ export function BoxRow({
   soon,
 }: {
   Icon: LucideIcon;
-  tint: BoxTint;
   title: string;
   summary: string;
   onClick: () => void;
@@ -111,7 +94,6 @@ export function BoxRow({
 }) {
   return (
     <BoxShell
-      iconTint={tint}
       icon={<Icon className="h-[22px] w-[22px]" />}
       title={title}
       summary={summary}

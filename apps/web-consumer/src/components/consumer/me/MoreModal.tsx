@@ -26,11 +26,13 @@ import { cn } from "@/lib/utils";
 // wall to scroll — the parked ones sat between live ones, so the page read as
 // mostly-unfinished. Behind More, the unfinished work stops being the first
 // thing you see.
+//
+// Neutral chips, like the boxes that lead here (MESITA-1132): colour on this
+// surface belongs to the passport alone.
 
 type MoreRow = {
   key: string;
   Icon: LucideIcon;
-  tint: string;
   title: string;
   summary: string;
   /** Parked: no table, EF or type yet. Visible, inert, honest. */
@@ -61,7 +63,6 @@ export function MoreModal({
     {
       key: "yums",
       Icon: Wallet,
-      tint: "bg-pink-gradient text-white",
       title: "Yums",
       summary: "Mesita credit you earn and spend at the bill",
       soon: true,
@@ -69,7 +70,6 @@ export function MoreModal({
     {
       key: "gift",
       Icon: Gift,
-      tint: "bg-pink-gradient text-white",
       title: "Gift",
       summary: "Buy Yums or send them to a friend",
       soon: true,
@@ -77,7 +77,6 @@ export function MoreModal({
     {
       key: "share",
       Icon: Share2,
-      tint: "bg-pink-gradient text-white",
       title: "Share",
       summary: "Invite a friend, both get Yums",
       soon: true,
@@ -88,7 +87,6 @@ export function MoreModal({
     {
       key: "metrics",
       Icon: BarChart3,
-      tint: "bg-violet-500/15 text-violet-600",
       title: "Metrics",
       summary: metricsSummary,
       onClick: onOpenMetrics,
@@ -96,7 +94,6 @@ export function MoreModal({
     {
       key: "help",
       Icon: HelpCircle,
-      tint: "bg-sky-500/15 text-sky-600",
       title: "Help",
       summary: "How the discount works",
       onClick: onOpenHelp,
@@ -104,7 +101,6 @@ export function MoreModal({
     {
       key: "contact",
       Icon: Mail,
-      tint: "bg-emerald-500/15 text-emerald-600",
       title: "Contact",
       summary: "support@mesita.ai",
       onClick: onOpenContact,
@@ -153,12 +149,7 @@ export function MoreModal({
                   inert ? "opacity-60" : "hover:bg-muted/50",
                 )}
               >
-                <span
-                  className={cn(
-                    "flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl shadow-sm",
-                    row.tint,
-                  )}
-                >
+                <span className="bg-muted text-foreground/70 flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl">
                   <row.Icon className="h-[22px] w-[22px]" />
                 </span>
                 <span className="min-w-0 flex-1">

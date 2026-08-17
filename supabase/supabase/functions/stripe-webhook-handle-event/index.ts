@@ -5,7 +5,7 @@
 // unsigned or mis-signed request is rejected.
 //
 // One endpoint, two billing surfaces, discriminated by metadata:
-//   • consumer_id  → consumer Premium ($100 MXN/mo). The ONLY writer that
+//   • consumer_id  → consumer Premium ($50 MXN/mo). The ONLY writer that
 //     flips a consumer to/from Premium on the back of the paid door.
 //   • project_id   → place plans (Verified / plan=pro; ultra legacy). The ONLY writer that flips
 //     projects.plan on the back of the paid door.

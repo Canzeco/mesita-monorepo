@@ -1,7 +1,7 @@
 // Mesita Stripe subscription catalog — product/price metadata only.
 // Provisioning lives in stripe-billing.ts (resolvePlanPrice / ensureWholeCatalog).
 //
-//   consumer_premium   — Mesita Premium · $100 MXN/mo · classes.premium
+//   consumer_premium   — Mesita Premium · $50 MXN/mo · classes.premium
 //   business_verified  — Mesita Verified · $1,000 MXN/yr · business_plans.pro
 //
 // Promos v4 (MESITA-541) retired business Pro/Ultra monthly SKUs. Verified is

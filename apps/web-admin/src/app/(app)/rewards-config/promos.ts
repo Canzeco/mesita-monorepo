@@ -177,7 +177,7 @@ export const PLAN_META: Record<
   premium: {
     name: "Premium",
     emoji: "◆",
-    blurb: "MX$100/mo — the consumer revenue lever. Never shown to the place.",
+    blurb: "MX$50/mo — the consumer revenue lever. Never shown to the place.",
   },
 };
 

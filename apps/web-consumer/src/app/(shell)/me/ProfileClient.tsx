@@ -210,7 +210,6 @@ export function ProfileClient({
           {/* Identity — the door you came through, then the rung. */}
           <BoxRow
             Icon={Instagram}
-            tint="pink"
             title="Instagram"
             summary={loading ? "…" : igSummary}
             onClick={() => setVerifyOpen(true)}
@@ -218,7 +217,6 @@ export function ProfileClient({
 
           <BoxRow
             Icon={ClassIcon}
-            tint="amber"
             title="Class"
             summary={loading ? "…" : classSummary}
             onClick={() => setClassOpen(true)}
@@ -228,7 +226,6 @@ export function ProfileClient({
               + manage), never inside the Class sheet. */}
           <BoxRow
             Icon={PREMIUM_PLAN_ICON}
-            tint="premium"
             title="Plan"
             summary={loading ? "…" : planSummary}
             onClick={() => setPlanOpen(true)}
@@ -238,7 +235,6 @@ export function ProfileClient({
           {/* decision: Pato — Consumer MCP connect (MESITA-265), not a tip */}
           <BoxRow
             Icon={Bot}
-            tint="violet"
             title="AI Connector"
             summary="Use Mesita from ChatGPT or Claude (MCP)"
             onClick={() => setAiOpen(true)}
@@ -247,7 +243,6 @@ export function ProfileClient({
 
           <BoxRow
             Icon={UserRound}
-            tint="sky"
             title="Profile"
             summary={loading ? "…" : profileSummary}
             onClick={() => profile && setEditOpen(true)}
@@ -256,7 +251,6 @@ export function ProfileClient({
 
           <BoxRow
             Icon={SettingsIcon}
-            tint="muted"
             title="Settings"
             summary="Notifications, privacy, language"
             onClick={() => setSettingsOpen(true)}
@@ -265,7 +259,6 @@ export function ProfileClient({
           {/* The long tail: Yums · Gift · Share · Metrics · Help · Contact. */}
           <BoxRow
             Icon={MoreHorizontal}
-            tint="muted"
             title="More"
             summary="Yums, Gift, Share, Metrics, Help, Contact"
             onClick={() => setMoreOpen(true)}

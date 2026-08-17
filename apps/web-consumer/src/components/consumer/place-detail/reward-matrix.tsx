@@ -171,7 +171,7 @@ export function PlanRow({ quote, plan }: { quote: RewardQuote; plan: PlanKey }) 
     <Row
       icon={PREMIUM_PLAN_ICON}
       label="Premium"
-      hint="On Bronze · $100 MXN / mo"
+      hint="On Bronze · $50 MXN / mo"
       value={value}
       mine={plan === "premium"}
     />

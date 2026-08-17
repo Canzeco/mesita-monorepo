@@ -38,19 +38,20 @@ import { cn } from "@/lib/utils";
 // anywhere in the repo, and the AI Connector box on Me is still parked.
 // Un-park either one by deleting its flag here and there.
 //
-// THE +20 IS A REAL NUMBER, not a round one (decision: Pato, MESITA-1130).
-// It is the Premium column minus the Free column of the v11 visits grid, and
-// it is +20 on BOTH live strategies:
-//   conservative  bronze 10→30 · silver 15→35 · gold 20→40 · diamond 25→45
-//   aggressive    bronze 20→40 · silver 30→50 · gold 40→60 · diamond 50→70
-// Conservative paid +10 until MESITA-1130, and conservative is what every live
-// place runs — so this line was set first and the GRID was moved to match it,
-// which is why the migration is part of the same change. One case still breaks
-// the claim: a ZERO-strategy place runs no program at all, so there is no
-// uplift to have. The grid is operator-editable at Admin › Promos Config —
-// move the Premium step and this string goes stale.
+// THE +10 IS A REAL NUMBER, not a round one (decision: Pato, MESITA-1131 —
+// which set it back after MESITA-1130 briefly made it +20). It is the Premium
+// column minus the Free column of the v11 visits grid, +10 at every class on
+// the CONSERVATIVE strategy:
+//   bronze 10→20 · silver 15→25 · gold 20→30 · diamond 25→35
+// Every live place runs conservative, so "every Mesita Partner" holds. Two
+// config cases would break it, and both need this line revisited:
+//   · an AGGRESSIVE place pays +20, so the claim would UNDERSTATE it
+//   · a ZERO-strategy place runs no program at all, so there is no uplift
+// The grid is operator-editable at Admin › Promos Config; move the Premium
+// step and this string goes stale. The rule that held twice now: the copy
+// follows the engine, so a change here comes with a migration.
 const PERKS: { label: string; soon?: boolean }[] = [
-  { label: "+20% extra discount at every Mesita Partner" },
+  { label: "+10% extra discount at every Mesita Partner" },
   { label: "Better recommendations" },
   { label: "10 reservations per month" },
   { label: "30 orders per month", soon: true },
