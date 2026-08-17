@@ -85,8 +85,10 @@ export const CONSUMER_ROUTES = {
   inboxDefault: '/(tabs)/inbox',
   me: '/(tabs)/me',
   // Premium checkout deliberately has NO mobile route (Apple review — the
-  // sole sanctioned web/mobile divergence): subscribing happens on web at
-  // https://consumer.mesita.ai/subscribe/premium.
+  // sole sanctioned web/mobile divergence): subscribing happens on web, at
+  // https://consumer.mesita.ai/me — the Plan box opens the checkout sheet.
+  // /subscribe/premium was that URL until MESITA-1129 and still 308s to /me,
+  // so an older build's link-out keeps working; new links should use /me.
   legacy: {
     profile: '/profile',
     invite: '/invite',

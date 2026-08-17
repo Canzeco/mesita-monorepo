@@ -92,11 +92,6 @@ export const CONSUMER_ROUTES = {
   // Default landing for the Inbox tab — link straight here so the bare /inbox
   // redirect hop is only hit by direct URLs / legacy deep links.
   inboxDefault: "/inbox/visits",
-  // Premium checkout (Stripe). The [classKey] segment exists for URL clarity
-  // but only "premium" is valid — other classes are earned, not bought.
-  // Auth-walled in middleware. Mobile deliberately has NO subscribe route
-  // (Apple review): the iOS app links out to this web URL.
-  subscribe: "/subscribe/premium",
   // The Me tab is a single flat page — identity hero + modular boxes that open
   // as modals (Class, Settings, …). There are NO nested tab routes yet; /me is
   // the whole surface. Legacy /me/class, /me/settings and /me/plan redirect
@@ -104,6 +99,12 @@ export const CONSUMER_ROUTES = {
   me: "/me",
   legacy: {
     profile: "/profile",
+    // Premium checkout was a page until the plan became a sheet on Me
+    // (MESITA-1129). Kept as a redirect, not deleted: this was the live URL,
+    // and it is the one an external link-out would still carry. If iOS ever
+    // needs a web purchase link for Apple review, it wants a real page again —
+    // this redirect is the marker for where it used to live.
+    subscribe: "/subscribe/premium",
     invite: "/invite",
     // The AI mode's route before it was named for what it does.
     homeAi: "/home/ai",
@@ -148,7 +149,6 @@ export const CONSUMER_ROUTE_PREFIX = {
   visit: "/visit",
   inbox: "/inbox",
   me: "/me",
-  subscribe: "/subscribe",
   saved: "/saved",
 } as const;
 
