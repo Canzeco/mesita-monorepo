@@ -5,12 +5,14 @@ import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 
 export const dynamic = "force-dynamic";
 
-// Inbox › Notifications — the feed, mine + global.
+// Inbox › Notifications — your own activity feed.
 //
-// This is the half MESITA-1046 left open: notifications used to sit at their
-// own /inbox/mine + /inbox/global routes reached from Me, so "Inbox" named
-// both a bottom tab and a separate surface. Both paths now redirect into this
-// section, and mine/global became a toggle INSIDE it rather than two routes.
+// YOUR activity only (Pato, 2026-08-17). Global activity was never a
+// notification — it is other people moving, which is the Social feed's job —
+// so it lives in Home > Social now and this section lost its toggle.
+//
+// Legacy /inbox/mine + /inbox/global both redirect here, which is what finally
+// stopped "Inbox" naming two different surfaces (MESITA-1046).
 export default async function InboxNotificationsPage() {
   const supabase = await createServerSupabase();
   const {
@@ -22,5 +24,5 @@ export default async function InboxNotificationsPage() {
     );
   }
 
-  return <NotificationsClient userId={user.id} initialTab="mine" />;
+  return <NotificationsClient userId={user.id} />;
 }

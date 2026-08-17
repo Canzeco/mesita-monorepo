@@ -11,6 +11,8 @@ import {
 } from "./social-feed-data";
 import { SocialActivityRow } from "./social-activity-row";
 import { SocialProfileModal } from "./SocialProfileModal";
+import { GLOBAL_ACTIVITY } from "@/components/consumer/consumer-activity-data";
+import { ConsumerActivityList } from "@/components/consumer/ConsumerActivityList";
 
 // Two ways to order the activity feed: most-recent-first, or by how relevant
 // the person is (weighted engagement, see socialRelevance). Relevance is
@@ -26,6 +28,12 @@ const SORT_MODES: { key: SocialSort; label: string }[] = [
 // right (navigates to the place detail). Rows resolve their place against
 // the REAL deck passed down from the server fetch; when the catalog is
 // empty the chip degrades to an inert mock name so the feed still reads.
+//
+// GLOBAL ACTIVITY LIVES HERE NOW (Pato, 2026-08-17: "global activity is going
+// to be displayed in social in home"). It used to be a toggle inside Inbox >
+// Notifications, which was the wrong home twice over: it isn't a notification
+// (nothing happened to YOU), and it is exactly what Social is for — other
+// people moving on Mesita. Notifications kept only your own activity.
 //
 // TODO(EF): social feed — people + events are mock (see social-feed-data.ts).
 
@@ -138,6 +146,21 @@ export function SocialFeed({ places }: { places: Place[] }) {
             );
           })}
         </div>
+
+        {/* Global activity — what's happening on Mesita generally, as opposed
+            to the people rows above. Anonymised: it's other guests' moves, so
+            it names the beat, never the person. */}
+        {GLOBAL_ACTIVITY.length > 0 ? (
+          <>
+            <div className="mt-6 mb-3 flex items-center gap-3 px-1">
+              <p className="text-muted-foreground text-[11px] font-semibold tracking-[0.14em] uppercase">
+                On Mesita
+              </p>
+              <span className="bg-border h-px flex-1" />
+            </div>
+            <ConsumerActivityList items={GLOBAL_ACTIVITY} anonymisedNote />
+          </>
+        ) : null}
       </div>
 
       <SocialProfileModal person={profile} onClose={() => setProfile(null)} />

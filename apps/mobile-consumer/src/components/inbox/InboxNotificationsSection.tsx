@@ -3,7 +3,6 @@ import { useCallback, useEffect, useState } from 'react';
 import { ScrollView, Text, View } from 'react-native';
 
 import { ConsumerActivityList } from '@/components/inbox/ConsumerActivityList';
-import { InboxSegmentTabs } from '@/components/inbox/inbox-segment-tabs';
 import {
   NotificationRow,
   SkeletonRow,
@@ -12,35 +11,18 @@ import {
   fetchConsumerNotifications,
   type ConsumerNotification,
 } from '@/lib/api/notifications';
-import { GLOBAL_ACTIVITY, MY_ACTIVITY } from '@/lib/consumer-activity-data';
+import { MY_ACTIVITY } from '@/lib/consumer-activity-data';
 import { usePayNotificationPoll } from '@/lib/hooks/usePayNotificationPoll';
 import { errMsg } from '@/lib/utils';
 
-export type InboxTab = 'mine' | 'global';
-
 const NOTIFICATIONS_LOAD_ERROR = "Couldn't load notifications.";
 
-// The notifications feed, mine + global.
+// YOUR activity feed and nothing else (Pato, 2026-08-17), web parity.
 //
-// Extracted from the old /inbox/[tab] screen so the Inbox TAB's Notifications
-// section and the legacy /inbox/* deep links render the exact same thing.
-// Mine/global is local state here, not a route: both used to be sibling
-// routes reached from Me, and folding them into one section is what made
-// "Inbox" stop naming two different surfaces (web parity).
-export function InboxNotificationsSection({
-  userId,
-  initialTab = 'mine',
-}: {
-  userId: string;
-  initialTab?: InboxTab;
-}) {
-  const [tab, setTab] = useState<InboxTab>(initialTab);
-  const [prevInitialTab, setPrevInitialTab] = useState<InboxTab>(initialTab);
-  if (initialTab !== prevInitialTab) {
-    setPrevInitialTab(initialTab);
-    setTab(initialTab);
-  }
-
+// The My activity / Global activity toggle is gone. Global activity was never
+// a notification — nothing happened to YOU — it's other people moving, which
+// is exactly the Social feed's job, so it moved to Home > Social.
+export function InboxNotificationsSection({ userId }: { userId: string }) {
   const [rows, setRows] = useState<ConsumerNotification[]>([]);
   const [loading, setLoading] = useState(Boolean(userId));
   const [error, setError] = useState<string | null>(null);
@@ -87,9 +69,6 @@ export function InboxNotificationsSection({
 
   usePayNotificationPoll(load, Boolean(userId));
 
-  const myCount = rows.length + MY_ACTIVITY.length;
-  const globalCount = GLOBAL_ACTIVITY.length;
-
   return (
     <ScrollView
       className="flex-1"
@@ -97,15 +76,8 @@ export function InboxNotificationsSection({
       showsVerticalScrollIndicator={false}
     >
       <Text className="mt-0.5 font-display text-lg font-semibold text-foreground">
-        {tab === 'mine' ? 'Your recent moves' : "What's happening on Mesita"}
+        Your recent moves
       </Text>
-
-      <InboxSegmentTabs
-        active={tab}
-        onChange={setTab}
-        myCount={myCount}
-        globalCount={globalCount}
-      />
 
       {error ? (
         <View className="rounded-xl border border-destructive/30 bg-destructive/10 p-3">
@@ -113,9 +85,7 @@ export function InboxNotificationsSection({
         </View>
       ) : null}
 
-      {tab === 'global' ? (
-        <ConsumerActivityList items={GLOBAL_ACTIVITY} anonymisedNote />
-      ) : loading ? (
+      {loading ? (
         <View className="gap-2">
           {[0, 1, 2, 3].map((i) => (
             <SkeletonRow key={i} />

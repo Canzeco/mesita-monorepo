@@ -30,7 +30,7 @@ export function ReservationsList({
     (async () => {
       try {
         const { reservations } = await apiListReservations({ scope });
-        if (!cancelled) setItems(reservations.map(toReservationItem));
+        if (!cancelled) setItems(orderOneFeed(reservations.map(toReservationItem), scope));
       } catch (e) {
         if (!cancelled) setError(errMsg(e, "Couldn't load your reservations."));
       }
@@ -69,4 +69,28 @@ export function ReservationsList({
       ))}
     </ScrollView>
   );
+}
+
+/**
+ * Single-feed order (web parity): what's coming next, then what already
+ * happened. Upcoming ascends — the soonest booking is the one you need —
+ * and past descends, since the most recent visit is the one you'd look up.
+ * Scoped modes keep the Edge Function's own order untouched.
+ */
+function orderOneFeed(
+  rows: ReservationItem[],
+  scope: ReservationScope,
+): ReservationItem[] {
+  if (scope !== 'all') return rows;
+  const now = Date.now();
+  const at = (r: ReservationItem) => {
+    const t = new Date(r.reservedAt ?? '').getTime();
+    return Number.isFinite(t) ? t : 0;
+  };
+  const upcoming: ReservationItem[] = [];
+  const past: ReservationItem[] = [];
+  for (const r of rows) (at(r) >= now ? upcoming : past).push(r);
+  upcoming.sort((a, b) => at(a) - at(b));
+  past.sort((a, b) => at(b) - at(a));
+  return [...upcoming, ...past];
 }

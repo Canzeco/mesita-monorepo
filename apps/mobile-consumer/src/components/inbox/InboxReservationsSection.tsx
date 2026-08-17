@@ -1,91 +1,32 @@
 import { LinearGradient } from 'expo-linear-gradient';
-import { CalendarCheck, Clock, type LucideIcon } from 'lucide-react-native';
-import { useState } from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { CalendarCheck, type LucideIcon } from 'lucide-react-native';
+import { Text, View } from 'react-native';
 
 import { ReservationsList } from '@/components/reservations/ReservationsList';
 import { GRADIENT_DIAGONAL, GRADIENTS, SHADOW_GLOW } from '@/constants/brand';
 
-// Inbox > Reservations — Upcoming / History (web parity with
-// app/(shell)/inbox/reservations). Booking is live (MESITA-715): each tab
-// reads consumer-web-list-reservations for its scope.
+// Inbox > Reservations — ONE feed (Pato, 2026-08-17: "remove upcoming and
+// history, all in the same feed"), web parity.
 //
-// This used to be the whole `reservations` TAB screen. It became a section
-// when Inbox grew four of them; the reservation DETAIL route did not move.
-
-type Tab = 'upcoming' | 'history';
-
-const TABS: { id: Tab; label: string }[] = [
-  { id: 'upcoming', label: 'Upcoming' },
-  { id: 'history', label: 'History' },
-];
+// The Upcoming/History segmented control is gone: it was a second row of
+// navigation stacked right under the Inbox section nav, chrome about chrome.
+// The split survives as ORDER inside the list — what's coming next, then what
+// already happened — instead of as a control.
 
 export function InboxReservationsSection() {
-  const [tab, setTab] = useState<Tab>('upcoming');
-
   return (
     <View className="flex-1">
-      <View className="px-4 pt-3">
-        <View className="flex-row gap-0 rounded-2xl border border-border bg-card p-1">
-          {TABS.map((t) => {
-            const active = tab === t.id;
-            return (
-              <Pressable
-                key={t.id}
-                onPress={() => setTab(t.id)}
-                accessibilityRole="button"
-                accessibilityState={{ selected: active }}
-                className={`flex-1 items-center justify-center rounded-xl px-1 py-1.5 ${
-                  active ? 'bg-foreground' : ''
-                }`}
-              >
-                <Text
-                  className={`text-center text-[12px] font-medium ${
-                    active ? 'text-background' : 'text-muted-foreground'
-                  }`}
-                >
-                  {t.label}
-                </Text>
-              </Pressable>
-            );
-          })}
-        </View>
-      </View>
-
-      <View className="min-h-0 flex-1">
-        {tab === 'upcoming' ? <UpcomingBody /> : <HistoryBody />}
-      </View>
+      <ReservationsList
+        scope="all"
+        empty={
+          <ReservationsEmptyState
+            icon={CalendarCheck}
+            title="No reservations yet"
+            body="Reserve a table from any place and Mesita calls to book it — your bookings show up here."
+          />
+        }
+      />
     </View>
-  );
-}
-
-function UpcomingBody() {
-  return (
-    <ReservationsList
-      scope="upcoming"
-      empty={
-        <ReservationsEmptyState
-          icon={CalendarCheck}
-          title="No upcoming reservations"
-          body="Reserve a table from any place and Mesita calls to book it — your upcoming bookings show up here."
-        />
-      }
-    />
-  );
-}
-
-function HistoryBody() {
-  return (
-    <ReservationsList
-      scope="past"
-      empty={
-        <ReservationsEmptyState
-          icon={Clock}
-          title="No past reservations"
-          body="Your dining history will show up here once you've booked and visited a place through Mesita."
-        />
-      }
-    />
   );
 }
 
