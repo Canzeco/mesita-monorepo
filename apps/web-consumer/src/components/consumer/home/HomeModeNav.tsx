@@ -5,21 +5,27 @@
 // layout, so the fetched deck (HomeDeckBoundary) is reused, not re-fetched.
 // The shell renders no TopBar for /home, so this band IS the page's top chrome.
 //
-// All FIVE labels fit the max-w-md frame at rest (Pato, 2026-08-16). They used
-// to overflow: the row scrolled and "Favorites" sat clipped mid-word at the
-// right edge, which reads as a broken render rather than an affordance. The
-// fix is metrics, not fewer modes: tighter pill padding, a tighter icon/label
-// gap and 14px icons buy back the ~50px needed, labels left intact.
+// EVERY PILL IS 20% (Pato, 2026-08-17), the same rule InboxSectionNav follows
+// at 25% — the two section rows are one control, so they size the same way.
+// `grid-flow-col auto-cols-fr` on a `w-max min-w-full` track: at rest
+// min-w-full stretches the track to the frame and the fr columns split it into
+// exact fifths; at large accessibility text w-max lets the track outgrow the
+// frame and the scroller takes over, columns still equal (all sized to the
+// widest, "Favorites"). The scroller stays the FALLBACK, not the resting
+// state — a row that scrolls at rest clips "Favorites" mid-word and reads as
+// a broken render rather than an affordance.
+//
+// Equal columns are budgeted by the LONGEST label, not the average, so this is
+// the tighter of the two rows: a fifth of the 432px content box is 83px and
+// "Favorites" spends 78 of it (Inter 600 12px ≈ 52px + 14px icon + gap +
+// px-1). Hence px-1 pills and 14px icons — px-1.5 leaves under a pixel and
+// px-2 overflows. A sixth mode, or a label longer than "Favorites", puts it
+// back over budget: measure before adding either.
 //
 // Only Swipe and Favorites are FUNCTIONAL (Pato, 2026-08-16). Catalog, Chat
 // and Social are parked — all three keep working code on disk, so each is a
 // one-flag unpark, and all five pills stay visible so the row reads as the
 // finished shape rather than a surface still being assembled.
-//
-// The horizontal scroller stays as the fallback, not the resting state: at
-// large accessibility text sizes the row overflows again and scrolling is the
-// correct degradation. Adding a sixth mode, or a label longer than
-// "Favorites", puts it back over budget — measure before adding either.
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -90,49 +96,51 @@ export function HomeModeNav() {
   const [soonTab, setSoonTab] = useState<Tab | null>(null);
 
   const baseClass =
-    "flex shrink-0 items-center justify-center gap-1 rounded-full px-2.5 py-2 text-xs font-semibold whitespace-nowrap transition active:scale-[0.98]";
+    "flex items-center justify-center gap-1 rounded-full px-1 py-2 text-xs font-semibold whitespace-nowrap transition active:scale-[0.98]";
 
   return (
     <div className="border-border bg-background/90 sticky top-0 z-20 shrink-0 border-b backdrop-blur-xl">
-      <div className="scrollbar-hide flex items-center gap-1 overflow-x-auto px-2 py-2.5">
-        {TABS.map((tab) => {
-          const { href, label, Icon, soon } = tab;
-          const active = pathname === href || pathname.startsWith(`${href}/`);
+      <div className="scrollbar-hide overflow-x-auto px-2 py-2.5">
+        <div className="grid w-max min-w-full grid-flow-col auto-cols-fr items-center gap-1">
+          {TABS.map((tab) => {
+            const { href, label, Icon, soon } = tab;
+            const active = pathname === href || pathname.startsWith(`${href}/`);
 
-          if (soon) {
+            if (soon) {
+              return (
+                <button
+                  key={href}
+                  type="button"
+                  onClick={() => setSoonTab(tab)}
+                  className={cn(
+                    baseClass,
+                    "text-muted-foreground hover:text-foreground",
+                  )}
+                >
+                  <Icon className="h-3.5 w-3.5 shrink-0" strokeWidth={2.2} />
+                  <span>{label}</span>
+                </button>
+              );
+            }
+
             return (
-              <button
+              <Link
                 key={href}
-                type="button"
-                onClick={() => setSoonTab(tab)}
+                href={href}
+                aria-current={active ? "page" : undefined}
                 className={cn(
                   baseClass,
-                  "text-muted-foreground hover:text-foreground",
+                  active
+                    ? "bg-primary text-primary-foreground shadow-glow"
+                    : "text-muted-foreground hover:text-foreground",
                 )}
               >
-                <Icon className="h-3.5 w-3.5" strokeWidth={2.2} />
+                <Icon className="h-3.5 w-3.5 shrink-0" strokeWidth={2.2} />
                 <span>{label}</span>
-              </button>
+              </Link>
             );
-          }
-
-          return (
-            <Link
-              key={href}
-              href={href}
-              aria-current={active ? "page" : undefined}
-              className={cn(
-                baseClass,
-                active
-                  ? "bg-primary text-primary-foreground shadow-glow"
-                  : "text-muted-foreground hover:text-foreground",
-              )}
-            >
-              <Icon className="h-3.5 w-3.5" strokeWidth={2.2} />
-              <span>{label}</span>
-            </Link>
-          );
-        })}
+          })}
+        </div>
       </div>
 
       <LocalDialog
