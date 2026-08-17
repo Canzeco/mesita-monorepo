@@ -32,8 +32,19 @@ import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 // these are not deliverable to a subscriber yet. Orders has no table, EF,
 // type or quota anywhere in the repo, and the AI Connector box on Me is still
 // parked. Un-park either one by deleting its flag here and there.
+//
+// THE +10 IS A REAL NUMBER, not a round one (decision: Pato — "be specific").
+// It is the Premium column minus the Free column of the v11 visits grid, which
+// is +10 at every class on the CONSERVATIVE strategy:
+//   bronze 10→20 · silver 15→25 · gold 20→30 · diamond 25→35
+// Every live place runs conservative today, so "every Verified Partner" holds.
+// Two config cases would break it, and both need this line revisited:
+//   · an AGGRESSIVE place pays +20, so the claim would understate it
+//   · a ZERO-strategy place runs no program at all, so there is no uplift
+// The grid is operator-editable at Admin › Promos Config — if the Premium
+// column moves, this string is the thing that goes stale.
 const PERKS: { label: string; soon?: boolean }[] = [
-  { label: "Bigger discounts at Verified Partners" },
+  { label: "+10% extra discount at every Verified Partner" },
   { label: "Better recommendations" },
   { label: "10 reservations per month" },
   { label: "30 orders per month", soon: true },
