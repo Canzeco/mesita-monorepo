@@ -8,10 +8,11 @@ import { toast } from "@/lib/toast";
 import { ClimbCard, type ClimbCardData } from "./ClimbCard";
 import { InstagramConnectedSummary } from "./InstagramConnectedSummary";
 
-// Elevated classes share core perks; the meter carries the discount signal
-// (MESITA-907 qualitative). Story Bonus is not a class perk — it lives on
-// Instagram connect / Rewards (MESITA-909).
-const ELEVATED_PERKS = ["Personalized picks", "10 reservations / mo"];
+// NO PERK LISTS (decision: Pato, MESITA-1123). A class moves the discount
+// rate and nothing else, so the DiscountMeter IS the card's payload. The old
+// lists promised "Personalized picks" and "10 reservations / mo" on every
+// elevated class — benefits that ride the PLAN, which made the ladder look
+// like it bought features it never granted.
 
 // THE CLASS LADDER, AND NOTHING ELSE (decision: Pato, MESITA-1122).
 //
@@ -38,7 +39,6 @@ export function WaysToClimb({
       title: "Bronze",
       via: "Default",
       discountLevel: "LOW",
-      perks: ["Basic place picks", "2 AI reservations / mo"],
       reached: key === "bronze",
       reachedLabel: "Current class",
       note: key === "bronze" ? undefined : "Included",
@@ -52,7 +52,6 @@ export function WaysToClimb({
       accent: true,
       door: `${silver.followerThreshold.toLocaleString("en-US")}+ followers · automatic`,
       discountLevel: "HIGH",
-      perks: [...ELEVATED_PERKS],
       reached: key === "silver",
       reachedLabel: origin === "instagram" ? "Connected" : "Active",
       actions: [{ label: "Join with Instagram", onClick: onConnectInstagram }],
@@ -70,7 +69,6 @@ export function WaysToClimb({
       // same Instagram door as Silver rather than a CTA that can't fire.
       door: "A higher reach band · automatic",
       discountLevel: "EXTRA",
-      perks: [...ELEVATED_PERKS],
       reached: key === "gold",
       reachedLabel: "Active",
       actions: [{ label: "Join with Instagram", onClick: onConnectInstagram }],
@@ -84,7 +82,6 @@ export function WaysToClimb({
       accent: true,
       door: "Aura-list invitation · no payment",
       discountLevel: "MAX",
-      perks: [...ELEVATED_PERKS],
       reached: key === "diamond",
       reachedLabel: "Active",
       actions: [

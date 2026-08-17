@@ -3,16 +3,11 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
-  BarChart3,
   Bot,
-  Gift,
-  HelpCircle,
   Instagram,
-  Mail,
+  MoreHorizontal,
   Settings as SettingsIcon,
-  Share2,
   UserRound,
-  Wallet,
 } from "lucide-react";
 import { SignOutButton } from "@/components/auth/SignOutButton";
 import { DeleteAccountSheet } from "@/components/consumer/DeleteAccountSheet";
@@ -25,6 +20,7 @@ import { ContactModal } from "@/components/consumer/me/ContactModal";
 import { HelpModal } from "@/components/consumer/me/HelpModal";
 import { MetricsModal } from "@/components/consumer/me/MetricsModal";
 import { AiConnectModal } from "@/components/consumer/me/AiConnectModal";
+import { MoreModal } from "@/components/consumer/me/MoreModal";
 import { errMsg, formatCompactCount, formatPhoneDisplay } from "@/lib/utils";
 import { toast } from "@/lib/toast";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
@@ -44,19 +40,18 @@ import { useConsumerClass } from "@/lib/class-context";
 import { BoxRow } from "./profile-sections";
 import { ProfileSummaryCard } from "./ProfileSummaryCard";
 
-// The Me surface — Passport + modular boxes, ordered identity → money →
-// account → support (MESITA-1079 v2):
+// The Me surface — Passport + SEVEN boxes (decision: Pato, MESITA-1123):
 //
-//   Class · Instagram      who you are, and the door you came through
-//   Plan · Yums · Gift     what you pay and what you hold
-//   Share                  outward
-//   Personal details · Metrics   your own record
-//   AI Connector · Help · Contact · Settings   tools and support
+//   Instagram · Class · Plan     who you are and what you pay
+//   AI Connector · Profile · Settings   your tools and your account
+//   More                          everything else, one tap deeper
 //
-// Every summary reads live wherever the page already holds the data — a box
-// that states a fact the guest can check beats one that lists its own fields.
-// Yums and Gift are PARKED (`soon`): the credit has no table, EF or type yet,
-// so the boxes state the intent without inventing a balance.
+// Twelve boxes made this a wall to scroll, with parked rows (Yums, Gift,
+// Share) sitting between live ones so the page read as mostly-unfinished.
+// The long tail moved into MoreModal; the split is by FREQUENCY, not
+// importance. Every summary reads live wherever the page already holds the
+// data — a box that states a fact the guest can check beats one that lists
+// its own fields.
 //
 // Flat page at /me; `openSettings` opens Settings on arrival for the legacy
 // /me/settings deep link.
@@ -97,6 +92,7 @@ export function ProfileClient({
   const [metricsOpen, setMetricsOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [moreOpen, setMoreOpen] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -183,7 +179,7 @@ export function ProfileClient({
     [profile?.first_name, profile?.last_name].filter(Boolean).join(" ") ||
     profile?.full_name ||
     null;
-  const personalSummary =
+  const profileSummary =
     [name, formatPhoneDisplay(profile?.phone)].filter(Boolean).join(" · ") ||
     "Name, phone, birthday, photo";
 
@@ -208,21 +204,21 @@ export function ProfileClient({
             onOpenInstagram={() => setVerifyOpen(true)}
           />
 
-          {/* Identity — the class you hold, then the door you came through. */}
-          <BoxRow
-            Icon={ClassIcon}
-            tint="amber"
-            title="Class"
-            summary={loading ? "…" : classSummary}
-            onClick={() => setClassOpen(true)}
-          />
-
+          {/* Identity — the door you came through, then the rung. */}
           <BoxRow
             Icon={Instagram}
             tint="pink"
             title="Instagram"
             summary={loading ? "…" : igSummary}
             onClick={() => setVerifyOpen(true)}
+          />
+
+          <BoxRow
+            Icon={ClassIcon}
+            tint="amber"
+            title="Class"
+            summary={loading ? "…" : classSummary}
+            onClick={() => setClassOpen(true)}
           />
 
           {/* Money — the plan axis lives on its own surface (Stripe checkout
@@ -235,59 +231,7 @@ export function ProfileClient({
             onClick={() => router.push("/subscribe/premium")}
           />
 
-          {/* Yums + Gift are PARKED: no yums table, EF or type exists yet, so
-              neither box may quote a balance. Un-park = drop `soon` and give
-              each a sheet. */}
-          <BoxRow
-            Icon={Wallet}
-            tint="pink"
-            title="Yums"
-            summary="Mesita credit you earn and spend at the bill"
-            onClick={() => undefined}
-            soon
-          />
-
-          <BoxRow
-            Icon={Gift}
-            tint="pink"
-            title="Gift"
-            summary="Buy Yums or send them to a friend"
-            onClick={() => undefined}
-            soon
-          />
-
-          <BoxRow
-            Icon={Share2}
-            tint="pink"
-            title="Share"
-            summary="Invite a friend, both get Yums"
-            onClick={() => setShareOpen(true)}
-            soon
-          />
-
-          {/* Your own record. */}
-          <BoxRow
-            Icon={UserRound}
-            tint="sky"
-            title="Personal details"
-            summary={loading ? "…" : personalSummary}
-            onClick={() => profile && setEditOpen(true)}
-            disabled={!profile}
-          />
-
-          <BoxRow
-            Icon={BarChart3}
-            tint="violet"
-            title="Metrics"
-            summary={
-              loading
-                ? "…"
-                : metricsSummary || "Visits, places, reviews — your numbers"
-            }
-            onClick={() => setMetricsOpen(true)}
-          />
-
-          {/* Tools + support. */}
+          {/* Tools + account. */}
           {/* decision: Pato — Consumer MCP connect (MESITA-265), not a tip */}
           <BoxRow
             Icon={Bot}
@@ -299,19 +243,12 @@ export function ProfileClient({
           />
 
           <BoxRow
-            Icon={HelpCircle}
+            Icon={UserRound}
             tint="sky"
-            title="Help"
-            summary="How the discount works"
-            onClick={() => setHelpOpen(true)}
-          />
-
-          <BoxRow
-            Icon={Mail}
-            tint="emerald"
-            title="Contact"
-            summary="support@mesita.ai"
-            onClick={() => setContactOpen(true)}
+            title="Profile"
+            summary={loading ? "…" : profileSummary}
+            onClick={() => profile && setEditOpen(true)}
+            disabled={!profile}
           />
 
           <BoxRow
@@ -320,6 +257,15 @@ export function ProfileClient({
             title="Settings"
             summary="Notifications, privacy, language"
             onClick={() => setSettingsOpen(true)}
+          />
+
+          {/* The long tail: Yums · Gift · Share · Metrics · Help · Contact. */}
+          <BoxRow
+            Icon={MoreHorizontal}
+            tint="muted"
+            title="More"
+            summary="Yums, Gift, Share, Metrics, Help, Contact"
+            onClick={() => setMoreOpen(true)}
           />
 
           <SignOutButton
@@ -363,6 +309,19 @@ export function ProfileClient({
       <DeleteAccountSheet
         open={deleteOpen}
         onClose={() => setDeleteOpen(false)}
+      />
+      <MoreModal
+        open={moreOpen}
+        onClose={() => setMoreOpen(false)}
+        onOpenShare={() => setShareOpen(true)}
+        onOpenMetrics={() => setMetricsOpen(true)}
+        onOpenHelp={() => setHelpOpen(true)}
+        onOpenContact={() => setContactOpen(true)}
+        metricsSummary={
+          loading
+            ? "…"
+            : metricsSummary || "Visits, places, reviews — your numbers"
+        }
       />
     </div>
   );

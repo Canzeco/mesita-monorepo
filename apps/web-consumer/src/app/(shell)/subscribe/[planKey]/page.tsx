@@ -3,25 +3,29 @@
 import { useState } from "react";
 import Link from "next/link";
 import { notFound, useParams } from "next/navigation";
-import { ArrowLeft, Check, Instagram, Mail, Sparkles } from "lucide-react";
+import { ArrowLeft, Check, Sparkles } from "lucide-react";
 import { PLANS } from "@/lib/consumer-data";
 import { Spinner } from "@/components/shared";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { apiCreateSubscriptionCheckout } from "@/lib/api/subscription";
 import { toast } from "@/lib/toast";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
-import { INSTAGRAM_ICON_GRADIENT_CLASS } from "@/lib/ui-classes";
-import { cn } from "@/lib/utils";
 
-// Premium subscribe page — the paid "door" into Mesita Premium ($100 MXN/mo).
-// The other two doors (Instagram, invitation) are surfaced here too so the
-// page reads as "here's how to get Premium", with Subscribe as the primary
-// action wired to real Stripe Checkout. The legacy four-class subscribe routes
-// collapsed to this single page; the [classKey] segment is kept so existing
+// Premium subscribe page — the ONE door into Mesita Premium ($100 MXN/mo),
+// wired to real Stripe Checkout. The legacy four-class subscribe routes
+// collapsed to this single page; the [planKey] segment is kept so existing
 // /subscribe/premium links resolve, but only "premium" is valid.
+//
+// THERE IS ONLY ONE WAY IN (decision: Pato, MESITA-1123). This page used to
+// carry a "Three ways in" list offering Instagram and invitation alongside
+// Subscribe — but those grant Silver and Diamond, which are CLASSES. Listing
+// them on the plan page told a guest they could get Premium free, and merged
+// the two axes on the one screen that takes their money. The class ladder is
+// reachable from Me › Class; it is not a route to this.
 
-// The elevated perk set — shared by every elevated class (Premium /
-// any class above Bronze); only the door differs. Mirrors ELEVATED_PERKS on Me.
+// What the PLAN confers. Unlike a class (which moves the discount rate and
+// nothing else), the subscription does carry product features — so this list
+// is legitimate here and must never be mirrored onto a class card.
 const PERKS = [
   "Higher discount rewards at every Verified Partner.",
   "Better, more rewarding recommendations across discovery.",
@@ -96,43 +100,20 @@ export default function SubscribePage() {
 
         <section className="border-border bg-card rounded-2xl border p-5">
           <h3 className="font-display text-base font-semibold tracking-tight">
-            Three ways in
+            Your class stays yours
           </h3>
-          <ul className="mt-3 flex flex-col gap-3 text-sm">
-            <li className="flex items-start gap-2.5">
-              <span
-                className={cn(
-                  "mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-lg text-white",
-                  INSTAGRAM_ICON_GRADIENT_CLASS,
-                )}
-              >
-                <Instagram className="h-3.5 w-3.5" />
-              </span>
-              <span>
-                <span className="font-semibold">Instagram</span> — 2,000+
-                followers. Silver, free, automatic. Story Bonus unlocks for any
-                connected account.
-              </span>
-            </li>
-            <li className="flex items-start gap-2.5">
-              <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-amber-500 text-white">
-                <Mail className="h-3.5 w-3.5" />
-              </span>
-              <span>
-                <span className="font-semibold">Invitation</span> — Diamond,
-                for the guests Mesita picks personally for the Aura list.
-              </span>
-            </li>
-            <li className="flex items-start gap-2.5">
-              <span className="bg-pink-gradient mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-lg text-white">
-                <Sparkles className="h-3.5 w-3.5" />
-              </span>
-              <span>
-                <span className="font-semibold">Subscribe</span> — $
-                {premium.priceMxn} MXN / mo, below. Cancel anytime.
-              </span>
-            </li>
-          </ul>
+          <p className="text-muted-foreground mt-2 text-sm leading-relaxed">
+            Premium is a subscription, not a rung. It raises your discount at
+            every place and never changes your class — Bronze, Silver, Gold and
+            Diamond are earned through Instagram reach or an Aura-list
+            invitation, and none of them can be bought.
+          </p>
+          <Link
+            href={CONSUMER_ROUTES.me}
+            className="text-primary mt-3 inline-flex text-sm font-semibold"
+          >
+            See your class
+          </Link>
         </section>
 
         <section className="border-border bg-muted/30 text-muted-foreground rounded-2xl border border-dashed p-4 text-[12px] leading-relaxed">

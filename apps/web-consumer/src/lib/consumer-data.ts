@@ -152,7 +152,6 @@ export const CLASSES: {
   /** Follower threshold via Instagram verification. 0 = not a reach door. */
   followerThreshold: number;
   reward: string;
-  perk: string;
 }[] = [
   // The class IS the brand — rendered as "Mesita Bronze" / "Mesita Diamond" in
   // marketing and Passport surfaces. The compact `label` here is used inside
@@ -160,13 +159,20 @@ export const CLASSES: {
   //
   // NO `priceMxn` ON A CLASS, on purpose: under v2 a class is never
   // purchasable. Money lives on PLANS below, and nowhere else.
+  //
+  // AND NO `perk` (decision: Pato, MESITA-1123). A class moves ONE thing: the
+  // discount rate, which is what `reward` names. It does not grant better
+  // recommendations, reservation quota, or anything else — those ride the PLAN.
+  // The old `perk` field claimed "Better recs · 10 reservations" on three rows
+  // and was read by nothing, so it was wrong AND dead. Do not re-add a second
+  // benefit field here; if a class ever confers more, that is a product
+  // decision, not a data-shape one.
   {
     id: "bronze",
     label: "Bronze",
     req: "Every account starts here",
     followerThreshold: 0,
     reward: "Base discount",
-    perk: "Welcome to the club",
   },
   {
     id: "silver",
@@ -178,7 +184,6 @@ export const CLASSES: {
     // Instagram unlocks it, not just a reach class.
     followerThreshold: 2_000,
     reward: "Higher discount",
-    perk: "Better recs · 10 reservations",
   },
   {
     id: "gold",
@@ -191,7 +196,6 @@ export const CLASSES: {
     req: "A higher reach band",
     followerThreshold: 0,
     reward: "Higher discount",
-    perk: "Better recs · 10 reservations",
   },
   {
     id: "diamond",
@@ -200,7 +204,6 @@ export const CLASSES: {
     followerThreshold: 0,
     // Highest flat class rate — the house pays for presence, no posting asked.
     reward: "Highest discount",
-    perk: "Better recs · 10 reservations",
   },
 ];
 

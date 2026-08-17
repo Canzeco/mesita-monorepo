@@ -1,0 +1,189 @@
+"use client";
+
+import {
+  BarChart3,
+  ChevronRight,
+  Gift,
+  HelpCircle,
+  Mail,
+  MoreHorizontal,
+  Share2,
+  Wallet,
+  type LucideIcon,
+} from "lucide-react";
+import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
+import { SHEET_TITLE_CLASS, SHEET_BODY_CLASS } from "@/lib/ui-classes";
+import { cn } from "@/lib/utils";
+
+// Me › More (decision: Pato, MESITA-1123). The Me page keeps SEVEN boxes —
+// Instagram · Class · Plan · AI Connector · Profile · Settings · More — and
+// everything else lives one tap deeper.
+//
+// The split is by FREQUENCY, not importance. The seven are what a guest opens
+// repeatedly or must reach in a hurry; these six are the long tail: two that
+// don't exist yet (Yums, Gift), one parked (Share), and three you consult once
+// and rarely again (Metrics, Help, Contact). Twelve boxes made the surface a
+// wall to scroll — the parked ones sat between live ones, so the page read as
+// mostly-unfinished. Behind More, the unfinished work stops being the first
+// thing you see.
+
+type MoreRow = {
+  key: string;
+  Icon: LucideIcon;
+  tint: string;
+  title: string;
+  summary: string;
+  /** Parked: no table, EF or type yet. Visible, inert, honest. */
+  soon?: boolean;
+  onClick?: () => void;
+};
+
+export function MoreModal({
+  open,
+  onClose,
+  onOpenShare,
+  onOpenMetrics,
+  onOpenHelp,
+  onOpenContact,
+  metricsSummary,
+}: {
+  open: boolean;
+  onClose: () => void;
+  onOpenShare: () => void;
+  onOpenMetrics: () => void;
+  onOpenHelp: () => void;
+  onOpenContact: () => void;
+  /** Live "MX$X saved · N visits" when the page has it; falls back to the
+   *  field list while loading or if the metrics EF failed. */
+  metricsSummary: string;
+}) {
+  const rows: MoreRow[] = [
+    {
+      key: "yums",
+      Icon: Wallet,
+      tint: "bg-pink-gradient text-white",
+      title: "Yums",
+      summary: "Mesita credit you earn and spend at the bill",
+      soon: true,
+    },
+    {
+      key: "gift",
+      Icon: Gift,
+      tint: "bg-pink-gradient text-white",
+      title: "Gift",
+      summary: "Buy Yums or send them to a friend",
+      soon: true,
+    },
+    {
+      key: "share",
+      Icon: Share2,
+      tint: "bg-pink-gradient text-white",
+      title: "Share",
+      summary: "Invite a friend, both get Yums",
+      soon: true,
+      // Handler stays wired while parked so un-parking is `soon` removal
+      // alone — the sheet it opens already works.
+      onClick: onOpenShare,
+    },
+    {
+      key: "metrics",
+      Icon: BarChart3,
+      tint: "bg-violet-500/15 text-violet-600",
+      title: "Metrics",
+      summary: metricsSummary,
+      onClick: onOpenMetrics,
+    },
+    {
+      key: "help",
+      Icon: HelpCircle,
+      tint: "bg-sky-500/15 text-sky-600",
+      title: "Help",
+      summary: "How the discount works",
+      onClick: onOpenHelp,
+    },
+    {
+      key: "contact",
+      Icon: Mail,
+      tint: "bg-emerald-500/15 text-emerald-600",
+      title: "Contact",
+      summary: "support@mesita.ai",
+      onClick: onOpenContact,
+    },
+  ];
+
+  // Opening a row hands off to a sheet that lives at the same z-layer, so this
+  // one closes first — two LocalSheets must never stack (z-[130]).
+  function handOff(run: () => void) {
+    onClose();
+    run();
+  }
+
+  return (
+    <LocalSheet open={open} onClose={onClose} ariaLabel="More">
+      <div className={SHEET_BODY_CLASS}>
+        <div className="mb-4 flex items-center gap-3">
+          <span className="bg-muted text-foreground/70 flex h-12 w-12 shrink-0 items-center justify-center rounded-full">
+            <MoreHorizontal className="h-5 w-5" />
+          </span>
+          <div>
+            <h2 className={SHEET_TITLE_CLASS}>More</h2>
+            <p className="text-muted-foreground text-[12px]">
+              Everything else on your account
+            </p>
+          </div>
+        </div>
+
+        <div className="flex flex-col gap-2.5">
+          {rows.map((row) => {
+            const inert = row.soon || !row.onClick;
+            return (
+              <button
+                key={row.key}
+                type="button"
+                onClick={
+                  inert || !row.onClick
+                    ? undefined
+                    : () => handOff(row.onClick!)
+                }
+                disabled={inert}
+                aria-disabled={inert}
+                title={row.soon ? "Coming soon" : undefined}
+                className={cn(
+                  "border-border bg-card flex w-full items-center gap-3.5 rounded-2xl border p-4 text-left transition active:scale-[0.99]",
+                  inert ? "opacity-60" : "hover:bg-muted/50",
+                )}
+              >
+                <span
+                  className={cn(
+                    "flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl shadow-sm",
+                    row.tint,
+                  )}
+                >
+                  <row.Icon className="h-[22px] w-[22px]" />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="flex items-center gap-1.5">
+                    <span className="text-[15px] font-bold tracking-tight">
+                      {row.title}
+                    </span>
+                    {row.soon && (
+                      <span className="border-border text-muted-foreground rounded-full border px-1.5 py-0.5 text-[8px] font-semibold tracking-[0.12em] uppercase">
+                        Soon
+                      </span>
+                    )}
+                  </span>
+                  <span className="text-muted-foreground block truncate text-[12px]">
+                    {row.summary}
+                  </span>
+                </span>
+                {!row.soon && (
+                  <ChevronRight className="text-muted-foreground h-4 w-4 shrink-0" />
+                )}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    </LocalSheet>
+  );
+}

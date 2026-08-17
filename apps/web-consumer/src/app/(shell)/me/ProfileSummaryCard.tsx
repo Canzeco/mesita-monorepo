@@ -49,6 +49,15 @@ const CLASS_FILL: Record<ClassKey, string> = {
  * One of the three passport tiles. `fill` paints it when the guest HOLDS the
  * thing; the empty state stays a bordered card so the card never reads as
  * three equally-earned badges.
+ *
+ * THE NOTE WRAPS, IT DOES NOT TRUNCATE. Three tiles across a 375px phone leaves
+ * roughly 80px of text width each (343 content − 32 card padding − 12 gutters,
+ * ÷ 3, − 20 tile padding), which fits about 13 characters at 10px. Every note
+ * longer than that — "Earned, not bought", "Connect to climb" — is WIDER than
+ * the tile can ever be, so `truncate` here clipped copy on every render rather
+ * than in an edge case. Wrapping costs nothing: the grid row stretches and all
+ * three tiles keep equal height. The VALUE still truncates, because a long
+ * Instagram handle has no good second line.
  */
 function Tile({
   eyebrow,
@@ -73,7 +82,7 @@ function Tile({
       onClick={onClick}
       aria-label={`${eyebrow}: ${value}. ${note}`}
       className={cn(
-        "flex min-w-0 flex-col items-start rounded-2xl p-3 text-left shadow-sm transition active:scale-[0.98]",
+        "flex min-w-0 flex-col items-start rounded-2xl p-2.5 text-left shadow-sm transition active:scale-[0.98]",
         held ? cn(fill, "text-white") : "border-border bg-card border",
       )}
     >
@@ -86,12 +95,12 @@ function Tile({
         <Icon className="h-2.5 w-2.5 shrink-0" />
         <span className="truncate">{eyebrow}</span>
       </span>
-      <span className="font-display mt-1.5 w-full truncate text-[17px] leading-tight font-semibold tracking-tight">
+      <span className="font-display mt-1.5 w-full truncate text-[16px] leading-tight font-semibold tracking-tight">
         {value}
       </span>
       <span
         className={cn(
-          "mt-0.5 w-full truncate text-[10px]",
+          "mt-1 w-full text-[10px] leading-snug",
           held ? "text-white/85" : "text-muted-foreground",
         )}
       >
@@ -141,9 +150,9 @@ export function ProfileSummaryCard({
               <div className="bg-muted h-3 w-28 animate-pulse rounded" />
             </div>
           </div>
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-3 gap-1.5">
             {Array.from({ length: 3 }).map((_, i) => (
-              <div key={i} className="bg-muted h-[76px] animate-pulse rounded-2xl" />
+              <div key={i} className="bg-muted h-[84px] animate-pulse rounded-2xl" />
             ))}
           </div>
         </div>
@@ -190,7 +199,7 @@ export function ProfileSummaryCard({
           month: "short",
         })}`
       : `MX$${PREMIUM_PLAN_PRICE_MXN}/mo`
-    : `MX$${PREMIUM_PLAN_PRICE_MXN}/mo to upgrade`;
+    : `MX$${PREMIUM_PLAN_PRICE_MXN}/mo`;
 
   // Prefer the context handle so the Instagram preview state wins over a
   // stale profile row.
@@ -263,7 +272,7 @@ export function ProfileSummaryCard({
 
         {/* The three things a guest holds. Each taps into the surface that
             owns it — Instagram verify, the Class sheet, Stripe. */}
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-3 items-stretch gap-1.5">
           <Tile
             eyebrow="Instagram"
             Icon={Instagram}
