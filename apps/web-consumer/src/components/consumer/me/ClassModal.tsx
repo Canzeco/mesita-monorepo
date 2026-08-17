@@ -47,7 +47,7 @@ export function ClassModal({
           <div>
             <h2 className={SHEET_TITLE_CLASS}>Your class</h2>
             <p className="text-muted-foreground text-[12px]">
-              Reach or get invited — your discount climbs with you.
+              Followers lift you automatically. An invite is by hand.
             </p>
           </div>
         </div>
@@ -59,12 +59,12 @@ export function ClassModal({
             <InstagramConnectedSummary followers={followers} />
           )}
 
-          {/* The only two doors up the ladder, ALWAYS BOTH, always in this
-              order: Instagram left, invite right (decision: Pato). Neither is
-              a purchase — money buys a PLAN, and that lives at
-              /subscribe/premium. They never gate on current class: a guest who
-              already holds one door can still see the other, and a fixed pair
-              means the sheet's footer never changes shape under them. */}
+          {/* THE TWO WAYS IN, and there are only two (decision: Pato):
+              followers, automatic — and an invitation, manual. Always both,
+              always in this order: Instagram left, invite right. Neither is a
+              purchase; money buys a PLAN, at /subscribe/premium.
+              They never gate on current class, so the footer can't change
+              shape under the guest. */}
           <div className="grid grid-cols-2 gap-2">
             <button
               type="button"
@@ -78,7 +78,7 @@ export function ClassModal({
               type="button"
               onClick={() =>
                 toast(
-                  "Invitation requests open soon — Mesita curates the Aura list personally.",
+                  "Invitations are by hand — Mesita picks the guests it invites.",
                 )
               }
               className="border-border bg-card hover:bg-muted flex min-h-12 w-full items-center justify-center gap-1.5 rounded-2xl border px-2 text-[13px] font-semibold transition active:scale-[0.99]"

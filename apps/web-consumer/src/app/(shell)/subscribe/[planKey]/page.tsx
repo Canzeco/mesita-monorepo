@@ -105,8 +105,8 @@ export default function SubscribePage() {
           <p className="text-muted-foreground mt-2 text-sm leading-relaxed">
             Premium is a subscription, not a rung. It raises your discount at
             every place and never changes your class — Bronze, Silver, Gold and
-            Diamond are earned through Instagram reach or an Aura-list
-            invitation, and none of them can be bought.
+            Diamond come from your follower count, or from an invitation Mesita
+            sends by hand. Neither one can be bought.
           </p>
           <Link
             href={CONSUMER_ROUTES.me}

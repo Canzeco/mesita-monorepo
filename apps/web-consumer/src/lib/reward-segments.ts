@@ -88,7 +88,7 @@ export const REWARD_SEGMENTS: readonly RewardSegment[] = [
     name: "Diamond",
     nameEs: "Diamante",
     kind: "class",
-    blurb: "Aura-list invitation — the highest base, just for showing up.",
+    blurb: "20,000+ followers, or a direct invite — the highest base.",
     rates: { zero: 0, conservative: 5, aggressive: 15 },
   },
   {
