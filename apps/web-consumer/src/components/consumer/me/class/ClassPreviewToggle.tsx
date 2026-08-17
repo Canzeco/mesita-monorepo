@@ -7,22 +7,26 @@ import {
 } from "@/lib/class-context";
 import { cn } from "@/lib/utils";
 
-// Dev/demo affordance — flip the signed-in consumer between the four class
-// states (Standard / Influencer via Instagram / Premium via subscription /
-// Aura via invitation, rate-ladder order) so every surface that reads
-// useConsumerClass() can be previewed without real billing or Instagram
-// reach. Writes the client-only MOCK_ACCOUNT override (class axis) and
-// switches the Instagram emulation off so the picked class always shows (a
-// qualifying IG emulation would otherwise win, like the real claim EF).
+// Dev/demo affordance — flip the signed-in consumer between the four CLASS
+// states (Bronze / Silver + Gold via Instagram reach / Diamond via Aura-list
+// invitation, ladder order) so every surface that reads useConsumerClass() can
+// be previewed without real Instagram reach. Writes the client-only
+// MOCK_ACCOUNT override (class axis) and switches the Instagram emulation off
+// so the picked class always shows (a qualifying IG emulation would otherwise
+// win, like the real claim EF).
+//
+// The PLAN axis is deliberately not here: it is independent, so folding it in
+// would turn four buttons into eight. Premium previews through
+// setMockAccount({ premium: true }) from the Me demo controls.
 // Remove with the MOCK_ paths once the states can be produced with real data.
 const CLASS_PREVIEW_OPTIONS: {
   value: NonNullable<MockAccount["class"]>;
   label: string;
 }[] = [
-  { value: "standard", label: "Standard" },
-  { value: "influencer", label: "Influencer" },
-  { value: "premium", label: "Premium" },
-  { value: "aura", label: "Aura" },
+  { value: "bronze", label: "Bronze" },
+  { value: "silver", label: "Silver" },
+  { value: "gold", label: "Gold" },
+  { value: "diamond", label: "Diamond" },
 ];
 
 export function ClassPreviewToggle() {

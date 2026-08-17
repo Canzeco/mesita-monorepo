@@ -6,7 +6,7 @@
 // (lib/api/notifications.ts) — tickets are the state, notifications the event.
 
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { ClassKey } from "@/lib/consumer-data";
+import type { LegacyClassKey } from "@/lib/consumer-data";
 import { invokeEF } from "./_invoke";
 
 // Mirrors _shared/reservation-places.ts attachPlaces — the EF returns the
@@ -128,11 +128,20 @@ export type RewardQuote = {
    * public shape, from the same live config that prices the bill, so the
    * Rewards tab never reconstructs it from the static CLASS_STEP ladder.
    *
+   * KEYED BY THE FOUR LEGACY SEGMENTS, not by Classes v2 (MESITA-1079). The EF
+   * resolves each one through `identityForClassKey` into the real class × plan
+   * grid and then reports it back under the legacy key, because that is still
+   * what `consumers.class_key` stores. So this payload can only ever expose
+   * FOUR of the eight cells — bronze·free, silver·free, diamond·free and
+   * bronze·premium — and `gold` is absent entirely. The client bridges these
+   * onto the v2 axes for display and shows ★ where it has no number; widening
+   * the EF to return the whole grid belongs with MESITA-1076.
+   *
    * Optional only to survive the deploy window where a cached client meets a
    * not-yet-redeployed EF; treat absent as "don't render the ladder", never
    * as a reason to fall back to local arithmetic.
    */
-  ladder?: Record<ClassKey, number>;
+  ladder?: Partial<Record<LegacyClassKey, number>>;
   storyEligible: boolean;
   cap: number;
 };

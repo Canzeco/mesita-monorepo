@@ -27,10 +27,10 @@ import {
 import { cn } from "@/lib/utils";
 
 const SEGMENT_ICON: Record<RewardSegmentKey, LucideIcon> = {
-  standard: CLASS_ICONS.standard,
-  premium: CLASS_ICONS.premium,
-  influencer: CLASS_ICONS.influencer,
-  aura: CLASS_ICONS.aura,
+  bronze: CLASS_ICONS.bronze,
+  silver: CLASS_ICONS.silver,
+  gold: CLASS_ICONS.gold,
+  diamond: CLASS_ICONS.diamond,
   story: Instagram,
   welcome: DoorOpen,
   review: Star,
@@ -83,9 +83,10 @@ export function HelpModal({
             <span className="text-foreground font-semibold">
               Elevated classes boost them.
             </span>{" "}
-            Standard gets the base discount; Premium, Influencer and Aura unlock
-            bigger ones — Influencer is free with Instagram reach, Aura is
-            invite-only.
+            Bronze gets the base discount; Silver, Gold and Diamond unlock
+            bigger ones — Silver and Gold are free with Instagram reach,
+            Diamond is invite-only. Premium is a separate subscription that
+            raises your rate at any class.
           </p>
         </div>
 

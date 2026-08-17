@@ -9,7 +9,7 @@
 // the bill engine reads. The consumer surface intentionally uses these static
 // defaults so it needs no new consumer Edge Function.
 //
-// Segments v6: four classes (Standard / Premium / Influencer / Aura) + three
+// Classes v2: four classes (Bronze / Silver / Gold / Diamond) + three
 // actions. Story is a universal action gated on connected Instagram
 // (MESITA-909); Review and
 // Welcome are universal.
@@ -21,22 +21,22 @@ import type { ClassKey } from "@/lib/consumer-data";
 type GridStrategy = "zero" | "conservative" | "aggressive";
 
 // Ontology of a rung (per the canonical definitions):
-//   class  — who the guest is (Standard / Premium / Influencer / Aura)
+//   class  — who the guest is (Bronze / Silver / Gold / Diamond)
 //   action — a rewarded thing the guest does at the table (Story / Google Review)
 //   visit  — a state of the visit itself (Welcome = first ticket at the venue)
 type RewardSegmentKind = "class" | "action" | "visit";
 
 export type RewardSegmentKey =
-  | "standard"
-  | "premium"
-  | "influencer"
-  | "aura"
+  | "bronze"
+  | "silver"
+  | "gold"
+  | "diamond"
   | "story"
   | "welcome"
   | "review";
 
 type RewardSegment = {
-  /** Pato's worst→best ladder rank (1 Standard … 7 Google Review). */
+  /** Pato's worst→best ladder rank (1 Bronze … 7 Google Review). */
   rank: number;
   key: RewardSegmentKey;
   /** English chrome (app chrome stays English). */
@@ -51,44 +51,44 @@ type RewardSegment = {
 };
 
 // The canonical ladder, stored worst→best (rank order — the class ladder is
-// standard < influencer < premium < aura, per classes.rank and the CLASS_STEP
-// money below (+5 influencer / +10 premium / +15 aura); the class BASE rows
-// tie on rates, the step breaks the tie — best-of makes ties harmless).
+// bronze < silver < gold < diamond per Classes v2, and the CLASS_STEP money
+// below (+5 / +10 / +15); the class BASE rows tie on rates, the step breaks
+// the tie — best-of makes ties harmless).
 export const REWARD_SEGMENTS: readonly RewardSegment[] = [
   {
     rank: 1,
-    key: "standard",
-    name: "Standard",
-    nameEs: "Estándar",
+    key: "bronze",
+    name: "Bronze",
+    nameEs: "Bronce",
     kind: "class",
     blurb: "The base rate every guest gets, always.",
     rates: { zero: 0, conservative: 5, aggressive: 15 },
   },
   {
     rank: 3,
-    key: "premium",
-    name: "Premium",
-    nameEs: "Premium",
+    key: "gold",
+    name: "Gold",
+    nameEs: "Oro",
     kind: "class",
-    blurb: "Mesita Premium — a bigger base at every place.",
+    blurb: "A higher reach band — a bigger base at every place.",
     rates: { zero: 0, conservative: 5, aggressive: 15 },
   },
   {
     rank: 2,
-    key: "influencer",
-    name: "Influencer",
-    nameEs: "Influencer",
+    key: "silver",
+    name: "Silver",
+    nameEs: "Plata",
     kind: "class",
     blurb: "2,000+ Instagram followers — automatic class upgrade.",
     rates: { zero: 0, conservative: 5, aggressive: 15 },
   },
   {
     rank: 4,
-    key: "aura",
-    name: "Aura",
-    nameEs: "Aura",
+    key: "diamond",
+    name: "Diamond",
+    nameEs: "Diamante",
     kind: "class",
-    blurb: "Invite-only — the highest base, just for showing up.",
+    blurb: "Aura-list invitation — the highest base, just for showing up.",
     rates: { zero: 0, conservative: 5, aggressive: 15 },
   },
   {
@@ -149,7 +149,7 @@ function reachableSegments(classKey: ClassKey): RewardSegment[] {
 /** Your class rung's peak rate — the "just for being you" number. */
 // ── The class step (v9, MESITA-877) ─────────────────────────────────────
 //
-// Every rate above is stored on the STANDARD row. A guest's real rate adds
+// Every rate above is stored on the BRONZE row. A guest's real rate adds
 // their class step, exactly as the bill engine computes it:
 //
 //   rate = 5 + type step + CLASS STEP + strategy step
@@ -158,10 +158,14 @@ function reachableSegments(classKey: ClassKey): RewardSegment[] {
 // the table is what lets this file stay a flat ladder while still matching
 // the engine cell for cell.
 const CLASS_STEP: Record<ClassKey, number> = {
-  standard: 0,
-  influencer: 5,
-  premium: 10,
-  aura: 15,
+  bronze: 0,
+  silver: 5,
+  // Gold's step is the INTERPOLATION its neighbours imply, not a measured
+  // cell: no legacy class key maps to Gold, so the live engine has never
+  // quoted it. Safe only because this whole module is education — the real
+  // number always comes from consumer-web-get-reward-quote.
+  gold: 10,
+  diamond: 15,
 };
 
 /** One rung's rate for a specific guest — the number they'd actually be paid. */

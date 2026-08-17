@@ -2,8 +2,13 @@
 
 import { useState } from "react";
 import Image from "next/image";
-import { CreditCard, Instagram, Megaphone, X } from "lucide-react";
+import { Instagram, X } from "lucide-react";
 import type { SocialPerson } from "./social-feed-data";
+import {
+  CLASS_ICONS,
+  classBadgeClass,
+  classProperLabel,
+} from "@/lib/consumer-data";
 import { LocalDialog } from "@/components/consumer/overlay/LocalOverlay";
 import { INSTAGRAM_BADGE_GRADIENT_CLASS } from "@/lib/ui-classes";
 import { cn } from "@/lib/utils";
@@ -29,6 +34,7 @@ export function SocialProfileModal({
   const [retained, setRetained] = useState<SocialPerson | null>(person);
   if (person && person !== retained) setRetained(person);
   const shown = person ?? retained;
+  const ShownIcon = shown ? CLASS_ICONS[shown.plan] : CLASS_ICONS.bronze;
 
   const stats: { label: string; value: number }[] = shown
     ? [
@@ -67,14 +73,18 @@ export function SocialProfileModal({
                 height={80}
                 className="ring-background h-20 w-20 rounded-full object-cover ring-4"
               />
-              {shown.plan === "influencer" && (
-                <span className="bg-tier-influencer ring-background absolute -bottom-0.5 -left-0.5 grid h-6 w-6 place-items-center rounded-full text-white ring-2">
-                  <Megaphone className="h-3.5 w-3.5" />
-                </span>
-              )}
-              {shown.plan === "premium" && (
-                <span className="bg-tier-premium ring-background absolute -bottom-0.5 -left-0.5 grid h-6 w-6 place-items-center rounded-full text-white ring-2">
-                  <CreditCard className="h-3.5 w-3.5" />
+              {/* CLASS ONLY — never a plan. Classes v2 makes the plan private
+                  and invisible to everyone but its owner, so a Premium badge
+                  on another guest's profile would leak what they pay. This
+                  modal used to carry exactly that badge. */}
+              {shown.plan !== "bronze" && (
+                <span
+                  className={cn(
+                    "ring-background absolute -bottom-0.5 -left-0.5 grid h-6 w-6 place-items-center rounded-full ring-2",
+                    classBadgeClass(shown.plan),
+                  )}
+                >
+                  <ShownIcon className="h-3.5 w-3.5" />
                 </span>
               )}
               <span
@@ -101,25 +111,16 @@ export function SocialProfileModal({
               </a>
             </p>
 
-            {shown.plan !== "standard" && (
+            {shown.plan !== "bronze" && (
               <div className="mt-3 flex gap-2">
                 <span
                   className={cn(
-                    "inline-flex h-7 items-center gap-1 rounded-full px-2.5 text-[11px] font-semibold text-white",
-                    shown.plan === "influencer"
-                      ? "bg-tier-influencer"
-                      : "bg-tier-premium",
+                    "inline-flex h-7 items-center gap-1 rounded-full px-2.5 text-[11px] font-semibold",
+                    classBadgeClass(shown.plan),
                   )}
                 >
-                  {shown.plan === "influencer" ? (
-                    <>
-                      <Megaphone className="h-3 w-3" /> Influencer
-                    </>
-                  ) : (
-                    <>
-                      <CreditCard className="h-3 w-3" /> Premium
-                    </>
-                  )}
+                  <ShownIcon className="h-3 w-3" />
+                  {classProperLabel(shown.plan)}
                 </span>
               </div>
             )}

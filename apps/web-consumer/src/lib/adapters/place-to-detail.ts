@@ -10,6 +10,7 @@
 // so this adapter never bakes in a current_class.
 
 import type { PlaceDetail } from "@/lib/mock/place";
+import { identityForClassKey } from "@/lib/consumer-data";
 import { detectMenuKind } from "@/lib/menu-url";
 import { resolvePlaceCategoryName } from "@/lib/place-category";
 import { displayPlaceTagLabel } from "@/lib/place-tag-label";
@@ -162,12 +163,10 @@ export function placeRowToDetail(row: Row, tags?: ResolvedTag[]): PlaceDetail {
       (v) => ({
         name: str(v.name) ?? "Anonymous guest",
         handle: str(v.handle) ?? "",
-        class_key: ((): PlaceDetail["mesita_visitors"][number]["class_key"] => {
-          const k = (str(v.class_key) ?? "standard").toLowerCase();
-          return k === "premium" || k === "influencer" || k === "aura"
-            ? k
-            : "standard";
-        })(),
+        // The server still sends LEGACY class keys, so the bridge splits them
+        // onto the v2 axes here (MESITA-1079). Only the class half is kept:
+        // a visitor's PLAN is private and must never reach another guest.
+        class_key: identityForClassKey(str(v.class_key)).cls,
         community: str(v.community) ?? "",
         followers: num(v.followers) ?? 0,
         quote: str(v.quote) ?? "",
