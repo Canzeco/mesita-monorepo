@@ -1,6 +1,6 @@
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
-import { COUNTRIES } from "@/lib/consumer-data";
+import { COUNTRIES, type Country } from "@/lib/consumer-data";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -146,19 +146,23 @@ export function formatPhoneDisplay(
 }
 
 /**
- * Flag emoji for the phone's dial code (longest match). Bare 10-digit MX
- * locals get 🇲🇽. Null when we can't map. Used on the Me card dial row.
+ * The country a phone belongs to, matched on the longest dial code so "+52"
+ * never wins over a longer code that starts with it. Bare 10-digit locals are
+ * Mexican (the home market, and the only length the onboarding accepts without
+ * a dial code). Null when nothing matches.
+ *
+ * Country is INFERRED here rather than stored: `consumers` has no country
+ * column, and the dial code the guest already gave us answers it.
  */
-export function phoneCountryFlag(
+export function phoneCountry(
   phone: string | null | undefined,
-): string | null {
+): Country | null {
   if (!phone) return null;
   const digits = phone.replace(/\D/g, "");
   if (!digits) return null;
-  if (digits.length === 10) return "🇲🇽";
-  const sorted = [...COUNTRIES].sort((a, b) => b.dial.length - a.dial.length);
-  for (const c of sorted) {
-    if (digits.startsWith(c.dial)) return c.flag;
+  if (digits.length === 10) {
+    return COUNTRIES.find((c) => c.code === "MX") ?? null;
   }
-  return null;
+  const sorted = [...COUNTRIES].sort((a, b) => b.dial.length - a.dial.length);
+  return sorted.find((c) => digits.startsWith(c.dial)) ?? null;
 }

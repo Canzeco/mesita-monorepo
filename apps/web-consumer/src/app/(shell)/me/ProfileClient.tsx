@@ -204,6 +204,8 @@ export function ProfileClient({
             profile={profile}
             loading={loading}
             onOpenClass={() => setClassOpen(true)}
+            onOpenPlan={() => router.push("/subscribe/premium")}
+            onOpenInstagram={() => setVerifyOpen(true)}
           />
 
           {/* Identity — the class you hold, then the door you came through. */}
