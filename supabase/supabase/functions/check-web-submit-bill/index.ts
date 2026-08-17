@@ -172,7 +172,15 @@ Deno.serve(async (req) => {
   );
   const capPesos = resolveBillCapPesos(place as Record<string, unknown>, grid.cap);
 
-  const billRes = computeTicketBill({ subtotal, ratePercent, capPesos });
+  // v4 (MESITA-1087): a staff bill entry must never zero the guest's tip —
+  // the preset recomputes on the new subtotal, a custom amount carries.
+  const billRes = computeTicketBill({
+    subtotal,
+    ratePercent,
+    capPesos,
+    tipPct: ticket.tip_pct,
+    carryTipCents: ticket.tip_cents,
+  });
   if (!billRes.ok) {
     return json({ ok: false, code: billRes.code, error: billRes.error }, 400);
   }

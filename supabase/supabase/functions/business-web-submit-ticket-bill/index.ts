@@ -67,7 +67,7 @@ Deno.serve(async (req) => {
   const ticketRow = await admin
     .from("tickets")
     .select(
-      "id, project_id, consumer_id, kind, story_status, review_status, status, check_subtotal_cents, total_cents, currency, welcome_free_rate, welcome_premium_rate, free_rate, premium_rate, rates_snapshotted_at",
+      "id, project_id, consumer_id, kind, story_status, review_status, status, check_subtotal_cents, tip_cents, tip_pct, total_cents, currency, welcome_free_rate, welcome_premium_rate, free_rate, premium_rate, rates_snapshotted_at",
     )
     .eq("id", ticketId)
     .maybeSingle();
@@ -159,7 +159,15 @@ Deno.serve(async (req) => {
   );
   const capPesos = resolveBillCapPesos(place as Record<string, unknown>, grid.cap);
 
-  const billRes = computeTicketBill({ subtotal, ratePercent, capPesos });
+  // v4 (MESITA-1087): the console's bill entry must never zero the guest's
+  // tip — the C4 money-loss critical. Preset recomputes, custom carries.
+  const billRes = computeTicketBill({
+    subtotal,
+    ratePercent,
+    capPesos,
+    tipPct: ticket.tip_pct,
+    carryTipCents: ticket.tip_cents,
+  });
   if (!billRes.ok) {
     return json({ ok: false, code: billRes.code, error: billRes.error }, 400);
   }

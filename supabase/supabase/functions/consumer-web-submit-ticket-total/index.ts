@@ -53,7 +53,7 @@ Deno.serve(async (req) => {
   const ticketRow = await admin
     .from("tickets")
     .select(
-      "id, consumer_id, project_id, status, story_status, review_status, check_subtotal_cents, total_cents, discount_percent",
+      "id, consumer_id, project_id, status, story_status, review_status, check_subtotal_cents, tip_cents, tip_pct, total_cents, discount_percent",
     )
     .eq("id", ticketId)
     .maybeSingle();
@@ -88,10 +88,14 @@ Deno.serve(async (req) => {
   if (!live.ok) return json({ ok: false, error: live.error }, 500);
   const ratePercent = Math.max(live.ratePercent, ticket.discount_percent ?? 0);
 
+  // v4 (MESITA-1087): the after-the-fact record keeps whatever tip the ticket
+  // already carries — preset recomputes on the entered total, custom carries.
   const billRes = computeTicketBill({
     subtotal: total,
     ratePercent,
     capPesos: live.capPesos,
+    tipPct: ticket.tip_pct,
+    carryTipCents: ticket.tip_cents,
   });
   if (!billRes.ok) {
     return json({ ok: false, error: billRes.error, code: billRes.code }, 400);

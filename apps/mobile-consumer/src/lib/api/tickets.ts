@@ -58,6 +58,9 @@ export type ConsumerTicketRow = {
 // pins all three copies (supabase · web · mobile) to each other.
 export const ACTIVE_TICKET_STATUSES = new Set([
   'open',
+  'scanned',
+  'approved',
+  'paying',
   'awaiting_payment_confirm',
 ]);
 
