@@ -31,6 +31,7 @@ type RepriceTicketRow = {
   tip_cents: number | null;
   tip_pct: number | null;
   discount_percent: number | null;
+  approved_at: string | null;
   currency: string | null;
 };
 
@@ -127,7 +128,7 @@ export async function repriceTicketAfterAction(
   const ticketRes = await admin
     .from("tickets")
     .select(
-      "id, project_id, consumer_id, kind, status, story_status, review_status, check_subtotal_cents, tip_cents, tip_pct, discount_percent, currency",
+      "id, project_id, consumer_id, kind, status, story_status, review_status, check_subtotal_cents, tip_cents, tip_pct, discount_percent, approved_at, currency",
     )
     .eq("id", ticketId)
     .maybeSingle();
@@ -135,6 +136,11 @@ export async function repriceTicketAfterAction(
     return { ok: false, error: ticketRes.error?.message ?? "ticket not found" };
   }
   const ticket = ticketRes.data as RepriceTicketRow;
+
+  // v4 (MESITA-1092): approval FREEZES the amount. A task landing after
+  // the staff approved still counts on a future visit, but this ticket's
+  // numbers are what the waiter committed to — never move them.
+  if (ticket.approved_at != null) return { ok: true, ratePercent: null };
 
   const subtotal = ticket.check_subtotal_cents ?? 0;
   if (subtotal <= 0) return { ok: true, ratePercent: null }; // not billed yet

@@ -47,6 +47,18 @@ export type ConsumerTicketRow = {
   /** Who supplied the recorded amount (MESITA-850): 'business' | 'consumer'
    *  | null (no amount on record). */
   bill_source: string | null;
+  // THE TICKET v4 (MESITA-1088+): the seven-step journey state. Optional so
+  // a cached bundle survives the deploy window where the EF predates them.
+  tip_cents?: number | null;
+  tip_pct?: number | null;
+  approved_at?: string | null;
+  approved_discount_cents?: number | null;
+  approved_amount_due_cents?: number | null;
+  fix_requested?: string | null;
+  fix_note?: string | null;
+  paid_method?: string | null;
+  validated_at?: string | null;
+  updated_at?: string;
   currency: string | null;
   created_at: string;
   revealed_at: string | null;
@@ -149,6 +161,21 @@ export type RewardQuote = {
    * as a reason to fall back to local arithmetic.
    */
   ladder?: Partial<Record<LegacyClassKey, number>>;
+  /**
+   * THE TICKET v4's Reward lanes (MESITA-1089): the base decomposed on the
+   * SAME v11 grid the bill pays — automatic = the bronze·free floor, each
+   * class chip = that class's free-plan rate over the floor, planUplift =
+   * the caller's own premium delta. automatic + classes[cls] + (plan ===
+   * "premium" ? planUplift : 0) === base, by construction. Absent on legacy
+   * best-of configs and on stale EFs — render the flat receipt then.
+   */
+  breakdown?: {
+    automatic: number;
+    classes: { bronze: number; silver: number; gold: number; diamond: number };
+    cls: "bronze" | "silver" | "gold" | "diamond";
+    plan: "free" | "premium";
+    planUplift: number;
+  };
   storyEligible: boolean;
   cap: number;
 };
@@ -212,19 +239,58 @@ export async function apiSubmitReview(
   return { repricedPercent: res.repricedPercent ?? null };
 }
 
-// v3b amount fallback (MESITA-850): the staff bill went optional, so when a
-// visit closes with no amount on record the guest is asked for the total.
-// Unverified by design — the discount was already applied at the place's POS,
-// so this is a record for reporting, never a money movement.
-export async function apiSubmitTicketTotal(
+// THE TICKET v4, step 1 (MESITA-1088): the guest's bill + tip. The tip
+// crosses the wire as the preset percent OR a custom peso amount — never as
+// client-computed cents (C4); the EF prices everything server-side.
+export async function apiSubmitTicketBill(
   client: SupabaseClient,
   ticketId: string,
-  totalCents: number,
-): Promise<void> {
-  await invokeEF<{ ticket?: unknown }>(
+  bill: {
+    subtotalCents: number;
+    tipPct: number | null;
+    tipCustomCents?: number;
+  },
+): Promise<{ ticket: ConsumerTicketRow; amount_due_cents: number }> {
+  return await invokeEF<{
+    ticket: ConsumerTicketRow;
+    amount_due_cents: number;
+  }>(client, "consumer-web-submit-ticket-bill", {
+    ticketId,
+    subtotalCents: bill.subtotalCents,
+    tipPct: bill.tipPct,
+    ...(bill.tipPct === null
+      ? { tipCustomCents: bill.tipCustomCents ?? 0 }
+      : {}),
+  });
+}
+
+// THE TICKET v4 live sync (MESITA-1091): one owner-scoped row, polled at 10s
+// while the ticket screen is mounted. Realtime stays off `tickets` on
+// purpose — this poll IS the design.
+export async function apiGetTicket(
+  client: SupabaseClient,
+  ticketId: string,
+): Promise<{ ticket: ConsumerTicketRow }> {
+  return await invokeEF<{ ticket: ConsumerTicketRow }>(
     client,
-    "consumer-web-submit-ticket-total",
-    { ticketId, totalCents },
+    "consumer-web-get-ticket",
+    { ticketId },
+  );
+}
+
+// THE TICKET v4, step 5 (MESITA-1092): after approval the guest picks how
+// they settle. `at_place` is the one live path (C2); `mesita` is staged and
+// the EF answers 501 — never send it outside the staged UI. null rolls a
+// `paying` ticket back to `approved`.
+export async function apiSelectTicketPayment(
+  client: SupabaseClient,
+  ticketId: string,
+  method: "at_place" | null,
+): Promise<{ status: string }> {
+  return await invokeEF<{ status: string }>(
+    client,
+    "consumer-web-select-ticket-payment",
+    { ticketId, method },
   );
 }
 

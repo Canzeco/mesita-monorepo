@@ -1,0 +1,143 @@
+// Supabase Edge Function — check-web-validate-ticket (product caller: the
+// public check page)
+//
+// verify_jwt = FALSE — code-possession auth (see _shared/ticket-check.ts).
+// THE TICKET v4 (MESITA-1092): the restaurant's second and last touch —
+// payment confirmed, the ticket validates and closes on its own. Closes via
+// the same closeTicketAndEnqueueReview the v3 close used (revealed +
+// revealed_at/paid_at + first-honor + the queued review), stamping
+// validated_at and the settle method on the way.
+//
+// Accepts `paying` (the guest picked how they settle) AND `approved` — on a
+// real floor the guest often just hands over cash without touching their
+// phone again, and a waiter who cannot close a ticket the guest already paid
+// is the exact friction v4 exists to remove. Validating from `approved`
+// records paid_method='at_place'. (Deliberate widening of §12's paying-only
+// row; logged on MESITA-1092.)
+//
+// Body:     { code, pin? }
+// Response: { ok: true, alreadyPaid? } | 404 | 409 | 429
+
+import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+import { corsPreflight, json, readJson, rejectUnlessMethods } from "../_shared/http.ts";
+import { adminClient, getOptionalAuthedUser, readEFEnv } from "../_shared/auth.ts";
+import { closeTicketAndEnqueueReview } from "../_shared/ticket-informal.ts";
+import {
+  checkNotFound,
+  hashRequestIp,
+  isRateLimited,
+  loadCheckSettings,
+  loadTicketByCheckCode,
+  logCheckEvent,
+  requireCheckPin,
+} from "../_shared/ticket-check.ts";
+import { CLOSED_TICKET_STATUS, TICKET_STATUS } from "../_shared/ticket-status.ts";
+
+type Body = { code?: string; pin?: string };
+
+Deno.serve(async (req) => {
+  if (req.method === "OPTIONS") return corsPreflight();
+  const methodReject = rejectUnlessMethods(req, "POST");
+  if (methodReject) return methodReject;
+
+  const envRes = readEFEnv();
+  if (!envRes.ok) return envRes.response;
+  const admin = adminClient(envRes.env);
+
+  const bodyRes = await readJson<Body>(req);
+  if (!bodyRes.ok) return bodyRes.response;
+  const code = (bodyRes.body.code ?? "").toString().trim();
+  if (!code) return checkNotFound(json);
+
+  const ipHash = await hashRequestIp(req, envRes.env.serviceKey);
+  if (await isRateLimited(admin, ipHash, { maxPerMinute: 30 })) {
+    return json({ ok: false, error: "Too many requests" }, 429);
+  }
+
+  const ticket = await loadTicketByCheckCode(admin, code);
+  if (!ticket) return checkNotFound(json);
+
+  const settings = await loadCheckSettings(admin, ticket.project_id);
+  const pinRes = await requireCheckPin({
+    admin,
+    projectId: ticket.project_id,
+    ticketId: ticket.id,
+    pin: bodyRes.body.pin,
+    ipHash,
+    userAgent: req.headers.get("user-agent"),
+    json,
+    settings,
+  });
+  if (!pinRes.ok) return pinRes.response;
+
+  if (ticket.status === CLOSED_TICKET_STATUS) {
+    return json({ ok: true, alreadyPaid: true });
+  }
+  if (
+    ticket.status !== TICKET_STATUS.paying &&
+    ticket.status !== TICKET_STATUS.approved
+  ) {
+    return json(
+      {
+        ok: false,
+        code: "stale_state",
+        status: ticket.status,
+        error: `Ticket is ${ticket.status} — approve it before confirming the payment.`,
+      },
+      409,
+    );
+  }
+
+  // Stamp the v4 close facts first (CAS on the two payable statuses), then
+  // run the shared close — which flips to revealed, records first-honor and
+  // queues the guest's review, exactly like every close before it.
+  const now = new Date().toISOString();
+  const stamp = await admin
+    .from("tickets")
+    .update({
+      validated_at: now,
+      paid_method: ticket.status === TICKET_STATUS.paying
+        ? undefined
+        : "at_place",
+    })
+    .eq("id", ticket.id)
+    .in("status", [TICKET_STATUS.paying, TICKET_STATUS.approved])
+    .select("id")
+    .maybeSingle();
+  if (stamp.error) {
+    return json({ ok: false, error: `ticket_update: ${stamp.error.message}` }, 500);
+  }
+  if (!stamp.data) {
+    // Someone else closed or cancelled it between the read and the stamp.
+    const fresh = await admin
+      .from("tickets")
+      .select("id, status")
+      .eq("id", ticket.id)
+      .maybeSingle();
+    if ((fresh.data as { status?: string } | null)?.status === CLOSED_TICKET_STATUS) {
+      return json({ ok: true, alreadyPaid: true });
+    }
+    return json({ ok: false, code: "stale_state", error: "Ticket changed — refresh." }, 409);
+  }
+
+  const closed = await closeTicketAndEnqueueReview(
+    admin,
+    ticket.id,
+    ticket.consumer_id,
+    ticket.project_id,
+  );
+  if (!closed.ok) {
+    return json({ ok: false, error: closed.error }, 500);
+  }
+
+  const { user } = await getOptionalAuthedUser(req, envRes.env);
+  await logCheckEvent(admin, {
+    ticketId: ticket.id,
+    event: "validated",
+    selfView: user?.id === ticket.consumer_id,
+    ipHash,
+    userAgent: req.headers.get("user-agent"),
+  });
+
+  return json({ ok: true });
+});

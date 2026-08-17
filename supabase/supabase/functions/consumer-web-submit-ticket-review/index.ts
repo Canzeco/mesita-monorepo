@@ -122,6 +122,16 @@ Deno.serve(async (req) => {
   }
 
   const now = new Date().toISOString();
+
+  // v4 fix loop (MESITA-1090): the Mesita review is a proof-shaped action —
+  // landing it clears an outstanding proof/reward send-back so staff can
+  // approve. Best-effort: the review itself already saved.
+  await admin
+    .from("tickets")
+    .update({ fix_requested: null, fix_note: null })
+    .eq("id", ticketId)
+    .in("fix_requested", ["proof", "reward"]);
+
   await admin
     .from("consumer_pay_notifications")
     .update({ status: "completed", resolved_at: now })

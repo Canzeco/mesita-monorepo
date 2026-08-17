@@ -41,6 +41,11 @@ const JWT_EFS: { name: string; path: string; accepts: string[] }[] = [
   { name: "consumer-web-submit-review", path: "../consumer-web-submit-review/index.ts", accepts: ["POST"] },
   { name: "consumer-web-list-pay-notifications", path: "../consumer-web-list-pay-notifications/index.ts", accepts: ["POST"] },
   { name: "consumer-web-list-tickets", path: "../consumer-web-list-tickets/index.ts", accepts: ["GET", "POST"] },
+  // THE TICKET v4 (MESITA-1088/1091/1092): the guest's bill, the live poll,
+  // the settle pick.
+  { name: "consumer-web-submit-ticket-bill", path: "../consumer-web-submit-ticket-bill/index.ts", accepts: ["POST"] },
+  { name: "consumer-web-get-ticket", path: "../consumer-web-get-ticket/index.ts", accepts: ["POST"] },
+  { name: "consumer-web-select-ticket-payment", path: "../consumer-web-select-ticket-payment/index.ts", accepts: ["POST"] },
 ];
 
 // The public check surface (Tickets v2, MESITA-806): verify_jwt=false,
@@ -51,6 +56,14 @@ const PUBLIC_CHECK_EFS: { name: string; path: string }[] = [
   { name: "check-web-get-ticket", path: "../check-web-get-ticket/index.ts" },
   { name: "check-web-submit-bill", path: "../check-web-submit-bill/index.ts" },
   { name: "check-web-mark-paid", path: "../check-web-mark-paid/index.ts" },
+  // THE TICKET v4 handshake (MESITA-1090/1092). A check-web EF scaffolded
+  // from a consumer template would inherit requireAuthedUser and 401 a
+  // surface with no login by design — these probes are what catches it.
+  { name: "check-web-scan-ticket", path: "../check-web-scan-ticket/index.ts" },
+  { name: "check-web-approve-ticket", path: "../check-web-approve-ticket/index.ts" },
+  { name: "check-web-request-fix", path: "../check-web-request-fix/index.ts" },
+  { name: "check-web-poll-ticket", path: "../check-web-poll-ticket/index.ts" },
+  { name: "check-web-validate-ticket", path: "../check-web-validate-ticket/index.ts" },
 ];
 
 for (const ef of PUBLIC_CHECK_EFS) {
@@ -163,6 +176,32 @@ Deno.test("stripe-webhook-handle-event: a bogus signature fails verification -> 
       },
       body: JSON.stringify({ id: "evt_1", type: "checkout.session.completed" }),
     }),
+  );
+  assertEquals(res.status, 400);
+  await res.body?.cancel();
+});
+
+// check-web-request-fix validates its closed fix vocabulary BEFORE any DB
+// work — an unknown fix is a client bug, not a lookup, and must never 500.
+Deno.test("check-web-request-fix: unknown fix enum -> 400 before any DB work", async () => {
+  const h = await loadEFHandler("../check-web-request-fix/index.ts");
+  const res = await h(
+    jsonRequest({ code: "abcdefghijklmnopqrstuv", fix: "vibes" }, {
+      method: "POST",
+      bearer: null,
+    }),
+  );
+  assertEquals(res.status, 400);
+  await res.body?.cancel();
+});
+
+Deno.test("check-web-request-fix: over-length note -> 400, not 500", async () => {
+  const h = await loadEFHandler("../check-web-request-fix/index.ts");
+  const res = await h(
+    jsonRequest(
+      { code: "abcdefghijklmnopqrstuv", fix: "bill", note: "x".repeat(300) },
+      { method: "POST", bearer: null },
+    ),
   );
   assertEquals(res.status, 400);
   await res.body?.cancel();

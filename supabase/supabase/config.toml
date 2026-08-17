@@ -272,6 +272,18 @@ verify_jwt = true
 [functions.consumer-web-submit-ticket-total]
 verify_jwt = true
 
+# THE TICKET v4 (MESITA-1088/1091/1092): the guest's bill+tip (step 1), the
+# ticket screen's 10s live poll, and the post-approval settle pick. All
+# authed — owner-only reads and writes.
+[functions.consumer-web-submit-ticket-bill]
+verify_jwt = true
+
+[functions.consumer-web-get-ticket]
+verify_jwt = true
+
+[functions.consumer-web-select-ticket-payment]
+verify_jwt = true
+
 # v3c report button (MESITA-851): the guest's only route that isn't arguing
 # with the person holding the terminal. Authed — owner-only, and a report is
 # evidence for an operator, never an automatic strike.
@@ -296,6 +308,29 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.check-web-mark-paid]
+verify_jwt = false
+
+# THE TICKET v4 handshake (MESITA-1090/1092): scan (open→scanned, an
+# affirmative staff write), approve / request-fix (the C1 verdict pair, CAS
+# on updated_at), the audit-free poll (get-ticket logs an event per read and
+# the limiter counts events per ip_hash — a 2-3s poll through it would
+# rate-limit the waiter out of their own approve), and validate (payment
+# confirmed → the ticket closes). Same code-possession posture as above;
+# omitting a stanza here would default verify_jwt=true and 401 the staff app
+# at the gateway.
+[functions.check-web-scan-ticket]
+verify_jwt = false
+
+[functions.check-web-approve-ticket]
+verify_jwt = false
+
+[functions.check-web-request-fix]
+verify_jwt = false
+
+[functions.check-web-poll-ticket]
+verify_jwt = false
+
+[functions.check-web-validate-ticket]
 verify_jwt = false
 
 # Entity-split EFs (migration 0031). consumer-list-tickets stays for

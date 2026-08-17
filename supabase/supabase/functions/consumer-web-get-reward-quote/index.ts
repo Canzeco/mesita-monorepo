@@ -193,6 +193,29 @@ Deno.serve(async (req) => {
   const { cls, plan } = identityForClassKey(classKey);
   const b = promos.visits.bonuses;
 
+  // THE TICKET v4's Reward step (MESITA-1089) renders the base as LANES —
+  // automatic floor · class · plan — so the guest sees what each axis of
+  // their identity adds. The decomposition is derived from the SAME grid the
+  // bill pays: automatic = the bronze·free floor everyone gets; a class chip
+  // = that class's free-plan rate over the floor; the plan uplift = the
+  // caller's own premium delta. Sums reproduce base exactly by construction.
+  // Consumer-side only — the classes ladder is the program's public shape,
+  // and blended-rate privacy (business never learns class) is untouched.
+  const visitsBase = promos.visits.base[strategy];
+  const automatic = visitsBase.bronze.free;
+  const breakdown = {
+    automatic,
+    classes: {
+      bronze: visitsBase.bronze.free - automatic,
+      silver: visitsBase.silver.free - automatic,
+      gold: visitsBase.gold.free - automatic,
+      diamond: visitsBase.diamond.free - automatic,
+    },
+    cls,
+    plan,
+    planUplift: visitsBase[cls].premium - visitsBase[cls].free,
+  };
+
   return json({
     ok: true,
     quote: {
@@ -200,6 +223,7 @@ Deno.serve(async (req) => {
       classKey,
       additive: true,
       isFirstVisit,
+      breakdown,
       base: promos.visits.base[strategy][cls][plan],
       bonuses: {
         // Welcome is a state of the visit, not an action the guest picks, so
