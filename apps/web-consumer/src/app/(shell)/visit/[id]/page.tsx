@@ -8,7 +8,7 @@ import { TicketScreen } from "@/components/consumer/rewards/TicketScreen";
 // does NOT re-run on soft navigation, those two round trips were pure added
 // latency on every ticket open: the biggest chunk of the "tap feels frozen"
 // delay. Do not add fetches here.
-export default async function RewardsTicketPage({
+export default async function VisitPage({
   params,
 }: {
   params: Promise<{ id: string }>;

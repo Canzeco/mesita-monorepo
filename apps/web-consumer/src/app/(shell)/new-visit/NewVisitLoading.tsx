@@ -1,12 +1,12 @@
 import { Skeleton } from "@/components/shared";
 
-// The Rewards page's ONE skeleton language. RewardsTabLoading is the dynamic()
+// The New Visit page's ONE skeleton language. NewVisitLoading is the dynamic()
 // fallback for the whole page client (banner + passport card + tickets);
 // TicketCardSkeleton mirrors the TicketVisitShell silhouette and is reused
-// by the tickets pending state and RewardsClient's tickets fallback, so every
+// by the tickets pending state and NewVisitClient's tickets fallback, so every
 // loading frame on this page looks like the content it becomes.
 //
-// This module stays a leaf (Skeleton only) on purpose: RewardsClient and the
+// This module stays a leaf (Skeleton only) on purpose: NewVisitClient and the
 // ticket stack import from it, and pulling anything heavier in here would
 // drag the ticket stack into the statically-bundled page chunk and defeat
 // the dynamic() splits.
@@ -44,8 +44,8 @@ function TicketListSkeleton() {
   );
 }
 
-export function RewardsTabLoading() {
-  // Silhouette of the single Rewards page: the Mesita passport card (QR +
+export function NewVisitLoading() {
+  // Silhouette of the single New Visit page: the Mesita passport card (QR +
   // how-it-works, two columns), then the tickets stack. The per-section
   // skeletons take over once the client mounts.
   return (

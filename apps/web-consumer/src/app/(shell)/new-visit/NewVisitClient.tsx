@@ -11,11 +11,11 @@ import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import { useConsumerTickets } from "@/lib/hooks/useConsumerTickets";
 import { useStartVisit } from "@/lib/hooks/useStartVisit";
 
-// Rewards Wallet — ONE job: pick a place and start a visit.
+// New Visit — ONE job: pick a place and start a visit.
 //
 // History MOVED to Inbox > Visits (Pato, 2026-08-16: "move the visits history
 // there"), which retired the last tab and the switcher with it — a one-tab tab
-// bar is chrome pretending to be a control. Rewards is now where a visit
+// bar is chrome pretending to be a control. This tab is now where a visit
 // STARTS and where you pay; Inbox is where you watch the ones in flight. The
 // ticket lists are gone from this file entirely; `tickets` stays only to
 // detect a just-paid reveal and to know which places already hold a live one.
@@ -31,7 +31,7 @@ import { useStartVisit } from "@/lib/hooks/useStartVisit";
 // then id… so you open a modal, the modal has multiple steps"). The 2-step
 // TicketWizard sheet is GONE: there is no pre-create screen at all. Every
 // ticket is created at "base" and THE TICKET — a four-step modal at
-// /rewards/ticket/[id] — owns reward → task → QR → results.
+// /visit/[id] — owns reward → task → QR → results.
 //
 // "base" is what makes the reward stop being a create-time boundary: the
 // submit-review / submit-story EFs accept any OPEN ticket, and a late task
@@ -41,7 +41,7 @@ import { useStartVisit } from "@/lib/hooks/useStartVisit";
 // Tapping a place that already holds a live ticket re-opens that ticket
 // instead of 409-ing on `already_open` (D5).
 
-export function RewardsClient({ userId }: { userId: string }) {
+export function NewVisitClient({ userId }: { userId: string }) {
   const tickets = useConsumerTickets(userId);
 
   const activePlaceIds = useMemo(
@@ -100,7 +100,7 @@ export function RewardsClient({ userId }: { userId: string }) {
         </div>
 
         {/* The tab track is GONE (Pato, 2026-08-16: "move the visits history
-            there"). History moved to Inbox › Visits, which leaves Rewards with
+            there"). History moved to Inbox › Visits, which leaves this tab with
             exactly one job — pick a place and start a visit — and no switcher
             to justify. A one-tab tab bar is chrome pretending to be a control.
 

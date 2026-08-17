@@ -8,7 +8,6 @@ import type { ReservationItem } from "@/lib/mock/reservations-mock";
 import { cn, guestNoun } from "@/lib/utils";
 import { RESERVATION_FLOW, statusMeta } from "@/lib/reservation-status";
 import {
-  LinkedCouponCard,
   MetaRow,
 } from "@/components/consumer/reservation-detail-ui";
 import { ReservationActions } from "@/components/consumer/reservation-actions";
@@ -174,9 +173,6 @@ export function ReservationDetailBody({
         )}
       </section>
 
-      {r.linkedCoupon && !meta.spent && (
-        <LinkedCouponCard coupon={r.linkedCoupon} />
-      )}
 
       {showOffers && (
         <section className="border-border bg-card flex flex-col gap-2 rounded-2xl border p-3">

@@ -34,11 +34,13 @@ import {
 import { adminClient, getAuthedUser, readEFEnv } from "../_shared/auth.ts";
 import { isConsumerFirstVisit } from "../_shared/membership.ts";
 import {
+  CLASS_SEGMENTS,
   identityForClassKey,
   isClassSegment,
   loadRewardsGrid,
   offersAction,
   placeStrategy,
+  type ClassSegment,
 } from "../_shared/rewards-config.ts";
 
 type Body = { placeId?: string; projectId?: string };
@@ -101,6 +103,34 @@ Deno.serve(async (req) => {
     (consumerRes.data.instagram_handle ?? "").toString().trim(),
   );
 
+  const promos = grid.promos;
+
+  // EVERY class's standing rate at this place, not just the caller's
+  // (MESITA-1068). The place-detail Rewards tab shows the whole ladder so a
+  // guest can see what the classes above them are worth here — and it has to
+  // come from the SAME live config that prices the bill. The consumer app
+  // owns a static `CLASS_STEP` ladder (+5/+10/+15) that could reproduce these
+  // numbers arithmetically, and that is precisely the drift MESITA-1017 was:
+  // a client table quoting rates the till doesn't honor. Reading them here
+  // costs nothing — the grid is already loaded for the caller's own quote.
+  //
+  // Blended-rate privacy is untouched: this is the program's public shape
+  // (the same ladder the pricing page states), not any other guest's data,
+  // and nothing here is reachable by a business.
+  //
+  // The rung is still keyed by the LEGACY class segment, because that is what
+  // `consumers.class_key` stores and what the client renders. Under v11 each
+  // one resolves through identityForClassKey to its (class, plan) cell of the
+  // visits grid — so the legacy `premium` rung correctly prices the PLAN.
+  const ladder = Object.fromEntries(
+    CLASS_SEGMENTS.map((segment) => {
+      if (strategy === "zero") return [segment, 0];
+      if (!promos) return [segment, grid.grid[segment][strategy]];
+      const id = identityForClassKey(segment);
+      return [segment, promos.visits.base[strategy][id.cls][id.plan]];
+    }),
+  ) as Record<ClassSegment, number>;
+
   // A zero-strategy place runs no program at all — every component is 0 and
   // the client shows the no-discount path rather than a 0% ladder.
   if (strategy === "zero") {
@@ -113,13 +143,12 @@ Deno.serve(async (req) => {
         isFirstVisit,
         base: 0,
         bonuses: { welcome: 0, story: 0, google: 0, mesita: 0 },
+        ladder,
         storyEligible: false,
         cap: grid.cap,
       },
     });
   }
-
-  const promos = grid.promos;
 
   // Legacy best-of fallback (no additive config saved yet). `additive: false`
   // tells the client to keep the pick-one presentation — showing stacked
@@ -141,6 +170,7 @@ Deno.serve(async (req) => {
           google: grid.actions.review[cls][strategy],
           mesita: grid.actions.mesita_review[cls][strategy],
         },
+        ladder,
         storyEligible:
           igConnected && offersAction(strategy, grid, "story"),
         cap: grid.cap,
@@ -172,6 +202,7 @@ Deno.serve(async (req) => {
         google: b.google,
         mesita: b.mesita,
       },
+      ladder,
       storyEligible: igConnected && offersAction(strategy, grid, "story"),
       cap: grid.cap,
     },

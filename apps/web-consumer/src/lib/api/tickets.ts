@@ -6,6 +6,7 @@
 // (lib/api/notifications.ts) — tickets are the state, notifications the event.
 
 import type { SupabaseClient } from "@supabase/supabase-js";
+import type { ClassKey } from "@/lib/consumer-data";
 import { invokeEF } from "./_invoke";
 
 // Mirrors _shared/reservation-places.ts attachPlaces — the EF returns the
@@ -122,6 +123,16 @@ export type RewardQuote = {
   base: number;
   /** `welcome` already reports 0 when this isn't the guest's first visit. */
   bonuses: { welcome: number; story: number; google: number; mesita: number };
+  /**
+   * EVERY class's standing rate at this place (MESITA-1068) — the program's
+   * public shape, from the same live config that prices the bill, so the
+   * Rewards tab never reconstructs it from the static CLASS_STEP ladder.
+   *
+   * Optional only to survive the deploy window where a cached client meets a
+   * not-yet-redeployed EF; treat absent as "don't render the ladder", never
+   * as a reason to fall back to local arithmetic.
+   */
+  ladder?: Record<ClassKey, number>;
   storyEligible: boolean;
   cap: number;
 };

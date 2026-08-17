@@ -12,24 +12,41 @@ import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 // hands the place prop down. Save · Contact · Share scroll with the body;
 // Visit · Order · Reserve are pinned (MESITA-1065).
 //
-// On THIS route the bar lands directly above BottomNav, so the hard-nav page
-// carries two bottom bands. The intercepted modal — how you actually arrive
-// here from swipe/favorites — covers BottomNav with its slide-over, so the
-// bar is the only bottom chrome there.
+// decision: Pato (live, MESITA-1070) — "place should not display bottom menu,
+// only the back arrow". A place is a DETAIL surface, not a tab destination:
+// the intercepted modal (how you actually arrive from swipe/favorites) already
+// covers the tab bar, so the hard-nav page was the only route showing two
+// stacked bottom bands — and a Visit button sitting directly above a Visit tab.
+// One frame, one way out: the arrow.
+//
+// Suppressed in CSS from inside this component rather than by teaching
+// BottomNav a route list, because the pathname CANNOT distinguish the two
+// place surfaces — /place/[id] is the URL for both the hard-nav page and the
+// intercepted modal. A route-based rule would therefore also hide the nav
+// behind the slide-over, and since that panel animates in over 300ms the
+// guest would watch the tab bar vanish from under it first. This style tag
+// exists exactly as long as this component is mounted, and the modal never
+// mounts it.
+//
+// `nav[data-shell-nav]` (0,1,1) outranks any single utility class, so it
+// holds even if the nav later grows a `display` utility.
+
 export function PlaceDetailPageBody({
   place,
-  backHref = CONSUMER_ROUTES.home,
+  fallbackHref = CONSUMER_ROUTES.home,
 }: {
   place: PlaceDetail;
-  backHref?: string;
+  /** Where the back arrow lands when there is no history to pop. */
+  fallbackHref?: string;
 }) {
   return (
     <div className="bg-background relative flex flex-1 flex-col overflow-hidden">
+      <style>{`nav[data-shell-nav]{display:none}`}</style>
       <PlaceDetailPageHeader
         placeId={place.id}
         placeName={place.name}
         listingType={place.listing_type}
-        backHref={backHref}
+        fallbackHref={fallbackHref}
       />
       {/*
         `min-h-0` mirrors PlaceDetailModalShell — without it the flex-1
