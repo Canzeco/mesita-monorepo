@@ -1,8 +1,15 @@
 "use client";
 
 // The New tab (Wallet v3, MESITA-811 · MESITA-817): EVERY Mesita place, listed
-// flat — deliberately no searchbar yet, per Pato ("just list all the places;
-// then we see how we can solve the searchbar").
+// flat, narrowed by the header's search field (MESITA-1071 — Pato: "replace
+// that with a searchbar", the answer to the deferred "then we see how we can
+// solve the searchbar").
+//
+// The field is OWNED BY THE HEADER (RewardsClient) because it renders outside
+// this scroll body; the query arrives as a prop and the matching happens here,
+// where the rows already live. Matching is client-side on purpose: the list is
+// capped at 100 rows and is already fully in memory, so a per-keystroke EF
+// round-trip would be slower and buy nothing.
 //
 // ROWS, one column (Pato, 2026-08-11: "no squares neither — you only see
 // places, step 1"). This reverses MESITA-1025's 2-col square grid: squares put
@@ -30,6 +37,7 @@ import {
   Lock,
   MapPin,
   QrCode,
+  SearchX,
   Store,
 } from "lucide-react";
 
@@ -37,16 +45,32 @@ import { apiFetchPublicPlaces, type Place } from "@/lib/api/places";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { cn } from "@/lib/utils";
 
+// Accent- and case-blind, token-AND matching: "zona hot" finds "Zona Hotelera",
+// and "cancun" still finds "Cancún". Spanish names carry diacritics that a
+// guest standing in a bar will not stop to type.
+function fold(value: string) {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+}
+
 export function PlacePickList({
   activePlaceIds,
   busyPlaceId = null,
   onPick,
+  query = "",
+  onClearQuery,
 }: {
   /** Places that already hold a live ticket — rows get an "Open" chip. */
   activePlaceIds: ReadonlySet<string>;
   /** Place whose ticket is being created right now — its row shows a spinner. */
   busyPlaceId?: string | null;
   onPick: (place: Place) => void;
+  /** Header search query. Empty string = show everything. */
+  query?: string;
+  /** Lets the no-match state clear the field it cannot reach itself. */
+  onClearQuery?: () => void;
 }) {
   const supabase = useBrowserSupabase();
   const [places, setPlaces] = useState<Place[]>([]);
@@ -83,7 +107,26 @@ export function PlacePickList({
       }),
     [places],
   );
-  const anyLocked = sorted.some((p) => p.listing_type !== "partner");
+  // Matched against exactly what the row RENDERS — its name and its subtitle
+  // (zone · category). Matching on a field the guest cannot see produces hits
+  // that look like bugs. Every token must land, so words narrow rather than
+  // widen: "zona sushi" means both, not either.
+  const visible = useMemo(() => {
+    const tokens = fold(query).split(/\s+/).filter(Boolean);
+    if (tokens.length === 0) return sorted;
+    return sorted.filter((p) => {
+      const haystack = fold(
+        [p.name, p.zone, p.category_label ?? p.category]
+          .filter(Boolean)
+          .join(" "),
+      );
+      return tokens.every((t) => haystack.includes(t));
+    });
+  }, [sorted, query]);
+
+  // Scoped to what is ON SCREEN: the partner footnote explains locked rows, so
+  // it has no business showing when the query has filtered them all away.
+  const anyLocked = visible.some((p) => p.listing_type !== "partner");
 
   if (status === "loading") {
     // Skeleton mirrors the row silhouette — a grid resolving into rows reads
@@ -136,10 +179,37 @@ export function PlacePickList({
     );
   }
 
+  // A query that matches nothing is NOT an empty catalog, and saying "no
+  // places on Mesita yet" to someone who simply mistyped is a lie the guest
+  // has no way to disprove — the field that caused it lives in the header,
+  // out of this component's reach, so the way out ships with the message.
+  if (visible.length === 0) {
+    return (
+      <div className="border-border bg-card flex flex-col items-center gap-2 rounded-2xl border px-4 py-8 text-center">
+        <span className="bg-muted text-muted-foreground grid size-11 place-items-center rounded-full">
+          <SearchX className="size-5" />
+        </span>
+        <p className="text-muted-foreground text-[12.5px]">
+          No place matches{" "}
+          <span className="text-foreground font-semibold">{query.trim()}</span>.
+        </p>
+        {onClearQuery ? (
+          <button
+            type="button"
+            onClick={onClearQuery}
+            className="text-primary text-[12.5px] font-semibold"
+          >
+            Clear search
+          </button>
+        ) : null}
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col gap-2">
       <ul className="border-border bg-card divide-border divide-y overflow-hidden rounded-2xl border">
-        {sorted.map((p) => (
+        {visible.map((p) => (
           <li key={p.id}>
             <PlaceRow
               place={p}
