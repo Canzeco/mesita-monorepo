@@ -24,7 +24,7 @@ export type MemoConfig = {
 /** Pre-load / failed-load placeholder — never Save this over a failed GET (MESITA-737). */
 export const DEFAULT_MEMO_CONFIG: MemoConfig = {
   // Live via get-memo-config → ask-memo bootstrap / turn metadata. Keep aligned
-  // with the web/mobile client FALLBACK_GREETING (Product Rules §D) for the
+  // with the web/mobile client FALLBACK_GREETING (Product Rules §C) for the
   // rare path where the server greeting is missing.
   greeting:
     "Hola, soy Don Memo, la IA de Mesita. Dime qué se te antoja — prueba “rooftop date tonight” o “tacos al pastor”.",

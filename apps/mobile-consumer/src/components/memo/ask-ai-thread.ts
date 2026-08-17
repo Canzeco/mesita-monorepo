@@ -4,7 +4,7 @@ import type { MemoAnswer, MemoTurn } from '@/lib/api/memo';
 export type { AiMessage } from '@/components/memo/types';
 
 // In-code fallback when ask-memo bootstrap / turn metadata has no greeting.
-// Product Rules §D Spanish-first — keep aligned with admin Memo Config DEFAULT.
+// Product Rules §C Spanish-first — keep aligned with admin Memo Config DEFAULT.
 const FALLBACK_GREETING =
   "Hola, soy Don Memo, la IA de Mesita. Dime qué se te antoja — prueba “rooftop date tonight” o “tacos al pastor”.";
 

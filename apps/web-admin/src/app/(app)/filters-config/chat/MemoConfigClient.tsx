@@ -25,7 +25,7 @@ import {
 //                               live persona on every turn
 //   greeting        enforced  — memo_greeting via get-memo-config → ask-memo
 //                               (empty-query bootstrap + turn metadata); clients
-//                               fall back to local Product Rules §D constant
+//                               fall back to local Product Rules §C constant
 //   provider        not wired — memo_provider is persisted but unused (OpenAI
 //                               is fixed on the serving path)
 //   openaiModel     fallback  — models_config.memo.model wins; memo_openai_model
