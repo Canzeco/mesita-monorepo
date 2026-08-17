@@ -1,6 +1,6 @@
 ---
 name: doctor
-description: Daily read-only health + congruence audit of the Mesita stack (Supabase DB, Edge Functions, configs, repo, deploys, ledger). Publishes a dated report as a Linear document and files P0/P1 findings as Linear issues. Never fixes anything, never writes repo files.
+description: Daily read-only health + congruence audit of the Mesita stack (Supabase DB, Edge Functions, configs, repo, deploys, ledger). Publishes the dated report as a Linear ISSUE (closed on creation) and files P0/P1 findings as separate Linear issues. Never fixes anything, never writes repo files. Linear documents are prohibited.
 ---
 
 # Doctor — daily stack audit
@@ -15,7 +15,8 @@ and **decay** (things that were healthy and no longer are), and write one report
    `supabase db push`, no writes to `app_settings`, no config edits, no code fixes, no
    `main` pushes, **no repo files — the repo carries no reports** (ASDM §C markdown law).
    If a fix is obvious, describe it in the report — do not apply it.
-   The only writes you are allowed: Linear documents, issues, and comments.
+   The only writes you are allowed: Linear issues and comments — **Linear documents
+   are PROHIBITED** (the ledger is issues + comments only; Pato, 2026-08-16).
 2. **Evidence or it didn't happen.** Every finding carries the query, command, or file:line
    that produced it, plus the two values that disagree. No "looks like", no inference from
    memory, no findings copied from a previous report without re-running the check.
@@ -207,17 +208,18 @@ For each admin config page — `adea` · `admin` · `atlas` · `db` · `enricher
 # Procedure
 
 1. `git fetch origin && git log -1 origin/main` — audit `origin/main`, never a dirty tree.
-2. Load the previous report: the most recent Linear **document** titled `Doctor — YYYY-MM-DD`
-   (team Mesita — find via the Linear MCP document list/search). If none, mark this run
-   `BASELINE` and skip the diff section.
+2. Load the previous report: the most recent Linear **issue** titled `Doctor — YYYY-MM-DD`
+   (team Mesita, Ops & maintenance — `list_issues` query `Doctor —`, include archived/Done).
+   If none, mark this run `BASELINE` and skip the diff section.
 3. Run scopes **1 → 8 in order**. Scopes are independent — parallelize freely inside a scope.
 4. For every finding, capture: scope · check id · severity · the two disagreeing values ·
    the exact query/command/`file:line` · suggested fix (one line) · blast radius.
 5. **Verify before reporting.** Re-run the underlying check for every P0/P1. A false P0 costs
    more than a missed P2 — if a finding does not reproduce, drop it and say nothing.
-6. Publish the report as a Linear **document** titled `Doctor — YYYY-MM-DD` (team Mesita,
-   `save_document`; see shape below). Never write it into the repo — the repo carries no
-   reports (ASDM §C markdown law).
+6. Publish the report as a Linear **issue** titled `Doctor — YYYY-MM-DD` (team Mesita,
+   project Ops & maintenance, body = the report — shape below) and set it **Done in the
+   same call** — it is a record, not work. Never a Linear document (prohibited) and never
+   a repo file (ASDM §C markdown law).
 7. Linear: one issue per **NEW P0/P1**, titled `doctor: <one-line symptom>`, body = the
    finding block verbatim. **Dedupe** — if an open issue already covers it, comment the new
    occurrence count instead of opening a second one. P2/P3 stay in the report only.
