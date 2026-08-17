@@ -1,297 +1,222 @@
 "use client";
 
-import type { ReactNode } from "react";
 import Image from "next/image";
-import { Instagram, type LucideIcon } from "lucide-react";
+import { ChevronRight, Instagram, Lock, Ticket, Unlock, Zap } from "lucide-react";
 import type { ConsumerProfile } from "@/lib/api/profile";
-import { formatCurrency } from "@/lib/api/profile";
 import { DefaultAvatar } from "@/components/consumer/DefaultAvatar";
-import { CLASSES, CLASS_ICONS, isElevatedIdentity } from "@/lib/consumer-data";
-import { useConsumerClass } from "@/lib/class-context";
+import { MesitaLogo } from "@/components/brand/MesitaLogo";
 import {
-  ageFromBirthday,
-  cn,
-  formatCompactCount,
-  formatPhoneDisplay,
-  formatSex,
-  phoneCountryFlag,
-} from "@/lib/utils";
+  CLASSES,
+  CLASS_ICONS,
+  PLANS,
+  PREMIUM_PLAN_ICON,
+  PREMIUM_PLAN_PRICE_MXN,
+  type ClassKey,
+} from "@/lib/consumer-data";
+import { useConsumerClass } from "@/lib/class-context";
+import { cn, formatCompactCount } from "@/lib/utils";
 
-// ─── Me membership card (MESITA-932 / MESITA-935 / MESITA-937) ──────────────
-// Centered photo + IG/Class badges (IG leading/left — MESITA-956), then five
-// equal-height identity rows: name·sex·age / 🇲🇽 phone / IG / class / visits·saved.
-// Typography: Fraunces only on MESITA wordmark; all identity rows = Inter.
+// ─── The Passport (MESITA-1079 v2 rebuild) ─────────────────────────────────
+// Replaces the centred-photo + five-stacked-rows card. That layout gave every
+// fact the same weight, so the two things a guest actually holds — the CLASS
+// they earned and the PLAN they pay for — read no louder than their phone
+// number. The v2 card is built around the two axes instead:
+//
+//   header      brand lockup + the privacy state of the profile
+//   identity    photo ringed in the class metal · name · Instagram
+//   two tiles   CLASS (metal fill) and PLAN (brand pink) side by side
+//   aura list   the invitation-only routes into Diamond
+//   stack CTA   into the Class sheet
+//
+// The axes are NEVER merged: the class tile can't show Premium and the plan
+// tile can't show a metal. Phone / sex / age moved to Personal details, and
+// visits / saved to the Metrics box — both already own that data.
 
-const ROW_CLASS =
-  "flex h-11 items-center justify-center gap-1.5 px-3 text-center";
+/** Each metal's fill for the class tile and the avatar ring. */
+const CLASS_FILL: Record<ClassKey, string> = {
+  bronze: "bg-tier-bronze",
+  silver: "bg-tier-silver",
+  gold: "bg-tier-gold",
+  diamond: "bg-tier-diamond",
+};
 
-function ClassBadge({
-  classKey,
-  label,
-}: {
-  classKey: keyof typeof CLASS_ICONS;
-  label: string;
-}) {
-  const Icon = CLASS_ICONS[classKey];
-  const chipClass =
-    classKey === "diamond"
-      ? "bg-gradient-to-br from-sky-200 to-blue-300 text-blue-950"
-      : classKey === "gold"
-        ? "bg-gradient-to-br from-amber-200 to-orange-300 text-amber-950"
-        : classKey === "silver"
-          ? "bg-gradient-to-br from-neutral-200 to-neutral-400 text-neutral-900"
-          : "bg-gradient-to-br from-orange-200 to-amber-600 text-amber-950";
+// The routes onto the Aura list — the only doors into Diamond (CLASSES.diamond
+// req: "Aura-list invitation"). Editorial, like the class ladder copy: nothing
+// here grants anything, it tells a guest the rung exists and can't be bought.
+const AURA_ROUTES = [
+  { key: "press", label: "Aura · Press", detail: "Invitation-only" },
+  { key: "mesita", label: "Invited by Mesita", detail: "Invitation-only" },
+] as const;
 
-  // Trailing (right) badge — Instagram leads on the left (MESITA-956).
-  // Same outer diameter as IgBadge (MESITA-938) — 28px.
+function Eyebrow({ children }: { children: React.ReactNode }) {
   return (
-    <div
-      className={cn(
-        "absolute -right-1 -bottom-1 grid h-7 w-7 place-items-center rounded-full border-2 border-white shadow-sm",
-        chipClass,
-      )}
-      aria-label={`Class: ${label}`}
-    >
-      <Icon className="h-3.5 w-3.5" strokeWidth={2.5} aria-hidden />
-    </div>
-  );
-}
-
-function IgBadge({
-  connected,
-  avatarUrl,
-}: {
-  connected: boolean;
-  avatarUrl: string | null;
-}) {
-  // Leading (left) badge — Instagram above Class everywhere (MESITA-956).
-  // Same outer diameter as ClassBadge (MESITA-938) — 28px h-7 w-7.
-  return (
-    <div
-      className={cn(
-        "absolute -bottom-1 -left-1 grid h-7 w-7 place-items-center rounded-full border-2 border-white p-[2px] shadow-sm",
-        connected
-          ? "bg-[linear-gradient(135deg,#f58529,#dd2a7b_45%,#8134af)]"
-          : "bg-border",
-      )}
-      aria-label={
-        connected ? "Instagram connected" : "Instagram not connected"
-      }
-    >
-      <div className="bg-card grid h-full w-full place-items-center overflow-hidden rounded-full">
-        {connected && avatarUrl ? (
-          <Image
-            src={avatarUrl}
-            alt=""
-            width={20}
-            height={20}
-            className="h-full w-full object-cover"
-          />
-        ) : (
-          <Instagram
-            className={cn(
-              "h-3.5 w-3.5",
-              connected ? "text-secondary" : "text-muted-foreground",
-            )}
-            aria-hidden
-          />
-        )}
-      </div>
-    </div>
-  );
-}
-
-function RowWithIcon({
-  Icon,
-  children,
-  iconClassName,
-}: {
-  Icon: LucideIcon;
-  children: ReactNode;
-  iconClassName?: string;
-}) {
-  return (
-    <>
-      <Icon
-        className={cn("h-3.5 w-3.5 shrink-0", iconClassName)}
-        strokeWidth={2.25}
-        aria-hidden
-      />
+    <p className="text-muted-foreground text-[10px] font-bold tracking-[0.14em] uppercase">
       {children}
-    </>
+    </p>
+  );
+}
+
+/** CLASS / PLAN tile — big value on a filled card, eyebrow above, note below. */
+function AxisTile({
+  eyebrow,
+  Icon,
+  value,
+  note,
+  fill,
+  muted = false,
+}: {
+  eyebrow: string;
+  Icon: React.ComponentType<{ className?: string }>;
+  value: string;
+  note: string;
+  fill: string;
+  muted?: boolean;
+}) {
+  return (
+    <div
+      className={cn(
+        "flex min-w-0 flex-col justify-between rounded-2xl p-3.5 shadow-sm",
+        muted ? "border-border border bg-card" : cn(fill, "text-white"),
+      )}
+    >
+      <span
+        className={cn(
+          "flex items-center gap-1.5 text-[10px] font-bold tracking-[0.14em] uppercase",
+          muted ? "text-muted-foreground" : "text-white/85",
+        )}
+      >
+        <Icon className="h-3 w-3" />
+        {eyebrow}
+      </span>
+      <span className="font-display mt-2 truncate text-[26px] leading-none font-semibold tracking-tight">
+        {value}
+      </span>
+      <span
+        className={cn(
+          "mt-1.5 truncate text-[11px]",
+          muted ? "text-muted-foreground" : "text-white/85",
+        )}
+      >
+        {note}
+      </span>
+    </div>
   );
 }
 
 export function ProfileSummaryCard({
   profile,
-  savedCents,
-  visits,
   loading,
+  onOpenClass,
 }: {
   profile: ConsumerProfile | null;
-  savedCents: number | null;
-  visits: number | null;
   loading: boolean;
+  onOpenClass: () => void;
 }) {
   const {
     key,
     plan,
     origin,
+    renewsAt,
     followers,
     handle: classHandle,
+    doors,
   } = useConsumerClass();
-  const isElevated = isElevatedIdentity({ cls: key, plan });
-  // The banner wears the CLASS metal. A Bronze guest on Premium is elevated
-  // (the perks are real) but is still Bronze, so it keeps the bronze fill
-  // rather than borrowing a rung it hasn't earned.
-  const elevatedBg =
-    key === "diamond"
-      ? "bg-tier-diamond"
-      : key === "gold"
-        ? "bg-tier-gold"
-        : key === "silver"
-          ? "bg-tier-silver"
-          : "bg-tier-bronze";
 
   if (loading) {
     return (
-      <div className="border-border bg-muted/50 w-full overflow-hidden rounded-2xl border px-4 py-4">
-        <div className="flex flex-col items-center gap-3">
-          <div className="bg-muted h-2.5 w-16 animate-pulse rounded" />
-          <div className="bg-muted h-[72px] w-[72px] animate-pulse rounded-full" />
-          <div className="bg-muted/80 w-full overflow-hidden rounded-xl">
-            {Array.from({ length: 5 }).map((_, i) => (
-              <div
-                key={i}
-                className="border-border/60 flex h-11 items-center justify-center border-b last:border-b-0"
-              >
-                <div className="bg-muted h-3 w-28 animate-pulse rounded" />
-              </div>
-            ))}
+      <section
+        aria-label="Your Mesita passport"
+        aria-busy="true"
+        className="border-border bg-card w-full overflow-hidden rounded-2xl border shadow-sm"
+      >
+        <div className="bg-muted h-1.5 w-full" />
+        <div className="flex flex-col gap-4 p-4">
+          <div className="bg-muted h-4 w-24 animate-pulse rounded" />
+          <div className="flex items-center gap-3.5">
+            <div className="bg-muted h-16 w-16 animate-pulse rounded-full" />
+            <div className="flex flex-col gap-2">
+              <div className="bg-muted h-4 w-40 animate-pulse rounded" />
+              <div className="bg-muted h-5 w-28 animate-pulse rounded-full" />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-2.5">
+            <div className="bg-muted h-[104px] animate-pulse rounded-2xl" />
+            <div className="bg-muted h-[104px] animate-pulse rounded-2xl" />
           </div>
         </div>
-      </div>
+      </section>
     );
   }
 
-  const first = profile?.first_name ?? "";
-  const last = profile?.last_name ?? "";
   const name =
-    [first, last].filter(Boolean).join(" ") ||
+    [profile?.first_name, profile?.last_name].filter(Boolean).join(" ") ||
     profile?.full_name ||
     "Mesita member";
   const avatarUrl = profile?.avatar_url ?? null;
-  const age = ageFromBirthday(profile?.birthday);
-  const sexLabel = formatSex(profile?.sex);
-  const phone = formatPhoneDisplay(profile?.phone);
-  const flag = phoneCountryFlag(profile?.phone);
-  const classLabel = CLASSES.find((c) => c.id === key)?.label ?? "Bronze";
+  const isPublic = profile?.profile_public ?? false;
+
+  const cls = CLASSES.find((c) => c.id === key);
+  const classLabel = cls?.label ?? "Bronze";
   const ClassIcon = CLASS_ICONS[key];
-  // Prefer class-context handle so IG mock (@mock) wins over a stale profile.
+
+  const isPremium = plan === "premium";
+  const planLabel = PLANS.find((p) => p.id === plan)?.label ?? "Free";
+  // Renewal beats the flat price when we know it: "renews 1 Sep" answers the
+  // question a paying guest actually has. Free states the price of the door.
+  const renewalDate = renewsAt ? new Date(renewsAt) : null;
+  const renewalValid = renewalDate != null && !Number.isNaN(renewalDate.valueOf());
+  const planNote = isPremium
+    ? renewalValid
+      ? `Renews ${renewalDate.toLocaleDateString("en-US", { day: "numeric", month: "short" })}`
+      : `MX$${PREMIUM_PLAN_PRICE_MXN}/mo`
+    : `MX$${PREMIUM_PLAN_PRICE_MXN}/mo to upgrade`;
+
+  // Prefer the context handle so the Instagram preview state wins over a
+  // stale profile row.
   const handle = classHandle ?? profile?.instagram_handle ?? null;
   const igConnected = origin === "instagram" || Boolean(handle);
-
-  const identityLine = [name, sexLabel, age != null ? String(age) : null]
-    .filter(Boolean)
-    .join(" · ");
-  const igLine = igConnected
+  const igLabel = igConnected
     ? [handle ? `@${handle}` : "Connected", formatCompactCount(followers)]
         .filter(Boolean)
         .join(" · ")
     : "Instagram not connected";
-  const metricsLine = [
-    visits == null ? "— visits" : `${visits} visits`,
-    savedCents == null ? "— saved" : `${formatCurrency(savedCents)} saved`,
-  ].join(" · ");
-
-  const rows: { key: string; content: ReactNode; muted?: boolean }[] = [
-    {
-      key: "identity",
-      content: (
-        <span className="truncate text-[15px] font-bold tracking-tight">
-          {identityLine}
-        </span>
-      ),
-    },
-    {
-      key: "phone",
-      content: (
-        <>
-          {flag ? (
-            <span className="text-[14px] leading-none" aria-hidden>
-              {flag}
-            </span>
-          ) : null}
-          <span className="truncate text-[13px] font-semibold tracking-wide tabular-nums">
-            {phone || "—"}
-          </span>
-        </>
-      ),
-      muted: !phone,
-    },
-    {
-      key: "instagram",
-      content: (
-        <span
-          className={cn(
-            "truncate text-[13px] font-semibold",
-            igConnected ? "text-secondary" : "text-muted-foreground",
-          )}
-        >
-          {igLine}
-        </span>
-      ),
-    },
-    {
-      key: "class",
-      content: (
-        <RowWithIcon Icon={ClassIcon} iconClassName="text-foreground/70">
-          <span className="truncate text-[13px] font-semibold">
-            {classLabel}
-          </span>
-        </RowWithIcon>
-      ),
-    },
-    {
-      key: "metrics",
-      content: (
-        <span className="truncate text-[13px] font-semibold tabular-nums">
-          {metricsLine}
-        </span>
-      ),
-    },
-  ];
 
   return (
     <section
-      aria-label="Your Mesita membership card"
-      className={cn(
-        "border-border w-full overflow-hidden rounded-2xl border px-4 py-4",
-        isElevated
-          ? "from-primary/[0.14] via-secondary/[0.08] to-accent/[0.10] bg-gradient-to-br"
-          : "from-primary/[0.10] via-secondary/[0.06] to-accent/[0.07] bg-gradient-to-br",
-      )}
+      aria-label="Your Mesita passport"
+      className="border-border bg-card w-full overflow-hidden rounded-2xl border shadow-sm"
     >
-      <div className="flex flex-col items-center">
-        <span className="font-display text-foreground/35 text-[10px] font-bold tracking-[0.28em] uppercase select-none">
-          Mesita
-        </span>
+      {/* The metal band — the class is the first thing the card says. */}
+      <div className={cn("h-1.5 w-full", CLASS_FILL[key])} />
 
-        <div className="relative mt-3 shrink-0">
-          <div
+      <div className="flex flex-col gap-4 p-4">
+        <div className="flex items-center justify-between gap-3">
+          <MesitaLogo className="text-primary h-[18px] w-auto" />
+          <span
             className={cn(
-              "rounded-full p-[2px]",
-              isElevated ? elevatedBg : "bg-pink-gradient",
+              "border-border text-muted-foreground inline-flex items-center gap-1 rounded-full border px-2 py-1 text-[9px] font-bold tracking-[0.12em] uppercase",
+              isPublic && "text-foreground/70",
             )}
           >
+            {isPublic ? (
+              <Unlock className="h-2.5 w-2.5" />
+            ) : (
+              <Lock className="h-2.5 w-2.5" />
+            )}
+            {isPublic ? "Public" : "Private"}
+          </span>
+        </div>
+
+        <div className="flex items-center gap-3.5">
+          <div className={cn("shrink-0 rounded-full p-[2.5px]", CLASS_FILL[key])}>
             <div className="bg-card rounded-full p-[2px]">
-              <div className="bg-muted relative h-[72px] w-[72px] overflow-hidden rounded-full">
+              <div className="bg-muted relative h-[60px] w-[60px] overflow-hidden rounded-full">
                 {avatarUrl ? (
                   <Image
                     src={avatarUrl}
                     alt={name}
                     fill
-                    sizes="72px"
+                    sizes="60px"
                     className="object-cover"
                   />
                 ) : (
@@ -300,29 +225,85 @@ export function ProfileSummaryCard({
               </div>
             </div>
           </div>
-          <IgBadge connected={igConnected} avatarUrl={avatarUrl} />
-          <ClassBadge classKey={key} label={classLabel} />
-        </div>
 
-        <div
-          className="border-border/80 mt-4 w-full overflow-hidden rounded-xl border bg-white/55"
-          role="list"
-          aria-label="Your identity"
-        >
-          {rows.map((row, i) => (
-            <div
-              key={row.key}
-              role="listitem"
+          <div className="flex min-w-0 flex-col items-start gap-1.5">
+            <h2 className="font-display w-full truncate text-[22px] leading-tight font-semibold tracking-tight">
+              {name}
+            </h2>
+            <span
               className={cn(
-                ROW_CLASS,
-                i < rows.length - 1 && "border-border/70 border-b",
-                row.muted && "text-muted-foreground",
+                "border-border inline-flex max-w-full items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-semibold",
+                igConnected ? "text-foreground" : "text-muted-foreground",
               )}
             >
-              {row.content}
+              <Instagram
+                className={cn(
+                  "h-3 w-3 shrink-0",
+                  igConnected ? "text-secondary" : "text-muted-foreground",
+                )}
+              />
+              <span className="truncate">{igLabel}</span>
+            </span>
+          </div>
+        </div>
+
+        {/* The two axes, side by side and equally weighted. */}
+        <div className="grid grid-cols-2 gap-2.5">
+          <AxisTile
+            eyebrow="Class"
+            Icon={ClassIcon}
+            value={classLabel}
+            note="Earned, not bought"
+            fill={CLASS_FILL[key]}
+          />
+          <AxisTile
+            eyebrow="Plan"
+            Icon={PREMIUM_PLAN_ICON}
+            value={planLabel}
+            note={planNote}
+            fill="bg-pink-gradient"
+            muted={!isPremium}
+          />
+        </div>
+
+        <div className="flex flex-col gap-2">
+          <Eyebrow>Aura list</Eyebrow>
+          {AURA_ROUTES.map((route) => (
+            <div
+              key={route.key}
+              className="border-border flex items-center gap-3 rounded-2xl border p-3"
+            >
+              <span className="bg-primary/10 text-primary flex h-9 w-9 shrink-0 items-center justify-center rounded-xl">
+                <Ticket className="h-[18px] w-[18px]" />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="text-muted-foreground block truncate text-[11px]">
+                  {route.label}
+                </span>
+                <span className="block truncate text-[13px] font-bold tracking-tight">
+                  {doors.invitation ? "Invitation held" : route.detail}
+                </span>
+              </span>
+              <span className="bg-primary/10 text-primary shrink-0 rounded-full px-2 py-1 text-[10px] font-bold">
+                Diamond
+              </span>
             </div>
           ))}
         </div>
+
+        <button
+          type="button"
+          onClick={onOpenClass}
+          className="bg-primary/5 hover:bg-primary/10 flex w-full items-center gap-3 rounded-2xl p-3 text-left transition active:scale-[0.99]"
+        >
+          <span className="bg-primary/10 text-primary flex h-9 w-9 shrink-0 items-center justify-center rounded-xl">
+            <Zap className="h-[18px] w-[18px]" />
+          </span>
+          <span className="min-w-0 flex-1 text-[13px] font-bold tracking-tight">
+            Stack them all for the biggest reward
+          </span>
+          <ChevronRight className="text-muted-foreground h-4 w-4 shrink-0" />
+        </button>
       </div>
     </section>
   );
