@@ -1,7 +1,10 @@
 import { BadgeCheck, Instagram } from "lucide-react";
 
-import { INSTAGRAM_ICON_GRADIENT_CLASS } from "@/lib/ui-classes";
-import { cn } from "@/lib/utils";
+// NO COLOUR BUT THE CLASS (decision: Pato, MESITA-1124). This panel used to
+// wear an emerald success frame and the Instagram brand gradient — two accents
+// competing with the one metal on the sheet. Neutral now: the words carry the
+// state.
+
 
 export function InstagramConnectedSummary({
   followers,
@@ -9,13 +12,8 @@ export function InstagramConnectedSummary({
   followers: number;
 }) {
   return (
-    <div className="flex items-center gap-3.5 rounded-2xl border border-emerald-500/25 bg-emerald-500/[0.05] p-4">
-      <span
-        className={cn(
-          "flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl text-white shadow-sm",
-          INSTAGRAM_ICON_GRADIENT_CLASS,
-        )}
-      >
+    <div className="border-border bg-card flex items-center gap-3.5 rounded-2xl border p-4">
+      <span className="bg-muted text-foreground flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl">
         <Instagram className="h-5 w-5" />
       </span>
       <div className="min-w-0 flex-1">
@@ -23,7 +21,7 @@ export function InstagramConnectedSummary({
           <span className="font-display text-[14px] leading-none font-bold tracking-tight">
             Profile connected
           </span>
-          <BadgeCheck className="h-4 w-4 shrink-0 text-emerald-600" />
+          <BadgeCheck className="text-muted-foreground h-4 w-4 shrink-0" />
         </div>
         <p className="text-muted-foreground mt-1 text-[12px] leading-snug">
           {followers > 0

@@ -35,7 +35,7 @@ export function ClassPreviewToggle() {
   return (
     <div className="border-border/70 rounded-2xl border border-dashed p-3">
       <div className="mb-2 flex items-center gap-1.5">
-        <span className="rounded bg-amber-500/15 px-1.5 py-0.5 text-[9px] font-bold tracking-[0.12em] text-amber-600 uppercase">
+        <span className="bg-muted text-muted-foreground rounded px-1.5 py-0.5 text-[9px] font-bold tracking-[0.12em] uppercase">
           Demo
         </span>
         <span className="text-muted-foreground text-[11px] font-medium">

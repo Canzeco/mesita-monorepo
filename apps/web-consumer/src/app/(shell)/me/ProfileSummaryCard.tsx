@@ -7,7 +7,7 @@ import { DefaultAvatar } from "@/components/consumer/DefaultAvatar";
 import { MesitaLogo } from "@/components/brand/MesitaLogo";
 import {
   CLASSES,
-  CLASS_ICONS,
+  CLASS_MARK_ICON,
   PLANS,
   PREMIUM_PLAN_ICON,
   PREMIUM_PLAN_PRICE_MXN,
@@ -183,7 +183,7 @@ export function ProfileSummaryCard({
 
   const cls = CLASSES.find((c) => c.id === key);
   const classLabel = cls?.label ?? "Bronze";
-  const ClassIcon = CLASS_ICONS[key];
+  const ClassIcon = CLASS_MARK_ICON;
 
   const isPremium = plan === "premium";
   const planLabel = PLANS.find((p) => p.id === plan)?.label ?? "Free";
