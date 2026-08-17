@@ -125,6 +125,12 @@ export function BottomNav({ userId }: { userId?: string }) {
   return (
     <>
       <nav
+        // Hook for surfaces that own their whole frame and suppress the tab
+        // bar in CSS (place detail — see PlaceDetailPageBody). A data attribute
+        // rather than a route list here: whether the nav belongs on a screen is
+        // that screen's statement, and the pathname alone can't tell the
+        // hard-nav place PAGE from the intercepted place MODAL, which share it.
+        data-shell-nav=""
         className={cn(
           "border-border bg-card/95 shrink-0 border-t px-0.5 pt-2 backdrop-blur",
           Z_BOTTOM_NAV,
