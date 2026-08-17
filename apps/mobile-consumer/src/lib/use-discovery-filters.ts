@@ -7,9 +7,12 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useSyncExternalStore } from 'react';
 
 import {
+  DISCOVERY_CONTEXTS,
   DISCOVERY_FILTER_DEFAULTS,
   DISCOVERY_ZONE_LEVELS,
   defaultRadiusForLevel,
+  discoveryContextIsSoon,
+  type DiscoveryContext,
   type DiscoveryFilters,
   type DiscoveryWhen,
   type DiscoveryZone,
@@ -21,11 +24,22 @@ import { PLACE_FAMILIES, type FamilyKey } from '@/lib/place-families';
 // v4 = v3 + `ask` (the intent's That axis, MESITA-699), since dropped — Memo
 // owns the ask and carries it on its own call. The key stays v4 because
 // ignoring a removed field is backward-safe; bumping would wipe live
-// zone/when/distance. Old keys ignored.
+// zone/when/distance. `context` (MESITA-1081) rides the same key for the same
+// reason: a session written before it existed just reads the `any` default.
+// Old keys ignored.
 const STORAGE_KEY = 'mesita_discovery_filters_v4';
 
 const KNOWN_FAMILY_KEYS = new Set<string>(PLACE_FAMILIES.map((f) => f.key));
 const ZONE_LEVELS = new Set<string>(DISCOVERY_ZONE_LEVELS);
+const CONTEXTS = new Set<string>(DISCOVERY_CONTEXTS);
+
+function readContext(raw: unknown): DiscoveryContext {
+  if (typeof raw !== 'string' || !CONTEXTS.has(raw)) return 'any';
+  const context = raw as DiscoveryContext;
+  // A parked context coerces back to `any`: the pill is disabled, so a session
+  // carrying it would be narrowing by something the guest can't see or clear.
+  return discoveryContextIsSoon(context) ? 'any' : context;
+}
 
 function readZone(raw: unknown): DiscoveryZone | null {
   if (!raw || typeof raw !== 'object') return null;
@@ -75,6 +89,7 @@ function parsePersisted(raw: string): DiscoveryFilters {
         ? ((parsed.randomness > 4 ? 4 : parsed.randomness) as RandomnessLevel)
         : 0;
     return {
+      context: readContext(parsed.context),
       familyKeys: Array.isArray(parsed.familyKeys)
         ? (parsed.familyKeys as unknown[]).filter(
             (k): k is FamilyKey =>
@@ -147,6 +162,16 @@ export function resetDiscoveryFilters() {
   state = DISCOVERY_FILTER_DEFAULTS;
   persist();
   emit();
+}
+
+/**
+ * Set the prioritized context. Parked contexts (`order`) are refused rather
+ * than stored — the sheet disables that pill, so accepting it would leave a
+ * filter the guest can neither see nor clear.
+ */
+export function setDiscoveryContext(context: DiscoveryContext) {
+  if (discoveryContextIsSoon(context)) return;
+  patchDiscoveryFilters({ context });
 }
 
 export function toggleDiscoveryFamily(key: FamilyKey) {

@@ -1,6 +1,20 @@
 // Discovery filter engine — the ONE place consumer surfaces narrow places.
 // v3 (MESITA-672) — FIVE parameters, Pato's order (Where · Distance · When ·
-// What · Randomness):
+// What · Randomness), behind the CONTEXT axis that cuts before all of them
+// (MESITA-1081):
+//
+//   · context    — what the guest wants to prioritize: any (no preference) ·
+//                  visit (a body in the room) · order (remote). This mirrors
+//                  Promos v11, where CONTEXT cuts before class × plan ever
+//                  resolves (MESITA-1069) — so the sheet asks the same first
+//                  question the bill engine does. `visit` narrows to places
+//                  running a REAL visit reward (placeRewardsVisits, off the
+//                  four per-class rate columns), which makes it a true
+//                  predicate rather than a mood. `order` is PARKED and not
+//                  selectable: no ticket carries a remote context yet, so
+//                  nothing could back it. The sheet ships the pill visible but
+//                  disabled + `soon` — the v11 precedent, "marked `soon`
+//                  end-to-end rather than hidden; the structure ships first".
 //
 //   · zone       — a resolved CENTER the user searched for at ANY hierarchy
 //                  level (address → street → neighborhood → city → county →
@@ -34,6 +48,48 @@ import type { Place } from "@/lib/api/places";
 import { computeOpenState } from "@/lib/adapters/place-to-detail-helpers";
 import { resolvePlaceCategoryName } from "@/lib/place-category";
 import { type FamilyKey } from "@/lib/place-families";
+import { placeRewardsVisits } from "@/lib/promo-rates";
+
+// ── Context (the promos-v11 CONTEXT axis) ───────────────────────────────────
+/** What the guest wants to prioritize — the first cut, same as the bill. */
+export type DiscoveryContext = "any" | "visit" | "order";
+
+export const DISCOVERY_CONTEXTS = ["any", "visit", "order"] as const;
+
+/**
+ * Contexts the model knows but the guest cannot pick yet. `orders` is parked
+ * end-to-end in promos v11 — the ladder and the knobs exist, but no ticket
+ * carries a remote context, so nothing reads it.
+ */
+export const DISCOVERY_CONTEXTS_SOON: readonly DiscoveryContext[] = ["order"];
+
+export function discoveryContextIsSoon(context: DiscoveryContext): boolean {
+  return DISCOVERY_CONTEXTS_SOON.includes(context);
+}
+
+/** Pill copy + the honest one-liner under the module. */
+export const DISCOVERY_CONTEXT_META: Record<
+  DiscoveryContext,
+  { label: string; caption: string }
+> = {
+  any: {
+    label: "Any",
+    caption: "No preference — everything your other filters leave standing.",
+  },
+  visit: {
+    label: "Visit",
+    caption: "Only places that reward you for showing up in person.",
+  },
+  order: {
+    label: "Order",
+    caption: "Ordering in lands when places start rewarding remote bills.",
+  },
+};
+
+/** Whether a context actually excludes places (only `visit` does today). */
+function contextNarrows(context: DiscoveryContext): boolean {
+  return context === "visit";
+}
 
 // ── Randomness ────────────────────────────────────────────────────────────
 export type RandomnessLevel = 0 | 1 | 2 | 3 | 4;
@@ -126,6 +182,8 @@ export function formatHourLabel(hour: number): string {
 
 // ── Filter state ────────────────────────────────────────────────────────────
 export type DiscoveryFilters = {
+  /** What to prioritize — any · visit · order (order parked, unselectable). */
+  context: DiscoveryContext;
   /** Super-categories: multi-select place families; empty = no constraint. */
   familyKeys: FamilyKey[];
   /** Concrete category slugs; ORed with familyKeys. Empty = no constraint. */
@@ -144,6 +202,8 @@ export type DiscoveryFilters = {
 };
 
 export const DISCOVERY_FILTER_DEFAULTS: DiscoveryFilters = {
+  // Any = neutral: the sheet never opens already committed to a context.
+  context: "any",
   familyKeys: [],
   categories: [],
   zone: null,
@@ -164,6 +224,7 @@ export const DISCOVERY_FILTER_DEFAULTS: DiscoveryFilters = {
  */
 export function hasDiscoveryPredicates(f: DiscoveryFilters): boolean {
   return (
+    contextNarrows(f.context) ||
     f.familyKeys.length > 0 ||
     f.categories.length > 0 ||
     f.maxKm !== null ||
@@ -181,6 +242,13 @@ export function discoveryFiltersAreActive(f: DiscoveryFilters): boolean {
 }
 
 function matchesDiscoveryFilters(place: Place, f: DiscoveryFilters): boolean {
+  // Context cuts FIRST — the same order the bill engine runs (promos v11). A
+  // guest prioritizing a visit only wants places that actually pay for one.
+  // `order` never reaches here (the pill is disabled and the store refuses it);
+  // if a stale session still carries it, it narrows nothing rather than
+  // inventing a remote catalog we don't have.
+  if (f.context === "visit" && !placeRewardsVisits(place)) return false;
+
   // What — OR across the two tiers.
   if (f.familyKeys.length > 0 || f.categories.length > 0) {
     const categoryHit =

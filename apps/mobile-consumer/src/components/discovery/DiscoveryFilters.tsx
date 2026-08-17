@@ -6,6 +6,7 @@ import {
   FilterGroupLabel,
   FilterModule,
   Pill,
+  PillSoon,
   PillText,
   RangeSlider,
   SectionLabel,
@@ -13,12 +14,15 @@ import {
 import { DiscoveryZoneField } from '@/components/discovery/discovery-zone-field';
 import { GRADIENTS, GRADIENT_DIAGONAL, SHADOW_GLOW } from '@/constants/brand';
 import {
+  DISCOVERY_CONTEXTS,
+  DISCOVERY_CONTEXT_META,
   DISTANCE_MAX_KM,
   DISTANCE_MIN_KM,
   RANDOMNESS_LABELS,
   RANDOMNESS_MAX,
   RANDOMNESS_MIN,
   WEEKDAY_LABELS,
+  discoveryContextIsSoon,
   formatHourLabel,
   hasDiscoveryPredicates,
   type CategoryOption,
@@ -27,6 +31,7 @@ import {
 import { PLACE_FAMILIES } from '@/lib/place-families';
 import {
   resetDiscoveryFilters,
+  setDiscoveryContext,
   setDiscoveryMaxKm,
   setDiscoveryRandomness,
   setDiscoveryWhen,
@@ -36,9 +41,10 @@ import {
 } from '@/lib/use-discovery-filters';
 
 // Shared body of the discovery Filters route modal — RN port of web
-// DiscoveryFilters (MESITA-905 simplify + routed /filters). Each INTENT /
-// Random section sits in a FilterModule box (MESITA-957). That — the ask — is
-// Memo's, not a filter: it rides Memo's own recall call.
+// DiscoveryFilters (MESITA-905 simplify + routed /filters). PRIORITIZE (the
+// context axis) cuts first, then each INTENT / Random section sits in a
+// FilterModule box (MESITA-957). That — the ask — is Memo's, not a filter: it
+// rides Memo's own recall call.
 
 export function DiscoveryFilters({
   onClose,
@@ -105,7 +111,35 @@ export function DiscoveryFilters({
         nestedScrollEnabled
         horizontal={false}
       >
-        <FilterGroupLabel>Intent · where when what</FilterGroupLabel>
+        <FilterGroupLabel>Prioritize · visit or order</FilterGroupLabel>
+
+        <FilterModule label="I want to">
+          <View className="flex-row flex-wrap gap-1.5">
+            {DISCOVERY_CONTEXTS.map((key) => {
+              const soon = discoveryContextIsSoon(key);
+              return (
+                <Pill
+                  key={key}
+                  active={filters.context === key}
+                  disabled={soon}
+                  onClick={() => setDiscoveryContext(key)}
+                >
+                  <PillText active={filters.context === key} disabled={soon}>
+                    {DISCOVERY_CONTEXT_META[key].label}
+                  </PillText>
+                  {soon ? <PillSoon /> : null}
+                </Pill>
+              );
+            })}
+          </View>
+          <Text className="mt-2.5 text-[11px] text-muted-foreground/70">
+            {DISCOVERY_CONTEXT_META[filters.context].caption}
+          </Text>
+        </FilterModule>
+
+        <FilterGroupLabel className="mt-5">
+          Intent · where when what
+        </FilterGroupLabel>
 
         <View className="gap-3">
         <FilterModule label="Where">
