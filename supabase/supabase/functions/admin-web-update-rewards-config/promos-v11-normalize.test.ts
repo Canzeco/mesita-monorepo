@@ -11,6 +11,7 @@ import {
   identityForClassKey,
   legacyRulesFromV11,
   normalizePromosV11,
+  promosWriteShape,
 } from "./promos-v11-normalize.ts";
 
 function ok(raw: unknown) {
@@ -153,4 +154,24 @@ Deno.test("legacyRulesFromV11: emits the complete 40-cell mirror, on-grid and �
   assertEquals(at("aggressive", "aura", "welcome"), 60);
   // Every class now pays the same story bonus.
   assertEquals(at("conservative", "influencer", "story"), 25); // 15 + 10
+});
+
+// ── the write gate ───────────────────────────────────────────────────────
+
+Deno.test("promosWriteShape: v11 is the only accepted save shape", () => {
+  assertEquals(promosWriteShape({ version: 11, visits: {}, orders: {} }), "v11");
+  assertEquals(promosWriteShape(DEFAULT_PROMOS_V11), "v11");
+});
+
+Deno.test("promosWriteShape: a v10 save is a STALE TAB, never a migration", () => {
+  // Reads still migrate v10 (normalizePromosV11 above proves it); a v10 WRITE
+  // can only come from a bundle that predates v11, which is rendering its own
+  // defaults rather than the live blob. The EF answers 409.
+  assertEquals(promosWriteShape({ version: 10, base: {}, bonuses: {} }), "stale-v10");
+});
+
+Deno.test("promosWriteShape: anything else falls through to the legacy path", () => {
+  for (const body of [null, undefined, [], "nope", 7, {}, { version: 9 }]) {
+    assertEquals(promosWriteShape(body), "other");
+  }
 });
