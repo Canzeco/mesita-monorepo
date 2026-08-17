@@ -15,11 +15,15 @@ export type SegmentItem = {
 // Pink-pill segment nav — RN port of web-consumer HomeModeNav:
 // active = solid primary + shadow-glow; idle/soon = muted text only (no fill).
 //
-// Pills are content-width inside a horizontal scroller, but all five fit a
-// phone-width row at rest (web parity, 2026-08-16): tighter padding, a tighter
-// icon/label gap and 14px icons buy back the width that used to leave the last
-// pill clipped mid-word. The scroller stays as the fallback for large
-// accessibility text, not as the resting state.
+// Pills are content-width inside a horizontal scroller. This is the ONE
+// deliberate break from web (see this package's CLAUDE.md): web sizes its
+// section rows as equal fractions — every pill 20% on Home, 25% on Inbox —
+// and a 375px phone cannot pay that bill, because equal columns are budgeted
+// by the LONGEST label rather than the average. Five equal pills would be 75px
+// against the ~78px "Favorites" needs, four would be 87px against the ~98px
+// "Notifications" needs, so every row would scroll at rest with the widest
+// label clipped. Content-width pills fit instead. Never close the gap by
+// shrinking type below 12px — shorten a label.
 export function SegmentNav({
   items,
   value,
