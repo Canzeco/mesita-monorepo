@@ -257,14 +257,14 @@ export const DEFAULT_PROMOS: PromosConfig = {
         diamond: { free: 50, premium: 70 },
       },
     },
-    bonuses: { welcome: 10, mesita: 5, story: 10, google: 10 },
+    bonuses: { welcome: 10, mesita: 5, story: 10, google: 15 },
   },
   orders: {
     base: {
       conservative: { free: 5, premium: 10 },
       aggressive: { free: 10, premium: 15 },
     },
-    bonuses: { welcome: 5, mesita: 5, story: 5, google: 5 },
+    bonuses: { welcome: 5, mesita: 5, story: 5, google: 10 },
     soon: true,
   },
   cap: CAP_DEFAULT,

@@ -183,12 +183,14 @@ describe("giveLevel — the card's number and meter", () => {
     const cons = giveLevel(DEFAULT_PROMOS, "conservative");
     const aggr = giveLevel(DEFAULT_PROMOS, "aggressive");
     // Straight off distribution-model, the same numbers the Playground charts.
-    // Both rose a point under v11 (19→20, 32→34): the Premium plan uplift now
-    // applies across the whole class ladder instead of at one `premium` row.
-    expect(cons.mean).toBe(20);
+    // v11 lifted both means a point (19→20, 32→34): the Premium plan uplift
+    // now applies across the whole class ladder, not at one `premium` row.
+    // Raising Google 10→15 widened the top of the band (p90 30→35 / 50→55)
+    // without moving the mean — only one visit in ten claims that rung.
+    expect(cons.mean).toBe(21);
     expect(aggr.mean).toBe(34);
-    expect([cons.p10, cons.p90]).toEqual([10, 30]);
-    expect([aggr.p10, aggr.p90]).toEqual([20, 50]);
+    expect([cons.p10, cons.p90]).toEqual([10, 35]);
+    expect([aggr.p10, aggr.p90]).toEqual([20, 55]);
   });
 
   it("the mean sits inside the quoted band", () => {

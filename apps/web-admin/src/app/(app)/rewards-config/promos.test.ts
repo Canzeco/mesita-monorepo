@@ -194,11 +194,15 @@ describe("totalFor + legacyRulesFrom (the engine bridge)", () => {
 });
 
 describe("modelWarnings", () => {
-  it("stays quiet on the defaults except the Google-vs-Story tie", () => {
-    // Defaults ship Google and Story both at 10 — Notion says Google, being
-    // one-shot, must out-pay the repeatable Story. Reported, not corrected.
-    const keys = modelWarnings(DEFAULT_PROMOS).map((w) => w.key);
-    expect(keys).toEqual(["google-vs-story"]);
+  it("stays silent on the defaults — the shipped ladder is well-formed", () => {
+    expect(modelWarnings(DEFAULT_PROMOS)).toEqual([]);
+  });
+
+  it("flags Google failing to out-pay the repeatable Story", () => {
+    // The one-shot rung must beat the one a guest can repeat every visit.
+    const cfg = structuredClone(DEFAULT_PROMOS);
+    cfg.visits.bonuses.google = cfg.visits.bonuses.story;
+    expect(modelWarnings(cfg).map((w) => w.key)).toEqual(["google-vs-story"]);
   });
 
   it("flags an inverted class ladder", () => {

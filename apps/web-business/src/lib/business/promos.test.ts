@@ -21,10 +21,10 @@ describe("promos — lockstep with the admin twin", () => {
   it("reproduces the admin expected-rate numbers exactly", () => {
     const cons = giveLevel(DEFAULT_PROMOS, "conservative");
     const aggr = giveLevel(DEFAULT_PROMOS, "aggressive");
-    expect(cons.mean).toBe(20);
+    expect(cons.mean).toBe(21);
     expect(aggr.mean).toBe(34);
-    expect([cons.p10, cons.p90]).toEqual([10, 30]);
-    expect([aggr.p10, aggr.p90]).toEqual([20, 50]);
+    expect([cons.p10, cons.p90]).toEqual([10, 35]);
+    expect([aggr.p10, aggr.p90]).toEqual([20, 55]);
   });
 
   it("prices returning visits the way the engine does, not the presets", () => {
