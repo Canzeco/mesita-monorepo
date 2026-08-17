@@ -8,7 +8,7 @@ import {
 import { cn } from "@/lib/utils";
 
 // Dev/demo affordance — flip the signed-in consumer between the four CLASS
-// states (Bronze / Silver + Gold via Instagram reach / Diamond via Aura-list
+// states (Bronze / Silver + Gold via Instagram reach / Diamond via a direct
 // invitation, ladder order) so every surface that reads useConsumerClass() can
 // be previewed without real Instagram reach. Writes the client-only
 // MOCK_ACCOUNT override (class axis) and switches the Instagram emulation off

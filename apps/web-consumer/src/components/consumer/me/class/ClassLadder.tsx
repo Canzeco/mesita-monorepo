@@ -32,21 +32,22 @@ import { cn } from "@/lib/utils";
 //    header states once that rewards climb; the ladder shows how far.
 
 export function ClassLadder() {
-  const { key, doors, followers } = useConsumerClass();
+  const { key, followers } = useConsumerClass();
 
   return (
     <ol className="flex flex-col gap-2">
       {CLASSES.map((c) => {
         const current = key === c.id;
         // PER-RUNG, not one shared reach flag (MESITA-1125). The bars are
-        // banded now — 1,000 / 5,000 / 20,000 — so the old boolean would have
+        // banded — 1,000 / 5,000 / 20,000 — so a single boolean would have
         // shown Gold unlocked to a guest with 1,000 followers, who is Silver.
-        // Each rung asks its own question. Diamond keeps its second door: an
-        // Aura-list invitation opens it at any follower count.
-        const unlocked =
-          current ||
-          followers >= c.followerThreshold ||
-          (c.id === "diamond" && doors.invitation);
+        //
+        // The manual door needs no branch here (MESITA-1126). An invitation
+        // NAMES a class and grants it outright, so an invited guest arrives
+        // with that rung already as `key` — it reads as `current`, which is
+        // the truth. The old `diamond && doors.invitation` case encoded the
+        // retired idea that invitations only ever led to the top rung.
+        const unlocked = current || followers >= c.followerThreshold;
 
         return (
           <li

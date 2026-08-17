@@ -14,7 +14,7 @@ import {
 //
 //   class — WHO YOU ARE. Bronze → Silver → Gold → Diamond, ascending, and
 //           never purchasable. Two doors up: Instagram reach (follower bands,
-//           operator-configured) or an Aura-list invitation. Class is public —
+//           operator-configured) or a direct invitation. Class is public —
 //           it shows on the Passport.
 //   plan  — WHAT YOU PAY. Free or Premium (MX$100/mo). Private: invisible to
 //           venues, never on the Passport.
@@ -203,10 +203,7 @@ export const CLASSES: {
   {
     id: "diamond",
     label: "Diamond",
-    // TWO doors, and the invitation is not the lesser one: pickEffectiveClass
-    // resolves invitation independently of reach, so 20,000 followers is an
-    // ADDITIONAL way in rather than a replacement for the Aura list.
-    req: "20,000+ followers, or an Aura-list invitation",
+    req: "20,000+ Instagram followers",
     followerThreshold: 20_000,
     // Highest flat class rate — the house pays for presence, no posting asked.
     reward: "Highest discount",

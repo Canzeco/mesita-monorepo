@@ -34,7 +34,9 @@ import {
 type ClassDoors = {
   /** Instagram reach at or above the entry bar — the Silver door. */
   reach: boolean;
-  /** An Aura-list invitation — the Diamond door. */
+  /** Your class was handed to you directly by Mesita. Not tied to any rung:
+   *  an invitation NAMES a class (the EF's `invitationClassKey`), so it can
+   *  grant Bronze or Diamond alike. */
   invitation: boolean;
 };
 
@@ -113,13 +115,18 @@ function normalize(
         : null,
     followers,
     handle: instagramHandle,
-    // Server-computed doors when the EF ships them — still under legacy names,
-    // so they're mapped here too. Otherwise derive from what the payload
-    // already proves (reach from followers, invitation only when it holds the
-    // slot). The old `premium` door is gone: it was never a class door.
+    // TWO WAYS IN, and only two (decision: Pato, MESITA-1126): follower count,
+    // automatic; or an invitation, manual.
+    //
+    // `reach` still reads the server's legacy `influencer` door — that key is
+    // storage, not vocabulary. `invitation` no longer asks "are you Diamond?":
+    // an invitation names ANY class, so the honest question is whether an
+    // invitation is what granted the class you hold. The old `aura` door and
+    // the `cls === "diamond"` fallback both encoded the retired idea that
+    // invitations only ever led to the top rung.
     doors: {
       reach: c.doors?.influencer ?? followers >= REACH_ENTRY_FOLLOWERS,
-      invitation: c.doors?.aura ?? cls === "diamond",
+      invitation: c.origin === "invitation",
     },
   };
 }
@@ -289,7 +296,9 @@ function mockAccountState(
     key = "silver";
     origin = "instagram";
   } else if (mock.class === "diamond") {
-    // The invite-only presence class — the Aura-list door.
+    // Diamond is previewed through the manual door. Not because Diamond is
+    // special — an invitation can name any class — but because the reach
+    // branch above already covers the automatic route.
     key = "diamond";
     origin = "invitation";
   } else if (mock.class === "silver" || mock.class === "gold") {
@@ -324,7 +333,7 @@ function mockAccountState(
     // the real account underneath).
     doors: {
       reach: igReach || mock.class === "silver" || mock.class === "gold",
-      invitation: mock.class === "diamond",
+      invitation: origin === "invitation",
     },
   };
 }
