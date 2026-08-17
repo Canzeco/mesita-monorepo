@@ -42,18 +42,9 @@ import {
 } from "lucide-react";
 
 import { apiFetchPublicPlaces, type Place } from "@/lib/api/places";
+import { filterPlacesByQuery } from "@/lib/place-search";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { cn } from "@/lib/utils";
-
-// Accent- and case-blind, token-AND matching: "zona hot" finds "Zona Hotelera",
-// and "cancun" still finds "Cancún". Spanish names carry diacritics that a
-// guest standing in a bar will not stop to type.
-function fold(value: string) {
-  return value
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase();
-}
 
 export function PlacePickList({
   activePlaceIds,
@@ -107,22 +98,12 @@ export function PlacePickList({
       }),
     [places],
   );
-  // Matched against exactly what the row RENDERS — its name and its subtitle
-  // (zone · category). Matching on a field the guest cannot see produces hits
-  // that look like bugs. Every token must land, so words narrow rather than
-  // widen: "zona sushi" means both, not either.
-  const visible = useMemo(() => {
-    const tokens = fold(query).split(/\s+/).filter(Boolean);
-    if (tokens.length === 0) return sorted;
-    return sorted.filter((p) => {
-      const haystack = fold(
-        [p.name, p.zone, p.category_label ?? p.category]
-          .filter(Boolean)
-          .join(" "),
-      );
-      return tokens.every((t) => haystack.includes(t));
-    });
-  }, [sorted, query]);
+  // Rules and rationale live with the matcher in `@/lib/place-search`, where
+  // they are unit-tested; this only decides WHEN to apply them.
+  const visible = useMemo(
+    () => filterPlacesByQuery(sorted, query),
+    [sorted, query],
+  );
 
   // Scoped to what is ON SCREEN: the partner footnote explains locked rows, so
   // it has no business showing when the query has filtered them all away.
