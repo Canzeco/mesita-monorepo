@@ -240,7 +240,7 @@ export function ProfileClient({
             Icon={Bot}
             tint="violet"
             title="AI Connector"
-            summary="Use Mesita from your chatbot"
+            summary="Use Mesita from ChatGPT or Claude (MCP)"
             onClick={() => setAiOpen(true)}
             soon
           />
