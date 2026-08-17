@@ -70,8 +70,17 @@ export function ProfileActions({
             outlineBtn,
             // Saved reads RED, not brand pink — the universal "hearted" hue
             // (MESITA-587), unmistakable at a glance next to its siblings.
+            //
+            // SOLID, not a tint (Pato, live 2026-08-17: "different background
+            // color when saved, the save button looks like shit"). The old
+            // `bg-red-500/12` was a 12% wash on a WHITE band sitting directly
+            // above the pink tab body — at that opacity it landed in the same
+            // pale-pink family as the page itself, so it read as a smudge
+            // rather than a state, and the thin /50 border was doing all the
+            // work. A toggle's ON state should be the loudest thing in its
+            // row: solid fill, white label, white filled heart.
             saved &&
-              "border-red-500/50 bg-red-500/12 text-red-600 hover:bg-red-500/18",
+              "border-red-600 bg-red-600 text-white hover:bg-red-700 hover:border-red-700 shadow-[0_2px_10px_-2px_rgba(220,38,38,0.5)]",
           )}
         >
           <Heart
