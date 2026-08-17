@@ -32,7 +32,7 @@ import {
 } from "@/lib/api/profile";
 import {
   CLASSES,
-  CLASS_ICONS,
+  CLASS_MARK_ICON,
   PREMIUM_PLAN_ICON,
   PREMIUM_PLAN_PRICE_MXN,
 } from "@/lib/consumer-data";
@@ -190,7 +190,10 @@ export function ProfileClient({
     .filter(Boolean)
     .join(" · ");
 
-  const ClassIcon = CLASS_ICONS[classKey];
+  // The box names the CONCEPT, so it wears the class mark (a pyramid), not the
+  // current rung's metal — a medal on a Bronze account read as "you won
+  // something" rather than "this is your class" (decision: Pato).
+  const ClassIcon = CLASS_MARK_ICON;
 
   return (
     <div className="flex h-full flex-col">
