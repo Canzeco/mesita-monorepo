@@ -15,6 +15,7 @@
 // match a face.
 
 import { type SupabaseClient } from "jsr:@supabase/supabase-js@2";
+import { amountDueCents } from "./business-ticket-billing.ts";
 
 // Canonical public URL of a check — the QR encodes exactly this.
 export const CHECK_URL_BASE = "https://check.mesita.ai/";
@@ -45,7 +46,7 @@ export function isPlausibleCheckCode(code: string): boolean {
 export const CHECK_TICKET_COLUMNS =
   "id, project_id, consumer_id, kind, status, check_code, first_scanned_at, " +
   "story_status, story_screenshot_url, review_status, review_screenshot_url, " +
-  "check_subtotal_cents, tip_cents, total_cents, discount_percent, discount_cents, " +
+  "check_subtotal_cents, tip_cents, tip_pct, total_cents, discount_percent, discount_cents, " +
   "bill_source, currency, created_at, revealed_at, cancelled_at";
 
 export type CheckTicketRow = {
@@ -62,6 +63,7 @@ export type CheckTicketRow = {
   review_screenshot_url: string | null;
   check_subtotal_cents: number | null;
   tip_cents: number | null;
+  tip_pct: number | null;
   total_cents: number | null;
   discount_percent: number | null;
   discount_cents: number | null;
@@ -160,13 +162,14 @@ export function shapeCheckPayload(args: {
         check_subtotal_cents: ticket.check_subtotal_cents,
         discount_percent: ticket.discount_percent,
         discount_cents: ticket.discount_cents,
-        // tickets.total_cents is the PRE-discount bill total (subtotal+tip);
-        // the amount to charge is total minus the snapshotted discount.
-        // Caught live by the MESITA-806 E2E — a MX$800 bill showed $800 due.
-        amount_due_cents: Math.max(
-          0,
-          (ticket.total_cents ?? 0) - (ticket.discount_cents ?? 0),
-        ),
+        // ONE amount-due formula for every surface (C4-6, MESITA-1087):
+        // subtotal − discount + tip, from business-ticket-billing. Three
+        // hand-rolled copies used to agree only because tip was always 0.
+        amount_due_cents: amountDueCents({
+          checkSubtotalCents: ticket.check_subtotal_cents ?? 0,
+          discountCents: ticket.discount_cents ?? 0,
+          tipCents: ticket.tip_cents ?? 0,
+        }),
         reward_cap_mxn: args.capMxn,
       }
       : null,

@@ -32,6 +32,7 @@ import {
   rejectUnlessMethods,
 } from "../_shared/http.ts";
 import { adminClient, getAuthedUser, readEFEnv } from "../_shared/auth.ts";
+import { resolveBillCapPesos } from "../_shared/discount-cap.ts";
 import { isConsumerFirstVisit } from "../_shared/membership.ts";
 import {
   CLASS_SEGMENTS,
@@ -70,7 +71,7 @@ Deno.serve(async (req) => {
   const placeRes = await admin
     .from("projects")
     .select(
-      "id, free_rate, premium_rate, welcome_free_rate, welcome_premium_rate",
+      "id, free_rate, premium_rate, welcome_free_rate, welcome_premium_rate, monthly_promo_cap",
     )
     .eq("id", placeId)
     .maybeSingle();
@@ -94,6 +95,13 @@ Deno.serve(async (req) => {
     loadRewardsGrid(admin),
     isConsumerFirstVisit(admin, consumerId, placeId),
   ]);
+
+  // The CAP the till will actually honour (MESITA-1087): the place's own
+  // monthly_promo_cap when set, else the platform fallback — the same
+  // resolveBillCapPesos the bill EFs use. Quoting grid.cap alone printed the
+  // fallback at places with their own knob, and a quoted cap the till
+  // disagrees with is the MESITA-1017 failure class.
+  const capPesos = resolveBillCapPesos(place, grid.cap);
 
   const rawClass = consumerRes.data.class_key;
   // Same generic resolution the engine uses: an unknown/legacy class key
@@ -145,7 +153,7 @@ Deno.serve(async (req) => {
         bonuses: { welcome: 0, story: 0, google: 0, mesita: 0 },
         ladder,
         storyEligible: false,
-        cap: grid.cap,
+        cap: capPesos,
       },
     });
   }
@@ -173,7 +181,7 @@ Deno.serve(async (req) => {
         ladder,
         storyEligible:
           igConnected && offersAction(strategy, grid, "story"),
-        cap: grid.cap,
+        cap: capPesos,
       },
     });
   }
@@ -204,7 +212,7 @@ Deno.serve(async (req) => {
       },
       ladder,
       storyEligible: igConnected && offersAction(strategy, grid, "story"),
-      cap: grid.cap,
+      cap: capPesos,
     },
   });
 });

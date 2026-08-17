@@ -8,10 +8,13 @@
 // added by editing THIS file and the migration in the same PR, never by
 // hunting literals.
 //
-// Every set below contains EXACTLY the values the inline literals held on
-// the day of extraction (verified against live pg_enum 2026-08-16: one
-// ticket, at 'open'). THE TICKET v4 (MESITA-1084) widens them in lockstep
-// with its schema migration — never before, never after.
+// v4 (MESITA-1086) widened this vocabulary in lockstep with the migration
+// that added `scanned`, `approved`, `paying` to the enum — the machine is
+// open → scanned → approved → paying → revealed (plan §12), with
+// fix_requested as a COLUMN at scanned, never a status.
+// `awaiting_payment_confirm` remains LIVE only while the transitional staff
+// bill path (check-web-submit-bill) still writes it; it retires with
+// MESITA-1093 and then moves to LEGACY.
 //
 // The web/mobile apps hold a mirror of LIVE_STATUSES as
 // `ACTIVE_TICKET_STATUSES` in their `lib/api/tickets.ts`; a drift test in
@@ -20,6 +23,9 @@
 
 export const TICKET_STATUS = {
   open: "open",
+  scanned: "scanned",
+  approved: "approved",
+  paying: "paying",
   pendingPayment: "pending_payment",
   paid: "paid",
   cancelled: "cancelled",
@@ -39,6 +45,9 @@ export const ALL_TICKET_STATUSES: readonly TicketStatus[] = [
   "revealed",
   "awaiting_story",
   "awaiting_payment_confirm",
+  "scanned",
+  "approved",
+  "paying",
 ];
 
 /**
@@ -47,6 +56,9 @@ export const ALL_TICKET_STATUSES: readonly TicketStatus[] = [
  */
 export const LIVE_STATUSES: readonly TicketStatus[] = [
   "open",
+  "scanned",
+  "approved",
+  "paying",
   "awaiting_payment_confirm",
 ];
 export const LIVE_STATUS_SET: ReadonlySet<string> = new Set(LIVE_STATUSES);
@@ -74,6 +86,7 @@ export const LEGACY_STATUSES: readonly TicketStatus[] = [
  */
 export const TASKABLE_STATUSES: readonly TicketStatus[] = [
   "open",
+  "scanned",
   "awaiting_payment_confirm",
 ];
 export const TASKABLE_STATUS_SET: ReadonlySet<string> = new Set(
@@ -84,7 +97,10 @@ export const TASKABLE_STATUS_SET: ReadonlySet<string> = new Set(
  * The guest may self-cancel. Deliberately narrower than the business set:
  * once the place is involved, walking away is the place's call.
  */
-export const GUEST_CANCELLABLE_STATUSES: readonly TicketStatus[] = ["open"];
+export const GUEST_CANCELLABLE_STATUSES: readonly TicketStatus[] = [
+  "open",
+  "scanned",
+];
 export const GUEST_CANCELLABLE_STATUS_SET: ReadonlySet<string> = new Set(
   GUEST_CANCELLABLE_STATUSES,
 );
@@ -92,6 +108,9 @@ export const GUEST_CANCELLABLE_STATUS_SET: ReadonlySet<string> = new Set(
 /** The business console may cancel any live ticket. */
 export const BUSINESS_CANCELLABLE_STATUSES: readonly TicketStatus[] = [
   "open",
+  "scanned",
+  "approved",
+  "paying",
   "awaiting_payment_confirm",
 ];
 
@@ -104,8 +123,15 @@ export const CLOSED_TICKET_STATUS: TicketStatus = "revealed";
 /**
  * The QR-farming dedupe set: consumer-web-create-ticket's friendly pre-check.
  * MUST stay equal to the predicate of the partial unique index
- * `tickets_one_open_check_per_consumer_place` — the index is the guard that
- * wins races, the pre-check only makes the 409 friendly. Widen both in the
- * same PR or the one-live-ticket-per-place rule silently dies.
+ * `tickets_one_open_check_per_consumer_place` (rebuilt over this exact set
+ * by 20260817050100_ticket_v4_schema.sql) — the index is the guard that wins
+ * races, the pre-check only makes the 409 friendly. Widen both in the same
+ * PR or the one-live-ticket-per-place rule silently dies.
  */
-export const CHECK_DEDUPE_STATUSES: readonly TicketStatus[] = ["open"];
+export const CHECK_DEDUPE_STATUSES: readonly TicketStatus[] = [
+  "open",
+  "scanned",
+  "approved",
+  "paying",
+  "awaiting_payment_confirm",
+];

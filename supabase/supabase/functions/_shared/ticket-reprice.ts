@@ -28,6 +28,8 @@ type RepriceTicketRow = {
   story_status: string | null;
   review_status: string | null;
   check_subtotal_cents: number | null;
+  tip_cents: number | null;
+  tip_pct: number | null;
   discount_percent: number | null;
   currency: string | null;
 };
@@ -125,7 +127,7 @@ export async function repriceTicketAfterAction(
   const ticketRes = await admin
     .from("tickets")
     .select(
-      "id, project_id, consumer_id, kind, status, story_status, review_status, check_subtotal_cents, discount_percent, currency",
+      "id, project_id, consumer_id, kind, status, story_status, review_status, check_subtotal_cents, tip_cents, tip_pct, discount_percent, currency",
     )
     .eq("id", ticketId)
     .maybeSingle();
@@ -163,10 +165,14 @@ export async function repriceTicketAfterAction(
     return { ok: true, ratePercent: null };
   }
 
+  // C4-7: the reprice carries the guest's tip forward byte-identically —
+  // preset recomputes on the (unchanged) subtotal, custom carries the cents.
   const billRes = computeTicketBill({
     subtotal,
     ratePercent,
     capPesos: liveRes.capPesos,
+    tipPct: ticket.tip_pct,
+    carryTipCents: ticket.tip_cents,
   });
   if (!billRes.ok) return { ok: false, error: billRes.error };
   const snap = billRes.snapshot;

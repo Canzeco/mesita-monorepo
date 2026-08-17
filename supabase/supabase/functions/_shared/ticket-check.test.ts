@@ -29,6 +29,7 @@ function row(overrides: Partial<CheckTicketRow> = {}): CheckTicketRow {
     review_screenshot_url: null,
     check_subtotal_cents: null,
     tip_cents: null,
+    tip_pct: null,
     total_cents: null,
     discount_percent: null,
     discount_cents: null,
@@ -153,7 +154,7 @@ Deno.test("shapeCheckPayload: bill_required defaults off, flag only (MESITA-898)
   assertEquals(JSON.stringify(required).includes("check_require_bill"), false);
 });
 
-Deno.test("shapeCheckPayload: amount due = total minus discount (E2E regression)", () => {
+Deno.test("shapeCheckPayload: amount due = subtotal minus discount (E2E regression)", () => {
   const payload = shape({
     status: "awaiting_payment_confirm",
     check_subtotal_cents: 80_000,
@@ -164,6 +165,26 @@ Deno.test("shapeCheckPayload: amount due = total minus discount (E2E regression)
   assertEquals(
     (payload.bill as Record<string, unknown>).amount_due_cents,
     70_000,
+  );
+});
+
+Deno.test("shapeCheckPayload: the tip rides through amount due untouched (C4-6)", () => {
+  // The F3 canonical bill: MX$850 + MX$128 tip − MX$100 off = MX$878 due.
+  // Before MESITA-1087 three hand-rolled amount-due formulas disagreed by
+  // exactly the tip the moment tip_cents went nonzero; this pins the shared
+  // formula at the staff payload, the surface where the waiter reads it.
+  const payload = shape({
+    status: "awaiting_payment_confirm",
+    check_subtotal_cents: 85_000,
+    tip_cents: 12_800,
+    tip_pct: 15,
+    total_cents: 97_800,
+    discount_percent: 20,
+    discount_cents: 10_000,
+  });
+  assertEquals(
+    (payload.bill as Record<string, unknown>).amount_due_cents,
+    87_800,
   );
 });
 
