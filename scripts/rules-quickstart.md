@@ -2,7 +2,7 @@
 
 Stable mirror of Notion **Rules** §0 — the master; Notion wins on any conflict: https://www.notion.so/Rules-395a9bf37a528081b2c1dacc445bb6c8
 
-**ASDM** is the one protocol for all agent work, on every platform and environment: 🏛️ **Product Rules** = WHAT Mesita is (Pato owns it; mirror shipped architecture changes there same session) · ⚙️ **Development Rules** = HOW agents build it. Your platform's ramp (isolation, branch naming, connectors): **Development Rules §K**.
+**ASDM** is the one protocol for all agent work, on every platform and environment — full text: 🤖 **ASDM Rules**; your platform's ramp (isolation, branch naming, connectors): **ASDM Rules §K**. 🏛️ **Product Rules** = WHAT Mesita is, extended by 🗺️ **Atlas** (profile spec) · ✨ **Enrichment** (pipeline) · 📞 **Reservations** (voice fleet) — Pato owns the product docs; mirror shipped architecture changes there same session. ⚙️ **Development Rules** = engineering law: tooling gotchas + the knowledge chain.
 
 | You're reading | You are |
 | --- | --- |
@@ -23,9 +23,9 @@ Stable mirror of Notion **Rules** §0 — the master; Notion wins on any conflic
 
 **The backend is a singleton.** One Supabase project, ONE live schema and EF set — Supabase branching deliberately unused; schema/EF surface is claimed footprint. Merging to main auto-deploys every EF, so a cloud-only edit dies at the next merge: mirror every cloud change into `supabase/` the same session; migrations apply via MCP/CLI, then reconcile the ledger (Development Rules §B).
 
-**ALWAYS:** reply in English · clients call Edge Functions, never the DB · never push to `main` (enforced: a ruleset requires squash PRs and blocks force-push) · terminal statuses same session · no local web dev servers — web verifies on Vercel, mobile via `npx expo export --platform web` + the Metro web preview (:8081 consumer · :8082 business) · admin-console configs bind every EF, app and agent (Admin · Models · Sourcing · Atlas · Enricher · Verification · Ojo · Promos · Memo · Reservations — unenforced config = bug; staged knobs are labeled staged).
+**ALWAYS:** reply in English · clients call Edge Functions, never the DB · never push to `main` (enforced: a ruleset requires squash PRs and blocks force-push) · terminal statuses same session · no local web dev servers — web verifies on Vercel, mobile via `npx expo export --platform web` + the Metro web preview (:8081 consumer · :8082 business) · admin-console configs bind every EF, app and agent (Admin · Models · Sourcing · Enricher · Verification · Ojo · Filters · Promos · Reservations — unenforced config = bug; staged knobs are labeled staged).
 
-**Generated output is never hand-edited.** `AGENTS.md` ← its sibling `CLAUDE.md` (`deno task sync-rules`) · brand assets, `BRAND-TOKENS` blocks, `src/components/brand/*`, favicons ← `assets/brand/brand.json` (`deno task sync-brand`; guide: Product Rules §F). Both CI-gated. **The repo holds no other markdown:** knowledge → Notion Rules · task context → Linear · code notes → code comments; the allowlist (`CLAUDE.md`/`AGENTS.md` pairs, `scripts/rules-quickstart.md`, `.claude/` `.cursor/` `.codex/` `.github/`) is CI-enforced. **Docs are rewritten, not amended** — present law only, no history trails; word budgets CI-enforced (Development Rules §C).
+**Generated output is never hand-edited.** `AGENTS.md` ← its sibling `CLAUDE.md` (`deno task sync-rules`) · brand assets, `BRAND-TOKENS` blocks, `src/components/brand/*`, favicons ← `assets/brand/brand.json` (`deno task sync-brand`; guide: Product Rules §E). Both CI-gated. **The repo holds no other markdown:** knowledge → Notion Rules · task context → Linear · code notes → code comments; the allowlist (`CLAUDE.md`/`AGENTS.md` pairs, `scripts/rules-quickstart.md`, `.claude/` `.cursor/` `.codex/` `.github/`) is CI-enforced. **Docs are rewritten, not amended** — present law only, no history trails; word budgets CI-enforced (Development Rules §C).
 
 **NEVER ask.** Reversible → decide, log a `decision:` comment, ship. `needs-human` = only a secret you can't enter, or one irreversible money/publish trigger.
 
