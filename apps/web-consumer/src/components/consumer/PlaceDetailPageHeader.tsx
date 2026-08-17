@@ -12,8 +12,8 @@ import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 // page can't trust browser history.
 //
 // decision: Pato (MESITA-392, reverses MESITA-383) — Save moved into the
-// body action row (Save · Contact · Reserve · Share). The header is just
-// back + centered name now, so a w-9 spacer balances the back button.
+// body action row (Save · Contact · Share since MESITA-1065). The header is
+// just back + centered name now, so a w-9 spacer balances the back button.
 //
 // decision: Pato (MESITA-451, revised) — the "Enriching" state now lives as
 // a chip in the profile summary (PlaceDetailBody), not to the right of the

@@ -16,15 +16,22 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Bell, CalendarCheck, QrCode, ShoppingBag } from "lucide-react";
+import { Bell, CalendarCheck, Footprints, ShoppingBag } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 
 type Section = { href: string; label: string; Icon: LucideIcon };
 
+// decision: Pato (live, 2026-08-17) — Visits is FOOTPRINTS, not a QR code.
+// The QR belongs to the Visit NAV TAB, and both were rendering on the same
+// screen: an identical glyph in the tab bar and in the section row reads as
+// one control drawn twice, and neither one tells you which is which. The QR
+// is the thing you SHOW to start a visit; this section is the record that you
+// WENT. Footprints says that, and collides with nothing else in the row
+// (bag / calendar / bell).
 const SECTIONS: Section[] = [
-  { href: CONSUMER_ROUTES.inbox.visits, label: "Visits", Icon: QrCode },
+  { href: CONSUMER_ROUTES.inbox.visits, label: "Visits", Icon: Footprints },
   { href: CONSUMER_ROUTES.inbox.orders, label: "Orders", Icon: ShoppingBag },
   {
     href: CONSUMER_ROUTES.inbox.reservations,

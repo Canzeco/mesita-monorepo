@@ -30,10 +30,11 @@ import {
 // Pure presentation for the place detail surface, laid out like an
 // Instagram profile. The two callers (full page at /place/[id] and the
 // intercepted modal at @modal/(.)place/[id]) each render their own top
-// bar (back + place name + ⋯) on top of this. Structure:
+// bar (back + place name + ⋯) above this and the pinned PlaceActionBar
+// (Visit · Order · Reserve) below it. Everything here SCROLLS:
 //
 //   1. Profile summary — name in page chrome; photo + Google/Instagram/
-//      Facebook; swipe-style tags; then Save · Contact · Reserve · Share.
+//      Facebook; swipe-style tags; then Save · Contact · Share.
 //   2. Sticky tab strip — Place · Reviews · Products · Rewards.
 //   3. The active tab's boxes.
 
