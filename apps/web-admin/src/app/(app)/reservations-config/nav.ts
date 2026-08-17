@@ -6,6 +6,6 @@ import { CalendarCheck } from "lucide-react";
 // with test mode ON. RESERVATIONS_PARENT is the Sidebar entry.
 export const RESERVATIONS_PARENT = {
   href: "/reservations-config",
-  label: "Reservations Config",
+  label: "Reservations",
   Icon: CalendarCheck,
 } as const;
