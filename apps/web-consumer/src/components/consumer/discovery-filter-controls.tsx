@@ -73,29 +73,45 @@ export function FilterModule({
 
 // Soft borderless pill — muted at rest, brand gradient when selected.
 // min-h-11 keeps every filter control at the 44px touch floor.
+// `disabled` is for options the model knows but the product can't back yet
+// (Order, MESITA-1081) — shown rather than hidden, so the axis reads whole.
 export function Pill({
   active,
   onClick,
   children,
+  disabled = false,
 }: {
   active: boolean;
   onClick: () => void;
   children: ReactNode;
+  disabled?: boolean;
 }) {
   return (
     <button
       type="button"
-      onClick={onClick}
+      onClick={disabled ? undefined : onClick}
+      disabled={disabled}
       aria-pressed={active}
       className={cn(
-        "flex min-h-11 shrink-0 items-center gap-1.5 rounded-full px-4 text-[13px] font-medium whitespace-nowrap transition active:scale-[0.97]",
-        active
-          ? "bg-pink-gradient text-white shadow-sm"
-          : "bg-muted/60 text-foreground/70 hover:bg-muted hover:text-foreground",
+        "flex min-h-11 shrink-0 items-center gap-1.5 rounded-full px-4 text-[13px] font-medium whitespace-nowrap transition",
+        disabled
+          ? "bg-muted/40 text-muted-foreground/60 cursor-not-allowed"
+          : active
+            ? "bg-pink-gradient text-white shadow-sm active:scale-[0.97]"
+            : "bg-muted/60 text-foreground/70 hover:bg-muted hover:text-foreground active:scale-[0.97]",
       )}
     >
       {children}
     </button>
+  );
+}
+
+/** `soon` tag riding inside a disabled Pill — the parked half of an axis. */
+export function PillSoon() {
+  return (
+    <span className="bg-foreground/10 text-muted-foreground/70 rounded-full px-1.5 py-0.5 text-[9px] font-bold tracking-[0.08em] uppercase">
+      soon
+    </span>
   );
 }
 

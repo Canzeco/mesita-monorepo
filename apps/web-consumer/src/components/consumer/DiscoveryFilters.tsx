@@ -3,12 +3,15 @@
 import { Clock, SlidersHorizontal, X } from "lucide-react";
 import { PLACE_FAMILIES } from "@/lib/place-families";
 import {
+  DISCOVERY_CONTEXTS,
+  DISCOVERY_CONTEXT_META,
   DISTANCE_MAX_KM,
   DISTANCE_MIN_KM,
   RANDOMNESS_LABELS,
   RANDOMNESS_MAX,
   RANDOMNESS_MIN,
   WEEKDAY_LABELS,
+  discoveryContextIsSoon,
   formatHourLabel,
   hasDiscoveryPredicates,
   type CategoryOption,
@@ -16,6 +19,7 @@ import {
 } from "@/lib/discovery-filters-engine";
 import {
   resetDiscoveryFilters,
+  setDiscoveryContext,
   setDiscoveryMaxKm,
   setDiscoveryRandomness,
   setDiscoveryWhen,
@@ -28,15 +32,17 @@ import {
   FilterGroupLabel,
   FilterModule,
   Pill,
+  PillSoon,
   RangeSlider,
   SectionLabel,
 } from "./discovery-filter-controls";
 
 // Shared body of the discovery Filters route modal (Home Swipe + Search) —
-// MESITA-905 simplify + routed /filters. INTENT (Where · When · What) +
-// Random (word levels low→max), each in a modular box. That — the ask — is
-// Memo's, not a filter: it rides Memo's own recall call. State in
-// use-discovery-filters; dismiss via onClose → router.back().
+// MESITA-905 simplify + routed /filters. PRIORITIZE (the context axis) cuts
+// first, then INTENT (Where · When · What) + Random (word levels low→max),
+// each in a modular box. That — the ask — is Memo's, not a filter: it rides
+// Memo's own recall call. State in use-discovery-filters; dismiss via
+// onClose → router.back().
 
 export function DiscoveryFilters({
   onClose,
@@ -99,7 +105,33 @@ export function DiscoveryFilters({
       </div>
 
       <div className="scrollbar-hide min-h-0 flex-1 overflow-y-auto px-4 pb-4">
-        <FilterGroupLabel>Intent · where when what</FilterGroupLabel>
+        <FilterGroupLabel>Prioritize · visit or order</FilterGroupLabel>
+
+        <FilterModule label="I want to">
+          <div className="flex flex-wrap gap-1.5">
+            {DISCOVERY_CONTEXTS.map((key) => {
+              const soon = discoveryContextIsSoon(key);
+              return (
+                <Pill
+                  key={key}
+                  active={filters.context === key}
+                  disabled={soon}
+                  onClick={() => setDiscoveryContext(key)}
+                >
+                  {DISCOVERY_CONTEXT_META[key].label}
+                  {soon && <PillSoon />}
+                </Pill>
+              );
+            })}
+          </div>
+          <p className="text-muted-foreground/70 mt-2.5 text-[11px]">
+            {DISCOVERY_CONTEXT_META[filters.context].caption}
+          </p>
+        </FilterModule>
+
+        <FilterGroupLabel className="mt-5">
+          Intent · where when what
+        </FilterGroupLabel>
 
         <div className="flex flex-col gap-3">
           <FilterModule label="Where">

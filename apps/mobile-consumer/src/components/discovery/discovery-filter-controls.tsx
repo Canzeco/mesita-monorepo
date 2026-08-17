@@ -78,15 +78,34 @@ function renderPillLabel(children: ReactNode, textClassName: string) {
   return children;
 }
 
+// `disabled` is for options the model knows but the product can't back yet
+// (Order, MESITA-1081) — shown rather than hidden, so the axis reads whole.
 export function Pill({
   active,
   onClick,
   children,
+  disabled = false,
 }: {
   active: boolean;
   onClick: () => void;
   children: ReactNode;
+  disabled?: boolean;
 }) {
+  if (disabled) {
+    return (
+      <View
+        accessibilityRole="button"
+        accessibilityState={{ disabled: true, selected: false }}
+        className="min-h-11 shrink-0 flex-row items-center gap-1.5 rounded-full bg-muted/40 px-4"
+      >
+        {renderPillLabel(
+          children,
+          'text-[13px] font-medium text-muted-foreground/60',
+        )}
+      </View>
+    );
+  }
+
   if (active) {
     return (
       <Pressable
@@ -127,21 +146,35 @@ export function Pill({
   );
 }
 
+/** `soon` tag riding inside a disabled Pill — the parked half of an axis. */
+export function PillSoon() {
+  return (
+    <View className="rounded-full bg-foreground/10 px-1.5 py-0.5">
+      <Text className="text-[9px] font-bold uppercase tracking-[0.08em] text-muted-foreground/70">
+        soon
+      </Text>
+    </View>
+  );
+}
+
 /** Pill children that mix icon + text need a white/muted text wrapper. */
 export function PillText({
   active,
   children,
+  disabled = false,
 }: {
   active: boolean;
   children: ReactNode;
+  disabled?: boolean;
 }) {
-  return (
-    <Text
-      className={`text-[13px] font-medium ${active ? 'text-white' : 'text-foreground/70'}`}
-    >
-      {children}
-    </Text>
-  );
+  // RN doesn't cascade text colour through the Pill's View, so the disabled
+  // tone has to be carried here too.
+  const tone = disabled
+    ? 'text-muted-foreground/60'
+    : active
+      ? 'text-white'
+      : 'text-foreground/70';
+  return <Text className={`text-[13px] font-medium ${tone}`}>{children}</Text>;
 }
 
 export function RangeSlider({

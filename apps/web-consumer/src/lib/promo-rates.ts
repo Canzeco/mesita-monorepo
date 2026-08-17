@@ -157,6 +157,28 @@ export function strategyForPlaceRow(
   return strategyForPromoMatrix(buildPromoMatrixFromRow(row, "partner"));
 }
 
+/**
+ * Does this place run a live VISIT reward — the `visits` context of promos v11?
+ *
+ * Class-independent on purpose. The discovery Filters context axis
+ * ("Prioritize · Visit", MESITA-1081) asks whether the place pays for a body in
+ * the room AT ALL, not what this particular guest would earn — that stays
+ * resolvePromoRateFromPlaceRow for display, and the quotable number still comes
+ * from consumer-web-get-reward-quote. Same gate as the promo chip, so a place
+ * the deck shows with a ribbon is exactly a place "Visit" keeps.
+ */
+export function placeRewardsVisits(
+  row: PromoRateFields | null | undefined,
+): boolean {
+  if (!row) return false;
+  const listingType = row.listing_type === "partner" ? "partner" : "web";
+  return placeOffersMesitaRewards({
+    listing_type: listingType,
+    promo_matrix: buildPromoMatrixFromRow(row, listingType),
+    promo_configured: hasExplicitClassRates(row),
+  });
+}
+
 export function resolvePromoRateFromPlaceRow(
   row: PromoRateFields,
   isFirstVisit: boolean,
