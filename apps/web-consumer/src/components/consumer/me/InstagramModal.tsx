@@ -27,7 +27,9 @@ import {
 } from "@/lib/ui-classes";
 
 // Instagram connect sheet (MESITA-936): DEMO → one Why box → Connect.
-// Threshold from REACH_ENTRY_FOLLOWERS (2,000 — MESITA-911).
+// Threshold from REACH_ENTRY_FOLLOWERS — the Silver bar, 1,000 since
+// MESITA-1125. Derived, never written out: the number lives in one place
+// (CLASSES.silver.followerThreshold, mirroring classes.follower_threshold).
 
 const HANDLE_RE = /^@?[A-Za-z0-9._]{1,30}$/;
 

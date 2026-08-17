@@ -32,19 +32,21 @@ import { cn } from "@/lib/utils";
 //    header states once that rewards climb; the ladder shows how far.
 
 export function ClassLadder() {
-  const { key, doors } = useConsumerClass();
+  const { key, doors, followers } = useConsumerClass();
 
   return (
     <ol className="flex flex-col gap-2">
       {CLASSES.map((c) => {
         const current = key === c.id;
-        // Bronze is a door every account holds. The other three resolve to the
-        // two v2 doors: reach carries Silver AND Gold (one Instagram claim,
-        // banded by follower count), invitation carries Diamond.
+        // PER-RUNG, not one shared reach flag (MESITA-1125). The bars are
+        // banded now — 1,000 / 5,000 / 20,000 — so the old boolean would have
+        // shown Gold unlocked to a guest with 1,000 followers, who is Silver.
+        // Each rung asks its own question. Diamond keeps its second door: an
+        // Aura-list invitation opens it at any follower count.
         const unlocked =
           current ||
-          c.id === "bronze" ||
-          (c.id === "diamond" ? doors.invitation : doors.reach);
+          followers >= c.followerThreshold ||
+          (c.id === "diamond" && doors.invitation);
 
         return (
           <li

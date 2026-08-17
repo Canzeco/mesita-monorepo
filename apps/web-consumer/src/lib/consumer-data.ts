@@ -177,31 +177,37 @@ export const CLASSES: {
   {
     id: "silver",
     label: "Silver",
-    req: "2,000+ Instagram followers",
-    // The entry bar into reach, mirroring classes.follower_threshold in the
-    // DB — the EF grants off that row, so this constant is display-only and
-    // must track it. Story Bonus is separate (MESITA-909): any connected
-    // Instagram unlocks it, not just a reach class.
-    followerThreshold: 2_000,
+    req: "1,000+ Instagram followers",
+    // Mirrors classes.follower_threshold in the DB — the EF grants off that
+    // row (generic: highest-ranked row the count clears), so this constant is
+    // DISPLAY-ONLY and must track it. Changing it here without the migration
+    // makes the ladder quote a bar the grant engine doesn't honour.
+    // Story Bonus is separate (MESITA-909): any connected Instagram unlocks
+    // it, not just a reach class.
+    followerThreshold: 1_000,
     reward: "Higher discount",
   },
   {
     id: "gold",
     label: "Gold",
-    // The band above Silver. Deliberately unquantified here: Notion Main puts
-    // the reach bands in Admin → Rewards Config, "never hardcoded", and only
-    // the 2,000 entry bar is a constant. NOTHING GRANTS GOLD TODAY — no legacy
-    // class key maps to it, so it is a real but unpopulated rung until
-    // MESITA-1076 lands.
-    req: "A higher reach band",
-    followerThreshold: 0,
+    // STILL UNGRANTABLE (MESITA-1076). The bar is real — Pato set it at 5,000
+    // — but `classes` has no gold row: `rank` is UNIQUE and rank 2 is held by
+    // the legacy `premium` row, so seating Gold between Silver and Diamond
+    // means re-ranking the live table and moving every consumer's effective
+    // class. Until that migration lands the ladder shows this bar and nothing
+    // clears it; a 5,000-follower account stays Silver.
+    req: "5,000+ Instagram followers",
+    followerThreshold: 5_000,
     reward: "Higher discount",
   },
   {
     id: "diamond",
     label: "Diamond",
-    req: "Aura-list invitation",
-    followerThreshold: 0,
+    // TWO doors, and the invitation is not the lesser one: pickEffectiveClass
+    // resolves invitation independently of reach, so 20,000 followers is an
+    // ADDITIONAL way in rather than a replacement for the Aura list.
+    req: "20,000+ followers, or an Aura-list invitation",
+    followerThreshold: 20_000,
     // Highest flat class rate — the house pays for presence, no posting asked.
     reward: "Highest discount",
   },
