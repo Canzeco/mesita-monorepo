@@ -28,6 +28,12 @@ export type ReservationItem = {
   placeName: string;
   placePhoto: string | null;
   when: string;
+  /**
+   * Raw ISO instant. `when` is a formatted display string, so anything that
+   * needs to ORDER or COMPARE reservations (the one-feed sort) has to read
+   * this. Mirrors the web ReservationItem field of the same name.
+   */
+  reservedAt?: string;
   partySize: number;
   status: ReservationStatus;
   statusNote?: string;

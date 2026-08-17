@@ -10,37 +10,19 @@ import {
 import { usePayNotificationPoll } from "@/lib/hooks/usePayNotificationPoll";
 import { ERROR_BOX_CLASS } from "@/lib/ui-classes";
 import { cn, errMsg } from "@/lib/utils";
-import {
-  GLOBAL_ACTIVITY,
-  MY_ACTIVITY,
-} from "@/components/consumer/consumer-activity-data";
-import {
-  ConsumerActivityList,
-  InboxSegmentTabs,
-} from "@/components/consumer/ConsumerActivityList";
+import { MY_ACTIVITY } from "@/components/consumer/consumer-activity-data";
+import { ConsumerActivityList } from "@/components/consumer/ConsumerActivityList";
 import { NotificationRow } from "@/components/consumer/notification-row";
 import { SkeletonRow } from "@/components/shared";
 
-export type InboxTab = "mine" | "global";
-
-export function NotificationsClient({
-  userId,
-  initialTab,
-}: {
-  userId: string;
-  initialTab: InboxTab;
-}) {
+// Notifications is YOUR activity and nothing else (Pato, 2026-08-17).
+//
+// The My activity / Global activity toggle is gone. Global activity was never
+// notifications — it's other people's moves, which is the Social feed's job,
+// so it moved to Home > Social where it belongs. What's left needs no
+// switcher: an inbox of things that happened to YOU.
+export function NotificationsClient({ userId }: { userId: string }) {
   const supabase = useBrowserSupabase();
-  // `initialTab` seeds the toggle and is still honoured if the prop changes
-  // under a mounted client. Rather than sync the prop into state via an
-  // effect (cascading render), adjust state during render when the incoming
-  // prop changes — React's recommended pattern.
-  const [tab, setTab] = useState<InboxTab>(initialTab);
-  const [prevInitialTab, setPrevInitialTab] = useState<InboxTab>(initialTab);
-  if (initialTab !== prevInitialTab) {
-    setPrevInitialTab(initialTab);
-    setTab(initialTab);
-  }
   const [rows, setRows] = useState<ConsumerNotification[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -81,34 +63,13 @@ export function NotificationsClient({
 
   usePayNotificationPoll(load, Boolean(userId));
 
-  const myCount = rows.length + MY_ACTIVITY.length;
-  const globalCount = GLOBAL_ACTIVITY.length;
-
-  // Mine/global is local state, not a route. The pair used to be two sibling
-  // routes (/inbox/mine + /inbox/global) reached from Me; now both are the
-  // one Notifications section of the Inbox tab, so flipping between them is
-  // a toggle inside a section rather than a navigation between sections.
-  const onTabChange = (next: InboxTab) => setTab(next);
-
   return (
     <div className="scrollbar-hide flex min-h-0 flex-1 flex-col overflow-y-auto px-4 pb-6">
       <header className="pt-2">
-        <p className="text-muted-foreground text-[10px] font-bold tracking-[0.18em] uppercase">
-          Inbox
-        </p>
-        <h2 className="font-display mt-0.5 text-lg font-semibold tracking-tight">
-          {tab === "mine" ? "Your recent moves" : "What's happening on Mesita"}
+        <h2 className="font-display text-lg font-semibold tracking-tight">
+          Your recent moves
         </h2>
       </header>
-
-      <div className="mt-3">
-        <InboxSegmentTabs
-          active={tab}
-          onChange={onTabChange}
-          myCount={myCount}
-          globalCount={globalCount}
-        />
-      </div>
 
       {error ? (
         <p className={cn(ERROR_BOX_CLASS, "mt-4 rounded-xl text-sm")}>
@@ -116,11 +77,7 @@ export function NotificationsClient({
         </p>
       ) : null}
 
-      {tab === "global" ? (
-        <div className="mt-4 flex flex-col gap-3">
-          <ConsumerActivityList items={GLOBAL_ACTIVITY} anonymisedNote />
-        </div>
-      ) : loading ? (
+      {loading ? (
         <div className="mt-4 flex flex-col gap-2" aria-hidden>
           {[0, 1, 2, 3].map((i) => (
             <SkeletonRow

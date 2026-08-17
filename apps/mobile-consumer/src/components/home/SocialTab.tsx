@@ -2,8 +2,10 @@ import { RefreshCw } from 'lucide-react-native';
 import { useMemo, useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 
+import { ConsumerActivityList } from '@/components/inbox/ConsumerActivityList';
 import { SocialActivityRow } from '@/components/home/social-activity-row';
 import { SocialProfileSheet } from '@/components/home/SocialProfileSheet';
+import { GLOBAL_ACTIVITY } from '@/lib/consumer-activity-data';
 import { useHomeDeck } from '@/hooks/use-home-deck';
 import {
   SOCIAL_PEOPLE,
@@ -13,6 +15,11 @@ import {
 
 // Social mode — live activity feed (mock people + real deck places).
 // Kept mounted from Home keep-alive; unpark = flip PARKED.homeModes.social.soon.
+//
+// GLOBAL ACTIVITY LIVES HERE NOW (Pato, 2026-08-17), web parity. It used to be
+// a toggle inside Inbox > Notifications, which was the wrong home twice over:
+// it isn't a notification (nothing happened to YOU), and it is exactly what
+// Social is for. Notifications kept only your own activity.
 //
 // TODO(EF): social feed — people + events are mock (see social-feed-data.ts).
 // When live, apply MESITA-913 privacy (anonymous private accounts; hide
@@ -126,6 +133,21 @@ export function SocialTab() {
             );
           })}
         </View>
+
+        {/* Global activity — the beat of Mesita generally, as opposed to the
+            people rows above. Anonymised: other guests' moves, named by what
+            happened, never by who. */}
+        {GLOBAL_ACTIVITY.length > 0 ? (
+          <>
+            <View className="mt-6 mb-3 flex-row items-center gap-3 px-1">
+              <Text className="text-[11px] font-semibold uppercase tracking-[1.6px] text-muted-foreground">
+                On Mesita
+              </Text>
+              <View className="h-px flex-1 bg-border" />
+            </View>
+            <ConsumerActivityList items={GLOBAL_ACTIVITY} anonymisedNote />
+          </>
+        ) : null}
       </ScrollView>
 
       <SocialProfileSheet

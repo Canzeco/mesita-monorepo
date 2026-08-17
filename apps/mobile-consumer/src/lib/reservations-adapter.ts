@@ -127,6 +127,7 @@ export function toReservationItem(row: EFReservationRow): ReservationItem {
     placeName: row.place?.name ?? 'Reservation',
     placePhoto: row.place?.photos?.[0] ?? null,
     when: formatReservationWhen(row.reserved_at),
+    reservedAt: row.reserved_at,
     partySize: row.party_size,
     status: toCardStatus(row.status),
     statusNote: noteFor(row, counterOffer),
