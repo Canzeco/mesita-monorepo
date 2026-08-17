@@ -1,5 +1,5 @@
 // Selected Reservation Endpoint — policy helpers.
-// Notion Reservations Rules §C / MESITA-842.
+// Notion Docs › Reservations §C / MESITA-842.
 //
 // The Reservationist is voice-only (Twilio + ElevenLabs). WhatsApp was dropped
 // fleet-wide (MESITA-839) — nothing calls Messages.json — so the only serving

@@ -1,6 +1,6 @@
 // Supabase Edge Function — supabase-cron-reservation-retries (internal)
 //
-// THE waker for every parked reservation leg (Reservations Rules §B). The
+// THE waker for every parked reservation leg (Docs › Reservations §B). The
 // call engine can't sleep (the edge runtime dies at ~400s), so anything that
 // must happen later is PARKED on the row and this poller — pg_cron, every
 // minute — hands the due ones back to the engine.

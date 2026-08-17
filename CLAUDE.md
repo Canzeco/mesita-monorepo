@@ -26,7 +26,7 @@ Stable mirror of Notion **Rules** §0 — the master; Notion wins on any conflic
 
 **ALWAYS:** reply in English · clients call Edge Functions, never the DB · never push to `main` (enforced: a ruleset requires squash PRs and blocks force-push) · terminal statuses same session · no local web dev servers — web verifies on Vercel, mobile via `npx expo export --platform web` + the Metro web preview (:8081 consumer · :8082 business) · admin-console configs bind every EF, app and agent (Admin · Models · Sourcing · Enricher · Verification · Filters · Reservations · Promos · Ojo — unenforced config = bug; staged knobs are labeled staged).
 
-**Generated output is never hand-edited.** `AGENTS.md` ← its sibling `CLAUDE.md` (`deno task sync-rules`) · brand assets, `BRAND-TOKENS` blocks, `src/components/brand/*`, favicons ← `assets/brand/brand.json` (`deno task sync-brand`; guide: 🎨 Design Rules). Both CI-gated. **The repo holds no other markdown:** knowledge → Notion Rules · task context → Linear · code notes → code comments; the allowlist (`CLAUDE.md`/`AGENTS.md` pairs, `scripts/rules-quickstart.md`, `.claude/` `.cursor/` `.codex/` `.github/`) is CI-enforced. **Docs are rewritten, not amended** — present law only, no history trails; word budgets CI-enforced (Development Rules §C).
+**Generated output is never hand-edited.** `AGENTS.md` ← its sibling `CLAUDE.md` (`deno task sync-rules`) · brand assets, `BRAND-TOKENS` blocks, `src/components/brand/*`, favicons ← `assets/brand/brand.json` (`deno task sync-brand`; guide: 🎨 Docs › Design). Both CI-gated. **The repo holds no other markdown:** knowledge → Notion Rules · task context → Linear · code notes → code comments; the allowlist (`CLAUDE.md`/`AGENTS.md` pairs, `scripts/rules-quickstart.md`, `.claude/` `.cursor/` `.codex/` `.github/`) is CI-enforced. **Docs are rewritten, not amended** — present law only, no history trails; word budgets CI-enforced (Development Rules §C).
 
 **NEVER ask.** Reversible → decide, log a `decision:` comment, ship. `needs-human` = only a secret you can't enter, or one irreversible money/publish trigger.
 
@@ -44,7 +44,7 @@ Stable mirror of Notion **Rules** §0 — the master; Notion wins on any conflic
 | `apps/mobile-consumer` | Native consumer app (Expo SDK 57 · RN · NativeWind) |
 | `apps/mobile-business` | Native business app (Expo SDK 57 · **scaffold only**) |
 | `supabase` | DB · RLS · Edge Functions — source of truth (Supabase CLI · Deno) |
-| `assets` | The brand: edit `assets/brand/brand.json`, run `deno task sync-brand` — it writes every brand output (guide: Notion Design Rules) |
+| `assets` | The brand: edit `assets/brand/brand.json`, run `deno task sync-brand` — it writes every brand output (guide: Notion Docs › Design) |
 
 - **Packages are independent install roots** (own `pnpm-workspace.yaml` + lockfile; no root pnpm workspace — mobile needs `nodeLinker: hoisted`). `cd` into a package to work; run every `supabase` command from `supabase/`.
 - **Vercel:** each `apps/web-*` is its own Vercel project (canzeco team) on this repo, Root Directory `apps/web-<app>`, "skip unaffected" on — a push to `main` deploys only what changed.

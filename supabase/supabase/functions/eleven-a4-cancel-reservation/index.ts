@@ -10,7 +10,7 @@
 // products.reservations endpoint), else 403. cancelled_by = business — and
 // the guest is then CALLED: cancelTicket owes notice_kind='guest_cancel' and
 // the engine (intent cancel_notice) puts a2 on the line with call_context
-// "cancelled_by_venue" (Reservations Rules §B leg 6).
+// "cancelled_by_venue" (Docs › Reservations §B leg 6).
 // Auth: anon bearer + x-agent-secret.
 //
 // Deploy: supabase functions deploy eleven-a4-cancel-reservation

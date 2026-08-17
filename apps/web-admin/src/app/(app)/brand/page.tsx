@@ -13,7 +13,7 @@ import {
 // components the products use — the swatches are the shipped ramp, the logos
 // are the shipped components — so this page cannot quietly disagree with what
 // ships. Authored source: assets/brand/brand.json; the guide is
-// the brand guide in Notion Design Rules. Both regenerate via `deno task sync-brand`.
+// the brand guide in Notion Docs › Design. Both regenerate via `deno task sync-brand`.
 
 export const metadata = { title: "Brand · Mesita Admin" };
 

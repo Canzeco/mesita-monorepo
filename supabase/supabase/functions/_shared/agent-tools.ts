@@ -264,7 +264,7 @@ export async function ticketsOfPlace(
 
 /**
  * Cancel + owe the notice. `notice` names the side that must HEAR about it
- * (Reservations Rules §B legs 5/6): 'venue_cancel' when the guest walks
+ * (Docs › Reservations §B legs 5/6): 'venue_cancel' when the guest walks
  * away from a table the venue is holding, 'guest_cancel' when the venue calls
  * it off. null = nobody to tell (the ticket never got confirmed). The caller
  * then fires the engine with intent 'cancel_notice'; the retry cron is the

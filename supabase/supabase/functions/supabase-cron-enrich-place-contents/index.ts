@@ -138,7 +138,7 @@ serveEnrichStage("contents", async (admin, env, row) => {
   sources.tags = { ok: inferredTags.length > 0, count: inferredTags.length, vocabulary: tagVocabulary.length };
   sources.cost = ledger.snapshot();
 
-  // Selected Reservation Endpoint (Reservations Rules §C / MESITA-597 / MESITA-842) —
+  // Selected Reservation Endpoint (Docs › Reservations §C / MESITA-597 / MESITA-842) —
   // seed products.reservations { channel, value } for the Reservationist.
   // Voice-only: phone is the sole serving channel (WhatsApp unreachable since
   // MESITA-839). Priority / parked knobs still live on reservations_config, but
