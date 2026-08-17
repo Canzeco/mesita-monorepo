@@ -71,6 +71,30 @@ export function identityForClassKey(
   return hit ?? LEGACY_CLASS_IDENTITY.standard;
 }
 
+/**
+ * What a SAVE body's `config` claims to be.
+ *
+ * Read and write are deliberately asymmetric. `normalizePromosV11` still
+ * migrates a v10 blob on READ, because a restored or reset `app_settings` row
+ * can legitimately hold one and a ticket must never fail to price. A v10
+ * WRITE is a different animal: no shipped client has produced one since the
+ * v11 migration landed, so it can only come from a stale browser tab whose
+ * bundle predates it. That tab renders its own bundled DEFAULTS (it cannot
+ * parse a v11 blob), so accepting its save would silently overwrite the live
+ * rates with launch defaults — losing every operator tuning at once.
+ */
+export type PromosWriteShape = "v11" | "stale-v10" | "other";
+
+export function promosWriteShape(rawConfig: unknown): PromosWriteShape {
+  if (!rawConfig || typeof rawConfig !== "object" || Array.isArray(rawConfig)) {
+    return "other";
+  }
+  const version = (rawConfig as Record<string, unknown>).version;
+  if (version === 11) return "v11";
+  if (version === 10) return "stale-v10";
+  return "other";
+}
+
 export type ContextBonuses = {
   welcome: number;
   mesita: number;

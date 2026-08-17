@@ -10,8 +10,10 @@
 // normalizePromosV11 always returns a complete one.
 //
 // The superseded `v10` key is DELETED on every v11 save so there is exactly
-// one additive source of truth; a v10-shaped body (a stale client tab mid-
-// deploy) is migrated forward rather than rejected.
+// one additive source of truth. A v10-shaped SAVE is now REFUSED (409): only
+// a stale tab can produce one, it is showing bundled defaults rather than the
+// live blob, and accepting it would overwrite every live rate. Reads still
+// migrate v10 — a restored app_settings row may hold one.
 //
 // MESITA-992: the LIVE bill prices additive from the config. Every save still
 // derives and upserts the 40 reward_rules cells as a frozen mirror (rollback
@@ -34,11 +36,12 @@ import { normalizeRewards, type RewardRule } from "./rewards-config-normalize.ts
 import {
   legacyRulesFromV11,
   normalizePromosV11,
+  promosWriteShape,
   type PromosConfigV11,
 } from "./promos-v11-normalize.ts";
 
 // Mirror the rules into the v13 blob shape. Belt and braces: loadRewardsGrid
-// prefers v10, then the rules table, then this blob fallback.
+// prefers v11, then the rules table, then this blob fallback.
 function blobFromRules(rules: RewardRule[], cap: number): Record<string, unknown> {
   const grid: Record<string, Record<string, number>> = {};
   const actions: Record<string, Record<string, Record<string, number>>> = {};
@@ -75,21 +78,30 @@ Deno.serve(async (req) => {
   const bodyRes = await readJson<{ rules?: unknown; cap?: unknown; config?: unknown }>(req);
   if (!bodyRes.ok) return bodyRes.response;
 
-  // v11 body: {config: {version: 11, visits, orders, cap}}. A version-10 body
-  // is accepted and migrated (stale client tab mid-deploy). Anything else
+  // v11 body: {config: {version: 11, visits, orders, cap}}. Anything else
   // falls through to the legacy v8 {rules, cap} path.
   const rawConfig = bodyRes.body.config;
-  const configVersion = !!rawConfig && typeof rawConfig === "object" &&
-      !Array.isArray(rawConfig)
-    ? (rawConfig as Record<string, unknown>).version
-    : undefined;
-  const isPromosConfig = configVersion === 10 || configVersion === 11;
+  const shape = promosWriteShape(rawConfig);
+
+  // A v10 SAVE is refused outright. Nothing shipped writes v10 any more, so
+  // it can only be a stale tab whose bundle predates the v11 migration — and
+  // such a tab cannot parse the live blob, so it is displaying its own bundled
+  // DEFAULTS. Letting it through would overwrite every live rate with those
+  // defaults, silently, on a single click. Reads still migrate v10 (see
+  // promosWriteShape); only writes are closed.
+  if (shape === "stale-v10") {
+    return jsonError(
+      "This page is out of date — reload it before saving. It is showing " +
+        "default rates, not the live ones, and saving would overwrite them.",
+      409,
+    );
+  }
 
   let rules: RewardRule[];
   let cap: number;
   let promosConfig: PromosConfigV11 | null = null;
 
-  if (isPromosConfig) {
+  if (shape === "v11") {
     const norm = normalizePromosV11(rawConfig);
     if (!norm.ok) return jsonError(norm.error, 400);
     promosConfig = norm.value;
@@ -118,8 +130,8 @@ Deno.serve(async (req) => {
   }
 
   // MERGE-preserve the blob: the v13 grid/actions fallback and the cap are
-  // refreshed, the v10 key is written only on a v10 save, and any other keys
-  // riding the blob survive untouched.
+  // refreshed, v11 is written on a config save, and any other keys riding the
+  // blob survive untouched.
   const current = await admin
     .from("app_settings")
     .select("rewards_config")
