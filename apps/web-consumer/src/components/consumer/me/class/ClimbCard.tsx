@@ -28,8 +28,6 @@ export type ClimbCardData = {
   /** Door one-liner under the title row (price / threshold / invite). */
   door?: string;
   discountLevel: DiscountLevel;
-  /** The class's perks, rendered as a check-list under the meter. */
-  perks?: string[];
   reached: boolean;
   reachedLabel: string;
   /** Doors into the class — a card can have several. */
@@ -141,28 +139,6 @@ export function ClimbCard({ data }: { data: ClimbCardData }) {
         <DiscountMeter level={data.discountLevel} />
       </div>
 
-      {data.perks && data.perks.length > 0 && (
-        <ul className="mt-3.5 flex flex-col gap-2">
-          {data.perks.map((perk) => (
-            <li
-              key={perk}
-              className="flex items-start gap-2 text-[12.5px] leading-snug"
-            >
-              <span
-                className={cn(
-                  "mt-[1px] flex h-4.5 w-4.5 shrink-0 items-center justify-center rounded-full",
-                  data.accent
-                    ? "bg-primary/12 text-primary"
-                    : "bg-emerald-500/15 text-emerald-700",
-                )}
-              >
-                <Check className="h-3 w-3" strokeWidth={3} />
-              </span>
-              <span className="text-foreground/85">{perk}</span>
-            </li>
-          ))}
-        </ul>
-      )}
       <div className="mt-4">{footer}</div>
     </article>
   );
