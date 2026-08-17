@@ -48,9 +48,17 @@ import { LocalDialog } from "@/components/consumer/overlay/LocalOverlay";
 // can't reach the parked content). Kept visible + tappable so the surface
 // reads as intentional; un-parking is `soon: false` + restoring the page.
 //
-// The AI mode's pill reads "Chat", not "Memo" (Pato, 2026-08-16): the label
-// names what the mode DOES, and Don Memo stays the persona you meet inside it
-// — so the blurb still introduces him by name. The route is still /home/ai.
+// The AI mode's pill reads "Memo" again (MESITA-1102). It was renamed to
+// "Chat" on 2026-08-16 so the label would name what the mode DOES — sound
+// reasoning that stopped holding the moment the mode grew a second way in.
+// Memo now offers Call AND Chat, so "Chat" names half of it, and the only
+// honest label for a mode containing both is the concierge himself.
+//
+// The ROUTE stays /home/chat. Renaming it would add a third path for one
+// surface (/home/ai already 308s to it) and the contract is drift-guarded
+// against the mobile copy plus pinned by route-structure.test.tsx — a lot of
+// moving parts to buy a URL nobody sees. Label ≠ route is already the
+// convention here.
 type Tab = {
   href: string;
   label: string;
@@ -74,11 +82,11 @@ const TABS: Tab[] = [
   },
   {
     href: CONSUMER_ROUTES.homeTabs.chat,
-    label: "Chat",
+    label: "Memo",
     Icon: Sparkles,
     soon: true,
     blurb:
-      "Don Memo, your AI concierge, is almost ready — tell him the vibe you want and he'll find your spot.",
+      "Don Memo, your AI concierge, is almost ready — call him or chat with him, tell him the vibe you want, and he'll find your spot.",
   },
   {
     href: CONSUMER_ROUTES.homeTabs.social,

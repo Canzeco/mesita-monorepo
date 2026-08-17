@@ -23,9 +23,10 @@ const MODES: (SegmentItem & {
 })[] = [
   { key: 'swipe', title: 'Swipe', Icon: Flame },
   { key: 'catalog', title: 'Catalog', Icon: LayoutGrid, soon: true },
-  // "Chat" names what the mode does; Don Memo stays the persona you meet
-  // inside it, so the coming-soon body still introduces him by name.
-  { key: 'ai', title: 'Chat', Icon: Sparkles, soon: true },
+  // The pill reads "Memo" again (MESITA-1102). It was "Chat" so the label
+  // would name what the mode DOES — sound until the mode grew a second way in.
+  // Memo now offers Call AND Chat, so "Chat" names half of it.
+  { key: 'ai', title: 'Memo', Icon: Sparkles, soon: true },
   { key: 'social', title: 'Social', Icon: Users, soon: true },
   { key: 'favorites', title: 'Favorites', Icon: Heart },
 ];
@@ -39,8 +40,8 @@ const SOON_META = {
     Icon: LayoutGrid,
   },
   ai: {
-    title: 'Chat',
-    body: "Don Memo, your AI concierge, is almost ready — tell him the vibe you want and he'll find your spot.",
+    title: 'Memo',
+    body: "Don Memo, your AI concierge, is almost ready — call him or chat with him, tell him the vibe you want, and he'll find your spot.",
     Icon: Sparkles,
   },
   social: {

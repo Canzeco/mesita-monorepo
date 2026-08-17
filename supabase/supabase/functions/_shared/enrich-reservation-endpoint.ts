@@ -1,4 +1,4 @@
-// Selected Reservation Endpoint — Notion Enricher Enrich-Analysis S4 / Product Rules §G.
+// Selected Reservation Endpoint — Notion Reservations Rules §C.
 //
 // Seeds products.reservations = { channel, value } for the Reservationist.
 // Priority among available profile contacts is an OPERATOR KNOB, not a constant:
