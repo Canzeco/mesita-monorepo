@@ -507,16 +507,159 @@ export function totalFor(
   );
 }
 
+// ── Components: the five-box editor's view of the stored grid ────────────
+//
+// The page edits COMPONENTS; storage keeps the GRID. The two are isomorphic
+// as long as the grid is additive:
+//
+//   grid[s][class][plan] = base[s] + classStep[s][class] + planStep[s][plan]
+//
+// `bronze` and `free` are the zero rungs by definition, so a component set
+// has 1 + 3 + 1 = 5 real knobs per strategy instead of 8 grid cells.
+//
+// STORAGE IS NOT CHANGING (D12). Deriving on read and expanding on write is
+// only safe because exactly one writer exists and it validates: see
+// additivityError below and its mirror in promos-v11-normalize.ts. An
+// off-ladder grid is unstorable, so the editor can never mis-derive.
+
+export type VisitsComponents = Record<
+  StrategyKey,
+  { base: number; class: Record<ClassKey, number>; plan: Record<PlanKey, number> }
+>;
+export type OrdersComponents = Record<
+  StrategyKey,
+  { base: number; plan: Record<PlanKey, number> }
+>;
+
+/** Grid → components. Exact when the grid is additive; the guard makes it so. */
+export function deriveVisits(base: VisitsBase): VisitsComponents {
+  const out = {} as VisitsComponents;
+  for (const s of STRATEGY_KEYS) {
+    const floor = base[s].bronze.free;
+    out[s] = {
+      base: floor,
+      class: {
+        bronze: 0,
+        silver: base[s].silver.free - floor,
+        gold: base[s].gold.free - floor,
+        diamond: base[s].diamond.free - floor,
+      },
+      plan: { free: 0, premium: base[s].bronze.premium - floor },
+    };
+  }
+  return out;
+}
+
+/** Components → grid, clamped to the engine ceiling. */
+export function expandVisits(components: VisitsComponents): VisitsBase {
+  const out = {} as VisitsBase;
+  for (const s of STRATEGY_KEYS) {
+    const c = components[s];
+    out[s] = {} as VisitsBase[StrategyKey];
+    for (const cls of CLASS_KEYS) {
+      out[s][cls] = {} as Record<PlanKey, number>;
+      for (const p of PLAN_KEYS) {
+        out[s][cls][p] = Math.max(
+          0,
+          Math.min(RATE_MAX, c.base + c.class[cls] + c.plan[p]),
+        );
+      }
+    }
+  }
+  return out;
+}
+
+export function deriveOrders(base: OrdersBase): OrdersComponents {
+  const out = {} as OrdersComponents;
+  for (const s of STRATEGY_KEYS) {
+    out[s] = {
+      base: base[s].free,
+      plan: { free: 0, premium: base[s].premium - base[s].free },
+    };
+  }
+  return out;
+}
+
+export function expandOrders(components: OrdersComponents): OrdersBase {
+  const out = {} as OrdersBase;
+  for (const s of STRATEGY_KEYS) {
+    const c = components[s];
+    out[s] = {
+      free: Math.max(0, Math.min(RATE_MAX, c.base + c.plan.free)),
+      premium: Math.max(0, Math.min(RATE_MAX, c.base + c.plan.premium)),
+    };
+  }
+  return out;
+}
+
+/**
+ * THE GUARD. Returns null when `base` is a legal component grid, else the
+ * reason it is not. Two conditions, and the second is the subtle one:
+ *
+ *  1. ADDITIVE — expand(derive(g)) must reproduce g exactly. A cell that
+ *     sits off the ladder cannot be represented by components, so storing it
+ *     would make the five-box editor render something that is not the truth.
+ *
+ *  2. MONOTONIC — class steps are OFFSETS FROM BASE, not rung-to-rung
+ *     deltas, so "every step >= 0" does NOT prevent inversion: silver +15
+ *     with gold +5 are both non-negative and still invert the ladder. The
+ *     real invariant is that the offsets never decrease as the class climbs,
+ *     and that the premium plan never pays less than free.
+ *
+ * This is what lets the class-order and plan-uplift modelWarnings retire:
+ * behind the guard those states are unstorable rather than merely reported.
+ */
+export function additivityError(base: VisitsBase): string | null {
+  const rebuilt = expandVisits(deriveVisits(base));
+  for (const s of STRATEGY_KEYS) {
+    for (const cls of CLASS_KEYS) {
+      for (const p of PLAN_KEYS) {
+        if (rebuilt[s][cls][p] !== base[s][cls][p]) {
+          return (
+            `${STRATEGY_META[s].name} · ${CLASS_META[cls].name} · ${PLAN_META[p].name} ` +
+            `is ${base[s][cls][p]}%, but base + class + plan resolves to ` +
+            `${rebuilt[s][cls][p]}%. Rates are built from components; a cell ` +
+            `cannot be set on its own.`
+          );
+        }
+      }
+    }
+  }
+
+  const components = deriveVisits(base);
+  for (const s of STRATEGY_KEYS) {
+    const c = components[s];
+    for (let i = 1; i < CLASS_KEYS.length; i++) {
+      const lower = CLASS_KEYS[i - 1];
+      const upper = CLASS_KEYS[i];
+      if (c.class[upper] < c.class[lower]) {
+        return (
+          `${STRATEGY_META[s].name}: ${CLASS_META[upper].name} adds ` +
+          `${c.class[upper]}% but ${CLASS_META[lower].name} adds ${c.class[lower]}% — ` +
+          `the class ladder would invert.`
+        );
+      }
+    }
+    if (c.plan.premium < 0) {
+      return (
+        `${STRATEGY_META[s].name}: Premium adds ${c.plan.premium}% — ` +
+        `the subscription would cost the guest money.`
+      );
+    }
+  }
+  return null;
+}
+
 // ── Model warnings (surfaced inline, never auto-corrected) ───────────────
 //
 // The page REPORTS invariant breaks instead of silently repairing them:
-// these are money, and the operator decides. Notion §2.8 fixes two:
-//   · every action bonus must beat the standing rate it replaces — an action
-//     worth nothing extra is a dead rung;
-//   · Google is one-shot, so it always out-pays the repeatable Story.
-// Class monotonicity (bronze ≤ silver ≤ gold ≤ diamond) and the plan uplift
-// (premium ≥ free) are the ladder itself: break either and the ladder
-// inverts.
+// these are money, and the operator decides.
+//
+// Only ONE check survives. Class monotonicity and the plan uplift used to
+// live here as warnings; behind additivityError they are UNSTORABLE, so
+// warning about them would be theatre. Google-vs-Story is different: it is a
+// policy the operator can legitimately break (Notion §2.8.4 says the one-shot
+// rung must out-pay the repeatable one), so it is reported, never enforced.
 
 export type ModelWarning = { key: string; message: string };
 
@@ -531,35 +674,6 @@ export function modelWarnings(cfg: PromosConfig): ModelWarning[] {
         `Google Review (${v.bonuses.google}%) should out-pay Instagram Story ` +
         `(${v.bonuses.story}%) — Google is one-shot per guest, the Story repeats.`,
     });
-  }
-
-  for (const s of STRATEGY_KEYS) {
-    for (const p of PLAN_KEYS) {
-      for (let i = 1; i < CLASS_KEYS.length; i++) {
-        const lower = CLASS_KEYS[i - 1];
-        const upper = CLASS_KEYS[i];
-        if (v.base[s][upper][p] < v.base[s][lower][p]) {
-          out.push({
-            key: `class-order-${s}-${p}-${upper}`,
-            message:
-              `${STRATEGY_META[s].name} · ${PLAN_META[p].name}: ` +
-              `${CLASS_META[upper].name} (${v.base[s][upper][p]}%) pays less than ` +
-              `${CLASS_META[lower].name} (${v.base[s][lower][p]}%) — the ladder inverts.`,
-          });
-        }
-      }
-    }
-    for (const c of CLASS_KEYS) {
-      if (v.base[s][c].premium < v.base[s][c].free) {
-        out.push({
-          key: `plan-uplift-${s}-${c}`,
-          message:
-            `${STRATEGY_META[s].name} · ${CLASS_META[c].name}: Premium ` +
-            `(${v.base[s][c].premium}%) pays less than Free (${v.base[s][c].free}%) — ` +
-            `the subscription would cost the guest money.`,
-        });
-      }
-    }
   }
 
   return out;

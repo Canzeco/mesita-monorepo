@@ -1,12 +1,14 @@
 import type { LucideIcon } from "lucide-react";
-import { BarChart3, Gift, Settings2 } from "lucide-react";
+import { BarChart3, Bike, Gift, UtensilsCrossed } from "lucide-react";
 
-// Promos Config (v10, MESITA-991) — two sub-tabs. "Config" prices the additive
-// model (base + bonuses + default cap); "Distribution" simulates how those
-// prices spread across 1,000 visits under operator assumptions (named for
-// what it shows — MESITA-996; "playground" is Memo's live-chat idiom, not
-// this). PROMOS_PARENT is the single Sidebar entry (Configs group);
-// PROMOS_SUBROUTES are the in-page tabs, never added to the Sidebar.
+// Promos Config — three sub-tabs. CONTEXT cuts before identity (Notion §2.8),
+// so the split is by context first: "Visits" prices the full identity grid
+// (class × plan), "Orders" drops class and prices plan alone, "Distribution"
+// simulates how visit prices spread across 1,000 visits.
+//
+// Labels are the bare nouns. The page heading already says Promos Config, and
+// a tab that repeats its own heading stutters — same rule the sidebar follows
+// ("the group says Configurations, so the item is Atlas, not Atlas Config").
 //
 // The route stays /rewards-config on purpose (decision D4-A) — the rename to
 // "Promos Config" is copy-only.
@@ -17,7 +19,8 @@ export const REWARDS_PARENT = {
 } as const;
 
 export const PROMOS_SUBROUTES = [
-  { href: "/rewards-config/config", label: "Config", Icon: Settings2 },
+  { href: "/rewards-config/visits", label: "Visits", Icon: UtensilsCrossed },
+  { href: "/rewards-config/orders", label: "Orders", Icon: Bike },
   {
     href: "/rewards-config/distribution",
     label: "Distribution",
