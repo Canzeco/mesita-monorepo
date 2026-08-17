@@ -77,12 +77,21 @@ const ITEMS: Item[] = [
     href: CONSUMER_ROUTES.newVisit.root,
     // QR is the right glyph and stays: showing the QR IS the visit.
     Icon: QrCode,
-    // "Visit", not "Rewards" and explicitly NOT "Pay" (Pato, 2026-08-16).
-    // The object this tab creates is a VISIT — Inbox > Visits tracks the same
-    // thing — so the tab, the object and the section finally share one word.
-    // "Pay" was rejected because paying is one beat of a visit, and it also
-    // collides with Stripe checkout in this codebase's vocabulary.
-    label: "Visit",
+    // "Pay" (Pato, 2026-08-17), reversing the 2026-08-16 call for "Visit".
+    // The tab is named for what the guest came to DO — the QR they show is the
+    // moment they pay — rather than for the object it creates.
+    //
+    // THE LABEL MOVED, AND NOTHING ELSE. The route is still /new-visit, the
+    // detail is still /visit/{id}, the object is still a ticket and the column
+    // is still `kind`. This tab has now been called Rewards, Pay, Visit and Pay
+    // again; every one of those renames stayed in the label, which is why the
+    // URLs and the schema survived four of them.
+    //
+    // "Pay" no longer collides with Stripe: `checkout` is the word for Stripe
+    // in this codebase, and the one Stripe surface a consumer can reach says
+    // "Continue to checkout" (PlanModal). Paying a BILL and checking out of a
+    // SUBSCRIPTION stay two different words.
+    label: "Pay",
     matchPrefixes: [CONSUMER_ROUTE_PREFIX.newVisit],
     // LIVE — the pass (QR + code + what you can claim + live visit) and the
     // ticket stack are built; the tab opens the real page.

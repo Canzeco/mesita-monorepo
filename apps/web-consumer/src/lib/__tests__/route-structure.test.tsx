@@ -236,7 +236,7 @@ describe("T5 — exactly one tab lights per surface", () => {
     ["/place/abc", "Home"],
     ["/filters", "Home"],
     ["/search", "Search"],
-    ["/new-visit", "Visit"],
+    ["/new-visit", "Pay"],
     // THE requirement from the routing v2 design review: the visit detail
     // lights INBOX, not the centre tab, because that is where the list lives.
     // It lit the centre tab before only by nesting under /rewards; the rename
