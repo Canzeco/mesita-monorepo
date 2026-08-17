@@ -144,7 +144,7 @@ export function AiConnectModal({
               </span>
             </h2>
             <p className="text-muted-foreground text-[12px]">
-              Control your Mesita through ChatGPT, Claude or any chatbot
+              Control your Mesita through ChatGPT, Claude or any chatbot (MCP)
             </p>
           </div>
         </div>
