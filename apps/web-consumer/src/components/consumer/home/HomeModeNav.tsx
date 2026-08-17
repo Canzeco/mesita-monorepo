@@ -48,7 +48,7 @@ import { LocalDialog } from "@/components/consumer/overlay/LocalOverlay";
 // can't reach the parked content). Kept visible + tappable so the surface
 // reads as intentional; un-parking is `soon: false` + restoring the page.
 //
-// The AI mode's pill reads "Memo" again (MESITA-1102). It was renamed to
+// The AI mode's pill reads "Memo" again (MESITA-1103). It was renamed to
 // "Chat" on 2026-08-16 so the label would name what the mode DOES — sound
 // reasoning that stopped holding the moment the mode grew a second way in.
 // Memo now offers Call AND Chat, so "Chat" names half of it, and the only
