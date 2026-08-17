@@ -18,7 +18,7 @@ import type { PlaceDetail } from "@/lib/mock/place";
 type PlaceListingType = "partner" | "web";
 type PlaceStatus = "lead" | "active" | "paused" | "archived";
 type FiscalType = "formal" | "informal";
-// Place plan keys (public.membership enum): Free (default) + Verified Partner
+// Place plan keys (public.membership enum): Free (default) + Mesita Partner
 // (`plan=pro`) + legacy `ultra` (folds onto Verified). Paid membership runs an
 // instant discount at the bill; sold SKU in the business console is Verified.
 type PlacePlan = "free" | "pro" | "ultra";

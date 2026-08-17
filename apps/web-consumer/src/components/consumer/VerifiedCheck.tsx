@@ -1,9 +1,9 @@
-// Verified Partner disc, inlined so it renders without the next/image
+// Mesita Partner disc, inlined so it renders without the next/image
 // optimizer (SVG optimization is disabled — see next.config). Mirrors
 // public/brand/verified-check.svg. Callers size via className.
 export function VerifiedCheck({
   className,
-  title = "Verified Partner",
+  title = "Mesita Partner",
 }: {
   className?: string;
   title?: string;

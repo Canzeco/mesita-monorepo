@@ -25,7 +25,7 @@ export function SuggestionLine({
     prediction.mainText,
     prediction.secondaryText,
     source === 'mesita' ? 'On Mesita' : 'From Google',
-    verified ? 'Verified partner' : null,
+    verified ? 'Mesita partner' : null,
     added ? 'Enriching' : null,
   ]
     .filter(Boolean)
@@ -60,7 +60,7 @@ export function SuggestionLine({
         <BadgeCheck
           color={COLORS.primary}
           size={14}
-          accessibilityLabel="Verified Partner"
+          accessibilityLabel="Mesita Partner"
         />
       ) : null}
       {added ? (

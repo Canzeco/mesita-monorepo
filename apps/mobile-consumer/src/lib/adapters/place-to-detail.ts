@@ -202,7 +202,7 @@ export function placeRowToDetail(
     },
     promo: {
       badge_label:
-        listingType === 'partner' ? 'Verified partner' : 'Web listing',
+        listingType === 'partner' ? 'Mesita partner' : 'Web listing',
       reward_kind: 'discount',
       reward_value: activePremiumRate,
     },

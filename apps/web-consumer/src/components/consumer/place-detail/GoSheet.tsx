@@ -106,7 +106,7 @@ export function GoSheet({
               title="Visit"
               hint={
                 !isPartner
-                  ? "Only Verified Partners run the Mesita reward program."
+                  ? "Only Mesita Partners run the Mesita reward program."
                   : live
                     ? "You have a live ticket here — open it."
                     : "Start your ticket and show the QR at the table."

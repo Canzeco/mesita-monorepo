@@ -82,7 +82,7 @@ export function VerificationBox({ place }: { place: PlaceDetail }) {
     >
       <View className="flex-row flex-wrap gap-2">
         <MetaPill
-          label={isPartner ? 'Verified Partner' : 'Not verified'}
+          label={isPartner ? 'Mesita Partner' : 'Web listing'}
           tone={isPartner ? 'sky' : 'amber'}
         />
       </View>

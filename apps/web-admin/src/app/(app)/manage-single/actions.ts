@@ -123,7 +123,7 @@ export type AdminPlace = {
   category_label: string | null;
   status: string | null;
   currency: string | null;
-  // Catalog tier: "web" (listed) vs "partner" (verified partner). Separate from
+  // Catalog tier: "web" (listed) vs "partner" (Mesita partner). Separate from
   // ownership (project_members.role = owner) — see place-ownership.ts.
   listing_type: string | null;
   price_level: number | null;
@@ -222,7 +222,7 @@ export async function updatePlace(
 // `rates` rides along on purpose (MESITA-818/912). A membership and the
 // strategy that justifies it are one decision, and sending them together
 // makes it ONE atomic write. Join may land on Zero (paid plan + null rates) —
-// the old 409 `no_strategy` guard is retired; a 0% Verified Partner is
+// the old 409 `no_strategy` guard is retired; a 0% Mesita Partner is
 // prevented by the shared listing_type derivation in the EF instead.
 export async function setPlacePlan(
   placeId: string,
