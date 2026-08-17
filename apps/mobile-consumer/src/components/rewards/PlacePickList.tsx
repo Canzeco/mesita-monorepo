@@ -162,7 +162,7 @@ export function PlacePickList({
           className="px-1 text-muted-foreground"
           style={{ fontSize: 11, lineHeight: 15 }}
         >
-          Only Verified Partners run the Mesita reward program — the rest are on
+          Only Mesita Partners run the Mesita reward program — the rest are on
           Mesita, but can&apos;t open a ticket yet.
         </Text>
       ) : null}

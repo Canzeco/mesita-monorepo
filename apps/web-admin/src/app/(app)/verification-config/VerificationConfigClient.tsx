@@ -117,10 +117,10 @@ export function VerificationConfigClient({
           </span>
           <div className="min-w-0 flex-1">
             <p className="font-display text-base font-semibold tracking-tight">
-              Create new places as Verified Partner
+              Create new places as Mesita Partner
             </p>
             <p className="text-muted-foreground mt-1 text-[13px] leading-relaxed">
-              When on, every newly created place shows the Verified Partner badge
+              When on, every newly created place shows the Mesita Partner badge
               immediately — even though nobody entered the place&apos;s phone
               number to prove ownership. When off (default), new places show Not
               Verified until a paid plan grants partner status, or ownership is
@@ -131,7 +131,7 @@ export function VerificationConfigClient({
             on={cfg.createPlacesAsVerified}
             pending={pendingKey === "createPlacesAsVerified"}
             onClick={() => toggle("createPlacesAsVerified")}
-            label="Create new places as Verified Partner"
+            label="Create new places as Mesita Partner"
           />
         </div>
       </section>

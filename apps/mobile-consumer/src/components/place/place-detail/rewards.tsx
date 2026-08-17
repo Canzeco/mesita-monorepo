@@ -63,10 +63,10 @@ export function RewardsBox({ place }: { place: PlaceDetail }) {
           </Text>
           <Text className="text-center text-xs leading-snug text-muted-foreground">
             {isPartner
-              ? "This Verified Partner isn't running a Mesita reward right now."
+              ? "This Mesita Partner isn't running a Mesita reward right now."
               : place.promo_configured
                 ? 'Rewards are being set up for this place.'
-                : 'Only Verified Partners run the Mesita reward program — this place is a web listing.'}
+                : 'Only Mesita Partners run the Mesita reward program — this place is a web listing.'}
           </Text>
         </View>
       </Box>

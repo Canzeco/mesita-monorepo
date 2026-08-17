@@ -228,7 +228,7 @@ export function placeRowToDetail(row: Row, tags?: ResolvedTag[]): PlaceDetail {
 
     promo: {
       badge_label:
-        listingType === "partner" ? "Verified partner" : "Web listing",
+        listingType === "partner" ? "Mesita partner" : "Web listing",
       reward_kind: "discount",
       reward_value: activePremiumRate,
     },

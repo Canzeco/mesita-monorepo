@@ -19,7 +19,7 @@
 //
 // Ownership (project_members) is intentionally NOT created here — ownership
 // only lands when admin-web-decide-verification approves a claim. Listing
-// type 'partner' here is the consumer Verified Partner badge only — it does
+// type 'partner' here is the consumer Mesita Partner badge only — it does
 // not grant plan, ownership, or a promo strategy.
 
 import { type SupabaseClient } from "jsr:@supabase/supabase-js@2";
@@ -84,10 +84,10 @@ export async function savePlaceData(
   // ── Unique slug against the live catalog ──
   const slug = await ensureUniqueSlug(admin, slugify(name));
 
-  // ── Verification Config: create as Verified Partner? ──
+  // ── Verification Config: create as Mesita Partner? ──
   // decision: Pato (live, 2026-08-05) — admin Verification Config toggle
   // create_places_as_verified. When on, new places land as listing_type=
-  // 'partner' (consumer "Verified Partner" badge) even without phone OTP
+  // 'partner' (consumer "Mesita Partner" badge) even without phone OTP
   // ownership proof. Default off → 'web' / "Not Verified". Does not grant
   // plan, ownership, or promo strategy (those stay on their own paths).
   const { data: settingsRow } = await admin

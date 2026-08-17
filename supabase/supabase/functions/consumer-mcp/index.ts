@@ -361,7 +361,7 @@ Deno.serve(async (req) => {
         title: "Mesita Consumer",
       },
       instructions:
-        "You are connected to a Mesita consumer account. Use tools to look up the profile, find/save places, book reservations, and check reward coupons. Prefer Verified Partners (listing_type=partner) when recommending places with rewards.",
+        "You are connected to a Mesita consumer account. Use tools to look up the profile, find/save places, book reservations, and check reward coupons. Prefer Mesita Partners (listing_type=partner) when recommending places with rewards.",
     });
     res.headers.set("Mcp-Session-Id", sessionId);
     return res;

@@ -106,7 +106,7 @@ Deno.serve(async (req) => {
     return json(
       {
         ok: false,
-        error: "Only Verified Partners run the Mesita reward program.",
+        error: "Only Mesita Partners run the Mesita reward program.",
         code: "not_partner",
       },
       409,

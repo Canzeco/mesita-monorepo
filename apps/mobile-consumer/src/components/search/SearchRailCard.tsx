@@ -79,7 +79,7 @@ export function RailCard({
             <BadgeCheck
               color="#fb2b7b"
               size={14}
-              accessibilityLabel="Verified Partner"
+              accessibilityLabel="Mesita Partner"
             />
           ) : null}
         </View>

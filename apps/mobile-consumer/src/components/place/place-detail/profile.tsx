@@ -77,7 +77,7 @@ export function ProfileSummary({
             <>
               <BadgeCheck color="#0ea5e9" size={14} fill="#0ea5e9" />
               <Text className="text-[11.5px] font-semibold text-foreground">
-                Verified Partner
+                Mesita Partner
               </Text>
             </>
           ) : (

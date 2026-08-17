@@ -17,7 +17,7 @@ import { CopyIdButton, ReadField, SectionCard } from "../ui";
 import { formatAbsoluteUtc } from "@/lib/format";
 
 // Admin — the Mesita-internal tab (Pato, 2026-08-04).
-// Verification (Verified Partner badge + immutable verified-by email),
+// Verification (Mesita Partner badge + immutable verified-by email),
 // Metadata (UID + audit trail), Embeddings. Enriching status lives in unit
 // chrome next to Re-enrich (MESITA-896) — not here, not as a Place body card.
 // Nothing here is business-facing; see nav.ts for why the tab can't leak to
@@ -35,7 +35,7 @@ export function AdminSection({ place }: { place: AdminPlace }) {
 }
 
 function VerificationCard({ place }: { place: AdminPlace }) {
-  // Verified Partner badge — listing_type='partner' (membership ∧ strategy ≠ zero).
+  // Mesita Partner badge — listing_type='partner' (membership ∧ strategy ≠ zero).
   const verified = place.listing_type === "partner";
   // Immutable email stamped on the approved ownership-verification row —
   // distinct from project_members owners (those live in Settings → Team).
@@ -66,7 +66,7 @@ function VerificationCard({ place }: { place: AdminPlace }) {
       icon={<ShieldCheck className="h-4 w-4" />}
       tint="emerald"
       title="Verification"
-      subtitle="Verified Partner status Mesita grants, plus the immutable email of who completed ownership proof."
+      subtitle="Mesita Partner status Mesita grants, plus the immutable email of who completed ownership proof."
     >
       <div className="mt-5 grid gap-4">
         <ReadField label="Status" boxed>

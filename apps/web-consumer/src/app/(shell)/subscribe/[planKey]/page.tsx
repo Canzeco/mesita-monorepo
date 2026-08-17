@@ -37,14 +37,14 @@ import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 // It is the Premium column minus the Free column of the v11 visits grid, which
 // is +10 at every class on the CONSERVATIVE strategy:
 //   bronze 10→20 · silver 15→25 · gold 20→30 · diamond 25→35
-// Every live place runs conservative today, so "every Verified Partner" holds.
+// Every live place runs conservative today, so "every Mesita Partner" holds.
 // Two config cases would break it, and both need this line revisited:
 //   · an AGGRESSIVE place pays +20, so the claim would understate it
 //   · a ZERO-strategy place runs no program at all, so there is no uplift
 // The grid is operator-editable at Admin › Promos Config — if the Premium
 // column moves, this string is the thing that goes stale.
 const PERKS: { label: string; soon?: boolean }[] = [
-  { label: "+10% extra discount at every Verified Partner" },
+  { label: "+10% extra discount at every Mesita Partner" },
   { label: "Better recommendations" },
   { label: "10 reservations per month" },
   { label: "30 orders per month", soon: true },

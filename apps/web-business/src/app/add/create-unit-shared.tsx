@@ -50,7 +50,7 @@ export const PREDICTION_BADGE: Record<
     badgeClass: "bg-secondary/15 text-secondary",
   },
   verified_partner_other: {
-    label: "Verified partner",
+    label: "Mesita partner",
     Icon: CheckCircle2,
     iconClass: "bg-amber-100 text-amber-700",
     badgeClass: "bg-amber-100 text-amber-700",

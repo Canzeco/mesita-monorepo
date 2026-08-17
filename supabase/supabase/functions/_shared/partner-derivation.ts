@@ -1,4 +1,4 @@
-// Verified Partner / promo-lane derivation (MESITA-912).
+// Mesita Partner / promo-lane derivation (MESITA-912).
 //
 // listing_type = 'partner' iff membership (plan ≠ free) AND strategy ≠ zero.
 // Otherwise demote partner → web; leave unclaimed untouched.

@@ -46,7 +46,7 @@ export default function PlaceDetailScreen() {
           {place?.listing_type === 'partner' ? (
             <View
               className="size-4 items-center justify-center rounded-full bg-[#0EA5E9]"
-              accessibilityLabel="Verified Partner"
+              accessibilityLabel="Mesita Partner"
             >
               <Text className="text-[9px] font-bold text-white">✓</Text>
             </View>

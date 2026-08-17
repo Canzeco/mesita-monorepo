@@ -90,12 +90,12 @@ export function PlaceSwipeCard({ place: rawPlace }: { place: Place }) {
           >
             {place.name}
           </Text>
-          {/* decision: MESITA-933 — blue ✓ disc only when verified partner.
+          {/* decision: MESITA-933 — blue ✓ disc only when Mesita partner.
               Unverified: no disc; "Not Verified" tag in the chip row. */}
           {isVerified ? (
             <View
               className="size-[18px] items-center justify-center rounded-full bg-[#0EA5E9]"
-              accessibilityLabel="Verified Partner"
+              accessibilityLabel="Mesita Partner"
             >
               <Text className="text-[10px] font-bold text-white">✓</Text>
             </View>

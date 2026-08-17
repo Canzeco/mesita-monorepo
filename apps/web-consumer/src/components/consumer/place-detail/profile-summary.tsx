@@ -114,7 +114,7 @@ export function ProfileSummary({ place }: { place: PlaceDetail }) {
                 className="h-3.5 w-3.5 shrink-0 fill-sky-500 text-white"
                 strokeWidth={2}
               />
-              <span className="font-semibold">Verified Partner</span>
+              <span className="font-semibold">Mesita Partner</span>
             </>
           ) : (
             <>

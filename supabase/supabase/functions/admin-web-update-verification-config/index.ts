@@ -7,7 +7,7 @@
 // boolean knob required. Returns the full config after write.
 //
 // Knobs:
-//   createPlacesAsVerified — catalog Verified Partner badge at create time
+//   createPlacesAsVerified — catalog Mesita Partner badge at create time
 //   autoVerifyAiCall       — phone OTP auto-grants ownership
 //   autoVerifyAiEmail      — email OTP auto-grants ownership
 //   autoVerifyVideo         — video walkthrough auto-grants ownership

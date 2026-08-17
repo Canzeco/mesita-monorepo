@@ -182,7 +182,7 @@ export function VerifiedPartnerCard({
     <section className="border-secondary/40 bg-card flex flex-col gap-4 rounded-[22px] border p-6">
       <StatusBadge tone="secondary">
         <CheckCircle2 className="h-3 w-3" />
-        Verified partner
+        Mesita partner
       </StatusBadge>
       <PlaceIdentity place={place} />
       <div className="border-border bg-background flex items-center gap-3 rounded-xl border p-3">

@@ -92,7 +92,7 @@ export function enrichPlaceOverview(v: Place): Place {
     last_updated_label: v.last_updated_label ?? freshness ?? null,
     // The ticket cap (pesos) backs the promo chip's "first MX$… / visit"
     // tooltip. The per-tier rate itself is resolved in PromoChip straight off
-    // the raw row columns — and only for Verified Partners (web-listed places
+    // the raw row columns — and only for Mesita Partners (web-listed places
     // never offer rewards).
     reward_cap_mxn: v.reward_cap_mxn ?? rewardCapMxn ?? null,
     is_enriching: isEnriching,

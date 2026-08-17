@@ -5,7 +5,7 @@
 // Returns every Verification Config knob from the public.app_settings singleton
 // for the admin console's Verification Config page:
 //
-//   create_places_as_verified — catalog Verified Partner badge at create time
+//   create_places_as_verified — catalog Mesita Partner badge at create time
 //   auto_verify_ai_call       — phone OTP auto-grants ownership
 //   auto_verify_ai_email      — email OTP auto-grants ownership
 //   auto_verify_video         — video walkthrough auto-grants ownership

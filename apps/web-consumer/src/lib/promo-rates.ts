@@ -140,7 +140,7 @@ export function placeOffersMesitaRewards(input: {
   if (!promoMatrixHasAnyRate(input.promo_matrix)) return false;
   if (input.listing_type === "partner") return true;
   // Business configured per-tier rates on the Promos page — active even if
-  // listing_type is still 'web' pending the Verified Partner badge.
+  // listing_type is still 'web' pending the Mesita Partner badge.
   return input.promo_configured;
 }
 

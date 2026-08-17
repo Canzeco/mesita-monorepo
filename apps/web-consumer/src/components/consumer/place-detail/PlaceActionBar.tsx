@@ -92,7 +92,7 @@ export function PlaceActionBar({
             title={
               isPartner
                 ? undefined
-                : "Only Verified Partners run the Mesita reward program."
+                : "Only Mesita Partners run the Mesita reward program."
             }
             className={cn(
               btn,

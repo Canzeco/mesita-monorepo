@@ -22,7 +22,7 @@ import {
 // Rewards are a Verified-Partner-only capability. Web-listed places never
 // offer rewards — a hard rule the chip enforces by short-circuiting on
 // listing_type, independent of any reward columns the row might still
-// carry. A Verified Partner MAY also choose not to set a rate. Either way
+// carry. A Mesita Partner MAY also choose not to set a rate. Either way
 // there is no fabricated promo: only a partner with a real, non-zero rate
 // shows a filled ribbon. When there's no reward the chip renders nothing by
 // default, or — if the caller passes `showWhenEmpty` — a stated
@@ -65,8 +65,8 @@ export function PromoChip({
       : "border border-white/35 bg-black/45 text-white";
   const emptyIconTone = tone === "light" ? "text-blue-500" : undefined;
 
-  // Hard gate: only Verified Partners can offer rewards. Web-listed places
-  // never resolve a rate; a Verified Partner may also choose not to set one.
+  // Hard gate: only Mesita Partners can offer rewards. Web-listed places
+  // never resolve a rate; a Mesita Partner may also choose not to set one.
   const isFirstVisit = place.is_first_visit !== false;
   const promoPercent = resolvePromoRateFromPlaceRow(
     place,

@@ -203,7 +203,7 @@ export function PlacePickList({
       </ul>
       {anyLocked ? (
         <p className="text-muted-foreground/80 px-1 text-[11px] leading-snug">
-          Only Verified Partners run the Mesita reward program — the rest are on
+          Only Mesita Partners run the Mesita reward program — the rest are on
           Mesita, but can&apos;t open a ticket yet.
         </p>
       ) : null}

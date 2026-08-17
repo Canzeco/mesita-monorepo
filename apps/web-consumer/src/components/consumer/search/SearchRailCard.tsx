@@ -74,7 +74,7 @@ export function RailCard({
           {place.listing_type === "partner" && (
             <BadgeCheck
               className="text-primary h-3.5 w-3.5 shrink-0"
-              aria-label="Verified Partner"
+              aria-label="Mesita Partner"
             />
           )}
         </span>
