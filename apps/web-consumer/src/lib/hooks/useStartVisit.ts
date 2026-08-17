@@ -15,7 +15,7 @@ import { seedTicket, ticketRowFromCreate, type SeedPlace } from "@/lib/ticket-se
 import { ticketPath } from "@/lib/consumer-route-contract";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 
-// Starting a visit, extracted (MESITA-1065). This was RewardsClient's private
+// Starting a visit, extracted (MESITA-1065). This was NewVisitClient's private
 // `startTicket`/`onPick` pair until the place-detail action bar grew a Visit
 // button and needed the identical contract. It is EXTRACTED, not copied: the
 // flow spends money (a ticket is a discount the place will honor), carries a

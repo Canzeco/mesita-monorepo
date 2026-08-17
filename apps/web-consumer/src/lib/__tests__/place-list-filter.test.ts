@@ -4,7 +4,7 @@ import {
   filterPlacesByQuery,
   foldForSearch,
   type SearchablePlace,
-} from "@/lib/place-search";
+} from "@/lib/place-list-filter";
 
 // The Visit wallet's searchbar (MESITA-1071). The component only renders what
 // this returns, so the matching rules are pinned here rather than trusted to a

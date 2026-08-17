@@ -5,7 +5,7 @@
 // that with a searchbar", the answer to the deferred "then we see how we can
 // solve the searchbar").
 //
-// The field is OWNED BY THE HEADER (RewardsClient) because it renders outside
+// The field is OWNED BY THE HEADER (NewVisitClient) because it renders outside
 // this scroll body; the query arrives as a prop and the matching happens here,
 // where the rows already live. Matching is client-side on purpose: the list is
 // capped at 100 rows and is already fully in memory, so a per-keystroke EF
@@ -42,7 +42,7 @@ import {
 } from "lucide-react";
 
 import { apiFetchPublicPlaces, type Place } from "@/lib/api/places";
-import { filterPlacesByQuery } from "@/lib/place-search";
+import { filterPlacesByQuery } from "@/lib/place-list-filter";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { cn } from "@/lib/utils";
 
@@ -98,7 +98,7 @@ export function PlacePickList({
       }),
     [places],
   );
-  // Rules and rationale live with the matcher in `@/lib/place-search`, where
+  // Rules and rationale live with the matcher in `@/lib/place-list-filter`, where
   // they are unit-tested; this only decides WHEN to apply them.
   const visible = useMemo(
     () => filterPlacesByQuery(sorted, query),
