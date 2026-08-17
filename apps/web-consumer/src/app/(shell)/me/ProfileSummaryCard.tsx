@@ -6,7 +6,7 @@ import { Instagram, type LucideIcon } from "lucide-react";
 import type { ConsumerProfile } from "@/lib/api/profile";
 import { formatCurrency } from "@/lib/api/profile";
 import { DefaultAvatar } from "@/components/consumer/DefaultAvatar";
-import { CLASSES, CLASS_ICONS, isElevatedClass } from "@/lib/consumer-data";
+import { CLASSES, CLASS_ICONS, isElevatedIdentity } from "@/lib/consumer-data";
 import { useConsumerClass } from "@/lib/class-context";
 import {
   ageFromBirthday,
@@ -34,13 +34,13 @@ function ClassBadge({
 }) {
   const Icon = CLASS_ICONS[classKey];
   const chipClass =
-    classKey === "aura"
-      ? "bg-gradient-to-br from-amber-200 to-orange-300 text-amber-950"
-      : classKey === "influencer"
-        ? "bg-gradient-to-br from-red-200 to-red-400 text-red-950"
-        : classKey === "premium"
-          ? "bg-gradient-to-br from-blue-200 to-blue-400 text-blue-950"
-          : "bg-gradient-to-br from-neutral-200 to-neutral-400 text-neutral-900";
+    classKey === "diamond"
+      ? "bg-gradient-to-br from-sky-200 to-blue-300 text-blue-950"
+      : classKey === "gold"
+        ? "bg-gradient-to-br from-amber-200 to-orange-300 text-amber-950"
+        : classKey === "silver"
+          ? "bg-gradient-to-br from-neutral-200 to-neutral-400 text-neutral-900"
+          : "bg-gradient-to-br from-orange-200 to-amber-600 text-amber-950";
 
   // Trailing (right) badge — Instagram leads on the left (MESITA-956).
   // Same outer diameter as IgBadge (MESITA-938) — 28px.
@@ -133,14 +133,25 @@ export function ProfileSummaryCard({
   visits: number | null;
   loading: boolean;
 }) {
-  const { key, origin, followers, handle: classHandle } = useConsumerClass();
-  const isElevated = isElevatedClass(key);
+  const {
+    key,
+    plan,
+    origin,
+    followers,
+    handle: classHandle,
+  } = useConsumerClass();
+  const isElevated = isElevatedIdentity({ cls: key, plan });
+  // The banner wears the CLASS metal. A Bronze guest on Premium is elevated
+  // (the perks are real) but is still Bronze, so it keeps the bronze fill
+  // rather than borrowing a rung it hasn't earned.
   const elevatedBg =
-    key === "aura"
-      ? "bg-tier-gold"
-      : key === "influencer"
-        ? "bg-tier-influencer"
-        : "bg-tier-premium";
+    key === "diamond"
+      ? "bg-tier-diamond"
+      : key === "gold"
+        ? "bg-tier-gold"
+        : key === "silver"
+          ? "bg-tier-silver"
+          : "bg-tier-bronze";
 
   if (loading) {
     return (
@@ -174,7 +185,7 @@ export function ProfileSummaryCard({
   const sexLabel = formatSex(profile?.sex);
   const phone = formatPhoneDisplay(profile?.phone);
   const flag = phoneCountryFlag(profile?.phone);
-  const classLabel = CLASSES.find((c) => c.id === key)?.label ?? "Standard";
+  const classLabel = CLASSES.find((c) => c.id === key)?.label ?? "Bronze";
   const ClassIcon = CLASS_ICONS[key];
   // Prefer class-context handle so IG mock (@mock) wins over a stale profile.
   const handle = classHandle ?? profile?.instagram_handle ?? null;

@@ -73,12 +73,17 @@
   --input: oklch(0.94 0.015 10);
   --ring: var(--brand-pink);
 
-  /* Class identity colors (MESITA-929): Standard gray · Premium blue ·
-     Influencer red · Aura yellow/gold. Tokens keep legacy names where
-     call sites already bind to them. */
-  --tier-free: oklch(0.72 0.02 250);
+  /* Class identity colors (Classes v2, MESITA-1079). The ladder is now four
+     metals — Bronze · Silver · Gold · Diamond — and they are named for what
+     they are, because the old token names WERE the old class names and a
+     `--tier-influencer` holding Silver's color is a trap, not a shortcut.
+     `--tier-premium` survives unchanged and changes meaning: it is the PLAN's
+     color now, the one axis that is not a metal. */
+  --tier-bronze: oklch(0.58 0.11 55);
+  --tier-silver: oklch(0.72 0.02 250);
+  --tier-gold: oklch(0.72 0.16 75);
+  --tier-diamond: oklch(0.68 0.12 220);
   --tier-premium: oklch(0.55 0.19 250);
-  --tier-influencer: oklch(0.55 0.22 25);
 
   --gradient-hero:
     radial-gradient(
@@ -97,20 +102,25 @@
     oklch(0.86 0.14 90),
     oklch(0.72 0.16 60)
   );
-  --gradient-free: linear-gradient(
+  --gradient-bronze: linear-gradient(
+    135deg,
+    oklch(0.7 0.1 62),
+    oklch(0.54 0.11 45)
+  );
+  --gradient-silver: linear-gradient(
     135deg,
     oklch(0.88 0.02 250),
     oklch(0.72 0.02 250)
+  );
+  --gradient-diamond: linear-gradient(
+    135deg,
+    oklch(0.87 0.08 210),
+    oklch(0.68 0.13 235)
   );
   --gradient-premium: linear-gradient(
     135deg,
     oklch(0.55 0.19 250),
     oklch(0.68 0.14 230)
-  );
-  --gradient-influencer: linear-gradient(
-    135deg,
-    oklch(0.62 0.22 25),
-    oklch(0.5 0.2 25)
   );
   --gradient-card: linear-gradient(
     180deg,
@@ -264,23 +274,32 @@
   .bg-tier-gold {
     background: var(--gradient-gold);
   }
-  .text-free {
-    color: var(--tier-free);
+  .text-bronze {
+    color: var(--tier-bronze);
+  }
+  .text-silver {
+    color: var(--tier-silver);
+  }
+  .text-gold {
+    color: var(--tier-gold);
+  }
+  .text-diamond {
+    color: var(--tier-diamond);
   }
   .text-premium {
     color: var(--tier-premium);
   }
-  .text-influencer {
-    color: var(--tier-influencer);
+  .bg-tier-bronze {
+    background: var(--gradient-bronze);
   }
-  .bg-tier-free {
-    background: var(--gradient-free);
+  .bg-tier-silver {
+    background: var(--gradient-silver);
+  }
+  .bg-tier-diamond {
+    background: var(--gradient-diamond);
   }
   .bg-tier-premium {
     background: var(--gradient-premium);
-  }
-  .bg-tier-influencer {
-    background: var(--gradient-influencer);
   }
   .border-whatsapp {
     border-color: var(--whatsapp);

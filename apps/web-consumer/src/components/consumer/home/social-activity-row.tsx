@@ -2,8 +2,9 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { CreditCard, Instagram, Megaphone } from "lucide-react";
+import { Instagram } from "lucide-react";
 import type { Place } from "@/lib/api/places";
+import { CLASS_ICONS, classBadgeClass } from "@/lib/consumer-data";
 import { INSTAGRAM_BADGE_GRADIENT_CLASS } from "@/lib/ui-classes";
 import { cn, firstInitial } from "@/lib/utils";
 import { placeHref } from "@/lib/place-route";
@@ -38,14 +39,21 @@ export function SocialActivityRow({
             height={44}
             className="h-11 w-11 rounded-full object-cover"
           />
-          {person.plan === "influencer" && (
-            <span className="bg-tier-influencer ring-background absolute -bottom-0.5 -left-0.5 grid h-4 w-4 place-items-center rounded-full text-white ring-2">
-              <Megaphone className="h-2.5 w-2.5" />
-            </span>
-          )}
-          {person.plan === "premium" && (
-            <span className="bg-tier-premium ring-background absolute -bottom-0.5 -left-0.5 grid h-4 w-4 place-items-center rounded-full text-white ring-2">
-              <CreditCard className="h-2.5 w-2.5" />
+          {/* CLASS ONLY — never a plan. Under Classes v2 the plan is private
+              and invisible to anyone but its owner, so a Premium badge on
+              somebody else's row would leak what they pay. This used to carry
+              exactly that badge. */}
+          {person.plan !== "bronze" && (
+            <span
+              className={cn(
+                "ring-background absolute -bottom-0.5 -left-0.5 grid h-4 w-4 place-items-center rounded-full ring-2",
+                classBadgeClass(person.plan),
+              )}
+            >
+              {(() => {
+                const Icon = CLASS_ICONS[person.plan];
+                return <Icon className="h-2.5 w-2.5" />;
+              })()}
             </span>
           )}
           <span

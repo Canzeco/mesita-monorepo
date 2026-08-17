@@ -1,7 +1,7 @@
 "use client";
 
 import { Gift } from "lucide-react";
-import { isElevatedClass } from "@/lib/consumer-data";
+import { isElevatedIdentity } from "@/lib/consumer-data";
 import { useConsumerClass } from "@/lib/class-context";
 import {
   resolvePromoRateFromPlaceRow,
@@ -55,7 +55,7 @@ export function PromoChip({
    *  summary on white (violet chip — see the tone note above). */
   tone?: "dark" | "light";
 }) {
-  const { key: classKey } = useConsumerClass();
+  const { key: classKey, plan } = useConsumerClass();
   const sizing =
     size === "md" ? "px-2.5 py-1 text-[11.5px]" : "px-2.5 py-1 text-[10.5px]";
   const iconSize = size === "md" ? "h-3 w-3" : "h-2.5 w-2.5";
@@ -71,7 +71,7 @@ export function PromoChip({
   const promoPercent = resolvePromoRateFromPlaceRow(
     place,
     isFirstVisit,
-    isElevatedClass(classKey),
+    isElevatedIdentity({ cls: classKey, plan }),
   );
 
   // No reward at the current class. Hidden by default; when the caller opts

@@ -127,7 +127,7 @@ export function ProfileClient({
 
   // Same live lines as ProfileSummaryCard identity rows (MESITA-955).
   const classLabel =
-    CLASSES.find((c) => c.id === classKey)?.label ?? "Standard";
+    CLASSES.find((c) => c.id === classKey)?.label ?? "Bronze";
   const handle = classHandle ?? profile?.instagram_handle ?? null;
   const igConnected = origin === "instagram" || Boolean(handle);
   const igSummary = igConnected

@@ -1,11 +1,12 @@
-import type { ClassKey } from "@/lib/consumer-data";
 
 // Per-class promo rates. The `free`/`premium` keys mirror the v4 places
 // columns (welcome_free_rate / free_rate / …) — the DB column vocabulary is
 // unchanged (per-segment place columns are a not-yet-landed backend follow-up,
 // MESITA-723). The consumer class → column mapping lives in
-// resolveActivePromoRate: Standard reads `free`; every elevated class
-// (Premium / Influencer / Aura) reads `premium`.
+// resolveActivePromoRate: the floor reads `free`, anything elevated reads
+// `premium`. These column names are the v4 PLACES columns and have nothing to
+// do with the consumer's plan — they predate Classes v2 and are a binary
+// cheap-vs-generous split, which is why the resolver takes a boolean.
 type PromoClassRates = {
   free: number | null;
   premium: number | null;
@@ -79,14 +80,15 @@ function promoMatrixHasAnyRate(matrix: PromoMatrix): boolean {
 
 function resolveActivePromoRate(
   matrix: PromoMatrix,
-  classKey: ClassKey,
+  elevated: boolean,
   isFirstVisit = matrix.is_first_visit,
 ): number | null {
-  // Standard reads the `free` column; every elevated class (Premium /
-  // Influencer / Aura) reads `premium` — the v4 columns only know the binary
-  // free-vs-elevated split.
-  const col: keyof PromoClassRates =
-    classKey === "standard" ? "free" : "premium";
+  // The v4 columns only know the binary free-vs-elevated split, so this takes
+  // the BOOLEAN it always meant. It used to take a ClassKey and compare it
+  // against "standard", which silently assumed the class ladder had exactly
+  // one unelevated rung — true under v1, and false the moment plan became its
+  // own axis (a Bronze guest on Premium is elevated).
+  const col: keyof PromoClassRates = elevated ? "premium" : "free";
   const welcome = matrix.welcome[col];
   const returning = matrix.default[col];
   return (
@@ -195,9 +197,5 @@ export function resolvePromoRateFromPlaceRow(
   ) {
     return null;
   }
-  return resolveActivePromoRate(
-    matrix,
-    premium ? "premium" : "standard",
-    isFirstVisit,
-  );
+  return resolveActivePromoRate(matrix, premium, isFirstVisit);
 }

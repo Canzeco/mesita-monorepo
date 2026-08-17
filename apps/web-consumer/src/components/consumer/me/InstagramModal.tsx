@@ -10,7 +10,10 @@ import { SectionEyebrow } from "@/components/consumer/me/settings-rows";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { apiClaimInstagram } from "@/lib/api/profile";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
-import { INFLUENCER_FOLLOWER_THRESHOLD } from "@/lib/consumer-data";
+import {
+  REACH_ENTRY_FOLLOWERS,
+  identityForClassKey,
+} from "@/lib/consumer-data";
 import {
   useConsumerClass,
   useMockAccount,
@@ -24,11 +27,11 @@ import {
 } from "@/lib/ui-classes";
 
 // Instagram connect sheet (MESITA-936): DEMO → one Why box → Connect.
-// Threshold from INFLUENCER_FOLLOWER_THRESHOLD (2,000 — MESITA-911).
+// Threshold from REACH_ENTRY_FOLLOWERS (2,000 — MESITA-911).
 
 const HANDLE_RE = /^@?[A-Za-z0-9._]{1,30}$/;
 
-const WHY_COPY = `Add Instagram to unlock better Rewards. Optionally post Stories for even better Rewards on visits — and with ${INFLUENCER_FOLLOWER_THRESHOLD.toLocaleString("en-US")}+ followers you automatically upgrade to Influencer for free.`;
+const WHY_COPY = `Add Instagram to unlock better Rewards. Optionally post Stories for even better Rewards on visits — and with ${REACH_ENTRY_FOLLOWERS.toLocaleString("en-US")}+ followers you automatically upgrade to Silver for free.`;
 
 export function InstagramModal({
   open,
@@ -55,7 +58,10 @@ export function InstagramModal({
         followers: DEMO_INSTAGRAM_FOLLOWERS,
         handle: handle.trim().replace(/^@/, "").toLowerCase(),
       });
-      if (result.tier === "influencer") {
+      // `tier` echoes the class key the SERVER wrote, which is still a legacy
+      // key — so it goes through the bridge rather than being compared to one
+      // (MESITA-1079). Any class off the floor means the claim granted reach.
+      if (identityForClassKey(result.tier).cls !== "bronze") {
         window.location.href = `${CONSUMER_ROUTES.me}?instagram=success`;
         return;
       }

@@ -27,10 +27,10 @@ export function InstagramConnectedSummary({
         </div>
         <p className="text-muted-foreground mt-1 text-[12px] leading-snug">
           {followers > 0
-            ? `${followers.toLocaleString("en-US")} followers · Influencer active`
-            : "Influencer active"}
+            ? `${followers.toLocaleString("en-US")} followers · Silver active`
+            : "Silver active"}
         </p>
-        {/* Influencer class from reach; Story Bonus from the connected
+        {/* Silver class from reach; Story Bonus from the connected
             handle (MESITA-909) — lead with the visit upside. */}
         <p className="text-muted-foreground/80 mt-0.5 text-[11px] leading-snug">
           Story Bonus unlocked — post a tagged story any visit for more off.

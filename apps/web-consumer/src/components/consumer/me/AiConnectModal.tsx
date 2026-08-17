@@ -12,7 +12,7 @@ import { toast } from "@/lib/toast";
 import { errMsg } from "@/lib/utils";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { useConsumerClass } from "@/lib/class-context";
-import { isElevatedClass } from "@/lib/consumer-data";
+import { isElevatedIdentity } from "@/lib/consumer-data";
 import { SHEET_BODY_CLASS } from "@/lib/ui-classes";
 import {
   apiCreateMcpToken,
@@ -27,7 +27,9 @@ import {
 // Mesita profile (find places, book, check rewards).
 //
 // decision: Pato — real Consumer MCP, not a copy-paste tip (MESITA-265).
-// decision: Pato — elevated classes only (Premium / Influencer / Aura), not Standard
+// decision: Pato — elevated identities only. Under Classes v2 that is any
+// class above Bronze OR the Premium plan, which is why the gate reads both
+// axes instead of comparing a single class key.
 // (MESITA-266).
 
 function cursorSnippet(mcpUrl: string, token: string): string {
@@ -55,9 +57,9 @@ export function AiConnectModal({
   onClose: () => void;
 }) {
   const supabase = useBrowserSupabase();
-  const { key: classKey } = useConsumerClass();
-  // AI connect is an elevated-class perk — every class above Standard.
-  const canConnect = isElevatedClass(classKey);
+  const { key: classKey, plan } = useConsumerClass();
+  // AI connect is an elevated perk — any class above Bronze, or Premium.
+  const canConnect = isElevatedIdentity({ cls: classKey, plan });
   const [tokens, setTokens] = useState<McpTokenMeta[]>([]);
   const [loading, setLoading] = useState(false);
   const [minting, setMinting] = useState(false);
@@ -152,18 +154,18 @@ export function AiConnectModal({
           Claude, Cursor, or ChatGPT. Your AI can then find places, save them,
           book tables, and check rewards — as you.{" "}
           <span className="text-foreground font-semibold">
-            Available for Premium, Influencer and Aura members
+            Available on Premium, or any class above Bronze
           </span>
-          — not on Standard.
+          — not on Bronze with the Free plan.
         </p>
 
         {!canConnect && (
           <div className="mt-4 flex items-start gap-3 rounded-2xl border border-amber-500/25 bg-amber-500/10 px-4 py-3">
             <Crown className="mt-0.5 h-4 w-4 shrink-0 text-amber-700" />
             <p className="text-[12px] leading-relaxed text-amber-950">
-              You’re on Standard. Upgrade to Premium — or reach Influencer via
-              Instagram — to create an MCP token and let an AI control your
-              profile.
+              You’re on Bronze with the Free plan. Subscribe to Premium — or
+              reach Silver via Instagram — to create an MCP token and let an AI
+              control your profile.
             </p>
           </div>
         )}

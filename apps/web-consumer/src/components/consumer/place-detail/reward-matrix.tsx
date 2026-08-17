@@ -4,8 +4,11 @@ import { DoorOpen, Instagram, Star, UtensilsCrossed } from "lucide-react";
 import {
   CLASS_ICONS,
   CLASS_ORDER,
+  PREMIUM_PLAN_ICON,
   classProperLabel,
   type ClassKey,
+  type LegacyClassKey,
+  type PlanKey,
 } from "@/lib/consumer-data";
 import type { RewardQuote } from "@/lib/api/tickets";
 import { cn } from "@/lib/utils";
@@ -104,6 +107,22 @@ export function RateSheetSkeleton() {
   );
 }
 
+// Which LEGACY segment carries each v2 class's free-plan rate. This is the
+// display half of the bridge (MESITA-1079): the engine reports the ladder
+// under the four legacy keys, so Bronze reads `standard`, Silver reads
+// `influencer` and Diamond reads `aura`.
+//
+// GOLD IS `null` AND THAT IS THE TRUTH, not a gap to paper over: no legacy key
+// resolves to Gold, so the engine has never priced it and nothing grants it
+// today (MESITA-1076). The row renders ★, which is the same thing this sheet
+// already shows for an action a place hasn't priced.
+const LADDER_SOURCE: Record<ClassKey, LegacyClassKey | null> = {
+  bronze: "standard",
+  silver: "influencer",
+  gold: null,
+  diamond: "aura",
+};
+
 // Every class's standing rate at THIS place, in rank order, the guest's own
 // marked. Renders nothing when the engine didn't send a ladder — better a
 // missing section than one rebuilt from a client-side table the till has
@@ -119,16 +138,43 @@ export function ClassLadder({
   if (!ladder) return null;
   return (
     <div className="flex flex-col gap-1.5">
-      {CLASS_ORDER.map((key) => (
-        <Row
-          key={key}
-          icon={CLASS_ICONS[key]}
-          label={classProperLabel(key)}
-          value={ladder[key] ?? 0}
-          mine={key === classKey}
-        />
-      ))}
+      {CLASS_ORDER.map((key) => {
+        const source = LADDER_SOURCE[key];
+        return (
+          <Row
+            key={key}
+            icon={CLASS_ICONS[key]}
+            label={classProperLabel(key)}
+            hint={key === "gold" ? "Not priced here yet" : undefined}
+            value={source ? (ladder[source] ?? 0) : null}
+            mine={key === classKey}
+            muted={source == null}
+          />
+        );
+      })}
     </div>
+  );
+}
+
+// The OTHER axis, and the reason this sheet now has two sections. Premium used
+// to sit in the ladder above as a rung between Influencer and Aura, which read
+// as "pay to outrank someone with reach" — the exact merge Classes v2 removes.
+//
+// The number is the `bronze·premium` cell and is labelled as such. It is the
+// only premium cell the payload carries, and deriving the others (silver on
+// Premium, diamond on Premium) would mean client-side arithmetic over rates
+// the till has never quoted — precisely the drift MESITA-1017 fixed.
+export function PlanRow({ quote, plan }: { quote: RewardQuote; plan: PlanKey }) {
+  const value = quote.ladder?.premium;
+  if (value == null) return null;
+  return (
+    <Row
+      icon={PREMIUM_PLAN_ICON}
+      label="Premium"
+      hint="On Bronze · $100 MXN / mo"
+      value={value}
+      mine={plan === "premium"}
+    />
   );
 }
 

@@ -6,19 +6,25 @@ import { CLASSES, CLASS_ICONS, classBadgeClass } from "@/lib/consumer-data";
 import { useConsumerClass } from "@/lib/class-context";
 import { cn } from "@/lib/utils";
 
-// The class rail (MESITA-972) — an at-a-glance strip of all four classes in
-// canonical ladder order (Standard → Influencer → Premium → Aura) showing
-// which DOORS the signed-in consumer holds open: the one that currently wins
-// the slot, the ones unlocked underneath it (a paying Aura member keeps the
-// Premium chip unlocked — the subscription runs on), and the locked ones with
-// the one-word how. Pure status: the ladder is strictly increasing, so there
-// is nothing to switch — the effective class is always the best open door.
-
+// The class rail (MESITA-972, re-cut for Classes v2) — an at-a-glance strip of
+// all four classes in canonical ladder order (Bronze → Silver → Gold →
+// Diamond) showing which DOORS the signed-in consumer holds open: the one that
+// currently wins the slot, the ones unlocked underneath it, and the locked
+// ones with the one-word how. Pure status: the ladder is strictly increasing,
+// so there is nothing to switch — the effective class is always the best open
+// door.
+//
+// The rail is CLASS ONLY. Premium is not on it and must not be added: it buys
+// a plan, not a rung, and a paid chip sitting in this strip is exactly the
+// merge v2 removed. The plan has its own card in WaysToClimb.
+//
+// Both reach classes name the same door because the bands above the 2,000
+// entry bar are operator-configured (Notion Main: "never hardcoded").
 const DOOR_HOW: Record<string, string> = {
-  standard: "Base",
-  influencer: "2,000+ IG",
-  premium: "$100/mo",
-  aura: "Invite",
+  bronze: "Base",
+  silver: "2,000+ IG",
+  gold: "More IG",
+  diamond: "Invite",
 };
 
 export function ClassRail() {
@@ -29,9 +35,13 @@ export function ClassRail() {
       {CLASSES.map((c) => {
         const Icon = CLASS_ICONS[c.id];
         const current = key === c.id;
-        // Standard is a door every account holds open.
+        // Bronze is a door every account holds open. The other three resolve
+        // to the two v2 doors: reach carries Silver AND Gold (one Instagram
+        // claim, banded by follower count), invitation carries Diamond.
         const unlocked =
-          current || c.id === "standard" || doors[c.id as keyof typeof doors];
+          current ||
+          c.id === "bronze" ||
+          (c.id === "diamond" ? doors.invitation : doors.reach);
         return (
           <div
             key={c.id}

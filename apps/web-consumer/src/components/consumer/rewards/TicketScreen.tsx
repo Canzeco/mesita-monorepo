@@ -91,13 +91,16 @@ import { useConsumerTickets } from "@/lib/hooks/useConsumerTickets";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { cn } from "@/lib/utils";
 
+// The ticket's own gradient, by CLASS (Classes v2). Takes a string because the
+// caller hands it the context key straight through; unknown values fall to the
+// Bronze wash rather than rendering nothing.
 function passGradient(key: string): string {
-  if (key === "aura")
-    return "bg-[linear-gradient(150deg,#ff7a45_0%,#ffb03d_55%,#e0982e_100%)]";
-  if (key === "influencer")
+  if (key === "diamond")
     return "bg-[linear-gradient(150deg,#ff7a45_0%,#4aa8ff_55%,#2f7fd6_100%)]";
-  if (key === "premium")
-    return "bg-[linear-gradient(150deg,#ff7a45_0%,#ff3d73_45%,#a13cf0_100%)]";
+  if (key === "gold")
+    return "bg-[linear-gradient(150deg,#ff7a45_0%,#ffb03d_55%,#e0982e_100%)]";
+  if (key === "silver")
+    return "bg-[linear-gradient(150deg,#ff7a45_0%,#c9ced6_55%,#98a1ad_100%)]";
   return "bg-[linear-gradient(150deg,#ff7a45_0%,#ff4d6d_55%,#ff2d78_100%)]";
 }
 
@@ -624,8 +627,13 @@ export function TicketScreen({ ticketId }: { ticketId: string }) {
     chosenState !== "done" &&
     bestReachableRate > base;
 
+  // Reach classes (Silver / Gold) wear their handle because reach IS how they
+  // got the rung; everyone else shows it only when a Story task is on the
+  // ticket. Under v1 this read `classKey === "influencer"` — one class, same
+  // meaning — and v2 simply split reach across two rungs.
   const showIgHandle =
-    (classKey === "influencer" || storyOnTicket) && Boolean(igHandle);
+    (classKey === "silver" || classKey === "gold" || storyOnTicket) &&
+    Boolean(igHandle);
   const stubCode = ticket.check_code
     ? `#${ticket.check_code.slice(0, 4).toUpperCase()}`
     : "";

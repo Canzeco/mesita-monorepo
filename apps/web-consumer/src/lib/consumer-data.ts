@@ -1,35 +1,90 @@
 import {
+  Award,
   CreditCard,
-  Crown,
-  Megaphone,
+  Gem,
+  Medal,
   Pyramid,
-  Smile,
+  Trophy,
   type LucideIcon,
 } from "lucide-react";
 
-// Ascending class ladder (segments v6, canonical order MESITA-972): standard
-// (default) < influencer (Instagram ≥ 2,000 followers, automatic) < premium
-// (paid) < aura (invite-only presence class) — mirrors classes.rank in the DB
-// and the money ladder (class steps +5 influencer / +10 premium / +15 aura).
-// "class" is the consumer membership axis — distinct from a business's
-// billing "plan" (free/pro/ultra).
-export const CLASS_ORDER = [
+// ── Classes v2 (MESITA-1039; surfaced here by MESITA-1079) ─────────────────
+//
+// TWO INDEPENDENT AXES, and the entire point of v2 is that they never merge:
+//
+//   class — WHO YOU ARE. Bronze → Silver → Gold → Diamond, ascending, and
+//           never purchasable. Two doors up: Instagram reach (follower bands,
+//           operator-configured) or an Aura-list invitation. Class is public —
+//           it shows on the Passport.
+//   plan  — WHAT YOU PAY. Free or Premium (MX$100/mo). Private: invisible to
+//           venues, never on the Passport.
+//
+// The retired v1 ladder was standard < influencer < premium < aura, which put
+// the paid subscription INSIDE the class ladder — "Premium" ranked above
+// "Influencer" as if money were reach. That merge is what this replaces, and
+// it is why `plan` is a separate type rather than a fifth class.
+export const CLASS_ORDER = ["bronze", "silver", "gold", "diamond"] as const;
+export type ClassKey = (typeof CLASS_ORDER)[number];
+
+export const PLAN_ORDER = ["free", "premium"] as const;
+export type PlanKey = (typeof PLAN_ORDER)[number];
+
+/** A consumer's full identity: one rung on each axis. */
+export type ClassIdentity = { cls: ClassKey; plan: PlanKey };
+
+// ── The bridge ─────────────────────────────────────────────────────────────
+//
+// DELIBERATELY TEMPORARY, and a MIRROR rather than an invention. `consumers`
+// has no plan column yet (MESITA-1076), so the paid subscription is still
+// stored as the `premium` CLASS row and every server payload still speaks the
+// four legacy keys. `consumer-web-get-reward-quote` already resolves them
+// through the identical map in `promos-v11-normalize.ts` before it prices a
+// real bill — so reading the same rule here means the name a guest sees and
+// the number they are charged come from ONE definition, not two that drift.
+//
+// When `consumers.plan` lands, this and its server twin delete together.
+export const LEGACY_CLASS_KEYS = [
   "standard",
   "influencer",
   "premium",
   "aura",
 ] as const;
-export type ClassKey = (typeof CLASS_ORDER)[number];
+export type LegacyClassKey = (typeof LEGACY_CLASS_KEYS)[number];
 
-// Premium-perk gate: everything above Standard unlocks the same elevated perk
-// set — better recommendations, higher discount rewards, 10 reservations a
-// month. Generic on purpose: a future class joins the ladder by joining
-// CLASS_ORDER, never by another branch here.
-export function isElevatedClass(classKey: ClassKey | string): boolean {
-  return (
-    classKey !== "standard" &&
-    (CLASS_ORDER as readonly string[]).includes(classKey)
-  );
+export const LEGACY_CLASS_IDENTITY: Record<LegacyClassKey, ClassIdentity> = {
+  standard: { cls: "bronze", plan: "free" },
+  influencer: { cls: "silver", plan: "free" },
+  premium: { cls: "bronze", plan: "premium" },
+  aura: { cls: "diamond", plan: "free" },
+};
+
+/**
+ * Resolve a stored `consumers.class_key` onto the two v2 axes.
+ *
+ * An unknown or missing key resolves to bronze·free — the floor — rather than
+ * throwing or leaking that it wasn't recognised. Nothing is ever gated OPEN by
+ * that fallback.
+ */
+export function identityForClassKey(
+  key: string | null | undefined,
+): ClassIdentity {
+  const hit = (LEGACY_CLASS_KEYS as readonly string[]).includes(key ?? "")
+    ? LEGACY_CLASS_IDENTITY[key as LegacyClassKey]
+    : undefined;
+  return hit ?? LEGACY_CLASS_IDENTITY.standard;
+}
+
+// Elevated = off the floor on EITHER axis — a class above Bronze, or the
+// Premium plan. Both unlock the same perk set (better recommendations, 10
+// reservations a month), which is exactly why one predicate spans two axes
+// instead of each surface re-deriving the union.
+export function isElevatedIdentity({ cls, plan }: ClassIdentity): boolean {
+  return cls !== "bronze" || plan === "premium";
+}
+
+/** Convenience for the many call sites still holding a raw server class_key. */
+export function isElevatedClassKey(key: string | null | undefined): boolean {
+  return isElevatedIdentity(identityForClassKey(key));
 }
 
 // NOTE: The original Lovable export shipped a large local `Place` type
@@ -94,79 +149,98 @@ export const CLASSES: {
   id: ClassKey;
   label: string;
   req: string;
-  /** Monthly subscription price in MXN. 0 for Standard (the default),
-   *  Influencer (earned with Instagram reach), and Aura (invited). Premium
-   *  is granted upfront on payment — no spend accumulation required. */
-  priceMxn: number;
-  /** Follower threshold via Instagram verification. 0 = no threshold. */
+  /** Follower threshold via Instagram verification. 0 = not a reach door. */
   followerThreshold: number;
   reward: string;
   perk: string;
 }[] = [
-  // The class IS the brand — rendered as "Mesita Standard" / "Mesita Premium" /
-  // "Mesita Influencer" / "Mesita Aura" in marketing and subscribe surfaces.
-  // The compact `label` here is used inside tight UI (class badges, table
-  // rows) where the "Mesita" prefix is noise.
+  // The class IS the brand — rendered as "Mesita Bronze" / "Mesita Diamond" in
+  // marketing and Passport surfaces. The compact `label` here is used inside
+  // tight UI (class badges, table rows) where the "Mesita" prefix is noise.
+  //
+  // NO `priceMxn` ON A CLASS, on purpose: under v2 a class is never
+  // purchasable. Money lives on PLANS below, and nowhere else.
   {
-    id: "standard",
-    label: "Standard",
-    req: "Default account",
-    priceMxn: 0,
+    id: "bronze",
+    label: "Bronze",
+    req: "Every account starts here",
     followerThreshold: 0,
     reward: "Base discount",
     perk: "Welcome to the club",
   },
   {
-    id: "influencer",
-    label: "Influencer",
-    req: "2,000+ IG followers",
-    priceMxn: 0,
-    // Mirrors classes.follower_threshold in the DB — the EF grants off that
-    // row, so this constant is display-only and must track it.
+    id: "silver",
+    label: "Silver",
+    req: "2,000+ Instagram followers",
+    // The entry bar into reach, mirroring classes.follower_threshold in the
+    // DB — the EF grants off that row, so this constant is display-only and
+    // must track it. Story Bonus is separate (MESITA-909): any connected
+    // Instagram unlocks it, not just a reach class.
     followerThreshold: 2_000,
-    // Class identity = reach door. Story Bonus is separate (MESITA-909):
-    // any connected Instagram unlocks it, not just Influencer.
-    reward: "HIGH discount · Story when connected",
+    reward: "Higher discount",
     perk: "Better recs · 10 reservations",
   },
   {
-    id: "premium",
-    label: "Premium",
-    req: "$100 MXN / mo",
-    priceMxn: 100,
+    id: "gold",
+    label: "Gold",
+    // The band above Silver. Deliberately unquantified here: Notion Main puts
+    // the reach bands in Admin → Rewards Config, "never hardcoded", and only
+    // the 2,000 entry bar is a constant. NOTHING GRANTS GOLD TODAY — no legacy
+    // class key maps to it, so it is a real but unpopulated rung until
+    // MESITA-1076 lands.
+    req: "A higher reach band",
     followerThreshold: 0,
     reward: "Higher discount",
     perk: "Better recs · 10 reservations",
   },
   {
-    id: "aura",
-    label: "Aura",
-    req: "By invitation only",
-    priceMxn: 0,
+    id: "diamond",
+    label: "Diamond",
+    req: "Aura-list invitation",
     followerThreshold: 0,
-    // Highest flat class rate — paid for presence, no posting required.
-    reward: "Highest base discount",
+    // Highest flat class rate — the house pays for presence, no posting asked.
+    reward: "Highest discount",
     perk: "Better recs · 10 reservations",
   },
 ];
 
-// The Influencer follower bar — mirrors classes.follower_threshold in the DB
-// (the gate consumer-web-claim-instagram grants off). Every surface quoting
-// or applying the bar derives from this one constant. Story Bonus is gated
-// on a connected handle (MESITA-909), not this threshold.
-export const INFLUENCER_FOLLOWER_THRESHOLD = CLASSES.find(
-  (c) => c.id === "influencer",
-)!.followerThreshold;
+// The OTHER axis. Premium is a subscription, not a rung: it never appears in
+// CLASSES, never shows on the Passport, and stays invisible to venues.
+export const PLANS: {
+  id: PlanKey;
+  label: string;
+  req: string;
+  priceMxn: number;
+}[] = [
+  { id: "free", label: "Free", req: "Default account", priceMxn: 0 },
+  { id: "premium", label: "Premium", req: "$100 MXN / mo", priceMxn: 100 },
+];
 
-// Canonical class icon set (MESITA-929): one mark + one color per class.
-// Standard = smile (gray), Influencer = megaphone (red), Premium = card
-// (blue), Aura = crown (yellow/gold). The Classes sheet mark is the pyramid.
+export const PREMIUM_PLAN_PRICE_MXN = PLANS.find((p) => p.id === "premium")!
+  .priceMxn;
+
+// The reach entry bar — mirrors classes.follower_threshold in the DB (the gate
+// consumer-web-claim-instagram grants off). Every surface quoting or applying
+// the bar derives from this one constant. Story Bonus is gated on a connected
+// handle (MESITA-909), not this threshold.
+export const REACH_ENTRY_FOLLOWERS = CLASSES.find((c) => c.id === "silver")!
+  .followerThreshold;
+
+// Canonical class icon set: one mark + one color per class, ascending as a
+// single readable progression — Medal → Award → Trophy → Gem. The v1 set
+// (Smile / Megaphone / CreditCard / Crown) named the old classes rather than a
+// ladder, and two of its marks were about the DOOR (a megaphone for reach, a
+// card for money) rather than the rung. CreditCard survives on PLAN_ICON,
+// which is the axis money actually belongs to.
 export const CLASS_ICONS: Record<ClassKey, LucideIcon> = {
-  standard: Smile,
-  premium: CreditCard,
-  influencer: Megaphone,
-  aura: Crown,
+  bronze: Medal,
+  silver: Award,
+  gold: Trophy,
+  diamond: Gem,
 };
+
+/** The plan axis has one mark — Free is the absence of it, not a badge. */
+export const PREMIUM_PLAN_ICON: LucideIcon = CreditCard;
 
 /** Sheet / section mark for the Classes surface (not a membership class). */
 export const CLASS_MARK_ICON: LucideIcon = Pyramid;
@@ -176,14 +250,16 @@ export const CLASS_MARK_ICON: LucideIcon = Pyramid;
 // cn() at the call site when extra modifiers (size, rounding) are needed.
 export function classBadgeClass(classKey: ClassKey): string {
   switch (classKey) {
-    case "standard":
-      return "bg-tier-free text-foreground";
-    case "premium":
-      return "bg-tier-premium text-white";
-    case "influencer":
-      return "bg-tier-influencer text-white";
-    case "aura":
+    case "bronze":
+      return "bg-tier-bronze text-white";
+    // Silver is the one light fill in the set — white-on-silver fails
+    // contrast, so it carries foreground ink instead.
+    case "silver":
+      return "bg-tier-silver text-foreground";
+    case "gold":
       return "bg-tier-gold text-white";
+    case "diamond":
+      return "bg-tier-diamond text-white";
   }
 }
 
@@ -196,12 +272,27 @@ export function classBadgeClass(classKey: ClassKey): string {
 // either (e.g. a server-sourced class_key that flows as string) without an
 // extra cast; unknown values fall back to the "Mesita" brand word.
 const CLASS_LABELS: Record<ClassKey, string> = {
-  standard: "Standard",
-  premium: "Premium",
-  influencer: "Influencer",
-  aura: "Aura",
+  bronze: "Bronze",
+  silver: "Silver",
+  gold: "Gold",
+  diamond: "Diamond",
 };
 
 export function classProperLabel(classKey: ClassKey | string): string {
   return CLASS_LABELS[classKey as ClassKey] ?? "Mesita";
+}
+
+const PLAN_LABELS: Record<PlanKey, string> = {
+  free: "Free",
+  premium: "Premium",
+};
+
+export function planProperLabel(planKey: PlanKey | string): string {
+  return PLAN_LABELS[planKey as PlanKey] ?? "Free";
+}
+
+/** Label a raw server `class_key` on the class axis — the common case for
+ *  payloads that still speak legacy keys. */
+export function classLabelForKey(key: string | null | undefined): string {
+  return classProperLabel(identityForClassKey(key).cls);
 }

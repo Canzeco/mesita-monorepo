@@ -14,8 +14,10 @@ import {
 } from "@/lib/instagram-demo";
 import {
   CLASS_ORDER,
-  INFLUENCER_FOLLOWER_THRESHOLD,
+  REACH_ENTRY_FOLLOWERS,
+  identityForClassKey,
   type ClassKey,
+  type PlanKey,
 } from "@/lib/consumer-data";
 
 // Real, server-sourced class for the signed-in consumer, shared with
@@ -26,20 +28,25 @@ import {
 // replaces the old hardcoded CURRENT_USER mock that pinned everyone to
 // Premium — key now reflects the real consumers.class_key from the profile EF.
 
-/** Open doors, independent of which one wins the class slot (MESITA-972).
- *  Standard is always open, so only the three earned/paid doors are carried.
- *  The class rail renders unlocked-vs-locked off this. */
+/** The two doors UP THE CLASS LADDER (MESITA-972, re-cut for v2). Bronze is
+ *  always open, so only the earned doors are carried — and paying is no longer
+ *  one of them: Premium moved to the plan axis, where money belongs. */
 type ClassDoors = {
-  influencer: boolean;
-  premium: boolean;
-  aura: boolean;
+  /** Instagram reach at or above the entry bar — the Silver door. */
+  reach: boolean;
+  /** An Aura-list invitation — the Diamond door. */
+  invitation: boolean;
 };
 
 type ConsumerClassState = {
+  /** Class axis — who you are. Public; shows on the Passport. */
   key: ClassKey;
-  origin: "default" | "instagram" | "subscription" | "invitation";
-  /** Subscription renewal date (ISO). Only meaningful when
-   *  origin === "subscription"; null for every other origin. */
+  /** Plan axis — what you pay. Private; never shown to a venue. */
+  plan: PlanKey;
+  /** How the CLASS was granted. "subscription" is deliberately absent: under
+   *  v2 paying grants a PLAN, never a rung. */
+  origin: "default" | "instagram" | "invitation";
+  /** Premium renewal date (ISO). Null on the Free plan. */
   renewsAt: string | null;
   followers: number;
   /** IG @handle for the connected account. Real handle is persisted on
@@ -49,21 +56,21 @@ type ConsumerClassState = {
   doors: ClassDoors;
 };
 
-// Safe default for any tree rendered without a provider: a plain Standard
-// account. Nothing is ever gated *open* by this default — the worst case is a
-// real elevated member momentarily shown as Standard, which the server-seeded
-// value corrects on first paint.
-const STANDARD_CLASS: ConsumerClassState = {
-  key: "standard",
+// Safe default for any tree rendered without a provider: the floor on both
+// axes. Nothing is ever gated *open* by this default — the worst case is a
+// real elevated member momentarily shown as Bronze/Free, which the
+// server-seeded value corrects on first paint.
+const FLOOR_CLASS: ConsumerClassState = {
+  key: "bronze",
+  plan: "free",
   origin: "default",
   renewsAt: null,
   followers: 0,
   handle: null,
-  doors: { influencer: false, premium: false, aura: false },
+  doors: { reach: false, invitation: false },
 };
 
-// Unknown/stale server keys (e.g. retired "magnetic") render as Standard
-// instead of crashing a Record lookup.
+// Unknown/stale keys render as the floor instead of crashing a Record lookup.
 function isClassKey(value: unknown): value is ClassKey {
   return (
     typeof value === "string" &&
@@ -77,30 +84,47 @@ function normalize(
 ): ConsumerClassState {
   if (!c) {
     return {
-      ...STANDARD_CLASS,
+      ...FLOOR_CLASS,
       handle: instagramHandle,
     };
   }
-  const key = isClassKey(c.key) ? c.key : "standard";
+  // THE BRIDGE, applied at the one boundary where server truth enters the
+  // client: `consumers.class_key` still stores a legacy key, so it is split
+  // onto the two axes here and nowhere downstream (MESITA-1079).
+  const { cls, plan: bridgedPlan } = identityForClassKey(c.key);
   const followers = c.followers ?? 0;
+  // A live subscription proves Premium independently of the key. Today the two
+  // always agree (a payer's class_key IS "premium"), but trusting either alone
+  // would break the moment consumers.plan lands and the key stops carrying it.
+  const plan: PlanKey =
+    bridgedPlan === "premium" || c.subscription != null ? "premium" : "free";
   return {
-    key,
-    origin: c.origin ?? "default",
-    renewsAt: c.subscription?.current_period_end ?? c.expires_at ?? null,
+    key: cls,
+    plan,
+    // The server's "subscription" origin describes the PLAN, so it can't be a
+    // class origin — such an account is Bronze by class, however it pays.
+    origin:
+      c.origin === "instagram" || c.origin === "invitation"
+        ? c.origin
+        : "default",
+    renewsAt:
+      plan === "premium"
+        ? (c.subscription?.current_period_end ?? c.expires_at ?? null)
+        : null,
     followers,
     handle: instagramHandle,
-    // Server-computed doors when the EF ships them; otherwise derive from
-    // what the payload already proves (reach from followers, the paid door
-    // from the live subscription, Aura only when it holds the slot).
-    doors: c.doors ?? {
-      influencer: followers >= INFLUENCER_FOLLOWER_THRESHOLD,
-      premium: c.subscription != null,
-      aura: key === "aura",
+    // Server-computed doors when the EF ships them — still under legacy names,
+    // so they're mapped here too. Otherwise derive from what the payload
+    // already proves (reach from followers, invitation only when it holds the
+    // slot). The old `premium` door is gone: it was never a class door.
+    doors: {
+      reach: c.doors?.influencer ?? followers >= REACH_ENTRY_FOLLOWERS,
+      invitation: c.doors?.aura ?? cls === "diamond",
     },
   };
 }
 
-const ClassContext = createContext<ConsumerClassState>(STANDARD_CLASS);
+const ClassContext = createContext<ConsumerClassState>(FLOOR_CLASS);
 
 // ── Server-seeded identity (MESITA-1029 S1) ────────────────────────────────
 // The shell layout fetches the profile ONCE per request and does NOT re-run on
@@ -128,25 +152,33 @@ const IdentityContext = createContext<ConsumerIdentity>({
 
 // Demo/design override. The Me-page demo toggles write this JSON blob so
 // every account state is previewable regardless of the real server-seeded
-// class. Two independent axes, mirroring the real model:
-//   • class     — forced class ("standard" down-previews a real elevated
-//                 account; premium = via subscription, aura = via
-//                 invitation, influencer = via Instagram). null = real class.
+// class. THREE independent axes now, mirroring the real v2 model:
+//   • class     — forced class ("bronze" down-previews a real elevated
+//                 account; diamond = via invitation, silver/gold = via reach).
+//                 null = real class.
+//   • premium   — the PLAN axis, independent of class. A Bronze guest on
+//                 Premium is a normal, previewable state; under v1 it was
+//                 unrepresentable because paying WAS the class.
 //   • instagram — a connected Instagram (handle + follower reach). Crossing
-//                 INFLUENCER_FOLLOWER_THRESHOLD grants Influencer via
-//                 Instagram — exactly like a qualifying
-//                 consumer-web-claim-instagram claim writes the class.
+//                 REACH_ENTRY_FOLLOWERS grants Silver — exactly like a
+//                 qualifying consumer-web-claim-instagram claim writes it.
 // Purely a client-side dev affordance; absent = the real account. Remove the
 // toggles + this key once the states can be produced with real data.
+//
+// Blobs written by the v1 toggles carry retired keys ("standard", "aura", …);
+// isClassKey rejects them, so a stale blob degrades to "no class override"
+// rather than pinning a preview to a class that no longer exists.
 const MOCK_ACCOUNT_KEY = "mesita:mock-account";
 export type MockAccount = {
   class: ClassKey | null;
+  premium: boolean;
   instagram: boolean;
   followers: number;
 };
 
 const MOCK_ACCOUNT_OFF: MockAccount = {
   class: null,
+  premium: false,
   instagram: false,
   followers: DEMO_INSTAGRAM_FOLLOWERS,
 };
@@ -182,15 +214,16 @@ function parseMockAccount(raw: string | null): MockAccount | null {
   try {
     const v = JSON.parse(raw) as Partial<MockAccount>;
     const cls = isClassKey(v.class) ? v.class : null;
+    const premium = v.premium === true;
     const instagram = v.instagram === true;
-    if (cls == null && !instagram) return null; // nothing overridden
+    if (cls == null && !premium && !instagram) return null; // nothing overridden
     const followers =
       typeof v.followers === "number" &&
       Number.isFinite(v.followers) &&
       v.followers >= 0
         ? Math.trunc(v.followers)
         : DEMO_INSTAGRAM_FOLLOWERS;
-    return { class: cls, instagram, followers };
+    return { class: cls, premium, instagram, followers };
   } catch {
     return null;
   }
@@ -225,7 +258,7 @@ export function setMockAccount(patch: Partial<MockAccount> | null): void {
       window.localStorage.removeItem(MOCK_ACCOUNT_KEY);
     } else {
       const next = { ...(readMockAccount() ?? MOCK_ACCOUNT_OFF), ...patch };
-      if (next.class == null && !next.instagram) {
+      if (next.class == null && !next.premium && !next.instagram) {
         window.localStorage.removeItem(MOCK_ACCOUNT_KEY);
       } else {
         window.localStorage.setItem(MOCK_ACCOUNT_KEY, JSON.stringify(next));
@@ -241,62 +274,57 @@ function mockAccountState(
   mock: MockAccount,
   base: ConsumerClassState,
 ): ConsumerClassState {
-  // Instagram reach wins over the class axis (except an explicit Aura
-  // preview — invitation outranks the reach door), exactly like a qualifying
-  // consumer-web-claim-instagram claim writes class_key server-side but never
-  // clobbers a higher-ranked invitation class.
-  const igInfluencer =
+  // Instagram reach wins over the class axis (except an explicit Diamond
+  // preview — an invitation outranks the reach door), exactly like a
+  // qualifying consumer-web-claim-instagram claim writes class_key
+  // server-side but never clobbers a higher-ranked invitation class.
+  const igReach =
     mock.instagram &&
-    mock.followers >= INFLUENCER_FOLLOWER_THRESHOLD &&
-    mock.class !== "aura";
+    mock.followers >= REACH_ENTRY_FOLLOWERS &&
+    mock.class !== "diamond";
 
   let key: ConsumerClassState["key"];
   let origin: ConsumerClassState["origin"];
-  let renewsAt: string | null;
-  if (igInfluencer) {
-    key = "influencer";
+  if (igReach) {
+    key = "silver";
     origin = "instagram";
-    renewsAt = null;
-  } else if (mock.class === "premium") {
-    const renews = new Date();
-    renews.setMonth(renews.getMonth() + 1);
-    key = "premium";
-    origin = "subscription";
-    renewsAt = renews.toISOString();
-  } else if (mock.class === "aura") {
-    // The invite-only presence class — the manual-invitation door.
-    key = "aura";
+  } else if (mock.class === "diamond") {
+    // The invite-only presence class — the Aura-list door.
+    key = "diamond";
     origin = "invitation";
-    renewsAt = null;
-  } else if (mock.class === "influencer") {
-    // Influencer preview without the IG axis on — still the reach door.
-    key = "influencer";
+  } else if (mock.class === "silver" || mock.class === "gold") {
+    // A reach preview without the IG axis on — still the reach door.
+    key = mock.class;
     origin = "instagram";
-    renewsAt = null;
-  } else if (mock.class === "standard") {
-    key = "standard";
+  } else if (mock.class === "bronze") {
+    key = "bronze";
     origin = "default";
-    renewsAt = null;
   } else {
     // No class override — the real class shows through the IG emulation.
-    ({ key, origin, renewsAt } = base);
+    ({ key, origin } = base);
   }
+
+  // The plan axis is mocked INDEPENDENTLY of the class, which is the whole
+  // point of v2: Bronze-on-Premium is a real state, and under v1 it could not
+  // even be expressed because paying was itself the class.
+  const renews = new Date();
+  renews.setMonth(renews.getMonth() + 1);
 
   return {
     key,
+    plan: mock.premium ? "premium" : "free",
     origin,
-    renewsAt,
+    renewsAt: mock.premium ? renews.toISOString() : null,
     // Mock IG always surfaces the demo profile (@mock / 5k) so the Me card
     // preview is deterministic (MESITA-935).
     followers: mock.instagram ? mock.followers : base.followers,
     handle: mock.instagram ? DEMO_INSTAGRAM_HANDLE : base.handle,
     // Preview doors mirror ONLY the mocked axes so each demo state is
-    // deterministic (a Standard preview shows every door locked, regardless
-    // of the real account underneath).
+    // deterministic (a Bronze preview shows every door locked, regardless of
+    // the real account underneath).
     doors: {
-      influencer: igInfluencer || mock.class === "influencer",
-      premium: mock.class === "premium",
-      aura: mock.class === "aura",
+      reach: igReach || mock.class === "silver" || mock.class === "gold",
+      invitation: mock.class === "diamond",
     },
   };
 }

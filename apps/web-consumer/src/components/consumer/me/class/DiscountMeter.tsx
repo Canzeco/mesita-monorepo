@@ -9,8 +9,8 @@ const LEVEL_META: Record<
   { filled: number; fillClass: string }
 > = {
   LOW: { filled: 1, fillClass: "bg-pink-gradient" },
-  HIGH: { filled: 2, fillClass: "bg-tier-influencer" },
-  EXTRA: { filled: 3, fillClass: "bg-tier-premium" },
+  HIGH: { filled: 2, fillClass: "bg-tier-silver" },
+  EXTRA: { filled: 3, fillClass: "bg-tier-gold" },
   MAX: {
     filled: 4,
     fillClass: "bg-gradient-to-r from-amber-500 to-amber-300",

@@ -51,7 +51,7 @@ export type SocialPerson = {
   id: string;
   name: string;
   igHandle: string;
-  plan: "standard" | "premium" | "influencer";
+  plan: "bronze" | "silver" | "gold" | "diamond";
   avatarUrl: string;
   action: SocialActionKind;
   /** Index into the live deck (modulo length) — resolves to a real place. */
@@ -66,12 +66,17 @@ export type SocialPerson = {
 
 // Relevance score — how much this person should surface in the "Relevance"
 // sort. Weighted engagement (rewards + likes count most), with a class
-// bump (Influencer > Premium). Higher = more relevant. Pure function of the
-// row so it stays stable.
+// bump (higher class = more relevant). Higher = more relevant. Pure function
+// of the row so it stays stable.
+//
+// PARKED DATA, kept on Classes v2 anyway: Social is a one-flag un-park, and a
+// mock still speaking `influencer` would resurface a retired class the day it
+// flips — and it already pointed at a `bg-tier-influencer` token that no
+// longer exists (MESITA-1079).
 export function socialRelevance(p: SocialPerson): number {
   const { visits, likes, stories, rewards } = p.stats;
   const engagement = visits + likes * 2 + stories + rewards * 3;
-  const mult = p.plan === "influencer" ? 1.25 : p.plan === "premium" ? 1.15 : 1;
+  const mult = p.plan === "diamond" ? 1.3 : p.plan === "gold" ? 1.25 : p.plan === "silver" ? 1.15 : 1;
   return Math.round(engagement * mult);
 }
 
@@ -80,7 +85,7 @@ export const SOCIAL_PEOPLE: SocialPerson[] = [
     id: "sofi",
     name: "Sofía Méndez",
     igHandle: "@sofi.mz",
-    plan: "influencer",
+    plan: "silver",
     avatarUrl: "https://i.pravatar.cc/200?img=20",
     action: "visit",
     placeSlot: 0,
@@ -93,7 +98,7 @@ export const SOCIAL_PEOPLE: SocialPerson[] = [
     id: "ana",
     name: "Ana Sofía",
     igHandle: "@ana.sof",
-    plan: "standard",
+    plan: "bronze",
     avatarUrl: "https://i.pravatar.cc/200?img=47",
     action: "story",
     placeSlot: 0,
@@ -106,7 +111,7 @@ export const SOCIAL_PEOPLE: SocialPerson[] = [
     id: "pablo",
     name: "Pablo Treviño",
     igHandle: "@pablo.tr",
-    plan: "premium",
+    plan: "gold",
     avatarUrl: "https://i.pravatar.cc/200?img=33",
     action: "like",
     placeSlot: 1,
@@ -119,7 +124,7 @@ export const SOCIAL_PEOPLE: SocialPerson[] = [
     id: "diego",
     name: "Diego R.",
     igHandle: "@diego.r",
-    plan: "standard",
+    plan: "bronze",
     avatarUrl: "https://i.pravatar.cc/200?img=12",
     action: "story",
     placeSlot: 2,
@@ -132,7 +137,7 @@ export const SOCIAL_PEOPLE: SocialPerson[] = [
     id: "mariana",
     name: "Mariana",
     igHandle: "@mari.mx",
-    plan: "influencer",
+    plan: "silver",
     avatarUrl: "https://i.pravatar.cc/200?img=32",
     action: "reward",
     placeSlot: 0,
@@ -145,7 +150,7 @@ export const SOCIAL_PEOPLE: SocialPerson[] = [
     id: "luis",
     name: "Luis P.",
     igHandle: "@luis.p",
-    plan: "standard",
+    plan: "bronze",
     avatarUrl: "https://i.pravatar.cc/200?img=53",
     action: "visit",
     placeSlot: 2,
@@ -158,7 +163,7 @@ export const SOCIAL_PEOPLE: SocialPerson[] = [
     id: "camila",
     name: "Camila V.",
     igHandle: "@cami.v",
-    plan: "influencer",
+    plan: "silver",
     avatarUrl: "https://i.pravatar.cc/200?img=23",
     action: "like",
     placeSlot: 3,
@@ -171,7 +176,7 @@ export const SOCIAL_PEOPLE: SocialPerson[] = [
     id: "tomas",
     name: "Tomás G.",
     igHandle: "@tomas.g",
-    plan: "standard",
+    plan: "bronze",
     avatarUrl: "https://i.pravatar.cc/200?img=14",
     action: "reward",
     placeSlot: 4,
@@ -184,7 +189,7 @@ export const SOCIAL_PEOPLE: SocialPerson[] = [
     id: "renata",
     name: "Renata L.",
     igHandle: "@ren.lz",
-    plan: "standard",
+    plan: "bronze",
     avatarUrl: "https://i.pravatar.cc/200?img=49",
     action: "story",
     placeSlot: 5,
@@ -197,7 +202,7 @@ export const SOCIAL_PEOPLE: SocialPerson[] = [
     id: "andres",
     name: "Andrés C.",
     igHandle: "@andres.c",
-    plan: "influencer",
+    plan: "silver",
     avatarUrl: "https://i.pravatar.cc/200?img=15",
     action: "story",
     placeSlot: 6,
@@ -210,7 +215,7 @@ export const SOCIAL_PEOPLE: SocialPerson[] = [
     id: "mateo",
     name: "Mateo V.",
     igHandle: "@mateo.v",
-    plan: "premium",
+    plan: "gold",
     avatarUrl: "https://i.pravatar.cc/200?img=11",
     action: "like",
     placeSlot: 3,
@@ -223,7 +228,7 @@ export const SOCIAL_PEOPLE: SocialPerson[] = [
     id: "lucia",
     name: "Lucía Garza",
     igHandle: "@lu.gza",
-    plan: "standard",
+    plan: "bronze",
     avatarUrl: "https://i.pravatar.cc/200?img=25",
     action: "reward",
     placeSlot: 5,

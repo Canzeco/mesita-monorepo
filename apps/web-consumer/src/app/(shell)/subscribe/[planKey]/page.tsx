@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { notFound, useParams } from "next/navigation";
 import { ArrowLeft, Check, Instagram, Mail, Sparkles } from "lucide-react";
-import { CLASSES } from "@/lib/consumer-data";
+import { PLANS } from "@/lib/consumer-data";
 import { Spinner } from "@/components/shared";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { apiCreateSubscriptionCheckout } from "@/lib/api/subscription";
@@ -21,7 +21,7 @@ import { cn } from "@/lib/utils";
 // /subscribe/premium links resolve, but only "premium" is valid.
 
 // The elevated perk set — shared by every elevated class (Premium /
-// Influencer / Aura); only the door differs. Mirrors ELEVATED_PERKS on Me.
+// any class above Bronze); only the door differs. Mirrors ELEVATED_PERKS on Me.
 const PERKS = [
   "Higher discount rewards at every Verified Partner.",
   "Better, more rewarding recommendations across discovery.",
@@ -29,10 +29,14 @@ const PERKS = [
 ];
 
 export default function SubscribePage() {
-  const params = useParams<{ classKey: string }>();
-  if (params?.classKey !== "premium") notFound();
+  // The segment is a PLAN key, not a class (Classes v2, MESITA-1079). The URL
+  // is unchanged — "premium" was always the right word here — but it now names
+  // the subscription axis rather than a rung, which is why the folder and the
+  // lookup moved off CLASSES.
+  const params = useParams<{ planKey: string }>();
+  if (params?.planKey !== "premium") notFound();
 
-  const premium = CLASSES.find((c) => c.id === "premium");
+  const premium = PLANS.find((p) => p.id === "premium");
   if (!premium) notFound();
 
   return (
@@ -58,7 +62,7 @@ export default function SubscribePage() {
       <div className="flex flex-col gap-5 px-5 py-5">
         <section className="bg-tier-premium shadow-elev rounded-2xl p-5 text-white">
           <p className="text-[10px] font-medium tracking-[0.16em] uppercase opacity-80">
-            Mesita Class
+            Mesita Plan
           </p>
           <h2 className="font-display mt-1 text-3xl font-semibold tracking-tight">
             Mesita Premium
@@ -106,8 +110,8 @@ export default function SubscribePage() {
               </span>
               <span>
                 <span className="font-semibold">Instagram</span> — 2,000+
-                followers. Influencer, free, automatic. Story Bonus unlocks
-                for any connected account.
+                followers. Silver, free, automatic. Story Bonus unlocks for any
+                connected account.
               </span>
             </li>
             <li className="flex items-start gap-2.5">
@@ -115,8 +119,8 @@ export default function SubscribePage() {
                 <Mail className="h-3.5 w-3.5" />
               </span>
               <span>
-                <span className="font-semibold">Invitation</span> — Aura, for
-                the guests Mesita picks personally.
+                <span className="font-semibold">Invitation</span> — Diamond,
+                for the guests Mesita picks personally for the Aura list.
               </span>
             </li>
             <li className="flex items-start gap-2.5">

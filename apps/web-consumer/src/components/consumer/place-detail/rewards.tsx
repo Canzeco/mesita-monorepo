@@ -14,6 +14,7 @@ import { Box, BoxLabel } from "./box";
 import {
   BonusList,
   ClassLadder,
+  PlanRow,
   RateSheetSkeleton,
   RewardTotal,
 } from "./reward-matrix";
@@ -45,6 +46,7 @@ import {
 export function RewardsBox({ place }: { place: PlaceDetail }) {
   const consumerClass = useConsumerClass();
   const classKey = consumerClass.key;
+  const plan = consumerClass.plan;
   const supabase = useBrowserSupabase();
 
   // The guest's real numbers for THIS place, from the engine. Must run before
@@ -156,6 +158,18 @@ export function RewardsBox({ place }: { place: PlaceDetail }) {
           <RateSheetSkeleton />
         )}
       </div>
+
+      {/* The plan, on its own. Classes v2 (MESITA-1079) splits identity into
+          two axes that "never merge", and this sheet is where the merge was
+          most visible: Premium used to sit in the ladder above as a rung
+          between Influencer and Aura. A separate label is the whole fix —
+          what you earn, then what you can buy. */}
+      {quote ? (
+        <div className="flex flex-col gap-3">
+          <BoxLabel>Rate by plan</BoxLabel>
+          <PlanRow quote={quote} plan={plan} />
+        </div>
+      ) : null}
 
       {/* The actions, priced. */}
       <div className="flex flex-col gap-3">
