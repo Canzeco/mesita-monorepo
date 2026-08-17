@@ -1,7 +1,12 @@
 {
+  "imports": {
+    "@std/assert": "jsr:@std/assert@1",
+    "@std/path": "jsr:@std/path@1"
+  },
   "tasks": {
     "sync-rules": "deno run --allow-read --allow-write --allow-run=git scripts/sync-rules.ts",
     "sync-rules:check": "deno run --allow-read --allow-run=git scripts/sync-rules.ts --check",
+    "test:rules": "deno test --allow-read scripts/sync-rules.test.ts",
     "sync-brand": "deno run --allow-read --allow-write scripts/sync-brand.ts",
     "sync-brand:check": "deno run --allow-read scripts/sync-brand.ts --check"
   }

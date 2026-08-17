@@ -2,7 +2,13 @@ name: rules
 
 # Any markdown change anywhere triggers this workflow: sync-rules:check also
 # enforces the ASDM §C markdown allowlist (knowledge → Notion, task context →
-# Linear; the repo carries only CLAUDE.md/AGENTS.md + tooling config).
+# Linear; the repo carries only CLAUDE.md/AGENTS.md + tooling config) and the
+# §C word budgets.
+#
+# The extension list below MUST match MD_SCAN_GLOBS in scripts/sync-rules.ts —
+# an extension the script scans but this filter omits means the workflow never
+# fires, so the gate reports green because it never ran. `deno task test:rules`
+# asserts the two stay in step (YAML cannot import from TS).
 on:
   push:
     branches: [main]
@@ -10,6 +16,7 @@ on:
       - "**/*.md"
       - "**/*.MD"
       - "**/*.mdx"
+      - "**/*.mdc"
       - "scripts/**"
       - "deno.json"
       - ".github/workflows/rules.yml"
@@ -18,6 +25,7 @@ on:
       - "**/*.md"
       - "**/*.MD"
       - "**/*.mdx"
+      - "**/*.mdc"
       - "scripts/**"
       - "deno.json"
       - ".github/workflows/rules.yml"
@@ -38,6 +46,11 @@ jobs:
         uses: denoland/setup-deno@v2
         with:
           deno-version: v2.9.1
+
+      # The gates guarding the gates. Runs first: a broken enforcement path
+      # would otherwise fail below with a message about the wrong thing.
+      - name: Test
+        run: deno task test:rules
 
       # One checkout covers the whole monorepo — the old per-repo --only
       # self-scoping (and its "cross-repo enforcement stays manual" caveat)
