@@ -33,6 +33,7 @@ import {
   withUserDistance,
 } from "./swipe-deck-shells";
 import { ReservationSheet } from "@/components/consumer/place-detail/ReservationSheet";
+import { GoSheet } from "@/components/consumer/place-detail/GoSheet";
 import { SwipeActionRow } from "./swipe-action-row";
 import {
   clearSwipeProgress,
@@ -132,7 +133,17 @@ function Deck({ places }: { places: Place[] }) {
   const [showTutorial, setShowTutorial] = useState(false);
   // Reserve opens the booking sheet over the deck — the card already carries
   // the id + name the sheet needs, so there's no detour through /place/[id].
+  // It is no longer opened from the rail directly: Go owns the entry point
+  // and SWAPS to it (MESITA-1072), because two LocalSheets sliding up from
+  // the bottom at the same z-tier read as a rendering bug.
   const [reserveOpen, setReserveOpen] = useState(false);
+  const [goOpen, setGoOpen] = useState(false);
+  // Go mounts LAZILY and then stays mounted. GoSheet pulls the guest's
+  // tickets (useConsumerTickets → an EF list + the shared notification poll)
+  // so it must not load for the many guests who only ever swipe; but
+  // unmounting it on close would kill LocalSheet's exit transition, which
+  // needs the component alive for the slide-down. First tap arms it forever.
+  const [goMounted, setGoMounted] = useState(false);
   // Shared discovery filters (MESITA-646): the deck below narrows LIVE and
   // the red Filter-action dot (MESITA-633) lights on any deviation from
   // defaults. One global store — Search shows the exact same state.
@@ -667,9 +678,24 @@ function Deck({ places }: { places: Place[] }) {
           onSkip={skip}
           onOpenInfo={openInfo}
           onSave={save}
-          onReserve={() => setReserveOpen(true)}
+          onGo={() => {
+            setGoMounted(true);
+            setGoOpen(true);
+          }}
         />
       </div>
+
+      {v && goMounted && (
+        <GoSheet
+          place={v}
+          open={goOpen}
+          onClose={() => setGoOpen(false)}
+          onReserve={() => {
+            setGoOpen(false);
+            setReserveOpen(true);
+          }}
+        />
+      )}
 
       {v && (
         <ReservationSheet

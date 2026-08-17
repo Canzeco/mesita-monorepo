@@ -4,6 +4,7 @@ import { useState } from "react";
 import { CalendarCheck, Loader2, Lock, QrCode, ShoppingBag } from "lucide-react";
 
 import { ComingSoonModal } from "@/components/consumer/ComingSoonModal";
+import { ORDER_COMING_SOON } from "@/components/consumer/place-detail/place-actions-copy";
 import { ReservationSheet } from "@/components/consumer/place-detail/ReservationSheet";
 import { useConsumerIdentity } from "@/lib/class-context";
 import { useConsumerTickets } from "@/lib/hooks/useConsumerTickets";
@@ -142,11 +143,14 @@ export function PlaceActionBar({
         open={reserveOpen}
         onClose={() => setReserveOpen(false)}
       />
+      {/* Copy is shared with the deck's GoSheet (MESITA-1072) — the promise
+          made about a parked feature must be ONE sentence, not two that
+          drifted apart on two surfaces. */}
       <ComingSoonModal
         open={orderSoon}
         onClose={() => setOrderSoon(false)}
-        title="Ordering coming soon"
-        body="Soon you'll be able to order from this place without leaving Mesita — it'll land in your Inbox next to your visits."
+        title={ORDER_COMING_SOON.title}
+        body={ORDER_COMING_SOON.body}
         icon={ShoppingBag}
       />
     </>
