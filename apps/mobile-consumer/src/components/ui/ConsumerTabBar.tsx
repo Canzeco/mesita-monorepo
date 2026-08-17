@@ -1,5 +1,10 @@
 import { BlurView } from 'expo-blur';
-import { CalendarCheck, QrCode, Search, User } from 'lucide-react-native';
+import {
+  Inbox as InboxIcon,
+  QrCode,
+  Search,
+  User,
+} from 'lucide-react-native';
 import type { ComponentType } from 'react';
 import { useState } from 'react';
 import { Platform, Pressable, Text, View } from 'react-native';
@@ -8,10 +13,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MesitaMark } from '@/components/brand/MesitaMark';
 import { ComingSoonModal } from '@/components/ui/ComingSoonModal';
 import { COLORS } from '@/constants/brand';
-import { classProperLabel } from '@/lib/consumer-classes';
 import { isTabParked, PARKED, type ParkedTabKey } from '@/lib/parked-flags';
 import { useReduceMotion } from '@/lib/useReduceMotion';
-import { useAuth } from '@/providers/auth';
 
 type IconComponent = ComponentType<{
   color?: string;
@@ -44,39 +47,42 @@ type ConsumerTabBarProps = {
 
 const SOON_ICONS: Record<ParkedTabKey, IconComponent> = {
   rewards: QrCode,
-  reservations: CalendarCheck,
+  inbox: InboxIcon,
 };
 
 const ICONS: Record<string, IconComponent> = {
   home: MesitaMark as IconComponent,
   search: Search,
   rewards: QrCode,
-  reservations: CalendarCheck,
+  inbox: InboxIcon,
   me: User,
 };
 
-// The `reservations` route keeps its name; the TAB is labelled "Inbox" (Pato,
-// 2026-08-15) — a container for Reservations, Orders and Notifications, so it
-// can't be named after any one of them. Web BottomNav parity.
-// NOTE: notifications still live at their own /inbox/* routes, reached from
-// Me. Folding them in here is the outstanding half of this rename.
+// The route is now named `inbox` too — it used to be `reservations`, the tab
+// wearing a container's name while holding exactly one thing. It holds four
+// sections (Visits · Orders · Reservations · Notifications), so it can't be
+// named after any one of them. Icon is an inbox tray, not a calendar: a
+// calendar named RESERVATIONS. Web BottomNav parity.
 const LABELS: Record<string, string> = {
   home: 'Home',
   search: 'Search',
-  rewards: 'Rewards',
-  reservations: 'Inbox',
+  rewards: 'Visit',
+  inbox: 'Inbox',
   me: 'Me',
 };
 
 // Custom tab bar — RN port of web BottomNav: card/95 + blur, active top
-// pill + tinted icon circle + stroke-weight swap, dynamic `Me · <class>`.
+// pill + tinted icon circle + stroke-weight swap.
+//
+// Every tab shows its plain label. Me used to append the live class ("Me ·
+// Standard") — dropped 2026-08-16 (Pato: "only write me, its cleaner"). A tab
+// label names a DESTINATION; the class is status, and it belongs on the Me
+// screen where it can be read and acted on, not in the chrome of every screen.
 // Parked flags/copy live in parked-flags.ts (flip `soon` to unpark).
 // Deep-linked parked routes stay live; tab tap always opens ComingSoonModal.
 export function ConsumerTabBar({ state, navigation }: ConsumerTabBarProps) {
   const insets = useSafeAreaInsets();
   const reduceMotion = useReduceMotion();
-  const { consumerClass } = useAuth();
-  const classLabel = classProperLabel(consumerClass?.key ?? 'standard');
   const [soonKey, setSoonKey] = useState<ParkedTabKey | null>(null);
   const soon = soonKey ? PARKED.tabs[soonKey] : null;
   const SoonIcon = soonKey ? SOON_ICONS[soonKey] : undefined;
@@ -110,9 +116,7 @@ export function ConsumerTabBar({ state, navigation }: ConsumerTabBarProps) {
             const name = route.name;
             const Icon = ICONS[name] ?? User;
             const parked = isTabParked(name);
-            const baseLabel = LABELS[name] ?? name;
-            const displayLabel =
-              name === 'me' ? `${baseLabel} · ${classLabel}` : baseLabel;
+            const displayLabel = LABELS[name] ?? name;
             // Parked tabs never show focused chrome (web BottomNav soon buttons).
             const showActive = focused && !parked;
             const tint = showActive ? COLORS.primary : COLORS.mutedForeground;

@@ -7,10 +7,14 @@
 //
 // All FIVE labels fit the max-w-md frame at rest (Pato, 2026-08-16). They used
 // to overflow: the row scrolled and "Favorites" sat clipped mid-word at the
-// right edge, which reads as a broken render rather than an affordance — and
-// once Catalog un-parked, the clipped pill was hiding a LIVE mode. The fix is
-// metrics, not fewer modes: tighter pill padding, a tighter icon/label gap and
-// 14px icons buy back the ~50px needed, with the labels left intact.
+// right edge, which reads as a broken render rather than an affordance. The
+// fix is metrics, not fewer modes: tighter pill padding, a tighter icon/label
+// gap and 14px icons buy back the ~50px needed, labels left intact.
+//
+// Only Swipe and Favorites are FUNCTIONAL (Pato, 2026-08-16). Catalog, Chat
+// and Social are parked — all three keep working code on disk, so each is a
+// one-flag unpark, and all five pills stay visible so the row reads as the
+// finished shape rather than a surface still being assembled.
 //
 // The horizontal scroller stays as the fallback, not the resting state: at
 // large accessibility text sizes the row overflows again and scrolling is the
@@ -51,7 +55,17 @@ type Tab = {
 
 const TABS: Tab[] = [
   { href: CONSUMER_ROUTES.homeTabs.swipe, label: "Swipe", Icon: Flame },
-  { href: CONSUMER_ROUTES.homeTabs.catalog, label: "Catalog", Icon: LayoutGrid },
+  {
+    href: CONSUMER_ROUTES.homeTabs.catalog,
+    label: "Catalog",
+    Icon: LayoutGrid,
+    // RE-PARKED 2026-08-16 (Pato: "only functional must be swipe and
+    // favorites"). The grid itself is built and works — CatalogGrid stays on
+    // disk for a one-flag unpark, same convention as AskAiTab/SocialTab.
+    soon: true,
+    blurb:
+      "The full Mesita catalog — every place, browsable and filterable, without swiping. Coming soon.",
+  },
   {
     href: CONSUMER_ROUTES.homeTabs.ai,
     label: "Chat",

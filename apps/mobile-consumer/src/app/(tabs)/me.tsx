@@ -37,7 +37,7 @@ import { TAB_SCROLL_PADDING_BOTTOM } from '@/lib/tab-layout';
 import { BoxRow } from '@/components/ui/BoxRow';
 import { Button } from '@/components/ui/Button';
 import { apiFetchConsumerMetrics } from '@/lib/api/auth';
-import { inboxPath } from '@/lib/consumer-route-contract';
+import { inboxTabPath } from '@/lib/consumer-route-contract';
 import { CLASSES } from '@/lib/consumer-classes';
 import { useEffectiveClass } from '@/lib/mock-class';
 import {
@@ -196,7 +196,7 @@ export default function MeScreen() {
           tint="pink"
           title="Inbox"
           summary="Notifications and activity"
-          onPress={() => router.push(inboxPath('mine'))}
+          onPress={() => router.push(inboxTabPath())}
         />
 
         <BoxRow

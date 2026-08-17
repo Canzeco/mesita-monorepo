@@ -5,21 +5,25 @@ import { Z_BOTTOM_NAV } from "@/lib/z-index";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, type ComponentType } from "react";
-import { Search, QrCode, CalendarCheck, User } from "lucide-react";
+import { Search, QrCode, Inbox, User } from "lucide-react";
 import { MesitaMark } from "@/components/brand/MesitaMark";
 import { ComingSoonModal } from "./ComingSoonModal";
 import { cn } from "@/lib/utils";
-import { useConsumerClass } from "@/lib/class-context";
-import { classProperLabel } from "@/lib/consumer-data";
 import {
   CONSUMER_RESERVATION_SURFACE_PREFIX,
   CONSUMER_ROUTES,
   CONSUMER_ROUTE_PREFIX,
 } from "@/lib/consumer-route-contract";
 
-// Five top-level surfaces: Home, Search, Rewards, Inbox, Profile.
-// Home hosts the discovery routes (Swipe / Ask AI / Social / Favorites);
-// Search hosts the map + catalog search.
+// Five top-level surfaces: Home, Search, Rewards, Inbox, Me.
+// Home hosts the discovery routes (Swipe / Catalog / Chat / Social /
+// Favorites); Search hosts the map + catalog search.
+//
+// Every tab shows its plain label. Me used to append the live class ("Me ·
+// Standard") — dropped 2026-08-16 (Pato: "only write me, its cleaner"). A tab
+// label names a DESTINATION; the class is status, and status belongs on the Me
+// page where it can be read and acted on, not stamped into the chrome of every
+// screen.
 
 // Icon is either a lucide glyph or the Mesita brand mark (Home) — both take
 // a className and (harmlessly) a strokeWidth, so the render stays uniform.
@@ -28,6 +32,8 @@ type Item = {
   Icon: ComponentType<{ className?: string; strokeWidth?: number }>;
   label: string;
   match: string;
+  /** Second prefix that also lights this tab (Inbox: /reservation detail). */
+  alsoMatch?: string;
   // Surface is parked. Tab stays visible and tappable; tap opens
   // ComingSoonModal instead of navigating (MESITA-383 — no "Soon" pills).
   soon?: boolean;
@@ -53,34 +59,38 @@ const ITEMS: Item[] = [
   },
   {
     href: CONSUMER_ROUTE_PREFIX.rewards,
+    // QR is the right glyph and stays: showing the QR IS the visit.
     Icon: QrCode,
-    label: "Rewards",
+    // "Visit", not "Rewards" and explicitly NOT "Pay" (Pato, 2026-08-16).
+    // The object this tab creates is a VISIT — Inbox > Visits tracks the same
+    // thing — so the tab, the object and the section finally share one word.
+    // "Pay" was rejected because paying is one beat of a visit, and it also
+    // collides with Stripe checkout in this codebase's vocabulary.
+    label: "Visit",
     match: CONSUMER_ROUTE_PREFIX.rewards,
     // LIVE — the pass (QR + code + what you can claim + live visit) and the
     // ticket stack are built; the tab opens the real page.
   },
   {
-    href: CONSUMER_ROUTES.reservations,
-    Icon: CalendarCheck,
-    // "Inbox" is the container, not the function (Pato, 2026-08-15): the tab
-    // holds Reservations today, Orders next, and Notifications — so it can't
-    // be named after any one of them, and naming it for the mechanism
-    // ("Agent") would break the day places integrate directly. The routes
-    // stay /reservations — a booking is still a reservation, and renaming the
-    // tab doesn't rename the object.
-    // NOTE: notifications still live at their own /inbox/* routes, reached
-    // from Me. Folding them in here is the outstanding half of this rename.
+    href: CONSUMER_ROUTES.inboxDefault,
+    // An inbox tray, not a calendar. CalendarCheck named RESERVATIONS — fine
+    // when the tab was the reservations surface wearing a container's name,
+    // wrong now that the container actually holds four things and a booking
+    // is only one of them (Pato, 2026-08-16).
+    Icon: Inbox,
+    // "Inbox" is the container, not the function (Pato, 2026-08-15): it holds
+    // Visits · Orders · Reservations · Notifications, so it can't be named
+    // after any one of them, and naming it for the mechanism ("Agent") would
+    // break the day places integrate directly.
     label: "Inbox",
-    // Prefix `/reservation` also catches /reservation/[id] detail views.
-    match: CONSUMER_RESERVATION_SURFACE_PREFIX,
-    // LIVE since 2026-07-27 — the Reservationist books over the phone and the
-    // Upcoming/History tabs read consumer-web-list-reservations.
+    // Matched on TWO prefixes: /inbox for the sections, and /reservation for
+    // the detail view that deliberately stayed outside the tab's namespace.
+    match: CONSUMER_ROUTE_PREFIX.inbox,
+    alsoMatch: CONSUMER_RESERVATION_SURFACE_PREFIX,
   },
   {
     href: CONSUMER_ROUTES.me,
     Icon: User,
-    // Base label; the live class ("Me · Premium" / "Me · Standard") is stitched
-    // in at render from the server-seeded class context — see BottomNav below.
     label: "Me",
     match: CONSUMER_ROUTE_PREFIX.me,
   },
@@ -92,12 +102,6 @@ export function BottomNav({ userId }: { userId?: string }) {
   // site doesn't churn while other agents work this tree.
   void userId;
   const pathname = usePathname();
-  // Real, server-seeded class → the Me tab reads "Me · Premium" / "Me ·
-  // Aura" / "Me · Standard" instead of a literal "Class". Defaults to
-  // Standard before the shell seeds the profile (harmless: an elevated member is
-  // shown Standard for one paint at most).
-  const { key: classKey } = useConsumerClass();
-  const classLabel = classProperLabel(classKey);
   const [soonItem, setSoonItem] = useState<Item | null>(null);
 
   return (
@@ -110,20 +114,15 @@ export function BottomNav({ userId }: { userId?: string }) {
       >
         <div className="flex items-end justify-around">
           {ITEMS.map((item) => {
-            const { href, Icon, label, match, soon } = item;
+            const { href, Icon, label, match, alsoMatch, soon } = item;
             const active =
               pathname.startsWith(match) ||
+              (alsoMatch != null && pathname.startsWith(alsoMatch)) ||
               // Place detail modals opened from Home keep the Home tab lit.
               // (Legacy /profile no longer needs a match branch — it 308s to
               // /me in next.config before any client render.)
               (match === CONSUMER_ROUTE_PREFIX.home &&
                 pathname.startsWith(CONSUMER_ROUTE_PREFIX.place));
-            // The Me tab carries the live class suffix; every other tab keeps
-            // its static label.
-            const displayLabel =
-              match === CONSUMER_ROUTE_PREFIX.me
-                ? `${label} · ${classLabel}`
-                : label;
             // Parked surfaces stay tappable — open ComingSoonModal (no Soon pill).
             if (soon) {
               return (
@@ -138,7 +137,7 @@ export function BottomNav({ userId }: { userId?: string }) {
                     <Icon className="h-5 w-5" strokeWidth={1.75} />
                   </span>
                   <span className="w-full truncate text-center">
-                    {displayLabel}
+                    {label}
                   </span>
                 </button>
               );
@@ -171,7 +170,7 @@ export function BottomNav({ userId }: { userId?: string }) {
                   />
                 </span>
                 <span className="w-full truncate text-center">
-                  {displayLabel}
+                  {label}
                 </span>
               </Link>
             );
@@ -184,7 +183,11 @@ export function BottomNav({ userId }: { userId?: string }) {
         onClose={() => setSoonItem(null)}
         title={soonItem?.soonTitle ?? "Coming soon"}
         body={soonItem?.soonBody}
-        icon={soonItem?.Icon === CalendarCheck ? CalendarCheck : QrCode}
+        // Item.Icon is deliberately wider than LucideIcon (Home renders the
+        // brand mark), so it can't be forwarded here. No tab is parked today;
+        // when one is, give it a real lucide glyph rather than widening the
+        // modal's prop.
+        icon={QrCode}
       />
     </>
   );

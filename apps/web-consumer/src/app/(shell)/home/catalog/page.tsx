@@ -1,15 +1,15 @@
-"use client";
+import { redirect } from "next/navigation";
+import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 
-import { CatalogGrid } from "@/components/consumer/home/CatalogGrid";
-import { useHomeDeck } from "@/components/consumer/home/HomeDeckContext";
-
-// Catalog — the shared deck as a browsable grid (un-parked 2026-08-16).
+// Catalog is parked (Pato, 2026-08-16: only Swipe and Favorites are
+// functional). The redirect keeps deep links safe.
 //
-// `fetchError` rides along: with no deck there is nothing to browse at all, so
-// unlike Favorites (which falls back to stored previews) this surface has to
-// say the fetch failed rather than render an empty grid that looks like an
-// empty catalog.
+// The grid is BUILT and working — see CatalogGrid, which this page rendered
+// until it was re-parked. Un-parking is two edits: flip `soon: false` on the
+// Catalog tab in HomeModeNav and restore the two-line body here:
+//
+//   const { places, fetchError } = useHomeDeck();
+//   return <CatalogGrid places={places} fetchError={fetchError} />;
 export default function HomeCatalogPage() {
-  const { places, fetchError } = useHomeDeck();
-  return <CatalogGrid places={places} fetchError={fetchError} />;
+  redirect(CONSUMER_ROUTES.homeDefault);
 }

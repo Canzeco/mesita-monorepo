@@ -17,7 +17,7 @@ export const PARKED = {
     },
     // Un-parked (MESITA-715): booking is live, so the tab opens the real
     // Upcoming/History screen instead of a coming-soon dialog.
-    reservations: {
+    inbox: {
       soon: false,
       // Dormant copy (soon: false), but it names the SECTION, so it follows the
       // tab label: "Inbox", not "Reservations".

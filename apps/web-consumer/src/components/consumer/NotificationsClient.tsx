@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import { Bell } from "lucide-react";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import {
@@ -21,7 +20,6 @@ import {
 } from "@/components/consumer/ConsumerActivityList";
 import { NotificationRow } from "@/components/consumer/notification-row";
 import { SkeletonRow } from "@/components/shared";
-import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 
 export type InboxTab = "mine" | "global";
 
@@ -32,12 +30,11 @@ export function NotificationsClient({
   userId: string;
   initialTab: InboxTab;
 }) {
-  const router = useRouter();
   const supabase = useBrowserSupabase();
-  // `tab` is optimistic: onTabChange flips it immediately, then router.push
-  // re-renders with the route-derived `initialTab`. Rather than sync the prop
-  // into state via an effect (cascading render), adjust state during render
-  // when the incoming prop changes — React's recommended pattern.
+  // `initialTab` seeds the toggle and is still honoured if the prop changes
+  // under a mounted client. Rather than sync the prop into state via an
+  // effect (cascading render), adjust state during render when the incoming
+  // prop changes — React's recommended pattern.
   const [tab, setTab] = useState<InboxTab>(initialTab);
   const [prevInitialTab, setPrevInitialTab] = useState<InboxTab>(initialTab);
   if (initialTab !== prevInitialTab) {
@@ -87,15 +84,11 @@ export function NotificationsClient({
   const myCount = rows.length + MY_ACTIVITY.length;
   const globalCount = GLOBAL_ACTIVITY.length;
 
-  const onTabChange = (next: InboxTab) => {
-    setTab(next);
-    router.push(
-      next === "mine"
-        ? CONSUMER_ROUTES.inbox.mine
-        : CONSUMER_ROUTES.inbox.global,
-      { scroll: false },
-    );
-  };
+  // Mine/global is local state, not a route. The pair used to be two sibling
+  // routes (/inbox/mine + /inbox/global) reached from Me; now both are the
+  // one Notifications section of the Inbox tab, so flipping between them is
+  // a toggle inside a section rather than a navigation between sections.
+  const onTabChange = (next: InboxTab) => setTab(next);
 
   return (
     <div className="scrollbar-hide flex min-h-0 flex-1 flex-col overflow-y-auto px-4 pb-6">

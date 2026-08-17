@@ -18,7 +18,7 @@ export default async function ReservationDetailPage({
     <div className="relative flex h-full flex-col">
       <header className="bg-background/85 z-20 flex shrink-0 items-center gap-2 px-3 py-3 backdrop-blur">
         <Link
-          href={CONSUMER_ROUTES.reservations}
+          href={CONSUMER_ROUTES.inbox.reservations}
           aria-label="Back to reservations"
           className="border-border bg-card text-foreground hover:bg-muted flex h-9 w-9 shrink-0 items-center justify-center rounded-full border transition"
         >

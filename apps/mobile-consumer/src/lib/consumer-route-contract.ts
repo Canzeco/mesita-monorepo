@@ -14,7 +14,7 @@ import type { Href } from 'expo-router';
 //       in-screen state on mobile, not nested routes — same IA)
 //   web /search                            →  Expo /(tabs)/search
 //   web /rewards                           →  Expo /(tabs)/rewards  (also /rewards)
-//   web /reservations                      →  Expo /(tabs)/reservations
+//   web /inbox/<section>                   →  Expo /(tabs)/inbox (segments)
 //   web /reservation/:id                   →  Expo /reservation/[id]
 //   web /saved/reservations (legacy)       →  Expo /saved/reservations → tab
 //   web /pay (legacy)                      →  Expo /pay → /(tabs)/rewards
@@ -23,7 +23,7 @@ import type { Href } from 'expo-router';
 //   web /rewards/ticket/:id                →  Expo /rewards/ticket/[id]
 //   web /onboard                           →  Expo /onboard
 //   web /share                             →  Expo /share
-//   web /inbox/{mine,global}               →  Expo /inbox/{mine,global}
+//   web /inbox/{mine,global} (legacy)      →  Expo /inbox/* → the Inbox tab
 
 export const CONSUMER_ROUTES = {
   onboard: '/onboard',
@@ -48,7 +48,6 @@ export const CONSUMER_ROUTES = {
   place: {
     prefix: '/place/',
   },
-  reservations: '/(tabs)/reservations',
   reservation: {
     prefix: '/reservation/',
   },
@@ -56,10 +55,22 @@ export const CONSUMER_ROUTES = {
     root: '/(tabs)/rewards',
     ticketPrefix: '/rewards/ticket/',
   },
+  // Inbox — the container tab, four sections in a FIXED order (Pato,
+  // 2026-08-16): Visits · Orders · Reservations · Notifications, running from
+  // what you're doing right now out to the passive feed.
+  //
+  // Web makes these nested routes (/inbox/<section>); here the tab screen
+  // holds them as segments, which is the RN-native shape. These paths are the
+  // web contract mirrored for deep-link parity — the tab route itself is
+  // `/(tabs)/inbox`.
   inbox: {
-    mine: '/inbox/mine',
-    global: '/inbox/global',
+    root: '/(tabs)/inbox',
+    visits: '/inbox/visits',
+    orders: '/inbox/orders',
+    reservations: '/inbox/reservations',
+    notifications: '/inbox/notifications',
   },
+  inboxDefault: '/(tabs)/inbox',
   me: '/(tabs)/me',
   // Premium checkout deliberately has NO mobile route (Apple review — the
   // sole sanctioned web/mobile divergence): subscribing happens on web at
@@ -73,6 +84,12 @@ export const CONSUMER_ROUTES = {
     notifications: '/notifications',
     inboxMine: '/inbox/my-activity',
     inboxGlobal: '/inbox/global-activity',
+    // The notifications pair reached from Me, before Inbox became one surface
+    // with four sections. Both fold into the Notifications section.
+    inboxMineTab: '/inbox/mine',
+    inboxGlobalTab: '/inbox/global',
+    // The reservations LIST used to be its own tab route.
+    reservations: '/(tabs)/reservations',
     placePrefix: '/place/',
     ticketPrefix: '/ticket/',
     pay: '/pay',
@@ -89,8 +106,15 @@ function asHref(path: string): Href {
 }
 
 /** Inbox routes exist on disk; typed-routes lag until expo export regenerates. */
-export function inboxPath(which: 'mine' | 'global' = 'mine'): Href {
-  return asHref(CONSUMER_ROUTES.inbox[which]);
+export function inboxPath(
+  section: 'visits' | 'orders' | 'reservations' | 'notifications' = 'visits',
+): Href {
+  return asHref(CONSUMER_ROUTES.inbox[section]);
+}
+
+/** The Inbox TAB itself (not a section deep link). */
+export function inboxTabPath(): Href {
+  return asHref(CONSUMER_ROUTES.inboxDefault);
 }
 
 export function filtersPath(): Href {
