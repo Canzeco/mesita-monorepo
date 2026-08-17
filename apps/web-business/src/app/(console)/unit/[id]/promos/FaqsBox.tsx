@@ -168,7 +168,7 @@ function PremiumExamples({
       ? Math.min(
           RATE_MAX,
           cfg.visits.base[paidStrategy].bronze[plan] +
-            (welcome ? cfg.visits.bonuses.welcome : 0),
+            (welcome ? cfg.visits.bonuses[paidStrategy].welcome : 0),
         )
       : null;
 

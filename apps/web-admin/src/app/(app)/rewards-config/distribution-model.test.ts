@@ -108,8 +108,8 @@ describe("distributionFor", () => {
   it("caps a stacked visit at 100%", () => {
     const rich = structuredClone(DEFAULT_PROMOS);
     rich.visits.base.aggressive.diamond.free = 70;
-    rich.visits.bonuses.welcome = 70;
-    rich.visits.bonuses.google = 70;
+    rich.visits.bonuses.aggressive.welcome = 70;
+    rich.visits.bonuses.aggressive.google = 70;
     const r = distributionFor(
       rich,
       {

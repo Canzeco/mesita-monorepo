@@ -191,7 +191,7 @@ Deno.serve(async (req) => {
   // a visit. The per-class story override is gone with the `influencer`
   // class; class is paid for once, in the base.
   const { cls, plan } = identityForClassKey(classKey);
-  const b = promos.visits.bonuses;
+  const b = promos.visits.bonuses[strategy];
 
   // THE TICKET v4's Reward step (MESITA-1089) renders the base as LANES —
   // automatic floor · class · plan — so the guest sees what each axis of

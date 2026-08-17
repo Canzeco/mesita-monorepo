@@ -44,15 +44,18 @@ export type ContextBonuses = {
   google: number;
 };
 
+/** Bonuses are per strategy as well as per context (admin twin). */
+export type StrategyBonuses = Record<StrategyKey, ContextBonuses>;
+
 export type PromosConfig = {
   version: 11;
   visits: {
     base: Record<StrategyKey, Record<ClassKey, Record<PlanKey, number>>>;
-    bonuses: ContextBonuses;
+    bonuses: StrategyBonuses;
   };
   orders: {
     base: Record<StrategyKey, Record<PlanKey, number>>;
-    bonuses: ContextBonuses;
+    bonuses: StrategyBonuses;
     soon: boolean;
   };
   cap: number;
@@ -99,14 +102,20 @@ export const DEFAULT_PROMOS: PromosConfig = {
         diamond: { free: 50, premium: 70 },
       },
     },
-    bonuses: { welcome: 10, mesita: 5, story: 10, google: 15 },
+    bonuses: {
+      conservative: { welcome: 10, mesita: 5, story: 10, google: 15 },
+      aggressive: { welcome: 10, mesita: 5, story: 10, google: 15 },
+    },
   },
   orders: {
     base: {
       conservative: { free: 5, premium: 10 },
       aggressive: { free: 10, premium: 15 },
     },
-    bonuses: { welcome: 5, mesita: 5, story: 5, google: 10 },
+    bonuses: {
+      conservative: { welcome: 5, mesita: 5, story: 5, google: 10 },
+      aggressive: { welcome: 5, mesita: 5, story: 5, google: 10 },
+    },
     soon: true,
   },
   cap: 500,
@@ -127,7 +136,7 @@ const isClass = (v: unknown): v is ClassKey =>
 const isPlan = (v: unknown): v is PlanKey =>
   (PLAN_KEYS as readonly unknown[]).includes(v);
 
-function coerceBonuses(raw: unknown, d: ContextBonuses): ContextBonuses {
+function coerceOneBonusSet(raw: unknown, d: ContextBonuses): ContextBonuses {
   const b = (raw ?? {}) as Record<string, unknown>;
   return {
     welcome: snapRate(b.welcome, d.welcome),
@@ -135,6 +144,17 @@ function coerceBonuses(raw: unknown, d: ContextBonuses): ContextBonuses {
     story: snapRate(b.story, d.story),
     google: snapRate(b.google, d.google),
   };
+}
+
+/** Accepts BOTH the flat legacy shape and the per-strategy one. */
+function coerceBonuses(raw: unknown, d: StrategyBonuses): StrategyBonuses {
+  const b = (raw ?? {}) as Record<string, unknown>;
+  const isFlat = STRATEGY_KEYS.every((s) => b[s] === undefined);
+  const out = {} as StrategyBonuses;
+  for (const s of STRATEGY_KEYS) {
+    out[s] = coerceOneBonusSet(isFlat ? b : b[s], d[s]);
+  }
+  return out;
 }
 
 const midpoint = (a: number, b: number) =>
@@ -275,8 +295,12 @@ export const ACTION_META: Record<ActionKey, { name: string; emoji: string }> = {
 };
 
 /** The bonus an action adds on a visit (standing = 0). */
-function bonusFor(cfg: PromosConfig, action: ActionKey): number {
-  const b = cfg.visits.bonuses;
+function bonusFor(
+  cfg: PromosConfig,
+  strategy: StrategyKey,
+  action: ActionKey,
+): number {
+  const b = cfg.visits.bonuses[strategy];
   switch (action) {
     case "standing":
       return 0;
@@ -305,7 +329,7 @@ export function totalFor(
 ): number {
   return Math.min(
     RATE_MAX,
-    cfg.visits.base[strategy][cls][plan] + bonusFor(cfg, action),
+    cfg.visits.base[strategy][cls][plan] + bonusFor(cfg, strategy, action),
   );
 }
 
@@ -356,7 +380,7 @@ function visitTotal(
   story: boolean,
   google: boolean,
 ): number {
-  const b = cfg.visits.bonuses;
+  const b = cfg.visits.bonuses[strategy];
   return Math.min(
     100,
     cfg.visits.base[strategy][cls][plan] +

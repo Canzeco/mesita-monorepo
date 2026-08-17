@@ -90,7 +90,7 @@ function visitTotal(
   story: boolean,
   google: boolean,
 ): number {
-  const b = cfg.visits.bonuses;
+  const b = cfg.visits.bonuses[strategy];
   const total =
     visitsBaseFor(cfg, strategy, cls, plan) +
     (welcome ? b.welcome : 0) +

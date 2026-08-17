@@ -436,7 +436,9 @@ function resolveAdditiveRate(
   ctx: RateContext,
 ): number {
   const { cls, plan } = identityForClassKey(ctx.classKey);
-  const b = cfg.visits.bonuses;
+  // Bonuses are per strategy: Aggressive out-pays Conservative on the actions
+  // exactly as it does on standing.
+  const b = cfg.visits.bonuses[strategy];
   let total = cfg.visits.base[strategy][cls][plan];
   // D3-A: Welcome grants on the first verified ticket at the place — not
   // gated on a Google review (that was the v9 coupling).
@@ -494,7 +496,7 @@ export function offersAction(
 ): boolean {
   if (strategy === "zero") return false;
   if (grid.promos) {
-    const b = grid.promos.visits.bonuses;
+    const b = grid.promos.visits.bonuses[strategy];
     switch (action) {
       case "welcome":
         return b.welcome > 0;

@@ -17,8 +17,10 @@ import {
   deriveVisits,
   expandOrders,
   expandVisits,
+  type BonusKey,
   type OrdersComponents,
   type PromosConfig,
+  type StrategyKey,
   type VisitsComponents,
 } from "./promos";
 
@@ -44,7 +46,8 @@ type PromosStateValue = {
   setOrders: (next: OrdersComponents) => void;
   setBonus: (
     context: "visits" | "orders",
-    key: keyof PromosConfig["visits"]["bonuses"],
+    strategy: StrategyKey,
+    key: BonusKey,
     value: number,
   ) => void;
   setCap: (value: number) => void;
@@ -158,10 +161,16 @@ export function PromosState({
       setOrdersState(next);
       setOk(false);
     },
-    setBonus: (context, key, v) => {
+    setBonus: (context, strategy, key, v) => {
       setCfg((c) => ({
         ...c,
-        [context]: { ...c[context], bonuses: { ...c[context].bonuses, [key]: v } },
+        [context]: {
+          ...c[context],
+          bonuses: {
+            ...c[context].bonuses,
+            [strategy]: { ...c[context].bonuses[strategy], [key]: v },
+          },
+        },
       }));
       setOk(false);
     },

@@ -45,8 +45,10 @@ Deno.test("normalizePromosV11: snaps to the 5% grid, drops unknown keys", () => 
     extra: true,
   });
   assertEquals(cfg.visits.base.conservative.bronze.free, 10);
-  assertEquals(cfg.visits.bonuses.welcome, 70); // ceiling
-  assertEquals(cfg.visits.bonuses.mesita, 0); // ≤0 → off
+  // A FLAT bonus body fans out to every strategy (the legacy shape).
+  assertEquals(cfg.visits.bonuses.conservative.welcome, 70); // ceiling
+  assertEquals(cfg.visits.bonuses.conservative.mesita, 0); // ≤0 → off
+  assertEquals(cfg.visits.bonuses.aggressive.welcome, 70);
   assertEquals(cfg.cap, 500);
   assertEquals("extra" in cfg, false);
   assertEquals(
@@ -100,12 +102,25 @@ Deno.test("migration: carries the plan uplift across classes, interpolates gold"
 
 Deno.test("migration: drops the retired influencer story override", () => {
   const cfg = ok(V10);
-  assertEquals(cfg.visits.bonuses, {
-    welcome: 10,
-    mesita: 5,
-    story: 10,
-    google: 10,
+  // v10's single flat set fans out to both strategies unchanged, so the
+  // migrated config bills identically.
+  const expected = { welcome: 10, mesita: 5, story: 10, google: 10 };
+  assertEquals(cfg.visits.bonuses.conservative, expected);
+  assertEquals(cfg.visits.bonuses.aggressive, expected);
+});
+
+Deno.test("bonuses: a PER-STRATEGY body is kept as sent, not flattened", () => {
+  const cfg = ok({
+    version: 11,
+    visits: {
+      bonuses: {
+        conservative: { welcome: 10, mesita: 5, story: 10, google: 15 },
+        aggressive: { welcome: 20, mesita: 10, story: 20, google: 25 },
+      },
+    },
   });
+  assertEquals(cfg.visits.bonuses.aggressive.google, 25);
+  assertEquals(cfg.visits.bonuses.conservative.google, 15);
 });
 
 Deno.test("migration: an uplifted cell clamps at the 70% ceiling", () => {
