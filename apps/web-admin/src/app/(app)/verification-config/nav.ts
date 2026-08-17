@@ -6,6 +6,6 @@ import { BadgeCheck } from "lucide-react";
 // Verification Queue (manual review of claims).
 export const VERIFICATION_PARENT = {
   href: "/verification-config",
-  label: "Verification Config",
+  label: "Verification",
   Icon: BadgeCheck,
 } as const;

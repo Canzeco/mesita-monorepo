@@ -37,26 +37,30 @@ const nextConfig: NextConfig = {
         destination: "/place/:id",
         permanent: true,
       },
-      // Pay era (the Rewards surface used to live at /pay).
+      // The centre tab: /pay -> /rewards -> /new-visit. Both the /pay era AND
+      // the /rewards era forward here now; /rewards and /rewards/ticket/:id
+      // were the LIVE urls until this change, so they need the forwarding
+      // address most, and everything else in this block used to chain through
+      // them (MESITA-1062 eng review, A5).
+      { source: "/rewards", destination: "/new-visit", permanent: true },
+      { source: "/pay", destination: "/new-visit", permanent: true },
+      { source: "/pay/:tab", destination: "/new-visit", permanent: true },
+      { source: "/qr", destination: "/new-visit", permanent: true },
+      // A single visit. The OBJECT is still a ticket; only the URL says visit.
       {
-        source: "/pay/ticket/:id",
-        destination: "/rewards/ticket/:id",
+        source: "/rewards/ticket/:id",
+        destination: "/visit/:id",
         permanent: true,
       },
+      { source: "/pay/ticket/:id", destination: "/visit/:id", permanent: true },
       {
         source: "/pay/tickets/:id",
-        destination: "/rewards/ticket/:id",
+        destination: "/visit/:id",
         permanent: true,
       },
-      { source: "/pay/:tab", destination: "/rewards", permanent: true },
-      { source: "/pay", destination: "/rewards", permanent: true },
-      { source: "/qr", destination: "/rewards", permanent: true },
-      {
-        source: "/ticket/:id",
-        destination: "/rewards/ticket/:id",
-        permanent: true,
-      },
+      { source: "/ticket/:id", destination: "/visit/:id", permanent: true },
       // Renamed surfaces.
+      { source: "/home/ai", destination: "/home/chat", permanent: true },
       { source: "/invite", destination: "/share", permanent: true },
       { source: "/profile", destination: "/me", permanent: true },
       {

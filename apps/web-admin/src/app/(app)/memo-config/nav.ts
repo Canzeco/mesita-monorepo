@@ -14,7 +14,7 @@ import {
 // enricher-config / atlas-config).
 export const MEMO_PARENT = {
   href: "/memo-config",
-  label: "Memo Config",
+  label: "Memo",
   Icon: MessagesSquare,
 } as const;
 

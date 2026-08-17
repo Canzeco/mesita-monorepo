@@ -7,6 +7,6 @@ import { Database } from "lucide-react";
 // against the singleton backend.
 export const DB_PARENT = {
   href: "/manage-database",
-  label: "Manage Database",
+  label: "Database",
   Icon: Database,
 } as const;
