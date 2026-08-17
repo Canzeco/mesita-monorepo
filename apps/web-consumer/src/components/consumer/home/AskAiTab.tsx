@@ -16,6 +16,7 @@ import { placeHref } from "@/lib/place-route";
 import { toast } from "@/lib/toast";
 import { errMsg } from "@/lib/utils";
 import { AskAiPanel } from "@/components/consumer/search/AskAiPanel";
+import { MemoModeHeader } from "@/components/consumer/home/MemoModeHeader";
 import { matchPredictionToPlace } from "@/components/consumer/search/search-utils";
 import type { AddState } from "@/components/consumer/search/add-state";
 
@@ -88,15 +89,23 @@ export function AskAiTab({ places }: { places: Place[] }) {
     [addStates, supabase],
   );
 
+  // Header (shrink-0) + panel (min-h-0 flex-1): the thread scrolls under a
+  // pinned header rather than pushing it off, the same two-part shape the
+  // place-detail shells use.
   return (
-    <AskAiPanel
-      layout="inline"
-      ask={askMemo}
-      loadGreeting={loadGreeting}
-      addStates={addStates}
-      resolvePlace={resolvePlace}
-      onInfo={handleInfo}
-      onAdd={handleAdd}
-    />
+    <div className="flex h-full min-h-0 flex-col">
+      <MemoModeHeader />
+      <div className="min-h-0 flex-1">
+        <AskAiPanel
+          layout="inline"
+          ask={askMemo}
+          loadGreeting={loadGreeting}
+          addStates={addStates}
+          resolvePlace={resolvePlace}
+          onInfo={handleInfo}
+          onAdd={handleAdd}
+        />
+      </div>
+    </div>
   );
 }
