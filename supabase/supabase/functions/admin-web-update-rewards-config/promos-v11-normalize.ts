@@ -102,15 +102,23 @@ export type ContextBonuses = {
   google: number;
 };
 
+/**
+ * Bonuses are per STRATEGY as well as per context — Aggressive out-pays
+ * Conservative on the actions exactly as it does on standing. A blob written
+ * before this dimension existed is FLAT and migrates by copying its one set to
+ * every strategy, so no bill moves and no version bump is needed.
+ */
+export type StrategyBonuses = Record<StrategyKey, ContextBonuses>;
+
 export type PromosConfigV11 = {
   version: 11;
   visits: {
     base: Record<StrategyKey, Record<ClassKey, Record<PlanKey, number>>>;
-    bonuses: ContextBonuses;
+    bonuses: StrategyBonuses;
   };
   orders: {
     base: Record<StrategyKey, Record<PlanKey, number>>;
-    bonuses: ContextBonuses;
+    bonuses: StrategyBonuses;
     soon: boolean;
   };
   cap: number;
@@ -148,14 +156,20 @@ export const DEFAULT_PROMOS_V11: PromosConfigV11 = {
         diamond: { free: 50, premium: 70 },
       },
     },
-    bonuses: { welcome: 10, mesita: 5, story: 10, google: 15 },
+    bonuses: {
+      conservative: { welcome: 10, mesita: 5, story: 10, google: 15 },
+      aggressive: { welcome: 10, mesita: 5, story: 10, google: 15 },
+    },
   },
   orders: {
     base: {
       conservative: { free: 5, premium: 10 },
       aggressive: { free: 10, premium: 15 },
     },
-    bonuses: { welcome: 5, mesita: 5, story: 5, google: 10 },
+    bonuses: {
+      conservative: { welcome: 5, mesita: 5, story: 5, google: 10 },
+      aggressive: { welcome: 5, mesita: 5, story: 5, google: 10 },
+    },
     soon: true,
   },
   cap: CAP_DEFAULT,
@@ -184,7 +198,7 @@ const isClass = (v: unknown): v is ClassKey =>
 const isPlan = (v: unknown): v is PlanKey =>
   (PLAN_KEYS as readonly unknown[]).includes(v);
 
-function coerceBonuses(raw: unknown, d: ContextBonuses): ContextBonuses {
+function coerceOneBonusSet(raw: unknown, d: ContextBonuses): ContextBonuses {
   const b = (raw ?? {}) as Record<string, unknown>;
   return {
     welcome: snapRate(b.welcome, d.welcome),
@@ -192,6 +206,17 @@ function coerceBonuses(raw: unknown, d: ContextBonuses): ContextBonuses {
     story: snapRate(b.story, d.story),
     google: snapRate(b.google, d.google),
   };
+}
+
+/** Accepts BOTH the flat legacy shape and the per-strategy one. */
+function coerceBonuses(raw: unknown, d: StrategyBonuses): StrategyBonuses {
+  const b = (raw ?? {}) as Record<string, unknown>;
+  const isFlat = STRATEGY_KEYS.every((s) => b[s] === undefined);
+  const out = {} as StrategyBonuses;
+  for (const s of STRATEGY_KEYS) {
+    out[s] = coerceOneBonusSet(isFlat ? b : b[s], d[s]);
+  }
+  return out;
 }
 
 /** Snap to the 5% grid without snapRate's floor/ceiling clamp. */
@@ -254,6 +279,8 @@ function migrateV10(r: Record<string, unknown>): PromosConfigV11 {
     version: 11,
     visits: {
       base: visitsBase,
+      // A v10 blob has ONE flat bonus set; coerceBonuses fans it out to
+      // every strategy, so the migrated config bills identically.
       bonuses: coerceBonuses(r.bonuses, d.visits.bonuses),
     },
     orders: structuredClone(d.orders),
@@ -451,7 +478,7 @@ export function legacyRulesFromV11(cfg: PromosConfigV11): LegacyRuleRow[] {
           discount_percent: Math.min(
             RATE_MAX,
             cfg.visits.base[strategy][cls][plan] +
-              bonusForAction(cfg.visits.bonuses, action),
+              bonusForAction(cfg.visits.bonuses[strategy], action),
           ),
         });
       }

@@ -59,12 +59,20 @@ export type VisitsBase = Record<
 /** orders: class does not resolve remotely, so plan alone prices the row. */
 export type OrdersBase = Record<StrategyKey, Record<PlanKey, number>>;
 
+/**
+ * Bonuses are per STRATEGY as well as per context: a place on Aggressive pays
+ * more for a Google review than one on Conservative, exactly as it pays more
+ * for standing. "Strategies write the ladder" means the WHOLE ladder, and the
+ * four-box editor would otherwise bind two controls to one number.
+ */
+export type StrategyBonuses = Record<StrategyKey, ContextBonuses>;
+
 export type PromosConfig = {
   version: 11;
-  visits: { base: VisitsBase; bonuses: ContextBonuses };
+  visits: { base: VisitsBase; bonuses: StrategyBonuses };
   orders: {
     base: OrdersBase;
-    bonuses: ContextBonuses;
+    bonuses: StrategyBonuses;
     /** Always true today — the remote bill path does not exist yet. */
     soon: boolean;
   };
@@ -257,14 +265,20 @@ export const DEFAULT_PROMOS: PromosConfig = {
         diamond: { free: 50, premium: 70 },
       },
     },
-    bonuses: { welcome: 10, mesita: 5, story: 10, google: 15 },
+    bonuses: {
+      conservative: { welcome: 10, mesita: 5, story: 10, google: 15 },
+      aggressive: { welcome: 10, mesita: 5, story: 10, google: 15 },
+    },
   },
   orders: {
     base: {
       conservative: { free: 5, premium: 10 },
       aggressive: { free: 10, premium: 15 },
     },
-    bonuses: { welcome: 5, mesita: 5, story: 5, google: 10 },
+    bonuses: {
+      conservative: { welcome: 5, mesita: 5, story: 5, google: 10 },
+      aggressive: { welcome: 5, mesita: 5, story: 5, google: 10 },
+    },
     soon: true,
   },
   cap: CAP_DEFAULT,
@@ -285,7 +299,7 @@ const isClass = (v: unknown): v is ClassKey =>
 const isPlan = (v: unknown): v is PlanKey =>
   (PLAN_KEYS as readonly unknown[]).includes(v);
 
-function coerceBonuses(raw: unknown, d: ContextBonuses): ContextBonuses {
+function coerceOneBonusSet(raw: unknown, d: ContextBonuses): ContextBonuses {
   const b = (raw ?? {}) as Record<string, unknown>;
   return {
     welcome: snapRate(b.welcome, d.welcome),
@@ -293,6 +307,22 @@ function coerceBonuses(raw: unknown, d: ContextBonuses): ContextBonuses {
     story: snapRate(b.story, d.story),
     google: snapRate(b.google, d.google),
   };
+}
+
+/**
+ * Bonuses accept BOTH shapes. A stored blob written before bonuses gained the
+ * strategy dimension is FLAT (`{welcome, mesita, story, google}`); it migrates
+ * by copying that one set to every strategy, so no bill moves. No version bump
+ * — the reader absorbs the difference.
+ */
+function coerceBonuses(raw: unknown, d: StrategyBonuses): StrategyBonuses {
+  const b = (raw ?? {}) as Record<string, unknown>;
+  const isFlat = STRATEGY_KEYS.every((s) => b[s] === undefined);
+  const out = {} as StrategyBonuses;
+  for (const s of STRATEGY_KEYS) {
+    out[s] = coerceOneBonusSet(isFlat ? b : b[s], d[s]);
+  }
+  return out;
 }
 
 /**
@@ -503,7 +533,7 @@ export function totalFor(
 ): number {
   return (
     visitsBaseFor(cfg, strategy, cls, plan) +
-    bonusForAction(cfg.visits.bonuses, action)
+    bonusForAction(cfg.visits.bonuses[strategy], action)
   );
 }
 
@@ -665,17 +695,18 @@ export type ModelWarning = { key: string; message: string };
 
 export function modelWarnings(cfg: PromosConfig): ModelWarning[] {
   const out: ModelWarning[] = [];
-  const v = cfg.visits;
-
-  if (v.bonuses.google <= v.bonuses.story) {
-    out.push({
-      key: "google-vs-story",
-      message:
-        `Google Review (${v.bonuses.google}%) should out-pay Instagram Story ` +
-        `(${v.bonuses.story}%) — Google is one-shot per guest, the Story repeats.`,
-    });
+  for (const s of STRATEGY_KEYS) {
+    const b = cfg.visits.bonuses[s];
+    if (b.google <= b.story) {
+      out.push({
+        key: `google-vs-story-${s}`,
+        message:
+          `${STRATEGY_META[s].name} · Google Review (${b.google}%) should ` +
+          `out-pay Instagram Story (${b.story}%) — Google is one-shot per ` +
+          `guest, the Story repeats.`,
+      });
+    }
   }
-
   return out;
 }
 
@@ -757,7 +788,9 @@ export function seedFromLegacyRules(rawRules: unknown): PromosConfig | null {
   }
 
   const refBase = at("conservative", "standard", "standing");
-  const d = DEFAULT_PROMOS.visits.bonuses;
+  // The legacy rule table has NO strategy axis on bonuses, so one set is
+  // derived off the Conservative·standard row and coerceBonuses fans it out.
+  const d = DEFAULT_PROMOS.visits.bonuses.conservative;
   const diff = (a: ActionKey, fallback: number) => {
     const v = at("conservative", "standard", a);
     return typeof v === "number" && typeof refBase === "number"

@@ -232,7 +232,8 @@ describe("giveLevel — the card's number and meter", () => {
       off.visits.base.conservative[cls] = { free: 0, premium: 0 };
       off.visits.base.aggressive[cls] = { free: 0, premium: 0 };
     }
-    off.visits.bonuses = { welcome: 0, mesita: 0, story: 0, google: 0 };
+    const zeroed = { welcome: 0, mesita: 0, story: 0, google: 0 };
+    off.visits.bonuses = { conservative: zeroed, aggressive: { ...zeroed } };
     expect(giveLevel(off, "aggressive").dots).toBe(0);
   });
 });

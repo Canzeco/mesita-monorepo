@@ -1508,7 +1508,7 @@ function PremiumExamples({
       ? Math.min(
           RATE_MAX,
           matrix.visits.base[paidStrategy].bronze[plan] +
-            (welcome ? matrix.visits.bonuses.welcome : 0),
+            (welcome ? matrix.visits.bonuses[paidStrategy].welcome : 0),
         )
       : null;
 

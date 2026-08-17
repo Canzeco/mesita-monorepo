@@ -17,9 +17,7 @@ import { usePromosState } from "./PromosState";
 // control that does not belong to it.
 export function PromosSaveFooter() {
   const pathname = usePathname();
-  const editable =
-    pathname?.startsWith("/rewards-config/visits") ||
-    pathname?.startsWith("/rewards-config/orders");
+  const editable = pathname?.startsWith("/rewards-config/tiers");
 
   const {
     dirty,
@@ -44,7 +42,7 @@ export function PromosSaveFooter() {
           <Link href="/aura-consumers" className="underline underline-offset-2">
             Aura Consumers
           </Link>
-          . Edits on Visits and Orders share one Save.
+          . All four tiers share one Save.
         </p>
         <button
           type="button"

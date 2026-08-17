@@ -52,7 +52,7 @@ export function ResolvedLedger({ cfg }: { cfg: PromosConfig }) {
     google: false,
   });
 
-  const b = cfg.visits.bonuses;
+  const b = cfg.visits.bonuses[p.strategy];
   const base = cfg.visits.base[p.strategy].bronze.free;
   const classAdds = cfg.visits.base[p.strategy][p.cls].free - base;
   const planAdds = cfg.visits.base[p.strategy].bronze.premium - base;

@@ -109,7 +109,9 @@ describe("coercePromosConfig — it comes off the wire", () => {
       },
     });
     expect(cfg.visits.base.aggressive.diamond.free).toBe(55);
-    expect(cfg.visits.bonuses.welcome).toBe(15);
+    // A flat bonus body fans out to every strategy.
+    expect(cfg.visits.bonuses.conservative.welcome).toBe(15);
+    expect(cfg.visits.bonuses.aggressive.welcome).toBe(15);
     // Untouched keys keep the defaults rather than blanking.
     expect(cfg.visits.base.conservative).toEqual(
       DEFAULT_PROMOS.visits.base.conservative,
@@ -117,7 +119,9 @@ describe("coercePromosConfig — it comes off the wire", () => {
     expect(cfg.visits.base.aggressive.diamond.premium).toBe(
       DEFAULT_PROMOS.visits.base.aggressive.diamond.premium,
     );
-    expect(cfg.visits.bonuses.google).toBe(DEFAULT_PROMOS.visits.bonuses.google);
+    expect(cfg.visits.bonuses.conservative.google).toBe(
+      DEFAULT_PROMOS.visits.bonuses.conservative.google,
+    );
   });
 
   it("drops unknown keys instead of trusting them", () => {

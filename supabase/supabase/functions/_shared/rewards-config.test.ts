@@ -454,7 +454,12 @@ Deno.test("resolveTicketRate: v11 additive — zero still pays nothing", () => {
 Deno.test("resolveTicketRate: v11 additive — clamps at 100", () => {
   const hot = structuredClone(DEFAULT_PROMOS_V11);
   hot.visits.base.aggressive.diamond.free = 70;
-  hot.visits.bonuses = { welcome: 70, mesita: 70, story: 70, google: 70 };
+  hot.visits.bonuses.aggressive = {
+    welcome: 70,
+    mesita: 70,
+    story: 70,
+    google: 70,
+  };
   const g = { ...DEFAULT_REWARDS_GRID, promos: hot, cap: hot.cap };
   assertEquals(
     resolveTicketRate("aggressive", g, {

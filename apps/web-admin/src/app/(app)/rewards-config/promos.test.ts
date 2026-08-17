@@ -48,8 +48,10 @@ describe("coercePromosConfig", () => {
     expect(cfg.visits.base.aggressive).toEqual(
       DEFAULT_PROMOS.visits.base.aggressive,
     );
-    expect(cfg.visits.bonuses.welcome).toBe(70); // ceiling
-    expect(cfg.visits.bonuses.mesita).toBe(0); // ≤0 → off
+    // A FLAT bonus body fans out to every strategy (the legacy shape).
+    expect(cfg.visits.bonuses.conservative.welcome).toBe(70); // ceiling
+    expect(cfg.visits.bonuses.conservative.mesita).toBe(0); // ≤0 → off
+    expect(cfg.visits.bonuses.aggressive.welcome).toBe(70);
     expect(cfg.cap).toBe(500);
     expect("extra" in cfg).toBe(false);
   });
@@ -110,13 +112,9 @@ describe("v10 → v11 migration", () => {
 
   it("drops the influencer story override and keeps the cap", () => {
     const cfg = coercePromosConfig(V10);
-    expect(cfg.visits.bonuses).toEqual({
-      welcome: 10,
-      mesita: 5,
-      story: 10,
-      google: 10,
-    });
-    expect("story_influencer" in cfg.visits.bonuses).toBe(false);
+    const expected = { welcome: 10, mesita: 5, story: 10, google: 10 };
+    expect(cfg.visits.bonuses.conservative).toEqual(expected);
+    expect(cfg.visits.bonuses.aggressive).toEqual(expected);
     expect(cfg.cap).toBe(200);
   });
 
@@ -164,7 +162,7 @@ describe("totalFor + legacyRulesFrom (the engine bridge)", () => {
     for (const cls of ["bronze", "silver", "gold", "diamond"] as const) {
       const base = DEFAULT_PROMOS.visits.base.conservative[cls].free;
       expect(totalFor(DEFAULT_PROMOS, "conservative", cls, "free", "story")).toBe(
-        base + DEFAULT_PROMOS.visits.bonuses.story,
+        base + DEFAULT_PROMOS.visits.bonuses.conservative.story,
       );
     }
   });
@@ -206,8 +204,10 @@ describe("modelWarnings", () => {
   it("flags Google failing to out-pay the repeatable Story", () => {
     // The one-shot rung must beat the one a guest can repeat every visit.
     const cfg = structuredClone(DEFAULT_PROMOS);
-    cfg.visits.bonuses.google = cfg.visits.bonuses.story;
-    expect(modelWarnings(cfg).map((w) => w.key)).toEqual(["google-vs-story"]);
+    cfg.visits.bonuses.aggressive.google = cfg.visits.bonuses.aggressive.story;
+    expect(modelWarnings(cfg).map((w) => w.key)).toEqual([
+      "google-vs-story-aggressive",
+    ]);
   });
 
   it("no longer reports class order or plan uplift — the guard makes them unstorable", () => {
@@ -275,12 +275,11 @@ describe("seedFromLegacyRules", () => {
       free: 20,
       premium: 30,
     });
-    expect(seeded?.visits.bonuses).toEqual({
-      welcome: 20,
-      mesita: 5,
-      story: 10,
-      google: 15,
-    });
+    // The legacy rule table has no strategy dimension on bonuses, so the one
+    // derived set fans out to both.
+    const expectedBonuses = { welcome: 20, mesita: 5, story: 10, google: 15 };
+    expect(seeded?.visits.bonuses.conservative).toEqual(expectedBonuses);
+    expect(seeded?.visits.bonuses.aggressive).toEqual(expectedBonuses);
   });
 });
 
@@ -362,5 +361,32 @@ describe("additivityError — the guard", () => {
       base.aggressive[cls].premium = base.aggressive[cls].free - 5;
     }
     expect(additivityError(base)).toMatch(/cost the guest money/);
+  });
+});
+
+describe("bonuses are per strategy", () => {
+  it("a PER-STRATEGY body survives the round trip", () => {
+    const cfg = coercePromosConfig({
+      version: 11,
+      visits: {
+        bonuses: {
+          conservative: { welcome: 10, mesita: 5, story: 10, google: 15 },
+          aggressive: { welcome: 20, mesita: 10, story: 20, google: 25 },
+        },
+      },
+    });
+    expect(cfg.visits.bonuses.aggressive.google).toBe(25);
+    expect(cfg.visits.bonuses.conservative.google).toBe(15);
+  });
+
+  it("totalFor pays the strategy's OWN action bonus", () => {
+    const cfg = structuredClone(DEFAULT_PROMOS);
+    cfg.visits.bonuses.aggressive.story = 30;
+    // Aggressive bronze·free base is 20; its own story bonus now adds 30.
+    expect(totalFor(cfg, "aggressive", "bronze", "free", "story")).toBe(50);
+    // Conservative is untouched by that edit.
+    expect(totalFor(cfg, "conservative", "bronze", "free", "story")).toBe(
+      10 + cfg.visits.bonuses.conservative.story,
+    );
   });
 });

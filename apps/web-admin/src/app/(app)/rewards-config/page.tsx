@@ -1,7 +1,6 @@
 import { redirect } from "next/navigation";
 
-// Promos Config parent route → Visits, the only context that prices anything
-// today. Subpages: visits, orders, distribution.
+// Promos Config parent route → Tiers, where every rate is priced.
 export default function PromosConfigIndex() {
-  redirect("/rewards-config/visits");
+  redirect("/rewards-config/tiers");
 }
