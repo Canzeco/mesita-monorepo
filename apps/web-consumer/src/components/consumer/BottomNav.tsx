@@ -31,9 +31,17 @@ type Item = {
   href: string;
   Icon: ComponentType<{ className?: string; strokeWidth?: number }>;
   label: string;
-  match: string;
-  /** Second prefix that also lights this tab (Inbox: /reservation detail). */
-  alsoMatch?: string;
+  /**
+   * Every pathname prefix that lights this tab. A LIST, not one-plus-a-spare:
+   * the previous shape was one required prefix plus one optional spare, Inbox
+   * had already spent the spare on /reservation, and a third prefix (Home's
+   * /place) was hard-coded as a special case down in the render. Three ways to
+   * say one thing meant a tab could silently light NOTHING — which is exactly
+   * what happens to a detail route that stops nesting under its tab's prefix.
+   *
+   * Order is irrelevant; matching is `startsWith` over the whole list.
+   */
+  matchPrefixes: readonly string[];
   // Surface is parked. Tab stays visible and tappable; tap opens
   // ComingSoonModal instead of navigating (MESITA-383 — no "Soon" pills).
   soon?: boolean;
@@ -49,13 +57,21 @@ const ITEMS: Item[] = [
     // Brand mark instead of a generic house — Home doubles as the Mesita anchor.
     Icon: MesitaMark,
     label: "Home",
-    match: CONSUMER_ROUTE_PREFIX.home,
+    // /place — detail opened from the deck keeps Home lit (this was a special
+    // case in the render). /filters — the shared discovery modal, which lit NO
+    // tab at all before this list existed; Home owns it because Swipe is where
+    // it opens from.
+    matchPrefixes: [
+      CONSUMER_ROUTE_PREFIX.home,
+      CONSUMER_ROUTE_PREFIX.place,
+      CONSUMER_ROUTES.filters,
+    ],
   },
   {
     href: CONSUMER_ROUTES.search,
     Icon: Search,
     label: "Search",
-    match: CONSUMER_ROUTE_PREFIX.search,
+    matchPrefixes: [CONSUMER_ROUTE_PREFIX.search],
   },
   {
     href: CONSUMER_ROUTE_PREFIX.rewards,
@@ -67,7 +83,7 @@ const ITEMS: Item[] = [
     // "Pay" was rejected because paying is one beat of a visit, and it also
     // collides with Stripe checkout in this codebase's vocabulary.
     label: "Visit",
-    match: CONSUMER_ROUTE_PREFIX.rewards,
+    matchPrefixes: [CONSUMER_ROUTE_PREFIX.rewards],
     // LIVE — the pass (QR + code + what you can claim + live visit) and the
     // ticket stack are built; the tab opens the real page.
   },
@@ -83,16 +99,18 @@ const ITEMS: Item[] = [
     // after any one of them, and naming it for the mechanism ("Agent") would
     // break the day places integrate directly.
     label: "Inbox",
-    // Matched on TWO prefixes: /inbox for the sections, and /reservation for
-    // the detail view that deliberately stayed outside the tab's namespace.
-    match: CONSUMER_ROUTE_PREFIX.inbox,
-    alsoMatch: CONSUMER_RESERVATION_SURFACE_PREFIX,
+    // /inbox for the sections, /reservation for the detail view that
+    // deliberately stayed outside the tab's namespace.
+    matchPrefixes: [
+      CONSUMER_ROUTE_PREFIX.inbox,
+      CONSUMER_RESERVATION_SURFACE_PREFIX,
+    ],
   },
   {
     href: CONSUMER_ROUTES.me,
     Icon: User,
     label: "Me",
-    match: CONSUMER_ROUTE_PREFIX.me,
+    matchPrefixes: [CONSUMER_ROUTE_PREFIX.me],
   },
 ];
 
@@ -114,15 +132,8 @@ export function BottomNav({ userId }: { userId?: string }) {
       >
         <div className="flex items-end justify-around">
           {ITEMS.map((item) => {
-            const { href, Icon, label, match, alsoMatch, soon } = item;
-            const active =
-              pathname.startsWith(match) ||
-              (alsoMatch != null && pathname.startsWith(alsoMatch)) ||
-              // Place detail modals opened from Home keep the Home tab lit.
-              // (Legacy /profile no longer needs a match branch — it 308s to
-              // /me in next.config before any client render.)
-              (match === CONSUMER_ROUTE_PREFIX.home &&
-                pathname.startsWith(CONSUMER_ROUTE_PREFIX.place));
+            const { href, Icon, label, matchPrefixes, soon } = item;
+            const active = matchPrefixes.some((p) => pathname.startsWith(p));
             // Parked surfaces stay tappable — open ComingSoonModal (no Soon pill).
             if (soon) {
               return (
