@@ -211,8 +211,8 @@ export function ProfileClient({
           <BoxRow
             Icon={Bot}
             tint="violet"
-            title="AI"
-            summary="Connect your Mesita profile to an AI · Premium"
+            title="AI Connector"
+            summary="Control your Mesita through ChatGPT, Claude or any chatbot · Premium"
             onClick={() => setAiOpen(true)}
             soon
           />

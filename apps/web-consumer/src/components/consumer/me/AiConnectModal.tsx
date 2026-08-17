@@ -127,7 +127,7 @@ export function AiConnectModal({
   }
 
   return (
-    <LocalSheet open={open} onClose={onClose} ariaLabel="Connect Mesita to AI">
+    <LocalSheet open={open} onClose={onClose} ariaLabel="AI Connector">
       <div className={SHEET_BODY_CLASS}>
         <div className="flex items-center gap-3">
           <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-violet-500/10 text-violet-600">
@@ -135,14 +135,14 @@ export function AiConnectModal({
           </span>
           <div>
             <h2 className="font-display flex items-center gap-2 text-xl font-semibold tracking-tight">
-              AI
+              AI Connector
               <span className="border-border text-muted-foreground inline-flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-[8px] font-semibold tracking-[0.12em] uppercase">
                 <Crown className="h-2.5 w-2.5 text-amber-600" />
                 Premium
               </span>
             </h2>
             <p className="text-muted-foreground text-[12px]">
-              Connect your Mesita profile to an AI
+              Control your Mesita through ChatGPT, Claude or any chatbot
             </p>
           </div>
         </div>
