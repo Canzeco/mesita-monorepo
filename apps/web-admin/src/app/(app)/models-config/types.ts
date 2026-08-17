@@ -2,7 +2,7 @@
 // file is a "use server" module (it may only export async functions to the
 // client) and it pulls in efInvoke / next/headers — importing the catalog or
 // SUBSYSTEMS from there would hand the client stubs and crash the picker. Same
-// footgun the Memo Config types file documents.
+// footgun the Memo types file documents.
 //
 // This page is the SoT for app_settings.models_config (MESITA-941). Live readers
 // (_shared/models-config.ts → get-memo-config, Enricher stages, embeddings,
@@ -136,7 +136,7 @@ export const SUBSYSTEMS: readonly SubsystemMeta[] = [
     Icon: MessagesSquare,
     status: "live",
     detail:
-      "Live OpenAI + Perplexity picks for Memo. Served by supabase-edgefunc-get-memo-config from models_config.memo.* (Memo Config's openai/perplexity fields are legacy fallback / not wired).",
+      "Live OpenAI + Perplexity picks for Memo. Served by supabase-edgefunc-get-memo-config from models_config.memo.* (the openai/perplexity fields under Filters › Chat › Memo are legacy fallback / not wired).",
     editableHere: true,
     owner: null,
   },

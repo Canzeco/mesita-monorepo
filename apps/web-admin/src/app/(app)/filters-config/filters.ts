@@ -125,7 +125,7 @@ export const SURFACE_META: Record<
   chat: {
     label: "Chat",
     blurb:
-      "Home › Chat — Don Memo. The ask is Memo's own axis; it rides Memo's recall call, not the filter store.",
+      "Home › Chat — Don Memo. The only surface with an agent behind it, so Memo's own config lives here too rather than as a sibling of the surface it powers.",
     live: false,
     parkedNote:
       "The Chat mode is parked in the consumer app: /home/chat redirects to Swipe and the pill opens a coming-soon dialog.",

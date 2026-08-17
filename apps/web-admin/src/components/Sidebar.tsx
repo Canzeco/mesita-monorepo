@@ -19,7 +19,6 @@ import { BILLING_TEST_PARENT } from "@/app/(app)/billing-test/nav";
 import { DB_PARENT } from "@/app/(app)/manage-database/nav";
 import { ENRICHER_PARENT } from "@/app/(app)/enricher-config/nav";
 import { FILTERS_PARENT } from "@/app/(app)/filters-config/nav";
-import { MEMO_PARENT } from "@/app/(app)/memo-config/nav";
 import { MODELS_PARENT } from "@/app/(app)/models-config/nav";
 import { OJO_PARENT } from "@/app/(app)/ojo-config/nav";
 import { RESERVATIONS_PARENT } from "@/app/(app)/reservations-config/nav";
@@ -90,9 +89,12 @@ const MANAGE_NAV: NavItem[] = [
 //   platform  who operates the console, then which model everything runs on
 //   supply    a place's life: eligible to enter (Sourcing) → what its profile
 //             must contain (Atlas) → the pipeline that fills it (Enricher) →
-//             how it gets sealed (Verification)
-//   demand    what a visit pays out (Promos)
-//   agents    the two conversational agents that sit on top of all of it
+//             how it gets sealed (Verification) → is a guest's proof real (Ojo)
+//   demand    how a guest finds a place (Filters) → what a visit pays (Promos)
+//   agents    the conversational agent that sits on top of all of it
+//
+// Memo is NOT a row here: Home › Chat is Memo, so its config lives inside
+// Filters Config › Chat rather than as a sibling of the surface it powers.
 const CONFIGURATIONS_NAV: NavItem[] = [
   { href: "/admin-config", label: "Admin", Icon: ShieldCheck },
   MODELS_PARENT,
@@ -101,11 +103,8 @@ const CONFIGURATIONS_NAV: NavItem[] = [
   ENRICHER_PARENT,
   VERIFICATION_PARENT,
   OJO_PARENT,
-  // Discovery sits between "is this place real" and "what does a visit pay":
-  // Filters is how demand finds the supply the pages above it admitted.
   FILTERS_PARENT,
   REWARDS_PARENT,
-  MEMO_PARENT,
   RESERVATIONS_PARENT,
 ];
 

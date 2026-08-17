@@ -7,9 +7,9 @@ import {
   ShieldCheck,
   UserRound,
 } from "lucide-react";
-import { SectionCard } from "../enricher-config/atlas-ui";
+import { SectionCard } from "@/components/admin-ui";
 
-// Memo Config · Data Access — the operator-facing map of Memo's data surface.
+// Filters › Chat › Data Access — the operator-facing map of Memo's data surface.
 //
 // Static documentation, deliberately: this page's job is to state the boundary,
 // and a boundary you can edit from a console is not a boundary. The authority is

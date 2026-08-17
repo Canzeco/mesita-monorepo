@@ -1,8 +1,8 @@
 "use client";
 
 import { Brain, Cpu, Globe, Wrench } from "lucide-react";
-import { Collapsible } from "../enricher-config/atlas-ui";
-import type { TraceSource, TraceStep } from "./types";
+import { Collapsible } from "@/components/admin-ui";
+import type { TraceSource, TraceStep } from "./memo-types";
 
 // MemoTrace — the "how Memo thought" inspector under each Memo reply. Renders
 // the reasoning trace admin-web-ask-memo returns: the RAG-first Lineup recall,

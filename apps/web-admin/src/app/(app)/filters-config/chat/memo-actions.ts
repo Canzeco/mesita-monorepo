@@ -1,6 +1,6 @@
 "use server";
 
-// Server actions for Memo Config. Thin wrappers over the admin-web-* Edge
+// Server actions for Filters › Chat › Memo. Thin wrappers over the admin-web-* Edge
 // Functions via the Result-style efInvoke (never throws) — same contract as the
 // Atlas config actions.
 //
@@ -23,7 +23,7 @@ import type {
   SampleConsumer,
   SampleConsumersResult,
   TraceStep,
-} from "./types";
+} from "./memo-types";
 
 type GetMemoConfigResult =
   | { ok: true; data: MemoConfig }

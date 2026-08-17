@@ -16,8 +16,8 @@ import {
   Users,
 } from "lucide-react";
 import { ErrorNote } from "@/components/ErrorNote";
-import { SectionCard } from "../enricher-config/atlas-ui";
-import { askMemoAdmin, getMemoConfig, sampleConsumers } from "./actions";
+import { SectionCard } from "@/components/admin-ui";
+import { askMemoAdmin, getMemoConfig, sampleConsumers } from "./memo-actions";
 import { MemoTrace } from "./MemoTrace";
 import {
   LOCATION_PRESETS,
@@ -26,9 +26,9 @@ import {
   OPENAI_MODELS,
   type PersonaMode,
   type SampleConsumer,
-} from "./types";
+} from "./memo-types";
 
-// Memo Config · Playground — a FULL chat panel that dogfoods Memo's v-next
+// Filters › Chat › Playground — a FULL chat panel that dogfoods Memo's v-next
 // reasoning agent from the admin console. The operator picks who Memo is
 // talking to (a real consumer sampled from the DB, a mock persona, or a
 // signed-out guest) + a location, starts a session, and chats turn-by-turn.
