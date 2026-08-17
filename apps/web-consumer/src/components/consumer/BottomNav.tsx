@@ -59,8 +59,14 @@ const ITEMS: Item[] = [
   },
   {
     href: CONSUMER_ROUTE_PREFIX.rewards,
+    // QR is the right glyph and stays: showing the QR IS the visit.
     Icon: QrCode,
-    label: "Rewards",
+    // "Visit", not "Rewards" and explicitly NOT "Pay" (Pato, 2026-08-16).
+    // The object this tab creates is a VISIT — Inbox > Visits tracks the same
+    // thing — so the tab, the object and the section finally share one word.
+    // "Pay" was rejected because paying is one beat of a visit, and it also
+    // collides with Stripe checkout in this codebase's vocabulary.
+    label: "Visit",
     match: CONSUMER_ROUTE_PREFIX.rewards,
     // LIVE — the pass (QR + code + what you can claim + live visit) and the
     // ticket stack are built; the tab opens the real page.

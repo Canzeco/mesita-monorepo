@@ -4,7 +4,6 @@ import { useEffect, useState } from 'react';
 import { View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { CatalogTab } from '@/components/home/CatalogTab';
 import { FavoritesTab } from '@/components/home/FavoritesTab';
 import { SwipeDeck } from '@/components/swipe/SwipeDeck';
 import { subscribeHomeMode } from '@/components/swipe/home-mode-intent';
@@ -12,17 +11,18 @@ import { ShellWash } from '@/components/ui/HeroBackdrop';
 import { ComingSoonModal } from '@/components/ui/ComingSoonModal';
 import { SegmentNav, type SegmentItem } from '@/components/ui/SegmentNav';
 
-// Mirrors web HomeModeNav: Swipe + Catalog + Favorites live; Memo + Social
-// parked. Parked modes stay tappable and open a coming-soon modal (MESITA-601).
-// AskAiTab / SocialTab stay on disk for a one-flag unpark.
-type Mode = 'swipe' | 'catalog' | 'favorites';
+// Mirrors web HomeModeNav: only Swipe + Favorites are FUNCTIONAL (Pato,
+// 2026-08-16); Catalog, Chat and Social are parked. Parked modes stay tappable
+// and open a coming-soon modal (MESITA-601). CatalogTab / AskAiTab / SocialTab
+// all stay on disk, so each is a one-flag unpark.
+type Mode = 'swipe' | 'favorites';
 
 const MODES: (SegmentItem & {
   key: Mode | SoonMode;
   Icon: ComponentType<{ color?: string; size?: number; strokeWidth?: number }>;
 })[] = [
   { key: 'swipe', title: 'Swipe', Icon: Flame },
-  { key: 'catalog', title: 'Catalog', Icon: LayoutGrid },
+  { key: 'catalog', title: 'Catalog', Icon: LayoutGrid, soon: true },
   // "Chat" names what the mode does; Don Memo stays the persona you meet
   // inside it, so the coming-soon body still introduces him by name.
   { key: 'ai', title: 'Chat', Icon: Sparkles, soon: true },
@@ -30,9 +30,14 @@ const MODES: (SegmentItem & {
   { key: 'favorites', title: 'Favorites', Icon: Heart },
 ];
 
-type SoonMode = 'ai' | 'social';
+type SoonMode = 'catalog' | 'ai' | 'social';
 
 const SOON_META = {
+  catalog: {
+    title: 'Catalog',
+    body: 'The full Mesita catalog — every place, browsable and filterable, without swiping. Coming soon.',
+    Icon: LayoutGrid,
+  },
   ai: {
     title: 'Chat',
     body: "Don Memo, your AI concierge, is almost ready — tell him the vibe you want and he'll find your spot.",
@@ -68,23 +73,18 @@ export default function HomeScreen() {
             items={MODES}
             value={mode}
             onChange={(v) => {
-              if (v === 'swipe' || v === 'catalog' || v === 'favorites') {
+              if (v === 'swipe' || v === 'favorites') {
                 setMode(v);
                 return;
               }
-              if (v === 'ai' || v === 'social') setSoonMode(v);
+              if (v === 'catalog' || v === 'ai' || v === 'social')
+                setSoonMode(v);
             }}
           />
         </View>
 
         <View style={{ flex: 1, minHeight: 0 }}>
-          {mode === 'swipe' ? (
-            <SwipeDeck />
-          ) : mode === 'catalog' ? (
-            <CatalogTab />
-          ) : (
-            <FavoritesTab />
-          )}
+          {mode === 'swipe' ? <SwipeDeck /> : <FavoritesTab />}
         </View>
 
         <ComingSoonModal

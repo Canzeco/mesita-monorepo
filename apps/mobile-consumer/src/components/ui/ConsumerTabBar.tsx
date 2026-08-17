@@ -66,7 +66,7 @@ const ICONS: Record<string, IconComponent> = {
 const LABELS: Record<string, string> = {
   home: 'Home',
   search: 'Search',
-  rewards: 'Rewards',
+  rewards: 'Visit',
   inbox: 'Inbox',
   me: 'Me',
 };
