@@ -21,7 +21,8 @@ describe("distributionFor", () => {
       DEFAULT_PROMOS,
       {
         welcomePct: 0,
-        classPct: { standard: 100, influencer: 0, premium: 0, aura: 0 },
+        classPct: { bronze: 100, silver: 0, gold: 0, diamond: 0 },
+        premiumPct: 0,
         actionPct: { mesita: 0, story: 0, google: 0 },
       },
       "aggressive",
@@ -39,12 +40,13 @@ describe("distributionFor", () => {
     expect(r.q3).toBe(20);
   });
 
-  it("normalizes a class mix that does not sum to 100", () => {
+  it("normalizes a class mix, and splits the plan axis independently", () => {
     const r = distributionFor(
       DEFAULT_PROMOS,
       {
         welcomePct: 0,
-        classPct: { standard: 1, influencer: 0, premium: 1, aura: 0 },
+        classPct: { bronze: 1, silver: 0, gold: 0, diamond: 0 },
+        premiumPct: 50,
         actionPct: { mesita: 0, story: 0, google: 0 },
       },
       "conservative",
@@ -75,7 +77,8 @@ describe("distributionFor", () => {
       DEFAULT_PROMOS,
       {
         welcomePct: 100,
-        classPct: { standard: 100, influencer: 0, premium: 0, aura: 0 },
+        classPct: { bronze: 100, silver: 0, gold: 0, diamond: 0 },
+        premiumPct: 0,
         actionPct: { mesita: 0, story: 100, google: 0 },
       },
       "conservative",
@@ -103,19 +106,16 @@ describe("distributionFor", () => {
   });
 
   it("caps a stacked visit at 100%", () => {
-    const rich = {
-      ...DEFAULT_PROMOS,
-      base: {
-        ...DEFAULT_PROMOS.base,
-        aggressive: { ...DEFAULT_PROMOS.base.aggressive, aura: 70 },
-      },
-      bonuses: { ...DEFAULT_PROMOS.bonuses, welcome: 70, google: 70 },
-    };
+    const rich = structuredClone(DEFAULT_PROMOS);
+    rich.visits.base.aggressive.diamond.free = 70;
+    rich.visits.bonuses.welcome = 70;
+    rich.visits.bonuses.google = 70;
     const r = distributionFor(
       rich,
       {
         welcomePct: 100,
-        classPct: { standard: 0, influencer: 0, premium: 0, aura: 100 },
+        classPct: { bronze: 0, silver: 0, gold: 0, diamond: 100 },
+        premiumPct: 0,
         actionPct: { mesita: 0, story: 0, google: 100 },
       },
       "aggressive",
@@ -129,23 +129,44 @@ describe("distributionFor", () => {
     ]);
   });
 
-  it("influencer stories use the override in the simulated totals", () => {
+  it("every class pays the same story bonus — the override retired with the influencer class", () => {
     const r = distributionFor(
       DEFAULT_PROMOS,
       {
         welcomePct: 0,
-        classPct: { standard: 0, influencer: 100, premium: 0, aura: 0 },
+        classPct: { bronze: 0, silver: 100, gold: 0, diamond: 0 },
+        premiumPct: 0,
         actionPct: { mesita: 0, story: 100, google: 0 },
       },
       "conservative",
     );
-    // influencer base 15 + override 30 — one bonus per visit
+    // silver base 15 + the universal story bonus 10 — one bonus per visit
     expect(r.dist).toEqual([
       {
-        value: 45,
+        value: 25,
         visits: SIMULATED_VISITS,
         byBonusCount: [0, SIMULATED_VISITS, 0],
       },
     ]);
+  });
+
+  it("the plan axis moves the whole distribution up without touching class", () => {
+    const mix = {
+      welcomePct: 0,
+      classPct: { bronze: 100, silver: 0, gold: 0, diamond: 0 },
+      actionPct: { mesita: 0, story: 0, google: 0 },
+    };
+    const allFree = distributionFor(
+      DEFAULT_PROMOS,
+      { ...mix, premiumPct: 0 },
+      "aggressive",
+    );
+    const allPremium = distributionFor(
+      DEFAULT_PROMOS,
+      { ...mix, premiumPct: 100 },
+      "aggressive",
+    );
+    expect(allFree.mean).toBe(20);
+    expect(allPremium.mean).toBe(40);
   });
 });

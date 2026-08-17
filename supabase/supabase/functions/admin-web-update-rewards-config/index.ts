@@ -2,20 +2,23 @@
 //
 // Naming: caller-verb-words. Caller = admin, verb = update, words = rewards-config.
 //
-// v10 (MESITA-991): the payload is the ADDITIVE Promos config — base
-// (strategy × class) + bonuses (welcome / mesita / story with a nullable
-// Influencer override / google) + the default cap. It is written as the
-// `v10` key on app_settings.rewards_config, MERGE-preserving the blob's other
-// keys. A WHOLE-BLOB write: the caller always sends the complete config and
-// normalizePromosV10 always returns a complete one.
+// v11 (MESITA-1069): the payload is the CONTEXT × IDENTITY Promos config —
+// visits (base: strategy × class × plan, + bonuses), orders (base: strategy ×
+// plan, + bonuses, parked) and the default cap. It is written as the `v11`
+// key on app_settings.rewards_config, MERGE-preserving the blob's other keys.
+// A WHOLE-BLOB write: the caller always sends the complete config and
+// normalizePromosV11 always returns a complete one.
 //
-// MESITA-992: the LIVE bill prices additive from rewards_config.v10. Every
-// v10 save still derives and upserts the 40 reward_rules cells as a frozen
-// mirror (rollback / empty-v10 fallback) and refreshes the legacy v13
-// grid/actions blob keys. See 20260804170553_reward_rules_normalized.sql.
+// The superseded `v10` key is DELETED on every v11 save so there is exactly
+// one additive source of truth; a v10-shaped body (a stale client tab mid-
+// deploy) is migrated forward rather than rejected.
 //
-// A legacy {rules, cap} body (older client mid-deploy) still writes through
-// the v8 path unchanged.
+// MESITA-992: the LIVE bill prices additive from the config. Every save still
+// derives and upserts the 40 reward_rules cells as a frozen mirror (rollback
+// / empty-config fallback) and refreshes the legacy v13 grid/actions blob
+// keys. See 20260804170553_reward_rules_normalized.sql.
+//
+// A legacy {rules, cap} body still writes through the v8 path unchanged.
 //
 // Auth: caller's JWT email must be in public.super_admins.
 
@@ -29,10 +32,10 @@ import {
 } from "../_shared/auth.ts";
 import { normalizeRewards, type RewardRule } from "./rewards-config-normalize.ts";
 import {
-  legacyRulesFromV10,
-  normalizePromosV10,
-  type PromosConfigV10,
-} from "./promos-v10-normalize.ts";
+  legacyRulesFromV11,
+  normalizePromosV11,
+  type PromosConfigV11,
+} from "./promos-v11-normalize.ts";
 
 // Mirror the rules into the v13 blob shape. Belt and braces: loadRewardsGrid
 // prefers v10, then the rules table, then this blob fallback.
@@ -72,22 +75,25 @@ Deno.serve(async (req) => {
   const bodyRes = await readJson<{ rules?: unknown; cap?: unknown; config?: unknown }>(req);
   if (!bodyRes.ok) return bodyRes.response;
 
-  // v10 body: {config: {version: 10, base, bonuses, cap}}. Anything else
+  // v11 body: {config: {version: 11, visits, orders, cap}}. A version-10 body
+  // is accepted and migrated (stale client tab mid-deploy). Anything else
   // falls through to the legacy v8 {rules, cap} path.
   const rawConfig = bodyRes.body.config;
-  const isV10 = !!rawConfig && typeof rawConfig === "object" &&
-    !Array.isArray(rawConfig) &&
-    (rawConfig as Record<string, unknown>).version === 10;
+  const configVersion = !!rawConfig && typeof rawConfig === "object" &&
+      !Array.isArray(rawConfig)
+    ? (rawConfig as Record<string, unknown>).version
+    : undefined;
+  const isPromosConfig = configVersion === 10 || configVersion === 11;
 
   let rules: RewardRule[];
   let cap: number;
-  let v10Config: PromosConfigV10 | null = null;
+  let promosConfig: PromosConfigV11 | null = null;
 
-  if (isV10) {
-    const norm = normalizePromosV10(rawConfig);
+  if (isPromosConfig) {
+    const norm = normalizePromosV11(rawConfig);
     if (!norm.ok) return jsonError(norm.error, 400);
-    v10Config = norm.value;
-    rules = legacyRulesFromV10(norm.value);
+    promosConfig = norm.value;
+    rules = legacyRulesFromV11(norm.value);
     cap = norm.value.cap;
   } else {
     const payload = bodyRes.body.rules !== undefined || bodyRes.body.cap !== undefined
@@ -125,16 +131,18 @@ Deno.serve(async (req) => {
   const existing =
     (current.data?.rewards_config ?? {}) as Record<string, unknown>;
 
+  const nextBlob: Record<string, unknown> = {
+    ...existing,
+    ...blobFromRules(rules, cap),
+    ...(promosConfig ? { v11: promosConfig } : {}),
+  };
+  // One additive source of truth: v11 supersedes v10 outright, so the old key
+  // is dropped rather than left to drift behind the live config.
+  if (promosConfig) delete nextBlob.v10;
+
   const settings = await admin
     .from("app_settings")
-    .update({
-      rewards_config: {
-        ...existing,
-        ...blobFromRules(rules, cap),
-        ...(v10Config ? { v10: v10Config } : {}),
-      },
-      updated_by: userId,
-    })
+    .update({ rewards_config: nextBlob, updated_by: userId })
     .eq("id", 1)
     .select("updated_at")
     .single();
@@ -143,7 +151,7 @@ Deno.serve(async (req) => {
   }
 
   return jsonOk({
-    config: v10Config,
+    config: promosConfig,
     rules: upsert.data ?? rules,
     cap,
     updatedAt: settings.data.updated_at,

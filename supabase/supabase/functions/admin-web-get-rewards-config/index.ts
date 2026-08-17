@@ -2,12 +2,12 @@
 //
 // Naming: caller-verb-words. Caller = admin, verb = get, words = rewards-config.
 //
-// Returns the Promos config: the v10 ADDITIVE blob (MESITA-991) when one has
-// been saved (`config`, from app_settings.rewards_config.v10), plus the v8
-// legacy rule rows and the cap scalar. The admin client prefers `config` and
-// seeds its knobs from the rows on the first load before any v10 save; the
-// rows also keep an older client mid-deploy rendering. "standing" is the
-// None column.
+// Returns the Promos config: the v11 ADDITIVE blob (MESITA-1069) when one has
+// been saved (`config`, from app_settings.rewards_config.v11 — a leftover v10
+// blob is handed back as-is and the client migrates it), plus the v8 legacy
+// rule rows and the cap scalar. The admin client prefers `config` and seeds
+// its knobs from the rows on the first load before any save; the rows also
+// keep an older client mid-deploy rendering. "standing" is the None column.
 //
 // Rows are returned as stored. The admin catalog fills any gap from the
 // launch defaults, so a partially-seeded table still renders a full table.
@@ -60,11 +60,13 @@ Deno.serve(async (req) => {
 
   const cfg = (settings.data?.rewards_config ?? {}) as Record<string, unknown>;
   const cap = typeof cfg.cap === "number" ? cfg.cap : null;
-  // The v10 additive config — null until the first v10 save (MESITA-991);
-  // the client seeds from the legacy rows in that case.
-  const v10 = cfg.v10 && typeof cfg.v10 === "object" && !Array.isArray(cfg.v10)
-    ? cfg.v10
-    : null;
+  // The additive config — null until the first save, in which case the client
+  // seeds from the legacy rows. A leftover v10 blob is handed back as-is and
+  // the client migrates it to v11 (coercePromosConfig), so the page opens on
+  // the operator's real numbers rather than the launch defaults.
+  const isBlob = (v: unknown) =>
+    !!v && typeof v === "object" && !Array.isArray(v);
+  const config = isBlob(cfg.v11) ? cfg.v11 : isBlob(cfg.v10) ? cfg.v10 : null;
 
   // Freshest write across both stores — the page shows one "Updated" stamp.
   const stamps = [
@@ -76,7 +78,7 @@ Deno.serve(async (req) => {
   const updatedAt = stamps.length > 0 ? (stamps.sort().at(-1) ?? null) : null;
 
   return jsonOk({
-    config: v10,
+    config,
     rules: (rules.data ?? []).map((r) => {
       const row = r as Record<string, unknown>;
       return {

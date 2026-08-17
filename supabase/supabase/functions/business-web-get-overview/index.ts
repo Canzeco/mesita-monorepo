@@ -198,7 +198,10 @@ Deno.serve(async (req) => {
     } else {
       const blob = (cfg.data as { rewards_config?: Record<string, unknown> } | null)
         ?.rewards_config;
-      rewardsConfig = blob?.v10 ?? null;
+      // v11 is the live shape; a leftover v10 blob is passed through and the
+      // business client migrates it (coercePromosConfig) — same contract the
+      // admin console uses.
+      rewardsConfig = blob?.v11 ?? blob?.v10 ?? null;
     }
   }
 

@@ -20,7 +20,7 @@ import {
 import {
   coercePromosConfig,
   type PromosConfig,
-} from "@/lib/business/promos-v10";
+} from "@/lib/business/promos";
 import { cn, errMsg, formatMoney } from "@/lib/utils";
 import { ERROR_BOX_CLASS } from "@/lib/ui-classes";
 import { FaqsBox } from "./FaqsBox";
