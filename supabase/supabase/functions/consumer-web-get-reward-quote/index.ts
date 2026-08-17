@@ -34,6 +34,7 @@ import {
 import { adminClient, getAuthedUser, readEFEnv } from "../_shared/auth.ts";
 import { isConsumerFirstVisit } from "../_shared/membership.ts";
 import {
+  identityForClassKey,
   isClassSegment,
   loadRewardsGrid,
   offersAction,
@@ -108,7 +109,7 @@ Deno.serve(async (req) => {
       quote: {
         strategy,
         classKey,
-        additive: Boolean(grid.v10),
+        additive: Boolean(grid.promos),
         isFirstVisit,
         base: 0,
         bonuses: { welcome: 0, story: 0, google: 0, mesita: 0 },
@@ -118,13 +119,13 @@ Deno.serve(async (req) => {
     });
   }
 
-  const v10 = grid.v10;
+  const promos = grid.promos;
 
-  // Legacy best-of fallback (no v10 blob saved yet). `additive: false` tells
-  // the client to keep the pick-one presentation — showing stacked bonuses
-  // over a best-of engine would over-promise, which is the one direction of
-  // error a discount quote must never make.
-  if (!v10) {
+  // Legacy best-of fallback (no additive config saved yet). `additive: false`
+  // tells the client to keep the pick-one presentation — showing stacked
+  // bonuses over a best-of engine would over-promise, which is the one
+  // direction of error a discount quote must never make.
+  if (!promos) {
     const cls = classKey;
     return json({
       ok: true,
@@ -147,12 +148,12 @@ Deno.serve(async (req) => {
     });
   }
 
-  // v10 additive — mirrors resolveAdditiveRate component for component,
-  // including the influencer story override that the consumer app never had.
-  const storyBonus =
-    classKey === "influencer" && v10.bonuses.story_influencer !== null
-      ? v10.bonuses.story_influencer
-      : v10.bonuses.story;
+  // v11 additive — mirrors resolveAdditiveRate component for component. Only
+  // the VISITS ladder is quoted: orders is parked, and every ticket today is
+  // a visit. The per-class story override is gone with the `influencer`
+  // class; class is paid for once, in the base.
+  const { cls, plan } = identityForClassKey(classKey);
+  const b = promos.visits.bonuses;
 
   return json({
     ok: true,
@@ -161,15 +162,15 @@ Deno.serve(async (req) => {
       classKey,
       additive: true,
       isFirstVisit,
-      base: v10.base[strategy][classKey],
+      base: promos.visits.base[strategy][cls][plan],
       bonuses: {
         // Welcome is a state of the visit, not an action the guest picks, so
         // it reports 0 once they've been here before — the client renders it
         // as an automatic row, never as a choice.
-        welcome: isFirstVisit ? v10.bonuses.welcome : 0,
-        story: storyBonus,
-        google: v10.bonuses.google,
-        mesita: v10.bonuses.mesita,
+        welcome: isFirstVisit ? b.welcome : 0,
+        story: b.story,
+        google: b.google,
+        mesita: b.mesita,
       },
       storyEligible: igConnected && offersAction(strategy, grid, "story"),
       cap: grid.cap,

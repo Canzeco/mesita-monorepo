@@ -2,7 +2,15 @@
 
 import { useEffect, useMemo, useState, useTransition } from "react";
 import Link from "next/link";
-import { ChevronDown, Coins, Gift, Info, Percent, RotateCcw } from "lucide-react";
+import {
+  AlertTriangle,
+  ChevronDown,
+  Coins,
+  Gift,
+  Info,
+  Percent,
+  RotateCcw,
+} from "lucide-react";
 
 import { ErrorNote } from "@/components/ErrorNote";
 import { formatShortDate } from "@/lib/format";
@@ -12,26 +20,35 @@ import {
   ACTION_KEYS,
   ALLOWED_CAPS,
   ALLOWED_RATES,
+  BONUS_KEYS,
   BONUS_META,
   CLASS_KEYS,
   CLASS_META,
+  CONTEXT_META,
   DEFAULT_PROMOS,
+  PLAN_KEYS,
+  PLAN_META,
   STRATEGY_KEYS,
   STRATEGY_META,
+  modelWarnings,
   totalFor,
   type ActionKey,
+  type BonusKey,
   type ClassKey,
+  type PlanKey,
   type PromosConfig,
   type StrategyKey,
 } from "./promos";
 
-// The v10 promos editor (MESITA-991). The 40-cell wall becomes 14 knobs in
-// three groups — base matrix, bonuses, default cap — because that IS the
-// model: per-action prices don't vary by strategy or class anymore (one
-// Influencer story override excepted). The collapsed preview (decision 1A)
-// derives every per-action total for verification without re-introducing the
-// wall; the example strip narrates one bill so the additive rule stays
-// concrete.
+// The v11 promos editor (MESITA-1069). Context cuts first, so the page is two
+// stacked ladders rather than one grid: VISITS prices the full identity grid
+// (class × plan), ORDERS drops class and prices plan alone. One strategy per
+// place governs both — the Conservative/Aggressive columns run straight
+// through the page, and a place picking one gets that whole vertical slice.
+//
+// Orders is PARKED: the knobs are live and saved, but no ticket carries a
+// remote context yet, so nothing reads them. Following the Ojo Config
+// precedent, the console keeps saying so instead of hiding the section.
 
 const PREVIEW_ACTION_LABEL: Record<ActionKey, string> = {
   standing: "Base",
@@ -90,19 +107,60 @@ export function PromosConfigClient({
     [cfg, saved],
   );
 
-  const setBase = (strategy: StrategyKey, cls: ClassKey, value: number) => {
+  const warnings = useMemo(() => modelWarnings(cfg), [cfg]);
+
+  const setVisitsBase = (
+    strategy: StrategyKey,
+    cls: ClassKey,
+    plan: PlanKey,
+    value: number,
+  ) => {
     setCfg((c) => ({
       ...c,
-      base: { ...c.base, [strategy]: { ...c.base[strategy], [cls]: value } },
+      visits: {
+        ...c.visits,
+        base: {
+          ...c.visits.base,
+          [strategy]: {
+            ...c.visits.base[strategy],
+            [cls]: { ...c.visits.base[strategy][cls], [plan]: value },
+          },
+        },
+      },
+    }));
+    setOk(false);
+  };
+
+  const setOrdersBase = (
+    strategy: StrategyKey,
+    plan: PlanKey,
+    value: number,
+  ) => {
+    setCfg((c) => ({
+      ...c,
+      orders: {
+        ...c.orders,
+        base: {
+          ...c.orders.base,
+          [strategy]: { ...c.orders.base[strategy], [plan]: value },
+        },
+      },
     }));
     setOk(false);
   };
 
   const setBonus = (
-    key: keyof PromosConfig["bonuses"],
-    value: number | null,
+    context: "visits" | "orders",
+    key: BonusKey,
+    value: number,
   ) => {
-    setCfg((c) => ({ ...c, bonuses: { ...c.bonuses, [key]: value } }));
+    setCfg((c) => ({
+      ...c,
+      [context]: {
+        ...c[context],
+        bonuses: { ...c[context].bonuses, [key]: value },
+      },
+    }));
     setOk(false);
   };
 
@@ -112,7 +170,7 @@ export function PromosConfigClient({
   };
 
   const resetDefaults = () => {
-    setCfg(DEFAULT_PROMOS);
+    setCfg(structuredClone(DEFAULT_PROMOS));
     setOk(false);
   };
 
@@ -134,12 +192,12 @@ export function PromosConfigClient({
   };
 
   // The example strip narrates ONE bill so the additive rule stays concrete:
-  // Aggressive · Premium, first visit, posts a story.
+  // Aggressive · Diamond on Premium, first visit, posts a story.
   const example = useMemo(() => {
-    const base = cfg.base.aggressive.premium;
+    const base = cfg.visits.base.aggressive.diamond.premium;
     const total = Math.min(
       100,
-      base + cfg.bonuses.welcome + cfg.bonuses.story,
+      base + cfg.visits.bonuses.welcome + cfg.visits.bonuses.story,
     );
     return { base, total };
   }, [cfg]);
@@ -149,15 +207,36 @@ export function PromosConfigClient({
       {seeded && !loadBlocked && (
         <p className="border-border bg-muted/50 text-muted-foreground flex items-start gap-1.5 rounded-lg border px-3 py-2 text-xs">
           <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-          These knobs were derived from the old rule table — review them, then
+          These knobs were derived from the previous model — review them, then
           Save.
         </p>
       )}
 
+      {warnings.length > 0 && (
+        <div className="rounded-lg border border-amber-300/70 bg-amber-50 px-3 py-2.5">
+          <p className="flex items-center gap-1.5 text-[11px] font-bold tracking-[0.1em] text-amber-900 uppercase">
+            <AlertTriangle className="h-3.5 w-3.5" />
+            Ladder check
+          </p>
+          <ul className="mt-1.5 space-y-1">
+            {warnings.map((w) => (
+              <li key={w.key} className="text-[12.5px] leading-snug text-amber-900">
+                {w.message}
+              </li>
+            ))}
+          </ul>
+          <p className="mt-2 text-[11px] text-amber-900/75">
+            Reported, never auto-corrected — these are money, so the call is
+            yours.
+          </p>
+        </div>
+      )}
+
+      {/* ── VISITS — the full identity grid ─────────────────────────────── */}
       <SectionCard
         icon={<Percent className="text-secondary h-4 w-4" />}
-        title="Base reward"
-        subtitle="The standing discount every guest gets, by class."
+        title={`${CONTEXT_META.visits.emoji} Visits · base reward`}
+        subtitle="The standing discount a guest gets in the room, by class and plan. Class is who they are; plan is what they pay."
         status={
           updatedAt ? (
             <span className="text-muted-foreground text-xs">
@@ -167,8 +246,22 @@ export function PromosConfigClient({
         }
       >
         <div className="mt-5 overflow-x-auto">
-          <table className="w-full min-w-[520px] border-collapse">
+          <table className="w-full min-w-[640px] border-collapse">
             <thead>
+              <tr>
+                <th className="pb-1" />
+                {STRATEGY_KEYS.map((s) => (
+                  <th
+                    key={s}
+                    scope="colgroup"
+                    colSpan={PLAN_KEYS.length}
+                    className="text-foreground border-border border-b pb-1.5 text-center text-[11px] font-bold tracking-[0.1em] uppercase"
+                    title={STRATEGY_META[s].blurb}
+                  >
+                    {STRATEGY_META[s].emoji} {STRATEGY_META[s].name}
+                  </th>
+                ))}
+              </tr>
               <tr className="border-border border-b-2">
                 <th
                   scope="col"
@@ -176,16 +269,18 @@ export function PromosConfigClient({
                 >
                   Class
                 </th>
-                {STRATEGY_KEYS.map((s) => (
-                  <th
-                    key={s}
-                    scope="col"
-                    className="text-foreground pb-2 text-center text-[11px] font-bold tracking-[0.1em] uppercase"
-                    title={STRATEGY_META[s].blurb}
-                  >
-                    {STRATEGY_META[s].emoji} {STRATEGY_META[s].name}
-                  </th>
-                ))}
+                {STRATEGY_KEYS.map((s) =>
+                  PLAN_KEYS.map((p) => (
+                    <th
+                      key={`${s}|${p}`}
+                      scope="col"
+                      className="text-muted-foreground pb-2 text-center text-[10px] font-bold tracking-[0.1em] uppercase"
+                      title={PLAN_META[p].blurb}
+                    >
+                      {PLAN_META[p].name}
+                    </th>
+                  )),
+                )}
               </tr>
             </thead>
             <tbody>
@@ -201,102 +296,41 @@ export function PromosConfigClient({
                     </span>
                     {CLASS_META[cls].name}
                   </th>
-                  {STRATEGY_KEYS.map((s) => (
-                    <td key={s} className="px-2 py-1.5 text-center">
-                      <RateSelect
-                        value={cfg.base[s][cls]}
-                        disabled={pending}
-                        ariaLabel={`${STRATEGY_META[s].name} ${CLASS_META[cls].name} base reward`}
-                        onChange={(v) => setBase(s, cls, v)}
-                      />
-                    </td>
-                  ))}
+                  {STRATEGY_KEYS.map((s) =>
+                    PLAN_KEYS.map((p) => (
+                      <td key={`${s}|${p}`} className="px-2 py-1.5 text-center">
+                        <RateSelect
+                          value={cfg.visits.base[s][cls][p]}
+                          disabled={pending}
+                          ariaLabel={`${STRATEGY_META[s].name} ${CLASS_META[cls].name} ${PLAN_META[p].name} visit base reward`}
+                          onChange={(v) => setVisitsBase(s, cls, p, v)}
+                        />
+                      </td>
+                    )),
+                  )}
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
+        <p className="text-muted-foreground mt-3 text-[11px] leading-snug">
+          A place picks ONE strategy and it prices both ladders — there is no
+          per-context choice. Plan never reaches the floor: the place sees the
+          resolved percent, never who earned it.
+        </p>
       </SectionCard>
 
       <SectionCard
         icon={<Gift className="text-secondary h-4 w-4" />}
-        title="Bonuses"
-        subtitle="Added on top of the base — same for every strategy and class, except the one override."
+        title={`${CONTEXT_META.visits.emoji} Visits · bonuses`}
+        subtitle="Added on top of the base — same for every strategy, class and plan."
       >
-        <div className="mt-4">
-          <p className="text-muted-foreground pt-1 pb-1 text-[10px] font-bold tracking-[0.12em] uppercase">
-            Automatic bonus
-          </p>
-          <BonusRow
-            label={BONUS_META.welcome.name}
-            emoji={BONUS_META.welcome.emoji}
-            qualifier={BONUS_META.welcome.qualifier}
-            disabled={pending}
-          >
-            <RateSelect
-              value={cfg.bonuses.welcome}
-              disabled={pending}
-              ariaLabel="Welcome Visit bonus"
-              onChange={(v) => setBonus("welcome", v)}
-            />
-          </BonusRow>
-
-          <p className="text-muted-foreground pt-4 pb-1 text-[10px] font-bold tracking-[0.12em] uppercase">
-            Action bonuses
-          </p>
-          <BonusRow
-            label={BONUS_META.mesita.name}
-            emoji={BONUS_META.mesita.emoji}
-            qualifier={BONUS_META.mesita.qualifier}
-            disabled={pending}
-          >
-            <RateSelect
-              value={cfg.bonuses.mesita}
-              disabled={pending}
-              ariaLabel="Mesita Review bonus"
-              onChange={(v) => setBonus("mesita", v)}
-            />
-          </BonusRow>
-          <BonusRow
-            label={BONUS_META.story.name}
-            emoji={BONUS_META.story.emoji}
-            qualifier={BONUS_META.story.qualifier}
-            disabled={pending}
-          >
-            <RateSelect
-              value={cfg.bonuses.story}
-              disabled={pending}
-              ariaLabel="Instagram Story bonus"
-              onChange={(v) => setBonus("story", v)}
-            />
-          </BonusRow>
-          <BonusRow
-            label={`↳ ${BONUS_META.story_influencer.name}`}
-            qualifier={BONUS_META.story_influencer.qualifier}
-            indent
-            disabled={pending}
-          >
-            <OverrideSelect
-              value={cfg.bonuses.story_influencer}
-              disabled={pending}
-              ariaLabel="Instagram Story bonus — Influencer override"
-              onChange={(v) => setBonus("story_influencer", v)}
-            />
-          </BonusRow>
-          <BonusRow
-            label={BONUS_META.google.name}
-            emoji={BONUS_META.google.emoji}
-            qualifier={BONUS_META.google.qualifier}
-            disabled={pending}
-          >
-            <RateSelect
-              value={cfg.bonuses.google}
-              disabled={pending}
-              ariaLabel="Google Review bonus"
-              onChange={(v) => setBonus("google", v)}
-            />
-          </BonusRow>
-        </div>
+        <BonusList
+          bonuses={cfg.visits.bonuses}
+          disabled={pending}
+          contextLabel="visit"
+          onChange={(k, v) => setBonus("visits", k, v)}
+        />
       </SectionCard>
 
       {/* Live example — one bill, narrated (recomputes as knobs change). */}
@@ -304,22 +338,22 @@ export function PromosConfigClient({
         <p className="text-muted-foreground text-[12.5px]">
           Example, live as you edit —{" "}
           <span className="text-foreground font-mono font-semibold tabular-nums">
-            ⚡ Aggressive · 💳 Premium, first visit, posts a story →{" "}
-            {example.base}% + {cfg.bonuses.welcome}% + {cfg.bonuses.story}% ={" "}
-            {example.total}%
+            ⚡ Aggressive · 💎 Diamond on Premium, first visit, posts a story →{" "}
+            {example.base}% + {cfg.visits.bonuses.welcome}% +{" "}
+            {cfg.visits.bonuses.story}% = {example.total}%
           </span>{" "}
           off the first MX${cfg.cap.toLocaleString("en-US")} (default cap).
         </p>
       </div>
 
-      {/* Collapsed totals preview — decision 1A. */}
+      {/* Collapsed totals preview. */}
       <details className="border-border group rounded-xl border">
         <summary className="text-muted-foreground hover:text-foreground flex cursor-pointer items-center gap-2 px-4 py-3 text-sm font-medium select-none">
           <ChevronDown className="h-4 w-4 transition-transform group-open:rotate-180" />
-          Preview all totals
+          Preview all visit totals
         </summary>
         <div className="overflow-x-auto px-4 pb-4">
-          <table className="w-full min-w-[640px] border-collapse text-[12.5px]">
+          <table className="w-full min-w-[720px] border-collapse text-[12.5px]">
             <thead>
               <tr className="border-border border-b-2">
                 <th
@@ -332,7 +366,7 @@ export function PromosConfigClient({
                   scope="col"
                   className="text-muted-foreground pb-2 text-left text-[10px] font-bold tracking-[0.12em] uppercase"
                 >
-                  Class
+                  Class · Plan
                 </th>
                 {ACTION_KEYS.map((a) => (
                   <th
@@ -347,50 +381,149 @@ export function PromosConfigClient({
             </thead>
             <tbody>
               {STRATEGY_KEYS.map((s) =>
-                CLASS_KEYS.map((cls, i) => (
-                  <tr
-                    key={`${s}|${cls}`}
-                    className={
-                      i === CLASS_KEYS.length - 1
-                        ? "border-border border-b-2 last:border-0"
-                        : "border-border border-b"
-                    }
-                  >
-                    <th
-                      scope="row"
-                      className="py-1.5 pr-3 text-left font-bold whitespace-nowrap"
-                    >
-                      {i === 0
-                        ? `${STRATEGY_META[s].emoji} ${STRATEGY_META[s].name}`
-                        : ""}
-                    </th>
-                    <td className="py-1.5 pr-3 whitespace-nowrap">
-                      {CLASS_META[cls].name}
-                    </td>
-                    {ACTION_KEYS.map((a) => (
-                      <td
-                        key={a}
-                        className="py-1.5 text-right font-mono font-semibold tabular-nums"
+                CLASS_KEYS.map((cls, ci) =>
+                  PLAN_KEYS.map((p, pi) => {
+                    const last =
+                      ci === CLASS_KEYS.length - 1 && pi === PLAN_KEYS.length - 1;
+                    return (
+                      <tr
+                        key={`${s}|${cls}|${p}`}
+                        className={
+                          last
+                            ? "border-border border-b-2 last:border-0"
+                            : "border-border border-b"
+                        }
                       >
-                        {Math.min(100, totalFor(cfg, s, cls, a))}%
-                      </td>
-                    ))}
-                  </tr>
-                )),
+                        <th
+                          scope="row"
+                          className="py-1.5 pr-3 text-left font-bold whitespace-nowrap"
+                        >
+                          {ci === 0 && pi === 0
+                            ? `${STRATEGY_META[s].emoji} ${STRATEGY_META[s].name}`
+                            : ""}
+                        </th>
+                        <td className="py-1.5 pr-3 whitespace-nowrap">
+                          {pi === 0 ? CLASS_META[cls].name : ""}
+                          <span className="text-muted-foreground">
+                            {pi === 0 ? " · " : ""}
+                            {PLAN_META[p].name}
+                          </span>
+                        </td>
+                        {ACTION_KEYS.map((a) => (
+                          <td
+                            key={a}
+                            className="py-1.5 text-right font-mono font-semibold tabular-nums"
+                          >
+                            {Math.min(100, totalFor(cfg, s, cls, p, a))}%
+                          </td>
+                        ))}
+                      </tr>
+                    );
+                  }),
+                ),
               )}
             </tbody>
           </table>
           <p className="text-muted-foreground/80 mt-2 text-[11px] leading-snug">
-            Base + that single action. A real bill can stack several bonuses.
+            Base + that single action. A real bill can stack several bonuses,
+            clamped to 100%.
           </p>
         </div>
       </details>
+
+      {/* ── ORDERS — parked, but real ───────────────────────────────────── */}
+      <SectionCard
+        icon={<Percent className="text-secondary h-4 w-4" />}
+        title={`${CONTEXT_META.orders.emoji} Orders · base reward`}
+        subtitle="Pickup and delivery. Class does not resolve here — presence is what class buys, and nobody is in the chair — so plan alone prices the row."
+        status={<SoonPill />}
+      >
+        <div className="mt-5 overflow-x-auto">
+          <table className="w-full min-w-[520px] border-collapse">
+            <thead>
+              <tr className="border-border border-b-2">
+                <th
+                  scope="col"
+                  className="text-muted-foreground pb-2 text-left text-[10px] font-bold tracking-[0.12em] uppercase"
+                >
+                  Plan
+                </th>
+                {STRATEGY_KEYS.map((s) => (
+                  <th
+                    key={s}
+                    scope="col"
+                    className="text-foreground pb-2 text-center text-[11px] font-bold tracking-[0.1em] uppercase"
+                    title={STRATEGY_META[s].blurb}
+                  >
+                    {STRATEGY_META[s].emoji} {STRATEGY_META[s].name}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {PLAN_KEYS.map((p) => (
+                <tr key={p} className="border-border border-b last:border-0">
+                  <th
+                    scope="row"
+                    className="py-2 pr-4 text-left text-[12.5px] font-semibold whitespace-nowrap"
+                    title={PLAN_META[p].blurb}
+                  >
+                    {PLAN_META[p].name}
+                  </th>
+                  {STRATEGY_KEYS.map((s) => (
+                    <td key={s} className="px-2 py-1.5 text-center">
+                      <RateSelect
+                        value={cfg.orders.base[s][p]}
+                        disabled={pending}
+                        ariaLabel={`${STRATEGY_META[s].name} ${PLAN_META[p].name} order base reward`}
+                        onChange={(v) => setOrdersBase(s, p, v)}
+                      />
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <p className="text-muted-foreground mt-3 text-[11px] leading-snug">
+          A flatter, lower band than visits by design: remote buys volume, and
+          the discount is funded out of the 25–30% a delivery app would have
+          taken from the same order.
+        </p>
+      </SectionCard>
+
+      <SectionCard
+        icon={<Gift className="text-secondary h-4 w-4" />}
+        title={`${CONTEXT_META.orders.emoji} Orders · bonuses`}
+        subtitle="The three sharing actions run in both contexts — a story about a delivered dinner is reach all the same — but they are priced separately here."
+        status={<SoonPill />}
+      >
+        <BonusList
+          bonuses={cfg.orders.bonuses}
+          disabled={pending}
+          contextLabel="order"
+          onChange={(k, v) => setBonus("orders", k, v)}
+        />
+      </SectionCard>
+
+      <p className="border-border bg-muted/50 text-muted-foreground flex items-start gap-1.5 rounded-lg border px-3 py-2 text-xs">
+        <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+        <span>
+          <span className="text-foreground font-semibold">
+            Orders knobs are staged.
+          </span>{" "}
+          They save to the live blob, but no ticket carries a remote context
+          yet, so nothing reads them and no order has ever been discounted.
+          Tune them now and they take effect the day the remote bill path
+          ships.
+        </span>
+      </p>
 
       {/* Platform default/fallback cap — place monthly_promo_cap is bill SoT. */}
       <SectionCard
         icon={<Coins className="text-secondary h-4 w-4" />}
         title="Default discount cap"
-        subtitle="Fallback when a place has not picked its own cap."
+        subtitle="Fallback when a place has not picked its own cap. Applies to both contexts."
       >
         <div className="mt-5 flex flex-wrap items-center gap-2">
           {ALLOWED_CAPS.map((c) => {
@@ -428,8 +561,9 @@ export function PromosConfigClient({
       <div>
         <div className="flex items-start justify-between gap-3">
           <p className="text-muted-foreground text-xs">
-            The live engine pays best-of until MESITA-992 ships; every save
-            keeps its rules in sync. Who is on Aura is decided in{" "}
+            The live engine pays the visits ladder additively — base + Welcome
+            + every earned bonus, clamped and capped. Class is granted, never
+            sold; who holds the top rung is decided in{" "}
             <Link href="/aura-consumers" className="underline underline-offset-2">
               Aura Consumers
             </Link>
@@ -458,37 +592,95 @@ export function PromosConfigClient({
   );
 }
 
+/** Parked-but-present marker — the Ojo Config convention. */
+function SoonPill() {
+  return (
+    <span className="border-border text-muted-foreground inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-bold tracking-[0.1em] uppercase">
+      Soon
+    </span>
+  );
+}
+
+function BonusList({
+  bonuses,
+  disabled,
+  contextLabel,
+  onChange,
+}: {
+  bonuses: Record<BonusKey, number>;
+  disabled: boolean;
+  contextLabel: string;
+  onChange: (key: BonusKey, value: number) => void;
+}) {
+  const automatic = BONUS_KEYS.filter((k) => BONUS_META[k].group === "automatic");
+  const actions = BONUS_KEYS.filter((k) => BONUS_META[k].group === "action");
+  return (
+    <div className="mt-4">
+      <p className="text-muted-foreground pt-1 pb-1 text-[10px] font-bold tracking-[0.12em] uppercase">
+        Automatic bonus
+      </p>
+      {automatic.map((k) => (
+        <BonusRow
+          key={k}
+          label={BONUS_META[k].name}
+          emoji={BONUS_META[k].emoji}
+          qualifier={BONUS_META[k].qualifier}
+          disabled={disabled}
+        >
+          <RateSelect
+            value={bonuses[k]}
+            disabled={disabled}
+            ariaLabel={`${BONUS_META[k].name} ${contextLabel} bonus`}
+            onChange={(v) => onChange(k, v)}
+          />
+        </BonusRow>
+      ))}
+
+      <p className="text-muted-foreground pt-4 pb-1 text-[10px] font-bold tracking-[0.12em] uppercase">
+        Action bonuses
+      </p>
+      {actions.map((k) => (
+        <BonusRow
+          key={k}
+          label={BONUS_META[k].name}
+          emoji={BONUS_META[k].emoji}
+          qualifier={BONUS_META[k].qualifier}
+          disabled={disabled}
+        >
+          <RateSelect
+            value={bonuses[k]}
+            disabled={disabled}
+            ariaLabel={`${BONUS_META[k].name} ${contextLabel} bonus`}
+            onChange={(v) => onChange(k, v)}
+          />
+        </BonusRow>
+      ))}
+    </div>
+  );
+}
+
 function BonusRow({
   label,
   emoji,
   qualifier,
-  indent,
   disabled,
   children,
 }: {
   label: string;
   emoji?: string;
   qualifier: string;
-  indent?: boolean;
   disabled: boolean;
   children: React.ReactNode;
 }) {
   return (
     <div
       className={
-        "border-border/60 flex items-center justify-between gap-4 border-b py-2 last:border-0 " +
-        (indent ? "pl-5" : "") +
+        "border-border/60 flex items-center justify-between gap-4 border-b py-2 last:border-0" +
         (disabled ? " opacity-60" : "")
       }
     >
       <div className="min-w-0">
-        <p
-          className={
-            indent
-              ? "text-muted-foreground text-[12.5px] font-medium"
-              : "text-foreground text-[13px] font-semibold"
-          }
-        >
+        <p className="text-foreground text-[13px] font-semibold">
           {emoji ? (
             <span className="mr-1.5" aria-hidden>
               {emoji}
@@ -496,9 +688,7 @@ function BonusRow({
           ) : null}
           {label}
         </p>
-        <p className="text-muted-foreground truncate text-[11px]">
-          {qualifier}
-        </p>
+        <p className="text-muted-foreground truncate text-[11px]">{qualifier}</p>
       </div>
       {children}
     </div>
@@ -524,40 +714,6 @@ function RateSelect({
       aria-label={ariaLabel}
       className="border-border bg-card focus:border-foreground h-9 w-24 rounded-lg border px-1.5 text-center text-[13px] font-semibold tabular-nums outline-none disabled:opacity-50"
     >
-      {ALLOWED_RATES.map((r) => (
-        <option key={r} value={r}>
-          {r <= 0 ? "Off" : `${r}%`}
-        </option>
-      ))}
-    </select>
-  );
-}
-
-// The Influencer override is TRI-state (decision 2A): "Same as universal"
-// (null, inherit), Off (0), or an explicit rate — so "no special treatment"
-// can never accidentally zero out influencer stories.
-function OverrideSelect({
-  value,
-  disabled,
-  ariaLabel,
-  onChange,
-}: {
-  value: number | null;
-  disabled: boolean;
-  ariaLabel: string;
-  onChange: (v: number | null) => void;
-}) {
-  return (
-    <select
-      value={value === null ? "inherit" : String(value)}
-      disabled={disabled}
-      onChange={(e) =>
-        onChange(e.target.value === "inherit" ? null : Number(e.target.value))
-      }
-      aria-label={ariaLabel}
-      className="border-border bg-card focus:border-foreground h-9 w-40 rounded-lg border px-1.5 text-center text-[12.5px] font-medium tabular-nums outline-none disabled:opacity-50"
-    >
-      <option value="inherit">Same as universal</option>
       {ALLOWED_RATES.map((r) => (
         <option key={r} value={r}>
           {r <= 0 ? "Off" : `${r}%`}

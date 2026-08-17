@@ -1,0 +1,360 @@
+// Normalize the Promos Config v11 payload (MESITA-1069) — the strict-shape,
+// lenient-values gate on save. Mirrors coercePromosConfig + legacyRulesFrom in
+// web-admin app/(app)/rewards-config/promos.ts — keep them in lock-step.
+//
+// v11 splits the two axes v10 conflated (Notion Main §2.7–2.8, Classes v2):
+//
+//   CONTEXT cuts first — visits (local) or orders (remote).
+//   CLASS is who you are: bronze < silver < gold < diamond. Never purchasable.
+//   PLAN is what you pay: free | premium. Private, server-side only.
+//
+// visits prices class × plan; orders drops class (presence can't be priced on
+// a delivery order) and prices plan alone. ORDERS IS PARKED — the shape is
+// stored and the operator can tune it, but no ticket carries a remote context
+// yet, so the engine never reads those rates.
+//
+// Lenient by design (the MESITA-804 lesson): unknown keys drop, gaps fall
+// back to defaults, every rate snaps to the 5% grid. The only hard error is a
+// non-object body. A stored v10 blob MIGRATES rather than resetting.
+
+const STRATEGY_KEYS = ["conservative", "aggressive"] as const;
+type StrategyKey = (typeof STRATEGY_KEYS)[number];
+
+const CLASS_KEYS = ["bronze", "silver", "gold", "diamond"] as const;
+export type ClassKey = (typeof CLASS_KEYS)[number];
+
+const PLAN_KEYS = ["free", "premium"] as const;
+export type PlanKey = (typeof PLAN_KEYS)[number];
+
+const ACTION_KEYS = [
+  "standing",
+  "mesita_review",
+  "story",
+  "review",
+  "welcome",
+] as const;
+type ActionKey = (typeof ACTION_KEYS)[number];
+
+// The legacy class rows the reward_rules mirror still speaks. Each maps onto
+// one (class, plan) cell of the VISITS grid — the legacy table has no context
+// axis, and every ticket it ever priced was a visit.
+const LEGACY_CLASS_KEYS = ["standard", "influencer", "premium", "aura"] as const;
+type LegacyClassKey = (typeof LEGACY_CLASS_KEYS)[number];
+
+export const LEGACY_CLASS_IDENTITY: Record<
+  LegacyClassKey,
+  { cls: ClassKey; plan: PlanKey }
+> = {
+  standard: { cls: "bronze", plan: "free" },
+  influencer: { cls: "silver", plan: "free" },
+  premium: { cls: "bronze", plan: "premium" },
+  aura: { cls: "diamond", plan: "free" },
+};
+
+/**
+ * Resolve a stored `consumers.class_key` onto the two v11 identity axes.
+ *
+ * THE BRIDGE, and deliberately temporary: `consumers` has no plan column yet,
+ * so today the paid subscription is still encoded as the `premium` CLASS row.
+ * Reading the plan back out of it is what lets v11 price real bills before the
+ * schema catches up. When `consumers.plan` lands this function deletes itself.
+ *
+ * An unknown or missing key prices as bronze·free — the floor — rather than
+ * erroring or leaking that it was unrecognised.
+ */
+export function identityForClassKey(
+  key: string | null | undefined,
+): { cls: ClassKey; plan: PlanKey } {
+  const hit = (LEGACY_CLASS_KEYS as readonly string[]).includes(key ?? "")
+    ? LEGACY_CLASS_IDENTITY[key as LegacyClassKey]
+    : undefined;
+  return hit ?? LEGACY_CLASS_IDENTITY.standard;
+}
+
+export type ContextBonuses = {
+  welcome: number;
+  mesita: number;
+  story: number;
+  google: number;
+};
+
+export type PromosConfigV11 = {
+  version: 11;
+  visits: {
+    base: Record<StrategyKey, Record<ClassKey, Record<PlanKey, number>>>;
+    bonuses: ContextBonuses;
+  };
+  orders: {
+    base: Record<StrategyKey, Record<PlanKey, number>>;
+    bonuses: ContextBonuses;
+    soon: boolean;
+  };
+  cap: number;
+};
+
+export type LegacyRuleRow = {
+  strategy: StrategyKey;
+  class: LegacyClassKey;
+  action: ActionKey;
+  discount_percent: number;
+};
+
+const RATE_STEP = 5;
+const RATE_FLOOR = 5;
+const RATE_MAX = 70;
+
+const ALLOWED_CAPS = [200, 500, 1000] as const;
+const CAP_DEFAULT = 500;
+
+// The v11 defaults. Byte-identical to DEFAULT_PROMOS in the web-admin catalog.
+export const DEFAULT_PROMOS_V11: PromosConfigV11 = {
+  version: 11,
+  visits: {
+    base: {
+      conservative: {
+        bronze: { free: 10, premium: 20 },
+        silver: { free: 15, premium: 25 },
+        gold: { free: 20, premium: 30 },
+        diamond: { free: 25, premium: 35 },
+      },
+      aggressive: {
+        bronze: { free: 20, premium: 40 },
+        silver: { free: 30, premium: 50 },
+        gold: { free: 40, premium: 60 },
+        diamond: { free: 50, premium: 70 },
+      },
+    },
+    bonuses: { welcome: 10, mesita: 5, story: 10, google: 10 },
+  },
+  orders: {
+    base: {
+      conservative: { free: 5, premium: 10 },
+      aggressive: { free: 10, premium: 15 },
+    },
+    bonuses: { welcome: 5, mesita: 5, story: 5, google: 5 },
+    soon: true,
+  },
+  cap: CAP_DEFAULT,
+};
+
+function snapRate(v: unknown, fallback: number): number {
+  if (typeof v !== "number" || !Number.isFinite(v)) return fallback;
+  if (v <= 0) return 0;
+  const stepped = Math.round(v / RATE_STEP) * RATE_STEP;
+  return Math.max(RATE_FLOOR, Math.min(RATE_MAX, stepped));
+}
+
+function snapCap(v: unknown): number {
+  if (typeof v !== "number" || !Number.isFinite(v)) return CAP_DEFAULT;
+  let best: number = ALLOWED_CAPS[0];
+  for (const option of ALLOWED_CAPS) {
+    if (Math.abs(option - v) < Math.abs(best - v)) best = option;
+  }
+  return best;
+}
+
+const isStrategy = (v: unknown): v is StrategyKey =>
+  (STRATEGY_KEYS as readonly unknown[]).includes(v);
+const isClass = (v: unknown): v is ClassKey =>
+  (CLASS_KEYS as readonly unknown[]).includes(v);
+const isPlan = (v: unknown): v is PlanKey =>
+  (PLAN_KEYS as readonly unknown[]).includes(v);
+
+function coerceBonuses(raw: unknown, d: ContextBonuses): ContextBonuses {
+  const b = (raw ?? {}) as Record<string, unknown>;
+  return {
+    welcome: snapRate(b.welcome, d.welcome),
+    mesita: snapRate(b.mesita, d.mesita),
+    story: snapRate(b.story, d.story),
+    google: snapRate(b.google, d.google),
+  };
+}
+
+/** Snap to the 5% grid without snapRate's floor/ceiling clamp. */
+function midpoint(a: number, b: number): number {
+  return Math.round((a + b) / 2 / RATE_STEP) * RATE_STEP;
+}
+
+/**
+ * Migrate a v10 blob. The old four-class row set carried BOTH axes at once:
+ *
+ *   standard → bronze·free    influencer → silver·free
+ *   premium  → bronze·premium aura       → diamond·free
+ *
+ * so the Premium PLAN uplift is exactly what the old `premium` class row paid
+ * over `standard`, carried across every class. Gold — no v10 ancestor —
+ * interpolates. The Influencer story override is DROPPED: it keyed on a class
+ * that no longer exists, and v2 prices no per-class bonus.
+ */
+function migrateV10(r: Record<string, unknown>): PromosConfigV11 {
+  const d = DEFAULT_PROMOS_V11;
+  const rawBase = (r.base ?? {}) as Record<string, unknown>;
+  const legacyAt = (s: StrategyKey, c: LegacyClassKey): number | undefined => {
+    const row = rawBase[s];
+    if (!row || typeof row !== "object") return undefined;
+    const v = (row as Record<string, unknown>)[c];
+    return typeof v === "number" && Number.isFinite(v) ? v : undefined;
+  };
+
+  const visitsBase = structuredClone(d.visits.base);
+  for (const s of STRATEGY_KEYS) {
+    const bronzeFree = snapRate(
+      legacyAt(s, "standard"),
+      d.visits.base[s].bronze.free,
+    );
+    const bronzePremium = snapRate(
+      legacyAt(s, "premium"),
+      d.visits.base[s].bronze.premium,
+    );
+    const silverFree = snapRate(
+      legacyAt(s, "influencer"),
+      d.visits.base[s].silver.free,
+    );
+    const diamondFree = snapRate(
+      legacyAt(s, "aura"),
+      d.visits.base[s].diamond.free,
+    );
+    const goldFree = midpoint(silverFree, diamondFree);
+    const uplift = Math.max(0, bronzePremium - bronzeFree);
+    const withUplift = (free: number) => Math.min(RATE_MAX, free + uplift);
+
+    visitsBase[s] = {
+      bronze: { free: bronzeFree, premium: bronzePremium },
+      silver: { free: silverFree, premium: withUplift(silverFree) },
+      gold: { free: goldFree, premium: withUplift(goldFree) },
+      diamond: { free: diamondFree, premium: withUplift(diamondFree) },
+    };
+  }
+
+  return {
+    version: 11,
+    visits: {
+      base: visitsBase,
+      bonuses: coerceBonuses(r.bonuses, d.visits.bonuses),
+    },
+    orders: structuredClone(d.orders),
+    cap: snapCap(r.cap),
+  };
+}
+
+/**
+ * Coerce an unknown body into a complete v11 config. Returns an error only
+ * for a non-object payload; everything else resolves via defaults + snapping.
+ */
+export function normalizePromosV11(
+  raw: unknown,
+): { ok: true; value: PromosConfigV11 } | { ok: false; error: string } {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
+    return { ok: false, error: "config must be an object" };
+  }
+  const r = raw as Record<string, unknown>;
+
+  // A v10 blob (or anything still carrying a v10-shaped `base`) migrates.
+  if (r.version === 10 || (r.base != null && r.visits == null)) {
+    return { ok: true, value: migrateV10(r) };
+  }
+
+  const d = DEFAULT_PROMOS_V11;
+  const visitsRaw = (r.visits ?? {}) as Record<string, unknown>;
+  const ordersRaw = (r.orders ?? {}) as Record<string, unknown>;
+
+  const visitsBase = structuredClone(d.visits.base);
+  const rawVisitsBase = visitsRaw.base;
+  if (rawVisitsBase && typeof rawVisitsBase === "object") {
+    for (
+      const [s, byClass] of Object.entries(
+        rawVisitsBase as Record<string, unknown>,
+      )
+    ) {
+      if (!isStrategy(s) || !byClass || typeof byClass !== "object") continue;
+      for (
+        const [c, byPlan] of Object.entries(byClass as Record<string, unknown>)
+      ) {
+        if (!isClass(c) || !byPlan || typeof byPlan !== "object") continue;
+        for (
+          const [p, v] of Object.entries(byPlan as Record<string, unknown>)
+        ) {
+          if (!isPlan(p)) continue;
+          visitsBase[s][c][p] = snapRate(v, d.visits.base[s][c][p]);
+        }
+      }
+    }
+  }
+
+  const ordersBase = structuredClone(d.orders.base);
+  const rawOrdersBase = ordersRaw.base;
+  if (rawOrdersBase && typeof rawOrdersBase === "object") {
+    for (
+      const [s, byPlan] of Object.entries(
+        rawOrdersBase as Record<string, unknown>,
+      )
+    ) {
+      if (!isStrategy(s) || !byPlan || typeof byPlan !== "object") continue;
+      for (const [p, v] of Object.entries(byPlan as Record<string, unknown>)) {
+        if (!isPlan(p)) continue;
+        ordersBase[s][p] = snapRate(v, d.orders.base[s][p]);
+      }
+    }
+  }
+
+  return {
+    ok: true,
+    value: {
+      version: 11,
+      visits: {
+        base: visitsBase,
+        bonuses: coerceBonuses(visitsRaw.bonuses, d.visits.bonuses),
+      },
+      orders: {
+        base: ordersBase,
+        bonuses: coerceBonuses(ordersRaw.bonuses, d.orders.bonuses),
+        // Never trust a stored value to un-park orders.
+        soon: true,
+      },
+      cap: snapCap(r.cap),
+    },
+  };
+}
+
+function bonusForAction(bonuses: ContextBonuses, action: ActionKey): number {
+  switch (action) {
+    case "standing":
+      return 0;
+    case "mesita_review":
+      return bonuses.mesita;
+    case "story":
+      return bonuses.story;
+    case "review":
+      return bonuses.google;
+    case "welcome":
+      return bonuses.welcome;
+  }
+}
+
+/**
+ * Derive the complete 40-cell legacy best-of rule set from the v11 knobs —
+ * cell = visits base for that legacy class's (class, plan) + the action's
+ * bonus, clamped to the engine's 70% ceiling. Frozen mirror, kept as the
+ * empty-config fallback.
+ */
+export function legacyRulesFromV11(cfg: PromosConfigV11): LegacyRuleRow[] {
+  const rules: LegacyRuleRow[] = [];
+  for (const strategy of STRATEGY_KEYS) {
+    for (const legacy of LEGACY_CLASS_KEYS) {
+      const { cls, plan } = LEGACY_CLASS_IDENTITY[legacy];
+      for (const action of ACTION_KEYS) {
+        rules.push({
+          strategy,
+          class: legacy,
+          action,
+          discount_percent: Math.min(
+            RATE_MAX,
+            cfg.visits.base[strategy][cls][plan] +
+              bonusForAction(cfg.visits.bonuses, action),
+          ),
+        });
+      }
+    }
+  }
+  return rules;
+}

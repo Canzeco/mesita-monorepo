@@ -34,6 +34,7 @@ import {
   totalFor,
   type ActionKey,
   type ClassKey,
+  type PlanKey,
   type PromosConfig,
   type StrategyKey,
 } from "@/app/(app)/rewards-config/promos";
@@ -180,7 +181,7 @@ export function PromosSection({
   const [dropBusy, setDropBusy] = useState(false);
   const [dropError, setDropError] = useState<string | null>(null);
   // The promos matrix, read LIVE from rewards_config (rates are never cached
-  // in code — MESITA-859), v10 shape since MESITA-991. Identity defaults
+  // in code — MESITA-859), v11 shape since MESITA-1069. Identity defaults
   // render until the fetch lands, so the cards never flash empty; on failure
   // they keep the defaults and the grid carries a quiet "showing defaults"
   // note.
@@ -1268,10 +1269,10 @@ function RewardsMatrix({
 }) {
   const cell = (v: number) => (v > 0 ? `${v}%` : "—");
   const shortClass: Record<ClassKey, string> = {
-    standard: "Standard",
-    premium: "Premium",
-    influencer: "Influencer",
-    aura: "Aura",
+    bronze: "Bronze",
+    silver: "Silver",
+    gold: "Gold",
+    diamond: "Diamond",
   };
   // Zero has no rules — it is off by definition, and this table is only shown
   // for the paid strategies anyway.
@@ -1312,7 +1313,13 @@ function RewardsMatrix({
                 {!paidStrategy
                   ? "—"
                   : cell(
-                      Math.min(RATE_MAX, totalFor(matrix, paidStrategy, cls, a)),
+                      Math.min(
+                        RATE_MAX,
+                        // The class ladder at the Free plan — the floor for
+                        // that class. Plan is the other axis and is never
+                        // attributed to a guest here.
+                        totalFor(matrix, paidStrategy, cls, "free", a),
+                      ),
                     )}
               </span>
             ))}
@@ -1494,11 +1501,14 @@ function PremiumExamples({
   const cap = place.monthly_promo_cap ?? DEFAULT_DISCOUNT_CAP_MXN;
 
   // Welcome is the automatic first-ticket bonus; returning is the bare base.
-  const rate = (cls: ClassKey, welcome: boolean) =>
+  // The two example rows are the PLAN axis (v11) at the base class: what the
+  // same Bronze guest pays on Free versus on the paid subscription.
+  const rate = (plan: PlanKey, welcome: boolean) =>
     paidStrategy
       ? Math.min(
           RATE_MAX,
-          matrix.base[paidStrategy][cls] + (welcome ? matrix.bonuses.welcome : 0),
+          matrix.visits.base[paidStrategy].bronze[plan] +
+            (welcome ? matrix.visits.bonuses.welcome : 0),
         )
       : null;
 
@@ -1528,21 +1538,21 @@ function PremiumExamples({
         <ExampleRow
           visit="Welcome"
           premiumRate={rate("premium", true)}
-          freeRate={rate("standard", true)}
+          freeRate={rate("free", true)}
           cap={cap}
           currency={place.currency}
         />
         <ExampleRow
           visit="Returning"
           premiumRate={rate("premium", false)}
-          freeRate={rate("standard", false)}
+          freeRate={rate("free", false)}
           cap={cap}
           currency={place.currency}
         />
       </div>
       <p>
-        Premium ≥ Standard in every strategy — Premium guests always get the
-        better deal. They are what the membership buys. Action bonuses (story,
+        Premium ≥ Free in every strategy — subscribers always get the better
+        deal. They are what the membership buys. Action bonuses (story,
         reviews) stack on top of these.
       </p>
     </>
