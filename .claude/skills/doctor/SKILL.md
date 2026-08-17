@@ -13,7 +13,7 @@ and **decay** (things that were healthy and no longer are), and write one report
 
 1. **READ-ONLY.** No `INSERT`/`UPDATE`/`DELETE`/DDL, no EF deploys, no migrations, no
    `supabase db push`, no writes to `app_settings`, no config edits, no code fixes, no
-   `main` pushes, **no repo files — the repo carries no reports** (ASDM §C markdown law).
+   `main` pushes, **no repo files — the repo carries no reports** (Development Rules §C markdown law).
    If a fix is obvious, describe it in the report — do not apply it.
    The only writes you are allowed: Linear issues and comments — **Linear documents
    are PROHIBITED** (the ledger is issues + comments only; Pato, 2026-08-16).
@@ -233,7 +233,7 @@ un-staged Ojo knob reads to an operator as a control that does something.
 6. Publish the report as a Linear **issue** titled `Doctor — YYYY-MM-DD` (team Mesita,
    project Ops & maintenance, body = the report — shape below) and set it **Done in the
    same call** — it is a record, not work. Never a Linear document (prohibited) and never
-   a repo file (ASDM §C markdown law).
+   a repo file (Development Rules §C markdown law).
 7. Linear: one issue per **NEW P0/P1**, titled `doctor: <one-line symptom>`, body = the
    finding block verbatim. **Dedupe** — if an open issue already covers it, comment the new
    occurrence count instead of opening a second one. P2/P3 stay in the report only.
