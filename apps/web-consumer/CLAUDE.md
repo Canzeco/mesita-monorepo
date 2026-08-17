@@ -2,7 +2,7 @@
 
 > Monorepo-wide rules: root [`CLAUDE.md`](../../CLAUDE.md) (the quickstart) — read it first. This file adds only package-specific rules.
 
-- **Light theme + semantic tokens only** (`bg-card`, `text-foreground`, `border-border`) — never `bg-zinc-900`/`text-white`. Surfaces read **premium**: branded gradients, tinted icon circles, differentiated chips; wireframe stacks = regression. Design map: Notion Product Rules §F.
+- **Light theme + semantic tokens only** (`bg-card`, `text-foreground`, `border-border`) — never `bg-zinc-900`/`text-white`. Surfaces read **premium**: branded gradients, tinted icon circles, differentiated chips; wireframe stacks = regression. Design map: Notion Product Rules §E.
 - **Overlay & loading primitives are mandatory:** route modals = `SlideOverShell`/`BottomSheetShell` from the segment `layout.tsx` (never `page.tsx`); state overlays = `LocalSheet`/`LocalDialog` (never `fixed inset-0`); loading = `Spinner`/`Skeleton`. Z: BottomNav 40 · @modal 120 · local 130 · Toaster 140. Lint baseline **0**.
 - **Parked blocks are not dead code** — look for a parking comment, a coming-soon route, or a live `@modal` before deleting. Un-parking Catalog = `soon: false` plus the page body.
 - **Five bottom tabs — Home · Search · Visit · Inbox · Me**, plain labels. Routes + legacy redirects: `src/lib/consumer-route-contract.ts`, drift-guarded against mobile.
