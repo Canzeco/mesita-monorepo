@@ -13,7 +13,6 @@ import {
 } from "lucide-react";
 import { MesitaLogo } from "@/components/brand/MesitaLogo";
 import { MesitaMark } from "@/components/brand/MesitaMark";
-import { ATLAS_PARENT } from "@/app/(app)/atlas-config/nav";
 import { AURA_CONSUMERS_PARENT } from "@/app/(app)/aura-consumers/nav";
 import { BILLING_TEST_PARENT } from "@/app/(app)/billing-test/nav";
 import { DB_PARENT } from "@/app/(app)/manage-database/nav";
@@ -87,9 +86,10 @@ const MANAGE_NAV: NavItem[] = [
 
 // Configurations — ordered as the product flows, not alphabetically or by age:
 //   platform  who operates the console, then which model everything runs on
-//   supply    a place's life: eligible to enter (Sourcing) → what its profile
-//             must contain (Atlas) → the pipeline that fills it (Enricher) →
-//             how it gets sealed (Verification) → is a guest's proof real (Ojo)
+//   supply    a place's life: eligible to enter (Sourcing) → the pipeline that
+//             fills its profile (Enricher; the profile SPEC is Notion Atlas
+//             Rules — nothing to configure, so no page) → how it gets sealed
+//             (Verification) → is a guest's proof real (Ojo)
 //   demand    how a guest finds a place (Filters) → what a visit pays (Promos)
 //   agents    the conversational agent that sits on top of all of it
 //
@@ -99,7 +99,6 @@ const CONFIGURATIONS_NAV: NavItem[] = [
   { href: "/admin-config", label: "Admin", Icon: ShieldCheck },
   MODELS_PARENT,
   SOURCING_PARENT,
-  ATLAS_PARENT,
   ENRICHER_PARENT,
   VERIFICATION_PARENT,
   OJO_PARENT,
