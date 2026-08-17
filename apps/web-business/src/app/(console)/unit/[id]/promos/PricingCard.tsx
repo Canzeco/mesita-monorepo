@@ -1,7 +1,7 @@
 import Image from "next/image";
 import { Check, Loader2 } from "lucide-react";
 import { type Strategy } from "@/lib/business/strategies";
-import type { PromosConfig } from "@/lib/business/promos-v10";
+import type { PromosConfig } from "@/lib/business/promos";
 import { cn } from "@/lib/utils";
 import { CARD_ART } from "./promoConstants";
 import { StrategyMeters } from "./promoShared";

@@ -183,8 +183,10 @@ describe("giveLevel — the card's number and meter", () => {
     const cons = giveLevel(DEFAULT_PROMOS, "conservative");
     const aggr = giveLevel(DEFAULT_PROMOS, "aggressive");
     // Straight off distribution-model, the same numbers the Playground charts.
-    expect(cons.mean).toBe(19);
-    expect(aggr.mean).toBe(32);
+    // Both rose a point under v11 (19→20, 32→34): the Premium plan uplift now
+    // applies across the whole class ladder instead of at one `premium` row.
+    expect(cons.mean).toBe(20);
+    expect(aggr.mean).toBe(34);
     expect([cons.p10, cons.p90]).toEqual([10, 30]);
     expect([aggr.p10, aggr.p90]).toEqual([20, 50]);
   });
@@ -203,7 +205,7 @@ describe("giveLevel — the card's number and meter", () => {
     // visits — the band must sit well below it.
     const cells = CLASS_KEYS.flatMap((c) =>
       ACTION_KEYS.map((a) =>
-        Math.min(70, totalFor(DEFAULT_PROMOS, "aggressive", c, a)),
+        Math.min(70, totalFor(DEFAULT_PROMOS, "aggressive", c, "free", a)),
       ),
     );
     expect(giveLevel(DEFAULT_PROMOS, "aggressive").p90).toBeLessThan(
@@ -214,31 +216,21 @@ describe("giveLevel — the card's number and meter", () => {
   it("a paying posture never rounds down to an empty meter", () => {
     // Conservative shaved to a single point against a 50-point Aggressive
     // rounds below half a segment — it must still light one.
-    const lopsided: PromosConfig = {
-      ...DEFAULT_PROMOS,
-      base: {
-        conservative: { standard: 1, influencer: 1, premium: 1, aura: 1 },
-        aggressive: { standard: 50, influencer: 50, premium: 50, aura: 50 },
-      },
-    };
+    const lopsided: PromosConfig = structuredClone(DEFAULT_PROMOS);
+    for (const cls of CLASS_KEYS) {
+      lopsided.visits.base.conservative[cls] = { free: 1, premium: 1 };
+      lopsided.visits.base.aggressive[cls] = { free: 50, premium: 50 };
+    }
     expect(giveLevel(lopsided, "conservative").dots).toBe(1);
   });
 
   it("an all-zero config lights nothing (no divide-by-zero)", () => {
-    const off: PromosConfig = {
-      ...DEFAULT_PROMOS,
-      base: {
-        conservative: { standard: 0, influencer: 0, premium: 0, aura: 0 },
-        aggressive: { standard: 0, influencer: 0, premium: 0, aura: 0 },
-      },
-      bonuses: {
-        welcome: 0,
-        mesita: 0,
-        story: 0,
-        story_influencer: 0,
-        google: 0,
-      },
-    };
+    const off: PromosConfig = structuredClone(DEFAULT_PROMOS);
+    for (const cls of CLASS_KEYS) {
+      off.visits.base.conservative[cls] = { free: 0, premium: 0 };
+      off.visits.base.aggressive[cls] = { free: 0, premium: 0 };
+    }
+    off.visits.bonuses = { welcome: 0, mesita: 0, story: 0, google: 0 };
     expect(giveLevel(off, "aggressive").dots).toBe(0);
   });
 });

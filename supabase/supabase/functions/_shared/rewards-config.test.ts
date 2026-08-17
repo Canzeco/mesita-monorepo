@@ -15,7 +15,7 @@ import {
   placeStrategy,
   resolveTicketRate,
 } from "./rewards-config.ts";
-import { DEFAULT_PROMOS_V10 } from "../admin-web-update-rewards-config/promos-v10-normalize.ts";
+import { DEFAULT_PROMOS_V11 } from "../admin-web-update-rewards-config/promos-v11-normalize.ts";
 
 const GRID = DEFAULT_REWARDS_GRID;
 
@@ -368,22 +368,47 @@ Deno.test("v9: the Welcome bonus is UNLOCKED BY the Google review, never on its 
 });
 
 
-// ── v10 additive (MESITA-992) ────────────────────────────────────────────
+// ── v11 additive (MESITA-1069) ───────────────────────────────────────────
+//
+// The engine still receives the LEGACY `class_key` on the ticket context, so
+// every case below also exercises identityForClassKey — the bridge that reads
+// the (class, plan) pair back out of it until `consumers.plan` lands:
+//   standard → bronze·free    influencer → silver·free
+//   premium  → bronze·premium aura       → diamond·free
 
-function withV10(grid = DEFAULT_REWARDS_GRID) {
-  return { ...grid, v10: structuredClone(DEFAULT_PROMOS_V10), cap: DEFAULT_PROMOS_V10.cap };
+function withPromos(grid = DEFAULT_REWARDS_GRID) {
+  return {
+    ...grid,
+    promos: structuredClone(DEFAULT_PROMOS_V11),
+    cap: DEFAULT_PROMOS_V11.cap,
+  };
 }
 
-Deno.test("resolveTicketRate: v10 additive — base alone", () => {
-  const g = withV10();
+Deno.test("resolveTicketRate: v11 additive — base alone, per legacy class", () => {
+  const g = withPromos();
   assertEquals(resolveTicketRate("conservative", g, { classKey: "standard", isFirstVisit: false }), 10);
   assertEquals(resolveTicketRate("aggressive", g, { classKey: "standard", isFirstVisit: false }), 20);
   assertEquals(resolveTicketRate("aggressive", g, { classKey: "aura", isFirstVisit: false }), 50);
 });
 
-Deno.test("resolveTicketRate: v10 additive — welcome on first visit alone (D3-A)", () => {
-  const g = withV10();
-  // Welcome is NOT gated on Google review under v10.
+Deno.test("resolveTicketRate: v11 — the legacy `premium` class resolves as the PLAN", () => {
+  const g = withPromos();
+  // premium → bronze·premium: the paid subscription at the base class, which
+  // is exactly what the v10 `premium` class row used to pay.
+  assertEquals(resolveTicketRate("conservative", g, { classKey: "premium", isFirstVisit: false }), 20);
+  assertEquals(resolveTicketRate("aggressive", g, { classKey: "premium", isFirstVisit: false }), 40);
+});
+
+Deno.test("resolveTicketRate: v11 — an unknown class prices at the floor", () => {
+  const g = withPromos();
+  // bronze·free, never an error and never a leak that it was unrecognised.
+  assertEquals(resolveTicketRate("aggressive", g, { classKey: "wizard", isFirstVisit: false }), 20);
+  assertEquals(resolveTicketRate("aggressive", g, { classKey: null, isFirstVisit: false }), 20);
+});
+
+Deno.test("resolveTicketRate: v11 additive — welcome on first visit alone (D3-A)", () => {
+  const g = withPromos();
+  // Welcome is NOT gated on a Google review.
   assertEquals(resolveTicketRate("aggressive", g, { classKey: "standard", isFirstVisit: true }), 30); // 20+10
   assertEquals(
     resolveTicketRate("aggressive", g, {
@@ -395,8 +420,8 @@ Deno.test("resolveTicketRate: v10 additive — welcome on first visit alone (D3-
   );
 });
 
-Deno.test("resolveTicketRate: v10 additive — bonuses stack", () => {
-  const g = withV10();
+Deno.test("resolveTicketRate: v11 additive — bonuses stack", () => {
+  const g = withPromos();
   assertEquals(
     resolveTicketRate("aggressive", g, {
       classKey: "influencer",
@@ -405,13 +430,15 @@ Deno.test("resolveTicketRate: v10 additive — bonuses stack", () => {
       reviewVerified: true,
       mesitaReviewed: true,
     }),
-    // base 30 + welcome 10 + story_influencer 30 + google 10 + mesita 5 = 85
-    85,
+    // influencer → silver·free base 30 + welcome 10 + story 10 + google 10
+    // + mesita 5 = 65. Under v10 this cell paid 85, because the retired
+    // per-class story override added 30 instead of the universal 10.
+    65,
   );
 });
 
-Deno.test("resolveTicketRate: v10 additive — zero still pays nothing", () => {
-  const g = withV10();
+Deno.test("resolveTicketRate: v11 additive — zero still pays nothing", () => {
+  const g = withPromos();
   assertEquals(
     resolveTicketRate("zero", g, {
       classKey: "aura",
@@ -424,8 +451,25 @@ Deno.test("resolveTicketRate: v10 additive — zero still pays nothing", () => {
   );
 });
 
-Deno.test("offersAction: v10 reads flat bonuses", () => {
-  const g = withV10();
+Deno.test("resolveTicketRate: v11 additive — clamps at 100", () => {
+  const hot = structuredClone(DEFAULT_PROMOS_V11);
+  hot.visits.base.aggressive.diamond.free = 70;
+  hot.visits.bonuses = { welcome: 70, mesita: 70, story: 70, google: 70 };
+  const g = { ...DEFAULT_REWARDS_GRID, promos: hot, cap: hot.cap };
+  assertEquals(
+    resolveTicketRate("aggressive", g, {
+      classKey: "aura",
+      isFirstVisit: true,
+      storyVerified: true,
+      reviewVerified: true,
+      mesitaReviewed: true,
+    }),
+    100,
+  );
+});
+
+Deno.test("offersAction: v11 reads the visits bonuses", () => {
+  const g = withPromos();
   assertEquals(offersAction("aggressive", g, "story"), true);
   assertEquals(offersAction("aggressive", g, "review"), true);
   assertEquals(offersAction("zero", g, "story"), false);

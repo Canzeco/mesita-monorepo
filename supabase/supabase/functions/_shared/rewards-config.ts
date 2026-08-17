@@ -1,11 +1,22 @@
-// Promos bill engine — v10 additive (MESITA-992) over the legacy v6/v13
+// Promos bill engine — v11 additive (MESITA-1069) over the legacy v6/v13
 // best-of grid (MESITA-723).
 //
-// Source of truth when present: app_settings.rewards_config.v10
-//   { version: 10, base, bonuses, cap }
-// A bill pays base (strategy × class) + welcome (first verified ticket at
-// the place, D3-A) + each earned action bonus (mesita / story±influencer
-// override / google), applied to the first cap-pesos.
+// Source of truth when present: app_settings.rewards_config.v11
+//   { version: 11, visits, orders, cap }
+// A bill pays visits base (strategy × class × plan) + welcome (first verified
+// ticket at the place, D3-A) + each earned action bonus (mesita / story /
+// google), applied to the first cap-pesos.
+//
+// CONTEXT: only the `visits` ladder is ever read. `orders` is parked — no
+// ticket carries a remote context yet — so a remote bill cannot be priced and
+// nothing here looks at those rates.
+//
+// IDENTITY: v11 prices two axes, class (bronze/silver/gold/diamond) and plan
+// (free/premium), but `consumers` still stores only the legacy `class_key`.
+// identityForClassKey bridges the two until `consumers.plan` lands.
+//
+// A stored v10 blob is migrated forward on read, so the engine keeps pricing
+// correctly between the config-shape deploy and the operator's first save.
 //
 // Fallback (no v10 blob yet): the legacy reward_rules table / v13 grid
 // blob, priced BEST-OF. Cap is a SEPARATE per-place param
@@ -28,12 +39,14 @@
 import { type SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { strategyForRates, ratesFromPlace, type PromoRates } from "./promo-strategy.ts";
 import {
-  legacyRulesFromV10,
-  normalizePromosV10,
-  type PromosConfigV10,
-} from "../admin-web-update-rewards-config/promos-v10-normalize.ts";
+  identityForClassKey,
+  legacyRulesFromV11,
+  normalizePromosV11,
+  type PromosConfigV11,
+} from "../admin-web-update-rewards-config/promos-v11-normalize.ts";
 
-export type { PromosConfigV10 };
+export type { PromosConfigV11 };
+export { identityForClassKey };
 
 // Class segments in rank order (mirrors public.classes: rank 0..3 —
 // MESITA-972: standard < influencer < premium < aura).
@@ -87,8 +100,8 @@ export type RewardsGrid = {
   grid: Record<ClassSegment, SegmentRates>;
   actions: ActionMatrix;
   cap: number;
-  /** When set, resolveTicketRate uses additive v10 math (MESITA-992). */
-  v10?: PromosConfigV10;
+  /** When set, resolveTicketRate uses additive v11 math (MESITA-1069). */
+  promos?: PromosConfigV11;
 };
 
 // The defaults (v9, MESITA-877) — the LAST-RESORT fallback, used only when
@@ -309,13 +322,20 @@ export async function loadRewardsGrid(
       ? (blob as Record<string, unknown>)
       : {};
 
-  // v10 additive SoT (MESITA-992). reward_rules stays frozen as a mirror
-  // written on save; the live engine no longer prices from it once v10 exists.
-  if (raw.v10 && typeof raw.v10 === "object" && !Array.isArray(raw.v10)) {
-    const norm = normalizePromosV10(raw.v10);
+  // v11 additive SoT (MESITA-1069). reward_rules stays frozen as a mirror
+  // written on save; the live engine no longer prices from it once a config
+  // exists. A leftover v10 blob is migrated on read (normalizePromosV11
+  // accepts both shapes), so pricing survives the gap between this deploy and
+  // the operator's first v11 save.
+  const stored = raw.v11 ?? raw.v10;
+  if (stored && typeof stored === "object" && !Array.isArray(stored)) {
+    const norm = normalizePromosV11(stored);
     if (norm.ok) {
-      const legacy = gridFromRuleRows(legacyRulesFromV10(norm.value), norm.value.cap);
-      return { ...legacy, v10: norm.value };
+      const legacy = gridFromRuleRows(
+        legacyRulesFromV11(norm.value),
+        norm.value.cap,
+      );
+      return { ...legacy, promos: norm.value };
     }
   }
 
@@ -402,28 +422,28 @@ function clampPercent(n: number): number {
 }
 
 /**
- * v10 additive resolution (MESITA-992 / D1-A / D3-A).
- * total = base(strategy×class) + welcome(first ticket) + each earned bonus.
+ * v11 additive resolution (MESITA-1069, carrying D1-A / D3-A forward).
+ * total = visits base(strategy × class × plan) + welcome(first ticket) + each
+ * earned bonus. Only the visits ladder resolves — orders is parked.
+ *
+ * The per-class Instagram story override is GONE: it keyed on the retired
+ * `influencer` class, and Classes v2 prices no per-class bonus. Class is paid
+ * for in the base, once, where the ladder is legible.
  */
 function resolveAdditiveRate(
   strategy: Exclude<GridStrategy, "zero">,
-  cfg: PromosConfigV10,
+  cfg: PromosConfigV11,
   ctx: RateContext,
 ): number {
-  const cls: ClassSegment = isClassSegment(ctx.classKey)
-    ? ctx.classKey
-    : "standard";
-  let total = cfg.base[strategy][cls];
+  const { cls, plan } = identityForClassKey(ctx.classKey);
+  const b = cfg.visits.bonuses;
+  let total = cfg.visits.base[strategy][cls][plan];
   // D3-A: Welcome grants on the first verified ticket at the place — not
   // gated on a Google review (that was the v9 coupling).
-  if (ctx.isFirstVisit) total += cfg.bonuses.welcome;
-  if (ctx.storyVerified) {
-    total += cls === "influencer" && cfg.bonuses.story_influencer !== null
-      ? cfg.bonuses.story_influencer
-      : cfg.bonuses.story;
-  }
-  if (ctx.reviewVerified) total += cfg.bonuses.google;
-  if (ctx.mesitaReviewed) total += cfg.bonuses.mesita;
+  if (ctx.isFirstVisit) total += b.welcome;
+  if (ctx.storyVerified) total += b.story;
+  if (ctx.reviewVerified) total += b.google;
+  if (ctx.mesitaReviewed) total += b.mesita;
   return clampPercent(total);
 }
 
@@ -462,7 +482,7 @@ export function resolveTicketRate(
   ctx: RateContext,
 ): number {
   if (strategy === "zero") return 0;
-  if (grid.v10) return resolveAdditiveRate(strategy, grid.v10, ctx);
+  if (grid.promos) return resolveAdditiveRate(strategy, grid.promos, ctx);
   return resolveBestOfRate(strategy, grid, ctx);
 }
 
@@ -473,15 +493,15 @@ export function offersAction(
   action: ActionSegment,
 ): boolean {
   if (strategy === "zero") return false;
-  if (grid.v10) {
-    const b = grid.v10.bonuses;
+  if (grid.promos) {
+    const b = grid.promos.visits.bonuses;
     switch (action) {
       case "welcome":
         return b.welcome > 0;
       case "mesita_review":
         return b.mesita > 0;
       case "story":
-        return b.story > 0 || (b.story_influencer ?? 0) > 0;
+        return b.story > 0;
       case "review":
         return b.google > 0;
     }

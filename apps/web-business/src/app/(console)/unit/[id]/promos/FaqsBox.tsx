@@ -9,10 +9,10 @@ import {
 } from "@/lib/business/strategies";
 import {
   RATE_MAX,
-  type ClassKey,
+  type PlanKey,
   type PromosConfig,
   type StrategyKey,
-} from "@/lib/business/promos-v10";
+} from "@/lib/business/promos";
 import { formatMoney } from "@/lib/utils";
 import { EXAMPLE_BILL_MXN, PRODUCT_PRICE_MXN } from "./promoConstants";
 
@@ -161,11 +161,14 @@ function PremiumExamples({
   const cap = place.monthly_promo_cap ?? DEFAULT_DISCOUNT_CAP_MXN;
 
   // Welcome is the automatic first-ticket bonus; returning is the bare base.
-  const rate = (cls: ClassKey, welcome: boolean) =>
+  // The two example cards are the PLAN axis (v11) at the base class: what the
+  // same Bronze guest pays on Free versus on the paid subscription.
+  const rate = (plan: PlanKey, welcome: boolean) =>
     paidStrategy
       ? Math.min(
           RATE_MAX,
-          cfg.base[paidStrategy][cls] + (welcome ? cfg.bonuses.welcome : 0),
+          cfg.visits.base[paidStrategy].bronze[plan] +
+            (welcome ? cfg.visits.bonuses.welcome : 0),
         )
       : null;
 
@@ -195,14 +198,14 @@ function PremiumExamples({
         <ExampleCard
           visit="Welcome"
           premiumRate={rate("premium", true)}
-          freeRate={rate("standard", true)}
+          freeRate={rate("free", true)}
           cap={cap}
           currency={place.currency}
         />
         <ExampleCard
           visit="Returning"
           premiumRate={rate("premium", false)}
-          freeRate={rate("standard", false)}
+          freeRate={rate("free", false)}
           cap={cap}
           currency={place.currency}
         />

@@ -11,7 +11,7 @@ import {
   visibilityDots,
   type PromosConfig,
   type StrategyKey,
-} from "@/lib/business/promos-v10";
+} from "@/lib/business/promos";
 import { cn } from "@/lib/utils";
 import type { CardArt } from "./promoConstants";
 

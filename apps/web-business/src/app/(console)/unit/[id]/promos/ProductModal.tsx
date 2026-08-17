@@ -6,7 +6,7 @@ import {
   DISCOUNT_CAPS_MXN,
   type Strategy,
 } from "@/lib/business/strategies";
-import type { PromosConfig, StrategyKey } from "@/lib/business/promos-v10";
+import type { PromosConfig, StrategyKey } from "@/lib/business/promos";
 import { cn, formatMoney } from "@/lib/utils";
 import { CARD_ART, PRODUCT_PRICE_MXN } from "./promoConstants";
 import { ModalLabel, RateMatrix, Step, StrategyMeters } from "./promoShared";
