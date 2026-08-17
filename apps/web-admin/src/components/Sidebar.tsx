@@ -84,14 +84,20 @@ const MANAGE_NAV: NavItem[] = [
   AURA_CONSUMERS_PARENT,
 ];
 
-// Configurations — ordered as the product flows, not alphabetically or by age:
+// Configurations — ordered as the product flows, not alphabetically or by age.
+// Two lifecycles end to end, a place's then a guest's:
 //   platform  who operates the console, then which model everything runs on
 //   supply    a place's life: eligible to enter (Sourcing) → the pipeline that
 //             fills its profile (Enricher; the profile SPEC is Notion Atlas
-//             Rules — nothing to configure, so no page) → how it gets sealed
-//             (Verification) → is a guest's proof real (Ojo)
-//   demand    how a guest finds a place (Filters) → what a visit pays (Promos)
-//   agents    the conversational agent that sits on top of all of it
+//             Rules — nothing to configure, so no page) → how ownership gets
+//             sealed (Verification)
+//   demand    a guest's night: how they find a place (Filters) → how they book
+//             it (Reservations) → what the visit pays them (Promos)
+//   proof     what happens after they leave: is the screenshot real (Ojo)
+//
+// Ojo trails everything because it reads a proof submitted AFTER the visit —
+// it is the last step of the last lifecycle, and the only config here whose
+// engine isn't built yet.
 //
 // Memo is NOT a row here: Home › Chat is Memo, so its config lives inside
 // Filters Config › Chat rather than as a sibling of the surface it powers.
@@ -101,10 +107,10 @@ const CONFIGURATIONS_NAV: NavItem[] = [
   SOURCING_PARENT,
   ENRICHER_PARENT,
   VERIFICATION_PARENT,
-  OJO_PARENT,
   FILTERS_PARENT,
-  REWARDS_PARENT,
   RESERVATIONS_PARENT,
+  REWARDS_PARENT,
+  OJO_PARENT,
 ];
 
 // Testing — operator tools that probe live systems rather than configure them.
