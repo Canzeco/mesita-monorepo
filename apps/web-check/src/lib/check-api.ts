@@ -24,10 +24,21 @@ export type CheckPayload = {
   created_at: string;
   first_scanned_at: string | null;
   currency: string;
+  /** v4 (MESITA-1090): the CAS token — every staff verdict echoes this back
+   *  as expectedUpdatedAt, so an approve can never land on numbers this
+   *  screen never rendered. */
+  updated_at?: string;
+  approved_at?: string | null;
+  fix_requested?: string | null;
+  fix_note?: string | null;
+  paid_method?: string | null;
+  validated_at?: string | null;
   place: { name: string; slug: string | null };
   guest: { display_name: string; instagram_handle: string | null };
   bill: {
     check_subtotal_cents: number | null;
+    tip_cents?: number | null;
+    tip_pct?: number | null;
     discount_percent: number | null;
     discount_cents: number | null;
     amount_due_cents: number | null;
@@ -116,6 +127,12 @@ const FAILURE_CODE_COPY: Record<string, string> = {
   pin_invalid: "PIN incorrecto — inténtalo de nuevo.",
   bill_required:
     "Este lugar requiere registrar la cuenta antes de cerrar el ticket.",
+  // v4 (MESITA-1090): la escritura del cliente siempre gana — un 409 aquí
+  // fuerza a re-mirar la cuenta antes de aprobar, nunca aprueba en silencio.
+  stale_ticket: "El cliente acaba de cambiar algo, revisa la cuenta otra vez.",
+  fix_outstanding:
+    "Hay una corrección pendiente — espera a que el cliente la envíe.",
+  stale_state: "El ticket cambió de estado — actualiza la pantalla.",
 };
 
 export function checkErrorMessage(res: EFFailure): string {
@@ -156,6 +173,83 @@ export function markPaid(code: string, pin?: string) {
   return callCheckEF<{ alreadyPaid?: boolean }>("check-web-mark-paid", {
     code,
     ...(pin ? { pin } : {}),
+  });
+}
+
+// ── THE TICKET v4 — the handshake (MESITA-1090/1092). ────────────────────
+
+/** open → scanned. An affirmative staff write, fired once by the page —
+ *  never a side effect of a read. Idempotent: already-past-open answers ok. */
+export function scanTicket(code: string, pin?: string) {
+  return callCheckEF<{ status?: string; already?: boolean }>(
+    "check-web-scan-ticket",
+    { code, ...(pin ? { pin } : {}) },
+  );
+}
+
+/** The verdict, half one: approve. Freezes the amount server-side. */
+export function approveTicket(
+  code: string,
+  expectedUpdatedAt: string,
+  pin?: string,
+) {
+  return callCheckEF<{ approvedAt?: string; already?: boolean }>(
+    "check-web-approve-ticket",
+    { code, expectedUpdatedAt, ...(pin ? { pin } : {}) },
+  );
+}
+
+export type CheckFix = "bill" | "proof" | "reward";
+
+/** The verdict, half two: send back ONE named fix. No free text beyond the
+ *  optional note; the ticket stays scanned, same code, no new QR. */
+export function requestFix(
+  code: string,
+  fix: CheckFix,
+  expectedUpdatedAt: string,
+  pin?: string,
+) {
+  return callCheckEF<{ fix?: string; already?: boolean }>(
+    "check-web-request-fix",
+    { code, fix, expectedUpdatedAt, ...(pin ? { pin } : {}) },
+  );
+}
+
+/** paying/approved → revealed. Payment confirmed; the ticket closes. */
+export function validateTicket(code: string, pin?: string) {
+  return callCheckEF<{ alreadyPaid?: boolean }>("check-web-validate-ticket", {
+    code,
+    ...(pin ? { pin } : {}),
+  });
+}
+
+/** The AUDIT-FREE live read the poll runs while a ticket is open on screen.
+ *  check-web-get-ticket logs an event per read and the rate limiter counts
+ *  events per ip — polling through it would rate-limit the waiter out of
+ *  their own approve. This endpoint writes nothing. */
+export type CheckPollPayload = {
+  status: string;
+  updated_at: string;
+  fix_requested: string | null;
+  fix_note: string | null;
+  approved_at: string | null;
+  validated_at: string | null;
+  paid_method: string | null;
+  bill: {
+    check_subtotal_cents: number | null;
+    tip_cents: number | null;
+    tip_pct: number | null;
+    discount_percent: number | null;
+    discount_cents: number | null;
+    amount_due_cents: number | null;
+  } | null;
+  story_state: string;
+  review_state: string;
+};
+
+export function pollTicket(code: string) {
+  return callCheckEF<{ poll: CheckPollPayload }>("check-web-poll-ticket", {
+    code,
   });
 }
 

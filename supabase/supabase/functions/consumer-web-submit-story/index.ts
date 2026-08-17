@@ -82,7 +82,7 @@ Deno.serve(async (req) => {
 
   const ticketRow = await admin
     .from("tickets")
-    .select("id, project_id, consumer_id, kind, status, story_status")
+    .select("id, project_id, consumer_id, kind, status, story_status, fix_requested")
     .eq("id", ticketId)
     .maybeSingle();
   if (ticketRow.error) {
@@ -175,6 +175,11 @@ Deno.serve(async (req) => {
       // The proof artifact (MESITA-1030). Only set when supplied so an older
       // client's retry can never blank a stored screenshot.
       ...(shotRes.url ? { story_screenshot_url: shotRes.url } : {}),
+      // v4 fix loop (MESITA-1090): a re-uploaded proof clears the staff
+      // send-back in the same write — their screen updates off the poll.
+      ...(ticket.fix_requested === "proof" || ticket.fix_requested === "reward"
+        ? { fix_requested: null, fix_note: null }
+        : {}),
     })
     .eq("id", ticketId)
     .select("id, kind, status, story_status, story_submitted_at")

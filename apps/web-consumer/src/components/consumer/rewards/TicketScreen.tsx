@@ -1,33 +1,36 @@
 "use client";
 
-// THE TICKET (MESITA-857 · 908 · 886 · 1029) — the whole ticket lifecycle on
-// ONE FULL PAGE, organised as a FOUR-STEP MODAL (Pato, 2026-08-11: "1. select
-// rewards/tasks, 2. do tasks, 3. show qr, 4. results page"):
+// THE TICKET v4 (MESITA-1084 · 1088–1092) — the whole ticket lifecycle on ONE
+// FULL PAGE, organised as the SEVEN-STEP JOURNEY from Notion 🦚 Main ›
+// Tickets Workflow. The place was picked in the wallet; from here:
 //
-//   chrome (back · place · status) → rail → step body → utility row
-//   1 Reward  · direction C, plan ticket-open-fast-20260811: NO hero number —
-//               the three chips ARE the screen, each carrying its engine rate
-//               big in Fraunces (selected = gradient); CTA right under them
-//   2 Do it   · the chosen proof, self-attested
-//   3 Show QR · THE PASS — guest + rate lockup + QR + stub (the big Fraunces
-//               % moment lives HERE, not on step 1)
-//   4 Results · what the visit paid, the ★, the bill capture
+//   chrome (back · place) → seven-chip rail → step body → utility row
+//   1 Bill     · the guest types the printed total + picks the tip
+//                (10/15/20/custom, 15% preselected, tip BEFORE the discount)
+//   2 Reward   · the lanes — payout · automatic · visit · class · plan ·
+//                sharing (pick one) — live result + the cap, honestly
+//   3 Task     · the chosen proof, done and uploaded right here
+//   4 QR       · the HANDSHAKE, not the finish: the scan opens the ticket
+//                staff-side; they approve or send back ONE named fix, which
+//                returns the guest to that step — same code, no new QR (F1)
+//   5 Pay      · after approval only — the amount is frozen; pay the place
+//                directly (C2: card-through-Mesita and Yums are staged)
+//   6 Validate · payment confirms → the ticket closes on its own
+//   7 Results  · what the visit paid
 //
-// SPEED CONTRACT (MESITA-1029): this screen renders from what the tap already
-// knew. Identity comes from useConsumerIdentity() (the shell layout's one
-// profile fetch — never re-fetch it here); a fresh ticket comes from the seed
-// cache (ticket-seed.ts) so the QR paints on the FIRST frame; the quote
-// promise starts at create time and is consumed here. list-tickets reconciles
-// everything in the background. The born entrance died with this (7.2B):
-// instant IS the delight, and the animation fired on a screen where the pass
-// wasn't even visible. The scanned verified-pulse stays.
+// LIVE SYNC is owner-scoped polling (consumer-web-get-ticket at 10s +
+// visibilitychange) — Realtime stays off `tickets` by design. A staff
+// send-back arrives asynchronously: the rail chip turns AMBER, the banner
+// NAMES the fix (never the failure — the word "rejected" appears nowhere),
+// focus moves to the returned-to step, and ONE aria-live region announces it
+// (D3 · T2). Approval auto-advances to Pay after ~900ms.
 //
-// THE RATE IS NOT A CREATE-TIME BOUNDARY. Tickets are created at "base";
-// submit-review / submit-story accept any OPEN ticket and ticket-reprice
-// bumps late tasks upward, so the QR never waits on a task and a task is
-// pure upside. The step-1 pick is a LOCAL preference (useStoredString) until
-// a proof lands; only the ticket's own status can lock the QR. Pre-1026
-// tickets with a 'pending' task keep their lock and land on step 2.
+// SPEED CONTRACT (MESITA-1029) survives v4: identity rides the shell
+// layout's one profile fetch, a fresh ticket paints from the seed cache, the
+// quote promise starts at create time. The step machine itself lives in
+// lib/ticket-journey.ts — pure and swept by tests, because its one bug class
+// (a fix bouncing to a step the clamps refuse) only used to reproduce at a
+// real restaurant.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
@@ -37,16 +40,20 @@ import { QRCodeSVG } from "qrcode.react";
 import {
   AlertTriangle,
   ArrowLeft,
+  Award,
   BadgeCheck,
   Check,
+  Crown,
+  Gem,
   Loader2,
-  Lock,
-  PartyPopper,
+  Medal,
+  RefreshCw,
   Sparkles,
   Star,
   Store,
   UtensilsCrossed,
   XCircle,
+  Zap,
 } from "lucide-react";
 
 import { DefaultAvatar } from "@/components/consumer/DefaultAvatar";
@@ -65,17 +72,29 @@ import {
   InstagramGlyph,
   MesitaGlyph,
 } from "@/components/consumer/rewards/BrandGlyph";
+import {
+  Lane,
+  LaneChip,
+  MoneyRow,
+  StepBill,
+  StepPay,
+  StepResults,
+  StepValidate,
+  TipHonesty,
+} from "@/components/consumer/rewards/ticket-steps";
 import { submitTicketReview } from "@/lib/api/pay";
 import { formatCurrency } from "@/lib/api/profile";
 import {
   ACTIVE_TICKET_STATUSES,
   REPORT_REASONS,
   apiCancelTicket,
+  apiGetRewardQuote,
+  apiGetTicket,
   apiReportTicket,
+  apiSelectTicketPayment,
   apiSubmitReview,
   apiSubmitStory,
-  apiGetRewardQuote,
-  apiSubmitTicketTotal,
+  apiSubmitTicketBill,
   checkUrlForCode,
   type ConsumerTicketRow,
   type ReportReason,
@@ -87,6 +106,16 @@ import { classProperLabel } from "@/lib/consumer-data";
 import { useStoredString } from "@/lib/local-store";
 import { strategyForPlaceRow } from "@/lib/promo-rates";
 import { peekTicketSeed } from "@/lib/ticket-seed";
+import {
+  FIX_COPY,
+  fixReturnStep,
+  isTicketFix,
+  resolveStep,
+  stepReachable,
+  type JourneyInput,
+  type TicketFix,
+  type TicketStepId,
+} from "@/lib/ticket-journey";
 import { useConsumerTickets } from "@/lib/hooks/useConsumerTickets";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { cn } from "@/lib/utils";
@@ -104,18 +133,6 @@ function passGradient(key: string): string {
   return "bg-[linear-gradient(150deg,#ff7a45_0%,#ff4d6d_55%,#ff2d78_100%)]";
 }
 
-function statusLine(t: ConsumerTicketRow): string {
-  switch (t.status) {
-    case "open":
-      return "Show this QR — staff scan it to start your visit.";
-    case "awaiting_payment_confirm":
-      // MESITA-886: bill is optional — never promise a table total.
-      return "Scanned — staff closes your visit at the table.";
-    default:
-      return t.status;
-  }
-}
-
 type TaskState = "todo" | "busy" | "checking" | "done" | "rejected";
 
 function taskStateFor(v: string | null | undefined): TaskState {
@@ -125,49 +142,56 @@ function taskStateFor(v: string | null | undefined): TaskState {
   return "done";
 }
 
-/** Where the guest's step-1 pick lives until a proof makes it real. */
+/** Where the guest's reward pick lives until a proof makes it real. */
 function pickStorageKey(ticketId: string): string {
   return `mesita.ticket.reward.${ticketId}`;
 }
 
-function stubNoun(a: ActionKind): string {
-  return a === "story" ? "Story" : a === "mesita" ? "Mesita ★" : "Review";
-}
-
-type Step = 1 | 2 | 3 | 4;
 type TaskSheet = "mesita" | "report" | null;
 
-const STEP_LABELS = ["Reward", "Do it", "Show QR", "Results"] as const;
-
-// The modular reward model (Pato, 2026-08-11: "you have your base and you can
-// select your bonuses… display all bonuses, automatic and action; automatic
-// is automatic but still display it; action bonuses you can only select one"):
-//   base reward            — always yours, shown first
-//   welcome visit bonus    — AUTOMATIC (displayed, never selectable)
-//   instagram story bonus  — action ┐
-//   google review bonus    — action ├ pick ONE (or none — base always works)
-//   mesita review bonus    — action ┘
-// story/google map to the ticket's story_status/review_status columns; the
-// Mesita ★ lives in ticket_reviews and the engine's resolveLiveTicketRate
-// counts it via hasMesitaReview at billing time, so all three actions PAY.
 type ActionKind = "story" | "google" | "mesita";
 /** "base" = no action selected — the QR at the guest's floor. */
 type RewardPick = ActionKind | "base";
+
+const ACTION_SHORT: Record<ActionKind, string> = {
+  story: "Instagram story",
+  google: "Google review",
+  mesita: "Mesita review",
+};
+
+const PAY_METHOD_LABEL: Record<string, string> = {
+  at_place: "Paid at the place",
+  mesita: "Card through Mesita",
+};
+
+/** The freshest of the wallet row and the 10s poll, by updated_at. */
+function freshest(
+  list: ConsumerTicketRow | null,
+  polled: ConsumerTicketRow | null,
+): ConsumerTicketRow | null {
+  if (!polled) return list;
+  if (!list) return polled;
+  const a = list.updated_at ?? "";
+  const b = polled.updated_at ?? "";
+  return b >= a
+    ? { ...list, ...polled, place: polled.place ?? list.place }
+    : list;
+}
 
 export function TicketScreen({ ticketId }: { ticketId: string }) {
   const supabase = useBrowserSupabase();
   const router = useRouter();
   // Identity rides the shell layout's one profile fetch (S1) — this screen
-  // adds ZERO server work of its own.
+  // adds ZERO server work of its own beyond its own ticket.
   const { userId, displayName: guestName, avatarUrl } = useConsumerIdentity();
   const tickets = useConsumerTickets(userId);
   const { key: classKey, handle: igHandle } = useConsumerClass();
 
-  // The seed (S3) covers the gap between arrival and the first list-tickets
-  // response — a freshly created ticket paints QR-and-all on frame 1. The
-  // polled list wins the moment it has the row.
+  // The seed (S3) covers the gap between arrival and the first list response;
+  // the 10s poll (v4) then owns freshness for THIS ticket.
   const seed = useMemo(() => peekTicketSeed(ticketId), [ticketId]);
-  const ticket = useMemo(
+  const [polled, setPolled] = useState<ConsumerTicketRow | null>(null);
+  const listTicket = useMemo(
     () =>
       tickets.active.find((t) => t.id === ticketId) ??
       tickets.history.find((t) => t.id === ticketId) ??
@@ -175,14 +199,94 @@ export function TicketScreen({ ticketId }: { ticketId: string }) {
       null,
     [tickets.active, tickets.history, ticketId, seed],
   );
+  const ticket = useMemo(
+    () => freshest(listTicket, polled),
+    [listTicket, polled],
+  );
 
-  // The pass quotes the ENGINE's number, not the static v6 ladder (MESITA-1013
-  // / 1014). Before this, everything up to the bill showed a best-of rung from
-  // reward-segments.ts while the bill paid base + welcome + each earned bonus —
-  // so the screen the waiter scans was the one showing the wrong rate.
-  //
-  // Stamped with the place it describes and read back through a match, so a
-  // quote can never be attributed to a different ticket's place.
+  const live = ticket ? ACTIVE_TICKET_STATUSES.has(ticket.status) : false;
+
+  // ── The guest side of the handshake: poll THIS ticket at 10s while it is
+  //    live, re-sync on visibilitychange, stop at terminal (F1). Transport
+  //    failure is NOT an error state — after three misses one muted line
+  //    appears; the card stays painted and the QR stays valid. ─────────────
+  // Declared before the poll effect below, which drives it on staff
+  // transitions (approve → auto-advance, send-back → returned step).
+  const [stepChoice, setStepChoice] = useState<TicketStepId | null>(null);
+  const [pendingSwitch, setPendingSwitch] = useState<ActionKind | null>(null);
+  const [pollMisses, setPollMisses] = useState(0);
+  // T2/F1: the ONE live region's text + the focus moves fire on the
+  // TRANSITIONS the poll observes — staff approve, staff send-back — inside
+  // the async handler, with stable copy. First observation only records a
+  // baseline: arriving mid-wait is not a change worth announcing.
+  const [announce, setAnnounce] = useState("");
+  const stepBodyRef = useRef<HTMLDivElement | null>(null);
+  const lastSyncRef = useRef<{ status: string | null; fix: string | null }>({
+    status: null,
+    fix: null,
+  });
+  useEffect(() => {
+    if (!live) return;
+    let cancelled = false;
+    const tick = async () => {
+      if (document.visibilityState !== "visible") return;
+      try {
+        const { ticket: fresh } = await apiGetTicket(supabase, ticketId);
+        if (cancelled) return;
+        setPolled(fresh);
+        setPollMisses(0);
+        const prev = lastSyncRef.current;
+        const freshFix = fresh.fix_requested ?? null;
+        const placeName = fresh.place?.name ?? "the place";
+        if (prev.status !== null) {
+          if (fresh.status !== prev.status) {
+            if (fresh.status === "scanned" && !freshFix) {
+              setAnnounce(`Scanned. Waiting for ${placeName} to approve.`);
+            } else if (fresh.status === "approved") {
+              setAnnounce(`Approved by ${placeName}.`);
+              // Auto-advance lands on Pay via the machine after ~900ms; move
+              // focus with it so the change is never a silent teleport.
+              window.setTimeout(() => {
+                if (cancelled) return;
+                setStepChoice(null);
+                stepBodyRef.current?.focus();
+              }, 900);
+            } else if (fresh.status === "revealed") {
+              setAnnounce("Visit complete.");
+              setStepChoice(null);
+            }
+          }
+          if (freshFix && freshFix !== prev.fix && isTicketFix(freshFix)) {
+            // D3/T2: the send-back names the fix and MOVES focus to the
+            // returned-to step — without this a screen-reader user is
+            // silently teleported mid-visit.
+            setAnnounce(
+              `${placeName} sent it back — ${FIX_COPY[freshFix].title}.`,
+            );
+            setStepChoice(null);
+            stepBodyRef.current?.focus();
+          }
+        }
+        lastSyncRef.current = { status: fresh.status, fix: freshFix };
+      } catch {
+        if (!cancelled) setPollMisses((n) => n + 1);
+      }
+    };
+    void tick();
+    const interval = window.setInterval(() => void tick(), 10_000);
+    const onVisible = () => {
+      if (document.visibilityState === "visible") void tick();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      cancelled = true;
+      window.clearInterval(interval);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
+  }, [supabase, ticketId, live]);
+
+  // The pass quotes the ENGINE's number (MESITA-1013/1014) — stamped with the
+  // place it describes so it can never be attributed to another ticket.
   const quotePlaceId = ticket?.place?.id ?? null;
   const [quoteRes, setQuoteRes] = useState<{
     placeId: string;
@@ -195,9 +299,6 @@ export function TicketScreen({ ticketId }: { ticketId: string }) {
     let cancelled = false;
     void (async () => {
       try {
-        // S4: a create-time prefetch may already hold the answer — consume it
-        // instead of starting cold. It resolves null on failure, and a manual
-        // retry (quoteReload > 0) always goes to the network.
         const seeded =
           quoteReload === 0 &&
           seed?.quote &&
@@ -211,9 +312,7 @@ export function TicketScreen({ ticketId }: { ticketId: string }) {
           setQuoteFail(null);
         }
       } catch {
-        // The QR NEVER waits on the quote — only step 1's numbers do. The
-        // failure renders as an inline retry + a "base" escape hatch there,
-        // and the pass headline stays hidden rather than guessing a number.
+        // The QR NEVER waits on the quote — only the Reward lanes do.
         if (!cancelled) setQuoteFail(quotePlaceId);
       }
     })();
@@ -224,19 +323,11 @@ export function TicketScreen({ ticketId }: { ticketId: string }) {
   const quote = quoteRes?.placeId === quotePlaceId ? quoteRes.quote : null;
   const quoteError = quoteFail === quotePlaceId && quote === null;
 
-  // Step 1's pick. useStoredString keeps the hydration render on the SSR
-  // snapshot, so no setState-in-effect and no mismatch.
+  // Step 1's pick. useStoredString keeps hydration on the SSR snapshot.
   const [storedPick, setStoredPick] = useStoredString(
     pickStorageKey(ticketId),
     "",
   );
-  // Row selection while the guest is still deciding — writing straight to the
-  // store would advance the derived step out from under the tap.
-  const [draftPick, setDraftPick] = useState<RewardPick | null>(null);
-  const [stepChoice, setStepChoice] = useState<Step | null>(null);
-  // A switch the guest asked for but hasn't confirmed yet (only raised when
-  // there is real work behind the current pick).
-  const [pendingSwitch, setPendingSwitch] = useState<ActionKind | null>(null);
 
   const scanned = ticket?.first_scanned_at != null;
   const [pulse, setPulse] = useState(false);
@@ -251,10 +342,8 @@ export function TicketScreen({ ticketId }: { ticketId: string }) {
   }, [scanned]);
 
   const [sheet, setSheet] = useState<TaskSheet>(null);
-  const openSheet = useCallback((next: TaskSheet) => setSheet(next), []);
 
-  // The screenshot URL is the proof artifact (MESITA-1030) — TaskProof
-  // uploads it, these pin it to the ticket via the submit EFs.
+  // ── Task submits (self-attested; the screenshot is the proof artifact). ──
   const confirmGoogle = useCallback(
     async (screenshotUrl: string) => {
       await apiSubmitReview(supabase, ticketId, screenshotUrl);
@@ -262,7 +351,6 @@ export function TicketScreen({ ticketId }: { ticketId: string }) {
     },
     [supabase, ticketId, tickets],
   );
-
   const confirmStory = useCallback(
     async (screenshotUrl: string) => {
       await apiSubmitStory(supabase, ticketId, screenshotUrl);
@@ -300,28 +388,54 @@ export function TicketScreen({ ticketId }: { ticketId: string }) {
     }
   }, [supabase, ticketId, reviewDraft]);
 
-  const [totalDraft, setTotalDraft] = useState("");
-  const [totalBusy, setTotalBusy] = useState(false);
-  const [actionError, setActionError] = useState<string | null>(null);
-  const submitTotal = useCallback(async () => {
-    const pesos = Number(totalDraft.replace(/[,$\s]/g, ""));
-    if (!Number.isFinite(pesos) || pesos <= 0) {
-      setActionError("Type the bill total in pesos.");
-      return;
-    }
-    setTotalBusy(true);
-    setActionError(null);
+  // ── Bill save (step 1) → the EF prices everything server-side. ──────────
+  const [billBusy, setBillBusy] = useState(false);
+  const [billError, setBillError] = useState<string | null>(null);
+  const saveBill = useCallback(
+    async (bill: {
+      subtotalCents: number;
+      tipPct: number | null;
+      tipCustomCents: number;
+    }) => {
+      setBillBusy(true);
+      setBillError(null);
+      try {
+        const res = await apiSubmitTicketBill(supabase, ticketId, bill);
+        setPolled((prev) =>
+          prev ? { ...prev, ...res.ticket } : (res.ticket as ConsumerTicketRow),
+        );
+        await tickets.refresh();
+        setStepChoice(null); // let the journey walk forward naturally
+      } catch (err) {
+        setBillError(
+          err instanceof Error ? err.message : "Couldn't save the bill.",
+        );
+      } finally {
+        setBillBusy(false);
+      }
+    },
+    [supabase, ticketId, tickets, setStepChoice],
+  );
+
+  // ── Pay (step 5): the ONE live path — the guest pays the place. ─────────
+  const [payBusy, setPayBusy] = useState(false);
+  const [payError, setPayError] = useState<string | null>(null);
+  const confirmAtPlace = useCallback(async () => {
+    setPayBusy(true);
+    setPayError(null);
     try {
-      await apiSubmitTicketTotal(supabase, ticketId, Math.round(pesos * 100));
-      await tickets.refresh();
+      await apiSelectTicketPayment(supabase, ticketId, "at_place");
+      const { ticket: fresh } = await apiGetTicket(supabase, ticketId);
+      setPolled(fresh);
+      setStepChoice(null);
     } catch (err) {
-      setActionError(
-        err instanceof Error ? err.message : "Couldn't save that just yet.",
+      setPayError(
+        err instanceof Error ? err.message : "Couldn't start the payment.",
       );
     } finally {
-      setTotalBusy(false);
+      setPayBusy(false);
     }
-  }, [supabase, ticketId, tickets, totalDraft]);
+  }, [supabase, ticketId, setStepChoice]);
 
   const [reportReason, setReportReason] = useState<ReportReason | null>(null);
   const [reportDetails, setReportDetails] = useState("");
@@ -357,6 +471,8 @@ export function TicketScreen({ ticketId }: { ticketId: string }) {
     }
   }, [supabase, ticketId, tickets, router]);
 
+  const waiting = ticket?.status === "scanned" && !ticket.fix_requested;
+
   if (tickets.status === "loading" && !ticket) {
     return (
       <Shell>
@@ -369,9 +485,7 @@ export function TicketScreen({ ticketId }: { ticketId: string }) {
     );
   }
 
-  // A failed list call is NOT a missing ticket (Pass 2): telling a guest at
-  // the table that their ticket "may have been cancelled" because the network
-  // blipped is the worst possible misread. Error gets a retry; only a
+  // A failed list call is NOT a missing ticket: error → retry; only a
   // successful list that lacks the row gets "not found".
   if (!ticket && tickets.status === "error") {
     return (
@@ -415,31 +529,36 @@ export function TicketScreen({ ticketId }: { ticketId: string }) {
             href={CONSUMER_ROUTES.newVisit.root}
             className="bg-pink-gradient shadow-glow mt-1 rounded-xl px-5 py-2.5 text-[13px] font-semibold text-white"
           >
-            Back to Rewards
+            Back to Visit
           </Link>
         </div>
       </Shell>
     );
   }
 
-  const live = ACTIVE_TICKET_STATUSES.has(ticket.status);
-  const closed = !live;
   const saved = ticket.status === "revealed";
   const cancelled = ticket.status === "cancelled";
-  const billed = (ticket.total_cents ?? 0) > 0;
   const placeName = ticket.place?.name ?? "Partner place";
   const photo = ticket.place?.photos?.[0] ?? null;
   const category = ticket.place?.category ?? null;
 
-  // Strategy still comes from the place's rate columns: those carry strategy
-  // IDENTITY, not price. Keeping it synchronous means the structural gates
-  // below (priced venue, QR lock) can't flicker while the quote is in flight.
+  // ── Money, read once (C4-6: the v4 readers key on the SUBTOTAL, and the
+  //    payable number is the ONE formula — frozen at approval). ────────────
+  const subtotalCents = ticket.check_subtotal_cents ?? 0;
+  const tipCents = ticket.tip_cents ?? 0;
+  const tipPct = ticket.tip_pct ?? null;
+  const discountCents = ticket.discount_cents ?? 0;
+  const billedPct = ticket.discount_percent ?? 0;
+  const billed = subtotalCents > 0;
+  const amountDueCents =
+    ticket.approved_amount_due_cents ??
+    Math.max(0, subtotalCents - discountCents) + tipCents;
+
   const strategy = strategyForPlaceRow(ticket.place);
   const priced = strategy !== "zero";
 
-  // PRICES come from the engine. 0 until the quote lands — the headline is
-  // guarded on `> 0`, so a loading pass shows no number rather than a wrong
-  // one. Welcome is automatic, so it belongs in the floor, not in a task.
+  // ── Reward derivations (the engine is additive; earned actions keep
+  //    paying whatever is picked next). ────────────────────────────────────
   const clamp = (n: number) => Math.max(0, Math.min(100, n));
   const additive = quote?.additive ?? false;
   const welcomeBonus = quote?.bonuses.welcome ?? 0;
@@ -449,12 +568,6 @@ export function TicketScreen({ ticketId }: { ticketId: string }) {
       ? clamp(quote.base + welcomeBonus)
       : quote.base;
 
-  // What the TICKET records beats what the guest merely picked. Only a
-  // persisted task can gate the QR (D6, pick-one); a local pick is an
-  // intention and gates nothing. story_status/review_status name the
-  // Instagram and GOOGLE rungs; the Mesita ★ lives in ticket_reviews, so its
-  // done-state is session-local (reviewDone) — the engine still counts it at
-  // billing time via hasMesitaReview.
   const storyOnTicket =
     ticket.story_status != null && ticket.story_status !== "not_required";
   const reviewOnTicket =
@@ -464,13 +577,7 @@ export function TicketScreen({ ticketId }: { ticketId: string }) {
     : reviewOnTicket
       ? "google"
       : null;
-  const persistedState: TaskState | null = persistedTask
-    ? taskStateFor(
-        persistedTask === "story" ? ticket.story_status : ticket.review_status,
-      )
-    : null;
 
-  // Stored "review" predates the google/mesita split — read it as google.
   const localPick: RewardPick | null =
     storedPick === "review"
       ? "google"
@@ -480,18 +587,9 @@ export function TicketScreen({ ticketId }: { ticketId: string }) {
           storedPick === "mesita"
         ? storedPick
         : null;
-  // The guest's pick WINS over what the ticket already carries (Pato,
-  // 2026-08-11: "i can change the reward but only if the ticket isn't
-  // terminated yet"). The ticket's own task is only the fallback, for a
-  // ticket the guest never chose on (legacy 'pending' creates). Switching is
-  // confirmed first — see ChangeBonusDialog.
   const pick: RewardPick | null = localPick ?? persistedTask;
   const chosenAction: ActionKind | null = pick === "base" ? null : pick;
-  // Per-rung truth, independent of what's currently selected. The ENGINE is
-  // additive over every verified action (_shared/rewards-config
-  // resolveAdditiveRate adds story + google + mesita independently), so an
-  // action the guest already completed keeps paying no matter what they pick
-  // afterwards. "Pick one" is this screen's rule, not the bill's.
+
   const storyVerified = taskStateFor(ticket.story_status) === "done";
   const googleVerified = taskStateFor(ticket.review_status) === "done";
   const mesitaVerified = reviewDone;
@@ -501,7 +599,11 @@ export function TicketScreen({ ticketId }: { ticketId: string }) {
     ...(mesitaVerified ? (["mesita"] as const) : []),
   ];
   const isVerified = (a: ActionKind): boolean =>
-    a === "story" ? storyVerified : a === "google" ? googleVerified : mesitaVerified;
+    a === "story"
+      ? storyVerified
+      : a === "google"
+        ? googleVerified
+        : mesitaVerified;
 
   const chosenState: TaskState =
     chosenAction === null
@@ -510,13 +612,12 @@ export function TicketScreen({ ticketId }: { ticketId: string }) {
         ? reviewDone
           ? "done"
           : "todo"
-        : chosenAction === persistedTask
-          ? (persistedState ?? "todo")
-          : taskStateFor(
-              chosenAction === "story"
-                ? ticket.story_status
-                : ticket.review_status,
-            );
+        : taskStateFor(
+            chosenAction === "story"
+              ? ticket.story_status
+              : ticket.review_status,
+          );
+
   const actionBonus = (a: ActionKind | null): number =>
     !quote || a === null
       ? 0
@@ -525,185 +626,53 @@ export function TicketScreen({ ticketId }: { ticketId: string }) {
         : a === "google"
           ? quote.bonuses.google
           : quote.bonuses.mesita;
-
-  // The FLOOR the guest already holds: class base + Welcome + every action
-  // they have ALREADY completed. Counting earned actions here is what makes
-  // switching honest — the bill adds them whatever the current pick is, so
-  // the screen must not quietly drop one when the guest changes their mind.
-  // A legacy best-of engine pays the single best rung, so it never stacks —
-  // over-promising is the one direction a discount quote must never err.
   const earnedExcept = (a: ActionKind | null): number =>
     !additive
       ? 0
       : verifiedActions
           .filter((v) => v !== a)
           .reduce((sum, v) => sum + actionBonus(v), 0);
-  const floorRate = !quote ? 0 : clamp(classBase + earnedExcept(null));
+  const base = !quote ? 0 : clamp(classBase + earnedExcept(null));
   const rateWith = (a: ActionKind): number =>
     !quote
       ? 0
       : additive
         ? clamp(classBase + earnedExcept(a) + actionBonus(a))
         : clamp(Math.max(classBase, actionBonus(a)));
-  // `base` = what you get with no NEW action (earned ones still counted).
-  const base = floorRate;
-  const storyRate = rateWith("story");
-  const reviewRate = rateWith("google");
-  const mesitaRate = rateWith("mesita");
-  const chosenRate =
-    !quote || !chosenAction || !priced ? 0 : rateWith(chosenAction);
-
-  // The headline number + its honesty clause. Billed truth wins; a rejected
-  // proof falls back to the class base (D7); everything else quotes the
-  // chosen action, conditionally until done.
-  const headlinePercent = billed
-    ? (ticket.discount_percent ?? 0)
-    : chosenAction && chosenState !== "rejected"
-      ? chosenRate
+  const selectedTotal = !quote
+    ? 0
+    : chosenAction
+      ? rateWith(chosenAction)
       : base;
-  const actionNoun =
-    chosenAction === "story"
-      ? "story"
-      : chosenAction === "mesita"
-        ? "Mesita review"
-        : "review";
-  const headlineSuffix = billed
-    ? "applied at the table"
-    : !priced
-      ? ""
-      : chosenAction === null
-        ? additive && welcomeBonus > 0
-          ? `your ${classProperLabel(classKey)} base + Welcome visit`
-          : `your ${classProperLabel(classKey)} base — no task needed`
-        : chosenState === "done"
-          ? `with your ${actionNoun} ✓`
-          : chosenState === "rejected"
-            ? `${actionNoun} not accepted — your base holds`
-            : `unlocks with your ${actionNoun}`;
+  const headlinePct = billed
+    ? billedPct
+    : chosenAction && chosenState !== "rejected"
+      ? selectedTotal
+      : base;
 
-  // QR gate (MESITA-886, recomputed for pick-one): only a task the TICKET
-  // carries gates, only while open and unscanned, only on priced venues.
-  // Tickets created at "base" — every ticket made after 2026-08-11 — have no
-  // gate at all, which is the point: the QR works before any task.
-  const scannable =
-    live &&
-    Boolean(ticket.check_code) &&
-    (ticket.status === "open" || ticket.status === "awaiting_payment_confirm");
-  // ...and ANY completed action releases it: the gate exists to make the
-  // guest do a task, so a legacy 'pending' review can't hold the QR hostage
-  // after they switched to the story and finished that instead.
-  const qrLocked =
-    ticket.status === "open" &&
-    !scanned &&
-    priced &&
-    persistedTask !== null &&
-    persistedState !== "done" &&
-    verifiedActions.length === 0;
-  const showPassCard = live && (qrLocked || scannable);
-  // ★ post-scan row: rating the visit belongs to the visit (D12). When the
-  // guest PICKED mesita as their action bonus it's already done (or offered
-  // on step 2), so this row is the catch-all for everyone else.
-  const showMesitaStar = !cancelled && (scanned || saved);
-  // Upside still on the table: the guest is holding a working QR but hasn't
-  // done an action that would pay more. Only REACHABLE rungs count — a story
-  // rate quoted to someone with no connected Instagram is a promise the
-  // submit EF will refuse, and over-promising a discount is the one direction
-  // this screen must never err. Post-scan the ★ row takes over.
   const igConnected = Boolean(igHandle?.trim());
-  const reachableStoryRate =
-    igConnected && quote?.storyEligible ? storyRate : 0;
-  const reachableMesitaRate =
-    !reviewDone && (quote?.bonuses.mesita ?? 0) > 0 ? mesitaRate : 0;
-  const bestReachableRate = Math.max(
-    reviewRate,
-    reachableStoryRate,
-    reachableMesitaRate,
-    chosenRate,
-  );
-  const upsideLeft =
-    live &&
-    priced &&
-    !scanned &&
-    chosenState !== "done" &&
-    bestReachableRate > base;
-
-  // Reach classes (Silver / Gold) wear their handle because reach IS how they
-  // got the rung; everyone else shows it only when a Story task is on the
-  // ticket. Under v1 this read `classKey === "influencer"` — one class, same
-  // meaning — and v2 simply split reach across two rungs.
-  const showIgHandle =
-    (classKey === "silver" || classKey === "gold" || storyOnTicket) &&
-    Boolean(igHandle);
-  const stubCode = ticket.check_code
-    ? `#${ticket.check_code.slice(0, 4).toUpperCase()}`
-    : "";
-
-  // ── Step machine ───────────────────────────────────────────────────────
-  // Where the ticket naturally IS, overridden by wherever the guest tapped.
-  // A closed ticket is pinned to Results: there is nothing else left to do.
-  const naturalStep: Step = closed
-    ? 4
-    : !priced || pick === "base"
-      ? 3
-      : chosenAction === null
-        ? 1
-        : chosenState === "done"
-          ? 3
-          : 2;
-  let step: Step = closed ? 4 : (stepChoice ?? naturalStep);
-  if (step === 2 && chosenAction === null) step = 1;
-  if (step === 1 && !priced) step = 3;
-
-  const stepReachable = (n: number): boolean =>
-    n === 4
-      ? closed
-      : n === 1
-        ? live && priced
-        : n === 2
-          ? live && chosenAction !== null
-          : live;
-
-  // The pick is editable for the WHOLE life of the ticket (Pato, 2026-08-11:
-  // "i can change the reward but only if the ticket isn't terminated yet").
-  // Terminated = revealed / cancelled — the reward is settled and nothing can
-  // move it. Switching away from work in flight confirms first.
-  const pickLocked = closed;
-  // Which action rows can actually be picked. A rung the engine prices at 0
-  // is displayed (Pato: "display all bonuses") but inert — selecting it would
-  // promise nothing.
+  const pickLocked =
+    !live || ticket.status === "approved" || ticket.status === "paying";
   const storySelectable =
     Boolean(quote?.storyEligible) && igConnected && !pickLocked;
   const googleSelectable = (quote?.bonuses.google ?? 0) > 0 && !pickLocked;
   const mesitaSelectable =
     (quote?.bonuses.mesita ?? 0) > 0 && !reviewDone && !pickLocked;
-  const defaultPick: RewardPick = googleSelectable
-    ? "google"
-    : mesitaSelectable
-      ? "mesita"
-      : storySelectable
-        ? "story"
-        : "base";
-  const selectedPick: RewardPick = draftPick ?? pick ?? defaultPick;
-  const selectedAction: ActionKind | null =
-    selectedPick === "base" ? null : selectedPick;
-  const selectedTotal = !quote
-    ? 0
-    : selectedAction
-      ? rateWith(selectedAction)
-      : base;
-  // Tap the selected action again to drop back to base-only — one action max,
-  // zero actions always allowed. Switching AWAY from an action the guest has
-  // actually completed confirms first (Pato: "throw an alert that progress is
-  // going to be lost").
-  const commitAction = (a: ActionKind | "base") => {
-    setDraftPick(a);
+  const selectableFor = (a: ActionKind): boolean =>
+    a === "story"
+      ? storySelectable
+      : a === "google"
+        ? googleSelectable
+        : mesitaSelectable;
+
+  const commitAction = (a: RewardPick) => {
     if (!pickLocked) setStoredPick(a);
   };
   const requestAction = (a: ActionKind) => {
-    const next: ActionKind | "base" = selectedPick === a ? "base" : a;
+    const next: RewardPick = pick === a ? "base" : a;
     const leavingRealWork =
-      selectedAction !== null &&
-      next !== selectedAction &&
+      chosenAction !== null &&
+      next !== chosenAction &&
       (chosenState === "done" || chosenState === "checking");
     if (leavingRealWork) {
       setPendingSwitch(a);
@@ -711,34 +680,46 @@ export function TicketScreen({ ticketId }: { ticketId: string }) {
     }
     commitAction(next);
   };
-  // Per-row rate caption: additive stacks (+N%), legacy best-of shows the
-  // resulting rate instead — never a "+" it won't honor.
-  const bonusAmount = (bonus: number): string =>
-    additive ? `+${bonus}%` : `${clamp(Math.max(classBase, bonus))}%`;
-  const actionLabel = (a: ActionKind): string =>
-    a === "story"
-      ? "Instagram story"
-      : a === "google"
-        ? "Google review"
-        : "Mesita review";
 
-  const confirmChosen = chosenAction === "story" ? confirmStory : confirmGoogle;
-
-  const goToStep = (n: number) => {
-    setStepChoice(n as Step);
+  // ── The journey machine (pure, tested). ─────────────────────────────────
+  const fix: TicketFix | null = isTicketFix(ticket.fix_requested)
+    ? ticket.fix_requested
+    : null;
+  const journey: JourneyInput = {
+    status: ticket.status,
+    live,
+    billed,
+    priced,
+    pickMade: pick !== null,
+    hasAction: chosenAction !== null,
+    actionDone: chosenState === "done",
+    fix,
   };
+  const step = resolveStep(journey, stepChoice);
+  const goToStep = (id: TicketStepId) => setStepChoice(id);
+  const amberStep = fix ? fixReturnStep(fix) : null;
+
+  const capPesos = quote?.cap ?? null;
+  const capApplied =
+    quote != null &&
+    billed &&
+    discountCents > 0 &&
+    subtotalCents > quote.cap * 100;
+
+  const stubCode = ticket.check_code
+    ? `#${ticket.check_code.slice(0, 4).toUpperCase()}`
+    : "";
 
   return (
     <Shell>
-      {/* Chrome row — place identity as chrome, not a card stack. It is the
-          page's ONLY title: nothing below repeats the place name. */}
+      {/* Chrome row — place identity as chrome, the page's only title. */}
       <div className="flex shrink-0 items-center gap-2.5 px-0.5 pt-0.5 pb-1">
         <button
           type="button"
           onClick={() =>
             router.push(CONSUMER_ROUTES.newVisit.root, { scroll: false })
           }
-          aria-label="Back to Rewards"
+          aria-label="Back to Visit"
           className="bg-muted text-foreground grid size-8 shrink-0 place-items-center rounded-full transition active:scale-95"
         >
           <ArrowLeft className="size-3.5" />
@@ -776,559 +757,385 @@ export function TicketScreen({ ticketId }: { ticketId: string }) {
         </span>
       </div>
 
-      {/* The rail — this ticket's real progress, tappable wherever it's
-          reachable so changing your mind is one tap, not a back-out. */}
-      {/* No divider rule, no panel: the rail sits IN the page rather than in a
-          header box (board C). */}
+      {/* The seven-chip rail. An outstanding fix paints its step amber (D3). */}
       <div className="shrink-0 pt-0.5 pb-2">
-        {/* Step swaps re-render in place; announce them (Pass 6 / T7). */}
-        <p className="sr-only" aria-live="polite">
-          Step {step} of 4 — {STEP_LABELS[step - 1]}
-        </p>
         <JourneyRail
-          current={step}
+          currentId={step}
+          amberId={amberStep}
           onSelect={goToStep}
-          isReachable={stepReachable}
+          isReachable={(id) => stepReachable(journey, id)}
         />
       </div>
 
-      {/* Step body — the only part that scrolls, so the panel never changes
-          shape as you move between steps. */}
-      <div className="scrollbar-hide flex min-h-0 flex-1 flex-col gap-2.5 overflow-y-auto pt-3">
-        {step === 1 ? (
-          <>
-            {/* NO page headline here. "Your reward at {place}" repeated the
-                place name the chrome row already carries two rows above, and
-                the rail already says which step you're on — three title
-                blocks stacked to say one thing (board C, 2026-08-11). The
-                receipt starts straight under the rail. */}
-            {quoteError ? (
-              // Rates unavailable ≠ ticket unavailable: the QR stays one tap
-              // away at the guest's base while the quote retries.
-              <div className="flex flex-col items-center gap-2 pt-1">
-                <p className="bg-destructive/10 text-destructive w-full rounded-lg px-3 py-2 text-center text-[12px]">
-                  Couldn&apos;t load your rates here.
-                </p>
-                <div className="flex items-center gap-5">
-                  <button
-                    type="button"
-                    onClick={() => setQuoteReload((k) => k + 1)}
-                    className="text-primary flex min-h-9 items-center text-[12.5px] font-semibold"
-                  >
-                    Retry
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (!pickLocked) setStoredPick("base");
-                      goToStep(3);
-                    }}
-                    className="text-muted-foreground hover:text-foreground flex min-h-9 items-center text-[12.5px] font-semibold"
-                  >
-                    Show my QR anyway
-                  </button>
-                </div>
-              </div>
-            ) : quote === null ? (
-              // Row-shaped skeletons — the headline paints, the rates pulse.
-              <div className="flex flex-col gap-2 pt-1">
-                {[0, 1, 2, 3, 4].map((i) => (
-                  <div
-                    key={i}
-                    className="border-border bg-card h-[52px] animate-pulse rounded-2xl border"
-                  />
-                ))}
-              </div>
-            ) : (
-              <>
-                {/* ONE receipt. Every rung is the same row grid — icon,
-                    name, amount, control — so nothing sits ragged, and the
-                    total lands under a rule like a bill. Three stacked cards
-                    with three different row shapes was the mess; a receipt is
-                    what this screen actually is. */}
-                <div className="border-border bg-card divide-border divide-y overflow-hidden rounded-2xl border">
-                  <ReceiptRow
-                    icon={<BadgeCheck className="size-4" />}
-                    label="Base reward"
-                    sub={`${classProperLabel(classKey)} class`}
-                    amount={`${quote.base}%`}
-                    trailing={<AutoChip />}
-                  />
-                  <ReceiptRow
-                    icon={<Sparkles className="size-4" />}
-                    label="Welcome visit bonus"
-                    sub={
-                      welcomeBonus > 0
-                        ? "Your first visit here"
-                        : quote.isFirstVisit
-                          ? "Not offered here"
-                          : "First visit only"
-                    }
-                    amount={welcomeBonus > 0 ? bonusAmount(welcomeBonus) : null}
-                    trailing={welcomeBonus > 0 ? <AutoChip /> : null}
-                    dim={welcomeBonus === 0}
-                  />
+      {/* D3 — the send-back banner: amber, inline, names the FIX. The copy
+          carries the whole message alone; colour is not the message. */}
+      {fix ? (
+        <div className="mb-2 shrink-0 rounded-xl bg-amber-500/12 px-3 py-2">
+          <p className="text-[11.5px] leading-snug font-semibold text-amber-800">
+            {placeName} sent it back — {FIX_COPY[fix].title.toLowerCase()}.
+            {ticket.fix_note ? ` “${ticket.fix_note}”` : ""}
+          </p>
+        </div>
+      ) : null}
 
-                  <p className="bg-muted/40 text-muted-foreground px-3 py-1.5 text-[9.5px] font-extrabold tracking-[0.12em] uppercase">
-                    Pick one bonus
-                  </p>
+      {/* THE one live region (T2). The elapsed clock never enters it. */}
+      <p className="sr-only" aria-live="polite">
+        {announce}
+      </p>
 
-                  <div
-                    role="radiogroup"
-                    aria-label="Action bonus"
-                    className="divide-border divide-y"
-                  >
-                    <ReceiptRow
-                      icon={<InstagramGlyph className="size-4" />}
-                      label="Instagram story bonus"
-                      sub={
-                        !quote.storyEligible
-                          ? "Not offered here"
-                          : !igConnected
-                            ? "Connect Instagram in Me"
-                            : "Post a tagged story"
-                      }
-                      amount={
-                        quote.storyEligible
-                          ? bonusAmount(quote.bonuses.story)
-                          : null
-                      }
-                      selected={selectedPick === "story"}
-                      selectable={storySelectable}
-                      dim={!quote.storyEligible}
-                      earned={storyVerified}
-                      onSelect={() => requestAction("story")}
-                    />
-                    <ReceiptRow
-                      icon={<GoogleGlyph className="size-4" />}
-                      label="Google review bonus"
-                      sub={
-                        quote.bonuses.google > 0
-                          ? "Leave a Google review"
-                          : "Not offered here"
-                      }
-                      amount={
-                        quote.bonuses.google > 0
-                          ? bonusAmount(quote.bonuses.google)
-                          : null
-                      }
-                      selected={selectedPick === "google"}
-                      selectable={googleSelectable}
-                      dim={quote.bonuses.google === 0}
-                      earned={googleVerified}
-                      onSelect={() => requestAction("google")}
-                    />
-                    <ReceiptRow
-                      icon={<MesitaGlyph className="size-4" />}
-                      label="Mesita review bonus"
-                      sub={
-                        quote.bonuses.mesita === 0
-                          ? "Not offered here"
-                          : reviewDone
-                            ? "Visit rated"
-                            : "Rate your visit on Mesita"
-                      }
-                      amount={
-                        quote.bonuses.mesita > 0
-                          ? bonusAmount(quote.bonuses.mesita)
-                          : null
-                      }
-                      selected={selectedPick === "mesita"}
-                      selectable={mesitaSelectable}
-                      dim={quote.bonuses.mesita === 0}
-                      earned={mesitaVerified}
-                      onSelect={() => requestAction("mesita")}
-                    />
-                  </div>
-
-                  {/* Total — the receipt's bottom line. */}
-                  <div className="bg-muted/40 flex items-center gap-3 px-3 py-2.5">
-                    <span className="text-muted-foreground min-w-0 flex-1 truncate text-[11px] font-semibold">
-                      {additive
-                        ? `${quote.base}% base` +
-                          (welcomeBonus > 0 ? ` + ${welcomeBonus}%` : "") +
-                          (selectedAction
-                            ? ` + ${actionBonus(selectedAction)}%`
-                            : "")
-                        : "Your best single reward"}
-                    </span>
-                    <span className="font-display text-foreground shrink-0 text-[24px] leading-none font-extrabold tracking-tight">
-                      {selectedTotal}% off
-                    </span>
-                  </div>
-                </div>
-
-                {pickLocked ? (
-                  <p className="text-muted-foreground/80 text-center text-[10.5px] leading-snug">
-                    This visit is closed — your reward is settled.
-                  </p>
-                ) : null}
-              </>
-            )}
-          </>
-        ) : step === 2 && chosenAction === "mesita" ? (
-          // The Mesita ★ as the chosen action — the form IS the task, inline.
-          <div className="flex flex-col gap-3 pt-1">
-            <div className="surface-card rounded-2xl px-4 py-4">
-              <TicketReviewForm
-                draft={reviewDraft}
-                onChange={setReviewDraft}
-                onSubmit={() =>
-                  void (async () => {
-                    const ok = await submitMesitaReview();
-                    if (ok) goToStep(3);
-                  })()
-                }
-                busy={reviewBusy}
-                placeName={placeName}
-                error={reviewError}
-              />
-            </div>
-            <button
-              type="button"
-              onClick={() => goToStep(3)}
-              className="text-muted-foreground hover:text-foreground mx-auto flex min-h-11 items-center text-[12.5px] font-semibold transition"
-            >
-              I&apos;ll finish this in a bit — show my QR
-            </button>
-          </div>
-        ) : step === 2 && chosenAction ? (
-          <TaskProof
-            kind={chosenAction === "story" ? "story" : "review"}
-            ticketId={ticketId}
-            placeName={placeName}
-            placeAddress={ticket.place?.address}
-            rate={chosenRate}
-            rejected={chosenState === "rejected"}
-            onConfirm={confirmChosen}
-            onDone={() => goToStep(3)}
-            onSkip={() => goToStep(3)}
+      {/* Step body — the only part that scrolls. */}
+      <div
+        ref={stepBodyRef}
+        tabIndex={-1}
+        className="scrollbar-hide flex min-h-0 flex-1 flex-col gap-2.5 overflow-y-auto pt-2 outline-none"
+      >
+        {step === "bill" ? (
+          <StepBill
+            key={`${subtotalCents}-${tipCents}`}
+            initialSubtotalCents={billed ? subtotalCents : null}
+            initialTipPct={billed ? tipPct : undefined}
+            initialTipCents={billed ? tipCents : null}
+            busy={billBusy}
+            error={billError}
+            fixActive={fix === "bill"}
+            onSave={saveBill}
           />
-        ) : step === 3 ? (
-          <>
-            {showPassCard ? (
-              <section
-                className={cn(
-                  "shrink-0 overflow-hidden rounded-[24px] px-4 pt-3.5 pb-3.5 text-white shadow-[0_16px_36px_-20px_rgba(255,77,109,0.55)]",
-                  passGradient(classKey),
-                  pulse && "animate-verified-pulse",
-                )}
-              >
-                <div className="flex items-center justify-between gap-3">
-                  <span className="flex min-w-0 items-center gap-2">
-                    <span className="size-6 shrink-0 overflow-hidden rounded-full ring-1 ring-white/40">
-                      {avatarUrl ? (
-                        <Image
-                          src={avatarUrl}
-                          alt=""
-                          width={24}
-                          height={24}
-                          className="size-6 object-cover"
-                        />
-                      ) : (
-                        <DefaultAvatar className="size-6" />
-                      )}
-                    </span>
-                    <span className="min-w-0">
-                      <span className="block truncate text-[11.5px] leading-tight font-bold">
-                        {guestName ?? "Mesita guest"}
-                      </span>
-                      {showIgHandle ? (
-                        <span className="block truncate text-[9px] leading-tight text-white/80">
-                          @{igHandle!.replace(/^@/, "")}
-                        </span>
-                      ) : null}
-                    </span>
-                  </span>
-                  <span className="shrink-0 rounded-full bg-white/22 px-2 py-0.5 text-[9px] font-extrabold tracking-widest uppercase">
-                    {classProperLabel(classKey)}
-                  </span>
-                </div>
+        ) : null}
 
-                <div aria-live="polite" className="mt-2 text-center">
-                  {priced && headlinePercent > 0 ? (
-                    <>
-                      <p className="font-display text-[clamp(30px,9vw,38px)] leading-none font-extrabold tracking-tight">
-                        {headlinePercent}% off
-                      </p>
-                      {headlineSuffix ? (
-                        <p className="mt-1 text-[11px] leading-snug font-semibold text-white/90">
-                          {headlineSuffix}
-                        </p>
-                      ) : null}
-                    </>
-                  ) : (
-                    <p className="mx-auto max-w-[30ch] text-[12px] leading-snug font-semibold text-white/90">
-                      Your discount is set by the place and applied at the table.
-                    </p>
-                  )}
-                </div>
+        {step === "reward" ? (
+          <RewardLanes
+            quote={quote}
+            quoteError={quoteError}
+            onRetryQuote={() => setQuoteReload((k) => k + 1)}
+            onShowQrAnyway={() => {
+              if (!pickLocked) setStoredPick("base");
+              goToStep("qr");
+            }}
+            classKey={classKey}
+            igConnected={igConnected}
+            pick={pick}
+            chosenAction={chosenAction}
+            isFirstVisit={quote?.isFirstVisit ?? false}
+            verified={isVerified}
+            selectableFor={selectableFor}
+            onPick={requestAction}
+            base={base}
+            selectedTotal={selectedTotal}
+            actionBonus={actionBonus}
+            capPesos={capPesos}
+          />
+        ) : null}
 
-                {qrLocked ? (
-                  <>
-                    {/* Locked plate — same footprint as the QR so unlock is a
-                        swap. Only pre-2026-08-11 tickets can land here. */}
-                    <div className="mx-auto mt-2.5 grid aspect-square w-full max-w-[min(170px,48vw)] place-items-center rounded-2xl border-2 border-dashed border-white/45 bg-white/12">
-                      <Lock className="size-8 text-white/90" />
-                    </div>
-                    <p
-                      aria-live="polite"
-                      className="mx-auto mt-2 max-w-[34ch] text-center text-[11px] leading-snug text-white/90"
-                    >
-                      Do your {actionNoun} to unlock your QR.
-                    </p>
-                  </>
-                ) : (
-                  <>
-                    <div className="mx-auto mt-2.5 w-full max-w-[min(170px,48vw)] rounded-2xl bg-white p-2.5 shadow-[0_12px_30px_-12px_rgba(120,20,40,0.5)]">
-                      <QRCodeSVG
-                        value={checkUrlForCode(ticket.check_code!)}
-                        size={170}
-                        className="h-auto w-full"
-                        bgColor="#ffffff"
-                        fgColor="#2b1233"
-                        level="M"
-                        marginSize={0}
-                      />
-                    </div>
-                    <p
-                      aria-live="polite"
-                      className="mx-auto mt-2 flex max-w-[34ch] items-center justify-center gap-1.5 text-center text-[11px] leading-snug text-white/90"
-                    >
-                      {scanned && ticket.status === "open" ? (
-                        <>
-                          <BadgeCheck className="size-3.5 shrink-0" /> Verified
-                          by {placeName}
-                        </>
-                      ) : (
-                        statusLine(ticket)
-                      )}
-                    </p>
-                    {billed ? (
-                      <div className="mt-2.5 rounded-xl bg-white/18 px-3 py-2 text-center">
-                        <p className="text-[9px] font-bold tracking-[0.14em] uppercase opacity-90">
-                          {ticket.discount_percent ?? 0}% off applied
-                        </p>
-                        <p className="font-display mt-0.5 text-[20px] leading-none font-bold">
-                          {formatCurrency(
-                            Math.max(
-                              0,
-                              (ticket.total_cents ?? 0) -
-                                (ticket.discount_cents ?? 0),
-                            ),
-                          )}
-                        </p>
-                        <p className="mt-0.5 text-[10.5px] opacity-90">
-                          to pay at the table
-                          {ticket.discount_cents
-                            ? ` — you save ${formatCurrency(ticket.discount_cents)}`
-                            : ""}
-                        </p>
-                      </div>
-                    ) : null}
-                  </>
-                )}
-
-                {/* Stub row — perforation + the small print. */}
-                <div className="mt-3 border-t-2 border-dashed border-white/35 pt-2">
-                  <div className="flex items-center justify-between gap-3 text-[9.5px] font-semibold text-white/90">
-                    <span>Ticket {stubCode}</span>
-                    <span>
-                      {chosenAction
-                        ? chosenState === "done"
-                          ? `${stubNoun(chosenAction)} ✓`
-                          : chosenState === "rejected"
-                            ? `${stubNoun(chosenAction)} not accepted`
-                            : `${stubNoun(chosenAction)} pending`
-                        : "No action — base rate"}
-                    </span>
-                  </div>
-                </div>
-              </section>
-            ) : null}
-
-            {/* Money still on the table. The QR already works, so this is an
-                offer, not a gate — it sends you back to step 2 (or 1 if the
-                pick was never made). */}
-            {upsideLeft ? (
+        {step === "task" ? (
+          chosenAction === null ? (
+            <div className="border-border bg-card flex flex-col items-center gap-2 rounded-2xl border px-4 py-6 text-center">
+              <p className="font-display text-foreground text-[17px] leading-tight font-bold">
+                No task on this ticket
+              </p>
+              <p className="text-muted-foreground max-w-[300px] text-[12.5px] leading-relaxed">
+                You didn&apos;t pick a bonus, so there&apos;s nothing to do
+                here. {placeName} still honours your {base}%.
+              </p>
               <button
                 type="button"
-                onClick={() => goToStep(chosenAction ? 2 : 1)}
-                className="border-border bg-card flex min-h-11 w-full shrink-0 items-center gap-2.5 rounded-2xl border px-3 py-2 text-left transition active:scale-[0.99]"
+                onClick={() => goToStep("reward")}
+                className="border-border text-foreground mt-1 flex min-h-11 w-full items-center justify-center rounded-full border text-[13px] font-bold"
               >
-                <span className="bg-muted/60 text-muted-foreground grid size-8 shrink-0 place-items-center rounded-lg">
-                  {chosenAction === "story" ? (
-                    <InstagramGlyph className="size-4" />
-                  ) : chosenAction === "google" ? (
-                    <GoogleGlyph className="size-4" />
-                  ) : chosenAction === "mesita" ? (
-                    <MesitaGlyph className="size-4" />
-                  ) : (
-                    <Sparkles className="size-4" />
-                  )}
-                </span>
-                <span className="min-w-0 flex-1">
-                  <span className="text-foreground block text-[13px] leading-tight font-bold">
-                    {chosenAction === "story"
-                      ? "Post your tagged story"
-                      : chosenAction === "google"
-                        ? "Leave your Google review"
-                        : chosenAction === "mesita"
-                          ? "Rate your visit on Mesita"
-                          : "Add an action bonus"}
-                  </span>
-                  <span className="text-muted-foreground mt-0.5 block text-[11px] leading-snug">
-                    {chosenState === "rejected"
-                      ? `Not accepted — you still keep your ${base}%. Try again?`
-                      : "Order first — do this while your food comes."}
-                  </span>
-                </span>
-                <span className="font-display text-foreground/80 shrink-0 text-[15px] leading-none font-extrabold tabular-nums">
-                  {bestReachableRate}%
-                </span>
+                Pick a bonus
               </button>
-            ) : null}
+            </div>
+          ) : chosenAction === "mesita" ? (
+            <div className="flex flex-col gap-3 pt-1">
+              <div className="surface-card rounded-2xl px-4 py-4">
+                <TicketReviewForm
+                  draft={reviewDraft}
+                  onChange={setReviewDraft}
+                  onSubmit={() =>
+                    void (async () => {
+                      const ok = await submitMesitaReview();
+                      if (ok) goToStep("qr");
+                    })()
+                  }
+                  busy={reviewBusy}
+                  placeName={placeName}
+                  error={reviewError}
+                />
+              </div>
+              <button
+                type="button"
+                onClick={() => goToStep("qr")}
+                className="text-muted-foreground hover:text-foreground mx-auto flex min-h-11 items-center text-[12.5px] font-semibold transition"
+              >
+                I&apos;ll finish this in a bit — show my QR
+              </button>
+            </div>
+          ) : (
+            <TaskProof
+              kind={chosenAction === "story" ? "story" : "review"}
+              ticketId={ticketId}
+              placeName={placeName}
+              placeAddress={ticket.place?.address}
+              rate={selectedTotal}
+              rejected={chosenState === "rejected"}
+              onConfirm={
+                chosenAction === "story" ? confirmStory : confirmGoogle
+              }
+              onDone={() => goToStep("qr")}
+              onSkip={() => goToStep("qr")}
+            />
+          )
+        ) : null}
 
-            {showMesitaStar ? (
-              <RateVisitRow
-                done={reviewDone}
-                onOpen={() => {
-                  setReviewError(null);
-                  openSheet("mesita");
-                }}
-              />
-            ) : null}
-          </>
-        ) : (
-          /* Step 4 — Results */
+        {step === "qr" ? (
           <>
+            {/* THE PASS — persists through every sub-state (F1): unscanned →
+                waiting → fix. Removing it mid-wait reads as something being
+                taken away, and a second waiter may re-scan. */}
             <section
               className={cn(
-                "shrink-0 overflow-hidden rounded-[24px] px-4 pt-3.5 pb-4 text-white shadow-[0_16px_36px_-20px_rgba(255,77,109,0.55)]",
+                "shrink-0 overflow-hidden rounded-[24px] px-4 pt-3.5 pb-3.5 text-white shadow-[0_16px_36px_-20px_rgba(255,77,109,0.55)]",
                 passGradient(classKey),
+                pulse && "animate-verified-pulse",
               )}
             >
               <div className="flex items-center justify-between gap-3">
-                <p className="text-[9px] font-bold tracking-[0.14em] text-white/80 uppercase">
-                  Mesita Pass
-                </p>
-                <span className="rounded-full bg-white/22 px-2 py-0.5 text-[9px] font-extrabold tracking-widest uppercase">
+                <span className="flex min-w-0 items-center gap-2">
+                  <span className="size-6 shrink-0 overflow-hidden rounded-full ring-1 ring-white/40">
+                    {avatarUrl ? (
+                      <Image
+                        src={avatarUrl}
+                        alt=""
+                        width={24}
+                        height={24}
+                        className="size-6 object-cover"
+                      />
+                    ) : (
+                      <DefaultAvatar className="size-6" />
+                    )}
+                  </span>
+                  <span className="min-w-0">
+                    <span className="block truncate text-[11.5px] leading-tight font-bold">
+                      {guestName ?? "Mesita guest"}
+                    </span>
+                    {igHandle ? (
+                      <span className="block truncate text-[9px] leading-tight text-white/80">
+                        @{igHandle.replace(/^@/, "")}
+                      </span>
+                    ) : null}
+                  </span>
+                </span>
+                <span className="shrink-0 rounded-full bg-white/22 px-2 py-0.5 text-[9px] font-extrabold tracking-widest uppercase">
                   {classProperLabel(classKey)}
                 </span>
               </div>
-              <div className="flex flex-col items-center gap-1.5 py-5 text-center">
-                {saved ? (
+
+              <div className="mt-2 text-center">
+                {priced && headlinePct > 0 ? (
+                  <p className="font-display text-[clamp(30px,9vw,38px)] leading-none font-extrabold tracking-tight">
+                    {headlinePct}% off
+                  </p>
+                ) : (
+                  <p className="mx-auto max-w-[30ch] text-[12px] leading-snug font-semibold text-white/90">
+                    Your discount is set by the place and applied at the table.
+                  </p>
+                )}
+              </div>
+
+              <div className="mx-auto mt-2.5 w-full max-w-[min(170px,48vw)] rounded-2xl bg-white p-2.5 shadow-[0_12px_30px_-12px_rgba(120,20,40,0.5)]">
+                <QRCodeSVG
+                  value={checkUrlForCode(ticket.check_code!)}
+                  size={170}
+                  className="h-auto w-full"
+                  bgColor="#ffffff"
+                  fgColor="#2b1233"
+                  level="M"
+                  marginSize={0}
+                />
+              </div>
+
+              <p className="mx-auto mt-2 flex max-w-[34ch] items-center justify-center gap-1.5 text-center text-[11px] leading-snug text-white/90">
+                {waiting ? (
                   <>
-                    <PartyPopper className="size-7" />
-                    <p className="text-[15px] font-extrabold">
-                      {ticket.discount_cents
-                        ? `You saved ${formatCurrency(ticket.discount_cents)}`
-                        : "Visit complete"}
-                    </p>
-                    <p className="text-[11.5px] text-white/85">
-                      {ticket.discount_percent
-                        ? `${ticket.discount_percent}% off at ${placeName}`
-                        : placeName}
-                    </p>
-                    {!billed ? (
-                      <div className="mt-2.5 w-full max-w-[260px] rounded-xl bg-white/18 p-2.5 text-left">
-                        <p className="text-[10px] font-bold tracking-wide uppercase opacity-90">
-                          How much was the bill?
-                        </p>
-                        <p className="mt-0.5 text-[10px] leading-snug opacity-80">
-                          Optional — it records what you saved.
-                        </p>
-                        <div className="mt-2 flex gap-1.5">
-                          <input
-                            inputMode="decimal"
-                            placeholder="850"
-                            value={totalDraft}
-                            onChange={(e) => setTotalDraft(e.target.value)}
-                            className="h-9 w-full min-w-0 rounded-lg border-0 bg-white/90 px-2.5 text-[13px] font-semibold text-neutral-900 outline-none placeholder:text-neutral-400"
-                          />
-                          <button
-                            type="button"
-                            disabled={totalBusy}
-                            onClick={() => void submitTotal()}
-                            className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-white/90 text-neutral-900 transition active:scale-95 disabled:opacity-60"
-                            aria-label="Save bill total"
-                          >
-                            {totalBusy ? (
-                              <Loader2 className="size-4 animate-spin" />
-                            ) : (
-                              <Check className="size-4" strokeWidth={3} />
-                            )}
-                          </button>
-                        </div>
-                        {actionError ? (
-                          <p className="mt-1.5 text-[10px] font-semibold text-white/90">
-                            {actionError}
-                          </p>
-                        ) : null}
-                      </div>
-                    ) : null}
+                    <BadgeCheck className="size-3.5 shrink-0" />
+                    Scanned — it&apos;s open on their screen.
                   </>
-                ) : cancelled ? (
-                  <>
-                    <p className="text-[15px] font-extrabold">Ticket cancelled</p>
-                    <p className="text-[11.5px] text-white/85">
-                      Start a fresh one from Rewards whenever you&apos;re back.
-                    </p>
-                  </>
+                ) : fix ? (
+                  <>Fix it below — their screen updates live, no new QR.</>
                 ) : (
                   <>
-                    <p className="text-[15px] font-extrabold">Visit in progress</p>
-                    <p className="text-[11.5px] text-white/85">
-                      Your result lands here once {placeName} closes the visit.
-                    </p>
+                    Show this to your server. The scan just opens your ticket on
+                    their side.
                   </>
                 )}
+              </p>
+              {waiting ? (
+                <ElapsedWaiting iso={ticket.first_scanned_at} />
+              ) : capPesos && priced ? (
+                <p className="mt-1 text-center text-[11px] text-white/80">
+                  Capped at MX${capPesos.toLocaleString("en-US")} off.
+                </p>
+              ) : null}
+
+              <div className="mt-3 border-t-2 border-dashed border-white/35 pt-2">
+                <div className="flex items-center justify-between gap-3 text-[9.5px] font-semibold text-white/90">
+                  <span>Ticket {stubCode}</span>
+                  <span>
+                    {chosenAction
+                      ? chosenState === "done"
+                        ? `${ACTION_SHORT[chosenAction]} ✓`
+                        : `${ACTION_SHORT[chosenAction]} pending`
+                      : "No task — base rate"}
+                  </span>
+                </div>
               </div>
             </section>
 
-            {showMesitaStar ? (
+            {/* What staff see at a glance — the F3 receipt, the guest's last
+                chance to catch a wrong bill while they wait. */}
+            <div className="flex flex-col gap-1.5">
+              <MoneyRow label="Bill" value={formatCurrency(subtotalCents)} />
+              <MoneyRow
+                label={tipPct === null ? "Tip" : `Tip · ${tipPct}%`}
+                sub={
+                  tipPct !== null
+                    ? `${tipPct}% of ${formatCurrency(subtotalCents)}, before the discount`
+                    : undefined
+                }
+                value={formatCurrency(tipCents)}
+              />
+              <MoneyRow
+                label={`Discount · ${billedPct}%`}
+                sub={
+                  capApplied && capPesos
+                    ? `Applies to your first MX$${capPesos.toLocaleString("en-US")}`
+                    : undefined
+                }
+                value={`− ${formatCurrency(discountCents)}`}
+              />
+              <MoneyRow
+                label="Estimated total"
+                value={formatCurrency(amountDueCents)}
+              />
+              <MoneyRow
+                label="Proof"
+                value={
+                  chosenAction
+                    ? chosenState === "done"
+                      ? "Uploaded"
+                      : "Missing"
+                    : "Not needed"
+                }
+              />
+              <TipHonesty subtotalCents={subtotalCents} tipPct={tipPct} />
+            </div>
+
+            {waiting ? (
+              <div className="border-border rounded-2xl border border-dashed p-3">
+                <p className="text-muted-foreground text-[9.5px] font-extrabold tracking-[0.12em] uppercase">
+                  Mesita Check · staff side
+                </p>
+                <p className="text-muted-foreground mt-1 text-[11.5px] leading-snug">
+                  {placeName} sees bill, tip, reward and proof at a glance —
+                  they approve it or send back one specific fix. Two touches,
+                  nothing to operate.
+                </p>
+              </div>
+            ) : null}
+
+            {pollMisses >= 3 && live ? (
+              <p className="text-muted-foreground text-center text-[11px]">
+                Can&apos;t reach Mesita right now — your ticket is still valid.
+              </p>
+            ) : null}
+
+            {live &&
+            (ticket.status === "open" || ticket.status === "scanned") ? (
+              <button
+                type="button"
+                onClick={() => goToStep("bill")}
+                className="text-muted-foreground hover:text-foreground mx-auto flex min-h-10 items-center text-[12px] font-semibold transition"
+              >
+                Need to change something?
+              </button>
+            ) : null}
+          </>
+        ) : null}
+
+        {step === "pay" ? (
+          <StepPay
+            placeName={placeName}
+            pct={billedPct}
+            subtotalCents={subtotalCents}
+            tipCents={tipCents}
+            tipPct={tipPct}
+            discountCents={ticket.approved_discount_cents ?? discountCents}
+            amountDueCents={amountDueCents}
+            busy={payBusy}
+            error={payError}
+            onConfirmAtPlace={() => void confirmAtPlace()}
+          />
+        ) : null}
+
+        {step === "validate" ? <StepValidate placeName={placeName} /> : null}
+
+        {step === "results" ? (
+          <>
+            <StepResults
+              passClassName={passGradient(classKey)}
+              classLabel={classProperLabel(classKey)}
+              placeName={placeName}
+              cancelled={cancelled}
+              revealed={saved}
+              savedCents={discountCents}
+              pct={billedPct}
+              subtotalCents={subtotalCents}
+              tipCents={tipCents}
+              tipPct={tipPct}
+              paidCents={amountDueCents}
+              paidMethodLabel={
+                ticket.paid_method
+                  ? (PAY_METHOD_LABEL[ticket.paid_method] ?? null)
+                  : null
+              }
+              capPesos={capPesos}
+              capApplied={capApplied}
+            />
+            {!cancelled ? (
               <RateVisitRow
                 done={reviewDone}
                 onOpen={() => {
                   setReviewError(null);
-                  openSheet("mesita");
+                  setSheet("mesita");
                 }}
               />
             ) : null}
           </>
-        )}
+        ) : null}
       </div>
 
-      {/* Pinned footer: step 1's commit + the utility row. The CTA moved back
-          here from the body (cleanup board, 2026-08-11) — with five rungs the
-          body outgrew the viewport and the commit clipped off-screen; pinned,
-          it is always visible and the rows scroll under it. */}
-      {step === 1 && quote !== null && !quoteError ? (
+      {/* Reward step's pinned commit — always visible, rows scroll under. */}
+      {step === "reward" && quote !== null && !quoteError ? (
         <div className="shrink-0 pt-2">
           <button
             type="button"
             onClick={() => {
-              if (!pickLocked) setStoredPick(selectedPick);
-              goToStep(selectedAction ? 2 : 3);
+              if (!pickLocked) setStoredPick(pick ?? "base");
+              goToStep(chosenAction && chosenState !== "done" ? "task" : "qr");
             }}
             className="bg-pink-gradient shadow-glow flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl text-[14px] font-bold text-white transition active:scale-[0.99]"
           >
-            {selectedAction === "google"
-              ? `Do the review → unlock ${selectedTotal}%`
-              : selectedAction === "story"
-                ? `Post a story → unlock ${selectedTotal}%`
-                : selectedAction === "mesita"
-                  ? `Rate on Mesita → unlock ${selectedTotal}%`
-                  : `Show my QR at ${base}%`}
+            {chosenAction && chosenState !== "done"
+              ? `Do the task · ${selectedTotal}%`
+              : `Show my QR at ${selectedTotal || base}%`}
           </button>
         </div>
       ) : null}
 
-      {/* Utility row — housekeeping only, ONE quiet line at the true bottom.
-          Destructive and rare actions don't get button chrome next to the
-          commit path. */}
+      {/* Utility row — housekeeping only, one quiet line. Guest self-cancel
+          ends at approval (§12): after that, walking away is the place's
+          call. */}
       <div className="flex shrink-0 items-center justify-center gap-2.5 pt-2">
-        {ticket.status === "open" ? (
+        {ticket.status === "open" || ticket.status === "scanned" ? (
           <button
             type="button"
             onClick={() => void cancel()}
@@ -1339,8 +1146,12 @@ export function TicketScreen({ ticketId }: { ticketId: string }) {
             Cancel ticket
           </button>
         ) : null}
-        {ticket.status === "open" && !cancelled ? (
-          <span aria-hidden="true" className="text-muted-foreground/40 text-[12px]">
+        {(ticket.status === "open" || ticket.status === "scanned") &&
+        !cancelled ? (
+          <span
+            aria-hidden="true"
+            className="text-muted-foreground/40 text-[12px]"
+          >
             ·
           </span>
         ) : null}
@@ -1352,7 +1163,7 @@ export function TicketScreen({ ticketId }: { ticketId: string }) {
           ) : (
             <button
               type="button"
-              onClick={() => openSheet("report")}
+              onClick={() => setSheet("report")}
               className="text-muted-foreground hover:text-foreground flex min-h-9 items-center text-[12px] font-semibold transition"
             >
               Report a problem
@@ -1361,11 +1172,11 @@ export function TicketScreen({ ticketId }: { ticketId: string }) {
         ) : null}
       </div>
 
-      {pendingSwitch && selectedAction ? (
+      {pendingSwitch && chosenAction ? (
         <ChangeBonusDialog
-          from={actionLabel(selectedAction)}
-          to={actionLabel(pendingSwitch)}
-          earned={isVerified(selectedAction)}
+          from={ACTION_SHORT[chosenAction]}
+          to={ACTION_SHORT[pendingSwitch]}
+          earned={isVerified(chosenAction)}
           onCancel={() => setPendingSwitch(null)}
           onConfirm={() => {
             commitAction(pendingSwitch);
@@ -1462,128 +1273,301 @@ export function TicketScreen({ ticketId }: { ticketId: string }) {
   );
 }
 
-// AUTO chip — automatic money, never tappable, never pink.
-function AutoChip() {
-  return (
-    <span className="bg-muted text-muted-foreground shrink-0 rounded-full px-1.5 py-0.5 text-[8.5px] font-extrabold tracking-wide uppercase">
-      Auto
-    </span>
-  );
-}
-
-// One line of the reward receipt. ONE grid for every rung — 28px icon, name +
-// sub, amount, trailing control — so automatic, selectable and unavailable
-// rungs all sit on the same rails. Selection is the only pink on the screen
-// (`--secondary` is the same pink family as `--primary`, which is exactly why
-// nothing else may tint).
-function ReceiptRow({
-  icon,
-  label,
-  sub,
-  amount,
-  trailing,
-  selected = false,
-  selectable = false,
-  dim = false,
-  earned = false,
-  onSelect,
+// ── The Reward step — the lanes (mock design over REAL quote numbers). ─────
+function RewardLanes({
+  quote,
+  quoteError,
+  onRetryQuote,
+  onShowQrAnyway,
+  classKey,
+  igConnected,
+  pick,
+  chosenAction,
+  isFirstVisit,
+  verified,
+  selectableFor,
+  onPick,
+  base,
+  selectedTotal,
+  actionBonus,
+  capPesos,
 }: {
-  icon: React.ReactNode;
-  label: string;
-  sub?: string;
-  /** "+10%" (additive) or "12%" (best-of) — null hides the number. */
-  amount: string | null;
-  /** Right-hand element for non-selectable rows (the AUTO chip). */
-  trailing?: React.ReactNode;
-  selected?: boolean;
-  /** Renders the radio and makes the row a button. */
-  selectable?: boolean;
-  /** Rung the guest can't have here — displayed, greyed, no control. */
-  dim?: boolean;
-  /** Already completed: the bill counts it whatever is picked next. */
-  earned?: boolean;
-  onSelect?: () => void;
+  quote: RewardQuote | null;
+  quoteError: boolean;
+  onRetryQuote: () => void;
+  onShowQrAnyway: () => void;
+  classKey: string;
+  igConnected: boolean;
+  pick: RewardPick | null;
+  chosenAction: ActionKind | null;
+  isFirstVisit: boolean;
+  verified: (a: ActionKind) => boolean;
+  selectableFor: (a: ActionKind) => boolean;
+  onPick: (a: ActionKind) => void;
+  base: number;
+  selectedTotal: number;
+  actionBonus: (a: ActionKind | null) => number;
+  capPesos: number | null;
 }) {
-  const body = (
-    <>
-      {/* Brand marks keep their own colours; house icons stay neutral. The
-          tile itself never tints — this screen is white, not pink. */}
-      <span className="bg-muted/60 text-muted-foreground grid size-8 shrink-0 place-items-center rounded-lg [&>svg]:size-4">
-        {icon}
-      </span>
-      <span className="min-w-0 flex-1">
-        <span className="text-foreground flex items-center gap-1.5 text-[12.5px] leading-tight font-bold">
-          <span className="truncate">{label}</span>
-          {earned ? (
-            <span className="shrink-0 rounded-full bg-emerald-500/12 px-1.5 py-0.5 text-[8.5px] font-extrabold tracking-wide text-emerald-700 uppercase">
-              Done
-            </span>
-          ) : null}
-        </span>
-        {sub ? (
-          <span className="text-muted-foreground mt-0.5 block truncate text-[10.5px] font-semibold">
-            {sub}
-          </span>
-        ) : null}
-      </span>
-      {amount ? (
-        <span
-          className={cn(
-            "font-display text-foreground shrink-0 leading-none font-extrabold tabular-nums",
-            selected ? "text-[19px]" : "text-[16px]",
-          )}
-        >
-          {amount}
-        </span>
-      ) : null}
-      {selectable ? (
-        <span
-          aria-hidden="true"
-          className={cn(
-            "grid size-[18px] shrink-0 place-items-center rounded-full border-[1.5px]",
-            selected
-              ? "border-foreground bg-foreground text-background"
-              : "border-border bg-card",
-          )}
-        >
-          {selected ? <Check className="size-2.5" strokeWidth={4} /> : null}
-        </span>
-      ) : (
-        trailing
-      )}
-    </>
-  );
-  const shell = cn(
-    "flex min-h-[52px] w-full items-center gap-2.5 px-3 py-2.5 text-left transition",
-    // Selection reads as WEIGHT, not hue: a faint neutral wash and a filled
-    // dark radio. Pink is spent once on this page, on the CTA.
-    selected && "bg-foreground/[0.04]",
-    dim && "opacity-45",
-  );
-  if (selectable) {
+  void pick;
+  if (quoteError) {
     return (
-      <button
-        type="button"
-        role="radio"
-        aria-checked={selected}
-        onClick={onSelect}
-        className={cn(shell, "hover:bg-muted/40 transition")}
-      >
-        {body}
-      </button>
+      <div className="flex flex-col items-center gap-2 pt-1">
+        <p className="bg-destructive/10 text-destructive w-full rounded-lg px-3 py-2 text-center text-[12px]">
+          Couldn&apos;t load your rates here.
+        </p>
+        <div className="flex items-center gap-5">
+          <button
+            type="button"
+            onClick={onRetryQuote}
+            className="text-primary flex min-h-9 items-center text-[12.5px] font-semibold"
+          >
+            Retry
+          </button>
+          <button
+            type="button"
+            onClick={onShowQrAnyway}
+            className="text-muted-foreground hover:text-foreground flex min-h-9 items-center text-[12.5px] font-semibold"
+          >
+            Show my QR anyway
+          </button>
+        </div>
+      </div>
     );
   }
+  if (!quote) {
+    return (
+      <div className="flex flex-col gap-2 pt-1">
+        {[0, 1, 2, 3, 4].map((i) => (
+          <div
+            key={i}
+            className="border-border bg-card h-[52px] animate-pulse rounded-2xl border"
+          />
+        ))}
+      </div>
+    );
+  }
+
+  const b = quote.breakdown ?? null;
+  const welcome = quote.bonuses.welcome;
+  const classGlyph = (k: "bronze" | "silver" | "gold" | "diamond") => {
+    const Icon =
+      k === "diamond"
+        ? Gem
+        : k === "gold"
+          ? Crown
+          : k === "silver"
+            ? Medal
+            : Award;
+    return <Icon className="text-primary size-3.5" />;
+  };
+  const classLabel = (k: string) => classProperLabel(k);
+  const myCls = b?.cls ?? null;
+  const myPlan = b?.plan ?? "free";
+
+  // Result line: earned terms only, in the mock's order.
+  const parts: string[] = [];
+  if (b) {
+    if (myCls && b.classes[myCls] > 0) parts.push(`${b.classes[myCls]}% class`);
+    if (b.automatic > 0) parts.push(`${b.automatic}% automatic`);
+    if (myPlan === "premium" && b.planUplift > 0)
+      parts.push(`${b.planUplift}% plan`);
+  } else if (quote.base > 0) {
+    parts.push(`${quote.base}% base`);
+  }
+  if (welcome > 0) parts.push(`${welcome}% welcome`);
+  if (chosenAction && actionBonus(chosenAction) > 0)
+    parts.push(`${actionBonus(chosenAction)}% sharing`);
+
   return (
-    <div aria-disabled={dim || undefined} className={shell}>
-      {body}
+    <div className="flex flex-col gap-1.5">
+      {/* PAYOUT — how it lands. Cashback (Yums) is STAGED: rendered so the
+          shape is real, never selectable, never paid. */}
+      <Lane title="Payout" note="how it lands">
+        <LaneChip label="Discount" sub="off tonight's bill" value={null} on />
+        <LaneChip
+          label="Cashback"
+          sub="Yums · coming soon"
+          value={null}
+          faded
+        />
+      </Lane>
+
+      {b ? (
+        <>
+          <Lane title="Base discount" note="always on">
+            <LaneChip
+              label="Automatic"
+              sub="standing offer"
+              value={b.automatic}
+              on={b.automatic > 0}
+              glyph={<Zap className="text-primary size-3.5" />}
+            />
+          </Lane>
+
+          <Lane title="Visit" note="where you stand">
+            <LaneChip
+              label="Welcome"
+              sub={
+                welcome > 0
+                  ? "your first visit here"
+                  : isFirstVisit
+                    ? "not offered here"
+                    : "first visit only"
+              }
+              value={welcome}
+              on={welcome > 0}
+              faded={welcome === 0}
+              glyph={<Sparkles className="text-primary size-3.5" />}
+            />
+            <LaneChip
+              label="Return"
+              sub={isFirstVisit ? "return visits" : "thanks for coming back"}
+              value={null}
+              on={!isFirstVisit}
+              faded={isFirstVisit}
+              glyph={<RefreshCw className="text-primary size-3.5" />}
+            />
+          </Lane>
+
+          <Lane title="Class" note="earned, not bought">
+            {(["bronze", "silver", "gold", "diamond"] as const).map((k) => (
+              <LaneChip
+                key={k}
+                label={classLabel(k)}
+                sub={k === myCls ? "you" : "locked"}
+                value={b.classes[k]}
+                on={k === myCls}
+                faded={k !== myCls}
+                glyph={classGlyph(k)}
+              />
+            ))}
+          </Lane>
+
+          <Lane title="Plan" note="visits and orders">
+            <LaneChip
+              label="Free"
+              sub={myPlan === "free" ? "yours" : "not active"}
+              value={0}
+              on={myPlan === "free"}
+              faded={myPlan !== "free"}
+              glyph={<Star className="text-muted-foreground size-3.5" />}
+            />
+            <LaneChip
+              label="Premium"
+              sub={myPlan === "premium" ? "yours" : "not active"}
+              value={b.planUplift}
+              on={myPlan === "premium"}
+              faded={myPlan !== "premium"}
+              glyph={<Crown className="text-primary size-3.5" />}
+            />
+          </Lane>
+        </>
+      ) : (
+        <Lane title="Base discount" note="always on">
+          <LaneChip
+            label={`Your ${classLabel(classKey)} base`}
+            sub="standing offer"
+            value={quote.base}
+            on={quote.base > 0}
+            glyph={<Zap className="text-primary size-3.5" />}
+          />
+          {welcome > 0 ? (
+            <LaneChip
+              label="Welcome"
+              sub="your first visit here"
+              value={welcome}
+              on
+              glyph={<Sparkles className="text-primary size-3.5" />}
+            />
+          ) : null}
+        </Lane>
+      )}
+
+      <Lane title="Sharing" note="pick one">
+        {(["google", "story", "mesita"] as const).map((a) => {
+          const available =
+            a === "story"
+              ? Boolean(quote.storyEligible) && igConnected
+              : actionBonus(a) > 0;
+          return (
+            <LaneChip
+              key={a}
+              label={ACTION_SHORT[a]}
+              sub={
+                !available
+                  ? a === "story" && !igConnected && quote.storyEligible
+                    ? "connect Instagram in Me"
+                    : "unavailable"
+                  : verified(a)
+                    ? "done"
+                    : chosenAction === a
+                      ? "tap to drop"
+                      : "tap to add"
+              }
+              value={available ? actionBonus(a) : 0}
+              on={chosenAction === a}
+              faded={!available}
+              done={verified(a)}
+              glyph={
+                a === "story" ? (
+                  <InstagramGlyph className="size-3.5" />
+                ) : a === "google" ? (
+                  <GoogleGlyph className="size-3.5" />
+                ) : (
+                  <MesitaGlyph className="size-3.5" />
+                )
+              }
+              onClick={selectableFor(a) ? () => onPick(a) : undefined}
+            />
+          );
+        })}
+      </Lane>
+
+      <div className="border-border bg-card overflow-hidden rounded-2xl border">
+        <div className="bg-muted/40 flex items-baseline justify-between gap-2 px-3 py-1.5">
+          <span className="text-muted-foreground text-[9px] font-extrabold tracking-[0.12em] uppercase">
+            Result
+          </span>
+          <span className="text-muted-foreground text-[10px] font-semibold">
+            live
+          </span>
+        </div>
+        <div className="flex items-end justify-between gap-3 px-2.5 py-1.5">
+          <span className="text-muted-foreground min-w-0 text-[10.5px] leading-snug font-semibold tabular-nums">
+            {parts.length > 0
+              ? parts.join(" + ")
+              : "Nothing on this ticket yet"}
+          </span>
+          <span className="font-display text-primary shrink-0 text-[26px] leading-none font-extrabold tabular-nums">
+            {selectedTotal || base}%
+          </span>
+        </div>
+        {capPesos ? (
+          <div className="border-border border-t px-2.5 py-1.5">
+            <div className="flex items-center gap-2 rounded-xl bg-amber-500/[0.08] px-2 py-1.5">
+              <span className="grid size-7 shrink-0 place-items-center rounded-full bg-amber-500/15 text-[12px] font-extrabold text-amber-700">
+                !
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="text-foreground text-[11px] leading-tight font-bold">
+                  Capped at MX${capPesos.toLocaleString("en-US")} off your bill
+                </p>
+                <p className="text-muted-foreground mt-0.5 text-[10px] leading-snug">
+                  This percentage is limited to this amount.
+                </p>
+              </div>
+            </div>
+          </div>
+        ) : null}
+      </div>
     </div>
   );
 }
 
 // Switching away from work the guest actually did. The warning is TRUE, not
 // scary: the engine is additive over every verified action, so an earned
-// bonus keeps paying whatever they pick next — what changes is the task in
-// front of them. Never claim money is lost when it isn't.
+// bonus keeps paying whatever they pick next.
 function ChangeBonusDialog({
   from,
   to,
@@ -1611,12 +1595,12 @@ function ChangeBonusDialog({
             {earned ? (
               <>
                 You already finished the {from} — that bonus stays on this
-                ticket and still counts at the bill. Switching only changes
-                what you do next.
+                ticket and still counts at the bill. Switching only changes what
+                you do next.
               </>
             ) : (
               <>
-                Your {from} is still being checked. Switching drops it and
+                Your {from} is still in progress. Switching sets it aside and
                 starts the {to} from scratch.
               </>
             )}
@@ -1689,21 +1673,46 @@ function RateVisitRow({ done, onOpen }: { done: boolean; onOpen: () => void }) {
   );
 }
 
-// THE TICKET is a FULL PAGE (Pato, 2026-08-11: "better make the modal full
-// page, not 80% tall"). This reverses MESITA-1022's 80% bottom panel, which
-// reserved the top 20% as page ground so the ticket would read as a sheet you
-// hold up and put away. With four steps inside it (MESITA-1026) that reasoning
-// inverted: the panel had to carry chrome + rail + a scrolling step body + a
-// pinned footer in 80% of the frame, so step 1's chips and step 3's QR both
-// scrolled inside a box that was itself floating. It is a real route — the
-// @modal interceptor is dead and stays dead (MESITA-857) — so it gets to be a
-// real page.
-//
-// Ground is bg-background, like every other consumer surface: the step body's
-// rows are `bg-card`, and a card fill here would erase their edges.
-//
-// Scroll lives in the STEP BODY, not here, so the chrome, the rail and the
-// footer stay put while a step changes.
+// The waiting clock (F1) — re-renders every 15s, aria-hidden throughout so
+// VoiceOver never announces a ticking number for ten minutes. State updates
+// happen only inside async callbacks (rAF + interval), which keeps the
+// React Compiler's purity rules satisfied.
+function ElapsedWaiting({ iso }: { iso: string | null | undefined }) {
+  const [mins, setMins] = useState<number | null>(null);
+  useEffect(() => {
+    if (!iso) return;
+    const compute = () =>
+      setMins(
+        Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60000)),
+      );
+    const raf = window.requestAnimationFrame(compute);
+    const interval = window.setInterval(compute, 15_000);
+    return () => {
+      window.cancelAnimationFrame(raf);
+      window.clearInterval(interval);
+    };
+  }, [iso]);
+  return (
+    <p className="mt-1 text-center text-[10px] text-white/80">
+      <span
+        aria-hidden="true"
+        className="mr-1.5 inline-block size-1.5 animate-pulse rounded-full bg-white/90 motion-reduce:animate-none"
+      />
+      <span aria-hidden="true">
+        {mins == null || mins < 1 ? "just now" : `waiting ${mins} min`}
+      </span>
+      {mins != null && mins >= 5 ? (
+        <span className="block">
+          Taking a while? Ask them to scan it again — this code doesn&apos;t
+          expire.
+        </span>
+      ) : null}
+    </p>
+  );
+}
+
+// THE TICKET is a FULL PAGE — a real route, bg-background ground; scroll
+// lives in the STEP BODY so chrome, rail and footer stay put.
 function Shell({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex h-full min-h-0 flex-1 flex-col px-4 pt-3 pb-3">

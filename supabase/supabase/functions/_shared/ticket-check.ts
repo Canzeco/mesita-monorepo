@@ -47,7 +47,8 @@ export const CHECK_TICKET_COLUMNS =
   "id, project_id, consumer_id, kind, status, check_code, first_scanned_at, " +
   "story_status, story_screenshot_url, review_status, review_screenshot_url, " +
   "check_subtotal_cents, tip_cents, tip_pct, total_cents, discount_percent, discount_cents, " +
-  "bill_source, currency, created_at, revealed_at, cancelled_at";
+  "bill_source, currency, created_at, revealed_at, cancelled_at, " +
+  "updated_at, approved_at, fix_requested, fix_note, paid_method, validated_at";
 
 export type CheckTicketRow = {
   id: string;
@@ -65,6 +66,12 @@ export type CheckTicketRow = {
   tip_cents: number | null;
   tip_pct: number | null;
   total_cents: number | null;
+  updated_at: string;
+  approved_at: string | null;
+  fix_requested: string | null;
+  fix_note: string | null;
+  paid_method: string | null;
+  validated_at: string | null;
   discount_percent: number | null;
   discount_cents: number | null;
   bill_source: string | null;
@@ -151,6 +158,15 @@ export function shapeCheckPayload(args: {
     status: ticket.status,
     created_at: ticket.created_at,
     first_scanned_at: ticket.first_scanned_at,
+    // v4 (MESITA-1090): the CAS token — staff mutations echo this back as
+    // expectedUpdatedAt so an approve can never land on numbers the staff
+    // screen never rendered.
+    updated_at: ticket.updated_at,
+    approved_at: ticket.approved_at,
+    fix_requested: ticket.fix_requested,
+    fix_note: ticket.fix_note,
+    paid_method: ticket.paid_method,
+    validated_at: ticket.validated_at,
     currency: ticket.currency ?? "MXN",
     place: { name: args.placeName, slug: args.placeSlug },
     guest: {
@@ -160,6 +176,8 @@ export function shapeCheckPayload(args: {
     bill: billed
       ? {
         check_subtotal_cents: ticket.check_subtotal_cents,
+        tip_cents: ticket.tip_cents,
+        tip_pct: ticket.tip_pct,
         discount_percent: ticket.discount_percent,
         discount_cents: ticket.discount_cents,
         // ONE amount-due formula for every surface (C4-6, MESITA-1087):
