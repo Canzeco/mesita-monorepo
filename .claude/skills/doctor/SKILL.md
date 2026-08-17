@@ -135,8 +135,22 @@ The business-truth layer. These are the "and shit" checks — pairs of facts tha
 
 ## Scope 4 — Config enforcement ("unenforced config = bug") · P1
 
-For each admin config page — `adea` · `admin` · `atlas` · `db` · `enricher` ·
-`memo` · `models` · `reservations` · `rewards` · `sourcing`:
+For each admin config page, in the sidebar's product-flow order (`CONFIGS_NAV`
+in `apps/web-admin/src/components/Sidebar.tsx` is the list of record) —
+`admin` · `models` · `sourcing` · `atlas` · `enricher` · `verification` ·
+`ojo` · `rewards` (labeled **Promos**) · `memo` · `reservations`:
+
+Not config pages, do not audit as one: `/adea-config`, `/aura-config` and
+`/db-config` are `permanentRedirect` shims for renamed routes (→ enricher-config,
+aura-consumers, manage-database). `agents_config` is EF-managed with no page yet.
+`scoring_config` belonged to the deleted Lineup engine (MESITA-1048) — if it
+still has no reader, that is a 4.3 dead-knob finding, not a page to check.
+
+**Ojo is the one that must not be skipped.** Every `ojo_config` knob is live and
+editable while the engine is unbuilt (MESITA-1034), so it is the repo's largest
+standing block of deliberately-unenforced config. The rule is that a staged knob
+is *labeled* staged — check that the console still says so. A silently
+un-staged Ojo knob reads to an operator as a control that does something.
 
 4.1 **Blob exists and parses** in `app_settings`, and validates against the TS schema the
     admin page and the consuming EFs expect (e.g. `rewards_config` carries the **v10**

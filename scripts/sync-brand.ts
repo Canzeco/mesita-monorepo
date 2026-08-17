@@ -25,7 +25,7 @@
 //
 // Worktree conflicts on generated files: regenerate, never hand-merge.
 
-import { dirname, fromFileUrl, join } from "jsr:@std/path@1";
+import { dirname, fromFileUrl, join } from "@std/path";
 
 const repoRoot = dirname(dirname(fromFileUrl(import.meta.url)));
 const check = Deno.args.includes("--check");
