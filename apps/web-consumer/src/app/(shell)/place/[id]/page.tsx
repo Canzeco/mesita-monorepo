@@ -23,5 +23,9 @@ export default async function PlaceDetailPage({
     // Bounce, but say so — see <PlaceGoneNotice />.
     redirect(placeGoneHref(CONSUMER_ROUTES.home, id));
   }
-  return <PlaceDetailPageBody place={place} backHref={CONSUMER_ROUTES.home} />;
+  // fallbackHref, not backHref (MESITA-1070): the arrow pops history now, and
+  // home is only where it lands when this tab has none to pop.
+  return (
+    <PlaceDetailPageBody place={place} fallbackHref={CONSUMER_ROUTES.home} />
+  );
 }
