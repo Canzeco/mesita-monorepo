@@ -18,7 +18,7 @@ import { useAuth } from '@/providers/auth';
 const DOOR_HOW: Record<string, string> = {
   standard: 'Base',
   influencer: '2,000+ IG',
-  premium: '$100/mo',
+  premium: '$50/mo',
   aura: 'Invite',
 };
 

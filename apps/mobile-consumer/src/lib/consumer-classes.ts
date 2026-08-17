@@ -39,7 +39,7 @@ export const CLASSES: {
   {
     id: 'premium',
     label: 'Premium',
-    priceMxn: 100,
+    priceMxn: 50,
     followerThreshold: 0,
   },
   {

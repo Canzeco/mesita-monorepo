@@ -16,7 +16,7 @@ import {
 //           never purchasable. Two doors up: Instagram reach (follower bands,
 //           operator-configured) or a direct invitation. Class is public —
 //           it shows on the Passport.
-//   plan  — WHAT YOU PAY. Free or Premium (MX$100/mo). Private: invisible to
+//   plan  — WHAT YOU PAY. Free or Premium (MX$50/mo). Private: invisible to
 //           venues, never on the Passport.
 //
 // The retired v1 ladder was standard < influencer < premium < aura, which put
@@ -219,7 +219,7 @@ export const PLANS: {
   priceMxn: number;
 }[] = [
   { id: "free", label: "Free", req: "Default account", priceMxn: 0 },
-  { id: "premium", label: "Premium", req: "$100 MXN / mo", priceMxn: 100 },
+  { id: "premium", label: "Premium", req: "$50 MXN / mo", priceMxn: 50 },
 ];
 
 export const PREMIUM_PLAN_PRICE_MXN = PLANS.find((p) => p.id === "premium")!

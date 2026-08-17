@@ -2,7 +2,7 @@ function FAQ() {
   const items: { q: string; a: string }[] = [
     {
       q: "¿Mesita es gratis?",
-      a: "Sí. Descubre, reserva y consigue descuentos sin pagar nada. Premium sube los descuentos en todos lados por $100 MXN al mes; Influencer es gratis con 2,000+ seguidores en Instagram.",
+      a: "Sí. Descubre, reserva y consigue descuentos sin pagar nada. Premium sube los descuentos en todos lados por $50 MXN al mes; Silver es gratis con 1,000+ seguidores en Instagram.",
     },
     {
       q: "¿Cómo uso un descuento?",
