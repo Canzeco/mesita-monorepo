@@ -1,20 +1,7 @@
-import { getFiltersConfig } from "../actions";
-import { SurfaceConfigClient } from "../SurfaceConfigClient";
-import { DEFAULT_FILTERS } from "../filters";
+import { redirect } from "next/navigation";
 
-// Filters Config · Chat — one consumer surface. Same server-seed contract as
-// General: a failed GET becomes loadError and Save stays blocked (MESITA-737).
-export const dynamic = "force-dynamic";
-
-export default async function FiltersChatPage() {
-  const res = await getFiltersConfig();
-  return (
-    <SurfaceConfigClient
-      surfaceKey="chat"
-      initialConfig={res.ok ? res.config : DEFAULT_FILTERS}
-      initialUpdatedAt={res.ok ? res.updatedAt : null}
-      initialSeeded={res.ok ? res.seeded : false}
-      loadError={res.ok ? null : res.error}
-    />
-  );
+// Chat parent → Memo, the substance of this surface. The filter knobs, the
+// playground and the data-access reference are the other three inner tabs.
+export default function ChatSurfaceIndex() {
+  redirect("/filters-config/chat/memo");
 }

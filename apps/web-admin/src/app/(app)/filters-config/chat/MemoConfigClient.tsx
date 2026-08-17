@@ -3,13 +3,13 @@
 import { useEffect, useState, useTransition } from "react";
 import { Bot, Globe, MessageSquare } from "lucide-react";
 import { ErrorNote } from "@/components/ErrorNote";
-import { KnobStatus, SaveRow, SectionCard, Switch, TextAreaField } from "../enricher-config/atlas-ui";
-import { getMemoConfig, updateMemoConfig } from "./actions";
+import { KnobStatus, SaveRow, SectionCard, Switch, TextAreaField } from "@/components/admin-ui";
+import { getMemoConfig, updateMemoConfig } from "./memo-actions";
 import {
   OPENAI_MODELS,
   PERPLEXITY_MODELS,
   type MemoConfig,
-} from "./types";
+} from "./memo-types";
 
 // Memo's config surface — kept deliberately small: the persona prose and the
 // legacy model fields. Server-seeded from admin-web-get-memo-config

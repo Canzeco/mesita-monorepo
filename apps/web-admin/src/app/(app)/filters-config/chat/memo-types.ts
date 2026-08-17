@@ -1,8 +1,8 @@
-// Shared Memo Config types + model catalogs. Kept OUT of actions.ts because
+// Shared Memo types + model catalogs (Filters › Chat › Memo). Kept OUT of actions.ts because
 // that file is a "use server" module — Next only exposes async functions from
 // it to the client, so importing OPENAI_MODELS / PERPLEXITY_MODELS from there
 // handed the client stubs and crashed Select's options.map (TypeError:
-// c.map is not a function on /memo-config).
+// c.map is not a function on the Memo tab).
 
 // The tunable surface an operator edits. Mirrors the knobs Memo actually reads
 // at runtime (persona prose, model params, retrieval shape).
