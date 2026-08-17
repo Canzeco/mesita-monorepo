@@ -41,6 +41,7 @@ import {
   placeStrategy,
 } from "../_shared/rewards-config.ts";
 import { checkUrlFor, newCheckCode } from "../_shared/ticket-check.ts";
+import { CHECK_DEDUPE_STATUSES, TICKET_STATUS } from "../_shared/ticket-status.ts";
 import { snapshotRatesFromPlace } from "../_shared/ticket-rate-snapshot.ts";
 
 type Body = {
@@ -136,7 +137,7 @@ Deno.serve(async (req) => {
     .select("id, check_code, status")
     .eq("consumer_id", consumerId)
     .eq("project_id", placeId)
-    .eq("status", "open")
+    .in("status", [...CHECK_DEDUPE_STATUSES])
     .not("check_code", "is", null)
     .maybeSingle();
   if (existing.data) {
@@ -202,7 +203,7 @@ Deno.serve(async (req) => {
         project_id: placeId,
         consumer_id: consumerId,
         opened_by: consumerId, // self-opened: the v2 marker
-        status: "open",
+        status: TICKET_STATUS.open,
         kind: "coupon",
         story_status: storyStatus,
         review_status: reviewStatus,

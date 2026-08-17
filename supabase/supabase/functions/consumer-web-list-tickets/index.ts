@@ -12,6 +12,7 @@ import {
   readEFEnv,
 } from "../_shared/auth.ts";
 import { attachPlaces } from "../_shared/reservation-places.ts";
+import { LIVE_STATUSES, TERMINAL_STATUSES } from "../_shared/ticket-status.ts";
 
 const DEFAULT_LIMIT = 20;
 const MAX_LIMIT = 100;
@@ -52,9 +53,9 @@ Deno.serve(async (req) => {
     )
     .eq("consumer_id", userId);
   if (scope === "active") {
-    query = query.in("status", ["open", "awaiting_payment_confirm"]);
+    query = query.in("status", [...LIVE_STATUSES]);
   } else if (scope === "history") {
-    query = query.in("status", ["revealed", "cancelled"]);
+    query = query.in("status", [...TERMINAL_STATUSES]);
   }
   const { data, error } = await query
     .order("created_at", { ascending: false })

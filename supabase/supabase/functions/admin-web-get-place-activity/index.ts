@@ -43,6 +43,7 @@ import {
   requireSuperAdmin,
 } from "../_shared/auth.ts";
 import { consumerFromNumber, reservationFromNumber } from "../_shared/elevenlabs.ts";
+import { CLOSED_TICKET_STATUS } from "../_shared/ticket-status.ts";
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 
 type Body = { placeId?: string; projectId?: string; limit?: number };
@@ -50,7 +51,7 @@ type Body = { placeId?: string; projectId?: string; limit?: number };
 // A ticket counts as CLOSED once staff marked the visit done (v3b /
 // MESITA-850). Matches business-web-get-performance. paid_at is still stamped
 // by informal close, but vocabulary and predicates follow status=revealed.
-const CLOSED_STATUS = "revealed";
+const CLOSED_STATUS = CLOSED_TICKET_STATUS;
 const CLOSED_PAGE = 1000;
 
 // supabase-js types a to-one embed as T | T[]; normalise.

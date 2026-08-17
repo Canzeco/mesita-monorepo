@@ -51,6 +51,7 @@ import {
   readEFEnv,
   requireMembership,
 } from "../_shared/auth.ts";
+import { CLOSED_TICKET_STATUS, TICKET_STATUS } from "../_shared/ticket-status.ts";
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 
 const DEFAULT_FEED_LIMIT = 40;
@@ -64,7 +65,7 @@ const FEED_TICKET_PAGE = 80;
 
 // A ticket counts as HONORED once it closed — v3b made the close the single
 // unconditional signal (MESITA-850), so this matches what activation records.
-const CLOSED_STATUS = "revealed";
+const CLOSED_STATUS = CLOSED_TICKET_STATUS;
 
 const ATTESTED_STATUSES = [
   "self_verified",
@@ -215,7 +216,7 @@ Deno.serve(async (req) => {
       .from("tickets")
       .select("id", { count: "exact", head: true })
       .eq("project_id", projectId)
-      .eq("status", "cancelled"),
+      .eq("status", TICKET_STATUS.cancelled),
     admin
       .from("tickets")
       .select("id", { count: "exact", head: true })

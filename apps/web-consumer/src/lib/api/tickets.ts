@@ -56,6 +56,10 @@ export type ConsumerTicketRow = {
   place: ConsumerTicketPlace;
 };
 
+// MIRROR of LIVE_STATUSES in supabase/supabase/functions/_shared/ticket-status.ts
+// (MESITA-1085) — the one status vocabulary. Drift here strands live tickets
+// in a bucket no UI renders; `ticket-status-drift.test.ts` pins all three
+// copies (supabase · web · mobile) to each other.
 export const ACTIVE_TICKET_STATUSES = new Set([
   "open",
   "awaiting_payment_confirm",

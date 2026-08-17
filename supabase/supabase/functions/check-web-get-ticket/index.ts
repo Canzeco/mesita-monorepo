@@ -29,6 +29,7 @@ import {
 import { loadRewardsGrid } from "../_shared/rewards-config.ts";
 import { resolveBillCapPesos } from "../_shared/discount-cap.ts";
 import { resolveLiveTicketRate } from "../_shared/ticket-reprice.ts";
+import { TICKET_STATUS } from "../_shared/ticket-status.ts";
 
 type Body = { code?: string };
 
@@ -106,7 +107,7 @@ Deno.serve(async (req) => {
   let liveCapPesos: number | null = null;
   const unbilled = (ticket.total_cents ?? 0) <= 0 &&
     (ticket.check_subtotal_cents ?? 0) <= 0;
-  if (unbilled && ticket.status === "open") {
+  if (unbilled && ticket.status === TICKET_STATUS.open) {
     const live = await resolveLiveTicketRate(admin, ticket);
     if (live.ok) {
       offerRatePercent = live.ratePercent;

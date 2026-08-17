@@ -77,6 +77,7 @@ import {
   readEFEnv,
   requireSuperAdmin,
 } from "../_shared/auth.ts";
+import { CLOSED_TICKET_STATUS } from "../_shared/ticket-status.ts";
 import {
   one,
   placeRef,
@@ -436,7 +437,7 @@ Deno.serve(async (req) => {
           "status, kind, revealed_at, check_subtotal_cents, discount_percent, discount_cents, currency, ",
           "revealed_at",
           wantType("rewards.ticket_closed"),
-          { status: "revealed" },
+          { status: CLOSED_TICKET_STATUS },
         ),
         activitySource(
           "ticket_reviews",

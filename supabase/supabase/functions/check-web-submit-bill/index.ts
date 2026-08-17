@@ -46,6 +46,7 @@ import {
   logCheckEvent,
   requireCheckPin,
 } from "../_shared/ticket-check.ts";
+import { TICKET_STATUS } from "../_shared/ticket-status.ts";
 
 type Body = { code?: string; checkSubtotalCents?: number; pin?: string };
 
@@ -100,7 +101,7 @@ Deno.serve(async (req) => {
   });
   if (!pinRes.ok) return pinRes.response;
 
-  if (ticket.status !== "open") {
+  if (ticket.status !== TICKET_STATUS.open) {
     return json(
       {
         ok: false,
@@ -186,7 +187,7 @@ Deno.serve(async (req) => {
   const update = await admin
     .from("tickets")
     .update({
-      status: "awaiting_payment_confirm",
+      status: TICKET_STATUS.awaitingPaymentConfirm,
       check_subtotal_cents: snap.checkSubtotalCents,
       tip_cents: snap.tipCents,
       total_cents: snap.totalCents,
@@ -196,7 +197,7 @@ Deno.serve(async (req) => {
       bill_source: "business", // staff entered it at the check page (MESITA-850)
     })
     .eq("id", ticket.id)
-    .eq("status", "open") // concurrent double-submits lose cleanly
+    .eq("status", TICKET_STATUS.open) // concurrent double-submits lose cleanly
     .select("id, status, story_status, total_cents, discount_percent, discount_cents, check_subtotal_cents, currency")
     .single();
   if (update.error) {

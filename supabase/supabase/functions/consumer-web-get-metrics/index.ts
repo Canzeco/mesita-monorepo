@@ -30,6 +30,7 @@ import {
   readEFEnv,
 } from "../_shared/auth.ts";
 import { isActionVerified } from "../_shared/rewards-config.ts";
+import { CLOSED_TICKET_STATUS } from "../_shared/ticket-status.ts";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
@@ -69,7 +70,7 @@ Deno.serve(async (req) => {
     ]);
 
   const tickets = ticketsRes.data ?? [];
-  const revealed = tickets.filter((t) => t.status === "revealed");
+  const revealed = tickets.filter((t) => t.status === CLOSED_TICKET_STATUS);
   // Product lock (MESITA-904): a place visit IS a reward claim — same source.
   const rewardsClaimed = revealed.length;
   const googleReviews = tickets.filter((t) =>

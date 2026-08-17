@@ -3,15 +3,12 @@
 
 import { type SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { placeInstagramHandleForPayload } from "./ticket-bill-payload.ts";
+import { CLOSED_TICKET_STATUS, LIVE_STATUSES } from "./ticket-status.ts";
 
 // v3 (MESITA-849): the Mesita review is a task the guest does BEFORE the scan,
 // so a live ticket is reviewable — it no longer has to reach the end of the
 // visit first. `awaiting_story` is gone with the staff verdict that resolved it.
-const REVIEW_READY_STATUSES = new Set([
-  "open",
-  "awaiting_payment_confirm",
-  "revealed",
-]);
+const REVIEW_READY_STATUSES = new Set<string>([...LIVE_STATUSES, CLOSED_TICKET_STATUS]);
 
 /** Ensure the review inbox row exists before the consumer submits a review. */
 export async function prepareTicketForReview(
