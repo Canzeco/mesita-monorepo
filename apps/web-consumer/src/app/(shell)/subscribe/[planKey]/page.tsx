@@ -23,13 +23,21 @@ import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 // the two axes on the one screen that takes their money. The class ladder is
 // reachable from Me › Class; it is not a route to this.
 
-// What the PLAN confers. Unlike a class (which moves the discount rate and
-// nothing else), the subscription does carry product features — so this list
-// is legitimate here and must never be mirrored onto a class card.
-const PERKS = [
-  "Higher discount rewards at every Verified Partner.",
-  "Better, more rewarding recommendations across discovery.",
-  "10 reservations every month.",
+// What the PLAN confers (decision: Pato, MESITA-1127). Unlike a class — which
+// moves the discount rate and nothing else — the subscription carries product
+// features, so this list is legitimate here and must never be mirrored onto a
+// class card.
+//
+// `soon` is not decoration on this page: it is a checkout screen, and two of
+// these are not deliverable to a subscriber yet. Orders has no table, EF,
+// type or quota anywhere in the repo, and the AI Connector box on Me is still
+// parked. Un-park either one by deleting its flag here and there.
+const PERKS: { label: string; soon?: boolean }[] = [
+  { label: "Bigger discounts at Verified Partners" },
+  { label: "Better recommendations" },
+  { label: "10 reservations per month" },
+  { label: "30 orders per month", soon: true },
+  { label: "AI connector", soon: true },
 ];
 
 export default function SubscribePage() {
@@ -71,8 +79,10 @@ export default function SubscribePage() {
           <h2 className="font-display mt-1 text-3xl font-semibold tracking-tight">
             Mesita Premium
           </h2>
+          {/* The hero used to list three perks the card below then listed
+              again. It states the offer; the list states the contents. */}
           <p className="mt-1 text-sm opacity-90">
-            Higher discount rewards, better recommendations, 10 reservations.
+            More off every bill, cancel anytime.
           </p>
           <p className="font-display mt-4 text-4xl font-bold tabular-nums">
             ${premium.priceMxn.toLocaleString()}
@@ -88,39 +98,38 @@ export default function SubscribePage() {
           </h3>
           <ul className="mt-3 flex flex-col gap-2.5">
             {PERKS.map((p) => (
-              <li key={p} className="flex items-start gap-2.5 text-sm">
-                <span className="bg-secondary/15 text-secondary mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full">
+              <li key={p.label} className="flex items-center gap-2.5 text-sm">
+                <span className="bg-secondary/15 text-secondary flex h-5 w-5 shrink-0 items-center justify-center rounded-full">
                   <Check className="h-3 w-3" />
                 </span>
-                <span>{p}</span>
+                <span className={p.soon ? "text-muted-foreground" : undefined}>
+                  {p.label}
+                </span>
+                {p.soon && (
+                  <span className="border-border text-muted-foreground shrink-0 rounded-full border px-1.5 py-0.5 text-[8px] font-semibold tracking-[0.12em] uppercase">
+                    Soon
+                  </span>
+                )}
               </li>
             ))}
           </ul>
         </section>
 
-        <section className="border-border bg-card rounded-2xl border p-5">
-          <h3 className="font-display text-base font-semibold tracking-tight">
-            Your class stays yours
-          </h3>
-          <p className="text-muted-foreground mt-2 text-sm leading-relaxed">
-            Premium is a subscription, not a rung. It raises your discount at
-            every place and never changes your class — Bronze, Silver, Gold and
-            Diamond come from your follower count, or from an invitation Mesita
-            sends by hand. Neither one can be bought.
-          </p>
-          <Link
-            href={CONSUMER_ROUTES.me}
-            className="text-primary mt-3 inline-flex text-sm font-semibold"
-          >
-            See your class
-          </Link>
-        </section>
-
+        {/* The class note earns one line, not a section. It still has to be
+            here — this is the screen where a guest is most likely to read
+            Premium as a rung — but a heading, a paragraph and a link competed
+            with the CTA to say one sentence. */}
         <section className="border-border bg-muted/30 text-muted-foreground rounded-2xl border border-dashed p-4 text-[12px] leading-relaxed">
           <p>
-            You become Mesita Premium the moment payment clears — no spend
-            accumulation needed. Cancel anytime; Premium stays through the end
-            of the current billing period.
+            Premium is a subscription, not a class — your class still comes
+            from followers or an invitation.{" "}
+            <Link href={CONSUMER_ROUTES.me} className="text-primary font-semibold">
+              See your class
+            </Link>
+          </p>
+          <p className="mt-2">
+            You become Mesita Premium the moment payment clears. Cancel anytime;
+            Premium stays through the end of the current billing period.
           </p>
         </section>
 
