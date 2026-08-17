@@ -76,7 +76,7 @@ export function HelpModal({
         </div>
 
         <div className="flex items-start gap-3">
-          <span className="bg-tier-premium grid size-9 shrink-0 place-items-center rounded-xl text-white">
+          <span className="bg-pink-gradient grid size-9 shrink-0 place-items-center rounded-xl text-white">
             <CLASS_MARK_ICON className="size-[18px]" />
           </span>
           <p className="text-muted-foreground text-[13px] leading-relaxed">

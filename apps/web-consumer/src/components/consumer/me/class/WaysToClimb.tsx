@@ -2,14 +2,8 @@
 
 import { Fragment } from "react";
 
-import {
-  CLASSES,
-  CLASS_ICONS,
-  PLANS,
-  PREMIUM_PLAN_ICON,
-} from "@/lib/consumer-data";
+import { CLASSES, CLASS_ICONS } from "@/lib/consumer-data";
 import { useConsumerClass } from "@/lib/class-context";
-import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import { toast } from "@/lib/toast";
 import { ClimbCard, type ClimbCardData } from "./ClimbCard";
 import { InstagramConnectedSummary } from "./InstagramConnectedSummary";
@@ -19,19 +13,22 @@ import { InstagramConnectedSummary } from "./InstagramConnectedSummary";
 // Instagram connect / Rewards (MESITA-909).
 const ELEVATED_PERKS = ["Personalized picks", "10 reservations / mo"];
 
-// TWO SECTIONS, because there are two axes (Classes v2, MESITA-1079). This
-// screen used to list four "ways to climb" with Premium third, which read as
-// "pay to outrank an Influencer" — the exact merge v2 removes. The class
-// ladder is what you EARN; the plan is what you BUY, and it is filed under its
-// own heading so no card can be mistaken for a rung.
+// THE CLASS LADDER, AND NOTHING ELSE (decision: Pato, MESITA-1122).
+//
+// This screen has twice failed the same way. v1 listed Premium as the third
+// "way to climb", which read as pay-to-outrank. v2 kept it, demoted to its own
+// "Your plan" heading — still a purchasable card on the surface that is
+// supposed to prove classes are earned, and still the loudest thing on it.
+// The plan now has its own box on Me and its own page at /subscribe/premium,
+// so it is gone from here entirely: nothing on the class surface may be
+// bought.
 export function WaysToClimb({
   onConnectInstagram,
 }: {
   onConnectInstagram: () => void;
 }) {
   const silver = CLASSES.find((c) => c.id === "silver")!;
-  const premiumPlan = PLANS.find((p) => p.id === "premium")!;
-  const { key, plan, origin, followers } = useConsumerClass();
+  const { key, origin, followers } = useConsumerClass();
 
   const classCards: ClimbCardData[] = [
     {
@@ -103,48 +100,16 @@ export function WaysToClimb({
     },
   ];
 
-  const planCard: ClimbCardData = {
-    key: "premium",
-    icon: PREMIUM_PLAN_ICON,
-    iconBg: "bg-tier-premium text-white",
-    title: "Premium",
-    via: "Subscription",
-    accent: true,
-    door: `$${premiumPlan.priceMxn} MXN / mo · cancel anytime`,
-    discountLevel: "EXTRA",
-    perks: [...ELEVATED_PERKS],
-    reached: plan === "premium",
-    reachedLabel: "Active",
-    actions: [
-      { label: "Join with subscription", href: CONSUMER_ROUTES.subscribe },
-    ],
-  };
-
   return (
-    <div className="flex flex-col gap-5">
-      <div className="flex flex-col gap-3">
-        {classCards.map((c) => (
-          <Fragment key={c.key}>
-            <ClimbCard data={c} />
-            {c.key === "silver" && origin === "instagram" && (
-              <InstagramConnectedSummary followers={followers} />
-            )}
-          </Fragment>
-        ))}
-      </div>
-
-      <div className="flex flex-col gap-3">
-        <div>
-          <h3 className="text-[11px] font-bold tracking-[0.14em] uppercase">
-            Your plan
-          </h3>
-          <p className="text-muted-foreground mt-0.5 text-xs leading-snug">
-            A separate axis — Premium raises your discount at every place and
-            never changes your class.
-          </p>
-        </div>
-        <ClimbCard data={planCard} />
-      </div>
+    <div className="flex flex-col gap-3">
+      {classCards.map((c) => (
+        <Fragment key={c.key}>
+          <ClimbCard data={c} />
+          {c.key === "silver" && origin === "instagram" && (
+            <InstagramConnectedSummary followers={followers} />
+          )}
+        </Fragment>
+      ))}
     </div>
   );
 }

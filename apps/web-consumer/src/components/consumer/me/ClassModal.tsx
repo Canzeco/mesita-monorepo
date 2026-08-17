@@ -35,7 +35,7 @@ export function ClassModal({
           <div>
             <h2 className={SHEET_TITLE_CLASS}>Your class</h2>
             <p className="text-muted-foreground text-[12px]">
-              Reach, subscribe, or get invited — rewards climb with you.
+              Reach or get invited — rewards climb with you.
             </p>
           </div>
         </div>

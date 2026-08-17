@@ -5,7 +5,7 @@
 // they can never diverge. Money tiles use formatCurrency (MXN).
 
 import { useEffect, useRef, useState } from "react";
-import { Activity } from "lucide-react";
+import { BarChart3 } from "lucide-react";
 
 import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
 import {
@@ -83,7 +83,7 @@ export function MetricsModal({
       <div className="space-y-4 px-5 pt-4 pb-8">
         <div className="flex items-center gap-2.5">
           <span className="bg-primary/10 text-primary grid size-9 place-items-center rounded-xl">
-            <Activity className="size-[18px]" strokeWidth={2.25} />
+            <BarChart3 className="size-[18px]" strokeWidth={2.25} />
           </span>
           <div>
             <h2 className="text-foreground text-lg leading-tight font-bold tracking-tight">

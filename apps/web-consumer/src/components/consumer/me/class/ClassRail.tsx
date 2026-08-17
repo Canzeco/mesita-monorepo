@@ -73,7 +73,7 @@ export function ClassRail() {
                 Current
               </span>
             ) : unlocked ? (
-              <span className="text-tier-premium flex items-center gap-0.5 text-[9px] font-bold tracking-[0.08em] uppercase">
+              <span className="flex items-center gap-0.5 text-[9px] font-bold tracking-[0.08em] text-emerald-700 uppercase">
                 <Check className="h-2.5 w-2.5" /> Unlocked
               </span>
             ) : (
