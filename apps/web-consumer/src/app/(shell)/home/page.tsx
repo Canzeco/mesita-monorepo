@@ -6,8 +6,8 @@ import { redirect } from "next/navigation";
 // /home/swipe, so this hop is only hit by direct URLs / legacy links.
 const MODE_SEGMENT: Record<string, string> = {
   swipe: "swipe",
-  ai: "ai",
-  askAi: "ai",
+  ai: "chat",
+  askAi: "chat",
   social: "social",
   favorites: "favorites",
 };

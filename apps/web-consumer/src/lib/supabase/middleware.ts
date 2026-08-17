@@ -36,12 +36,12 @@ import type { Database } from "./database.types";
 
 const PROTECTED_PREFIXES = [
   "/me",
-  "/rewards",
+  "/new-visit",
+  "/visit",
   "/reservations",
   "/reservation",
   "/inbox",
   "/subscribe",
-  "/saved",
 ];
 
 // Routes where a signed-in visitor should be bounced through post-signin.

@@ -348,7 +348,7 @@ export function TicketScreen({ ticketId }: { ticketId: string }) {
     try {
       await apiCancelTicket(supabase, ticketId);
       await tickets.refresh();
-      router.push(CONSUMER_ROUTES.rewards.root, { scroll: false });
+      router.push(CONSUMER_ROUTES.newVisit.root, { scroll: false });
     } catch {
       setCancelling(false);
     }
@@ -409,7 +409,7 @@ export function TicketScreen({ ticketId }: { ticketId: string }) {
             It may have been cancelled, or it belongs to another account.
           </p>
           <Link
-            href={CONSUMER_ROUTES.rewards.root}
+            href={CONSUMER_ROUTES.newVisit.root}
             className="bg-pink-gradient shadow-glow mt-1 rounded-xl px-5 py-2.5 text-[13px] font-semibold text-white"
           >
             Back to Rewards
@@ -728,7 +728,7 @@ export function TicketScreen({ ticketId }: { ticketId: string }) {
         <button
           type="button"
           onClick={() =>
-            router.push(CONSUMER_ROUTES.rewards.root, { scroll: false })
+            router.push(CONSUMER_ROUTES.newVisit.root, { scroll: false })
           }
           aria-label="Back to Rewards"
           className="bg-muted text-foreground grid size-8 shrink-0 place-items-center rounded-full transition active:scale-95"

@@ -18,7 +18,10 @@ export const CONSUMER_ROUTES = {
   homeTabs: {
     swipe: "/home/swipe",
     catalog: "/home/catalog",
-    ai: "/home/ai",
+    // The AI concierge mode. The pill has read "Chat" since 2026-08-16; the
+    // route caught up here. Don Memo is the persona you meet inside it, not
+    // the name of the destination. /home/ai 308s to this.
+    chat: "/home/chat",
     social: "/home/social",
     favorites: "/home/favorites",
   },
@@ -45,12 +48,25 @@ export const CONSUMER_ROUTES = {
   reservation: {
     prefix: "/reservation/",
   },
-  // Rewards is a single page (banner + Mesita passport + tickets). The tab
-  // used to live at /pay — that whole tree now redirects here. Ticket detail
-  // is /rewards/ticket/[id].
-  rewards: {
-    root: "/rewards",
-    ticketPrefix: "/rewards/ticket/",
+  // The centre tab: pick a place, start a visit. A VERB on purpose — it is
+  // the primary action, and the visits LIST lives in Inbox > Visits, so this
+  // surface only ever creates. /rewards, /pay and /qr all 308 here.
+  newVisit: {
+    root: "/new-visit",
+  },
+  // A single visit — THE TICKET (reward -> task -> QR -> results). Top-level
+  // sibling of /place and /reservation, not a child of /new-visit: you reach
+  // it from the centre tab when you start one AND from Inbox > Visits when you
+  // return to one, so it belongs to neither.
+  //
+  // It lights the INBOX tab (see BottomNav matchPrefixes) because that is
+  // where the list lives — exactly how /reservation/[id] behaves.
+  //
+  // The OBJECT is still a ticket and the DB column is still `kind`. Only the
+  // consumer-facing URL says visit. Do not let this cascade into a code or
+  // column rename (MESITA-1062 eng review).
+  visit: {
+    prefix: "/visit/",
   },
   // Inbox — the container tab, and now genuinely ONE surface. It holds four
   // sections in this fixed order (Pato, 2026-08-16):
@@ -82,12 +98,19 @@ export const CONSUMER_ROUTES = {
   // (Apple review): the iOS app links out to this web URL.
   subscribe: "/subscribe/premium",
   // The Me tab is a single flat page — identity hero + modular boxes that open
-  // as modals (Class, Settings, …). There are NO nested tab routes; /me is the
-  // whole surface. Legacy /me/class, /me/settings, and /me/plan redirect here.
+  // as modals (Class, Settings, …). There are NO nested tab routes yet; /me is
+  // the whole surface. Legacy /me/class, /me/settings and /me/plan redirect
+  // here. Promoting those to real @modal-intercepted routes is the next stage.
   me: "/me",
   legacy: {
     profile: "/profile",
     invite: "/invite",
+    // The AI mode's route before it was named for what it does.
+    homeAi: "/home/ai",
+    // The centre tab and its detail, before visit/order/reservation replaced
+    // the word "ticket" in the consumer URL space.
+    rewards: "/rewards",
+    rewardsTicketPrefix: "/rewards/ticket/",
     meClass: "/me/class",
     meSettings: "/me/settings",
     mePlan: "/me/plan",
@@ -121,7 +144,8 @@ export const CONSUMER_ROUTE_PREFIX = {
   search: "/search",
   place: "/place",
   reservations: "/reservations",
-  rewards: "/rewards",
+  newVisit: "/new-visit",
+  visit: "/visit",
   inbox: "/inbox",
   me: "/me",
   subscribe: "/subscribe",
@@ -140,30 +164,40 @@ export function reservationPath(id: string): string {
   return `${CONSUMER_ROUTES.reservation.prefix}${id}`;
 }
 
-// Coupon detail is singular /coupon/[id]. There is deliberately NO /coupons
-// list route — coupons are reached from reservations/tickets (MESITA-899 D6).
-const COUPON_PATH_PREFIX = "/coupon/";
-
-export function couponPath(id: string): string {
-  return `${COUPON_PATH_PREFIX}${id}`;
+export function visitPath(id: string): string {
+  return `${CONSUMER_ROUTES.visit.prefix}${id}`;
 }
 
-export function rewardsTicketPath(id: string): string {
-  return `${CONSUMER_ROUTES.rewards.ticketPrefix}${id}`;
-}
-
+/**
+ * Historical alias. The object is still a ticket everywhere below the URL —
+ * the DB column, the EFs and the row types all still say ticket — so call
+ * sites that are talking about the OBJECT keep reading naturally.
+ */
 export function ticketPath(id: string): string {
-  return rewardsTicketPath(id);
+  return visitPath(id);
 }
 
+/**
+ * Does this path paint inside a routed modal shell?
+ *
+ * SlideOverShell and BottomSheetShell both open with
+ * `if (!isModalContractPath(pathname)) return null`, and they are this
+ * predicate's ONLY consumers. So a new @modal intercept whose path is missing
+ * here renders BLANK — URL changes, page underneath stays, nothing opens, and
+ * typecheck/build/tests all stay green. `route-structure.test.tsx` T2 guards
+ * that direction.
+ *
+ * The reverse is NOT an invariant: a path may sit outside this list and still
+ * be a real route (it just renders full-page). /rewards/ticket/ used to be
+ * listed here with no intercept behind it — inert, and removed with the
+ * rename rather than carried forward as an inert /visit/ branch.
+ */
 export function isModalContractPath(pathname: string): boolean {
   return (
     pathname === CONSUMER_ROUTES.filters ||
     pathname.startsWith(CONSUMER_ROUTES.place.prefix) ||
     pathname.startsWith(CONSUMER_ROUTES.legacy.savedPlacePrefix) ||
     pathname.startsWith(CONSUMER_ROUTES.reservation.prefix) ||
-    pathname.startsWith(CONSUMER_ROUTES.legacy.savedReservationPrefix) ||
-    pathname.startsWith(CONSUMER_ROUTES.rewards.ticketPrefix) ||
-    pathname.startsWith(COUPON_PATH_PREFIX)
+    pathname.startsWith(CONSUMER_ROUTES.legacy.savedReservationPrefix)
   );
 }

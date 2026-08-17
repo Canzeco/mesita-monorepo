@@ -236,8 +236,12 @@ describe("T5 — exactly one tab lights per surface", () => {
     ["/place/abc", "Home"],
     ["/filters", "Home"],
     ["/search", "Search"],
-    ["/rewards", "Visit"],
-    ["/rewards/ticket/t1", "Visit"],
+    ["/new-visit", "Visit"],
+    // THE requirement from the routing v2 design review: the visit detail
+    // lights INBOX, not the centre tab, because that is where the list lives.
+    // It lit the centre tab before only by nesting under /rewards; the rename
+    // severed that nesting and this row is what holds the replacement.
+    ["/visit/t1", "Inbox"],
     ["/inbox/visits", "Inbox"],
     ["/inbox/reservations", "Inbox"],
     ["/reservation/r1", "Inbox"],
@@ -251,9 +255,12 @@ describe("T5 — exactly one tab lights per surface", () => {
 
   // Non-overlap is currently naming luck (/rewards vs /reservation share no
   // prefix). Pin it so a future rename that creates an overlap fails here.
+  // /new-visit vs /visit is a genuine prefix hazard: "/visit".startsWith is
+  // false for "/new-visit", but a careless future rename could make the centre
+  // tab swallow its own detail route. Pin the cardinality.
   it("never lights two tabs at once", async () => {
     for (const [path] of MATRIX) {
-      expect((await activeTabFor(path)).length).toBe(1);
+      expect((await activeTabFor(path)).length, path).toBe(1);
     }
   });
 });

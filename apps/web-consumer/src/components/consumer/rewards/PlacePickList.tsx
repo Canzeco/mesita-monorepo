@@ -11,7 +11,7 @@
 // reads first, at full width, unabbreviated.
 //
 // ONE TAP IS THE WHOLE INTERACTION: tapping a partner creates the ticket and
-// lands on THE TICKET (/rewards/ticket/[id]). No wizard, no confirm — hence
+// lands on THE TICKET (/visit/[id]). No wizard, no confirm — hence
 // the ghost QR on every actionable row, which is the row's promise made
 // visible.
 //
