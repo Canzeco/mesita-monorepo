@@ -7,6 +7,6 @@ import { UsersRound } from "lucide-react";
 // (segments v6, MESITA-797). Every other class is earned, not granted.
 export const AURA_CONSUMERS_PARENT = {
   href: "/aura-consumers",
-  label: "Manage Multiple Consumers",
+  label: "Consumers",
   Icon: UsersRound,
 } as const;

@@ -5,12 +5,14 @@ import { usePathname } from "next/navigation";
 import {
   BadgeCheck,
   Building2,
+  PanelLeftClose,
+  PanelLeftOpen,
   Radar,
   ShieldCheck,
   UserRound,
 } from "lucide-react";
 import { MesitaLogo } from "@/components/brand/MesitaLogo";
-import { BRAND_PARENT } from "@/app/(app)/brand/nav";
+import { MesitaMark } from "@/components/brand/MesitaMark";
 import { ATLAS_PARENT } from "@/app/(app)/atlas-config/nav";
 import { AURA_CONSUMERS_PARENT } from "@/app/(app)/aura-consumers/nav";
 import { BILLING_TEST_PARENT } from "@/app/(app)/billing-test/nav";
@@ -47,6 +49,10 @@ function isNavActive(
 
 type SidebarProps = {
   onNavigate?: () => void;
+  /** Icon-only rail. Desktop instance only — the mobile drawer is always full. */
+  collapsed?: boolean;
+  /** Omitted on the drawer instance, which has no collapsed state to toggle. */
+  onToggleCollapse?: () => void;
 };
 
 type NavItem = {
@@ -55,7 +61,10 @@ type NavItem = {
   Icon: React.ComponentType<{ className?: string }>;
 };
 
-const ACCOUNT_NAV: NavItem[] = [
+// Labels never repeat their section heading — the heading already says
+// "Configurations", so the item is "Atlas", not "Atlas Config" (MESITA-1073).
+// Each label lives in its route's nav.ts; the Sidebar is their only consumer.
+const PRIMARY_NAV: NavItem[] = [
   { href: "/account", label: "Account", Icon: UserRound },
 ];
 
@@ -64,15 +73,27 @@ const ALERTS_NAV: NavItem[] = [
   { href: "/verifications", label: "Verification Queue", Icon: BadgeCheck },
 ];
 
-// Configs — ordered as the product flows, not alphabetically or by age:
+// Manage — the records of real things, widest scope first: the backend itself,
+// then the units Mesita lists, then the consumers who walk into them. Not
+// Configurations; nothing here is a policy blob. Units keep the
+// Multiple/Single qualifier because there are two surfaces to tell apart;
+// consumers have one, so the qualifier would carry no information.
+const MANAGE_NAV: NavItem[] = [
+  DB_PARENT,
+  { href: "/manage-multiple", label: "Multiple Units", Icon: Building2 },
+  ...TOOL_ROUTES,
+  AURA_CONSUMERS_PARENT,
+];
+
+// Configurations — ordered as the product flows, not alphabetically or by age:
 //   platform  who operates the console, then which model everything runs on
 //   supply    a place's life: eligible to enter (Sourcing) → what its profile
 //             must contain (Atlas) → the pipeline that fills it (Enricher) →
 //             how it gets sealed (Verification)
 //   demand    what a visit pays out (Promos)
 //   agents    the two conversational agents that sit on top of all of it
-const CONFIGS_NAV: NavItem[] = [
-  { href: "/admin-config", label: "Admin Config", Icon: ShieldCheck },
+const CONFIGURATIONS_NAV: NavItem[] = [
+  { href: "/admin-config", label: "Admin", Icon: ShieldCheck },
   MODELS_PARENT,
   SOURCING_PARENT,
   ATLAS_PARENT,
@@ -84,16 +105,6 @@ const CONFIGS_NAV: NavItem[] = [
   RESERVATIONS_PARENT,
 ];
 
-// Manage — the records of real things, widest scope first: the backend itself,
-// then the units Mesita lists, then the consumers who walk into them. Not
-// Configs; nothing here is a policy blob.
-const MANAGE_NAV: NavItem[] = [
-  DB_PARENT,
-  { href: "/manage-multiple", label: "Manage Multiple Units", Icon: Building2 },
-  ...TOOL_ROUTES,
-  AURA_CONSUMERS_PARENT,
-];
-
 // Testing — operator tools that probe live systems rather than configure them.
 const TESTING_NAV: NavItem[] = [
   {
@@ -103,47 +114,54 @@ const TESTING_NAV: NavItem[] = [
   },
 ];
 
-// Reference — reading surfaces with no knobs. The brand page renders the
-// shipped tokens and logo components, so drift between the guide and the
-// product shows up the moment you open it.
-const REFERENCE_NAV: NavItem[] = [BRAND_PARENT];
-
-const SIDEBAR_SECTIONS = [
-  { label: "Account", items: ACCOUNT_NAV },
-  { label: "Alerts", items: ALERTS_NAV },
-  { label: "Manage", items: MANAGE_NAV },
-  { label: "Configs", items: CONFIGS_NAV },
-  { label: "Testing", items: TESTING_NAV },
-  { label: "Reference", items: REFERENCE_NAV },
-] as const;
+// The first group is deliberately unlabelled: a heading reading "Account" above
+// a lone "Account" link is the redundancy this menu is trying to shed.
+const SIDEBAR_SECTIONS: {
+  id: string;
+  label: string | null;
+  items: NavItem[];
+}[] = [
+  { id: "primary", label: null, items: PRIMARY_NAV },
+  { id: "alerts", label: "Alerts", items: ALERTS_NAV },
+  { id: "manage", label: "Manage", items: MANAGE_NAV },
+  { id: "configurations", label: "Configurations", items: CONFIGURATIONS_NAV },
+  { id: "testing", label: "Testing", items: TESTING_NAV },
+];
 
 function NavLink({
   href,
   label,
   Icon,
   active,
+  collapsed,
   onNavigate,
 }: {
   href: string;
   label: string;
   Icon: React.ComponentType<{ className?: string }>;
   active: boolean;
+  collapsed: boolean;
   onNavigate?: () => void;
 }) {
   return (
     <Link
       href={href}
       onClick={onNavigate}
+      // Collapsed, the icon is the only affordance — the native tooltip is
+      // what names the destination.
+      title={collapsed ? label : undefined}
       className={
-        "pl-2 lg:pl-2.5 " +
-        " flex items-center gap-2 rounded-xl py-1.5 pr-2 text-[12px] font-medium transition lg:gap-2.5 lg:py-2 lg:pr-2.5 lg:text-[12.5px] " +
+        "flex items-center rounded-xl text-[12px] font-medium transition lg:text-[12.5px] " +
+        (collapsed
+          ? "justify-center py-2 "
+          : "gap-2 py-1.5 pr-2 pl-2 lg:gap-2.5 lg:py-2 lg:pr-2.5 lg:pl-2.5 ") +
         (active
           ? "bg-secondary text-secondary-foreground"
           : "text-background/60 hover:bg-background/10 hover:text-background")
       }
     >
-      <Icon className="h-3.5 w-3.5 shrink-0" />
-      <span className="truncate">{label}</span>
+      <Icon className={collapsed ? "h-4 w-4 shrink-0" : "h-3.5 w-3.5 shrink-0"} />
+      <span className={collapsed ? "sr-only" : "truncate"}>{label}</span>
     </Link>
   );
 }
@@ -162,16 +180,29 @@ function SectionGap() {
   return <div className="py-1" />;
 }
 
-function SidebarNav({ onNavigate }: SidebarProps) {
+// Collapsed there is no room for a heading, so the grouping survives as a rule.
+function SectionRule() {
+  return <div className="border-background/10 mx-1.5 my-2 border-t" />;
+}
+
+function SidebarNav({
+  collapsed,
+  onNavigate,
+}: {
+  collapsed: boolean;
+  onNavigate?: () => void;
+}) {
   const pathname = usePathname();
   const projectId = parseUnitId(pathname);
 
   return (
     <nav className="flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto">
       {SIDEBAR_SECTIONS.map((section, index) => (
-        <div key={section.label}>
-          {index > 0 ? <SectionGap /> : null}
-          <SectionLabel>{section.label}</SectionLabel>
+        <div key={section.id}>
+          {index === 0 ? null : collapsed ? <SectionRule /> : <SectionGap />}
+          {collapsed || !section.label ? null : (
+            <SectionLabel>{section.label}</SectionLabel>
+          )}
           <div className="flex flex-col gap-0.5">
             {section.items.map(({ href, label, Icon }) => (
               <NavLink
@@ -180,6 +211,7 @@ function SidebarNav({ onNavigate }: SidebarProps) {
                 label={label}
                 Icon={Icon}
                 active={isNavActive(pathname, href, projectId)}
+                collapsed={collapsed}
                 onNavigate={onNavigate}
               />
             ))}
@@ -190,24 +222,70 @@ function SidebarNav({ onNavigate }: SidebarProps) {
   );
 }
 
-export function Sidebar({ onNavigate }: SidebarProps) {
-  // Dark lateral rail — only the main menu is inverted; content stays light.
+function CollapseToggle({
+  collapsed,
+  onToggle,
+}: {
+  collapsed: boolean;
+  onToggle: () => void;
+}) {
+  const action = collapsed ? "Expand menu" : "Collapse menu";
+  const Icon = collapsed ? PanelLeftOpen : PanelLeftClose;
   return (
-    <aside className="bg-foreground text-background flex h-full w-52 shrink-0 flex-col overflow-hidden border-r border-background/10 px-2 pt-4 pb-3 lg:w-60 lg:px-2.5">
+    <button
+      type="button"
+      onClick={onToggle}
+      title={action}
+      aria-label={action}
+      aria-expanded={!collapsed}
+      className={
+        "text-background/45 hover:bg-background/10 hover:text-background mt-1 flex shrink-0 items-center rounded-xl py-2 text-[12px] font-medium transition " +
+        (collapsed ? "justify-center" : "gap-2.5 px-2.5")
+      }
+    >
+      <Icon className="h-4 w-4 shrink-0" />
+      {collapsed ? null : <span className="truncate">Collapse</span>}
+    </button>
+  );
+}
+
+export function Sidebar({
+  onNavigate,
+  collapsed = false,
+  onToggleCollapse,
+}: SidebarProps) {
+  // Dark lateral rail — only the main menu is inverted; content stays light.
+  // Width is the shell's call (it animates the column), so the rail fills it.
+  return (
+    <aside className="bg-foreground text-background border-background/10 flex h-full w-full flex-col overflow-hidden border-r px-2 pt-4 pb-3 lg:px-2.5">
       <Link
         href="/central"
         onClick={onNavigate}
-        className="inline-flex shrink-0 items-center gap-2 px-2"
+        title={collapsed ? "Mesita admin" : undefined}
+        className={
+          "inline-flex shrink-0 items-center " +
+          (collapsed ? "justify-center" : "gap-2 px-2")
+        }
       >
-        <MesitaLogo variant="horizontal" className="h-5 w-auto" />
-        <span className="text-background/50 text-[10px] font-medium tracking-[0.16em] uppercase">
-          admin
-        </span>
+        {collapsed ? (
+          <MesitaMark className="h-5 w-5" />
+        ) : (
+          <>
+            <MesitaLogo variant="horizontal" className="h-5 w-auto" />
+            <span className="text-background/50 text-[10px] font-medium tracking-[0.16em] uppercase">
+              admin
+            </span>
+          </>
+        )}
       </Link>
 
       <SectionGap />
 
-      <SidebarNav onNavigate={onNavigate} />
+      <SidebarNav collapsed={collapsed} onNavigate={onNavigate} />
+
+      {onToggleCollapse ? (
+        <CollapseToggle collapsed={collapsed} onToggle={onToggleCollapse} />
+      ) : null}
     </aside>
   );
 }

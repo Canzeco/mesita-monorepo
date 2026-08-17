@@ -8,6 +8,6 @@ import { Sparkles } from "lucide-react";
 // profiles with.
 export const ATLAS_PARENT = {
   href: "/atlas-config",
-  label: "Atlas Config",
+  label: "Atlas",
   Icon: Sparkles,
 } as const;

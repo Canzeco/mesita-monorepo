@@ -6,6 +6,6 @@ import { Cpu } from "lucide-react";
 // (under Admin Config), since every config below it inherits these models.
 export const MODELS_PARENT = {
   href: "/models-config",
-  label: "Models Config",
+  label: "Models",
   Icon: Cpu,
 } as const;

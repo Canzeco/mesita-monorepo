@@ -7,7 +7,7 @@ import { Calculator, Settings2, Wand2 } from "lucide-react";
 // profile spec it writes into lives on the separate Atlas Config page.
 export const ENRICHER_PARENT = {
   href: "/enricher-config",
-  label: "Enricher Config",
+  label: "Enricher",
   Icon: Wand2,
 } as const;
 
