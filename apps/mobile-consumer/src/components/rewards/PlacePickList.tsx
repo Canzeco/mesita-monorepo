@@ -1,6 +1,8 @@
-// The New tab (Wallet v3, MESITA-811 · MESITA-817) — mobile mirror: EVERY
-// Mesita place, listed flat — deliberately no searchbar yet, per Pato ("just
-// list all the places; then we see how we solve the searchbar").
+// The wallet (v4 · MESITA-1094) — mobile mirror of web's PlacePickList:
+// EVERY Mesita place, listed flat, narrowed by the header's search field.
+// The query is owned by the wallet screen; matching happens here where the
+// rows live, client-side over the ≤100 loaded rows (place-list-filter, the
+// same module web uses).
 //
 // Non-partners are shown, not hidden (MESITA-817). Hiding them meant a guest
 // whose catalog is all `web` listings saw an empty tab and concluded the page
@@ -9,27 +11,36 @@
 // consumer-web-create-ticket 409s `not_partner`, so a tap is a dead end.
 // Partners sort first.
 
-import { Image } from 'expo-image';
-import { ChevronRight, Lock, MapPin, QrCode, Store } from 'lucide-react-native';
-import { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Pressable, Text, View } from 'react-native';
+import { Image } from "expo-image";
+import { ChevronRight, Lock, MapPin, QrCode, Store } from "lucide-react-native";
+import { useEffect, useMemo, useState } from "react";
+import { ActivityIndicator, Pressable, Text, View } from "react-native";
 
-import { apiFetchPublicPlaces, type Place } from '@/lib/api/places';
-import { supabase } from '@/lib/supabase';
+import { apiFetchPublicPlaces, type Place } from "@/lib/api/places";
+import { filterPlacesByQuery } from "@/lib/place-list-filter";
+import { supabase } from "@/lib/supabase";
 
 export function PlacePickList({
   activePlaceIds,
   busyPlaceId = null,
   onPick,
+  query = "",
+  onClearQuery,
 }: {
   /** Places that already hold a live ticket — rows get an "Open" chip. */
   activePlaceIds: ReadonlySet<string>;
   /** Place whose ticket is being created right now — its row shows a spinner. */
   busyPlaceId?: string | null;
   onPick: (place: Place) => void;
+  /** Header search query. Empty string = show everything. */
+  query?: string;
+  /** Lets the no-match state clear the field it cannot reach itself. */
+  onClearQuery?: () => void;
 }) {
   const [places, setPlaces] = useState<Place[]>([]);
-  const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading');
+  const [status, setStatus] = useState<"loading" | "ready" | "error">(
+    "loading",
+  );
   const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
@@ -39,10 +50,10 @@ export function PlacePickList({
         const rows = await apiFetchPublicPlaces(supabase, 100);
         if (!cancelled) {
           setPlaces(rows);
-          setStatus('ready');
+          setStatus("ready");
         }
       } catch {
-        if (!cancelled) setStatus('error');
+        if (!cancelled) setStatus("error");
       }
     })();
     return () => {
@@ -54,19 +65,25 @@ export function PlacePickList({
   const sorted = useMemo(
     () =>
       [...places].sort((a, b) => {
-        const ap = a.listing_type === 'partner' ? 0 : 1;
-        const bp = b.listing_type === 'partner' ? 0 : 1;
+        const ap = a.listing_type === "partner" ? 0 : 1;
+        const bp = b.listing_type === "partner" ? 0 : 1;
         return ap !== bp ? ap - bp : a.name.localeCompare(b.name);
       }),
     [places],
   );
-  const anyLocked = sorted.some((p) => p.listing_type !== 'partner');
+  // Rules and rationale live with the matcher in place-list-filter (shared
+  // with web); this only decides WHEN to apply them.
+  const visible = useMemo(
+    () => filterPlacesByQuery(sorted, query),
+    [sorted, query],
+  );
+  const anyLocked = visible.some((p) => p.listing_type !== "partner");
 
-  if (status === 'loading') {
+  if (status === "loading") {
     return <ActivityIndicator style={{ paddingVertical: 24 }} />;
   }
 
-  if (status === 'error') {
+  if (status === "error") {
     return (
       <View className="flex-row items-center justify-between gap-3 rounded-2xl border border-border bg-card px-4 py-3">
         <Text className="text-muted-foreground" style={{ fontSize: 12.5 }}>
@@ -74,12 +91,15 @@ export function PlacePickList({
         </Text>
         <Pressable
           onPress={() => {
-            setStatus('loading');
+            setStatus("loading");
             setReloadKey((k) => k + 1);
           }}
           accessibilityRole="button"
         >
-          <Text className="font-semibold text-primary" style={{ fontSize: 12.5 }}>
+          <Text
+            className="font-semibold text-primary"
+            style={{ fontSize: 12.5 }}
+          >
             Retry
           </Text>
         </Pressable>
@@ -100,10 +120,33 @@ export function PlacePickList({
     );
   }
 
+  // A query that matches nothing is NOT an empty catalog — the way out ships
+  // with the message, since the field lives in the header out of reach.
+  if (visible.length === 0) {
+    return (
+      <View className="items-center gap-2 rounded-2xl border border-border bg-card px-4 py-8">
+        <Text className="text-muted-foreground" style={{ fontSize: 12.5 }}>
+          No place matches{" "}
+          <Text className="font-semibold text-foreground">{query.trim()}</Text>.
+        </Text>
+        {onClearQuery ? (
+          <Pressable onPress={onClearQuery} accessibilityRole="button">
+            <Text
+              className="font-semibold text-primary"
+              style={{ fontSize: 12.5 }}
+            >
+              Clear search
+            </Text>
+          </Pressable>
+        ) : null}
+      </View>
+    );
+  }
+
   return (
     <View style={{ gap: 8 }}>
       <View className="overflow-hidden rounded-2xl border border-border bg-card">
-        {sorted.map((p, i) => (
+        {visible.map((p, i) => (
           <PlaceRow
             key={p.id}
             place={p}
@@ -140,12 +183,12 @@ function PlaceRow({
   onPick: (place: Place) => void;
   first: boolean;
 }) {
-  const isPartner = place.listing_type === 'partner';
+  const isPartner = place.listing_type === "partner";
   const photo = place.photos?.[0] ?? null;
   const subtitle =
     [place.zone, place.category_label ?? place.category]
       .filter(Boolean)
-      .join(' · ') || (isPartner ? 'Mesita partner' : 'On Mesita');
+      .join(" · ") || (isPartner ? "Mesita partner" : "On Mesita");
 
   const body = (
     <>
@@ -166,16 +209,16 @@ function PlaceRow({
       ) : (
         <View
           className={`h-12 w-12 items-center justify-center rounded-xl ${
-            isPartner ? 'bg-secondary/10' : 'bg-muted'
+            isPartner ? "bg-secondary/10" : "bg-muted"
           }`}
         >
-          <Store size={20} color={isPartner ? '#cf0360' : '#775254'} />
+          <Store size={20} color={isPartner ? "#cf0360" : "#775254"} />
         </View>
       )}
       <View className="min-w-0 flex-1">
         <Text
           className={`font-bold ${
-            isPartner ? 'text-foreground' : 'text-muted-foreground'
+            isPartner ? "text-foreground" : "text-muted-foreground"
           }`}
           numberOfLines={1}
           style={{ fontSize: 13.5 }}
@@ -234,7 +277,7 @@ function PlaceRow({
   );
 
   const rowClass = `flex-row items-center gap-3 px-3.5 py-3 ${
-    first ? '' : 'border-t border-border'
+    first ? "" : "border-t border-border"
   }`;
 
   // Non-partners are visible but inert: create-ticket would 409 `not_partner`.

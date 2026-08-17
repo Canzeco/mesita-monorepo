@@ -1,13 +1,13 @@
 // Display helpers — ported from apps/web-consumer/src/lib/utils.ts
 // (subset needed by swipe + future ports). Keep in sync when web changes.
 
-import { COUNTRIES } from '@/lib/countries';
+import { COUNTRIES } from "@/lib/countries";
 
 export function errMsg(err: unknown, fallback: string): string {
   return err instanceof Error ? err.message : fallback;
 }
 
-export function firstInitial(name: string, fallback = '·'): string {
+export function firstInitial(name: string, fallback = "·"): string {
   return name.trim().slice(0, 1).toUpperCase() || fallback;
 }
 
@@ -47,9 +47,9 @@ export function formatPhoneDisplay(
   phone: string | null | undefined,
 ): string | null {
   if (!phone) return null;
-  const digits = phone.replace(/\D/g, '');
+  const digits = phone.replace(/\D/g, "");
   if (!digits) return phone;
-  if (digits.length === 12 && digits.startsWith('52')) {
+  if (digits.length === 12 && digits.startsWith("52")) {
     return `+52 ${digits.slice(2, 5)} ${digits.slice(5, 8)} ${digits.slice(8)}`;
   }
   if (digits.length === 10) {
@@ -66,9 +66,9 @@ export function phoneCountryFlag(
   phone: string | null | undefined,
 ): string | null {
   if (!phone) return null;
-  const digits = phone.replace(/\D/g, '');
+  const digits = phone.replace(/\D/g, "");
   if (!digits) return null;
-  if (digits.length === 10) return '🇲🇽';
+  if (digits.length === 10) return "🇲🇽";
   const sorted = [...COUNTRIES].sort((a, b) => b.dial.length - a.dial.length);
   for (const c of sorted) {
     if (digits.startsWith(c.dial)) return c.flag;
@@ -79,12 +79,10 @@ export function phoneCountryFlag(
 // Guest-count noun: "person" for 1, "people" otherwise. Pair with the count
 // at the call site — `${n} ${guestNoun(n)}`. Keep in sync with web-consumer.
 export function guestNoun(n: number): string {
-  return n === 1 ? 'person' : 'people';
+  return n === 1 ? "person" : "people";
 }
 
-export function formatRating(
-  rating: number | null | undefined,
-): string | null {
+export function formatRating(rating: number | null | undefined): string | null {
   return rating != null ? rating.toFixed(1) : null;
 }
 
@@ -115,13 +113,13 @@ export function formatKm(km: number): string {
 
 /** Place-detail distance chip: null/≤0 means "couldn't calculate" → "- km". */
 export function formatDistanceKm(km: number | null | undefined): string {
-  if (km == null || km <= 0) return '- km';
+  if (km == null || km <= 0) return "- km";
   return `${km} km`;
 }
 
 export function formatCompactCount(n: number, exact = false): string {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
-  if (exact && n >= 1000) return n.toLocaleString('en-US');
+  if (exact && n >= 1000) return n.toLocaleString("en-US");
   if (n >= 1_000) return `${(n / 1_000).toFixed(n >= 10_000 ? 0 : 1)}K`;
   return n.toString();
 }
@@ -131,15 +129,21 @@ export function relativeLabel(iso: string | undefined): string | undefined {
   const t = Date.parse(iso);
   if (!Number.isFinite(t)) return undefined;
   const diff = Date.now() - t;
-  if (diff < 60_000) return 'just now';
+  if (diff < 60_000) return "just now";
   const mins = Math.floor(diff / 60_000);
-  if (mins < 60) return `${mins} min${mins === 1 ? '' : 's'} ago`;
+  if (mins < 60) return `${mins} min${mins === 1 ? "" : "s"} ago`;
   const hrs = Math.floor(mins / 60);
-  if (hrs < 24) return `${hrs} hour${hrs === 1 ? '' : 's'} ago`;
+  if (hrs < 24) return `${hrs} hour${hrs === 1 ? "" : "s"} ago`;
   const days = Math.floor(hrs / 24);
-  if (days < 30) return `${days} day${days === 1 ? '' : 's'} ago`;
+  if (days < 30) return `${days} day${days === 1 ? "" : "s"} ago`;
   const months = Math.floor(days / 30);
-  if (months < 12) return `${months} month${months === 1 ? '' : 's'} ago`;
+  if (months < 12) return `${months} month${months === 1 ? "" : "s"} ago`;
   const years = Math.floor(months / 12);
-  return `${years} year${years === 1 ? '' : 's'} ago`;
+  return `${years} year${years === 1 ? "" : "s"} ago`;
+}
+
+/** Join truthy class fragments — the RN mirror of web's `cn` (no tailwind-merge
+ *  here on purpose: NativeWind classes in this package never collide). */
+export function cn(...parts: (string | false | null | undefined)[]): string {
+  return parts.filter(Boolean).join(" ");
 }
