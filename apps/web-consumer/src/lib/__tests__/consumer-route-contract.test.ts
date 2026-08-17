@@ -19,7 +19,7 @@ import { isConsumerOnboarded } from "@/lib/consumer-onboarding";
 import nextConfig from "../../../next.config";
 
 // Routing is contract, not implementation detail: five tabs, flat /me,
-// canonical /share, top-level /place — see Product Rules §D. These tests pin
+// canonical /share, top-level /place — see Product Rules §C. These tests pin
 // the contract, the helpers, the legacy→canonical redirect table, and the
 // middleware auth wall so a rename or a "helpful cleanup" can't silently
 // break bookmarks, QR deep links, or the signed-out gate.
