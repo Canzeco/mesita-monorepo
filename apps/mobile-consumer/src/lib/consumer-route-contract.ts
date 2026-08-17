@@ -14,6 +14,18 @@ import type { Href } from 'expo-router';
 //       in-screen state on mobile, not nested routes — same IA)
 //   web /search                            →  Expo /(tabs)/search
 //   web /rewards                           →  Expo /(tabs)/rewards  (also /rewards)
+// WEB HAS MOVED AHEAD (routing v2 S1, 2026-08-17). The port is a SEPARATE PR
+// because it is a file-move on this side (Expo route files ARE the paths) with
+// its own Metro verification loop:
+//   web /rewards            ->  /new-visit        (Expo: (tabs)/rewards.tsx)
+//   web /rewards/ticket/:id ->  /visit/:id        (Expo: app/rewards/ticket/[id].tsx)
+//   web /home/ai            ->  /home/chat        (Expo: Home screen segment)
+//   web /coupon/:id, /saved/*  DELETED
+// SANCTIONED DIVERGENCE: web lights the Inbox tab from /visit/:id via a
+// pathname prefix. Mobile CANNOT — the tab bar reads navigator state, and root
+// modal screens cover the tab bar entirely, so no tab is lit. That is correct
+// RN, not a bug; do not try to port it.
+//
 //   web /inbox/<section>                   →  Expo /(tabs)/inbox (segments)
 //   web /reservation/:id                   →  Expo /reservation/[id]
 //   web /saved/reservations (legacy)       →  Expo /saved/reservations → tab

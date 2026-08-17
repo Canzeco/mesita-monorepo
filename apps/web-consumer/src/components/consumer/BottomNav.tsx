@@ -74,7 +74,7 @@ const ITEMS: Item[] = [
     matchPrefixes: [CONSUMER_ROUTE_PREFIX.search],
   },
   {
-    href: CONSUMER_ROUTE_PREFIX.rewards,
+    href: CONSUMER_ROUTES.newVisit.root,
     // QR is the right glyph and stays: showing the QR IS the visit.
     Icon: QrCode,
     // "Visit", not "Rewards" and explicitly NOT "Pay" (Pato, 2026-08-16).
@@ -83,7 +83,7 @@ const ITEMS: Item[] = [
     // "Pay" was rejected because paying is one beat of a visit, and it also
     // collides with Stripe checkout in this codebase's vocabulary.
     label: "Visit",
-    matchPrefixes: [CONSUMER_ROUTE_PREFIX.rewards],
+    matchPrefixes: [CONSUMER_ROUTE_PREFIX.newVisit],
     // LIVE — the pass (QR + code + what you can claim + live visit) and the
     // ticket stack are built; the tab opens the real page.
   },
@@ -99,10 +99,14 @@ const ITEMS: Item[] = [
     // after any one of them, and naming it for the mechanism ("Agent") would
     // break the day places integrate directly.
     label: "Inbox",
-    // /inbox for the sections, /reservation for the detail view that
-    // deliberately stayed outside the tab's namespace.
+    // /inbox for the sections, plus the two DETAIL routes that deliberately
+    // live outside the tab's namespace because you reach each from two places.
+    // Both lists live under Inbox, so both details light Inbox:
+    //   /visit/{id}       reached from the centre tab AND Inbox > Visits
+    //   /reservation/{id} reached from a place AND Inbox > Reservations
     matchPrefixes: [
       CONSUMER_ROUTE_PREFIX.inbox,
+      CONSUMER_ROUTE_PREFIX.visit,
       CONSUMER_RESERVATION_SURFACE_PREFIX,
     ],
   },
