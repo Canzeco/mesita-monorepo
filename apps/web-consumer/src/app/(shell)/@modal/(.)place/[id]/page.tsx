@@ -25,11 +25,7 @@ export default async function PlaceModalPage({
     redirect(placeGoneHref(CONSUMER_ROUTES.home, id));
   }
   return (
-    <PlaceDetailModalShell
-      placeId={place.id}
-      placeName={place.name}
-      listingType={place.listing_type}
-    >
+    <PlaceDetailModalShell place={place}>
       <PlaceDetailBody place={place} />
     </PlaceDetailModalShell>
   );

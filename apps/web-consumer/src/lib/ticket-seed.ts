@@ -18,7 +18,32 @@ import type {
   CreatedTicket,
   RewardQuote,
 } from "@/lib/api/tickets";
-import type { Place } from "@/lib/api/places";
+
+// Structural, not nominal (MESITA-1065): a visit now starts from TWO surfaces —
+// the wallet's place list (a `Place` from consumer-web-list-places) and the
+// place-detail action bar (a `PlaceDetail` from consumer-get-place). Neither
+// type is a subtype of the other, and the seed only ever reads these fields,
+// so it asks for exactly them. `Place` satisfies this as-is.
+//
+// PlaceDetail carries no `slug` and no rate columns; both stay optional here
+// because they were always the SECONDARY path — the quote promise passed
+// alongside the seed is where THE TICKET's real numbers come from, and the
+// polled list overrides the whole row the moment it lands.
+export type SeedPlace = {
+  id: string;
+  name: string;
+  photos?: string[] | null;
+  category?: string | null;
+  address?: string | null;
+  price_level?: number | null;
+  slug?: string | null;
+  currency?: string | null;
+  listing_type?: string | null;
+  welcome_free_rate?: number | null;
+  welcome_premium_rate?: number | null;
+  free_rate?: number | null;
+  premium_rate?: number | null;
+};
 
 type TicketSeed = {
   ticket: ConsumerTicketRow;
@@ -48,7 +73,7 @@ export function peekTicketSeed(id: string): TicketSeed | null {
 /** The freshly created ticket as a list row, filled from what the tap knew. */
 export function ticketRowFromCreate(
   t: CreatedTicket,
-  place: Place,
+  place: SeedPlace,
 ): ConsumerTicketRow {
   return {
     id: t.id,

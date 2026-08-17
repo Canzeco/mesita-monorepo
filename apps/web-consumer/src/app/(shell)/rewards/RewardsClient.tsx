@@ -1,28 +1,15 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ChevronRight, MapPin, QrCode, Sparkles, Star } from "lucide-react";
 
 import { PlacePickList } from "@/components/consumer/rewards/PlacePickList";
 import { SavingsReveal } from "@/components/consumer/rewards/SavingsReveal";
-import { EFError } from "@/lib/api/_invoke";
-import {
-  ACTIVE_TICKET_STATUSES,
-  apiCreateTicket,
-  apiGetRewardQuote,
-  apiListConsumerTickets,
-  type ConsumerTicketRow,
-} from "@/lib/api/tickets";
-import type { Place } from "@/lib/api/places";
-import { seedTicket, ticketRowFromCreate } from "@/lib/ticket-seed";
-import {
-  CONSUMER_ROUTES,
-  ticketPath,
-} from "@/lib/consumer-route-contract";
+import { type ConsumerTicketRow } from "@/lib/api/tickets";
+import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import { useConsumerTickets } from "@/lib/hooks/useConsumerTickets";
-import { useBrowserSupabase } from "@/lib/supabase/browser";
+import { useStartVisit } from "@/lib/hooks/useStartVisit";
 
 // Rewards Wallet — ONE job: pick a place and start a visit.
 //
@@ -55,8 +42,6 @@ import { useBrowserSupabase } from "@/lib/supabase/browser";
 // instead of 409-ing on `already_open` (D5).
 
 export function RewardsClient({ userId }: { userId: string }) {
-  const supabase = useBrowserSupabase();
-  const router = useRouter();
   const tickets = useConsumerTickets(userId);
 
   const activePlaceIds = useMemo(
@@ -65,81 +50,21 @@ export function RewardsClient({ userId }: { userId: string }) {
   );
 
   // ── Ticket creation: tap a place, that's it. ──
-  const [startingId, setStartingId] = useState<string | null>(null);
-  const [startError, setStartError] = useState<string | null>(null);
-
-  const openTicket = useCallback(
-    (id: string) => {
-      router.push(ticketPath(id), { scroll: false });
-    },
-    [router],
-  );
-
-  const startTicket = useCallback(
-    async (place: Place) => {
-      setStartingId(place.id);
-      setStartError(null);
-      // The quote starts NOW, in parallel with the create (MESITA-1029 S4),
-      // so step 1's numbers are ready at arrival instead of after two chained
-      // fetches on the ticket screen. Resolves null on failure — the screen
-      // falls back to its own fetch + retry.
-      const quotePromise = apiGetRewardQuote(supabase, place.id)
-        .then((r) => r.quote)
-        .catch(() => null);
-      // ALWAYS "base": no task attached, nothing gating the QR. The rung is
-      // the modal's step 1, not this tap's decision.
-      try {
-        const res = await apiCreateTicket(supabase, place.id, "base");
-        // Seed BEFORE navigating (S3): THE TICKET paints QR-and-all on its
-        // first frame from this row; list-tickets reconciles in background.
-        seedTicket(ticketRowFromCreate(res.ticket, place), quotePromise);
-        void tickets.refresh();
-        router.push(ticketPath(res.ticket.id), { scroll: false });
-      } catch (err) {
-        if (err instanceof EFError && err.code === "already_open") {
-          // Another device/tab won the race — open the existing ticket. The
-          // friendly 409 carries its id; the index-race arm doesn't, so fall
-          // back to a fresh list (never the stale closure state).
-          const fromBody = err.body?.ticketId;
-          let id = typeof fromBody === "string" ? fromBody : null;
-          if (!id) {
-            const rows = await apiListConsumerTickets(supabase).catch(
-              () => [] as ConsumerTicketRow[],
-            );
-            id =
-              rows.find(
-                (t) =>
-                  t.project_id === place.id &&
-                  ACTIVE_TICKET_STATUSES.has(t.status),
-              )?.id ?? null;
-          }
-          if (id) {
-            openTicket(id);
-            return;
-          }
-        }
-        setStartError(
-          err instanceof Error ? err.message : "Couldn't start your ticket.",
-        );
-      } finally {
-        setStartingId(null);
-      }
-    },
-    [supabase, tickets, router, openTicket],
-  );
-
-  const onPick = useCallback(
-    (place: Place) => {
-      const existing = tickets.active.find((t) => t.project_id === place.id);
-      if (existing) {
-        // Live ticket → open it rather than making a second one (D5).
-        openTicket(existing.id);
-        return;
-      }
-      void startTicket(place);
-    },
-    [tickets.active, openTicket, startTicket],
-  );
+  //
+  // The create/recover/seed flow moved into useStartVisit (MESITA-1065) when
+  // the place-detail action bar grew its own Visit button. Same contract,
+  // one implementation — this surface is no longer the only door in.
+  const refreshTickets = useCallback(() => {
+    void tickets.refresh();
+  }, [tickets]);
+  const {
+    pickPlace: onPick,
+    startingId,
+    error: startError,
+  } = useStartVisit({
+    activeTickets: tickets.active,
+    onCreated: refreshTickets,
+  });
 
   // The paid beat (MESITA-808, 4A): a watched ticket flipping to revealed
   // holds a savings reveal before settling into History.

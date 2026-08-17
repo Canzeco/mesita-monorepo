@@ -2,22 +2,26 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { CalendarCheck, Heart, Phone, Share2 } from "lucide-react";
+import { Heart, Phone, Share2 } from "lucide-react";
 
 import { ComingSoonModal } from "@/components/consumer/ComingSoonModal";
 import { PlaceContactSheet } from "@/components/consumer/PlaceContactSheet";
-import { ReservationSheet } from "@/components/consumer/place-detail/ReservationSheet";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import type { PlaceDetail } from "@/lib/mock/place";
 import { useSavedPlaces } from "@/lib/saved-places";
 import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 
-// Save · Contact · Reserve · Share — four equal outline buttons. Save toggles
-// the localStorage favorite (saved state = primary tint + filled heart).
-// Reserve opens the booking sheet (Mesita calls the place); Share is still
-// parked behind ComingSoonModal (no "Soon" pills). Contact glyph prefers
+// Save · Contact · Share — three equal outline buttons. Save toggles the
+// localStorage favorite (saved state = primary tint + filled heart); Share is
+// still parked behind ComingSoonModal (no "Soon" pills). Contact glyph prefers
 // WhatsApp when the place has it.
+//
+// RESERVE LEFT THIS ROW (MESITA-1065) for the fixed bar at the bottom of the
+// surface. What's left here are the verbs that act on your relationship to the
+// PAGE — keep it, call it, pass it on — and all three are reversible. Reserve
+// commits you to being at the place, which is the other bar's job, alongside
+// Visit and Order.
 export function ProfileActions({
   place,
   className,
@@ -28,12 +32,12 @@ export function ProfileActions({
   const router = useRouter();
   const { isSaved, toggle } = useSavedPlaces();
   const [contactOpen, setContactOpen] = useState(false);
-  const [reserveOpen, setReserveOpen] = useState(false);
   const [soonKind, setSoonKind] = useState<"share" | null>(null);
   const hasWhatsApp = Boolean(place.channels.whatsapp_url);
   const saved = isSaved(place.id);
 
-  // gap-1 + whitespace-nowrap keeps all four labels on one line at 4-up.
+  // gap-1 + whitespace-nowrap keeps every label on one line; at 3-up there is
+  // more room than the old 4-up row ever had.
   const outlineBtn =
     "border-border bg-card text-foreground hover:bg-muted inline-flex items-center justify-center gap-1 rounded-xl border py-2.5 text-[13px] font-semibold whitespace-nowrap transition active:scale-[0.99]";
 
@@ -56,7 +60,7 @@ export function ProfileActions({
 
   return (
     <>
-      <div className={cn("grid grid-cols-4 gap-2", className)}>
+      <div className={cn("grid grid-cols-3 gap-2", className)}>
         <button
           type="button"
           onClick={onSave}
@@ -98,14 +102,6 @@ export function ProfileActions({
         </button>
         <button
           type="button"
-          onClick={() => setReserveOpen(true)}
-          className={outlineBtn}
-        >
-          <CalendarCheck className="h-4 w-4 shrink-0" strokeWidth={2.25} />
-          Reserve
-        </button>
-        <button
-          type="button"
           onClick={() => setSoonKind("share")}
           className={outlineBtn}
         >
@@ -117,11 +113,6 @@ export function ProfileActions({
         place={place}
         open={contactOpen}
         onClose={() => setContactOpen(false)}
-      />
-      <ReservationSheet
-        place={place}
-        open={reserveOpen}
-        onClose={() => setReserveOpen(false)}
       />
       <ComingSoonModal
         open={soonKind === "share"}
