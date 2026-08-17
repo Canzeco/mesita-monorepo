@@ -19,6 +19,7 @@ import { adminClient, getAuthedUser, readEFEnv } from "../_shared/auth.ts";
 import { computeTicketBill } from "../_shared/business-ticket-billing.ts";
 import { resolveLiveTicketRate } from "../_shared/ticket-reprice.ts";
 import { toCents } from "../_shared/money.ts";
+import { CLOSED_TICKET_STATUS } from "../_shared/ticket-status.ts";
 
 type Body = { ticketId?: string; totalCents?: number };
 
@@ -68,7 +69,7 @@ Deno.serve(async (req) => {
   }
   const ticket = ticketRow.data;
 
-  if (ticket.status !== "revealed") {
+  if (ticket.status !== CLOSED_TICKET_STATUS) {
     return json(
       { ok: false, error: "The total can be added once the visit is closed." },
       409,
@@ -108,7 +109,7 @@ Deno.serve(async (req) => {
       bill_source: "consumer",
     })
     .eq("id", ticketId)
-    .eq("status", "revealed")
+    .eq("status", CLOSED_TICKET_STATUS)
     .is("bill_source", null) // a concurrent business record wins
     .select(
       "id, status, check_subtotal_cents, total_cents, discount_percent, discount_cents, bill_source, currency",

@@ -13,6 +13,11 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { corsPreflight, json, readJson, rejectUnlessMethods } from "../_shared/http.ts";
 import { adminClient, getAuthedUser, readEFEnv } from "../_shared/auth.ts";
+import {
+  GUEST_CANCELLABLE_STATUS_SET,
+  GUEST_CANCELLABLE_STATUSES,
+  TICKET_STATUS,
+} from "../_shared/ticket-status.ts";
 
 type Body = { ticketId?: string };
 
@@ -47,10 +52,10 @@ Deno.serve(async (req) => {
   }
   const ticket = ticketRow.data;
 
-  if (ticket.status === "cancelled") {
+  if (ticket.status === TICKET_STATUS.cancelled) {
     return json({ ok: true, alreadyCancelled: true });
   }
-  if (ticket.status !== "open") {
+  if (!GUEST_CANCELLABLE_STATUS_SET.has(ticket.status)) {
     return json(
       {
         ok: false,
@@ -63,12 +68,12 @@ Deno.serve(async (req) => {
   const updated = await admin
     .from("tickets")
     .update({
-      status: "cancelled",
+      status: TICKET_STATUS.cancelled,
       cancelled_at: new Date().toISOString(),
       cancel_reason: "consumer_cancelled",
     })
     .eq("id", ticketId)
-    .eq("status", "open")
+    .in("status", [...GUEST_CANCELLABLE_STATUSES])
     .select("id, status, cancelled_at")
     .single();
   if (updated.error) {

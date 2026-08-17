@@ -17,6 +17,7 @@ import {
   requireEditor,
 } from "../_shared/auth.ts";
 import { closeTicketAndEnqueueReview } from "../_shared/ticket-informal.ts";
+import { CLOSED_TICKET_STATUS, TICKET_STATUS } from "../_shared/ticket-status.ts";
 
 type Body = { ticketId?: string };
 
@@ -55,10 +56,10 @@ Deno.serve(async (req) => {
   if (!memberRes.ok) return memberRes.response;
 
   // Idempotent: already closed.
-  if (ticket.status === "revealed") {
+  if (ticket.status === CLOSED_TICKET_STATUS) {
     return json({ ok: true, ticket, alreadyPaid: true });
   }
-  if (ticket.status !== "awaiting_payment_confirm") {
+  if (ticket.status !== TICKET_STATUS.awaitingPaymentConfirm) {
     return json(
       { ok: false, error: `Cannot mark a ${ticket.status} ticket as paid.` },
       409,
@@ -75,5 +76,5 @@ Deno.serve(async (req) => {
     return json({ ok: false, error: `ticket_close: ${closed.error}` }, 500);
   }
 
-  return json({ ok: true, ticketId, status: "revealed" });
+  return json({ ok: true, ticketId, status: CLOSED_TICKET_STATUS });
 });

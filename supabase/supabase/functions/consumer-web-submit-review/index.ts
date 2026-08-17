@@ -43,12 +43,13 @@ import {
   placeStrategy,
 } from "../_shared/rewards-config.ts";
 import { repriceTicketAfterAction } from "../_shared/ticket-reprice.ts";
+import { TASKABLE_STATUS_SET } from "../_shared/ticket-status.ts";
 
 type Body = { ticketId?: string; screenshotUrl?: string };
 
 // Ticket states that can still take a task. A closed ticket can't — the
 // reward is already settled.
-const OPEN_TO_TASKS = new Set(["open", "awaiting_payment_confirm"]);
+const OPEN_TO_TASKS = TASKABLE_STATUS_SET;
 
 const ALREADY_CLAIMED = {
   ok: false,

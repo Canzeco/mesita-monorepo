@@ -16,6 +16,10 @@ import {
   isStrikeReason,
   recordMembershipStrike,
 } from "../_shared/membership-enforcement.ts";
+import {
+  BUSINESS_CANCELLABLE_STATUSES,
+  TICKET_STATUS,
+} from "../_shared/ticket-status.ts";
 
 type Body = { ticketId?: string; reason?: string };
 
@@ -51,10 +55,10 @@ Deno.serve(async (req) => {
   const membership = await requireEditor(admin, authRes.user, ticket.data.project_id);
   if (!membership.ok) return membership.response;
 
-  if (ticket.data.status === "cancelled") {
+  if (ticket.data.status === TICKET_STATUS.cancelled) {
     return json({ ok: true, alreadyCancelled: true });
   }
-  const cancellable = new Set(["open", "awaiting_payment_confirm"]);
+  const cancellable = new Set<string>(BUSINESS_CANCELLABLE_STATUSES);
   if (!cancellable.has(ticket.data.status)) {
     return json(
       { ok: false, error: `Cannot cancel a ${ticket.data.status} ticket` },
@@ -65,9 +69,9 @@ Deno.serve(async (req) => {
   const cancelledAt = new Date().toISOString();
   const update = await admin
     .from("tickets")
-    .update({ status: "cancelled", cancelled_at: cancelledAt, cancel_reason: reason })
+    .update({ status: TICKET_STATUS.cancelled, cancelled_at: cancelledAt, cancel_reason: reason })
     .eq("id", ticketId)
-    .in("status", ["open", "awaiting_payment_confirm"])
+    .in("status", [...BUSINESS_CANCELLABLE_STATUSES])
     .select("id, status, cancelled_at, cancel_reason")
     .single();
   if (update.error) {

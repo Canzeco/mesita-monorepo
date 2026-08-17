@@ -17,6 +17,7 @@ import {
 import { getTierConfig } from "../_shared/membership.ts";
 import { recomputeConsumerClass } from "../_shared/class-doors.ts";
 import { isCanonicalConsumerCode } from "../_shared/consumer-code.ts";
+import { CLOSED_TICKET_STATUS, TICKET_STATUS } from "../_shared/ticket-status.ts";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
@@ -149,7 +150,7 @@ Deno.serve(async (req) => {
     .eq("consumer_id", userId)
     .eq("is_test", false)
     .gte("created_at", monthStart.toISOString())
-    .neq("status", "cancelled");
+    .neq("status", TICKET_STATUS.cancelled);
   used = count ?? 0;
 
   const subscriptionClass = {
@@ -175,7 +176,7 @@ Deno.serve(async (req) => {
     .from("tickets")
     .select("id", { count: "exact", head: true })
     .eq("consumer_id", userId)
-    .eq("status", "revealed");
+    .eq("status", CLOSED_TICKET_STATUS);
 
   return json({
     ok: true,

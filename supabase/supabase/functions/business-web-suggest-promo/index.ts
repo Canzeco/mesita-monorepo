@@ -25,12 +25,13 @@ import {
 } from "../_shared/auth.ts";
 import { createMemoData } from "../_shared/memo-data.ts";
 import { DEFAULT_MODELS_CONFIG, loadModelsConfig } from "../_shared/models-config.ts";
+import { CLOSED_TICKET_STATUS } from "../_shared/ticket-status.ts";
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 
 const OPENAI_CHAT_URL = "https://api.openai.com/v1/chat/completions";
 /** Fallback when models_config.supabase.model is unset. */
 const DEFAULT_MODEL = DEFAULT_MODELS_CONFIG.supabase.model!;
-const CLOSED_STATUS = "revealed";
+const CLOSED_STATUS = CLOSED_TICKET_STATUS;
 const REVIEW_SNIPPET_LIMIT = 5;
 
 const STRATEGIES = [

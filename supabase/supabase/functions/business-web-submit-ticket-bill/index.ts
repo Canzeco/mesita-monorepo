@@ -28,6 +28,7 @@ import {
   assessPromoLane,
   loadMembershipRow,
 } from "../_shared/membership-enforcement.ts";
+import { TICKET_STATUS } from "../_shared/ticket-status.ts";
 import { placeInstagramHandleForPayload } from "../_shared/ticket-bill-payload.ts";
 import { toCents } from "../_shared/money.ts";
 
@@ -84,7 +85,7 @@ Deno.serve(async (req) => {
   const memberRes = await requireEditor(admin, authRes.user, ticket.project_id);
   if (!memberRes.ok) return memberRes.response;
 
-  if (ticket.status !== "open") {
+  if (ticket.status !== TICKET_STATUS.open) {
     return json(
       { ok: false, error: `Ticket is ${ticket.status} — billing only applies to open scans.` },
       409,
@@ -174,7 +175,7 @@ Deno.serve(async (req) => {
   const update = await admin
     .from("tickets")
     .update({
-      status: "awaiting_payment_confirm",
+      status: TICKET_STATUS.awaitingPaymentConfirm,
       check_subtotal_cents: snap.checkSubtotalCents,
       tip_cents: snap.tipCents,
       total_cents: snap.totalCents,
@@ -184,7 +185,7 @@ Deno.serve(async (req) => {
       bill_source: "business", // place-entered amount (MESITA-850)
     })
     .eq("id", ticketId)
-    .eq("status", "open")
+    .eq("status", TICKET_STATUS.open)
     .select(
       "id, kind, status, story_status, check_subtotal_cents, tip_cents, total_cents, discount_percent, discount_cents, revealed_at, currency, created_at",
     )

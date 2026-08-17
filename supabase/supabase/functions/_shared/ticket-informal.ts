@@ -21,6 +21,7 @@ import {
   placeInstagramHandleForPayload,
 } from "./ticket-bill-payload.ts";
 import { ensureConsumerReviewNotification } from "./ticket-review-notify.ts";
+import { CLOSED_TICKET_STATUS } from "./ticket-status.ts";
 
 export {
   buildConsumerBillPayload,
@@ -153,13 +154,13 @@ export async function finalizeInformalTicket(
   if (ticket.error || !ticket.data) {
     return { ok: false, error: ticket.error?.message ?? "ticket not found" };
   }
-  if (ticket.data.status === "revealed") return { ok: true };
+  if (ticket.data.status === CLOSED_TICKET_STATUS) return { ok: true };
 
   const now = new Date().toISOString();
   const update = await admin
     .from("tickets")
     .update({
-      status: "revealed",
+      status: CLOSED_TICKET_STATUS,
       revealed_at: now,
       paid_at: now,
     })
