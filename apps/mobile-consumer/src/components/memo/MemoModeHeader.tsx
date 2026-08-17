@@ -5,7 +5,7 @@ import { MessageCircle, Phone, Sparkles } from 'lucide-react-native';
 import { ComingSoonModal } from '@/components/ui/ComingSoonModal';
 import { COLORS } from '@/constants/brand';
 
-// Mirrors web `components/consumer/home/MemoModeHeader.tsx` (MESITA-1102) —
+// Mirrors web `components/consumer/home/MemoModeHeader.tsx` (MESITA-1103) —
 // Don Memo, and the two ways to reach him.
 //
 // Memo used to be one thing, so the Home pill said "Chat" and the screen below

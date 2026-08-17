@@ -23,7 +23,7 @@ const MODES: (SegmentItem & {
 })[] = [
   { key: 'swipe', title: 'Swipe', Icon: Flame },
   { key: 'catalog', title: 'Catalog', Icon: LayoutGrid, soon: true },
-  // The pill reads "Memo" again (MESITA-1102). It was "Chat" so the label
+  // The pill reads "Memo" again (MESITA-1103). It was "Chat" so the label
   // would name what the mode DOES — sound until the mode grew a second way in.
   // Memo now offers Call AND Chat, so "Chat" names half of it.
   { key: 'ai', title: 'Memo', Icon: Sparkles, soon: true },
