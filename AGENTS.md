@@ -45,7 +45,7 @@ Stable mirror of Notion **Rules** §0 — the master; Notion wins on any conflic
 | `apps/mobile-consumer` | Native consumer app (Expo SDK 57 · RN · NativeWind) |
 | `apps/mobile-business` | Native business app (Expo SDK 57 · **scaffold only**) |
 | `supabase` | DB · RLS · Edge Functions — source of truth (Supabase CLI · Deno) |
-| `assets` | The brand: edit `assets/brand/brand.json`, run `deno task sync-brand` — it writes every brand output (guide: Notion Product Rules §F) |
+| `assets` | The brand: edit `assets/brand/brand.json`, run `deno task sync-brand` — it writes every brand output (guide: Notion Product Rules §E) |
 
 - **Packages are independent install roots** (own `pnpm-workspace.yaml` + lockfile; no root pnpm workspace — mobile needs `nodeLinker: hoisted`). `cd` into a package to work; run every `supabase` command from `supabase/`.
 - **Vercel:** each `apps/web-*` is its own Vercel project (canzeco team) on this repo, Root Directory `apps/web-<app>`, "skip unaffected" on — a push to `main` deploys only what changed.
