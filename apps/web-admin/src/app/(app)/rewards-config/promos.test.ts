@@ -7,7 +7,12 @@ import {
   DEFAULT_PROMOS,
   LEGACY_CLASS_IDENTITY,
   STRATEGY_KEYS,
+  additivityError,
   coercePromosConfig,
+  deriveOrders,
+  deriveVisits,
+  expandOrders,
+  expandVisits,
   legacyRulesFrom,
   modelWarnings,
   seedFromLegacyRules,
@@ -205,20 +210,13 @@ describe("modelWarnings", () => {
     expect(modelWarnings(cfg).map((w) => w.key)).toEqual(["google-vs-story"]);
   });
 
-  it("flags an inverted class ladder", () => {
-    const cfg = structuredClone(DEFAULT_PROMOS);
-    cfg.visits.base.conservative.diamond.free = 5;
-    expect(modelWarnings(cfg).some((w) => w.key.startsWith("class-order"))).toBe(
-      true,
-    );
-  });
-
-  it("flags a Premium plan that pays less than Free", () => {
-    const cfg = structuredClone(DEFAULT_PROMOS);
-    cfg.visits.base.aggressive.gold.premium = 5;
-    expect(modelWarnings(cfg).some((w) => w.key.startsWith("plan-uplift"))).toBe(
-      true,
-    );
+  it("no longer reports class order or plan uplift — the guard makes them unstorable", () => {
+    // Both used to be warnings. additivityError refuses to store them now, so
+    // warning about them would be theatre. Covered in the guard suite below.
+    const inverted = structuredClone(DEFAULT_PROMOS);
+    inverted.visits.base.conservative.diamond.free = 5;
+    expect(modelWarnings(inverted)).toEqual([]);
+    expect(additivityError(inverted.visits.base)).not.toBeNull();
   });
 });
 
@@ -283,5 +281,86 @@ describe("seedFromLegacyRules", () => {
       story: 10,
       google: 15,
     });
+  });
+});
+
+// ── components: the five-box editor's view of the stored grid ────────────
+
+describe("deriveVisits / expandVisits", () => {
+  it("round-trips the shipped grid exactly", () => {
+    const base = DEFAULT_PROMOS.visits.base;
+    expect(expandVisits(deriveVisits(base))).toEqual(base);
+  });
+
+  it("pins bronze and free to zero — they ARE the baseline", () => {
+    const c = deriveVisits(DEFAULT_PROMOS.visits.base);
+    for (const s of ["conservative", "aggressive"] as const) {
+      expect(c[s].class.bronze).toBe(0);
+      expect(c[s].plan.free).toBe(0);
+    }
+  });
+
+  it("reads the real per-strategy steps off the shipped grid", () => {
+    const c = deriveVisits(DEFAULT_PROMOS.visits.base);
+    // Class climbs +5 on Conservative and +10 on Aggressive; plan adds
+    // +10 vs +20. A strategy-invariant step would halve every elevated rate.
+    expect(c.conservative.class).toEqual({
+      bronze: 0,
+      silver: 5,
+      gold: 10,
+      diamond: 15,
+    });
+    expect(c.aggressive.class).toEqual({
+      bronze: 0,
+      silver: 10,
+      gold: 20,
+      diamond: 30,
+    });
+    expect(c.conservative.plan.premium).toBe(10);
+    expect(c.aggressive.plan.premium).toBe(20);
+  });
+
+  it("clamps an over-ceiling component sum at 70", () => {
+    const c = deriveVisits(DEFAULT_PROMOS.visits.base);
+    c.aggressive.base = 60;
+    expect(expandVisits(c).aggressive.diamond.premium).toBe(70);
+  });
+
+  it("orders round-trips too, with no class axis", () => {
+    const base = DEFAULT_PROMOS.orders.base;
+    expect(expandOrders(deriveOrders(base))).toEqual(base);
+  });
+});
+
+describe("additivityError — the guard", () => {
+  it("passes the shipped grid", () => {
+    expect(additivityError(DEFAULT_PROMOS.visits.base)).toBeNull();
+  });
+
+  it("rejects a cell set on its own", () => {
+    const base = structuredClone(DEFAULT_PROMOS.visits.base);
+    base.aggressive.gold.premium = 55; // ladder says 60
+    expect(additivityError(base)).toMatch(/cannot be set on its own/);
+  });
+
+  it("rejects an inverted class ladder even when every offset is >= 0", () => {
+    // The subtle one: steps are OFFSETS FROM BASE, not rung-to-rung deltas,
+    // so "all steps >= 0" does not imply monotonic. silver +15 / gold +5 are
+    // both non-negative and still invert.
+    const base = structuredClone(DEFAULT_PROMOS.visits.base);
+    const floor = base.conservative.bronze.free;
+    base.conservative.silver.free = floor + 15;
+    base.conservative.silver.premium = floor + 15 + 10;
+    base.conservative.gold.free = floor + 5;
+    base.conservative.gold.premium = floor + 5 + 10;
+    expect(additivityError(base)).toMatch(/ladder would invert/);
+  });
+
+  it("rejects a Premium plan that pays less than Free", () => {
+    const base = structuredClone(DEFAULT_PROMOS.visits.base);
+    for (const cls of ["bronze", "silver", "gold", "diamond"] as const) {
+      base.aggressive[cls].premium = base.aggressive[cls].free - 5;
+    }
+    expect(additivityError(base)).toMatch(/cost the guest money/);
   });
 });

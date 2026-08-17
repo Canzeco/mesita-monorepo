@@ -8,6 +8,7 @@
 import { assert, assertEquals } from "jsr:@std/assert@1";
 import {
   DEFAULT_PROMOS_V11,
+  additivityError,
   identityForClassKey,
   legacyRulesFromV11,
   normalizePromosV11,
@@ -173,5 +174,54 @@ Deno.test("promosWriteShape: a v10 save is a STALE TAB, never a migration", () =
 Deno.test("promosWriteShape: anything else falls through to the legacy path", () => {
   for (const body of [null, undefined, [], "nope", 7, {}, { version: 9 }]) {
     assertEquals(promosWriteShape(body), "other");
+  }
+});
+
+// ── the additivity guard ─────────────────────────────────────────────────
+
+Deno.test("additivityError: the shipped grid is a legal component grid", () => {
+  assertEquals(additivityError(DEFAULT_PROMOS_V11.visits.base), null);
+});
+
+Deno.test("additivityError: a cell set on its own is refused", () => {
+  const base = structuredClone(DEFAULT_PROMOS_V11.visits.base);
+  base.aggressive.gold.premium = 55; // the ladder resolves 60
+  assert((additivityError(base) ?? "").includes("cannot be set on its own"));
+});
+
+Deno.test("additivityError: an inverted ladder is refused even with all offsets >= 0", () => {
+  // Offsets from base, not rung-to-rung deltas: +15 then +5 are both
+  // non-negative and still invert.
+  const base = structuredClone(DEFAULT_PROMOS_V11.visits.base);
+  const floor = base.conservative.bronze.free;
+  base.conservative.silver.free = floor + 15;
+  base.conservative.silver.premium = floor + 25;
+  base.conservative.gold.free = floor + 5;
+  base.conservative.gold.premium = floor + 15;
+  assert((additivityError(base) ?? "").includes("invert"));
+});
+
+Deno.test("normalizePromosV11: a non-additive body is a hard error, not a silent snap", () => {
+  const bad = structuredClone(DEFAULT_PROMOS_V11);
+  bad.visits.base.aggressive.gold.premium = 55;
+  const r = normalizePromosV11(bad);
+  assertEquals(r.ok, false);
+});
+
+Deno.test("normalizePromosV11: the v10 migration still passes the guard", () => {
+  // migrateV10 builds the grid from components, so it is additive by
+  // construction — including when the uplift pushes a cell into the clamp.
+  const migrated = normalizePromosV11({
+    version: 10,
+    base: {
+      conservative: { standard: 10, influencer: 15, premium: 20, aura: 25 },
+      aggressive: { standard: 30, influencer: 40, premium: 60, aura: 60 },
+    },
+    bonuses: { welcome: 10, mesita: 5, story: 10, google: 15 },
+    cap: 200,
+  });
+  assert(migrated.ok);
+  if (migrated.ok) {
+    assertEquals(additivityError(migrated.value.visits.base), null);
   }
 });

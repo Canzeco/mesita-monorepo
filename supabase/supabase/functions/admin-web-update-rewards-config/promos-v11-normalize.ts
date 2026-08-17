@@ -261,9 +261,81 @@ function migrateV10(r: Record<string, unknown>): PromosConfigV11 {
   };
 }
 
+// ── The additivity guard (mirrors rewards-config/promos.ts) ──────────────
+//
+// The admin page edits COMPONENTS (base + class step + plan step) and expands
+// them into this grid before sending. Storage keeps the grid, so the two
+// representations stay isomorphic only while the grid is additive. This
+// module is the single writer, which is what makes that safe: an off-ladder
+// grid is refused here, so the editor can never read back something it cannot
+// represent.
+//
+// Two conditions. The second is the subtle one: class steps are OFFSETS FROM
+// BASE, not rung-to-rung deltas, so "every step >= 0" does NOT prevent
+// inversion (silver +15 with gold +5 are both non-negative and still invert).
+// The real invariant is that offsets never decrease as the class climbs.
+
+function deriveVisits(base: PromosConfigV11["visits"]["base"]) {
+  const out = {} as Record<
+    StrategyKey,
+    { base: number; class: Record<ClassKey, number>; plan: Record<PlanKey, number> }
+  >;
+  for (const s of STRATEGY_KEYS) {
+    const floor = base[s].bronze.free;
+    out[s] = {
+      base: floor,
+      class: {
+        bronze: 0,
+        silver: base[s].silver.free - floor,
+        gold: base[s].gold.free - floor,
+        diamond: base[s].diamond.free - floor,
+      },
+      plan: { free: 0, premium: base[s].bronze.premium - floor },
+    };
+  }
+  return out;
+}
+
+/** Returns null when the grid is a legal component grid, else why not. */
+export function additivityError(
+  base: PromosConfigV11["visits"]["base"],
+): string | null {
+  const components = deriveVisits(base);
+  for (const s of STRATEGY_KEYS) {
+    const c = components[s];
+    for (const cls of CLASS_KEYS) {
+      for (const p of PLAN_KEYS) {
+        const expected = Math.max(
+          0,
+          Math.min(RATE_MAX, c.base + c.class[cls] + c.plan[p]),
+        );
+        if (expected !== base[s][cls][p]) {
+          return `${s} ${cls} ${p} is ${base[s][cls][p]}%, but base + class + plan ` +
+            `resolves to ${expected}% — rates are built from components, so a ` +
+            `cell cannot be set on its own.`;
+        }
+      }
+    }
+    for (let i = 1; i < CLASS_KEYS.length; i++) {
+      if (c.class[CLASS_KEYS[i]] < c.class[CLASS_KEYS[i - 1]]) {
+        return `${s}: ${CLASS_KEYS[i]} adds ${c.class[CLASS_KEYS[i]]}% but ` +
+          `${CLASS_KEYS[i - 1]} adds ${c.class[CLASS_KEYS[i - 1]]}% — the class ` +
+          `ladder would invert.`;
+      }
+    }
+    if (c.plan.premium < 0) {
+      return `${s}: Premium adds ${c.plan.premium}% — the subscription would ` +
+        `cost the guest money.`;
+    }
+  }
+  return null;
+}
+
 /**
- * Coerce an unknown body into a complete v11 config. Returns an error only
- * for a non-object payload; everything else resolves via defaults + snapping.
+ * Coerce an unknown body into a complete v11 config. Returns an error for a
+ * non-object payload, or for a grid that is not expressible as components
+ * (the additivity guard — see above). Everything else resolves via defaults
+ * and snapping, as before.
  */
 export function normalizePromosV11(
   raw: unknown,
@@ -320,6 +392,11 @@ export function normalizePromosV11(
       }
     }
   }
+
+  // The guard runs on the COERCED grid, so snapping cannot smuggle a
+  // non-additive cell past it.
+  const guard = additivityError(visitsBase);
+  if (guard) return { ok: false, error: guard };
 
   return {
     ok: true,
