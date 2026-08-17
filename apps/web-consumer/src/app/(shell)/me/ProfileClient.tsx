@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import {
   Bot,
   Instagram,
@@ -21,6 +20,7 @@ import { HelpModal } from "@/components/consumer/me/HelpModal";
 import { MetricsModal } from "@/components/consumer/me/MetricsModal";
 import { AiConnectModal } from "@/components/consumer/me/AiConnectModal";
 import { MoreModal } from "@/components/consumer/me/MoreModal";
+import { PlanModal } from "@/components/consumer/me/PlanModal";
 import { errMsg, formatCompactCount, formatPhoneDisplay } from "@/lib/utils";
 import { toast } from "@/lib/toast";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
@@ -61,7 +61,6 @@ export function ProfileClient({
   openSettings?: boolean;
 }) {
   const supabase = useBrowserSupabase();
-  const router = useRouter();
   const {
     key: classKey,
     plan,
@@ -93,6 +92,7 @@ export function ProfileClient({
   const [helpOpen, setHelpOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
+  const [planOpen, setPlanOpen] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -203,7 +203,7 @@ export function ProfileClient({
             profile={profile}
             loading={loading}
             onOpenClass={() => setClassOpen(true)}
-            onOpenPlan={() => router.push("/subscribe/premium")}
+            onOpenPlan={() => setPlanOpen(true)}
             onOpenInstagram={() => setVerifyOpen(true)}
           />
 
@@ -231,7 +231,7 @@ export function ProfileClient({
             tint="premium"
             title="Plan"
             summary={loading ? "…" : planSummary}
-            onClick={() => router.push("/subscribe/premium")}
+            onClick={() => setPlanOpen(true)}
           />
 
           {/* Tools + account. */}
@@ -313,6 +313,7 @@ export function ProfileClient({
         open={deleteOpen}
         onClose={() => setDeleteOpen(false)}
       />
+      <PlanModal open={planOpen} onClose={() => setPlanOpen(false)} />
       <MoreModal
         open={moreOpen}
         onClose={() => setMoreOpen(false)}

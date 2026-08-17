@@ -42,6 +42,12 @@ const nextConfig: NextConfig = {
       // were the LIVE urls until this change, so they need the forwarding
       // address most, and everything else in this block used to chain through
       // them (MESITA-1062 eng review, A5).
+      // The plan moved from a page to a sheet on Me (MESITA-1129). Both the
+      // bare prefix and the /subscribe/premium URL forward — the latter was
+      // the LIVE url and is what any external link (an iOS link-out, a
+      // receipt email) would still carry.
+      { source: "/subscribe", destination: "/me", permanent: true },
+      { source: "/subscribe/:plan", destination: "/me", permanent: true },
       { source: "/rewards", destination: "/new-visit", permanent: true },
       { source: "/pay", destination: "/new-visit", permanent: true },
       { source: "/pay/:tab", destination: "/new-visit", permanent: true },

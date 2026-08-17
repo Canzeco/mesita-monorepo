@@ -61,10 +61,10 @@ describe("CONSUMER_ROUTES (canonical surface map)", () => {
         notifications: "/inbox/notifications",
       },
       inboxDefault: "/inbox/visits",
-      subscribe: "/subscribe/premium",
       me: "/me",
       legacy: {
         profile: "/profile",
+        subscribe: "/subscribe/premium",
         invite: "/invite",
         homeAi: "/home/ai",
         rewards: "/rewards",
@@ -101,7 +101,6 @@ describe("CONSUMER_ROUTES (canonical surface map)", () => {
       visit: "/visit",
       inbox: "/inbox",
       me: "/me",
-      subscribe: "/subscribe",
       saved: "/saved",
     });
     expect(CONSUMER_RESERVATION_SURFACE_PREFIX).toBe("/reservation");
@@ -189,6 +188,9 @@ describe("next.config redirects (static legacy → canonical, 308)", () => {
       // The centre tab: /pay -> /rewards -> /new-visit. BOTH eras forward
       // here. /rewards was the LIVE url until routing v2, so it needs the
       // forwarding address most — everything below used to chain through it.
+      // The plan is a sheet on Me now, not a page (MESITA-1129).
+      { source: "/subscribe", destination: "/me", permanent: true },
+      { source: "/subscribe/:plan", destination: "/me", permanent: true },
       { source: "/rewards", destination: "/new-visit", permanent: true },
       { source: "/pay", destination: "/new-visit", permanent: true },
       { source: "/pay/:tab", destination: "/new-visit", permanent: true },
@@ -254,7 +256,6 @@ describe("middleware auth wall (shouldGate)", () => {
     "/reservation/r1",
     "/inbox/mine",
     "/inbox/global",
-    "/subscribe/premium",
   ];
   // "Ungated at middleware" — NOT "public". Everything under app/(shell)
   // (/home, /search, /place, /share) is still walled by that
@@ -279,6 +280,9 @@ describe("middleware auth wall (shouldGate)", () => {
     "/notifications",
     "/ticket/t1",
     "/invite",
+    // The plan became a sheet on Me (MESITA-1129); this 308s to /me.
+    "/subscribe",
+    "/subscribe/premium",
   ];
 
   it.each(walled)("%s requires a session", (p) => {
