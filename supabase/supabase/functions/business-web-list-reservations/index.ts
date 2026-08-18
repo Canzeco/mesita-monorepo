@@ -84,7 +84,7 @@ Deno.serve(async (req) => {
   if (!memberRes.ok) return memberRes.response;
 
   let q = admin
-    .from("reservations")
+    .from("reservation_tickets")
     .select(SELECT, { count: "exact" })
     .eq("project_id", projectId)
     .eq("is_test", false)

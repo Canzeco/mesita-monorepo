@@ -32,7 +32,7 @@ Deno.serve(async (req) => {
   if (!saRes.ok) return saRes.response;
 
   const { data, error } = await admin
-    .from("app_settings")
+    .from("app_config")
     .select(
       "memo_greeting, memo_instructions, memo_provider, memo_openai_model, memo_web_grounding, memo_perplexity_model, updated_at",
     )

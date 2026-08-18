@@ -111,7 +111,7 @@ const COLUMNS: readonly string[] = [
   "city",
   "established_year",
   "executive_chef",
-  "reward_cap_cents",
+  "discount_cap_cents",
   "requires_story",
   "details",
   // Generic product payload. Menus live under products.menu.
@@ -134,11 +134,11 @@ const COLUMNS: readonly string[] = [
   // Promos v4 membership / strikes (MESITA-542) — projects columns exposed via
   // projects_view. Readers that hit `places` directly simply won't see them.
   "first_ticket_honored_at",
-  "membership_live_at",
+  "plan_live_at",
   "strike_count",
   "last_strike_at",
   "promo_paused_until",
-  "membership_forfeited_at",
+  "plan_forfeited_at",
 ];
 
 // Consumer reads — used by every public/consumer-facing EF. No `updated_at`

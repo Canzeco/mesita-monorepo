@@ -27,7 +27,7 @@ function row(overrides: Partial<CheckTicketRow> = {}): CheckTicketRow {
     story_screenshot_url: null,
     review_status: "not_required",
     review_screenshot_url: null,
-    check_subtotal_cents: null,
+    bill_subtotal_cents: null,
     tip_cents: null,
     tip_pct: null,
     total_cents: null,
@@ -87,7 +87,7 @@ Deno.test("shapeCheckPayload: the allowlist — forbidden fields never leak", ()
   const payload = shape({
     status: "awaiting_payment_confirm",
     total_cents: 50_000, // PRE-discount (subtotal + tip)
-    check_subtotal_cents: 50_000,
+    bill_subtotal_cents: 50_000,
     discount_percent: 20,
     discount_cents: 10_000,
   });
@@ -163,7 +163,7 @@ Deno.test("shapeCheckPayload: bill_required defaults off, flag only (MESITA-898)
 Deno.test("shapeCheckPayload: amount due = subtotal minus discount (E2E regression)", () => {
   const payload = shape({
     status: "awaiting_payment_confirm",
-    check_subtotal_cents: 80_000,
+    bill_subtotal_cents: 80_000,
     total_cents: 80_000,
     discount_percent: 20,
     discount_cents: 10_000,
@@ -181,7 +181,7 @@ Deno.test("shapeCheckPayload: the tip rides through amount due untouched (C4-6)"
   // formula at the staff payload, the surface where the waiter reads it.
   const payload = shape({
     status: "awaiting_payment_confirm",
-    check_subtotal_cents: 85_000,
+    bill_subtotal_cents: 85_000,
     tip_cents: 12_800,
     tip_pct: 15,
     total_cents: 97_800,
@@ -260,7 +260,7 @@ Deno.test("shapeCheckPayload: offer states the commitment only while unbilled (M
 
   // A billed ticket never carries an offer — the bill block is the truth.
   const billed = shapeCheckPayload({
-    ticket: row({ check_subtotal_cents: 70000, total_cents: 70000 }),
+    ticket: row({ bill_subtotal_cents: 70000, total_cents: 70000 }),
     placeName: "Café Prueba",
     placeSlug: "cafe-prueba",
     guestDisplayName: "Ana López",

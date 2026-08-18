@@ -367,7 +367,7 @@ Deno.serve(async (req) => {
   // the next sync.
   const admin = adminClient(envRes.env);
   const { data: settings } = await admin
-    .from("app_settings")
+    .from("app_config")
     .select("agents_config")
     .eq("id", 1)
     .maybeSingle();
@@ -819,7 +819,7 @@ Deno.serve(async (req) => {
     };
     delete nextConfig.knowledgeDocId;
     const { error: saveErr } = await admin
-      .from("app_settings")
+      .from("app_config")
       .update({ agents_config: nextConfig })
       .eq("id", 1);
 
@@ -1082,7 +1082,7 @@ Deno.serve(async (req) => {
       fleetSyncedAt: new Date().toISOString(),
     };
     const { error: saveErr } = await admin
-      .from("app_settings")
+      .from("app_config")
       .update({ agents_config: newConfig })
       .eq("id", 1);
 

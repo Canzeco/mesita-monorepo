@@ -131,8 +131,8 @@ export function toReservationItem(row: EFReservationRow): ReservationItem {
     partySize: row.party_size,
     status: toCardStatus(row.status),
     statusNote: noteFor(row, counterOffer),
-    guestNotify: row.guest_notify === 'app' ? 'app' : 'call',
-    guestConfirmedAt: row.guest_confirmed_at ?? null,
+    guestNotify: row.consumer_notify === 'app' ? 'app' : 'call',
+    guestConfirmedAt: row.consumer_confirmed_at ?? null,
     alternatives,
     dbStatus: row.status,
     // linkedCoupon intentionally omitted: the list EF exposes the coupon by

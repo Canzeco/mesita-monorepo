@@ -37,7 +37,7 @@ export function ReviewsSummaryBox({ place }: { place: PlaceDetail }) {
   const subRatings: Array<[string, number]> = [
     ["Food", rating(place.mesita_reviews.food)],
     ["Service", rating(place.mesita_reviews.service)],
-    ["Ambience", rating(place.mesita_reviews.ambiance)],
+    ["Ambience", rating(place.mesita_reviews.ambience)],
     ["Value", rating(place.mesita_reviews.value)],
   ];
   return (
@@ -47,7 +47,7 @@ export function ReviewsSummaryBox({ place }: { place: PlaceDetail }) {
             • Hero overall — pink-tinted square card on the left with the
               big serif rating + a gold star + "OVERALL" eyebrow.
             • Three sub-rating bars on the right (Food / Service /
-              Ambiance) — pink-gradient fill proportional to value, value
+              Ambience) — pink-gradient fill proportional to value, value
               pinned to the right edge. Visual comparison beats a list of
               pills. */}
       <div className="bg-background flex flex-col gap-4 rounded-xl p-4">

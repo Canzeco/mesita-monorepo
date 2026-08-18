@@ -34,7 +34,7 @@ Deno.serve(async (req) => {
   if (!saRes.ok) return saRes.response;
 
   const { data, error } = await admin
-    .from("app_settings")
+    .from("app_config")
     .select("reservations_config, updated_at")
     .eq("id", 1)
     .maybeSingle();
@@ -57,15 +57,15 @@ Deno.serve(async (req) => {
   //                              nobody picked up — the table exists and its
   //                              owner doesn't know
   const { data: attention } = await admin
-    .from("reservations")
+    .from("reservation_tickets")
     .select(
-      "id, reference_code, status, reserved_at, last_call_status, notice_state, notice_kind, attempts_state, callback_state, guest_confirmed_at, is_test",
+      "id, reference_code, status, reserved_at, last_call_status, notice_state, notice_kind, attempts_state, callback_state, consumer_confirmed_at, is_test",
     )
     .or(
       "notice_state.eq.failed," +
         "attempts_state.eq.error," +
         "callback_state.eq.failed," +
-        "and(status.eq.confirmed,guest_confirmed_at.is.null,callback_state.in.(no_answer,unknown),callback_next_attempt_at.is.null)",
+        "and(status.eq.confirmed,consumer_confirmed_at.is.null,callback_state.in.(no_answer,unknown),callback_next_attempt_at.is.null)",
     )
     .order("reserved_at", { ascending: false })
     .limit(30);

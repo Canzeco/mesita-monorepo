@@ -52,7 +52,7 @@ Deno.serve(async (req) => {
   const column = UUID_RE.test(idOrSlug) ? "id" : "slug";
 
   const { data, error } = await supabase
-    .from("projects_view")
+    .from("profiles")
     .select(PLACE_COLUMNS)
     .eq(column, idOrSlug)
     .maybeSingle();
@@ -77,9 +77,9 @@ Deno.serve(async (req) => {
   const reviewsRes = await admin
     .from("ticket_reviews")
     .select(
-      "food, service, ambiance, value, comments, created_at, " +
+      "food, service, ambience, value, comments, created_at, " +
         "consumer:consumers(first_name, last_name, full_name, instagram_handle, " +
-        "profile_public, class_key, consumer_instagram_followers_count)",
+        "privacy_public, class_key, instagram_followers_count)",
     )
     .eq("project_id", placeId)
     .order("created_at", { ascending: false })

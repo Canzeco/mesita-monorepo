@@ -191,7 +191,7 @@ export async function readChannelPolicy(
 ): Promise<ChannelPolicy> {
   try {
     const { data } = await admin
-      .from("app_settings")
+      .from("app_config")
       .select("sourcing_config")
       .eq("id", 1)
       .maybeSingle();

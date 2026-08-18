@@ -311,7 +311,7 @@ export function CheckClient({
     v4 && check.status === "scanned" && !fixOutstanding && !stale;
 
   const tipCents = check.bill?.tip_cents ?? 0;
-  const subtotalCents = check.bill?.check_subtotal_cents ?? 0;
+  const subtotalCents = check.bill?.bill_subtotal_cents ?? 0;
   const discountCents = check.bill?.discount_cents ?? 0;
   // What the POS rings up vs. what the guest hands over (F3, staff side):
   // two labeled numbers, because the till splits them.

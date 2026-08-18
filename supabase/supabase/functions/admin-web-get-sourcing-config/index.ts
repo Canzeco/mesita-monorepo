@@ -34,7 +34,7 @@ Deno.serve(async (req) => {
   if (!saRes.ok) return saRes.response;
 
   const { data, error } = await admin
-    .from("app_settings")
+    .from("app_config")
     .select("sourcing_config, updated_at")
     .eq("id", 1)
     .maybeSingle();

@@ -36,7 +36,7 @@ Deno.serve(async (req) => {
   const admin = adminClient(envRes.env);
 
   const { data, error } = await admin
-    .from("saved_places")
+    .from("favorites")
     .select(
       "id, created_at, project_id",
     )

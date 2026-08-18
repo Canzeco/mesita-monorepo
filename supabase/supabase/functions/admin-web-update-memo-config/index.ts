@@ -48,7 +48,7 @@ Deno.serve(async (req) => {
   patch.updated_by = userId;
 
   const { data, error } = await admin
-    .from("app_settings")
+    .from("app_config")
     .update(patch)
     .eq("id", 1)
     .select(

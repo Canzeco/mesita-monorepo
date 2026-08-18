@@ -42,7 +42,7 @@ Deno.serve(async (req) => {
   if (!norm.ok) return jsonError(norm.error, 400);
 
   const { data, error } = await admin
-    .from("app_settings")
+    .from("app_config")
     .update({ reservations_config: norm.value, updated_by: userId })
     .eq("id", 1)
     .select("reservations_config, updated_at")

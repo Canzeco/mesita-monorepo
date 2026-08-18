@@ -40,7 +40,7 @@ Deno.serve(async (req) => {
   const admin = adminClient(envRes.env);
 
   const invite = await admin
-    .from("account_invites")
+    .from("project_invites")
     .select("id, project_id, email, role, claimed_at, expires_at")
     .eq("token", token)
     .maybeSingle();
@@ -64,12 +64,12 @@ Deno.serve(async (req) => {
   }
 
   const { data: existingBusiness } = await admin
-    .from("accounts")
+    .from("managers")
     .select("id")
     .eq("id", user.id)
     .maybeSingle();
   if (!existingBusiness) {
-    const ins = await admin.from("accounts").insert({
+    const ins = await admin.from("managers").insert({
       id: user.id,
       email: user.emailLower,
       full_name: (user.raw?.user_metadata?.full_name as string | null) ?? null,
@@ -96,7 +96,7 @@ Deno.serve(async (req) => {
   }
 
   const claim = await admin
-    .from("account_invites")
+    .from("project_invites")
     .update({ claimed_at: new Date().toISOString(), claimed_by: user.id })
     .eq("id", invite.data.id)
     .is("claimed_at", null);

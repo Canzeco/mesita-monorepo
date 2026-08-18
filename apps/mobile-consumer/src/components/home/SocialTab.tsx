@@ -23,7 +23,7 @@ import {
 //
 // TODO(EF): social feed — people + events are mock (see social-feed-data.ts).
 // When live, apply MESITA-913 privacy (anonymous private accounts; hide
-// stories when profile_show_stories=false).
+// stories when privacy_show_stories=false).
 
 type SocialSort = 'recent' | 'relevance';
 const SORT_MODES: { key: SocialSort; label: string }[] = [

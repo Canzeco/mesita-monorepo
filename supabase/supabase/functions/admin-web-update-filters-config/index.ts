@@ -57,7 +57,7 @@ Deno.serve(async (req) => {
   // singleton row always exists (id = 1), so a missing row is a real fault
   // rather than something to create on the fly.
   const current = await admin
-    .from("app_settings")
+    .from("app_config")
     .select("filters_config")
     .eq("id", 1)
     .maybeSingle();
@@ -73,7 +73,7 @@ Deno.serve(async (req) => {
   const merged = { ...existing, v1: config };
 
   const wrote = await admin
-    .from("app_settings")
+    .from("app_config")
     .update({
       filters_config: merged,
       updated_at: new Date().toISOString(),

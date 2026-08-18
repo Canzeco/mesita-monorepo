@@ -62,7 +62,7 @@ Deno.serve(async (req) => {
 
   const admin = adminClient(envRes.env);
   const ticketRow = await admin
-    .from("tickets")
+    .from("visit_tickets")
     .select("id, consumer_id, status, paid_method")
     .eq("id", ticketId)
     .maybeSingle();
@@ -90,7 +90,7 @@ Deno.serve(async (req) => {
       );
     }
     const update = await admin
-      .from("tickets")
+      .from("visit_tickets")
       .update({ status: TICKET_STATUS.paying, paid_method: "at_place" })
       .eq("id", ticket.id)
       .eq("status", TICKET_STATUS.approved)
@@ -116,7 +116,7 @@ Deno.serve(async (req) => {
     );
   }
   const rollback = await admin
-    .from("tickets")
+    .from("visit_tickets")
     .update({ status: TICKET_STATUS.approved, paid_method: null })
     .eq("id", ticket.id)
     .eq("status", TICKET_STATUS.paying)

@@ -27,7 +27,7 @@ type RepriceTicketRow = {
   status: string;
   story_status: string | null;
   review_status: string | null;
-  check_subtotal_cents: number | null;
+  bill_subtotal_cents: number | null;
   tip_cents: number | null;
   tip_pct: number | null;
   discount_percent: number | null;
@@ -56,7 +56,7 @@ export async function resolveLiveTicketRate(
   const [placeRes, consumerRes, grid, firstVisit, mesitaReviewed] = await Promise
     .all([
       admin
-        .from("projects_view")
+        .from("profiles")
         .select(
           "id, welcome_free_rate, welcome_premium_rate, free_rate, premium_rate, monthly_promo_cap",
         )
@@ -84,7 +84,7 @@ export async function resolveLiveTicketRate(
   }
 
   const ticketRatesRes = await admin
-    .from("tickets")
+    .from("visit_tickets")
     .select(
       "welcome_free_rate, welcome_premium_rate, free_rate, premium_rate, rates_snapshotted_at",
     )
@@ -126,9 +126,9 @@ export async function repriceTicketAfterAction(
   ticketId: string,
 ): Promise<{ ok: true; ratePercent: number | null } | { ok: false; error: string }> {
   const ticketRes = await admin
-    .from("tickets")
+    .from("visit_tickets")
     .select(
-      "id, project_id, consumer_id, kind, status, story_status, review_status, check_subtotal_cents, tip_cents, tip_pct, discount_percent, approved_at, currency",
+      "id, project_id, consumer_id, kind, status, story_status, review_status, bill_subtotal_cents, tip_cents, tip_pct, discount_percent, approved_at, currency",
     )
     .eq("id", ticketId)
     .maybeSingle();
@@ -142,12 +142,12 @@ export async function repriceTicketAfterAction(
   // numbers are what the waiter committed to — never move them.
   if (ticket.approved_at != null) return { ok: true, ratePercent: null };
 
-  const subtotal = ticket.check_subtotal_cents ?? 0;
+  const subtotal = ticket.bill_subtotal_cents ?? 0;
   if (subtotal <= 0) return { ok: true, ratePercent: null }; // not billed yet
 
   // The Pay-inbox refresh below still needs the place's display fields.
   const placeRes = await admin
-    .from("projects_view")
+    .from("profiles")
     .select("id, name, slug, photos, instagram_url")
     .eq("id", ticket.project_id)
     .maybeSingle();
@@ -184,7 +184,7 @@ export async function repriceTicketAfterAction(
   const snap = billRes.snapshot;
 
   const update = await admin
-    .from("tickets")
+    .from("visit_tickets")
     .update({
       discount_percent: snap.discountPercent,
       discount_cents: snap.discountCents,
@@ -196,7 +196,7 @@ export async function repriceTicketAfterAction(
   if (update.error) return { ok: false, error: update.error.message };
 
   // Refresh the consumer's Pay inbox with the improved bill.
-  await admin.from("consumer_pay_notifications").insert({
+  await admin.from("consumer_notifications").insert({
     consumer_id: ticket.consumer_id,
     ticket_id: ticket.id,
     kind: "bill",
@@ -209,7 +209,7 @@ export async function repriceTicketAfterAction(
       place_photo_url: place.photos?.[0] ?? null,
       place_instagram_handle: placeInstagramHandleForPayload(place.instagram_url),
       ticket_kind: ticket.kind,
-      check_subtotal_cents: snap.checkSubtotalCents,
+      bill_subtotal_cents: snap.checkSubtotalCents,
       tip_cents: snap.tipCents,
       total_cents: snap.totalCents,
       discount_cents: snap.discountCents ?? 0,

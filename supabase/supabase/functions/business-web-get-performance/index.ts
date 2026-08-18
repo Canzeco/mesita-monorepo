@@ -86,7 +86,7 @@ type ClosedTicketRow = {
   consumer_id: string;
   story_status: string | null;
   review_status: string | null;
-  check_subtotal_cents: number | null;
+  bill_subtotal_cents: number | null;
   total_cents: number | null;
   discount_cents: number | null;
   discount_percent: number | null;
@@ -104,7 +104,7 @@ type FeedTicketRow = {
   created_at: string;
   revealed_at: string | null;
   cancelled_at: string | null;
-  check_subtotal_cents: number | null;
+  bill_subtotal_cents: number | null;
   total_cents: number | null;
   discount_cents: number | null;
   discount_percent: number | null;
@@ -129,10 +129,10 @@ async function fetchAllClosedTickets(
   let from = 0;
   for (;;) {
     const { data, error } = await admin
-      .from("tickets")
+      .from("visit_tickets")
       .select(
         "id, consumer_id, story_status, review_status, " +
-          "check_subtotal_cents, total_cents, discount_cents, discount_percent, " +
+          "bill_subtotal_cents, total_cents, discount_cents, discount_percent, " +
           "bill_source, currency, created_at, revealed_at, first_scanned_at",
       )
       .eq("project_id", projectId)
@@ -195,35 +195,35 @@ Deno.serve(async (req) => {
     resvRes,
   ] = await Promise.all([
     admin
-      .from("saved_places")
+      .from("favorites")
       .select("id", { count: "exact", head: true })
       .eq("project_id", projectId),
     admin
-      .from("tickets")
+      .from("visit_tickets")
       .select("id", { count: "exact", head: true })
       .eq("project_id", projectId),
     admin
-      .from("tickets")
+      .from("visit_tickets")
       .select("id", { count: "exact", head: true })
       .eq("project_id", projectId)
       .not("first_scanned_at", "is", null),
     admin
-      .from("tickets")
+      .from("visit_tickets")
       .select("id", { count: "exact", head: true })
       .eq("project_id", projectId)
       .eq("status", CLOSED_STATUS),
     admin
-      .from("tickets")
+      .from("visit_tickets")
       .select("id", { count: "exact", head: true })
       .eq("project_id", projectId)
       .eq("status", TICKET_STATUS.cancelled),
     admin
-      .from("tickets")
+      .from("visit_tickets")
       .select("id", { count: "exact", head: true })
       .eq("project_id", projectId)
       .in("story_status", [...ATTESTED_STATUSES]),
     admin
-      .from("tickets")
+      .from("visit_tickets")
       .select("id", { count: "exact", head: true })
       .eq("project_id", projectId)
       .in("review_status", [...ATTESTED_STATUSES]),
@@ -234,29 +234,29 @@ Deno.serve(async (req) => {
     admin
       .from("ticket_reviews")
       .select(
-        "id, food, service, ambiance, value, overall, comments, created_at, " +
+        "id, food, service, ambience, value, overall, comments, created_at, " +
           "consumer:consumers(first_name)",
       )
       .eq("project_id", projectId)
       .order("created_at", { ascending: false })
       .limit(reviewLimit),
     admin
-      .from("saved_places")
+      .from("favorites")
       .select("id, created_at")
       .eq("project_id", projectId)
       .order("created_at", { ascending: false })
       .limit(MAX_FEED_LIMIT),
     admin
-      .from("tickets")
+      .from("visit_tickets")
       .select(
         "id, status, first_scanned_at, created_at, revealed_at, cancelled_at, " +
-          "check_subtotal_cents, total_cents, discount_cents, discount_percent, bill_source",
+          "bill_subtotal_cents, total_cents, discount_cents, discount_percent, bill_source",
       )
       .eq("project_id", projectId)
       .order("created_at", { ascending: false })
       .limit(FEED_TICKET_PAGE),
     admin
-      .from("reservations")
+      .from("reservation_tickets")
       .select("id, status, party_size, reserved_at, created_at")
       .eq("project_id", projectId)
       .order("created_at", { ascending: false })
@@ -294,7 +294,7 @@ Deno.serve(async (req) => {
   let billedCount = 0;
   let consumerBilledCount = 0;
   for (const t of closed) {
-    const amount = t.total_cents ?? t.check_subtotal_cents ?? 0;
+    const amount = t.total_cents ?? t.bill_subtotal_cents ?? 0;
     if (amount > 0) {
       influencedCents += amount;
       billedCount += 1;
@@ -346,7 +346,7 @@ Deno.serve(async (req) => {
     id: string;
     food: number | null;
     service: number | null;
-    ambiance: number | null;
+    ambience: number | null;
     value: number | null;
     overall: number | null;
     comments: string | null;
@@ -359,7 +359,7 @@ Deno.serve(async (req) => {
       id: r.id,
       food: r.food,
       service: r.service,
-      ambiance: r.ambiance,
+      ambience: r.ambience,
       value: r.value,
       overall: r.overall,
       comments: r.comments,
@@ -410,7 +410,7 @@ Deno.serve(async (req) => {
         meta: {
           discountPercent: t.discount_percent,
           discountCents: t.discount_cents,
-          amountCents: t.total_cents ?? t.check_subtotal_cents,
+          amountCents: t.total_cents ?? t.bill_subtotal_cents,
           billSource: t.bill_source,
         },
       });

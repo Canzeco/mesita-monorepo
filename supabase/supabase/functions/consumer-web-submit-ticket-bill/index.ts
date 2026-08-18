@@ -79,7 +79,7 @@ Deno.serve(async (req) => {
 
   const admin = adminClient(envRes.env);
   const ticketRow = await admin
-    .from("tickets")
+    .from("visit_tickets")
     .select(
       "id, consumer_id, project_id, status, story_status, review_status, fix_requested, approved_at, currency",
     )
@@ -129,9 +129,9 @@ Deno.serve(async (req) => {
   const clearingFix = ticket.fix_requested === "bill" ||
     ticket.fix_requested === "reward";
   const update = await admin
-    .from("tickets")
+    .from("visit_tickets")
     .update({
-      check_subtotal_cents: snap.checkSubtotalCents,
+      bill_subtotal_cents: snap.checkSubtotalCents,
       tip_cents: snap.tipCents,
       tip_pct: tipPct,
       total_cents: snap.totalCents,
@@ -144,7 +144,7 @@ Deno.serve(async (req) => {
     .eq("id", ticket.id)
     .in("status", BILL_EDITABLE)
     .select(
-      "id, status, check_subtotal_cents, tip_cents, tip_pct, total_cents, discount_percent, discount_cents, fix_requested, updated_at, currency",
+      "id, status, bill_subtotal_cents, tip_cents, tip_pct, total_cents, discount_percent, discount_cents, fix_requested, updated_at, currency",
     )
     .maybeSingle();
   if (update.error) {

@@ -183,7 +183,7 @@ async function computeAndPersistPlaceEmbedding(
   }
 
   const { error } = await admin
-    .from("projects_view")
+    .from("profiles")
     .update({
       embedding: vectorLiteral(vector),
       embedding_source_hash: factsHash,
@@ -204,7 +204,7 @@ async function loadEmbeddablePlace(
   placeId: string,
 ): Promise<EmbeddablePlace | null> {
   const { data, error } = await admin
-    .from("projects_view")
+    .from("profiles")
     .select(
       "id, name, category, description, zone, city, address, price_level, embedding, embedding_source_hash, embedding_source_text",
     )

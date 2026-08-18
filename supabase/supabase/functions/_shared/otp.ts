@@ -145,7 +145,7 @@ export async function redeemOtpVerification(
   }
 
   const { data: settings } = await admin
-    .from("app_settings")
+    .from("app_config")
     .select(args.autoVerifyColumn)
     .eq("id", 1)
     .maybeSingle();

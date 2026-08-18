@@ -70,7 +70,7 @@ Deno.serve(async (req) => {
 
   const admin = adminClient(env);
   const { data, error } = await admin
-    .from("projects_view")
+    .from("profiles")
     .select(PLACE_PUBLIC_COLUMNS)
     .eq("status", "active")
     .limit(POOL_CAP);

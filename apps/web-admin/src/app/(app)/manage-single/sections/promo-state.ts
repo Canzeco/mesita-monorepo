@@ -25,9 +25,9 @@ import {
 // coerces exactly like the component used to.
 type MembershipSnapshot = {
   plan?: unknown;
-  membership_forfeited_at?: unknown;
+  plan_forfeited_at?: unknown;
   promo_paused_until?: unknown;
-  membership_live_at?: unknown;
+  plan_live_at?: unknown;
   strike_count?: unknown;
   last_strike_at?: unknown;
 };
@@ -67,7 +67,7 @@ export function membershipPillState(
   snap: MembershipSnapshot,
   now: number = Date.now(),
 ): MembershipPillState {
-  if (snap.membership_forfeited_at) return "forfeited";
+  if (snap.plan_forfeited_at) return "forfeited";
   if (!isMemberPlan(snap.plan)) return "not_member";
   if (
     snap.promo_paused_until &&
@@ -75,7 +75,7 @@ export function membershipPillState(
   ) {
     return "paused";
   }
-  if (snap.membership_live_at) return "live";
+  if (snap.plan_live_at) return "live";
   return "pending";
 }
 

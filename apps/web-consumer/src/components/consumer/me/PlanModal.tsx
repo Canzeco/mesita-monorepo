@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Check, Loader2, Sparkles } from "lucide-react";
+import { Check, FlaskConical, Loader2, Sparkles } from "lucide-react";
 
 import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
@@ -68,6 +68,7 @@ export function PlanModal({
   const supabase = useBrowserSupabase();
   const { plan, renewsAt } = useConsumerClass();
   const [loading, setLoading] = useState(false);
+  const [emulating, setEmulating] = useState(false);
 
   const premium = PLANS.find((p) => p.id === "premium")!;
   const isPremium = plan === "premium";
@@ -94,6 +95,42 @@ export function PlanModal({
         err instanceof Error ? err.message : "Couldn't start checkout",
       );
       setLoading(false);
+    }
+  }
+
+  // Emulator. Stripe is not wired in every environment, so the EF grants the
+  // subscription directly when it has no key (or MOCK_SUBSCRIPTION is on) and
+  // reports `mock: true`. Two rules make that safe to expose:
+  //
+  //   1. The client cannot REQUEST the emulator. It calls the same endpoint and
+  //      only reacts to what the server says it did. If Stripe is live here,
+  //      this button refuses rather than quietly opening a real checkout.
+  //   2. It is labelled as emulated on screen. A free-Premium path that looks
+  //      like a purchase is the one version of this worth being afraid of.
+  //
+  // On success it lands on the same ?subscription=success URL the real Stripe
+  // return leg uses, so ProfileClient's existing toast and refetch handle it.
+  async function activateEmulated() {
+    setEmulating(true);
+    try {
+      const origin =
+        typeof window !== "undefined" ? window.location.origin : "";
+      const successUrl = `${origin}${CONSUMER_ROUTES.me}?subscription=success`;
+      const { mock } = await apiCreateSubscriptionCheckout(supabase, {
+        successUrl,
+        cancelUrl: `${origin}${CONSUMER_ROUTES.me}?subscription=cancelled`,
+      });
+      if (!mock) {
+        toast.error("Stripe is live here — use Continue to checkout.");
+        setEmulating(false);
+        return;
+      }
+      window.location.href = successUrl;
+    } catch (err) {
+      toast.error(
+        err instanceof Error ? err.message : "Couldn't activate Premium",
+      );
+      setEmulating(false);
     }
   }
 
@@ -225,6 +262,24 @@ export function PlanModal({
                 <Sparkles className="h-4 w-4" />
               )}
               {loading ? "Starting checkout…" : "Continue to checkout"}
+            </button>
+          )}
+
+          {!isPremium && (
+            <button
+              type="button"
+              onClick={() => void activateEmulated()}
+              disabled={emulating || loading}
+              className="border-border text-muted-foreground hover:bg-muted/40 flex min-h-11 w-full items-center justify-center gap-2 rounded-2xl border border-dashed text-[12px] font-medium transition active:scale-[0.99] disabled:opacity-70"
+            >
+              {emulating ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <FlaskConical className="h-3.5 w-3.5" />
+              )}
+              {emulating
+                ? "Activating…"
+                : "Activate Premium — emulator, no payment"}
             </button>
           )}
 

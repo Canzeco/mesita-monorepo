@@ -58,7 +58,7 @@ Deno.serve(async (req) => {
 
   const [placeRow, consumerRow, grid, checkSettings] = await Promise.all([
     admin
-      .from("projects_view")
+      .from("profiles")
       .select("id, name, slug, monthly_promo_cap")
       .eq("id", ticket.project_id)
       .maybeSingle(),
@@ -78,7 +78,7 @@ Deno.serve(async (req) => {
   if (!wasScanned) {
     const now = new Date().toISOString();
     await admin
-      .from("tickets")
+      .from("visit_tickets")
       .update({ first_scanned_at: now })
       .eq("id", ticket.id)
       .is("first_scanned_at", null);
@@ -106,7 +106,7 @@ Deno.serve(async (req) => {
   let offerRatePercent: number | null = null;
   let liveCapPesos: number | null = null;
   const unbilled = (ticket.total_cents ?? 0) <= 0 &&
-    (ticket.check_subtotal_cents ?? 0) <= 0;
+    (ticket.bill_subtotal_cents ?? 0) <= 0;
   if (unbilled && ticket.status === TICKET_STATUS.open) {
     const live = await resolveLiveTicketRate(admin, ticket);
     if (live.ok) {

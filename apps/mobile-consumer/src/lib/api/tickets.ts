@@ -36,7 +36,7 @@ export type ConsumerTicketRow = {
   review_submitted_at: string | null;
   check_code: string | null;
   first_scanned_at: string | null;
-  check_subtotal_cents: number | null;
+  bill_subtotal_cents: number | null;
   total_cents: number | null;
   discount_percent: number | null;
   discount_cents: number | null;

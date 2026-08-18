@@ -139,7 +139,7 @@ describe("lifecycleView — the Box 0 stepper state machine", () => {
   it("live on a paid strategy: collapses to the strip, tone by strikes", () => {
     expect(
       lifecycleView(
-        { plan: "pro", membership_live_at: daysAgo(30) },
+        { plan: "pro", plan_live_at: daysAgo(30) },
         "aggressive",
         NOW,
       ),
@@ -148,7 +148,7 @@ describe("lifecycleView — the Box 0 stepper state machine", () => {
       lifecycleView(
         {
           plan: "pro",
-          membership_live_at: daysAgo(60),
+          plan_live_at: daysAgo(60),
           strike_count: 1,
           last_strike_at: daysAgo(10),
         },
@@ -163,7 +163,7 @@ describe("lifecycleView — the Box 0 stepper state machine", () => {
       lifecycleView(
         {
           plan: "pro",
-          membership_live_at: daysAgo(400),
+          plan_live_at: daysAgo(400),
           strike_count: 2,
           last_strike_at: daysAgo(STRIKE_DECAY_DAYS),
         },
@@ -176,7 +176,7 @@ describe("lifecycleView — the Box 0 stepper state machine", () => {
   it("live but parked on Zero: rail returns with step 2 current, step 3 done", () => {
     expect(
       lifecycleView(
-        { plan: "pro", membership_live_at: daysAgo(30) },
+        { plan: "pro", plan_live_at: daysAgo(30) },
         "zero",
         NOW,
       ),
@@ -193,7 +193,7 @@ describe("lifecycleView — the Box 0 stepper state machine", () => {
       lifecycleView(
         {
           plan: "pro",
-          membership_live_at: daysAgo(60),
+          plan_live_at: daysAgo(60),
           promo_paused_until: daysAgo(-10),
         },
         "conservative",
@@ -209,7 +209,7 @@ describe("lifecycleView — the Box 0 stepper state machine", () => {
 
   it("forfeited: step 3 blocked, strategy resets (re-join re-picks)", () => {
     expect(
-      lifecycleView({ membership_forfeited_at: daysAgo(1) }, "zero", NOW),
+      lifecycleView({ plan_forfeited_at: daysAgo(1) }, "zero", NOW),
     ).toEqual({
       kind: "rail",
       join: "done",

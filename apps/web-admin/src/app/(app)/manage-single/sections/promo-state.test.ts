@@ -26,7 +26,7 @@ const daysAgo = (d: number) => new Date(NOW - d * DAY_MS).toISOString();
 describe("membershipPillState", () => {
   it("maps the five states", () => {
     expect(
-      membershipPillState({ membership_forfeited_at: daysAgo(1) }, NOW),
+      membershipPillState({ plan_forfeited_at: daysAgo(1) }, NOW),
     ).toBe("forfeited");
     expect(membershipPillState({ plan: "free" }, NOW)).toBe("not_member");
     expect(membershipPillState({ plan: null }, NOW)).toBe("not_member");
@@ -38,7 +38,7 @@ describe("membershipPillState", () => {
     ).toBe("paused");
     expect(
       membershipPillState(
-        { plan: "pro", membership_live_at: daysAgo(30) },
+        { plan: "pro", plan_live_at: daysAgo(30) },
         NOW,
       ),
     ).toBe("live");
@@ -51,7 +51,7 @@ describe("membershipPillState", () => {
         {
           plan: "pro",
           promo_paused_until: daysAgo(5),
-          membership_live_at: daysAgo(60),
+          plan_live_at: daysAgo(60),
         },
         NOW,
       ),
@@ -63,8 +63,8 @@ describe("membershipPillState", () => {
       membershipPillState(
         {
           plan: "pro",
-          membership_forfeited_at: daysAgo(2),
-          membership_live_at: daysAgo(60),
+          plan_forfeited_at: daysAgo(2),
+          plan_live_at: daysAgo(60),
         },
         NOW,
       ),
@@ -128,7 +128,7 @@ describe("describeMembershipStatus", () => {
     const note = describeMembershipStatus(
       {
         plan: "pro",
-        membership_live_at: daysAgo(400),
+        plan_live_at: daysAgo(400),
         strike_count: 2,
         last_strike_at: daysAgo(200),
       },
@@ -143,7 +143,7 @@ describe("describeMembershipStatus", () => {
     const note = describeMembershipStatus(
       {
         plan: "pro",
-        membership_live_at: daysAgo(60),
+        plan_live_at: daysAgo(60),
         strike_count: 1,
         last_strike_at: daysAgo(10),
       },
@@ -366,7 +366,7 @@ describe("lifecycleView — the Box 0 stepper state machine", () => {
   it("live on a paid strategy: collapses to the strip, tone by strikes", () => {
     expect(
       lifecycleView(
-        { plan: "pro", membership_live_at: daysAgo(30) },
+        { plan: "pro", plan_live_at: daysAgo(30) },
         "aggressive",
         NOW,
       ),
@@ -375,7 +375,7 @@ describe("lifecycleView — the Box 0 stepper state machine", () => {
       lifecycleView(
         {
           plan: "pro",
-          membership_live_at: daysAgo(60),
+          plan_live_at: daysAgo(60),
           strike_count: 1,
           last_strike_at: daysAgo(10),
         },
@@ -390,7 +390,7 @@ describe("lifecycleView — the Box 0 stepper state machine", () => {
       lifecycleView(
         {
           plan: "pro",
-          membership_live_at: daysAgo(400),
+          plan_live_at: daysAgo(400),
           strike_count: 2,
           last_strike_at: daysAgo(STRIKE_DECAY_DAYS),
         },
@@ -403,7 +403,7 @@ describe("lifecycleView — the Box 0 stepper state machine", () => {
   it("live but parked on Zero: rail returns with step 2 current, step 3 done", () => {
     expect(
       lifecycleView(
-        { plan: "pro", membership_live_at: daysAgo(30) },
+        { plan: "pro", plan_live_at: daysAgo(30) },
         "zero",
         NOW,
       ),
@@ -420,7 +420,7 @@ describe("lifecycleView — the Box 0 stepper state machine", () => {
       lifecycleView(
         {
           plan: "pro",
-          membership_live_at: daysAgo(60),
+          plan_live_at: daysAgo(60),
           promo_paused_until: daysAgo(-10),
         },
         "conservative",
@@ -436,7 +436,7 @@ describe("lifecycleView — the Box 0 stepper state machine", () => {
 
   it("forfeited: step 3 blocked, strategy resets (re-join re-picks)", () => {
     expect(
-      lifecycleView({ membership_forfeited_at: daysAgo(1) }, "zero", NOW),
+      lifecycleView({ plan_forfeited_at: daysAgo(1) }, "zero", NOW),
     ).toEqual({
       kind: "rail",
       join: "done",

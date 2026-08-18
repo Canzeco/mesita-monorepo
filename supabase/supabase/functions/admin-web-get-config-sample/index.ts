@@ -99,7 +99,7 @@ Deno.serve(async (req) => {
   const { data: consumerRows, error: cErr } = await admin
     .from("consumers")
     .select(
-      "id, first_name, full_name, class_key, consumer_instagram_followers_count, sex, birthday, country",
+      "id, first_name, full_name, class_key, instagram_followers_count, sex, birthday, country",
     )
     .limit(200);
   if (cErr) return jsonError(`consumers_failed: ${cErr.message}`, 500);
@@ -113,12 +113,12 @@ Deno.serve(async (req) => {
   if (consumerIds.length > 0) {
     const [{ data: saves, error: sErr }, { data: visits, error: vErr }] = await Promise.all([
       admin
-        .from("saved_places")
+        .from("favorites")
         .select("consumer_id, project_id")
         .in("consumer_id", consumerIds)
         .limit(300),
       admin
-        .from("tickets")
+        .from("visit_tickets")
         .select("consumer_id, project_id")
         .in("consumer_id", consumerIds)
         .not("paid_at", "is", null)
@@ -176,7 +176,7 @@ Deno.serve(async (req) => {
       // First name only.
       label: c.first_name ?? (c.full_name ? String(c.full_name).split(" ")[0] : null),
       class_key: c.class_key ?? "standard",
-      instagram_followers: c.consumer_instagram_followers_count ?? null,
+      instagram_followers: c.instagram_followers_count ?? null,
       sex: typeof c.sex === "string" ? c.sex : null,
       age,
       country: typeof c.country === "string" ? c.country : null,

@@ -39,7 +39,7 @@ Deno.serve(async (req) => {
   const admin = adminClient(envRes.env);
 
   const ticketRow = await admin
-    .from("tickets")
+    .from("visit_tickets")
     .select("id, consumer_id, status")
     .eq("id", ticketId)
     .maybeSingle();
@@ -66,7 +66,7 @@ Deno.serve(async (req) => {
   }
 
   const updated = await admin
-    .from("tickets")
+    .from("visit_tickets")
     .update({
       status: TICKET_STATUS.cancelled,
       cancelled_at: new Date().toISOString(),

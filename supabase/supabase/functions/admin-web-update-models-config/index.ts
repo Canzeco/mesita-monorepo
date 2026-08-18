@@ -124,7 +124,7 @@ Deno.serve(async (req) => {
   if (!v.ok) return jsonError(v.error, 400);
 
   const { data, error } = await admin
-    .from("app_settings")
+    .from("app_config")
     .update({ models_config: v.config, updated_by: userId })
     .eq("id", 1)
     .select("models_config")

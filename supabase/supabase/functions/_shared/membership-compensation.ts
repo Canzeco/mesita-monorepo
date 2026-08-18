@@ -24,8 +24,8 @@ export async function compensateBurnedGuest(
     .select("id, currency")
     .eq("listing_type", "partner")
     .neq("id", opts.burnedProjectId)
-    .not("membership_live_at", "is", null)
-    .is("membership_forfeited_at", null)
+    .not("plan_live_at", "is", null)
+    .is("plan_forfeited_at", null)
     .or("promo_paused_until.is.null,promo_paused_until.lt.now()")
     .limit(20);
   let candidates = live.data ?? [];

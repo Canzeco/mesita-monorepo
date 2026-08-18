@@ -24,7 +24,7 @@ type Body = { code?: string };
 
 const POLL_COLUMNS =
   "id, status, updated_at, fix_requested, fix_note, approved_at, validated_at, paid_method, " +
-  "check_subtotal_cents, tip_cents, tip_pct, total_cents, discount_percent, discount_cents, " +
+  "bill_subtotal_cents, tip_cents, tip_pct, total_cents, discount_percent, discount_cents, " +
   "story_status, review_status";
 
 Deno.serve(async (req) => {
@@ -42,7 +42,7 @@ Deno.serve(async (req) => {
 
   const admin = adminClient(envRes.env);
   const { data } = await admin
-    .from("tickets")
+    .from("visit_tickets")
     .select(POLL_COLUMNS)
     .eq("check_code", code)
     .maybeSingle();
@@ -56,7 +56,7 @@ Deno.serve(async (req) => {
     approved_at: string | null;
     validated_at: string | null;
     paid_method: string | null;
-    check_subtotal_cents: number | null;
+    bill_subtotal_cents: number | null;
     tip_cents: number | null;
     tip_pct: number | null;
     total_cents: number | null;
@@ -66,7 +66,7 @@ Deno.serve(async (req) => {
     review_status: string | null;
   };
 
-  const billed = (t.total_cents ?? 0) > 0 || (t.check_subtotal_cents ?? 0) > 0;
+  const billed = (t.total_cents ?? 0) > 0 || (t.bill_subtotal_cents ?? 0) > 0;
   // Same collapse rule as shapeCheckPayload: verified states report
   // "approved"; the verification channel itself never leaks.
   const collapse = (s: string | null): string =>
@@ -87,13 +87,13 @@ Deno.serve(async (req) => {
       paid_method: t.paid_method,
       bill: billed
         ? {
-          check_subtotal_cents: t.check_subtotal_cents,
+          bill_subtotal_cents: t.bill_subtotal_cents,
           tip_cents: t.tip_cents,
           tip_pct: t.tip_pct,
           discount_percent: t.discount_percent,
           discount_cents: t.discount_cents,
           amount_due_cents: amountDueCents({
-            checkSubtotalCents: t.check_subtotal_cents ?? 0,
+            checkSubtotalCents: t.bill_subtotal_cents ?? 0,
             discountCents: t.discount_cents ?? 0,
             tipCents: t.tip_cents ?? 0,
           }),

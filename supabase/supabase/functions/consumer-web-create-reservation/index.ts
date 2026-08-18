@@ -8,7 +8,7 @@
 //
 // Body:
 //   { project_id: uuid, reserved_at: iso8601, party_size: int, notes?: string,
-//     guest_notify?: "call" | "app" }  // default "call" (MESITA-787)
+//     consumer_notify?: "call" | "app" }  // default "call" (MESITA-787)
 //
 // Response:
 //   { ok: true, reservation: {…}, linked_coupon_id: uuid|null }
@@ -28,7 +28,7 @@ type Body = {
   reserved_at?: string;
   party_size?: number;
   notes?: string;
-  guest_notify?: string;
+  consumer_notify?: string;
 };
 
 Deno.serve(async (req) => {
@@ -70,7 +70,7 @@ Deno.serve(async (req) => {
   if (!Number.isFinite(partySize) || partySize < 1 || partySize > MAX_PARTY) {
     return json({ ok: false, error: `party_size must be 1..${MAX_PARTY}` }, 400);
   }
-  const guestNotify = body.guest_notify === "app" ? "app" : "call";
+  const guestNotify = body.consumer_notify === "app" ? "app" : "call";
 
   const admin = adminClient(envRes.env);
 
@@ -110,7 +110,7 @@ Deno.serve(async (req) => {
   // lifts the cap for EVERY consumer so a tester isn't blocked mid-run. Defaults
   // off; the admin Reservations Config page owns it.
   const { data: settingsRow } = await admin
-    .from("app_settings")
+    .from("app_config")
     .select("reservations_config")
     .eq("id", 1)
     .maybeSingle();
@@ -125,7 +125,7 @@ Deno.serve(async (req) => {
     monthStart.setUTCDate(1);
     monthStart.setUTCHours(0, 0, 0, 0);
     const { count, error: countErr } = await admin
-      .from("reservations")
+      .from("reservation_tickets")
       .select("id", { count: "exact", head: true })
       .eq("consumer_id", consumerId)
       .eq("is_test", false)
@@ -164,7 +164,7 @@ Deno.serve(async (req) => {
   let insertError: { message: string } | null = null;
   for (let i = 0; i < 3 && !reservation; i++) {
     const ins = await admin
-      .from("reservations")
+      .from("reservation_tickets")
       .insert({
         consumer_id: consumerId,
         project_id: body.project_id,
@@ -173,7 +173,7 @@ Deno.serve(async (req) => {
         reserved_at: reservedAt.toISOString(),
         party_size: partySize,
         notes: (body.notes ?? "").trim() || null,
-        guest_notify: guestNotify,
+        consumer_notify: guestNotify,
         status: "pending",
       })
       // NO `place:places(...)` embed here — reservations→places is a two-hop FK
@@ -182,7 +182,7 @@ Deno.serve(async (req) => {
       // in the schema cache". Select project_id and stitch via attachPlaces,
       // exactly like the list EFs (#518/#523).
       .select(
-        "id, reference_code, reserved_at, party_size, status, notes, guest_notify, coupon_id, created_at, project_id",
+        "id, reference_code, reserved_at, party_size, status, notes, consumer_notify, coupon_id, created_at, project_id",
       )
       .single();
     if (!ins.error) {

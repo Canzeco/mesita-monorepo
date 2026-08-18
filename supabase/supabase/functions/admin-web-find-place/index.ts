@@ -44,7 +44,7 @@ Deno.serve(async (req) => {
   }
 
   const { data, error } = await admin
-    .from("projects_view")
+    .from("profiles")
     .select("id, slug, name, status, created_at, updated_at")
     .eq("google_place_id", placeId)
     .maybeSingle();

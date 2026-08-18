@@ -76,7 +76,7 @@ Deno.serve(async (req) => {
       );
     }
     const placeRow = await admin
-      .from("projects_view")
+      .from("profiles")
       .select(PLACE_COLUMNS + PLACE_ADMIN_EMBEDDING_COLUMNS)
       .eq("id", requestedPlaceId)
       .maybeSingle();
@@ -117,7 +117,7 @@ Deno.serve(async (req) => {
       places = [];
     } else {
       const placeRows = await admin
-        .from("projects_view")
+        .from("profiles")
         .select(PLACE_COLUMNS)
         .in("id", ids);
       if (placeRows.error) {
@@ -164,9 +164,9 @@ Deno.serve(async (req) => {
   if (active && ticketsLimit > 0) {
     const activeId = (active as { id: string }).id;
     const tx = await admin
-      .from("tickets")
+      .from("visit_tickets")
       .select(
-        "id, kind, status, story_status, story_screenshot_url, story_submitted_at, story_verified_at, story_reject_reason, check_subtotal_cents, tip_cents, total_cents, redeem_cents, discount_percent, discount_cents, revealed_at, reservation_status, reservation_at, reservation_party_size, currency, created_at, paid_at, cancelled_at, cancel_reason, consumer:consumers(id, code, full_name)",
+        "id, kind, status, story_status, story_screenshot_url, story_submitted_at, story_verified_at, story_reject_reason, bill_subtotal_cents, tip_cents, total_cents, redeem_cents, discount_percent, discount_cents, revealed_at, reservation_status, reservation_at, reservation_party_size, currency, created_at, paid_at, cancelled_at, cancel_reason, consumer:consumers(id, code, full_name)",
       )
       .eq("project_id", activeId)
       .order("created_at", { ascending: false })
@@ -189,7 +189,7 @@ Deno.serve(async (req) => {
   let rewardsConfig: unknown = null;
   {
     const cfg = await admin
-      .from("app_settings")
+      .from("app_config")
       .select("rewards_config")
       .maybeSingle();
     if (cfg.error) {

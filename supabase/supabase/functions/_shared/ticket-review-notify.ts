@@ -17,7 +17,7 @@ export async function prepareTicketForReview(
   consumerId: string,
 ): Promise<{ ok: true; projectId: string } | { ok: false; error: string }> {
   const ticket = await admin
-    .from("tickets")
+    .from("visit_tickets")
     .select("id, project_id, status")
     .eq("id", ticketId)
     .eq("consumer_id", consumerId)
@@ -47,7 +47,7 @@ export async function ensureConsumerReviewNotification(
   projectId: string,
 ): Promise<void> {
   const existing = await admin
-    .from("consumer_pay_notifications")
+    .from("consumer_notifications")
     .select("id")
     .eq("ticket_id", ticketId)
     .eq("consumer_id", consumerId)
@@ -57,14 +57,14 @@ export async function ensureConsumerReviewNotification(
 
   const [placeRes, ticketRes] = await Promise.all([
     admin
-      .from("projects_view")
+      .from("profiles")
       .select("name, slug, photos, instagram_url")
       .eq("id", projectId)
       .single(),
     admin
-      .from("tickets")
+      .from("visit_tickets")
       .select(
-        "kind, discount_cents, discount_percent, total_cents, check_subtotal_cents, tip_cents",
+        "kind, discount_cents, discount_percent, total_cents, bill_subtotal_cents, tip_cents",
       )
       .eq("id", ticketId)
       .single(),
@@ -74,7 +74,7 @@ export async function ensureConsumerReviewNotification(
   const t = ticketRes.data;
   const discount = t?.discount_cents ?? 0;
 
-  await admin.from("consumer_pay_notifications").insert({
+  await admin.from("consumer_notifications").insert({
     consumer_id: consumerId,
     ticket_id: ticketId,
     kind: "review",
@@ -86,7 +86,7 @@ export async function ensureConsumerReviewNotification(
       place_photo_url: v?.photos?.[0] ?? null,
       place_instagram_handle: placeInstagramHandleForPayload(v?.instagram_url),
       ticket_kind: t?.kind ?? null,
-      check_subtotal_cents: t?.check_subtotal_cents ?? null,
+      bill_subtotal_cents: t?.bill_subtotal_cents ?? null,
       tip_cents: t?.tip_cents ?? null,
       discount_cents: discount,
       discount_percent: t?.discount_percent ?? null,

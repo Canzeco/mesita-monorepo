@@ -39,7 +39,7 @@ Deno.serve(async (req) => {
 
   const [settings, rules] = await Promise.all([
     admin
-      .from("app_settings")
+      .from("app_config")
       .select("rewards_config, updated_at")
       .eq("id", 1)
       .maybeSingle(),

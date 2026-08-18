@@ -35,7 +35,7 @@ Deno.serve(async (req) => {
   // Read once. If absent, insert with a generated code and re-read.
   const existing = await admin
     .from("consumers")
-    .select("id, code, full_name, first_name, last_name, sex, birthday, country, phone, avatar_url, instagram_handle, profile_public, profile_show_saves, profile_show_visits, profile_show_stories, class_key, class_origin, consumer_instagram_followers_count, class_expires_at")
+    .select("id, code, full_name, first_name, last_name, sex, birthday, country, phone, avatar_url, instagram_handle, privacy_public, privacy_show_saves, privacy_show_visits, privacy_show_stories, class_key, class_origin, instagram_followers_count, class_expires_at")
     .eq("id", userId)
     .maybeSingle();
   if (existing.error) {
@@ -54,7 +54,7 @@ Deno.serve(async (req) => {
       const inserted = await admin
         .from("consumers")
         .insert({ id: userId, code: codeResult.data as string })
-        .select("id, code, full_name, first_name, last_name, sex, birthday, country, phone, avatar_url, instagram_handle, profile_public, profile_show_saves, profile_show_visits, profile_show_stories, class_key, class_origin, consumer_instagram_followers_count, class_expires_at")
+        .select("id, code, full_name, first_name, last_name, sex, birthday, country, phone, avatar_url, instagram_handle, privacy_public, privacy_show_saves, privacy_show_visits, privacy_show_stories, class_key, class_origin, instagram_followers_count, class_expires_at")
         .single();
       if (!inserted.error) {
         consumer = inserted.data;
@@ -78,7 +78,7 @@ Deno.serve(async (req) => {
       .from("consumers")
       .update({ code: codeResult.data as string })
       .eq("id", userId)
-      .select("id, code, full_name, first_name, last_name, sex, birthday, country, phone, avatar_url, instagram_handle, profile_public, profile_show_saves, profile_show_visits, profile_show_stories, class_key, class_origin, consumer_instagram_followers_count, class_expires_at")
+      .select("id, code, full_name, first_name, last_name, sex, birthday, country, phone, avatar_url, instagram_handle, privacy_public, privacy_show_saves, privacy_show_visits, privacy_show_stories, class_key, class_origin, instagram_followers_count, class_expires_at")
       .single();
     if (updated.error) {
       return json({ ok: false, error: `consumer_code_set: ${updated.error.message}` }, 500);
@@ -145,7 +145,7 @@ Deno.serve(async (req) => {
   monthStart.setUTCDate(1);
   monthStart.setUTCHours(0, 0, 0, 0);
   const { count } = await admin
-    .from("reservations")
+    .from("reservation_tickets")
     .select("id", { count: "exact", head: true })
     .eq("consumer_id", userId)
     .eq("is_test", false)
@@ -157,7 +157,7 @@ Deno.serve(async (req) => {
     key: classKey,
     origin: classOrigin,
     label: tier?.label ?? "Standard",
-    followers: consumer.consumer_instagram_followers_count ?? null,
+    followers: consumer.instagram_followers_count ?? null,
     expires_at: classExpiresAt,
     // Open doors, independent of which one currently wins the slot — the
     // Class rail renders unlocked-vs-locked off this (MESITA-972).
@@ -173,7 +173,7 @@ Deno.serve(async (req) => {
   // ("revealed" — staff tapped done, billed or not). Best-effort like the
   // rest of this block: a count failure degrades to 0, never a 500.
   const { count: visitCount } = await admin
-    .from("tickets")
+    .from("visit_tickets")
     .select("id", { count: "exact", head: true })
     .eq("consumer_id", userId)
     .eq("status", CLOSED_TICKET_STATUS);

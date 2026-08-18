@@ -67,6 +67,6 @@ export async function deleteTarget(admin: SupabaseClient, kind: Kind, id: string
     case "editor":
       return await admin.from("project_members").delete().eq("id", id);
     case "editorInvite":
-      return await admin.from("account_invites").delete().eq("id", id);
+      return await admin.from("project_invites").delete().eq("id", id);
   }
 }

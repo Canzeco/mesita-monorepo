@@ -85,7 +85,7 @@ function planPatchForRow(
     currentListingType: row.listing_type as string,
   });
   if (plan === "free") {
-    patch.membership_live_at = null;
+    patch.plan_live_at = null;
     patch.first_ticket_honored_at = null;
   }
   return patch;
@@ -200,7 +200,7 @@ Deno.serve(async (req) => {
 
   // ── Paid Verified membership ──────────────────────────────────────────────
   const { data: planRow } = await admin
-    .from("business_plans")
+    .from("project_plans")
     .select("key, label, price_cents, currency")
     .eq("key", VERIFIED_PLAN)
     .maybeSingle();

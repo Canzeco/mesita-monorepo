@@ -46,9 +46,9 @@ export function buildStrikePatch(
       currentListingType: "partner",
     });
     if (listing !== undefined) patch.listing_type = listing;
-    patch.membership_live_at = null;
+    patch.plan_live_at = null;
     patch.first_ticket_honored_at = null;
-    patch.membership_forfeited_at = iso;
+    patch.plan_forfeited_at = iso;
     patch.promo_paused_until = null;
   }
 

@@ -46,7 +46,7 @@ export function apiCreateReservation(args: {
       reserved_at: args.reservedAt,
       party_size: args.partySize,
       ...(notes ? { notes } : {}),
-      guest_notify: args.guestNotify === 'app' ? 'app' : 'call',
+      consumer_notify: args.guestNotify === 'app' ? 'app' : 'call',
     },
     "Couldn't create the reservation",
   );
@@ -102,8 +102,8 @@ export type EFReservationRow = {
   next_attempt_at?: string | null;
   call_attempts?: number | null;
   /** MESITA-787 — whether a2 may ring the guest. */
-  guest_notify?: GuestNotify | null;
-  guest_confirmed_at?: string | null;
+  consumer_notify?: GuestNotify | null;
+  consumer_confirmed_at?: string | null;
   alternatives?: PlaceAlternative[] | string[] | null;
   place: {
     id: string;

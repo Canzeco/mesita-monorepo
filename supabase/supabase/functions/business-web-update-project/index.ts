@@ -565,7 +565,7 @@ Deno.serve(async (req) => {
   );
 
   let { data: place, error: updateError } = await admin
-    .from("projects_view")
+    .from("profiles")
     .update(update)
     .eq("id", projectId)
     .select(PLACE_BUSINESS_COLUMNS + ", manual_priority")
@@ -581,7 +581,7 @@ Deno.serve(async (req) => {
     const retryUpdate = { ...update };
     delete retryUpdate.category_label;
     const retry = await admin
-      .from("projects_view")
+      .from("profiles")
       .update(retryUpdate)
       .eq("id", projectId)
       .select(PLACE_BUSINESS_COLUMNS + ", manual_priority")

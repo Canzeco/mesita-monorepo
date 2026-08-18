@@ -133,7 +133,7 @@ Deno.serve(async (req) => {
   // refreshed, v11 is written on a config save, and any other keys riding the
   // blob survive untouched.
   const current = await admin
-    .from("app_settings")
+    .from("app_config")
     .select("rewards_config")
     .eq("id", 1)
     .maybeSingle();
@@ -153,7 +153,7 @@ Deno.serve(async (req) => {
   if (promosConfig) delete nextBlob.v10;
 
   const settings = await admin
-    .from("app_settings")
+    .from("app_config")
     .update({ rewards_config: nextBlob, updated_by: userId })
     .eq("id", 1)
     .select("updated_at")

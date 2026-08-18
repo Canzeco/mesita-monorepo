@@ -80,7 +80,7 @@ Deno.serve(async (req) => {
   }
 
   const { data, error } = await admin
-    .from("app_settings")
+    .from("app_config")
     .update(update)
     .eq("id", 1)
     .select(

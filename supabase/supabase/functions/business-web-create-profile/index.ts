@@ -60,7 +60,7 @@ Deno.serve(async (req) => {
   // Ensure the row exists. If absent, insert with the auth email so the
   // first update doesn't have to know about the email mirror.
   const existing = await admin
-    .from("accounts")
+    .from("managers")
     .select("id")
     .eq("id", userId)
     .maybeSingle();
@@ -72,7 +72,7 @@ Deno.serve(async (req) => {
   }
   if (!existing.data) {
     const seed = await admin
-      .from("accounts")
+      .from("managers")
       .insert({ id: userId, email: userEmail })
       .select("id")
       .single();
@@ -105,7 +105,7 @@ Deno.serve(async (req) => {
   }
 
   const update = await admin
-    .from("accounts")
+    .from("managers")
     .update(patch)
     .eq("id", userId)
     .select("id, full_name, first_name, last_name, email, phone, created_at")

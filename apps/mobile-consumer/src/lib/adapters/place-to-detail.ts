@@ -146,7 +146,7 @@ export function placeRowToDetail(
     mesita_reviews: {
       food: num(row.mesita_stars_food) ?? 0,
       service: num(row.mesita_stars_service) ?? 0,
-      ambiance: num(row.mesita_stars_ambience) ?? 0,
+      ambience: num(row.mesita_stars_ambience) ?? 0,
       value: num(row.mesita_stars_value) ?? 0,
       overall: num(row.mesita_stars_overall) ?? 0,
       total: num(row.mesita_review_count) ?? 0,
@@ -186,7 +186,7 @@ export function placeRowToDetail(
         quote: str(v.quote) ?? '',
         food: num(v.food) ?? 0,
         service: num(v.service) ?? 0,
-        ambiance: num(v.ambiance) ?? 0,
+        ambience: num(v.ambience) ?? 0,
         value: num(v.value) ?? 0,
         photo_url: str(v.photo_url),
         photo_aspect: undefined,

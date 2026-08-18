@@ -106,7 +106,7 @@ Deno.test("toConsumerSummary: maps the row, blanks become null", () => {
       full_name: "Ada Lovelace",
       phone: "+525512345678",
       instagram_handle: "",
-      consumer_instagram_followers_count: 4200,
+      instagram_followers_count: 4200,
       class_key: "aura",
       class_origin: "invitation",
       class_granted_at: "2026-08-04T00:00:00Z",

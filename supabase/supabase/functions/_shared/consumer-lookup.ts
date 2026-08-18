@@ -91,7 +91,7 @@ export function safeOrFilterValue(value: string): string {
 
 /** The consumer columns every admin identity surface reads. */
 export const CONSUMER_SUMMARY_COLUMNS =
-  "id, code, full_name, first_name, last_name, phone, instagram_handle, consumer_instagram_followers_count, class_key, class_origin, class_granted_at, invitation_class_key, invitation_granted_at";
+  "id, code, full_name, first_name, last_name, phone, instagram_handle, instagram_followers_count, class_key, class_origin, class_granted_at, invitation_class_key, invitation_granted_at";
 
 export type ConsumerSummary = {
   id: string;
@@ -125,7 +125,7 @@ export function consumerDisplayName(row: ConsumerRow): string | null {
 }
 
 export function toConsumerSummary(row: ConsumerRow): ConsumerSummary {
-  const followers = row.consumer_instagram_followers_count;
+  const followers = row.instagram_followers_count;
   return {
     id: String(row.id),
     code: str(row.code),

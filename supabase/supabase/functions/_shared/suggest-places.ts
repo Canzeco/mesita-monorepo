@@ -259,7 +259,7 @@ async function fetchMesitaPredictions(
   // the PostgREST or() grammar.
   const pattern = `%${escapeIlike(input)}%`;
   const { data, error } = await admin
-    .from("projects_view")
+    .from("profiles")
     .select("id, slug, google_place_id, name, google_name, address")
     .or(`name.ilike."${pattern}",google_name.ilike."${pattern}"`)
     .not("google_place_id", "is", null)
@@ -307,7 +307,7 @@ async function enrichByPlaceIds(
   Map<string, Pick<Prediction, "status" | "mesitaId" | "mesitaSlug">>
 > {
   const { data, error } = await admin
-    .from("projects_view")
+    .from("profiles")
     .select("id, slug, google_place_id")
     .in("google_place_id", placeIds);
   if (error) {

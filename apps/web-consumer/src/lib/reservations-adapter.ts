@@ -193,8 +193,8 @@ export function toReservationItem(row: EFReservationRow): ReservationItem {
     notes: row.notes ?? undefined,
     canCancel: live,
     canReschedule: live,
-    guestNotify: row.guest_notify === "app" ? "app" : "call",
-    guestConfirmedAt: row.guest_confirmed_at ?? null,
+    guestNotify: row.consumer_notify === "app" ? "app" : "call",
+    guestConfirmedAt: row.consumer_confirmed_at ?? null,
     alternatives,
     // linkedCoupon intentionally omitted: the list EF exposes the coupon by
     // id only (rates/class live on the coupon row).

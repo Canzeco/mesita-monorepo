@@ -225,30 +225,30 @@ async function loadPerfContext(
     reviewRows,
   ] = await Promise.all([
     admin
-      .from("saved_places")
+      .from("favorites")
       .select("id", { count: "exact", head: true })
       .eq("project_id", projectId),
     admin
-      .from("tickets")
+      .from("visit_tickets")
       .select("id", { count: "exact", head: true })
       .eq("project_id", projectId),
     admin
-      .from("tickets")
+      .from("visit_tickets")
       .select("id", { count: "exact", head: true })
       .eq("project_id", projectId)
       .not("first_scanned_at", "is", null),
     admin
-      .from("tickets")
+      .from("visit_tickets")
       .select("id", { count: "exact", head: true })
       .eq("project_id", projectId)
       .eq("status", CLOSED_STATUS),
     admin
-      .from("tickets")
+      .from("visit_tickets")
       .select("id", { count: "exact", head: true })
       .eq("project_id", projectId)
       .in("story_status", [...attested]),
     admin
-      .from("tickets")
+      .from("visit_tickets")
       .select("id", { count: "exact", head: true })
       .eq("project_id", projectId)
       .in("review_status", [...attested]),
@@ -257,7 +257,7 @@ async function loadPerfContext(
       .select("id", { count: "exact", head: true })
       .eq("project_id", projectId),
     admin
-      .from("tickets")
+      .from("visit_tickets")
       .select("consumer_id, story_status, review_status")
       .eq("project_id", projectId)
       .eq("status", CLOSED_STATUS)

@@ -32,7 +32,7 @@ Deno.serve(async (req) => {
 
   const admin = adminClient(envRes.env);
   const { data, error } = await admin
-    .from("consumer_mcp_tokens")
+    .from("consumer_connectors")
     .update({ revoked_at: new Date().toISOString() })
     .eq("id", tokenId)
     .eq("consumer_id", consumerId)

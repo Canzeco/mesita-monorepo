@@ -365,7 +365,7 @@ export function TicketScreen({ ticketId }: { ticketId: string }) {
   const [reviewDraft, setReviewDraft] = useState<TicketReviewDraft>({
     food: 0,
     service: 0,
-    ambiance: 0,
+    ambience: 0,
     value: 0,
     overall: 0,
     comments: "",
@@ -544,7 +544,7 @@ export function TicketScreen({ ticketId }: { ticketId: string }) {
 
   // ── Money, read once (C4-6: the v4 readers key on the SUBTOTAL, and the
   //    payable number is the ONE formula — frozen at approval). ────────────
-  const subtotalCents = ticket.check_subtotal_cents ?? 0;
+  const subtotalCents = ticket.bill_subtotal_cents ?? 0;
   const tipCents = ticket.tip_cents ?? 0;
   const tipPct = ticket.tip_pct ?? null;
   const discountCents = ticket.discount_cents ?? 0;
@@ -1664,7 +1664,7 @@ function RateVisitRow({ done, onOpen }: { done: boolean; onOpen: () => void }) {
           <span className="text-muted-foreground mt-0.5 block text-[11px] leading-snug">
             {done
               ? "It feeds this place's Mesita rating."
-              : "Food · service · ambiance — feeds its rating"}
+              : "Food · service · ambience — feeds its rating"}
           </span>
         </span>
         {!done ? <Star className="text-foreground/60 size-4 shrink-0" /> : null}

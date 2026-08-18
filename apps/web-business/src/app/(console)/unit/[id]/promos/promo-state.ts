@@ -55,9 +55,9 @@ export function isCardCurrent(
 
 type MembershipSnapshot = {
   plan?: unknown;
-  membership_forfeited_at?: unknown;
+  plan_forfeited_at?: unknown;
   promo_paused_until?: unknown;
-  membership_live_at?: unknown;
+  plan_live_at?: unknown;
   strike_count?: number | null;
   last_strike_at?: string | null;
 };
@@ -85,7 +85,7 @@ type PillState =
   | "forfeited";
 
 function pillFromSnap(snap: MembershipSnapshot, now: number): PillState {
-  if (snap.membership_forfeited_at) return "forfeited";
+  if (snap.plan_forfeited_at) return "forfeited";
   if (!isMemberPlan(snap.plan)) return "not_member";
   if (
     snap.promo_paused_until &&
@@ -93,7 +93,7 @@ function pillFromSnap(snap: MembershipSnapshot, now: number): PillState {
   ) {
     return "paused";
   }
-  if (snap.membership_live_at) return "live";
+  if (snap.plan_live_at) return "live";
   return "pending";
 }
 

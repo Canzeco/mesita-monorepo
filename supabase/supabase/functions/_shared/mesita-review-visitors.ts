@@ -16,7 +16,7 @@ export type MesitaVisitorCard = {
   quote: string;
   food: number;
   service: number;
-  ambiance: number;
+  ambience: number;
   value: number;
 };
 
@@ -25,15 +25,15 @@ type ConsumerJoin = {
   last_name?: string | null;
   full_name?: string | null;
   instagram_handle?: string | null;
-  profile_public?: boolean | null;
+  privacy_public?: boolean | null;
   class_key?: string | null;
-  consumer_instagram_followers_count?: number | null;
+  instagram_followers_count?: number | null;
 };
 
 type ReviewRow = {
   food: number;
   service: number;
-  ambiance: number;
+  ambience: number;
   value: number | null;
   comments: string | null;
   consumer: ConsumerJoin | ConsumerJoin[] | null;
@@ -59,9 +59,9 @@ export function mapTicketReviewsToVisitors(
   return rows.map((row) => {
     const consumer = asConsumer(row.consumer);
     const identity = publicGuestIdentity(consumer);
-    const followers = consumer.consumer_instagram_followers_count;
+    const followers = consumer.instagram_followers_count;
     const value = row.value ??
-      Math.round((row.food + row.service + row.ambiance) / 3);
+      Math.round((row.food + row.service + row.ambience) / 3);
     return {
       name: identity.name,
       handle: identity.handle,
@@ -71,7 +71,7 @@ export function mapTicketReviewsToVisitors(
       quote: (row.comments ?? "").trim(),
       food: row.food,
       service: row.service,
-      ambiance: row.ambiance,
+      ambience: row.ambience,
       value,
     };
   });

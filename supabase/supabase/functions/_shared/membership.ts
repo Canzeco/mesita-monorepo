@@ -91,7 +91,7 @@ export async function isConsumerFirstVisit(
   excludeTicketId?: string,
 ): Promise<boolean> {
   let query = admin
-    .from("tickets")
+    .from("visit_tickets")
     .select("id", { count: "exact", head: true })
     .eq("consumer_id", consumerId)
     .eq("project_id", projectId);

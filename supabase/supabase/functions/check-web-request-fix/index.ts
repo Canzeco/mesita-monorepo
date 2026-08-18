@@ -109,7 +109,7 @@ Deno.serve(async (req) => {
   // CAS: still scanned, not approved (approve⊕fix is also a DB constraint),
   // and unchanged since the staff screen rendered.
   const update = await admin
-    .from("tickets")
+    .from("visit_tickets")
     .update({ fix_requested: fix, fix_note: note || null })
     .eq("id", ticket.id)
     .eq("status", TICKET_STATUS.scanned)
@@ -122,7 +122,7 @@ Deno.serve(async (req) => {
   }
   if (!update.data) {
     const fresh = await admin
-      .from("tickets")
+      .from("visit_tickets")
       .select("id, status, fix_requested")
       .eq("id", ticket.id)
       .maybeSingle();

@@ -82,7 +82,7 @@ Deno.serve(async (req) => {
   const admin = adminClient(envRes.env);
 
   const ticketRow = await admin
-    .from("tickets")
+    .from("visit_tickets")
     .select("id, project_id, consumer_id, kind, status, review_status, fix_requested")
     .eq("id", ticketId)
     .maybeSingle();
@@ -115,7 +115,7 @@ Deno.serve(async (req) => {
 
   // The place's program must run the Google Review rung at its strategy.
   const placeRow = await admin
-    .from("projects_view")
+    .from("profiles")
     .select(
       "id, welcome_free_rate, welcome_premium_rate, free_rate, premium_rate",
     )
@@ -156,7 +156,7 @@ Deno.serve(async (req) => {
 
   const now = new Date().toISOString();
   const updated = await admin
-    .from("tickets")
+    .from("visit_tickets")
     .update({
       review_status: "self_verified",
       review_submitted_at: now,

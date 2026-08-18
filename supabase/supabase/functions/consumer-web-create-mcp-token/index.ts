@@ -62,7 +62,7 @@ Deno.serve(async (req) => {
 
   // Cap active tokens per consumer so a buggy client can't mint forever.
   const { count, error: countErr } = await admin
-    .from("consumer_mcp_tokens")
+    .from("consumer_connectors")
     .select("id", { count: "exact", head: true })
     .eq("consumer_id", consumerId)
     .is("revoked_at", null);
@@ -82,7 +82,7 @@ Deno.serve(async (req) => {
 
   const minted = await mintMcpTokenPlaintext();
   const { data, error } = await admin
-    .from("consumer_mcp_tokens")
+    .from("consumer_connectors")
     .insert({
       consumer_id: consumerId,
       token_prefix: minted.prefix,

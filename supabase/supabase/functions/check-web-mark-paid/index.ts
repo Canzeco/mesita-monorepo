@@ -90,7 +90,7 @@ Deno.serve(async (req) => {
   // optional bill — an unbilled ticket refuses to close until submit-bill
   // ran. Same billed test as get-ticket/submit-bill (either amount > 0).
   const billed = (ticket.total_cents ?? 0) > 0 ||
-    (ticket.check_subtotal_cents ?? 0) > 0;
+    (ticket.bill_subtotal_cents ?? 0) > 0;
   if (settings.requireBill && !billed) {
     return json(
       {

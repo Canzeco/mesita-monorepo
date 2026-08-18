@@ -39,7 +39,7 @@ Deno.serve(async (req) => {
   const admin = adminClient(envRes.env);
 
   const ticketRow = await admin
-    .from("tickets")
+    .from("visit_tickets")
     .select("id, project_id, consumer_id, status")
     .eq("id", ticketId)
     .maybeSingle();

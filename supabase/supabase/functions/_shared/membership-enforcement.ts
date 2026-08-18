@@ -6,7 +6,7 @@
 // lane, so "not activated blocks creation" was a deadlock: no ticket could
 // ever exist to be honored. (Same failure class as the retired WhatsApp
 // ping, which once left every paid place stuck the same way, MESITA-833.)
-// first_ticket_honored_at / membership_live_at still get stamped on the
+// first_ticket_honored_at / plan_live_at still get stamped on the
 // first close and remain the activation signal for admin & Performance.
 // Strikes (refused/ignored QR): 1 warning · 2 pause promo 30d ·
 // 3 remove paid posture (plan→free, rates cleared) + forfeit stamp.
@@ -33,11 +33,11 @@ export type MembershipRow = {
   id: string;
   plan: string | null;
   first_ticket_honored_at: string | null;
-  membership_live_at: string | null;
+  plan_live_at: string | null;
   strike_count: number;
   last_strike_at: string | null;
   promo_paused_until: string | null;
-  membership_forfeited_at: string | null;
+  plan_forfeited_at: string | null;
 };
 
 export type PromoLaneBlockCode =
@@ -83,7 +83,7 @@ export function assessPromoLane(
   const strikeCount = effectiveStrikeCount(row, now);
 
   // Forfeit wins even after plan is cleared to free (strike 3).
-  if (row.membership_forfeited_at) {
+  if (row.plan_forfeited_at) {
     return {
       open: false,
       code: "forfeited",
@@ -125,7 +125,7 @@ export async function loadMembershipRow(
   const res = await admin
     .from("projects")
     .select(
-      "id, plan, first_ticket_honored_at, membership_live_at, strike_count, last_strike_at, promo_paused_until, membership_forfeited_at",
+      "id, plan, first_ticket_honored_at, plan_live_at, strike_count, last_strike_at, promo_paused_until, plan_forfeited_at",
     )
     .eq("id", projectId)
     .maybeSingle();
@@ -146,7 +146,7 @@ async function maybeDecayStrikes(
     .update({ strike_count: effective })
     .eq("id", row.id)
     .select(
-      "id, plan, first_ticket_honored_at, membership_live_at, strike_count, last_strike_at, promo_paused_until, membership_forfeited_at",
+      "id, plan, first_ticket_honored_at, plan_live_at, strike_count, last_strike_at, promo_paused_until, plan_forfeited_at",
     )
     .single();
   if (update.error || !update.data) return { ...row, strike_count: effective };
@@ -159,14 +159,14 @@ function buildActivationPatch(
 ): { patch: Record<string, unknown>; membershipLive: boolean } {
   const iso = now.toISOString();
   const patch: Record<string, unknown> = { first_ticket_honored_at: iso };
-  let membershipLive = !!row.membership_live_at;
+  let membershipLive = !!row.plan_live_at;
 
   if (
-    !row.membership_live_at &&
-    !row.membership_forfeited_at &&
+    !row.plan_live_at &&
+    !row.plan_forfeited_at &&
     isPaidPlan(row.plan)
   ) {
-    patch.membership_live_at = iso;
+    patch.plan_live_at = iso;
     membershipLive = true;
   }
 
@@ -194,7 +194,7 @@ export async function recordFirstTicketHonored(
   if (row.first_ticket_honored_at) {
     return {
       ok: true,
-      membershipLive: !!row.membership_live_at,
+      membershipLive: !!row.plan_live_at,
       firstHonor: false,
     };
   }
@@ -236,7 +236,7 @@ export async function recordMembershipStrike(
 
   if (opts.ticketId) {
     const existing = await admin
-      .from("membership_strikes")
+      .from("project_strikes")
       .select("id, strike_number, compensation_coupon_id")
       .eq("ticket_id", opts.ticketId)
       .maybeSingle();
@@ -273,7 +273,7 @@ export async function recordMembershipStrike(
     if (comp.ok) compensationCouponId = comp.couponId;
   }
 
-  const insert = await admin.from("membership_strikes").insert({
+  const insert = await admin.from("project_strikes").insert({
     project_id: opts.projectId,
     consumer_id: opts.consumerId ?? null,
     ticket_id: opts.ticketId ?? null,

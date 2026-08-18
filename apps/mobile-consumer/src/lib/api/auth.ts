@@ -37,10 +37,10 @@ export type ConsumerProfile = {
   instagram_handle?: string | null;
   avatar_url?: string | null;
   // Settings → Privacy (MESITA-76 / MESITA-913). Defaults true when EF omits.
-  profile_public?: boolean;
-  profile_show_saves?: boolean;
-  profile_show_visits?: boolean;
-  profile_show_stories?: boolean;
+  privacy_public?: boolean;
+  privacy_show_saves?: boolean;
+  privacy_show_visits?: boolean;
+  privacy_show_stories?: boolean;
 };
 
 // Matches consumer-web-get-profile `class` payload (EF uses `key`).
@@ -128,10 +128,10 @@ export type ConsumerProfilePatch = {
   birthday?: string; // YYYY-MM-DD
   // Public URL after Storage upload, or null to clear (MESITA-953).
   avatar_url?: string | null;
-  profile_public?: boolean;
-  profile_show_saves?: boolean;
-  profile_show_visits?: boolean;
-  profile_show_stories?: boolean;
+  privacy_public?: boolean;
+  privacy_show_saves?: boolean;
+  privacy_show_visits?: boolean;
+  privacy_show_stories?: boolean;
 };
 
 // Identity writes still require first_name + last_name as a pair (EF 400s

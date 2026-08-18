@@ -46,7 +46,7 @@ export function isPlausibleCheckCode(code: string): boolean {
 export const CHECK_TICKET_COLUMNS =
   "id, project_id, consumer_id, kind, status, check_code, first_scanned_at, " +
   "story_status, story_screenshot_url, review_status, review_screenshot_url, " +
-  "check_subtotal_cents, tip_cents, tip_pct, total_cents, discount_percent, discount_cents, " +
+  "bill_subtotal_cents, tip_cents, tip_pct, total_cents, discount_percent, discount_cents, " +
   "bill_source, currency, created_at, revealed_at, cancelled_at, " +
   "updated_at, approved_at, fix_requested, fix_note, paid_method, validated_at";
 
@@ -62,7 +62,7 @@ export type CheckTicketRow = {
   story_screenshot_url: string | null;
   review_status: string | null;
   review_screenshot_url: string | null;
-  check_subtotal_cents: number | null;
+  bill_subtotal_cents: number | null;
   tip_cents: number | null;
   tip_pct: number | null;
   total_cents: number | null;
@@ -87,7 +87,7 @@ export async function loadTicketByCheckCode(
 ): Promise<CheckTicketRow | null> {
   if (!isPlausibleCheckCode(code)) return null;
   const { data } = await admin
-    .from("tickets")
+    .from("visit_tickets")
     .select(CHECK_TICKET_COLUMNS)
     .eq("check_code", code)
     .maybeSingle();
@@ -175,7 +175,7 @@ export function shapeCheckPayload(args: {
     },
     bill: billed
       ? {
-        check_subtotal_cents: ticket.check_subtotal_cents,
+        bill_subtotal_cents: ticket.bill_subtotal_cents,
         tip_cents: ticket.tip_cents,
         tip_pct: ticket.tip_pct,
         discount_percent: ticket.discount_percent,
@@ -184,7 +184,7 @@ export function shapeCheckPayload(args: {
         // subtotal − discount + tip, from business-ticket-billing. Three
         // hand-rolled copies used to agree only because tip was always 0.
         amount_due_cents: amountDueCents({
-          checkSubtotalCents: ticket.check_subtotal_cents ?? 0,
+          checkSubtotalCents: ticket.bill_subtotal_cents ?? 0,
           discountCents: ticket.discount_cents ?? 0,
           tipCents: ticket.tip_cents ?? 0,
         }),

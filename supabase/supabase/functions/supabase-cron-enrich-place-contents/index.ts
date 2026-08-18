@@ -147,7 +147,7 @@ serveEnrichStage("contents", async (admin, env, row) => {
   // already picked phone — unless respectAdminOverride is off. Legacy
   // whatsapp/instagram picks are NOT overrides (hasReservationTarget).
   const { data: settingsRow } = await admin
-    .from("app_settings")
+    .from("app_config")
     .select("reservations_config")
     .eq("id", 1)
     .maybeSingle();

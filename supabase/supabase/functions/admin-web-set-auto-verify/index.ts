@@ -74,7 +74,7 @@ Deno.serve(async (req) => {
 
   const column = COLUMN[body.method];
   const { data, error } = await admin
-    .from("app_settings")
+    .from("app_config")
     .update({ [column]: body.enabled, updated_by: userId })
     .eq("id", 1)
     .select(

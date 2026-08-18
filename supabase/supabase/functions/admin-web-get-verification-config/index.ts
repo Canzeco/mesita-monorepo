@@ -36,7 +36,7 @@ Deno.serve(async (req) => {
   if (!saRes.ok) return saRes.response;
 
   const { data, error } = await admin
-    .from("app_settings")
+    .from("app_config")
     .select(
       "create_places_as_verified, auto_verify_ai_call, auto_verify_ai_email, auto_verify_video, updated_at",
     )

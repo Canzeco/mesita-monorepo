@@ -71,7 +71,7 @@ Deno.serve(async (req) => {
 
   // 1. Place row by Place ID.
   const { data: place, error: placeError } = await admin
-    .from("projects_view")
+    .from("profiles")
     .select(PLACE_COLUMNS)
     .eq("google_place_id", placeId)
     .maybeSingle();

@@ -54,7 +54,7 @@ export async function loadModelsConfig(
   raw: ModelsConfig | null;
 }> {
   const { data, error } = await admin
-    .from("app_settings")
+    .from("app_config")
     .select("models_config")
     .eq("id", 1)
     .maybeSingle();

@@ -52,7 +52,7 @@ Deno.serve(async (req) => {
     // ON CONFLICT DO NOTHING in the coupons insert, so a duplicate save
     // request from the client doesn't spawn duplicate coupons.
     const { data: saved, error: saveErr } = await admin
-      .from("saved_places")
+      .from("favorites")
       .upsert(
         { consumer_id: consumerId, project_id: body.project_id },
         { onConflict: "consumer_id,project_id" },
@@ -79,7 +79,7 @@ Deno.serve(async (req) => {
   // saved === false → delete bookmark. The cancel-coupon trigger flips
   // any active coupon for this (consumer, place) to 'cancelled'.
   const { error: delErr } = await admin
-    .from("saved_places")
+    .from("favorites")
     .delete()
     .eq("consumer_id", consumerId)
     .eq("project_id", body.project_id);

@@ -171,7 +171,7 @@ Deno.serve(async (req) => {
     const createdQuery = wantType("atlas.place_created")
       ? (() => {
         let qb = admin
-          .from("projects_view")
+          .from("profiles")
           .select(
             "id, slug, name, address, category_label, google_place_id, listing_type, status, created_at, enriched_at",
           )
@@ -185,7 +185,7 @@ Deno.serve(async (req) => {
     const enrichedQuery = wantType("atlas.place_enriched")
       ? (() => {
         let qb = admin
-          .from("projects_view")
+          .from("profiles")
           .select(
             "id, slug, name, address, category_label, google_place_id, editorial_summary, description, details, enriched_at",
           )
@@ -434,14 +434,14 @@ Deno.serve(async (req) => {
         // by informal close but is no longer the feed's vocabulary.
         activitySource(
           "tickets",
-          "status, kind, revealed_at, check_subtotal_cents, discount_percent, discount_cents, currency, ",
+          "status, kind, revealed_at, bill_subtotal_cents, discount_percent, discount_cents, currency, ",
           "revealed_at",
           wantType("rewards.ticket_closed"),
           { status: CLOSED_TICKET_STATUS },
         ),
         activitySource(
           "ticket_reviews",
-          "overall, food, service, ambiance, comments, ",
+          "overall, food, service, ambience, comments, ",
           "created_at",
           wantType("rewards.review_submitted"),
         ),
@@ -522,7 +522,7 @@ Deno.serve(async (req) => {
       status: string;
       kind: string;
       revealed_at: string;
-      check_subtotal_cents: number | null;
+      bill_subtotal_cents: number | null;
       discount_percent: number | null;
       discount_cents: number | null;
       currency: string | null;
@@ -530,7 +530,7 @@ Deno.serve(async (req) => {
       push("rewards.ticket_closed", "rewards", r, r.revealed_at, null, {
         status: r.status,
         kind: r.kind,
-        subtotalCents: r.check_subtotal_cents,
+        subtotalCents: r.bill_subtotal_cents,
         discountPercent: r.discount_percent,
         discountCents: r.discount_cents,
         currency: r.currency,
@@ -541,7 +541,7 @@ Deno.serve(async (req) => {
       overall: number | null;
       food: number | null;
       service: number | null;
-      ambiance: number | null;
+      ambience: number | null;
       comments: string | null;
     }>) {
       push(
@@ -554,7 +554,7 @@ Deno.serve(async (req) => {
           overall: r.overall,
           food: r.food,
           service: r.service,
-          ambiance: r.ambiance,
+          ambience: r.ambience,
         },
       );
     }

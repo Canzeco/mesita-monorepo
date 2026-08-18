@@ -34,7 +34,7 @@ Deno.test("parseName: blank half (whitespace-only, cleaned to null) is rejected"
 
 Deno.test("parseName: patches that don't touch the name pass through", () => {
   assertEquals(parseName({ birthday: "1990-04-02" }, null, null).ok, true);
-  assertEquals(parseName({ profile_public: true }, null, null).ok, true);
+  assertEquals(parseName({ privacy_public: true }, null, null).ok, true);
   // Legacy single-field clients still allowed — they don't set first/last.
   assertEquals(parseName({ full_name: "Ana Ruiz" }, null, null).ok, true);
 });
@@ -63,7 +63,7 @@ Deno.test("buildProfilePatch: name pair also refreshes full_name", () => {
 
 Deno.test("buildProfilePatch: privacy flags alone (MESITA-913)", () => {
   const res = buildProfilePatch(
-    { profile_public: false, profile_show_stories: false },
+    { privacy_public: false, privacy_show_stories: false },
     {
       firstName: null,
       lastName: null,
@@ -77,8 +77,8 @@ Deno.test("buildProfilePatch: privacy flags alone (MESITA-913)", () => {
   assertEquals(res.ok, true);
   if (!res.ok) return;
   assertEquals(res.patch, {
-    profile_public: false,
-    profile_show_stories: false,
+    privacy_public: false,
+    privacy_show_stories: false,
   });
 });
 

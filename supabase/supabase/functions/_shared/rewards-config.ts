@@ -312,7 +312,7 @@ export async function loadRewardsGrid(
   admin: SupabaseClient,
 ): Promise<RewardsGrid> {
   const [settingsRes, rulesRes] = await Promise.all([
-    admin.from("app_settings").select("rewards_config").eq("id", 1).maybeSingle(),
+    admin.from("app_config").select("rewards_config").eq("id", 1).maybeSingle(),
     admin.from("reward_rules").select("strategy, class, action, discount_percent"),
   ]);
 

@@ -8,7 +8,7 @@
 //   ─────────────  ──────────────────────────────────────────  ──────────────
 //   invitation     consumers.invitation_class_key              'invitation'
 //   subscription   live consumer_subscriptions row (Stripe)    'subscription'
-//   reach          consumer_instagram_followers_count vs the   'instagram'
+//   reach          instagram_followers_count vs the   'instagram'
 //                  highest classes.follower_threshold cleared
 //   standard       always open                                 'default'
 //
@@ -130,7 +130,7 @@ export async function recomputeConsumerClass(
   const consumerRes = await admin
     .from("consumers")
     .select(
-      "id, class_key, class_origin, class_expires_at, consumer_instagram_followers_count, invitation_class_key",
+      "id, class_key, class_origin, class_expires_at, instagram_followers_count, invitation_class_key",
     )
     .eq("id", consumerId)
     .maybeSingle();
@@ -162,7 +162,7 @@ export async function recomputeConsumerClass(
 
   const effective = pickEffectiveClass({
     classes,
-    followers: (consumer.consumer_instagram_followers_count as number) ?? 0,
+    followers: (consumer.instagram_followers_count as number) ?? 0,
     invitationClassKey: (consumer.invitation_class_key as string) ?? null,
     hasLiveSubscription: subRes.data != null,
     subscriptionPeriodEnd: subRes.data?.current_period_end as

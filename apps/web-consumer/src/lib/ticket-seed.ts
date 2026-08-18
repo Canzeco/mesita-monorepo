@@ -87,7 +87,7 @@ export function ticketRowFromCreate(
     review_submitted_at: null,
     check_code: t.check_code,
     first_scanned_at: t.first_scanned_at ?? null,
-    check_subtotal_cents: null,
+    bill_subtotal_cents: null,
     total_cents: null,
     discount_percent: null,
     discount_cents: null,

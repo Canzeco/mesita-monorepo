@@ -108,7 +108,7 @@ async function processAssetsInBackground(
   if (finalPhotos.length === 0) return;
 
   const { error: placeErr } = await admin
-    .from("projects_view")
+    .from("profiles")
     .update({ photos: finalPhotos })
     .eq("id", projectId);
   if (placeErr) {

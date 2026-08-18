@@ -58,7 +58,7 @@ export async function fetchCandidatePool<T extends { lat: number | null; lng: nu
   if (lat != null && lng != null) {
     const { latDelta, lngDelta } = radiusBoundingBox(lat, radiusKm);
     const { data, error } = await admin
-      .from("projects_view")
+      .from("profiles")
       .select(POOL_PLACE_COLUMNS)
       .eq("status", "active")
       .gte("lat", lat - latDelta)
@@ -76,7 +76,7 @@ export async function fetchCandidatePool<T extends { lat: number | null; lng: nu
   }
 
   const { data, error } = await admin
-    .from("projects_view")
+    .from("profiles")
     .select(POOL_PLACE_COLUMNS)
     .eq("status", "active")
     .order("created_at", { ascending: false })

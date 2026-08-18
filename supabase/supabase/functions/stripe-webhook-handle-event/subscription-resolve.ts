@@ -69,7 +69,7 @@ export async function resolvePlanKey(
   if (!price) return null;
 
   const { data } = await admin
-    .from("business_plans")
+    .from("project_plans")
     .select("key")
     .eq("stripe_price_id", price.id)
     .maybeSingle();

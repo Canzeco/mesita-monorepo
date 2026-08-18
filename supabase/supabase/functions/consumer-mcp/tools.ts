@@ -91,7 +91,7 @@ export const TOOLS: ToolDef[] = [
         },
         party_size: { type: "number", minimum: 1, maximum: 20 },
         notes: { type: "string" },
-        guest_notify: {
+        consumer_notify: {
           type: "string",
           enum: ["call", "app"],
           description:

@@ -134,7 +134,7 @@ Deno.serve(async (req) => {
   const { data: current, error: readCurrent } = await admin
     .from("projects")
     .select(
-      "plan, listing_type, welcome_free_rate, welcome_premium_rate, free_rate, premium_rate, membership_forfeited_at",
+      "plan, listing_type, welcome_free_rate, welcome_premium_rate, free_rate, premium_rate, plan_forfeited_at",
     )
     .eq("id", projectId)
     .maybeSingle();
@@ -194,7 +194,7 @@ Deno.serve(async (req) => {
     });
 
     const { data: place, error: readError } = await admin
-      .from("projects_view")
+      .from("profiles")
       .select(PLACE_BUSINESS_COLUMNS)
       .eq("id", projectId)
       .single();
@@ -228,17 +228,17 @@ Deno.serve(async (req) => {
   });
 
   // T10 — admin re-grant after forfeit restarts pending activation.
-  if (plan !== "free" && row.membership_forfeited_at) {
-    patch.membership_forfeited_at = null;
+  if (plan !== "free" && row.plan_forfeited_at) {
+    patch.plan_forfeited_at = null;
     patch.strike_count = 0;
     patch.promo_paused_until = null;
-    patch.membership_live_at = null;
+    patch.plan_live_at = null;
     patch.first_ticket_honored_at = null;
   }
 
   // T13 — voluntary drop clears activation stamps for a fresh re-join.
   if (plan === "free") {
-    patch.membership_live_at = null;
+    patch.plan_live_at = null;
     patch.first_ticket_honored_at = null;
   }
 
@@ -256,7 +256,7 @@ Deno.serve(async (req) => {
   }
 
   const { data: place, error: readError } = await admin
-    .from("projects_view")
+    .from("profiles")
     .select(PLACE_BUSINESS_COLUMNS)
     .eq("id", projectId)
     .single();

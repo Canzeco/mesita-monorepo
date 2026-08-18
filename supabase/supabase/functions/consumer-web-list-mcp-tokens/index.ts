@@ -22,7 +22,7 @@ Deno.serve(async (req) => {
 
   const admin = adminClient(envRes.env);
   const { data, error } = await admin
-    .from("consumer_mcp_tokens")
+    .from("consumer_connectors")
     .select(
       "id, token_prefix, label, created_at, last_used_at, revoked_at",
     )

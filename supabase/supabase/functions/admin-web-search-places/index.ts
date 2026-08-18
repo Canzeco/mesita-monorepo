@@ -56,7 +56,7 @@ Deno.serve(async (req) => {
   if (q.length === 0) {
     // Empty query — browse recent places for the catalog landing state.
     const { data, error } = await admin
-      .from("projects_view")
+      .from("profiles")
       .select(cols)
       .order("updated_at", { ascending: false })
       .limit(limit);
@@ -64,7 +64,7 @@ Deno.serve(async (req) => {
     rows = (data ?? []) as Record<string, unknown>[];
   } else if (UUID_RE.test(q)) {
     // Exact id paste — return that one place.
-    const { data, error } = await admin.from("projects_view").select(cols).eq("id", q).maybeSingle();
+    const { data, error } = await admin.from("profiles").select(cols).eq("id", q).maybeSingle();
     if (error) return json({ ok: false, error: `search_failed: ${error.message}` }, 500);
     rows = data ? [data as Record<string, unknown>] : [];
   } else if (q.length < 2) {
@@ -80,7 +80,7 @@ Deno.serve(async (req) => {
     const escaped = safe.replace(/[%_\\]/g, (m) => `\\${m}`);
     const pattern = `%${escaped}%`;
     const { data, error } = await admin
-      .from("projects_view")
+      .from("profiles")
       .select(cols)
       .or(
         `name.ilike."${pattern}",google_name.ilike."${pattern}",slug.ilike."${pattern}"`,

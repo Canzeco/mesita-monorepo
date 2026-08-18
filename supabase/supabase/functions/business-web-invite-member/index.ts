@@ -82,9 +82,9 @@ Deno.serve(async (req) => {
   // (drives the link-directly path), and any pending invite for the
   // same address (so we can short-circuit with a friendly error).
   const [existingBusiness, existingInvite] = await Promise.all([
-    admin.from("accounts").select("id").ilike("email", email).maybeSingle(),
+    admin.from("managers").select("id").ilike("email", email).maybeSingle(),
     admin
-      .from("account_invites")
+      .from("project_invites")
       .select("id, expires_at, claimed_at")
       .eq("project_id", projectId)
       .ilike("email", email)
@@ -127,7 +127,7 @@ Deno.serve(async (req) => {
   const token = newInviteToken();
 
   const invite = await admin
-    .from("account_invites")
+    .from("project_invites")
     .insert({
       project_id: projectId,
       email,

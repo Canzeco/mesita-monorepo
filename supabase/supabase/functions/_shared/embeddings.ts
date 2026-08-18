@@ -85,7 +85,7 @@ export async function embedAndPersistPlaces<T extends EmbeddablePlace>(
       const v = byIdx.get(i);
       if (!v || v.length !== EMBEDDING_DIMS) return;
       const { error } = await admin
-        .from("projects_view")
+        .from("profiles")
         .update({
           embedding: vectorLiteral(v),
           embedding_source_hash: inp.hash,

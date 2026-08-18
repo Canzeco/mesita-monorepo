@@ -25,7 +25,7 @@ export function ReviewCard(props: MesitaPayload | GooglePayload) {
   if (props.kind === 'mesita') {
     const v = props.data;
     const overall = Math.round(
-      (v.food + v.service + v.ambiance + v.value) / 4,
+      (v.food + v.service + v.ambience + v.value) / 4,
     );
     const isLong = v.quote.length > LONG_QUOTE_THRESHOLD;
     return (
@@ -45,7 +45,7 @@ export function ReviewCard(props: MesitaPayload | GooglePayload) {
           {' · '}Service{' '}
           <Text className="font-semibold text-foreground">{v.service}</Text>
           {' · '}Ambience{' '}
-          <Text className="font-semibold text-foreground">{v.ambiance}</Text>
+          <Text className="font-semibold text-foreground">{v.ambience}</Text>
           {' · '}Value{' '}
           <Text className="font-semibold text-foreground">{v.value}</Text>
         </Text>

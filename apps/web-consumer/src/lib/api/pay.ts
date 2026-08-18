@@ -3,7 +3,7 @@ import type { Database } from "@/lib/supabase/database.types";
 import { invokeEF } from "./_invoke";
 
 type PayNotificationRow =
-  Database["public"]["Tables"]["consumer_pay_notifications"]["Row"];
+  Database["public"]["Tables"]["consumer_notifications"]["Row"];
 
 /** Stored on consumer_pay_notifications.payload for Pay → Tickets. */
 export type TicketBillPayload = {
@@ -14,7 +14,7 @@ export type TicketBillPayload = {
   /** Bare handle (no @), from place instagram_url at billing time. */
   place_instagram_handle?: string | null;
   ticket_kind?: string;
-  check_subtotal_cents?: number;
+  bill_subtotal_cents?: number;
   tip_cents?: number;
   total_cents?: number;
   discount_cents?: number;
@@ -51,7 +51,7 @@ export async function submitTicketReview(
     ticketId: string;
     food: number;
     service: number;
-    ambiance: number;
+    ambience: number;
     value: number;
     overall: number;
     comments?: string;

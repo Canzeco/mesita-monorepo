@@ -44,7 +44,7 @@ Deno.serve(async (req) => {
   }
 
   const { data, error } = await supabase
-    .from("projects_view")
+    .from("profiles")
     .select(PLACE_PUBLIC_COLUMNS)
     .order("created_at", { ascending: false })
     .limit(limit);

@@ -56,7 +56,7 @@ Deno.serve(async (req) => {
   // any later ownership claim. NO project_members insert — ownership lands at
   // admin-web-decide-verification.
   const { error: businessError } = await admin
-    .from("accounts")
+    .from("managers")
     .upsert({ id: userId, email: userEmail }, { onConflict: "id" });
   if (businessError) {
     return json({ ok: false, error: `business_upsert: ${businessError.message}` }, 500);

@@ -81,7 +81,7 @@ Deno.serve(async (req) => {
   const admin = adminClient(envRes.env);
 
   const ticketRow = await admin
-    .from("tickets")
+    .from("visit_tickets")
     .select("id, project_id, consumer_id, kind, status, story_status, fix_requested")
     .eq("id", ticketId)
     .maybeSingle();
@@ -144,7 +144,7 @@ Deno.serve(async (req) => {
   // > 0) — checked on every submit, not just a fresh opt-in, because the
   // ticket may have been created before the place changed its program.
   const placeRow = await admin
-    .from("projects_view")
+    .from("profiles")
     .select(
       "id, welcome_free_rate, welcome_premium_rate, free_rate, premium_rate",
     )
@@ -163,7 +163,7 @@ Deno.serve(async (req) => {
 
   const now = new Date().toISOString();
   const updated = await admin
-    .from("tickets")
+    .from("visit_tickets")
     .update({
       story_status: "self_verified",
       story_submitted_at: now,

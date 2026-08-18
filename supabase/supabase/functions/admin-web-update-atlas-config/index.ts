@@ -254,7 +254,7 @@ Deno.serve(async (req) => {
   //   IG keep ≤ IG depth · analyze ≤ keep per source · save ≤ analyzed total.
   if (FUNNEL_COLS.some((c) => c in patch)) {
     const { data: cur } = await admin
-      .from("app_settings")
+      .from("app_config")
       .select(
         "atlas_gather_google_images, atlas_gather_instagram_depth, atlas_gather_instagram_posts, atlas_analyze_google_images, atlas_analyze_instagram_images, atlas_save_total_images",
       )
@@ -284,7 +284,7 @@ Deno.serve(async (req) => {
   patch.updated_by = userId;
 
   const { data, error } = await admin
-    .from("app_settings")
+    .from("app_config")
     .update(patch)
     .eq("id", 1)
     .select(

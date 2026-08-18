@@ -16,7 +16,7 @@ Deno.test("isPrivateAccount: only explicit false is private", () => {
 Deno.test("publicGuestIdentity: private strips name + handle", () => {
   assertEquals(
     publicGuestIdentity({
-      profile_public: false,
+      privacy_public: false,
       full_name: "Ada Lovelace",
       first_name: "Ada",
       instagram_handle: "ada",
@@ -28,7 +28,7 @@ Deno.test("publicGuestIdentity: private strips name + handle", () => {
 Deno.test("publicGuestIdentity: public keeps name + @handle", () => {
   assertEquals(
     publicGuestIdentity({
-      profile_public: true,
+      privacy_public: true,
       full_name: "Ada Lovelace",
       instagram_handle: "ada",
     }),

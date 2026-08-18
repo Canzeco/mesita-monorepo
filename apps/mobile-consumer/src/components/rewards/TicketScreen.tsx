@@ -302,7 +302,7 @@ export function TicketScreen({
   const [reviewDraft, setReviewDraft] = useState<TicketReviewDraft>({
     food: 0,
     service: 0,
-    ambiance: 0,
+    ambience: 0,
     value: 0,
     overall: 0,
     comments: "",
@@ -471,7 +471,7 @@ export function TicketScreen({
 
   // Money, read once (C4): v4 readers key on the SUBTOTAL; the payable
   // number is frozen at approval.
-  const subtotalCents = ticket.check_subtotal_cents ?? 0;
+  const subtotalCents = ticket.bill_subtotal_cents ?? 0;
   const tipCents = ticket.tip_cents ?? 0;
   const tipPct = ticket.tip_pct ?? null;
   const discountCents = ticket.discount_cents ?? 0;
@@ -1178,7 +1178,7 @@ export function TicketScreen({
                     className="text-muted-foreground"
                     style={{ fontSize: 11 }}
                   >
-                    Food · service · ambiance — feeds its rating
+                    Food · service · ambience — feeds its rating
                   </Text>
                 </View>
               </Pressable>

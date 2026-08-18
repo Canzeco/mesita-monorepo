@@ -141,9 +141,9 @@ export type EnrichConfig = {
 };
 
 const DEFAULT_ANALYSIS_PROMPT =
-  "Describe this place photo: subject (ambiance / interior / exterior / food / people / detail), visual quality, lighting, and whether it is representative and appealing. Be concise and factual.";
+  "Describe this place photo: subject (ambience / interior / exterior / food / people / detail), visual quality, lighting, and whether it is representative and appealing. Be concise and factual.";
 const DEFAULT_SORTING_PROMPT =
-  "Rank these place photos best to worst for a should-we-go-tonight decision. We sell EXPERIENCES: weight beautiful place / ambiance / vibe shots EQUALLY with food. Favor visual quality, representativeness, and a balanced mix. Drop duplicates, blurry, dark, or text-heavy images.";
+  "Rank these place photos best to worst for a should-we-go-tonight decision. We sell EXPERIENCES: weight beautiful place / ambience / vibe shots EQUALLY with food. Favor visual quality, representativeness, and a balanced mix. Drop duplicates, blurry, dark, or text-heavy images.";
 
 // Read the Atlas admin knobs from app_settings (row id=1) and derive the step
 // gates. The select is a single string LITERAL on purpose: supabase-js infers
@@ -151,7 +151,7 @@ const DEFAULT_SORTING_PROMPT =
 // falls back to GenericStringError and untypes cfg.atlas_*.
 export async function loadEnrichConfig(admin: SupabaseClient): Promise<EnrichConfig> {
   const { data: cfg } = await admin
-    .from("app_settings")
+    .from("app_config")
     .select(
       "atlas_synthesis_quality, atlas_vision_quality, atlas_perplexity_preset, atlas_gather_google_images, atlas_gather_instagram_depth, atlas_gather_instagram_posts, atlas_gather_reviews, atlas_save_total_images, atlas_save_images_to_storage, atlas_image_vision_enabled, atlas_analyze_google_images, atlas_analyze_instagram_images, atlas_image_analysis_prompt, atlas_image_sorting_prompt, atlas_per_run_cost_cap_usd, atlas_discover_website_n, atlas_discover_instagram_n, atlas_discover_facebook_n, atlas_discover_opentable_n, atlas_discover_ubereats_n",
     )

@@ -48,19 +48,19 @@ Deno.serve(async (req) => {
   const [ticketsRes, reservationsRes, savesRes, mesitaReviewsRes] =
     await Promise.all([
       admin
-        .from("tickets")
+        .from("visit_tickets")
         .select(
-          "status, story_status, review_status, check_subtotal_cents, total_cents, discount_cents",
+          "status, story_status, review_status, bill_subtotal_cents, total_cents, discount_cents",
         )
         .eq("consumer_id", userId),
       admin
-        .from("reservations")
+        .from("reservation_tickets")
         .select("id", { count: "exact", head: true })
         .eq("consumer_id", userId)
         .eq("is_test", false)
         .eq("status", "confirmed"),
       admin
-        .from("saved_places")
+        .from("favorites")
         .select("id", { count: "exact", head: true })
         .eq("consumer_id", userId),
       admin
@@ -83,7 +83,7 @@ Deno.serve(async (req) => {
   let spentCents = 0;
   let savedCents = 0;
   for (const t of revealed) {
-    const bill = t.total_cents ?? t.check_subtotal_cents ?? 0;
+    const bill = t.total_cents ?? t.bill_subtotal_cents ?? 0;
     const discount = t.discount_cents ?? 0;
     savedCents += discount;
     // Guest-paid = pre-discount bill minus discount (never negative).

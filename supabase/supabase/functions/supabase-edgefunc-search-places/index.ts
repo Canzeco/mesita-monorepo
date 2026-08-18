@@ -83,7 +83,7 @@ Deno.serve(async (req) => {
   const [byName, byId] = await Promise.all([
     name.length >= 2
       ? admin
-        .from("projects_view")
+        .from("profiles")
         .select(MEMO_PLACE_PUBLIC_SELECT)
         .or(`name.ilike."${pattern}",google_name.ilike."${pattern}"`)
         .in("status", BROWSABLE_STATUS)
@@ -91,7 +91,7 @@ Deno.serve(async (req) => {
       : Promise.resolve({ data: [], error: null }),
     placeIds.length > 0
       ? admin
-        .from("projects_view")
+        .from("profiles")
         .select(MEMO_PLACE_PUBLIC_SELECT)
         .in("google_place_id", placeIds)
       : Promise.resolve({ data: [], error: null }),

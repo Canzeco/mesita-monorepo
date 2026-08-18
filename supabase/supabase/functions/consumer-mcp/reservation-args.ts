@@ -14,7 +14,7 @@ export function parseReservationArgs(args: Record<string, unknown>): {
   const notes = typeof args.notes === "string"
     ? args.notes.trim() || null
     : null;
-  const guestNotify = args.guest_notify === "app" ? "app" : "call";
+  const guestNotify = args.consumer_notify === "app" ? "app" : "call";
 
   if (!UUID_RE.test(placeId)) return { ok: false, error: "place_id must be a UUID" };
   const reservedAt = new Date(reservedAtRaw);

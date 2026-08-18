@@ -4,7 +4,7 @@ import { invokeEF } from "./_invoke";
 import { payloadFromNotification, type TicketBillPayload } from "@/lib/api/pay";
 
 type ConsumerNotificationRow =
-  Database["public"]["Tables"]["consumer_pay_notifications"]["Row"];
+  Database["public"]["Tables"]["consumer_notifications"]["Row"];
 
 export type ConsumerNotification = ConsumerNotificationRow & {
   bill: TicketBillPayload;

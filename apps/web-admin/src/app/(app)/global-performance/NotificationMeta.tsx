@@ -89,7 +89,7 @@ export function MetaRow({ item }: { item: NotificationItem }) {
     for (const [key, label] of [
       ["food", "food"],
       ["service", "service"],
-      ["ambiance", "ambiance"],
+      ["ambience", "ambience"],
     ] as const) {
       const v = m[key];
       if (typeof v === "number") {

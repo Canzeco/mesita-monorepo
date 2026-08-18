@@ -83,7 +83,7 @@ export async function createMinimalPlace(opts: {
   // places BEFORE spending any budget. savePlaceData dedupes again as a race
   // guard; gating here keeps a duplicate click cheap. ──
   const { data: existing } = await admin
-    .from("projects_view")
+    .from("profiles")
     .select("id, slug, name, status, listing_type")
     .eq("google_place_id", googlePlaceId)
     .maybeSingle();

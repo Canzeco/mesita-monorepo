@@ -49,7 +49,7 @@ Deno.serve(async (req) => {
 
   if (body.pendingCountOnly) {
     const { count, error } = await admin
-      .from("consumer_pay_notifications")
+      .from("consumer_notifications")
       .select("id", { count: "exact", head: true })
       .eq("consumer_id", consumerId)
       .eq("status", "pending");
@@ -64,7 +64,7 @@ Deno.serve(async (req) => {
     : 100;
 
   let notifQuery = admin
-    .from("consumer_pay_notifications")
+    .from("consumer_notifications")
     .select("*")
     .eq("consumer_id", consumerId)
     .order("created_at", { ascending: false })
@@ -89,7 +89,7 @@ Deno.serve(async (req) => {
 
   if (ticketIds.length > 0) {
     const ticketRes = await admin
-      .from("tickets")
+      .from("visit_tickets")
       .select(
         "id, kind, status, story_status, story_submitted_at, first_scanned_at, discount_percent, project_id, total_cents, created_at",
       )

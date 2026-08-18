@@ -33,7 +33,7 @@ export async function requireAgentSecret(
 ): Promise<Response | null> {
   const sent = (req.headers.get("x-agent-secret") ?? "").trim();
   const { data: settings } = await admin
-    .from("app_settings")
+    .from("app_config")
     .select("agents_config")
     .eq("id", 1)
     .maybeSingle();
@@ -145,7 +145,7 @@ export function ticketMatchesGuestName(row: TicketRow, query: string): boolean {
 // ── Ticket reads ─────────────────────────────────────────────────────────────
 
 const TICKET_SELECT =
-  "id, run_id, reference_code, reserved_at, party_size, status, notes, is_test, project_id, consumer_id, reported_verdict, alternatives, guest_confirmed_at, negotiation_rounds, consumer:consumers(full_name, first_name, last_name, phone)";
+  "id, run_id, reference_code, reserved_at, party_size, status, notes, is_test, project_id, consumer_id, reported_verdict, alternatives, consumer_confirmed_at, negotiation_rounds, consumer:consumers(full_name, first_name, last_name, phone)";
 
 export type TicketRow = {
   run_id: string | null;
@@ -160,7 +160,7 @@ export type TicketRow = {
   consumer_id: string;
   reported_verdict: string | null;
   alternatives: unknown;
-  guest_confirmed_at: string | null;
+  consumer_confirmed_at: string | null;
   negotiation_rounds: number;
   consumer: {
     full_name: string | null;
@@ -214,7 +214,7 @@ export async function ticketByCode(
   const digits = typeof codeRaw === "string" ? phoneDigits(codeRaw) : "";
   if (!/^\d{8}$/.test(digits)) return null;
   const { data } = await admin
-    .from("reservations")
+    .from("reservation_tickets")
     .select(TICKET_SELECT)
     .eq("reference_code", digits)
     .maybeSingle();
@@ -229,7 +229,7 @@ export async function ticketsOfConsumers(
 ): Promise<TicketRow[]> {
   if (consumerIds.length === 0) return [];
   const { data } = await admin
-    .from("reservations")
+    .from("reservation_tickets")
     .select(TICKET_SELECT)
     .in("consumer_id", consumerIds)
     .order("created_at", { ascending: false })
@@ -248,7 +248,7 @@ export async function ticketsOfPlace(
 ): Promise<TicketRow[]> {
   const since = new Date(Date.now() - 6 * 3600_000).toISOString();
   const { data } = await admin
-    .from("reservations")
+    .from("reservation_tickets")
     .select(TICKET_SELECT)
     .eq("project_id", projectId)
     .gte("reserved_at", since)
@@ -278,7 +278,7 @@ export async function cancelTicket(
   notice: "venue_cancel" | "guest_cancel" | null = null,
 ): Promise<string | null> {
   const { error } = await admin
-    .from("reservations")
+    .from("reservation_tickets")
     .update({
       status: "cancelled",
       cancelled_at: new Date().toISOString(),

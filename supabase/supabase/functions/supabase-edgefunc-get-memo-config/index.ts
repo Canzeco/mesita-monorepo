@@ -70,7 +70,7 @@ Deno.serve(async (req) => {
     const admin = adminClient(envRes.env);
     const [{ data, error }, models] = await Promise.all([
       admin
-        .from("app_settings")
+        .from("app_config")
         .select(
           "memo_greeting, memo_instructions, memo_openai_model, sourcing_config",
         )

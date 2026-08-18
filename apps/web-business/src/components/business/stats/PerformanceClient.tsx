@@ -353,7 +353,7 @@ export function PerformanceClient({
           <EmptyState
             icon={<UtensilsCrossed className="text-muted-foreground h-5 w-5" />}
             title="No Mesita reviews yet"
-            description="Guests rate food, service, ambiance and value right after a visit."
+            description="Guests rate food, service, ambience and value right after a visit."
           />
         ) : (
           <div className="flex flex-col gap-2">
@@ -376,7 +376,7 @@ export function PerformanceClient({
                       ["Overall", r.overall],
                       ["Food", r.food],
                       ["Service", r.service],
-                      ["Ambiance", r.ambiance],
+                      ["Ambience", r.ambience],
                       ["Value", r.value],
                     ] as const
                   ).map(([label, v]) =>

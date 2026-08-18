@@ -63,7 +63,7 @@ async function runTool(
       const { data, error } = await admin
         // saved_places.project_id → projects → places is two hops; a direct
         // places embed 500s. Stitch instead (_shared/reservation-places.ts).
-        .from("saved_places")
+        .from("favorites")
         .select("id, created_at, project_id")
         .eq("consumer_id", consumerId)
         .order("created_at", { ascending: false })
@@ -82,7 +82,7 @@ async function runTool(
 
       if (saved) {
         const { data: row, error } = await admin
-          .from("saved_places")
+          .from("favorites")
           .upsert(
             { consumer_id: consumerId, project_id: placeId },
             { onConflict: "consumer_id,project_id" },
@@ -103,7 +103,7 @@ async function runTool(
       }
 
       const { error } = await admin
-        .from("saved_places")
+        .from("favorites")
         .delete()
         .eq("consumer_id", consumerId)
         .eq("project_id", placeId);
@@ -136,7 +136,7 @@ async function runTool(
       if (!idOrSlug) return toolError("id_or_slug required");
       const column = UUID_RE.test(idOrSlug) ? "id" : "slug";
       const { data, error } = await admin
-        .from("projects_view")
+        .from("profiles")
         .select(PLACE_PUBLIC_COLUMNS)
         .eq(column, idOrSlug)
         .maybeSingle();
@@ -162,7 +162,7 @@ async function runTool(
       // NO place embed — reservations→places is a two-hop FK chain PostgREST
       // can't resolve; attachPlaces does the lookup (see the shared module).
       let q = admin
-        .from("reservations")
+        .from("reservation_tickets")
         .select(
           "id, reserved_at, party_size, status, reference_code, notes, confirmed_at, completed_at, cancelled_at, coupon_id, created_at, project_id",
         )
@@ -204,7 +204,7 @@ async function runTool(
         monthStart.setUTCDate(1);
         monthStart.setUTCHours(0, 0, 0, 0);
         const { count, error: countErr } = await admin
-          .from("reservations")
+          .from("reservation_tickets")
           .select("id", { count: "exact", head: true })
           .eq("consumer_id", consumerId)
           .eq("is_test", false)
@@ -232,7 +232,7 @@ async function runTool(
       let insertError: { message: string } | null = null;
       for (let i = 0; i < 3 && !reservation; i++) {
         const ins = await admin
-          .from("reservations")
+          .from("reservation_tickets")
           .insert({
             consumer_id: consumerId,
             project_id: placeId,
@@ -241,12 +241,12 @@ async function runTool(
             reserved_at: reservedAt.toISOString(),
             party_size: partySize,
             notes,
-            guest_notify: guestNotify,
+            consumer_notify: guestNotify,
             status: "pending",
           })
           // No places embed — two-hop FK (_shared/reservation-places.ts).
           .select(
-            "id, reference_code, reserved_at, party_size, status, notes, guest_notify, coupon_id, created_at, project_id",
+            "id, reference_code, reserved_at, party_size, status, notes, consumer_notify, coupon_id, created_at, project_id",
           )
           .single();
         if (!ins.error) {

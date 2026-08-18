@@ -59,7 +59,7 @@ Deno.serve(async (req) => {
   const ticketId = (body.ticketId ?? "").toString().trim() || null;
   if (ticketId) {
     const ticket = await admin
-      .from("tickets")
+      .from("visit_tickets")
       .select("id, project_id, consumer_id")
       .eq("id", ticketId)
       .maybeSingle();

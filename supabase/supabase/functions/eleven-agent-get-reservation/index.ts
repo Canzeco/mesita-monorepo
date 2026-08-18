@@ -109,7 +109,7 @@ async function searchReservations(
   let rows: Row[] = [];
   if (code) {
     const { data } = await admin
-      .from("reservations")
+      .from("reservation_tickets")
       .select(SELECT)
       .eq("reference_code", code)
       .limit(5);
@@ -142,7 +142,7 @@ async function searchReservations(
       .map((g) => g.id);
     if (ids.length === 0) return [];
     const { data } = await admin
-      .from("reservations")
+      .from("reservation_tickets")
       .select(SELECT)
       .in("consumer_id", ids)
       .order("created_at", { ascending: false })
@@ -198,7 +198,7 @@ Deno.serve(async (req) => {
   // Lock 2: the shared tool secret, read live from app_settings.
   const sent = (req.headers.get("x-agent-secret") ?? "").trim();
   const { data: settings } = await admin
-    .from("app_settings")
+    .from("app_config")
     .select("agents_config")
     .eq("id", 1)
     .maybeSingle();

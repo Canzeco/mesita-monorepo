@@ -71,7 +71,7 @@ Deno.serve(async (req) => {
 
   // Lazy-create accounts row. Email mirrors auth.user.email.
   const existing = await admin
-    .from("accounts")
+    .from("managers")
     .select("id, full_name, email, phone")
     .eq("id", user.id)
     .maybeSingle();
@@ -82,7 +82,7 @@ Deno.serve(async (req) => {
   let businessRow = existing.data;
   if (!businessRow) {
     const seed = await admin
-      .from("accounts")
+      .from("managers")
       .insert({ id: user.id, email: user.email })
       .select("id, full_name, email, phone")
       .single();
@@ -92,7 +92,7 @@ Deno.serve(async (req) => {
     if (seed.error) {
       // Concurrent insert — read back.
       const refetch = await admin
-        .from("accounts")
+        .from("managers")
         .select("id, full_name, email, phone")
         .eq("id", user.id)
         .maybeSingle();
@@ -106,7 +106,7 @@ Deno.serve(async (req) => {
   } else if (businessRow.email !== user.email) {
     // Email drifted (Supabase Auth email change). Re-sync.
     const sync = await admin
-      .from("accounts")
+      .from("managers")
       .update({ email: user.email })
       .eq("id", user.id)
       .select("id, full_name, email, phone")

@@ -56,7 +56,7 @@ Deno.serve(async (req) => {
       .eq("project_id", projectId)
       .order("created_at", { ascending: true }),
     admin
-      .from("account_invites")
+      .from("project_invites")
       .select("id, email, role, token, created_at, expires_at")
       .eq("project_id", projectId)
       .is("claimed_at", null)

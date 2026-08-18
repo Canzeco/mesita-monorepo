@@ -17,7 +17,7 @@ export async function ensureUniqueSlug(
 ): Promise<string> {
   let candidate = base || `place-${Date.now()}`;
   for (let i = 0; i < 5; i += 1) {
-    const { data } = await admin.from("projects_view").select("id").eq("slug", candidate)
+    const { data } = await admin.from("profiles").select("id").eq("slug", candidate)
       .maybeSingle();
     if (!data) return candidate;
     candidate = `${base}-${Math.random().toString(36).slice(2, 6)}`;

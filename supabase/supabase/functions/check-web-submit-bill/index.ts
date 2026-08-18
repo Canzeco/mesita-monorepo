@@ -81,7 +81,7 @@ Deno.serve(async (req) => {
   if (!ticket) return checkNotFound(json);
 
   const ticketRatesRes = await admin
-    .from("tickets")
+    .from("visit_tickets")
     .select(
       "welcome_free_rate, welcome_premium_rate, free_rate, premium_rate, rates_snapshotted_at",
     )
@@ -110,12 +110,12 @@ Deno.serve(async (req) => {
       409,
     );
   }
-  if ((ticket.check_subtotal_cents ?? 0) > 0 || (ticket.total_cents ?? 0) > 0) {
+  if ((ticket.bill_subtotal_cents ?? 0) > 0 || (ticket.total_cents ?? 0) > 0) {
     return json({ ok: false, error: "Bill already submitted for this ticket." }, 409);
   }
 
   const placeRow = await admin
-    .from("projects_view")
+    .from("profiles")
     .select(
       "id, name, slug, photos, instagram_url, welcome_free_rate, welcome_premium_rate, free_rate, premium_rate, monthly_promo_cap, status",
     )
@@ -193,10 +193,10 @@ Deno.serve(async (req) => {
   // must NOT touch it: the old `story_status: pending` reset would have wiped
   // a self-verified story right after pricing with it.
   const update = await admin
-    .from("tickets")
+    .from("visit_tickets")
     .update({
       status: TICKET_STATUS.awaitingPaymentConfirm,
-      check_subtotal_cents: snap.checkSubtotalCents,
+      bill_subtotal_cents: snap.checkSubtotalCents,
       tip_cents: snap.tipCents,
       total_cents: snap.totalCents,
       redeem_cents: 0,
@@ -206,7 +206,7 @@ Deno.serve(async (req) => {
     })
     .eq("id", ticket.id)
     .eq("status", TICKET_STATUS.open) // concurrent double-submits lose cleanly
-    .select("id, status, story_status, total_cents, discount_percent, discount_cents, check_subtotal_cents, currency")
+    .select("id, status, story_status, total_cents, discount_percent, discount_cents, bill_subtotal_cents, currency")
     .single();
   if (update.error) {
     return json({ ok: false, error: `ticket_update: ${update.error.message}` }, 500);
@@ -214,7 +214,7 @@ Deno.serve(async (req) => {
 
   // Deliver the discounted bill to the guest's Pay inbox (same payload shape
   // as the retired staff path — the consumer app already renders it).
-  await admin.from("consumer_pay_notifications").insert({
+  await admin.from("consumer_notifications").insert({
     consumer_id: ticket.consumer_id,
     ticket_id: ticket.id,
     kind: "bill",
@@ -227,7 +227,7 @@ Deno.serve(async (req) => {
       place_photo_url: place.photos?.[0] ?? null,
       place_instagram_handle: placeInstagramHandleForPayload(place.instagram_url),
       ticket_kind: ticket.kind,
-      check_subtotal_cents: snap.checkSubtotalCents,
+      bill_subtotal_cents: snap.checkSubtotalCents,
       tip_cents: snap.tipCents,
       total_cents: snap.totalCents,
       discount_cents: snap.discountCents ?? 0,
@@ -254,7 +254,7 @@ Deno.serve(async (req) => {
     check: {
       status: update.data.status,
       bill: {
-        check_subtotal_cents: update.data.check_subtotal_cents,
+        bill_subtotal_cents: update.data.bill_subtotal_cents,
         discount_percent: update.data.discount_percent,
         discount_cents: update.data.discount_cents,
         // total_cents is the pre-discount bill; the snapshot carries the

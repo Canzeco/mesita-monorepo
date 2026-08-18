@@ -33,7 +33,7 @@ Deno.serve(async (req) => {
   if (!saRes.ok) return saRes.response;
 
   const { data, error } = await admin
-    .from("app_settings")
+    .from("app_config")
     .select(
       "auto_verify_ai_call, auto_verify_ai_email, auto_verify_video, atlas_gather_google_images, atlas_gather_instagram_depth, atlas_gather_instagram_posts, atlas_gather_reviews, atlas_image_vision_enabled, atlas_analyze_google_images, atlas_analyze_instagram_images, atlas_save_total_images, atlas_save_images_to_storage, atlas_image_analysis_prompt, atlas_image_sorting_prompt, atlas_synthesis_quality, atlas_vision_quality, atlas_perplexity_preset, atlas_per_run_cost_cap_usd, atlas_discover_website_n, atlas_discover_instagram_n, atlas_discover_facebook_n, atlas_discover_opentable_n, atlas_discover_ubereats_n, updated_at",
     )
