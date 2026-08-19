@@ -4,7 +4,7 @@ import { Instagram, Mail } from "lucide-react";
 
 import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
 import { ClassLadder } from "@/components/consumer/me/class/ClassLadder";
-import { ClassPreviewToggle } from "@/components/consumer/me/class/ClassPreviewToggle";
+import { ClassPreviewToggle } from "@/components/consumer/me/demo/ClassPreviewToggle";
 import { InstagramConnectedSummary } from "@/components/consumer/me/class/InstagramConnectedSummary";
 import { useConsumerClass } from "@/lib/class-context";
 import { CLASS_MARK_ICON } from "@/lib/consumer-data";
@@ -53,6 +53,10 @@ export function ClassModal({
         </div>
 
         <div className="flex flex-col gap-4">
+          {/* Demo state is declared before the surface it changes — same box,
+              same position, on all three Me sheets that can fake an identity. */}
+          <ClassPreviewToggle />
+
           <ClassLadder />
 
           {origin === "instagram" && (
@@ -87,8 +91,6 @@ export function ClassModal({
               <span className="truncate">Request invite</span>
             </button>
           </div>
-
-          <ClassPreviewToggle />
         </div>
       </div>
     </LocalSheet>

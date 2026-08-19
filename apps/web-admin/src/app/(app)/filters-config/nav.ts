@@ -9,7 +9,8 @@ import {
   Users,
 } from "lucide-react";
 
-// Filters Config (MESITA-1083) — one Sidebar entry, seven in-page tabs.
+// Filters Config (MESITA-1083) — one Sidebar entry, "Discover" (the route
+// stays /filters-config), with seven in-page tabs.
 // General carries the law; the other six are one consumer surface each, in the
 // order a guest meets them (the Home hub's four modes, then Search's map and
 // list). FILTERS_SUBROUTES are tabs, never Sidebar rows.
@@ -18,7 +19,7 @@ import {
 // SlidersHorizontal — the same icon the consumer trigger wears.
 export const FILTERS_PARENT = {
   href: "/filters-config",
-  label: "Filters",
+  label: "Discover",
   Icon: SlidersHorizontal,
 } as const;
 
