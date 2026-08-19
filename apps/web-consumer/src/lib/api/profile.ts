@@ -2,8 +2,8 @@
 //
 // Pre-entity-split this file used to also house the ticket workflow /
 // taxonomy code under the name `api/tickets.ts`. After the split
-// (reservations + coupons each got their own EFs) the ticket helpers
-// were dropped and the file was renamed to its current responsibility:
+// (reservations got their own EFs) the ticket helpers were dropped and
+// the file was renamed to its current responsibility:
 // fetch + update the consumer profile, plus the currency display
 // helper that every money surface reuses.
 

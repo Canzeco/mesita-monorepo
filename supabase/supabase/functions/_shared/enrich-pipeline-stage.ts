@@ -47,7 +47,7 @@ export async function seedPlaceResearch(
   createdBy: string,
 ): Promise<{ ok: boolean; error?: string }> {
   const { error } = await admin.from("place_research").upsert({
-    project_id: projectId,
+    place_id: projectId,
     google_place_id: googlePlaceId,
     stage: "research",
     status: "pending",
@@ -57,7 +57,7 @@ export async function seedPlaceResearch(
     error: null,
     created_by: createdBy,
     updated_at: new Date().toISOString(),
-  }, { onConflict: "project_id" });
+  }, { onConflict: "place_id" });
   if (error) return { ok: false, error: error.message };
   await markProjectGenerating(admin, projectId);
   return { ok: true };
@@ -72,8 +72,8 @@ export async function loadClaimedRow(
 ): Promise<{ ok: true; row: PlaceResearchRow } | { ok: false; reason: string }> {
   const { data, error } = await admin
     .from("place_research")
-    .select("project_id, google_place_id, stage, status, attempts, gathered, analysis, error")
-    .eq("project_id", projectId)
+    .select("place_id, google_place_id, stage, status, attempts, gathered, analysis, error")
+    .eq("place_id", projectId)
     .maybeSingle();
   if (error) return { ok: false, reason: `row_read: ${error.message}` };
   if (!data) return { ok: false, reason: "row_not_found" };
@@ -101,7 +101,7 @@ export async function advanceResearchStage(
       ...patch,
       updated_at: new Date().toISOString(),
     })
-    .eq("project_id", projectId);
+    .eq("place_id", projectId);
   if (error) console.error(`[enrich-pipeline] advance→${nextStage}:`, error.message);
 }
 
@@ -116,7 +116,7 @@ export async function releaseResearchRow(
   const { error } = await admin
     .from("place_research")
     .update({ status: "pending", error: errorMsg.slice(0, 500), updated_at: new Date().toISOString() })
-    .eq("project_id", projectId);
+    .eq("place_id", projectId);
   if (error) console.error("[enrich-pipeline] release:", error.message);
 }
 
@@ -131,7 +131,7 @@ export async function failResearchRow(
   const { error } = await admin
     .from("place_research")
     .update({ stage: "failed", status: "pending", error: errorMsg.slice(0, 500), updated_at: new Date().toISOString() })
-    .eq("project_id", projectId);
+    .eq("place_id", projectId);
   if (error) console.error("[enrich-pipeline] fail:", error.message);
   const { error: projErr } = await admin
     .from("projects")

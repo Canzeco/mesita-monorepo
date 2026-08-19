@@ -10,8 +10,9 @@
 // first close and remain the activation signal for admin & Performance.
 // Strikes (refused/ignored QR): 1 warning · 2 pause promo 30d ·
 // 3 remove paid posture (plan→free, rates cleared) + forfeit stamp.
-// Strikes decay after 6 months clean. Burned guests get an instant compensation
-// coupon at another live partner place.
+// Strikes decay after 6 months clean. There is no guest-side compensation:
+// a reward comes from SHOWING UP, so compensating a burned guest belongs on a
+// future visit ticket, not on a grant handed out at strike time.
 
 import { type SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import {
@@ -20,9 +21,7 @@ import {
   strikeConsequenceForCount,
 } from "./membership-enforcement-helpers.ts";
 import { buildStrikePatch } from "./membership-strike-patch.ts";
-import { compensateBurnedGuest } from "./membership-compensation.ts";
 export { PROMO_PAUSE_MS } from "./membership-strike-patch.ts";
-export { COMPENSATION_RATES, compensateBurnedGuest } from "./membership-compensation.ts";
 
 const STRIKE_REASONS = ["refused_qr", "ignored_qr"] as const;
 export type StrikeReason = (typeof STRIKE_REASONS)[number];
@@ -210,12 +209,11 @@ export type RecordStrikeResult = {
   ok: true;
   strikeNumber: number;
   consequence: StrikeConsequence;
-  compensationCouponId: string | null;
   alreadyRecorded?: boolean;
 } | { ok: false; error: string };
 
 /**
- * Record a refused/ignored-QR strike, apply the ladder, and compensate the guest.
+ * Record a refused/ignored-QR strike and apply the ladder.
  * Idempotent on ticket_id when provided.
  */
 export async function recordMembershipStrike(
@@ -237,7 +235,7 @@ export async function recordMembershipStrike(
   if (opts.ticketId) {
     const existing = await admin
       .from("project_strikes")
-      .select("id, strike_number, compensation_coupon_id")
+      .select("id, strike_number")
       .eq("ticket_id", opts.ticketId)
       .maybeSingle();
     if (existing.data) {
@@ -246,9 +244,6 @@ export async function recordMembershipStrike(
         ok: true,
         strikeNumber: n,
         consequence: strikeConsequenceForCount(n),
-        compensationCouponId: existing.data.compensation_coupon_id as
-          | string
-          | null,
         alreadyRecorded: true,
       };
     }
@@ -264,22 +259,12 @@ export async function recordMembershipStrike(
   );
   if (update.error) return { ok: false, error: update.error.message };
 
-  let compensationCouponId: string | null = null;
-  if (opts.consumerId) {
-    const comp = await compensateBurnedGuest(admin, {
-      burnedProjectId: opts.projectId,
-      consumerId: opts.consumerId,
-    });
-    if (comp.ok) compensationCouponId = comp.couponId;
-  }
-
   const insert = await admin.from("project_strikes").insert({
     project_id: opts.projectId,
     consumer_id: opts.consumerId ?? null,
     ticket_id: opts.ticketId ?? null,
     reason: opts.reason,
     strike_number: next,
-    compensation_coupon_id: compensationCouponId,
     notes: opts.notes ?? null,
   }).select("id").single();
   if (insert.error) {
@@ -287,5 +272,5 @@ export async function recordMembershipStrike(
     return { ok: false, error: `strike_ledger: ${insert.error.message}` };
   }
 
-  return { ok: true, strikeNumber: next, consequence, compensationCouponId };
+  return { ok: true, strikeNumber: next, consequence };
 }

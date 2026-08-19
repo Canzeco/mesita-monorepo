@@ -61,7 +61,7 @@ async function runTool(
     case "list_saved_places": {
       const limit = clamp(args.limit, 1, 100, 50);
       const { data, error } = await admin
-        // saved_places.project_id → projects → places is two hops; a direct
+        // favorites.project_id → projects → places is two hops; a direct
         // places embed 500s. Stitch instead (_shared/reservation-places.ts).
         .from("favorites")
         .select("id, created_at, project_id")
@@ -90,16 +90,8 @@ async function runTool(
           .select("id, project_id, created_at")
           .single();
         if (error) return toolError(error.message);
-        const { data: coupon } = await admin
-          .from("coupons")
-          .select(
-            "id, project_id, status, issued_at, welcome_free_rate, welcome_premium_rate, free_rate, premium_rate, cap_cents, currency, expires_at",
-          )
-          .eq("consumer_id", consumerId)
-          .eq("project_id", placeId)
-          .eq("status", "active")
-          .maybeSingle();
-        return toolText({ ok: true, saved_place: row, coupon });
+        // A favorite is a pure bookmark — it issues nothing.
+        return toolText({ ok: true, saved_place: row });
       }
 
       const { error } = await admin
@@ -164,7 +156,7 @@ async function runTool(
       let q = admin
         .from("reservation_tickets")
         .select(
-          "id, reserved_at, party_size, status, reference_code, notes, confirmed_at, completed_at, cancelled_at, coupon_id, created_at, project_id",
+          "id, reserved_at, party_size, status, reference_code, notes, confirmed_at, completed_at, cancelled_at, created_at, project_id",
         )
         .eq("consumer_id", consumerId)
         // Operator test tickets (is_test) reference real consumers — hidden.
@@ -218,14 +210,6 @@ async function runTool(
         }
       }
 
-      const { data: coupon } = await admin
-        .from("coupons")
-        .select("id")
-        .eq("consumer_id", consumerId)
-        .eq("project_id", placeId)
-        .eq("status", "active")
-        .maybeSingle();
-
       // Insert with the ticket's 8-digit reference code — fresh code per try;
       // a unique-index collision just redraws.
       let reservation: Record<string, unknown> | null = null;
@@ -236,7 +220,6 @@ async function runTool(
           .insert({
             consumer_id: consumerId,
             project_id: placeId,
-            coupon_id: coupon?.id ?? null,
             reference_code: generateReservationCode(),
             reserved_at: reservedAt.toISOString(),
             party_size: partySize,
@@ -246,7 +229,7 @@ async function runTool(
           })
           // No places embed — two-hop FK (_shared/reservation-places.ts).
           .select(
-            "id, reference_code, reserved_at, party_size, status, notes, consumer_notify, coupon_id, created_at, project_id",
+            "id, reference_code, reserved_at, party_size, status, notes, consumer_notify, created_at, project_id",
           )
           .single();
         if (!ins.error) {
@@ -264,26 +247,7 @@ async function runTool(
       return toolText({
         ok: true,
         reservation: reservationWithPlace ?? reservation,
-        linked_coupon_id: coupon?.id ?? null,
       });
-    }
-
-    case "list_rewards": {
-      const limit = clamp(args.limit, 1, 100, 50);
-      const includeInactive = args.include_inactive === true;
-      let q = admin
-        // coupons.project_id → projects → places is two hops; stitch instead.
-        .from("coupons")
-        .select(
-          "id, status, issued_at, redeemed_at, cancelled_at, expires_at, welcome_free_rate, welcome_premium_rate, free_rate, premium_rate, cap_cents, currency, project_id",
-        )
-        .eq("consumer_id", consumerId)
-        .order("issued_at", { ascending: false })
-        .limit(limit);
-      if (!includeInactive) q = q.eq("status", "active");
-      const { data, error } = await q;
-      if (error) return toolError(error.message);
-      return toolText({ ok: true, coupons: await attachPlaces(admin, data ?? []) });
     }
 
     default:
@@ -361,7 +325,7 @@ Deno.serve(async (req) => {
         title: "Mesita Consumer",
       },
       instructions:
-        "You are connected to a Mesita consumer account. Use tools to look up the profile, find/save places, book reservations, and check reward coupons. Prefer Mesita Partners (listing_type=partner) when recommending places with rewards.",
+        "You are connected to a Mesita consumer account. Use tools to look up the profile, find/save places, and book reservations. Prefer Mesita Partners (listing_type=partner) when recommending places with rewards — the discount is earned by showing up and lands on the visit ticket.",
     });
     res.headers.set("Mcp-Session-Id", sessionId);
     return res;

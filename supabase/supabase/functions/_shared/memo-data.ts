@@ -79,7 +79,7 @@ export type MemoData = {
 // Routing through EFs turned two in-process reads into network hops on the
 // consumer's SYNCHRONOUS chat path, so the two that are worth caching are:
 //
-//   config()          — the app_settings singleton. An operator edits it maybe
+//   config()          — the app_config singleton. An operator edits it maybe
 //                       a few times a week; every turn was re-reading it.
 //   consumerContext() — one user's persona clause. A chat replays history turn
 //                       after turn for the SAME user, so this is the read most

@@ -99,12 +99,12 @@ Deno.serve(async (req) => {
     ];
   } else {
     // Pull every place the caller is a member of, with the role on each row.
-    // Read via projects_view so Promos v4 membership columns (MESITA-542) and
+    // Read via profiles so Promos v4 membership columns (MESITA-542) and
     // project rate/plan fields round-trip with the place profile.
     const memberRows = await admin
       .from("project_members")
       .select(`role, project_id`)
-      .eq("business_id", userId)
+      .eq("manager_id", userId)
       .order("created_at", { ascending: false });
     if (memberRows.error) {
       return json({ ok: false, error: memberRows.error.message }, 500);
@@ -140,7 +140,7 @@ Deno.serve(async (req) => {
   // Staff check settings — the PIN (MESITA-823) and the require-bill switch
   // (MESITA-898) — attached to the ACTIVE place only, and only for owners
   // (super-admin path tags my_role=owner). Read straight off projects: the
-  // columns are deliberately NOT in projects_view / PLACE_COLUMNS so no
+  // columns are deliberately NOT in profiles / PLACE_COLUMNS so no
   // consumer- or viewer-facing payload can ever pick them up.
   if (active && (active as { my_role?: string }).my_role === "owner") {
     const pinRow = await admin
@@ -166,7 +166,7 @@ Deno.serve(async (req) => {
     const tx = await admin
       .from("visit_tickets")
       .select(
-        "id, kind, status, story_status, story_screenshot_url, story_submitted_at, story_verified_at, story_reject_reason, bill_subtotal_cents, tip_cents, total_cents, redeem_cents, discount_percent, discount_cents, revealed_at, reservation_status, reservation_at, reservation_party_size, currency, created_at, paid_at, cancelled_at, cancel_reason, consumer:consumers(id, code, full_name)",
+        "id, status, story_status, story_screenshot_url, story_submitted_at, story_verified_at, story_reject_reason, bill_subtotal_cents, tip_cents, total_cents, redeem_cents, discount_percent, discount_cents, revealed_at, currency, created_at, paid_at, cancelled_at, cancel_reason, consumer:consumers(id, code, full_name)",
       )
       .eq("project_id", activeId)
       .order("created_at", { ascending: false })
@@ -190,14 +190,14 @@ Deno.serve(async (req) => {
   {
     const cfg = await admin
       .from("app_config")
-      .select("rewards_config")
+      .select("promos_config")
       .maybeSingle();
     if (cfg.error) {
       // Non-fatal — the client falls back to its bundled defaults and says so.
-      console.error("[business-web-get-overview] rewards_config:", cfg.error.message);
+      console.error("[business-web-get-overview] promos_config:", cfg.error.message);
     } else {
-      const blob = (cfg.data as { rewards_config?: Record<string, unknown> } | null)
-        ?.rewards_config;
+      const blob = (cfg.data as { promos_config?: Record<string, unknown> } | null)
+        ?.promos_config;
       // v11 is the live shape; a leftover v10 blob is passed through and the
       // business client migrates it (coercePromosConfig) — same contract the
       // admin console uses.

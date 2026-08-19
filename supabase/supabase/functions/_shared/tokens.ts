@@ -1,5 +1,5 @@
 // URL-safe random invite tokens. Same shape used by both
-// account_invites — 18 random bytes encoded as
+// project_invites — 18 random bytes encoded as
 // base64url. Matches the SQL helper public.generate_invite_token().
 
 export function newInviteToken(byteLength = 18): string {

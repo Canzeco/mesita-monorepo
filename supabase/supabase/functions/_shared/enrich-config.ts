@@ -1,6 +1,6 @@
 // Enricher pipeline: run-time config + shared types.
 //
-// Every knob lives in app_settings (columns still named atlas_* for
+// Every knob lives in app_config (columns still named atlas_* for
 // historical continuity with the admin console) and is read at run time —
 // the DB is the single source of truth; callers never pass overrides.
 
@@ -145,7 +145,7 @@ const DEFAULT_ANALYSIS_PROMPT =
 const DEFAULT_SORTING_PROMPT =
   "Rank these place photos best to worst for a should-we-go-tonight decision. We sell EXPERIENCES: weight beautiful place / ambience / vibe shots EQUALLY with food. Favor visual quality, representativeness, and a balanced mix. Drop duplicates, blurry, dark, or text-heavy images.";
 
-// Read the Atlas admin knobs from app_settings (row id=1) and derive the step
+// Read the Atlas admin knobs from app_config (row id=1) and derive the step
 // gates. The select is a single string LITERAL on purpose: supabase-js infers
 // the row type only from a literal argument — anything that widens to `string`
 // falls back to GenericStringError and untypes cfg.atlas_*.
@@ -185,7 +185,7 @@ export async function loadEnrichConfig(admin: SupabaseClient): Promise<EnrichCon
       (cfg?.atlas_image_analysis_prompt as string | undefined)?.trim() || DEFAULT_ANALYSIS_PROMPT,
     imageSortingPrompt:
       (cfg?.atlas_image_sorting_prompt as string | undefined)?.trim() || DEFAULT_SORTING_PROMPT,
-    // Default matches migration 0042 / live app_settings row.
+    // Default matches migration 0042 / live app_config row.
     perRunCostCapUsd: num(cfg?.atlas_per_run_cost_cap_usd, 1.0),
   };
 }

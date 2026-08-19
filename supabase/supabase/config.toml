@@ -219,7 +219,7 @@ verify_jwt = false
 # Memo — the consumer AI concierge (Mesita's third agent, alongside the
 # Enricher/Atlas and the Reservationist). Public like the catalog reads:
 # decision — the concierge answers signed-out visitors, and it only READS
-# (Perplexity + Google Places + projects_view). Auth is read optionally for
+# (Perplexity + Google Places + profiles). Auth is read optionally for
 # personalisation via getOptionalAuthedUser; RLS still gates place visibility.
 [functions.consumer-web-ask-memo]
 verify_jwt = false
@@ -242,15 +242,12 @@ verify_jwt = true
 verify_jwt = true
 
 # Entity-split EFs (migration 0031). consumer-list-tickets stays for
-# now while clients migrate; the new surfaces split saved-places,
-# reservations, and coupons into first-class entities.
-[functions.consumer-web-save-place]
+# now while clients migrate; the new surfaces split favorites and
+# reservations into first-class entities.
+[functions.consumer-web-add-favorite]
 verify_jwt = true
 
-[functions.consumer-web-list-saved-places]
-verify_jwt = true
-
-[functions.consumer-web-list-coupons]
+[functions.consumer-web-list-favorites]
 verify_jwt = true
 
 [functions.consumer-web-create-reservation]
@@ -259,8 +256,13 @@ verify_jwt = true
 [functions.consumer-web-list-tickets]
 verify_jwt = true
 
+# The live discount quote for a place × this consumer (renamed from
+# consumer-web-get-reward-quote). Authenticated: the rate is per-consumer.
+[functions.consumer-web-get-discount-quote]
+verify_jwt = true
+
 # Tickets v2 self-check-in (MESITA-806): the guest creates/cancels their own
-# reward ticket; the QR encodes mesita.ai/check/<check_code>.
+# visit ticket; the QR encodes check.mesita.ai/<check_code>.
 [functions.consumer-web-create-ticket]
 verify_jwt = true
 
@@ -334,8 +336,8 @@ verify_jwt = false
 verify_jwt = false
 
 # Entity-split EFs (migration 0031). consumer-list-tickets stays for
-# now while clients migrate; the new surfaces split saved-places,
-# reservations, and coupons into first-class entities.
+# now while clients migrate; the new surfaces split favorites and
+# reservations into first-class entities.
 
 [functions.consumer-web-delete-account]
 verify_jwt = true
@@ -385,13 +387,13 @@ verify_jwt = true
 # Consumer MCP — personal access tokens + Streamable HTTP MCP endpoint.
 # Mint/list/revoke use the consumer session JWT; consumer-mcp itself uses
 # a mesita_mcp_… bearer (verify_jwt off — custom auth in-handler).
-[functions.consumer-web-create-mcp-token]
+[functions.consumer-web-create-connector]
 verify_jwt = true
 
-[functions.consumer-web-list-mcp-tokens]
+[functions.consumer-web-list-connectors]
 verify_jwt = true
 
-[functions.consumer-web-revoke-mcp-token]
+[functions.consumer-web-revoke-connector]
 verify_jwt = true
 
 [functions.consumer-mcp]
@@ -400,10 +402,10 @@ verify_jwt = false
 [functions.consumer-web-submit-ticket-review]
 verify_jwt = true
 
-[functions.business-web-get-profile]
+[functions.business-web-get-manager]
 verify_jwt = true
 
-[functions.business-web-create-profile]
+[functions.business-web-create-manager]
 verify_jwt = true
 
 # Unit (place) lifecycle
@@ -472,7 +474,7 @@ verify_jwt = true
 verify_jwt = true
 
 # Team management — owner / editor / viewer tier + waiters.
-[functions.business-web-list-team]
+[functions.business-web-list-members]
 verify_jwt = true
 
 [functions.business-web-invite-member]
@@ -484,7 +486,7 @@ verify_jwt = true
 [functions.business-web-update-member-role]
 verify_jwt = true
 
-[functions.business-web-record-membership-strike]
+[functions.business-web-record-strike]
 verify_jwt = true
 
 [functions.business-web-set-check-pin]
@@ -583,12 +585,9 @@ verify_jwt = true
 [functions.admin-web-revoke-admin]
 verify_jwt = true
 
-# The Aura door (segments v6) — the invite-only consumer class. The roster the
-# admin console's Aura Config page lists, and the single write that seats or
-# unseats a member. Both re-check super_admins on the caller.
-[functions.admin-web-list-aura]
-verify_jwt = true
-
+# The class-grant write — seats or unseats one consumer on a class by hand,
+# re-checking super_admins on the caller. No console page calls it any more:
+# the roster that did listed Aura, a retired class.
 [functions.admin-web-grant-class]
 verify_jwt = true
 
@@ -599,11 +598,11 @@ verify_jwt = true
 [functions.admin-web-get-place-activity]
 verify_jwt = true
 
-# Atlas / Enricher configuration — place research knobs on app_settings.
-[functions.admin-web-get-settings]
+# Enricher configuration — place research knobs on app_config.
+[functions.admin-web-get-config]
 verify_jwt = true
 
-[functions.admin-web-update-atlas-config]
+[functions.admin-web-update-enricher-config]
 verify_jwt = true
 
 # Re-run the Enricher on an existing place (super-admin only).

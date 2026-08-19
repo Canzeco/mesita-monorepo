@@ -4,10 +4,10 @@
 // is never invited — transfer ownership from an existing member). Two
 // paths:
 //
-//   1. Email matches an existing accounts row → link directly: insert
+//   1. Email matches an existing managers row → link directly: insert
 //      project_members at the requested role. No email goes out.
 //
-//   2. Email is unknown → create a account_invites row with a fresh
+//   2. Email is unknown → create a project_invites row with a fresh
 //      token AND ask Supabase Auth to send the standard invite email
 //      (auth.admin.inviteUserByEmail). The redirect URL embeds our
 //      token so the accept page can claim the invite once the new
@@ -78,7 +78,7 @@ Deno.serve(async (req) => {
   );
   if (!owner.ok) return owner.response;
 
-  // Already on the team? Two parallel lookups: existing accounts row
+  // Already on the team? Two parallel lookups: existing managers row
   // (drives the link-directly path), and any pending invite for the
   // same address (so we can short-circuit with a friendly error).
   const [existingBusiness, existingInvite] = await Promise.all([
@@ -98,7 +98,7 @@ Deno.serve(async (req) => {
       .from("project_members")
       .select("id")
       .eq("project_id", projectId)
-      .eq("business_id", existingBusiness.data.id)
+      .eq("manager_id", existingBusiness.data.id)
       .maybeSingle();
     if (existingMember) {
       return json(
@@ -108,7 +108,7 @@ Deno.serve(async (req) => {
     }
     const ins = await admin
       .from("project_members")
-      .insert({ project_id: projectId, business_id: existingBusiness.data.id, role })
+      .insert({ project_id: projectId, manager_id: existingBusiness.data.id, role })
       .select("id")
       .single();
     if (ins.error) {
@@ -155,7 +155,7 @@ Deno.serve(async (req) => {
       redirectTo,
     });
     if (inviteRes.error) {
-      // "User already registered" is fine: the account_invites row is
+      // "User already registered" is fine: the project_invites row is
       // still good and the recipient can use the link directly.
       emailError = inviteRes.error.message;
     } else {

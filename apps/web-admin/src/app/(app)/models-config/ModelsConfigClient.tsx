@@ -17,7 +17,7 @@ import {
   type ModelStatus,
 } from "./types";
 
-// Models Config — SoT for app_settings.models_config. supabase + memo are
+// Models Config — SoT for app_config.models_config. supabase + memo are
 // edited here and read live by EFs (MESITA-941 loadModelsConfig). The Enricher
 // and embedding cards map to Enricher Config (plus a staged note for
 // models_config.enricher.perplexity). Failed GET blocks Save (MESITA-737) —

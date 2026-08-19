@@ -49,8 +49,8 @@ type Funnel = { gg: number; depth: number; ag: number; ai: number; save: number 
 // and the input's max never disagree about the funnel's invariant.
 const MAX_GOOGLE_COLLECT = 10;
 const MAX_INSTAGRAM_COLLECT = 50;
-// Matches DB CHECK app_settings_atlas_save_total_images_range (0–20) and the
-// admin-web-update-atlas-config / ENRICH_FIELD_LIMITS.photos contract. UI min
+// Matches DB CHECK app_config_atlas_save_total_images_range (0–20) and the
+// admin-web-update-enricher-config / ENRICH_FIELD_LIMITS.photos contract. UI min
 // stays 1 (a zero-save gallery is not useful from this knob). Separate from
 // PHOTO_CEILING=50 in enrich-config.ts (S9 storage-mirror hard cap).
 const MAX_SAVE_IMAGES = 20;
@@ -104,7 +104,7 @@ function SubHeading({
 // One "Images" box: the whole photo funnel (Collection → Analysis → Selection)
 // as three subsections in a single card, plus two binaries.
 //
-// Vision is a REAL kill-switch (app_settings.atlas_image_vision_enabled): the
+// Vision is a REAL kill-switch (app_config.atlas_image_vision_enabled): the
 // analysis stage reads it and skips the whole describe+rank pass when it's off
 // (supabase-cron-enrich-place-analysis). Off does NOT mean "no photos" — the
 // funnel still collects and still keeps saveTotalImages, just in source order

@@ -13,7 +13,7 @@ import {
 
 // Memo's config surface — kept deliberately small: the persona prose and the
 // legacy model fields. Server-seeded from admin-web-get-memo-config
-// (app_settings.memo_*); a failed load keeps DEFAULT_MEMO_CONFIG visible but
+// (app_config.memo_*); a failed load keeps DEFAULT_MEMO_CONFIG visible but
 // blocks Save (MESITA-737).
 //
 // Enforcement is stated PER KNOB via <KnobStatus>, not in card prose (MESITA-738).

@@ -196,7 +196,5 @@ export function toReservationItem(row: EFReservationRow): ReservationItem {
     guestNotify: row.consumer_notify === "app" ? "app" : "call",
     guestConfirmedAt: row.consumer_confirmed_at ?? null,
     alternatives,
-    // linkedCoupon intentionally omitted: the list EF exposes the coupon by
-    // id only (rates/class live on the coupon row).
   };
 }

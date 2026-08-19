@@ -48,7 +48,7 @@ export async function storePlaceImages(
   }
 
   const upsertRows = assets.map((a) => ({
-    project_id: projectId,
+    place_id: projectId,
     source: a.source,
     source_url: a.source_url,
     status: "pending",
@@ -61,7 +61,7 @@ export async function storePlaceImages(
 
   const { error: upsertErr } = await admin
     .from("place_media_assets")
-    .upsert(upsertRows, { onConflict: "project_id,source_url" });
+    .upsert(upsertRows, { onConflict: "place_id,source_url" });
   if (upsertErr) {
     return { ok: false, error: `media_upsert: ${upsertErr.message}` };
   }
@@ -92,7 +92,7 @@ async function processAssetsInBackground(
         bytes: mirrored.bytes,
         last_error: mirrored.error,
       })
-      .eq("project_id", projectId)
+      .eq("place_id", projectId)
       .eq("source_url", asset.source_url);
     if (error) {
       console.error("[store-place-images] asset_update:", error.message);

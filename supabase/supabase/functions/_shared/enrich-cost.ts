@@ -2,7 +2,7 @@
 //
 // Uses the shared COST rate card in enrich-config.ts (mirrors the admin
 // calculator). Accumulates estimated USD as each paid step completes; aborts
-// the run when a charge would push spent over app_settings.atlas_per_run_cost_cap_usd.
+// the run when a charge would push spent over app_config.atlas_per_run_cost_cap_usd.
 // Approximate — enough to bound spend, not for billing.
 
 import { COST, type EnrichConfig } from "./enrich-config.ts";

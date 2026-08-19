@@ -19,7 +19,6 @@ function row(overrides: Partial<CheckTicketRow> = {}): CheckTicketRow {
     id: "11111111-1111-1111-1111-111111111111",
     project_id: "22222222-2222-2222-2222-222222222222",
     consumer_id: "33333333-3333-3333-3333-333333333333",
-    kind: "coupon",
     status: "open",
     check_code: "abcdefghijklmnopqrstuv",
     first_scanned_at: null,

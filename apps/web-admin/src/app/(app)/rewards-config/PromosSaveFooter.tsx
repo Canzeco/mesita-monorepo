@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { RotateCcw } from "lucide-react";
 
@@ -37,12 +36,9 @@ export function PromosSaveFooter() {
       <div className="flex items-start justify-between gap-3">
         <p className="text-muted-foreground text-xs">
           Rates are built from components: base + class + plan, plus whatever the
-          guest earned. Class is granted, never sold — who holds the top rung is
-          decided in{" "}
-          <Link href="/aura-consumers" className="underline underline-offset-2">
-            Aura Consumers
-          </Link>
-          . All four tiers share one Save.
+          guest earned. Class is earned, never sold or granted — this page
+          prices the rungs, it does not seat anyone on them. All four tiers
+          share one Save.
         </p>
         <button
           type="button"

@@ -204,14 +204,13 @@ Deno.serve(async (req) => {
         consumer_id: consumerId,
         opened_by: consumerId, // self-opened: the v2 marker
         status: TICKET_STATUS.open,
-        kind: "coupon",
         story_status: storyStatus,
         review_status: reviewStatus,
         check_code: newCheckCode(),
         ...snapshotRatesFromPlace(place as Record<string, unknown>),
       })
       .select(
-        "id, status, kind, story_status, review_status, check_code, first_scanned_at, currency, created_at",
+        "id, status, story_status, review_status, check_code, first_scanned_at, currency, created_at",
       )
       .single();
     if (!res.error) {

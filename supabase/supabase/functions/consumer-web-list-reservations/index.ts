@@ -3,10 +3,9 @@
 // Authenticated read of the caller's reservations. Returns booking
 // metadata joined with the place summary — NO discount /
 // money fields, because the entity split's contract is that the
-// reservation card never carries financial info. The (optional)
-// linked coupon is exposed by id only so the client can cross-
-// reference the coupons list, but the rates / cap live on the
-// coupon row, never here.
+// reservation card never carries financial info. The reservation has no
+// discount surface at all: a reward comes from showing up, and the rates
+// live on the visit ticket.
 //
 // Defaults to upcoming + recently completed; pass `scope: "past"` for
 // archived bookings.
@@ -70,7 +69,7 @@ Deno.serve(async (req) => {
       // attempts_state / call_attempts let the app separate `created` (no dial
       // yet) from `booking` (agent working it) — see the lifecycle in the
       // consumer adapter.
-      "id, reserved_at, party_size, status, reference_code, notes, confirmed_at, completed_at, cancelled_at, coupon_id, created_at, project_id, attempts_state, next_attempt_at, call_attempts, consumer_notify, consumer_confirmed_at, alternatives",
+      "id, reserved_at, party_size, status, reference_code, notes, confirmed_at, completed_at, cancelled_at, created_at, project_id, attempts_state, next_attempt_at, call_attempts, consumer_notify, consumer_confirmed_at, alternatives",
     )
     .eq("consumer_id", consumerId)
     // Operator test tickets (is_test) reference real consumers — never surface

@@ -34,7 +34,7 @@ export async function checkMembership(
       .from("project_members")
       .select("role")
       .eq("project_id", projectId)
-      .eq("business_id", user.id)
+      .eq("manager_id", user.id)
       .maybeSingle(),
   ]);
   const role = (vm.data?.role as MembershipRole | undefined) ?? null;

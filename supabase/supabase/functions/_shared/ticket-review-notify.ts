@@ -64,7 +64,7 @@ export async function ensureConsumerReviewNotification(
     admin
       .from("visit_tickets")
       .select(
-        "kind, discount_cents, discount_percent, total_cents, bill_subtotal_cents, tip_cents",
+        "discount_cents, discount_percent, total_cents, bill_subtotal_cents, tip_cents",
       )
       .eq("id", ticketId)
       .single(),
@@ -85,7 +85,6 @@ export async function ensureConsumerReviewNotification(
       place_name: v?.name ?? "Partner place",
       place_photo_url: v?.photos?.[0] ?? null,
       place_instagram_handle: placeInstagramHandleForPayload(v?.instagram_url),
-      ticket_kind: t?.kind ?? null,
       bill_subtotal_cents: t?.bill_subtotal_cents ?? null,
       tip_cents: t?.tip_cents ?? null,
       discount_cents: discount,

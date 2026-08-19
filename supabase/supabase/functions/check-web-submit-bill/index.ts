@@ -226,7 +226,6 @@ Deno.serve(async (req) => {
       place_name: place.name,
       place_photo_url: place.photos?.[0] ?? null,
       place_instagram_handle: placeInstagramHandleForPayload(place.instagram_url),
-      ticket_kind: ticket.kind,
       bill_subtotal_cents: snap.checkSubtotalCents,
       tip_cents: snap.tipCents,
       total_cents: snap.totalCents,

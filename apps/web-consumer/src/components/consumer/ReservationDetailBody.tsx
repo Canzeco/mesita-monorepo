@@ -16,9 +16,10 @@ import { useBrowserSupabase } from "@/lib/supabase/browser";
 
 // Shared body for /reservation/[id]. Used by both the intercepted modal
 // (ReservationDetailModalShell) and the hard-nav page. Stays narrow on
-// purpose — the ticket's lifecycle, its metadata, the linked coupon if any,
-// and the actions that can move it. No payment, no bill math (that happens at
-// the table); no full place detail (that lives on /places/[id]).
+// purpose — the ticket's lifecycle, its metadata, and the actions that can
+// move it. No reward surface (a discount is earned by showing up, on the
+// visit ticket); no payment, no bill math (that happens at the table); no
+// full place detail (that lives on /places/[id]).
 
 // The happy path as a stepper: created → booking → confirmed → passed. A
 // ticket that exited the path (cancelled / failed) shows the banner instead —

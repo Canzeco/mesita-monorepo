@@ -1,7 +1,7 @@
 // Supabase Edge Function — admin-web-set-auto-verify
 //
 // Toggles one of the per-method auto-confirm flags on
-// public.app_settings. Prefer admin-web-update-verification-config for
+// public.app_config. Prefer admin-web-update-verification-config for
 // the admin console (Verification Config owns every verification knob);
 // this endpoint remains for single-method callers.
 //

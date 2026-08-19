@@ -7,7 +7,7 @@
 //      email-pool only).
 //   2. Stamp app_metadata.role = 'business' if unset. Refuse to demote
 //      an admin.
-//   3. Lazy-create the accounts row.
+//   3. Lazy-create the managers row.
 //
 // Safe to call on every sign-in (idempotent). Returns the role + business
 // row so the client can route after refreshSession().
@@ -69,7 +69,7 @@ Deno.serve(async (req) => {
     }
   }
 
-  // Lazy-create accounts row. Email mirrors auth.user.email.
+  // Lazy-create managers row. Email mirrors auth.user.email.
   const existing = await admin
     .from("managers")
     .select("id, full_name, email, phone")

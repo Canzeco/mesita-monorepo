@@ -1,6 +1,6 @@
 // Sourcing policy enforcement — the BACKEND owner of the sourcing gate.
 //
-// public.app_settings.sourcing_config (id=1) decides, per sourcing CHANNEL,
+// public.app_config.sourcing_config (id=1) decides, per sourcing CHANNEL,
 // which place FAMILIES may enter Mesita and the Google quality bar (min rating +
 // min review count). The admin console authors it; this module is where an
 // add-path actually ENFORCES it — a client can't be trusted to self-gate.
@@ -124,16 +124,16 @@ export function familyForGoogleType(primaryType: string | null | undefined): Fam
 }
 
 // The launch policy — must match the admin catalog's DEFAULT_CONFIG. Used as
-// the fallback when the app_settings read fails or a channel key is absent, so
+// the fallback when the app_config read fails or a channel key is absent, so
 // a transient error still enforces the intended floors rather than failing open
-// to "allow anything". Live floors are authored in app_settings; historical
+// to "allow anything". Live floors are authored in app_config; historical
 // migration seeds (20260708120000_sourcing_config.sql) may differ.
 const DEFAULT_POLICY: Record<ChannelKey, ChannelPolicy> = {
   admin_search: { enabled: true, families: [...ALL_FAMILY_KEYS], minRating: 0, minReviews: 0 },
   admin_add: { enabled: true, families: [...ALL_FAMILY_KEYS], minRating: 0, minReviews: 0 },
   business_search: { enabled: true, families: [...ALL_FAMILY_KEYS], minRating: 0, minReviews: 0 },
   business_add: { enabled: true, families: [...ALL_FAMILY_KEYS], minRating: 0, minReviews: 0 },
-  // Live admin defaults (floors authored in app_settings.sourcing_config;
+  // Live admin defaults (floors authored in app_config.sourcing_config;
   // these are the read-fail fallback — not the old migration seed 3.5★ / 100).
   consumer_search: { enabled: true, families: [...ALL_FAMILY_KEYS], minRating: 1, minReviews: 50 },
   consumer_add: { enabled: true, families: [...ALL_FAMILY_KEYS], minRating: 2, minReviews: 50 },
@@ -183,7 +183,7 @@ export type EligibilityResult =
 
 export type SourcingConfigRow = Partial<Record<ChannelKey, unknown>>;
 
-// Read one channel slice from app_settings.sourcing_config, coerced with the
+// Read one channel slice from app_config.sourcing_config, coerced with the
 // launch-policy fallback. Shared by add-paths and search-paths.
 export async function readChannelPolicy(
   admin: SupabaseClient,

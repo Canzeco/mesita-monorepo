@@ -13,7 +13,7 @@ export type MemoAnswer = {
   predictions: PlacePrediction[];
   related: string[];
   mocked: boolean;
-  // Operator-configured Ask AI opener (app_settings.memo_greeting).
+  // Operator-configured Ask AI opener (app_config.memo_greeting).
   greeting?: string | null;
 };
 

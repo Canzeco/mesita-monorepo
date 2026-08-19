@@ -2,7 +2,7 @@
 //
 // Naming: caller-verb-words. Caller = admin, verb = get, words = reservations-config.
 //
-// Returns the reservation-endpoint policy from the public.app_settings singleton
+// Returns the reservation-endpoint policy from the public.app_config singleton
 // for the admin console's Reservations Config page: the ordered channel priority
 // (phone only — MESITA-842; voice-reachable), the parked channels, and whether
 // an operator's hand-picked channel survives a re-enrich. See
@@ -42,7 +42,7 @@ Deno.serve(async (req) => {
     return jsonError(`reservations_config_read: ${error.message}`, 500);
   }
   if (!data) {
-    return jsonError("app_settings missing", 500);
+    return jsonError("app_config missing", 500);
   }
 
   // ── Needs attention (eng-review 2026-08-04) ────────────────────────────────

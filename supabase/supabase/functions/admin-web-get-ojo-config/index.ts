@@ -2,7 +2,7 @@
 //
 // Naming: caller-verb-words. Caller = admin, verb = get, words = ojo-config.
 //
-// Returns Ojo's policy blob from the public.app_settings singleton for the
+// Returns Ojo's policy blob from the public.app_config singleton for the
 // admin console's Ojo Config page. Ojo is the proof-verification engine: it
 // reads the screenshot a guest posts for an Instagram story / Google review
 // (MESITA-1030 · ticket-proofs bucket) and returns a verdict. See
@@ -43,7 +43,7 @@ Deno.serve(async (req) => {
     .eq("id", 1)
     .maybeSingle();
   if (error) return jsonError(`ojo_config_read: ${error.message}`, 500);
-  if (!data) return jsonError("app_settings missing", 500);
+  if (!data) return jsonError("app_config missing", 500);
 
   return json({
     ok: true,

@@ -305,11 +305,11 @@ export const CHANNELS: Channel[] = [
   },
 ];
 
-// Fail-closed placeholder / coerce seed — must match live app_settings +
+// Fail-closed placeholder / coerce seed — must match live app_config +
 // `_shared/sourcing.ts` DEFAULT_POLICY (shipped code > historical migration
 // seed). Used as the pre-load placeholder and as the fallback if the config
 // read fails. consumer_search minRating is 1★; consumer_add is 2★ / 50 reviews
-// (live app_settings floors — not the old migration seed 3.5★ / 100).
+// (live app_config floors — not the old migration seed 3.5★ / 100).
 export const DEFAULT_CONFIG: SourcingConfig = {
   admin_search: { enabled: true, families: [...ALL_FAMILY_KEYS], minRating: 0, minReviews: 0 },
   admin_add: { enabled: true, families: [...ALL_FAMILY_KEYS], minRating: 0, minReviews: 0 },

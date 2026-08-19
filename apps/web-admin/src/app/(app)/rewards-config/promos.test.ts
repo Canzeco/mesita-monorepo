@@ -2,20 +2,14 @@ import { describe, expect, it } from "vitest";
 
 import { snapDiscountCap } from "@/lib/business/strategies";
 import {
-  ACTION_KEYS,
-  ALLOWED_RATES,
   DEFAULT_PROMOS,
-  LEGACY_CLASS_IDENTITY,
-  STRATEGY_KEYS,
   additivityError,
   coercePromosConfig,
   deriveOrders,
   deriveVisits,
   expandOrders,
   expandVisits,
-  legacyRulesFrom,
   modelWarnings,
-  seedFromLegacyRules,
   snapRate,
   totalFor,
 } from "./promos";
@@ -148,7 +142,7 @@ describe("snap helpers", () => {
   });
 });
 
-describe("totalFor + legacyRulesFrom (the engine bridge)", () => {
+describe("totalFor (the engine bridge)", () => {
   it("standing total is the bare base for that class and plan", () => {
     expect(
       totalFor(DEFAULT_PROMOS, "aggressive", "bronze", "premium", "standing"),
@@ -165,34 +159,6 @@ describe("totalFor + legacyRulesFrom (the engine bridge)", () => {
         base + DEFAULT_PROMOS.visits.bonuses.conservative.story,
       );
     }
-  });
-
-  it("emits the complete 40-rule legacy set, on-grid and ≤70", () => {
-    const rules = legacyRulesFrom(DEFAULT_PROMOS);
-    const legacyClassCount = Object.keys(LEGACY_CLASS_IDENTITY).length;
-    expect(rules).toHaveLength(
-      STRATEGY_KEYS.length * legacyClassCount * ACTION_KEYS.length,
-    );
-    for (const r of rules) {
-      expect(ALLOWED_RATES).toContain(r.discount_percent);
-    }
-    // The legacy `premium` row is the PLAN uplift at the base class, not a
-    // class of its own: aggressive bronze·premium (40) + welcome (10) = 50.
-    const premiumWelcome = rules.find(
-      (r) =>
-        r.strategy === "aggressive" &&
-        r.class === "premium" &&
-        r.action === "welcome",
-    );
-    expect(premiumWelcome?.discount_percent).toBe(50);
-    // aura → diamond·free: 50 + 10 = 60 (≤70).
-    const auraWelcome = rules.find(
-      (r) =>
-        r.strategy === "aggressive" &&
-        r.class === "aura" &&
-        r.action === "welcome",
-    );
-    expect(auraWelcome?.discount_percent).toBe(60);
   });
 });
 
@@ -217,69 +183,6 @@ describe("modelWarnings", () => {
     inverted.visits.base.conservative.diamond.free = 5;
     expect(modelWarnings(inverted)).toEqual([]);
     expect(additivityError(inverted.visits.base)).not.toBeNull();
-  });
-});
-
-describe("seedFromLegacyRules", () => {
-  it("returns null when there is nothing to seed from", () => {
-    expect(seedFromLegacyRules(undefined)).toBeNull();
-    expect(seedFromLegacyRules([])).toBeNull();
-    expect(seedFromLegacyRules([{ nope: 1 }])).toBeNull();
-  });
-
-  it("round-trips a v11-derived table back to the same knobs", () => {
-    const seeded = seedFromLegacyRules(legacyRulesFrom(DEFAULT_PROMOS));
-    expect(seeded).not.toBeNull();
-    expect(seeded?.visits.base).toEqual(DEFAULT_PROMOS.visits.base);
-    expect(seeded?.visits.bonuses).toEqual(DEFAULT_PROMOS.visits.bonuses);
-  });
-
-  it("reads the v9 formula table through the same axis split", () => {
-    // The v9 stored shape: rate = 5 + type + class + strategy.
-    const TYPE: Record<string, number> = {
-      standing: 0,
-      mesita_review: 5,
-      story: 10,
-      review: 15,
-      welcome: 20,
-    };
-    const CLS: Record<string, number> = {
-      standard: 0,
-      influencer: 5,
-      premium: 10,
-      aura: 15,
-    };
-    const STRAT: Record<string, number> = { conservative: 0, aggressive: 10 };
-    const rules = [];
-    for (const s of Object.keys(STRAT))
-      for (const c of Object.keys(CLS))
-        for (const a of Object.keys(TYPE))
-          rules.push({
-            strategy: s,
-            class: c,
-            action: a,
-            discount_percent: 5 + TYPE[a] + CLS[c] + STRAT[s],
-          });
-
-    const seeded = seedFromLegacyRules(rules);
-    // standard 5 → bronze·free; premium 15 → bronze·premium (uplift +10).
-    expect(seeded?.visits.base.conservative.bronze).toEqual({
-      free: 5,
-      premium: 15,
-    });
-    expect(seeded?.visits.base.conservative.silver).toEqual({
-      free: 10,
-      premium: 20,
-    });
-    expect(seeded?.visits.base.conservative.diamond).toEqual({
-      free: 20,
-      premium: 30,
-    });
-    // The legacy rule table has no strategy dimension on bonuses, so the one
-    // derived set fans out to both.
-    const expectedBonuses = { welcome: 20, mesita: 5, story: 10, google: 15 };
-    expect(seeded?.visits.bonuses.conservative).toEqual(expectedBonuses);
-    expect(seeded?.visits.bonuses.aggressive).toEqual(expectedBonuses);
   });
 });
 

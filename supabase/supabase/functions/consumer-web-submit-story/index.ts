@@ -82,7 +82,7 @@ Deno.serve(async (req) => {
 
   const ticketRow = await admin
     .from("visit_tickets")
-    .select("id, project_id, consumer_id, kind, status, story_status, fix_requested")
+    .select("id, project_id, consumer_id, status, story_status, fix_requested")
     .eq("id", ticketId)
     .maybeSingle();
   if (ticketRow.error) {
@@ -168,7 +168,7 @@ Deno.serve(async (req) => {
       story_status: "self_verified",
       story_submitted_at: now,
       story_verified_at: now,
-      // tickets.story_verified_by FKs to accounts (business-side) — a consumer
+      // visit_tickets.story_verified_by FKs to managers (business-side) — a consumer
       // id can't go here, and self-verification has no approver anyway.
       story_verified_by: null,
       story_reject_reason: null,
@@ -182,7 +182,7 @@ Deno.serve(async (req) => {
         : {}),
     })
     .eq("id", ticketId)
-    .select("id, kind, status, story_status, story_submitted_at")
+    .select("id, status, story_status, story_submitted_at")
     .single();
   if (updated.error) {
     return json(

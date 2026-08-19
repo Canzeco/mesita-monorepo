@@ -350,7 +350,7 @@ Deno.serve(async (req) => {
   // Four per-tier promo rates. Each is nullable (null clears the offer). The
   // The Promos page sends the tens grid {10, 20, 30, 40, 50} via its four
   // preset strategies (50 is the ceiling; legacy 70 retired — MESITA-543).
-  // Coupons + projects CHECKs mirror this set.
+  // The projects CHECK constraints mirror this set.
   for (const field of PROMO_RATE_FIELDS) {
     if (!(field in body)) continue;
     const rate = normalisePromoRate(field, body[field]);
@@ -500,7 +500,7 @@ Deno.serve(async (req) => {
   // Manual Priority — the operator's per-place override. SUPER-ADMIN ONLY: a
   // business owner lifting their own place would defeat the point, so for
   // non-super-admins the field is silently dropped (not a 403 — the rest of the
-  // form still saves). Written to the place via the projects_view INSTEAD OF
+  // form still saves). Written to the place via the profiles INSTEAD OF
   // trigger (routed to places.manual_priority).
   //
   // Currently INERT: MESITA-1048 deleted the ranking engine that consumed it.

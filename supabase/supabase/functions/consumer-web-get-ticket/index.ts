@@ -20,12 +20,12 @@ import { attachPlaces } from "../_shared/reservation-places.ts";
 // The wallet's list columns plus the v4 journey state. updated_at rides along
 // so the client can keep the freshest of (wallet row · this poll).
 const TICKET_COLUMNS =
-  "id, kind, status, story_status, story_screenshot_url, story_submitted_at, story_verified_at, story_reject_reason, " +
+  "id, status, story_status, story_screenshot_url, story_submitted_at, story_verified_at, story_reject_reason, " +
   "review_status, review_screenshot_url, review_submitted_at, review_verified_at, review_reject_reason, " +
   "check_code, first_scanned_at, bill_subtotal_cents, tip_cents, tip_pct, total_cents, redeem_cents, " +
   "discount_percent, discount_cents, bill_source, revealed_at, " +
   "approved_at, approved_discount_cents, approved_amount_due_cents, fix_requested, fix_note, paid_method, validated_at, " +
-  "reservation_status, reservation_at, reservation_party_size, currency, created_at, paid_at, cancelled_at, cancel_reason, " +
+  "currency, created_at, paid_at, cancelled_at, cancel_reason, " +
   "project_id, updated_at";
 
 type Body = { ticketId?: string };

@@ -44,7 +44,7 @@ export function isPlausibleCheckCode(code: string): boolean {
 // ── Lookup ──────────────────────────────────────────────────────────────
 
 export const CHECK_TICKET_COLUMNS =
-  "id, project_id, consumer_id, kind, status, check_code, first_scanned_at, " +
+  "id, project_id, consumer_id, status, check_code, first_scanned_at, " +
   "story_status, story_screenshot_url, review_status, review_screenshot_url, " +
   "bill_subtotal_cents, tip_cents, tip_pct, total_cents, discount_percent, discount_cents, " +
   "bill_source, currency, created_at, revealed_at, cancelled_at, " +
@@ -54,7 +54,6 @@ export type CheckTicketRow = {
   id: string;
   project_id: string;
   consumer_id: string;
-  kind: string;
   status: string;
   check_code: string;
   first_scanned_at: string | null;
@@ -297,7 +296,7 @@ export function checkNotFound(json: (b: unknown, s?: number) => Response): Respo
 // ── Per-place check settings (MESITA-823 · MESITA-898) ─────────────────
 //
 // The two staff-side knobs living on projects, EF-only (never in
-// projects_view): check_pin — optional 6-digit PIN gating WRITE actions
+// profiles): check_pin — optional 6-digit PIN gating WRITE actions
 // (NULL = off; NOT a waiter identity, MESITA-833 stands) — and
 // check_require_bill — when true, mark-paid refuses to close an unbilled
 // ticket. get-ticket never gates; it exposes the booleans `pin_required`

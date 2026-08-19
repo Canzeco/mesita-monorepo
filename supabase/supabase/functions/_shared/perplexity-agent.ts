@@ -6,7 +6,7 @@
 import { safeParseJson } from "./parse-utils.ts";
 
 const PERPLEXITY_AGENT_URL = "https://api.perplexity.ai/v1/agent";
-// Default preset when the caller doesn't pass one (matches the app_settings
+// Default preset when the caller doesn't pass one (matches the app_config
 // default). Callers pass the admin-selected preset via opts.preset.
 const DEFAULT_PRESET = "pro-search";
 

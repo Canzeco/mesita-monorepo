@@ -13,7 +13,6 @@ type CreatedReservation = {
     status: string;
     notes: string | null;
   };
-  linked_coupon_id: string | null;
   /** Whether the outbound-call trigger was accepted (best-effort; not required). */
   call_triggered?: boolean;
 };
@@ -80,8 +79,8 @@ export function apiConfirmReservation(
 export type ReservationScope = "upcoming" | "past" | "all";
 
 // One row from consumer-web-list-reservations: booking metadata joined with
-// the place summary. No money fields (the entity split keeps discounts on the
-// coupon row); the linked coupon is exposed by id only.
+// the place summary. No money fields: a booking carries no discount — the
+// reward is earned by showing up and lives on the visit ticket.
 export type EFReservationRow = {
   id: string;
   reserved_at: string;
@@ -106,7 +105,6 @@ export type EFReservationRow = {
   confirmed_at: string | null;
   completed_at: string | null;
   cancelled_at: string | null;
-  coupon_id: string | null;
   created_at: string;
   /** MESITA-787 — whether a2 may ring the guest. */
   consumer_notify?: GuestNotify | null;

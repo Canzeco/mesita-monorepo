@@ -21,7 +21,7 @@ Expo SDK 57 · React Native · Expo Router · NativeWind — the mobile port of 
 - Env: `EXPO_PUBLIC_SUPABASE_URL` + `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY`; optional `EXPO_PUBLIC_GMP_KEY` and `EXPO_PUBLIC_SENTRY_DSN`. Public values only, never a service key. EAS project `@canzeco/mesita-mobile-consumer`; secrets live in EAS env. Bundle ID `com.mesita.consumer` is **STAGED** — no store submission until Pato confirms it.
 
 ## Where native diverges from web
-- `src/app/` — Expo Router: `index.tsx` (auth gate) · `sign-in` · `onboard` · `(tabs)/{home,search,rewards,inbox,me}`. Web's third-tab route rename applies here too: the label is **Visit**, the route stays `(tabs)/rewards`.
+- `src/app/` — Expo Router: `index.tsx` (auth gate) · `sign-in` · `onboard` · `(tabs)/{home,search,rewards,inbox,me}`. Web's third-tab rename applies here too: the label is **Pay**, the route stays `(tabs)/rewards`.
 - **Inbox renders its four sections as `SegmentNav` segments of ONE screen**, where web uses nested routes. Same sections, same load-bearing order. `/inbox/*` and `/saved/reservations` redirect to the tab. `ReservationItem.reservedAt` exists in the mobile mirror because `when` is a display string and cannot be sorted on.
 - **`SegmentNav` scrolls horizontally as its RESTING state.** A 375px phone genuinely cannot hold five icon+label pills, so unlike web this is not just the large-text fallback. Never fix it by shrinking type below 12px — shorten a label instead.
 - Home-hub parked tabs are `ComingSoonModal`, not redirects. `CatalogTab`/`AskAiTab`/`SocialTab` stay in tree — each is a one-flag un-park; never delete them as "unused".

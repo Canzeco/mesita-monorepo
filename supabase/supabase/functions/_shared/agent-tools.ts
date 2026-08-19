@@ -10,7 +10,7 @@
 // Endpoints stay THIN — one capability per EF, auth + data shaping here.
 // Auth (two locks, same as eleven-agent-get-reservation): gateway verify_jwt
 // via the anon-key bearer, then `x-agent-secret` matched timing-safe against
-// app_settings.agents_config.toolSecret (rotatable with SQL).
+// app_config.agents_config.toolSecret (rotatable with SQL).
 //
 // Inbound scope rule: a3/a4 tools NEVER trust the LLM's claims — identity is
 // re-derived server-side from the caller's phone number (the agent passes

@@ -38,7 +38,7 @@ import {
 } from "../_shared/enrich-pipeline.ts";
 
 serveEnrichStage("analysis", async (admin, _env, row) => {
-  const projectId = row.project_id;
+  const projectId = row.place_id;
   const gathered = row.gathered;
   if (!gathered) {
     // Research output missing (shouldn't happen) — send the row back to research.

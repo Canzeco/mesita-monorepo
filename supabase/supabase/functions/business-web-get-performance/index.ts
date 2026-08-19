@@ -273,7 +273,7 @@ Deno.serve(async (req) => {
     ["google_reviews_count", googleReviewsCountRes],
     ["mesita_reviews_count", mesitaReviewsCountRes],
     ["ticket_reviews", reviewsRes],
-    ["saved_places", savesFeedRes],
+    ["favorites", savesFeedRes],
     ["tickets_feed", ticketsFeedRes],
     ["reservations", resvRes],
   ] as const) {

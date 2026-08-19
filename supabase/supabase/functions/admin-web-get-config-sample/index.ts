@@ -9,7 +9,7 @@
 // scoring_config blob and both /lineup-config pages went with it); the sampler
 // itself is generic and survives under a name that doesn't lie.
 //
-// Consumer taste comes from what they actually saved/visited (saved_places /
+// Consumer taste comes from what they actually saved/visited (favorites /
 // paid tickets → place categories+tags). Empty history returns empty arrays —
 // the client synthesizes taste and LABELS it synthetic; this EF never invents
 // data. Read-only; nothing here writes.

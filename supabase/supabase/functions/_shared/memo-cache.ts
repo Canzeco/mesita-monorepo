@@ -2,7 +2,7 @@
 //
 // Routing Memo through Edge Functions (see memo-data.ts) turned in-process
 // reads into network hops on the consumer's SYNCHRONOUS chat path. This buys
-// most of that back for the two reads that repeat: the app_settings singleton
+// most of that back for the two reads that repeat: the app_config singleton
 // and one user's persona clause.
 //
 // Isolate-local and short-lived BY DESIGN. Entries live in one Edge Function

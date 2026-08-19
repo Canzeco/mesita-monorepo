@@ -91,7 +91,6 @@ Deno.serve(async (req) => {
       strike = {
         strikeNumber: result.strikeNumber,
         consequence: result.consequence,
-        compensationCouponId: result.compensationCouponId,
       };
     } else {
       console.error("[business-web-cancel-ticket] strike:", result.error);

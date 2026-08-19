@@ -1,4 +1,4 @@
-// EF-side reader for the reservation-agent knobs on app_settings.reservations_config
+// EF-side reader for the reservation-agent knobs on app_config.reservations_config
 // (Test mode number + attempts). Mirrors the coerce in
 // apps/web-admin/src/app/(app)/reservations-config/catalog.ts so the admin page and
 // the calling EF agree on the shape. The CHANNEL policy

@@ -88,21 +88,21 @@ Deno.serve(async (req) => {
   // 2. Owner check via project_members.
   const { data: owner } = await admin
     .from("project_members")
-    .select("business_id, role")
+    .select("manager_id, role")
     .eq("project_id", place.id)
     .eq("role", "owner")
     .maybeSingle();
 
   if (owner) {
     const { data: ownerUser } = await admin.auth.admin.getUserById(
-      owner.business_id,
+      owner.manager_id,
     );
     return json({
       ok: true,
       state: "verified_partner",
       place,
       owner: {
-        id: owner.business_id,
+        id: owner.manager_id,
         email: ownerUser?.user?.email ?? null,
       },
     });

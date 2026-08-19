@@ -120,7 +120,7 @@ Deno.serve(async (req) => {
   );
 
   // Quality filters — request body overrides win; otherwise fall back to the
-  // admin_search channel policy from app_settings.sourcing_config.
+  // admin_search channel policy from app_config.sourcing_config.
   const minRating = clamp(
     Number(body.minRating ?? adminSearchPolicy.minRating ?? 0),
     0,

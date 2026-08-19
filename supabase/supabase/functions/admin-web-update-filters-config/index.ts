@@ -4,7 +4,7 @@
 //
 // The payload is the whole Filters config (MESITA-1083): general (modules,
 // defaults, bounds, behavior) plus one entry per consumer surface. It is
-// written as the `v1` key on app_settings.filters_config, MERGE-preserving the
+// written as the `v1` key on app_config.filters_config, MERGE-preserving the
 // blob's other keys so a future v2 can land beside it.
 //
 // A WHOLE-BLOB write: the caller always sends the complete config and

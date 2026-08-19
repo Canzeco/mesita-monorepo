@@ -2,7 +2,7 @@
 //
 // Naming: caller-verb-words. Caller = admin, verb = update, words = models-config.
 //
-// Writes the central models config as ONE jsonb blob on the public.app_settings
+// Writes the central models config as ONE jsonb blob on the public.app_config
 // singleton (models_config). Whole-blob writes only — the Models Config page
 // always saves its full form, so partial patches would only invite drift.
 //

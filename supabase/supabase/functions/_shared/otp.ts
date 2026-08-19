@@ -70,7 +70,7 @@ export async function insertPendingOtpVerification(
 
 // One redemption helper, identical for ai_call and ai_email. Caller
 // passes the methodFilter (so an email code can't redeem a phone row)
-// and the column on app_settings that gates auto-vs-manual approval.
+// and the column on app_config that gates auto-vs-manual approval.
 //
 // Returns a Response either way — success path returns the JSON the
 // EF would have built itself. Hard errors get baked into 4xx/5xx
@@ -189,7 +189,7 @@ export async function redeemOtpVerification(
 
   const { error: memberError } = await admin.from("project_members").insert({
     project_id: verification.project_id,
-    business_id: args.userId,
+    manager_id: args.userId,
     role: "owner",
   });
   if (memberError) {

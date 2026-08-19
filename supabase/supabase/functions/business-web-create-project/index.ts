@@ -3,7 +3,7 @@
 // The signed-in business passes a Google Places `googlePlaceId`. ASYNC create —
 // a MINIMAL 'generating' place is returned immediately and deep enrichment runs
 // in the Enricher pipeline (supabase-cron-enrich-place-*):
-//   1. authenticate the business + upsert its accounts row (ownership scaffolding),
+//   1. authenticate the business + upsert its managers row (ownership scaffolding),
 //   2. createMinimalPlace (_shared/create-place.ts): dedupe → Google spine →
 //      save 'generating' row → seed place_research.
 //

@@ -2,7 +2,7 @@
 //
 // Naming: caller-verb-words. Caller = admin, verb = get, words = filters-config.
 //
-// Returns the Filters config: the v1 blob under app_settings.filters_config.v1
+// Returns the Filters config: the v1 blob under app_config.filters_config.v1
 // (MESITA-1083), or null when nothing has been saved yet. Null is meaningful,
 // not an error — the console renders the code defaults and says out loud that
 // they are launch values rather than an operator's choices, so it must be able

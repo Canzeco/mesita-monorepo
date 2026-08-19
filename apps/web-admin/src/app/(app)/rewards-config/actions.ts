@@ -5,25 +5,20 @@
 // same contract as the Reservations / Sourcing / Memo config actions.
 //
 // Backed by admin-web-get-rewards-config / admin-web-update-rewards-config.
-// The v10 blob in app_settings.rewards_config is the source of truth; the EF
-// keeps the legacy best-of reward_rules in sync on every save so the LIVE
-// engine tracks operator edits after the additive flip (MESITA-992).
+// The v10 blob in app_config.promos_config is the ONLY source of truth — the
+// legacy best-of rule table is gone, so what this page saves is what the LIVE
+// engine prices (MESITA-992).
 // No client ever touches the DB.
 
-import { snapDiscountCap } from "@/lib/business/strategies";
 import { efInvoke } from "@/lib/supabase-ef";
-import {
-  coercePromosConfig,
-  seedFromLegacyRules,
-  type PromosConfig,
-} from "./promos";
+import { coercePromosConfig, type PromosConfig } from "./promos";
 
 type GetPromosConfigResult =
   | {
       ok: true;
       config: PromosConfig;
       updatedAt: string | null;
-      /** True when no v10 blob exists yet and the knobs were derived from the legacy rule table — review, then Save. */
+      /** True when no v10 blob exists yet and the knobs are the launch defaults — review, then Save. */
       seeded: boolean;
     }
   | { ok: false; error: string };
@@ -31,7 +26,6 @@ type GetPromosConfigResult =
 export async function getPromosConfig(): Promise<GetPromosConfigResult> {
   const r = await efInvoke<{
     config?: unknown;
-    rules?: unknown;
     cap?: unknown;
     updatedAt: string | null;
   }>("admin-web-get-rewards-config", {});
@@ -46,15 +40,11 @@ export async function getPromosConfig(): Promise<GetPromosConfigResult> {
     };
   }
 
-  // First load before any v10 save: derive the knobs from the stored legacy
-  // rules (exact for formula-shaped tables) and the cap from the blob scalar.
-  const seeded = seedFromLegacyRules(r.data.rules);
-  const config = seeded
-    ? { ...seeded, cap: snapDiscountCap(r.data.cap) }
-    : coercePromosConfig({ cap: r.data.cap });
+  // First load before any v10 save: nothing is stored but the cap scalar, so
+  // the page opens on the launch defaults carrying that cap — review, then Save.
   return {
     ok: true,
-    config,
+    config: coercePromosConfig({ cap: r.data.cap }),
     updatedAt: r.data.updatedAt ?? null,
     seeded: true,
   };

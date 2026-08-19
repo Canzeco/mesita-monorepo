@@ -102,17 +102,4 @@ export const TOOLS: ToolDef[] = [
       additionalProperties: false,
     },
   },
-  {
-    name: "list_rewards",
-    description:
-      "List active reward coupons (at-the-bill discounts) available to the consumer.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        include_inactive: { type: "boolean" },
-        limit: { type: "number", minimum: 1, maximum: 100 },
-      },
-      additionalProperties: false,
-    },
-  },
 ];

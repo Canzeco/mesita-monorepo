@@ -50,13 +50,13 @@
 // "Who called it" for a creation: places don't persist the caller at insert
 // time (business-web-create-project deliberately leaves the place unowned until an
 // ownership claim is approved), so the closest honest signal is the place's
-// current owner — resolved here via project_members(role=owner) → accounts.
+// current owner — resolved here via project_members(role=owner) → managers.
 // Unclaimed places report actor = null and meta.claimed = false. The exact
 // claimant, when it exists, is its own ownership_claimed event.
 //
 // Place embedding — each source resolves the place profile through the FK it
 // actually has (PostgREST embeds follow declared FKs only):
-//   • place_enrichment_events.project_id → places(id)      → embed places directly
+//   • place_enrichment_events.place_id → places(id)      → embed places directly
 //   • project_verifications.project_id  → projects(id)     → hop projects → places
 // projects (the owned entity) shares its PK 1:1 with places and carries the
 // `slug`; the place profile columns (name/address/…) live on places. So the
@@ -202,11 +202,11 @@ Deno.serve(async (req) => {
         let qb = admin
           .from("place_enrichment_events")
           .select(
-            "id, project_id, step, step_name, status, detail, meta, created_at, place:places(id, name, address, category_label, google_place_id)",
+            "id, place_id, step, step_name, status, detail, meta, created_at, place:places(id, name, address, category_label, google_place_id)",
           )
           .order("created_at", { ascending: false })
           .limit(limit);
-        if (projectId) qb = qb.eq("project_id", projectId);
+        if (projectId) qb = qb.eq("place_id", projectId);
         return qb;
       })()
       : Promise.resolve({ data: null, error: null });
@@ -257,10 +257,10 @@ Deno.serve(async (req) => {
     if (createdIds.length > 0) {
       const { data: owners, error: ownersErr } = await admin
         .from("project_members")
-        // project_members.business_id → accounts (the businesses table was
-        // renamed to `accounts` in the R2 rename; no compat view exists, so
-        // embedding `businesses` 500s). Alias the result back to `business`.
-        .select("project_id, business:accounts(email, full_name, first_name, last_name)")
+        // project_members.manager_id → managers (the business-account table;
+        // no compat view exists, so embedding any older name 500s). Alias the
+        // result back to `business`.
+        .select("project_id, business:managers(email, full_name, first_name, last_name)")
         .eq("role", "owner")
         .in("project_id", createdIds);
       if (ownersErr) {
@@ -319,7 +319,7 @@ Deno.serve(async (req) => {
     // ── atlas.enrichment_step ────────────────────────────────────────────
     for (const e of (stepsRes.data ?? []) as Array<{
       id: string;
-      project_id: string;
+      place_id: string;
       step: string;
       step_name: string;
       status: string;
@@ -371,9 +371,10 @@ Deno.serve(async (req) => {
   // ── Consumer activity (consumer / rewards / reservations) ─────────────
   // Same per-source window + merge pattern as atlas. Every source hops
   // project → places for the profile and embeds the consumer for the actor.
-  // Tickets contribute three event types from three timestamps — each gets
-  // its OWN window (ordered by its own timestamp) so a burst of creates
-  // can't hide older visits/closes.
+  // Visit tickets contribute three event types from three timestamps — each
+  // gets its OWN window (ordered by its own timestamp) so a burst of creates
+  // can't hide older visits/closes. The ticket TABLE is the type now: the
+  // `kind` discriminator is gone, so no payload carries it.
   {
     type ActivityRow = {
       id: string;
@@ -416,16 +417,16 @@ Deno.serve(async (req) => {
       reportsRes,
       resvRes,
     ] = await Promise.all([
-        activitySource("saved_places", "", "created_at", wantType("consumer.place_saved")),
+        activitySource("favorites", "", "created_at", wantType("consumer.place_saved")),
         activitySource(
-          "tickets",
-          "status, kind, ",
+          "visit_tickets",
+          "status, ",
           "created_at",
           wantType("rewards.ticket_created"),
         ),
         activitySource(
-          "tickets",
-          "status, kind, first_scanned_at, ",
+          "visit_tickets",
+          "status, first_scanned_at, ",
           "first_scanned_at",
           wantType("rewards.ticket_visit"),
         ),
@@ -433,8 +434,8 @@ Deno.serve(async (req) => {
         // status rewrite can't reshuffle history; paid_at is still stamped
         // by informal close but is no longer the feed's vocabulary.
         activitySource(
-          "tickets",
-          "status, kind, revealed_at, bill_subtotal_cents, discount_percent, discount_cents, currency, ",
+          "visit_tickets",
+          "status, revealed_at, bill_subtotal_cents, discount_percent, discount_cents, currency, ",
           "revealed_at",
           wantType("rewards.ticket_closed"),
           { status: CLOSED_TICKET_STATUS },
@@ -452,7 +453,7 @@ Deno.serve(async (req) => {
           wantType("rewards.ticket_reported"),
         ),
         activitySource(
-          "reservations",
+          "reservation_tickets",
           "status, party_size, reserved_at, is_test, ",
           "created_at",
           wantType("reservations.reservation_created"),
@@ -460,7 +461,7 @@ Deno.serve(async (req) => {
       ]);
 
     for (const [label, r] of [
-      ["saved_places", savesRes],
+      ["favorites", savesRes],
       ["tickets_created", tCreatedRes],
       ["tickets_visit", tVisitRes],
       ["tickets_closed", tClosedRes],
@@ -498,29 +499,24 @@ Deno.serve(async (req) => {
 
     for (const r of ((tCreatedRes.data ?? []) as unknown[]) as Array<ActivityRow & {
       status: string;
-      kind: string;
     }>) {
       push("rewards.ticket_created", "rewards", r, r.created_at, null, {
         status: r.status,
-        kind: r.kind,
       });
     }
 
     // A first scan is the visit signal — the guest's QR met the venue.
     for (const r of ((tVisitRes.data ?? []) as unknown[]) as Array<ActivityRow & {
       status: string;
-      kind: string;
       first_scanned_at: string;
     }>) {
       push("rewards.ticket_visit", "rewards", r, r.first_scanned_at, null, {
         status: r.status,
-        kind: r.kind,
       });
     }
 
     for (const r of ((tClosedRes.data ?? []) as unknown[]) as Array<ActivityRow & {
       status: string;
-      kind: string;
       revealed_at: string;
       bill_subtotal_cents: number | null;
       discount_percent: number | null;
@@ -529,7 +525,6 @@ Deno.serve(async (req) => {
     }>) {
       push("rewards.ticket_closed", "rewards", r, r.revealed_at, null, {
         status: r.status,
-        kind: r.kind,
         subtotalCents: r.bill_subtotal_cents,
         discountPercent: r.discount_percent,
         discountCents: r.discount_cents,

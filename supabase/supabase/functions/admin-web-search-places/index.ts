@@ -47,7 +47,7 @@ Deno.serve(async (req) => {
       : 25;
 
   // Catalog table columns need zone / Google reviews / enrichment / listing.
-  // All of these already live on projects_view — no join required.
+  // All of these already live on profiles — no join required.
   // Keep as a single string literal so supabase-js can type the select.
   const cols =
     "id, slug, name, google_name, category, category_label, status, address, photos, zone, google_stars_overall, google_review_count, content_status, listing_type, updated_at";

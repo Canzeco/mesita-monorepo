@@ -52,7 +52,7 @@ export const MY_ACTIVITY: ConsumerActivity[] = [
   {
     id: "m3",
     kind: "saved",
-    verb: "You unlocked a reward at",
+    verb: "You saved",
     place: "Mar Verde",
     when: "3 days ago",
   },
@@ -94,7 +94,7 @@ export const GLOBAL_ACTIVITY: ConsumerActivity[] = [
     id: "l4",
     kind: "saved",
     handle: "@diego",
-    verb: "unlocked a reward at",
+    verb: "saved",
     place: "Casa Luminar",
     when: "12 min ago",
   },

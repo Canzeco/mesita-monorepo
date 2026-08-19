@@ -14,7 +14,6 @@ type CreatedReservation = {
     status: string;
     notes: string | null;
   };
-  linked_coupon_id: string | null;
   /** Whether the outbound-call trigger was accepted (best-effort). */
   call_triggered?: boolean;
 };
@@ -75,7 +74,7 @@ export function apiConfirmReservation(args: {
 export type ReservationScope = 'upcoming' | 'past' | 'all';
 
 // One row from consumer-web-list-reservations: booking metadata joined with
-// the place summary. No money fields (entity split); coupon by id only.
+// the place summary. No money fields — a booking carries no discount.
 export type EFReservationRow = {
   id: string;
   reserved_at: string;
@@ -95,7 +94,6 @@ export type EFReservationRow = {
   confirmed_at: string | null;
   completed_at: string | null;
   cancelled_at: string | null;
-  coupon_id: string | null;
   created_at: string;
   /** Run state — parked vs mid-call (MESITA-954). */
   attempts_state?: string | null;

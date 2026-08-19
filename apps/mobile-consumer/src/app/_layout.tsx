@@ -78,9 +78,8 @@ function RootLayout() {
               contentStyle: { backgroundColor: '#fff7f8' },
             }}
           >
-            {/* Place / coupon / reservation / filters — web @modal peers. */}
+            {/* Place / reservation / filters — web @modal peers. */}
             <Stack.Screen name="place/[id]" options={MODAL_SCREEN} />
-            <Stack.Screen name="coupon/[id]" options={MODAL_SCREEN} />
             <Stack.Screen name="reservation/[id]" options={MODAL_SCREEN} />
             <Stack.Screen name="filters" options={MODAL_SCREEN} />
           </Stack>

@@ -135,7 +135,7 @@ export type MyPlace = Place & {
   updated_at?: string;
   // Owner-only staff Check PIN (MESITA-823). Attached by
   // business-web-get-overview on the active place when my_role=owner;
-  // absent for editors/viewers and never present on projects_view.
+  // absent for editors/viewers and never present on the profiles view.
   check_pin?: string | null;
   check_require_bill?: boolean;
 };

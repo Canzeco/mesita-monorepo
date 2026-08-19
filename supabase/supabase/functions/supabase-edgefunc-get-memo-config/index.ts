@@ -4,7 +4,7 @@
 // up Memo's entire data surface (see _shared/memo-data.ts); Memo itself holds
 // no database client.
 //
-// Four slices of the `app_settings` singleton in ONE read:
+// Four slices of the `app_config` singleton in ONE read:
 //   • greeting     — memo_greeting, the consumer Ask AI opener. Null when blank
 //                    so clients keep their in-code fallback.
 //   • instructions — memo_instructions, the operator-tunable persona written by

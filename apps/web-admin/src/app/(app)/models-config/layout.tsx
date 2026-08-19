@@ -1,7 +1,7 @@
 import { ConfigPageLayout } from "@/components/ConfigPageLayout";
 
 // Models Config — a single flat page (no sub-tabs). SoT for
-// app_settings.models_config (MESITA-941 loadModelsConfig): supabase + memo
+// app_config.models_config (MESITA-941 loadModelsConfig): supabase + memo
 // picks are edited here and read live by EFs; Enricher quality / Perplexity
 // Agent preset and the embedding model are controlled on Enricher Config.
 // models_config.enricher.perplexity remains staged (unread —

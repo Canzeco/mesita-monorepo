@@ -2,7 +2,7 @@
 //
 // Naming: caller-verb-words. Caller = admin, verb = update, words = sourcing-config.
 //
-// Writes the place-sourcing policy on the public.app_settings singleton from the
+// Writes the place-sourcing policy on the public.app_config singleton from the
 // admin console's Sourcing Config page. The body carries a partial config keyed by
 // channel; only known channels are merged, each fully validated. Unknown channels
 // and future keys already on the row are preserved. See the getter + the

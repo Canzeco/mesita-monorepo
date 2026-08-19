@@ -11,7 +11,7 @@
 // QR — letting an unverified tap trigger that would hand every guest a
 // button that costs a place real money. Reports land `open` for an operator
 // to read in admin-web-list-notifications and act on with the existing
-// business-web-record-membership-strike path.
+// business-web-record-strike path.
 //
 // Window: from creation until REPORT_WINDOW_DAYS after the ticket closed —
 // a guest usually realises they were shorted once they're outside the venue.

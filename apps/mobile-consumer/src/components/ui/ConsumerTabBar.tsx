@@ -63,10 +63,13 @@ const ICONS: Record<string, IconComponent> = {
 // sections (Visits · Orders · Reservations · Notifications), so it can't be
 // named after any one of them. Icon is an inbox tray, not a calendar: a
 // calendar named RESERVATIONS. Web BottomNav parity.
+// The third tab is "Pay" (Pato, 2026-08-17): named for what the guest came to
+// DO, not for the object it creates. THE LABEL MOVED, AND NOTHING ELSE — the
+// route is still `(tabs)/rewards`, matching web's /new-visit.
 const LABELS: Record<string, string> = {
   home: 'Home',
   search: 'Search',
-  rewards: 'Visit',
+  rewards: 'Pay',
   inbox: 'Inbox',
   me: 'Me',
 };

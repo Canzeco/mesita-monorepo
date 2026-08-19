@@ -28,7 +28,7 @@ export async function apiCreateMcpToken(
 ): Promise<McpTokenMinted> {
   const { token } = await invokeEF<{ token: McpTokenMinted }>(
     client,
-    "consumer-web-create-mcp-token",
+    "consumer-web-create-connector",
     label ? { label } : {},
   );
   return token;
@@ -39,7 +39,7 @@ export async function apiListMcpTokens(
 ): Promise<McpTokenMeta[]> {
   const { tokens } = await invokeEF<{ tokens: McpTokenMeta[] }>(
     client,
-    "consumer-web-list-mcp-tokens",
+    "consumer-web-list-connectors",
     {},
   );
   return tokens;
@@ -49,7 +49,7 @@ export async function apiRevokeMcpToken(
   client: SupabaseClient,
   tokenId: string,
 ): Promise<void> {
-  await invokeEF(client, "consumer-web-revoke-mcp-token", {
+  await invokeEF(client, "consumer-web-revoke-connector", {
     token_id: tokenId,
   });
 }

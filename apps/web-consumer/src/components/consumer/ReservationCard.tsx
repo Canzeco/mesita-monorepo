@@ -4,25 +4,21 @@ import Link from "next/link";
 
 import Image from "next/image";
 import { Calendar, Users } from "lucide-react";
-import type {
-  ReservationItem,
-} from "@/lib/mock/reservations-mock";
+import type { ReservationItem } from "@/lib/mock/reservations-mock";
 import { statusMeta } from "@/lib/reservation-status";
 import { cn, guestNoun } from "@/lib/utils";
 import { reservationPath } from "@/lib/consumer-route-contract";
 
-// Reservation card. Booking metadata only. When the reservation has a
-// linked coupon (the reward tied to the visit), a small "ticket
-// stub" rides along underneath the card — dashed perforated edge above
-// it sells the metaphor without needing a literal scissor icon.
+// Reservation card. Booking metadata only — and no reward surface at all:
+// a discount comes from SHOWING UP (the visit ticket snapshots its own
+// rates), never from holding a booking.
 
 export function ReservationCard({ r }: { r: ReservationItem }) {
   const meta = statusMeta(r.status);
   // "spent" = finished and not happening (passed / cancelled / not booked).
   const spent = meta.spent;
   // Tapping the card opens the intercepted /reservation/[id] modal on
-  // soft nav and the full page on hard nav. Linked-coupon stub stays
-  // inside the same link so the whole ticket is one tap target.
+  // soft nav and the full page on hard nav.
   return (
     <Link
       href={reservationPath(r.id)}
@@ -101,12 +97,6 @@ export function ReservationCard({ r }: { r: ReservationItem }) {
           {r.statusNote}
         </div>
       )}
-
-      {/* Linked coupon ticket stub — only renders if the reservation
-          has a coupon tied to it. Dashed border-top sells the
-          "perforated edge" metaphor; the inline ticket icon + the
-          small percent badge keep the stub visually distinct from
-          the main reservation surface above. */}
     </Link>
   );
 }

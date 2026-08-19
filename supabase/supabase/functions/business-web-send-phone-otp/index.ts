@@ -111,7 +111,7 @@ Deno.serve(async (req) => {
   // second guard keeps the path safe under stale clients.
   const { data: existingOwner } = await admin
     .from("project_members")
-    .select("business_id")
+    .select("manager_id")
     .eq("project_id", projectId)
     .eq("role", "owner")
     .maybeSingle();

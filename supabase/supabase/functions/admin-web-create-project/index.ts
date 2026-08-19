@@ -14,7 +14,7 @@
 // public.super_admins table — that table IS the admin allowlist; this is the
 // same gate every other admin-* EF uses).
 //
-// Difference vs business-web-create-project: NO accounts upsert — an admin creates an
+// Difference vs business-web-create-project: NO managers upsert — an admin creates an
 // UNOWNED listing (listing_type='web'); ownership only ever lands when a business
 // claims it and admin-web-decide-verification approves.
 //

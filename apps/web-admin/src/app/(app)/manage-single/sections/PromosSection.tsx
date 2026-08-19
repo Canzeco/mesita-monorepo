@@ -180,7 +180,7 @@ export function PromosSection({
   const [dropOpen, setDropOpen] = useState(false);
   const [dropBusy, setDropBusy] = useState(false);
   const [dropError, setDropError] = useState<string | null>(null);
-  // The promos matrix, read LIVE from rewards_config (rates are never cached
+  // The promos matrix, read LIVE from promos_config (rates are never cached
   // in code — MESITA-859), v11 shape since MESITA-1069. Identity defaults
   // render until the fetch lands, so the cards never flash empty; on failure
   // they keep the defaults and the grid carries a quiet "showing defaults"
@@ -1255,7 +1255,7 @@ function Step({
 
 // The v7 Strategy × Class matrix at this strategy (MESITA-862, replaces the
 // retired 2×2): rows = guest classes, columns = None (standing) + the four
-// rewarded actions, read live from rewards_config. Story is universal
+// rewarded actions, read live from promos_config. Story is universal
 // (MESITA-909) — every class row shows its priced cell; eligibility is
 // Instagram-connected at the consumer EF layer. Rates live in HTML text,
 // never artwork. Modal-only since MESITA-999 — the card face abstracts it

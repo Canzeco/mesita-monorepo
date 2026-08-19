@@ -2,7 +2,7 @@
 //
 // Naming: caller-verb-words. Caller = admin, verb = get, words = memo-config.
 //
-// Returns Memo's persona + model config from the public.app_settings singleton
+// Returns Memo's persona + model config from the public.app_config singleton
 // for the admin console's Memo Config page. Memo is the consumer AI concierge
 // (consumer-web-ask-memo); see 20260707220000_memo_config.sql for the columns.
 //
@@ -42,7 +42,7 @@ Deno.serve(async (req) => {
     return jsonError(`memo_config_read: ${error.message}`, 500);
   }
   if (!data) {
-    return jsonError("app_settings missing", 500);
+    return jsonError("app_config missing", 500);
   }
 
   return jsonOk({ greeting: data.memo_greeting,

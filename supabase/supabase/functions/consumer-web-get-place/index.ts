@@ -35,7 +35,7 @@ Deno.serve(async (req) => {
   if (methodReject) return methodReject;
 
   // Service role is required for the privacy-shaped review join; place browse
-  // still goes through the anon client + projects_view RLS.
+  // still goes through the anon client + profiles RLS.
   const envRes = readEFEnv();
   if (!envRes.ok) return envRes.response;
 

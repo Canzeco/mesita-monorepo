@@ -17,7 +17,9 @@ import type {
 } from '@/lib/mock/reservations-mock';
 import { guestNoun } from '@/lib/utils';
 
-// Reservation list card — booking metadata only (money lives on the coupon).
+// Reservation list card — booking metadata only. A reservation carries no
+// money at all: the reward comes from showing up, and the rates live on the
+// visit ticket that snapshots them.
 // Web parity: apps/web-consumer/src/components/consumer/ReservationCard.tsx.
 
 const STATUS_META: Record<

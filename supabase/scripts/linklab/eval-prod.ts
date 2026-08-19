@@ -36,7 +36,7 @@ type Truth = {
   instagram: string | null;
 };
 
-// Mirror the app_settings defaults from 20260707000000_enricher_discovery_knobs.sql
+// Mirror the app_config defaults from 20260707000000_enricher_discovery_knobs.sql
 // so the eval reflects the shipped per-source gather depth.
 const DISCOVER_DEFAULTS = {
   website_url: 5,

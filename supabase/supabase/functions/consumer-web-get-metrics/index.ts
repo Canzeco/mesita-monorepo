@@ -7,7 +7,7 @@
 //
 // Counters (10 tiles, funnel → value):
 //   places_viewed       place-detail opens — not tracked yet → always 0
-//   places_saved        saved_places rows
+//   places_saved        favorites rows
 //   places_visited      = rewards_claimed (revealed tickets). A visit is a
 //                       reward claim; the two tiles MUST never diverge.
 //   rewards_claimed     tickets the v3 close sealed ("revealed")

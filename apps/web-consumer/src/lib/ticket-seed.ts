@@ -77,7 +77,6 @@ export function ticketRowFromCreate(
 ): ConsumerTicketRow {
   return {
     id: t.id,
-    kind: t.kind ?? "coupon",
     status: t.status,
     story_status: t.story_status ?? null,
     story_submitted_at: null,

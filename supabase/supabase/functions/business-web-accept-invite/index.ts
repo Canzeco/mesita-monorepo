@@ -4,7 +4,7 @@
 //
 //   1. Validate the invite token (exists, unexpired, unclaimed,
 //      addressed to the caller's email).
-//   2. Ensure an `accounts` profile exists for the caller — the
+//   2. Ensure a `managers` profile exists for the caller — the
 //      Supabase invite flow creates the auth.users row but never
 //      writes our domain table.
 //   3. Insert project_members at the stored role (upsert is idempotent
@@ -84,10 +84,10 @@ Deno.serve(async (req) => {
     .upsert(
       {
         project_id: invite.data.project_id,
-        business_id: user.id,
+        manager_id: user.id,
         role: invite.data.role,
       },
-      { onConflict: "project_id,business_id", ignoreDuplicates: false },
+      { onConflict: "project_id,manager_id", ignoreDuplicates: false },
     )
     .select("id, role")
     .single();

@@ -23,7 +23,6 @@ type RepriceTicketRow = {
   id: string;
   project_id: string;
   consumer_id: string;
-  kind: string;
   status: string;
   story_status: string | null;
   review_status: string | null;
@@ -128,7 +127,7 @@ export async function repriceTicketAfterAction(
   const ticketRes = await admin
     .from("visit_tickets")
     .select(
-      "id, project_id, consumer_id, kind, status, story_status, review_status, bill_subtotal_cents, tip_cents, tip_pct, discount_percent, approved_at, currency",
+      "id, project_id, consumer_id, status, story_status, review_status, bill_subtotal_cents, tip_cents, tip_pct, discount_percent, approved_at, currency",
     )
     .eq("id", ticketId)
     .maybeSingle();
@@ -208,7 +207,6 @@ export async function repriceTicketAfterAction(
       place_name: place.name,
       place_photo_url: place.photos?.[0] ?? null,
       place_instagram_handle: placeInstagramHandleForPayload(place.instagram_url),
-      ticket_kind: ticket.kind,
       bill_subtotal_cents: snap.checkSubtotalCents,
       tip_cents: snap.tipCents,
       total_cents: snap.totalCents,

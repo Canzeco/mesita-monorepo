@@ -1,7 +1,7 @@
 // Supabase Edge Function — supabase-edgefunc-reservation-call (internal)
 //
 // THE Reservationist call engine — the sandbox AND the admin Playground are
-// retired (2026-07-27): every ticket is a real public.reservations row and
+// retired (2026-07-27): every ticket is a real public.reservation_tickets row and
 // testing happens through the consumer app with config testCall mode ON (the
 // venue leg dials the test line instead of a real place). Invoked with
 // { reservation_id } by:

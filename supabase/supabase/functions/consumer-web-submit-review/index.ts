@@ -83,7 +83,7 @@ Deno.serve(async (req) => {
 
   const ticketRow = await admin
     .from("visit_tickets")
-    .select("id, project_id, consumer_id, kind, status, review_status, fix_requested")
+    .select("id, project_id, consumer_id, status, review_status, fix_requested")
     .eq("id", ticketId)
     .maybeSingle();
   if (ticketRow.error) {
@@ -161,7 +161,7 @@ Deno.serve(async (req) => {
       review_status: "self_verified",
       review_submitted_at: now,
       review_verified_at: now,
-      // FKs to accounts (business-side); self-verification has no approver.
+      // FKs to managers (business-side); self-verification has no approver.
       review_verified_by: null,
       review_reject_reason: null,
       // The proof artifact (MESITA-1030). Only set when supplied so an older
@@ -174,7 +174,7 @@ Deno.serve(async (req) => {
         : {}),
     })
     .eq("id", ticketId)
-    .select("id, kind, status, review_status, review_submitted_at")
+    .select("id, status, review_status, review_submitted_at")
     .single();
   if (updated.error) {
     // Give the claim back — otherwise a transient write failure would burn the

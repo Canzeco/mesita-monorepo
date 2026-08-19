@@ -26,7 +26,6 @@ type ConsumerTicketPlace = {
 
 export type ConsumerTicketRow = {
   id: string;
-  kind: string;
   status: string;
   story_status: string | null;
   story_submitted_at: string | null;
@@ -178,7 +177,7 @@ export async function apiGetRewardQuote(
 ): Promise<{ quote: RewardQuote }> {
   return await invokeEF<{ quote: RewardQuote }>(
     supabase,
-    "consumer-web-get-reward-quote",
+    "consumer-web-get-discount-quote",
     { placeId },
   );
 }

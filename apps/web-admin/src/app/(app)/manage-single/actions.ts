@@ -504,7 +504,7 @@ export type TeamSnapshot = {
 };
 
 export async function listTeam(projectId: string): Promise<Result<TeamSnapshot>> {
-  const r = await efInvoke<TeamSnapshot>("business-web-list-team", { placeId: projectId });
+  const r = await efInvoke<TeamSnapshot>("business-web-list-members", { placeId: projectId });
   if (!r.ok) return { ok: false, error: r.error };
   return { ok: true, data: r.data };
 }
@@ -664,7 +664,8 @@ export async function createUnitFromPlaceId(placeId: string) {
 // The optional shared 6-digit staff PIN gating check-page WRITE actions, and
 // the per-place "require bill amount" switch gating the close. Read: both
 // ride on the active place from business-web-get-overview (owner /
-// super-admin only — the columns are deliberately absent from projects_view).
+// super-admin only — the columns are deliberately absent from the profiles
+// view).
 // Write: one owner-gated EF, partial updates — each card sends only its key.
 
 export async function setCheckPin(

@@ -24,7 +24,7 @@ export function buildStrikePatch(
     // Strike 3: remove paid posture, forfeit fee stamp, keep catalog listing.
     //
     // "Keep catalog listing" means the place stays browsable — it does NOT
-    // mean it keeps running rewards. Mesita Partner tracks membership +
+    // mean it keeps running promos. Mesita Partner tracks membership +
     // strategy (MESITA-912), so forfeiting the membership demotes here too;
     // otherwise a struck-out place would keep an openable ticket lane with
     // every rate nulled.

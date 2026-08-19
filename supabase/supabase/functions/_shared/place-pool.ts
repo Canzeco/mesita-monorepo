@@ -28,7 +28,7 @@ export {
 // carry died with the Lineup engine (MESITA-1048):
 //   • manual_priority           — the MP subscore's input. The COLUMN stays in
 //                                 the database (dropping it means rebuilding
-//                                 projects_view and both INSTEAD OF triggers,
+//                                 profiles and both INSTEAD OF triggers,
 //                                 which reopened an anon-browse RLS hole once
 //                                 before), but no code reads it anymore.
 //   • embedding_source_hash     — only the lazy-embed writeback needed these,

@@ -13,7 +13,7 @@ import {
 // same job in two places.
 //
 // One concern per tab, and therefore at most one Save per tab: Memo writes the
-// app_settings memo_* columns, Filters writes the filters_config blob. Stacking
+// app_config memo_* columns, Filters writes the filters_config blob. Stacking
 // them on one page would put two independent save buttons on one screen.
 export const CHAT_SUBROUTES = [
   {

@@ -2,7 +2,7 @@
 
 // Server actions for Ojo Config. Thin wrappers over the admin-web-* Edge
 // Functions via the Result-style efInvoke (never throws). Backed by
-// admin-web-get/update-ojo-config on app_settings.ojo_config. WHOLE-BLOB save:
+// admin-web-get/update-ojo-config on app_config.ojo_config. WHOLE-BLOB save:
 // the thresholds are a related set, so a per-key merge could persist an
 // inverted band. No client ever touches the DB.
 

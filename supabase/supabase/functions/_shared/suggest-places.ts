@@ -15,7 +15,7 @@
 // with per-row status (`not_in_mesita`, `web_listed`,
 // `verified_partner_other`, `verified_partner_self`) so the UI can render
 // the right badge. On-Mesita rows (any status other than `not_in_mesita`)
-// additionally carry `mesitaId` + `mesitaSlug` (projects_view id + slug)
+// additionally carry `mesitaId` + `mesitaSlug` (profiles id + slug)
 // so clients can navigate straight to the place row instead of
 // re-matching predictions by name; Google-only predictions omit both.
 //
@@ -60,7 +60,7 @@ export type SuggestPlacesArgs = {
   // owned row.
   callerUserId?: string | null;
   // When set, Google-only ("not_in_mesita") predictions are filtered against
-  // app_settings.sourcing_config[sourcingChannel]. On-Mesita rows always
+  // app_config.sourcing_config[sourcingChannel]. On-Mesita rows always
   // pass — they're already onboarded.
   sourcingChannel?: ChannelKey;
 };

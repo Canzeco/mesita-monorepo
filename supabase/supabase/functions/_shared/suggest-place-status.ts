@@ -12,7 +12,7 @@ export async function statusesForPlaces(
   if (rows.length === 0) return new Map();
   const { data, error } = await admin
     .from("project_members")
-    .select("project_id, business_id")
+    .select("project_id, manager_id")
     .in("project_id", rows.map((r) => r.id))
     .eq("role", "owner");
   if (error) {
@@ -22,10 +22,10 @@ export async function statusesForPlaces(
   for (
     const m of (data ?? []) as Array<{
       project_id: string;
-      business_id: string;
+      manager_id: string;
     }>
   ) {
-    ownerByPlace.set(m.project_id, m.business_id);
+    ownerByPlace.set(m.project_id, m.manager_id);
   }
   const out = new Map<string, PredictionStatus>();
   for (const v of rows) {

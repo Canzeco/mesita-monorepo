@@ -5,7 +5,7 @@ import { invokeEF } from "./_invoke";
 type PayNotificationRow =
   Database["public"]["Tables"]["consumer_notifications"]["Row"];
 
-/** Stored on consumer_pay_notifications.payload for Pay → Tickets. */
+/** Stored on consumer_notifications.payload for Pay → Tickets. */
 export type TicketBillPayload = {
   project_id?: string;
   place_slug?: string | null;
@@ -13,7 +13,6 @@ export type TicketBillPayload = {
   place_photo_url?: string | null;
   /** Bare handle (no @), from place instagram_url at billing time. */
   place_instagram_handle?: string | null;
-  ticket_kind?: string;
   bill_subtotal_cents?: number;
   tip_cents?: number;
   total_cents?: number;

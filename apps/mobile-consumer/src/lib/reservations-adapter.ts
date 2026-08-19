@@ -135,7 +135,5 @@ export function toReservationItem(row: EFReservationRow): ReservationItem {
     guestConfirmedAt: row.consumer_confirmed_at ?? null,
     alternatives,
     dbStatus: row.status,
-    // linkedCoupon intentionally omitted: the list EF exposes the coupon by
-    // id only, and cross-looking it up is out of scope for MESITA-715.
   };
 }

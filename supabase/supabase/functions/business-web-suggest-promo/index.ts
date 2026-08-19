@@ -193,8 +193,10 @@ async function loadPerfContext(
   admin: SupabaseClient,
   projectId: string,
 ): Promise<{ ok: true; ctx: PerfContext } | { ok: false; error: string }> {
+  // monthly_promo_cap is a PROJECT column; only the profiles view exposes it
+  // alongside the place columns, so reading `places` here 400s the whole row.
   const placeRes = await admin
-    .from("places")
+    .from("profiles")
     .select(
       "id, name, category, category_label, " +
         "welcome_free_rate, welcome_premium_rate, free_rate, premium_rate, " +

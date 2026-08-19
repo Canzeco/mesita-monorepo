@@ -205,8 +205,8 @@ export function TiersClient() {
     <div className="space-y-5">
       {seeded && !loadBlocked && (
         <p className="border-border bg-muted/50 text-muted-foreground rounded-lg border px-3 py-2 text-xs">
-          These knobs were derived from the previous model — review them, then
-          Save.
+          Nothing is saved yet — these are the launch defaults. Review them,
+          then Save.
         </p>
       )}
 

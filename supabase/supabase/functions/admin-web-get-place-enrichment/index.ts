@@ -59,7 +59,7 @@ Deno.serve(async (req) => {
       .select(
         "public_url, source, status, analysis_text, caption, likes_count, source_url, source_metadata",
       )
-      .eq("project_id", projectId)
+      .eq("place_id", projectId)
       .order("created_at", { ascending: true }),
     admin
       .from("projects")
@@ -69,7 +69,7 @@ Deno.serve(async (req) => {
     admin
       .from("place_research")
       .select("stage, status, error, updated_at")
-      .eq("project_id", projectId)
+      .eq("place_id", projectId)
       .maybeSingle(),
   ]);
 

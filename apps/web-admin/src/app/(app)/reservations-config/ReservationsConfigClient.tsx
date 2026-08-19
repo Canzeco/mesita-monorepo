@@ -210,8 +210,9 @@ export function ReservationsConfigClient({
           ))}
         </ol>
         <p className="text-muted-foreground mt-4 border-t border-border/60 pt-3 text-xs">
-          A reservation is its own ticket — booking only, no discount. It’s tracked
-          separately from a guest’s reward coupons; the two never share a record.
+          A reservation is its own ticket — booking only, no discount. A reward
+          comes from showing up, so only a visit ticket ever carries one; the two
+          never share a record.
         </p>
       </SectionCard>
 

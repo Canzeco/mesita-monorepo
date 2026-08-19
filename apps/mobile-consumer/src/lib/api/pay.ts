@@ -22,7 +22,6 @@ export type TicketBillPayload = {
   place_name?: string;
   place_photo_url?: string | null;
   place_instagram_handle?: string | null;
-  ticket_kind?: string;
   bill_subtotal_cents?: number;
   tip_cents?: number;
   total_cents?: number;

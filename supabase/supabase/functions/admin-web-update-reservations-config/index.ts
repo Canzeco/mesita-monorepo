@@ -2,7 +2,7 @@
 //
 // Naming: caller-verb-words. Caller = admin, verb = update, words = reservations-config.
 //
-// Writes the reservation-endpoint policy on the public.app_settings singleton from
+// Writes the reservation-endpoint policy on the public.app_config singleton from
 // the admin console's Reservations Config page. Unlike the sourcing knobs this is a
 // WHOLE-CONFIG write, not a per-key merge: `priority` is an ordered list, and a
 // partial merge of an ordering is meaningless — the caller always sends the full

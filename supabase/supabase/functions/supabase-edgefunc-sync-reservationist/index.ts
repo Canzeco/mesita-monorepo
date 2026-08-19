@@ -374,7 +374,7 @@ Deno.serve(async (req) => {
   const agentsConfig = (settings?.agents_config ?? {}) as Record<string, unknown>;
   const toolSecret = ((agentsConfig.toolSecret as string | undefined) ?? "").trim();
   if (!toolSecret) {
-    return json({ ok: false, error: "app_settings.agents_config.toolSecret missing" }, 500);
+    return json({ ok: false, error: "app_config.agents_config.toolSecret missing" }, 500);
   }
   const configuredAgents = (agentsConfig.agents ?? {}) as Record<
     string,

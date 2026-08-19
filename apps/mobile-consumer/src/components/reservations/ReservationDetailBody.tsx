@@ -10,10 +10,7 @@ import { useState } from 'react';
 import { Image, Pressable, Text, View } from 'react-native';
 
 import { ReservationActions } from '@/components/reservations/reservation-actions';
-import {
-  LinkedCouponCard,
-  MetaRow,
-} from '@/components/reservations/reservation-detail-ui';
+import { MetaRow } from '@/components/reservations/reservation-detail-ui';
 import { Button } from '@/components/ui/Button';
 import { apiConfirmReservation } from '@/lib/api/reservations';
 import type {
@@ -56,8 +53,7 @@ const STATUS_META: Record<
     textClass: 'text-muted-foreground',
     Icon: X,
     iconColor: '#775254',
-    banner:
-      'This reservation is cancelled. Saved rewards remain valid for a new booking.',
+    banner: 'This reservation is cancelled.',
   },
 };
 
@@ -161,10 +157,6 @@ export function ReservationDetailBody({
           value={meta.label}
         />
       </View>
-
-      {r.linkedCoupon && !cancelled ? (
-        <LinkedCouponCard coupon={r.linkedCoupon} />
-      ) : null}
 
       {showOffers ? (
         <View className="gap-2 rounded-2xl border border-border bg-card p-3">

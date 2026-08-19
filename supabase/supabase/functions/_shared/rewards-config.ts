@@ -1,7 +1,7 @@
 // Promos bill engine — v11 additive (MESITA-1069) over the legacy v6/v13
 // best-of grid (MESITA-723).
 //
-// Source of truth when present: app_settings.rewards_config.v11
+// Source of truth when present: app_config.promos_config.v11
 //   { version: 11, visits, orders, cap }
 // A bill pays visits base (strategy × class × plan) + welcome (first verified
 // ticket at the place, D3-A) + each earned action bonus (mesita / story /
@@ -18,9 +18,9 @@
 // A stored v10 blob is migrated forward on read, so the engine keeps pricing
 // correctly between the config-shape deploy and the operator's first save.
 //
-// Fallback (no v10 blob yet): the legacy reward_rules table / v13 grid
-// blob, priced BEST-OF. Cap is a SEPARATE per-place param
-// (monthly_promo_cap); the config `cap` is the platform fallback.
+// Fallback (no v10 blob yet): the legacy v13 grid blob, priced BEST-OF.
+// Cap is a SEPARATE per-place param (monthly_promo_cap); the config `cap`
+// is the platform fallback.
 //
 // A place's STRATEGY (zero/conservative/aggressive) is derived from its
 // v4 rate columns via strategyForRates. Dominant (40/50/20/30) coerces to
@@ -105,8 +105,8 @@ export type RewardsGrid = {
 };
 
 // The defaults (v9, MESITA-877) — the LAST-RESORT fallback, used only when
-// both reward_rules and app_settings come back empty, so a ticket degrades to
-// the canonical table rather than to zero. Must stay byte-identical to the
+// app_config comes back empty, so a ticket degrades to the canonical table
+// rather than to zero. Must stay byte-identical to the
 // admin catalog's defaultRateFor and the update EF's defaultFor.
 //
 // EVERY CELL COMES FROM ONE FORMULA, which is what makes the model's
@@ -244,9 +244,9 @@ export function coerceRewardsGrid(raw: unknown): RewardsGrid {
 }
 
 // One (strategy, class, action) rule row — the v8 normalized shape
-// (MESITA-873). "standing" is the None column: v13's `grid` and `actions`
-// were two shapes for the same thing, and collapsing them means a future
-// action is rows, not a schema change.
+// (MESITA-873). The rules TABLE is gone; the shape survives as the in-memory
+// bridge v11 derives its best-of grid through. "standing" is the None
+// column: v13's `grid` and `actions` were two shapes for the same thing.
 export type RewardRuleRow = {
   strategy: string;
   class: string;
@@ -299,34 +299,32 @@ export function gridFromRuleRows(
 }
 
 /**
- * Loads the reward grid. `reward_rules` is the source of truth (v8); the
- * cap stays a scalar on app_settings because it is one platform constant,
- * not a rule.
+ * Loads the reward grid from `app_config.promos_config` — the one store.
  *
- * Two fallbacks, both deliberate — a ticket must never fail to price:
- * an empty/unreadable rules table falls back to the legacy blob (which is
- * still written on every save), and a missing blob falls back to the locked
+ * Two fallbacks, both deliberate — a ticket must never fail to price: a blob
+ * with no readable v11/v10 config falls back to the legacy v13 grid keys the
+ * same blob still carries, and a missing blob falls back to the locked
  * defaults.
  */
 export async function loadRewardsGrid(
   admin: SupabaseClient,
 ): Promise<RewardsGrid> {
-  const [settingsRes, rulesRes] = await Promise.all([
-    admin.from("app_config").select("rewards_config").eq("id", 1).maybeSingle(),
-    admin.from("reward_rules").select("strategy, class, action, discount_percent"),
-  ]);
+  const settingsRes = await admin
+    .from("app_config")
+    .select("promos_config")
+    .eq("id", 1)
+    .maybeSingle();
 
-  const blob = settingsRes.data?.rewards_config;
+  const blob = settingsRes.data?.promos_config;
   const raw =
     blob && typeof blob === "object" && !Array.isArray(blob)
       ? (blob as Record<string, unknown>)
       : {};
 
-  // v11 additive SoT (MESITA-1069). reward_rules stays frozen as a mirror
-  // written on save; the live engine no longer prices from it once a config
-  // exists. A leftover v10 blob is migrated on read (normalizePromosV11
-  // accepts both shapes), so pricing survives the gap between this deploy and
-  // the operator's first v11 save.
+  // v11 additive SoT (MESITA-1069) — the only store now that the reward_rules
+  // mirror is dropped. A leftover v10 blob is migrated on read
+  // (normalizePromosV11 accepts both shapes), so pricing survives the gap
+  // between this deploy and the operator's first v11 save.
   const stored = raw.v11 ?? raw.v10;
   if (stored && typeof stored === "object" && !Array.isArray(stored)) {
     const norm = normalizePromosV11(stored);
@@ -338,10 +336,6 @@ export async function loadRewardsGrid(
       return { ...legacy, promos: norm.value };
     }
   }
-
-  const cap = blob ? coerceRewardsGrid(blob).cap : DEFAULT_REWARDS_GRID.cap;
-  const rows = (rulesRes.data ?? []) as RewardRuleRow[];
-  if (rows.length > 0) return gridFromRuleRows(rows, cap);
 
   return blob ? coerceRewardsGrid(blob) : DEFAULT_REWARDS_GRID;
 }
@@ -450,8 +444,8 @@ function resolveAdditiveRate(
 }
 
 /**
- * Legacy best-of over the v13 grid. Kept as the fallback when no v10 blob
- * has been saved yet. Story eligibility is settled UPSTREAM (MESITA-909).
+ * Legacy best-of over the v13 grid. Kept as the fallback when no additive
+ * blob has been saved yet. Story eligibility is settled UPSTREAM (MESITA-909).
  */
 function resolveBestOfRate(
   strategy: GridStrategy,
@@ -477,7 +471,7 @@ function resolveBestOfRate(
 }
 
 // Resolve a ticket's discount percent — and ONLY that (blended-rate privacy).
-// Prefers v10 additive when loadRewardsGrid attached a v10 blob.
+// Prefers v11 additive when loadRewardsGrid attached an additive blob.
 export function resolveTicketRate(
   strategy: GridStrategy,
   grid: RewardsGrid,
