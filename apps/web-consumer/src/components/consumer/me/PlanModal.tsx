@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Check, FlaskConical, Loader2, Sparkles } from "lucide-react";
 
 import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
+import { PlanPreviewToggle } from "@/components/consumer/me/demo/PlanPreviewToggle";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { apiCreateSubscriptionCheckout } from "@/lib/api/subscription";
 import { useConsumerClass } from "@/lib/class-context";
@@ -150,6 +151,10 @@ export function PlanModal({
         </div>
 
         <div className="flex flex-col gap-4">
+          {/* Demo state is declared before the surface it changes — same box,
+              same position, on all three Me sheets that can fake an identity. */}
+          <PlanPreviewToggle />
+
           {/* The two rungs, same shape as the class ladder. */}
           <ol className="flex flex-col gap-2">
             <li

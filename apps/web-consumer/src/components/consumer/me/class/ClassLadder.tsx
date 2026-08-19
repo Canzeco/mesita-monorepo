@@ -2,12 +2,7 @@
 
 import { Lock } from "lucide-react";
 
-import {
-  CLASSES,
-  CLASS_MARK_ICON,
-  classBadgeClass,
-} from "@/lib/consumer-data";
-import { CLASS_TEXT } from "@/lib/class-styles";
+import { CLASSES, CLASS_MARK_ICON, classBadgeClass } from "@/lib/consumer-data";
 import { useConsumerClass } from "@/lib/class-context";
 import { cn } from "@/lib/utils";
 
@@ -22,9 +17,10 @@ import { cn } from "@/lib/utils";
 // 1. ONE SHAPE. Every rung wears the same pyramid — the class mark. The old
 //    set (medal / award / trophy / gem) made the reader learn four symbols to
 //    read one ladder, and no symbol carried information the order didn't.
-// 2. COLOUR MEANS CLASS, AND NOTHING ELSE. The only colour here is a metal.
-//    No emerald "unlocked" ticks, no pink CTA, no amber demo chip — when
-//    everything else is neutral, the one coloured thing is unambiguous.
+// 2. COLOUR MEANS CLASS, AND NOTHING ELSE, and it is carried by a FILL — the
+//    current row's card, and every other row's mark tile. No emerald
+//    "unlocked" ticks, no pink CTA, no amber demo chip — when everything else
+//    is neutral, the one coloured thing is unambiguous.
 // 3. NO LETTERS FOR THE LADDER. The discount scale used to be spelled out per
 //    rung (LOW / HIGH / EXTRA / MAX) on a four-bar meter. The rows are already
 //    in ascending order and already carry the metal, so the words restated
@@ -63,21 +59,22 @@ export function ClassLadder() {
             <span
               className={cn(
                 "flex h-9 w-9 shrink-0 items-center justify-center rounded-xl",
-                current ? "bg-white/20" : "bg-muted",
+                // THE METAL IS THE TILE, NOT THE STROKES (decision: Pato). The
+                // mark used to be drawn IN the class colour, which put the
+                // colour on four hairlines an 18px glyph wide — Silver was
+                // illegible and Bronze read as a smudge. Colour still means
+                // class, it just lives on the fill now, with the mark in the
+                // ink `classBadgeClass` pairs with it (white, or foreground on
+                // Silver's light fill). The current row keeps its inset tile:
+                // the card underneath is already the metal.
+                current
+                  ? "bg-white/20"
+                  : unlocked
+                    ? classBadgeClass(c.id)
+                    : "bg-muted text-muted-foreground/50",
               )}
             >
-              <CLASS_MARK_ICON
-                className={cn(
-                  "h-[18px] w-[18px]",
-                  // Off the current row the metal survives as INK — the one
-                  // place colour is allowed, because it IS the class.
-                  current
-                    ? ""
-                    : unlocked
-                      ? CLASS_TEXT[c.id]
-                      : "text-muted-foreground/50",
-                )}
-              />
+              <CLASS_MARK_ICON className="h-[18px] w-[18px]" />
             </span>
 
             <div className="min-w-0 flex-1">
