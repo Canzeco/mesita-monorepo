@@ -2,18 +2,14 @@
 //
 // Naming: caller-verb-words. Caller = admin, verb = get, words = orders-config.
 //
-// Returns the ORDER context's policy blob from the public.app_settings
+// Returns the ORDER context's policy blob from the public.app_config
 // singleton for the admin console's Orders Config page. Orders are the remote
 // half of the two contexts Promos prices; the rail itself is parked, so every
 // knob here is labeled STAGED in the console. See _shared/orders-config.ts for
 // the shape and 20260818120000_orders_config.sql for the column.
 //
-// TABLE NAME: app_config, not app_settings. The entity-model rename landed on
-// the live singleton on 2026-08-18 (migrations 20260818090000–096000, applied
-// cloud-side and not yet mirrored into this repo) and took `app_settings` with
-// it — which is why every OTHER admin config EF here is currently 500ing
-// against live. These two are written for the world the rename created; the
-// sweep that fixes their siblings will find them already correct.
+// TABLE NAME: app_config — the settings singleton, renamed from `app_settings`
+// by the entity-model migrations (20260818090000–096000).
 //
 // Auth: caller's JWT email must be in public.super_admins.
 
@@ -47,7 +43,7 @@ Deno.serve(async (req) => {
     .eq("id", 1)
     .maybeSingle();
   if (error) return jsonError(`orders_config_read: ${error.message}`, 500);
-  if (!data) return jsonError("app_settings missing", 500);
+  if (!data) return jsonError("app_config missing", 500);
 
   return json({
     ok: true,
