@@ -225,11 +225,11 @@ export type MembershipPillState =
 
 export function membershipPillState(place: {
   plan: string;
-  membership_forfeited_at?: string | null;
-  membership_live_at?: string | null;
+  plan_forfeited_at?: string | null;
+  plan_live_at?: string | null;
   promo_paused_until?: string | null;
 }): MembershipPillState {
-  if (place.membership_forfeited_at) return "forfeited";
+  if (place.plan_forfeited_at) return "forfeited";
   if (place.plan === "free") return "not_member";
   if (
     place.promo_paused_until &&
@@ -237,7 +237,7 @@ export function membershipPillState(place: {
   ) {
     return "paused";
   }
-  if (place.membership_live_at) return "live";
+  if (place.plan_live_at) return "live";
   return "pending";
 }
 

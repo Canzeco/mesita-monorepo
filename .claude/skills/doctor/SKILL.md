@@ -12,7 +12,7 @@ and **decay** (things that were healthy and no longer are), and write one report
 ## Hard rules
 
 1. **READ-ONLY.** No `INSERT`/`UPDATE`/`DELETE`/DDL, no EF deploys, no migrations, no
-   `supabase db push`, no writes to `app_settings`, no config edits, no code fixes, no
+   `supabase db push`, no writes to `app_config`, no config edits, no code fixes, no
    `main` pushes, **no repo files — the repo carries no reports** (Development Rules §C markdown law).
    If a fix is obvious, describe it in the report — do not apply it.
    The only writes you are allowed: Linear issues and comments — **Linear documents
@@ -70,21 +70,22 @@ The singleton rule is the one that silently breaks. Check it first.
 1.5 **`admin_reset_database` / `admin_reset_preserve` coverage.** Survivors are DATA in
     `public.admin_reset_preserve` (read at run time — not an inlined array). Check:
     (a) live function body still `SELECT`s from `admin_reset_preserve` and still asserts the
-    required core (`app_settings`, `super_admins`, `reward_rules`, vocabularies) before
+    required core (`app_config`, `super_admins`, vocabularies, and the two plan
+    catalogs `consumer_plans` / `project_plans`) before
     truncate; (b) every row in `admin_reset_preserve` names a real `public` base table;
-    (c) required admin-config survivors are present in the registry (`app_settings`,
-    `super_admins`, `reward_rules` at minimum); (d) every *other* public base table is in
+    (c) required admin-config survivors are present in the registry (`app_config`,
+    `super_admins`, `consumer_plans`, `project_plans` at minimum); (d) every *other* public base table is in
     the wipe set (new operational tables must NOT land in the registry by accident). A
     CREATE OR REPLACE that re-inlines a stale keep-list is a P0 — the function must read
     the registry. (The old `preserved_media_assets:true` return flag is gone — do not
     re-report it.)
 1.6 **Known-intentional exceptions** — assert they still hold, and report if flipped:
-    `projects_view` must be `security_invoker = true`. Two things that look broken and
+    `profiles` (the view, renamed from `projects_view`) must be `security_invoker = true`. Two things that look broken and
     are not (MESITA-1048, until a new engine ships): `consumer-web-recommend-swipe`
     returns active places in random order and reads-then-discards `lat` / `lng` /
     `radiusKm` / `randomness` — slug and response shape are frozen for deployed Expo
     binaries; and `places.manual_priority` has no reader, kept because dropping it means
-    rebuilding `projects_view` and both INSTEAD OF triggers.
+    rebuilding `profiles` and both INSTEAD OF triggers.
 
 ## Scope 2 — Postgres health (imported standard) · P1
 
@@ -120,7 +121,7 @@ The business-truth layer. These are the "and shit" checks — pairs of facts tha
     `magnetic` / legacy 2-class rows).
 3.5 **Reservations shape.** `products.reservations` = primary `{channel, value}` + `fallbacks[]`;
     shape is load-bearing. Channels must be members of the order in
-    `app_settings.reservations_config`. Malformed blobs, empty primaries, unknown channels.
+    `app_config.reservations_config`. Malformed blobs, empty primaries, unknown channels.
 3.6 **Geo / time congruence.** lat+lng present and inside plausible MX bounds · `city` matches
     Google locality · `zone` matches neighborhood/sublocality · hours stored place-local and
     parseable · `google_place_id` present on `places` where expected.
@@ -140,9 +141,10 @@ in `apps/web-admin/src/components/Sidebar.tsx` is the list of record) —
 `admin` · `models` · `sourcing` · `atlas` · `enricher` · `verification` ·
 `ojo` · `rewards` (labeled **Promos**) · `memo` · `reservations`:
 
-Not config pages, do not audit as one: `/adea-config`, `/aura-config` and
-`/db-config` are `permanentRedirect` shims for renamed routes (→ enricher-config,
-aura-consumers, manage-database). `agents_config` is EF-managed with no page yet.
+Not config pages, do not audit as one: `/adea-config` and `/db-config` are
+`permanentRedirect` shims for renamed routes (→ enricher-config, manage-database).
+The `/aura-*` route tree is gone — Aura is a retired class, so a reference to it
+is stale doc, not a missing page. `agents_config` is EF-managed with no page yet.
 `scoring_config` belonged to the deleted Lineup engine (MESITA-1048) — if it
 still has no reader, that is a 4.3 dead-knob finding, not a page to check.
 
@@ -152,10 +154,10 @@ standing block of deliberately-unenforced config. The rule is that a staged knob
 is *labeled* staged — check that the console still says so. A silently
 un-staged Ojo knob reads to an operator as a control that does something.
 
-4.1 **Blob exists and parses** in `app_settings`, and validates against the TS schema the
-    admin page and the consuming EFs expect (e.g. `rewards_config` carries the **v10**
-    additive bill engine; the page reads "Promos Config" but the column and the
-    `/rewards-config` route keep the older name on purpose).
+4.1 **Blob exists and parses** in `app_config`, and validates against the TS schema the
+    admin page and the consuming EFs expect (e.g. `promos_config` carries the **v11**
+    additive bill engine; the column was renamed with the page, but the
+    `/rewards-config` route keeps the older name).
 4.2 **Shape skew.** Stored blob shape older/newer than its reader → the reader is silently
     falling back to defaults. This is the single most common invisible bug class here.
 4.3 **Dead knobs.** Every field in the blob: grep for a reader in EFs/apps. No reader = dead knob.
@@ -175,7 +177,7 @@ un-staged Ojo knob reads to an operator as a control that does something.
 5.2 **Direction rule.** Natural callers may invoke artificial callers, never the reverse.
 5.3 **Clients never touch the DB.** Grep app code for direct `supabase.from(` / `.rpc(`
     outside sanctioned layers. Include stale-table names (`businesses` / `units` / `venues` →
-    `accounts` / `projects` / `places`; no compat views, so a stale `.from()` 500s in prod).
+    `managers` / `projects` / `places`; no compat views, so a stale `.from()` 500s in prod).
 5.4 **Dead & missing EFs.** Deployed EF with no caller anywhere in the repo · EF invoked by
     app code that does not exist or is not deployed (includes half-renamed slugs where the
     deployed app still calls the old name — do not report those as deletable).

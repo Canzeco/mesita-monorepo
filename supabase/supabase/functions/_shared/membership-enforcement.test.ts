@@ -15,11 +15,11 @@ function row(partial: Partial<MembershipRow> = {}): MembershipRow {
     id: "p1",
     plan: "pro",
     first_ticket_honored_at: "2026-01-02T00:00:00.000Z",
-    membership_live_at: "2026-01-02T00:00:00.000Z",
+    plan_live_at: "2026-01-02T00:00:00.000Z",
     strike_count: 0,
     last_strike_at: null,
     promo_paused_until: null,
-    membership_forfeited_at: null,
+    plan_forfeited_at: null,
     ...partial,
   };
 }
@@ -53,7 +53,7 @@ Deno.test("effectiveStrikeCount: decays after ~6 months clean", () => {
 });
 
 Deno.test("assessPromoLane: free plan always open", () => {
-  const r = assessPromoLane(row({ plan: "free", membership_live_at: null }));
+  const r = assessPromoLane(row({ plan: "free", plan_live_at: null }));
   assertEquals(r.open, true);
 });
 
@@ -61,7 +61,7 @@ Deno.test("assessPromoLane: paid not-yet-activated stays OPEN (MESITA-850)", () 
   // The guest's first ticket IS the activation — closing the lane here was
   // a deadlock (creation checks the lane; no ticket could ever be honored).
   const r = assessPromoLane(
-    row({ membership_live_at: null, first_ticket_honored_at: null }),
+    row({ plan_live_at: null, first_ticket_honored_at: null }),
   );
   assertEquals(r.open, true);
 });
@@ -89,8 +89,8 @@ Deno.test("assessPromoLane: forfeit blocks even when plan is free", () => {
   const r = assessPromoLane(
     row({
       plan: "free",
-      membership_forfeited_at: "2026-06-01T00:00:00.000Z",
-      membership_live_at: null,
+      plan_forfeited_at: "2026-06-01T00:00:00.000Z",
+      plan_live_at: null,
       strike_count: 3,
       last_strike_at: "2026-06-01T00:00:00.000Z",
     }),

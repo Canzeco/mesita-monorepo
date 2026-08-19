@@ -51,9 +51,9 @@ Deno.serve(async (req) => {
   // Literal select string — supabase-js parses it at the TYPE level;
   // concatenation yields GenericStringError and breaks deno check.
   const ticketRow = await admin
-    .from("tickets")
+    .from("visit_tickets")
     .select(
-      "id, consumer_id, project_id, status, story_status, review_status, check_subtotal_cents, tip_cents, tip_pct, total_cents, discount_percent",
+      "id, consumer_id, project_id, status, story_status, review_status, bill_subtotal_cents, tip_cents, tip_pct, total_cents, discount_percent",
     )
     .eq("id", ticketId)
     .maybeSingle();
@@ -75,7 +75,7 @@ Deno.serve(async (req) => {
       409,
     );
   }
-  if ((ticket.check_subtotal_cents ?? 0) > 0 || (ticket.total_cents ?? 0) > 0) {
+  if ((ticket.bill_subtotal_cents ?? 0) > 0 || (ticket.total_cents ?? 0) > 0) {
     return json(
       { ok: false, error: "This ticket already has an amount on record." },
       409,
@@ -103,9 +103,9 @@ Deno.serve(async (req) => {
   const snap = billRes.snapshot;
 
   const updated = await admin
-    .from("tickets")
+    .from("visit_tickets")
     .update({
-      check_subtotal_cents: snap.checkSubtotalCents,
+      bill_subtotal_cents: snap.checkSubtotalCents,
       tip_cents: snap.tipCents,
       total_cents: snap.totalCents,
       discount_percent: snap.discountPercent,
@@ -116,7 +116,7 @@ Deno.serve(async (req) => {
     .eq("status", CLOSED_TICKET_STATUS)
     .is("bill_source", null) // a concurrent business record wins
     .select(
-      "id, status, check_subtotal_cents, total_cents, discount_percent, discount_cents, bill_source, currency",
+      "id, status, bill_subtotal_cents, total_cents, discount_percent, discount_cents, bill_source, currency",
     )
     .single();
   if (updated.error) {

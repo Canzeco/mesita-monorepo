@@ -24,7 +24,7 @@ export async function apiGetBusinessProfile(
 ): Promise<BusinessProfile> {
   const { business } = await invokeEF<{ business: BusinessProfile }>(
     client,
-    "business-web-get-profile",
+    "business-web-get-manager",
     {},
     "Couldn't load your business profile.",
   );
@@ -41,7 +41,7 @@ export async function apiCreateBusinessProfile(
 ): Promise<BusinessProfile> {
   const { business } = await invokeEF<{ business: BusinessProfile }>(
     client,
-    "business-web-create-profile",
+    "business-web-create-manager",
     input,
     "Couldn't create your business profile.",
   );

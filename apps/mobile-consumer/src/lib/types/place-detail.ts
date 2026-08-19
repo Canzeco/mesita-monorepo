@@ -52,7 +52,7 @@ export type PlaceDetail = {
   mesita_reviews: {
     food: number;
     service: number;
-    ambiance: number;
+    ambience: number;
     value: number;
     overall: number;
     total: number;
@@ -77,7 +77,7 @@ export type PlaceDetail = {
     quote: string;
     food: number;
     service: number;
-    ambiance: number;
+    ambience: number;
     value: number;
     photo_url?: string;
     photo_aspect?: 'square' | 'portrait' | 'landscape';

@@ -5,7 +5,7 @@
 // the same contract as the Promos / Reservations / Sourcing / Memo actions.
 //
 // Backed by admin-web-get-filters-config / admin-web-update-filters-config.
-// app_settings.filters_config.v1 is the source of truth. No client touches
+// app_config.filters_config.v1 is the source of truth. No client touches
 // the DB.
 
 import { efInvoke } from "@/lib/supabase-ef";

@@ -9,7 +9,7 @@ const NOTE_MIN = 50;
 export type TicketReviewDraft = {
   food: number;
   service: number;
-  ambiance: number;
+  ambience: number;
   value: number;
   overall: number;
   comments: string;
@@ -83,7 +83,7 @@ export function TicketReviewForm({
     draft.overall > 0 &&
     draft.food > 0 &&
     draft.service > 0 &&
-    draft.ambiance > 0 &&
+    draft.ambience > 0 &&
     draft.value > 0;
   const noteLen = draft.comments.trim().length;
   const canSubmit = ratingsSet && noteLen >= NOTE_MIN;
@@ -91,13 +91,13 @@ export function TicketReviewForm({
   const dims: {
     key: keyof Pick<
       TicketReviewDraft,
-      "food" | "service" | "ambiance" | "value"
+      "food" | "service" | "ambience" | "value"
     >;
     label: string;
   }[] = [
     { key: "food", label: "Food" },
     { key: "service", label: "Service" },
-    { key: "ambiance", label: "Ambiance" },
+    { key: "ambience", label: "Ambience" },
     { key: "value", label: "Value" },
   ];
 

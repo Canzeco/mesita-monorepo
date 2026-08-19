@@ -93,7 +93,7 @@ Deno.serve(async (req) => {
   // queues the guest's review, exactly like every close before it.
   const now = new Date().toISOString();
   const stamp = await admin
-    .from("tickets")
+    .from("visit_tickets")
     .update({
       validated_at: now,
       paid_method: ticket.status === TICKET_STATUS.paying
@@ -110,7 +110,7 @@ Deno.serve(async (req) => {
   if (!stamp.data) {
     // Someone else closed or cancelled it between the read and the stamp.
     const fresh = await admin
-      .from("tickets")
+      .from("visit_tickets")
       .select("id, status")
       .eq("id", ticket.id)
       .maybeSingle();

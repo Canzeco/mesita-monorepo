@@ -79,7 +79,7 @@ Deno.serve(async (req) => {
 
   // CAS: a concurrent scan loses cleanly and reads as already-scanned.
   const update = await admin
-    .from("tickets")
+    .from("visit_tickets")
     .update({ status: TICKET_STATUS.scanned })
     .eq("id", ticket.id)
     .eq("status", TICKET_STATUS.open)

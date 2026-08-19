@@ -82,10 +82,10 @@ const ITEMS: Item[] = [
     // moment they pay — rather than for the object it creates.
     //
     // THE LABEL MOVED, AND NOTHING ELSE. The route is still /new-visit, the
-    // detail is still /visit/{id}, the object is still a ticket and the column
-    // is still `kind`. This tab has now been called Rewards, Pay, Visit and Pay
-    // again; every one of those renames stayed in the label, which is why the
-    // URLs and the schema survived four of them.
+    // detail is still /visit/{id} and the object is still a visit ticket. This
+    // tab has now been called Rewards, Pay, Visit and Pay again; every one of
+    // those renames stayed in the label, which is why the URLs and the schema
+    // survived four of them.
     //
     // "Pay" no longer collides with Stripe: `checkout` is the word for Stripe
     // in this codebase, and the one Stripe surface a consumer can reach says

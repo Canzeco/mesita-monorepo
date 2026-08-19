@@ -99,7 +99,7 @@ Deno.serve(async (req) => {
 
   const now = new Date().toISOString();
   const frozenDue = amountDueCents({
-    checkSubtotalCents: ticket.check_subtotal_cents ?? 0,
+    checkSubtotalCents: ticket.bill_subtotal_cents ?? 0,
     discountCents: ticket.discount_cents ?? 0,
     tipCents: ticket.tip_cents ?? 0,
   });
@@ -107,7 +107,7 @@ Deno.serve(async (req) => {
   // CAS: scanned, no fix outstanding, and the row is exactly what the staff
   // screen rendered. Zero rows means someone else won — diagnose below.
   const update = await admin
-    .from("tickets")
+    .from("visit_tickets")
     .update({
       status: TICKET_STATUS.approved,
       approved_at: now,
@@ -125,7 +125,7 @@ Deno.serve(async (req) => {
   }
   if (!update.data) {
     const fresh = await admin
-      .from("tickets")
+      .from("visit_tickets")
       .select("id, status, fix_requested, updated_at")
       .eq("id", ticket.id)
       .maybeSingle();

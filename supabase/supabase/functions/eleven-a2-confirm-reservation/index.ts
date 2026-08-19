@@ -5,7 +5,7 @@
 //
 //   { reference_code, new_date?: "YYYY-MM-DD", new_time?: "HH:mm", note? }
 //
-// Plain acceptance → guest_confirmed_at stamps (both-sides-confirmed when the
+// Plain acceptance → consumer_confirmed_at stamps (both-sides-confirmed when the
 // venue already said yes). A datetime — the guest picking one of the venue's
 // alternatives OR proposing something entirely new ("mejor mañana a las 9") —
 // moves reserved_at, returns the ticket to pending and RE-FIRES the Booker
@@ -84,10 +84,10 @@ Deno.serve(async (req) => {
   // ── No change: the guest accepts what the venue confirmed ──────────────────
   if (!wantsChange) {
     const patch: Record<string, unknown> = {
-      guest_confirmed_at: new Date().toISOString(),
+      consumer_confirmed_at: new Date().toISOString(),
     };
     if (note) patch.outcome_note = note;
-    const { error } = await admin.from("reservations").update(patch).eq("id", ticket.id);
+    const { error } = await admin.from("reservation_tickets").update(patch).eq("id", ticket.id);
     if (error) return json({ ok: false, error: error.message }, 500);
     return json({
       ok: true,
@@ -132,7 +132,7 @@ Deno.serve(async (req) => {
       status: "confirmed",
       reported_verdict: "confirmed",
       confirmed_at: nowIso,
-      guest_confirmed_at: nowIso,
+      consumer_confirmed_at: nowIso,
       next_attempt_at: null,
       attempts_state: "answered",
       // a2 is ON the phone with the guest right now — there is nothing left
@@ -143,7 +143,7 @@ Deno.serve(async (req) => {
     };
     if (note) patch.outcome_note = note;
     const { error: confErr } = await admin
-      .from("reservations")
+      .from("reservation_tickets")
       .update(patch)
       .eq("id", ticket.id);
     if (confErr) return json({ ok: false, error: confErr.message }, 500);
@@ -165,7 +165,7 @@ Deno.serve(async (req) => {
   const rounds = ticket.negotiation_rounds ?? 0;
   if (rounds >= MAX_NEGOTIATION_ROUNDS) {
     // Cap reached — note the wish, park in-app, no more calls this ticket.
-    await admin.from("reservations").update({
+    await admin.from("reservation_tickets").update({
       outcome_note:
         `parked after ${rounds} rounds — guest wants ${date} ${time}${note ? ` (${note})` : ""}`
           .slice(0, 300),
@@ -185,13 +185,13 @@ Deno.serve(async (req) => {
     // New terms — the venue hasn't agreed to them yet.
     status: "pending",
     reported_verdict: null,
-    guest_confirmed_at: new Date().toISOString(),
+    consumer_confirmed_at: new Date().toISOString(),
     negotiation_rounds: rounds + 1,
     callback_attempts: 0,
     callback_next_attempt_at: null,
   };
   if (note) patch.outcome_note = note;
-  const { error } = await admin.from("reservations").update(patch).eq("id", ticket.id);
+  const { error } = await admin.from("reservation_tickets").update(patch).eq("id", ticket.id);
   if (error) return json({ ok: false, error: error.message }, 500);
 
   // The double call: fire the Booker at the venue with the new terms. The

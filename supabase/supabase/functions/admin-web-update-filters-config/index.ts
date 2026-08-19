@@ -4,7 +4,7 @@
 //
 // The payload is the whole Filters config (MESITA-1083): general (modules,
 // defaults, bounds, behavior) plus one entry per consumer surface. It is
-// written as the `v1` key on app_settings.filters_config, MERGE-preserving the
+// written as the `v1` key on app_config.filters_config, MERGE-preserving the
 // blob's other keys so a future v2 can land beside it.
 //
 // A WHOLE-BLOB write: the caller always sends the complete config and
@@ -57,7 +57,7 @@ Deno.serve(async (req) => {
   // singleton row always exists (id = 1), so a missing row is a real fault
   // rather than something to create on the fly.
   const current = await admin
-    .from("app_settings")
+    .from("app_config")
     .select("filters_config")
     .eq("id", 1)
     .maybeSingle();
@@ -73,7 +73,7 @@ Deno.serve(async (req) => {
   const merged = { ...existing, v1: config };
 
   const wrote = await admin
-    .from("app_settings")
+    .from("app_config")
     .update({
       filters_config: merged,
       updated_at: new Date().toISOString(),

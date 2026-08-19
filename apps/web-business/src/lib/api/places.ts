@@ -80,11 +80,11 @@ type Place = {
   monthly_promo_cap: number | null;
   // Promos v4 membership / strikes (MESITA-542).
   first_ticket_honored_at?: string | null;
-  membership_live_at?: string | null;
+  plan_live_at?: string | null;
   strike_count?: number | null;
   last_strike_at?: string | null;
   promo_paused_until?: string | null;
-  membership_forfeited_at?: string | null;
+  plan_forfeited_at?: string | null;
   photos: string[];
   menu_pdf_url: string | null;
   // Display name paired with menu_pdf_url (e.g. "Dinner menu"). Null
@@ -135,7 +135,7 @@ export type MyPlace = Place & {
   updated_at?: string;
   // Owner-only staff Check PIN (MESITA-823). Attached by
   // business-web-get-overview on the active place when my_role=owner;
-  // absent for editors/viewers and never present on projects_view.
+  // absent for editors/viewers and never present on the profiles view.
   check_pin?: string | null;
   check_require_bill?: boolean;
 };

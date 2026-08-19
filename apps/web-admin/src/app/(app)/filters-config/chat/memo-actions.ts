@@ -5,7 +5,7 @@
 // Atlas config actions.
 //
 // Backed by admin-web-get-memo-config / admin-web-update-memo-config, which read
-// and write the memo_* columns on the public.app_settings singleton. Memo's
+// and write the memo_* columns on the public.app_config singleton. Memo's
 // system prompt (instructions) is consumed live by consumer-web-ask-memo. Live
 // model picks come from models_config.memo (Models Config) via get-memo-config;
 // greeting / provider / webGrounding / perplexityModel on this page are staged.

@@ -87,7 +87,7 @@ Deno.serve(async (req) => {
   const admin = adminClient(envRes.env);
 
   const { data: place, error: placeError } = await admin
-    .from("projects_view")
+    .from("profiles")
     .select("id, phone, country")
     .eq("id", projectId)
     .maybeSingle();
@@ -111,7 +111,7 @@ Deno.serve(async (req) => {
   // second guard keeps the path safe under stale clients.
   const { data: existingOwner } = await admin
     .from("project_members")
-    .select("business_id")
+    .select("manager_id")
     .eq("project_id", projectId)
     .eq("role", "owner")
     .maybeSingle();

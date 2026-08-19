@@ -5,7 +5,7 @@
 // Memo / Atlas config actions.
 //
 // Backed by admin-web-get-sourcing-config / admin-web-update-sourcing-config,
-// which read and write the sourcing_config jsonb on the public.app_settings
+// which read and write the sourcing_config jsonb on the public.app_config
 // singleton. No client ever touches the DB.
 
 import { efInvoke } from "@/lib/supabase-ef";

@@ -35,7 +35,7 @@ const ACTION_KEYS = [
 ] as const;
 type ActionKey = (typeof ACTION_KEYS)[number];
 
-// The legacy class rows the reward_rules mirror still speaks. Each maps onto
+// The legacy class rows the derived best-of grid still speaks. Each maps onto
 // one (class, plan) cell of the VISITS grid — the legacy table has no context
 // axis, and every ticket it ever priced was a visit.
 const LEGACY_CLASS_KEYS = ["standard", "influencer", "premium", "aura"] as const;
@@ -75,7 +75,7 @@ export function identityForClassKey(
  * What a SAVE body's `config` claims to be.
  *
  * Read and write are deliberately asymmetric. `normalizePromosV11` still
- * migrates a v10 blob on READ, because a restored or reset `app_settings` row
+ * migrates a v10 blob on READ, because a restored or reset `app_config` row
  * can legitimately hold one and a ticket must never fail to price. A v10
  * WRITE is a different animal: no shipped client has produced one since the
  * v11 migration landed, so it can only come from a stale browser tab whose

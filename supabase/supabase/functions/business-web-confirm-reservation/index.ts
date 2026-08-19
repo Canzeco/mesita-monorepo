@@ -59,8 +59,8 @@ Deno.serve(async (req) => {
   // The guest-callback seed needs the slot + the venue's longitude (quiet
   // hours run venue-local). Read them before the write.
   const { data: current } = await admin
-    .from("reservations")
-    .select("reserved_at, guest_confirmed_at, guest_notify")
+    .from("reservation_tickets")
+    .select("reserved_at, consumer_confirmed_at, consumer_notify")
     .eq("id", reservationId)
     .eq("project_id", projectId)
     .maybeSingle();
@@ -85,7 +85,7 @@ Deno.serve(async (req) => {
     // opted out of phone callbacks (MESITA-787). The ladder's own schedule
     // (~10 min out, held to 09:00–22:00 venue-local) keeps a 1 a.m. console
     // confirm from ringing anyone at 1 a.m.
-    if (!current?.guest_confirmed_at && current?.guest_notify !== "app") {
+    if (!current?.consumer_confirmed_at && current?.consumer_notify !== "app") {
       const reservedAt = current?.reserved_at ? new Date(current.reserved_at) : null;
       const first = nextGuestCallAt(0, lng, reservedAt);
       if (first) {
@@ -94,10 +94,10 @@ Deno.serve(async (req) => {
         patch.callback_attempts = 0;
         patch.last_call_status = "confirmed from the console — guest call scheduled";
       }
-    } else if (current?.guest_notify === "app" && !current?.guest_confirmed_at) {
+    } else if (current?.consumer_notify === "app" && !current?.consumer_confirmed_at) {
       patch.callback_state = "skipped";
       patch.callback_next_attempt_at = null;
-      patch.guest_confirmed_at = nowIso;
+      patch.consumer_confirmed_at = nowIso;
       patch.last_call_status =
         "confirmed from the console — guest prefers app-only; no call";
     }
@@ -116,7 +116,7 @@ Deno.serve(async (req) => {
   // Scope the update to this place and to still-actionable states so a
   // member can't flip a terminal booking (declined / no_show / cancelled).
   const { data, error } = await admin
-    .from("reservations")
+    .from("reservation_tickets")
     .update(patch)
     .eq("id", reservationId)
     .eq("project_id", projectId)

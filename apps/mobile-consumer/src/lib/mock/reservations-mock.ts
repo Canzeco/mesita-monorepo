@@ -1,20 +1,8 @@
-// Reservation entity. Booking metadata only — no money fields. When a
-// reservation has a coupon riding along with it (the auto-issued one
-// from saving the place, or one specifically linked at booking time),
-// the embedded `linkedCoupon` summary travels with the reservation so
-// the card can render a "tied coupon" stub without a cross-lookup.
+// Reservation entity. Booking metadata only — no money fields, and no
+// discount surface: a reward is earned by SHOWING UP, so the rates live on
+// the visit ticket that snapshots them, never on the booking.
 
 export type ReservationStatus = "booking" | "booked" | "cancelled";
-
-/** Compact coupon summary shown as a stub below a reservation card. */
-export type LinkedCouponSummary = {
-  id: string;
-  percent: number;
-  classLabel: string;
-  kind: "normal" | "instagram";
-  /** Lifecycle hint — surfaced as a small pill. Subset of the full status. */
-  state: "active" | "pending";
-};
 
 export type ReservationAlternative = {
   time: string;
@@ -37,7 +25,6 @@ export type ReservationItem = {
   partySize: number;
   status: ReservationStatus;
   statusNote?: string;
-  linkedCoupon?: LinkedCouponSummary;
   /** MESITA-787 */
   guestNotify?: "call" | "app";
   guestConfirmedAt?: string | null;

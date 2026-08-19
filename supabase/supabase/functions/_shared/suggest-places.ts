@@ -15,7 +15,7 @@
 // with per-row status (`not_in_mesita`, `web_listed`,
 // `verified_partner_other`, `verified_partner_self`) so the UI can render
 // the right badge. On-Mesita rows (any status other than `not_in_mesita`)
-// additionally carry `mesitaId` + `mesitaSlug` (projects_view id + slug)
+// additionally carry `mesitaId` + `mesitaSlug` (profiles id + slug)
 // so clients can navigate straight to the place row instead of
 // re-matching predictions by name; Google-only predictions omit both.
 //
@@ -60,7 +60,7 @@ export type SuggestPlacesArgs = {
   // owned row.
   callerUserId?: string | null;
   // When set, Google-only ("not_in_mesita") predictions are filtered against
-  // app_settings.sourcing_config[sourcingChannel]. On-Mesita rows always
+  // app_config.sourcing_config[sourcingChannel]. On-Mesita rows always
   // pass — they're already onboarded.
   sourcingChannel?: ChannelKey;
 };
@@ -259,7 +259,7 @@ async function fetchMesitaPredictions(
   // the PostgREST or() grammar.
   const pattern = `%${escapeIlike(input)}%`;
   const { data, error } = await admin
-    .from("projects_view")
+    .from("profiles")
     .select("id, slug, google_place_id, name, google_name, address")
     .or(`name.ilike."${pattern}",google_name.ilike."${pattern}"`)
     .not("google_place_id", "is", null)
@@ -307,7 +307,7 @@ async function enrichByPlaceIds(
   Map<string, Pick<Prediction, "status" | "mesitaId" | "mesitaSlug">>
 > {
   const { data, error } = await admin
-    .from("projects_view")
+    .from("profiles")
     .select("id, slug, google_place_id")
     .in("google_place_id", placeIds);
   if (error) {

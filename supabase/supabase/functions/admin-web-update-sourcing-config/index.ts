@@ -2,7 +2,7 @@
 //
 // Naming: caller-verb-words. Caller = admin, verb = update, words = sourcing-config.
 //
-// Writes the place-sourcing policy on the public.app_settings singleton from the
+// Writes the place-sourcing policy on the public.app_config singleton from the
 // admin console's Sourcing Config page. The body carries a partial config keyed by
 // channel; only known channels are merged, each fully validated. Unknown channels
 // and future keys already on the row are preserved. See the getter + the
@@ -126,7 +126,7 @@ Deno.serve(async (req) => {
   // Merge onto the persisted config so partial saves and any future channels
   // already on the row are preserved.
   const { data: current, error: readErr } = await admin
-    .from("app_settings")
+    .from("app_config")
     .select("sourcing_config")
     .eq("id", 1)
     .maybeSingle();
@@ -140,7 +140,7 @@ Deno.serve(async (req) => {
   const merged = { ...base, ...validated };
 
   const { data, error } = await admin
-    .from("app_settings")
+    .from("app_config")
     .update({ sourcing_config: merged, updated_by: userId })
     .eq("id", 1)
     .select("sourcing_config, updated_at")

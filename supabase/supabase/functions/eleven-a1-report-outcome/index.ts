@@ -87,7 +87,7 @@ Deno.serve(async (req) => {
   const alternatives = normalizeAlternatives(body.alternatives).slice(0, 5);
 
   const { error } = await admin
-    .from("reservations")
+    .from("reservation_tickets")
     .update({
       reported_verdict: verdict,
       alternatives,

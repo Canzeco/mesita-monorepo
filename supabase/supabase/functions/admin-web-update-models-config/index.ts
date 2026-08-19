@@ -2,7 +2,7 @@
 //
 // Naming: caller-verb-words. Caller = admin, verb = update, words = models-config.
 //
-// Writes the central models config as ONE jsonb blob on the public.app_settings
+// Writes the central models config as ONE jsonb blob on the public.app_config
 // singleton (models_config). Whole-blob writes only — the Models Config page
 // always saves its full form, so partial patches would only invite drift.
 //
@@ -124,7 +124,7 @@ Deno.serve(async (req) => {
   if (!v.ok) return jsonError(v.error, 400);
 
   const { data, error } = await admin
-    .from("app_settings")
+    .from("app_config")
     .update({ models_config: v.config, updated_by: userId })
     .eq("id", 1)
     .select("models_config")

@@ -43,7 +43,7 @@ Deno.serve(async (req) => {
   const admin = adminClient(envRes.env);
 
   const ticket = await admin
-    .from("tickets")
+    .from("visit_tickets")
     .select("id, project_id, status, consumer_id")
     .eq("id", ticketId)
     .maybeSingle();
@@ -68,7 +68,7 @@ Deno.serve(async (req) => {
 
   const cancelledAt = new Date().toISOString();
   const update = await admin
-    .from("tickets")
+    .from("visit_tickets")
     .update({ status: TICKET_STATUS.cancelled, cancelled_at: cancelledAt, cancel_reason: reason })
     .eq("id", ticketId)
     .in("status", [...BUSINESS_CANCELLABLE_STATUSES])
@@ -91,7 +91,6 @@ Deno.serve(async (req) => {
       strike = {
         strikeNumber: result.strikeNumber,
         consequence: result.consequence,
-        compensationCouponId: result.compensationCouponId,
       };
     } else {
       console.error("[business-web-cancel-ticket] strike:", result.error);

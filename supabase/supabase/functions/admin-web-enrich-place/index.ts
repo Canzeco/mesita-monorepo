@@ -97,7 +97,7 @@ Deno.serve(async (req) => {
   const { data: row, error: rowErr } = await admin
     .from("place_research")
     .select("gathered, analysis")
-    .eq("project_id", projectId)
+    .eq("place_id", projectId)
     .maybeSingle();
   if (rowErr) return json({ ok: false, error: `place_research: ${rowErr.message}` }, 500);
   if (!row) {

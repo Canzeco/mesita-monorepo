@@ -65,7 +65,7 @@ Deno.serve(async (req) => {
 
   // ── 1 · Expiry: bury stuck pending tickets FIRST ───────────────────────────
   const { data: expRows } = await admin
-    .from("reservations")
+    .from("reservation_tickets")
     .update({
       status: "unresolved",
       attempts_state: "exhausted",
@@ -81,7 +81,7 @@ Deno.serve(async (req) => {
 
   // ── 2 · Moot notices: nobody needs a release call about a passed slot ──────
   const { data: mootRows } = await admin
-    .from("reservations")
+    .from("reservation_tickets")
     .update({
       notice_state: "skipped",
       notice_next_at: null,
@@ -98,7 +98,7 @@ Deno.serve(async (req) => {
     patch: Record<string, unknown>,
   ) => {
     const { data } = await admin
-      .from("reservations")
+      .from("reservation_tickets")
       .update({
         ...patch,
         last_call_status: "run reaped — its worker died mid-flight; resuming",
@@ -144,7 +144,7 @@ Deno.serve(async (req) => {
   };
 
   const { data: bookRows, error: bookErr } = await admin
-    .from("reservations")
+    .from("reservation_tickets")
     .select("id")
     .eq("status", "pending")
     .eq("attempts_state", "scheduled")
@@ -158,7 +158,7 @@ Deno.serve(async (req) => {
   bookings.woken = await wake((bookRows ?? []).map((r) => r.id), "book");
 
   const { data: cbRows } = await admin
-    .from("reservations")
+    .from("reservation_tickets")
     .select("id")
     .in("status", ["pending", "confirmed"])
     .eq("callback_state", "scheduled")
@@ -174,7 +174,7 @@ Deno.serve(async (req) => {
   // normal owner, and a failed modification owes a release from 'unreachable'
   // / 'unresolved'. Live tickets are excluded by the engine's gate.
   const { data: ntRows } = await admin
-    .from("reservations")
+    .from("reservation_tickets")
     .select("id")
     .in("notice_kind", ["venue_cancel", "guest_cancel"])
     .or(`notice_state.eq.pending,and(notice_state.eq.scheduled,notice_next_at.lte.${nowIso})`)

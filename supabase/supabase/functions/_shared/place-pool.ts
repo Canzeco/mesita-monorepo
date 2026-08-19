@@ -28,7 +28,7 @@ export {
 // carry died with the Lineup engine (MESITA-1048):
 //   • manual_priority           — the MP subscore's input. The COLUMN stays in
 //                                 the database (dropping it means rebuilding
-//                                 projects_view and both INSTEAD OF triggers,
+//                                 profiles and both INSTEAD OF triggers,
 //                                 which reopened an anon-browse RLS hole once
 //                                 before), but no code reads it anymore.
 //   • embedding_source_hash     — only the lazy-embed writeback needed these,
@@ -58,7 +58,7 @@ export async function fetchCandidatePool<T extends { lat: number | null; lng: nu
   if (lat != null && lng != null) {
     const { latDelta, lngDelta } = radiusBoundingBox(lat, radiusKm);
     const { data, error } = await admin
-      .from("projects_view")
+      .from("profiles")
       .select(POOL_PLACE_COLUMNS)
       .eq("status", "active")
       .gte("lat", lat - latDelta)
@@ -76,7 +76,7 @@ export async function fetchCandidatePool<T extends { lat: number | null; lng: nu
   }
 
   const { data, error } = await admin
-    .from("projects_view")
+    .from("profiles")
     .select(POOL_PLACE_COLUMNS)
     .eq("status", "active")
     .order("created_at", { ascending: false })

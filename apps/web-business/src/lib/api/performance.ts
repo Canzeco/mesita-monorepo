@@ -36,7 +36,7 @@ type PerformanceReview = {
   id: string;
   food: number | null;
   service: number | null;
-  ambiance: number | null;
+  ambience: number | null;
   value: number | null;
   overall: number | null;
   comments: string | null;

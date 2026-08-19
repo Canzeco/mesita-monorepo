@@ -2,7 +2,7 @@
 //
 // Naming: caller-verb-words. Caller = admin, verb = update, words = memo-config.
 //
-// Partial-update of Memo's persona + model config on the public.app_settings
+// Partial-update of Memo's persona + model config on the public.app_config
 // singleton, written from the admin console's Memo Config page. Each field is
 // optional; only keys present in the body are written. Memo is the consumer AI
 // concierge (consumer-web-ask-memo) — memo_instructions is read live as its
@@ -48,7 +48,7 @@ Deno.serve(async (req) => {
   patch.updated_by = userId;
 
   const { data, error } = await admin
-    .from("app_settings")
+    .from("app_config")
     .update(patch)
     .eq("id", 1)
     .select(

@@ -1,7 +1,7 @@
 // memo-prompt.ts — Memo's voice.
 //
 // The default persona lives here in code; the operator-tunable override lives in
-// app_settings.memo_instructions, written by the admin console's Memo Config
+// app_config.memo_instructions, written by the admin console's Memo Config
 // page and SERVED to Memo by supabase-edgefunc-get-memo-config (Memo holds no
 // database client — see memo-data.ts).
 //

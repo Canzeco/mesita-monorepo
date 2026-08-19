@@ -13,7 +13,6 @@ import {
 } from "lucide-react";
 import { MesitaLogo } from "@/components/brand/MesitaLogo";
 import { MesitaMark } from "@/components/brand/MesitaMark";
-import { AURA_CONSUMERS_PARENT } from "@/app/(app)/aura-consumers/nav";
 import { BILLING_TEST_PARENT } from "@/app/(app)/billing-test/nav";
 import { DB_PARENT } from "@/app/(app)/manage-database/nav";
 import { ENRICHER_PARENT } from "@/app/(app)/enricher-config/nav";
@@ -74,15 +73,14 @@ const ALERTS_NAV: NavItem[] = [
 ];
 
 // Manage — the records of real things, widest scope first: the backend itself,
-// then the units Mesita lists, then the consumers who walk into them. Not
-// Configurations; nothing here is a policy blob. Units keep the
-// Multiple/Single qualifier because there are two surfaces to tell apart;
-// consumers have one, so the qualifier would carry no information.
+// then the units Mesita lists. Not Configurations; nothing here is a policy
+// blob. Units keep the Multiple/Single qualifier because there are two
+// surfaces to tell apart. There is no consumers row: every class is earned,
+// so the console has nothing to grant by hand.
 const MANAGE_NAV: NavItem[] = [
   DB_PARENT,
   { href: "/manage-multiple", label: "Multiple Units", Icon: Building2 },
   ...TOOL_ROUTES,
-  AURA_CONSUMERS_PARENT,
 ];
 
 // Configurations — ordered as the product flows, not alphabetically or by age.

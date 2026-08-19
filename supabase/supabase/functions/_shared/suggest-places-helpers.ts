@@ -12,7 +12,7 @@ export type Prediction = {
   secondaryText: string;
   status: PredictionStatus;
   // Present only on on-Mesita rows (status !== "not_in_mesita"):
-  // projects_view id + slug so clients can navigate directly to the
+  // profiles id + slug so clients can navigate directly to the
   // place instead of fuzzy-matching by name. Google-only predictions
   // omit both.
   mesitaId?: string;

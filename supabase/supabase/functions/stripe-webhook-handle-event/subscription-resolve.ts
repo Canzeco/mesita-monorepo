@@ -56,7 +56,7 @@ export async function resolveProjectId(
 }
 
 // Resolves which Mesita plan a Stripe subscription pays for: subscription
-// metadata first, then the price id against business_plans, then the price
+// metadata first, then the price id against project_plans, then the price
 // lookup_key against the static catalog.
 export async function resolvePlanKey(
   admin: ReturnType<typeof adminClient>,
@@ -69,14 +69,14 @@ export async function resolvePlanKey(
   if (!price) return null;
 
   const { data } = await admin
-    .from("business_plans")
+    .from("project_plans")
     .select("key")
     .eq("stripe_price_id", price.id)
     .maybeSingle();
   if (data?.key) return data.key as string;
 
   const byLookup = STRIPE_CATALOG.find(
-    (e) => e.lookupKey === price.lookup_key && e.table === "business_plans",
+    (e) => e.lookupKey === price.lookup_key && e.table === "project_plans",
   );
   return byLookup?.rowKey ?? null;
 }

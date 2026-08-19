@@ -85,7 +85,7 @@ Deno.serve(async (req) => {
   const admin = adminClient(envRes.env);
 
   const placeRow = await admin
-    .from("projects_view")
+    .from("profiles")
     .select(
       "id, name, slug, status, listing_type, welcome_free_rate, welcome_premium_rate, free_rate, premium_rate",
     )
@@ -133,7 +133,7 @@ Deno.serve(async (req) => {
   // One LIVE self-created ticket per guest × place — friendly check first,
   // the partial unique index wins any race.
   const existing = await admin
-    .from("tickets")
+    .from("visit_tickets")
     .select("id, check_code, status")
     .eq("consumer_id", consumerId)
     .eq("project_id", placeId)
@@ -198,20 +198,19 @@ Deno.serve(async (req) => {
   let lastError = "";
   for (let attempt = 0; attempt < 2 && !inserted; attempt++) {
     const res = await admin
-      .from("tickets")
+      .from("visit_tickets")
       .insert({
         project_id: placeId,
         consumer_id: consumerId,
         opened_by: consumerId, // self-opened: the v2 marker
         status: TICKET_STATUS.open,
-        kind: "coupon",
         story_status: storyStatus,
         review_status: reviewStatus,
         check_code: newCheckCode(),
         ...snapshotRatesFromPlace(place as Record<string, unknown>),
       })
       .select(
-        "id, status, kind, story_status, review_status, check_code, first_scanned_at, currency, created_at",
+        "id, status, story_status, review_status, check_code, first_scanned_at, currency, created_at",
       )
       .single();
     if (!res.error) {

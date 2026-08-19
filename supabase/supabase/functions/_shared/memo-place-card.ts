@@ -3,7 +3,7 @@
 // Memo never reads Postgres. Its data-access Edge Functions
 // (supabase-edgefunc-recall-places / -search-places) own the SELECT and project
 // every row down to this card before answering. That projection is the privacy
-// boundary: it is a whitelist, so a column added to `places`/`projects_view`
+// boundary: it is a whitelist, so a column added to `places`/`profiles`
 // cannot leak into Memo's context by accident — someone has to widen this file
 // on purpose.
 //

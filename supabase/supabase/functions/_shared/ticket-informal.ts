@@ -55,7 +55,7 @@ export type ConsumerRow = {
   last_name: string | null;
   class_key: string | null;
   class_origin: string | null;
-  consumer_instagram_followers_count: number | null;
+  instagram_followers_count: number | null;
   phone: string | null;
 };
 
@@ -145,9 +145,9 @@ export async function finalizeInformalTicket(
   ticketId: string,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   const ticket = await admin
-    .from("tickets")
+    .from("visit_tickets")
     .select(
-      "id, status, project_id, check_subtotal_cents, total_cents, discount_cents, discount_percent",
+      "id, status, project_id, bill_subtotal_cents, total_cents, discount_cents, discount_percent",
     )
     .eq("id", ticketId)
     .maybeSingle();
@@ -158,7 +158,7 @@ export async function finalizeInformalTicket(
 
   const now = new Date().toISOString();
   const update = await admin
-    .from("tickets")
+    .from("visit_tickets")
     .update({
       status: CLOSED_TICKET_STATUS,
       revealed_at: now,
@@ -173,7 +173,7 @@ export async function finalizeInformalTicket(
   // with no bill, the discount was applied at the place's own POS per the
   // stated offer, so the close itself is the honor.
   const billed = ((ticket.data.total_cents as number | null) ?? 0) > 0 ||
-    ((ticket.data.check_subtotal_cents as number | null) ?? 0) > 0;
+    ((ticket.data.bill_subtotal_cents as number | null) ?? 0) > 0;
   const discount =
     (ticket.data.discount_cents as number | null) ??
     (ticket.data.discount_percent as number | null) ??

@@ -3,7 +3,7 @@
 // Removes one team artefact from a place. The `kind` discriminates:
 //
 //   editor       → project_members row (cannot remove last owner)
-//   editorInvite → account_invites row (revoke pending email invite)
+//   editorInvite → project_invites row (revoke pending email invite)
 //
 // The waiter / waiterInvite kinds were retired with the waiter identity
 // itself (MESITA-833) — staff work the public check page and hold no

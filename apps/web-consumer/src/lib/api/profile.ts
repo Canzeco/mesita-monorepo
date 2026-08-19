@@ -2,8 +2,8 @@
 //
 // Pre-entity-split this file used to also house the ticket workflow /
 // taxonomy code under the name `api/tickets.ts`. After the split
-// (reservations + coupons each got their own EFs) the ticket helpers
-// were dropped and the file was renamed to its current responsibility:
+// (reservations got their own EFs) the ticket helpers were dropped and
+// the file was renamed to its current responsibility:
 // fetch + update the consumer profile, plus the currency display
 // helper that every money surface reuses.
 
@@ -30,12 +30,12 @@ export type ConsumerProfile = {
   // falls back to DefaultAvatar on Me / Personal details (MESITA-880/953).
   avatar_url?: string | null;
   // Account-level visibility flags (MESITA-76 / MESITA-913) — Settings → Privacy.
-  // profile_public=false → Private account (anonymous to other guests).
-  // profile_show_stories → Mesita story visibility (independent of Instagram).
-  profile_public: boolean;
-  profile_show_saves: boolean;
-  profile_show_visits: boolean;
-  profile_show_stories: boolean;
+  // privacy_public=false → Private account (anonymous to other guests).
+  // privacy_show_stories → Mesita story visibility (independent of Instagram).
+  privacy_public: boolean;
+  privacy_show_saves: boolean;
+  privacy_show_visits: boolean;
+  privacy_show_stories: boolean;
 };
 
 // Class payload returned alongside the profile by consumer-web-get-profile.
@@ -136,10 +136,10 @@ type ConsumerOnboardingInput = {
 // Visibility-only patches (MESITA-913). Name fields are omitted so the EF
 // doesn't require the first/last pair for a privacy toggle flip.
 type ConsumerPrivacyPatch = {
-  profile_public?: boolean;
-  profile_show_saves?: boolean;
-  profile_show_visits?: boolean;
-  profile_show_stories?: boolean;
+  privacy_public?: boolean;
+  privacy_show_saves?: boolean;
+  privacy_show_visits?: boolean;
+  privacy_show_stories?: boolean;
 };
 
 // Avatar-only patch after a Storage upload (MESITA-953). null clears.

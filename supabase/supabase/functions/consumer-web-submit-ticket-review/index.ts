@@ -1,6 +1,6 @@
 // Supabase Edge Function — consumer-web-submit-ticket-review
 //
-// Post-visit review (Food, Service, Ambiance, Value, Overall + comments).
+// Post-visit review (Food, Service, Ambience, Value, Overall + comments).
 //
 // ONE review per account per place (MESITA-825) — NOT per ticket. The upsert
 // conflicts on (consumer_id, project_id), matching the unique constraint added
@@ -20,7 +20,7 @@ type Body = {
   ticketId?: string;
   food?: number;
   service?: number;
-  ambiance?: number;
+  ambience?: number;
   value?: number;
   overall?: number;
   comments?: string;
@@ -50,21 +50,21 @@ Deno.serve(async (req) => {
   const ticketId = (body.ticketId ?? "").trim();
   const food = score(body.food);
   const service = score(body.service);
-  const ambiance = score(body.ambiance);
+  const ambience = score(body.ambience);
   const value = score(body.value);
   const overall = score(body.overall);
   if (!ticketId) return json({ ok: false, error: "ticketId is required" }, 400);
   if (
     food == null ||
     service == null ||
-    ambiance == null ||
+    ambience == null ||
     value == null ||
     overall == null
   ) {
     return json(
       {
         ok: false,
-        error: "food, service, ambiance, value, and overall must be 1–5",
+        error: "food, service, ambience, value, and overall must be 1–5",
       },
       400,
     );
@@ -78,7 +78,7 @@ Deno.serve(async (req) => {
   }
 
   const ticket = await admin
-    .from("tickets")
+    .from("visit_tickets")
     .select("id, consumer_id, project_id, status")
     .eq("id", ticketId)
     .eq("consumer_id", userId)
@@ -104,7 +104,7 @@ Deno.serve(async (req) => {
         project_id: ticket.data.project_id,
         food,
         service,
-        ambiance,
+        ambience,
         value,
         overall,
         comments,
@@ -127,13 +127,13 @@ Deno.serve(async (req) => {
   // landing it clears an outstanding proof/reward send-back so staff can
   // approve. Best-effort: the review itself already saved.
   await admin
-    .from("tickets")
+    .from("visit_tickets")
     .update({ fix_requested: null, fix_note: null })
     .eq("id", ticketId)
     .in("fix_requested", ["proof", "reward"]);
 
   await admin
-    .from("consumer_pay_notifications")
+    .from("consumer_notifications")
     .update({ status: "completed", resolved_at: now })
     .eq("ticket_id", ticketId)
     .eq("consumer_id", userId)

@@ -91,7 +91,7 @@ export const TOOLS: ToolDef[] = [
         },
         party_size: { type: "number", minimum: 1, maximum: 20 },
         notes: { type: "string" },
-        guest_notify: {
+        consumer_notify: {
           type: "string",
           enum: ["call", "app"],
           description:
@@ -99,19 +99,6 @@ export const TOOLS: ToolDef[] = [
         },
       },
       required: ["place_id", "reserved_at", "party_size"],
-      additionalProperties: false,
-    },
-  },
-  {
-    name: "list_rewards",
-    description:
-      "List active reward coupons (at-the-bill discounts) available to the consumer.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        include_inactive: { type: "boolean" },
-        limit: { type: "number", minimum: 1, maximum: 100 },
-      },
       additionalProperties: false,
     },
   },

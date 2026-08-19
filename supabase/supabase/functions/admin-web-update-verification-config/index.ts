@@ -2,7 +2,7 @@
 //
 // Naming: caller-verb-words. Caller = admin, verb = update, words = verification-config.
 //
-// Writes Verification Config knobs on the public.app_settings singleton from
+// Writes Verification Config knobs on the public.app_config singleton from
 // the admin console. Body: { config: { …partial knobs… } } — at least one
 // boolean knob required. Returns the full config after write.
 //
@@ -80,7 +80,7 @@ Deno.serve(async (req) => {
   }
 
   const { data, error } = await admin
-    .from("app_settings")
+    .from("app_config")
     .update(update)
     .eq("id", 1)
     .select(

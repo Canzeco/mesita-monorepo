@@ -84,7 +84,7 @@ Deno.serve(async (req) => {
 
   const admin = adminClient(envRes.env);
   const { data: row, error: readErr } = await admin
-    .from("reservations")
+    .from("reservation_tickets")
     .select(
       "id, status, reserved_at, consumer_id, reference_code, reschedules_today, reschedules_day, modification_of",
     )
@@ -105,7 +105,7 @@ Deno.serve(async (req) => {
   // Every reschedule resets call_attempts — i.e. buys fresh venue calls — so
   // it is rate-limited per ticket per day. Knob lives in reservations_config.
   const { data: settings } = await admin
-    .from("app_settings")
+    .from("app_config")
     .select("reservations_config")
     .eq("id", 1)
     .maybeSingle();
@@ -140,7 +140,7 @@ Deno.serve(async (req) => {
     status: "pending",
     reported_verdict: null,
     alternatives: [],
-    guest_confirmed_at: null,
+    consumer_confirmed_at: null,
     confirmed_at: null,
     negotiation_rounds: 0,
     attempts: [],
@@ -163,7 +163,7 @@ Deno.serve(async (req) => {
     last_call_status: "rescheduled by the guest — calling the place again",
   });
 
-  const { error } = await admin.from("reservations").update(patch).eq("id", id);
+  const { error } = await admin.from("reservation_tickets").update(patch).eq("id", id);
   if (error) return json({ ok: false, error: error.message }, 500);
 
   // Ask the venue again. The engine acks early and runs the legs in the

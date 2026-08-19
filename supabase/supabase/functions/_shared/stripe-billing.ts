@@ -4,8 +4,8 @@
 // resolvePlanPrice() is self-provisioning: the first real checkout after a
 // deploy materializes the product + price in whatever Stripe account
 // STRIPE_SECRET_KEY points at (live or sandbox), idempotently via lookup_key,
-// and caches the resulting price id back onto the lookup row (classes /
-// business_plans). A price change in the DB (e.g. Premium $200 → $100) is
+// and caches the resulting price id back onto the lookup row (consumer_plans /
+// project_plans). A price change in the DB (e.g. Premium $200 → $100) is
 // self-healing too: the cached price is re-verified against the row and a
 // mismatched price is replaced (old one deactivated, lookup_key transferred).
 // No dashboard step, and the secret never leaves the server.

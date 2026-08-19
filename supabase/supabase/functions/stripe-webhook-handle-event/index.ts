@@ -306,7 +306,7 @@ async function reconcileProjectSubscription(
       rates: ratesFromPlace(current),
       currentListingType: current.listing_type as string,
     });
-    patch.membership_live_at = null;
+    patch.plan_live_at = null;
     patch.first_ticket_honored_at = null;
 
     const revoke = await admin

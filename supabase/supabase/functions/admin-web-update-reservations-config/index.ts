@@ -2,7 +2,7 @@
 //
 // Naming: caller-verb-words. Caller = admin, verb = update, words = reservations-config.
 //
-// Writes the reservation-endpoint policy on the public.app_settings singleton from
+// Writes the reservation-endpoint policy on the public.app_config singleton from
 // the admin console's Reservations Config page. Unlike the sourcing knobs this is a
 // WHOLE-CONFIG write, not a per-key merge: `priority` is an ordered list, and a
 // partial merge of an ordering is meaningless — the caller always sends the full
@@ -42,7 +42,7 @@ Deno.serve(async (req) => {
   if (!norm.ok) return jsonError(norm.error, 400);
 
   const { data, error } = await admin
-    .from("app_settings")
+    .from("app_config")
     .update({ reservations_config: norm.value, updated_by: userId })
     .eq("id", 1)
     .select("reservations_config, updated_at")

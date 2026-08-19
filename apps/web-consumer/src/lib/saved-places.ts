@@ -1,11 +1,13 @@
-// Saved-places store. Persists which place ids the consumer has bookmarked
+// Favorites store. Persists which place ids the consumer has bookmarked
 // to localStorage so the state survives reloads. Module-scope state +
 // useSyncExternalStore is the canonical React 18+ pattern for "subscribe
 // to a value outside React" without the setState-in-useEffect anti-pattern.
 //
-// When the real backend lands this module is the only thing to swap: the
-// public API (isSaved / toggleSaved / list) becomes an EF call instead of
-// a localStorage read, and every caller keeps working unchanged.
+// Saving is a BOOKMARK and nothing more — it issues no discount; a discount
+// comes from showing up. The server side exists (the `favorites` table behind
+// consumer-web-add-favorite / consumer-web-list-favorites) but no client calls
+// it yet: this module is still the only thing to swap when they do, since the
+// public API (isSaved / toggleSaved / list) is what every caller uses.
 
 import { useCallback, useSyncExternalStore } from "react";
 

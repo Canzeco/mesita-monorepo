@@ -11,7 +11,7 @@
 // QR — letting an unverified tap trigger that would hand every guest a
 // button that costs a place real money. Reports land `open` for an operator
 // to read in admin-web-list-notifications and act on with the existing
-// business-web-record-membership-strike path.
+// business-web-record-strike path.
 //
 // Window: from creation until REPORT_WINDOW_DAYS after the ticket closed —
 // a guest usually realises they were shorted once they're outside the venue.
@@ -79,7 +79,7 @@ Deno.serve(async (req) => {
   const admin = adminClient(envRes.env);
 
   const ticketRow = await admin
-    .from("tickets")
+    .from("visit_tickets")
     .select("id, consumer_id, project_id, status, created_at, revealed_at, cancelled_at")
     .eq("id", ticketId)
     .maybeSingle();

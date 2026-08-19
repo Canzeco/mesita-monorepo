@@ -17,7 +17,7 @@
 // back the same flat `place` shape clients already speak.
 //
 // NOT reservation-only despite the filename: EVERY table that points at
-// projects hits this same wall — tickets, coupons, saved_places all FK to
+// projects hits this same wall — visit_tickets and favorites both FK to
 // projects, so they use this helper too. The summary is a SUPERSET of what
 // those callers need (extra keys are harmless); note which side each column
 // lives on, because the old embeds got that wrong as well:

@@ -6,7 +6,7 @@
 // how "connect ElevenLabs to Supabase" works in Mesita: the agent never touches
 // the DB — it calls an EF, like every other client.
 //
-// Looks up a reservation ticket in REAL TIME on the ONE reservations table
+// Looks up a reservation ticket in REAL TIME on the ONE reservation_tickets table
 // (sandbox retired 2026-07-27; is_test rows are included on purpose — the
 // agent must resolve operator test calls too). Two lookup keys, either works:
 //   { reference_code }              — the ticket's 8-digit code (exact)
@@ -16,7 +16,7 @@
 // Auth (two locks):
 //   1. Gateway verify_jwt — the tool sends `Authorization: Bearer <anon key>`
 //      (the anon key is a valid project JWT; it grants NOTHING here by itself).
-//   2. `x-agent-secret` header must match app_settings.agents_config.toolSecret
+//   2. `x-agent-secret` header must match app_config.agents_config.toolSecret
 //      (timing-safe). Stored in the DB, not EF env, so it rotates with SQL.
 //
 // Deploy: supabase functions deploy eleven-agent-get-reservation
@@ -109,7 +109,7 @@ async function searchReservations(
   let rows: Row[] = [];
   if (code) {
     const { data } = await admin
-      .from("reservations")
+      .from("reservation_tickets")
       .select(SELECT)
       .eq("reference_code", code)
       .limit(5);
@@ -142,7 +142,7 @@ async function searchReservations(
       .map((g) => g.id);
     if (ids.length === 0) return [];
     const { data } = await admin
-      .from("reservations")
+      .from("reservation_tickets")
       .select(SELECT)
       .in("consumer_id", ids)
       .order("created_at", { ascending: false })
@@ -195,10 +195,10 @@ Deno.serve(async (req) => {
   if (!envRes.ok) return envRes.response;
   const admin = adminClient(envRes.env);
 
-  // Lock 2: the shared tool secret, read live from app_settings.
+  // Lock 2: the shared tool secret, read live from app_config.
   const sent = (req.headers.get("x-agent-secret") ?? "").trim();
   const { data: settings } = await admin
-    .from("app_settings")
+    .from("app_config")
     .select("agents_config")
     .eq("id", 1)
     .maybeSingle();

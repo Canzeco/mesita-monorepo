@@ -1,17 +1,16 @@
 // Supabase Edge Function — consumer-web-create-reservation (product caller)
 //
-// Authenticated. Creates a reservation row for the caller and, if the
-// consumer already has an active coupon for the same place (because
-// they previously saved it), links that coupon to the reservation via
-// `coupon_id`. The reservation row deliberately carries NO discount
-// info — the linked coupon owns the discount surface.
+// Authenticated. Creates a reservation row for the caller. The reservation
+// carries NO discount surface at all, deliberately: a reward comes from
+// SHOWING UP, never from holding a booking. The rates are snapshotted onto
+// the visit ticket when the guest actually arrives.
 //
 // Body:
 //   { project_id: uuid, reserved_at: iso8601, party_size: int, notes?: string,
-//     guest_notify?: "call" | "app" }  // default "call" (MESITA-787)
+//     consumer_notify?: "call" | "app" }  // default "call" (MESITA-787)
 //
 // Response:
-//   { ok: true, reservation: {…}, linked_coupon_id: uuid|null }
+//   { ok: true, reservation: {…} }
 //
 // Deploy: supabase functions deploy consumer-web-create-reservation
 
@@ -28,7 +27,7 @@ type Body = {
   reserved_at?: string;
   party_size?: number;
   notes?: string;
-  guest_notify?: string;
+  consumer_notify?: string;
 };
 
 Deno.serve(async (req) => {
@@ -70,7 +69,7 @@ Deno.serve(async (req) => {
   if (!Number.isFinite(partySize) || partySize < 1 || partySize > MAX_PARTY) {
     return json({ ok: false, error: `party_size must be 1..${MAX_PARTY}` }, 400);
   }
-  const guestNotify = body.guest_notify === "app" ? "app" : "call";
+  const guestNotify = body.consumer_notify === "app" ? "app" : "call";
 
   const admin = adminClient(envRes.env);
 
@@ -106,11 +105,11 @@ Deno.serve(async (req) => {
     .maybeSingle();
   if (consumerErr) return json({ ok: false, error: consumerErr.message }, 500);
 
-  // Admin testing switch (app_settings.reservations_config.unlimitedReservations)
+  // Admin testing switch (app_config.reservations_config.unlimitedReservations)
   // lifts the cap for EVERY consumer so a tester isn't blocked mid-run. Defaults
   // off; the admin Reservations Config page owns it.
   const { data: settingsRow } = await admin
-    .from("app_settings")
+    .from("app_config")
     .select("reservations_config")
     .eq("id", 1)
     .maybeSingle();
@@ -125,7 +124,7 @@ Deno.serve(async (req) => {
     monthStart.setUTCDate(1);
     monthStart.setUTCHours(0, 0, 0, 0);
     const { count, error: countErr } = await admin
-      .from("reservations")
+      .from("reservation_tickets")
       .select("id", { count: "exact", head: true })
       .eq("consumer_id", consumerId)
       .eq("is_test", false)
@@ -147,33 +146,21 @@ Deno.serve(async (req) => {
     }
   }
 
-  // Look up an active coupon for this (consumer, place) so we can link it.
-  // We don't fail if none exists — the place might be a web listing
-  // (no coupons), or the consumer might not have saved it yet.
-  const { data: coupon } = await admin
-    .from("coupons")
-    .select("id")
-    .eq("consumer_id", consumerId)
-    .eq("project_id", body.project_id)
-    .eq("status", "active")
-    .maybeSingle();
-
   // Insert with the ticket's 8-digit reference code — fresh code per try; a
   // unique-index collision just redraws.
   let reservation: { id: string } & Record<string, unknown> | null = null;
   let insertError: { message: string } | null = null;
   for (let i = 0; i < 3 && !reservation; i++) {
     const ins = await admin
-      .from("reservations")
+      .from("reservation_tickets")
       .insert({
         consumer_id: consumerId,
         project_id: body.project_id,
-        coupon_id: coupon?.id ?? null,
         reference_code: generateReservationCode(),
         reserved_at: reservedAt.toISOString(),
         party_size: partySize,
         notes: (body.notes ?? "").trim() || null,
-        guest_notify: guestNotify,
+        consumer_notify: guestNotify,
         status: "pending",
       })
       // NO `place:places(...)` embed here — reservations→places is a two-hop FK
@@ -182,7 +169,7 @@ Deno.serve(async (req) => {
       // in the schema cache". Select project_id and stitch via attachPlaces,
       // exactly like the list EFs (#518/#523).
       .select(
-        "id, reference_code, reserved_at, party_size, status, notes, guest_notify, coupon_id, created_at, project_id",
+        "id, reference_code, reserved_at, party_size, status, notes, consumer_notify, created_at, project_id",
       )
       .single();
     if (!ins.error) {
@@ -215,7 +202,6 @@ Deno.serve(async (req) => {
   return json({
     ok: true,
     reservation: withPlace ?? reservation,
-    linked_coupon_id: coupon?.id ?? null,
     call_triggered: call.ok,
   });
 });

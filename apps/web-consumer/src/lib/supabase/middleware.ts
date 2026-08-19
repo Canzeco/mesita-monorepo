@@ -19,7 +19,7 @@ import type { Database } from "./database.types";
 //
 // PROTECTED_PREFIXES is a fast path, NOT the security boundary. Every route
 // under app/(shell) — which is all of these plus /home, /search, /place,
-// /share, /coupon, /filters — is walled by that layout's own getUser()
+// /share, /filters — is walled by that layout's own getUser()
 // check. Listing the personal-data routes here just means we redirect at
 // the edge instead of paying for an SSR render first.
 //

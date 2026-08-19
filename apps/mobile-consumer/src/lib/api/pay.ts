@@ -22,8 +22,7 @@ export type TicketBillPayload = {
   place_name?: string;
   place_photo_url?: string | null;
   place_instagram_handle?: string | null;
-  ticket_kind?: string;
-  check_subtotal_cents?: number;
+  bill_subtotal_cents?: number;
   tip_cents?: number;
   total_cents?: number;
   discount_cents?: number;
@@ -76,7 +75,7 @@ export function submitTicketReview(input: {
   ticketId: string;
   food: number;
   service: number;
-  ambiance: number;
+  ambience: number;
   value: number;
   overall: number;
   comments?: string;

@@ -2,7 +2,7 @@
 //
 // Naming: caller-verb-words. Caller = admin, verb = get, words = sourcing-config.
 //
-// Returns the place-sourcing policy from the public.app_settings singleton for
+// Returns the place-sourcing policy from the public.app_config singleton for
 // the admin console's Sourcing Config page. The policy decides, per sourcing
 // channel (admin_add / admin_search / business_add / consumer_add / memo_search),
 // which place families are eligible to enter Mesita and the Google quality bar
@@ -34,7 +34,7 @@ Deno.serve(async (req) => {
   if (!saRes.ok) return saRes.response;
 
   const { data, error } = await admin
-    .from("app_settings")
+    .from("app_config")
     .select("sourcing_config, updated_at")
     .eq("id", 1)
     .maybeSingle();
@@ -42,7 +42,7 @@ Deno.serve(async (req) => {
     return jsonError(`sourcing_config_read: ${error.message}`, 500);
   }
   if (!data) {
-    return jsonError("app_settings missing", 500);
+    return jsonError("app_config missing", 500);
   }
 
   return jsonOk({ config: data.sourcing_config,

@@ -69,7 +69,7 @@ export async function savePlaceData(
 
   // ── Idempotency: already onboarded? (read the joined view) ──
   const { data: existing } = await admin
-    .from("projects_view")
+    .from("profiles")
     .select("id, slug, name, status, listing_type")
     .eq("google_place_id", googlePlaceId)
     .maybeSingle();
@@ -91,7 +91,7 @@ export async function savePlaceData(
   // ownership proof. Default off → 'web' / "Not Verified". Does not grant
   // plan, ownership, or promo strategy (those stay on their own paths).
   const { data: settingsRow } = await admin
-    .from("app_settings")
+    .from("app_config")
     .select("create_places_as_verified")
     .eq("id", 1)
     .maybeSingle();
@@ -125,7 +125,7 @@ export async function savePlaceData(
     // Race guard: a concurrent create won the unique index — report as dup.
     if (placeErr?.code === "23505" && /google_place_id/.test(placeErr.message)) {
       const after = await admin
-        .from("projects_view")
+        .from("profiles")
         .select("id, slug, name, status, listing_type")
         .eq("google_place_id", googlePlaceId)
         .maybeSingle();

@@ -36,7 +36,7 @@ export type CheckPayload = {
   place: { name: string; slug: string | null };
   guest: { display_name: string; instagram_handle: string | null };
   bill: {
-    check_subtotal_cents: number | null;
+    bill_subtotal_cents: number | null;
     tip_cents?: number | null;
     tip_pct?: number | null;
     discount_percent: number | null;
@@ -236,7 +236,7 @@ export type CheckPollPayload = {
   validated_at: string | null;
   paid_method: string | null;
   bill: {
-    check_subtotal_cents: number | null;
+    bill_subtotal_cents: number | null;
     tip_cents: number | null;
     tip_pct: number | null;
     discount_percent: number | null;

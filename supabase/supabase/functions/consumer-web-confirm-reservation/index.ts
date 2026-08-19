@@ -52,9 +52,9 @@ Deno.serve(async (req) => {
 
   const admin = adminClient(envRes.env);
   const { data: ticket, error: loadErr } = await admin
-    .from("reservations")
+    .from("reservation_tickets")
     .select(
-      "id, status, reserved_at, alternatives, guest_confirmed_at, consumer_id, is_test",
+      "id, status, reserved_at, alternatives, consumer_confirmed_at, consumer_id, is_test",
     )
     .eq("id", body.reservation_id)
     .maybeSingle();
@@ -75,9 +75,9 @@ Deno.serve(async (req) => {
     }
     const nowIso = new Date().toISOString();
     const { error } = await admin
-      .from("reservations")
+      .from("reservation_tickets")
       .update({
-        guest_confirmed_at: nowIso,
+        consumer_confirmed_at: nowIso,
         callback_state: "skipped",
         callback_next_attempt_at: null,
         last_call_status: "guest confirmed in the app",
@@ -125,13 +125,13 @@ Deno.serve(async (req) => {
 
   const nowIso = new Date().toISOString();
   const { error: confErr } = await admin
-    .from("reservations")
+    .from("reservation_tickets")
     .update({
       reserved_at: next.toISOString(),
       status: "confirmed",
       reported_verdict: "confirmed",
       confirmed_at: nowIso,
-      guest_confirmed_at: nowIso,
+      consumer_confirmed_at: nowIso,
       next_attempt_at: null,
       attempts_state: "answered",
       callback_state: "skipped",

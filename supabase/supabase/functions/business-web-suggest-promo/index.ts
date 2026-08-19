@@ -193,8 +193,10 @@ async function loadPerfContext(
   admin: SupabaseClient,
   projectId: string,
 ): Promise<{ ok: true; ctx: PerfContext } | { ok: false; error: string }> {
+  // monthly_promo_cap is a PROJECT column; only the profiles view exposes it
+  // alongside the place columns, so reading `places` here 400s the whole row.
   const placeRes = await admin
-    .from("places")
+    .from("profiles")
     .select(
       "id, name, category, category_label, " +
         "welcome_free_rate, welcome_premium_rate, free_rate, premium_rate, " +
@@ -225,30 +227,30 @@ async function loadPerfContext(
     reviewRows,
   ] = await Promise.all([
     admin
-      .from("saved_places")
+      .from("favorites")
       .select("id", { count: "exact", head: true })
       .eq("project_id", projectId),
     admin
-      .from("tickets")
+      .from("visit_tickets")
       .select("id", { count: "exact", head: true })
       .eq("project_id", projectId),
     admin
-      .from("tickets")
+      .from("visit_tickets")
       .select("id", { count: "exact", head: true })
       .eq("project_id", projectId)
       .not("first_scanned_at", "is", null),
     admin
-      .from("tickets")
+      .from("visit_tickets")
       .select("id", { count: "exact", head: true })
       .eq("project_id", projectId)
       .eq("status", CLOSED_STATUS),
     admin
-      .from("tickets")
+      .from("visit_tickets")
       .select("id", { count: "exact", head: true })
       .eq("project_id", projectId)
       .in("story_status", [...attested]),
     admin
-      .from("tickets")
+      .from("visit_tickets")
       .select("id", { count: "exact", head: true })
       .eq("project_id", projectId)
       .in("review_status", [...attested]),
@@ -257,7 +259,7 @@ async function loadPerfContext(
       .select("id", { count: "exact", head: true })
       .eq("project_id", projectId),
     admin
-      .from("tickets")
+      .from("visit_tickets")
       .select("consumer_id, story_status, review_status")
       .eq("project_id", projectId)
       .eq("status", CLOSED_STATUS)

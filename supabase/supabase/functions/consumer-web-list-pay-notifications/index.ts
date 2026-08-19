@@ -19,7 +19,6 @@ type Body = {
 };
 
 type TicketMeta = {
-  kind?: string;
   status?: string;
   story_status?: string;
   story_submitted_at?: string | null;
@@ -49,7 +48,7 @@ Deno.serve(async (req) => {
 
   if (body.pendingCountOnly) {
     const { count, error } = await admin
-      .from("consumer_pay_notifications")
+      .from("consumer_notifications")
       .select("id", { count: "exact", head: true })
       .eq("consumer_id", consumerId)
       .eq("status", "pending");
@@ -64,7 +63,7 @@ Deno.serve(async (req) => {
     : 100;
 
   let notifQuery = admin
-    .from("consumer_pay_notifications")
+    .from("consumer_notifications")
     .select("*")
     .eq("consumer_id", consumerId)
     .order("created_at", { ascending: false })
@@ -89,9 +88,9 @@ Deno.serve(async (req) => {
 
   if (ticketIds.length > 0) {
     const ticketRes = await admin
-      .from("tickets")
+      .from("visit_tickets")
       .select(
-        "id, kind, status, story_status, story_submitted_at, first_scanned_at, discount_percent, project_id, total_cents, created_at",
+        "id, status, story_status, story_submitted_at, first_scanned_at, discount_percent, project_id, total_cents, created_at",
       )
       .in("id", ticketIds);
 
@@ -111,8 +110,10 @@ Deno.serve(async (req) => {
     const placeInstagramById = new Map<string, string | null>();
 
     if (placeIds.length > 0) {
+      // monthly_promo_cap lives on projects, not places — read the profiles
+      // view, which exposes the project columns alongside the place ones.
       const placeRes = await admin
-        .from("places")
+        .from("profiles")
         .select("id, monthly_promo_cap, instagram_url")
         .in("id", placeIds);
 
@@ -126,7 +127,6 @@ Deno.serve(async (req) => {
 
     for (const t of ticketRes.data ?? []) {
       tickets[t.id] = {
-        kind: t.kind,
         status: t.status,
         story_status: t.story_status,
         story_submitted_at: t.story_submitted_at,

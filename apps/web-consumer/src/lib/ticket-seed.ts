@@ -77,7 +77,6 @@ export function ticketRowFromCreate(
 ): ConsumerTicketRow {
   return {
     id: t.id,
-    kind: t.kind ?? "coupon",
     status: t.status,
     story_status: t.story_status ?? null,
     story_submitted_at: null,
@@ -87,7 +86,7 @@ export function ticketRowFromCreate(
     review_submitted_at: null,
     check_code: t.check_code,
     first_scanned_at: t.first_scanned_at ?? null,
-    check_subtotal_cents: null,
+    bill_subtotal_cents: null,
     total_cents: null,
     discount_percent: null,
     discount_cents: null,

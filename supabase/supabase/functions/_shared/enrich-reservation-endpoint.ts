@@ -2,7 +2,7 @@
 //
 // Seeds products.reservations = { channel, value } for the Reservationist.
 // Priority among available profile contacts is an OPERATOR KNOB, not a constant:
-// it lives at app_settings.reservations_config and is authored on the admin
+// it lives at app_config.reservations_config and is authored on the admin
 // console's Reservations Config page (MESITA-623). Callers pass the policy in;
 // DEFAULT_RESERVATIONS_POLICY is phone-only (MESITA-842) — the Reservationist is
 // voice-reachable only; WhatsApp/Instagram are not serving paths (MESITA-839).

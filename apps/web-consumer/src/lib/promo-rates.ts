@@ -166,7 +166,7 @@ export function strategyForPlaceRow(
  * ("Prioritize · Visit", MESITA-1081) asks whether the place pays for a body in
  * the room AT ALL, not what this particular guest would earn — that stays
  * resolvePromoRateFromPlaceRow for display, and the quotable number still comes
- * from consumer-web-get-reward-quote. Same gate as the promo chip, so a place
+ * from consumer-web-get-discount-quote. Same gate as the promo chip, so a place
  * the deck shows with a ribbon is exactly a place "Visit" keeps.
  */
 export function placeRewardsVisits(

@@ -3,14 +3,13 @@
 // Naming: caller-verb-words. Caller = admin, verb = get, words = rewards-config.
 //
 // Returns the Promos config: the v11 ADDITIVE blob (MESITA-1069) when one has
-// been saved (`config`, from app_settings.rewards_config.v11 — a leftover v10
-// blob is handed back as-is and the client migrates it), plus the v8 legacy
-// rule rows and the cap scalar. The admin client prefers `config` and seeds
-// its knobs from the rows on the first load before any save; the rows also
-// keep an older client mid-deploy rendering. "standing" is the None column.
+// been saved (`config`, from app_config.promos_config.v11 — a leftover v10
+// blob is handed back as-is and the client migrates it), plus the cap scalar.
+// Before the first save there is no blob, only the cap, and the client opens
+// on the launch defaults carrying it.
 //
-// Rows are returned as stored. The admin catalog fills any gap from the
-// launch defaults, so a partially-seeded table still renders a full table.
+// The v8 legacy rule rows are gone with the reward_rules table: the blob is
+// the one store, so there is nothing left to reconcile it against.
 //
 // Auth: caller's JWT email must be in public.super_admins.
 
@@ -37,28 +36,17 @@ Deno.serve(async (req) => {
   const saRes = await requireSuperAdmin(admin, authRes.user);
   if (!saRes.ok) return saRes.response;
 
-  const [settings, rules] = await Promise.all([
-    admin
-      .from("app_settings")
-      .select("rewards_config, updated_at")
-      .eq("id", 1)
-      .maybeSingle(),
-    admin
-      .from("reward_rules")
-      .select("strategy, class, action, discount_percent, updated_at")
-      .order("strategy")
-      .order("class")
-      .order("action"),
-  ]);
+  const settings = await admin
+    .from("app_config")
+    .select("promos_config, updated_at")
+    .eq("id", 1)
+    .maybeSingle();
 
   if (settings.error) {
-    return jsonError(`rewards_config_read: ${settings.error.message}`, 500);
-  }
-  if (rules.error) {
-    return jsonError(`reward_rules_read: ${rules.error.message}`, 500);
+    return jsonError(`promos_config_read: ${settings.error.message}`, 500);
   }
 
-  const cfg = (settings.data?.rewards_config ?? {}) as Record<string, unknown>;
+  const cfg = (settings.data?.promos_config ?? {}) as Record<string, unknown>;
   const cap = typeof cfg.cap === "number" ? cfg.cap : null;
   // The additive config — null until the first save, in which case the client
   // seeds from the legacy rows. A leftover v10 blob is handed back as-is and
@@ -68,26 +56,12 @@ Deno.serve(async (req) => {
     !!v && typeof v === "object" && !Array.isArray(v);
   const config = isBlob(cfg.v11) ? cfg.v11 : isBlob(cfg.v10) ? cfg.v10 : null;
 
-  // Freshest write across both stores — the page shows one "Updated" stamp.
-  const stamps = [
-    settings.data?.updated_at as string | null | undefined,
-    ...(rules.data ?? []).map((r) =>
-      (r as { updated_at?: string | null }).updated_at
-    ),
-  ].filter((v): v is string => typeof v === "string");
-  const updatedAt = stamps.length > 0 ? (stamps.sort().at(-1) ?? null) : null;
+  // One store, so one "Updated" stamp.
+  const stamp = settings.data?.updated_at as string | null | undefined;
+  const updatedAt = typeof stamp === "string" ? stamp : null;
 
   return jsonOk({
     config,
-    rules: (rules.data ?? []).map((r) => {
-      const row = r as Record<string, unknown>;
-      return {
-        strategy: row.strategy,
-        class: row.class,
-        action: row.action,
-        discount_percent: row.discount_percent,
-      };
-    }),
     cap,
     updatedAt,
   });

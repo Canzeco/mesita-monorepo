@@ -38,7 +38,7 @@ export default async function BusinessOnboardPage() {
   try {
     profile = await apiGetBusinessProfile(supabase);
   } catch (err) {
-    console.error("[business/onboard] business-web-get-profile:", err);
+    console.error("[business/onboard] business-web-get-manager:", err);
   }
   if (profile?.full_name) redirect("/central");
 

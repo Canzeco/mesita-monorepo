@@ -7,7 +7,7 @@
 //
 // Since the a1..a4 fleet exists (_shared/reservationist-fleet.ts), leg 1 is
 // placed on eleven-a1 and leg 2 on eleven-a2 (agent ids in
-// app_settings.agents_config.agents, fallback = the original single agent,
+// app_config.agents_config.agents, fallback = the original single agent,
 // which still branches on {{call_direction}}). Every call carries the same
 // dynamic variables either way; when the agent's security tab allows
 // overrides, the full per-leg prompt + first message ride along too

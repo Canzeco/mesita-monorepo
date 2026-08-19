@@ -31,7 +31,7 @@ type PendingEditorInvite = {
 
 // Note on field naming: the EF returns `members` / `pendingBusinessInvites`.
 // The team UI labels members as "Editors" — that's the per-place tier
-// (member_role) name, distinct from the accounts table.
+// (member_role) name, distinct from the managers table.
 export type TeamSnapshot = {
   myRole: BusinessRole | null;
   members: TeamEditor[];
@@ -44,7 +44,7 @@ export async function apiListTeam(
 ): Promise<TeamSnapshot> {
   return await invokeEF<TeamSnapshot>(
     client,
-    "business-web-list-team",
+    "business-web-list-members",
     // Canonical payload key is `placeId` (MESITA-26); local naming unchanged.
     { placeId: projectId },
     "Couldn't load your team.",

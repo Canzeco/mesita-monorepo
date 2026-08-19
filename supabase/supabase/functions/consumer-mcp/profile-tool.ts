@@ -9,7 +9,7 @@ export async function getProfileTool(
   const { data: consumer, error } = await admin
     .from("consumers")
     .select(
-      "id, code, full_name, first_name, last_name, phone, instagram_handle, class_key, class_origin, consumer_instagram_followers_count, class_expires_at",
+      "id, code, full_name, first_name, last_name, phone, instagram_handle, class_key, class_origin, instagram_followers_count, class_expires_at",
     )
     .eq("id", consumerId)
     .maybeSingle();
@@ -26,7 +26,7 @@ export async function getProfileTool(
   monthStart.setUTCDate(1);
   monthStart.setUTCHours(0, 0, 0, 0);
   const { count } = await admin
-    .from("reservations")
+    .from("reservation_tickets")
     .select("id", { count: "exact", head: true })
     .eq("consumer_id", consumerId)
     .eq("is_test", false)
@@ -39,7 +39,7 @@ export async function getProfileTool(
       key: classKey,
       origin: consumer.class_origin ?? "default",
       label: tier?.label ?? "Standard",
-      followers: consumer.consumer_instagram_followers_count ?? null,
+      followers: consumer.instagram_followers_count ?? null,
       expires_at: consumer.class_expires_at ?? null,
       usage: {
         reservations_used: count ?? 0,

@@ -2,7 +2,7 @@
 //
 // Naming: caller-verb-words. Caller = admin, verb = get, words = verification-config.
 //
-// Returns every Verification Config knob from the public.app_settings singleton
+// Returns every Verification Config knob from the public.app_config singleton
 // for the admin console's Verification Config page:
 //
 //   create_places_as_verified — catalog Mesita Partner badge at create time
@@ -36,7 +36,7 @@ Deno.serve(async (req) => {
   if (!saRes.ok) return saRes.response;
 
   const { data, error } = await admin
-    .from("app_settings")
+    .from("app_config")
     .select(
       "create_places_as_verified, auto_verify_ai_call, auto_verify_ai_email, auto_verify_video, updated_at",
     )
@@ -46,7 +46,7 @@ Deno.serve(async (req) => {
     return jsonError(`verification_config_read: ${error.message}`, 500);
   }
   if (!data) {
-    return jsonError("app_settings missing", 500);
+    return jsonError("app_config missing", 500);
   }
 
   return jsonOk({

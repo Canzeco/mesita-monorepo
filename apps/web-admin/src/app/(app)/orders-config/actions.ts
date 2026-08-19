@@ -2,7 +2,7 @@
 
 // Server actions for Orders Config. Thin wrappers over the admin-web-* Edge
 // Functions via the Result-style efInvoke (never throws). Backed by
-// admin-web-get/update-orders-config on app_settings.orders_config.
+// admin-web-get/update-orders-config on app_config.orders_config.
 // WHOLE-BLOB save: the two quotas are a related pair, so a per-key merge could
 // persist a Premium plan that allows fewer orders than Free. No client ever
 // touches the DB.

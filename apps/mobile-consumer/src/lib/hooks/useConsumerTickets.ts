@@ -61,10 +61,9 @@ export function useConsumerTickets(userId: string): ConsumerTicketsState {
     const active: ConsumerTicketRow[] = [];
     const history: ConsumerTicketRow[] = [];
     for (const row of rows) {
-      // NOTE: there is no reservation-kind row to skip. public.reservations
-      // is its own table and predates the ticket_kind enum by a month, so the
-      // 'reservation' value was born dead (MESITA-1062 eng review). The filter
-      // that used to live here was unreachable.
+      // NOTE: there is no reservation row to skip. Reservations are their own
+      // table (reservation_tickets); the ticket discriminator that once
+      // claimed otherwise was born dead and has since been dropped.
       (ACTIVE_TICKET_STATUSES.has(row.status) ? active : history).push(row);
     }
     return { active, history };

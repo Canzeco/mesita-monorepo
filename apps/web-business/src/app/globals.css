@@ -120,9 +120,9 @@
     oklch(1 0 0 / 0.95),
     oklch(0.97 0.012 10 / 0.85)
   );
-  /* Multi-stop "celebration" gradient used on the Welcome coupon pill —
+  /* Multi-stop "celebration" gradient used on the Welcome rate pill —
      violet → magenta → peach, distinct from the brand pink so the
-     Welcome (first-visit, one-time) coupon visually pops against the
+     Welcome (first-visit, one-time) rate visually pops against the
      per-tier rate cards. */
   --gradient-welcome: linear-gradient(
     90deg,

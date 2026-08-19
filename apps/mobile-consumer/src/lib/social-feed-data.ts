@@ -1,7 +1,7 @@
 // TODO(EF): social feed — parked mock (copied from web-consumer). When the
 // social backend lands, swap SOCIAL_PEOPLE for an EF read. That EF MUST apply
 // `_shared/consumer-privacy.ts` (MESITA-913): private accounts → Anonymous
-// guest; story events omitted when profile_show_stories=false.
+// guest; story events omitted when privacy_show_stories=false.
 
 import {
   Camera,

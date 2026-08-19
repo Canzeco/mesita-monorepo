@@ -12,7 +12,7 @@ import { isModalContractPath } from "@/lib/consumer-route-contract";
 
 // THE detail-modal chrome: a full-height panel that pushes in from the right
 // edge, iOS-navigation style, and slides back out on dismiss. Used by every
-// route modal in the @modal slot (place / coupon / reservation) so opening a
+// route modal in the @modal slot (place / reservation) so opening a
 // detail from any surface is one consistent gesture.
 //
 // Mounting contract: render this from the intercepted segment's layout.tsx,

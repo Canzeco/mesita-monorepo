@@ -5,7 +5,7 @@
 // the /rewards program summary and the "max % for you" banner. It is program
 // education — the shape of the Mesita reward program — not a per-transaction
 // promise. The numbers below are the locked defaults; the admin "Rewards"
-// config page persists the editable copy in app_settings.rewards_config that
+// config page persists the editable copy in app_config.promos_config that
 // the bill engine reads. The consumer surface intentionally uses these static
 // defaults so it needs no new consumer Edge Function.
 //
@@ -163,7 +163,7 @@ const CLASS_STEP: Record<ClassKey, number> = {
   // Gold's step is the INTERPOLATION its neighbours imply, not a measured
   // cell: no legacy class key maps to Gold, so the live engine has never
   // quoted it. Safe only because this whole module is education — the real
-  // number always comes from consumer-web-get-reward-quote.
+  // number always comes from consumer-web-get-discount-quote.
   gold: 10,
   diamond: 15,
 };

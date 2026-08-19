@@ -1,4 +1,4 @@
-// Central reader for public.app_settings.models_config (admin Models page).
+// Central reader for public.app_config.models_config (admin Models page).
 // Binding rule: every serving path that picks an LLM/embedding model must
 // go through this helper — hardcoded model strings are a compliance bug.
 //
@@ -54,7 +54,7 @@ export async function loadModelsConfig(
   raw: ModelsConfig | null;
 }> {
   const { data, error } = await admin
-    .from("app_settings")
+    .from("app_config")
     .select("models_config")
     .eq("id", 1)
     .maybeSingle();

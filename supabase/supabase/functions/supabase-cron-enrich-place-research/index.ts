@@ -62,7 +62,7 @@ import {
 } from "../_shared/enrich-pipeline.ts";
 
 serveEnrichStage("research", async (admin, _env, row) => {
-  const projectId = row.project_id;
+  const projectId = row.place_id;
   const googlePlaceId = row.google_place_id;
   const GOOGLE_KEY = Deno.env.get("GMP_KEY") ?? Deno.env.get("SUPA_GMP_KEY");
   if (!GOOGLE_KEY) {

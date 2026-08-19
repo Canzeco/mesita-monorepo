@@ -76,7 +76,7 @@ export type NeedsAttentionRow = {
   notice_kind: string | null;
   attempts_state: string | null;
   callback_state: string | null;
-  guest_confirmed_at: string | null;
+  consumer_confirmed_at: string | null;
   is_test: boolean | null;
 };
 

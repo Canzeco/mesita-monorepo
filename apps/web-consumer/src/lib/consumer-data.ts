@@ -37,7 +37,7 @@ export type ClassIdentity = { cls: ClassKey; plan: PlanKey };
 // DELIBERATELY TEMPORARY, and a MIRROR rather than an invention. `consumers`
 // has no plan column yet (MESITA-1076), so the paid subscription is still
 // stored as the `premium` CLASS row and every server payload still speaks the
-// four legacy keys. `consumer-web-get-reward-quote` already resolves them
+// four legacy keys. `consumer-web-get-discount-quote` already resolves them
 // through the identical map in `promos-v11-normalize.ts` before it prices a
 // real bill — so reading the same rule here means the name a guest sees and
 // the number they are charged come from ONE definition, not two that drift.
@@ -270,8 +270,7 @@ export function classBadgeClass(classKey: ClassKey): string {
 }
 
 // Compact Title-Case label per class. Used by the swipe overlay, the
-// promo chip, the coupon promo card, and the place detail rewards
-// box — anywhere we render "Mesita Standard" / "Mesita Premium" /
+// promo chip and the place detail rewards box — anywhere we render "Mesita Standard" / "Mesita Premium" /
 // "Mesita Influencer" / "Mesita Aura" alongside the lower-case class id.
 //
 // Accepts a strictly-typed ClassKey or a plain string so callers can hand us

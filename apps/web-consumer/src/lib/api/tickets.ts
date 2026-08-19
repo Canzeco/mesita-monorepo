@@ -30,7 +30,6 @@ type ConsumerTicketPlace = {
 
 export type ConsumerTicketRow = {
   id: string;
-  kind: string;
   status: string;
   story_status: string | null;
   story_submitted_at: string | null;
@@ -40,7 +39,7 @@ export type ConsumerTicketRow = {
   review_submitted_at: string | null;
   check_code: string | null;
   first_scanned_at: string | null;
-  check_subtotal_cents: number | null;
+  bill_subtotal_cents: number | null;
   total_cents: number | null;
   discount_percent: number | null;
   discount_cents: number | null;
@@ -100,7 +99,6 @@ export async function apiListConsumerTickets(
 export type CreatedTicket = {
   id: string;
   status: string;
-  kind?: string;
   story_status?: string | null;
   review_status?: string | null;
   first_scanned_at?: string | null;
@@ -186,7 +184,7 @@ export async function apiGetRewardQuote(
 ): Promise<{ quote: RewardQuote }> {
   return await invokeEF<{ quote: RewardQuote }>(
     client,
-    "consumer-web-get-reward-quote",
+    "consumer-web-get-discount-quote",
     { placeId },
   );
 }

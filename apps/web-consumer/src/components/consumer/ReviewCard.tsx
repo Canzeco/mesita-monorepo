@@ -43,7 +43,7 @@ export function ReviewCard(props: MesitaPayload | GooglePayload) {
   const [expanded, setExpanded] = useState(false);
   if (props.kind === "mesita") {
     const v = props.data;
-    const overall = Math.round((v.food + v.service + v.ambiance + v.value) / 4);
+    const overall = Math.round((v.food + v.service + v.ambience + v.value) / 4);
     const isLong = v.quote.length > LONG_QUOTE_THRESHOLD;
     return (
       <article className="bg-background flex w-72 shrink-0 snap-start flex-col gap-3 rounded-2xl p-4">
@@ -81,7 +81,7 @@ export function ReviewCard(props: MesitaPayload | GooglePayload) {
           {" · "}Service{" "}
           <span className="text-foreground font-semibold">{v.service}</span>
           {" · "}Ambience{" "}
-          <span className="text-foreground font-semibold">{v.ambiance}</span>
+          <span className="text-foreground font-semibold">{v.ambience}</span>
           {" · "}Value{" "}
           <span className="text-foreground font-semibold">{v.value}</span>
         </p>

@@ -1,7 +1,7 @@
 // Supabase Edge Function — supabase-edgefunc-reservation-call (internal)
 //
 // THE Reservationist call engine — the sandbox AND the admin Playground are
-// retired (2026-07-27): every ticket is a real public.reservations row and
+// retired (2026-07-27): every ticket is a real public.reservation_tickets row and
 // testing happens through the consumer app with config testCall mode ON (the
 // venue leg dials the test line instead of a real place). Invoked with
 // { reservation_id } by:
@@ -34,11 +34,11 @@
 // sequence. See _shared/reservation-retry.ts.
 //
 // Number resolution, per side:
-//   business — reservations.business_number when pre-resolved (test tickets),
+//   business — reservations.place_phone when pre-resolved (test tickets),
 //     else config testCall (test mode defaults ON → never rings a real venue
 //     by accident), else products.reservations when channel=phone (MESITA-842 —
 //     voice-only; whatsapp/instagram picks ignored → places.phone fallback).
-//   consumer — reservations.consumer_number when pre-resolved, else the
+//   consumer — reservations.consumer_phone when pre-resolved, else the
 //     consumer's own phone; empty → leg 2 is skipped.
 //
 // And per LINE: leg 1 dials FROM the venue-facing line, leg 2 FROM the
@@ -209,7 +209,7 @@ async function guardedRecord(
   patch: Record<string, unknown>,
 ): Promise<void> {
   const { data } = await admin
-    .from("reservations")
+    .from("reservation_tickets")
     .update(patch)
     .eq("id", reservationId)
     .eq("run_id", runId)
@@ -236,7 +236,7 @@ async function readReportedVerdict(
   id: string,
 ): Promise<{ verdict: string | null; alternativesText: string; note: string }> {
   const { data } = await admin
-    .from("reservations")
+    .from("reservation_tickets")
     .select("reported_verdict, alternatives, outcome_note")
     .eq("id", id)
     .maybeSingle();
@@ -330,7 +330,7 @@ async function callGuest(input: {
       // Plain venue confirm: in-app status IS the ack. Counter-offers stay
       // open for the guest to pick an alternative in the app.
       ...(input.context === "confirmation"
-        ? { guest_confirmed_at: new Date().toISOString() }
+        ? { consumer_confirmed_at: new Date().toISOString() }
         : {}),
       last_call_status: `${label} — guest prefers app-only; no call`,
     });
@@ -666,7 +666,7 @@ async function runCancelNotice(input: {
   } catch (e) {
     if (e instanceof OrphanedRunError) return; // ticket moved on — stop quietly
     await admin
-      .from("reservations")
+      .from("reservation_tickets")
       .update({
         notice_state: "failed",
         notice_next_at: null,
@@ -1099,7 +1099,7 @@ async function runIntents(input: {
     // Guarded by run_id directly: if the run was orphaned between the throw
     // and here, this error write must not clobber the ticket's new life.
     await admin
-      .from("reservations")
+      .from("reservation_tickets")
       .update({
         attempts_state: "error",
         callback_state: "skipped",
@@ -1140,15 +1140,15 @@ Deno.serve(async (req) => {
   // Fetch place by project_id separately — reservations.project_id has no
   // PostgREST FK hint to places, so an embed 500s. places.id == project_id.
   const { data: r, error: rErr } = await admin
-    .from("reservations")
+    .from("reservation_tickets")
     .select(
-      "id, reference_code, reserved_at, party_size, notes, status, project_id, is_test, business_number, consumer_number, attempts_state, attempts, call_attempts, callback_attempts, guest_confirmed_at, guest_notify, alternatives, notice_kind, notice_state, notice_attempts, outage_retries, modification_of, consumer:consumers(full_name, first_name, last_name, phone)",
+      "id, reference_code, reserved_at, party_size, notes, status, project_id, is_test, place_phone, consumer_phone, attempts_state, attempts, call_attempts, callback_attempts, consumer_confirmed_at, consumer_notify, alternatives, notice_kind, notice_state, notice_attempts, outage_retries, modification_of, consumer:consumers(full_name, first_name, last_name, phone)",
     )
     .eq("id", reservationId)
     .maybeSingle();
   if (rErr) return json({ ok: false, error: rErr.message }, 500);
   if (!r) return json({ ok: false, error: "reservation not found" }, 404);
-  const guestNotify: "call" | "app" = r.guest_notify === "app" ? "app" : "call";
+  const guestNotify: "call" | "app" = r.consumer_notify === "app" ? "app" : "call";
   // Per-intent gates — each errand has its own idea of a live ticket.
   if (intent === "book") {
     if (r.status !== "pending") {
@@ -1170,7 +1170,7 @@ Deno.serve(async (req) => {
     }
   } else {
     // callback_retry: only a still-live verdict warrants re-ringing the guest.
-    const confirmationDue = r.status === "confirmed" && !r.guest_confirmed_at;
+    const confirmationDue = r.status === "confirmed" && !r.consumer_confirmed_at;
     const counterDue = r.status === "pending" &&
       normalizeAlternatives(r.alternatives).length > 0;
     if (!confirmationDue && !counterDue) {
@@ -1179,7 +1179,7 @@ Deno.serve(async (req) => {
   }
 
   const { data: settings } = await admin
-    .from("app_settings")
+    .from("app_config")
     .select("reservations_config, agents_config")
     .eq("id", 1)
     .maybeSingle();
@@ -1196,7 +1196,7 @@ Deno.serve(async (req) => {
       ? { callback_state: "scheduled", callback_next_attempt_at: inHalfHour }
       : { notice_state: "scheduled", notice_next_at: inHalfHour };
     await admin
-      .from("reservations")
+      .from("reservation_tickets")
       .update({ ...parkPatch, last_call_status: "kill switch on — all calls held" })
       .eq("id", reservationId);
     return json({ ok: true, skipped: "kill switch on — parked 30 min" });
@@ -1225,7 +1225,7 @@ Deno.serve(async (req) => {
   } | null;
 
   // ── Resolve the business number: row override → test mode → place endpoint ─
-  let businessNumber = (r.business_number ?? "").trim();
+  let businessNumber = (r.place_phone ?? "").trim();
   let via = "row";
   if (!businessNumber) {
     if (cfg.testCall.enabled) {
@@ -1252,12 +1252,12 @@ Deno.serve(async (req) => {
     // cancel notice must never corrupt attempts_state (it's 'cancelled').
     if (intent === "book") {
       await admin
-        .from("reservations")
+        .from("reservation_tickets")
         .update({ attempts_state: "error", last_call_status: `no number to dial (${via})` })
         .eq("id", reservationId);
     } else {
       await admin
-        .from("reservations")
+        .from("reservation_tickets")
         .update({ notice_state: "failed", last_call_status: `cancel notice — no venue number (${via})` })
         .eq("id", reservationId);
     }
@@ -1265,7 +1265,7 @@ Deno.serve(async (req) => {
   }
 
   const consumer = (r.consumer ?? null) as ConsumerName | null;
-  const consumerNumber = (r.consumer_number ?? consumer?.phone ?? "").trim();
+  const consumerNumber = (r.consumer_phone ?? consumer?.phone ?? "").trim();
 
   const runId = crypto.randomUUID();
   const modificationOfIso = typeof r.modification_of === "string" ? r.modification_of : null;
@@ -1290,7 +1290,7 @@ Deno.serve(async (req) => {
     const toNumber = kind === "venue_cancel" ? businessNumber : consumerNumber;
     if (!toNumber) {
       await admin
-        .from("reservations")
+        .from("reservation_tickets")
         .update({
           notice_state: "failed",
           last_call_status: `cancel notice (${kind}) — no number to dial`,
@@ -1302,7 +1302,7 @@ Deno.serve(async (req) => {
     // fire — whoever flips pending/scheduled → running places the call. The
     // claim rotates run_id so a stale runner can never write over this one.
     const { data: claimed } = await admin
-      .from("reservations")
+      .from("reservation_tickets")
       .update({
         notice_state: "running",
         notice_next_at: null,
@@ -1345,7 +1345,7 @@ Deno.serve(async (req) => {
   if (intent === "callback_retry") {
     if (guestNotify === "app") {
       await admin
-        .from("reservations")
+        .from("reservation_tickets")
         .update({
           callback_state: "skipped",
           callback_next_attempt_at: null,
@@ -1356,7 +1356,7 @@ Deno.serve(async (req) => {
     }
     if (!consumerNumber) {
       await admin
-        .from("reservations")
+        .from("reservation_tickets")
         .update({
           callback_state: "skipped",
           callback_next_attempt_at: null,
@@ -1366,7 +1366,7 @@ Deno.serve(async (req) => {
       return json({ ok: true, skipped: "no guest number" });
     }
     const { data: claimed } = await admin
-      .from("reservations")
+      .from("reservation_tickets")
       .update({
         callback_state: "calling",
         callback_next_attempt_at: null,
@@ -1406,15 +1406,15 @@ Deno.serve(async (req) => {
   // concurrent invokes both pass the gate and double-dial the venue). The
   // claim rotates run_id — every background write is guarded by it.
   const { data: bookClaim } = await admin
-    .from("reservations")
+    .from("reservation_tickets")
     .update({
       attempts_state: "running",
       run_id: runId,
       claimed_at: new Date().toISOString(),
       next_attempt_at: null,
       attempts_planned: cfg.attempts,
-      business_number: businessNumber,
-      consumer_number: consumerNumber || null,
+      place_phone: businessNumber,
+      consumer_phone: consumerNumber || null,
       // A stale verdict from a previous negotiation round must never be read
       // as this run's outcome — and a new errand starts a fresh guest ladder.
       reported_verdict: null,

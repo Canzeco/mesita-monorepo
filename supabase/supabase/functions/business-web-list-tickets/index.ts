@@ -40,11 +40,11 @@ Deno.serve(async (req) => {
   if (!memberRes.ok) return memberRes.response;
 
   const { data, error } = await admin
-    .from("tickets")
+    .from("visit_tickets")
     .select(
       // Privacy-safe consumer join — never class_key / class_origin
       // (blended-rate privacy: businesses must not learn class or entry door).
-      "id, kind, status, story_status, story_screenshot_url, story_submitted_at, story_verified_at, story_reject_reason, check_subtotal_cents, tip_cents, total_cents, redeem_cents, discount_percent, discount_cents, revealed_at, reservation_status, reservation_at, reservation_party_size, currency, created_at, paid_at, cancelled_at, cancel_reason, consumer:consumers(id, code, full_name, birthday, sex, country)",
+      "id, status, story_status, story_screenshot_url, story_submitted_at, story_verified_at, story_reject_reason, bill_subtotal_cents, tip_cents, total_cents, redeem_cents, discount_percent, discount_cents, revealed_at, currency, created_at, paid_at, cancelled_at, cancel_reason, consumer:consumers(id, code, full_name, birthday, sex, country)",
     )
     .eq("project_id", projectId)
     .order("created_at", { ascending: false })

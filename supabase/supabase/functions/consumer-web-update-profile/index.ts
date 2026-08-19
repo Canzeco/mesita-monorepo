@@ -25,7 +25,7 @@ import {
 } from "./update-profile-fields.ts";
 
 const CONSUMER_PROFILE_SELECT =
-  "id, code, full_name, first_name, last_name, sex, birthday, country, phone, avatar_url, profile_public, profile_show_saves, profile_show_visits, profile_show_stories";
+  "id, code, full_name, first_name, last_name, sex, birthday, country, phone, avatar_url, privacy_public, privacy_show_saves, privacy_show_visits, privacy_show_stories";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();

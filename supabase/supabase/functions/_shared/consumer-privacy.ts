@@ -1,12 +1,12 @@
 /**
  * Guest-to-guest privacy on Mesita (MESITA-913).
  *
- * Private account (`profile_public = false`) anonymizes the display name /
+ * Private account (`privacy_public = false`) anonymizes the display name /
  * Instagram handle that OTHER guests see in the social feed and on Mesita
  * reviews. Business/staff surfaces (reservations, check, tickets) keep real
  * names — those are operational, not social.
  *
- * `profile_show_stories` is independent: a guest can keep Mesita story
+ * `privacy_show_stories` is independent: a guest can keep Mesita story
  * activity hidden even while posting publicly on Instagram.
  */
 
@@ -21,7 +21,7 @@ export type PublicGuestIdentity = {
 };
 
 type PrivacyRow = {
-  profile_public?: boolean | null;
+  privacy_public?: boolean | null;
   full_name?: string | null;
   first_name?: string | null;
   last_name?: string | null;
@@ -41,7 +41,7 @@ export function isPrivateAccount(
  * empty handle — never leak first name or Instagram.
  */
 export function publicGuestIdentity(row: PrivacyRow): PublicGuestIdentity {
-  if (isPrivateAccount(row.profile_public)) {
+  if (isPrivateAccount(row.privacy_public)) {
     return { name: ANONYMOUS_GUEST_NAME, handle: "", anonymous: true };
   }
   const name = consumerDisplayName(row) ?? ANONYMOUS_GUEST_NAME;

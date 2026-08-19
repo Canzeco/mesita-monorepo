@@ -7,15 +7,15 @@ Deno.test("mapTicketReviewsToVisitors: anonymizes private accounts", () => {
     {
       food: 5,
       service: 4,
-      ambiance: 5,
+      ambience: 5,
       value: 4,
       comments: "Loved it",
       consumer: {
-        profile_public: false,
+        privacy_public: false,
         full_name: "Ada Lovelace",
         instagram_handle: "ada",
         class_key: "premium",
-        consumer_instagram_followers_count: 1200,
+        instagram_followers_count: 1200,
       },
     },
   ]);
@@ -30,11 +30,11 @@ Deno.test("mapTicketReviewsToVisitors: public keeps identity", () => {
     {
       food: 5,
       service: 5,
-      ambiance: 5,
+      ambience: 5,
       value: null,
       comments: "  Great  ",
       consumer: {
-        profile_public: true,
+        privacy_public: true,
         first_name: "Ada",
         last_name: "Lovelace",
         instagram_handle: "ada",

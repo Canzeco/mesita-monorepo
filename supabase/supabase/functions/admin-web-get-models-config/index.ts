@@ -2,7 +2,7 @@
 //
 // Naming: caller-verb-words. Caller = admin, verb = get, words = models-config.
 //
-// Returns the central models config from the public.app_settings singleton for
+// Returns the central models config from the public.app_config singleton for
 // the admin console's Models Config page (admin.mesita.ai/models-config). One
 // { provider, model } per subsystem (supabase / enricher / lineup / memo). NULL
 // means "no blob yet → the client falls back to its DEFAULTS". See
@@ -43,7 +43,7 @@ Deno.serve(async (req) => {
   if (!saRes.ok) return saRes.response;
 
   const { data, error } = await admin
-    .from("app_settings")
+    .from("app_config")
     .select("models_config")
     .eq("id", 1)
     .single();

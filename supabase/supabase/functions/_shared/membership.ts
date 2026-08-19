@@ -16,28 +16,28 @@ export type PlaceRates = {
   premium_rate: number | null;
 };
 
+// A class is WHO YOU ARE: earned, public, ranked. Price and the Stripe price
+// id are the PLAN — they live on consumer_plans and are read there (see
+// stripe-billing-catalog.ts), never here.
 export type TierConfig = {
   key: string;
   label: string;
   rank: number;
   follower_threshold: number | null;
   monthly_reservation_limit: number | null;
-  price_cents: number;
-  currency: string;
-  stripe_price_id: string | null;
   recommendation_weight: number;
 };
 
 // Promos v5 (MESITA-723): the promo rate resolver moved to the grid-authoritative
-// engine in ./rewards-config.ts (resolveTicketRate over the app_settings grid ×
-// the place's strategy, best-of). selectprojectRate (v4, per-place columns) is
+// engine in ./rewards-config.ts (resolveTicketRate over the app_config
+// promos_config grid × the place's strategy — v11 additive, with best-of as
+// the no-config fallback). selectprojectRate (v4, per-place columns) is
 // retired; the helpers below feed the new resolver's rate context.
 
-// Consumer-class perk gate: which classes clear the "Premium or better" bar.
-// Segments v6: every elevated class — Premium (paid), Influencer (Instagram
-// ≥ 2,000, automatic), Aura (invite-only) — passes; Standard / null / unknown
-// do not. Generic on purpose (rank > 0 in classes-table terms): a future class
-// or tier INSERT inherits the elevated perks without touching this gate.
+// Consumer-class perk gate: which classes clear the "better than the base
+// class" bar. Every elevated class passes; the base class / null / unknown do
+// not. Generic on purpose (rank > 0 in classes-table terms): a future class
+// INSERT inherits the elevated perks without touching this gate.
 export function isElevatedClass(classKey: string | null | undefined): boolean {
   return isClassSegment(classKey) && classKey !== "standard";
 }
@@ -50,7 +50,7 @@ export async function getTierConfig(
   const { data } = await admin
     .from("classes")
     .select(
-      "key, label, rank, follower_threshold, monthly_reservation_limit, price_cents, currency, stripe_price_id, recommendation_weight",
+      "key, label, rank, follower_threshold, monthly_reservation_limit, recommendation_weight",
     )
     .eq("key", tierKey)
     .maybeSingle();
@@ -91,7 +91,7 @@ export async function isConsumerFirstVisit(
   excludeTicketId?: string,
 ): Promise<boolean> {
   let query = admin
-    .from("tickets")
+    .from("visit_tickets")
     .select("id", { count: "exact", head: true })
     .eq("consumer_id", consumerId)
     .eq("project_id", projectId);

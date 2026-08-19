@@ -62,7 +62,7 @@ Deno.serve(async (req) => {
 
   // Persist the reach-door fact (and handle when sent)…
   const patch: Record<string, unknown> = {
-    consumer_instagram_followers_count: followers,
+    instagram_followers_count: followers,
   };
   if (handle !== null) patch.instagram_handle = handle;
   const { error } = await admin.from("consumers").update(patch).eq("id", consumerId);

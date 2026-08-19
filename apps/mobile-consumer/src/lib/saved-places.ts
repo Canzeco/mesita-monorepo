@@ -1,5 +1,6 @@
-// Saved-places store — AsyncStorage port of web lib/saved-places.ts.
-// Favorites (MESITA-433) will reuse this; swipe Save writes here today.
+// Favorites store — AsyncStorage port of web lib/saved-places.ts.
+// Saving is a BOOKMARK and nothing more — it issues no discount; a discount
+// comes from showing up. Still localStorage-only, exactly like web.
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useCallback, useEffect, useSyncExternalStore } from 'react';

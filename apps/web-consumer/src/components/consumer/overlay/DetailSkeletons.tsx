@@ -28,7 +28,7 @@ export function PlaceBodySkeleton() {
   );
 }
 
-// Generic detail silhouette (coupon / reservation): inset rounded hero card,
+// Generic detail silhouette (reservation): inset rounded hero card,
 // chip row, text rows, section boxes.
 function DetailBodySkeleton() {
   return (

@@ -50,7 +50,7 @@ export const ENRICH_FIELD_LIMITS = {
     note: "places.photos array (hero + gallery) — mirrors the Enricher Config \"Save Total Images\" setting (admin-tunable 1–20, DB max 20); a separate storage-mirror step (PHOTO_CEILING=50) caps the array at 50 regardless.",
   },
   // Hard Apify scrape ceiling (EF wall-clock + cost). Live gather count is
-  // app_settings.atlas_gather_reviews (0–100) on Enricher Config; this is the
+  // app_config.atlas_gather_reviews (0–100) on Enricher Config; this is the
   // profile-spec max the pipeline may never exceed.
   googleReviews: {
     max: 100,

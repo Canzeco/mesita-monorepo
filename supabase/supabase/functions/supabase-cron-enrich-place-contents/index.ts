@@ -51,7 +51,7 @@ import {
 } from "../_shared/enrich-pipeline.ts";
 
 serveEnrichStage("contents", async (admin, env, row) => {
-  const projectId = row.project_id;
+  const projectId = row.place_id;
   const { gathered, analysis } = row;
   if (!gathered) {
     // Research output missing (shouldn't happen) — send the row back to research.
@@ -147,7 +147,7 @@ serveEnrichStage("contents", async (admin, env, row) => {
   // already picked phone — unless respectAdminOverride is off. Legacy
   // whatsapp/instagram picks are NOT overrides (hasReservationTarget).
   const { data: settingsRow } = await admin
-    .from("app_settings")
+    .from("app_config")
     .select("reservations_config")
     .eq("id", 1)
     .maybeSingle();

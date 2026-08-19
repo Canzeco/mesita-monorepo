@@ -5,7 +5,7 @@
 // v11 (MESITA-1069): the payload is the CONTEXT × IDENTITY Promos config —
 // visits (base: strategy × class × plan, + bonuses), orders (base: strategy ×
 // plan, + bonuses, parked) and the default cap. It is written as the `v11`
-// key on app_settings.rewards_config, MERGE-preserving the blob's other keys.
+// key on app_config.promos_config, MERGE-preserving the blob's other keys.
 // A WHOLE-BLOB write: the caller always sends the complete config and
 // normalizePromosV11 always returns a complete one.
 //
@@ -13,12 +13,13 @@
 // one additive source of truth. A v10-shaped SAVE is now REFUSED (409): only
 // a stale tab can produce one, it is showing bundled defaults rather than the
 // live blob, and accepting it would overwrite every live rate. Reads still
-// migrate v10 — a restored app_settings row may hold one.
+// migrate v10 — a restored app_config row may hold one.
 //
-// MESITA-992: the LIVE bill prices additive from the config. Every save still
-// derives and upserts the 40 reward_rules cells as a frozen mirror (rollback
-// / empty-config fallback) and refreshes the legacy v13 grid/actions blob
-// keys. See 20260804170553_reward_rules_normalized.sql.
+// MESITA-992: the LIVE bill prices additive from the config. The reward_rules
+// mirror table is gone (20260818090000_drop_coupons_and_dead_columns.sql) —
+// the config priced every ticket long before it was dropped — so a save now
+// writes the blob alone, refreshing the legacy v13 grid/actions keys it
+// carries as the engine's last-resort fallback.
 //
 // A legacy {rules, cap} body still writes through the v8 path unchanged.
 //
@@ -40,8 +41,8 @@ import {
   type PromosConfigV11,
 } from "./promos-v11-normalize.ts";
 
-// Mirror the rules into the v13 blob shape. Belt and braces: loadRewardsGrid
-// prefers v11, then the rules table, then this blob fallback.
+// Fold the rules into the v13 blob shape. Belt and braces: loadRewardsGrid
+// prefers v11, then falls back to these blob keys.
 function blobFromRules(rules: RewardRule[], cap: number): Record<string, unknown> {
   const grid: Record<string, Record<string, number>> = {};
   const actions: Record<string, Record<string, Record<string, number>>> = {};
@@ -117,31 +118,19 @@ Deno.serve(async (req) => {
     cap = norm.value.cap;
   }
 
-  const now = new Date().toISOString();
-  const upsert = await admin
-    .from("reward_rules")
-    .upsert(
-      rules.map((r) => ({ ...r, updated_at: now, updated_by: userId })),
-      { onConflict: "strategy,class,action" },
-    )
-    .select("strategy, class, action, discount_percent");
-  if (upsert.error) {
-    return jsonError(`reward_rules_update: ${upsert.error.message}`, 500);
-  }
-
   // MERGE-preserve the blob: the v13 grid/actions fallback and the cap are
   // refreshed, v11 is written on a config save, and any other keys riding the
   // blob survive untouched.
   const current = await admin
-    .from("app_settings")
-    .select("rewards_config")
+    .from("app_config")
+    .select("promos_config")
     .eq("id", 1)
     .maybeSingle();
   if (current.error) {
-    return jsonError(`rewards_config_read: ${current.error.message}`, 500);
+    return jsonError(`promos_config_read: ${current.error.message}`, 500);
   }
   const existing =
-    (current.data?.rewards_config ?? {}) as Record<string, unknown>;
+    (current.data?.promos_config ?? {}) as Record<string, unknown>;
 
   const nextBlob: Record<string, unknown> = {
     ...existing,
@@ -153,8 +142,8 @@ Deno.serve(async (req) => {
   if (promosConfig) delete nextBlob.v10;
 
   const settings = await admin
-    .from("app_settings")
-    .update({ rewards_config: nextBlob, updated_by: userId })
+    .from("app_config")
+    .update({ promos_config: nextBlob, updated_by: userId })
     .eq("id", 1)
     .select("updated_at")
     .single();
@@ -164,7 +153,7 @@ Deno.serve(async (req) => {
 
   return jsonOk({
     config: promosConfig,
-    rules: upsert.data ?? rules,
+    rules,
     cap,
     updatedAt: settings.data.updated_at,
   });

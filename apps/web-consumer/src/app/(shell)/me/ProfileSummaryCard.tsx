@@ -165,7 +165,7 @@ export function ProfileSummaryCard({
     profile?.full_name ||
     "Mesita member";
   const avatarUrl = profile?.avatar_url ?? null;
-  const isPublic = profile?.profile_public ?? false;
+  const isPublic = profile?.privacy_public ?? false;
 
   // age · sex · country — country inferred from the dial code the guest
   // already gave us at onboarding.

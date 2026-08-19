@@ -34,7 +34,7 @@ export function buildConsumerBillPayload(
     place_name: place.name,
     place_photo_url: place.photos?.[0] ?? null,
     place_instagram_handle: placeInstagramHandleForPayload(place.instagram_url),
-    check_subtotal_cents: calc.subtotal,
+    bill_subtotal_cents: calc.subtotal,
     tip_cents: calc.tip,
     total_cents: calc.total,
     discount_cents: discount,

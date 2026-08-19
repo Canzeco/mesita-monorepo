@@ -136,7 +136,7 @@ export function ExternalCard({
 
 // decision: Pato — frontend-only review sort (no EF) for both Google and
 // Mesita. Newest default; Highest / Lowest by rating. Google uses published
-// date; Mesita uses avg(food/service/ambiance/value) and keeps source order
+// date; Mesita uses avg(food/service/ambience/value) and keeps source order
 // for Newest until visitors carry a date field.
 export type ReviewSort = 'newest' | 'highest' | 'lowest';
 
@@ -154,7 +154,7 @@ export function reviewTimeMs(date: string): number {
 export function mesitaOverall(
   v: PlaceDetail['mesita_visitors'][number],
 ): number {
-  return (v.food + v.service + v.ambiance + v.value) / 4;
+  return (v.food + v.service + v.ambience + v.value) / 4;
 }
 
 export function ReviewSortChips({

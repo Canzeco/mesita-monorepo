@@ -16,10 +16,10 @@ export type UpdateProfileBody = {
   avatar_url?: string | null;
   // Profile visibility flags (MESITA-76 / MESITA-913). Sent alone or
   // alongside the identity fields; only the keys present are patched.
-  profile_public?: boolean;
-  profile_show_saves?: boolean;
-  profile_show_visits?: boolean;
-  profile_show_stories?: boolean;
+  privacy_public?: boolean;
+  privacy_show_saves?: boolean;
+  privacy_show_visits?: boolean;
+  privacy_show_stories?: boolean;
 };
 
 export const AVATAR_BUCKET = "consumer-avatars";
@@ -211,10 +211,10 @@ export function buildProfilePatch(
   if (body.phone !== undefined) patch.phone = fields.phone;
   if (body.avatar_url !== undefined) patch.avatar_url = fields.avatarUrl ?? null;
   for (const key of [
-    "profile_public",
-    "profile_show_saves",
-    "profile_show_visits",
-    "profile_show_stories",
+    "privacy_public",
+    "privacy_show_saves",
+    "privacy_show_visits",
+    "privacy_show_stories",
   ] as const) {
     const value = body[key];
     if (value === undefined) continue;

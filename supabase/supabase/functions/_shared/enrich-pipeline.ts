@@ -57,7 +57,7 @@ export {
 export type ResearchStage = "research" | "analysis" | "contents" | "done" | "failed";
 
 export type PlaceResearchRow = {
-  project_id: string;
+  place_id: string;
   google_place_id: string;
   stage: ResearchStage;
   status: "pending" | "running";
@@ -123,7 +123,7 @@ export async function reportEnrichmentStep(
 ): Promise<void> {
   try {
     const { error } = await admin.from("place_enrichment_events").insert({
-      project_id: projectId,
+      place_id: projectId,
       step,
       step_name: stepName.slice(0, 80),
       status,

@@ -64,7 +64,7 @@ type ConsumerRow = {
   last_name: string | null;
   phone: string | null;
   instagram_handle: string | null;
-  consumer_instagram_followers_count: number | null;
+  instagram_followers_count: number | null;
   class_key: string | null;
   class_origin: string | null;
   class_granted_at: string | null;

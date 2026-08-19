@@ -79,7 +79,7 @@ Deno.serve(async (req) => {
   const admin = adminClient(envRes.env);
 
   const { data: place, error: placeError } = await admin
-    .from("projects_view")
+    .from("profiles")
     .select("id, name, country")
     .eq("id", projectId)
     .maybeSingle();
@@ -89,7 +89,7 @@ Deno.serve(async (req) => {
 
   const { data: existingOwner } = await admin
     .from("project_members")
-    .select("business_id")
+    .select("manager_id")
     .eq("project_id", projectId)
     .eq("role", "owner")
     .maybeSingle();

@@ -20,7 +20,7 @@ import type { Href } from 'expo-router';
 //   web /rewards            ->  /new-visit        (Expo: (tabs)/rewards.tsx)
 //   web /rewards/ticket/:id ->  /visit/:id        (Expo: app/rewards/ticket/[id].tsx)
 //   web /home/ai            ->  /home/chat        (Expo: Home screen segment)
-//   web /coupon/:id, /saved/*  DELETED
+//   web /saved/*            DELETED
 // SANCTIONED DIVERGENCE: web lights the Inbox tab from /visit/:id via a
 // pathname prefix. Mobile CANNOT — the tab bar reads navigator state, and root
 // modal screens cover the tab bar entirely, so no tab is lit. That is correct
@@ -141,12 +141,6 @@ export function placePath(idOrSlug: string): Href {
 
 export function reservationPath(id: string): Href {
   return asHref(`${CONSUMER_ROUTES.reservation.prefix}${id}`);
-}
-
-const COUPON_PATH_PREFIX = '/coupon/';
-
-export function couponPath(id: string): Href {
-  return asHref(`${COUPON_PATH_PREFIX}${id}`);
 }
 
 export function rewardsTicketPath(id: string): Href {

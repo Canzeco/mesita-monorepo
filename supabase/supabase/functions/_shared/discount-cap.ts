@@ -3,7 +3,7 @@
 // Cap is independent of strategy: a member picks Zero / Conservative /
 // Aggressive AND separately picks MX$200 / 500 / 1000. Persisted on
 // projects.monthly_promo_cap. Billing prefers the place cap; the platform
-// rewards_config.cap is the fallback when a paid place has a null cap
+// promos_config.cap is the fallback when a paid place has a null cap
 // (legacy / mid-migration).
 
 export const DISCOUNT_CAPS_MXN = [200, 500, 1000] as const;
@@ -24,7 +24,7 @@ export function snapDiscountCap(v: unknown): DiscountCapMxn {
 
 /**
  * Cap used for ticket bill math. Place wins when set; otherwise platform
- * fallback (rewards_config.cap), then the product default.
+ * fallback (promos_config.cap), then the product default.
  */
 export function resolveBillCapPesos(
   place: { monthly_promo_cap?: number | null } | Record<string, unknown>,

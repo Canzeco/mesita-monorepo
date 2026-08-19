@@ -367,14 +367,14 @@ Deno.serve(async (req) => {
   // the next sync.
   const admin = adminClient(envRes.env);
   const { data: settings } = await admin
-    .from("app_settings")
+    .from("app_config")
     .select("agents_config")
     .eq("id", 1)
     .maybeSingle();
   const agentsConfig = (settings?.agents_config ?? {}) as Record<string, unknown>;
   const toolSecret = ((agentsConfig.toolSecret as string | undefined) ?? "").trim();
   if (!toolSecret) {
-    return json({ ok: false, error: "app_settings.agents_config.toolSecret missing" }, 500);
+    return json({ ok: false, error: "app_config.agents_config.toolSecret missing" }, 500);
   }
   const configuredAgents = (agentsConfig.agents ?? {}) as Record<
     string,
@@ -819,7 +819,7 @@ Deno.serve(async (req) => {
     };
     delete nextConfig.knowledgeDocId;
     const { error: saveErr } = await admin
-      .from("app_settings")
+      .from("app_config")
       .update({ agents_config: nextConfig })
       .eq("id", 1);
 
@@ -1082,7 +1082,7 @@ Deno.serve(async (req) => {
       fleetSyncedAt: new Date().toISOString(),
     };
     const { error: saveErr } = await admin
-      .from("app_settings")
+      .from("app_config")
       .update({ agents_config: newConfig })
       .eq("id", 1);
 

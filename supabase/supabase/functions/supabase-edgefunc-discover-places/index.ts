@@ -120,7 +120,7 @@ Deno.serve(async (req) => {
   );
 
   // Quality filters — request body overrides win; otherwise fall back to the
-  // admin_search channel policy from app_settings.sourcing_config.
+  // admin_search channel policy from app_config.sourcing_config.
   const minRating = clamp(
     Number(body.minRating ?? adminSearchPolicy.minRating ?? 0),
     0,
@@ -185,7 +185,7 @@ Deno.serve(async (req) => {
     try {
       const ids = uniquePlaces.map((p) => p.id);
       const { data, error } = await admin
-        .from("projects_view")
+        .from("profiles")
         .select("google_place_id, created_at, updated_at")
         .in("google_place_id", ids);
       if (error) {

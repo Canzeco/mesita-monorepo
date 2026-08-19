@@ -1,5 +1,5 @@
 // memo-airlock-prompt.ts — how the reasoning model is told to behave inside the
-// airlock. The persona itself is operator-tunable (app_settings.memo_
+// airlock. The persona itself is operator-tunable (app_config.memo_
 // instructions, served by supabase-edgefunc-get-memo-config); this wraps that persona with
 // the fixed OPERATING rules that make Memo safe, passive, and natural. These
 // rules are code, not DB config — they are load-bearing security, not voice.

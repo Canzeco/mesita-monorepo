@@ -20,7 +20,6 @@ import Stripe from "npm:stripe@17";
 import { corsPreflight, json, readJsonOr, rejectUnlessMethods } from "../_shared/http.ts";
 import { adminClient, getAuthedUser, readEFEnv } from "../_shared/auth.ts";
 import { recomputeConsumerClass } from "../_shared/class-doors.ts";
-import { getTierConfig } from "../_shared/membership.ts";
 import {
   ensureWholeCatalog,
   resolvePlanPrice,
@@ -55,7 +54,12 @@ Deno.serve(async (req) => {
   const body = await readJsonOr<Body>(req, {});
 
   const admin = adminClient(envRes.env);
-  const premium = await getTierConfig(admin, "premium");
+  // Price is the PLAN, not the class: it lives on consumer_plans.
+  const { data: premium } = await admin
+    .from("consumer_plans")
+    .select("price_cents, currency")
+    .eq("key", "premium")
+    .maybeSingle();
 
   const origin = req.headers.get("origin") ?? "";
   const successUrl = body.successUrl ?? `${origin}/profile?subscription=success`;

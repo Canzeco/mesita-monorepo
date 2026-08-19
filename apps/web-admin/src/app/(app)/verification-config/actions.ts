@@ -2,7 +2,7 @@
 
 // Server actions for Verification Config. Thin wrappers over the admin-web-*
 // Edge Functions via the Result-style efInvoke (never throws). Backed by
-// admin-web-get/update-verification-config on app_settings verification knobs.
+// admin-web-get/update-verification-config on app_config verification knobs.
 // No client ever touches the DB.
 
 import { efInvoke } from "@/lib/supabase-ef";

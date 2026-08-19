@@ -4,10 +4,10 @@
 // every auth.users row that isn't a super-admin, and every object in the
 // storage buckets. Survivors are DATA in public.admin_reset_preserve
 // (read at run time by admin_reset_database) — today: super_admins + their
-// auth accounts, the app_settings admin-config singleton (Atlas/Enricher/
-// Memo/Sourcing/Scoring/Reservations/Rewards/Models/Agents/Verification),
-// reward_rules, consumer_code_counter, and the re-seeded vocabularies
-// (classes, business_plans, place_categories, place_tags).
+// auth accounts, the app_config admin-config singleton (Atlas/Enricher/
+// Memo/Sourcing/Scoring/Reservations/Promos/Models/Agents/Verification),
+// consumer_code_counter, and the re-seeded vocabularies (classes,
+// project_plans, place_categories, place_tags).
 //
 // Two guards before anything runs:
 //   1. Caller's JWT identity — email OR phone — must be in

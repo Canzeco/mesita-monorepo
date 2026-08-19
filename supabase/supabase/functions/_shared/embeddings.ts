@@ -13,7 +13,7 @@
 // (embedding_source_text), never from tags. Prefer On-Update synthesis; the
 // lazy path here synthesizes when the stored blurb is missing.
 //
-// Model: app_settings.models_config.lineup.model (admin Models page). The
+// Model: app_config.models_config.lineup.model (admin Models page). The
 // `lineup` blob KEY is legacy naming kept for wire compatibility with the
 // admin Models page — it selects the place-embedding model, nothing else.
 
@@ -85,7 +85,7 @@ export async function embedAndPersistPlaces<T extends EmbeddablePlace>(
       const v = byIdx.get(i);
       if (!v || v.length !== EMBEDDING_DIMS) return;
       const { error } = await admin
-        .from("projects_view")
+        .from("profiles")
         .update({
           embedding: vectorLiteral(v),
           embedding_source_hash: inp.hash,

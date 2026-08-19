@@ -105,7 +105,7 @@ Deno.serve(async (req) => {
   // Memo's whole reach, on either engine.
   //
   // Config + persona-clause reads are cached briefly (see memo-data.ts): this
-  // is the consumer's synchronous chat path, app_settings changes a few times a
+  // is the consumer's synchronous chat path, app_config changes a few times a
   // week, and a chat asks for the same user's clause on every turn. Place reads
   // are never cached — those are the answer. An operator's Config save takes
   // effect within CONFIG_CACHE_MS; the admin Playground opts out entirely so it

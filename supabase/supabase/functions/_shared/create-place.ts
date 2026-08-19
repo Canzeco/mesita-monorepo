@@ -61,7 +61,7 @@ export async function createMinimalPlace(opts: {
   // Caller-specific copy for the 409 (e.g. the business app adds claim advice).
   dedupeError?: string;
   // Sourcing gate: when set, the place is evaluated against
-  // app_settings.sourcing_config[sourcingChannel] (family + rating + review
+  // app_config.sourcing_config[sourcingChannel] (family + rating + review
   // floors) after the Google fetch and rejected (422) if ineligible. Consumer
   // adds pass "consumer_add"; admin/business callers pass nothing (unquota'd,
   // ungated — trusted operators / place owners).
@@ -83,7 +83,7 @@ export async function createMinimalPlace(opts: {
   // places BEFORE spending any budget. savePlaceData dedupes again as a race
   // guard; gating here keeps a duplicate click cheap. ──
   const { data: existing } = await admin
-    .from("projects_view")
+    .from("profiles")
     .select("id, slug, name, status, listing_type")
     .eq("google_place_id", googlePlaceId)
     .maybeSingle();

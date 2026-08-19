@@ -5,7 +5,7 @@
 // the Sourcing / Memo / Atlas config actions.
 //
 // Backed by admin-web-get-reservations-config / admin-web-update-reservations-config,
-// which read and write the reservations_config jsonb on the public.app_settings
+// which read and write the reservations_config jsonb on the public.app_config
 // singleton. No client ever touches the DB.
 //
 // The Playground actions that used to live here are gone with the Playground

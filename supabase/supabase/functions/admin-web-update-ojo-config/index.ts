@@ -41,7 +41,7 @@ Deno.serve(async (req) => {
   const next = normalizeOjoConfig(bodyRes.body.config);
 
   const { data, error } = await admin
-    .from("app_settings")
+    .from("app_config")
     .update({ ojo_config: next, updated_by: userId })
     .eq("id", 1)
     .select("ojo_config, updated_at")

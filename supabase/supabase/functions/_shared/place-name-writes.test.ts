@@ -55,7 +55,7 @@ const BARE_NAME_KEY = /(?<![\w$])name\s*:/;
 /** `something.name = ...` assignment building a write payload. */
 const BARE_NAME_ASSIGN = /(?<![\w$])update\.name\s*=|(?<![\w$])nameUpdate\.name\s*=/;
 
-const PLACE_TABLE = /\.from\(\s*["'](places|projects_view)["']\s*\)/g;
+const PLACE_TABLE = /\.from\(\s*["'](places|profiles)["']\s*\)/g;
 const WRITE_CALL = /\.(insert|update|upsert)\s*\(/;
 
 Deno.test("no Edge Function writes places.name (it is a generated column)", async () => {

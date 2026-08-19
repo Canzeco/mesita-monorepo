@@ -334,15 +334,15 @@ export function SettingsSheet({
   const [savingPrivacy, setSavingPrivacy] = useState(false);
 
   const privateAccount =
-    privacyDraft?.privateAccount ?? profile?.profile_public === false;
+    privacyDraft?.privateAccount ?? profile?.privacy_public === false;
   const showStories =
-    privacyDraft?.showStories ?? profile?.profile_show_stories !== false;
+    privacyDraft?.showStories ?? profile?.privacy_show_stories !== false;
 
   async function persistPrivacy(
     draft: { privateAccount: boolean; showStories: boolean },
     patch: {
-      profile_public?: boolean;
-      profile_show_stories?: boolean;
+      privacy_public?: boolean;
+      privacy_show_stories?: boolean;
     },
   ) {
     setPrivacyDraft(draft);
@@ -363,20 +363,20 @@ export function SettingsSheet({
     if (nextPrivate) {
       void persistPrivacy(
         { privateAccount: true, showStories: false },
-        { profile_public: false, profile_show_stories: false },
+        { privacy_public: false, privacy_show_stories: false },
       );
       return;
     }
     void persistPrivacy(
       { privateAccount: false, showStories },
-      { profile_public: true },
+      { privacy_public: true },
     );
   }
 
   function onStoriesToggle(next: boolean) {
     void persistPrivacy(
       { privateAccount, showStories: next },
-      { profile_show_stories: next },
+      { privacy_show_stories: next },
     );
   }
 

@@ -80,7 +80,7 @@ export async function resolveMcpBearer(
 
   const tokenHash = await hashMcpToken(plaintext);
   const { data, error } = await admin
-    .from("consumer_mcp_tokens")
+    .from("consumer_connectors")
     .select(
       "id, consumer_id, token_prefix, label, created_at, last_used_at, revoked_at",
     )
@@ -103,7 +103,7 @@ export async function resolveMcpBearer(
 
   // Best-effort last_used — never block the tool call on this write.
   void admin
-    .from("consumer_mcp_tokens")
+    .from("consumer_connectors")
     .update({ last_used_at: new Date().toISOString() })
     .eq("id", data.id);
 

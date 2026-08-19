@@ -5,7 +5,7 @@
 // Memo / Atlas config actions.
 //
 // Backed by admin-web-get-models-config / admin-web-update-models-config, which
-// read and write the models_config jsonb blob on the public.app_settings
+// read and write the models_config jsonb blob on the public.app_config
 // singleton. Live binding (MESITA-941): readers bind supabase / enricher.model /
 // lineup / memo.* via _shared/models-config.ts; enricher.perplexity in the blob
 // is still staged (Enricher uses atlas_perplexity_preset). No client ever

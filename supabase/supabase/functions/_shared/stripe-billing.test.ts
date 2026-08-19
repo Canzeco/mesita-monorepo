@@ -24,12 +24,12 @@ Deno.test("STRIPE_CATALOG: Premium monthly + Verified yearly map to DB rows", ()
   const byId = Object.fromEntries(STRIPE_CATALOG.map((e) => [e.id, e]));
   assertEquals(STRIPE_CATALOG.length, 2);
 
-  assertEquals(byId["consumer_premium"].table, "classes");
+  assertEquals(byId["consumer_premium"].table, "consumer_plans");
   assertEquals(byId["consumer_premium"].rowKey, "premium");
   assertEquals(byId["consumer_premium"].lookupKey, "consumer_premium_monthly");
   assertEquals(byId["consumer_premium"].interval, "month");
 
-  assertEquals(byId["business_verified"].table, "business_plans");
+  assertEquals(byId["business_verified"].table, "project_plans");
   assertEquals(byId["business_verified"].rowKey, "pro");
   assertEquals(byId["business_verified"].lookupKey, "business_verified_yearly");
   assertEquals(byId["business_verified"].interval, "year");

@@ -25,7 +25,7 @@ export async function loadTarget(
     case "editor": {
       const row = await admin
         .from("project_members")
-        .select("project_id, business_id, role")
+        .select("project_id, manager_id, role")
         .eq("id", id)
         .maybeSingle();
       if (row.error) return notFound(`member_read: ${row.error.message}`, 500);
@@ -33,18 +33,18 @@ export async function loadTarget(
       return {
         ok: true,
         projectId: row.data.project_id,
-        isSelfRemoval: row.data.business_id === callerId,
+        isSelfRemoval: row.data.manager_id === callerId,
         targetIsOwner: row.data.role === "owner",
       };
     }
     case "editorInvite":
-      return await loadInvite(admin, "account_invites", id);
+      return await loadInvite(admin, "project_invites", id);
   }
 }
 
 export async function loadInvite(
   admin: SupabaseClient,
-  table: "account_invites",
+  table: "project_invites",
   id: string,
 ): Promise<LoadedTarget> {
   const row = await admin.from(table).select("project_id").eq("id", id).maybeSingle();
@@ -67,6 +67,6 @@ export async function deleteTarget(admin: SupabaseClient, kind: Kind, id: string
     case "editor":
       return await admin.from("project_members").delete().eq("id", id);
     case "editorInvite":
-      return await admin.from("account_invites").delete().eq("id", id);
+      return await admin.from("project_invites").delete().eq("id", id);
   }
 }

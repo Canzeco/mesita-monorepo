@@ -8,7 +8,7 @@
 //   stats        — REAL aggregates over the whole place, not a sample. Counts
 //     run server-side (head + exact count); the money sums drain every closed
 //     ticket's amount columns past PostgREST's default page (MESITA-890).
-//     Amount = total_cents ?? check_subtotal_cents — same formula as
+//     Amount = total_cents ?? bill_subtotal_cents — same formula as
 //     business-web-get-performance, so admin and business never disagree on
 //     "influenced spend" for the same place.
 //
@@ -78,7 +78,7 @@ function guestName(c: GuestShape | null): string {
 }
 
 type MoneyRow = {
-  check_subtotal_cents: number | null;
+  bill_subtotal_cents: number | null;
   total_cents: number | null;
   discount_cents: number | null;
   bill_source: string | null;
@@ -93,8 +93,8 @@ async function fetchAllClosedMoney(
   let from = 0;
   for (;;) {
     const { data, error } = await admin
-      .from("tickets")
-      .select("check_subtotal_cents, total_cents, discount_cents, bill_source")
+      .from("visit_tickets")
+      .select("bill_subtotal_cents, total_cents, discount_cents, bill_source")
       .eq("project_id", projectId)
       .eq("status", CLOSED_STATUS)
       .order("created_at", { ascending: false })
@@ -140,30 +140,30 @@ Deno.serve(async (req) => {
     resvListRes,
   ] = await Promise.all([
     admin
-      .from("saved_places")
+      .from("favorites")
       .select("id", { count: "exact", head: true })
       .eq("project_id", projectId),
     admin
-      .from("tickets")
+      .from("visit_tickets")
       .select("id", { count: "exact", head: true })
       .eq("project_id", projectId),
     admin
-      .from("tickets")
+      .from("visit_tickets")
       .select("id", { count: "exact", head: true })
       .eq("project_id", projectId)
       .not("first_scanned_at", "is", null),
     admin
-      .from("tickets")
+      .from("visit_tickets")
       .select("id", { count: "exact", head: true })
       .eq("project_id", projectId)
       .eq("status", CLOSED_STATUS),
     admin
-      .from("reservations")
+      .from("reservation_tickets")
       .select("id", { count: "exact", head: true })
       .eq("project_id", projectId),
     fetchAllClosedMoney(admin, projectId),
     admin
-      .from("reservations")
+      .from("reservation_tickets")
       .select(
         "id, reserved_at, party_size, status, is_test, " +
           "consumer:consumers(full_name, first_name, instagram_handle)",
@@ -194,7 +194,7 @@ Deno.serve(async (req) => {
   for (const row of moneyDrain.rows) {
     // Same amount resolution as business-web-get-performance — v3b made the
     // bill optional and total_cents the preferred recorded amount.
-    const amount = row.total_cents ?? row.check_subtotal_cents ?? 0;
+    const amount = row.total_cents ?? row.bill_subtotal_cents ?? 0;
     if (amount > 0) {
       influencedCents += amount;
       billedCount += 1;

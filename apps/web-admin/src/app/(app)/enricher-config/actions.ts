@@ -47,7 +47,7 @@ type GetSettingsResult =
   | { ok: false; error: string };
 
 export async function getAtlasSettings(): Promise<GetSettingsResult> {
-  const r = await efInvoke<SettingsResponse>("admin-web-get-settings", {});
+  const r = await efInvoke<SettingsResponse>("admin-web-get-config", {});
   if (!r.ok) return { ok: false, error: r.error };
   return { ok: true, data: r.data };
 }
@@ -106,7 +106,7 @@ export async function updateAtlasConfig(patch: {
   discoverUbereatsN?: number;
 }): Promise<UpdateAtlasConfigResult> {
   const r = await efInvoke<AtlasConfigResponse>(
-    "admin-web-update-atlas-config",
+    "admin-web-update-enricher-config",
     patch,
   );
   if (!r.ok) return { ok: false, error: r.error };

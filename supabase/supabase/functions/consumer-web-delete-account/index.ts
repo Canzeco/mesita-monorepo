@@ -105,7 +105,7 @@ Deno.serve(async (req) => {
 
   // Cascade clean-up of dependent rows (RESTRICT FKs).
   const { error: ticketsErr } = await admin
-    .from("tickets")
+    .from("visit_tickets")
     .delete()
     .eq("consumer_id", userId);
   if (ticketsErr) {

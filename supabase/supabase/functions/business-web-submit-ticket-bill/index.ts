@@ -65,9 +65,9 @@ Deno.serve(async (req) => {
   const admin = adminClient(envRes.env);
 
   const ticketRow = await admin
-    .from("tickets")
+    .from("visit_tickets")
     .select(
-      "id, project_id, consumer_id, kind, story_status, review_status, status, check_subtotal_cents, tip_cents, tip_pct, total_cents, currency, welcome_free_rate, welcome_premium_rate, free_rate, premium_rate, rates_snapshotted_at",
+      "id, project_id, consumer_id, story_status, review_status, status, bill_subtotal_cents, tip_cents, tip_pct, total_cents, currency, welcome_free_rate, welcome_premium_rate, free_rate, premium_rate, rates_snapshotted_at",
     )
     .eq("id", ticketId)
     .maybeSingle();
@@ -91,13 +91,12 @@ Deno.serve(async (req) => {
       409,
     );
   }
-  if ((ticket.check_subtotal_cents ?? 0) > 0 || (ticket.total_cents ?? 0) > 0) {
+  if ((ticket.bill_subtotal_cents ?? 0) > 0 || (ticket.total_cents ?? 0) > 0) {
     return json({ ok: false, error: "Bill already submitted for this ticket." }, 409);
   }
 
-  const kind = ticket.kind;
   const placeRow = await admin
-    .from("projects_view")
+    .from("profiles")
     .select(
       "id, name, slug, photos, instagram_url, welcome_free_rate, welcome_premium_rate, free_rate, premium_rate, monthly_promo_cap, status",
     )
@@ -132,7 +131,7 @@ Deno.serve(async (req) => {
   }
 
   // Promos v5 best-of (MESITA-723): the place's strategy (from its v4 rate
-  // columns) × the operator grid on app_settings. The ticket already exists
+  // columns) × the operator grid on app_config. The ticket already exists
   // (scan step), so exclude it from the first-visit count — otherwise Welcome
   // never fires on the scan → bill path. Actions verified before billing join
   // the qualifying set here; ones verified after billing bump via reprice.
@@ -181,10 +180,10 @@ Deno.serve(async (req) => {
   const now = new Date().toISOString();
 
   const update = await admin
-    .from("tickets")
+    .from("visit_tickets")
     .update({
       status: TICKET_STATUS.awaitingPaymentConfirm,
-      check_subtotal_cents: snap.checkSubtotalCents,
+      bill_subtotal_cents: snap.checkSubtotalCents,
       tip_cents: snap.tipCents,
       total_cents: snap.totalCents,
       redeem_cents: 0,
@@ -195,7 +194,7 @@ Deno.serve(async (req) => {
     .eq("id", ticketId)
     .eq("status", TICKET_STATUS.open)
     .select(
-      "id, kind, status, story_status, check_subtotal_cents, tip_cents, total_cents, discount_percent, discount_cents, revealed_at, currency, created_at",
+      "id, status, story_status, bill_subtotal_cents, tip_cents, total_cents, discount_percent, discount_cents, revealed_at, currency, created_at",
     )
     .single();
   if (update.error) {
@@ -206,7 +205,7 @@ Deno.serve(async (req) => {
   }
 
   // Deliver the discounted bill to the consumer's Pay inbox.
-  await admin.from("consumer_pay_notifications").insert({
+  await admin.from("consumer_notifications").insert({
     consumer_id: ticket.consumer_id,
     ticket_id: ticketId,
     kind: "bill",
@@ -218,8 +217,7 @@ Deno.serve(async (req) => {
       place_name: place.name,
       place_photo_url: place.photos?.[0] ?? null,
       place_instagram_handle: placeInstagramHandleForPayload(place.instagram_url),
-      ticket_kind: kind,
-      check_subtotal_cents: snap.checkSubtotalCents,
+      bill_subtotal_cents: snap.checkSubtotalCents,
       tip_cents: snap.tipCents,
       total_cents: snap.totalCents,
       discount_cents: snap.discountCents ?? 0,

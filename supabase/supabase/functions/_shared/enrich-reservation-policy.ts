@@ -4,7 +4,7 @@
 // The Reservationist is voice-only (Twilio + ElevenLabs). WhatsApp was dropped
 // fleet-wide (MESITA-839) — nothing calls Messages.json — so the only serving
 // channel is phone. Priority / disabled remain operator knobs on
-// app_settings.reservations_config, but the eligible set is phone alone.
+// app_config.reservations_config, but the eligible set is phone alone.
 // Legacy stored rows that still list whatsapp/instagram are coerced away.
 
 /** Channels a reservation endpoint may use. Voice-reachable only (MESITA-842). */
@@ -43,7 +43,7 @@ function isReservationChannel(v: unknown): v is ReservationChannel {
 }
 
 /**
- * Coerce the app_settings.reservations_config jsonb into a usable policy.
+ * Coerce the app_config.reservations_config jsonb into a usable policy.
  * Anything malformed falls back to the default rather than throwing — a bad row
  * must never stop the Enricher from seeding an endpoint. Legacy whatsapp /
  * instagram entries are dropped (not serving paths since MESITA-839/842).

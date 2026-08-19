@@ -3,7 +3,7 @@
 // Super-admin approves or rejects a pending ownership verification.
 //
 //   approve  → verification.status='approved' + a project_members row
-//              (role='owner', business_id=requester) is inserted. The
+//              (role='owner', manager_id=requester) is inserted. The
 //              place itself is already active+web from
 //              business-web-create-project; this EF only grants membership.
 //   reject   → verification.status='rejected' with reject_reason. No
@@ -115,7 +115,7 @@ Deno.serve(async (req) => {
     // membership is what gates business access on /unit/<id>/*.
     const { error: memberError } = await admin.from("project_members").insert({
       project_id: verification.project_id,
-      business_id: verification.requester_id,
+      manager_id: verification.requester_id,
       role: "owner",
     });
     if (memberError) {

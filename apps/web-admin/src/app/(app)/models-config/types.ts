@@ -4,7 +4,7 @@
 // SUBSYSTEMS from there would hand the client stubs and crash the picker. Same
 // footgun the Memo types file documents.
 //
-// This page is the SoT for app_settings.models_config (MESITA-941). Live readers
+// This page is the SoT for app_config.models_config (MESITA-941). Live readers
 // (_shared/models-config.ts → get-memo-config, Enricher stages, embeddings,
 // business-web-suggest-promo) bind supabase / enricher.model / lineup / memo.*.
 // Enricher Perplexity is NOT read from this blob — Enricher
@@ -16,7 +16,7 @@ import { Database, Layers, MessagesSquare, Sparkles } from "lucide-react";
 
 type SubsystemKey = "supabase" | "enricher" | "lineup" | "memo";
 
-// The persisted blob (app_settings.models_config). supabase + memo are edited
+// The persisted blob (app_config.models_config). supabase + memo are edited
 // here; enricher.model is informational (Enricher Config quality tiers pick the
 // live OpenAI model, with models_config.enricher.model as the cheap/default
 // binding); enricher.perplexity is staged (unread — atlas_perplexity_preset wins).
@@ -142,7 +142,7 @@ export const SUBSYSTEMS: readonly SubsystemMeta[] = [
   },
 ];
 
-// Defaults — mirror the migration's app_settings.models_config seed. The client
+// Defaults — mirror the migration's app_config.models_config seed. The client
 // shows these before load; the server coerces a null/partial blob to them.
 export const DEFAULT_MODELS_CONFIG: ModelsConfig = {
   v: 1,
