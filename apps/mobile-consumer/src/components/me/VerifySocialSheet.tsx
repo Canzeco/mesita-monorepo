@@ -18,7 +18,10 @@ import { useAuth } from '@/providers/auth';
 const HANDLE_RE = /^@?[A-Za-z0-9._]{1,30}$/;
 const VERIFICATION_CODE_LENGTH = 8;
 
-const WHY_COPY = `Add Instagram to unlock better Rewards. Optionally post Stories for even better Rewards on visits — and with ${INFLUENCER_FOLLOWER_THRESHOLD.toLocaleString('en-US')}+ followers you automatically upgrade to Influencer for free.`;
+const WHY_LINES = [
+  `Your class updates automatically — ${INFLUENCER_FOLLOWER_THRESHOLD.toLocaleString('en-US')}+ followers puts you on Influencer, free, and a better class means better Rewards.`,
+  `Post Stories on your visits for even better Rewards.`,
+];
 
 type Props = {
   visible: boolean;
@@ -172,17 +175,35 @@ function WhyConnectModule() {
       >
         Why connect
       </Text>
-      <Text
-        style={{
-          marginTop: 8,
-          fontSize: 13,
-          fontWeight: '500',
-          lineHeight: 18,
-          color: '#260409',
-        }}
-      >
-        {WHY_COPY}
-      </Text>
+      <View style={{ marginTop: 8, gap: 8 }}>
+        {WHY_LINES.map((line) => (
+          <View
+            key={line}
+            style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 10 }}
+          >
+            <View
+              style={{
+                marginTop: 6,
+                height: 6,
+                width: 6,
+                borderRadius: 3,
+                backgroundColor: '#c2185b',
+              }}
+            />
+            <Text
+              style={{
+                flex: 1,
+                fontSize: 13,
+                fontWeight: '500',
+                lineHeight: 18,
+                color: '#260409',
+              }}
+            >
+              {line}
+            </Text>
+          </View>
+        ))}
+      </View>
     </View>
   );
 }

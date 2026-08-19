@@ -20,6 +20,7 @@ import { ENRICHER_PARENT } from "@/app/(app)/enricher-config/nav";
 import { FILTERS_PARENT } from "@/app/(app)/filters-config/nav";
 import { MODELS_PARENT } from "@/app/(app)/models-config/nav";
 import { OJO_PARENT } from "@/app/(app)/ojo-config/nav";
+import { ORDERS_PARENT } from "@/app/(app)/orders-config/nav";
 import { RESERVATIONS_PARENT } from "@/app/(app)/reservations-config/nav";
 import { REWARDS_PARENT } from "@/app/(app)/rewards-config/nav";
 import { SOURCING_PARENT } from "@/app/(app)/sourcing-config/nav";
@@ -88,16 +89,19 @@ const MANAGE_NAV: NavItem[] = [
 // Two lifecycles end to end, a place's then a guest's:
 //   platform  who operates the console, then which model everything runs on
 //   supply    a place's life: eligible to enter (Sourcing) → the pipeline that
-//             fills its profile (Enricher; the profile SPEC is Notion Atlas
+//             fills its profile (Enrichment; the profile SPEC is Notion Atlas
 //             Rules — nothing to configure, so no page) → how ownership gets
 //             sealed (Verification)
-//   demand    a guest's night: how they find a place (Filters) → how they book
-//             it (Reservations) → what the visit pays them (Promos)
+//   demand    a guest's night: how they find a place (Discover) → how they
+//             book it (Reservations) → how they order without going at all
+//             (Orders, the remote context) → what either one pays them
+//             (Promos)
 //   proof     what happens after they leave: is the screenshot real (Ojo)
 //
 // Ojo trails everything because it reads a proof submitted AFTER the visit —
-// it is the last step of the last lifecycle, and the only config here whose
-// engine isn't built yet.
+// it is the last step of the last lifecycle. It and Orders are the two configs
+// here that run ahead of their engines: both save, neither is read yet, and
+// every knob on those two pages is labeled STAGED.
 //
 // Memo is NOT a row here: Home › Chat is Memo, so its config lives inside
 // Filters Config › Chat rather than as a sibling of the surface it powers.
@@ -109,6 +113,7 @@ const CONFIGURATIONS_NAV: NavItem[] = [
   VERIFICATION_PARENT,
   FILTERS_PARENT,
   RESERVATIONS_PARENT,
+  ORDERS_PARENT,
   REWARDS_PARENT,
   OJO_PARENT,
 ];

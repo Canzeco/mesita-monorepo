@@ -533,6 +533,15 @@ verify_jwt = true
 [functions.admin-web-update-verification-config]
 verify_jwt = true
 
+# Orders Config — the REMOTE context's policy (channels, quotas, eligibility).
+# Rates are not here; those are the Promos grid's `orders` context. Every knob
+# is STAGED until the order rail exists.
+[functions.admin-web-get-orders-config]
+verify_jwt = true
+
+[functions.admin-web-update-orders-config]
+verify_jwt = true
+
 [functions.admin-web-get-atlas-fields]
 verify_jwt = true
 

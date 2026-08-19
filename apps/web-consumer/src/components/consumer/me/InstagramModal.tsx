@@ -14,11 +14,8 @@ import {
   REACH_ENTRY_FOLLOWERS,
   identityForClassKey,
 } from "@/lib/consumer-data";
-import {
-  useConsumerClass,
-  useMockAccount,
-  setMockAccount,
-} from "@/lib/class-context";
+import { useConsumerClass } from "@/lib/class-context";
+import { InstagramEmulator } from "@/components/consumer/me/demo/InstagramEmulator";
 import { DEMO_INSTAGRAM_FOLLOWERS } from "@/lib/instagram-demo";
 import {
   INSTAGRAM_ICON_GRADIENT_CLASS,
@@ -33,7 +30,10 @@ import {
 
 const HANDLE_RE = /^@?[A-Za-z0-9._]{1,30}$/;
 
-const WHY_COPY = `Add Instagram to unlock better Rewards. Optionally post Stories for even better Rewards on visits — and with ${REACH_ENTRY_FOLLOWERS.toLocaleString("en-US")}+ followers you automatically upgrade to Silver for free.`;
+const WHY_LINES = [
+  `Your class updates automatically — ${REACH_ENTRY_FOLLOWERS.toLocaleString("en-US")}+ followers puts you on Silver, free, and a better class means better Rewards.`,
+  `Post Stories on your visits for even better Rewards.`,
+];
 
 export function InstagramModal({
   open,
@@ -129,7 +129,17 @@ function WhyConnectModule() {
       <h3 className="text-[14px] leading-tight font-extrabold tracking-tight">
         Why connect
       </h3>
-      <p className="mt-2 text-[13px] leading-snug font-medium">{WHY_COPY}</p>
+      <ul className="mt-2 flex flex-col gap-2">
+        {WHY_LINES.map((line) => (
+          <li
+            key={line}
+            className="flex items-start gap-2.5 text-[13px] leading-snug font-medium"
+          >
+            <span className="bg-secondary mt-[6px] h-1.5 w-1.5 shrink-0 rounded-full" />
+            <span>{line}</span>
+          </li>
+        ))}
+      </ul>
     </article>
   );
 }
@@ -240,77 +250,6 @@ function CurrentConnectionCard() {
         </p>
         <p className="text-muted-foreground text-[12px]">Rewards unlocked</p>
       </div>
-    </div>
-  );
-}
-
-function InstagramEmulator() {
-  const mock = useMockAccount();
-  const igOn = mock?.instagram ?? false;
-  const followers = mock?.followers ?? DEMO_INSTAGRAM_FOLLOWERS;
-
-  return (
-    <div className="border-border/50 rounded-2xl border border-dashed p-3 opacity-80">
-      <div className="flex min-h-11 items-center gap-1.5">
-        <span className="rounded bg-amber-500/15 px-1.5 py-0.5 text-[9px] font-bold tracking-[0.12em] text-amber-600 uppercase">
-          Demo
-        </span>
-        <span className="text-muted-foreground text-[11px] font-medium">
-          Preview connected
-        </span>
-        <span className="ml-auto">
-          <button
-            type="button"
-            role="switch"
-            aria-checked={igOn}
-            aria-label="Preview connected Instagram"
-            onClick={() =>
-              setMockAccount(
-                igOn
-                  ? { instagram: false }
-                  : {
-                      instagram: true,
-                      followers: DEMO_INSTAGRAM_FOLLOWERS,
-                    },
-              )
-            }
-            className={cn(
-              "relative inline-flex h-6 w-10 shrink-0 items-center rounded-full transition",
-              igOn ? "bg-primary" : "bg-muted",
-            )}
-          >
-            <span
-              className={cn(
-                "inline-block h-5 w-5 transform rounded-full bg-white shadow-sm transition",
-                igOn ? "translate-x-[18px]" : "translate-x-[2px]",
-              )}
-            />
-          </button>
-        </span>
-      </div>
-      {igOn && (
-        <div className="mt-2.5 flex items-center gap-2">
-          <label
-            htmlFor="mock-ig-followers"
-            className="text-muted-foreground text-[11px] font-medium"
-          >
-            Demo count
-          </label>
-          <input
-            id="mock-ig-followers"
-            inputMode="numeric"
-            value={followers}
-            onChange={(e) => {
-              const n = Number(e.target.value.replace(/[^\d]/g, ""));
-              setMockAccount({ followers: Number.isFinite(n) ? n : 0 });
-            }}
-            className="border-border bg-muted/30 h-8 w-24 rounded-lg border px-2.5 text-right text-[12px] font-semibold outline-none"
-          />
-          <span className="text-muted-foreground ml-auto text-[10px]">
-            Class preview uses this
-          </span>
-        </div>
-      )}
     </div>
   );
 }
