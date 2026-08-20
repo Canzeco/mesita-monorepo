@@ -26,9 +26,13 @@ import { type SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { ensureUniqueSlug, slugify } from "./place-slug.ts";
 
 // The places-shaped profile from fetchGoogleBasics. Required spine:
-// google_place_id + name (the same fields fetchGoogleBasics guarantees).
+// google_place_id + google_name (the same fields fetchGoogleBasics guarantees).
+// `name` is accepted only as a legacy alias for the Google label — it is a
+// GENERATED column on places, so no caller can meaningfully supply it.
 export type PlacePayload = Record<string, unknown> & {
   google_place_id?: string;
+  google_name?: string;
+  /** @deprecated legacy alias for `google_name`. */
   name?: string;
 };
 
@@ -58,9 +62,16 @@ export async function savePlaceData(
   });
 
   const googlePlaceId = (place.google_place_id ?? "").toString().trim();
-  const name = (place.name ?? "").toString().trim();
+  // `places.name` is GENERATED (coalesce(mesita_name, google_name)), so callers
+  // send the Google observation, not the display label — fetchGoogleBasics
+  // deliberately omits `name` (MESITA-1011). Guarding on `name` here rejected
+  // every create for 11 days; guard the key that is actually supplied, keeping
+  // the legacy `name` alias working for any caller still sending it.
+  const googleName = (place.google_name ?? place.name ?? "").toString().trim();
   if (!googlePlaceId) return fail(400, { error: "place.google_place_id is required" });
-  if (!name) return fail(400, { error: "place.name is required" });
+  if (!googleName) return fail(400, { error: "place.google_name is required" });
+  // Create never sets mesita_name, so the row's generated `name` == google_name.
+  const name = googleName;
   // decision: Pato (MESITA-468) — Maps URL is part of the native spine; create
   // must never persist a place without it (fetchGoogleBasics always supplies one).
   const mapsUrl = (place.google_maps_url ?? "").toString().trim();
@@ -114,7 +125,7 @@ export async function savePlaceData(
   } = place;
   const placeInsert = {
     ...placeRest,
-    google_name: ((place.google_name ?? name) as string).toString().trim() || name,
+    google_name: googleName,
   };
   const { data: placeRow, error: placeErr } = await admin
     .from("places")

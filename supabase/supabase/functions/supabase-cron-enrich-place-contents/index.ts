@@ -71,7 +71,19 @@ serveEnrichStage("contents", async (admin, env, row) => {
   const ledger = createEnrichCostLedger(cfg.perRunCostCapUsd, costFromGathered(gathered));
 
   const place: Record<string, unknown> = { ...gathered.place };
-  const name = (place.name ?? "").toString();
+  // `gathered.place` deliberately carries NO name keys: the research stage
+  // deletes name/google_name/mesita_name so a re-run can never ride a stale
+  // label back over an operator override (MESITA-1011). Reading `place.name`
+  // here therefore always yielded "" — synthesis, category and tag inference
+  // were all prompted with an unnamed place. Read the live generated label
+  // (coalesce(mesita_name, google_name)) instead, so an operator's Mesita name
+  // is what the Enricher reasons about.
+  const { data: nameRow } = await admin
+    .from("places")
+    .select("name")
+    .eq("id", projectId)
+    .maybeSingle();
+  const name = (nameRow?.name ?? "").toString();
   const category = (place.category ?? null) as string | null;
   const { igBio, googleReviewsText, serpSummary } = gathered.grounding;
 
