@@ -14,6 +14,7 @@ import {
 } from "@/lib/instagram-demo";
 import {
   CLASS_ORDER,
+  REACH_ENTRY_CLASS,
   REACH_ENTRY_FOLLOWERS,
   identityForClassKey,
   type ClassKey,
@@ -293,7 +294,12 @@ function mockAccountState(
   let key: ConsumerClassState["key"];
   let origin: ConsumerClassState["origin"];
   if (igReach) {
-    key = "silver";
+    // The ENTRY rung, named by the ladder rather than by hand. Deliberately
+    // not "the highest bar this count clears": the EF grants off `classes`,
+    // which has no gold row, so a 5,000-follower claim really does land on
+    // the entry rung server-side. Promoting the preview past it would make
+    // the demo promise a class production cannot grant.
+    key = REACH_ENTRY_CLASS.id;
     origin = "instagram";
   } else if (mock.class === "diamond") {
     // Diamond is previewed through the manual door. Not because Diamond is

@@ -10,10 +10,7 @@ import { SectionEyebrow } from "@/components/consumer/me/settings-rows";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { apiClaimInstagram } from "@/lib/api/profile";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
-import {
-  REACH_ENTRY_FOLLOWERS,
-  identityForClassKey,
-} from "@/lib/consumer-data";
+import { REACH_ENTRY_CLASS, identityForClassKey } from "@/lib/consumer-data";
 import { useConsumerClass } from "@/lib/class-context";
 import { InstagramEmulator } from "@/components/consumer/me/demo/InstagramEmulator";
 import { DEMO_INSTAGRAM_FOLLOWERS } from "@/lib/instagram-demo";
@@ -24,14 +21,15 @@ import {
 } from "@/lib/ui-classes";
 
 // Instagram connect sheet (MESITA-936): DEMO → one Why box → Connect.
-// Threshold from REACH_ENTRY_FOLLOWERS — the Silver bar, 1,000 since
-// MESITA-1125. Derived, never written out: the number lives in one place
-// (CLASSES.silver.followerThreshold, mirroring classes.follower_threshold).
+// Bar AND rung both come off REACH_ENTRY_CLASS, so the sentence can never
+// quote one class’s threshold next to another class’s name. Neither half is
+// written out here — no metal is named in this file, and the ladder
+// (mirroring classes.follower_threshold) stays the only place either lives.
 
 const HANDLE_RE = /^@?[A-Za-z0-9._]{1,30}$/;
 
 const WHY_LINES = [
-  `Your class updates automatically — ${REACH_ENTRY_FOLLOWERS.toLocaleString("en-US")}+ followers puts you on Silver, free, and a better class means better Rewards.`,
+  `Your class updates automatically — ${REACH_ENTRY_CLASS.followerThreshold.toLocaleString("en-US")}+ followers puts you on ${REACH_ENTRY_CLASS.label}, free, and a better class means better Rewards.`,
   `Post Stories on your visits for even better Rewards.`,
 ];
 

@@ -225,12 +225,22 @@ export const PLANS: {
 export const PREMIUM_PLAN_PRICE_MXN = PLANS.find((p) => p.id === "premium")!
   .priceMxn;
 
-// The reach entry bar — mirrors classes.follower_threshold in the DB (the gate
-// consumer-web-claim-instagram grants off). Every surface quoting or applying
-// the bar derives from this one constant. Story Bonus is gated on a connected
+// The reach entry rung — the lowest class a follower count can open, found by
+// SHAPE (cheapest non-zero bar on the ladder) rather than by naming a metal.
+// Silver holds it today; if the ladder is re-ranked, re-priced, or renamed,
+// this follows without an edit, and copy that quotes the bar keeps quoting the
+// rung that bar actually grants. Its threshold mirrors
+// classes.follower_threshold in the DB — the gate
+// consumer-web-claim-instagram grants off. Story Bonus is gated on a connected
 // handle (MESITA-909), not this threshold.
-export const REACH_ENTRY_FOLLOWERS = CLASSES.find((c) => c.id === "silver")!
-  .followerThreshold;
+export const REACH_ENTRY_CLASS = CLASSES.filter(
+  (c) => c.followerThreshold > 0,
+).reduce((lowest, c) =>
+  c.followerThreshold < lowest.followerThreshold ? c : lowest,
+);
+
+/** Every surface quoting or applying the bar derives from this one constant. */
+export const REACH_ENTRY_FOLLOWERS = REACH_ENTRY_CLASS.followerThreshold;
 
 // Canonical class icon set: one mark + one color per class, ascending as a
 // single readable progression — Medal → Award → Trophy → Gem. The v1 set

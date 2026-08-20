@@ -35,7 +35,7 @@ export function ClassModal({
   onClose: () => void;
   onConnectInstagram: () => void;
 }) {
-  const { origin, followers } = useConsumerClass();
+  const { origin, followers, key: classKey } = useConsumerClass();
 
   return (
     <LocalSheet open={open} onClose={onClose} ariaLabel="Your class">
@@ -60,7 +60,10 @@ export function ClassModal({
           <ClassLadder />
 
           {origin === "instagram" && (
-            <InstagramConnectedSummary followers={followers} />
+            <InstagramConnectedSummary
+              followers={followers}
+              classKey={classKey}
+            />
           )}
 
           {/* THE TWO WAYS IN, and there are only two (decision: Pato):
