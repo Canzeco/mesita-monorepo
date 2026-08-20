@@ -91,6 +91,7 @@ export type Database = {
           memo_web_grounding: boolean
           models_config: Json
           ojo_config: Json | null
+          orders_config: Json | null
           promos_config: Json
           reservations_config: Json
           sourcing_config: Json
@@ -133,6 +134,7 @@ export type Database = {
           memo_web_grounding?: boolean
           models_config?: Json
           ojo_config?: Json | null
+          orders_config?: Json | null
           promos_config?: Json
           reservations_config?: Json
           sourcing_config?: Json
@@ -175,6 +177,7 @@ export type Database = {
           memo_web_grounding?: boolean
           models_config?: Json
           ojo_config?: Json | null
+          orders_config?: Json | null
           promos_config?: Json
           reservations_config?: Json
           sourcing_config?: Json
@@ -2183,7 +2186,6 @@ export type Database = {
     }
     Enums: {
       content_status: "queued" | "generating" | "ready" | "failed"
-      coupon_status: "active" | "redeemed" | "expired" | "cancelled"
       listing_type: "partner" | "web" | "unclaimed"
       member_role: "owner" | "editor" | "viewer"
       plan: "free" | "pro" | "ultra"
@@ -2361,7 +2363,6 @@ export const Constants = {
   public: {
     Enums: {
       content_status: ["queued", "generating", "ready", "failed"],
-      coupon_status: ["active", "redeemed", "expired", "cancelled"],
       listing_type: ["partner", "web", "unclaimed"],
       member_role: ["owner", "editor", "viewer"],
       plan: ["free", "pro", "ultra"],
