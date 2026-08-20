@@ -264,18 +264,24 @@ export const CLASS_MARK_ICON: LucideIcon = Pyramid;
 // Canonical bg + text class per class. Used wherever a class needs the
 // brand-color chip treatment (avatars, pills, hero rows). Compose with
 // cn() at the call site when extra modifiers (size, rounding) are needed.
+// FILL AND INK TRAVEL TOGETHER, always, and this is the only place that pairs
+// them. Callers that took a fill from a separate map and hardcoded `text-white`
+// beside it are what let three surfaces print white on a light metal — Silver
+// was caught early and given foreground ink here, but the note that did it
+// ("white-on-silver fails contrast") never asked whether any OTHER rung was
+// also a light fill. Two were: white measured 1.53:1 on gold and 1.44:1 on
+// diamond (MESITA-1142). Bronze, the floor, is the only metal dark enough to
+// carry white.
 export function classBadgeClass(classKey: ClassKey): string {
   switch (classKey) {
     case "bronze":
       return "bg-tier-bronze text-white";
-    // Silver is the one light fill in the set — white-on-silver fails
-    // contrast, so it carries foreground ink instead.
     case "silver":
       return "bg-tier-silver text-foreground";
     case "gold":
-      return "bg-tier-gold text-white";
+      return "bg-tier-gold text-foreground";
     case "diamond":
-      return "bg-tier-diamond text-white";
+      return "bg-tier-diamond text-foreground";
   }
 }
 

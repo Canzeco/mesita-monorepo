@@ -8,6 +8,7 @@ import { MesitaLogo } from "@/components/brand/MesitaLogo";
 import {
   CLASSES,
   CLASS_MARK_ICON,
+  classBadgeClass,
   PLANS,
   PREMIUM_PLAN_ICON,
   PREMIUM_PLAN_PRICE_MXN,
@@ -37,7 +38,9 @@ import {
 // and the plan tile can't show a metal. Each tile taps through to the surface
 // that owns it, which is why the card carries no separate CTA.
 
-/** Each metal's fill for the class tile and the avatar ring. */
+/** Each metal's fill for the avatar ring, where nothing sits on top of it.
+ *  The class TILE takes `classBadgeClass` instead — a tile carries a label,
+ *  so it needs the ink that goes with the metal, not just the metal. */
 const CLASS_FILL: Record<ClassKey, string> = {
   bronze: "bg-tier-bronze",
   silver: "bg-tier-silver",
@@ -83,13 +86,17 @@ function Tile({
       aria-label={`${eyebrow}: ${value}. ${note}`}
       className={cn(
         "flex min-w-0 flex-col items-start rounded-2xl p-2.5 text-left shadow-sm transition active:scale-[0.98]",
-        held ? cn(fill, "text-white") : "border-border bg-card border",
+        // `fill` carries its own ink — three of the four metals are LIGHT
+        // fills and white on them measures under 2:1 (MESITA-1142), so the
+        // tile cannot assume a colour here. Sub-text dims the inherited ink
+        // instead of hardcoding a white wash.
+        held ? fill : "border-border bg-card border",
       )}
     >
       <span
         className={cn(
           "flex max-w-full items-center gap-1 text-[9px] font-bold tracking-[0.1em] uppercase",
-          held ? "text-white/85" : "text-muted-foreground",
+          held ? "opacity-85" : "text-muted-foreground",
         )}
       >
         <Icon className="h-2.5 w-2.5 shrink-0" />
@@ -101,7 +108,7 @@ function Tile({
       <span
         className={cn(
           "mt-1 w-full text-[10px] leading-snug",
-          held ? "text-white/85" : "text-muted-foreground",
+          held ? "opacity-85" : "text-muted-foreground",
         )}
       >
         {note}
@@ -282,7 +289,7 @@ export function ProfileSummaryCard({
                 ? `${formatCompactCount(followers)} followers`
                 : "Connect to climb"
             }
-            fill={INSTAGRAM_BADGE_GRADIENT_CLASS}
+            fill={cn(INSTAGRAM_BADGE_GRADIENT_CLASS, "text-white")}
             held={igConnected}
             onClick={onOpenInstagram}
           />
@@ -291,7 +298,7 @@ export function ProfileSummaryCard({
             Icon={ClassIcon}
             value={classLabel}
             note="Earned, not bought"
-            fill={CLASS_FILL[key]}
+            fill={classBadgeClass(key)}
             held
             onClick={onOpenClass}
           />
@@ -300,7 +307,7 @@ export function ProfileSummaryCard({
             Icon={PREMIUM_PLAN_ICON}
             value={planLabel}
             note={planNote}
-            fill="bg-pink-gradient"
+            fill="bg-pink-gradient text-white"
             held={isPremium}
             onClick={onOpenPlan}
           />
