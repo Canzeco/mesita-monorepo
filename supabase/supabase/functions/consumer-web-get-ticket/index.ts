@@ -55,11 +55,16 @@ Deno.serve(async (req) => {
   if (error) {
     return json({ ok: false, error: error.message }, 500);
   }
-  if (!data) {
+  // Cast at the query boundary: the EF clients carry no `Database` generic, so a
+  // select() the type parameter can't resolve degrades the row to
+  // `GenericStringError`, and narrowing `null` away first leaves attachPlaces
+  // nothing to match its `project_id` constraint against (MESITA-1140).
+  const row = data as (Record<string, unknown> & { project_id: string | null }) | null;
+  if (!row) {
     // Uniform miss — never confirms someone else's ticket exists.
     return json({ ok: false, error: "Ticket not found" }, 404);
   }
 
-  const [ticket] = await attachPlaces(admin, [data]);
+  const [ticket] = await attachPlaces(admin, [row]);
   return json({ ok: true, ticket });
 });
