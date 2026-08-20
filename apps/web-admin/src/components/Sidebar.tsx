@@ -21,6 +21,7 @@ import { MODELS_PARENT } from "@/app/(app)/models-config/nav";
 import { OJO_PARENT } from "@/app/(app)/ojo-config/nav";
 import { ORDERS_PARENT } from "@/app/(app)/orders-config/nav";
 import { RESERVATIONS_PARENT } from "@/app/(app)/reservations-config/nav";
+import { VISITS_PARENT } from "@/app/(app)/visits-config/nav";
 import { REWARDS_PARENT } from "@/app/(app)/rewards-config/nav";
 import { SOURCING_PARENT } from "@/app/(app)/sourcing-config/nav";
 import { VERIFICATION_PARENT } from "@/app/(app)/verification-config/nav";
@@ -91,15 +92,15 @@ const MANAGE_NAV: NavItem[] = [
 //             Rules — nothing to configure, so no page) → how ownership gets
 //             sealed (Verification)
 //   demand    a guest's night: how they find a place (Discover) → how they
-//             book it (Reservations) → how they order without going at all
-//             (Orders, the remote context) → what either one pays them
-//             (Promos)
+//             book it (Reservations) → the journey once they sit down (Visits,
+//             the local context) → or ordering without going at all (Orders,
+//             the remote one) → what either context pays them (Promos)
 //   proof     what happens after they leave: is the screenshot real (Ojo)
 //
 // Ojo trails everything because it reads a proof submitted AFTER the visit —
-// it is the last step of the last lifecycle. It and Orders are the two configs
-// here that run ahead of their engines: both save, neither is read yet, and
-// every knob on those two pages is labeled STAGED.
+// it is the last step of the last lifecycle. Visits, Orders and Ojo all run
+// ahead of what reads them: they save, nothing consumes them yet, and every
+// knob on those three pages is labeled STAGED.
 //
 // Memo is NOT a row here: Home › Chat is Memo, so its config lives inside
 // Filters Config › Chat rather than as a sibling of the surface it powers.
@@ -111,6 +112,7 @@ const CONFIGURATIONS_NAV: NavItem[] = [
   VERIFICATION_PARENT,
   FILTERS_PARENT,
   RESERVATIONS_PARENT,
+  VISITS_PARENT,
   ORDERS_PARENT,
   REWARDS_PARENT,
   OJO_PARENT,
