@@ -22,6 +22,24 @@ import { checkNotFound, isPlausibleCheckCode } from "../_shared/ticket-check.ts"
 
 type Body = { code?: string };
 
+type PollRow = {
+  status: string;
+  updated_at: string;
+  fix_requested: string | null;
+  fix_note: string | null;
+  approved_at: string | null;
+  validated_at: string | null;
+  paid_method: string | null;
+  bill_subtotal_cents: number | null;
+  tip_cents: number | null;
+  tip_pct: number | null;
+  total_cents: number | null;
+  discount_percent: number | null;
+  discount_cents: number | null;
+  story_status: string | null;
+  review_status: string | null;
+};
+
 const POLL_COLUMNS =
   "id, status, updated_at, fix_requested, fix_note, approved_at, validated_at, paid_method, " +
   "bill_subtotal_cents, tip_cents, tip_pct, total_cents, discount_percent, discount_cents, " +
@@ -46,25 +64,12 @@ Deno.serve(async (req) => {
     .select(POLL_COLUMNS)
     .eq("check_code", code)
     .maybeSingle();
-  if (!data) return checkNotFound(json);
-
-  const t = data as {
-    status: string;
-    updated_at: string;
-    fix_requested: string | null;
-    fix_note: string | null;
-    approved_at: string | null;
-    validated_at: string | null;
-    paid_method: string | null;
-    bill_subtotal_cents: number | null;
-    tip_cents: number | null;
-    tip_pct: number | null;
-    total_cents: number | null;
-    discount_percent: number | null;
-    discount_cents: number | null;
-    story_status: string | null;
-    review_status: string | null;
-  };
+  // Cast at the query boundary, before the null guard — the EF clients carry no
+  // `Database` generic, so a select() the type parameter can't resolve degrades
+  // the row to `GenericStringError`. Narrowing `null` away first leaves nothing
+  // for the cast to overlap with (MESITA-1140). Same shape as ticket-check.ts.
+  const t = data as PollRow | null;
+  if (!t) return checkNotFound(json);
 
   const billed = (t.total_cents ?? 0) > 0 || (t.bill_subtotal_cents ?? 0) > 0;
   // Same collapse rule as shapeCheckPayload: verified states report

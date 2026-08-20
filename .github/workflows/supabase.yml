@@ -47,13 +47,22 @@ jobs:
   # (MESITA-456) — one checkout now covers the whole monorepo.
 
   # Full type-check of every edge function against its remote (jsr/npm/https)
-  # imports. Non-blocking: it depends on live registries being reachable, so a
-  # registry hiccup should not block a merge. The blocking `test` job above
-  # already type-checks the tested modules.
+  # imports.
+  #
+  # This was non-blocking, on the reasoning that a registry hiccup should not
+  # block a merge. That protected nothing: the `test` job above is blocking and
+  # resolves the same remote imports, so a registry outage already fails CI. All
+  # the exemption bought was a job that sat red on main for weeks, at which point
+  # it could no longer distinguish "you broke it" from "it was already broken" —
+  # and #924 shipped a contract change past it that took every create path down
+  # for 11 days (MESITA-1139). A gate nobody can read is not a gate. Blocking.
+  #
+  # NOTE: scope is `supabase/supabase/functions` (see defaults above), so this
+  # does NOT cover `supabase/scripts/`. Run `deno check .` from `supabase/` to
+  # include those.
   typecheck:
-    name: deno check (non-blocking)
+    name: deno check
     runs-on: ubuntu-latest
-    continue-on-error: true
     steps:
       - name: Checkout
         uses: actions/checkout@v4

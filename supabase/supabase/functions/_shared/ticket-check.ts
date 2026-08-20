@@ -224,11 +224,21 @@ export function shapeCheckPayload(args: {
 // The story_*/review_* verdict events retired with the staff verdict itself
 // (MESITA-849) — nothing writes them any more. Stored rows keep their values;
 // this union only constrains new inserts.
+//
+// `ticket_check_events.event` is a plain text column, not a Postgres enum, so
+// a value missing here still writes fine at runtime — which is exactly how the
+// four v4 events below drifted out of the union unnoticed (MESITA-1140). Keep
+// this list equal to the set of literals passed to logCheckEvent.
 export type CheckEvent =
   | "scanned"
   | "bill_submitted"
   | "marked_paid"
-  | "pin_rejected";
+  | "pin_rejected"
+  // The v4 check journey: scan · approve / one-fix · validate.
+  | "scan_opened"
+  | "approved"
+  | "fix_requested"
+  | "validated";
 
 // sha256(ip | yyyy-mm-dd | server salt) — the raw IP never lands in the DB,
 // and the daily rotation means hashes can't be joined across days.
