@@ -17,18 +17,18 @@
 
 import type { ClassKey } from "@/lib/consumer-data";
 
-export const CLASS_AVATAR_BG: Record<ClassKey, string> = {
-  bronze: "bg-tier-bronze",
-  silver: "bg-tier-silver",
-  gold: "bg-tier-gold",
-  diamond: "bg-tier-diamond",
-};
+// CLASS_AVATAR_BG is gone (MESITA-1142). It handed out a fill with no ink, and
+// its one caller then hardcoded a white wash beside it — which is exactly how
+// white ended up on three light metals. A filled element that carries content
+// takes `classBadgeClass` from @/lib/consumer-data, which pairs the two.
 
 export const CLASS_TEXT: Record<ClassKey, string> = {
   bronze: "text-bronze",
-  // Silver ink on a light surface is unreadable — the metal only works as a
-  // fill, so its TEXT treatment borrows the muted foreground instead.
-  silver: "text-muted-foreground",
+  // Silver is ink again. It was demoted to the muted foreground because the
+  // metal "only works as a fill" — true of the old token, which was a 0.72
+  // near-white. The solids are tuned as TEXT now, so silver reads at 4.85:1
+  // on card and no longer needs a stand-in.
+  silver: "text-silver",
   gold: "text-gold",
   diamond: "text-diamond",
 };

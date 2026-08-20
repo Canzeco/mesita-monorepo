@@ -4,9 +4,9 @@ import { useState } from "react";
 import { GoogleLogo, MesitaSourceBadge } from "./BrandLogos";
 import { Header, Quote, StarRow, Thumbnail } from "./review-card-parts";
 import { cn, firstInitial } from "@/lib/utils";
-import type { ClassKey } from "@/lib/consumer-data";
+import { type ClassKey, classBadgeClass } from "@/lib/consumer-data";
 import type { PlaceDetail } from "@/lib/mock/place";
-import { CLASS_AVATAR_BG, CLASS_TEXT } from "@/lib/class-styles";
+import { CLASS_TEXT } from "@/lib/class-styles";
 
 // Individual review card — same skeleton for Mesita and Google, with the
 // source-specific bits (italic-serif quote vs sans, class chip vs none,
@@ -51,8 +51,11 @@ export function ReviewCard(props: MesitaPayload | GooglePayload) {
           avatar={
             <div
               className={cn(
-                "flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-bold text-white/90",
-                CLASS_AVATAR_BG[v.class_key],
+                // Ink comes from the metal, not from here: Silver, Gold and
+                // Diamond are light fills and the white wash this used to
+                // carry measured under 2:1 on all three (MESITA-1142).
+                "flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-bold opacity-90",
+                classBadgeClass(v.class_key),
               )}
             >
               {firstInitial(v.name)}

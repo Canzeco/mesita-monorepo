@@ -78,11 +78,29 @@
      they are, because the old token names WERE the old class names and a
      `--tier-influencer` holding Silver's color is a trap, not a shortcut.
      `--tier-premium` survives unchanged and changes meaning: it is the PLAN's
-     color now, the one axis that is not a metal. */
-  --tier-bronze: oklch(0.58 0.11 55);
-  --tier-silver: oklch(0.72 0.02 250);
-  --tier-gold: oklch(0.72 0.16 75);
-  --tier-diamond: oklch(0.68 0.12 220);
+     color now, the one axis that is not a metal.
+
+     TWO RULES, both measured rather than eyeballed (MESITA-1142):
+
+     1. EACH METAL OWNS A HUE BAND, and the bands do not touch — bronze 40-55,
+        gold 83-97, diamond 205-232, silver neutral at chroma <= 0.006. Silver
+        used to sit at chroma 0.02 on hue 250, which is not a metal but a
+        blue, and it shared that hue family with Diamond; gold's dark stop
+        used to land on hue 60, one degree off bronze's light stop. On a
+        surface whose rule is "colour means class, and nothing else", two
+        rungs the eye can merge is the whole rule failing.
+     2. THE SOLIDS ARE TEXT, THE GRADIENTS ARE FILL. Nothing paints a
+        background from a `--tier-*` solid, so those are tuned only to clear
+        4.5:1 as ink on card. The gradients are tuned so their LIGHT stop —
+        the weak end, top-left under a 135deg ramp — still clears 3:1 against
+        the ink `classBadgeClass` pairs with them. Bronze is the only metal
+        dark enough to carry white; Silver, Gold and Diamond are light metals
+        and carry foreground ink. Before this, white on gold measured 1.53:1
+        and white on diamond 1.44:1. */
+  --tier-bronze: oklch(0.5 0.11 45);
+  --tier-silver: oklch(0.55 0.006 250);
+  --tier-gold: oklch(0.55 0.12 85);
+  --tier-diamond: oklch(0.52 0.13 235);
   --tier-premium: oklch(0.55 0.19 250);
 
   --gradient-hero:
@@ -99,23 +117,23 @@
     linear-gradient(180deg, oklch(0.99 0.012 10), oklch(0.96 0.02 5));
   --gradient-gold: linear-gradient(
     135deg,
-    oklch(0.86 0.14 90),
-    oklch(0.72 0.16 60)
+    oklch(0.87 0.13 97),
+    oklch(0.71 0.15 83)
   );
   --gradient-bronze: linear-gradient(
     135deg,
-    oklch(0.7 0.1 62),
-    oklch(0.54 0.11 45)
+    oklch(0.64 0.1 55),
+    oklch(0.5 0.11 40)
   );
   --gradient-silver: linear-gradient(
     135deg,
-    oklch(0.88 0.02 250),
-    oklch(0.72 0.02 250)
+    oklch(0.89 0.004 250),
+    oklch(0.74 0.006 250)
   );
   --gradient-diamond: linear-gradient(
     135deg,
-    oklch(0.87 0.08 210),
-    oklch(0.68 0.13 235)
+    oklch(0.88 0.07 205),
+    oklch(0.72 0.12 232)
   );
   --gradient-premium: linear-gradient(
     135deg,
