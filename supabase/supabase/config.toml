@@ -544,6 +544,15 @@ verify_jwt = true
 [functions.admin-web-update-orders-config]
 verify_jwt = true
 
+# Visits Config — the LOCAL context's policy (tips, poll cadence, proof,
+# send-backs, pay rails, abandonment). Rates live in Promos, proof reading in
+# Ojo. Every knob is STAGED until the consumer and check apps read it.
+[functions.admin-web-get-visits-config]
+verify_jwt = true
+
+[functions.admin-web-update-visits-config]
+verify_jwt = true
+
 [functions.admin-web-get-atlas-fields]
 verify_jwt = true
 
