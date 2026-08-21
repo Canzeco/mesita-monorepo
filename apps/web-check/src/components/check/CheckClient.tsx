@@ -293,8 +293,12 @@ export function CheckClient({
   const status = statusFor(check.status);
   const scannedLine = minutesAgo(check.first_scanned_at);
   const billRequired = check.bill_required === true;
-  const mustBillBeforeClose =
-    billRequired && !check.bill && check.status === "open";
+  // The place opted out of the optional bill, and this ticket carries none.
+  // Under v3 that blocked the close; under v4 it blocks the APPROVAL, which
+  // is where check-web-approve-ticket enforces it (MESITA-1148) — the button
+  // has to say so rather than earn a 409 bill_required.
+  const billMissing = billRequired && !check.bill;
+  const mustBillBeforeClose = billMissing && check.status === "open";
 
   const onSubmitBill = () => {
     const pesos = Number(subtotal.replace(/[,$\s]/g, ""));
@@ -308,7 +312,8 @@ export function CheckClient({
   const expected = check.updated_at ?? "";
   const fixOutstanding = Boolean(check.fix_requested);
   const canVerdict =
-    v4 && check.status === "scanned" && !fixOutstanding && !stale;
+    v4 && check.status === "scanned" && !fixOutstanding && !stale &&
+    !billMissing;
 
   const tipCents = check.bill?.tip_cents ?? 0;
   const subtotalCents = check.bill?.bill_subtotal_cents ?? 0;
@@ -568,6 +573,13 @@ export function CheckClient({
               )}
               Aprobar
             </Button>
+            {billMissing ? (
+              <p className="text-muted-foreground text-[11px] leading-snug">
+                Este lugar requiere registrar la cuenta antes de aprobar. Pide
+                la corrección de <span className="font-semibold">cuenta</span> y
+                el cliente la captura.
+              </p>
+            ) : null}
             {!fixOutstanding ? (
               fixOpen ? (
                 <div className="grid grid-cols-3 gap-2">

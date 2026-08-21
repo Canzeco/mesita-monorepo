@@ -443,9 +443,19 @@ export type PlaceEnrichmentStatus = {
   updated_at: string | null;
 };
 
+/** Per-place enrichment schedule — WHEN it re-runs (MESITA-1148).
+ *  everyDays null = manual only; the cron never picks the place up. */
+export type PlaceEnrichmentSchedule = {
+  everyDays: number | null;
+  mode: ReenrichMode;
+  nextAt: string | null;
+  lastEnrichedAt: string | null;
+};
+
 type PlaceEnrichment = {
   media: Record<string, PlaceMediaMeta>;
   status: PlaceEnrichmentStatus | null;
+  schedule: PlaceEnrichmentSchedule | null;
 };
 
 export async function getPlaceEnrichment(
@@ -454,9 +464,31 @@ export async function getPlaceEnrichment(
   const r = await efInvoke<{
     media: Record<string, PlaceMediaMeta>;
     status: PlaceEnrichmentStatus | null;
+    schedule: PlaceEnrichmentSchedule | null;
   }>("admin-web-get-place-enrichment", { projectId });
   if (!r.ok) return { ok: false, error: r.error };
-  return { ok: true, data: { media: r.data.media ?? {}, status: r.data.status ?? null } };
+  return {
+    ok: true,
+    data: {
+      media: r.data.media ?? {},
+      status: r.data.status ?? null,
+      schedule: r.data.schedule ?? null,
+    },
+  };
+}
+
+// Set WHEN a place re-enriches. The EF writes places.enrich_* and derives the
+// next due date; the queue_due_place_enrichments cron is what honours it.
+export async function setPlaceEnrichmentSchedule(
+  placeId: string,
+  schedule: { everyDays: number | null; mode: ReenrichMode },
+): Promise<Result<PlaceEnrichmentSchedule>> {
+  const r = await efInvoke<{ schedule: PlaceEnrichmentSchedule }>(
+    "admin-web-set-place-enrichment",
+    { placeId, everyDays: schedule.everyDays, mode: schedule.mode },
+  );
+  if (!r.ok) return { ok: false, error: r.error };
+  return { ok: true, data: r.data.schedule };
 }
 
 // Which slice of the Enricher pipeline a manual re-enrich re-runs:
@@ -668,26 +700,20 @@ export async function createUnitFromPlaceId(placeId: string) {
 // view).
 // Write: one owner-gated EF, partial updates — each card sends only its key.
 
-export async function setCheckPin(
-  placeId: string,
-  pin: string | null,
-): Promise<Result<string | null>> {
-  const r = await efInvoke<{ pin: string | null }>("business-web-set-check-pin", {
-    placeId,
-    pin,
-  });
-  if (!r.ok) return { ok: false, error: r.error };
-  return { ok: true, data: r.data.pin };
-}
+/** Both check-page gates a place controls. One box, one save (MESITA-1148). */
+export type CheckGates = { pin: string | null; requireBill: boolean };
 
-export async function setCheckRequireBill(
+// business-web-set-check-pin writes only the keys present in the body, so
+// sending both in one call is a single atomic save for the Visits card —
+// the two used to be separate cards with separate saves.
+export async function setCheckGates(
   placeId: string,
-  requireBill: boolean,
-): Promise<Result<boolean>> {
-  const r = await efInvoke<{ requireBill: boolean }>(
+  gates: CheckGates,
+): Promise<Result<CheckGates>> {
+  const r = await efInvoke<{ pin: string | null; requireBill: boolean }>(
     "business-web-set-check-pin",
-    { placeId, requireBill },
+    { placeId, pin: gates.pin, requireBill: gates.requireBill },
   );
   if (!r.ok) return { ok: false, error: r.error };
-  return { ok: true, data: r.data.requireBill };
+  return { ok: true, data: { pin: r.data.pin, requireBill: r.data.requireBill } };
 }
