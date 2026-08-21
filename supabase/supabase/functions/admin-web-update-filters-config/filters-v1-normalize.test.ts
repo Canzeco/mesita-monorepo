@@ -47,6 +47,51 @@ Deno.test("normalizeFiltersV1: defaults mirror the shipped consumer engine", () 
   assertEquals(behavior.zoneSeedsRadius, true);
 });
 
+Deno.test("normalizeFiltersV1: covers every Home mode, Favorites included", () => {
+  assertEquals(SURFACE_KEYS, [
+    "swipe",
+    "catalog",
+    "chat",
+    "social",
+    "favorites",
+    "map",
+    "search",
+  ]);
+});
+
+Deno.test("normalizeFiltersV1: searchbar mirrors the shipped SearchClient", () => {
+  assertEquals(DEFAULT_FILTERS_V1.searchbar, {
+    minQueryLength: 2,
+    debounceMs: 300,
+    googleResults: true,
+    addFromGoogle: true,
+    mesitaResultCap: null,
+    googleResultCap: null,
+  });
+});
+
+Deno.test("normalizeFiltersV1: fills a complete searchbar from a missing one", () => {
+  assertEquals(
+    normalizeFiltersV1({}).searchbar,
+    DEFAULT_FILTERS_V1.searchbar,
+  );
+});
+
+Deno.test("normalizeFiltersV1: clamps searchbar numbers, 0 caps mean no cap", () => {
+  const bar = normalizeFiltersV1({
+    searchbar: {
+      minQueryLength: 99,
+      debounceMs: -40,
+      mesitaResultCap: 9999,
+      googleResultCap: 0,
+    },
+  }).searchbar;
+  assertEquals(bar.minQueryLength, 6);
+  assertEquals(bar.debounceMs, 0);
+  assertEquals(bar.mesitaResultCap, 25);
+  assertEquals(bar.googleResultCap, null);
+});
+
 Deno.test("normalizeFiltersV1: live surfaces on, parked Home modes off", () => {
   const s = DEFAULT_FILTERS_V1.surfaces;
   assertEquals(s.swipe.enabled, true);
@@ -55,6 +100,8 @@ Deno.test("normalizeFiltersV1: live surfaces on, parked Home modes off", () => {
   assertEquals(s.catalog.enabled, false);
   assertEquals(s.chat.enabled, false);
   assertEquals(s.social.enabled, false);
+  // Off because it is SHEETLESS, not because it is parked — see SURFACE_META.
+  assertEquals(s.favorites.enabled, false);
 });
 
 Deno.test("normalizeFiltersV1: a partial body keeps its edits and fills the rest", () => {

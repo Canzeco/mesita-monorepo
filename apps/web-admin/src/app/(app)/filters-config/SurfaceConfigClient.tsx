@@ -1,9 +1,18 @@
 "use client";
 
 // Filters Config · one consumer surface (Swipe · Catalog · Chat · Social ·
-// Map · Search). ONE client drives all six tabs — the surfaces differ in what
-// they mean, not in what they configure, so six near-identical files would be
-// six places for the same knob to drift.
+// Favorites · Map · Search). ONE client drives all seven tabs — the surfaces
+// mostly differ in what they MEAN, not in what they configure, so seven
+// near-identical files would be seven places for the same knob to drift.
+//
+// Two surfaces need more than the shared shape, and both are handled here
+// rather than in a fork, so the single whole-blob Save stays single:
+//
+//   FAVORITES is sheetless (`hasSheet: false`) — live, unparked, and carrying
+//   no Filters trigger at all. Its knobs describe a sheet nobody has built, so
+//   the page says that outright instead of letting them read as "off".
+//   SEARCH additionally renders SearchbarCard, the free-text autocomplete the
+//   six modules cannot describe.
 //
 // The tier that matters here is `inherit`: it TRACKS General rather than
 // copying it at save time, so a module switched off in General goes off on
@@ -33,18 +42,22 @@ import {
   RESULT_CAP_CEILING,
   SURFACE_META,
   resolveSurface,
+  searchbarWarnings,
   surfaceWarnings,
   type ContextDefault,
   type FiltersConfig,
   type ModuleToggle,
+  type SearchbarFilters,
   type SurfaceFilters,
   type SurfaceKey,
   type WhenDefault,
 } from "./filters";
+import { SearchbarCard } from "./SearchbarCard";
 import {
   KnobRow,
   ParkedBadge,
   SegmentedPicker,
+  SheetlessBadge,
   StagedBanner,
   UpdatedStamp,
   WarningsNote,
@@ -87,13 +100,18 @@ export function SurfaceConfigClient({
   const resolved = resolveSurface(cfg, surfaceKey);
   const warnings = surfaceWarnings(cfg, surfaceKey);
 
-  const status = meta.live ? (
+  // Strongest reason first: a parked surface renders nothing at all, a
+  // sheetless one renders places but has no trigger, and everything else is
+  // merely unwired. Showing "not wired" on Favorites would understate it.
+  const status = !meta.live ? (
+    <ParkedBadge />
+  ) : !meta.hasSheet ? (
+    <SheetlessBadge />
+  ) : (
     <KnobStatus
       kind="not-wired"
       reason="the consumer sheet reads its own code defaults"
     />
-  ) : (
-    <ParkedBadge />
   );
 
   const patchSurface = (p: Partial<SurfaceFilters>) => {
@@ -105,6 +123,11 @@ export function SurfaceConfigClient({
         [surfaceKey]: { ...c.surfaces[surfaceKey], ...p },
       },
     }));
+  };
+
+  const patchSearchbar = (p: Partial<SearchbarFilters>) => {
+    setOk(false);
+    setCfg((c) => ({ ...c, searchbar: { ...c.searchbar, ...p } }));
   };
 
   const save = () => {
@@ -133,6 +156,23 @@ export function SurfaceConfigClient({
           <p className="text-xs leading-relaxed">
             <span className="font-semibold">This surface is parked.</span>{" "}
             <span className="text-muted-foreground">{meta.parkedNote}</span>
+          </p>
+        </div>
+      )}
+
+      {meta.live && !meta.hasSheet && (
+        <div className="border-border bg-muted/40 rounded-xl border p-3.5">
+          <p className="text-xs leading-relaxed">
+            <span className="font-semibold">
+              This surface has no Filters sheet.
+            </span>{" "}
+            <span className="text-muted-foreground">
+              {meta.label} is live and unparked, but it carries no Filters
+              trigger — there is nothing on screen to open. The knobs below
+              describe what a sheet WOULD do if one were ever added; today none
+              of them has a control to attach to. The tab exists so this strip
+              matches the modes Home actually ships.
+            </span>
           </p>
         </div>
       )}
@@ -438,6 +478,16 @@ export function SurfaceConfigClient({
           </div>
         </div>
       </SectionCard>
+
+      {surfaceKey === "search" && (
+        <SearchbarCard
+          value={cfg.searchbar}
+          onChange={patchSearchbar}
+          pending={pending}
+          status={status}
+          warnings={searchbarWarnings(cfg)}
+        />
+      )}
 
       <div className="flex flex-wrap items-center justify-between gap-3">
         <SaveRow

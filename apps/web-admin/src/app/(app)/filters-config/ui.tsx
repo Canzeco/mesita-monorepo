@@ -26,6 +26,19 @@ export function ParkedBadge() {
 }
 
 /**
+ * A surface that renders places but carries no Filters trigger at all — a
+ * stronger claim than "staged", and a different one from "parked". Favorites is
+ * the only one today.
+ */
+export function SheetlessBadge() {
+  return (
+    <span className="border-border bg-muted text-muted-foreground rounded-full border px-2 py-0.5 text-[10px] font-semibold tracking-wide uppercase">
+      No sheet
+    </span>
+  );
+}
+
+/**
  * The page-level honesty notice. An unenforced config is a bug unless it says
  * so out loud, and prose buried in a card gets skipped — this sits above
  * everything, on every tab.

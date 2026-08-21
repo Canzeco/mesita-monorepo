@@ -29,6 +29,7 @@ export type SurfaceKey =
   | "catalog"
   | "chat"
   | "social"
+  | "favorites"
   | "map"
   | "search";
 
@@ -37,6 +38,7 @@ export const SURFACE_KEYS: SurfaceKey[] = [
   "catalog",
   "chat",
   "social",
+  "favorites",
   "map",
   "search",
 ];
@@ -54,6 +56,9 @@ export const DISTANCE_CEILING_KM = 200;
 export const RANDOMNESS_CEILING = 4;
 export const CATEGORY_CAP_CEILING = 40;
 export const RESULT_CAP_CEILING = 500;
+export const QUERY_LENGTH_CEILING = 6;
+export const DEBOUNCE_CEILING_MS = 2000;
+export const SEARCH_RESULT_CAP_CEILING = 25;
 
 export type GeneralFilters = {
   modules: Record<ModuleKey, boolean>;
@@ -88,10 +93,21 @@ export type SurfaceFilters = {
   resultCap: number | null;
 };
 
+/** The Search searchbar's own behaviour — distinct from surfaces.search. */
+export type SearchbarFilters = {
+  minQueryLength: number;
+  debounceMs: number;
+  googleResults: boolean;
+  addFromGoogle: boolean;
+  mesitaResultCap: number | null;
+  googleResultCap: number | null;
+};
+
 export type FiltersConfigV1 = {
   version: 1;
   general: GeneralFilters;
   surfaces: Record<SurfaceKey, SurfaceFilters>;
+  searchbar: SearchbarFilters;
 };
 
 function everyModule<T>(value: T): Record<ModuleKey, T> {
@@ -138,8 +154,18 @@ export const DEFAULT_FILTERS_V1: FiltersConfigV1 = {
     catalog: defaultSurface(false),
     chat: defaultSurface(false),
     social: defaultSurface(false),
+    // Live but sheetless — see SURFACE_META in the admin catalog.
+    favorites: defaultSurface(false),
     map: defaultSurface(true),
     search: defaultSurface(true),
+  },
+  searchbar: {
+    minQueryLength: 2,
+    debounceMs: 300,
+    googleResults: true,
+    addFromGoogle: true,
+    mesitaResultCap: null,
+    googleResultCap: null,
   },
 };
 
@@ -287,6 +313,39 @@ function normalizeSurface(
   };
 }
 
+/** A row cap that survives as null — null means "no cap", not "missing". */
+function nullableCap(v: unknown, ceiling: number): number | null {
+  if (typeof v !== "number" || !Number.isFinite(v) || v <= 0) return null;
+  return int(v, ceiling, 1, ceiling);
+}
+
+function normalizeSearchbar(raw: unknown): SearchbarFilters {
+  const d = DEFAULT_FILTERS_V1.searchbar;
+  if (!isBlob(raw)) return structuredClone(d);
+
+  return {
+    minQueryLength: int(
+      raw.minQueryLength,
+      d.minQueryLength,
+      1,
+      QUERY_LENGTH_CEILING,
+    ),
+    // 0 is legal — "no debounce". Expensive, warned about in the console, not
+    // forbidden here.
+    debounceMs: int(raw.debounceMs, d.debounceMs, 0, DEBOUNCE_CEILING_MS),
+    googleResults: bool(raw.googleResults, d.googleResults),
+    addFromGoogle: bool(raw.addFromGoogle, d.addFromGoogle),
+    mesitaResultCap: nullableCap(
+      raw.mesitaResultCap,
+      SEARCH_RESULT_CAP_CEILING,
+    ),
+    googleResultCap: nullableCap(
+      raw.googleResultCap,
+      SEARCH_RESULT_CAP_CEILING,
+    ),
+  };
+}
+
 export function normalizeFiltersV1(raw: unknown): FiltersConfigV1 {
   if (!isBlob(raw)) return structuredClone(DEFAULT_FILTERS_V1);
   const surfacesRaw = isBlob(raw.surfaces) ? raw.surfaces : {};
@@ -299,5 +358,6 @@ export function normalizeFiltersV1(raw: unknown): FiltersConfigV1 {
         normalizeSurface(surfacesRaw[k], DEFAULT_FILTERS_V1.surfaces[k]),
       ]),
     ) as Record<SurfaceKey, SurfaceFilters>,
+    searchbar: normalizeSearchbar(raw.searchbar),
   };
 }

@@ -3,9 +3,11 @@ import {
   DEFAULT_FILTERS,
   MODULE_KEYS,
   SURFACE_KEYS,
+  SURFACE_META,
   coerceFiltersConfig,
   generalWarnings,
   resolveSurface,
+  searchbarWarnings,
   surfaceWarnings,
   type FiltersConfig,
 } from "./filters";
@@ -36,6 +38,105 @@ describe("defaults", () => {
     expect(DEFAULT_FILTERS.surfaces.catalog.enabled).toBe(false);
     expect(DEFAULT_FILTERS.surfaces.chat.enabled).toBe(false);
     expect(DEFAULT_FILTERS.surfaces.social.enabled).toBe(false);
+  });
+
+  it("cover every Home mode the consumer nav ships, Favorites included", () => {
+    expect([...SURFACE_KEYS]).toEqual([
+      "swipe",
+      "catalog",
+      "chat",
+      "social",
+      "favorites",
+      "map",
+      "search",
+    ]);
+  });
+
+  it("mirror the shipped searchbar constants", () => {
+    // SearchClient.tsx: MIN_SUGGEST_QUERY_LENGTH = 2, SUGGEST_DEBOUNCE_MS = 300,
+    // both result groups uncapped, the Add flow live.
+    expect(DEFAULT_FILTERS.searchbar).toEqual({
+      minQueryLength: 2,
+      debounceMs: 300,
+      googleResults: true,
+      addFromGoogle: true,
+      mesitaResultCap: null,
+      googleResultCap: null,
+    });
+  });
+});
+
+describe("sheetless surfaces", () => {
+  it("mark Favorites live but sheetless — three distinct claims", () => {
+    const meta = SURFACE_META.favorites;
+    expect(meta.live).toBe(true);
+    expect(meta.hasSheet).toBe(false);
+    expect(meta.parkedNote).toBe("");
+    expect(DEFAULT_FILTERS.surfaces.favorites.enabled).toBe(false);
+  });
+
+  it("leave every other surface with a sheet", () => {
+    for (const key of SURFACE_KEYS) {
+      if (key === "favorites") continue;
+      expect(SURFACE_META[key].hasSheet).toBe(true);
+    }
+  });
+
+  it("stay silent on a sheetless surface at its defaults", () => {
+    // `enabled: false` + inherited-on modules is the PERMANENT state here, not
+    // a contradiction to nag about on every load.
+    expect(surfaceWarnings(clone(), "favorites")).toEqual([]);
+  });
+
+  it("flag filters switched ON for a surface with no trigger", () => {
+    const cfg = clone();
+    cfg.surfaces.favorites.enabled = true;
+    expect(surfaceWarnings(cfg, "favorites").join(" ")).toContain(
+      "no Filters trigger",
+    );
+  });
+
+  it("still flag a disabled sheet on a surface that HAS one", () => {
+    const cfg = clone();
+    cfg.surfaces.swipe.enabled = false;
+    expect(surfaceWarnings(cfg, "swipe").join(" ")).toContain(
+      "Filters are disabled on this surface",
+    );
+  });
+});
+
+describe("searchbarWarnings", () => {
+  it("is silent on the defaults", () => {
+    expect(searchbarWarnings(clone())).toEqual([]);
+  });
+
+  it("flags an Add flow with nothing to attach to", () => {
+    const cfg = clone();
+    cfg.searchbar.googleResults = false;
+    expect(searchbarWarnings(cfg).join(" ")).toContain("Adding from Google");
+  });
+
+  it("flags a cap on rows that never render", () => {
+    const cfg = clone();
+    cfg.searchbar.googleResults = false;
+    cfg.searchbar.addFromGoogle = false;
+    cfg.searchbar.googleResultCap = 5;
+    expect(searchbarWarnings(cfg).join(" ")).toContain("Google row cap");
+  });
+
+  it("says nothing about Google rows switched off on their own", () => {
+    // A deliberate catalog-only searchbar is a CHOICE, not a contradiction.
+    const cfg = clone();
+    cfg.searchbar.googleResults = false;
+    cfg.searchbar.addFromGoogle = false;
+    expect(searchbarWarnings(cfg)).toEqual([]);
+  });
+
+  it("flags a threshold and a debounce that bill a call per keystroke", () => {
+    const cfg = clone();
+    cfg.searchbar.minQueryLength = 1;
+    cfg.searchbar.debounceMs = 0;
+    expect(searchbarWarnings(cfg)).toHaveLength(2);
   });
 });
 
@@ -92,11 +193,18 @@ describe("warnings — reported, never corrected", () => {
   it("is silent on the defaults", () => {
     expect(generalWarnings(DEFAULT_FILTERS)).toEqual([]);
     for (const key of SURFACE_KEYS) {
-      // Parked surfaces are disabled with modules inheriting `on`, which is a
-      // real contradiction worth saying out loud.
       const warnings = surfaceWarnings(DEFAULT_FILTERS, key);
-      if (DEFAULT_FILTERS.surfaces[key].enabled) expect(warnings).toEqual([]);
-      else expect(warnings.length).toBeGreaterThan(0);
+      if (DEFAULT_FILTERS.surfaces[key].enabled) {
+        expect(warnings).toEqual([]);
+      } else if (SURFACE_META[key].hasSheet) {
+        // A PARKED surface is disabled with modules inheriting `on` — a real
+        // contradiction, and one an operator can resolve by un-parking.
+        expect(warnings.length).toBeGreaterThan(0);
+      } else {
+        // A SHEETLESS surface is disabled because it has no trigger to enable.
+        // Nothing to resolve, so nagging every load would be noise.
+        expect(warnings).toEqual([]);
+      }
     }
   });
 
@@ -197,6 +305,38 @@ describe("coerceFiltersConfig", () => {
     });
     expect(cfg.surfaces.map.overrides.maxKm).toBe("any");
     expect(cfg.surfaces.swipe.overrides.maxKm).toBeNull();
+  });
+
+  it("fills a complete searchbar from a missing one", () => {
+    expect(coerceFiltersConfig({}).searchbar).toEqual(
+      DEFAULT_FILTERS.searchbar,
+    );
+  });
+
+  it("clamps searchbar numbers instead of rejecting the blob", () => {
+    const cfg = coerceFiltersConfig({
+      searchbar: {
+        minQueryLength: 99,
+        debounceMs: -40,
+        mesitaResultCap: 9999,
+        googleResultCap: 0,
+      },
+    });
+    expect(cfg.searchbar.minQueryLength).toBe(6);
+    expect(cfg.searchbar.debounceMs).toBe(0);
+    expect(cfg.searchbar.mesitaResultCap).toBe(25);
+    // 0 is not a cap of zero rows — it is the absence of a cap.
+    expect(cfg.searchbar.googleResultCap).toBeNull();
+  });
+
+  it("round-trips a searchbar with edits", () => {
+    const cfg = clone();
+    cfg.searchbar.minQueryLength = 3;
+    cfg.searchbar.debounceMs = 500;
+    cfg.searchbar.googleResults = false;
+    cfg.searchbar.addFromGoogle = false;
+    cfg.searchbar.mesitaResultCap = 8;
+    expect(coerceFiltersConfig(JSON.parse(JSON.stringify(cfg)))).toEqual(cfg);
   });
 
   it("drops unknown surfaces, modules and enum values", () => {
