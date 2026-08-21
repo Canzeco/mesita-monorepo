@@ -9,11 +9,11 @@ import { cn } from "@/lib/utils";
 // The Memo mode's own header (MESITA-1103) — Don Memo, and the two ways to
 // reach him.
 //
-// WHY THE MODE HAS A HEADER AT ALL. Memo used to be one thing, so the Home
-// pill said "Chat" and the page below it was the thread, top to bottom. It is
-// two things now — you can CALL him or you can TYPE at him — and a mode with
-// two ways in needs to say so before you start, not after. Call leads because
-// it is the one a guest wouldn't guess.
+// WHY THE MODE HAS A HEADER AT ALL. The mode is two things — you can CALL him
+// or you can TYPE at him — and a mode with two ways in needs to say so before
+// you start, not after. The Home pill says "Chat", naming the segment that
+// actually works; this header is where the second way in gets announced. Call
+// leads because it is the one a guest wouldn't guess.
 //
 // CALL IS ANNOUNCED, NOT WIRED (Pato, live: "announced only, for now"). There
 // is no Memo voice agent and no number behind it — the ElevenLabs workspace
