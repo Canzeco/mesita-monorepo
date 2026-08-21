@@ -17,7 +17,7 @@ import {
 
 import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
 import { useConsumerClass } from "@/lib/class-context";
-import { CLASS_ICONS, CLASS_MARK_ICON } from "@/lib/consumer-data";
+import { CLASS_FLOOR, CLASS_ICONS, CLASS_MARK_ICON } from "@/lib/consumer-data";
 import {
   PEAK_STRATEGY,
   REWARD_SEGMENTS,
@@ -83,10 +83,18 @@ export function HelpModal({
             <span className="text-foreground font-semibold">
               Elevated classes boost them.
             </span>{" "}
-            Bronze gets the base discount; Silver, Gold and Diamond unlock
-            bigger ones — Silver and Gold are free with Instagram reach,
-            Diamond is invite-only. Premium is a separate subscription that
-            raises your rate at any class.
+            {/* THE DOORS, NOT THE METALS (MESITA-1145). This used to name
+                all four rungs and assign each to a door, and it got one
+                flatly wrong: "Silver and Gold are free with Instagram reach"
+                promised a class nothing can grant — `classes` has no gold
+                row, so a 5,000-follower account stays Silver. Naming the two
+                ways in states the same thing, stays true as the ladder moves,
+                and leaves the bars to the ladder, which is the surface that
+                actually shows them. */}
+            {CLASS_FLOOR.label} gets the base discount; every class above it
+            unlocks a bigger one. Followers lift you automatically; an invite
+            is by hand. Premium is a separate subscription that raises your
+            rate at any class.
           </p>
         </div>
 
