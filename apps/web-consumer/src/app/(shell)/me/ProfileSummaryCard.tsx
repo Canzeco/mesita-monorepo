@@ -4,7 +4,6 @@ import Image from "next/image";
 import { Instagram, Lock, Unlock } from "lucide-react";
 import type { ConsumerProfile } from "@/lib/api/profile";
 import { DefaultAvatar } from "@/components/consumer/DefaultAvatar";
-import { MesitaLogo } from "@/components/brand/MesitaLogo";
 import {
   CLASSES,
   CLASS_MARK_ICON,
@@ -20,19 +19,37 @@ import {
   ageFromBirthday,
   cn,
   formatCompactCount,
-  formatPhoneDisplay,
   formatSex,
   phoneCountry,
 } from "@/lib/utils";
 
 // ─── The Passport (MESITA-1079 v2) ─────────────────────────────────────────
 //
-//   header      brand lockup + the profile's privacy state
-//   identity    photo ringed in the class metal · name · age·sex·country·phone
+//   identity    photo ringed in the class metal · name · age·sex·country,
+//               with the privacy state as a quiet marker on the right
 //   three tiles INSTAGRAM · CLASS · PLAN — the three things a guest holds
 //
+// TWO ZONES, NOT THREE (MESITA-1158). There was a third row above these: the
+// Mesita wordmark beside a bordered PUBLIC pill. Both lost their argument. The
+// wordmark told a Mesita user they were inside Mesita, and the pill was drawn
+// as a control while being a read-only status — a bordered rounded-full pill
+// is the app's own button shape. `justify-between` across two light elements
+// also left a wide dead gap over the card.
+//
+// The PHONE line is gone too. It was the third of three grey lines, the most
+// private thing on the most glanceable surface, and the Profile BoxRow below
+// this card already summarises as `name · phone` — so it is one tap away in
+// the place that owns editing it. Age, sex and country stay: unlike the phone
+// they appear nowhere else, and they collapse to ONE line, which is what fixes
+// the block. The bug was never that the facts existed; it was three lines of
+// identical 12px muted type stacked 2px apart, so nothing led.
+//
+// Gaps encode grouping rather than being uniform: 4px inside the name stack,
+// 16px photo-to-name, 20px between the identity zone and the tiles. The card
+// runs on one 4px scale (4·8·12·16·20); it previously mixed 2, 2.5, 6 and 14.
+//
 // Country is INFERRED from the phone's dial code (`consumers` has no country
-// column) and rendered with its flag.
+// column) and rendered with its flag — the number itself is not shown.
 //
 // The class and plan axes are NEVER merged: the class tile can't show Premium
 // and the plan tile can't show a metal. Each tile taps through to the surface
@@ -85,7 +102,7 @@ function Tile({
       onClick={onClick}
       aria-label={`${eyebrow}: ${value}. ${note}`}
       className={cn(
-        "flex min-w-0 flex-col items-start rounded-2xl p-2.5 text-left shadow-sm transition active:scale-[0.98]",
+        "flex min-w-0 flex-col items-start rounded-2xl p-3 text-left shadow-sm transition active:scale-[0.98]",
         // `fill` carries its own ink — three of the four metals are LIGHT
         // fills and white on them measures under 2:1 (MESITA-1142), so the
         // tile cannot assume a colour here. Sub-text dims the inherited ink
@@ -95,14 +112,16 @@ function Tile({
     >
       <span
         className={cn(
-          "flex max-w-full items-center gap-1 text-[9px] font-bold tracking-[0.1em] uppercase",
+          // 10px, not 9px: Docs › Design §D puts eyebrow/meta at
+          // text-[10px]–xs, and 9px at this tracking was under its own floor.
+          "flex max-w-full items-center gap-1 text-[10px] font-bold tracking-[0.1em] uppercase",
           held ? "opacity-85" : "text-muted-foreground",
         )}
       >
         <Icon className="h-2.5 w-2.5 shrink-0" />
         <span className="truncate">{eyebrow}</span>
       </span>
-      <span className="font-display mt-1.5 w-full truncate text-[16px] leading-tight font-semibold tracking-tight">
+      <span className="font-display mt-1.5 w-full truncate text-[17px] leading-tight font-semibold tracking-tight">
         {value}
       </span>
       <span
@@ -147,19 +166,26 @@ export function ProfileSummaryCard({
         className="border-border bg-card w-full overflow-hidden rounded-2xl border shadow-sm"
       >
         <div className="bg-muted h-1.5 w-full" />
-        <div className="flex flex-col gap-4 p-4">
-          <div className="bg-muted h-4 w-24 animate-pulse rounded" />
-          <div className="flex items-center gap-3.5">
-            <div className="bg-muted h-16 w-16 animate-pulse rounded-full" />
-            <div className="flex flex-col gap-2">
-              <div className="bg-muted h-5 w-40 animate-pulse rounded" />
-              <div className="bg-muted h-3 w-32 animate-pulse rounded" />
-              <div className="bg-muted h-3 w-28 animate-pulse rounded" />
+        {/* The skeleton mirrors the DESTINATION (Docs › Design §D). It used
+            to draw the old anatomy — a wordmark block and a three-line text
+            stack — so the card visibly reshaped on every load. */}
+        <div className="flex flex-col gap-5 p-5">
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex items-center gap-4">
+              <div className="bg-muted h-[65px] w-[65px] animate-pulse rounded-full" />
+              <div className="flex flex-col gap-1">
+                <div className="bg-muted h-5 w-40 animate-pulse rounded" />
+                <div className="bg-muted h-3 w-32 animate-pulse rounded" />
+              </div>
             </div>
+            <div className="bg-muted h-2.5 w-14 animate-pulse rounded" />
           </div>
-          <div className="grid grid-cols-3 gap-1.5">
+          <div className="grid grid-cols-3 gap-2">
             {Array.from({ length: 3 }).map((_, i) => (
-              <div key={i} className="bg-muted h-[84px] animate-pulse rounded-2xl" />
+              <div
+                key={i}
+                className="bg-muted h-[92px] animate-pulse rounded-2xl"
+              />
             ))}
           </div>
         </div>
@@ -179,7 +205,6 @@ export function ProfileSummaryCard({
   const age = ageFromBirthday(profile?.birthday);
   const sexLabel = formatSex(profile?.sex);
   const country = phoneCountry(profile?.phone);
-  const phone = formatPhoneDisplay(profile?.phone);
   const detailLine = [
     age != null ? `${age}` : null,
     sexLabel,
@@ -218,17 +243,52 @@ export function ProfileSummaryCard({
       aria-label="Your Mesita passport"
       className="border-border bg-card w-full overflow-hidden rounded-2xl border shadow-sm"
     >
-      {/* The metal band — the class is the first thing the card says. */}
-      <div className={cn("h-1.5 w-full", CLASS_FILL[key])} />
+      {/* The metal band — the class is the first thing the card says. Hidden
+          from assistive tech on purpose: it is colour-only, and the Class tile
+          below states the same rung in words. */}
+      <div className={cn("h-1.5 w-full", CLASS_FILL[key])} aria-hidden />
 
-      <div className="flex flex-col gap-4 p-4">
-        <div className="flex items-center justify-between gap-3">
-          <MesitaLogo className="text-primary h-[18px] w-auto" />
+      <div className="flex flex-col gap-5 p-5">
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex min-w-0 items-center gap-4">
+            <div
+              className={cn("shrink-0 rounded-full p-[2.5px]", CLASS_FILL[key])}
+              aria-hidden
+            >
+              <div className="bg-card rounded-full p-[2px]">
+                <div className="bg-muted relative h-[60px] w-[60px] overflow-hidden rounded-full">
+                  {avatarUrl ? (
+                    <Image
+                      src={avatarUrl}
+                      alt={name}
+                      fill
+                      sizes="60px"
+                      className="object-cover"
+                    />
+                  ) : (
+                    <DefaultAvatar className="h-full w-full" />
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div className="flex min-w-0 flex-col gap-1">
+              <h2 className="font-display truncate text-[22px] leading-tight font-semibold tracking-tight">
+                {name}
+              </h2>
+              {detailLine && (
+                <p className="text-muted-foreground truncate text-[12px]">
+                  {detailLine}
+                </p>
+              )}
+            </div>
+          </div>
+
+          {/* Status, not control. The bordered rounded-full pill this replaces
+              wore the app's button shape while being unclickable. */}
           <span
-            className={cn(
-              "border-border text-muted-foreground inline-flex items-center gap-1 rounded-full border px-2 py-1 text-[9px] font-bold tracking-[0.12em] uppercase",
-              isPublic && "text-foreground/70",
-            )}
+            aria-label={`Profile is ${isPublic ? "public" : "private"}`}
+            className="text-muted-foreground mt-1 inline-flex shrink-0 items-center gap-1 text-[10px] font-bold tracking-[0.12em] uppercase"
           >
             {isPublic ? (
               <Unlock className="h-2.5 w-2.5" />
@@ -239,47 +299,9 @@ export function ProfileSummaryCard({
           </span>
         </div>
 
-        <div className="flex items-center gap-3.5">
-          <div
-            className={cn("shrink-0 rounded-full p-[2.5px]", CLASS_FILL[key])}
-          >
-            <div className="bg-card rounded-full p-[2px]">
-              <div className="bg-muted relative h-[60px] w-[60px] overflow-hidden rounded-full">
-                {avatarUrl ? (
-                  <Image
-                    src={avatarUrl}
-                    alt={name}
-                    fill
-                    sizes="60px"
-                    className="object-cover"
-                  />
-                ) : (
-                  <DefaultAvatar className="h-full w-full" />
-                )}
-              </div>
-            </div>
-          </div>
-
-          <div className="flex min-w-0 flex-col gap-0.5">
-            <h2 className="font-display truncate text-[22px] leading-tight font-semibold tracking-tight">
-              {name}
-            </h2>
-            {detailLine && (
-              <p className="text-muted-foreground truncate text-[12px]">
-                {detailLine}
-              </p>
-            )}
-            {phone && (
-              <p className="text-muted-foreground truncate text-[12px] tabular-nums">
-                {phone}
-              </p>
-            )}
-          </div>
-        </div>
-
         {/* The three things a guest holds. Each taps into the surface that
             owns it — Instagram verify, the Class sheet, Stripe. */}
-        <div className="grid grid-cols-3 items-stretch gap-1.5">
+        <div className="grid grid-cols-3 items-stretch gap-2">
           <Tile
             eyebrow="Instagram"
             Icon={Instagram}
