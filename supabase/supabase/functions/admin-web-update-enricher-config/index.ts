@@ -29,6 +29,7 @@ import {
   readEFEnv,
   requireSuperAdmin,
 } from "../_shared/auth.ts";
+import { normalizeEnrichmentTriggers } from "../_shared/enrich-triggers.ts";
 import { ENRICH_FIELD_LIMITS } from "../_shared/enrich-field-limits.ts";
 import {
   effectiveFunnelValue,
@@ -41,6 +42,11 @@ const GOOGLE_REVIEWS_MAX = ENRICH_FIELD_LIMITS.googleReviews.max;
 const SAVE_TOTAL_IMAGES_MAX = ENRICH_FIELD_LIMITS.photos.max;
 
 type Body = {
+  // The trigger x subprocess matrix. Saved WHOLE: the console always sends the
+  // full grid, and it is normalized (locked cells forced, unknown keys dropped)
+  // before it lands, so a stale client can never write a shape the EFs cannot
+  // read. Vocabulary lives in _shared/enrich-triggers.ts, never in the blob.
+  enrichmentTriggers?: unknown;
   // Image funnel — GATHER. Google: single pre-sorted cap (1–10). Instagram: split
   // into download DEPTH (1–30) + keep-count (1–30, ≤ depth).
   gatherGoogleImages?: number;
@@ -278,6 +284,13 @@ Deno.serve(async (req) => {
     if (lockErr) return jsonError(lockErr, 400);
   }
 
+  if (body.enrichmentTriggers !== undefined) {
+    if (body.enrichmentTriggers === null || typeof body.enrichmentTriggers !== "object") {
+      return jsonError("enrichmentTriggers must be an object", 400);
+    }
+    patch.enrichment_triggers = normalizeEnrichmentTriggers(body.enrichmentTriggers);
+  }
+
   if (Object.keys(patch).length === 0) {
     return jsonError("Nothing to update", 400);
   }
@@ -288,7 +301,7 @@ Deno.serve(async (req) => {
     .update(patch)
     .eq("id", 1)
     .select(
-      "atlas_gather_google_images, atlas_gather_instagram_depth, atlas_gather_instagram_posts, atlas_gather_reviews, atlas_image_vision_enabled, atlas_analyze_google_images, atlas_analyze_instagram_images, atlas_save_total_images, atlas_save_images_to_storage, atlas_image_analysis_prompt, atlas_image_sorting_prompt, atlas_synthesis_quality, atlas_vision_quality, atlas_perplexity_preset, atlas_per_run_cost_cap_usd, atlas_discover_website_n, atlas_discover_instagram_n, atlas_discover_facebook_n, atlas_discover_opentable_n, atlas_discover_ubereats_n, updated_at",
+      "atlas_gather_google_images, atlas_gather_instagram_depth, atlas_gather_instagram_posts, atlas_gather_reviews, atlas_image_vision_enabled, atlas_analyze_google_images, atlas_analyze_instagram_images, atlas_save_total_images, atlas_save_images_to_storage, atlas_image_analysis_prompt, atlas_image_sorting_prompt, atlas_synthesis_quality, atlas_vision_quality, atlas_perplexity_preset, atlas_per_run_cost_cap_usd, atlas_discover_website_n, atlas_discover_instagram_n, atlas_discover_facebook_n, atlas_discover_opentable_n, atlas_discover_ubereats_n, enrichment_triggers, updated_at",
     )
     .single();
   if (error) {
@@ -297,6 +310,9 @@ Deno.serve(async (req) => {
 
   return json({
     ok: true,
+    enrichmentTriggers: normalizeEnrichmentTriggers(
+      (data as { enrichment_triggers?: unknown }).enrichment_triggers ?? null,
+    ),
     atlasGatherGoogleImages: data.atlas_gather_google_images,
     atlasGatherInstagramDepth: data.atlas_gather_instagram_depth,
     atlasGatherInstagramPosts: data.atlas_gather_instagram_posts,

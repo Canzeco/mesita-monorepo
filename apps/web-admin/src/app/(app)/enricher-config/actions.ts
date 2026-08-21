@@ -15,6 +15,52 @@ export type PerplexityPreset =
   | "deep-research"
   | "advanced-deep-research";
 
+
+// ─── Enrichment trigger matrix ─────────────────────────────────────────────
+// The vocabulary (which triggers and subprocesses exist, which cells are
+// locked) is CODE-DEFINED in supabase `_shared/enrich-triggers.ts` and arrives
+// as `enrichmentTriggersMeta`. The console renders whatever the backend
+// declares — it deliberately keeps no copy of the list, because a second copy
+// drifts the first time a subprocess is added.
+
+export type TriggerCostTier = "free" | "low" | "high";
+
+export type EnrichmentTriggerRow = {
+  enabled: boolean;
+  cooldownHours: number;
+  subprocesses: Record<string, boolean>;
+};
+
+export type EnrichmentTriggersConfig = Record<string, EnrichmentTriggerRow>;
+
+export type EnrichmentTriggersMeta = {
+  triggers: { key: string; label: string; blurb: string; staged: boolean }[];
+  subprocesses: {
+    key: string;
+    label: string;
+    step: string;
+    cost: TriggerCostTier;
+    blurb: string;
+  }[];
+  locks: Record<string, Record<string, { value: boolean; reason: string }>>;
+};
+
+type UpdateTriggersResult =
+  | { ok: true; data: EnrichmentTriggersConfig }
+  | { ok: false; error: string };
+
+/** WHOLE-blob save: the page always sends the full grid, never a patch. */
+export async function updateEnrichmentTriggers(
+  enrichmentTriggers: EnrichmentTriggersConfig,
+): Promise<UpdateTriggersResult> {
+  const r = await efInvoke<{ enrichmentTriggers: EnrichmentTriggersConfig }>(
+    "admin-web-update-enricher-config",
+    { enrichmentTriggers },
+  );
+  if (!r.ok) return { ok: false, error: r.error };
+  return { ok: true, data: r.data.enrichmentTriggers };
+}
+
 type SettingsResponse = {
   autoVerifyAiCall: boolean;
   autoVerifyAiEmail: boolean;
@@ -39,6 +85,8 @@ type SettingsResponse = {
   atlasDiscoverFacebookN: number;
   atlasDiscoverOpentableN: number;
   atlasDiscoverUbereatsN: number;
+  enrichmentTriggers: EnrichmentTriggersConfig;
+  enrichmentTriggersMeta: EnrichmentTriggersMeta;
   updatedAt: string | null;
 };
 

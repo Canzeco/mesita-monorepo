@@ -35,6 +35,7 @@ import {
   mapToObject,
   reportEnrichmentStep,
   serveEnrichStage,
+  wants,
 } from "../_shared/enrich-pipeline.ts";
 
 serveEnrichStage("analysis", async (admin, _env, row) => {
@@ -43,6 +44,31 @@ serveEnrichStage("analysis", async (admin, _env, row) => {
   if (!gathered) {
     // Research output missing (shouldn't happen) — send the row back to research.
     await advanceResearchStage(admin, projectId, "research");
+    return;
+  }
+
+  // A run the matrix bought without the image funnel (a cheap liveness refresh
+  // has no business spending vision dollars) still walks the stage machine —
+  // it just hands contents an empty gallery. Contents only writes photos when
+  // the list is non-empty, so the place keeps the gallery it already had.
+  if (!wants(row.subprocesses, "images")) {
+    await reportEnrichmentStep(
+      admin,
+      projectId,
+      "S5",
+      "images",
+      "skipped",
+      "Image analysis skipped — the trigger that queued this run does not buy the image funnel.",
+      { reason: "subprocess_not_requested" },
+    );
+    await advanceResearchStage(admin, projectId, "contents", {
+      analysis: {
+        finalPhotos: [],
+        saved: [],
+        imageAnalysisByUrl: {},
+        diag: { skipped: "images" },
+      },
+    });
     return;
   }
 

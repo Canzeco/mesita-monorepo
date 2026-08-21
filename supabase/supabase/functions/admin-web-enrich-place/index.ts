@@ -124,6 +124,13 @@ Deno.serve(async (req) => {
   // MESITA-453: Enriching covers the whole pipeline (research|analysis|contents),
   // so flip content_status back to generating for light re-enrich modes too.
   await markProjectGenerating(admin, projectId);
+  // Explicit operator intent outranks the trigger matrix: clear whatever
+  // subprocess set the last automatic trigger stamped, so a light re-enrich
+  // queued after (say) an on_visit refresh still runs every step of its stage.
+  await admin
+    .from("place_research")
+    .update({ subprocesses: null })
+    .eq("place_id", projectId);
   await advanceResearchStage(admin, projectId, stage);
   return json({ ok: true, enrichmentTriggered: true, mode, stage });
 });

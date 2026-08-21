@@ -59,11 +59,15 @@ import {
   releaseResearchRow,
   reportEnrichmentStep,
   serveEnrichStage,
+  wants,
 } from "../_shared/enrich-pipeline.ts";
 
 serveEnrichStage("research", async (admin, _env, row) => {
   const projectId = row.place_id;
   const googlePlaceId = row.google_place_id;
+  // What this run bought, per the trigger matrix. S1 (the Google gate) is not
+  // gated: it is the identity spine every stage downstream trusts.
+  const buys = row.subprocesses;
   const GOOGLE_KEY = Deno.env.get("GMP_KEY") ?? Deno.env.get("SUPA_GMP_KEY");
   if (!GOOGLE_KEY) {
     await releaseResearchRow(admin, projectId, "server_misconfigured: missing GMP_KEY");
@@ -118,6 +122,7 @@ serveEnrichStage("research", async (admin, _env, row) => {
   let gmapsInvoked = false;
 
   const gmapsGather = (async () => {
+    if (!wants(buys, "reviews")) return;
     if (!APIFY_KEY || !basics.google_place_id) return;
     gmapsInvoked = true;
     try {
@@ -140,7 +145,7 @@ serveEnrichStage("research", async (admin, _env, row) => {
     }
   })();
 
-  if (PERPLEXITY_KEY) {
+  if (PERPLEXITY_KEY && wants(buys, "serp")) {
     ledger.assertCanAfford(COST.perplexity, "serp");
     const serp = await gatherSerpSummary({ perplexityKey: PERPLEXITY_KEY, name, locationLine, category, perplexityPreset: cfg.perplexityPreset });
     serpSummary = serp.summary;
@@ -159,7 +164,8 @@ serveEnrichStage("research", async (admin, _env, row) => {
   let resolvedOpenTable = basics.opentable_url;
   let resolvedUberEats = basics.uber_eats_url;
 
-  const needsDiscovery = (!!FIRECRAWL_KEY || !!PERPLEXITY_KEY) &&
+  const needsDiscovery = wants(buys, "links") &&
+    (!!FIRECRAWL_KEY || !!PERPLEXITY_KEY) &&
     (!resolvedInstagram || !resolvedFacebook || !resolvedWebsite || !resolvedOpenTable ||
       !resolvedUberEats);
 
@@ -279,8 +285,10 @@ serveEnrichStage("research", async (admin, _env, row) => {
   // category from the Google spine + reviews + the Perplexity SERP blurb (+ IG),
   // and never scrapes the site body. S3 discovery is Firecrawl SEARCH only (no
   // footer scrape) → Agent Y selection.
-  const runInstagram = !!APIFY_KEY && (!!igHandle || !!fbHandleCandidate || !!PERPLEXITY_KEY);
-  const runFacebook = !!APIFY_KEY && !!resolvedFacebook;
+  const runSocial = wants(buys, "social");
+  const runInstagram = runSocial && !!APIFY_KEY &&
+    (!!igHandle || !!fbHandleCandidate || !!PERPLEXITY_KEY);
+  const runFacebook = runSocial && !!APIFY_KEY && !!resolvedFacebook;
   const igCost = runInstagram ? instagramRunCost(cfg.gatherInstagramDepth) : 0;
   const fbCost = runFacebook ? COST.facebook : 0;
   // Reserve the in-flight GMaps spend so IG/FB don't start when the remaining
