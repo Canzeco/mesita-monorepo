@@ -24,6 +24,23 @@
 // gap + px-1). That is why the pill padding is px-1 here and in HomeModeNav —
 // px-2 overflows. A fifth section makes the quarters fifths (83px), which the
 // current labels do NOT fit with icons: re-measure before adding one.
+//
+// EVERY PILL CARRIES A SURFACE (fixed 2026-08-20, Pato: "fix the spaces and
+// bad spacing margin. it looks like shit"). The quarters were already exact —
+// the RAGGED part was never the geometry, it was that only the active pill
+// had a background. Centred text inside four invisible equal columns is read
+// by the eye as four labels with arbitrary gaps, because the eye groups on
+// text edges and the column edges aren't drawn: with labels running 6 to 13
+// characters the measured text-to-text gaps came out 26px / 43px / 56px on a
+// row whose columns are all exactly 105px. Mathematically perfect, optically
+// random. One solid pill among three bare words made it worse — the row read
+// as "a button, and then some labels", not as one segmented control.
+//
+// Drawing the inactive surface fixes it without touching the 25% rule: the
+// rhythm you now perceive is pill EDGES (four equal quarters, uniform gap-1)
+// instead of word edges. A background costs zero width, so the px-1 budget
+// above is untouched. Contrast stays carried by fill, not by presence —
+// active is solid primary + glow, resting is a muted surface.
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -74,7 +91,7 @@ export function InboxSectionNav() {
                   "flex items-center justify-center gap-1 rounded-full px-1 py-2 text-xs font-semibold whitespace-nowrap transition active:scale-[0.98]",
                   active
                     ? "bg-primary text-primary-foreground shadow-glow"
-                    : "text-muted-foreground hover:text-foreground",
+                    : "bg-muted/60 text-muted-foreground hover:bg-muted hover:text-foreground",
                 )}
               >
                 <Icon className="h-3.5 w-3.5 shrink-0" strokeWidth={2.2} />

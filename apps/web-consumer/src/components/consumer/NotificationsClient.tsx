@@ -65,7 +65,11 @@ export function NotificationsClient({ userId }: { userId: string }) {
 
   return (
     <div className="scrollbar-hide flex min-h-0 flex-1 flex-col overflow-y-auto px-4 pb-6">
-      <header className="pt-2">
+      {/* pt-4, not pt-2: Visits and Reservations both open their scroller on
+          `py-4`, so an 8px top here made the content start jump by half a step
+          the moment you tabbed onto Notifications. Same rhythm across all four
+          sections or the row isn't one control. */}
+      <header className="pt-4">
         <h2 className="font-display text-lg font-semibold tracking-tight">
           Your recent moves
         </h2>

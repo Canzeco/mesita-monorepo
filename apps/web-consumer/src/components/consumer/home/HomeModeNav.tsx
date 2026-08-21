@@ -103,8 +103,18 @@ export function HomeModeNav() {
   const pathname = usePathname();
   const [soonTab, setSoonTab] = useState<Tab | null>(null);
 
+  // EVERY PILL CARRIES A SURFACE (fixed 2026-08-20) — the same change landed
+  // on InboxSectionNav in the same pass, because the two rows are one control
+  // and must not drift. Rationale in full lives in that file's header; short
+  // version: exact equal columns still read as ragged when only the active
+  // pill is drawn, since the eye groups on text edges and the column edges are
+  // invisible. Drawing the resting surface makes the perceived rhythm the pill
+  // edges (five equal fifths, uniform gap-1) instead of the words. Zero width
+  // cost, so the px-1 budget documented above is untouched.
   const baseClass =
     "flex items-center justify-center gap-1 rounded-full px-1 py-2 text-xs font-semibold whitespace-nowrap transition active:scale-[0.98]";
+  const restingClass =
+    "bg-muted/60 text-muted-foreground hover:bg-muted hover:text-foreground";
 
   return (
     <div className="border-border bg-background/90 sticky top-0 z-20 shrink-0 border-b backdrop-blur-xl">
@@ -120,10 +130,7 @@ export function HomeModeNav() {
                   key={href}
                   type="button"
                   onClick={() => setSoonTab(tab)}
-                  className={cn(
-                    baseClass,
-                    "text-muted-foreground hover:text-foreground",
-                  )}
+                  className={cn(baseClass, restingClass)}
                 >
                   <Icon className="h-3.5 w-3.5 shrink-0" strokeWidth={2.2} />
                   <span>{label}</span>
@@ -140,7 +147,7 @@ export function HomeModeNav() {
                   baseClass,
                   active
                     ? "bg-primary text-primary-foreground shadow-glow"
-                    : "text-muted-foreground hover:text-foreground",
+                    : restingClass,
                 )}
               >
                 <Icon className="h-3.5 w-3.5 shrink-0" strokeWidth={2.2} />
