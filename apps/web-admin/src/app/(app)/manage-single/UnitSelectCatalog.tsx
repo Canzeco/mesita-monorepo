@@ -12,7 +12,6 @@ import {
   MapPin,
   Plus,
   Search,
-  Star,
   X } from "lucide-react";
 import {
   createUnitFromPlaceId,
@@ -272,16 +271,20 @@ export function UnitSelectCatalog() {
         {hits.length > 0 ? (
           <div className="border-border bg-card mt-4 overflow-hidden rounded-xl border">
             <div className="-mx-0 overflow-x-auto">
-              <table className="w-full min-w-[860px] border-separate border-spacing-0 text-sm">
+              {/* The row IS the pipeline, left to right: seeded → enriched →
+                  verified → partner → promoting (MESITA-1166). Category, Zone
+                  and Google reviews are gone — they describe the place, and
+                  this table answers "how far along is it". */}
+              <table className="w-full min-w-[760px] border-separate border-spacing-0 text-sm">
                 <thead>
                   <tr className="text-muted-foreground bg-muted/30 text-left text-[11px] font-semibold tracking-[0.08em] uppercase">
                     <th className="w-14 px-3 py-2.5 font-semibold">Photo</th>
                     <th className="px-3 py-2.5 font-semibold">Name</th>
-                    <th className="px-3 py-2.5 font-semibold">Category</th>
-                    <th className="px-3 py-2.5 font-semibold">Zone</th>
-                    <th className="px-3 py-2.5 font-semibold">Google reviews</th>
+                    <th className="px-3 py-2.5 text-center font-semibold">Seeded</th>
                     <th className="px-3 py-2.5 text-center font-semibold">Enriched</th>
                     <th className="px-3 py-2.5 text-center font-semibold">Verified</th>
+                    <th className="px-3 py-2.5 text-center font-semibold">Partner</th>
+                    <th className="px-3 py-2.5 text-center font-semibold">Promoting</th>
                     <th className="w-10 px-3 py-2.5" aria-hidden />
                   </tr>
                 </thead>
@@ -437,9 +440,9 @@ function UnitCatalogRow({
   disabled: boolean;
   onPick: () => void;
 }) {
-  const category = unit.category_label ?? unit.category ?? "—";
-  const zone = unit.zone?.trim() || "—";
-  const reviews = formatGoogleReviews(unit.google_stars_overall, unit.google_review_count);
+  // Google's label specifically, not the generated display name (which is
+  // coalesce(mesita_name, google_name) and would hide an operator override).
+  const googleName = unit.google_name?.trim() || unit.name;
 
   return (
     <tr
@@ -465,38 +468,68 @@ function UnitCatalogRow({
       <td className="px-3 py-2.5">
         <UnitThumb photo={unit.photo} name={unit.name} size="sm" />
       </td>
-      <td className="max-w-[220px] px-3 py-2.5">
-        <p className="truncate font-medium">{unit.name}</p>
-        {unit.status && (
-          <p className="text-muted-foreground truncate text-[11px] capitalize">{unit.status}</p>
-        )}
-      </td>
-      <td className="max-w-[160px] px-3 py-2.5">
-        <span className="text-muted-foreground truncate block">{category}</span>
-      </td>
-      <td className="max-w-[140px] px-3 py-2.5">
-        <span className="text-muted-foreground truncate block">{zone}</span>
-      </td>
-      <td className="px-3 py-2.5 whitespace-nowrap">
-        {reviews ? (
-          <span className="text-muted-foreground inline-flex items-center gap-1">
-            <Star className="h-3 w-3 fill-amber-400 text-amber-400" aria-hidden />
-            {reviews}
-          </span>
-        ) : (
-          <span className="text-muted-foreground">—</span>
-        )}
+      <td className="max-w-[260px] px-3 py-2.5">
+        <p className="truncate font-medium">{googleName}</p>
       </td>
       <td className="px-3 py-2.5 text-center">
-        <BoolCell value={unit.enriched} trueLabel="Yes" falseLabel="No" />
+        <BoolCell value={unit.seeded} trueLabel="Yes" falseLabel="No" />
       </td>
       <td className="px-3 py-2.5 text-center">
-        <BoolCell value={unit.verified} trueLabel="Yes" falseLabel="No" accent />
+        <LevelCell level={unit.enrich_level} />
+      </td>
+      <td className="px-3 py-2.5 text-center">
+        <BoolCell value={unit.verified} trueLabel="Yes" falseLabel="No" />
+      </td>
+      <td className="px-3 py-2.5 text-center">
+        <BoolCell value={unit.partner} trueLabel="Yes" falseLabel="No" />
+      </td>
+      <td className="px-3 py-2.5 text-center">
+        <BoolCell value={unit.promoting} trueLabel="Yes" falseLabel="No" accent />
       </td>
       <td className="px-3 py-2.5 text-right">
         <ChevronRight className="text-muted-foreground ml-auto h-4 w-4" aria-hidden />
       </td>
     </tr>
+  );
+}
+
+// ENRICHED is the only non-boolean flag: a 0-3 level off the pipeline stage
+// (place_research walks research → analysis → contents → done). The number
+// carries the value; the three ticks make a row scannable without reading it.
+const LEVEL_TITLE: Record<number, string> = {
+  0: "Seeded only — enrichment has never run",
+  1: "Research gathered",
+  2: "Images analysed",
+  3: "Profile persisted",
+};
+
+function LevelCell({ level }: { level: 0 | 1 | 2 | 3 }) {
+  return (
+    <span
+      className="inline-flex items-center gap-1.5"
+      title={LEVEL_TITLE[level] ?? ""}
+    >
+      <span
+        className={
+          "text-[11px] font-semibold tabular-nums " +
+          (level === 0 ? "text-muted-foreground" : "text-foreground")
+        }
+      >
+        {level}
+      </span>
+      <span className="flex gap-[2px]" aria-hidden>
+        {[1, 2, 3].map((step) => (
+          <span
+            key={step}
+            className={
+              "h-1.5 w-1.5 rounded-[1px] " +
+              (level >= step ? "bg-green-600" : "bg-muted-foreground/25")
+            }
+          />
+        ))}
+      </span>
+      <span className="sr-only">{LEVEL_TITLE[level] ?? `Level ${level}`}</span>
+    </span>
   );
 }
 
@@ -527,18 +560,6 @@ function BoolCell({
   return (
     <span className="text-muted-foreground text-[11px] font-medium">{falseLabel}</span>
   );
-}
-
-function formatGoogleReviews(
-  stars: number | null | undefined,
-  count: number | null | undefined,
-): string | null {
-  const hasStars = typeof stars === "number" && Number.isFinite(stars);
-  const hasCount = typeof count === "number" && Number.isFinite(count);
-  if (!hasStars && !hasCount) return null;
-  const starPart = hasStars ? stars.toFixed(1) : "—";
-  if (!hasCount) return starPart;
-  return `${starPart} · ${count.toLocaleString()}`;
 }
 
 type GooglePlaceDetails = {
