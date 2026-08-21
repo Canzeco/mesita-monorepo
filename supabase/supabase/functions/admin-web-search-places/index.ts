@@ -18,6 +18,8 @@ import {
   readEFEnv,
   requireSuperAdmin,
 } from "../_shared/auth.ts";
+import { isPaidPlan } from "../_shared/membership-enforcement-helpers.ts";
+import { isPlacePromoting } from "../_shared/place-promoting.ts";
 
 type Body = { query?: unknown; limit?: unknown };
 
@@ -46,11 +48,14 @@ Deno.serve(async (req) => {
       ? Math.min(Math.max(bodyRes.body.limit, 1), 50)
       : 25;
 
-  // Catalog table columns need zone / Google reviews / enrichment / listing.
-  // All of these already live on profiles — no join required.
+  // The catalog table is now the PIPELINE in one row (MESITA-1166): seeded →
+  // enriched 0-3 → verified → partner → promoting. Everything except the two
+  // id-scoped reads below lives on profiles, so no join is required here.
+  // google_place_id is the seeded spine; plan + the four rate columns + the
+  // strike/pause fields are what isPlacePromoting weighs.
   // Keep as a single string literal so supabase-js can type the select.
   const cols =
-    "id, slug, name, google_name, category, category_label, status, address, photos, zone, google_stars_overall, google_review_count, content_status, listing_type, updated_at";
+    "id, slug, name, google_name, google_place_id, category, category_label, status, address, photos, zone, google_stars_overall, google_review_count, content_status, listing_type, plan, welcome_free_rate, welcome_premium_rate, free_rate, premium_rate, promo_paused_until, plan_forfeited_at, strike_count, last_strike_at, updated_at";
   let rows: Record<string, unknown>[] = [];
 
   if (q.length === 0) {
@@ -101,14 +106,73 @@ Deno.serve(async (req) => {
     });
   }
 
+  // ── Two id-scoped reads for the flags that are NOT on profiles. ──
+  //
+  // ENRICHED is a LEVEL, not a boolean, and the pipeline already tracks it:
+  // place_research walks research → analysis → contents → done, and its two
+  // payload columns are the evidence of how far a place got. Deriving it here
+  // means no new column, no backfill, and no second source of truth to drift
+  // (Pato ratified "pipeline stage reached", 2026-08-21).
+  //
+  // VERIFIED is ownership proof — an approved project_verifications row. It
+  // used to read `listing_type === "partner"`, which is the partner badge and
+  // a different fact entirely (MESITA-1152).
+  const ids = rows.map((v) => String(v.id)).filter(Boolean);
+
+  const research = new Map<string, { stage: string; gathered: boolean; analysis: boolean }>();
+  const verified = new Set<string>();
+  if (ids.length > 0) {
+    const [researchRes, verificationRes] = await Promise.all([
+      admin
+        .from("place_research")
+        .select("place_id, stage, gathered, analysis")
+        .in("place_id", ids),
+      admin
+        .from("project_verifications")
+        .select("project_id")
+        .eq("status", "approved")
+        .in("project_id", ids),
+    ]);
+    // Best-effort: a flag lookup must never 500 the catalog. A failed read
+    // degrades to level 0 / not-verified, which reads as "less done than it
+    // is" — the safe direction for a status column.
+    if (researchRes.error) {
+      console.error("[search-places] place_research:", researchRes.error.message);
+    }
+    for (const r of (researchRes.data ?? []) as Record<string, unknown>[]) {
+      research.set(String(r.place_id), {
+        stage: String(r.stage ?? ""),
+        gathered: r.gathered != null,
+        analysis: r.analysis != null,
+      });
+    }
+    if (verificationRes.error) {
+      console.error("[search-places] project_verifications:", verificationRes.error.message);
+    }
+    for (const v of (verificationRes.data ?? []) as Record<string, unknown>[]) {
+      verified.add(String(v.project_id));
+    }
+  }
+
+  /** 0 seeded only · 1 research gathered · 2 images analysed · 3 persisted. */
+  function enrichLevel(id: string, contentStatus: string | null): 0 | 1 | 2 | 3 {
+    const r = research.get(id);
+    if (!r || contentStatus === "queued") return 0;
+    if (r.stage === "done") return 3;
+    if (r.analysis) return 2;
+    if (r.gathered) return 1;
+    return 0;
+  }
+
   // Trim photos to the first thumbnail to keep the payload small.
-  // enriched / verified are derived for the Manage Single Place catalog table.
-  // `name` is the generated display column (mesita_name → google_name), so the
-  // label needs no resolution here — never two rows for one place.
+  // `name` is the generated display column (mesita_name → google_name); the
+  // table now shows google_name specifically, so both ride along.
   const places = rows.map((v) => {
+    const id = String(v.id);
     const contentStatus = (v.content_status as string | null) ?? null;
     const listingType = (v.listing_type as string | null) ?? null;
     const label = String(v.name ?? "");
+    const level = enrichLevel(id, contentStatus);
     return {
       id: v.id,
       slug: v.slug,
@@ -125,8 +189,14 @@ Deno.serve(async (req) => {
         typeof v.google_review_count === "number" ? v.google_review_count : null,
       content_status: contentStatus,
       listing_type: listingType,
-      enriched: contentStatus === "ready",
-      verified: listingType === "partner",
+      // The five status flags, in table order.
+      seeded: typeof v.google_place_id === "string" && v.google_place_id.trim() !== "",
+      enrich_level: level,
+      /** Kept for callers that only need "is it done". */
+      enriched: level === 3,
+      verified: verified.has(id),
+      partner: isPaidPlan((v.plan as string | null) ?? null),
+      promoting: isPlacePromoting(v as Parameters<typeof isPlacePromoting>[0]),
       photo: Array.isArray(v.photos) && v.photos.length > 0 ? v.photos[0] : null,
     };
   });

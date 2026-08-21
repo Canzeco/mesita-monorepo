@@ -20,7 +20,10 @@ type Result<T> = { ok: true; data: T } | { ok: false; error: string };
 export type UnitHit = {
   id: string;
   slug: string | null;
+  /** Generated display label: coalesce(mesita_name, google_name). */
   name: string;
+  /** Google's own label. The catalog table shows THIS, not `name`. */
+  google_name: string | null;
   category: string | null;
   category_label: string | null;
   status: string | null;
@@ -31,10 +34,20 @@ export type UnitHit = {
   google_review_count: number | null;
   content_status: string | null;
   listing_type: string | null;
-  /** content_status === "ready" */
+  // ── The five status flags the catalog table renders (MESITA-1166). All
+  //    derived server-side in admin-web-search-places; none is a column.
+  /** google_place_id present — the identity spine every run starts from. */
+  seeded: boolean;
+  /** 0 seeded only · 1 research gathered · 2 images analysed · 3 persisted. */
+  enrich_level: 0 | 1 | 2 | 3;
+  /** enrich_level === 3. Kept for callers that only need "is it done". */
   enriched: boolean;
-  /** listing_type === "partner" */
+  /** An APPROVED project_verifications row — ownership proof, not a badge. */
   verified: boolean;
+  /** plan !== "free" — the place pays Mesita. */
+  partner: boolean;
+  /** Live: paid ∧ strategy above Zero ∧ promo lane open. */
+  promoting: boolean;
 };
 
 // The search EF only guarantees id/name — every other field may be absent,
@@ -57,6 +70,7 @@ function normalizeUnitHit(raw: RawUnitHit): UnitHit {
     id: raw.id,
     slug: raw.slug ?? null,
     name: raw.name,
+    google_name: raw.google_name ?? null,
     category: raw.category ?? null,
     category_label: raw.category_label ?? null,
     status: raw.status ?? null,
@@ -69,8 +83,15 @@ function normalizeUnitHit(raw: RawUnitHit): UnitHit {
       typeof raw.google_review_count === "number" ? raw.google_review_count : null,
     content_status: contentStatus,
     listing_type: listingType,
-    enriched: raw.enriched ?? contentStatus === "ready",
-    verified: raw.verified ?? listingType === "partner",
+    // No listing_type fallbacks here any more: it fuses paying and promoting
+    // into one stale enum, so guessing from it would put a wrong flag on
+    // screen rather than an honest "not yet" (MESITA-1152 / MESITA-1166).
+    seeded: raw.seeded ?? false,
+    enrich_level: raw.enrich_level ?? 0,
+    enriched: raw.enriched ?? raw.enrich_level === 3,
+    verified: raw.verified ?? false,
+    partner: raw.partner ?? false,
+    promoting: raw.promoting ?? false,
   };
 }
 
