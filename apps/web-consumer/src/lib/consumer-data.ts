@@ -74,12 +74,17 @@ export function identityForClassKey(
   return hit ?? LEGACY_CLASS_IDENTITY.standard;
 }
 
-// Elevated = off the floor on EITHER axis — a class above Bronze, or the
+// Elevated = off the floor on EITHER axis — a class above the floor, or the
 // Premium plan. Both unlock the same perk set (better recommendations, 10
 // reservations a month), which is exactly why one predicate spans two axes
 // instead of each surface re-deriving the union.
+//
+// The floor is CLASS_FLOOR.id, not the string "bronze". This predicate is the
+// gate every elevated perk reads, so a hardcoded metal here would outrank the
+// ladder itself: re-seat the floor and the perk would keep unlocking off a
+// rung that no longer sits at the bottom.
 export function isElevatedIdentity({ cls, plan }: ClassIdentity): boolean {
-  return cls !== "bronze" || plan === "premium";
+  return cls !== CLASS_FLOOR.id || plan === "premium";
 }
 
 /** Convenience for the many call sites still holding a raw server class_key. */
@@ -224,6 +229,15 @@ export const PLANS: {
 
 export const PREMIUM_PLAN_PRICE_MXN = PLANS.find((p) => p.id === "premium")!
   .priceMxn;
+
+// The floor — the rung an account is on before it clears anything, found by
+// SHAPE (the one rung with no follower bar) rather than by naming a metal.
+// Bronze holds it today. Symmetric with REACH_ENTRY_CLASS below: one is the
+// rung you start on, the other the first you can climb to, and neither is
+// spelled out anywhere else. `find` takes the first match in ladder order, so
+// even a malformed ladder with two barless rungs resolves to the lower one.
+export const CLASS_FLOOR =
+  CLASSES.find((c) => c.followerThreshold === 0) ?? CLASSES[0];
 
 // The reach entry rung — the lowest class a follower count can open, found by
 // SHAPE (cheapest non-zero bar on the ladder) rather than by naming a metal.

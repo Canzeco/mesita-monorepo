@@ -2,9 +2,11 @@ import type { LucideIcon } from "lucide-react";
 import { DoorOpen, Instagram, Star, UtensilsCrossed } from "lucide-react";
 
 import {
+  CLASS_FLOOR,
   CLASS_ICONS,
   CLASS_ORDER,
   PREMIUM_PLAN_ICON,
+  PREMIUM_PLAN_PRICE_MXN,
   classProperLabel,
   type ClassKey,
   type LegacyClassKey,
@@ -171,7 +173,7 @@ export function PlanRow({ quote, plan }: { quote: RewardQuote; plan: PlanKey }) 
     <Row
       icon={PREMIUM_PLAN_ICON}
       label="Premium"
-      hint="On Bronze · $50 MXN / mo"
+      hint={`On ${CLASS_FLOOR.label} · $${PREMIUM_PLAN_PRICE_MXN} MXN / mo`}
       value={value}
       mine={plan === "premium"}
     />
