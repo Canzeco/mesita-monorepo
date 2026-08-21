@@ -1,8 +1,9 @@
 "use client";
 
 import { CalendarCheck } from "lucide-react";
-import { SHEET_TITLE_CLASS } from "@/lib/ui-classes";
+import { EmptyState } from "@/components/shared";
 import { ReservationsList } from "@/components/consumer/reservations-list";
+import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 
 // Inbox › Reservations — ONE feed (Pato, 2026-08-17: "remove upcoming and
 // history, all in the same feed").
@@ -16,7 +17,21 @@ import { ReservationsList } from "@/components/consumer/reservations-list";
 // Canonical path is /inbox/reservations; /reservations and
 // /saved/reservations redirect here. The singular DETAIL stays at
 // /reservation/[id] — moving the list didn't rename the object.
-
+//
+// THE ZERO STATE IS THE SHARED PRIMITIVE (fixed 2026-08-20). This page used to
+// hand-roll it: a 16x16 `bg-pink-gradient shadow-glow` tile with a WHITE glyph,
+// its own gap-4/py-16 rhythm, and no next step — sitting one tab away from
+// Visits and Orders, which render EmptyState's 14x14 tinted `bg-primary/10`
+// tile on the mt-4/mt-1.5/mt-5 scale with a CTA. Same idea, same row of the
+// same nav, two different visual languages and two different spacing scales:
+// tab across and the artwork changed size, weight and colour treatment.
+//
+// The bespoke markup also carried `h-full`/`min-h-full`, which is why THIS
+// section was the only one that centred correctly while Visits and Orders
+// pinned to the top. That was a local patch over a layout bug, not a fix —
+// the real cause was the Inbox children slot being a block box (see
+// inbox/layout.tsx). With the slot corrected the primitive centres on its own,
+// so the workaround came out with the duplicate styling.
 export const dynamic = "force-dynamic";
 
 export default function InboxReservationsPage() {
@@ -24,20 +39,12 @@ export default function InboxReservationsPage() {
     <ReservationsList
       scope="all"
       empty={
-        <div className="scrollbar-hide h-full overflow-y-auto">
-          <div className="flex min-h-full flex-col items-center justify-center gap-4 px-6 py-16 text-center">
-            <span className="bg-pink-gradient shadow-glow flex h-16 w-16 items-center justify-center rounded-2xl text-white">
-              <CalendarCheck className="h-7 w-7" strokeWidth={2} />
-            </span>
-            <div className="flex flex-col items-center gap-1.5">
-              <h2 className={SHEET_TITLE_CLASS}>No reservations yet</h2>
-              <p className="text-muted-foreground max-w-xs text-sm leading-snug">
-                Reserve a table from any place and Mesita calls to book it —
-                your bookings show up here.
-              </p>
-            </div>
-          </div>
-        </div>
+        <EmptyState
+          icon={CalendarCheck}
+          title="No reservations yet"
+          description="Reserve a table from any place and Mesita calls to book it — your bookings show up here."
+          action={{ label: "Find a place", href: CONSUMER_ROUTES.search }}
+        />
       }
     />
   );
