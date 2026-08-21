@@ -29,12 +29,12 @@ import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 export function PlaceDetailPageHeader({
   placeId: _placeId,
   placeName,
-  listingType,
+  promoting,
   fallbackHref = CONSUMER_ROUTES.home,
 }: {
   placeId: string;
   placeName: string;
-  listingType: "partner" | "web";
+  promoting: boolean;
   /** Where to land when there is no history to pop. */
   fallbackHref?: string;
 }) {
@@ -63,7 +63,7 @@ export function PlaceDetailPageHeader({
       >
         <ArrowLeft className="h-4 w-4" />
       </button>
-      <PlaceDetailTitle placeName={placeName} listingType={listingType} />
+      <PlaceDetailTitle placeName={placeName} promoting={promoting} />
       <div className="h-9 w-9 shrink-0" aria-hidden />
     </header>
   );

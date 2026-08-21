@@ -20,6 +20,7 @@ import { useStartVisit } from "@/lib/hooks/useStartVisit";
 import type { SeedPlace } from "@/lib/ticket-seed";
 import { ERROR_BOX_CLASS, SHEET_TITLE_CLASS } from "@/lib/ui-classes";
 import { cn } from "@/lib/utils";
+import { isPromoting } from "@/lib/promo-rates";
 
 // The Go sheet (MESITA-1072) — what the deck's fifth action button opens.
 //
@@ -69,7 +70,7 @@ export function GoSheet({
   });
   const [orderSoon, setOrderSoon] = useState(false);
 
-  const isPartner = place.listing_type === "partner";
+  const promoting = isPromoting(place);
   const starting = startingId === place.id;
   // A live ticket here means the tap RE-OPENS it instead of making a second
   // one (useStartVisit D5). The row says so up front — otherwise "Visit" reads
@@ -101,19 +102,19 @@ export function GoSheet({
                 but hiding it would tell the guest the app is missing a
                 feature, when the truth is this place isn't a partner yet. */}
             <GoOption
-              Icon={starting ? Loader2 : isPartner ? QrCode : Lock}
+              Icon={starting ? Loader2 : promoting ? QrCode : Lock}
               spin={starting}
               title="Visit"
               hint={
-                !isPartner
-                  ? "Only Mesita Partners run the Mesita reward program."
+                !promoting
+                  ? "This place isn't running a Mesita reward right now."
                   : live
                     ? "You have a live ticket here — open it."
                     : "Start your ticket and show the QR at the table."
               }
               onClick={() => pickPlace(place)}
-              disabled={!isPartner || starting}
-              primary={isPartner}
+              disabled={!promoting || starting}
+              primary={promoting}
             />
 
             {/* ORDER — parked exactly as Inbox › Orders is parked: no table,

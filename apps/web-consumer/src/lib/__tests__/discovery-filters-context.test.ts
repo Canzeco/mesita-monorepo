@@ -14,6 +14,11 @@ import {
 // mirroring promos v11. `visit` must be a REAL predicate (a place that pays
 // for a body in the room), and `order` must stay unselectable while the remote
 // context is parked.
+//
+// The predicate reads the server-computed `promoting` flag, never
+// `listing_type` (MESITA-1150): the enum is written only when something writes
+// the place, so a strike-2 pause left it saying 'partner' over a promo lane
+// that would honor nothing.
 
 function place(over: Partial<Place> = {}): Place {
   return {
@@ -26,10 +31,11 @@ function place(over: Partial<Place> = {}): Place {
   } as Place;
 }
 
-/** A partner running the conservative visits ladder. */
+/** A partner running the conservative visits ladder, lane open. */
 const rewarding = place({
   id: "rewarding",
   listing_type: "partner",
+  promoting: true,
   welcome_free_rate: 20,
   welcome_premium_rate: 30,
   free_rate: 10,
@@ -41,6 +47,19 @@ const noReward = place({ id: "no-reward", listing_type: "partner" });
 
 /** A web listing that never ran the program. */
 const webListing = place({ id: "web", listing_type: "web" });
+
+/** The case the old listing_type gate got wrong: rates still on the row and
+ *  the badge still saying 'partner', but the promo lane is paused, so the
+ *  server answers promoting:false and the guest must not see it offered. */
+const pausedPartner = place({
+  id: "paused",
+  listing_type: "partner",
+  promoting: false,
+  welcome_free_rate: 20,
+  welcome_premium_rate: 30,
+  free_rate: 10,
+  premium_rate: 20,
+});
 
 function filters(over: Partial<DiscoveryFilters> = {}): DiscoveryFilters {
   return { ...DISCOVERY_FILTER_DEFAULTS, ...over };
@@ -105,5 +124,11 @@ describe("discovery context axis", () => {
       expect(DISCOVERY_CONTEXT_META[key].label).toBeTruthy();
       expect(DISCOVERY_CONTEXT_META[key].caption).toBeTruthy();
     }
+  });
+
+  it("`visit` drops a paused partner even though its rates are still on the row", () => {
+    const f = filters({ context: "visit" });
+    const kept = applyDiscoveryFilters([rewarding, pausedPartner], f);
+    expect(kept.map((p) => p.id)).toEqual(["rewarding"]);
   });
 });

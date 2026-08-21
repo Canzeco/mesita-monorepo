@@ -3,7 +3,7 @@
 // public/brand/verified-check.svg. Callers size via className.
 export function VerifiedCheck({
   className,
-  title = "Mesita Partner",
+  title = "Mesita reward here",
 }: {
   className?: string;
   title?: string;

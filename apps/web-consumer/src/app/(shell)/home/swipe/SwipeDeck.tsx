@@ -42,6 +42,7 @@ import {
 } from "./swipe-deck-storage";
 import { SwipeDecisionBadge } from "./swipe-decision-badge";
 import { SwipeExitStamp, SwipeTutorialOverlay } from "./swipe-deck-overlays";
+import { isPromoting } from "@/lib/promo-rates";
 
 const SWIPE_THRESHOLD = 64;
 const SWIPE_VELOCITY = 0.35; // px/ms — a quick flick commits even with small displacement
@@ -432,8 +433,8 @@ function Deck({ places }: { places: Place[] }) {
     try {
       const result = await apiRecommendDeck(supabase, { limit: 50 });
       const sorted = [...result.deck].sort((a, b) => {
-        const aRank = a.listing_type === "partner" ? 0 : 1;
-        const bRank = b.listing_type === "partner" ? 0 : 1;
+        const aRank = isPromoting(a) ? 0 : 1;
+        const bRank = isPromoting(b) ? 0 : 1;
         return aRank - bRank;
       });
       const enriched = sorted.map((v) => enrichPlaceOverview(v));

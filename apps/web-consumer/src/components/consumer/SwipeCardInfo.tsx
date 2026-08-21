@@ -20,6 +20,7 @@ import { formatPlacePriceLevelSymbols } from "@/lib/place-price";
 import { Spinner } from "@/components/shared";
 import { PromoChip } from "./PromoChip";
 import { VerifiedCheck } from "./VerifiedCheck";
+import { isPromoting } from "@/lib/promo-rates";
 
 /** Place fields — padding comes from SWIPE_CARD_FIELDS_INNER on the card face. */
 export function SwipeCardInfo({
@@ -55,7 +56,7 @@ export function SwipeCardInfo({
   // is a MetaChip like every other fact on the card (MESITA-1146): it was
   // hand-rolled as a solid black slab with no icon, which read as a different
   // KIND of thing rather than one more fact about the place.
-  const isVerified = place.listing_type === "partner";
+  const promoting = isPromoting(place);
 
   return (
     <div
@@ -70,7 +71,7 @@ export function SwipeCardInfo({
         <span className={cn("min-w-0", compact && "truncate")}>
           {place.name}
         </span>
-        {isVerified && (
+        {promoting && (
           <VerifiedCheck className="h-[18px] w-[18px] shrink-0 drop-shadow-[0_1px_4px_rgba(0,0,0,0.45)]" />
         )}
       </h2>
@@ -104,13 +105,13 @@ export function SwipeCardInfo({
             Enriching
           </span>
         )}
-        {!isVerified && (
+        {!promoting && (
           <MetaChip compact={compact}>
             {/* The globe matches the place-detail twin, which renders this
                 same state through ProfileMetaChip with a lucide Globe — both
                 surfaces mean "a plain web listing, not a Mesita partner", so
-                both say it the same way. NOT a warning glyph: `isVerified` is
-                partner-only, so this chip is on MOST cards, and alarming the
+                both say it the same way. NOT a warning glyph: most places
+                run no reward, so this chip is on MOST cards, and alarming the
                 default state is noise rather than information. */}
             <span aria-hidden>🌐</span>
             <span className="font-semibold">Not Verified</span>

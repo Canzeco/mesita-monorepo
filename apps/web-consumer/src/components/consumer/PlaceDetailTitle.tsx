@@ -14,14 +14,14 @@ import { VerifiedCheck } from "./VerifiedCheck";
 
 export function PlaceDetailTitle({
   placeName,
-  listingType,
+  promoting,
   className,
 }: {
   placeName: string;
-  listingType?: "partner" | "web";
+  promoting?: boolean;
   className?: string;
 }) {
-  const isVerified = listingType === "partner";
+  const rewarding = promoting === true;
 
   return (
     <div
@@ -31,7 +31,7 @@ export function PlaceDetailTitle({
       )}
     >
       <span className="truncate">{placeName}</span>
-      {isVerified && <VerifiedCheck className="h-4 w-4 shrink-0" />}
+      {rewarding && <VerifiedCheck className="h-4 w-4 shrink-0" />}
     </div>
   );
 }

@@ -7,7 +7,7 @@ import { useEffect, useState } from "react";
 import { apiGetRewardQuote, type RewardQuote } from "@/lib/api/tickets";
 import { useConsumerClass } from "@/lib/class-context";
 import type { PlaceDetail } from "@/lib/mock/place";
-import { placeOffersMesitaRewards } from "@/lib/promo-rates";
+import { isPromoting, placeOffersMesitaRewards } from "@/lib/promo-rates";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 
 import { Box, BoxLabel } from "./box";
@@ -74,11 +74,11 @@ export function RewardsBox({ place }: { place: PlaceDetail }) {
   const quote = quoteRes?.placeId === placeId ? quoteRes.quote : null;
 
   const offersRewards = placeOffersMesitaRewards({
-    listing_type: place.listing_type,
+    promoting: isPromoting(place),
     promo_matrix: place.promo_matrix,
     promo_configured: place.promo_configured === true,
   });
-  const isPartner = place.listing_type === "partner";
+  const promoting = isPromoting(place);
 
   if (!offersRewards) {
     return (
@@ -92,11 +92,11 @@ export function RewardsBox({ place }: { place: PlaceDetail }) {
               This place doesn&apos;t offer rewards
             </p>
             <p className="text-muted-foreground text-xs leading-snug">
-              {isPartner
-                ? "This Mesita Partner isn't running a Mesita reward right now."
+              {promoting
+                ? "This place isn't running a reward you can claim right now."
                 : place.promo_configured
                   ? "Rewards are being set up for this place."
-                  : "Only Mesita Partners run the Mesita reward program — this place is a web listing."}
+                  : "This place doesn't run a Mesita reward yet."}
             </p>
           </div>
         </div>

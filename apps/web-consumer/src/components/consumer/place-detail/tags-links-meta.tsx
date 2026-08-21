@@ -21,6 +21,7 @@ import {
 } from "../place-detail-links";
 import { Box } from "./box";
 import { ChannelChips, TagChips, type ChannelChip } from "./place-link-chips";
+import { isPromoting } from "@/lib/promo-rates";
 
 // ── 9. About lives in @/components/consumer/AboutBox (client). ──────────
 
@@ -79,25 +80,27 @@ function MetaPill({
 export function VerificationBox({ place }: { place: PlaceDetail }) {
   // decision: Tags-harmonic status pill + short support (MESITA-927).
   // Never ShieldAlert for unverified — reads as a security vulnerability.
-  const isPartner = place.listing_type === "partner";
+  // What a guest can act on is whether a reward is LIVE here — not whether
+  // the place pays Mesita, which is Mesita's business and tells them nothing.
+  const promoting = isPromoting(place);
   return (
     <Box
-      title="Verification"
-      icon={isPartner ? BadgeCheck : CircleHelp}
-      iconColor={isPartner ? "text-sky-500" : "text-amber-500"}
+      title="Mesita"
+      icon={promoting ? BadgeCheck : CircleHelp}
+      iconColor={promoting ? "text-sky-500" : "text-amber-500"}
     >
       <div className="flex flex-wrap gap-2">
         <MetaPill
-          label={isPartner ? "Mesita Partner" : "Web listing"}
-          tone={isPartner ? "sky" : "amber"}
+          label={promoting ? "Runs Mesita rewards" : "No reward here yet"}
+          tone={promoting ? "sky" : "amber"}
         />
       </div>
       <p className="text-muted-foreground text-xs leading-relaxed">
-        {isPartner
-          ? "Signed up on Mesita — can run rewards and take reservations."
-          : "Web listing — claim to run Mesita rewards. Free for owners."}
+        {promoting
+          ? "Running a Mesita reward — start a visit and claim it at the table."
+          : "No reward here yet. Owners claim their place to run one — free."}
       </p>
-      {!isPartner && (
+      {!promoting && (
         <a
           href="https://business.mesita.ai/add"
           target="_blank"

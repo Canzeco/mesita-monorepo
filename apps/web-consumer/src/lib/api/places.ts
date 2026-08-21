@@ -24,6 +24,10 @@ type FiscalType = "formal" | "informal";
 type PlacePlan = "free" | "pro" | "ultra";
 
 export type Place = {
+  /** Server-computed per request (MESITA-1150): a guest gets a discount here
+   *  RIGHT NOW. The gate every reward surface reads — `listing_type` is the
+   *  stale collapsed enum and no longer decides anything a guest sees. */
+  promoting?: boolean | null;
   id: string;
   slug: string;
   name: string;

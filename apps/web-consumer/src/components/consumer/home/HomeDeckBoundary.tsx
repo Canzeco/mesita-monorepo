@@ -8,6 +8,7 @@ import {
 import { enrichPlaceOverview } from "@/lib/mock/enrich-overview";
 import { errMsg } from "@/lib/utils";
 import { HomeDeckProvider } from "./HomeDeckContext";
+import { isPromoting } from "@/lib/promo-rates";
 
 // Async server component that fetches the Home deck ONCE and hands it to
 // every /home sub-route via context. It lives inside the /home layout's
@@ -40,8 +41,8 @@ export async function HomeDeckBoundary({ children }: { children: ReactNode }) {
   }
 
   const sorted = [...places].sort((a, b) => {
-    const aRank = a.listing_type === "partner" ? 0 : 1;
-    const bRank = b.listing_type === "partner" ? 0 : 1;
+    const aRank = isPromoting(a) ? 0 : 1;
+    const bRank = isPromoting(b) ? 0 : 1;
     return aRank - bRank;
   });
   const enriched = sorted.map((v) => enrichPlaceOverview(v));

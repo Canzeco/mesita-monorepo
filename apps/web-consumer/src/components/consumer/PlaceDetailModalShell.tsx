@@ -4,6 +4,7 @@ import { PlaceDetailTitle } from "@/components/consumer/PlaceDetailTitle";
 import { SlideOverHeader } from "@/components/consumer/overlay/SlideOverShell";
 import { PlaceActionBar } from "@/components/consumer/place-detail/PlaceActionBar";
 import type { PlaceDetail } from "@/lib/mock/place";
+import { isPromoting } from "@/lib/promo-rates";
 
 // Content chrome for the intercepted /place/[id] route. The sliding panel
 // itself (enter/exit animation, backdrop, ESC, router.back on dismiss) is
@@ -37,7 +38,7 @@ export function PlaceDetailModalShell({
         title={
           <PlaceDetailTitle
             placeName={place.name}
-            listingType={place.listing_type}
+            promoting={isPromoting(place)}
             className="flex-none"
           />
         }

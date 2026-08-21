@@ -130,7 +130,11 @@ function SuggestionLine({
   addState: AddState | undefined;
   onPick: (prediction: PlacePrediction) => void;
 }) {
-  const verified =
+  // `verified_partner_*` is set from an OWNER row in project_members
+  // (_shared/suggest-place-status.ts) — it means the place is claimed, not
+  // that it pays and not that a reward is live. The wire value keeps its
+  // legacy name; the label says what it actually means (MESITA-1150).
+  const claimed =
     prediction.status === "verified_partner_self" ||
     prediction.status === "verified_partner_other";
   const added = addState === "added";
@@ -159,10 +163,10 @@ function SuggestionLine({
           </span>
         )}
       </span>
-      {verified && (
+      {claimed && (
         <BadgeCheck
           className="text-primary h-3.5 w-3.5 shrink-0"
-          aria-label="Mesita Partner"
+          aria-label="Claimed on Mesita"
         />
       )}
       {added && (
