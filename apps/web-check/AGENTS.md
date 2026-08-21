@@ -1,7 +1,7 @@
 <!-- GENERATED — scripts/sync-rules.ts mirrors this file from its sibling CLAUDE.md. Edit CLAUDE.md (root: below its END marker) or scripts/rules-quickstart.md — NEVER this file. -->
 # apps/web-check — Mesita Check, the staff app (check.mesita.ai)
 
-> Monorepo-wide rules: root [`CLAUDE.md`](../../CLAUDE.md) (the quickstart) — read it first. This file adds only package-specific rules.
+> Read root [`CLAUDE.md`](../../CLAUDE.md) first — the quickstart; Notion holds the deep docs. Package-specific rules only below.
 
 - **The staff side of THE TICKET v4 (MESITA-1084/1090/1092):** the waiter scans the QR a guest generated and lands on `/<code>` (`check.mesita.ai/<code>`) — bill, tip, reward and proof at a glance. **Scan · glance · approve — two touches**: one `Aprobar` (freezes the amount; every verdict carries `expectedUpdatedAt`, and a stale render disables it), one `Pedir corrección` with exactly three chips (`bill` · `proof` · `reward`) — the guest fixes it live on the same code, no new QR. Second touch: `Pago recibido` validates and closes. **Staff never judge a TASK** — story/review rows are informational; the ticket-level verdict is the floor's whole job. Unbilled (v3) tickets keep the legacy bill+close path until MESITA-1093. Root page = explainer + hand-typed code fallback; legacy `/check/<code>` redirects.
 - **Proof screenshots don't change the staff job** (MESITA-1030): submissions self-verify, and `shapeCheckPayload` only ships `story.screenshot_url` for pre-v3 leftovers. **Never render the proof image here** — reading it is **Ojo**'s job (admin `/ojo-config`, staged — engine MESITA-1034). Don't grow a per-task verdict, a free-text rejection, or a fourth fix reason.

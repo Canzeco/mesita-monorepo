@@ -1,7 +1,7 @@
 <!-- GENERATED — scripts/sync-rules.ts mirrors this file from its sibling CLAUDE.md. Edit CLAUDE.md (root: below its END marker) or scripts/rules-quickstart.md — NEVER this file. -->
 # apps/web-consumer — consumer app (consumer.mesita.ai)
 
-> Monorepo-wide rules: root [`CLAUDE.md`](../../CLAUDE.md) (the quickstart) — read it first. This file adds only package-specific rules.
+> Read root [`CLAUDE.md`](../../CLAUDE.md) first — the quickstart; Notion holds the deep docs. Package-specific rules only below.
 
 - **Light theme + semantic tokens only** (`bg-card`, `text-foreground`, `border-border`) — never `bg-zinc-900`/`text-white`. Surfaces read **premium**: branded gradients, tinted icon circles, differentiated chips; wireframe stacks = regression. Design map: Notion Docs › Design.
 - **Overlay & loading primitives are mandatory:** route modals = `SlideOverShell`/`BottomSheetShell` from the segment `layout.tsx` (never `page.tsx`); state overlays = `LocalSheet`/`LocalDialog` (never `fixed inset-0`); loading = `Spinner`/`Skeleton`. Z: BottomNav 40 · @modal 120 · local 130 · Toaster 140 · RouteBadge 150. Lint baseline **0**.
