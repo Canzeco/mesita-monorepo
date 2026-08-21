@@ -29,7 +29,7 @@ export function SettingsSection({
     // Same masonry as the Place tab — columns pack top-down (MESITA-399).
     <div className="columns-1 gap-4 pb-8 [&>section]:mb-4 [&>section]:break-inside-avoid [&>details]:mb-4 [&>details]:break-inside-avoid lg:columns-2 lg:gap-5 lg:pb-10 lg:[&>section]:mb-5 lg:[&>details]:mb-5">
       <VisitsCard place={place} />
-      <OrdersCard place={place} />
+      <OrdersCard place={place} onSaved={onSaved} />
       <ReservationsCard place={place} onSaved={onSaved} />
       <TeamSection place={place} />
     </div>
