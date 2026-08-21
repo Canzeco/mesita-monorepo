@@ -105,7 +105,10 @@ const MANAGE_NAV: NavItem[] = [
 // Memo is NOT a row here: Home › Chat is Memo, so its config lives inside
 // Filters Config › Chat rather than as a sibling of the surface it powers.
 const CONFIGURATIONS_NAV: NavItem[] = [
-  { href: "/admin-config", label: "Admin", Icon: ShieldCheck },
+  // Label only (Pato, 2026-08-21): the row lists WHO has access, so it is a
+  // plural noun, not a section. Route, actions and EF names stay `admin-config`
+  // / `admin-web-*` — a rename stops at the label.
+  { href: "/admin-config", label: "Admins", Icon: ShieldCheck },
   MODELS_PARENT,
   SOURCING_PARENT,
   ENRICHER_PARENT,
