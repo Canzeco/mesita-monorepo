@@ -1,36 +1,78 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { Braces, ChevronDown, Fingerprint } from "lucide-react";
-import { type AdminPlace } from "../actions";
+import { getPlaceVerification, type AdminPlace } from "../actions";
 import { CopyIdButton, ReadField } from "../ui";
 import { EnrichmentCard } from "./EnrichmentCard";
-import { PartnerCard, RewardsCard, VerifiedCard } from "./PlaceStateCards";
+import { StatusCard } from "./StatusCard";
 import { formatAbsoluteUtc } from "@/lib/format";
 
 // Admin — the Mesita-internal tab (Pato, 2026-08-04).
 //
-// Three booleans about the place, one box each (MESITA-1148 · MESITA-1152):
-// Verified (someone proved ownership) · Partner (the place pays Mesita) ·
-// Rewards (a guest gets a discount here right now). They used to be one
-// "Verification" card keyed on listing_type === 'partner', which answered
-// none of the three — and that column still fuses the last two. Then
-// Enrichment (WHEN the place re-enriches), Metadata and Embeddings.
+// Admin — the Mesita-internal tab, FOUR boxes (Pato, MESITA-1161: "i don't
+// want lots of fucking boxes"):
 //
-// Live enriching STATUS still lives in unit chrome next to Re-enrich
-// (MESITA-896); the schedule is a setting, so it is a card.
-// Nothing here is business-facing; see nav.ts for why the tab can't leak to
-// web-business.
+//   Status      Verified · Partner · Promoting, three rows in one box.
+//   Enrichment  when the Enricher refreshes this place, and the run-now button.
+//   Embedding   the Place Synthesis text and the vector it becomes.
+//   Metadata    every identifier and timestamp on the place. Nothing else in
+//               the tab carries an id or a date — they all live here.
+//
+// The ownership-verification read is hoisted to this component because two
+// boxes need it (Status for the boolean, Metadata for who and how) and it
+// should cost one request, not two.
+type Verification = {
+  verifiedByEmail: string | null;
+  decidedAt: string | null;
+  method: string | null;
+  decidedVia: string | null;
+};
+
 export function AdminSection({ place }: { place: AdminPlace }) {
+  // undefined = in flight. Distinguished from null so a failed read can render
+  // as "?" rather than a false "not verified".
+  const [verification, setVerification] = useState<Verification | null | undefined>(
+    undefined,
+  );
+  const [verificationError, setVerificationError] = useState<string | null>(null);
+
+  // No sync reset in the effect body (react-hooks/set-state-in-effect): the
+  // shell remounts this tab when the operator switches place, so state starts
+  // undefined on its own.
+  useEffect(() => {
+    let alive = true;
+    getPlaceVerification(place.id).then((r) => {
+      if (!alive) return;
+      if (!r.ok) {
+        setVerificationError(r.error);
+        setVerification(null);
+        return;
+      }
+      setVerificationError(null);
+      setVerification(r.data);
+    });
+    return () => {
+      alive = false;
+    };
+  }, [place.id]);
+
   return (
     // Same masonry as the Place tab — columns pack top-down (MESITA-399).
     <div className="columns-1 gap-4 pb-8 [&>section]:mb-4 [&>section]:break-inside-avoid [&>details]:mb-4 [&>details]:break-inside-avoid lg:columns-2 lg:gap-5 lg:pb-10 lg:[&>section]:mb-5 lg:[&>details]:mb-5">
-      {/* key remounts the loaders when the operator switches units. */}
-      <VerifiedCard key={`verified-${place.id}`} place={place} />
-      <PartnerCard place={place} />
-      <RewardsCard place={place} />
+      <StatusCard
+        place={place}
+        verification={verification}
+        verificationError={verificationError}
+      />
+      {/* key remounts the loader when the operator switches units. */}
       <EnrichmentCard key={`enrich-${place.id}`} place={place} />
-      <MetaCard place={place} />
-      <EmbeddingsCard place={place} />
+      <EmbeddingCard place={place} />
+      <MetaCard
+        place={place}
+        verification={verification}
+        verificationError={verificationError}
+      />
     </div>
   );
 }
@@ -48,10 +90,22 @@ function lastUpdatedBy(place: AdminPlace): "ai" | "human" | null {
   return updated - enriched <= 90_000 ? "ai" : "human";
 }
 
-// Metadata — UID + audit trail only (MESITA-896). Enriching status moved to
-// unit chrome beside Re-enrich. Open by default (MESITA-588); collapsible.
-function MetaCard({ place }: { place: AdminPlace }) {
+// Metadata — EVERY identifier and timestamp on the place, and the only box in
+// the tab that carries one (MESITA-1161: "there the metadata of everything.
+// don't put other metadata in other boxes"). That includes the immutable
+// ownership-verification record: who proved it, how, and when — Status says
+// only whether it happened. Open by default (MESITA-588); collapsible.
+function MetaCard({
+  place,
+  verification,
+  verificationError,
+}: {
+  place: AdminPlace;
+  verification: Verification | null | undefined;
+  verificationError: string | null;
+}) {
   const by = lastUpdatedBy(place);
+  const verifiedBy = verification?.verifiedByEmail ?? null;
   return (
     <details
       className="border-border bg-card shadow-card group rounded-2xl border"
@@ -85,6 +139,17 @@ function MetaCard({ place }: { place: AdminPlace }) {
             </span>
           </span>
         </ReadField>
+        <ReadField label="Slug" boxed>
+          {place.slug ? (
+            <code className="min-w-0 truncate font-mono text-[11px]">
+              {place.slug}
+            </code>
+          ) : (
+            <span className="text-muted-foreground text-xs italic">
+              None — computed on the profiles view.
+            </span>
+          )}
+        </ReadField>
         <ReadField label="Created at" boxed>
           {place.created_at ? formatAbsoluteUtc(place.created_at) : "—"}
         </ReadField>
@@ -105,6 +170,32 @@ function MetaCard({ place }: { place: AdminPlace }) {
             )}
           </span>
         </ReadField>
+        <ReadField label="Ownership verified by" boxed>
+          {verificationError ? (
+            <span className="text-destructive text-xs">{verificationError}</span>
+          ) : verification === undefined ? (
+            <span className="text-muted-foreground text-xs">Checking…</span>
+          ) : !verifiedBy ? (
+            <span className="text-muted-foreground text-xs italic">
+              Nobody has completed ownership verification yet.
+            </span>
+          ) : (
+            <span className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+              <span className="truncate font-mono text-[13px]">{verifiedBy}</span>
+              <span className="text-muted-foreground text-[11px]">
+                {[
+                  verification?.method?.replace(/_/g, " "),
+                  verification?.decidedVia?.replace(/_/g, " "),
+                  verification?.decidedAt
+                    ? formatAbsoluteUtc(verification.decidedAt)
+                    : null,
+                ]
+                  .filter(Boolean)
+                  .join(" · ")}
+              </span>
+            </span>
+          )}
+        </ReadField>
       </div>
     </details>
   );
@@ -122,7 +213,19 @@ function parseEmbeddingVector(raw: AdminPlace["embedding"]): number[] | null {
   return nums.every((n) => Number.isFinite(n)) ? nums : null;
 }
 
-// Embeddings — the Place Synthesis text + the vector it embeds to (MESITA-720).
+// Embedding — the Place Synthesis text + the vector it embeds to (MESITA-720).
+//
+// WHICH ENTITY IS VECTORIZED (Pato asked, MESITA-1161): the PLACE, and only
+// the place. `_shared/embeddings-vector.ts::placeEmbeddingFacts` builds the
+// source from name · category · zone/city · address · price level · About —
+// all `places` columns — and the vector lands on `places.embedding` beside
+// `embedding_source_text` / `embedding_source_hash`. The write goes through
+// the `profiles` view because that is the write door, NOT because a profile
+// or a project is what gets embedded: no plan, no rates, no listing_type, no
+// status is in the vector. That is deliberate — commercial state changes
+// weekly and would poison a semantic index that answers "what is this place
+// like".
+//
 // NOTE: the Place Synthesis is NOT the About/description. About is the
 // human-readable profile copy; the synthesis is a separate, super-concise text
 // purpose-built for semantic search. Written on create + on profile update.
@@ -131,7 +234,7 @@ function parseEmbeddingVector(raw: AdminPlace["embedding"]): number[] | null {
 // ENRICH_FIELD_LIMITS.embeddingSourceText (Atlas Config → Field limits).
 const EMBEDDING_SOURCE_TEXT_MAX_WORDS = 60;
 
-function EmbeddingsCard({ place }: { place: AdminPlace }) {
+function EmbeddingCard({ place }: { place: AdminPlace }) {
   const text = (place.embedding_source_text ?? "").trim();
   const wordCount = text ? text.split(/\s+/).filter(Boolean).length : 0;
   const vector = parseEmbeddingVector(place.embedding);
@@ -148,12 +251,14 @@ function EmbeddingsCard({ place }: { place: AdminPlace }) {
         </span>
         <div className="min-w-0 flex-1">
           <h2 className="font-display text-base font-semibold tracking-tight">
-            Embeddings
+            Embedding
           </h2>
           <p className="text-muted-foreground mt-0.5 text-xs leading-relaxed">
-            The Place Synthesis — a super-concise text (≤{EMBEDDING_SOURCE_TEXT_MAX_WORDS}{" "}
-            words) built FOR semantic search (not the human About), and the vector
-            OpenAI embeds it into. Cap lives in Atlas Config → Field limits.
+            What gets vectorized is the PLACE — name, category, zone, address,
+            price level and About, synthesized into ≤{EMBEDDING_SOURCE_TEXT_MAX_WORDS}{" "}
+            words FOR semantic search (never the human About itself, never the
+            plan or the rates). Stored on the place row; cap lives in
+            Configurations → Enrichment.
           </p>
         </div>
         <ChevronDown
