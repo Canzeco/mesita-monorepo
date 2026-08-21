@@ -10,11 +10,11 @@ describe("dirtySectionLabels", () => {
   it("returns labels in UI order", () => {
     expect(
       dirtySectionLabels({
-        "require-bill": true,
+        visits: true,
         place: true,
         products: true,
       }),
-    ).toEqual(["Place", "Products", "Require bill"]);
+    ).toEqual(["Place", "Products", "Visits"]);
   });
 
   it("omits falsey keys", () => {
@@ -27,9 +27,9 @@ describe("dirtySectionLabels", () => {
     expect(
       dirtySectionLabels({
         reservations: true,
-        "check-pin": true,
+        visits: true,
       }),
-    ).toEqual(["Reservations", "Check PIN"]);
+    ).toEqual(["Visits", "Reservations"]);
   });
 });
 

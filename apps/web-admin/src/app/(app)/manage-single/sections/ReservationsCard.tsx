@@ -17,6 +17,14 @@ import { SaveBar, SectionCard } from "../ui";
 // operator sees the roadmap and that each channel binds a *different* contact
 // (`phone` / `whatsapp_url` / `instagram_url`) — both parked with Soon until
 // a Messages path ships (MESITA-839).
+//
+// The rail this feeds (MESITA-1148 review): a guest books, a
+// reservation_ticket opens at `pending`, and the a1–a4 agent graphs call THIS
+// number until the ticket lands — confirmed · declined · unreachable ·
+// no_show · cancelled · unresolved. Retries, callbacks and negotiation rounds
+// are Mesita-wide (Configurations → Reservations); the number is the only
+// per-place decision, which is why it is the only control in this box. The
+// place answers a phone and nothing else: no login, no dashboard, no app.
 
 const str = (v: unknown) => (typeof v === "string" ? v : "");
 
@@ -168,12 +176,16 @@ export function ReservationsCard({
       icon={<CalendarCheck className="h-4 w-4" />}
       tint="teal"
       title="Reservations"
-      subtitle="Mesita's AI agent books by phone — the Reservationist is voice-only today."
+      subtitle="Mesita's AI agent books the table by phone — the Reservationist is voice-only today."
     >
-      <p className="text-muted-foreground mt-5 text-xs">
-        Each channel uses its own contact from Place → Channels (Phone,
-        WhatsApp, Instagram). Only Phone is live; WhatsApp and Instagram are
-        coming soon.
+      <p className="text-muted-foreground mt-5 text-xs leading-relaxed">
+        A guest books, and the agent calls this number until it has an answer —
+        confirmed, declined, or unreachable after its retries — then tells the
+        guest. The place answers a phone and nothing else: no login, no
+        dashboard. Each channel binds its own contact from Place → Channels;
+        only Phone is live. How many times it calls back, and how it negotiates
+        an alternative time, are Mesita-wide under Configurations →
+        Reservations.
       </p>
       <div className="mt-3.5 grid gap-3.5">
         <div className="flex flex-col gap-1.5">

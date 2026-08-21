@@ -2,9 +2,12 @@
 export const DIRTY_SECTION_ORDER = [
   "place",
   "products",
+  // One key per Settings box, in box order (MESITA-1148): the Check PIN and
+  // Require-bill cards merged into Visits, so their two keys became this one.
+  "visits",
   "reservations",
-  "check-pin",
-  "require-bill",
+  // Admin tab.
+  "enrichment",
 ] as const;
 
 export type DirtySectionKey = (typeof DIRTY_SECTION_ORDER)[number];
@@ -12,9 +15,9 @@ export type DirtySectionKey = (typeof DIRTY_SECTION_ORDER)[number];
 export const DIRTY_SECTION_LABELS: Record<DirtySectionKey, string> = {
   place: "Place",
   products: "Products",
+  visits: "Visits",
   reservations: "Reservations",
-  "check-pin": "Check PIN",
-  "require-bill": "Require bill",
+  enrichment: "Enrichment",
 };
 
 /** Human labels for currently-dirty sections, in UI order. */

@@ -16,7 +16,8 @@
 // always wins: their edit is the newer fact about the bill.
 //
 // Body:     { code, pin?, expectedUpdatedAt }
-// Response: { ok: true, already? } | 404 | 409 stale_ticket / fix_outstanding / stale_state | 429
+// Response: { ok: true, already? } | 404 | 409 stale_ticket / fix_outstanding /
+//           stale_state / bill_required | 429
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { corsPreflight, json, readJson, rejectUnlessMethods } from "../_shared/http.ts";
@@ -92,6 +93,27 @@ Deno.serve(async (req) => {
         code: "stale_state",
         status: ticket.status,
         error: `Ticket is ${ticket.status} — nothing to approve.`,
+      },
+      409,
+    );
+  }
+
+  // Bill-required gate (MESITA-898 · MESITA-1148): the place opted out of the
+  // optional bill, so an unbilled ticket cannot be approved. The gate lives
+  // HERE, at the verdict, and not at check-web-validate-ticket: approval is
+  // the moment the amount freezes and the last moment staff can still act —
+  // they enter the bill, or send the ticket back with fix='bill'. A gate at
+  // the close would dead-end a ticket the floor had already approved, with
+  // the guest standing there. Same billed test as get-ticket/submit-bill.
+  const billed = (ticket.total_cents ?? 0) > 0 ||
+    (ticket.bill_subtotal_cents ?? 0) > 0;
+  if (settings.requireBill && !billed) {
+    return json(
+      {
+        ok: false,
+        code: "bill_required",
+        error:
+          "This place requires the bill amount on record before the ticket can be approved.",
       },
       409,
     );

@@ -15,6 +15,13 @@
 // records paid_method='at_place'. (Deliberate widening of §12's paying-only
 // row; logged on MESITA-1092.)
 //
+// NOT gated on projects.check_require_bill, deliberately (MESITA-1148): that
+// gate fires at check-web-approve-ticket, the verdict. Everything this EF
+// accepts is already approved, so a second gate here could only strand a
+// ticket the floor had approved — the guest has paid and there would be no
+// way to close. The v3 close (check-web-mark-paid) keeps its own gate,
+// because it closes straight from `open` with no verdict in between.
+//
 // Body:     { code, pin? }
 // Response: { ok: true, alreadyPaid? } | 404 | 409 | 429
 

@@ -11,6 +11,10 @@
 //   • status — enrichment progress for the place: projects.content_status +
 //     the place_research stage/status/error + last_enriched_at (the moment the
 //     pipeline last reached stage='done').
+//   • schedule — the per-place cadence (MESITA-1148): places.enrich_every_days
+//     / enrich_mode / enrich_next_at, written by admin-web-set-place-enrichment
+//     and honoured by the queue_due_place_enrichments cron. NULL everyDays =
+//     manual only.
 //
 // Internal enricher output — super-admin gated, admin console only. Never
 // exposed through a shared business EF.
@@ -53,7 +57,7 @@ Deno.serve(async (req) => {
   const projectId = readPlaceIdAlias(bodyRes.body);
   if (!projectId) return jsonError("Missing projectId", 400);
 
-  const [mediaRes, projectRes, researchRes] = await Promise.all([
+  const [mediaRes, projectRes, researchRes, placeRes] = await Promise.all([
     admin
       .from("place_media_assets")
       .select(
@@ -71,6 +75,11 @@ Deno.serve(async (req) => {
       .select("stage, status, error, updated_at")
       .eq("place_id", projectId)
       .maybeSingle(),
+    admin
+      .from("places")
+      .select("enrich_every_days, enrich_mode, enrich_next_at, enriched_at")
+      .eq("id", projectId)
+      .maybeSingle(),
   ]);
 
   if (mediaRes.error) {
@@ -81,6 +90,9 @@ Deno.serve(async (req) => {
   }
   if (researchRes.error) {
     return jsonError(`place_research: ${researchRes.error.message}`, 500);
+  }
+  if (placeRes.error) {
+    return jsonError(`places: ${placeRes.error.message}`, 500);
   }
 
   const rows = (mediaRes.data ?? []) as MediaRow[];
@@ -106,5 +118,24 @@ Deno.serve(async (req) => {
     updated_at: research?.updated_at ?? null,
   };
 
-  return json({ ok: true, media, status, count: rows.length });
+  const placeRow = placeRes.data as
+    | {
+        enrich_every_days: number | null;
+        enrich_mode: string | null;
+        enrich_next_at: string | null;
+        enriched_at: string | null;
+      }
+    | null;
+
+  const schedule = {
+    everyDays: placeRow?.enrich_every_days ?? null,
+    mode: placeRow?.enrich_mode ?? "full",
+    nextAt: placeRow?.enrich_next_at ?? null,
+    // places.enriched_at is stamped by the contents stage on a successful
+    // persist — the durable "last enriched", where status.last_enriched_at
+    // only survives while the research row still sits at 'done'.
+    lastEnrichedAt: placeRow?.enriched_at ?? null,
+  };
+
+  return json({ ok: true, media, status, schedule, count: rows.length });
 });

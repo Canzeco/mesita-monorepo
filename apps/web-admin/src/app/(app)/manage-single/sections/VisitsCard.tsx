@@ -8,49 +8,58 @@ import {
   useState,
   useTransition,
 } from "react";
-import { KeyRound } from "lucide-react";
-import { setCheckPin, type AdminPlace } from "../actions";
+import { Receipt } from "lucide-react";
+import { setCheckGates, type AdminPlace } from "../actions";
 import { useSectionDirty } from "../useSectionDirty";
 import { SaveBar, SectionCard } from "../ui";
 
-// Rewards Check PIN — optional staff gate on the public check page (MESITA-823).
+// Visits — ONE box for the visit ticket, the local context (MESITA-1148).
 //
-// Pato: "you scan a qr, and you need some 6 digits PIN to mark ticket as
-// done. optional. but maybe big companies want that so there you have it."
+// Pato: "don't create lots of boxes. just create a box for visits / orders /
+// reservations — but not fucking lots of visits." The Check PIN (MESITA-823)
+// and Require bill (MESITA-898) were two cards saying the same thing twice:
+// both are gates on the same check page, on the same ticket. One box, one
+// save — business-web-set-check-pin takes both keys in a single call.
 //
-// This is NOT a waiter account (MESITA-833 stands — staff hold no identity).
-// It is ONE shared 6-digit secret per place: the manager briefs the floor
-// with it, and check-page WRITE actions (bill, story/review verdict, paid)
-// require it. Blank = off, which is the default and keeps the two-tap close.
-export function CheckPinCard({ place }: { place: AdminPlace }) {
-  const saved = useMemo(
+// The v4 machine underneath (MESITA-1086/1090/1092):
+//   open → scanned → approved → paying → revealed
+// with fix_requested (bill · proof · reward) a COLUMN at `scanned`, never a
+// status: a send-back keeps the same QR. What a visit PAYS is the Promos
+// grid; the tip chips, poll cadence and pay rails are Visits Config. Only
+// these two gates are the place's own call.
+const LIFECYCLE = ["Open", "Scanned", "Approved", "Paying", "Closed"];
+
+export function VisitsCard({ place }: { place: AdminPlace }) {
+  const savedPin = useMemo(
     () => (typeof place.check_pin === "string" ? place.check_pin : ""),
     [place.check_pin],
   );
-  const [pin, setPin] = useState(saved);
-  const [current, setCurrent] = useState(saved);
+  const savedRequireBill = place.check_require_bill === true;
+
+  const [pin, setPin] = useState(savedPin);
+  const [requireBill, setRequireBill] = useState(savedRequireBill);
+  const [current, setCurrent] = useState({
+    pin: savedPin,
+    requireBill: savedRequireBill,
+  });
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [ok, setOk] = useState(false);
   const pinInputRef = useRef<HTMLInputElement>(null);
 
-  const dirty = pin !== current;
+  const dirty = pin !== current.pin || requireBill !== current.requireBill;
   const valid = pin === "" || /^[0-9]{6}$/.test(pin);
 
   const resetDraft = useCallback(() => {
-    setPin(current);
+    setPin(current.pin);
+    setRequireBill(current.requireBill);
     setError(null);
     setOk(false);
   }, [current]);
-  useSectionDirty("check-pin", dirty, resetDraft);
+  useSectionDirty("visits", dirty, resetDraft);
 
   const focusPin = () => {
     window.requestAnimationFrame(() => pinInputRef.current?.focus());
-  };
-
-  const clearPin = () => {
-    setPin("");
-    focusPin();
   };
 
   const save = () => {
@@ -61,60 +70,129 @@ export function CheckPinCard({ place }: { place: AdminPlace }) {
     setError(null);
     setOk(false);
     start(async () => {
-      const r = await setCheckPin(place.id, pin === "" ? null : pin);
+      const r = await setCheckGates(place.id, {
+        pin: pin === "" ? null : pin,
+        requireBill,
+      });
       if (!r.ok) {
         setError(r.error);
         return;
       }
-      const next = r.data ?? "";
+      const next = { pin: r.data.pin ?? "", requireBill: r.data.requireBill };
       setCurrent(next);
-      setPin(next);
+      setPin(next.pin);
+      setRequireBill(next.requireBill);
       setOk(true);
       window.setTimeout(() => setOk(false), 2500);
     });
   };
 
+  const gatesOn = (current.pin !== "" ? 1 : 0) + (current.requireBill ? 1 : 0);
+
   return (
     <SectionCard
-      icon={<KeyRound className="h-4 w-4" />}
+      icon={<Receipt className="h-4 w-4" />}
       tint="amber"
-      title="Rewards Check PIN"
-      subtitle="Optional 6-digit code staff must enter on the check page before billing or closing a ticket."
+      title="Visits"
+      subtitle="The guest's ticket at the table — what the place's staff must do before they can approve or close one."
       action={
         <span
           className={
             "inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-semibold " +
-            (current
+            (gatesOn > 0
               ? "bg-amber-500/10 text-amber-700"
               : "bg-muted text-muted-foreground")
           }
         >
-          {current ? "Gate on" : "Gate off"}
+          {gatesOn === 0
+            ? "No gates"
+            : gatesOn === 1
+              ? "1 gate on"
+              : "2 gates on"}
         </span>
       }
     >
-      <p className="text-muted-foreground mt-5 text-xs leading-relaxed">
-        The QR itself is the authentication — anyone holding it can work the
-        ticket. Turn this on and the place&apos;s staff also need a shared code,
-        so a guest (or a passer-by who photographed the QR) can&apos;t self-bill.
-        Scanning and viewing never ask for it; only bill, story/review verdicts
-        and &ldquo;paid received&rdquo; do. Clear all six digits to keep the
-        two-tap close.
+      <ol className="mt-5 flex flex-wrap items-center gap-x-1.5 gap-y-1">
+        {LIFECYCLE.map((step, i) => (
+          <li key={step} className="flex items-center gap-1.5">
+            <span className="bg-muted text-muted-foreground rounded-full px-2 py-0.5 text-[10px] font-semibold tracking-wide uppercase">
+              {step}
+            </span>
+            {i < LIFECYCLE.length - 1 ? (
+              <span className="text-muted-foreground/50 text-[10px]" aria-hidden>
+                →
+              </span>
+            ) : null}
+          </li>
+        ))}
+      </ol>
+      <p className="text-muted-foreground mt-3 text-xs leading-relaxed">
+        The guest opens the ticket, staff scan the QR, and one tap approves it —
+        that tap freezes the amount. Staff can instead send it back for ONE
+        named fix (bill, proof or reward) without issuing a new QR. Tip chips,
+        pay rails and how fast each side polls are Mesita-wide, under
+        Configurations → Visits.
       </p>
-      <div className="mt-4 flex flex-col gap-1.5">
+
+      <div className="border-border/60 mt-5 border-t pt-4">
+        <div className="flex items-center justify-between gap-3">
+          <span className="text-foreground/90 text-[13px] font-medium">
+            Bill amount required
+          </span>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={requireBill}
+            aria-label={`Bill amount required ${requireBill ? "on" : "off"}`}
+            disabled={pending}
+            onClick={() => setRequireBill((v) => !v)}
+            className={
+              "relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition disabled:opacity-50 " +
+              (requireBill ? "bg-pink-gradient" : "bg-border")
+            }
+          >
+            <span
+              className={
+                "absolute h-4 w-4 rounded-full bg-white shadow transition " +
+                (requireBill ? "translate-x-4" : "translate-x-0.5")
+              }
+            />
+          </button>
+        </div>
+        <p className="text-muted-foreground mt-1.5 text-[11px] leading-relaxed">
+          Off by default: the bill is the place&apos;s own control, not a gate —
+          staff can close a ticket without it and apply the discount at their
+          own point of sale. On, and staff can&apos;t approve or close until the
+          subtotal has been entered.
+        </p>
+      </div>
+
+      <div className="border-border/60 mt-4 border-t pt-4">
         <div className="flex min-h-4 items-center justify-between gap-2">
-          <span className="text-foreground/90 text-[13px] font-medium">PIN</span>
+          <span className="text-foreground/90 text-[13px] font-medium">
+            Staff PIN
+          </span>
           {pin !== "" ? (
             <button
               type="button"
               disabled={pending}
-              onClick={clearPin}
+              onClick={() => {
+                setPin("");
+                focusPin();
+              }}
               className="text-muted-foreground hover:text-foreground text-[11px] font-medium underline-offset-2 hover:underline disabled:opacity-50"
             >
               Clear to edit
             </button>
           ) : null}
         </div>
+        <p className="text-muted-foreground mt-1.5 mb-2.5 text-[11px] leading-relaxed">
+          The QR itself is the authentication — anyone holding it can work the
+          ticket. Set a shared 6-digit code and every staff-side write asks for
+          it (scan, bill, approve, send-back, close), so a guest who
+          photographed the QR can&apos;t self-approve. Reading the ticket never
+          asks. Not a waiter login: one code per place, briefed to the floor.
+        </p>
         <PinDigits
           ref={pinInputRef}
           value={pin}
@@ -123,24 +201,25 @@ export function CheckPinCard({ place }: { place: AdminPlace }) {
           hasError={pin !== "" && !valid}
         />
         {pin !== "" && !valid ? (
-          <span className="text-xs font-medium text-amber-700">
+          <span className="mt-1.5 block text-xs font-medium text-amber-700">
             Needs all 6 digits.
           </span>
         ) : (
-          <span className="text-muted-foreground text-[11px]">
+          <span className="text-muted-foreground mt-1.5 block text-[11px]">
             Click a digit to edit from there · type over a full PIN to replace
-            it · clear all to turn the gate off.
+            it · clear all six to turn the gate off.
           </span>
         )}
       </div>
+
       <SaveBar
         pending={pending}
-        dirtyLabel="Rewards Check PIN · unsaved"
+        dirtyLabel="Visits · unsaved"
         dirty={dirty}
         ok={ok}
         error={error}
         onSave={save}
-        onCancel={() => setPin(current)}
+        onCancel={resetDraft}
       />
     </SectionCard>
   );
@@ -161,11 +240,7 @@ const PinDigits = forwardRef<
   const cells = Array.from({ length: 6 }, (_, i) => value[i] ?? "");
   // Highlight the next empty cell while typing; when full and focused,
   // highlight the last cell so the row still reads as live/editable.
-  const focusIndex = !focused
-    ? -1
-    : value.length < 6
-      ? value.length
-      : 5;
+  const focusIndex = !focused ? -1 : value.length < 6 ? value.length : 5;
 
   const focusEl = () => {
     const el = typeof ref === "object" && ref ? ref.current : null;
@@ -190,9 +265,7 @@ const PinDigits = forwardRef<
         autoComplete="off"
         maxLength={6}
         value={value}
-        onChange={(e) =>
-          onChange(e.target.value.replace(/\D/g, "").slice(0, 6))
-        }
+        onChange={(e) => onChange(e.target.value.replace(/\D/g, "").slice(0, 6))}
         onKeyDown={(e) => {
           // Full PIN + a new digit → replace from scratch (settings edit).
           if (
@@ -209,7 +282,7 @@ const PinDigits = forwardRef<
         onFocus={() => setFocused(true)}
         onBlur={() => setFocused(false)}
         disabled={disabled}
-        aria-label="6-digit rewards check PIN"
+        aria-label="6-digit staff PIN"
         aria-invalid={hasError}
         // pointer-events-none so clicks hit the cells (edit-from-index);
         // keyboard still works once focused via cell click / Clear / tab.
@@ -244,9 +317,7 @@ const PinDigits = forwardRef<
                     : filled
                       ? "border-foreground/20"
                       : "border-border") +
-                (disabled
-                  ? " cursor-not-allowed opacity-60"
-                  : " cursor-text")
+                (disabled ? " cursor-not-allowed opacity-60" : " cursor-text")
               }
             >
               {char || (

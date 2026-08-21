@@ -1,106 +1,36 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import {
-  BadgeCheck,
-  Braces,
-  ChevronDown,
-  Fingerprint,
-  Mail,
-  ShieldCheck,
-} from "lucide-react";
-import {
-  getPlaceVerification,
-  type AdminPlace,
-} from "../actions";
-import { CopyIdButton, ReadField, SectionCard } from "../ui";
+import { Braces, ChevronDown, Fingerprint } from "lucide-react";
+import { type AdminPlace } from "../actions";
+import { CopyIdButton, ReadField } from "../ui";
+import { EnrichmentCard } from "./EnrichmentCard";
+import { PartnerCard, PlanCard, VerifiedCard } from "./PlaceStateCards";
 import { formatAbsoluteUtc } from "@/lib/format";
 
 // Admin — the Mesita-internal tab (Pato, 2026-08-04).
-// Verification (Mesita Partner badge + immutable verified-by email),
-// Metadata (UID + audit trail), Embeddings. Enriching status lives in unit
-// chrome next to Re-enrich (MESITA-896) — not here, not as a Place body card.
+//
+// Three facts about the place, one box each (MESITA-1148): Verified (someone
+// proved ownership) · Plan (what it pays Mesita) · Partner (a guest gets a
+// discount here right now). They used to be one "Verification" card keyed on
+// listing_type === 'partner', which answered none of the three. Then
+// Enrichment (WHEN the place re-enriches), Metadata and Embeddings.
+//
+// Live enriching STATUS still lives in unit chrome next to Re-enrich
+// (MESITA-896); the schedule is a setting, so it is a card.
 // Nothing here is business-facing; see nav.ts for why the tab can't leak to
 // web-business.
 export function AdminSection({ place }: { place: AdminPlace }) {
   return (
     // Same masonry as the Place tab — columns pack top-down (MESITA-399).
     <div className="columns-1 gap-4 pb-8 [&>section]:mb-4 [&>section]:break-inside-avoid [&>details]:mb-4 [&>details]:break-inside-avoid lg:columns-2 lg:gap-5 lg:pb-10 lg:[&>section]:mb-5 lg:[&>details]:mb-5">
-      {/* key remounts the loader when the operator switches units. */}
-      <VerificationCard key={place.id} place={place} />
+      {/* key remounts the loaders when the operator switches units. */}
+      <VerifiedCard key={`verified-${place.id}`} place={place} />
+      <PlanCard place={place} />
+      <PartnerCard place={place} />
+      <EnrichmentCard key={`enrich-${place.id}`} place={place} />
       <MetaCard place={place} />
       <EmbeddingsCard place={place} />
     </div>
-  );
-}
-
-function VerificationCard({ place }: { place: AdminPlace }) {
-  // Mesita Partner badge — listing_type='partner' (membership ∧ strategy ≠ zero).
-  const verified = place.listing_type === "partner";
-  // Immutable email stamped on the approved ownership-verification row —
-  // distinct from project_members owners (those live in Settings → Team).
-  const [verifiedByEmail, setVerifiedByEmail] = useState<string | null | undefined>(
-    undefined,
-  );
-  const [verifiedByError, setVerifiedByError] = useState<string | null>(null);
-
-  useEffect(() => {
-    let alive = true;
-    getPlaceVerification(place.id).then((r) => {
-      if (!alive) return;
-      if (!r.ok) {
-        setVerifiedByError(r.error);
-        setVerifiedByEmail(null);
-        return;
-      }
-      setVerifiedByError(null);
-      setVerifiedByEmail(r.data.verifiedByEmail);
-    });
-    return () => {
-      alive = false;
-    };
-  }, [place.id]);
-
-  return (
-    <SectionCard
-      icon={<ShieldCheck className="h-4 w-4" />}
-      tint="emerald"
-      title="Verification"
-      subtitle="Mesita Partner status Mesita grants, plus the immutable email of who completed ownership proof."
-    >
-      <div className="mt-5 grid gap-4">
-        <ReadField label="Status" boxed>
-          {verified ? (
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200/80 bg-emerald-50/80 px-2.5 py-1 text-[11px] font-semibold text-emerald-800">
-              <BadgeCheck className="h-3.5 w-3.5" />
-              Verified
-            </span>
-          ) : (
-            <span className="border-border/70 bg-card text-foreground/80 inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-semibold">
-              Not verified
-            </span>
-          )}
-        </ReadField>
-        <ReadField label="Verified by" boxed>
-          {verifiedByError ? (
-            <span className="text-destructive text-xs">{verifiedByError}</span>
-          ) : verifiedByEmail === undefined ? (
-            <span className="text-muted-foreground text-xs">Checking…</span>
-          ) : verifiedByEmail == null ? (
-            <span className="text-muted-foreground text-xs italic">
-              Nobody has completed ownership verification yet.
-            </span>
-          ) : (
-            <span className="flex min-w-0 items-center gap-2 text-sm">
-              <Mail className="text-muted-foreground h-3.5 w-3.5 shrink-0" />
-              <span className="truncate font-mono text-[13px]">
-                {verifiedByEmail}
-              </span>
-            </span>
-          )}
-        </ReadField>
-      </div>
-    </SectionCard>
   );
 }
 
