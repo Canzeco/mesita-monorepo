@@ -3,7 +3,7 @@
 import { efInvoke } from "@/lib/supabase-ef";
 
 // ─── Reset database ─────────────────────────────────────────────────────
-// Moved here from Admin Config (2026-07-26): DB-wide operator actions live on
+// Moved here from Admins (2026-07-26): DB-wide operator actions live on
 // the DB Config page now.
 //
 // A reset is TWO jobs behind one button: a single fast DB wipe, then a purge

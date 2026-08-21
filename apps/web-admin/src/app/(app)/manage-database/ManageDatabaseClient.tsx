@@ -6,7 +6,7 @@ import { PageContainer, PageHeader } from "@/components/PageContainer";
 import { continueStoragePurge, resetDatabase } from "./actions";
 
 // Manage Database — database-wide operator actions. Today: reset the
-// environment (moved here from Admin Config 2026-07-26). Super-admins only.
+// environment (moved here from Admins 2026-07-26). Super-admins only.
 
 // Must match the EF's CONFIRM_PHRASE.
 const CONFIRM_PHRASE = "RESET";
