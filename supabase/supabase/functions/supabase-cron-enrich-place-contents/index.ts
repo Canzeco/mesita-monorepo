@@ -24,7 +24,11 @@
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { invokeInternalCaller } from "../_shared/internal.ts";
-import { applyProfileToUpdate, synthesisModelFor, synthesizeProfile } from "../_shared/enrich-synthesis.ts";
+import {
+  applyProfileToUpdate,
+  synthesisModelFor,
+  synthesizeProfile,
+} from "../_shared/enrich-synthesis.ts";
 import { COST, loadEnrichConfig } from "../_shared/enrich-config.ts";
 import {
   costFromGathered,
@@ -32,7 +36,10 @@ import {
   synthesisRunCost,
 } from "../_shared/enrich-cost.ts";
 import { runPlaceEmbeddingsOnUpdate } from "../_shared/place-embeddings.ts";
-import { fetchPlaceCategories, inferPlaceCategory } from "../_shared/categories.ts";
+import {
+  fetchPlaceCategories,
+  inferPlaceCategory,
+} from "../_shared/categories.ts";
 import { fetchPlaceTags, inferPlaceTags } from "../_shared/tags.ts";
 import { loadModelsConfig } from "../_shared/models-config.ts";
 import {
@@ -48,9 +55,12 @@ import {
   releaseResearchRow,
   reportEnrichmentStep,
   serveEnrichStage,
+  wants,
 } from "../_shared/enrich-pipeline.ts";
 
 serveEnrichStage("contents", async (admin, env, row) => {
+  // What this run bought, per the trigger matrix (NULL = everything).
+  const buys = row.subprocesses;
   const projectId = row.place_id;
   const { gathered, analysis } = row;
   if (!gathered) {
@@ -64,11 +74,18 @@ serveEnrichStage("contents", async (admin, env, row) => {
   }
   const OPENAI_KEY = Deno.env.get("OPENAI_KEY");
   if (!OPENAI_KEY) {
-    await releaseResearchRow(admin, projectId, "server_misconfigured: missing OPENAI_KEY");
+    await releaseResearchRow(
+      admin,
+      projectId,
+      "server_misconfigured: missing OPENAI_KEY",
+    );
     return;
   }
   const cfg = await loadEnrichConfig(admin);
-  const ledger = createEnrichCostLedger(cfg.perRunCostCapUsd, costFromGathered(gathered));
+  const ledger = createEnrichCostLedger(
+    cfg.perRunCostCapUsd,
+    costFromGathered(gathered),
+  );
 
   const place: Record<string, unknown> = { ...gathered.place };
   // `gathered.place` deliberately carries NO name keys: the research stage
@@ -92,62 +109,89 @@ serveEnrichStage("contents", async (admin, env, row) => {
   // ━━━ S7 — synthesis + category + tags ━━━
   // Admin cost model: synthesis + 2 × classify calls (category then tags);
   // classify model = models_config.enricher.model (MESITA-941/942).
-  const synthCost = synthesisRunCost(cfg.synthesisQuality);
-  const classifyCost = COST.sort * 2;
-  ledger.assertCanAfford(synthCost + classifyCost, "synthesis_and_classify");
+  const sources: Record<string, unknown> = {
+    ...gathered.sources,
+    image_funnel: analysis.diag,
+  };
+  // S7 is the step that REWRITES the profile prose. A trigger that only bought
+  // a liveness refresh must never re-synthesize: About, category and tags stay
+  // exactly as they are, and only what research resolved is persisted below.
+  let inferredTags: string[] = [];
+  if (!wants(buys, "synthesis")) {
+    sources.synthesis = { skipped: "subprocess_not_requested" };
+  } else {
+    const synthCost = synthesisRunCost(cfg.synthesisQuality);
+    const classifyCost = COST.sort * 2;
+    ledger.assertCanAfford(synthCost + classifyCost, "synthesis_and_classify");
 
-  const { parsed, diag: synthDiag } = await synthesizeProfile({
-    openaiKey: OPENAI_KEY,
-    model: synthesisModelFor(cfg.synthesisQuality),
-    name,
-    locationLine: gathered.locationLine,
-    category,
-    igBio,
-    googleReviewsText,
-    serpSummary,
-  });
-  ledger.charge("synthesis", synthCost);
-  const sources: Record<string, unknown> = { ...gathered.sources, image_funnel: analysis.diag, synthesis: synthDiag };
-  if (parsed) applyProfileToUpdate(place, parsed);
+    const { parsed, diag: synthDiag } = await synthesizeProfile({
+      openaiKey: OPENAI_KEY,
+      model: synthesisModelFor(cfg.synthesisQuality),
+      name,
+      locationLine: gathered.locationLine,
+      category,
+      igBio,
+      googleReviewsText,
+      serpSummary,
+    });
+    ledger.charge("synthesis", synthCost);
+    sources.synthesis = synthDiag;
+    if (parsed) applyProfileToUpdate(place, parsed);
 
-  // About first (above), then category, then tags — each step feeds the next.
-  // Category + tags both ground primarily on the synthesized About.
-  const [categoryList, tagVocabulary, models] = await Promise.all([
-    fetchPlaceCategories(admin),
-    fetchPlaceTags(admin),
-    loadModelsConfig(admin),
-  ]);
-  // 'undefined' is the create-path placeholder, not a real category — never
-  // offer it to the classifier (thin-signal places would land there).
-  const realCategories = categoryList.filter((c) => c.slug !== "undefined");
-  const aboutText = ((place.description ?? null) as string | null)?.slice(0, 1500) || null;
-  const enricherModel = models.enricherModel;
-  const inferredCategory = await inferPlaceCategory(OPENAI_KEY, realCategories, {
-    name,
-    address: (place.address ?? null) as string | null,
-    editorialSummary: (place.editorial_summary ?? null) as string | null,
-    // Prefer the About we just synthesized; fall back to IG bio when synthesis
-    // produced nothing (thin harvest).
-    description: aboutText || igBio || null,
-  }, enricherModel);
-  if (inferredCategory) {
-    place.category = inferredCategory;
-    place.category_label =
-      realCategories.find((c) => c.slug === inferredCategory)?.label ??
-      humanizeCategorySlug(inferredCategory) ?? inferredCategory;
+    // About first (above), then category, then tags — each step feeds the next.
+    // Category + tags both ground primarily on the synthesized About.
+    const [categoryList, tagVocabulary, models] = await Promise.all([
+      fetchPlaceCategories(admin),
+      fetchPlaceTags(admin),
+      loadModelsConfig(admin),
+    ]);
+    // 'undefined' is the create-path placeholder, not a real category — never
+    // offer it to the classifier (thin-signal places would land there).
+    const realCategories = categoryList.filter((c) => c.slug !== "undefined");
+    const aboutText =
+      ((place.description ?? null) as string | null)?.slice(0, 1500) || null;
+    const enricherModel = models.enricherModel;
+    const inferredCategory = await inferPlaceCategory(
+      OPENAI_KEY,
+      realCategories,
+      {
+        name,
+        address: (place.address ?? null) as string | null,
+        editorialSummary: (place.editorial_summary ?? null) as string | null,
+        // Prefer the About we just synthesized; fall back to IG bio when synthesis
+        // produced nothing (thin harvest).
+        description: aboutText || igBio || null,
+      },
+      enricherModel,
+    );
+    if (inferredCategory) {
+      place.category = inferredCategory;
+      place.category_label = realCategories.find((c) =>
+        c.slug === inferredCategory
+      )?.label ??
+        humanizeCategorySlug(inferredCategory) ?? inferredCategory;
+    }
+    const categoryForTags = (place.category ?? category) as string | null;
+    inferredTags = await inferPlaceTags(OPENAI_KEY, tagVocabulary, {
+      name,
+      category: categoryForTags,
+      description: aboutText,
+      googleReviewsText,
+      serpSummary,
+    }, enricherModel);
+    if (inferredTags.length > 0) place.tags = inferredTags;
+    ledger.charge("category_tags", classifyCost);
+    sources.category = {
+      ok: !!inferredCategory,
+      slug: inferredCategory,
+      candidates: realCategories.length,
+    };
+    sources.tags = {
+      ok: inferredTags.length > 0,
+      count: inferredTags.length,
+      vocabulary: tagVocabulary.length,
+    };
   }
-  const categoryForTags = (place.category ?? category) as string | null;
-  const inferredTags = await inferPlaceTags(OPENAI_KEY, tagVocabulary, {
-    name,
-    category: categoryForTags,
-    description: aboutText,
-    googleReviewsText,
-    serpSummary,
-  }, enricherModel);
-  if (inferredTags.length > 0) place.tags = inferredTags;
-  ledger.charge("category_tags", classifyCost);
-  sources.category = { ok: !!inferredCategory, slug: inferredCategory, candidates: realCategories.length };
-  sources.tags = { ok: inferredTags.length > 0, count: inferredTags.length, vocabulary: tagVocabulary.length };
   sources.cost = ledger.snapshot();
 
   // Selected Reservation Endpoint (Docs › Reservations §C / MESITA-597 / MESITA-842) —
@@ -163,7 +207,9 @@ serveEnrichStage("contents", async (admin, env, row) => {
     .select("reservations_config")
     .eq("id", 1)
     .maybeSingle();
-  const reservationsPolicy = coerceReservationsPolicy(settingsRow?.reservations_config);
+  const reservationsPolicy = coerceReservationsPolicy(
+    settingsRow?.reservations_config,
+  );
 
   const { data: liveContacts } = await admin
     .from("places")
@@ -172,12 +218,19 @@ serveEnrichStage("contents", async (admin, env, row) => {
     .maybeSingle();
   const liveProducts = liveContacts?.products ?? null;
   let reservationChannel: string | null = null;
-  if (reservationsPolicy.respectAdminOverride && hasReservationTarget(liveProducts)) {
+  if (
+    reservationsPolicy.respectAdminOverride &&
+    hasReservationTarget(liveProducts)
+  ) {
     const existing = (liveProducts as Record<string, unknown>).reservations as {
       channel?: string;
     };
     reservationChannel = existing.channel ?? null;
-    sources.reservation_endpoint = { ok: true, via: "admin_override", channel: reservationChannel };
+    sources.reservation_endpoint = {
+      ok: true,
+      via: "admin_override",
+      channel: reservationChannel,
+    };
   } else {
     const candidates = {
       phone: (liveContacts?.phone as string | null | undefined) ?? null,
@@ -198,7 +251,8 @@ serveEnrichStage("contents", async (admin, env, row) => {
 
   // Captured for the single stage beacon below — a dropped/missing About must
   // be visible in the feed, not claimed as written.
-  const aboutWritten = typeof place.description === "string" && place.description.length > 0;
+  const aboutWritten = typeof place.description === "string" &&
+    place.description.length > 0;
 
   // ━━━ S8 — persist the profile (direct UPDATE; this EF IS the DB layer) ━━━
   // Strip identity/timestamps so the DB owns them; keys absent are untouched
@@ -231,13 +285,27 @@ serveEnrichStage("contents", async (admin, env, row) => {
     name?: unknown;
     google_name?: unknown;
   };
-  const { error: placeErr } = await admin.from("places").update(placeUpdate).eq("id", projectId);
+  const { error: placeErr } = await admin.from("places").update(placeUpdate).eq(
+    "id",
+    projectId,
+  );
   if (placeErr) {
     // Persist failed — the run is aborted here, so this failed beacon IS the
     // stage's single notification.
-    await reportEnrichmentStep(admin, projectId, "S7", "publish", "failed",
-      "Profile persist failed — the place record was not updated.", { error: placeErr.message });
-    await releaseResearchRow(admin, projectId, `place_update: ${placeErr.message}`);
+    await reportEnrichmentStep(
+      admin,
+      projectId,
+      "S7",
+      "publish",
+      "failed",
+      "Profile persist failed — the place record was not updated.",
+      { error: placeErr.message },
+    );
+    await releaseResearchRow(
+      admin,
+      projectId,
+      `place_update: ${placeErr.message}`,
+    );
     return;
   }
   const { error: projErr } = await admin
@@ -245,20 +313,26 @@ serveEnrichStage("contents", async (admin, env, row) => {
     .update({ content_status: "ready" })
     .eq("id", projectId);
   if (projErr) {
-    await releaseResearchRow(admin, projectId, `content_status: ${projErr.message}`);
+    await releaseResearchRow(
+      admin,
+      projectId,
+      `content_status: ${projErr.message}`,
+    );
     return;
   }
 
   // On-Update S2/S3 — synthesize short embedding blurb (no tags) + vector.
   // Best-effort: profile is already ready; a failed embed leaves lazy
   // lazy embedding backfill as the safety net.
-  const openaiKey = Deno.env.get("OPENAI_KEY")?.trim();
-  await runPlaceEmbeddingsOnUpdate(
-    admin,
-    projectId,
-    openaiKey,
-    "enrich-contents/on-update",
-  );
+  if (wants(buys, "embedding")) {
+    const openaiKey = Deno.env.get("OPENAI_KEY")?.trim();
+    await runPlaceEmbeddingsOnUpdate(
+      admin,
+      projectId,
+      openaiKey,
+      "enrich-contents/on-update",
+    );
+  }
 
   // ━━━ S9 — store images (own EF: storage mirroring gets its own wall clock) ━━━
   // Profile is already persisted (ready); image mirroring is best-effort — a
@@ -267,7 +341,12 @@ serveEnrichStage("contents", async (admin, env, row) => {
   const assets = buildMediaAssets(gathered, analysis);
   let imagesSummary: string;
   const imagesMeta: Record<string, unknown> = {};
-  if (!cfg.saveImagesToStorage) {
+  if (!wants(buys, "photos")) {
+    // The trigger did not buy storage mirroring; photos still render from
+    // their source URLs, exactly as when the admin toggle is off.
+    imagesSummary = "image storage skipped (trigger)";
+    imagesMeta.images = "skipped";
+  } else if (!cfg.saveImagesToStorage) {
     // Admin turned Storage mirroring off — photos still render from their
     // source URLs; we just don't copy binaries into the bucket.
     imagesSummary = "image storage disabled (admin)";
@@ -277,7 +356,11 @@ serveEnrichStage("contents", async (admin, env, row) => {
       env,
       "supabase-cron-enrich-place-contents",
       "supabase-edgefunc-store-place-images",
-      { project_id: projectId, assets, preferred_photo_urls: analysis.finalPhotos },
+      {
+        project_id: projectId,
+        assets,
+        preferred_photo_urls: analysis.finalPhotos,
+      },
     );
     if (storeRes.ok) {
       const queued = storeRes.data.queued ?? assets.length;
@@ -296,15 +379,27 @@ serveEnrichStage("contents", async (admin, env, row) => {
 
   // One beacon for the whole contents stage (S7–S9) — one notification per
   // function. Reports synthesis + persist + image outcome in a single line.
-  await reportEnrichmentStep(admin, projectId, "S7", "publish", "completed",
-    `Enrichment complete for “${name}” — About ${aboutWritten ? "written" : "MISSING"}, category “${place.category ?? "n/a"}”, ${inferredTags.length} tag(s), reservation ${reservationChannel ?? "—"}; ${imagesSummary}.`,
+  await reportEnrichmentStep(
+    admin,
+    projectId,
+    "S7",
+    "publish",
+    "completed",
+    `Enrichment complete for “${name}” — About ${
+      aboutWritten ? "written" : "MISSING"
+    }, category “${
+      place.category ?? "n/a"
+    }”, ${inferredTags.length} tag(s), reservation ${
+      reservationChannel ?? "—"
+    }; ${imagesSummary}.`,
     {
       about: aboutWritten,
       category: place.category ?? null,
       tags: inferredTags.length,
       reservation: reservationChannel,
       ...imagesMeta,
-    });
+    },
+  );
 
   await advanceResearchStage(admin, projectId, "done");
 });

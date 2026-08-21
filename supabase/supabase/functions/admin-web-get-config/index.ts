@@ -10,13 +10,22 @@
 // Auth: caller's JWT email must be in public.super_admins.
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, jsonError, jsonOk, rejectUnlessMethods } from "../_shared/http.ts";
+import {
+  corsPreflight,
+  jsonError,
+  jsonOk,
+  rejectUnlessMethods,
+} from "../_shared/http.ts";
 import {
   adminClient,
   getAuthedUser,
   readEFEnv,
   requireSuperAdmin,
 } from "../_shared/auth.ts";
+import {
+  enrichmentTriggersMeta,
+  normalizeEnrichmentTriggers,
+} from "../_shared/enrich-triggers.ts";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
@@ -35,7 +44,7 @@ Deno.serve(async (req) => {
   const { data, error } = await admin
     .from("app_config")
     .select(
-      "auto_verify_ai_call, auto_verify_ai_email, auto_verify_video, atlas_gather_google_images, atlas_gather_instagram_depth, atlas_gather_instagram_posts, atlas_gather_reviews, atlas_image_vision_enabled, atlas_analyze_google_images, atlas_analyze_instagram_images, atlas_save_total_images, atlas_save_images_to_storage, atlas_image_analysis_prompt, atlas_image_sorting_prompt, atlas_synthesis_quality, atlas_vision_quality, atlas_perplexity_preset, atlas_per_run_cost_cap_usd, atlas_discover_website_n, atlas_discover_instagram_n, atlas_discover_facebook_n, atlas_discover_opentable_n, atlas_discover_ubereats_n, updated_at",
+      "auto_verify_ai_call, auto_verify_ai_email, auto_verify_video, atlas_gather_google_images, atlas_gather_instagram_depth, atlas_gather_instagram_posts, atlas_gather_reviews, atlas_image_vision_enabled, atlas_analyze_google_images, atlas_analyze_instagram_images, atlas_save_total_images, atlas_save_images_to_storage, atlas_image_analysis_prompt, atlas_image_sorting_prompt, atlas_synthesis_quality, atlas_vision_quality, atlas_perplexity_preset, atlas_per_run_cost_cap_usd, atlas_discover_website_n, atlas_discover_instagram_n, atlas_discover_facebook_n, atlas_discover_opentable_n, atlas_discover_ubereats_n, enrichment_triggers, updated_at",
     )
     .eq("id", 1)
     .maybeSingle();
@@ -46,7 +55,8 @@ Deno.serve(async (req) => {
     return jsonError("app_config missing", 500);
   }
 
-  return jsonOk({ autoVerifyAiCall: data.auto_verify_ai_call,
+  return jsonOk({
+    autoVerifyAiCall: data.auto_verify_ai_call,
     autoVerifyAiEmail: data.auto_verify_ai_email,
     autoVerifyVideo: data.auto_verify_video,
     atlasGatherGoogleImages: data.atlas_gather_google_images,
@@ -69,5 +79,10 @@ Deno.serve(async (req) => {
     atlasDiscoverFacebookN: data.atlas_discover_facebook_n,
     atlasDiscoverOpentableN: data.atlas_discover_opentable_n,
     atlasDiscoverUbereatsN: data.atlas_discover_ubereats_n,
-    updatedAt: data.updated_at, });
+    enrichmentTriggersMeta: enrichmentTriggersMeta(),
+    enrichmentTriggers: normalizeEnrichmentTriggers(
+      (data as { enrichment_triggers?: unknown }).enrichment_triggers ?? null,
+    ),
+    updatedAt: data.updated_at,
+  });
 });

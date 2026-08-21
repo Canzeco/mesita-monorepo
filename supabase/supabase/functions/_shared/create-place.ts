@@ -11,7 +11,11 @@
 // queue); only auth, dedupe copy, and response shaping differ per EF.
 
 import { type SupabaseClient } from "jsr:@supabase/supabase-js@2";
-import { seedPlaceResearch } from "./enrich-pipeline.ts";
+import {
+  loadEnrichmentTriggers,
+  seedPlaceResearch,
+  subprocessesFor,
+} from "./enrich-pipeline.ts";
 import { fetchGoogleBasics } from "./enrich-google-basics.ts";
 import { savePlaceData } from "./save-place.ts";
 import { queuePlaceEmbeddingsOnUpdate } from "./place-embeddings.ts";
@@ -176,7 +180,20 @@ export async function createMinimalPlace(opts: {
   // stage='research'; the pg_cron poller picks it up
   // (supabase-cron-enrich-place-*). A seed failure NEVER fails the create —
   // the row exists ('generating') and can be re-seeded. ──
-  const trigger = await seedPlaceResearch(admin, saved.project_id, googlePlaceId, callerName);
+  // The on_create row of the trigger matrix decides what this first run buys.
+  // An operator who turns the whole row off gets a place with only its Google
+  // spine, which is a legitimate (if unusual) way to run a cheap catalog.
+  const triggers = await loadEnrichmentTriggers(admin);
+  const subprocesses = subprocessesFor(triggers, "on_create");
+  const trigger = subprocesses.length > 0
+    ? await seedPlaceResearch(
+      admin,
+      saved.project_id,
+      googlePlaceId,
+      callerName,
+      subprocesses,
+    )
+    : { ok: false as const, error: "on_create disabled in the enrichment trigger matrix" };
 
   const channelCount = CHANNEL_KEYS.filter((k) => !!place[k]).length;
   return {

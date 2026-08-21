@@ -32,6 +32,7 @@ import { corsPreflight, json, readJson, rejectUnlessMethods } from "./http.ts";
 import { adminClient, type EFEnv, readEFEnv } from "./auth.ts";
 import { requireInternalCaller } from "./internal.ts";
 import { isEnrichCostCapError } from "./enrich-cost.ts";
+import type { SubprocessKey } from "./enrich-triggers.ts";
 import {
   advanceResearchStage,
   failResearchRow,
@@ -43,6 +44,14 @@ import {
 } from "./enrich-pipeline-stage.ts";
 
 export { buildMediaAssets, mapToObject } from "./enrich-media-assets.ts";
+
+export {
+  loadEnrichmentTriggers,
+  type SubprocessKey,
+  subprocessesFor,
+  type TriggerKey,
+  wants,
+} from "./enrich-triggers.ts";
 
 export {
   advanceResearchStage,
@@ -65,6 +74,9 @@ export type PlaceResearchRow = {
   gathered: GatheredPayload | null;
   analysis: AnalysisPayload | null;
   error: string | null;
+  // The subprocess set this run bought, resolved from the trigger matrix at
+  // seed time. NULL = run everything (pre-matrix rows, manual re-enrich).
+  subprocesses: SubprocessKey[] | null;
 };
 
 // ── Stage payloads ───────────────────────────────────────────────────────────

@@ -2,6 +2,7 @@
 // Extracted from enrich-pipeline.ts (stage claim / advance / fail I/O).
 
 import { type SupabaseClient } from "jsr:@supabase/supabase-js@2";
+import type { SubprocessKey } from "./enrich-triggers.ts";
 import type {
   AnalysisPayload,
   GatheredPayload,
@@ -45,6 +46,8 @@ export async function seedPlaceResearch(
   projectId: string,
   googlePlaceId: string,
   createdBy: string,
+  // NULL keeps the pre-matrix contract: the stage EFs run every subprocess.
+  subprocesses: SubprocessKey[] | null = null,
 ): Promise<{ ok: boolean; error?: string }> {
   const { error } = await admin.from("place_research").upsert({
     place_id: projectId,
@@ -55,6 +58,7 @@ export async function seedPlaceResearch(
     gathered: null,
     analysis: null,
     error: null,
+    subprocesses,
     created_by: createdBy,
     updated_at: new Date().toISOString(),
   }, { onConflict: "place_id" });
@@ -72,7 +76,7 @@ export async function loadClaimedRow(
 ): Promise<{ ok: true; row: PlaceResearchRow } | { ok: false; reason: string }> {
   const { data, error } = await admin
     .from("place_research")
-    .select("place_id, google_place_id, stage, status, attempts, gathered, analysis, error")
+    .select("place_id, google_place_id, stage, status, attempts, gathered, analysis, error, subprocesses")
     .eq("place_id", projectId)
     .maybeSingle();
   if (error) return { ok: false, reason: `row_read: ${error.message}` };
