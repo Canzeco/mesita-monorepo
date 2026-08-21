@@ -7,6 +7,7 @@ import {
   Camera,
   Instagram,
   MapPin,
+  MessageCircle,
   ShoppingBag,
   Sparkles,
   Users,
@@ -316,7 +317,7 @@ export function FeaturedVisitsBox({
                   {v.discount_percent}% off
                 </Chip>
               )}
-              {v.reviewed && <Chip icon={Sparkles}>Reviewed</Chip>}
+              {v.reviewed && <Chip icon={MessageCircle}>Reviewed</Chip>}
             </div>
           </article>
         ))
@@ -342,7 +343,7 @@ export function FeaturedOrdersBox() {
       <EmptyRail
         icon={ShoppingBag}
         title="Ordering isn't live yet"
-        body="When guests can order through Mesita, their orders here will show up in this box."
+        body="When guests can order through Mesita, their orders will show up here."
       />
     </Box>
   );
