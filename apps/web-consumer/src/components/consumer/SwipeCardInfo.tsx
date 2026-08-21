@@ -51,7 +51,10 @@ export function SwipeCardInfo({
   const statusLabel = getOpeningStatusLabel(place);
   const isOpen = place.open_now === true;
   // decision: Pato (MESITA-933) — verified = blue check disc beside name;
-  // unverified = no disc, "Not Verified" tag in the chip row (black / gray).
+  // unverified = no disc, a "Not Verified" chip in the row instead. That chip
+  // is a MetaChip like every other fact on the card (MESITA-1146): it was
+  // hand-rolled as a solid black slab with no icon, which read as a different
+  // KIND of thing rather than one more fact about the place.
   const isVerified = place.listing_type === "partner";
 
   return (
@@ -102,16 +105,16 @@ export function SwipeCardInfo({
           </span>
         )}
         {!isVerified && (
-          <span
-            className={cn(
-              "inline-flex items-center gap-1.5 rounded-md border border-white/15 bg-black font-semibold whitespace-nowrap text-neutral-300",
-              compact
-                ? "px-[9px] py-[3px] text-[11px]"
-                : "px-2.5 py-1 text-[11.5px]",
-            )}
-          >
-            Not Verified
-          </span>
+          <MetaChip compact={compact}>
+            {/* The globe matches the place-detail twin, which renders this
+                same state through ProfileMetaChip with a lucide Globe — both
+                surfaces mean "a plain web listing, not a Mesita partner", so
+                both say it the same way. NOT a warning glyph: `isVerified` is
+                partner-only, so this chip is on MOST cards, and alarming the
+                default state is noise rather than information. */}
+            <span aria-hidden>🌐</span>
+            <span className="font-semibold">Not Verified</span>
+          </MetaChip>
         )}
         {categoryLabel && (
           <MetaChip compact={compact}>
