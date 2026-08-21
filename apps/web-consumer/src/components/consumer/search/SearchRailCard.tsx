@@ -5,6 +5,7 @@ import { resolvePlaceCategoryName } from "@/lib/place-category";
 import { getOpeningStatusLabel } from "@/lib/place-status";
 import { formatPlacePriceLevelSymbols } from "@/lib/place-price";
 import { cn, firstInitial, formatKm, formatRating } from "@/lib/utils";
+import { isPromoting } from "@/lib/promo-rates";
 
 // One floating catalog card on the bottom rail.
 // Two-step tap: the first tap on an unselected card just selects it (highlight +
@@ -71,10 +72,10 @@ export function RailCard({
           <span className="truncate text-sm leading-tight font-semibold">
             {place.name}
           </span>
-          {place.listing_type === "partner" && (
+          {isPromoting(place) && (
             <BadgeCheck
               className="text-primary h-3.5 w-3.5 shrink-0"
-              aria-label="Mesita Partner"
+              aria-label="Mesita reward here"
             />
           )}
         </span>

@@ -11,6 +11,7 @@ import { useConsumerTickets } from "@/lib/hooks/useConsumerTickets";
 import { useStartVisit } from "@/lib/hooks/useStartVisit";
 import type { PlaceDetail } from "@/lib/mock/place";
 import { cn } from "@/lib/utils";
+import { isPromoting } from "@/lib/promo-rates";
 
 // The place-detail action bar (MESITA-1065): Visit · Order · Reserve, pinned.
 //
@@ -45,7 +46,9 @@ export function PlaceActionBar({
   const [orderSoon, setOrderSoon] = useState(false);
   const [reserveOpen, setReserveOpen] = useState(false);
 
-  const isPartner = place.listing_type === "partner";
+  // Gated on the LIVE reward, not the stored badge: a paused place used to
+  // let a guest open a ticket that nothing at the table would honor.
+  const promoting = isPromoting(place);
   const starting = startingId === place.id;
 
   const btn =
@@ -83,27 +86,27 @@ export function PlaceActionBar({
           <button
             type="button"
             onClick={() => pickPlace(place)}
-            disabled={!isPartner || starting}
+            disabled={!promoting || starting}
             aria-label={
-              isPartner
+              promoting
                 ? "Start a visit"
                 : "Visits aren't available at this place yet"
             }
             title={
-              isPartner
+              promoting
                 ? undefined
-                : "Only Mesita Partners run the Mesita reward program."
+                : "This place isn't running a Mesita reward right now."
             }
             className={cn(
               btn,
-              isPartner
+              promoting
                 ? "bg-primary text-primary-foreground shadow-glow hover:opacity-95"
                 : "bg-muted text-muted-foreground cursor-not-allowed",
             )}
           >
             {starting ? (
               <Loader2 className="h-4 w-4 shrink-0 animate-spin" />
-            ) : isPartner ? (
+            ) : promoting ? (
               <QrCode className="h-4 w-4 shrink-0" strokeWidth={2.25} />
             ) : (
               <Lock className="h-3.5 w-3.5 shrink-0" strokeWidth={2.25} />

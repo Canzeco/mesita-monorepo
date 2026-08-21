@@ -24,6 +24,7 @@ import {
   formatRating,
 } from "@/lib/utils";
 
+import { isPromoting } from "@/lib/promo-rates";
 import { ProfileActions } from "./ProfileActions";
 import {
   ProfileMetaChip,
@@ -56,7 +57,7 @@ export function ProfileSummary({ place }: { place: PlaceDetail }) {
   const statusValue = getOpeningStatusLabel(place);
   const isOpen = place.open_now === true;
   const promoPlace = placeDetailAsPromoPlace(place);
-  const isPartner = place.listing_type === "partner";
+  const promoting = isPromoting(place);
 
   return (
     // Full-bleed white band under the top chrome so the summary reads as
@@ -107,19 +108,23 @@ export function ProfileSummary({ place }: { place: PlaceDetail }) {
             Enriching
           </span>
         )}
+        {/* The chip states the one fact a guest can act on: is a reward live
+            here. It used to read "Mesita Partner" / "Not Verified" off
+            listing_type — a word that now means "pays Mesita" and a word that
+            means ownership proof, neither of which is this (MESITA-1150). */}
         <ProfileMetaChip>
-          {isPartner ? (
+          {promoting ? (
             <>
               <BadgeCheck
                 className="h-3.5 w-3.5 shrink-0 fill-sky-500 text-white"
                 strokeWidth={2}
               />
-              <span className="font-semibold">Mesita Partner</span>
+              <span className="font-semibold">Mesita reward</span>
             </>
           ) : (
             <>
               <Globe className="text-muted-foreground h-3.5 w-3.5 shrink-0" />
-              <span className="font-semibold">Not Verified</span>
+              <span className="font-semibold">No reward</span>
             </>
           )}
         </ProfileMetaChip>
@@ -174,7 +179,7 @@ export function ProfileSummary({ place }: { place: PlaceDetail }) {
 /** Shim PlaceDetail → PromoChipPlace for the header reward chip. */
 function placeDetailAsPromoPlace(place: PlaceDetail): PromoChipPlace {
   return {
-    listing_type: place.listing_type,
+    promoting: place.promoting,
     is_first_visit: place.promo_matrix.is_first_visit,
     welcome_free_rate: place.promo_matrix.welcome.free,
     welcome_premium_rate: place.promo_matrix.welcome.premium,

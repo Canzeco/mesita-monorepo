@@ -30,6 +30,10 @@ import type {
 // alongside the seed is where THE TICKET's real numbers come from, and the
 // polled list overrides the whole row the moment it lands.
 export type SeedPlace = {
+  /** Server-computed per request (MESITA-1150): a guest gets a discount here
+   *  RIGHT NOW. The gate every reward surface reads — `listing_type` is the
+   *  stale collapsed enum and no longer decides anything a guest sees. */
+  promoting?: boolean | null;
   id: string;
   name: string;
   photos?: string[] | null;

@@ -20,6 +20,14 @@ type PromoMatrix = {
 
 /** Columns needed to resolve a place's promo rate / strategy. */
 export type PromoRateFields = {
+  /** Computed server-side per request (MESITA-1150): does a guest get a
+   *  discount here RIGHT NOW. Replaces every listing_type gate — that enum is
+   *  written only when something writes the place, so a strike-2 pause left
+   *  it saying 'partner' over a closed promo lane. Absent ⇒ NOT promoting:
+   *  hiding a real reward is recoverable, promising a dead one is not. */
+  promoting?: boolean | null;
+  /** @deprecated for gating — still on the row, no longer decides anything a
+   *  guest sees. `promoting` is the question every surface actually asks. */
   listing_type?: string | null;
   is_first_visit?: boolean | null;
   welcome_free_rate?: number | null;
@@ -131,17 +139,24 @@ export function strategyForPromoMatrix(matrix: {
   return hit?.id ?? "zero";
 }
 
+/** Fail-closed read of the server's live answer (MESITA-1150). */
+export function isPromoting(
+  row: { promoting?: boolean | null } | null | undefined,
+): boolean {
+  return row?.promoting === true;
+}
+
 /** Whether the place runs the Mesita reward program (detail hero + matrix). */
 export function placeOffersMesitaRewards(input: {
-  listing_type: "partner" | "web";
+  promoting: boolean;
   promo_matrix: PromoMatrix;
   promo_configured: boolean;
 }): boolean {
   if (!promoMatrixHasAnyRate(input.promo_matrix)) return false;
-  if (input.listing_type === "partner") return true;
-  // Business configured per-tier rates on the Promos page — active even if
-  // listing_type is still 'web' pending the Mesita Partner badge.
-  return input.promo_configured;
+  // The server already weighed plan, strategy and promo lane together. A rate
+  // on the row is not enough on its own: a paused place still carries its
+  // rates, and rendering them would promise a discount nobody will honor.
+  return input.promoting;
 }
 
 /**
@@ -173,10 +188,9 @@ export function placeRewardsVisits(
   row: PromoRateFields | null | undefined,
 ): boolean {
   if (!row) return false;
-  const listingType = row.listing_type === "partner" ? "partner" : "web";
   return placeOffersMesitaRewards({
-    listing_type: listingType,
-    promo_matrix: buildPromoMatrixFromRow(row, listingType),
+    promoting: isPromoting(row),
+    promo_matrix: buildPromoMatrixFromRow(row, "partner"),
     promo_configured: hasExplicitClassRates(row),
   });
 }
@@ -186,11 +200,10 @@ export function resolvePromoRateFromPlaceRow(
   isFirstVisit: boolean,
   premium: boolean,
 ): number | null {
-  const listingType = row.listing_type === "partner" ? "partner" : "web";
-  const matrix = buildPromoMatrixFromRow(row, listingType);
+  const matrix = buildPromoMatrixFromRow(row, "partner");
   if (
     !placeOffersMesitaRewards({
-      listing_type: listingType,
+      promoting: isPromoting(row),
       promo_matrix: matrix,
       promo_configured: hasExplicitClassRates(row),
     })

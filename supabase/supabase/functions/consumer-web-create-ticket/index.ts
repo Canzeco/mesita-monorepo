@@ -35,6 +35,7 @@ import {
   assessPromoLane,
   loadMembershipRow,
 } from "../_shared/membership-enforcement.ts";
+import { isPlacePromoting } from "../_shared/place-promoting.ts";
 import {
   loadRewardsGrid,
   offersAction,
@@ -102,18 +103,13 @@ Deno.serve(async (req) => {
   if (place.status === "archived") {
     return json({ ok: false, error: "Place is archived" }, 409);
   }
-  if (place.listing_type !== "partner") {
-    return json(
-      {
-        ok: false,
-        error: "Only Mesita Partners run the Mesita reward program.",
-        code: "not_partner",
-      },
-      409,
-    );
-  }
-
-  // Promo lane must be open (membership strikes can pause it).
+  // The place must be PROMOTING — paying, a strategy above Zero, and an open
+  // promo lane. This used to gate on `listing_type = 'partner'` plus a
+  // separate lane check; the enum is derived only when something writes the
+  // place, so it could equally block a place that had just started promoting
+  // and pass one whose lane had since closed. Same computation the consumer
+  // surfaces now render from, so an enabled button and a 409 can no longer
+  // disagree (MESITA-1150). Error CODES are unchanged: callers switch on them.
   const membershipRow = await loadMembershipRow(admin, placeId);
   if (membershipRow) {
     const lane = assessPromoLane(membershipRow);
@@ -128,6 +124,16 @@ Deno.serve(async (req) => {
         409,
       );
     }
+  }
+  if (!isPlacePromoting({ ...(membershipRow ?? {}), ...place })) {
+    return json(
+      {
+        ok: false,
+        error: "This place isn't running a Mesita reward right now.",
+        code: "not_partner",
+      },
+      409,
+    );
   }
 
   // One LIVE self-created ticket per guest × place — friendly check first,

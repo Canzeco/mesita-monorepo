@@ -12,6 +12,10 @@ import type { ClassKey } from "@/lib/consumer-data";
 export type ConsumerClass = ClassKey;
 
 export type PlaceDetail = {
+  /** Server-computed per request (MESITA-1150): a guest gets a discount here
+   *  RIGHT NOW. The gate every reward surface reads — `listing_type` is the
+   *  stale collapsed enum and no longer decides anything a guest sees. */
+  promoting?: boolean | null;
   // Stable identifier — matches public.places.id once the real fetch lands.
   // Used as the key in the localStorage saved-places store, share URLs, and
   // any future per-place persistence.
