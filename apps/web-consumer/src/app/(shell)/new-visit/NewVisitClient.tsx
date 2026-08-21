@@ -120,12 +120,16 @@ export function NewVisitClient({ userId }: { userId: string }) {
 
             The pointer stays because a feature that MOVED needs a forwarding
             address; anyone who knew History lived here has to be told where it
-            went, once, in the place they'll look. */}
+            went, once, in the place they'll look. It therefore has to say
+            HISTORY: the label read "Your visits live in Inbox", which names
+            the destination but not the thing that moved, so the one reader it
+            exists for — someone hunting the History tab — had nothing to
+            match on. */}
         <Link
           href={CONSUMER_ROUTES.inbox.visits}
           className="text-muted-foreground hover:text-foreground mt-2 flex items-center justify-center gap-1 text-[11.5px] font-semibold transition"
         >
-          Your visits live in Inbox
+          Your visit history lives in Inbox
           <ChevronRight className="h-3.5 w-3.5" />
         </Link>
       </div>
