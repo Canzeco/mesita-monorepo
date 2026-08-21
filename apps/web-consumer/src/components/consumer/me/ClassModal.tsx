@@ -5,7 +5,7 @@ import { Instagram, Mail } from "lucide-react";
 import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
 import { ClassLadder } from "@/components/consumer/me/class/ClassLadder";
 import { ClassPreviewToggle } from "@/components/consumer/me/demo/ClassPreviewToggle";
-import { InstagramConnectedSummary } from "@/components/consumer/me/class/InstagramConnectedSummary";
+import { ClassOriginSummary } from "@/components/consumer/me/class/ClassOriginSummary";
 import { useConsumerClass } from "@/lib/class-context";
 import { CLASS_MARK_ICON } from "@/lib/consumer-data";
 import { toast } from "@/lib/toast";
@@ -35,7 +35,7 @@ export function ClassModal({
   onClose: () => void;
   onConnectInstagram: () => void;
 }) {
-  const { origin, followers, key: classKey } = useConsumerClass();
+  const { origin, followers, key: classKey, handle } = useConsumerClass();
 
   return (
     <LocalSheet open={open} onClose={onClose} ariaLabel="Your class">
@@ -59,12 +59,16 @@ export function ClassModal({
 
           <ClassLadder />
 
-          {origin === "instagram" && (
-            <InstagramConnectedSummary
-              followers={followers}
-              classKey={classKey}
-            />
-          )}
+          {/* Names the door that granted this rung. Renders for BOTH doors —
+              it was gated on `origin === "instagram"`, so an invited guest saw
+              a Diamond row wearing a follower bar they never cleared and no
+              word of how they got there (MESITA-1159). */}
+          <ClassOriginSummary
+            origin={origin}
+            classKey={classKey}
+            followers={followers}
+            handle={handle}
+          />
 
           {/* THE TWO WAYS IN, and there are only two (decision: Pato):
               followers, automatic — and an invitation, manual. Always both,

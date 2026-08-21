@@ -7,7 +7,7 @@ import {
   REACH_ENTRY_CLASS,
   isElevatedIdentity,
 } from "@/lib/consumer-data";
-import { InstagramConnectedSummary } from "@/components/consumer/me/class/InstagramConnectedSummary";
+import { ClassOriginSummary } from "@/components/consumer/me/class/ClassOriginSummary";
 
 // Twice now a metal has been written into copy that renders for classes it
 // does not describe: the Instagram sheet quoted one class's follower bar next
@@ -28,10 +28,15 @@ describe("the reach entry rung is found by shape, not by name", () => {
   });
 });
 
-describe("the connected summary names the class it was handed", () => {
+describe("the origin summary names the class it was handed", () => {
   it.each(CLASSES)("$label reads back as $label", (cls) => {
     const html = renderToStaticMarkup(
-      <InstagramConnectedSummary followers={0} classKey={cls.id} />,
+      <ClassOriginSummary
+        origin="instagram"
+        classKey={cls.id}
+        followers={0}
+        handle={null}
+      />,
     );
     expect(html).toContain(`${cls.label} active`);
     // ...and names no OTHER rung, which is the actual regression.
@@ -42,10 +47,72 @@ describe("the connected summary names the class it was handed", () => {
 
   it("reports the follower count alongside the class when there is one", () => {
     const html = renderToStaticMarkup(
-      <InstagramConnectedSummary followers={20_000} classKey="diamond" />,
+      <ClassOriginSummary
+        origin="instagram"
+        classKey="diamond"
+        followers={20_000}
+        handle="mock"
+      />,
     );
     expect(html).toContain("20,000 followers");
     expect(html).toContain("Diamond active");
+  });
+});
+
+describe("the origin summary names the DOOR, not just the rung", () => {
+  // An invited guest used to get nothing here: the box was gated on
+  // `origin === "instagram"`, so the sheet showed a rung with no account of
+  // how it was granted.
+  it("says Instagram when the rung came from reach", () => {
+    const html = renderToStaticMarkup(
+      <ClassOriginSummary
+        origin="instagram"
+        classKey="silver"
+        followers={1_000}
+        handle="mock"
+      />,
+    );
+    expect(html).toContain("Instagram connected");
+    expect(html).not.toContain("Direct invitation");
+  });
+
+  it("says Direct invitation when the rung was granted by hand", () => {
+    const html = renderToStaticMarkup(
+      <ClassOriginSummary
+        origin="invitation"
+        classKey="diamond"
+        followers={0}
+        handle={null}
+      />,
+    );
+    expect(html).toContain("Direct invitation");
+    expect(html).toContain("Diamond active");
+    expect(html).not.toContain("Instagram connected");
+  });
+
+  it("never promises Story Bonus on an invitation — that rides a handle", () => {
+    const html = renderToStaticMarkup(
+      <ClassOriginSummary
+        origin="invitation"
+        classKey="diamond"
+        followers={0}
+        handle={null}
+      />,
+    );
+    expect(html).not.toContain("Story Bonus");
+  });
+
+  it("renders nothing at all on the default origin", () => {
+    expect(
+      renderToStaticMarkup(
+        <ClassOriginSummary
+          origin="default"
+          classKey="bronze"
+          followers={0}
+          handle={null}
+        />,
+      ),
+    ).toBe("");
   });
 });
 
