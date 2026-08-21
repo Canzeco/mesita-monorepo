@@ -1,14 +1,24 @@
 // Filters Config catalog — the v1 model (MESITA-1083).
 //
-// ONE blob governs every consumer filter surface, in two tiers:
+// ONE blob governs every consumer filter surface, in three tiers:
 //
-//   GENERAL  — the law. Which of the six modules exist at all, what the sheet
-//              opens on, the bounds a surface may not exceed, how the store
-//              behaves.
-//   SURFACES — one screen each (Swipe · Catalog · Chat · Social · Map ·
-//              Search). A surface either inherits the law or overrides it.
-//              `inherit` is a real third state, not a synonym for `on`: it
-//              tracks General when General changes.
+//   GENERAL   — the law. Which of the six modules exist at all, what the sheet
+//               opens on, the bounds a surface may not exceed, how the store
+//               behaves.
+//   SURFACES  — one screen each: Home's five modes (Swipe · Catalog · Chat ·
+//               Social · Favorites) then Search's two layers (Map · Search).
+//               A surface either inherits the law or overrides it. `inherit` is
+//               a real third state, not a synonym for `on`: it tracks General
+//               when General changes.
+//   SEARCHBAR — the one behaviour the module vocabulary cannot describe. The
+//               other seven surfaces narrow a pool they were handed; the
+//               searchbar goes and asks for one. See SearchbarFilters.
+//
+// Two surfaces are not what a quick read suggests. CATALOG is parked — the
+// consumer route redirects, so its knobs are doubly inert. FAVORITES is the
+// opposite: live, unparked, and SHEETLESS. It carries no Filters trigger at
+// all, and its tab exists so the strip matches Home's five modes rather than
+// implying four. `live`, `hasSheet` and `enabled` are three different claims.
 //
 // The defaults below are not invented — they are the values the shipped
 // consumer engine already runs (discovery-filters-engine.ts, both apps), so
@@ -85,14 +95,19 @@ export type SurfaceKey =
   | "catalog"
   | "chat"
   | "social"
+  | "favorites"
   | "map"
   | "search";
 
+// Home's five modes in HomeModeNav order, then Search's two layers — the order
+// a guest meets them. Favorites is the fifth Home mode, not an afterthought:
+// leaving it out of this list is what made the tab strip claim Home had four.
 export const SURFACE_KEYS = [
   "swipe",
   "catalog",
   "chat",
   "social",
+  "favorites",
   "map",
   "search",
 ] as const satisfies ReadonlyArray<SurfaceKey>;
@@ -106,6 +121,15 @@ export const SURFACE_META: Record<
     live: boolean;
     /** Why it's parked. Empty for live surfaces. */
     parkedNote: string;
+    /**
+     * False when the surface renders places but offers no Filters trigger at
+     * all. A THIRD axis, not a synonym for `live` or `enabled`: Favorites is
+     * live, unparked, and sheetless. Knobs on a sheetless surface describe what
+     * a sheet WOULD do if one were added, so the page has to say that out loud
+     * — otherwise an operator reads the silence as "filters are off here",
+     * which is a different and wrong claim.
+     */
+    hasSheet: boolean;
   }
 > = {
   swipe: {
@@ -114,6 +138,7 @@ export const SURFACE_META: Record<
       "Home › Swipe — the card deck. The only surface that applies Random, since ordering is all a deck is.",
     live: true,
     parkedNote: "",
+    hasSheet: true,
   },
   catalog: {
     label: "Catalog",
@@ -121,6 +146,7 @@ export const SURFACE_META: Record<
     live: false,
     parkedNote:
       "The Catalog mode is parked in the consumer app: the pill opens a coming-soon dialog and the route redirects to Swipe. CatalogGrid works — un-parking is a flag plus the page body.",
+    hasSheet: true,
   },
   chat: {
     label: "Chat",
@@ -129,6 +155,7 @@ export const SURFACE_META: Record<
     live: false,
     parkedNote:
       "The Chat mode is parked in the consumer app: /home/chat redirects to Swipe and the pill opens a coming-soon dialog.",
+    hasSheet: true,
   },
   social: {
     label: "Social",
@@ -136,6 +163,19 @@ export const SURFACE_META: Record<
     live: false,
     parkedNote:
       "The Social mode is parked in the consumer app: the pill opens a coming-soon dialog and the route redirects to Swipe.",
+    hasSheet: true,
+  },
+  favorites: {
+    label: "Favorites",
+    blurb:
+      "Home › Favorites — the places a guest saved by swiping right. The one surface a guest fills himself, so there is nothing to narrow that he did not already choose.",
+    live: true,
+    parkedNote: "",
+    // Favorites resolves saved ids against the shared deck and renders them.
+    // There is no Filters trigger on the screen and never has been. The tab
+    // exists so the strip matches Home's five modes — an operator counting
+    // tabs should not conclude the product has four.
+    hasSheet: false,
   },
   map: {
     label: "Map",
@@ -143,6 +183,7 @@ export const SURFACE_META: Record<
       "Search › the map layer — the pin set. Random is deliberately inert here: shuffling pins on a map means nothing.",
     live: true,
     parkedNote: "",
+    hasSheet: true,
   },
   search: {
     label: "Search",
@@ -150,6 +191,7 @@ export const SURFACE_META: Record<
       "Search › the searchbar and result list — free-text matching over name, zone and category, on top of the sheet.",
     live: true,
     parkedNote: "",
+    hasSheet: true,
   },
 };
 
@@ -213,10 +255,43 @@ export type SurfaceFilters = {
   resultCap: number | null;
 };
 
+/**
+ * The SEARCHBAR on the Search tab — a different kind of thing from everything
+ * above, which is why it gets its own block rather than a seventh module.
+ *
+ * Every other surface NARROWS a pool it was handed. Search goes and ASKS for
+ * one: ≥N characters triggers a debounced call to consumer-web-suggest-places,
+ * whose rows come back split "On Mesita" / "From Google", and a Google row
+ * carries the Add flow that generates the place into the catalog on the spot.
+ * None of the six modules describes any of that, so the sheet's vocabulary
+ * can't reach it — hence a sibling block on the surface's own tab, the same
+ * shape Memo's config takes on the Chat tab.
+ *
+ * The values mirror SearchClient.tsx exactly (MIN_SUGGEST_QUERY_LENGTH,
+ * SUGGEST_DEBOUNCE_MS) and the shipped two-group result panel. Changing one
+ * here is a proposal; changing SearchClient is the change.
+ */
+export type SearchbarFilters = {
+  /** Characters typed before the first autocomplete call goes out. */
+  minQueryLength: number;
+  /** Debounce after the last keystroke — one call per pause, not per keystroke. */
+  debounceMs: number;
+  /** Whether not-on-Mesita rows render under "From Google" at all. */
+  googleResults: boolean;
+  /** Whether a "From Google" row carries the Add flow that creates the place. */
+  addFromGoogle: boolean;
+  /** Rows rendered under "On Mesita"; null = no cap. */
+  mesitaResultCap: number | null;
+  /** Rows rendered under "From Google"; null = no cap. */
+  googleResultCap: number | null;
+};
+
 export type FiltersConfig = {
   version: 1;
   general: GeneralFilters;
   surfaces: Record<SurfaceKey, SurfaceFilters>;
+  /** The Search searchbar's own behaviour — distinct from surfaces.search, which is its filter sheet. */
+  searchbar: SearchbarFilters;
 };
 
 // ── Defaults ────────────────────────────────────────────────────────────────
@@ -227,6 +302,15 @@ export const DISTANCE_CEILING_KM = 200;
 export const RANDOMNESS_CEILING = 4;
 export const CATEGORY_CAP_CEILING = 40;
 export const RESULT_CAP_CEILING = 500;
+// Searchbar ceilings. A query threshold past a handful of characters would
+// make the bar feel broken, and a debounce past two seconds reads as a hang.
+export const QUERY_LENGTH_CEILING = 6;
+export const DEBOUNCE_CEILING_MS = 2000;
+// Suggest rows are one line each and share the panel with the map — a cap in
+// the hundreds would be a scroll, not a result list.
+export const SEARCH_RESULT_CAP_CEILING = 25;
+// Below this the debounce stops collapsing keystrokes into one call.
+export const DEBOUNCE_ADVISORY_MS = 150;
 
 function everyModule<T>(value: T): Record<ModuleKey, T> {
   return Object.fromEntries(MODULE_KEYS.map((k) => [k, value])) as Record<
@@ -275,8 +359,19 @@ export const DEFAULT_FILTERS: FiltersConfig = {
     catalog: defaultSurface(false),
     chat: defaultSurface(false),
     social: defaultSurface(false),
+    // Live, but sheetless — `false` is the honest launch value here, and it
+    // means something different from Catalog's `false` above, which is parked.
+    favorites: defaultSurface(false),
     map: defaultSurface(true),
     search: defaultSurface(true),
+  },
+  searchbar: {
+    minQueryLength: 2,
+    debounceMs: 300,
+    googleResults: true,
+    addFromGoogle: true,
+    mesitaResultCap: null,
+    googleResultCap: null,
   },
 };
 
@@ -373,7 +468,17 @@ export function surfaceWarnings(
       "A When override is set, but the When module is off on this surface.",
     );
   }
-  if (!surface.enabled && MODULE_KEYS.some((k) => resolved.modules[k])) {
+  // A sheetless surface is `enabled: false` forever, so the "disabled" line
+  // below would fire on every load and read as a defect to fix. The honest
+  // contradiction on a sheetless surface is the opposite one: switching
+  // filters ON for a screen that has no trigger to switch on.
+  if (!SURFACE_META[key].hasSheet) {
+    if (surface.enabled) {
+      out.push(
+        "Filters are on here, but this surface has no Filters trigger — the switch describes a sheet nobody has built yet.",
+      );
+    }
+  } else if (!surface.enabled && MODULE_KEYS.some((k) => resolved.modules[k])) {
     out.push(
       "Filters are disabled on this surface, so none of the modules above are reachable.",
     );
@@ -436,6 +541,39 @@ export function generalWarnings(cfg: FiltersConfig): string[] {
   if (defaults.when === "now" && !modules.when) {
     out.push(
       "The default is Now but the When module is off — places without an hours table would vanish with no visible control to clear it.",
+    );
+  }
+
+  return out;
+}
+
+/**
+ * Contradictions inside the searchbar block. Same house rule as the rest of the
+ * page — report, never auto-correct. A deliberate "Google rows off" is a choice
+ * and gets no warning; a knob that can never take effect gets one.
+ */
+export function searchbarWarnings(cfg: FiltersConfig): string[] {
+  const bar = cfg.searchbar;
+  const out: string[] = [];
+
+  if (bar.addFromGoogle && !bar.googleResults) {
+    out.push(
+      "Adding from Google is on, but Google rows never render — the Add flow has nothing to attach to.",
+    );
+  }
+  if (bar.googleResultCap !== null && !bar.googleResults) {
+    out.push(
+      "A Google row cap is set, but Google rows never render, so the cap can't apply.",
+    );
+  }
+  if (bar.minQueryLength <= 1) {
+    out.push(
+      `A ${bar.minQueryLength}-character threshold sends an autocomplete call on nearly every keystroke.`,
+    );
+  }
+  if (bar.debounceMs < DEBOUNCE_ADVISORY_MS) {
+    out.push(
+      `A ${bar.debounceMs} ms debounce is below the ${DEBOUNCE_ADVISORY_MS} ms where keystrokes stop collapsing into one call — a fast typist bills a Google call per letter.`,
     );
   }
 
@@ -592,6 +730,39 @@ function coerceSurface(raw: unknown, fallback: SurfaceFilters): SurfaceFilters {
   };
 }
 
+/** A row cap that survives as null — null means "no cap", not "missing". */
+function nullableCap(v: unknown, ceiling: number): number | null {
+  if (typeof v !== "number" || !Number.isFinite(v) || v <= 0) return null;
+  return int(v, ceiling, 1, ceiling);
+}
+
+function coerceSearchbar(raw: unknown): SearchbarFilters {
+  const d = DEFAULT_FILTERS.searchbar;
+  if (!isBlob(raw)) return structuredClone(d);
+
+  return {
+    minQueryLength: int(
+      raw.minQueryLength,
+      d.minQueryLength,
+      1,
+      QUERY_LENGTH_CEILING,
+    ),
+    // Floor of 0 is legal and means "no debounce" — expensive, warned about,
+    // not forbidden. The operator owns that call.
+    debounceMs: int(raw.debounceMs, d.debounceMs, 0, DEBOUNCE_CEILING_MS),
+    googleResults: bool(raw.googleResults, d.googleResults),
+    addFromGoogle: bool(raw.addFromGoogle, d.addFromGoogle),
+    mesitaResultCap: nullableCap(
+      raw.mesitaResultCap,
+      SEARCH_RESULT_CAP_CEILING,
+    ),
+    googleResultCap: nullableCap(
+      raw.googleResultCap,
+      SEARCH_RESULT_CAP_CEILING,
+    ),
+  };
+}
+
 /** Accepts anything, returns a COMPLETE v1 config — never a partial. */
 export function coerceFiltersConfig(raw: unknown): FiltersConfig {
   if (!isBlob(raw)) return structuredClone(DEFAULT_FILTERS);
@@ -605,5 +776,6 @@ export function coerceFiltersConfig(raw: unknown): FiltersConfig {
         coerceSurface(surfacesRaw[k], DEFAULT_FILTERS.surfaces[k]),
       ]),
     ) as Record<SurfaceKey, SurfaceFilters>,
+    searchbar: coerceSearchbar(raw.searchbar),
   };
 }
