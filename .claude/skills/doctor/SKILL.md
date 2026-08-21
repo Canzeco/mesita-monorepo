@@ -105,6 +105,18 @@ The singleton rule is the one that silently breaks. Check it first.
 2.8 **Extensions.** Anything installed into `public`, version drift.
 2.9 **Plan ceilings.** DB size, storage size, EF count vs the plan cap (the 100-EF free-plan
     cap has already caused a total deploy blackout — track headroom, not just the number).
+2.10 **Stored-body staleness (plpgsql_check).** The extension is installed (schema
+    `extensions`; it is the engine behind `supabase db lint`). Sweep every `public`
+    PL/pgSQL body against the live catalog — any `error`/`fatal` row is a **P0**: that
+    function is broken in prod right now (a rename that skips rebuilding dependent
+    bodies is invisible until execution; this is how the 2026-08 enrichment dispatcher
+    died silently). Plain functions:
+    `select p.proname, c.lineno, c.message from pg_proc p join pg_namespace n on n.oid = p.pronamespace cross join lateral extensions.plpgsql_check_function_tb(p.oid) c where n.nspname = 'public' and p.prolang = (select oid from pg_language where lanname = 'plpgsql') and p.prorettype <> 'trigger'::regtype and c.level in ('error','fatal')`
+    Trigger functions (checked against each relation they fire on):
+    `select t.tgrelid::regclass, p.proname, c.lineno, c.message from pg_trigger t join pg_proc p on p.oid = t.tgfoid join pg_namespace n on n.oid = p.pronamespace cross join lateral extensions.plpgsql_check_function_tb(p.oid, t.tgrelid) c where not t.tgisinternal and n.nspname = 'public' and c.level in ('error','fatal')`
+    Known blindspot, by design: dynamic SQL (`EXECUTE` strings, e.g. admin_reset's
+    truncate) is not validated — the same class of blindspot as EF query strings
+    vs `deno check`. `LANGUAGE sql` functions are also outside plpgsql_check.
 
 ## Scope 3 — Data integrity / incongruences · P1
 
@@ -207,6 +219,12 @@ un-staged Ojo knob reads to an operator as a control that does something.
 7.1 **EF logs.** Error rate and 5xx/4xx per function; **new error signatures** vs yesterday.
 7.2 **Auth logs.** OTP send/verify failure spikes (phone OTP is the only consumer sign-in).
 7.3 **Schedulers.** Every scheduled job ran; last-run timestamps; failures; retry storms.
+    Concretely:
+    `select j.jobname, j.schedule, count(*) filter (where r.status = 'failed') as fails_24h, max(r.start_time) filter (where r.status = 'succeeded') as last_ok from cron.job j left join cron.job_run_details r on r.jobid = j.jobid and r.start_time > now() - interval '1 day' where j.active group by 1, 2`
+    An active job whose recent runs are all `failed`, or with no success inside ~3× its
+    cadence, is a **P0 regardless of this scope's tier** — pg_cron failures land only in
+    `cron.job_run_details`, which nothing else reads (the 2026-08 enrichment dispatcher
+    failed 8,410 consecutive runs over 2 days before anyone looked).
 7.4 **Third-party health.** 401/403/429 rates and credit headroom for Google Places,
     Firecrawl, Perplexity, Apify, Twilio, Stripe, ElevenLabs. Credit exhaustion presents as
     a data-quality bug, so it belongs in a health check, not a billing check.
