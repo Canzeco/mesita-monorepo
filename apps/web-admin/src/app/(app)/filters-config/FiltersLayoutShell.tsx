@@ -35,11 +35,11 @@ export function FiltersLayoutShell({
   return (
     <>
       <PageHeader
-        eyebrow="Product · Filters"
-        title="Filters Config"
+        eyebrow="Product · Discover"
+        title="Discover Config"
         description={describe(pathname)}
       />
-      <ConfigTabNav ariaLabel="Filters Config" subroutes={FILTERS_SUBROUTES} />
+      <ConfigTabNav ariaLabel="Discover Config" subroutes={FILTERS_SUBROUTES} />
       <div className="mt-6 sm:mt-8">{children}</div>
     </>
   );

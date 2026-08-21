@@ -1,5 +1,6 @@
 import type { LucideIcon } from "lucide-react";
 import {
+  Compass,
   Grid3x3,
   Heart,
   Layers,
@@ -22,12 +23,14 @@ import {
 // operator the product has four, so the tab is the correction (it says on the
 // page that the surface is sheetless).
 //
-// Sourcing already owns the `Filter` glyph, so this takes the sheet's own
-// SlidersHorizontal — the same icon the consumer trigger wears.
+// The COMPASS is the domain's mark: 🧭 is what Notion Docs › Discovery wears,
+// and finding a place is what every surface under here is for. The sheet's own
+// SlidersHorizontal stays below on the Swipe tab, where a filter sheet is
+// literally the thing being configured — one glyph, one meaning.
 export const FILTERS_PARENT = {
   href: "/filters-config",
   label: "Discover",
-  Icon: SlidersHorizontal,
+  Icon: Compass,
 } as const;
 
 export const FILTERS_SUBROUTES = [
