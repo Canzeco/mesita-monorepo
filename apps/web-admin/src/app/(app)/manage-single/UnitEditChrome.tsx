@@ -2,21 +2,12 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useCallback, useEffect, useRef, useState, useTransition } from "react";
+import { useEffect, useRef, useState } from "react";
+import { ArrowLeftRight, ImageOff, Loader2 } from "lucide-react";
 import {
-  ArrowLeftRight,
-  CheckCircle2,
-  ChevronDown,
-  ImageOff,
-  Loader2,
-  Sparkles,
-} from "lucide-react";
-import {
-  enrichPlace,
   getPlaceEnrichment,
   type AdminPlace,
   type PlaceEnrichmentStatus,
-  type ReenrichMode,
 } from "./actions";
 import { UNIT_TAB_SECTIONS, unitSectionHref } from "./nav";
 import { useUnitPlace } from "./UnitPlaceContext";
@@ -56,7 +47,7 @@ export function UnitEditChrome({
   // The discard guard and its dialog live on UnitPlaceContext so every exit
   // path is covered — including the cross-tab links inside PlaceSection, which
   // used to bypass the chrome-local guard entirely.
-  const { isDirty, guardNav, guardIntent } = useUnitPlace();
+  const { isDirty, guardNav } = useUnitPlace();
   const heroPhoto = place.photos?.[0] ?? null;
   const statusLabel = place.status?.trim()
     ? place.status.charAt(0).toUpperCase() + place.status.slice(1)
@@ -72,7 +63,10 @@ export function UnitEditChrome({
     enrichingRef.current = enriching;
   }, [enriching]);
 
-  // decision: MESITA-896 — enriching status lives HERE (next to Re-enrich).
+  // decision: MESITA-896 — the live enriching STATUS lives HERE, in the
+  // chrome, so it is visible from every tab. The TRIGGER moved to Admin →
+  // Enrichment (Pato, 2026-08-20): scheduling a refresh and running one now
+  // are the same decision, so they belong in the same box.
   // Poll while enriching (~8s); back off to ~60s when idle; pause when the
   // document is hidden (E-R4).
   useEffect(() => {
@@ -140,42 +134,6 @@ export function UnitEditChrome({
     window.addEventListener("beforeunload", onBeforeUnload);
     return () => window.removeEventListener("beforeunload", onBeforeUnload);
   }, [isDirty]);
-
-  const [reenrichPending, startReenrich] = useTransition();
-  const [reenrichState, setReenrichState] = useState<"idle" | "done" | "error">(
-    "idle",
-  );
-  const [reenrichError, setReenrichError] = useState<string | null>(null);
-  const [ranMode, setRanMode] = useState<ReenrichMode | null>(null);
-
-  const runReenrich = useCallback(
-    (mode: ReenrichMode) => {
-      setReenrichState("idle");
-      setReenrichError(null);
-      setRanMode(mode);
-      startReenrich(async () => {
-        const r = await enrichPlace(projectId, mode);
-        if (r.ok) {
-          setReenrichState("done");
-          setEnrichStatus((prev) => ({
-            content_status: "generating",
-            stage:
-              prev?.stage && prev.stage !== "done" && prev.stage !== "failed"
-                ? prev.stage
-                : "research",
-            stage_status: "queued",
-            error: null,
-            last_enriched_at: prev?.last_enriched_at ?? null,
-            updated_at: new Date().toISOString(),
-          }));
-        } else {
-          setReenrichState("error");
-          setReenrichError(r.error);
-        }
-      });
-    },
-    [projectId],
-  );
 
   return (
     // Light sticky chrome — content area stays light; only the lateral menu is dark.
@@ -268,17 +226,6 @@ export function UnitEditChrome({
             <ArrowLeftRight className="h-4 w-4" />
             <span className="hidden sm:inline">Switch place</span>
           </Link>
-          <ReEnrichButton
-            pending={reenrichPending}
-            state={reenrichState}
-            error={reenrichError}
-            ranMode={ranMode}
-            onPick={(mode) => {
-              if (guardIntent({ kind: "reenrich", run: () => runReenrich(mode) }))
-                return;
-              runReenrich(mode);
-            }}
-          />
         </div>
       </div>
 
@@ -341,130 +288,6 @@ export function UnitEditChrome({
           })}
         </nav>
       </div>
-    </div>
-  );
-}
-
-// The three re-enrich modes, widest → cheapest. The lighter two reuse the stored
-// pipeline payloads, so they skip the expensive gather/analysis they don't re-run.
-const REENRICH_MODES: {
-  mode: ReenrichMode;
-  label: string;
-  detail: string;
-}[] = [
-  {
-    mode: "full",
-    label: "Full re-enrich",
-    detail:
-      "Research + analysis + contents. Refreshes Google spine, channels, reviews, images, copy — and re-fetches the phone (overrides).",
-  },
-  {
-    mode: "analysis",
-    label: "Analysis + contents",
-    detail:
-      "Re-ranks & rebuilds images, then re-persists — reusing the last gathered data (no re-gather). Phone/email untouched.",
-  },
-  {
-    mode: "contents",
-    label: "Contents only",
-    detail:
-      "Re-synthesises About / category / tags and re-persists — reusing the last gathered + analysis. Cheapest. Phone/email untouched.",
-  },
-];
-
-// Manual re-enrich trigger. Ghost/secondary styling — expensive overwrite sits
-// beside Switch place without competing as the primary chrome action (MESITA-547).
-function ReEnrichButton({
-  pending,
-  state,
-  error,
-  ranMode,
-  onPick,
-}: {
-  pending: boolean;
-  state: "idle" | "done" | "error";
-  error: string | null;
-  ranMode: ReenrichMode | null;
-  onPick: (mode: ReenrichMode) => void;
-}) {
-  const [open, setOpen] = useState(false);
-  const wrapRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!open) return;
-    const onDown = (e: MouseEvent) => {
-      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) setOpen(false);
-    };
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setOpen(false);
-    };
-    document.addEventListener("mousedown", onDown);
-    document.addEventListener("keydown", onKey);
-    return () => {
-      document.removeEventListener("mousedown", onDown);
-      document.removeEventListener("keydown", onKey);
-    };
-  }, [open]);
-
-  const ranLabel = REENRICH_MODES.find((m) => m.mode === ranMode)?.label ?? "Re-enrich";
-
-  return (
-    <div ref={wrapRef} className="relative shrink-0">
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        disabled={pending}
-        aria-haspopup="menu"
-        aria-expanded={open}
-        title={
-          state === "error"
-            ? (error ?? "Failed to queue enrichment")
-            : "Re-run the Enricher pipeline for this place"
-        }
-        className={
-          "inline-flex h-10 items-center gap-2 rounded-xl border px-3 text-sm font-medium transition disabled:opacity-60 sm:px-3.5 " +
-          (state === "error"
-            ? "border-red-300 bg-red-500/10 text-red-700 hover:bg-red-500/15"
-            : "border-border text-muted-foreground hover:bg-muted hover:text-foreground")
-        }
-      >
-        {pending ? (
-          <Loader2 className="h-4 w-4 animate-spin" />
-        ) : state === "done" ? (
-          <CheckCircle2 className="h-4 w-4" />
-        ) : (
-          <Sparkles className="h-4 w-4" />
-        )}
-        <span className="hidden sm:inline">
-          {pending ? "Queuing…" : state === "done" ? `Queued · ${ranLabel}` : "Re-enrich"}
-        </span>
-        <ChevronDown className="h-3.5 w-3.5 opacity-80" aria-hidden />
-      </button>
-
-      {open && (
-        <div
-          role="menu"
-          className="border-border bg-card absolute right-0 z-40 mt-2 w-80 overflow-hidden rounded-xl border shadow-lg"
-        >
-          {REENRICH_MODES.map(({ mode, label, detail }) => (
-            <button
-              key={mode}
-              type="button"
-              role="menuitem"
-              onClick={() => {
-                setOpen(false);
-                onPick(mode);
-              }}
-              className="hover:bg-muted/60 block w-full px-4 py-3 text-left transition"
-            >
-              <span className="text-foreground block text-sm font-medium">{label}</span>
-              <span className="text-muted-foreground mt-0.5 block text-xs leading-snug">
-                {detail}
-              </span>
-            </button>
-          ))}
-        </div>
-      )}
     </div>
   );
 }

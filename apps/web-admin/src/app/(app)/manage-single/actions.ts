@@ -158,6 +158,10 @@ export type AdminPlace = {
   products?: {
     menu?: AdminMenuItem[] | null;
     reservations?: ReservationTarget | null;
+    // Which contact an ORDER reaches the place on (MESITA-1155). Same
+    // { channel, value } shape as reservations; stored now, read when the
+    // order rail ships — the Orders box is labeled Soon because of it.
+    orders?: ReservationTarget | null;
   } | null;
   // Legacy parallel array; prefer products.menu when present.
   menus?: AdminMenuItem[] | null;

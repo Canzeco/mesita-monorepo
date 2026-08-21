@@ -1,22 +1,85 @@
 "use client";
 
+import { useCallback, useMemo, useState, useTransition } from "react";
 import { ShoppingBag } from "lucide-react";
-import { type AdminPlace } from "../actions";
-import { CrossTabLink, SectionCard } from "../ui";
+import { updatePlace, type AdminPlace, type ReservationTarget } from "../actions";
+import { useSectionDirty } from "../useSectionDirty";
+import { CrossTabLink, SaveBar, SectionCard } from "../ui";
+import {
+  ChannelPicker,
+  channelOptions,
+  readChannel,
+  type ChannelKey,
+} from "./ChannelPicker";
 
-// Orders — the REMOTE context, parked (MESITA-1148).
+// Orders — the REMOTE context (MESITA-1148 · MESITA-1155).
 //
 // Mesita prices exactly two contexts: a VISIT (the guest is at the place) and
 // an ORDER (the guest is not). Visits shipped; orders have no table, no EF and
-// no consumer type — `orders_config.enabled` is false and every knob on the
-// Orders Config page is labeled STAGED. So this box holds NO switch: a control
-// that saves nothing is worse than an honest Soon (house rule — unenforced
-// config is a bug).
+// no consumer type, so the box wears Soon.
 //
-// What it does show is the one thing that is already real per place: the
-// place's own ordering links, which are plain place fields today and become
-// the `externalLink` channel the moment the rail ships.
-export function OrdersCard({ place }: { place: AdminPlace }) {
+// It still carries ONE real decision, and Pato asked for it explicitly: which
+// contact an order reaches the place on. Same picker as Reservations, same
+// storage shape (`products.orders = { channel, value }`), phone the only live
+// channel. It is a STAGED knob — stored now, read when the rail ships — and
+// the box says so rather than pretending the switch does something today.
+export function OrdersCard({
+  place,
+  onSaved,
+}: {
+  place: AdminPlace;
+  onSaved: (v: AdminPlace) => void;
+}) {
+  const options = useMemo(() => channelOptions(place), [place]);
+  const hasPhone = options[0].contact !== "";
+  const saved = useMemo(
+    () => readChannel(place.products?.orders),
+    [place.products?.orders],
+  );
+
+  const [channel, setChannel] = useState<ChannelKey | "">(
+    saved || (hasPhone ? "phone" : ""),
+  );
+  const [pending, start] = useTransition();
+  const [error, setError] = useState<string | null>(null);
+  const [ok, setOk] = useState(false);
+
+  const dirty = channel !== saved;
+
+  const resetDraft = useCallback(() => {
+    setChannel(saved || (hasPhone ? "phone" : ""));
+    setError(null);
+    setOk(false);
+  }, [saved, hasPhone]);
+  useSectionDirty("orders", dirty, resetDraft);
+
+  const save = () => {
+    if (!channel) {
+      setError("Set a phone under Place → Channels — ordering is voice-only for now.");
+      setOk(false);
+      return;
+    }
+    setError(null);
+    setOk(false);
+    start(async () => {
+      const target: ReservationTarget = {
+        channel: "phone",
+        value: options[0].contact || null,
+      };
+      const r = await updatePlace({
+        id: place.id,
+        products: { ...(place.products ?? {}), orders: target },
+      });
+      if (!r.ok) {
+        setError(r.error);
+        return;
+      }
+      onSaved(r.data);
+      setOk(true);
+      window.setTimeout(() => setOk(false), 2500);
+    });
+  };
+
   const links = [
     { label: "Uber Eats", value: place.uber_eats_url },
     { label: "Website", value: place.website_url },
@@ -35,12 +98,22 @@ export function OrdersCard({ place }: { place: AdminPlace }) {
       }
     >
       <p className="text-muted-foreground mt-5 text-xs leading-relaxed">
-        Order tickets don&apos;t exist yet — no rail, no ticket, nothing to
-        configure per place. When they ship, the first channel is the
-        place&apos;s own ordering link (no new checkout to build), the receipt
-        is the proof, and the quota is a Premium perk. Quotas, minimums and
-        fulfilment are Mesita-wide, under Configurations → Orders.
+        Order tickets don&apos;t exist yet — no rail, no ticket, no receipt to
+        read. The channel below is the one thing worth deciding in advance:
+        it saves now and the rail reads it the day it ships. Quotas, minimums
+        and fulfilment are Mesita-wide, under Configurations → Orders.
       </p>
+      <div className="mt-3.5">
+        <ChannelPicker
+          options={options}
+          selected={channel}
+          onSelect={setChannel}
+          disabled={pending}
+          ariaLabel="Order channel"
+          soonVerb="ordering"
+        />
+      </div>
+
       <div className="border-border/60 mt-4 border-t pt-4">
         <span className="text-foreground/90 text-[13px] font-medium">
           Ordering links on file
@@ -62,10 +135,20 @@ export function OrdersCard({ place }: { place: AdminPlace }) {
         )}
         <div className="mt-3">
           <CrossTabLink href={`/manage-single/${place.id}/place`}>
-            Edit under Place → Channels
+            Edit contacts under Place → Channels
           </CrossTabLink>
         </div>
       </div>
+
+      <SaveBar
+        pending={pending}
+        dirtyLabel="Orders · unsaved"
+        dirty={dirty}
+        ok={ok}
+        error={error}
+        onSave={save}
+        onCancel={resetDraft}
+      />
     </SectionCard>
   );
 }

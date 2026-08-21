@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState, useTransition } from "react";
 import { Sparkles } from "lucide-react";
 import {
+  enrichPlace,
   getPlaceEnrichment,
   setPlaceEnrichmentSchedule,
   type AdminPlace,
@@ -12,16 +13,26 @@ import {
 } from "../actions";
 import { useSectionDirty } from "../useSectionDirty";
 import { ReadField, SaveBar, SectionCard, Spinner } from "../ui";
+import { useUnitPlace } from "../UnitPlaceContext";
 import { formatAbsoluteUtc } from "@/lib/format";
 
-// Enrichment — WHEN this place re-enriches (MESITA-1148).
+// Enrichment — WHEN this place re-enriches, and the button that runs it now
+// (MESITA-1148 · MESITA-1155).
 //
-// Re-enrich in the unit chrome is "now". This is the other half: a cadence,
-// so a place enriched in July doesn't still carry July's photos, hours and
-// copy. The box writes places.enrich_every_days / enrich_mode / enrich_next_at
+// The trigger used to be a dropdown in the unit chrome, beside Switch place.
+// Pato moved it here: "remove button to re enrich and put it in admin that
+// button on the header." Scheduling a refresh and running one are the same
+// decision about the same pipeline, so they share a box — and an expensive
+// overwrite stops sitting one mis-tap away on every tab.
+//
+// The cadence writes places.enrich_every_days / enrich_mode / enrich_next_at
 // through admin-web-set-place-enrichment; the pg_cron enqueuer
 // (queue_due_place_enrichments, every 15 min) seeds place_research when a
 // place comes due, and run_place_enrichment_stages stays the only dispatcher.
+// Run now goes through admin-web-enrich-place, which seeds the same row.
+//
+// The live enriching STATUS stays in the chrome (MESITA-896) — it belongs on
+// every tab; only the trigger moved.
 //
 // Admin tab, not Settings: the Enricher is Mesita's own pipeline burning
 // Mesita's own API budget. A business never schedules it.
@@ -101,6 +112,41 @@ export function EnrichmentCard({ place }: { place: AdminPlace }) {
     });
   };
 
+  // ── Run now ──────────────────────────────────────────────────────────
+  // Guarded by the same unsaved-edits dialog the chrome used: a re-enrich can
+  // overwrite fields the operator is mid-edit on.
+  const { guardIntent } = useUnitPlace();
+  const [runPending, startRun] = useTransition();
+  const [ranMode, setRanMode] = useState<ReenrichMode | null>(null);
+  const [runError, setRunError] = useState<string | null>(null);
+  const [queued, setQueued] = useState(false);
+
+  const runNow = useCallback(
+    (m: ReenrichMode) => {
+      setRunError(null);
+      setQueued(false);
+      setRanMode(m);
+      startRun(async () => {
+        const r = await enrichPlace(place.id, m);
+        if (!r.ok) {
+          setRunError(r.error);
+          return;
+        }
+        setQueued(true);
+        // Reflect the queued run without waiting for the chrome's poll.
+        setStatus((prev) => ({
+          content_status: "generating",
+          stage: m === "full" ? "research" : m,
+          stage_status: "queued",
+          error: null,
+          last_enriched_at: prev?.last_enriched_at ?? null,
+          updated_at: new Date().toISOString(),
+        }));
+      });
+    },
+    [place.id],
+  );
+
   const auto = loaded?.everyDays != null;
   const running =
     status?.stage != null && !["done", "failed"].includes(status.stage);
@@ -110,7 +156,7 @@ export function EnrichmentCard({ place }: { place: AdminPlace }) {
       icon={<Sparkles className="h-4 w-4" />}
       tint="indigo"
       title="Enrichment"
-      subtitle="When the Enricher refreshes this place on its own — Re-enrich above is the same pipeline, run now."
+      subtitle="When the Enricher refreshes this place on its own — and the button that runs it now."
       action={
         <span
           className={
@@ -223,6 +269,47 @@ export function EnrichmentCard({ place }: { place: AdminPlace }) {
             Perplexity and OpenAI budget, and the per-run cap only bounds one
             run. Caps and models live under Configurations → Enrichment.
           </p>
+
+          <div className="border-border/60 mt-4 border-t pt-4">
+            <span className="text-foreground/90 text-[13px] font-medium">
+              Run now
+            </span>
+            <p className="text-muted-foreground mt-1.5 mb-2.5 text-[11px] leading-relaxed">
+              Queues the same pipeline immediately, independent of the cadence
+              above. A full run overwrites the profile with what it finds — the
+              lighter two need a full run to have happened first.
+            </p>
+            <div className="grid grid-cols-3 gap-2">
+              {MODES.map((m) => (
+                <button
+                  key={m.value}
+                  type="button"
+                  disabled={runPending || running}
+                  title={m.hint}
+                  onClick={() => {
+                    if (guardIntent({ kind: "reenrich", run: () => runNow(m.value) })) return;
+                    runNow(m.value);
+                  }}
+                  className="border-border/60 bg-muted/40 text-foreground/70 hover:border-foreground/25 hover:bg-muted/70 rounded-xl border px-2 py-2 text-[12px] font-semibold transition disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {runPending && ranMode === m.value ? "Queuing…" : m.label}
+                </button>
+              ))}
+            </div>
+            <p className="mt-2 min-h-4 text-[11px]" aria-live="polite">
+              {runError ? (
+                <span className="text-destructive">{runError}</span>
+              ) : queued ? (
+                <span className="text-muted-foreground">
+                  Queued — the Enricher picks it up within seconds.
+                </span>
+              ) : running ? (
+                <span className="text-muted-foreground">
+                  A run is in flight; wait for it to finish.
+                </span>
+              ) : null}
+            </p>
+          </div>
 
           <SaveBar
             pending={pending}
