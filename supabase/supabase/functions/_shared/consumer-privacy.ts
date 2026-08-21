@@ -56,3 +56,10 @@ export function storiesVisibleOnMesita(
 ): boolean {
   return profileShowStories !== false;
 }
+
+/** Whether visit activity may appear on Mesita social surfaces. Default on. */
+export function visitsVisibleOnMesita(
+  profileShowVisits: boolean | null | undefined,
+): boolean {
+  return profileShowVisits !== false;
+}
