@@ -4,15 +4,16 @@ import { Braces, ChevronDown, Fingerprint } from "lucide-react";
 import { type AdminPlace } from "../actions";
 import { CopyIdButton, ReadField } from "../ui";
 import { EnrichmentCard } from "./EnrichmentCard";
-import { PartnerCard, PlanCard, VerifiedCard } from "./PlaceStateCards";
+import { PartnerCard, RewardsCard, VerifiedCard } from "./PlaceStateCards";
 import { formatAbsoluteUtc } from "@/lib/format";
 
 // Admin — the Mesita-internal tab (Pato, 2026-08-04).
 //
-// Three facts about the place, one box each (MESITA-1148): Verified (someone
-// proved ownership) · Plan (what it pays Mesita) · Partner (a guest gets a
-// discount here right now). They used to be one "Verification" card keyed on
-// listing_type === 'partner', which answered none of the three. Then
+// Three booleans about the place, one box each (MESITA-1148 · MESITA-1152):
+// Verified (someone proved ownership) · Partner (the place pays Mesita) ·
+// Rewards (a guest gets a discount here right now). They used to be one
+// "Verification" card keyed on listing_type === 'partner', which answered
+// none of the three — and that column still fuses the last two. Then
 // Enrichment (WHEN the place re-enriches), Metadata and Embeddings.
 //
 // Live enriching STATUS still lives in unit chrome next to Re-enrich
@@ -25,8 +26,8 @@ export function AdminSection({ place }: { place: AdminPlace }) {
     <div className="columns-1 gap-4 pb-8 [&>section]:mb-4 [&>section]:break-inside-avoid [&>details]:mb-4 [&>details]:break-inside-avoid lg:columns-2 lg:gap-5 lg:pb-10 lg:[&>section]:mb-5 lg:[&>details]:mb-5">
       {/* key remounts the loaders when the operator switches units. */}
       <VerifiedCard key={`verified-${place.id}`} place={place} />
-      <PlanCard place={place} />
       <PartnerCard place={place} />
+      <RewardsCard place={place} />
       <EnrichmentCard key={`enrich-${place.id}`} place={place} />
       <MetaCard place={place} />
       <EmbeddingsCard place={place} />
