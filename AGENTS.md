@@ -2,14 +2,9 @@
 <!-- RULES-QUICKSTART:START (generated — do not hand-edit; run: deno task sync-rules) -->
 # Mesita — agent quickstart (you're ~90% correct after this)
 
-Stable mirror of Notion **Rules** §0 — the master; Notion wins on any conflict: https://www.notion.so/Rules-395a9bf37a528081b2c1dacc445bb6c8
+**Notion is the library, and it is deep — it wins on any conflict.** This block mirrors [**Rules**](https://www.notion.so/Rules-395a9bf37a528081b2c1dacc445bb6c8) §0. **Rules = the law:** 🤖 **ASDM Rules** — the one protocol for all agent work, your platform's ramp (isolation, branch naming, connectors) in **§K** · 🏛️ **Product Rules** = WHAT Mesita is · ⚙️ **Development Rules** = tooling gotchas + the knowledge chain. **📚 [Docs](https://www.notion.so/Docs-3bfa9bf37a52801e891ec3407d717273) = the knowledge**, one flat page per domain: Apps, Atlas, Enrichment, Discovery, Passport, Promos, Visits, Orders, Reservations, Checkout, Yums, Vocabulary, Design. Read the matching doc first; mirror shipped changes back the same session. **Rules beat Docs.**
 
-**ASDM** is the one protocol for all agent work — full text: 🤖 **ASDM Rules**; your platform's ramp (isolation, branch naming, connectors): **ASDM Rules §K**. 🏛️ **Product Rules** = WHAT Mesita is. ⚙️ **Development Rules** = engineering law: tooling gotchas + the knowledge chain. Domain knowledge — one page per subsystem — lives in 📚 **Docs**: mirror shipped changes there same session, and **Rules beat Docs on any conflict**.
-
-| You're reading | You are |
-| --- | --- |
-| `CLAUDE.md` | Claude Code (local · cloud · subagent) or Claude Cowork |
-| `AGENTS.md` | Cursor, Codex, or any open-standard agent — generated from `CLAUDE.md`; hand edits go there |
+**This file has a twin:** `CLAUDE.md` for Claude Code (local · cloud · subagent) and Cowork; `AGENTS.md` for Cursor, Codex and any open-standard agent — generated, so always edit `CLAUDE.md`.
 
 **The repo.** `Canzeco/mesita-monorepo` is the whole product: `apps/{web-admin,web-business,web-consumer,web-landing,web-check,mobile-consumer,mobile-business}` + `supabase/` + `assets/`. The six former standalone repos are frozen read-only history — never work in them. Package-specific rules: that package's `CLAUDE.md`.
 
@@ -27,7 +22,7 @@ Stable mirror of Notion **Rules** §0 — the master; Notion wins on any conflic
 
 **ALWAYS:** reply in English · clients call Edge Functions, never the DB · never push to `main` (enforced: a ruleset requires squash PRs and blocks force-push) · terminal statuses same session · no local web dev servers — web verifies on Vercel, mobile via `npx expo export --platform web` + the Metro web preview (:8081 consumer · :8082 business) · admin-console configs bind every EF, app and agent (Admin · Models · Sourcing · Enrichment · Verification · Discover · Reservations · Visits · Orders · Promos · Ojo — unenforced config = bug; staged knobs are labeled staged).
 
-**Generated output is never hand-edited.** `AGENTS.md` ← its sibling `CLAUDE.md` (`deno task sync-rules`) · brand assets, `BRAND-TOKENS` blocks, `src/components/brand/*`, favicons ← `assets/brand/brand.json` (`deno task sync-brand`; guide: 🎨 Docs › Design). Both CI-gated. **The repo holds no other markdown:** knowledge → Notion Rules · task context → Linear · code notes → code comments; the allowlist (`CLAUDE.md`/`AGENTS.md` pairs, `scripts/rules-quickstart.md`, `.claude/` `.cursor/` `.codex/` `.github/`) is CI-enforced. **Docs are rewritten, not amended** — present law only, no history trails; word budgets CI-enforced (Development Rules §C).
+**Generated output is never hand-edited.** `AGENTS.md` ← its sibling `CLAUDE.md` (`deno task sync-rules`) · brand assets, `BRAND-TOKENS` blocks, `src/components/brand/*`, favicons ← `assets/brand/brand.json` (`deno task sync-brand`; guide: 🎨 Docs › Design). Both CI-gated. **The repo holds no other markdown:** knowledge → Notion · task context → Linear · code notes → code comments; the allowlist (`CLAUDE.md`/`AGENTS.md` pairs, `scripts/rules-quickstart.md`, `.claude/` `.cursor/` `.codex/` `.github/`) is CI-enforced. **Docs are rewritten, not amended** — present law only, no history trails; word budgets CI-enforced (Development Rules §C).
 
 **NEVER ask.** Reversible → decide, log a `decision:` comment, ship. `needs-human` = only a secret you can't enter, or one irreversible money/publish trigger.
 

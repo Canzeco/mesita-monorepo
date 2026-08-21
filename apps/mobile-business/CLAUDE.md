@@ -1,6 +1,6 @@
 # apps/mobile-business — native business app
 
-> Monorepo-wide rules: root [`CLAUDE.md`](../../CLAUDE.md) (the quickstart) — read it first. This file adds only package-specific rules.
+> Read root [`CLAUDE.md`](../../CLAUDE.md) first — the quickstart; Notion holds the deep docs. Package-specific rules only below.
 
 **Status: scaffold only.** A fresh Expo SDK 57 app (React Native · Expo Router · NativeWind) wired to EAS, with a single placeholder route. The native business counterpart to `apps/web-business`; nothing is built yet. When building, port structure/patterns from [`apps/mobile-consumer`](../mobile-consumer) — its `CLAUDE.md` is the fuller reference.
 

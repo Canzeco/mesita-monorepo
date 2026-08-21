@@ -1,7 +1,7 @@
 <!-- GENERATED — scripts/sync-rules.ts mirrors this file from its sibling CLAUDE.md. Edit CLAUDE.md (root: below its END marker) or scripts/rules-quickstart.md — NEVER this file. -->
 # apps/web-business — business console (business.mesita.ai)
 
-> Monorepo-wide rules: root [`CLAUDE.md`](../../CLAUDE.md) (the quickstart) — read it first. This file adds only package-specific rules.
+> Read root [`CLAUDE.md`](../../CLAUDE.md) first — the quickstart; Notion holds the deep docs. Package-specific rules only below.
 
 - **Deploys via the Vercel `mesita-web-business` project**, pointed at `Canzeco/mesita-monorepo` with Root Directory `apps/web-business` (cutover landed 2026-07-11). The frozen standalone repos — especially `mesita-web-business-legacy` — are decoys; a wrong connection = silent no-deploy.
 - Light theme + semantic tokens. Business surfaces stay **calm and high-density** — don't ornament them.

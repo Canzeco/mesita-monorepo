@@ -1,7 +1,7 @@
 <!-- GENERATED — scripts/sync-rules.ts mirrors this file from its sibling CLAUDE.md. Edit CLAUDE.md (root: below its END marker) or scripts/rules-quickstart.md — NEVER this file. -->
 # apps/web-admin — internal admin console
 
-> Monorepo-wide rules: root [`CLAUDE.md`](../../CLAUDE.md) (the quickstart) — read it first. This file adds only package-specific rules.
+> Read root [`CLAUDE.md`](../../CLAUDE.md) first — the quickstart; Notion holds the deep docs. Package-specific rules only below.
 
 - Light theme + semantic tokens; calm, dense, unornamented. Design map: Notion Docs › Design. New UI takes chrome from [`src/components/admin-ui/`](./src/components/admin-ui/), never a new route-local shim. `/brand` is read-only, out of the sidebar.
 - Clients never touch the DB — everything via `admin-web-*` Edge Functions. The EF-invoke wrapper is the deliberate **`Result` variant** (consumer/business throw `EFError`) — keep it.

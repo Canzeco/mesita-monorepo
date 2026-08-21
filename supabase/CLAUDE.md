@@ -1,6 +1,6 @@
 # supabase — DB · RLS · Edge Functions (source of truth)
 
-> Monorepo-wide rules: root [`CLAUDE.md`](../CLAUDE.md) (the quickstart) — read it first. This file adds only package-specific rules.
+> Read root [`CLAUDE.md`](../CLAUDE.md) first — the quickstart; Notion holds the deep docs. Package-specific rules only below.
 
 - **New here?** The system map — audiences, topology, EF caller taxonomy, data layer, Enricher pipeline, agents, billing — is **Notion 🏛️ Product Rules §A**; read it before touching EFs. Reservation timing (retry ladders, quiet hours, cancel notices) is **§J**; read it before changing when any call fires. Ops knowledge (Twilio rails, ElevenLabs fleet, sync modes, OTP probe) is **§I**.
 - Run every `supabase` command from **this package** — the CLI config is `supabase/config.toml` inside it. All Supabase files live only here; kill stray `supabase/` config stubs elsewhere in the monorepo, since a stub links against a divergent migration ledger.
