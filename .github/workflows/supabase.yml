@@ -57,9 +57,10 @@ jobs:
   # and #924 shipped a contract change past it that took every create path down
   # for 11 days (MESITA-1139). A gate nobody can read is not a gate. Blocking.
   #
-  # NOTE: scope is `supabase/supabase/functions` (see defaults above), so this
-  # does NOT cover `supabase/scripts/`. Run `deno check .` from `supabase/` to
-  # include those.
+  # Scope is the whole `supabase` package, not just `functions/` — the step below
+  # overrides the job default. `scripts/` imports freely from `functions/_shared`,
+  # so a sweep that deletes an export there breaks a script that CI would
+  # otherwise never load (that is how two linklab runners sat broken for weeks).
   typecheck:
     name: deno check
     runs-on: ubuntu-latest
@@ -73,4 +74,5 @@ jobs:
           deno-version: v2.9.1
 
       - name: Check
+        working-directory: supabase
         run: deno check .
