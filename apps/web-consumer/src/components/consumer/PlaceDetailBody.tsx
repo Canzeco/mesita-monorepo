@@ -3,8 +3,20 @@
 import { useState } from "react";
 
 import { AboutBox } from "@/components/consumer/AboutBox";
+import {
+  apiFetchPlaceActivity,
+  EMPTY_PLACE_ACTIVITY,
+  type PlaceActivity,
+} from "@/lib/api/place-activity";
 import type { PlaceDetail } from "@/lib/mock/place";
+import { useBrowserSupabase } from "@/lib/supabase/browser";
 
+import {
+  FeaturedOrdersBox,
+  FeaturedReservationsBox,
+  FeaturedVisitsBox,
+  InstagramStoriesBox,
+} from "./place-detail/activity";
 import { LocationBox, HoursBox } from "./place-detail/location-hours";
 import { MediaBox } from "./place-detail/media";
 import { ProductsBox } from "./place-detail/products";
@@ -40,6 +52,37 @@ import {
 
 export function PlaceDetailBody({ place }: { place: PlaceDetail }) {
   const [tab, setTab] = useState<PlaceTab>("place");
+  const supabase = useBrowserSupabase();
+  // Guest activity (stories · visits · reservations) is fetched the first time
+  // Reviews is opened, not with the page — see lib/api/place-activity.ts for
+  // why it isn't folded into the server-rendered place payload.
+  //
+  // Kicked off from the tab handler rather than an effect: React 19 flags
+  // setState-in-effect, and the tab can only be reached by a tap, so the
+  // event IS the trigger.
+  const [activity, setActivity] = useState<PlaceActivity>(
+    EMPTY_PLACE_ACTIVITY,
+  );
+  const [activityState, setActivityState] = useState<
+    "idle" | "loading" | "done"
+  >("idle");
+
+  const onTabChange = (next: PlaceTab) => {
+    setTab(next);
+    if (next !== "reviews" || activityState !== "idle") return;
+    setActivityState("loading");
+    void apiFetchPlaceActivity(supabase, place.id)
+      .then(setActivity)
+      // A failed rail must not take the tab down: the reviews above it are
+      // already rendered from the page payload, and each activity box falls
+      // back to its own empty state.
+      .catch((err) => {
+        console.error("[PlaceDetailBody] place activity failed:", err);
+      })
+      .finally(() => setActivityState("done"));
+  };
+
+  const activityLoading = activityState === "loading";
   return (
     // decision: Pato — white profile-summary header vs pink tab body for
     // contrast. Summary sits on bg-card; tabs + content keep bg-background.
@@ -48,7 +91,7 @@ export function PlaceDetailBody({ place }: { place: PlaceDetail }) {
     <div className="flex flex-col pb-4">
       <ProfileSummary place={place} />
       <div className="flex flex-col gap-3 px-4">
-        <PlaceTabBar tab={tab} onChange={setTab} />
+        <PlaceTabBar tab={tab} onChange={onTabChange} />
         {tab === "place" && (
           <>
             <MediaBox place={place} />
@@ -65,11 +108,29 @@ export function PlaceDetailBody({ place }: { place: PlaceDetail }) {
             <DatesBox place={place} />
           </>
         )}
+        {/* decision: Pato (live, MESITA-1147) — six rails in exactly this
+            order: the three review sources (Mesita's own first, Google's as
+            context), then the three Featured feeds. Each box owns its own
+            sort set. Orders keeps its slot between Visits and Reservations
+            even though ordering isn't built — the box states that itself. */}
         {tab === "reviews" && (
           <>
             <ReviewsSummaryBox place={place} />
-            <GoogleReviewsBox place={place} />
             <MesitaReviewsBox place={place} />
+            <GoogleReviewsBox place={place} />
+            <InstagramStoriesBox
+              stories={activity.stories}
+              loading={activityLoading}
+            />
+            <FeaturedVisitsBox
+              visits={activity.visits}
+              loading={activityLoading}
+            />
+            <FeaturedOrdersBox />
+            <FeaturedReservationsBox
+              reservations={activity.reservations}
+              loading={activityLoading}
+            />
           </>
         )}
         {tab === "products" && <ProductsBox place={place} />}

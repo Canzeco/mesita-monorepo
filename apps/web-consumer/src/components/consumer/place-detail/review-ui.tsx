@@ -60,9 +60,16 @@ export function ExternalCard({
 // Mesita. Newest default; Highest / Lowest by rating. Google uses published
 // date; Mesita uses avg(food/service/ambience/value) and keeps source order
 // for Newest until visitors carry a date field.
+//
+// Extended for MESITA-1147: every box on the Reviews tab now carries its own
+// sort set — stories sort by reach, visits by reward, reservations by party
+// size — so the control below is generic over the option list and the three
+// review modes are just one such list.
 export type ReviewSort = "newest" | "highest" | "lowest";
 
-const REVIEW_SORTS: { key: ReviewSort; label: string }[] = [
+export type SortOption<K extends string> = { key: K; label: string };
+
+const REVIEW_SORTS: SortOption<ReviewSort>[] = [
   { key: "newest", label: "Newest" },
   { key: "highest", label: "Highest" },
   { key: "lowest", label: "Lowest" },
@@ -79,6 +86,50 @@ export function mesitaOverall(
   return (v.food + v.service + v.ambience + v.value) / 4;
 }
 
+/**
+ * Segmented sort control. Generic over the option list so each box on the
+ * Reviews tab declares the sorts that make sense for its own content.
+ *
+ * Options stay on one row: at four the labels are already tight on a 360px
+ * screen, so keep sets to three or four short words.
+ */
+export function SortChips<K extends string>({
+  sort,
+  onSort,
+  options,
+  label,
+}: {
+  sort: K;
+  onSort: (next: K) => void;
+  options: readonly SortOption<K>[];
+  label: string;
+}) {
+  return (
+    <div
+      className="bg-muted/60 flex gap-1 rounded-xl p-1"
+      role="group"
+      aria-label={label}
+    >
+      {options.map((mode) => (
+        <button
+          key={mode.key}
+          type="button"
+          onClick={() => onSort(mode.key)}
+          aria-pressed={sort === mode.key}
+          className={cn(
+            "min-w-0 flex-1 truncate rounded-lg px-1 py-1.5 text-xs font-semibold transition",
+            sort === mode.key
+              ? "bg-card text-foreground shadow-sm"
+              : "text-muted-foreground",
+          )}
+        >
+          {mode.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 export function ReviewSortChips({
   sort,
   onSort,
@@ -89,27 +140,11 @@ export function ReviewSortChips({
   label: string;
 }) {
   return (
-    <div
-      className="bg-muted/60 flex gap-1 rounded-xl p-1"
-      role="group"
-      aria-label={label}
-    >
-      {REVIEW_SORTS.map((mode) => (
-        <button
-          key={mode.key}
-          type="button"
-          onClick={() => onSort(mode.key)}
-          aria-pressed={sort === mode.key}
-          className={cn(
-            "flex-1 rounded-lg py-1.5 text-xs font-semibold transition",
-            sort === mode.key
-              ? "bg-card text-foreground shadow-sm"
-              : "text-muted-foreground",
-          )}
-        >
-          {mode.label}
-        </button>
-      ))}
-    </div>
+    <SortChips
+      sort={sort}
+      onSort={onSort}
+      options={REVIEW_SORTS}
+      label={label}
+    />
   );
 }
