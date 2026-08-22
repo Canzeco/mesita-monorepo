@@ -128,10 +128,13 @@ Deno.serve(async (req) => {
   const verified = new Set<string>();
   if (ids.length > 0) {
     const [researchRes, verificationRes] = await Promise.all([
-      admin
-        .from("place_research")
-        .select("place_id, stage, gathered, analysis")
-        .in("place_id", ids),
+      // Via the RPC, not the table: `gathered`/`analysis` are the Enricher's
+      // full payloads (tens of KB of jsonb EACH), and all this needs is
+      // whether they landed. Selecting the columns shipped megabytes out of
+      // Postgres per search — up to 50 rows — to compute two booleans, and
+      // threw every byte away (MESITA-1198). place_research_facts does the
+      // `is not null` in the database.
+      admin.rpc("place_research_facts", { p_place_ids: ids }),
       admin
         .from("project_verifications")
         .select("project_id")
@@ -147,8 +150,8 @@ Deno.serve(async (req) => {
     for (const r of (researchRes.data ?? []) as Record<string, unknown>[]) {
       research.set(String(r.place_id), {
         stage: String(r.stage ?? ""),
-        gathered: r.gathered != null,
-        analysis: r.analysis != null,
+        gathered: r.has_gathered === true,
+        analysis: r.has_analysis === true,
       });
     }
     if (verificationRes.error) {
