@@ -48,7 +48,11 @@ type Funnel = { gg: number; depth: number; ag: number; ai: number; save: number 
 // Shared with the NumberField bounds below — keep both in sync so the clamp
 // and the input's max never disagree about the funnel's invariant.
 const MAX_GOOGLE_COLLECT = 10;
-const MAX_INSTAGRAM_COLLECT = 50;
+// 30, because that is what the DB CHECK enforces
+// (app_config_atlas_gather_instagram_depth_range). This was 50, so the field
+// offered 31-50 — values that passed here and passed the EF and were then
+// rejected at the write (MESITA-1195).
+const MAX_INSTAGRAM_COLLECT = 30;
 // Matches DB CHECK app_config_atlas_save_total_images_range (0–20) and the
 // admin-web-update-enricher-config / ENRICH_FIELD_LIMITS.photos contract. UI min
 // stays 1 (a zero-save gallery is not useful from this knob). Separate from
@@ -275,7 +279,7 @@ export function ImageFunnelSection({
           <NumberField icon={<Instagram className="text-muted-foreground h-4 w-4" />} label="Instagram collect" value={f.depth} min={1} max={MAX_INSTAGRAM_COLLECT} onChange={(v) => patch({ depth: v })} disabled={savePending} />
         </div>
         <p className="text-muted-foreground mt-3 text-xs leading-relaxed">
-          Google returns its photos already ranked by relevance — best first, so we take them in order. Instagram returns the <em>most recent</em> posts, so the Enricher re-ranks that window by number of likes. No separate keep step — Analysis reads the top of each pool.
+          Google returns its photos already ranked by relevance — best first, so we take them in order. Instagram returns the <em>most recent</em> posts, so the Enricher re-ranks that window by number of likes. Analysis reads the top of each pool.
         </p>
       </div>
 
@@ -304,7 +308,7 @@ export function ImageFunnelSection({
         <p className="text-muted-foreground mt-3 text-xs leading-relaxed">
           {vision ? (
             <>
-              The vision model describes the first N of each pool — Google&apos;s most-relevant and Instagram&apos;s most-liked — then re-ranks all of them by photo quality for the final gallery. The number you analyze is the number you keep — Google ≤ <span className="text-foreground font-semibold tabular-nums">{f.gg}</span>, Instagram ≤ <span className="text-foreground font-semibold tabular-nums">{f.depth}</span>.
+              The vision model describes the first N of each pool — Google&apos;s most-relevant and Instagram&apos;s most-liked — then re-ranks all of them by photo quality. Selection below keeps the best <span className="text-foreground font-semibold tabular-nums">{f.save}</span> of the <span className="text-foreground font-semibold tabular-nums">{aSum}</span> analyzed.
             </>
           ) : (
             <>
