@@ -54,8 +54,6 @@ function promoRateFieldsFromRow(row: Row): PromoRateFields {
   return {
     listing_type:
       typeof row.listing_type === "string" ? row.listing_type : null,
-    is_first_visit:
-      typeof row.is_first_visit === "boolean" ? row.is_first_visit : null,
     welcome_free_rate: num(row.welcome_free_rate) ?? null,
     welcome_premium_rate: num(row.welcome_premium_rate) ?? null,
     free_rate: num(row.free_rate) ?? null,
@@ -75,7 +73,6 @@ export function placeRowToDetail(row: Row, tags?: ResolvedTag[]): PlaceDetail {
   const promoRates = promoRateFieldsFromRow(row);
   const details = obj(row.details);
 
-  const activePremiumRate = num(row.premium_rate) ?? num(row.free_rate) ?? 0;
   const openState = computeOpenState(row.hours, str(row.timezone));
   // Dates box: Created from created_at; Updated from enrichment (falls back
   // to creation). last_updated_label stays an alias for lean Place / overview.
@@ -224,13 +221,6 @@ export function placeRowToDetail(row: Row, tags?: ResolvedTag[]): PlaceDetail {
           },
         ];
       })(),
-    },
-
-    promo: {
-      badge_label:
-        listingType === "partner" ? "Mesita partner" : "Web listing",
-      reward_kind: "discount",
-      reward_value: activePremiumRate,
     },
 
     promo_matrix: buildPromoMatrixFromRow(promoRates, listingType),

@@ -13,6 +13,7 @@ import { Toaster } from "@/components/consumer/Toaster";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { apiFetchConsumerProfile, type ConsumerClass } from "@/lib/api/profile";
 import { ClassProvider } from "@/lib/class-context";
+import { DiscountQuotesProvider } from "@/lib/discount-quotes";
 import { isConsumerOnboarded } from "@/lib/consumer-onboarding";
 import { withNext } from "@/lib/auth-redirect";
 
@@ -46,7 +47,9 @@ export default async function ConsumerShellLayout({
   // URL. `here` is what the guest actually asked for, params included, and
   // it rides every redirect below so nothing is lost at the wall.
   const pathname = requestHeaders.get("x-pathname") ?? "";
-  const here = pathname ? `${pathname}${requestHeaders.get("x-search") ?? ""}` : "";
+  const here = pathname
+    ? `${pathname}${requestHeaders.get("x-search") ?? ""}`
+    : "";
   const supabase = await createServerSupabase();
   const {
     data: { user },
@@ -129,23 +132,33 @@ export default async function ConsumerShellLayout({
         displayName={displayName}
         avatarUrl={avatarUrl}
       >
-        <div className="relative flex flex-1 flex-col overflow-hidden">
-          <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
-            <ShellChildrenSlot>{children}</ShellChildrenSlot>
-          </div>
-          <BottomNav userId={user.id} />
-          {/* Single modal host layer above shell chrome. Keeping this as the
+        {/* One engine-quote cache for the whole shell (MESITA-1019). Mounted
+            here, not per surface, so the promo chip resolves the same number
+            wherever it renders and a place quoted on the swipe deck is
+            already answered when the guest opens it.
+
+            `key` is the owner stamp: a quote is one guest's OWN rate, so a
+            different consumer in the same tab gets a fresh provider and an
+            empty cache instead of inheriting the previous guest's numbers. */}
+        <DiscountQuotesProvider key={user.id}>
+          <div className="relative flex flex-1 flex-col overflow-hidden">
+            <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
+              <ShellChildrenSlot>{children}</ShellChildrenSlot>
+            </div>
+            <BottomNav userId={user.id} />
+            {/* Single modal host layer above shell chrome. Keeping this as the
               only stacking context avoids "menu peeking through" races while
               intercepted routes resolve/loading UI mounts. */}
-          <div
-            className={cn(
-              "pointer-events-none absolute inset-0",
-              Z_ROUTE_MODAL,
-            )}
-          >
-            {modal}
+            <div
+              className={cn(
+                "pointer-events-none absolute inset-0",
+                Z_ROUTE_MODAL,
+              )}
+            >
+              {modal}
+            </div>
           </div>
-        </div>
+        </DiscountQuotesProvider>
       </ClassProvider>
       <Toaster />
     </MobileFrame>

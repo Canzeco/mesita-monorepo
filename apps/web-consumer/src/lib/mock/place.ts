@@ -136,22 +136,11 @@ export type PlaceDetail = {
     }>;
   };
 
-  // 7. Promotion
-  promo: {
-    badge_label: string;
-    reward_kind: "discount";
-    reward_value: number;
-  };
-
-  // 8. Reward by class — four per-class promo rates (Welcome × class on
-  // first visit, default × class afterwards) + whether this is the guest's
-  // first visit at this place. Active reward is
-  // `is_first_visit ? promo_matrix.welcome[classKey] : promo_matrix.default[classKey]`,
-  // where `classKey` is the guest's live class, resolved at render time
-  // from the class context — not baked into the row, since the server
-  // adapter can't know who's viewing.
-  // Mirrors mesita-supabase migration 0032 / public.places columns. Each
-  // rate is one of 10 / 20 / 50 / 70 or null (= no promo at that class).
+  // 7. Promotion — strategy identity, the four per-class promo columns mirroring
+  // mesita-supabase migration 0032 / public.places. NOT prices (MESITA-1019):
+  // the engine matches this tuple against its strategy presets, and the
+  // percentage a guest is quoted comes from consumer-web-get-discount-quote.
+  // Read them to decide WHETHER a place rewards, never by how much.
   promo_matrix: {
     welcome: {
       free: number | null;
@@ -161,7 +150,6 @@ export type PlaceDetail = {
       free: number | null;
       premium: number | null;
     };
-    is_first_visit: boolean;
   };
   /** Business set per-tier rates on the Promos page (not scraped legacy percent). */
   promo_configured?: boolean;
@@ -171,7 +159,7 @@ export type PlaceDetail = {
   // "Pay & Post" vs "Pay" CTA on the place Reward box.
   requires_story?: boolean;
 
-  // 9. Long description — English (Mesita core). Spanish TMS later.
+  // 8. Long description — English (Mesita core). Spanish TMS later.
   long_description: string;
 
   // Hours / popular times
@@ -186,7 +174,7 @@ export type PlaceDetail = {
   }>;
   popular_times_featured: string; // day name to show in the Popular times card
 
-  // 10. Details (Google-Places-style metadata: category, zone, hours, etc.)
+  // 9. Details (Google-Places-style metadata: category, zone, hours, etc.)
   // Most of the extra fields below mirror what Google's Places panel
   // and OpenTable surface on their detail views — dining style, dress
   // code, parking, accessibility, amenities, executive chef. Optional

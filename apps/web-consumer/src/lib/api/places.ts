@@ -109,15 +109,6 @@ export type Place = {
   is_enriching?: boolean;
   // Generic product payload. Menus are carried in products.menu.
   products?: Record<string, unknown> | null;
-  /**
-   * Whether this is the guest's first visit at this place. Drives the
-   * ribbon copy:
-   *   true  → "X% OFF welcome discount"
-   *   false → "X% OFF return-visit discount"
-   * Lean EFs leave this null; the ribbon falls back to first-visit
-   * copy so a fresh consumer sees the welcome framing.
-   */
-  is_first_visit?: boolean | null;
 
   // ── Raw EF columns (optional) ─────────────────────────────────────
   //

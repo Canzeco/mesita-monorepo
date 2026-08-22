@@ -1,12 +1,17 @@
-
 // Per-class promo rates. The `free`/`premium` keys mirror the v4 places
 // columns (welcome_free_rate / free_rate / …) — the DB column vocabulary is
 // unchanged (per-segment place columns are a not-yet-landed backend follow-up,
-// MESITA-723). The consumer class → column mapping lives in
-// resolveActivePromoRate: the floor reads `free`, anything elevated reads
-// `premium`. These column names are the v4 PLACES columns and have nothing to
-// do with the consumer's plan — they predate Classes v2 and are a binary
-// cheap-vs-generous split, which is why the resolver takes a boolean.
+// MESITA-723).
+//
+// NOTHING HERE IS A PRICE (MESITA-1019). These four numbers are the place's
+// strategy IDENTITY: the engine recovers `zero | conservative | aggressive |
+// dominant` by matching the tuple against the presets below, and the rate a
+// guest is actually quoted comes from `promos_config.v11` via
+// `consumer-web-get-discount-quote`. Reading a column as a percentage is the
+// MESITA-1017 drift class and is how the promo chip spent a month quoting
+// numbers the till never honored. The names also have nothing to do with the
+// consumer's plan — they predate Classes v2 and are a binary
+// cheap-vs-generous split.
 type PromoClassRates = {
   free: number | null;
   premium: number | null;
@@ -15,10 +20,9 @@ type PromoClassRates = {
 type PromoMatrix = {
   welcome: PromoClassRates;
   default: PromoClassRates;
-  is_first_visit: boolean;
 };
 
-/** Columns needed to resolve a place's promo rate / strategy. */
+/** Columns needed to recover a place's strategy — and to gate on it. */
 export type PromoRateFields = {
   /** Computed server-side per request (MESITA-1150): does a guest get a
    *  discount here RIGHT NOW. Replaces every listing_type gate — that enum is
@@ -29,15 +33,17 @@ export type PromoRateFields = {
   /** @deprecated for gating — still on the row, no longer decides anything a
    *  guest sees. `promoting` is the question every surface actually asks. */
   listing_type?: string | null;
-  is_first_visit?: boolean | null;
   welcome_free_rate?: number | null;
   welcome_premium_rate?: number | null;
   free_rate?: number | null;
   premium_rate?: number | null;
 };
 
-/** Place-shaped input for PromoChip (rates + cap/currency for the tooltip). */
+/** Place-shaped input for PromoChip: the id it quotes by, the columns that
+ *  decide WHETHER it quotes, and the cap/currency for the tooltip. No rate is
+ *  read from here any more — see PromoChip (MESITA-1019). */
 export type PromoChipPlace = PromoRateFields & {
+  id: string;
   currency?: string | null;
   reward_cap_mxn?: number | null;
 };
@@ -70,11 +76,7 @@ export function buildPromoMatrixFromRow(
     premium: positiveRate(row.premium_rate),
   };
 
-  return {
-    welcome,
-    default: defaults,
-    is_first_visit: row.is_first_visit !== false,
-  };
+  return { welcome, default: defaults };
 }
 
 function promoMatrixHasAnyRate(matrix: PromoMatrix): boolean {
@@ -83,24 +85,6 @@ function promoMatrixHasAnyRate(matrix: PromoMatrix): boolean {
     matrix.welcome.premium != null ||
     matrix.default.free != null ||
     matrix.default.premium != null
-  );
-}
-
-function resolveActivePromoRate(
-  matrix: PromoMatrix,
-  elevated: boolean,
-  isFirstVisit = matrix.is_first_visit,
-): number | null {
-  // The v4 columns only know the binary free-vs-elevated split, so this takes
-  // the BOOLEAN it always meant. It used to take a ClassKey and compare it
-  // against "standard", which silently assumed the class ladder had exactly
-  // one unelevated rung — true under v1, and false the moment plan became its
-  // own axis (a Bronze guest on Premium is elevated).
-  const col: keyof PromoClassRates = elevated ? "premium" : "free";
-  const welcome = matrix.welcome[col];
-  const returning = matrix.default[col];
-  return (
-    (isFirstVisit ? (welcome ?? returning) : (returning ?? welcome)) ?? null
   );
 }
 
@@ -183,10 +167,10 @@ export function strategyForPlaceRow(
  *
  * Class-independent on purpose. The discovery Filters context axis
  * ("Prioritize · Visit", MESITA-1081) asks whether the place pays for a body in
- * the room AT ALL, not what this particular guest would earn — that stays
- * resolvePromoRateFromPlaceRow for display, and the quotable number still comes
- * from consumer-web-get-discount-quote. Same gate as the promo chip, so a place
- * the deck shows with a ribbon is exactly a place "Visit" keeps.
+ * the room AT ALL, not what this particular guest would earn — the quotable
+ * number comes from consumer-web-get-discount-quote. Same gate as the promo
+ * chip, so a place the deck shows with a ribbon is exactly a place "Visit"
+ * keeps.
  */
 export function placeRewardsVisits(
   row: PromoRateFields | null | undefined,
@@ -197,22 +181,4 @@ export function placeRewardsVisits(
     promo_matrix: buildPromoMatrixFromRow(row, "partner"),
     promo_configured: hasExplicitClassRates(row),
   });
-}
-
-export function resolvePromoRateFromPlaceRow(
-  row: PromoRateFields,
-  isFirstVisit: boolean,
-  premium: boolean,
-): number | null {
-  const matrix = buildPromoMatrixFromRow(row, "partner");
-  if (
-    !placeOffersMesitaRewards({
-      promoting: isPromoting(row),
-      promo_matrix: matrix,
-      promo_configured: hasExplicitClassRates(row),
-    })
-  ) {
-    return null;
-  }
-  return resolveActivePromoRate(matrix, premium, isFirstVisit);
 }

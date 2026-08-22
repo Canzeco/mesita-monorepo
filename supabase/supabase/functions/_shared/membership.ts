@@ -114,3 +114,36 @@ export async function hasClaimedReview(
     .eq("project_id", projectId);
   return (count ?? 0) > 0;
 }
+
+/**
+ * Which of `projectIds` this consumer has ALREADY visited — one query for a
+ * whole batch (MESITA-1019).
+ *
+ * `isConsumerFirstVisit` above answers the same question for one place with a
+ * count query, which is right when a bill is being priced but is an N+1 the
+ * moment a surface needs the answer for a deck of places. The set is inverted
+ * by the caller: absent from it ⇒ first visit. An empty id list short-circuits
+ * without touching the table.
+ *
+ * No `excludeTicketId` twin on purpose: the exclusion exists so a ticket being
+ * billed doesn't suppress its own Welcome rate, and nothing that reads a batch
+ * is pricing a live ticket.
+ */
+export async function consumerVisitedPlaceIds(
+  admin: SupabaseClient,
+  consumerId: string,
+  projectIds: string[],
+): Promise<Set<string>> {
+  if (projectIds.length === 0) return new Set();
+  const { data } = await admin
+    .from("visit_tickets")
+    .select("project_id")
+    .eq("consumer_id", consumerId)
+    .in("project_id", projectIds);
+  const rows = (data ?? []) as { project_id: string | null }[];
+  return new Set(
+    rows
+      .map((r) => r.project_id)
+      .filter((id): id is string => typeof id === "string"),
+  );
+}
