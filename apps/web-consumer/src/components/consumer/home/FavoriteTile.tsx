@@ -47,7 +47,7 @@ export function FavoriteTile({
 
   return (
     <li className="min-w-0">
-      <div className="border-border bg-card relative flex aspect-[3/4] flex-col overflow-hidden rounded-2xl border transition hover:shadow-md">
+      <div className="border-border bg-card hover:shadow-rest relative flex aspect-[3/4] flex-col overflow-hidden rounded-2xl border transition">
         {/* Photo + text navigate to the place; the heart is a separate control
             (interactive elements can't nest inside an <a>). */}
         <Link
@@ -119,9 +119,7 @@ export function FavoriteTile({
           type="button"
           onClick={onToggle}
           aria-label={
-            saved
-              ? `Remove ${place.name} from saved`
-              : `Save ${place.name}`
+            saved ? `Remove ${place.name} from saved` : `Save ${place.name}`
           }
           className="absolute top-1 right-1 flex h-11 w-11 items-center justify-center"
         >

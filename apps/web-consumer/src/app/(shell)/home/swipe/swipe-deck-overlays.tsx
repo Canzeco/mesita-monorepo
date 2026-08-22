@@ -21,7 +21,7 @@ export function SwipeExitStamp({
     >
       <span
         className={cn(
-          "animate-in fade-in zoom-in-50 inline-flex items-center gap-2 rounded-2xl border-[3px] px-5 py-2.5 text-2xl font-black tracking-[0.15em] uppercase duration-200 ease-out",
+          "animate-in fade-in zoom-in-50 inline-flex items-center gap-2 rounded-2xl border-[3px] px-5 py-2.5 text-2xl font-black tracking-[0.14em] uppercase duration-200 ease-out",
           isSavedStamp
             ? "bg-pink-gradient shadow-glow -rotate-[8deg] border-white text-white"
             : "border-foreground/70 bg-foreground/85 text-background rotate-[8deg]",
@@ -49,7 +49,7 @@ export function SwipeTutorialOverlay() {
       <div className="flex flex-col items-center gap-5">
         <div className="animate-swipe-hint">
           <Hand
-            className="h-20 w-20 text-white drop-shadow-[0_8px_32px_rgba(0,0,0,0.7)]"
+            className="drop-shadow-media-lg h-20 w-20 text-white"
             strokeWidth={1.4}
           />
         </div>

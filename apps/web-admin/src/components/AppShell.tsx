@@ -96,7 +96,7 @@ export function AppShell({ children, defaultCollapsed = false }: AppShellProps) 
               type="button"
               onClick={close}
               aria-label="Close menu"
-              className="border-border bg-card text-muted-foreground hover:text-foreground absolute top-3 -right-12 flex h-9 w-9 items-center justify-center rounded-full border shadow-sm transition"
+              className="border-border bg-card text-muted-foreground hover:text-foreground absolute top-3 -right-12 flex h-9 w-9 items-center justify-center rounded-full border shadow-card transition"
             >
               <X className="h-4 w-4" />
             </button>
@@ -124,7 +124,7 @@ export function AppShell({ children, defaultCollapsed = false }: AppShellProps) 
               variant="horizontal"
               className="text-primary h-5 w-auto"
             />
-            <span className="text-muted-foreground text-[10px] font-medium tracking-[0.16em] uppercase">
+            <span className="text-muted-foreground text-[10px] font-medium tracking-[0.14em] uppercase">
               admin
             </span>
           </Link>

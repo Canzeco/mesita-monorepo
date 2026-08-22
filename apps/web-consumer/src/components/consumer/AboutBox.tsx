@@ -47,7 +47,7 @@ export function AboutBox({ text, name }: { text: string; name: string }) {
   if (!isLong) {
     return (
       <section className="border-border bg-card flex flex-col gap-3 rounded-2xl border p-4">
-        <h3 className="text-muted-foreground text-[10px] font-bold tracking-[0.18em] uppercase">
+        <h3 className="text-muted-foreground text-[10px] font-bold tracking-[0.14em] uppercase">
           {heading}
         </h3>
         <p className="text-muted-foreground text-base leading-relaxed whitespace-pre-wrap">
@@ -64,7 +64,7 @@ export function AboutBox({ text, name }: { text: string; name: string }) {
       aria-expanded={expanded}
       className="border-border bg-card hover:bg-card/80 flex flex-col gap-3 rounded-2xl border p-4 text-left transition"
     >
-      <h3 className="text-muted-foreground text-[10px] font-bold tracking-[0.18em] uppercase">
+      <h3 className="text-muted-foreground text-[10px] font-bold tracking-[0.14em] uppercase">
         {heading}
       </h3>
       <p

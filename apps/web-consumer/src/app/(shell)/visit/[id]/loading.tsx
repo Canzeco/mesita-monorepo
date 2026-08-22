@@ -20,7 +20,7 @@ export default function TicketLoading() {
       <div className="border-border shrink-0 border-b pt-1 pb-2.5">
         <Skeleton className="h-12 rounded-xl" />
       </div>
-      <Skeleton className="mt-3 h-72 shrink-0 rounded-[24px]" />
+      <Skeleton className="rounded-panel mt-3 h-72 shrink-0" />
       <Skeleton className="mt-2.5 h-12 shrink-0 rounded-2xl" />
     </div>
   );

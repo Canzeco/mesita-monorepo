@@ -75,7 +75,7 @@ export function ResultSummary({
             onClick={() =>
               onCopy(result.uniquePlaces.map((p) => p.id).join("\n"), "all")
             }
-            className="bg-background hover:bg-background/80 inline-flex items-center gap-2 rounded-xl border border-transparent px-3.5 py-2 text-sm font-medium shadow-sm transition"
+            className="bg-background hover:bg-background/80 inline-flex items-center gap-2 rounded-xl border border-transparent px-3.5 py-2 text-sm font-medium shadow-card transition"
           >
             {copied === "all" ? (
               <Check className="h-4 w-4" />
@@ -87,7 +87,7 @@ export function ResultSummary({
           <button
             type="button"
             onClick={onDownload}
-            className="bg-background hover:bg-background/80 inline-flex items-center gap-2 rounded-xl border border-transparent px-3.5 py-2 text-sm font-medium shadow-sm transition"
+            className="bg-background hover:bg-background/80 inline-flex items-center gap-2 rounded-xl border border-transparent px-3.5 py-2 text-sm font-medium shadow-card transition"
           >
             <Download className="h-4 w-4" />
             Download CSV

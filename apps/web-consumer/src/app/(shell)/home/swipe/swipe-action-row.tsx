@@ -94,14 +94,14 @@ function SwipeActionButton({
         "disabled:pointer-events-none disabled:opacity-50 disabled:shadow-none",
         big ? "h-15 w-15" : "h-12 w-12",
         variant === "utility" &&
-          "border-border bg-card text-muted-foreground hover:bg-muted shadow-[0_2px_8px_-4px_rgba(80,20,40,0.25)]",
+          "border-border bg-card text-muted-foreground hover:bg-muted shadow-rest",
         // Heavier than the utilities, still no hue — Skip is a decision, not
         // an error, so it must not read as destructive red.
         variant === "skip" &&
-          "border-foreground/25 bg-card text-foreground/80 hover:bg-muted shadow-[0_2px_10px_-4px_rgba(80,20,40,0.3)]",
+          "border-foreground/25 bg-card text-foreground/80 hover:bg-muted shadow-rest",
         // The one colour. Solid, so it wins the row outright.
         variant === "save" &&
-          "border-primary bg-primary text-primary-foreground shadow-[0_5px_16px_-5px_rgba(251,43,123,0.65)] hover:brightness-105",
+          "border-primary bg-primary text-primary-foreground shadow-glow-sm hover:brightness-105",
       )}
     >
       <Icon

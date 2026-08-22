@@ -34,7 +34,10 @@ import { cn } from "@/lib/utils";
 
 export type TaskKind = "review" | "story";
 
-export function googleMapsSearchUrl(placeName: string, address?: string | null) {
+export function googleMapsSearchUrl(
+  placeName: string,
+  address?: string | null,
+) {
   const q = [placeName, address].filter(Boolean).join(" ");
   return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
     q || "restaurant",
@@ -95,7 +98,9 @@ export function TaskProof({
   const openTarget = useCallback(() => {
     setPhase("opening");
     window.open(
-      isReview ? googleMapsSearchUrl(placeName, placeAddress) : instagramOpenUrl(),
+      isReview
+        ? googleMapsSearchUrl(placeName, placeAddress)
+        : instagramOpenUrl(),
       "_blank",
       "noopener,noreferrer",
     );
@@ -203,7 +208,7 @@ export function TaskProof({
             type="button"
             onClick={() => fileInputRef.current?.click()}
             disabled={phase === "confirming"}
-            className="text-foreground absolute top-2 right-2 flex items-center gap-1 rounded-full bg-white/90 px-2.5 py-1 text-[11px] font-bold shadow-sm transition active:scale-95"
+            className="text-foreground shadow-rest absolute top-2 right-2 flex items-center gap-1 rounded-full bg-white/90 px-2.5 py-1 text-[11px] font-bold transition active:scale-95"
           >
             <RefreshCw className="size-3" />
             Replace

@@ -182,7 +182,7 @@ function GiftCardTile({ card }: { card: GiftCard }) {
 
       {/* Buttons on top: eyebrow (left) + Contact (partner cards) + Share. */}
       <div className="relative flex items-start justify-between gap-3">
-        <p className="text-[10px] font-bold tracking-[0.2em] text-white/80 uppercase">
+        <p className="text-[10px] font-bold tracking-[0.14em] text-white/80 uppercase">
           Mesita · Gift card
         </p>
         <div className="flex shrink-0 items-center gap-2">

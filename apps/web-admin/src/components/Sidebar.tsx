@@ -297,7 +297,7 @@ export function Sidebar({
         ) : (
           <>
             <MesitaLogo variant="horizontal" className="h-5 w-auto" />
-            <span className="text-background/50 text-[10px] font-medium tracking-[0.16em] uppercase">
+            <span className="text-background/50 text-[10px] font-medium tracking-[0.14em] uppercase">
               admin
             </span>
           </>

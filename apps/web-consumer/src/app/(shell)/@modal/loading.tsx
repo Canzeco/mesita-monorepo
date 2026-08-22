@@ -6,7 +6,7 @@ import { Spinner } from "@/components/shared";
 // MobileFrame on desktop), never an opaque white flash.
 export default function ModalLoading() {
   return (
-    <div className="pointer-events-auto absolute inset-0 z-50 flex items-center justify-center bg-black/20">
+    <div className="pointer-events-auto absolute inset-0 z-50 flex items-center justify-center bg-black/40">
       <Spinner label="Loading" className="border-white/40 border-t-white" />
     </div>
   );

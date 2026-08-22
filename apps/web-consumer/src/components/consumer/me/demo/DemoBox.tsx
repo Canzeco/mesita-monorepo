@@ -72,7 +72,7 @@ export function DemoSegmented<T extends string>({
             className={cn(
               "flex-1 rounded-md px-2 py-1.5 text-center text-[12px] font-semibold whitespace-nowrap transition",
               active
-                ? "bg-background text-foreground shadow-sm"
+                ? "bg-background text-foreground shadow-rest"
                 : "text-muted-foreground hover:text-foreground",
             )}
           >
@@ -109,7 +109,7 @@ export function DemoSwitch({
     >
       <span
         className={cn(
-          "inline-block h-5 w-5 transform rounded-full bg-white shadow-sm transition",
+          "shadow-rest inline-block h-5 w-5 transform rounded-full bg-white transition",
           checked ? "translate-x-[18px]" : "translate-x-[2px]",
         )}
       />

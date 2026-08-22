@@ -479,7 +479,7 @@ export function ConfirmDialog({
         // itself can only be the ::backdrop.
         if (!busy && e.target === e.currentTarget) onCancel();
       }}
-      className="border-border bg-card m-auto hidden w-[min(28rem,calc(100vw-2rem))] rounded-2xl border p-0 shadow-lg backdrop:bg-black/40 open:block"
+      className="border-border bg-card m-auto hidden w-[min(28rem,calc(100vw-2rem))] rounded-2xl border p-0 shadow-elev backdrop:bg-black/40 open:block"
     >
       <div className="p-5">
         <h2 id={titleId} className="font-display text-base font-semibold tracking-tight">
@@ -558,7 +558,7 @@ export function ReadField({
           className={
             boxed
               ? "text-foreground/90 flex items-center gap-1.5 text-[13px] font-medium"
-              : "text-muted-foreground flex items-center gap-1.5 text-[11px] font-semibold tracking-[0.05em] uppercase"
+              : "text-muted-foreground flex items-center gap-1.5 text-[11px] font-semibold tracking-[0.12em] uppercase"
           }
         >
           {label}

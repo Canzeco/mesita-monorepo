@@ -48,7 +48,7 @@ export function ParamCard({
     <label
       className={`bg-card shadow-elev flex flex-col gap-1 rounded-2xl border px-5 py-4 transition focus-within:border-primary ${toneClasses}`}
     >
-      <span className="text-muted-foreground text-[10px] font-medium tracking-[0.16em] uppercase">
+      <span className="text-muted-foreground text-[10px] font-medium tracking-[0.14em] uppercase">
         {label}
       </span>
       <div className="flex items-center justify-center py-1">{children}</div>
@@ -78,7 +78,7 @@ export function FilterCard({
       }
     >
       <div className="flex items-baseline justify-between gap-2">
-        <span className="text-muted-foreground text-[10px] font-medium tracking-[0.16em] uppercase">
+        <span className="text-muted-foreground text-[10px] font-medium tracking-[0.14em] uppercase">
           {label}
         </span>
         <span className="text-muted-foreground/70 text-[11px]">{footer}</span>
@@ -110,7 +110,7 @@ export function ChipRow({
             className={
               "rounded-xl px-3 py-1.5 text-sm font-medium tabular-nums transition " +
               (selected
-                ? "bg-primary text-primary-foreground shadow-sm"
+                ? "bg-primary text-primary-foreground shadow-card"
                 : "bg-muted/60 text-foreground/70 hover:bg-muted hover:text-foreground")
             }
           >

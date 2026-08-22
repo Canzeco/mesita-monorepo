@@ -137,7 +137,7 @@ export function PlaceEditChrome({
 
   return (
     // Light sticky chrome — content area stays light; only the lateral menu is dark.
-    <div className="border-border bg-card text-foreground sticky top-0 z-30 border-b shadow-sm">
+    <div className="border-border bg-card text-foreground sticky top-0 z-30 border-b shadow-card">
       {/* Row 1 — identity + actions */}
       <div className="flex items-center gap-3 px-4 py-3.5 sm:gap-4 sm:px-6 sm:py-4 lg:px-8">
         <PlaceThumb photo={heroPhoto} name={placeDisplayName(place)} size="lg" />
@@ -302,7 +302,7 @@ export function PlaceThumb({
   size?: "sm" | "lg";
 }) {
   const dim =
-    size === "lg" ? "h-11 w-11 rounded-xl shadow-sm" : "h-8 w-8 rounded-md";
+    size === "lg" ? "h-11 w-11 rounded-xl shadow-card" : "h-8 w-8 rounded-md";
   const icon = size === "lg" ? "h-4 w-4" : "h-3.5 w-3.5";
 
   if (!photo) {

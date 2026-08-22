@@ -75,7 +75,7 @@ export function JourneyRail({
             </>
           );
           const shell = cn(
-            "flex min-h-[44px] w-full min-w-[52px] flex-col items-start justify-center gap-1.5 rounded-xl border px-1.5 text-left transition",
+            "flex min-h-11 w-full min-w-[52px] flex-col items-start justify-center gap-1.5 rounded-xl border px-1.5 text-left transition",
             amber
               ? "border-amber-500/40 bg-amber-500/10"
               : current

@@ -273,13 +273,13 @@ function DistributionCard({
               <tr className="border-border border-b-2">
                 <th
                   scope="col"
-                  className="text-muted-foreground pb-1 text-left text-[10px] font-bold tracking-[0.1em] uppercase"
+                  className="text-muted-foreground pb-1 text-left text-[10px] font-bold tracking-[0.12em] uppercase"
                 >
                   Reward
                 </th>
                 <th
                   scope="col"
-                  className="text-muted-foreground pb-1 text-right text-[10px] font-bold tracking-[0.1em] uppercase"
+                  className="text-muted-foreground pb-1 text-right text-[10px] font-bold tracking-[0.12em] uppercase"
                 >
                   Visits
                 </th>
@@ -287,7 +287,7 @@ function DistributionCard({
                   <th
                     key={label}
                     scope="col"
-                    className="text-muted-foreground pb-1 text-right text-[10px] font-bold tracking-[0.1em] uppercase"
+                    className="text-muted-foreground pb-1 text-right text-[10px] font-bold tracking-[0.12em] uppercase"
                   >
                     {label}
                   </th>

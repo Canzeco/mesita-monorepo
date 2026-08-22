@@ -102,7 +102,7 @@ function Tile({
       onClick={onClick}
       aria-label={`${eyebrow}: ${value}. ${note}`}
       className={cn(
-        "flex min-w-0 flex-col items-start rounded-2xl p-3 text-left shadow-sm transition active:scale-[0.98]",
+        "shadow-rest flex min-w-0 flex-col items-start rounded-2xl p-3 text-left transition active:scale-[0.98]",
         // `fill` carries its own ink — three of the four metals are LIGHT
         // fills and white on them measures under 2:1 (MESITA-1142), so the
         // tile cannot assume a colour here. Sub-text dims the inherited ink
@@ -114,7 +114,7 @@ function Tile({
         className={cn(
           // 10px, not 9px: Docs › Design §D puts eyebrow/meta at
           // text-[10px]–xs, and 9px at this tracking was under its own floor.
-          "flex max-w-full items-center gap-1 text-[10px] font-bold tracking-[0.1em] uppercase",
+          "flex max-w-full items-center gap-1 text-[10px] font-bold tracking-[0.12em] uppercase",
           held ? "opacity-85" : "text-muted-foreground",
         )}
       >
@@ -163,7 +163,7 @@ export function ProfileSummaryCard({
       <section
         aria-label="Your Mesita passport"
         aria-busy="true"
-        className="border-border bg-card w-full overflow-hidden rounded-2xl border shadow-sm"
+        className="border-border bg-card shadow-rest w-full overflow-hidden rounded-2xl border"
       >
         <div className="bg-muted h-1.5 w-full" />
         {/* The skeleton mirrors the DESTINATION (Docs › Design §D). It used
@@ -241,7 +241,7 @@ export function ProfileSummaryCard({
   return (
     <section
       aria-label="Your Mesita passport"
-      className="border-border bg-card w-full overflow-hidden rounded-2xl border shadow-sm"
+      className="border-border bg-card shadow-rest w-full overflow-hidden rounded-2xl border"
     >
       {/* The metal band — the class is the first thing the card says. Hidden
           from assistive tech on purpose: it is colour-only, and the Class tile

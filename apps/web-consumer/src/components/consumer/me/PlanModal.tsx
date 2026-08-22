@@ -162,7 +162,7 @@ export function PlanModal({
               className={cn(
                 "flex items-center gap-3 rounded-2xl p-3.5",
                 !isPremium
-                  ? "bg-muted shadow-sm"
+                  ? "bg-muted shadow-rest"
                   : "border-border bg-card border",
               )}
             >
@@ -184,7 +184,7 @@ export function PlanModal({
               className={cn(
                 "flex items-center gap-3 rounded-2xl p-3.5",
                 isPremium
-                  ? "bg-tier-premium text-white shadow-sm"
+                  ? "bg-tier-premium shadow-rest text-white"
                   : "border-border bg-card border",
               )}
             >
@@ -236,7 +236,9 @@ export function PlanModal({
                   <span className="bg-secondary/15 text-secondary flex h-5 w-5 shrink-0 items-center justify-center rounded-full">
                     <Check className="h-3 w-3" />
                   </span>
-                  <span className={p.soon ? "text-muted-foreground" : undefined}>
+                  <span
+                    className={p.soon ? "text-muted-foreground" : undefined}
+                  >
                     {p.label}
                   </span>
                   {p.soon && (

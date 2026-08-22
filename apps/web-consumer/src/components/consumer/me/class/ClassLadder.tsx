@@ -59,7 +59,7 @@ export function ClassLadder() {
             className={cn(
               "flex items-center gap-3 rounded-2xl p-3.5",
               current
-                ? cn("shadow-sm", classBadgeClass(c.id))
+                ? cn("shadow-rest", classBadgeClass(c.id))
                 : "border-border bg-card border",
             )}
           >

@@ -62,7 +62,7 @@ export function SlideOverShell({ children }: { children: React.ReactNode }) {
         tabIndex={-1}
         onClick={requestClose}
         className={cn(
-          "absolute inset-0 cursor-default bg-black/30 transition-opacity duration-300 motion-reduce:transition-none",
+          "absolute inset-0 cursor-default bg-black/40 backdrop-blur-sm transition-opacity duration-300 motion-reduce:transition-none",
           open ? "opacity-100" : "opacity-0",
         )}
       />
@@ -70,7 +70,7 @@ export function SlideOverShell({ children }: { children: React.ReactNode }) {
         role="dialog"
         aria-modal="true"
         className={cn(
-          "bg-background absolute inset-y-0 right-0 flex w-full flex-col overflow-hidden shadow-[-16px_0_40px_rgba(0,0,0,0.25)]",
+          "bg-background shadow-sheet-left absolute inset-y-0 right-0 flex w-full flex-col overflow-hidden",
           "transition-transform duration-300 motion-reduce:transition-none",
           OVERLAY_EASE,
           open ? "translate-x-0" : "translate-x-full",

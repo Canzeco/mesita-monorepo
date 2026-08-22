@@ -23,7 +23,7 @@ export function CarouselMuteButton({
       aria-label={muted ? "Unmute video" : "Mute video"}
       data-no-swipe
       className={cn(
-        "absolute z-20 flex h-9 w-9 items-center justify-center rounded-full bg-black/65 text-white backdrop-blur transition hover:bg-black/80",
+        "absolute z-20 flex h-9 w-9 items-center justify-center rounded-full bg-black/60 text-white backdrop-blur transition hover:bg-black/80",
         mutePosition === "top-right"
           ? multiSlide
             ? "top-12 right-3"
@@ -53,7 +53,7 @@ export function CarouselPillDots({
         <span
           key={i}
           className={cn(
-            "h-1.5 rounded-full bg-white drop-shadow-[0_1px_3px_rgba(0,0,0,0.55)] transition-all duration-200",
+            "drop-shadow-media h-1.5 rounded-full bg-white transition-all duration-200",
             i === activeIdx ? "w-5 opacity-100" : "w-1.5 opacity-60",
           )}
         />
@@ -99,7 +99,7 @@ export function CarouselSlideCounter({
   count: number;
 }) {
   return (
-    <div className="pointer-events-none absolute top-3 right-3 z-10 rounded-full bg-black/60 px-2 py-0.5 text-[10px] font-semibold text-white shadow-[0_2px_8px_rgba(0,0,0,0.35)] backdrop-blur">
+    <div className="shadow-media pointer-events-none absolute top-3 right-3 z-10 rounded-full bg-black/60 px-2 py-0.5 text-[10px] font-semibold text-white backdrop-blur">
       {idx + 1} / {count}
     </div>
   );

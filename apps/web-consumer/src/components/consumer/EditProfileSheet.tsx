@@ -174,7 +174,7 @@ export function EditProfileSheet({
             aria-label="Change profile photo"
           >
             {/* Story-ring around the photo, matching the profile hero. */}
-            <span className="bg-pink-gradient flex h-20 w-20 rounded-full p-[2.5px] shadow-sm">
+            <span className="bg-pink-gradient shadow-rest flex h-20 w-20 rounded-full p-[2.5px]">
               <span className="bg-card relative flex-1 overflow-hidden rounded-full">
                 {displayAvatarUrl ? (
                   <Image
@@ -198,7 +198,7 @@ export function EditProfileSheet({
                 )}
               </span>
             </span>
-            <span className="border-background bg-foreground text-background absolute -right-0.5 -bottom-0.5 flex h-7 w-7 items-center justify-center rounded-full border-2 shadow-sm transition group-active:scale-95">
+            <span className="border-background bg-foreground text-background shadow-rest absolute -right-0.5 -bottom-0.5 flex h-7 w-7 items-center justify-center rounded-full border-2 transition group-active:scale-95">
               <Camera className="h-3.5 w-3.5" />
             </span>
           </button>

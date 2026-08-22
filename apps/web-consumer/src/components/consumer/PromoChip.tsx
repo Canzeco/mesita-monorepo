@@ -68,7 +68,7 @@ export function PromoChip({
   const emptyTone =
     tone === "light"
       ? "border border-blue-200 bg-blue-50 text-blue-700"
-      : "border border-white/35 bg-black/45 text-white";
+      : "border border-white/35 bg-black/60 text-white";
   const emptyIconTone = tone === "light" ? "text-blue-500" : undefined;
 
   // Hard gate, and the reason a deck of ordinary listings costs nothing: only

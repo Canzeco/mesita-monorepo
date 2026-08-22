@@ -28,7 +28,7 @@ export function EnterpriseAuthLayout({
         <div className="flex flex-1 items-center justify-center px-6 py-12 sm:px-10">
           <div className="w-full max-w-[420px]">
             <header className="mb-7">
-              <p className="text-muted-foreground text-[10px] font-medium tracking-[0.18em] uppercase">
+              <p className="text-muted-foreground text-[10px] font-medium tracking-[0.14em] uppercase">
                 Mesita
               </p>
               <h1 className="font-display mt-1.5 text-[30px] leading-tight font-semibold tracking-[-0.02em]">
@@ -55,7 +55,7 @@ function LandingPane() {
         <Link href="/" className="inline-flex items-center no-underline">
           <MesitaLogo variant="horizontal" className="h-7 w-auto" />
         </Link>
-        <span className="text-[10px] font-bold tracking-[0.2em] text-background/70 uppercase">
+        <span className="text-[10px] font-bold tracking-[0.14em] text-background/70 uppercase">
           Admin
         </span>
       </div>
