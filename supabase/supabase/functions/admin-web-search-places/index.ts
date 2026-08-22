@@ -20,7 +20,11 @@ import {
 } from "../_shared/auth.ts";
 import { isPaidPlan } from "../_shared/membership-enforcement-helpers.ts";
 import { isPlacePromoting } from "../_shared/place-promoting.ts";
-import { isPlaceSeeded, placeEnrichLevel } from "../_shared/place-pulse.ts";
+import {
+  isPlaceListed,
+  isPlaceSeeded,
+  placeEnrichLevel,
+} from "../_shared/place-pulse.ts";
 
 type Body = { query?: unknown; limit?: unknown };
 
@@ -182,6 +186,10 @@ Deno.serve(async (req) => {
       listing_type: listingType,
       // The five status flags, in table order.
       seeded: isPlaceSeeded(v.google_place_id),
+      // The second pulse fact. MESITA-1186 put it on the Pulse box and in the
+      // shared helper but never on this payload, so the catalog table still
+      // could not render it. No extra read — `status` is already selected.
+      listed: isPlaceListed(v.status),
       enrich_level: level,
       /** Kept for callers that only need "is it done". */
       enriched: level === 3,

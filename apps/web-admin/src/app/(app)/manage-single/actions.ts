@@ -38,6 +38,8 @@ export type PlaceHit = {
   //    derived server-side in admin-web-search-places; none is a column.
   /** google_place_id present — the identity spine every run starts from. */
   seeded: boolean;
+  /** A guest can reach it: projects.status, per the consumer RLS policy. */
+  listed: boolean;
   /** 0 seeded only · 1 research gathered · 2 images analysed · 3 persisted. */
   enrich_level: 0 | 1 | 2 | 3;
   /** enrich_level === 3. Kept for callers that only need "is it done". */
@@ -87,6 +89,7 @@ function normalizePlaceHit(raw: RawPlaceHit): PlaceHit {
     // into one stale enum, so guessing from it would put a wrong flag on
     // screen rather than an honest "not yet" (MESITA-1152 / MESITA-1166).
     seeded: raw.seeded ?? false,
+    listed: raw.listed ?? false,
     enrich_level: raw.enrich_level ?? 0,
     enriched: raw.enriched ?? raw.enrich_level === 3,
     verified: raw.verified ?? false,
