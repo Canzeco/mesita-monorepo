@@ -1,23 +1,8 @@
-import { getVerificationConfig, type VerificationConfig } from "./actions";
-import { VerificationConfigClient } from "./VerificationConfigClient";
+import { permanentRedirect } from "next/navigation";
 
-// Verification Config — partner badge + ownership auto-confirm policies.
-export const dynamic = "force-dynamic";
-
-const FALLBACK_CONFIG: VerificationConfig = {
-  createPlacesAsVerified: false,
-  autoVerifyAiCall: true,
-  autoVerifyAiEmail: true,
-  autoVerifyVideo: false,
-};
-
-export default async function VerificationConfigPage() {
-  const res = await getVerificationConfig();
-  return (
-    <VerificationConfigClient
-      initialConfig={res.ok ? res.config : FALLBACK_CONFIG}
-      initialUpdatedAt={res.ok ? res.updatedAt : null}
-      loadError={res.ok ? null : res.error}
-    />
-  );
+// Verification folded into General (MESITA-1175). The route survives as a
+// redirect: Notion's Configs registry links it, and those links are external
+// and ungreppable.
+export default function VerificationConfigPage(): never {
+  permanentRedirect("/general-config");
 }
