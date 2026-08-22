@@ -7,13 +7,25 @@
 // auth accounts, the app_config admin-config singleton (Atlas/Enricher/
 // Memo/Sourcing/Scoring/Reservations/Promos/Models/Agents/Verification),
 // consumer_code_counter, and the re-seeded vocabularies (classes,
-// project_plans, place_categories, place_tags).
+// consumer_plans, project_plans, place_categories, place_tags).
 //
-// Two guards before anything runs:
+// RE-SEEDED MEANS IDENTITY ONLY. classes converge on label + rank, the two
+// plan catalogs on label. Tuned values — thresholds, limits, weights, prices,
+// currency, stripe_price_id — are written on INSERT only, because those tables
+// are preserved and an upsert over a live row is a rollback to whenever the
+// function's literals were last edited (MESITA-1179). So a reset does NOT
+// restore factory thresholds or prices: a drifted one is a migration, never a
+// trip through this button.
+//
+// Three guards before anything runs:
 //   1. Caller's JWT identity — email OR phone — must be in
 //      public.super_admins.
 //   2. Body must carry { confirm: "RESET" } — a typed phrase so a stray
 //      click or replayed request can't trigger a wipe.
+//   3. In SQL: an EMPTY public.super_admins refuses the wipe outright. The
+//      auth.users delete is keyed on that table, so an empty one deletes every
+//      account including the operator's, and nothing can re-grant admin
+//      afterwards because granting runs through checkSuperAdmin (MESITA-1192).
 //
 // The DB half lives in the public.admin_reset_database() SQL function
 // (security definer, service-role only), which discovers the tables to
