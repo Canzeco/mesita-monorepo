@@ -11,7 +11,7 @@ import {
   Users,
 } from "lucide-react";
 
-// Filters Config (MESITA-1083) — one Sidebar entry, "Discover" (the route
+// Filters Config (MESITA-1083) — one Sidebar entry, "Discovery" (the route
 // stays /filters-config), with eight in-page tabs.
 // General carries the law; the other seven are one consumer surface each, in
 // the order a guest meets them: the Home hub's FIVE modes (Swipe · Catalog ·
@@ -29,7 +29,7 @@ import {
 // literally the thing being configured — one glyph, one meaning.
 export const FILTERS_PARENT = {
   href: "/filters-config",
-  label: "Discover",
+  label: "Discovery",
   Icon: Compass,
 } as const;
 

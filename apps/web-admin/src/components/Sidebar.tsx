@@ -90,7 +90,7 @@ const MANAGE_NAV: NavItem[] = [
 //             fills its profile (Enrichment; the profile SPEC is Notion Atlas
 //             Rules — nothing to configure, so no page) → how ownership gets
 //             sealed (Verification)
-//   demand    a guest's night: how they find a place (Discover) → how they
+//   demand    a guest's night: how they find a place (Discovery) → how they
 //             book it (Reservations) → the journey once they sit down (Visits,
 //             the local context) → or ordering without going at all (Orders,
 //             the remote one) → what either context pays them (Promos)
