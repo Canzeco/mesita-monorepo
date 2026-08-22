@@ -1,17 +1,7 @@
-import { getOjoConfig } from "./actions";
-import { OJO_FALLBACK } from "./defaults";
-import { OjoConfigClient } from "./OjoConfigClient";
+import { permanentRedirect } from "next/navigation";
 
-// Ojo Config — the proof-verification engine's policy blob.
-export const dynamic = "force-dynamic";
-
-export default async function OjoConfigPage() {
-  const res = await getOjoConfig();
-  return (
-    <OjoConfigClient
-      initialConfig={res.ok ? res.config : OJO_FALLBACK}
-      initialUpdatedAt={res.ok ? res.updatedAt : null}
-      loadError={res.ok ? null : res.error}
-    />
-  );
+// Ojo folded into General (MESITA-1178) — three controls do not earn a rail
+// row. The route survives as a redirect: Notion's Configs registry links it.
+export default function OjoConfigPage(): never {
+  permanentRedirect("/general-config");
 }
