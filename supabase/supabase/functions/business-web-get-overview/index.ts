@@ -23,6 +23,11 @@ import {
   isPlaceSeeded,
   placeEnrichLevel,
 } from "../_shared/place-status.ts";
+import {
+  PULSE_TOTAL,
+  pulseHighWater,
+  type PulseEvent,
+} from "../_shared/pulse-pieces.ts";
 
 // Super-admin manage-single extras: the Embeddings card (MESITA-720) and the
 // per-place manual_priority override. Keep both off the business overview
@@ -89,7 +94,7 @@ Deno.serve(async (req) => {
     // One round trip for both: the place row, and the pipeline row the Status
     // box's `enriched` level is read from. Parallel, so the extra fact costs
     // no latency.
-    const [placeRow, researchRow] = await Promise.all([
+    const [placeRow, researchRow, eventsRow] = await Promise.all([
       admin
         .from("profiles")
         .select(
@@ -101,6 +106,10 @@ Deno.serve(async (req) => {
       // each and only their PRESENCE is used, so the `is not null` happens in
       // the database and nothing large ever leaves it (MESITA-1198).
       admin.rpc("place_research_facts", { p_place_ids: [requestedPlaceId] }),
+      // PULSE pieces, latest per piece (MESITA-1172). The Status box and the
+      // catalog table MUST show the same number — a status that disagrees with
+      // itself across two screens is worse than no status at all.
+      admin.rpc("place_enrich_events_latest", { p_place_ids: [requestedPlaceId] }),
     ]);
     if (placeRow.error) {
       return json({ ok: false, error: placeRow.error.message }, 500);
@@ -134,6 +143,14 @@ Deno.serve(async (req) => {
         : null,
       (placeFields.content_status as string | null) ?? null,
     );
+    // Same best-effort posture: no events simply means the queue never
+    // reported, which reads as 0.
+    if (eventsRow.error) {
+      console.error("[get-overview] place_enrich_events_latest:", eventsRow.error.message);
+    }
+    const enrichPulse = pulseHighWater(
+      (eventsRow.data ?? []) as PulseEvent[],
+    );
     // Tag as owner so any downstream UI that gates on role still works —
     // super-admin gets the broadest permission set the place role enum
     // can express. (The frontend MyPlace type only knows owner|business|staff.)
@@ -151,6 +168,8 @@ Deno.serve(async (req) => {
         seeded: isPlaceSeeded(placeFields.google_place_id),
         listed: isPlaceListed(placeFields.status),
         enrich_level: enrichLevel,
+        enrich_pulse: enrichPulse,
+        enrich_pulse_total: PULSE_TOTAL,
       } as unknown as PlaceRow,
     ];
   } else {

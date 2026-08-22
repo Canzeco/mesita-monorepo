@@ -25,9 +25,11 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { invokeInternalCaller } from "../_shared/internal.ts";
 import {
-  notBought,
-  reportSubprocessOutcomes,
-} from "../_shared/enrich-subprocess-report.ts";
+  pieceDone,
+  pieceFailed,
+  reportPulsePieces,
+  type PieceOutcome,
+} from "../_shared/pulse-report.ts";
 import {
   applyProfileToUpdate,
   synthesisModelFor,
@@ -384,54 +386,26 @@ serveEnrichStage("contents", async (admin, env, row) => {
     imagesMeta.images = "skipped";
   }
 
-  // ── per-subprocess outcomes (MESITA-1200) ──────────────────────────────
-  // This stage owns synthesis, embedding and photos. Each `completed` is read
-  // off an observed effect — `aboutWritten` is computed from the PERSISTED
-  // place.description, `embeddingWrote` from the write's return value, and the
-  // photo status from the storage call's own result. See
-  // enrich-subprocess-report.ts.
-  await reportSubprocessOutcomes(admin, projectId, {
-    synthesis: !wants(buys, "synthesis")
-      ? notBought("Profile synthesis")
-      : aboutWritten
-      ? {
-        status: "completed",
-        detail: `About written; category “${place.category ?? "n/a"}”, ${inferredTags.length} tag(s).`,
-        meta: { category: place.category ?? null, tags: inferredTags.length },
-      }
-      : {
-        status: "failed",
-        detail: "Synthesis ran but no About was persisted.",
-        meta: { reason: "about_missing" },
-      },
-    embedding: !wants(buys, "embedding")
-      ? notBought("Semantic embedding")
-      : embeddingWrote
-      ? { status: "completed", detail: "Place embedding written." }
-      : {
-        status: "failed",
-        detail: "Embedding did not write — lazy backfill remains the safety net.",
-        meta: { reason: "embedding_not_written" },
-      },
-    photos: !wants(buys, "photos")
-      ? notBought("Image storage")
-      : imagesMeta.images === "stored"
-      ? {
-        status: "completed",
-        detail: imagesSummary,
-        meta: { stored: imagesMeta.imagesStored ?? null },
-      }
-      : imagesMeta.images === "skipped"
-      // Bought, but there was nothing to mirror. Nothing failed and nothing
-      // is missing, so this is a success rather than a strike against the
-      // place — photos still render from their source URLs.
-      ? { status: "completed", detail: imagesSummary, meta: { reason: "no_images" } }
-      : {
-        status: "failed",
-        detail: imagesSummary,
-        meta: { reason: imagesMeta.imagesError ?? "storage_failed" },
-      },
-  });
+  // ── PULSE pieces (MESITA-1172) ─────────────────────────────────────────
+  // Contents owns 5 (menu) and 9 (semantics).
+  const contentPieces: Partial<Record<string, PieceOutcome>> = {
+    // MENU IS A STUB. The website is no longer scraped, so there is no menu
+    // source and the piece can never block the queue — MESITA-1172 says so
+    // outright. It passes, and it is a free slot in the ladder until someone
+    // builds it. Worth knowing when reading a 9.
+    menu: pieceDone("No menu source yet — the piece is a stub."),
+  };
+  if (wants(buys, "synthesis")) {
+    // Semantics fuses synthesis and the embedding. `aboutWritten` is computed
+    // from the PERSISTED description, not from the model having replied.
+    contentPieces.semantics = aboutWritten
+      ? pieceDone(
+        `About written; category “${place.category ?? "n/a"}”, ${inferredTags.length} tag(s).`,
+        { embedding: embeddingWrote },
+      )
+      : pieceFailed("Synthesis ran but no About was persisted.");
+  }
+  await reportPulsePieces(admin, projectId, contentPieces);
 
   // One beacon for the whole contents stage (S7–S9) — one notification per
   // function. Reports synthesis + persist + image outcome in a single line.

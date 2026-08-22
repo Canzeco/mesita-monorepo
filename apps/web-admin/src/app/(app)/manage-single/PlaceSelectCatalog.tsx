@@ -480,7 +480,7 @@ function PlaceCatalogRow({
         <BoolCell value={place.listed} trueLabel="Yes" falseLabel="No" />
       </td>
       <td className="px-3 py-2.5 text-center">
-        <LevelCell level={place.enrich_level} progress={place.enrich_progress} />
+        <LevelCell level={place.enrich_pulse} total={place.enrich_pulse_total} />
       </td>
       <td className="px-3 py-2.5 text-center">
         <BoolCell value={place.verified} trueLabel="Yes" falseLabel="No" />
@@ -498,29 +498,10 @@ function PlaceCatalogRow({
   );
 }
 
-// ENRICHED is the only non-boolean flag.
-//
-// It reads a FRACTION when the place has per-subprocess events (MESITA-1200):
-// how many of the subprocesses its runs actually bought have landed. The
-// denominator is per-place, never a constant 9 — a place with no Instagram
-// never buys `social`, and against a fixed 9 it could never read as finished.
-//
-// It falls back to the old 0-3 stage level for a place whose last run predates
-// per-subprocess reporting, because 0/0 on a fully-enriched place would be a
-// worse lie than a coarse number.
-const LEVEL_TITLE: Record<number, string> = {
-  0: "Seeded only — enrichment has never run",
-  1: "Research gathered",
-  2: "Images analysed",
-  3: "Profile persisted",
-};
-
-/** done/total of what this place bought, or the coarse level when unknown. */
 // PROMOTING is a 0-3 rung, not a yes/no: how hard a place is discounting right
-// now (Pato, 2026-08-22). 0 is not "no data" — it means a guest gets nothing
-// here at this moment, which is also true of a paid Aggressive place whose
-// promo lane is paused. The server derives it so the boolean and the rung can
-// never disagree.
+// now. 0 is not "no data" — it means a guest gets nothing here at this moment,
+// which is also true of a paid Aggressive place whose promo lane is paused. The
+// server derives it so the boolean and the rung can never disagree.
 const PROMO_TITLE: Record<number, string> = {
   0: "Zero — no live discount",
   1: "Conservative",
@@ -556,31 +537,44 @@ function PromoLevelCell({ level }: { level: 0 | 1 | 2 | 3 }) {
   );
 }
 
-function LevelCell({
-  level,
-  progress,
-}: {
-  level: 0 | 1 | 2 | 3;
-  progress: { done: number; total: number } | null;
-}) {
-  // total 0 means every subprocess was skipped — nothing was bought, so there
-  // is nothing to be part-way through. The stage level is the better answer.
-  const useProgress = !!progress && progress.total > 0;
-  const done = useProgress ? progress!.done : level;
-  const total = useProgress ? progress!.total : 3;
-  const title = useProgress
-    ? `${progress!.done} of ${progress!.total} bought subprocess(es) complete`
-    : (LEVEL_TITLE[level] ?? `Level ${level}`);
+// ENRICHED is the only non-boolean flag: the PULSE high-water, 0-9
+// (MESITA-1172). Nine pieces run strictly in order —
+//
+//   seed · status · details · links · menu · social · images · reviews · semantics
+//
+// — and the number is HOW FAR THE QUEUE GOT: the index of the last piece such
+// that it and everything before it completed. Not a count of pieces that
+// worked; a gap stops it, because a profile built past a hole is built on
+// incomplete data.
+//
+// 0 also covers a place that predates piece reporting. That is honest — we do
+// not know how far its queue got, and claiming a number would be worse.
+const PULSE_LABEL = [
+  "Never started",
+  "Seed",
+  "Status",
+  "Details",
+  "Links",
+  "Menu",
+  "Social",
+  "Images",
+  "Reviews",
+  "Semantics — complete",
+];
 
+function LevelCell({ level, total }: { level: number; total: number }) {
+  const title = level === 0
+    ? "Never started, or enriched before piece tracking"
+    : `${level}/${total} — reached ${PULSE_LABEL[level] ?? `piece ${level}`}`;
   return (
     <span className="inline-flex items-center gap-1.5" title={title}>
       <span
         className={
           "text-[11px] font-semibold tabular-nums " +
-          (done === 0 ? "text-muted-foreground" : "text-foreground")
+          (level === 0 ? "text-muted-foreground" : "text-foreground")
         }
       >
-        {useProgress ? `${done}/${total}` : done}
+        {level}
       </span>
       <span className="flex gap-[2px]" aria-hidden>
         {Array.from({ length: total }, (_, i) => i + 1).map((step) => (
@@ -588,7 +582,7 @@ function LevelCell({
             key={step}
             className={
               "h-1.5 w-1.5 rounded-[1px] " +
-              (done >= step ? "bg-green-600" : "bg-muted-foreground/25")
+              (level >= step ? "bg-green-600" : "bg-muted-foreground/25")
             }
           />
         ))}

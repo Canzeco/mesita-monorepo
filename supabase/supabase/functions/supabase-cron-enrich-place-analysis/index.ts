@@ -37,6 +37,7 @@ import {
   serveEnrichStage,
   wants,
 } from "../_shared/enrich-pipeline.ts";
+import { pieceDone, reportPulsePieces } from "../_shared/pulse-report.ts";
 
 serveEnrichStage("analysis", async (admin, _env, row) => {
   const projectId = row.place_id;
@@ -122,6 +123,16 @@ serveEnrichStage("analysis", async (admin, _env, row) => {
 
   // One beacon for the whole analysis stage (S5–S6) — one notification per function.
   const described = funnel.imageAnalysisByUrl.size;
+  // PULSE piece 7. The funnel ran; `described` is the observed effect. Zero
+  // described is still a pass when vision is off by config — the pool was
+  // ranked in source order, which is the funnel doing its job.
+  await reportPulsePieces(admin, projectId, {
+    images: pieceDone(
+      `Described ${funnel.imageAnalysisByUrl.size}, selected ${funnel.finalPhotos.length}.`,
+      { described: funnel.imageAnalysisByUrl.size, finalPhotos: funnel.finalPhotos.length },
+    ),
+  });
+
   await reportEnrichmentStep(admin, projectId, "S5", "images", "completed",
     `Image analysis complete — described ${described} candidate photo(s), selected ${funnel.finalPhotos.length} final photo(s) for the profile.`,
     { described, finalPhotos: funnel.finalPhotos.length, spentUsd: ledger.spentUsd });

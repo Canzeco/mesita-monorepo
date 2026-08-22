@@ -1,0 +1,139 @@
+import { assertEquals } from "jsr:@std/assert@1";
+import {
+  PULSE_PIECES,
+  PULSE_TOTAL,
+  completedPulsePieces,
+  pulseHighWater,
+} from "./pulse-pieces.ts";
+
+const at = (n: number) => `2026-08-22T10:00:${String(n).padStart(2, "0")}Z`;
+const done = (step: string, n = 0) => ({
+  step_name: step,
+  status: "completed",
+  created_at: at(n),
+});
+
+Deno.test("pulse: the nine, in the decided order", () => {
+  assertEquals([...PULSE_PIECES], [
+    "seed",
+    "status",
+    "details",
+    "links",
+    "menu",
+    "social",
+    "images",
+    "reviews",
+    "semantics",
+  ]);
+  assertEquals(PULSE_TOTAL, 9);
+});
+
+Deno.test("high water: nothing recorded is 0", () => {
+  assertEquals(pulseHighWater([]), 0);
+});
+
+Deno.test("high water: a full queue is 9", () => {
+  assertEquals(pulseHighWater(PULSE_PIECES.map((p, i) => done(p, i))), 9);
+});
+
+Deno.test("high water: it is HOW FAR, not how many", () => {
+  // The distinction the whole model rests on. Eight pieces completed, but
+  // `links` (4) never did, so the queue got to 3 — not 8. A profile built past
+  // a hole is built on incomplete data, which is why the queue is linear.
+  const events = PULSE_PIECES.filter((p) => p !== "links").map((p, i) =>
+    done(p, i)
+  );
+  assertEquals(completedPulsePieces(events).length, 8);
+  assertEquals(pulseHighWater(events), 3);
+});
+
+Deno.test("high water: a failed piece stops the count at the one before it", () => {
+  assertEquals(
+    pulseHighWater([
+      done("seed", 1),
+      done("status", 2),
+      { step_name: "details", status: "failed", created_at: at(3) },
+      done("links", 4),
+    ]),
+    2,
+  );
+});
+
+Deno.test("high water: a piece a run did not buy simply has no event", () => {
+  // MESITA-1172 blocker 2. The matrix lets a cheap refresh buy a subset, so a
+  // piece it did not run writes NOTHING and keeps whatever an earlier run
+  // recorded. State accumulates across runs rather than being reset by the
+  // cheapest one — here an earlier full run got to 4, and a refresh that only
+  // re-ran `seed` does not knock it back down.
+  const earlier = [done("seed", 1), done("status", 2), done("details", 3), done("links", 4)];
+  const refresh = [done("seed", 9)];
+  assertEquals(pulseHighWater([...earlier, ...refresh]), 4);
+});
+
+Deno.test("high water: absence is a RESULT — a place with no Instagram still reaches 9", () => {
+  // The piece ran, resolved "there is nothing here", and is completed. Marking
+  // it failed would punish a place for a fact about the world.
+  const events = PULSE_PIECES.map((p, i) =>
+    p === "social"
+      ? { step_name: "social", status: "completed", created_at: at(i) }
+      : done(p, i)
+  );
+  assertEquals(pulseHighWater(events), 9);
+});
+
+Deno.test("high water: a re-enrich that fixes a piece RAISES the number", () => {
+  assertEquals(
+    pulseHighWater([
+      done("seed", 1),
+      { step_name: "status", status: "failed", created_at: at(2) },
+      done("details", 3),
+      done("status", 8), // the later, successful attempt wins
+    ]),
+    3,
+  );
+});
+
+Deno.test("high water: a re-enrich that breaks a piece LOWERS it", () => {
+  assertEquals(
+    pulseHighWater([
+      done("seed", 1),
+      done("status", 2),
+      done("details", 3),
+      { step_name: "status", status: "failed", created_at: at(9) },
+    ]),
+    1,
+  );
+});
+
+Deno.test("high water: legacy stage beacons are not pieces", () => {
+  // The rows written before any of this: gather / images / publish. `images`
+  // collides with a real piece name, so a reader that did not filter would
+  // read a stage beacon as pipeline progress.
+  assertEquals(
+    pulseHighWater([
+      { step_name: "gather", status: "completed", created_at: at(1) },
+      { step_name: "publish", status: "completed", created_at: at(2) },
+    ]),
+    0,
+  );
+});
+
+Deno.test("high water: `skipped` does not advance the queue", () => {
+  // Pieces are never skipped for not being bought — that writes nothing at
+  // all. If a `skipped` ever reaches here it means the piece did not run, so
+  // it must not count as progress.
+  assertEquals(
+    pulseHighWater([
+      done("seed", 1),
+      { step_name: "status", status: "skipped", created_at: at(2) },
+      done("details", 3),
+    ]),
+    1,
+  );
+});
+
+Deno.test("high water: never exceeds the total, and never goes negative", () => {
+  const n = pulseHighWater([...PULSE_PIECES, ...PULSE_PIECES].map((p, i) => done(p, i)));
+  assertEquals(n >= 0 && n <= PULSE_TOTAL, true);
+  assertEquals(n, 9);
+});
