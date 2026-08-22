@@ -137,3 +137,42 @@ Deno.test("high water: never exceeds the total, and never goes negative", () => 
   assertEquals(n >= 0 && n <= PULSE_TOTAL, true);
   assertEquals(n, 9);
 });
+
+// ── the guard MESITA-1209 needed ──────────────────────────────────────────
+//
+// The bug: supabase-cron-enrich-place-analysis wrote a STAGE beacon as
+// { step_name: "images", status: "skipped" } on the "matrix did not buy the
+// funnel" path. `images` is piece 7, so the high-water reader saw a
+// non-completed piece and stopped at 6 — a cheap refresh knocked a complete
+// place from 9 to 6 every time it ran.
+//
+// Nothing in TypeScript stops a beacon borrowing a piece's name, because
+// step_name is just a string. This reads the stage EFs and asserts that only
+// reportPulsePieces ever writes one, so the next person to add a beacon cannot
+// reintroduce it silently.
+Deno.test("no raw beacon may use a PULSE piece key as its step_name", async () => {
+  const dir = new URL("../", import.meta.url);
+  const stages = [
+    "supabase-cron-enrich-place-research",
+    "supabase-cron-enrich-place-analysis",
+    "supabase-cron-enrich-place-contents",
+  ];
+  const pieces = new Set<string>(PULSE_PIECES);
+  const offenders: string[] = [];
+
+  for (const stage of stages) {
+    const src = await Deno.readTextFile(new URL(`${stage}/index.ts`, dir));
+    // reportEnrichmentStep(admin, id, "S_", "<step_name>", ...) — 4th argument.
+    const re =
+      /reportEnrichmentStep\(\s*[^,]+,\s*[^,]+,\s*"[^"]*",\s*"([^"]+)"/g;
+    for (const m of src.matchAll(re)) {
+      if (pieces.has(m[1])) offenders.push(`${stage}: "${m[1]}"`);
+    }
+  }
+
+  assertEquals(
+    offenders,
+    [],
+    `A raw beacon is using a piece key as step_name, which corrupts the high-water. Use reportPulsePieces, or rename the beacon.`,
+  );
+});

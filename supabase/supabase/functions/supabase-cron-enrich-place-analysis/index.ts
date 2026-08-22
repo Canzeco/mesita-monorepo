@@ -53,15 +53,15 @@ serveEnrichStage("analysis", async (admin, _env, row) => {
   // it just hands contents an empty gallery. Contents only writes photos when
   // the list is non-empty, so the place keeps the gallery it already had.
   if (!wants(row.subprocesses, "images")) {
-    await reportEnrichmentStep(
-      admin,
-      projectId,
-      "S5",
-      "images",
-      "skipped",
-      "Image analysis skipped — the trigger that queued this run does not buy the image funnel.",
-      { reason: "subprocess_not_requested" },
-    );
+    // NO BEACON HERE (MESITA-1209). This used to write
+    // { step_name: "images", status: "skipped" } — and `images` is PULSE piece
+    // 7, so the high-water reader saw a non-completed piece and stopped at 6.
+    // A cheap refresh that did not buy the funnel therefore knocked a complete
+    // place from 9 down to 6, every time it ran.
+    //
+    // The rule it broke is in pulse-report.ts: a piece a run did not BUY writes
+    // NOTHING, so the previous run's result stands. What this run bought is
+    // already recorded in place_research.subprocesses, so nothing is lost.
     await advanceResearchStage(admin, projectId, "contents", {
       analysis: {
         finalPhotos: [],
@@ -133,7 +133,10 @@ serveEnrichStage("analysis", async (admin, _env, row) => {
     ),
   });
 
-  await reportEnrichmentStep(admin, projectId, "S5", "images", "completed",
+  // The STAGE notification, named `analysis` rather than `images`: a beacon
+  // that borrows a piece key lands in the same column the ladder reads, which
+  // is how MESITA-1209 happened. The piece itself is reported above.
+  await reportEnrichmentStep(admin, projectId, "S5", "analysis", "completed",
     `Image analysis complete — described ${described} candidate photo(s), selected ${funnel.finalPhotos.length} final photo(s) for the profile.`,
     { described, finalPhotos: funnel.finalPhotos.length, spentUsd: ledger.spentUsd });
 
