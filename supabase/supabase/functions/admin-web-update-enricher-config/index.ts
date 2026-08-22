@@ -39,6 +39,15 @@ import {
 } from "./atlas-config-validate.ts";
 
 const GOOGLE_REVIEWS_MAX = ENRICH_FIELD_LIMITS.googleReviews.max;
+
+// The DB is the authority here, not this file. Three CHECK constraints —
+// app_config_atlas_gather_instagram_depth_range,
+// app_config_atlas_gather_instagram_posts_range and
+// app_config_atlas_analyze_instagram_images_range — all cap at 30. This EF
+// used to validate 1-50, so 31-50 passed the console AND passed here and then
+// died at the write with a raw constraint violation (MESITA-1195). Raising
+// this is a deliberate Apify spend decision that needs a migration first.
+const INSTAGRAM_MAX = 30;
 const SAVE_TOTAL_IMAGES_MAX = ENRICH_FIELD_LIMITS.photos.max;
 
 type Body = {
@@ -116,17 +125,23 @@ Deno.serve(async (req) => {
   }
 
   if (body.gatherInstagramDepth !== undefined) {
-    const n = intInRange(body.gatherInstagramDepth, 1, 50);
+    const n = intInRange(body.gatherInstagramDepth, 1, INSTAGRAM_MAX);
     if (n === null) {
-      return jsonError("gatherInstagramDepth must be an integer 1-50", 400);
+      return jsonError(
+        `gatherInstagramDepth must be an integer 1-${INSTAGRAM_MAX}`,
+        400,
+      );
     }
     patch.atlas_gather_instagram_depth = n;
   }
 
   if (body.gatherInstagramPosts !== undefined) {
-    const n = intInRange(body.gatherInstagramPosts, 1, 50);
+    const n = intInRange(body.gatherInstagramPosts, 1, INSTAGRAM_MAX);
     if (n === null) {
-      return jsonError("gatherInstagramPosts must be an integer 1-50", 400);
+      return jsonError(
+        `gatherInstagramPosts must be an integer 1-${INSTAGRAM_MAX}`,
+        400,
+      );
     }
     patch.atlas_gather_instagram_posts = n;
   }
@@ -185,9 +200,12 @@ Deno.serve(async (req) => {
   }
 
   if (body.analyzeInstagramImages !== undefined) {
-    const n = intInRange(body.analyzeInstagramImages, 1, 50);
+    const n = intInRange(body.analyzeInstagramImages, 1, INSTAGRAM_MAX);
     if (n === null) {
-      return jsonError("analyzeInstagramImages must be an integer 1-50", 400);
+      return jsonError(
+        `analyzeInstagramImages must be an integer 1-${INSTAGRAM_MAX}`,
+        400,
+      );
     }
     patch.atlas_analyze_instagram_images = n;
   }
