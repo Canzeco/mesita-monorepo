@@ -580,7 +580,7 @@ function AnalyticsTile({
           : "from-card to-primary/[0.04] bg-gradient-to-br")
       }
     >
-      <p className="text-muted-foreground text-[10px] font-semibold tracking-[0.08em] uppercase">
+      <p className="text-muted-foreground text-[10px] font-semibold tracking-[0.12em] uppercase">
         {label}
       </p>
       <p

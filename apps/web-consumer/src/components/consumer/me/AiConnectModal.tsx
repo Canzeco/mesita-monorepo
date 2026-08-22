@@ -258,7 +258,7 @@ export function AiConnectModal({
         )}
 
         <div className="mt-5">
-          <p className="text-foreground/60 mb-2 text-[10px] font-semibold tracking-[0.16em] uppercase">
+          <p className="text-foreground/60 mb-2 text-[10px] font-semibold tracking-[0.14em] uppercase">
             Active tokens
           </p>
           <ActiveTokensList

@@ -212,7 +212,7 @@ export function TiersClient() {
 
       {ladderError && (
         <div className="rounded-lg border border-red-300/70 bg-red-50 px-3 py-2.5">
-          <p className="flex items-center gap-1.5 text-[11px] font-bold tracking-[0.1em] text-red-900 uppercase">
+          <p className="flex items-center gap-1.5 text-[11px] font-bold tracking-[0.12em] text-red-900 uppercase">
             <AlertTriangle className="h-3.5 w-3.5" />
             Cannot save
           </p>
@@ -224,7 +224,7 @@ export function TiersClient() {
 
       {warnings.length > 0 && (
         <div className="rounded-lg border border-amber-300/70 bg-amber-50 px-3 py-2.5">
-          <p className="flex items-center gap-1.5 text-[11px] font-bold tracking-[0.1em] text-amber-900 uppercase">
+          <p className="flex items-center gap-1.5 text-[11px] font-bold tracking-[0.12em] text-amber-900 uppercase">
             <AlertTriangle className="h-3.5 w-3.5" />
             Ladder check
           </p>
@@ -302,7 +302,7 @@ export function TiersClient() {
                   <th
                     key={a}
                     scope="col"
-                    className="text-muted-foreground pb-2 text-right text-[10px] font-bold tracking-[0.1em] uppercase"
+                    className="text-muted-foreground pb-2 text-right text-[10px] font-bold tracking-[0.12em] uppercase"
                   >
                     {PREVIEW_ACTION_LABEL[a]}
                   </th>

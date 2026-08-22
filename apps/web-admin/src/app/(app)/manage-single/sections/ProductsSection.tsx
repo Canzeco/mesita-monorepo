@@ -515,7 +515,7 @@ function AddItemsControl({
             className="fixed inset-0 z-10 cursor-default"
             onClick={() => onOpenChange(false)}
           />
-          <div className="border-border bg-card absolute top-full left-0 z-20 mt-1 min-w-56 overflow-hidden rounded-xl border shadow-md">
+          <div className="border-border bg-card absolute top-full left-0 z-20 mt-1 min-w-56 overflow-hidden rounded-xl border shadow-card">
             {ITEM_KINDS.map((k) => (
               <button
                 key={k.id}
@@ -792,7 +792,7 @@ function SourceCard({
       <span
         className={
           "mt-0.5 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg " +
-          (active ? "bg-pink-gradient text-white shadow-sm" : "bg-muted text-muted-foreground")
+          (active ? "bg-pink-gradient text-white shadow-card" : "bg-muted text-muted-foreground")
         }
       >
         {icon}

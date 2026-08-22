@@ -262,7 +262,6 @@ export function SearchClient({
     setRailIndex(Math.max(0, Math.min(idx, visible.length - 1)));
   };
 
-
   // Pin tap → highlight + scroll the rail to the matching card. Tapping a
   // pin also reopens the rail if it was dismissed. The map pans itself via
   // SearchMap's selectedId.
@@ -357,7 +356,7 @@ export function SearchClient({
           z-30 floating bar; pt-[60px] drops results below it. Dismiss via the
           bar's X or a tap on the visible map strip. */}
       {trimmed.length > 0 && (
-        <div className="bg-background border-border absolute inset-x-0 top-0 z-20 flex max-h-[70%] flex-col rounded-b-3xl border-b pt-[60px] shadow-sm">
+        <div className="bg-background border-border shadow-rest absolute inset-x-0 top-0 z-20 flex max-h-[70%] flex-col rounded-b-3xl border-b pt-[60px]">
           <SearchResultsPanel
             query={query}
             searching={searching}

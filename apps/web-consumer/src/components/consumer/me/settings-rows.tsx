@@ -14,7 +14,7 @@ import { INSTAGRAM_ICON_GRADIENT_CLASS } from "@/lib/ui-classes";
 
 export function SectionEyebrow({ children }: { children: ReactNode }) {
   return (
-    <p className="text-foreground/60 text-[10px] font-semibold tracking-[0.16em] uppercase">
+    <p className="text-foreground/60 text-[10px] font-semibold tracking-[0.14em] uppercase">
       {children}
     </p>
   );

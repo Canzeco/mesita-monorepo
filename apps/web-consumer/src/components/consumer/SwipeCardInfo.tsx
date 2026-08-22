@@ -72,7 +72,7 @@ export function SwipeCardInfo({
           {place.name}
         </span>
         {promoting && (
-          <VerifiedCheck className="h-[18px] w-[18px] shrink-0 drop-shadow-[0_1px_4px_rgba(0,0,0,0.45)]" />
+          <VerifiedCheck className="drop-shadow-media h-[18px] w-[18px] shrink-0" />
         )}
       </h2>
 
@@ -185,7 +185,7 @@ function MetaChip({
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1.5 rounded-md border border-white/35 bg-black/45 whitespace-nowrap text-white tabular-nums [font-variant-numeric:tabular-nums_lining-nums] backdrop-blur-md",
+        "inline-flex items-center gap-1.5 rounded-md border border-white/35 bg-black/60 whitespace-nowrap text-white tabular-nums [font-variant-numeric:tabular-nums_lining-nums] backdrop-blur-md",
         compact ? "px-[9px] py-[3px] text-[11px]" : "px-2.5 py-1 text-[11.5px]",
       )}
     >

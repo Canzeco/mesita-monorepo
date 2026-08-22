@@ -477,8 +477,8 @@ export function TicketScreen({ ticketId }: { ticketId: string }) {
     return (
       <Shell>
         <div className="flex flex-col gap-2.5">
-          <div className="bg-muted h-12 animate-pulse rounded-[18px]" />
-          <div className="bg-muted h-72 animate-pulse rounded-[28px]" />
+          <div className="bg-muted h-12 animate-pulse rounded-2xl" />
+          <div className="bg-muted rounded-panel h-72 animate-pulse" />
           <div className="bg-muted h-12 animate-pulse rounded-2xl" />
         </div>
       </Shell>
@@ -893,7 +893,7 @@ export function TicketScreen({ ticketId }: { ticketId: string }) {
                 taken away, and a second waiter may re-scan. */}
             <section
               className={cn(
-                "shrink-0 overflow-hidden rounded-[24px] px-4 pt-3.5 pb-3.5 text-white shadow-[0_16px_36px_-20px_rgba(255,77,109,0.55)]",
+                "rounded-panel shadow-glow-sm shrink-0 overflow-hidden px-4 pt-3.5 pb-3.5 text-white",
                 passGradient(classKey),
                 pulse && "animate-verified-pulse",
               )}
@@ -941,7 +941,7 @@ export function TicketScreen({ ticketId }: { ticketId: string }) {
                 )}
               </div>
 
-              <div className="mx-auto mt-2.5 w-full max-w-[min(170px,48vw)] rounded-2xl bg-white p-2.5 shadow-[0_12px_30px_-12px_rgba(120,20,40,0.5)]">
+              <div className="shadow-glow-sm mx-auto mt-2.5 w-full max-w-[min(170px,48vw)] rounded-2xl bg-white p-2.5">
                 <QRCodeSVG
                   value={checkUrlForCode(ticket.check_code!)}
                   size={170}
@@ -1053,7 +1053,7 @@ export function TicketScreen({ ticketId }: { ticketId: string }) {
               <button
                 type="button"
                 onClick={() => goToStep("bill")}
-                className="text-muted-foreground hover:text-foreground mx-auto flex min-h-10 items-center text-[12px] font-semibold transition"
+                className="text-muted-foreground hover:text-foreground mx-auto flex min-h-11 items-center text-[12px] font-semibold transition"
               >
                 Need to change something?
               </button>
@@ -1140,7 +1140,7 @@ export function TicketScreen({ ticketId }: { ticketId: string }) {
             type="button"
             onClick={() => void cancel()}
             disabled={cancelling}
-            className="text-muted-foreground hover:text-foreground flex min-h-9 items-center gap-1.5 text-[12px] font-semibold transition"
+            className="text-muted-foreground hover:text-foreground flex min-h-11 items-center gap-1.5 text-[12px] font-semibold transition"
           >
             {cancelling ? <Loader2 className="size-3.5 animate-spin" /> : null}
             Cancel ticket
@@ -1157,14 +1157,14 @@ export function TicketScreen({ ticketId }: { ticketId: string }) {
         ) : null}
         {!cancelled ? (
           reported ? (
-            <p className="text-muted-foreground flex min-h-9 items-center text-[12px] font-semibold">
+            <p className="text-muted-foreground flex min-h-11 items-center text-[12px] font-semibold">
               Reported — Mesita is looking at it
             </p>
           ) : (
             <button
               type="button"
               onClick={() => setSheet("report")}
-              className="text-muted-foreground hover:text-foreground flex min-h-9 items-center text-[12px] font-semibold transition"
+              className="text-muted-foreground hover:text-foreground flex min-h-11 items-center text-[12px] font-semibold transition"
             >
               Report a problem
             </button>
@@ -1320,14 +1320,14 @@ function RewardLanes({
           <button
             type="button"
             onClick={onRetryQuote}
-            className="text-primary flex min-h-9 items-center text-[12.5px] font-semibold"
+            className="text-primary flex min-h-11 items-center text-[12.5px] font-semibold"
           >
             Retry
           </button>
           <button
             type="button"
             onClick={onShowQrAnyway}
-            className="text-muted-foreground hover:text-foreground flex min-h-9 items-center text-[12.5px] font-semibold"
+            className="text-muted-foreground hover:text-foreground flex min-h-11 items-center text-[12.5px] font-semibold"
           >
             Show my QR anyway
           </button>
@@ -1616,7 +1616,7 @@ function ChangeBonusDialog({
         <button
           type="button"
           onClick={onCancel}
-          className="text-muted-foreground hover:text-foreground mx-auto flex min-h-10 items-center text-[12.5px] font-semibold transition"
+          className="text-muted-foreground hover:text-foreground mx-auto flex min-h-11 items-center text-[12.5px] font-semibold transition"
         >
           Keep the {from}
         </button>

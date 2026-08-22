@@ -211,7 +211,7 @@ export function PlaceSelectCatalog() {
           Manage Single Place
         </p>
         <form onSubmit={onSubmit}>
-          <div className="border-border bg-background focus-within:border-foreground focus-within:ring-foreground/10 mt-3 flex h-14 items-center gap-3 rounded-xl border px-4 shadow-sm transition focus-within:ring-2 sm:h-16 sm:gap-4 sm:px-5">
+          <div className="border-border bg-background focus-within:border-foreground focus-within:ring-foreground/10 mt-3 flex h-14 items-center gap-3 rounded-xl border px-4 shadow-card transition focus-within:ring-2 sm:h-16 sm:gap-4 sm:px-5">
             <Search className="text-muted-foreground h-5 w-5 shrink-0 sm:h-6 sm:w-6" />
             <input
               value={q}
@@ -278,7 +278,7 @@ export function PlaceSelectCatalog() {
                   this table answers "how far along is it". */}
               <table className="w-full min-w-[840px] border-separate border-spacing-0 text-sm">
                 <thead>
-                  <tr className="text-muted-foreground bg-muted/30 text-left text-[11px] font-semibold tracking-[0.08em] uppercase">
+                  <tr className="text-muted-foreground bg-muted/30 text-left text-[11px] font-semibold tracking-[0.12em] uppercase">
                     <th className="w-14 px-3 py-2.5 font-semibold">Photo</th>
                     <th className="px-3 py-2.5 font-semibold">Name</th>
                     <th className="px-3 py-2.5 text-center font-semibold">Seeded</th>
@@ -717,7 +717,7 @@ function AddPlaceModal({
       }}
     >
       <div
-        className="border-border bg-card w-full max-w-md overflow-hidden rounded-2xl border shadow-xl"
+        className="border-border bg-card w-full max-w-md overflow-hidden rounded-2xl border shadow-elev"
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"

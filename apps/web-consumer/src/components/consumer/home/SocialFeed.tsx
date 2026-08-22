@@ -102,7 +102,7 @@ export function SocialFeed({ places }: { places: Place[] }) {
               onClick={refresh}
               disabled={refreshing}
               aria-label="Refresh activity"
-              className="border-border bg-card text-muted-foreground hover:text-foreground flex h-7 items-center gap-1.5 rounded-full border px-2.5 text-[11px] font-semibold shadow-sm transition active:scale-95 disabled:opacity-60"
+              className="border-border bg-card text-muted-foreground hover:text-foreground shadow-rest flex h-7 items-center gap-1.5 rounded-full border px-2.5 text-[11px] font-semibold transition active:scale-95 disabled:opacity-60"
             >
               <RefreshCw
                 className={cn("h-3 w-3", refreshing && "animate-spin")}
@@ -123,7 +123,7 @@ export function SocialFeed({ places }: { places: Place[] }) {
               className={cn(
                 "flex-1 rounded-lg py-1.5 text-xs font-semibold transition",
                 sort === mode.key
-                  ? "bg-card text-foreground shadow-sm"
+                  ? "bg-card text-foreground shadow-rest"
                   : "text-muted-foreground",
               )}
             >

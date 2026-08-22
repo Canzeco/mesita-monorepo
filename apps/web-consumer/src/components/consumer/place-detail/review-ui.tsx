@@ -119,7 +119,7 @@ export function SortChips<K extends string>({
           className={cn(
             "min-w-0 flex-1 truncate rounded-lg px-1 py-1.5 text-xs font-semibold transition",
             sort === mode.key
-              ? "bg-card text-foreground shadow-sm"
+              ? "bg-card text-foreground shadow-rest"
               : "text-muted-foreground",
           )}
         >

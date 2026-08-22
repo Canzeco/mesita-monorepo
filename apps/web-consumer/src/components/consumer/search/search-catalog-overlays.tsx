@@ -55,7 +55,7 @@ export function SearchRailOverlay({
         ) : (
           <>
             <div className="mb-2 flex justify-center">
-              <span className="border-border bg-card/95 text-muted-foreground flex items-center gap-1 rounded-full border py-1 pr-1 pl-2.5 text-[11px] font-semibold tabular-nums shadow-sm backdrop-blur">
+              <span className="border-border bg-card/95 text-muted-foreground shadow-rest flex items-center gap-1 rounded-full border py-1 pr-1 pl-2.5 text-[11px] font-semibold tabular-nums backdrop-blur">
                 <MapPin className="text-primary h-3 w-3" />
                 {places.length > 1 ? (
                   <>
@@ -118,7 +118,7 @@ export function EmptySearchPrompt() {
     // live map stays visible in the strip below (the search moment still
     // reads as "browse the map"). Sits at z-20 below the z-30 floating
     // search bar (which the user types into).
-    <div className="bg-background border-border absolute inset-x-0 top-0 z-20 flex h-[70%] flex-col items-center justify-center rounded-b-3xl border-b px-8 text-center shadow-sm">
+    <div className="bg-background border-border shadow-rest absolute inset-x-0 top-0 z-20 flex h-[70%] flex-col items-center justify-center rounded-b-3xl border-b px-8 text-center">
       {/* decision: Lucide line Search in a tinted circle -- not the emoji, which
           Apple renders as a heavy 3D lupa that clashes with the rest of the
           consumer icon language. */}

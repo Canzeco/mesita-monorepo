@@ -873,7 +873,7 @@ function PhotosEditor({
               />
             </button>
             {idx === 0 && (
-              <span className="bg-pink-gradient absolute top-2 left-2 rounded-full px-2 py-0.5 text-[10px] font-semibold tracking-wide text-white uppercase shadow-sm">
+              <span className="bg-pink-gradient absolute top-2 left-2 rounded-full px-2 py-0.5 text-[10px] font-semibold tracking-wide text-white uppercase shadow-card">
                 Hero
               </span>
             )}

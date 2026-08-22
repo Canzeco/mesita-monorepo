@@ -57,7 +57,7 @@ export function CostCalculator({
     <div className="border-border bg-card shadow-elev rounded-2xl border px-5 py-4">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <p className="text-muted-foreground text-[10px] font-medium tracking-[0.16em] uppercase">
+          <p className="text-muted-foreground text-[10px] font-medium tracking-[0.14em] uppercase">
             Estimated cost (USD)
           </p>
           <p className="text-muted-foreground/80 mt-1 text-xs">
@@ -68,7 +68,7 @@ export function CostCalculator({
           <p className="font-display text-4xl font-semibold tracking-tight tabular-nums">
             {formatUsdEstimate(totalCostUsd)}
           </p>
-          <span className="text-muted-foreground text-xs font-medium tracking-[0.16em] uppercase">
+          <span className="text-muted-foreground text-xs font-medium tracking-[0.14em] uppercase">
             USD
           </span>
         </div>

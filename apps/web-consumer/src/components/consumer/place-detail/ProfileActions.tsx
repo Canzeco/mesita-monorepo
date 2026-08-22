@@ -80,7 +80,7 @@ export function ProfileActions({
             // work. A toggle's ON state should be the loudest thing in its
             // row: solid fill, white label, white filled heart.
             saved &&
-              "border-red-600 bg-red-600 text-white hover:bg-red-700 hover:border-red-700 shadow-[0_2px_10px_-2px_rgba(220,38,38,0.5)]",
+              "shadow-danger border-red-600 bg-red-600 text-white hover:border-red-700 hover:bg-red-700",
           )}
         >
           <Heart

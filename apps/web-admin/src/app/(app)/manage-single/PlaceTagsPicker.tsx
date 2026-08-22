@@ -263,7 +263,7 @@ function TagsModal({
           ) : (
             visibleGroups.map((group) => (
               <div key={group.facet.slug} className="border-border border-b last:border-b-0">
-                <p className="text-muted-foreground bg-muted/30 sticky top-0 px-4 py-2 text-[11px] font-semibold tracking-[0.08em] uppercase">
+                <p className="text-muted-foreground bg-muted/30 sticky top-0 px-4 py-2 text-[11px] font-semibold tracking-[0.12em] uppercase">
                   {group.facet.emoji} {group.facet.label_en}
                 </p>
                 <div className="grid grid-cols-1 gap-0.5 px-2 py-1 sm:grid-cols-2 lg:grid-cols-3">

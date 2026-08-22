@@ -63,7 +63,7 @@ function LandingPane() {
         <Link href="/" className="inline-flex items-center no-underline">
           <MesitaLogo variant="horizontal" className="h-7 w-auto" />
         </Link>
-        <span className="text-[10px] font-bold tracking-[0.2em] text-white/70 uppercase">
+        <span className="text-[10px] font-bold tracking-[0.14em] text-white/70 uppercase">
           For consumers
         </span>
       </div>

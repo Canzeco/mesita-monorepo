@@ -187,7 +187,7 @@ export function StepBill({
                 onClick={() => setPct(p)}
                 aria-pressed={on}
                 className={cn(
-                  "flex min-h-[46px] flex-col items-center justify-center rounded-xl border text-[12px] font-bold transition-colors",
+                  "flex min-h-12 flex-col items-center justify-center rounded-xl border text-[12px] font-bold transition-colors",
                   on
                     ? "border-primary bg-primary/8 text-primary"
                     : "border-border bg-card text-foreground",
@@ -205,7 +205,7 @@ export function StepBill({
             onClick={() => setPct(null)}
             aria-pressed={pct === null}
             className={cn(
-              "flex min-h-[46px] flex-col items-center justify-center rounded-xl border text-[12px] font-bold transition-colors",
+              "flex min-h-12 flex-col items-center justify-center rounded-xl border text-[12px] font-bold transition-colors",
               pct === null
                 ? "border-primary bg-primary/8 text-primary"
                 : "border-border bg-card text-foreground",
@@ -403,7 +403,7 @@ function PayMethodRow({
     <div
       aria-disabled={soon || undefined}
       className={cn(
-        "relative flex min-h-[56px] items-center gap-3 px-3.5 py-2.5",
+        "relative flex min-h-14 items-center gap-3 px-3.5 py-2.5",
         selected && "bg-primary/[0.06]",
         soon && "opacity-50",
       )}
@@ -507,7 +507,7 @@ export function StepResults({
     <div className="flex flex-col gap-3">
       <section
         className={cn(
-          "shrink-0 overflow-hidden rounded-[24px] px-4 pt-3.5 pb-4 text-white shadow-[0_16px_36px_-20px_rgba(255,77,109,0.55)]",
+          "rounded-panel shadow-glow-sm shrink-0 overflow-hidden px-4 pt-3.5 pb-4 text-white",
           passClassName,
         )}
       >

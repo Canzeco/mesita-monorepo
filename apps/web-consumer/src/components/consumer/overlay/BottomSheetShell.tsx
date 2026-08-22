@@ -62,7 +62,7 @@ export function BottomSheetShell({
         role="dialog"
         aria-modal="true"
         className={cn(
-          "bg-background border-border relative flex max-h-[90%] min-h-0 flex-col overflow-hidden rounded-t-2xl border-t shadow-[0_-12px_32px_rgba(0,0,0,0.25)]",
+          "bg-background border-border shadow-sheet-up relative flex max-h-[90%] min-h-0 flex-col overflow-hidden rounded-t-2xl border-t",
           "transition-transform duration-300 motion-reduce:transition-none",
           OVERLAY_EASE,
           open ? "translate-y-0" : "translate-y-full",

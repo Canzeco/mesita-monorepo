@@ -83,7 +83,7 @@ export function PdfFirstPage({
         <canvas
           ref={canvasRef}
           className={
-            "border-border/60 h-auto max-h-48 w-auto max-w-full rounded-md border bg-white shadow-sm transition-opacity duration-300 " +
+            "border-border/60 h-auto max-h-48 w-auto max-w-full rounded-md border bg-white shadow-card transition-opacity duration-300 " +
             (rendered ? "opacity-100" : "opacity-0")
           }
         />

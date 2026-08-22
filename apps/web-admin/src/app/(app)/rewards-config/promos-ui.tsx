@@ -10,7 +10,7 @@ import { ALLOWED_RATES } from "./promos";
 
 export function SoonPill() {
   return (
-    <span className="border-border text-muted-foreground inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-bold tracking-[0.1em] uppercase">
+    <span className="border-border text-muted-foreground inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-bold tracking-[0.12em] uppercase">
       Soon
     </span>
   );
@@ -104,7 +104,7 @@ export function StrategyHeads({ names }: { names: readonly string[] }) {
       {names.map((n) => (
         <span
           key={n}
-          className="text-muted-foreground w-24 text-center text-[9.5px] font-bold tracking-[0.1em] uppercase"
+          className="text-muted-foreground w-24 text-center text-[9.5px] font-bold tracking-[0.12em] uppercase"
         >
           {n}
         </span>

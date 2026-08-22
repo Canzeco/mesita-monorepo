@@ -149,17 +149,21 @@
   .bg-pink-gradient {
     background: var(--gradient-pink);
   }
-  .shadow-glow {
-    box-shadow: var(--shadow-glow);
-  }
-  .shadow-elev {
-    box-shadow: var(--shadow-elev);
-  }
 }
 
 /* Registered via @utility (not plain @layer classes) so variant prefixes
    (hover:, focus:) compose — a plain class would shadow the core
    shadow-<color> parse and silently no-op under hover:. */
+
+/* Moved out of @layer utilities for the reason documented above: as plain
+   classes these silently no-opped under hover:/focus:. shadow-elev is now
+   reachable as hover:shadow-elev (MESITA-1217). */
+@utility shadow-glow {
+  box-shadow: var(--shadow-glow);
+}
+@utility shadow-elev {
+  box-shadow: var(--shadow-elev);
+}
 
 /* Card resting shadow — one soft ambient layer + a tight contact edge. */
 @utility shadow-card {

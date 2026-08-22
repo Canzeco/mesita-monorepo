@@ -158,7 +158,7 @@ export function AskAiPanel({
           type="button"
           onClick={onClose}
           aria-label="Close Ask AI"
-          className="border-border bg-background/90 text-foreground hover:bg-muted absolute top-2 right-2 z-10 flex h-9 w-9 items-center justify-center rounded-full border shadow-sm backdrop-blur-sm transition active:scale-95"
+          className="border-border bg-background/90 text-foreground hover:bg-muted shadow-rest absolute top-2 right-2 z-10 flex h-9 w-9 items-center justify-center rounded-full border backdrop-blur-sm transition active:scale-95"
         >
           <X className="h-5 w-5" />
         </button>
@@ -172,7 +172,7 @@ export function AskAiPanel({
           onClick={clearThread}
           aria-label="Clear chat"
           className={cn(
-            "border-border bg-background/90 text-muted-foreground hover:text-foreground hover:bg-muted absolute top-2 z-10 flex h-8 items-center gap-1 rounded-full border px-2.5 text-xs shadow-sm backdrop-blur-sm transition active:scale-95",
+            "border-border bg-background/90 text-muted-foreground hover:text-foreground hover:bg-muted shadow-rest absolute top-2 z-10 flex h-8 items-center gap-1 rounded-full border px-2.5 text-xs backdrop-blur-sm transition active:scale-95",
             layout === "overlay" ? "right-12" : "right-2",
           )}
         >

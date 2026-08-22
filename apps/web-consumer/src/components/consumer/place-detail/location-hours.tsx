@@ -44,7 +44,7 @@ export function LocationBox({ place }: { place: PlaceDetail }) {
               strokeWidth={1.5}
             />
           </div>
-          <span className="max-w-full truncate rounded-full bg-black/80 px-2.5 py-0.5 text-[11px] font-medium text-white">
+          <span className="max-w-full truncate rounded-full bg-black/60 px-2.5 py-0.5 text-[11px] font-medium text-white">
             {place.name}
           </span>
         </div>

@@ -236,7 +236,7 @@ function CurrentConnectionCard() {
     <div className="border-border bg-card flex items-center gap-3 rounded-2xl border p-4">
       <span
         className={cn(
-          "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-white shadow-sm",
+          "shadow-rest flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-white",
           INSTAGRAM_ICON_GRADIENT_CLASS,
         )}
       >

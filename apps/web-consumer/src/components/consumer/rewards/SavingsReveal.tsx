@@ -53,7 +53,7 @@ export function SavingsReveal({
   }, [onDone]);
 
   return (
-    <section className="bg-pink-gradient shadow-glow flex flex-col items-center gap-2 rounded-[24px] px-5 py-7 text-center text-white">
+    <section className="bg-pink-gradient shadow-glow rounded-panel flex flex-col items-center gap-2 px-5 py-7 text-center text-white">
       <span className="grid size-11 place-items-center rounded-full bg-white/20">
         <PartyPopper className="size-5" />
       </span>

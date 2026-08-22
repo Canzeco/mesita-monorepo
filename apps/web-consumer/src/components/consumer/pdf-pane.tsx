@@ -142,7 +142,7 @@ export function PdfPane({
 
       {pageCount > 1 ? (
         <div className="pointer-events-none absolute inset-x-0 bottom-3 flex justify-center">
-          <span className="bg-foreground/80 text-background rounded-full px-3 py-1 text-[11px] font-semibold tabular-nums shadow-md backdrop-blur-sm">
+          <span className="bg-foreground/80 text-background shadow-media rounded-full px-3 py-1 text-[11px] font-semibold tabular-nums backdrop-blur-sm">
             {currentPage} / {pageCount}
           </span>
         </div>
@@ -212,7 +212,7 @@ function PdfPageCanvas({
       <canvas
         ref={canvasRef}
         className={cn(
-          "h-auto w-full rounded-xl bg-white shadow-md transition-opacity duration-300",
+          "shadow-elev h-auto w-full rounded-xl bg-white transition-opacity duration-300",
           rendered ? "opacity-100" : "absolute inset-0 opacity-0",
         )}
       />

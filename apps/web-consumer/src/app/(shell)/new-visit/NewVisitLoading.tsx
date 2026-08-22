@@ -51,7 +51,7 @@ export function NewVisitLoading() {
   return (
     <div className="flex h-full min-h-0 flex-1 flex-col px-4 pt-4 pb-6">
       {/* Mesita passport card (MyQrCard) */}
-      <Skeleton className="h-[300px] rounded-[24px]" />
+      <Skeleton className="rounded-panel h-[300px]" />
       {/* Tickets stack */}
       <div className="mt-4">
         <TicketListSkeleton />

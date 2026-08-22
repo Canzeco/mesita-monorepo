@@ -750,7 +750,7 @@ function MembershipBox({
           {/* Activation lives in the lifecycle banner (Box 0) — only the
               strikes ladder and the admin-write note are unique here. */}
           <div className="text-muted-foreground flex flex-col gap-2.5 pb-3 text-[12px] leading-snug">
-            <p className="text-[10px] font-bold tracking-[0.16em] uppercase">
+            <p className="text-[10px] font-bold tracking-[0.14em] uppercase">
               If a guest is turned away
             </p>
             <ol className="flex flex-col gap-1">
@@ -832,12 +832,12 @@ function StrategyCard({
         "bg-card group relative flex flex-col overflow-hidden rounded-2xl border text-left transition",
         selected
           ? "border-foreground/70 ring-foreground/70 ring-2"
-          : "border-border/60 motion-safe:hover:-translate-y-0.5 hover:shadow-[0_18px_32px_-20px_rgba(0,0,0,0.35)]",
+          : "border-border/60 motion-safe:hover:-translate-y-0.5 hover:shadow-card",
       )}
     >
       <ArtBand strategy={strategy} art={art} height="h-24">
         {selected && (
-          <span className="text-foreground absolute top-2 right-2 inline-flex items-center gap-1 rounded-full bg-white/90 px-2 py-0.5 text-[10px] font-bold tracking-wide uppercase shadow-sm">
+          <span className="text-foreground absolute top-2 right-2 inline-flex items-center gap-1 rounded-full bg-white/90 px-2 py-0.5 text-[10px] font-bold tracking-wide uppercase shadow-card">
             {pending ? (
               <Loader2 className="h-3 w-3 animate-spin" />
             ) : (
@@ -939,7 +939,7 @@ function ArtBand({
       {children}
       <p
         id={titleId}
-        className="font-display absolute inset-x-4 bottom-2.5 truncate text-sm font-bold tracking-wide text-white uppercase drop-shadow-sm"
+        className="font-display absolute inset-x-4 bottom-2.5 truncate text-sm font-bold tracking-wide text-white uppercase drop-shadow-card"
       >
         <span className="mr-1" aria-hidden>
           {strategy.emoji}
@@ -1081,7 +1081,7 @@ function ProductModal({
         // itself can only be the ::backdrop.
         if (!busy && e.target === e.currentTarget) onClose();
       }}
-      className="border-border bg-card m-auto hidden max-h-[88vh] w-[min(28rem,calc(100vw-2rem))] flex-col overflow-hidden rounded-2xl border p-0 shadow-xl backdrop:bg-black/45 backdrop:backdrop-blur-sm open:flex max-sm:mt-auto max-sm:mb-4"
+      className="border-border bg-card m-auto hidden max-h-[88vh] w-[min(28rem,calc(100vw-2rem))] flex-col overflow-hidden rounded-2xl border p-0 shadow-elev backdrop:bg-black/45 backdrop:backdrop-blur-sm open:flex max-sm:mt-auto max-sm:mb-4"
     >
       <ArtBand
         strategy={strategy}
@@ -1100,7 +1100,7 @@ function ProductModal({
           <X className="h-4 w-4" />
         </button>
         {isCurrent && (
-          <span className="text-foreground absolute top-2.5 left-2.5 inline-flex items-center gap-1 rounded-full bg-white/90 px-2 py-0.5 text-[10px] font-bold tracking-wide uppercase shadow-sm">
+          <span className="text-foreground absolute top-2.5 left-2.5 inline-flex items-center gap-1 rounded-full bg-white/90 px-2 py-0.5 text-[10px] font-bold tracking-wide uppercase shadow-card">
             <Check className="h-3 w-3" />
             Current
           </span>
@@ -1214,7 +1214,7 @@ function ProductModal({
 
 function ModalLabel({ children }: { children: React.ReactNode }) {
   return (
-    <span className="text-muted-foreground text-[10px] font-bold tracking-[0.16em] uppercase">
+    <span className="text-muted-foreground text-[10px] font-bold tracking-[0.14em] uppercase">
       {children}
     </span>
   );
