@@ -1,6 +1,6 @@
 "use client";
 
-import { Instagram, Mail } from "lucide-react";
+import { Instagram, Ticket } from "lucide-react";
 
 import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
 import { ClassLadder } from "@/components/consumer/me/class/ClassLadder";
@@ -8,7 +8,6 @@ import { ClassPreviewToggle } from "@/components/consumer/me/demo/ClassPreviewTo
 import { ClassOriginSummary } from "@/components/consumer/me/class/ClassOriginSummary";
 import { useConsumerClass } from "@/lib/class-context";
 import { CLASS_MARK_ICON } from "@/lib/consumer-data";
-import { toast } from "@/lib/toast";
 import { SHEET_TITLE_CLASS, SHEET_BODY_CLASS } from "@/lib/ui-classes";
 
 // The class surface (decision: Pato, MESITA-1124) — header, one ladder, two
@@ -30,10 +29,12 @@ export function ClassModal({
   open,
   onClose,
   onConnectInstagram,
+  onRedeemInvite,
 }: {
   open: boolean;
   onClose: () => void;
   onConnectInstagram: () => void;
+  onRedeemInvite: () => void;
 }) {
   const { origin, followers, key: classKey, handle } = useConsumerClass();
 
@@ -85,17 +86,17 @@ export function ClassModal({
               <Instagram className="h-4 w-4 shrink-0" />
               <span className="truncate">Join with Instagram</span>
             </button>
+            {/* Was a toast that said invitations are by hand and then did
+                nothing. There is a real door now (MESITA-1168): Mesita hands a
+                partner a batch of PINs, the partner gives them out, the holder
+                redeems one here. */}
             <button
               type="button"
-              onClick={() =>
-                toast(
-                  "Invitations are by hand — Mesita picks the guests it invites.",
-                )
-              }
+              onClick={onRedeemInvite}
               className="border-border bg-card hover:bg-muted flex min-h-12 w-full items-center justify-center gap-1.5 rounded-2xl border px-2 text-[13px] font-semibold transition active:scale-[0.99]"
             >
-              <Mail className="h-4 w-4 shrink-0" />
-              <span className="truncate">Request invite</span>
+              <Ticket className="h-4 w-4 shrink-0" />
+              <span className="truncate">I have a PIN</span>
             </button>
           </div>
         </div>
