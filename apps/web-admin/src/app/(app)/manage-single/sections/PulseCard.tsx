@@ -10,17 +10,23 @@ import {
 } from "./promo-state";
 import { strategyForPlace } from "@/lib/business/strategies";
 
-// Status — the three booleans a place carries, in ONE box (MESITA-1161).
+// Pulse — where a place stands, in ONE box (MESITA-1161; renamed from Status).
 //
 // Pato: "i don't want lots of fucking boxes. just create a box called Status.
 // it mention verified, partner, promoting." They were three cards; they are
 // three rows, because they are three answers to one question — where does this
-// place stand.
+// place stand. The box is now called Pulse so the word stops colliding with
+// `places.status` (lead/active/paused/archived), a different column answering
+// a different question.
 //
 //   Verified   somebody proved they own it. One-time, never lapses.
 //   Partner    the place pays Mesita. A deal: stable, internal.
 //   Promoting  a guest gets a discount here RIGHT NOW. Volatile, and the only
 //              one of the three a guest is ever shown.
+//
+// Pulse names six fields — seeded · listed · enriched · verified · partner ·
+// promoting. Three render here; seeded/listed/enriched are not on AdminPlace
+// yet (the Single Unit table reads those off a different payload).
 //
 // `listing_type` backs NONE of them, deliberately: it stores
 // (pays ∧ strategy ≠ zero) collapsed into one enum and is re-derived only when
@@ -58,7 +64,7 @@ const PLAN_LABEL: Record<string, string> = {
   ultra: "Ultra",
 };
 
-export function StatusCard({
+export function PulseCard({
   place,
   verification,
   verificationError,
@@ -133,25 +139,25 @@ export function StatusCard({
     <SectionCard
       icon={<CircleCheck className="h-4 w-4" />}
       tint="emerald"
-      title="Status"
+      title="Pulse"
       subtitle="Where this place stands. Three separate facts — a place can be any combination of them."
     >
       <div className="mt-5 flex flex-col">
-        <StatusRow
+        <PulseRow
           name="Verified"
           value={verified}
           tint="emerald"
           meaning="Somebody proved they own this place. Ownership only — it grants no discount and buys nothing."
           detail={verifiedDetail}
         />
-        <StatusRow
+        <PulseRow
           name="Partner"
           value={partner}
           tint="sky"
           meaning="The place pays Mesita. A deal, not an offer — and never shown to a guest."
           detail={partnerDetail}
         />
-        <StatusRow
+        <PulseRow
           name="Promoting"
           value={promoting}
           tint="pink"
@@ -184,7 +190,7 @@ function methodLabel(method: string): string {
   return clean.charAt(0).toUpperCase() + clean.slice(1);
 }
 
-function StatusRow({
+function PulseRow({
   name,
   value,
   tint,
