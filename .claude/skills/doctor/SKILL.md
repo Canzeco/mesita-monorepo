@@ -37,6 +37,9 @@ and **decay** (things that were healthy and no longer are), and write one report
 - Linear: team Mesita (`MESITA-`).
 - Vercel MCP: 5 projects (web-admin, web-business, web-consumer, web-landing, web-check).
 - GitHub via `gh`.
+- Notion MCP: 📜 **Rules** (§0 + the three law pages) and 📚 **Docs** (14 flat domain
+  pages). **Scope 9 only.** No connector → Scope 9 is `SKIPPED (connector unavailable)`,
+  never `OK` — a scope that reads as healthy because it never ran is the bug it exists to catch.
 
 ## Standard
 
@@ -50,6 +53,9 @@ they exist because no off-the-shelf linter knows our invariants.
 # The scopes
 
 Each check: run it, record `OK` / `FINDING` / `SKIPPED (reason)`. Never leave a check blank.
+
+Scopes 1–8 are the daily sweep. **Scope 9 is weekly and runs alone** (own budget, own
+report) so knowledge never competes with the P0 backend checks for the 25-minute target.
 
 ## Scope 1 — Backend congruence (cloud == repo) · **P0 by default**
 
@@ -237,6 +243,49 @@ un-staged Ojo knob reads to an operator as a control that does something.
 8.3 Branches/PRs with no issue · issues with no project.
 8.4 Issues whose premise is already false — closed-by-reality work still open.
 
+## Scope 9 — Knowledge congruence (Notion == reality) · P2 · **weekly, separate run**
+
+Publishes its own `Doctor Knowledge — YYYY-MM-DD` issue, not a section of the daily report.
+
+Compare **meaning, never timestamps.** `notion-search`'s `timestamp` returned query-time for
+both Enrichment pages while returning a real past date for the Docs index (verified
+2026-08-22), so a staleness gate built on it reports green forever. You are a reading agent:
+compare the claim to the code, the way Scope 1 compares EF inventories.
+
+9.1 **Docs tree shape.** Every domain link on 📚 Docs resolves · exactly one page per domain
+    (the tree is FLAT, one level, forever) · no page carrying a domain's title that the index
+    does not link. A second page wearing a real domain's name is an unmaintained door agents
+    can walk through and never know they picked the wrong one.
+
+9.2 **Doc vs shipped code.** For each domain, read the page and the code of record below;
+    report every claim that disagrees, with `file:line` and both values. A doc that lags code
+    is drift to fix, never a reason to code against. **A map entry matching no code is a
+    FINDING (the map is stale), never `OK`.** Paths are under `supabase/supabase/functions/`
+    unless stated.
+
+    Apps `apps/*/src/app` · Atlas `_shared/create-place.ts`, `_shared/categories*.ts`, `atlas-*` ·
+    Enrichment `*enrich*`, `_shared/enrich-*.ts`, `_shared/channels*.ts` ·
+    Discovery `*discover*`, `*filter*`, `_shared/embeddings*.ts` ·
+    Passport `_shared/class-doors.ts`, `_shared/consumer-*.ts`, `admin-web-grant-class` ·
+    Promos `_shared/promo-strategy.ts`, `_shared/promo-rates.ts`, `_shared/discount-cap.ts`, `_shared/place-promoting.ts` ·
+    Visits `*visit*`, `_shared/business-ticket-billing.ts`, `apps/web-check` ·
+    Orders `*order*` (expect DESIGNED NOT BUILT) · Reservations `*reserv*` ·
+    Checkout `*stripe*` · Yums — no code; a page claiming shipped machinery IS the finding ·
+    Vocabulary — repo-wide banned-word sweep · Design `assets/brand/`, `**/globals.css`,
+    `src/components/brand/*` · Functions — deliberately empty, skip it, do not "fix" it.
+
+9.3 **The quickstart mirror — the one repo copy of Notion, and the only ungated hop.**
+    `scripts/sync-rules.ts:16` names Notion **Rules §0** the master and the copy into
+    `scripts/rules-quickstart.md` a HAND step. CI gates everything downstream of that file
+    and nothing upstream, so root `CLAUDE.md` can drift from the law with CI fully green —
+    and every agent boots off it. Compare the two. On drift, put **the exact corrected text**
+    in the Linear issue so the fix is a paste, not a decode. (Describing a fix is allowed by
+    Hard rule 1; applying it is not.) Check both directions — either side can be the stale one.
+
+9.4 **Vocabulary.** Sweep the banned list in 📚 Docs › Vocabulary across the repo AND the Docs
+    pages themselves. One house word used for two things is how nomenclature rots.
+
+
 ---
 
 # Procedure
@@ -246,6 +295,7 @@ un-staged Ojo knob reads to an operator as a control that does something.
    (team Mesita, Ops & maintenance — `list_issues` query `Doctor —`, include archived/Done).
    If none, mark this run `BASELINE` and skip the diff section.
 3. Run scopes **1 → 8 in order**. Scopes are independent — parallelize freely inside a scope.
+   Weekly run: **Scope 9 only**, on its own budget, publishing its own report.
 4. For every finding, capture: scope · check id · severity · the two disagreeing values ·
    the exact query/command/`file:line` · suggested fix (one line) · blast radius.
 5. **Verify before reporting.** Re-run the underlying check for every P0/P1. A false P0 costs
@@ -277,6 +327,7 @@ un-staged Ojo knob reads to an operator as a control that does something.
 
 **Verdict:** HEALTHY | DEGRADED (n P1) | CRITICAL (n P0)
 **Scopes run:** 1–8 (skipped: none)
+<!-- weekly run: title `Doctor Knowledge — YYYY-MM-DD`, **Scopes run:** 9 -->
 **origin/main:** <sha>
 
 ## Diff vs YYYY-MM-DD
