@@ -499,7 +499,7 @@ export function PlaceSection({
         </div>
         {/* One field per row — the whole card is a single column. */}
         <div className="mt-4 grid gap-4">
-          <ReadField label="Price level" auto boxed>
+          <ReadField label="Google price" auto boxed>
             <PriceDisplay level={place.price_level} />
           </ReadField>
           <PlaceCategorySelect
