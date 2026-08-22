@@ -18,6 +18,11 @@ import {
   readEFEnv,
 } from "../_shared/auth.ts";
 import { PLACE_BUSINESS_COLUMNS as PLACE_COLUMNS } from "../_shared/place-columns.ts";
+import {
+  isPlaceListed,
+  isPlaceSeeded,
+  placeEnrichLevel,
+} from "../_shared/place-pulse.ts";
 
 // Super-admin manage-single extras: the Embeddings card (MESITA-720) and the
 // per-place manual_priority override. Keep both off the business overview
@@ -28,6 +33,12 @@ import { PLACE_BUSINESS_COLUMNS as PLACE_COLUMNS } from "../_shared/place-column
 // survives the rebuild.
 const PLACE_ADMIN_EMBEDDING_COLUMNS =
   ", embedding, embedding_source_hash, embedding_source_text, manual_priority";
+
+// Pulse (MESITA-1186). The place editor's Pulse box answers `seeded` off the
+// identity spine, so the super-admin read needs the column. Admin-only for the
+// same reason the embedding columns are: a business has no use for Google's id,
+// and it must never widen PLACE_PUBLIC_COLUMNS.
+const PLACE_ADMIN_PULSE_COLUMNS = ", google_place_id";
 
 // `placeId` is the canonical place-row id key (MESITA-26); `activeUnitId` (legacy)
 // is this EF's legacy alias, kept working during the client migration window.
@@ -75,26 +86,72 @@ Deno.serve(async (req) => {
         400,
       );
     }
-    const placeRow = await admin
-      .from("profiles")
-      .select(PLACE_COLUMNS + PLACE_ADMIN_EMBEDDING_COLUMNS)
-      .eq("id", requestedPlaceId)
-      .maybeSingle();
+    // One round trip for both: the place row, and the pipeline row the Pulse
+    // box's `enriched` level is read from. Parallel, so the extra fact costs
+    // no latency.
+    const [placeRow, researchRow] = await Promise.all([
+      admin
+        .from("profiles")
+        .select(
+          PLACE_COLUMNS + PLACE_ADMIN_EMBEDDING_COLUMNS + PLACE_ADMIN_PULSE_COLUMNS,
+        )
+        .eq("id", requestedPlaceId)
+        .maybeSingle(),
+      // gathered/analysis are tens of KB of JSON; only their PRESENCE is used,
+      // and it is reduced to two booleans below — nothing large crosses the
+      // wire to the console.
+      admin
+        .from("place_research")
+        .select("stage, gathered, analysis")
+        .eq("place_id", requestedPlaceId)
+        .maybeSingle(),
+    ]);
     if (placeRow.error) {
       return json({ ok: false, error: placeRow.error.message }, 500);
     }
     if (!placeRow.data) {
       return json({ ok: false, error: "Place not found" }, 404);
     }
+    // Best-effort, exactly like admin-web-search-places: a failed pipeline
+    // lookup must not 500 the editor. It degrades to level 0, which reads as
+    // "less done than it is" — the safe direction for a status field.
+    if (researchRow.error) {
+      console.error(
+        "[business-web-get-overview] place_research:",
+        researchRow.error.message,
+      );
+    }
+    const research = researchRow.data as
+      | { stage: string | null; gathered: unknown; analysis: unknown }
+      | null;
+    const placeFields = placeRow.data as unknown as Record<string, unknown>;
+    const enrichLevel = placeEnrichLevel(
+      research
+        ? {
+          stage: research.stage,
+          gathered: research.gathered != null,
+          analysis: research.analysis != null,
+        }
+        : null,
+      (placeFields.content_status as string | null) ?? null,
+    );
     // Tag as owner so any downstream UI that gates on role still works —
     // super-admin gets the broadest permission set the place role enum
     // can express. (The frontend MyPlace type only knows owner|business|staff.)
     // `name` arrives already resolved — it is a generated column
     // (mesita_name → google_name), so no display pass is needed here.
+    //
+    // The three pipeline facts of Pulse ride along, admin-only and computed
+    // (never stored): seeded · listed · enriched. The other three the box
+    // derives itself — partner and promoting from columns already on this row,
+    // verified from admin-web-get-place-verification.
     places = [
       {
-        ...(placeRow.data as unknown as Record<string, unknown>),
+        ...placeFields,
         my_role: "owner",
+        seeded: isPlaceSeeded(placeFields.google_place_id),
+        listed: isPlaceListed(placeFields.status),
+        enrich_level: enrichLevel,
       } as unknown as PlaceRow,
     ];
   } else {

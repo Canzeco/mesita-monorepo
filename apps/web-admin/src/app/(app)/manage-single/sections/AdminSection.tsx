@@ -13,14 +13,15 @@ import { formatAbsoluteUtc } from "@/lib/format";
 // Admin — the Mesita-internal tab, FOUR boxes (Pato, MESITA-1161: "i don't
 // want lots of fucking boxes"):
 //
-//   Status      Verified · Partner · Promoting, three rows in one box.
+//   Pulse       the six pulse fields — seeded · listed · enriched · verified ·
+//               partner · promoting — one row each, in one box.
 //   Enrichment  when the Enricher refreshes this place, and the run-now button.
 //   Embedding   the Place Synthesis text and the vector it becomes.
 //   Metadata    every identifier and timestamp on the place. Nothing else in
 //               the tab carries an id or a date — they all live here.
 //
 // The ownership-verification read is hoisted to this component because two
-// boxes need it (Status for the boolean, Metadata for who and how) and it
+// boxes need it (Pulse for the boolean, Metadata for who and how) and it
 // should cost one request, not two.
 type Verification = {
   verifiedByEmail: string | null;
