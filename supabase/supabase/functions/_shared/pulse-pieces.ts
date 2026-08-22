@@ -4,15 +4,33 @@
 // pipeline." The six-fact box that used to wear this name is Status again
 // (MESITA-1206); Pulse is the queue below.
 //
-//   1 seed        a google_place_id resolves — nothing runs without it
-//   2 status      open/closed and the weekly hours
-//   3 details     phone, address, price, category, zone
-//   4 links       website · instagram · facebook · opentable · ubereats
-//   5 menu        STUB — no implementation, so it can never block the queue
-//   6 social      the Instagram / Facebook gathers
-//   7 images      the vision funnel, which ranks the pools social filled
-//   8 reviews     Google reviews
-//   9 semantics   About, category, tags, embedding
+//   S0 seed      NOT A STEP — the pre-run gate. A google_place_id must already
+//                resolve or the queue cannot start at all, which is why its
+//                absence is a hard stop rather than a failed step. 0 means the
+//                seed is in place and nothing after it has landed.
+//
+//   1 pulse      is this place ALIVE — hours, closes_at, timezone
+//   2 details    the rest of the Google spine: address, geo, zone, city,
+//                price, phone, website
+//   3 links      website · instagram · facebook · opentable · ubereats
+//   4 social     the Instagram / Facebook gathers
+//   5 images     the vision funnel, which ranks the pools SOCIAL filled
+//   6 menu       STUB — no source today, so it can never block the queue
+//   7 reviews    Google reviews
+//   8 semantics  About, then category, then tags
+//   9 embeddings the 60-word Place Synthesis blurb → the vector
+//
+// THE ORDER IS LOAD-BEARING. `social` runs BEFORE `images` because the
+// Instagram/Facebook gathers fill the pools the vision funnel ranks — images
+// any earlier would rank Google photos and nothing else. `menu` sits after
+// `links` (its source) and before `semantics` (which would read it).
+// `embeddings` runs LAST because it vectorizes the text `semantics` just
+// wrote; any earlier and it vectorizes the previous profile.
+//
+// SEMANTICS ≠ EMBEDDINGS. The About is prose a guest reads; the embedded text
+// is `places.embedding_source_text`, a 60-word blurb written for the index.
+// Two artifacts, two purposes — collapsing them either bloats the vector with
+// a thousand words of narrative or shrinks the profile to a stub.
 //
 // `enriched` is NOT a count of pieces that worked. It is HOW FAR THE QUEUE GOT:
 // the index of the last good piece, 0-9. That is what makes it gateable — Map
@@ -36,15 +54,15 @@
 // Recording that as a failure would punish a place for a fact about the world.
 
 export const PULSE_PIECES = [
-  "seed",
-  "status",
+  "pulse",
   "details",
   "links",
-  "menu",
   "social",
   "images",
+  "menu",
   "reviews",
   "semantics",
+  "embeddings",
 ] as const;
 
 export type PulsePiece = (typeof PULSE_PIECES)[number];
@@ -53,15 +71,15 @@ export const PULSE_PIECE_META: Record<
   PulsePiece,
   { index: number; label: string }
 > = {
-  seed: { index: 1, label: "Seed" },
-  status: { index: 2, label: "Status" },
-  details: { index: 3, label: "Details" },
-  links: { index: 4, label: "Links" },
-  menu: { index: 5, label: "Menu" },
-  social: { index: 6, label: "Social" },
-  images: { index: 7, label: "Images" },
-  reviews: { index: 8, label: "Reviews" },
-  semantics: { index: 9, label: "Semantics" },
+  pulse: { index: 1, label: "Pulse" },
+  details: { index: 2, label: "Details" },
+  links: { index: 3, label: "Links" },
+  social: { index: 4, label: "Social" },
+  images: { index: 5, label: "Images" },
+  menu: { index: 6, label: "Menu" },
+  reviews: { index: 7, label: "Reviews" },
+  semantics: { index: 8, label: "Semantics" },
+  embeddings: { index: 9, label: "Embeddings" },
 };
 
 /** The total, so nothing hardcodes 9. */

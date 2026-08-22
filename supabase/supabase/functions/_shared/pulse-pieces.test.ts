@@ -13,17 +13,40 @@ const done = (step: string, n = 0) => ({
   created_at: at(n),
 });
 
+Deno.test("pulse: `seed` is the S0 GATE and is NOT a step", () => {
+  // 0 means the seed is in place and nothing after it landed. If `seed` were a
+  // member, a seeded place would read 1 and the ladder would be off by one
+  // against the spec and against Map/Swipe's gate.
+  assertEquals((PULSE_PIECES as readonly string[]).includes("seed"), false);
+});
+
+Deno.test("pulse: social runs BEFORE images, menu after both", () => {
+  // Load-bearing order. The IG/FB gathers fill the pools the vision funnel
+  // ranks, so images any earlier would rank Google photos and nothing else.
+  const i = (k: string) => (PULSE_PIECES as readonly string[]).indexOf(k);
+  assertEquals(i("social") < i("images"), true);
+  assertEquals(i("images") < i("menu"), true);
+  assertEquals(i("links") < i("menu"), true);
+});
+
+Deno.test("pulse: embeddings is LAST — it vectorizes what semantics wrote", () => {
+  assertEquals(PULSE_PIECES[PULSE_PIECES.length - 1], "embeddings");
+  const i = (k: string) => (PULSE_PIECES as readonly string[]).indexOf(k);
+  assertEquals(i("semantics") < i("embeddings"), true);
+});
+
 Deno.test("pulse: the nine, in the decided order", () => {
+  // The law: Docs › Enrichment §A. S0 seed is a GATE, not a member.
   assertEquals([...PULSE_PIECES], [
-    "seed",
-    "status",
+    "pulse",
     "details",
     "links",
-    "menu",
     "social",
     "images",
+    "menu",
     "reviews",
     "semantics",
+    "embeddings",
   ]);
   assertEquals(PULSE_TOTAL, 9);
 });
@@ -38,22 +61,22 @@ Deno.test("high water: a full queue is 9", () => {
 
 Deno.test("high water: it is HOW FAR, not how many", () => {
   // The distinction the whole model rests on. Eight pieces completed, but
-  // `links` (4) never did, so the queue got to 3 — not 8. A profile built past
+  // `links` (3) never did, so the queue got to 2 — not 8. A profile built past
   // a hole is built on incomplete data, which is why the queue is linear.
   const events = PULSE_PIECES.filter((p) => p !== "links").map((p, i) =>
     done(p, i)
   );
   assertEquals(completedPulsePieces(events).length, 8);
-  assertEquals(pulseHighWater(events), 3);
+  assertEquals(pulseHighWater(events), 2);
 });
 
 Deno.test("high water: a failed piece stops the count at the one before it", () => {
   assertEquals(
     pulseHighWater([
-      done("seed", 1),
-      done("status", 2),
-      { step_name: "details", status: "failed", created_at: at(3) },
-      done("links", 4),
+      done("pulse", 1),
+      done("details", 2),
+      { step_name: "links", status: "failed", created_at: at(3) },
+      done("social", 4),
     ]),
     2,
   );
@@ -65,8 +88,8 @@ Deno.test("high water: a piece a run did not buy simply has no event", () => {
   // recorded. State accumulates across runs rather than being reset by the
   // cheapest one — here an earlier full run got to 4, and a refresh that only
   // re-ran `seed` does not knock it back down.
-  const earlier = [done("seed", 1), done("status", 2), done("details", 3), done("links", 4)];
-  const refresh = [done("seed", 9)];
+  const earlier = [done("pulse", 1), done("details", 2), done("links", 3), done("social", 4)];
+  const refresh = [done("pulse", 9)];
   assertEquals(pulseHighWater([...earlier, ...refresh]), 4);
 });
 
@@ -84,10 +107,10 @@ Deno.test("high water: absence is a RESULT — a place with no Instagram still r
 Deno.test("high water: a re-enrich that fixes a piece RAISES the number", () => {
   assertEquals(
     pulseHighWater([
-      done("seed", 1),
-      { step_name: "status", status: "failed", created_at: at(2) },
-      done("details", 3),
-      done("status", 8), // the later, successful attempt wins
+      done("pulse", 1),
+      { step_name: "details", status: "failed", created_at: at(2) },
+      done("links", 3),
+      done("details", 8), // the later, successful attempt wins
     ]),
     3,
   );
@@ -96,10 +119,10 @@ Deno.test("high water: a re-enrich that fixes a piece RAISES the number", () => 
 Deno.test("high water: a re-enrich that breaks a piece LOWERS it", () => {
   assertEquals(
     pulseHighWater([
-      done("seed", 1),
-      done("status", 2),
-      done("details", 3),
-      { step_name: "status", status: "failed", created_at: at(9) },
+      done("pulse", 1),
+      done("details", 2),
+      done("links", 3),
+      { step_name: "details", status: "failed", created_at: at(9) },
     ]),
     1,
   );
@@ -124,9 +147,9 @@ Deno.test("high water: `skipped` does not advance the queue", () => {
   // it must not count as progress.
   assertEquals(
     pulseHighWater([
-      done("seed", 1),
-      { step_name: "status", status: "skipped", created_at: at(2) },
-      done("details", 3),
+      done("pulse", 1),
+      { step_name: "details", status: "skipped", created_at: at(2) },
+      done("links", 3),
     ]),
     1,
   );

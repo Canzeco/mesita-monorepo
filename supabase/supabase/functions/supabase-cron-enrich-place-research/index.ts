@@ -394,13 +394,15 @@ serveEnrichStage("research", async (admin, _env, row) => {
     ["instagram", "facebook", "website", "opentable", "ubereats"]
       .some((k) => disc[k] === true);
 
+  // NOTE: there is no `seed` piece. S0 is the pre-run GATE, not a step — the
+  // spine must already resolve or this function returns long before here, so
+  // 0 means "seeded and nothing after it landed".
   const pieces: Partial<Record<string, PieceOutcome>> = {
-    // We are past the S1 hard gate, so the spine resolved.
-    seed: pieceDone(`Google place id resolved — ${basics.photos.length} photo(s).`),
-    // Google either published hours or it did not. Absence here is Google's,
-    // not the place's, but it IS missing data, so it does not pass.
-    status: basics.hours
-      ? pieceDone("Hours and open/closed resolved.")
+    // PULSE (1) — is this place ALIVE. Google either published hours or it did
+    // not; absence is Google's fault rather than the place's, but it is still
+    // missing data, so it does not pass.
+    pulse: basics.hours
+      ? pieceDone("Hours, closing time and timezone resolved.")
       : pieceFailed("Google publishes no hours for this place."),
     details: (basics.phone || basics.address || basics.price_level != null)
       ? pieceDone("Phone, address and price resolved.")

@@ -538,33 +538,36 @@ function PromoLevelCell({ level }: { level: 0 | 1 | 2 | 3 }) {
 }
 
 // ENRICHED is the only non-boolean flag: the PULSE high-water, 0-9
-// (MESITA-1172). Nine pieces run strictly in order —
+// (Docs › Enrichment §A). Nine steps over an S0 SEED GATE —
 //
-//   seed · status · details · links · menu · social · images · reviews · semantics
+//   S0 seed (a precondition, not a step)
+//   1 pulse · 2 details · 3 links · 4 social · 5 images
+//   6 menu · 7 reviews · 8 semantics · 9 embeddings
 //
-// — and the number is HOW FAR THE QUEUE GOT: the index of the last piece such
-// that it and everything before it completed. Not a count of pieces that
+// — and the number is HOW FAR THE QUEUE GOT: the index of the last step such
+// that it and everything before it completed. Not a count of steps that
 // worked; a gap stops it, because a profile built past a hole is built on
 // incomplete data.
 //
-// 0 also covers a place that predates piece reporting. That is honest — we do
+// 0 means the seed is in place and nothing after it has landed — which also
+// covers a place enriched before step reporting existed. That is honest: we do
 // not know how far its queue got, and claiming a number would be worse.
 const PULSE_LABEL = [
-  "Never started",
-  "Seed",
-  "Status",
+  "Seeded — nothing after it has landed",
+  "Pulse",
   "Details",
   "Links",
-  "Menu",
   "Social",
   "Images",
+  "Menu",
   "Reviews",
-  "Semantics — complete",
+  "Semantics",
+  "Embeddings — complete",
 ];
 
 function LevelCell({ level, total }: { level: number; total: number }) {
   const title = level === 0
-    ? "Never started, or enriched before piece tracking"
+    ? "Seeded — nothing after it has landed"
     : `${level}/${total} — reached ${PULSE_LABEL[level] ?? `piece ${level}`}`;
   return (
     <span className="inline-flex items-center gap-1.5" title={title}>

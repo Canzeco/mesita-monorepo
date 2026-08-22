@@ -395,14 +395,21 @@ serveEnrichStage("contents", async (admin, env, row) => {
     menu: pieceDone("No menu source yet — the piece is a stub."),
   };
   if (wants(buys, "synthesis")) {
-    // Semantics fuses synthesis and the embedding. `aboutWritten` is computed
-    // from the PERSISTED description, not from the model having replied.
+    // SEMANTICS (8) — About, then category, then tags. NOT the vector: that is
+    // step 9, and the two are different artifacts (prose a guest reads vs the
+    // 60-word blurb the index reads). `aboutWritten` is computed from the
+    // PERSISTED description, not from the model having replied.
     contentPieces.semantics = aboutWritten
       ? pieceDone(
         `About written; category “${place.category ?? "n/a"}”, ${inferredTags.length} tag(s).`,
-        { embedding: embeddingWrote },
       )
       : pieceFailed("Synthesis ran but no About was persisted.");
+  }
+  if (wants(buys, "embedding")) {
+    // EMBEDDINGS (9) — last, because it vectorizes the text step 8 just wrote.
+    contentPieces.embeddings = embeddingWrote
+      ? pieceDone("Place synthesis blurb embedded.")
+      : pieceFailed("Embedding did not write — lazy backfill remains the net.");
   }
   await reportPulsePieces(admin, projectId, contentPieces);
 
