@@ -494,10 +494,10 @@ export function TicketScreen({ ticketId }: { ticketId: string }) {
           <span className="bg-muted text-muted-foreground grid size-12 place-items-center rounded-2xl">
             <XCircle className="size-6" />
           </span>
-          <p className="text-foreground text-[15px] font-semibold">
+          <p className="text-foreground text-sm font-semibold">
             Couldn&apos;t load your ticket
           </p>
-          <p className="text-muted-foreground max-w-[280px] text-[12.5px] leading-relaxed">
+          <p className="text-muted-foreground max-w-[280px] text-xs leading-relaxed">
             Check your connection — your ticket is safe.
           </p>
           <button
@@ -519,10 +519,10 @@ export function TicketScreen({ ticketId }: { ticketId: string }) {
           <span className="bg-muted text-muted-foreground grid size-12 place-items-center rounded-2xl">
             <XCircle className="size-6" />
           </span>
-          <p className="text-foreground text-[15px] font-semibold">
+          <p className="text-foreground text-sm font-semibold">
             Ticket not found
           </p>
-          <p className="text-muted-foreground max-w-[280px] text-[12.5px] leading-relaxed">
+          <p className="text-muted-foreground max-w-[280px] text-xs leading-relaxed">
             It may have been cancelled, or it belongs to another account.
           </p>
           <Link
@@ -728,24 +728,24 @@ export function TicketScreen({ ticketId }: { ticketId: string }) {
           {photo ? (
             <Image src={photo} alt="" fill className="object-cover" />
           ) : (
-            <div className="bg-pink-gradient grid h-full w-full place-items-center text-white/80">
+            <div className="bg-pink-gradient grid h-full w-full place-items-center text-white/75">
               <Store className="size-4" />
             </div>
           )}
         </div>
         <div className="min-w-0 flex-1">
-          <p className="text-foreground truncate text-[14px] leading-tight font-extrabold tracking-tight">
+          <p className="font-display text-foreground truncate text-lg leading-tight font-semibold tracking-tight">
             {placeName}
           </p>
           {category ? (
-            <p className="text-muted-foreground truncate text-[10.5px] capitalize">
+            <p className="text-muted-foreground truncate text-[10px] capitalize">
               {category.replaceAll("_", " ")}
             </p>
           ) : null}
         </div>
         <span
           className={cn(
-            "shrink-0 rounded-full px-2 py-0.5 text-[9px] font-extrabold tracking-widest uppercase",
+            "shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold tracking-widest uppercase",
             saved
               ? "bg-emerald-500/10 text-emerald-700"
               : cancelled
@@ -771,7 +771,7 @@ export function TicketScreen({ ticketId }: { ticketId: string }) {
           carries the whole message alone; colour is not the message. */}
       {fix ? (
         <div className="mb-2 shrink-0 rounded-xl bg-amber-500/12 px-3 py-2">
-          <p className="text-[11.5px] leading-snug font-semibold text-amber-800">
+          <p className="text-xs leading-snug font-semibold text-amber-800">
             {placeName} sent it back — {FIX_COPY[fix].title.toLowerCase()}.
             {ticket.fix_note ? ` “${ticket.fix_note}”` : ""}
           </p>
@@ -829,10 +829,10 @@ export function TicketScreen({ ticketId }: { ticketId: string }) {
         {step === "task" ? (
           chosenAction === null ? (
             <div className="border-border bg-card flex flex-col items-center gap-2 rounded-2xl border px-4 py-6 text-center">
-              <p className="font-display text-foreground text-[17px] leading-tight font-bold">
+              <p className="font-display text-foreground text-base leading-tight font-bold">
                 No task on this ticket
               </p>
-              <p className="text-muted-foreground max-w-[300px] text-[12.5px] leading-relaxed">
+              <p className="text-muted-foreground max-w-[300px] text-xs leading-relaxed">
                 You didn&apos;t pick a bonus, so there&apos;s nothing to do
                 here. {placeName} still honours your {base}%.
               </p>
@@ -864,7 +864,7 @@ export function TicketScreen({ ticketId }: { ticketId: string }) {
               <button
                 type="button"
                 onClick={() => goToStep("qr")}
-                className="text-muted-foreground hover:text-foreground mx-auto flex min-h-11 items-center text-[12.5px] font-semibold transition"
+                className="text-muted-foreground hover:text-foreground mx-auto flex min-h-11 items-center text-xs font-semibold transition"
               >
                 I&apos;ll finish this in a bit — show my QR
               </button>
@@ -914,28 +914,28 @@ export function TicketScreen({ ticketId }: { ticketId: string }) {
                     )}
                   </span>
                   <span className="min-w-0">
-                    <span className="block truncate text-[11.5px] leading-tight font-bold">
+                    <span className="block truncate text-xs leading-tight font-bold">
                       {guestName ?? "Mesita guest"}
                     </span>
                     {igHandle ? (
-                      <span className="block truncate text-[9px] leading-tight text-white/80">
+                      <span className="block truncate text-[10px] leading-tight text-white/75">
                         @{igHandle.replace(/^@/, "")}
                       </span>
                     ) : null}
                   </span>
                 </span>
-                <span className="shrink-0 rounded-full bg-white/22 px-2 py-0.5 text-[9px] font-extrabold tracking-widest uppercase">
+                <span className="shrink-0 rounded-full bg-white/22 px-2 py-0.5 text-[10px] font-bold tracking-widest uppercase">
                   {classProperLabel(classKey)}
                 </span>
               </div>
 
               <div className="mt-2 text-center">
                 {priced && headlinePct > 0 ? (
-                  <p className="font-display text-[clamp(30px,9vw,38px)] leading-none font-extrabold tracking-tight">
+                  <p className="font-display text-[clamp(30px,9vw,38px)] leading-none font-bold tracking-tight">
                     {headlinePct}% off
                   </p>
                 ) : (
-                  <p className="mx-auto max-w-[30ch] text-[12px] leading-snug font-semibold text-white/90">
+                  <p className="mx-auto max-w-[30ch] text-xs leading-snug font-semibold text-white/90">
                     Your discount is set by the place and applied at the table.
                   </p>
                 )}
@@ -953,7 +953,7 @@ export function TicketScreen({ ticketId }: { ticketId: string }) {
                 />
               </div>
 
-              <p className="mx-auto mt-2 flex max-w-[34ch] items-center justify-center gap-1.5 text-center text-[11px] leading-snug text-white/90">
+              <p className="mx-auto mt-2 flex max-w-[34ch] items-center justify-center gap-1.5 text-center text-xs leading-snug text-white/90">
                 {waiting ? (
                   <>
                     <BadgeCheck className="size-3.5 shrink-0" />
@@ -971,13 +971,13 @@ export function TicketScreen({ ticketId }: { ticketId: string }) {
               {waiting ? (
                 <ElapsedWaiting iso={ticket.first_scanned_at} />
               ) : capPesos && priced ? (
-                <p className="mt-1 text-center text-[11px] text-white/80">
+                <p className="mt-1 text-center text-xs text-white/75">
                   Capped at MX${capPesos.toLocaleString("en-US")} off.
                 </p>
               ) : null}
 
               <div className="mt-3 border-t-2 border-dashed border-white/35 pt-2">
-                <div className="flex items-center justify-between gap-3 text-[9.5px] font-semibold text-white/90">
+                <div className="flex items-center justify-between gap-3 text-[10px] font-semibold text-white/90">
                   <span>Ticket {stubCode}</span>
                   <span>
                     {chosenAction
@@ -1031,10 +1031,10 @@ export function TicketScreen({ ticketId }: { ticketId: string }) {
 
             {waiting ? (
               <div className="border-border rounded-2xl border border-dashed p-3">
-                <p className="text-muted-foreground text-[9.5px] font-extrabold tracking-[0.12em] uppercase">
+                <p className="text-muted-foreground text-[10px] font-bold tracking-[0.12em] uppercase">
                   Mesita Check · staff side
                 </p>
-                <p className="text-muted-foreground mt-1 text-[11.5px] leading-snug">
+                <p className="text-muted-foreground mt-1 text-xs leading-snug">
                   {placeName} sees bill, tip, reward and proof at a glance —
                   they approve it or send back one specific fix. Two touches,
                   nothing to operate.
@@ -1043,7 +1043,7 @@ export function TicketScreen({ ticketId }: { ticketId: string }) {
             ) : null}
 
             {pollMisses >= 3 && live ? (
-              <p className="text-muted-foreground text-center text-[11px]">
+              <p className="text-muted-foreground text-center text-xs">
                 Can&apos;t reach Mesita right now — your ticket is still valid.
               </p>
             ) : null}
@@ -1053,7 +1053,7 @@ export function TicketScreen({ ticketId }: { ticketId: string }) {
               <button
                 type="button"
                 onClick={() => goToStep("bill")}
-                className="text-muted-foreground hover:text-foreground mx-auto flex min-h-11 items-center text-[12px] font-semibold transition"
+                className="text-muted-foreground hover:text-foreground mx-auto flex min-h-11 items-center text-xs font-semibold transition"
               >
                 Need to change something?
               </button>
@@ -1122,7 +1122,7 @@ export function TicketScreen({ ticketId }: { ticketId: string }) {
               if (!pickLocked) setStoredPick(pick ?? "base");
               goToStep(chosenAction && chosenState !== "done" ? "task" : "qr");
             }}
-            className="bg-pink-gradient shadow-glow flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl text-[14px] font-bold text-white transition active:scale-[0.99]"
+            className="bg-pink-gradient shadow-glow flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl text-sm font-bold text-white transition active:scale-[0.99]"
           >
             {chosenAction && chosenState !== "done"
               ? `Do the task · ${selectedTotal}%`
@@ -1140,7 +1140,7 @@ export function TicketScreen({ ticketId }: { ticketId: string }) {
             type="button"
             onClick={() => void cancel()}
             disabled={cancelling}
-            className="text-muted-foreground hover:text-foreground flex min-h-11 items-center gap-1.5 text-[12px] font-semibold transition"
+            className="text-muted-foreground hover:text-foreground flex min-h-11 items-center gap-1.5 text-xs font-semibold transition"
           >
             {cancelling ? <Loader2 className="size-3.5 animate-spin" /> : null}
             Cancel ticket
@@ -1148,23 +1148,20 @@ export function TicketScreen({ ticketId }: { ticketId: string }) {
         ) : null}
         {(ticket.status === "open" || ticket.status === "scanned") &&
         !cancelled ? (
-          <span
-            aria-hidden="true"
-            className="text-muted-foreground/40 text-[12px]"
-          >
+          <span aria-hidden="true" className="text-muted-foreground/40 text-xs">
             ·
           </span>
         ) : null}
         {!cancelled ? (
           reported ? (
-            <p className="text-muted-foreground flex min-h-11 items-center text-[12px] font-semibold">
+            <p className="text-muted-foreground flex min-h-11 items-center text-xs font-semibold">
               Reported — Mesita is looking at it
             </p>
           ) : (
             <button
               type="button"
               onClick={() => setSheet("report")}
-              className="text-muted-foreground hover:text-foreground flex min-h-11 items-center text-[12px] font-semibold transition"
+              className="text-muted-foreground hover:text-foreground flex min-h-11 items-center text-xs font-semibold transition"
             >
               Report a problem
             </button>
@@ -1209,10 +1206,10 @@ export function TicketScreen({ ticketId }: { ticketId: string }) {
       >
         <div className="flex flex-col gap-3 px-5 pt-4 pb-8">
           <div>
-            <p className="text-foreground text-[15px] font-extrabold tracking-tight">
+            <p className="text-foreground text-sm font-bold tracking-tight">
               What went wrong at {placeName}?
             </p>
-            <p className="text-muted-foreground mt-0.5 text-[12px] leading-snug">
+            <p className="text-muted-foreground mt-0.5 text-xs leading-snug">
               A real person at Mesita reads every report. Places that don&apos;t
               honor tickets lose the program.
             </p>
@@ -1233,10 +1230,10 @@ export function TicketScreen({ ticketId }: { ticketId: string }) {
                       : "bg-muted/40 active:scale-[0.99]",
                   )}
                 >
-                  <span className="text-foreground block text-[13.5px] font-bold">
+                  <span className="text-foreground block text-[13px] font-bold">
                     {r.label}
                   </span>
-                  <span className="text-muted-foreground mt-0.5 block text-[11.5px]">
+                  <span className="text-muted-foreground mt-0.5 block text-xs">
                     {r.hint}
                   </span>
                 </button>
@@ -1253,7 +1250,7 @@ export function TicketScreen({ ticketId }: { ticketId: string }) {
           />
 
           {reportError ? (
-            <p className="bg-destructive/10 text-destructive rounded-lg px-3 py-2 text-[12px]">
+            <p className="bg-destructive/10 text-destructive rounded-lg px-3 py-2 text-xs">
               {reportError}
             </p>
           ) : null}
@@ -1262,7 +1259,7 @@ export function TicketScreen({ ticketId }: { ticketId: string }) {
             type="button"
             disabled={!reportReason || reportBusy}
             onClick={() => void submitReport()}
-            className="bg-pink-gradient shadow-glow flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl text-[14px] font-bold text-white transition active:scale-[0.99] disabled:opacity-50"
+            className="bg-pink-gradient shadow-glow flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl text-sm font-bold text-white transition active:scale-[0.99] disabled:opacity-50"
           >
             {reportBusy ? <Loader2 className="size-4 animate-spin" /> : null}
             Send report
@@ -1313,21 +1310,21 @@ function RewardLanes({
   if (quoteError) {
     return (
       <div className="flex flex-col items-center gap-2 pt-1">
-        <p className="bg-destructive/10 text-destructive w-full rounded-lg px-3 py-2 text-center text-[12px]">
+        <p className="bg-destructive/10 text-destructive w-full rounded-lg px-3 py-2 text-center text-xs">
           Couldn&apos;t load your rates here.
         </p>
         <div className="flex items-center gap-5">
           <button
             type="button"
             onClick={onRetryQuote}
-            className="text-primary flex min-h-11 items-center text-[12.5px] font-semibold"
+            className="text-primary flex min-h-11 items-center text-xs font-semibold"
           >
             Retry
           </button>
           <button
             type="button"
             onClick={onShowQrAnyway}
-            className="text-muted-foreground hover:text-foreground flex min-h-11 items-center text-[12.5px] font-semibold"
+            className="text-muted-foreground hover:text-foreground flex min-h-11 items-center text-xs font-semibold"
           >
             Show my QR anyway
           </button>
@@ -1526,7 +1523,7 @@ function RewardLanes({
 
       <div className="border-border bg-card overflow-hidden rounded-2xl border">
         <div className="bg-muted/40 flex items-baseline justify-between gap-2 px-3 py-1.5">
-          <span className="text-muted-foreground text-[9px] font-extrabold tracking-[0.12em] uppercase">
+          <span className="text-muted-foreground text-[10px] font-bold tracking-[0.12em] uppercase">
             Result
           </span>
           <span className="text-muted-foreground text-[10px] font-semibold">
@@ -1534,23 +1531,23 @@ function RewardLanes({
           </span>
         </div>
         <div className="flex items-end justify-between gap-3 px-2.5 py-1.5">
-          <span className="text-muted-foreground min-w-0 text-[10.5px] leading-snug font-semibold tabular-nums">
+          <span className="text-muted-foreground min-w-0 text-[10px] leading-snug font-semibold tabular-nums">
             {parts.length > 0
               ? parts.join(" + ")
               : "Nothing on this ticket yet"}
           </span>
-          <span className="font-display text-primary shrink-0 text-[26px] leading-none font-extrabold tabular-nums">
+          <span className="font-display text-primary shrink-0 text-[26px] leading-none font-bold tabular-nums">
             {selectedTotal || base}%
           </span>
         </div>
         {capPesos ? (
           <div className="border-border border-t px-2.5 py-1.5">
             <div className="flex items-center gap-2 rounded-xl bg-amber-500/[0.08] px-2 py-1.5">
-              <span className="grid size-7 shrink-0 place-items-center rounded-full bg-amber-500/15 text-[12px] font-extrabold text-amber-700">
+              <span className="grid size-7 shrink-0 place-items-center rounded-full bg-amber-500/15 text-xs font-bold text-amber-700">
                 !
               </span>
               <div className="min-w-0 flex-1">
-                <p className="text-foreground text-[11px] leading-tight font-bold">
+                <p className="text-foreground text-xs leading-tight font-bold">
                   Capped at MX${capPesos.toLocaleString("en-US")} off your bill
                 </p>
                 <p className="text-muted-foreground mt-0.5 text-[10px] leading-snug">
@@ -1588,10 +1585,10 @@ function ChangeBonusDialog({
           <AlertTriangle className="size-5" />
         </span>
         <div>
-          <p className="text-foreground text-[15px] font-extrabold tracking-tight">
+          <p className="text-foreground text-sm font-bold tracking-tight">
             Switch to the {to}?
           </p>
-          <p className="text-muted-foreground mt-1 text-[12.5px] leading-snug">
+          <p className="text-muted-foreground mt-1 text-xs leading-snug">
             {earned ? (
               <>
                 You already finished the {from} — that bonus stays on this
@@ -1609,14 +1606,14 @@ function ChangeBonusDialog({
         <button
           type="button"
           onClick={onConfirm}
-          className="bg-pink-gradient shadow-glow flex min-h-11 w-full items-center justify-center rounded-2xl text-[13.5px] font-bold text-white transition active:scale-[0.99]"
+          className="bg-pink-gradient shadow-glow flex min-h-11 w-full items-center justify-center rounded-2xl text-[13px] font-bold text-white transition active:scale-[0.99]"
         >
           Switch to the {to}
         </button>
         <button
           type="button"
           onClick={onCancel}
-          className="text-muted-foreground hover:text-foreground mx-auto flex min-h-11 items-center text-[12.5px] font-semibold transition"
+          className="text-muted-foreground hover:text-foreground mx-auto flex min-h-11 items-center text-xs font-semibold transition"
         >
           Keep the {from}
         </button>
@@ -1661,7 +1658,7 @@ function RateVisitRow({ done, onOpen }: { done: boolean; onOpen: () => void }) {
           >
             {done ? "Thanks — visit rated" : "Rate your visit"}
           </span>
-          <span className="text-muted-foreground mt-0.5 block text-[11px] leading-snug">
+          <span className="text-muted-foreground mt-0.5 block text-xs leading-snug">
             {done
               ? "It feeds this place's Mesita rating."
               : "Food · service · ambience — feeds its rating"}
@@ -1693,7 +1690,7 @@ function ElapsedWaiting({ iso }: { iso: string | null | undefined }) {
     };
   }, [iso]);
   return (
-    <p className="mt-1 text-center text-[10px] text-white/80">
+    <p className="mt-1 text-center text-[10px] text-white/75">
       <span
         aria-hidden="true"
         className="mr-1.5 inline-block size-1.5 animate-pulse rounded-full bg-white/90 motion-reduce:animate-none"

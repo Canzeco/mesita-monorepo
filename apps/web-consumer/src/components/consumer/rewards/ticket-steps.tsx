@@ -39,10 +39,10 @@ export function MoneyRow({
         dim && "opacity-60",
       )}
     >
-      <span className="text-muted-foreground min-w-0 text-[12.5px]">
+      <span className="text-muted-foreground min-w-0 text-xs">
         <span className="block truncate">{label}</span>
         {sub ? (
-          <span className="text-muted-foreground/80 block text-[10.5px] leading-snug">
+          <span className="text-muted-foreground/80 block text-[10px] leading-snug">
             {sub}
           </span>
         ) : null}
@@ -70,7 +70,7 @@ export function TipHonesty({
   if (subtotalCents <= 0) return null;
   const amount = formatCurrency(subtotalCents);
   return (
-    <p className="text-muted-foreground px-1 text-center text-[11px] leading-snug">
+    <p className="text-muted-foreground px-1 text-center text-xs leading-snug">
       {tipPct === null
         ? "Your discount never comes out of your server's tip."
         : past
@@ -143,10 +143,10 @@ export function StepBill({
   return (
     <div className="flex flex-col gap-3">
       <div className="border-border bg-card rounded-2xl border p-3.5">
-        <p className="font-display text-foreground text-[17px] leading-tight font-bold">
+        <p className="font-display text-foreground text-base leading-tight font-bold">
           What&apos;s the bill?
         </p>
-        <p className="text-muted-foreground mt-1 text-[12px]">
+        <p className="text-muted-foreground mt-1 text-xs">
           The tip is taken on the bill, before anything else.
         </p>
 
@@ -167,10 +167,10 @@ export function StepBill({
             value={billDraft}
             onChange={(e) => setBillDraft(e.target.value)}
             placeholder="850"
-            className="border-border bg-background focus:border-primary min-h-11 min-w-0 flex-1 rounded-xl border px-3 text-[15px] font-bold tabular-nums outline-none"
+            className="border-border bg-background focus:border-primary min-h-11 min-w-0 flex-1 rounded-xl border px-3 text-sm font-bold tabular-nums outline-none"
           />
         </div>
-        <p className="text-muted-foreground/80 mt-1 text-[10.5px]">
+        <p className="text-muted-foreground/80 mt-1 text-[10px]">
           The printed total, before your discount.
         </p>
 
@@ -187,7 +187,7 @@ export function StepBill({
                 onClick={() => setPct(p)}
                 aria-pressed={on}
                 className={cn(
-                  "flex min-h-12 flex-col items-center justify-center rounded-xl border text-[12px] font-bold transition-colors",
+                  "flex min-h-12 flex-col items-center justify-center rounded-xl border text-xs font-bold transition-colors",
                   on
                     ? "border-primary bg-primary/8 text-primary"
                     : "border-border bg-card text-foreground",
@@ -205,7 +205,7 @@ export function StepBill({
             onClick={() => setPct(null)}
             aria-pressed={pct === null}
             className={cn(
-              "flex min-h-12 flex-col items-center justify-center rounded-xl border text-[12px] font-bold transition-colors",
+              "flex min-h-12 flex-col items-center justify-center rounded-xl border text-xs font-bold transition-colors",
               pct === null
                 ? "border-primary bg-primary/8 text-primary"
                 : "border-border bg-card text-foreground",
@@ -225,7 +225,7 @@ export function StepBill({
               onChange={(e) => setTipDraft(e.target.value)}
               placeholder="0"
               aria-label="Custom tip in pesos"
-              className="border-border bg-background focus:border-primary min-h-11 min-w-0 flex-1 rounded-xl border px-3 text-[15px] font-bold tabular-nums outline-none"
+              className="border-border bg-background focus:border-primary min-h-11 min-w-0 flex-1 rounded-xl border px-3 text-sm font-bold tabular-nums outline-none"
             />
           </div>
         ) : null}
@@ -251,7 +251,7 @@ export function StepBill({
       ) : null}
 
       {error ? (
-        <p className="bg-destructive/10 text-destructive rounded-lg px-3 py-2 text-[12px]">
+        <p className="bg-destructive/10 text-destructive rounded-lg px-3 py-2 text-xs">
           {error}
         </p>
       ) : null}
@@ -262,7 +262,7 @@ export function StepBill({
         onClick={() =>
           onSave({ subtotalCents, tipPct: pct, tipCustomCents: customCents })
         }
-        className="bg-pink-gradient shadow-glow flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl text-[14px] font-bold text-white transition active:scale-[0.99] disabled:opacity-45 disabled:shadow-none"
+        className="bg-pink-gradient shadow-glow flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl text-sm font-bold text-white transition active:scale-[0.99] disabled:opacity-45 disabled:shadow-none"
       >
         {busy ? <Loader2 className="size-4 animate-spin" /> : null}
         {subtotalCents <= 0
@@ -307,10 +307,10 @@ export function StepPay({
   return (
     <div className="flex flex-col gap-3">
       <div className="rounded-2xl border border-emerald-500/35 bg-emerald-500/[0.06] p-3.5">
-        <p className="font-display text-foreground text-[17px] leading-tight font-bold">
+        <p className="font-display text-foreground text-base leading-tight font-bold">
           {placeName} approved it
         </p>
-        <p className="text-muted-foreground mt-1 text-[12px]">
+        <p className="text-muted-foreground mt-1 text-xs">
           {pct > 0 ? `${pct}% off is locked. ` : ""}Pay at the table like always
           — the ticket closes the moment they confirm.
         </p>
@@ -318,7 +318,7 @@ export function StepPay({
 
       <div className="border-border bg-card overflow-hidden rounded-2xl border">
         <div className="border-border bg-muted/40 border-b px-3.5 py-2">
-          <span className="text-muted-foreground text-[9.5px] font-extrabold tracking-[0.12em] uppercase">
+          <span className="text-muted-foreground text-[10px] font-bold tracking-[0.12em] uppercase">
             How you settle
           </span>
         </div>
@@ -337,7 +337,7 @@ export function StepPay({
           />
         </div>
         <div className="border-border bg-muted/40 border-y px-3.5 py-2">
-          <span className="text-muted-foreground text-[9.5px] font-extrabold tracking-[0.12em] uppercase">
+          <span className="text-muted-foreground text-[10px] font-bold tracking-[0.12em] uppercase">
             Your Yums
           </span>
         </div>
@@ -366,7 +366,7 @@ export function StepPay({
       </div>
 
       {error ? (
-        <p className="bg-destructive/10 text-destructive rounded-lg px-3 py-2 text-[12px]">
+        <p className="bg-destructive/10 text-destructive rounded-lg px-3 py-2 text-xs">
           {error}
         </p>
       ) : null}
@@ -375,7 +375,7 @@ export function StepPay({
         type="button"
         disabled={busy}
         onClick={onConfirmAtPlace}
-        className="bg-pink-gradient shadow-glow flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl text-[14px] font-bold text-white transition active:scale-[0.99] disabled:opacity-45"
+        className="bg-pink-gradient shadow-glow flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl text-sm font-bold text-white transition active:scale-[0.99] disabled:opacity-45"
       >
         {busy ? <Loader2 className="size-4 animate-spin" /> : null}
         I&apos;m paying {formatCurrency(amountDueCents)} at the register
@@ -423,15 +423,15 @@ function PayMethodRow({
         {icon}
       </span>
       <span className="min-w-0 flex-1">
-        <span className="text-foreground flex items-center gap-1.5 text-[12.5px] leading-tight font-bold">
+        <span className="text-foreground flex items-center gap-1.5 text-xs leading-tight font-bold">
           <span className="truncate">{label}</span>
           {soon ? (
-            <span className="bg-muted text-muted-foreground shrink-0 rounded-full px-1.5 py-0.5 text-[8.5px] font-extrabold tracking-wide uppercase">
+            <span className="bg-muted text-muted-foreground shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-bold tracking-wide uppercase">
               Soon
             </span>
           ) : null}
         </span>
-        <span className="text-muted-foreground mt-0.5 block truncate text-[10.5px] font-semibold">
+        <span className="text-muted-foreground mt-0.5 block truncate text-[10px] font-semibold">
           {sub}
         </span>
       </span>
@@ -460,10 +460,10 @@ export function StepValidate({ placeName }: { placeName: string }) {
       <span className="bg-muted/60 grid size-11 place-items-center rounded-2xl">
         <span className="border-border border-t-primary size-5 animate-spin rounded-full border-2" />
       </span>
-      <p className="font-display text-foreground text-[17px] leading-tight font-bold">
+      <p className="font-display text-foreground text-base leading-tight font-bold">
         Waiting on {placeName}
       </p>
-      <p className="text-muted-foreground max-w-[300px] text-[12px] leading-relaxed">
+      <p className="text-muted-foreground max-w-[300px] text-xs leading-relaxed">
         Hand over the payment — the moment they confirm it, the visit validates
         and closes on its own. Nothing left to do.
       </p>
@@ -512,10 +512,10 @@ export function StepResults({
         )}
       >
         <div className="flex items-center justify-between gap-3">
-          <p className="text-[9px] font-bold tracking-[0.14em] text-white/80 uppercase">
+          <p className="text-[10px] font-bold tracking-[0.14em] text-white/75 uppercase">
             Mesita Pass
           </p>
-          <span className="rounded-full bg-white/22 px-2 py-0.5 text-[9px] font-extrabold tracking-widest uppercase">
+          <span className="rounded-full bg-white/22 px-2 py-0.5 text-[10px] font-bold tracking-widest uppercase">
             {classLabel}
           </span>
         </div>
@@ -523,31 +523,31 @@ export function StepResults({
           {revealed ? (
             <>
               <PartyPopper className="size-7" />
-              <p className="font-display text-[22px] font-extrabold tabular-nums">
+              <p className="font-display text-[22px] font-bold tabular-nums">
                 {savedCents > 0
                   ? `You saved ${formatCurrency(savedCents)}`
                   : "Visit complete"}
               </p>
-              <p className="text-[11.5px] text-white/85">
+              <p className="text-xs text-white/90">
                 {pct > 0 ? `${pct}% off at ${placeName}` : placeName}
               </p>
               {capApplied && capPesos ? (
-                <p className="text-[11px] text-white/75">
+                <p className="text-xs text-white/75">
                   Capped at MX${capPesos.toLocaleString("en-US")} off.
                 </p>
               ) : null}
             </>
           ) : cancelled ? (
             <>
-              <p className="text-[15px] font-extrabold">Ticket cancelled</p>
-              <p className="text-[11.5px] text-white/85">
+              <p className="text-sm font-bold">Ticket cancelled</p>
+              <p className="text-xs text-white/90">
                 Start a fresh one from Visit whenever you&apos;re back.
               </p>
             </>
           ) : (
             <>
-              <p className="text-[15px] font-extrabold">Visit in progress</p>
-              <p className="text-[11.5px] text-white/85">
+              <p className="text-sm font-bold">Visit in progress</p>
+              <p className="text-xs text-white/90">
                 Your result lands here once {placeName} closes the visit.
               </p>
             </>
@@ -572,7 +572,7 @@ export function StepResults({
             <MoneyRow label="Settled" value={paidMethodLabel} />
           ) : null}
           {capApplied && capPesos ? (
-            <p className="text-muted-foreground px-1 text-[11px]">
+            <p className="text-muted-foreground px-1 text-xs">
               Discount capped at MX${capPesos.toLocaleString("en-US")}.
             </p>
           ) : null}
@@ -598,7 +598,7 @@ export function Lane({
   return (
     <section className="border-border bg-card overflow-hidden rounded-2xl border">
       <div className="border-border bg-muted/40 flex items-baseline justify-between gap-2 border-b px-3 py-1.5">
-        <span className="text-muted-foreground text-[9px] font-extrabold tracking-[0.12em] uppercase">
+        <span className="text-muted-foreground text-[10px] font-bold tracking-[0.12em] uppercase">
           {title}
         </span>
         <span className="text-muted-foreground text-[10px] font-semibold">
@@ -638,7 +638,7 @@ export function LaneChip({
         <span className="shrink-0 [&>svg]:size-3.5">{glyph}</span>
       ) : null}
       <span className="min-w-0">
-        <span className="text-foreground flex items-center gap-1 text-[9px] leading-tight font-bold">
+        <span className="text-foreground flex items-center gap-1 text-[10px] leading-tight font-bold">
           <span className="truncate">{label}</span>
           {done ? (
             <Check
@@ -648,14 +648,14 @@ export function LaneChip({
           ) : null}
         </span>
         {sub ? (
-          <span className="text-muted-foreground block truncate text-[8px] leading-tight">
+          <span className="text-muted-foreground block truncate text-[10px] leading-tight">
             {sub}
           </span>
         ) : null}
         {value !== null ? (
           <span
             className={cn(
-              "font-display block text-[12px] leading-tight font-extrabold tabular-nums",
+              "font-display block text-xs leading-tight font-bold tabular-nums",
               on ? "text-primary" : "text-foreground",
             )}
           >
