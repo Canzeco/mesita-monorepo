@@ -96,13 +96,9 @@ export function channelOptions(place: AdminPlace): ChannelOption[] {
   ];
 }
 
-/** Read a stored { channel, value } target off a products blob key. */
+/** Read a stored channel column. Only 'phone' is a served pick (MESITA-842). */
 export function readChannel(raw: unknown): ChannelKey | "" {
-  if (raw && typeof raw === "object" && !Array.isArray(raw)) {
-    const obj = raw as Record<string, unknown>;
-    if (obj.channel === "phone") return "phone";
-  }
-  return "";
+  return raw === "phone" ? "phone" : "";
 }
 
 export function ChannelPicker({

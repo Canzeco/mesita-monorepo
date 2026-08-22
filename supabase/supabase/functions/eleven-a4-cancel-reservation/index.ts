@@ -7,7 +7,7 @@
 //   { caller_phone, reference_code, reason? }
 //
 // The ticket's place must own the calling line (places.phone or the
-// products.reservations endpoint), else 403. cancelled_by = business — and
+// reservation_target endpoint), else 403. cancelled_by = business — and
 // the guest is then CALLED: cancelTicket owes notice_kind='guest_cancel' and
 // the engine (intent cancel_notice) puts a2 on the line with call_context
 // "cancelled_by_venue" (Docs › Reservations §B leg 6).
@@ -49,17 +49,17 @@ Deno.serve(async (req) => {
 
   const { data: placeRow } = await admin
     .from("places")
-    .select("id, phone, products")
+    .select("id, phone, reservation_target")
     .eq("id", ticket.project_id)
     .maybeSingle();
   const place = (placeRow ?? null) as {
     id: string;
     phone: string | null;
-    products: Record<string, unknown> | null;
+    reservation_target: string | null;
   } | null;
-  const resv = (place?.products?.reservations ?? null) as { value?: string } | null;
   const owns = !!place &&
-    (sameLine(place.phone, body.caller_phone) || sameLine(resv?.value ?? null, body.caller_phone));
+    (sameLine(place.phone, body.caller_phone) ||
+      sameLine(place.reservation_target, body.caller_phone));
   if (!owns) {
     return json({
       ok: false,

@@ -2,7 +2,7 @@
 
 import { useCallback, useMemo, useState, useTransition } from "react";
 import { CalendarCheck } from "lucide-react";
-import { updatePlace, type AdminPlace, type ReservationTarget } from "../actions";
+import { updatePlace, type AdminPlace } from "../actions";
 import { useSectionDirty } from "../useSectionDirty";
 import { SaveBar, SectionCard } from "../ui";
 import {
@@ -35,8 +35,8 @@ export function ReservationsCard({
   const options = useMemo(() => channelOptions(place), [place]);
   const hasPhone = options[0].contact !== "";
   const saved = useMemo(
-    () => readChannel(place.products?.reservations),
-    [place.products?.reservations],
+    () => readChannel(place.reservation_channel),
+    [place.reservation_channel],
   );
 
   const [channel, setChannel] = useState<ChannelKey | "">(
@@ -56,7 +56,7 @@ export function ReservationsCard({
   useSectionDirty("reservations", dirty, resetDraft);
 
   const save = () => {
-    if (!channel) {
+    if (!channel || !hasPhone) {
       setError("Set a phone under Place → Channels — the agent books by voice only.");
       setOk(false);
       return;
@@ -64,15 +64,13 @@ export function ReservationsCard({
     setError(null);
     setOk(false);
     start(async () => {
-      const target: ReservationTarget = {
-        channel: "phone",
-        value: options[0].contact || null,
-      };
       const r = await updatePlace({
         id: place.id,
+        // Legacy pair stays cleared until the CONTRACT issue drops the columns.
         reservation_endpoint: null,
         reservation_contacts: [],
-        products: { ...(place.products ?? {}), reservations: target },
+        reservation_channel: "phone",
+        reservation_target: options[0].contact || null,
       });
       if (!r.ok) {
         setError(r.error);

@@ -2,7 +2,7 @@
 
 import { useCallback, useMemo, useState, useTransition } from "react";
 import { ShoppingBag } from "lucide-react";
-import { updatePlace, type AdminPlace, type ReservationTarget } from "../actions";
+import { updatePlace, type AdminPlace } from "../actions";
 import { useSectionDirty } from "../useSectionDirty";
 import { CrossTabLink, SaveBar, SectionCard } from "../ui";
 import {
@@ -20,7 +20,7 @@ import {
 //
 // It still carries ONE real decision, and Pato asked for it explicitly: which
 // contact an order reaches the place on. Same picker as Reservations, same
-// storage shape (`products.orders = { channel, value }`), phone the only live
+// storage shape (the typed `order_channel` / `order_target` columns), phone the only live
 // channel. It is a STAGED knob — stored now, read when the rail ships — and
 // the box says so rather than pretending the switch does something today.
 export function OrdersCard({
@@ -33,8 +33,8 @@ export function OrdersCard({
   const options = useMemo(() => channelOptions(place), [place]);
   const hasPhone = options[0].contact !== "";
   const saved = useMemo(
-    () => readChannel(place.products?.orders),
-    [place.products?.orders],
+    () => readChannel(place.order_channel),
+    [place.order_channel],
   );
 
   const [channel, setChannel] = useState<ChannelKey | "">(
@@ -54,7 +54,7 @@ export function OrdersCard({
   useSectionDirty("orders", dirty, resetDraft);
 
   const save = () => {
-    if (!channel) {
+    if (!channel || !hasPhone) {
       setError("Set a phone under Place → Channels — ordering is voice-only for now.");
       setOk(false);
       return;
@@ -62,13 +62,10 @@ export function OrdersCard({
     setError(null);
     setOk(false);
     start(async () => {
-      const target: ReservationTarget = {
-        channel: "phone",
-        value: options[0].contact || null,
-      };
       const r = await updatePlace({
         id: place.id,
-        products: { ...(place.products ?? {}), orders: target },
+        order_channel: "phone",
+        order_target: options[0].contact || null,
       });
       if (!r.ok) {
         setError(r.error);

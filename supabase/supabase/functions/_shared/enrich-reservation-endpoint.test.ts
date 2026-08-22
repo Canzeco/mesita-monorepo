@@ -6,7 +6,7 @@ import {
   availableReservationChannels,
   buildReservationTarget,
   hasReservationTarget,
-  mergeProductsReservations,
+  reservationTargetPatch,
   coerceReservationsPolicy,
   DEFAULT_RESERVATIONS_POLICY,
   preferReservationChannel,
@@ -50,30 +50,30 @@ Deno.test("valueForReservationChannel / buildReservationTarget", () => {
 });
 
 Deno.test("hasReservationTarget: only phone counts as a serving override", () => {
+  // Reads the typed column, not a products blob (MESITA-1208).
   assertEquals(hasReservationTarget(null), false);
-  assertEquals(hasReservationTarget({ menu: [] }), false);
-  assertEquals(hasReservationTarget({ reservations: { channel: "phone", value: "+1" } }), true);
-  // Legacy picks were never dialed — not overrides (MESITA-842).
-  assertEquals(hasReservationTarget({ reservations: { channel: "whatsapp", value: "https://wa.me/1" } }), false);
-  assertEquals(hasReservationTarget({ reservations: { channel: "instagram" } }), false);
-  assertEquals(hasReservationTarget({ reservations: { channel: "email" } }), false);
-  assertEquals(hasReservationTarget({ reservations: null }), false);
+  assertEquals(hasReservationTarget(undefined), false);
+  assertEquals(hasReservationTarget({}), false);
+  assertEquals(hasReservationTarget({ reservation_channel: null }), false);
+  assertEquals(hasReservationTarget({ reservation_channel: "phone" }), true);
+  // Legacy picks were never dialed — not overrides (MESITA-842). The CHECK
+  // constraint no longer admits them, but a pre-migration row could still
+  // surface one, so the guard stays.
+  assertEquals(hasReservationTarget({ reservation_channel: "whatsapp" }), false);
+  assertEquals(hasReservationTarget({ reservation_channel: "instagram" }), false);
+  assertEquals(hasReservationTarget({ reservation_channel: "email" }), false);
 });
 
-Deno.test("mergeProductsReservations: preserves menu and other keys", () => {
-  const merged = mergeProductsReservations(
-    { menu: [{ name: "Dinner" }], other: 1 },
-    { channel: "phone", value: "+52 55" },
-  );
-  assertEquals(merged.menu, [{ name: "Dinner" }]);
-  assertEquals(merged.other, 1);
-  assertEquals(merged.reservations, {
-    channel: "phone",
-    value: "+52 55",
-  });
+Deno.test("reservationTargetPatch: two typed columns, no blob merge", () => {
   assertEquals(
-    mergeProductsReservations(null, { channel: "phone", value: "+1" }),
-    { reservations: { channel: "phone", value: "+1" } },
+    reservationTargetPatch({ channel: "phone", value: "+52 55" }),
+    { reservation_channel: "phone", reservation_target: "+52 55" },
+  );
+  // A null value still pins the channel — the rail is selected, the contact
+  // is simply not known yet.
+  assertEquals(
+    reservationTargetPatch({ channel: "phone", value: null }),
+    { reservation_channel: "phone", reservation_target: null },
   );
 });
 
