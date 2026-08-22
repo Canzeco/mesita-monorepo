@@ -1,17 +1,16 @@
-import { PageContainer } from "@/components/PageContainer";
-import { FiltersLayoutShell } from "./FiltersLayoutShell";
+import { ConfigPageLayout } from "@/components/ConfigPageLayout";
 
-// Filters Config — tabbed (General + one tab per consumer surface). The layout
-// mounts the shared shell (header + tab strip); each subpage renders its own
-// body beneath it.
-export default function FiltersConfigLayout({
+// Discovery — ONE flat page. Signals and Engines were separate tabs; they are
+// joined (Pato, 2026-08-22). The route stays /filters-config: a rename stops
+// at the label.
+export default function DiscoveryLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
   return (
-    <PageContainer>
-      <FiltersLayoutShell>{children}</FiltersLayoutShell>
-    </PageContainer>
+    <ConfigPageLayout eyebrow="Product · Discovery" title="Discovery">
+      {children}
+    </ConfigPageLayout>
   );
 }
