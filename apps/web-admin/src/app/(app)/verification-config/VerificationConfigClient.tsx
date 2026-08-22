@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useState, useTransition } from "react";
-import { BadgeCheck, Mail, Phone, Video } from "lucide-react";
+import { BadgeCheck, Mail, Phone } from "lucide-react";
 import { ErrorNote } from "@/components/ErrorNote";
+import { SectionCard } from "@/components/admin-ui/config";
 import { Switch } from "../enricher-config/atlas-ui";
 import {
   getVerificationConfig,
@@ -12,32 +13,39 @@ import {
 
 type KnobKey = keyof VerificationConfig;
 
-const OWNERSHIP_KNOBS: {
+// One clause each. The full account of what a proof is and who adjudicates it
+// lives in Notion Docs, not on a page with three switches (MESITA-1176).
+//
+// `autoVerifyVideo` is GONE, not hidden: nothing reads it. Every occurrence in
+// the backend is a write path or a comment, and admin-web-list-verifications
+// says outright that the queue shows video rows "regardless of
+// auto_verify_video". A knob that cannot be obeyed lies to the operator who
+// flips it. The column and the orphan admin-web-set-auto-verify EF are a
+// separate cleanup; the update EF patches only the keys it is sent, so
+// omitting it leaves the stored value alone.
+const KNOBS: {
   key: KnobKey;
   label: string;
   blurb: string;
   Icon: typeof Phone;
 }[] = [
   {
+    key: "createPlacesAsVerified",
+    label: "Create new places as Mesita Partner",
+    blurb: "Off, a new place reads Not Verified until someone proves ownership.",
+    Icon: BadgeCheck,
+  },
+  {
     key: "autoVerifyAiCall",
     label: "Auto-confirm phone OTP",
-    blurb:
-      "When on, picking up the call and reading the 6-digit code grants ownership instantly. When off, the code is still validated but the request lands on the Verification Queue for manual approval.",
+    blurb: "Off, a correct code still waits on the Verification Queue.",
     Icon: Phone,
   },
   {
     key: "autoVerifyAiEmail",
     label: "Auto-confirm email OTP",
-    blurb:
-      "When on, entering the email OTP grants ownership instantly. When off, the code is validated but the request lands on the Verification Queue for manual approval.",
+    blurb: "Off, a correct code still waits on the Verification Queue.",
     Icon: Mail,
-  },
-  {
-    key: "autoVerifyVideo",
-    label: "Auto-confirm video walkthrough",
-    blurb:
-      "When on, any submitted video URL grants ownership without review — for trusted operators only. When off, every video lands on the Verification Queue for a human to watch.",
-    Icon: Video,
   },
 ];
 
@@ -92,103 +100,41 @@ export function VerificationConfigClient({
   };
 
   return (
-    <div className="space-y-8">
+    <>
       {error && <ErrorNote message={error} />}
-
-      <section className="space-y-3">
-        <div>
-          <h2 className="font-display text-sm font-semibold tracking-tight">
-            Partner badge
-          </h2>
-          <p className="text-muted-foreground mt-1 text-[13px] leading-relaxed">
-            Catalog badge shown on place profiles. Separate from ownership proof.
-          </p>
-        </div>
-        <div className="border-border bg-card flex items-start gap-4 rounded-2xl border p-5">
-          <span
-            className={
-              "flex h-10 w-10 shrink-0 items-center justify-center rounded-full " +
-              (cfg.createPlacesAsVerified
-                ? "bg-sky-500/15 text-sky-600"
-                : "bg-muted text-muted-foreground")
-            }
-          >
-            <BadgeCheck className="h-5 w-5" />
-          </span>
-          <div className="min-w-0 flex-1">
-            <p className="font-display text-base font-semibold tracking-tight">
-              Create new places as Mesita Partner
-            </p>
-            <p className="text-muted-foreground mt-1 text-[13px] leading-relaxed">
-              When on, every newly created place shows the Mesita Partner badge
-              immediately — even though nobody entered the place&apos;s phone
-              number to prove ownership. When off (default), new places show Not
-              Verified until a paid plan grants partner status, or ownership is
-              proven via phone OTP.
-            </p>
-          </div>
-          <Switch
-            on={cfg.createPlacesAsVerified}
-            pending={pendingKey === "createPlacesAsVerified"}
-            onClick={() => toggle("createPlacesAsVerified")}
-            label="Create new places as Mesita Partner"
-          />
-        </div>
-      </section>
-
-      <section className="space-y-3">
-        <div>
-          <h2 className="font-display text-sm font-semibold tracking-tight">
-            Ownership auto-confirm
-          </h2>
-          <p className="text-muted-foreground mt-1 text-[13px] leading-relaxed">
-            When off, successful OTP / video submissions wait on the Verification
-            Queue under Alerts for a human decision.
-          </p>
-        </div>
-        <div className="grid grid-cols-1 gap-3">
-          {OWNERSHIP_KNOBS.map(({ key, label, blurb, Icon }) => {
-            const on = cfg[key];
-            return (
-              <div
-                key={key}
-                className="border-border bg-card flex items-start gap-4 rounded-2xl border p-5"
-              >
-                <span
-                  className={
-                    "flex h-10 w-10 shrink-0 items-center justify-center rounded-full " +
-                    (on
-                      ? "bg-secondary/15 text-secondary"
-                      : "bg-muted text-muted-foreground")
-                  }
-                >
-                  <Icon className="h-5 w-5" />
-                </span>
-                <div className="min-w-0 flex-1">
-                  <p className="font-display text-base font-semibold tracking-tight">
-                    {label}
-                  </p>
-                  <p className="text-muted-foreground mt-1 text-[13px] leading-relaxed">
-                    {blurb}
-                  </p>
-                </div>
-                <Switch
-                  on={on}
-                  pending={pendingKey === key}
-                  onClick={() => toggle(key)}
-                  label={label}
-                />
+      <SectionCard
+        icon={<BadgeCheck className="h-4 w-4" />}
+        title="Verification"
+        subtitle="Who may prove they own a place, and whether a correct code grants it outright or waits on the queue."
+      >
+        <div className="mt-5 flex flex-col gap-2">
+          {KNOBS.map((k) => (
+            <div
+              key={k.key}
+              className="border-border bg-background flex items-center justify-between gap-4 rounded-xl border p-4"
+            >
+              <div className="min-w-0">
+                <p className="text-sm font-semibold">{k.label}</p>
+                <p className="text-muted-foreground mt-0.5 text-xs leading-relaxed">
+                  {k.blurb}
+                </p>
               </div>
-            );
-          })}
+              <Switch
+                on={cfg[k.key]}
+                pending={pendingKey === k.key}
+                onClick={() => toggle(k.key)}
+                label={k.label}
+              />
+            </div>
+          ))}
         </div>
-      </section>
-
-      {updatedAt && (
-        <p className="text-muted-foreground text-[12px]">
-          Last updated {new Date(updatedAt).toLocaleString()}
-        </p>
-      )}
-    </div>
+        {updatedAt ? (
+          <p className="text-muted-foreground mt-4 text-[11px]">
+            Each switch saves on click · last saved{" "}
+            {new Date(updatedAt).toLocaleDateString()}
+          </p>
+        ) : null}
+      </SectionCard>
+    </>
   );
 }
