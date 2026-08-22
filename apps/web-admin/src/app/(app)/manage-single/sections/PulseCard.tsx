@@ -207,14 +207,12 @@ export function PulseCard({
           name="Seeded"
           value={seeded}
           tint="slate"
-          meaning="A google_place_id is on the row — the identity spine every enrichment run starts from. It buys nothing on its own."
           detail={seededDetail}
         />
         <PulseRow
           name="Listed"
           value={listed}
           tint="indigo"
-          meaning="A guest can reach this place at all. Not a rung and not a tier — the visibility gate every consumer read passes through."
           detail={listedDetail}
         />
         <PulseRow
@@ -222,28 +220,24 @@ export function PulseCard({
           value={level === 3}
           tint="violet"
           chipLabel={level === null ? undefined : `${level}/3`}
-          meaning="How far the Enricher got: research gathered → images analysed → profile persisted. A level, not a yes."
           detail={enrichedDetail}
         />
         <PulseRow
           name="Verified"
           value={verified}
           tint="emerald"
-          meaning="Somebody proved they own this place. Ownership only — it grants no discount and buys nothing."
           detail={verifiedDetail}
         />
         <PulseRow
           name="Partner"
           value={partner}
           tint="sky"
-          meaning="The place pays Mesita. A deal, not an offer — and never shown to a guest."
           detail={partnerDetail}
         />
         <PulseRow
           name="Promoting"
           value={promoting}
           tint="pink"
-          meaning="A guest gets a discount here right now — the only one of the three a guest is ever shown."
           detail={promotingDetail}
         />
       </div>
@@ -257,9 +251,7 @@ export function PulseCard({
             </span>{" "}
             {badged
               ? "projects.listing_type still says 'partner' while nothing is on offer, so the consumer app shows a reward badge over a closed promo lane."
-              : "This place promotes a live discount but isn't stored as 'partner', so the consumer app gates the reward off and no guest can claim it."}{" "}
-            That column collapses paying and promoting into one flag and is
-            re-derived only when something writes the place (MESITA-1150).
+              : "This place promotes a live discount but isn't stored as 'partner', so the consumer app gates the reward off and no guest can claim it."}
           </p>
         </div>
       ) : null}
@@ -276,14 +268,12 @@ function PulseRow({
   name,
   value,
   tint,
-  meaning,
   detail,
   chipLabel,
 }: {
   name: string;
   value: boolean | "unknown" | "loading";
   tint: "slate" | "indigo" | "violet" | "emerald" | "sky" | "pink";
-  meaning: string;
   detail: string;
   /** Overrides the chip text in BOTH states. Enriched is a 0-3 level, not a
    *  yes, so its chip reads "2/3" whether or not the level is complete. */
@@ -303,9 +293,6 @@ function PulseRow({
     <div className="border-border/60 flex items-start justify-between gap-4 border-b py-3.5 first:pt-0 last:border-b-0 last:pb-0">
       <div className="min-w-0">
         <span className="text-foreground/90 text-[13px] font-medium">{name}</span>
-        <p className="text-muted-foreground mt-0.5 text-[11px] leading-relaxed">
-          {meaning}
-        </p>
         <p className="text-foreground/70 mt-1 text-[11px] font-medium">{detail}</p>
       </div>
       <span
