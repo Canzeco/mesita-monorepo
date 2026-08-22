@@ -475,6 +475,8 @@ function PlaceCatalogRow({
       </td>
       <td className="px-3 py-2.5 text-center">
         <BoolCell value={place.seeded} trueLabel="Yes" falseLabel="No" />
+      </td>
+      <td className="px-3 py-2.5 text-center">
         <BoolCell value={place.listed} trueLabel="Yes" falseLabel="No" />
       </td>
       <td className="px-3 py-2.5 text-center">
@@ -487,7 +489,7 @@ function PlaceCatalogRow({
         <BoolCell value={place.partner} trueLabel="Yes" falseLabel="No" />
       </td>
       <td className="px-3 py-2.5 text-center">
-        <BoolCell value={place.promoting} trueLabel="Yes" falseLabel="No" accent />
+        <PromoLevelCell level={place.promoting_level} />
       </td>
       <td className="px-3 py-2.5 text-right">
         <ChevronRight className="text-muted-foreground ml-auto h-4 w-4" aria-hidden />
@@ -514,6 +516,46 @@ const LEVEL_TITLE: Record<number, string> = {
 };
 
 /** done/total of what this place bought, or the coarse level when unknown. */
+// PROMOTING is a 0-3 rung, not a yes/no: how hard a place is discounting right
+// now (Pato, 2026-08-22). 0 is not "no data" — it means a guest gets nothing
+// here at this moment, which is also true of a paid Aggressive place whose
+// promo lane is paused. The server derives it so the boolean and the rung can
+// never disagree.
+const PROMO_TITLE: Record<number, string> = {
+  0: "Zero — no live discount",
+  1: "Conservative",
+  2: "Aggressive",
+  3: "Dominant",
+};
+
+function PromoLevelCell({ level }: { level: 0 | 1 | 2 | 3 }) {
+  const title = PROMO_TITLE[level] ?? `Level ${level}`;
+  return (
+    <span className="inline-flex items-center gap-1.5" title={title}>
+      <span
+        className={
+          "text-[11px] font-semibold tabular-nums " +
+          (level === 0 ? "text-muted-foreground" : "text-foreground")
+        }
+      >
+        {level}
+      </span>
+      <span className="flex gap-[2px]" aria-hidden>
+        {[1, 2, 3].map((rung) => (
+          <span
+            key={rung}
+            className={
+              "h-1.5 w-1.5 rounded-[1px] " +
+              (level >= rung ? "bg-amber-500" : "bg-muted-foreground/25")
+            }
+          />
+        ))}
+      </span>
+      <span className="sr-only">{title}</span>
+    </span>
+  );
+}
+
 function LevelCell({
   level,
   progress,

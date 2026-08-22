@@ -89,3 +89,36 @@ export const BUSINESS_PRIVATE_PLACE_KEYS = [
   "plan_live_at",
   "first_ticket_honored_at",
 ] as const;
+
+/**
+ * HOW HARD a place is promoting right now, 0-3 (Pato, 2026-08-22):
+ * 0 zero · 1 conservative · 2 aggressive · 3 dominant.
+ *
+ * A refinement of `isPlacePromoting`, never a replacement — it answers the same
+ * question with the strategy ladder attached, and it agrees with the boolean by
+ * construction: level 0 exactly when the boolean is false.
+ *
+ * That equivalence is the point. A paid place on Aggressive whose promo lane is
+ * CLOSED (a strike pause) is NOT promoting, so it reads 0 even though its rate
+ * columns say Aggressive — the level describes what a guest gets right now, not
+ * what the place signed up for. Reading the strategy alone would show a live
+ * discount on a place that will honor nothing, which is the exact bug
+ * `promoting` was introduced to kill (MESITA-1150).
+ */
+export function placePromotingLevel(
+  row: PromotingFields | null | undefined,
+  now: Date = new Date(),
+): 0 | 1 | 2 | 3 {
+  if (!isPlacePromoting(row, now)) return 0;
+  switch (placeStrategy(row as unknown as Record<string, unknown>)) {
+    case "conservative":
+      return 1;
+    case "aggressive":
+      return 2;
+    case "dominant":
+      return 3;
+    default:
+      // Unreachable: isPlacePromoting already rejected `zero`.
+      return 0;
+  }
+}

@@ -19,7 +19,10 @@ import {
   requireSuperAdmin,
 } from "../_shared/auth.ts";
 import { isPaidPlan } from "../_shared/membership-enforcement-helpers.ts";
-import { isPlacePromoting } from "../_shared/place-promoting.ts";
+import {
+  isPlacePromoting,
+  placePromotingLevel,
+} from "../_shared/place-promoting.ts";
 import {
   isPlaceListed,
   isPlaceSeeded,
@@ -232,6 +235,11 @@ Deno.serve(async (req) => {
       verified: verified.has(id),
       partner: isPaidPlan((v.plan as string | null) ?? null),
       promoting: isPlacePromoting(v as Parameters<typeof isPlacePromoting>[0]),
+      // HOW HARD, 0-3 (zero · conservative · aggressive · dominant). Agrees
+      // with the boolean above by construction: 0 exactly when it is false.
+      promoting_level: placePromotingLevel(
+        v as Parameters<typeof placePromotingLevel>[0],
+      ),
       photo: Array.isArray(v.photos) && v.photos.length > 0 ? v.photos[0] : null,
     };
   });

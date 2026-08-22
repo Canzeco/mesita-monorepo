@@ -53,6 +53,8 @@ export type PlaceHit = {
   partner: boolean;
   /** Live: paid ∧ strategy above Zero ∧ promo lane open. */
   promoting: boolean;
+  /** How hard, 0-3: zero · conservative · aggressive · dominant. 0 ⟺ !promoting. */
+  promoting_level: 0 | 1 | 2 | 3;
 };
 
 // The search EF only guarantees id/name — every other field may be absent,
@@ -99,6 +101,7 @@ function normalizePlaceHit(raw: RawPlaceHit): PlaceHit {
     verified: raw.verified ?? false,
     partner: raw.partner ?? false,
     promoting: raw.promoting ?? false,
+    promoting_level: raw.promoting_level ?? 0,
   };
 }
 
