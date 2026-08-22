@@ -1,24 +1,43 @@
 "use client";
 
 import { useState } from "react";
-import type { PerplexityPreset, SynthesisQuality } from "./actions";
+import { Calculator } from "lucide-react";
+import type {
+  EnrichmentTriggersConfig,
+  EnrichmentTriggersMeta,
+  PerplexityPreset,
+  SynthesisQuality,
+} from "./actions";
 import {
   DiscoverySection,
   ImageFunnelSection,
   ModelsSection,
   ReviewsSection,
 } from "./config-sections";
+import { RunsSection } from "./RunsSection";
 import { CostSection } from "./CostSection";
-import type { LinkCounts } from "./cost-model";
+import { Collapsible, SectionCard } from "./atlas-ui";
 
-// Atlas / Enricher admin console. This file wires the two page entry points —
-// the full configuration view and the standalone cost calculator — to their
-// section modules:
-//   • config-sections   — the three editable boxes: Models, Links, Images
-//   • CostSection       — the standalone cost + runtime calculator (Enricher Calculator)
-//   • atlas-ui          — the shared card / control / disclosure primitives
+// The Enrichment console — ONE page, no tab strip (Pato, 2026-08-21: "only one
+// tab in that section"). It was three tabs: Config, Triggers, Calculator.
+//
+// Order is deliberate. RUNS leads because it is the page's kill switch: a
+// disabled on_create row hard-skips the first-run pipeline, a disabled
+// on_schedule row makes the */15 cron queue nothing, and its columns are the
+// only fleet-wide way to stop $$ Reviews / Links / Social / Images spend. The
+// same reason the Reservations kill switch leads its page.
+//
+// The CALCULATOR is one box at the bottom, collapsed — it is by far the tallest
+// thing here, and "one page" must not mean "one endless page". It has no Save
+// (pure estimator), so it adds no save conflict; it is keyed on `updatedAt` so
+// it re-seeds after any save above rather than quietly pricing stale numbers.
+//
+// Every box keeps its OWN save scope and its own dirty/ok/error. Collapsible is
+// a native <details>, so children stay mounted — never swap it for
+// `{open && <Section/>}`, which throws away an operator's unsaved edits on
+// collapse with no warning.
 
-export function AtlasConfigurationClient(props: {
+export function EnrichmentClient(props: {
   initialGatherGoogleImages: number;
   initialGatherInstagramDepth: number;
   initialGatherReviews: number;
@@ -39,6 +58,8 @@ export function AtlasConfigurationClient(props: {
   initialDiscoverOpentableN: number;
   initialDiscoverUbereatsN: number;
   initialUpdatedAt: string | null;
+  initialTriggers: EnrichmentTriggersConfig;
+  triggersMeta: EnrichmentTriggersMeta;
 }) {
   const [updatedAt, setUpdatedAt] = useState(props.initialUpdatedAt);
 
@@ -54,6 +75,10 @@ export function AtlasConfigurationClient(props: {
         </p>
       )}
 
+      <RunsSection
+        initialConfig={props.initialTriggers}
+        meta={props.triggersMeta}
+      />
       <ModelsSection
         initialSynthesisQuality={props.initialSynthesisQuality}
         initialVisionQuality={props.initialVisionQuality}
@@ -85,28 +110,33 @@ export function AtlasConfigurationClient(props: {
         initialImageSortingPrompt={props.initialImageSortingPrompt}
         onSaved={setUpdatedAt}
       />
-    </div>
-  );
-}
 
-export function AtlasCalculatorClient(props: {
-  initialSynthesisQuality: SynthesisQuality;
-  initialVisionQuality: SynthesisQuality;
-  initialGatherGoogleImages: number;
-  initialGatherInstagramDepth: number;
-  initialAnalyzeGoogleImages: number;
-  initialAnalyzeInstagramImages: number;
-  initialLinks: LinkCounts;
-}) {
-  return (
-    <CostSection
-      initialSynthesisQuality={props.initialSynthesisQuality}
-      initialVisionQuality={props.initialVisionQuality}
-      initialGatherGoogleImages={props.initialGatherGoogleImages}
-      initialGatherInstagramDepth={props.initialGatherInstagramDepth}
-      initialAnalyzeGoogleImages={props.initialAnalyzeGoogleImages}
-      initialAnalyzeInstagramImages={props.initialAnalyzeInstagramImages}
-      initialLinks={props.initialLinks}
-    />
+      {/* One box, bottom, closed. Pato: "leave it at the bottom of the
+          configuration, but as one box, not as one fucking giant tab." */}
+      <SectionCard
+        icon={<Calculator className="h-4 w-4" />}
+        title="Calculator"
+        subtitle="What one run costs at the settings above."
+      >
+        <Collapsible summary="Price a run">
+          <CostSection
+            key={updatedAt ?? "seed"}
+            initialSynthesisQuality={props.initialSynthesisQuality}
+            initialVisionQuality={props.initialVisionQuality}
+            initialGatherGoogleImages={props.initialGatherGoogleImages}
+            initialGatherInstagramDepth={props.initialGatherInstagramDepth}
+            initialAnalyzeGoogleImages={props.initialAnalyzeGoogleImages}
+            initialAnalyzeInstagramImages={props.initialAnalyzeInstagramImages}
+            initialLinks={{
+              website: props.initialDiscoverWebsiteN,
+              instagram: props.initialDiscoverInstagramN,
+              facebook: props.initialDiscoverFacebookN,
+              opentable: props.initialDiscoverOpentableN,
+              ubereats: props.initialDiscoverUbereatsN,
+            }}
+          />
+        </Collapsible>
+      </SectionCard>
+    </div>
   );
 }
