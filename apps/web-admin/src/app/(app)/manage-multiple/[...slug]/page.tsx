@@ -1,16 +1,8 @@
 import { permanentRedirect } from "next/navigation";
 
-// Retired Manage Multiple subpaths. Required `[...slug]` so live search /
-// create / enrich (and the index → search redirect) stay authoritative.
-export default async function ManageMultipleLegacyRedirect({
-  params,
-}: {
-  params: Promise<{ slug: string[] }>;
-}) {
-  const { slug } = await params;
-  if (slug[0] === "update") {
-    permanentRedirect("/manage-multiple/enrich");
-  }
-  // catalog | anything else → Search (first tool)
-  permanentRedirect("/manage-multiple/search");
+// The three retired tab routes — search, create, enrich — are sections on the
+// one page now. MUST stay the REQUIRED `[...slug]`: the index is a real page,
+// and the optional form would collide with it.
+export default function ManageMultipleLegacyRedirect() {
+  permanentRedirect("/manage-multiple");
 }

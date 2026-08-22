@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { AlertTriangle } from "lucide-react";
+import { AlertTriangle, ListPlus } from "lucide-react";
 
 import { PlacesMap } from "@/components/PlacesMap";
 import type { SearchErrorResponse, SearchResponse } from "@/lib/places-types";
@@ -46,7 +46,14 @@ function buildSearchCsvRows(result: SearchResponse): string[] {
   return rows;
 }
 
-export function SearchTab() {
+// `onSendToCreate` is the pipeline handoff (MESITA-1203). On one page, step 1's
+// output IS step 2's input, so the operator should never have to carry the IDs
+// across by hand.
+export function SearchTab({
+  onSendToCreate,
+}: {
+  onSendToCreate?: (placeIds: string[]) => void;
+}) {
   const [queriesText, setQueriesText] = useState("");
   const [regionCode, setRegionCode] = useState("MX");
   const [maxResults, setMaxResults] = useState(MAX_RESULTS);
@@ -104,6 +111,13 @@ export function SearchTab() {
       setRunning(false);
     }
   }
+
+  // Unique hits Mesita does not already have — what step 2 would actually act
+  // on. `existsInMesita` is null-safe: the Supabase lookup can fail while the
+  // search still succeeds, and in that case nothing is claimed to be new.
+  const newPlaceIds = (result?.uniquePlaces ?? [])
+    .filter((p) => !p.existsInMesita)
+    .map((p) => p.id);
 
   async function copyText(text: string, key: string) {
     try {
@@ -188,6 +202,21 @@ export function SearchTab() {
             onCopy={copyText}
             onDownload={downloadCsv}
           />
+
+          {/* Only places NOT already in Mesita. Sending the rest would queue
+              creates for places that already exist, which the operator would
+              then have to read past in step 2's results. */}
+          {onSendToCreate && newPlaceIds.length > 0 && (
+            <button
+              type="button"
+              onClick={() => onSendToCreate(newPlaceIds)}
+              className="border-border bg-card hover:border-foreground inline-flex items-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-medium"
+            >
+              <ListPlus className="h-4 w-4" />
+              Send {newPlaceIds.length} new{" "}
+              {newPlaceIds.length === 1 ? "place" : "places"} to Create
+            </button>
+          )}
 
           {failedQueries.length > 0 && (
             <section className="border-destructive/40 bg-destructive/5 text-destructive rounded-2xl border p-4 text-sm">
