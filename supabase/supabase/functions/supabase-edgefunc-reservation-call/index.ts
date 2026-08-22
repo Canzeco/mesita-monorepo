@@ -36,7 +36,7 @@
 // Number resolution, per side:
 //   business — reservations.place_phone when pre-resolved (test tickets),
 //     else config testCall (test mode defaults ON → never rings a real venue
-//     by accident), else products.reservations when channel=phone (MESITA-842 —
+//     by accident), else places.reservation_target when the channel is phone (MESITA-842 —
 //     voice-only; whatsapp/instagram picks ignored → places.phone fallback).
 //   consumer — reservations.consumer_phone when pre-resolved, else the
 //     consumer's own phone; empty → leg 2 is skipped.
@@ -1213,13 +1213,14 @@ Deno.serve(async (req) => {
 
   const { data: placeRow } = await admin
     .from("places")
-    .select("name, phone, products, hours, lng")
+    .select("name, phone, reservation_channel, reservation_target, hours, lng")
     .eq("id", r.project_id)
     .maybeSingle();
   const place = (placeRow ?? null) as {
     name?: string | null;
     phone?: string | null;
-    products?: Record<string, unknown> | null;
+    reservation_channel?: string | null;
+    reservation_target?: string | null;
     hours?: unknown;
     lng?: number | null;
   } | null;
@@ -1232,17 +1233,14 @@ Deno.serve(async (req) => {
       businessNumber = cfg.testCall.number;
       via = "test-mode number";
     } else {
-      // Voice-only serving path (MESITA-842): honor products.reservations only
-      // when channel is phone. Legacy whatsapp/instagram picks were never
-      // dialed — fall back to places.phone so the call still reaches a line.
-      const resv = (place?.products?.reservations ?? null) as
-        | { channel?: string; value?: string }
-        | null;
-      businessNumber =
-        (resv?.channel === "phone" && resv.value ? resv.value : place?.phone ?? "")?.trim() ?? "";
-      via = resv?.channel === "phone" && resv.value
-        ? "place phone endpoint"
-        : "place.phone fallback";
+      // Voice-only serving path (MESITA-842): the CHECK constraint admits
+      // only 'phone', so a stored channel is by definition dialable. Falls
+      // back to places.phone when no endpoint was ever selected.
+      const endpoint = place?.reservation_channel === "phone"
+        ? (place.reservation_target ?? "").trim()
+        : "";
+      businessNumber = endpoint || (place?.phone ?? "").trim();
+      via = endpoint ? "place phone endpoint" : "place.phone fallback";
     }
   }
   const dialsVenue = intent === "book" ||

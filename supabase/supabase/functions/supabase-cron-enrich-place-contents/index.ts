@@ -7,7 +7,7 @@
 //   S7  synthesis (About/details, grounded ONLY in gathered material — Google
 //       spine + reviews + SERP blurb + IG bio; no website/menu) + category
 //       inference + tag inference (closed vocabularies) + Selected Reservation
-//       Endpoint (phone → products.reservations; voice-only, MESITA-842)
+//       Endpoint (phone → places.reservation_channel/_target; voice-only, MESITA-842)
 //   S8  persist the enriched profile onto the places row (direct UPDATE — this
 //       EF is already the DB layer; no HTTP hop) + content_status='ready'
 //   S9  store images via supabase-edgefunc-store-place-images (kept as an EF call
@@ -49,7 +49,7 @@ import { loadModelsConfig } from "../_shared/models-config.ts";
 import {
   coerceReservationsPolicy,
   hasReservationTarget,
-  mergeProductsReservations,
+  reservationTargetPatch,
   selectReservationEndpoint,
 } from "../_shared/enrich-reservation-endpoint.ts";
 import { humanizeCategorySlug } from "../_shared/parse-utils.ts";
@@ -199,7 +199,7 @@ serveEnrichStage("contents", async (admin, env, row) => {
   sources.cost = ledger.snapshot();
 
   // Selected Reservation Endpoint (Docs › Reservations §C / MESITA-597 / MESITA-842) —
-  // seed products.reservations { channel, value } for the Reservationist.
+  // seed places.reservation_channel / reservation_target for the Reservationist.
   // Voice-only: phone is the sole serving channel (WhatsApp unreachable since
   // MESITA-839). Priority / parked knobs still live on reservations_config, but
   // the eligible set is phone. Phone is stripped from gathered.place
@@ -217,35 +217,34 @@ serveEnrichStage("contents", async (admin, env, row) => {
 
   const { data: liveContacts } = await admin
     .from("places")
-    .select("phone, products")
+    .select("phone, reservation_channel")
     .eq("id", projectId)
     .maybeSingle();
-  const liveProducts = liveContacts?.products ?? null;
+  const live = (liveContacts ?? null) as
+    | { phone: string | null; reservation_channel: string | null }
+    | null;
   let reservationChannel: string | null = null;
   if (
     reservationsPolicy.respectAdminOverride &&
-    hasReservationTarget(liveProducts)
+    hasReservationTarget(live)
   ) {
-    const existing = (liveProducts as Record<string, unknown>).reservations as {
-      channel?: string;
-    };
-    reservationChannel = existing.channel ?? null;
+    reservationChannel = live?.reservation_channel ?? null;
     sources.reservation_endpoint = {
       ok: true,
       via: "admin_override",
       channel: reservationChannel,
     };
   } else {
-    const candidates = {
-      phone: (liveContacts?.phone as string | null | undefined) ?? null,
-    };
+    const candidates = { phone: live?.phone ?? null };
     const { target, diag: reservationDiag } = selectReservationEndpoint({
       candidates,
       policy: reservationsPolicy,
     });
     sources.reservation_endpoint = reservationDiag;
     if (target) {
-      place.products = mergeProductsReservations(liveProducts, target);
+      // Two typed columns, written independently of products — the menu and
+      // the routing no longer share one cell (MESITA-1208).
+      Object.assign(place, reservationTargetPatch(target));
       reservationChannel = target.channel;
     }
   }

@@ -92,7 +92,7 @@ const CHECKS: readonly CompletenessCheck[] = [
     label: "Reservations",
     hint: "Pick a reservation channel",
     weight: 10,
-    done: (p) => !!p.products?.reservations?.channel,
+    done: (p) => p.reservation_channel === "phone",
     tab: "settings",
   },
   {

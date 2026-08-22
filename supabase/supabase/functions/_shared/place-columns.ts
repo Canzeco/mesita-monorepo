@@ -145,6 +145,20 @@ const COLUMNS: readonly string[] = [
 // because consumers don't need to see when the business last touched a row.
 export const PLACE_PUBLIC_COLUMNS = COLUMNS.join(", ");
 
+// Order + reservation routing — which contact each rail reaches the place on
+// (MESITA-1208; typed columns since routing left the products jsonb).
+// BUSINESS-ONLY on purpose: a consumer never dials the place itself, so the
+// selected endpoint stays out of the public payload even though it is usually
+// just a copy of the already-public places.phone.
+const ROUTING_COLUMNS: readonly string[] = [
+  "reservation_channel",
+  "reservation_target",
+  "order_channel",
+  "order_target",
+];
+
 // Business reads — includes `updated_at` so the business UI can show
-// "saved · 2 min ago" style affordances.
-export const PLACE_BUSINESS_COLUMNS = [...COLUMNS, "updated_at"].join(", ");
+// "saved · 2 min ago" style affordances, plus the routing columns the
+// Settings rails edit.
+export const PLACE_BUSINESS_COLUMNS = [...COLUMNS, ...ROUTING_COLUMNS, "updated_at"]
+  .join(", ");

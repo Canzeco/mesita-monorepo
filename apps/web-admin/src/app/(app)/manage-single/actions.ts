@@ -122,16 +122,6 @@ export type AdminMenuItem = {
   items?: unknown[] | null;
 };
 
-/** How the Reservationist reaches this place. Voice-only (MESITA-842): phone
- *  is the sole serving channel. Shape matches the Enricher's
- *  products.reservations = { channel, value }. */
-export type ReservationChannel = "phone";
-export type ReservationTarget = {
-  channel: ReservationChannel;
-  value?: string | null;
-  fallbacks?: { channel: ReservationChannel; value?: string | null }[];
-};
-
 // The full place row, loaded for a super-admin via business-get-overview
 // (which returns the single requested place when the caller is super-admin).
 // Typed loosely — the editor only touches the known fields below.
@@ -184,16 +174,17 @@ export type AdminPlace = {
   uber_eats_url: string | null;
   menu_pdf_url: string | null;
   menu_pdf_name: string | null;
-  // Generic products payload. Menus live under products.menu; reservation
-  // contact target under products.reservations ({ channel, value }).
-  products?: {
-    menu?: AdminMenuItem[] | null;
-    reservations?: ReservationTarget | null;
-    // Which contact an ORDER reaches the place on (MESITA-1155). Same
-    // { channel, value } shape as reservations; stored now, read when the
-    // order rail ships — the Orders box is labeled Soon because of it.
-    orders?: ReservationTarget | null;
-  } | null;
+  // Generic products payload — MENUS ONLY. Order + reservation routing left
+  // this blob for typed columns in MESITA-1208: they are separate decisions
+  // and must not share one read-modify-written cell with the menu.
+  products?: { menu?: AdminMenuItem[] | null } | null;
+  // Which contact each rail reaches the place on. 'phone' is the only served
+  // channel (MESITA-842). order_* is STAGED — stored now, read when the order
+  // rail ships, which is why the Orders box wears Soon (MESITA-1155).
+  reservation_channel?: string | null;
+  reservation_target?: string | null;
+  order_channel?: string | null;
+  order_target?: string | null;
   // Legacy parallel array; prefer products.menu when present.
   menus?: AdminMenuItem[] | null;
   plan: string | null;

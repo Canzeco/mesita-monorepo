@@ -8,7 +8,7 @@
 //   { caller_phone, guest_name }
 //
 // Scope is re-verified server-side: the calling line must belong to the place
-// (places.phone or the products.reservations endpoint), and only that place's
+// (places.phone or the reservation_target endpoint), and only that place's
 // book is searched. Matching is accent-insensitive, every spoken word must
 // appear in the guest's name. Auth: anon bearer + x-agent-secret.
 //
@@ -47,19 +47,18 @@ Deno.serve(async (req) => {
 
   const { data: candidates } = await admin
     .from("places")
-    .select("id, name, phone, products")
-    .or(`phone.ilike.%${tail}%,products->reservations->>value.ilike.%${tail}%`)
+    .select("id, name, phone, reservation_target")
+    .or(`phone.ilike.%${tail}%,reservation_target.ilike.%${tail}%`)
     .limit(10);
   type P = {
     id: string;
     name: string | null;
     phone: string | null;
-    products: Record<string, unknown> | null;
+    reservation_target: string | null;
   };
-  const matches = ((candidates ?? []) as P[]).filter((p) => {
-    const resv = (p.products?.reservations ?? null) as { value?: string } | null;
-    return sameLine(p.phone, tail) || sameLine(resv?.value ?? null, tail);
-  });
+  const matches = ((candidates ?? []) as P[]).filter((p) =>
+    sameLine(p.phone, tail) || sameLine(p.reservation_target, tail)
+  );
   if (matches.length === 0) {
     return json({ ok: true, verified: false, reason: "no Mesita place with this number" });
   }

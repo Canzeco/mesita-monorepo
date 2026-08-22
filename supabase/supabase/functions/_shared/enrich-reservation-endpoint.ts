@@ -1,6 +1,7 @@
 // Selected Reservation Endpoint — Notion Docs › Reservations §C.
 //
-// Seeds products.reservations = { channel, value } for the Reservationist.
+// Seeds places.reservation_channel / reservation_target for the Reservationist
+// (typed columns since MESITA-1208 — routing left the products jsonb).
 // Priority among available profile contacts is an OPERATOR KNOB, not a constant:
 // it lives at app_config.reservations_config and is authored on the admin
 // console's Reservations Config page (MESITA-623). Callers pass the policy in;
@@ -24,8 +25,8 @@ export {
   coerceReservationsPolicy,
   DEFAULT_RESERVATIONS_POLICY,
   hasReservationTarget,
-  mergeProductsReservations,
   preferReservationChannel,
+  reservationTargetPatch,
   RESERVATION_CHANNELS,
   type ReservationCandidates,
   type ReservationChannel,

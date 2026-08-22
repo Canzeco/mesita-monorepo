@@ -3,7 +3,7 @@
 // Caller = eleven-a4: the business INBOUND line — a venue phones Mesita to
 // ask about or change bookings. THE GATE for every a4 conversation: verifies
 // the caller by phone number against the place's lines (places.phone and the
-// products.reservations endpoint) and returns the place plus its upcoming
+// reservation_target endpoint) and returns the place plus its upcoming
 // book, speakable:
 //
 //   { caller_phone }
@@ -43,19 +43,18 @@ Deno.serve(async (req) => {
 
   const { data: candidates } = await admin
     .from("places")
-    .select("id, name, phone, products")
-    .or(`phone.ilike.%${tail}%,products->reservations->>value.ilike.%${tail}%`)
+    .select("id, name, phone, reservation_target")
+    .or(`phone.ilike.%${tail}%,reservation_target.ilike.%${tail}%`)
     .limit(10);
   type P = {
     id: string;
     name: string | null;
     phone: string | null;
-    products: Record<string, unknown> | null;
+    reservation_target: string | null;
   };
-  const matches = ((candidates ?? []) as P[]).filter((p) => {
-    const resv = (p.products?.reservations ?? null) as { value?: string } | null;
-    return sameLine(p.phone, tail) || sameLine(resv?.value ?? null, tail);
-  });
+  const matches = ((candidates ?? []) as P[]).filter((p) =>
+    sameLine(p.phone, tail) || sameLine(p.reservation_target, tail)
+  );
   if (matches.length === 0) {
     return json({ ok: true, verified: false, reason: "no Mesita place with this number" });
   }

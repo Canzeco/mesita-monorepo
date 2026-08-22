@@ -123,28 +123,22 @@ export function buildReservationTarget(
 }
 
 /**
- * True when products.reservations already has a selected *serving* channel
- * (admin override). Legacy whatsapp/instagram picks are NOT overrides — they
- * were never dialed (MESITA-842) — so the Enricher re-seeds phone.
+ * True when the place already has a selected *serving* reservation channel
+ * (an operator override the Enricher must not overwrite). Reads the typed
+ * column — routing left places.products in MESITA-1208. A legacy
+ * whatsapp/instagram pick is not an override: it was never dialled
+ * (MESITA-842), and the CHECK constraint no longer admits it.
  */
-export function hasReservationTarget(products: unknown): boolean {
-  if (!products || typeof products !== "object" || Array.isArray(products)) {
-    return false;
-  }
-  const raw = (products as Record<string, unknown>).reservations;
-  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return false;
-  return isReservationChannel((raw as Record<string, unknown>).channel);
+export function hasReservationTarget(
+  place: { reservation_channel?: unknown } | null | undefined,
+): boolean {
+  if (!place || typeof place !== "object") return false;
+  return isReservationChannel(place.reservation_channel);
 }
 
-/** Merge a reservation target into products without wiping menu / other keys. */
-export function mergeProductsReservations(
-  products: unknown,
+/** The column patch that pins a reservation target. */
+export function reservationTargetPatch(
   target: ReservationTarget,
-): Record<string, unknown> {
-  const base =
-    products && typeof products === "object" && !Array.isArray(products)
-      ? { ...(products as Record<string, unknown>) }
-      : {};
-  base.reservations = { channel: target.channel, value: target.value };
-  return base;
+): { reservation_channel: ReservationChannel; reservation_target: string | null } {
+  return { reservation_channel: target.channel, reservation_target: target.value };
 }
