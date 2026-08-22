@@ -13,22 +13,9 @@ import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { enrichPlaceOverview } from "@/lib/mock/enrich-overview";
 import { placeHref } from "@/lib/place-route";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
-import { publishFiltersHostContext } from "@/lib/filters-host-context";
-import {
-  applyDiscoveryFilters,
-  createSeededRandom,
-  deriveCategoryOptions,
-  discoveryFiltersAreActive,
-  orderByRandomness,
-} from "@/lib/discovery-filters-engine";
-import {
-  resetDiscoveryFilters,
-  useDiscoveryFilters,
-} from "@/lib/use-discovery-filters";
 import {
   EmptyDeck,
   ExhaustedDeck,
-  FilterEmptyDeck,
   shuffleDeck,
   withUserDistance,
 } from "./swipe-deck-shells";
@@ -157,11 +144,6 @@ function Deck({ places }: { places: Place[] }) {
   // unmounting it on close would kill LocalSheet's exit transition, which
   // needs the component alive for the slide-down. First tap arms it forever.
   const [goMounted, setGoMounted] = useState(false);
-  // Shared discovery filters (MESITA-646): the deck below narrows LIVE and
-  // the red Filter-action dot (MESITA-633) lights on any deviation from
-  // defaults. One global store — Search shows the exact same state.
-  const filters = useDiscoveryFilters();
-  const filtersActive = discoveryFiltersAreActive(filters);
   const infoOpeningRef = useRef(false);
   const cardElRef = useRef<HTMLDivElement | null>(null);
   const startRef = useRef({ x: 0, y: 0, t: 0 });
@@ -274,72 +256,33 @@ function Deck({ places }: { places: Place[] }) {
   // (or a denied prompt) keep whatever distance they had, or fall back
   // to a "0 km" placeholder so the chip never just vanishes.
   const coords = useUserLocation();
-  // Distances measure from the chosen zone center (a searched location) or,
-  // with none, the device fix — the same center the distance filter rings.
-  const center = filters.zone ?? coords;
+  // Distances measure from the device fix. The zone-center option went with
+  // the filter surface (MESITA-1183); there is nothing else to recenter on.
+  const center = coords;
   const located = useMemo(
     () => runtimeDeck.map((v) => withUserDistance(v, center)),
     [runtimeDeck, center],
   );
 
-  // The deck the user actually swipes (MESITA-646): the shared discovery
-  // filters narrow `located` live, and the 0–4 randomness level (MESITA-905)
-  // reorders it — jittered ranks in the middle, full shuffle at max. Category
-  // options derive from the RAW snapshot so Filters offers everything this
-  // deck actually has.
-  // The seed pins the random permutation for the session: this memo also
-  // re-runs when `located` merely changes identity (the geolocation fix
-  // arriving, a zone recenter), and an unseeded shuffle would visibly swap
-  // the top card mid-swipe.
-  const [orderSeed] = useState(() => Math.floor(Math.random() * 0x7fffffff));
   // Cards already swiped this session drop out here rather than being skipped
   // by index: the server deck is a random sample, so each fetch can return a
   // different order (or different places entirely), which makes a stored
   // position meaningless but leaves "don't show me this again" perfectly
   // well-defined.
   const seenSet = useMemo(() => new Set(seenIds), [seenIds]);
-  const filtered = useMemo(
-    () => applyDiscoveryFilters(located, filters),
-    [located, filters],
-  );
+  // No narrowing and no client reorder: consumer-web-recommend-swipe already
+  // returns the catalog Fisher–Yates shuffled, so random lives in exactly one
+  // place (MESITA-1183). The deck is the server's order minus what's seen.
   const deck = useMemo(
-    () =>
-      orderByRandomness(
-        filtered.filter((place) => !seenSet.has(place.id)),
-        filters.randomness,
-        createSeededRandom(orderSeed),
-      ),
-    [filtered, filters.randomness, orderSeed, seenSet],
+    () => located.filter((place) => !seenSet.has(place.id)),
+    [located, seenSet],
   );
-  const categoryOptions = useMemo(
-    () => deriveCategoryOptions(runtimeDeck),
-    [runtimeDeck],
-  );
-
-  // Publish host context for the routed /filters modal (MESITA-905).
-  useEffect(() => {
-    publishFiltersHostContext({
-      surface: "swipe",
-      count: deck.length,
-      categoryOptions,
-      hasLocation: coords != null,
-    });
-  }, [deck.length, categoryOptions, coords]);
-
-  const openFilters = () => {
-    router.push(CONSUMER_ROUTES.filters, { scroll: false });
-  };
 
   // Past the last card the deck is exhausted — no silent wrap. Looping
   // back to the first card with a tiny flash was reading as "the last
   // card got stuck" because the same card kept reappearing on small
   // catalogs. An explicit "you're caught up" state with a restart CTA
-  // is clearer. Filters excluding EVERYTHING is a distinct state — the
-  // deck isn't empty and the user hasn't seen it all; their filters did it.
-  // Measured BEFORE the seen filter, so "your filters excluded everything"
-  // and "you're caught up" stay distinct states — otherwise swiping the last
-  // card would blame the filters.
-  const filterEmptied = filtered.length === 0 && located.length > 0;
+  // is clearer.
   const exhausted = idx >= deck.length;
   const v = exhausted ? null : deck[idx];
   const next = idx + 1 < deck.length ? deck[idx + 1] : null;
@@ -577,25 +520,10 @@ function Deck({ places }: { places: Place[] }) {
     }
   }, [deck, idx]);
 
-  if (filterEmptied) {
-    return (
-      <div className="relative flex h-full flex-col">
-        <FilterEmptyDeck
-          onAdjustFilters={openFilters}
-          onResetFilters={resetDiscoveryFilters}
-        />
-      </div>
-    );
-  }
-
   if (exhausted || !v) {
     return (
       <div className="relative flex h-full flex-col">
-        <ExhaustedDeck
-          onRestart={restart}
-          restarting={restarting}
-          onAdjustFilters={filtersActive ? openFilters : undefined}
-        />
+        <ExhaustedDeck onRestart={restart} restarting={restarting} />
       </div>
     );
   }
@@ -685,9 +613,7 @@ function Deck({ places }: { places: Place[] }) {
         </div>
 
         <SwipeActionRow
-          filtersActive={filtersActive}
           saved={saved}
-          onOpenFilters={openFilters}
           onSkip={skip}
           onOpenInfo={openInfo}
           onSave={save}

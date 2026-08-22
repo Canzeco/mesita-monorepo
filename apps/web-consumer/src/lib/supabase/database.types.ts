@@ -81,7 +81,6 @@ export type Database = {
           auto_verify_ai_email: boolean
           auto_verify_video: boolean
           create_places_as_verified: boolean
-          filters_config: Json | null
           id: number
           memo_greeting: string
           memo_instructions: string
@@ -124,7 +123,6 @@ export type Database = {
           auto_verify_ai_email?: boolean
           auto_verify_video?: boolean
           create_places_as_verified?: boolean
-          filters_config?: Json | null
           id?: number
           memo_greeting?: string
           memo_instructions?: string
@@ -167,7 +165,6 @@ export type Database = {
           auto_verify_ai_email?: boolean
           auto_verify_video?: boolean
           create_places_as_verified?: boolean
-          filters_config?: Json | null
           id?: number
           memo_greeting?: string
           memo_instructions?: string

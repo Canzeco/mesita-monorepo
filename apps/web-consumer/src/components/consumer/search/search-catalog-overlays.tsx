@@ -15,7 +15,6 @@ export function SearchRailOverlay({
   railScrollRef,
   onShowRail,
   onHideRail,
-  onClearFilters,
   onRailScroll,
   onSelectPlace,
   onOpenPlace,
@@ -30,7 +29,6 @@ export function SearchRailOverlay({
   railScrollRef: RefObject<HTMLDivElement | null>;
   onShowRail: () => void;
   onHideRail: () => void;
-  onClearFilters: () => void;
   onRailScroll: () => void;
   onSelectPlace: (place: Place) => void;
   onOpenPlace: (place: Place) => void;
@@ -105,15 +103,8 @@ export function SearchRailOverlay({
         catalogCount > 0 && (
           <div className="border-border bg-card/95 shadow-elev mx-auto flex w-max items-center gap-3 rounded-2xl border px-4 py-3 backdrop-blur">
             <p className="text-muted-foreground text-xs">
-              No places match these filters.
+              No places to show here yet.
             </p>
-            <button
-              type="button"
-              onClick={onClearFilters}
-              className="text-primary text-xs font-semibold"
-            >
-              Clear filters
-            </button>
           </div>
         )
       )}

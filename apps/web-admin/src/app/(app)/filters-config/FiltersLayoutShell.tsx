@@ -13,13 +13,14 @@ import { FILTERS_SUBROUTES } from "./nav";
 // its section heading, and the section is Configurations (web-admin rules). The
 // eyebrow carries the section instead — the same shape Manage › Database uses.
 
-// One line each. Two pages, two sentences — the surface-by-surface prose that
-// used to live here went with the seven tabs.
+// One line each. Both pages are empty until the rebuild lands (MESITA-1183
+// cleared them; MESITA-1196/1197 refill them), so the descriptions say what
+// each page WILL govern rather than describing controls that aren't there.
 const DESCRIPTIONS: Record<string, string> = {
   "/filters-config/signals":
-    "The six things a guest can ask for, and the law every engine inherits.",
+    "The scoring micro-functions. Being rebuilt — nothing here yet.",
   "/filters-config/engines":
-    "The surfaces that answer with places.",
+    "The surfaces that answer with places. Being rebuilt — nothing here yet.",
 };
 
 function describe(pathname: string): string {

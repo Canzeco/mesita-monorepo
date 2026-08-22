@@ -41,16 +41,6 @@ import {
   SearchRailOverlay,
 } from "./search-catalog-overlays";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
-import { publishFiltersHostContext } from "@/lib/filters-host-context";
-import {
-  applyDiscoveryFilters,
-  deriveCategoryOptions,
-  discoveryFiltersAreActive,
-} from "@/lib/discovery-filters-engine";
-import {
-  resetDiscoveryFilters,
-  useDiscoveryFilters,
-} from "@/lib/use-discovery-filters";
 import {
   matchPredictionToPlace,
   newSessionToken,
@@ -88,11 +78,6 @@ export function SearchClient({
   // Opened by tapping the search field — the results/suggest panel appears on
   // one tap, before any typing.
   const [searchOpen, setSearchOpen] = useState(false);
-  // Shared discovery filters (MESITA-646): pins + rail narrow LIVE and the
-  // red tune-icon dot (MESITA-633) lights on any deviation from defaults.
-  // One global store — Swipe shows the exact same state. Open via /filters.
-  const filters = useDiscoveryFilters();
-  const filtersActive = discoveryFiltersAreActive(filters);
   const [predictions, setPredictions] = useState<PlacePrediction[]>([]);
   const [searching, setSearching] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
@@ -115,42 +100,13 @@ export function SearchClient({
   // and catalog rail only exist here; the results panel owns the other state.
   const idle = trimmed.length === 0 && !searchOpen;
 
-  // Distances ride on the chosen zone center (a searched location) or, with
-  // none, the consumer's live location; the discovery filters then facet the
-  // SAME array the map pins and rail render.
+  // Distances ride on the consumer's live location. Nothing narrows the
+  // catalog any more (MESITA-1183) — pins and rail render it whole.
   const catalog = useMemo(
-    () => withDistances(places, filters.zone ?? userLocation),
-    [places, filters.zone, userLocation],
+    () => withDistances(places, userLocation),
+    [places, userLocation],
   );
-  const categoryOptions = useMemo(
-    () => deriveCategoryOptions(catalog),
-    [catalog],
-  );
-  const visible = useMemo(() => {
-    const filtered = applyDiscoveryFilters(catalog, filters);
-    // The selection must stay pinned even when the active filters would
-    // exclude it (a search pick lands here regardless of filters) —
-    // otherwise the red pin the user just asked for silently disappears.
-    if (selectedId && !filtered.some((p) => p.id === selectedId)) {
-      const held = catalog.find((p) => p.id === selectedId);
-      if (held) return [held, ...filtered];
-    }
-    return filtered;
-  }, [catalog, filters, selectedId]);
-
-  // Publish host context for the routed /filters modal (MESITA-905).
-  useEffect(() => {
-    publishFiltersHostContext({
-      surface: "search",
-      count: visible.length,
-      categoryOptions,
-      hasLocation: userLocation != null,
-    });
-  }, [visible.length, categoryOptions, userLocation]);
-
-  const openFilters = () => {
-    router.push(CONSUMER_ROUTES.filters, { scroll: false });
-  };
+  const visible = catalog;
 
   // End the current Places autocomplete session and mint the next one.
   const resetSearchSession = useCallback(() => {
@@ -281,8 +237,8 @@ export function SearchClient({
     [addStates, resetSearchSession, supabase],
   );
 
-  // A filter change reshuffles the rail, so snap the pager back to the first
-  // card (and the scroll container with it) to keep the count honest.
+  // Snap the pager back to the first card (and the scroll container with it)
+  // to keep the count honest.
   const resetRail = () => {
     setRailIndex(0);
     railScrollRef.current?.scrollTo({ left: 0 });
@@ -306,13 +262,6 @@ export function SearchClient({
     setRailIndex(Math.max(0, Math.min(idx, visible.length - 1)));
   };
 
-  // The "No places match" rail escape hatch resets the SHARED filter store
-  // (MESITA-646) — it used to clear the long-dead activeChips state, which
-  // once wired would have cleared the wrong thing and left the dot lit.
-  const clearFilters = () => {
-    resetRail();
-    resetDiscoveryFilters();
-  };
 
   // Pin tap → highlight + scroll the rail to the matching card. Tapping a
   // pin also reopens the rail if it was dismissed. The map pans itself via
@@ -372,11 +321,9 @@ export function SearchClient({
         <SearchBar
           query={query}
           showClear={Boolean(query || searchOpen)}
-          filtersActive={filtersActive}
           onQueryChange={updateQuery}
           onFocus={() => setSearchOpen(true)}
           onClear={dismissSearch}
-          onOpenFilters={openFilters}
         />
 
         {fetchError && idle && (
@@ -396,7 +343,6 @@ export function SearchClient({
         railScrollRef={railScrollRef}
         onShowRail={() => setRailCollapsed(false)}
         onHideRail={() => setRailCollapsed(true)}
-        onClearFilters={clearFilters}
         onRailScroll={handleRailScroll}
         onSelectPlace={handleSelectPlace}
         onOpenPlace={handleOpenPlace}

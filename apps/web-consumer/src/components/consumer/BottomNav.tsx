@@ -58,14 +58,9 @@ const ITEMS: Item[] = [
     Icon: MesitaMark,
     label: "Home",
     // /place — detail opened from the deck keeps Home lit (this was a special
-    // case in the render). /filters — the shared discovery modal, which lit NO
-    // tab at all before this list existed; Home owns it because Swipe is where
-    // it opens from.
-    matchPrefixes: [
-      CONSUMER_ROUTE_PREFIX.home,
-      CONSUMER_ROUTE_PREFIX.place,
-      CONSUMER_ROUTES.filters,
-    ],
+    // case in the render). /filters used to ride here too; it went with the
+    // discovery filter surface (MESITA-1183).
+    matchPrefixes: [CONSUMER_ROUTE_PREFIX.home, CONSUMER_ROUTE_PREFIX.place],
   },
   {
     href: CONSUMER_ROUTES.search,

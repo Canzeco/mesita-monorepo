@@ -234,7 +234,6 @@ describe("T5 — exactly one tab lights per surface", () => {
     ["/home/swipe", "Home"],
     ["/home/favorites", "Home"],
     ["/place/abc", "Home"],
-    ["/filters", "Home"],
     ["/search", "Search"],
     ["/new-visit", "Pay"],
     // THE requirement from the routing v2 design review: the visit detail

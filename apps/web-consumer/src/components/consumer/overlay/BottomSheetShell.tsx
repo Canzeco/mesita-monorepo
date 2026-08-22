@@ -20,8 +20,10 @@ import { isModalContractPath } from "@/lib/consumer-route-contract";
 // swap; `absolute` positioning only; dismiss plays the exit slide, then
 // router.back().
 //
-// `hideHeader` — child owns title / Reset / close (Filters DiscoveryFilters).
-// Body then does NOT scroll; the child keeps sticky header + footer.
+// `hideHeader` — child owns title / Reset / close. Body then does NOT scroll;
+// the child keeps sticky header + footer. Its only user was the discovery
+// Filters sheet, deleted in MESITA-1183; the option stays for the next child
+// that needs to own its own chrome.
 
 export function BottomSheetShell({
   children,
