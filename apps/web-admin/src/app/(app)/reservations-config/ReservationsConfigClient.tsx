@@ -1,16 +1,37 @@
 "use client";
 
+// Reservations Config — the Reservationist's operating limits.
+//
+// MINIMAL PAGE (Pato, 2026-08-21: "make this much simpler by far … simple and
+// clean UI minimalist few words"). It was five cards for six controls, each
+// switch carrying a paragraph for its on state AND another for its off state.
+//
+// Unlike the other pages in the reduction, NOTHING here is staged — all six
+// controls are read by live code — so the cut is boxes and words, never knobs:
+//
+//   • TWO boxes, split by the only question that matters: is this call real?
+//     Calls = what actually dials out. Testing = the overrides that fake it.
+//   • The KILL SWITCH LEADS. It was the last control on the page, under two
+//     number fields, which is the wrong end for the one switch you reach for
+//     during a runaway loop or a credit emergency.
+//   • One line of help per control, and only where the label doesn't say it.
+//     Prose appears for a DANGEROUS state — test mode off, cap bypass on,
+//     kill switch on — because those are the three an operator can leave set
+//     by accident and not notice.
+//
+// STOP RENDERING, NEVER STOP CARRYING still applies: `attempts` (fixed at 2 by
+// protocol), the phone-only channel shape, and the legacy `consumerNumber` have
+// no controls, and save spreads the whole object so they survive a write.
+//
+// WHOLE-BLOB save; `dirty` gates on loadError so a failed read can never
+// overwrite the live singleton (MESITA-737).
+
 import { useEffect, useMemo, useState, useTransition } from "react";
 import {
   AlertTriangle,
   FlaskConical,
-  Gauge,
-  // Aliased: the lucide export is named `Infinity`, which would shadow the
-  // global of the same name for this whole module.
-  Infinity as InfinityIcon,
   OctagonPause,
   Phone,
-  ShieldCheck,
 } from "lucide-react";
 import { ErrorNote } from "@/components/ErrorNote";
 import { SaveRow, SectionCard, Switch } from "../enricher-config/atlas-ui";
@@ -27,6 +48,70 @@ const PHONE_ONLY_CHANNELS: Pick<ReservationsConfig, "priority" | "disabled"> = {
   priority: ["phone"],
   disabled: [],
 };
+
+/** A labelled switch row. One line of help, and only when it earns one. */
+function Row({
+  label,
+  help,
+  danger,
+  on,
+  pending,
+  onClick,
+}: {
+  label: string;
+  help?: string;
+  danger?: boolean;
+  on: boolean;
+  pending: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <div className="border-border bg-background flex items-center justify-between gap-4 rounded-xl border p-4">
+      <div className="min-w-0">
+        <p className="text-sm font-semibold">{label}</p>
+        {help ? (
+          <p
+            className={`mt-0.5 text-xs ${danger ? "font-medium text-amber-600" : "text-muted-foreground"}`}
+          >
+            {help}
+          </p>
+        ) : null}
+      </div>
+      <Switch on={on} pending={pending} label={label} onClick={onClick} />
+    </div>
+  );
+}
+
+/** A small integer field — a daily meter. */
+function Cap({
+  label,
+  help,
+  value,
+  pending,
+  onChange,
+}: {
+  label: string;
+  help: string;
+  value: number;
+  pending: boolean;
+  onChange: (v: number) => void;
+}) {
+  return (
+    <label className="border-border bg-background flex flex-col gap-2 rounded-xl border p-4">
+      <span className="text-sm font-semibold">{label}</span>
+      <input
+        type="number"
+        min={1}
+        max={1000}
+        value={value}
+        disabled={pending}
+        onChange={(e) => onChange(Math.max(1, Math.trunc(Number(e.target.value) || 1)))}
+        className="border-border bg-card focus:border-foreground h-9 w-full max-w-[8rem] rounded-lg border px-3 text-sm tabular-nums outline-none disabled:opacity-50"
+      />
+      <span className="text-muted-foreground text-xs">{help}</span>
+    </label>
+  );
+}
 
 export function ReservationsConfigClient({
   initialConfig,
@@ -74,8 +159,7 @@ export function ReservationsConfigClient({
     // eslint-disable-next-line react-hooks/exhaustive-deps -- seed once on mount
   }, []);
 
-  const testInvalid =
-    cfg.testCall.enabled && !looksLikePhone(cfg.testCall.number);
+  const testInvalid = cfg.testCall.enabled && !looksLikePhone(cfg.testCall.number);
 
   const dirty = useMemo(
     () => JSON.stringify(cfg) !== JSON.stringify(saved),
@@ -90,17 +174,14 @@ export function ReservationsConfigClient({
   const save = () => {
     if (loadBlocked) return;
     setError(null);
-    // Force the phone-only channel shape — the section above is read-only, but the
+    // Force the phone-only channel shape — there is no control for it, but the
     // stored blob must stay a valid, phone-first policy for the Enricher.
     const payload: ReservationsConfig = {
       ...cfg,
       ...PHONE_ONLY_CHANNELS,
       // consumerNumber rides along untouched — legacy field from the retired
       // Playground, kept so stored rows stay shape-stable.
-      testCall: {
-        ...cfg.testCall,
-        number: cfg.testCall.number.trim(),
-      },
+      testCall: { ...cfg.testCall, number: cfg.testCall.number.trim() },
     };
     startTransition(async () => {
       const r = await updateReservationsConfig(payload);
@@ -118,24 +199,23 @@ export function ReservationsConfigClient({
   const whyAttention = (row: NeedsAttentionRow): string => {
     if (row.notice_state === "failed") {
       return row.notice_kind === "venue_cancel"
-        ? "Place release NOT delivered — the place may still hold a cancelled table"
-        : "Guest was never told their table was cancelled";
+        ? "Place never told the table was cancelled"
+        : "Guest never told the table was cancelled";
     }
-    if (row.attempts_state === "error") return "Booking run died — see status below";
+    if (row.attempts_state === "error") return "Booking run died";
     if (row.callback_state === "failed") return "Guest call could not be placed";
-    return "Place confirmed but the guest never picked up — table exists, owner unaware";
+    return "Place confirmed, guest never picked up";
   };
 
   return (
-    <div className="space-y-6">
-      {/* Needs attention — the protocol exists because states nobody reads
-          stop silently. This list is the reader: every terminal-bad state a
-          human must act on, straight from the same GET as the config. */}
+    <div className="flex flex-col gap-4">
+      {/* Only renders when there is something to act on, so it costs nothing on
+          a normal day and is the first thing read on a bad one. */}
       {attention.length > 0 && (
         <SectionCard
           icon={<AlertTriangle className="h-4 w-4 text-red-600" />}
           title={`Needs attention (${attention.length})`}
-          subtitle="Tickets in a terminal-bad state: failed cancel notices, dead booking runs, unreached guests on confirmed tables. These do not fix themselves."
+          subtitle="These do not fix themselves."
         >
           <ul className="mt-5 space-y-2">
             {attention.map((row) => (
@@ -147,7 +227,7 @@ export function ReservationsConfigClient({
                   <span className="font-mono text-xs font-semibold tabular-nums">
                     #{row.reference_code ?? row.id.slice(0, 8)}
                   </span>
-                  <span className="bg-red-500/10 rounded-full px-1.5 py-0.5 text-[10px] font-semibold text-red-700">
+                  <span className="rounded-full bg-red-500/10 px-1.5 py-0.5 text-[10px] font-semibold text-red-700">
                     {row.status}
                   </span>
                   {row.is_test && (
@@ -169,238 +249,136 @@ export function ReservationsConfigClient({
         </SectionCard>
       )}
 
-      {/* How it works — the shape of the agent, so the knobs below have context. */}
+      {/* CALLS — what actually dials out. Kill switch first. */}
       <SectionCard
-        icon={<FlaskConical className="text-secondary h-4 w-4" />}
-        title="Test mode"
-        subtitle="While test mode is on, every reservation call dials the test number below instead of the place's real line — whichever place the guest booked. So we can run the whole flow end to end without ringing a single business."
+        icon={<Phone className="text-secondary h-4 w-4" />}
+        title="Calls"
+        subtitle="Every reservation is a real, metered phone call."
       >
-        <div className="mt-5 flex items-start justify-between gap-4">
+        <div className="mt-5 flex items-center justify-between gap-4 rounded-xl border border-red-200 bg-red-50/50 p-4 dark:border-red-900/40 dark:bg-red-950/20">
           <div className="min-w-0">
-            <p className="text-sm font-semibold">Test mode</p>
-            <p className="text-muted-foreground mt-0.5 text-xs">
-              {cfg.testCall.enabled
-                ? "On — the agent ignores each place's real phone and dials the test number below. Keep this on until we're ready to call real places."
-                : "Off — the agent calls each place's actual reservation line. Only turn test mode off when you mean to reach real businesses."}
+            <p className="flex items-center gap-2 text-sm font-semibold">
+              <OctagonPause className="h-4 w-4 text-red-600" />
+              Stop all calls
             </p>
+            {cfg.limits.killSwitch ? (
+              <p className="mt-0.5 text-xs font-medium text-red-600">
+                Nothing is dialling. Resumes a minute after you turn this off.
+              </p>
+            ) : null}
           </div>
           <Switch
-            on={cfg.testCall.enabled}
+            on={cfg.limits.killSwitch}
             pending={pending}
-            label="Test mode"
+            label="Stop all calls"
             onClick={() =>
-              patch({
-                testCall: { ...cfg.testCall, enabled: !cfg.testCall.enabled },
-              })
+              patch({ limits: { ...cfg.limits, killSwitch: !cfg.limits.killSwitch } })
             }
           />
         </div>
 
-        <label className="mt-4 flex flex-col gap-2">
-          <span className="flex items-center gap-2 text-sm font-medium">
-            <Phone className="text-muted-foreground h-4 w-4" />
-            Business test number
-          </span>
+        <div className="mt-3 grid gap-3 sm:grid-cols-2">
+          <Cap
+            label="Reschedules per ticket, daily"
+            help="Each one buys fresh place calls."
+            value={cfg.limits.reschedulesPerTicketPerDay}
+            pending={pending}
+            onChange={(v) =>
+              patch({ limits: { ...cfg.limits, reschedulesPerTicketPerDay: v } })
+            }
+          />
+          <Cap
+            label="Calls per place, daily"
+            help="Bookings and cancel notices share the meter."
+            value={cfg.limits.venueCallsPerPlacePerDay}
+            pending={pending}
+            onChange={(v) =>
+              patch({ limits: { ...cfg.limits, venueCallsPerPlacePerDay: v } })
+            }
+          />
+        </div>
+
+        <div className="mt-3">
+          <Row
+            label="Keep hand-picked contacts"
+            help={
+              cfg.respectAdminOverride
+                ? undefined
+                : "Next enrich overwrites contacts an operator chose."
+            }
+            danger={!cfg.respectAdminOverride}
+            on={cfg.respectAdminOverride}
+            pending={pending}
+            onClick={() => patch({ respectAdminOverride: !cfg.respectAdminOverride })}
+          />
+        </div>
+      </SectionCard>
+
+      {/* TESTING — the two overrides that make a run fake. Both belong off. */}
+      <SectionCard
+        icon={<FlaskConical className="text-secondary h-4 w-4" />}
+        title="Testing"
+        subtitle="Check both before a real run."
+      >
+        <div className="mt-5">
+          <Row
+            label="Test mode"
+            help={
+              cfg.testCall.enabled
+                ? "Every call dials the test number, never a real place."
+                : "The agent is calling real businesses."
+            }
+            danger={!cfg.testCall.enabled}
+            on={cfg.testCall.enabled}
+            pending={pending}
+            onClick={() =>
+              patch({ testCall: { ...cfg.testCall, enabled: !cfg.testCall.enabled } })
+            }
+          />
+        </div>
+
+        <label className="mt-3 flex flex-col gap-2">
+          <span className="text-sm font-medium">Test number</span>
           <input
             type="tel"
             inputMode="tel"
             placeholder="+52 444 549 9597"
             value={cfg.testCall.number}
             disabled={pending || !cfg.testCall.enabled}
-            onChange={(e) =>
-              patch({ testCall: { ...cfg.testCall, number: e.target.value } })
-            }
+            onChange={(e) => patch({ testCall: { ...cfg.testCall, number: e.target.value } })}
             className="border-border bg-card focus:border-foreground h-9 w-full max-w-sm rounded-lg border px-3 text-sm tabular-nums outline-none disabled:opacity-50"
           />
           {testInvalid ? (
             <span className="text-xs text-amber-600">
-              Enter an E.164 number — a leading + and country code, e.g.
-              +5215512345678.
+              Needs E.164 — a leading + and country code.
             </span>
-          ) : (
-            <span className="text-muted-foreground text-xs">
-              E.164 format (leading +, country code). Stands in for the
-              place&apos;s line: the only number the agent dials while test mode
-              is on — reserve from the consumer app and the place leg rings
-              here instead of a real place.
-            </span>
-          )}
+          ) : null}
         </label>
-      </SectionCard>
 
-      {/* Call attempts — fixed by protocol, shown only so the number is never a mystery. */}
-      <SectionCard
-        icon={<ShieldCheck className="text-secondary h-4 w-4" />}
-        title="Operator overrides"
-        subtitle="What happens on re-enrich to a reservation contact a human picked by hand on the place's Products tab."
-      >
-        <div className="mt-5 flex items-start justify-between gap-4">
-          <div className="min-w-0">
-            <p className="text-sm font-semibold">Keep hand-picked contacts</p>
-            <p className="text-muted-foreground mt-0.5 text-xs">
-              {cfg.respectAdminOverride
-                ? "On — a place whose reservation contact an operator set is left alone by every re-enrich. The operator outranks the pipeline."
-                : "Off — every re-enrich re-applies the default, overwriting contacts operators picked by hand. Only useful for a deliberate backfill."}
-            </p>
-          </div>
-          <Switch
-            on={cfg.respectAdminOverride}
-            pending={pending}
-            label="Keep hand-picked contacts"
-            onClick={() =>
-              patch({ respectAdminOverride: !cfg.respectAdminOverride })
+        <div className="mt-3">
+          <Row
+            label="Ignore the monthly cap"
+            help={
+              cfg.unlimitedReservations
+                ? "Hides the paywall Premium depends on."
+                : undefined
             }
-          />
-        </div>
-        {!cfg.respectAdminOverride && (
-          <p className="mt-3 text-xs text-amber-600">
-            With this off, the next enrich of any place clobbers its operator-chosen
-            contact. Turn it back on once the backfill is done.
-          </p>
-        )}
-      </SectionCard>
-
-      {/* Testing-only cap bypass. Lives next to the test-call override because
-          both exist for the same reason: keeping a test run unblocked. */}
-      <SectionCard
-        icon={<InfinityIcon className="text-secondary h-4 w-4" />}
-        title="Unlimited reservations"
-        subtitle="Testing switch — lets any consumer keep booking past their class's monthly cap."
-      >
-        <div className="mt-5 flex items-start justify-between gap-4">
-          <div className="min-w-0">
-            <p className="text-sm font-semibold">Ignore the monthly cap</p>
-            <p className="text-muted-foreground mt-0.5 text-xs">
-              {cfg.unlimitedReservations
-                ? "On — the per-class monthly reservation limit is skipped for EVERY consumer. Booking never hits the paywall."
-                : "Off — each consumer is held to their class's monthly reservation limit (Standard is capped; Premium and above are unlimited)."}
-            </p>
-          </div>
-          <Switch
+            danger={cfg.unlimitedReservations}
             on={cfg.unlimitedReservations}
             pending={pending}
-            label="Ignore the monthly cap"
-            onClick={() =>
-              patch({ unlimitedReservations: !cfg.unlimitedReservations })
-            }
+            onClick={() => patch({ unlimitedReservations: !cfg.unlimitedReservations })}
           />
         </div>
-        {cfg.unlimitedReservations && (
-          <p className="mt-3 text-xs text-amber-600">
-            This hides the exact paywall the Premium upsell depends on — nobody can
-            reach the limit while it&apos;s on. Turn it off before any real run.
-          </p>
-        )}
       </SectionCard>
 
-      {/* Abuse & cost guards — every unit of abuse here is a metered phone call. */}
-      <SectionCard
-        icon={<Gauge className="text-secondary h-4 w-4" />}
-        title="Call limits & kill switch"
-        subtitle="Abuse and cost guards. Reschedules reset the place-call budget, so both doors are capped; the kill switch holds every outbound reservation call until it's flipped back."
-      >
-        <div className="mt-5 grid gap-4 sm:grid-cols-2">
-          <label className="flex flex-col gap-2">
-            <span className="text-sm font-medium">Reschedules per ticket per day</span>
-            <input
-              type="number"
-              min={1}
-              max={1000}
-              value={cfg.limits.reschedulesPerTicketPerDay}
-              disabled={pending}
-              onChange={(e) =>
-                patch({
-                  limits: {
-                    ...cfg.limits,
-                    reschedulesPerTicketPerDay: Math.max(
-                      1,
-                      Math.trunc(Number(e.target.value) || 1),
-                    ),
-                  },
-                })
-              }
-              className="border-border bg-card focus:border-foreground h-9 w-full max-w-[10rem] rounded-lg border px-3 text-sm tabular-nums outline-none disabled:opacity-50"
-            />
-            <span className="text-muted-foreground text-xs">
-              Each reschedule resets the ticket&apos;s call attempts — i.e. buys
-              fresh place calls. Over the cap the app says &quot;try again
-              tomorrow&quot;.
-            </span>
-          </label>
-          <label className="flex flex-col gap-2">
-            <span className="text-sm font-medium">Outbound place calls per day</span>
-            <input
-              type="number"
-              min={1}
-              max={1000}
-              value={cfg.limits.venueCallsPerPlacePerDay}
-              disabled={pending}
-              onChange={(e) =>
-                patch({
-                  limits: {
-                    ...cfg.limits,
-                    venueCallsPerPlacePerDay: Math.max(
-                      1,
-                      Math.trunc(Number(e.target.value) || 1),
-                    ),
-                  },
-                })
-              }
-              className="border-border bg-card focus:border-foreground h-9 w-full max-w-[10rem] rounded-lg border px-3 text-sm tabular-nums outline-none disabled:opacity-50"
-            />
-            <span className="text-muted-foreground text-xs">
-              Booking calls and cancel notices share one daily meter per place —
-              N guests can&apos;t make Mesita ring one restaurant all day. Over
-              the cap, calls defer six hours.
-            </span>
-          </label>
-        </div>
-        <div className="mt-5 flex items-start justify-between gap-4 rounded-xl border border-red-200 bg-red-50/50 p-4 dark:border-red-900/40 dark:bg-red-950/20">
-          <div className="min-w-0">
-            <p className="flex items-center gap-2 text-sm font-semibold">
-              <OctagonPause className="h-4 w-4 text-red-600" />
-              Kill switch
-            </p>
-            <p className="text-muted-foreground mt-0.5 text-xs">
-              {cfg.limits.killSwitch
-                ? "ON — no outbound reservation call of any kind is being placed. Everything parks and resumes within a minute of turning this off."
-                : "Off — calls flow normally. Flip this on to stop ALL outbound reservation calls instantly (runaway loop, credit emergency, place complaint)."}
-            </p>
-          </div>
-          <Switch
-            on={cfg.limits.killSwitch}
-            pending={pending}
-            label="Kill switch"
-            onClick={() =>
-              patch({ limits: { ...cfg.limits, killSwitch: !cfg.limits.killSwitch } })
-            }
-          />
-        </div>
-        {cfg.limits.killSwitch && (
-          <p className="mt-3 text-xs font-medium text-red-600">
-            While this is on, NO place is called and NO guest is called — bookings
-            park as scheduled and retry after you turn it off. Don&apos;t forget it.
-          </p>
-        )}
-      </SectionCard>
-
-      <div>
-        <p className="text-muted-foreground text-xs">
-          Channel selection is enforced live by the Enricher contents stage
-          (supabase-cron-enrich-place-contents). The test number and attempt count
-          are read by the reservation agent when it places a call.
-        </p>
-        <SaveRow
-          pending={pending}
-          dirty={dirty && !testInvalid}
-          ok={ok}
-          onClick={save}
-          loadError={
-            loadBlocked ? (error ?? "Failed to load Reservations config") : null
-          }
-        />
-        {error && <ErrorNote message={error} />}
-      </div>
+      <SaveRow
+        pending={pending}
+        dirty={dirty && !testInvalid}
+        ok={ok}
+        onClick={save}
+        loadError={loadBlocked ? (error ?? "Failed to load Reservations config") : null}
+      />
+      {error && <ErrorNote message={error} />}
     </div>
   );
 }
