@@ -70,17 +70,20 @@ describe("promos — lockstep with the admin twin", () => {
 });
 
 describe("promos — meters", () => {
-  it("Zero empty, Conservative mid, Aggressive full, on a 3-rung rail", () => {
-    expect(METER_SEGMENTS).toBe(3);
+  it("Zero empty, Dominant full, on a 4-rung rail", () => {
+    expect(METER_SEGMENTS).toBe(4);
     expect(giveLevel(DEFAULT_PROMOS, "zero").dots).toBe(0);
     expect(giveLevel(DEFAULT_PROMOS, "conservative").dots).toBe(2);
     expect(giveLevel(DEFAULT_PROMOS, "aggressive").dots).toBe(3);
+    expect(giveLevel(DEFAULT_PROMOS, "dominant").dots).toBe(METER_SEGMENTS);
   });
 
   it("visibility rail has exactly as many rungs as the ladder", () => {
     expect(visibilityDots("Low")).toBe(1);
     expect(visibilityDots("Mid")).toBe(2);
     expect(visibilityDots("High")).toBe(3);
+    // A rail shorter than the ladder would draw Max as High.
+    expect(visibilityDots("Max")).toBe(METER_SEGMENTS);
   });
 
   it("a paying posture never rounds down to an empty meter", () => {
@@ -129,7 +132,7 @@ describe("coercePromosConfig — it comes off the wire", () => {
       version: 11,
       visits: {
         base: {
-          dominant: { bronze: { free: 99 } },
+          reckless: { bronze: { free: 99 } },
           conservative: { wizard: { free: 99 }, bronze: { galaxy: 99 } },
         },
       },
@@ -137,6 +140,7 @@ describe("coercePromosConfig — it comes off the wire", () => {
     expect(Object.keys(cfg.visits.base).sort()).toEqual([
       "aggressive",
       "conservative",
+      "dominant",
     ]);
     expect(Object.keys(cfg.visits.base.conservative).sort()).toEqual(
       [...CLASS_KEYS].sort(),

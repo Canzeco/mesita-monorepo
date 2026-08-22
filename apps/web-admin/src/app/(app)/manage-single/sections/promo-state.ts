@@ -213,7 +213,7 @@ export function lifecycleView(
 // The copy beside it says so, and must keep saying so until real tickets back
 // it (there were zero in production when this shipped).
 
-export const METER_SEGMENTS = 3;
+export const METER_SEGMENTS = 4;
 
 export type GiveLevel = {
   dots: number;

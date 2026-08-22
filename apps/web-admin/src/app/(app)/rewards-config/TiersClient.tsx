@@ -249,9 +249,12 @@ export function TiersClient() {
         </p>
       )}
 
-      {/* THE FOUR TIERS. One column per strategy: a place picks one, and
-          reading down its column gives the whole program for that posture. */}
-      <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
+      {/* THE TIERS. One column per strategy: a place picks one, and reading
+          down its column gives the whole program for that posture. The column
+          count TRACKS STRATEGY_KEYS — at lg:grid-cols-2 the third strategy
+          wrapped to a row of its own and read as an afterthought rather than
+          a peer. */}
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
         {STRATEGY_KEYS.map((s) => (
           <div key={s} className="space-y-5">
             <TierBox strategy={s} context="visits" />
