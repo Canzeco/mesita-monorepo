@@ -13,6 +13,24 @@ const done = (step: string, n = 0) => ({
   created_at: at(n),
 });
 
+Deno.test("pulse: the ladder fits inside the DB's single-digit step CHECK", () => {
+  // place_enrichment_events.step is `check (step ~ '^S[0-9]$')`, so S9 is the
+  // last value Postgres accepts. reportPulsePieces stamps `S${meta.index}`.
+  //
+  // A tenth rung would type-check (reportEnrichmentStep takes the open template
+  // `S${number}`), be REJECTED by Postgres, and have its error swallowed by
+  // enrich-pipeline.ts — the piece would never record, the meter would cap at 9
+  // forever, and no surface would report a failure. This test is the only thing
+  // that fails loudly first (MESITA-1219).
+  assertEquals(
+    PULSE_TOTAL <= 9,
+    true,
+    "place_enrichment_events.step is CHECK (step ~ '^S[0-9]$') — a tenth piece " +
+      "stamps S10, is rejected by Postgres, and the error is swallowed. Widen " +
+      "the constraint with a migration BEFORE adding a rung.",
+  );
+});
+
 Deno.test("pulse: `seed` is the S0 GATE and is NOT a step", () => {
   // 0 means the seed is in place and nothing after it landed. If `seed` were a
   // member, a seeded place would read 1 and the ladder would be off by one
