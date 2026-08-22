@@ -30,6 +30,7 @@ import {
   reportPulsePieces,
   type PieceOutcome,
 } from "../_shared/pulse-report.ts";
+import type { PulsePiece } from "../_shared/pulse-pieces.ts";
 import {
   applyProfileToUpdate,
   synthesisModelFor,
@@ -387,7 +388,7 @@ serveEnrichStage("contents", async (admin, env, row) => {
 
   // ── PULSE pieces (MESITA-1172) ─────────────────────────────────────────
   // Contents owns 5 (menu) and 9 (semantics).
-  const contentPieces: Partial<Record<string, PieceOutcome>> = {
+  const contentPieces: Partial<Record<PulsePiece, PieceOutcome>> = {
     // MENU IS A STUB. The website is no longer scraped, so there is no menu
     // source and the piece can never block the queue — MESITA-1172 says so
     // outright. It passes, and it is a free slot in the ladder until someone

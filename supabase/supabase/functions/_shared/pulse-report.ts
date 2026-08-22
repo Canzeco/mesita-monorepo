@@ -69,7 +69,12 @@ export function pieceFailed(
 export async function reportPulsePieces(
   admin: SupabaseClient,
   projectId: string,
-  pieces: Partial<Record<string, PieceOutcome>>,
+  //   5. THE KEY IS `PulsePiece`, NOT `string`. A misspelled key used to compile,
+  //      write nothing, and cap the ladder at the rung before it — with the run
+  //      reporting success. `socail` for `social` pinned every place at 3 and
+  //      nothing in the type system, the tests or CI said a word (MESITA-1219).
+  //      The runtime guard below stays as the belt.
+  pieces: Partial<Record<PulsePiece, PieceOutcome>>,
 ): Promise<void> {
   for (const [key, outcome] of Object.entries(pieces)) {
     if (!outcome) continue;

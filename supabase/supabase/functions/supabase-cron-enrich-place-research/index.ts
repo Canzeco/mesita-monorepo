@@ -44,6 +44,7 @@ import {
   reportPulsePieces,
   type PieceOutcome,
 } from "../_shared/pulse-report.ts";
+import type { PulsePiece } from "../_shared/pulse-pieces.ts";
 import { COST, loadEnrichConfig } from "../_shared/enrich-config.ts";
 import {
   chargeGoogleSpine,
@@ -397,16 +398,30 @@ serveEnrichStage("research", async (admin, _env, row) => {
   // NOTE: there is no `seed` piece. S0 is the pre-run GATE, not a step — the
   // spine must already resolve or this function returns long before here, so
   // 0 means "seeded and nothing after it landed".
-  const pieces: Partial<Record<string, PieceOutcome>> = {
-    // PULSE (1) — is this place ALIVE. Google either published hours or it did
-    // not; absence is Google's fault rather than the place's, but it is still
-    // missing data, so it does not pass.
-    pulse: basics.hours
-      ? pieceDone("Hours, closing time and timezone resolved.")
-      : pieceFailed("Google publishes no hours for this place."),
-    details: (basics.phone || basics.address || basics.price_level != null)
-      ? pieceDone("Phone, address and price resolved.")
-      : pieceFailed("Google returned no contact or address detail."),
+  const pieces: Partial<Record<PulsePiece, PieceOutcome>> = {
+    // PULSE (1) — is this place ALIVE. ABSENCE IS A RESULT (pulse-report.ts
+    // rule 4). The Details call already SUCCEEDED — a failed one returns at the
+    // S1 gate far above — so a null `hours` is Google's ANSWER, not our failure
+    // to ask. `pieceFailed` here could only ever mean "Google was silent".
+    //
+    // It used to fail, and because this is rung 1 it pinned every hours-less
+    // place — bars, pop-ups, street food, new listings — at 0 forever, no
+    // matter what the other eight rungs achieved. 0 is also the reserved
+    // "never ran" value the catalog renders as "Seeded — nothing after it has
+    // landed", so a fully enriched place was indistinguishable from an
+    // untouched one (MESITA-1219).
+    pulse: pieceDone(
+      basics.hours
+        ? "Hours, closing time and timezone resolved."
+        : "Google publishes no hours for this place.",
+    ),
+    // Same rule: Google answering "no phone, no address, no price" is a fact
+    // about the listing, not an infrastructure failure.
+    details: pieceDone(
+      (basics.phone || basics.address || basics.price_level != null)
+        ? "Phone, address and price resolved."
+        : "Google returned no contact or address detail.",
+    ),
   };
 
   if (wants(buys, "links")) {
