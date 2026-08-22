@@ -263,7 +263,7 @@ export function PlaceSelectCatalog() {
           <div className="border-border bg-card mt-4 rounded-xl border p-4">
             <p className="text-sm font-medium">{creatingLabel}</p>
             <p className="text-muted-foreground mt-2 text-xs">
-              Creating place… Deep enrichment runs in the background once it exists.
+              Creating place… 
             </p>
           </div>
         )}
