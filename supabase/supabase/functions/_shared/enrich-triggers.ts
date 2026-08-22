@@ -148,7 +148,12 @@ export const TRIGGER_META: Record<
     label: "On update",
     blurb:
       "Someone edited the profile. A human just stated the truth, so nothing re-scrapes.",
-    staged: false,
+    // STAGED, not live. `subprocessesFor` is only ever called with "on_create"
+    // (create-place.ts:187); on_schedule is resolved in SQL by
+    // queue_due_place_enrichments. Nothing emits on_update, so a `staged:false`
+    // here badged a dead row as live — and the console now SPLITS the grid on
+    // this flag, so the lie would have promoted it into the live table.
+    staged: true,
   },
   on_schedule: {
     label: "On schedule",

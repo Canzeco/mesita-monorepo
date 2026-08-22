@@ -159,7 +159,7 @@ export function EnrichTab({ costSeed }: { costSeed: EnrichCostSeed | null }) {
         same re-enrich pipeline as the single-place control — the Enricher cron
         runs async after trigger. Caps and models live in{" "}
         <Link
-          href="/enricher-config/config"
+          href="/enricher-config"
           className="text-foreground font-medium underline underline-offset-2"
         >
           Enricher Config
@@ -244,7 +244,7 @@ export function EnrichTab({ costSeed }: { costSeed: EnrichCostSeed | null }) {
               {mode !== "full" ? " (scaled for lighter mode)" : ""}. Approximate
               — not a bill. Full calculator:{" "}
               <Link
-                href="/enricher-config/calculator"
+                href="/enricher-config#calculator"
                 className="text-foreground font-medium underline underline-offset-2"
               >
                 Enricher Calculator

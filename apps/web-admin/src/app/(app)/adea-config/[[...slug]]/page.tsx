@@ -10,7 +10,7 @@ export default async function AdeaConfigLegacyRedirect({
 }) {
   const { slug } = await params;
   if (slug?.[0] === "calculator") {
-    permanentRedirect("/enricher-config/calculator");
+    permanentRedirect("/enricher-config#calculator");
   }
-  permanentRedirect("/enricher-config/config");
+  permanentRedirect("/enricher-config");
 }

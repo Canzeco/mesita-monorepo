@@ -116,7 +116,7 @@ export function CreateTab() {
         deep Enricher research runs in the background.
         Caps, levels, and photo analysis are configured in{" "}
         <Link
-          href="/enricher-config/config"
+          href="/enricher-config"
           className="text-foreground font-medium underline underline-offset-2"
         >
           Enricher Config
