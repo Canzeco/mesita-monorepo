@@ -214,6 +214,27 @@ export async function apiClaimInstagram(
   );
 }
 
+export type InviteCodeClaimResult = {
+  classKey: string;
+  origin: "default" | "instagram" | "subscription" | "invitation";
+  batchLabel: string | null;
+};
+
+/** Redeem a 10-digit invitation PIN (MESITA-1168). Bearer: whoever holds the
+ *  PIN redeems it, unlike admin-web-grant-class which names a known consumer.
+ *  The EF answers one generic message for every rejection on purpose, so the
+ *  endpoint cannot be used to confirm which 10-digit strings are real PINs. */
+export async function apiClaimInviteCode(
+  client: SupabaseClient,
+  input: { code: string },
+): Promise<InviteCodeClaimResult> {
+  return await invokeEF<InviteCodeClaimResult>(
+    client,
+    "consumer-web-claim-invite-code",
+    input,
+  );
+}
+
 // ─── Display helpers ─────────────────────────────────────────────────────
 
 export function formatCurrency(

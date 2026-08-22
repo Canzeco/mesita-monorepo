@@ -11,6 +11,7 @@ import {
 import { SignOutButton } from "@/components/auth/SignOutButton";
 import { DeleteAccountSheet } from "@/components/consumer/DeleteAccountSheet";
 import { EditProfileSheet } from "@/components/consumer/EditProfileSheet";
+import { InvitePinModal } from "@/components/consumer/me/InvitePinModal";
 import { InstagramModal } from "@/components/consumer/me/InstagramModal";
 import { ShareModal } from "@/components/consumer/me/ShareModal";
 import { ClassModal } from "@/components/consumer/me/ClassModal";
@@ -86,6 +87,7 @@ export function ProfileClient({
   const [classOpen, setClassOpen] = useState(false);
   const [verifyOpen, setVerifyOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
+  const [invitePinOpen, setInvitePinOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(openSettings);
   const [contactOpen, setContactOpen] = useState(false);
   const [metricsOpen, setMetricsOpen] = useState(false);
@@ -282,8 +284,19 @@ export function ProfileClient({
         open={classOpen}
         onClose={() => setClassOpen(false)}
         onConnectInstagram={openVerify}
+        // Close the ladder before opening the PIN sheet. Local sheets are one
+        // layer (z-130 in the overlay standard), so stacking two would put a
+        // scrim over the thing the guest is trying to type into.
+        onRedeemInvite={() => {
+          setClassOpen(false);
+          setInvitePinOpen(true);
+        }}
       />
       <InstagramModal open={verifyOpen} onClose={() => setVerifyOpen(false)} />
+      <InvitePinModal
+        open={invitePinOpen}
+        onClose={() => setInvitePinOpen(false)}
+      />
       {profile && (
         <EditProfileSheet
           profile={profile}
