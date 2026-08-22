@@ -97,14 +97,10 @@ Deno.serve(async (req) => {
         )
         .eq("id", requestedPlaceId)
         .maybeSingle(),
-      // gathered/analysis are tens of KB of JSON; only their PRESENCE is used,
-      // and it is reduced to two booleans below — nothing large crosses the
-      // wire to the console.
-      admin
-        .from("place_research")
-        .select("stage, gathered, analysis")
-        .eq("place_id", requestedPlaceId)
-        .maybeSingle(),
+      // Via the RPC, not the table: gathered/analysis are tens of KB of jsonb
+      // each and only their PRESENCE is used, so the `is not null` happens in
+      // the database and nothing large ever leaves it (MESITA-1198).
+      admin.rpc("place_research_facts", { p_place_ids: [requestedPlaceId] }),
     ]);
     if (placeRow.error) {
       return json({ ok: false, error: placeRow.error.message }, 500);
@@ -121,16 +117,19 @@ Deno.serve(async (req) => {
         researchRow.error.message,
       );
     }
-    const research = researchRow.data as
-      | { stage: string | null; gathered: unknown; analysis: unknown }
-      | null;
+    // The RPC returns a set, so one place is a one-row array (or none).
+    const research = ((researchRow.data ?? []) as {
+      stage: string | null;
+      has_gathered: boolean | null;
+      has_analysis: boolean | null;
+    }[])[0] ?? null;
     const placeFields = placeRow.data as unknown as Record<string, unknown>;
     const enrichLevel = placeEnrichLevel(
       research
         ? {
           stage: research.stage,
-          gathered: research.gathered != null,
-          analysis: research.analysis != null,
+          gathered: research.has_gathered === true,
+          analysis: research.has_analysis === true,
         }
         : null,
       (placeFields.content_status as string | null) ?? null,
