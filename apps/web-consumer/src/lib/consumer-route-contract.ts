@@ -30,10 +30,6 @@ export const CONSUMER_ROUTES = {
   homeDefault: "/home/swipe",
   // Map + catalog search (Ask AI now lives on Home).
   search: "/search",
-  // Shared discovery Filters modal — one route for Home Swipe and Search
-  // (MESITA-905). Soft-open via @modal/(.)filters + BottomSheetShell; hard
-  // open at (shell)/filters. Values live in use-discovery-filters, not the URL.
-  filters: "/filters",
   // The saved-places list lives on the Home > Favorites route. This is the
   // canonical "view my saved places" destination — the old standalone
   // /saved/places grid was a duplicate and was removed.
@@ -194,7 +190,6 @@ export function ticketPath(id: string): string {
  */
 export function isModalContractPath(pathname: string): boolean {
   return (
-    pathname === CONSUMER_ROUTES.filters ||
     pathname.startsWith(CONSUMER_ROUTES.place.prefix) ||
     pathname.startsWith(CONSUMER_ROUTES.legacy.savedPlacePrefix) ||
     pathname.startsWith(CONSUMER_ROUTES.reservation.prefix) ||

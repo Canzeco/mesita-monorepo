@@ -26,16 +26,6 @@ import { useUserLocation } from "@/lib/use-user-location";
 import { withUserDistance } from "@/lib/place-distance";
 import { upsertSavedPlacePreview, useSavedPlaces } from "@/lib/saved-places";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
-import { publishFiltersHostContext } from "@/lib/filters-host-context";
-import {
-  applyDiscoveryFilters,
-  deriveCategoryOptions,
-  discoveryFiltersAreActive,
-} from "@/lib/discovery-filters-engine";
-import {
-  resetDiscoveryFilters,
-  useDiscoveryFilters,
-} from "@/lib/use-discovery-filters";
 import { EmptyState } from "@/components/shared";
 import { FavoriteTile } from "./FavoriteTile";
 
@@ -56,52 +46,22 @@ export function CatalogGrid({
   const { savedIds, setSaved } = useSavedPlaces();
   const [sort, setSort] = useState<Sort>("suggested");
 
-  const filters = useDiscoveryFilters();
-  const filtersActive = discoveryFiltersAreActive(filters);
-
-  // Distances measure from the chosen zone center (a searched location) or,
-  // with none, the device fix — the same center the distance filter rings.
+  // Distances measure from the device fix; the zone-center option went with
+  // the filter surface (MESITA-1183).
   const coords = useUserLocation();
-  const center = filters.zone ?? coords;
+  const center = coords;
   const located = useMemo(
     () => deckPlaces.map((place) => withUserDistance(place, center)),
     [deckPlaces, center],
   );
 
-  const filtered = useMemo(
-    () => applyDiscoveryFilters(located, filters),
-    [located, filters],
-  );
-
   const ordered = useMemo(() => {
-    if (sort === "suggested") return filtered;
+    if (sort === "suggested") return located;
     // Open first, each group keeping deck order (Array.sort is stable).
-    return [...filtered].sort(
+    return [...located].sort(
       (a, b) => Number(b.open_now === true) - Number(a.open_now === true),
     );
-  }, [filtered, sort]);
-
-  // Category options derive from the RAW deck, not the filtered view, so the
-  // Filters sheet keeps offering everything the catalog actually has — a
-  // narrowed list can't be widened again from inside itself.
-  const categoryOptions = useMemo(
-    () => deriveCategoryOptions(deckPlaces),
-    [deckPlaces],
-  );
-
-  // Publish host context for the routed /filters modal (MESITA-905).
-  useEffect(() => {
-    publishFiltersHostContext({
-      surface: "catalog",
-      count: filtered.length,
-      categoryOptions,
-      hasLocation: coords != null,
-    });
-  }, [filtered.length, categoryOptions, coords]);
-
-  const openFilters = () => {
-    router.push(CONSUMER_ROUTES.filters, { scroll: false });
-  };
+  }, [located, sort]);
 
   // Saving from the grid is one tap with no dialog — it's the
   // non-destructive direction. Unsaving here is too: the confirm dialog lives
@@ -137,16 +97,11 @@ export function CatalogGrid({
     );
   }
 
-  // Filters excluding everything is a distinct state from an empty catalog —
-  // the deck isn't empty, the filters did it, and the fix is a button not a
-  // wait.
-  const filterEmptied = filtered.length === 0;
-  const openNow = filtered.filter((p) => p.open_now === true).length;
+  const openNow = located.filter((p) => p.open_now === true).length;
 
   return (
-    // Header sits OUTSIDE the scroller: the count is a live region and the
-    // Filters button is the fix for the empty state below it — both have to
-    // stay reachable when the grid is scrolled or gone.
+    // Header sits OUTSIDE the scroller so the live count stays reachable
+    // when the grid is scrolled.
     <div className="flex min-h-0 flex-1 flex-col">
       <div className="shrink-0 px-4 pt-4 pb-3">
         <div className="flex items-center justify-between gap-2 px-1">
@@ -155,13 +110,13 @@ export function CatalogGrid({
             aria-live="polite"
           >
             <span className="text-foreground">
-              {filtered.length} {filtered.length === 1 ? "place" : "places"}
+              {located.length} {located.length === 1 ? "place" : "places"}
             </span>
             {openNow > 0 && ` · ${openNow} open now`}
           </p>
 
           <div className="flex shrink-0 items-center gap-1.5">
-            {filtered.length >= SORT_CONTROL_MIN && (
+            {located.length >= SORT_CONTROL_MIN && (
               <button
                 type="button"
                 onClick={() =>
@@ -173,32 +128,12 @@ export function CatalogGrid({
                 {sort === "suggested" ? "Suggested" : "Open first"}
               </button>
             )}
-            <button
-              type="button"
-              onClick={openFilters}
-              aria-label="Open filters"
-              className={
-                filtersActive
-                  ? "bg-primary text-primary-foreground shadow-glow flex shrink-0 items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold transition"
-                  : "border-border bg-card text-muted-foreground hover:text-foreground flex shrink-0 items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-semibold transition"
-              }
-            >
-              <SlidersHorizontal className="h-3 w-3" />
-              Filters
-            </button>
           </div>
         </div>
 
       </div>
 
-      {filterEmptied ? (
-        <EmptyState
-          icon={SlidersHorizontal}
-          title="Nothing matches those filters"
-          description="Your filters excluded every place in the catalog. Loosen them to see more."
-          action={{ label: "Clear filters", onClick: resetDiscoveryFilters }}
-        />
-      ) : (
+      {(
         <div className="scrollbar-hide min-h-0 flex-1 overflow-y-auto px-4 pb-6">
           <ul
             role="list"

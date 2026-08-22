@@ -43,7 +43,6 @@ describe("CONSUMER_ROUTES (canonical surface map)", () => {
       },
       homeDefault: "/home/swipe",
       search: "/search",
-      filters: "/filters",
       favorites: "/home/favorites",
       place: { prefix: "/place/" },
       reservation: { prefix: "/reservation/" },
@@ -139,7 +138,6 @@ describe("path helpers", () => {
 
 describe("isModalContractPath (intercepted detail overlays)", () => {
   const modal = [
-    "/filters",
     "/place/abc",
     "/saved/place/abc", // legacy — redirects, but still intercepts first
     "/reservation/r1",

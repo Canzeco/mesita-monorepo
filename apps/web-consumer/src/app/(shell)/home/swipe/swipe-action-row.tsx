@@ -1,12 +1,14 @@
 "use client";
 
 import type { LucideIcon } from "lucide-react";
-import { Heart, SlidersHorizontal, Store, X, Zap } from "lucide-react";
+import { Heart, Store, X, Zap } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 // The deck's action rail: circular, centred under the card.
 //
-// Five buttons, and five is the budget: Filter · Skip · Place · Save · Go.
+// Four buttons: Skip · Place · Save · Go. It was five — Filter led the rail
+// until the discovery filter surface was deleted (MESITA-1183). Five was the
+// budget, so the slot stays free for whatever the rebuilt engine earns.
 //
 // THE LAST ONE IS A GATEWAY, NOT A VERB (MESITA-1072). It used to be Reserve,
 // wired straight to ReservationSheet — one verb, and the narrowest of the
@@ -62,7 +64,6 @@ function SwipeActionButton({
   onClick,
   disabled,
   filled,
-  showDot,
   haspopup,
 }: {
   label: string;
@@ -75,8 +76,6 @@ function SwipeActionButton({
   disabled?: boolean;
   /** Solid glyph — the saved heart. */
   filled?: boolean;
-  /** Red status dot: filters deviate from defaults (MESITA-633). */
-  showDot?: boolean;
   /** Announces that this button opens a dialog instead of acting (Go). */
   haspopup?: boolean;
 }) {
@@ -109,20 +108,12 @@ function SwipeActionButton({
         className={cn(big ? "h-7 w-7" : "h-5 w-5", filled && "fill-current")}
         strokeWidth={2.25}
       />
-      {showDot ? (
-        <span
-          className="ring-card absolute -top-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-red-500 ring-2"
-          aria-hidden="true"
-        />
-      ) : null}
     </button>
   );
 }
 
 type SwipeActionRowProps = {
-  filtersActive: boolean;
   saved: boolean;
-  onOpenFilters: () => void;
   onSkip: () => void;
   onOpenInfo: () => void;
   onSave: () => void;
@@ -130,9 +121,7 @@ type SwipeActionRowProps = {
 };
 
 export function SwipeActionRow({
-  filtersActive,
   saved,
-  onOpenFilters,
   onSkip,
   onOpenInfo,
   onSave,
@@ -140,13 +129,6 @@ export function SwipeActionRow({
 }: SwipeActionRowProps) {
   return (
     <div className="mt-3 flex items-center justify-center gap-3.5">
-      <SwipeActionButton
-        label={filtersActive ? "Filters (active)" : "Filters"}
-        Icon={SlidersHorizontal}
-        variant="utility"
-        onClick={onOpenFilters}
-        showDot={filtersActive}
-      />
       <SwipeActionButton
         label="Skip"
         Icon={X}
