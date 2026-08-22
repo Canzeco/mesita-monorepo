@@ -37,7 +37,11 @@ Deno.test("normalizePromosV11: snaps to the 5% grid, drops unknown keys", () => 
     visits: {
       base: {
         conservative: { bronze: { free: 12, bogus: 99 }, wizard: {} },
-        dominant: { bronze: { free: 60 } }, // retired strategy
+        // `dominant` used to be sent here to prove a RETIRED strategy was
+        // dropped. It was restored 2026-08-21, so a partial dominant body is
+        // now honoured — and a partial that breaks additivity is rejected by
+        // the guard, which is a different contract with its own test. The
+        // subject here is unknown KEYS (`bogus`, `wizard`), which still holds.
       },
       bonuses: { welcome: 73, mesita: -4 },
     },
@@ -153,9 +157,9 @@ Deno.test("identityForClassKey: maps every live class row, floors the unknown", 
   assertEquals(identityForClassKey(undefined), { cls: "bronze", plan: "free" });
 });
 
-Deno.test("legacyRulesFromV11: emits the complete 40-cell mirror, on-grid and ≤70", () => {
+Deno.test("legacyRulesFromV11: emits the complete mirror, on-grid and ≤70", () => {
   const rules = legacyRulesFromV11(DEFAULT_PROMOS_V11);
-  assertEquals(rules.length, 2 * 4 * 5); // strategies × legacy classes × actions
+  assertEquals(rules.length, 3 * 4 * 5); // strategies × legacy classes × actions
   for (const r of rules) {
     assert(r.discount_percent >= 0 && r.discount_percent <= 70);
     assertEquals(r.discount_percent % 5, 0);

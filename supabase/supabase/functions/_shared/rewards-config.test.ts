@@ -112,7 +112,7 @@ Deno.test("isClassSegment: the four classes and nothing else", () => {
   assertEquals(isClassSegment(undefined), false);
 });
 
-Deno.test("placeStrategy: derives from v4 columns, all three strategies", () => {
+Deno.test("placeStrategy: derives from v4 columns, all four strategies", () => {
   // Conservative preset (v4 tens grid).
   assertEquals(
     placeStrategy({ welcome_free_rate: 20, welcome_premium_rate: 30, free_rate: 10, premium_rate: 20 }),
@@ -123,10 +123,13 @@ Deno.test("placeStrategy: derives from v4 columns, all three strategies", () => 
     placeStrategy({ welcome_free_rate: 30, welcome_premium_rate: 50, free_rate: 10, premium_rate: 30 }),
     "aggressive",
   );
-  // D5: leftover Dominant (40/50/20/30) coerces to Aggressive — never Zero.
+  // Dominant, restored 2026-08-21 on the SAME tuple it was retired with. This
+  // assertion is the inverse of the D5 one it replaces: 40/50/20/30 used to be
+  // coerced to Aggressive, and now resolves to the strategy it always was — so
+  // any row that outlived the retirement resurrects correctly.
   assertEquals(
     placeStrategy({ welcome_free_rate: 40, welcome_premium_rate: 50, free_rate: 20, premium_rate: 30 }),
-    "aggressive",
+    "dominant",
   );
   // Custom / all-null → zero.
   assertEquals(

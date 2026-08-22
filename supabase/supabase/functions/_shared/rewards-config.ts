@@ -37,7 +37,7 @@
 // here — never per-class branches.
 
 import { type SupabaseClient } from "jsr:@supabase/supabase-js@2";
-import { strategyForRates, ratesFromPlace, type PromoRates } from "./promo-strategy.ts";
+import { ratesFromPlace, strategyForRates } from "./promo-strategy.ts";
 import {
   identityForClassKey,
   legacyRulesFromV11,
@@ -86,7 +86,7 @@ export function isClassSegment(
 // Three strategies (2026-08-09): Dominant retired for good. Anything
 // unrecognised (custom/legacy, including a leftover Dominant rate tuple)
 // coerces to zero.
-export type GridStrategy = "zero" | "conservative" | "aggressive";
+export type GridStrategy = "zero" | "conservative" | "aggressive" | "dominant";
 export type SegmentRates = Record<GridStrategy, number>;
 
 // v13 (v7 matrix, MESITA-859): `grid` holds the four STANDING class rows (the
@@ -146,7 +146,7 @@ const CLASS_STEP: Record<ClassSegment, number> = {
   aura: 15,
 };
 
-const STRATEGY_STEP = { conservative: 0, aggressive: 10 } as const;
+const STRATEGY_STEP = { conservative: 0, aggressive: 10, dominant: 20 } as const;
 
 function defaultCell(
   type: keyof typeof TYPE_STEP,
@@ -163,6 +163,7 @@ const defaultRow = (
   zero: 0, // off by definition
   conservative: defaultCell(type, cls, "conservative"),
   aggressive: defaultCell(type, cls, "aggressive"),
+  dominant: defaultCell(type, cls, "dominant"),
 });
 
 const defaultMatrix = (
@@ -216,6 +217,7 @@ export function coerceRewardsGrid(raw: unknown): RewardsGrid {
       zero: 0, // off by definition
       conservative: num(r.conservative, d.conservative),
       aggressive: num(r.aggressive, d.aggressive),
+      dominant: num(r.dominant, d.dominant),
     };
   };
 
@@ -273,14 +275,18 @@ export function gridFromRuleRows(
   for (const action of ACTION_SEGMENTS) {
     const perClass = {} as Record<ClassSegment, SegmentRates>;
     for (const cls of CLASS_SEGMENTS) {
-      perClass[cls] = { zero: 0, conservative: 0, aggressive: 0 };
+      perClass[cls] = { zero: 0, conservative: 0, aggressive: 0, dominant: 0 };
     }
     actions[action] = perClass;
   }
 
   for (const row of rows) {
     const strategy = row.strategy;
-    if (strategy !== "conservative" && strategy !== "aggressive") {
+    if (
+      strategy !== "conservative" &&
+      strategy !== "aggressive" &&
+      strategy !== "dominant"
+    ) {
       continue;
     }
     const cls = CLASS_SEGMENTS.find((c) => c === row.class);
@@ -340,42 +346,18 @@ export async function loadRewardsGrid(
   return blob ? coerceRewardsGrid(blob) : DEFAULT_REWARDS_GRID;
 }
 
-// Retired Dominant rate tuple (pre-2026-08-09). Migration remapped live
-// rows; this catch keeps any leftover from silently underpaying as Zero.
-const RETIRED_DOMINANT_RATES: PromoRates = {
-  welcome_free_rate: 40,
-  welcome_premium_rate: 50,
-  free_rate: 20,
-  premium_rate: 30,
-};
-
-let dominantCoerceLogged = false;
-
-function ratesEqual(a: PromoRates, b: PromoRates): boolean {
-  return (
-    a.welcome_free_rate === b.welcome_free_rate &&
-    a.welcome_premium_rate === b.welcome_premium_rate &&
-    a.free_rate === b.free_rate &&
-    a.premium_rate === b.premium_rate
-  );
-}
-
-// A place's strategy from its v4 rate columns → the three grid keys.
+// A place's strategy from its v4 rate columns → the four grid keys.
+//
+// The D5 coercion that mapped the retired Dominant tuple to Aggressive is
+// GONE (2026-08-21): Dominant is a real strategy again and its preset is the
+// same 40/50/20/30 it was retired with, so strategyForRates matches those rows
+// outright. Nothing needs to be caught on the way past any more.
 export function placeStrategy(place: Record<string, unknown>): GridStrategy {
   const rates = ratesFromPlace(place);
   const p = strategyForRates(rates);
   if (p === "conservative") return "conservative";
   if (p === "aggressive") return "aggressive";
-  // D5 (MESITA-992): Dominant → Aggressive. Log once per isolate.
-  if (ratesEqual(rates, RETIRED_DOMINANT_RATES)) {
-    if (!dominantCoerceLogged) {
-      console.log(
-        "placeStrategy: coercing retired Dominant rates → aggressive (D5)",
-      );
-      dominantCoerceLogged = true;
-    }
-    return "aggressive";
-  }
+  if (p === "dominant") return "dominant";
   return "zero"; // zero, null (custom/legacy)
 }
 

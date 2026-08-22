@@ -111,7 +111,7 @@ function resolveActivePromoRate(
 // web-set-plan refuses partial grids), so the client recovers it by exact
 // preset match, mirroring _shared/promo-strategy.ts. null/custom coerces to
 // "zero", same as the bill engine.
-export type PlaceStrategy = "zero" | "conservative" | "aggressive";
+export type PlaceStrategy = "zero" | "conservative" | "aggressive" | "dominant";
 
 const STRATEGY_PRESETS: {
   id: PlaceStrategy;
@@ -123,6 +123,10 @@ const STRATEGY_PRESETS: {
   { id: "zero", w_free: null, w_prem: null, free: null, prem: null },
   { id: "conservative", w_free: 20, w_prem: 30, free: 10, prem: 20 },
   { id: "aggressive", w_free: 30, w_prem: 50, free: 10, prem: 30 },
+  // Dominant, restored 2026-08-21. Without this row a place running it falls
+  // through to "zero" and the guest is told there is no reward — the exact
+  // coercion this table's exact matching makes so easy to miss.
+  { id: "dominant", w_free: 40, w_prem: 50, free: 20, prem: 30 },
 ];
 
 export function strategyForPromoMatrix(matrix: {

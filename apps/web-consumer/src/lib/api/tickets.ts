@@ -132,7 +132,7 @@ export async function apiCreateTicket(
 // matching the bill when v10 shipped. Anything that quotes a guest a rate for a
 // SPECIFIC place must use this, never the static table.
 export type RewardQuote = {
-  strategy: "zero" | "conservative" | "aggressive";
+  strategy: "zero" | "conservative" | "aggressive" | "dominant";
   classKey: string;
   /** False = engine is still on legacy best-of; the client must not stack. */
   additive: boolean;

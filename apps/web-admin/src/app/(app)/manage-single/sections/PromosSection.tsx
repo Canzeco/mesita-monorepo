@@ -111,6 +111,16 @@ const CARD_ART: Record<
     meter: "bg-orange-500",
     accent: "text-orange-600",
   },
+  // No art file yet — the gradient IS the fallback, which is why it exists.
+  // Violet reads as the rung above orange without colliding with any other
+  // strategy on the rail.
+  dominant: {
+    src: "/promos/strategy-dominant.jpg",
+    fallback: "from-violet-900 to-fuchsia-500",
+    cta: "from-violet-600 to-fuchsia-500",
+    meter: "bg-violet-500",
+    accent: "text-violet-600",
+  },
 };
 
 const cx = (...c: (string | false | null | undefined)[]) =>

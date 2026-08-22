@@ -10,7 +10,7 @@
 // other nine are billing — the additive v10 bill engine, ticket pricing, plan
 // changes and the Stripe webhook — so this module outlived the engine.
 
-export type PromoStrategy = "zero" | "conservative" | "aggressive";
+export type PromoStrategy = "zero" | "conservative" | "aggressive" | "dominant";
 
 export type PromoRates = {
   welcome_free_rate: number | null;
@@ -44,6 +44,20 @@ const PRESETS: { id: PromoStrategy; rates: PromoRates }[] = [
       welcome_free_rate: 30,
       welcome_premium_rate: 50,
       free_rate: 10,
+      premium_rate: 30,
+    },
+  },
+  // Dominant, restored 2026-08-21 — and deliberately the SAME tuple it was
+  // retired with (40/50/20/30). Any row still carrying it resurrects as the
+  // strategy it always was, instead of being coerced to Aggressive, which is
+  // why the D5 coercion in rewards-config.ts could simply be deleted. It ties
+  // Aggressive on welcome_premium (both at the 50 ceiling) and on premium.
+  {
+    id: "dominant",
+    rates: {
+      welcome_free_rate: 40,
+      welcome_premium_rate: 50,
+      free_rate: 20,
       premium_rate: 30,
     },
   },

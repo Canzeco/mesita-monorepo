@@ -32,8 +32,8 @@ const ACTION_KEYS = [
 ] as const;
 type ActionKey = (typeof ACTION_KEYS)[number];
 
-// Zero is off by definition and has no rows.
-const STRATEGY_KEYS = ["conservative", "aggressive"] as const;
+// Zero is off by definition and has no rows. Dominant restored 2026-08-21.
+const STRATEGY_KEYS = ["conservative", "aggressive", "dominant"] as const;
 type StrategyKey = (typeof STRATEGY_KEYS)[number];
 
 export type RewardRule = {
@@ -84,6 +84,9 @@ const CLASS_STEP: Record<ClassKey, number> = {
 const STRATEGY_STEP: Record<StrategyKey, number> = {
   conservative: 0,
   aggressive: 10,
+  // Same spacing above Aggressive that Aggressive has above Conservative, so
+  // the legacy ladder keeps the shape the v11 grid has.
+  dominant: 20,
 };
 
 function defaultFor(

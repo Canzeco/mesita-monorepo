@@ -24,9 +24,9 @@ const ACTIONS = [
   "review",
   "welcome",
 ] as const;
-const STRATEGIES = ["conservative", "aggressive"] as const;
+const STRATEGIES = ["conservative", "aggressive", "dominant"] as const;
 
-const RULE_COUNT = STRATEGIES.length * CLASSES.length * ACTIONS.length; // 40
+const RULE_COUNT = STRATEGIES.length * CLASSES.length * ACTIONS.length; // 60 since Dominant
 
 function rateOf(
   rules: { strategy: string; class: string; action: string; discount_percent: number }[],
@@ -41,7 +41,7 @@ function rateOf(
   return hit.discount_percent;
 }
 
-Deno.test("normalizeRewards: an empty object still yields all 40 rules", () => {
+Deno.test("normalizeRewards: an empty object still yields every rule", () => {
   const r = normalizeRewards({});
   assert(r.ok);
   assertEquals(r.value.rules.length, RULE_COUNT);
@@ -68,7 +68,11 @@ Deno.test("normalizeRewards: an empty object still yields all 40 rules", () => {
   }
 });
 
-Deno.test("normalizeRewards: zero and dominant never get rows", () => {
+// Zero alone is off by definition — it is the ABSENCE of a program, so it has
+// nothing to price. Dominant used to be excluded here too; it was restored on
+// 2026-08-21 and now carries a full set of rows like any other strategy, which
+// is what this asserts.
+Deno.test("normalizeRewards: zero never gets rows, dominant does", () => {
   const r = normalizeRewards({
     rules: [
       { strategy: "zero", class: "standard", action: "standing", discount_percent: 45 },
@@ -77,15 +81,17 @@ Deno.test("normalizeRewards: zero and dominant never get rows", () => {
   });
   assert(r.ok);
   assertEquals(r.value.rules.length, RULE_COUNT);
-  // Cast: the return TYPE already excludes these; this guards the runtime.
+  // Cast: the return TYPE already excludes zero; this guards the runtime.
   assertEquals(
     r.value.rules.some((x) => (x.strategy as string) === "zero"),
     false,
   );
+  // The sent Dominant rule is honoured rather than dropped on the floor.
   assertEquals(
     r.value.rules.some((x) => (x.strategy as string) === "dominant"),
-    false,
+    true,
   );
+  assertEquals(rateOf(r.value.rules, "dominant", "standard", "standing"), 45);
 });
 
 Deno.test("normalizeRewards: a sent rule wins; the rest keep their defaults", () => {
