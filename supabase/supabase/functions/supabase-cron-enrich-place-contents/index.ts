@@ -25,6 +25,10 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { invokeInternalCaller } from "../_shared/internal.ts";
 import {
+  notBought,
+  reportSubprocessOutcomes,
+} from "../_shared/enrich-subprocess-report.ts";
+import {
   applyProfileToUpdate,
   synthesisModelFor,
   synthesizeProfile,
@@ -324,14 +328,17 @@ serveEnrichStage("contents", async (admin, env, row) => {
   // On-Update S2/S3 — synthesize short embedding blurb (no tags) + vector.
   // Best-effort: profile is already ready; a failed embed leaves lazy
   // lazy embedding backfill as the safety net.
+  // Captured so the subprocess report can say whether the embedding actually
+  // landed — the function returns null on a missing key or a failed write.
+  let embeddingWrote = false;
   if (wants(buys, "embedding")) {
     const openaiKey = Deno.env.get("OPENAI_KEY")?.trim();
-    await runPlaceEmbeddingsOnUpdate(
+    embeddingWrote = !!(await runPlaceEmbeddingsOnUpdate(
       admin,
       projectId,
       openaiKey,
       "enrich-contents/on-update",
-    );
+    ));
   }
 
   // ━━━ S9 — store images (own EF: storage mirroring gets its own wall clock) ━━━
@@ -376,6 +383,55 @@ serveEnrichStage("contents", async (admin, env, row) => {
     imagesSummary = "no images to store";
     imagesMeta.images = "skipped";
   }
+
+  // ── per-subprocess outcomes (MESITA-1200) ──────────────────────────────
+  // This stage owns synthesis, embedding and photos. Each `completed` is read
+  // off an observed effect — `aboutWritten` is computed from the PERSISTED
+  // place.description, `embeddingWrote` from the write's return value, and the
+  // photo status from the storage call's own result. See
+  // enrich-subprocess-report.ts.
+  await reportSubprocessOutcomes(admin, projectId, {
+    synthesis: !wants(buys, "synthesis")
+      ? notBought("Profile synthesis")
+      : aboutWritten
+      ? {
+        status: "completed",
+        detail: `About written; category “${place.category ?? "n/a"}”, ${inferredTags.length} tag(s).`,
+        meta: { category: place.category ?? null, tags: inferredTags.length },
+      }
+      : {
+        status: "failed",
+        detail: "Synthesis ran but no About was persisted.",
+        meta: { reason: "about_missing" },
+      },
+    embedding: !wants(buys, "embedding")
+      ? notBought("Semantic embedding")
+      : embeddingWrote
+      ? { status: "completed", detail: "Place embedding written." }
+      : {
+        status: "failed",
+        detail: "Embedding did not write — lazy backfill remains the safety net.",
+        meta: { reason: "embedding_not_written" },
+      },
+    photos: !wants(buys, "photos")
+      ? notBought("Image storage")
+      : imagesMeta.images === "stored"
+      ? {
+        status: "completed",
+        detail: imagesSummary,
+        meta: { stored: imagesMeta.imagesStored ?? null },
+      }
+      : imagesMeta.images === "skipped"
+      // Bought, but there was nothing to mirror. Nothing failed and nothing
+      // is missing, so this is a success rather than a strike against the
+      // place — photos still render from their source URLs.
+      ? { status: "completed", detail: imagesSummary, meta: { reason: "no_images" } }
+      : {
+        status: "failed",
+        detail: imagesSummary,
+        meta: { reason: imagesMeta.imagesError ?? "storage_failed" },
+      },
+  });
 
   // One beacon for the whole contents stage (S7–S9) — one notification per
   // function. Reports synthesis + persist + image outcome in a single line.

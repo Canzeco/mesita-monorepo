@@ -42,6 +42,9 @@ export type PlaceHit = {
   listed: boolean;
   /** 0 seeded only · 1 research gathered · 2 images analysed · 3 persisted. */
   enrich_level: 0 | 1 | 2 | 3;
+  /** done/total of the subprocesses this place BOUGHT, or null when it has no
+   *  subprocess events yet (the client falls back to enrich_level). */
+  enrich_progress: { done: number; total: number } | null;
   /** enrich_level === 3. Kept for callers that only need "is it done". */
   enriched: boolean;
   /** An APPROVED project_verifications row — ownership proof, not a badge. */
@@ -91,6 +94,7 @@ function normalizePlaceHit(raw: RawPlaceHit): PlaceHit {
     seeded: raw.seeded ?? false,
     listed: raw.listed ?? false,
     enrich_level: raw.enrich_level ?? 0,
+    enrich_progress: raw.enrich_progress ?? null,
     enriched: raw.enriched ?? raw.enrich_level === 3,
     verified: raw.verified ?? false,
     partner: raw.partner ?? false,
