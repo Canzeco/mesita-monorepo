@@ -5,7 +5,7 @@ import { Braces, ChevronDown, Fingerprint } from "lucide-react";
 import { getPlaceVerification, type AdminPlace } from "../actions";
 import { CopyIdButton, ReadField } from "../ui";
 import { EnrichmentCard } from "./EnrichmentCard";
-import { PulseCard } from "./PulseCard";
+import { StatusCard } from "./StatusCard";
 import { formatAbsoluteUtc } from "@/lib/format";
 
 // Admin — the Mesita-internal tab (Pato, 2026-08-04).
@@ -13,7 +13,7 @@ import { formatAbsoluteUtc } from "@/lib/format";
 // Admin — the Mesita-internal tab, FOUR boxes (Pato, MESITA-1161: "i don't
 // want lots of fucking boxes"):
 //
-//   Pulse       the six pulse fields — seeded · listed · enriched · verified ·
+//   Status      the six status fields — seeded · listed · enriched · verified ·
 //               partner · promoting — one row each, in one box.
 //   Enrichment  when the Enricher refreshes this place, and the run-now button.
 //   Embedding   the Place Synthesis text and the vector it becomes.
@@ -21,7 +21,7 @@ import { formatAbsoluteUtc } from "@/lib/format";
 //               the tab carries an id or a date — they all live here.
 //
 // The ownership-verification read is hoisted to this component because two
-// boxes need it (Pulse for the boolean, Metadata for who and how) and it
+// boxes need it (Status for the boolean, Metadata for who and how) and it
 // should cost one request, not two.
 type Verification = {
   verifiedByEmail: string | null;
@@ -61,7 +61,7 @@ export function AdminSection({ place }: { place: AdminPlace }) {
   return (
     // Same masonry as the Place tab — columns pack top-down (MESITA-399).
     <div className="columns-1 gap-4 pb-8 [&>section]:mb-4 [&>section]:break-inside-avoid [&>details]:mb-4 [&>details]:break-inside-avoid lg:columns-2 lg:gap-5 lg:pb-10 lg:[&>section]:mb-5 lg:[&>details]:mb-5">
-      <PulseCard
+      <StatusCard
         place={place}
         verification={verification}
         verificationError={verificationError}
