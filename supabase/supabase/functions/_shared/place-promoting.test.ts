@@ -1,5 +1,8 @@
 import { assertEquals } from "jsr:@std/assert@1";
-import { isPlacePromoting } from "./place-promoting.ts";
+import {
+  isPlacePromoting,
+  placePromotingLevel,
+} from "./place-promoting.ts";
 import { withFamilyKeys } from "./place-family-keys.ts";
 
 const NOW = new Date("2026-08-21T00:00:00Z");
@@ -107,4 +110,99 @@ Deno.test("withFamilyKeys: computes promoting and drops the private columns", ()
   // The rates DO stay: the chip resolves the guest's own percentage from them.
   assertEquals(wire.free_rate, 10);
   assertEquals(Array.isArray(wire.family_keys), true);
+});
+
+// ── placePromotingLevel — the 0-3 ladder (Pato, 2026-08-22) ────────────────
+
+Deno.test("promoting level: agrees with the boolean by construction", () => {
+  // The invariant that keeps the two from drifting: level 0 exactly when the
+  // boolean is false, for every strategy.
+  for (
+    const rates of [
+      { welcome_free_rate: null, welcome_premium_rate: null, free_rate: null, premium_rate: null },
+      { welcome_free_rate: 20, welcome_premium_rate: 30, free_rate: 10, premium_rate: 20 },
+      { welcome_free_rate: 30, welcome_premium_rate: 50, free_rate: 10, premium_rate: 30 },
+      { welcome_free_rate: 40, welcome_premium_rate: 50, free_rate: 20, premium_rate: 30 },
+    ]
+  ) {
+    const row = { plan: "pro", ...rates };
+    assertEquals(
+      placePromotingLevel(row) === 0,
+      !isPlacePromoting(row),
+      JSON.stringify(rates),
+    );
+  }
+});
+
+Deno.test("promoting level: the four rungs in order", () => {
+  const paid = (r: Record<string, unknown>) => ({ plan: "pro", ...r });
+  assertEquals(
+    placePromotingLevel(paid({
+      welcome_free_rate: null,
+      welcome_premium_rate: null,
+      free_rate: null,
+      premium_rate: null,
+    })),
+    0,
+  );
+  assertEquals(
+    placePromotingLevel(paid({
+      welcome_free_rate: 20,
+      welcome_premium_rate: 30,
+      free_rate: 10,
+      premium_rate: 20,
+    })),
+    1,
+  );
+  assertEquals(
+    placePromotingLevel(paid({
+      welcome_free_rate: 30,
+      welcome_premium_rate: 50,
+      free_rate: 10,
+      premium_rate: 30,
+    })),
+    2,
+  );
+  assertEquals(
+    placePromotingLevel(paid({
+      welcome_free_rate: 40,
+      welcome_premium_rate: 50,
+      free_rate: 20,
+      premium_rate: 30,
+    })),
+    3,
+  );
+});
+
+Deno.test("promoting level: an unpaid place is 0 whatever its rate columns say", () => {
+  assertEquals(
+    placePromotingLevel({
+      plan: "free",
+      welcome_free_rate: 40,
+      welcome_premium_rate: 50,
+      free_rate: 20,
+      premium_rate: 30,
+    }),
+    0,
+  );
+});
+
+Deno.test("promoting level: a closed promo lane is 0, not the signed-up strategy", () => {
+  // The whole reason this is a refinement of `promoting` rather than a read of
+  // the strategy: a strike pause means the guest gets nothing right now.
+  const paused = new Date("2026-08-22T00:00:00Z");
+  assertEquals(
+    placePromotingLevel(
+      {
+        plan: "pro",
+        welcome_free_rate: 40,
+        welcome_premium_rate: 50,
+        free_rate: 20,
+        premium_rate: 30,
+        promo_paused_until: "2026-09-01T00:00:00Z",
+      },
+      paused,
+    ),
+    0,
+  );
 });
