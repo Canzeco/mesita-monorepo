@@ -473,17 +473,11 @@ export function PlaceSection({
         icon={<Store className="h-4 w-4" />}
         tint="rose"
         title="Basics"
-        subtitle="Mesita name, category, About (EN + ES) & tags are editable — Google name & price come from Enricher / Google Places. Core About is always English."
       >
         <div className="mt-5 grid gap-4">
           <ReadField label="Google name" auto boxed>
             {(place.google_name ?? "").trim() || "—"}
           </ReadField>
-          <p className="text-muted-foreground -mt-2 text-[11px] leading-relaxed">
-            What Google calls this place right now. Refreshes on every
-            Re-enrich, so it can change on its own. Not editable here — fix it
-            on the Google Business Profile if the listing is wrong.
-          </p>
           <TextField
             label="Mesita name"
             value={form.mesitaName}
@@ -492,10 +486,6 @@ export function PlaceSection({
             disabled={anyPending}
             placeholder={(place.google_name ?? "").trim() || undefined}
           />
-          <p className="text-muted-foreground -mt-2 text-[11px] leading-relaxed">
-            Shown everywhere in Mesita, and never touched by Re-enrich. Leave
-            blank to follow the Google name. Search matches both.
-          </p>
         </div>
         {/* One field per row — the whole card is a single column. */}
         <div className="mt-4 grid gap-4">
@@ -523,9 +513,6 @@ export function PlaceSection({
             maxLength={limits.descriptionMax}
             disabled={anyPending}
           />
-          <p className="text-muted-foreground -mt-2 text-[11px] leading-relaxed">
-            English only (Mesita core). Enricher always writes English here.
-          </p>
         </div>
         <div className="mt-4">
           <PlaceTagsPicker
@@ -549,11 +536,6 @@ export function PlaceSection({
         icon={<Clock className="h-4 w-4" />}
         tint="violet"
         title="Hours"
-        subtitle={
-          place.timezone
-            ? `Shown in the place's local time (${place.timezone}) — one range per day.`
-            : "One range per day. Toggle off for days the place isn't open."
-        }
       >
         <div className="border-border/60 divide-border/60 mt-5 divide-y overflow-hidden rounded-xl border">
           {DAYS.map((d) => {
@@ -648,7 +630,6 @@ export function PlaceSection({
         icon={<Globe className="h-4 w-4" />}
         tint="indigo"
         title="Channels"
-        subtitle="Official links + contact. Google Maps is native (create spine) — read-only. Leave other blanks to clear."
       >
         {/* One column, one list — links and contacts are all just channels;
             no sub-grouping. grid-cols-1 (minmax(0,1fr)) bounds the column so a
@@ -743,7 +724,6 @@ export function PlaceSection({
         icon={<Images className="h-4 w-4" />}
         tint="orange"
         title="Photos"
-        subtitle="First photo is the hero. Reorder or remove; upload one at a time."
         action={
           <span className="text-muted-foreground text-[11px] tabular-nums">
             {form.photos.length} / {limits.photosMax}
@@ -780,7 +760,6 @@ export function PlaceSection({
         icon={<MapPin className="h-4 w-4" />}
         tint="sky"
         title="Location"
-        subtitle="Native — address & coordinates come from Google / the Enricher."
       >
         {/* One boxed field per row — same filled-input language as every
             other card. Lat/Lng share one box (a coordinate pair is one
@@ -959,8 +938,7 @@ function PhotosEditor({
 
       {photos.length === 0 ? (
         <p className="text-muted-foreground mt-3 text-xs leading-relaxed">
-          No photos yet — the hero drives consumer cards. Run a Contents
-          re-enrich, or upload the first image.
+No photos yet.
         </p>
       ) : (
         <p className="text-muted-foreground mt-3 text-[11px] tabular-nums">

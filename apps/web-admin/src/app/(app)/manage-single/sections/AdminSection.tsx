@@ -254,13 +254,6 @@ function EmbeddingCard({ place }: { place: AdminPlace }) {
           <h2 className="font-display text-base font-semibold tracking-tight">
             Embedding
           </h2>
-          <p className="text-muted-foreground mt-0.5 text-xs leading-relaxed">
-            What gets vectorized is the PLACE — name, category, zone, address,
-            price level and About, synthesized into ≤{EMBEDDING_SOURCE_TEXT_MAX_WORDS}{" "}
-            words FOR semantic search (never the human About itself, never the
-            plan or the rates). Stored on the place row; cap lives in
-            Configurations → Enrichment.
-          </p>
         </div>
         <ChevronDown
           className="text-muted-foreground h-4 w-4 shrink-0 transition-transform group-open:rotate-180"

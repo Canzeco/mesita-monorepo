@@ -351,7 +351,6 @@ export function PromosSection({
         icon={<TrendingUp className="h-4 w-4" />}
         tint="violet"
         title="Strategy"
-        subtitle="What you give, what the algorithm gives back. Tap a card for the full rates."
         action={
           switchPending || capPending ? (
             <Loader2 className="text-muted-foreground h-4 w-4 animate-spin" />
@@ -420,7 +419,6 @@ export function PromosSection({
           strategy={modalStrategy}
           matrix={matrix}
           currency={v.currency}
-          capMxn={placeCap}
           state={promoCardState({
             member,
             forfeited,
@@ -1005,7 +1003,6 @@ function ProductModal({
   strategy,
   matrix,
   currency,
-  capMxn,
   state,
   member,
   busy,
@@ -1016,7 +1013,6 @@ function ProductModal({
   strategy: Strategy;
   matrix: PromosConfig;
   currency: string | null;
-  capMxn: DiscountCapMxn;
   state: CardState;
   member: boolean;
   busy: boolean;
@@ -1141,12 +1137,6 @@ function ProductModal({
             <div className="flex flex-col gap-2">
               <ModalLabel>Every rate</ModalLabel>
               <RewardsMatrix matrix={matrix} strategy={strategy.id} />
-              <p className="text-muted-foreground text-[11px] leading-snug">
-                Rows are guest classes, columns are what the guest did. Bonuses
-                stack on the base, and every discount applies to the first{" "}
-                {formatMoney(capMxn, currency)} of the bill — the place&apos;s
-                chosen cap, always shown to guests.
-              </p>
             </div>
 
             <div className="flex flex-col gap-3">
@@ -1164,11 +1154,7 @@ function ProductModal({
                 We ping your staff WhatsApp, then honoring the first guest check
                 at the bill makes you live.
               </Step>
-              <p className="text-muted-foreground text-[10px] leading-snug">
-                Turn a guest away and it&apos;s a strike — 1 warning · 2
-                discounts paused 30 days · 3 removed. Strikes decay after 6
-                months clean.
-              </p>
+              <p className="text-muted-foreground text-[10px] leading-snug">Refusing a guest is a strike: 1 warning · 2 paused 30 days · 3 removed.</p>
             </div>
           </>
         ) : (
@@ -1371,7 +1357,6 @@ function FaqsBox({
       icon={<CircleHelp className="h-4 w-4" />}
       tint="sky"
       title="FAQs"
-      subtitle="How membership and strategy work — with real numbers."
     >
       {/* One divided list, everything closed: the answers are reference, not
           reading. The worked example opens first because it is the only one
