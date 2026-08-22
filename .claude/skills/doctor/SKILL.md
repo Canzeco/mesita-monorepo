@@ -252,6 +252,17 @@ both Enrichment pages while returning a real past date for the Docs index (verif
 2026-08-22), so a staleness gate built on it reports green forever. You are a reading agent:
 compare the claim to the code, the way Scope 1 compares EF inventories.
 
+**Already-tracked deltas are not findings.** Before promoting ANY disagreement, check
+whether it is already known: an open Linear issue naming it · a doc that declares its own
+drift (a `SPEC vs SHIPPED` paragraph) · a documented freeze (`apps/mobile-consumer` is
+frozen; web decides and mobile is recopied later). Known → record `TRACKED (MESITA-…)`,
+never `FINDING`. Re-reporting deliberate, settled state every week is how a report earns
+being ignored — and a doc that accurately declares its own drift is doing its job, not
+failing. **Quote both disagreeing values with `file:line` before promoting anything;** a
+grep count is not a finding. Verified 2026-08-22: reading `_shared/pulse-pieces.ts` against
+✨ Enrichment §A produces a real disagreement whose correct verdict is TRACKED (MESITA-1172),
+and reporting it as drift would be a false P1 on the doc that called it first.
+
 9.1 **Docs tree shape.** Every domain link on 📚 Docs resolves · exactly one page per domain
     (the tree is FLAT, one level, forever) · no page carrying a domain's title that the index
     does not link. A second page wearing a real domain's name is an unmaintained door agents
@@ -284,6 +295,9 @@ compare the claim to the code, the way Scope 1 compares EF inventories.
 
 9.4 **Vocabulary.** Sweep the banned list in 📚 Docs › Vocabulary across the repo AND the Docs
     pages themselves. One house word used for two things is how nomenclature rots.
+    **Exclude `supabase/supabase/migrations/**`** — an applied migration is frozen history and
+    is never rewritten, so its vocabulary is not live vocabulary (56 `cashback` hits live there
+    and none are findings).
 
 
 ---
