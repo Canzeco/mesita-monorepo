@@ -3,13 +3,13 @@
 import { PlaceSection } from "../../sections/PlaceSection";
 import { ProductsSection } from "../../sections/ProductsSection";
 import { ProfileCompleteness } from "../../sections/ProfileCompleteness";
-import { useUnitPlace } from "../../UnitPlaceContext";
+import { usePlaceContext } from "../../PlaceContext";
 
 // Place — the editable profile, with Products (menus) as a card in the same
 // masonry. Reviews folded into Performance; the Mesita-internal cards live on
 // the Admin tab (MESITA-834 + amendments).
-export default function UnitPlacePage() {
-  const { place, setPlace } = useUnitPlace();
+export default function PlaceProfilePage() {
+  const { place, setPlace } = usePlaceContext();
 
   return (
     <div className="mx-auto max-w-7xl">

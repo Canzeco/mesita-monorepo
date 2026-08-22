@@ -3,7 +3,7 @@
 import { Tag } from "lucide-react";
 import { isSectionSoon } from "../../nav";
 import { PromosSection } from "../../sections/PromosSection";
-import { useUnitPlace } from "../../UnitPlaceContext";
+import { usePlaceContext } from "../../PlaceContext";
 
 // Per-place Promos — the membership ladder, the strategy cards and the v11
 // rate grid.
@@ -12,7 +12,7 @@ import { useUnitPlace } from "../../UnitPlaceContext";
 // Soon gate in `nav.ts`. The chrome renders the tab disabled and this route
 // serves the placeholder below; the grid underneath is untouched, so flipping
 // `soon: false` in nav.ts brings it all back.
-export default function UnitPromosPage() {
+export default function PlacePromosPage() {
   if (isSectionSoon("promos")) return <PromosSoon />;
   return <PromosGrid />;
 }
@@ -41,7 +41,7 @@ function PromosSoon() {
 
 /** The live grid — parked behind the Soon gate above, not deleted. */
 function PromosGrid() {
-  const { place, setPlace } = useUnitPlace();
+  const { place, setPlace } = usePlaceContext();
 
   return (
     <div className="mx-auto max-w-6xl">

@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
-import { isUnitSection, unitSectionHref } from "../nav";
+import { isPlaceSectionId, placeSectionHref } from "../nav";
 
-export default async function ManageSingleUnitPage({
+export default async function ManageSinglePlacePage({
   params,
   searchParams,
 }: {
@@ -10,6 +10,6 @@ export default async function ManageSingleUnitPage({
 }) {
   const { projectId } = await params;
   const { section } = await searchParams;
-  const target = isUnitSection(section) ? section : "place";
-  redirect(unitSectionHref(projectId, target));
+  const target = isPlaceSectionId(section) ? section : "place";
+  redirect(placeSectionHref(projectId, target));
 }

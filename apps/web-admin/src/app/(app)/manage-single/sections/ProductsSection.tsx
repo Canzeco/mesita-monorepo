@@ -25,7 +25,7 @@ import {
   validateMenuUploadFile,
 } from "@/lib/place-upload-utils";
 import { updatePlace, type AdminMenuItem, type AdminPlace } from "../actions";
-import { useUnitPlace } from "../UnitPlaceContext";
+import { usePlaceContext } from "../PlaceContext";
 import { SaveBar, SectionCard, TextField } from "../ui";
 
 const MENU_NAME_MAX = 80;
@@ -128,7 +128,7 @@ export function ProductsSection({
   onSaved: (v: AdminPlace) => void;
 }) {
   // Parent remounts this section with key={place.id} when the operator switches
-  // units, so initial state is always the active place's product items.
+  // places, so initial state is always the active place's product items.
   const [items, setItems] = useState<MenuDraft[]>(() => menusFromPlace(place));
   const [saved, setSaved] = useState<MenuDraft[]>(items);
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -158,7 +158,7 @@ export function ProductsSection({
     );
   }, [items, saved]);
 
-  const { setSectionDirty, registerDiscardHandler } = useUnitPlace();
+  const { setSectionDirty, registerDiscardHandler } = usePlaceContext();
   useEffect(() => {
     setSectionDirty("products", dirty);
     return () => setSectionDirty("products", false);
@@ -400,7 +400,7 @@ export function ProductsSection({
 
   return (
     <SectionCard
-      id="unit-products"
+      id="place-products"
       icon={<UtensilsCrossed className="h-4 w-4" />}
       tint="orange"
       title="Products"

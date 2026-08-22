@@ -26,7 +26,7 @@ import { strategyForPlace } from "@/lib/business/strategies";
 //
 // Pulse names six fields — seeded · listed · enriched · verified · partner ·
 // promoting. Three render here; seeded/listed/enriched are not on AdminPlace
-// yet (the Single Unit table reads those off a different payload).
+// yet (the Single Place table reads those off a different payload).
 //
 // `listing_type` backs NONE of them, deliberately: it stores
 // (pays ∧ strategy ≠ zero) collapsed into one enum and is re-derived only when

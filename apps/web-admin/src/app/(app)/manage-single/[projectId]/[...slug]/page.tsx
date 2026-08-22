@@ -1,6 +1,6 @@
 import { permanentRedirect } from "next/navigation";
 
-// Retired Manage Single unit tabs. Required `[...slug]` so live place / promos /
+// Retired Manage Single place tabs. Required `[...slug]` so live place / promos /
 // performance / settings / admin (and the project index) stay authoritative.
 export default async function ManageSingleLegacyTabRedirect({
   params,

@@ -20,7 +20,7 @@ import {
 
 // Shared admin manage/records kit — `@/components/admin-ui/manage`.
 // Tinted icon chips, Fraunces titles, filled inputs, pink-gradient SaveBar.
-// CrossTabLink stays in `manage-single/ui.tsx` (needs UnitPlaceContext).
+// CrossTabLink stays in `manage-single/ui.tsx` (needs PlaceContext).
 
 /** Fixed tint palette for card icon chips — differentiated, never loud. */
 export type Tint =

@@ -2,15 +2,15 @@
 
 import { CheckCircle2, Gauge } from "lucide-react";
 import type { AdminPlace } from "../actions";
-import { unitSectionHref } from "../nav";
-import { useUnitPlace } from "../UnitPlaceContext";
+import { placeSectionHref } from "../nav";
+import { usePlaceContext } from "../PlaceContext";
 import { CrossTabLink } from "../ui";
 
 // Profile completeness banner (MESITA-586) — the one full-width element above
 // the Place-tab masonry. The score is computed ENTIRELY on the client from
 // the already-loaded AdminPlace: deliberately NO backend calculation, no
 // column, no EF — just a frontend read of the profile object. Because the
-// place flows through UnitPlaceContext, the banner re-derives live as each
+// place flows through PlaceContext, the banner re-derives live as each
 // section saves.
 
 const cx = (...c: (string | false | null | undefined)[]) =>
@@ -86,7 +86,7 @@ const CHECKS: readonly CompletenessCheck[] = [
       (p.products?.menu?.length ?? 0) > 0 ||
       (p.menus?.length ?? 0) > 0 ||
       !!p.menu_pdf_url,
-    scrollId: "unit-products",
+    scrollId: "place-products",
   },
   {
     label: "Reservations",
@@ -114,11 +114,11 @@ function scrollToSection(id: string) {
 }
 
 export function ProfileCompleteness({ place }: { place: AdminPlace }) {
-  const { projectId } = useUnitPlace();
+  const { projectId } = usePlaceContext();
   const missing = CHECKS.filter((c) => !c.done(place));
   const pct = 100 - missing.reduce((sum, c) => sum + c.weight, 0);
   const complete = missing.length === 0;
-  // Pipeline status lives in unit chrome (MESITA-896). When Enricher is mid-
+  // Pipeline status lives in place chrome (MESITA-896). When Enricher is mid-
   // flight, a quiet footnote here explains why completeness chips may lag.
   const enriching =
     place.content_status === "generating" || place.content_status === "queued";
@@ -199,7 +199,7 @@ export function ProfileCompleteness({ place }: { place: AdminPlace }) {
                   return (
                     <CrossTabLink
                       key={c.label}
-                      href={unitSectionHref(projectId, "settings")}
+                      href={placeSectionHref(projectId, "settings")}
                       className={CHIP_CLASS + " inline-flex items-center gap-1"}
                     >
                       {c.hint}

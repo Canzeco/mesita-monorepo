@@ -18,7 +18,7 @@ import type { Database } from "./database.types";
 // Onboard pages and dashboards each do their own server-side check.
 
 const PROTECTED_PREFIXES = [
-  "/unit",
+  "/place",
   "/onboard",
   "/add",
   "/central",

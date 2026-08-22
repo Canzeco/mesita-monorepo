@@ -11,10 +11,10 @@ import {
 // performance · settings · admin. Reservations list + AI dial lines live
 // inside Performance again (reverses MESITA-894's own-tab split). Channel
 // config stays on Settings. Admin stays last, admin-console-only.
-/** Tabs shown in UnitEditChrome. `soon: true` = parked: the tab renders
+/** Tabs shown in PlaceEditChrome. `soon: true` = parked: the tab renders
  *  disabled and its route serves a placeholder instead of the live section. */
-export const UNIT_TAB_SECTIONS = [
-  { id: "place", label: "Place", Icon: Store, soon: false },
+export const PLACE_TAB_SECTIONS = [
+  { id: "place", label: "Profile", Icon: Store, soon: false },
   // decision: Pato live 2026-08-20 — Promos is parked behind Soon, "just
   // soon". The v11 grid, the membership ladder and the strategy cards are
   // untouched underneath; flip this to `false` to un-park it in one line.
@@ -28,30 +28,30 @@ export const UNIT_TAB_SECTIONS = [
   { id: "admin", label: "Admin", Icon: Shield, soon: false },
 ] as const;
 
-type UnitSection = (typeof UNIT_TAB_SECTIONS)[number]["id"];
+type PlaceSectionId = (typeof PLACE_TAB_SECTIONS)[number]["id"];
 
 /** True while `section` is parked behind the Soon gate. */
-export function isSectionSoon(section: UnitSection): boolean {
-  return UNIT_TAB_SECTIONS.some((s) => s.id === section && s.soon);
+export function isSectionSoon(section: PlaceSectionId): boolean {
+  return PLACE_TAB_SECTIONS.some((s) => s.id === section && s.soon);
 }
 
 export const TOOL_ROUTES = [
   {
     href: "/manage-single/select",
-    label: "Single Unit",
+    label: "Single Place",
     Icon: MapPin,
   },
 ] as const;
 
-export function unitSectionHref(projectId: string, section: UnitSection): string {
+export function placeSectionHref(projectId: string, section: PlaceSectionId): string {
   return `/manage-single/${projectId}/${section}`;
 }
 
-export function isUnitSection(value: string | null | undefined): value is UnitSection {
-  return UNIT_TAB_SECTIONS.some((s) => s.id === value);
+export function isPlaceSectionId(value: string | null | undefined): value is PlaceSectionId {
+  return PLACE_TAB_SECTIONS.some((s) => s.id === value);
 }
 
-export function parseUnitId(pathname: string): string | null {
+export function parsePlaceId(pathname: string): string | null {
   const m = pathname.match(/^\/manage-single\/([^/]+)(?:\/|$)/);
   if (!m) return null;
   const id = m[1];

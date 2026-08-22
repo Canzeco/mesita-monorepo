@@ -11,7 +11,7 @@ import { cn } from "@/lib/utils";
  *     centered on the hero gradient with breathing room.
  *   - Card: the actual app surface. STRICT height on mobile (`h-full`
  *     of the outer = h-dvh), capped `max-h` on desktop. The shell inside
- *     lays out as flex-col: [StatusBar][body flex-1][UnitDock].
+ *     lays out as flex-col: [StatusBar][body flex-1][PlaceDock].
  *     With a strict card height, the dock stays pinned at the bottom and
  *     the body's own `overflow-y-auto` scrolls inside the available space.
  */

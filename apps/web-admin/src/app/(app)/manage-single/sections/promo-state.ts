@@ -1,7 +1,7 @@
 // Pure membership/strategy presentation state for the admin Promos tab.
 //
 // ZERO React/Next imports on purpose: PromosSection.tsx chains to
-// next/headers through its server-action imports, so anything unit-tested
+// next/headers through its server-action imports, so anything place-tested
 // must live here instead — vitest imports this file under plain node
 // (see promo-state.test.ts).
 

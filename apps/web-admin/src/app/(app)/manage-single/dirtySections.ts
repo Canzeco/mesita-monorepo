@@ -1,4 +1,4 @@
-/** Stable keys registered via UnitPlaceContext.setSectionDirty. */
+/** Stable keys registered via PlaceContext.setSectionDirty. */
 export const DIRTY_SECTION_ORDER = [
   "place",
   "products",

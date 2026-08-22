@@ -24,7 +24,7 @@ import { VISITS_PARENT } from "@/app/(app)/visits-config/nav";
 import { REWARDS_PARENT } from "@/app/(app)/rewards-config/nav";
 import { SOURCING_PARENT } from "@/app/(app)/sourcing-config/nav";
 import {
-  parseUnitId,
+  parsePlaceId,
   TOOL_ROUTES,
 } from "@/app/(app)/manage-single/nav";
 
@@ -34,7 +34,7 @@ function isNavActive(
   projectId: string | null,
 ): boolean {
   if (href === "/manage-single/select") {
-    // One nav item covers the whole single-unit surface (select + create redirects + editors).
+    // One nav item covers the whole single-place surface (select + create redirects + editors).
     return (
       pathname === href ||
       pathname === "/manage-single" ||
@@ -72,13 +72,13 @@ const ALERTS_NAV: NavItem[] = [
 ];
 
 // Manage — the records of real things, widest scope first: the backend itself,
-// then the units Mesita lists. Not Configurations; nothing here is a policy
-// blob. Units keep the Multiple/Single qualifier because there are two
+// then the places Mesita lists. Not Configurations; nothing here is a policy
+// blob. Places keep the Multiple/Single qualifier because there are two
 // surfaces to tell apart. There is no consumers row: every class is earned,
 // so the console has nothing to grant by hand.
 const MANAGE_NAV: NavItem[] = [
   DB_PARENT,
-  { href: "/manage-multiple", label: "Multiple Units", Icon: Building2 },
+  { href: "/manage-multiple", label: "Multiple Places", Icon: Building2 },
   ...TOOL_ROUTES,
 ];
 
@@ -218,7 +218,7 @@ function SidebarNav({
   onNavigate?: () => void;
 }) {
   const pathname = usePathname();
-  const projectId = parseUnitId(pathname);
+  const projectId = parsePlaceId(pathname);
 
   return (
     <nav className="flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto">

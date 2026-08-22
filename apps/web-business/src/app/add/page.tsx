@@ -1,13 +1,13 @@
 import { redirect } from "next/navigation";
 import { createServerSupabase } from "@/lib/supabase/server";
-import { getUnitOverview } from "@/lib/api/unit";
+import { getPlaceOverview } from "@/lib/api/place";
 import { AppHeader, type HeaderPlace } from "@/components/auth/AppHeader";
 import { MobileFrame } from "@/components/business/MobileFrame";
-import { CreateUnitForm } from "./CreateUnitForm";
+import { CreatePlaceForm } from "./CreatePlaceForm";
 
 // /add lets a business operator claim a place. Distinct from /onboard,
 // which captures the business operator's own name once. /add is recurring
-// (multi-unit operators add N places over time) and also the de-facto home
+// (multi-place operators add N places over time) and also the de-facto home
 // for first-time users who haven't added anything yet.
 //
 // Renders with AppHeader at the top instead of the old "Back to home"
@@ -16,7 +16,7 @@ import { CreateUnitForm } from "./CreateUnitForm";
 
 export const dynamic = "force-dynamic";
 
-export default async function CreateUnitPage() {
+export default async function CreatePlacePage() {
   const supabase = await createServerSupabase();
   const {
     data: { user },
@@ -28,7 +28,7 @@ export default async function CreateUnitPage() {
   // we just render an empty places list in that case.
   let places: HeaderPlace[] = [];
   try {
-    const overview = await getUnitOverview(supabase, null);
+    const overview = await getPlaceOverview(supabase, null);
     places = (overview?.places ?? []).map((v) => ({ id: v.id, name: v.name }));
   } catch (err) {
     console.error("[add] business-web-get-overview:", err);
@@ -48,7 +48,7 @@ export default async function CreateUnitPage() {
               Google and show its current Mesita status inline.
             </p>
           </header>
-          <CreateUnitForm signedInEmail={user.email ?? ""} />
+          <CreatePlaceForm signedInEmail={user.email ?? ""} />
         </div>
       </div>
     </MobileFrame>

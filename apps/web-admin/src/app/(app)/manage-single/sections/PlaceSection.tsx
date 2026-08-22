@@ -36,7 +36,7 @@ import {
   TextArea,
   TextField,
 } from "../ui";
-import { useUnitPlace } from "../UnitPlaceContext";
+import { usePlaceContext } from "../PlaceContext";
 import { formatAbsoluteUtc } from "@/lib/format";
 import { createBrowserSupabase } from "@/lib/supabase/browser";
 import {
@@ -310,7 +310,7 @@ export function PlaceSection({
   const placeDirty =
     dirtyBasics || dirtyTime || dirtyChannels || dirtyPhotos;
 
-  const { setSectionDirty, registerDiscardHandler } = useUnitPlace();
+  const { setSectionDirty, registerDiscardHandler } = usePlaceContext();
   useEffect(() => {
     setSectionDirty("place", placeDirty);
     return () => setSectionDirty("place", false);

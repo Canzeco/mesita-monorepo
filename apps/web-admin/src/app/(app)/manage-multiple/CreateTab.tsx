@@ -3,7 +3,7 @@
 import { useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { Loader2, Play, Upload } from "lucide-react";
-import { createUnitFromPlaceId } from "../manage-single/actions";
+import { createPlaceFromGooglePlaceId } from "../manage-single/actions";
 import { StatusIcon } from "./StatusIcon";
 
 // Google Place IDs are base64url-ish tokens (commonly 27 chars, but length
@@ -73,7 +73,7 @@ export function CreateTab() {
         const id = ids[cursor++];
         setResults((prev) => ({ ...prev, [id]: { status: "running" } }));
         try {
-          const r = await createUnitFromPlaceId(id);
+          const r = await createPlaceFromGooglePlaceId(id);
           setResults((prev) => ({
             ...prev,
             [id]: r.ok
@@ -176,7 +176,7 @@ export function CreateTab() {
             ) : (
               <>
                 <Play className="h-3.5 w-3.5" />
-                Create {placeIds.length} unit{placeIds.length === 1 ? "" : "s"}
+                Create {placeIds.length} place{placeIds.length === 1 ? "" : "s"}
               </>
             )}
           </button>

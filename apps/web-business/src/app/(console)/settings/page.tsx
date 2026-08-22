@@ -5,11 +5,11 @@ import { ArrowRight, Check, LifeBuoy, PlayCircle, Plus } from "lucide-react";
 import { PageErrorState } from "@/components/business/PageErrorState";
 import { SignOutButton } from "@/components/auth/SignOutButton";
 import { createServerSupabase } from "@/lib/supabase/server";
-import { getUnitOverview } from "@/lib/api/unit";
+import { getPlaceOverview } from "@/lib/api/place";
 import { apiGetBusinessProfile } from "@/lib/api/business";
 import { placeSubtitle } from "@/components/business/place/place-utils";
 import { errMsg, initialLetter } from "@/lib/utils";
-import { ACTIVE_UNIT_COOKIE, resolveActiveUnitId } from "@/lib/active-unit";
+import { ACTIVE_PLACE_COOKIE, resolveActivePlaceId } from "@/lib/active-place";
 import { placePath } from "@/lib/business-route-contract";
 
 export const dynamic = "force-dynamic";
@@ -22,10 +22,10 @@ export default async function SettingsPage() {
   if (!user) redirect("/?next=/settings");
 
   const cookieStore = await cookies();
-  const cookieUnitId = cookieStore.get(ACTIVE_UNIT_COOKIE)?.value ?? null;
+  const cookiePlaceId = cookieStore.get(ACTIVE_PLACE_COOKIE)?.value ?? null;
 
   const [overviewResult, profileResult] = await Promise.allSettled([
-    getUnitOverview(supabase, cookieUnitId),
+    getPlaceOverview(supabase, cookiePlaceId),
     apiGetBusinessProfile(supabase),
   ]);
 
@@ -44,8 +44,8 @@ export default async function SettingsPage() {
     profileResult.status === "fulfilled" ? profileResult.value : null;
 
   const places = overview.places;
-  const activePlaceId = resolveActiveUnitId({
-    cookieId: cookieUnitId,
+  const activePlaceId = resolveActivePlaceId({
+    cookieId: cookiePlaceId,
     projectIds: places.map((v) => v.id),
   });
   const activePlace =

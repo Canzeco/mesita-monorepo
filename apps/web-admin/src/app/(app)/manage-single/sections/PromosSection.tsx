@@ -132,7 +132,7 @@ function formatMoney(amount: number, currency: string | null): string {
 }
 
 // Membership/pill/card/meter derivations live in ./promo-state (pure module,
-// unit-tested — see promo-state.test.ts).
+// place-tested — see promo-state.test.ts).
 
 function strategyRatesOnly(s: Strategy) {
   return {

@@ -1,5 +1,5 @@
-import { UnitSelectCatalog } from "../UnitSelectCatalog";
+import { PlaceSelectCatalog } from "../PlaceSelectCatalog";
 
 export default function ManageSingleSelectPage() {
-  return <UnitSelectCatalog />;
+  return <PlaceSelectCatalog />;
 }

@@ -1,11 +1,11 @@
 "use server";
 
 import { efInvoke } from "@/lib/supabase-ef";
-import { createUnitFromPlaceId as createUnitFromPlaceIdImpl } from "@/lib/create-unit-from-place";
+import { createPlaceFromGooglePlaceId as createPlaceFromGooglePlaceIdImpl } from "@/lib/create-place-from-google-place";
 import type { PlanKey } from "@/lib/business/plans";
 
 // ════════════════════════════════════════════════════════════════════════
-// Single-unit console — a super-admin drives ANY place through the existing
+// Single-place console — a super-admin drives ANY place through the existing
 // business-* edge functions. The operator's JWT email is in super_admins, so
 // _shared/auth.ts (checkMembership / requireMembership / requireOwner) grants
 // access regardless of project_members. Two things need admin-specific EFs:
@@ -17,7 +17,7 @@ type Result<T> = { ok: true; data: T } | { ok: false; error: string };
 
 // ── Place search + load ──────────────────────────────────────────────────
 
-export type UnitHit = {
+export type PlaceHit = {
   id: string;
   slug: string | null;
   /** Generated display label: coalesce(mesita_name, google_name). */
@@ -52,18 +52,18 @@ export type UnitHit = {
 
 // The search EF only guarantees id/name — every other field may be absent,
 // hence the defensive `?? null` normalization below.
-type RawUnitHit = Pick<UnitHit, "id" | "name"> & Partial<Omit<UnitHit, "id" | "name">>;
+type RawPlaceHit = Pick<PlaceHit, "id" | "name"> & Partial<Omit<PlaceHit, "id" | "name">>;
 
-async function fetchUnits(query: string, limit = 50): Promise<Result<UnitHit[]>> {
-  const r = await efInvoke<{ places: RawUnitHit[] }>("admin-web-search-places", {
+async function fetchPlaces(query: string, limit = 50): Promise<Result<PlaceHit[]>> {
+  const r = await efInvoke<{ places: RawPlaceHit[] }>("admin-web-search-places", {
     query,
     limit,
   });
   if (!r.ok) return { ok: false, error: r.error };
-  return { ok: true, data: (r.data.places ?? []).map(normalizeUnitHit) };
+  return { ok: true, data: (r.data.places ?? []).map(normalizePlaceHit) };
 }
 
-function normalizeUnitHit(raw: RawUnitHit): UnitHit {
+function normalizePlaceHit(raw: RawPlaceHit): PlaceHit {
   const contentStatus = raw.content_status ?? null;
   const listingType = raw.listing_type ?? null;
   return {
@@ -95,14 +95,14 @@ function normalizeUnitHit(raw: RawUnitHit): UnitHit {
   };
 }
 
-export async function listUnits(): Promise<Result<UnitHit[]>> {
-  return fetchUnits("");
+export async function listPlaces(): Promise<Result<PlaceHit[]>> {
+  return fetchPlaces("");
 }
 
-export async function searchUnits(query: string): Promise<Result<UnitHit[]>> {
+export async function searchPlacesCatalog(query: string): Promise<Result<PlaceHit[]>> {
   const q = (query ?? "").trim();
   if (q.length < 2) return { ok: true, data: [] };
-  return fetchUnits(q);
+  return fetchPlaces(q);
 }
 
 // One menu / catalog entry under products.menu (and legacy menus).
@@ -359,7 +359,7 @@ export async function getPlaceActivity(
 
 // ── Atlas tag catalog (for Place tags picker) ────────────────────────────
 // Same backend source Atlas Config reads (`admin-web-get-atlas-fields` →
-// public.place_tags). Manage Single Unit calls this EF via its own server
+// public.place_tags). Manage Single Place calls this EF via its own server
 // action — it does NOT import from /atlas-config or talk to that page.
 
 export type PlaceTagOption = {
@@ -676,7 +676,7 @@ export async function findPlaceByPlaceId(
   // super_admins, and grants place access regardless of project_members.
   const businessOrigin =
     (process.env.BUSINESS_WEB_URL ?? "").trim() || BUSINESS_WEB_URL_FALLBACK;
-  const link = `${businessOrigin.replace(/\/$/, "")}/unit/${encodeURIComponent(place.id)}/home`;
+  const link = `${businessOrigin.replace(/\/$/, "")}/place/${encodeURIComponent(place.id)}/home`;
   return { ok: true, found: true, place, link };
 }
 
@@ -711,10 +711,10 @@ export async function suggestPlaces(
   return { ok: true, data: r.data.predictions ?? [] };
 }
 
-// The create-unit pipeline is shared with the bulk creator — see the single
-// canonical implementation in @/lib/create-unit-from-place.
-export async function createUnitFromPlaceId(placeId: string) {
-  return createUnitFromPlaceIdImpl(placeId);
+// The create-place pipeline is shared with the bulk creator — see the single
+// canonical implementation in @/lib/create-place-from-google-place.
+export async function createPlaceFromGooglePlaceId(placeId: string) {
+  return createPlaceFromGooglePlaceIdImpl(placeId);
 }
 
 // ── Check settings (MESITA-823 · MESITA-898) ─────────────────────────────
