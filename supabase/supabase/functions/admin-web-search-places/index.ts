@@ -27,9 +27,12 @@ import {
   isPlaceListed,
   isPlaceSeeded,
   placeEnrichLevel,
-  placeEnrichProgress,
-  type SubprocessEvent,
 } from "../_shared/place-status.ts";
+import {
+  PULSE_TOTAL,
+  pulseHighWater,
+  type PulseEvent,
+} from "../_shared/pulse-pieces.ts";
 
 type Body = { query?: unknown; limit?: unknown };
 
@@ -131,11 +134,10 @@ Deno.serve(async (req) => {
 
   const research = new Map<string, { stage: string; gathered: boolean; analysis: boolean }>();
   const verified = new Set<string>();
-  // Per-subprocess events (MESITA-1200) — how far a place got, as a fraction of
-  // what its runs actually bought. The RPC returns only the latest event per
-  // (place, subprocess); placeEnrichProgress still owns the counting rules,
-  // which is where they are unit-tested.
-  const events = new Map<string, SubprocessEvent[]>();
+  // PULSE piece events (MESITA-1172). The RPC returns only the latest event
+  // per (place, piece); pulseHighWater owns the ladder rules, which is where
+  // they are unit-tested.
+  const events = new Map<string, PulseEvent[]>();
   if (ids.length > 0) {
     const [researchRes, verificationRes, eventsRes] = await Promise.all([
       // Via the RPC, not the table: `gathered`/`analysis` are the Enricher's
@@ -184,7 +186,7 @@ Deno.serve(async (req) => {
     for (const e of (eventsRes.data ?? []) as Record<string, unknown>[]) {
       const key = String(e.place_id);
       const list = events.get(key);
-      const row: SubprocessEvent = {
+      const row: PulseEvent = {
         step_name: e.step_name == null ? null : String(e.step_name),
         status: e.status == null ? null : String(e.status),
         created_at: e.created_at == null ? null : String(e.created_at),
@@ -228,7 +230,11 @@ Deno.serve(async (req) => {
       // done/total of the subprocesses THIS place bought. null when it has no
       // subprocess events yet — the client then renders the 0-3 level instead
       // of an empty 0/0 meter.
-      enrich_progress: placeEnrichProgress(events.get(id) ?? []),
+      // PULSE: how far the nine-piece queue got, 0-9 (MESITA-1172). Not a
+      // count of pieces that worked — the index of the last piece such that it
+      // and everything before it completed.
+      enrich_pulse: pulseHighWater(events.get(id) ?? []),
+      enrich_pulse_total: PULSE_TOTAL,
       enrich_level: level,
       /** Kept for callers that only need "is it done". */
       enriched: level === 3,

@@ -39,10 +39,11 @@ import { instagramHandleFromUrl } from "../_shared/apify.ts";
 import { resolveChannels } from "../_shared/enrich-channel-discovery.ts";
 import { fbSlugCandidate } from "../_shared/channels.ts";
 import {
-  didNotLand,
-  notBought,
-  reportSubprocessOutcomes,
-} from "../_shared/enrich-subprocess-report.ts";
+  pieceDone,
+  pieceFailed,
+  reportPulsePieces,
+  type PieceOutcome,
+} from "../_shared/pulse-report.ts";
 import { COST, loadEnrichConfig } from "../_shared/enrich-config.ts";
 import {
   chargeGoogleSpine,
@@ -378,81 +379,63 @@ serveEnrichStage("research", async (admin, _env, row) => {
       facebook: fbOk,
     });
 
-  // ── per-subprocess outcomes (MESITA-1200) ──────────────────────────────
-  // ONE call, at the end, derived from what was actually observed — never a
-  // literal `true`. Each `completed` is read off a recorded effect
-  // (`sources.X.ok`, a verified handle), which is what makes a beacon-based
-  // meter trustworthy. See enrich-subprocess-report.ts.
+  // ── PULSE pieces (MESITA-1172) ─────────────────────────────────────────
+  // Research owns pieces 1,2,3,4,6,8. Each is reported from an OBSERVED
+  // effect, never from "we reached this line" — see pulse-pieces.ts.
+  //
+  // A piece this run did not BUY writes nothing at all, so an earlier run's
+  // result stands. That is what lets a cheap refresh coexist with a linear
+  // high-water (MESITA-1172 blocker 2).
   const diagOk = (d: unknown) =>
     !!d && typeof d === "object" && (d as { ok?: unknown }).ok === true;
 
-  // Did discovery leave the place with any channel at all? The per-channel
-  // booleans in the discovery record are real; its `ok` is not.
   const disc = sources.discovery as Record<string, unknown> | undefined;
   const anyChannelResolved = !!disc &&
     ["instagram", "facebook", "website", "opentable", "ubereats"]
       .some((k) => disc[k] === true);
 
-  await reportSubprocessOutcomes(admin, projectId, {
-    // Past the S1 hard gate, so the spine resolved — a failure there returns
-    // long before this line.
-    google: {
-      status: "completed",
-      detail: `Google identity spine resolved — ${basics.photos.length} photo(s).`,
-      meta: { photos: basics.photos.length },
-    },
-    reviews: !wants(buys, "reviews")
-      ? notBought("Google reviews")
-      : diagOk(sources.apify_google_reviews)
-      ? {
-        status: "completed",
-        detail: `Gathered ${reviews.length} Google review(s).`,
-        meta: { reviews: reviews.length },
-      }
-      : didNotLand(
-        "Google reviews",
-        gmapsInvoked ? "the Apify gather failed" : "no Apify key or Google place id",
-      ),
-    serp: !wants(buys, "serp")
-      ? notBought("SERP summary")
-      : diagOk(sources.serp)
-      ? { status: "completed", detail: "SERP summary gathered." }
-      : didNotLand(
-        "SERP summary",
-        PERPLEXITY_KEY ? "the Perplexity call failed" : "no Perplexity key",
-      ),
-    // NOT `sources.discovery.ok` — that is a HARDCODED literal written
-    // whenever the block runs (see the assignment above), so it says "we
-    // attempted", never "we resolved". Reading it here would rebuild the exact
-    // green-beacon failure this whole mechanism exists to avoid. The real
-    // outcome is whether any channel is actually known afterwards.
-    links: !wants(buys, "links")
-      ? notBought("Channel discovery")
-      : anyChannelResolved
-      ? {
-        status: "completed",
-        detail: `Resolved ${resolvedCount} link/contact field(s).`,
-        meta: { resolved: resolvedCount },
-      }
-      // Not every bought run NEEDS discovery: when every channel was already
-      // known there is nothing to discover, and that is a success.
-      : needsDiscovery
-      ? didNotLand("Channel discovery", "no channel could be resolved")
-      : {
-        status: "completed",
-        detail: "Every channel was already known — nothing to discover.",
-        meta: { reason: "already_resolved" },
-      },
-    social: !runSocial
-      ? notBought("Social gather")
-      : (igR?.verifiedInstagramUrl || fbOk)
-      ? {
-        status: "completed",
-        detail: `Social gathered — Instagram ${igMark}, Facebook ${fbOk ? "✓" : "—"}.`,
-        meta: { instagram: !!igR?.verifiedInstagramUrl, facebook: fbOk },
-      }
-      : didNotLand("Social gather", "neither Instagram nor Facebook could be scraped"),
-  });
+  const pieces: Partial<Record<string, PieceOutcome>> = {
+    // We are past the S1 hard gate, so the spine resolved.
+    seed: pieceDone(`Google place id resolved — ${basics.photos.length} photo(s).`),
+    // Google either published hours or it did not. Absence here is Google's,
+    // not the place's, but it IS missing data, so it does not pass.
+    status: basics.hours
+      ? pieceDone("Hours and open/closed resolved.")
+      : pieceFailed("Google publishes no hours for this place."),
+    details: (basics.phone || basics.address || basics.price_level != null)
+      ? pieceDone("Phone, address and price resolved.")
+      : pieceFailed("Google returned no contact or address detail."),
+  };
+
+  if (wants(buys, "links")) {
+    pieces.links = anyChannelResolved || !needsDiscovery
+      // Nothing to discover is a RESULT: every channel was already known.
+      ? pieceDone(`${resolvedCount} link/contact field(s) known.`)
+      : pieceFailed("No channel could be resolved.");
+  }
+
+  if (runSocial) {
+    // ABSENCE IS A RESULT. A place with no Instagram and no Facebook handle
+    // has nothing to gather, so the piece ran, found nothing, and PASSES — a
+    // place must be able to reach 9 without socials. Only a place that HAD a
+    // handle and could not be scraped fails.
+    const hadSomethingToTry = !!igHandle || !!fbHandleCandidate || !!resolvedFacebook;
+    pieces.social = (igR?.verifiedInstagramUrl || fbOk)
+      ? pieceDone(`Instagram ${igMark}, Facebook ${fbOk ? "✓" : "—"}.`)
+      : hadSomethingToTry
+      ? pieceFailed("A social handle was known but could not be gathered.")
+      : pieceDone("No social presence to gather.");
+  }
+
+  if (wants(buys, "reviews")) {
+    pieces.reviews = diagOk(sources.apify_google_reviews)
+      ? pieceDone(`${reviews.length} Google review(s).`)
+      : pieceFailed(
+        gmapsInvoked ? "The Apify gather failed." : "No Apify key or Google place id.",
+      );
+  }
+
+  await reportPulsePieces(admin, projectId, pieces);
 
   // ━━━ hand off to the analysis stage ━━━
   const gathered: GatheredPayload = {

@@ -124,6 +124,14 @@ export function StatusCard({
     typeof place.seeded === "boolean" ? place.seeded : "unknown";
   const listed: boolean | "unknown" =
     typeof place.listed === "boolean" ? place.listed : "unknown";
+  // The PULSE high-water, 0-9 (MESITA-1172) — the SAME number the catalog
+  // table shows, from the same helper, so the two screens cannot disagree.
+  // Falls back to the coarse 0-3 stage level only when the payload predates
+  // piece reporting entirely.
+  const pulse = typeof place.enrich_pulse === "number" ? place.enrich_pulse : null;
+  const pulseTotal = typeof place.enrich_pulse_total === "number"
+    ? place.enrich_pulse_total
+    : 9;
   const level = typeof place.enrich_level === "number" ? place.enrich_level : null;
   const placeStatus = typeof place.status === "string" ? place.status : null;
 
@@ -222,9 +230,9 @@ export function StatusCard({
         />
         <StatusRow
           name="Enriched"
-          value={level === 3}
+          value={pulse === pulseTotal}
           tint="violet"
-          chipLabel={level === null ? undefined : `${level}/3`}
+          chipLabel={pulse === null ? undefined : `${pulse}/${pulseTotal}`}
           detail={enrichedDetail}
         />
         <StatusRow
