@@ -29,7 +29,7 @@ import {
   placeEnrichLevel,
   placeEnrichProgress,
   type SubprocessEvent,
-} from "../_shared/place-pulse.ts";
+} from "../_shared/place-status.ts";
 
 type Body = { query?: unknown; limit?: unknown };
 
@@ -221,7 +221,7 @@ Deno.serve(async (req) => {
       listing_type: listingType,
       // The five status flags, in table order.
       seeded: isPlaceSeeded(v.google_place_id),
-      // The second pulse fact. MESITA-1186 put it on the Pulse box and in the
+      // The second status fact. MESITA-1186 put it on the Pulse box and in the
       // shared helper but never on this payload, so the catalog table still
       // could not render it. No extra read — `status` is already selected.
       listed: isPlaceListed(v.status),

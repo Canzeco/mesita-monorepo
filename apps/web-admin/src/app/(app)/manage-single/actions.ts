@@ -226,8 +226,8 @@ export type AdminPlace = {
   embedding?: string | number[] | null;
   embedding_source_hash?: string | null;
   embedding_source_text?: string | null;
-  // ── Pulse, super-admin overview only (MESITA-1186) ──────────────────────
-  // Computed by business-web-get-overview off _shared/place-pulse.ts — the
+  // ── Status, super-admin overview only (MESITA-1186) ──────────────────────
+  // Computed by business-web-get-overview off _shared/place-status.ts — the
   // same helpers admin-web-search-places uses for the Single Place table, so
   // the box and the table can never disagree. Absent (undefined) means the
   // payload predates them; the box renders "?" rather than a false "no".

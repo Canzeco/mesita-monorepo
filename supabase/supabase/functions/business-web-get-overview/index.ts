@@ -22,7 +22,7 @@ import {
   isPlaceListed,
   isPlaceSeeded,
   placeEnrichLevel,
-} from "../_shared/place-pulse.ts";
+} from "../_shared/place-status.ts";
 
 // Super-admin manage-single extras: the Embeddings card (MESITA-720) and the
 // per-place manual_priority override. Keep both off the business overview
@@ -34,11 +34,11 @@ import {
 const PLACE_ADMIN_EMBEDDING_COLUMNS =
   ", embedding, embedding_source_hash, embedding_source_text, manual_priority";
 
-// Pulse (MESITA-1186). The place editor's Pulse box answers `seeded` off the
+// Status (MESITA-1186). The place editor's Status box answers `seeded` off the
 // identity spine, so the super-admin read needs the column. Admin-only for the
 // same reason the embedding columns are: a business has no use for Google's id,
 // and it must never widen PLACE_PUBLIC_COLUMNS.
-const PLACE_ADMIN_PULSE_COLUMNS = ", google_place_id";
+const PLACE_ADMIN_STATUS_COLUMNS = ", google_place_id";
 
 // `placeId` is the canonical place-row id key (MESITA-26); `activeUnitId` (legacy)
 // is this EF's legacy alias, kept working during the client migration window.
@@ -86,14 +86,14 @@ Deno.serve(async (req) => {
         400,
       );
     }
-    // One round trip for both: the place row, and the pipeline row the Pulse
+    // One round trip for both: the place row, and the pipeline row the Status
     // box's `enriched` level is read from. Parallel, so the extra fact costs
     // no latency.
     const [placeRow, researchRow] = await Promise.all([
       admin
         .from("profiles")
         .select(
-          PLACE_COLUMNS + PLACE_ADMIN_EMBEDDING_COLUMNS + PLACE_ADMIN_PULSE_COLUMNS,
+          PLACE_COLUMNS + PLACE_ADMIN_EMBEDDING_COLUMNS + PLACE_ADMIN_STATUS_COLUMNS,
         )
         .eq("id", requestedPlaceId)
         .maybeSingle(),
@@ -140,7 +140,7 @@ Deno.serve(async (req) => {
     // `name` arrives already resolved — it is a generated column
     // (mesita_name → google_name), so no display pass is needed here.
     //
-    // The three pipeline facts of Pulse ride along, admin-only and computed
+    // The three pipeline facts of Status ride along, admin-only and computed
     // (never stored): seeded · listed · enriched. The other three the box
     // derives itself — partner and promoting from columns already on this row,
     // verified from admin-web-get-place-verification.

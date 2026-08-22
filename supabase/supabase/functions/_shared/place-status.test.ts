@@ -4,7 +4,7 @@ import {
   isPlaceSeeded,
   placeEnrichLevel,
   placeEnrichProgress,
-} from "./place-pulse.ts";
+} from "./place-status.ts";
 
 Deno.test("seeded: a blank or missing google_place_id is not seeded", () => {
   assertEquals(isPlaceSeeded(null), false);

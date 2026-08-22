@@ -1,4 +1,14 @@
-"use client";
+// Status — where a place stands, in ONE box.
+//
+// Six facts, each read from its own source: seeded · listed · enriched ·
+// verified · partner · promoting.
+//
+// NAMING (Pato, 2026-08-22). This box was Status, became Pulse in MESITA-1161
+// to stop "status" colliding with `places.status`, and is Status again — because
+// PULSE now names something else: the enrichment pipeline and its steps. One
+// word, one meaning, and the collision with `places.status` is handled the way
+// it should have been, by the row's own detail line naming the column value
+// rather than by renaming the box.
 
 import { AlertTriangle, CircleCheck } from "lucide-react";
 import { type AdminPlace } from "../actions";
@@ -10,15 +20,10 @@ import {
 } from "./promo-state";
 import { strategyForPlace } from "@/lib/business/strategies";
 
-// Pulse — where a place stands, in ONE box (MESITA-1161; renamed from Status;
-// completed to six rows in MESITA-1186).
-//
 // Pato: "i don't want lots of fucking boxes. just create a box called Status.
 // it mention verified, partner, promoting." They were three cards; they are
 // rows, because they are answers to one question — where does this place
-// stand. The box is called Pulse so the word stops colliding with
-// `places.status` (lead/active/paused/archived), a different column answering
-// a different question — though that column is exactly what Listed reads.
+// stand.
 //
 //   Seeded     a google_place_id exists. Nothing enriches without it.
 //   Listed     a guest can reach the place AT ALL. projects.status ∈
@@ -38,7 +43,7 @@ import { strategyForPlace } from "@/lib/business/strategies";
 //              one of the six a guest is ever shown.
 //
 // Seeded, Listed and Enriched arrive computed on the super-admin overview
-// payload (business-web-get-overview → _shared/place-pulse.ts), the same
+// payload (business-web-get-overview → _shared/place-status.ts), the same
 // helpers the Single Place table uses, so the box and the table can never
 // disagree. Partner and Promoting are derived here from columns on the row;
 // Verified is a separate admin read hoisted into AdminSection.
@@ -88,7 +93,7 @@ const ENRICH_STEP: Record<0 | 1 | 2 | 3, string> = {
   3: "Profile persisted — the Enricher finished.",
 };
 
-export function PulseCard({
+export function StatusCard({
   place,
   verification,
   verificationError,
@@ -200,41 +205,41 @@ export function PulseCard({
     <SectionCard
       icon={<CircleCheck className="h-4 w-4" />}
       tint="emerald"
-      title="Pulse"
+      title="Status"
     >
       <div className="mt-5 flex flex-col">
-        <PulseRow
+        <StatusRow
           name="Seeded"
           value={seeded}
           tint="slate"
           detail={seededDetail}
         />
-        <PulseRow
+        <StatusRow
           name="Listed"
           value={listed}
           tint="indigo"
           detail={listedDetail}
         />
-        <PulseRow
+        <StatusRow
           name="Enriched"
           value={level === 3}
           tint="violet"
           chipLabel={level === null ? undefined : `${level}/3`}
           detail={enrichedDetail}
         />
-        <PulseRow
+        <StatusRow
           name="Verified"
           value={verified}
           tint="emerald"
           detail={verifiedDetail}
         />
-        <PulseRow
+        <StatusRow
           name="Partner"
           value={partner}
           tint="sky"
           detail={partnerDetail}
         />
-        <PulseRow
+        <StatusRow
           name="Promoting"
           value={promoting}
           tint="pink"
@@ -264,7 +269,7 @@ function methodLabel(method: string): string {
   return clean.charAt(0).toUpperCase() + clean.slice(1);
 }
 
-function PulseRow({
+function StatusRow({
   name,
   value,
   tint,

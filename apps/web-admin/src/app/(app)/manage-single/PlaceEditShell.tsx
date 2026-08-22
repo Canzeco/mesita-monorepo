@@ -41,7 +41,7 @@ export function PlaceEditShell({
 
   // A write EF re-reads the place with PLACE_BUSINESS_COLUMNS and nothing
   // else, so its response drops every admin-only extra the overview attached —
-  // the embedding columns, and now the Pulse block. MERGE it over the loaded
+  // the embedding columns, and now the Status block. MERGE it over the loaded
   // place rather than replacing: every real column is present in the response
   // (so a cleared field still clears), and the extras survive the save.
   const mergePlace = useCallback((next: AdminPlace) => {

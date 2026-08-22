@@ -1,4 +1,5 @@
-// Pulse — the six facts that say where a place stands (MESITA-1171 · MESITA-1186).
+// Status — the six facts that say where a place stands (MESITA-1171 · MESITA-1186).
+// Renamed from `pulse` 2026-08-22: PULSE now names the enrichment pipeline.
 //
 //   seeded      a google_place_id exists — the identity spine every enrichment
 //               run starts from. Without it nothing can be gathered.
@@ -11,7 +12,7 @@
 //   promoting   a live discount right now (place-promoting.ts).
 //
 // The first three live here because two surfaces read them — admin-web-search-
-// places (the Single Unit table) and business-web-get-overview (the Pulse box
+// places (the Single Unit table) and business-web-get-overview (the Status box
 // in the place editor) — and a status column that disagrees with itself across
 // two screens is worse than no status column. The last three are one-liners the
 // callers already own.
