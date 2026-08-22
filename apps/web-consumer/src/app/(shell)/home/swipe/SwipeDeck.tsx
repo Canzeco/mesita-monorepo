@@ -43,6 +43,7 @@ import {
 import { SwipeDecisionBadge } from "./swipe-decision-badge";
 import { SwipeExitStamp, SwipeTutorialOverlay } from "./swipe-deck-overlays";
 import { isPromoting } from "@/lib/promo-rates";
+import { usePrefetchDiscountQuotes } from "@/lib/discount-quotes";
 
 const SWIPE_THRESHOLD = 64;
 const SWIPE_VELOCITY = 0.35; // px/ms — a quick flick commits even with small displacement
@@ -123,6 +124,17 @@ function Deck({ places }: { places: Place[] }) {
   // progress only hides cards already swiped (applied after mount, below) —
   // it never supplies card data.
   const [runtimeDeck, setRuntimeDeck] = useState<Place[]>(places);
+  // Warm every promoting card's engine quote in ONE request (MESITA-1019).
+  // The deck renders a single card at a time but knows its whole sample up
+  // front, so without this each swipe would pay for its own round trip before
+  // the promo chip could say a number. Non-promoting places are filtered out
+  // by the same gate the chip uses — they never need a quote.
+  usePrefetchDiscountQuotes(
+    useMemo(
+      () => runtimeDeck.filter(isPromoting).map((p) => p.id),
+      [runtimeDeck],
+    ),
+  );
   // Ids swiped past this session. Seeded empty so the hydration render matches
   // the server's, then filled from sessionStorage after mount.
   const [seenIds, setSeenIds] = useState<string[]>([]);

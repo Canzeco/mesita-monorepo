@@ -1,33 +1,40 @@
 "use client";
 
 import { Gift } from "lucide-react";
-import { isElevatedIdentity } from "@/lib/consumer-data";
-import { useConsumerClass } from "@/lib/class-context";
-import {
-  resolvePromoRateFromPlaceRow,
-  type PromoChipPlace,
-} from "@/lib/promo-rates";
+import { useDiscountQuote } from "@/lib/discount-quotes";
+import { upToPercentFromQuote } from "@/lib/discount-quote";
+import { isPromoting, type PromoChipPlace } from "@/lib/promo-rates";
 
 // Tiny shared building block for the place-card promo callout.
 //
 // Renders the "Up to X% Discount for You" pink-gradient pill
-// at the bottom of both the swipe overlay and the catalog/saved tile. Owns
-// the per-class rate resolution, kind logic, and the class+cap tooltip so the
-// two surfaces can't drift.
+// at the bottom of the swipe overlay, the favorites/catalog tile and the
+// place-detail header. Owns the kind logic and the cap tooltip so the
+// surfaces can't drift.
 //
-// The rate is REAL: it's read from the place's per-class promo columns
-// (welcome_/default_ × free/premium, migration 0032) for the current
-// guest's class.
+// The rate is the ENGINE's (MESITA-1019). It used to be resolved here from
+// the place's four v4 rate columns (welcome_/default_ × free/premium), which
+// stopped being prices when v10 additive shipped: those columns carry
+// strategy IDENTITY and the price moved into `promos_config.v11`. The
+// mismatch was visible on one screen — an aggressive place quoted a
+// bronze·free guest "Up to 30%" in this chip and "Up to 60%" in the Rewards
+// box below it, and 30 was neither the guaranteed base (20) nor the ceiling
+// (60). Worse, the column path keyed off `place.is_first_visit`, a field no
+// Edge Function has ever written: it read `undefined` everywhere, so every
+// guest was quoted the WELCOME column forever, including returning guests who
+// had already spent it. Both numbers now come from
+// `consumer-web-get-discount-quote` through the shared cache, and the total
+// is `upToPercentFromQuote` — the same function the Rewards box prints.
 //
-// Rewards are a Verified-Partner-only capability. Web-listed places never
-// offer rewards — a hard rule the chip enforces by short-circuiting on
-// listing_type, independent of any reward columns the row might still
-// carry. A Mesita Partner MAY also choose not to set a rate. Either way
-// there is no fabricated promo: only a partner with a real, non-zero rate
-// shows a filled ribbon. When there's no reward the chip renders nothing by
-// default, or — if the caller passes `showWhenEmpty` — a stated
-// "No reward for you" pill so the absence is stated rather than silently
-// hidden.
+// Rewards are a promoting-place capability. `promoting` is computed
+// server-side per request (MESITA-1150); a place that isn't promoting
+// short-circuits BEFORE the quote is requested, so an ordinary listing never
+// costs a round trip. A promoting place may still resolve to nothing — a zero
+// strategy, or an engine that returned no answer. Either way there is no
+// fabricated promo: only a real, non-zero rate shows a filled ribbon. When
+// there's no reward the chip renders nothing by default, or — if the caller
+// passes `showWhenEmpty` — a stated "No reward for you" pill so the absence is
+// stated rather than silently hidden.
 //
 // decision: Pato — on the place profile (`tone="light"`) the reward is the
 // ONLY reward signal in the header (it was pulled out of the stat trio, which
@@ -55,7 +62,6 @@ export function PromoChip({
    *  summary on white (violet chip — see the tone note above). */
   tone?: "dark" | "light";
 }) {
-  const { key: classKey, plan } = useConsumerClass();
   const sizing =
     size === "md" ? "px-2.5 py-1 text-[11.5px]" : "px-2.5 py-1 text-[10.5px]";
   const iconSize = size === "md" ? "h-3 w-3" : "h-2.5 w-2.5";
@@ -65,19 +71,44 @@ export function PromoChip({
       : "border border-white/35 bg-black/45 text-white";
   const emptyIconTone = tone === "light" ? "text-blue-500" : undefined;
 
-  // Hard gate: only Mesita Partners can offer rewards. Web-listed places
-  // never resolve a rate; a Mesita Partner may also choose not to set one.
-  const isFirstVisit = place.is_first_visit !== false;
-  const promoPercent = resolvePromoRateFromPlaceRow(
-    place,
-    isFirstVisit,
-    isElevatedIdentity({ cls: classKey, plan }),
-  );
+  // Hard gate, and the reason a deck of ordinary listings costs nothing: only
+  // a promoting place is worth quoting. The server already weighed plan,
+  // strategy and promo lane together to answer this.
+  const promoting = isPromoting(place);
+  const { quote, loading } = useDiscountQuote(promoting ? place.id : null);
+  // `promoting` gates the RENDER, not just the request. The cache is keyed by
+  // place id and outlives any one payload, so a place quoted while its promo
+  // lane was open would keep painting that ribbon after a strike-2 pause
+  // closed it — the same stale-gate failure `listing_type` was retired for
+  // (MESITA-1150). Fail closed on every render.
+  const promoPercent =
+    promoting && quote && quote.strategy !== "zero"
+      ? upToPercentFromQuote(quote)
+      : null;
 
-  // No reward at the current class. Hidden by default; when the caller opts
-  // in, the absence is stated with a neutral pill rather than vanishing — the
-  // same "mention it" treatment as the place-detail Reward section.
-  if (promoPercent == null) {
+  // In flight. A skeleton rather than the empty pill: the chip is about to say
+  // a number, and flashing "No Reward for You" first would state the opposite
+  // of the answer on its way. Mirrors the Rewards box hero, which holds a
+  // pulse in the same situation.
+  if (promoting && loading) {
+    return (
+      <span
+        className={`inline-flex max-w-full animate-pulse items-center gap-1.5 rounded-md whitespace-nowrap ${emptyTone} ${sizing}`}
+        aria-hidden
+      >
+        <Gift
+          className={`${iconSize} shrink-0 ${emptyIconTone ?? ""}`}
+          strokeWidth={2.25}
+        />
+        <span className="font-semibold opacity-0">Up to 00% Discount</span>
+      </span>
+    );
+  }
+
+  // No reward here. Hidden by default; when the caller opts in, the absence is
+  // stated with a neutral pill rather than vanishing — the same "mention it"
+  // treatment as the place-detail Reward section.
+  if (promoPercent == null || promoPercent <= 0) {
     if (!showWhenEmpty) return null;
     return (
       <span

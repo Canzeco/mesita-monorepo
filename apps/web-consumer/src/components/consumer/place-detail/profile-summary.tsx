@@ -179,8 +179,8 @@ export function ProfileSummary({ place }: { place: PlaceDetail }) {
 /** Shim PlaceDetail → PromoChipPlace for the header reward chip. */
 function placeDetailAsPromoPlace(place: PlaceDetail): PromoChipPlace {
   return {
+    id: place.id,
     promoting: place.promoting,
-    is_first_visit: place.promo_matrix.is_first_visit,
     welcome_free_rate: place.promo_matrix.welcome.free,
     welcome_premium_rate: place.promo_matrix.welcome.premium,
     free_rate: place.promo_matrix.default.free,

@@ -2,13 +2,11 @@
 
 import { Gift, Sparkles } from "lucide-react";
 
-import { useEffect, useState } from "react";
-
-import { apiGetRewardQuote, type RewardQuote } from "@/lib/api/tickets";
 import { useConsumerClass } from "@/lib/class-context";
+import { upToPercentFromQuote } from "@/lib/discount-quote";
+import { useDiscountQuote } from "@/lib/discount-quotes";
 import type { PlaceDetail } from "@/lib/mock/place";
 import { isPromoting, placeOffersMesitaRewards } from "@/lib/promo-rates";
-import { useBrowserSupabase } from "@/lib/supabase/browser";
 
 import { Box, BoxLabel } from "./box";
 import {
@@ -47,31 +45,15 @@ export function RewardsBox({ place }: { place: PlaceDetail }) {
   const consumerClass = useConsumerClass();
   const classKey = consumerClass.key;
   const plan = consumerClass.plan;
-  const supabase = useBrowserSupabase();
 
-  // The guest's real numbers for THIS place, from the engine. Must run before
-  // the offersRewards early return below — hooks can't be conditional.
-  const placeId = place.id;
-  const [quoteRes, setQuoteRes] = useState<{
-    placeId: string;
-    quote: RewardQuote;
-  } | null>(null);
-  useEffect(() => {
-    let cancelled = false;
-    void (async () => {
-      try {
-        const res = await apiGetRewardQuote(supabase, placeId);
-        if (!cancelled) setQuoteRes({ placeId, quote: res.quote });
-      } catch {
-        // Non-fatal: the sheet stays in its loading shape rather than quoting
-        // a rate the bill won't honor.
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [placeId, supabase]);
-  const quote = quoteRes?.placeId === placeId ? quoteRes.quote : null;
+  // The guest's real numbers for THIS place, from the engine — via the shell's
+  // shared cache (MESITA-1019), so the header chip above and this sheet make
+  // ONE request between them and can never print two different numbers. Must
+  // run before the offersRewards early return below — hooks can't be
+  // conditional — and is gated on `promoting` so a place that rewards nobody
+  // never costs a round trip. A failed fetch caches null and the sheet holds
+  // its loading shape rather than quoting a rate the bill won't honor.
+  const { quote } = useDiscountQuote(isPromoting(place) ? place.id : null);
 
   const offersRewards = placeOffersMesitaRewards({
     promoting: isPromoting(place),
@@ -109,23 +91,10 @@ export function RewardsBox({ place }: { place: PlaceDetail }) {
   // base + welcome + every earned bonus, so the max understated the hero by
   // ~20 points (Standard/conservative advertised 25% against a real 45%).
   // The most persuasive number on the page was the most wrong.
-  const upTo = quote
-    ? quote.additive
-      ? Math.min(
-          100,
-          quote.base +
-            quote.bonuses.welcome +
-            quote.bonuses.story +
-            quote.bonuses.google +
-            quote.bonuses.mesita,
-        )
-      : Math.max(
-          quote.base,
-          quote.bonuses.welcome,
-          quote.bonuses.story,
-          quote.bonuses.google,
-        )
-    : null;
+  //
+  // The arithmetic moved to `upToPercentFromQuote` (MESITA-1019) so the header
+  // chip prints this exact number instead of its own.
+  const upTo = quote ? upToPercentFromQuote(quote) : null;
 
   const capLabel =
     place.reward_cap_mxn != null && place.reward_cap_mxn > 0

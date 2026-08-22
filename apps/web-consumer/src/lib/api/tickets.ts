@@ -189,6 +189,28 @@ export async function apiGetRewardQuote(
   );
 }
 
+/**
+ * The same quote for MANY places in one round trip (MESITA-1019).
+ *
+ * The promo chip renders on four surfaces and every one of them used to read
+ * the four v4 rate columns as prices. Routing it through the engine is the
+ * fix; doing that per card would have turned a deck into a deck of requests.
+ * Ids the server doesn't know are simply absent from the map — the caller
+ * renders nothing rather than a fabricated rate.
+ */
+export async function apiGetRewardQuotes(
+  client: SupabaseClient,
+  placeIds: string[],
+): Promise<Record<string, RewardQuote>> {
+  if (placeIds.length === 0) return {};
+  const res = await invokeEF<{ quotes: Record<string, RewardQuote> }>(
+    client,
+    "consumer-web-get-discount-quote",
+    { placeIds },
+  );
+  return res.quotes ?? {};
+}
+
 export async function apiCancelTicket(
   client: SupabaseClient,
   ticketId: string,
