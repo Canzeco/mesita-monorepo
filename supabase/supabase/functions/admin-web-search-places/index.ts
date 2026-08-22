@@ -20,6 +20,7 @@ import {
 } from "../_shared/auth.ts";
 import { isPaidPlan } from "../_shared/membership-enforcement-helpers.ts";
 import { isPlacePromoting } from "../_shared/place-promoting.ts";
+import { isPlaceSeeded, placeEnrichLevel } from "../_shared/place-pulse.ts";
 
 type Body = { query?: unknown; limit?: unknown };
 
@@ -154,16 +155,6 @@ Deno.serve(async (req) => {
     }
   }
 
-  /** 0 seeded only · 1 research gathered · 2 images analysed · 3 persisted. */
-  function enrichLevel(id: string, contentStatus: string | null): 0 | 1 | 2 | 3 {
-    const r = research.get(id);
-    if (!r || contentStatus === "queued") return 0;
-    if (r.stage === "done") return 3;
-    if (r.analysis) return 2;
-    if (r.gathered) return 1;
-    return 0;
-  }
-
   // Trim photos to the first thumbnail to keep the payload small.
   // `name` is the generated display column (mesita_name → google_name); the
   // table now shows google_name specifically, so both ride along.
@@ -172,7 +163,7 @@ Deno.serve(async (req) => {
     const contentStatus = (v.content_status as string | null) ?? null;
     const listingType = (v.listing_type as string | null) ?? null;
     const label = String(v.name ?? "");
-    const level = enrichLevel(id, contentStatus);
+    const level = placeEnrichLevel(research.get(id), contentStatus);
     return {
       id: v.id,
       slug: v.slug,
@@ -190,7 +181,7 @@ Deno.serve(async (req) => {
       content_status: contentStatus,
       listing_type: listingType,
       // The five status flags, in table order.
-      seeded: typeof v.google_place_id === "string" && v.google_place_id.trim() !== "",
+      seeded: isPlaceSeeded(v.google_place_id),
       enrich_level: level,
       /** Kept for callers that only need "is it done". */
       enriched: level === 3,

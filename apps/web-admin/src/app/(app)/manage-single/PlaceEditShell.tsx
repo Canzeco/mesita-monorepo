@@ -39,6 +39,15 @@ export function PlaceEditShell({
     setLoadedId(id);
   }, []);
 
+  // A write EF re-reads the place with PLACE_BUSINESS_COLUMNS and nothing
+  // else, so its response drops every admin-only extra the overview attached —
+  // the embedding columns, and now the Pulse block. MERGE it over the loaded
+  // place rather than replacing: every real column is present in the response
+  // (so a cleared field still clears), and the extras survive the save.
+  const mergePlace = useCallback((next: AdminPlace) => {
+    setPlace((prev) => (prev ? { ...prev, ...next } : next));
+  }, []);
+
   // Fetch inline (not via loadPlace) so every setState sits after the await —
   // the same reqRef guard makes a superseded response a no-op.
   useEffect(() => {
@@ -98,7 +107,7 @@ export function PlaceEditShell({
     <PlaceProvider
       projectId={projectId}
       place={place}
-      setPlace={setPlace}
+      setPlace={mergePlace}
       reload={() => void loadPlace(projectId)}
     >
       {/* Chrome is full-bleed across the main column; body keeps page padding. */}

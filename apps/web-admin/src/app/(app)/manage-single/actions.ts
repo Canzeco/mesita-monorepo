@@ -216,6 +216,19 @@ export type AdminPlace = {
   embedding?: string | number[] | null;
   embedding_source_hash?: string | null;
   embedding_source_text?: string | null;
+  // ── Pulse, super-admin overview only (MESITA-1186) ──────────────────────
+  // Computed by business-web-get-overview off _shared/place-pulse.ts — the
+  // same helpers admin-web-search-places uses for the Single Place table, so
+  // the box and the table can never disagree. Absent (undefined) means the
+  // payload predates them; the box renders "?" rather than a false "no".
+  /** google_place_id present — the identity spine every enrichment run needs. */
+  seeded?: boolean;
+  /** projects.status ∈ (active, lead) — a guest can reach the place at all. */
+  listed?: boolean;
+  /** 0 seeded only · 1 research gathered · 2 images analysed · 3 persisted. */
+  enrich_level?: 0 | 1 | 2 | 3;
+  /** Google's own id. Admin payload only — never in PLACE_PUBLIC_COLUMNS. */
+  google_place_id?: string | null;
   [k: string]: unknown;
 };
 

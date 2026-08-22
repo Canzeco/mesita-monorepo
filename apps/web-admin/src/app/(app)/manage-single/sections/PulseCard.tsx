@@ -10,23 +10,38 @@ import {
 } from "./promo-state";
 import { strategyForPlace } from "@/lib/business/strategies";
 
-// Pulse — where a place stands, in ONE box (MESITA-1161; renamed from Status).
+// Pulse — where a place stands, in ONE box (MESITA-1161; renamed from Status;
+// completed to six rows in MESITA-1186).
 //
 // Pato: "i don't want lots of fucking boxes. just create a box called Status.
 // it mention verified, partner, promoting." They were three cards; they are
-// three rows, because they are three answers to one question — where does this
-// place stand. The box is now called Pulse so the word stops colliding with
+// rows, because they are answers to one question — where does this place
+// stand. The box is called Pulse so the word stops colliding with
 // `places.status` (lead/active/paused/archived), a different column answering
-// a different question.
+// a different question — though that column is exactly what Listed reads.
 //
+//   Seeded     a google_place_id exists. Nothing enriches without it.
+//   Listed     a guest can reach the place AT ALL. projects.status ∈
+//              (active, lead) is what the consumer RLS policy
+//              projects_select_public_visible gates on — its content_status
+//              leg is a tautology (all four labels of the enum are allowed),
+//              so status alone decides. Product Rules §B is right that Listed
+//              is not a RUNG — nothing progresses through it — but it is not a
+//              constant either: archive a place and every guest surface stops
+//              resolving it. Today it is true for every row only because
+//              nothing writes any status but 'active'.
+//   Enriched   HOW FAR the Enricher got, 0-3, off place_research. A level, not
+//              a yes.
 //   Verified   somebody proved they own it. One-time, never lapses.
 //   Partner    the place pays Mesita. A deal: stable, internal.
 //   Promoting  a guest gets a discount here RIGHT NOW. Volatile, and the only
-//              one of the three a guest is ever shown.
+//              one of the six a guest is ever shown.
 //
-// Pulse names six fields — seeded · listed · enriched · verified · partner ·
-// promoting. Three render here; seeded/listed/enriched are not on AdminPlace
-// yet (the Single Place table reads those off a different payload).
+// Seeded, Listed and Enriched arrive computed on the super-admin overview
+// payload (business-web-get-overview → _shared/place-pulse.ts), the same
+// helpers the Single Place table uses, so the box and the table can never
+// disagree. Partner and Promoting are derived here from columns on the row;
+// Verified is a separate admin read hoisted into AdminSection.
 //
 // `listing_type` backs NONE of them, deliberately: it stores
 // (pays ∧ strategy ≠ zero) collapsed into one enum and is re-derived only when
@@ -64,6 +79,15 @@ const PLAN_LABEL: Record<string, string> = {
   ultra: "Ultra",
 };
 
+// The 0-3 enrich level in the box's voice. The Single Place table shows the
+// same ladder as three ticks (LEVEL_TITLE in PlaceSelectCatalog).
+const ENRICH_STEP: Record<0 | 1 | 2 | 3, string> = {
+  0: "Nothing gathered — the pipeline has never finished a stage here.",
+  1: "Research gathered. Images not analysed yet.",
+  2: "Images analysed. The profile isn't written yet.",
+  3: "Profile persisted — the Enricher finished.",
+};
+
 export function PulseCard({
   place,
   verification,
@@ -86,6 +110,43 @@ export function PulseCard({
     premium_rate: place.premium_rate,
   });
   const badged = place.listing_type === "partner";
+
+  // The three pipeline facts ride on the super-admin overview payload. An
+  // absent key means an older payload, not a "no" — same rule Verified
+  // follows: misreporting a real place is worse than admitting the read
+  // failed.
+  const seeded: boolean | "unknown" =
+    typeof place.seeded === "boolean" ? place.seeded : "unknown";
+  const listed: boolean | "unknown" =
+    typeof place.listed === "boolean" ? place.listed : "unknown";
+  const level = typeof place.enrich_level === "number" ? place.enrich_level : null;
+  const placeStatus = typeof place.status === "string" ? place.status : null;
+
+  const seededDetail =
+    seeded === "unknown"
+      ? "Couldn't read the identity spine."
+      : seeded
+        ? "Google's place id is on the row — the pipeline has something to start from."
+        : "No google_place_id. Nothing can enrich this place until one lands.";
+
+  const listedDetail =
+    listed === "unknown"
+      ? "Couldn't read the place's status."
+      : placeStatus === "active"
+        ? "active — on every consumer surface, and in the discovery pool."
+        : placeStatus === "lead"
+          ? "lead — reachable by link and by search, but discovery pools active places only."
+          : placeStatus
+            ? `${placeStatus} — no guest surface resolves this place; the RLS policy stops the read.`
+            : "No status on the row.";
+
+  const enrichedDetail =
+    level === null
+      ? "Couldn't read the pipeline row."
+      : ENRICH_STEP[level] +
+        (place.enriched_at
+          ? ` · last run ${String(place.enriched_at).slice(0, 10)}`
+          : "");
 
   // An unknown must never render as a false negative: misreporting a real
   // place's standing is worse than admitting the lookup failed.
@@ -140,9 +201,31 @@ export function PulseCard({
       icon={<CircleCheck className="h-4 w-4" />}
       tint="emerald"
       title="Pulse"
-      subtitle="Where this place stands. Three separate facts — a place can be any combination of them."
+      subtitle="Where this place stands — the six pulse fields, each read from its own source. Seeded, Listed and Enriched are how far the place got; Verified, Partner and Promoting are what it is."
     >
       <div className="mt-5 flex flex-col">
+        <PulseRow
+          name="Seeded"
+          value={seeded}
+          tint="slate"
+          meaning="A google_place_id is on the row — the identity spine every enrichment run starts from. It buys nothing on its own."
+          detail={seededDetail}
+        />
+        <PulseRow
+          name="Listed"
+          value={listed}
+          tint="indigo"
+          meaning="A guest can reach this place at all. Not a rung and not a tier — the visibility gate every consumer read passes through."
+          detail={listedDetail}
+        />
+        <PulseRow
+          name="Enriched"
+          value={level === 3}
+          tint="violet"
+          chipLabel={level === null ? undefined : `${level}/3`}
+          meaning="How far the Enricher got: research gathered → images analysed → profile persisted. A level, not a yes."
+          detail={enrichedDetail}
+        />
         <PulseRow
           name="Verified"
           value={verified}
@@ -196,15 +279,22 @@ function PulseRow({
   tint,
   meaning,
   detail,
+  chipLabel,
 }: {
   name: string;
   value: boolean | "unknown" | "loading";
-  tint: "emerald" | "sky" | "pink";
+  tint: "slate" | "indigo" | "violet" | "emerald" | "sky" | "pink";
   meaning: string;
   detail: string;
+  /** Overrides the chip text in BOTH states. Enriched is a 0-3 level, not a
+   *  yes, so its chip reads "2/3" whether or not the level is complete. */
+  chipLabel?: string;
 }) {
   const on = value === true;
   const chipClass = {
+    slate: "bg-slate-500/10 text-slate-700",
+    indigo: "bg-indigo-500/10 text-indigo-700",
+    violet: "bg-violet-500/10 text-violet-700",
     emerald: "bg-emerald-500/10 text-emerald-700",
     sky: "bg-sky-500/10 text-sky-700",
     pink: "bg-pink-500/10 text-pink-600",
@@ -229,12 +319,14 @@ function PulseRow({
             ? "checking"
             : value === "unknown"
               ? "unknown"
-              : on
-                ? "yes"
-                : "no"
+              : (chipLabel ?? (on ? "yes" : "no"))
         }`}
       >
-        {value === "loading" ? "…" : value === "unknown" ? "?" : on ? name : "—"}
+        {value === "loading"
+          ? "…"
+          : value === "unknown"
+            ? "?"
+            : (chipLabel ?? (on ? name : "—"))}
       </span>
     </div>
   );
