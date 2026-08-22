@@ -3,10 +3,6 @@
 import { useEffect, useMemo, useState, useTransition } from "react";
 import {
   AlertTriangle,
-  Bot,
-  CalendarCheck,
-  CheckCircle2,
-  Clock,
   FlaskConical,
   Gauge,
   // Aliased: the lucide export is named `Infinity`, which would shadow the
@@ -14,18 +10,12 @@ import {
   Infinity as InfinityIcon,
   OctagonPause,
   Phone,
-  PhoneCall,
-  RotateCcw,
   ShieldCheck,
-  Smartphone,
-  Workflow,
 } from "lucide-react";
 import { ErrorNote } from "@/components/ErrorNote";
-import { formatShortDate } from "@/lib/format";
 import { SaveRow, SectionCard, Switch } from "../enricher-config/atlas-ui";
 import { getReservationsConfig, updateReservationsConfig } from "./actions";
 import {
-  CHANNELS,
   looksLikePhone,
   type NeedsAttentionRow,
   type ReservationsConfig,
@@ -37,13 +27,6 @@ const PHONE_ONLY_CHANNELS: Pick<ReservationsConfig, "priority" | "disabled"> = {
   priority: ["phone"],
   disabled: [],
 };
-
-const STEPS = [
-  "A guest taps Reserve in the app and sets the details — date & time, party size, occasion, a note.",
-  "A Supabase function takes the request and briefs the Reservationist, an ElevenLabs voice agent, with the place and the guest's parameters.",
-  "The agent phones the place over Twilio and books the table, speaking naturally.",
-  "It retries on the schedule below until it holds a table or runs out of attempts — then the guest's reservation flips from Pending to Confirmed.",
-];
 
 export function ReservationsConfigClient({
   initialConfig,
@@ -62,7 +45,7 @@ export function ReservationsConfigClient({
   const [error, setError] = useState<string | null>(loadError);
   const [loadBlocked, setLoadBlocked] = useState(!!loadError);
   const [ok, setOk] = useState(false);
-  const [updatedAt, setUpdatedAt] = useState<string | null>(initialUpdatedAt);
+  const [, setUpdatedAt] = useState<string | null>(initialUpdatedAt);
   const [attention, setAttention] = useState<NeedsAttentionRow[]>(initialNeedsAttention);
 
   // Re-fetch on mount so a client-side nav to the page shows the live row, not a
@@ -188,37 +171,6 @@ export function ReservationsConfigClient({
 
       {/* How it works — the shape of the agent, so the knobs below have context. */}
       <SectionCard
-        icon={<Bot className="text-secondary h-4 w-4" />}
-        title="How a reservation happens"
-        subtitle="The Reservationist is a voice agent, not a form. A Supabase function briefs it and it calls the place on the guest's behalf."
-        status={
-          updatedAt ? (
-            <span className="text-muted-foreground text-xs">
-              Updated {formatShortDate(updatedAt)}
-            </span>
-          ) : null
-        }
-      >
-        <ol className="mt-5 space-y-3">
-          {STEPS.map((step, i) => (
-            <li key={i} className="flex gap-3">
-              <span className="bg-secondary/10 text-secondary flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-semibold tabular-nums">
-                {i + 1}
-              </span>
-              <p className="text-foreground/90 text-sm leading-relaxed">{step}</p>
-            </li>
-          ))}
-        </ol>
-        <p className="text-muted-foreground mt-4 border-t border-border/60 pt-3 text-xs">
-          A reservation is its own ticket — booking only, no discount. A reward
-          comes from showing up, so only a visit ticket ever carries one; the two
-          never share a record.
-        </p>
-      </SectionCard>
-
-      {/* Test mode — while we're not ringing real places, the agent calls one
-          fixed test number for every reservation. */}
-      <SectionCard
         icon={<FlaskConical className="text-secondary h-4 w-4" />}
         title="Test mode"
         subtitle="While test mode is on, every reservation call dials the test number below instead of the place's real line — whichever place the guest booked. So we can run the whole flow end to end without ringing a single business."
@@ -277,187 +229,6 @@ export function ReservationsConfigClient({
       </SectionCard>
 
       {/* Call attempts — fixed by protocol, shown only so the number is never a mystery. */}
-      <SectionCard
-        icon={<RotateCcw className="text-secondary h-4 w-4" />}
-        title="Call attempts"
-        subtitle="Fixed by protocol — two attempts per reservation, then the guest is told the place couldn't be reached. Not configurable."
-      >
-        <div className="border-border bg-card mt-5 inline-flex items-center gap-3 rounded-xl border px-4 py-3">
-          <RotateCcw className="text-muted-foreground h-4 w-4" />
-          <span className="text-2xl font-semibold tabular-nums">2</span>
-          <span className="text-muted-foreground text-xs leading-tight">
-            attempts per reservation
-            <br />
-            fixed — not configurable
-          </span>
-        </div>
-        <div className="mt-4 space-y-2 rounded-xl border border-border/60 bg-muted/30 p-4">
-          <p className="flex items-start gap-2 text-xs">
-            <Clock className="text-secondary mt-0.5 h-3.5 w-3.5 shrink-0" />
-            <span>
-              <span className="text-foreground font-medium">Attempt 1 is immediate</span>{" "}
-              — the moment a guest taps Reserve, whatever the hour. Plenty of places
-              run a 24/7 AI receptionist, so a 3 a.m. call can still land a table.
-            </span>
-          </p>
-          <p className="flex items-start gap-2 text-xs">
-            <Clock className="text-secondary mt-0.5 h-3.5 w-3.5 shrink-0" />
-            <span>
-              <span className="text-foreground font-medium">
-                Attempt 2 waits for opening hours
-              </span>{" "}
-              — five minutes after the first miss if the place is open right now,
-              otherwise 30 minutes after it next opens, today or tomorrow. It waits
-              on the place’s hours, never the guest. Still no answer → the ticket
-              lands unreachable and the guest is informed.
-            </span>
-          </p>
-        </div>
-      </SectionCard>
-
-      {/* The workflow — read-only. The protocol drawn out so it's understood at a glance. */}
-      <SectionCard
-        icon={<Workflow className="text-secondary h-4 w-4" />}
-        title="The reservation workflow"
-        subtitle="Fixed protocol, read-only — how every ticket flows from intent to a table, and who calls whom. Calls continue until both sides confirm the same reservation."
-      >
-        <ol className="mt-5">
-          <li className="relative pb-6 pl-9">
-            <span className="bg-secondary/10 text-secondary absolute top-0 left-0 flex h-6 w-6 items-center justify-center rounded-full text-[11px] font-bold">
-              1
-            </span>
-            <span className="bg-border absolute top-7 bottom-1 left-3 w-px" />
-            <p className="text-sm font-medium">Intent → ticket</p>
-            <p className="text-muted-foreground mt-1 text-xs">
-              The guest sets place, date, hour, party size and any requests. The
-              ticket is created that instant with its 8-digit reference code —
-              and opening hours never block an intent: a Thursday ask at a
-              Friday–Saturday place still gets tried.
-            </p>
-          </li>
-          <li className="relative pb-6 pl-9">
-            <span className="bg-secondary/10 text-secondary absolute top-0 left-0 flex h-6 w-6 items-center justify-center rounded-full text-[11px] font-bold">
-              2
-            </span>
-            <span className="bg-border absolute top-7 bottom-1 left-3 w-px" />
-            <p className="text-sm font-medium">
-              The Booker calls the place{" "}
-              <span className="text-muted-foreground text-xs font-normal">
-                · consumer → business
-              </span>
-            </p>
-            <p className="text-muted-foreground mt-1 text-xs">
-              The two attempts above. On the call it requests the table, reads the
-              details back, leaves the guest’s number — and hangs up only once the
-              call is solved. It comes back with one of:
-            </p>
-            <div className="mt-2 flex flex-wrap gap-1.5">
-              <span className="inline-flex items-center rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold text-emerald-700">
-                confirmed
-              </span>
-              <span className="inline-flex items-center rounded-full bg-amber-500/10 px-2 py-0.5 text-[10px] font-semibold text-amber-700">
-                counter-offer
-              </span>
-              <span className="inline-flex items-center rounded-full bg-red-500/10 px-2 py-0.5 text-[10px] font-semibold text-red-700">
-                declined
-              </span>
-              <span className="inline-flex items-center rounded-full bg-red-500/10 px-2 py-0.5 text-[10px] font-semibold text-red-700">
-                unreachable
-              </span>
-            </div>
-          </li>
-          <li className="relative pb-6 pl-9">
-            <span className="bg-secondary/10 text-secondary absolute top-0 left-0 flex h-6 w-6 items-center justify-center rounded-full text-[11px] font-bold">
-              3
-            </span>
-            <span className="bg-border absolute top-7 bottom-1 left-3 w-px" />
-            <p className="text-sm font-medium">
-              The Confirmer reaches the guest{" "}
-              <span className="text-muted-foreground text-xs font-normal">
-                · business → consumer
-              </span>
-            </p>
-            <p className="text-muted-foreground mt-1 text-xs">
-              By default the guest gets a call explaining the outcome; with the
-              app-only preference the ticket just updates silently in the consumer
-              app. A counter-offer — “outside only at 10, inside at 9” — is put to
-              the guest, and their pick triggers a fresh Booker call to the place.
-              Two negotiation rounds max, then the ticket parks in the app for the
-              guest to decide.
-            </p>
-          </li>
-          <li className="relative pl-9">
-            <span className="bg-secondary/10 text-secondary absolute top-0 left-0 flex h-6 w-6 items-center justify-center rounded-full text-[11px] font-bold">
-              <CheckCircle2 className="h-3.5 w-3.5" />
-            </span>
-            <p className="text-sm font-medium">Both sides confirmed</p>
-            <p className="text-muted-foreground mt-1 text-xs">
-              Calls keep happening only while the two sides disagree. The moment
-              place and guest match, the ticket closes confirmed — otherwise it
-              lands declined, unreachable or cancelled, and the guest always ends
-              up informed.
-            </p>
-          </li>
-        </ol>
-        <div className="mt-5 space-y-2 rounded-xl border border-border/60 bg-muted/30 p-4">
-          <p className="flex items-start gap-2 text-xs">
-            <Smartphone className="text-secondary mt-0.5 h-3.5 w-3.5 shrink-0" />
-            <span>
-              <span className="text-foreground font-medium">Anytime</span> — the
-              guest can edit or cancel the ticket in the mobile app; that supersedes
-              any pending call.
-            </span>
-          </p>
-          <p className="flex items-start gap-2 text-xs">
-            <PhoneCall className="text-secondary mt-0.5 h-3.5 w-3.5 shrink-0" />
-            <span>
-              <span className="text-foreground font-medium">Future</span> — inbound
-              lines for guests and places (agents 3 and 4), callers auto-verified
-              by phone number against the Mesita database.
-            </span>
-          </p>
-        </div>
-      </SectionCard>
-
-      {/* Channels — phone only (voice fleet; MESITA-842). */}
-      <SectionCard
-        icon={<CalendarCheck className="text-secondary h-4 w-4" />}
-        title="Booking channels"
-        subtitle="The contact the agent books through. Voice-only: every place is booked by phone."
-      >
-        <ul className="mt-5 space-y-2">
-          {CHANNELS.map((ch) => (
-            <li
-              key={ch.key}
-              className="border-border bg-card flex items-center gap-3 rounded-2xl border p-3"
-            >
-              <span className="text-lg" aria-hidden>
-                {ch.emoji}
-              </span>
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-semibold">{ch.label}</span>
-                  <span className="bg-secondary/10 text-secondary rounded-full px-1.5 py-0.5 text-[10px] font-medium">
-                    live
-                  </span>
-                </div>
-                <p className="text-muted-foreground mt-0.5 text-xs">{ch.blurb}</p>
-                <p className="text-muted-foreground/70 mt-0.5 font-mono text-[10px]">
-                  {ch.source}
-                </p>
-              </div>
-            </li>
-          ))}
-        </ul>
-        <p className="text-muted-foreground mt-3 text-xs">
-          WhatsApp and Instagram are not reservation channels — the Reservationist
-          has no messaging path (MESITA-839). Profile links for those stay on Place
-          → Channels for discovery; they never drive a booking call.
-        </p>
-      </SectionCard>
-
-      {/* Operator overrides — kept from the endpoint-selection era; still governs
-          re-enrich of a hand-picked phone. */}
       <SectionCard
         icon={<ShieldCheck className="text-secondary h-4 w-4" />}
         title="Operator overrides"

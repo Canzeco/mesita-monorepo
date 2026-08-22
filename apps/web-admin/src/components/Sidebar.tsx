@@ -18,7 +18,6 @@ import { BILLING_TEST_PARENT } from "@/app/(app)/billing-test/nav";
 import { DB_PARENT } from "@/app/(app)/manage-database/nav";
 import { ENRICHER_PARENT } from "@/app/(app)/enricher-config/nav";
 import { FILTERS_PARENT } from "@/app/(app)/filters-config/nav";
-import { OJO_PARENT } from "@/app/(app)/ojo-config/nav";
 import { ORDERS_PARENT } from "@/app/(app)/orders-config/nav";
 import { RESERVATIONS_PARENT } from "@/app/(app)/reservations-config/nav";
 import { VISITS_PARENT } from "@/app/(app)/visits-config/nav";
@@ -128,7 +127,6 @@ const CONFIGURATIONS_NAV: NavItem[] = [
   ORDERS_PARENT,
   RESERVATIONS_PARENT,
   REWARDS_PARENT,
-  OJO_PARENT,
 ];
 
 // Testing — operator tools that probe live systems rather than configure them.
