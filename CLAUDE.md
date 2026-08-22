@@ -7,7 +7,7 @@
 
 **The repo.** `Canzeco/mesita-monorepo` is the whole product: `apps/{web-admin,web-business,web-consumer,web-landing,web-check,mobile-consumer,mobile-business}` + `supabase/` + `assets/`. The six former standalone repos are frozen read-only history — never work in them. Package-specific rules: that package's `CLAUDE.md`.
 
-**The blackboard.** Agents never talk to each other. **Linear** (team Mesita, `MESITA-`) carries intent — issues, claims, `decision:` comments, statuses; issues + comments ONLY, Linear documents are prohibited. **git/GitHub** carries the work — branches and squash PRs; `Closes <ID>` is the join. Chat is ephemeral: durable state → Linear, durable knowledge → Notion, same session.
+**The blackboard.** Agents never talk to each other. **Linear** (team Mesita, `MESITA-`) carries intent — issues, claims, `decision:` comments, statuses; issues + comments ONLY; **Linear documents and Claude Artifacts are prohibited**. **git/GitHub** carries the work — branches and squash PRs; `Closes <ID>` is the join. Chat is ephemeral: durable state → Linear, durable knowledge → Notion, same session.
 
 **The loop.**
 
