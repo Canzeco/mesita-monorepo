@@ -6,11 +6,11 @@ import { ConfigTabNav } from "@/components/ConfigTabNav";
 import { FILTERS_SUBROUTES } from "./nav";
 import { SURFACE_META, type SurfaceKey } from "./filters";
 
-// Discover shell — the header + the tab strip. Mirrors the Promos / Memo /
+// Discovery shell — the header + the tab strip. Mirrors the Promos / Memo /
 // Enricher shells; the description switches per active tab so the header always
 // says what THIS tab governs.
 //
-// The page is titled "Discover", NOT "Discover Config": a label never repeats
+// The page is titled "Discovery", NOT "Discovery Config": a label never repeats
 // its section heading, and the section is Configurations (web-admin rules). The
 // eyebrow carries the section instead — the same shape Manage › Database uses.
 
@@ -39,11 +39,11 @@ export function FiltersLayoutShell({
   return (
     <>
       <PageHeader
-        eyebrow="Product · Discover"
-        title="Discover"
+        eyebrow="Product · Discovery"
+        title="Discovery"
         description={describe(pathname)}
       />
-      <ConfigTabNav ariaLabel="Discover" subroutes={FILTERS_SUBROUTES} />
+      <ConfigTabNav ariaLabel="Discovery" subroutes={FILTERS_SUBROUTES} />
       <div className="mt-6 sm:mt-8">{children}</div>
     </>
   );
