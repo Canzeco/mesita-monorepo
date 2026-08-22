@@ -1,32 +1,17 @@
 import type { LucideIcon } from "lucide-react";
-import {
-  Compass,
-  Grid3x3,
-  Heart,
-  Layers,
-  Map,
-  MessageCircle,
-  Search,
-  SlidersHorizontal,
-  Users,
-} from "lucide-react";
+import { Compass, Layers, SlidersHorizontal } from "lucide-react";
 
-// Filters Config (MESITA-1083) — one Sidebar entry, "Discovery" (the route
-// stays /filters-config), with eight in-page tabs.
-// General carries the law; the other seven are one consumer surface each, in
-// the order a guest meets them: the Home hub's FIVE modes (Swipe · Catalog ·
-// Chat · Social · Favorites), then Search's map and list. FILTERS_SUBROUTES are
-// tabs, never Sidebar rows.
+// Discovery (MESITA-1083) — ONE Sidebar entry, TWO pages (Pato, 2026-08-21:
+// "In discover I only want two pages / Signals & Engines"). The route stays
+// /filters-config; a rename stops at the label.
 //
-// Favorites was missing until MESITA-1151. It has no filter sheet to configure
-// and probably never will — but a strip that lists four Home modes tells an
-// operator the product has four, so the tab is the correction (it says on the
-// page that the surface is sheetless).
+// The two pages are the two axes the data model always had: SIGNALS are the
+// six modules a guest can express (context · where · distance · when · what ·
+// random), ENGINES are the surfaces that answer with places. It was General
+// plus seven surface tabs, and the Chat tab carried four subpages of its own.
 //
-// The COMPASS is the domain's mark: 🧭 is what Notion Docs › Discovery wears,
-// and finding a place is what every surface under here is for. The sheet's own
-// SlidersHorizontal stays below on the Swipe tab, where a filter sheet is
-// literally the thing being configured — one glyph, one meaning.
+// The COMPASS is the domain's mark: it is what Notion Docs › Discovery wears,
+// and finding a place is what everything under here is for.
 export const FILTERS_PARENT = {
   href: "/filters-config",
   label: "Discovery",
@@ -34,14 +19,8 @@ export const FILTERS_PARENT = {
 } as const;
 
 export const FILTERS_SUBROUTES = [
-  { href: "/filters-config/general", label: "General", Icon: Layers },
-  { href: "/filters-config/swipe", label: "Swipe", Icon: SlidersHorizontal },
-  { href: "/filters-config/catalog", label: "Catalog", Icon: Grid3x3 },
-  { href: "/filters-config/chat", label: "Chat", Icon: MessageCircle },
-  { href: "/filters-config/social", label: "Social", Icon: Users },
-  { href: "/filters-config/favorites", label: "Favorites", Icon: Heart },
-  { href: "/filters-config/map", label: "Map", Icon: Map },
-  { href: "/filters-config/search", label: "Search", Icon: Search },
+  { href: "/filters-config/signals", label: "Signals", Icon: SlidersHorizontal },
+  { href: "/filters-config/engines", label: "Engines", Icon: Layers },
 ] as const satisfies ReadonlyArray<{
   href: string;
   label: string;
