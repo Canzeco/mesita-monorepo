@@ -13,13 +13,13 @@ import {
 } from "../actions";
 import { useSectionDirty } from "../useSectionDirty";
 import { ReadField, SaveBar, SectionCard, Spinner } from "../ui";
-import { useUnitPlace } from "../UnitPlaceContext";
+import { usePlaceContext } from "../PlaceContext";
 import { formatAbsoluteUtc } from "@/lib/format";
 
 // Enrichment — WHEN this place re-enriches, and the button that runs it now
 // (MESITA-1148 · MESITA-1155).
 //
-// The trigger used to be a dropdown in the unit chrome, beside Switch place.
+// The trigger used to be a dropdown in the place chrome, beside Switch place.
 // Pato moved it here: "remove button to re enrich and put it in admin that
 // button on the header." Scheduling a refresh and running one are the same
 // decision about the same pipeline, so they share a box — and an expensive
@@ -115,7 +115,7 @@ export function EnrichmentCard({ place }: { place: AdminPlace }) {
   // ── Run now ──────────────────────────────────────────────────────────
   // Guarded by the same unsaved-edits dialog the chrome used: a re-enrich can
   // overwrite fields the operator is mid-edit on.
-  const { guardIntent } = useUnitPlace();
+  const { guardIntent } = usePlaceContext();
   const [runPending, startRun] = useTransition();
   const [ranMode, setRanMode] = useState<ReenrichMode | null>(null);
   const [runError, setRunError] = useState<string | null>(null);

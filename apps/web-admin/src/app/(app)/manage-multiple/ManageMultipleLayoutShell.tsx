@@ -9,7 +9,7 @@ const SUBPAGE_DESCRIPTION: Record<string, string> = {
   "/manage-multiple/search":
     "Run many Google Places text searches at once and export Place IDs for bulk create.",
   "/manage-multiple/create":
-    "Create many units from Google Place IDs — same pipeline as single create, with progress per row.",
+    "Create many places from Google Place IDs — same pipeline as single create, with progress per row.",
   "/manage-multiple/enrich":
     "Re-run the Enricher over many places — paste project IDs, pick a mode, see spend before you queue.",
 };
@@ -29,9 +29,9 @@ export function ManageMultipleLayoutShell({
 
   return (
     <>
-      <PageHeader title="Manage Multiple Units" description={description} />
+      <PageHeader title="Manage Multiple Places" description={description} />
       <ConfigTabNav
-        ariaLabel="Manage Multiple Units"
+        ariaLabel="Manage Multiple Places"
         subroutes={MULTIPLE_SUBROUTES}
       />
       <div className="mt-6 sm:mt-8">{children}</div>

@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { ChevronDown, Loader2 } from "lucide-react";
 import { listPlaceTagCatalog, type PlaceCategoryOption } from "./actions";
 
-// Atlas category picker for Manage Single Unit Basics (MESITA-469).
+// Atlas category picker for Manage Single Place Basics (MESITA-469).
 // Catalog from admin-web-get-atlas-fields — same source Atlas Config / tags use.
 
 const INPUT_BASE =

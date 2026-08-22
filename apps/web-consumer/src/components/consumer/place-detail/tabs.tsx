@@ -5,7 +5,7 @@ import { cn } from "@/lib/utils";
 export type PlaceTab = "place" | "reviews" | "products" | "rewards";
 
 const PLACE_TABS: Array<{ key: PlaceTab; label: string }> = [
-  { key: "place", label: "Place" },
+  { key: "place", label: "Overview" },
   { key: "reviews", label: "Reviews" },
   { key: "products", label: "Products" },
   { key: "rewards", label: "Rewards" },

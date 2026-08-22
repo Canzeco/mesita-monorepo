@@ -13,7 +13,7 @@
 //
 // The third "Talk to us" option is now a direct wa.me deep-link to
 // Mesita ops — no EF round-trip, no admin queue row. See the WhatsApp
-// constant in CreateUnitForm. The legacy business-web-request-manual-review
+// constant in CreatePlaceForm. The legacy business-web-request-manual-review
 // EF still exists server-side for historical rows but is no longer
 // wrapped here.
 //

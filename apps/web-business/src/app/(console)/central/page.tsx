@@ -11,7 +11,7 @@ import {
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { createServerSupabase } from "@/lib/supabase/server";
-import { getUnitOverview } from "@/lib/api/unit";
+import { getPlaceOverview } from "@/lib/api/place";
 import {
   apiGetBusinessProfile,
   type BusinessProfile,
@@ -36,9 +36,9 @@ export default async function CentralPage() {
   }
   if (!profile?.full_name) redirect("/onboard");
 
-  let overview: Awaited<ReturnType<typeof getUnitOverview>> | null = null;
+  let overview: Awaited<ReturnType<typeof getPlaceOverview>> | null = null;
   try {
-    overview = await getUnitOverview(supabase, null);
+    overview = await getPlaceOverview(supabase, null);
   } catch (err) {
     console.error("[central] business-web-get-overview:", errMsg(err, ""));
   }

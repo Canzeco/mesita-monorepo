@@ -65,7 +65,7 @@ export function AdminSection({ place }: { place: AdminPlace }) {
         verification={verification}
         verificationError={verificationError}
       />
-      {/* key remounts the loader when the operator switches units. */}
+      {/* key remounts the loader when the operator switches places. */}
       <EnrichmentCard key={`enrich-${place.id}`} place={place} />
       <EmbeddingCard place={place} />
       <MetaCard

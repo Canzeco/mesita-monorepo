@@ -7,27 +7,27 @@ import {
 export const BUSINESS_ROUTES = {
   central: "/central",
   // Account-level settings (billing, sign-out) — distinct from the per-place
-  // Settings tab, which is `unit/<id>/settings`.
+  // Settings tab, which is `place/<id>/settings`.
   settings: "/settings",
   add: "/add",
   onboard: "/onboard",
 } as const;
 
-type UnitSection = "performance" | "settings";
+type PlaceSection = "performance" | "settings";
 
 export function placePath(
   projectId: string,
   tab: PlaceSubTab = "preview",
 ): string {
-  return `/unit/${projectId}/place/${tab}`;
+  return `/place/${projectId}/place/${tab}`;
 }
 
 export function promosPath(projectId: string): string {
-  return `/unit/${projectId}/promos`;
+  return `/place/${projectId}/promos`;
 }
 
-function unitSectionPath(projectId: string, section: UnitSection): string {
-  return `/unit/${projectId}/${section}`;
+function placeSectionPath(projectId: string, section: PlaceSection): string {
+  return `/place/${projectId}/${section}`;
 }
 
 export function resolvePlaceTab(
@@ -39,23 +39,23 @@ export function resolvePlaceTab(
   return null;
 }
 
-export function pathnameUnitId(pathname: string): string | null {
-  return pathname.match(/^\/unit\/([^/]+)/)?.[1] ?? null;
+export function pathnamePlaceId(pathname: string): string | null {
+  return pathname.match(/^\/place\/([^/]+)/)?.[1] ?? null;
 }
 
 export function dockHrefForSection(
   section: "place" | "promos" | "performance" | "settings",
-  activeUnitId: string | null,
+  activePlaceId: string | null,
 ): string {
   if (section === "place") return BUSINESS_ROUTES.central;
-  if (!activeUnitId) return BUSINESS_ROUTES.add;
-  if (section === "promos") return promosPath(activeUnitId);
-  return unitSectionPath(activeUnitId, section);
+  if (!activePlaceId) return BUSINESS_ROUTES.add;
+  if (section === "promos") return promosPath(activePlaceId);
+  return placeSectionPath(activePlaceId, section);
 }
 
 export function placeSwitchHref(projectId: string, pathname: string): string {
   const placeTab = pathname.match(/\/place\/([^/]+)/)?.[1];
-  const section = pathname.match(/^\/unit\/[^/]+\/([^/]+)/)?.[1];
+  const section = pathname.match(/^\/place\/[^/]+\/([^/]+)/)?.[1];
 
   if (section === "place") {
     return placePath(projectId, resolvePlaceSubTab(placeTab ?? null));
@@ -65,9 +65,9 @@ export function placeSwitchHref(projectId: string, pathname: string): string {
   }
   if (section === "performance" || section === "reservations") {
     // MESITA-900 — old /reservations URLs land on Performance.
-    return unitSectionPath(projectId, "performance");
+    return placeSectionPath(projectId, "performance");
   }
-  if (section === "settings") return unitSectionPath(projectId, "settings");
+  if (section === "settings") return placeSectionPath(projectId, "settings");
   // The retired check surface (scan/tickets) and the old standalone team tab
   // all land back on the place when you switch places.
   return placePath(projectId);

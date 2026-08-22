@@ -9,7 +9,7 @@ import { PerformanceHeadline } from "../../sections/PerformanceHeadline";
 import { ReputationStrip } from "../../sections/ReputationStrip";
 import { ReservationsList } from "../../sections/ReservationsList";
 import { Spinner } from "../../ui";
-import { useUnitPlace } from "../../UnitPlaceContext";
+import { usePlaceContext } from "../../PlaceContext";
 
 // Per-place Performance (MESITA-900 — Reservations back inside this tab):
 //
@@ -24,7 +24,7 @@ import { useUnitPlace } from "../../UnitPlaceContext";
 // `nav.ts`. The chrome renders it disabled and this route serves the
 // placeholder below — the feed underneath is untouched, so flipping
 // `soon: false` in nav.ts brings it all back.
-export default function UnitPerformancePage() {
+export default function PlacePerformancePage() {
   if (isSectionSoon("performance")) return <PerformanceSoon />;
   return <PerformanceFeed />;
 }
@@ -54,7 +54,7 @@ function PerformanceSoon() {
 
 /** The live feed — parked behind the Soon gate above, not deleted. */
 function PerformanceFeed() {
-  const { place } = useUnitPlace();
+  const { place } = usePlaceContext();
   const [activity, setActivity] = useState<PlaceActivity | null>(null);
   const [activityError, setActivityError] = useState<string | null>(null);
 

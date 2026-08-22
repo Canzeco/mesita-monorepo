@@ -1,6 +1,6 @@
-import { UnitEditShell } from "../UnitEditShell";
+import { PlaceEditShell } from "../PlaceEditShell";
 
-export default async function ManageSingleUnitLayout({
+export default async function ManageSinglePlaceLayout({
   children,
   params,
 }: {
@@ -8,5 +8,5 @@ export default async function ManageSingleUnitLayout({
   params: Promise<{ projectId: string }>;
 }) {
   const { projectId } = await params;
-  return <UnitEditShell projectId={projectId}>{children}</UnitEditShell>;
+  return <PlaceEditShell projectId={projectId}>{children}</PlaceEditShell>;
 }

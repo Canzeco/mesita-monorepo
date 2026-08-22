@@ -2,11 +2,11 @@
 
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
-import { useUnitPlace } from "./UnitPlaceContext";
+import { usePlaceContext } from "./PlaceContext";
 
 // Thin re-export shim — implementation lives in `@/components/admin-ui/manage`.
 // Prefer importing from `@/components/admin-ui` (or `/manage`) in new code.
-// CrossTabLink stays here: it needs UnitPlaceContext (route-local).
+// CrossTabLink stays here: it needs PlaceContext (route-local).
 
 export {
   SectionCard,
@@ -24,7 +24,7 @@ export {
   type Tint,
 } from "@/components/admin-ui/manage";
 
-/** Link out to another unit tab, routed through the discard guard. */
+/** Link out to another place tab, routed through the discard guard. */
 export function CrossTabLink({
   href,
   children,
@@ -34,7 +34,7 @@ export function CrossTabLink({
   children: React.ReactNode;
   className?: string;
 }) {
-  const { guardNav } = useUnitPlace();
+  const { guardNav } = usePlaceContext();
   return (
     <Link
       href={href}

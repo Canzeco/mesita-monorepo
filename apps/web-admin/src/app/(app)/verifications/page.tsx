@@ -11,8 +11,8 @@ export default async function VerificationsPage() {
   return (
     <PageContainer>
       <PageHeader
-        eyebrow="Units · Verification queue"
-        title="Unit verification requests"
+        eyebrow="Places · Verification queue"
+        title="Place verification requests"
         description="Claims that need a human decision. Auto-confirm policy lives under Configs → Verification Config — when auto-confirm is on for a method, successful proofs never land here."
       />
       {!result.ok ? (
