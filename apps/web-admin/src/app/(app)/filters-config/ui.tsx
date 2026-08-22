@@ -16,14 +16,6 @@ export function StagedBadge() {
   );
 }
 
-/** A consumer surface that is itself parked — the knobs are doubly inert. */
-export function ParkedBadge() {
-  return (
-    <span className="border-border bg-muted text-muted-foreground rounded-full border px-2 py-0.5 text-[10px] font-semibold tracking-wide uppercase">
-      Surface parked
-    </span>
-  );
-}
 
 /**
  * A surface that renders places but carries no Filters trigger at all — a
@@ -142,7 +134,8 @@ export function KnobRow({
   trailing,
 }: {
   label: string;
-  blurb: string;
+  /** Optional — a module is DEFINED once, on Signals. Engines just set it. */
+  blurb?: string;
   control: React.ReactNode;
   /** Optional resolved-value caption under the control. */
   trailing?: React.ReactNode;
@@ -151,9 +144,11 @@ export function KnobRow({
     <div className="border-border bg-background flex flex-col gap-3 rounded-xl border p-4 sm:flex-row sm:items-start sm:gap-4">
       <div className="min-w-0 flex-1">
         <p className="text-sm font-semibold">{label}</p>
-        <p className="text-muted-foreground mt-1 text-xs leading-relaxed">
-          {blurb}
-        </p>
+        {blurb ? (
+          <p className="text-muted-foreground mt-1 text-xs leading-relaxed">
+            {blurb}
+          </p>
+        ) : null}
       </div>
       <div className="shrink-0 sm:w-64">
         {control}

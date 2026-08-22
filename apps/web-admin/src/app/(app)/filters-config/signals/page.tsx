@@ -1,16 +1,16 @@
 import { getFiltersConfig } from "../actions";
-import { SurfaceConfigClient } from "../SurfaceConfigClient";
+import { GeneralConfigClient } from "../GeneralConfigClient";
 import { DEFAULT_FILTERS } from "../filters";
 
-// Filters Config · Social — one consumer surface. Same server-seed contract as
-// General: a failed GET becomes loadError and Save stays blocked (MESITA-737).
+// Discovery › Signals — the six modules a guest can express, and the law each
+// engine inherits. Server-seeds so a failed GET becomes loadError and Save
+// stays blocked (MESITA-737).
 export const dynamic = "force-dynamic";
 
-export default async function FiltersSocialPage() {
+export default async function DiscoverySignalsPage() {
   const res = await getFiltersConfig();
   return (
-    <SurfaceConfigClient
-      surfaceKey="social"
+    <GeneralConfigClient
       initialConfig={res.ok ? res.config : DEFAULT_FILTERS}
       initialUpdatedAt={res.ok ? res.updatedAt : null}
       initialSeeded={res.ok ? res.seeded : false}

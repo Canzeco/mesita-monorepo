@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 
-// Filters Config parent route → default to General, the tab that carries the
-// law the six surface tabs inherit.
-export default function FiltersConfigIndex() {
-  redirect("/filters-config/general");
+// Discovery has two pages; Signals is the one that defines what the other
+// inherits, so it is the landing.
+export default function DiscoveryIndex() {
+  redirect("/filters-config/signals");
 }

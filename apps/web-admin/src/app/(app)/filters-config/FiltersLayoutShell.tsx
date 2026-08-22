@@ -4,7 +4,6 @@ import { usePathname } from "next/navigation";
 import { PageHeader } from "@/components/PageContainer";
 import { ConfigTabNav } from "@/components/ConfigTabNav";
 import { FILTERS_SUBROUTES } from "./nav";
-import { SURFACE_META, type SurfaceKey } from "./filters";
 
 // Discovery shell — the header + the tab strip. Mirrors the Promos / Memo /
 // Enricher shells; the description switches per active tab so the header always
@@ -14,19 +13,20 @@ import { SURFACE_META, type SurfaceKey } from "./filters";
 // its section heading, and the section is Configurations (web-admin rules). The
 // eyebrow carries the section instead — the same shape Manage › Database uses.
 
-const GENERAL_DESCRIPTION =
-  "The law every consumer filter surface inherits: which of the six modules exist, what the sheet opens on, the bounds it may not exceed, and how the store behaves.";
+// One line each. Two pages, two sentences — the surface-by-surface prose that
+// used to live here went with the seven tabs.
+const DESCRIPTIONS: Record<string, string> = {
+  "/filters-config/signals":
+    "The six things a guest can ask for, and the law every engine inherits.",
+  "/filters-config/engines":
+    "The surfaces that answer with places.",
+};
 
 function describe(pathname: string): string {
   const match = FILTERS_SUBROUTES.find(
     (r) => pathname === r.href || pathname.startsWith(`${r.href}/`),
   );
-  if (!match || match.href === "/filters-config/general") {
-    return GENERAL_DESCRIPTION;
-  }
-  const key = match.href.split("/").pop() as SurfaceKey;
-  const meta = SURFACE_META[key];
-  return meta ? meta.blurb : GENERAL_DESCRIPTION;
+  return DESCRIPTIONS[match?.href ?? ""] ?? DESCRIPTIONS["/filters-config/signals"];
 }
 
 export function FiltersLayoutShell({
