@@ -38,6 +38,17 @@ export function isPlaceSeeded(googlePlaceId: unknown): boolean {
  * The content_status leg is a TAUTOLOGY — those are all four labels of the
  * enum — so `status` alone decides, and only `status` is checked here.
  *
+ * CONFIRMED against the live DB 2026-08-22 (MESITA-1199), and it rests on two
+ * facts that are NOT self-evident from this file:
+ *   • content_status has exactly the labels {queued, generating, ready, failed}
+ *   • the column is NOT NULL, default 'queued'
+ * Both matter. Nullability is not decoration here: `col = ANY(...)` yields NULL
+ * rather than true for a NULL column, so a nullable content_status would make
+ * the leg load-bearing again and this function wrong in the unsafe direction.
+ * ADDING A LABEL TO content_status SILENTLY BREAKS THIS — the policy would then
+ * exclude rows that `status` alone still calls listed. If you add one, either
+ * add it to the policy or check content_status here.
+ *
  * Not to be confused with `listing_type`, which is a commercial tier, nor with
  * the discovery pool: _shared/place-pool.ts is stricter still (status='active'
  * only), so a `lead` place is reachable by link and search but never pooled for

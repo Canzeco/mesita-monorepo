@@ -271,16 +271,18 @@ export function PlaceSelectCatalog() {
         {hits.length > 0 ? (
           <div className="border-border bg-card mt-4 overflow-hidden rounded-xl border">
             <div className="-mx-0 overflow-x-auto">
-              {/* The row IS the pipeline, left to right: seeded → enriched →
+              {/* The row IS the pipeline, left to right: seeded → listed →
+                  enriched →
                   verified → partner → promoting (MESITA-1166). Category, Zone
                   and Google reviews are gone — they describe the place, and
                   this table answers "how far along is it". */}
-              <table className="w-full min-w-[760px] border-separate border-spacing-0 text-sm">
+              <table className="w-full min-w-[840px] border-separate border-spacing-0 text-sm">
                 <thead>
                   <tr className="text-muted-foreground bg-muted/30 text-left text-[11px] font-semibold tracking-[0.08em] uppercase">
                     <th className="w-14 px-3 py-2.5 font-semibold">Photo</th>
                     <th className="px-3 py-2.5 font-semibold">Name</th>
                     <th className="px-3 py-2.5 text-center font-semibold">Seeded</th>
+                    <th className="px-3 py-2.5 text-center font-semibold">Listed</th>
                     <th className="px-3 py-2.5 text-center font-semibold">Enriched</th>
                     <th className="px-3 py-2.5 text-center font-semibold">Verified</th>
                     <th className="px-3 py-2.5 text-center font-semibold">Partner</th>
@@ -473,6 +475,7 @@ function PlaceCatalogRow({
       </td>
       <td className="px-3 py-2.5 text-center">
         <BoolCell value={place.seeded} trueLabel="Yes" falseLabel="No" />
+        <BoolCell value={place.listed} trueLabel="Yes" falseLabel="No" />
       </td>
       <td className="px-3 py-2.5 text-center">
         <LevelCell level={place.enrich_level} />
