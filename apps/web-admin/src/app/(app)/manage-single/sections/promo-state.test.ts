@@ -175,8 +175,11 @@ describe("giveLevel — the card's number and meter", () => {
       p10: 0,
       p90: 0,
     });
-    expect(giveLevel(DEFAULT_PROMOS, "aggressive").dots).toBe(METER_SEGMENTS);
-    expect(giveLevel(DEFAULT_PROMOS, "conservative").dots).toBe(2);
+    // The rail is relative to the most generous posture, so Dominant fills it
+    // and everything below it reads as a fraction of Dominant.
+    expect(giveLevel(DEFAULT_PROMOS, "dominant").dots).toBe(METER_SEGMENTS);
+    expect(giveLevel(DEFAULT_PROMOS, "aggressive").dots).toBe(2);
+    expect(giveLevel(DEFAULT_PROMOS, "conservative").dots).toBe(1);
   });
 
   it("quotes the EXPECTED rate, not a matrix extreme (MESITA-1001)", () => {
@@ -231,9 +234,14 @@ describe("giveLevel — the card's number and meter", () => {
     for (const cls of CLASS_KEYS) {
       off.visits.base.conservative[cls] = { free: 0, premium: 0 };
       off.visits.base.aggressive[cls] = { free: 0, premium: 0 };
+      off.visits.base.dominant[cls] = { free: 0, premium: 0 };
     }
     const zeroed = { welcome: 0, mesita: 0, story: 0, google: 0 };
-    off.visits.bonuses = { conservative: zeroed, aggressive: { ...zeroed } };
+    off.visits.bonuses = {
+      conservative: zeroed,
+      aggressive: { ...zeroed },
+      dominant: { ...zeroed },
+    };
     expect(giveLevel(off, "aggressive").dots).toBe(0);
   });
 });
@@ -470,7 +478,12 @@ describe("strategyForPlace contract (locks the documented trap)", () => {
     expect(strategyForPlace({ ...paid.rates, premium_rate: 33 })).toBe(null);
   });
 
-  it("leftover Dominant rates (40/50/20/30) display as Aggressive (MESITA-993)", () => {
+  // The inverse of the MESITA-993 trap this used to lock. Dominant was
+  // restored 2026-08-21 on the SAME tuple it was retired with, so a place that
+  // outlived the retirement resolves to the strategy it always ran instead of
+  // being displayed as Aggressive. Both coercions — here and in the EF's
+  // placeStrategy — were deleted rather than inverted.
+  it("Dominant rates (40/50/20/30) resolve to Dominant, not Aggressive", () => {
     expect(
       strategyForPlace({
         welcome_free_rate: 40,
@@ -478,6 +491,6 @@ describe("strategyForPlace contract (locks the documented trap)", () => {
         free_rate: 20,
         premium_rate: 30,
       }),
-    ).toBe("aggressive");
+    ).toBe("dominant");
   });
 });

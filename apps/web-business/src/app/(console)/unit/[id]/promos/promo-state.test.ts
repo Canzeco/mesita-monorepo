@@ -90,7 +90,12 @@ describe("strategyForPlace contract (locks the documented trap)", () => {
     expect(strategyForPlace({ ...paid.rates, premium_rate: 33 })).toBe(null);
   });
 
-  it("leftover Dominant rates (40/50/20/30) display as Aggressive (MESITA-993)", () => {
+  // The inverse of the MESITA-993 trap. Dominant was restored 2026-08-21 on
+  // the SAME tuple it was retired with, so these rows resolve to the strategy
+  // they always ran. Critically, this console WRITES what it resolves — had
+  // the coercion stayed, a Dominant place would have been downgraded to
+  // Aggressive rates by its own next save.
+  it("Dominant rates (40/50/20/30) resolve to Dominant, not Aggressive", () => {
     expect(
       strategyForPlace({
         welcome_free_rate: 40,
@@ -98,7 +103,7 @@ describe("strategyForPlace contract (locks the documented trap)", () => {
         free_rate: 20,
         premium_rate: 30,
       }),
-    ).toBe("aggressive");
+    ).toBe("dominant");
   });
 });
 

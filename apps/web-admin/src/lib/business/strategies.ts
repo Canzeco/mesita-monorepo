@@ -33,10 +33,10 @@ export type DiscountCapMxn = (typeof DISCOUNT_CAPS_MXN)[number];
 /** Default when a place leaves Zero or has no cap yet. */
 export const DEFAULT_DISCOUNT_CAP_MXN: DiscountCapMxn = 500;
 
-export type StrategyId = "zero" | "conservative" | "aggressive";
+export type StrategyId = "zero" | "conservative" | "aggressive" | "dominant";
 
 // Three rungs — Aggressive is the peak.
-export type StrategyVisibility = "Low" | "Mid" | "High";
+export type StrategyVisibility = "Low" | "Mid" | "High" | "Max";
 
 // The four discount cells, keyed by the exact projects column each maps to.
 //   welcome_* → first visit at the place · unprefixed → every visit after.
@@ -110,6 +110,29 @@ export const STRATEGIES: readonly Strategy[] = [
       premium_rate: 30,
     },
   },
+  {
+    id: "dominant",
+    name: "Dominant",
+    nameEs: "Dominante",
+    emoji: "👑",
+    // The ceiling is 50 and Aggressive already reaches it on welcome·premium,
+    // so Dominant cannot outbid it at the top. What it does instead is lift
+    // the FLOOR: a returning Free guest doubles, 10 → 20, and a first-time
+    // Free guest goes 30 → 40. Everyone gets close to the best rate rather
+    // than only the best guests getting it.
+    //
+    // These are EXACTLY the rates Dominant was retired with on 2026-08-09, so
+    // any place still carrying them resurrects as Dominant instead of being
+    // coerced to Aggressive — which is why that coercion could be deleted.
+    tagline: "The floor lifted — nearly the top rate for everyone.",
+    visibility: "Max",
+    rates: {
+      welcome_free_rate: 40,
+      welcome_premium_rate: 50,
+      free_rate: 20,
+      premium_rate: 30,
+    },
+  },
 ];
 
 export const STRATEGY_BY_ID = Object.fromEntries(
@@ -121,6 +144,7 @@ export const STRATEGY_VISIBILITY_LADDER: readonly StrategyVisibility[] = [
   "Low",
   "Mid",
   "High",
+  "Max",
 ];
 
 /** Snap any number onto the legal discount-cap ladder (nearest option). */

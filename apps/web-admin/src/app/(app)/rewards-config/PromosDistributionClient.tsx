@@ -38,6 +38,7 @@ import {
 const STRATEGY_RAMP: Record<StrategyKey, [string, string, string]> = {
   conservative: ["#3E63DD", "#7C96EB", "#B6C4F4"],
   aggressive: ["#CE4444", "#E08383", "#F2C0C0"],
+  dominant: ["#8347B9", "#AC7FD1", "#D5BCE8"],
 };
 
 const BONUS_SEGMENT_LABEL = ["Base only", "+1 bonus", "+2 or more"] as const;

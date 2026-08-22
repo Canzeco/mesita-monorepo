@@ -17,7 +17,7 @@
 // back to defaults, every rate snaps to the 5% grid. The only hard error is a
 // non-object body. A stored v10 blob MIGRATES rather than resetting.
 
-const STRATEGY_KEYS = ["conservative", "aggressive"] as const;
+const STRATEGY_KEYS = ["conservative", "aggressive", "dominant"] as const;
 type StrategyKey = (typeof STRATEGY_KEYS)[number];
 
 const CLASS_KEYS = ["bronze", "silver", "gold", "diamond"] as const;
@@ -155,20 +155,32 @@ export const DEFAULT_PROMOS_V11: PromosConfigV11 = {
         gold: { free: 40, premium: 60 },
         diamond: { free: 50, premium: 70 },
       },
+      // Additive by construction: floor 40, class steps 0/5/10/15, one plan
+      // step of 15. Must stay byte-identical to the admin twin in
+      // rewards-config/promos.ts — they are checked against each other.
+      dominant: {
+        bronze: { free: 40, premium: 55 },
+        silver: { free: 45, premium: 60 },
+        gold: { free: 50, premium: 65 },
+        diamond: { free: 55, premium: 70 },
+      },
     },
     bonuses: {
       conservative: { welcome: 10, mesita: 5, story: 10, google: 15 },
       aggressive: { welcome: 10, mesita: 5, story: 10, google: 15 },
+      dominant: { welcome: 10, mesita: 10, story: 10, google: 15 },
     },
   },
   orders: {
     base: {
       conservative: { free: 5, premium: 10 },
       aggressive: { free: 10, premium: 15 },
+      dominant: { free: 15, premium: 20 },
     },
     bonuses: {
       conservative: { welcome: 5, mesita: 5, story: 5, google: 10 },
       aggressive: { welcome: 5, mesita: 5, story: 5, google: 10 },
+      dominant: { welcome: 10, mesita: 10, story: 10, google: 15 },
     },
     soon: true,
   },

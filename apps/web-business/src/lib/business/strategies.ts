@@ -33,10 +33,10 @@ export type DiscountCapMxn = (typeof DISCOUNT_CAPS_MXN)[number];
 /** Default when a place leaves Zero or has no cap yet. */
 export const DEFAULT_DISCOUNT_CAP_MXN: DiscountCapMxn = 500;
 
-export type StrategyId = "zero" | "conservative" | "aggressive";
+export type StrategyId = "zero" | "conservative" | "aggressive" | "dominant";
 
-// Three rungs — Aggressive is the peak.
-export type StrategyVisibility = "Low" | "Mid" | "High";
+// Four rungs — Dominant is the peak (restored 2026-08-21).
+export type StrategyVisibility = "Low" | "Mid" | "High" | "Max";
 
 // The four discount cells, keyed by the exact projects column each maps to.
 //   welcome_* → first visit at the place · unprefixed → every visit after.
@@ -65,8 +65,11 @@ export type Strategy = {
 //   ⭕ Zero        off off off off   Low
 //   🌿 Conservative 10  20  20  30   Mid
 //   ⚡ Aggressive   10  30  30  50   High
+//   👑 Dominant     20  30  40  50   Max
 //
-// Aggressive is Conservative stretched on the Premium/Welcome side.
+// Aggressive is Conservative stretched on the Premium/Welcome side; Dominant
+// lifts the two FREE cells the others hold back, so it buys reach among guests
+// who pay Mesita nothing rather than paying Premium guests even more.
 export const STRATEGIES: readonly Strategy[] = [
   {
     id: "zero",
@@ -110,6 +113,20 @@ export const STRATEGIES: readonly Strategy[] = [
       premium_rate: 30,
     },
   },
+  {
+    id: "dominant",
+    name: "Dominant",
+    nameEs: "Dominante",
+    emoji: "👑",
+    tagline: "Every guest, every visit — the loudest offer on Mesita.",
+    visibility: "Max",
+    rates: {
+      welcome_free_rate: 40,
+      welcome_premium_rate: 50,
+      free_rate: 20,
+      premium_rate: 30,
+    },
+  },
 ];
 
 export const STRATEGY_BY_ID = Object.fromEntries(
@@ -121,6 +138,7 @@ export const STRATEGY_VISIBILITY_LADDER: readonly StrategyVisibility[] = [
   "Low",
   "Mid",
   "High",
+  "Max",
 ];
 
 /** Snap any number onto the legal discount-cap ladder (nearest option). */
@@ -136,17 +154,6 @@ export function snapDiscountCap(v: unknown): DiscountCapMxn {
 }
 
 
-/** Retired Dominant rate tuple (pre-2026-08-09). Migration remapped live rows
- * to Aggressive; this catch stays so any leftover row displays/pays as
- * Aggressive rather than falling through to the null/custom → Zero path
- * (MESITA-993 / engine D5). */
-export const RETIRED_DOMINANT_RATES: StrategyRates = {
-  welcome_free_rate: 40,
-  welcome_premium_rate: 50,
-  free_rate: 20,
-  premium_rate: 30,
-};
-
 function ratesMatch(a: StrategyRates, b: StrategyRates): boolean {
   return (
     a.welcome_free_rate === b.welcome_free_rate &&
@@ -158,14 +165,16 @@ function ratesMatch(a: StrategyRates, b: StrategyRates): boolean {
 
 // Which strategy a place's stored rates currently reflect. Matched on the four
 // rate columns (cap is independent, not part of identity). Returns null when
-// the rates match no preset (e.g. a retired 70) — so the UI shows a
-// neutral "custom" state. Leftover Dominant (40/50/20/30) coerces to
-// Aggressive (MESITA-993).
+// the rates match no preset (e.g. a retired 70) — so the UI shows a neutral
+// "custom" state.
 // A fresh place (all nulls) matches Zero, which is correct.
+//
+// Dominant was restored 2026-08-21 on the SAME tuple it was retired with, so
+// the MESITA-993 coercion that displayed leftover Dominant rows as Aggressive
+// was DELETED rather than inverted: those rows now resolve to the strategy
+// they were always running. Leaving it would have been the expensive bug —
+// this console WRITES what it resolves, so a Dominant place opening it would
+// have been silently downgraded to Aggressive rates on the next save.
 export function strategyForPlace(rates: StrategyRates): StrategyId | null {
-  const match = STRATEGIES.find((s) => ratesMatch(s.rates, rates));
-  if (match) return match.id;
-  // D5 / MESITA-993: leftover Dominant rates display as Aggressive.
-  if (ratesMatch(rates, RETIRED_DOMINANT_RATES)) return "aggressive";
-  return null;
+  return STRATEGIES.find((s) => ratesMatch(s.rates, rates))?.id ?? null;
 }

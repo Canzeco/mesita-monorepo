@@ -34,7 +34,7 @@ import {
   snapDiscountCap,
 } from "@/lib/business/strategies";
 
-export type StrategyKey = "conservative" | "aggressive";
+export type StrategyKey = "conservative" | "aggressive" | "dominant";
 /** Who you are. Never purchasable, always public (it prints on the Passport). */
 export type ClassKey = "bronze" | "silver" | "gold" | "diamond";
 /** What you pay. Private — never printed, never leaves the server. */
@@ -82,6 +82,7 @@ export type PromosConfig = {
 export const STRATEGY_KEYS: readonly StrategyKey[] = [
   "conservative",
   "aggressive",
+  "dominant",
 ];
 // Worst → best. The ladder a guest climbs; rates must rise with it.
 export const CLASS_KEYS: readonly ClassKey[] = [
@@ -120,6 +121,11 @@ export const STRATEGY_META: Record<
     name: "Aggressive",
     emoji: "⚡",
     blurb: "Bold headlines to pull a crowd.",
+  },
+  dominant: {
+    name: "Dominant",
+    emoji: "👑",
+    blurb: "Nearly the top rate for everyone, not just the best guests.",
   },
 };
 
@@ -264,20 +270,45 @@ export const DEFAULT_PROMOS: PromosConfig = {
         gold: { free: 40, premium: 60 },
         diamond: { free: 50, premium: 70 },
       },
+      // Dominant lifts the FLOOR, because it cannot lift the ceiling:
+      // Aggressive already pays 70 at diamond·premium, and RATE_MAX is 70.
+      // So the strategy is not "pay your best guests more" — they are already
+      // capped — it is "pay everyone close to the top". A Bronze Free guest
+      // goes 20 → 40; the whole ladder compresses upward into a narrow band.
+      //
+      // Additive by construction (additivityError blocks Save otherwise):
+      // floor 40, class steps 0/5/10/15, one plan step of 15 for every class.
+      // Strictly above Aggressive in seven of eight cells; the eighth is the
+      // system's maximum, where nothing can be above anything.
+      dominant: {
+        bronze: { free: 40, premium: 55 },
+        silver: { free: 45, premium: 60 },
+        gold: { free: 50, premium: 65 },
+        diamond: { free: 55, premium: 70 },
+      },
     },
     bonuses: {
       conservative: { welcome: 10, mesita: 5, story: 10, google: 15 },
       aggressive: { welcome: 10, mesita: 5, story: 10, google: 15 },
+      // Google still has to out-pay the repeatable Story (modelWarnings
+      // enforces it: a Story a guest can post nightly must never beat a
+      // one-shot review, or the program buys stories). Google is already at
+      // the 15 the 95% worst case allows, so Story cannot rise past 10 and
+      // Dominant's edge lives in its base floor, not here. Mesita review is
+      // the one bonus with room: it is the review Mesita owns.
+      dominant: { welcome: 10, mesita: 10, story: 10, google: 15 },
     },
   },
   orders: {
     base: {
       conservative: { free: 5, premium: 10 },
       aggressive: { free: 10, premium: 15 },
+      dominant: { free: 15, premium: 20 },
     },
     bonuses: {
       conservative: { welcome: 5, mesita: 5, story: 5, google: 10 },
       aggressive: { welcome: 5, mesita: 5, story: 5, google: 10 },
+      dominant: { welcome: 10, mesita: 10, story: 10, google: 15 },
     },
     soon: true,
   },
