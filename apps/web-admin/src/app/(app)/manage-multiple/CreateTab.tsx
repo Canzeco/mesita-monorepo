@@ -25,8 +25,18 @@ type RowStatus =
     }
   | { status: "error"; error: string };
 
-export function CreateTab() {
-  const [text, setText] = useState("");
+// The textarea is CONTROLLED by the page (MESITA-1203): step 1's results push
+// Place IDs straight in, so the operator no longer copies them across a tab
+// boundary. Everything else — per-row results, the running flag — stays local,
+// because nothing outside this step has any use for it.
+export function CreateTab({
+  text,
+  onTextChange,
+}: {
+  text: string;
+  onTextChange: (next: string) => void;
+}) {
+  const setText = onTextChange;
   const [results, setResults] = useState<Record<string, RowStatus>>({});
   const [running, setRunning] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -56,7 +66,7 @@ export function CreateTab() {
     const file = e.target.files?.[0];
     if (!file) return;
     const content = await file.text();
-    setText((prev) => (prev ? `${prev}\n${content}` : content));
+    setText(text ? `${text}\n${content}` : content);
     if (fileRef.current) fileRef.current.value = "";
   }
 
