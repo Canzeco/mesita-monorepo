@@ -24,6 +24,8 @@ import {
   isPlaceListed,
   isPlaceSeeded,
   placeEnrichLevel,
+  placeEnrichProgress,
+  type SubprocessEvent,
 } from "../_shared/place-pulse.ts";
 
 type Body = { query?: unknown; limit?: unknown };
@@ -126,8 +128,13 @@ Deno.serve(async (req) => {
 
   const research = new Map<string, { stage: string; gathered: boolean; analysis: boolean }>();
   const verified = new Set<string>();
+  // Per-subprocess events (MESITA-1200) — how far a place got, as a fraction of
+  // what its runs actually bought. The RPC returns only the latest event per
+  // (place, subprocess); placeEnrichProgress still owns the counting rules,
+  // which is where they are unit-tested.
+  const events = new Map<string, SubprocessEvent[]>();
   if (ids.length > 0) {
-    const [researchRes, verificationRes] = await Promise.all([
+    const [researchRes, verificationRes, eventsRes] = await Promise.all([
       // Via the RPC, not the table: `gathered`/`analysis` are the Enricher's
       // full payloads (tens of KB of jsonb EACH), and all this needs is
       // whether they landed. Selecting the columns shipped megabytes out of
@@ -140,6 +147,12 @@ Deno.serve(async (req) => {
         .select("project_id")
         .eq("status", "approved")
         .in("project_id", ids),
+      // Via the RPC for the same reason as place_research_facts above: the
+      // events table is an APPEND-ONLY log, so the raw rows grow with every
+      // re-enrich while the fold only ever wants the newest row per
+      // subprocess. distinct on collapses that in Postgres, capping the
+      // transfer at one row per (place, subprocess).
+      admin.rpc("place_enrich_events_latest", { p_place_ids: ids }),
     ]);
     // Best-effort: a flag lookup must never 500 the catalog. A failed read
     // degrades to level 0 / not-verified, which reads as "less done than it
@@ -159,6 +172,22 @@ Deno.serve(async (req) => {
     }
     for (const v of (verificationRes.data ?? []) as Record<string, unknown>[]) {
       verified.add(String(v.project_id));
+    }
+    // Same best-effort posture: no events simply means no progress fraction,
+    // and the row falls back to the coarse stage level.
+    if (eventsRes.error) {
+      console.error("[search-places] place_enrichment_events:", eventsRes.error.message);
+    }
+    for (const e of (eventsRes.data ?? []) as Record<string, unknown>[]) {
+      const key = String(e.place_id);
+      const list = events.get(key);
+      const row: SubprocessEvent = {
+        step_name: e.step_name == null ? null : String(e.step_name),
+        status: e.status == null ? null : String(e.status),
+        created_at: e.created_at == null ? null : String(e.created_at),
+      };
+      if (list) list.push(row);
+      else events.set(key, [row]);
     }
   }
 
@@ -193,6 +222,10 @@ Deno.serve(async (req) => {
       // shared helper but never on this payload, so the catalog table still
       // could not render it. No extra read — `status` is already selected.
       listed: isPlaceListed(v.status),
+      // done/total of the subprocesses THIS place bought. null when it has no
+      // subprocess events yet — the client then renders the 0-3 level instead
+      // of an empty 0/0 meter.
+      enrich_progress: placeEnrichProgress(events.get(id) ?? []),
       enrich_level: level,
       /** Kept for callers that only need "is it done". */
       enriched: level === 3,

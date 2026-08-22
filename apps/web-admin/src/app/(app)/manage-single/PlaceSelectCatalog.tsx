@@ -478,7 +478,7 @@ function PlaceCatalogRow({
         <BoolCell value={place.listed} trueLabel="Yes" falseLabel="No" />
       </td>
       <td className="px-3 py-2.5 text-center">
-        <LevelCell level={place.enrich_level} />
+        <LevelCell level={place.enrich_level} progress={place.enrich_progress} />
       </td>
       <td className="px-3 py-2.5 text-center">
         <BoolCell value={place.verified} trueLabel="Yes" falseLabel="No" />
@@ -496,9 +496,16 @@ function PlaceCatalogRow({
   );
 }
 
-// ENRICHED is the only non-boolean flag: a 0-3 level off the pipeline stage
-// (place_research walks research → analysis → contents → done). The number
-// carries the value; the three ticks make a row scannable without reading it.
+// ENRICHED is the only non-boolean flag.
+//
+// It reads a FRACTION when the place has per-subprocess events (MESITA-1200):
+// how many of the subprocesses its runs actually bought have landed. The
+// denominator is per-place, never a constant 9 — a place with no Instagram
+// never buys `social`, and against a fixed 9 it could never read as finished.
+//
+// It falls back to the old 0-3 stage level for a place whose last run predates
+// per-subprocess reporting, because 0/0 on a fully-enriched place would be a
+// worse lie than a coarse number.
 const LEVEL_TITLE: Record<number, string> = {
   0: "Seeded only — enrichment has never run",
   1: "Research gathered",
@@ -506,32 +513,45 @@ const LEVEL_TITLE: Record<number, string> = {
   3: "Profile persisted",
 };
 
-function LevelCell({ level }: { level: 0 | 1 | 2 | 3 }) {
+/** done/total of what this place bought, or the coarse level when unknown. */
+function LevelCell({
+  level,
+  progress,
+}: {
+  level: 0 | 1 | 2 | 3;
+  progress: { done: number; total: number } | null;
+}) {
+  // total 0 means every subprocess was skipped — nothing was bought, so there
+  // is nothing to be part-way through. The stage level is the better answer.
+  const useProgress = !!progress && progress.total > 0;
+  const done = useProgress ? progress!.done : level;
+  const total = useProgress ? progress!.total : 3;
+  const title = useProgress
+    ? `${progress!.done} of ${progress!.total} bought subprocess(es) complete`
+    : (LEVEL_TITLE[level] ?? `Level ${level}`);
+
   return (
-    <span
-      className="inline-flex items-center gap-1.5"
-      title={LEVEL_TITLE[level] ?? ""}
-    >
+    <span className="inline-flex items-center gap-1.5" title={title}>
       <span
         className={
           "text-[11px] font-semibold tabular-nums " +
-          (level === 0 ? "text-muted-foreground" : "text-foreground")
+          (done === 0 ? "text-muted-foreground" : "text-foreground")
         }
       >
-        {level}
+        {useProgress ? `${done}/${total}` : done}
       </span>
       <span className="flex gap-[2px]" aria-hidden>
-        {[1, 2, 3].map((step) => (
+        {Array.from({ length: total }, (_, i) => i + 1).map((step) => (
           <span
             key={step}
             className={
               "h-1.5 w-1.5 rounded-[1px] " +
-              (level >= step ? "bg-green-600" : "bg-muted-foreground/25")
+              (done >= step ? "bg-green-600" : "bg-muted-foreground/25")
             }
           />
         ))}
       </span>
-      <span className="sr-only">{LEVEL_TITLE[level] ?? `Level ${level}`}</span>
+      <span className="sr-only">{title}</span>
     </span>
   );
 }
