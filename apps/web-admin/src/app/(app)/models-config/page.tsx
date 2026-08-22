@@ -1,11 +1,8 @@
-import { ModelsConfigClient } from "./ModelsConfigClient";
+import { permanentRedirect } from "next/navigation";
 
-// Models Config — the flat provider + model picker per subsystem. The client
-// self-loads the saved blob on mount (admin-web-get-models-config); on load
-// failure it keeps DEFAULTS and a Save surfaces the real error, so the page
-// stays usable either way.
-export const dynamic = "force-dynamic";
-
-export default function ModelsConfigPage() {
-  return <ModelsConfigClient />;
+// Models folded into General (MESITA-1175). The route survives as a redirect:
+// Notion's Configs registry links it, and those links are external and
+// ungreppable.
+export default function ModelsConfigPage(): never {
+  permanentRedirect("/general-config");
 }

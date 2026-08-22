@@ -8,6 +8,7 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   Radar,
+  Settings2,
   ShieldCheck,
   UserRound,
 } from "lucide-react";
@@ -17,14 +18,12 @@ import { BILLING_TEST_PARENT } from "@/app/(app)/billing-test/nav";
 import { DB_PARENT } from "@/app/(app)/manage-database/nav";
 import { ENRICHER_PARENT } from "@/app/(app)/enricher-config/nav";
 import { FILTERS_PARENT } from "@/app/(app)/filters-config/nav";
-import { MODELS_PARENT } from "@/app/(app)/models-config/nav";
 import { OJO_PARENT } from "@/app/(app)/ojo-config/nav";
 import { ORDERS_PARENT } from "@/app/(app)/orders-config/nav";
 import { RESERVATIONS_PARENT } from "@/app/(app)/reservations-config/nav";
 import { VISITS_PARENT } from "@/app/(app)/visits-config/nav";
 import { REWARDS_PARENT } from "@/app/(app)/rewards-config/nav";
 import { SOURCING_PARENT } from "@/app/(app)/sourcing-config/nav";
-import { VERIFICATION_PARENT } from "@/app/(app)/verification-config/nav";
 import {
   parseUnitId,
   TOOL_ROUTES,
@@ -104,15 +103,26 @@ const MANAGE_NAV: NavItem[] = [
 //
 // Memo is NOT a row here: Home › Chat is Memo, so its config lives inside
 // Filters Config › Chat rather than as a sibling of the surface it powers.
-const CONFIGURATIONS_NAV: NavItem[] = [
-  // Label only (Pato, 2026-08-21): the row lists WHO has access, so it is a
-  // plural noun, not a section. Route, actions and EF names stay `admin-config`
-  // / `admin-web-*` — a rename stops at the label.
+// Access — who may enter the console at all. Its own group (Pato, 2026-08-21)
+// because it is not a policy blob: every other Configurations row tunes how
+// the PRODUCT behaves, while this one decides who gets to tune them. It sits
+// below Configurations rather than beside Account: an operator opens it a few
+// times a year, and the rail should lead with what they use daily.
+//
+// Label only: the row lists WHO has access, so it is a plural noun. Route,
+// actions and EF names stay `admin-config` / `admin-web-*` — a rename stops
+// at the label.
+const ACCESS_NAV: NavItem[] = [
   { href: "/admin-config", label: "Admins", Icon: ShieldCheck },
-  MODELS_PARENT,
+];
+
+const CONFIGURATIONS_NAV: NavItem[] = [
+  // General absorbed Models and Verification (MESITA-1175): a page whose whole
+  // content is three controls does not earn a rail row. Their routes survive
+  // as redirects; only the rows are gone.
+  { href: "/general-config", label: "General", Icon: Settings2 },
   SOURCING_PARENT,
   ENRICHER_PARENT,
-  VERIFICATION_PARENT,
   FILTERS_PARENT,
   VISITS_PARENT,
   ORDERS_PARENT,
@@ -141,6 +151,7 @@ const SIDEBAR_SECTIONS: {
   { id: "alerts", label: "Alerts", items: ALERTS_NAV },
   { id: "manage", label: "Manage", items: MANAGE_NAV },
   { id: "configurations", label: "Configurations", items: CONFIGURATIONS_NAV },
+  { id: "access", label: "Access", items: ACCESS_NAV },
   { id: "testing", label: "Testing", items: TESTING_NAV },
 ];
 
