@@ -175,7 +175,11 @@ export function TeamSection({ place }: { place: AdminPlace }) {
       icon={<Users className="h-4 w-4" />}
       tint="indigo"
       title="Team"
-      subtitle={`Members of ${place.name} — one owner, plus editors and viewers. Actions save immediately.`}
+      action={
+        <span className="border-border bg-muted text-muted-foreground rounded-full border px-2 py-0.5 text-[10px] font-semibold tracking-wide uppercase">
+          Saves instantly
+        </span>
+      }
     >
       {error && (
         <div className="mt-4 flex flex-wrap items-center gap-2">

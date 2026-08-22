@@ -201,7 +201,6 @@ export function PulseCard({
       icon={<CircleCheck className="h-4 w-4" />}
       tint="emerald"
       title="Pulse"
-      subtitle="Where this place stands — the six pulse fields, each read from its own source. Seeded, Listed and Enriched are how far the place got; Verified, Partner and Promoting are what it is."
     >
       <div className="mt-5 flex flex-col">
         <PulseRow

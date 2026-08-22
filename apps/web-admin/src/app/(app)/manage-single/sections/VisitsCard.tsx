@@ -94,7 +94,6 @@ export function VisitsCard({ place }: { place: AdminPlace }) {
       icon={<Receipt className="h-4 w-4" />}
       tint="amber"
       title="Visits"
-      subtitle="The guest's ticket at the table — what the place's staff must do before they can approve or close one."
       action={
         <span
           className={
@@ -126,13 +125,6 @@ export function VisitsCard({ place }: { place: AdminPlace }) {
           </li>
         ))}
       </ol>
-      <p className="text-muted-foreground mt-3 text-xs leading-relaxed">
-        The guest opens the ticket, staff scan the QR, and one tap approves it —
-        that tap freezes the amount. Staff can instead send it back for ONE
-        named fix (bill, proof or reward) without issuing a new QR. Tip chips,
-        pay rails and how fast each side polls are Mesita-wide, under
-        Configurations → Visits.
-      </p>
 
       <div className="border-border/60 mt-5 border-t pt-4">
         <div className="flex items-center justify-between gap-3">
@@ -159,12 +151,6 @@ export function VisitsCard({ place }: { place: AdminPlace }) {
             />
           </button>
         </div>
-        <p className="text-muted-foreground mt-1.5 text-[11px] leading-relaxed">
-          Off by default: the bill is the place&apos;s own control, not a gate —
-          staff can close a ticket without it and apply the discount at their
-          own point of sale. On, and staff can&apos;t approve or close until the
-          subtotal has been entered.
-        </p>
       </div>
 
       <div className="border-border/60 mt-4 border-t pt-4">
@@ -186,13 +172,7 @@ export function VisitsCard({ place }: { place: AdminPlace }) {
             </button>
           ) : null}
         </div>
-        <p className="text-muted-foreground mt-1.5 mb-2.5 text-[11px] leading-relaxed">
-          The QR itself is the authentication — anyone holding it can work the
-          ticket. Set a shared 6-digit code and every staff-side write asks for
-          it (scan, bill, approve, send-back, close), so a guest who
-          photographed the QR can&apos;t self-approve. Reading the ticket never
-          asks. Not a waiter login: one code per place, briefed to the floor.
-        </p>
+        <p className="text-muted-foreground mt-1.5 mb-2.5 text-[11px] leading-relaxed">The QR is the authentication — anyone holding it can work the ticket.</p>
         <PinDigits
           ref={pinInputRef}
           value={pin}

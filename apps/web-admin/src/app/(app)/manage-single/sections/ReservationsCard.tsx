@@ -89,15 +89,7 @@ export function ReservationsCard({
       icon={<CalendarCheck className="h-4 w-4" />}
       tint="teal"
       title="Reservations"
-      subtitle="Mesita's AI agent books the table by phone — the Reservationist is voice-only today."
     >
-      <p className="text-muted-foreground mt-5 text-xs leading-relaxed">
-        A guest books, and the agent calls this number until it has an answer —
-        confirmed, declined, or unreachable after its retries — then tells the
-        guest. The place answers a phone and nothing else: no login, no
-        dashboard. How many times it calls back, and how it negotiates an
-        alternative time, are Mesita-wide under Configurations → Reservations.
-      </p>
       <div className="mt-3.5">
         <ChannelPicker
           options={options}

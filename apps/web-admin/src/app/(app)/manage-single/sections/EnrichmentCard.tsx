@@ -156,7 +156,6 @@ export function EnrichmentCard({ place }: { place: AdminPlace }) {
       icon={<Sparkles className="h-4 w-4" />}
       tint="indigo"
       title="Enrichment"
-      subtitle="When the Enricher refreshes this place on its own — and the button that runs it now."
       action={
         <span
           className={
@@ -263,22 +262,12 @@ export function EnrichmentCard({ place }: { place: AdminPlace }) {
                   : "Not scheduled"}
             </ReadField>
           </div>
-          <p className="text-muted-foreground mt-3 text-[11px] leading-relaxed">
-            Due places are picked up within 15 minutes, at most five at a time
-            across all of Mesita — every run spends real Google, Apify,
-            Perplexity and OpenAI budget, and the per-run cap only bounds one
-            run. Caps and models live under Configurations → Enrichment.
-          </p>
 
           <div className="border-border/60 mt-4 border-t pt-4">
             <span className="text-foreground/90 text-[13px] font-medium">
               Run now
             </span>
-            <p className="text-muted-foreground mt-1.5 mb-2.5 text-[11px] leading-relaxed">
-              Queues the same pipeline immediately, independent of the cadence
-              above. A full run overwrites the profile with what it finds — the
-              lighter two need a full run to have happened first.
-            </p>
+            <p className="text-muted-foreground mt-1.5 mb-2.5 text-[11px] leading-relaxed">A full run overwrites the profile with what it finds.</p>
             <div className="grid grid-cols-3 gap-2">
               {MODES.map((m) => (
                 <button

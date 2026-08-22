@@ -404,7 +404,6 @@ export function ProductsSection({
       icon={<UtensilsCrossed className="h-4 w-4" />}
       tint="orange"
       title="Products"
-      subtitle="Add menus shown to consumers. For each menu, choose Upload or Drive — not both."
     >
       <input
         ref={fileInputRef}

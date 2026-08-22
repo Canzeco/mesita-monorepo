@@ -90,7 +90,6 @@ export function OrdersCard({
       icon={<ShoppingBag className="h-4 w-4" />}
       tint="violet"
       title="Orders"
-      subtitle="Rewarding a guest who orders without coming in — the remote half of what Mesita prices."
       action={
         <span className="bg-muted text-muted-foreground inline-flex items-center rounded-full px-2.5 py-1 text-[10px] font-bold tracking-wider uppercase">
           Soon
