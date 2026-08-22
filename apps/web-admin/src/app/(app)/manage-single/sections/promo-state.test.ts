@@ -176,10 +176,12 @@ describe("giveLevel — the card's number and meter", () => {
       p90: 0,
     });
     // The rail is relative to the most generous posture, so Dominant fills it
-    // and everything below it reads as a fraction of Dominant.
+    // and everything below it reads as a fraction of Dominant. On the 4-dot
+    // rail that is a clean monotonic ramp — 2 · 3 · 4 — with no two postures
+    // sharing a reading.
     expect(giveLevel(DEFAULT_PROMOS, "dominant").dots).toBe(METER_SEGMENTS);
-    expect(giveLevel(DEFAULT_PROMOS, "aggressive").dots).toBe(2);
-    expect(giveLevel(DEFAULT_PROMOS, "conservative").dots).toBe(1);
+    expect(giveLevel(DEFAULT_PROMOS, "aggressive").dots).toBe(3);
+    expect(giveLevel(DEFAULT_PROMOS, "conservative").dots).toBe(2);
   });
 
   it("quotes the EXPECTED rate, not a matrix extreme (MESITA-1001)", () => {
@@ -250,8 +252,12 @@ describe("visibilityDots", () => {
   it("gives the rail exactly as many rungs as the ladder has", () => {
     expect(visibilityDots("Low")).toBe(1);
     expect(visibilityDots("Mid")).toBe(2);
-    expect(visibilityDots("High")).toBe(METER_SEGMENTS);
-    expect(METER_SEGMENTS).toBe(3);
+    expect(visibilityDots("High")).toBe(3);
+    expect(visibilityDots("Max")).toBe(METER_SEGMENTS);
+    // Four rungs since Dominant. The rail draws METER_SEGMENTS dots, so a
+    // ladder longer than the rail would render Max and High identically —
+    // the top posture would look like the one below it.
+    expect(METER_SEGMENTS).toBe(4);
   });
 });
 

@@ -33,7 +33,7 @@ import {
   type StrategyVisibility,
 } from "./strategies";
 
-export type StrategyKey = "conservative" | "aggressive";
+export type StrategyKey = "conservative" | "aggressive" | "dominant";
 export type ClassKey = "bronze" | "silver" | "gold" | "diamond";
 export type PlanKey = "free" | "premium";
 
@@ -64,6 +64,7 @@ export type PromosConfig = {
 export const STRATEGY_KEYS: readonly StrategyKey[] = [
   "conservative",
   "aggressive",
+  "dominant",
 ];
 /** Worst → best. */
 export const CLASS_KEYS: readonly ClassKey[] = [
@@ -101,20 +102,29 @@ export const DEFAULT_PROMOS: PromosConfig = {
         gold: { free: 40, premium: 60 },
         diamond: { free: 50, premium: 70 },
       },
+      dominant: {
+        bronze: { free: 40, premium: 55 },
+        silver: { free: 45, premium: 60 },
+        gold: { free: 50, premium: 65 },
+        diamond: { free: 55, premium: 70 },
+      },
     },
     bonuses: {
       conservative: { welcome: 10, mesita: 5, story: 10, google: 15 },
       aggressive: { welcome: 10, mesita: 5, story: 10, google: 15 },
+      dominant: { welcome: 10, mesita: 10, story: 10, google: 15 },
     },
   },
   orders: {
     base: {
       conservative: { free: 5, premium: 10 },
       aggressive: { free: 10, premium: 15 },
+      dominant: { free: 15, premium: 20 },
     },
     bonuses: {
       conservative: { welcome: 5, mesita: 5, story: 5, google: 10 },
       aggressive: { welcome: 5, mesita: 5, story: 5, google: 10 },
+      dominant: { welcome: 10, mesita: 10, story: 10, google: 15 },
     },
     soon: true,
   },
@@ -472,13 +482,15 @@ export function distributionFor(
 
 // ── Card-face meters ───────────────────────────────────────────────────────
 //
-// THREE segments, not five: the visibility ladder has exactly three rungs and
-// there are exactly three postures, so a longer rail would imply headroom an
-// owner could buy. The number is the EXPECTED discount per bill — what the
-// posture costs — never a matrix extreme (the top cell lands on ~1.5% of
-// visits and still understates the true ceiling, because bonuses stack).
+// FOUR segments, not five: the visibility ladder has exactly four rungs and
+// there are exactly four postures, so a longer rail would imply headroom an
+// owner could buy — and a SHORTER one would render Max identically to High,
+// hiding the rung Dominant added. The number is the EXPECTED discount per bill
+// — what the posture costs — never a matrix extreme (the top cell lands on
+// ~1.5% of visits and still understates the true ceiling, because bonuses
+// stack).
 
-export const METER_SEGMENTS = 3;
+export const METER_SEGMENTS = 4;
 
 export type GiveLevel = {
   dots: number;
@@ -514,7 +526,7 @@ export function giveLevel(cfg: PromosConfig, id: StrategyId): GiveLevel {
   return { dots, mean: Math.round(mine.mean), p10: mine.p10, p90: mine.p90 };
 }
 
-/** Visibility on the same three-segment rail: Low 1 · Mid 2 · High 3. */
+/** Visibility on the same four-segment rail: Low 1 · Mid 2 · High 3 · Max 4. */
 export function visibilityDots(v: StrategyVisibility): number {
   const idx = STRATEGY_VISIBILITY_LADDER.indexOf(v);
   return idx < 0 ? 1 : idx + 1;
