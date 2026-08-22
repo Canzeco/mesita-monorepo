@@ -86,7 +86,10 @@ const METALS = CLASSES.map((c) => c.id);
 describe("every metal keeps to its own hue band", () => {
   it.each(Object.entries(HUE_BANDS))("%s stays inside %j", (metal, band) => {
     const [lo, hi] = band;
-    for (const stop of [...gradientStops(metal), oklch(token(`tier-${metal}`))]) {
+    for (const stop of [
+      ...gradientStops(metal),
+      oklch(token(`tier-${metal}`)),
+    ]) {
       expect(stop.H).toBeGreaterThanOrEqual(lo);
       expect(stop.H).toBeLessThanOrEqual(hi);
     }
@@ -100,31 +103,59 @@ describe("every metal keeps to its own hue band", () => {
   });
 
   it("silver is a neutral, not a blue", () => {
-    for (const stop of [...gradientStops("silver"), oklch(token("tier-silver"))]) {
+    for (const stop of [
+      ...gradientStops("silver"),
+      oklch(token("tier-silver")),
+    ]) {
       expect(stop.C).toBeLessThanOrEqual(0.008);
+    }
+  });
+
+  // Chroma alone was not enough. Silver passed the rule above at hue 250 — a
+  // COOL neutral on an app whose every neutral is warm — and a cool grey on a
+  // blush surface reads as the DISABLED register, the same family as
+  // `bg-muted`, which is the locked-rung treatment. A neutral has no
+  // meaningful hue of its own, so it has to borrow the app's.
+  it("silver's neutral is the APP's neutral, not a foreign one", () => {
+    const appHue = oklch(token("foreground")).H;
+    for (const stop of [
+      ...gradientStops("silver"),
+      oklch(token("tier-silver")),
+    ]) {
+      expect(Math.abs(stop.H - appHue)).toBeLessThanOrEqual(20);
     }
   });
 });
 
+// 4.5:1, NOT 3:1. This asserted 3:1 for a year — WCAG's threshold for LARGE
+// text — while the text it guards is the class name at `text-[15px]
+// font-bold`. Large text starts at 18.66px bold, so 4.5:1 was always the real
+// requirement. Bronze's light stop measured 3.47:1: green here, failing AA on
+// screen, on the rung labelled "Every account starts here" that every guest
+// sees. The wrong threshold is why nobody caught it by eye.
+const AA_NORMAL_TEXT = 4.5;
+
 describe("ink is readable on the fill it is paired with", () => {
-  it.each(METALS)("%s clears 3:1 at BOTH gradient stops", (metal) => {
+  it.each(METALS)("%s clears 4.5:1 at BOTH gradient stops", (metal) => {
     const ink = classBadgeClass(metal).includes("text-white") ? WHITE : INK;
     for (const stop of gradientStops(metal)) {
-      expect(contrast(stop, ink)).toBeGreaterThanOrEqual(3);
+      expect(contrast(stop, ink)).toBeGreaterThanOrEqual(AA_NORMAL_TEXT);
     }
   });
 
   it("only Bronze — the floor, the one dark metal — carries white", () => {
-    const white = METALS.filter((m) => classBadgeClass(m).includes("text-white"));
+    const white = METALS.filter((m) =>
+      classBadgeClass(m).includes("text-white"),
+    );
     expect(white).toEqual(["bronze"]);
   });
 });
 
 describe("the solids are text, and are legible as text", () => {
   it.each(METALS)("--tier-%s clears 4.5:1 on card", (metal) => {
-    expect(contrast(oklch(token(`tier-${metal}`)), CARD)).toBeGreaterThanOrEqual(
-      4.5,
-    );
+    expect(
+      contrast(oklch(token(`tier-${metal}`)), CARD),
+    ).toBeGreaterThanOrEqual(4.5);
   });
 
   it("nothing paints a background from a --tier-* solid", () => {

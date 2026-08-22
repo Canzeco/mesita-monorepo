@@ -28,12 +28,18 @@ import { cn } from "@/lib/utils";
 //    header states once that rewards climb; the ladder shows how far.
 
 export function ClassLadder() {
-  const { key, followers } = useConsumerClass();
+  const { key, followers, unknown } = useConsumerClass();
 
   return (
     <ol className="flex flex-col gap-2">
       {CLASSES.map((c) => {
-        const current = key === c.id;
+        // NOBODY IS CURRENT WHEN WE DIDN'T READ THE CLASS. The floor fallback
+        // makes a failed profile read indistinguishable from a real Bronze
+        // account, and this ladder is the one surface where that difference
+        // IS the content. The rungs still render — they teach what the
+        // classes are, which is true regardless — but none is marked, and
+        // `aria-current` never asserts a rung the app couldn't read.
+        const current = !unknown && key === c.id;
         // PER-RUNG, not one shared reach flag (MESITA-1125). The bars are
         // banded — 1,000 / 5,000 / 20,000 — so a single boolean would have
         // shown Gold unlocked to a guest with 1,000 followers, who is Silver.
@@ -43,7 +49,8 @@ export function ClassLadder() {
         // with that rung already as `key` — it reads as `current`, which is
         // the truth. The old `diamond && doors.invitation` case encoded the
         // retired idea that invitations only ever led to the top rung.
-        const unlocked = current || followers >= c.followerThreshold;
+        const unlocked =
+          !unknown && (current || followers >= c.followerThreshold);
 
         return (
           <li
@@ -88,8 +95,14 @@ export function ClassLadder() {
               </p>
               <p
                 className={cn(
+                  // NO FADE ON THE CURRENT ROW. `opacity-90` used to sit
+                  // here for hierarchy, but size and weight already carry
+                  // that (15px bold name vs 12px requirement) and the fade
+                  // cost the only thing it could: contrast. It pushed gold's
+                  // requirement line to 4.48:1, just under AA. Full ink lands
+                  // every rung between 6.29:1 and 8.24:1.
                   "mt-0.5 flex items-center gap-1 text-[12px] leading-snug",
-                  current ? "opacity-90" : "text-muted-foreground",
+                  current ? undefined : "text-muted-foreground",
                 )}
               >
                 {!current && !unlocked && (

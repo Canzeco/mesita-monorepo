@@ -1,6 +1,6 @@
 "use client";
 
-import { Instagram, Ticket } from "lucide-react";
+import { Instagram, Ticket, TriangleAlert } from "lucide-react";
 
 import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
 import { ClassLadder } from "@/components/consumer/me/class/ClassLadder";
@@ -36,7 +36,13 @@ export function ClassModal({
   onConnectInstagram: () => void;
   onRedeemInvite: () => void;
 }) {
-  const { origin, followers, key: classKey, handle } = useConsumerClass();
+  const {
+    origin,
+    followers,
+    key: classKey,
+    handle,
+    unknown,
+  } = useConsumerClass();
 
   return (
     <LocalSheet open={open} onClose={onClose} ariaLabel="Your class">
@@ -58,18 +64,49 @@ export function ClassModal({
               same position, on all three Me sheets that can fake an identity. */}
           <ClassPreviewToggle />
 
+          {/* THE ONE THING THIS SHEET MUST NEVER GUESS. When the profile read
+              throws, the class context falls back to the floor — so without
+              this the sheet told a Diamond guest they were Bronze, in a
+              filled card, with aria-current asserting it to screen readers.
+              It fails closed on permissions (the floor grants nothing) but
+              WRONG on information, and information is all this screen
+              renders. The ladder below still draws all four rungs, because
+              what the classes ARE stays true; it just stops claiming one of
+              them is yours. */}
+          {unknown && (
+            <div className="border-border bg-card flex items-start gap-3 rounded-2xl border p-4">
+              <span className="bg-muted text-muted-foreground flex h-9 w-9 shrink-0 items-center justify-center rounded-xl">
+                <TriangleAlert className="h-4 w-4" />
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="font-display text-[14px] leading-none font-bold tracking-tight">
+                  Couldn&apos;t load your class
+                </p>
+                <p className="text-muted-foreground mt-1.5 text-[12px] leading-snug">
+                  Your class is safe — we just couldn&apos;t read it right now.
+                  Reopen this sheet to try again.
+                </p>
+              </div>
+            </div>
+          )}
+
           <ClassLadder />
 
           {/* Names the door that granted this rung. Renders for BOTH doors —
               it was gated on `origin === "instagram"`, so an invited guest saw
               a Diamond row wearing a follower bar they never cleared and no
               word of how they got there (MESITA-1159). */}
-          <ClassOriginSummary
-            origin={origin}
-            classKey={classKey}
-            followers={followers}
-            handle={handle}
-          />
+          {/* Hidden while the class is unknown: naming the door that granted
+              a rung we never read would be a second guess on top of the
+              first. */}
+          {!unknown && (
+            <ClassOriginSummary
+              origin={origin}
+              classKey={classKey}
+              followers={followers}
+              handle={handle}
+            />
+          )}
 
           {/* THE TWO WAYS IN, and there are only two (decision: Pato):
               followers, automatic — and an invitation, manual. Always both,
