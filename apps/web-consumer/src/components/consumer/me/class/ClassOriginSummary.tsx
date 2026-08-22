@@ -80,7 +80,10 @@ export function ClassOriginSummary({
         <p className="text-muted-foreground mt-1 text-[12px] leading-snug">
           {detail}
         </p>
-        <p className="text-muted-foreground/80 mt-0.5 text-[11px] leading-snug">
+        {/* Full muted ink, not /80: at 11px this is the smallest text on the
+            sheet and the fade put it at 3.13:1. It carries product fact (the
+            Story Bonus, how the invitation works), not decoration. */}
+        <p className="text-muted-foreground mt-0.5 text-[11px] leading-snug">
           {note}
         </p>
       </div>

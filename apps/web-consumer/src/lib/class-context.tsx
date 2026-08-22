@@ -57,6 +57,20 @@ type ConsumerClassState = {
    *  demo handle for the Instagram preview state where no profile exists. */
   handle: string | null;
   doors: ClassDoors;
+  /** TRUE when the profile read FAILED and this state is the floor fallback
+   *  rather than the guest's real class (MESITA design review 2026-08-22).
+   *
+   *  The shell layout catches a consumer-get-profile throw and renders
+   *  degraded on purpose — its comment says "let each page surface its own
+   *  error". Nothing did, so `normalize(null)` returning FLOOR_CLASS made
+   *  "we don't know your class" and "your class is Bronze" the same state.
+   *  Harmless on surfaces that only read this for STYLING; on the Class sheet
+   *  it is the entire content, and it was asserted to screen readers via
+   *  aria-current. Fails closed on permissions, wrong on information.
+   *
+   *  Any surface that STATES the class (rather than colouring with it) must
+   *  branch on this before treating the floor as fact. */
+  unknown: boolean;
 };
 
 // Safe default for any tree rendered without a provider: the floor on both
@@ -71,6 +85,9 @@ const FLOOR_CLASS: ConsumerClassState = {
   followers: 0,
   handle: null,
   doors: { reach: false, invitation: false },
+  // The bare default (no provider) is NOT a failed read — it is a tree that
+  // never asked. Only the layout's catch sets `unknown`.
+  unknown: false,
 };
 
 // Unknown/stale keys render as the floor instead of crashing a Record lookup.
@@ -84,11 +101,13 @@ function isClassKey(value: unknown): value is ClassKey {
 function normalize(
   c: ConsumerClass | null | undefined,
   instagramHandle: string | null = null,
+  unknown = false,
 ): ConsumerClassState {
   if (!c) {
     return {
       ...FLOOR_CLASS,
       handle: instagramHandle,
+      unknown,
     };
   }
   // THE BRIDGE, applied at the one boundary where server truth enters the
@@ -102,6 +121,14 @@ function normalize(
   const plan: PlanKey =
     bridgedPlan === "premium" || c.subscription != null ? "premium" : "free";
   return {
+    // THE FAILURE SIGNAL WINS. Today this is belt-and-braces — the layout only
+    // assigns `consumerClass` inside its try, so a throw always pairs with a
+    // null row and this branch never sees `unknown`. It is written this way
+    // so the prop means one thing: a caller that says the read failed is
+    // believed, even if class data is also present. A future refactor that
+    // keeps a stale cached class while marking the read failed gets the safe
+    // behaviour for free instead of silently restating the stale rung.
+    unknown,
     key: cls,
     plan,
     // The server's "subscription" origin describes the PLAN, so it can't be a
@@ -326,6 +353,10 @@ function mockAccountState(
   renews.setMonth(renews.getMonth() + 1);
 
   return {
+    // A previewed class is a KNOWN class — the demo toggle states it outright.
+    // Without this a degraded read would leak into every preview and the
+    // Demo box would be unable to demonstrate the very states it exists for.
+    unknown: false,
     key,
     plan: mock.premium ? "premium" : "free",
     origin,
@@ -350,9 +381,13 @@ export function ClassProvider({
   userId = "",
   displayName = null,
   avatarUrl = null,
+  classUnavailable = false,
   children,
 }: {
   consumerClass: ConsumerClass | null;
+  /** The profile read THREW (not "returned nothing"). The two are different
+   *  and only the layout can tell them apart, so it says which. */
+  classUnavailable?: boolean;
   /** Real `consumers.instagram_handle` — Story Bonus gate (MESITA-909). */
   instagramHandle?: string | null;
   /** Seeded by the shell layout; identity for every client surface below. */
@@ -362,8 +397,13 @@ export function ClassProvider({
   children: ReactNode;
 }) {
   const base = useMemo(
-    () => normalize(consumerClass, instagramHandle?.trim() || null),
-    [consumerClass, instagramHandle],
+    () =>
+      normalize(
+        consumerClass,
+        instagramHandle?.trim() || null,
+        classUnavailable,
+      ),
+    [consumerClass, instagramHandle, classUnavailable],
   );
 
   const mockAccount = useMockAccount();

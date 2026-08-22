@@ -79,6 +79,14 @@ export default async function ConsumerShellLayout({
   let displayName: string | null = null;
   let avatarUrl: string | null = null;
   let needsOnboarding = false;
+  // "The EF threw" is not "the guest is Bronze" (design review 2026-08-22).
+  // This layout deliberately degrades rather than ejecting, and the comment
+  // above promises each page will surface its own error. The Class sheet
+  // could not: `normalize(null)` hands it the FLOOR, so a failed read and a
+  // real Bronze account were the same state — and it asserted that state to
+  // screen readers with aria-current. Only this catch knows the difference,
+  // so it says so.
+  let classUnavailable = false;
   try {
     const { consumer: profile, consumerClass: c } =
       await apiFetchConsumerProfile(supabase);
@@ -96,6 +104,7 @@ export default async function ConsumerShellLayout({
     avatarUrl = profile.avatar_url ?? null;
   } catch (err) {
     console.error("[consumer/shell] consumer-get-profile:", err);
+    classUnavailable = true;
   }
   // Carry the destination into onboarding so finishing the form lands the
   // guest on what they originally opened, not a generic home tab.
@@ -131,6 +140,7 @@ export default async function ConsumerShellLayout({
         userId={user.id}
         displayName={displayName}
         avatarUrl={avatarUrl}
+        classUnavailable={classUnavailable}
       >
         {/* One engine-quote cache for the whole shell (MESITA-1019). Mounted
             here, not per surface, so the promo chip resolves the same number

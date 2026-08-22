@@ -89,16 +89,33 @@
         used to land on hue 60, one degree off bronze's light stop. On a
         surface whose rule is "colour means class, and nothing else", two
         rungs the eye can merge is the whole rule failing.
+
+        Silver's HUE is load-bearing too, not just its chroma. Dropping the
+        chroma made it a neutral but left it on hue 250 — a COOL neutral on an
+        app whose every neutral is warm (background 10, foreground 15, muted
+        10, border 10). A cool grey on a blush surface reads as the DISABLED
+        register: the same family as `bg-muted`, which is literally the
+        locked-rung treatment. The one earned achievement was rendered in the
+        language of "unavailable". Hue 250 -> 15 at unchanged chroma costs
+        0.02 of ink contrast and buys the rung back. `--tier-premium` stays
+        cool on purpose: it is the PLAN axis, not a metal.
      2. THE SOLIDS ARE TEXT, THE GRADIENTS ARE FILL. Nothing paints a
         background from a `--tier-*` solid, so those are tuned only to clear
         4.5:1 as ink on card. The gradients are tuned so their LIGHT stop —
-        the weak end, top-left under a 135deg ramp — still clears 3:1 against
-        the ink `classBadgeClass` pairs with them. Bronze is the only metal
-        dark enough to carry white; Silver, Gold and Diamond are light metals
-        and carry foreground ink. Before this, white on gold measured 1.53:1
-        and white on diamond 1.44:1. */
+        the weak end, top-left under a 135deg ramp — clears 4.5:1 against the
+        ink `classBadgeClass` pairs with them. Bronze is the only metal dark
+        enough to carry white; Silver, Gold and Diamond are light metals and
+        carry foreground ink. Before this, white on gold measured 1.53:1 and
+        white on diamond 1.44:1.
+
+        That bar was 3:1 until it was measured against the text it actually
+        guards. 3:1 is WCAG's threshold for LARGE text, and the class name is
+        15px bold — large text starts at 18.66px bold, so 4.5:1 is the real
+        requirement. Bronze's light stop sat at 0.64 and measured 3.47:1:
+        passing the test, failing AA, on the rung labelled "Every account
+        starts here" that every guest sees. 0.64 -> 0.574 clears it. */
   --tier-bronze: oklch(0.5 0.11 45);
-  --tier-silver: oklch(0.55 0.006 250);
+  --tier-silver: oklch(0.55 0.006 15);
   --tier-gold: oklch(0.55 0.12 85);
   --tier-diamond: oklch(0.52 0.13 235);
   --tier-premium: oklch(0.55 0.19 250);
@@ -122,13 +139,13 @@
   );
   --gradient-bronze: linear-gradient(
     135deg,
-    oklch(0.64 0.1 55),
+    oklch(0.574 0.1 55),
     oklch(0.5 0.11 40)
   );
   --gradient-silver: linear-gradient(
     135deg,
-    oklch(0.89 0.004 250),
-    oklch(0.74 0.006 250)
+    oklch(0.89 0.004 15),
+    oklch(0.74 0.006 15)
   );
   --gradient-diamond: linear-gradient(
     135deg,
