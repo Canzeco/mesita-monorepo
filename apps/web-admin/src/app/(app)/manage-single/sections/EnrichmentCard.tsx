@@ -11,6 +11,7 @@ import {
   type PlaceEnrichmentStatus,
   type ReenrichMode,
 } from "../actions";
+import { REENRICH_MODES } from "../reenrich-modes";
 import { useSectionDirty } from "../useSectionDirty";
 import { ReadField, SaveBar, SectionCard, Spinner } from "../ui";
 import { usePlaceContext } from "../PlaceContext";
@@ -43,11 +44,7 @@ const CADENCES: { value: number | null; label: string; hint: string }[] = [
   { value: 90, label: "Quarterly", hint: "Cheap upkeep for a stable listing." },
 ];
 
-const MODES: { value: ReenrichMode; label: string; hint: string }[] = [
-  { value: "full", label: "Full", hint: "Re-gathers everything: Google, channels, reviews, photos, then rewrites the copy. The only mode that refreshes facts." },
-  { value: "analysis", label: "Images", hint: "Re-ranks and re-picks photos from what the last full run gathered. No new web calls." },
-  { value: "contents", label: "Description", hint: "Re-writes the Profile Description, category and tags from stored research. Cheapest." },
-];
+const MODES = REENRICH_MODES;
 
 export function EnrichmentCard({ place }: { place: AdminPlace }) {
   const [loaded, setLoaded] = useState<PlaceEnrichmentSchedule | null>(null);

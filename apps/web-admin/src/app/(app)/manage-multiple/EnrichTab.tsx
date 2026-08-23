@@ -11,6 +11,7 @@ import {
 } from "../enricher-config/cost-model";
 import type { SynthesisQuality } from "../enricher-config/actions";
 import { enrichPlace, type ReenrichMode } from "../manage-single/actions";
+import { REENRICH_MODES } from "../manage-single/reenrich-modes";
 import { StatusIcon } from "./StatusIcon";
 
 const PROJECT_ID_RE =
@@ -42,23 +43,7 @@ export type EnrichCostSeed = {
   links: LinkCounts;
 };
 
-const MODES: { mode: ReenrichMode; label: string; detail: string }[] = [
-  {
-    mode: "full",
-    label: "Full",
-    detail: "Research + analysis + contents (re-gathers).",
-  },
-  {
-    mode: "analysis",
-    label: "Analysis + contents",
-    detail: "Reuses gathered data — no re-gather.",
-  },
-  {
-    mode: "contents",
-    label: "Contents only",
-    detail: "Re-synthesises copy from last analysis. Cheapest.",
-  },
-];
+const MODES = REENRICH_MODES;
 
 export function EnrichTab({ costSeed }: { costSeed: EnrichCostSeed | null }) {
   const [text, setText] = useState("");
@@ -155,14 +140,14 @@ export function EnrichTab({ costSeed }: { costSeed: EnrichCostSeed | null }) {
   return (
     <div>
       <p className="text-muted-foreground max-w-xl text-sm leading-relaxed">
-        Paste project IDs (one per line) or upload a list. Each row queues the
+        Paste place IDs (one per line) or upload a list. Each row queues the
         same re-enrich pipeline as the single-place control — the Enricher cron
         runs async after trigger. Caps and models live in{" "}
         <Link
           href="/enricher-config"
           className="text-foreground font-medium underline underline-offset-2"
         >
-          Enricher Config
+          Enrichment
         </Link>
         .
       </p>
@@ -172,12 +157,12 @@ export function EnrichTab({ costSeed }: { costSeed: EnrichCostSeed | null }) {
           <legend className="text-sm font-medium">Mode</legend>
           <div className="mt-3 grid gap-2 sm:grid-cols-3">
             {MODES.map((m) => {
-              const selected = mode === m.mode;
+              const selected = mode === m.value;
               return (
                 <button
-                  key={m.mode}
+                  key={m.value}
                   type="button"
-                  onClick={() => setMode(m.mode)}
+                  onClick={() => setMode(m.value)}
                   className={
                     selected
                       ? "border-foreground bg-foreground/5 rounded-xl border px-3 py-3 text-left"
@@ -186,7 +171,7 @@ export function EnrichTab({ costSeed }: { costSeed: EnrichCostSeed | null }) {
                 >
                   <span className="block text-sm font-semibold">{m.label}</span>
                   <span className="text-muted-foreground mt-1 block text-[11px] leading-snug">
-                    {m.detail}
+                    {m.hint}
                   </span>
                 </button>
               );
@@ -194,11 +179,20 @@ export function EnrichTab({ costSeed }: { costSeed: EnrichCostSeed | null }) {
           </div>
         </fieldset>
 
-        <label className="mt-6 block text-sm font-medium" htmlFor="project-ids">
-          Project IDs
+        {MODES.find((m) => m.value === mode)?.needsPriorRun && (
+          <p className="text-muted-foreground mt-3 text-xs leading-relaxed">
+            This mode reuses what an earlier full run stored. Any place without
+            that payload is refused — it is not silently upgraded to a full run,
+            so a list that never enriched comes back all failures. Run Full on
+            those first.
+          </p>
+        )}
+
+        <label className="mt-6 block text-sm font-medium" htmlFor="place-ids">
+          Place IDs
         </label>
         <textarea
-          id="project-ids"
+          id="place-ids"
           value={text}
           disabled={running}
           rows={8}
@@ -239,22 +233,21 @@ export function EnrichTab({ costSeed }: { costSeed: EnrichCostSeed | null }) {
               {projectIds.length} place{projectIds.length === 1 ? "" : "s"}
             </p>
             <p className="text-muted-foreground mt-1 text-xs leading-relaxed">
-              ~{money(estimate.perPlace)} / place at current Enricher Config
-              rates
+              ~{money(estimate.perPlace)} / place at current Enrichment rates
               {mode !== "full" ? " (scaled for lighter mode)" : ""}. Approximate
               — not a bill. Full calculator:{" "}
               <Link
                 href="/enricher-config#calculator"
                 className="text-foreground font-medium underline underline-offset-2"
               >
-                Enricher Calculator
+                the cost calculator
               </Link>
               .
             </p>
           </div>
         ) : costSeed === null ? (
           <p className="text-muted-foreground mt-5 text-xs">
-            Cost estimate unavailable — Enricher settings failed to load. You
+            Cost estimate unavailable — Enrichment settings failed to load. You
             can still queue re-enrich.
           </p>
         ) : null}
@@ -274,8 +267,9 @@ export function EnrichTab({ costSeed }: { costSeed: EnrichCostSeed | null }) {
             ) : (
               <>
                 <Play className="h-3.5 w-3.5" />
-                Re-enrich {projectIds.length} place
-                {projectIds.length === 1 ? "" : "s"}
+                {projectIds.length === 0
+                  ? "Re-enrich"
+                  : `Re-enrich ${projectIds.length} place${projectIds.length === 1 ? "" : "s"}`}
               </>
             )}
           </button>
