@@ -52,6 +52,10 @@ import {
   queuePlaceEmbeddingsOnUpdate,
   updateTouchesEmbeddingInputs,
 } from "../_shared/place-embeddings.ts";
+import {
+  loadEnrichmentTriggers,
+  subprocessesFor,
+} from "../_shared/enrich-triggers.ts";
 
 const MAX_PHOTOS = ENRICH_FIELD_LIMITS.photos.max;
 const MAX_TAGS = ENRICH_FIELD_LIMITS.tagsPerPlace.max;
@@ -649,18 +653,37 @@ Deno.serve(async (req) => {
     );
   }
 
-  queueSocialFollowersRefresh({
-    admin,
-    apifyKey: APIFY_KEY,
-    projectId,
-    update,
-    prevSocial,
-  });
+  // ── The on_update row of the trigger matrix, honoured (MESITA-1188) ──────
+  // Until now this row was decorative: it rendered two editable cells and
+  // nothing read them, so flipping either changed nothing. It is the one row
+  // honoured by WITHHOLDING work — an edit is ground truth, so this path seeds
+  // no run and re-derives nothing. It has exactly two operator-controlled
+  // cells, `social` and `embedding`; lockedCell() forces the other seven false
+  // so wiring the row can never re-scrape over the human who just fixed the
+  // record. A disabled row buys nothing, which stops both side effects.
+  //
+  // loadEnrichmentTriggers falls back to the code defaults when the blob is
+  // missing, and both cells default ON — so a fresh environment behaves
+  // exactly as it did before this row was wired.
+  const onUpdateBuys = subprocessesFor(
+    await loadEnrichmentTriggers(admin),
+    "on_update",
+  );
+
+  if (onUpdateBuys.includes("social")) {
+    queueSocialFollowersRefresh({
+      admin,
+      apifyKey: APIFY_KEY,
+      projectId,
+      update,
+      prevSocial,
+    });
+  }
 
   // On-Update embeddings (MESITA-720): when profile fields that feed the
   // blurb change, re-synthesize human text + vector in the background.
   // Tags alone never trigger a re-embed.
-  if (updateTouchesEmbeddingInputs(update)) {
+  if (onUpdateBuys.includes("embedding") && updateTouchesEmbeddingInputs(update)) {
     queuePlaceEmbeddingsOnUpdate({
       admin,
       placeId: projectId,

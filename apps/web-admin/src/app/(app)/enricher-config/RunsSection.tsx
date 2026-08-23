@@ -18,8 +18,10 @@
 //
 // So the TAB died and the capability stayed. What actually got deleted is the
 // part that made it a wall:
-//   • the whole COOLDOWN column — zero readers in TS or SQL anywhere in the
-//     repo; real cadence is places.enrich_every_days on the Place page;
+//   • the whole COOLDOWN column — real cadence is places.enrich_every_days on
+//     the Place page. (Since MESITA-1185 the mechanism DOES exist: SQL enforces
+//     a caller-supplied window. Every caller passes 0 on purpose, so the number
+//     is still staged — see TriggerRow.cooldownHours for why and until when.)
 //   • five of seven rows, behind one disclosure — they have no emitter;
 //   • the 130-word Corrections essay, which had no input, no state, no writer.
 // Seven rows × 12 columns plus two essays became two rows × 10 columns.
@@ -134,7 +136,14 @@ export function RunsSection({
       status={
         <KnobStatus
           kind="enforced"
-          reason="seeded onto place_research.subprocesses; the three stage EFs skip what a run did not buy"
+          // Two mechanisms live in this grid, so the badge must describe both
+          // (MESITA-1184/1188). on_create and on_schedule SEED: the resolved
+          // set lands on place_research.subprocesses and the three stage EFs
+          // skip what the run did not buy. on_update WITHHOLDS: it seeds
+          // nothing and instead skips the follower refresh / the re-embed.
+          // The old wording named only the seeding half, which would have made
+          // this badge a fresh instance of the very bug MESITA-1184 reported.
+          reason="every live row is read before it acts — a seeded run buys only what its row bought, and the update path skips what its row switched off"
         />
       }
     >
