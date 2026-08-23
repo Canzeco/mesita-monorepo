@@ -95,6 +95,11 @@ import {
   placeCancelNoticeFirstMessage,
   placeCancelNoticePrompt,
 } from "../_shared/reservation-legs.ts";
+import {
+  type ReservationPatch,
+  validateReservationPatch,
+  writeReservation,
+} from "../_shared/reservation-doc.ts";
 
 // intent: "book" (default) = the two-leg booking run · "callback_retry" =
 // re-ring the guest on a still-live verdict (leg 3) · "cancel_notice" = tell
@@ -200,19 +205,27 @@ class OrphanedRunError extends Error {
 
 // Guarded ticket write: lands only while `runId` still owns the row. Zero
 // rows affected = another actor rotated run_id → abort the whole runner.
+// Routed through the reservation write door (MESITA-1280) — id + a single
+// `.eq()` match is exactly the shape `writeReservation` models, so this is
+// the door itself, not a hand-built query. Any failure — a rejected patch,
+// a zero-row match, or a genuine DB error — throws OrphanedRunError, same as
+// the pre-door code (it read only `data?.length` and never inspected
+// `error`); this refactor validates what leaves the runner, not when it
+// decides to stop.
 async function guardedRecord(
   admin: SupabaseClient,
   reservationId: string,
   runId: string,
   patch: Record<string, unknown>,
 ): Promise<void> {
-  const { data } = await admin
-    .from("reservation_tickets")
-    .update(patch)
-    .eq("id", reservationId)
-    .eq("run_id", runId)
-    .select("id");
-  if (!data?.length) throw new OrphanedRunError();
+  const result = await writeReservation(admin, {
+    mode: "update",
+    id: reservationId,
+    patch: patch as ReservationPatch,
+    match: { run_id: runId },
+    select: "id",
+  });
+  if (!result.ok || !result.row) throw new OrphanedRunError();
 }
 
 // Per-place daily venue-call meter (abuse guard): atomic bump, returns the
@@ -663,17 +676,18 @@ async function runCancelNotice(input: {
     await park(watch.outcome === "no_answer" ? "no answer" : "outcome unknown");
   } catch (e) {
     if (e instanceof OrphanedRunError) return; // ticket moved on — stop quietly
-    await admin
-      .from("reservation_tickets")
-      .update({
+    await writeReservation(admin, {
+      mode: "update",
+      id: reservationId,
+      patch: {
         notice_state: "failed",
         notice_next_at: null,
         last_call_status: `cancel notice (${who}) crashed: ${
           e instanceof Error ? e.message : "run crashed"
         }`.slice(0, 200),
-      })
-      .eq("id", reservationId)
-      .eq("run_id", input.runId);
+      },
+      match: { run_id: input.runId },
+    });
   }
 }
 
@@ -1096,15 +1110,16 @@ async function runIntents(input: {
     if (e instanceof OrphanedRunError) return; // ticket moved on — stop quietly
     // Guarded by run_id directly: if the run was orphaned between the throw
     // and here, this error write must not clobber the ticket's new life.
-    await admin
-      .from("reservation_tickets")
-      .update({
+    await writeReservation(admin, {
+      mode: "update",
+      id: reservationId,
+      patch: {
         attempts_state: "error",
         callback_state: "skipped",
         last_call_status: `failed: ${e instanceof Error ? e.message : "run crashed"}`.slice(0, 200),
-      })
-      .eq("id", reservationId)
-      .eq("run_id", input.runId);
+      },
+      match: { run_id: input.runId },
+    });
   }
 }
 
@@ -1188,15 +1203,16 @@ Deno.serve(async (req) => {
   // cron within a minute of each parked clock coming due.
   if (cfg.limits.killSwitch) {
     const inHalfHour = new Date(Date.now() + 30 * 60_000).toISOString();
-    const parkPatch = intent === "book"
+    const parkPatch: ReservationPatch = intent === "book"
       ? { attempts_state: "scheduled", next_attempt_at: inHalfHour }
       : intent === "callback_retry"
       ? { callback_state: "scheduled", callback_next_attempt_at: inHalfHour }
       : { notice_state: "scheduled", notice_next_at: inHalfHour };
-    await admin
-      .from("reservation_tickets")
-      .update({ ...parkPatch, last_call_status: "kill switch on — all calls held" })
-      .eq("id", reservationId);
+    await writeReservation(admin, {
+      mode: "update",
+      id: reservationId,
+      patch: { ...parkPatch, last_call_status: "kill switch on — all calls held" },
+    });
     return json({ ok: true, skipped: "kill switch on — parked 30 min" });
   }
 
@@ -1247,15 +1263,20 @@ Deno.serve(async (req) => {
     // Only a venue-dialing errand dies on a missing venue number — and a
     // cancel notice must never corrupt attempts_state (it's 'cancelled').
     if (intent === "book") {
-      await admin
-        .from("reservation_tickets")
-        .update({ attempts_state: "error", last_call_status: `no number to dial (${via})` })
-        .eq("id", reservationId);
+      await writeReservation(admin, {
+        mode: "update",
+        id: reservationId,
+        patch: { attempts_state: "error", last_call_status: `no number to dial (${via})` },
+      });
     } else {
-      await admin
-        .from("reservation_tickets")
-        .update({ notice_state: "failed", last_call_status: `cancel notice — no venue number (${via})` })
-        .eq("id", reservationId);
+      await writeReservation(admin, {
+        mode: "update",
+        id: reservationId,
+        patch: {
+          notice_state: "failed",
+          last_call_status: `cancel notice — no venue number (${via})`,
+        },
+      });
     }
     return json({ ok: false, error: `no number to dial (${via})` }, 422);
   }
@@ -1285,26 +1306,35 @@ Deno.serve(async (req) => {
     const kind = r.notice_kind as "venue_cancel" | "guest_cancel";
     const toNumber = kind === "venue_cancel" ? businessNumber : consumerNumber;
     if (!toNumber) {
-      await admin
-        .from("reservation_tickets")
-        .update({
+      await writeReservation(admin, {
+        mode: "update",
+        id: reservationId,
+        patch: {
           notice_state: "failed",
           last_call_status: `cancel notice (${kind}) — no number to dial`,
-        })
-        .eq("id", reservationId);
+        },
+      });
       return json({ ok: false, error: "no number to dial for the notice" }, 422);
     }
     // Claim it compare-and-swap style: the cancel EF and the cron may both
     // fire — whoever flips pending/scheduled → running places the call. The
     // claim rotates run_id so a stale runner can never write over this one.
+    // Routed through validateReservationPatch directly (not the writeReservation
+    // door — this update's `.in("notice_state", …)` filter is a shape the door
+    // doesn't model; see reservation-doc.ts's header and the same idiom in
+    // business-web-confirm-reservation / supabase-cron-reservation-retries).
+    const noticeClaimValidated = validateReservationPatch({
+      notice_state: "running",
+      notice_next_at: null,
+      run_id: runId,
+      claimed_at: new Date().toISOString(),
+    });
+    if (!noticeClaimValidated.ok) {
+      return json({ ok: false, error: noticeClaimValidated.error }, 500);
+    }
     const { data: claimed } = await admin
       .from("reservation_tickets")
-      .update({
-        notice_state: "running",
-        notice_next_at: null,
-        run_id: runId,
-        claimed_at: new Date().toISOString(),
-      })
+      .update(noticeClaimValidated.patch)
       .eq("id", reservationId)
       .in("notice_state", ["pending", "scheduled"])
       .select("id");
@@ -1340,39 +1370,46 @@ Deno.serve(async (req) => {
 
   if (intent === "callback_retry") {
     if (guestNotify === "app") {
-      await admin
-        .from("reservation_tickets")
-        .update({
+      await writeReservation(admin, {
+        mode: "update",
+        id: reservationId,
+        patch: {
           callback_state: "skipped",
           callback_next_attempt_at: null,
           last_call_status: "callback retry — guest prefers app-only; no call",
-        })
-        .eq("id", reservationId);
+        },
+      });
       return json({ ok: true, skipped: "guest prefers app-only" });
     }
     if (!consumerNumber) {
-      await admin
-        .from("reservation_tickets")
-        .update({
+      await writeReservation(admin, {
+        mode: "update",
+        id: reservationId,
+        patch: {
           callback_state: "skipped",
           callback_next_attempt_at: null,
           last_call_status: "callback retry — no guest number",
-        })
-        .eq("id", reservationId);
+        },
+      });
       return json({ ok: true, skipped: "no guest number" });
     }
-    const { data: claimed } = await admin
-      .from("reservation_tickets")
-      .update({
+    // Claim it CAS-style — a single `.eq()` match beyond id, so this is the
+    // writeReservation door itself, not a hand-built query.
+    const callbackClaim = await writeReservation(admin, {
+      mode: "update",
+      id: reservationId,
+      patch: {
         callback_state: "calling",
         callback_next_attempt_at: null,
         run_id: runId,
         claimed_at: new Date().toISOString(),
-      })
-      .eq("id", reservationId)
-      .eq("callback_state", "scheduled")
-      .select("id");
-    if (!claimed?.length) return json({ ok: true, skipped: "callback already claimed" });
+      },
+      match: { callback_state: "scheduled" },
+      select: "id",
+    });
+    if (!callbackClaim.ok || !callbackClaim.row) {
+      return json({ ok: true, skipped: "callback already claimed" });
+    }
     const context = r.status === "confirmed" ? "confirmation" as const : "counter_offer" as const;
     runInBackground(
       runCallbackRetry({
@@ -1401,22 +1438,30 @@ Deno.serve(async (req) => {
   // non-running pending ticket to running (the old read-then-write let two
   // concurrent invokes both pass the gate and double-dial the venue). The
   // claim rotates run_id — every background write is guarded by it.
+  // Routed through validateReservationPatch directly (not the writeReservation
+  // door — this update's `.or(...)` filter is a shape the door doesn't model;
+  // see reservation-doc.ts's header and the same idiom in
+  // business-web-confirm-reservation / supabase-cron-reservation-retries).
+  const bookClaimValidated = validateReservationPatch({
+    attempts_state: "running",
+    run_id: runId,
+    claimed_at: new Date().toISOString(),
+    next_attempt_at: null,
+    attempts_planned: cfg.attempts,
+    place_phone: businessNumber,
+    consumer_phone: consumerNumber || null,
+    // A stale verdict from a previous negotiation round must never be read
+    // as this run's outcome — and a new errand starts a fresh guest ladder.
+    reported_verdict: null,
+    callback_attempts: 0,
+    callback_next_attempt_at: null,
+  });
+  if (!bookClaimValidated.ok) {
+    return json({ ok: false, error: bookClaimValidated.error }, 500);
+  }
   const { data: bookClaim } = await admin
     .from("reservation_tickets")
-    .update({
-      attempts_state: "running",
-      run_id: runId,
-      claimed_at: new Date().toISOString(),
-      next_attempt_at: null,
-      attempts_planned: cfg.attempts,
-      place_phone: businessNumber,
-      consumer_phone: consumerNumber || null,
-      // A stale verdict from a previous negotiation round must never be read
-      // as this run's outcome — and a new errand starts a fresh guest ladder.
-      reported_verdict: null,
-      callback_attempts: 0,
-      callback_next_attempt_at: null,
-    })
+    .update(bookClaimValidated.patch)
     .eq("id", reservationId)
     .eq("status", "pending")
     .or("attempts_state.is.null,attempts_state.neq.running")

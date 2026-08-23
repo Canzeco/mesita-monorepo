@@ -16,8 +16,10 @@
 //   (3, all bulk/filtered `.in()`/`.lt()` sweeps) — 4 more sites gated
 //   through validateReservationPatch directly (see below for why they don't
 //   use writeReservation); and supabase-edgefunc-reservation-call (13 — the
-//   live call engine: guardedRecord itself plus 12 raw fallback sites; NOT
-//   routed by this PR, see its own header note below). 15 of 28 routed.
+//   live call engine: guardedRecord plus 12 direct writes, routed in a
+//   follow-up PR, MESITA-1280, once this file's write-surface research
+//   confirmed every literal value it writes was already covered by the
+//   closed sets below). All 28 of 28 routed.
 //
 // THE TWO-BELT PATTERN (StampablePulseStep, pulse-report.ts; consumer-doc.ts
 // is the first aggregate to apply it — same shape here):
