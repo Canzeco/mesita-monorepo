@@ -88,14 +88,24 @@ Deno.test("TRIGGER_META: exactly the rows some code reads are marked live", () =
   //                 follower refresh / the re-embed (MESITA-1188). It is the
   //                 one reader that WITHHOLDS work instead of scheduling it,
   //                 which is why it is live without being an emitter.
-  // There is no fourth. on_visit / on_order / on_reservation_* still have no
-  // reader (MESITA-1189) and must stay staged until one exists.
+  //   on_reservation_failed — eleven-a1-report-outcome resolves it and seeds
+  //                 a Google-only refetch on a "wrong_number" verdict, the one
+  //                 terminal, unambiguous signal the stored channel is stale
+  //                 (MESITA-1189). declined/counter_offer/confirmed mean the
+  //                 channel worked; unreachable is documented as retryable.
+  // on_visit / on_order / on_reservation_ok still have no reader and must
+  // stay staged until one exists.
   const live = Object.entries(TRIGGER_META)
     .filter(([, m]) => !m.staged)
     .map(([k]) => k)
     .sort();
 
-  assertEquals(live, ["on_create", "on_schedule", "on_update"]);
+  assertEquals(live, [
+    "on_create",
+    "on_reservation_failed",
+    "on_schedule",
+    "on_update",
+  ]);
 });
 
 // ── on_update: wired, and still forbidden from re-deriving anything ─────────
@@ -157,6 +167,22 @@ Deno.test("on_update: turning one cell off leaves the other side effect alone", 
   const buys = subprocessesFor(normalizeEnrichmentTriggers(cfg), "on_update");
   assertEquals(buys.includes("social"), false);
   assertEquals(buys.includes("embedding"), true);
+});
+
+Deno.test("on_reservation_failed: buys google only, NOT links (MESITA-1189)", () => {
+  // eleven-a1-report-outcome resolves this on a wrong_number verdict. Links
+  // rediscovery finds website/Instagram/Facebook URLs, never a phone number
+  // (enrich-channel-discovery.ts), and the reservation selector has been
+  // phone-only since MESITA-842 — so a links purchase here has no causal path
+  // to the failure it would react to. Only `google` can fix a stale phone.
+  const buys = subprocessesFor(ENRICHMENT_TRIGGERS_DEFAULTS, "on_reservation_failed").sort();
+  assertEquals(buys, ["google"]);
+});
+
+Deno.test("on_reservation_failed: default cooldown is 24h, not 0", () => {
+  // A wrong number is a standing fact, not an event to re-check minutes
+  // later — 0 would let a chatty guest re-fire the refetch on every retry.
+  assertEquals(ENRICHMENT_TRIGGERS_DEFAULTS.on_reservation_failed.cooldownHours, 24);
 });
 
 Deno.test("subprocessesFor: a disabled live row buys nothing", () => {

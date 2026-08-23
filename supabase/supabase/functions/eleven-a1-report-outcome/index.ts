@@ -21,6 +21,24 @@
 // owns those transitions; the negotiation loop (follow-up) consumes what this
 // records. Auth: anon-key bearer + x-agent-secret (see _shared/agent-tools.ts).
 //
+// on_reservation_failed emitter (MESITA-1189): a "wrong_number" verdict is the
+// ONE terminal, unambiguous signal that the stored channel is stale — declined
+// and counter_offer mean the venue answered (channel works), unreachable is
+// documented and implemented as retryable (voicemail, IVR, "call back later").
+// Firing on those would burn the cooldown window on a channel that isn't
+// actually broken. Best-effort: a seeding failure here never fails the
+// caller's outcome report, the same rule create-place's on_create hookup uses.
+//
+// KNOWN LIMITATION, accepted rather than fixed here: the research stage EF
+// (supabase-cron-enrich-place-research) REPLACES `place_research.gathered`
+// wholesale with only what the run's subprocesses collected — it does not
+// merge against the prior value. A subprocesses=["google"]-only run on a place
+// that was previously fully enriched would therefore drop its other gathered
+// pieces (reviews, serp, social, images), not just refresh the phone. This is
+// pre-existing architecture, not introduced here, and out of scope for one
+// emitter — flagged on MESITA-1189 for whoever schedules the fix. Harmless
+// today: production holds 0 places with any research history.
+//
 // Deploy: supabase functions deploy eleven-a1-report-outcome
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
@@ -28,6 +46,8 @@ import { corsPreflight, json, readJsonOr, rejectUnlessMethods } from "../_shared
 import { adminClient, readEFEnv } from "../_shared/auth.ts";
 import { cleanNote, requireAgentSecret, ticketByCode } from "../_shared/agent-tools.ts";
 import { normalizeAlternatives } from "../_shared/reservation-alternatives.ts";
+import { loadEnrichmentTriggers, subprocessesFor } from "../_shared/enrich-triggers.ts";
+import { seedPlaceResearch } from "../_shared/enrich-pipeline-stage.ts";
 
 const VERDICTS = [
   "confirmed",
@@ -96,5 +116,39 @@ Deno.serve(async (req) => {
     .eq("id", ticket.id);
   if (error) return json({ ok: false, error: error.message }, 500);
 
+  if (verdict === "wrong_number") {
+    await emitOnReservationFailed(admin, ticket.project_id);
+  }
+
   return json({ ok: true, recorded: { reference_code: ticket.reference_code, verdict, alternatives } });
 });
+
+// Best-effort — never lets an enrichment-side failure fail the outcome report
+// the vendor agent is waiting on mid-call.
+async function emitOnReservationFailed(
+  admin: ReturnType<typeof adminClient>,
+  projectId: string,
+): Promise<void> {
+  try {
+    const triggers = await loadEnrichmentTriggers(admin);
+    const subprocesses = subprocessesFor(triggers, "on_reservation_failed");
+    if (subprocesses.length === 0) return; // trigger disabled in the matrix
+
+    const { data: place } = await admin
+      .from("places")
+      .select("google_place_id")
+      .eq("id", projectId)
+      .maybeSingle();
+    const googlePlaceId = (place?.google_place_id ?? "").toString().trim();
+    if (!googlePlaceId) return; // no identity spine to refetch from
+
+    await seedPlaceResearch(admin, projectId, googlePlaceId, "eleven-a1-report-outcome", {
+      trigger: "on_reservation_failed",
+      subprocesses,
+      cooldownHours: triggers.on_reservation_failed.cooldownHours,
+    });
+  } catch {
+    // Enrichment is a side effect of reporting a wrong number, never a
+    // condition of it — swallow and let the outcome write stand.
+  }
+}
