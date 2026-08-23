@@ -1,8 +1,8 @@
 #!/usr/bin/env -S deno run --allow-read --allow-write
 // sync-rules.ts — regenerate the agent-instruction files across the monorepo
 // from ONE canonical source (scripts/rules-quickstart.md), and enforce the two
-// laws that keep them from rotting (ASDM §C): the markdown allowlist and the
-// word budgets.
+// laws that keep them from rotting (Development Rules §C): the markdown
+// allowlist and the word budgets.
 //
 // CONTRACT (monorepo form, ASDM v6 — 2026-07-11 / MESITA-456 + MESITA-462):
 //   Root CLAUDE.md    = generated quickstart block (between the markers below)
@@ -34,7 +34,7 @@ export const END = "<!-- RULES-QUICKSTART:END -->";
 export const AGENTS_NOTICE =
   "<!-- GENERATED — scripts/sync-rules.ts mirrors this file from its sibling CLAUDE.md. Edit CLAUDE.md (root: below its END marker) or scripts/rules-quickstart.md — NEVER this file. -->";
 
-// ── Word budgets (ASDM §C — docs are rewritten, not amended) ────────────────
+// ── Word budgets (Development Rules §C — docs are rewritten, not amended) ───
 // Instruction files die of accretion: each session appends a clause and agents
 // replicate the mutations at machine speed. The budget is the forcing function:
 // over it, the fix is a from-scratch rewrite (present law only, no history),
@@ -61,7 +61,7 @@ export function countWords(text: string): number {
   return text.trim().split(/\s+/).filter(Boolean).length;
 }
 
-// ── Markdown allowlist (ASDM §C) ────────────────────────────────────────────
+// ── Markdown allowlist (Development Rules §C) ───────────────────────────────
 // The repo holds NO knowledge markdown: knowledge lives in Notion (the Rules
 // tree), task/commit context lives in Linear, code explanation lives in code
 // comments. The ONLY tracked files allowed are the instruction pairs, this
@@ -162,7 +162,8 @@ export function budgetsFor(target: Target, text: string): BudgetCheck[] {
 
 export function overBudgetMessage({ label, words, budget }: BudgetCheck): string {
   return `OVER BUDGET: ${label} — ${words} words > ${budget} — ` +
-    `rewrite it from scratch (ASDM §C: present law only, no history trails); don't trim around the edges.`;
+    `rewrite it from scratch (Development Rules §C: present law only, ` +
+    `no history trails); don't trim around the edges.`;
 }
 
 async function main(): Promise<void> {
@@ -271,7 +272,7 @@ async function main(): Promise<void> {
         console.error(
           `STRAY MARKDOWN: ${f} — the repo holds no knowledge/docs markdown. ` +
             `Knowledge → Notion Rules tree; task context → Linear; code notes → code comments; ` +
-            `package rules → that package's CLAUDE.md (ASDM §C).`,
+            `package rules → that package's CLAUDE.md (Development Rules §C).`,
         );
       }
       failed += strays.length;

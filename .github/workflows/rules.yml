@@ -1,9 +1,9 @@
 name: rules
 
 # Any markdown change anywhere triggers this workflow: sync-rules:check also
-# enforces the ASDM §C markdown allowlist (knowledge → Notion, task context →
-# Linear; the repo carries only CLAUDE.md/AGENTS.md + tooling config) and the
-# §C word budgets.
+# enforces the Development Rules §C markdown allowlist (knowledge → Notion,
+# task context → Linear; the repo carries only CLAUDE.md/AGENTS.md + tooling
+# config) and the §C word budgets.
 #
 # The extension list below MUST match MD_SCAN_GLOBS in scripts/sync-rules.ts —
 # an extension the script scans but this filter omits means the workflow never

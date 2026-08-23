@@ -1,9 +1,10 @@
 // sync-rules.test.ts — the gate that guards the gates.
 //
-// scripts/sync-rules.ts enforces the two ASDM §C laws (markdown allowlist, word
-// budgets) plus the generated-file contract. A gate that silently stops biting
-// still reports green, so every branch is exercised here — including the
-// negative cases that prove a violation is actually rejected.
+// scripts/sync-rules.ts enforces the two Development Rules §C laws (markdown
+// allowlist, word budgets) plus the generated-file contract. A gate that
+// silently stops biting still reports green, so every branch is exercised
+// here — including the negative cases that prove a violation is actually
+// rejected.
 //
 // Run: deno task test:rules   (CI: .github/workflows/rules.yml)
 
