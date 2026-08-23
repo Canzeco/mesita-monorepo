@@ -100,8 +100,9 @@ const MANAGE_NAV: NavItem[] = [
 // ahead of what reads them: they save, nothing consumes them yet, and every
 // knob on those three pages is labeled STAGED.
 //
-// Memo is NOT a row here: Home › Chat is Memo, so its config lives inside
-// Filters Config › Chat rather than as a sibling of the surface it powers.
+// Memo is NOT a row here: Home › Chat is Memo, and it belongs to Discovery
+// because it IS the chat engine. It has no editor at all — it runs on in-code
+// defaults, so there is no Chat tab and nothing to give a rail row to.
 // Access — who may enter the console at all. Its own group (Pato, 2026-08-21)
 // because it is not a policy blob: every other Configurations row tunes how
 // the PRODUCT behaves, while this one decides who gets to tune them. It sits
@@ -115,10 +116,24 @@ const ACCESS_NAV: NavItem[] = [
   { href: "/admin-config", label: "Admins", Icon: ShieldCheck },
 ];
 
-const CONFIGURATIONS_NAV: NavItem[] = [
-  // General absorbed Models and Verification (MESITA-1175): a page whose whole
-  // content is three controls does not earn a rail row. Their routes survive
-  // as redirects; only the rows are gone.
+/**
+ * THE CONFIG PAGE SET IS CODE-DEFINED. This array is the SoT — never mirror
+ * the list into a doc, a comment or a skill file (MESITA-1225).
+ *
+ * Every prose copy of it drifted within two days of the MESITA-1175 rail
+ * rework: Rules §0, Product Rules §A, the doctor's Scope 4 and the comment
+ * block 20 lines above this one all disagreed with each other and with the
+ * console. Same argument `_shared/channels.ts` makes about `ChannelKey`, and
+ * `_shared/discovery-signals.ts` about `SIGNAL_KEYS` — neither has ever
+ * drifted, because there is nothing to copy.
+ *
+ * Anything that needs to know the set imports it. Anything that only needs to
+ * NAME it points here instead of enumerating.
+ */
+export const CONFIGURATIONS_NAV: NavItem[] = [
+  // General absorbed Models, Verification and Ojo (MESITA-1175, MESITA-1178):
+  // a page whose whole content is three controls does not earn a rail row.
+  // Their routes survive as permanent redirects; only the rows are gone.
   { href: "/general-config", label: "General", Icon: Settings2 },
   SOURCING_PARENT,
   ENRICHER_PARENT,
