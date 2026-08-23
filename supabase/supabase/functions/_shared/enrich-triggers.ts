@@ -66,6 +66,25 @@ export const TRIGGER_KEYS: TriggerKey[] = [
   "on_reservation_failed",
 ];
 
+/**
+ * What a RUN can be provoked by — the matrix's seven, plus `manual` (MESITA-1185).
+ *
+ * `manual` is deliberately NOT a TriggerKey. The Run-now button opts OUT of the
+ * matrix on both axes: it clears `subprocesses` to null ("run everything",
+ * because explicit operator intent outranks the grid) and it ignores cooldown.
+ * Adding it to TriggerKey would draw a phantom eighth row in the console grid
+ * carrying nine checkboxes and a cooldown the button must ignore — an unenforced
+ * config, which is the house definition of a bug.
+ *
+ * So the two vocabularies are siblings, not one list: TRIGGER_KEYS is what the
+ * matrix PRICES, RUN_TRIGGERS is what the history RECORDS. This list is pinned
+ * against the DB CHECK by a test, the same way pulse-pieces.test.ts pins the
+ * `step ~ '^S[0-9]$'` constraint from TypeScript.
+ */
+export const RUN_TRIGGERS = [...TRIGGER_KEYS, "manual"] as const;
+
+export type RunTrigger = TriggerKey | "manual";
+
 /** Rough per-run spend, for the console's cost column. */
 export type CostTier = "free" | "low" | "high";
 

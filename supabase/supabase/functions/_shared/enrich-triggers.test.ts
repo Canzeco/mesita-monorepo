@@ -2,7 +2,9 @@ import { assert, assertEquals } from "jsr:@std/assert@1";
 import {
   ENRICHMENT_TRIGGERS_DEFAULTS,
   normalizeEnrichmentTriggers,
+  RUN_TRIGGERS,
   subprocessesFor,
+  TRIGGER_KEYS,
   TRIGGER_META,
 } from "./enrich-triggers.ts";
 
@@ -107,5 +109,43 @@ Deno.test("subprocessesFor: an enabled row buys exactly its true cells", () => {
       true,
       `${key} was bought but its cell is not true`,
     );
+  }
+});
+
+// ── The run vocabulary is pinned to a DB CHECK (MESITA-1185) ──────────────
+//
+// place_enrichment_runs.trigger_key carries
+//   check (trigger_key in ('on_create','on_update','on_schedule','on_visit',
+//                          'on_order','on_reservation_ok','on_reservation_failed','manual'))
+// in migration 20260823005430. Postgres enforces it; nothing in TypeScript does,
+// so an added RunTrigger would type-check, deploy, and then fail at INSERT — on
+// a money-spending path, at the moment a run starts. Same idiom as
+// pulse-pieces.test.ts pinning `step ~ '^S[0-9]$'` from this side.
+Deno.test("runs: the run vocabulary matches the DB CHECK, literal for literal", () => {
+  assertEquals([...RUN_TRIGGERS], [
+    "on_create",
+    "on_update",
+    "on_schedule",
+    "on_visit",
+    "on_order",
+    "on_reservation_ok",
+    "on_reservation_failed",
+    "manual",
+  ]);
+});
+
+// The two vocabularies are SIBLINGS, not one list. TRIGGER_KEYS is what the
+// matrix prices — seven rows, seven cooldowns, nine checkboxes each.
+// RUN_TRIGGERS is what the history records, and it adds `manual`, which must
+// never become a matrix row: the Run-now button clears `subprocesses` and
+// ignores cooldown, so a grid row for it would be an unenforced config.
+Deno.test("runs: `manual` is a run trigger and NOT a matrix trigger", () => {
+  assertEquals(RUN_TRIGGERS.includes("manual"), true);
+  assertEquals((TRIGGER_KEYS as string[]).includes("manual"), false);
+  assertEquals(Object.keys(TRIGGER_META).includes("manual"), false);
+  // RUN_TRIGGERS is TRIGGER_KEYS plus exactly one more.
+  assertEquals(RUN_TRIGGERS.length, TRIGGER_KEYS.length + 1);
+  for (const k of TRIGGER_KEYS) {
+    assertEquals((RUN_TRIGGERS as readonly string[]).includes(k), true);
   }
 });

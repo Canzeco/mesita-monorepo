@@ -92,7 +92,10 @@ serveEnrichStage("research", async (admin, _env, row) => {
       // Spine incomplete — not retryable. Terminal fail.
       await reportEnrichmentStep(admin, projectId, "S1", "google_profile", "failed",
         "Google identity spine incomplete — no reliable Google Places match, so the enrichment run was aborted.");
-      await failResearchRow(admin, projectId, `google_spine: ${basicsRes.error}`);
+      await failResearchRow(admin, projectId, `google_spine: ${basicsRes.error}`, {
+        runId: row.run_id,
+        stage: "research",
+      });
     } else {
       // Transient Google trouble — release for a retry.
       await releaseResearchRow(admin, projectId, `google_basics: ${basicsRes.error}`);

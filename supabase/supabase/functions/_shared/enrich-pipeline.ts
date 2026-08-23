@@ -35,10 +35,12 @@ import { isEnrichCostCapError } from "./enrich-cost.ts";
 import type { SubprocessKey } from "./enrich-triggers.ts";
 import {
   advanceResearchStage,
+  closeEnrichmentRun,
   failResearchRow,
   isEnrichingStage,
   loadClaimedRow,
   markProjectGenerating,
+  openEnrichmentRun,
   releaseResearchRow,
   seedPlaceResearch,
 } from "./enrich-pipeline-stage.ts";
@@ -47,6 +49,8 @@ export { buildMediaAssets, mapToObject } from "./enrich-media-assets.ts";
 
 export {
   loadEnrichmentTriggers,
+  RUN_TRIGGERS,
+  type RunTrigger,
   type SubprocessKey,
   subprocessesFor,
   type TriggerKey,
@@ -55,10 +59,12 @@ export {
 
 export {
   advanceResearchStage,
+  closeEnrichmentRun,
   failResearchRow,
   isEnrichingStage,
   loadClaimedRow,
   markProjectGenerating,
+  openEnrichmentRun,
   releaseResearchRow,
   seedPlaceResearch,
 };
@@ -77,6 +83,10 @@ export type PlaceResearchRow = {
   // The subprocess set this run bought, resolved from the trigger matrix at
   // seed time. NULL = run everything (pre-matrix rows, manual re-enrich).
   subprocesses: SubprocessKey[] | null;
+  // The open place_enrichment_runs row this state belongs to (MESITA-1185).
+  // Threaded to every terminal so a close can never land on a run that a manual
+  // re-enrich already superseded. NULL on rows seeded before the runs table.
+  run_id: string | null;
 };
 
 // ── Stage payloads ───────────────────────────────────────────────────────────
@@ -213,7 +223,18 @@ export function serveEnrichStage(
           await reportEnrichmentStep(admin, projectId, STAGE_CRASH_STEP[stage] ?? "S1",
             `${stage}_cost_cap`, "failed",
             `Enrichment aborted — per-run cost cap hit: ${msg}`.slice(0, 490));
-          await failResearchRow(admin, projectId, msg.slice(0, 500));
+          // The cost cap is the one terminal that KNOWS the money and used to
+          // lose all of it: the prose was truncated into `error` and charges[]
+          // was dropped, and because the failing stage never reaches its
+          // advanceResearchStage the ledger snapshot never lands on
+          // gathered.cost either. Structured, on the run row, once.
+          await failResearchRow(admin, projectId, msg.slice(0, 500), {
+            runId: rowRes.row.run_id,
+            stage,
+            costUsd: err.spentUsd,
+            charges: err.charges,
+            meta: { kind: "cost_cap", capUsd: err.capUsd },
+          });
           return;
         }
         // Surface the crash in the admin feed — silent crashes hid a wedged
