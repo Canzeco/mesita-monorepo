@@ -14,6 +14,7 @@ import {
   Images,
   Instagram,
   Link2,
+  ListChecks,
   Lock,
   ShoppingBag,
   Sparkles,
@@ -263,8 +264,8 @@ export function ImageFunnelSection({
   return (
     <SectionCard
       icon={<Images className="text-muted-foreground h-4 w-4" />}
-      title="Images"
-      subtitle="How the Enricher builds a place's gallery: collect a candidate pool per source, analyze the top of each (which also picks what's kept), then choose how many reach the profile."
+      title="6–7 · Social & Images"
+      subtitle="Two steps, one box. Social (6) downloads the Instagram pool; Images (7) describes it with vision, ranks it, and picks the gallery. The knobs live together because the chain is validated as one thing — collect ≥ analyze ≥ save — and splitting it would let you save an analyze cap higher than the collect depth that feeds it."
     >
       {/* ── Collection ── */}
       <div className="border-border mt-6 border-t pt-6">
@@ -480,8 +481,8 @@ export function DiscoverySection({
   return (
     <SectionCard
       icon={<Link2 className="text-muted-foreground h-4 w-4" />}
-      title="Links"
-      subtitle="How many Firecrawl Search candidates to pull per source (0–10) when finding a place's official links. Agent Y reviews these and picks the best one per field (or none). 0 turns a source off."
+      title="5 · Links"
+      subtitle="How many Firecrawl Search candidates to pull per source (0–10) when finding a place's official links. Agent Y reviews these against the step-4 SERP Summary and picks the best one per field, or none. 0 turns a source off."
     >
       <div className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
         <NumberField icon={<Globe className="text-muted-foreground h-4 w-4" />} label="Website" value={website} min={0} max={MAX_DISCOVERY_CANDIDATES} onChange={setWebsite} disabled={pending} />
@@ -534,8 +535,8 @@ export function ReviewsSection({
   return (
     <SectionCard
       icon={<Star className="text-muted-foreground h-4 w-4" />}
-      title="Reviews"
-      subtitle="How many Google reviews Apify scrapes for the Enricher (0–100). Google Places itself only returns ~5; 100 is Mesita's hard safety bound for Edge Function wall-clock and Apify cost (~$0.50 per 100), not a Google limit. More reviews ground richer About / category / tags synthesis, but slow and price the scrape."
+      title="9 · Reviews"
+      subtitle="How many Google reviews Apify scrapes for the Enricher (0–100). Google Places itself only returns ~5; 100 is Mesita's hard safety bound for Edge Function wall-clock and Apify cost (~$0.50 per 100), not a Google limit. More reviews ground a richer Profile Description at step 10, but slow and price the scrape."
     >
       <div className="mt-5 sm:max-w-xs">
         <NumberField
@@ -646,7 +647,7 @@ export function ModelsSection({
     <SectionCard
       icon={<Sparkles className="text-muted-foreground h-4 w-4" />}
       title="Models & cost"
-      subtitle="Text and image quality, Perplexity Search preset (Agent X SERP + Agent Y link select), per-run USD cost cap (enforced mid-run by the Enricher), and the locked embeddings model. High quality is identical to Standard today (both gpt-4o)."
+      subtitle="The four models every step draws on, and the per-run USD ceiling the Enricher enforces mid-run. Text drives step 10 and the image-rank leg; Image drives step 7; Search drives Agent X at step 4 and Agent Y at step 5; Embeddings is locked. High quality is identical to Standard today (both gpt-4o)."
     >
       <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <ModelSelect
@@ -778,5 +779,91 @@ function ModelDisplay({
       </div>
       <p className="text-muted-foreground type-label leading-snug">{detail}</p>
     </div>
+  );
+}
+
+// ── The steps that have no knobs ───────────────────────────────────────────
+//
+// A config page that lists only the tunable steps reads like the pipeline has
+// four. It has ten plus an extra, and the honest answer for most of them is
+// "nothing to tune" — either Google's answer IS the answer, or the only knob is
+// a shared model that lives in the box above. Saying so beats leaving an
+// operator to wonder which page hides the rest.
+//
+// No save, no state: this box is a map, not a form.
+const QUIET_STEPS: { step: string; name: string; why: string }[] = [
+  {
+    step: "S0",
+    name: "Seed",
+    why:
+      "The pre-run gate, not a step. A Google Place ID either resolves or the queue never starts — there is nothing to tune about a hard stop.",
+  },
+  {
+    step: "1",
+    name: "Pulse",
+    why:
+      "Open/closed and the weekly hours, straight from Google Place Details. Google publishing no hours is Google's answer, not a setting.",
+  },
+  {
+    step: "2",
+    name: "Details",
+    why:
+      "The rest of the Google spine — address, geo, zone, city, timezone, price, phone. Same call as Pulse, same reason: no knob.",
+  },
+  {
+    step: "3",
+    name: "Name",
+    why:
+      "Refreshes the cached Google label. The operator override is mesita_name, which lives on the place itself, not in config.",
+  },
+  {
+    step: "4",
+    name: "Serp",
+    why:
+      "Agent X's soft editorial read, and the context Agent Y selects links against. Its one knob is the Search model preset, in Models above.",
+  },
+  {
+    step: "8",
+    name: "Menu",
+    why:
+      "A stub. The website is no longer crawled, so no menu source exists — it always passes and can never block the queue.",
+  },
+  {
+    step: "10",
+    name: "Description",
+    why:
+      "The Profile Description, then category, then tags. Its one knob is the Text model tier, in Models above; the vocabularies are closed and code-defined.",
+  },
+  {
+    step: "Extra",
+    name: "Semantics",
+    why:
+      "The Semantic Summary and its vector — outside the queue, so it never counts toward Enriched. The embeddings model is LOCKED: swapping it changes dimensions and re-embeds the whole catalog.",
+  },
+];
+
+export function QuietStepsSection() {
+  return (
+    <SectionCard
+      icon={<ListChecks className="h-4 w-4" />}
+      title="The rest of the queue"
+      subtitle="Every other step, and where its knob lives if it has one. Nothing here to save."
+    >
+      <ul className="divide-border/60 divide-y">
+        {QUIET_STEPS.map((s) => (
+          <li key={s.step} className="flex gap-3 py-3 first:pt-0 last:pb-0">
+            <span className="bg-muted text-muted-foreground mt-0.5 inline-flex h-6 shrink-0 items-center justify-center rounded-md px-1.5 type-label font-semibold tabular-nums">
+              {s.step}
+            </span>
+            <div className="min-w-0">
+              <p className="text-sm font-semibold">{s.name}</p>
+              <p className="text-muted-foreground mt-0.5 text-xs leading-relaxed">
+                {s.why}
+              </p>
+            </div>
+          </li>
+        ))}
+      </ul>
+    </SectionCard>
   );
 }
