@@ -6,10 +6,12 @@
 // tunes that agent — the number it calls while we test, how hard it retries, and
 // the booking channel (phone — voice-only since MESITA-842 / MESITA-839).
 //
-// Every place carries ONE selected reservation endpoint at
-// products.reservations = { channel, value } — the address the Reservationist
-// dials. The Enricher seeds phone from places.phone. WhatsApp / Instagram are
-// not serving paths (no Twilio Messages.json; fleet is voice-only).
+// Every place carries ONE selected reservation endpoint, in the typed pair
+// places.reservation_channel / places.reservation_target (MESITA-1208 moved it
+// out of the products jsonb; MESITA-1211 dropped the leftovers) — the address
+// the Reservationist dials. The Enricher seeds phone from places.phone.
+// WhatsApp / Instagram are not serving paths (no Twilio Messages.json; fleet
+// is voice-only).
 //
 // The channel keys are the contract shared with the Edge Functions
 // (admin-web-{get,update}-reservations-config) and with

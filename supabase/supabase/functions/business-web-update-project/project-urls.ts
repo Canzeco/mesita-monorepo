@@ -24,18 +24,3 @@ export function isUrl(v: unknown): v is string {
     return false;
   }
 }
-
-/** POS / booking endpoint: https URL or a phone/email deep link. */
-export function isReservationEndpoint(v: string): boolean {
-  try {
-    const u = new URL(v);
-    return (
-      u.protocol === "https:" ||
-      u.protocol === "tel:" ||
-      u.protocol === "mailto:" ||
-      u.protocol === "sms:"
-    );
-  } catch {
-    return false;
-  }
-}

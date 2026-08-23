@@ -6,7 +6,7 @@ Deno.test("products.menu: sanitizes name/url and keeps sibling keys", () => {
   const res = applyMediaUpdates(
     {
       products: {
-        reservations: { channel: "phone", value: "+52 81 0000 0000" },
+        catalog_note: "keep me",
         menu: [
           { name: "  Dinner  ", url: "https://example.com/menu.pdf" },
           { name: "", url: "" }, // empty draft — dropped
@@ -19,7 +19,7 @@ Deno.test("products.menu: sanitizes name/url and keeps sibling keys", () => {
   );
   assertEquals(res, null);
   assertEquals(update.products, {
-    reservations: { channel: "phone", value: "+52 81 0000 0000" },
+    catalog_note: "keep me",
     menu: [
       { name: "Dinner", url: "https://example.com/menu.pdf" },
       { name: "Wine", url: "https://example.com/wine.pdf" },
