@@ -31,9 +31,17 @@ export async function updateReservation(
 ): Promise<{ ok: true; value: { id: string } } | { ok: false; error: string }> {
   const out: Record<string, unknown> = { ...patch };
   if ("attempts" in patch) {
-    const arr = Array.isArray(patch.attempts) ? patch.attempts : [];
+    // MESITA-1247 review fix: `attempts` itself being present-but-not-an-array
+    // (a string, a number, a stray object) used to fall back to `[]` here —
+    // silently dropping the whole malformed value instead of refusing the
+    // write, exactly the "swallowing" behaviour this door's own docstring
+    // above says it deliberately does NOT want. Refuse it the same way a
+    // malformed ENTRY inside an otherwise-real array already was.
+    if (!Array.isArray(patch.attempts)) {
+      return { ok: false, error: "attempts must be an array" };
+    }
     const value: unknown[] = [];
-    for (const entry of arr) {
+    for (const entry of patch.attempts) {
       const r = AttemptEntrySchema.parse(entry);
       if (!r.ok) return { ok: false, error: `attempts: ${r.error}` };
       value.push(r.value);

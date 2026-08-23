@@ -8,6 +8,25 @@
 // place-card size budget — need the aggregate validators or a materialized
 // place-card projection that do not exist yet; they belong to the PRs that
 // build those.
+//
+// REVIEW FINDING (MESITA-1247): the issue names guard test 2 as THREE legs —
+// "closed-key-sets (class, function, channel)". This file covers function
+// (FUNCTION_STATE_KEYS below) and channel (ChannelSet alias test below,
+// plus channels.test.ts's tiktok/tripadvisor/yelp retirement coverage). The
+// CLASS leg — a closed set for consumers.class_key — is NOT covered here,
+// and not because it's cheap to add correctly: consumer-doc.ts (PR #1157,
+// the canonical, already-shipped consumer door) validates class_key as
+// "any non-empty string", not a closed enum — per repo law (class bronze <
+// silver < gold < diamond are EARNED labels, but the DB column stores
+// LEGACY keys, never the metal names themselves), the actual legal set
+// lives in the classes-v2 bridge, not in consumer-doc.ts. Writing a
+// closed-key-set test here would either (a) test a property consumer-doc.ts
+// itself doesn't enforce — asserting something false about the shipped
+// validator — or (b) require changing consumer-doc.ts's own validation,
+// which is out of scope for this PR to do correctly without the product
+// clarity on the exact legal set that a dedicated pass needs. Left
+// undone and flagged rather than guessed at; see MESITA-1247's follow-up
+// issue for the class-key closed-set leg.
 
 import { assert, assertEquals } from "jsr:@std/assert@1";
 import { PULSE_EXTRAS, PULSE_PIECES, type PulseStep } from "./pulse-pieces.ts";

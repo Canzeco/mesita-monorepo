@@ -28,6 +28,24 @@
 // what this ratchet is for; migrating those 6 onto the door is follow-up
 // work, not a claim this comment makes.
 //
+// RECONCILIATION (2026-08-23, same day, after this PR's own branch was cut):
+// three more child issues split off this same parent (MESITA-1247 §21:58)
+// landed on main before this PR did — MESITA-1279/1280/1281 shipped real,
+// comprehensive doors for PLACE/RESERVATION/TICKET (`place-doc.ts`
+// writePlace, `reservation-doc.ts` writeReservation, `ticket-doc.ts`
+// writeTicket), each routing most or all of its aggregate's existing call
+// sites. `place-doc.ts`/`ticket-doc.ts`/`ojo-engine.ts`/`reservation-doc.ts`
+// are added to the allowlists below — new files now writing their
+// aggregate's table directly, which is exactly what a door (or, for
+// ojo-engine.ts, a pre-existing shipped writer this ratchet's baseline
+// simply predates) is supposed to do. See each entry's own comment for
+// which is which. `update-place.ts` (this PR's own PLACE door) is REMOVED
+// from the allowlist below — deleted in this reconciliation as a second,
+// competing PLACE door now that `place-doc.ts` is the real one; its jsonb
+// content schemas (place-jsonb-schemas.ts) were folded into place-doc.ts's
+// validator instead, per the coordination comment on this PR
+// (github.com/Canzeco/mesita-monorepo/pull/1163#issuecomment-5388875090).
+//
 // Scan helpers duplicated from place-name-writes.test.ts on purpose — that
 // file's internals are regression-pinned (MESITA-1075's relative-path fix);
 // touching them for a DRY cleanup here is unneeded risk. Extracting a shared
@@ -97,13 +115,14 @@ const DELETE_VERB = /\.delete\s*\(/;
 // ── PLACE (places, profiles) — bootstrapped from a real findWriters() run ──
 const PLACE_UPDATE_ALLOWLIST = [
   "_shared/embeddings.ts",
+  "_shared/ojo-engine.ts", // windowing false positive — its .from("profiles") is read-only (.select); the write-verb match in the 2000-char window is the unrelated visit_tickets .update() a few lines later
+  "_shared/place-doc.ts", // THE place door (writePlace, MESITA-1279/#1164) — not actually caught by this scan (table is a parameterized arg, not a literal .from("places")), listed for a future reader's clarity
   "_shared/place-embeddings.ts",
   "_shared/save-place.ts",
   "_shared/social-followers.ts",
   "_shared/store-place-images.ts",
   "_shared/ticket-reprice.ts",
   "_shared/ticket-review-notify.ts",
-  "_shared/update-place.ts",
   "admin-web-set-place-enrichment/index.ts",
   "admin-web-set-place-listed/index.ts",
   "admin-web-set-plan/index.ts",
@@ -142,7 +161,15 @@ Deno.test("CONSUMER: no new writer of consumers outside the allowlist", async ()
 });
 
 // ── TICKET (visit_tickets) — no door this PR, ratchet only ─────────────
+// THE ticket door now exists (`_shared/ticket-doc.ts`, writeTicket,
+// MESITA-1281/#1161, merged after this PR's branch was cut) — routes 18/18
+// existing call sites. This PR's own TICKET section stays ratchet-only by
+// design (see the file header / PR body: a door without the state-machine
+// transition logic would be misleading); no reconciliation needed beyond
+// listing the new door + ojo-engine.ts below.
 const TICKET_ALLOWLIST = [
+  "_shared/ojo-engine.ts", // real writer (Ojo, MESITA-1034/#1159, merged after this ratchet's baseline scan) — annotation + status-transition updates on visit_tickets, all CAS-guarded (see the file itself)
+  "_shared/ticket-doc.ts", // THE ticket door (writeTicket, MESITA-1281/#1161)
   "_shared/ticket-informal.ts",
   "_shared/ticket-reprice.ts",
   "_shared/ticket-review-notify.ts",
@@ -172,7 +199,8 @@ Deno.test("TICKET: no new writer of visit_tickets outside the allowlist", async 
 // ── RESERVATION (reservation_tickets) ───────────────────────────────────
 const RESERVATION_ALLOWLIST = [
   "_shared/agent-tools.ts",
-  "_shared/reservation-attempts.ts",
+  "_shared/reservation-attempts.ts", // complementary to reservation-doc.ts, not competing — different axis (AttemptEntry shape) AND different file (supabase-edgefunc-reservation-call/index.ts, which reservation-doc.ts's 15/28-routed rollout deliberately left for its own pass)
+  "_shared/reservation-doc.ts", // THE reservation door (writeReservation, MESITA-1280/#1162) — 15/28 call sites routed; the other 13 are all in supabase-edgefunc-reservation-call/index.ts, left for a dedicated pass per that PR
   "business-web-confirm-reservation/index.ts",
   "consumer-mcp/index.ts",
   "consumer-web-confirm-reservation/index.ts",
@@ -240,6 +268,7 @@ Deno.test("CONFIG: no new writer of app_config outside the allowlist", async () 
 // tightened later without this file silently going stale.
 const HARD_DELETE_ALLOWLIST = [
   "_shared/save-place.ts", // real: deletes the places row it just inserted, on a failed downstream step (compensating-write pattern)
+  "_shared/ticket-doc.ts", // real, but a CONSOLIDATION not a new bypass: writeTicket's own `mode: "delete"` is THE door's sanctioned delete path, replacing what consumer-web-delete-account's cascade clean-up already did as a scattered raw call (see the door's own docstring) — a chokepoint appearing here is the deletion law getting MORE enforceable, not less
   "business-web-request-manual-review/index.ts", // windowing false positive — real delete() targets project_verifications (dedup-before-insert), not profiles
   "consumer-web-delete-account/index.ts", // real: deletes the consumer's own visit_tickets as part of account deletion — VERIFIED it does NOT hard-delete the consumers row itself (no delete() on consumers exists anywhere in the codebase today)
   "consumer-web-submit-review/index.ts", // windowing false positive — real delete() targets consumer_review_claims (claim rollback on a failed write), not profiles or visit_tickets
