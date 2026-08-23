@@ -25,7 +25,7 @@ export function StepHeading({
 }) {
   return (
     <div className="min-w-0">
-      <h3 className="text-muted-foreground flex items-center gap-1.5 text-[11px] font-semibold tracking-[0.12em] uppercase">
+      <h3 className="text-muted-foreground flex items-center gap-1.5 type-eyebrow">
         {icon}
         {title}
       </h3>
