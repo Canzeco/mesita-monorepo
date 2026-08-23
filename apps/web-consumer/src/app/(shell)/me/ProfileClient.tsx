@@ -6,6 +6,7 @@ import {
   Instagram,
   MoreHorizontal,
   Settings as SettingsIcon,
+  Ticket,
   UserRound,
 } from "lucide-react";
 import { SignOutButton } from "@/components/auth/SignOutButton";
@@ -158,6 +159,14 @@ export function ProfileClient({
         .join(" · ")
     : "Instagram not connected";
 
+  // The row states which door you came through, not a count: invitations are
+  // one-shot bearer codes, so there is no standing list to tally. An invited
+  // guest sees the rung it named; everyone else sees what the door is for.
+  const inviteSummary =
+    origin === "invitation"
+      ? `${cls?.label ?? "Bronze"} by invitation`
+      : "Have a code? Redeem it here";
+
   const renewalDate = renewsAt ? new Date(renewsAt) : null;
   const renewalValid =
     renewalDate != null && !Number.isNaN(renewalDate.valueOf());
@@ -222,6 +231,19 @@ export function ProfileClient({
             title="Class"
             summary={loading ? "…" : classSummary}
             onClick={() => setClassOpen(true)}
+          />
+
+          {/* THE OTHER DOOR, ITS OWN ROW (decision: Pato). An invitation
+              grants a class outright, exactly like reach does — but it was
+              reachable only by opening Class and finding a button inside it,
+              while Instagram, the automatic door, got a row of its own. A
+              guest holding a code had to guess where it went. Two doors, two
+              rows, same rank. */}
+          <BoxRow
+            Icon={Ticket}
+            title="Invitations"
+            summary={loading ? "…" : inviteSummary}
+            onClick={() => setInvitePinOpen(true)}
           />
 
           {/* Money — the plan axis lives on its own surface (Stripe checkout
