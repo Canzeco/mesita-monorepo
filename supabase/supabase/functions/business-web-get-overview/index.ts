@@ -18,12 +18,9 @@ import {
   readEFEnv,
 } from "../_shared/auth.ts";
 import { PLACE_BUSINESS_COLUMNS as PLACE_COLUMNS } from "../_shared/place-columns.ts";
+import { isPlaceListed, isPlaceSeeded } from "../_shared/place-status.ts";
 import {
-  isPlaceListed,
-  isPlaceSeeded,
-  placeEnrichLevel,
-} from "../_shared/place-status.ts";
-import {
+  PULSE_LABELS_IN_ORDER,
   PULSE_TOTAL,
   pulseHighWater,
   type PulseEvent,
@@ -91,10 +88,10 @@ Deno.serve(async (req) => {
         400,
       );
     }
-    // One round trip for both: the place row, and the pipeline row the Status
-    // box's `enriched` level is read from. Parallel, so the extra fact costs
-    // no latency.
-    const [placeRow, researchRow, eventsRow] = await Promise.all([
+    // One round trip for both: the place row, and the PULSE events the Status
+    // box's `enriched` high-water is folded from. Parallel, so the extra fact
+    // costs no latency.
+    const [placeRow, eventsRow] = await Promise.all([
       admin
         .from("profiles")
         .select(
@@ -102,10 +99,6 @@ Deno.serve(async (req) => {
         )
         .eq("id", requestedPlaceId)
         .maybeSingle(),
-      // Via the RPC, not the table: gathered/analysis are tens of KB of jsonb
-      // each and only their PRESENCE is used, so the `is not null` happens in
-      // the database and nothing large ever leaves it (MESITA-1198).
-      admin.rpc("place_research_facts", { p_place_ids: [requestedPlaceId] }),
       // PULSE pieces, latest per piece (MESITA-1172). The Status box and the
       // catalog table MUST show the same number — a status that disagrees with
       // itself across two screens is worse than no status at all.
@@ -117,32 +110,7 @@ Deno.serve(async (req) => {
     if (!placeRow.data) {
       return json({ ok: false, error: "Place not found" }, 404);
     }
-    // Best-effort, exactly like admin-web-search-places: a failed pipeline
-    // lookup must not 500 the editor. It degrades to level 0, which reads as
-    // "less done than it is" — the safe direction for a status field.
-    if (researchRow.error) {
-      console.error(
-        "[business-web-get-overview] place_research:",
-        researchRow.error.message,
-      );
-    }
-    // The RPC returns a set, so one place is a one-row array (or none).
-    const research = ((researchRow.data ?? []) as {
-      stage: string | null;
-      has_gathered: boolean | null;
-      has_analysis: boolean | null;
-    }[])[0] ?? null;
     const placeFields = placeRow.data as unknown as Record<string, unknown>;
-    const enrichLevel = placeEnrichLevel(
-      research
-        ? {
-          stage: research.stage,
-          gathered: research.has_gathered === true,
-          analysis: research.has_analysis === true,
-        }
-        : null,
-      (placeFields.content_status as string | null) ?? null,
-    );
     // Same best-effort posture: no events simply means the queue never
     // reported, which reads as 0.
     if (eventsRow.error) {
@@ -167,9 +135,9 @@ Deno.serve(async (req) => {
         my_role: "owner",
         seeded: isPlaceSeeded(placeFields.google_place_id),
         listed: isPlaceListed(placeFields.status),
-        enrich_level: enrichLevel,
         enrich_pulse: enrichPulse,
         enrich_pulse_total: PULSE_TOTAL,
+        enrich_pulse_labels: PULSE_LABELS_IN_ORDER,
       } as unknown as PlaceRow,
     ];
   } else {

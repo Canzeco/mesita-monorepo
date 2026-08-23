@@ -381,7 +381,7 @@ serveEnrichStage("research", async (admin, _env, row) => {
     });
 
   // ── PULSE pieces (MESITA-1172) ─────────────────────────────────────────
-  // Research owns pieces 1,2,3,4,6,8. Each is reported from an OBSERVED
+  // Research owns pieces 1,2,3,4 and 7. Each is reported from an OBSERVED
   // effect, never from "we reached this line" — see pulse-pieces.ts.
   //
   // A piece this run did not BUY writes nothing at all, so an earlier run's

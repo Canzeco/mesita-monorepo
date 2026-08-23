@@ -54,10 +54,10 @@ serveEnrichStage("analysis", async (admin, _env, row) => {
   // the list is non-empty, so the place keeps the gallery it already had.
   if (!wants(row.subprocesses, "images")) {
     // NO BEACON HERE (MESITA-1209). This used to write
-    // { step_name: "images", status: "skipped" } — and `images` is PULSE piece
-    // 7, so the high-water reader saw a non-completed piece and stopped at 6.
-    // A cheap refresh that did not buy the funnel therefore knocked a complete
-    // place from 9 down to 6, every time it ran.
+    // { step_name: "images", status: "skipped" } — and `images` is a PULSE
+    // piece key, so the high-water reader saw a non-completed piece mid-ladder
+    // and stopped short of it. A cheap refresh that did not buy the funnel
+    // therefore knocked a complete place back down, every time it ran.
     //
     // The rule it broke is in pulse-report.ts: a piece a run did not BUY writes
     // NOTHING, so the previous run's result stands. What this run bought is
@@ -123,9 +123,9 @@ serveEnrichStage("analysis", async (admin, _env, row) => {
 
   // One beacon for the whole analysis stage (S5–S6) — one notification per function.
   const described = funnel.imageAnalysisByUrl.size;
-  // PULSE piece 7. The funnel ran; `described` is the observed effect. Zero
-  // described is still a pass when vision is off by config — the pool was
-  // ranked in source order, which is the funnel doing its job.
+  // PULSE piece 5 (images). The funnel ran; `described` is the observed
+  // effect. Zero described is still a pass when vision is off by config — the
+  // pool was ranked in source order, which is the funnel doing its job.
   await reportPulsePieces(admin, projectId, {
     images: pieceDone(
       `Described ${funnel.imageAnalysisByUrl.size}, selected ${funnel.finalPhotos.length}.`,

@@ -40,15 +40,14 @@ export type PlaceHit = {
   seeded: boolean;
   /** A guest can reach it: projects.status, per the consumer RLS policy. */
   listed: boolean;
-  /** 0 seeded only · 1 research gathered · 2 images analysed · 3 persisted. */
-  enrich_level: 0 | 1 | 2 | 3;
   /** PULSE: how far the nine-piece queue got, 0-9. 0 means it never started
    *  — or the place predates piece reporting and has no events. */
   enrich_pulse: number;
   /** The ladder's length, so nothing hardcodes 9. */
   enrich_pulse_total: number;
-  /** enrich_level === 3. Kept for callers that only need "is it done". */
-  enriched: boolean;
+  /** The rung names in queue order, from the server. Never hand-copy this
+   *  list — a reorder would put the wrong name beside every row. */
+  enrich_pulse_labels: string[];
   /** An APPROVED project_verifications row — ownership proof, not a badge. */
   verified: boolean;
   /** plan !== "free" — the place pays Mesita. */
@@ -97,10 +96,11 @@ function normalizePlaceHit(raw: RawPlaceHit): PlaceHit {
     // screen rather than an honest "not yet" (MESITA-1152 / MESITA-1166).
     seeded: raw.seeded ?? false,
     listed: raw.listed ?? false,
-    enrich_level: raw.enrich_level ?? 0,
     enrich_pulse: raw.enrich_pulse ?? 0,
-    enrich_pulse_total: raw.enrich_pulse_total ?? 9,
-    enriched: raw.enriched ?? raw.enrich_level === 3,
+    // No `?? 9` here any more: the total and the labels come from the same
+    // server list, so a client fallback could only ever disagree with it.
+    enrich_pulse_total: raw.enrich_pulse_total ?? raw.enrich_pulse_labels?.length ?? 0,
+    enrich_pulse_labels: raw.enrich_pulse_labels ?? [],
     verified: raw.verified ?? false,
     partner: raw.partner ?? false,
     promoting: raw.promoting ?? false,
@@ -229,8 +229,13 @@ export type AdminPlace = {
   seeded?: boolean;
   /** projects.status ∈ (active, lead) — a guest can reach the place at all. */
   listed?: boolean;
-  /** 0 seeded only · 1 research gathered · 2 images analysed · 3 persisted. */
-  enrich_level?: 0 | 1 | 2 | 3;
+  /** PULSE: how far the nine-piece queue got, 0-9. Absent on a payload that
+   *  predates it; the box renders "?" rather than a false 0. */
+  enrich_pulse?: number;
+  /** The ladder's length, from the server. */
+  enrich_pulse_total?: number;
+  /** The rung names in queue order, from the server. */
+  enrich_pulse_labels?: string[];
   /** Google's own id. Admin payload only — never in PLACE_PUBLIC_COLUMNS. */
   google_place_id?: string | null;
   [k: string]: unknown;

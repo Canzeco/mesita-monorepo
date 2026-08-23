@@ -67,20 +67,48 @@ export const PULSE_PIECES = [
 
 export type PulsePiece = (typeof PULSE_PIECES)[number];
 
+/** The operator-facing name of each piece. Names only — see below for why. */
+const PULSE_LABELS: Record<PulsePiece, string> = {
+  pulse: "Pulse",
+  details: "Details",
+  links: "Links",
+  social: "Social",
+  images: "Images",
+  menu: "Menu",
+  reviews: "Reviews",
+  semantics: "Semantics",
+  embeddings: "Embeddings",
+};
+
+/**
+ * THE INDEX IS DERIVED, never written down (MESITA-1222).
+ *
+ * It used to be nine hand-typed literals sitting beside the array that already
+ * defines the order, with nothing tying the two together. `pulseHighWater`
+ * iterates the ARRAY and returns the META index, so a reorder that updated only
+ * one of them would yield a high-water that skips or repeats a number — and the
+ * S-number written to `place_enrichment_events` would drift from the rung's real
+ * position. PR #1072 reordered the array and renumbered by hand and got it
+ * right; nothing would have caught it if it hadn't.
+ */
 export const PULSE_PIECE_META: Record<
   PulsePiece,
   { index: number; label: string }
-> = {
-  pulse: { index: 1, label: "Pulse" },
-  details: { index: 2, label: "Details" },
-  links: { index: 3, label: "Links" },
-  social: { index: 4, label: "Social" },
-  images: { index: 5, label: "Images" },
-  menu: { index: 6, label: "Menu" },
-  reviews: { index: 7, label: "Reviews" },
-  semantics: { index: 8, label: "Semantics" },
-  embeddings: { index: 9, label: "Embeddings" },
-};
+> = Object.fromEntries(
+  PULSE_PIECES.map((key, i) => [key, { index: i + 1, label: PULSE_LABELS[key] }]),
+) as Record<PulsePiece, { index: number; label: string }>;
+
+/**
+ * The labels in queue order — what a client renders beside the number.
+ *
+ * Shipped on the admin payloads so no other package hand-copies this list.
+ * web-admin carried its own positional array with no shared import, no test and
+ * no CI gate; the catalog would simply have shown the wrong rung name beside
+ * every number if a reorder had missed it.
+ */
+export const PULSE_LABELS_IN_ORDER: readonly string[] = PULSE_PIECES.map(
+  (k) => PULSE_PIECE_META[k].label,
+);
 
 /** The total, so nothing hardcodes 9. */
 export const PULSE_TOTAL = PULSE_PIECES.length;

@@ -35,18 +35,22 @@ import { strategyForPlace } from "@/lib/business/strategies";
 //              constant either: archive a place and every guest surface stops
 //              resolving it. Today it is true for every row only because
 //              nothing writes any status but 'active'.
-//   Enriched   HOW FAR the Enricher got, 0-3, off place_research. A level, not
-//              a yes.
+//   Enriched   HOW FAR the PULSE queue got, 0-9, off place_enrichment_events.
+//              A high-water, not a yes: the index of the last rung such that
+//              it and every rung before it completed.
 //   Verified   somebody proved they own it. One-time, never lapses.
 //   Partner    the place pays Mesita. A deal: stable, internal.
 //   Promoting  a guest gets a discount here RIGHT NOW. Volatile, and the only
 //              one of the six a guest is ever shown.
 //
 // Seeded, Listed and Enriched arrive computed on the super-admin overview
-// payload (business-web-get-overview → _shared/place-status.ts), the same
-// helpers the Single Place table uses, so the box and the table can never
-// disagree. Partner and Promoting are derived here from columns on the row;
-// Verified is a separate admin read hoisted into AdminSection.
+// payload (business-web-get-overview → _shared/place-status.ts and
+// _shared/pulse-pieces.ts), the same helpers the Single Place table uses, so
+// the box and the table can never disagree. That guarantee was only half true
+// until MESITA-1218: the chip read the 0-9 high-water while this box's prose
+// read a rival 0-3 stage level, and on every row they disagreed. Partner and
+// Promoting are derived here from columns on the row; Verified is a separate
+// admin read hoisted into AdminSection.
 //
 // `listing_type` backs NONE of them, deliberately: it stores
 // (pays ∧ strategy ≠ zero) collapsed into one enum and is re-derived only when
@@ -84,15 +88,6 @@ const PLAN_LABEL: Record<string, string> = {
   ultra: "Ultra",
 };
 
-// The 0-3 enrich level in the box's voice. The Single Place table shows the
-// same ladder as three ticks (LEVEL_TITLE in PlaceSelectCatalog).
-const ENRICH_STEP: Record<0 | 1 | 2 | 3, string> = {
-  0: "Nothing gathered — the pipeline has never finished a stage here.",
-  1: "Research gathered. Images not analysed yet.",
-  2: "Images analysed. The profile isn't written yet.",
-  3: "Profile persisted — the Enricher finished.",
-};
-
 export function StatusCard({
   place,
   verification,
@@ -126,13 +121,18 @@ export function StatusCard({
     typeof place.listed === "boolean" ? place.listed : "unknown";
   // The PULSE high-water, 0-9 (MESITA-1172) — the SAME number the catalog
   // table shows, from the same helper, so the two screens cannot disagree.
-  // Falls back to the coarse 0-3 stage level only when the payload predates
-  // piece reporting entirely.
+  // There is no fallback: a payload without it renders "?" rather than a 0,
+  // because 0 is a real rung ("seeded, nothing since") and claiming it for a
+  // failed read would report a complete place as an untouched one.
   const pulse = typeof place.enrich_pulse === "number" ? place.enrich_pulse : null;
+  // Names and total both come from the server list, so they cannot disagree
+  // with each other or with the ladder they describe.
+  const pulseLabels = Array.isArray(place.enrich_pulse_labels)
+    ? (place.enrich_pulse_labels as string[])
+    : [];
   const pulseTotal = typeof place.enrich_pulse_total === "number"
     ? place.enrich_pulse_total
-    : 9;
-  const level = typeof place.enrich_level === "number" ? place.enrich_level : null;
+    : pulseLabels.length;
   const placeStatus = typeof place.status === "string" ? place.status : null;
 
   const seededDetail =
@@ -153,10 +153,20 @@ export function StatusCard({
             ? `${placeStatus} — no guest surface resolves this place; the RLS policy stops the read.`
             : "No status on the row.";
 
+  // Names the rung the queue actually reached — off the SAME number the chip
+  // shows. The rung after it is the one that has not completed, which is the
+  // question an operator looking at a stalled place is actually asking.
+  const rung = (n: number) => pulseLabels[n - 1] ?? `piece ${n}`;
   const enrichedDetail =
-    level === null
-      ? "Couldn't read the pipeline row."
-      : ENRICH_STEP[level] +
+    pulse === null || pulseTotal === 0
+      ? "Couldn't read the pipeline events."
+      : (pulse === 0
+        ? "Seeded — nothing after it has landed."
+        : pulse >= pulseTotal
+          ? `All ${pulseTotal} rungs completed — the queue finished.`
+          : `Reached ${rung(pulse)} (${pulse}/${pulseTotal}). ${
+              rung(pulse + 1)
+            } has not completed.`) +
         (place.enriched_at
           ? ` · last run ${String(place.enriched_at).slice(0, 10)}`
           : "");
@@ -288,8 +298,8 @@ function StatusRow({
   value: boolean | "unknown" | "loading";
   tint: "slate" | "indigo" | "violet" | "emerald" | "sky" | "pink";
   detail: string;
-  /** Overrides the chip text in BOTH states. Enriched is a 0-3 level, not a
-   *  yes, so its chip reads "2/3" whether or not the level is complete. */
+  /** Overrides the chip text in BOTH states. Enriched is a 0-9 high-water, not
+   *  a yes, so its chip reads "5/9" whether or not the queue finished. */
   chipLabel?: string;
 }) {
   const on = value === true;
