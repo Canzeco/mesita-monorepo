@@ -80,7 +80,7 @@ export const CORRECTABLE_FIELD_COLUMNS: Record<
 > = {
   hours: ["hours"],
   phone: ["phone"],
-  reservation_endpoint: ["reservation_channel", "reservation_target"],
+  reservation_target: ["reservation_channel", "reservation_target"],
   website_url: ["website_url"],
   address: ["address"],
   closes_at: ["closes_at"],

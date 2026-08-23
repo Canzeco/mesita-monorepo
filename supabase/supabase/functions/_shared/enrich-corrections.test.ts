@@ -78,17 +78,17 @@ Deno.test("an expired pin gives the field back to the Enricher", () => {
   assertEquals(update.hours, { mon: "x" });
 });
 
-Deno.test("the reservation endpoint pins BOTH of its columns", () => {
+Deno.test("the reservation target pins BOTH of its columns", () => {
   // channel and value are written as a pair; protecting one and not the other
   // leaves a channel pointing at a stale number.
   const pins = activeFieldPins(
-    readFieldPins(pinned("reservation_endpoint", FUTURE)),
+    readFieldPins(pinned("reservation_target", FUTURE)),
   );
   const { update, skipped } = stripPinnedColumns(
     { reservation_channel: "phone", reservation_target: "+5215500000000" },
     pins,
   );
-  assertEquals(skipped, ["reservation_endpoint"]);
+  assertEquals(skipped, ["reservation_target"]);
   assertEquals(Object.keys(update), []);
 });
 
