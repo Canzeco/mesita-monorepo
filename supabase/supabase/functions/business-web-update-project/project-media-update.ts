@@ -137,8 +137,10 @@ export function applyMediaUpdates(
         if (!normalized.ok) {
           return json({ ok: false, error: normalized.error }, 400);
         }
-        // Rewrite products with the sanitized menu so sibling keys
-        // (e.g. reservations) stay intact and garbage entries never land.
+        // Rewrite products with the sanitized menu so any sibling key a
+        // future product rail adds stays intact and garbage entries never
+        // land. Routing is NOT one of them: reservation/order routing left
+        // this blob for typed columns in MESITA-1208.
         update.products = { ...p, menu: normalized.value };
         update.menus = normalized.value;
       } else {

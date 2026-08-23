@@ -36,7 +36,7 @@ export type CorrectionSource =
 export type CorrectableField =
   | "hours"
   | "phone"
-  | "reservation_endpoint"
+  | "reservation_target"
   | "website_url"
   | "address"
   | "closes_at";

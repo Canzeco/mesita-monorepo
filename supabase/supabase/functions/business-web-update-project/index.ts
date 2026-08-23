@@ -21,12 +21,7 @@ import { PLACE_BUSINESS_COLUMNS } from "../_shared/place-columns.ts";
 import { ENRICH_FIELD_LIMITS } from "../_shared/enrich-field-limits.ts";
 import { sanitizePlaceTags } from "../_shared/tags.ts";
 import { type PlaceHours, sanitiseHours } from "./project-hours.ts";
-import {
-  isReservationEndpoint,
-  isUrl,
-  URL_FIELDS,
-  type UrlField,
-} from "./project-urls.ts";
+import { isUrl, URL_FIELDS, type UrlField } from "./project-urls.ts";
 import { normalisePromoRate, PROMO_RATE_FIELDS } from "../_shared/promo-rates.ts";
 import { ratesFromPlace } from "../_shared/promo-strategy.ts";
 import {
@@ -39,10 +34,6 @@ import {
   optString,
 } from "./project-update-utils.ts";
 import { resolveCategoryInput } from "./category-input.ts";
-import {
-  type ReservationContact,
-  sanitiseReservationContacts,
-} from "./reservation-contacts.ts";
 import { applyMediaUpdates } from "./project-media-update.ts";
 import {
   loadPreviousSocialUrlsForRefresh,
@@ -140,9 +131,6 @@ type UpdateBody = {
   google_place_id?: string | null;
   // Plain contact (not URL-shaped)
   email?: string | null;
-  // Reservationist booking target (any POS / booking URL) + multi-contacts.
-  reservation_endpoint?: string | null;
-  reservation_contacts?: ReservationContact[] | null;
   // Routing: which contact each rail reaches the place on (MESITA-1208).
   // 'phone' is the only served channel; null clears the rail.
   reservation_channel?: string | null;
@@ -462,49 +450,6 @@ Deno.serve(async (req) => {
       }
       update.email = trimmed.toLowerCase();
     }
-  }
-
-  // Custom POS / booking endpoint — any https URL (or deep link). Empty clears.
-  if ("reservation_endpoint" in body) {
-    const raw = body.reservation_endpoint;
-    if (raw == null || (typeof raw === "string" && raw.trim() === "")) {
-      update.reservation_endpoint = null;
-    } else if (typeof raw !== "string") {
-      return json(
-        { ok: false, error: "reservation_endpoint must be a string" },
-        400,
-      );
-    } else {
-      const trimmed = raw.trim().slice(0, 500);
-      // Allow https://… and common deep-link schemes the reservationist may dial.
-      if (!isReservationEndpoint(trimmed)) {
-        return json(
-          {
-            ok: false,
-            error:
-              "reservation_endpoint must be an https:// URL or a tel:/mailto:/sms: deep link",
-          },
-          400,
-        );
-      }
-      update.reservation_endpoint = trimmed;
-    }
-  }
-
-  // Multi-contact list for the reservationist. Empty array clears.
-  if ("reservation_contacts" in body) {
-    const cleaned = sanitiseReservationContacts(body.reservation_contacts);
-    if (cleaned === "invalid") {
-      return json(
-        {
-          ok: false,
-          error:
-            "reservation_contacts must be an array of {name, role?, phone?, email?, notes?} (max 8)",
-        },
-        400,
-      );
-    }
-    update.reservation_contacts = cleaned;
   }
 
   // Order + reservation ROUTING — which contact each rail reaches the place on
