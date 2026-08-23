@@ -25,6 +25,7 @@ import {
   requireCheckPin,
 } from "../_shared/ticket-check.ts";
 import { TICKET_STATUS } from "../_shared/ticket-status.ts";
+import { writeTicket } from "../_shared/ticket-doc.ts";
 
 const FIXES = new Set(["bill", "proof", "reward"]);
 const MAX_NOTE = 200;
@@ -108,19 +109,20 @@ Deno.serve(async (req) => {
 
   // CAS: still scanned, not approved (approve⊕fix is also a DB constraint),
   // and unchanged since the staff screen rendered.
-  const update = await admin
-    .from("visit_tickets")
-    .update({ fix_requested: fix, fix_note: note || null })
-    .eq("id", ticket.id)
-    .eq("status", TICKET_STATUS.scanned)
-    .is("approved_at", null)
-    .eq("updated_at", expectedUpdatedAt)
-    .select("id, fix_requested")
-    .maybeSingle();
-  if (update.error) {
-    return json({ ok: false, error: `ticket_update: ${update.error.message}` }, 500);
+  const update = await writeTicket(admin, {
+    mode: "update",
+    id: ticket.id,
+    patch: { fix_requested: fix as "bill" | "proof" | "reward", fix_note: note || null },
+    guard: {
+      eq: { status: TICKET_STATUS.scanned, updated_at: expectedUpdatedAt },
+      is: { approved_at: null },
+    },
+    select: "id, fix_requested",
+  });
+  if (!update.ok) {
+    return json({ ok: false, error: `ticket_update: ${update.error}` }, 500);
   }
-  if (!update.data) {
+  if (!update.row) {
     const fresh = await admin
       .from("visit_tickets")
       .select("id, status, fix_requested")

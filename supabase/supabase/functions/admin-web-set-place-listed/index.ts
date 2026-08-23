@@ -54,6 +54,7 @@ import {
   requireSuperAdmin,
 } from "../_shared/auth.ts";
 import { PLACE_BUSINESS_COLUMNS } from "../_shared/place-columns.ts";
+import { writePlace } from "../_shared/place-doc.ts";
 
 /** The statuses the consumer RLS policy treats as reachable. */
 const LISTED_STATUSES = ["active", "lead"] as const;
@@ -119,16 +120,18 @@ Deno.serve(async (req) => {
   }
 
   const nextStatus = listed ? LISTED_STATUS : UNLISTED_STATUS;
-  const { data: updated, error } = await admin
-    .from("projects")
-    .update({ status: nextStatus })
-    .eq("id", projectId)
-    .select("id")
-    .maybeSingle();
-  if (error) {
-    return json({ ok: false, error: `status_update: ${error.message}` }, 500);
+  const updRes = await writePlace(admin, {
+    table: "projects",
+    mode: "update",
+    id: projectId,
+    patch: { status: nextStatus },
+    select: "id",
+    selectMode: "maybeSingle",
+  });
+  if (!updRes.ok) {
+    return json({ ok: false, error: `status_update: ${updRes.error}` }, 500);
   }
-  if (!updated) return json({ ok: false, error: "Place not found" }, 404);
+  if (!updRes.row) return json({ ok: false, error: "Place not found" }, 404);
 
   console.log(
     JSON.stringify({

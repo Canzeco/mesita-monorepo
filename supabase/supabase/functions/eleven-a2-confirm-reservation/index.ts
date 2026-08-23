@@ -36,6 +36,7 @@ import {
   requireAgentSecret,
   ticketByCode,
 } from "../_shared/agent-tools.ts";
+import { type ReservationPatch, writeReservation } from "../_shared/reservation-doc.ts";
 
 const MAX_NEGOTIATION_ROUNDS = 2;
 
@@ -83,12 +84,12 @@ Deno.serve(async (req) => {
 
   // ── No change: the guest accepts what the venue confirmed ──────────────────
   if (!wantsChange) {
-    const patch: Record<string, unknown> = {
+    const patch: ReservationPatch = {
       consumer_confirmed_at: new Date().toISOString(),
     };
     if (note) patch.outcome_note = note;
-    const { error } = await admin.from("reservation_tickets").update(patch).eq("id", ticket.id);
-    if (error) return json({ ok: false, error: error.message }, 500);
+    const write = await writeReservation(admin, { mode: "update", id: ticket.id, patch });
+    if (!write.ok) return json({ ok: false, error: write.error }, 500);
     return json({
       ok: true,
       guest_confirmed: true,
@@ -127,7 +128,7 @@ Deno.serve(async (req) => {
   const offered = normalizeAlternatives(ticket.alternatives);
   if (matchesOffer(offered, date, time, placeLocalDate(ticket.reserved_at))) {
     const nowIso = new Date().toISOString();
-    const patch: Record<string, unknown> = {
+    const patch: ReservationPatch = {
       reserved_at: next.toISOString(),
       status: "confirmed",
       reported_verdict: "confirmed",
@@ -142,11 +143,8 @@ Deno.serve(async (req) => {
       last_call_status: `guest took the venue's own ${date} ${time} offer — confirmed on the spot`,
     };
     if (note) patch.outcome_note = note;
-    const { error: confErr } = await admin
-      .from("reservation_tickets")
-      .update(patch)
-      .eq("id", ticket.id);
-    if (confErr) return json({ ok: false, error: confErr.message }, 500);
+    const confirm = await writeReservation(admin, { mode: "update", id: ticket.id, patch });
+    if (!confirm.ok) return json({ ok: false, error: confirm.error }, 500);
     return json({
       ok: true,
       guest_confirmed: true,
@@ -165,11 +163,15 @@ Deno.serve(async (req) => {
   const rounds = ticket.negotiation_rounds ?? 0;
   if (rounds >= MAX_NEGOTIATION_ROUNDS) {
     // Cap reached — note the wish, park in-app, no more calls this ticket.
-    await admin.from("reservation_tickets").update({
-      outcome_note:
-        `parked after ${rounds} rounds — guest wants ${date} ${time}${note ? ` (${note})` : ""}`
-          .slice(0, 300),
-    }).eq("id", ticket.id);
+    await writeReservation(admin, {
+      mode: "update",
+      id: ticket.id,
+      patch: {
+        outcome_note:
+          `parked after ${rounds} rounds — guest wants ${date} ${time}${note ? ` (${note})` : ""}`
+            .slice(0, 300),
+      },
+    });
     return json({
       ok: true,
       parked: true,
@@ -180,7 +182,7 @@ Deno.serve(async (req) => {
     });
   }
 
-  const patch: Record<string, unknown> = {
+  const patch: ReservationPatch = {
     reserved_at: next.toISOString(),
     // New terms — the venue hasn't agreed to them yet.
     status: "pending",
@@ -191,8 +193,8 @@ Deno.serve(async (req) => {
     callback_next_attempt_at: null,
   };
   if (note) patch.outcome_note = note;
-  const { error } = await admin.from("reservation_tickets").update(patch).eq("id", ticket.id);
-  if (error) return json({ ok: false, error: error.message }, 500);
+  const write = await writeReservation(admin, { mode: "update", id: ticket.id, patch });
+  if (!write.ok) return json({ ok: false, error: write.error }, 500);
 
   // The double call: fire the Booker at the venue with the new terms. The
   // engine acks early; its run updates the ticket as it goes.

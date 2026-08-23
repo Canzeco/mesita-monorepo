@@ -92,7 +92,8 @@ export function ModelsConfigClient() {
   const dirty =
     cfg.supabase.model !== saved.supabase.model ||
     cfg.memo.model !== saved.memo.model ||
-    cfg.memo.perplexity !== saved.memo.perplexity;
+    cfg.memo.perplexity !== saved.memo.perplexity ||
+    cfg.ojo.model !== saved.ojo.model;
 
   const setSupabaseModel = (model: string) => {
     setOk(false);
@@ -107,6 +108,11 @@ export function ModelsConfigClient() {
   const setMemoPerplexity = (perplexity: string) => {
     setOk(false);
     setCfg((c) => ({ ...c, memo: { ...c.memo, perplexity } }));
+  };
+
+  const setOjoModel = (model: string) => {
+    setOk(false);
+    setCfg((c) => ({ ...c, ojo: { model } }));
   };
 
   const save = () => {
@@ -132,7 +138,7 @@ export function ModelsConfigClient() {
     >
       {error && <ErrorNote message={error} />}
 
-      <div className="mt-5 grid gap-3 sm:grid-cols-3">
+      <div className="mt-5 grid gap-3 sm:grid-cols-4">
         <label className="border-border bg-background flex flex-col gap-2 rounded-xl border p-4">
           <span className="text-muted-foreground type-eyebrow">
             Edge Functions
@@ -168,11 +174,24 @@ export function ModelsConfigClient() {
             onChange={setMemoPerplexity}
           />
         </label>
+        <label className="border-border bg-background flex flex-col gap-2 rounded-xl border p-4">
+          <span className="text-muted-foreground type-eyebrow">
+            Ojo · Vision
+          </span>
+          <Select
+            value={cfg.ojo.model}
+            options={OPENAI_CHAT_MODELS}
+            disabled={busy}
+            onChange={setOjoModel}
+            labelFor={(id) => id}
+          />
+        </label>
       </div>
 
       <p className="text-muted-foreground mt-3 type-label leading-relaxed">
         Enricher quality tiers and the embedding model live on Enrichment; the
         embedding model is fixed by design — changing it re-vectors the catalog.
+        Ojo&apos;s enabled/threshold/retry policy lives on Ojo Config.
       </p>
 
       <SaveRow

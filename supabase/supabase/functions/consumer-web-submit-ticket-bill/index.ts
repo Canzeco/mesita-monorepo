@@ -25,6 +25,7 @@ import { computeTicketBill } from "../_shared/business-ticket-billing.ts";
 import { resolveLiveTicketRate } from "../_shared/ticket-reprice.ts";
 import { toCents } from "../_shared/money.ts";
 import { TICKET_STATUS } from "../_shared/ticket-status.ts";
+import { writeTicket } from "../_shared/ticket-doc.ts";
 
 type Body = {
   ticketId?: string;
@@ -128,9 +129,10 @@ Deno.serve(async (req) => {
   // fix itself. CAS on the editable statuses.
   const clearingFix = ticket.fix_requested === "bill" ||
     ticket.fix_requested === "reward";
-  const update = await admin
-    .from("visit_tickets")
-    .update({
+  const update = await writeTicket(admin, {
+    mode: "update",
+    id: ticket.id,
+    patch: {
       bill_subtotal_cents: snap.checkSubtotalCents,
       tip_cents: snap.tipCents,
       tip_pct: tipPct,
@@ -140,17 +142,15 @@ Deno.serve(async (req) => {
       discount_cents: snap.discountCents,
       bill_source: "consumer",
       ...(clearingFix ? { fix_requested: null, fix_note: null } : {}),
-    })
-    .eq("id", ticket.id)
-    .in("status", BILL_EDITABLE)
-    .select(
+    },
+    guard: { in: { status: BILL_EDITABLE } },
+    select:
       "id, status, bill_subtotal_cents, tip_cents, tip_pct, total_cents, discount_percent, discount_cents, fix_requested, updated_at, currency",
-    )
-    .maybeSingle();
-  if (update.error) {
-    return json({ ok: false, error: `ticket_update: ${update.error.message}` }, 500);
+  });
+  if (!update.ok) {
+    return json({ ok: false, error: `ticket_update: ${update.error}` }, 500);
   }
-  if (!update.data) {
+  if (!update.row) {
     return json(
       { ok: false, code: "stale_state", error: "The ticket moved on — refresh and try again." },
       409,
@@ -159,7 +159,7 @@ Deno.serve(async (req) => {
 
   return json({
     ok: true,
-    ticket: update.data,
+    ticket: update.row,
     amount_due_cents: snap.amountDueCents,
   });
 });

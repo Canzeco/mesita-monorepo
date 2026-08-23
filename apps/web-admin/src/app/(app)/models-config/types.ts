@@ -6,26 +6,28 @@
 //
 // This page is the SoT for app_config.models_config (MESITA-941). Live readers
 // (_shared/models-config.ts → get-memo-config, Enricher stages, embeddings,
-// business-web-suggest-promo) bind supabase / enricher.model / embeddings / memo.*.
+// business-web-suggest-promo, ojo-engine) bind supabase / enricher.model /
+// embeddings / memo.* / ojo.model.
 // Enricher Perplexity is NOT read from this blob — Enricher
 // Config's atlas_perplexity_preset is the live search preset (enricher.perplexity
 // here is staged). Synthesis / vision quality tiers stay on Enricher Config.
 
 import type { LucideIcon } from "lucide-react";
-import { Database, Layers, MessagesSquare, Sparkles } from "lucide-react";
+import { Database, Eye, Layers, MessagesSquare, Sparkles } from "lucide-react";
 
-type SubsystemKey = "supabase" | "enricher" | "embeddings" | "memo";
+type SubsystemKey = "supabase" | "enricher" | "embeddings" | "memo" | "ojo";
 
-// The persisted blob (app_config.models_config). supabase + memo are edited
-// here; enricher.model is informational (Enricher Config quality tiers pick the
-// live OpenAI model, with models_config.enricher.model as the cheap/default
-// binding); enricher.perplexity is staged (unread — atlas_perplexity_preset wins).
+// The persisted blob (app_config.models_config). supabase + memo + ojo are
+// edited here; enricher.model is informational (Enricher Config quality tiers
+// pick the live OpenAI model, with models_config.enricher.model as the
+// cheap/default binding); enricher.perplexity is staged (unread — atlas_perplexity_preset wins).
 export type ModelsConfig = {
   v: number;
   supabase: { model: string };
   enricher: { model: string; perplexity: string };
   embeddings: { model: string };
   memo: { model: string; perplexity: string };
+  ojo: { model: string };
 };
 
 // OpenAI chat catalog for editable OpenAI knobs on this page.
@@ -140,6 +142,16 @@ export const SUBSYSTEMS: readonly SubsystemMeta[] = [
     editableHere: true,
     owner: null,
   },
+  {
+    key: "ojo",
+    label: "Ojo",
+    Icon: Eye,
+    status: "live",
+    detail:
+      "Vision model reading a guest's story/review screenshot (MESITA-1034). Defaults to gpt-4o, not the enricher's gpt-4o-mini — Ojo decides whether a guest earns money, not whether a photo is worth ranking. See Ojo Config for the enabled/threshold/retry policy this model serves.",
+    editableHere: true,
+    owner: null,
+  },
 ];
 
 // Defaults — mirror the migration's app_config.models_config seed. The client
@@ -150,6 +162,7 @@ export const DEFAULT_MODELS_CONFIG: ModelsConfig = {
   enricher: { model: "gpt-4o-mini", perplexity: "sonar-pro" },
   embeddings: { model: "text-embedding-3-small" },
   memo: { model: "gpt-4o-mini", perplexity: "sonar-pro" },
+  ojo: { model: "gpt-4o" },
 };
 
 /** Merge a null / partial / untrusted blob into a complete, valid config. */
@@ -187,5 +200,6 @@ export function coerceModelsConfig(raw: unknown): ModelsConfig {
       model: str(obj("memo").model, d.memo.model),
       perplexity: perp(obj("memo").perplexity, d.memo.perplexity),
     },
+    ojo: { model: str(obj("ojo").model, d.ojo.model) },
   };
 }

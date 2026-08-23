@@ -44,6 +44,8 @@ import {
 } from "../_shared/rewards-config.ts";
 import { repriceTicketAfterAction } from "../_shared/ticket-reprice.ts";
 import { TASKABLE_STATUS_SET } from "../_shared/ticket-status.ts";
+import { writeTicket } from "../_shared/ticket-doc.ts";
+import { queueOjoVerification } from "../_shared/ojo-engine.ts";
 
 type Body = { ticketId?: string; screenshotUrl?: string };
 
@@ -155,9 +157,10 @@ Deno.serve(async (req) => {
   }
 
   const now = new Date().toISOString();
-  const updated = await admin
-    .from("visit_tickets")
-    .update({
+  const updated = await writeTicket(admin, {
+    mode: "update",
+    id: ticketId,
+    patch: {
       review_status: "self_verified",
       review_submitted_at: now,
       review_verified_at: now,
@@ -172,11 +175,11 @@ Deno.serve(async (req) => {
       ...(ticket.fix_requested === "proof" || ticket.fix_requested === "reward"
         ? { fix_requested: null, fix_note: null }
         : {}),
-    })
-    .eq("id", ticketId)
-    .select("id, status, review_status, review_submitted_at")
-    .single();
-  if (updated.error) {
+    },
+    select: "id, status, review_status, review_submitted_at",
+    single: true,
+  });
+  if (!updated.ok) {
     // Give the claim back — otherwise a transient write failure would burn the
     // guest's one shot at this place forever.
     await admin
@@ -185,7 +188,7 @@ Deno.serve(async (req) => {
       .eq("consumer_id", userId)
       .eq("project_id", ticket.project_id);
     return json(
-      { ok: false, error: `review_submit: ${updated.error.message}` },
+      { ok: false, error: `review_submit: ${updated.error}` },
       500,
     );
   }
@@ -196,5 +199,18 @@ Deno.serve(async (req) => {
   const reprice = await repriceTicketAfterAction(admin, ticketId);
   if (reprice.ok) repricedPercent = reprice.ratePercent;
 
-  return json({ ok: true, ticket: updated.data, repricedPercent });
+  // Ojo (MESITA-1034): background vision-model read of the screenshot just
+  // attached. Fires only when a screenshot actually came in on THIS call.
+  // Never awaited, never blocks this response; a no-op when
+  // ojo_config.enabled is false (the shipped default).
+  if (shotRes.url) {
+    queueOjoVerification({
+      admin,
+      ticketId,
+      kind: "review",
+      logPrefix: "consumer-web-submit-review/ojo",
+    });
+  }
+
+  return json({ ok: true, ticket: updated.row, repricedPercent });
 });

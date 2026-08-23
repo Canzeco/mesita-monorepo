@@ -23,6 +23,7 @@ import { withFamilyKeys } from "../_shared/place-family-keys.ts";
 import { getTierConfig, isElevatedClass } from "../_shared/membership.ts";
 import { generateReservationCode, isUniqueViolation } from "../_shared/reservation-code.ts";
 import { attachPlaces } from "../_shared/reservation-places.ts";
+import { writeReservation } from "../_shared/reservation-doc.ts";
 import { suggestPlaces } from "../_shared/suggest-places.ts";
 import { CORS } from "../_shared/cors.ts";
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
@@ -215,9 +216,10 @@ async function runTool(
       let reservation: Record<string, unknown> | null = null;
       let insertError: { message: string } | null = null;
       for (let i = 0; i < 3 && !reservation; i++) {
-        const ins = await admin
-          .from("reservation_tickets")
-          .insert({
+        // No places embed — two-hop FK (_shared/reservation-places.ts).
+        const ins = await writeReservation(admin, {
+          mode: "insert",
+          patch: {
             consumer_id: consumerId,
             project_id: placeId,
             reference_code: generateReservationCode(),
@@ -226,18 +228,16 @@ async function runTool(
             notes,
             consumer_notify: guestNotify,
             status: "pending",
-          })
-          // No places embed — two-hop FK (_shared/reservation-places.ts).
-          .select(
+          },
+          select:
             "id, reference_code, reserved_at, party_size, status, notes, consumer_notify, created_at, project_id",
-          )
-          .single();
-        if (!ins.error) {
-          reservation = ins.data as Record<string, unknown>;
+        });
+        if (ins.ok) {
+          reservation = ins.row as Record<string, unknown>;
           insertError = null;
         } else {
-          insertError = ins.error;
-          if (!isUniqueViolation(ins.error)) break;
+          insertError = { message: ins.error };
+          if (!isUniqueViolation({ code: ins.code })) break;
         }
       }
       if (!reservation) return toolError(insertError?.message ?? "insert failed");

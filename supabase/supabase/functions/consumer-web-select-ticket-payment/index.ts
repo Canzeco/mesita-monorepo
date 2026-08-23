@@ -23,6 +23,7 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { corsPreflight, json, readJson, rejectUnlessMethods } from "../_shared/http.ts";
 import { adminClient, getAuthedUser, readEFEnv } from "../_shared/auth.ts";
 import { TICKET_STATUS } from "../_shared/ticket-status.ts";
+import { writeTicket } from "../_shared/ticket-doc.ts";
 
 type Body = { ticketId?: string; method?: string | null };
 
@@ -89,17 +90,17 @@ Deno.serve(async (req) => {
         409,
       );
     }
-    const update = await admin
-      .from("visit_tickets")
-      .update({ status: TICKET_STATUS.paying, paid_method: "at_place" })
-      .eq("id", ticket.id)
-      .eq("status", TICKET_STATUS.approved)
-      .select("id, status")
-      .maybeSingle();
-    if (update.error) {
-      return json({ ok: false, error: `ticket_update: ${update.error.message}` }, 500);
+    const update = await writeTicket(admin, {
+      mode: "update",
+      id: ticket.id,
+      patch: { status: TICKET_STATUS.paying, paid_method: "at_place" },
+      guard: { eq: { status: TICKET_STATUS.approved } },
+      select: "id, status",
+    });
+    if (!update.ok) {
+      return json({ ok: false, error: `ticket_update: ${update.error}` }, 500);
     }
-    if (!update.data) {
+    if (!update.row) {
       return json({ ok: false, code: "stale_state", error: "Ticket changed — refresh." }, 409);
     }
     return json({ ok: true, status: TICKET_STATUS.paying });
@@ -115,17 +116,17 @@ Deno.serve(async (req) => {
       409,
     );
   }
-  const rollback = await admin
-    .from("visit_tickets")
-    .update({ status: TICKET_STATUS.approved, paid_method: null })
-    .eq("id", ticket.id)
-    .eq("status", TICKET_STATUS.paying)
-    .select("id, status")
-    .maybeSingle();
-  if (rollback.error) {
-    return json({ ok: false, error: `ticket_update: ${rollback.error.message}` }, 500);
+  const rollback = await writeTicket(admin, {
+    mode: "update",
+    id: ticket.id,
+    patch: { status: TICKET_STATUS.approved, paid_method: null },
+    guard: { eq: { status: TICKET_STATUS.paying } },
+    select: "id, status",
+  });
+  if (!rollback.ok) {
+    return json({ ok: false, error: `ticket_update: ${rollback.error}` }, 500);
   }
-  if (!rollback.data) {
+  if (!rollback.row) {
     return json({ ok: false, code: "stale_state", error: "Ticket changed — refresh." }, 409);
   }
   return json({ ok: true, status: TICKET_STATUS.approved });

@@ -36,6 +36,7 @@ import {
   readEFEnv,
   requireSuperAdmin,
 } from "../_shared/auth.ts";
+import { writePlace } from "../_shared/place-doc.ts";
 
 type EnrichMode = "full" | "analysis" | "contents";
 type Body = {
@@ -125,17 +126,16 @@ Deno.serve(async (req) => {
     nextAt = new Date(Math.max(due, Date.now())).toISOString();
   }
 
-  const { data: saved, error: updErr } = await admin
-    .from("places")
-    .update({
-      enrich_every_days: everyDays,
-      enrich_mode: mode,
-      enrich_next_at: nextAt,
-    })
-    .eq("id", projectId)
-    .select("enrich_every_days, enrich_mode, enrich_next_at, enriched_at")
-    .maybeSingle();
-  if (updErr) return json({ ok: false, error: `update: ${updErr.message}` }, 500);
+  const updRes = await writePlace(admin, {
+    table: "places",
+    mode: "update",
+    id: projectId,
+    patch: { enrich_every_days: everyDays, enrich_mode: mode, enrich_next_at: nextAt },
+    select: "enrich_every_days, enrich_mode, enrich_next_at, enriched_at",
+    selectMode: "maybeSingle",
+  });
+  if (!updRes.ok) return json({ ok: false, error: `update: ${updRes.error}` }, 500);
+  const saved = updRes.row;
   if (!saved) return json({ ok: false, error: "Place not found" }, 404);
 
   const out = saved as {

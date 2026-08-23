@@ -53,6 +53,9 @@ const DEFAULT = {
   enricher: { model: "gpt-4o-mini", perplexity: "sonar-pro" },
   embeddings: { model: "text-embedding-3-small" },
   memo: { model: "gpt-4o-mini", perplexity: "sonar-pro" },
+  // MESITA-1034: gpt-4o, not gpt-4o-mini — matches _shared/models-config.ts's
+  // DEFAULT_MODELS_CONFIG.ojo, the reader side of the same default.
+  ojo: { model: "gpt-4o" },
 };
 
 function obj(v: unknown): Record<string, unknown> {
@@ -107,6 +110,9 @@ function validate(
         obj(r.memo).perplexity,
         DEFAULT.memo.perplexity,
       ),
+    },
+    ojo: {
+      model: cleanModel(obj(r.ojo).model, DEFAULT.ojo.model),
     },
   };
   return { ok: true, config };

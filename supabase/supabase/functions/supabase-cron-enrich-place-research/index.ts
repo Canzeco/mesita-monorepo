@@ -62,6 +62,7 @@ import {
 import { gatherSerpSummary } from "../_shared/enrich-serp.ts";
 import { gatherInstagram, type InstagramResult } from "../_shared/enrich-instagram.ts";
 import { type FacebookResult, gatherFacebook } from "../_shared/enrich-facebook.ts";
+import { writePlace } from "../_shared/place-doc.ts";
 import {
   advanceResearchStage,
   failResearchRow,
@@ -151,15 +152,21 @@ serveEnrichStage("research", async (admin, _env, row) => {
   // pipeline, and the gate below reads `businessStatus` directly, never the
   // column.
   {
-    const { error: opErr } = await admin
-      .from("places")
-      .update({
-        business_status: businessStatus ?? null,
+    const opRes = await writePlace(admin, {
+      table: "places",
+      mode: "update",
+      id: projectId,
+      patch: {
+        business_status: (businessStatus ?? null) as
+          | "OPERATIONAL"
+          | "CLOSED_TEMPORARILY"
+          | "CLOSED_PERMANENTLY"
+          | null,
         business_status_at: new Date().toISOString(),
-      })
-      .eq("id", projectId);
-    if (opErr) {
-      console.error("[enrich-research] business_status write:", opErr.message);
+      },
+    });
+    if (!opRes.ok) {
+      console.error("[enrich-research] business_status write:", opRes.error);
     }
   }
 
@@ -334,10 +341,14 @@ serveEnrichStage("research", async (admin, _env, row) => {
         pinnedUntil: pins.phone.pinnedUntil,
       };
     } else {
-      const { error: phoneErr } = await admin
-        .from("places").update({ phone: basics.phone }).eq("id", projectId);
-      sources.contact_phone = phoneErr
-        ? { ok: false, error: phoneErr.message }
+      const phoneRes = await writePlace(admin, {
+        table: "places",
+        mode: "update",
+        id: projectId,
+        patch: { phone: basics.phone },
+      });
+      sources.contact_phone = !phoneRes.ok
+        ? { ok: false, error: phoneRes.error }
         : { ok: true, source: "google" };
     }
   }
@@ -372,14 +383,16 @@ serveEnrichStage("research", async (admin, _env, row) => {
       : "";
     if (googleName) {
       const next = googleName.slice(0, ENRICH_FIELD_LIMITS.placeName.max);
-      const { error: nameErr } = await admin
-        .from("places")
-        .update({ google_name: next })
-        .eq("id", projectId);
+      const nameRes = await writePlace(admin, {
+        table: "places",
+        mode: "update",
+        id: projectId,
+        patch: { google_name: next },
+      });
       sources.name_sync = {
         google_name: next,
-        ok: !nameErr,
-        ...(nameErr ? { error: nameErr.message } : {}),
+        ok: nameRes.ok,
+        ...(!nameRes.ok ? { error: nameRes.error } : {}),
       };
       console.log(
         JSON.stringify({
