@@ -24,13 +24,14 @@ export const ENRICH_FIELD_LIMITS = {
     unit: "chars",
     note: "places.description as freshly written by an Enricher run, before any business-editor overwrite (7,000 = 1,000-word target × 7).",
   },
-  // Place Synthesis blurb that OpenAI embeds (places.embedding_source_text) —
-  // NOT the Presentation. Enforced at word boundaries in place-embeddings.ts
-  // (never a mid-word char slice).
+  // The Semantic Summary that OpenAI embeds (places.embedding_source_text) —
+  // NOT the Presentation. One of the three enrichment texts, and the only one
+  // the INDEX reads (`_shared/pulse-pieces.ts`). Enforced at word boundaries in
+  // place-embeddings.ts (never a mid-word char slice).
   embeddingSourceText: {
     max: 60,
     unit: "words",
-    note: "places.embedding_source_text — Place Synthesis blurb for semantic search (On-Create / On-Update / lazy backfill). Hard 60-word ceiling, truncated on word boundaries.",
+    note: "places.embedding_source_text — the Semantic Summary the index reads (On-Create / On-Update / lazy backfill). Hard 60-word ceiling, truncated on word boundaries.",
   },
   tagsPerPlace: {
     max: 20,

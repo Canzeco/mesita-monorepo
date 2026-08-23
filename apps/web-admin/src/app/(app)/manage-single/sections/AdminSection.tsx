@@ -20,7 +20,7 @@ import { formatAbsoluteUtc } from "@/lib/format";
 //   Status      the six status fields — seeded · listed · enriched · verified ·
 //               partner · promoting — one row each, in one box.
 //   Enrichment  when the Enricher refreshes this place, and the run-now button.
-//   Embedding   the Place Synthesis text and the vector it becomes.
+//   Embedding   the Semantic Summary and the vector it becomes.
 //   Metadata    every identifier and timestamp on the place. Nothing else in
 //               the tab carries an id or a date — they all live here.
 //
@@ -208,7 +208,7 @@ function parseEmbeddingVector(raw: AdminPlace["embedding"]): number[] | null {
   return nums.every((n) => Number.isFinite(n)) ? nums : null;
 }
 
-// Embedding — the Place Synthesis text + the vector it embeds to (MESITA-720).
+// Embedding — the Semantic Summary + the vector it embeds to (MESITA-720).
 //
 // WHICH ENTITY IS VECTORIZED (Pato asked, MESITA-1161): the PLACE, and only
 // the place. `_shared/embeddings-vector.ts::placeEmbeddingFacts` builds the
@@ -221,11 +221,14 @@ function parseEmbeddingVector(raw: AdminPlace["embedding"]): number[] | null {
 // weekly and would poison a semantic index that answers "what is this place
 // like".
 //
-// NOTE: the Place Synthesis is NOT the Presentation. The presentation is the
-// human-readable profile copy; the synthesis is a separate, super-concise text
-// purpose-built for semantic search. Written on create + on profile update.
-// Open by default; collapsible like Metadata.
-// Hard ceiling for Place Synthesis blurbs — must stay in lockstep with
+// NOTE: the Semantic Summary is NOT the Presentation. The Presentation is the
+// human-readable profile copy a GUEST reads (`places.description`); the
+// Semantic Summary is a separate, super-concise text purpose-built for
+// semantic search, and the only one the INDEX reads. Two of the three
+// enrichment texts named in `_shared/pulse-pieces.ts`, never collapsed.
+// Written on create + on profile update. Open by default; collapsible like
+// Metadata.
+// Hard ceiling for the Semantic Summary — must stay in lockstep with
 // ENRICH_FIELD_LIMITS.embeddingSourceText (Atlas Config → Field limits).
 const EMBEDDING_SOURCE_TEXT_MAX_WORDS = 60;
 
