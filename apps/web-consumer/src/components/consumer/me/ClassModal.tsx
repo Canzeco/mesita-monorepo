@@ -90,12 +90,17 @@ export function ClassModal({
             </div>
           )}
 
-          <ClassLadder />
-
-          {/* Names the door that granted this rung. Renders for BOTH doors —
-              it was gated on `origin === "instagram"`, so an invited guest saw
-              a Diamond row wearing a follower bar they never cleared and no
-              word of how they got there (MESITA-1159). */}
+          {/* Names the door that granted this rung, ABOVE the ladder
+              (decision: Pato, 2026-08-22): the sheet reads Emulator · Reason ·
+              Ladder · Buttons — how you got here before where you stand. The
+              cost is a conditional slot (a plain Bronze has no origin box);
+              the guard against the card reading as a fifth rung is spacing —
+              16px between blocks vs 8px inside the ladder — plus its larger
+              tile and third line.
+              Renders for BOTH doors — it was gated on `origin ===
+              "instagram"`, so an invited guest saw a Diamond row wearing a
+              follower bar they never cleared and no word of how they got
+              there (MESITA-1159). */}
           {/* Hidden while the class is unknown: naming the door that granted
               a rung we never read would be a second guess on top of the
               first. */}
@@ -107,6 +112,8 @@ export function ClassModal({
               handle={handle}
             />
           )}
+
+          <ClassLadder />
 
           {/* THE TWO WAYS IN, and there are only two (decision: Pato):
               followers, automatic — and an invitation, manual. Always both,
