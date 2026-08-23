@@ -5,7 +5,7 @@ import { PlaceDetailPageHeader } from "./PlaceDetailPageHeader";
 import { PlaceActionBar } from "./place-detail/PlaceActionBar";
 import type { PlaceDetail } from "@/lib/mock/place";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
-import { isPromoting } from "@/lib/promo-rates";
+import { isPartner } from "@/lib/promo-rates";
 
 // Client wrapper for the hard-nav /place/[id] page. Mirrors the modal
 // shell's three-band layout: header · scroll area · pinned action bar. The
@@ -46,7 +46,7 @@ export function PlaceDetailPageBody({
       <PlaceDetailPageHeader
         placeId={place.id}
         placeName={place.name}
-        promoting={isPromoting(place)}
+        partner={isPartner(place)}
         fallbackHref={fallbackHref}
       />
       {/*

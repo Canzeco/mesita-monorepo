@@ -66,19 +66,23 @@ export function ClassLadder() {
             <span
               className={cn(
                 "flex h-9 w-9 shrink-0 items-center justify-center rounded-xl",
-                // THE METAL IS THE TILE, NOT THE STROKES (decision: Pato). The
-                // mark used to be drawn IN the class colour, which put the
-                // colour on four hairlines an 18px glyph wide — Silver was
-                // illegible and Bronze read as a smudge. Colour still means
-                // class, it just lives on the fill now, with the mark in the
-                // ink `classBadgeClass` pairs with it (white, or foreground on
-                // Silver's light fill). The current row keeps its inset tile:
-                // the card underneath is already the metal.
-                current
-                  ? "bg-white/20"
-                  : unlocked
-                    ? classBadgeClass(c.id)
-                    : "bg-muted text-muted-foreground/50",
+                // ONLY THE CURRENT CLASS IS COLOURED (decision: Pato). Rule 2
+                // of this file says colour means class and nothing else — so
+                // it has to mean YOUR class, or it means nothing.
+                //
+                // This used to colour every UNLOCKED rung's tile, and Bronze's
+                // followerThreshold is 0, so `followers >= 0` was true for
+                // everyone: a Diamond guest read their own blue row with a
+                // solid BRONZE tile two rows above it, and two metals on one
+                // ladder is exactly the "two rungs the eye can merge" failure
+                // the palette work exists to prevent.
+                //
+                // Earned-but-not-current is still legible without colour: it
+                // carries no padlock and keeps full-strength ink, while a
+                // locked rung is muted and padlocked. The current row keeps
+                // its inset tile because the card underneath is already the
+                // metal.
+                current ? "bg-white/20" : "bg-muted text-muted-foreground/50",
               )}
             >
               <CLASS_MARK_ICON className="h-[18px] w-[18px]" />

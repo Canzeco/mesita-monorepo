@@ -87,3 +87,30 @@ describe("a class we could not read is not stated", () => {
     expect(html).not.toContain("aria-current");
   });
 });
+
+describe("only the CURRENT class is coloured", () => {
+  // Bronze's followerThreshold is 0, so `followers >= threshold` is true for
+  // every guest. That made Bronze permanently "unlocked" and permanently
+  // painted: a Diamond guest saw their own blue row with a solid BRONZE tile
+  // two rows above it. Colour means class, so it has to mean YOUR class.
+  it("a Diamond guest sees no bronze anywhere", () => {
+    const html = render(DIAMOND, false);
+    expect(html).not.toContain("bg-tier-bronze");
+  });
+
+  it("paints exactly one metal — the current rung's card", () => {
+    const html = render(DIAMOND, false);
+    expect(html.match(/bg-tier-/g)).toHaveLength(1);
+    expect(html).toContain("bg-tier-diamond");
+  });
+
+  it("a Bronze guest paints bronze, and only bronze", () => {
+    const html = render(null, false); // floor = bronze
+    expect(html.match(/bg-tier-/g)).toHaveLength(1);
+    expect(html).toContain("bg-tier-bronze");
+  });
+
+  it("paints nothing at all when the class was never read", () => {
+    expect(render(DIAMOND, true).match(/bg-tier-/g)).toBeNull();
+  });
+});

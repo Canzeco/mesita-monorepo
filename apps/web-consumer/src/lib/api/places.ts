@@ -28,6 +28,12 @@ export type Place = {
    *  RIGHT NOW. The gate every reward surface reads — `listing_type` is the
    *  stale collapsed enum and no longer decides anything a guest sees. */
   promoting?: boolean | null;
+  /** Server-computed per request: this place PAYS Mesita. Independent of
+   *  `promoting` — a partner can be paused or running a zero strategy, and a
+   *  non-partner never promotes. Computed like `promoting` rather than read
+   *  off `listing_type`, which fuses the two and only updates when something
+   *  writes the place. Absent ⇒ NOT a partner. */
+  partner?: boolean | null;
   id: string;
   slug: string;
   name: string;

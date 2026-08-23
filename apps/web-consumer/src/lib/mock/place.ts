@@ -16,6 +16,8 @@ export type PlaceDetail = {
    *  RIGHT NOW. The gate every reward surface reads — `listing_type` is the
    *  stale collapsed enum and no longer decides anything a guest sees. */
   promoting?: boolean | null;
+  /** Server-computed per request: this place PAYS Mesita. See Place.partner. */
+  partner?: boolean | null;
   // Stable identifier — matches public.places.id once the real fetch lands.
   // Used as the key in the localStorage saved-places store, share URLs, and
   // any future per-place persistence.

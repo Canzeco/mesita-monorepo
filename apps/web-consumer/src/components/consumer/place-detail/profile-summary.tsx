@@ -24,7 +24,7 @@ import {
   formatRating,
 } from "@/lib/utils";
 
-import { isPromoting } from "@/lib/promo-rates";
+import { isPartner } from "@/lib/promo-rates";
 import { ProfileActions } from "./ProfileActions";
 import {
   ProfileMetaChip,
@@ -57,7 +57,7 @@ export function ProfileSummary({ place }: { place: PlaceDetail }) {
   const statusValue = getOpeningStatusLabel(place);
   const isOpen = place.open_now === true;
   const promoPlace = placeDetailAsPromoPlace(place);
-  const promoting = isPromoting(place);
+  const partner = isPartner(place);
 
   return (
     // Full-bleed white band under the top chrome so the summary reads as
@@ -108,23 +108,25 @@ export function ProfileSummary({ place }: { place: PlaceDetail }) {
             Enriching
           </span>
         )}
-        {/* The chip states the one fact a guest can act on: is a reward live
-            here. It used to read "Mesita Partner" / "Not Verified" off
-            listing_type — a word that now means "pays Mesita" and a word that
-            means ownership proof, neither of which is this (MESITA-1150). */}
+        {/* PARTNER LEADS THE ROW (decision: Pato). This chip and the swipe
+            card's twin now state the same fact in the same words — they used
+            to read "No reward" here and "Not Verified" there off one shared
+            `promoting` boolean, so the same place described itself two ways
+            depending on which screen you were on. What the guest EARNS is a
+            separate chip (PromoChip, below); this one is who the place is. */}
         <ProfileMetaChip>
-          {promoting ? (
+          {partner ? (
             <>
               <BadgeCheck
-                className="h-3.5 w-3.5 shrink-0 fill-sky-500 text-white"
+                className="text-primary h-3.5 w-3.5 shrink-0 fill-current"
                 strokeWidth={2}
               />
-              <span className="font-semibold">Mesita reward</span>
+              <span className="font-semibold">Partner</span>
             </>
           ) : (
             <>
               <Globe className="text-muted-foreground h-3.5 w-3.5 shrink-0" />
-              <span className="font-semibold">No reward</span>
+              <span className="font-semibold">Not Partner</span>
             </>
           )}
         </ProfileMetaChip>
