@@ -26,11 +26,9 @@ export {
 // The public projection plus ONE extra column: `embedding`, the paid OpenAI
 // vector cosine ranking reads. The other three columns this projection used to
 // carry died with the Lineup engine (MESITA-1048):
-//   • manual_priority           — the MP subscore's input. The COLUMN stays in
-//                                 the database (dropping it means rebuilding
-//                                 profiles and both INSTEAD OF triggers,
-//                                 which reopened an anon-browse RLS hole once
-//                                 before), but no code reads it anymore.
+//   • manual_priority           — the MP subscore's input. The column itself is
+//                                 now GONE (MESITA-1055 dropped it from
+//                                 public.places and from the profiles view).
 //   • embedding_source_hash     — only the lazy-embed writeback needed these,
 //   • embedding_source_text       and nothing on this path writes.
 // `embedding` is stripped by stripInternal before a row crosses back over the
