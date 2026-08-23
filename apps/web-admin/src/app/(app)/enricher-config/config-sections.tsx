@@ -904,8 +904,11 @@ export function SeedSection() {
         Then they seed the research row and stop — the stage functions are
         SCHEDULED into the queue, never called inline, so a burst of creates
         cannot saturate the pipeline. <span className="font-semibold">Enriched = 0</span>{" "}
-        means exactly this: seeded, and nothing after it has landed. It is a
-        floor, never a failure.
+        normally means exactly this: seeded, and nothing after it has landed —
+        a floor, not a failure. The one exception is function 1 below: a place
+        Google reports permanently closed FAILS at 1 and so also reads 0. The
+        operator surfaces say which of the two it is rather than making you
+        guess.
       </KnobElsewhere>
     </QuietFunction>
   );
@@ -1042,10 +1045,10 @@ export function SemanticSummarySection() {
       subtitle="Outside the queue too: the 60-word Semantic Summary and its vector, re-run on any profile edit."
     >
       <KnobElsewhere>
-        It does <span className="font-semibold">not</span> embed the Profile
-        Description — the description is what a guest reads, the Semantic Summary
-        is what the index reads, and collapsing the two would bloat a 1536-d
-        vector with a thousand words of narrative. The embeddings model is
+        It does <span className="font-semibold">not</span> embed the
+        Presentation — the Presentation is what a guest reads, the Semantic
+        Summary is what the index reads, and collapsing the two would bloat a
+        1536-d vector with a thousand words of narrative. The embeddings model is
         LOCKED, not a knob: swapping it changes dimensions and re-embeds the
         whole catalog.
       </KnobElsewhere>

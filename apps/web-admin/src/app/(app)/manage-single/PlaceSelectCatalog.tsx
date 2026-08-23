@@ -19,7 +19,8 @@ import {
   suggestPlaces,
   type PlacePrediction,
   type PlacePredictionStatus,
-  type PlaceHit } from "./actions";
+  type PlaceHit,
+  type PulseBlock } from "./actions";
 import { placeSectionHref } from "./nav";
 import { PlaceThumb } from "./PlaceEditChrome";
 import { usePlaceCatalogSearch } from "./usePlaceCatalogSearch";
@@ -484,6 +485,7 @@ function PlaceCatalogRow({
           level={place.enrich_pulse}
           total={place.enrich_pulse_total}
           labels={place.enrich_pulse_labels}
+          blocked={place.enrich_pulse_blocked}
         />
       </td>
       <td className="px-3 py-2.5 text-center">
@@ -564,22 +566,39 @@ function PromoLevelCell({ level }: { level: 0 | 1 | 2 | 3 }) {
 // would have shown the wrong name beside every row and nothing would have
 // caught it (MESITA-1222).
 function LevelCell(
-  { level, total, labels }: { level: number; total: number; labels: string[] },
+  { level, total, labels, blocked }: {
+    level: number;
+    total: number;
+    labels: string[];
+    blocked?: PulseBlock | null;
+  },
 ) {
   // `labels` is indexed BY FUNCTION NUMBER — labels[0] is Seed — so function N
   // is labels[N], with no off-by-one. It was labels[N - 1] while seed sat
   // outside the numbering (MESITA-1243 pulled it in as function 0).
   const reached = level > 0 ? labels[level] : null;
+
+  // WHY it stopped, when the server told us. 0 alone is ambiguous: function 1
+  // FAILS a place Google reports permanently closed, so "0" means both
+  // "seeded, nothing tried" and "we asked, and the listing is dead". This cell
+  // used to assert the first for both, which is a confident lie about a place
+  // an operator may be about to spend money re-enriching.
+  const stoppedBy = blocked?.status === "failed"
+    ? `${blocked.index} ${labels[blocked.index] ?? blocked.key} failed`
+    : null;
+
   const title = level === 0
-    ? "Seeded — nothing after it has landed"
+    ? (stoppedBy
+      ? `0/${total} — ${stoppedBy}`
+      : "Seeded — nothing after it has landed")
     : `${level}/${total} — reached ${reached ?? `function ${level}`}` +
-      (level === total ? " — complete" : "");
+      (level === total ? " — complete" : stoppedBy ? ` · ${stoppedBy}` : "");
   return (
     <span className="inline-flex items-center gap-1.5" title={title}>
       <span
         className={
           "type-label font-semibold tabular-nums " +
-          (level === 0
+          (level === 0 || stoppedBy
             ? "text-rose-700"
             : level >= total
               ? "text-green-700"

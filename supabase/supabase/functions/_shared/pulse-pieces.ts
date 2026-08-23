@@ -263,6 +263,47 @@ export function pulseHighWater(events: readonly PulseEvent[]): number {
 }
 
 /**
+ * WHY the queue stopped where it did, or null when it finished.
+ *
+ * The high-water alone is ambiguous at every level, and MESITA-1243 made that
+ * ambiguity load-bearing at 0: function 1 now FAILS a place Google reports
+ * permanently closed, so 0 stopped meaning only "seeded, nothing tried" and
+ * started also meaning "we asked, and the listing is dead". Two facts, one
+ * number — the exact thing this ladder exists to prevent.
+ *
+ * So the number ships with its reason. `failed` = the function ran and could
+ * not do its job. `missing` = it has no event at all, which for a fresh place
+ * is simply "not yet" and for a stalled one is "the run never got here".
+ *
+ * Derived from the same events the high-water walks, so the two can never
+ * disagree — do not let a caller compute this from the number alone.
+ */
+export type PulseBlock = {
+  key: PulsePiece;
+  index: number;
+  status: "failed" | "missing";
+};
+
+export function pulseBlockedAt(
+  events: readonly PulseEvent[],
+): PulseBlock | null {
+  const latest = latestByPiece(events);
+  for (const piece of WALKED) {
+    const rec = latest.get(piece);
+    if (rec?.status === "completed") continue;
+    return {
+      key: piece,
+      index: PULSE_PIECE_META[piece].index,
+      // Anything that is not `completed` and not absent — `failed`, or the
+      // `skipped` a legacy row might carry — is the function having run and
+      // not delivered. Only a total absence of events is "not yet".
+      status: rec ? "failed" : "missing",
+    };
+  }
+  return null;
+}
+
+/**
  * Every function that has completed, in order — for a per-function readout.
  *
  * The floor is always included: this is called about a place that exists, and a

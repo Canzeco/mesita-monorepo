@@ -7,7 +7,9 @@ import {
   PULSE_PIECE_META,
   PULSE_TOTAL,
   completedPulsePieces,
+  pulseBlockedAt,
   pulseHighWater,
+  type PulseEvent,
 } from "./pulse-pieces.ts";
 
 const at = (n: number) => `2026-08-22T10:00:${String(n).padStart(2, "0")}Z`;
@@ -355,4 +357,77 @@ Deno.test("no raw beacon may use a PULSE function key as its step_name", async (
     [],
     `A raw beacon is using a function key as step_name, which corrupts the high-water. Use reportPulsePieces, or rename the beacon.`,
   );
+});
+
+// ── the reason beside the number (MESITA-1243 follow-up) ──────────────────
+//
+// Function 1 can FAIL — a place Google reports permanently closed — so the
+// number 0 stopped carrying one fact and started carrying two: "seeded,
+// nothing tried" and "we asked, and the listing is dead". A post-merge audit
+// caught both admin surfaces asserting the first for either case. The reason
+// is what makes them distinguishable, and it must be derived from the SAME
+// events the walk reads or the two can disagree.
+
+Deno.test("blocked: a fresh place is blocked at function 1, MISSING not failed", () => {
+  const b = pulseBlockedAt([]);
+  assertEquals(b?.key, "pulse");
+  assertEquals(b?.index, 1);
+  assertEquals(b?.status, "missing");
+});
+
+Deno.test("blocked: a permanently-closed place is FAILED at 1, not merely absent", () => {
+  // The exact shape supabase-cron-enrich-place-research writes on
+  // CLOSED_PERMANENTLY. High-water and reason must agree: 0, because pulse
+  // failed — NOT 0 because nothing ran.
+  const events = [{ step_name: "pulse", status: "failed", created_at: at(1) }];
+  assertEquals(pulseHighWater(events), 0);
+  const b = pulseBlockedAt(events);
+  assertEquals(b?.key, "pulse");
+  assertEquals(b?.status, "failed");
+});
+
+Deno.test("blocked: it never disagrees with the high-water", () => {
+  // The invariant that keeps the cell honest at EVERY level, not just 0: the
+  // blocking function is always the one immediately after the high-water.
+  const cases: PulseEvent[][] = [
+    [],
+    [done("pulse", 1)],
+    [done("pulse", 1), done("details", 2), done("serp", 3)],
+    [
+      done("pulse", 1),
+      done("details", 2),
+      { step_name: "serp", status: "failed", created_at: at(3) },
+      done("links", 4),
+    ],
+    fullQueue(),
+  ];
+  for (const events of cases) {
+    const hw = pulseHighWater(events);
+    const b = pulseBlockedAt(events);
+    if (hw === PULSE_TOTAL) {
+      assertEquals(b, null, "a finished queue is blocked by nothing");
+    } else {
+      assertEquals(b?.index, hw + 1, `blocked index must be high-water + 1 (hw=${hw})`);
+    }
+  }
+});
+
+Deno.test("blocked: the floor is never the blocker", () => {
+  // `seed` is never stamped, so if the walk ever reported it as the blocker
+  // every place in the catalog would read "blocked at 0 · missing".
+  for (const events of [[], [done("pulse", 1)], fullQueue()]) {
+    assertEquals(pulseBlockedAt(events)?.key === PULSE_FLOOR, false);
+  }
+});
+
+Deno.test("blocked: a legacy `skipped` counts as ran-and-did-not-deliver", () => {
+  // Functions are never skipped for not being bought — that writes nothing at
+  // all — so a `skipped` in the log means the function ran. Reporting it as
+  // "missing" would tell an operator it had never been attempted.
+  const b = pulseBlockedAt([
+    done("pulse", 1),
+    { step_name: "details", status: "skipped", created_at: at(2) },
+  ]);
+  assertEquals(b?.key, "details");
+  assertEquals(b?.status, "failed");
 });
