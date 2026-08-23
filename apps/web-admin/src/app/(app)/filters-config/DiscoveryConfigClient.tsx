@@ -1,13 +1,16 @@
 "use client";
 
 import { useEffect, useMemo, useState, useTransition } from "react";
-import { Compass, Megaphone } from "lucide-react";
+import { Compass, Filter, Layers, Megaphone } from "lucide-react";
 import { ErrorNote } from "@/components/ErrorNote";
 import { formatShortDate } from "@/lib/format";
 import { KnobStatus, SaveRow, SectionCard, Switch } from "@/components/admin-ui/config";
 import { getDiscoveryConfig, updateDiscoveryConfig } from "./actions";
 import {
   DEFAULT_CONFIG,
+  ENGINES,
+  MAX_DISTANCE_KM_MAX,
+  MIN_RATING_MAX,
   SIGNALS,
   SLOT_MAX_EVERY_NTH,
   SLOT_MIN_EVERY_NTH,
@@ -16,7 +19,9 @@ import {
   WIRED_ENGINES,
   weightMeaning,
   type DiscoveryConfig,
+  type DiscoveryFilters,
   type SignalKey,
+  type WiredEngineKey,
 } from "./catalog";
 
 /** The exponent step. Matches the two-decimal rounding in catalog.coerceConfig. */
@@ -81,6 +86,19 @@ export function DiscoveryConfigClient({
     value: DiscoveryConfig["slotting"][K],
   ) => {
     setCfg((c) => ({ ...c, slotting: { ...c.slotting, [key]: value } }));
+    setOk(false);
+  };
+
+  const setFilter = <K extends keyof DiscoveryFilters>(
+    key: K,
+    value: DiscoveryFilters[K],
+  ) => {
+    setCfg((c) => ({ ...c, filters: { ...c.filters, [key]: value } }));
+    setOk(false);
+  };
+
+  const setEngineRanked = (key: WiredEngineKey, ranked: boolean) => {
+    setCfg((c) => ({ ...c, engines: { ...c.engines, [key]: { ranked } } }));
     setOk(false);
   };
 
@@ -258,6 +276,197 @@ export function DiscoveryConfigClient({
             />
           </label>
         </div>
+      </SectionCard>
+
+      <SectionCard
+        icon={<Filter className="text-secondary h-4 w-4" />}
+        title="Filters"
+        subtitle="What may ENTER the pool at all. A signal DEMOTES, a filter EXCLUDES — that is why both boxes exist, and why a rule belongs to exactly one of them. These are catalog-wide operator policy: a guest never sees them and cannot express them."
+      >
+        <div className="mt-4">
+          <KnobStatus
+            kind="enforced"
+            reason="Applied as query predicates on Swipe and Map, before anything ranks — never as a post-filter, which would thin the deck instead of narrowing the catalog."
+          />
+        </div>
+
+        <div className="mt-5 space-y-4">
+          <div className="border-border bg-background flex items-start justify-between gap-4 rounded-xl border p-4">
+            <div>
+              <div className="text-sm font-medium leading-snug">
+                Only fully enriched places
+              </div>
+              <div className="text-muted-foreground mt-0.5 type-label">
+                Requires <code>content_status = ready</code>. A half-enriched card
+                has no description, no images and no hours — it reads as a broken
+                listing rather than a pending one. Off shows them anyway.
+              </div>
+            </div>
+            <Switch
+              label="Only fully enriched places"
+              on={cfg.filters.requireReady}
+              pending={pending}
+              onClick={() => setFilter("requireReady", !cfg.filters.requireReady)}
+            />
+          </div>
+
+          <label className="border-border bg-background flex flex-col gap-2 rounded-xl border p-4">
+            <span className="text-sm font-medium leading-snug">
+              Minimum Google rating (0 = off)
+            </span>
+            <span className="text-muted-foreground type-label">
+              Above 0 this also EXCLUDES places with no rating at all — a floor
+              asks a place to clear a bar, and an unrated place has not. In a
+              young catalog that is most of them. Popularity already demotes a
+              weak place; use this only when you mean to remove it.
+            </span>
+            <input
+              type="number"
+              inputMode="decimal"
+              min={0}
+              max={MIN_RATING_MAX}
+              step={0.1}
+              value={cfg.filters.minRating}
+              disabled={pending}
+              onChange={(e) => {
+                const raw = Number(e.target.value);
+                if (Number.isNaN(raw)) return;
+                setFilter(
+                  "minRating",
+                  Math.round(Math.min(MIN_RATING_MAX, Math.max(0, raw)) * 10) / 10,
+                );
+              }}
+              className="border-border bg-card focus:border-foreground h-9 w-full rounded-lg border px-3 text-right text-sm tabular-nums outline-none disabled:opacity-50"
+            />
+          </label>
+
+          <label className="border-border bg-background flex flex-col gap-2 rounded-xl border p-4">
+            <span className="text-sm font-medium leading-snug">
+              Minimum Google review count (0 = off)
+            </span>
+            <span className="text-muted-foreground type-label">
+              Same exclusion rule: above 0, a place with no reviews is out.
+            </span>
+            <input
+              type="number"
+              inputMode="numeric"
+              min={0}
+              step={1}
+              value={cfg.filters.minReviews}
+              disabled={pending}
+              onChange={(e) => {
+                const raw = Number(e.target.value);
+                if (Number.isNaN(raw)) return;
+                setFilter("minReviews", Math.max(0, Math.round(raw)));
+              }}
+              className="border-border bg-card focus:border-foreground h-9 w-full rounded-lg border px-3 text-right text-sm tabular-nums outline-none disabled:opacity-50"
+            />
+          </label>
+
+          <label className="border-border bg-background flex flex-col gap-2 rounded-xl border p-4">
+            <span className="text-sm font-medium leading-snug">
+              Hard radius in km (0 = off)
+            </span>
+            <span className="text-muted-foreground type-label">
+              Swipe only — Map passes no location, and a radius would fight the
+              viewport a guest is panning. Off by default on purpose: Proximity
+              already bends distance through a log curve, and a hard radius is
+              the model the filter teardown removed. Use it for a real city
+              boundary, not as the normal way distance is handled.
+            </span>
+            <input
+              type="number"
+              inputMode="numeric"
+              min={0}
+              max={MAX_DISTANCE_KM_MAX}
+              step={1}
+              value={cfg.filters.maxDistanceKm}
+              disabled={pending}
+              onChange={(e) => {
+                const raw = Number(e.target.value);
+                if (Number.isNaN(raw)) return;
+                setFilter(
+                  "maxDistanceKm",
+                  Math.min(MAX_DISTANCE_KM_MAX, Math.max(0, Math.round(raw))),
+                );
+              }}
+              className="border-border bg-card focus:border-foreground h-9 w-full rounded-lg border px-3 text-right text-sm tabular-nums outline-none disabled:opacity-50"
+            />
+          </label>
+        </div>
+      </SectionCard>
+
+      <SectionCard
+        icon={<Layers className="text-secondary h-4 w-4" />}
+        title="Engines"
+        subtitle="The surfaces that answer with places. An engine takes params, calls the signals it needs, and returns places — signals never call engines, and no engine owns one. Only an engine actually wired to the library gets a control here."
+      >
+        <div className="mt-5 -mx-4 overflow-x-auto sm:mx-0">
+          <table className="w-full min-w-[620px] border-separate border-spacing-0 px-4 sm:px-0">
+            <thead>
+              <tr className="text-muted-foreground text-left text-xs">
+                <th className="pb-2 pl-1 font-medium">Engine</th>
+                <th className="pb-2 font-medium">What it is</th>
+                <th className="w-24 pb-2 font-medium">State</th>
+                <th className="w-40 pb-2 pr-1 text-right font-medium">Ranked</th>
+              </tr>
+            </thead>
+            <tbody>
+              {ENGINES.map((e) => {
+                const dim = e.state !== "LIVE";
+                return (
+                  <tr
+                    key={e.key}
+                    className="border-border/50 align-top [&>td]:border-t [&>td]:py-3"
+                  >
+                    <td className="pl-1 pr-4">
+                      <span
+                        className={"text-sm font-semibold" + (dim ? " opacity-50" : "")}
+                      >
+                        {e.label}
+                      </span>
+                    </td>
+                    <td className="text-muted-foreground pr-4 type-label">{e.what}</td>
+                    <td className="pr-4">
+                      <span className="text-muted-foreground type-meta font-semibold tracking-wide uppercase">
+                        {e.state}
+                      </span>
+                    </td>
+                    <td className="pr-1">
+                      {e.wired ? (
+                        <div className="flex items-center justify-end gap-2">
+                          <span className="text-muted-foreground type-label">
+                            {cfg.engines[e.wired].ranked ? "Signals" : "Pool order"}
+                          </span>
+                          <Switch
+                            label={`${e.label} reads the signals`}
+                            on={cfg.engines[e.wired].ranked}
+                            pending={pending}
+                            onClick={() =>
+                              setEngineRanked(e.wired!, !cfg.engines[e.wired!].ranked)
+                            }
+                          />
+                        </div>
+                      ) : (
+                        <span className="text-muted-foreground block text-right type-label">
+                          Not wired
+                        </span>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+
+        <p className="text-muted-foreground mt-4 type-label">
+          Turning an engine off ranking serves its pool in the pool&rsquo;s own
+          order — what Swipe did before this model existed. The Filters above
+          still apply either way: admission and ordering are different
+          questions. &ldquo;Not wired&rdquo; means that engine does not read the
+          signal library yet, so there is no knob to offer.
+        </p>
       </SectionCard>
 
       {error && <ErrorNote message={error} />}

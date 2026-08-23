@@ -7,16 +7,20 @@
 // signal is a code change in both packages — deliberately, because a signal
 // nobody wrote has nothing to score.
 //
-// The two halves below are the two LANES of the model (Notion Docs ›
-// Discovery §A):
+// FOUR BOXES, ONE PAGE (Pato, 2026-08-23: "Signals, Engines, Filters. BUT NOT
+// SUBPAGES. JUST ONE PAGE FOR ALL DISCOVERY. PERHAPS DIVIDE INTO BOXES."):
 //
-//   WEIGHTS   the six EARNED signals, each with one exponent. Signals compose
+//   SIGNALS   the six EARNED signals, each with one exponent. Signals compose
 //             as `s^w`, so this table is the whole ranking model an operator
 //             owns.
 //   SLOTTING  the BOUGHT lane, kept out of the blend on purpose. Money buys a
 //             deck POSITION, never a score (Pato, 2026-08-22 — the two-lane
 //             question §A left open). Promoting is not a signal and there is
 //             no row for it above.
+//   FILTERS   what may ENTER the pool. A SIGNAL DEMOTES, A FILTER EXCLUDES —
+//             that is the whole reason both boxes exist, and why a knob
+//             belongs to exactly one of them.
+//   ENGINES   which surfaces read any of it. Only a WIRED engine gets a knob.
 
 export const SIGNAL_KEYS = [
   "proximity",
@@ -32,13 +36,28 @@ export type SignalKey = (typeof SIGNAL_KEYS)[number];
 export type DiscoveryConfig = {
   weights: Record<SignalKey, number>;
   slotting: { enabled: boolean; everyNth: number };
+  filters: DiscoveryFilters;
+  engines: Record<WiredEngineKey, { ranked: boolean }>;
 };
+
+export type DiscoveryFilters = {
+  requireReady: boolean;
+  minRating: number;
+  minReviews: number;
+  maxDistanceKm: number;
+};
+
+/** Mirrors WIRED_ENGINE_KEYS in _shared/discovery-config.ts. */
+export const WIRED_ENGINE_KEYS = ["swipe"] as const;
+export type WiredEngineKey = (typeof WIRED_ENGINE_KEYS)[number];
 
 /** Mirrors WEIGHT_MIN / WEIGHT_MAX in _shared/discovery-config.ts. */
 export const WEIGHT_MIN = 0;
 export const WEIGHT_MAX = 4;
 export const SLOT_MIN_EVERY_NTH = 2;
 export const SLOT_MAX_EVERY_NTH = 50;
+export const MIN_RATING_MAX = 5;
+export const MAX_DISTANCE_KM_MAX = 200;
 
 /** Mirrors DISCOVERY_DEFAULTS. Used only as the seed on a failed load. */
 export const DEFAULT_CONFIG: DiscoveryConfig = {
@@ -51,7 +70,82 @@ export const DEFAULT_CONFIG: DiscoveryConfig = {
     randomness: 0.35,
   },
   slotting: { enabled: true, everyNth: 5 },
+  filters: { requireReady: true, minRating: 0, minReviews: 0, maxDistanceKm: 0 },
+  engines: { swipe: { ranked: true } },
 };
+
+/**
+ * The engine registry — Docs › Discovery §B, mirrored for the console.
+ *
+ * `wired` is the only thing that decides whether a row gets a control. An
+ * engine that does not read the signal library must not offer a toggle over
+ * it: the house rule is that a page whose engine is unbuilt shows its state,
+ * not knobs.
+ */
+export const ENGINES: {
+  key: string;
+  label: string;
+  what: string;
+  state: "LIVE" | "PARKED" | "UNBUILT";
+  wired: WiredEngineKey | null;
+}[] = [
+  {
+    key: "swipe",
+    label: "Swipe",
+    what: "The Home deck. Photo-first cards, right saves, left skips.",
+    state: "LIVE",
+    wired: "swipe",
+  },
+  {
+    key: "map",
+    label: "Map",
+    what: "The Search tab: pins, catalog rail, a deliberately plain searchbar.",
+    state: "LIVE",
+    wired: null,
+  },
+  {
+    key: "favorites",
+    label: "Favorites",
+    what: "What the guest saved. No ranking question to answer.",
+    state: "LIVE",
+    wired: null,
+  },
+  {
+    key: "catalog",
+    label: "Catalog",
+    what: "The grid. Built and working; the page redirects and the pill opens coming-soon.",
+    state: "PARKED",
+    wired: null,
+  },
+  {
+    key: "chat",
+    label: "Chat",
+    what: "The Concierge. Ships dark; Don Memo is its persona.",
+    state: "PARKED",
+    wired: null,
+  },
+  {
+    key: "social",
+    label: "Social",
+    what: "A live feed of check-ins, likes, rewards and stories.",
+    state: "PARKED",
+    wired: null,
+  },
+  {
+    key: "name",
+    label: "Name",
+    what: "Entity resolution: a string in, the right place out.",
+    state: "UNBUILT",
+    wired: null,
+  },
+  {
+    key: "web",
+    label: "Web",
+    what: "Perplexity retrieval for what the catalog lacks. Wired inside Chat already.",
+    state: "UNBUILT",
+    wired: null,
+  },
+];
 
 /**
  * One row of the weights table.
@@ -136,6 +230,17 @@ export function coerceConfig(raw: unknown): DiscoveryConfig {
     weights[key] = Math.round(v * 100) / 100;
   }
 
+  const f = (r.filters ?? {}) as Record<string, unknown>;
+  const e = (r.engines ?? {}) as Record<string, unknown>;
+
+  const engines = {} as Record<WiredEngineKey, { ranked: boolean }>;
+  for (const key of WIRED_ENGINE_KEYS) {
+    const row = (e[key] ?? {}) as Record<string, unknown>;
+    engines[key] = {
+      ranked: typeof row.ranked === "boolean" ? row.ranked : DEFAULT_CONFIG.engines[key].ranked,
+    };
+  }
+
   return {
     weights,
     slotting: {
@@ -144,6 +249,21 @@ export function coerceConfig(raw: unknown): DiscoveryConfig {
         num(s.everyNth, DEFAULT_CONFIG.slotting.everyNth, SLOT_MIN_EVERY_NTH, SLOT_MAX_EVERY_NTH),
       ),
     },
+    filters: {
+      requireReady: typeof f.requireReady === "boolean"
+        ? f.requireReady
+        : DEFAULT_CONFIG.filters.requireReady,
+      // One decimal: Google stars are one-decimal values, and a floor landing
+      // at 4.300000000000001 would leave the page permanently dirty.
+      minRating: Math.round(
+        num(f.minRating, DEFAULT_CONFIG.filters.minRating, 0, MIN_RATING_MAX) * 10,
+      ) / 10,
+      minReviews: Math.round(num(f.minReviews, DEFAULT_CONFIG.filters.minReviews, 0, 100_000)),
+      maxDistanceKm: Math.round(
+        num(f.maxDistanceKm, DEFAULT_CONFIG.filters.maxDistanceKm, 0, MAX_DISTANCE_KM_MAX),
+      ),
+    },
+    engines,
   };
 }
 
