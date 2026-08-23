@@ -46,6 +46,15 @@ export function InstagramModal({
   const [handle, setHandle] = useState("");
   const [code, setCode] = useState("");
   const [verifying, setVerifying] = useState(false);
+  // A CONNECTED GUEST IS NOT A PROSPECT (decision: Pato, 2026-08-22). The
+  // sheet used to render the pitch AND the whole DM-the-bot form under the
+  // card that already said "connected" — three headings all saying connect,
+  // and a form for a job that is done. Connected collapses to the account
+  // card; switching accounts is a real but rare need, so it gets one quiet
+  // link that brings the form back rather than the form standing open
+  // forever.
+  const [switching, setSwitching] = useState(false);
+  const showForm = !connected || switching;
 
   const canVerify =
     HANDLE_RE.test(handle.trim()) && code.length >= 8 && !verifying;
@@ -104,17 +113,31 @@ export function InstagramModal({
             </section>
           )}
 
-          <WhyConnectModule />
+          {/* The pitch is for people who haven't connected. Once they have,
+              it is the app arguing with a decision the guest already made. */}
+          {!connected && <WhyConnectModule />}
 
-          <ConnectModule
-            handle={handle}
-            code={code}
-            verifying={verifying}
-            canVerify={canVerify}
-            onHandleChange={setHandle}
-            onCodeChange={setCode}
-            onVerify={verify}
-          />
+          {showForm && (
+            <ConnectModule
+              handle={handle}
+              code={code}
+              verifying={verifying}
+              canVerify={canVerify}
+              onHandleChange={setHandle}
+              onCodeChange={setCode}
+              onVerify={verify}
+            />
+          )}
+
+          {connected && !switching && (
+            <button
+              type="button"
+              onClick={() => setSwitching(true)}
+              className="text-muted-foreground hover:text-foreground type-body min-h-11 font-medium underline underline-offset-4 transition"
+            >
+              Connect a different account
+            </button>
+          )}
         </div>
       </div>
     </LocalSheet>
@@ -124,7 +147,7 @@ export function InstagramModal({
 function WhyConnectModule() {
   return (
     <article className="border-border bg-card rounded-2xl border p-4">
-      <h3 className="text-sm leading-tight font-extrabold tracking-tight">
+      <h3 className="text-sm leading-tight font-bold tracking-tight">
         Why connect
       </h3>
       <ul className="mt-2 flex flex-col gap-2">
@@ -161,7 +184,9 @@ function ConnectModule({
 }) {
   return (
     <section className="border-border bg-card rounded-2xl border p-4">
-      <h3 className="mb-3 text-sm leading-tight font-extrabold tracking-tight">
+      {/* `font-bold`, not extrabold: the design law caps weight at two steps
+          (semibold / bold) and a third one on a 14px heading buys nothing. */}
+      <h3 className="mb-3 text-sm leading-tight font-bold tracking-tight">
         Connect Instagram
       </h3>
       <ol className="flex flex-col gap-3">
@@ -189,11 +214,11 @@ function ConnectModule({
       <input
         value={handle}
         onChange={(e) => onHandleChange(e.target.value)}
-        placeholder="@handle"
+        placeholder="yourhandle"
         autoCapitalize="none"
         autoCorrect="off"
         spellCheck={false}
-        className="border-border bg-muted/30 placeholder:text-muted-foreground/70 h-12 w-full rounded-lg border px-5 text-center text-sm outline-none"
+        className="border-border bg-muted/30 placeholder:text-muted-foreground/70 h-12 w-full rounded-xl border px-5 text-center text-sm outline-none"
         maxLength={31}
       />
       <label className="text-muted-foreground type-label mt-2 block font-medium">
@@ -202,15 +227,15 @@ function ConnectModule({
       <input
         value={code}
         onChange={(e) => onCodeChange(e.target.value)}
-        placeholder="8-digit code"
-        className="border-border bg-muted/30 placeholder:text-muted-foreground/70 h-12 w-full rounded-lg border px-5 text-center text-sm outline-none"
+        placeholder="12345678"
+        className="border-border bg-muted/30 placeholder:text-muted-foreground/70 h-12 w-full rounded-xl border px-5 text-center text-sm outline-none"
         maxLength={8}
       />
       <button
         type="button"
         onClick={onVerify}
         disabled={!canVerify}
-        className="bg-pink-gradient mt-2 flex min-h-11 w-full items-center justify-center gap-2 rounded-lg py-3 text-sm font-semibold text-white transition disabled:opacity-60"
+        className="bg-pink-gradient mt-2 flex min-h-11 w-full items-center justify-center gap-2 rounded-xl py-3 text-sm font-semibold text-white transition disabled:opacity-60"
       >
         {verifying ? (
           <Spinner size="sm" className="border-white/40 border-t-white" />

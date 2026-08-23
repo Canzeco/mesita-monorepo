@@ -8,6 +8,7 @@ import {
   useOverlayPresence,
 } from "@/components/consumer/overlay/overlay-presence";
 import { isModalContractPath } from "@/lib/consumer-route-contract";
+import { SEMI_MODAL_PANEL_CLASS } from "@/components/consumer/overlay/LocalOverlay";
 
 // Route-modal bottom sheet: slides up from the bottom edge and stops short
 // of the top so the underlying surface stays visible behind a dimmed
@@ -62,13 +63,20 @@ export function BottomSheetShell({
         role="dialog"
         aria-modal="true"
         className={cn(
-          "bg-background border-border shadow-sheet-up relative flex max-h-[90%] min-h-0 flex-col overflow-hidden rounded-t-2xl border-t",
+          // The SAME panel as every state-driven sheet (decision: Pato,
+          // 2026-08-22). This used to be its own recipe — 90% instead of
+          // 85%, 2xl corners instead of 3xl, bg-background instead of
+          // bg-popover, a different shadow — which meant the ticket sheet
+          // and the Class sheet were visibly different objects for a reason
+          // no guest can perceive: one changes the URL and the other does
+          // not.
+          SEMI_MODAL_PANEL_CLASS,
           "transition-transform duration-300 motion-reduce:transition-none",
           OVERLAY_EASE,
           open ? "translate-y-0" : "translate-y-full",
         )}
       >
-        <div className="bg-foreground/20 mx-auto mt-2.5 h-1 w-10 shrink-0 rounded-full" />
+        <div className="bg-foreground/20 mx-auto mt-2 h-1 w-10 shrink-0 rounded-full" />
 
         {!hideHeader && (
           <header className="flex shrink-0 items-center gap-2 px-3 pt-2 pb-3">
