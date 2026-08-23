@@ -53,11 +53,11 @@ const MAX_GOOGLE_COLLECT = 10;
 // offered 31-50 — values that passed here and passed the EF and were then
 // rejected at the write (MESITA-1195).
 const MAX_INSTAGRAM_COLLECT = 30;
-// Matches DB CHECK app_config_atlas_save_total_images_range (0–20) and the
+// Matches DB CHECK app_config_atlas_save_total_images_range (0–10) and the
 // admin-web-update-enricher-config / ENRICH_FIELD_LIMITS.photos contract. UI min
 // stays 1 (a zero-save gallery is not useful from this knob). Separate from
 // PHOTO_CEILING=50 in enrich-config.ts (S9 storage-mirror hard cap).
-const MAX_SAVE_IMAGES = 20;
+const MAX_SAVE_IMAGES = 10;
 
 const clampN = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, Math.round(v)));
 

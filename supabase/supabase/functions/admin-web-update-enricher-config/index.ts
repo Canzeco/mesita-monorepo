@@ -12,7 +12,7 @@
 //   gatherReviews (0–100) → atlas_gather_reviews (Apify Google reviews pulled)
 //   analyzeGoogleImages (1–10, ≤ gatherGoogleImages) /
 //     analyzeInstagramImages (1–50, ≤ gatherInstagramPosts)
-//   saveTotalImages (1–20, ≤ analyzeGoogle + analyzeInstagram) → atlas_save_total_images
+//   saveTotalImages (1–10, ≤ analyzeGoogle + analyzeInstagram) → atlas_save_total_images
 //     (DB CHECK 0–20; PHOTO_CEILING=50 is a separate S9 storage-mirror constant)
 //   saveImagesToStorage (boolean) → atlas_save_images_to_storage (S9 Storage-mirror gate)
 //   discover{Website,Instagram,Facebook,Opentable,Ubereats}N (0–10, per-source
