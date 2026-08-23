@@ -328,8 +328,10 @@ serveEnrichStage("contents", async (admin, env, row) => {
   }
 
   // On-Update S2/S3 — synthesize short embedding blurb (no tags) + vector.
-  // Best-effort: profile is already ready; a failed embed leaves lazy
-  // lazy embedding backfill as the safety net.
+  // Best-effort: the profile is already ready, so a failed embed leaves the
+  // place at rung 8 rather than failing the run. There is no backfill behind
+  // it — `embedAndPersistPlaces` has no callers anywhere in the repo — so a
+  // stuck vector needs a re-enrich, not patience (MESITA-1222).
   // Captured so the subprocess report can say whether the embedding actually
   // landed — the function returns null on a missing key or a failed write.
   let embeddingWrote = false;
@@ -387,7 +389,7 @@ serveEnrichStage("contents", async (admin, env, row) => {
   }
 
   // ── PULSE pieces (MESITA-1172) ─────────────────────────────────────────
-  // Contents owns 5 (menu) and 9 (semantics).
+  // Contents owns 6 (menu), 8 (semantics) and 9 (embeddings).
   const contentPieces: Partial<Record<PulsePiece, PieceOutcome>> = {
     // MENU IS A STUB. The website is no longer scraped, so there is no menu
     // source and the piece can never block the queue — MESITA-1172 says so
@@ -410,7 +412,7 @@ serveEnrichStage("contents", async (admin, env, row) => {
     // EMBEDDINGS (9) — last, because it vectorizes the text step 8 just wrote.
     contentPieces.embeddings = embeddingWrote
       ? pieceDone("Place synthesis blurb embedded.")
-      : pieceFailed("Embedding did not write — lazy backfill remains the net.");
+      : pieceFailed("Embedding did not write. Re-enrich to retry — there is no backfill.");
   }
   await reportPulsePieces(admin, projectId, contentPieces);
 

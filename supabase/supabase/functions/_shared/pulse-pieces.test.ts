@@ -1,6 +1,8 @@
 import { assertEquals } from "jsr:@std/assert@1";
 import {
+  PULSE_LABELS_IN_ORDER,
   PULSE_PIECES,
+  PULSE_PIECE_META,
   PULSE_TOTAL,
   completedPulsePieces,
   pulseHighWater,
@@ -67,6 +69,26 @@ Deno.test("pulse: the nine, in the decided order", () => {
     "embeddings",
   ]);
   assertEquals(PULSE_TOTAL, 9);
+});
+
+Deno.test("pulse: the index is the position, and the labels ride in order", () => {
+  // MESITA-1222. The index is derived from PULSE_PIECES now, so this is a
+  // regression guard, not a spot-check: it fails the moment anyone reintroduces
+  // hand-written literals that drift from the array. `pulseHighWater` iterates
+  // the array and returns the META index, and reportPulsePieces stamps
+  // `S${index}` into the DB, so a drift corrupts both the meter and the beacon.
+  assertEquals(
+    PULSE_PIECES.map((p) => PULSE_PIECE_META[p].index),
+    [1, 2, 3, 4, 5, 6, 7, 8, 9],
+  );
+  // The list clients render beside the number must stay aligned with the ladder
+  // itself — that alignment is the whole reason it ships from the server.
+  assertEquals(PULSE_LABELS_IN_ORDER.length, PULSE_TOTAL);
+  assertEquals(
+    [...PULSE_LABELS_IN_ORDER],
+    PULSE_PIECES.map((p) => PULSE_PIECE_META[p].label),
+  );
+  assertEquals(PULSE_LABELS_IN_ORDER.every((l) => l.trim() !== ""), true);
 });
 
 Deno.test("high water: nothing recorded is 0", () => {
@@ -183,9 +205,11 @@ Deno.test("high water: never exceeds the total, and never goes negative", () => 
 //
 // The bug: supabase-cron-enrich-place-analysis wrote a STAGE beacon as
 // { step_name: "images", status: "skipped" } on the "matrix did not buy the
-// funnel" path. `images` is piece 7, so the high-water reader saw a
-// non-completed piece and stopped at 6 — a cheap refresh knocked a complete
-// place from 9 to 6 every time it ran.
+// funnel" path. `images` is a piece key, so the high-water reader saw a
+// non-completed piece mid-ladder and stopped short of it — a cheap refresh
+// knocked a complete place down every time it ran. (It presented as 9 -> 6
+// under the piece order of the day; `images` is rung 5 now, so the same bug
+// would read 9 -> 4. The rung number was never the point.)
 //
 // Nothing in TypeScript stops a beacon borrowing a piece's name, because
 // step_name is just a string. This reads the stage EFs and asserts that only

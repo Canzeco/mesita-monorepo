@@ -5,26 +5,20 @@
 //               run starts from. Without it nothing can be gathered.
 //   listed      a guest can reach the place at all. projects.status is what the
 //               consumer RLS policy gates on.
-//   enriched    HOW FAR the Enricher got — a 0-3 LEVEL off place_research,
-//               never a boolean.
+//   enriched    HOW FAR the PULSE queue got — a 0-9 high-water off
+//               place_enrichment_events, never a boolean. It does NOT live
+//               here: `pulseHighWater` in pulse-pieces.ts owns it, beside the
+//               ladder it counts. This file kept a rival 0-3 stage level until
+//               MESITA-1218; two numbers for one fact disagreed on every row.
 //   verified    an approved project_verifications row (ownership proof).
 //   partner     plan != free — the place pays Mesita.
 //   promoting   a live discount right now (place-promoting.ts).
 //
-// The first three live here because two surfaces read them — admin-web-search-
-// places (the Single Unit table) and business-web-get-overview (the Status box
+// Seeded and listed live here because two surfaces read them — admin-web-search-
+// places (the Single Place table) and business-web-get-overview (the Status box
 // in the place editor) — and a status column that disagrees with itself across
-// two screens is worse than no status column. The last three are one-liners the
+// two screens is worse than no status column. The rest are one-liners the
 // callers already own.
-
-/** The place_research facts the enrich level is read from. Callers select
- *  `stage, gathered, analysis` and pass PRESENCE (`gathered != null`), never
- *  the payloads — those are tens of KB of JSON. */
-export type ResearchFacts = {
-  stage?: string | null;
-  gathered?: boolean;
-  analysis?: boolean;
-} | null | undefined;
 
 /** google_place_id present — the identity spine every run starts from. */
 export function isPlaceSeeded(googlePlaceId: unknown): boolean {
@@ -59,22 +53,4 @@ export const LISTED_STATUSES: readonly string[] = ["active", "lead"];
 
 export function isPlaceListed(status: unknown): boolean {
   return typeof status === "string" && LISTED_STATUSES.includes(status);
-}
-
-/**
- * 0 seeded only · 1 research gathered · 2 images analysed · 3 persisted.
- *
- * Presence of gathered/analysis decides it, not `stage` alone: a hard failure
- * parks the row at stage='failed' (failResearchRow) with whatever payloads had
- * already landed, and the level must still report how far it got.
- */
-export function placeEnrichLevel(
-  research: ResearchFacts,
-  contentStatus: string | null,
-): 0 | 1 | 2 | 3 {
-  if (!research || contentStatus === "queued") return 0;
-  if (research.stage === "done") return 3;
-  if (research.analysis) return 2;
-  if (research.gathered) return 1;
-  return 0;
 }

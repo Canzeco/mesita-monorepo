@@ -480,7 +480,11 @@ function PlaceCatalogRow({
         <BoolCell value={place.listed} trueLabel="Yes" falseLabel="No" />
       </td>
       <td className="px-3 py-2.5 text-center">
-        <LevelCell level={place.enrich_pulse} total={place.enrich_pulse_total} />
+        <LevelCell
+          level={place.enrich_pulse}
+          total={place.enrich_pulse_total}
+          labels={place.enrich_pulse_labels}
+        />
       </td>
       <td className="px-3 py-2.5 text-center">
         <BoolCell value={place.verified} trueLabel="Yes" falseLabel="No" />
@@ -552,23 +556,21 @@ function PromoLevelCell({ level }: { level: 0 | 1 | 2 | 3 }) {
 // 0 means the seed is in place and nothing after it has landed — which also
 // covers a place enriched before step reporting existed. That is honest: we do
 // not know how far its queue got, and claiming a number would be worse.
-const PULSE_LABEL = [
-  "Seeded — nothing after it has landed",
-  "Pulse",
-  "Details",
-  "Links",
-  "Social",
-  "Images",
-  "Menu",
-  "Reviews",
-  "Semantics",
-  "Embeddings — complete",
-];
-
-function LevelCell({ level, total }: { level: number; total: number }) {
+//
+// The rung NAMES arrive with the number, from PULSE_LABELS_IN_ORDER on the
+// admin-web-search-places payload. This file used to keep its own positional
+// copy — no shared import, no test, no CI gate — so a reorder in the backend
+// would have shown the wrong rung name beside every row and nothing would have
+// caught it (MESITA-1222).
+function LevelCell(
+  { level, total, labels }: { level: number; total: number; labels: string[] },
+) {
+  // `labels` is 1-indexed by rung, so rung N is labels[N - 1].
+  const reached = level > 0 ? labels[level - 1] : null;
   const title = level === 0
     ? "Seeded — nothing after it has landed"
-    : `${level}/${total} — reached ${PULSE_LABEL[level] ?? `piece ${level}`}`;
+    : `${level}/${total} — reached ${reached ?? `piece ${level}`}` +
+      (level === total ? " — complete" : "");
   return (
     <span className="inline-flex items-center gap-1.5" title={title}>
       <span

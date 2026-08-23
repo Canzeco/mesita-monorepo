@@ -23,12 +23,9 @@ import {
   isPlacePromoting,
   placePromotingLevel,
 } from "../_shared/place-promoting.ts";
+import { isPlaceListed, isPlaceSeeded } from "../_shared/place-status.ts";
 import {
-  isPlaceListed,
-  isPlaceSeeded,
-  placeEnrichLevel,
-} from "../_shared/place-status.ts";
-import {
+  PULSE_LABELS_IN_ORDER,
   PULSE_TOTAL,
   pulseHighWater,
   type PulseEvent,
@@ -121,57 +118,40 @@ Deno.serve(async (req) => {
 
   // ── Two id-scoped reads for the flags that are NOT on profiles. ──
   //
-  // ENRICHED is a LEVEL, not a boolean, and the pipeline already tracks it:
-  // place_research walks research → analysis → contents → done, and its two
-  // payload columns are the evidence of how far a place got. Deriving it here
-  // means no new column, no backfill, and no second source of truth to drift
-  // (Pato ratified "pipeline stage reached", 2026-08-21).
+  // ENRICHED is the PULSE high-water, 0-9, folded from place_enrichment_events
+  // by pulseHighWater. There used to be a SECOND enriched number here — a 0-3
+  // stage level off place_research — and the two disagreed on every row: the
+  // chip read one, the detail prose read the other (MESITA-1218). One fact,
+  // one table, one number. The place_research read went with it: computing
+  // that level was its only purpose here.
   //
   // VERIFIED is ownership proof — an approved project_verifications row. It
   // used to read `listing_type === "partner"`, which is the partner badge and
   // a different fact entirely (MESITA-1152).
   const ids = rows.map((v) => String(v.id)).filter(Boolean);
 
-  const research = new Map<string, { stage: string; gathered: boolean; analysis: boolean }>();
   const verified = new Set<string>();
   // PULSE piece events (MESITA-1172). The RPC returns only the latest event
   // per (place, piece); pulseHighWater owns the ladder rules, which is where
   // they are unit-tested.
   const events = new Map<string, PulseEvent[]>();
   if (ids.length > 0) {
-    const [researchRes, verificationRes, eventsRes] = await Promise.all([
-      // Via the RPC, not the table: `gathered`/`analysis` are the Enricher's
-      // full payloads (tens of KB of jsonb EACH), and all this needs is
-      // whether they landed. Selecting the columns shipped megabytes out of
-      // Postgres per search — up to 50 rows — to compute two booleans, and
-      // threw every byte away (MESITA-1198). place_research_facts does the
-      // `is not null` in the database.
-      admin.rpc("place_research_facts", { p_place_ids: ids }),
+    const [verificationRes, eventsRes] = await Promise.all([
       admin
         .from("project_verifications")
         .select("project_id")
         .eq("status", "approved")
         .in("project_id", ids),
-      // Via the RPC for the same reason as place_research_facts above: the
-      // events table is an APPEND-ONLY log, so the raw rows grow with every
-      // re-enrich while the fold only ever wants the newest row per
-      // subprocess. distinct on collapses that in Postgres, capping the
-      // transfer at one row per (place, subprocess).
+      // Via an RPC, not the table: the events table is an APPEND-ONLY log, so
+      // the raw rows grow with every re-enrich while the fold only ever wants
+      // the newest row per PIECE. `distinct on` collapses that in Postgres,
+      // capping the transfer at one row per (place, piece) instead of shipping
+      // the whole history out and throwing most of it away (MESITA-1198).
       admin.rpc("place_enrich_events_latest", { p_place_ids: ids }),
     ]);
     // Best-effort: a flag lookup must never 500 the catalog. A failed read
-    // degrades to level 0 / not-verified, which reads as "less done than it
-    // is" — the safe direction for a status column.
-    if (researchRes.error) {
-      console.error("[search-places] place_research:", researchRes.error.message);
-    }
-    for (const r of (researchRes.data ?? []) as Record<string, unknown>[]) {
-      research.set(String(r.place_id), {
-        stage: String(r.stage ?? ""),
-        gathered: r.has_gathered === true,
-        analysis: r.has_analysis === true,
-      });
-    }
+    // degrades to 0 / not-verified, which reads as "less done than it is" —
+    // the safe direction for a status column.
     if (verificationRes.error) {
       console.error("[search-places] project_verifications:", verificationRes.error.message);
     }
@@ -204,7 +184,6 @@ Deno.serve(async (req) => {
     const contentStatus = (v.content_status as string | null) ?? null;
     const listingType = (v.listing_type as string | null) ?? null;
     const label = String(v.name ?? "");
-    const level = placeEnrichLevel(research.get(id), contentStatus);
     return {
       id: v.id,
       slug: v.slug,
@@ -227,17 +206,16 @@ Deno.serve(async (req) => {
       // shared helper but never on this payload, so the catalog table still
       // could not render it. No extra read — `status` is already selected.
       listed: isPlaceListed(v.status),
-      // done/total of the subprocesses THIS place bought. null when it has no
-      // subprocess events yet — the client then renders the 0-3 level instead
-      // of an empty 0/0 meter.
       // PULSE: how far the nine-piece queue got, 0-9 (MESITA-1172). Not a
       // count of pieces that worked — the index of the last piece such that it
       // and everything before it completed.
       enrich_pulse: pulseHighWater(events.get(id) ?? []),
       enrich_pulse_total: PULSE_TOTAL,
-      enrich_level: level,
-      /** Kept for callers that only need "is it done". */
-      enriched: level === 3,
+      // The rung NAMES ride with the number so the client renders what the
+      // server counted. web-admin used to keep its own positional copy of this
+      // list with no shared import and no test, so a reorder would have put the
+      // wrong name beside every row (MESITA-1222).
+      enrich_pulse_labels: PULSE_LABELS_IN_ORDER,
       verified: verified.has(id),
       partner: isPaidPlan((v.plan as string | null) ?? null),
       promoting: isPlacePromoting(v as Parameters<typeof isPlacePromoting>[0]),
