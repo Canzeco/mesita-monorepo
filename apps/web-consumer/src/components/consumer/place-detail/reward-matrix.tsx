@@ -70,26 +70,26 @@ function Row({
       <span className="min-w-0 flex-1">
         <span
           className={cn(
-            "flex items-center gap-1.5 truncate text-[12.5px] leading-tight font-bold",
+            "type-body flex items-center gap-1.5 truncate leading-tight font-bold",
             muted ? "text-muted-foreground" : "text-foreground",
           )}
         >
           {label}
           {mine ? (
-            <span className="bg-primary text-primary-foreground shrink-0 rounded-full px-1.5 py-0.5 text-[8.5px] font-extrabold tracking-widest uppercase">
+            <span className="bg-primary text-primary-foreground type-meta shrink-0 rounded-full px-1.5 py-0.5 font-extrabold tracking-widest uppercase">
               You
             </span>
           ) : null}
         </span>
         {hint ? (
-          <span className="text-muted-foreground mt-0.5 block truncate text-[11px]">
+          <span className="text-muted-foreground type-label mt-0.5 block truncate">
             {hint}
           </span>
         ) : null}
       </span>
       <span
         className={cn(
-          "font-display shrink-0 text-[15px] leading-none font-extrabold tabular-nums",
+          "font-display shrink-0 text-sm leading-none font-extrabold tabular-nums",
           muted ? "text-muted-foreground" : "text-foreground/85",
         )}
       >
@@ -166,7 +166,13 @@ export function ClassLadder({
 // only premium cell the payload carries, and deriving the others (silver on
 // Premium, diamond on Premium) would mean client-side arithmetic over rates
 // the till has never quoted — precisely the drift MESITA-1017 fixed.
-export function PlanRow({ quote, plan }: { quote: RewardQuote; plan: PlanKey }) {
+export function PlanRow({
+  quote,
+  plan,
+}: {
+  quote: RewardQuote;
+  plan: PlanKey;
+}) {
   const value = quote.ladder?.premium;
   if (value == null) return null;
   return (
@@ -246,14 +252,14 @@ export function RewardTotal({
   return (
     <div className="border-primary/20 bg-primary/8 flex flex-col gap-1 rounded-xl border px-3 py-2.5">
       <div className="flex items-baseline justify-between gap-2">
-        <span className="text-foreground text-[12.5px] font-bold">
+        <span className="text-foreground type-body font-bold">
           {quote.additive ? "Everything stacked" : "Your best single rung"}
         </span>
         <span className="font-display text-primary text-xl leading-none font-extrabold tabular-nums">
           {total}%
         </span>
       </div>
-      <p className="text-muted-foreground text-[11px] leading-snug">
+      <p className="text-muted-foreground type-label leading-snug">
         {quote.additive
           ? "Your class plus every bonus you complete, added together"
           : "Bonuses don't stack here — you keep the single best one"}

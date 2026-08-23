@@ -382,10 +382,10 @@ export function EventSuperBoxes({
   return (
     <section aria-label="Event receipts" className="flex flex-col gap-4">
       <div className="border-border flex items-baseline justify-between gap-3 border-t pt-5">
-        <h2 className="text-muted-foreground text-[11px] font-semibold tracking-[0.12em] uppercase">
+        <h2 className="text-muted-foreground type-label font-semibold tracking-[0.12em] uppercase">
           Event receipts
         </h2>
-        <div className="text-muted-foreground flex items-center gap-2 text-[11px]">
+        <div className="text-muted-foreground flex items-center gap-2 type-label">
           {updatedLabel && <span>Updated {updatedLabel}</span>}
           <button
             type="button"
@@ -465,7 +465,7 @@ export function EventSuperBoxes({
                 </h3>
                 <span
                   className={
-                    "text-[11px] " +
+                    "type-label " +
                     (urgent ? "text-primary font-medium" : "text-muted-foreground")
                   }
                 >
@@ -580,20 +580,20 @@ function AnalyticsTile({
           : "from-card to-primary/[0.04] bg-gradient-to-br")
       }
     >
-      <p className="text-muted-foreground text-[10px] font-semibold tracking-[0.12em] uppercase">
+      <p className="text-muted-foreground type-meta font-semibold tracking-[0.12em] uppercase">
         {label}
       </p>
       <p
         className={
-          "mt-1.5 text-[28px] leading-none font-semibold tracking-tight " +
+          "mt-1.5 text-3xl leading-none font-semibold tracking-tight " +
           (empty ? "text-muted-foreground" : "text-foreground")
         }
       >
         {primary}
       </p>
-      <p className="text-muted-foreground mt-1.5 text-[11px]">{hint}</p>
+      <p className="text-muted-foreground mt-1.5 type-label">{hint}</p>
       {secondary && (
-        <p className="text-foreground mt-2 text-[11px] font-medium">{secondary}</p>
+        <p className="text-foreground mt-2 type-label font-medium">{secondary}</p>
       )}
     </div>
   );
@@ -629,10 +629,10 @@ function EventCard({
           : "hover:bg-muted/30")
       }
     >
-      <span className="text-muted-foreground text-[10px]">{when}</span>
+      <span className="text-muted-foreground type-meta">{when}</span>
       <span className="mt-1 w-full truncate text-sm font-semibold">{who}</span>
       {meta && (
-        <span className="text-muted-foreground mt-1 w-full truncate text-[11px]">
+        <span className="text-muted-foreground mt-1 w-full truncate type-label">
           {meta}
         </span>
       )}
@@ -658,14 +658,14 @@ const ExpandPanel = forwardRef<
         <div className="min-w-0">
           <p
             id={labelId}
-            className={`text-[11px] font-semibold tracking-[0.12em] uppercase ${cfg.tone.kicker}`}
+            className={`type-label font-semibold tracking-[0.12em] uppercase ${cfg.tone.kicker}`}
           >
             {cfg.label}
           </p>
           <p className="mt-1 text-sm font-semibold">
             {item.actor?.trim() || "Guest"}
           </p>
-          <p className="text-muted-foreground mt-0.5 text-[11px]">
+          <p className="text-muted-foreground mt-0.5 type-label">
             {formatAbsoluteUtc(item.occurredAt)}
           </p>
         </div>
@@ -687,7 +687,7 @@ const ExpandPanel = forwardRef<
         <MetaRow item={item} />
       </div>
       {item.type === "rewards.ticket_reported" && (
-        <p className="text-muted-foreground mt-3 text-[11px]">
+        <p className="text-muted-foreground mt-3 type-label">
           View only on this tab — follow up outside Performance.
         </p>
       )}

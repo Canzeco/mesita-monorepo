@@ -124,7 +124,7 @@ export function AppShell({ children, defaultCollapsed = false }: AppShellProps) 
               variant="horizontal"
               className="text-primary h-5 w-auto"
             />
-            <span className="text-muted-foreground text-[10px] font-medium tracking-[0.14em] uppercase">
+            <span className="text-muted-foreground type-meta font-medium tracking-[0.14em] uppercase">
               admin
             </span>
           </Link>

@@ -115,7 +115,7 @@ export function SocialProfileModal({
               <div className="mt-3 flex gap-2">
                 <span
                   className={cn(
-                    "inline-flex h-7 items-center gap-1 rounded-full px-2.5 text-[11px] font-semibold",
+                    "type-label inline-flex h-7 items-center gap-1 rounded-full px-2.5 font-semibold",
                     classBadgeClass(shown.plan),
                   )}
                 >
@@ -134,7 +134,7 @@ export function SocialProfileModal({
                   <p className="text-foreground text-base font-bold">
                     {s.value}
                   </p>
-                  <p className="text-muted-foreground text-[10px] tracking-wider uppercase">
+                  <p className="text-muted-foreground type-meta tracking-wider uppercase">
                     {s.label}
                   </p>
                 </div>

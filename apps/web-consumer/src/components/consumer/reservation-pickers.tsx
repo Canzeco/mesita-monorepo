@@ -94,10 +94,10 @@ export function ReservationDatePicker({
 }) {
   return (
     <div className="mt-5">
-      <p className="text-muted-foreground text-[11px] font-medium tracking-[0.14em] uppercase">
+      <p className="text-muted-foreground type-label font-medium tracking-[0.14em] uppercase">
         Date
       </p>
-      <p className="text-muted-foreground mt-1 text-[11px]">
+      <p className="text-muted-foreground type-label mt-1">
         Up to {BOOKING_HORIZON_MONTHS} month ahead
       </p>
       <div className="scrollbar-hide -mx-5 mt-2 flex flex-nowrap gap-2 overflow-x-auto px-5 pb-1">
@@ -122,7 +122,7 @@ export function ReservationDatePicker({
             >
               <span
                 className={cn(
-                  "text-[10px] font-semibold uppercase",
+                  "type-meta font-semibold uppercase",
                   active && !d.disabled
                     ? "text-pink-300"
                     : "text-muted-foreground",
@@ -138,9 +138,7 @@ export function ReservationDatePicker({
               >
                 {d.day}
               </span>
-              <span className="text-muted-foreground text-[9px]">
-                {d.month}
-              </span>
+              <span className="text-muted-foreground type-meta">{d.month}</span>
             </button>
           );
         })}
@@ -173,17 +171,20 @@ export function ReservationTimePicker({
   const dayHours = date ? hoursLabelForDate(date, hours) : null;
   return (
     <div className="mt-4">
-      <p className="text-muted-foreground text-[11px] font-medium tracking-[0.14em] uppercase">
+      <p className="text-muted-foreground type-label font-medium tracking-[0.14em] uppercase">
         Time
       </p>
-      <p className="text-muted-foreground mt-1 text-[11px]">
+      <p className="text-muted-foreground type-label mt-1">
         Times shown in {PLACE_TZ_LABEL}
         {dayHours ? ` · open ${dayHours}` : ""}
       </p>
       <div className="scrollbar-hide -mx-5 mt-2 overflow-x-auto px-5 pb-1">
         <div className="inline-flex flex-nowrap gap-2">
           {columns.map((col) => (
-            <div key={col.hour} className="flex w-[4.5rem] shrink-0 flex-col gap-2">
+            <div
+              key={col.hour}
+              className="flex w-[4.5rem] shrink-0 flex-col gap-2"
+            >
               <TimeSlotButton
                 slot={col.onHour}
                 date={date}
@@ -277,7 +278,7 @@ export function ClosedSlotNotice({
   return (
     <div className="mt-3 flex items-start gap-2.5 rounded-2xl border border-amber-500/40 bg-amber-500/10 p-3">
       <AlertTriangle className="mt-px h-4 w-4 shrink-0 text-amber-600" />
-      <p className="text-[12.5px] leading-snug text-amber-900">
+      <p className="type-body leading-snug text-amber-900">
         <span className="font-semibold">
           {placeName} looks closed at {time} on {weekdayName(date)}.
         </span>{" "}
@@ -301,7 +302,7 @@ export function ReservationPartyPicker({
 }) {
   return (
     <div className="mt-4">
-      <p className="text-muted-foreground text-[11px] font-medium tracking-[0.14em] uppercase">
+      <p className="text-muted-foreground type-label font-medium tracking-[0.14em] uppercase">
         Party size
       </p>
       <div className="border-border bg-card mt-2 flex items-center justify-between rounded-2xl border p-2">

@@ -207,7 +207,7 @@ export function PlaceSelectCatalog() {
   return (
     <div className="w-full">
       <div className="border-border bg-card/95 supports-[backdrop-filter]:bg-card/85 sticky top-0 z-30 border-b px-4 py-4 backdrop-blur-md sm:px-6 sm:py-5 lg:px-8">
-        <p className="text-muted-foreground text-[11px] font-semibold tracking-[0.14em] uppercase">
+        <p className="text-muted-foreground type-label font-semibold tracking-[0.14em] uppercase">
           Manage Single Place
         </p>
         <form onSubmit={onSubmit}>
@@ -278,7 +278,7 @@ export function PlaceSelectCatalog() {
                   this table answers "how far along is it". */}
               <table className="w-full min-w-[840px] border-separate border-spacing-0 text-sm">
                 <thead>
-                  <tr className="text-muted-foreground bg-muted/30 text-left text-[11px] font-semibold tracking-[0.12em] uppercase">
+                  <tr className="text-muted-foreground bg-muted/30 text-left type-label font-semibold tracking-[0.12em] uppercase">
                     <th className="w-14 px-3 py-2.5 font-semibold">Photo</th>
                     <th className="px-3 py-2.5 font-semibold">Name</th>
                     <th className="px-3 py-2.5 text-center font-semibold">Seeded</th>
@@ -364,7 +364,7 @@ export function PlaceSelectCatalog() {
                         <span className="truncate text-sm font-medium">{p.mainText}</span>
                         <span
                           className={
-                            "inline-flex shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold tracking-wide uppercase " +
+                            "inline-flex shrink-0 rounded-full px-2 py-0.5 type-meta font-semibold tracking-wide uppercase " +
                             badge.className
                           }
                         >
@@ -429,7 +429,7 @@ export function PlaceSelectCatalog() {
 
 function sectionLabelClass(active: boolean): string {
   return (
-    "flex items-center gap-2 text-xs font-medium tracking-wide uppercase transition-colors " +
+    "flex items-center gap-2 type-eyebrow transition-colors " +
     (active ? "text-primary" : "text-muted-foreground")
   );
 }
@@ -519,7 +519,7 @@ function PromoLevelCell({ level }: { level: 0 | 1 | 2 | 3 }) {
     <span className="inline-flex items-center gap-1.5" title={title}>
       <span
         className={
-          "text-[11px] font-semibold tabular-nums " +
+          "type-label font-semibold tabular-nums " +
           (level === 0 ? "text-muted-foreground" : "text-foreground")
         }
       >
@@ -575,7 +575,7 @@ function LevelCell(
     <span className="inline-flex items-center gap-1.5" title={title}>
       <span
         className={
-          "text-[11px] font-semibold tabular-nums " +
+          "type-label font-semibold tabular-nums " +
           (level === 0
             ? "text-rose-700"
             : level >= total
@@ -624,7 +624,7 @@ function BoolCell({
   falseTone?: "pending" | "neutral";
 }) {
   const pill =
-    "inline-flex items-center justify-center rounded-md px-2 py-0.5 text-[11px] font-semibold ";
+    "inline-flex items-center justify-center rounded-md px-2 py-0.5 type-label font-semibold ";
   if (value) {
     return (
       <span
@@ -769,7 +769,7 @@ function AddPlaceModal({
         </div>
 
         <div className="p-5">
-          <p className="text-muted-foreground text-[11px] font-semibold tracking-[0.14em] uppercase">
+          <p className="text-muted-foreground type-label font-semibold tracking-[0.14em] uppercase">
             Add to Mesita
           </p>
           <h3 className="mt-1 text-base font-semibold">{prediction.mainText}</h3>

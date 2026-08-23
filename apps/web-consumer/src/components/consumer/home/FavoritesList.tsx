@@ -156,12 +156,18 @@ export function FavoritesList({
           icon={Heart}
           title="Nothing saved yet"
           description="Swipe right on a place and it lands here — with its discount attached."
-          action={{ label: "Start swiping", href: CONSUMER_ROUTES.homeTabs.swipe }}
+          action={{
+            label: "Start swiping",
+            href: CONSUMER_ROUTES.homeTabs.swipe,
+          }}
         />
       ) : (
         <div className="px-4 pt-4 pb-6">
           <div className="mb-3 flex items-center justify-between gap-2 px-1">
-            <p className="text-muted-foreground text-xs font-semibold" aria-live="polite">
+            <p
+              className="text-muted-foreground text-xs font-semibold"
+              aria-live="polite"
+            >
               <span className="text-foreground">{savedIds.size} saved</span>
               {openNow > 0 && ` · ${openNow} open now`}
             </p>
@@ -171,7 +177,7 @@ export function FavoritesList({
                 onClick={() =>
                   setSort((s) => (s === "recent" ? "open" : "recent"))
                 }
-                className="border-border bg-card text-muted-foreground hover:text-foreground flex shrink-0 items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-semibold transition"
+                className="border-border bg-card text-muted-foreground hover:text-foreground type-label flex shrink-0 items-center gap-1 rounded-full border px-2.5 py-1 font-semibold transition"
               >
                 <ArrowUpDown className="h-3 w-3" />
                 {sort === "recent" ? "Recent" : "Open first"}
@@ -180,14 +186,18 @@ export function FavoritesList({
           </div>
 
           {(unresolved > 0 || deckError) && (
-            <p className="bg-muted text-muted-foreground mb-3 rounded-lg px-3 py-2 text-[11.5px] leading-snug">
+            <p className="bg-muted text-muted-foreground mb-3 rounded-lg px-3 py-2 text-xs leading-snug">
               {unresolved > 0
                 ? `${unresolved} saved ${unresolved === 1 ? "place" : "places"} couldn't be loaded right now.`
                 : "Tonight's picks didn't load, so this is showing your saved copies."}
             </p>
           )}
 
-          <ul role="list" aria-label="Saved places" className="grid grid-cols-1 gap-2.5 min-[360px]:grid-cols-2">
+          <ul
+            role="list"
+            aria-label="Saved places"
+            className="grid grid-cols-1 gap-2.5 min-[360px]:grid-cols-2"
+          >
             {ordered.map((place) => (
               <FavoriteTile
                 key={place.id}
@@ -201,7 +211,7 @@ export function FavoritesList({
           {suggestions.length > 0 && (
             <>
               <div className="mt-6 mb-3 flex items-center gap-3 px-1">
-                <span className="font-display text-[15px] font-semibold tracking-tight">
+                <span className="font-display text-sm font-semibold tracking-tight">
                   More like your saves
                 </span>
                 <span className="bg-border h-px flex-1" />

@@ -79,10 +79,10 @@ function MenuViewerBody({
           )}
         </span>
         <div className="min-w-0 flex-1">
-          <p className="font-display truncate text-[15px] font-semibold tracking-tight">
+          <p className="font-display truncate text-sm font-semibold tracking-tight">
             {menu.name}
           </p>
-          <p className="text-muted-foreground truncate text-[11px]">
+          <p className="text-muted-foreground type-label truncate">
             {kindLabel}
             {menu.kind === "pdf" && pageCount > 0
               ? ` · ${pageCount === 1 ? "1 page" : `${pageCount} pages`}`
@@ -194,7 +194,7 @@ function MenuViewerBody({
         </div>
       ) : (
         <div className="border-border flex shrink-0 items-center justify-between gap-3 border-t px-4 py-2.5">
-          <p className="text-muted-foreground text-[11px] leading-snug">
+          <p className="text-muted-foreground type-label leading-snug">
             Prices may differ at the place.
           </p>
           <a

@@ -74,7 +74,7 @@ export function PlacesMap({ places }: { places: PlaceLite[] }) {
       <div className="border-border flex items-center justify-between gap-3 border-b px-5 py-3">
         <div className="flex items-center gap-2">
           <MapPin className="text-secondary h-4 w-4" />
-          <h2 className="text-foreground text-xs font-medium tracking-[0.14em] uppercase">
+          <h2 className="text-foreground type-eyebrow">
             Map
           </h2>
         </div>

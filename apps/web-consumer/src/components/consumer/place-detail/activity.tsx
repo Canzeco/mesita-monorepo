@@ -29,7 +29,12 @@ import {
   type StorySort,
   type VisitSort,
 } from "@/lib/place-activity-sort";
-import { cn, firstInitial, formatCompactCount, relativeLabel } from "@/lib/utils";
+import {
+  cn,
+  firstInitial,
+  formatCompactCount,
+  relativeLabel,
+} from "@/lib/utils";
 
 import { Box, BoxHScroll } from "./box";
 import { SortChips, type SortOption } from "./review-ui";
@@ -72,7 +77,7 @@ function GuestLine({
       </div>
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm font-semibold">{name}</p>
-        <p className="text-muted-foreground truncate text-[11px]">
+        <p className="text-muted-foreground type-label truncate">
           {handle ? `${handle} · ${sub}` : sub}
         </p>
       </div>
@@ -92,7 +97,7 @@ function Chip({
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1 rounded-full px-2 py-1 text-[11px] font-semibold",
+        "type-label inline-flex items-center gap-1 rounded-full px-2 py-1 font-semibold",
         tone === "reward" && "bg-amber-500/10 text-amber-600",
         tone === "story" && "bg-fuchsia-500/10 text-fuchsia-600",
         tone === "muted" && "bg-muted text-muted-foreground",

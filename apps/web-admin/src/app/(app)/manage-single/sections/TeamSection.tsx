@@ -176,7 +176,7 @@ export function TeamSection({ place }: { place: AdminPlace }) {
       tint="indigo"
       title="Team"
       action={
-        <span className="border-border bg-muted text-muted-foreground rounded-full border px-2 py-0.5 text-[10px] font-semibold tracking-wide uppercase">
+        <span className="border-border bg-muted text-muted-foreground rounded-full border px-2 py-0.5 type-meta font-semibold tracking-wide uppercase">
           Saves instantly
         </span>
       }
@@ -247,7 +247,7 @@ export function TeamSection({ place }: { place: AdminPlace }) {
                     <p className="truncate text-sm font-medium">
                       {m.fullName ?? m.email ?? "—"}
                       {isOwner ? (
-                        <span className="text-muted-foreground ml-1.5 text-[10px] font-semibold tracking-wide uppercase">
+                        <span className="text-muted-foreground ml-1.5 type-meta font-semibold tracking-wide uppercase">
                           Owner
                         </span>
                       ) : null}
@@ -411,7 +411,7 @@ function Group({
 }) {
   return (
     <div>
-      <p className="text-muted-foreground text-[11px] font-semibold tracking-[0.12em] uppercase">
+      <p className="text-muted-foreground type-label font-semibold tracking-[0.12em] uppercase">
         {title} · {count}
       </p>
       <div className="mt-2 flex flex-col gap-2">{children}</div>

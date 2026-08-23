@@ -94,7 +94,7 @@ export function PdfFirstPage({
           />
         ) : null}
         {rendered && pageCount > 0 ? (
-          <span className="bg-foreground/75 text-background absolute right-3 bottom-3 rounded-full px-2 py-0.5 text-[10px] font-semibold tabular-nums">
+          <span className="bg-foreground/75 text-background absolute right-3 bottom-3 rounded-full px-2 py-0.5 type-meta font-semibold tabular-nums">
             {pageCount === 1 ? "1 page" : `${pageCount} pages`}
           </span>
         ) : null}

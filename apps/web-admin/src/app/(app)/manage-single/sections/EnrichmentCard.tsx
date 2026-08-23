@@ -159,7 +159,7 @@ export function EnrichmentCard({ place }: { place: AdminPlace }) {
       action={
         <span
           className={
-            "inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-semibold " +
+            "inline-flex items-center rounded-full px-2.5 py-1 type-label font-semibold " +
             (auto
               ? "bg-indigo-500/10 text-indigo-700"
               : "bg-muted text-muted-foreground")
@@ -180,7 +180,7 @@ export function EnrichmentCard({ place }: { place: AdminPlace }) {
       ) : (
         <>
           <div className="mt-5 flex flex-col gap-1.5">
-            <span className="text-foreground/90 text-[13px] font-medium">
+            <span className="text-foreground/90 type-body font-medium">
               Refresh this place
             </span>
             <div role="group" aria-label="Enrichment cadence" className="grid grid-cols-2 gap-2 sm:grid-cols-4">
@@ -195,7 +195,7 @@ export function EnrichmentCard({ place }: { place: AdminPlace }) {
                     title={c.hint}
                     onClick={() => setEveryDays(c.value)}
                     className={
-                      "rounded-xl border px-2 py-2 text-[12px] font-semibold transition disabled:opacity-50 " +
+                      "rounded-xl border px-2 py-2 text-xs font-semibold transition disabled:opacity-50 " +
                       (on
                         ? "border-primary/50 bg-primary/8 text-primary ring-primary/15 ring-2"
                         : "border-border/60 bg-muted/40 text-foreground/70 hover:border-foreground/25 hover:bg-muted/70")
@@ -206,14 +206,14 @@ export function EnrichmentCard({ place }: { place: AdminPlace }) {
                 );
               })}
             </div>
-            <span className="text-muted-foreground text-[11px] leading-relaxed">
+            <span className="text-muted-foreground type-label leading-relaxed">
               {CADENCES.find((c) => c.value === everyDays)?.hint}
             </span>
           </div>
 
           {everyDays !== null ? (
             <div className="mt-4 flex flex-col gap-1.5">
-              <span className="text-foreground/90 text-[13px] font-medium">
+              <span className="text-foreground/90 type-body font-medium">
                 What each scheduled run redoes
               </span>
               <div role="group" aria-label="Scheduled enrichment mode" className="grid grid-cols-3 gap-2">
@@ -228,7 +228,7 @@ export function EnrichmentCard({ place }: { place: AdminPlace }) {
                       title={m.hint}
                       onClick={() => setMode(m.value)}
                       className={
-                        "rounded-xl border px-2 py-2 text-[12px] font-semibold transition disabled:opacity-50 " +
+                        "rounded-xl border px-2 py-2 text-xs font-semibold transition disabled:opacity-50 " +
                         (on
                           ? "border-primary/50 bg-primary/8 text-primary ring-primary/15 ring-2"
                           : "border-border/60 bg-muted/40 text-foreground/70 hover:border-foreground/25 hover:bg-muted/70")
@@ -239,7 +239,7 @@ export function EnrichmentCard({ place }: { place: AdminPlace }) {
                   );
                 })}
               </div>
-              <span className="text-muted-foreground text-[11px] leading-relaxed">
+              <span className="text-muted-foreground type-label leading-relaxed">
                 {MODES.find((m) => m.value === mode)?.hint}
                 {mode !== "full"
                   ? " Falls back to a full run if the stored research it reuses is missing."
@@ -264,10 +264,10 @@ export function EnrichmentCard({ place }: { place: AdminPlace }) {
           </div>
 
           <div className="border-border/60 mt-4 border-t pt-4">
-            <span className="text-foreground/90 text-[13px] font-medium">
+            <span className="text-foreground/90 type-body font-medium">
               Run now
             </span>
-            <p className="text-muted-foreground mt-1.5 mb-2.5 text-[11px] leading-relaxed">A full run overwrites the profile with what it finds.</p>
+            <p className="text-muted-foreground mt-1.5 mb-2.5 type-label leading-relaxed">A full run overwrites the profile with what it finds.</p>
             <div className="grid grid-cols-3 gap-2">
               {MODES.map((m) => (
                 <button
@@ -279,13 +279,13 @@ export function EnrichmentCard({ place }: { place: AdminPlace }) {
                     if (guardIntent({ kind: "reenrich", run: () => runNow(m.value) })) return;
                     runNow(m.value);
                   }}
-                  className="border-border/60 bg-muted/40 text-foreground/70 hover:border-foreground/25 hover:bg-muted/70 rounded-xl border px-2 py-2 text-[12px] font-semibold transition disabled:cursor-not-allowed disabled:opacity-50"
+                  className="border-border/60 bg-muted/40 text-foreground/70 hover:border-foreground/25 hover:bg-muted/70 rounded-xl border px-2 py-2 text-xs font-semibold transition disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {runPending && ranMode === m.value ? "Queuing…" : m.label}
                 </button>
               ))}
             </div>
-            <p className="mt-2 min-h-4 text-[11px]" aria-live="polite">
+            <p className="mt-2 min-h-4 type-label" aria-live="polite">
               {runError ? (
                 <span className="text-destructive">{runError}</span>
               ) : queued ? (

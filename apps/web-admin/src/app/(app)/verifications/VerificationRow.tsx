@@ -59,7 +59,7 @@ export function VerificationRow({
           <p className="font-display text-base font-semibold tracking-tight">
             {verification.place?.name ?? "(deleted place)"}
           </p>
-          <p className="text-muted-foreground text-[12px]">
+          <p className="text-muted-foreground text-xs">
             {METHOD_LABEL[verification.method]} · requested{" "}
             {formatDate(verification.created_at)} ·{" "}
             <span className="font-mono">{verification.requester_email}</span>
@@ -71,7 +71,7 @@ export function VerificationRow({
         />
       </div>
 
-      <div className="border-border bg-background grid grid-cols-1 gap-3 rounded-xl border p-3 text-[12px] sm:grid-cols-2">
+      <div className="border-border bg-background grid grid-cols-1 gap-3 rounded-xl border p-3 text-xs sm:grid-cols-2">
         <KV label="Place address">
           {verification.place?.address ?? "—"}
         </KV>

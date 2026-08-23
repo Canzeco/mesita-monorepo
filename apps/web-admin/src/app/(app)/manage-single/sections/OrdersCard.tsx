@@ -88,7 +88,7 @@ export function OrdersCard({
       tint="violet"
       title="Orders"
       action={
-        <span className="bg-muted text-muted-foreground inline-flex items-center rounded-full px-2.5 py-1 text-[10px] font-bold tracking-wider uppercase">
+        <span className="bg-muted text-muted-foreground inline-flex items-center rounded-full px-2.5 py-1 type-meta font-bold tracking-wider uppercase">
           Soon
         </span>
       }
@@ -111,7 +111,7 @@ export function OrdersCard({
       </div>
 
       <div className="border-border/60 mt-4 border-t pt-4">
-        <span className="text-foreground/90 text-[13px] font-medium">
+        <span className="text-foreground/90 type-body font-medium">
           Ordering links on file
         </span>
         {links.length > 0 ? (

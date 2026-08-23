@@ -18,11 +18,8 @@ export function MetaRow({
         className={cn("text-muted-foreground h-4 w-4", iconClass)}
         strokeWidth={2}
       />
-      <span className="text-muted-foreground flex-1 text-[12px] font-medium tracking-wide uppercase">
-        {label}
-      </span>
+      <span className="text-muted-foreground type-eyebrow flex-1">{label}</span>
       <span className="text-foreground text-sm font-semibold">{value}</span>
     </div>
   );
 }
-

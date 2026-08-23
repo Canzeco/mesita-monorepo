@@ -97,7 +97,7 @@ export function VisitsCard({ place }: { place: AdminPlace }) {
       action={
         <span
           className={
-            "inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-semibold " +
+            "inline-flex items-center rounded-full px-2.5 py-1 type-label font-semibold " +
             (gatesOn > 0
               ? "bg-amber-500/10 text-amber-700"
               : "bg-muted text-muted-foreground")
@@ -114,11 +114,11 @@ export function VisitsCard({ place }: { place: AdminPlace }) {
       <ol className="mt-5 flex flex-wrap items-center gap-x-1.5 gap-y-1">
         {LIFECYCLE.map((step, i) => (
           <li key={step} className="flex items-center gap-1.5">
-            <span className="bg-muted text-muted-foreground rounded-full px-2 py-0.5 text-[10px] font-semibold tracking-wide uppercase">
+            <span className="bg-muted text-muted-foreground rounded-full px-2 py-0.5 type-meta font-semibold tracking-wide uppercase">
               {step}
             </span>
             {i < LIFECYCLE.length - 1 ? (
-              <span className="text-muted-foreground/50 text-[10px]" aria-hidden>
+              <span className="text-muted-foreground/50 type-meta" aria-hidden>
                 →
               </span>
             ) : null}
@@ -128,7 +128,7 @@ export function VisitsCard({ place }: { place: AdminPlace }) {
 
       <div className="border-border/60 mt-5 border-t pt-4">
         <div className="flex items-center justify-between gap-3">
-          <span className="text-foreground/90 text-[13px] font-medium">
+          <span className="text-foreground/90 type-body font-medium">
             Bill amount required
           </span>
           <button
@@ -155,7 +155,7 @@ export function VisitsCard({ place }: { place: AdminPlace }) {
 
       <div className="border-border/60 mt-4 border-t pt-4">
         <div className="flex min-h-4 items-center justify-between gap-2">
-          <span className="text-foreground/90 text-[13px] font-medium">
+          <span className="text-foreground/90 type-body font-medium">
             Staff PIN
           </span>
           {pin !== "" ? (
@@ -166,13 +166,13 @@ export function VisitsCard({ place }: { place: AdminPlace }) {
                 setPin("");
                 focusPin();
               }}
-              className="text-muted-foreground hover:text-foreground text-[11px] font-medium underline-offset-2 hover:underline disabled:opacity-50"
+              className="text-muted-foreground hover:text-foreground type-label font-medium underline-offset-2 hover:underline disabled:opacity-50"
             >
               Clear to edit
             </button>
           ) : null}
         </div>
-        <p className="text-muted-foreground mt-1.5 mb-2.5 text-[11px] leading-relaxed">The QR is the authentication — anyone holding it can work the ticket.</p>
+        <p className="text-muted-foreground mt-1.5 mb-2.5 type-label leading-relaxed">The QR is the authentication — anyone holding it can work the ticket.</p>
         <PinDigits
           ref={pinInputRef}
           value={pin}
@@ -185,7 +185,7 @@ export function VisitsCard({ place }: { place: AdminPlace }) {
             Needs all 6 digits.
           </span>
         ) : (
-          <span className="text-muted-foreground mt-1.5 block text-[11px]">
+          <span className="text-muted-foreground mt-1.5 block type-label">
             Click a digit to edit from there · type over a full PIN to replace
             it · clear all six to turn the gate off.
           </span>

@@ -98,7 +98,7 @@ function SubHeading({
       <span className="flex items-center gap-2 text-sm font-semibold">
         {icon}
         {title}
-        {hint && <span className="text-muted-foreground text-[11px] font-normal">{hint}</span>}
+        {hint && <span className="text-muted-foreground type-label font-normal">{hint}</span>}
       </span>
       {status}
     </div>
@@ -296,7 +296,7 @@ export function ImageFunnelSection({
           <span className="flex flex-wrap items-center gap-2 text-sm font-medium">
             <Eye className="text-muted-foreground h-4 w-4" />
             Analyze images with the vision model
-            <span className="text-muted-foreground text-[11px]">off = keep photos in source order, unranked</span>
+            <span className="text-muted-foreground type-label">off = keep photos in source order, unranked</span>
           </span>
           <Switch on={vision} pending={visionPending} onClick={flipVision} label="Toggle image vision" />
         </div>
@@ -369,7 +369,7 @@ export function ImageFunnelSection({
           <span className="flex flex-wrap items-center gap-2 text-sm font-medium">
             <Database className="text-muted-foreground h-4 w-4" />
             Save selected images to Supabase Storage
-            <span className="text-muted-foreground text-[11px]">off = render from source URLs</span>
+            <span className="text-muted-foreground type-label">off = render from source URLs</span>
           </span>
           <Switch on={storage} pending={storagePending} onClick={flipStorage} label="Toggle image storage" />
         </div>
@@ -696,7 +696,7 @@ export function ModelsSection({
           onChange={setCostCap}
           disabled={pending}
         />
-        <p className="text-muted-foreground mt-2 text-[11px] leading-snug">
+        <p className="text-muted-foreground mt-2 type-label leading-snug">
           Enforced mid-run by EnrichCostLedger against{" "}
           <code className="font-mono">atlas_per_run_cost_cap_usd</code>. 0 blocks paid steps.
         </p>
@@ -730,7 +730,7 @@ function ModelSelect<T extends string>({
       <span className="flex items-center gap-2 text-sm font-medium">
         {icon}
         {label}
-        <span className="text-muted-foreground text-[11px] font-normal">· {hint}</span>
+        <span className="text-muted-foreground type-label font-normal">· {hint}</span>
       </span>
       <select
         value={value}
@@ -767,7 +767,7 @@ function ModelDisplay({
       <span className="flex items-center gap-2 text-sm font-medium">
         {icon}
         {label}
-        <span className="text-muted-foreground text-[11px] font-normal">· {hint}</span>
+        <span className="text-muted-foreground type-label font-normal">· {hint}</span>
         <Lock className="text-muted-foreground ml-auto h-3.5 w-3.5 shrink-0" aria-hidden />
       </span>
       <div
@@ -776,7 +776,7 @@ function ModelDisplay({
       >
         <span className="truncate">{value}</span>
       </div>
-      <p className="text-muted-foreground text-[11px] leading-snug">{detail}</p>
+      <p className="text-muted-foreground type-label leading-snug">{detail}</p>
     </div>
   );
 }

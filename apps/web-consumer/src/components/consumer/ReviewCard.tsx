@@ -66,7 +66,7 @@ export function ReviewCard(props: MesitaPayload | GooglePayload) {
           rightChip={
             <span
               className={cn(
-                "rounded-full border border-current/30 px-1.5 py-0 text-[8px] font-bold tracking-wider uppercase",
+                "type-meta rounded-full border border-current/30 px-1.5 py-0 font-bold tracking-wider uppercase",
                 CLASS_TEXT[v.class_key],
               )}
             >
@@ -76,7 +76,7 @@ export function ReviewCard(props: MesitaPayload | GooglePayload) {
           sourceLogo={<MesitaSourceBadge />}
         />
         <StarRow rating={overall} />
-        <p className="text-muted-foreground text-[10px] leading-snug">
+        <p className="text-muted-foreground type-meta leading-snug">
           Overall{" "}
           <span className="text-foreground font-semibold">{overall}</span>
           {" · "}Food{" "}

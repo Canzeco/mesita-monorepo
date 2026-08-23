@@ -23,9 +23,7 @@ export default function NotFound() {
         <div className="bg-brand shadow-glow mx-auto mb-6 flex h-14 w-14 items-center justify-center rounded-2xl text-white">
           <Compass className="h-6 w-6" />
         </div>
-        <p className="text-muted-foreground text-xs font-bold tracking-[0.14em] uppercase">
-          Error 404
-        </p>
+        <p className="text-muted-foreground type-eyebrow">Error 404</p>
         <h1 className="font-display mt-2 text-2xl font-semibold tracking-tight">
           This page doesn&apos;t exist
         </h1>

@@ -23,7 +23,7 @@ export function ResultSummary({
     <section className="border-border bg-pink-gradient shadow-card relative overflow-hidden rounded-2xl border p-6">
       <div className="flex flex-wrap items-end justify-between gap-5">
         <div>
-          <p className="text-secondary text-xs font-medium tracking-[0.14em] uppercase">
+          <p className="text-secondary type-eyebrow">
             Result
           </p>
           <p className="font-display mt-1 text-5xl font-semibold tracking-tight md:text-6xl">
@@ -47,7 +47,7 @@ export function ResultSummary({
           </p>
           {filtersActive && (
             <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
-              <span className="text-foreground/60 inline-flex items-center gap-1 font-medium uppercase tracking-wide">
+              <span className="text-foreground/60 inline-flex items-center gap-1 type-eyebrow">
                 <SlidersHorizontal className="h-3 w-3" />
                 Filters
               </span>

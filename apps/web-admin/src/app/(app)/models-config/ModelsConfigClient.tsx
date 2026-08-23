@@ -134,7 +134,7 @@ export function ModelsConfigClient() {
 
       <div className="mt-5 grid gap-3 sm:grid-cols-3">
         <label className="border-border bg-background flex flex-col gap-2 rounded-xl border p-4">
-          <span className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
+          <span className="text-muted-foreground type-eyebrow">
             Edge Functions
           </span>
           <Select
@@ -146,7 +146,7 @@ export function ModelsConfigClient() {
           />
         </label>
         <label className="border-border bg-background flex flex-col gap-2 rounded-xl border p-4">
-          <span className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
+          <span className="text-muted-foreground type-eyebrow">
             Memo · OpenAI
           </span>
           <Select
@@ -158,7 +158,7 @@ export function ModelsConfigClient() {
           />
         </label>
         <label className="border-border bg-background flex flex-col gap-2 rounded-xl border p-4">
-          <span className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
+          <span className="text-muted-foreground type-eyebrow">
             Memo · Perplexity
           </span>
           <Select
@@ -170,7 +170,7 @@ export function ModelsConfigClient() {
         </label>
       </div>
 
-      <p className="text-muted-foreground mt-3 text-[11px] leading-relaxed">
+      <p className="text-muted-foreground mt-3 type-label leading-relaxed">
         Enricher quality tiers and the embedding model live on Enrichment; the
         embedding model is fixed by design — changing it re-vectors the catalog.
       </p>

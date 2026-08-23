@@ -51,21 +51,19 @@ function BoxShell({
         inert ? "opacity-60" : "hover:bg-muted/50",
       )}
     >
-      <span
-        className="bg-muted text-foreground/70 flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl"
-      >
+      <span className="bg-muted text-foreground/70 flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl">
         {icon}
       </span>
       <span className="min-w-0 flex-1">
         <span className="flex items-center gap-1.5">
-          <span className="text-[15px] font-bold tracking-tight">{title}</span>
+          <span className="text-sm font-bold tracking-tight">{title}</span>
           {soon && (
-            <span className="border-border text-muted-foreground rounded-full border px-1.5 py-0.5 text-[8px] font-semibold tracking-[0.12em] uppercase">
+            <span className="border-border text-muted-foreground type-meta rounded-full border px-1.5 py-0.5 font-semibold tracking-[0.12em] uppercase">
               Soon
             </span>
           )}
         </span>
-        <span className="text-muted-foreground block truncate text-[12px]">
+        <span className="text-muted-foreground block truncate text-xs">
           {summary}
         </span>
       </span>

@@ -55,7 +55,7 @@ export function SearchRailOverlay({
         ) : (
           <>
             <div className="mb-2 flex justify-center">
-              <span className="border-border bg-card/95 text-muted-foreground shadow-rest flex items-center gap-1 rounded-full border py-1 pr-1 pl-2.5 text-[11px] font-semibold tabular-nums backdrop-blur">
+              <span className="border-border bg-card/95 text-muted-foreground shadow-rest type-label flex items-center gap-1 rounded-full border py-1 pr-1 pl-2.5 font-semibold tabular-nums backdrop-blur">
                 <MapPin className="text-primary h-3 w-3" />
                 {places.length > 1 ? (
                   <>

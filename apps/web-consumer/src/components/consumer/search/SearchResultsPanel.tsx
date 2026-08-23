@@ -70,7 +70,7 @@ export function SearchResultsPanel({
 
         {onMesita.length > 0 && (
           <div>
-            <p className="eyebrow px-1">On Mesita</p>
+            <p className="type-eyebrow text-muted-foreground px-1">On Mesita</p>
             <div className="divide-border/60 divide-y">
               {onMesita.map((p) => (
                 <SuggestionLine
@@ -87,9 +87,11 @@ export function SearchResultsPanel({
 
         {fromGoogle.length > 0 && (
           <div>
-            <p className="eyebrow px-1">From Google</p>
+            <p className="type-eyebrow text-muted-foreground px-1">
+              From Google
+            </p>
             {onMesita.length === 0 && settled && (
-              <p className="text-muted-foreground px-1 pt-1 text-[11px]">
+              <p className="text-muted-foreground type-label px-1 pt-1">
                 Not on Mesita yet? Tap a place and we&apos;ll build its profile
                 for everyone.
               </p>
@@ -170,7 +172,7 @@ function SuggestionLine({
         />
       )}
       {added && (
-        <span className="flex shrink-0 items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold text-emerald-700">
+        <span className="type-meta flex shrink-0 items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 font-semibold text-emerald-700">
           <Spinner
             size="sm"
             className="border-emerald-300 border-t-emerald-600"

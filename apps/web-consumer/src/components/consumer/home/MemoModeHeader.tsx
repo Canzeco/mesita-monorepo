@@ -39,7 +39,7 @@ export function MemoModeHeader() {
           </span>
           <div className="min-w-0 flex-1">
             <p className="text-sm leading-tight font-semibold">Don Memo</p>
-            <p className="text-muted-foreground text-[11px] leading-tight">
+            <p className="text-muted-foreground type-label leading-tight">
               Your Mesita concierge
             </p>
           </div>

@@ -25,7 +25,7 @@ export function StepHeading({
 }) {
   return (
     <div className="min-w-0">
-      <h3 className="text-muted-foreground flex items-center gap-1.5 text-[11px] font-semibold tracking-[0.12em] uppercase">
+      <h3 className="text-muted-foreground flex items-center gap-1.5 type-eyebrow">
         {icon}
         {title}
       </h3>
@@ -55,11 +55,11 @@ export function ParamCard({
     <label
       className={`bg-muted/60 focus-within:border-ring/60 focus-within:bg-card focus-within:ring-ring/10 flex flex-col gap-1 rounded-xl border px-4 py-3 transition focus-within:ring-4 ${toneClasses}`}
     >
-      <span className="text-muted-foreground text-[10px] font-medium tracking-[0.14em] uppercase">
+      <span className="text-muted-foreground type-meta font-medium tracking-[0.14em] uppercase">
         {label}
       </span>
       <div className="flex items-center justify-center py-1">{children}</div>
-      <span className="text-muted-foreground text-center text-[11px]">
+      <span className="text-muted-foreground text-center type-label">
         {footer}
       </span>
     </label>
@@ -85,10 +85,10 @@ export function FilterCard({
       }
     >
       <div className="flex items-baseline justify-between gap-2">
-        <span className="text-muted-foreground text-[10px] font-medium tracking-[0.14em] uppercase">
+        <span className="text-muted-foreground type-meta font-medium tracking-[0.14em] uppercase">
           {label}
         </span>
-        <span className="text-muted-foreground/70 text-[11px]">{footer}</span>
+        <span className="text-muted-foreground/70 type-label">{footer}</span>
       </div>
       {children}
     </div>

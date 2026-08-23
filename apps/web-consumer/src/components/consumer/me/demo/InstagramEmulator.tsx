@@ -35,7 +35,7 @@ export function InstagramEmulator() {
         <div className="flex items-center gap-2">
           <label
             htmlFor="mock-ig-followers"
-            className="text-muted-foreground text-[11px] font-medium"
+            className="text-muted-foreground type-label font-medium"
           >
             Demo count
           </label>
@@ -47,9 +47,9 @@ export function InstagramEmulator() {
               const n = Number(e.target.value.replace(/[^\d]/g, ""));
               setMockAccount({ followers: Number.isFinite(n) ? n : 0 });
             }}
-            className="border-border bg-muted/30 h-8 w-24 rounded-lg border px-2.5 text-right text-[12px] font-semibold outline-none"
+            className="border-border bg-muted/30 h-8 w-24 rounded-lg border px-2.5 text-right text-xs font-semibold outline-none"
           />
-          <span className="text-muted-foreground ml-auto text-[10px]">
+          <span className="text-muted-foreground type-meta ml-auto">
             Class preview uses this
           </span>
         </div>

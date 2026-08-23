@@ -72,7 +72,7 @@ export function SocialActivityRow({
             </p>
             <span
               className={cn(
-                "inline-flex h-5 shrink-0 items-center gap-0.5 rounded-full px-1.5 text-[10px] font-semibold",
+                "type-meta inline-flex h-5 shrink-0 items-center gap-0.5 rounded-full px-1.5 font-semibold",
                 meta.bg,
                 meta.color,
               )}
@@ -81,7 +81,7 @@ export function SocialActivityRow({
               {meta.label}
             </span>
           </div>
-          <p className="text-muted-foreground truncate text-[11px]">
+          <p className="text-muted-foreground type-label truncate">
             {person.igHandle} · {person.time}
           </p>
         </div>
@@ -94,14 +94,14 @@ export function SocialActivityRow({
           className="border-border bg-background/80 hover:shadow-rest flex shrink-0 items-center gap-2 rounded-xl border p-1.5 pr-2 transition active:scale-[0.99]"
         >
           <PlaceThumb name={place.name} photo={place.photos[0]} />
-          <span className="text-foreground max-w-[80px] truncate text-[11px] font-semibold">
+          <span className="text-foreground type-label max-w-[80px] truncate font-semibold">
             {place.name}
           </span>
         </Link>
       ) : (
         <div className="border-border bg-muted/40 flex shrink-0 items-center gap-2 rounded-xl border p-1.5 pr-2">
           <PlaceThumb name={person.fallbackPlaceName} />
-          <span className="text-muted-foreground max-w-[80px] truncate text-[11px] font-semibold">
+          <span className="text-muted-foreground type-label max-w-[80px] truncate font-semibold">
             {person.fallbackPlaceName}
           </span>
         </div>

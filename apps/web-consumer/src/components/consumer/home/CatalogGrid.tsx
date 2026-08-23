@@ -122,7 +122,7 @@ export function CatalogGrid({
                 onClick={() =>
                   setSort((s) => (s === "suggested" ? "open" : "suggested"))
                 }
-                className="border-border bg-card text-muted-foreground hover:text-foreground flex shrink-0 items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-semibold transition"
+                className="border-border bg-card text-muted-foreground hover:text-foreground type-label flex shrink-0 items-center gap-1 rounded-full border px-2.5 py-1 font-semibold transition"
               >
                 <ArrowUpDown className="h-3 w-3" />
                 {sort === "suggested" ? "Suggested" : "Open first"}
@@ -130,10 +130,9 @@ export function CatalogGrid({
             )}
           </div>
         </div>
-
       </div>
 
-      {(
+      {
         <div className="scrollbar-hide min-h-0 flex-1 overflow-y-auto px-4 pb-6">
           <ul
             role="list"
@@ -153,7 +152,7 @@ export function CatalogGrid({
             })}
           </ul>
         </div>
-      )}
+      }
     </div>
   );
 }

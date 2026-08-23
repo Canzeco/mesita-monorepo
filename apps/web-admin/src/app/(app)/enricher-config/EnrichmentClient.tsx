@@ -66,7 +66,7 @@ export function EnrichmentClient(props: {
   return (
     <div className="flex flex-col gap-4 sm:gap-6">
       {updatedAt && (
-        <p className="text-muted-foreground text-[11px]">
+        <p className="text-muted-foreground type-label">
           Settings last changed{" "}
           {new Date(updatedAt).toLocaleString(undefined, {
             dateStyle: "medium",

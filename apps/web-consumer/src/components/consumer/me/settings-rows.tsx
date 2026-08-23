@@ -14,7 +14,7 @@ import { INSTAGRAM_ICON_GRADIENT_CLASS } from "@/lib/ui-classes";
 
 export function SectionEyebrow({ children }: { children: ReactNode }) {
   return (
-    <p className="text-foreground/60 text-[10px] font-semibold tracking-[0.14em] uppercase">
+    <p className="text-foreground/60 type-meta font-semibold tracking-[0.14em] uppercase">
       {children}
     </p>
   );
@@ -108,7 +108,7 @@ function RowText({
       {sub && (
         <span
           className={cn(
-            "text-muted-foreground block text-[11px]",
+            "text-muted-foreground type-label block",
             wrapSub ? "leading-snug whitespace-normal" : "truncate",
           )}
         >
@@ -325,7 +325,7 @@ export function StoredSelectRow({
       <select
         value={value}
         onChange={(e) => set(e.target.value)}
-        className="border-border bg-background text-foreground focus:border-primary max-w-[42%] shrink-0 truncate rounded-lg border px-2 py-1.5 text-[12.5px] font-medium outline-none"
+        className="border-border bg-background text-foreground focus:border-primary type-body max-w-[42%] shrink-0 truncate rounded-lg border px-2 py-1.5 font-medium outline-none"
       >
         {options.map((o) => (
           <option key={o.value} value={o.value}>

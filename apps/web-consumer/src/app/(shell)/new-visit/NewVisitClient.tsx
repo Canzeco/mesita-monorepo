@@ -127,7 +127,7 @@ export function NewVisitClient({ userId }: { userId: string }) {
             match on. */}
         <Link
           href={CONSUMER_ROUTES.inbox.visits}
-          className="text-muted-foreground hover:text-foreground mt-2 flex items-center justify-center gap-1 text-[11.5px] font-semibold transition"
+          className="text-muted-foreground hover:text-foreground mt-2 flex items-center justify-center gap-1 text-xs font-semibold transition"
         >
           Your visit history lives in Inbox
           <ChevronRight className="h-3.5 w-3.5" />
@@ -144,7 +144,7 @@ export function NewVisitClient({ userId }: { userId: string }) {
         ) : null}
 
         {startError ? (
-          <p className="bg-destructive/10 text-destructive rounded-lg px-3 py-2 text-[12.5px]">
+          <p className="bg-destructive/10 text-destructive type-body rounded-lg px-3 py-2">
             {startError}
           </p>
         ) : null}

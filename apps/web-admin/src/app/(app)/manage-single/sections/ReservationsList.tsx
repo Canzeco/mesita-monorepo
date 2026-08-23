@@ -115,7 +115,7 @@ export function ReservationsList({ activity }: { activity: PlaceActivity }) {
                   </span>
                   <span
                     className={
-                      "shrink-0 rounded-full px-2.5 py-0.5 text-[11px] font-semibold " +
+                      "shrink-0 rounded-full px-2.5 py-0.5 type-label font-semibold " +
                       st.chip
                     }
                   >

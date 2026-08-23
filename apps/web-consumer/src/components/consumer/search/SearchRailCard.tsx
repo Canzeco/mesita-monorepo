@@ -80,12 +80,12 @@ export function RailCard({
           )}
         </span>
         {subtitle && (
-          <p className="text-muted-foreground truncate text-[11px] leading-4">
+          <p className="text-muted-foreground type-label truncate leading-4">
             {subtitle}
           </p>
         )}
         {hasMeta && (
-          <p className="text-muted-foreground flex items-center gap-1 text-[11px] leading-4">
+          <p className="text-muted-foreground type-label flex items-center gap-1 leading-4">
             {place.google_rating != null && (
               <span className="flex items-center gap-1">
                 <Star className="h-2.5 w-2.5 shrink-0 fill-amber-400 text-amber-400" />
@@ -109,7 +109,7 @@ export function RailCard({
           </p>
         )}
         {openingLabel && (
-          <span className="flex items-center gap-1.5 text-[11px] leading-4 font-medium">
+          <span className="type-label flex items-center gap-1.5 leading-4 font-medium">
             <span
               className={cn(
                 "h-1.5 w-1.5 shrink-0 rounded-full",

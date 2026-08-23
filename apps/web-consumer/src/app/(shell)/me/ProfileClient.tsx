@@ -270,7 +270,7 @@ export function ProfileClient({
             redirectTo="/"
             className="border-border bg-card hover:bg-muted mt-2 flex w-full items-center justify-center gap-2 rounded-2xl border py-4 text-sm font-semibold transition"
           />
-          <p className="text-muted-foreground -mt-1 text-center text-[11px]">
+          <p className="text-muted-foreground type-label -mt-1 text-center">
             Mesita · v2.4.1
           </p>
         </div>

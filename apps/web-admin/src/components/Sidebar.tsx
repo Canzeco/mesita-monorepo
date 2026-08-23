@@ -176,7 +176,7 @@ function NavLink({
       // what names the destination.
       title={collapsed ? label : undefined}
       className={
-        "flex items-center rounded-xl text-[12px] font-medium transition lg:text-[12.5px] " +
+        "flex items-center rounded-xl text-xs font-medium transition lg:type-body " +
         (collapsed
           ? "justify-center py-2 "
           : "gap-2 py-1.5 pr-2 pl-2 lg:gap-2.5 lg:py-2 lg:pr-2.5 lg:pl-2.5 ") +
@@ -194,7 +194,7 @@ function NavLink({
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
     <div className="px-2 pt-2 pb-1 lg:px-2.5">
-      <span className="text-background/35 text-[9px] font-medium tracking-[0.14em] uppercase">
+      <span className="text-background/35 type-meta font-medium tracking-[0.14em] uppercase">
         {children}
       </span>
     </div>
@@ -264,7 +264,7 @@ function CollapseToggle({
       aria-label={action}
       aria-expanded={!collapsed}
       className={
-        "text-background/45 hover:bg-background/10 hover:text-background mt-1 flex shrink-0 items-center rounded-xl py-2 text-[12px] font-medium transition " +
+        "text-background/45 hover:bg-background/10 hover:text-background mt-1 flex shrink-0 items-center rounded-xl py-2 text-xs font-medium transition " +
         (collapsed ? "justify-center" : "gap-2.5 px-2.5")
       }
     >
@@ -297,7 +297,7 @@ export function Sidebar({
         ) : (
           <>
             <MesitaLogo variant="horizontal" className="h-5 w-auto" />
-            <span className="text-background/50 text-[10px] font-medium tracking-[0.14em] uppercase">
+            <span className="text-background/50 type-meta font-medium tracking-[0.14em] uppercase">
               admin
             </span>
           </>

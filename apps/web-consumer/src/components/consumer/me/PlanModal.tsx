@@ -144,7 +144,7 @@ export function PlanModal({
           </span>
           <div>
             <h2 className={SHEET_TITLE_CLASS}>Your plan</h2>
-            <p className="text-muted-foreground text-[12px]">
+            <p className="text-muted-foreground text-xs">
               A subscription, not a class. Cancel anytime.
             </p>
           </div>
@@ -170,10 +170,10 @@ export function PlanModal({
                 <PREMIUM_PLAN_ICON className="text-muted-foreground h-[18px] w-[18px]" />
               </span>
               <div className="min-w-0 flex-1">
-                <p className="font-display text-[15px] leading-tight font-bold tracking-tight">
+                <p className="font-display text-sm leading-tight font-bold tracking-tight">
                   Free
                 </p>
-                <p className="text-muted-foreground mt-0.5 truncate text-[12px] leading-snug">
+                <p className="text-muted-foreground mt-0.5 truncate text-xs leading-snug">
                   Every account starts here
                 </p>
               </div>
@@ -202,12 +202,12 @@ export function PlanModal({
                 />
               </span>
               <div className="min-w-0 flex-1">
-                <p className="font-display text-[15px] leading-tight font-bold tracking-tight">
+                <p className="font-display text-sm leading-tight font-bold tracking-tight">
                   Premium
                 </p>
                 <p
                   className={cn(
-                    "mt-0.5 truncate text-[12px] leading-snug",
+                    "mt-0.5 truncate text-xs leading-snug",
                     isPremium ? "opacity-90" : "text-muted-foreground",
                   )}
                 >
@@ -231,7 +231,7 @@ export function PlanModal({
               {PERKS.map((p) => (
                 <li
                   key={p.label}
-                  className="flex items-center gap-2.5 text-[13px]"
+                  className="type-body flex items-center gap-2.5"
                 >
                   <span className="bg-secondary/15 text-secondary flex h-5 w-5 shrink-0 items-center justify-center rounded-full">
                     <Check className="h-3 w-3" />
@@ -242,7 +242,7 @@ export function PlanModal({
                     {p.label}
                   </span>
                   {p.soon && (
-                    <span className="border-border text-muted-foreground shrink-0 rounded-full border px-1.5 py-0.5 text-[8px] font-semibold tracking-[0.12em] uppercase">
+                    <span className="border-border text-muted-foreground type-meta shrink-0 rounded-full border px-1.5 py-0.5 font-semibold tracking-[0.12em] uppercase">
                       Soon
                     </span>
                   )}
@@ -252,7 +252,7 @@ export function PlanModal({
           </section>
 
           {isPremium ? (
-            <p className="border-border bg-muted/30 text-muted-foreground rounded-2xl border border-dashed p-4 text-[12px] leading-relaxed">
+            <p className="border-border bg-muted/30 text-muted-foreground rounded-2xl border border-dashed p-4 text-xs leading-relaxed">
               You&rsquo;re on Premium. Cancel anytime from the receipt email —
               Premium stays through the end of the current billing period.
             </p>
@@ -277,7 +277,7 @@ export function PlanModal({
               type="button"
               onClick={() => void activateEmulated()}
               disabled={emulating || loading}
-              className="border-border text-muted-foreground hover:bg-muted/40 flex min-h-11 w-full items-center justify-center gap-2 rounded-2xl border border-dashed text-[12px] font-medium transition active:scale-[0.99] disabled:opacity-70"
+              className="border-border text-muted-foreground hover:bg-muted/40 flex min-h-11 w-full items-center justify-center gap-2 rounded-2xl border border-dashed text-xs font-medium transition active:scale-[0.99] disabled:opacity-70"
             >
               {emulating ? (
                 <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -290,7 +290,7 @@ export function PlanModal({
             </button>
           )}
 
-          <p className="text-muted-foreground text-[11px] leading-relaxed">
+          <p className="text-muted-foreground type-label leading-relaxed">
             Premium is a subscription, not a class — your class still comes from
             followers or an invitation. You become Premium the moment payment
             clears.

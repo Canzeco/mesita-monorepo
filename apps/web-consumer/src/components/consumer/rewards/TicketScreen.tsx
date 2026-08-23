@@ -503,7 +503,7 @@ export function TicketScreen({ ticketId }: { ticketId: string }) {
           <button
             type="button"
             onClick={tickets.retry}
-            className="bg-pink-gradient shadow-glow mt-1 rounded-xl px-5 py-2.5 text-[13px] font-semibold text-white"
+            className="bg-pink-gradient shadow-glow type-body mt-1 rounded-xl px-5 py-2.5 font-semibold text-white"
           >
             Retry
           </button>
@@ -527,7 +527,7 @@ export function TicketScreen({ ticketId }: { ticketId: string }) {
           </p>
           <Link
             href={CONSUMER_ROUTES.newVisit.root}
-            className="bg-pink-gradient shadow-glow mt-1 rounded-xl px-5 py-2.5 text-[13px] font-semibold text-white"
+            className="bg-pink-gradient shadow-glow type-body mt-1 rounded-xl px-5 py-2.5 font-semibold text-white"
           >
             Back to Visit
           </Link>
@@ -738,14 +738,14 @@ export function TicketScreen({ ticketId }: { ticketId: string }) {
             {placeName}
           </p>
           {category ? (
-            <p className="text-muted-foreground truncate text-[10px] capitalize">
+            <p className="text-muted-foreground type-meta truncate capitalize">
               {category.replaceAll("_", " ")}
             </p>
           ) : null}
         </div>
         <span
           className={cn(
-            "shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold tracking-widest uppercase",
+            "type-meta shrink-0 rounded-full px-2 py-0.5 font-bold tracking-widest uppercase",
             saved
               ? "bg-emerald-500/10 text-emerald-700"
               : cancelled
@@ -839,7 +839,7 @@ export function TicketScreen({ ticketId }: { ticketId: string }) {
               <button
                 type="button"
                 onClick={() => goToStep("reward")}
-                className="border-border text-foreground mt-1 flex min-h-11 w-full items-center justify-center rounded-full border text-[13px] font-bold"
+                className="border-border text-foreground type-body mt-1 flex min-h-11 w-full items-center justify-center rounded-full border font-bold"
               >
                 Pick a bonus
               </button>
@@ -918,13 +918,13 @@ export function TicketScreen({ ticketId }: { ticketId: string }) {
                       {guestName ?? "Mesita guest"}
                     </span>
                     {igHandle ? (
-                      <span className="block truncate text-[10px] leading-tight text-white/75">
+                      <span className="type-meta block truncate leading-tight text-white/75">
                         @{igHandle.replace(/^@/, "")}
                       </span>
                     ) : null}
                   </span>
                 </span>
-                <span className="shrink-0 rounded-full bg-white/22 px-2 py-0.5 text-[10px] font-bold tracking-widest uppercase">
+                <span className="type-meta shrink-0 rounded-full bg-white/22 px-2 py-0.5 font-bold tracking-widest uppercase">
                   {classProperLabel(classKey)}
                 </span>
               </div>
@@ -977,7 +977,7 @@ export function TicketScreen({ ticketId }: { ticketId: string }) {
               ) : null}
 
               <div className="mt-3 border-t-2 border-dashed border-white/35 pt-2">
-                <div className="flex items-center justify-between gap-3 text-[10px] font-semibold text-white/90">
+                <div className="type-meta flex items-center justify-between gap-3 font-semibold text-white/90">
                   <span>Ticket {stubCode}</span>
                   <span>
                     {chosenAction
@@ -1031,7 +1031,7 @@ export function TicketScreen({ ticketId }: { ticketId: string }) {
 
             {waiting ? (
               <div className="border-border rounded-2xl border border-dashed p-3">
-                <p className="text-muted-foreground text-[10px] font-bold tracking-[0.12em] uppercase">
+                <p className="text-muted-foreground type-meta font-bold tracking-[0.12em] uppercase">
                   Mesita Check · staff side
                 </p>
                 <p className="text-muted-foreground mt-1 text-xs leading-snug">
@@ -1230,7 +1230,7 @@ export function TicketScreen({ ticketId }: { ticketId: string }) {
                       : "bg-muted/40 active:scale-[0.99]",
                   )}
                 >
-                  <span className="text-foreground block text-[13px] font-bold">
+                  <span className="text-foreground type-body block font-bold">
                     {r.label}
                   </span>
                   <span className="text-muted-foreground mt-0.5 block text-xs">
@@ -1246,7 +1246,7 @@ export function TicketScreen({ ticketId }: { ticketId: string }) {
             onChange={(e) => setReportDetails(e.target.value.slice(0, 1000))}
             rows={3}
             placeholder="Anything else we should know? (optional)"
-            className="border-border bg-card focus:border-foreground w-full resize-none rounded-2xl border px-3.5 py-3 text-[13px] outline-none"
+            className="border-border bg-card focus:border-foreground type-body w-full resize-none rounded-2xl border px-3.5 py-3 outline-none"
           />
 
           {reportError ? (
@@ -1523,20 +1523,20 @@ function RewardLanes({
 
       <div className="border-border bg-card overflow-hidden rounded-2xl border">
         <div className="bg-muted/40 flex items-baseline justify-between gap-2 px-3 py-1.5">
-          <span className="text-muted-foreground text-[10px] font-bold tracking-[0.12em] uppercase">
+          <span className="text-muted-foreground type-meta font-bold tracking-[0.12em] uppercase">
             Result
           </span>
-          <span className="text-muted-foreground text-[10px] font-semibold">
+          <span className="text-muted-foreground type-meta font-semibold">
             live
           </span>
         </div>
         <div className="flex items-end justify-between gap-3 px-2.5 py-1.5">
-          <span className="text-muted-foreground min-w-0 text-[10px] leading-snug font-semibold tabular-nums">
+          <span className="text-muted-foreground type-meta min-w-0 leading-snug font-semibold tabular-nums">
             {parts.length > 0
               ? parts.join(" + ")
               : "Nothing on this ticket yet"}
           </span>
-          <span className="font-display text-primary shrink-0 text-[26px] leading-none font-bold tabular-nums">
+          <span className="font-display text-primary shrink-0 text-2xl leading-none font-bold tabular-nums">
             {selectedTotal || base}%
           </span>
         </div>
@@ -1550,7 +1550,7 @@ function RewardLanes({
                 <p className="text-foreground text-xs leading-tight font-bold">
                   Capped at MX${capPesos.toLocaleString("en-US")} off your bill
                 </p>
-                <p className="text-muted-foreground mt-0.5 text-[10px] leading-snug">
+                <p className="text-muted-foreground type-meta mt-0.5 leading-snug">
                   This percentage is limited to this amount.
                 </p>
               </div>
@@ -1606,7 +1606,7 @@ function ChangeBonusDialog({
         <button
           type="button"
           onClick={onConfirm}
-          className="bg-pink-gradient shadow-glow flex min-h-11 w-full items-center justify-center rounded-2xl text-[13px] font-bold text-white transition active:scale-[0.99]"
+          className="bg-pink-gradient shadow-glow type-body flex min-h-11 w-full items-center justify-center rounded-2xl font-bold text-white transition active:scale-[0.99]"
         >
           Switch to the {to}
         </button>
@@ -1652,7 +1652,7 @@ function RateVisitRow({ done, onOpen }: { done: boolean; onOpen: () => void }) {
         <span className="min-w-0 flex-1">
           <span
             className={cn(
-              "block text-[13px] leading-tight font-bold",
+              "type-body block leading-tight font-bold",
               done ? "text-emerald-800" : "text-foreground",
             )}
           >
@@ -1690,7 +1690,7 @@ function ElapsedWaiting({ iso }: { iso: string | null | undefined }) {
     };
   }, [iso]);
   return (
-    <p className="mt-1 text-center text-[10px] text-white/75">
+    <p className="type-meta mt-1 text-center text-white/75">
       <span
         aria-hidden="true"
         className="mr-1.5 inline-block size-1.5 animate-pulse rounded-full bg-white/90 motion-reduce:animate-none"

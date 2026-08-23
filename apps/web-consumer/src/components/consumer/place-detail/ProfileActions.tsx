@@ -39,7 +39,7 @@ export function ProfileActions({
   // gap-1 + whitespace-nowrap keeps every label on one line; at 3-up there is
   // more room than the old 4-up row ever had.
   const outlineBtn =
-    "border-border bg-card text-foreground hover:bg-muted inline-flex items-center justify-center gap-1 rounded-xl border py-2.5 text-[13px] font-semibold whitespace-nowrap transition active:scale-[0.99]";
+    "border-border bg-card text-foreground hover:bg-muted inline-flex items-center justify-center gap-1 rounded-xl border py-2.5 type-body font-semibold whitespace-nowrap transition active:scale-[0.99]";
 
   function onSave() {
     const nowSaved = !saved;

@@ -38,11 +38,11 @@ export function ProfileStat({
 }) {
   return (
     <div className="flex min-w-0 flex-col items-center justify-center px-0.5 text-center">
-      <span className="text-foreground flex items-center gap-0.5 text-[17px] leading-tight font-bold tabular-nums">
+      <span className="text-foreground flex items-center gap-0.5 text-lg leading-tight font-bold tabular-nums">
         {icon}
         {value}
       </span>
-      <span className="text-muted-foreground mt-0.5 max-w-full truncate text-[10px] leading-tight font-medium">
+      <span className="text-muted-foreground type-meta mt-0.5 max-w-full truncate leading-tight font-medium">
         {label}
       </span>
     </div>
@@ -53,7 +53,7 @@ export function ProfileStat({
  *  Soft pink fill (`bg-background`) so chips read against the white summary. */
 export function ProfileMetaChip({ children }: { children: React.ReactNode }) {
   return (
-    <span className="border-border bg-background text-foreground inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-[11.5px] whitespace-nowrap tabular-nums">
+    <span className="border-border bg-background text-foreground inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs whitespace-nowrap tabular-nums">
       {children}
     </span>
   );

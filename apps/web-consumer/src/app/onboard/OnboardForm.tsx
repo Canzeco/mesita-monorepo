@@ -160,7 +160,7 @@ export function OnboardForm({
             </>
           )}
         </button>
-        <p className="text-muted-foreground mt-3 text-center text-[11px]">
+        <p className="text-muted-foreground type-label mt-3 text-center">
           We use these to personalize recommendations. Only your name is shared
           with a place — it&apos;s the name your reservation is booked under.
         </p>

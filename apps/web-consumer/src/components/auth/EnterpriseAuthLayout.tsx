@@ -34,7 +34,7 @@ export function EnterpriseAuthLayout({
         <div className="flex flex-1 items-center justify-center px-6 py-12 sm:px-10">
           <div className="w-full max-w-[440px]">
             <header className="mb-7">
-              <h1 className="font-display text-[30px] leading-tight font-semibold tracking-[-0.02em]">
+              <h1 className="font-display text-3xl leading-tight font-semibold tracking-[-0.02em]">
                 {title}
               </h1>
               <p className="text-muted-foreground mt-1.5 text-sm leading-[1.55]">
@@ -44,7 +44,7 @@ export function EnterpriseAuthLayout({
             </header>
             {children}
             {footer && (
-              <p className="text-muted-foreground mt-7 text-center text-[12.5px]">
+              <p className="text-muted-foreground type-body mt-7 text-center">
                 {footer}
               </p>
             )}
@@ -63,13 +63,13 @@ function LandingPane() {
         <Link href="/" className="inline-flex items-center no-underline">
           <MesitaLogo variant="horizontal" className="h-7 w-auto" />
         </Link>
-        <span className="text-[10px] font-bold tracking-[0.14em] text-white/70 uppercase">
+        <span className="type-meta font-bold tracking-[0.14em] text-white/70 uppercase">
           For consumers
         </span>
       </div>
 
       <div className="relative z-10 flex flex-col gap-8">
-        <h2 className="font-display max-w-[18ch] text-[40px] leading-[1.05] font-semibold tracking-[-0.02em] xl:text-[46px]">
+        <h2 className="font-display max-w-[18ch] text-4xl leading-[1.05] font-semibold tracking-[-0.02em] xl:text-5xl">
           Eat where you&apos;d eat anyway.{" "}
           <em className="not-italic underline decoration-white/40 underline-offset-[6px]">
             Get paid for it.
@@ -99,7 +99,7 @@ function LandingPane() {
         </ul>
       </div>
 
-      <p className="relative z-10 text-[11.5px] text-white/70">
+      <p className="relative z-10 text-xs text-white/70">
         Made in Monterrey · © Mesita
       </p>
     </aside>
@@ -120,10 +120,10 @@ function ValueProp({
       <span className="flex h-8 w-8 items-center justify-center rounded-full bg-white/20">
         <Icon className="h-4 w-4 text-white" />
       </span>
-      <p className="font-display text-[15px] font-semibold tracking-[-0.01em]">
+      <p className="font-display text-sm font-semibold tracking-[-0.01em]">
         {title}
       </p>
-      <p className="text-[12.5px] leading-[1.5] text-white/80">{blurb}</p>
+      <p className="type-body leading-[1.5] text-white/80">{blurb}</p>
     </li>
   );
 }

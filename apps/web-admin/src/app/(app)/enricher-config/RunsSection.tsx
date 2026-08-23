@@ -189,7 +189,7 @@ function Grid({
                 <span title={s.blurb} className="block cursor-help">
                   {s.label}
                 </span>
-                <span className="text-muted-foreground block text-[10px] font-normal tabular-nums">
+                <span className="text-muted-foreground block type-meta font-normal tabular-nums">
                   {s.step} · {COST_LABEL[s.cost] ?? s.cost}
                 </span>
               </th>
@@ -214,7 +214,7 @@ function Grid({
                     {t.blurb}
                   </p>
                   {spendsOnHighFrequency && (
-                    <p className="mt-1 text-[11px] font-medium text-amber-700 dark:text-amber-500">
+                    <p className="mt-1 type-label font-medium text-amber-700 dark:text-amber-500">
                       Fires many times a day and is buying a $$ subprocess.
                     </p>
                   )}

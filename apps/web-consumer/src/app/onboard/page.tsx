@@ -74,7 +74,7 @@ export default async function ConsumerOnboardPage({
       <div className="flex flex-1 flex-col overflow-y-auto px-6 pt-6 pb-8">
         <div className="border-border bg-card mb-6 flex items-center justify-between gap-3 rounded-2xl border px-3 py-2.5">
           <div className="min-w-0">
-            <p className="text-muted-foreground text-[10px] font-semibold tracking-[0.12em] uppercase">
+            <p className="text-muted-foreground type-meta font-semibold tracking-[0.12em] uppercase">
               Signed in as
             </p>
             <p className="truncate text-sm font-medium">

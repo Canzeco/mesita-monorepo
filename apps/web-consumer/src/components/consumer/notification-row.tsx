@@ -42,16 +42,16 @@ export function NotificationRow({ n }: { n: ConsumerNotification }) {
             {p.place_name ?? "Mesita partner"}
           </p>
         </div>
-        <p className="text-muted-foreground mt-0.5 flex items-center gap-1.5 text-[12px]">
+        <p className="text-muted-foreground mt-0.5 flex items-center gap-1.5 text-xs">
           <KindIcon kind={n.kind} className="h-3.5 w-3.5 shrink-0" />
           {kindLabel(n.kind)}
         </p>
         {reward > 0 ? (
-          <p className="text-secondary mt-1 text-[12px] font-medium">
+          <p className="text-secondary mt-1 text-xs font-medium">
             Reward {formatPayMx(reward, p.currency)}
           </p>
         ) : null}
-        <p className="text-muted-foreground mt-1 text-[10px]">
+        <p className="text-muted-foreground type-meta mt-1">
           {new Date(n.created_at).toLocaleString(undefined, {
             month: "short",
             day: "numeric",

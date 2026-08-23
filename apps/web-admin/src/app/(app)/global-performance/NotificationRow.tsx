@@ -35,13 +35,13 @@ export function NotificationRow({
       <div className="min-w-0 flex-1">
         <div className="flex items-start justify-between gap-3">
           <p
-            className={`text-[11px] font-semibold tracking-[0.12em] uppercase ${tone.kicker}`}
+            className={`type-label font-semibold tracking-[0.12em] uppercase ${tone.kicker}`}
             title={phase?.blurb}
           >
             {kicker}
           </p>
           <time
-            className="text-muted-foreground shrink-0 text-[11px]"
+            className="text-muted-foreground shrink-0 type-label"
             title={formatAbsoluteUtc(item.occurredAt)}
             suppressHydrationWarning
           >

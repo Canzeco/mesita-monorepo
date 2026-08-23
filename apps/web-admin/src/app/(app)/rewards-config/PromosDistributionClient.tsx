@@ -135,7 +135,7 @@ export function PromosDistributionClient({
             ))}
           </div>
           {classSum !== 100 && (
-            <p className="text-secondary mt-3 text-[11px] font-semibold">
+            <p className="text-secondary mt-3 type-label font-semibold">
               Sums to {classSum}% — normalized proportionally.
             </p>
           )}
@@ -151,7 +151,7 @@ export function PromosDistributionClient({
         />
       ))}
 
-      <p className="text-muted-foreground/80 text-[11px] leading-snug">
+      <p className="text-muted-foreground/80 type-label leading-snug">
         Exact expected distribution of {SIMULATED_VISITS.toLocaleString("en-US")}{" "}
         visits under the saved Config — no sampling. The live engine still pays
         best-of until MESITA-992, so real bills today pay less than this.
@@ -171,7 +171,7 @@ function PctField({
 }) {
   return (
     <div className="border-border/60 flex items-center justify-between gap-4 border-b py-2.5 last:border-0">
-      <span className="text-foreground text-[13px] font-medium">{label}</span>
+      <span className="text-foreground type-body font-medium">{label}</span>
       <label className="flex shrink-0 items-center gap-1.5">
         <input
           type="number"
@@ -185,7 +185,7 @@ function PctField({
             if (Number.isNaN(raw)) return;
             onChange(Math.max(0, Math.min(100, Math.round(raw))));
           }}
-          className="border-border bg-card focus:border-foreground h-9 w-20 rounded-lg border px-2 text-right text-[13px] font-semibold tabular-nums outline-none"
+          className="border-border bg-card focus:border-foreground h-9 w-20 rounded-lg border px-2 text-right type-body font-semibold tabular-nums outline-none"
         />
         <span className="text-muted-foreground text-xs">%</span>
       </label>
@@ -223,7 +223,7 @@ function DistributionCard({
       </div>
 
       {/* The quartile numbers live HERE, once — never on the plot. */}
-      <div className="text-muted-foreground mt-2.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px]">
+      <div className="text-muted-foreground mt-2.5 flex flex-wrap items-center gap-x-4 gap-y-1 type-label">
         {(
           [
             ["Min", result.min],
@@ -248,7 +248,7 @@ function DistributionCard({
         {BONUS_SEGMENT_LABEL.map((label, i) => (
           <span
             key={label}
-            className="text-muted-foreground inline-flex items-center gap-1.5 text-[11px]"
+            className="text-muted-foreground inline-flex items-center gap-1.5 type-label"
           >
             <span
               aria-hidden
@@ -258,28 +258,28 @@ function DistributionCard({
             {label}
           </span>
         ))}
-        <span className="text-muted-foreground/70 ml-auto text-[11px]">
+        <span className="text-muted-foreground/70 ml-auto type-label">
           Shaded band = middle half of visits (Q1–Q3)
         </span>
       </div>
 
       <details className="mt-3">
-        <summary className="text-muted-foreground hover:text-foreground cursor-pointer text-[11px] select-none">
+        <summary className="text-muted-foreground hover:text-foreground cursor-pointer type-label select-none">
           View as table
         </summary>
         <div className="overflow-x-auto">
-          <table className="mt-2 w-full max-w-lg border-collapse text-[12px]">
+          <table className="mt-2 w-full max-w-lg border-collapse text-xs">
             <thead>
               <tr className="border-border border-b-2">
                 <th
                   scope="col"
-                  className="text-muted-foreground pb-1 text-left text-[10px] font-bold tracking-[0.12em] uppercase"
+                  className="text-muted-foreground pb-1 text-left type-meta font-bold tracking-[0.12em] uppercase"
                 >
                   Reward
                 </th>
                 <th
                   scope="col"
-                  className="text-muted-foreground pb-1 text-right text-[10px] font-bold tracking-[0.12em] uppercase"
+                  className="text-muted-foreground pb-1 text-right type-meta font-bold tracking-[0.12em] uppercase"
                 >
                   Visits
                 </th>
@@ -287,7 +287,7 @@ function DistributionCard({
                   <th
                     key={label}
                     scope="col"
-                    className="text-muted-foreground pb-1 text-right text-[10px] font-bold tracking-[0.12em] uppercase"
+                    className="text-muted-foreground pb-1 text-right type-meta font-bold tracking-[0.12em] uppercase"
                   >
                     {label}
                   </th>

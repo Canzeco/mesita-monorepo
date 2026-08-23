@@ -63,7 +63,7 @@ export function PromoChip({
   tone?: "dark" | "light";
 }) {
   const sizing =
-    size === "md" ? "px-2.5 py-1 text-[11.5px]" : "px-2.5 py-1 text-[10.5px]";
+    size === "md" ? "px-2.5 py-1 text-xs" : "px-2.5 py-1 type-label";
   const iconSize = size === "md" ? "h-3 w-3" : "h-2.5 w-2.5";
   const emptyTone =
     tone === "light"

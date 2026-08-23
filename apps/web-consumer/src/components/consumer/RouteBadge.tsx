@@ -40,7 +40,7 @@ export function RouteBadge() {
         // only drifts within the gutter — it never covers the card.
         "md:left-[calc(50%-14.75rem)] md:-translate-x-full",
         "bg-card/80 text-muted-foreground border-border rounded-full border px-2.5 py-1",
-        "font-mono text-[11px] leading-none tracking-tight tabular-nums backdrop-blur-sm",
+        "type-label font-mono leading-none tracking-tight tabular-nums backdrop-blur-sm",
         Z_ROUTE_BADGE,
       )}
     >

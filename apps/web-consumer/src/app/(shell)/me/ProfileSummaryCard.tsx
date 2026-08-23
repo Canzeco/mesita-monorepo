@@ -113,20 +113,20 @@ function Tile({
       <span
         className={cn(
           // 10px, not 9px: Docs › Design §D puts eyebrow/meta at
-          // text-[10px]–xs, and 9px at this tracking was under its own floor.
-          "flex max-w-full items-center gap-1 text-[10px] font-bold tracking-[0.12em] uppercase",
+          // type-meta–xs, and 9px at this tracking was under its own floor.
+          "type-meta flex max-w-full items-center gap-1 font-bold tracking-[0.12em] uppercase",
           held ? "opacity-85" : "text-muted-foreground",
         )}
       >
         <Icon className="h-2.5 w-2.5 shrink-0" />
         <span className="truncate">{eyebrow}</span>
       </span>
-      <span className="font-display mt-1.5 w-full truncate text-[17px] leading-tight font-semibold tracking-tight">
+      <span className="font-display mt-1.5 w-full truncate text-lg leading-tight font-semibold tracking-tight">
         {value}
       </span>
       <span
         className={cn(
-          "mt-1 w-full text-[10px] leading-snug",
+          "type-meta mt-1 w-full leading-snug",
           held ? "opacity-85" : "text-muted-foreground",
         )}
       >
@@ -273,11 +273,11 @@ export function ProfileSummaryCard({
             </div>
 
             <div className="flex min-w-0 flex-col gap-1">
-              <h2 className="font-display truncate text-[22px] leading-tight font-semibold tracking-tight">
+              <h2 className="font-display truncate text-xl leading-tight font-semibold tracking-tight">
                 {name}
               </h2>
               {detailLine && (
-                <p className="text-muted-foreground truncate text-[12px]">
+                <p className="text-muted-foreground truncate text-xs">
                   {detailLine}
                 </p>
               )}
@@ -288,7 +288,7 @@ export function ProfileSummaryCard({
               wore the app's button shape while being unclickable. */}
           <span
             aria-label={`Profile is ${isPublic ? "public" : "private"}`}
-            className="text-muted-foreground mt-1 inline-flex shrink-0 items-center gap-1 text-[10px] font-bold tracking-[0.12em] uppercase"
+            className="text-muted-foreground type-meta mt-1 inline-flex shrink-0 items-center gap-1 font-bold tracking-[0.12em] uppercase"
           >
             {isPublic ? (
               <Unlock className="h-2.5 w-2.5" />

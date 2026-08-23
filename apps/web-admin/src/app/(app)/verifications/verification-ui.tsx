@@ -10,7 +10,7 @@ export function StatusBadge({
 }) {
   if (status === "pending") {
     return (
-      <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold tracking-wider text-amber-700 uppercase">
+      <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 type-meta font-bold tracking-wider text-amber-700 uppercase">
         <Clock className="h-3 w-3" />
         Pending
       </span>
@@ -18,7 +18,7 @@ export function StatusBadge({
   }
   if (status === "approved") {
     return (
-      <span className="bg-secondary/15 text-secondary inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold tracking-wider uppercase">
+      <span className="bg-secondary/15 text-secondary inline-flex items-center gap-1 rounded-full px-2 py-0.5 type-meta font-bold tracking-wider uppercase">
         <CheckCircle2 className="h-3 w-3" />
         Approved
         {decidedVia === "auto" && <span>· auto</span>}
@@ -26,7 +26,7 @@ export function StatusBadge({
     );
   }
   return (
-    <span className="bg-destructive/10 text-destructive inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold tracking-wider uppercase">
+    <span className="bg-destructive/10 text-destructive inline-flex items-center gap-1 rounded-full px-2 py-0.5 type-meta font-bold tracking-wider uppercase">
       <X className="h-3 w-3" />
       Rejected
     </span>
@@ -44,7 +44,7 @@ export function KV({
 }) {
   return (
     <div className={wide ? "sm:col-span-2" : ""}>
-      <p className="text-muted-foreground text-[9px] font-medium tracking-[0.14em] uppercase">
+      <p className="text-muted-foreground type-meta font-medium tracking-[0.14em] uppercase">
         {label}
       </p>
       <p className="mt-0.5">{children}</p>

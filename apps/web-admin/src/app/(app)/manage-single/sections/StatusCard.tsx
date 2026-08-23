@@ -268,7 +268,7 @@ export function StatusCard({
       {badged !== promoting ? (
         <div className="mt-4 flex items-start gap-2.5 rounded-xl border border-amber-200/70 bg-amber-50/60 p-3">
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-700" />
-          <p className="text-[11px] leading-relaxed text-amber-900">
+          <p className="type-label leading-relaxed text-amber-900">
             <span className="font-semibold">
               Guest surfaces disagree with Promoting.
             </span>{" "}
@@ -315,12 +315,12 @@ function StatusRow({
   return (
     <div className="border-border/60 flex items-start justify-between gap-4 border-b py-3.5 first:pt-0 last:border-b-0 last:pb-0">
       <div className="min-w-0">
-        <span className="text-foreground/90 text-[13px] font-medium">{name}</span>
-        <p className="text-foreground/70 mt-1 text-[11px] font-medium">{detail}</p>
+        <span className="text-foreground/90 type-body font-medium">{name}</span>
+        <p className="text-foreground/70 mt-1 type-label font-medium">{detail}</p>
       </div>
       <span
         className={
-          "inline-flex shrink-0 items-center rounded-full px-2.5 py-1 text-[11px] font-semibold tabular-nums " +
+          "inline-flex shrink-0 items-center rounded-full px-2.5 py-1 type-label font-semibold tabular-nums " +
           (on ? chipClass : "bg-muted text-muted-foreground")
         }
         aria-label={`${name}: ${

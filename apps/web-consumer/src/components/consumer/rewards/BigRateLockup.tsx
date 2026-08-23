@@ -28,9 +28,7 @@ export function BigRateLockup({
   return (
     <div aria-live="polite" className={cn("text-center", className)}>
       {caption ? (
-        <p className="text-muted-foreground text-[12px] font-semibold">
-          {caption}
-        </p>
+        <p className="text-muted-foreground text-xs font-semibold">{caption}</p>
       ) : null}
       <p
         className={cn(
@@ -43,7 +41,7 @@ export function BigRateLockup({
         {percent}%
       </p>
       {suffix ? (
-        <p className="text-foreground mt-1 text-[12.5px] leading-snug font-bold">
+        <p className="text-foreground type-body mt-1 leading-snug font-bold">
           {suffix}
         </p>
       ) : null}

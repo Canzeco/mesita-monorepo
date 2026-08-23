@@ -91,9 +91,7 @@ export function SwipeCardInfo({
           <span
             className={cn(
               "inline-flex items-center gap-1.5 rounded-md border border-emerald-300/55 bg-emerald-500/35 font-semibold whitespace-nowrap text-emerald-50 backdrop-blur-md",
-              compact
-                ? "px-[9px] py-[3px] text-[11px]"
-                : "px-2.5 py-1 text-[11.5px]",
+              compact ? "type-label px-[9px] py-[3px]" : "px-2.5 py-1 text-xs",
             )}
             aria-live="polite"
           >
@@ -186,7 +184,7 @@ function MetaChip({
     <span
       className={cn(
         "inline-flex items-center gap-1.5 rounded-md border border-white/35 bg-black/60 whitespace-nowrap text-white tabular-nums [font-variant-numeric:tabular-nums_lining-nums] backdrop-blur-md",
-        compact ? "px-[9px] py-[3px] text-[11px]" : "px-2.5 py-1 text-[11.5px]",
+        compact ? "type-label px-[9px] py-[3px]" : "px-2.5 py-1 text-xs",
       )}
     >
       {children}

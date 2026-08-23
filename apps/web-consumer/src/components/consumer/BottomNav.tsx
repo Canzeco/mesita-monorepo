@@ -156,14 +156,12 @@ export function BottomNav({ userId }: { userId?: string }) {
                   type="button"
                   onClick={() => setSoonItem(item)}
                   title={item.soonTitle ?? "Coming soon"}
-                  className="text-muted-foreground hover:text-foreground relative flex min-w-0 flex-1 flex-col items-center gap-1 rounded-lg px-0.5 py-1 text-[10px] font-medium transition"
+                  className="text-muted-foreground hover:text-foreground type-meta relative flex min-w-0 flex-1 flex-col items-center gap-1 rounded-lg px-0.5 py-1 font-medium transition"
                 >
                   <span className="relative flex h-8 w-8 items-center justify-center rounded-full">
                     <Icon className="h-5 w-5" strokeWidth={1.75} />
                   </span>
-                  <span className="w-full truncate text-center">
-                    {label}
-                  </span>
+                  <span className="w-full truncate text-center">{label}</span>
                 </button>
               );
             }
@@ -173,7 +171,7 @@ export function BottomNav({ userId }: { userId?: string }) {
                 key={href}
                 href={href}
                 className={cn(
-                  "relative flex min-w-0 flex-1 flex-col items-center gap-1 rounded-lg px-0.5 py-1 text-[10px] font-medium transition",
+                  "type-meta relative flex min-w-0 flex-1 flex-col items-center gap-1 rounded-lg px-0.5 py-1 font-medium transition",
                   active
                     ? "text-primary"
                     : "text-muted-foreground hover:text-foreground",
@@ -194,9 +192,7 @@ export function BottomNav({ userId }: { userId?: string }) {
                     strokeWidth={active ? 2.25 : 1.75}
                   />
                 </span>
-                <span className="w-full truncate text-center">
-                  {label}
-                </span>
+                <span className="w-full truncate text-center">{label}</span>
               </Link>
             );
           })}

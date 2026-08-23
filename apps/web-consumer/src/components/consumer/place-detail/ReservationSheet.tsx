@@ -242,7 +242,7 @@ export function ReservationSheet({
             <h2 className={cn(SHEET_TITLE_CLASS, "mt-4")}>
               {rescheduling ? "Reservation updated" : "Reservation requested"}
             </h2>
-            <p className="text-muted-foreground mx-auto mt-2 max-w-xs text-[13px] leading-relaxed">
+            <p className="text-muted-foreground type-body mx-auto mt-2 max-w-xs leading-relaxed">
               Mesita is calling{" "}
               <span className="text-foreground font-medium">{place.name}</span>{" "}
               to {rescheduling ? "move" : "book"} your table for {party} on{" "}
@@ -267,7 +267,7 @@ export function ReservationSheet({
                 <h2 className={SHEET_TITLE_CLASS}>
                   {rescheduling ? "Move your table" : "Reserve a table"}
                 </h2>
-                <p className="text-muted-foreground truncate text-[12px]">
+                <p className="text-muted-foreground truncate text-xs">
                   {place.name} · Mesita calls the place for you
                 </p>
               </div>
@@ -306,7 +306,7 @@ export function ReservationSheet({
             />
 
             <div className="mt-4">
-              <p className="text-muted-foreground text-[11px] font-medium tracking-[0.14em] uppercase">
+              <p className="text-muted-foreground type-label font-medium tracking-[0.14em] uppercase">
                 Notes for the place{" "}
                 <span className="tracking-normal normal-case">(optional)</span>
               </p>
@@ -322,7 +322,7 @@ export function ReservationSheet({
 
             {!rescheduling && (
               <div className="mt-4">
-                <p className="text-muted-foreground text-[11px] font-medium tracking-[0.14em] uppercase">
+                <p className="text-muted-foreground type-label font-medium tracking-[0.14em] uppercase">
                   When Mesita has news
                 </p>
                 <div className="border-border mt-2 grid grid-cols-2 gap-2 rounded-2xl border p-1">
@@ -350,7 +350,7 @@ export function ReservationSheet({
             )}
 
             {error && (
-              <p className="mt-3 rounded-xl bg-red-500/10 px-3 py-2 text-[13px] font-medium text-red-600">
+              <p className="type-body mt-3 rounded-xl bg-red-500/10 px-3 py-2 font-medium text-red-600">
                 {error}
               </p>
             )}
@@ -370,7 +370,7 @@ export function ReservationSheet({
                 submitLabel
               )}
             </button>
-            <p className="text-muted-foreground mt-2 text-center text-[11px]">
+            <p className="text-muted-foreground type-label mt-2 text-center">
               {guestNotify === "app"
                 ? "Mesita's AI agent calls the place to book — you'll see the answer here."
                 : "Mesita's AI agent calls the place to book — then calls you to confirm."}
@@ -410,10 +410,10 @@ function DuplicateBanner({
           <CalendarClock className="h-4 w-4" />
         </span>
         <div className="min-w-0">
-          <p className="text-foreground text-[13px] font-semibold">
+          <p className="text-foreground type-body font-semibold">
             You already have a table here
           </p>
-          <p className="text-muted-foreground mt-0.5 text-[12px] leading-snug">
+          <p className="text-muted-foreground mt-0.5 text-xs leading-snug">
             {when} for {existing.party_size} {guestNoun(existing.party_size)}.
           </p>
         </div>
@@ -424,20 +424,20 @@ function DuplicateBanner({
           <button
             type="button"
             onClick={onReschedule}
-            className="bg-primary text-primary-foreground flex-1 rounded-full py-2 text-[12.5px] font-semibold transition active:scale-[0.99]"
+            className="bg-primary text-primary-foreground type-body flex-1 rounded-full py-2 font-semibold transition active:scale-[0.99]"
           >
             Reschedule that one
           </button>
           <button
             type="button"
             onClick={onAnother}
-            className="border-border bg-card hover:bg-muted flex-1 rounded-full border py-2 text-[12.5px] font-semibold transition"
+            className="border-border bg-card hover:bg-muted type-body flex-1 rounded-full border py-2 font-semibold transition"
           >
             Make another
           </button>
         </div>
       ) : (
-        <p className="text-muted-foreground mt-2 text-[12px]">
+        <p className="text-muted-foreground mt-2 text-xs">
           {choice === "reschedule"
             ? "Moving your existing table."
             : "Booking a second table here."}

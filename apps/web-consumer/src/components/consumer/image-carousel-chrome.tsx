@@ -99,7 +99,7 @@ export function CarouselSlideCounter({
   count: number;
 }) {
   return (
-    <div className="shadow-media pointer-events-none absolute top-3 right-3 z-10 rounded-full bg-black/60 px-2 py-0.5 text-[10px] font-semibold text-white backdrop-blur">
+    <div className="shadow-media type-meta pointer-events-none absolute top-3 right-3 z-10 rounded-full bg-black/60 px-2 py-0.5 font-semibold text-white backdrop-blur">
       {idx + 1} / {count}
     </div>
   );

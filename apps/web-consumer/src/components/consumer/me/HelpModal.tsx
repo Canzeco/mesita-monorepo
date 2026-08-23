@@ -66,7 +66,7 @@ export function HelpModal({
           <span className="bg-secondary/12 text-secondary grid size-9 shrink-0 place-items-center rounded-xl">
             <Percent className="size-[18px]" strokeWidth={2.25} />
           </span>
-          <p className="text-muted-foreground text-[13px] leading-relaxed">
+          <p className="text-muted-foreground type-body leading-relaxed">
             <span className="text-foreground font-semibold">
               Instant discounts.
             </span>{" "}
@@ -79,7 +79,7 @@ export function HelpModal({
           <span className="bg-pink-gradient grid size-9 shrink-0 place-items-center rounded-xl text-white">
             <CLASS_MARK_ICON className="size-[18px]" />
           </span>
-          <p className="text-muted-foreground text-[13px] leading-relaxed">
+          <p className="text-muted-foreground type-body leading-relaxed">
             <span className="text-foreground font-semibold">
               Elevated classes boost them.
             </span>{" "}
@@ -92,9 +92,9 @@ export function HelpModal({
                 and leaves the bars to the ladder, which is the surface that
                 actually shows them. */}
             {CLASS_FLOOR.label} gets the base discount; every class above it
-            unlocks a bigger one. Followers lift you automatically; an invite
-            is by hand. Premium is a separate subscription that raises your
-            rate at any class.
+            unlocks a bigger one. Followers lift you automatically; an invite is
+            by hand. Premium is a separate subscription that raises your rate at
+            any class.
           </p>
         </div>
 
@@ -102,7 +102,7 @@ export function HelpModal({
           <span className="bg-secondary/12 text-secondary grid size-9 shrink-0 place-items-center rounded-xl">
             <Sparkles className="size-[18px]" strokeWidth={2.25} />
           </span>
-          <p className="text-muted-foreground text-[13px] leading-relaxed">
+          <p className="text-muted-foreground type-body leading-relaxed">
             <span className="text-foreground font-semibold">
               Actions beat your class.
             </span>{" "}
@@ -118,7 +118,7 @@ export function HelpModal({
             <h3 className="text-foreground text-sm font-bold tracking-tight">
               Reward tiers
             </h3>
-            <span className="text-muted-foreground text-[11px]">
+            <span className="text-muted-foreground type-label">
               You keep your best one
             </span>
           </div>
@@ -148,13 +148,13 @@ export function HelpModal({
                 <span className="min-w-0 flex-1">
                   <span
                     className={cn(
-                      "flex items-center gap-1.5 truncate text-[12.5px] leading-tight font-bold",
+                      "type-body flex items-center gap-1.5 truncate leading-tight font-bold",
                       isMine ? "text-white" : "text-foreground",
                     )}
                   >
                     {seg.name}
                     {isMine ? (
-                      <span className="shrink-0 rounded-full bg-white/25 px-1.5 py-0.5 text-[8.5px] font-extrabold tracking-widest uppercase">
+                      <span className="type-meta shrink-0 rounded-full bg-white/25 px-1.5 py-0.5 font-extrabold tracking-widest uppercase">
                         You
                       </span>
                     ) : null}
@@ -162,7 +162,7 @@ export function HelpModal({
                 </span>
                 <span
                   className={cn(
-                    "shrink-0 text-[13px] leading-none font-extrabold tabular-nums",
+                    "type-body shrink-0 leading-none font-extrabold tabular-nums",
                     isMine ? "text-white" : "text-foreground/80",
                   )}
                 >

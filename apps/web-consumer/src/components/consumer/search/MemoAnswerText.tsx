@@ -143,7 +143,7 @@ export function MemoAnswerText({
         ),
       )}
       {unlinked.length > 0 && (
-        <span className="text-muted-foreground mt-1 block text-[13px]">
+        <span className="text-muted-foreground type-body mt-1 block">
           También:{" "}
           {unlinked.map((prediction, i) => (
             <span key={prediction.placeId}>

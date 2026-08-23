@@ -121,7 +121,7 @@ export function ChannelPicker({
 
   return (
     <div className="flex flex-col gap-1.5">
-      <span className="text-foreground/90 flex min-h-4 items-center text-[13px] font-medium">
+      <span className="text-foreground/90 flex min-h-4 items-center type-body font-medium">
         Channel
       </span>
       <div role="group" aria-label={ariaLabel} className="grid grid-cols-3 gap-2">
@@ -141,7 +141,7 @@ export function ChannelPicker({
                     : undefined
                 }
                 className={
-                  "relative flex min-h-[5.25rem] flex-col items-center justify-center gap-1 rounded-xl border px-1.5 py-2 text-[12px] font-semibold transition disabled:cursor-not-allowed disabled:opacity-45 " +
+                  "relative flex min-h-[5.25rem] flex-col items-center justify-center gap-1 rounded-xl border px-1.5 py-2 text-xs font-semibold transition disabled:cursor-not-allowed disabled:opacity-45 " +
                   (pressed
                     ? "border-primary/50 bg-primary/8 text-primary ring-primary/15 ring-2"
                     : "border-border/60 bg-muted/40 text-foreground/70 hover:border-foreground/25 hover:bg-muted/70")
@@ -155,7 +155,7 @@ export function ChannelPicker({
                 />
                 Phone
                 {!hasPhone ? (
-                  <span className="text-muted-foreground/70 text-[9px] font-medium">
+                  <span className="text-muted-foreground/70 type-meta font-medium">
                     not set
                   </span>
                 ) : null}
@@ -168,9 +168,9 @@ export function ChannelPicker({
               key={opt.id}
               aria-disabled
               title={`${opt.label} ${soonVerb} — coming soon`}
-              className="border-border/60 bg-muted/25 relative flex min-h-[5.25rem] cursor-not-allowed flex-col items-center justify-center gap-1 rounded-xl border border-dashed px-1.5 py-2 text-[12px] font-semibold opacity-60"
+              className="border-border/60 bg-muted/25 relative flex min-h-[5.25rem] cursor-not-allowed flex-col items-center justify-center gap-1 rounded-xl border border-dashed px-1.5 py-2 text-xs font-semibold opacity-60"
             >
-              <span className="bg-muted text-muted-foreground absolute top-1.5 right-1.5 rounded-full px-1.5 py-0 text-[9px] font-bold tracking-wider uppercase">
+              <span className="bg-muted text-muted-foreground absolute top-1.5 right-1.5 rounded-full px-1.5 py-0 type-meta font-bold tracking-wider uppercase">
                 Soon
               </span>
               {/* Static brand SVG — same pattern as Place → Channels. */}
@@ -183,7 +183,7 @@ export function ChannelPicker({
               />
               <span className="text-foreground/70">{opt.label}</span>
               {!opt.contact ? (
-                <span className="text-muted-foreground/70 text-[9px] font-medium">
+                <span className="text-muted-foreground/70 type-meta font-medium">
                   not set
                 </span>
               ) : null}

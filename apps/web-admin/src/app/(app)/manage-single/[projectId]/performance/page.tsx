@@ -44,7 +44,7 @@ function PerformanceSoon() {
           funnel, reputation and reservations — are parked while the feed is
           rebuilt. Nothing here is lost; the tab comes back with real numbers.
         </p>
-        <span className="bg-muted text-muted-foreground mt-1 rounded-full px-2 py-0.5 text-[10px] font-bold tracking-wider uppercase">
+        <span className="bg-muted text-muted-foreground mt-1 rounded-full px-2 py-0.5 type-meta font-bold tracking-wider uppercase">
           Soon
         </span>
       </div>

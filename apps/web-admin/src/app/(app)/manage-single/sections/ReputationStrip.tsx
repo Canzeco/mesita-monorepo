@@ -47,7 +47,7 @@ function Cell({
   const empty = value === "—";
   return (
     <div className="border-border bg-card shadow-card w-[9.75rem] shrink-0 snap-start rounded-2xl border p-4 sm:w-[10.5rem]">
-      <p className="text-muted-foreground text-[11px]">{label}</p>
+      <p className="text-muted-foreground type-label">{label}</p>
       <p
         className={
           "mt-1.5 text-2xl leading-none font-semibold tracking-tight " +
@@ -56,7 +56,7 @@ function Cell({
       >
         {value}
       </p>
-      <p className="text-muted-foreground mt-1.5 text-[11px]">{hint}</p>
+      <p className="text-muted-foreground mt-1.5 type-label">{hint}</p>
     </div>
   );
 }

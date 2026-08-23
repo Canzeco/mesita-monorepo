@@ -97,7 +97,7 @@ export function ProfileSummary({ place }: { place: PlaceDetail }) {
       <div className="flex flex-wrap items-center gap-1.5">
         {place.is_enriching && (
           <span
-            className="inline-flex items-center gap-1.5 rounded-md border border-emerald-200/70 bg-emerald-50 px-2.5 py-1 text-[11.5px] font-semibold whitespace-nowrap text-emerald-900"
+            className="inline-flex items-center gap-1.5 rounded-md border border-emerald-200/70 bg-emerald-50 px-2.5 py-1 text-xs font-semibold whitespace-nowrap text-emerald-900"
             aria-live="polite"
           >
             <Spinner

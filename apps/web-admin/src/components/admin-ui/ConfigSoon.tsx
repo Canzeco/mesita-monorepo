@@ -32,10 +32,10 @@ export function ConfigSoon({
       <p className="text-muted-foreground max-w-md text-sm leading-relaxed">
         {body}
       </p>
-      <span className="bg-muted text-muted-foreground mt-1 rounded-full px-2 py-0.5 text-[10px] font-bold tracking-wider uppercase">
+      <span className="bg-muted text-muted-foreground mt-1 rounded-full px-2 py-0.5 type-meta font-bold tracking-wider uppercase">
         Soon
       </span>
-      <p className="text-muted-foreground/80 mt-1 text-[11px]">{doc}</p>
+      <p className="text-muted-foreground/80 mt-1 type-label">{doc}</p>
     </div>
   );
 }

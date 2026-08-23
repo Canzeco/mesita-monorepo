@@ -123,7 +123,7 @@ export function MoreModal({
           </span>
           <div>
             <h2 className={SHEET_TITLE_CLASS}>More</h2>
-            <p className="text-muted-foreground text-[12px]">
+            <p className="text-muted-foreground text-xs">
               Everything else on your account
             </p>
           </div>
@@ -154,16 +154,16 @@ export function MoreModal({
                 </span>
                 <span className="min-w-0 flex-1">
                   <span className="flex items-center gap-1.5">
-                    <span className="text-[15px] font-bold tracking-tight">
+                    <span className="text-sm font-bold tracking-tight">
                       {row.title}
                     </span>
                     {row.soon && (
-                      <span className="border-border text-muted-foreground rounded-full border px-1.5 py-0.5 text-[8px] font-semibold tracking-[0.12em] uppercase">
+                      <span className="border-border text-muted-foreground type-meta rounded-full border px-1.5 py-0.5 font-semibold tracking-[0.12em] uppercase">
                         Soon
                       </span>
                     )}
                   </span>
-                  <span className="text-muted-foreground block truncate text-[12px]">
+                  <span className="text-muted-foreground block truncate text-xs">
                     {row.summary}
                   </span>
                 </span>

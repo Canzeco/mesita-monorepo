@@ -25,7 +25,7 @@ export function ShareModal({
           </span>
           <div>
             <h2 className={SHEET_TITLE_CLASS}>Share Mesita</h2>
-            <p className="text-muted-foreground text-[12px]">
+            <p className="text-muted-foreground text-xs">
               Your seat at the table — pass it on
             </p>
           </div>

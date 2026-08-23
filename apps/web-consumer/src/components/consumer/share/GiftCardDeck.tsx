@@ -182,7 +182,7 @@ function GiftCardTile({ card }: { card: GiftCard }) {
 
       {/* Buttons on top: eyebrow (left) + Contact (partner cards) + Share. */}
       <div className="relative flex items-start justify-between gap-3">
-        <p className="text-[10px] font-bold tracking-[0.14em] text-white/80 uppercase">
+        <p className="type-meta font-bold tracking-[0.14em] text-white/80 uppercase">
           Mesita · Gift card
         </p>
         <div className="flex shrink-0 items-center gap-2">
@@ -191,7 +191,7 @@ function GiftCardTile({ card }: { card: GiftCard }) {
               href={`mailto:${MESITA_CONTACT_EMAIL}?subject=${encodeURIComponent(
                 card.contact.subject,
               )}`}
-              className="flex shrink-0 items-center gap-1.5 rounded-full bg-white/15 px-3 py-1.5 text-[12px] font-semibold text-white backdrop-blur transition hover:bg-white/25"
+              className="flex shrink-0 items-center gap-1.5 rounded-full bg-white/15 px-3 py-1.5 text-xs font-semibold text-white backdrop-blur transition hover:bg-white/25"
             >
               <Mail className="h-3.5 w-3.5" />
               Contact
@@ -200,7 +200,7 @@ function GiftCardTile({ card }: { card: GiftCard }) {
           <button
             type="button"
             onClick={onShare}
-            className="flex shrink-0 items-center gap-1.5 rounded-full bg-white/15 px-3 py-1.5 text-[12px] font-semibold text-white backdrop-blur transition hover:bg-white/25"
+            className="flex shrink-0 items-center gap-1.5 rounded-full bg-white/15 px-3 py-1.5 text-xs font-semibold text-white backdrop-blur transition hover:bg-white/25"
           >
             {flash === "shared" ? (
               <>
@@ -228,7 +228,7 @@ function GiftCardTile({ card }: { card: GiftCard }) {
         <p className="font-display text-2xl leading-tight font-semibold tracking-tight">
           {card.audience}
         </p>
-        <p className="mt-1.5 text-[13px] text-white/85">{card.line}</p>
+        <p className="type-body mt-1.5 text-white/85">{card.line}</p>
       </div>
     </div>
   );

@@ -53,7 +53,7 @@ export function SwipeTutorialOverlay() {
             strokeWidth={1.4}
           />
         </div>
-        <p className="text-center text-[13px] font-medium tracking-wide text-white/95">
+        <p className="type-body text-center font-medium tracking-wide text-white/95">
           Swipe left to skip
           <span className="mx-1.5 opacity-50">·</span>
           right to save

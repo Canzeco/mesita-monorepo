@@ -35,7 +35,7 @@ export function PlaceTabBar({
             onClick={() => onChange(t.key)}
             aria-current={active ? "page" : undefined}
             className={cn(
-              "-mb-px border-b-2 py-3 text-center text-[13px] font-semibold tracking-wide transition",
+              "type-body -mb-px border-b-2 py-3 text-center font-semibold tracking-wide transition",
               active
                 ? "text-foreground border-pink-500"
                 : "text-muted-foreground hover:text-foreground border-transparent",

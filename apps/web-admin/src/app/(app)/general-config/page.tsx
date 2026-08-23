@@ -27,7 +27,7 @@ export default async function GeneralConfigPage() {
           <h2 className="font-display text-base font-semibold tracking-tight">
             Verification
           </h2>
-          <p className="text-muted-foreground mt-1 text-[13px] leading-relaxed">
+          <p className="text-muted-foreground mt-1 type-body leading-relaxed">
             The Mesita Partner badge is separate from ownership proof. These
             decide whether a successful phone or email OTP grants ownership
             outright, or waits on the Verification Queue under Alerts.
@@ -45,7 +45,7 @@ export default async function GeneralConfigPage() {
           <h2 className="font-display text-base font-semibold tracking-tight">
             Models
           </h2>
-          <p className="text-muted-foreground mt-1 text-[13px] leading-relaxed">
+          <p className="text-muted-foreground mt-1 type-body leading-relaxed">
             Which model each subsystem thinks with. Every one of these is read
             at run time by an Edge Function — changing it changes token spend.
           </p>

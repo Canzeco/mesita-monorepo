@@ -53,7 +53,7 @@ export function ClassModal({
           </span>
           <div>
             <h2 className={SHEET_TITLE_CLASS}>Your class</h2>
-            <p className="text-muted-foreground text-[12px]">
+            <p className="text-muted-foreground text-xs">
               Followers lift you automatically. An invite is by hand.
             </p>
           </div>
@@ -79,10 +79,10 @@ export function ClassModal({
                 <TriangleAlert className="h-4 w-4" />
               </span>
               <div className="min-w-0 flex-1">
-                <p className="font-display text-[14px] leading-none font-bold tracking-tight">
+                <p className="font-display text-sm leading-none font-bold tracking-tight">
                   Couldn&apos;t load your class
                 </p>
-                <p className="text-muted-foreground mt-1.5 text-[12px] leading-snug">
+                <p className="text-muted-foreground mt-1.5 text-xs leading-snug">
                   Your class is safe — we just couldn&apos;t read it right now.
                   Reopen this sheet to try again.
                 </p>
@@ -118,7 +118,7 @@ export function ClassModal({
             <button
               type="button"
               onClick={onConnectInstagram}
-              className="bg-foreground text-background flex min-h-12 w-full items-center justify-center gap-1.5 rounded-2xl px-2 text-[13px] font-semibold transition active:scale-[0.99]"
+              className="bg-foreground text-background type-body flex min-h-12 w-full items-center justify-center gap-1.5 rounded-2xl px-2 font-semibold transition active:scale-[0.99]"
             >
               <Instagram className="h-4 w-4 shrink-0" />
               <span className="truncate">Join with Instagram</span>
@@ -130,7 +130,7 @@ export function ClassModal({
             <button
               type="button"
               onClick={onRedeemInvite}
-              className="border-border bg-card hover:bg-muted flex min-h-12 w-full items-center justify-center gap-1.5 rounded-2xl border px-2 text-[13px] font-semibold transition active:scale-[0.99]"
+              className="border-border bg-card hover:bg-muted type-body flex min-h-12 w-full items-center justify-center gap-1.5 rounded-2xl border px-2 font-semibold transition active:scale-[0.99]"
             >
               <Ticket className="h-4 w-4 shrink-0" />
               <span className="truncate">I have a PIN</span>
