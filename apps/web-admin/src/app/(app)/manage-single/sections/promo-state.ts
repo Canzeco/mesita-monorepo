@@ -94,7 +94,7 @@ export function describeMembershipStatus(
   if (pillState === "forfeited") {
     return {
       label:
-        "Membership forfeited after 3 strikes — re-join is an admin decision.",
+        "Partnership forfeited after 3 strikes — re-join is an admin decision.",
       tone: "blocked",
     };
   }
@@ -110,14 +110,14 @@ export function describeMembershipStatus(
     return {
       label:
         strikes > 0
-          ? `Membership live · ${strikes} active strike${strikes === 1 ? "" : "s"} (of 3).`
-          : "Membership live — promo lane open.",
+          ? `Partnership live · ${strikes} active strike${strikes === 1 ? "" : "s"} (of 3).`
+          : "Partnership live — promo lane open.",
       tone: strikes > 0 ? "warn" : "live",
     };
   }
   return {
     label:
-      "Member — pending activation. Honor the first guest check to go live.",
+      "Partner — pending activation. Honor the first guest check to go live.",
     tone: "warn",
   };
 }
@@ -197,9 +197,9 @@ export function lifecycleView(
 // detail modal. The face carries two meters — how much you GIVE, how much
 // placement you GET — plus ONE number.
 //
-// THREE segments, not five. The visibility ladder has exactly three rungs
-// (Low/Mid/High) and there are exactly three postures; a five-segment rail
-// rendered three-of-five, which reads as "two more rungs exist that I could
+// FOUR segments, not five. The visibility ladder has exactly four rungs
+// (Low/Mid/High/Max) and there are exactly four postures; a five-segment rail
+// rendered four-of-five, which reads as "one more rung exists that I could
 // buy". A meter gets as many segments as its ladder has rungs.
 //
 // The number is the EXPECTED discount per bill — the figure an owner budgets
@@ -253,7 +253,7 @@ export function giveLevel(cfg: PromosConfig, id: StrategyId): GiveLevel {
   return { dots, mean: Math.round(mine.mean), p10: mine.p10, p90: mine.p90 };
 }
 
-/** Visibility on the same three-segment rail: Low 1 · Mid 2 · High 3. */
+/** Visibility on the same four-segment rail: Low 1 · Mid 2 · High 3 · Max 4. */
 export function visibilityDots(v: StrategyVisibility): number {
   const idx = STRATEGY_VISIBILITY_LADDER.indexOf(v);
   return idx < 0 ? 1 : idx + 1;

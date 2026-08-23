@@ -136,7 +136,7 @@ describe("describeMembershipStatus", () => {
       NOW,
     );
     expect(note?.tone).toBe("live");
-    expect(note?.label).toBe("Membership live — promo lane open.");
+    expect(note?.label).toBe("Partnership live — promo lane open.");
   });
 
   it("live with an active strike warns with the effective count", () => {

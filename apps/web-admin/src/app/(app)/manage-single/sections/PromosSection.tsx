@@ -439,9 +439,9 @@ export function PromosSection({
         danger
         busy={dropBusy}
         error={dropError}
-        title="Drop membership?"
-        body="Ends the membership and clears activation — re-joining restarts pending activation. Strikes and any active pause carry over if the place re-joins."
-        confirmLabel="Drop membership"
+        title="Drop partnership?"
+        body="Ends the partnership and clears activation — re-joining restarts pending activation. Strikes and any active pause carry over if the place re-joins."
+        confirmLabel="Drop partnership"
         onConfirm={() => void commitDrop()}
         onCancel={() => {
           if (!dropBusy) {
@@ -467,7 +467,7 @@ export function PromosSection({
 // Membership box header keeps the only pill in the viewport.
 
 const STEP_TITLES = {
-  join: "Join the membership",
+  join: "Join the partnership",
   strategy: "Pick a strategy",
   honor: "Honor guest checks",
 } as const;
@@ -505,7 +505,7 @@ function LifecycleBanner({
           </span>
           <span className={warn ? "text-amber-800" : "text-muted-foreground"}>
             {warn
-              ? `${view.strikes} active strike${view.strikes === 1 ? "" : "s"} of 3 — the third forfeits membership.`
+              ? `${view.strikes} active strike${view.strikes === 1 ? "" : "s"} of 3 — the third forfeits the partnership.`
               : "All three steps done — joined, strategy set, checks honored."}
           </span>
         </p>
@@ -528,11 +528,11 @@ function LifecycleBanner({
         ? storedStrategy === ZERO_STRATEGY_ID
           ? "Zero pauses discounts — pick a paid strategy to reopen the lane."
           : "Custom rates — pick a strategy to standardize."
-        : "Three discount postures — switch free anytime.";
+        : "Three paid postures plus Zero — switch free anytime.";
   const honorDetail =
     view.honor === "blocked"
       ? forfeited
-        ? "Membership forfeited after 3 strikes — re-join by picking a strategy below."
+        ? "Partnership forfeited after 3 strikes — re-join by picking a strategy below."
         : `Discounts paused until ${String(place.promo_paused_until ?? "").slice(0, 10)} (strike 2 of 3).`
       : view.honor === "current"
         ? "Staff scan the guest's QR on Mesita Check — honor the first check at the bill to go live."
@@ -659,7 +659,7 @@ const STRIKES: { n: string; consequence: string }[] = [
   {
     n: "3",
     consequence:
-      "Membership forfeited — promos off, place stays listed on Mesita.",
+      "Partnership forfeited — promos off, place stays listed on Mesita.",
   },
 ];
 
@@ -696,13 +696,13 @@ function MembershipBox({
     ? "Choose a strategy below to join. Rank is never for sale — visibility rises with what you give."
     : forfeited
       ? "Re-join by picking a strategy below — reinstating clears the forfeit and strikes; activation is earned again."
-      : "Switching to Zero pauses discounts without ending the membership. Dropping is separate.";
+      : "Switching to Zero pauses discounts without ending the partnership. Dropping is separate.";
 
   return (
     <SectionCard
       icon={<Percent className="h-4 w-4" />}
       tint="pink"
-      title="Mesita Membership"
+      title="Mesita Partnership"
       action={<MembershipStatusPill state={pillState} />}
     >
       <div className="mt-4 flex flex-col gap-3">
@@ -783,7 +783,7 @@ function MembershipBox({
             onClick={onDropClick}
             className="text-muted-foreground hover:text-destructive self-start text-xs font-semibold underline underline-offset-4 transition"
           >
-            Drop membership
+            Drop partnership
           </button>
         )}
       </div>
@@ -1059,13 +1059,13 @@ function ProductModal({
     kind === "current"
       ? ""
       : kind === "join"
-        ? `Starts membership at ${price}/year with ${strategy.name} rates. Admin write — no Stripe charge.`
+        ? `Starts the partnership at ${price}/year with ${strategy.name} rates. Admin write — no Stripe charge.`
         : kind === "reinstate"
           ? paid
-            ? "Clears the forfeit and strikes; membership restarts in pending activation."
-            : "Clears the forfeit and strikes; reinstates the membership with no discounts — promo lane stays closed until a paid strategy is picked."
+            ? "Clears the forfeit and strikes; partnership restarts in pending activation."
+            : "Clears the forfeit and strikes; reinstates the partnership with no discounts — promo lane stays closed until a paid strategy is picked."
           : kind === "switch_zero"
-            ? "Membership stays active; discounts pause. Promo lane closes until you pick a paid strategy again."
+            ? "Partnership stays active; discounts pause. Promo lane closes until you pick a paid strategy again."
             : "Applies to new tickets only — open tickets keep the rates they were created with.";
 
   return (
@@ -1143,7 +1143,7 @@ function ProductModal({
               {/* Canonical step titles — mirror the page banner (Box 0),
                   with per-strategy detail lines. Never fork the wording. */}
               <ModalLabel>How it works</ModalLabel>
-              <Step n={1} title="Join the membership">
+              <Step n={1} title="Join the partnership">
                 {price}/year — one fee, switch strategies free anytime.
               </Step>
               <Step n={2} title="Pick a strategy">
@@ -1162,8 +1162,8 @@ function ProductModal({
             <ModalLabel>How it works</ModalLabel>
             <p className="text-muted-foreground text-xs leading-snug">
               {member
-                ? "Zero pauses discounts — membership stays active. Drop membership separately if you want to leave."
-                : "Non-members stay at Zero — no discounts. Join membership to unlock the paid strategies."}
+                ? "Zero pauses discounts — partnership stays active. Drop the partnership separately if you want to leave."
+                : "Non-partners stay at Zero — no discounts. Join the partnership to unlock the paid strategies."}
             </p>
           </div>
         )}
@@ -1372,27 +1372,27 @@ function FaqsBox({
 
         <Faq q={`What exactly does the ${price}/year buy?`}>
           <p>
-            The right to leave Zero. Membership unlocks Conservative and
-            Aggressive — pick either, switch free anytime while you&apos;re a
-            member. Zero stays free with no discounts. Being listed on Mesita
-            never costs anything, member or not. The fee is a commitment filter
-            (keeps half-hearted places out of rewards), not a feature tier and
-            not a rank you can buy.
+            The right to leave Zero. The partnership unlocks Conservative,
+            Aggressive and Dominant — pick any, switch free anytime while
+            you&apos;re a partner. Zero stays free with no discounts. Being
+            listed on Mesita never costs anything, partner or not. The fee is a
+            commitment filter (keeps half-hearted places out of rewards), not a
+            feature tier and not a rank you can buy.
           </p>
         </Faq>
 
         <Faq q="Can I switch strategies — or move to Zero?">
           <p>
-            Yes — free, anytime, while your membership is active. Strategy is
+            Yes — free, anytime, while your partnership is active. Strategy is
             the discount posture you promise guests; switching only changes your
             rates. New tickets pick up the new rates; open tickets keep what
             they were created with.
           </p>
           <p>
-            Switching to Zero pauses discounts: membership stays active,
+            Switching to Zero pauses discounts: the partnership stays active,
             activation state and strikes carry on, but the promo lane closes and
-            visibility drops to Low. Cancelling membership is a separate action
-            in the Membership box.
+            visibility drops to Low. Cancelling the partnership is a separate
+            action in the Partnership box.
           </p>
         </Faq>
 
@@ -1428,19 +1428,20 @@ function FaqsBox({
         <Faq q="What happens if a guest is turned away?">
           <p>
             A refused or ignored QR is a strike: 1 — warning and the activation
-            test re-runs · 2 — your discounts pause for 30 days · 3 — membership
-            forfeited (the place stays listed on Mesita). Strikes decay after 6
-            months clean, and the turned-away guest is compensated instantly.
+            test re-runs · 2 — your discounts pause for 30 days · 3 —
+            partnership forfeited (the place stays listed on Mesita). Strikes
+            decay after 6 months clean, and the turned-away guest is
+            compensated instantly.
           </p>
         </Faq>
 
-        <Faq q="How do I cancel membership?">
+        <Faq q="How do I cancel the partnership?">
           <p>
-            Use Drop membership in the Membership box — it clears your plan and
-            rates.{" "}
+            Use Drop partnership in the Partnership box — it clears your plan
+            and rates.{" "}
             {member
-              ? "You are currently a member."
-              : "You are not currently a member."}
+              ? "This place is currently a partner."
+              : "This place is not currently a partner."}
           </p>
         </Faq>
       </div>
@@ -1547,7 +1548,7 @@ function PremiumExamples({
       </div>
       <p>
         Premium ≥ Free in every strategy — subscribers always get the better
-        deal. They are what the membership buys. Action bonuses (story,
+        deal. They are what the partnership buys. Action bonuses (story,
         reviews) stack on top of these.
       </p>
     </>
@@ -1660,9 +1661,9 @@ function DiscountCapPicker({
 
 function MembershipStatusPill({ state }: { state: MembershipPillState }) {
   const labels: Record<MembershipPillState, string> = {
-    not_member: "Not a member",
-    pending: "Member — pending",
-    live: "Member — live",
+    not_member: "Not a partner",
+    pending: "Partner — pending",
+    live: "Partner — live",
     paused: "Paused",
     forfeited: "Forfeited",
   };
