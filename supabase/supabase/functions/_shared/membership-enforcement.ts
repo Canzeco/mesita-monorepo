@@ -21,6 +21,7 @@ import {
   strikeConsequenceForCount,
 } from "./membership-enforcement-helpers.ts";
 import { buildStrikePatch } from "./membership-strike-patch.ts";
+import { type ProjectPatch, writePlace } from "./place-doc.ts";
 export { PROMO_PAUSE_MS } from "./membership-strike-patch.ts";
 
 const STRIKE_REASONS = ["refused_qr", "ignored_qr"] as const;
@@ -140,16 +141,16 @@ async function maybeDecayStrikes(
 ): Promise<MembershipRow> {
   const effective = effectiveStrikeCount(row, now);
   if (effective === row.strike_count) return row;
-  const update = await admin
-    .from("projects")
-    .update({ strike_count: effective })
-    .eq("id", row.id)
-    .select(
+  const update = await writePlace(admin, {
+    table: "projects",
+    mode: "update",
+    id: row.id,
+    patch: { strike_count: effective },
+    select:
       "id, plan, first_ticket_honored_at, plan_live_at, strike_count, last_strike_at, promo_paused_until, plan_forfeited_at",
-    )
-    .single();
-  if (update.error || !update.data) return { ...row, strike_count: effective };
-  return update.data as MembershipRow;
+  });
+  if (!update.ok || !update.row) return { ...row, strike_count: effective };
+  return update.row as MembershipRow;
 }
 
 function buildActivationPatch(
@@ -200,8 +201,13 @@ export async function recordFirstTicketHonored(
 
   const { patch, membershipLive } = buildActivationPatch(row, now);
 
-  const update = await admin.from("projects").update(patch).eq("id", projectId);
-  if (update.error) return { ok: false, error: update.error.message };
+  const update = await writePlace(admin, {
+    table: "projects",
+    mode: "update",
+    id: projectId,
+    patch: patch as ProjectPatch,
+  });
+  if (!update.ok) return { ok: false, error: update.error };
   return { ok: true, membershipLive, firstHonor: true };
 }
 
@@ -253,11 +259,13 @@ export async function recordMembershipStrike(
   const consequence = strikeConsequenceForCount(next);
   const patch = buildStrikePatch(next, now);
 
-  const update = await admin.from("projects").update(patch).eq(
-    "id",
-    opts.projectId,
-  );
-  if (update.error) return { ok: false, error: update.error.message };
+  const update = await writePlace(admin, {
+    table: "projects",
+    mode: "update",
+    id: opts.projectId,
+    patch: patch as ProjectPatch,
+  });
+  if (!update.ok) return { ok: false, error: update.error };
 
   const insert = await admin.from("project_strikes").insert({
     project_id: opts.projectId,

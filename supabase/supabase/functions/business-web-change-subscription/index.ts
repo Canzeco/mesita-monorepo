@@ -44,6 +44,7 @@ import {
 import {
   applyListingTypeToPatch,
 } from "../_shared/partner-derivation.ts";
+import { type ProjectPatch, writePlace } from "../_shared/place-doc.ts";
 import { ratesFromPlace } from "../_shared/promo-strategy.ts";
 
 type Body = {
@@ -188,12 +189,14 @@ Deno.serve(async (req) => {
     if (!projectRow.data) {
       return json({ ok: false, error: "Place not found" }, 404);
     }
-    const down = await admin
-      .from("projects")
-      .update(planPatchForRow(projectRow.data as Record<string, unknown>, "free"))
-      .eq("id", projectId);
-    if (down.error) {
-      return json({ ok: false, error: `downgrade: ${down.error.message}` }, 500);
+    const down = await writePlace(admin, {
+      table: "projects",
+      mode: "update",
+      id: projectId,
+      patch: planPatchForRow(projectRow.data as Record<string, unknown>, "free") as ProjectPatch,
+    });
+    if (!down.ok) {
+      return json({ ok: false, error: `downgrade: ${down.error}` }, 500);
     }
     return json({ ok: true, plan: "free" });
   }
@@ -255,14 +258,14 @@ Deno.serve(async (req) => {
     if (!projectRow.data) {
       return json({ ok: false, error: "Place not found" }, 404);
     }
-    const grant = await admin
-      .from("projects")
-      .update(
-        planPatchForRow(projectRow.data as Record<string, unknown>, VERIFIED_PLAN),
-      )
-      .eq("id", projectId);
-    if (grant.error) {
-      return json({ ok: false, error: `mock_grant: ${grant.error.message}` }, 500);
+    const grant = await writePlace(admin, {
+      table: "projects",
+      mode: "update",
+      id: projectId,
+      patch: planPatchForRow(projectRow.data as Record<string, unknown>, VERIFIED_PLAN) as ProjectPatch,
+    });
+    if (!grant.ok) {
+      return json({ ok: false, error: `mock_grant: ${grant.error}` }, 500);
     }
 
     return json({ ok: true, plan: VERIFIED_PLAN, checkout_url: successUrl, mock: true });
@@ -314,12 +317,12 @@ Deno.serve(async (req) => {
     if (!projectRow.data) {
       return json({ ok: false, error: "Place not found" }, 404);
     }
-    await admin
-      .from("projects")
-      .update(
-        planPatchForRow(projectRow.data as Record<string, unknown>, VERIFIED_PLAN),
-      )
-      .eq("id", projectId);
+    await writePlace(admin, {
+      table: "projects",
+      mode: "update",
+      id: projectId,
+      patch: planPatchForRow(projectRow.data as Record<string, unknown>, VERIFIED_PLAN) as ProjectPatch,
+    });
     return json({ ok: true, plan: VERIFIED_PLAN, plan_switched: true });
   }
 

@@ -4,20 +4,35 @@
 //
 // MINIMAL PAGE (Pato, 2026-08-21: "less info, that's overwhelming, just ask
 // the important params"). A census of all 306 admin knobs found 68% of them
-// unread by any code path; Ojo was 11 controls of which ZERO are enforced,
+// unread by any code path; Ojo was 11 controls of which ZERO were enforced,
 // spread over four cards each wearing its own identical Staged badge.
 //
-// The rule this page is the template for:
-//   • ENFORCED knobs are always visible, never behind a disclosure.
-//   • STAGED knobs stay if an operator can answer them TODAY from product
-//     intent alone (enabled · auto-pass · what a fail does), and go behind ONE
-//     disclosure if they describe an object that doesn't exist yet (the
-//     rubric and the prompt of a vision model nobody has written).
-//   • STOP RENDERING, NEVER STOP CARRYING. `cfg` still holds every key —
-//     showGuestReason and maxRetries included — and save spreads the whole
-//     object, so a knob without a control keeps its stored value instead of
-//     being reset by the next whole-blob write. ojo-config.test.ts is the
-//     ship gate for that.
+// ENGINE SHIPPED (MESITA-1034): _shared/ojo-engine.ts reads every knob on
+// this page — enabled gates whether it runs at all; autoPassScore /
+// reviewFloorScore are the two thresholds deriveVerdict() compares the
+// model's confidence against (the model itself never says "pass"/"fail" —
+// see that function's own comment for why trusting a categorical label
+// instead would have left these two fields live-looking but silently
+// unenforced); failAction decides whether a fail only gets flagged or also
+// withholds the bonus (pre-bill only — see withholdEligible()); the four
+// `checks` and `prompt` compose the vision prompt directly.
+//
+// The disclosure STAYS. This page is composed into General
+// (apps/web-admin/src/app/(app)/general-config/page.tsx, MESITA-1178) under
+// an explicit "three controls, or it doesn't earn a spot there" budget —
+// un-collapsing all seven fields on ship day would have honored the "STAGED
+// hides behind a disclosure" rule while breaking that separate, real
+// constraint. What was actually false was the LABEL, not the collapse: it
+// said "not built yet" about a rubric the engine now reads on every call.
+// Renamed to "Detection detail" — still one disclosure, now honestly
+// describing optional depth rather than a nonexistent feature.
+//
+// STOP RENDERING, NEVER STOP CARRYING still applies to showGuestReason and
+// maxRetries: both are genuinely read by the engine too, deliberately with
+// no control on this minimal page (Pato's call, not an oversight) — `cfg`
+// still carries them and save spreads the whole object, so they keep their
+// stored value instead of being reset by the next whole-blob write.
+// ojo-config.test.ts is the ship gate for that.
 //
 // WHOLE-BLOB save; `dirty` gates on loadError so a failed read can never
 // overwrite the live singleton (MESITA-737).
@@ -115,10 +130,10 @@ export function OjoConfigClient({
       <SectionCard
         icon={<Eye className="h-4 w-4" />}
         title="Ojo"
-        subtitle="Reads the screenshot a guest posts as proof and scores it. Nothing reads this policy until the engine ships (MESITA-1034)."
+        subtitle="Reads the screenshot a guest posts as proof and scores it. Off by default — flip the switch below to run it for real (MESITA-1034)."
         status={
           <span className="border-border bg-muted text-muted-foreground rounded-full border px-2 py-0.5 type-meta font-semibold tracking-wide uppercase">
-            Staged
+            Enforced
           </span>
         }
       >
@@ -166,10 +181,13 @@ export function OjoConfigClient({
           />
         </div>
 
-        {/* Everything below describes a vision model nobody has written yet.
-            The Linear id is in the label so it is greppable on ship day: the
-            controls move OUT of this <details>, same file, same keys. */}
-        <Collapsible summary="Engine detail — not built yet (MESITA-1034)">
+        {/* Stays behind ONE disclosure — General Config composes this whole
+            card under a "three controls, or it doesn't earn a spot here"
+            budget (general-config/page.tsx, MESITA-1178). enabled /
+            autoPassScore / failAction above are the three; everything below
+            is real, engine-read detail (MESITA-1034), not a placeholder —
+            the label says so, not "not built yet". */}
+        <Collapsible summary="Detection detail">
           <div className="grid gap-3 sm:grid-cols-2">
             <NumberField
               icon={<Eye className="h-4 w-4" />}
@@ -211,8 +229,10 @@ export function OjoConfigClient({
               onChange={(v) => patch({ prompt: v })}
             />
             <p className="text-muted-foreground mt-2 text-xs leading-relaxed">
-              Never ask it to judge sentiment — paying more for praise is how a
-              rewards program buys fake reviews.
+              Never ask it to judge sentiment — paying more for praise is how
+              a rewards program buys fake reviews. Appended as additional
+              context after Ojo&apos;s own fixed rules, never able to
+              override them (see buildPrompt() in _shared/ojo-engine.ts).
             </p>
           </div>
         </Collapsible>

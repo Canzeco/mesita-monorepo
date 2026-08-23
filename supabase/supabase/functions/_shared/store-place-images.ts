@@ -6,6 +6,7 @@
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { dedup } from "./parse-utils.ts";
 import { runInBackground } from "./enrich-pipeline.ts";
+import { writePlace } from "./place-doc.ts";
 import {
   type AssetRow,
   extFor,
@@ -107,12 +108,14 @@ async function processAssetsInBackground(
   ).slice(0, PLACE_PHOTOS_CAP);
   if (finalPhotos.length === 0) return;
 
-  const { error: placeErr } = await admin
-    .from("profiles")
-    .update({ photos: finalPhotos })
-    .eq("id", projectId);
-  if (placeErr) {
-    console.error("[store-place-images] place_update:", placeErr.message);
+  const placeRes = await writePlace(admin, {
+    table: "profiles",
+    mode: "update",
+    id: projectId,
+    patch: { photos: finalPhotos },
+  });
+  if (!placeRes.ok) {
+    console.error("[store-place-images] place_update:", placeRes.error);
   }
 }
 

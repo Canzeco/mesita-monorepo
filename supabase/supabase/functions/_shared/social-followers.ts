@@ -15,6 +15,7 @@ import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { APIFY_ACTORS, instagramHandleFromUrl, runApifyActor } from "./apify.ts";
 import { gatherFacebook } from "./enrich-facebook.ts";
 import { numOf } from "./parse-utils.ts";
+import { type PlacePatch, writePlace } from "./place-doc.ts";
 
 export type SocialFollowersRefresh = {
   admin: SupabaseClient;
@@ -27,7 +28,7 @@ export type SocialFollowersRefresh = {
 
 export async function refreshSocialFollowers(opts: SocialFollowersRefresh): Promise<void> {
   const { admin, apifyKey, placeId } = opts;
-  const update: Record<string, unknown> = {};
+  const update: PlacePatch = {};
 
   const [ig, fb] = await Promise.all([
     opts.instagramUrl === undefined
@@ -47,7 +48,8 @@ export async function refreshSocialFollowers(opts: SocialFollowersRefresh): Prom
   }
   if (Object.keys(update).length === 0) return;
 
-  await admin.from("places").update(update).eq("id", placeId);
+  const res = await writePlace(admin, { table: "places", mode: "update", id: placeId, patch: update });
+  if (!res.ok) console.error("[social-followers] update:", res.error);
 }
 
 async function scrapeInstagramFollowers(

@@ -3,6 +3,7 @@
 
 import { type SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import type { RunTrigger, SubprocessKey } from "./enrich-triggers.ts";
+import { writePlace } from "./place-doc.ts";
 import type {
   AnalysisPayload,
   GatheredPayload,
@@ -27,12 +28,14 @@ export async function markProjectGenerating(
   admin: SupabaseClient,
   projectId: string,
 ): Promise<void> {
-  const { error } = await admin
-    .from("projects")
-    .update({ content_status: "generating" })
-    .eq("id", projectId);
-  if (error) {
-    console.error("[enrich-pipeline] markProjectGenerating:", error.message);
+  const res = await writePlace(admin, {
+    table: "projects",
+    mode: "update",
+    id: projectId,
+    patch: { content_status: "generating" },
+  });
+  if (!res.ok) {
+    console.error("[enrich-pipeline] markProjectGenerating:", res.error);
   }
 }
 
@@ -290,9 +293,11 @@ export async function failResearchRow(
     charges: run.charges ?? null,
     meta: run.meta,
   });
-  const { error: projErr } = await admin
-    .from("projects")
-    .update({ content_status: "failed" })
-    .eq("id", projectId);
-  if (projErr) console.error("[enrich-pipeline] fail content_status:", projErr.message);
+  const projRes = await writePlace(admin, {
+    table: "projects",
+    mode: "update",
+    id: projectId,
+    patch: { content_status: "failed" },
+  });
+  if (!projRes.ok) console.error("[enrich-pipeline] fail content_status:", projRes.error);
 }

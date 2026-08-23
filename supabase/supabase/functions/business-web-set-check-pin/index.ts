@@ -30,6 +30,7 @@ import {
   readEFEnv,
   requireOwner,
 } from "../_shared/auth.ts";
+import { writePlace } from "../_shared/place-doc.ts";
 
 type Body = {
   placeId?: string;
@@ -89,18 +90,20 @@ Deno.serve(async (req) => {
   );
   if (!ownerRes.ok) return ownerRes.response;
 
-  const upd = await admin
-    .from("projects")
-    .update(update)
-    .eq("id", projectId)
-    .select("check_pin, check_require_bill")
-    .maybeSingle();
-  if (upd.error) {
-    return json({ ok: false, error: `update: ${upd.error.message}` }, 500);
+  const upd = await writePlace(admin, {
+    table: "projects",
+    mode: "update",
+    id: projectId,
+    patch: update,
+    select: "check_pin, check_require_bill",
+    selectMode: "maybeSingle",
+  });
+  if (!upd.ok) {
+    return json({ ok: false, error: `update: ${upd.error}` }, 500);
   }
-  if (!upd.data) return json({ ok: false, error: "Place not found" }, 404);
+  if (!upd.row) return json({ ok: false, error: "Place not found" }, 404);
 
-  const row = upd.data as {
+  const row = upd.row as {
     check_pin: string | null;
     check_require_bill: boolean | null;
   };

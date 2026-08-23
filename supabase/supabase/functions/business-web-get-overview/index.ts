@@ -211,7 +211,8 @@ Deno.serve(async (req) => {
     const tx = await admin
       .from("visit_tickets")
       .select(
-        "id, status, story_status, story_screenshot_url, story_submitted_at, story_verified_at, story_reject_reason, bill_subtotal_cents, tip_cents, total_cents, redeem_cents, discount_percent, discount_cents, revealed_at, currency, created_at, paid_at, cancelled_at, cancel_reason, consumer:consumers(id, code, full_name)",
+        // story_ojo_* (MESITA-1034): same rationale as business-web-list-tickets.
+        "id, status, story_status, story_screenshot_url, story_submitted_at, story_verified_at, story_reject_reason, story_ojo_verdict, story_ojo_confidence, story_ojo_reasons, bill_subtotal_cents, tip_cents, total_cents, redeem_cents, discount_percent, discount_cents, revealed_at, currency, created_at, paid_at, cancelled_at, cancel_reason, consumer:consumers(id, code, full_name)",
       )
       .eq("project_id", activeId)
       .order("created_at", { ascending: false })

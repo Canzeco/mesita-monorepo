@@ -3,12 +3,13 @@
 // Ojo (Spanish "eye"; "¡Ojo!" = watch out) reads the screenshot a guest posts
 // as proof of an Instagram story or a Google review and returns a verdict.
 // This module is the single normalizer for its policy blob, shared by the
-// admin get/update EFs and (when it ships, MESITA-1034) by ojo-* itself — so
-// the console and the engine can never disagree about defaults.
+// admin get/update EFs and, as of MESITA-1034, by _shared/ojo-engine.ts
+// itself — so the console and the engine can never disagree about defaults.
 //
-// Every knob is STAGED until the engine ships: the blob is live and editable,
-// nothing reads it yet, and the console says so. House rule is that an
-// unenforced config is a bug — a staged one has to be labeled.
+// enabled defaults to false, so nothing about this file changes behavior
+// until an admin deliberately turns Ojo on.
+
+import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 
 export type OjoChecks = {
   placeNameMatches: boolean;
@@ -95,4 +96,23 @@ export function normalizeOjoConfig(raw: unknown): OjoConfig {
     prompt:
       typeof r.prompt === "string" ? r.prompt.slice(0, 4000) : OJO_DEFAULTS.prompt,
   };
+}
+
+/**
+ * The ONE reader of app_config.ojo_config, shared by the admin console
+ * (admin-web-get-ojo-config) and the engine (_shared/ojo-engine.ts) so they
+ * can never disagree about what "the current policy" is. A missing blob is
+ * not an error — OJO_DEFAULTS (enabled:false) is the shipped policy, so a
+ * fresh environment behaves correctly before anyone opens the console.
+ */
+export async function loadOjoConfig(admin: SupabaseClient): Promise<OjoConfig> {
+  const { data, error } = await admin
+    .from("app_config")
+    .select("ojo_config")
+    .eq("id", 1)
+    .maybeSingle();
+  if (error) {
+    console.error("[ojo-config] load:", error.message);
+  }
+  return normalizeOjoConfig(data?.ojo_config ?? null);
 }
