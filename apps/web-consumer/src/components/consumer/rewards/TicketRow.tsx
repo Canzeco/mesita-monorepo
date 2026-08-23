@@ -14,7 +14,18 @@ import type { ConsumerTicketRow } from "@/lib/api/tickets";
 import { cn } from "@/lib/utils";
 
 // A parked ticket (D8: "I'll finish this in a bit") still owes its one
-// chosen task — say so, or the guest reaches bill time with a locked QR.
+// chosen task — say so, or the guest leaves the bonus on the table. What it
+// does NOT cost is the pass: ticket-journey's stepReachable gates "qr" on
+// `editable && t.billed` alone, and TicketScreen's task step hands out
+// "show my QR" as an explicit exit.
+//
+// The bill is a snapshot, not a deadline. It counts VERIFIED actions only
+// (every bill path → isActionVerified; pending/submitted/*_rejected are none
+// of them), but finishing later still pays: consumer-web-submit-story and
+// consumer-web-submit-review both call repriceTicketAfterAction, which
+// re-resolves the rate and moves the ticket UPWARD only — no clawback.
+// What actually ends it is staff approval: ticket-reprice.ts returns a null
+// rate once approved_at is set, because approval FREEZES the amount.
 function hasPendingTask(t: ConsumerTicketRow): boolean {
   const gating = (v: string | null) =>
     v === "pending" ||
@@ -30,7 +41,7 @@ function caption(t: ConsumerTicketRow): string {
       return t.first_scanned_at
         ? "Scanned — visit started"
         : hasPendingTask(t)
-          ? "1 task to go — it unlocks your QR"
+          ? "1 task to go — finish it for the bonus"
           : "Open — show your QR";
     case "awaiting_payment_confirm":
       return "Pay the discounted total";
