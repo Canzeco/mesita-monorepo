@@ -217,8 +217,11 @@ export const TRIGGER_META: Record<
   on_reservation_failed: {
     label: "On reservation · failed",
     blurb:
-      "The call failed — wrong number, unreachable, closed. The stored channel is provably stale.",
-    staged: true,
+      "A wrong number fires this — the only failure verdict that is unambiguous, " +
+      "terminal evidence the stored channel is stale (MESITA-1189). Emitted from " +
+      "eleven-a1-report-outcome on verdict==='wrong_number' only; declined and " +
+      "counter_offer mean the channel worked, unreachable is retryable.",
+    staged: false,
   },
 };
 
@@ -284,8 +287,13 @@ function row(
 
 // Defaults encode two rules. High-frequency triggers may never spend money, so
 // visit/order/reservation buy nothing beyond the Google refetch they already
-// pass through. And a failed reservation is the one cheap event that earns link
-// rediscovery, because it is positive evidence the stored channel is wrong.
+// pass through. A failed reservation does NOT also buy `links` (MESITA-1189):
+// the reservation selector is phone-only since MESITA-842
+// (enrich-reservation-endpoint.ts's RESERVATION_CHANNELS = ["phone"]), and
+// link discovery never finds a phone number — it discovers website/Instagram/
+// Facebook URLs, never phone or email (enrich-channel-discovery.ts). A wrong
+// number has no causal path to a links re-run; only `google` can fix it,
+// since the phone comes from the Google Places identity spine.
 export const ENRICHMENT_TRIGGERS_DEFAULTS: EnrichmentTriggersConfig = {
   on_create: row(0, [
     "google",
@@ -313,7 +321,7 @@ export const ENRICHMENT_TRIGGERS_DEFAULTS: EnrichmentTriggersConfig = {
   on_visit: row(168, ["google"]),
   on_order: row(168, ["google"]),
   on_reservation_ok: row(336, ["google"]),
-  on_reservation_failed: row(24, ["google", "links"]),
+  on_reservation_failed: row(24, ["google"]),
 };
 
 function bool(raw: unknown, fallback: boolean): boolean {
