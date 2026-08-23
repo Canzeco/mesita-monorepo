@@ -1,6 +1,6 @@
 "use client";
 
-// Catalog mode — the full deck as a browsable, filterable grid.
+// Catalog mode — the full deck as a browsable grid.
 //
 // The pitch the parked pill made for a month: "every place, browsable and
 // filterable, without swiping." So this is Swipe's data with Swipe's verdict
@@ -9,18 +9,16 @@
 // browsing and deciding.
 //
 // Reuse, deliberately: the same shared deck from HomeDeckContext (zero extra
-// fetches — switching modes never re-runs the recommender), the same
-// FavoriteTile the Favorites grid uses, and the same routed /filters modal
-// Swipe and Search publish into. Catalog adds no data layer of its own.
+// fetches — switching modes never re-runs the recommender) and the same
+// FavoriteTile the Favorites grid uses. Catalog adds no data layer of its own.
 //
 // Ordering: whatever the deck arrived in (HomeDeckBoundary floats partners
 // first), or open-first. Explicitly NOT randomness-ordered — that knob exists
 // so a swipe deck doesn't feel like the same deck twice, and a catalog you
 // can't find a place in again would be broken, not fresh.
 
-import { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
-import { ArrowUpDown, Compass, SlidersHorizontal } from "lucide-react";
+import { useMemo, useState } from "react";
+import { ArrowUpDown, Compass } from "lucide-react";
 import type { Place } from "@/lib/api/places";
 import { useUserLocation } from "@/lib/use-user-location";
 import { withUserDistance } from "@/lib/place-distance";
@@ -42,7 +40,6 @@ export function CatalogGrid({
   /** The shared deck fetch failed — there is nothing to browse. */
   fetchError?: string | null;
 }) {
-  const router = useRouter();
   const { savedIds, setSaved } = useSavedPlaces();
   const [sort, setSort] = useState<Sort>("suggested");
 
