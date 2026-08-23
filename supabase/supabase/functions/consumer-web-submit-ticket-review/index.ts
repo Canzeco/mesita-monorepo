@@ -15,6 +15,7 @@ import {
   readEFEnv,
 } from "../_shared/auth.ts";
 import { prepareTicketForReview } from "../_shared/ticket-review-notify.ts";
+import { writeTicket } from "../_shared/ticket-doc.ts";
 
 type Body = {
   ticketId?: string;
@@ -126,11 +127,12 @@ Deno.serve(async (req) => {
   // v4 fix loop (MESITA-1090): the Mesita review is a proof-shaped action —
   // landing it clears an outstanding proof/reward send-back so staff can
   // approve. Best-effort: the review itself already saved.
-  await admin
-    .from("visit_tickets")
-    .update({ fix_requested: null, fix_note: null })
-    .eq("id", ticketId)
-    .in("fix_requested", ["proof", "reward"]);
+  await writeTicket(admin, {
+    mode: "update",
+    id: ticketId,
+    patch: { fix_requested: null, fix_note: null },
+    guard: { in: { fix_requested: ["proof", "reward"] } },
+  });
 
   await admin
     .from("consumer_notifications")

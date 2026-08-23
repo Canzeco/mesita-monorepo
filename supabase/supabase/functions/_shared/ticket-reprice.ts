@@ -18,6 +18,7 @@ import {
 import { ratesForBilling } from "./ticket-rate-snapshot.ts";
 import { resolveBillCapPesos } from "./discount-cap.ts";
 import { placeInstagramHandleForPayload } from "./ticket-bill-payload.ts";
+import { writeTicket } from "./ticket-doc.ts";
 
 type RepriceTicketRow = {
   id: string;
@@ -182,17 +183,18 @@ export async function repriceTicketAfterAction(
   if (!billRes.ok) return { ok: false, error: billRes.error };
   const snap = billRes.snapshot;
 
-  const update = await admin
-    .from("visit_tickets")
-    .update({
+  const update = await writeTicket(admin, {
+    mode: "update",
+    id: ticket.id,
+    patch: {
       discount_percent: snap.discountPercent,
       discount_cents: snap.discountCents,
       total_cents: snap.totalCents,
-    })
-    .eq("id", ticket.id)
-    .select("id")
-    .single();
-  if (update.error) return { ok: false, error: update.error.message };
+    },
+    select: "id",
+    single: true,
+  });
+  if (!update.ok) return { ok: false, error: update.error };
 
   // Refresh the consumer's Pay inbox with the improved bill.
   await admin.from("consumer_notifications").insert({

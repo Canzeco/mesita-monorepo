@@ -33,6 +33,7 @@ import {
   requireCheckPin,
 } from "../_shared/ticket-check.ts";
 import { TICKET_STATUS } from "../_shared/ticket-status.ts";
+import { writeTicket } from "../_shared/ticket-doc.ts";
 
 type Body = { code?: string; pin?: string; expectedUpdatedAt?: string };
 
@@ -128,24 +129,25 @@ Deno.serve(async (req) => {
 
   // CAS: scanned, no fix outstanding, and the row is exactly what the staff
   // screen rendered. Zero rows means someone else won — diagnose below.
-  const update = await admin
-    .from("visit_tickets")
-    .update({
+  const update = await writeTicket(admin, {
+    mode: "update",
+    id: ticket.id,
+    patch: {
       status: TICKET_STATUS.approved,
       approved_at: now,
       approved_discount_cents: ticket.discount_cents ?? 0,
       approved_amount_due_cents: frozenDue,
-    })
-    .eq("id", ticket.id)
-    .eq("status", TICKET_STATUS.scanned)
-    .is("fix_requested", null)
-    .eq("updated_at", expectedUpdatedAt)
-    .select("id, status, approved_at")
-    .maybeSingle();
-  if (update.error) {
-    return json({ ok: false, error: `ticket_update: ${update.error.message}` }, 500);
+    },
+    guard: {
+      eq: { status: TICKET_STATUS.scanned, updated_at: expectedUpdatedAt },
+      is: { fix_requested: null },
+    },
+    select: "id, status, approved_at",
+  });
+  if (!update.ok) {
+    return json({ ok: false, error: `ticket_update: ${update.error}` }, 500);
   }
-  if (!update.data) {
+  if (!update.row) {
     const fresh = await admin
       .from("visit_tickets")
       .select("id, status, fix_requested, updated_at")

@@ -27,6 +27,7 @@ import {
   requireCheckPin,
 } from "../_shared/ticket-check.ts";
 import { LIVE_STATUS_SET, TICKET_STATUS } from "../_shared/ticket-status.ts";
+import { writeTicket } from "../_shared/ticket-doc.ts";
 
 type Body = { code?: string; pin?: string };
 
@@ -78,17 +79,17 @@ Deno.serve(async (req) => {
   }
 
   // CAS: a concurrent scan loses cleanly and reads as already-scanned.
-  const update = await admin
-    .from("visit_tickets")
-    .update({ status: TICKET_STATUS.scanned })
-    .eq("id", ticket.id)
-    .eq("status", TICKET_STATUS.open)
-    .select("id, status")
-    .maybeSingle();
-  if (update.error) {
-    return json({ ok: false, error: `ticket_update: ${update.error.message}` }, 500);
+  const update = await writeTicket(admin, {
+    mode: "update",
+    id: ticket.id,
+    patch: { status: TICKET_STATUS.scanned },
+    guard: { eq: { status: TICKET_STATUS.open } },
+    select: "id, status",
+  });
+  if (!update.ok) {
+    return json({ ok: false, error: `ticket_update: ${update.error}` }, 500);
   }
-  if (!update.data) {
+  if (!update.row) {
     return json({ ok: true, already: true, status: TICKET_STATUS.scanned });
   }
 

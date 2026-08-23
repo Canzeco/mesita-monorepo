@@ -18,6 +18,7 @@ import {
   GUEST_CANCELLABLE_STATUSES,
   TICKET_STATUS,
 } from "../_shared/ticket-status.ts";
+import { writeTicket } from "../_shared/ticket-doc.ts";
 
 type Body = { ticketId?: string };
 
@@ -65,20 +66,21 @@ Deno.serve(async (req) => {
     );
   }
 
-  const updated = await admin
-    .from("visit_tickets")
-    .update({
+  const updated = await writeTicket(admin, {
+    mode: "update",
+    id: ticketId,
+    patch: {
       status: TICKET_STATUS.cancelled,
       cancelled_at: new Date().toISOString(),
       cancel_reason: "consumer_cancelled",
-    })
-    .eq("id", ticketId)
-    .in("status", [...GUEST_CANCELLABLE_STATUSES])
-    .select("id, status, cancelled_at")
-    .single();
-  if (updated.error) {
-    return json({ ok: false, error: `ticket_update: ${updated.error.message}` }, 500);
+    },
+    guard: { in: { status: [...GUEST_CANCELLABLE_STATUSES] } },
+    select: "id, status, cancelled_at",
+    single: true,
+  });
+  if (!updated.ok) {
+    return json({ ok: false, error: `ticket_update: ${updated.error}` }, 500);
   }
 
-  return json({ ok: true, ticket: updated.data });
+  return json({ ok: true, ticket: updated.row });
 });

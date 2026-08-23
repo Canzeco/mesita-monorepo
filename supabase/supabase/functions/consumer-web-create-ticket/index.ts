@@ -44,6 +44,7 @@ import {
 import { checkUrlFor, newCheckCode } from "../_shared/ticket-check.ts";
 import { CHECK_DEDUPE_STATUSES, TICKET_STATUS } from "../_shared/ticket-status.ts";
 import { snapshotRatesFromPlace } from "../_shared/ticket-rate-snapshot.ts";
+import { writeTicket } from "../_shared/ticket-doc.ts";
 
 type Body = {
   placeId?: string;
@@ -203,29 +204,28 @@ Deno.serve(async (req) => {
   let inserted: Record<string, unknown> | null = null;
   let lastError = "";
   for (let attempt = 0; attempt < 2 && !inserted; attempt++) {
-    const res = await admin
-      .from("visit_tickets")
-      .insert({
+    const res = await writeTicket(admin, {
+      mode: "insert",
+      patch: {
         project_id: placeId,
         consumer_id: consumerId,
         opened_by: consumerId, // self-opened: the v2 marker
         status: TICKET_STATUS.open,
-        story_status: storyStatus,
-        review_status: reviewStatus,
+        story_status: storyStatus as "not_required" | "pending",
+        review_status: reviewStatus as "not_required" | "pending",
         check_code: newCheckCode(),
         ...snapshotRatesFromPlace(place as Record<string, unknown>),
-      })
-      .select(
+      },
+      select:
         "id, status, story_status, review_status, check_code, first_scanned_at, currency, created_at",
-      )
-      .single();
-    if (!res.error) {
-      inserted = res.data;
+    });
+    if (res.ok) {
+      inserted = res.row;
       break;
     }
-    lastError = res.error.message;
-    if (res.error.code === "23505") {
-      if (res.error.message.includes("tickets_one_open_check_per_consumer_place")) {
+    lastError = res.error;
+    if (res.code === "23505") {
+      if (res.error.includes("tickets_one_open_check_per_consumer_place")) {
         return json(
           {
             ok: false,

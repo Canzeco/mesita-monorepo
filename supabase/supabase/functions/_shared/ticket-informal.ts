@@ -22,6 +22,7 @@ import {
 } from "./ticket-bill-payload.ts";
 import { ensureConsumerReviewNotification } from "./ticket-review-notify.ts";
 import { CLOSED_TICKET_STATUS } from "./ticket-status.ts";
+import { writeTicket } from "./ticket-doc.ts";
 
 export {
   buildConsumerBillPayload,
@@ -157,15 +158,16 @@ export async function finalizeInformalTicket(
   if (ticket.data.status === CLOSED_TICKET_STATUS) return { ok: true };
 
   const now = new Date().toISOString();
-  const update = await admin
-    .from("visit_tickets")
-    .update({
+  const update = await writeTicket(admin, {
+    mode: "update",
+    id: ticketId,
+    patch: {
       status: CLOSED_TICKET_STATUS,
       revealed_at: now,
       paid_at: now,
-    })
-    .eq("id", ticketId);
-  if (update.error) return { ok: false, error: update.error.message };
+    },
+  });
+  if (!update.ok) return { ok: false, error: update.error };
 
   // Activation binds to the CLOSE (v3b, MESITA-850) — the close is the only
   // unconditional signal that the place honored a guest. With a bill on
