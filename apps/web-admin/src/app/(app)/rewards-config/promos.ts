@@ -162,7 +162,7 @@ export const CLASS_META: Record<
   gold: {
     name: "Gold",
     emoji: "🥇",
-    blurb: "Real reach, or an Aura-list invitation.",
+    blurb: "Real reach, or a direct invitation.",
   },
   diamond: {
     name: "Diamond",
