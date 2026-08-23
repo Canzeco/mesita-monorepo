@@ -123,7 +123,7 @@ Deno.serve(async (req) => {
     // 'done' that timestamp is the completion time.
     last_enriched_at: research?.stage === "done" ? (research?.updated_at ?? null) : null,
     updated_at: research?.updated_at ?? null,
-    // One of the three enrichment texts (SERP Summary · Profile Description ·
+    // One of the three enrichment texts (SERP Summary · Presentation ·
     // Semantic Summary). It grounds link selection and the description, and it
     // is never a source of facts, ratings or prices.
     serp_summary: research?.serp_summary ?? null,
