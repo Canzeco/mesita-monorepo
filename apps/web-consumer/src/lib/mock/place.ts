@@ -123,7 +123,7 @@ export type PlaceDetail = {
     photo_aspect?: "square" | "portrait" | "landscape";
   }>;
 
-  // 6. Products — generic commercial catalog. For restaurants, menu lives
+  // 6. Menus (stored under `products`) — for restaurants the menu lives
   // under products.menu. `url` is the Storage public URL or Drive share link;
   // `kind` drives the in-app viewer (image / PDF / Drive preview).
   products: {

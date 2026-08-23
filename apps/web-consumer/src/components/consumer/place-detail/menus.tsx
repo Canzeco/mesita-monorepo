@@ -9,12 +9,14 @@ import type { PlaceDetail } from "@/lib/mock/place";
 
 import { Box } from "./box";
 
-// ── Products ────────────────────────────────────────────────────────────
+// ── Menus ───────────────────────────────────────────────────────────────
 
-export function ProductsBox({ place }: { place: PlaceDetail }) {
-  // Sole occupant of the Products tab, so it never returns null — an
-  // empty catalog renders an explicit "no menu" state instead of a
-  // blank tab.
+export function MenusBox({ place }: { place: PlaceDetail }) {
+  // Sole occupant of the Menus tab, so it never returns null — a place with
+  // no menus renders an explicit empty state instead of a blank tab.
+  //
+  // `place.products.menu` keeps its name: that is the column the row is read
+  // from (places.products.menu). Storage vocabulary does not follow a label.
   const menus = place.products.menu;
   const [active, setActive] = useState<
     PlaceDetail["products"]["menu"][number] | null
@@ -32,7 +34,7 @@ export function ProductsBox({ place }: { place: PlaceDetail }) {
               No menu available yet
             </p>
             <p className="text-muted-foreground text-xs leading-snug">
-              This place hasn&apos;t uploaded a menu or product catalog.
+              This place hasn&apos;t uploaded a menu yet.
             </p>
           </div>
         </div>

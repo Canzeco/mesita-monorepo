@@ -120,7 +120,7 @@ function serializeMenus(items: MenuDraft[]): AdminMenuItem[] {
     .filter((m) => m.url);
 }
 
-export function ProductsSection({
+export function MenusSection({
   place,
   onSaved,
 }: {
