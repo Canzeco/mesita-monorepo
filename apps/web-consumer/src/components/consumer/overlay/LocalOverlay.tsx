@@ -94,6 +94,30 @@ function CardPortal({ children }: { children: React.ReactNode }) {
   return createPortal(children, card);
 }
 
+// THE SEMI-MODAL, AND THERE IS ONLY ONE (decision: Pato, 2026-08-22).
+//
+// A SHEET IS 80% OF THE CARD. Not "up to" 80% — exactly. Every sheet used to
+// be `max-h` with no floor, so its height was a function of its own copy: the
+// contact sheet opened as a strip, Instagram opened near 85%, and no two
+// sheets in the app agreed on where the top edge lands. Height was carrying
+// no information — it just leaked how much text the sheet happened to hold —
+// while costing the one thing a repeated shape can give you, which is the
+// feeling that you are still in the same app. A fixed edge also means the
+// grabber, the title and the first row land in the same place every time, so
+// the eye and the thumb both stop re-aiming.
+//
+// SHORT CONTENT DOES NOT GET A SHEET. The rule this would otherwise break is
+// "no fixed tall empty panels" (Docs › Design §D) — a three-line confirm in
+// an 80% panel is 60% dead space. So a confirm is not a short sheet: it is a
+// LocalDialog, the centred shape below, which is sized by its content by
+// design. Two shapes, chosen by what the surface IS, never by how long its
+// copy ran.
+//
+// Route modals share the same panel (BottomSheetShell imports this), because
+// a guest cannot tell a route modal from a state modal and should not have to.
+export const SEMI_MODAL_PANEL_CLASS =
+  "border-border bg-popover shadow-elev relative flex h-[80%] max-h-[80%] min-h-0 flex-col overflow-hidden rounded-t-3xl border-t";
+
 export function LocalSheet({
   open,
   onClose,
@@ -139,7 +163,7 @@ export function LocalSheet({
         />
         <div
           className={cn(
-            "border-border bg-popover shadow-elev relative flex max-h-[85%] min-h-0 flex-col overflow-hidden rounded-t-3xl border-t",
+            SEMI_MODAL_PANEL_CLASS,
             "transition-transform duration-300 motion-reduce:transition-none",
             OVERLAY_EASE,
             shown ? "translate-y-0" : "translate-y-full",

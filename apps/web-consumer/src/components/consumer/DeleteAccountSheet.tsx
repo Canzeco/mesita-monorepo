@@ -4,13 +4,20 @@ import { useState } from "react";
 import { Trash2 } from "lucide-react";
 import { cn, errMsg } from "@/lib/utils";
 import { toast } from "@/lib/toast";
-import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
+import { LocalDialog } from "@/components/consumer/overlay/LocalOverlay";
 import { Spinner } from "@/components/shared";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { apiDeleteConsumerAccount } from "@/lib/api/profile";
 import { SHEET_TITLE_CLASS, SHEET_BODY_CLASS } from "@/lib/ui-classes";
 
-// Destructive confirm sheet for Settings → Privacy & data → Delete account.
+// Destructive confirm DIALOG for Settings → Privacy & data → Delete account.
+//
+// A confirm is a dialog, not a sheet (decision: Pato, 2026-08-22). Sheets are
+// a fixed 80% of the card now, and this surface is a paragraph, one field and
+// two buttons — in a sheet it would be more than half empty, which is the
+// "fixed tall empty panel" the design law names. The centred dialog is sized
+// by its content, so the question and the two answers sit together with
+// nothing between them. It reads as a stop, which is what it is.
 // Type-to-confirm ("DELETE") gates the real consumer-web-delete-account call;
 // on success the dead session is cleared locally and the app hard-navigates
 // to /. The privacy@ mailto stays in the copy as the manual fallback path.
@@ -47,8 +54,8 @@ export function DeleteAccountSheet({
   }
 
   return (
-    <LocalSheet open={open} onClose={onClose} ariaLabel="Delete account">
-      <div className={cn(SHEET_BODY_CLASS, "pt-3")}>
+    <LocalDialog open={open} onClose={onClose} ariaLabel="Delete account">
+      <div className={cn(SHEET_BODY_CLASS, "overflow-y-auto")}>
         <div className="flex items-start gap-3">
           <span className="bg-destructive/10 text-destructive flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl">
             <Trash2 className="h-5 w-5" />
@@ -115,6 +122,6 @@ export function DeleteAccountSheet({
           </button>
         </div>
       </div>
-    </LocalSheet>
+    </LocalDialog>
   );
 }

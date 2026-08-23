@@ -41,7 +41,6 @@ export function MenuViewer({
       open={open}
       onClose={onClose}
       ariaLabel={`${menu.name} menu`}
-      panelClassName="h-[92%] max-h-[92%]"
     >
       {/* key remounts body so zoom/loading reset without an effect */}
       <MenuViewerBody key={menu.url} menu={menu} onClose={onClose} />
