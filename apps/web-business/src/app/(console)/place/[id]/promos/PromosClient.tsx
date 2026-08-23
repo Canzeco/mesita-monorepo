@@ -17,10 +17,7 @@ import {
   type DiscountCapMxn,
   type StrategyId,
 } from "@/lib/business/strategies";
-import {
-  coercePromosConfig,
-  type PromosConfig,
-} from "@/lib/business/promos";
+import { coercePromosConfig, type PromosConfig } from "@/lib/business/promos";
 import { cn, errMsg, formatMoney } from "@/lib/utils";
 import { ERROR_BOX_CLASS } from "@/lib/ui-classes";
 import { FaqsBox } from "./FaqsBox";
@@ -231,7 +228,7 @@ export function PromosClient({
           Promos
         </h2>
         <p className="text-muted-foreground text-[13px] leading-snug">
-          One membership, three strategies — switch your discount posture free
+          One membership, four strategies — switch your discount posture free
           anytime.
         </p>
       </header>
@@ -321,7 +318,9 @@ export function PromosClient({
                     pendingCap && !busy && "opacity-60",
                   )}
                 >
-                  {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
+                  {busy ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : null}
                   {formatMoney(cap, place.currency)}
                 </button>
               );
@@ -349,9 +348,7 @@ export function PromosClient({
           strategy={modalStrategy}
           cfg={cfg}
           currency={place.currency}
-          capMxn={
-            modalStrategy.id !== "zero" ? displayCapMxn : undefined
-          }
+          capMxn={modalStrategy.id !== "zero" ? displayCapMxn : undefined}
           isCurrent={isCardCurrent(subscribed, selectedId, modalStrategy.id)}
           subscribed={subscribed}
           joinDisabled={joinDisabled}
