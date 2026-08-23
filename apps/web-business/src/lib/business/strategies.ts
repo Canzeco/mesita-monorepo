@@ -4,9 +4,12 @@
 // (MESITA-912): one MX$1,000/year membership door, free strategy switching
 // anytime. Non-members are locked at Zero; members pick any preset.
 //
-// Product (2026-08-09, Pato): THREE strategies only — Zero / Conservative /
-// Aggressive. There is NO Dominant. Discount cap is a SEPARATE parameter
-// with three options: MX$200 / MX$500 / MX$1000 (not bundled into strategy).
+// Product: FOUR strategies — Zero / Conservative / Aggressive / Dominant.
+// Dominant was retired 2026-08-09 and RESTORED 2026-08-21 (MESITA-1180) on the
+// exact tuple it was retired with, so leftover rows resolve to Dominant again
+// and the old "→ Aggressive" coercion is gone for good — never re-add it.
+// Discount cap is a SEPARATE parameter with three options: MX$200 / MX$500 /
+// MX$1000 (not bundled into strategy).
 //
 // A member selects ONE strategy (rate bundle) and independently ONE discount
 // cap. The presets encode:
@@ -58,7 +61,7 @@ export type Strategy = {
   rates: StrategyRates;
 };
 
-// Ordered ascending in generosity so the picker reads Zero → Aggressive.
+// Ordered ascending in generosity so the picker reads Zero → Dominant.
 // Cap is NOT part of the strategy — it is an independent place param.
 //
 //   Level          FR  PR  FW  PW   Visibility
@@ -152,7 +155,6 @@ export function snapDiscountCap(v: unknown): DiscountCapMxn {
   }
   return best;
 }
-
 
 function ratesMatch(a: StrategyRates, b: StrategyRates): boolean {
   return (
