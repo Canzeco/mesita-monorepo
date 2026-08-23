@@ -34,7 +34,12 @@
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { reportEnrichmentStep } from "./enrich-pipeline.ts";
-import { PULSE_PIECE_META, type PulsePiece } from "./pulse-pieces.ts";
+import {
+  PULSE_EXTRA_LABELS,
+  PULSE_PIECE_META,
+  type PulsePiece,
+  type PulseStep,
+} from "./pulse-pieces.ts";
 
 export type PieceOutcome = {
   status: "completed" | "failed";
@@ -74,20 +79,27 @@ export async function reportPulsePieces(
   //      reporting success. `socail` for `social` pinned every place at 3 and
   //      nothing in the type system, the tests or CI said a word (MESITA-1219).
   //      The runtime guard below stays as the belt.
-  pieces: Partial<Record<PulsePiece, PieceOutcome>>,
+  //   6. EXTRAS ARE STAMPED HERE TOO, and marked `SX` rather than given a
+  //      rung. semantics is real work with a real outcome, but counting it
+  //      would make `enriched` fall when someone edits a name — the
+  //      On-Update path fires the same machinery (MESITA-1230).
+  pieces: Partial<Record<PulseStep, PieceOutcome>>,
 ): Promise<void> {
   for (const [key, outcome] of Object.entries(pieces)) {
     if (!outcome) continue;
     const meta = PULSE_PIECE_META[key as PulsePiece];
-    if (!meta) continue;
+    const extraLabel = PULSE_EXTRA_LABELS[key as keyof typeof PULSE_EXTRA_LABELS];
+    if (!meta && !extraLabel) continue;
     await reportEnrichmentStep(
       admin,
       projectId,
-      `S${meta.index}`,
+      meta ? `S${meta.index}` : "SX",
       key,
       outcome.status,
       outcome.detail,
-      { piece: key, index: meta.index, ...(outcome.meta ?? {}) },
+      meta
+        ? { piece: key, index: meta.index, ...(outcome.meta ?? {}) }
+        : { piece: key, extra: true, ...(outcome.meta ?? {}) },
     );
   }
 }

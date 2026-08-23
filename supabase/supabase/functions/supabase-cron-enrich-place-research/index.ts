@@ -412,17 +412,41 @@ serveEnrichStage("research", async (admin, _env, row) => {
     // untouched one (MESITA-1219).
     pulse: pieceDone(
       basics.hours
-        ? "Hours, closing time and timezone resolved."
+        ? "Open/closed and the weekly hours resolved."
         : "Google publishes no hours for this place.",
     ),
     // Same rule: Google answering "no phone, no address, no price" is a fact
     // about the listing, not an infrastructure failure.
     details: pieceDone(
       (basics.phone || basics.address || basics.price_level != null)
-        ? "Phone, address and price resolved."
+        ? "Address, geo, timezone, phone and price resolved."
         : "Google returned no contact or address detail.",
     ),
+    // NAME (3) — the google_name refresh behind the GENERATED places.name.
+    // Never separately bought: it rides the same Place Details call the gate
+    // already made, so if we are here Google answered. An empty label would be
+    // Google's answer, not our failure, but it is still missing data.
+    name: (typeof basics.google_name === "string" && basics.google_name.trim())
+      ? pieceDone(`Google label “${basics.google_name.trim()}”.`)
+      : pieceFailed("Google returned no display name."),
   };
+
+  if (wants(buys, "serp")) {
+    // SERP (4) — the SERP Summary, Agent X's soft editorial read. It runs
+    // BEFORE links because Agent Y selects channels against this context.
+    // ABSENCE IS A RESULT: the web having nothing to say about a place is an
+    // answer, so the piece passes on an ok diag whether or not text came back.
+    // A missing key or a thrown call is the only failure.
+    pieces.serp = diagOk(sources.serp)
+      ? pieceDone(
+        serpSummary
+          ? `SERP Summary written — ${serpSummary.trim().split(/\s+/).length} word(s).`
+          : "Agent X ran; the web had nothing to add.",
+      )
+      : pieceFailed(
+        PERPLEXITY_KEY ? "The SERP gather failed." : "No Perplexity key configured.",
+      );
+  }
 
   if (wants(buys, "links")) {
     pieces.links = anyChannelResolved || !needsDiscovery
