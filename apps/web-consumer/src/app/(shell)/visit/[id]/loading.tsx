@@ -12,7 +12,7 @@ export default function TicketLoading() {
         <Skeleton className="size-8 rounded-full" />
         <Skeleton className="size-9 rounded-xl" />
         <div className="min-w-0 flex-1 space-y-1.5">
-          <Skeleton className="h-3.5 w-2/5" />
+          <Skeleton className="h-4.5 w-2/5" />
           <Skeleton className="h-2.5 w-1/4" />
         </div>
         <Skeleton className="h-5 w-12 rounded-full" />
