@@ -77,6 +77,15 @@ jobs:
         working-directory: supabase
         run: deno check .
 
+  # ⚠ PARKED — this job cannot go green yet. `supabase start` dies replaying
+  # 0036_coupon_snapshot_two_tiers.sql ("relation public.coupons does not
+  # exist"): the repo's migration files no longer rebuild the database from
+  # zero, because the CLI replays the whole `00NN` series before every
+  # timestamped file and `coupons` is only created ~26 files later. That is
+  # MESITA-1278, and it has to land before this job can be a gate. Nothing
+  # below is wrong — it is waiting on a replayable history. Do NOT make it
+  # non-blocking to merge it: a gate nobody can read is not a gate.
+  #
   # SQL invariants, tested against a database built from every migration.
   #
   # The 512 deno tests never touch a database, so until now every schema
