@@ -1,10 +1,11 @@
 "use client";
 
-import { useCallback, useMemo, useState, useTransition } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { CalendarCheck } from "lucide-react";
-import { updatePlace, type AdminPlace } from "../actions";
-import { useSectionDirty } from "../useSectionDirty";
-import { SaveBar, SectionCard } from "../ui";
+import { type AdminPlace } from "../actions";
+import { useSectionSaver } from "../useSectionDirty";
+import { usePlaceContext } from "../PlaceContext";
+import { SectionCard } from "../ui";
 import {
   ChannelPicker,
   channelOptions,
@@ -27,10 +28,8 @@ import {
 // no login, no dashboard, no app.
 export function ReservationsCard({
   place,
-  onSaved,
 }: {
   place: AdminPlace;
-  onSaved: (v: AdminPlace) => void;
 }) {
   const options = useMemo(() => channelOptions(place), [place]);
   const hasPhone = options[0].contact !== "";
@@ -42,45 +41,42 @@ export function ReservationsCard({
   const [channel, setChannel] = useState<ChannelKey | "">(
     saved || (hasPhone ? "phone" : ""),
   );
-  const [pending, start] = useTransition();
-  const [error, setError] = useState<string | null>(null);
-  const [ok, setOk] = useState(false);
+  const { savePending } = usePlaceContext();
 
   const dirty = channel !== saved;
 
   const resetDraft = useCallback(() => {
     setChannel(saved || (hasPhone ? "phone" : ""));
-    setError(null);
-    setOk(false);
   }, [saved, hasPhone]);
-  useSectionDirty("reservations", dirty, resetDraft);
 
-  const save = () => {
-    if (!channel || !hasPhone) {
-      setError("Set a phone under Place → Channels — the agent books by voice only.");
-      setOk(false);
-      return;
-    }
-    setError(null);
-    setOk(false);
-    start(async () => {
-      const r = await updatePlace({
-        id: place.id,
-        // Legacy pair stays cleared until the CONTRACT issue drops the columns.
-        reservation_endpoint: null,
-        reservation_contacts: [],
-        reservation_channel: "phone",
-        reservation_target: options[0].contact || null,
-      });
-      if (!r.ok) {
-        setError(r.error);
-        return;
+  useSectionSaver(
+    "reservations",
+    dirty,
+    () => {
+      if (!dirty) return { kind: "clean" };
+      if (!channel || !hasPhone) {
+        return {
+          kind: "invalid",
+          error:
+            "Set a phone under Place → Channels — the agent books by voice only.",
+        };
       }
-      onSaved(r.data);
-      setOk(true);
-      window.setTimeout(() => setOk(false), 2500);
-    });
-  };
+      return {
+        kind: "patch",
+        patch: {
+          // Legacy pair stays cleared until the CONTRACT issue drops the columns.
+          reservation_endpoint: null,
+          reservation_contacts: [],
+          reservation_channel: "phone",
+          reservation_target: options[0].contact || null,
+        },
+      };
+    },
+    () => {
+      // `saved` re-derives from the refreshed place row; nothing local to seed.
+    },
+    resetDraft,
+  );
 
   return (
     <SectionCard
@@ -93,20 +89,11 @@ export function ReservationsCard({
           options={options}
           selected={channel}
           onSelect={setChannel}
-          disabled={pending}
+          disabled={savePending}
           ariaLabel="Reservation channel"
           soonVerb="booking"
         />
       </div>
-      <SaveBar
-        pending={pending}
-        dirtyLabel="Reservations · unsaved"
-        dirty={dirty}
-        ok={ok}
-        error={error}
-        onSave={save}
-        onCancel={resetDraft}
-      />
     </SectionCard>
   );
 }

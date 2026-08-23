@@ -1,18 +1,15 @@
 "use client";
 
-import { useEffect, useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   ArrowLeft,
   ArrowRight,
-  Clock,
   ExternalLink,
   Globe,
   ImagePlus,
   Images,
   Info,
   Loader2,
-  Mail,
-  MapPin,
   Store,
   X,
   type LucideIcon,
@@ -20,7 +17,6 @@ import {
 import {
   getPlaceEnrichment,
   listPlaceTagCatalog,
-  updatePlace,
   type AdminPlace,
   type PlaceFieldLimits,
   type PlaceMediaMeta,
@@ -28,15 +24,17 @@ import {
 import { PlaceTagsPicker } from "../PlaceTagsPicker";
 import { PlaceCategorySelect } from "../PlaceCategorySelect";
 import {
+  GroupLabel,
   OpenLink,
   PhoneField,
   ReadField,
-  SaveBar,
   SectionCard,
   TextArea,
   TextField,
 } from "../ui";
 import { usePlaceContext } from "../PlaceContext";
+import { useSectionSaver } from "../useSectionDirty";
+import { ErrorNote } from "@/components/ErrorNote";
 import { formatAbsoluteUtc } from "@/lib/format";
 import { createBrowserSupabase } from "@/lib/supabase/browser";
 import {
@@ -137,7 +135,6 @@ type Form = {
    * `description`; the FIELD is Presentation (Pato, 2026-08-23). */
   description: string;
   phone: string;
-  email: string;
   tags: string[];
   photos: string[];
   channels: Record<string, string>;
@@ -168,9 +165,9 @@ function placeToForm(v: AdminPlace, limits: PlaceFieldLimits = FALLBACK_LIMITS):
     category: v.category ?? "",
     description: (v.description ?? "").slice(0, limits.descriptionMax),
     phone: v.phone ?? "",
-    email: v.email ?? "",
     tags: (v.tags ?? []).slice(0, limits.tagsPerPlaceMax),
-    photos: (v.photos ?? []).slice(0, limits.photosMax),
+    // NOT sliced to photosMax — see the over-cap note on the Photos box.
+    photos: v.photos ?? [],
     channels,
     hours,
   };
@@ -211,58 +208,29 @@ function boxToPatch(
     const patch: Record<string, unknown> & { id: string } = {
       id,
       phone: nz(f.phone),
-      email: nz(f.email),
     };
     for (const c of EDITABLE_CHANNELS) patch[c.key as string] = nz(f.channels[c.key as string]);
     return patch;
   }
-  return { id, photos: f.photos.slice(0, limits.photosMax) };
+  return { id, photos: f.photos };
 }
 
 function sliceEqual(a: unknown, b: unknown): boolean {
   return JSON.stringify(a) === JSON.stringify(b);
 }
 
-/** Copy one box's fields from `from` onto `base` — keeps other boxes intact. */
-function mergeBoxSlice(base: Form, from: Form, box: PlaceBox): Form {
-  if (box === "basics") {
-    return {
-      ...base,
-      mesitaName: from.mesitaName,
-      description: from.description,
-      tags: from.tags,
-      category: from.category,
-    };
-  }
-  if (box === "time") return { ...base, hours: from.hours };
-  if (box === "channels") {
-    return {
-      ...base,
-      channels: from.channels,
-      phone: from.phone,
-      email: from.email,
-    };
-  }
-  return { ...base, photos: from.photos };
-}
-
 export function PlaceSection({
   place,
-  onSaved,
   children,
 }: {
   place: AdminPlace;
-  onSaved: (v: AdminPlace) => void;
   /** Extra Place-page boxes (Menus) — flow in the same masonry columns. */
   children?: React.ReactNode;
 }) {
   const [limits, setLimits] = useState<PlaceFieldLimits>(FALLBACK_LIMITS);
   const [form, setForm] = useState<Form>(() => placeToForm(place));
   const [saved, setSaved] = useState<Form>(form);
-  const [pendingBox, setPendingBox] = useState<PlaceBox | null>(null);
   const [errors, setErrors] = useState<Partial<Record<PlaceBox, string>>>({});
-  const [oks, setOks] = useState<Partial<Record<PlaceBox, boolean>>>({});
-  const [, start] = useTransition();
 
   const dirtyBasics = useMemo(
     () =>
@@ -298,10 +266,10 @@ export function PlaceSection({
   const dirtyChannels = useMemo(
     () =>
       !sliceEqual(
-        { channels: form.channels, phone: form.phone, email: form.email },
-        { channels: saved.channels, phone: saved.phone, email: saved.email },
+        { channels: form.channels, phone: form.phone },
+        { channels: saved.channels, phone: saved.phone },
       ),
-    [form.channels, form.phone, form.email, saved.channels, saved.phone, saved.email],
+    [form.channels, form.phone, saved.channels, saved.phone],
   );
   const dirtyPhotos = useMemo(
     () => !sliceEqual(form.photos, saved.photos),
@@ -311,24 +279,49 @@ export function PlaceSection({
   const placeDirty =
     dirtyBasics || dirtyTime || dirtyChannels || dirtyPhotos;
 
-  const { setSectionDirty, registerDiscardHandler } = usePlaceContext();
-  useEffect(() => {
-    setSectionDirty("place", placeDirty);
-    return () => setSectionDirty("place", false);
-  }, [placeDirty, setSectionDirty]);
+  const { savePending } = usePlaceContext();
 
-  useEffect(() => {
-    registerDiscardHandler("place", () => {
+  // Four boxes, ONE patch. Only the dirty ones contribute, so a save never
+  // rewrites columns nobody touched — which matters for Basics in particular,
+  // where re-sending an untouched `description` would count as an operator
+  // overwrite of Enricher output.
+  useSectionSaver(
+    "place",
+    placeDirty,
+    () => {
+      const parts: Record<string, unknown>[] = [];
+      if (dirtyBasics) parts.push(boxToPatch("basics", form, place.id, limits));
+      if (dirtyTime) parts.push(boxToPatch("time", form, place.id, limits));
+      if (dirtyChannels) parts.push(boxToPatch("channels", form, place.id, limits));
+      if (dirtyPhotos) parts.push(boxToPatch("photos", form, place.id, limits));
+      if (form.photos.length > limits.photosMax) {
+        const over = form.photos.length - limits.photosMax;
+        return {
+          kind: "invalid" as const,
+          error: `This place has ${form.photos.length} photos and the ceiling is ${limits.photosMax}. Remove ${over} to save.`,
+        };
+      }
+      if (parts.length === 0) return { kind: "clean" as const };
+      return {
+        kind: "patch" as const,
+        patch: Object.assign({}, ...parts) as Record<string, unknown>,
+      };
+    },
+    (fresh) => {
+      const next = placeToForm(fresh, limits);
+      setForm(next);
+      setSaved(next);
+      setErrors({});
+    },
+    () => {
       const next = placeToForm(place, limits);
       setForm(next);
       setSaved(next);
-      setOks({});
       setErrors({});
-    });
-    return () => registerDiscardHandler("place", null);
-  }, [registerDiscardHandler, place, limits]);
+    },
+  );
 
-  const anyPending = pendingBox !== null;
+  const anyPending = savePending;
 
   const set = <K extends keyof Form>(k: K, val: Form[K]) =>
     setForm((f) => ({ ...f, [k]: val }));
@@ -339,7 +332,10 @@ export function PlaceSection({
 
   const [uploading, setUploading] = useState(false);
 
-  const setPhotos = (photos: string[]) => set("photos", photos.slice(0, limits.photosMax));
+  // Never truncates: removing is the operator's call, and an over-cap place
+  // must be able to reorder and delete its way down rather than lose the tail
+  // silently. The cap is enforced on ADD (uploadPhoto) and at save.
+  const setPhotos = (photos: string[]) => set("photos", photos);
 
   const uploadPhoto = async (file: File) => {
     if (uploading || anyPending) return;
@@ -409,7 +405,6 @@ export function PlaceSection({
         mesitaName: f.mesitaName.slice(0, r.data.fieldLimits.placeNameMax),
         description: f.description.slice(0, r.data.fieldLimits.descriptionMax),
         tags: f.tags.slice(0, r.data.fieldLimits.tagsPerPlaceMax),
-        photos: f.photos.slice(0, r.data.fieldLimits.photosMax),
       }));
     });
     getPlaceEnrichment(place.id).then((r) => {
@@ -420,41 +415,6 @@ export function PlaceSection({
       alive = false;
     };
   }, [place.id]);
-
-  // Cancel — put this box's slice back to its last-saved values. Only this
-  // box reverts; unsaved edits in the other boxes survive (the mirror of the
-  // per-box merge on save).
-  const cancelBox = (box: PlaceBox) => {
-    setForm((prev) => mergeBoxSlice(prev, saved, box));
-    setErrors((e) => ({ ...e, [box]: undefined }));
-    setOks((o) => ({ ...o, [box]: false }));
-  };
-
-  const saveBox = (box: PlaceBox) => {
-    // Mesita name may be blank — the place then follows the Google name.
-    setErrors((e) => ({ ...e, [box]: undefined }));
-    setOks((o) => ({ ...o, [box]: false }));
-    setPendingBox(box);
-    start(async () => {
-      const r = await updatePlace(
-        boxToPatch(box, form, place.id, limits),
-      );
-      setPendingBox(null);
-      if (!r.ok) {
-        setErrors((e) => ({ ...e, [box]: r.error }));
-        return;
-      }
-      const fresh = placeToForm(r.data, limits);
-      // Merge only this box's slice so unsaved edits in other boxes survive.
-      setForm((prev) => mergeBoxSlice(prev, fresh, box));
-      setSaved((prev) => mergeBoxSlice(prev, fresh, box));
-      onSaved(r.data);
-      setOks((o) => ({ ...o, [box]: true }));
-      window.setTimeout(() => {
-        setOks((o) => (o[box] ? { ...o, [box]: false } : o));
-      }, 2500);
-    });
-  };
 
   return (
     // Masonry, not a grid: CSS columns pack the cards top-down, so a short
@@ -468,12 +428,21 @@ export function PlaceSection({
           Basics → Hours → Channels → Photos → Menus (children) →
           Location. Mesita-internal cards live on Admin; Team on Settings;
           reputation on Performance. */}
-      {/* Basics — editable identity. Price stays Enricher/Google-derived
-          read-only; category is Enricher + Admin + Business (MESITA-469). */}
+      {/* ONE card for the place's facts (design pass 2026-08-22).
+          Basics, Hours and Location were three framed boxes answering one
+          question — what is this place and where/when is it — and once the
+          per-card Save footers left, a frame no longer marked how far a save
+          reached. It only marked a topic, which is what a GroupLabel is for.
+          Three frames became three labelled groups inside one card.
+
+          Channels, Photos and Menus stay their own cards: each is a
+          different KIND of work (links, images, documents) rather than
+          another set of facts about the same thing. */}
       <SectionCard
         icon={<Store className="h-4 w-4" />}
         tint="rose"
-        title="Basics"
+        title="Identity"
+        subtitle="What this place is, when it opens, and where it sits."
       >
         <div className="mt-5 grid gap-4">
           <ReadField label="Google name" auto boxed>
@@ -522,109 +491,131 @@ export function PlaceSection({
             disabled={anyPending}
           />
         </div>
-        <SaveBar
-          pending={pendingBox === "basics"}
-          dirtyLabel="Basics · unsaved"
-          dirty={dirtyBasics}
-          ok={!!oks.basics}
-          error={errors.basics}
-          onSave={() => saveBox("basics")}
-          onCancel={() => cancelBox("basics")}
-        />
-      </SectionCard>
+        {errors.basics ? <ErrorNote message={errors.basics} /> : null}
 
-      <SectionCard
-        icon={<Clock className="h-4 w-4" />}
-        tint="violet"
-        title="Hours"
-      >
-        <div className="border-border/60 divide-border/60 mt-5 divide-y overflow-hidden rounded-xl border">
-          {DAYS.map((d) => {
-            const h = form.hours[d];
-            return (
-              <div
-                key={d}
-                className={
-                  "flex items-center gap-3 px-3.5 py-2.5 transition " +
-                  (h.closed ? "bg-muted/30" : "")
-                }
-              >
-                <span
+        <div className="border-border/60 mt-6 border-t pt-5">
+          <GroupLabel>Hours</GroupLabel>
+          <div className="border-border/60 divide-border/60 mt-5 divide-y overflow-hidden rounded-xl border">
+            {DAYS.map((d) => {
+              const h = form.hours[d];
+              return (
+                <div
+                  key={d}
                   className={
-                    "w-20 shrink-0 text-sm font-medium capitalize " +
-                    (h.closed ? "text-muted-foreground/70" : "")
-                  }
-                >
-                  {d}
-                </span>
-                {h.closed ? (
-                  <span className="text-muted-foreground/70 flex-1 text-xs italic">
-                    Closed
-                  </span>
-                ) : (
-                  <div className="flex flex-1 flex-wrap items-center gap-2">
-                    <input
-                      type="time"
-                      value={h.open}
-                      disabled={anyPending}
-                      onChange={(e) => setDay(d, { open: e.target.value })}
-                      className="bg-muted/60 border-border/60 focus:border-ring/60 focus:bg-card focus:ring-ring/10 h-8 rounded-lg border px-2 text-sm tabular-nums outline-none transition focus:ring-4"
-                    />
-                    <span className="text-muted-foreground text-xs">–</span>
-                    <input
-                      type="time"
-                      value={h.close}
-                      disabled={anyPending}
-                      onChange={(e) => setDay(d, { close: e.target.value })}
-                      className="bg-muted/60 border-border/60 focus:border-ring/60 focus:bg-card focus:ring-ring/10 h-8 rounded-lg border px-2 text-sm tabular-nums outline-none transition focus:ring-4"
-                    />
-                  </div>
-                )}
-                <button
-                  type="button"
-                  role="switch"
-                  aria-checked={!h.closed}
-                  aria-label={`${d} ${h.closed ? "closed" : "open"}`}
-                  disabled={anyPending}
-                  // Re-enabling a day must never surface empty --:-- inputs:
-                  // seed the 9-to-9 default when no range was kept around.
-                  onClick={() =>
-                    setDay(
-                      d,
-                      h.closed
-                        ? {
-                            closed: false,
-                            open: h.open || "09:00",
-                            close: h.close || "21:00",
-                          }
-                        : { closed: true },
-                    )
-                  }
-                  className={
-                    "relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition disabled:opacity-50 " +
-                    (h.closed ? "bg-border" : "bg-pink-gradient")
+                    "flex items-center gap-3 px-3.5 py-2.5 transition " +
+                    (h.closed ? "bg-muted/30" : "")
                   }
                 >
                   <span
                     className={
-                      "absolute h-4 w-4 rounded-full bg-white shadow transition " +
-                      (h.closed ? "translate-x-0.5" : "translate-x-4")
+                      "w-20 shrink-0 text-sm font-medium capitalize " +
+                      (h.closed ? "text-muted-foreground/70" : "")
                     }
-                  />
-                </button>
-              </div>
-            );
-          })}
+                  >
+                    {d}
+                  </span>
+                  {h.closed ? (
+                    <span className="text-muted-foreground/70 flex-1 text-xs italic">
+                      Closed
+                    </span>
+                  ) : (
+                    <div className="flex flex-1 flex-wrap items-center gap-2">
+                      <input
+                        type="time"
+                        value={h.open}
+                        disabled={anyPending}
+                        onChange={(e) => setDay(d, { open: e.target.value })}
+                        className="bg-muted/60 border-border/60 focus:border-ring/60 focus:bg-card focus:ring-ring/10 h-8 rounded-lg border px-2 text-sm tabular-nums outline-none transition focus:ring-4"
+                      />
+                      <span className="text-muted-foreground text-xs">–</span>
+                      <input
+                        type="time"
+                        value={h.close}
+                        disabled={anyPending}
+                        onChange={(e) => setDay(d, { close: e.target.value })}
+                        className="bg-muted/60 border-border/60 focus:border-ring/60 focus:bg-card focus:ring-ring/10 h-8 rounded-lg border px-2 text-sm tabular-nums outline-none transition focus:ring-4"
+                      />
+                    </div>
+                  )}
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={!h.closed}
+                    aria-label={`${d} ${h.closed ? "closed" : "open"}`}
+                    disabled={anyPending}
+                    // Re-enabling a day must never surface empty --:-- inputs:
+                    // seed the 9-to-9 default when no range was kept around.
+                    onClick={() =>
+                      setDay(
+                        d,
+                        h.closed
+                          ? {
+                              closed: false,
+                              open: h.open || "09:00",
+                              close: h.close || "21:00",
+                            }
+                          : { closed: true },
+                      )
+                    }
+                    className={
+                      "relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition disabled:opacity-50 " +
+                      (h.closed ? "bg-border" : "bg-pink-gradient")
+                    }
+                  >
+                    <span
+                      className={
+                        "absolute h-4 w-4 rounded-full bg-white shadow transition " +
+                        (h.closed ? "translate-x-0.5" : "translate-x-4")
+                      }
+                    />
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+          {errors.time ? <ErrorNote message={errors.time} /> : null}
         </div>
-        <SaveBar
-          pending={pendingBox === "time"}
-          dirtyLabel="Hours · unsaved"
-          dirty={dirtyTime}
-          ok={!!oks.time}
-          error={errors.time}
-          onSave={() => saveBox("time")}
-          onCancel={() => cancelBox("time")}
-        />
+
+        {/* Location is native — Google Places seed + Enricher synthesis.
+            The EF rejects manual address writes, so this group is read-only. */}
+        <div className="border-border/60 mt-6 border-t pt-5">
+          <GroupLabel>Location</GroupLabel>
+          {/* One boxed field per row — same filled-input language as every
+              other card. Lat/Lng share one box (a coordinate pair is one
+              fact); everything else stacks. */}
+          <div className="mt-5 grid gap-4">
+            <ReadField label="Address" auto boxed>
+              {place.address?.trim() ? place.address : "—"}
+            </ReadField>
+            <ReadField label="Zone" auto boxed>
+              {place.zone ?? "—"}
+            </ReadField>
+            <ReadField label="City" auto boxed>
+              {place.city ?? "—"}
+            </ReadField>
+            <ReadField label="Lat / Lng" auto boxed>
+              <span className="font-mono type-body tabular-nums">
+                {place.lat == null || place.lng == null
+                  ? "—"
+                  : `${place.lat}, ${place.lng}`}
+              </span>
+            </ReadField>
+            <ReadField label="Timezone" auto boxed>
+              {place.timezone?.trim() ? place.timezone : "—"}
+            </ReadField>
+          </div>
+          {place.lat != null && place.lng != null ? (
+            <div className="border-border/60 mt-4 overflow-hidden rounded-xl border">
+              <iframe
+                src={`https://maps.google.com/maps?q=${place.lat},${place.lng}&z=15&output=embed`}
+                title={`Map of ${place.name}`}
+                loading="lazy"
+                referrerPolicy="no-referrer-when-downgrade"
+                className="block h-[160px] w-full border-0"
+              />
+            </div>
+          ) : null}
+        </div>
       </SectionCard>
 
       <SectionCard
@@ -701,24 +692,8 @@ export function PlaceSection({
             placeholder="81 8378 2164"
             disabled={anyPending}
           />
-          <TextField
-            label="Email"
-            leading={<Mail className="text-muted-foreground h-3.5 w-3.5 shrink-0" />}
-            type="email"
-            value={form.email}
-            onChange={(x) => set("email", x)}
-            disabled={anyPending}
-          />
         </div>
-        <SaveBar
-          pending={pendingBox === "channels"}
-          dirtyLabel="Channels · unsaved"
-          dirty={dirtyChannels}
-          ok={!!oks.channels}
-          error={errors.channels}
-          onSave={() => saveBox("channels")}
-          onCancel={() => cancelBox("channels")}
-        />
+        {errors.channels ? <ErrorNote message={errors.channels} /> : null}
       </SectionCard>
 
       <SectionCard
@@ -726,11 +701,29 @@ export function PlaceSection({
         tint="orange"
         title="Photos"
         action={
-          <span className="text-muted-foreground type-label tabular-nums">
+          <span
+            className={
+              "type-label tabular-nums " +
+              (form.photos.length > limits.photosMax
+                ? "text-destructive font-semibold"
+                : "text-muted-foreground")
+            }
+          >
             {form.photos.length} / {limits.photosMax}
           </span>
         }
       >
+        {form.photos.length > limits.photosMax ? (
+          // The ceiling dropped to ten (MESITA-1237) and places enriched under
+          // the old one still hold more. Say so, rather than quietly dropping
+          // the tail on load and persisting that deletion at the next save.
+          <p className="border-destructive/30 bg-destructive/5 text-destructive mt-4 rounded-xl border px-3.5 py-2.5 text-xs leading-relaxed">
+            Over the ceiling by {form.photos.length - limits.photosMax}. Every
+            photo below is still on the place — nothing has been dropped — but
+            the page will not save until you remove{" "}
+            {form.photos.length - limits.photosMax}.
+          </p>
+        ) : null}
         <PhotosEditor
           placeId={place.id}
           photos={form.photos}
@@ -742,62 +735,11 @@ export function PlaceSection({
           onRemove={removePhoto}
           onInfo={setMetaFor}
         />
-        <SaveBar
-          pending={pendingBox === "photos"}
-          dirtyLabel="Photos · unsaved"
-          dirty={dirtyPhotos}
-          ok={!!oks.photos}
-          error={errors.photos}
-          onSave={() => saveBox("photos")}
-          onCancel={() => cancelBox("photos")}
-        />
+        {errors.photos ? <ErrorNote message={errors.photos} /> : null}
       </SectionCard>
 
       {children}
 
-      {/* Location is native — Google Places seed + Enricher synthesis. The EF
-          rejects manual address writes, so this whole box is read-only. */}
-      <SectionCard
-        icon={<MapPin className="h-4 w-4" />}
-        tint="sky"
-        title="Location"
-      >
-        {/* One boxed field per row — same filled-input language as every
-            other card. Lat/Lng share one box (a coordinate pair is one
-            fact); everything else stacks. */}
-        <div className="mt-5 grid gap-4">
-          <ReadField label="Address" auto boxed>
-            {place.address?.trim() ? place.address : "—"}
-          </ReadField>
-          <ReadField label="Zone" auto boxed>
-            {place.zone ?? "—"}
-          </ReadField>
-          <ReadField label="City" auto boxed>
-            {place.city ?? "—"}
-          </ReadField>
-          <ReadField label="Lat / Lng" auto boxed>
-            <span className="font-mono type-body tabular-nums">
-              {place.lat == null || place.lng == null
-                ? "—"
-                : `${place.lat}, ${place.lng}`}
-            </span>
-          </ReadField>
-          <ReadField label="Timezone" auto boxed>
-            {place.timezone?.trim() ? place.timezone : "—"}
-          </ReadField>
-        </div>
-        {place.lat != null && place.lng != null ? (
-          <div className="border-border/60 mt-4 overflow-hidden rounded-xl border">
-            <iframe
-              src={`https://maps.google.com/maps?q=${place.lat},${place.lng}&z=15&output=embed`}
-              title={`Map of ${place.name}`}
-              loading="lazy"
-              referrerPolicy="no-referrer-when-downgrade"
-              className="block h-[160px] w-full border-0"
-            />
-          </div>
-        ) : null}
-      </SectionCard>
 
       {metaFor !== null && (
         <MediaMetaDialog

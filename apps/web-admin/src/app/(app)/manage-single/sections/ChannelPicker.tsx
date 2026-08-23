@@ -118,6 +118,7 @@ export function ChannelPicker({
   soonVerb: string;
 }) {
   const hasPhone = options[0].contact !== "";
+  const resolved = options.find((o) => o.id === selected) ?? null;
 
   return (
     <div className="flex flex-col gap-1.5">
@@ -192,27 +193,33 @@ export function ChannelPicker({
         })}
       </div>
 
-      <ul className="mt-1 grid gap-1">
-        {options.map((opt) => (
-          <li key={opt.id} className="text-muted-foreground text-xs">
-            <span className="text-foreground/80 font-medium">
-              {opt.contactKind}:
-            </span>{" "}
-            {opt.contact ? (
-              <span className="text-foreground/90 font-medium break-all">
-                {opt.contact}
-              </span>
-            ) : (
-              <span className="text-amber-700/90 font-medium">
-                not set — add under Place → Channels
-              </span>
-            )}
-            {!opt.selectable ? (
-              <span className="text-muted-foreground/70"> · Soon</span>
-            ) : null}
-          </li>
-        ))}
-      </ul>
+      {/* ONE line, not three (design pass 2026-08-22). This used to list every
+          channel's contact — Phone, WhatsApp, Instagram — and BOTH the Orders
+          and the Reservations box render this picker, so the Settings tab
+          restated the same three place-level facts six times in one viewport.
+          The tiles above already say which channels are unset; the only thing
+          left worth stating is what the CURRENT selection actually resolves
+          to, which is the one fact that differs between the two boxes. */}
+      {resolved ? (
+        <p className="text-muted-foreground mt-1 text-xs">
+          <span className="text-foreground/80 font-medium">
+            {resolved.contactKind}:
+          </span>{" "}
+          {resolved.contact ? (
+            <span className="text-foreground/90 font-medium break-all">
+              {resolved.contact}
+            </span>
+          ) : (
+            <span className="text-amber-700/90 font-medium">
+              not set — add under Place → Channels
+            </span>
+          )}
+        </p>
+      ) : (
+        <p className="text-muted-foreground mt-1 text-xs">
+          Pick a channel. Contacts are edited under Place → Channels.
+        </p>
+      )}
     </div>
   );
 }

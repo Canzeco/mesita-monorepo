@@ -90,7 +90,6 @@ export function placeToFormState(place: MyPlace): PlaceFormState {
     tags: place.tags ?? [],
     phone: place.phone ?? "",
     whatsapp_url: place.whatsapp_url ?? "",
-    email: place.email ?? "",
     website_url: place.website_url ?? "",
     instagram_url: place.instagram_url ?? "",
     facebook_url: place.facebook_url ?? "",

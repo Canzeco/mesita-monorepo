@@ -6,6 +6,7 @@ import { Search } from "lucide-react";
 import { getPlace, type AdminPlace } from "./actions";
 import { PlaceEditChrome } from "./PlaceEditChrome";
 import { PlaceProvider } from "./PlaceContext";
+import { PlaceSaveBar } from "./PlaceSaveBar";
 import {Spinner} from "./ui";
 import { ErrorNote } from "@/components/ErrorNote";
 
@@ -110,10 +111,14 @@ export function PlaceEditShell({
       setPlace={mergePlace}
       reload={() => void loadPlace(projectId)}
     >
-      {/* Chrome is full-bleed across the main column; body keeps page padding. */}
+      {/* Chrome is full-bleed across the main column; body keeps page padding.
+          The save bar is rendered ONCE here rather than per tab, so every tab
+          gets the same one save without knowing it exists — and so switching
+          tabs cannot strand a half-saved page behind a bar that unmounted. */}
       <div className="w-full">
         <PlaceEditChrome projectId={projectId} place={place} />
         <div className="px-4 pt-6 sm:px-6 lg:px-8">{children}</div>
+        <PlaceSaveBar />
       </div>
     </PlaceProvider>
   );
