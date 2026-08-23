@@ -202,9 +202,6 @@ export type AdminPlace = {
   google_maps_url: string | null;
   opentable_url: string | null;
   resy_url: string | null;
-  // Legacy (MESITA-377) — no longer edited; cleared when saving the selector.
-  reservation_endpoint: string | null;
-  reservation_contacts: unknown;
   uber_eats_url: string | null;
   menu_pdf_url: string | null;
   menu_pdf_name: string | null;

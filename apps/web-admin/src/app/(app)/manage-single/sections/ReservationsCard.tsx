@@ -64,9 +64,6 @@ export function ReservationsCard({
       return {
         kind: "patch",
         patch: {
-          // Legacy pair stays cleared until the CONTRACT issue drops the columns.
-          reservation_endpoint: null,
-          reservation_contacts: [],
           reservation_channel: "phone",
           reservation_target: options[0].contact || null,
         },
