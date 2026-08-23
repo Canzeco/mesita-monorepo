@@ -18,7 +18,7 @@ import {
 export {
   applyProfileToUpdate,
   asProfileText,
-  formatAboutParagraphs,
+  formatDescriptionParagraphs,
   type ProfileResult,
 } from "./enrich-synthesis-profile.ts";
 
@@ -107,7 +107,7 @@ export async function synthesizeProfile(input: {
     `"editorial_summary", and every other prose field MUST be written in ` +
     `English, even when the source material is Spanish. Translate facts ` +
     `into English; do not leave Spanish prose in any field. ` +
-    `Write "description" as the public About section for the Place page: ` +
+    `Write "description" as the public Profile Description for the Place page: ` +
     `a rich, inviting, factual narrative of roughly ` +
     `${ENRICH_DESCRIPTION_TARGET_WORDS} words (max ` +
     `${ENRICH_DESCRIPTION_MAX} characters). ` +

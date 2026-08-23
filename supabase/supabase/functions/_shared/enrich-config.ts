@@ -41,7 +41,7 @@ export function visionModelFor(quality: string): string {
 // save cap is atlas_save_total_images, applied at the end).
 export const PHOTO_CEILING = 50;
 
-// Atlas About target: a full public narrative, not a blurb. ~7 chars/word
+// Profile Description target: a full public narrative, not a blurb. ~7 chars/word
 // (word + space) gives a predictable synthesis budget.
 export const ENRICH_DESCRIPTION_TARGET_WORDS = 1000;
 export const ENRICH_DESCRIPTION_MAX = ENRICH_DESCRIPTION_TARGET_WORDS * 7;

@@ -37,7 +37,7 @@ import { formatAbsoluteUtc } from "@/lib/format";
 // Admin tab, not Settings: the Enricher is Mesita's own pipeline burning
 // Mesita's own API budget. A business never schedules it.
 const CADENCES: { value: number | null; label: string; hint: string }[] = [
-  { value: null, label: "Manual only", hint: "Nothing runs unless you press Re-enrich." },
+  { value: null, label: "Manual only", hint: "Nothing runs unless you press Run now." },
   { value: 7, label: "Weekly", hint: "For places whose hours and menu move constantly." },
   { value: 30, label: "Monthly", hint: "The sane default for a place that's live." },
   { value: 90, label: "Quarterly", hint: "Cheap upkeep for a stable listing." },
@@ -46,7 +46,7 @@ const CADENCES: { value: number | null; label: string; hint: string }[] = [
 const MODES: { value: ReenrichMode; label: string; hint: string }[] = [
   { value: "full", label: "Full", hint: "Re-gathers everything: Google, channels, reviews, photos, then rewrites the copy. The only mode that refreshes facts." },
   { value: "analysis", label: "Images", hint: "Re-ranks and re-picks photos from what the last full run gathered. No new web calls." },
-  { value: "contents", label: "Copy", hint: "Re-writes description, category and tags from stored research. Cheapest." },
+  { value: "contents", label: "Description", hint: "Re-writes the Profile Description, category and tags from stored research. Cheapest." },
 ];
 
 export function EnrichmentCard({ place }: { place: AdminPlace }) {

@@ -133,7 +133,7 @@ type Form = {
   /** Operator override → places.mesita_name. Blank ⇒ the place follows Google. */
   mesitaName: string;
   category: string;
-  /** Canonical About — English (Mesita core). */
+  /** Canonical Profile Description — English (Mesita core). */
   description: string;
   phone: string;
   email: string;
@@ -501,7 +501,7 @@ export function PlaceSection({
         </div>
         <div className="mt-4 grid gap-4">
           <TextArea
-            label="About"
+            label="Description"
             labelRight={
               <span className="text-muted-foreground text-[11px] tabular-nums">
                 {form.description.length} / {limits.descriptionMax}

@@ -490,7 +490,7 @@ function PlaceCatalogRow({
         <BoolCell value={place.verified} trueLabel="Yes" falseLabel="No" />
       </td>
       <td className="px-3 py-2.5 text-center">
-        <BoolCell value={place.partner} trueLabel="Yes" falseLabel="No" />
+        <BoolCell value={place.partner} trueLabel="Yes" falseLabel="No" falseTone="neutral" />
       </td>
       <td className="px-3 py-2.5 text-center">
         <PromoLevelCell level={place.promoting_level} />
@@ -576,10 +576,14 @@ function LevelCell(
       <span
         className={
           "text-[11px] font-semibold tabular-nums " +
-          (level === 0 ? "text-muted-foreground" : "text-foreground")
+          (level === 0
+            ? "text-rose-700"
+            : level >= total
+              ? "text-green-700"
+              : "text-amber-700")
         }
       >
-        {level}
+        {level}/{total}
       </span>
       <span className="flex gap-[2px]" aria-hidden>
         {Array.from({ length: total }, (_, i) => i + 1).map((step) => (
@@ -587,7 +591,11 @@ function LevelCell(
             key={step}
             className={
               "h-1.5 w-1.5 rounded-[1px] " +
-              (level >= step ? "bg-green-600" : "bg-muted-foreground/25")
+              (level >= step
+                ? "bg-green-600"
+                : level === 0
+                  ? "bg-rose-500/30"
+                  : "bg-amber-500/25")
             }
           />
         ))}
@@ -597,21 +605,31 @@ function LevelCell(
   );
 }
 
+// A false cell used to render as plain grey text, which read as "no data" for
+// every column alike. It isn't the same fact twice: Seeded/Listed/Verified are
+// PENDING — something the pipeline or an operator still owes — while Partner is
+// simply a state (a free place is not a defect). So a false state gets a real
+// pill, and `falseTone` says which kind of false it is: rose for pending, plain
+// grey for a fact that is merely not true.
 function BoolCell({
   value,
   trueLabel,
   falseLabel,
-  accent = false }: {
+  accent = false,
+  falseTone = "pending" }: {
   value: boolean;
   trueLabel: string;
   falseLabel: string;
   accent?: boolean;
+  falseTone?: "pending" | "neutral";
 }) {
+  const pill =
+    "inline-flex items-center justify-center rounded-md px-2 py-0.5 text-[11px] font-semibold ";
   if (value) {
     return (
       <span
         className={
-          "inline-flex items-center justify-center rounded-md px-2 py-0.5 text-[11px] font-semibold " +
+          pill +
           (accent
             ? "bg-amber-100 text-amber-800"
             : "bg-green-500/10 text-green-700")
@@ -622,7 +640,16 @@ function BoolCell({
     );
   }
   return (
-    <span className="text-muted-foreground text-[11px] font-medium">{falseLabel}</span>
+    <span
+      className={
+        pill +
+        (falseTone === "pending"
+          ? "bg-rose-500/10 text-rose-700"
+          : "text-muted-foreground bg-muted")
+      }
+    >
+      {falseLabel}
+    </span>
   );
 }
 
