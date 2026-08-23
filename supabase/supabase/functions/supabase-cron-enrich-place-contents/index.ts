@@ -64,6 +64,12 @@ import {
   serveEnrichStage,
   wants,
 } from "../_shared/enrich-pipeline.ts";
+import {
+  activeFieldPins,
+  carryFieldPins,
+  readFieldPins,
+  stripPinnedColumns,
+} from "../_shared/enrich-corrections.ts";
 
 serveEnrichStage("contents", async (admin, env, row) => {
   // What this run bought, per the trigger matrix (NULL = everything).
@@ -220,12 +226,21 @@ serveEnrichStage("contents", async (admin, env, row) => {
 
   const { data: liveContacts } = await admin
     .from("places")
-    .select("phone, reservation_channel")
+    .select("phone, reservation_channel, enrichment_sources")
     .eq("id", projectId)
     .maybeSingle();
   const live = (liveContacts ?? null) as
-    | { phone: string | null; reservation_channel: string | null }
+    | {
+      phone: string | null;
+      reservation_channel: string | null;
+      enrichment_sources: unknown;
+    }
     | null;
+
+  // Corrections (MESITA-1190) — the fields an agent already fixed. Read from
+  // the LIVE row before the blob below is rebuilt, because the pins live inside
+  // `enrichment_sources` and S8 assigns that column wholesale.
+  const pins = activeFieldPins(readFieldPins(live?.enrichment_sources));
   let reservationChannel: string | null = null;
   if (
     reservationsPolicy.respectAdminOverride &&
@@ -252,8 +267,25 @@ serveEnrichStage("contents", async (admin, env, row) => {
     }
   }
 
-  place.enriched_at = new Date().toISOString();
-  place.enrichment_sources = sources;
+  // Corrections (MESITA-1190) — write AROUND a pinned field, never over it.
+  // An agent that called the venue knows something Google does not, and
+  // re-running the pipeline refetches the same wrong value; persisting it here
+  // would revert the correction on every scheduled run. Absent keys are
+  // untouched by the persist contract, so dropping the key IS the guard.
+  // Done before the blob below is sealed so the diagnostics can name the
+  // fields the Enricher stood down on. Only correctable columns are removed —
+  // description/category/tags are read further down and are not correctable.
+  const { update: persisted, skipped: pinnedSkipped } = stripPinnedColumns(
+    place,
+    pins,
+  );
+  if (pinnedSkipped.length > 0) sources.pins_respected = pinnedSkipped;
+
+  persisted.enriched_at = new Date().toISOString();
+  // NEVER `= sources` on its own: the pins are durable state stored in this
+  // otherwise per-run blob, so a plain overwrite deletes every correction on the
+  // next enrichment. `_shared/enrich-corrections.test.ts` is the gate.
+  persisted.enrichment_sources = carryFieldPins(sources, pins);
 
   // Captured for the single stage beacon below — a dropped/missing About must
   // be visible in the feed, not claimed as written.
@@ -289,7 +321,7 @@ serveEnrichStage("contents", async (admin, env, row) => {
     name: _dropName,
     google_name: _dropGoogleName,
     ...placeUpdate
-  } = place as Record<string, unknown> & {
+  } = persisted as Record<string, unknown> & {
     id?: unknown;
     created_at?: unknown;
     updated_at?: unknown;
@@ -458,6 +490,9 @@ serveEnrichStage("contents", async (admin, env, row) => {
       category: place.category ?? null,
       tags: inferredTags.length,
       reservation: reservationChannel,
+      // A pin that silently eats a write is as confusing as one that does not
+      // hold, so the beacon says which fields the Enricher stood down on.
+      ...(pinnedSkipped.length > 0 ? { pinned: pinnedSkipped } : {}),
       ...imagesMeta,
     },
   );

@@ -55,6 +55,10 @@ import {
 import { fetchGoogleBasics } from "../_shared/enrich-google-basics.ts";
 import { gatherGoogleMaps } from "../_shared/enrich-google.ts";
 import { ENRICH_FIELD_LIMITS } from "../_shared/enrich-field-limits.ts";
+import {
+  activeFieldPins,
+  readFieldPins,
+} from "../_shared/enrich-corrections.ts";
 import { gatherSerpSummary } from "../_shared/enrich-serp.ts";
 import { gatherInstagram, type InstagramResult } from "../_shared/enrich-instagram.ts";
 import { type FacebookResult, gatherFacebook } from "../_shared/enrich-facebook.ts";
@@ -304,12 +308,38 @@ serveEnrichStage("research", async (admin, _env, row) => {
   // re-enrich = override) — and stripped from `gathered.place` so the contents
   // stage never touches it. A null Google phone is never written (it would clobber
   // a Mesita-entered number). Email is never written by the enricher at all.
+  //
+  // Corrections (MESITA-1190) — a pinned phone outranks the Google spine.
+  // `phone` is a CorrectableField and the Reservationist calling a venue is
+  // exactly how we learn the listed number is dead, so this write is the second
+  // of the two persist doors that must stand down for a pin. (The other is S8
+  // in supabase-cron-enrich-place-contents, which owns hours/address/website/
+  // closes_at/reservation endpoint.) Pins live in `places.enrichment_sources`,
+  // which this stage never writes, so a plain read is enough here.
   if (basics.phone) {
-    const { error: phoneErr } = await admin
-      .from("places").update({ phone: basics.phone }).eq("id", projectId);
-    sources.contact_phone = phoneErr
-      ? { ok: false, error: phoneErr.message }
-      : { ok: true, source: "google" };
+    const { data: pinRow } = await admin
+      .from("places")
+      .select("enrichment_sources")
+      .eq("id", projectId)
+      .maybeSingle();
+    const pins = activeFieldPins(
+      readFieldPins((pinRow as { enrichment_sources?: unknown } | null)
+        ?.enrichment_sources),
+    );
+    if (pins.phone) {
+      sources.contact_phone = {
+        ok: true,
+        source: "pinned",
+        pinnedBy: pins.phone.source,
+        pinnedUntil: pins.phone.pinnedUntil,
+      };
+    } else {
+      const { error: phoneErr } = await admin
+        .from("places").update({ phone: basics.phone }).eq("id", projectId);
+      sources.contact_phone = phoneErr
+        ? { ok: false, error: phoneErr.message }
+        : { ok: true, source: "google" };
+    }
   }
   delete place.phone;
   delete place.email;
