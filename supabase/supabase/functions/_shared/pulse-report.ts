@@ -32,29 +32,33 @@
 //      one place where a wrong call quietly punishes a place for a fact about
 //      the world.
 //
-//   5. THE FLOOR CANNOT BE STAMPED. `seed` is function 0 and the type below
-//      excludes it, because the row EXISTING is the seed — there is no effect
-//      to observe. A seed beacon would also break every place created before
-//      it: no seed event, the walk stops at 0, and the whole catalog reads 0
-//      forever. Silently, since these writes swallow their own errors.
+//   5. SEED IS NEVER STAMPED — it is not an enrich function at all
+//      (MESITA-1253: seed is step 1 of CREATE, and the row existing IS the
+//      seed). It is not in PULSE_PIECES, so a `seed:` key fails to compile
+//      and an unknown-string cast falls through the META/label check below
+//      and writes nothing.
+//
+//   6. CREATE IS A CALLER OF THIS REPORTER TOO. The create function stamps
+//      the enrich functions it ran inline (pulse, details), so a fresh place
+//      reads 2/9 immediately and state accumulates across create and every
+//      later run under one rule.
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { reportEnrichmentStep } from "./enrich-pipeline.ts";
 import {
   PULSE_EXTRA_LABELS,
-  PULSE_FLOOR,
   PULSE_PIECE_META,
   type PulsePiece,
   type PulseStep,
 } from "./pulse-pieces.ts";
 
 /**
- * What a stage may stamp: any function EXCEPT the floor (rule 5).
- *
- * Excluded in the type rather than checked at runtime, so `seed:` fails to
- * compile instead of failing silently at 3am.
+ * What a caller may stamp: any enrich function or semantic function. `seed`
+ * is not among them by construction — it left PULSE_PIECES in MESITA-1253 —
+ * so the old floor-exclusion type collapsed into the union itself. The alias
+ * survives because call sites read better naming what they hold.
  */
-export type StampablePulseStep = Exclude<PulseStep, typeof PULSE_FLOOR>;
+export type StampablePulseStep = PulseStep;
 
 export type PieceOutcome = {
   status: "completed" | "failed";
@@ -90,12 +94,12 @@ export function pieceFailed(
 export async function reportPulsePieces(
   admin: SupabaseClient,
   projectId: string,
-  //   6. THE KEY IS `StampablePulseStep`, NOT `string`. A misspelled key used to
+  //   7. THE KEY IS `StampablePulseStep`, NOT `string`. A misspelled key used to
   //      compile, write nothing, and cap the ladder at the rung before it — with
   //      the run reporting success. `socail` for `social` pinned every place at
   //      3 and nothing in the type system, the tests or CI said a word
-  //      (MESITA-1219). The runtime guards below stay as the belt.
-  //   7. THE SEMANTIC FUNCTIONS ARE STAMPED HERE TOO, and marked `SX` rather
+  //      (MESITA-1219). The unknown-key check below stays as the belt.
+  //   8. THE SEMANTIC FUNCTIONS ARE STAMPED HERE TOO, and marked `SX` rather
   //      than given a rung. Name and Summary are real work with real outcomes,
   //      but counting either would make `enriched` fall when someone edits a
   //      name — the On-Update path fires the same machinery (MESITA-1243).
@@ -103,9 +107,6 @@ export async function reportPulsePieces(
 ): Promise<void> {
   for (const [key, outcome] of Object.entries(pieces)) {
     if (!outcome) continue;
-    // The belt for rule 5. The type already forbids the floor; this catches a
-    // cast, a spread from a wider record, or a hand-built object.
-    if (key === PULSE_FLOOR) continue;
     const meta = PULSE_PIECE_META[key as PulsePiece];
     const extraLabel = PULSE_EXTRA_LABELS[key as keyof typeof PULSE_EXTRA_LABELS];
     if (!meta && !extraLabel) continue;

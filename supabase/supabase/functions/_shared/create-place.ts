@@ -1,9 +1,21 @@
-// Shared create-place core — the pipeline every create path runs after its
-// caller-specific auth:
+// Shared create-place core — THE CREATE FUNCTION (MESITA-1253): one function,
+// synchronous, the front door. Its steps, in the spec's words:
 //
-//   early dedupe (google_place_id) → fetchGoogleBasics (identity spine,
-//   category='undefined') → savePlaceData (minimal 'generating' rows,
-//   in-process) → seedPlaceResearch (queue the Enricher pipeline).
+//   1 seed    → dedupe on google_place_id, mint the minimal 'generating' rows
+//   2 pulse   → the liveness gate: Google's businessStatus, read from the same
+//               Basics call — a place reported CLOSED_PERMANENTLY is REFUSED
+//               at the door, before any row exists. Don't seed corpses.
+//   3 details → the Google spine persisted (fetchGoogleBasics fields,
+//               category='undefined' until the Enricher infers the real one)
+//   · semantic summary → the first vector, queued in background
+//   · semantic name    → NOT BUILT (MESITA-1238)
+//
+// Pulse, Details and the semantics are SHARED with the ENRICH queue (functions
+// 1, 2 and the extras there) — create runs them inline, enrich runs them as
+// rungs. Create STAMPS what it ran (pulse, details) so a fresh place reads
+// 2/9 immediately and state accumulates across create and every later run
+// under one rule. Then it queues deep enrichment (functions 3-9 and re-runs of
+// 1-2) per the on_create trigger row.
 //
 // Callers: admin-web-create-project, business-web-create-project,
 // consumer-web-create-place (+ its consumer-web-schedule-project-creation
@@ -19,6 +31,7 @@ import {
 import { fetchGoogleBasics } from "./enrich-google-basics.ts";
 import { savePlaceData } from "./save-place.ts";
 import { queuePlaceEmbeddingsOnUpdate } from "./place-embeddings.ts";
+import { pieceDone, reportPulsePieces } from "./pulse-report.ts";
 import {
   type ChannelKey,
   evaluatePlaceForChannel,
@@ -124,6 +137,26 @@ export async function createMinimalPlace(opts: {
       body: { ok: false, code: basicsRes.code, error: basicsRes.error },
     };
   }
+
+  // ── CREATE step 2 — PULSE. Is this place still active? ──────────────────
+  // The same gate ENRICH runs at function 1, at the only moment it is cheaper
+  // still: before a single row is minted. CLOSED_PERMANENTLY refuses the
+  // create outright — a dead listing must not enter the catalog at all.
+  // CLOSED_TEMPORARILY passes (a refurb is a real business) and a silent
+  // Google passes (absence is a result). No stamp here on refusal: there is
+  // no place to stamp against, which is the point.
+  if (basicsRes.businessStatus === "CLOSED_PERMANENTLY") {
+    return {
+      ok: false,
+      status: 422,
+      body: {
+        ok: false,
+        code: "place_permanently_closed",
+        error:
+          "Google reports this place as permanently closed, so it can't be added to Mesita.",
+      },
+    };
+  }
   // ── Sourcing gate (quality). Evaluated here — after the Google fetch, before
   // any persist/enrichment — because family/rating/review signals only exist
   // once Google answers. One Basics call is spent on a rejected place; that's
@@ -162,6 +195,22 @@ export async function createMinimalPlace(opts: {
     return { ok: false, status: saveRes.status, body: saveRes.body };
   }
   const saved = saveRes.saved;
+
+  // ── CREATE stamps what it ran (MESITA-1253) ─────────────────────────────
+  // pulse: the gate above passed — the listing resolves and is not permanently
+  // closed. details: the spine the save just persisted IS the observed effect.
+  // Both best-effort (a stamp failure never fails a create); the summary stamp
+  // lands separately, where the vector write is observed (place-embeddings).
+  // Result: a fresh, healthy place reads enriched 2/9 the moment it exists.
+  await reportPulsePieces(admin, saved.project_id, {
+    pulse: pieceDone(
+      basicsRes.businessStatus
+        ? `Google reports this listing ${basicsRes.businessStatus}.`
+        : "Google states no business status; the listing resolves.",
+      { businessStatus: basicsRes.businessStatus, via: "create" },
+    ),
+    details: pieceDone("Google spine persisted at create.", { via: "create" }),
+  });
 
   // ── On-Create embeddings (Notion On-Create S4 "Compute Place Synthesis and
   // Embedding"): synthesize the first blurb + vector for the new place right

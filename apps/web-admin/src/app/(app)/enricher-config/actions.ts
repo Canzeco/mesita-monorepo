@@ -40,7 +40,7 @@ export type EnrichmentTriggersMeta = {
     key: string;
     label: string;
     /**
-     * Which of the TEN functions this purchase unit buys — a pointer into
+     * Which of the NINE enrich functions this purchase unit buys — a pointer into
      * Docs › Enrichment §A's numbering, never a numbering of its own. It held
      * stage S-numbers until MESITA-1243, which read as a rival ladder.
      */

@@ -249,12 +249,13 @@ export type AdminPlace = {
   seeded?: boolean;
   /** projects.status ∈ (active, lead) — a guest can reach the place at all. */
   listed?: boolean;
-  /** PULSE: how far the TEN-function queue got, 0-9. Absent on a payload that
+  /** PULSE: how far the NINE-function ENRICH queue got, 0-9 (0 = created).
+   *  Absent on a payload that
    *  predates it; the box renders "?" rather than a false 0. */
   enrich_pulse?: number;
   /** The ladder's length, from the server. */
   enrich_pulse_total?: number;
-  /** The function names, indexed BY FUNCTION NUMBER — labels[0] is Seed. */
+  /** Function names indexed BY FUNCTION NUMBER — labels[0] = the Created floor. */
   enrich_pulse_labels?: string[];
   /** Why the queue stopped where it did. Absent on an older payload. */
   enrich_pulse_blocked?: PulseBlock | null;
