@@ -88,12 +88,12 @@ The singleton rule is the one that silently breaks. Check it first.
     the registry. (The old `preserved_media_assets:true` return flag is gone — do not
     re-report it.)
 1.6 **Known-intentional exceptions** — assert they still hold, and report if flipped:
-    `profiles` (the view, renamed from `projects_view`) must be `security_invoker = true`. Two things that look broken and
-    are not (MESITA-1048, until a new engine ships): `consumer-web-recommend-swipe`
+    `profiles` (the view, renamed from `projects_view`) must be `security_invoker = true`. One thing that looks broken and
+    is not (MESITA-1048, until a new engine ships): `consumer-web-recommend-swipe`
     returns active places in random order and reads-then-discards `lat` / `lng` /
     `radiusKm` / `randomness` — slug and response shape are frozen for deployed Expo
-    binaries; and `places.manual_priority` has no reader, kept because dropping it means
-    rebuilding `profiles` and both INSTEAD OF triggers.
+    binaries. (`places.manual_priority` was the second such exception; MESITA-1055
+    dropped the column, so its absence is correct — do not report it as missing.)
 
 ## Scope 2 — Postgres health (imported standard) · P1
 
