@@ -15,6 +15,7 @@ import {
   readEFEnv,
 } from "../_shared/auth.ts";
 import { clean } from "../_shared/input.ts";
+import { writeConsumer } from "../_shared/consumer-doc.ts";
 import {
   buildProfilePatch,
   parseAvatarUrl,
@@ -89,14 +90,14 @@ Deno.serve(async (req) => {
       if (codeResult.error) {
         return json({ ok: false, error: `code_gen: ${codeResult.error.message}` }, 500);
       }
-      const inserted = await admin
-        .from("consumers")
-        .insert({ id: userId, code: codeResult.data as string })
-        .select("id, code")
-        .single();
-      if (!inserted.error) break;
-      if (inserted.error.code !== "23505") {
-        return json({ ok: false, error: `consumer_create: ${inserted.error.message}` }, 500);
+      const inserted = await writeConsumer(admin, {
+        mode: "insert",
+        id: userId,
+        patch: { code: codeResult.data as string },
+      });
+      if (inserted.ok) break;
+      if (inserted.code !== "23505") {
+        return json({ ok: false, error: `consumer_create: ${inserted.error}` }, 500);
       }
     }
   }
@@ -114,21 +115,21 @@ Deno.serve(async (req) => {
   if (!built.ok) return built.response;
   const patch = built.patch;
 
-  const update = await admin
-    .from("consumers")
-    .update(patch)
-    .eq("id", userId)
-    .select(CONSUMER_PROFILE_SELECT)
-    .single();
-  if (update.error) {
-    if (update.error.code === "23505") {
+  const update = await writeConsumer(admin, {
+    mode: "update",
+    id: userId,
+    patch,
+    select: CONSUMER_PROFILE_SELECT,
+  });
+  if (!update.ok) {
+    if (update.code === "23505") {
       return json(
         { ok: false, code: "phone_taken", error: "That phone is already on another account." },
         409,
       );
     }
-    return json({ ok: false, error: `consumer_update: ${update.error.message}` }, 500);
+    return json({ ok: false, error: `consumer_update: ${update.error}` }, 500);
   }
 
-  return json({ ok: true, consumer: update.data });
+  return json({ ok: true, consumer: update.row });
 });

@@ -21,6 +21,7 @@ import {
   getAuthedUser,
   readEFEnv,
 } from "../_shared/auth.ts";
+import { writeConsumer } from "../_shared/consumer-doc.ts";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
@@ -59,11 +60,13 @@ Deno.serve(async (req) => {
     }
   }
 
+  const SIGNIN_SELECT = "id, code, full_name, first_name, last_name, phone, birthday, sex";
+
   // Lazy-create consumers row. Race: two parallel sign-ins on a brand-new
   // account can both insert — handle 23505 by reading the row back.
   const existing = await admin
     .from("consumers")
-    .select("id, code, full_name, first_name, last_name, phone, birthday, sex")
+    .select(SIGNIN_SELECT)
     .eq("id", user.id)
     .maybeSingle();
   if (existing.error) {
@@ -77,26 +80,23 @@ Deno.serve(async (req) => {
       if (codeResult.error) {
         return json({ ok: false, error: `code_gen: ${codeResult.error.message}` }, 500);
       }
-      const inserted = await admin
-        .from("consumers")
-        .insert({
-          id: user.id,
-          code: codeResult.data as string,
-          phone: user.phone,
-        })
-        .select("id, code, full_name, first_name, last_name, phone, birthday, sex")
-        .single();
-      if (!inserted.error) {
-        consumerRow = inserted.data;
+      const inserted = await writeConsumer(admin, {
+        mode: "insert",
+        id: user.id,
+        patch: { code: codeResult.data as string, phone: user.phone },
+        select: SIGNIN_SELECT,
+      });
+      if (inserted.ok) {
+        consumerRow = inserted.row as typeof consumerRow;
         break;
       }
-      if (inserted.error.code !== "23505") {
-        return json({ ok: false, error: `consumer_create: ${inserted.error.message}` }, 500);
+      if (inserted.code !== "23505") {
+        return json({ ok: false, error: `consumer_create: ${inserted.error}` }, 500);
       }
       // Conflict — someone else inserted concurrently. Read it back.
       const refetch = await admin
         .from("consumers")
-        .select("id, code, full_name, first_name, last_name, phone, birthday, sex")
+        .select(SIGNIN_SELECT)
         .eq("id", user.id)
         .maybeSingle();
       if (refetch.data) {
@@ -107,16 +107,16 @@ Deno.serve(async (req) => {
   } else if (consumerRow.phone !== user.phone) {
     // Phone drifted (rare — admin manually changed auth.users.phone).
     // Re-sync.
-    const sync = await admin
-      .from("consumers")
-      .update({ phone: user.phone })
-      .eq("id", user.id)
-      .select("id, code, full_name, first_name, last_name, phone, birthday, sex")
-      .single();
-    if (sync.error) {
-      return json({ ok: false, error: `consumer_phone_sync: ${sync.error.message}` }, 500);
+    const sync = await writeConsumer(admin, {
+      mode: "update",
+      id: user.id,
+      patch: { phone: user.phone },
+      select: SIGNIN_SELECT,
+    });
+    if (!sync.ok) {
+      return json({ ok: false, error: `consumer_phone_sync: ${sync.error}` }, 500);
     }
-    consumerRow = sync.data;
+    consumerRow = sync.row as typeof consumerRow;
   }
 
   return json({

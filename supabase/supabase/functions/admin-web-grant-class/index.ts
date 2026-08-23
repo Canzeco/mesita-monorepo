@@ -39,6 +39,7 @@ import {
 } from "../_shared/auth.ts";
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { recomputeConsumerClass } from "../_shared/class-doors.ts";
+import { writeConsumer } from "../_shared/consumer-doc.ts";
 import {
   candidateLabel,
   classifyConsumerLookup,
@@ -216,15 +217,16 @@ Deno.serve(async (req) => {
       return json({ ok: false, error: `Unknown class: ${classKey}` }, 400);
     }
 
-    const grant = await admin
-      .from("consumers")
-      .update({
+    const grant = await writeConsumer(admin, {
+      mode: "update",
+      id: consumerId,
+      patch: {
         invitation_class_key: classKey,
         invitation_granted_at: new Date().toISOString(),
-      })
-      .eq("id", consumerId);
-    if (grant.error) {
-      return json({ ok: false, error: `grant: ${grant.error.message}` }, 500);
+      },
+    });
+    if (!grant.ok) {
+      return json({ ok: false, error: `grant: ${grant.error}` }, 500);
     }
 
     return finishWithRecompute(admin, consumerId, consumer);
@@ -244,12 +246,13 @@ Deno.serve(async (req) => {
     );
   }
 
-  const revoke = await admin
-    .from("consumers")
-    .update({ invitation_class_key: null, invitation_granted_at: null })
-    .eq("id", consumerId);
-  if (revoke.error) {
-    return json({ ok: false, error: `revoke: ${revoke.error.message}` }, 500);
+  const revoke = await writeConsumer(admin, {
+    mode: "update",
+    id: consumerId,
+    patch: { invitation_class_key: null, invitation_granted_at: null },
+  });
+  if (!revoke.ok) {
+    return json({ ok: false, error: `revoke: ${revoke.error}` }, 500);
   }
 
   return finishWithRecompute(admin, consumerId, consumer);

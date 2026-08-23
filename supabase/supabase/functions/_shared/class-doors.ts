@@ -24,6 +24,7 @@
 // class_origin is needed — the slot is derived state.
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
+import { writeConsumer } from "./consumer-doc.ts";
 
 export type ConsumerDoors = {
   /** Reach door — the follower count clears a classes.follower_threshold. */
@@ -188,12 +189,9 @@ export async function recomputeConsumerClass(
     ) {
       patch.class_granted_at = new Date().toISOString();
     }
-    const write = await admin
-      .from("consumers")
-      .update(patch)
-      .eq("id", consumerId);
-    if (write.error) {
-      throw new Error(`class_doors_write: ${write.error.message}`);
+    const write = await writeConsumer(admin, { mode: "update", id: consumerId, patch });
+    if (!write.ok) {
+      throw new Error(`class_doors_write: ${write.error}`);
     }
   }
 
