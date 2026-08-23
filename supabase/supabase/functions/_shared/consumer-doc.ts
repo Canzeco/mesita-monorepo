@@ -138,6 +138,27 @@ const CLASS_ORIGIN_VALUES = new Set([
   "subscription",
   "invitation",
 ]);
+// consumers.class_key IS a closed set — FK-enforced by Postgres
+// (consumers_tier_key_fkey, a "tier" rename fossil, so a plain grep for
+// "class" on constraint NAMES misses it), not a free string. Verified live:
+// public.classes holds exactly these 4 rows today. These are the LEGACY v11
+// bridge keys (Notion Classes v2 §2.7-2.8) — never compare one to a metal
+// name (bronze/silver/gold/diamond are earned display labels the DB never
+// stores; MESITA-1076 renames the table and retires this bridge, paused
+// pending Pato's own "not shipping this in-session" hold on that issue).
+// Two other files hand-type this identical 4-value set today —
+// admin-web-update-rewards-config/{promos-v11-normalize,
+// rewards-config-normalize}.ts — pre-existing drift risk this issue
+// (MESITA-1282) is scoped to the guard test, not to. Both COULD safely
+// import a shared export from here (no circular dependency — neither file
+// is imported by consumer-doc.ts); left as a documented follow-up rather
+// than touching two live pricing files in a guard-test-scoped change.
+const CLASS_KEY_VALUES = new Set([
+  "standard",
+  "influencer",
+  "premium",
+  "aura",
+]);
 const CODE_RE = /^[0-9]{4}-[0-9]{4}$/;
 const INSTAGRAM_HANDLE_RE = /^[a-z0-9._]{1,30}$/;
 
@@ -228,8 +249,11 @@ export function validateConsumerPatch(input: unknown): ConsumerValidationResult 
   }
   if ("class_key" in raw) {
     const v = raw.class_key;
-    if (typeof v !== "string" || v.length === 0) {
-      return { ok: false, error: "class_key must be a non-empty string" };
+    if (typeof v !== "string" || !CLASS_KEY_VALUES.has(v)) {
+      return {
+        ok: false,
+        error: `class_key must be one of ${[...CLASS_KEY_VALUES].join(", ")}`,
+      };
     }
     patch.class_key = v;
   }
@@ -253,8 +277,13 @@ export function validateConsumerPatch(input: unknown): ConsumerValidationResult 
   }
   if ("invitation_class_key" in raw) {
     const v = raw.invitation_class_key;
-    if (!isNullableString(v)) {
-      return { ok: false, error: "invitation_class_key must be a string or null" };
+    // Same FK target as class_key (consumers_invitation_class_key_fkey ->
+    // classes(key)) — closed set here too, not just non-null-vs-null.
+    if (v !== null && (typeof v !== "string" || !CLASS_KEY_VALUES.has(v))) {
+      return {
+        ok: false,
+        error: `invitation_class_key must be null or one of ${[...CLASS_KEY_VALUES].join(", ")}`,
+      };
     }
     patch.invitation_class_key = v;
   }
