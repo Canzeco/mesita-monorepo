@@ -70,7 +70,9 @@ The singleton rule is the one that silently breaks. Check it first.
     `_shared/*`). Both look fine in the dashboard.
 1.3 **Migration ledger.** `list_migrations` vs `supabase/supabase/migrations/*` (250 files).
     Flag: file with no ledger row (unapplied) · ledger row with no file (applied off-repo,
-    the dangerous one) · version ordering anomalies.
+    the dangerous one) · version ordering anomalies. Note what this check CANNOT see: a
+    ledger row proves a version was STAMPED, never that its SQL ran. Whether the statements
+    actually landed is 3.11.
 1.4 **Schema drift.** Live tables/columns/enums/views/functions vs what the migrations
     reconstruct. Any object in the DB that no migration creates = drift.
 1.5 **`admin_reset_database` / `admin_reset_preserve` coverage.** Survivors are DATA in
@@ -151,6 +153,27 @@ The business-truth layer. These are the "and shit" checks — pairs of facts tha
     `scheduled_project_creations` leak · `place_enrichment_events` unbounded growth.
 3.10 **Enrichment state machine.** Places stuck mid-pipeline beyond a sane TTL · step/tier
     values regressing · enrichment rows with no terminal state.
+
+3.11 **Ledger says applied, live says otherwise.** A ledger row records INTENT, not execution:
+    the "MCP apply + stamped row" fallback can register a version whose SQL never ran
+    (MESITA-1169 — `20260817110000_class_reach_thresholds` sat in the remote ledger while
+    `influencer` still read 2000, under a consumer app already advertising "1,000+"). Skipped
+    DDL breaks loudly at the next query; a skipped **data-only** migration is silent forever,
+    which is why this is its own check and not part of 1.3.
+    **Derive the set, never keep a list here:** migrations whose body matches
+    `update|insert into public.` and which create no table or function. For each, read the
+    values it asserts and re-check them against live. The set grows with every config
+    migration, so re-derive each run — an enumerated list in this file would rot into a
+    false all-clear.
+    Two traps before calling drift, both hit on the 2026-08-23 sweep: the column may have
+    MOVED (`classes.price_cents` → `consumer_plans`, `20260818093000`) and the table may have
+    been RENAMED (`app_settings` → `app_config`). Confirm the destination holds the value
+    before reporting a miss. An assertion against a table that no longer exists is history,
+    not a finding.
+    Severity: **P0** when a shipped surface already advertises the asserted value — the DB is
+    breaking a promise the product has made to a guest. Otherwise P1.
+    Last full sweep: 2026-08-23, clean (8 data-only migrations, every live-checkable
+    assertion matched).
 
 ## Scope 4 — Config enforcement ("unenforced config = bug") · P1
 
