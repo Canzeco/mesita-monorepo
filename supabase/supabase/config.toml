@@ -309,9 +309,6 @@ verify_jwt = true
 [functions.check-web-get-ticket]
 verify_jwt = false
 
-[functions.check-web-submit-bill]
-verify_jwt = false
-
 [functions.check-web-mark-paid]
 verify_jwt = false
 
@@ -461,9 +458,6 @@ verify_jwt = true
 
 # Ticket workflow — business-web-create-ticket retired by Tickets v2
 # (MESITA-806): guests create their own tickets (consumer-web-create-ticket).
-[functions.business-web-submit-ticket-bill]
-verify_jwt = true
-
 [functions.business-web-mark-ticket-paid]
 verify_jwt = true
 
