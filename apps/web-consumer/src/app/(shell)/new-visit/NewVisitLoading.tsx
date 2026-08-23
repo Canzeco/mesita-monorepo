@@ -1,15 +1,23 @@
 import { Skeleton } from "@/components/shared";
+import { PlacePickListSkeleton } from "@/components/consumer/rewards/place-pick-skeleton";
 
-// The New Visit page's ONE skeleton language. NewVisitLoading is the dynamic()
-// fallback for the whole page client (banner + passport card + tickets);
-// TicketCardSkeleton mirrors the TicketVisitShell silhouette and is reused
-// by the tickets pending state and NewVisitClient's tickets fallback, so every
-// loading frame on this page looks like the content it becomes.
+// The New Visit page's skeleton language.
 //
-// This module stays a leaf (Skeleton only) on purpose: NewVisitClient and the
-// ticket stack import from it, and pulling anything heavier in here would
-// drag the ticket stack into the statically-bundled page chunk and defeat
-// the dynamic() splits.
+// NewVisitLoading is the dynamic() fallback for the whole page client AND the
+// route-level fallback, so it must mirror NewVisitClient: a shrink-0 search
+// header (SearchBar + the Inbox link) over a scrolling column of place rows.
+// It previously drew a passport card and two ticket cards — the silhouette of
+// a design this page has not had since tickets moved to THE TICKET and
+// Inbox > Visits. Nothing caught it because a skeleton has no test and no
+// grep signature (MESITA-1229).
+//
+// This module stays a LEAF on purpose: it imports Skeleton and the place-list
+// skeleton leaf, never PlacePickList itself. Pulling the real list in here
+// would drag its fetch layer into the statically-bundled page chunk and defeat
+// the dynamic() split.
+//
+// TicketCardSkeleton mirrors the TicketVisitShell silhouette and is consumed
+// by Inbox > Visits, which is the only surface that still stacks tickets.
 
 /** Placeholder matching TicketVisitShell: thumbnail + 3 pills + stepper band. */
 export function TicketCardSkeleton() {
@@ -30,31 +38,21 @@ export function TicketCardSkeleton() {
   );
 }
 
-/** Tickets list placeholder: section header line + two ticket cards. */
-function TicketListSkeleton() {
-  return (
-    <div className="flex flex-col gap-3">
-      <div className="flex items-baseline justify-between gap-2 px-0.5">
-        <Skeleton className="h-4 w-16" />
-        <Skeleton className="h-3 w-24" />
-      </div>
-      <TicketCardSkeleton />
-      <TicketCardSkeleton />
-    </div>
-  );
-}
-
 export function NewVisitLoading() {
-  // Silhouette of the single New Visit page: the Mesita passport card (QR +
-  // how-it-works, two columns), then the tickets stack. The per-section
-  // skeletons take over once the client mounts.
   return (
-    <div className="flex h-full min-h-0 flex-1 flex-col px-4 pt-4 pb-6">
-      {/* Mesita passport card (MyQrCard) */}
-      <Skeleton className="rounded-panel h-[300px]" />
-      {/* Tickets stack */}
-      <div className="mt-4">
-        <TicketListSkeleton />
+    <div className="flex h-full min-h-0 flex-1 flex-col" aria-hidden>
+      {/* Search header — same shrink-0 bordered band NewVisitClient renders:
+          a h-12 rounded-full SearchBar, then the centred Inbox link. */}
+      <div className="border-border bg-background/90 shrink-0 border-b px-4 pt-3 pb-2.5">
+        <Skeleton className="h-12 rounded-full" />
+        <div className="mt-2 flex justify-center">
+          <Skeleton className="h-3.5 w-48 rounded" />
+        </div>
+      </div>
+      {/* Scroll body — the place list, drawn by the shared leaf so this frame
+          and the list's own pending frame cannot diverge. */}
+      <div className="flex min-h-0 flex-1 flex-col gap-3.5 px-4 pt-4 pb-6">
+        <PlacePickListSkeleton />
       </div>
     </div>
   );
