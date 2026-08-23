@@ -81,6 +81,8 @@ export type Database = {
           auto_verify_ai_email: boolean
           auto_verify_video: boolean
           create_places_as_verified: boolean
+          discovery_config: Json
+          enrichment_triggers: Json | null
           id: number
           memo_greeting: string
           memo_instructions: string
@@ -96,6 +98,7 @@ export type Database = {
           sourcing_config: Json
           updated_at: string
           updated_by: string | null
+          visits_config: Json | null
         }
         Insert: {
           agents_config?: Json
@@ -123,6 +126,8 @@ export type Database = {
           auto_verify_ai_email?: boolean
           auto_verify_video?: boolean
           create_places_as_verified?: boolean
+          discovery_config?: Json
+          enrichment_triggers?: Json | null
           id?: number
           memo_greeting?: string
           memo_instructions?: string
@@ -138,6 +143,7 @@ export type Database = {
           sourcing_config?: Json
           updated_at?: string
           updated_by?: string | null
+          visits_config?: Json | null
         }
         Update: {
           agents_config?: Json
@@ -165,6 +171,8 @@ export type Database = {
           auto_verify_ai_email?: boolean
           auto_verify_video?: boolean
           create_places_as_verified?: boolean
+          discovery_config?: Json
+          enrichment_triggers?: Json | null
           id?: number
           memo_greeting?: string
           memo_instructions?: string
@@ -180,6 +188,7 @@ export type Database = {
           sourcing_config?: Json
           updated_at?: string
           updated_by?: string | null
+          visits_config?: Json | null
         }
         Relationships: []
       }
@@ -266,6 +275,53 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "consumers"
             referencedColumns: ["id"]
+          },
+        ]
+      }
+      consumer_invite_codes: {
+        Row: {
+          batch_label: string | null
+          claimed_at: string | null
+          claimed_by: string | null
+          class_key: string
+          code: string
+          created_at: string
+          created_by: string | null
+          expires_at: string | null
+          id: string
+          note: string | null
+        }
+        Insert: {
+          batch_label?: string | null
+          claimed_at?: string | null
+          claimed_by?: string | null
+          class_key: string
+          code: string
+          created_at?: string
+          created_by?: string | null
+          expires_at?: string | null
+          id?: string
+          note?: string | null
+        }
+        Update: {
+          batch_label?: string | null
+          claimed_at?: string | null
+          claimed_by?: string | null
+          class_key?: string
+          code?: string
+          created_at?: string
+          created_by?: string | null
+          expires_at?: string | null
+          id?: string
+          note?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "consumer_invite_codes_class_key_fkey"
+            columns: ["class_key"]
+            isOneToOne: false
+            referencedRelation: "classes"
+            referencedColumns: ["key"]
           },
         ]
       }
@@ -700,6 +756,75 @@ export type Database = {
           },
         ]
       }
+      place_enrichment_runs: {
+        Row: {
+          actor_user_id: string | null
+          cost_charges: Json | null
+          cost_usd: number | null
+          end_reason: string | null
+          ended_at: string | null
+          entry_stage: string
+          id: string
+          meta: Json
+          outcome: string | null
+          place_id: string
+          seeded_by: string
+          stage_reached: string | null
+          started_at: string
+          subprocesses: Json | null
+          trigger_key: string
+        }
+        Insert: {
+          actor_user_id?: string | null
+          cost_charges?: Json | null
+          cost_usd?: number | null
+          end_reason?: string | null
+          ended_at?: string | null
+          entry_stage?: string
+          id?: string
+          meta?: Json
+          outcome?: string | null
+          place_id: string
+          seeded_by: string
+          stage_reached?: string | null
+          started_at?: string
+          subprocesses?: Json | null
+          trigger_key: string
+        }
+        Update: {
+          actor_user_id?: string | null
+          cost_charges?: Json | null
+          cost_usd?: number | null
+          end_reason?: string | null
+          ended_at?: string | null
+          entry_stage?: string
+          id?: string
+          meta?: Json
+          outcome?: string | null
+          place_id?: string
+          seeded_by?: string
+          stage_reached?: string | null
+          started_at?: string
+          subprocesses?: Json | null
+          trigger_key?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "place_enrichment_runs_place_id_fkey"
+            columns: ["place_id"]
+            isOneToOne: false
+            referencedRelation: "places"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "place_enrichment_runs_place_id_fkey"
+            columns: ["place_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       place_media_assets: {
         Row: {
           analysis_text: string | null
@@ -782,8 +907,10 @@ export type Database = {
           gathered: Json | null
           google_place_id: string
           place_id: string
+          run_id: string | null
           stage: string
           status: string
+          subprocesses: Json | null
           updated_at: string
         }
         Insert: {
@@ -795,8 +922,10 @@ export type Database = {
           gathered?: Json | null
           google_place_id: string
           place_id: string
+          run_id?: string | null
           stage?: string
           status?: string
+          subprocesses?: Json | null
           updated_at?: string
         }
         Update: {
@@ -808,8 +937,10 @@ export type Database = {
           gathered?: Json | null
           google_place_id?: string
           place_id?: string
+          run_id?: string | null
           stage?: string
           status?: string
+          subprocesses?: Json | null
           updated_at?: string
         }
         Relationships: [
@@ -877,6 +1008,9 @@ export type Database = {
           embedding: string | null
           embedding_source_hash: string | null
           embedding_source_text: string | null
+          enrich_every_days: number | null
+          enrich_mode: string
+          enrich_next_at: string | null
           enriched_at: string | null
           enrichment_sources: Json | null
           established_year: number | null
@@ -913,6 +1047,8 @@ export type Database = {
           mesita_visitor_count: number | null
           name: string
           opentable_url: string | null
+          order_channel: string | null
+          order_target: string | null
           phone: string | null
           photos: string[]
           pitch: string | null
@@ -920,8 +1056,10 @@ export type Database = {
           price_level: number | null
           products: Json | null
           reddit_url: string | null
+          reservation_channel: string | null
           reservation_contacts: Json
           reservation_endpoint: string | null
+          reservation_target: string | null
           resy_url: string | null
           story: string | null
           tags: string[]
@@ -956,6 +1094,9 @@ export type Database = {
           embedding?: string | null
           embedding_source_hash?: string | null
           embedding_source_text?: string | null
+          enrich_every_days?: number | null
+          enrich_mode?: string
+          enrich_next_at?: string | null
           enriched_at?: string | null
           enrichment_sources?: Json | null
           established_year?: number | null
@@ -992,6 +1133,8 @@ export type Database = {
           mesita_visitor_count?: number | null
           name?: string
           opentable_url?: string | null
+          order_channel?: string | null
+          order_target?: string | null
           phone?: string | null
           photos?: string[]
           pitch?: string | null
@@ -999,8 +1142,10 @@ export type Database = {
           price_level?: number | null
           products?: Json | null
           reddit_url?: string | null
+          reservation_channel?: string | null
           reservation_contacts?: Json
           reservation_endpoint?: string | null
+          reservation_target?: string | null
           resy_url?: string | null
           story?: string | null
           tags?: string[]
@@ -1035,6 +1180,9 @@ export type Database = {
           embedding?: string | null
           embedding_source_hash?: string | null
           embedding_source_text?: string | null
+          enrich_every_days?: number | null
+          enrich_mode?: string
+          enrich_next_at?: string | null
           enriched_at?: string | null
           enrichment_sources?: Json | null
           established_year?: number | null
@@ -1071,6 +1219,8 @@ export type Database = {
           mesita_visitor_count?: number | null
           name?: string
           opentable_url?: string | null
+          order_channel?: string | null
+          order_target?: string | null
           phone?: string | null
           photos?: string[]
           pitch?: string | null
@@ -1078,8 +1228,10 @@ export type Database = {
           price_level?: number | null
           products?: Json | null
           reddit_url?: string | null
+          reservation_channel?: string | null
           reservation_contacts?: Json
           reservation_endpoint?: string | null
+          reservation_target?: string | null
           resy_url?: string | null
           story?: string | null
           tags?: string[]
@@ -1400,11 +1552,13 @@ export type Database = {
           plan_live_at: string | null
           premium_rate: number | null
           promo_paused_until: string | null
+          require_bill: boolean
           requires_story: boolean
           segmentation_advanced_enabled: boolean
           segmentation_basic_enabled: boolean
           slug: string
           staff_channel_pinged_at: string | null
+          staff_pin: string | null
           status: Database["public"]["Enums"]["project_status"]
           strike_count: number
           updated_at: string
@@ -1430,11 +1584,13 @@ export type Database = {
           plan_live_at?: string | null
           premium_rate?: number | null
           promo_paused_until?: string | null
+          require_bill?: boolean
           requires_story?: boolean
           segmentation_advanced_enabled?: boolean
           segmentation_basic_enabled?: boolean
           slug: string
           staff_channel_pinged_at?: string | null
+          staff_pin?: string | null
           status?: Database["public"]["Enums"]["project_status"]
           strike_count?: number
           updated_at?: string
@@ -1460,11 +1616,13 @@ export type Database = {
           plan_live_at?: string | null
           premium_rate?: number | null
           promo_paused_until?: string | null
+          require_bill?: boolean
           requires_story?: boolean
           segmentation_advanced_enabled?: boolean
           segmentation_basic_enabled?: boolean
           slug?: string
           staff_channel_pinged_at?: string | null
+          staff_pin?: string | null
           status?: Database["public"]["Enums"]["project_status"]
           strike_count?: number
           updated_at?: string
@@ -1917,6 +2075,7 @@ export type Database = {
           story_submitted_at: string | null
           story_verified_at: string | null
           story_verified_by: string | null
+          ticket_code: string | null
           tip_cents: number | null
           tip_pct: number | null
           total_cents: number | null
@@ -1965,6 +2124,7 @@ export type Database = {
           story_submitted_at?: string | null
           story_verified_at?: string | null
           story_verified_by?: string | null
+          ticket_code?: string | null
           tip_cents?: number | null
           tip_pct?: number | null
           total_cents?: number | null
@@ -2013,6 +2173,7 @@ export type Database = {
           story_submitted_at?: string | null
           story_verified_at?: string | null
           story_verified_by?: string | null
+          ticket_code?: string | null
           tip_cents?: number | null
           tip_pct?: number | null
           total_cents?: number | null
@@ -2110,6 +2271,8 @@ export type Database = {
           monthly_promo_cap: number | null
           name: string | null
           opentable_url: string | null
+          order_channel: string | null
+          order_target: string | null
           phone: string | null
           photos: string[] | null
           pitch: string | null
@@ -2123,8 +2286,10 @@ export type Database = {
           promo_paused_until: string | null
           reddit_url: string | null
           requires_story: boolean | null
+          reservation_channel: string | null
           reservation_contacts: Json | null
           reservation_endpoint: string | null
+          reservation_target: string | null
           resy_url: string | null
           segmentation_advanced_enabled: boolean | null
           segmentation_basic_enabled: boolean | null
@@ -2168,10 +2333,50 @@ export type Database = {
       }
       admin_revoke_admin: { Args: { p_email: string }; Returns: number }
       bump_reservation_call_counter: { Args: { pid: string }; Returns: number }
+      close_place_enrichment_run: {
+        Args: {
+          p_charges?: Json
+          p_cost_usd?: number
+          p_meta?: Json
+          p_outcome: string
+          p_reason?: string
+          p_run_id: string
+          p_stage?: string
+        }
+        Returns: boolean
+      }
+      close_stale_place_enrichment_runs: { Args: never; Returns: number }
       find_user_id_by_phone: { Args: { phone_digits: string }; Returns: string }
       generate_consumer_code: { Args: never; Returns: string }
       is_project_member: { Args: { p_project_id: string }; Returns: boolean }
       is_super_admin: { Args: never; Returns: boolean }
+      open_place_enrichment_run: {
+        Args: {
+          p_actor_user_id?: string
+          p_cooldown_hours?: number
+          p_entry_stage?: string
+          p_meta?: Json
+          p_place_id: string
+          p_seeded_by: string
+          p_subprocesses?: Json
+          p_trigger: string
+        }
+        Returns: {
+          blocked: string
+          retry_after: string
+          run_id: string
+        }[]
+      }
+      place_enrich_events_latest: {
+        Args: { p_place_ids: string[] }
+        Returns: {
+          created_at: string
+          place_id: string
+          status: string
+          step_name: string
+        }[]
+      }
+      queue_due_place_enrichments: { Args: never; Returns: number }
       refresh_place_mesita_reviews: {
         Args: { p_project_id: string }
         Returns: undefined
