@@ -6,12 +6,13 @@
 // rows (approved / rejected) are kept in the list as history.
 //
 // Queue surface: the admin only ever sees rows that need a human
-// decision. That's all video rows (regardless of auto_verify_video,
-// since decided history matters too) plus ai_call rows where the
-// caller successfully entered the OTP but auto_verify_ai_call was off
-// at that moment (payload.codeVerifiedAt set). Phone rows where the
-// code hasn't been entered yet stay invisible — they're not the
-// admin's concern.
+// decision. That's all video rows (decided history matters too — there
+// was never an auto-verify path for video that could skip this queue,
+// and the auto_verify_video knob that once claimed otherwise was retired
+// as dead config, MESITA-1248) plus ai_call rows where the caller
+// successfully entered the OTP but auto_verify_ai_call was off at that
+// moment (payload.codeVerifiedAt set). Phone rows where the code hasn't
+// been entered yet stay invisible — they're not the admin's concern.
 //
 // Per-place mode: pass projectId to get ONE place's verification history
 // instead (newest first, method gate skipped — the inspector wants the

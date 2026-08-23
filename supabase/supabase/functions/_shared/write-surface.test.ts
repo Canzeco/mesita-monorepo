@@ -223,7 +223,6 @@ const CONFIG_ALLOWLIST = [
   "_shared/otp.ts",
   "_shared/save-place.ts",
   "_shared/write-config.ts",
-  "admin-web-set-auto-verify/index.ts",
   "admin-web-update-discovery-config/index.ts",
   "admin-web-update-enricher-config/index.ts",
   "admin-web-update-models-config/index.ts",
