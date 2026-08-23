@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Check, FlaskConical, Loader2, Sparkles } from "lucide-react";
 
 import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
+import { Button } from "@/components/ui/button";
 import { PlanPreviewToggle } from "@/components/consumer/me/demo/PlanPreviewToggle";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { apiCreateSubscriptionCheckout } from "@/lib/api/subscription";
@@ -257,11 +258,12 @@ export function PlanModal({
               Premium stays through the end of the current billing period.
             </p>
           ) : (
-            <button
+            <Button
               type="button"
+              size="lg"
               onClick={() => void startCheckout()}
               disabled={loading}
-              className="bg-pink-gradient flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl text-sm font-semibold text-white transition active:scale-[0.99] disabled:opacity-70"
+              className="w-full text-sm font-semibold disabled:opacity-70"
             >
               {loading ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -269,7 +271,7 @@ export function PlanModal({
                 <Sparkles className="h-4 w-4" />
               )}
               {loading ? "Starting checkout…" : "Continue to checkout"}
-            </button>
+            </Button>
           )}
 
           {!isPremium && (

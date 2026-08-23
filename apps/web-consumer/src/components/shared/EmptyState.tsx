@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import type { LucideIcon } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 // Shared empty state — closes the design-map debt note ("no shared
@@ -54,20 +55,20 @@ export function EmptyState({
       )}
       {action &&
         (action.href ? (
-          <Link
-            href={action.href}
-            className="bg-pink-gradient shadow-glow mt-5 inline-flex h-11 items-center justify-center rounded-full px-6 text-sm font-semibold text-white transition active:scale-[0.98]"
+          <Button
+            asChild
+            className="shadow-glow mt-5 text-sm font-semibold active:scale-[0.98]"
           >
-            {action.label}
-          </Link>
+            <Link href={action.href}>{action.label}</Link>
+          </Button>
         ) : (
-          <button
+          <Button
             type="button"
             onClick={action.onClick}
-            className="bg-pink-gradient shadow-glow mt-5 inline-flex h-11 items-center justify-center rounded-full px-6 text-sm font-semibold text-white transition active:scale-[0.98]"
+            className="shadow-glow mt-5 text-sm font-semibold active:scale-[0.98]"
           >
             {action.label}
-          </button>
+          </Button>
         ))}
     </div>
   );

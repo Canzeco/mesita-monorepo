@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 
 import { formatCurrency } from "@/lib/api/profile";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 // ── Shared receipt row (mock `Row`): one bordered line, label left, number
@@ -254,13 +255,14 @@ export function StepBill({
         </p>
       ) : null}
 
-      <button
+      <Button
         type="button"
+        size="lg"
         disabled={subtotalCents <= 0 || busy}
         onClick={() =>
           onSave({ subtotalCents, tipPct: pct, tipCustomCents: customCents })
         }
-        className="bg-pink-gradient shadow-glow flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl text-sm font-bold text-white transition active:scale-[0.99] disabled:opacity-45 disabled:shadow-none"
+        className="shadow-glow w-full text-sm font-bold disabled:opacity-45 disabled:shadow-none"
       >
         {busy ? <Loader2 className="size-4 animate-spin" /> : null}
         {subtotalCents <= 0
@@ -268,7 +270,7 @@ export function StepBill({
           : fixActive
             ? "Send the corrected bill"
             : "Save the bill"}
-      </button>
+      </Button>
 
       <TipHonesty subtotalCents={subtotalCents} tipPct={pct} />
     </div>
@@ -369,15 +371,16 @@ export function StepPay({
         </p>
       ) : null}
 
-      <button
+      <Button
         type="button"
+        size="lg"
         disabled={busy}
         onClick={onConfirmAtPlace}
-        className="bg-pink-gradient shadow-glow flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl text-sm font-bold text-white transition active:scale-[0.99] disabled:opacity-45"
+        className="shadow-glow w-full text-sm font-bold disabled:opacity-45"
       >
         {busy ? <Loader2 className="size-4 animate-spin" /> : null}
         I&apos;m paying {formatCurrency(amountDueCents)} at the register
-      </button>
+      </Button>
 
       <TipHonesty subtotalCents={subtotalCents} tipPct={tipPct} />
     </div>

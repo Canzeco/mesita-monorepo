@@ -5,6 +5,7 @@ import { BadgeCheck, KeyRound } from "lucide-react";
 
 import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
 import { Spinner } from "@/components/shared";
+import { Button } from "@/components/ui/button";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { apiClaimInviteCode } from "@/lib/api/profile";
 import { classProperLabel, identityForClassKey } from "@/lib/consumer-data";
@@ -97,11 +98,12 @@ export function InvitePinModal({
             {digits.length}/{PIN_LENGTH}
           </p>
 
-          <button
+          <Button
             type="button"
+            size="sm"
             onClick={claim}
             disabled={!canClaim}
-            className="bg-pink-gradient mt-3 flex min-h-11 w-full items-center justify-center gap-2 rounded-lg py-3 text-sm font-semibold text-white transition disabled:opacity-60"
+            className="mt-3 w-full text-sm font-semibold"
           >
             {claiming ? (
               <Spinner size="sm" className="border-white/40 border-t-white" />
@@ -109,7 +111,7 @@ export function InvitePinModal({
               <BadgeCheck className="h-4 w-4" />
             )}
             {claiming ? "Checking…" : "Redeem"}
-          </button>
+          </Button>
         </section>
 
         <p className="text-muted-foreground type-label mt-3 text-center leading-snug">

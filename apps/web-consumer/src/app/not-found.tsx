@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Compass, MoveLeft } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 // Global 404 for the consumer app. Any path that doesn't match a route
 // renders here (wrapped in the root layout only — no shell chrome), so a
@@ -31,13 +32,15 @@ export default function NotFound() {
           The link may be broken or the page may have moved. Let&apos;s get you
           back to Mesita.
         </p>
-        <Link
-          href="/"
-          className="bg-pink-gradient shadow-glow mt-7 inline-flex h-11 items-center justify-center gap-2 rounded-full px-6 text-sm font-semibold text-white transition active:scale-[0.99]"
+        <Button
+          asChild
+          className="shadow-glow mt-7 text-sm font-semibold"
         >
-          <MoveLeft className="h-4 w-4" />
-          Back to Mesita
-        </Link>
+          <Link href="/">
+            <MoveLeft className="h-4 w-4" />
+            Back to Mesita
+          </Link>
+        </Button>
       </div>
     </main>
   );

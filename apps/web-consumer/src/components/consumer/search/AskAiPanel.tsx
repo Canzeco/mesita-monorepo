@@ -16,6 +16,7 @@ import { Z_IN_FRAME_OVERLAY } from "@/lib/z-index";
 import { useEffect, useRef, useState } from "react";
 import { ArrowUp, RotateCcw, Sparkles, X } from "lucide-react";
 import { Spinner } from "@/components/shared";
+import { Button } from "@/components/ui/button";
 import type { Place } from "@/lib/api/places";
 import type { PlacePrediction } from "@/lib/api/place-search";
 import type { MemoAnswer, MemoTurn } from "@/lib/api/memo";
@@ -261,14 +262,15 @@ export function AskAiPanel({
             placeholder="Ask anything…"
             className="placeholder:text-muted-foreground min-w-0 flex-1 bg-transparent text-sm outline-none"
           />
-          <button
+          <Button
             type="submit"
+            size="icon"
             disabled={!input.trim() || thinking}
             aria-label="Send"
-            className="bg-pink-gradient flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-white transition active:scale-95 disabled:opacity-40"
+            className="shrink-0 active:scale-95 disabled:opacity-40"
           >
             <ArrowUp className="h-4 w-4" />
-          </button>
+          </Button>
         </form>
       </div>
     </div>

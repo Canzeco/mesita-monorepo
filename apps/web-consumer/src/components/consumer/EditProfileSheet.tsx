@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 import Image from "next/image";
 import { Camera } from "lucide-react";
 import { BirthdayPicker, Spinner } from "@/components/shared";
+import { Button } from "@/components/ui/button";
 import { DefaultAvatar } from "@/components/consumer/DefaultAvatar";
 import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
 import {
@@ -250,20 +251,18 @@ export function EditProfileSheet({
           >
             Cancel
           </button>
-          <button
+          <Button
             type="button"
+            size="sm"
             onClick={() => void save()}
             disabled={!dirty || saving || uploadingPhoto}
-            className={cn(
-              "bg-pink-gradient flex flex-1 items-center justify-center gap-2 rounded-lg py-3 text-sm font-semibold text-white transition",
-              (!dirty || saving || uploadingPhoto) && "opacity-60",
-            )}
+            className="flex-1 text-sm font-semibold"
           >
             {saving && (
               <Spinner size="sm" className="border-white/40 border-t-white" />
             )}
             {saving ? "Saving…" : "Save"}
-          </button>
+          </Button>
         </div>
       </div>
     </LocalSheet>
