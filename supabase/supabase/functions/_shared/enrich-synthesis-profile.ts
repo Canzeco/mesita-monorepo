@@ -1,4 +1,5 @@
 import { ENRICH_DESCRIPTION_MAX } from "./enrich-config.ts";
+import { PlaceDetailsSchema, PopularTimesSchema } from "./place-jsonb-schemas.ts";
 
 export type ProfileResult = {
   zone?: string | null;
@@ -103,12 +104,24 @@ export function applyProfileToUpdate(
   if (description) {
     update.description = formatDescriptionParagraphs(description).slice(0, ENRICH_DESCRIPTION_MAX);
   }
+  // MESITA-1247: validate before it lands on the row. json_object mode only
+  // *describes* the schema to the model — it can and does return off-type or
+  // extra fields — so a malformed blob is dropped rather than trusted, per
+  // this function's own rule above ("only sets a field when synthesis
+  // actually produced a USABLE value" — a shape the validator rejects isn't
+  // usable). Writes back the ORIGINAL parsed value on success, not the
+  // schema's normalized output — object() always returns every shape key
+  // (nullable ones as explicit null), which would silently reshape a
+  // legitimate partial object into a wider one; this only needs a gate, not
+  // a rewrite, and a byte-identical write is the smaller behaviour change.
   if (parsed.details && typeof parsed.details === "object" && !Array.isArray(parsed.details)) {
-    update.details = parsed.details;
+    const validated = PlaceDetailsSchema.parse(parsed.details);
+    if (validated.ok) update.details = parsed.details;
   }
   // products.menu is no longer synthesised — the website (its only source) is no
   // longer scraped. Existing menus on the place are left untouched.
   if (Array.isArray(parsed.popular_times) && parsed.popular_times.length > 0) {
-    update.popular_times = parsed.popular_times;
+    const validated = PopularTimesSchema.parse(parsed.popular_times);
+    if (validated.ok) update.popular_times = parsed.popular_times;
   }
 }

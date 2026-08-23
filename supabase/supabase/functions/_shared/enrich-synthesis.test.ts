@@ -75,6 +75,22 @@ Deno.test("applyProfileToUpdate: happy path unchanged (trimmed, capped, typed)",
   assertEquals(update.popular_times, [{ day: "Fri", range: "8-11pm" }]);
 });
 
+Deno.test("applyProfileToUpdate: a details blob with a hallucinated key is dropped (MESITA-1247)", () => {
+  const update: Record<string, unknown> = {};
+  applyProfileToUpdate(update, {
+    details: { dress_code: "casual", made_up_field: "the LLM invented this" },
+  } as unknown as ProfileResult);
+  assertEquals("details" in update, false);
+});
+
+Deno.test("applyProfileToUpdate: a partial details blob is still written through (behaviour-preserving, MESITA-1247)", () => {
+  const update: Record<string, unknown> = {};
+  applyProfileToUpdate(update, {
+    details: { dress_code: "casual" },
+  } as unknown as ProfileResult);
+  assertEquals(update.details, { dress_code: "casual" });
+});
+
 Deno.test("applyProfileToUpdate: ignores description_es — English only for now", () => {
   const update: Record<string, unknown> = {};
   applyProfileToUpdate(update, {

@@ -66,6 +66,12 @@
 // avatar_url.
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
+import { nullable } from "./doc-schema.ts";
+import {
+  GoogleReviewsSchema,
+  PlaceDetailsSchema,
+  PopularTimesSchema,
+} from "./place-jsonb-schemas.ts";
 
 // ── PlaceRow — the full `places` row shape ──────────────────────────────────
 
@@ -411,10 +417,29 @@ const PLACE_NONNEG_INT_KEYS = new Set<string>([
   "google_review_count", "google_visitor_count", "mesita_review_count",
   "mesita_visitor_count", "instagram_followers_count", "facebook_followers",
 ]);
+// hours/enrichment_sources/menus/products stay opaque (isJsonish) — no
+// schema exists for their internal shape yet. details/google_reviews/
+// popular_times moved OUT of this set (MESITA-1247 reconciliation, see
+// PLACE_SCHEMA_JSON_KEYS below): place-jsonb-schemas.ts already validates
+// their content, and PR #1163 first shipped that validation only at two
+// caller-side gates (enrich-synthesis-profile.ts, enrich-google-basics.ts)
+// plus a competing, uncalled `update-place.ts` door — folding the same
+// schemas in HERE, at the one real door, closes the gap for every OTHER
+// caller these three fields would otherwise pass through unvalidated (this
+// door's own PROJECT/PROFILE surfaces, save-place.ts's create insert, and
+// any future writer), not just the two hand-patched call sites.
 const PLACE_JSON_KEYS = new Set<string>([
-  "hours", "enrichment_sources", "details", "google_reviews", "menus",
-  "popular_times", "products",
+  "hours", "enrichment_sources", "menus", "products",
 ]);
+// Content-validated JSONB keys — nullable() wraps each schema because the
+// column itself is nullable and a patch clearing it to null must stay legal
+// (place-jsonb-schemas.ts's own schemas reject bare `null`, by design, since
+// they are also used where absence already means "don't touch this field").
+const PLACE_SCHEMA_JSON_KEYS: Record<string, { parse(v: unknown): { ok: boolean; error?: string } }> = {
+  details: nullable(PlaceDetailsSchema),
+  google_reviews: nullable(GoogleReviewsSchema),
+  popular_times: nullable(PopularTimesSchema),
+};
 const PLACE_STRING_ARRAY_KEYS = new Set<string>([
   "photos", "tags", "whatsapp_pr_urls", "instagram_pr_urls",
 ]);
@@ -433,6 +458,10 @@ function checkPlaceField(key: string, v: unknown): string | null {
   }
   if (PLACE_NONNEG_INT_KEYS.has(key)) {
     return isNullableNonNegInt(v) ? null : `${key} must be a non-negative integer, or null`;
+  }
+  if (key in PLACE_SCHEMA_JSON_KEYS) {
+    const r = PLACE_SCHEMA_JSON_KEYS[key].parse(v);
+    return r.ok ? null : `${key}: ${r.error}`;
   }
   if (PLACE_JSON_KEYS.has(key)) {
     return isJsonish(v) ? null : `${key} must be an object, an array, or null`;

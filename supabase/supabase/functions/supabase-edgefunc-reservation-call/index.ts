@@ -61,6 +61,7 @@ import { corsPreflight, json, readJson, rejectUnlessMethods } from "../_shared/h
 import { adminClient, readEFEnv } from "../_shared/auth.ts";
 import { requireInternalCaller } from "../_shared/internal.ts";
 import { coerceReservationsCallConfig } from "../_shared/reservations-config.ts";
+import { type AttemptEntry } from "../_shared/reservation-attempts.ts";
 import {
   consumerFromNumber,
   resolveElevenLabsKey,
@@ -162,12 +163,9 @@ function esTime(iso: string): string {
   }
 }
 
-type AttemptEntry = {
-  n: number;
-  started_at: string;
-  conversation_id: string | null;
-  result: string;
-};
+// AttemptEntry: promoted to _shared/reservation-attempts.ts (MESITA-1247) —
+// was a local, unexported type here, read back with a bare `as` cast at its
+// hydration site below. Import only; do not re-declare it.
 
 // Watch one placed call until we can tell whether it was answered. On failed,
 // errorCode (metadata.error.code) lets the caller separate a platform kill

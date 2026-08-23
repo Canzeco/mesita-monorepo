@@ -110,8 +110,37 @@ Deno.test("validatePlacePatch: accepts string-array fields", () => {
 
 Deno.test("validatePlacePatch: accepts jsonb fields as object, array, or null", () => {
   assert(validatePlacePatch({ hours: { mon: [{ open: "09:00", close: "18:00" }] } }).ok);
-  assert(validatePlacePatch({ google_reviews: [{ text: "great" }] }).ok);
+  assert(
+    validatePlacePatch({
+      google_reviews: [{ author: "Ana", rating: 5, quote: "great", date: "2026-01-01" }],
+    }).ok,
+  );
   assert(validatePlacePatch({ products: null }).ok);
+});
+
+// MESITA-1247 reconciliation: details/google_reviews/popular_times are no
+// longer opaque jsonb here — place-jsonb-schemas.ts (PR #1163) is folded
+// into this door so EVERY caller of writePlace gets the same content
+// validation the enrich-synthesis-profile.ts/enrich-google-basics.ts call
+// sites already had inline, not just those two.
+Deno.test("validatePlacePatch: details/google_reviews/popular_times accept null (clearing the column)", () => {
+  assert(validatePlacePatch({ details: null }).ok);
+  assert(validatePlacePatch({ google_reviews: null }).ok);
+  assert(validatePlacePatch({ popular_times: null }).ok);
+});
+
+Deno.test("validatePlacePatch: details/google_reviews/popular_times accept a real partial shape", () => {
+  assert(validatePlacePatch({ details: { dress_code: "casual" } }).ok);
+  assert(validatePlacePatch({ popular_times: [{ day: "Mon", range: "12-3pm" }] }).ok);
+});
+
+Deno.test("validatePlacePatch: rejects a hallucinated key or wrong-typed field inside the jsonb blobs", () => {
+  const badDetails = validatePlacePatch({ details: { dress_code: "casual", vibe: "cozy" } });
+  assert(!badDetails.ok);
+  const badReview = validatePlacePatch({ google_reviews: [{ text: "great" }] });
+  assert(!badReview.ok, "a review missing author/rating/quote/date must be rejected, not passed through opaque");
+  const badPopular = validatePlacePatch({ popular_times: [{ day: "Mon" }] });
+  assert(!badPopular.ok, "a popular_times entry missing range must be rejected");
 });
 
 Deno.test("validatePlacePatch: accepts a mesita_name override alone (google_name untouched)", () => {
