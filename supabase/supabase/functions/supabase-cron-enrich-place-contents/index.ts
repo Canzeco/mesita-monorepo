@@ -270,6 +270,12 @@ serveEnrichStage("contents", async (admin, env, row) => {
   // phone/email from `gathered.place` and clobber a business edit. (The strip also
   // covers place_research rows seeded before this change, whose gathered still
   // carries phone/email.)
+  // `whatsapp_url` joins them (MESITA-1268): it is a MANUAL field per the
+  // who-can-edit matrix, but `enrich-google-basics` classifies the Google
+  // website URI into channel columns and can emit it. Research now strips it
+  // from `gathered.place`, and this strip covers every place_research row
+  // already stored with it — without both, a lighter re-enrich keeps replaying
+  // the old payload and nulling a business-entered WhatsApp.
   // Same for names (MESITA-917): google_name + sticky Mesita name are written in
   // research only. Contents must NEVER write `name` / `google_name` — otherwise
   // Re-enrich silently reverts an admin Mesita rename (the landmine this closes).
@@ -279,6 +285,7 @@ serveEnrichStage("contents", async (admin, env, row) => {
     updated_at: _dropUpdated,
     phone: _dropPhone,
     email: _dropEmail,
+    whatsapp_url: _dropWhatsapp,
     name: _dropName,
     google_name: _dropGoogleName,
     ...placeUpdate
@@ -288,6 +295,7 @@ serveEnrichStage("contents", async (admin, env, row) => {
     updated_at?: unknown;
     phone?: unknown;
     email?: unknown;
+    whatsapp_url?: unknown;
     name?: unknown;
     google_name?: unknown;
   };
