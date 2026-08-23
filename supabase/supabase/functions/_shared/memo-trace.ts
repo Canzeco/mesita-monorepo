@@ -12,17 +12,22 @@
 // The upstream source a step read from — the label the playground shows.
 //
 // "Place recall" is the trace label for the catalog RAG tool. It replaced
-// "Lineup engine" in MESITA-1216: MESITA-1048 deleted
-// the Lineup engine, and the label outlived it. The label and the tool
-// name that maps to it) is mirrored in apps/web-admin's own TraceSource union
-// and its badge colour map. Renaming it here alone breaks that inspector, so
-// both flip together in a follow-up. It labels Memo's cosine recall over the
-// place catalog — which is alive and unchanged.
+// "Lineup engine" in MESITA-1216: MESITA-1048 deleted the Lineup engine, and
+// the label outlived it. It labels Memo's cosine recall over the place catalog
+// — which is alive and unchanged. The old note here said the label was mirrored
+// in apps/web-admin's own TraceSource union and could not move alone; that
+// inspector went with Memo Config into Filters › Chat (MESITA-1097) and no
+// admin surface reads these labels today, so this union stands on its own.
+//
+// "Mesita knowledge" labels the in-house curated set (memo-knowledge.ts),
+// added by MESITA-1201 — distinct from "Mesita catalog" (places) because the
+// whole point of the row is that a Mesita question is not a place question.
 export type TraceSource =
   | "OpenAI"
   | "Place recall"
   | "Perplexity (web)"
-  | "Mesita catalog";
+  | "Mesita catalog"
+  | "Mesita knowledge";
 
 export type TraceStep =
   // The RAG-first seed: recall Mesita candidates before the model's first turn.
@@ -73,6 +78,8 @@ export function toolSource(tool: string): TraceSource {
       return "Perplexity (web)";
     case "place_facts":
       return "Mesita catalog";
+    case "mesita_knowledge":
+      return "Mesita knowledge";
     default:
       return "Mesita catalog";
   }

@@ -1,22 +1,30 @@
 // memo-airlock-tools.ts — the FIXED, read-only tool set Memo's agent may call.
 //
-// Exactly three sources, matching Pato's design, all reads of PUBLIC data:
+// Four sources, all reads of PUBLIC data:
 //   • web_search      → Perplexity (the live web)
 //   • places_recommend → the Mesita catalog's RAG recall, via
 //                       supabase-edgefunc-recall-places
 //   • place_facts     → one named Mesita place, via
 //                       supabase-edgefunc-search-places
+//   • mesita_knowledge → Mesita's OWN words (_shared/memo-knowledge.ts), the
+//                       curated in-house set. Added by MESITA-1201: a question
+//                       about classes, Passport, plans or tickets has no answer
+//                       on the open web, so before this tool it fell to
+//                       web_search and got declined or invented.
 //
-// Note what these handlers no longer contain: a query. Every Mesita read goes
-// through ctx.data (memo-data.ts) to a named Edge Function that owns its own
-// SELECT — Memo holds no database client, so a tool CANNOT reach a table its
-// endpoint doesn't already serve. The airlock's guarantees are as much about
+// Note what these handlers no longer contain: a query. Every Mesita DATA read
+// goes through ctx.data (memo-data.ts) to a named Edge Function that owns its
+// own SELECT — Memo holds no database client, so a tool CANNOT reach a table its
+// endpoint doesn't already serve. (mesita_knowledge reads neither: its rows are
+// a code constant, so it adds a source without widening the data surface at
+// all.) The airlock's guarantees are as much about
 // what is ABSENT as present: no tool writes, reserves, edits, or reads any
 // user's private data. None of these tools takes a user id — personalisation
 // flows only from the sealed context's authenticated caller, never a
 // model-supplied parameter.
 
 import { callPerplexityChat } from "./perplexity-chat.ts";
+import { lookupMesitaKnowledge } from "./memo-knowledge.ts";
 import type { AirlockContext, AirlockTool, ToolResult } from "./memo-airlock.ts";
 import type { MemoPlaceCard } from "./memo-place-card.ts";
 import type { Prediction } from "./memo-types.ts";
@@ -58,10 +66,13 @@ export function cardsToText(cards: MemoPlaceCard[]): string {
 // supabase-edgefunc-recall-places; what comes back is already ranked public
 // cards. Deliberately non-persisting on that side too — Memo never writes.
 //
-// The `places_recommend` tool NAME and the "Place recall" trace label below
-// are deliberately unchanged by MESITA-1048: both are rendered verbatim by the
-// admin Memo Playground (apps/web-admin), so renaming them here alone would
-// break that inspector. They are a coordinated follow-up, not dead branding.
+// The `places_recommend` tool NAME replaced `lineup_recommend` (MESITA-1216)
+// after MESITA-1048 deleted the Lineup engine; the endpoint behind it is
+// supabase-edgefunc-recall-places. The old note here said the name was pinned
+// because the admin Memo Playground rendered it verbatim — that playground UI
+// was dropped when Memo Config moved into Filters › Chat (MESITA-1097), and
+// apps/web-admin holds no memo surface today, so nothing outside this repo's
+// own Edge Functions reads these names any more.
 //
 // `opts.traceKind === "recall"` records the RAG-seed step to ctx.trace (with
 // pool size + whether it embedded); the plain tool path is recorded generically
@@ -101,7 +112,7 @@ export async function placesRecall(
   };
 }
 
-// ── The three tools ────────────────────────────────────────────────────
+// ── The four tools ─────────────────────────────────────────────────────
 
 const webSearchTool: AirlockTool = {
   name: "web_search",
@@ -181,9 +192,43 @@ const placeFactsTool: AirlockTool = {
   },
 };
 
+const knowledgeTool: AirlockTool = {
+  name: "mesita_knowledge",
+  description:
+    "Mesita's own explanations of how Mesita works — classes (Bronze/Silver/Gold/Diamond), the Passport, plans (Free/Premium), how the discount is computed, tickets, reservations, rewards and what a restaurant does or doesn't see. ALWAYS use this, never the web, when the person asks about Mesita itself: the answer is not published anywhere, so a web search will only guess.",
+  schema: {
+    properties: {
+      topic: {
+        type: "string",
+        description: "What they asked about Mesita, in their own words.",
+        maxLen: 200,
+      },
+    },
+    required: ["topic"],
+  },
+  // The only tool with nothing to await: its rows are a local constant, not an
+  // endpoint. It still returns a Promise to keep the AirlockTool contract.
+  run(args, _ctx): Promise<ToolResult> {
+    const topic = String(args.topic ?? "").trim();
+    // Audience is hardcoded "guest" here and NOT model-supplied: this tool sits
+    // on the consumer concierge, and an audience the model could pass would be
+    // one prompt injection away from unlocking the internal rows.
+    const hits = lookupMesitaKnowledge(topic, "guest");
+    if (hits.length === 0) {
+      return Promise.resolve({
+        text:
+          "Mesita's own knowledge has nothing on that. Say you're not sure rather than guessing — and do NOT search the web for it, since Mesita's workings aren't published anywhere.",
+      });
+    }
+    return Promise.resolve({
+      text: hits.map((h) => `${h.topic}: ${h.fact}`).join("\n\n"),
+    });
+  },
+};
+
 // The fixed registry. Adding a capability means adding a READ tool here — there
 // is intentionally no write/reserve/edit/delete tool to add, and no endpoint on
 // Memo's data surface (config.toml, supabase-edgefunc-*) that would serve one.
 export function buildMemoTools(): AirlockTool[] {
-  return [placesTool, webSearchTool, placeFactsTool];
+  return [placesTool, webSearchTool, placeFactsTool, knowledgeTool];
 }
