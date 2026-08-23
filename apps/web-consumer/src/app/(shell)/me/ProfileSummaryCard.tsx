@@ -329,7 +329,11 @@ export function ProfileSummaryCard({
             Icon={PREMIUM_PLAN_ICON}
             value={planLabel}
             note={planNote}
-            fill="bg-pink-gradient text-white"
+            // The plan wears its OWN token, and that token is black
+            // (decision: Pato, 2026-08-22). This was `bg-pink-gradient`,
+            // which sat two tiles from Instagram's pink gradient — the two
+            // axes read as one family, and pink here means Instagram.
+            fill="bg-tier-premium text-white"
             held={isPremium}
             onClick={onOpenPlan}
           />

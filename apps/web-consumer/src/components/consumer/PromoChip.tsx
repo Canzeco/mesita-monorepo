@@ -39,9 +39,12 @@ import { isPromoting, type PromoChipPlace } from "@/lib/promo-rates";
 // decision: Pato — on the place profile (`tone="light"`) the reward is the
 // ONLY reward signal in the header (it was pulled out of the stat trio, which
 // is now Google · Instagram · Mesita). So it can't read as one more grey tag:
-// it carries the premium violet — `bg-tier-premium` when a rate resolves, a
-// violet-tinted outline when it doesn't. The dark tone (swipe overlay) and the
-// `sm` catalog tile keep the pink-gradient ribbon.
+// it carries the premium colour — `bg-tier-premium` (ink-black since the
+// plan recolour, Pato 2026-08-22) when a rate resolves, a neutral outline when
+// it doesn't. The empty state used to be a blue tint that rhymed with the old
+// premium violet; with the violet gone it was a cool stray on a warm app. The
+// dark tone (swipe overlay) and the `sm` catalog tile keep the pink-gradient
+// ribbon.
 //
 // `size` lets the caller pick chip vs body weight:
 //   - "sm" (default) — catalog / saved tile
@@ -59,7 +62,7 @@ export function PromoChip({
    *  clean; the swipe card opts in to state the absence explicitly. */
   showWhenEmpty?: boolean;
   /** `dark` = swipe overlay (white on black/45). `light` = place profile
-   *  summary on white (violet chip — see the tone note above). */
+   *  summary on white (premium-black chip — see the tone note above). */
   tone?: "dark" | "light";
 }) {
   const sizing =
@@ -67,9 +70,8 @@ export function PromoChip({
   const iconSize = size === "md" ? "h-3 w-3" : "h-2.5 w-2.5";
   const emptyTone =
     tone === "light"
-      ? "border border-blue-200 bg-blue-50 text-blue-700"
+      ? "border-border bg-card text-muted-foreground border"
       : "border border-white/35 bg-black/60 text-white";
-  const emptyIconTone = tone === "light" ? "text-blue-500" : undefined;
 
   // Hard gate, and the reason a deck of ordinary listings costs nothing: only
   // a promoting place is worth quoting. The server already weighed plan,
@@ -97,7 +99,7 @@ export function PromoChip({
         aria-hidden
       >
         <Gift
-          className={`${iconSize} shrink-0 ${emptyIconTone ?? ""}`}
+          className={`${iconSize} shrink-0`}
           strokeWidth={2.25}
         />
         <span className="font-semibold opacity-0">Up to 00% Discount</span>
@@ -115,7 +117,7 @@ export function PromoChip({
         className={`inline-flex max-w-full items-center gap-1.5 rounded-md whitespace-nowrap ${emptyTone} ${sizing}`}
       >
         <Gift
-          className={`${iconSize} shrink-0 ${emptyIconTone ?? ""}`}
+          className={`${iconSize} shrink-0`}
           strokeWidth={2.25}
         />
         <span className="font-semibold">No Reward for You</span>
