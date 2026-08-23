@@ -142,6 +142,29 @@ const COLUMNS: readonly string[] = [
 // because consumers don't need to see when the business last touched a row.
 export const PLACE_PUBLIC_COLUMNS = COLUMNS.join(", ");
 
+// The five enrichment-filled jsonb columns a LIST of places never needs —
+// each is priced for one place read (a detail page), not N per request.
+// place-card.ts (MESITA-1247 guard test 7 / MESITA-1283) proves a row
+// stripped of these stays under the 50KB card budget even worst-case-stuffed.
+export const PLACE_CARD_EXCLUDED_COLUMNS = new Set([
+  "details",
+  "products",
+  "google_reviews",
+  "menus",
+  "popular_times",
+]);
+
+// The real card projection: every public column EXCEPT the five heavy jsonb
+// ones. This is the source of truth place-card.ts's PlaceCard type mirrors —
+// not a hand-picked subset. Any consumer surface returning MORE THAN ONE
+// place per request (list, search, swipe/recommend) should select this, not
+// PLACE_PUBLIC_COLUMNS; a single-place detail read (consumer-web-get-place)
+// still wants the full projection, heavy columns included.
+export const PLACE_CARD_COLUMNS_ARRAY: readonly string[] = COLUMNS.filter(
+  (c) => !PLACE_CARD_EXCLUDED_COLUMNS.has(c),
+);
+export const PLACE_CARD_COLUMNS = PLACE_CARD_COLUMNS_ARRAY.join(", ");
+
 // Order + reservation routing — which contact each rail reaches the place on
 // (MESITA-1208; typed columns since routing left the products jsonb).
 // BUSINESS-ONLY on purpose: a consumer never dials the place itself, so the
