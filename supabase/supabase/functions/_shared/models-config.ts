@@ -3,19 +3,22 @@
 // go through this helper — hardcoded model strings are a compliance bug.
 //
 // Shape (20260726010000_models_config_reshape):
-//   supabase : { model }              OpenAI chat (general EF default)
-//   enricher : { model, perplexity }  OpenAI main + Perplexity leg
-//   lineup   : { model }              OpenAI embedding (see the note below)
-//   memo     : { model, perplexity }  OpenAI main + Perplexity leg
+//   supabase   : { model }              OpenAI chat (general EF default)
+//   enricher   : { model, perplexity }  OpenAI main + Perplexity leg
+//   embeddings : { model }              OpenAI embedding (see the note below)
+//   memo       : { model, perplexity }  OpenAI main + Perplexity leg
 //
 // "off" on a perplexity leg means skip Perplexity for that subsystem.
 //
-// LEGACY KEY: the blob key is still `lineup` even though MESITA-1048 deleted
-// the Lineup engine. It selects the PLACE-EMBEDDING model and nothing else —
-// the vectors, and Memo's RAG recall over them, are very much alive. Renaming
-// the key means a data migration plus a matching change to the admin Models
-// page, so it stays; the derived field below is called `embeddingModel` so
-// reading code says what it means.
+// THE KEY IS `embeddings`, AND `lineup` IS STILL READ (MESITA-1216). It selects
+// the PLACE-EMBEDDING model — enrich function 9 — and never had anything to do
+// with candidate ordering; the name outlived the engine MESITA-1048 deleted.
+//
+// The legacy read is NOT decoration. This is a JSONB blob, so a stored row
+// written before the rename still says `lineup`, and dropping the fallback
+// would silently fall back to the code default on every place — a model swap
+// nobody asked for, invisible until the vectors disagree. Keep reading both
+// until a migration has rewritten every row AND no rollback target remains.
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 
@@ -23,16 +26,18 @@ export type ModelsConfig = {
   v?: number;
   supabase?: { model?: string };
   enricher?: { model?: string; perplexity?: string };
+  embeddings?: { model?: string };
+  /** Pre-MESITA-1216 spelling of `embeddings`. Read-only fallback. */
   lineup?: { model?: string };
   memo?: { model?: string; perplexity?: string };
 };
 
 export const DEFAULT_MODELS_CONFIG: Required<
-  Pick<ModelsConfig, "supabase" | "enricher" | "lineup" | "memo">
+  Pick<ModelsConfig, "supabase" | "enricher" | "embeddings" | "memo">
 > = {
   supabase: { model: "gpt-4o-mini" },
   enricher: { model: "gpt-4o-mini", perplexity: "sonar-pro" },
-  lineup: { model: "text-embedding-3-small" },
+  embeddings: { model: "text-embedding-3-small" },
   memo: { model: "gpt-4o-mini", perplexity: "sonar-pro" },
 };
 
@@ -47,7 +52,7 @@ export async function loadModelsConfig(
   supabaseModel: string;
   enricherModel: string;
   enricherPerplexity: string;
-  /** From the legacy `lineup` blob key. The place-embedding model. */
+  /** From `embeddings.model`, falling back to the legacy `lineup.model`. */
   embeddingModel: string;
   memoModel: string;
   memoPerplexity: string;
@@ -75,9 +80,11 @@ export async function loadModelsConfig(
       raw?.enricher?.perplexity,
       DEFAULT_MODELS_CONFIG.enricher.perplexity!,
     ),
+    // Both spellings, new one first — a row written before MESITA-1216 still
+    // says `lineup`, and losing it would silently re-vector the catalog.
     embeddingModel: nonEmpty(
-      raw?.lineup?.model,
-      DEFAULT_MODELS_CONFIG.lineup.model!,
+      raw?.embeddings?.model ?? raw?.lineup?.model,
+      DEFAULT_MODELS_CONFIG.embeddings.model!,
     ),
     memoModel: nonEmpty(raw?.memo?.model, DEFAULT_MODELS_CONFIG.memo.model!),
     memoPerplexity: nonEmpty(

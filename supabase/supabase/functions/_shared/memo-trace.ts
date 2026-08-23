@@ -11,15 +11,16 @@
 
 // The upstream source a step read from — the label the playground shows.
 //
-// "Lineup engine" is a WIRE LABEL, not a live subsystem: MESITA-1048 deleted
-// the Lineup engine, but this exact string (and the `lineup_recommend` tool
+// "Place recall" is the trace label for the catalog RAG tool. It replaced
+// "Lineup engine" in MESITA-1216: MESITA-1048 deleted
+// the Lineup engine, and the label outlived it. The label and the tool
 // name that maps to it) is mirrored in apps/web-admin's own TraceSource union
 // and its badge colour map. Renaming it here alone breaks that inspector, so
 // both flip together in a follow-up. It labels Memo's cosine recall over the
 // place catalog — which is alive and unchanged.
 export type TraceSource =
   | "OpenAI"
-  | "Lineup engine"
+  | "Place recall"
   | "Perplexity (web)"
   | "Mesita catalog";
 
@@ -28,7 +29,7 @@ export type TraceStep =
   | {
     kind: "recall";
     title: string;
-    source: "Lineup engine";
+    source: "Place recall";
     intent: string;
     poolSize: number; // candidates recalled near the caller before ranking
     embedded: boolean; // did we embed the intent + cosine-rank the pool?
@@ -66,8 +67,8 @@ export type TraceSink = TraceStep[];
 // The source a given airlock tool reads from — used to label tool steps.
 export function toolSource(tool: string): TraceSource {
   switch (tool) {
-    case "lineup_recommend":
-      return "Lineup engine";
+    case "places_recommend":
+      return "Place recall";
     case "web_search":
       return "Perplexity (web)";
     case "place_facts":
