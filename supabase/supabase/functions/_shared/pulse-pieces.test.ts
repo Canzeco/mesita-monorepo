@@ -1,7 +1,7 @@
 import { assertEquals } from "jsr:@std/assert@1";
 import {
   PULSE_EXTRAS,
-  PULSE_FLOOR,
+  PULSE_FLOOR_LABEL,
   PULSE_LABELS_IN_ORDER,
   PULSE_PIECES,
   PULSE_PIECE_META,
@@ -19,9 +19,8 @@ const done = (step: string, n = 0) => ({
   created_at: at(n),
 });
 
-/** Every function above the floor, completed — what a finished queue looks like. */
-const fullQueue = () =>
-  PULSE_PIECES.filter((p) => p !== PULSE_FLOOR).map((p, i) => done(p, i));
+/** Every enrich function completed — what a finished queue looks like. */
+const fullQueue = () => PULSE_PIECES.map((p, i) => done(p, i));
 
 Deno.test("pulse: every stamped step matches the DB's step CHECK", () => {
   // place_enrichment_events.step is `check (step ~ '^S([0-9]{1,2}|X)$')`.
@@ -48,11 +47,10 @@ Deno.test("pulse: every stamped step matches the DB's step CHECK", () => {
   assertEquals(PULSE_EXTRAS.length > 0, true);
 });
 
-Deno.test("pulse: the ten functions, in the decided order", () => {
-  // The law: Docs › Enrichment §A. Seed is function 0 — IN the count — and the
-  // two semantic functions are outside it.
+Deno.test("pulse: the NINE enrich functions, in the decided order", () => {
+  // The law (MESITA-1253): ENRICH is nine functions, 1-9. Seed is NOT among
+  // them — it is step 1 of CREATE — and the two semantic functions sit outside.
   assertEquals([...PULSE_PIECES], [
-    "seed",
     "pulse",
     "details",
     "serp",
@@ -63,22 +61,18 @@ Deno.test("pulse: the ten functions, in the decided order", () => {
     "reviews",
     "description",
   ]);
-  // NINE, not ten: `seed` occupies 0, so a complete profile tops out at 9.
   assertEquals(PULSE_TOTAL, 9);
 });
 
-Deno.test("pulse: `seed` is function 0 and is NEVER stamped or walked", () => {
-  // THE regression this ladder can die of. `seed` is a member now (it was a
-  // gate outside the numbering before), and the row EXISTING is the seed —
-  // there is no beacon for it and there never will be for any place created
-  // before one existed. So the walk must start at function 1.
-  //
-  // If it did not, every place in the catalog would have no `seed` event, the
-  // walk would break at 0, and the whole catalog would read 0 — silently,
-  // because these writes swallow their own errors.
-  assertEquals(PULSE_FLOOR, "seed");
-  assertEquals(PULSE_PIECES[0], "seed");
-  assertEquals(PULSE_PIECE_META.seed.index, 0);
+Deno.test("pulse: `seed` is NOT an enrich function — it is step 1 of CREATE", () => {
+  // MESITA-1253. The row existing IS the seed, so there is no rung below
+  // pulse and nothing to stamp. THE regression this ladder can die of is
+  // unchanged in substance: if a `seed` membership ever returned, every place
+  // in the catalog (none of which has a seed event) would read 0 forever —
+  // silently, because beacons swallow their own errors.
+  assertEquals((PULSE_PIECES as readonly string[]).includes("seed"), false);
+  assertEquals(PULSE_PIECES[0], "pulse");
+  assertEquals(PULSE_PIECE_META.pulse.index, 1);
 
   // No seed event anywhere, and the queue still reaches 9.
   const events = fullQueue();
@@ -89,13 +83,25 @@ Deno.test("pulse: `seed` is function 0 and is NEVER stamped or walked", () => {
   assertEquals(pulseHighWater([done("seed", 1)]), 0);
 });
 
+Deno.test("pulse: CREATE's stamps read as 2/9 — one ladder, two callers", () => {
+  // The create function runs pulse + details inline and stamps them
+  // (create-place.ts), so a fresh healthy place is 2/9 the moment it exists.
+  // State then accumulates: the first full enrich run continues from there.
+  const created = [done("pulse", 1), done("details", 2)];
+  assertEquals(pulseHighWater(created), 2);
+  const b = pulseBlockedAt(created);
+  assertEquals(b?.key, "serp");
+  assertEquals(b?.index, 3);
+  assertEquals(b?.status, "missing");
+});
+
 Deno.test("pulse: `name` is a SEMANTIC function now, not rung 3", () => {
   // It was a rung until MESITA-1243. The google_name refresh is one field on
   // function 2's call, not a stage of its own; what deserves a function is the
   // Mesita Name as a VECTOR, and that cannot be a rung because the On-Update
   // path fires it whenever an operator renames a place.
   assertEquals((PULSE_PIECES as readonly string[]).includes("name"), false);
-  assertEquals([...PULSE_EXTRAS], ["name", "summary"]);
+  assertEquals([...PULSE_EXTRAS], ["summary", "name"]);
 });
 
 Deno.test("pulse: rows from the PREVIOUS ladder still read correctly", () => {
@@ -183,22 +189,24 @@ Deno.test("pulse: the index is the position, and the labels ride in order", () =
   // `S${index}` into the DB, so a drift corrupts both the meter and the beacon.
   assertEquals(
     PULSE_PIECES.map((p) => PULSE_PIECE_META[p].index),
-    [0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
+    [1, 2, 3, 4, 5, 6, 7, 8, 9],
   );
   // The labels are indexed BY FUNCTION NUMBER, so the array is one longer than
-  // the top of the scale — labels[0] is Seed, labels[9] is Description. A
-  // client renders labels[level] with no off-by-one.
+  // the piece list — labels[0] is the CREATED floor (not a function),
+  // labels[9] is Description. A client renders labels[level] with no
+  // off-by-one.
   assertEquals(PULSE_LABELS_IN_ORDER.length, PULSE_TOTAL + 1);
-  assertEquals(PULSE_LABELS_IN_ORDER[0], "Seed");
+  assertEquals(PULSE_LABELS_IN_ORDER[0], PULSE_FLOOR_LABEL);
+  assertEquals(PULSE_FLOOR_LABEL, "Created");
   assertEquals(PULSE_LABELS_IN_ORDER[PULSE_TOTAL], "Description");
   assertEquals(
     [...PULSE_LABELS_IN_ORDER],
-    PULSE_PIECES.map((p) => PULSE_PIECE_META[p].label),
+    [PULSE_FLOOR_LABEL, ...PULSE_PIECES.map((p) => PULSE_PIECE_META[p].label)],
   );
   assertEquals(PULSE_LABELS_IN_ORDER.every((l) => l.trim() !== ""), true);
 });
 
-Deno.test("high water: nothing recorded is 0 — the FLOOR, not a failure", () => {
+Deno.test("high water: nothing recorded is 0 — CREATED, not a failure", () => {
   assertEquals(pulseHighWater([]), 0);
 });
 
@@ -211,14 +219,12 @@ Deno.test("high water: it is HOW FAR, not how many", () => {
   // `links` (4) never did, so the queue got to 3 — not 8. A profile built past
   // a hole is built on incomplete data, which is why the queue is linear.
   const events = PULSE_PIECES
-    .filter((p) => p !== PULSE_FLOOR && p !== "links")
+    .filter((p) => p !== "links")
     .map((p, i) => done(p, i));
   assertEquals(pulseHighWater(events), 3);
-  // completedPulsePieces answers the OTHER question — which ones landed — and
-  // always includes the floor, because a place that exists is seeded.
+  // completedPulsePieces answers the OTHER question — which ones landed.
   const landed = completedPulsePieces(events);
-  assertEquals(landed[0], PULSE_FLOOR);
-  assertEquals(landed.length, 9); // the floor + the eight that ran
+  assertEquals(landed.length, 8); // the eight that ran; created is implicit
   assertEquals(landed.includes("links"), false);
 });
 
@@ -412,11 +418,13 @@ Deno.test("blocked: it never disagrees with the high-water", () => {
   }
 });
 
-Deno.test("blocked: the floor is never the blocker", () => {
-  // `seed` is never stamped, so if the walk ever reported it as the blocker
-  // every place in the catalog would read "blocked at 0 · missing".
+Deno.test("blocked: seed is never the blocker — it is not a function", () => {
+  // If a `seed` membership ever returned, every place in the catalog would
+  // read "blocked at seed · missing" forever.
   for (const events of [[], [done("pulse", 1)], fullQueue()]) {
-    assertEquals(pulseBlockedAt(events)?.key === PULSE_FLOOR, false);
+    // The type itself now forbids "seed" (PulsePiece excludes it) — this
+    // compares as strings so the test survives even a type regression.
+    assertEquals((pulseBlockedAt(events)?.key as string | undefined) === "seed", false);
   }
 });
 

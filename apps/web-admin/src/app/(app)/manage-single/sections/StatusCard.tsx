@@ -164,9 +164,8 @@ export function StatusCard({
   // chip shows. The one after it is what has not completed, which is the
   // question an operator looking at a stalled place is actually asking.
   //
-  // `pulseLabels` is indexed BY FUNCTION NUMBER (labels[0] is Seed), so this is
-  // a direct lookup. It was `n - 1` while seed sat outside the numbering
-  // (MESITA-1243 pulled it in as function 0).
+  // `pulseLabels` is indexed BY FUNCTION NUMBER (labels[0] is the Created
+  // floor label), so this is a direct lookup.
   const rung = (n: number) => pulseLabels[n] ?? `function ${n}`;
 
   // WHY it stopped, when the server said. 0 is ambiguous on its own: function 1
@@ -184,7 +183,7 @@ export function StatusCard({
       : (failedAt
         ? `Stopped at ${rung(failedAt.index)} (${pulse}/${pulseTotal}) — that function ran and failed.`
         : pulse === 0
-        ? "Seeded — nothing after it has landed."
+        ? "Created — nothing enriched yet."
         : pulse >= pulseTotal
           ? `All ${pulseTotal} functions completed — the queue finished.`
           : `Reached ${rung(pulse)} (${pulse}/${pulseTotal}). ${

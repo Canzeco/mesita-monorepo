@@ -851,12 +851,12 @@ function ModelDisplay({
 
 // ── The functions with no knobs of their own ───────────────────────────────
 //
-// One box per function, including the ones there is nothing to tune about
-// (Docs › Enrichment §A). A page that showed only the tunable functions read
-// like the pipeline had four; it has twelve, and for most of them the honest
-// answer is "nothing to tune" — either Google's answer IS the answer, or the
-// only knob is a shared model in Models & cost below. Saying so beats leaving
-// an operator to wonder which page hides the rest.
+// One box per function (Docs › Enrichment §A, MESITA-1253): the CREATE
+// function (one box, the front door), the NINE enrich functions 1-9, and the
+// two semantic functions. For most there is nothing to tune — either Google's
+// answer IS the answer, or the only knob is a shared model in Models & cost
+// below. Saying so beats leaving an operator to wonder which page hides the
+// rest.
 //
 // These carry no state and no Save. They are the queue, written down.
 
@@ -889,26 +889,30 @@ function KnobElsewhere({ children }: { children: React.ReactNode }) {
   );
 }
 
-export function SeedSection() {
+export function CreateSection() {
   return (
     <QuietFunction
-      n="0"
+      n="C"
       icon={<Sparkles className="text-muted-foreground h-4 w-4" />}
-      title="0 · Seed"
-      subtitle="The gate the whole queue stands on. A Google Place ID either resolves or no row is created at all — there is nothing to tune about a hard stop."
+      title="Create"
+      subtitle="ONE function, synchronous, the front door: seed → pulse → details, with both semantic functions riding along. Not part of the enrich queue — it is the other caller of the same shared functions."
     >
       <KnobElsewhere>
-        The create EFs mint the paired place and project rows, freeze any
-        operator-supplied channels and contacts as trusted input, and pull a
-        basic profile plus a first photo so the place has an instant thumbnail.
-        Then they seed the research row and stop — the stage functions are
-        SCHEDULED into the queue, never called inline, so a burst of creates
-        cannot saturate the pipeline. <span className="font-semibold">Enriched = 0</span>{" "}
-        normally means exactly this: seeded, and nothing after it has landed —
-        a floor, not a failure. The one exception is function 1 below: a place
-        Google reports permanently closed FAILS at 1 and so also reads 0. The
-        operator surfaces say which of the two it is rather than making you
-        guess.
+        <span className="font-semibold">Seed</span> dedupes on the Google Place
+        ID and mints the paired rows, freezing operator-supplied channels and
+        contacts as trusted input. <span className="font-semibold">Pulse</span>{" "}
+        gates at the door: a place Google reports permanently closed is REFUSED
+        before any row exists — a dead listing never enters the catalog.{" "}
+        <span className="font-semibold">Details</span> persists the Google spine
+        with a first photo for an instant thumbnail, and the{" "}
+        <span className="font-semibold">Summary</span> vector is queued so the
+        place is searchable from birth (Name joins when built). Create STAMPS
+        what it ran, so a fresh healthy place reads{" "}
+        <span className="font-semibold">Enriched 2/9</span> immediately — 0
+        means created with nothing enriched, which after this change is itself
+        a signal worth a look. Deep enrichment (3–9 and re-runs of 1–2) is then
+        SCHEDULED per the on_create trigger row, never called inline, so a
+        burst of creates cannot saturate the pipeline.
       </KnobElsewhere>
     </QuietFunction>
   );
@@ -930,7 +934,8 @@ export function PulseSection() {
         Permanently closed stops the run. Temporarily closed passes: a refurb is
         still a real business. A silent Google passes too — absence is a result,
         and failing on silence would pin every place Google is quiet about at 0
-        forever.
+        forever. A SHARED function: Create runs the same gate at the door and
+        refuses the place outright.
       </KnobElsewhere>
     </QuietFunction>
   );

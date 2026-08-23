@@ -24,6 +24,7 @@ import {
 import { OPENAI_URL } from "./enrich-config.ts";
 import { ENRICH_FIELD_LIMITS } from "./enrich-field-limits.ts";
 import { DEFAULT_MODELS_CONFIG, loadModelsConfig } from "./models-config.ts";
+import { pieceDone, reportPulsePieces } from "./pulse-report.ts";
 
 /** Fallback when models_config.enricher.model is unset. */
 const DEFAULT_SYNTH_MODEL = DEFAULT_MODELS_CONFIG.enricher.model!;
@@ -195,6 +196,20 @@ async function computeAndPersistPlaceEmbedding(
     console.error(`[${logPrefix}] write:`, error.message);
     return null;
   }
+
+  // ── SEMANTIC · SUMMARY stamp (MESITA-1253) ──────────────────────────────
+  // This is the one spot where the vector write is OBSERVED, so the stamp
+  // lives here and covers every caller with one writer: CREATE (a place is
+  // born searchable), On-Update (an edit re-embeds), and the enrich contents
+  // stage (which may also stamp from its own observation — a duplicate stamp
+  // of the same status is harmless, the reader takes the latest). A hash-match
+  // skip above deliberately does NOT re-stamp: no new effect, the prior stamp
+  // stands. Best-effort by construction (reportPulsePieces swallows errors).
+  await reportPulsePieces(admin, place.id, {
+    summary: pieceDone(
+      `Semantic Summary written and embedded — ${countWords(text)} word(s).`,
+    ),
+  });
 
   return { embedding: vector, hash: factsHash, text, skipped: false };
 }

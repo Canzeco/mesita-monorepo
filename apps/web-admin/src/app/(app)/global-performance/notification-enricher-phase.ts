@@ -27,9 +27,15 @@ type EnricherPhase = {
   tone: Tone;
 };
 
-type PhaseKey = "research" | "analysis" | "contents";
+type PhaseKey = "create" | "research" | "analysis" | "contents";
 
 const ENRICHER_PHASES: Record<PhaseKey, EnricherPhase> = {
+  create: {
+    label: "Create",
+    blurb:
+      "The CREATE function — seed, the pulse gate and the Google spine run inline at the front door; the vector is queued (MESITA-1253).",
+    tone: TONES.emerald,
+  },
   research: {
     label: "Research",
     blurb:
@@ -54,7 +60,11 @@ const ENRICHER_PHASES: Record<PhaseKey, EnricherPhase> = {
 // it. THREE families live here, and the third is the one a hand-written list
 // forgets:
 //
-//   1. the TEN functions and the two semantic ones (Docs › Enrichment §A);
+//   1. the NINE enrich functions and the two semantic ones (Docs › Enrichment
+//      §A) — pulse/details/summary rows can ALSO come from the CREATE function
+//      (meta.via === "create"), which the caller check below routes to its own
+//      chip so an operator is not sent to read the research EF for a beacon
+//      the front door wrote;
 //   2. the LEGACY STAGE BEACONS — gather · google_profile · analysis · publish
 //      — which are not functions at all but do appear in the Monitor;
 //   3. the TERMINAL BEACONS, `<stage>_crash` and `<stage>_cost_cap`, written by
@@ -109,6 +119,10 @@ const PHASE_BY_STEP_NAME: Record<string, PhaseKey> = {
  * Edge Function to go read.
  */
 export function enricherPhase(meta: Record<string, unknown>): EnricherPhase | null {
+  // The CREATE function stamps pulse/details (and summary, via the embeddings
+  // module) with meta.via === "create". Those rows must not wear a stage chip:
+  // "Research" would send an operator to read the wrong Edge Function.
+  if (meta.via === "create") return ENRICHER_PHASES.create;
   const stepName = typeof meta.stepName === "string" ? meta.stepName.trim() : "";
   const phase = PHASE_BY_STEP_NAME[stepName];
   return phase ? ENRICHER_PHASES[phase] : null;

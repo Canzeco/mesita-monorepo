@@ -456,9 +456,9 @@ serveEnrichStage("research", async (admin, _env, row) => {
     basics.timezone ? "timezone" : null,
   ].filter(Boolean) as string[];
 
-  // NOTE: there is no `seed` stamp. Function 0 is the FLOOR — the row existing
-  // IS the seed, so there is no effect to observe and the report type forbids
-  // it. 0 means "seeded and nothing after it landed" (pulse-pieces.ts).
+  // NOTE: there is no `seed` stamp — seed is not an enrich function at all;
+  // it is step 1 of CREATE (MESITA-1253), and the row existing IS the seed.
+  // 0 on the meter means CREATED and no enrich function completed.
   const pieces: Partial<Record<PulsePiece, PieceOutcome>> = {
     // PULSE (1) — is this place still ACTIVE, and NOTHING else. The only
     // failing value returns far above, before a cent is spent, so reaching

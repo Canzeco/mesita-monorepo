@@ -544,10 +544,14 @@ function PromoLevelCell({ level }: { level: 0 | 1 | 2 | 3 }) {
 }
 
 // ENRICHED is the only non-boolean flag: the PULSE high-water, 0-9
-// (Docs › Enrichment §A). TEN functions, numbered from the seed —
+// (Docs › Enrichment §A). NINE enrich functions —
 //
-//   0 seed · 1 pulse · 2 details · 3 serp · 4 links
-//   5 social · 6 images · 7 menu · 8 reviews · 9 description
+//   1 pulse · 2 details · 3 serp · 4 links · 5 social
+//   6 images · 7 menu · 8 reviews · 9 description
+//
+// — with 0 as the CREATED floor (seed is step 1 of the CREATE function, not a
+// rung; MESITA-1253). Create stamps pulse+details, so a healthy fresh place
+// reads 2/9 immediately.
 //
 // — plus two SEMANTIC functions (Name, Summary) that sit outside the count and
 // never reach this cell. The number is HOW FAR THE QUEUE GOT: the index of the
@@ -555,10 +559,10 @@ function PromoLevelCell({ level }: { level: 0 | 1 | 2 | 3 }) {
 // of functions that worked; a gap stops it, because a profile built past a
 // hole is built on incomplete data.
 //
-// 0 is the FLOOR, not a failure: the seed is in place and nothing after it has
-// landed. It also covers a place enriched before step reporting existed. That
-// is honest — we do not know how far its queue got, and claiming a number
-// would be worse.
+// 0 is the CREATED floor, not a failure — though with create stamping 1-2 a
+// healthy fresh place never rests there, so a lingering 0 is worth a look
+// (create stamps failed, a pre-stamping place, or ENRICH pulse failed — the
+// blocked reason tells those apart).
 //
 // The function NAMES arrive with the number, from PULSE_LABELS_IN_ORDER on the
 // admin-web-search-places payload. This file used to keep its own positional
@@ -573,9 +577,8 @@ function LevelCell(
     blocked?: PulseBlock | null;
   },
 ) {
-  // `labels` is indexed BY FUNCTION NUMBER — labels[0] is Seed — so function N
-  // is labels[N], with no off-by-one. It was labels[N - 1] while seed sat
-  // outside the numbering (MESITA-1243 pulled it in as function 0).
+  // `labels` is indexed BY FUNCTION NUMBER — labels[0] is the Created floor
+  // label, not a function — so function N is labels[N], with no off-by-one.
   const reached = level > 0 ? labels[level] : null;
 
   // WHY it stopped, when the server told us. 0 alone is ambiguous: function 1
@@ -590,7 +593,7 @@ function LevelCell(
   const title = level === 0
     ? (stoppedBy
       ? `0/${total} — ${stoppedBy}`
-      : "Seeded — nothing after it has landed")
+      : "Created — nothing enriched yet")
     : `${level}/${total} — reached ${reached ?? `function ${level}`}` +
       (level === total ? " — complete" : stoppedBy ? ` · ${stoppedBy}` : "");
   return (

@@ -207,14 +207,16 @@ Deno.serve(async (req) => {
       // shared helper but never on this payload, so the catalog table still
       // could not render it. No extra read — `status` is already selected.
       listed: isPlaceListed(v.status),
-      // PULSE: how far the TEN-function queue got, 0-9 (MESITA-1243). Not a
-      // count of functions that worked — the index of the last function such
-      // that it and everything before it completed. 0 is the floor (seeded),
-      // not a failure: function 0 is never stamped.
+      // PULSE: how far the NINE-function ENRICH queue got, 0-9
+      // (MESITA-1253). Not a count of functions that worked — the index of
+      // the last function such that it and everything before it completed.
+      // 0 is the CREATED floor; create stamps pulse+details, so a healthy
+      // fresh place reads 2.
       enrich_pulse: pulseHighWater(events.get(id) ?? []),
       enrich_pulse_total: PULSE_TOTAL,
       // The function NAMES ride with the number so the client renders what the
-      // server counted. Indexed BY FUNCTION NUMBER — labels[0] is Seed — so a
+      // server counted. Indexed BY FUNCTION NUMBER — labels[0] is the
+      // CREATED floor label — so a
       // client reads labels[level] with no off-by-one. web-admin used to keep its own positional copy of this
       // list with no shared import and no test, so a reorder would have put the
       // wrong name beside every row (MESITA-1222).

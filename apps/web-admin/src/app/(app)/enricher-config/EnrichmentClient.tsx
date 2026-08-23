@@ -9,6 +9,7 @@ import type {
   SynthesisQuality,
 } from "./actions";
 import {
+  CreateSection,
   DescriptionSection,
   DetailsSection,
   DiscoverySection,
@@ -16,7 +17,6 @@ import {
   ModelsSection,
   PulseSection,
   ReviewsSection,
-  SeedSection,
   SemanticNameSection,
   SemanticSummarySection,
   SerpSection,
@@ -29,12 +29,13 @@ import { Collapsible, SectionCard } from "./atlas-ui";
 // The Enrichment console — ONE page, no tab strip (Pato, 2026-08-21: "only one
 // tab in that section"). It was three tabs: Config, Triggers, Calculator.
 //
-// ONE BOX PER FUNCTION, IN QUEUE ORDER (Pato, 2026-08-23). The queue is ten
-// functions numbered 0-9 plus two semantic functions outside it, and all twelve
-// get a card: 0 seed · 1 pulse · 2 details · 3 serp · 4 links · 5 social ·
-// 6 images · 7 menu · 8 reviews · 9 description · ◇ name · ◇ summary.
+// ONE BOX PER FUNCTION, IN RUN ORDER (Pato, MESITA-1253). Two flows over
+// shared functions: CREATE (one box — seed → pulse → details + semantics,
+// the front door) and the ENRICH queue of nine, 1 pulse · 2 details · 3 serp ·
+// 4 links · 5 social · 6 images · 7 menu · 8 reviews · 9 description, plus
+// ◇ summary · ◇ name outside the count.
 //
-// Only five own knobs. The other seven are cards anyway, because a page that
+// Only five own knobs. The others are cards anyway, because a page that
 // shows only the tunable functions reads like the pipeline has five — an
 // operator asking "where do I change the hours" needs to find 2 · Details and
 // be told the answer is nowhere, not fail to find it and assume another page
@@ -112,8 +113,9 @@ export function EnrichmentClient(props: {
         meta={props.triggersMeta}
       />
 
-      {/* ══ THE QUEUE — one box per function, 0 → 9, then the semantic pair ══ */}
-      <SeedSection />
+      {/* ══ CREATE (the front door), then THE ENRICH QUEUE 1 → 9, then the
+          semantic pair — one box per function (MESITA-1253) ══ */}
+      <CreateSection />
       <PulseSection />
       <DetailsSection />
       <SerpSection />
@@ -146,8 +148,8 @@ export function EnrichmentClient(props: {
         onSaved={setUpdatedAt}
       />
       <DescriptionSection />
-      <SemanticNameSection />
       <SemanticSummarySection />
+      <SemanticNameSection />
 
       {/* ══ Shared across functions — see the header on why it is not inside one ══ */}
       <ModelsSection

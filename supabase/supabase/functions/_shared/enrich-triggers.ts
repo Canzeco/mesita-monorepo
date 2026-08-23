@@ -91,7 +91,8 @@ export type CostTier = "free" | "low" | "high";
 /**
  * ONE LADDER, ONE PLACE (Docs › Enrichment §A, §D).
  *
- * `functions` names which of the TEN functions a purchase unit buys — it is a
+ * `functions` names which of the NINE enrich functions a purchase unit buys —
+ * it is a
  * pointer INTO §A's numbering, never a numbering of its own. This field used to
  * hold stage S-numbers (S1, S2, S5–S6…), which made a second ladder: an
  * operator reading "SERP · S2" beside a doc that calls SERP function 3 has two
@@ -405,7 +406,7 @@ export type EnrichmentTriggersMeta = {
   subprocesses: {
     key: SubprocessKey;
     label: string;
-    /** Which of §A's TEN functions this unit buys. See SUBPROCESS_META. */
+    /** Which of §A's NINE enrich functions this unit buys. See SUBPROCESS_META. */
     functions: string;
     cost: CostTier;
     blurb: string;
