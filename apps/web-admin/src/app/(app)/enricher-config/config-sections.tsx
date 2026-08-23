@@ -802,19 +802,19 @@ const QUIET_STEPS: { step: string; name: string; why: string }[] = [
     step: "1",
     name: "Pulse",
     why:
-      "Open/closed and the weekly hours, straight from Google Place Details. Google publishing no hours is Google's answer, not a setting.",
+      "One question: is the place still active. Not the hours, not the address — just whether the listing is alive, so a dead place is caught before a dollar is spent on it. It re-hits Place Details on purpose; paying twice buys a liveness gate that means one thing.",
   },
   {
     step: "2",
     name: "Details",
     why:
-      "The Google spine — address, geo, zone, city, timezone, price, phone — and the name. `places.name` is generated from `coalesce(mesita_name, google_name)`; the override is `mesita_name`, which lives on the place, not in config.",
+      "Everything else Google knows — the hours, address, geo, zone, city, timezone, price, phone — and the name. The hours live here, not on Pulse: a place that publishes none is missing data, not closed for business. `places.name` is generated from `coalesce(mesita_name, google_name)`; the override is `mesita_name`, which lives on the place, not in config.",
   },
   {
     step: "3",
     name: "Serp",
     why:
-      "Agent X's soft editorial read, and the context Agent Y selects links against. Its one knob is the Search model preset, in Models above.",
+      "Bought to feed Links: Agent Y cannot pick between five Instagram candidates on a name and a city, and this editorial read is what it recognises the place by. Function 9 reuses it, but that is not why it exists. Its one knob is the Search model preset, in Models above.",
   },
   {
     step: "7",
