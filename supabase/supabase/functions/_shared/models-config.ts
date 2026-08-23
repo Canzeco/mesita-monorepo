@@ -2,13 +2,19 @@
 // Binding rule: every serving path that picks an LLM/embedding model must
 // go through this helper — hardcoded model strings are a compliance bug.
 //
-// Shape (20260726010000_models_config_reshape):
+// Shape (20260726010000_models_config_reshape, ojo added MESITA-1034):
 //   supabase   : { model }              OpenAI chat (general EF default)
 //   enricher   : { model, perplexity }  OpenAI main + Perplexity leg
 //   embeddings : { model }              OpenAI embedding (see the note below)
 //   memo       : { model, perplexity }  OpenAI main + Perplexity leg
+//   ojo        : { model }              OpenAI vision (proof-verification engine)
 //
 // "off" on a perplexity leg means skip Perplexity for that subsystem.
+//
+// ojo defaults to gpt-4o, not the enricher's gpt-4o-mini — Ojo reads a
+// screenshot to decide whether a guest earns money, and needs the stronger
+// vision tier the enricher's own image funnel reserves for its "standard"
+// quality knob (COST.visionPerImageStandard in enrich-config.ts).
 //
 // THE KEY IS `embeddings`, AND `lineup` IS STILL READ (MESITA-1216). It selects
 // the PLACE-EMBEDDING model — enrich function 9 — and never had anything to do
@@ -30,15 +36,17 @@ export type ModelsConfig = {
   /** Pre-MESITA-1216 spelling of `embeddings`. Read-only fallback. */
   lineup?: { model?: string };
   memo?: { model?: string; perplexity?: string };
+  ojo?: { model?: string };
 };
 
 export const DEFAULT_MODELS_CONFIG: Required<
-  Pick<ModelsConfig, "supabase" | "enricher" | "embeddings" | "memo">
+  Pick<ModelsConfig, "supabase" | "enricher" | "embeddings" | "memo" | "ojo">
 > = {
   supabase: { model: "gpt-4o-mini" },
   enricher: { model: "gpt-4o-mini", perplexity: "sonar-pro" },
   embeddings: { model: "text-embedding-3-small" },
   memo: { model: "gpt-4o-mini", perplexity: "sonar-pro" },
+  ojo: { model: "gpt-4o" },
 };
 
 function nonEmpty(s: unknown, fallback: string): string {
@@ -56,6 +64,7 @@ export async function loadModelsConfig(
   embeddingModel: string;
   memoModel: string;
   memoPerplexity: string;
+  ojoModel: string;
   raw: ModelsConfig | null;
 }> {
   const { data, error } = await admin
@@ -91,6 +100,7 @@ export async function loadModelsConfig(
       raw?.memo?.perplexity,
       DEFAULT_MODELS_CONFIG.memo.perplexity!,
     ),
+    ojoModel: nonEmpty(raw?.ojo?.model, DEFAULT_MODELS_CONFIG.ojo.model!),
     raw,
   };
 }

@@ -44,6 +44,7 @@ import {
 } from "../_shared/rewards-config.ts";
 import { repriceTicketAfterAction } from "../_shared/ticket-reprice.ts";
 import { TASKABLE_STATUS_SET } from "../_shared/ticket-status.ts";
+import { queueOjoVerification } from "../_shared/ojo-engine.ts";
 
 type Body = { ticketId?: string; screenshotUrl?: string };
 
@@ -195,6 +196,19 @@ Deno.serve(async (req) => {
   let repricedPercent: number | null = null;
   const reprice = await repriceTicketAfterAction(admin, ticketId);
   if (reprice.ok) repricedPercent = reprice.ratePercent;
+
+  // Ojo (MESITA-1034): background vision-model read of the screenshot just
+  // attached. Fires only when a screenshot actually came in on THIS call.
+  // Never awaited, never blocks this response; a no-op when
+  // ojo_config.enabled is false (the shipped default).
+  if (shotRes.url) {
+    queueOjoVerification({
+      admin,
+      ticketId,
+      kind: "review",
+      logPrefix: "consumer-web-submit-review/ojo",
+    });
+  }
 
   return json({ ok: true, ticket: updated.data, repricedPercent });
 });
