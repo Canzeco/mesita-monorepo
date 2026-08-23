@@ -38,7 +38,12 @@ export type EnrichmentTriggersMeta = {
   subprocesses: {
     key: string;
     label: string;
-    step: string;
+    /**
+     * Which of the TEN functions this purchase unit buys — a pointer into
+     * Docs › Enrichment §A's numbering, never a numbering of its own. It held
+     * stage S-numbers until MESITA-1243, which read as a rival ladder.
+     */
+    functions: string;
     cost: TriggerCostTier;
     blurb: string;
   }[];

@@ -785,8 +785,9 @@ function ModelDisplay({
 // ── The steps that have no knobs ───────────────────────────────────────────
 //
 // A config page that lists only the tunable steps reads like the pipeline has
-// four. It has ten plus an extra, and the honest answer for most of them is
-// "nothing to tune" — either Google's answer IS the answer, or the only knob is
+// four. It has TWELVE functions — ten in the queue, numbered 0-9, plus the two
+// semantic ones outside it — and the honest answer for most of them is
+// "nothing to tune": either Google's answer IS the answer, or the only knob is
 // a shared model that lives in the box above. Saying so beats leaving an
 // operator to wonder which page hides the rest.
 //

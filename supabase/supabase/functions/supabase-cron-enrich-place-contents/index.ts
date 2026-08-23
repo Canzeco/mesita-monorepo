@@ -29,8 +29,8 @@ import {
   pieceFailed,
   reportPulsePieces,
   type PieceOutcome,
+  type StampablePulseStep,
 } from "../_shared/pulse-report.ts";
-import type { PulseStep } from "../_shared/pulse-pieces.ts";
 import {
   applyProfileToUpdate,
   synthesisModelFor,
@@ -388,22 +388,22 @@ serveEnrichStage("contents", async (admin, env, row) => {
     imagesMeta.images = "skipped";
   }
 
-  // ── PULSE steps (MESITA-1230) ──────────────────────────────────────────
-  // Contents owns 8 (menu), 10 (description) and the semantics EXTRA.
-  const contentPieces: Partial<Record<PulseStep, PieceOutcome>> = {
+  // ── PULSE functions (MESITA-1243) ──────────────────────────────────────
+  // Contents owns 7 (menu), 9 (description) and the SEMANTIC Summary function.
+  const contentPieces: Partial<Record<StampablePulseStep, PieceOutcome>> = {
     // MENU IS A STUB. The website is no longer scraped, so there is no menu
-    // source and the step can never block the queue — MESITA-1230 says so
-    // outright. It passes, and it holds slot 8 until someone builds it, so the
-    // numbers do not all shift by one on the day they do. Worth knowing when
-    // reading a 10.
-    menu: pieceDone("No menu source yet — the piece is a stub."),
+    // source and the function can never block the queue. It passes, and it
+    // holds slot 7 until someone builds it, so the numbers do not all shift by
+    // one on the day they do. Worth knowing when reading a 9.
+    menu: pieceDone("No menu source yet — the function is a stub."),
   };
   if (wants(buys, "synthesis")) {
-    // DESCRIPTION (10) — the Profile Description, then category, then tags.
-    // NOT the Semantic Summary: that is the extra below, and the two are
-    // different artifacts (prose a GUEST reads vs the 60-word blurb the INDEX
-    // reads). `aboutWritten` is computed from the PERSISTED description, not
-    // from the model having replied.
+    // DESCRIPTION (9) — the Profile Description, then category, then tags, and
+    // the function that CLOSES the queue. NOT the Semantic Summary: that is the
+    // semantic function below, and the two are different artifacts (prose a
+    // GUEST reads vs the 60-word blurb the INDEX reads). `aboutWritten` is
+    // computed from the PERSISTED description, not from the model having
+    // replied.
     contentPieces.description = aboutWritten
       ? pieceDone(
         `Profile Description written; category “${place.category ?? "n/a"}”, ${inferredTags.length} tag(s).`,
@@ -411,12 +411,17 @@ serveEnrichStage("contents", async (admin, env, row) => {
       : pieceFailed("Synthesis ran but no Profile Description was persisted.");
   }
   if (wants(buys, "embedding")) {
-    // SEMANTICS — the EXTRA, not a rung. It writes the Semantic Summary and
-    // vectorises it, after step 10, because it embeds the text the queue just
-    // wrote. It is reported so an operator can see it and NEVER counted: the
-    // same machinery fires on any profile edit, and `enriched` must not fall
-    // because someone renamed a place (MESITA-1230).
-    contentPieces.semantics = embeddingWrote
+    // SEMANTIC · SUMMARY — a semantic function, not a rung. It writes the
+    // Semantic Summary and vectorises it, after function 9, because it embeds
+    // the text the queue just wrote. It is reported so an operator can see it
+    // and NEVER counted: the same machinery fires on any profile edit, and
+    // `enriched` must not fall because someone renamed a place (MESITA-1243).
+    //
+    // Its sibling, SEMANTIC · NAME, is declared in pulse-pieces.ts and is NOT
+    // BUILT — `places` carries one embedding over the whole facts block today,
+    // so there is no separate name vector to stamp (MESITA-1238). Nothing is
+    // written for it rather than something fake being written.
+    contentPieces.summary = embeddingWrote
       ? pieceDone("Semantic Summary written and embedded.")
       : pieceFailed("Embedding did not write. Re-enrich to retry — there is no backfill.");
   }

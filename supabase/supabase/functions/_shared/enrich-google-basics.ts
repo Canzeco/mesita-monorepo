@@ -142,7 +142,23 @@ export type GoogleBasicsResult =
   // `primaryType` is the raw Google Places (New) primary type (e.g.
   // "cocktail_bar"). Returned alongside `basics` — NOT inside it — because it's
   // a sourcing-gate signal (see _shared/sourcing.ts), not a persisted column.
-  | { ok: true; basics: GoogleBasics; primaryType: string | null }
+  //
+  // `businessStatus` rides alongside for the SAME reason, and the reason is
+  // load-bearing rather than stylistic: the research stage does
+  // `place = { ...basics }` and hands that object to a `places` UPDATE, so a
+  // key in `basics` with no matching column fails the persist. It is Google's
+  // verbatim UPPERCASE value — OPERATIONAL, CLOSED_TEMPORARILY,
+  // CLOSED_PERMANENTLY — or null when Google does not say.
+  //
+  // It is the ONE fact function 1 (pulse) reads. Liveness is a question Google
+  // answers directly; every other way of guessing it (no hours? no phone?) is a
+  // fact about the LISTING, not about whether the place is open for business.
+  | {
+    ok: true;
+    basics: GoogleBasics;
+    primaryType: string | null;
+    businessStatus: string | null;
+  }
   | { ok: false; code: string; error: string; status: number };
 
 // Fetch + assemble the Google identity spine for a placeId. Mirrors the old
@@ -216,6 +232,7 @@ export async function fetchGoogleBasics(
   return {
     ok: true,
     primaryType: details.primaryType ?? null,
+    businessStatus: details.businessStatus?.trim().toUpperCase() || null,
     basics: {
       google_place_id: placeIdSpine,
       // google_name is a CACHED OBSERVATION of Google's display name, not an

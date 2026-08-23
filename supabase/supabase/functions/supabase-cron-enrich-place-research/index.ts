@@ -103,6 +103,42 @@ serveEnrichStage("research", async (admin, _env, row) => {
     return;
   }
   const basics = basicsRes.basics;
+
+  // ━━━ FUNCTION 1 — PULSE. Is this place still ACTIVE? ━━━
+  //
+  // One question, one answer. It runs HERE, immediately after the spine and
+  // before the cost ledger, because a gate that reports at the end of the stage
+  // is not a gate — every Apify, Firecrawl and Perplexity call would already
+  // have been paid for. This is the whole reason function 1 hits Place Details
+  // separately from function 2 (MESITA-1243).
+  //
+  // CLOSED_PERMANENTLY is the only value that stops the run. The other three
+  // outcomes all pass, and each for its own reason:
+  //   OPERATIONAL         — alive.
+  //   CLOSED_TEMPORARILY  — alive. A refurb or a seasonal close is still a real
+  //                         business with a real profile worth building.
+  //   null                — ABSENCE IS A RESULT (pulse-report.ts rule 4).
+  //                         Google being silent is Google's answer, not our
+  //                         failure to ask. Failing here would pin every place
+  //                         Google is quiet about at 0 forever — which is
+  //                         exactly the bug hours-on-pulse caused
+  //                         (MESITA-1219), rebuilt on a different field.
+  const businessStatus = basicsRes.businessStatus;
+  if (businessStatus === "CLOSED_PERMANENTLY") {
+    await reportPulsePieces(admin, projectId, {
+      pulse: pieceFailed("Google reports this place as permanently closed.", {
+        businessStatus,
+      }),
+    });
+    await failResearchRow(
+      admin,
+      projectId,
+      "pulse: google reports CLOSED_PERMANENTLY",
+      { runId: row.run_id, stage: "research" },
+    );
+    return;
+  }
+
   const cfg = await loadEnrichConfig(admin);
   // MESITA-624 — accumulate estimated USD against atlas_per_run_cost_cap_usd.
   // Throws EnrichCostCapError → serveEnrichStage hard-fails the row (no retry).
@@ -383,9 +419,10 @@ serveEnrichStage("research", async (admin, _env, row) => {
       facebook: fbOk,
     });
 
-  // ── PULSE pieces (MESITA-1172) ─────────────────────────────────────────
-  // Research owns pieces 1,2,3,4 and 7. Each is reported from an OBSERVED
-  // effect, never from "we reached this line" — see pulse-pieces.ts.
+  // ── PULSE functions (MESITA-1243) ──────────────────────────────────────
+  // Research owns 1 pulse · 2 details · 3 serp · 4 links · 5 social · 8
+  // reviews. Each is reported from an OBSERVED effect, never from "we reached
+  // this line" — see pulse-pieces.ts.
   //
   // A piece this run did not BUY writes nothing at all, so an earlier run's
   // result stands. That is what lets a cheap refresh coexist with a linear
@@ -398,45 +435,60 @@ serveEnrichStage("research", async (admin, _env, row) => {
     ["instagram", "facebook", "website", "opentable", "ubereats"]
       .some((k) => disc[k] === true);
 
-  // NOTE: there is no `seed` piece. S0 is the pre-run GATE, not a step — the
-  // spine must already resolve or this function returns long before here, so
-  // 0 means "seeded and nothing after it landed".
+  // What function 2 actually got back, named so the operator reads facts rather
+  // than a bare "resolved". Hours FIRST: they are the field that moved here.
+  const spineFacts = [
+    basics.hours ? "hours" : null,
+    basics.address ? "address" : null,
+    basics.phone ? "phone" : null,
+    basics.price_level != null ? "price" : null,
+    basics.timezone ? "timezone" : null,
+  ].filter(Boolean) as string[];
+
+  // NOTE: there is no `seed` stamp. Function 0 is the FLOOR — the row existing
+  // IS the seed, so there is no effect to observe and the report type forbids
+  // it. 0 means "seeded and nothing after it landed" (pulse-pieces.ts).
   const pieces: Partial<Record<PulsePiece, PieceOutcome>> = {
-    // PULSE (1) — is this place ALIVE. ABSENCE IS A RESULT (pulse-report.ts
-    // rule 4). The Details call already SUCCEEDED — a failed one returns at the
-    // S1 gate far above — so a null `hours` is Google's ANSWER, not our failure
-    // to ask. `pieceFailed` here could only ever mean "Google was silent".
+    // PULSE (1) — is this place still ACTIVE, and NOTHING else. The only
+    // failing value returns far above, before a cent is spent, so reaching
+    // here means the answer was yes. Recorded so the ladder has the rung.
     //
-    // It used to fail, and because this is rung 1 it pinned every hours-less
-    // place — bars, pop-ups, street food, new listings — at 0 forever, no
-    // matter what the other eight rungs achieved. 0 is also the reserved
-    // "never ran" value the catalog renders as "Seeded — nothing after it has
-    // landed", so a fully enriched place was indistinguishable from an
-    // untouched one (MESITA-1219).
+    // The hours used to live on this rung, and because it is rung 1 that
+    // pinned every hours-less place — bars, pop-ups, street food, new listings
+    // — at 0 forever, no matter what the rungs above achieved (MESITA-1219).
+    // The fix then was to stop failing; the fix now is that hours are not this
+    // function's question at all. They belong to 2, below.
     pulse: pieceDone(
-      basics.hours
-        ? "Open/closed and the weekly hours resolved."
-        : "Google publishes no hours for this place.",
+      businessStatus
+        ? `Google reports this listing ${businessStatus}.`
+        : "Google states no business status; the listing resolves.",
+      { businessStatus },
     ),
-    // Same rule: Google answering "no phone, no address, no price" is a fact
-    // about the listing, not an infrastructure failure.
+    // DETAILS (2) — the Google spine, and THE HOURS LIVE HERE. A place that
+    // publishes none is missing data, not closed for business.
+    //
+    // ABSENCE IS A RESULT (pulse-report.ts rule 4): the Place Details call
+    // already SUCCEEDED — a failed one returns at the spine gate far above — so
+    // Google answering "no phone, no address, no price, no hours" is a fact
+    // about the listing, not an infrastructure failure. `pieceFailed` here
+    // could only ever mean "Google was silent", which is not a thing it can be
+    // at this point.
+    //
+    // The `google_name` refresh behind the GENERATED `places.name` also lands
+    // on this function's call. It has no rung of its own — it is one field on
+    // the same fetch. What carries the name is the SEMANTIC Name function,
+    // outside the queue (pulse-pieces.ts).
     details: pieceDone(
-      (basics.phone || basics.address || basics.price_level != null)
-        ? "Address, geo, timezone, phone and price resolved."
-        : "Google returned no contact or address detail.",
+      spineFacts.length
+        ? `Google spine resolved — ${spineFacts.join(", ")}.`
+        : "Google returned no hours, contact or address detail.",
     ),
-    // NAME (3) — the google_name refresh behind the GENERATED places.name.
-    // Never separately bought: it rides the same Place Details call the gate
-    // already made, so if we are here Google answered. An empty label would be
-    // Google's answer, not our failure, but it is still missing data.
-    name: (typeof basics.google_name === "string" && basics.google_name.trim())
-      ? pieceDone(`Google label “${basics.google_name.trim()}”.`)
-      : pieceFailed("Google returned no display name."),
   };
 
   if (wants(buys, "serp")) {
-    // SERP (4) — the SERP Summary, Agent X's soft editorial read. It runs
-    // BEFORE links because Agent Y selects channels against this context.
+    // SERP (3) — the SERP Summary, Agent X's soft editorial read. It is bought
+    // FOR links: Agent Y cannot pick between five Instagram candidates on a
+    // name and a city, and this is what it recognises the place by.
     // ABSENCE IS A RESULT: the web having nothing to say about a place is an
     // answer, so the piece passes on an ok diag whether or not text came back.
     // A missing key or a thrown call is the only failure.
