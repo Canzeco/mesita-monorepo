@@ -28,6 +28,7 @@ import { corsPreflight, json, readJsonOr, rejectUnlessMethods } from "../_shared
 import { adminClient, readEFEnv } from "../_shared/auth.ts";
 import { cleanNote, requireAgentSecret, ticketByCode } from "../_shared/agent-tools.ts";
 import { normalizeAlternatives } from "../_shared/reservation-alternatives.ts";
+import { writeReservation } from "../_shared/reservation-doc.ts";
 
 const VERDICTS = [
   "confirmed",
@@ -86,15 +87,21 @@ Deno.serve(async (req) => {
   // form, so an agent build that hasn't picked up the new schema keeps working.
   const alternatives = normalizeAlternatives(body.alternatives).slice(0, 5);
 
-  const { error } = await admin
-    .from("reservation_tickets")
-    .update({
-      reported_verdict: verdict,
+  const write = await writeReservation(admin, {
+    mode: "update",
+    id: ticket.id,
+    patch: {
+      reported_verdict: verdict as
+        | "confirmed"
+        | "counter_offer"
+        | "declined"
+        | "unreachable"
+        | "wrong_number",
       alternatives,
       outcome_note: cleanNote(body.note) || null,
-    })
-    .eq("id", ticket.id);
-  if (error) return json({ ok: false, error: error.message }, 500);
+    },
+  });
+  if (!write.ok) return json({ ok: false, error: write.error }, 500);
 
   return json({ ok: true, recorded: { reference_code: ticket.reference_code, verdict, alternatives } });
 });

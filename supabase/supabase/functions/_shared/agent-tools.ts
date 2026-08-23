@@ -22,6 +22,7 @@ import type { EFEnv } from "./auth.ts";
 import { json } from "./http.ts";
 import { invokeInternalCaller } from "./internal.ts";
 import { phoneDigits } from "./phone.ts";
+import { writeReservation } from "./reservation-doc.ts";
 import { timingSafeEqual } from "./timing-safe-equal.ts";
 
 // ── Auth ─────────────────────────────────────────────────────────────────────
@@ -277,9 +278,10 @@ export async function cancelTicket(
   reason: string,
   notice: "venue_cancel" | "guest_cancel" | null = null,
 ): Promise<string | null> {
-  const { error } = await admin
-    .from("reservation_tickets")
-    .update({
+  const res = await writeReservation(admin, {
+    mode: "update",
+    id,
+    patch: {
       status: "cancelled",
       cancelled_at: new Date().toISOString(),
       cancelled_by: by,
@@ -296,9 +298,9 @@ export async function cancelTicket(
       ...(notice
         ? { notice_kind: notice, notice_state: "pending", notice_attempts: 0, notice_next_at: null }
         : {}),
-    })
-    .eq("id", id);
-  return error ? error.message : null;
+    },
+  });
+  return res.ok ? null : res.error;
 }
 
 export function cleanNote(v: unknown, max = 300): string {

@@ -24,6 +24,7 @@ import {
   placeLocalDate,
   placeLocalTime,
 } from "../_shared/agent-tools.ts";
+import { writeReservation } from "../_shared/reservation-doc.ts";
 
 type Body = {
   reservation_id?: string;
@@ -74,17 +75,18 @@ Deno.serve(async (req) => {
       return json({ ok: false, error: "reservation is not open to confirm" }, 409);
     }
     const nowIso = new Date().toISOString();
-    const { error } = await admin
-      .from("reservation_tickets")
-      .update({
+    const write = await writeReservation(admin, {
+      mode: "update",
+      id: ticket.id,
+      match: { consumer_id: consumerId },
+      patch: {
         consumer_confirmed_at: nowIso,
         callback_state: "skipped",
         callback_next_attempt_at: null,
         last_call_status: "guest confirmed in the app",
-      })
-      .eq("id", ticket.id)
-      .eq("consumer_id", consumerId);
-    if (error) return json({ ok: false, error: error.message }, 500);
+      },
+    });
+    if (!write.ok) return json({ ok: false, error: write.error }, 500);
     return json({
       ok: true,
       guest_confirmed: true,
@@ -124,9 +126,11 @@ Deno.serve(async (req) => {
   }
 
   const nowIso = new Date().toISOString();
-  const { error: confErr } = await admin
-    .from("reservation_tickets")
-    .update({
+  const confirm = await writeReservation(admin, {
+    mode: "update",
+    id: ticket.id,
+    match: { consumer_id: consumerId, status: "pending" },
+    patch: {
       reserved_at: next.toISOString(),
       status: "confirmed",
       reported_verdict: "confirmed",
@@ -138,11 +142,9 @@ Deno.serve(async (req) => {
       callback_next_attempt_at: null,
       last_call_status:
         `guest took the venue's own ${date} ${time} offer in the app — confirmed on the spot`,
-    })
-    .eq("id", ticket.id)
-    .eq("consumer_id", consumerId)
-    .eq("status", "pending");
-  if (confErr) return json({ ok: false, error: confErr.message }, 500);
+    },
+  });
+  if (!confirm.ok) return json({ ok: false, error: confirm.error }, 500);
 
   return json({
     ok: true,
