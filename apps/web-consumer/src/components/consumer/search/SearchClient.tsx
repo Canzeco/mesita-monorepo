@@ -3,9 +3,9 @@
 // Search — the consumer catalog map. Composition layer for the page:
 //
 //   • Base: SearchMap fills the body (partner/web pins + user dot).
-//   • Top overlay: full-width search bar with the filter tune icon. The
-//     shared discovery filters (MESITA-646) narrow BOTH the catalog rail and
-//     the map pins live. (Ask AI / Memo now lives as a tab on Home.)
+//   • Top overlay: full-width search bar. Nothing narrows the catalog — the
+//     filter surface went with MESITA-1183, so the rail and the map pins both
+//     render it whole. (Ask AI / Memo now lives as a tab on Home.)
 //   • Bottom overlay (idle): horizontal catalog rail; tapping a map pin
 //     highlights + scrolls to the matching rail card, tapping a card opens
 //     the place page.
@@ -40,7 +40,6 @@ import {
   EmptySearchPrompt,
   SearchRailOverlay,
 } from "./search-catalog-overlays";
-import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import {
   matchPredictionToPlace,
   newSessionToken,
@@ -236,13 +235,6 @@ export function SearchClient({
     },
     [addStates, resetSearchSession, supabase],
   );
-
-  // Snap the pager back to the first card (and the scroll container with it)
-  // to keep the count honest.
-  const resetRail = () => {
-    setRailIndex(0);
-    railScrollRef.current?.scrollTo({ left: 0 });
-  };
 
   // Card width (288, SearchRailCard's w-[288px]) + flex gap (8, gap-2) → the
   // horizontal stride between cards.
