@@ -6,8 +6,9 @@ import { efInvoke } from "@/lib/supabase-ef";
 
 export type SynthesisQuality = "economy" | "standard" | "high";
 
-// Perplexity Agent preset — the "search model" for the Enricher's S2 (SERP
-// summary) + S3 (channel link discovery). Mirrors the Perplexity Agent API
+// Perplexity Agent preset — the "search model" for the Enricher's function 3
+// (Agent X, the SERP Summary) + function 4 (Agent Y, channel link discovery,
+// which grounds on function 3's text). Mirrors the Perplexity Agent API
 // preset names (docs.perplexity.ai/docs/agent-api/presets).
 export type PerplexityPreset =
   | "fast-search"
@@ -38,7 +39,12 @@ export type EnrichmentTriggersMeta = {
   subprocesses: {
     key: string;
     label: string;
-    step: string;
+    /**
+     * Which of the TEN functions this purchase unit buys — a pointer into
+     * Docs › Enrichment §A's numbering, never a numbering of its own. It held
+     * stage S-numbers until MESITA-1243, which read as a rival ladder.
+     */
+    functions: string;
     cost: TriggerCostTier;
     blurb: string;
   }[];

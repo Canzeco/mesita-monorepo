@@ -130,9 +130,11 @@ export function StatusCard({
   const pulseLabels = Array.isArray(place.enrich_pulse_labels)
     ? (place.enrich_pulse_labels as string[])
     : [];
+  // The scale tops out at the LAST index, not the label count: `seed` occupies
+  // 0, so ten labels describe a 0-9 scale.
   const pulseTotal = typeof place.enrich_pulse_total === "number"
     ? place.enrich_pulse_total
-    : pulseLabels.length;
+    : Math.max(0, pulseLabels.length - 1);
   const placeStatus = typeof place.status === "string" ? place.status : null;
 
   const seededDetail =
@@ -153,17 +155,21 @@ export function StatusCard({
             ? `${placeStatus} — no guest surface resolves this place; the RLS policy stops the read.`
             : "No status on the row.";
 
-  // Names the rung the queue actually reached — off the SAME number the chip
-  // shows. The rung after it is the one that has not completed, which is the
+  // Names the function the queue actually reached — off the SAME number the
+  // chip shows. The one after it is what has not completed, which is the
   // question an operator looking at a stalled place is actually asking.
-  const rung = (n: number) => pulseLabels[n - 1] ?? `piece ${n}`;
+  //
+  // `pulseLabels` is indexed BY FUNCTION NUMBER (labels[0] is Seed), so this is
+  // a direct lookup. It was `n - 1` while seed sat outside the numbering
+  // (MESITA-1243 pulled it in as function 0).
+  const rung = (n: number) => pulseLabels[n] ?? `function ${n}`;
   const enrichedDetail =
     pulse === null || pulseTotal === 0
       ? "Couldn't read the pipeline events."
       : (pulse === 0
         ? "Seeded — nothing after it has landed."
         : pulse >= pulseTotal
-          ? `All ${pulseTotal} rungs completed — the queue finished.`
+          ? `All ${pulseTotal} functions completed — the queue finished.`
           : `Reached ${rung(pulse)} (${pulse}/${pulseTotal}). ${
               rung(pulse + 1)
             } has not completed.`) +

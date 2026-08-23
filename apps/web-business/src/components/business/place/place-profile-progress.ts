@@ -9,7 +9,7 @@ type ProfileProgressCheck = {
 function getProfileProgressChecks(v: PlaceFormState): ProfileProgressCheck[] {
   return [
     { label: "Category", done: v.category.trim() !== "" },
-    { label: "About", done: v.description.trim() !== "" },
+    { label: "Presentation", done: v.description.trim() !== "" },
     { label: "Photos", done: v.photos.length > 0 },
     {
       label: "Hours",

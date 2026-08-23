@@ -121,9 +121,11 @@ serveEnrichStage("analysis", async (admin, _env, row) => {
     ledger.charge("sort", COST.sort);
   }
 
-  // One beacon for the whole analysis stage (S5–S6) — one notification per function.
+  // One beacon for the whole analysis stage — one notification per Edge
+  // Function. Its own `step` is decorative and does not track the ladder: the
+  // stage runs exactly one function (6 images), stamped above.
   const described = funnel.imageAnalysisByUrl.size;
-  // PULSE piece 5 (images). The funnel ran; `described` is the observed
+  // PULSE function 6 (images). The funnel ran; `described` is the observed
   // effect. Zero described is still a pass when vision is off by config — the
   // pool was ranked in source order, which is the funnel doing its job.
   await reportPulsePieces(admin, projectId, {

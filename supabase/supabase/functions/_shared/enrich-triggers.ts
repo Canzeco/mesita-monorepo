@@ -12,7 +12,7 @@
 //
 // WHAT THIS IS NOT. A trigger re-derives facts from external sources. It cannot
 // carry a fact the sources do not have: when the Reservationist learns on a call
-// that the hours are wrong, re-running S1 refetches the SAME wrong hours from
+// that the hours are wrong, re-running function 2 refetches the SAME wrong hours from
 // Google. That is a CORRECTION — a proposed field write with provenance and a
 // pin so the next scheduled run cannot clobber it — and it is deliberately not
 // modelled here. Conflating the two is how a corrected place silently reverts.
@@ -88,66 +88,78 @@ export type RunTrigger = TriggerKey | "manual";
 /** Rough per-run spend, for the console's cost column. */
 export type CostTier = "free" | "low" | "high";
 
+/**
+ * ONE LADDER, ONE PLACE (Docs › Enrichment §A, §D).
+ *
+ * `functions` names which of the TEN functions a purchase unit buys — it is a
+ * pointer INTO §A's numbering, never a numbering of its own. This field used to
+ * hold stage S-numbers (S1, S2, S5–S6…), which made a second ladder: an
+ * operator reading "SERP · S2" beside a doc that calls SERP function 3 has two
+ * answers to one question. The mapping is deliberately one-way and not
+ * one-to-one — `google` buys two functions, `photos` buys none (it is the
+ * storage mirror), `embedding` buys the semantic pair that sits outside the
+ * count entirely.
+ */
 export const SUBPROCESS_META: Record<
   SubprocessKey,
-  { label: string; step: string; cost: CostTier; blurb: string }
+  { label: string; functions: string; cost: CostTier; blurb: string }
 > = {
   google: {
     label: "Google",
-    step: "S1",
+    functions: "1–2",
     cost: "low",
     blurb:
       "Place Details by ID — hours, rating, review count, phone, geo, price.",
   },
   reviews: {
     label: "Reviews",
-    step: "S2",
+    functions: "8",
     cost: "high",
-    blurb: "Apify Google Maps scrape — the newest reviews that ground the Profile Description.",
+    blurb: "Apify Google Maps scrape — the newest reviews that ground the Presentation.",
   },
   serp: {
     label: "SERP",
-    step: "S2",
+    functions: "3",
     cost: "low",
     blurb: "Agent X editorial read of the open web. Soft context, never facts.",
   },
   links: {
     label: "Links",
-    step: "S3",
+    functions: "4",
     cost: "high",
     blurb:
       "Firecrawl Search per source, then Agent Y picks the winning channel.",
   },
   social: {
     label: "Social",
-    step: "S4",
+    functions: "5",
     cost: "high",
     blurb:
       "Apify Instagram + Facebook — followers, bio, posts, identity judge.",
   },
   images: {
     label: "Images",
-    step: "S5–S6",
+    functions: "6",
     cost: "high",
     blurb:
       "Describe every candidate with vision, then rank and pick the gallery.",
   },
   synthesis: {
     label: "Synthesis",
-    step: "S7",
+    functions: "9",
     cost: "low",
     blurb:
-      "The Profile Description, then category and tags grounded on it. Rewrites the profile.",
+      "The Presentation, then category and tags grounded on it. Rewrites the profile.",
   },
   photos: {
     label: "Photos",
-    step: "S9",
+    functions: "—",
     cost: "free",
     blurb: "Mirror the winning photos into the place-images bucket.",
   },
   embedding: {
     label: "Embedding",
-    step: "—",
+    functions: "◇",
     cost: "free",
     blurb: "Re-vectorize the place so search and recall see the new text.",
   },
@@ -235,7 +247,7 @@ export function lockedCell(
     return {
       value: true,
       reason:
-        "S1 Place Details is the identity gate; every pipeline run passes it.",
+        "Place Details is the identity gate (functions 1–2); every pipeline run passes it.",
     };
   }
   return null;
@@ -393,7 +405,8 @@ export type EnrichmentTriggersMeta = {
   subprocesses: {
     key: SubprocessKey;
     label: string;
-    step: string;
+    /** Which of §A's TEN functions this unit buys. See SUBPROCESS_META. */
+    functions: string;
     cost: CostTier;
     blurb: string;
   }[];

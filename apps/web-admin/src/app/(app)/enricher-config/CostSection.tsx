@@ -156,9 +156,11 @@ export function CostSection({
     <div className="mx-auto flex max-w-6xl flex-col gap-6">
       <p className="text-muted-foreground max-w-3xl text-sm leading-relaxed">
         Estimate cost and runtime to enrich one new place with the current
-        Enricher config. Every step S1→S9 runs on every enrichment and image
+        Enricher config. Every function runs on a full enrichment and image
         analysis is always on — Selection and Storage don&apos;t change cost, so
-        they&apos;re not inputs here. Figures are approximate, not billing.
+        they&apos;re not inputs here. Rows are numbered by the function that
+        spends them, so several can share a number. Figures are approximate,
+        not billing.
       </p>
 
       {/* Headline result — cost + time, always visible above the inputs */}

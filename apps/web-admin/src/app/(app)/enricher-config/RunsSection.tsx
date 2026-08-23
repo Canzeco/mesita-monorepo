@@ -190,7 +190,7 @@ function Grid({
                   {s.label}
                 </span>
                 <span className="text-muted-foreground block type-meta font-normal tabular-nums">
-                  {s.step} · {COST_LABEL[s.cost] ?? s.cost}
+                  fn {s.functions} · {COST_LABEL[s.cost] ?? s.cost}
                 </span>
               </th>
             ))}

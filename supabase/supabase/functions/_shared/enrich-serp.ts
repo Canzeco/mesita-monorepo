@@ -14,7 +14,7 @@ const SERP_SCHEMA = {
 
 // Agent X — SERP AI Summary (child G / MESITA-204). This blurb is SOFT grounding
 // consumed twice downstream: it anchors Agent Y's link selection and seeds the
-// final Profile Description synthesis. So it must be identity-rich (what/where/why-notable) yet
+// final Presentation synthesis. So it must be identity-rich (what/where/why-notable) yet
 // strictly non-authoritative — no facts a later step will persist as truth.
 const SERP_INSTRUCTIONS =
   "You are a research assistant that writes ONE short, web-grounded editorial " +

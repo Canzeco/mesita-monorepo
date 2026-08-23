@@ -542,34 +542,37 @@ function PromoLevelCell({ level }: { level: 0 | 1 | 2 | 3 }) {
 }
 
 // ENRICHED is the only non-boolean flag: the PULSE high-water, 0-9
-// (Docs › Enrichment §A). Nine steps over an S0 SEED GATE —
+// (Docs › Enrichment §A). TEN functions, numbered from the seed —
 //
-//   S0 seed (a precondition, not a step)
-//   1 pulse · 2 details · 3 links · 4 social · 5 images
-//   6 menu · 7 reviews · 8 semantics · 9 embeddings
+//   0 seed · 1 pulse · 2 details · 3 serp · 4 links
+//   5 social · 6 images · 7 menu · 8 reviews · 9 description
 //
-// — and the number is HOW FAR THE QUEUE GOT: the index of the last step such
-// that it and everything before it completed. Not a count of steps that
-// worked; a gap stops it, because a profile built past a hole is built on
-// incomplete data.
+// — plus two SEMANTIC functions (Name, Summary) that sit outside the count and
+// never reach this cell. The number is HOW FAR THE QUEUE GOT: the index of the
+// last function such that it and everything before it completed. Not a count
+// of functions that worked; a gap stops it, because a profile built past a
+// hole is built on incomplete data.
 //
-// 0 means the seed is in place and nothing after it has landed — which also
-// covers a place enriched before step reporting existed. That is honest: we do
-// not know how far its queue got, and claiming a number would be worse.
+// 0 is the FLOOR, not a failure: the seed is in place and nothing after it has
+// landed. It also covers a place enriched before step reporting existed. That
+// is honest — we do not know how far its queue got, and claiming a number
+// would be worse.
 //
-// The rung NAMES arrive with the number, from PULSE_LABELS_IN_ORDER on the
+// The function NAMES arrive with the number, from PULSE_LABELS_IN_ORDER on the
 // admin-web-search-places payload. This file used to keep its own positional
-// copy — no shared import, no test, no CI gate — so a reorder in the backend
-// would have shown the wrong rung name beside every row and nothing would have
+// copy — no shared import, no test and no CI gate — so a reorder in the backend
+// would have shown the wrong name beside every row and nothing would have
 // caught it (MESITA-1222).
 function LevelCell(
   { level, total, labels }: { level: number; total: number; labels: string[] },
 ) {
-  // `labels` is 1-indexed by rung, so rung N is labels[N - 1].
-  const reached = level > 0 ? labels[level - 1] : null;
+  // `labels` is indexed BY FUNCTION NUMBER — labels[0] is Seed — so function N
+  // is labels[N], with no off-by-one. It was labels[N - 1] while seed sat
+  // outside the numbering (MESITA-1243 pulled it in as function 0).
+  const reached = level > 0 ? labels[level] : null;
   const title = level === 0
     ? "Seeded — nothing after it has landed"
-    : `${level}/${total} — reached ${reached ?? `piece ${level}`}` +
+    : `${level}/${total} — reached ${reached ?? `function ${level}`}` +
       (level === total ? " — complete" : "");
   return (
     <span className="inline-flex items-center gap-1.5" title={title}>
