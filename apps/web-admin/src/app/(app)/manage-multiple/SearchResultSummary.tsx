@@ -20,7 +20,7 @@ export function ResultSummary({
   const filtersActive =
     result.minRating > 0 || result.minUserRatingCount > 0;
   return (
-    <section className="border-border bg-pink-gradient shadow-elev relative overflow-hidden rounded-3xl border p-7">
+    <section className="border-border bg-pink-gradient shadow-card relative overflow-hidden rounded-2xl border p-6">
       <div className="flex flex-wrap items-end justify-between gap-5">
         <div>
           <p className="text-secondary type-eyebrow">

@@ -24,9 +24,22 @@ function isEnriching(status: PlaceEnrichmentStatus | null): boolean {
   return contentStatus === "generating" || contentStatus === "queued";
 }
 
-// Status values that render the green "healthy" dot next to the place name;
-// anything else (draft, paused, etc.) renders the amber dot.
-const POSITIVE_STATUS_LABELS = new Set(["active", "published", "live", "ready"]);
+// LISTED, not "Active" (Pato live 2026-08-22). The header used to print
+// `projects.status` capitalized — the raw column value shown to a human — and
+// that is a second word for a fact Mesita already names. Listed is the word:
+// StatusCard defines it as projects.status ∈ (active, lead), which is exactly
+// what the consumer RLS policy projects_select_public_visible gates on. One
+// word, one meaning; the header and the Status box now agree by construction
+// because they read the same predicate.
+//
+// The old set also guarded "published" / "live" / "ready", three values this
+// system has never written. Listing is binary here, so the derivation is too.
+const LISTED_STATUSES = new Set(["active", "lead"]);
+
+/** Is this place reachable by a guest on Mesita at all? */
+function isListed(status: string | null | undefined): boolean {
+  return LISTED_STATUSES.has((status ?? "").trim().toLowerCase());
+}
 
 /**
  * `name` is resolved in Postgres (generated: mesita_name → google_name) and is
@@ -49,9 +62,7 @@ export function PlaceEditChrome({
   // used to bypass the chrome-local guard entirely.
   const { isDirty, guardNav } = usePlaceContext();
   const heroPhoto = place.photos?.[0] ?? null;
-  const statusLabel = place.status?.trim()
-    ? place.status.charAt(0).toUpperCase() + place.status.slice(1)
-    : null;
+  const listed = isListed(place.status);
   const [enrichStatus, setEnrichStatus] = useState<PlaceEnrichmentStatus | null>(
     null,
   );
@@ -190,25 +201,19 @@ export function PlaceEditChrome({
             </p>
           ) : null}
           <div className="text-muted-foreground mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs">
-            {statusLabel ? (
-              <span className="text-foreground/80 inline-flex items-center gap-1.5 font-medium capitalize">
-                <span
-                  className={
-                    "h-1.5 w-1.5 rounded-full " +
-                    (POSITIVE_STATUS_LABELS.has(statusLabel.toLowerCase())
-                      ? "bg-green-500"
-                      : "bg-amber-500")
-                  }
-                  aria-hidden
-                />
-                {statusLabel}
-              </span>
-            ) : null}
+            <span className="text-foreground/80 inline-flex items-center gap-1.5 font-medium">
+              <span
+                className={
+                  "h-1.5 w-1.5 rounded-full " +
+                  (listed ? "bg-green-500" : "bg-amber-500")
+                }
+                aria-hidden
+              />
+              {listed ? "Listed" : "Not listed"}
+            </span>
             {place.category_label || place.category ? (
               <>
-                {statusLabel ? (
-                  <span className="bg-border h-1 w-1 rounded-full" aria-hidden />
-                ) : null}
+                <span className="bg-border h-1 w-1 rounded-full" aria-hidden />
                 <span className="truncate">
                   {place.category_label || place.category}
                 </span>

@@ -14,12 +14,12 @@ describe("dirtySectionLabels", () => {
         place: true,
         products: true,
       }),
-    ).toEqual(["Place", "Products", "Visits"]);
+    ).toEqual(["Place", "Menus", "Visits"]);
   });
 
   it("omits falsey keys", () => {
     expect(dirtySectionLabels({ place: false, products: true })).toEqual([
-      "Products",
+      "Menus",
     ]);
   });
 
@@ -35,11 +35,11 @@ describe("dirtySectionLabels", () => {
 
 describe("dirtyDialogTitle", () => {
   it("names a single section", () => {
-    expect(dirtyDialogTitle(["Products"])).toBe("Unsaved Products edits");
+    expect(dirtyDialogTitle(["Menus"])).toBe("Unsaved Menus edits");
   });
 
   it("uses generic title for multiple", () => {
-    expect(dirtyDialogTitle(["Place", "Products"])).toBe("Unsaved edits");
+    expect(dirtyDialogTitle(["Place", "Menus"])).toBe("Unsaved edits");
   });
 });
 
@@ -55,9 +55,9 @@ describe("dirtyDialog bodies", () => {
   });
 
   it("mentions sections in reenrich copy", () => {
-    expect(dirtyDialogReenrichBody(["Products"])).toContain("Products");
-    expect(dirtyDialogReenrichBody(["Place", "Products"])).toContain(
-      "Place, Products",
+    expect(dirtyDialogReenrichBody(["Menus"])).toContain("Menus");
+    expect(dirtyDialogReenrichBody(["Place", "Menus"])).toContain(
+      "Place, Menus",
     );
   });
 });

@@ -11,7 +11,7 @@ export default function ShareLoading() {
         {Array.from({ length: 5 }).map((_, i) => (
           <div
             key={i}
-            className="border-border bg-card flex min-h-[150px] flex-col justify-between rounded-2xl border p-5"
+            className="bg-muted flex aspect-[85.6/53.98] flex-col justify-between rounded-2xl p-5"
           >
             <div className="flex items-start justify-between gap-3">
               <Skeleton className="h-3 w-24 rounded" />

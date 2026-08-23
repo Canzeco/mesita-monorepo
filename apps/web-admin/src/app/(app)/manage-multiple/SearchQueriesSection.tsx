@@ -17,12 +17,11 @@ export function SearchQueriesSection({
   return (
     <div className="space-y-3">
       <StepHeading
-        step={1}
         title="Queries"
         hint="One search per line. Duplicates and blank lines are ignored."
       />
-      <div className="border-border bg-card shadow-elev rounded-3xl border p-1">
-        <div className="border-border bg-background rounded-2xl border">
+      <div className="border-border/60 bg-muted/60 focus-within:border-ring/60 focus-within:ring-ring/10 rounded-xl border transition focus-within:ring-4">
+        <div>
           <textarea
             id="queries"
             value={queriesText}

@@ -42,6 +42,7 @@ import {
 } from "lucide-react";
 
 import { apiFetchPublicPlaces, type Place } from "@/lib/api/places";
+import { PlacePickListSkeleton } from "@/components/consumer/rewards/place-pick-skeleton";
 import { filterPlacesByQuery } from "@/lib/place-list-filter";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { cn } from "@/lib/utils";
@@ -110,21 +111,7 @@ export function PlacePickList({
   const anyLocked = visible.some((p) => p.listing_type !== "partner");
 
   if (status === "loading") {
-    // Skeleton mirrors the row silhouette — a grid resolving into rows reads
-    // as a layout jump.
-    return (
-      <div className="border-border bg-card divide-border divide-y overflow-hidden rounded-2xl border">
-        {[0, 1, 2, 3].map((i) => (
-          <div key={i} className="flex items-center gap-3 px-3.5 py-3">
-            <div className="bg-muted size-12 animate-pulse rounded-xl" />
-            <div className="flex-1 space-y-2">
-              <div className="bg-muted h-3.5 w-2/5 animate-pulse rounded" />
-              <div className="bg-muted h-3 w-3/5 animate-pulse rounded" />
-            </div>
-          </div>
-        ))}
-      </div>
-    );
+    return <PlacePickListSkeleton />;
   }
 
   if (status === "error") {

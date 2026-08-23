@@ -176,7 +176,7 @@ export async function loadEnrichConfig(admin: SupabaseClient): Promise<EnrichCon
       opentable_url: num(cfg?.atlas_discover_opentable_n, 3),
       uber_eats_url: num(cfg?.atlas_discover_ubereats_n, 2),
     },
-    saveTotalImages: num(cfg?.atlas_save_total_images, 20),
+    saveTotalImages: num(cfg?.atlas_save_total_images, 10),
     saveImagesToStorage: (cfg?.atlas_save_images_to_storage as boolean) ?? true,
     visionEnabled: (cfg?.atlas_image_vision_enabled as boolean) ?? true,
     analyzeGoogleImages: num(cfg?.atlas_analyze_google_images, 10),
