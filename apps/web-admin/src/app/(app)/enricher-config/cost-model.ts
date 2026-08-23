@@ -139,11 +139,20 @@ type CostEstimate = {
   totalSecs: number;
 };
 
-// Build the per-step rate rows and the aggregate cost/time for one enrichment.
-// Every step S1→S9 runs on every enrichment (no tiers). Rows scale with the
-// live config knobs — Collection drives the Google-photo & IG-post volumes,
-// Links drives how many channels are searched, and Analysis drives the vision
-// calls (which zero out only when both analyze counts are 0).
+// Build the per-function rate rows and the aggregate cost/time for one
+// enrichment. Every function runs on every full enrichment (no tiers). Rows
+// scale with the live config knobs — Collection drives the Google-photo &
+// IG-post volumes, Links drives how many channels are searched, and Analysis
+// drives the vision calls (which zero out only when both analyze counts are 0).
+//
+// LABELS CARRY THE FUNCTION NUMBER (Docs › Enrichment §A), not a stage
+// S-number. They held S1–S9 — the retired three-stage numbering — which put a
+// second ladder on the very page that states the queue is 0–9, and disagreed
+// with it: "S3 · link discovery" sat beside a Links box labelled 4. Several
+// functions legitimately own more than one line (6 describes AND ranks; 9
+// writes, categorises and persists), and one line legitimately serves two
+// functions — the Place Details call, which 1 and 2 share. That is a mapping,
+// not a numbering: never renumber these to make them one-to-one.
 export function computeEnrichmentCost({
   quality,
   imageModel,
@@ -179,7 +188,7 @@ export function computeEnrichmentCost({
   // pre = serial before gather · gather = concurrent · post = serial after.
   const lines: CostLine[] = [
     {
-      label: "S1 · Google profile",
+      label: "1–2 · Google profile",
       detail: "Places Details — Enterprise+Atmosphere SKU",
       pricing: "$25 / 1k calls",
       note: "1 call · field mask pulls reviews + editorial/generative summaries → Atmosphere tier",
@@ -189,7 +198,7 @@ export function computeEnrichmentCost({
       active: true,
     },
     {
-      label: "S1 · Google photos",
+      label: "2 · Google photos",
       detail: "Place Photo media fetch",
       pricing: "$7 / 1k photos",
       note: `Google collect = ${gCollect} photo${gCollect === 1 ? "" : "s"} fetched (≤10 refs) × ${money(COST_RATES.googlePhoto)}`,
@@ -199,7 +208,7 @@ export function computeEnrichmentCost({
       active: true,
     },
     {
-      label: "S1 · Timezone",
+      label: "2 · Timezone",
       detail: "Time Zone API",
       pricing: "$5 / 1k calls",
       note: "1 call from the place lat/lng",
@@ -209,7 +218,7 @@ export function computeEnrichmentCost({
       active: true,
     },
     {
-      label: "S2 · SERP summary",
+      label: "3 · SERP summary",
       detail: "Perplexity Agent X (pro-search)",
       pricing: "$0.005 search + tokens",
       note: "1 agent call · web search + sonar tokens",
@@ -219,7 +228,7 @@ export function computeEnrichmentCost({
       active: true,
     },
     {
-      label: "S3 · link discovery",
+      label: "4 · link discovery",
       detail: "Firecrawl Search × channels",
       pricing: "2 credits / 10 results",
       note: discoveryActive
@@ -231,7 +240,7 @@ export function computeEnrichmentCost({
       active: discoveryActive,
     },
     {
-      label: "S3 · agent validate + contacts",
+      label: "4 · agent validate + contacts",
       detail: "Perplexity Agent Y (pro-search)",
       pricing: "$0.005 search + tokens",
       note: "1 agent call · selects links + phone/email",
@@ -241,7 +250,11 @@ export function computeEnrichmentCost({
       active: discoveryActive,
     },
     {
-      label: "S4 · Google reviews + images",
+      // Function 8 costs land HERE, between 4 and 5, and that is not a typo:
+      // the Apify Google Maps scrape fires into the background early and is
+      // collected at the end, so it overlaps everything after it. The rows are
+      // in SPEND order, which is wall-clock order — not queue order.
+      label: "8 · Google reviews + images",
       detail: "Apify compass/crawler-google-places",
       pricing: "$1.50/1k + $0.50/100 reviews",
       note: "base place + details add-on + up to 100 reviews (maxReviews:100); ~$0.65 worst case",
@@ -251,7 +264,7 @@ export function computeEnrichmentCost({
       active: true,
     },
     {
-      label: "S4 · Instagram",
+      label: "5 · Instagram",
       detail: "Apify IG profile + post scrapers",
       pricing: "$2.60/1k + $2.70/1k posts",
       note: `profile + Instagram collect = ${igCollect} post${igCollect === 1 ? "" : "s"} pulled + identity verify`,
@@ -261,7 +274,7 @@ export function computeEnrichmentCost({
       active: true,
     },
     {
-      label: "S4 · Facebook",
+      label: "5 · Facebook",
       detail: "Apify facebook-pages-scraper",
       pricing: "$10 / 1k pages",
       note: "1 page",
@@ -271,7 +284,7 @@ export function computeEnrichmentCost({
       active: true,
     },
     {
-      label: "S5 · image descriptions",
+      label: "6 · image descriptions",
       detail: imageModel === "economy" ? "gpt-4o-mini vision" : "gpt-4o vision",
       pricing:
         imageModel === "economy" ? "~$0.001 / image" : "~$0.008 / image",
@@ -284,7 +297,7 @@ export function computeEnrichmentCost({
       active: visionActive,
     },
     {
-      label: "S6 · image ranking",
+      label: "6 · image ranking",
       detail: "gpt-4o-mini text sort",
       pricing: "~$0.001 / call",
       note: "1 sort call over the analyzed images",
@@ -294,7 +307,7 @@ export function computeEnrichmentCost({
       active: visionActive,
     },
     {
-      label: `S7 · About synthesis — ${quality}`,
+      label: `9 · About synthesis — ${quality}`,
       detail: quality === "economy" ? "gpt-4o-mini" : "gpt-4o",
       pricing: quality === "economy" ? "$0.15/$0.60 per 1M" : "$2.50/$10 per 1M",
       note: "~1000-word About from gathered sources (no web)",
@@ -304,7 +317,7 @@ export function computeEnrichmentCost({
       active: true,
     },
     {
-      label: "S7 · category → tags",
+      label: "9 · category → tags",
       detail: "2 × gpt-4o-mini (sequential)",
       pricing: "~$0.001 / call",
       note: "Category then tags, both grounded on the synthesized About",
@@ -314,7 +327,7 @@ export function computeEnrichmentCost({
       active: true,
     },
     {
-      label: "S8/S9 · persist data + images",
+      label: "9 · persist data + images",
       detail: "Edge Functions + Supabase Storage",
       pricing: "no metered cost",
       note: "DB writes + image mirroring — not separately billed",

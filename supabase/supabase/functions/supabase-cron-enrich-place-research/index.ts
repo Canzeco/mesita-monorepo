@@ -112,6 +112,17 @@ serveEnrichStage("research", async (admin, _env, row) => {
   // have been paid for. This is the whole reason function 1 hits Place Details
   // separately from function 2 (MESITA-1243).
   //
+  // ONE CALL, TWO FUNCTIONS — a deliberate deviation from the table's letter.
+  // Docs § A says functions 1 and 2 "both hit Place Details" and calls the
+  // redundant call deliberate. That clause is PERMISSION, not a requirement:
+  // it authorises paying twice so that the liveness gate can mean one thing,
+  // and forbids merging the two functions' SEMANTICS. The semantics are
+  // separate here — 1 answers "is it active", 2 owns the hours and the rest of
+  // the spine — off a single fetch, because a second Enterprise+Atmosphere call
+  // ($25/1k) would buy the same bytes twice and no extra information. Split the
+  // call the day 1 and 2 become separately purchasable; never merge what they
+  // ASK.
+  //
   // CLOSED_PERMANENTLY is the only value that stops the run. The other three
   // outcomes all pass, and each for its own reason:
   //   OPERATIONAL         — alive.

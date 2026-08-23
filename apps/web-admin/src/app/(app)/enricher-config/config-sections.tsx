@@ -564,7 +564,8 @@ const QUALITY_OPTIONS: { value: SynthesisQuality; label: string; hint: string }[
   { value: "high", label: "High", hint: "same as Standard · gpt-4o (no-op)" },
 ];
 
-// Perplexity Agent presets — the "search model" for S2 (SERP) + S3 (links).
+// Perplexity Agent presets — the "search model" for function 3 (Serp, Agent X)
+// and function 4 (Links, Agent Y).
 // Cost/depth climbs down the list; pro-search is the default.
 const PERPLEXITY_OPTIONS: { value: PerplexityPreset; label: string; hint: string }[] = [
   { value: "fast-search", label: "Fast", hint: "1 step · cheapest" },
