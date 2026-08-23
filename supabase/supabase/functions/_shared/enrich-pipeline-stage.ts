@@ -68,8 +68,15 @@ export async function seedPlaceResearch(
     trigger: RunTrigger;
     /** NULL keeps the pre-matrix contract: the stage EFs run every subprocess. */
     subprocesses: SubprocessKey[] | null;
-    /** 0 disables the check. The NUMBER lives in enrich-triggers.ts, never in SQL. */
-    cooldownHours?: number;
+    /**
+     * REQUIRED, not optional (MESITA-1184). 0 disables the check, and every
+     * caller today legitimately wants 0 — but an OMITTED cooldown silently
+     * defaulting to "no window" is precisely how this knob stayed orphaned
+     * while the SQL to enforce it already existed. A new event-driven caller
+     * must now state its window or fail to compile.
+     * The NUMBER lives in enrich-triggers.ts, never in SQL.
+     */
+    cooldownHours: number;
     actorUserId?: string | null;
     meta?: Record<string, unknown>;
   },
@@ -124,7 +131,8 @@ export async function openEnrichmentRun(
     seededBy: string;
     subprocesses?: SubprocessKey[] | null;
     entryStage?: ResearchStage;
-    cooldownHours?: number;
+    /** REQUIRED — see seedPlaceResearch above. 0 disables the check. */
+    cooldownHours: number;
     actorUserId?: string | null;
     meta?: Record<string, unknown>;
   },
@@ -137,7 +145,7 @@ export async function openEnrichmentRun(
     p_seeded_by: opts.seededBy,
     p_subprocesses: opts.subprocesses ?? null,
     p_entry_stage: opts.entryStage ?? "research",
-    p_cooldown_hours: Math.max(0, Math.round(opts.cooldownHours ?? 0)),
+    p_cooldown_hours: Math.max(0, Math.round(opts.cooldownHours)),
     p_actor_user_id: opts.actorUserId ?? null,
     p_meta: opts.meta ?? {},
   });

@@ -180,12 +180,15 @@ export const TRIGGER_META: Record<
     label: "On update",
     blurb:
       "Someone edited the profile. A human just stated the truth, so nothing re-scrapes.",
-    // STAGED, not live. `subprocessesFor` is only ever called with "on_create"
-    // (create-place.ts:187); on_schedule is resolved in SQL by
-    // queue_due_place_enrichments. Nothing emits on_update, so a `staged:false`
-    // here badged a dead row as live — and the console now SPLITS the grid on
-    // this flag, so the lie would have promoted it into the live table.
-    staged: true,
+    // LIVE (MESITA-1188), and the only row honoured by WITHHOLDING work rather
+    // than scheduling it. business-web-update-project resolves
+    // subprocessesFor(triggers, "on_update") and skips the follower refresh
+    // when `social` is off, the re-embed when `embedding` is off. It seeds no
+    // run and re-derives nothing: an edit is ground truth, so the update path
+    // does its work inline. lockedCell() forces the other seven cells false,
+    // which is what stops a wired row re-scraping over the human who just
+    // fixed the record — the one way this system loses information.
+    staged: false,
   },
   on_schedule: {
     label: "On schedule",
@@ -221,7 +224,22 @@ export const TRIGGER_META: Record<
 
 export type TriggerRow = {
   enabled: boolean;
-  /** Minimum hours between two runs of this trigger for the same place. */
+  /**
+   * Minimum hours between two runs of this trigger for the same place.
+   *
+   * STAGED (MESITA-1184), and labelled here because an unenforced config is a
+   * bug. The mechanism is real and atomic — `open_place_enrichment_run`
+   * compares this against `max(started_at)` for the pair under an advisory
+   * lock — but every caller alive today passes 0 deliberately: `on_create`
+   * fires once per place, `on_schedule`'s cadence IS `places.enrich_every_days`
+   * and a second window would fight it, and `manual` is explicit operator
+   * intent. So the number round-trips and reaches no enforcement site.
+   *
+   * It stops being staged when the first event-driven emitter lands
+   * (MESITA-1189) and passes it. The console draws no cooldown control; the
+   * whole-blob save is what keeps this field alive across writes, which
+   * `enrich-triggers.test.ts` pins.
+   */
   cooldownHours: number;
   subprocesses: Record<SubprocessKey, boolean>;
 };

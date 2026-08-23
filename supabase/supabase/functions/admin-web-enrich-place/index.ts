@@ -98,6 +98,7 @@ Deno.serve(async (req) => {
     const seed = await seedPlaceResearch(admin, projectId, googlePlaceId, "admin-web-enrich-place", {
       trigger: "manual",
       subprocesses: null,
+      cooldownHours: 0,
       actorUserId: authRes.user.id,
       meta: { mode },
     });
@@ -149,6 +150,7 @@ Deno.serve(async (req) => {
     seededBy: "admin-web-enrich-place",
     subprocesses: null,
     entryStage: stage,
+    cooldownHours: 0,
     actorUserId: authRes.user.id,
     meta: { mode },
   });

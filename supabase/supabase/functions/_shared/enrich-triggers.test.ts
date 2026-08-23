@@ -74,19 +74,89 @@ Deno.test("normalize: a STAGED row's cells survive a save made while it sat behi
 
 // ── the live/staged split the console now renders on ────────────────────────
 
-Deno.test("TRIGGER_META: exactly the rows with a real emitter are marked live", () => {
+Deno.test("TRIGGER_META: exactly the rows some code reads are marked live", () => {
   // The folded page splits the grid on `staged`, so this flag stopped being
-  // decoration the moment it decided which table a row lands in.
+  // decoration the moment it decided which table a row lands in. `staged` means
+  // NOTHING READS THIS ROW — not "this row seeds no run".
   //
-  // The emitters, exhaustively: create-place.ts calls
-  // subprocessesFor(triggers, "on_create"), and queue_due_place_enrichments()
-  // resolves on_schedule in SQL. There is no third.
+  // The readers, exhaustively:
+  //   on_create   — create-place.ts resolves subprocessesFor(t, "on_create")
+  //                 and hard-skips the first run when the row buys nothing.
+  //   on_schedule — queue_due_place_enrichments() resolves it in SQL every
+  //                 15 minutes and queues zero rows when it is disabled.
+  //   on_update   — business-web-update-project resolves it and skips the
+  //                 follower refresh / the re-embed (MESITA-1188). It is the
+  //                 one reader that WITHHOLDS work instead of scheduling it,
+  //                 which is why it is live without being an emitter.
+  // There is no fourth. on_visit / on_order / on_reservation_* still have no
+  // reader (MESITA-1189) and must stay staged until one exists.
   const live = Object.entries(TRIGGER_META)
     .filter(([, m]) => !m.staged)
     .map(([k]) => k)
     .sort();
 
-  assertEquals(live, ["on_create", "on_schedule"]);
+  assertEquals(live, ["on_create", "on_schedule", "on_update"]);
+});
+
+// ── on_update: wired, and still forbidden from re-deriving anything ─────────
+//
+// MESITA-1188 made this row load-bearing. The guardrail it must never lose:
+// an edit is GROUND TRUTH, so on_update may never re-derive google / reviews /
+// serp / links / images / synthesis / photos. Re-scraping there would overwrite
+// the person who just fixed the record — the one way this system loses
+// information. lockedCell() forces those seven false and the normalizer applies
+// it, so wiring the row cannot route around the lock.
+
+Deno.test("on_update: the seven locked cells stay false even when stored true", () => {
+  const hostile = structuredClone(ENRICHMENT_TRIGGERS_DEFAULTS);
+  for (const key of Object.keys(hostile.on_update.subprocesses)) {
+    (hostile.on_update.subprocesses as Record<string, boolean>)[key] = true;
+  }
+
+  const out = normalizeEnrichmentTriggers(hostile);
+
+  for (
+    const locked of [
+      "google",
+      "reviews",
+      "serp",
+      "links",
+      "images",
+      "synthesis",
+      "photos",
+    ]
+  ) {
+    assertEquals(
+      (out.on_update.subprocesses as Record<string, boolean>)[locked],
+      false,
+      `on_update.${locked} must stay locked off — an edit is ground truth`,
+    );
+  }
+  // The two the operator actually owns survive the same pass.
+  assertEquals(out.on_update.subprocesses.social, true);
+  assertEquals(out.on_update.subprocesses.embedding, true);
+});
+
+Deno.test("on_update: what the update path is allowed to buy is exactly social + embedding", () => {
+  // business-web-update-project gates on `.includes("social")` and
+  // `.includes("embedding")`. If this list ever grows, that EF starts
+  // re-deriving a field a human just typed.
+  const buys = subprocessesFor(ENRICHMENT_TRIGGERS_DEFAULTS, "on_update").sort();
+  assertEquals(buys, ["embedding", "social"]);
+});
+
+Deno.test("on_update: a disabled row buys nothing, so the update path does neither side effect", () => {
+  const cfg = structuredClone(ENRICHMENT_TRIGGERS_DEFAULTS);
+  cfg.on_update.enabled = false;
+  assertEquals(subprocessesFor(cfg, "on_update"), []);
+});
+
+Deno.test("on_update: turning one cell off leaves the other side effect alone", () => {
+  const cfg = structuredClone(ENRICHMENT_TRIGGERS_DEFAULTS);
+  cfg.on_update.subprocesses.social = false;
+  const buys = subprocessesFor(normalizeEnrichmentTriggers(cfg), "on_update");
+  assertEquals(buys.includes("social"), false);
+  assertEquals(buys.includes("embedding"), true);
 });
 
 Deno.test("subprocessesFor: a disabled live row buys nothing", () => {
