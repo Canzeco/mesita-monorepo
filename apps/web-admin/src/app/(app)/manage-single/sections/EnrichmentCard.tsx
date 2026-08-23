@@ -138,6 +138,9 @@ export function EnrichmentCard({ place }: { place: AdminPlace }) {
           error: null,
           last_enriched_at: prev?.last_enriched_at ?? null,
           updated_at: new Date().toISOString(),
+          // The queued run has not written a new SERP Summary yet — keep the
+          // one the last run produced rather than blanking the box on click.
+          serp_summary: prev?.serp_summary ?? null,
         }));
       });
     },

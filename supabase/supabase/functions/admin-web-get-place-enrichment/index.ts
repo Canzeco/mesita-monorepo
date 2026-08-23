@@ -11,6 +11,10 @@
 //   • status — enrichment progress for the place: projects.content_status +
 //     the place_research stage/status/error + last_enriched_at (the moment the
 //     pipeline last reached stage='done').
+//   • serpSummary — the SERP Summary (Agent X's soft editorial read) for the
+//     last run. Selected as a JSON PATH, never as the whole `gathered` blob:
+//     that column is tens of KB and shipping it wholesale is the regression
+//     MESITA-1198 already had to undo once.
 //   • schedule — the per-place cadence (MESITA-1148): places.enrich_every_days
 //     / enrich_mode / enrich_next_at, written by admin-web-set-place-enrichment
 //     and honoured by the queue_due_place_enrichments cron. NULL everyDays =
@@ -72,7 +76,9 @@ Deno.serve(async (req) => {
       .maybeSingle(),
     admin
       .from("place_research")
-      .select("stage, status, error, updated_at")
+      .select(
+        "stage, status, error, updated_at, serp_summary:gathered->grounding->>serpSummary",
+      )
       .eq("place_id", projectId)
       .maybeSingle(),
     admin
@@ -104,6 +110,7 @@ Deno.serve(async (req) => {
         status: string | null;
         error: string | null;
         updated_at: string | null;
+        serp_summary: string | null;
       }
     | null;
 
@@ -116,6 +123,10 @@ Deno.serve(async (req) => {
     // 'done' that timestamp is the completion time.
     last_enriched_at: research?.stage === "done" ? (research?.updated_at ?? null) : null,
     updated_at: research?.updated_at ?? null,
+    // One of the three enrichment texts (SERP Summary · Profile Description ·
+    // Semantic Summary). It grounds link selection and the description, and it
+    // is never a source of facts, ratings or prices.
+    serp_summary: research?.serp_summary ?? null,
   };
 
   const placeRow = placeRes.data as

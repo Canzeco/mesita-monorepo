@@ -1,8 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Braces, ChevronDown, Fingerprint } from "lucide-react";
-import { getPlaceVerification, type AdminPlace } from "../actions";
+import { Braces, ChevronDown, Fingerprint, Telescope } from "lucide-react";
+import {
+  getPlaceEnrichment,
+  getPlaceVerification,
+  type AdminPlace,
+} from "../actions";
 import { CopyIdButton, ReadField } from "../ui";
 import { EnrichmentCard } from "./EnrichmentCard";
 import { StatusCard } from "./StatusCard";
@@ -68,6 +72,7 @@ export function AdminSection({ place }: { place: AdminPlace }) {
       />
       {/* key remounts the loader when the operator switches places. */}
       <EnrichmentCard key={`enrich-${place.id}`} place={place} />
+      <SerpSummaryCard place={place} />
       <EmbeddingCard place={place} />
       <MetaCard
         place={place}
@@ -225,11 +230,16 @@ function parseEmbeddingVector(raw: AdminPlace["embedding"]): number[] | null {
 const EMBEDDING_SOURCE_TEXT_MAX_WORDS = 60;
 
 function EmbeddingCard({ place }: { place: AdminPlace }) {
-  const text = (place.embedding_source_text ?? "").trim();
-  const wordCount = text ? text.split(/\s+/).filter(Boolean).length : 0;
+  const summary = (place.embedding_source_text ?? "").trim();
+  const wordCount = summary ? summary.split(/\s+/).filter(Boolean).length : 0;
   const vector = parseEmbeddingVector(place.embedding);
   const preview = vector?.slice(0, 24) ?? null;
   const dims = vector?.length ?? 0;
+  // The resolved label is what actually reaches the source text: Postgres
+  // generates places.name as coalesce(mesita_name, google_name), so an
+  // operator override is already folded in by the time we embed.
+  const resolvedName = (place.name ?? "").trim();
+  const override = (place.mesita_name ?? "").trim();
   return (
     <details
       className="border-border bg-card shadow-card group rounded-2xl border"
@@ -243,6 +253,9 @@ function EmbeddingCard({ place }: { place: AdminPlace }) {
           <h2 className="font-display text-base font-semibold tracking-tight">
             Embedding
           </h2>
+          <p className="text-muted-foreground mt-0.5 text-xs">
+            One vector, over the name and the Semantic Summary.
+          </p>
         </div>
         <ChevronDown
           className="text-muted-foreground h-4 w-4 shrink-0 transition-transform group-open:rotate-180"
@@ -250,35 +263,137 @@ function EmbeddingCard({ place }: { place: AdminPlace }) {
         />
       </summary>
       <div className="border-border/60 flex flex-col gap-4 border-t px-5 pb-6 sm:px-6 sm:pb-8">
-        <ReadField
-          label={`Place Synthesis as Text${text ? ` · ${wordCount}/${EMBEDDING_SOURCE_TEXT_MAX_WORDS} words` : ""}`}
-          boxed
-        >
-          {text ? (
-            <span className="text-sm leading-relaxed whitespace-pre-wrap">{text}</span>
-          ) : (
-            <span className="text-muted-foreground text-xs italic">
-              Not synthesized yet — written on create and when the profile changes.
-            </span>
-          )}
-        </ReadField>
-        <ReadField label="Place Synthesis as Embedding" boxed>
-          {vector && preview ? (
-            <span className="flex min-w-0 flex-col gap-1.5 py-0.5">
-              <code className="text-muted-foreground break-all font-mono text-[10px] leading-snug">
-                [{preview.map((n) => n.toFixed(4)).join(", ")}
-                {dims > preview.length ? `, … +${dims - preview.length} dims` : ""}]
-              </code>
-              <span className="text-muted-foreground text-[11px] tabular-nums">
-                {dims}d · text-embedding-3-small
-                {place.embedding_source_hash
-                  ? ` · hash ${place.embedding_source_hash.slice(0, 8)}…`
-                  : ""}
+        <ReadField label="Mesita Name" boxed>
+          {resolvedName ? (
+            <span className="flex min-w-0 flex-col gap-0.5 py-0.5">
+              <span className="text-sm">{resolvedName}</span>
+              <span className="text-muted-foreground text-[11px]">
+                {override
+                  ? "Operator override — this is what gets embedded."
+                  : "Following the Google name — no override set."}
               </span>
             </span>
           ) : (
             <span className="text-muted-foreground text-xs italic">
-              No vector yet — produced from the synthesis text above.
+              Unnamed — nothing to embed.
+            </span>
+          )}
+        </ReadField>
+        <ReadField
+          label={`Semantic Summary${summary ? ` \u00b7 ${wordCount}/${EMBEDDING_SOURCE_TEXT_MAX_WORDS} words` : ""}`}
+          boxed
+        >
+          {summary ? (
+            <span className="text-sm leading-relaxed whitespace-pre-wrap">{summary}</span>
+          ) : (
+            <span className="text-muted-foreground text-xs italic">
+              Not written yet — produced on create and whenever the profile changes.
+            </span>
+          )}
+        </ReadField>
+        <ReadField label="Vector" boxed>
+          {vector && preview ? (
+            <code className="text-muted-foreground break-all font-mono text-[10px] leading-snug">
+              [{preview.map((n) => n.toFixed(4)).join(", ")}
+              {dims > preview.length ? `, \u2026 +${dims - preview.length} dims` : ""}]
+            </code>
+          ) : (
+            <span className="text-muted-foreground text-xs italic">
+              No vector yet — produced from the Semantic Summary above.
+            </span>
+          )}
+        </ReadField>
+        <ReadField label="Model" boxed>
+          <span className="text-muted-foreground text-[11px] tabular-nums">
+            text-embedding-3-small{dims ? ` \u00b7 ${dims}d` : " \u00b7 1536d"} \u00b7 locked, not a knob
+          </span>
+        </ReadField>
+        <ReadField label="Source hash" boxed>
+          {place.embedding_source_hash ? (
+            <span className="flex min-w-0 flex-col gap-0.5 py-0.5">
+              <code className="min-w-0 truncate font-mono text-[11px]">
+                {place.embedding_source_hash}
+              </code>
+              <span className="text-muted-foreground text-[11px]">
+                The model is only called again when this goes stale.
+              </span>
+            </span>
+          ) : (
+            <span className="text-muted-foreground text-xs italic">
+              None — the place has never been embedded.
+            </span>
+          )}
+        </ReadField>
+      </div>
+    </details>
+  );
+}
+
+// SERP Summary — Agent X's web-grounded editorial read of the place, written at
+// step 4 of the queue. It is one of the three enrichment texts, and the only
+// one that never reaches a guest:
+//
+//   SERP Summary        soft context the PIPELINE reads (this box)
+//   Profile Description places.description — the prose a GUEST reads
+//   Semantic Summary    embedding_source_text — what the INDEX reads
+//
+// It gets its own box precisely because it is none of the other two. It grounds
+// Agent Y's link selection at step 5 and the description at step 10, and it is
+// NEVER a source of facts, ratings or prices — which is worth seeing plainly
+// when a wrong fact shows up in a profile and you are hunting for its origin.
+//
+// It lives on the run (place_research.gathered), not on the place, so it comes
+// from the enrichment EF rather than the place row.
+function SerpSummaryCard({ place }: { place: AdminPlace }) {
+  const [summary, setSummary] = useState<string | null>(null);
+  const [loaded, setLoaded] = useState(false);
+
+  useEffect(() => {
+    let alive = true;
+    setLoaded(false);
+    getPlaceEnrichment(place.id).then((r) => {
+      if (!alive) return;
+      setSummary(r.ok ? (r.data.status?.serp_summary ?? null) : null);
+      setLoaded(true);
+    });
+    return () => {
+      alive = false;
+    };
+  }, [place.id]);
+
+  const text = (summary ?? "").trim();
+  return (
+    <details
+      className="border-border bg-card shadow-card group rounded-2xl border"
+      open
+    >
+      <summary className="flex cursor-pointer list-none items-center gap-3 p-5 sm:p-6 [&::-webkit-details-marker]:hidden">
+        <span className="bg-muted text-muted-foreground inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl">
+          <Telescope className="h-4 w-4" />
+        </span>
+        <div className="min-w-0 flex-1">
+          <h2 className="font-display text-base font-semibold tracking-tight">
+            SERP Summary
+          </h2>
+          <p className="text-muted-foreground mt-0.5 text-xs">
+            Soft context for the pipeline — never a source of facts.
+          </p>
+        </div>
+        <ChevronDown
+          className="text-muted-foreground h-4 w-4 shrink-0 transition-transform group-open:rotate-180"
+          aria-hidden
+        />
+      </summary>
+      <div className="border-border/60 flex flex-col gap-4 border-t px-5 pb-6 sm:px-6 sm:pb-8">
+        <ReadField label="Agent X · last run" boxed>
+          {!loaded ? (
+            <span className="text-muted-foreground text-xs italic">Loading…</span>
+          ) : text ? (
+            <span className="text-sm leading-relaxed whitespace-pre-wrap">{text}</span>
+          ) : (
+            <span className="text-muted-foreground text-xs italic">
+              No SERP Summary on the last run — either the run did not buy it, or
+              the web had nothing to say about this place.
             </span>
           )}
         </ReadField>
