@@ -7,6 +7,7 @@ import { DEFAULT_MODELS_CONFIG } from "../_shared/models-config.ts";
 import {
   candidateBlock,
 } from "./memo-catalog-helpers.ts";
+import { knowledgeBlock } from "../_shared/memo-knowledge.ts";
 import type { Prediction } from "./memo-google-text-search.ts";
 
 const MAX_HISTORY = 8;
@@ -45,13 +46,21 @@ export async function answerWithPerplexity(
   // spots and flag off-hours asks.
   const ctx = hiddenMemoContext(profileCtx, lat, lng);
 
+  // Mesita's own words, for asks about Mesita itself (MESITA-1201). This engine
+  // has no tool loop — Perplexity IS the answer — so the grounding has to ride
+  // the prompt: without it "¿qué significa Gold?" is a web search over
+  // vocabulary the web has never heard of, and the model declines or invents.
+  // Always the guest audience; the internal rows have no path to this prompt.
+  // Empty when the ask isn't about Mesita, which is most asks.
+  const knowledge = knowledgeBlock(query, "guest");
+
   // Feed the exact cards the user will see so the recommendation stays
   // coherent with the rail — Memo names the real cards instead of drifting to
   // web-only spots. Empty/absent when the ask isn't place-seeking or nothing
   // matched.
   messages.push({
     role: "user",
-    content: `${query}${ctx}${candidateBlock(candidates, MAX_CARDS)}`,
+    content: `${query}${ctx}${knowledge}${candidateBlock(candidates, MAX_CARDS)}`,
   });
 
   const res = await callPerplexityChat(key, messages, {

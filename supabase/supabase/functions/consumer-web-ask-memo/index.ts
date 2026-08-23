@@ -28,7 +28,10 @@
 //      color (what to order, vibe) + citations + follow-up questions, and can
 //      answer ANY question. Non-place-seeking turns skip step 1 and reply text-
 //      only. Hidden context feeds the user's location + local time so Memo
-//      favours open, time-appropriate spots.
+//      favours open, time-appropriate spots. Asks about MESITA ITSELF (classes,
+//      Passport, plans, tickets, how a discount resolves) additionally carry
+//      our own curated facts into the prompt (_shared/memo-knowledge.ts) —
+//      none of that is on the open web for Perplexity to retrieve.
 //
 // No random-sample fallback: no genuine match → empty rail + text-only reply.
 //
@@ -152,8 +155,9 @@ Deno.serve(async (req) => {
     ? data.consumerContext(user.id)
     : Promise.resolve<string | null>(null);
 
-  // Memo v-next: the OpenAI reasoning airlock (sources: Perplexity · catalog RAG
-  // · passive public catalog reads). Gated behind MEMO_ENGINE=agent so this
+  // Memo v-next: the OpenAI reasoning airlock (sources: Perplexity · catalog
+  // RAG · passive public catalog reads · our own curated Mesita knowledge).
+  // Gated behind MEMO_ENGINE=agent so this
   // ships dark until flipped; returns the exact same response contract as below,
   // so the (already-enabled) frontend is untouched either way.
   if ((Deno.env.get("MEMO_ENGINE") ?? "").trim() === "agent") {
