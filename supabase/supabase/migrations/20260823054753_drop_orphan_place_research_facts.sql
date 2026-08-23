@@ -1,0 +1,13 @@
+-- MESITA-1232: place_research_facts is an orphaned RPC.
+--
+-- Shipped 2026-08-22 (20260822202146_place_research_facts_rpc.sql, MESITA-1198)
+-- to answer "did the Enricher's payloads land" without shipping tens of KB of
+-- jsonb per place. Its two callers moved to the 0-3 enrich level and now read
+-- place_enrich_events_latest instead, which answers the same question off the
+-- event log. That sibling is live (business-web-get-overview:106,
+-- admin-web-search-places:151); this one has zero callers in any EF or app and
+-- zero pg_depend dependents.
+--
+-- The full body is preserved in the creating migration and in git history, so
+-- this is reversible: re-run 20260822202146 to restore it.
+drop function if exists public.place_research_facts(uuid[]);
