@@ -1033,7 +1033,6 @@ export type Database = {
           instagram_url: string | null
           lat: number | null
           lng: number | null
-          manual_priority: number
           menu_pdf_name: string | null
           menu_pdf_url: string | null
           menus: Json | null
@@ -1119,7 +1118,6 @@ export type Database = {
           instagram_url?: string | null
           lat?: number | null
           lng?: number | null
-          manual_priority?: number
           menu_pdf_name?: string | null
           menu_pdf_url?: string | null
           menus?: Json | null
@@ -1205,7 +1203,6 @@ export type Database = {
           instagram_url?: string | null
           lat?: number | null
           lng?: number | null
-          manual_priority?: number
           menu_pdf_name?: string | null
           menu_pdf_url?: string | null
           menus?: Json | null
@@ -2256,7 +2253,6 @@ export type Database = {
           lat: number | null
           listing_type: Database["public"]["Enums"]["listing_type"] | null
           lng: number | null
-          manual_priority: number | null
           menu_pdf_name: string | null
           menu_pdf_url: string | null
           menus: Json | null

@@ -110,9 +110,6 @@ type UpdateBody = {
   // Place-level monthly promo spend cap (migration 0038), in the place's
   // currency. One of 200, 500, 1000 or null (no cap).
   monthly_promo_cap?: number | null;
-  // Operator priority [0,1]. SUPER-ADMIN ONLY (a business
-  // must not lift its own place); silently ignored for non-super-admins.
-  manual_priority?: number | null;
   photos?: string[];
   // External + social channels
   website_url?: string | null;
@@ -495,24 +492,6 @@ Deno.serve(async (req) => {
     update[targetCol] = value;
   }
 
-  // Manual Priority — the operator's per-place override. SUPER-ADMIN ONLY: a
-  // business owner lifting their own place would defeat the point, so for
-  // non-super-admins the field is silently dropped (not a 403 — the rest of the
-  // form still saves). Written to the place via the profiles INSTEAD OF
-  // trigger (routed to places.manual_priority).
-  //
-  // Currently INERT: MESITA-1048 deleted the ranking engine that consumed it.
-  // The column, this write and the admin editor stay so operator intent
-  // survives until a rebuilt engine reads it again.
-  if ("manual_priority" in body && memberRes.membership.isSuperAdmin) {
-    const raw = body.manual_priority;
-    const v = raw == null ? 0.1 : Number(raw);
-    if (!Number.isFinite(v) || v < 0 || v > 1) {
-      return json({ ok: false, error: "manual_priority must be a number in [0,1]" }, 400);
-    }
-    update.manual_priority = v;
-  }
-
   if (Object.keys(update).length === 0) {
     return json({ ok: false, error: "No editable fields provided" }, 400);
   }
@@ -566,7 +545,7 @@ Deno.serve(async (req) => {
     .from("profiles")
     .update(update)
     .eq("id", projectId)
-    .select(PLACE_BUSINESS_COLUMNS + ", manual_priority")
+    .select(PLACE_BUSINESS_COLUMNS)
     .single();
 
   // Backward compatibility: in projects where category_label migration hasn't
@@ -582,7 +561,7 @@ Deno.serve(async (req) => {
       .from("profiles")
       .update(retryUpdate)
       .eq("id", projectId)
-      .select(PLACE_BUSINESS_COLUMNS + ", manual_priority")
+      .select(PLACE_BUSINESS_COLUMNS)
       .single();
     place = retry.data;
     updateError = retry.error;
