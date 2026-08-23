@@ -220,10 +220,10 @@ export async function createMinimalPlace(opts: {
     details: pieceDone("Google spine persisted at create.", { via: "create" }),
   });
 
-  // ── On-Create embeddings (Notion On-Create S4 "Compute Place Synthesis and
-  // Embedding"): synthesize the first blurb + vector for the new place right
-  // away, so it's semantically searchable before the Enricher fills the deep
-  // profile. Background (waitUntil) — never blocks or fails the create; the
+  // ── On-Create embeddings — the SUMMARY semantic function, run by CREATE
+  // rather than by the queue (Docs › Enrichment §A): synthesize the first
+  // Semantic Summary + vector for the new place right away, so it's
+  // semantically searchable before the Enricher fills the deep profile. Background (waitUntil) — never blocks or fails the create; the
   // On-Update path re-embeds when the Enricher later changes profile fields.
   // Tags never feed the source text. ──
   queuePlaceEmbeddingsOnUpdate({

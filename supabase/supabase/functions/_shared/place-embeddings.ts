@@ -28,7 +28,7 @@ import { pieceDone, reportPulsePieces } from "./pulse-report.ts";
 
 /** Fallback when models_config.enricher.model is unset. */
 const DEFAULT_SYNTH_MODEL = DEFAULT_MODELS_CONFIG.enricher.model!;
-/** Hard ceiling for Place Synthesis blurbs — Atlas Config Field limits. */
+/** Hard ceiling for the Semantic Summary — Atlas Config Field limits. */
 export const MAX_BLURB_WORDS = ENRICH_FIELD_LIMITS.embeddingSourceText.max;
 
 /** Normalize whitespace and clamp to a word count (never mid-word). */
