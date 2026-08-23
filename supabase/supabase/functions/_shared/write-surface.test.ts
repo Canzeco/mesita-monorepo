@@ -14,15 +14,19 @@
 //     ratcheted the same way. The visibility half needs a status column
 //     that doesn't exist yet — that's MESITA-1250's, not this file's.
 //
-// CONSUMER note: this ratchet lists today's origin/main writers of
-// `consumers`, not a door built by this PR — PR #1157 (open, not yet
-// merged as of this PR) already builds a comprehensive consumer validator +
-// write door (`_shared/consumer-doc.ts`, all 7 real callers routed) under
-// this same issue. Building a second, competing consumer door here would
-// duplicate that work and contradict deliverable 3 ("the ONLY exported
-// mutation function"). The ratchet below is safe regardless of merge order:
-// it only fails on a writer NOT in the allowlist, so consolidating today's
-// scattered writers onto consumer-doc.ts only shrinks the found set.
+// CONSUMER note: PR #1157 (merged 2026-08-23, same issue) already built a
+// comprehensive consumer validator + write door — `_shared/consumer-doc.ts`,
+// `ConsumerDoc`/`validateConsumerPatch`/`writeConsumer` — and routed its
+// own survey's 7 call sites through it. This PR does not build a second,
+// competing consumer door — that would contradict deliverable 3 ("the ONLY
+// exported mutation function"). The allowlist below is bootstrapped from a
+// real scan taken AFTER #1157 landed, and still finds 6 files besides
+// consumer-doc.ts itself writing `consumers` directly — #1157's routing
+// covered its own survey's call sites, not the full closure of every
+// `.from("consumers")` write in the tree. Freezing that honestly (not
+// pretending the door is the sole writer when the scan says otherwise) is
+// what this ratchet is for; migrating those 6 onto the door is follow-up
+// work, not a claim this comment makes.
 //
 // Scan helpers duplicated from place-name-writes.test.ts on purpose — that
 // file's internals are regression-pinned (MESITA-1075's relative-path fix);
@@ -122,7 +126,7 @@ Deno.test("PLACE: no new writer of places/profiles outside the allowlist", async
 
 // ── CONSUMER (consumers) — see the CONSUMER note in the file header ────────
 const CONSUMER_ALLOWLIST = [
-  "_shared/consumer-doc.ts", // PR #1157's write door — not yet merged, allowlisted ahead of time so this test does not flip red the moment it lands
+  "_shared/consumer-doc.ts", // PR #1157's write door (merged)
   "check-web-get-ticket/index.ts",
   "consumer-mcp/index.ts",
   "consumer-web-create-connector/index.ts",
