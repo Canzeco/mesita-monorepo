@@ -1,22 +1,38 @@
 // Supabase Edge Function — consumer-web-recommend-swipe (product caller)
 //
-// Consumer swipe deck. DELIBERATE PLACEHOLDER (MESITA-1048): the Lineup
-// scoring engine was deleted — subscores, lanes, the openness table, the
-// scoring_config blob and both admin config pages are gone — and nothing has
-// replaced it yet. Until a rebuilt engine ships, this function returns every
-// ACTIVE place in uniformly random (Fisher–Yates) order. That is the whole
-// algorithm. There is no ranking, no personalisation, no embedding, no
-// distance weighting. Do not read intent into the order.
+// The SWIPE engine — the Home deck (Docs › Discovery §B).
 //
-// The SLUG and the RESPONSE SHAPE are frozen on purpose: deployed Expo
-// binaries call this endpoint and cannot be redeployed atomically. A changed
-// shape throws inside the client helper and every caller silently falls back
-// forever. Keep returning { ok, deck, summary: { candidates, embedded } }.
+// This function used to be a Fisher–Yates shuffle over every active place, and
+// said so: the Lineup scoring engine was deleted in MESITA-1048 and nothing
+// replaced it. MESITA-1196 replaces it. Swipe is now the first engine wired to
+// the shared signal library, which is what makes app_config.discovery_config
+// an ENFORCED config rather than a staged one — the house rule is that an
+// unenforced config is a bug, so the rebuild lands with a consumer surface
+// reading it on day one.
 //
-// COMPAT BODY FIELDS: `lat`, `lng`, `radiusKm` and `randomness` are still
-// accepted so old clients keep working, but they NO LONGER AFFECT SELECTION —
-// they are read and discarded. Only `limit` still does anything (it caps the
-// deck). `summary.embedded` is always 0 because nothing embeds here anymore.
+// TWO LANES, IN THIS ORDER, AND NEVER THE OTHER (see _shared/discovery-blend.ts):
+//   1. EARNED — the six signals compose as `s^w` into one score per place.
+//   2. BOUGHT — every Nth deck position is a slot a promoting place is moved
+//      forward into. It runs on the ALREADY-RANKED list and cannot see a
+//      score; the blend runs on a projection that carries no promo field and
+//      cannot see a strategy. Money buys a position, never a score.
+// `discoveryRank` is the only entry point precisely so no caller can run these
+// backwards.
+//
+// THE SLUG AND THE RESPONSE SHAPE ARE STILL FROZEN. Deployed Expo binaries call
+// this endpoint and cannot be redeployed atomically; a changed shape throws
+// inside the client helper and every caller silently falls back forever. Keep
+// returning { ok, deck, summary: { candidates, embedded } }.
+//
+// WHAT CHANGED FOR OLD CLIENTS: `lat` / `lng` were accepted-and-discarded under
+// the placeholder and are LIVE again — they feed Proximity. That is a strictly
+// better deck for a client already sending them, and a client that sends
+// nothing gets a neutral Proximity (1) rather than a penalty, so it is
+// unaffected. `radiusKm` stays discarded: this engine demotes distance, it does
+// not filter on it — a hard radius is the filter model MESITA-1183 tore down.
+// `randomness` also stays discarded, because randomness is now a SIGNAL whose
+// exponent the operator owns in admin Discovery; letting a client override an
+// operator's weight is how a config stops meaning anything.
 //
 // Local:  supabase functions serve consumer-web-recommend-swipe
 // Deploy: supabase functions deploy consumer-web-recommend-swipe
@@ -27,34 +43,31 @@ import { adminClient, readEFEnv } from "../_shared/auth.ts";
 import { clampPositive, stripInternal } from "../_shared/place-pool-shape.ts";
 import type { PlaceRow } from "../_shared/place-pool-shape.ts";
 import { PLACE_PUBLIC_COLUMNS } from "../_shared/place-columns.ts";
+import { discoveryRank } from "../_shared/discovery-blend.ts";
+import { loadDiscoveryConfig } from "../_shared/discovery-config.ts";
+import {
+  DISCOVERY_EXTRA_COLUMNS,
+  toPromotingFields,
+  toSignalPlace,
+} from "../_shared/discovery-place.ts";
 
 const DEFAULT_LIMIT = 50;
 const MAX_LIMIT = 50;
-// Hard ceiling on the rows we pull before shuffling. The catalog is far
-// smaller than this today; it exists so the query can never grow unbounded.
+// Hard ceiling on the rows we pull before ranking. The catalog is far smaller
+// than this today; it exists so the query can never grow unbounded.
 const POOL_CAP = 1000;
 
 type Body = {
-  /** Accepted for wire compatibility. Ignored — see the header. */
+  /** Guest latitude. LIVE again — feeds the Proximity signal. */
   lat?: number;
-  /** Accepted for wire compatibility. Ignored — see the header. */
+  /** Guest longitude. LIVE again — feeds the Proximity signal. */
   lng?: number;
   /** Accepted for wire compatibility. Ignored — see the header. */
   radiusKm?: number;
   limit?: number;
-  /** Accepted for wire compatibility. Ignored — see the header. */
+  /** Accepted for wire compatibility. Ignored — the operator owns this. */
   randomness?: number;
 };
-
-/** In-place Fisher–Yates over a copy. Uniform, unbiased, no ordering bias. */
-function shuffle<T>(rows: T[]): T[] {
-  const a = [...rows];
-  for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [a[i], a[j]] = [a[j], a[i]];
-  }
-  return a;
-}
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
@@ -69,9 +82,13 @@ Deno.serve(async (req) => {
   const limit = clampPositive(body.limit, DEFAULT_LIMIT, MAX_LIMIT);
 
   const admin = adminClient(env);
+
+  // The pool needs the promo columns the slotting lane reads, which
+  // PLACE_PUBLIC_COLUMNS already carries (they are stripped on the way out by
+  // stripInternal), plus the embedding for the Semantic signal.
   const { data, error } = await admin
     .from("profiles")
-    .select(PLACE_PUBLIC_COLUMNS)
+    .select(`${PLACE_PUBLIC_COLUMNS}, ${DISCOVERY_EXTRA_COLUMNS}`)
     .eq("status", "active")
     .limit(POOL_CAP);
 
@@ -81,13 +98,32 @@ Deno.serve(async (req) => {
   }
 
   const rows = (data ?? []) as unknown as PlaceRow[];
-  // stripInternal also attaches computed `family_keys` (MESITA-679), which the
-  // consumer "What" discovery filter reads straight off the wire. Keep it.
-  const deck = shuffle(rows).slice(0, limit).map(stripInternal);
+  const cfg = await loadDiscoveryConfig(admin);
+
+  // Swipe carries no query and no category intent — the deck is the whole
+  // catalog, ordered. Proximity is the only intent a swiping guest expresses,
+  // so Category and Semantic abstain at NEUTRAL and drop out of the blend.
+  const ranked = discoveryRank(
+    rows,
+    (r) => toSignalPlace(r as unknown as Record<string, unknown>),
+    (r) => toPromotingFields(r as unknown as Record<string, unknown>),
+    {
+      lat: typeof body.lat === "number" ? body.lat : null,
+      lng: typeof body.lng === "number" ? body.lng : null,
+    },
+    cfg.weights,
+    cfg.slotting,
+  );
+
+  // stripInternal also attaches computed `family_keys` (MESITA-679). Keep it.
+  const deck = ranked.slice(0, limit).map((r) => stripInternal(r.row));
+  const embedded = rows.filter((r) =>
+    (r as unknown as Record<string, unknown>).embedding != null
+  ).length;
 
   return json({
     ok: true,
     deck,
-    summary: { candidates: rows.length, embedded: 0 },
+    summary: { candidates: rows.length, embedded },
   });
 });
