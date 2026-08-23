@@ -17,6 +17,17 @@ import { assertEquals } from "jsr:@std/assert@1";
 
 const FUNCTIONS_DIR = new URL("../", import.meta.url);
 
+/**
+ * A file's path relative to the functions dir, e.g.
+ * `supabase-cron-enrich-place-research/index.ts`. Every path guard in this file
+ * matches on this, never on an absolute path — see the note in walk().
+ */
+function relativeToFunctions(file: URL): string {
+  const base = FUNCTIONS_DIR.pathname;
+  const full = file.pathname;
+  return full.startsWith(base) ? full.slice(base.length) : full;
+}
+
 async function tsSources(): Promise<Array<{ path: string; text: string }>> {
   const out: Array<{ path: string; text: string }> = [];
   for await (
@@ -40,7 +51,17 @@ async function* walk(
     if (entry.isDirectory) {
       yield* walk(child);
     } else if (entry.name.endsWith(".ts") && !entry.name.endsWith(".test.ts")) {
-      yield { path: child.pathname, text: await Deno.readTextFile(child) };
+      // RELATIVE to the functions dir, never absolute (MESITA-1075). The
+      // Enricher scan below filters on /enrich/, and ASDM puts every agent in
+      // `.claude/worktrees/<ISSUE-ID>-<slug>/` — so an absolute path inside any
+      // worktree whose slug contains "enrich" matched EVERY file, and this guard
+      // reported innocent operator-initiated writers as offenders. It cried wolf
+      // locally while CI, checked out at a clean path, stayed green. Relative
+      // paths also keep the failure message portable.
+      yield {
+        path: relativeToFunctions(child),
+        text: await Deno.readTextFile(child),
+      };
     }
   }
 }
@@ -81,6 +102,58 @@ Deno.test("no Edge Function writes places.name (it is a generated column)", asyn
     `places.name is generated and rejects writes. Write mesita_name (operator ` +
       `override) or google_name (Enricher observation) instead.\n` +
       offenders.join("\n"),
+  );
+});
+
+// ── the guard above only works if `path` is RELATIVE (MESITA-1075) ──────────
+//
+// This is the regression pin. Reverting walk() to `child.pathname` puts the
+// checkout's own directory name inside every path, and ASDM runs agents from
+// `.claude/worktrees/<ISSUE-ID>-<slug>/` — so any issue whose slug contains
+// "enrich" (a whole subsystem's worth) silently widens the Enricher scan to
+// EVERY edge function. The observed damage was two innocent files reported as
+// offenders: `business-web-update-project/index.ts` and `_shared/save-place.ts`,
+// both operator-initiated writers, which is exactly what mesita_name is FOR.
+// An agent trusting that local run either wastes a cycle or "fixes" a real
+// writer. CI never caught it because CI checks out at a clean path.
+Deno.test("the source scan yields paths relative to the functions dir", async () => {
+  const sources = await tsSources();
+  assertEquals(sources.length > 0, true, "the scan found no sources at all");
+
+  const absolute = sources.filter((s) => s.path.startsWith("/"));
+  assertEquals(
+    absolute.map((s) => s.path).slice(0, 3),
+    [],
+    "paths must be relative to the functions dir, never absolute",
+  );
+
+  // The exact false positive this fixes: an operator-write EF that lives
+  // nowhere near enrichment must not be caught by the Enricher filter, no
+  // matter what the checkout is called.
+  const innocent = sources.find(
+    (s) => s.path === "business-web-update-project/index.ts",
+  );
+  assertEquals(
+    innocent !== undefined,
+    true,
+    "expected business-web-update-project/index.ts in the scan",
+  );
+  assertEquals(
+    /enrich|cron-enrich/.test(innocent!.path),
+    false,
+    "the Enricher filter matched a non-enrichment EF — path is not relative",
+  );
+
+  // And the filter still catches what it is for.
+  const realEnricher = sources.filter((s) => /enrich|cron-enrich/.test(s.path));
+  assertEquals(
+    realEnricher.length > 0,
+    true,
+    "the Enricher filter matched nothing — it is now too narrow",
+  );
+  assertEquals(
+    realEnricher.every((s) => s.path.includes("enrich")),
+    true,
   );
 });
 
