@@ -6,7 +6,7 @@
 //
 // This page is the SoT for app_config.models_config (MESITA-941). Live readers
 // (_shared/models-config.ts → get-memo-config, Enricher stages, embeddings,
-// business-web-suggest-promo) bind supabase / enricher.model / lineup / memo.*.
+// business-web-suggest-promo) bind supabase / enricher.model / embeddings / memo.*.
 // Enricher Perplexity is NOT read from this blob — Enricher
 // Config's atlas_perplexity_preset is the live search preset (enricher.perplexity
 // here is staged). Synthesis / vision quality tiers stay on Enricher Config.
@@ -14,7 +14,7 @@
 import type { LucideIcon } from "lucide-react";
 import { Database, Layers, MessagesSquare, Sparkles } from "lucide-react";
 
-type SubsystemKey = "supabase" | "enricher" | "lineup" | "memo";
+type SubsystemKey = "supabase" | "enricher" | "embeddings" | "memo";
 
 // The persisted blob (app_config.models_config). supabase + memo are edited
 // here; enricher.model is informational (Enricher Config quality tiers pick the
@@ -24,7 +24,7 @@ export type ModelsConfig = {
   v: number;
   supabase: { model: string };
   enricher: { model: string; perplexity: string };
-  lineup: { model: string };
+  embeddings: { model: string };
   memo: { model: string; perplexity: string };
 };
 
@@ -118,15 +118,15 @@ export const SUBSYSTEMS: readonly SubsystemMeta[] = [
     owner: { label: "Enricher Config", href: "/enricher-config" },
   },
   {
-    key: "lineup",
+    key: "embeddings",
     label: "Embeddings",
     Icon: Layers,
     status: "locked",
     models: [
-      { id: "text-embedding-3-small", note: "1536-d — place ↔ intent · models_config.lineup.model" },
+      { id: "text-embedding-3-small", note: "1536-d — place ↔ intent · models_config.embeddings.model" },
     ],
     detail:
-      "Place vectors behind Memo recall. Fixed by design — changing it re-vectors the whole catalog. Read live as models_config.lineup.model by _shared/embeddings.ts (the blob key keeps its old name); shown read-only on Enricher Config.",
+      "Place vectors behind Memo recall. Fixed by design — changing it re-vectors the whole catalog. Read live as models_config.embeddings.model by _shared/embeddings.ts; shown read-only on Enricher Config.",
     editableHere: false,
     owner: null,
   },
@@ -148,14 +148,17 @@ export const DEFAULT_MODELS_CONFIG: ModelsConfig = {
   v: 1,
   supabase: { model: "gpt-4o-mini" },
   enricher: { model: "gpt-4o-mini", perplexity: "sonar-pro" },
-  lineup: { model: "text-embedding-3-small" },
+  embeddings: { model: "text-embedding-3-small" },
   memo: { model: "gpt-4o-mini", perplexity: "sonar-pro" },
 };
 
 /** Merge a null / partial / untrusted blob into a complete, valid config. */
 export function coerceModelsConfig(raw: unknown): ModelsConfig {
   const r = (raw && typeof raw === "object" ? raw : {}) as Record<string, unknown>;
-  const obj = (k: SubsystemKey): Record<string, unknown> =>
+  // Keyed by string, not SubsystemKey: the coercer also has to reach the
+  // LEGACY `lineup` key, which is deliberately not a subsystem any more
+  // (MESITA-1216) but still appears in blobs written before the rename.
+  const obj = (k: string): Record<string, unknown> =>
     (r[k] && typeof r[k] === "object" ? r[k] : {}) as Record<string, unknown>;
   const str = (v: unknown, fb: string): string =>
     typeof v === "string" && v.trim().length > 0 ? v.trim() : fb;
@@ -171,7 +174,15 @@ export function coerceModelsConfig(raw: unknown): ModelsConfig {
       model: str(obj("enricher").model, d.enricher.model),
       perplexity: perp(obj("enricher").perplexity, d.enricher.perplexity),
     },
-    lineup: { model: str(obj("lineup").model, d.lineup.model) },
+    // Both spellings — a blob written before MESITA-1216 still says `lineup`,
+    // and dropping it here would show the operator the default model rather
+    // than what is actually stored.
+    embeddings: {
+      model: str(
+        obj("embeddings").model ?? obj("lineup").model,
+        d.embeddings.model,
+      ),
+    },
     memo: {
       model: str(obj("memo").model, d.memo.model),
       perplexity: perp(obj("memo").perplexity, d.memo.perplexity),

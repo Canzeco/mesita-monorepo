@@ -2,7 +2,7 @@
 //
 // Exactly three sources, matching Pato's design, all reads of PUBLIC data:
 //   • web_search      → Perplexity (the live web)
-//   • lineup_recommend→ the Mesita catalog's RAG recall, via
+//   • places_recommend → the Mesita catalog's RAG recall, via
 //                       supabase-edgefunc-recall-places
 //   • place_facts     → one named Mesita place, via
 //                       supabase-edgefunc-search-places
@@ -58,7 +58,7 @@ export function cardsToText(cards: MemoPlaceCard[]): string {
 // supabase-edgefunc-recall-places; what comes back is already ranked public
 // cards. Deliberately non-persisting on that side too — Memo never writes.
 //
-// The `lineup_recommend` tool NAME and the "Lineup engine" trace label below
+// The `places_recommend` tool NAME and the "Place recall" trace label below
 // are deliberately unchanged by MESITA-1048: both are rendered verbatim by the
 // admin Memo Playground (apps/web-admin), so renaming them here alone would
 // break that inspector. They are a coordinated follow-up, not dead branding.
@@ -83,7 +83,7 @@ export async function placesRecall(
     ctx.trace.push({
       kind: "recall",
       title: "Places recall · RAG seed",
-      source: "Lineup engine",
+      source: "Place recall",
       intent,
       poolSize: recall.poolSize,
       embedded: recall.embedded,
@@ -106,7 +106,7 @@ export async function placesRecall(
 const webSearchTool: AirlockTool = {
   name: "web_search",
   description:
-    "Search the live web for facts, news, what-to-order, vibe, or anything you're unsure about. Returns a grounded summary with sources. Use for general knowledge and current info — NOT for finding Mesita places (use lineup_recommend for that).",
+    "Search the live web for facts, news, what-to-order, vibe, or anything you're unsure about. Returns a grounded summary with sources. Use for general knowledge and current info — NOT for finding Mesita places (use places_recommend for that).",
   schema: {
     properties: {
       query: {
@@ -139,7 +139,7 @@ const webSearchTool: AirlockTool = {
 };
 
 const placesTool: AirlockTool = {
-  name: "lineup_recommend",
+  name: "places_recommend",
   description:
     "Mesita's own ranked recommendations for what the person wants — bars, restaurants, cafés, nightlife, experiences near them. This is the primary way to suggest places. Pass their need in natural language; results appear as cards.",
   schema: {

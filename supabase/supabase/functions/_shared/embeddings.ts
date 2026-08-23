@@ -13,9 +13,10 @@
 // (embedding_source_text), never from tags. Prefer On-Update synthesis; the
 // lazy path here synthesizes when the stored blurb is missing.
 //
-// Model: app_config.models_config.lineup.model (admin Models page). The
-// `lineup` blob KEY is legacy naming kept for wire compatibility with the
-// admin Models page — it selects the place-embedding model, nothing else.
+// Model: app_config.models_config.embeddings.model (admin Models page). The
+// key was called `lineup` until MESITA-1216 — it never ordered anything, it
+// selects the place-embedding model and nothing else. The reader still accepts
+// the old spelling for blobs written before the rename.
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import {
