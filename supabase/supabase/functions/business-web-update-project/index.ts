@@ -666,6 +666,7 @@ Deno.serve(async (req) => {
       placeId: projectId,
       apiKey: Deno.env.get("OPENAI_KEY")?.trim(),
       logPrefix: "business-web-update-project/on-update",
+      via: "update",
     });
   }
 

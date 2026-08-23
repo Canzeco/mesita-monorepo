@@ -135,8 +135,9 @@ export function StatusCard({
   const pulseLabels = Array.isArray(place.enrich_pulse_labels)
     ? (place.enrich_pulse_labels as string[])
     : [];
-  // The scale tops out at the LAST index, not the label count: `seed` occupies
-  // 0, so ten labels describe a 0-9 scale.
+  // The scale tops out at the LAST index, not the label count: labels[0] is
+  // the Created floor label (not a function), so ten labels describe a 0-9
+  // scale (MESITA-1253).
   const pulseTotal = typeof place.enrich_pulse_total === "number"
     ? place.enrich_pulse_total
     : Math.max(0, pulseLabels.length - 1);

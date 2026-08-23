@@ -342,6 +342,7 @@ serveEnrichStage("contents", async (admin, env, row) => {
       projectId,
       openaiKey,
       "enrich-contents/on-update",
+      "contents",
     ));
   }
 

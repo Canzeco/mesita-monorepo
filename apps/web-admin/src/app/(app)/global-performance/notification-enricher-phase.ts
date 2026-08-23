@@ -62,9 +62,12 @@ const ENRICHER_PHASES: Record<PhaseKey, EnricherPhase> = {
 //
 //   1. the NINE enrich functions and the two semantic ones (Docs › Enrichment
 //      §A) — pulse/details/summary rows can ALSO come from the CREATE function
-//      (meta.via === "create"), which the caller check below routes to its own
-//      chip so an operator is not sent to read the research EF for a beacon
-//      the front door wrote;
+//      or an on-update re-embed. Every summary stamp carries meta.via
+//      ("create" | "update" | "contents", set where the vector write is
+//      observed in _shared/place-embeddings.ts), and create's pulse/details
+//      carry via: "create". The caller check below routes create's rows to
+//      their own chip and update's to NO chip, so an operator is never sent
+//      to read a stage EF for a beacon it did not write;
 //   2. the LEGACY STAGE BEACONS — gather · google_profile · analysis · publish
 //      — which are not functions at all but do appear in the Monitor;
 //   3. the TERMINAL BEACONS, `<stage>_crash` and `<stage>_cost_cap`, written by
@@ -119,10 +122,15 @@ const PHASE_BY_STEP_NAME: Record<string, PhaseKey> = {
  * Edge Function to go read.
  */
 export function enricherPhase(meta: Record<string, unknown>): EnricherPhase | null {
-  // The CREATE function stamps pulse/details (and summary, via the embeddings
-  // module) with meta.via === "create". Those rows must not wear a stage chip:
-  // "Research" would send an operator to read the wrong Edge Function.
+  // meta.via names the caller, stamped at the write. "create" wears the Create
+  // chip — pulse/details from create-place.ts AND the summary the embeddings
+  // module stamps for it. "update" wears NO chip: an on-update re-embed runs
+  // in-process in whatever EF edited the profile, and any stage chip would be
+  // a lie (null rather than a guess — the step chip beside it still names the
+  // function). "contents" and legacy via-less rows fall through to the
+  // step_name map, where summary → Contents is the truth.
   if (meta.via === "create") return ENRICHER_PHASES.create;
+  if (meta.via === "update") return null;
   const stepName = typeof meta.stepName === "string" ? meta.stepName.trim() : "";
   const phase = PHASE_BY_STEP_NAME[stepName];
   return phase ? ENRICHER_PHASES[phase] : null;

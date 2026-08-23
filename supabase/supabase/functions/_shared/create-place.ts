@@ -223,6 +223,9 @@ export async function createMinimalPlace(opts: {
     placeId: saved.project_id,
     apiKey: Deno.env.get("OPENAI_KEY")?.trim(),
     logPrefix: `${callerName}/on-create`,
+    // The summary stamp carries the caller, so the Monitor wears the Create
+    // chip on it — not a guessed "Contents" (MESITA-1253 audit).
+    via: "create",
   });
 
   // ── 3) Queue deep enrichment (async): seed the place_research row at

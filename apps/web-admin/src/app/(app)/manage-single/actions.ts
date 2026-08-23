@@ -114,7 +114,8 @@ function normalizePlaceHit(raw: RawPlaceHit): PlaceHit {
     // No `?? 9` here any more: the total and the labels come from the same
     // server list, so a client fallback could only ever disagree with it. The
     // label fallback subtracts one — the labels are indexed by function number
-    // and `seed` holds 0, so ten of them describe a 0-9 scale (MESITA-1243).
+    // with the Created floor label at 0, so ten of them describe a 0-9 scale
+    // (MESITA-1253).
     enrich_pulse_total: raw.enrich_pulse_total ??
       (raw.enrich_pulse_labels ? raw.enrich_pulse_labels.length - 1 : 0),
     enrich_pulse_labels: raw.enrich_pulse_labels ?? [],
