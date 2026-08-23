@@ -163,10 +163,22 @@ export function StatusCard({
   // a direct lookup. It was `n - 1` while seed sat outside the numbering
   // (MESITA-1243 pulled it in as function 0).
   const rung = (n: number) => pulseLabels[n] ?? `function ${n}`;
+
+  // WHY it stopped, when the server said. 0 is ambiguous on its own: function 1
+  // FAILS a place Google reports permanently closed, so 0 means both "seeded,
+  // nothing tried" and "we asked, and the listing is dead". Asserting the first
+  // for both is a confident lie about a place someone may re-enrich.
+  const blocked = (place.enrich_pulse_blocked ?? null) as
+    | { key: string; index: number; status: "failed" | "missing" }
+    | null;
+  const failedAt = blocked?.status === "failed" ? blocked : null;
+
   const enrichedDetail =
     pulse === null || pulseTotal === 0
       ? "Couldn't read the pipeline events."
-      : (pulse === 0
+      : (failedAt
+        ? `Stopped at ${rung(failedAt.index)} (${pulse}/${pulseTotal}) — that function ran and failed.`
+        : pulse === 0
         ? "Seeded — nothing after it has landed."
         : pulse >= pulseTotal
           ? `All ${pulseTotal} functions completed — the queue finished.`

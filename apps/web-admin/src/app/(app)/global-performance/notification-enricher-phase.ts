@@ -51,14 +51,25 @@ const ENRICHER_PHASES: Record<PhaseKey, EnricherPhase> = {
 };
 
 // Every step_name the events table can carry, mapped to the stage that writes
-// it. Two families live here on purpose:
+// it. THREE families live here, and the third is the one a hand-written list
+// forgets:
 //
-//   the TEN functions and the two semantic ones (Docs › Enrichment §A), and
-//   the LEGACY STAGE BEACONS — gather · google_profile · analysis · publish —
-//   which are not functions at all but do appear in the Monitor.
+//   1. the TEN functions and the two semantic ones (Docs › Enrichment §A);
+//   2. the LEGACY STAGE BEACONS — gather · google_profile · analysis · publish
+//      — which are not functions at all but do appear in the Monitor;
+//   3. the TERMINAL BEACONS, `<stage>_crash` and `<stage>_cost_cap`, written by
+//      serveEnrichStage in _shared/enrich-pipeline.ts rather than by any stage
+//      body. Those are exactly the rows an operator opens the Monitor to find,
+//      and the first version of this map omitted all six — the number-bucketing
+//      it replaced had chipped them by accident, so dropping them was a quiet
+//      regression. They are DERIVED from STAGE_KEYS below so a fourth stage
+//      cannot silently repeat it.
 //
 // `seed` is absent because nothing stamps it: the row existing IS the seed.
+const STAGE_KEYS = ["research", "analysis", "contents"] as const;
+
 const PHASE_BY_STEP_NAME: Record<string, PhaseKey> = {
+  // ── 1. the functions ──
   // Research
   pulse: "research",
   details: "research",
@@ -66,17 +77,27 @@ const PHASE_BY_STEP_NAME: Record<string, PhaseKey> = {
   links: "research",
   social: "research",
   reviews: "research",
-  gather: "research",
-  google_profile: "research",
   // Analysis
   images: "analysis",
-  analysis: "analysis",
   // Contents
   menu: "contents",
   description: "contents",
   summary: "contents",
   name: "contents",
+
+  // ── 2. the legacy stage beacons ──
+  gather: "research",
+  google_profile: "research",
+  analysis: "analysis",
   publish: "contents",
+
+  // ── 3. the terminal beacons ──
+  ...Object.fromEntries(
+    STAGE_KEYS.flatMap((stage) => [
+      [`${stage}_crash`, stage],
+      [`${stage}_cost_cap`, stage],
+    ]),
+  ),
 };
 
 /**

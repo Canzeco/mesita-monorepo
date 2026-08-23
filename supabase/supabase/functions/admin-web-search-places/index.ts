@@ -27,6 +27,7 @@ import { isPlaceListed, isPlaceSeeded } from "../_shared/place-status.ts";
 import {
   PULSE_LABELS_IN_ORDER,
   PULSE_TOTAL,
+  pulseBlockedAt,
   pulseHighWater,
   type PulseEvent,
 } from "../_shared/pulse-pieces.ts";
@@ -218,6 +219,12 @@ Deno.serve(async (req) => {
       // list with no shared import and no test, so a reorder would have put the
       // wrong name beside every row (MESITA-1222).
       enrich_pulse_labels: PULSE_LABELS_IN_ORDER,
+      // WHY it stopped, not just where. The number alone is ambiguous, and
+      // MESITA-1243 made that bite at 0: function 1 now fails a place Google
+      // reports permanently closed, so 0 means both "seeded, nothing tried"
+      // and "we asked, and the listing is dead". Shipped from the same events
+      // the high-water walks, so the two cannot disagree.
+      enrich_pulse_blocked: pulseBlockedAt(events.get(id) ?? []),
       verified: verified.has(id),
       partner: isPaidPlan((v.plan as string | null) ?? null),
       promoting: isPlacePromoting(v as Parameters<typeof isPlacePromoting>[0]),

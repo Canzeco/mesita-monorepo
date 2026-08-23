@@ -22,6 +22,7 @@ import { isPlaceListed, isPlaceSeeded } from "../_shared/place-status.ts";
 import {
   PULSE_LABELS_IN_ORDER,
   PULSE_TOTAL,
+  pulseBlockedAt,
   pulseHighWater,
   type PulseEvent,
 } from "../_shared/pulse-pieces.ts";
@@ -116,9 +117,13 @@ Deno.serve(async (req) => {
     if (eventsRow.error) {
       console.error("[get-overview] place_enrich_events_latest:", eventsRow.error.message);
     }
-    const enrichPulse = pulseHighWater(
-      (eventsRow.data ?? []) as PulseEvent[],
-    );
+    const pulseEvents = (eventsRow.data ?? []) as PulseEvent[];
+    const enrichPulse = pulseHighWater(pulseEvents);
+    // WHY it stopped, beside where. Function 1 can now FAIL a place Google
+    // reports permanently closed, so the number 0 carries two different facts
+    // — "seeded, nothing tried" and "we asked, and the listing is dead". The
+    // reason disambiguates them, from the same events the walk reads.
+    const enrichPulseBlocked = pulseBlockedAt(pulseEvents);
     // Tag as owner so any downstream UI that gates on role still works —
     // super-admin gets the broadest permission set the place role enum
     // can express. (The frontend MyPlace type only knows owner|business|staff.)
@@ -138,6 +143,7 @@ Deno.serve(async (req) => {
         enrich_pulse: enrichPulse,
         enrich_pulse_total: PULSE_TOTAL,
         enrich_pulse_labels: PULSE_LABELS_IN_ORDER,
+        enrich_pulse_blocked: enrichPulseBlocked,
       } as unknown as PlaceRow,
     ];
   } else {

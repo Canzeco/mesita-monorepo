@@ -17,6 +17,18 @@ type Result<T> = { ok: true; data: T } | { ok: false; error: string };
 
 // ── Place search + load ──────────────────────────────────────────────────
 
+/**
+ * Why the enrichment queue stopped, straight off `pulseBlockedAt` in
+ * `_shared/pulse-pieces.ts`. `failed` = the function ran and could not do its
+ * job; `missing` = it has no event yet. Both admin EFs ship it beside the
+ * number, because the number alone cannot tell those two apart at 0.
+ */
+export type PulseBlock = {
+  key: string;
+  index: number;
+  status: "failed" | "missing";
+};
+
 export type PlaceHit = {
   id: string;
   slug: string | null;
@@ -48,6 +60,8 @@ export type PlaceHit = {
   /** The rung names in queue order, from the server. Never hand-copy this
    *  list — a reorder would put the wrong name beside every row. */
   enrich_pulse_labels: string[];
+  /** Why the queue stopped where it did — null once it has finished. */
+  enrich_pulse_blocked: PulseBlock | null;
   /** An APPROVED project_verifications row — ownership proof, not a badge. */
   verified: boolean;
   /** plan !== "free" — the place pays Mesita. */
@@ -104,6 +118,9 @@ function normalizePlaceHit(raw: RawPlaceHit): PlaceHit {
     enrich_pulse_total: raw.enrich_pulse_total ??
       (raw.enrich_pulse_labels ? raw.enrich_pulse_labels.length - 1 : 0),
     enrich_pulse_labels: raw.enrich_pulse_labels ?? [],
+    // No invented fallback: absent means the payload predates the field, and
+    // defaulting to "missing" would claim a fact we did not read.
+    enrich_pulse_blocked: raw.enrich_pulse_blocked ?? null,
     verified: raw.verified ?? false,
     partner: raw.partner ?? false,
     promoting: raw.promoting ?? false,
@@ -232,13 +249,15 @@ export type AdminPlace = {
   seeded?: boolean;
   /** projects.status ∈ (active, lead) — a guest can reach the place at all. */
   listed?: boolean;
-  /** PULSE: how far the nine-piece queue got, 0-9. Absent on a payload that
+  /** PULSE: how far the TEN-function queue got, 0-9. Absent on a payload that
    *  predates it; the box renders "?" rather than a false 0. */
   enrich_pulse?: number;
   /** The ladder's length, from the server. */
   enrich_pulse_total?: number;
-  /** The rung names in queue order, from the server. */
+  /** The function names, indexed BY FUNCTION NUMBER — labels[0] is Seed. */
   enrich_pulse_labels?: string[];
+  /** Why the queue stopped where it did. Absent on an older payload. */
+  enrich_pulse_blocked?: PulseBlock | null;
   /** Google's own id. Admin payload only — never in PLACE_PUBLIC_COLUMNS. */
   google_place_id?: string | null;
   [k: string]: unknown;
