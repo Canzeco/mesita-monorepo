@@ -2,14 +2,17 @@ import type { PlacePlan } from "@/lib/api/places";
 
 // Subscription catalog used by place summaries (label lookup).
 //
-// Promos v4 (MESITA-541): a place is either Free or Verified (MX$1,000/year).
-// Discount Strategies (Zero / Conservative / Aggressive) live on the Promos
-// page and are NOT separate Stripe products — paid Strategies all grant the
-// same Verified membership (`plan=pro`). Legacy `ultra` folds onto Verified
-// for display.
+// Promos v4 (MESITA-541), ratified 2026-08-21 (MESITA-1154): a place is
+// either Free or holds the Membership (MX$1,000 + IVA/year). Verified is a
+// SEPARATE, free ownership fact (resolvePlaceVerification in place-utils.ts)
+// — never this catalog's label. Discount Strategies (Zero / Conservative /
+// Aggressive) live on the Promos page and are NOT separate Stripe products —
+// paid Strategies all grant the same Membership (`plan=pro`). Legacy `ultra`
+// folds onto it for display. Never sell organic ranking: the bundle is
+// named explicitly, not "algorithm placement".
 
-/** Catalog id — Free or the single Verified membership. */
-type SubscriptionId = "free" | "verified";
+/** Catalog id — Free or the single Membership (Partner status). */
+type SubscriptionId = "free" | "partner";
 
 type SubscriptionRow = {
   id: SubscriptionId;
@@ -30,21 +33,21 @@ export const SUBSCRIPTIONS: SubscriptionRow[] = [
     tagline: "Listed on Mesita.",
   },
   {
-    id: "verified",
-    label: "Verified",
-    price: "MX$1,000",
+    id: "partner",
+    label: "Membership",
+    price: "MX$1,000 + IVA",
     cadence: "/ year",
-    tagline: "Membership — discounts at the bill, algorithm placement.",
+    tagline: "Rewards placement, Partner status, Performance analytics, Reservationist.",
     setup: "WhatsApp ping + first ticket",
     featured: true,
   },
 ];
 
-/** True when the place holds Verified membership (any paid plan key). */
-function isVerifiedMember(p: PlacePlan): boolean {
+/** True when the place holds the Membership (any paid plan key). */
+function isPartner(p: PlacePlan): boolean {
   return p !== "free";
 }
 
 export function subscriptionForPlace(p: PlacePlan): SubscriptionId {
-  return isVerifiedMember(p) ? "verified" : "free";
+  return isPartner(p) ? "partner" : "free";
 }
