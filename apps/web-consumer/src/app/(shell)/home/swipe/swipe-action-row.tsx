@@ -1,14 +1,20 @@
 "use client";
 
 import type { LucideIcon } from "lucide-react";
-import { Heart, Store, X, Zap } from "lucide-react";
+import { Heart, SlidersHorizontal, Store, X, Zap } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 // The deck's action rail: circular, centred under the card.
 //
-// Four buttons: Skip · Place · Save · Go. It was five — Filter led the rail
-// until the discovery filter surface was deleted (MESITA-1183). Five was the
-// budget, so the slot stays free for whatever the rebuilt engine earns.
+// Five buttons, and five is the budget: Filter · Skip · Place · Save · Go.
+//
+// Filter led this rail until MESITA-1183 deleted the discovery filter surface,
+// and the slot was reserved here "for whatever the rebuilt engine earns".
+// Pato reclaimed it (MESITA-1236) before that engine was scheduled — signals
+// and engines are still Backlog with nothing implemented — so the slot goes
+// back to the control the guest actually had. Four predicates, not five: the
+// randomness level is one of the seven named signals and does not belong to a
+// client-side sheet.
 //
 // THE LAST ONE IS A GATEWAY, NOT A VERB (MESITA-1072). It used to be Reserve,
 // wired straight to ReservationSheet — one verb, and the narrowest of the
@@ -65,6 +71,7 @@ function SwipeActionButton({
   disabled,
   filled,
   haspopup,
+  dot,
 }: {
   label: string;
   Icon: LucideIcon;
@@ -76,8 +83,12 @@ function SwipeActionButton({
   disabled?: boolean;
   /** Solid glyph — the saved heart. */
   filled?: boolean;
-  /** Announces that this button opens a dialog instead of acting (Go). */
+  /** Announces that this button opens a dialog instead of acting (Go, Filters). */
   haspopup?: boolean;
+  /** Small brand dot, top-right — "this control is doing something right now".
+   *  Decorative: the state is already in `label`, which is the accessible name,
+   *  so a screen reader hears "Filters (active)" and never sees the dot. */
+  dot?: boolean;
 }) {
   const big = variant !== "utility";
   return (
@@ -108,12 +119,21 @@ function SwipeActionButton({
         className={cn(big ? "h-7 w-7" : "h-5 w-5", filled && "fill-current")}
         strokeWidth={2.25}
       />
+      {dot && (
+        <span
+          aria-hidden
+          className="bg-primary border-card absolute top-0 right-0 h-3 w-3 rounded-full border-2"
+        />
+      )}
     </button>
   );
 }
 
 type SwipeActionRowProps = {
   saved: boolean;
+  /** Any deviation from filter defaults — drives the trigger dot. */
+  filtersActive: boolean;
+  onOpenFilters: () => void;
   onSkip: () => void;
   onOpenInfo: () => void;
   onSave: () => void;
@@ -122,6 +142,8 @@ type SwipeActionRowProps = {
 
 export function SwipeActionRow({
   saved,
+  filtersActive,
+  onOpenFilters,
   onSkip,
   onOpenInfo,
   onSave,
@@ -129,6 +151,17 @@ export function SwipeActionRow({
 }: SwipeActionRowProps) {
   return (
     <div className="mt-3 flex items-center justify-center gap-3.5">
+      {/* THE DOT IS THE WHOLE STATE. The rail is icon-only, so an active
+          filter has no other way to announce itself — and a guest who forgot
+          they narrowed the deck reads a thin deck as an empty catalogue. */}
+      <SwipeActionButton
+        label={filtersActive ? "Filters (active)" : "Filters"}
+        Icon={SlidersHorizontal}
+        variant="utility"
+        onClick={onOpenFilters}
+        dot={filtersActive}
+        haspopup
+      />
       <SwipeActionButton
         label="Skip"
         Icon={X}

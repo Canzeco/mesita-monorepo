@@ -30,6 +30,14 @@ import {
 import { SwipeDecisionBadge } from "./swipe-decision-badge";
 import { SwipeExitStamp, SwipeTutorialOverlay } from "./swipe-deck-overlays";
 import { isPromoting } from "@/lib/promo-rates";
+import {
+  applyDiscoveryFilters,
+  deriveCategoryOptions,
+  discoveryFiltersAreActive,
+} from "@/lib/discovery-filters-engine";
+import { useDiscoveryFilters } from "@/lib/use-discovery-filters";
+import { DiscoveryFilters } from "@/components/consumer/DiscoveryFilters";
+import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
 import { usePrefetchDiscountQuotes } from "@/lib/discount-quotes";
 
 const SWIPE_THRESHOLD = 64;
@@ -144,6 +152,14 @@ function Deck({ places }: { places: Place[] }) {
   // unmounting it on close would kill LocalSheet's exit transition, which
   // needs the component alive for the slide-down. First tap arms it forever.
   const [goMounted, setGoMounted] = useState(false);
+  // The filter sheet is LOCAL, not a route (MESITA-1236). The pre-teardown
+  // version was a routed @modal at /filters with a host-context bus feeding it
+  // the deck's count and categories; both are gone. One host, props passed
+  // straight down — the bus only ever existed because three surfaces shared
+  // the route, and Swipe is the only host now.
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const filters = useDiscoveryFilters();
+  const filtersActive = discoveryFiltersAreActive(filters);
   const infoOpeningRef = useRef(false);
   const cardElRef = useRef<HTMLDivElement | null>(null);
   const startRef = useRef({ x: 0, y: 0, t: 0 });
@@ -256,9 +272,10 @@ function Deck({ places }: { places: Place[] }) {
   // (or a denied prompt) keep whatever distance they had, or fall back
   // to a "0 km" placeholder so the chip never just vanishes.
   const coords = useUserLocation();
-  // Distances measure from the device fix. The zone-center option went with
-  // the filter surface (MESITA-1183); there is nothing else to recenter on.
-  const center = coords;
+  // Distances measure from the chosen zone center (a searched location) or,
+  // with none, the device fix — the SAME center the distance filter rings, so
+  // "within 5 km" and the "5 km" on the card can never disagree.
+  const center = filters.zone ?? coords;
   const located = useMemo(
     () => runtimeDeck.map((v) => withUserDistance(v, center)),
     [runtimeDeck, center],
@@ -270,12 +287,29 @@ function Deck({ places }: { places: Place[] }) {
   // position meaningless but leaves "don't show me this again" perfectly
   // well-defined.
   const seenSet = useMemo(() => new Set(seenIds), [seenIds]);
-  // No narrowing and no client reorder: consumer-web-recommend-swipe already
-  // returns the catalog Fisher–Yates shuffled, so random lives in exactly one
-  // place (MESITA-1183). The deck is the server's order minus what's seen.
+  // PREDICATES CUT, THE SERVER ORDERS. The four discovery predicates narrow
+  // the deck here; nothing reorders it, because consumer-web-recommend-swipe
+  // already returns the catalog Fisher–Yates shuffled and random must live in
+  // exactly one place (MESITA-1183, kept).
+  //
+  // Known ceiling, flagged not designed around (MESITA-1153): that EF caps at
+  // MAX_LIMIT = 50, so a predicate matching a fraction p of the catalog leaves
+  // ~50p cards however large the catalog grows. Invisible now, a cliff later —
+  // the fix is server-side, in the EF, not here.
+  const filtered = useMemo(
+    () => applyDiscoveryFilters(located, filters),
+    [located, filters],
+  );
   const deck = useMemo(
-    () => located.filter((place) => !seenSet.has(place.id)),
-    [located, seenSet],
+    () => filtered.filter((place) => !seenSet.has(place.id)),
+    [filtered, seenSet],
+  );
+  // Derived from the RAW snapshot, not the filtered deck, so the sheet always
+  // offers every category this deck actually has — otherwise narrowing to one
+  // category would delete every other option and strand the guest there.
+  const categoryOptions = useMemo(
+    () => deriveCategoryOptions(runtimeDeck),
+    [runtimeDeck],
   );
 
   // Past the last card the deck is exhausted — no silent wrap. Looping
@@ -520,10 +554,36 @@ function Deck({ places }: { places: Place[] }) {
     }
   }, [deck, idx]);
 
+  // ONE element, mounted in BOTH return branches. The exhausted branch returns
+  // early and never renders the rail, so a filter that empties the deck would
+  // otherwise strand the guest on a screen whose only control restarts a deck
+  // the same filter empties again.
+  const filtersSheet = (
+    <LocalSheet
+      open={filtersOpen}
+      onClose={() => setFiltersOpen(false)}
+      ariaLabel="Filters"
+    >
+      <DiscoveryFilters
+        onClose={() => setFiltersOpen(false)}
+        categoryOptions={categoryOptions}
+        count={deck.length}
+        hasLocation={coords != null}
+      />
+    </LocalSheet>
+  );
+
   if (exhausted || !v) {
     return (
       <div className="relative flex h-full flex-col">
-        <ExhaustedDeck onRestart={restart} restarting={restarting} />
+        <ExhaustedDeck
+          onRestart={restart}
+          restarting={restarting}
+          onAdjustFilters={
+            filtersActive ? () => setFiltersOpen(true) : undefined
+          }
+        />
+        {filtersSheet}
       </div>
     );
   }
@@ -613,6 +673,8 @@ function Deck({ places }: { places: Place[] }) {
         </div>
 
         <SwipeActionRow
+          filtersActive={filtersActive}
+          onOpenFilters={() => setFiltersOpen(true)}
           saved={saved}
           onSkip={skip}
           onOpenInfo={openInfo}
@@ -623,6 +685,8 @@ function Deck({ places }: { places: Place[] }) {
           }}
         />
       </div>
+
+      {filtersSheet}
 
       {v && goMounted && (
         <GoSheet
