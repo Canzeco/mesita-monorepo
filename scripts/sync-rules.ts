@@ -2,7 +2,9 @@
 // sync-rules.ts — regenerate the agent-instruction files across the monorepo
 // from ONE canonical source (scripts/rules-quickstart.md), and enforce the two
 // laws that keep them from rotting (Development Rules §C): the markdown
-// allowlist and the word budgets.
+// allowlist and the word budgets. It also carries one repo-wide file-extension
+// guard that shares the same `git ls-files` machinery: FORBIDDEN_ASSET_EXTS
+// (MESITA-1077).
 //
 // CONTRACT (monorepo form, ASDM v6 — 2026-07-11 / MESITA-456 + MESITA-462):
 //   Root CLAUDE.md    = generated quickstart block (between the markers below)
@@ -112,6 +114,45 @@ export const MD_SCAN_GLOBS = ["*.md", "*.MD", "*.mdx", "*.mdc"];
 // (SKILL_BUDGETS above). The allowlist decides what may exist, the budget
 // decides how big it may get.
 export const MD_ALLOW_DIRS = [".claude/", ".cursor/", ".codex/", ".github/"];
+
+// ── Forbidden asset extensions (MESITA-1077) ───────────────────────────────
+// `image-size` carries four high-severity advisories with NO patched release
+// (2.0.2 is latest; the advisories cover `<= 2.0.2`). It is transitive through
+// metro — build-time only, never in a shipped binary — and both advisories are
+// infinite loops in the ICNS parser and the JXL/HEIF parsers specifically. The
+// alerts were dismissed as `not_used` on exactly one premise: the repo ships no
+// asset in any of those formats. That premise was a sentence in a dismissal;
+// this list makes it a check. Add one such asset and the build the advisory
+// describes becomes reachable, with nothing left to notice — a dismissed alert
+// never reopens on its own.
+//
+// Matched case-insensitively: an iPhone export is `IMG_1234.HEIC`, so a
+// lowercase-only gate would miss the single likeliest way one arrives.
+export const FORBIDDEN_ASSET_EXTS = [".icns", ".jxl", ".heif", ".heic"];
+
+// Same KEEP IN SYNC contract as MD_SCAN_GLOBS: every glob here must appear in
+// the `paths:` filters of .github/workflows/rules.yml under BOTH events, or the
+// workflow never fires on the file it exists to reject. Upper case is spelled
+// out because both git pathspecs and GitHub path filters are case-sensitive.
+export const FORBIDDEN_ASSET_GLOBS = FORBIDDEN_ASSET_EXTS.flatMap((ext) => [
+  `*${ext}`,
+  `*${ext.toUpperCase()}`,
+]);
+
+/** Tracked paths whose extension is one the unpatched parsers choke on. */
+export function findForbiddenAssets(tracked: string[]): string[] {
+  return tracked.filter((f) => {
+    const lower = f.toLowerCase();
+    return FORBIDDEN_ASSET_EXTS.some((ext) => lower.endsWith(ext));
+  });
+}
+
+export function forbiddenAssetMessage(path: string): string {
+  return `FORBIDDEN ASSET: ${path} — ${FORBIDDEN_ASSET_EXTS.join("/")} are the formats ` +
+    `image-size's unpatched advisories parse into an infinite loop (MESITA-1077). ` +
+    `The Dependabot dismissal holds only while the repo ships none: convert it to ` +
+    `png/svg/jpg, or reopen the alerts before landing this.`;
+}
 
 const repoRoot = dirname(dirname(fromFileUrl(import.meta.url)));
 
@@ -374,6 +415,33 @@ async function main(): Promise<void> {
     }
   } catch (err) {
     console.error(`markdown allowlist: could not run git (${err}) — check skipped`);
+    if (check) failed++;
+  }
+
+  // Its own ls-files call rather than a wider pathspec on the one above: the
+  // stray-markdown filter would otherwise see an .icns and reject it with a
+  // message about knowledge docs, which is the wrong instruction entirely.
+  try {
+    const ls = new Deno.Command("git", {
+      args: ["ls-files", ...FORBIDDEN_ASSET_GLOBS],
+      cwd: repoRoot,
+      stdout: "piped",
+      stderr: "piped",
+    });
+    const out = await ls.output();
+    if (out.success) {
+      const tracked = new TextDecoder().decode(out.stdout).split("\n").filter(Boolean);
+      // Re-filtered in TS, not trusted from the pathspec: the extension list is
+      // the law, the globs are only how git is asked.
+      const forbidden = findForbiddenAssets(tracked);
+      for (const f of forbidden) console.error(forbiddenAssetMessage(f));
+      failed += forbidden.length;
+    } else {
+      console.error("forbidden assets: `git ls-files` failed — check skipped (not a git checkout?)");
+      if (check) failed++;
+    }
+  } catch (err) {
+    console.error(`forbidden assets: could not run git (${err}) — check skipped`);
     if (check) failed++;
   }
 

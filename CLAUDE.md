@@ -41,6 +41,6 @@
 
 - **Packages are independent install roots** (own `pnpm-workspace.yaml` + lockfile; no root pnpm workspace — mobile needs `nodeLinker: hoisted`). `cd` into a package to work; run every `supabase` command from `supabase/`.
 - **Vercel:** each `apps/web-*` is its own Vercel project (canzeco team) on this repo, Root Directory `apps/web-<app>`, "skip unaffected" on — a push to `main` deploys only what changed.
-- **CI is path-filtered per package** (`.github/workflows/*.yml`) plus two repo-wide gates: `rules.yml` (instruction-file sync + markdown allowlist + quickstart word budget) and `brand.yml` (brand sync).
+- **CI is path-filtered per package** (`.github/workflows/*.yml`) plus two repo-wide gates: `rules.yml` (instruction-file sync + markdown allowlist + word budgets + the forbidden-asset guard: no `.icns`/`.jxl`/`.heif`/`.heic` anywhere — `image-size`'s advisories are unpatched and those are the formats they parse) and `brand.yml` (brand sync).
 - **Instruction files:** root `CLAUDE.md` = generated quickstart block + this tail · package `CLAUDE.md` = package rules only (markers forbidden) · every `AGENTS.md` = generated. Edit `scripts/rules-quickstart.md` or a `CLAUDE.md`, then `deno task sync-rules`; strict `--check` gates CI.
 - **Worktrees:** `.worktreeinclude` lists the gitignored state every new worktree needs. **Preview servers** (`.claude/launch.json`): web-admin :3001 · web-business :3002 · web-consumer :3003 · web-landing :3004 · web-check :3005 · mobile-consumer :8081 · mobile-business :8082.

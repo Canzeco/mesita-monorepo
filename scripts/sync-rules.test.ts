@@ -18,8 +18,12 @@ import {
   DEFAULT_PACKAGE_WORD_BUDGET,
   DEFAULT_SKILL_WORD_BUDGET,
   END,
+  findForbiddenAssets,
   findMarkerSpan,
   findStrayMarkdown,
+  FORBIDDEN_ASSET_EXTS,
+  FORBIDDEN_ASSET_GLOBS,
+  forbiddenAssetMessage,
   groupSkillDocs,
   MD_ALLOW_DIRS,
   MD_SCAN_GLOBS,
@@ -324,8 +328,10 @@ Deno.test("every scanned extension also triggers rules.yml, on BOTH events", asy
   // An extension scanned here but absent from the workflow filter is worse than
   // not scanning it: the workflow never fires, so the gate reports green because
   // it never ran. This test is the only thing holding the two files together.
+  // Both scan sets are covered: the markdown allowlist and the forbidden assets
+  // run off the same `git ls-files` machinery and need the same trigger.
   const yml = await Deno.readTextFile(join(repoRoot, ".github", "workflows", "rules.yml"));
-  for (const glob of MD_SCAN_GLOBS) {
+  for (const glob of [...MD_SCAN_GLOBS, ...FORBIDDEN_ASSET_GLOBS]) {
     const occurrences = yml.split(`"**/${glob}"`).length - 1;
     assert(
       occurrences >= 2,
@@ -339,6 +345,46 @@ Deno.test("MD_ALLOW_DIRS entries are root-anchored directory prefixes", () => {
     assert(d.endsWith("/"), `${d} must end with / so it cannot prefix-match a sibling file`);
     assert(!d.startsWith("/"), `${d} must be repo-relative`);
   }
+});
+
+// ── Forbidden assets (MESITA-1077) ───────────────────────────────────────────
+
+Deno.test("FORBIDDEN_ASSET_GLOBS spells out both cases of every extension", () => {
+  // git pathspecs and GitHub path filters are both case-sensitive, and the
+  // likeliest arrival of a HEIC is an iPhone export named IMG_1234.HEIC.
+  for (const ext of FORBIDDEN_ASSET_EXTS) {
+    assert(FORBIDDEN_ASSET_GLOBS.includes(`*${ext}`), `*${ext} missing`);
+    assert(FORBIDDEN_ASSET_GLOBS.includes(`*${ext.toUpperCase()}`), `*${ext.toUpperCase()} missing`);
+  }
+});
+
+Deno.test("findForbiddenAssets catches every vulnerable format, in any case", () => {
+  const tracked = [
+    "assets/brand/icon.icns",
+    "apps/web-consumer/public/hero.JXL",
+    "assets/shot.heif",
+    "apps/mobile-consumer/assets/IMG_0042.HEIC",
+  ];
+  assertEquals(findForbiddenAssets(tracked), tracked);
+});
+
+Deno.test("findForbiddenAssets passes the formats the repo actually ships", () => {
+  assertEquals(
+    findForbiddenAssets([
+      "assets/brand/logo.svg",
+      "apps/web-landing/public/og.png",
+      "assets/deck.pdf",
+      // Substring, not suffix: a directory named after the format is not one.
+      "assets/heic-conversions/README.png",
+    ]),
+    [],
+  );
+});
+
+Deno.test("the forbidden-asset message names the file and the issue", () => {
+  const msg = forbiddenAssetMessage("assets/brand/icon.icns");
+  assertStringIncludes(msg, "assets/brand/icon.icns");
+  assertStringIncludes(msg, "MESITA-1077");
 });
 
 // ── The live repo must satisfy its own gates ─────────────────────────────────
