@@ -187,21 +187,33 @@ The business-truth layer. These are the "and shit" checks — pairs of facts tha
 
 ## Scope 4 — Config enforcement ("unenforced config = bug") · P1
 
-For each admin config page, in the sidebar's product-flow order (`CONFIGS_NAV`
-in `apps/web-admin/src/components/Sidebar.tsx` is the list of record) —
-`admin` · `models` · `sourcing` · `atlas` · `enricher` · `verification` ·
-`ojo` · `rewards` (labeled **Promos**) · `memo` · `reservations`:
+For each admin config page, in the sidebar's product-flow order. **Read the set
+from code, never from this file:** `CONFIGURATIONS_NAV` in
+`apps/web-admin/src/components/Sidebar.tsx` is the SoT, and it is exported for
+exactly this reason (MESITA-1225).
 
-Not config pages, do not audit as one: `/adea-config` and `/db-config` are
-`permanentRedirect` shims for renamed routes (→ enricher-config, manage-database).
+The enumeration that used to sit here is deleted on purpose. Every prose copy of
+this list drifted within two days of the MESITA-1175 rail rework — this one had
+gone stale in both directions at once, naming `models`, `verification` and `ojo`
+as pages to audit when all three are redirects, and `atlas` and `memo` as pages
+that have never existed. A stale copy sends the doctor hunting phantoms while
+silently skipping rows that are really there, which is worse than no list.
+
+Not config pages, do not audit as one: any route whose page body is a
+`permanentRedirect` shim — grep for it rather than trusting a list. Today that
+covers `/adea-config` and `/db-config` (renamed routes → enricher-config,
+manage-database) plus `/models-config`, `/verification-config` and `/ojo-config`
+(folded into `/general-config`).
 The `/aura-*` route tree is gone — Aura is a retired class, so a reference to it
 is stale doc, not a missing page. `agents_config` is EF-managed with no page yet.
 `scoring_config` belonged to the deleted Lineup engine (MESITA-1048) — if it
 still has no reader, that is a 4.3 dead-knob finding, not a page to check.
 
-**Ojo is the one that must not be skipped.** Every `ojo_config` knob is live and
-editable while the engine is unbuilt (MESITA-1034), so it is the repo's largest
-standing block of deliberately-unenforced config. The rule is that a staged knob
+**Ojo is the one that must not be skipped**, and it no longer has a rail row —
+its knobs render inside **General Config** (`/general-config`), so auditing the
+rail alone misses it. Every `ojo_config` knob is live and editable while the
+engine is unbuilt (MESITA-1034), so it is the repo's largest standing block of
+deliberately-unenforced config. The rule is that a staged knob
 is *labeled* staged — check that the console still says so. A silently
 un-staged Ojo knob reads to an operator as a control that does something.
 
