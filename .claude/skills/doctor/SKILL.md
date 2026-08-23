@@ -125,6 +125,16 @@ The singleton rule is the one that silently breaks. Check it first.
     Known blindspot, by design: dynamic SQL (`EXECUTE` strings, e.g. admin_reset's
     truncate) is not validated — the same class of blindspot as EF query strings
     vs `deno check`. `LANGUAGE sql` functions are also outside plpgsql_check.
+    **Cover the blindspot with a second query, and run it after ANY rename or drop**
+    (MESITA-1191). plpgsql_check parses; this one only greps, so it sees exactly what the
+    parser cannot — `EXECUTE` strings, `LANGUAGE sql` bodies, non-`public` schemas, and the
+    cron commands that are text to Postgres and were invisible during the 2026-08 outage.
+    Substitute the OLD name for the pattern; a hit means a stored body still names something
+    that no longer exists:
+    `with needle as (select '%OLD_NAME%'::text as pat) select 'function' as kind, n.nspname::text as where_, p.proname::text as name, l.lanname::text as lang from pg_proc p join pg_namespace n on n.oid = p.pronamespace join pg_language l on l.oid = p.prolang cross join needle where p.prosrc ilike needle.pat and n.nspname not in ('pg_catalog','information_schema') union all select 'cron_job', 'cron', j.jobname::text, 'command' from cron.job j cross join needle where j.command ilike needle.pat order by 1,2,3`
+    It over-reports by design — a body legitimately mentioning the new name that contains the
+    old one as a substring will match. Read the hits, do not count them. Grep beats parse here
+    precisely because it understands nothing.
 
 ## Scope 3 — Data integrity / incongruences · P1
 
