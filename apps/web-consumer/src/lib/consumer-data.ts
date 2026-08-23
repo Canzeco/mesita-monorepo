@@ -16,8 +16,11 @@ import {
 //           never purchasable. Two doors up: Instagram reach (follower bands,
 //           operator-configured) or a direct invitation. Class is public —
 //           it shows on the Passport.
-//   plan  — WHAT YOU PAY. Free or Premium (MX$50/mo). Private: invisible to
-//           venues, never on the Passport.
+//   plan  — WHAT YOU PAY. Free or Premium (MX$50/mo). Private from the
+//           BUSINESS side: a place never learns it. It DOES show to the guest
+//           on their own Passport, in a Plan tile beside Class — the two axes
+//           render side by side and never MERGE (a class tile can never say
+//           Premium, a plan tile can never say a metal).
 //
 // The retired v1 ladder was standard < influencer < premium < aura, which put
 // the paid subscription INSIDE the class ladder — "Premium" ranked above
@@ -221,7 +224,8 @@ export const CLASSES: {
 ];
 
 // The OTHER axis. Premium is a subscription, not a rung: it never appears in
-// CLASSES, never shows on the Passport, and stays invisible to venues.
+// CLASSES and stays invisible to places. It DOES render on the guest's own
+// Passport, in its own Plan tile — separate from Class, never merged into it.
 export const PLANS: {
   id: PlanKey;
   label: string;

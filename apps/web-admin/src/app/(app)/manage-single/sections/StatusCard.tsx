@@ -5,12 +5,13 @@
 // Six facts, each read from its own source: seeded · listed · enriched ·
 // verified · partner · promoting.
 //
-// NAMING (Pato, 2026-08-22). This box was Status, became Pulse in MESITA-1161
-// to stop "status" colliding with `places.status`, and is Status again — because
-// PULSE now names something else: the enrichment pipeline and its steps. One
-// word, one meaning, and the collision with `places.status` is handled the way
-// it should have been, by the row's own detail line naming the column value
-// rather than by renaming the box.
+// NAMING (Pato, 2026-08-22). This box is Status, and PULSE names something
+// else entirely: the enrichment machinery. One word, one meaning.
+//
+// The word collides with `projects.status` (lead/active/paused/archived) —
+// NOT `places.status`, which does not exist: the column moved to `projects`
+// when the entity was split, and never came back. The collision is handled by
+// each row's own detail line naming the column value, not by renaming the box.
 
 import { useState } from "react";
 import { AlertTriangle, CircleCheck, Loader2 } from "lucide-react";
