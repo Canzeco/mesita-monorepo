@@ -115,10 +115,14 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      # Pinned, unlike the deploy workflow's `latest`: resolving "latest" costs
+      # an unauthenticated GitHub API call, which is rate-limited per runner IP
+      # and already failed this job once (run 32626825469). A blocking gate that
+      # goes red on someone else's traffic teaches people to ignore it.
       - name: Install Supabase CLI
         uses: supabase/setup-cli@v1
         with:
-          version: latest
+          version: 2.100.0
 
       # `start` on a fresh volume applies every migration in order and then
       # seed.sql, so a migration that cannot replay from zero fails right here.
