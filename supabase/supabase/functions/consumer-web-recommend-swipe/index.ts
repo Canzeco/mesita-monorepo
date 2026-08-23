@@ -90,6 +90,16 @@ Deno.serve(async (req) => {
     .from("profiles")
     .select(`${PLACE_PUBLIC_COLUMNS}, ${DISCOVERY_EXTRA_COLUMNS}`)
     .eq("status", "active")
+    // The enrichment gate (MESITA-1228, the one part of MESITA-1172 that never
+    // shipped). It is a PREDICATE, not a post-filter: the pool is already
+    // capped at POOL_CAP, so filtering after the fetch would silently thin the
+    // deck instead of deepening it. `content_status` is the lifecycle column
+    // (queued | generating | ready | failed) and only the contents stage lands
+    // 'ready', so it answers "the pipeline finished" and distinguishes done
+    // from failed. The 0-9 `enrich_pulse` ordinal cannot do this job: it is a
+    // read-time fold over an event log, not a column, so it cannot appear in a
+    // WHERE clause until MESITA-1249 materializes it.
+    .eq("content_status", "ready")
     .limit(POOL_CAP);
 
   if (error) {
