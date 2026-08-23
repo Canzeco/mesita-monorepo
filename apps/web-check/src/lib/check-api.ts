@@ -157,18 +157,6 @@ export function fetchCheck(code: string) {
   return callCheckEF<{ check: CheckPayload }>("check-web-get-ticket", { code });
 }
 
-export function submitBill(
-  code: string,
-  checkSubtotalCents: number,
-  pin?: string,
-) {
-  return callCheckEF<{ check: unknown }>("check-web-submit-bill", {
-    code,
-    checkSubtotalCents,
-    ...(pin ? { pin } : {}),
-  });
-}
-
 export function markPaid(code: string, pin?: string) {
   return callCheckEF<{ alreadyPaid?: boolean }>("check-web-mark-paid", {
     code,

@@ -30,7 +30,6 @@ const JWT_EFS: { name: string; path: string; accepts: string[] }[] = [
   // create their own tickets now.
   { name: "consumer-web-create-ticket", path: "../consumer-web-create-ticket/index.ts", accepts: ["POST"] },
   { name: "consumer-web-cancel-ticket", path: "../consumer-web-cancel-ticket/index.ts", accepts: ["POST"] },
-  { name: "business-web-submit-ticket-bill", path: "../business-web-submit-ticket-bill/index.ts", accepts: ["POST"] },
   { name: "business-web-mark-ticket-paid", path: "../business-web-mark-ticket-paid/index.ts", accepts: ["POST"] },
   { name: "business-web-cancel-ticket", path: "../business-web-cancel-ticket/index.ts", accepts: ["POST"] },
   { name: "business-web-list-tickets", path: "../business-web-list-tickets/index.ts", accepts: ["POST"] },
@@ -54,7 +53,6 @@ const JWT_EFS: { name: string; path: string; accepts: string[] }[] = [
 // and the null ip-hash shortcut make these probes network-free).
 const PUBLIC_CHECK_EFS: { name: string; path: string }[] = [
   { name: "check-web-get-ticket", path: "../check-web-get-ticket/index.ts" },
-  { name: "check-web-submit-bill", path: "../check-web-submit-bill/index.ts" },
   { name: "check-web-mark-paid", path: "../check-web-mark-paid/index.ts" },
   // THE TICKET v4 handshake (MESITA-1090/1092). A check-web EF scaffolded
   // from a consumer template would inherit requireAuthedUser and 401 a

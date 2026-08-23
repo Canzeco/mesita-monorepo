@@ -22,9 +22,8 @@
 // stale_ticket means the guest changed something under the glance: the
 // guest's write always wins, the screen re-renders, Aprobar re-enables.
 //
-// LEGACY (v3) tickets — no guest bill on record — keep the old flow exactly:
-// staff may enter the subtotal and close directly. That path retires with
-// MESITA-1093 once v4 is verified on a real floor.
+// The GUEST enters the bill; staff never do. An unbilled ticket still scans,
+// approves and closes — the discount is applied at the place's own POS.
 //
 // Privacy by construction: the payload only carries the blended final
 // percent — no classes, no rungs.
@@ -32,7 +31,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   BadgeCheck,
-  Banknote,
   Check,
   Flame,
   Instagram,
@@ -57,7 +55,6 @@ import {
   pollTicket,
   requestFix,
   scanTicket,
-  submitBill,
   validateTicket,
 } from "@/lib/check-api";
 import { cn } from "@/lib/utils";
@@ -165,7 +162,6 @@ export function CheckClient({
   const [check, setCheck] = useState<CheckPayload>(initial);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [subtotal, setSubtotal] = useState("");
   // Staff PIN (MESITA-823) — one entry covers the whole visit.
   const [pin, setPin] = useState("");
   const [pinOpen, setPinOpen] = useState(false);
@@ -175,8 +171,8 @@ export function CheckClient({
   const lastSyncedRef = useRef<number | null>(null);
   const [stale, setStale] = useState(false);
 
-  // A ticket with a guest bill on record runs the v4 handshake; an unbilled
-  // one keeps the v3 legacy flow until MESITA-1093 retires it.
+  // A ticket with a guest bill on record runs the v4 handshake. An unbilled
+  // one has no numbers to freeze, so it skips straight to the close.
   const v4 = check.bill != null && check.updated_at != null;
   const terminal = check.status === "revealed" || check.status === "cancelled";
 
@@ -300,15 +296,6 @@ export function CheckClient({
   const billMissing = billRequired && !check.bill;
   const mustBillBeforeClose = billMissing && check.status === "open";
 
-  const onSubmitBill = () => {
-    const pesos = Number(subtotal.replace(/[,$\s]/g, ""));
-    if (!Number.isFinite(pesos) || pesos <= 0) {
-      setError("Escribe el subtotal de la cuenta en pesos.");
-      return;
-    }
-    void run("bill", () => submitBill(code, Math.round(pesos * 100), pin));
-  };
-
   const expected = check.updated_at ?? "";
   const fixOutstanding = Boolean(check.fix_requested);
   const canVerdict =
@@ -376,24 +363,6 @@ export function CheckClient({
             <Button size="sm" variant="outline" onClick={() => void refresh()}>
               <RefreshCw /> Actualizar
             </Button>
-          </div>
-        ) : null}
-
-        {/* v3b: no bill yet — the ticket states the commitment outright. */}
-        {!check.bill && check.offer && check.status === "open" ? (
-          <div className="border-primary/25 bg-primary/5 rounded-xl border p-4 text-center">
-            <p className="font-display text-primary text-3xl leading-none font-bold tabular-nums">
-              {check.offer.discount_percent ?? 0}%
-            </p>
-            <p className="mt-1 text-sm font-semibold">
-              de descuento para este cliente
-            </p>
-            {check.offer.reward_cap_mxn ? (
-              <p className="text-muted-foreground mt-1 text-[11px]">
-                Sobre los primeros MX${check.offer.reward_cap_mxn} de la cuenta
-                — aplícalo en tu punto de venta.
-              </p>
-            ) : null}
           </div>
         ) : null}
 
@@ -477,43 +446,6 @@ export function CheckClient({
             <p className="text-[11px] leading-snug text-amber-800/80">
               Este lugar pide un código de 6 dígitos para las acciones del
               ticket. Pídeselo a tu gerente.
-            </p>
-          </div>
-        ) : null}
-
-        {/* Legacy (v3) staff bill entry — unbilled tickets only. Retires
-            with MESITA-1093. */}
-        {!v4 && check.status === "open" ? (
-          <div className="flex flex-col gap-2">
-            <label
-              htmlFor="check-subtotal"
-              className="text-muted-foreground text-xs font-semibold tracking-wide uppercase"
-            >
-              Subtotal de la cuenta (MXN) —{" "}
-              {billRequired ? "obligatorio" : "opcional"}
-            </label>
-            <div className="flex gap-2">
-              <input
-                id="check-subtotal"
-                inputMode="decimal"
-                placeholder="850"
-                value={subtotal}
-                onChange={(e) => setSubtotal(e.target.value)}
-                className="border-input bg-background focus-visible:ring-ring/50 h-10 w-full rounded-md border px-3 text-sm outline-none focus-visible:ring-[3px]"
-              />
-              <Button onClick={onSubmitBill} disabled={busy != null}>
-                {busy === "bill" ? (
-                  <Loader2 className="animate-spin" />
-                ) : (
-                  <Banknote />
-                )}
-                Calcular
-              </Button>
-            </div>
-            <p className="text-muted-foreground text-[11px] leading-snug">
-              {billRequired
-                ? "Este lugar requiere registrar la cuenta: escríbela y Mesita calcula el total a cobrar con el descuento. Después podrás cerrar el ticket."
-                : "Si la escribes, Mesita calcula el total a cobrar con el descuento. Si no, aplica el descuento en tu punto de venta y cierra el ticket directo."}
             </p>
           </div>
         ) : null}
@@ -662,15 +594,15 @@ export function CheckClient({
             </Button>
             {mustBillBeforeClose ? (
               <p className="text-muted-foreground text-center text-[11px] leading-snug">
-                Registra el subtotal de la cuenta arriba para poder cerrar el
-                ticket.
+                Este lugar requiere la cuenta registrada. El cliente la
+                escribe en su ticket; pídesela para poder cerrar.
               </p>
             ) : null}
           </div>
         ) : null}
 
-        {/* v4 staff-billed leftovers (awaiting_payment_confirm with a bill):
-            the old close still works while MESITA-1093 is pending. */}
+        {/* awaiting_payment_confirm: the guest chose a rail and the place
+            confirms the money arrived. */}
         {v4 && check.status === "awaiting_payment_confirm" ? (
           <Button
             size="lg"
