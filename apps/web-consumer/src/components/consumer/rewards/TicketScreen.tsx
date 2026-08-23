@@ -1378,16 +1378,11 @@ function RewardLanes({
 
   return (
     <div className="flex flex-col gap-1.5">
-      {/* PAYOUT — how it lands. Cashback (Yums) is STAGED: rendered so the
+      {/* PAYOUT — how it lands. The Yums payout is STAGED: rendered so the
           shape is real, never selectable, never paid. */}
       <Lane title="Payout" note="how it lands">
         <LaneChip label="Discount" sub="off tonight's bill" value={null} on />
-        <LaneChip
-          label="Cashback"
-          sub="Yums · coming soon"
-          value={null}
-          faded
-        />
+        <LaneChip label="Yums" sub="coming soon" value={null} faded />
       </Lane>
 
       {b ? (

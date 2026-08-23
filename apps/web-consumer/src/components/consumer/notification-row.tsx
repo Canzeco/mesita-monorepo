@@ -16,8 +16,8 @@ function KindIcon({ kind, className }: { kind: string; className?: string }) {
 
 export function NotificationRow({ n }: { n: ConsumerNotification }) {
   const p = n.bill;
-  const reward =
-    p.total_reward_cents ?? (p.discount_cents ?? 0) + (p.redeem_cents ?? 0);
+  // redeem_cents is always 0 — ignore it in UI (Product Rules §A).
+  const reward = p.total_reward_cents ?? p.discount_cents ?? 0;
 
   return (
     <article className="border-border bg-card flex gap-3 overflow-hidden rounded-2xl border p-3">
