@@ -24,6 +24,7 @@ import {
 import { OPENAI_URL } from "./enrich-config.ts";
 import { ENRICH_FIELD_LIMITS } from "./enrich-field-limits.ts";
 import { DEFAULT_MODELS_CONFIG, loadModelsConfig } from "./models-config.ts";
+import { writePlace } from "./place-doc.ts";
 import { pieceDone, reportPulsePieces } from "./pulse-report.ts";
 
 /** Fallback when models_config.enricher.model is unset. */
@@ -192,17 +193,19 @@ async function computeAndPersistPlaceEmbedding(
     return null;
   }
 
-  const { error } = await admin
-    .from("profiles")
-    .update({
+  const writeRes = await writePlace(admin, {
+    table: "profiles",
+    mode: "update",
+    id: place.id,
+    patch: {
       embedding: vectorLiteral(vector),
       embedding_source_hash: factsHash,
       embedding_source_text: text,
-    })
-    .eq("id", place.id);
+    },
+  });
 
-  if (error) {
-    console.error(`[${logPrefix}] write:`, error.message);
+  if (!writeRes.ok) {
+    console.error(`[${logPrefix}] write:`, writeRes.error);
     return null;
   }
 

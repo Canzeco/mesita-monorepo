@@ -33,6 +33,7 @@ import {
   applyListingTypeToPatch,
 } from "../_shared/partner-derivation.ts";
 import { recomputeConsumerClass } from "../_shared/class-doors.ts";
+import { type ProjectPatch, writePlace } from "../_shared/place-doc.ts";
 import { ratesFromPlace } from "../_shared/promo-strategy.ts";
 import { subscriptionSnapshot } from "./subscription-snapshot.ts";
 
@@ -281,11 +282,13 @@ async function reconcileProjectSubscription(
       currentListingType: (row as Record<string, unknown>).listing_type as string,
     });
 
-    const grant = await admin
-      .from("projects")
-      .update(patch)
-      .eq("id", projectId);
-    if (grant.error) throw new Error(`project_grant: ${grant.error.message}`);
+    const grant = await writePlace(admin, {
+      table: "projects",
+      mode: "update",
+      id: projectId,
+      patch: patch as ProjectPatch,
+    });
+    if (!grant.ok) throw new Error(`project_grant: ${grant.error}`);
   } else {
     const { data: row, error: readErr } = await admin
       .from("projects")
@@ -309,11 +312,15 @@ async function reconcileProjectSubscription(
     patch.plan_live_at = null;
     patch.first_ticket_honored_at = null;
 
-    const revoke = await admin
-      .from("projects")
-      .update(patch)
-      .eq("id", projectId)
-      .eq("plan", planKey);
-    if (revoke.error) throw new Error(`project_revoke: ${revoke.error.message}`);
+    // Guard: only revoke if the plan is still what we read above — a
+    // concurrent change (another webhook, a manual admin grant) must win.
+    const revoke = await writePlace(admin, {
+      table: "projects",
+      mode: "update",
+      id: projectId,
+      patch: patch as ProjectPatch,
+      guard: { plan: planKey },
+    });
+    if (!revoke.ok) throw new Error(`project_revoke: ${revoke.error}`);
   }
 }

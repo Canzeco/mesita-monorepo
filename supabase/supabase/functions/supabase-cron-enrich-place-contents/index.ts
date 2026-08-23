@@ -56,6 +56,7 @@ import {
   selectReservationEndpoint,
 } from "../_shared/enrich-reservation-endpoint.ts";
 import { humanizeCategorySlug } from "../_shared/parse-utils.ts";
+import { type PlacePatch, writePlace } from "../_shared/place-doc.ts";
 import {
   advanceResearchStage,
   buildMediaAssets,
@@ -331,11 +332,13 @@ serveEnrichStage("contents", async (admin, env, row) => {
     name?: unknown;
     google_name?: unknown;
   };
-  const { error: placeErr } = await admin.from("places").update(placeUpdate).eq(
-    "id",
-    projectId,
-  );
-  if (placeErr) {
+  const placeRes = await writePlace(admin, {
+    table: "places",
+    mode: "update",
+    id: projectId,
+    patch: placeUpdate as PlacePatch,
+  });
+  if (!placeRes.ok) {
     // Persist failed — the run is aborted here, so this failed beacon IS the
     // stage's single notification.
     await reportEnrichmentStep(
@@ -345,24 +348,26 @@ serveEnrichStage("contents", async (admin, env, row) => {
       "publish",
       "failed",
       "Profile persist failed — the place record was not updated.",
-      { error: placeErr.message },
+      { error: placeRes.error },
     );
     await releaseResearchRow(
       admin,
       projectId,
-      `place_update: ${placeErr.message}`,
+      `place_update: ${placeRes.error}`,
     );
     return;
   }
-  const { error: projErr } = await admin
-    .from("projects")
-    .update({ content_status: "ready" })
-    .eq("id", projectId);
-  if (projErr) {
+  const projRes = await writePlace(admin, {
+    table: "projects",
+    mode: "update",
+    id: projectId,
+    patch: { content_status: "ready" },
+  });
+  if (!projRes.ok) {
     await releaseResearchRow(
       admin,
       projectId,
-      `content_status: ${projErr.message}`,
+      `content_status: ${projRes.error}`,
     );
     return;
   }
