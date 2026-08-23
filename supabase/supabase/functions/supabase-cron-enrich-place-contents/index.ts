@@ -427,8 +427,10 @@ serveEnrichStage("contents", async (admin, env, row) => {
   }
   await reportPulsePieces(admin, projectId, contentPieces);
 
-  // One beacon for the whole contents stage (S7–S9) — one notification per
-  // function. Reports synthesis + persist + image outcome in a single line.
+  // One beacon for the whole contents stage — one notification per Edge
+  // Function. Its own `step` is decorative and does not track the ladder: the
+  // stage runs 7 menu, 9 description and the semantic Summary, all stamped
+  // above. Reports synthesis + persist + image outcome in a single line.
   await reportEnrichmentStep(
     admin,
     projectId,

@@ -1,7 +1,24 @@
 import { TONES, type Tone } from "./notification-config";
 
-// The Enricher runs as three cron EFs (supabase-cron-enrich-place-*); each
-// step event carries its S-code, which maps a step onto one of the phases.
+// Which of the three cron EFs (supabase-cron-enrich-place-*) produced an
+// enrichment event, for the Monitor's colour chip.
+//
+// IT MATCHES ON THE FUNCTION KEY, NEVER ON THE S-NUMBER (MESITA-1231).
+//
+// This used to bucket by number — `n <= 4` research, `n <= 6` analysis, `n <= 9`
+// contents — which only worked while the ladder's numbering happened to be
+// grouped by stage. It never really was: reviews has always been gathered by
+// Research even though it sits late in the queue, because the Apify scrape
+// fires into the background and is collected at the end. Under the ten-function
+// ladder (MESITA-1243) the same arithmetic puts `social` (5) in Analysis and
+// `reviews` (8) in Contents, both wrong, and drops the semantic Summary
+// entirely because `SX` has no digits to parse.
+//
+// The key is the stable thing. Renumbering the ladder has never moved a key,
+// which is exactly why the high-water reader matches on one — see
+// Docs › Enrichment §A. This mirrors §A2's stage table; if a function moves
+// between Edge Functions, it moves here too.
+//
 // Colors follow the catalog: Research≈Link=emerald, Analysis=sky,
 // Contents/Persist=amber.
 type EnricherPhase = {
@@ -10,37 +27,68 @@ type EnricherPhase = {
   tone: Tone;
 };
 
-const ENRICHER_PHASES: Record<
-  "research" | "analysis" | "contents",
-  EnricherPhase
-> = {
+type PhaseKey = "research" | "analysis" | "contents";
+
+const ENRICHER_PHASES: Record<PhaseKey, EnricherPhase> = {
   research: {
     label: "Research",
     blurb:
-      "Gathers the raw material (S0–S4): Google profile, reviews & SERP, channel links, source harvest.",
+      "Gathers the raw material — functions 1 pulse · 2 details · 3 serp · 4 links · 5 social · 8 reviews.",
     tone: TONES.emerald,
   },
   analysis: {
     label: "Analysis",
     blurb:
-      "Vision pass over candidate photos (S5–S6): describes each one, then ranks and selects the gallery.",
+      "Vision pass over candidate photos — function 6 images: describes each one, then ranks and selects the gallery.",
     tone: TONES.sky,
   },
   contents: {
     label: "Contents",
     blurb:
-      "Writes the profile (S7–S9): synthesizes About, category & tags, then persists data and images.",
+      "Writes the profile — functions 7 menu · 9 description, then persists data and images and vectorizes (semantic Summary).",
     tone: TONES.amber,
   },
 };
 
+// Every step_name the events table can carry, mapped to the stage that writes
+// it. Two families live here on purpose:
+//
+//   the TEN functions and the two semantic ones (Docs › Enrichment §A), and
+//   the LEGACY STAGE BEACONS — gather · google_profile · analysis · publish —
+//   which are not functions at all but do appear in the Monitor.
+//
+// `seed` is absent because nothing stamps it: the row existing IS the seed.
+const PHASE_BY_STEP_NAME: Record<string, PhaseKey> = {
+  // Research
+  pulse: "research",
+  details: "research",
+  serp: "research",
+  links: "research",
+  social: "research",
+  reviews: "research",
+  gather: "research",
+  google_profile: "research",
+  // Analysis
+  images: "analysis",
+  analysis: "analysis",
+  // Contents
+  menu: "contents",
+  description: "contents",
+  summary: "contents",
+  name: "contents",
+  publish: "contents",
+};
+
+/**
+ * The stage behind one enrichment event, or null when we cannot say.
+ *
+ * NULL RATHER THAN A GUESS. An unrecognised step_name renders no phase chip at
+ * all — the step chip beside it still shows the raw value. A wrong colour is
+ * worse than a missing one: it tells an operator a confident lie about which
+ * Edge Function to go read.
+ */
 export function enricherPhase(meta: Record<string, unknown>): EnricherPhase | null {
-  const step = typeof meta.step === "string" ? meta.step : null;
-  const m = step ? /^S(\d+)/i.exec(step.trim()) : null;
-  if (!m) return null;
-  const n = Number(m[1]);
-  if (n <= 4) return ENRICHER_PHASES.research;
-  if (n <= 6) return ENRICHER_PHASES.analysis;
-  if (n <= 9) return ENRICHER_PHASES.contents;
-  return null;
+  const stepName = typeof meta.stepName === "string" ? meta.stepName.trim() : "";
+  const phase = PHASE_BY_STEP_NAME[stepName];
+  return phase ? ENRICHER_PHASES[phase] : null;
 }
