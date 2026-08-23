@@ -31,7 +31,7 @@ const PLACE_SECTIONS: readonly {
   },
   {
     id: "products",
-    label: "Menu",
+    label: "Menus",
     description:
       "Add menus shown to consumers. For each menu, choose Upload or Drive — not both.",
   },

@@ -57,7 +57,7 @@ export function SectionCard({
   action,
   children,
 }: {
-  /** Optional scroll/focus target (e.g. completeness Menu → Products). */
+  /** Optional scroll/focus target (e.g. completeness Menu → Menus). */
   id?: string;
   icon?: React.ReactNode;
   /** Icon-chip hue — keep sibling cards on different tints. */

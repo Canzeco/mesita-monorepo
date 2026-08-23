@@ -19,7 +19,7 @@ import {
 } from "./place-detail/activity";
 import { LocationBox, HoursBox } from "./place-detail/location-hours";
 import { MediaBox } from "./place-detail/media";
-import { ProductsBox } from "./place-detail/products";
+import { MenusBox } from "./place-detail/menus";
 import { ProfileSummary } from "./place-detail/profile-summary";
 // decision: Pato (live, 2026-08-03) — the Reviews tab carries all three boxes
 // again: the cross-channel summary, Google's reviews, then Mesita's own. The
@@ -47,7 +47,7 @@ import {
 //
 //   1. Profile summary — name in page chrome; photo + Google/Instagram/
 //      Facebook; swipe-style tags; then Save · Contact · Share.
-//   2. Sticky tab strip — Place · Reviews · Products · Rewards.
+//   2. Sticky tab strip — Overview · Reviews · Menus · Rewards.
 //   3. The active tab's boxes.
 
 export function PlaceDetailBody({ place }: { place: PlaceDetail }) {
@@ -133,7 +133,7 @@ export function PlaceDetailBody({ place }: { place: PlaceDetail }) {
             />
           </>
         )}
-        {tab === "products" && <ProductsBox place={place} />}
+        {tab === "products" && <MenusBox place={place} />}
         {/* Reward always renders on its tab. Web listings and rate-less
             partners get a "doesn't offer rewards" state inside RewardsBox
             rather than an empty tab, so all three cases (web / partner-no-

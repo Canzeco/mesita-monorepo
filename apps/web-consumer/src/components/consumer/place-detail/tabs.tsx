@@ -2,12 +2,14 @@
 
 import { cn } from "@/lib/utils";
 
+// The KEYS are addresses (and map to places.products); only the LABELS are
+// the words a guest reads. "Menus", never "Products" (Pato 2026-08-22).
 export type PlaceTab = "place" | "reviews" | "products" | "rewards";
 
 const PLACE_TABS: Array<{ key: PlaceTab; label: string }> = [
   { key: "place", label: "Overview" },
   { key: "reviews", label: "Reviews" },
-  { key: "products", label: "Products" },
+  { key: "products", label: "Menus" },
   { key: "rewards", label: "Rewards" },
 ];
 
