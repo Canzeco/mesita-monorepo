@@ -15,11 +15,17 @@
 // instead would have left these two fields live-looking but silently
 // unenforced); failAction decides whether a fail only gets flagged or also
 // withholds the bonus (pre-bill only — see withholdEligible()); the four
-// `checks` and `prompt` compose the vision prompt directly. The rule this
-// page is the template for — ENFORCED knobs are always visible, STAGED ones
-// go behind ONE disclosure ONLY WHILE they describe an object that doesn't
-// exist yet — means that object existing now retires the disclosure
-// entirely, not just the "auto-pass" field it used to sit beside.
+// `checks` and `prompt` compose the vision prompt directly.
+//
+// The disclosure STAYS. This page is composed into General
+// (apps/web-admin/src/app/(app)/general-config/page.tsx, MESITA-1178) under
+// an explicit "three controls, or it doesn't earn a spot there" budget —
+// un-collapsing all seven fields on ship day would have honored the "STAGED
+// hides behind a disclosure" rule while breaking that separate, real
+// constraint. What was actually false was the LABEL, not the collapse: it
+// said "not built yet" about a rubric the engine now reads on every call.
+// Renamed to "Detection detail" — still one disclosure, now honestly
+// describing optional depth rather than a nonexistent feature.
 //
 // STOP RENDERING, NEVER STOP CARRYING still applies to showGuestReason and
 // maxRetries: both are genuinely read by the engine too, deliberately with
@@ -35,6 +41,7 @@ import { useState, useTransition } from "react";
 import { Eye } from "lucide-react";
 import { ErrorNote } from "@/components/ErrorNote";
 import {
+  Collapsible,
   NumberField,
   SaveRow,
   SectionCard,
@@ -174,56 +181,61 @@ export function OjoConfigClient({
           />
         </div>
 
-        {/* Promoted out of the "not built yet" disclosure on ship day
-            (MESITA-1034), exactly as the prior comment here said it would —
-            _shared/ojo-engine.ts reads all three of these now. */}
-        <div className="mt-3 grid gap-3 sm:grid-cols-2">
-          <NumberField
-            icon={<Eye className="h-4 w-4" />}
-            label="Send to queue at or above"
-            value={cfg.reviewFloorScore}
-            min={0}
-            max={1}
-            decimals
-            disabled={pending}
-            onChange={(v) => patch({ reviewFloorScore: v })}
-          />
-        </div>
-        <p className="text-muted-foreground mt-2 text-xs leading-relaxed">
-          Below this is a fail. Saving clamps it to the auto-pass score.
-        </p>
-
-        <div className="mt-4 flex flex-col gap-2">
-          {CHECKS.map((c) => (
-            <div
-              key={c.key}
-              className="border-border bg-background flex items-center justify-between gap-4 rounded-xl border px-4 py-2.5"
-            >
-              <p className="text-sm">{c.label}</p>
-              <Switch
-                on={cfg.checks[c.key]}
-                pending={pending}
-                onClick={() => patchCheck(c.key)}
-                label={c.label}
-              />
-            </div>
-          ))}
-        </div>
-
-        <div className="mt-4">
-          <TextAreaField
-            label="Operator instruction"
-            value={cfg.prompt}
-            disabled={pending}
-            onChange={(v) => patch({ prompt: v })}
-          />
+        {/* Stays behind ONE disclosure — General Config composes this whole
+            card under a "three controls, or it doesn't earn a spot here"
+            budget (general-config/page.tsx, MESITA-1178). enabled /
+            autoPassScore / failAction above are the three; everything below
+            is real, engine-read detail (MESITA-1034), not a placeholder —
+            the label says so, not "not built yet". */}
+        <Collapsible summary="Detection detail">
+          <div className="grid gap-3 sm:grid-cols-2">
+            <NumberField
+              icon={<Eye className="h-4 w-4" />}
+              label="Send to queue at or above"
+              value={cfg.reviewFloorScore}
+              min={0}
+              max={1}
+              decimals
+              disabled={pending}
+              onChange={(v) => patch({ reviewFloorScore: v })}
+            />
+          </div>
           <p className="text-muted-foreground mt-2 text-xs leading-relaxed">
-            Never ask it to judge sentiment — paying more for praise is how a
-            rewards program buys fake reviews. Appended as additional context
-            after Ojo&apos;s own fixed rules, never able to override them
-            (see buildPrompt() in _shared/ojo-engine.ts).
+            Below this is a fail. Saving clamps it to the auto-pass score.
           </p>
-        </div>
+
+          <div className="mt-4 flex flex-col gap-2">
+            {CHECKS.map((c) => (
+              <div
+                key={c.key}
+                className="border-border bg-background flex items-center justify-between gap-4 rounded-xl border px-4 py-2.5"
+              >
+                <p className="text-sm">{c.label}</p>
+                <Switch
+                  on={cfg.checks[c.key]}
+                  pending={pending}
+                  onClick={() => patchCheck(c.key)}
+                  label={c.label}
+                />
+              </div>
+            ))}
+          </div>
+
+          <div className="mt-4">
+            <TextAreaField
+              label="Operator instruction"
+              value={cfg.prompt}
+              disabled={pending}
+              onChange={(v) => patch({ prompt: v })}
+            />
+            <p className="text-muted-foreground mt-2 text-xs leading-relaxed">
+              Never ask it to judge sentiment — paying more for praise is how
+              a rewards program buys fake reviews. Appended as additional
+              context after Ojo&apos;s own fixed rules, never able to
+              override them (see buildPrompt() in _shared/ojo-engine.ts).
+            </p>
+          </div>
+        </Collapsible>
       </SectionCard>
 
       <SaveRow
