@@ -54,7 +54,7 @@ const eslintConfig = defineConfig([
             "    type-meta     0.625rem  (10px)  dense meta, the FLOOR\n" +
             "    type-label    0.6875rem (11px)  group label\n" +
             "    type-body     0.8125rem (13px)  field label / body\n" +
-            "    type-eyebrow  10px + uppercase + 0.12em + bold\n\n" +
+            "    type-eyebrow  12px + uppercase + 0.14em + weight 500\n\n" +
             "  Do NOT round to the nearest px — read the block and pick the ROLE.\n" +
             "  clamp() is allowed for fluid display type; a fractional size a\n" +
             "  machine computed is fine, one a human typed is always a bug.\n\n" +
@@ -82,7 +82,7 @@ const eslintConfig = defineConfig([
             "Literal[value=/^(?=.*\\btype-eyebrow\\b)(?=.*\\bfont-(thin|light|normal|medium|semibold|bold|extrabold|black)\\b)/]",
           message:
             "This role already sets font-weight.\n\n" +
-            "  type-eyebrow sets 700. A font-* alongside it lands in the same utilities layer at equal specificity, so\n" +
+            "  type-eyebrow sets 500. A font-* alongside it lands in the same utilities layer at equal specificity, so\n" +
             "  the winner is emission order, not what you wrote — the silent\n" +
             "  trap that made .eyebrow lose to its own call sites.\n\n" +
             "  Drop the font-*, or add a role in src/lib/type-roles.ts.\n\n" +
@@ -93,9 +93,9 @@ const eslintConfig = defineConfig([
           selector:
             "Literal[value=/^(?=.*\\btype-eyebrow\\b)(?=.*\\btracking-)/]",
           message:
-            "type-eyebrow already sets letter-spacing (0.12em, per §C).\n\n" +
+            "type-eyebrow already sets letter-spacing (0.14em, per §C).\n\n" +
             "  Same equal-specificity race. If you need the other legal value\n" +
-            "  (0.14em), add it as a role rather than overriding this one.",
+            "  (0.12em), add it as a role rather than overriding this one.",
         },
       ],
     },
