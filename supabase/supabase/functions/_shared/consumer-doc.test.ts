@@ -67,6 +67,35 @@ Deno.test("validateConsumerPatch: accepts the class slot when origin is not 'sub
   assert(res.ok);
 });
 
+// Guard test 2's class leg (MESITA-1282, split from MESITA-1247's guard
+// test 2 "closed-key-sets: class, function, channel"). class_key is FK-
+// enforced by Postgres (consumers_tier_key_fkey -> classes(key)) against the
+// LEGACY v11 bridge keys — verified live: public.classes holds exactly
+// standard/influencer/premium/aura today. Mirrors ChannelSet/
+// FUNCTION_STATE_KEYS's accept-every-legal-reject-one-unknown pattern.
+Deno.test("validateConsumerPatch: class_key accepts every legacy key, rejects an unknown one", () => {
+  for (const key of ["standard", "influencer", "premium", "aura"]) {
+    assert(validateConsumerPatch({ class_key: key }).ok, `${key} should be legal`);
+  }
+  const res = validateConsumerPatch({ class_key: "gold" });
+  assert(!res.ok, "gold is an EARNED DISPLAY LABEL, never a DB class_key value");
+});
+
+Deno.test("invitation_class_key: same closed set as class_key, plus null to clear", () => {
+  for (const key of ["standard", "influencer", "premium", "aura"]) {
+    assert(
+      validateConsumerPatch({ invitation_class_key: key, invitation_granted_at: "2026-08-23T00:00:00Z" }).ok,
+      `${key} should be legal`,
+    );
+  }
+  assert(validateConsumerPatch({ invitation_class_key: null, invitation_granted_at: null }).ok);
+  const res = validateConsumerPatch({
+    invitation_class_key: "diamond",
+    invitation_granted_at: "2026-08-23T00:00:00Z",
+  });
+  assert(!res.ok, "diamond is an EARNED DISPLAY LABEL, never a DB class_key value");
+});
+
 Deno.test("validateConsumerPatch: accepts a matched invitation grant and a matched revoke", () => {
   const grant = validateConsumerPatch({
     invitation_class_key: "aura",
