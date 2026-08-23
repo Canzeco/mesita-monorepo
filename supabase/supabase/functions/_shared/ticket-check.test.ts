@@ -7,10 +7,13 @@
 
 import { assert, assertEquals, assertMatch } from "jsr:@std/assert@1";
 import {
+  type CheckSettings,
   type CheckTicketRow,
   checkUrlFor,
   isPlausibleCheckCode,
+  loadCheckSettings,
   newCheckCode,
+  requireCheckPin,
   shapeCheckPayload,
 } from "./ticket-check.ts";
 
@@ -272,4 +275,119 @@ Deno.test("shapeCheckPayload: offer states the commitment only while unbilled (M
 
   // No rate resolved → no block (the page just shows the ticket).
   assertEquals(shape().offer, null);
+});
+
+
+// ── The staff PIN gate (MESITA-1120) ───────────────────────────────────
+//
+// The gate is the ONLY protection on six verify_jwt=false write EFs —
+// service-role bypasses RLS and `projects` carries no anon policy. Before
+// this suite it had zero coverage, which is why a dropped PostgREST error
+// held it open in production.
+
+/** Minimal PostgREST double: one `.from().select().eq().maybeSingle()` chain. */
+function fakeAdmin(result: { data: unknown; error: unknown }) {
+  const chain = {
+    select: () => chain,
+    eq: () => chain,
+    maybeSingle: () => Promise.resolve(result),
+    // logCheckEvent inserts; the gate must not depend on it succeeding.
+    insert: () => Promise.resolve({ data: null, error: null }),
+    // isRateLimited-style reads, unused by these cases.
+    gte: () => chain,
+    order: () => chain,
+    limit: () => Promise.resolve({ data: [], error: null }),
+  };
+  // deno-lint-ignore no-explicit-any
+  return { from: () => chain } as any;
+}
+
+const json = (body: unknown, status = 200) =>
+  new Response(JSON.stringify(body), { status });
+
+function gate(settings: CheckSettings | undefined, pin: unknown, admin = fakeAdmin({ data: null, error: null })) {
+  return requireCheckPin({
+    admin,
+    projectId: "22222222-2222-2222-2222-222222222222",
+    ticketId: "11111111-1111-1111-1111-111111111111",
+    pin,
+    ipHash: null,
+    userAgent: null,
+    json,
+    settings,
+  });
+}
+
+Deno.test("loadCheckSettings: an errored read reports loadFailed, never a clean null", async () => {
+  const errored = await loadCheckSettings(
+    fakeAdmin({ data: null, error: { code: "57014", message: "canceling statement due to statement timeout", details: null } }),
+    "22222222-2222-2222-2222-222222222222",
+  );
+  assertEquals(errored.loadFailed, true);
+  assertEquals(errored.pin, null);
+
+  // The shape a genuinely unconfigured place produces — same pin, different
+  // meaning. If these two ever collapse again, the gate reopens.
+  const unconfigured = await loadCheckSettings(
+    fakeAdmin({ data: { check_pin: null, check_require_bill: null }, error: null }),
+    "22222222-2222-2222-2222-222222222222",
+  );
+  assertEquals(unconfigured.loadFailed, false);
+  assertEquals(unconfigured.pin, null);
+});
+
+Deno.test("requireCheckPin: DENIES 503 when the settings read failed (MESITA-1120)", async () => {
+  const res = await gate({ pin: null, requireBill: false, loadFailed: true }, "123456");
+  assert(!res.ok, "an unknown PIN state must never pass the gate");
+  assertEquals(res.response.status, 503);
+  assertEquals((await res.response.json()).code, "pin_unavailable");
+});
+
+Deno.test("requireCheckPin: DENIES on a failed read even with no PIN supplied", async () => {
+  const res = await gate({ pin: null, requireBill: false, loadFailed: true }, undefined);
+  assert(!res.ok);
+  assertEquals(res.response.status, 503);
+});
+
+Deno.test("requireCheckPin: DENIES when it loads the settings itself and that read errors", async () => {
+  // The `settings` arg is optional — callers that skip it used to reach the
+  // fail-open path. Now the gate loads the settings itself and must deny too.
+  const res = await gate(
+    undefined,
+    "123456",
+    fakeAdmin({ data: null, error: { code: "08006", message: "connection failure", details: null } }),
+  );
+  assert(!res.ok);
+  assertEquals(res.response.status, 503);
+});
+
+Deno.test("requireCheckPin: an unconfigured PIN still passes — the gate stays opt-in", async () => {
+  const res = await gate({ pin: null, requireBill: false, loadFailed: false }, undefined);
+  assert(res.ok);
+});
+
+Deno.test("requireCheckPin: correct PIN passes, wrong PIN 401s, absent PIN asks", async () => {
+  const settings: CheckSettings = { pin: "123456", requireBill: false, loadFailed: false };
+
+  assert((await gate(settings, "123456")).ok);
+  assert((await gate(settings, " 123456 ")).ok, "surrounding whitespace is trimmed");
+
+  const wrong = await gate(settings, "000000");
+  assert(!wrong.ok);
+  assertEquals(wrong.response.status, 401);
+  assertEquals((await wrong.response.json()).code, "pin_invalid");
+
+  const absent = await gate(settings, undefined);
+  assert(!absent.ok);
+  assertEquals(absent.response.status, 401);
+  assertEquals((await absent.response.json()).code, "pin_required");
+});
+
+Deno.test("the 503 body never leaks the PIN or its existence", async () => {
+  const res = await gate({ pin: "123456", requireBill: false, loadFailed: true }, "000000");
+  assert(!res.ok);
+  const body = await res.response.text();
+  for (const forbidden of ["123456", "check_pin"]) {
+    assert(!body.includes(forbidden), `503 body leaked ${forbidden}`);
+  }
 });
