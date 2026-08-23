@@ -13,9 +13,14 @@ export const DIRTY_SECTION_ORDER = [
 
 export type DirtySectionKey = (typeof DIRTY_SECTION_ORDER)[number];
 
+// The KEYS are storage vocabulary — `products` is the column the box writes
+// (places.products.menu). The LABELS are what a human reads, and the box is
+// called Menus (Pato live 2026-08-22: "rename products to menus"); its body
+// copy already said "No menus yet" / "New menu", so the title was the only
+// word still out of step.
 export const DIRTY_SECTION_LABELS: Record<DirtySectionKey, string> = {
   place: "Place",
-  products: "Products",
+  products: "Menus",
   visits: "Visits",
   orders: "Orders",
   reservations: "Reservations",

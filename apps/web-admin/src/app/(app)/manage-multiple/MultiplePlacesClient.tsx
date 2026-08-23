@@ -23,45 +23,57 @@
 // have to read past in the results.
 
 import { useState } from "react";
-import { ListFilter, ListPlus, Sparkles } from "lucide-react";
+import { SectionCard, type Tint } from "@/components/admin-ui/manage";
 import { SearchTab } from "./SearchTab";
 import { CreateTab } from "./CreateTab";
 import { EnrichTab, type EnrichCostSeed } from "./EnrichTab";
 
+// THE CARD, not a bare section (design pass 2026-08-22). This page was the
+// only one in the console whose content floated directly on the page
+// background: no border, no card, no icon chip, a plain `font-semibold`
+// heading where every other page uses the Fraunces `SectionCard` title. Two
+// adjacent entries in the same MANAGE rail group shared zero vocabulary, and
+// that — not the spacing — is why the page read as unfinished next to Single
+// Place.
+//
+// The step NUMBER takes the icon-chip slot rather than sitting beside it as a
+// second circle. `SectionCard` already reserves a 36px tinted square there,
+// so the number gets the affordance the system already has instead of
+// introducing a competing one. Each step takes its own tint, per the palette's
+// keep-siblings-different rule.
 function Step({
   n,
+  id,
   title,
   blurb,
-  icon,
+  tint,
   children,
 }: {
   n: number;
+  id?: string;
   title: string;
   blurb: string;
-  icon: React.ReactNode;
+  tint: Tint;
   children: React.ReactNode;
 }) {
+  // The id rides the wrapper, not SectionCard: `scroll-mt-24` only offsets the
+  // element that scrollIntoView actually targets, and step 2's "send to
+  // create" jump would otherwise land under the sticky page header.
   return (
-    <section className="scroll-mt-24">
-      <div className="flex items-start gap-3">
-        <span
-          className="bg-secondary/10 text-secondary mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[11px] font-semibold tabular-nums"
-          aria-hidden
-        >
-          {n}
-        </span>
-        <div className="min-w-0">
-          <h2 className="flex items-center gap-2 text-base font-semibold">
-            {icon}
-            {title}
-          </h2>
-          <p className="text-muted-foreground mt-0.5 text-sm leading-relaxed">
-            {blurb}
-          </p>
-        </div>
-      </div>
-      <div className="mt-4">{children}</div>
-    </section>
+    <div id={id} className="scroll-mt-24">
+      <SectionCard
+        tint={tint}
+        title={title}
+        subtitle={blurb}
+        icon={
+          <span className="text-sm font-semibold tabular-nums" aria-hidden>
+            {n}
+          </span>
+        }
+      >
+        <div className="mt-5">{children}</div>
+      </SectionCard>
+    </div>
   );
 }
 
@@ -76,12 +88,12 @@ export function MultiplePlacesClient({
   const [createText, setCreateText] = useState("");
 
   return (
-    <div className="flex flex-col gap-10 sm:gap-12">
+    <div className="flex flex-col gap-5">
       <Step
         n={1}
+        tint="sky"
         title="Search"
         blurb="One Google Places query per line. The deduped union of Place IDs comes back below."
-        icon={<ListFilter className="text-muted-foreground h-4 w-4" />}
       >
         <SearchTab
           onSendToCreate={(ids) => {
@@ -93,22 +105,21 @@ export function MultiplePlacesClient({
         />
       </Step>
 
-      <div id="bulk-create">
-        <Step
-          n={2}
-          title="Create"
-          blurb="Place IDs in, places out — the same pipeline as a single create, with progress per row."
-          icon={<ListPlus className="text-muted-foreground h-4 w-4" />}
-        >
-          <CreateTab text={createText} onTextChange={setCreateText} />
-        </Step>
-      </div>
+      <Step
+        n={2}
+        id="bulk-create"
+        tint="violet"
+        title="Create"
+        blurb="Place IDs in, places out — the same pipeline as a single create, with progress per row."
+      >
+        <CreateTab text={createText} onTextChange={setCreateText} />
+      </Step>
 
       <Step
         n={3}
+        tint="amber"
         title="Enrich"
         blurb="Re-run the Enricher over many places. Pick a mode and see the spend before you queue."
-        icon={<Sparkles className="text-muted-foreground h-4 w-4" />}
       >
         <EnrichTab costSeed={costSeed} />
       </Step>
