@@ -282,7 +282,7 @@ export function DiscoveryFilters({
             type="button"
             size="lg"
             onClick={onClose}
-            className="shadow-glow w-full rounded-xl text-sm font-semibold"
+            className="shadow-glow w-full text-sm font-semibold"
           >
             Show {count} {count === 1 ? "place" : "places"}
           </Button>
@@ -303,7 +303,7 @@ export function DiscoveryFilters({
             type="button"
             size="lg"
             onClick={onClose}
-            className="shadow-glow w-full rounded-xl text-sm font-semibold"
+            className="shadow-glow w-full text-sm font-semibold"
           >
             Done
           </Button>
