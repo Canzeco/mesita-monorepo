@@ -261,8 +261,12 @@ un-staged Ojo knob reads to an operator as a control that does something.
     `apps/web-<app>`, "skip unaffected" on, last production deploy green. A wrong Git
     connection produces a *silent no-deploy*, which is why this is checked daily.
 6.6 **Build/runtime errors.** Latest deploy build logs + runtime errors per project.
-6.7 **Git surface.** Stale branches, orphan worktrees, open PRs older than N days,
-    branches whose issue is already closed.
+6.7 **Git surface.** Local branches and worktrees on the operator's Mac, open PRs older
+    than 7 days, branches whose issue is already closed. Triage by **residual diff, never
+    ancestry** — squash-merges make `rev-list` call landed branches unmerged, so test with
+    `git cherry origin/main <branch>`: zero `+` lines means the work landed and the branch
+    should have died at merge (ASDM §A.5). Report the counts and the patch-equivalent
+    list; **never delete** — a branch belongs to the claim that created it.
 6.8 **CI budget.** Actions minutes headroom, red workflows on main.
 
 ## Scope 7 — Runtime observability (last 24h) · P2
@@ -365,7 +369,8 @@ and reporting it as drift would be a false P1 on the doc that called it first.
    a repo file (Development Rules §C markdown law).
 7. Linear: one issue per **NEW P0/P1**, titled `doctor: <one-line symptom>`, body = the
    finding block verbatim. **Dedupe** — if an open issue already covers it, comment the new
-   occurrence count instead of opening a second one. P2/P3 stay in the report only.
+   occurrence count instead of opening a second one. P2/P3 stay in the report only until
+   they persist — see **Escalation**.
 8. Print to the operator: the verdict line, the P0/P1 list, and the resolved-since-yesterday
    list. Nothing else.
 
@@ -378,6 +383,15 @@ and reporting it as drift would be a false P1 on the doc that called it first.
   taxonomy violations, advisor security lints, plan ceiling < 10% headroom.)
 - **P2** — decay, cost, or hygiene. (Unused indexes, dead knobs, dead EFs, stale branches.)
 - **P3** — ledger and paperwork.
+
+**Escalation — persistence is a severity input.** A finding that reports `PERSISTING` on
+**7 consecutive daily runs** has stopped being hygiene: it is decay nobody acts on, and a
+report that repeats it forever trains the reader to skip it. On day 7 promote it one tier
+(P3→P2, P2→P1), file it like any new P1 titled `doctor: <symptom> — PERSISTING <n> days`,
+and name the promotion in the diff section. `RESOLVED` resets the counter; so does Pato
+closing the issue won't-fix — then stop counting and stop reporting it.
+Worked example: 6.7's git surface sat at P2 while local branches went 15 → 173 and
+worktrees 6 → 18 in six days (MESITA-1064).
 
 ## Report shape
 
