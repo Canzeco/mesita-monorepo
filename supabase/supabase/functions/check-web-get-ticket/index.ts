@@ -131,7 +131,11 @@ Deno.serve(async (req) => {
             placeRow.data as Record<string, unknown>,
             grid.cap,
           ),
-        pinRequired: checkSettings.pin != null,
+        // MESITA-1120: get-ticket never gates, so it may degrade — but it
+        // must not answer `false` on an errored read, or the page hides the
+        // PIN input and staff cannot complete an action the write EF will
+        // then demand a PIN for. Unknown resolves to "prompt".
+        pinRequired: checkSettings.loadFailed || checkSettings.pin != null,
         offerRatePercent,
         // MESITA-898: the place opted in to a mandatory bill — the page
         // shows the subtotal step as required and holds the close.

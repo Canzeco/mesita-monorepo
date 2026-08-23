@@ -315,17 +315,34 @@ export function checkNotFound(json: (b: unknown, s?: number) => Response): Respo
 export type CheckSettings = {
   pin: string | null;
   requireBill: boolean;
+  /** MESITA-1120: the read itself failed, so we do NOT know whether this
+   *  place has a PIN. `pin: null` alone cannot carry that — an unconfigured
+   *  PIN and an errored read produce the identical row. Gates must DENY on
+   *  this; only the display path may degrade. */
+  loadFailed: boolean;
 };
 
 export async function loadCheckSettings(
   admin: SupabaseClient,
   projectId: string,
 ): Promise<CheckSettings> {
-  const { data } = await admin
+  const { data, error } = await admin
     .from("projects")
     .select("check_pin, check_require_bill")
     .eq("id", projectId)
     .maybeSingle();
+  // A transient DB error, an exhausted pool, a timeout, a renamed column or
+  // an RLS change all return data = null. Reporting that as "no PIN
+  // configured" is what ungated all six write EFs (MESITA-1120).
+  if (error) {
+    console.error("loadCheckSettings failed", {
+      projectId,
+      code: error.code,
+      message: error.message,
+      details: error.details,
+    });
+    return { pin: null, requireBill: false, loadFailed: true };
+  }
   const row = data as
     | { check_pin: string | null; check_require_bill: boolean | null }
     | null;
@@ -333,14 +350,8 @@ export async function loadCheckSettings(
   return {
     pin: pin && /^[0-9]{6}$/.test(pin) ? pin : null,
     requireBill: row?.check_require_bill === true,
+    loadFailed: false,
   };
-}
-
-export async function loadCheckPin(
-  admin: SupabaseClient,
-  projectId: string,
-): Promise<string | null> {
-  return (await loadCheckSettings(admin, projectId)).pin;
 }
 
 // Verify the caller's PIN against the place's. Returns the 401 to send on
@@ -360,9 +371,27 @@ export async function requireCheckPin(args: {
    *  skips the redundant projects read. */
   settings?: CheckSettings;
 }): Promise<{ ok: true } | { ok: false; response: Response }> {
-  const required = args.settings
-    ? args.settings.pin
-    : await loadCheckPin(args.admin, args.projectId);
+  const settings = args.settings ??
+    await loadCheckSettings(args.admin, args.projectId);
+
+  // MESITA-1120: "we could not determine whether a PIN is configured" is not
+  // "no PIN configured". Deny, loudly and retryably — never fall through to
+  // the ok:true below, which is the whole gate on six verify_jwt=false EFs.
+  if (settings.loadFailed) {
+    return {
+      ok: false,
+      response: args.json(
+        {
+          ok: false,
+          code: "pin_unavailable",
+          error: "Could not verify the staff PIN. Try again in a moment.",
+        },
+        503,
+      ),
+    };
+  }
+
+  const required = settings.pin;
   if (!required) return { ok: true };
 
   const supplied = typeof args.pin === "string" ? args.pin.trim() : "";
