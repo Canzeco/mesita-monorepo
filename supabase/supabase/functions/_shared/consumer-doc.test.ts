@@ -14,7 +14,11 @@
 
 import { assert, assertEquals } from "jsr:@std/assert@1";
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
-import { validateConsumerPatch, writeConsumer } from "./consumer-doc.ts";
+import {
+  type ConsumerPatch,
+  validateConsumerPatch,
+  writeConsumer,
+} from "./consumer-doc.ts";
 
 // ── validateConsumerPatch: accept ──────────────────────────────────────────
 
@@ -167,10 +171,16 @@ function unreachableAdmin(): SupabaseClient {
 
 Deno.test("writeConsumer: an invalid patch never reaches the DB", async () => {
   const admin = unreachableAdmin();
+  // A real caller decodes HTTP JSON as `unknown` and casts to ConsumerPatch
+  // before calling the write door — the same bypass of Belt 1 (the compiler)
+  // this cast simulates. Belt 2 (validateConsumerPatch, run inside
+  // writeConsumer below) is what catches an invalid value once TypeScript
+  // can no longer see it.
+  const invalidPatch = { sex: "other" } as unknown as ConsumerPatch;
   const res = await writeConsumer(admin, {
     mode: "update",
     id: "11111111-1111-1111-1111-111111111111",
-    patch: { sex: "other" },
+    patch: invalidPatch,
   });
   assert(!res.ok);
   assertEquals(res.error, "sex must be 'male', 'female', or null");

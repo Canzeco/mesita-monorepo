@@ -8,8 +8,12 @@
 // sites); config and vocab are explicitly out of scope for this issue.
 //
 // THE TWO-BELT PATTERN (StampablePulseStep, pulse-report.ts):
-//   Belt 1 — TypeScript. ConsumerPatch is a closed key set; a misspelled or
-//     retired field name fails to compile at every call site.
+//   Belt 1 — TypeScript. ConsumerWriteArgs.patch IS ConsumerPatch (a closed
+//     key set), not Record<string, unknown> — a misspelled or retired field
+//     name fails to compile at every call site that builds the patch as a
+//     typed literal or variable. This belt only holds until a caller casts
+//     past it (e.g. `as ConsumerPatch` on raw HTTP JSON) — which is exactly
+//     what belt 2 exists for.
 //   Belt 2 — runtime. validateConsumerPatch re-checks the same closed key
 //     set (HTTP JSON has no compiler) plus the shape and cross-field
 //     invariants below. A malformed patch never reaches Postgres — it just
@@ -286,8 +290,8 @@ export type ConsumerWriteResult =
   | { ok: false; error: string; code?: string };
 
 export type ConsumerWriteArgs =
-  | { mode: "insert"; id: string; patch: Record<string, unknown>; select?: string }
-  | { mode: "update"; id: string; patch: Record<string, unknown>; select?: string };
+  | { mode: "insert"; id: string; patch: ConsumerPatch; select?: string }
+  | { mode: "update"; id: string; patch: ConsumerPatch; select?: string };
 
 /**
  * THE consumer write door. Every insert/update against public.consumers in
