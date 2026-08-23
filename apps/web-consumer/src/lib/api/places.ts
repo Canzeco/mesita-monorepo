@@ -14,6 +14,7 @@ import { EFError, invokeEF } from "./_invoke";
 import { placeRowToDetail } from "@/lib/adapters/place-to-detail";
 import type { ResolvedTag } from "@/lib/adapters/place-to-detail";
 import type { PlaceDetail } from "@/lib/mock/place";
+import type { DiscoveryPredicatesWire } from "@/lib/discovery-filters-wire";
 
 type PlaceListingType = "partner" | "web";
 type PlaceStatus = "lead" | "active" | "paused" | "archived";
@@ -136,16 +137,19 @@ export type Place = {
   content_status?: string | null;
 };
 
-// Discover surfaces (swipe + catalog) go through dedicated EFs. The deck
-// EF returns a random sample of active places — there is no ranking
-// engine behind it. The helpers below are thin invokers; whatever
-// selection logic exists lives in the EFs so we can iterate on it
-// without redeploying the web app.
+// Discover surfaces (swipe + catalog) go through dedicated EFs. The deck EF
+// ranks the catalog behind the shared signal library (MESITA-1196) and, given
+// `predicates`, cuts its pool with the guest's filters BEFORE ranking
+// (MESITA-1153) — so a narrow filter searches the catalog instead of thinning a
+// slice of it. The helpers below are thin invokers; the selection logic lives
+// in the EFs so we can iterate on it without redeploying the web app.
 type RecommendDeckInput = {
   lat?: number;
   lng?: number;
   radiusKm?: number;
   limit?: number;
+  /** The guest's four discovery predicates — see lib/discovery-filters-wire. */
+  predicates?: DiscoveryPredicatesWire;
 };
 type RecommendDeckResponse = {
   deck: Place[];

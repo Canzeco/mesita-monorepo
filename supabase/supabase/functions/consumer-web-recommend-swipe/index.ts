@@ -36,6 +36,22 @@
 // precisely because this engine prefers to DEMOTE distance through Proximity's
 // log curve rather than exclude on it.
 //
+// LANE 0 — THE GUEST'S PREDICATE CUT (MESITA-1153). Optional `predicates`
+// carries the guest's four discovery filters (context · what · distance ·
+// when) and cuts the pool INSIDE the operator's filters, before the two lanes
+// above. They used to run in the browser, on the `limit` rows this function had
+// already sliced off a ranked catalog — so a predicate matching a fraction p of
+// the catalog left ~50p cards however large the catalog grew. A client that
+// omits `predicates` — every deployed Expo binary — gets the pool it always
+// got, so this is additive on the wire in both directions.
+//
+// It is `predicates`, not `filters`, because `cfg.filters` in this same
+// function is the OPERATOR's admission policy and the two must never be
+// mistaken for each other: `_shared/discovery-filters.ts` decides what may
+// enter the catalog's pool at all, `_shared/discovery-predicates.ts` narrows
+// within it on behalf of one guest, and only the latter can be wrong in a
+// direction the browser can still correct.
+//
 // Local:  supabase functions serve consumer-web-recommend-swipe
 // Deploy: supabase functions deploy consumer-web-recommend-swipe
 
@@ -53,6 +69,10 @@ import {
   toSignalPlace,
 } from "../_shared/discovery-place.ts";
 import { applyDiscoveryFilters, trimToRadius } from "../_shared/discovery-filters.ts";
+import {
+  applyDeckPredicates,
+  readDeckPredicates,
+} from "../_shared/discovery-predicates.ts";
 
 const DEFAULT_LIMIT = 50;
 const MAX_LIMIT = 50;
@@ -70,6 +90,12 @@ type Body = {
   limit?: number;
   /** Accepted for wire compatibility. Ignored — the operator owns this. */
   randomness?: number;
+  /**
+   * The GUEST's four discovery predicates (see _shared/discovery-predicates.ts
+   * — not `cfg.filters`, which is the operator's). Absent = no cut, which is
+   * what every pre-MESITA-1153 client sends.
+   */
+  predicates?: unknown;
 };
 
 Deno.serve(async (req) => {
@@ -120,7 +146,7 @@ Deno.serve(async (req) => {
   // Corner trim: the radius filter is a bounding BOX in the query, so this
   // removes the rows the box admitted that fall outside the true circle. It
   // only ever refines the predicate, never reaches past it.
-  const rows = trimToRadius(
+  const pool = trimToRadius(
     admitted,
     (r) => (r as unknown as Record<string, unknown>).lat as number | null,
     (r) => (r as unknown as Record<string, unknown>).lng as number | null,
@@ -128,14 +154,28 @@ Deno.serve(async (req) => {
     geo,
   );
 
+  // LANE 0 — the GUEST's cut, inside the operator's (MESITA-1153). Same rule
+  // as the filters above and the same reason: the pool is capped before
+  // anything ranks, so a predicate applied after the `limit` slice thins the
+  // deck the guest receives instead of narrowing the catalog it was drawn
+  // from. It runs second because an operator's admission rules bound what a
+  // guest may narrow, never the other way round.
+  const rows = applyDeckPredicates(
+    pool as unknown as Record<string, unknown>[],
+    readDeckPredicates(body.predicates),
+    geo.lat !== null && geo.lng !== null
+      ? { lat: geo.lat, lng: geo.lng }
+      : null,
+  ) as unknown as PlaceRow[];
+
   // Swipe carries no query and no category intent — the deck is the whole
   // catalog, ordered. Proximity is the only intent a swiping guest expresses,
   // so Category and Semantic abstain at NEUTRAL and drop out of the blend.
   //
   // `engines.swipe.ranked` is the operator's kill switch on the ranking brain.
   // Off serves the pool in its own order — which is what this function did
-  // before MESITA-1196 — and the FILTERS still apply, because admission and
-  // ordering are different questions.
+  // before MESITA-1196 — and the FILTERS and PREDICATES still apply, because
+  // admission and ordering are different questions.
   const ordered = cfg.engines.swipe.ranked
     ? discoveryRank(
       rows,
@@ -153,6 +193,9 @@ Deno.serve(async (req) => {
     (r as unknown as Record<string, unknown>).embedding != null
   ).length;
 
+  // `candidates` counts what was RANKED, i.e. the pool after both cuts — the
+  // honest denominator for "the deck is thin". Same field, same shape; a
+  // client that sends no predicates sees exactly the number it always saw.
   return json({
     ok: true,
     deck,
