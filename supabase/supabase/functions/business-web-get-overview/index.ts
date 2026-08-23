@@ -27,15 +27,11 @@ import {
   type PulseEvent,
 } from "../_shared/pulse-pieces.ts";
 
-// Super-admin manage-single extras: the Embeddings card (MESITA-720) and the
-// per-place manual_priority override. Keep both off the business overview
-// payload; only elevate when the caller is a super-admin.
-//
-// manual_priority no longer feeds anything (MESITA-1048 deleted the Lineup
-// engine that read it) — the column and this editor stay so operator intent
-// survives the rebuild.
+// Super-admin manage-single extra: the Embeddings card (MESITA-720). Keep it
+// off the business overview payload; only elevate when the caller is a
+// super-admin.
 const PLACE_ADMIN_EMBEDDING_COLUMNS =
-  ", embedding, embedding_source_hash, embedding_source_text, manual_priority";
+  ", embedding, embedding_source_hash, embedding_source_text";
 
 // Status (MESITA-1186). The place editor's Status box answers `seeded` off the
 // identity spine, so the super-admin read needs the column. Admin-only for the
