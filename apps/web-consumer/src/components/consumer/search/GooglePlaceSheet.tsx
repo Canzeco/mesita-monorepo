@@ -193,7 +193,7 @@ export function GooglePlaceSheet({
               size="lg"
               disabled={adding}
               onClick={() => onAdd(prediction)}
-              className="shadow-glow mt-4 w-full gap-1.5 text-sm font-semibold disabled:opacity-70"
+              className="shadow-glow mt-4 w-full gap-1.5 rounded-xl text-sm font-semibold disabled:opacity-70"
             >
               {adding ? (
                 <Spinner size="sm" className="border-white/40 border-t-white" />
