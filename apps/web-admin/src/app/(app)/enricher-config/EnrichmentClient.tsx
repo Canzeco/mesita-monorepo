@@ -12,6 +12,7 @@ import {
   DiscoverySection,
   ImageFunnelSection,
   ModelsSection,
+  QuietStepsSection,
   ReviewsSection,
 } from "./config-sections";
 import { RunsSection } from "./RunsSection";
@@ -20,6 +21,19 @@ import { Collapsible, SectionCard } from "./atlas-ui";
 
 // The Enrichment console — ONE page, no tab strip (Pato, 2026-08-21: "only one
 // tab in that section"). It was three tabs: Config, Triggers, Calculator.
+//
+// AFTER RUNS AND MODELS, THE PAGE IS THE QUEUE, IN QUEUE ORDER: 5 Links,
+// 6–7 Social & Images, 9 Reviews, then a map of every step that has no knob.
+// It used to be grouped by subsystem — Links, Reviews, Images — which is the
+// order the code grew in, not the order a run happens in. An operator tuning
+// "why are the photos wrong" had to know that Images runs after Social, which
+// the page never said. Numbering the boxes and sorting them by the queue means
+// the page reads the way a run does.
+//
+// Models sits above the steps rather than inside one because each of the four
+// serves several: Text drives step 10 and the image-rank leg, Search drives
+// Agent X at 4 and Agent Y at 5. Filing a shared model under one step would
+// make the other steps look knob-less when they are not.
 //
 // Order is deliberate. RUNS leads because it is the page's kill switch: a
 // disabled on_create row hard-skips the first-run pipeline, a disabled
@@ -94,10 +108,6 @@ export function EnrichmentClient(props: {
         initialUbereatsN={props.initialDiscoverUbereatsN}
         onSaved={setUpdatedAt}
       />
-      <ReviewsSection
-        initialGatherReviews={props.initialGatherReviews}
-        onSaved={setUpdatedAt}
-      />
       <ImageFunnelSection
         initialGatherGoogleImages={props.initialGatherGoogleImages}
         initialGatherInstagramDepth={props.initialGatherInstagramDepth}
@@ -110,6 +120,11 @@ export function EnrichmentClient(props: {
         initialImageSortingPrompt={props.initialImageSortingPrompt}
         onSaved={setUpdatedAt}
       />
+      <ReviewsSection
+        initialGatherReviews={props.initialGatherReviews}
+        onSaved={setUpdatedAt}
+      />
+      <QuietStepsSection />
 
       {/* One box, bottom, closed. Pato: "leave it at the bottom of the
           configuration, but as one box, not as one fucking giant tab." */}
