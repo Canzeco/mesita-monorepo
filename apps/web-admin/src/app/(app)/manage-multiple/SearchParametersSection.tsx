@@ -46,8 +46,7 @@ export function SearchParametersSection({
     <>
       <div className="space-y-3">
         <StepHeading
-          step={2}
-          title="Search settings"
+            title="Search settings"
           hint="How many results to pull per query, and which country to bias toward."
         />
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -91,8 +90,7 @@ export function SearchParametersSection({
 
       <div className="space-y-3">
         <StepHeading
-          step={3}
-          title="Quality filters"
+            title="Quality filters"
           icon={<SlidersHorizontal className="h-3.5 w-3.5" />}
           hint="Places with many Google reviews and a high rating are almost always real, good places. Filter out the noise — the results tell you how many each query dropped, so you never mistake a filter for an empty search."
         />

@@ -402,8 +402,12 @@ export function ProductsSection({
     <SectionCard
       id="place-products"
       icon={<UtensilsCrossed className="h-4 w-4" />}
-      tint="orange"
-      title="Products"
+      // teal, not orange: Photos sits directly above this box in the same
+      // masonry column and was also orange, which is the one thing the tint
+      // palette's own contract asks you not to do ("keep sibling cards on
+      // different tints").
+      tint="teal"
+      title="Menus"
     >
       <input
         ref={fileInputRef}
@@ -459,7 +463,7 @@ export function ProductsSection({
         <SaveBar
           pending={pending}
           dirty={dirty}
-          dirtyLabel="Products · unsaved"
+          dirtyLabel="Menus · unsaved"
           ok={ok}
           error={error}
           onSave={save}

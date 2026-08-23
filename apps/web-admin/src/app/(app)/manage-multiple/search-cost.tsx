@@ -54,7 +54,7 @@ export function CostCalculator({
   const pricePerCallLabel = `US$${PRICE_PER_REQUEST_USD.toFixed(3)}`;
   const freeTierLabel = FREE_PRO_REQUESTS_PER_MONTH.toLocaleString();
   return (
-    <div className="border-border bg-card shadow-elev rounded-2xl border px-5 py-4">
+    <div className="border-border/60 bg-muted/60 rounded-xl border px-4 py-3">
       <div className="flex items-start justify-between gap-4">
         <div>
           <p className="text-muted-foreground text-[10px] font-medium tracking-[0.14em] uppercase">
