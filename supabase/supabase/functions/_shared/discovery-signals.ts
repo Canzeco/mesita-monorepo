@@ -1,0 +1,355 @@
+// DISCOVERY SIGNALS — the scoring micro-functions (Docs › Discovery §A).
+//
+// A signal is a PURE FUNCTION: one or more indexes (facts already on the row,
+// or precomputed) plus the caller's intent in, ONE number in [0, 1] out. Never
+// metres, never a review count, never a peso figure — normalizing is the
+// signal's own job, and so is SHAPING. Proximity computes raw kilometres and
+// bends them through a logarithmic curve before returning; the linear number
+// never leaves the function. That is the whole contract, and it is what lets
+// every engine reach the same library instead of each one inventing a scale.
+//
+// THERE ARE SIX, and there used to be seven. Docs § A listed Promoting among
+// them; MESITA-1196 settled the two-lane question the other way (Pato,
+// 2026-08-22), so Promoting is NOT here — a bought placement never touches an
+// earned score. It is a slotting pass that runs AFTER the blend, and it lives
+// in discovery-blend.ts. Nothing in this file may read a promo field; that is
+// what makes "rank is never for sale" an invariant a test can hold rather than
+// an exponent someone has to defend.
+//
+// There is no Social signal either, and that is also deliberate: it would
+// stand on the Social ENGINE, which is parked. Social is an engine only.
+//
+// NEUTRAL IS 1, NOT 0.5. Signals compose as `s^w` (see discovery-blend.ts), so
+// the identity element of the blend is 1 — a signal with s=1 drops out of the
+// product entirely, for any exponent. When there is no intent to read (the
+// guest sent no geo, the query has no vector) the signal returns 1 and
+// abstains. Returning 0.5 would look neutral and is not: it would multiply
+// every place by the same factor for a fact about the CALLER, quietly
+// compressing the whole deck toward zero and making an absent guest location
+// change how much the OTHER signals matter. Absence of intent is not evidence
+// about a place.
+//
+// MISSING DATA ON THE PLACE IS A DIFFERENT QUESTION and gets a different
+// answer. A place with no hours, no rating or no vector has failed to tell us
+// something, and the honest score there is a middling one, not an abstention —
+// otherwise a bare row would outrank a fully enriched one by having nothing to
+// judge. Each signal names its own unknown value below and says why.
+//
+// EVERY SIGNAL CLAMPS ITS OWN OUTPUT. The blend raises these to a power and
+// multiplies them; one signal returning 1.2 or -0.1 would poison the product
+// (a negative base under a fractional exponent is NaN). `clamp01` is applied
+// on the way out of every one of them, without exception.
+
+import { haversineKm } from "./geo.ts";
+import { isOpenAt } from "./local-time-open.ts";
+import { localClock } from "./local-time.ts";
+import { cosineSim, parseVector } from "./embeddings-vector.ts";
+
+/** The six earned signals, in the order the admin table renders them. */
+export const SIGNAL_KEYS = [
+  "proximity",
+  "timing",
+  "category",
+  "popularity",
+  "semantic",
+  "randomness",
+] as const;
+
+export type SignalKey = (typeof SIGNAL_KEYS)[number];
+
+/** The neutral element of the blend: `1^w === 1` for every exponent. */
+export const NEUTRAL = 1;
+
+/** Every signal's last statement before it returns. See the header. */
+export function clamp01(n: number): number {
+  if (!Number.isFinite(n)) return NEUTRAL;
+  return Math.min(1, Math.max(0, n));
+}
+
+// ── The indexes a signal may read ────────────────────────────────────────────
+
+/**
+ * The facts a signal is allowed to see. This is a projection of `places`, not
+ * the row — narrowing it here is what stops a signal from quietly reaching for
+ * a promo field. Note what is absent: nothing about strategy, plan, or rates.
+ */
+export type SignalPlace = {
+  lat: number | null;
+  lng: number | null;
+  hours: unknown;
+  category: string | null;
+  family_keys?: string[] | null;
+  rating: number | null;
+  user_ratings_total: number | null;
+  embedding: unknown;
+};
+
+/** What the CALLER wants. Every field is optional; an absent one abstains. */
+export type SignalIntent = {
+  /** Guest position. Both halves required — a lone latitude is not a location. */
+  lat?: number | null;
+  lng?: number | null;
+  /** Category keys the guest asked for, e.g. ["taqueria"]. */
+  categories?: string[] | null;
+  /** Family keys the guest asked for, e.g. ["food"]. */
+  families?: string[] | null;
+  /** The query embedding, already computed by the engine. */
+  queryVector?: number[] | null;
+  /** Injectable clock, so every signal is testable without the wall clock. */
+  now?: Date;
+  /** Injectable RNG, same reason. Must return [0, 1). */
+  random?: () => number;
+};
+
+// ── 1. Proximity ─────────────────────────────────────────────────────────────
+
+/** Distance at which the curve reaches 0. Past this, everything ties at 0. */
+export const PROXIMITY_MAX_KM = 25;
+/**
+ * The curve's knee. Smaller = the first kilometre costs more.
+ *
+ * At 1 km the FIRST kilometre costs ~0.21 of the score, while a kilometre out
+ * at range costs ~0.018 — twelve times less. That marginal difference is the
+ * whole point: "rewards very close hard, penalizes far gently" is the shape
+ * Docs §A asks for, and it is why this is logarithmic instead of linear. (Read
+ * per kilometre, not per stretch: 10→25 km is fifteen kilometres and of course
+ * costs more in total than one does.)
+ */
+export const PROXIMITY_KNEE_KM = 1;
+
+/**
+ * Guest geo × place geo → [0, 1], through a logarithmic curve.
+ *
+ * No guest geo → NEUTRAL (abstain — that is a fact about the caller).
+ * No place geo → 0.35. A place we cannot locate is genuinely worse for a
+ * signal whose entire question is "how far", but zero would delete it from a
+ * multiplicative blend, and an unlocated place is unlocated, not disqualified.
+ */
+export function proximity(place: SignalPlace, intent: SignalIntent): number {
+  const gLat = intent.lat;
+  const gLng = intent.lng;
+  if (typeof gLat !== "number" || typeof gLng !== "number") return NEUTRAL;
+  if (typeof place.lat !== "number" || typeof place.lng !== "number") return 0.35;
+
+  const km = haversineKm(gLat, gLng, place.lat, place.lng);
+  if (!Number.isFinite(km)) return 0.35;
+  if (km >= PROXIMITY_MAX_KM) return 0;
+
+  const scale = Math.log1p(PROXIMITY_MAX_KM / PROXIMITY_KNEE_KM);
+  return clamp01(1 - Math.log1p(km / PROXIMITY_KNEE_KM) / scale);
+}
+
+// ── 2. Timing ────────────────────────────────────────────────────────────────
+
+/**
+ * Open, AND is this its hour. Two different questions that share one number.
+ *
+ * `open` dominates because it is the one a guest feels immediately — a closed
+ * door ends the visit — but a closed place scores 0.2 rather than 0, because
+ * the house rule is DEMOTE, DON'T HIDE (the same rule `demoteClosed` encodes
+ * for Memo). Zero in a multiplicative blend is not a demotion, it is deletion,
+ * and a place that opens in twenty minutes should still be reachable.
+ *
+ * No usable hours → the open half abstains at NEUTRAL rather than guessing
+ * closed. `isOpenAt` already distinguishes "no data" (null) from "nothing is
+ * open right now" (false), so we do not have to.
+ */
+export const TIMING_OPEN_SHARE = 0.7;
+export const TIMING_CLOSED_FLOOR = 0.2;
+
+/**
+ * Is this the place's hour? Read off the place's own local clock, not the
+ * server's — a multi-city pool is judged in each place's own time.
+ *
+ * This is deliberately COARSE. It is not a cuisine-by-daypart table; it is the
+ * observation that the small hours are nobody's peak and the meal windows are
+ * most places' peak. A real per-category daypart curve needs the category
+ * taxonomy to carry one, and it does not yet — inventing one here would be a
+ * config nobody can edit, which is the house definition of a bug.
+ */
+export function daypartScore(hour: number): number {
+  if (hour >= 2 && hour < 6) return 0.25; // dead hours
+  if (hour >= 6 && hour < 8) return 0.55;
+  if (hour >= 8 && hour < 11) return 0.8; // breakfast
+  if (hour >= 11 && hour < 17) return 1; // lunch through afternoon
+  if (hour >= 17 && hour < 23) return 1; // dinner and evening
+  return 0.5; // 23:00–02:00, late but alive
+}
+
+export function timing(place: SignalPlace, intent: SignalIntent): number {
+  const now = intent.now ?? new Date();
+  const clock = localClock(place.lng ?? null, now);
+  // No resolvable local clock — we cannot ask either half of the question.
+  if (!clock) return NEUTRAL;
+
+  const open = isOpenAt(place.hours, clock.weekday, clock.minutes);
+  const openPart = open === null ? NEUTRAL : open ? 1 : TIMING_CLOSED_FLOOR;
+  const dayPart = daypartScore(clock.hour);
+
+  return clamp01(
+    openPart * TIMING_OPEN_SHARE + dayPart * (1 - TIMING_OPEN_SHARE),
+  );
+}
+
+// ── 3. Category ──────────────────────────────────────────────────────────────
+
+/** Exact category hit. */
+export const CATEGORY_EXACT = 1;
+/** Right family, wrong category — a taqueria when the guest asked for sushi. */
+export const CATEGORY_FAMILY = 0.55;
+/** Wrong family. Low, never zero: see the header on deletion vs demotion. */
+export const CATEGORY_MISS = 0.1;
+
+/**
+ * Does the type answer the intent?
+ *
+ * No category intent → NEUTRAL. The guest did not ask, so this signal has
+ * nothing to judge and abstains — this is the common case on Swipe, where the
+ * whole point is that nobody has narrowed anything.
+ *
+ * A place with no category at all scores CATEGORY_FAMILY when an intent
+ * exists: it might match, we cannot tell, and an uncategorised place is an
+ * enrichment gap rather than a wrong answer.
+ */
+export function category(place: SignalPlace, intent: SignalIntent): number {
+  const wantCats = (intent.categories ?? []).filter(Boolean);
+  const wantFams = (intent.families ?? []).filter(Boolean);
+  if (wantCats.length === 0 && wantFams.length === 0) return NEUTRAL;
+
+  const cat = place.category;
+  const fams = place.family_keys ?? [];
+  if (!cat && fams.length === 0) return CATEGORY_FAMILY;
+
+  if (cat && wantCats.includes(cat)) return CATEGORY_EXACT;
+  if (wantFams.some((f) => fams.includes(f))) return CATEGORY_FAMILY;
+  // The guest named categories; resolve those to families via the place's own
+  // family keys only — this signal never loads the taxonomy, it reads the row.
+  if (wantCats.length > 0 && fams.length > 0 && wantFams.length === 0) {
+    return CATEGORY_MISS;
+  }
+  return CATEGORY_MISS;
+}
+
+// ── 4. Popularity ────────────────────────────────────────────────────────────
+
+/**
+ * Bayesian shrinkage toward the catalog mean, so a 5.0 from three reviews does
+ * not outrank a 4.6 from nine hundred. `m` is the confidence weight: the
+ * review count at which a place's own rating carries half the answer.
+ */
+export const POPULARITY_PRIOR_RATING = 4.2;
+export const POPULARITY_CONFIDENCE = 60;
+
+/**
+ * Rating × volume → [0, 1].
+ *
+ * No rating data → the prior, which is exactly what shrinkage means when the
+ * evidence is empty: the catalog's average place. Not NEUTRAL — an unrated
+ * place is a real place we know nothing flattering about, and abstaining would
+ * hand it a free 1.
+ *
+ * The scale is anchored at 3.0, not 0. Nothing in a curated catalog sits at a
+ * true 1.0, so mapping [0,5] linearly would squash every real place into the
+ * top third of the range and waste most of the signal's resolution.
+ */
+export const POPULARITY_FLOOR_RATING = 3;
+
+export function popularity(place: SignalPlace, _intent?: SignalIntent): number {
+  const r = typeof place.rating === "number" ? place.rating : null;
+  const v = typeof place.user_ratings_total === "number"
+    ? Math.max(0, place.user_ratings_total)
+    : 0;
+
+  const shrunk = r === null
+    ? POPULARITY_PRIOR_RATING
+    : (v * r + POPULARITY_CONFIDENCE * POPULARITY_PRIOR_RATING) /
+      (v + POPULARITY_CONFIDENCE);
+
+  const span = 5 - POPULARITY_FLOOR_RATING;
+  return clamp01((shrunk - POPULARITY_FLOOR_RATING) / span);
+}
+
+// ── 5. Semantic ──────────────────────────────────────────────────────────────
+
+/**
+ * Intent vs the place's SUMMARY embedding (`places.embedding`) — never the
+ * Presentation. Docs › Discovery §C: About is the narrative a guest reads,
+ * Summary is the machine blurb; we embed the second one, and the enrichment
+ * queue's semantic `summary` function is what writes it.
+ *
+ * Cosine lands in [-1, 1] and is remapped to [0, 1]. In practice text-embedding
+ * cosines cluster in [0, 0.6], so the useful band is narrow and the exponent is
+ * how an operator widens it.
+ *
+ * No query vector → NEUTRAL (the caller asked nothing).
+ * No place vector → 0.4. The place has not been embedded yet, which is an
+ * enrichment gap; it should lose to an embedded place on a semantic query
+ * without being deleted from the deck.
+ */
+export const SEMANTIC_UNEMBEDDED = 0.4;
+
+export function semantic(place: SignalPlace, intent: SignalIntent): number {
+  const q = intent.queryVector;
+  if (!Array.isArray(q) || q.length === 0) return NEUTRAL;
+
+  const v = parseVector(place.embedding);
+  if (!v || v.length !== q.length) return SEMANTIC_UNEMBEDDED;
+
+  const cos = cosineSim(q, v);
+  if (!Number.isFinite(cos)) return SEMANTIC_UNEMBEDDED;
+  return clamp01((cos + 1) / 2);
+}
+
+// ── 6. Randomness ────────────────────────────────────────────────────────────
+
+/**
+ * The only signal that reads nothing about the place.
+ *
+ * It exists so the deck is not deterministic: with every other signal fixed, a
+ * catalog would serve the same order to the same guest forever. Under `s^w` an
+ * exponent BELOW 1 softens it (r^0.3 pushes a uniform draw toward 1, so it
+ * only breaks near-ties) and an exponent of 0 removes it outright. That is why
+ * its default exponent is the only one below 1.
+ */
+export function randomness(_place: SignalPlace, intent?: SignalIntent): number {
+  const rng = intent?.random ?? Math.random;
+  return clamp01(rng());
+}
+
+// ── The library ──────────────────────────────────────────────────────────────
+
+export type SignalFn = (place: SignalPlace, intent: SignalIntent) => number;
+
+/**
+ * The library every engine reaches. Engines call signals; signals never call
+ * engines, and no engine owns one — that shared reach is the reason admin
+ * Discovery is one table instead of one per surface.
+ */
+export const SIGNALS: Record<SignalKey, SignalFn> = {
+  proximity,
+  timing,
+  category,
+  popularity,
+  semantic,
+  randomness,
+};
+
+/** Operator-facing names. The admin weights table renders these. */
+export const SIGNAL_LABELS: Record<SignalKey, string> = {
+  proximity: "Proximity",
+  timing: "Timing",
+  category: "Category",
+  popularity: "Popularity",
+  semantic: "Semantic",
+  randomness: "Randomness",
+};
+
+/** One line each, for the same table. What the signal asks, not how it works. */
+export const SIGNAL_BLURBS: Record<SignalKey, string> = {
+  proximity: "How far is it, bent through a log curve — close counts hard, far counts gently.",
+  timing: "Is it open, and is this its hour — read in the place's own local time.",
+  category: "Does the type answer what the guest asked for.",
+  popularity: "Rating shrunk toward the catalog mean by review volume.",
+  semantic: "The query against the place's Semantic Summary vector.",
+  randomness: "Reads nothing about the place. Keeps the deck from freezing.",
+};
