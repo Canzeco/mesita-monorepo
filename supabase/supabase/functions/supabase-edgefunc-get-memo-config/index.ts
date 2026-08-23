@@ -7,23 +7,22 @@
 // Four slices of the `app_config` singleton in ONE read:
 //   • greeting     — memo_greeting, the consumer Ask AI opener. Null when blank
 //                    so clients keep their in-code fallback.
-//   • instructions — memo_instructions, the operator-tunable persona written by
-//                    the admin console's Memo Config page. Null when blank, so
-//                    the caller falls back to the in-code SYSTEM_PROMPT and a
-//                    config hiccup never costs Memo its voice.
+//   • instructions — memo_instructions, the operator-tunable persona. Null
+//                    when blank, so the caller falls back to the in-code
+//                    SYSTEM_PROMPT and a config hiccup never costs Memo its
+//                    voice.
 //   • model        — models_config.memo.model (admin Models page), falling
 //                    back to legacy memo_openai_model when unset.
 //   • perplexity   — models_config.memo.perplexity ("off" = skip Perplexity).
 //   • searchPolicy — the `memo_search` slice of sourcing_config, coerced
 //                    against the launch policy.
 //
-// This is the read side ONLY. Writes stay where they belong: the super-admin
-// door admin-web-update-memo-config. There is no write path from here, which is
-// the whole point of Memo reaching its config through a named endpoint.
-//
-// Note the ACL shape: admin-web-get-memo-config serves the same row to the
-// console operator; this serves it to the agent. Same data, two callers, two
-// endpoints — the name IS the access-control contract.
+// This is the read side ONLY, and today it is the ONLY side — greeting/
+// instructions have no live write path (MESITA-1248: admin-web-get-memo-config
+// / admin-web-update-memo-config were deleted as dead code, orphaned since
+// whatever session retired the admin console's Memo Config page — no frontend
+// route called them). Setting these two columns is a direct DB write today;
+// building a real editor is its own decision, not implied by this cleanup.
 //
 // Naming: actor-origin-verb-noun → supabase · edgefunc · get · memo-config.
 // Auth: verify_jwt = true + requireInternalCaller (service-role bearer).

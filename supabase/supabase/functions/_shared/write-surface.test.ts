@@ -226,7 +226,6 @@ const CONFIG_ALLOWLIST = [
   "admin-web-set-auto-verify/index.ts",
   "admin-web-update-discovery-config/index.ts",
   "admin-web-update-enricher-config/index.ts",
-  "admin-web-update-memo-config/index.ts",
   "admin-web-update-models-config/index.ts",
   "admin-web-update-ojo-config/index.ts",
   "admin-web-update-orders-config/index.ts",
