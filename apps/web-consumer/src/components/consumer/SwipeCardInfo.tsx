@@ -19,8 +19,8 @@ import { getOpeningStatusLabel } from "@/lib/place-status";
 import { formatPlacePriceLevelSymbols } from "@/lib/place-price";
 import { Spinner } from "@/components/shared";
 import { PromoChip } from "./PromoChip";
-import { VerifiedCheck } from "./VerifiedCheck";
-import { isPromoting } from "@/lib/promo-rates";
+import { PartnerMark } from "./PartnerMark";
+import { isPartner } from "@/lib/promo-rates";
 
 /** Place fields — padding comes from SWIPE_CARD_FIELDS_INNER on the card face. */
 export function SwipeCardInfo({
@@ -51,12 +51,18 @@ export function SwipeCardInfo({
       : null;
   const statusLabel = getOpeningStatusLabel(place);
   const isOpen = place.open_now === true;
-  // decision: Pato (MESITA-933) — verified = blue check disc beside name;
-  // unverified = no disc, a "Not Verified" chip in the row instead. That chip
-  // is a MetaChip like every other fact on the card (MESITA-1146): it was
-  // hand-rolled as a solid black slab with no icon, which read as a different
-  // KIND of thing rather than one more fact about the place.
-  const promoting = isPromoting(place);
+  // THE CARD STATES PARTNER, NOT VERIFIED (decision: Pato).
+  //
+  // It used to do neither cleanly: the disc beside the name was a component
+  // called VerifiedCheck gated on `promoting`, and the chip below it read
+  // "Not Verified" gated on `!promoting`. Two verification words over one
+  // reward boolean, and neither fact was the one being read. Verification is
+  // Mesita's own bookkeeping and is off the card entirely now.
+  //
+  // Partner is computed per request from the plan (see promo-rates.isPartner),
+  // never `listing_type` — that enum fuses paying with strategy and goes stale
+  // the moment a promo lane closes without the row being rewritten.
+  const partner = isPartner(place);
 
   return (
     <div
@@ -71,8 +77,8 @@ export function SwipeCardInfo({
         <span className={cn("min-w-0", compact && "truncate")}>
           {place.name}
         </span>
-        {promoting && (
-          <VerifiedCheck className="drop-shadow-media h-[18px] w-[18px] shrink-0" />
+        {partner && (
+          <PartnerMark className="text-primary drop-shadow-media h-[18px] w-[18px] shrink-0" />
         )}
       </h2>
 
@@ -103,18 +109,17 @@ export function SwipeCardInfo({
             Enriching
           </span>
         )}
-        {!promoting && (
-          <MetaChip compact={compact}>
-            {/* The globe matches the place-detail twin, which renders this
-                same state through ProfileMetaChip with a lucide Globe — both
-                surfaces mean "a plain web listing, not a Mesita partner", so
-                both say it the same way. NOT a warning glyph: most places
-                run no reward, so this chip is on MOST cards, and alarming the
-                default state is noise rather than information. */}
-            <span aria-hidden>🌐</span>
-            <span className="font-semibold">Not Verified</span>
-          </MetaChip>
-        )}
+        {/* ALWAYS RENDERED, AND FIRST. Partner is a two-state fact, so
+            showing the chip only in one state made its absence ambiguous —
+            a guest could not tell "not a partner" from "the card ran out of
+            room". Same glyph both ways, because the negative is the common
+            case and a warning icon on most cards is noise, not information. */}
+        <MetaChip compact={compact}>
+          <span aria-hidden>{partner ? "🤝" : "🌐"}</span>
+          <span className="font-semibold">
+            {partner ? "Partner" : "Not Partner"}
+          </span>
+        </MetaChip>
         {categoryLabel && (
           <MetaChip compact={compact}>
             <span className="font-semibold">{categoryLabel}</span>

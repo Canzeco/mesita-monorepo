@@ -110,8 +110,13 @@ export function ClassModal({
 
           {/* THE TWO WAYS IN, and there are only two (decision: Pato):
               followers, automatic — and an invitation, manual. Always both,
-              always in this order: Instagram left, invite right. Neither is a
-              purchase; money buys a PLAN, at /subscribe/premium.
+              always in this order: Instagram left, invitation right.
+              SYMMETRICAL BY NAME, not just by shape — "Join with Instagram" /
+              "Join with Invitation". The right one used to read "I have a
+              PIN", which described the guest's inventory rather than the
+              door, and so read as a lesser fallback beside a real CTA. Two
+              doors, two verbs, same verb.
+              Neither is a purchase; money buys a PLAN, at /subscribe/premium.
               They never gate on current class, so the footer can't change
               shape under the guest. */}
           <div className="grid grid-cols-2 gap-2">
@@ -133,7 +138,7 @@ export function ClassModal({
               className="border-border bg-card hover:bg-muted type-body flex min-h-12 w-full items-center justify-center gap-1.5 rounded-2xl border px-2 font-semibold transition active:scale-[0.99]"
             >
               <Ticket className="h-4 w-4 shrink-0" />
-              <span className="truncate">I have a PIN</span>
+              <span className="truncate">Join with Invitation</span>
             </button>
           </div>
         </div>

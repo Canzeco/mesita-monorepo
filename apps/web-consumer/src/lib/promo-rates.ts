@@ -134,6 +134,21 @@ export function isPromoting(
   return row?.promoting === true;
 }
 
+/**
+ * Does this place PAY Mesita — the Partner fact, fail-closed.
+ *
+ * One of the three independent place facts (Verified · Partner · Promoting).
+ * Deliberately NOT `listing_type === "partner"`: that enum fuses paying with
+ * running a non-zero strategy and is only rewritten when something writes the
+ * place, so a paused promo leaves it standing. The server computes this one
+ * per request from the plan alone.
+ */
+export function isPartner(
+  row: { partner?: boolean | null } | null | undefined,
+): boolean {
+  return row?.partner === true;
+}
+
 /** Whether the place runs the Mesita reward program (detail hero + matrix). */
 export function placeOffersMesitaRewards(input: {
   promoting: boolean;

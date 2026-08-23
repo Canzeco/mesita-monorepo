@@ -81,6 +81,13 @@ export function placeRowToDetail(row: Row, tags?: ResolvedTag[]): PlaceDetail {
     relativeLabel(str(row.enriched_at) ?? str(row.created_at)) ?? "recently";
 
   return {
+    // BOTH server booleans have to be carried explicitly — this adapter builds
+    // a literal and never spread the row, so `promoting` was simply absent on
+    // every PlaceDetail ever built. `isPromoting()` is fail-closed, so the
+    // whole reward surface on place detail (the header disc, the summary chip,
+    // the Rewards box) read false no matter what the server said.
+    promoting: typeof row.promoting === "boolean" ? row.promoting : null,
+    partner: typeof row.partner === "boolean" ? row.partner : null,
     id: str(row.id) ?? str(row.slug) ?? "",
     name: str(row.name) ?? "Place",
     category: categoryName,
