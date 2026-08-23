@@ -345,23 +345,30 @@ function EmbeddingCard({ place }: { place: AdminPlace }) {
 // It lives on the run (place_research.gathered), not on the place, so it comes
 // from the enrichment EF rather than the place row.
 function SerpSummaryCard({ place }: { place: AdminPlace }) {
-  const [summary, setSummary] = useState<string | null>(null);
-  const [loaded, setLoaded] = useState(false);
+  // The fetched summary carries the id it belongs to, so "have we loaded THIS
+  // place" is DERIVED rather than a second state reset inside the effect —
+  // React 19 flags a synchronous setState in an effect as a cascading render,
+  // and switching places is exactly when that would fire.
+  const [fetched, setFetched] = useState<
+    { id: string; summary: string | null } | null
+  >(null);
 
   useEffect(() => {
     let alive = true;
-    setLoaded(false);
     getPlaceEnrichment(place.id).then((r) => {
       if (!alive) return;
-      setSummary(r.ok ? (r.data.status?.serp_summary ?? null) : null);
-      setLoaded(true);
+      setFetched({
+        id: place.id,
+        summary: r.ok ? (r.data.status?.serp_summary ?? null) : null,
+      });
     });
     return () => {
       alive = false;
     };
   }, [place.id]);
 
-  const text = (summary ?? "").trim();
+  const loaded = fetched?.id === place.id;
+  const text = (loaded ? (fetched?.summary ?? "") : "").trim();
   return (
     <details
       className="border-border bg-card shadow-card group rounded-2xl border"
