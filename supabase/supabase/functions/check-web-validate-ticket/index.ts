@@ -39,6 +39,7 @@ import {
   requireCheckPin,
 } from "../_shared/ticket-check.ts";
 import { CLOSED_TICKET_STATUS, TICKET_STATUS } from "../_shared/ticket-status.ts";
+import { writeTicket } from "../_shared/ticket-doc.ts";
 
 type Body = { code?: string; pin?: string };
 
@@ -99,22 +100,24 @@ Deno.serve(async (req) => {
   // run the shared close — which flips to revealed, records first-honor and
   // queues the guest's review, exactly like every close before it.
   const now = new Date().toISOString();
-  const stamp = await admin
-    .from("visit_tickets")
-    .update({
+  // paid_method is only stamped when validating from `approved` — a
+  // `paying` ticket already carries the guest's own choice and keeps it.
+  // Omitted from the patch entirely (not `undefined`) so the closed key set
+  // never sees the key at all on that branch.
+  const stamp = await writeTicket(admin, {
+    mode: "update",
+    id: ticket.id,
+    patch: {
       validated_at: now,
-      paid_method: ticket.status === TICKET_STATUS.paying
-        ? undefined
-        : "at_place",
-    })
-    .eq("id", ticket.id)
-    .in("status", [TICKET_STATUS.paying, TICKET_STATUS.approved])
-    .select("id")
-    .maybeSingle();
-  if (stamp.error) {
-    return json({ ok: false, error: `ticket_update: ${stamp.error.message}` }, 500);
+      ...(ticket.status === TICKET_STATUS.paying ? {} : { paid_method: "at_place" as const }),
+    },
+    guard: { in: { status: [TICKET_STATUS.paying, TICKET_STATUS.approved] } },
+    select: "id",
+  });
+  if (!stamp.ok) {
+    return json({ ok: false, error: `ticket_update: ${stamp.error}` }, 500);
   }
-  if (!stamp.data) {
+  if (!stamp.row) {
     // Someone else closed or cancelled it between the read and the stamp.
     const fresh = await admin
       .from("visit_tickets")

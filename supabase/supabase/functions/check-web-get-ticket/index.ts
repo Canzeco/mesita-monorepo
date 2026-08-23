@@ -30,6 +30,7 @@ import { loadRewardsGrid } from "../_shared/rewards-config.ts";
 import { resolveBillCapPesos } from "../_shared/discount-cap.ts";
 import { resolveLiveTicketRate } from "../_shared/ticket-reprice.ts";
 import { TICKET_STATUS } from "../_shared/ticket-status.ts";
+import { writeTicket } from "../_shared/ticket-doc.ts";
 
 type Body = { code?: string };
 
@@ -77,11 +78,12 @@ Deno.serve(async (req) => {
   const wasScanned = ticket.first_scanned_at != null;
   if (!wasScanned) {
     const now = new Date().toISOString();
-    await admin
-      .from("visit_tickets")
-      .update({ first_scanned_at: now })
-      .eq("id", ticket.id)
-      .is("first_scanned_at", null);
+    await writeTicket(admin, {
+      mode: "update",
+      id: ticket.id,
+      patch: { first_scanned_at: now },
+      guard: { is: { first_scanned_at: null } },
+    });
     ticket.first_scanned_at = now;
   }
 

@@ -35,6 +35,7 @@ import {
   readEFEnv,
 } from "../_shared/auth.ts";
 import { STRIPE_API_VERSION } from "../_shared/stripe-billing.ts";
+import { writeTicket } from "../_shared/ticket-doc.ts";
 
 // Statuses that still bill (or still owe us money). `canceled` / `incomplete_
 // expired` are terminal at Stripe already, so there is nothing to cancel.
@@ -104,12 +105,12 @@ Deno.serve(async (req) => {
   }
 
   // Cascade clean-up of dependent rows (RESTRICT FKs).
-  const { error: ticketsErr } = await admin
-    .from("visit_tickets")
-    .delete()
-    .eq("consumer_id", userId);
-  if (ticketsErr) {
-    return json({ ok: false, error: `tickets_delete: ${ticketsErr.message}` }, 500);
+  const ticketsRes = await writeTicket(admin, {
+    mode: "delete",
+    match: { consumer_id: userId },
+  });
+  if (!ticketsRes.ok) {
+    return json({ ok: false, error: `tickets_delete: ${ticketsRes.error}` }, 500);
   }
 
   // public.consumers is ON DELETE CASCADE from auth.users — dropping the

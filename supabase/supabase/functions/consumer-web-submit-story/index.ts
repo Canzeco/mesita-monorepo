@@ -49,6 +49,7 @@ import {
 } from "../_shared/rewards-config.ts";
 import { repriceTicketAfterAction } from "../_shared/ticket-reprice.ts";
 import { TASKABLE_STATUS_SET } from "../_shared/ticket-status.ts";
+import { writeTicket } from "../_shared/ticket-doc.ts";
 import { queueOjoVerification } from "../_shared/ojo-engine.ts";
 
 type Body = { ticketId?: string; screenshotUrl?: string };
@@ -163,9 +164,10 @@ Deno.serve(async (req) => {
   }
 
   const now = new Date().toISOString();
-  const updated = await admin
-    .from("visit_tickets")
-    .update({
+  const updated = await writeTicket(admin, {
+    mode: "update",
+    id: ticketId,
+    patch: {
       story_status: "self_verified",
       story_submitted_at: now,
       story_verified_at: now,
@@ -181,13 +183,13 @@ Deno.serve(async (req) => {
       ...(ticket.fix_requested === "proof" || ticket.fix_requested === "reward"
         ? { fix_requested: null, fix_note: null }
         : {}),
-    })
-    .eq("id", ticketId)
-    .select("id, status, story_status, story_submitted_at")
-    .single();
-  if (updated.error) {
+    },
+    select: "id, status, story_status, story_submitted_at",
+    single: true,
+  });
+  if (!updated.ok) {
     return json(
-      { ok: false, error: `story_submit: ${updated.error.message}` },
+      { ok: false, error: `story_submit: ${updated.error}` },
       500,
     );
   }
@@ -213,5 +215,5 @@ Deno.serve(async (req) => {
     });
   }
 
-  return json({ ok: true, ticket: updated.data, repricedPercent });
+  return json({ ok: true, ticket: updated.row, repricedPercent });
 });

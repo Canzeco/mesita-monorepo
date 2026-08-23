@@ -20,6 +20,7 @@ import { computeTicketBill } from "../_shared/business-ticket-billing.ts";
 import { resolveLiveTicketRate } from "../_shared/ticket-reprice.ts";
 import { toCents } from "../_shared/money.ts";
 import { CLOSED_TICKET_STATUS } from "../_shared/ticket-status.ts";
+import { writeTicket } from "../_shared/ticket-doc.ts";
 
 type Body = { ticketId?: string; totalCents?: number };
 
@@ -102,29 +103,31 @@ Deno.serve(async (req) => {
   }
   const snap = billRes.snapshot;
 
-  const updated = await admin
-    .from("visit_tickets")
-    .update({
+  const updated = await writeTicket(admin, {
+    mode: "update",
+    id: ticketId,
+    patch: {
       bill_subtotal_cents: snap.checkSubtotalCents,
       tip_cents: snap.tipCents,
       total_cents: snap.totalCents,
       discount_percent: snap.discountPercent,
       discount_cents: snap.discountCents,
       bill_source: "consumer",
-    })
-    .eq("id", ticketId)
-    .eq("status", CLOSED_TICKET_STATUS)
-    .is("bill_source", null) // a concurrent business record wins
-    .select(
+    },
+    guard: {
+      eq: { status: CLOSED_TICKET_STATUS },
+      is: { bill_source: null }, // a concurrent business record wins
+    },
+    select:
       "id, status, bill_subtotal_cents, total_cents, discount_percent, discount_cents, bill_source, currency",
-    )
-    .single();
-  if (updated.error) {
+    single: true,
+  });
+  if (!updated.ok) {
     return json(
-      { ok: false, error: `ticket_update: ${updated.error.message}` },
+      { ok: false, error: `ticket_update: ${updated.error}` },
       500,
     );
   }
 
-  return json({ ok: true, ticket: updated.data });
+  return json({ ok: true, ticket: updated.row });
 });
