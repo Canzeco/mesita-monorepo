@@ -2,8 +2,15 @@
 
 // Status — where a place stands, in ONE box.
 //
-// Six facts, each read from its own source: seeded · listed · enriched ·
-// verified · partner · promoting.
+// Seven facts, each read from its own source: seeded · operating · listed ·
+// enriched · verified · partner · promoting.
+//
+// OPERATING is Google's, not ours (MESITA-1239). It answers "does this business
+// still exist and trade", which is a different question from Listed ("can a
+// guest reach it on Mesita") — a place can be OPERATIONAL in Google and
+// unlisted here, or listed here and long dead. It is a FLAG, never a gate:
+// Google is wrong sometimes, and auto-unlisting on a third-party signal would
+// vanish a live place with no human in the loop (the Ojo posture).
 //
 // NAMING (Pato, 2026-08-22). This box is Status, and PULSE names something
 // else entirely: the enrichment machinery. One word, one meaning.
@@ -162,6 +169,40 @@ export function StatusCard({
             ? `${placeStatus} — no guest surface resolves this place; the RLS policy stops the read.`
             : "No status on the row.";
 
+  // ── Operating (MESITA-1239) — Google's word on the business itself.
+  //
+  // Three Google values plus silence, collapsed onto the row's tri-state:
+  // OPERATIONAL is a yes, either CLOSED_* is a no, and an absent value is
+  // "unknown" rather than a false no — the same rule Seeded and Listed follow.
+  // The chip keeps the verbatim distinction, because CLOSED_TEMPORARILY (a
+  // refurb, still a real business) and CLOSED_PERMANENTLY (dead) are not the
+  // same operational fact and a bare "No" would erase the difference.
+  const bizStatus = typeof place.business_status === "string"
+    ? place.business_status
+    : null;
+  const operating: boolean | "unknown" = bizStatus === null
+    ? "unknown"
+    : bizStatus === "OPERATIONAL";
+  const operatingChip = bizStatus === "OPERATIONAL"
+    ? "Operational"
+    : bizStatus === "CLOSED_TEMPORARILY"
+      ? "Temporarily closed"
+      : bizStatus === "CLOSED_PERMANENTLY"
+        ? "Permanently closed"
+        : undefined;
+  // A liveness claim with no date reads as current however old it is, so the
+  // row says when Google last told us.
+  const operatingSeen = typeof place.business_status_at === "string"
+    ? new Date(place.business_status_at).toLocaleDateString()
+    : null;
+  const operatingDetail = bizStatus === null
+    ? "Google has not reported a business status for this listing yet."
+    : bizStatus === "OPERATIONAL"
+      ? `Google reports this business as open and trading${operatingSeen ? ` (seen ${operatingSeen})` : ""}. Separate from Listed — this is Google's word, not ours.`
+      : bizStatus === "CLOSED_TEMPORARILY"
+        ? `Google reports a temporary close${operatingSeen ? ` (seen ${operatingSeen})` : ""} — a refurb or a seasonal break. Still a real business; nothing is unlisted automatically.`
+        : `Google reports this business as PERMANENTLY CLOSED${operatingSeen ? ` (seen ${operatingSeen})` : ""}. Flag only — review and unlist by hand if it is right.`;
+
   // Names the function the queue actually reached — off the SAME number the
   // chip shows. The one after it is what has not completed, which is the
   // question an operator looking at a stalled place is actually asking.
@@ -257,6 +298,13 @@ export function StatusCard({
           detail={seededDetail}
         />
         <StatusRow
+          name="Operating"
+          value={operating}
+          tint="teal"
+          chipLabel={operatingChip}
+          detail={operatingDetail}
+        />
+        <StatusRow
           name="Listed"
           value={listed}
           tint="indigo"
@@ -322,7 +370,7 @@ function StatusRow({
 }: {
   name: string;
   value: boolean | "unknown" | "loading";
-  tint: "slate" | "indigo" | "violet" | "emerald" | "sky" | "pink";
+  tint: "slate" | "teal" | "indigo" | "violet" | "emerald" | "sky" | "pink";
   detail: string;
   /** Overrides the chip text in BOTH states. Enriched is a 0-9 high-water, not
    *  a yes, so its chip reads "5/9" whether or not the queue finished. */
@@ -334,6 +382,7 @@ function StatusRow({
   const on = value === true;
   const chipClass = {
     slate: "bg-slate-500/10 text-slate-700",
+    teal: "bg-teal-500/10 text-teal-700",
     indigo: "bg-indigo-500/10 text-indigo-700",
     violet: "bg-violet-500/10 text-violet-700",
     emerald: "bg-emerald-500/10 text-emerald-700",

@@ -185,6 +185,14 @@ export async function createMinimalPlace(opts: {
     ...basicsRes.basics,
     category: "undefined",
     category_label: null,
+    // Operating (MESITA-1239). businessStatus rides the envelope, not `basics`,
+    // so the spread above does not carry it. Stored verbatim: reaching here
+    // means it is not CLOSED_PERMANENTLY (refused above), but OPERATIONAL,
+    // CLOSED_TEMPORARILY and null are three different facts and the box says
+    // which. Stamped with the observation time so a stale claim cannot read as
+    // current.
+    business_status: basicsRes.businessStatus ?? null,
+    business_status_at: basicsRes.businessStatus ? new Date().toISOString() : null,
   };
 
   // ── 2) Persist the minimal rows (in-process) — lands

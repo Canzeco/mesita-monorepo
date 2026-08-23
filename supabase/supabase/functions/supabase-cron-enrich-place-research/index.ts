@@ -135,6 +135,30 @@ serveEnrichStage("research", async (admin, _env, row) => {
   //                         exactly the bug hours-on-pulse caused
   //                         (MESITA-1219), rebuilt on a different field.
   const businessStatus = basicsRes.businessStatus;
+
+  // Operating (MESITA-1239) — persist what Google just said, BEFORE the gate
+  // below can return. A place reported CLOSED_PERMANENTLY fails its run, and
+  // the run row records that; but without this write nothing on the PLACE says
+  // why, so an operator sees a failed enrichment and no reason. Written here,
+  // in research only, for the same reason phone and google_name are: a lighter
+  // analysis/contents re-run must never replay a stale liveness claim.
+  //
+  // Best-effort. This is a flag, not a gate — a failed write must not stop the
+  // pipeline, and the gate below reads `businessStatus` directly, never the
+  // column.
+  {
+    const { error: opErr } = await admin
+      .from("places")
+      .update({
+        business_status: businessStatus ?? null,
+        business_status_at: new Date().toISOString(),
+      })
+      .eq("id", projectId);
+    if (opErr) {
+      console.error("[enrich-research] business_status write:", opErr.message);
+    }
+  }
+
   if (businessStatus === "CLOSED_PERMANENTLY") {
     await reportPulsePieces(admin, projectId, {
       pulse: pieceFailed("Google reports this place as permanently closed.", {
