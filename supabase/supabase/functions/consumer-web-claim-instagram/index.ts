@@ -27,6 +27,7 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { corsPreflight, json, readJson, rejectUnlessMethods } from "../_shared/http.ts";
 import { adminClient, getAuthedUser, readEFEnv } from "../_shared/auth.ts";
 import { recomputeConsumerClass } from "../_shared/class-doors.ts";
+import { writeConsumer } from "../_shared/consumer-doc.ts";
 
 type Body = { followers?: number; handle?: string };
 
@@ -65,8 +66,8 @@ Deno.serve(async (req) => {
     instagram_followers_count: followers,
   };
   if (handle !== null) patch.instagram_handle = handle;
-  const { error } = await admin.from("consumers").update(patch).eq("id", consumerId);
-  if (error) return json({ ok: false, error: error.message }, 500);
+  const wrote = await writeConsumer(admin, { mode: "update", id: consumerId, patch });
+  if (!wrote.ok) return json({ ok: false, error: wrote.error }, 500);
 
   // …then let the shared recompute settle the slot from every open door.
   try {

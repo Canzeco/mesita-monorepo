@@ -40,6 +40,7 @@ import {
 } from "../_shared/http.ts";
 import { adminClient, getAuthedUser, readEFEnv } from "../_shared/auth.ts";
 import { recomputeConsumerClass } from "../_shared/class-doors.ts";
+import { writeConsumer } from "../_shared/consumer-doc.ts";
 
 type Body = { code?: string };
 
@@ -146,15 +147,16 @@ Deno.serve(async (req) => {
   }
 
   // The invitation door FACT. The slot itself is settled by the recompute.
-  const wrote = await admin
-    .from("consumers")
-    .update({
+  const wrote = await writeConsumer(admin, {
+    mode: "update",
+    id: consumerId,
+    patch: {
       invitation_class_key: invite.class_key,
       invitation_granted_at: new Date().toISOString(),
-    })
-    .eq("id", consumerId);
+    },
+  });
 
-  if (wrote.error) {
+  if (!wrote.ok) {
     // Hand the PIN back rather than burning it on a grant that did not land.
     await admin
       .from("consumer_invite_codes")
@@ -163,7 +165,7 @@ Deno.serve(async (req) => {
     console.error("claim_invite_code_grant_failed", {
       consumerId,
       inviteId: invite.id,
-      error: wrote.error.message,
+      error: wrote.error,
     });
     return json({ ok: false, error: "Couldn't apply that PIN." }, 500);
   }

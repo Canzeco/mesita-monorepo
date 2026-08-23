@@ -17,6 +17,7 @@ import {
 import { getTierConfig } from "../_shared/membership.ts";
 import { recomputeConsumerClass } from "../_shared/class-doors.ts";
 import { isCanonicalConsumerCode } from "../_shared/consumer-code.ts";
+import { writeConsumer } from "../_shared/consumer-doc.ts";
 import { CLOSED_TICKET_STATUS, TICKET_STATUS } from "../_shared/ticket-status.ts";
 
 Deno.serve(async (req) => {
@@ -32,10 +33,13 @@ Deno.serve(async (req) => {
 
   const admin = adminClient(envRes.env);
 
+  const CONSUMER_PROFILE_SELECT =
+    "id, code, full_name, first_name, last_name, sex, birthday, country, phone, avatar_url, instagram_handle, privacy_public, privacy_show_saves, privacy_show_visits, privacy_show_stories, class_key, class_origin, instagram_followers_count, class_expires_at";
+
   // Read once. If absent, insert with a generated code and re-read.
   const existing = await admin
     .from("consumers")
-    .select("id, code, full_name, first_name, last_name, sex, birthday, country, phone, avatar_url, instagram_handle, privacy_public, privacy_show_saves, privacy_show_visits, privacy_show_stories, class_key, class_origin, instagram_followers_count, class_expires_at")
+    .select(CONSUMER_PROFILE_SELECT)
     .eq("id", userId)
     .maybeSingle();
   if (existing.error) {
@@ -51,18 +55,19 @@ Deno.serve(async (req) => {
       if (codeResult.error) {
         return json({ ok: false, error: `code_gen: ${codeResult.error.message}` }, 500);
       }
-      const inserted = await admin
-        .from("consumers")
-        .insert({ id: userId, code: codeResult.data as string })
-        .select("id, code, full_name, first_name, last_name, sex, birthday, country, phone, avatar_url, instagram_handle, privacy_public, privacy_show_saves, privacy_show_visits, privacy_show_stories, class_key, class_origin, instagram_followers_count, class_expires_at")
-        .single();
-      if (!inserted.error) {
-        consumer = inserted.data;
+      const inserted = await writeConsumer(admin, {
+        mode: "insert",
+        id: userId,
+        patch: { code: codeResult.data as string },
+        select: CONSUMER_PROFILE_SELECT,
+      });
+      if (inserted.ok) {
+        consumer = inserted.row as typeof consumer;
         break;
       }
       // Unique-violation on code → retry. Anything else: bail out.
-      if (inserted.error.code !== "23505") {
-        return json({ ok: false, error: `consumer_create: ${inserted.error.message}` }, 500);
+      if (inserted.code !== "23505") {
+        return json({ ok: false, error: `consumer_create: ${inserted.error}` }, 500);
       }
     }
     if (!consumer) {
@@ -74,16 +79,16 @@ Deno.serve(async (req) => {
     if (codeResult.error) {
       return json({ ok: false, error: `code_gen: ${codeResult.error.message}` }, 500);
     }
-    const updated = await admin
-      .from("consumers")
-      .update({ code: codeResult.data as string })
-      .eq("id", userId)
-      .select("id, code, full_name, first_name, last_name, sex, birthday, country, phone, avatar_url, instagram_handle, privacy_public, privacy_show_saves, privacy_show_visits, privacy_show_stories, class_key, class_origin, instagram_followers_count, class_expires_at")
-      .single();
-    if (updated.error) {
-      return json({ ok: false, error: `consumer_code_set: ${updated.error.message}` }, 500);
+    const updated = await writeConsumer(admin, {
+      mode: "update",
+      id: userId,
+      patch: { code: codeResult.data as string },
+      select: CONSUMER_PROFILE_SELECT,
+    });
+    if (!updated.ok) {
+      return json({ ok: false, error: `consumer_code_set: ${updated.error}` }, 500);
     }
-    consumer = updated.data;
+    consumer = updated.row as typeof consumer;
   }
 
   // ── Membership payload ─────────────────────────────────────────────────
