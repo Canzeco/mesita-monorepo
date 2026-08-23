@@ -264,8 +264,8 @@ export function ImageFunnelSection({
   return (
     <SectionCard
       icon={<Images className="text-muted-foreground h-4 w-4" />}
-      title="6–7 · Social & Images"
-      subtitle="Two steps, one box. Social (6) downloads the Instagram pool; Images (7) describes it with vision, ranks it, and picks the gallery. The knobs live together because the chain is validated as one thing — collect ≥ analyze ≥ save — and splitting it would let you save an analyze cap higher than the collect depth that feeds it."
+      title="5–6 · Social & Images"
+      subtitle="Two steps, one box. Social (5) downloads the Instagram pool; Images (6) describes it with vision, ranks it, and picks the gallery. The knobs live together because the chain is validated as one thing — collect ≥ analyze ≥ save — and splitting it would let you save an analyze cap higher than the collect depth that feeds it."
     >
       {/* ── Collection ── */}
       <div className="border-border mt-6 border-t pt-6">
@@ -481,8 +481,8 @@ export function DiscoverySection({
   return (
     <SectionCard
       icon={<Link2 className="text-muted-foreground h-4 w-4" />}
-      title="5 · Links"
-      subtitle="How many Firecrawl Search candidates to pull per source (0–10) when finding a place's official links. Agent Y reviews these against the step-4 SERP Summary and picks the best one per field, or none. 0 turns a source off."
+      title="4 · Links"
+      subtitle="How many Firecrawl Search candidates to pull per source (0–10) when finding a place's official links. Agent Y reviews these against the function-3 SERP Summary and picks the best one per field, or none. 0 turns a source off."
     >
       <div className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
         <NumberField icon={<Globe className="text-muted-foreground h-4 w-4" />} label="Website" value={website} min={0} max={MAX_DISCOVERY_CANDIDATES} onChange={setWebsite} disabled={pending} />
@@ -535,8 +535,8 @@ export function ReviewsSection({
   return (
     <SectionCard
       icon={<Star className="text-muted-foreground h-4 w-4" />}
-      title="9 · Reviews"
-      subtitle="How many Google reviews Apify scrapes for the Enricher (0–100). Google Places itself only returns ~5; 100 is Mesita's hard safety bound for Edge Function wall-clock and Apify cost (~$0.50 per 100), not a Google limit. More reviews ground a richer Profile Description at step 10, but slow and price the scrape."
+      title="8 · Reviews"
+      subtitle="How many Google reviews Apify scrapes for the Enricher (0–100). Google Places itself only returns ~5; 100 is Mesita's hard safety bound for Edge Function wall-clock and Apify cost (~$0.50 per 100), not a Google limit. More reviews ground a richer Profile Description at function 9, but slow and price the scrape."
     >
       <div className="mt-5 sm:max-w-xs">
         <NumberField
@@ -647,7 +647,7 @@ export function ModelsSection({
     <SectionCard
       icon={<Sparkles className="text-muted-foreground h-4 w-4" />}
       title="Models & cost"
-      subtitle="The four models every step draws on, and the per-run USD ceiling the Enricher enforces mid-run. Text drives step 10 and the image-rank leg; Image drives step 7; Search drives Agent X at step 4 and Agent Y at step 5; Embeddings is locked. High quality is identical to Standard today (both gpt-4o)."
+      subtitle="The four models every step draws on, and the per-run USD ceiling the Enricher enforces mid-run. Text drives function 9 and the image-rank leg; Image drives function 6; Search drives Agent X at function 3 and Agent Y at function 4; Embeddings is locked. High quality is identical to Standard today (both gpt-4o)."
     >
       <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <ModelSelect
@@ -793,10 +793,10 @@ function ModelDisplay({
 // No save, no state: this box is a map, not a form.
 const QUIET_STEPS: { step: string; name: string; why: string }[] = [
   {
-    step: "S0",
+    step: "0",
     name: "Seed",
     why:
-      "The pre-run gate, not a step. A Google Place ID either resolves or the queue never starts — there is nothing to tune about a hard stop.",
+      "The gate the queue stands on. A Google Place ID either resolves or no row is created at all — there is nothing to tune about a hard stop. `enriched = 0` means exactly this: seeded, nothing after it.",
   },
   {
     step: "1",
@@ -808,37 +808,37 @@ const QUIET_STEPS: { step: string; name: string; why: string }[] = [
     step: "2",
     name: "Details",
     why:
-      "The rest of the Google spine — address, geo, zone, city, timezone, price, phone. Same call as Pulse, same reason: no knob.",
+      "The Google spine — address, geo, zone, city, timezone, price, phone — and the name. `places.name` is generated from `coalesce(mesita_name, google_name)`; the override is `mesita_name`, which lives on the place, not in config.",
   },
   {
     step: "3",
-    name: "Name",
-    why:
-      "Refreshes the cached Google label. The operator override is mesita_name, which lives on the place itself, not in config.",
-  },
-  {
-    step: "4",
     name: "Serp",
     why:
       "Agent X's soft editorial read, and the context Agent Y selects links against. Its one knob is the Search model preset, in Models above.",
   },
   {
-    step: "8",
+    step: "7",
     name: "Menu",
     why:
       "A stub. The website is no longer crawled, so no menu source exists — it always passes and can never block the queue.",
   },
   {
-    step: "10",
+    step: "9",
     name: "Description",
     why:
-      "The Profile Description, then category, then tags. Its one knob is the Text model tier, in Models above; the vocabularies are closed and code-defined.",
+      "The Profile Description, then Category, Tags and Presentation. Its one knob is the Text model tier, in Models above; the category and tag vocabularies are closed and code-defined.",
   },
   {
-    step: "Extra",
-    name: "Semantics",
+    step: "◇",
+    name: "Semantic · Name",
     why:
-      "The Semantic Summary and its vector — outside the queue, so it never counts toward Enriched. The embeddings model is LOCKED: swapping it changes dimensions and re-embeds the whole catalog.",
+      "Outside the queue, so it never counts toward Enriched: the Mesita Name as its own vector. NOT BUILT — today a single embedding covers the whole facts block.",
+  },
+  {
+    step: "◇",
+    name: "Semantic · Summary",
+    why:
+      "Outside the queue too: the 60-word Semantic Summary and its vector, re-run on any profile edit. The embeddings model is LOCKED — swapping it changes dimensions and re-embeds the whole catalog.",
   },
 ];
 
@@ -846,8 +846,8 @@ export function QuietStepsSection() {
   return (
     <SectionCard
       icon={<ListChecks className="h-4 w-4" />}
-      title="The rest of the queue"
-      subtitle="Every other step, and where its knob lives if it has one. Nothing here to save."
+      title="The rest of the pipeline"
+      subtitle="Every other function, and where its knob lives if it has one. ◇ marks the two semantic functions, which sit outside the numbered queue. Nothing here to save."
     >
       <ul className="divide-border/60 divide-y">
         {QUIET_STEPS.map((s) => (
