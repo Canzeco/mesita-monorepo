@@ -137,6 +137,14 @@ export type PlaceEmbeddingWrite = {
   skipped: boolean;
 };
 
+/**
+ * Who asked for this embed — stamped onto the summary event so the Monitor can
+ * attribute the beacon to the right caller instead of guessing from the key
+ * (MESITA-1253 audit): "create" = the front door, "update" = a profile edit
+ * re-embedding in-process, "contents" = the enrich stage.
+ */
+export type EmbeddingVia = "create" | "update" | "contents";
+
 // On-Update S2+S3 for one place. Skips when facts digest matches the stored
 // embedding_source_hash and both text + vector are present.
 async function computeAndPersistPlaceEmbedding(
@@ -144,6 +152,7 @@ async function computeAndPersistPlaceEmbedding(
   place: EmbeddablePlace,
   apiKey: string,
   logPrefix = "place-embeddings",
+  via: EmbeddingVia = "update",
 ): Promise<PlaceEmbeddingWrite | null> {
   const facts = placeEmbeddingFacts(place);
   const factsHash = await digest(facts);
@@ -202,12 +211,15 @@ async function computeAndPersistPlaceEmbedding(
   // lives here and covers every caller with one writer: CREATE (a place is
   // born searchable), On-Update (an edit re-embeds), and the enrich contents
   // stage (which may also stamp from its own observation — a duplicate stamp
-  // of the same status is harmless, the reader takes the latest). A hash-match
+  // of the same status is harmless, the reader takes the latest). `via` names
+  // the caller on the event so the Monitor attributes the beacon to the right
+  // door instead of guessing "Contents" from the key. A hash-match
   // skip above deliberately does NOT re-stamp: no new effect, the prior stamp
   // stands. Best-effort by construction (reportPulsePieces swallows errors).
   await reportPulsePieces(admin, place.id, {
     summary: pieceDone(
       `Semantic Summary written and embedded — ${countWords(text)} word(s).`,
+      { via },
     ),
   });
 
@@ -237,6 +249,7 @@ export async function runPlaceEmbeddingsOnUpdate(
   placeId: string,
   apiKey: string | undefined,
   logPrefix = "place-embeddings",
+  via: EmbeddingVia = "update",
 ): Promise<PlaceEmbeddingWrite | null> {
   if (!apiKey) {
     console.error(`[${logPrefix}] OPENAI_KEY missing — skip`);
@@ -247,7 +260,7 @@ export async function runPlaceEmbeddingsOnUpdate(
     console.error(`[${logPrefix}] place not found:`, placeId);
     return null;
   }
-  return computeAndPersistPlaceEmbedding(admin, place, apiKey, logPrefix);
+  return computeAndPersistPlaceEmbedding(admin, place, apiKey, logPrefix, via);
 }
 
 export function queuePlaceEmbeddingsOnUpdate(opts: {
@@ -255,12 +268,14 @@ export function queuePlaceEmbeddingsOnUpdate(opts: {
   placeId: string;
   apiKey: string | undefined;
   logPrefix?: string;
+  via?: EmbeddingVia;
 }): void {
   const task = runPlaceEmbeddingsOnUpdate(
     opts.admin,
     opts.placeId,
     opts.apiKey,
     opts.logPrefix,
+    opts.via,
   ).catch((err) => {
     console.error(`[${opts.logPrefix ?? "place-embeddings"}] bg:`, err);
   });
