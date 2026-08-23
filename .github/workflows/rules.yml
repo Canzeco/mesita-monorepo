@@ -5,10 +5,16 @@ name: rules
 # task context → Linear; the repo carries only CLAUDE.md/AGENTS.md + tooling
 # config) and the §C word budgets.
 #
-# The extension list below MUST match MD_SCAN_GLOBS in scripts/sync-rules.ts —
-# an extension the script scans but this filter omits means the workflow never
-# fires, so the gate reports green because it never ran. `deno task test:rules`
-# asserts the two stay in step (YAML cannot import from TS).
+# The image formats trigger it too: sync-rules:check rejects any tracked
+# .icns/.jxl/.heif/.heic file, the one premise the dismissed image-size
+# advisories rest on (MESITA-1077). Adding such an asset is exactly the change
+# that must not slip through unrun.
+#
+# The extension lists below MUST match MD_SCAN_GLOBS and FORBIDDEN_ASSET_GLOBS
+# in scripts/sync-rules.ts — an extension the script scans but this filter omits
+# means the workflow never fires, so the gate reports green because it never
+# ran. `deno task test:rules` asserts the two stay in step (YAML cannot import
+# from TS).
 on:
   push:
     branches: [main]
@@ -17,6 +23,14 @@ on:
       - "**/*.MD"
       - "**/*.mdx"
       - "**/*.mdc"
+      - "**/*.icns"
+      - "**/*.ICNS"
+      - "**/*.jxl"
+      - "**/*.JXL"
+      - "**/*.heif"
+      - "**/*.HEIF"
+      - "**/*.heic"
+      - "**/*.HEIC"
       - "scripts/**"
       - "deno.json"
       - ".github/workflows/rules.yml"
@@ -26,6 +40,14 @@ on:
       - "**/*.MD"
       - "**/*.mdx"
       - "**/*.mdc"
+      - "**/*.icns"
+      - "**/*.ICNS"
+      - "**/*.jxl"
+      - "**/*.JXL"
+      - "**/*.heif"
+      - "**/*.HEIF"
+      - "**/*.heic"
+      - "**/*.HEIC"
       - "scripts/**"
       - "deno.json"
       - ".github/workflows/rules.yml"
