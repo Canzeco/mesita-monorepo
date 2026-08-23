@@ -1,4 +1,4 @@
-import { BadgeCheck, Instagram, Ticket } from "lucide-react";
+import { BadgeCheck, Instagram, KeyRound } from "lucide-react";
 
 import { type ClassKey, classProperLabel } from "@/lib/consumer-data";
 import { cn } from "@/lib/utils";
@@ -38,7 +38,11 @@ export function ClassOriginSummary({
   const classLabel = classProperLabel(classKey);
   const invited = origin === "invitation";
 
-  const Icon = invited ? Ticket : Instagram;
+  // The invitation door's glyph is a KEY (decision: Pato, 2026-08-22). It was
+  // lucide's Ticket, which collides with THE TICKET — the visit object — a
+  // core product noun; the door vocabulary this surface is written in makes
+  // the key the honest symbol. Every invitation surface wears it.
+  const Icon = invited ? KeyRound : Instagram;
   const title = invited ? "Direct invitation" : "Instagram connected";
 
   // The line that says WHAT the door gave you. Reach can quote the follower
