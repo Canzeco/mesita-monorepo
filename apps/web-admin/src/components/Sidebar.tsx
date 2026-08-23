@@ -18,6 +18,7 @@ import { BILLING_TEST_PARENT } from "@/app/(app)/billing-test/nav";
 import { DB_PARENT } from "@/app/(app)/manage-database/nav";
 import { ENRICHER_PARENT } from "@/app/(app)/enricher-config/nav";
 import { FILTERS_PARENT } from "@/app/(app)/filters-config/nav";
+import { INVITATIONS_PARENT } from "@/app/(app)/invitations/nav";
 import { ORDERS_PARENT } from "@/app/(app)/orders-config/nav";
 import { RESERVATIONS_PARENT } from "@/app/(app)/reservations-config/nav";
 import { VISITS_PARENT } from "@/app/(app)/visits-config/nav";
@@ -72,14 +73,17 @@ const ALERTS_NAV: NavItem[] = [
 ];
 
 // Manage — the records of real things, widest scope first: the backend itself,
-// then the places Mesita lists. Not Configurations; nothing here is a policy
-// blob. Places keep the Multiple/Single qualifier because there are two
-// surfaces to tell apart. There is no consumers row: every class is earned,
-// so the console has nothing to grant by hand.
+// then the places Mesita lists, then the one guest-side record an operator
+// writes by hand. Not Configurations; nothing here is a policy blob. Places
+// keep the Multiple/Single qualifier because there are two surfaces to tell
+// apart. Invitations is last because it is the narrowest: not consumers at
+// large — every other class is earned — but the single INVITATION DOOR, which
+// by definition only opens by hand (MESITA-972, MESITA-1160).
 const MANAGE_NAV: NavItem[] = [
   DB_PARENT,
   { href: "/manage-multiple", label: "Multiple Places", Icon: Building2 },
   ...TOOL_ROUTES,
+  INVITATIONS_PARENT,
 ];
 
 // Configurations — ordered as the product flows, not alphabetically or by age.

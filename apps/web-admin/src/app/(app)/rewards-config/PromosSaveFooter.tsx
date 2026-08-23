@@ -36,7 +36,7 @@ export function PromosSaveFooter() {
       <div className="flex items-start justify-between gap-3">
         <p className="text-muted-foreground text-xs">
           Rates are built from components: base + class + plan, plus whatever the
-          guest earned. Class is earned, never sold or granted — this page
+          guest earned. Class is earned or invited, never sold — this page
           prices the rungs, it does not seat anyone on them. All four tiers
           share one Save.
         </p>
