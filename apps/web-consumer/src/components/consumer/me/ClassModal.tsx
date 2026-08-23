@@ -1,6 +1,6 @@
 "use client";
 
-import { Instagram, Ticket, TriangleAlert } from "lucide-react";
+import { Instagram, KeyRound, TriangleAlert } from "lucide-react";
 
 import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
 import { ClassLadder } from "@/components/consumer/me/class/ClassLadder";
@@ -144,7 +144,7 @@ export function ClassModal({
               onClick={onRedeemInvite}
               className="border-border bg-card hover:bg-muted type-body flex min-h-12 w-full items-center justify-center gap-1.5 rounded-2xl border px-2 font-semibold transition active:scale-[0.99]"
             >
-              <Ticket className="h-4 w-4 shrink-0" />
+              <KeyRound className="h-4 w-4 shrink-0" />
               <span className="truncate">Join with Invitation</span>
             </button>
           </div>

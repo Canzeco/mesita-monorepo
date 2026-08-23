@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { BadgeCheck, Ticket } from "lucide-react";
+import { BadgeCheck, KeyRound } from "lucide-react";
 
 import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
 import { Spinner } from "@/components/shared";
@@ -66,7 +66,7 @@ export function InvitePinModal({
       <div className={cn(SHEET_BODY_CLASS, "pt-3")}>
         <div className="mb-4 flex items-center gap-3">
           <span className="bg-muted text-foreground flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl">
-            <Ticket className="h-5 w-5" />
+            <KeyRound className="h-5 w-5" />
           </span>
           <div>
             <h2 className={SHEET_TITLE_CLASS}>Invitation PIN</h2>
