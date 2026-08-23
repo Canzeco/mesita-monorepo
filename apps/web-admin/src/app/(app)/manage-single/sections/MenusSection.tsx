@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, useTransition } from "react";
+import { useMemo, useRef, useState } from "react";
 import {
   ExternalLink,
   FileText,
@@ -24,9 +24,11 @@ import {
   removeOrphanMenuStorageObjects,
   validateMenuUploadFile,
 } from "@/lib/place-upload-utils";
-import { updatePlace, type AdminMenuItem, type AdminPlace } from "../actions";
-import { usePlaceContext } from "../PlaceContext";
-import { SaveBar, SectionCard, TextField } from "../ui";
+import { type AdminMenuItem, type AdminPlace } from "../actions";
+import { usePlaceContext, type PatchResult } from "../PlaceContext";
+import { useSectionSaver } from "../useSectionDirty";
+import { SectionCard, TextField } from "../ui";
+import { ErrorNote } from "@/components/ErrorNote";
 
 const MENU_NAME_MAX = 80;
 
@@ -122,10 +124,8 @@ function serializeMenus(items: MenuDraft[]): AdminMenuItem[] {
 
 export function MenusSection({
   place,
-  onSaved,
 }: {
   place: AdminPlace;
-  onSaved: (v: AdminPlace) => void;
 }) {
   // Parent remounts this section with key={place.id} when the operator switches
   // places, so initial state is always the active place's product items.
@@ -133,9 +133,7 @@ export function MenusSection({
   const [saved, setSaved] = useState<MenuDraft[]>(items);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [uploadingKey, setUploadingKey] = useState<string | null>(null);
-  const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
-  const [ok, setOk] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const uploadTargetKey = useRef<string | null>(null);
   // Public URLs uploaded this editing session but not yet in the last-saved
@@ -158,31 +156,6 @@ export function MenusSection({
     );
   }, [items, saved]);
 
-  const { setSectionDirty, registerDiscardHandler } = usePlaceContext();
-  useEffect(() => {
-    setSectionDirty("products", dirty);
-    return () => setSectionDirty("products", false);
-  }, [dirty, setSectionDirty]);
-
-  useEffect(() => {
-    registerDiscardHandler("products", () => {
-      const next = menusFromPlace(place);
-      const keep = next.map((m) => m.url);
-      const orphans = [...sessionUploadsRef.current];
-      sessionUploadsRef.current = new Set();
-      void removeOrphanMenuStorageObjects(
-        createBrowserSupabase(),
-        orphans,
-        keep,
-      );
-      setItems(next);
-      setSaved(next);
-      setOk(false);
-      setError(null);
-    });
-    return () => registerDiscardHandler("products", null);
-  }, [registerDiscardHandler, place]);
-
   /** Drop a never-saved Storage object immediately (Clear / Remove / switch). */
   const releaseSessionUrl = (url: string) => {
     const trimmed = url.trim();
@@ -202,7 +175,6 @@ export function MenusSection({
     setItems((prev) =>
       prev.map((m) => (m.key === key ? { ...m, ...patch } : m)),
     );
-    setOk(false);
   };
 
   const clearUpload = (key: string) => {
@@ -221,14 +193,12 @@ export function MenusSection({
         m.key === key ? { ...m, source, url: "" } : m,
       ),
     );
-    setOk(false);
   };
 
   const removeItem = (key: string) => {
     const prevUrl = items.find((m) => m.key === key)?.url.trim() ?? "";
     releaseSessionUrl(prevUrl);
     setItems((prev) => prev.filter((m) => m.key !== key));
-    setOk(false);
   };
 
   const addMenu = () => {
@@ -241,7 +211,6 @@ export function MenusSection({
       { key: newKey(), name: "", url: "", source: null },
     ]);
     setPickerOpen(false);
-    setOk(false);
   };
 
   const onPickKind = (kind: ItemKind) => {
@@ -305,7 +274,6 @@ export function MenusSection({
         sessionUploadsRef.current.delete(prevUrl);
         void removeOrphanMenuStorageObjects(supabase, [prevUrl], []);
       }
-      setOk(false);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Couldn't upload that file.");
     } finally {
@@ -314,48 +282,44 @@ export function MenusSection({
   };
 
   // Cancel — restore last-saved menus and delete never-saved uploads.
-  const cancel = () => {
-    const keep = saved.map((m) => m.url);
-    const orphans = [...sessionUploadsRef.current];
-    sessionUploadsRef.current = new Set();
-    void removeOrphanMenuStorageObjects(
-      createBrowserSupabase(),
-      orphans,
-      keep,
-    );
-    setItems(saved);
-    setError(null);
-    setOk(false);
-  };
+  // Validate + build, no I/O. The page-level save calls this, merges the patch
+  // with every other dirty box and writes them in one call, so a bad menu here
+  // stops the whole save rather than letting the other boxes through.
+  const { savePending } = usePlaceContext();
 
-  const save = () => {
-    if (!dirty) return;
+  const buildPatch = (): PatchResult => {
+    if (!dirty) return { kind: "clean" };
     for (const m of items) {
       const trimmed = m.url.trim();
       if (!trimmed) {
         // Block incomplete drafts — don't silently drop a chosen source.
         if (m.source) {
-          setError(
-            m.source === "drive"
-              ? "Each Drive menu needs a Google Drive or Docs share link."
-              : "Each uploaded menu needs a file.",
-          );
-          return;
+          return {
+            kind: "invalid",
+            error:
+              m.source === "drive"
+                ? "Each Drive menu needs a Google Drive or Docs share link."
+                : "Each uploaded menu needs a file.",
+          };
         }
         continue;
       }
       const normalized = normalizeHttpsUrl(trimmed);
       if (!/^https:\/\//i.test(normalized)) {
-        setError("Each menu needs a valid https:// URL (Drive link or uploaded file).");
-        return;
+        return {
+          kind: "invalid",
+          error:
+            "Each menu needs a valid https:// URL (Drive link or uploaded file).",
+        };
       }
       if (m.source === "drive" && !isDriveMenuUrl(normalized)) {
-        setError("Drive menus need a Google Drive or Docs link.");
-        return;
+        return { kind: "invalid", error: "Drive menus need a Google Drive or Docs link." };
       }
       if (!m.source) {
-        setError("Each menu needs a source — Upload file or Google Drive.");
-        return;
+        return {
+          kind: "invalid",
+          error: "Each menu needs a source — Upload file or Google Drive.",
+        };
       }
     }
     const menu = serializeMenus(
@@ -365,38 +329,56 @@ export function MenusSection({
       })),
     );
     const first = menu[0] ?? null;
-    setError(null);
-    setOk(false);
-    start(async () => {
-      const r = await updatePlace({
-        id: place.id,
+    return {
+      kind: "patch",
+      patch: {
         // Preserve sibling products keys (e.g. reservations routing).
         products: { ...(place.products ?? {}), menu },
         // Keep legacy single-slot columns in sync for older surfaces.
         menu_pdf_url: first?.url ?? null,
         menu_pdf_name: first?.name ?? null,
-      });
-      if (!r.ok) {
-        setError(r.error);
-        return;
-      }
-      const next = menusFromPlace(r.data);
+      },
+    };
+  };
+
+  // Storage cleanup still belongs to this box: only it knows which objects it
+  // uploaded this session and which the save actually kept.
+  const afterSaved = (fresh: AdminPlace) => {
+    const next = menusFromPlace(fresh);
+    const keep = next.map((m) => m.url);
+    const previous = saved.map((m) => m.url);
+    const session = [...sessionUploadsRef.current];
+    sessionUploadsRef.current = new Set();
+    void removeOrphanMenuStorageObjects(
+      createBrowserSupabase(),
+      [...previous, ...session],
+      keep,
+    );
+    setItems(next);
+    setSaved(next);
+    setError(null);
+  };
+
+  useSectionSaver(
+    "products",
+    dirty,
+    buildPatch,
+    afterSaved,
+    () => {
+      const next = menusFromPlace(place);
       const keep = next.map((m) => m.url);
-      const previous = saved.map((m) => m.url);
-      const session = [...sessionUploadsRef.current];
+      const orphans = [...sessionUploadsRef.current];
       sessionUploadsRef.current = new Set();
       void removeOrphanMenuStorageObjects(
         createBrowserSupabase(),
-        [...previous, ...session],
+        orphans,
         keep,
       );
       setItems(next);
       setSaved(next);
-      onSaved(r.data);
-      setOk(true);
-      window.setTimeout(() => setOk(false), 2500);
-    });
-  };
+      setError(null);
+    },
+  );
 
   return (
     <SectionCard
@@ -422,7 +404,7 @@ export function MenusSection({
           <p className="text-muted-foreground text-sm">No menus yet.</p>
           <button
             type="button"
-            disabled={pending}
+            disabled={savePending}
             onClick={addMenu}
             className="border-border hover:border-primary/50 hover:text-primary inline-flex h-9 items-center gap-1.5 rounded-lg border px-3 text-sm font-medium transition disabled:opacity-50"
           >
@@ -437,7 +419,7 @@ export function MenusSection({
               key={item.key}
               index={idx}
               item={item}
-              pending={pending}
+              pending={savePending}
               uploading={uploadingKey === item.key}
               onPatch={(patch) => patchItem(item.key, patch)}
               onClearUpload={() => clearUpload(item.key)}
@@ -451,7 +433,7 @@ export function MenusSection({
             onOpenChange={setPickerOpen}
             onPick={onPickKind}
             disabled={
-              pending ||
+              savePending ||
               uploadingKey != null ||
               items.length >= MENU_MAX_COUNT
             }
@@ -459,17 +441,7 @@ export function MenusSection({
         </div>
       )}
 
-      {items.length > 0 || dirty ? (
-        <SaveBar
-          pending={pending}
-          dirty={dirty}
-          dirtyLabel="Menus · unsaved"
-          ok={ok}
-          error={error}
-          onSave={save}
-          onCancel={cancel}
-        />
-      ) : null}
+            {error ? <ErrorNote message={error} /> : null}
     </SectionCard>
   );
 }

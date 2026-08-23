@@ -1,10 +1,11 @@
 "use client";
 
-import { useCallback, useMemo, useState, useTransition } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { ShoppingBag } from "lucide-react";
-import { updatePlace, type AdminPlace } from "../actions";
-import { useSectionDirty } from "../useSectionDirty";
-import { CrossTabLink, SaveBar, SectionCard } from "../ui";
+import { type AdminPlace } from "../actions";
+import { useSectionSaver } from "../useSectionDirty";
+import { usePlaceContext } from "../PlaceContext";
+import { CrossTabLink, SectionCard } from "../ui";
 import {
   ChannelPicker,
   channelOptions,
@@ -25,10 +26,8 @@ import {
 // the box says so rather than pretending the switch does something today.
 export function OrdersCard({
   place,
-  onSaved,
 }: {
   place: AdminPlace;
-  onSaved: (v: AdminPlace) => void;
 }) {
   const options = useMemo(() => channelOptions(place), [place]);
   const hasPhone = options[0].contact !== "";
@@ -40,42 +39,40 @@ export function OrdersCard({
   const [channel, setChannel] = useState<ChannelKey | "">(
     saved || (hasPhone ? "phone" : ""),
   );
-  const [pending, start] = useTransition();
-  const [error, setError] = useState<string | null>(null);
-  const [ok, setOk] = useState(false);
+  const { savePending } = usePlaceContext();
 
   const dirty = channel !== saved;
 
   const resetDraft = useCallback(() => {
     setChannel(saved || (hasPhone ? "phone" : ""));
-    setError(null);
-    setOk(false);
   }, [saved, hasPhone]);
-  useSectionDirty("orders", dirty, resetDraft);
 
-  const save = () => {
-    if (!channel || !hasPhone) {
-      setError("Set a phone under Place → Channels — ordering is voice-only for now.");
-      setOk(false);
-      return;
-    }
-    setError(null);
-    setOk(false);
-    start(async () => {
-      const r = await updatePlace({
-        id: place.id,
-        order_channel: "phone",
-        order_target: options[0].contact || null,
-      });
-      if (!r.ok) {
-        setError(r.error);
-        return;
+  useSectionSaver(
+    "orders",
+    dirty,
+    () => {
+      if (!dirty) return { kind: "clean" };
+      if (!channel || !hasPhone) {
+        return {
+          kind: "invalid",
+          error:
+            "Set a phone under Place → Channels — ordering is voice-only for now.",
+        };
       }
-      onSaved(r.data);
-      setOk(true);
-      window.setTimeout(() => setOk(false), 2500);
-    });
-  };
+      return {
+        kind: "patch",
+        patch: {
+          order_channel: "phone",
+          order_target: options[0].contact || null,
+        },
+      };
+    },
+    () => {
+      // `saved` is derived from the place row the page just refreshed, so the
+      // draft re-derives itself; nothing local to re-seed.
+    },
+    resetDraft,
+  );
 
   const links = [
     { label: "Uber Eats", value: place.uber_eats_url },
@@ -104,7 +101,7 @@ export function OrdersCard({
           options={options}
           selected={channel}
           onSelect={setChannel}
-          disabled={pending}
+          disabled={savePending}
           ariaLabel="Order channel"
           soonVerb="ordering"
         />
@@ -135,16 +132,6 @@ export function OrdersCard({
           </CrossTabLink>
         </div>
       </div>
-
-      <SaveBar
-        pending={pending}
-        dirtyLabel="Orders · unsaved"
-        dirty={dirty}
-        ok={ok}
-        error={error}
-        onSave={save}
-        onCancel={resetDraft}
-      />
     </SectionCard>
   );
 }

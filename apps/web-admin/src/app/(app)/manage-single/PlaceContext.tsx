@@ -11,7 +11,7 @@ import {
   type ReactNode,
 } from "react";
 import { useRouter } from "next/navigation";
-import type { AdminPlace } from "./actions";
+import { updatePlace, type AdminPlace } from "./actions";
 import {
   dirtyDialogNavBody,
   dirtyDialogReenrichBody,
@@ -33,6 +33,47 @@ type GuardedIntent = {
   run: () => void;
 };
 
+/**
+ * ONE SAVE, and it is genuinely atomic.
+ *
+ * The page used to carry eight SaveBars — four inside PlaceSection plus Menus,
+ * Visits, Orders, Reservations and Enrichment — so "have I saved?" was eight
+ * separate questions and the answer to each was an amber dot inside whichever
+ * card you last touched. Pato, 2026-08-22: make it one.
+ *
+ * All-or-nothing was his call over per-box partial success, and the code makes
+ * that honest rather than aspirational: PlaceSection, MenusSection, OrdersCard
+ * and ReservationsCard all write through the SAME Edge Function
+ * (`updatePlace` → business-web-update-project) with a patch keyed by `id`, and
+ * their patch fragments touch disjoint columns. So the whole page's edits merge
+ * into ONE object and go over ONE call — one row write, which either lands or
+ * does not. There is no compensating-write fiction here and no window where
+ * half the page is saved.
+ *
+ * A section registers what it would write and how to resync when it lands.
+ * `getPatch` returns null when that section is clean, so a save only ever sends
+ * columns somebody actually edited.
+ *
+ * NOT every box can join: VisitsCard writes the check PIN through
+ * business-web-set-check-pin, a different EF, so it cannot ride the same row
+ * write and keeps its own inline save. Folding it in would mean two sequential
+ * calls, which is exactly the partial-failure state this model exists to avoid.
+ */
+export type PatchResult =
+  /** Nothing edited here — contributes no columns. */
+  | { kind: "clean" }
+  /** These columns, please. */
+  | { kind: "patch"; patch: Record<string, unknown> }
+  /** The draft cannot be written yet, and this is why. */
+  | { kind: "invalid"; error: string };
+
+type SectionSaver = {
+  /** What this section would write right now. */
+  getPatch: () => PatchResult;
+  /** Re-seed this section's local draft from the row the save returned. */
+  onSaved: (fresh: AdminPlace) => void;
+};
+
 type PlaceContextValue = {
   projectId: string;
   place: AdminPlace;
@@ -44,6 +85,18 @@ type PlaceContextValue = {
   /** Register a reset callback invoked when the operator discards dirty edits. */
   registerDiscardHandler: (section: string, handler: (() => void) | null) => void;
   requestDiscard: () => void;
+  /** Join this section to the page-level save. Pass null to leave. */
+  registerSaver: (section: string, saver: SectionSaver | null) => void;
+  /** Human labels of every currently-dirty section, in UI order. */
+  dirtyLabels: string[];
+  /** A page-level save is in flight. */
+  savePending: boolean;
+  /** The last save's failure, or null. Cleared when a new save starts. */
+  saveError: string | null;
+  /** True briefly after a save lands, for the confirmation state. */
+  saveOk: boolean;
+  /** Merge every dirty section into one patch and write it in one call. */
+  saveAll: () => void;
   /**
    * Intercept an action that would discard unsaved edits. Returns true when it
    * was intercepted (a confirm dialog is now open) and false when the caller
@@ -80,8 +133,12 @@ export function PlaceProvider({
 }) {
   const [dirtyMap, setDirtyMap] = useState<Record<string, boolean>>({});
   const discardHandlers = useRef<Record<string, () => void>>({});
+  const savers = useRef<Record<string, SectionSaver>>({});
   const historyRef = useRef<HistoryGuardState>(INITIAL_HISTORY_GUARD);
   const isDirtyRef = useRef(false);
+  const [savePending, setSavePending] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [saveOk, setSaveOk] = useState(false);
 
   const setSectionDirty = useCallback((section: string, dirty: boolean) => {
     setDirtyMap((prev) => {
@@ -106,12 +163,66 @@ export function PlaceProvider({
     [],
   );
 
+  const registerSaver = useCallback(
+    (section: string, saver: SectionSaver | null) => {
+      if (!saver) {
+        delete savers.current[section];
+        return;
+      }
+      savers.current[section] = saver;
+    },
+    [],
+  );
+
   const requestDiscard = useCallback(() => {
     for (const handler of Object.values(discardHandlers.current)) {
       handler();
     }
     setDirtyMap({});
+    setSaveError(null);
   }, []);
+
+  // ONE call for the whole page. Object.assign is safe here precisely because
+  // the fragments are disjoint — each box owns its own columns — so no section
+  // can silently clobber another's edit on the way into the patch.
+  const saveAll = useCallback(() => {
+    const results = Object.values(savers.current).map((s) => s.getPatch());
+
+    // One invalid draft blocks the whole save. That follows from all-or-
+    // nothing rather than fighting it: if a box cannot be written, writing the
+    // others would be a partial save wearing a success message.
+    const invalid = results.find((r) => r.kind === "invalid");
+    if (invalid && invalid.kind === "invalid") {
+      setSaveOk(false);
+      setSaveError(invalid.error);
+      return;
+    }
+
+    const fragments = results.flatMap((r) => (r.kind === "patch" ? [r.patch] : []));
+    if (fragments.length === 0) return;
+
+    setSaveError(null);
+    setSaveOk(false);
+    setSavePending(true);
+    void (async () => {
+      const patch = Object.assign({ id: projectId }, ...fragments) as {
+        id: string;
+      } & Record<string, unknown>;
+      const r = await updatePlace(patch);
+      setSavePending(false);
+      if (!r.ok) {
+        // Nothing was written, so nothing is re-seeded and every draft stays
+        // exactly as the operator left it — the whole point of one call.
+        setSaveError(r.error);
+        return;
+      }
+      for (const s of Object.values(savers.current)) s.onSaved(r.data);
+      setPlace(r.data);
+      setDirtyMap({});
+      setSaveOk(true);
+      window.setTimeout(() => setSaveOk(false), 2500);
+    })();
+  }, [projectId, setPlace]);
 
   const isDirty = useMemo(
     () => Object.values(dirtyMap).some(Boolean),
@@ -211,6 +322,12 @@ export function PlaceProvider({
       setSectionDirty,
       registerDiscardHandler,
       requestDiscard,
+      registerSaver,
+      dirtyLabels,
+      savePending,
+      saveError,
+      saveOk,
+      saveAll,
       guardIntent,
       guardNav,
     }),
@@ -223,6 +340,12 @@ export function PlaceProvider({
       setSectionDirty,
       registerDiscardHandler,
       requestDiscard,
+      registerSaver,
+      dirtyLabels,
+      savePending,
+      saveError,
+      saveOk,
+      saveAll,
       guardIntent,
       guardNav,
     ],

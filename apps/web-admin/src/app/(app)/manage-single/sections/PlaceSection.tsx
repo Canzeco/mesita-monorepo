@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   ArrowLeft,
   ArrowRight,
@@ -20,7 +20,6 @@ import {
 import {
   getPlaceEnrichment,
   listPlaceTagCatalog,
-  updatePlace,
   type AdminPlace,
   type PlaceFieldLimits,
   type PlaceMediaMeta,
@@ -31,12 +30,13 @@ import {
   OpenLink,
   PhoneField,
   ReadField,
-  SaveBar,
   SectionCard,
   TextArea,
   TextField,
 } from "../ui";
 import { usePlaceContext } from "../PlaceContext";
+import { useSectionSaver } from "../useSectionDirty";
+import { ErrorNote } from "@/components/ErrorNote";
 import { formatAbsoluteUtc } from "@/lib/format";
 import { createBrowserSupabase } from "@/lib/supabase/browser";
 import {
@@ -223,46 +223,18 @@ function sliceEqual(a: unknown, b: unknown): boolean {
   return JSON.stringify(a) === JSON.stringify(b);
 }
 
-/** Copy one box's fields from `from` onto `base` — keeps other boxes intact. */
-function mergeBoxSlice(base: Form, from: Form, box: PlaceBox): Form {
-  if (box === "basics") {
-    return {
-      ...base,
-      mesitaName: from.mesitaName,
-      description: from.description,
-      tags: from.tags,
-      category: from.category,
-    };
-  }
-  if (box === "time") return { ...base, hours: from.hours };
-  if (box === "channels") {
-    return {
-      ...base,
-      channels: from.channels,
-      phone: from.phone,
-      email: from.email,
-    };
-  }
-  return { ...base, photos: from.photos };
-}
-
 export function PlaceSection({
   place,
-  onSaved,
   children,
 }: {
   place: AdminPlace;
-  onSaved: (v: AdminPlace) => void;
   /** Extra Place-page boxes (Menus) — flow in the same masonry columns. */
   children?: React.ReactNode;
 }) {
   const [limits, setLimits] = useState<PlaceFieldLimits>(FALLBACK_LIMITS);
   const [form, setForm] = useState<Form>(() => placeToForm(place));
   const [saved, setSaved] = useState<Form>(form);
-  const [pendingBox, setPendingBox] = useState<PlaceBox | null>(null);
   const [errors, setErrors] = useState<Partial<Record<PlaceBox, string>>>({});
-  const [oks, setOks] = useState<Partial<Record<PlaceBox, boolean>>>({});
-  const [, start] = useTransition();
 
   const dirtyBasics = useMemo(
     () =>
@@ -311,24 +283,42 @@ export function PlaceSection({
   const placeDirty =
     dirtyBasics || dirtyTime || dirtyChannels || dirtyPhotos;
 
-  const { setSectionDirty, registerDiscardHandler } = usePlaceContext();
-  useEffect(() => {
-    setSectionDirty("place", placeDirty);
-    return () => setSectionDirty("place", false);
-  }, [placeDirty, setSectionDirty]);
+  const { savePending } = usePlaceContext();
 
-  useEffect(() => {
-    registerDiscardHandler("place", () => {
+  // Four boxes, ONE patch. Only the dirty ones contribute, so a save never
+  // rewrites columns nobody touched — which matters for Basics in particular,
+  // where re-sending an untouched `description` would count as an operator
+  // overwrite of Enricher output.
+  useSectionSaver(
+    "place",
+    placeDirty,
+    () => {
+      const parts: Record<string, unknown>[] = [];
+      if (dirtyBasics) parts.push(boxToPatch("basics", form, place.id, limits));
+      if (dirtyTime) parts.push(boxToPatch("time", form, place.id, limits));
+      if (dirtyChannels) parts.push(boxToPatch("channels", form, place.id, limits));
+      if (dirtyPhotos) parts.push(boxToPatch("photos", form, place.id, limits));
+      if (parts.length === 0) return { kind: "clean" as const };
+      return {
+        kind: "patch" as const,
+        patch: Object.assign({}, ...parts) as Record<string, unknown>,
+      };
+    },
+    (fresh) => {
+      const next = placeToForm(fresh, limits);
+      setForm(next);
+      setSaved(next);
+      setErrors({});
+    },
+    () => {
       const next = placeToForm(place, limits);
       setForm(next);
       setSaved(next);
-      setOks({});
       setErrors({});
-    });
-    return () => registerDiscardHandler("place", null);
-  }, [registerDiscardHandler, place, limits]);
+    },
+  );
 
-  const anyPending = pendingBox !== null;
+  const anyPending = savePending;
 
   const set = <K extends keyof Form>(k: K, val: Form[K]) =>
     setForm((f) => ({ ...f, [k]: val }));
@@ -421,41 +411,6 @@ export function PlaceSection({
     };
   }, [place.id]);
 
-  // Cancel — put this box's slice back to its last-saved values. Only this
-  // box reverts; unsaved edits in the other boxes survive (the mirror of the
-  // per-box merge on save).
-  const cancelBox = (box: PlaceBox) => {
-    setForm((prev) => mergeBoxSlice(prev, saved, box));
-    setErrors((e) => ({ ...e, [box]: undefined }));
-    setOks((o) => ({ ...o, [box]: false }));
-  };
-
-  const saveBox = (box: PlaceBox) => {
-    // Mesita name may be blank — the place then follows the Google name.
-    setErrors((e) => ({ ...e, [box]: undefined }));
-    setOks((o) => ({ ...o, [box]: false }));
-    setPendingBox(box);
-    start(async () => {
-      const r = await updatePlace(
-        boxToPatch(box, form, place.id, limits),
-      );
-      setPendingBox(null);
-      if (!r.ok) {
-        setErrors((e) => ({ ...e, [box]: r.error }));
-        return;
-      }
-      const fresh = placeToForm(r.data, limits);
-      // Merge only this box's slice so unsaved edits in other boxes survive.
-      setForm((prev) => mergeBoxSlice(prev, fresh, box));
-      setSaved((prev) => mergeBoxSlice(prev, fresh, box));
-      onSaved(r.data);
-      setOks((o) => ({ ...o, [box]: true }));
-      window.setTimeout(() => {
-        setOks((o) => (o[box] ? { ...o, [box]: false } : o));
-      }, 2500);
-    });
-  };
-
   return (
     // Masonry, not a grid: CSS columns pack the cards top-down, so a short
     // card never strands empty space beside a tall neighbour — columns don't
@@ -522,15 +477,7 @@ export function PlaceSection({
             disabled={anyPending}
           />
         </div>
-        <SaveBar
-          pending={pendingBox === "basics"}
-          dirtyLabel="Basics · unsaved"
-          dirty={dirtyBasics}
-          ok={!!oks.basics}
-          error={errors.basics}
-          onSave={() => saveBox("basics")}
-          onCancel={() => cancelBox("basics")}
-        />
+        {errors.basics ? <ErrorNote message={errors.basics} /> : null}
       </SectionCard>
 
       <SectionCard
@@ -616,15 +563,7 @@ export function PlaceSection({
             );
           })}
         </div>
-        <SaveBar
-          pending={pendingBox === "time"}
-          dirtyLabel="Hours · unsaved"
-          dirty={dirtyTime}
-          ok={!!oks.time}
-          error={errors.time}
-          onSave={() => saveBox("time")}
-          onCancel={() => cancelBox("time")}
-        />
+        {errors.time ? <ErrorNote message={errors.time} /> : null}
       </SectionCard>
 
       <SectionCard
@@ -710,15 +649,7 @@ export function PlaceSection({
             disabled={anyPending}
           />
         </div>
-        <SaveBar
-          pending={pendingBox === "channels"}
-          dirtyLabel="Channels · unsaved"
-          dirty={dirtyChannels}
-          ok={!!oks.channels}
-          error={errors.channels}
-          onSave={() => saveBox("channels")}
-          onCancel={() => cancelBox("channels")}
-        />
+        {errors.channels ? <ErrorNote message={errors.channels} /> : null}
       </SectionCard>
 
       <SectionCard
@@ -742,15 +673,7 @@ export function PlaceSection({
           onRemove={removePhoto}
           onInfo={setMetaFor}
         />
-        <SaveBar
-          pending={pendingBox === "photos"}
-          dirtyLabel="Photos · unsaved"
-          dirty={dirtyPhotos}
-          ok={!!oks.photos}
-          error={errors.photos}
-          onSave={() => saveBox("photos")}
-          onCancel={() => cancelBox("photos")}
-        />
+        {errors.photos ? <ErrorNote message={errors.photos} /> : null}
       </SectionCard>
 
       {children}
