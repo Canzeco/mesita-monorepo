@@ -258,8 +258,4 @@
     letter-spacing: 0.1em;
     color: var(--muted-foreground);
   }
-  .caption {
-    font-size: 10px;
-    color: var(--muted-foreground);
-  }
 }
