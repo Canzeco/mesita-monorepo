@@ -50,7 +50,8 @@ export const KNOWN_PROBES: ReadonlyArray<{
   {
     id: "openai",
     label: "OpenAI",
-    impact: "Memo airlock (parked) — not yet load-bearing",
+    impact:
+      "Enricher text/vision + Memo + Ojo proof verification (MESITA-1034, off by default)",
   },
   {
     id: "stripe",
