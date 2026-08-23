@@ -21,6 +21,7 @@ import { getTierConfig } from "../_shared/membership.ts";
 import { invokeInternalCaller } from "../_shared/internal.ts";
 import { generateReservationCode, isUniqueViolation } from "../_shared/reservation-code.ts";
 import { attachPlaces } from "../_shared/reservation-places.ts";
+import { writeReservation } from "../_shared/reservation-doc.ts";
 
 type Body = {
   project_id?: string;
@@ -151,9 +152,14 @@ Deno.serve(async (req) => {
   let reservation: { id: string } & Record<string, unknown> | null = null;
   let insertError: { message: string } | null = null;
   for (let i = 0; i < 3 && !reservation; i++) {
-    const ins = await admin
-      .from("reservation_tickets")
-      .insert({
+    // NO `place:places(...)` embed here — reservations→places is a two-hop FK
+    // (reservations.project_id → projects.id → places.id), so PostgREST fails
+    // with "Could not find a relationship between 'reservations' and 'places'
+    // in the schema cache". Select project_id and stitch via attachPlaces,
+    // exactly like the list EFs (#518/#523).
+    const ins = await writeReservation(admin, {
+      mode: "insert",
+      patch: {
         consumer_id: consumerId,
         project_id: body.project_id,
         reference_code: generateReservationCode(),
@@ -162,22 +168,16 @@ Deno.serve(async (req) => {
         notes: (body.notes ?? "").trim() || null,
         consumer_notify: guestNotify,
         status: "pending",
-      })
-      // NO `place:places(...)` embed here — reservations→places is a two-hop FK
-      // (reservations.project_id → projects.id → places.id), so PostgREST fails
-      // with "Could not find a relationship between 'reservations' and 'places'
-      // in the schema cache". Select project_id and stitch via attachPlaces,
-      // exactly like the list EFs (#518/#523).
-      .select(
+      },
+      select:
         "id, reference_code, reserved_at, party_size, status, notes, consumer_notify, created_at, project_id",
-      )
-      .single();
-    if (!ins.error) {
-      reservation = ins.data as { id: string } & Record<string, unknown>;
+    });
+    if (ins.ok) {
+      reservation = ins.row as { id: string } & Record<string, unknown>;
       insertError = null;
     } else {
-      insertError = ins.error;
-      if (!isUniqueViolation(ins.error)) break;
+      insertError = { message: ins.error };
+      if (!isUniqueViolation({ code: ins.code })) break;
     }
   }
   if (!reservation) {

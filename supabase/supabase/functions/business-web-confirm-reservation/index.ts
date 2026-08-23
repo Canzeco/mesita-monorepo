@@ -24,6 +24,7 @@ import {
 } from "../_shared/auth.ts";
 import { RESERVATION_SELECT } from "../_shared/reservation-columns.ts";
 import { nextGuestCallAt } from "../_shared/reservation-callback.ts";
+import { type ReservationPatch, validateReservationPatch } from "../_shared/reservation-doc.ts";
 
 type Decision = "confirm" | "decline";
 type Body = { placeId?: string; projectId?: string; reservationId?: string; decision?: Decision };
@@ -72,7 +73,7 @@ Deno.serve(async (req) => {
   const lng = typeof placeRow?.lng === "number" ? placeRow.lng : null;
 
   const nowIso = new Date().toISOString();
-  let patch: Record<string, unknown>;
+  let patch: ReservationPatch;
   if (decision === "confirm") {
     patch = {
       status: "confirmed",
@@ -113,11 +114,16 @@ Deno.serve(async (req) => {
     };
   }
 
-  // Scope the update to this place and to still-actionable states so a
-  // member can't flip a terminal booking (declined / no_show / cancelled).
+  // Routed through validateReservationPatch (not the id-only writeReservation
+  // door — this update's `.in("status", …)` filter is a shape the door
+  // doesn't model; see reservation-doc.ts's header). Scope the update to this
+  // place and to still-actionable states so a member can't flip a terminal
+  // booking (declined / no_show / cancelled).
+  const validated = validateReservationPatch(patch);
+  if (!validated.ok) return json({ ok: false, error: validated.error }, 500);
   const { data, error } = await admin
     .from("reservation_tickets")
-    .update(patch)
+    .update(validated.patch)
     .eq("id", reservationId)
     .eq("project_id", projectId)
     .in("status", ["pending", "confirmed"])

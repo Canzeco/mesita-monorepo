@@ -36,6 +36,16 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { corsPreflight, json, readJsonOr, rejectUnlessMethods } from "../_shared/http.ts";
 import { adminClient, readEFEnv } from "../_shared/auth.ts";
 import { invokeInternalCaller, requireInternalCaller } from "../_shared/internal.ts";
+import { validateReservationPatch } from "../_shared/reservation-doc.ts";
+
+/** Throws if the patch fails validateReservationPatch — every bulk sweep
+ * below hardcodes its own patch, so a validation failure here means the
+ * literal patch itself is wrong, not bad caller input; fail loud. */
+function validated(patch: Record<string, unknown>): Record<string, unknown> {
+  const res = validateReservationPatch(patch);
+  if (!res.ok) throw new Error(`reservation-retries: invalid patch — ${res.error}`);
+  return res.patch;
+}
 
 const DEFAULT_LIMIT = 25;
 const MAX_LIMIT = 100;
@@ -66,14 +76,14 @@ Deno.serve(async (req) => {
   // ── 1 · Expiry: bury stuck pending tickets FIRST ───────────────────────────
   const { data: expRows } = await admin
     .from("reservation_tickets")
-    .update({
+    .update(validated({
       status: "unresolved",
       attempts_state: "exhausted",
       next_attempt_at: null,
       callback_state: "skipped",
       callback_next_attempt_at: null,
       last_call_status: "expired: the reserved time passed while still unconfirmed",
-    })
+    }))
     .eq("status", "pending")
     .lt("reserved_at", expiryFloor)
     .or("attempts_state.is.null,attempts_state.neq.running")
@@ -82,11 +92,11 @@ Deno.serve(async (req) => {
   // ── 2 · Moot notices: nobody needs a release call about a passed slot ──────
   const { data: mootRows } = await admin
     .from("reservation_tickets")
-    .update({
+    .update(validated({
       notice_state: "skipped",
       notice_next_at: null,
       last_call_status: "cancel notice skipped — the slot already passed",
-    })
+    }))
     .in("notice_state", ["pending", "scheduled"])
     .lt("reserved_at", expiryFloor)
     .select("id");
@@ -99,10 +109,10 @@ Deno.serve(async (req) => {
   ) => {
     const { data } = await admin
       .from("reservation_tickets")
-      .update({
+      .update(validated({
         ...patch,
         last_call_status: "run reaped — its worker died mid-flight; resuming",
-      })
+      }))
       .in(field, zombieStates)
       .not("claimed_at", "is", null)
       .lt("claimed_at", staleClaim)

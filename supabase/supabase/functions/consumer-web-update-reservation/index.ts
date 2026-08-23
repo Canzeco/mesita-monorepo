@@ -26,6 +26,7 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { corsPreflight, json, readJson, rejectUnlessMethods } from "../_shared/http.ts";
 import { adminClient, getAuthedUser, readEFEnv } from "../_shared/auth.ts";
 import { invokeInternalCaller } from "../_shared/internal.ts";
+import { type ReservationPatch, writeReservation } from "../_shared/reservation-doc.ts";
 import { coerceReservationsCallConfig } from "../_shared/reservations-config.ts";
 
 type Body = {
@@ -57,7 +58,7 @@ Deno.serve(async (req) => {
   }
 
   // ── Validate the requested changes ─────────────────────────────────────────
-  const patch: Record<string, unknown> = {};
+  const patch: ReservationPatch = {};
   if (body.reserved_at !== undefined) {
     const when = new Date(String(body.reserved_at));
     if (Number.isNaN(when.getTime())) {
@@ -163,8 +164,8 @@ Deno.serve(async (req) => {
     last_call_status: "rescheduled by the guest — calling the place again",
   });
 
-  const { error } = await admin.from("reservation_tickets").update(patch).eq("id", id);
-  if (error) return json({ ok: false, error: error.message }, 500);
+  const write = await writeReservation(admin, { mode: "update", id, patch });
+  if (!write.ok) return json({ ok: false, error: write.error }, 500);
 
   // Ask the venue again. The engine acks early and runs the legs in the
   // background, updating this row as it goes.
