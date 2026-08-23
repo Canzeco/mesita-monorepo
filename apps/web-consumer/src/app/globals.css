@@ -97,8 +97,12 @@
         register: the same family as `bg-muted`, which is literally the
         locked-rung treatment. The one earned achievement was rendered in the
         language of "unavailable". Hue 250 -> 15 at unchanged chroma costs
-        0.02 of ink contrast and buys the rung back. `--tier-premium` stays
-        cool on purpose: it is the PLAN axis, not a metal.
+        0.02 of ink contrast and buys the rung back. `--tier-premium` is
+        BLACK on purpose (decision: Pato, 2026-08-22): it used to be a cool
+        violet, which read as a fifth metal, and on the Me card the plan tile
+        wore the brand pink — the same family as the Instagram tile beside
+        it, so the two axes read as one. Ink-black is the one colour no rung
+        or connector owns, so the PLAN axis can't be mistaken for either.
      2. THE SOLIDS ARE TEXT, THE GRADIENTS ARE FILL. Nothing paints a
         background from a `--tier-*` solid, so those are tuned only to clear
         4.5:1 as ink on card. The gradients are tuned so their LIGHT stop —
@@ -118,7 +122,7 @@
   --tier-silver: oklch(0.55 0.006 15);
   --tier-gold: oklch(0.55 0.12 85);
   --tier-diamond: oklch(0.52 0.13 235);
-  --tier-premium: oklch(0.55 0.19 250);
+  --tier-premium: oklch(0.25 0.04 15);
 
   --gradient-hero:
     radial-gradient(
@@ -154,8 +158,8 @@
   );
   --gradient-premium: linear-gradient(
     135deg,
-    oklch(0.55 0.19 250),
-    oklch(0.68 0.14 230)
+    oklch(0.35 0.04 15),
+    oklch(0.18 0.05 15)
   );
   --gradient-card: linear-gradient(
     180deg,

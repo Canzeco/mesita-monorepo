@@ -153,6 +153,11 @@ export const COUNTRY_BY_CODE: Record<string, Country> = Object.fromEntries(
 export const CLASSES: {
   id: ClassKey;
   label: string;
+  /** The rung's unlock line. On reach rungs it names BOTH doors — followers
+   *  and Invitation — because an invitation can grant ANY class outright
+   *  (MESITA-1126), so every bar the ladder quotes has a manual twin. Keeps
+   *  the rows symmetric with the two buttons under the ladder — "Join with
+   *  Instagram" / "Join with Invitation" (decision: Pato, 2026-08-22). */
   req: string;
   /** Follower threshold via Instagram verification. 0 = not a reach door. */
   followerThreshold: number;
@@ -182,7 +187,7 @@ export const CLASSES: {
   {
     id: "silver",
     label: "Silver",
-    req: "1,000+ Instagram followers",
+    req: "1,000+ followers · Invitation",
     // Mirrors classes.follower_threshold in the DB — the EF grants off that
     // row (generic: highest-ranked row the count clears), so this constant is
     // DISPLAY-ONLY and must track it. Changing it here without the migration
@@ -201,14 +206,14 @@ export const CLASSES: {
     // means re-ranking the live table and moving every consumer's effective
     // class. Until that migration lands the ladder shows this bar and nothing
     // clears it; a 5,000-follower account stays Silver.
-    req: "5,000+ Instagram followers",
+    req: "5,000+ followers · Invitation",
     followerThreshold: 5_000,
     reward: "Higher discount",
   },
   {
     id: "diamond",
     label: "Diamond",
-    req: "20,000+ Instagram followers",
+    req: "20,000+ followers · Invitation",
     followerThreshold: 20_000,
     // Highest flat class rate — the house pays for presence, no posting asked.
     reward: "Highest discount",
