@@ -289,6 +289,15 @@ serveEnrichStage("research", async (admin, _env, row) => {
   }
   delete place.phone;
   delete place.email;
+  // WhatsApp is a MANUAL field — the who-can-edit matrix (Atlas §A) puts it
+  // beside Email and Menus, never enriched. But `enrich-google-basics`
+  // classifies `details.websiteUri` through `classifyLinks`, so a Google
+  // website URI that happens to be a wa.me link lands here as `whatsapp_url`
+  // — and rides `gathered.place` into the contents stage, which UPDATEs
+  // `places` wholesale. A business-entered WhatsApp was being overwritten,
+  // almost always with null, since the classifier yields null for an ordinary
+  // website. Same clobber phone and email are guarded against above.
+  delete place.whatsapp_url;
 
   // ━━━ Names — refresh the cached Google label, nothing else ━━━
   // Same pattern as phone: write in research only (a fresh Google read), strip
