@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { Compass, RotateCcw } from "lucide-react";
+import { Compass, RotateCcw, SlidersHorizontal } from "lucide-react";
 import { Spinner } from "@/components/shared";
+import { cn } from "@/lib/utils";
 import type { Place } from "@/lib/api/places";
 
 export function EmptyDeck({
@@ -40,27 +41,51 @@ export function EmptyDeck({
 export function ExhaustedDeck({
   onRestart,
   restarting,
+  onAdjustFilters,
 }: {
   onRestart: () => void;
   restarting: boolean;
+  /** Provided ONLY when a filter is active. An empty deck has two very
+   *  different causes — you saw everything, or you narrowed it to nothing —
+   *  and they need different offers. Absent = the honest "caught up". */
+  onAdjustFilters?: () => void;
 }) {
+  const narrowed = onAdjustFilters != null;
   return (
     <div className="flex h-full flex-col items-center justify-center gap-4 px-8 text-center">
       <div className="bg-muted flex h-14 w-14 items-center justify-center rounded-2xl">
         <Compass className="text-muted-foreground h-6 w-6" />
       </div>
       <h2 className="font-display text-2xl font-semibold tracking-tight">
-        You&apos;re caught up
+        {narrowed ? "Nothing matches" : "You're caught up"}
       </h2>
       <p className="text-muted-foreground max-w-xs text-sm">
-        You&apos;ve seen every place we have. Check the catalog or map, or
-        start over from the top.
+        {narrowed
+          ? "No place fits every filter you've set. Loosen one and the deck fills back up."
+          : "You've seen every place we have. Check the catalog or map, or start over from the top."}
       </p>
+      {narrowed && (
+        <button
+          type="button"
+          onClick={onAdjustFilters}
+          className="bg-foreground text-background mt-2 inline-flex min-h-11 items-center gap-2 rounded-lg px-5 py-2.5 text-sm font-semibold hover:opacity-90"
+        >
+          <SlidersHorizontal className="h-4 w-4" />
+          Adjust filters
+        </button>
+      )}
       <button
         type="button"
         onClick={onRestart}
         disabled={restarting}
-        className="bg-foreground text-background mt-2 inline-flex items-center gap-2 rounded-lg px-5 py-2.5 text-sm font-semibold hover:opacity-90 disabled:cursor-default disabled:opacity-70"
+        className={cn(
+          "inline-flex min-h-11 items-center gap-2 rounded-lg px-5 py-2.5 text-sm font-semibold disabled:cursor-default disabled:opacity-70",
+          // Demoted when a filter is the cause: restarting a deck the filters
+          // will empty again just repeats this screen.
+          narrowed
+            ? "border-border bg-card text-foreground hover:bg-muted border"
+            : "bg-foreground text-background mt-2 hover:opacity-90",
+        )}
       >
         {restarting ? (
           <>
