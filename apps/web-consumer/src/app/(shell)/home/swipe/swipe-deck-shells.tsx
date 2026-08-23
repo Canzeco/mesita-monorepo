@@ -38,6 +38,21 @@ export function EmptyDeck({
   );
 }
 
+/**
+ * Shown while a filtered deck is in flight and the current one has nothing
+ * left to show (MESITA-1153). Without it, changing a filter flashes "Nothing
+ * matches" for the length of a round trip and then fills — which reads as the
+ * filter having broken and then fixed itself.
+ */
+export function LoadingDeck() {
+  return (
+    <div className="flex h-full flex-col items-center justify-center gap-4 px-8 text-center">
+      <Spinner size="lg" />
+      <p className="text-muted-foreground text-sm">Finding matches...</p>
+    </div>
+  );
+}
+
 export function ExhaustedDeck({
   onRestart,
   restarting,

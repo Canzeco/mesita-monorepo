@@ -16,6 +16,7 @@ import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import {
   EmptyDeck,
   ExhaustedDeck,
+  LoadingDeck,
   shuffleDeck,
   withUserDistance,
 } from "./swipe-deck-shells";
@@ -35,6 +36,11 @@ import {
   deriveCategoryOptions,
   discoveryFiltersAreActive,
 } from "@/lib/discovery-filters-engine";
+import {
+  deckRequestKey,
+  toDeckRequest,
+  UNFILTERED_DECK_KEY,
+} from "@/lib/discovery-filters-wire";
 import { useDiscoveryFilters } from "@/lib/use-discovery-filters";
 import { DiscoveryFilters } from "@/components/consumer/DiscoveryFilters";
 import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
@@ -75,6 +81,19 @@ function writeTutorialSeen(): void {
 // How many upcoming cards' cover photos to pre-warm ahead of the active card.
 const PRELOAD_CARDS_AHEAD = 3;
 const DECISION_BADGE_THRESHOLD = 30; // px of drag before the Skip/Save badge lights up
+/** How many cards a deck request asks for. The EF's ceiling is the same 50. */
+const DECK_LIMIT = 50;
+
+/**
+ * Everything a freshly-fetched deck needs before it can render: promoting rows
+ * float to the top, then each card gains its overview fields. Mirrors
+ * HomeDeckBoundary so a client refetch and the SSR fetch produce the same deck.
+ */
+function prepareDeck(rows: Place[]): Place[] {
+  return [...rows]
+    .sort((a, b) => (isPromoting(a) ? 0 : 1) - (isPromoting(b) ? 0 : 1))
+    .map((v) => enrichPlaceOverview(v));
+}
 
 export function SwipeDeck({
   places,
@@ -134,6 +153,11 @@ function Deck({ places }: { places: Place[] }) {
   // the server's, then filled from sessionStorage after mount.
   const [seenIds, setSeenIds] = useState<string[]>([]);
   const [restarting, setRestarting] = useState(false);
+  // Whether a deck for a newer predicate set is in flight (MESITA-1153). The
+  // SSR deck always arrives unfiltered — a server component cannot read the
+  // sessionStorage the filter store lives in — so a session that opens with
+  // predicates already set starts here and re-requests once.
+  const [deckLoading, setDeckLoading] = useState(false);
   const [idx, setIdx] = useState(0);
   const [dragX, setDragX] = useState(0);
   const [dragging, setDragging] = useState(false);
@@ -170,6 +194,8 @@ function Deck({ places }: { places: Place[] }) {
   const exitingRef = useRef<null | "left" | "right">(null);
   const activePointerIdRef = useRef<number | null>(null);
   const advanceTimerRef = useRef<number | null>(null);
+  /** Which predicate set `runtimeDeck` was fetched under (MESITA-1153). */
+  const deckKeyRef = useRef<string>(UNFILTERED_DECK_KEY);
 
   // Restore progress AFTER mount (client-only), so the hydration render stays
   // identical to the server's. Schedule on rAF so setState stays out of the
@@ -191,6 +217,11 @@ function Deck({ places }: { places: Place[] }) {
       setRuntimeDeck(places);
       setIdx(0);
     });
+    // The SSR deck is unfiltered by construction, so any active predicate set
+    // is now stale against it — clearing the key re-arms the refetch below
+    // (which lists `places` too) instead of leaving a filtered session
+    // silently sitting on the full deck.
+    deckKeyRef.current = UNFILTERED_DECK_KEY;
     return () => cancelAnimationFrame(raf);
   }, [places]);
 
@@ -276,26 +307,78 @@ function Deck({ places }: { places: Place[] }) {
   // with none, the device fix — the SAME center the distance filter rings, so
   // "within 5 km" and the "5 km" on the card can never disagree.
   const center = filters.zone ?? coords;
+
+  // PREDICATES CUT ON THE SERVER (MESITA-1153). The deck EF caps at 50, so
+  // narrowing a fetched deck in the browser meant a predicate matching a
+  // fraction p of the catalog left ~50p cards however large the catalog grew —
+  // "open now + one family + 2 km" could come back empty while the catalog held
+  // plenty of matches. Sending the predicates makes the EF cut its POOL first,
+  // so those 50 are drawn from places that already match. Everything below
+  // still filters client-side: this fetch is asynchronous, `now` drifts, and
+  // the EF is deliberately permissive wherever it can't evaluate a predicate.
+  const wantedDeckKey = useMemo(
+    () => deckRequestKey(filters, center),
+    [filters, center],
+  );
+  useEffect(() => {
+    // The key is claimed in a REF, not state: this effect must not re-run on
+    // its own bookkeeping, and a failed fetch must not spin it.
+    if (deckKeyRef.current === wantedDeckKey) return;
+    deckKeyRef.current = wantedDeckKey;
+    // Clearing every predicate goes back to the deck the host already holds.
+    // That IS the unfiltered answer, so there is nothing to ask for.
+    if (wantedDeckKey === UNFILTERED_DECK_KEY) {
+      const restore = requestAnimationFrame(() => {
+        setRuntimeDeck(places);
+        setIdx(0);
+      });
+      return () => cancelAnimationFrame(restore);
+    }
+    let cancelled = false;
+    // Scheduled, not called in the effect body — setState there cascades
+    // renders (react-hooks/set-state-in-effect), the same reason every other
+    // effect in this file hops a frame first.
+    const raf = requestAnimationFrame(() => {
+      if (!cancelled) setDeckLoading(true);
+    });
+    apiRecommendDeck(supabase, toDeckRequest(filters, center, DECK_LIMIT))
+      .then((result) => {
+        if (cancelled) return;
+        setRuntimeDeck(prepareDeck(result.deck));
+        setIdx(0);
+      })
+      .catch((err) => {
+        // Keep the deck we already have — the client-side pass still narrows
+        // it, which is exactly the pre-MESITA-1153 behaviour.
+        console.warn("[swipe] filtered deck fetch failed, keeping deck:", err);
+      })
+      .finally(() => {
+        cancelAnimationFrame(raf);
+        if (!cancelled) setDeckLoading(false);
+      });
+    return () => {
+      cancelled = true;
+      cancelAnimationFrame(raf);
+    };
+  }, [wantedDeckKey, places, filters, center, supabase]);
+
   const located = useMemo(
     () => runtimeDeck.map((v) => withUserDistance(v, center)),
     [runtimeDeck, center],
   );
 
   // Cards already swiped this session drop out here rather than being skipped
-  // by index: the server deck is a random sample, so each fetch can return a
-  // different order (or different places entirely), which makes a stored
-  // position meaningless but leaves "don't show me this again" perfectly
-  // well-defined.
+  // by index: each fetch can return a different order (or different places
+  // entirely), which makes a stored position meaningless but leaves "don't
+  // show me this again" perfectly well-defined.
   const seenSet = useMemo(() => new Set(seenIds), [seenIds]);
-  // PREDICATES CUT, THE SERVER ORDERS. The four discovery predicates narrow
-  // the deck here; nothing reorders it, because consumer-web-recommend-swipe
-  // already returns the catalog Fisher–Yates shuffled and random must live in
-  // exactly one place (MESITA-1183, kept).
-  //
-  // Known ceiling, flagged not designed around (MESITA-1153): that EF caps at
-  // MAX_LIMIT = 50, so a predicate matching a fraction p of the catalog leaves
-  // ~50p cards however large the catalog grows. Invisible now, a cliff later —
-  // the fix is server-side, in the EF, not here.
+  // PREDICATES CUT, THE SERVER ORDERS. Nothing here reorders the deck —
+  // consumer-web-recommend-swipe ranks it (MESITA-1196) and randomness is a
+  // signal whose exponent the operator owns, so random lives in exactly one
+  // place. This is the SECOND pass of the same predicate set the fetch above
+  // already sent: it catches the window before the filtered deck lands, the
+  // rows the EF kept because it could not evaluate a predicate, and the
+  // minute-by-minute drift of "open now".
   const filtered = useMemo(
     () => applyDiscoveryFilters(located, filters),
     [located, filters],
@@ -304,12 +387,13 @@ function Deck({ places }: { places: Place[] }) {
     () => filtered.filter((place) => !seenSet.has(place.id)),
     [filtered, seenSet],
   );
-  // Derived from the RAW snapshot, not the filtered deck, so the sheet always
-  // offers every category this deck actually has — otherwise narrowing to one
-  // category would delete every other option and strand the guest there.
+  // Derived from the UNFILTERED deck the host was handed, never from
+  // `runtimeDeck` — which is now the server's filtered answer whenever a
+  // predicate is set. Narrowing to one category must not delete every other
+  // option and strand the guest there.
   const categoryOptions = useMemo(
-    () => deriveCategoryOptions(runtimeDeck),
-    [runtimeDeck],
+    () => deriveCategoryOptions(places),
+    [places],
   );
 
   // Past the last card the deck is exhausted — no silent wrap. Looping
@@ -420,17 +504,17 @@ function Deck({ places }: { places: Place[] }) {
     resetGesture();
     setExiting(null);
     try {
-      const result = await apiRecommendDeck(supabase, { limit: 50 });
-      const sorted = [...result.deck].sort((a, b) => {
-        const aRank = isPromoting(a) ? 0 : 1;
-        const bRank = isPromoting(b) ? 0 : 1;
-        return aRank - bRank;
-      });
-      const enriched = sorted.map((v) => enrichPlaceOverview(v));
-      const fresh = shuffleDeck(enriched);
+      // Start over inside the guest's filters, not around them: restarting an
+      // unfiltered deck the predicates empty again just repeats this screen.
+      const result = await apiRecommendDeck(
+        supabase,
+        toDeckRequest(filters, center, DECK_LIMIT),
+      );
+      const fresh = shuffleDeck(prepareDeck(result.deck));
       setSeenIds([]);
       clearSwipeProgress();
       setRuntimeDeck(fresh);
+      deckKeyRef.current = wantedDeckKey;
       setIdx(0);
     } catch {
       // Fallback to server re-fetch path if client call fails.
@@ -576,13 +660,17 @@ function Deck({ places }: { places: Place[] }) {
   if (exhausted || !v) {
     return (
       <div className="relative flex h-full flex-col">
-        <ExhaustedDeck
-          onRestart={restart}
-          restarting={restarting}
-          onAdjustFilters={
-            filtersActive ? () => setFiltersOpen(true) : undefined
-          }
-        />
+        {deckLoading ? (
+          <LoadingDeck />
+        ) : (
+          <ExhaustedDeck
+            onRestart={restart}
+            restarting={restarting}
+            onAdjustFilters={
+              filtersActive ? () => setFiltersOpen(true) : undefined
+            }
+          />
+        )}
         {filtersSheet}
       </div>
     );
