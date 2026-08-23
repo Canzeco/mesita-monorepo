@@ -440,5 +440,16 @@ serveEnrichStage("contents", async (admin, env, row) => {
     },
   );
 
-  await advanceResearchStage(admin, projectId, "done");
+  // The terminal hop. The ledger snapshot is the only complete per-run total
+  // that exists — it rides on gathered.cost, which the NEXT run overwrites, so
+  // the run row is where it survives.
+  const finalCost = ledger.snapshot();
+  await advanceResearchStage(admin, projectId, "done", {}, {
+    runId: row.run_id,
+    // A run that entered at analysis or contents REUSED a stored gather it did
+    // not pay for, so it must not be billed for it. Only a run that walked from
+    // research owns this number.
+    costUsd: row.stage === "contents" && row.gathered ? null : finalCost.spentUsd,
+    charges: row.stage === "contents" && row.gathered ? null : finalCost.charges,
+  });
 });

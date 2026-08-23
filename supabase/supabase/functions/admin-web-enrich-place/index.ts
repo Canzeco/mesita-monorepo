@@ -32,7 +32,12 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { corsPreflight, json, readJson, rejectUnlessMethods, readPlaceIdAlias } from "../_shared/http.ts";
 import { adminClient, getAuthedUser, readEFEnv, requireSuperAdmin } from "../_shared/auth.ts";
-import { advanceResearchStage, markProjectGenerating, seedPlaceResearch } from "../_shared/enrich-pipeline.ts";
+import {
+  advanceResearchStage,
+  markProjectGenerating,
+  openEnrichmentRun,
+  seedPlaceResearch,
+} from "../_shared/enrich-pipeline.ts";
 
 // placeId is the MESITA-26 alias for the place-row id (== project_id here).
 type ReenrichMode = "full" | "analysis" | "contents";
@@ -86,7 +91,16 @@ Deno.serve(async (req) => {
 
   // ── Full re-enrich: reseed to 'research' (nulls stored payloads). ──
   if (mode === "full") {
-    const seed = await seedPlaceResearch(admin, projectId, googlePlaceId, "admin-web-enrich-place");
+    // `manual`, not a matrix trigger. The Run-now button opts out of the grid on
+    // both axes — it clears `subprocesses` and ignores cooldown — so recording it
+    // as on_schedule would poison exactly the cost-attribution and cooldown
+    // queries the run history exists to answer (MESITA-1185).
+    const seed = await seedPlaceResearch(admin, projectId, googlePlaceId, "admin-web-enrich-place", {
+      trigger: "manual",
+      subprocesses: null,
+      actorUserId: authRes.user.id,
+      meta: { mode },
+    });
     if (!seed.ok) return json({ ok: false, error: seed.error ?? "Failed to queue enrichment" }, 500);
     return json({ ok: true, enrichmentTriggered: true, mode, stage: "research" });
   }
@@ -127,9 +141,20 @@ Deno.serve(async (req) => {
   // Explicit operator intent outranks the trigger matrix: clear whatever
   // subprocess set the last automatic trigger stamped, so a light re-enrich
   // queued after (say) an on_visit refresh still runs every step of its stage.
+  // A light re-enrich is still a RUN: it spends money and it changes the
+  // profile. It enters mid-pipeline, and `entryStage` is what stops the janitor
+  // later crediting it with the spend of the gather it is reusing.
+  const opened = await openEnrichmentRun(admin, projectId, {
+    trigger: "manual",
+    seededBy: "admin-web-enrich-place",
+    subprocesses: null,
+    entryStage: stage,
+    actorUserId: authRes.user.id,
+    meta: { mode },
+  });
   await admin
     .from("place_research")
-    .update({ subprocesses: null })
+    .update({ subprocesses: null, run_id: opened.runId ?? null })
     .eq("place_id", projectId);
   await advanceResearchStage(admin, projectId, stage);
   return json({ ok: true, enrichmentTriggered: true, mode, stage });

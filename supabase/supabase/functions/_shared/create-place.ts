@@ -191,7 +191,9 @@ export async function createMinimalPlace(opts: {
       saved.project_id,
       googlePlaceId,
       callerName,
-      subprocesses,
+      // No cooldown on create: a place enters Mesita exactly once, and the
+      // on_create row's window would only ever block a re-created place.
+      { trigger: "on_create", subprocesses },
     )
     : { ok: false as const, error: "on_create disabled in the enrichment trigger matrix" };
 
