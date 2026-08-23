@@ -56,6 +56,13 @@ export function isMoney(v: unknown): v is Money {
 // Deliberately NOT wired into stripe-billing.ts by this PR — that file works
 // today, touches real payment code, and swapping its private type for this
 // public one is a one-line, zero-risk follow-up, not part of the foundation.
+// KNOWN DIVERGENCE (MESITA-1247 survey, not resolved here — needs a product
+// decision): project_subscriptions carries plan_key (FK -> business_plans);
+// consumer_subscriptions has no equivalent column, though every other column
+// between the two tables matches. Does consumer billing need multi-plan
+// support, or is business's plan_key the actual outlier? Whoever answers
+// that should also decide whether BillingState should grow an optional
+// plan_key or stay as-is. Left alone on purpose.
 export type BillingState = {
   price_cents: number;
   currency: string;
@@ -81,6 +88,17 @@ export function isBillingState(v: unknown): v is BillingState {
 // exact shape §C asks for. Aliased here under the catalog's name so a
 // validator composing sub-schemas finds it in one place; the type itself
 // still lives, and is still maintained, in channels.ts.
+//
+// KNOWN DIVERGENCE (MESITA-1247 survey, a pure technical decision, not a
+// product one): `places` still carries three dead columns from before they
+// were retired from the channel set — tiktok_url, tripadvisor_url,
+// yelp_url (added 0003_venue_links.sql / 0007_venue_links_more.sql /
+// 20260625140000_venue_yelp_url.sql, never dropped). rappi_url and
+// youtube_url, added in the same original migrations, WERE properly dropped
+// later (20260625150000/20260625161000) — that's the precedent for cleaning
+// these three up too. Not executed here: see the migration this PR ships
+// alongside this comment (P2/stretch) — the decision is the required part
+// of this reconciliation, executing it is not.
 export type ChannelSetKey = ChannelKey;
 export type ChannelSet = Channels;
 
@@ -95,6 +113,18 @@ export type ChannelSet = Channels;
 // event log pulse-pieces.ts folds over. Defining the type here does not
 // materialize anything — it gives 1249 a name to build against instead of
 // inventing its own shape.
+// KNOWN GAP (MESITA-1247 survey, deliberately left for MESITA-1249, which
+// owns materializing this map): the DB event log's `started` and `skipped`
+// statuses (place_enrichment_events.status CHECK) have no home in this
+// three-value enum, and the write-side PieceOutcome (pulse-report.ts) is
+// narrower still (`completed | failed`, no `pending`). Whether `skipped`
+// projects as `completed` (skipped but fine), needs a fourth status, or
+// something else, is 1249's call — don't let it get decided by accident
+// when this map's first real writer lands. `detail` being nullable here
+// while PieceOutcome.detail is not is correct as designed, not a bug: this
+// type has to represent `pending` (never run, no detail to report), a state
+// PieceOutcome structurally cannot hold since a piece that hasn't run never
+// gets a PieceOutcome written at all.
 export type FunctionState = {
   status: "pending" | "completed" | "failed";
   /** ISO timestamp of the latest event for this step, or null if never run. */

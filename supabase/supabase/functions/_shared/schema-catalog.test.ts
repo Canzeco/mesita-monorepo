@@ -20,6 +20,7 @@ import {
   type ChannelSet,
   type ChannelSetKey,
   type FunctionState,
+  type FunctionStateMap,
   type Money,
 } from "./schema-catalog.ts";
 import type { ChannelKey, Channels } from "./channels.ts";
@@ -40,6 +41,16 @@ Deno.test("FUNCTION_STATE_KEYS has 11 members — 9 enrich functions + 2 semanti
 Deno.test("FUNCTION_STATE_KEYS carries no duplicate — the two arrays never overlap", () => {
   const seen = new Set(FUNCTION_STATE_KEYS);
   assertEquals(seen.size, FUNCTION_STATE_KEYS.length);
+});
+
+// The runtime tests above only prove the key LIST is right; this proves the
+// compile-time belt — TypeScript rejects a key outside PulseStep — actually
+// holds (MESITA-1247 guard test 2, function leg, compile-time half).
+Deno.test("FunctionStateMap rejects a key outside PulseStep at compile time", () => {
+  const map: FunctionStateMap = { pulse: { status: "pending", at: null, detail: null } };
+  // @ts-expect-error — "bogus" is not a PulseStep; FunctionStateMap must reject it
+  map.bogus = { status: "pending", at: null, detail: null };
+  assertEquals(map.pulse?.status, "pending");
 });
 
 // ChannelSet is a straight alias, not a copy — assert the two types accept

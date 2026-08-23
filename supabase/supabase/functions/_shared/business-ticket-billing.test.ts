@@ -214,3 +214,20 @@ Deno.test("tipCentsFor: clamps hostile percents into 0–100", () => {
   assertEquals(tipCentsFor(85000, 250), 85000);
   assertEquals(tipCentsFor(85000, 0), 0);
 });
+
+// ── MESITA-1247 guard test 6 addition ───────────────────────────────────
+//
+// Everything above already covers review->rollup math end to end (this
+// file predates the issue — MESITA-142/#203, MESITA-1087/#980). The one
+// real gap: computeTicketBill's own internal clamp
+// (`if (discountCents > subtotal) discountCents = subtotal`) means it can
+// never actually call amountDueCents with discountCents > checkSubtotalCents,
+// so amountDueCents's OWN defensive `Math.max(0, ...)` floor has never been
+// exercised directly, only vicariously through a clamp that makes it
+// unreachable in practice. This closes that one direct gap.
+Deno.test("amountDueCents: floors at zero when discount exceeds subtotal, called directly", () => {
+  assertEquals(
+    amountDueCents({ checkSubtotalCents: 100000, discountCents: 150000, tipCents: 10000 }),
+    10000,
+  );
+});

@@ -16,6 +16,7 @@ import { slugify } from "./place-slug.ts";
 import { humanizeCategorySlug } from "./parse-utils.ts";
 import { ENRICH_FIELD_LIMITS } from "./enrich-field-limits.ts";
 import { mapGoogleReviews } from "./enrich-google-review-snippets.ts";
+import { GoogleReviewsSchema } from "./place-jsonb-schemas.ts";
 import {
   closesAtFromHours,
   type GooglePeriod,
@@ -161,6 +162,17 @@ export type GoogleBasicsResult =
   }
   | { ok: false; code: string; error: string; status: number };
 
+// MESITA-1247: drop-on-failure shape guard for the google_reviews write —
+// see the call site's comment for why this is defense in depth rather than
+// a real malformation risk.
+function validatedGoogleReviews(
+  reviews: ReturnType<typeof mapGoogleReviews>,
+): ReturnType<typeof mapGoogleReviews> {
+  if (reviews === null) return null;
+  const r = GoogleReviewsSchema.parse(reviews);
+  return r.ok ? r.value : null;
+}
+
 // Fetch + assemble the Google identity spine for a placeId. Mirrors the old
 // atlas-seed-place's pre-insert logic exactly (including the spine-incomplete
 // rejection), minus any DB work.
@@ -272,7 +284,11 @@ export async function fetchGoogleBasics(
       email: null,
       google_stars_overall: details.rating ?? null,
       google_review_count: details.userRatingCount ?? null,
-      google_reviews: mapGoogleReviews(details.reviews),
+      // MESITA-1247: mapGoogleReviews already hand-shapes this from Google's
+      // structured API response (not LLM output), so this is defense in
+      // depth rather than a real malformation risk — validated the same
+      // drop-on-failure way as the LLM-sourced jsonb columns for consistency.
+      google_reviews: validatedGoogleReviews(mapGoogleReviews(details.reviews)),
       editorial_summary: details.editorialSummary?.text ?? null,
     },
   };
