@@ -1,6 +1,7 @@
 "use client";
 
 import { Clock, SlidersHorizontal, X } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { PLACE_FAMILIES } from "@/lib/place-families";
 import {
   DISCOVERY_CONTEXTS,
@@ -277,13 +278,14 @@ export function DiscoveryFilters({
 
       <div className="border-border/60 shrink-0 border-t p-4">
         {count != null && count > 0 ? (
-          <button
+          <Button
             type="button"
+            size="lg"
             onClick={onClose}
-            className="bg-pink-gradient shadow-glow flex h-12 w-full items-center justify-center rounded-xl text-sm font-semibold text-white transition active:scale-[0.99]"
+            className="shadow-glow w-full text-sm font-semibold"
           >
             Show {count} {count === 1 ? "place" : "places"}
-          </button>
+          </Button>
         ) : count === 0 && hasPredicates ? (
           <button
             type="button"
@@ -297,13 +299,14 @@ export function DiscoveryFilters({
             No places to show
           </div>
         ) : (
-          <button
+          <Button
             type="button"
+            size="lg"
             onClick={onClose}
-            className="bg-pink-gradient shadow-glow flex h-12 w-full items-center justify-center rounded-xl text-sm font-semibold text-white transition active:scale-[0.99]"
+            className="shadow-glow w-full text-sm font-semibold"
           >
             Done
-          </button>
+          </Button>
         )}
       </div>
     </div>

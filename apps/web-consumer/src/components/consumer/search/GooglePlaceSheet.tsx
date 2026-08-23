@@ -18,6 +18,7 @@
 import { useEffect, useState } from "react";
 import { ExternalLink, MapPinPlus, Wand2, X } from "lucide-react";
 import { Spinner } from "@/components/shared";
+import { Button } from "@/components/ui/button";
 import type { PlacePrediction } from "@/lib/api/place-search";
 import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
 import type { AddState } from "./add-state";
@@ -187,11 +188,12 @@ export function GooglePlaceSheet({
               </p>
             </div>
           ) : (
-            <button
+            <Button
               type="button"
+              size="lg"
               disabled={adding}
               onClick={() => onAdd(prediction)}
-              className="bg-pink-gradient shadow-glow mt-4 flex h-12 w-full items-center justify-center gap-1.5 rounded-xl text-sm font-semibold text-white transition active:scale-[0.99] disabled:opacity-70"
+              className="shadow-glow mt-4 w-full gap-1.5 text-sm font-semibold disabled:opacity-70"
             >
               {adding ? (
                 <Spinner size="sm" className="border-white/40 border-t-white" />
@@ -199,7 +201,7 @@ export function GooglePlaceSheet({
                 <Wand2 className="h-4 w-4" />
               )}
               {adding ? "Adding…" : "Add to Mesita"}
-            </button>
+            </Button>
           )}
         </div>
       )}

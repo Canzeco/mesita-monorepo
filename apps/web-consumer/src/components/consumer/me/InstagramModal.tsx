@@ -6,6 +6,7 @@ import { cn, errMsg } from "@/lib/utils";
 import { toast } from "@/lib/toast";
 import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
 import { Spinner } from "@/components/shared";
+import { Button } from "@/components/ui/button";
 import { SectionEyebrow } from "@/components/consumer/me/settings-rows";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { apiClaimInstagram } from "@/lib/api/profile";
@@ -231,11 +232,12 @@ function ConnectModule({
         className="border-border bg-muted/30 placeholder:text-muted-foreground/70 h-12 w-full rounded-xl border px-5 text-center text-sm outline-none"
         maxLength={8}
       />
-      <button
+      <Button
         type="button"
+        size="sm"
         onClick={onVerify}
         disabled={!canVerify}
-        className="bg-pink-gradient mt-2 flex min-h-11 w-full items-center justify-center gap-2 rounded-xl py-3 text-sm font-semibold text-white transition disabled:opacity-60"
+        className="mt-2 w-full rounded-xl text-sm font-semibold"
       >
         {verifying ? (
           <Spinner size="sm" className="border-white/40 border-t-white" />
@@ -243,7 +245,7 @@ function ConnectModule({
           <BadgeCheck className="h-4 w-4" />
         )}
         {verifying ? "Connecting…" : "Verify"}
-      </button>
+      </Button>
       <p className="text-muted-foreground type-label mt-2 text-center">
         We never ask for your password.
       </p>
