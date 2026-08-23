@@ -76,3 +76,47 @@ jobs:
       - name: Check
         working-directory: supabase
         run: deno check .
+
+  # SQL invariants, tested against a database built from every migration.
+  #
+  # The 512 deno tests never touch a database, so until now every schema
+  # guarantee was protected by convention: `profiles` (née `projects_view`) must
+  # keep security_invoker, `places.name` must stay a generated column behind its
+  # CHECK, `admin_reset_database` must find its survivors registered. Migrations
+  # do carry DO-block assertions — that is the posture Pato picked over this
+  # harness in /plan-eng-review (2026-08-09, Issue 5, option 5A) — but they only
+  # see the world at the moment they run. The failure that actually happened is
+  # the one they cannot see: 20260712040000 dropped security_invoker off a
+  # projects_view rebuild and it went unnoticed until an audit, months after the
+  # migration that asserted it had passed. This job runs after the LAST
+  # migration, so it sees the schema that ships (MESITA-1050).
+  #
+  # Blocking, same reasoning as `deno check` above: a gate nobody can read is
+  # not a gate. If Postgres will not come up, the migration set is broken and
+  # that IS the finding — merging past it deploys the same breakage.
+  #
+  # Cost containment: `-x` drops every container except Postgres (and auth,
+  # which the CLI always starts), and the whole workflow is path-filtered to
+  # `supabase/**`, so a web-only PR never pays for it.
+  schema:
+    name: pgTAP · schema invariants
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      # `start` on a fresh volume applies every migration in order and then
+      # seed.sql, so a migration that cannot replay from zero fails right here.
+      - name: Start Postgres and replay every migration
+        working-directory: supabase
+        run: supabase start -x studio,imgproxy,edge-runtime,functions,realtime,storage,inbucket,vector,analytics,meta,kong,rest
+
+      - name: Run pgTAP
+        working-directory: supabase
+        run: supabase test db --local supabase/tests/database
