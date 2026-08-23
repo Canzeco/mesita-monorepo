@@ -20,7 +20,6 @@ export type PlaceFormState = {
   tags: string[];
   phone: string;
   whatsapp_url: string;
-  email: string;
   website_url: string;
   instagram_url: string;
   facebook_url: string;

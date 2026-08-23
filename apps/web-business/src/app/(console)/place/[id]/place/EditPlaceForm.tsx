@@ -209,7 +209,6 @@ export function EditPlaceForm({
         .slice(0, TAG_MAX_COUNT),
       phone: nullable(v.phone),
       whatsapp_url: nullableUrl(v.whatsapp_url),
-      email: nullable(v.email),
       website_url: nullableUrl(v.website_url),
       instagram_url: nullableUrl(v.instagram_url),
       facebook_url: nullableUrl(v.facebook_url),

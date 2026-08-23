@@ -307,6 +307,24 @@ export async function setPlacePlan(
   return { ok: true, data: r.data.place };
 }
 
+/** List or unlist the place on Mesita — the ONLY write path to
+ *  projects.status, which is what the consumer RLS policy
+ *  projects_select_public_visible gates every guest read on. Unlisting removes
+ *  the place from browse, search, the swipe deck and any shared link at once.
+ *  business-web-update-project does not accept `status`, so this is its own
+ *  admin door (admin-web-set-place-listed). */
+export async function setPlaceListed(
+  placeId: string,
+  listed: boolean,
+): Promise<Result<AdminPlace>> {
+  const r = await efInvoke<{ place: AdminPlace }>("admin-web-set-place-listed", {
+    placeId,
+    listed,
+  });
+  if (!r.ok) return { ok: false, error: r.error };
+  return { ok: true, data: r.data.place };
+}
+
 /** Rates-only strategy switch — no plan write (MESITA-912).
  *  Plan-less body on admin-web-set-plan (one-caller ACL; never business-web). */
 export async function setPlaceStrategy(

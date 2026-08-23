@@ -101,13 +101,6 @@ export function PlaceChannelsModule({
         readOnly
         hint="Set from the Google Place ID at create — not editable."
       />
-      <PlaceUrlField
-        label="Email"
-        placeholder="hola@yourplace.com"
-        value={form.email}
-        onChange={(val) => set("email", val)}
-      />
-
       <button
         type="button"
         onClick={() => setShowOptional((open) => !open)}
