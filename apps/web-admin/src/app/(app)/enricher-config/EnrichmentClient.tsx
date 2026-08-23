@@ -9,11 +9,18 @@ import type {
   SynthesisQuality,
 } from "./actions";
 import {
+  DescriptionSection,
+  DetailsSection,
   DiscoverySection,
-  ImageFunnelSection,
+  MenuSection,
   ModelsSection,
-  QuietStepsSection,
+  PulseSection,
   ReviewsSection,
+  SeedSection,
+  SemanticNameSection,
+  SemanticSummarySection,
+  SerpSection,
+  SocialImagesSections,
 } from "./config-sections";
 import { RunsSection } from "./RunsSection";
 import { CostSection } from "./CostSection";
@@ -22,20 +29,29 @@ import { Collapsible, SectionCard } from "./atlas-ui";
 // The Enrichment console — ONE page, no tab strip (Pato, 2026-08-21: "only one
 // tab in that section"). It was three tabs: Config, Triggers, Calculator.
 //
-// AFTER RUNS AND MODELS, THE PAGE IS THE QUEUE, IN QUEUE ORDER: 4 Links,
-// 5–6 Social & Images, 8 Reviews, then a map of every function with no knob.
-// The queue is ten functions numbered 0–9 plus two semantic functions outside
-// it (MESITA-1230 → the ten-function respec); only four own knobs.
-// It used to be grouped by subsystem — Links, Reviews, Images — which is the
-// order the code grew in, not the order a run happens in. An operator tuning
-// "why are the photos wrong" had to know that Images runs after Social, which
-// the page never said. Numbering the boxes and sorting them by the queue means
-// the page reads the way a run does.
+// ONE BOX PER FUNCTION, IN QUEUE ORDER (Pato, 2026-08-23). The queue is ten
+// functions numbered 0-9 plus two semantic functions outside it, and all twelve
+// get a card: 0 seed · 1 pulse · 2 details · 3 serp · 4 links · 5 social ·
+// 6 images · 7 menu · 8 reviews · 9 description · ◇ name · ◇ summary.
 //
-// Models sits above the steps rather than inside one because each of the four
-// serves several: Text drives function 9 and the image-rank leg, Search drives
-// Agent X at 3 and Agent Y at 4. Filing a shared model under one step would
-// make the other steps look knob-less when they are not.
+// Only five own knobs. The other seven are cards anyway, because a page that
+// shows only the tunable functions reads like the pipeline has five — an
+// operator asking "where do I change the hours" needs to find 2 · Details and
+// be told the answer is nowhere, not fail to find it and assume another page
+// hides it. They were one collapsed "the rest of the pipeline" list until now,
+// which made them look like footnotes to the tunable ones rather than equal
+// members of the same queue.
+//
+// The order is the RUN's order, not the order the code grew in. Grouped by
+// subsystem — Links, Reviews, Images — an operator tuning "why are the photos
+// wrong" had to already know that Images runs after Social, which the page
+// never said.
+//
+// Models sits after the functions rather than inside one because each of the
+// four serves several: Text drives 9 and the image-rank leg of 6, Search drives
+// Agent X at 3 and Agent Y at 4. Filing a shared model under one function would
+// make the others look knob-less when they are not, so those cards point at it
+// instead.
 //
 // Order is deliberate. RUNS leads because it is the page's kill switch: a
 // disabled on_create row hard-skips the first-run pipeline, a disabled
@@ -95,13 +111,12 @@ export function EnrichmentClient(props: {
         initialConfig={props.initialTriggers}
         meta={props.triggersMeta}
       />
-      <ModelsSection
-        initialSynthesisQuality={props.initialSynthesisQuality}
-        initialVisionQuality={props.initialVisionQuality}
-        initialPerplexityPreset={props.initialPerplexityPreset}
-        initialPerRunCostCapUsd={props.initialPerRunCostCapUsd}
-        onSaved={setUpdatedAt}
-      />
+
+      {/* ══ THE QUEUE — one box per function, 0 → 9, then the semantic pair ══ */}
+      <SeedSection />
+      <PulseSection />
+      <DetailsSection />
+      <SerpSection />
       <DiscoverySection
         initialWebsiteN={props.initialDiscoverWebsiteN}
         initialInstagramN={props.initialDiscoverInstagramN}
@@ -110,7 +125,10 @@ export function EnrichmentClient(props: {
         initialUbereatsN={props.initialDiscoverUbereatsN}
         onSaved={setUpdatedAt}
       />
-      <ImageFunnelSection
+      {/* 5 and 6 are two cards over ONE funnel state — the Instagram collect
+          depth at 5 bounds the analyze cap at 6, so the chain is normalized as
+          a whole and either card's Save persists all of it. */}
+      <SocialImagesSections
         initialGatherGoogleImages={props.initialGatherGoogleImages}
         initialGatherInstagramDepth={props.initialGatherInstagramDepth}
         initialAnalyzeGoogleImages={props.initialAnalyzeGoogleImages}
@@ -122,11 +140,23 @@ export function EnrichmentClient(props: {
         initialImageSortingPrompt={props.initialImageSortingPrompt}
         onSaved={setUpdatedAt}
       />
+      <MenuSection />
       <ReviewsSection
         initialGatherReviews={props.initialGatherReviews}
         onSaved={setUpdatedAt}
       />
-      <QuietStepsSection />
+      <DescriptionSection />
+      <SemanticNameSection />
+      <SemanticSummarySection />
+
+      {/* ══ Shared across functions — see the header on why it is not inside one ══ */}
+      <ModelsSection
+        initialSynthesisQuality={props.initialSynthesisQuality}
+        initialVisionQuality={props.initialVisionQuality}
+        initialPerplexityPreset={props.initialPerplexityPreset}
+        initialPerRunCostCapUsd={props.initialPerRunCostCapUsd}
+        onSaved={setUpdatedAt}
+      />
 
       {/* One box, bottom, closed. Pato: "leave it at the bottom of the
           configuration, but as one box, not as one fucking giant tab." */}

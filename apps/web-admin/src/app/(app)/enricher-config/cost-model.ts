@@ -40,7 +40,7 @@ const COST_RATES = {
   visionEconomy: 0.001, // gpt-4o-mini vision, one image (detail:low)
   visionStandard: 0.008, // gpt-4o vision, one image
   sort: 0.001, // gpt-4o-mini text sort / short judge
-  synthEconomy: 0.002, // gpt-4o-mini synthesis (~1000-word About)
+  synthEconomy: 0.002, // gpt-4o-mini synthesis (~1000-word Presentation)
   synthStandard: 0.028, // gpt-4o synthesis (standard & high)
 } as const;
 
@@ -307,10 +307,10 @@ export function computeEnrichmentCost({
       active: visionActive,
     },
     {
-      label: `9 · About synthesis — ${quality}`,
+      label: `9 · Presentation synthesis — ${quality}`,
       detail: quality === "economy" ? "gpt-4o-mini" : "gpt-4o",
       pricing: quality === "economy" ? "$0.15/$0.60 per 1M" : "$2.50/$10 per 1M",
-      note: "~1000-word About from gathered sources (no web)",
+      note: "~1000-word Presentation from gathered sources (no web)",
       cost: synthCost,
       secs: synthSecs,
       stage: "post",
@@ -320,7 +320,7 @@ export function computeEnrichmentCost({
       label: "9 · category → tags",
       detail: "2 × gpt-4o-mini (sequential)",
       pricing: "~$0.001 / call",
-      note: "Category then tags, both grounded on the synthesized About",
+      note: "Category then tags, both grounded on the fresh Presentation",
       cost: COST_RATES.sort * 2,
       secs: TIME_RATES.sort * 2,
       stage: "post",

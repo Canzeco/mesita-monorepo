@@ -398,7 +398,7 @@ serveEnrichStage("contents", async (admin, env, row) => {
     menu: pieceDone("No menu source yet — the function is a stub."),
   };
   if (wants(buys, "synthesis")) {
-    // DESCRIPTION (9) — the Profile Description, then category, then tags, and
+    // DESCRIPTION (9) — the PRESENTATION, then category, then tags, and
     // the function that CLOSES the queue. NOT the Semantic Summary: that is the
     // semantic function below, and the two are different artifacts (prose a
     // GUEST reads vs the 60-word blurb the INDEX reads). `aboutWritten` is
@@ -406,9 +406,9 @@ serveEnrichStage("contents", async (admin, env, row) => {
     // replied.
     contentPieces.description = aboutWritten
       ? pieceDone(
-        `Profile Description written; category “${place.category ?? "n/a"}”, ${inferredTags.length} tag(s).`,
+        `Presentation written; category “${place.category ?? "n/a"}”, ${inferredTags.length} tag(s).`,
       )
-      : pieceFailed("Synthesis ran but no Profile Description was persisted.");
+      : pieceFailed("Synthesis ran but no Presentation was persisted.");
   }
   if (wants(buys, "embedding")) {
     // SEMANTIC · SUMMARY — a semantic function, not a rung. It writes the

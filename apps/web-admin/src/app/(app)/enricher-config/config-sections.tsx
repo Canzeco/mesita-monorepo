@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import {
+  Activity,
   Brain,
   CalendarClock,
   CheckCheck,
@@ -9,16 +10,18 @@ import {
   DollarSign,
   Eye,
   Facebook,
+  FileText,
   Globe,
   Image as ImageIcon,
   Images,
   Instagram,
   Link2,
-  ListChecks,
   Lock,
+  Search,
   ShoppingBag,
   Sparkles,
   Star,
+  Type,
 } from "lucide-react";
 import { updateAtlasConfig, type PerplexityPreset, type SynthesisQuality } from "./actions";
 import { ErrorNote } from "@/components/ErrorNote";
@@ -74,6 +77,17 @@ function normalizeFunnel(s: Funnel): Funnel {
   return { gg, depth, ag, ai, save };
 }
 
+// The function number, in the same shape on every box, so the page reads as one
+// numbered queue rather than a pile of unrelated settings cards. "◇" marks the
+// two SEMANTIC functions, which sit outside the count.
+function FunctionBadge({ n }: { n: string }) {
+  return (
+    <span className="bg-muted text-muted-foreground inline-flex h-6 min-w-6 items-center justify-center rounded-md px-1.5 type-label font-semibold tabular-nums">
+      {n}
+    </span>
+  );
+}
+
 function StageTotal({ label, n }: { label: string; n: number }) {
   return (
     <span className="border-border bg-background inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold tabular-nums">
@@ -106,8 +120,19 @@ function SubHeading({
   );
 }
 
-// One "Images" box: the whole photo funnel (Collection → Analysis → Selection)
-// as three subsections in a single card, plus two binaries.
+// TWO boxes — 5 · Social and 6 · Images — over ONE funnel state.
+//
+// The page is one box per function (Docs › Enrichment §A), and Social and
+// Images are two functions, so they are two cards. But the knobs they carry are
+// a single validated chain: Instagram collect (5) BOUNDS Instagram analyze (6),
+// and analyze bounds save. That invariant cannot live in a box boundary.
+//
+// So the state stays lifted here and every edit re-normalizes the WHOLE funnel,
+// exactly as it did when this was one card. Each card carries a Save that
+// persists the whole funnel, because the funnel is what the EF takes; saving
+// from either card writes the same valid config, and both show the same dirty
+// state. Splitting the STATE is what would let you save an analyze cap higher
+// than the collect depth that feeds it — splitting the CARDS does not.
 //
 // Vision is a REAL kill-switch (app_config.atlas_image_vision_enabled): the
 // analysis stage reads it and skips the whole describe+rank pass when it's off
@@ -120,7 +145,7 @@ function SubHeading({
 // The per-source lock still holds (analyze ≤ collect, keep ≤ analyzed total);
 // the numeric knobs batch under one Save, and both binaries — Vision and
 // Storage — save on the spot like feature switches.
-export function ImageFunnelSection({
+export function SocialImagesSections({
   initialGatherGoogleImages,
   initialGatherInstagramDepth,
   initialAnalyzeGoogleImages,
@@ -261,26 +286,78 @@ export function ImageFunnelSection({
     });
   };
 
+  const funnelLine = (
+    <p className="text-sm font-medium tabular-nums">
+      <span className="text-muted-foreground">Funnel</span>{" "}
+      Collect <span className="font-semibold">{cSum}</span>
+      <span className="text-muted-foreground"> ≥ </span>
+      {vision && (
+        <>
+          Analyze <span className="font-semibold">{aSum}</span>
+          <span className="text-muted-foreground"> ≥ </span>
+        </>
+      )}
+      Keep <span className="font-semibold">{f.save}</span>
+      {!vision && (
+        <span className="text-muted-foreground font-normal"> · unranked</span>
+      )}
+    </p>
+  );
+
   return (
+    <>
+    {/* ══ 5 · SOCIAL ══ */}
+    <SectionCard
+      icon={<Instagram className="text-muted-foreground h-4 w-4" />}
+      title="5 · Social"
+      status={<FunctionBadge n="5" />}
+      subtitle="The Instagram and Facebook gathers — and the reason Social runs BEFORE Images: these gathers are what fill the candidate pool the vision funnel ranks. Run Images any earlier and it would rank Google photos and nothing else. A place with no social presence has nothing to gather, so the function runs, resolves “there is nothing here”, and passes."
+    >
+      <div className="border-border mt-6 border-t pt-6">
+        <SubHeading
+          icon={<Instagram className="text-muted-foreground h-4 w-4" />}
+          title="Instagram pool"
+          hint="newest-first window, then top-K by likes"
+          status={<StageTotal label="collected" n={f.depth} />}
+        />
+        <div className="mt-3 grid gap-4 sm:grid-cols-2">
+          <NumberField icon={<Instagram className="text-muted-foreground h-4 w-4" />} label="Instagram collect" value={f.depth} min={1} max={MAX_INSTAGRAM_COLLECT} onChange={(v) => patch({ depth: v })} disabled={savePending} />
+        </div>
+        <p className="text-muted-foreground mt-3 text-xs leading-relaxed">
+          Instagram returns the <em>most recent</em> posts, so the Enricher re-ranks that window by number of likes. This number also caps <span className="font-semibold">Analyze Instagram images</span> in 6 · Images below — the two are one validated chain, so this knob saves with that box and either Save persists both.
+        </p>
+        <p className="text-muted-foreground mt-3 text-xs leading-relaxed">
+          Facebook has no knob: the page gather takes followers and rating, and gets no identity judge because its link was already validated at 4 · Links. The Instagram profile IS identity-judged here — a brand or franchise main is accepted, and on a scraper outage the handle is attached <em>unverified</em> rather than lost.
+        </p>
+      </div>
+      <div className="border-border mt-6 flex flex-col gap-3 border-t pt-5 sm:flex-row sm:items-center sm:justify-between">
+        {funnelLine}
+        <SaveRow pending={savePending} dirty={dirty} ok={ok} onClick={save} />
+      </div>
+      {error && <ErrorNote message={error} />}
+    </SectionCard>
+
+    {/* ══ 6 · IMAGES ══ */}
     <SectionCard
       icon={<Images className="text-muted-foreground h-4 w-4" />}
-      title="5–6 · Social & Images"
-      subtitle="Two steps, one box. Social (5) downloads the Instagram pool; Images (6) describes it with vision, ranks it, and picks the gallery. The knobs live together because the chain is validated as one thing — collect ≥ analyze ≥ save — and splitting it would let you save an analyze cap higher than the collect depth that feeds it."
+      title="6 · Images"
+      status={<FunctionBadge n="6" />}
+      subtitle="The vision funnel over every candidate the pools hold: describe each one, rank them all in a single shared bucket where the source stops mattering, then pick the gallery. Largest cost driver on the page."
     >
       {/* ── Collection ── */}
       <div className="border-border mt-6 border-t pt-6">
         <SubHeading
-          icon={<Images className="text-muted-foreground h-4 w-4" />}
+          icon={<ImageIcon className="text-muted-foreground h-4 w-4" />}
           title="Collection"
           hint="candidate pool per source"
           status={<StageTotal label="collected" n={cSum} />}
         />
         <div className="mt-3 grid gap-4 sm:grid-cols-2">
           <NumberField icon={<ImageIcon className="text-muted-foreground h-4 w-4" />} label="Google collect" value={f.gg} min={1} max={MAX_GOOGLE_COLLECT} onChange={(v) => patch({ gg: v })} disabled={savePending} />
-          <NumberField icon={<Instagram className="text-muted-foreground h-4 w-4" />} label="Instagram collect" value={f.depth} min={1} max={MAX_INSTAGRAM_COLLECT} onChange={(v) => patch({ depth: v })} disabled={savePending} />
+          <NumberField icon={<Instagram className="text-muted-foreground h-4 w-4" />} label="Instagram collect (set in 5 · Social)" value={f.depth} min={1} max={MAX_INSTAGRAM_COLLECT} onChange={(v) => patch({ depth: v })} disabled={savePending} />
         </div>
         <p className="text-muted-foreground mt-3 text-xs leading-relaxed">
-          Google returns its photos already ranked by relevance — best first, so we take them in order. Instagram returns the <em>most recent</em> posts, so the Enricher re-ranks that window by number of likes. Analysis reads the top of each pool.
+          Google returns its photos already ranked by relevance — best first, so we take them in order. The Instagram pool is gathered by 5 · Social and is repeated here because it bounds the analyze cap below. Analysis reads the top of each pool.
         </p>
       </div>
 
@@ -378,25 +455,12 @@ export function ImageFunnelSection({
 
       {/* ── Funnel invariant + one save for the numeric knobs ── */}
       <div className="border-border mt-6 flex flex-col gap-3 border-t pt-5 sm:flex-row sm:items-center sm:justify-between">
-        <p className="text-sm font-medium tabular-nums">
-          <span className="text-muted-foreground">Funnel</span>{" "}
-          Collect <span className="font-semibold">{cSum}</span>
-          <span className="text-muted-foreground"> ≥ </span>
-          {vision && (
-            <>
-              Analyze <span className="font-semibold">{aSum}</span>
-              <span className="text-muted-foreground"> ≥ </span>
-            </>
-          )}
-          Keep <span className="font-semibold">{f.save}</span>
-          {!vision && (
-            <span className="text-muted-foreground font-normal"> · unranked</span>
-          )}
-        </p>
+        {funnelLine}
         <SaveRow pending={savePending} dirty={dirty} ok={ok} onClick={save} />
       </div>
       {error && <ErrorNote message={error} />}
     </SectionCard>
+    </>
   );
 }
 
@@ -482,6 +546,7 @@ export function DiscoverySection({
     <SectionCard
       icon={<Link2 className="text-muted-foreground h-4 w-4" />}
       title="4 · Links"
+      status={<FunctionBadge n="4" />}
       subtitle="How many Firecrawl Search candidates to pull per source (0–10) when finding a place's official links. Agent Y reviews these against the function-3 SERP Summary and picks the best one per field, or none. 0 turns a source off."
     >
       <div className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
@@ -536,7 +601,8 @@ export function ReviewsSection({
     <SectionCard
       icon={<Star className="text-muted-foreground h-4 w-4" />}
       title="8 · Reviews"
-      subtitle="How many Google reviews Apify scrapes for the Enricher (0–100). Google Places itself only returns ~5; 100 is Mesita's hard safety bound for Edge Function wall-clock and Apify cost (~$0.50 per 100), not a Google limit. More reviews ground a richer Profile Description at function 9, but slow and price the scrape."
+      status={<FunctionBadge n="8" />}
+      subtitle="How many Google reviews Apify scrapes for the Enricher (0–100). Google Places itself only returns ~5; 100 is Mesita's hard safety bound for Edge Function wall-clock and Apify cost (~$0.50 per 100), not a Google limit. More reviews ground a richer Presentation at function 9, but slow and price the scrape. Gathered by Research even though it sits at 8 — the Apify scrape fires into the background early and is collected at the end."
     >
       <div className="mt-5 sm:max-w-xs">
         <NumberField
@@ -783,89 +849,206 @@ function ModelDisplay({
   );
 }
 
-// ── The steps that have no knobs ───────────────────────────────────────────
+// ── The functions with no knobs of their own ───────────────────────────────
 //
-// A config page that lists only the tunable steps reads like the pipeline has
-// four. It has TWELVE functions — ten in the queue, numbered 0-9, plus the two
-// semantic ones outside it — and the honest answer for most of them is
-// "nothing to tune": either Google's answer IS the answer, or the only knob is
-// a shared model that lives in the box above. Saying so beats leaving an
-// operator to wonder which page hides the rest.
+// One box per function, including the ones there is nothing to tune about
+// (Docs › Enrichment §A). A page that showed only the tunable functions read
+// like the pipeline had four; it has twelve, and for most of them the honest
+// answer is "nothing to tune" — either Google's answer IS the answer, or the
+// only knob is a shared model in Models & cost below. Saying so beats leaving
+// an operator to wonder which page hides the rest.
 //
-// No save, no state: this box is a map, not a form.
-const QUIET_STEPS: { step: string; name: string; why: string }[] = [
-  {
-    step: "0",
-    name: "Seed",
-    why:
-      "The gate the queue stands on. A Google Place ID either resolves or no row is created at all — there is nothing to tune about a hard stop. `enriched = 0` means exactly this: seeded, nothing after it.",
-  },
-  {
-    step: "1",
-    name: "Pulse",
-    why:
-      "One question: is the place still active. Not the hours, not the address — just whether the listing is alive, so a dead place is caught before a dollar is spent on it. It re-hits Place Details on purpose; paying twice buys a liveness gate that means one thing.",
-  },
-  {
-    step: "2",
-    name: "Details",
-    why:
-      "Everything else Google knows — the hours, address, geo, zone, city, timezone, price, phone — and the name. The hours live here, not on Pulse: a place that publishes none is missing data, not closed for business. `places.name` is generated from `coalesce(mesita_name, google_name)`; the override is `mesita_name`, which lives on the place, not in config.",
-  },
-  {
-    step: "3",
-    name: "Serp",
-    why:
-      "Bought to feed Links: Agent Y cannot pick between five Instagram candidates on a name and a city, and this editorial read is what it recognises the place by. Function 9 reuses it, but that is not why it exists. Its one knob is the Search model preset, in Models above.",
-  },
-  {
-    step: "7",
-    name: "Menu",
-    why:
-      "A stub. The website is no longer crawled, so no menu source exists — it always passes and can never block the queue.",
-  },
-  {
-    step: "9",
-    name: "Description",
-    why:
-      "The Profile Description, then Category, Tags and Presentation. Its one knob is the Text model tier, in Models above; the category and tag vocabularies are closed and code-defined.",
-  },
-  {
-    step: "◇",
-    name: "Semantic · Name",
-    why:
-      "Outside the queue, so it never counts toward Enriched: the Mesita Name as its own vector. NOT BUILT — today a single embedding covers the whole facts block.",
-  },
-  {
-    step: "◇",
-    name: "Semantic · Summary",
-    why:
-      "Outside the queue too: the 60-word Semantic Summary and its vector, re-run on any profile edit. The embeddings model is LOCKED — swapping it changes dimensions and re-embeds the whole catalog.",
-  },
-];
+// These carry no state and no Save. They are the queue, written down.
 
-export function QuietStepsSection() {
+function QuietFunction({
+  n,
+  icon,
+  title,
+  subtitle,
+  children,
+}: {
+  n: string;
+  icon: React.ReactNode;
+  title: string;
+  subtitle: string;
+  children?: React.ReactNode;
+}) {
   return (
-    <SectionCard
-      icon={<ListChecks className="h-4 w-4" />}
-      title="The rest of the pipeline"
-      subtitle="Every other function, and where its knob lives if it has one. ◇ marks the two semantic functions, which sit outside the numbered queue. Nothing here to save."
-    >
-      <ul className="divide-border/60 divide-y">
-        {QUIET_STEPS.map((s) => (
-          <li key={s.step} className="flex gap-3 py-3 first:pt-0 last:pb-0">
-            <span className="bg-muted text-muted-foreground mt-0.5 inline-flex h-6 shrink-0 items-center justify-center rounded-md px-1.5 type-label font-semibold tabular-nums">
-              {s.step}
-            </span>
-            <div className="min-w-0">
-              <p className="text-sm font-semibold">{s.name}</p>
-              <p className="text-muted-foreground mt-0.5 text-xs leading-relaxed">
-                {s.why}
-              </p>
-            </div>
-          </li>
-        ))}
-      </ul>
+    <SectionCard icon={icon} title={title} status={<FunctionBadge n={n} />} subtitle={subtitle}>
+      {children ? (
+        <div className="border-border mt-6 border-t pt-6">{children}</div>
+      ) : null}
     </SectionCard>
+  );
+}
+
+/** Where a function's only knob actually lives, when it is a shared one. */
+function KnobElsewhere({ children }: { children: React.ReactNode }) {
+  return (
+    <p className="text-muted-foreground text-xs leading-relaxed">{children}</p>
+  );
+}
+
+export function SeedSection() {
+  return (
+    <QuietFunction
+      n="0"
+      icon={<Sparkles className="text-muted-foreground h-4 w-4" />}
+      title="0 · Seed"
+      subtitle="The gate the whole queue stands on. A Google Place ID either resolves or no row is created at all — there is nothing to tune about a hard stop."
+    >
+      <KnobElsewhere>
+        The create EFs mint the paired place and project rows, freeze any
+        operator-supplied channels and contacts as trusted input, and pull a
+        basic profile plus a first photo so the place has an instant thumbnail.
+        Then they seed the research row and stop — the stage functions are
+        SCHEDULED into the queue, never called inline, so a burst of creates
+        cannot saturate the pipeline. <span className="font-semibold">Enriched = 0</span>{" "}
+        means exactly this: seeded, and nothing after it has landed. It is a
+        floor, never a failure.
+      </KnobElsewhere>
+    </QuietFunction>
+  );
+}
+
+export function PulseSection() {
+  return (
+    <QuietFunction
+      n="1"
+      icon={<Activity className="text-muted-foreground h-4 w-4" />}
+      title="1 · Pulse"
+      subtitle="One question, one answer: is this place still active. Not the hours, not the address — just whether the listing is alive, so a dead place is caught before a dollar is spent on it."
+    >
+      <KnobElsewhere>
+        It reads Google&apos;s own business status and acts on it the instant the
+        spine resolves, <span className="font-semibold">before the cost ledger opens</span> —
+        a gate that reported at the end of the stage would not be a gate, since
+        every Apify, Firecrawl and Perplexity call would already be paid for.
+        Permanently closed stops the run. Temporarily closed passes: a refurb is
+        still a real business. A silent Google passes too — absence is a result,
+        and failing on silence would pin every place Google is quiet about at 0
+        forever.
+      </KnobElsewhere>
+    </QuietFunction>
+  );
+}
+
+export function DetailsSection() {
+  return (
+    <QuietFunction
+      n="2"
+      icon={<Globe className="text-muted-foreground h-4 w-4" />}
+      title="2 · Details"
+      subtitle="Everything else Google knows — the hours, address, geo, zone, city, timezone, price, phone — and the name."
+    >
+      <KnobElsewhere>
+        <span className="font-semibold">The hours live here, not on Pulse:</span>{" "}
+        a place that publishes none is missing data, not closed for business.
+        The name lives here too — <span className="font-mono">places.name</span> is
+        generated from <span className="font-mono">coalesce(mesita_name, google_name)</span>,
+        so the override is <span className="font-mono">mesita_name</span>, which
+        belongs to the operator on the place itself and not to config. Phone and
+        email are never web-searched: enrichment must not clobber a contact a
+        person entered.
+      </KnobElsewhere>
+    </QuietFunction>
+  );
+}
+
+export function SerpSection() {
+  return (
+    <QuietFunction
+      n="3"
+      icon={<Search className="text-muted-foreground h-4 w-4" />}
+      title="3 · Serp"
+      subtitle="Bought to feed Links. Agent Y cannot pick between five Instagram candidates on a name and a city, and this editorial read is what it recognises the place by."
+    >
+      <KnobElsewhere>
+        Function 9 reuses the same text, but that is a second use of something
+        bought for the first — do not reorder the queue to serve it. Soft context
+        only, never a source of facts, ratings or prices: it never reaches the
+        place row, and it is the one enrichment text a guest never sees. Its one
+        knob is the <span className="font-semibold">Search model preset</span>, in
+        Models &amp; cost below — shared with 4 · Links.
+      </KnobElsewhere>
+    </QuietFunction>
+  );
+}
+
+export function MenuSection() {
+  return (
+    <QuietFunction
+      n="7"
+      icon={<ShoppingBag className="text-muted-foreground h-4 w-4" />}
+      title="7 · Menu"
+      subtitle="A stub. The website is no longer crawled, so no menu source exists — it always passes and can never block the queue."
+    >
+      <KnobElsewhere>
+        It holds slot 7 on purpose: when a real menu source lands, the numbers
+        and every stored high-water stay valid instead of all shifting by one.
+      </KnobElsewhere>
+    </QuietFunction>
+  );
+}
+
+export function DescriptionSection() {
+  return (
+    <QuietFunction
+      n="9"
+      icon={<FileText className="text-muted-foreground h-4 w-4" />}
+      title="9 · Description"
+      subtitle="The function that CLOSES the queue. It makes three things, in this fixed order: the Presentation — the prose a guest reads — then Category, then Tags."
+    >
+      <KnobElsewhere>
+        The Presentation is grounded only in gathered material — the Google
+        spine, the reviews, the SERP Summary from 3 and the Instagram bio; never
+        the website, never the menu — so it cannot drift. Category and Tags then
+        ground primarily on the Presentation it just wrote, which is why the
+        order is fixed. Its one knob is the{" "}
+        <span className="font-semibold">Text model tier</span>, in Models &amp;
+        cost below; the category and tag vocabularies are closed and
+        code-defined, so there is nothing to tune about them here.
+      </KnobElsewhere>
+    </QuietFunction>
+  );
+}
+
+export function SemanticNameSection() {
+  return (
+    <QuietFunction
+      n="◇"
+      icon={<Type className="text-muted-foreground h-4 w-4" />}
+      title="Semantic · Name"
+      subtitle="Outside the queue, so it never counts toward Enriched: the Mesita Name as its own vector, so a guest searching by name scores on the name itself rather than on sixty words of vibe text that happen to contain it."
+    >
+      <KnobElsewhere>
+        <span className="font-semibold">NOT BUILT.</span> Today a single
+        embedding covers the whole facts block; splitting the name into its own
+        vector is the open build. It cannot be a rung even once it ships — the
+        On-Update path fires it whenever an operator renames a place, and a
+        number that falls because someone renamed a place is not &ldquo;how far
+        did the queue get&rdquo;.
+      </KnobElsewhere>
+    </QuietFunction>
+  );
+}
+
+export function SemanticSummarySection() {
+  return (
+    <QuietFunction
+      n="◇"
+      icon={<Brain className="text-muted-foreground h-4 w-4" />}
+      title="Semantic · Summary"
+      subtitle="Outside the queue too: the 60-word Semantic Summary and its vector, re-run on any profile edit."
+    >
+      <KnobElsewhere>
+        It does <span className="font-semibold">not</span> embed the Profile
+        Description — the description is what a guest reads, the Semantic Summary
+        is what the index reads, and collapsing the two would bloat a 1536-d
+        vector with a thousand words of narrative. The embeddings model is
+        LOCKED, not a knob: swapping it changes dimensions and re-embeds the
+        whole catalog.
+      </KnobElsewhere>
+    </QuietFunction>
   );
 }

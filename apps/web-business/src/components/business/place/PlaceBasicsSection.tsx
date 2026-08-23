@@ -83,7 +83,7 @@ export function PlaceBasicsSection({
       </PlaceBox>
 
       <PlaceBox>
-        <PlaceKvField label="Description">
+        <PlaceKvField label="Presentation">
           <PlaceAboutField
             value={form.description}
             onChange={(description) => set("description", description)}

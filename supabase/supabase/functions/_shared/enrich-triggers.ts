@@ -115,7 +115,7 @@ export const SUBPROCESS_META: Record<
     label: "Reviews",
     functions: "8",
     cost: "high",
-    blurb: "Apify Google Maps scrape — the newest reviews that ground the Profile Description.",
+    blurb: "Apify Google Maps scrape — the newest reviews that ground the Presentation.",
   },
   serp: {
     label: "SERP",
@@ -149,7 +149,7 @@ export const SUBPROCESS_META: Record<
     functions: "9",
     cost: "low",
     blurb:
-      "The Profile Description, then category and tags grounded on it. Rewrites the profile.",
+      "The Presentation, then category and tags grounded on it. Rewrites the profile.",
   },
   photos: {
     label: "Photos",

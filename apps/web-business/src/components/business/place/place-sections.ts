@@ -20,12 +20,14 @@ const PLACE_SECTIONS: readonly {
   {
     id: "basics",
     label: "Basics",
-    description: "Identity, location, hours, and description.",
+    description: "Identity, location, hours, and presentation.",
   },
   {
+    // The id stays `about`: ids are addresses, and an address never follows a
+    // rename — same law as routes. Only the LABEL is the field's name.
     id: "about",
-    label: "About",
-    description: "A short description of your place.",
+    label: "Presentation",
+    description: "How your place presents itself to a guest.",
   },
   {
     id: "products",

@@ -6,7 +6,7 @@ export type ProfileResult = {
   established_year?: number | null;
   executive_chef?: string | null;
   editorial_summary?: string | null;
-  /** Canonical Profile Description — always English (Mesita core language). */
+  /** Canonical Presentation — always English (Mesita core language). */
   description?: string | null;
   details?: Record<string, unknown> | null;
   popular_times?: unknown[] | null;
@@ -38,7 +38,7 @@ export function asProfileText(v: unknown): string | null {
   return parts.length > 0 ? parts.join("\n\n") : null;
 }
 
-// Ensure the Profile Description is readable paragraphs, not one mambo-jumbo block.
+// Ensure the Presentation is readable paragraphs, not one mambo-jumbo block.
 // - Collapse runs of whitespace inside a paragraph.
 // - Normalize any mix of single/double newlines into blank-line breaks.
 // - If the model still returned one wall of text, split on sentence ends into
@@ -98,7 +98,7 @@ export function applyProfileToUpdate(
   if (chef) update.executive_chef = chef;
   const editorial = asProfileText(parsed.editorial_summary);
   if (editorial) update.editorial_summary = editorial;
-  // Canonical Profile Description — English only (MESITA-939). Spanish TMS later.
+  // Canonical Presentation — English only (MESITA-939). Spanish TMS later.
   const description = asProfileText(parsed.description);
   if (description) {
     update.description = formatDescriptionParagraphs(description).slice(0, ENRICH_DESCRIPTION_MAX);

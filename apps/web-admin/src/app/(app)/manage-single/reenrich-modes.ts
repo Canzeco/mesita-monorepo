@@ -7,7 +7,7 @@
 // which screen they were on before they could predict what a run would redo.
 //
 // The labels are what the mode REDOES, not which stage function it enters:
-// `analysis` re-ranks images, `contents` rewrites the Profile Description. The
+// `analysis` re-ranks images, `contents` rewrites the Presentation. The
 // stage names stay in the wire contract, where they belong.
 //
 // This cannot live in actions.ts — that module is "use server", and a
@@ -28,7 +28,7 @@ export const REENRICH_MODES: {
     value: "full",
     label: "Full",
     hint:
-      "Re-gathers everything: Google, channels, reviews, photos, then rewrites the Profile Description. The only mode that refreshes facts.",
+      "Re-gathers everything: Google, channels, reviews, photos, then rewrites the Presentation. The only mode that refreshes facts.",
     needsPriorRun: false,
   },
   {
@@ -42,7 +42,7 @@ export const REENRICH_MODES: {
     value: "contents",
     label: "Description",
     hint:
-      "Re-writes the Profile Description, category and tags from stored research. Cheapest.",
+      "Re-writes the Presentation, category and tags from stored research. Cheapest.",
     needsPriorRun: true,
   },
 ];

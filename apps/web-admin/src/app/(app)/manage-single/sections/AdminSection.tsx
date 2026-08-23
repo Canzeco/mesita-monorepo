@@ -221,7 +221,7 @@ function parseEmbeddingVector(raw: AdminPlace["embedding"]): number[] | null {
 // weekly and would poison a semantic index that answers "what is this place
 // like".
 //
-// NOTE: the Place Synthesis is NOT the Profile Description. The description is the
+// NOTE: the Place Synthesis is NOT the Presentation. The presentation is the
 // human-readable profile copy; the synthesis is a separate, super-concise text
 // purpose-built for semantic search. Written on create + on profile update.
 // Open by default; collapsible like Metadata.
@@ -334,7 +334,7 @@ function EmbeddingCard({ place }: { place: AdminPlace }) {
 // one that never reaches a guest:
 //
 //   SERP Summary        soft context the PIPELINE reads (this box)
-//   Profile Description places.description — the prose a GUEST reads
+//   Presentation        places.description — the prose a GUEST reads
 //   Semantic Summary    embedding_source_text — what the INDEX reads
 //
 // It gets its own box precisely because it is none of the other two. It grounds

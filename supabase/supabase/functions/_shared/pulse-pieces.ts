@@ -18,7 +18,9 @@
 //    6 images     the vision funnel, which ranks the pools SOCIAL filled
 //    7 menu       STUB — no source today, so it can never block the queue
 //    8 reviews    Google reviews
-//    9 description the Profile Description, then category, then tags
+//    9 description the PRESENTATION, then category, then tags. The function is
+//                 named `description` after the column it writes; the ARTIFACT
+//                 an operator and a guest see is the Presentation
 //
 //   semantic name     the Mesita Name as its own vector — NOT BUILT YET
 //   semantic summary  the Semantic Summary + its vector
@@ -65,9 +67,9 @@
 //
 // THE THREE TEXTS, each with exactly one reader, never collapsed:
 //   SERP Summary        function 3 — soft context the PIPELINE reads
-//   Profile Description function 9 — places.description, what a GUEST reads
+//   Presentation        function 9 — places.description, what a GUEST reads
 //   Semantic Summary    semantic   — embedding_source_text, what the INDEX reads
-// Embedding the Profile Description would bloat a 1536-d vector with a thousand
+// Embedding the Presentation would bloat a 1536-d vector with a thousand
 // words of narrative; showing the Semantic Summary to a guest would shrink the
 // profile to a stub.
 //
