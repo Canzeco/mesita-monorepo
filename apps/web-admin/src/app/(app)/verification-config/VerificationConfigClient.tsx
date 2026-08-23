@@ -16,13 +16,12 @@ type KnobKey = keyof VerificationConfig;
 // One clause each. The full account of what a proof is and who adjudicates it
 // lives in Notion Docs, not on a page with three switches (MESITA-1176).
 //
-// `autoVerifyVideo` is GONE, not hidden: nothing reads it. Every occurrence in
-// the backend is a write path or a comment, and admin-web-list-verifications
-// says outright that the queue shows video rows "regardless of
-// auto_verify_video". A knob that cannot be obeyed lies to the operator who
-// flips it. The column and the orphan admin-web-set-auto-verify EF are a
-// separate cleanup; the update EF patches only the keys it is sent, so
-// omitting it leaves the stored value alone.
+// `autoVerifyVideo` retired (MESITA-1248): the column, the type field, every
+// backend touch point, and the orphan admin-web-set-auto-verify EF are all
+// gone now, not just unrendered. It was GONE from the console for the same
+// reason first — nothing ever read it, and admin-web-list-verifications
+// showed every video row "regardless of auto_verify_video" — a knob that
+// cannot be obeyed lies to the operator who flips it.
 const KNOBS: {
   key: KnobKey;
   label: string;

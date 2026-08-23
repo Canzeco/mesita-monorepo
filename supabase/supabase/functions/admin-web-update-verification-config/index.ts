@@ -10,7 +10,13 @@
 //   createPlacesAsVerified — catalog Mesita Partner badge at create time
 //   autoVerifyAiCall       — phone OTP auto-grants ownership
 //   autoVerifyAiEmail      — email OTP auto-grants ownership
-//   autoVerifyVideo         — video walkthrough auto-grants ownership
+//
+// `autoVerifyVideo` retired (MESITA-1248) — nothing ever read it.
+// `admin-web-list-verifications` shows every video row regardless of the
+// flag, and the console never rendered a control for it (see
+// verification-config/VerificationConfigClient.tsx's own comment, which
+// flagged this exact cleanup). `auto_verify_video` dropped in the same
+// migration that removes it here.
 //
 // Auth: caller's JWT email must be in public.super_admins.
 
@@ -27,7 +33,6 @@ type ConfigPatch = {
   createPlacesAsVerified?: unknown;
   autoVerifyAiCall?: unknown;
   autoVerifyAiEmail?: unknown;
-  autoVerifyVideo?: unknown;
 };
 
 type Body = {
@@ -38,7 +43,6 @@ const KNOBS = [
   ["createPlacesAsVerified", "create_places_as_verified"],
   ["autoVerifyAiCall", "auto_verify_ai_call"],
   ["autoVerifyAiEmail", "auto_verify_ai_email"],
-  ["autoVerifyVideo", "auto_verify_video"],
 ] as const;
 
 Deno.serve(async (req) => {
@@ -74,7 +78,7 @@ Deno.serve(async (req) => {
   }
   if (Object.keys(update).length === 1) {
     return jsonError(
-      "config must include at least one of createPlacesAsVerified | autoVerifyAiCall | autoVerifyAiEmail | autoVerifyVideo",
+      "config must include at least one of createPlacesAsVerified | autoVerifyAiCall | autoVerifyAiEmail",
       400,
     );
   }
@@ -84,7 +88,7 @@ Deno.serve(async (req) => {
     .update(update)
     .eq("id", 1)
     .select(
-      "create_places_as_verified, auto_verify_ai_call, auto_verify_ai_email, auto_verify_video, updated_at",
+      "create_places_as_verified, auto_verify_ai_call, auto_verify_ai_email, updated_at",
     )
     .single();
   if (error) {
@@ -96,7 +100,6 @@ Deno.serve(async (req) => {
       createPlacesAsVerified: data.create_places_as_verified === true,
       autoVerifyAiCall: data.auto_verify_ai_call !== false,
       autoVerifyAiEmail: data.auto_verify_ai_email !== false,
-      autoVerifyVideo: data.auto_verify_video === true,
     },
     updatedAt: data.updated_at,
   });

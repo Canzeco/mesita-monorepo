@@ -8,7 +8,9 @@
 //   create_places_as_verified — catalog Mesita Partner badge at create time
 //   auto_verify_ai_call       — phone OTP auto-grants ownership
 //   auto_verify_ai_email      — email OTP auto-grants ownership
-//   auto_verify_video         — video walkthrough auto-grants ownership
+//
+// `auto_verify_video` retired (MESITA-1248) — nothing ever read it; see
+// admin-web-update-verification-config's header for the full finding.
 //
 // Auth: caller's JWT email must be in public.super_admins.
 
@@ -38,7 +40,7 @@ Deno.serve(async (req) => {
   const { data, error } = await admin
     .from("app_config")
     .select(
-      "create_places_as_verified, auto_verify_ai_call, auto_verify_ai_email, auto_verify_video, updated_at",
+      "create_places_as_verified, auto_verify_ai_call, auto_verify_ai_email, updated_at",
     )
     .eq("id", 1)
     .maybeSingle();
@@ -54,7 +56,6 @@ Deno.serve(async (req) => {
       createPlacesAsVerified: data.create_places_as_verified === true,
       autoVerifyAiCall: data.auto_verify_ai_call !== false,
       autoVerifyAiEmail: data.auto_verify_ai_email !== false,
-      autoVerifyVideo: data.auto_verify_video === true,
     },
     updatedAt: data.updated_at,
   });

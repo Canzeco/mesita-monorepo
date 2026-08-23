@@ -70,7 +70,6 @@ export async function updateEnrichmentTriggers(
 type SettingsResponse = {
   autoVerifyAiCall: boolean;
   autoVerifyAiEmail: boolean;
-  autoVerifyVideo: boolean;
   atlasGatherGoogleImages: number;
   atlasGatherInstagramDepth: number;
   atlasGatherInstagramPosts: number;

@@ -15,7 +15,6 @@ const FALLBACK_CONFIG: VerificationConfig = {
   createPlacesAsVerified: false,
   autoVerifyAiCall: true,
   autoVerifyAiEmail: true,
-  autoVerifyVideo: false,
 };
 
 export default async function GeneralConfigPage() {

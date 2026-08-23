@@ -11,7 +11,6 @@ export type VerificationConfig = {
   createPlacesAsVerified: boolean;
   autoVerifyAiCall: boolean;
   autoVerifyAiEmail: boolean;
-  autoVerifyVideo: boolean;
 };
 
 type ConfigPayload = {
@@ -26,7 +25,6 @@ function normalizeConfig(
     createPlacesAsVerified: raw?.createPlacesAsVerified === true,
     autoVerifyAiCall: raw?.autoVerifyAiCall !== false,
     autoVerifyAiEmail: raw?.autoVerifyAiEmail !== false,
-    autoVerifyVideo: raw?.autoVerifyVideo === true,
   };
 }
 
