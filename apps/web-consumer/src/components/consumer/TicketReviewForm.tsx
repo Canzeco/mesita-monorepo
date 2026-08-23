@@ -105,10 +105,10 @@ export function TicketReviewForm({
     <div className="space-y-1">
       {placeName ? (
         <div className="mb-2">
-          <p className="text-foreground text-[15px] font-extrabold tracking-tight">
+          <p className="text-foreground text-sm font-extrabold tracking-tight">
             Rate {placeName}
           </p>
-          <p className="text-muted-foreground mt-0.5 text-[12px]">
+          <p className="text-muted-foreground mt-0.5 text-xs">
             On Mesita · feeds its rating
           </p>
         </div>
@@ -119,7 +119,7 @@ export function TicketReviewForm({
         <div className="flex items-baseline justify-between gap-2">
           <p className="text-foreground text-sm font-extrabold">Overall</p>
           {draft.overall > 0 ? (
-            <p className="text-muted-foreground text-[11px] tabular-nums">
+            <p className="text-muted-foreground type-label tabular-nums">
               {draft.overall}
             </p>
           ) : null}
@@ -138,9 +138,9 @@ export function TicketReviewForm({
           className="border-border/60 flex items-center justify-between gap-3 border-b py-2.5 last:border-b-0"
         >
           <div className="flex min-w-0 items-baseline gap-2">
-            <p className="text-foreground text-[13px] font-semibold">{label}</p>
+            <p className="text-foreground type-body font-semibold">{label}</p>
             {draft[key] > 0 ? (
-              <p className="text-muted-foreground text-[11px] tabular-nums">
+              <p className="text-muted-foreground type-label tabular-nums">
                 {draft[key]}
               </p>
             ) : null}
@@ -155,11 +155,11 @@ export function TicketReviewForm({
       ))}
 
       <label className="mt-2 block">
-        <span className="text-foreground mb-1 flex items-center justify-between text-[12px] font-semibold">
+        <span className="text-foreground mb-1 flex items-center justify-between text-xs font-semibold">
           <span>Notes</span>
           <span
             className={cn(
-              "text-[11px] font-normal tabular-nums",
+              "type-label font-normal tabular-nums",
               noteLen >= NOTE_MIN
                 ? "text-emerald-600"
                 : "text-muted-foreground",
@@ -181,13 +181,13 @@ export function TicketReviewForm({
       </label>
 
       {error ? (
-        <p className="bg-destructive/10 text-destructive rounded-lg px-3 py-2 text-[12px]">
+        <p className="bg-destructive/10 text-destructive rounded-lg px-3 py-2 text-xs">
           {error}
         </p>
       ) : null}
 
       {!canSubmit ? (
-        <p className="text-muted-foreground text-[12px]">
+        <p className="text-muted-foreground text-xs">
           {ratingsSet
             ? `Your note needs at least ${NOTE_MIN} characters.`
             : "Rate every row to continue."}

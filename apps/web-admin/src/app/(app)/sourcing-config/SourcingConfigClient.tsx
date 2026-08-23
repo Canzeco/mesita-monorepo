@@ -175,7 +175,7 @@ export function SourcingConfigClient({
                         {ch.verb === "search" ? "Search" : "Add"}
                       </span>
                       {ch.live && (
-                        <span className="rounded-full bg-green-100 px-1.5 py-0.5 text-[10px] font-medium text-green-700">
+                        <span className="rounded-full bg-green-100 px-1.5 py-0.5 type-meta font-medium text-green-700">
                           live
                         </span>
                       )}

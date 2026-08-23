@@ -16,7 +16,7 @@ export function FilterGroupLabel({
   return (
     <p
       className={cn(
-        "text-primary/70 mb-3 text-[10px] font-bold tracking-[0.16em] uppercase",
+        "text-primary/70 type-meta mb-3 font-bold tracking-[0.16em] uppercase",
         className,
       )}
     >
@@ -38,7 +38,7 @@ export function SectionLabel({
   return (
     <p
       className={cn(
-        "mb-2 text-[11px] font-semibold tracking-wide",
+        "type-label mb-2 font-semibold tracking-wide",
         sub ? "text-muted-foreground/70" : "text-muted-foreground",
         className,
       )}
@@ -90,7 +90,7 @@ export function Pill({
       disabled={disabled}
       aria-pressed={active}
       className={cn(
-        "flex min-h-11 shrink-0 items-center gap-1.5 rounded-full px-4 text-[13px] font-medium whitespace-nowrap transition",
+        "type-body flex min-h-11 shrink-0 items-center gap-1.5 rounded-full px-4 font-medium whitespace-nowrap transition",
         disabled
           ? "bg-muted/40 text-muted-foreground/60 cursor-not-allowed"
           : active
@@ -106,7 +106,7 @@ export function Pill({
 /** `soon` tag riding inside a disabled Pill — the parked half of an axis. */
 export function PillSoon() {
   return (
-    <span className="bg-foreground/10 text-muted-foreground/70 rounded-full px-1.5 py-0.5 text-[9px] font-bold tracking-[0.08em] uppercase">
+    <span className="bg-foreground/10 text-muted-foreground/70 type-meta rounded-full px-1.5 py-0.5 font-bold tracking-[0.08em] uppercase">
       soon
     </span>
   );

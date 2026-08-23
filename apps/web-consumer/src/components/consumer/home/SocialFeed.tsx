@@ -86,11 +86,9 @@ export function SocialFeed({ places }: { places: Place[] }) {
     <div className="scrollbar-hide min-h-0 flex-1 overflow-y-auto">
       <div className="px-4 pt-4 pb-6">
         <div className="mb-3 flex items-center justify-between px-1">
-          <p className="text-muted-foreground text-xs font-semibold tracking-wider uppercase">
-            Activity
-          </p>
+          <p className="text-muted-foreground type-eyebrow">Activity</p>
           <div className="flex items-center gap-2">
-            <span className="text-primary bg-primary/10 flex items-center gap-1.5 rounded-full px-2 py-1 text-[10px] font-semibold">
+            <span className="text-primary bg-primary/10 type-meta flex items-center gap-1.5 rounded-full px-2 py-1 font-semibold">
               <span className="relative flex h-1.5 w-1.5">
                 <span className="bg-primary absolute inset-0 animate-ping rounded-full opacity-75" />
                 <span className="bg-primary relative h-1.5 w-1.5 rounded-full" />
@@ -102,7 +100,7 @@ export function SocialFeed({ places }: { places: Place[] }) {
               onClick={refresh}
               disabled={refreshing}
               aria-label="Refresh activity"
-              className="border-border bg-card text-muted-foreground hover:text-foreground shadow-rest flex h-7 items-center gap-1.5 rounded-full border px-2.5 text-[11px] font-semibold transition active:scale-95 disabled:opacity-60"
+              className="border-border bg-card text-muted-foreground hover:text-foreground shadow-rest type-label flex h-7 items-center gap-1.5 rounded-full border px-2.5 font-semibold transition active:scale-95 disabled:opacity-60"
             >
               <RefreshCw
                 className={cn("h-3 w-3", refreshing && "animate-spin")}
@@ -153,7 +151,7 @@ export function SocialFeed({ places }: { places: Place[] }) {
         {GLOBAL_ACTIVITY.length > 0 ? (
           <>
             <div className="mt-6 mb-3 flex items-center gap-3 px-1">
-              <p className="text-muted-foreground text-[11px] font-semibold tracking-[0.14em] uppercase">
+              <p className="text-muted-foreground type-label font-semibold tracking-[0.14em] uppercase">
                 On Mesita
               </p>
               <span className="bg-border h-px flex-1" />

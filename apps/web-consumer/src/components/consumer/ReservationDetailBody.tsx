@@ -7,9 +7,7 @@ import { useState } from "react";
 import type { ReservationItem } from "@/lib/mock/reservations-mock";
 import { cn, guestNoun } from "@/lib/utils";
 import { RESERVATION_FLOW, statusMeta } from "@/lib/reservation-status";
-import {
-  MetaRow,
-} from "@/components/consumer/reservation-detail-ui";
+import { MetaRow } from "@/components/consumer/reservation-detail-ui";
 import { ReservationActions } from "@/components/consumer/reservation-actions";
 import { apiConfirmReservation } from "@/lib/api/reservations";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
@@ -45,7 +43,7 @@ function LifecycleStepper({ status }: { status: ReservationItem["status"] }) {
             />
             <span
               className={cn(
-                "truncate text-[10.5px] font-medium",
+                "type-label truncate font-medium",
                 i === index
                   ? "text-foreground"
                   : done
@@ -125,7 +123,7 @@ export function ReservationDetailBody({
           </h1>
           <span
             className={cn(
-              "inline-flex shrink-0 items-center gap-1 rounded-md border px-2.5 py-0.5 text-[11px] font-semibold",
+              "type-label inline-flex shrink-0 items-center gap-1 rounded-md border px-2.5 py-0.5 font-semibold",
               meta.pillClass,
             )}
           >
@@ -143,7 +141,7 @@ export function ReservationDetailBody({
       {banner && (
         <p
           className={cn(
-            "rounded-2xl px-3 py-2.5 text-[12.5px] leading-snug",
+            "type-body rounded-2xl px-3 py-2.5 leading-snug",
             r.status === "booking" || r.status === "created"
               ? "bg-amber-50 text-amber-900 ring-1 ring-amber-400/30"
               : r.status === "failed"
@@ -174,12 +172,13 @@ export function ReservationDetailBody({
         )}
       </section>
 
-
       {showOffers && (
         <section className="border-border bg-card flex flex-col gap-2 rounded-2xl border p-3">
-          <p className="text-[12.5px] font-semibold">Pick an offered time</p>
+          <p className="type-body font-semibold">Pick an offered time</p>
           {offers.map((alt) => {
-            const label = [alt.date, alt.time, alt.note].filter(Boolean).join(" · ");
+            const label = [alt.date, alt.time, alt.note]
+              .filter(Boolean)
+              .join(" · ");
             return (
               <button
                 key={`${alt.date ?? ""}-${alt.time}-${alt.note ?? ""}`}
@@ -198,7 +197,7 @@ export function ReservationDetailBody({
             );
           })}
           {confirmError && (
-            <p className="text-[12px] font-medium text-red-600">{confirmError}</p>
+            <p className="text-xs font-medium text-red-600">{confirmError}</p>
           )}
         </section>
       )}

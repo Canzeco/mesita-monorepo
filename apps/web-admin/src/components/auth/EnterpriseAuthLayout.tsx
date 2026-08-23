@@ -28,10 +28,10 @@ export function EnterpriseAuthLayout({
         <div className="flex flex-1 items-center justify-center px-6 py-12 sm:px-10">
           <div className="w-full max-w-[420px]">
             <header className="mb-7">
-              <p className="text-muted-foreground text-[10px] font-medium tracking-[0.14em] uppercase">
+              <p className="text-muted-foreground type-meta font-medium tracking-[0.14em] uppercase">
                 Mesita
               </p>
-              <h1 className="font-display mt-1.5 text-[30px] leading-tight font-semibold tracking-[-0.02em]">
+              <h1 className="font-display mt-1.5 text-3xl leading-tight font-semibold tracking-[-0.02em]">
                 {title}
               </h1>
               <p className="text-muted-foreground mt-1.5 text-sm leading-[1.55]">
@@ -55,13 +55,13 @@ function LandingPane() {
         <Link href="/" className="inline-flex items-center no-underline">
           <MesitaLogo variant="horizontal" className="h-7 w-auto" />
         </Link>
-        <span className="text-[10px] font-bold tracking-[0.14em] text-background/70 uppercase">
+        <span className="type-meta font-bold tracking-[0.14em] text-background/70 uppercase">
           Admin
         </span>
       </div>
 
       <div className="relative z-10 flex flex-col gap-8">
-        <h2 className="font-display max-w-[20ch] text-[40px] leading-[1.05] font-semibold tracking-[-0.02em] xl:text-[46px]">
+        <h2 className="font-display max-w-[20ch] text-4xl leading-[1.05] font-semibold tracking-[-0.02em] xl:text-5xl">
           Internal operations console.
         </h2>
         <ul className="grid grid-cols-1 gap-3.5 xl:grid-cols-2">
@@ -88,7 +88,7 @@ function LandingPane() {
         </ul>
       </div>
 
-      <p className="relative z-10 text-[11.5px] text-background/70">
+      <p className="relative z-10 text-xs text-background/70">
         Made in Monterrey · © Mesita
       </p>
     </aside>
@@ -109,10 +109,10 @@ function ValueProp({
       <span className="flex h-8 w-8 items-center justify-center rounded-full bg-white/20">
         <Icon className="h-4 w-4" />
       </span>
-      <p className="font-display text-[15px] font-semibold tracking-[-0.01em]">
+      <p className="font-display text-sm font-semibold tracking-[-0.01em]">
         {title}
       </p>
-      <p className="text-[12.5px] leading-[1.5] text-background/80">{blurb}</p>
+      <p className="type-body leading-[1.5] text-background/80">{blurb}</p>
     </li>
   );
 }

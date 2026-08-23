@@ -14,7 +14,7 @@ export function SwipeDecisionBadge({
   return (
     <div
       className={cn(
-        "pointer-events-none absolute top-4 z-30 rounded-md px-3 py-1 text-[11px] font-bold tracking-wider text-white uppercase transition-all",
+        "type-label pointer-events-none absolute top-4 z-30 rounded-md px-3 py-1 font-bold tracking-wider text-white uppercase transition-all",
         side === "left"
           ? "bg-foreground/40 left-4 border-2 border-white"
           : "bg-pink-gradient right-4",

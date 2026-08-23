@@ -95,7 +95,7 @@ export default async function AppLayout({
               Sign out
             </button>
           </form>
-          <p className="text-muted-foreground text-[11px]">
+          <p className="text-muted-foreground type-label">
             Trying to sign in as someone else?{" "}
             <Link href="/" className="font-semibold underline">
               Back to sign-in

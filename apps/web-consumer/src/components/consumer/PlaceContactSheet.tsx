@@ -114,7 +114,7 @@ export function PlaceContactSheet({
           </span>
           <div className="min-w-0">
             <h2 className={SHEET_TITLE_CLASS}>Contact</h2>
-            <p className="text-muted-foreground truncate text-[12px]">
+            <p className="text-muted-foreground truncate text-xs">
               {place.name}
             </p>
           </div>
@@ -138,7 +138,7 @@ export function PlaceContactSheet({
               ))}
             </SettingsGroup>
           ) : (
-            <p className="border-border bg-card text-muted-foreground rounded-2xl border px-4 py-6 text-center text-[13px]">
+            <p className="border-border bg-card text-muted-foreground type-body rounded-2xl border px-4 py-6 text-center">
               No contact details yet.
             </p>
           )}

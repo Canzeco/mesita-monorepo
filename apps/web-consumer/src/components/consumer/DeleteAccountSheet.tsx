@@ -55,13 +55,13 @@ export function DeleteAccountSheet({
           </span>
           <div>
             <h2 className={SHEET_TITLE_CLASS}>Delete account</h2>
-            <p className="text-muted-foreground text-[12px]">
+            <p className="text-muted-foreground text-xs">
               This is permanent and can&apos;t be undone.
             </p>
           </div>
         </div>
 
-        <p className="text-muted-foreground mt-4 text-[13px] leading-snug">
+        <p className="text-muted-foreground type-body mt-4 leading-snug">
           Your profile, tickets, reservations and rewards will be permanently
           deleted, and your sign-in will stop working immediately. If you&apos;d
           rather we handle it manually, email{" "}
@@ -76,7 +76,7 @@ export function DeleteAccountSheet({
           .
         </p>
 
-        <p className="mt-4 text-[13px] font-medium">
+        <p className="type-body mt-4 font-medium">
           Type{" "}
           <span className="text-destructive font-mono">{CONFIRM_WORD}</span> to
           confirm:

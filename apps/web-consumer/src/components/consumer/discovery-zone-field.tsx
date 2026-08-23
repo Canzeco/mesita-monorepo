@@ -108,7 +108,7 @@ export function DiscoveryZoneField({
       <div className="bg-muted/60 relative flex h-11 items-center rounded-full pr-1 pl-3">
         <Search className="text-muted-foreground h-4 w-4 shrink-0" />
         {zone ? (
-          <span className="bg-pink-gradient shadow-glow-sm ml-2 flex min-w-0 flex-1 items-center gap-1.5 rounded-full py-1 pr-1.5 pl-3 text-[13px] font-medium text-white">
+          <span className="bg-pink-gradient shadow-glow-sm type-body ml-2 flex min-w-0 flex-1 items-center gap-1.5 rounded-full py-1 pr-1.5 pl-3 font-medium text-white">
             <MapPin className="h-3.5 w-3.5 shrink-0" />
             <span className="truncate">{zone.label}</span>
             <button
@@ -132,7 +132,7 @@ export function DiscoveryZoneField({
             value={query}
             onChange={(e) => updateQuery(e.target.value)}
             placeholder="Search a city, zone or address…"
-            className="placeholder:text-muted-foreground/60 min-w-0 flex-1 bg-transparent px-2 text-[13px] outline-none"
+            className="placeholder:text-muted-foreground/60 type-body min-w-0 flex-1 bg-transparent px-2 outline-none"
           />
         )}
         {(searching || (!zone && query.length > 0)) && (
@@ -168,7 +168,7 @@ export function DiscoveryZoneField({
       </div>
 
       {!hasLocation && zone === null && (
-        <p className="text-muted-foreground/70 text-[11px]">
+        <p className="text-muted-foreground/70 type-label">
           Turn on location to rank by distance, or search a place above.
         </p>
       )}
@@ -176,7 +176,7 @@ export function DiscoveryZoneField({
       {!zone && trimmed.length >= 2 && (
         <div className="border-border/60 divide-border/50 max-h-56 divide-y overflow-y-auto rounded-2xl border">
           {predictions.length === 0 && !searching ? (
-            <p className="text-muted-foreground px-3 py-3 text-[13px]">
+            <p className="text-muted-foreground type-body px-3 py-3">
               No matches.
             </p>
           ) : (
@@ -193,11 +193,11 @@ export function DiscoveryZoneField({
               >
                 <MapPin className="text-muted-foreground h-4 w-4 shrink-0" />
                 <span className="min-w-0 flex-1">
-                  <span className="block truncate text-[13px] font-medium">
+                  <span className="type-body block truncate font-medium">
                     {prediction.mainText}
                   </span>
                   {prediction.secondaryText && (
-                    <span className="text-muted-foreground block truncate text-[11px]">
+                    <span className="text-muted-foreground type-label block truncate">
                       {prediction.secondaryText}
                     </span>
                   )}

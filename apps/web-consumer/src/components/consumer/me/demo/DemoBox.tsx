@@ -35,10 +35,10 @@ export function DemoBox({
   return (
     <div className="border-border/70 rounded-2xl border border-dashed p-3">
       <div className="flex min-h-6 items-center gap-1.5">
-        <span className="bg-muted text-muted-foreground rounded px-1.5 py-0.5 text-[9px] font-bold tracking-[0.12em] uppercase">
+        <span className="bg-muted text-muted-foreground type-meta rounded px-1.5 py-0.5 font-bold tracking-[0.12em] uppercase">
           Demo
         </span>
-        <span className="text-muted-foreground text-[11px] font-medium">
+        <span className="text-muted-foreground type-label font-medium">
           {label}
         </span>
         {action && <span className="ml-auto">{action}</span>}
@@ -70,7 +70,7 @@ export function DemoSegmented<T extends string>({
             onClick={() => onSelect(o.value)}
             aria-pressed={active}
             className={cn(
-              "flex-1 rounded-md px-2 py-1.5 text-center text-[12px] font-semibold whitespace-nowrap transition",
+              "flex-1 rounded-md px-2 py-1.5 text-center text-xs font-semibold whitespace-nowrap transition",
               active
                 ? "bg-background text-foreground shadow-rest"
                 : "text-muted-foreground hover:text-foreground",

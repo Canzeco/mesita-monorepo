@@ -145,18 +145,18 @@ export function AiConnectModal({
           <div>
             <h2 className="font-display flex items-center gap-2 text-xl font-semibold tracking-tight">
               AI Connector
-              <span className="border-border text-muted-foreground inline-flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-[8px] font-semibold tracking-[0.12em] uppercase">
+              <span className="border-border text-muted-foreground type-meta inline-flex items-center gap-1 rounded-full border px-1.5 py-0.5 font-semibold tracking-[0.12em] uppercase">
                 <Crown className="h-2.5 w-2.5 text-amber-600" />
                 Premium
               </span>
             </h2>
-            <p className="text-muted-foreground text-[12px]">
+            <p className="text-muted-foreground text-xs">
               Control your Mesita through ChatGPT, Claude or any chatbot (MCP)
             </p>
           </div>
         </div>
 
-        <p className="text-muted-foreground mt-4 text-[13px] leading-relaxed">
+        <p className="text-muted-foreground type-body mt-4 leading-relaxed">
           Generate a personal access token, then add Mesita as an MCP server in
           Claude, Cursor, or ChatGPT. Your AI can then find places, save them,
           book tables, and check rewards — as you.{" "}
@@ -169,7 +169,7 @@ export function AiConnectModal({
         {!canConnect && (
           <div className="mt-4 flex items-start gap-3 rounded-2xl border border-amber-500/25 bg-amber-500/10 px-4 py-3">
             <Crown className="mt-0.5 h-4 w-4 shrink-0 text-amber-700" />
-            <p className="text-[12px] leading-relaxed text-amber-950">
+            <p className="text-xs leading-relaxed text-amber-950">
               You’re on {CLASS_FLOOR.label} with the Free plan. Subscribe to
               Premium — or reach {REACH_ENTRY_CLASS.label} via Instagram — to
               create an MCP token and let an AI control your profile.
@@ -200,7 +200,7 @@ export function AiConnectModal({
                       ? "Create MCP token"
                       : "Premium required"}
                 </span>
-                <span className="text-muted-foreground block truncate text-[11px]">
+                <span className="text-muted-foreground type-label block truncate">
                   {canConnect
                     ? "Shown once — copy it into your AI client"
                     : "Upgrade to Premium to mint a token"}
@@ -214,12 +214,12 @@ export function AiConnectModal({
           <div className="border-border bg-card mt-4 overflow-hidden rounded-2xl border">
             <div className="border-border/60 border-b px-4 py-3">
               <p className="text-sm font-semibold">New token</p>
-              <p className="text-muted-foreground text-[11px]">
+              <p className="text-muted-foreground type-label">
                 Copy now — Mesita won’t show the full token again
               </p>
             </div>
             <div className="space-y-3 px-4 py-3">
-              <code className="bg-muted block rounded-lg px-3 py-2 text-[11px] leading-relaxed break-all">
+              <code className="bg-muted type-label block rounded-lg px-3 py-2 leading-relaxed break-all">
                 {fresh.token}
               </code>
               <button
@@ -233,10 +233,10 @@ export function AiConnectModal({
                 Copy token
               </button>
               <div>
-                <p className="text-muted-foreground mb-1 text-[11px] font-semibold tracking-wide uppercase">
+                <p className="text-muted-foreground type-label mb-1 font-semibold tracking-wide uppercase">
                   MCP URL
                 </p>
-                <code className="bg-muted block rounded-lg px-3 py-2 text-[11px] break-all">
+                <code className="bg-muted type-label block rounded-lg px-3 py-2 break-all">
                   {fresh.mcp_url}
                 </code>
               </div>
@@ -258,7 +258,7 @@ export function AiConnectModal({
         )}
 
         <div className="mt-5">
-          <p className="text-foreground/60 mb-2 text-[10px] font-semibold tracking-[0.14em] uppercase">
+          <p className="text-foreground/60 type-meta mb-2 font-semibold tracking-[0.14em] uppercase">
             Active tokens
           </p>
           <ActiveTokensList
@@ -268,7 +268,7 @@ export function AiConnectModal({
           />
         </div>
 
-        <p className="text-muted-foreground mt-4 text-[11px] leading-relaxed">
+        <p className="text-muted-foreground type-label mt-4 leading-relaxed">
           Tools: get profile, suggest/get places, save places, list/create
           reservations, list rewards. Revoke anytime if a client is compromised.
         </p>

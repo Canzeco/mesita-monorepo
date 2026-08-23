@@ -34,7 +34,7 @@ type Picked = {
 };
 
 const CHIP =
-  "rounded-md px-2 py-0.5 text-[11px] font-semibold transition border";
+  "rounded-md px-2 py-0.5 type-label font-semibold transition border";
 // On the dark ledger surface the "selected" state inverts to the page
 // background, so the chip states are written inline rather than as shared
 // light-surface constants.
@@ -80,7 +80,7 @@ export function ResolvedLedger({ cfg }: { cfg: PromosConfig }) {
 
   return (
     <section className="bg-foreground text-background rounded-2xl p-4 sm:p-5">
-      <p className="text-[10px] font-bold tracking-[0.14em] uppercase opacity-60">
+      <p className="type-meta font-bold tracking-[0.14em] uppercase opacity-60">
         Resolved — pick a guest
       </p>
 
@@ -148,7 +148,7 @@ export function ResolvedLedger({ cfg }: { cfg: PromosConfig }) {
         {terms.map((t) => (
           <div
             key={t.label}
-            className="flex items-baseline justify-between py-[3px] text-[12.5px]"
+            className="flex items-baseline justify-between py-[3px] type-body"
           >
             <dt className={t.value == null ? "opacity-40" : "opacity-85"}>
               {t.label}
@@ -162,11 +162,11 @@ export function ResolvedLedger({ cfg }: { cfg: PromosConfig }) {
             </dd>
           </div>
         ))}
-        <div className="mt-1.5 flex items-baseline justify-between border-t border-white/20 pt-2 text-[15px] font-bold">
+        <div className="mt-1.5 flex items-baseline justify-between border-t border-white/20 pt-2 text-sm font-bold">
           <dt>Pays</dt>
           <dd className="font-mono tabular-nums">
             {total}%{" "}
-            <span className="text-[11px] font-medium opacity-60">
+            <span className="type-label font-medium opacity-60">
               · first MX${cfg.cap.toLocaleString("en-US")}
             </span>
           </dd>

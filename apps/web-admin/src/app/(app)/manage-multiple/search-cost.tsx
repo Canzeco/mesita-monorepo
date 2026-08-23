@@ -57,7 +57,7 @@ export function CostCalculator({
     <div className="border-border bg-card shadow-elev rounded-2xl border px-5 py-4">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <p className="text-muted-foreground text-[10px] font-medium tracking-[0.14em] uppercase">
+          <p className="text-muted-foreground type-meta font-medium tracking-[0.14em] uppercase">
             Estimated cost (USD)
           </p>
           <p className="text-muted-foreground/80 mt-1 text-xs">
@@ -68,7 +68,7 @@ export function CostCalculator({
           <p className="font-display text-4xl font-semibold tracking-tight tabular-nums">
             {formatUsdEstimate(totalCostUsd)}
           </p>
-          <span className="text-muted-foreground text-xs font-medium tracking-[0.14em] uppercase">
+          <span className="text-muted-foreground type-eyebrow">
             USD
           </span>
         </div>
@@ -98,7 +98,7 @@ export function CostCalculator({
         />
       </div>
 
-      <p className="text-muted-foreground/70 mt-3 text-[11px] leading-relaxed">
+      <p className="text-muted-foreground/70 mt-3 type-label leading-relaxed">
         Worst-case estimate. Quality filters don&apos;t change the cost — every
         page of 20 results is one billable request whether or not the places
         pass the filters. The first {freeTierLabel} Pro calls each month are
@@ -128,7 +128,7 @@ function CalcStep({
         </span>
       )}
       <div className="min-w-0">
-        <p className="text-muted-foreground text-[10px] font-medium tracking-[0.14em] uppercase">
+        <p className="text-muted-foreground type-meta font-medium tracking-[0.14em] uppercase">
           {label}
         </p>
         <p

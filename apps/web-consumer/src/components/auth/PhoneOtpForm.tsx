@@ -146,7 +146,7 @@ export function PhoneOtpForm({ redirectAfter }: { redirectAfter: string }) {
           />
         </label>
 
-        <p className="text-muted-foreground text-[11px]">
+        <p className="text-muted-foreground type-label">
           We&apos;ll text you a {OTP_LENGTH}-digit code. Standard SMS rates may
           apply.
         </p>

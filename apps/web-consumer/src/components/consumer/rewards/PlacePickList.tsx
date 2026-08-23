@@ -130,7 +130,7 @@ export function PlacePickList({
   if (status === "error") {
     return (
       <div className="border-border bg-card flex items-center justify-between gap-3 rounded-2xl border px-4 py-3">
-        <p className="text-muted-foreground text-[12.5px]">
+        <p className="text-muted-foreground type-body">
           Couldn&apos;t load the places.
         </p>
         <button
@@ -139,7 +139,7 @@ export function PlacePickList({
             setStatus("loading");
             setReloadKey((k) => k + 1);
           }}
-          className="text-primary text-[12.5px] font-semibold"
+          className="text-primary type-body font-semibold"
         >
           Retry
         </button>
@@ -153,7 +153,7 @@ export function PlacePickList({
         <span className="bg-muted text-muted-foreground grid size-11 place-items-center rounded-full">
           <MapPin className="size-5" />
         </span>
-        <p className="text-muted-foreground text-[12.5px]">
+        <p className="text-muted-foreground type-body">
           No places on Mesita yet — check back soon.
         </p>
       </div>
@@ -170,7 +170,7 @@ export function PlacePickList({
         <span className="bg-muted text-muted-foreground grid size-11 place-items-center rounded-full">
           <SearchX className="size-5" />
         </span>
-        <p className="text-muted-foreground text-[12.5px]">
+        <p className="text-muted-foreground type-body">
           No place matches{" "}
           <span className="text-foreground font-semibold">{query.trim()}</span>.
         </p>
@@ -178,7 +178,7 @@ export function PlacePickList({
           <button
             type="button"
             onClick={onClearQuery}
-            className="text-primary text-[12.5px] font-semibold"
+            className="text-primary type-body font-semibold"
           >
             Clear search
           </button>
@@ -202,7 +202,7 @@ export function PlacePickList({
         ))}
       </ul>
       {anyLocked ? (
-        <p className="text-muted-foreground/80 px-1 text-[11px] leading-snug">
+        <p className="text-muted-foreground/80 type-label px-1 leading-snug">
           Only Mesita Partners run the Mesita reward program — the rest are on
           Mesita, but can&apos;t open a ticket yet.
         </p>
@@ -260,26 +260,26 @@ function PlaceRow({
       <span className="min-w-0 flex-1">
         <span
           className={cn(
-            "block truncate text-[13.5px] leading-tight font-bold",
+            "block truncate text-sm leading-tight font-bold",
             isPartner ? "text-foreground" : "text-muted-foreground",
           )}
         >
           {place.name}
         </span>
-        <span className="text-muted-foreground/80 mt-0.5 block truncate text-[11.5px]">
+        <span className="text-muted-foreground/80 mt-0.5 block truncate text-xs">
           {subtitle}
         </span>
       </span>
       {!isPartner ? (
         // One unambiguous locked signal, in one place.
-        <span className="bg-muted text-muted-foreground flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-extrabold tracking-wide uppercase">
+        <span className="bg-muted text-muted-foreground type-meta flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 font-extrabold tracking-wide uppercase">
           <Lock className="size-2.5" />
           Soon
         </span>
       ) : hasOpen ? (
         // The one place-row state worth showing: this place already holds a
         // live ticket, so the tap re-opens it instead of making a second one.
-        <span className="bg-primary/10 text-primary shrink-0 rounded-full px-2 py-0.5 text-[10px] font-extrabold tracking-wide uppercase">
+        <span className="bg-primary/10 text-primary type-meta shrink-0 rounded-full px-2 py-0.5 font-extrabold tracking-wide uppercase">
           Open
         </span>
       ) : (

@@ -57,13 +57,13 @@ export function SavingsReveal({
       <span className="grid size-11 place-items-center rounded-full bg-white/20">
         <PartyPopper className="size-5" />
       </span>
-      <p className="text-[11px] font-bold tracking-[0.14em] uppercase opacity-85">
+      <p className="type-label font-bold tracking-[0.14em] uppercase opacity-85">
         Visit complete at {placeName}
       </p>
-      <p className="font-display text-[38px] leading-none font-bold tabular-nums">
+      <p className="font-display text-4xl leading-none font-bold tabular-nums">
         {savedCents > 0 ? formatCurrency(shown) : "¡Listo!"}
       </p>
-      <p className="text-[12px] opacity-90">
+      <p className="text-xs opacity-90">
         {savedCents > 0 ? "saved on this visit" : "ticket closed"}
       </p>
     </section>

@@ -87,7 +87,7 @@ export function ClassLadder() {
             <div className="min-w-0 flex-1">
               <p
                 className={cn(
-                  "font-display text-[15px] leading-tight font-bold tracking-tight",
+                  "font-display text-sm leading-tight font-bold tracking-tight",
                   !current && !unlocked && "text-muted-foreground",
                 )}
               >
@@ -101,7 +101,7 @@ export function ClassLadder() {
                   // cost the only thing it could: contrast. It pushed gold's
                   // requirement line to 4.48:1, just under AA. Full ink lands
                   // every rung between 6.29:1 and 8.24:1.
-                  "mt-0.5 flex items-center gap-1 text-[12px] leading-snug",
+                  "mt-0.5 flex items-center gap-1 text-xs leading-snug",
                   current ? undefined : "text-muted-foreground",
                 )}
               >

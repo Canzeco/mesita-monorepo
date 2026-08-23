@@ -137,7 +137,7 @@ function MetaCard({
       <div className="border-border/60 flex flex-col gap-4 border-t px-5 pb-5 sm:px-6 sm:pb-6">
         <ReadField label="UID" boxed>
           <span className="flex min-w-0 flex-1 items-center justify-between gap-2">
-            <code className="min-w-0 truncate font-mono text-[11px]">
+            <code className="min-w-0 truncate font-mono type-label">
               {place.id}
             </code>
             <span className="text-muted-foreground shrink-0 text-xs">
@@ -154,7 +154,7 @@ function MetaCard({
             {by != null && (
               <span
                 className={
-                  "inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold " +
+                  "inline-flex items-center rounded-full px-2 py-0.5 type-meta font-semibold " +
                   (by === "ai"
                     ? "bg-sky-500/10 text-sky-700"
                     : "bg-card text-muted-foreground border-border/70 border")
@@ -176,8 +176,8 @@ function MetaCard({
             </span>
           ) : (
             <span className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
-              <span className="truncate font-mono text-[13px]">{verifiedBy}</span>
-              <span className="text-muted-foreground text-[11px]">
+              <span className="truncate font-mono type-body">{verifiedBy}</span>
+              <span className="text-muted-foreground type-label">
                 {[
                   verification?.method?.replace(/_/g, " "),
                   verification?.decidedVia?.replace(/_/g, " "),
@@ -267,7 +267,7 @@ function EmbeddingCard({ place }: { place: AdminPlace }) {
           {resolvedName ? (
             <span className="flex min-w-0 flex-col gap-0.5 py-0.5">
               <span className="text-sm">{resolvedName}</span>
-              <span className="text-muted-foreground text-[11px]">
+              <span className="text-muted-foreground type-label">
                 {override
                   ? "Operator override — this is what gets embedded."
                   : "Following the Google name — no override set."}
@@ -293,7 +293,7 @@ function EmbeddingCard({ place }: { place: AdminPlace }) {
         </ReadField>
         <ReadField label="Vector" boxed>
           {vector && preview ? (
-            <code className="text-muted-foreground break-all font-mono text-[10px] leading-snug">
+            <code className="text-muted-foreground break-all font-mono type-meta leading-snug">
               [{preview.map((n) => n.toFixed(4)).join(", ")}
               {dims > preview.length ? `, \u2026 +${dims - preview.length} dims` : ""}]
             </code>
@@ -304,17 +304,17 @@ function EmbeddingCard({ place }: { place: AdminPlace }) {
           )}
         </ReadField>
         <ReadField label="Model" boxed>
-          <span className="text-muted-foreground text-[11px] tabular-nums">
+          <span className="text-muted-foreground type-label tabular-nums">
             text-embedding-3-small{dims ? ` \u00b7 ${dims}d` : " \u00b7 1536d"} \u00b7 locked, not a knob
           </span>
         </ReadField>
         <ReadField label="Source hash" boxed>
           {place.embedding_source_hash ? (
             <span className="flex min-w-0 flex-col gap-0.5 py-0.5">
-              <code className="min-w-0 truncate font-mono text-[11px]">
+              <code className="min-w-0 truncate font-mono type-label">
                 {place.embedding_source_hash}
               </code>
-              <span className="text-muted-foreground text-[11px]">
+              <span className="text-muted-foreground type-label">
                 The model is only called again when this goes stale.
               </span>
             </span>

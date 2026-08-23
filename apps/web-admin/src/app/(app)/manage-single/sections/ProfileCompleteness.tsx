@@ -17,7 +17,7 @@ const cx = (...c: (string | false | null | undefined)[]) =>
   c.filter(Boolean).join(" ");
 
 const CHIP_CLASS =
-  "rounded-full bg-amber-500/10 px-2 py-0.5 text-[10px] font-semibold text-amber-700 transition hover:bg-amber-500/20";
+  "rounded-full bg-amber-500/10 px-2 py-0.5 type-meta font-semibold text-amber-700 transition hover:bg-amber-500/20";
 
 type CompletenessCheck = {
   label: string;
@@ -149,7 +149,7 @@ export function ProfileCompleteness({ place }: { place: AdminPlace }) {
             )}
           </span>
           <div>
-            <p className="text-muted-foreground text-[11px] font-semibold tracking-[0.12em] uppercase">
+            <p className="text-muted-foreground type-label font-semibold tracking-[0.12em] uppercase">
               Profile completeness
             </p>
             <p className="font-display text-2xl leading-none font-bold tabular-nums">
@@ -173,13 +173,13 @@ export function ProfileCompleteness({ place }: { place: AdminPlace }) {
             />
           </div>
           {complete ? (
-            <p className="flex items-center gap-1.5 text-[11px] font-semibold text-emerald-700">
+            <p className="flex items-center gap-1.5 type-label font-semibold text-emerald-700">
               <CheckCircle2 className="h-3.5 w-3.5" />
               Profile complete — everything a guest needs is filled in.
             </p>
           ) : (
             <div className="flex flex-wrap items-center gap-1.5">
-              <span className="text-muted-foreground text-[10px] font-semibold tracking-wide uppercase">
+              <span className="text-muted-foreground type-meta font-semibold tracking-wide uppercase">
                 Missing:
               </span>
               {missing.slice(0, 5).map((c) => {
@@ -213,14 +213,14 @@ export function ProfileCompleteness({ place }: { place: AdminPlace }) {
                 );
               })}
               {missing.length > 5 && (
-                <span className="text-muted-foreground text-[10px]">
+                <span className="text-muted-foreground type-meta">
                   +{missing.length - 5} more
                 </span>
               )}
             </div>
           )}
           {enriching ? (
-            <p className="text-muted-foreground text-[11px]">
+            <p className="text-muted-foreground type-label">
               Enricher is still filling this profile — gaps may close on their own.
             </p>
           ) : null}

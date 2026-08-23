@@ -250,7 +250,7 @@ export function SearchTab({
           <PlacesMap places={result.uniquePlaces} />
 
           <section>
-            <h2 className="text-foreground text-xs font-medium tracking-[0.14em] uppercase">
+            <h2 className="text-foreground type-eyebrow">
               By query
             </h2>
             <ul className="border-border bg-card divide-border mt-3 divide-y rounded-2xl border">

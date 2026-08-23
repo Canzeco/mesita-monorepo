@@ -39,7 +39,7 @@ function CalcPanel({
 }) {
   return (
     <section className="border-border bg-card rounded-2xl border p-4">
-      <h3 className="text-muted-foreground mb-3 flex items-center gap-2 text-[11px] font-semibold tracking-[0.12em] uppercase">
+      <h3 className="text-muted-foreground mb-3 flex items-center gap-2 type-label font-semibold tracking-[0.12em] uppercase">
         {icon}
         {title}
       </h3>
@@ -93,7 +93,7 @@ function CalcStepper({
 
 function SubLabel({ children }: { children: React.ReactNode }) {
   return (
-    <p className="text-muted-foreground text-[11px] font-semibold tracking-wide uppercase">
+    <p className="text-muted-foreground type-label font-semibold tracking-wide uppercase">
       {children}
     </p>
   );
@@ -165,7 +165,7 @@ export function CostSection({
       <div className="border-border bg-card rounded-2xl border p-5 sm:p-6">
         <div className="grid grid-cols-2 gap-6 sm:gap-8">
           <div>
-            <p className="text-muted-foreground text-[11px] font-semibold tracking-[0.12em] uppercase">
+            <p className="text-muted-foreground type-label font-semibold tracking-[0.12em] uppercase">
               Cost
             </p>
             <p className="mt-1 text-3xl font-semibold tracking-tight tabular-nums sm:text-4xl">
@@ -174,7 +174,7 @@ export function CostSection({
             <p className="text-muted-foreground mt-1 text-sm">per place</p>
           </div>
           <div>
-            <p className="text-muted-foreground text-[11px] font-semibold tracking-[0.12em] uppercase">
+            <p className="text-muted-foreground type-label font-semibold tracking-[0.12em] uppercase">
               Time
             </p>
             <p className="mt-1 text-3xl font-semibold tracking-tight tabular-nums sm:text-4xl">
@@ -252,7 +252,7 @@ export function CostSection({
         <div className="border-border overflow-x-auto rounded-xl border">
           <table className="w-full min-w-[680px] text-sm">
                 <thead>
-                  <tr className="border-border text-muted-foreground border-b text-xs tracking-wide uppercase">
+                  <tr className="border-border text-muted-foreground border-b type-eyebrow">
                     <th className="px-4 py-2.5 text-left font-medium">Source / step</th>
                     <th className="hidden px-4 py-2.5 text-left font-medium sm:table-cell">Fields</th>
                     <th className="hidden px-4 py-2.5 text-left font-medium md:table-cell">Notes</th>

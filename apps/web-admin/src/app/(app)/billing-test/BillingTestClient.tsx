@@ -44,7 +44,7 @@ function VerdictChip({ verdict }: { verdict: Verdict }) {
   const { label, chip, Icon } = VERDICT_STYLE[verdict];
   return (
     <span
-      className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-semibold ${chip}`}
+      className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 type-label font-semibold ${chip}`}
     >
       <Icon className="h-3 w-3" />
       {label}
@@ -79,7 +79,7 @@ function ProbeCard({
         {result ? (
           <VerdictChip verdict={result.verdict} />
         ) : (
-          <span className="text-muted-foreground/60 inline-flex items-center gap-1.5 rounded-full border border-dashed px-2.5 py-1 text-[11px] font-medium">
+          <span className="text-muted-foreground/60 inline-flex items-center gap-1.5 rounded-full border border-dashed px-2.5 py-1 type-label font-medium">
             <CircleDashed className="h-3 w-3" />
             Not run
           </span>
@@ -89,7 +89,7 @@ function ProbeCard({
       {result ? (
         <div className="border-border/60 bg-muted/30 rounded-xl border p-3">
           <p className="text-foreground text-xs leading-relaxed">{result.detail}</p>
-          <div className="text-muted-foreground mt-2 flex flex-wrap gap-x-3 gap-y-1 text-[10px]">
+          <div className="text-muted-foreground mt-2 flex flex-wrap gap-x-3 gap-y-1 type-meta">
             {result.httpStatus !== null ? <span>HTTP {result.httpStatus}</span> : null}
             {result.latencyMs !== null ? <span>{result.latencyMs} ms</span> : null}
             {result.envKeys.length > 0 ? (
@@ -203,7 +203,7 @@ export function BillingTestClient() {
       ) : null}
 
       <section>
-        <h2 className="text-muted-foreground text-[11px] font-medium tracking-[0.14em] uppercase">
+        <h2 className="text-muted-foreground type-label font-medium tracking-[0.14em] uppercase">
           Vendors
         </h2>
         {/* Per-card Run stays: attributing an outage to one vendor is the whole

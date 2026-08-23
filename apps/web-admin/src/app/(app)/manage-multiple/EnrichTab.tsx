@@ -170,7 +170,7 @@ export function EnrichTab({ costSeed }: { costSeed: EnrichCostSeed | null }) {
                   }
                 >
                   <span className="block text-sm font-semibold">{m.label}</span>
-                  <span className="text-muted-foreground mt-1 block text-[11px] leading-snug">
+                  <span className="text-muted-foreground mt-1 block type-label leading-snug">
                     {m.hint}
                   </span>
                 </button>
@@ -304,12 +304,12 @@ export function EnrichTab({ costSeed }: { costSeed: EnrichCostSeed | null }) {
                       {id}
                     </span>
                     {r.status === "ok" && (
-                      <p className="text-muted-foreground text-[11px]">
+                      <p className="text-muted-foreground type-label">
                         Enricher queued
                       </p>
                     )}
                     {r.status === "error" && (
-                      <p className="text-destructive text-[11px]">{r.error}</p>
+                      <p className="text-destructive type-label">{r.error}</p>
                     )}
                   </div>
                 </li>

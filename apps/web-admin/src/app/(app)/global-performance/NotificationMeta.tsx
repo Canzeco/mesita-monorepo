@@ -132,7 +132,7 @@ export function MetaRow({ item }: { item: NotificationItem }) {
         href={`https://www.google.com/maps/place/?q=place_id:${item.place.googlePlaceId}`}
         target="_blank"
         rel="noopener noreferrer"
-        className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1 text-[11px] font-medium transition"
+        className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1 type-label font-medium transition"
       >
         <ExternalLink className="h-3 w-3" />
         Maps
@@ -155,7 +155,7 @@ export function MetaTag({
 }) {
   return (
     <span
-      className={`inline-flex rounded-md px-2 py-0.5 text-[11px] font-medium ${
+      className={`inline-flex rounded-md px-2 py-0.5 type-label font-medium ${
         className ?? "bg-muted text-muted-foreground"
       }`}
       title={title}
@@ -171,7 +171,7 @@ export function MetaTag({
 function StepStatusTag({ status }: { status: string }) {
   if (status === "completed") {
     return (
-      <span className="bg-secondary/10 text-secondary inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-medium">
+      <span className="bg-secondary/10 text-secondary inline-flex items-center gap-1 rounded-md px-2 py-0.5 type-label font-medium">
         <CheckCircle2 className="h-3 w-3" />
         completed
       </span>
@@ -179,7 +179,7 @@ function StepStatusTag({ status }: { status: string }) {
   }
   if (status === "failed") {
     return (
-      <span className="bg-destructive/10 text-destructive inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-medium">
+      <span className="bg-destructive/10 text-destructive inline-flex items-center gap-1 rounded-md px-2 py-0.5 type-label font-medium">
         <XCircle className="h-3 w-3" />
         failed
       </span>
@@ -187,14 +187,14 @@ function StepStatusTag({ status }: { status: string }) {
   }
   if (status === "started") {
     return (
-      <span className="bg-muted text-muted-foreground inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-medium">
+      <span className="bg-muted text-muted-foreground inline-flex items-center gap-1 rounded-md px-2 py-0.5 type-label font-medium">
         <Clock className="h-3 w-3" />
         started
       </span>
     );
   }
   return (
-    <span className="bg-muted text-muted-foreground/70 inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-medium">
+    <span className="bg-muted text-muted-foreground/70 inline-flex items-center rounded-md px-2 py-0.5 type-label font-medium">
       {status}
     </span>
   );
@@ -203,7 +203,7 @@ function StepStatusTag({ status }: { status: string }) {
 function ClaimStatusTag({ status }: { status: string }) {
   if (status === "approved") {
     return (
-      <span className="bg-secondary/10 text-secondary inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-medium">
+      <span className="bg-secondary/10 text-secondary inline-flex items-center gap-1 rounded-md px-2 py-0.5 type-label font-medium">
         <CheckCircle2 className="h-3 w-3" />
         approved
       </span>
@@ -211,14 +211,14 @@ function ClaimStatusTag({ status }: { status: string }) {
   }
   if (status === "rejected") {
     return (
-      <span className="bg-destructive/10 text-destructive inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-medium">
+      <span className="bg-destructive/10 text-destructive inline-flex items-center gap-1 rounded-md px-2 py-0.5 type-label font-medium">
         <XCircle className="h-3 w-3" />
         rejected
       </span>
     );
   }
   return (
-    <span className="bg-muted text-muted-foreground inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-medium">
+    <span className="bg-muted text-muted-foreground inline-flex items-center gap-1 rounded-md px-2 py-0.5 type-label font-medium">
       <Clock className="h-3 w-3" />
       pending
     </span>

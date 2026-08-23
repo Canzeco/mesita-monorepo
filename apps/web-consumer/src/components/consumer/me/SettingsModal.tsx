@@ -38,7 +38,7 @@ import { toast } from "@/lib/toast";
 
 function SoonPill() {
   return (
-    <span className="bg-muted text-muted-foreground shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold tracking-wide uppercase">
+    <span className="bg-muted text-muted-foreground type-meta shrink-0 rounded-full px-2 py-0.5 font-bold tracking-wide uppercase">
       Soon
     </span>
   );
@@ -158,7 +158,7 @@ export function SettingsModal({
           </span>
           <div>
             <h2 className={SHEET_TITLE_CLASS}>Settings</h2>
-            <p className="text-muted-foreground text-[12px]">
+            <p className="text-muted-foreground text-xs">
               Preferences on this device
             </p>
           </div>
@@ -293,7 +293,7 @@ export function SettingsModal({
             />
           </SettingsGroup>
 
-          <p className="text-muted-foreground text-center text-[11px]">
+          <p className="text-muted-foreground type-label text-center">
             Mesita · v2.4.1
           </p>
         </div>

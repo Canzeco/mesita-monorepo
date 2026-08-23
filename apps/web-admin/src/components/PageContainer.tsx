@@ -42,7 +42,7 @@ export function PageHeader({
   return (
     <header>
       {eyebrow && (
-        <p className="text-muted-foreground text-xs font-medium tracking-[0.14em] uppercase">
+        <p className="text-muted-foreground type-eyebrow">
           {eyebrow}
         </p>
       )}

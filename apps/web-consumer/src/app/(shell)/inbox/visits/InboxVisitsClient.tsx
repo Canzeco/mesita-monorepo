@@ -21,10 +21,7 @@ import { TicketRow } from "@/components/consumer/rewards/TicketRow";
 import { TicketCardSkeleton } from "@/app/(shell)/new-visit/NewVisitLoading";
 import { EmptyState } from "@/components/shared";
 import { useConsumerTickets } from "@/lib/hooks/useConsumerTickets";
-import {
-  CONSUMER_ROUTES,
-  ticketPath,
-} from "@/lib/consumer-route-contract";
+import { CONSUMER_ROUTES, ticketPath } from "@/lib/consumer-route-contract";
 
 export function InboxVisitsClient({ userId }: { userId: string }) {
   const router = useRouter();
@@ -80,11 +77,11 @@ export function InboxVisitsClient({ userId }: { userId: string }) {
         rows.length === 0 ? null : (
           <section key={key} className="mb-5 last:mb-0">
             <div className="mb-2 flex items-center gap-3 px-1">
-              <p className="text-muted-foreground text-[11px] font-semibold tracking-[0.14em] uppercase">
+              <p className="text-muted-foreground type-label font-semibold tracking-[0.14em] uppercase">
                 {label}
               </p>
               <span className="bg-border h-px flex-1" />
-              <p className="text-muted-foreground text-[11px] font-semibold tabular-nums">
+              <p className="text-muted-foreground type-label font-semibold tabular-nums">
                 {rows.length}
               </p>
             </div>

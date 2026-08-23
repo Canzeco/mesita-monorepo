@@ -117,7 +117,7 @@ export function OjoConfigClient({
         title="Ojo"
         subtitle="Reads the screenshot a guest posts as proof and scores it. Nothing reads this policy until the engine ships (MESITA-1034)."
         status={
-          <span className="border-border bg-muted text-muted-foreground rounded-full border px-2 py-0.5 text-[10px] font-semibold tracking-wide uppercase">
+          <span className="border-border bg-muted text-muted-foreground rounded-full border px-2 py-0.5 type-meta font-semibold tracking-wide uppercase">
             Staged
           </span>
         }

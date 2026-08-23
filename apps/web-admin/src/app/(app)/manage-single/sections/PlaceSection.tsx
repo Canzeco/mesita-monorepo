@@ -503,7 +503,7 @@ export function PlaceSection({
           <TextArea
             label="Description"
             labelRight={
-              <span className="text-muted-foreground text-[11px] tabular-nums">
+              <span className="text-muted-foreground type-label tabular-nums">
                 {form.description.length} / {limits.descriptionMax}
               </span>
             }
@@ -725,7 +725,7 @@ export function PlaceSection({
         tint="orange"
         title="Photos"
         action={
-          <span className="text-muted-foreground text-[11px] tabular-nums">
+          <span className="text-muted-foreground type-label tabular-nums">
             {form.photos.length} / {limits.photosMax}
           </span>
         }
@@ -775,7 +775,7 @@ export function PlaceSection({
             {place.city ?? "—"}
           </ReadField>
           <ReadField label="Lat / Lng" auto boxed>
-            <span className="font-mono text-[13px] tabular-nums">
+            <span className="font-mono type-body tabular-nums">
               {place.lat == null || place.lng == null
                 ? "—"
                 : `${place.lat}, ${place.lng}`}
@@ -873,7 +873,7 @@ function PhotosEditor({
               />
             </button>
             {idx === 0 && (
-              <span className="bg-pink-gradient absolute top-2 left-2 rounded-full px-2 py-0.5 text-[10px] font-semibold tracking-wide text-white uppercase shadow-card">
+              <span className="bg-pink-gradient absolute top-2 left-2 rounded-full px-2 py-0.5 type-meta font-semibold tracking-wide text-white uppercase shadow-card">
                 Hero
               </span>
             )}
@@ -924,12 +924,12 @@ function PhotosEditor({
             {uploading ? (
               <>
                 <Loader2 className="h-5 w-5 animate-spin" />
-                <span className="text-[11px] font-medium">Uploading…</span>
+                <span className="type-label font-medium">Uploading…</span>
               </>
             ) : (
               <>
                 <ImagePlus className="h-5 w-5" />
-                <span className="text-[11px] font-medium">Add photo</span>
+                <span className="type-label font-medium">Add photo</span>
               </>
             )}
           </label>
@@ -941,7 +941,7 @@ function PhotosEditor({
 No photos yet.
         </p>
       ) : (
-        <p className="text-muted-foreground mt-3 text-[11px] tabular-nums">
+        <p className="text-muted-foreground mt-3 type-label tabular-nums">
           {photos.length}/{photosMax} photos · JPG, PNG, WEBP, AVIF · max 8 MB
         </p>
       )}

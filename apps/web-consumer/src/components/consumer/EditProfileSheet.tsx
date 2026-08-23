@@ -149,7 +149,7 @@ export function EditProfileSheet({
     <LocalSheet open={open} onClose={onClose} ariaLabel="Edit profile">
       <div className={SHEET_BODY_CLASS}>
         <h2 className={SHEET_TITLE_CLASS}>Personal details</h2>
-        <p className="text-muted-foreground text-[12px]">
+        <p className="text-muted-foreground text-xs">
           How you appear across Mesita
         </p>
 
@@ -203,7 +203,7 @@ export function EditProfileSheet({
             </span>
           </button>
         </div>
-        <p className="text-muted-foreground mt-2 text-center text-[11px]">
+        <p className="text-muted-foreground type-label mt-2 text-center">
           JPG, PNG, or WEBP · max 2 MB
         </p>
 
@@ -221,7 +221,7 @@ export function EditProfileSheet({
             placeholder="Last name"
           />
           <label className="block">
-            <span className="text-muted-foreground mb-1 block text-[11px] font-medium">
+            <span className="text-muted-foreground type-label mb-1 block font-medium">
               Sex
             </span>
             <select
@@ -235,7 +235,7 @@ export function EditProfileSheet({
             </select>
           </label>
           <label className="block">
-            <span className="text-muted-foreground mb-1 block text-[11px] font-medium">
+            <span className="text-muted-foreground type-label mb-1 block font-medium">
               Birthday
             </span>
             <BirthdayPicker value={birthday} onChange={setBirthday} />
@@ -285,7 +285,7 @@ function SheetField({
 }) {
   return (
     <label className="block">
-      <span className="text-muted-foreground mb-1 block text-[11px] font-medium">
+      <span className="text-muted-foreground type-label mb-1 block font-medium">
         {label}
       </span>
       <input

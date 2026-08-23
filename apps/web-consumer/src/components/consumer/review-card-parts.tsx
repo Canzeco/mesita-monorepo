@@ -23,7 +23,7 @@ export function Header({
           <p className="truncate text-sm font-semibold">{name}</p>
           {rightChip}
         </div>
-        <p className="text-muted-foreground truncate text-[11px]">{sub}</p>
+        <p className="text-muted-foreground type-label truncate">{sub}</p>
       </div>
       {sourceLogo}
     </div>
@@ -73,7 +73,7 @@ export function Quote({
         <button
           type="button"
           onClick={onExpand}
-          className="text-foreground self-start text-[11px] font-semibold hover:underline"
+          className="text-foreground type-label self-start font-semibold hover:underline"
         >
           Read more
         </button>

@@ -10,7 +10,7 @@ export function RatingBar({ label, value }: { label: string; value: number }) {
   const pct = Math.min(100, (value / 5) * 100);
   return (
     <div className="flex items-center gap-2">
-      <span className="text-muted-foreground w-14 shrink-0 truncate text-[11px]">
+      <span className="text-muted-foreground type-label w-14 shrink-0 truncate">
         {label}
       </span>
       <div className="bg-muted relative h-1.5 flex-1 overflow-hidden rounded-full">
@@ -19,7 +19,7 @@ export function RatingBar({ label, value }: { label: string; value: number }) {
           style={{ width: `${pct}%` }}
         />
       </div>
-      <span className="text-foreground w-8 shrink-0 text-right text-[11px] font-semibold tabular-nums">
+      <span className="text-foreground type-label w-8 shrink-0 text-right font-semibold tabular-nums">
         {formatRating(value)!}
       </span>
     </div>
@@ -51,7 +51,7 @@ export function ExternalCard({
         )}
         {value}
       </div>
-      <p className="text-muted-foreground text-[10px] leading-tight">{meta}</p>
+      <p className="text-muted-foreground type-meta leading-tight">{meta}</p>
     </div>
   );
 }

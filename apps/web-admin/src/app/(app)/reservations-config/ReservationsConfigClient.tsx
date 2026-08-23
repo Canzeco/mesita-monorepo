@@ -227,11 +227,11 @@ export function ReservationsConfigClient({
                   <span className="font-mono text-xs font-semibold tabular-nums">
                     #{row.reference_code ?? row.id.slice(0, 8)}
                   </span>
-                  <span className="rounded-full bg-red-500/10 px-1.5 py-0.5 text-[10px] font-semibold text-red-700">
+                  <span className="rounded-full bg-red-500/10 px-1.5 py-0.5 type-meta font-semibold text-red-700">
                     {row.status}
                   </span>
                   {row.is_test && (
-                    <span className="bg-muted text-muted-foreground rounded-full px-1.5 py-0.5 text-[10px] font-medium">
+                    <span className="bg-muted text-muted-foreground rounded-full px-1.5 py-0.5 type-meta font-medium">
                       test
                     </span>
                   )}

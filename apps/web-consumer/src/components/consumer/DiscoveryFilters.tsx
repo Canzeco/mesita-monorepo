@@ -129,7 +129,7 @@ export function DiscoveryFilters({
               );
             })}
           </div>
-          <p className="text-muted-foreground/70 mt-2.5 text-[11px]">
+          <p className="text-muted-foreground/70 type-label mt-2.5">
             {DISCOVERY_CONTEXT_META[filters.context].caption}
           </p>
         </FilterModule>
@@ -164,13 +164,13 @@ export function DiscoveryFilters({
                     setDiscoveryMaxKm(km >= DISTANCE_MAX_KM ? null : km)
                   }
                 />
-                <div className="text-muted-foreground mt-1 flex justify-between text-[10px]">
+                <div className="text-muted-foreground type-meta mt-1 flex justify-between">
                   <span>{DISTANCE_MIN_KM} km</span>
                   <span>Any</span>
                 </div>
               </>
             ) : (
-              <p className="text-muted-foreground/70 text-[11px]">
+              <p className="text-muted-foreground/70 type-label">
                 Pick a location above or turn on device location to filter by
                 distance.
               </p>
@@ -211,7 +211,7 @@ export function DiscoveryFilters({
                   ))}
                 </div>
                 <div className="mt-3 flex items-center">
-                  <span className="text-muted-foreground text-[11px] font-semibold tracking-wide">
+                  <span className="text-muted-foreground type-label font-semibold tracking-wide">
                     Open at
                   </span>
                   <span className="font-display ml-auto text-base font-semibold tabular-nums">

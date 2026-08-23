@@ -129,7 +129,7 @@ export function VerificationConfigClient({
           ))}
         </div>
         {updatedAt ? (
-          <p className="text-muted-foreground mt-4 text-[11px]">
+          <p className="text-muted-foreground mt-4 type-label">
             Each switch saves on click · last saved{" "}
             {new Date(updatedAt).toLocaleDateString()}
           </p>

@@ -45,7 +45,7 @@ function Step({
     <section className="scroll-mt-24">
       <div className="flex items-start gap-3">
         <span
-          className="bg-secondary/10 text-secondary mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[11px] font-semibold tabular-nums"
+          className="bg-secondary/10 text-secondary mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full type-label font-semibold tabular-nums"
           aria-hidden
         >
           {n}

@@ -17,8 +17,10 @@ import { cn } from "@/lib/utils";
 // chosen task — say so, or the guest reaches bill time with a locked QR.
 function hasPendingTask(t: ConsumerTicketRow): boolean {
   const gating = (v: string | null) =>
-    v === "pending" || v === "submitted" ||
-    v === "ai_rejected" || v === "staff_rejected";
+    v === "pending" ||
+    v === "submitted" ||
+    v === "ai_rejected" ||
+    v === "staff_rejected";
   return gating(t.story_status) || gating(t.review_status);
 }
 
@@ -75,12 +77,12 @@ export function TicketRow({
         </span>
       )}
       <span className="min-w-0 flex-1">
-        <span className="text-foreground block truncate text-[13.5px] leading-tight font-bold">
+        <span className="text-foreground block truncate text-sm leading-tight font-bold">
           {ticket.place?.name ?? "Partner place"}
         </span>
         <span
           className={cn(
-            "mt-0.5 block truncate text-[11.5px]",
+            "mt-0.5 block truncate text-xs",
             !closed && ticket.first_scanned_at
               ? "font-semibold text-emerald-700"
               : "text-muted-foreground",
@@ -90,7 +92,7 @@ export function TicketRow({
         </span>
       </span>
       {saved > 0 ? (
-        <span className="shrink-0 text-[13.5px] font-extrabold text-emerald-700 tabular-nums">
+        <span className="shrink-0 text-sm font-extrabold text-emerald-700 tabular-nums">
           −{formatCurrency(saved)}
         </span>
       ) : (

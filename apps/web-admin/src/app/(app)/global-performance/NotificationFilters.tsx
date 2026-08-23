@@ -78,7 +78,7 @@ export function NotificationFilters({
             />
           )}
           <span
-            className="text-muted-foreground hidden text-[11px] sm:inline"
+            className="text-muted-foreground hidden type-label sm:inline"
             suppressHydrationWarning
           >
             {updatedLabel}
@@ -126,7 +126,7 @@ function FilterSegment({
       {label}
       <span
         className={
-          "rounded-full px-1.5 py-0.5 text-[10px] tabular-nums " +
+          "rounded-full px-1.5 py-0.5 type-meta tabular-nums " +
           (active ? "bg-background text-foreground" : "bg-muted text-muted-foreground")
         }
       >

@@ -88,7 +88,7 @@ export function InstagramModal({
           </span>
           <div>
             <h2 className={SHEET_TITLE_CLASS}>Instagram</h2>
-            <p className="text-muted-foreground text-[12px]">
+            <p className="text-muted-foreground text-xs">
               Connect Instagram for better Rewards.
             </p>
           </div>
@@ -124,14 +124,14 @@ export function InstagramModal({
 function WhyConnectModule() {
   return (
     <article className="border-border bg-card rounded-2xl border p-4">
-      <h3 className="text-[14px] leading-tight font-extrabold tracking-tight">
+      <h3 className="text-sm leading-tight font-extrabold tracking-tight">
         Why connect
       </h3>
       <ul className="mt-2 flex flex-col gap-2">
         {WHY_LINES.map((line) => (
           <li
             key={line}
-            className="flex items-start gap-2.5 text-[13px] leading-snug font-medium"
+            className="type-body flex items-start gap-2.5 leading-snug font-medium"
           >
             <span className="bg-secondary mt-[6px] h-1.5 w-1.5 shrink-0 rounded-full" />
             <span>{line}</span>
@@ -161,7 +161,7 @@ function ConnectModule({
 }) {
   return (
     <section className="border-border bg-card rounded-2xl border p-4">
-      <h3 className="mb-3 text-[14px] leading-tight font-extrabold tracking-tight">
+      <h3 className="mb-3 text-sm leading-tight font-extrabold tracking-tight">
         Connect Instagram
       </h3>
       <ol className="flex flex-col gap-3">
@@ -175,18 +175,15 @@ function ConnectModule({
           </>,
           <>Paste the 8-digit code here</>,
         ].map((line, i) => (
-          <li
-            key={i}
-            className="flex items-start gap-3 text-[13px] leading-snug"
-          >
-            <span className="bg-secondary/15 text-secondary flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[11px] font-bold">
+          <li key={i} className="type-body flex items-start gap-3 leading-snug">
+            <span className="bg-secondary/15 text-secondary type-label flex h-6 w-6 shrink-0 items-center justify-center rounded-full font-bold">
               {i + 1}
             </span>
             <span>{line}</span>
           </li>
         ))}
       </ol>
-      <label className="text-muted-foreground mt-3 block text-[11px] font-medium">
+      <label className="text-muted-foreground type-label mt-3 block font-medium">
         @handle
       </label>
       <input
@@ -199,7 +196,7 @@ function ConnectModule({
         className="border-border bg-muted/30 placeholder:text-muted-foreground/70 h-12 w-full rounded-lg border px-5 text-center text-sm outline-none"
         maxLength={31}
       />
-      <label className="text-muted-foreground mt-2 block text-[11px] font-medium">
+      <label className="text-muted-foreground type-label mt-2 block font-medium">
         8-digit code
       </label>
       <input
@@ -222,7 +219,7 @@ function ConnectModule({
         )}
         {verifying ? "Connecting…" : "Verify"}
       </button>
-      <p className="text-muted-foreground mt-2 text-center text-[11px]">
+      <p className="text-muted-foreground type-label mt-2 text-center">
         We never ask for your password.
       </p>
     </section>
@@ -243,10 +240,10 @@ function CurrentConnectionCard() {
         <Instagram className="h-5 w-5" />
       </span>
       <div className="min-w-0 flex-1">
-        <p className="truncate text-[14px] font-bold tracking-tight">
+        <p className="truncate text-sm font-bold tracking-tight">
           {handle ? `@${handle}` : "Instagram connected"}
         </p>
-        <p className="text-muted-foreground text-[12px]">Rewards unlocked</p>
+        <p className="text-muted-foreground text-xs">Rewards unlocked</p>
       </div>
     </div>
   );

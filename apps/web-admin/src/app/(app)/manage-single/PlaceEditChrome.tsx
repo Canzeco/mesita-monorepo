@@ -185,7 +185,7 @@ export function PlaceEditChrome({
           </p>
           {/* Show what Google calls it only when an operator override hides it. */}
           {(place.mesita_name ?? "").trim() && (place.google_name ?? "").trim() ? (
-            <p className="text-muted-foreground mt-0.5 truncate text-[11px]">
+            <p className="text-muted-foreground mt-0.5 truncate type-label">
               Google: {(place.google_name ?? "").trim()}
             </p>
           ) : null}
@@ -252,7 +252,7 @@ export function PlaceEditChrome({
                 >
                   <Icon className="h-4 w-4 shrink-0 opacity-70" aria-hidden />
                   <span>{label}</span>
-                  <span className="bg-muted text-muted-foreground rounded-full px-1.5 py-0 text-[9px] font-bold tracking-wider uppercase">
+                  <span className="bg-muted text-muted-foreground rounded-full px-1.5 py-0 type-meta font-bold tracking-wider uppercase">
                     Soon
                   </span>
                 </span>

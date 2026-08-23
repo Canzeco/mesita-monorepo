@@ -134,7 +134,7 @@ export function TaskProof({
     <div className="flex flex-col gap-3">
       {/* Order first (D8): the task is something you do while the food comes,
           not a toll you pay at the door. */}
-      <p className="rounded-xl bg-amber-500/12 px-3 py-2 text-center text-[11.5px] leading-snug font-bold text-amber-800">
+      <p className="rounded-xl bg-amber-500/12 px-3 py-2 text-center text-xs leading-snug font-bold text-amber-800">
         <UtensilsCrossed className="mr-1 inline size-3.5 align-[-2px]" />
         Order first — do this while your food comes.
       </p>
@@ -147,23 +147,23 @@ export function TaskProof({
             <InstagramGlyph className="size-6" />
           )}
         </span>
-        <p className="text-foreground mt-2 text-[14.5px] font-extrabold tracking-tight">
+        <p className="text-foreground mt-2 text-sm font-extrabold tracking-tight">
           {isReview ? "Leave your Google review" : "Post your tagged story"}
         </p>
-        <p className="text-muted-foreground mt-1 text-[12px] leading-snug">
+        <p className="text-muted-foreground mt-1 text-xs leading-snug">
           {isReview
             ? "Rate your visit on Google, screenshot it, post it here."
             : `Tag ${placeName} in your story, screenshot it, post it here.`}
         </p>
         {rate > 0 ? (
-          <p className="text-foreground mt-2 text-[12.5px] font-bold">
+          <p className="text-foreground type-body mt-2 font-bold">
             Unlocks {rate}% off
           </p>
         ) : null}
       </div>
 
       {rejected ? (
-        <p className="bg-destructive/10 text-destructive rounded-lg px-3 py-2 text-center text-[12px] font-semibold">
+        <p className="bg-destructive/10 text-destructive rounded-lg px-3 py-2 text-center text-xs font-semibold">
           That one wasn&apos;t accepted — your base rate still holds. You can
           try again.
         </p>
@@ -173,7 +173,7 @@ export function TaskProof({
         type="button"
         onClick={openTarget}
         disabled={phase === "confirming"}
-        className="bg-foreground text-background flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl text-[14px] font-bold transition active:scale-[0.99] disabled:opacity-50"
+        className="bg-foreground text-background flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl text-sm font-bold transition active:scale-[0.99] disabled:opacity-50"
       >
         {phase === "opening" ? (
           <Loader2 className="size-4 animate-spin" />
@@ -208,7 +208,7 @@ export function TaskProof({
             type="button"
             onClick={() => fileInputRef.current?.click()}
             disabled={phase === "confirming"}
-            className="text-foreground shadow-rest absolute top-2 right-2 flex items-center gap-1 rounded-full bg-white/90 px-2.5 py-1 text-[11px] font-bold transition active:scale-95"
+            className="text-foreground shadow-rest type-label absolute top-2 right-2 flex items-center gap-1 rounded-full bg-white/90 px-2.5 py-1 font-bold transition active:scale-95"
           >
             <RefreshCw className="size-3" />
             Replace
@@ -218,7 +218,7 @@ export function TaskProof({
         <button
           type="button"
           onClick={() => fileInputRef.current?.click()}
-          className="border-primary/35 bg-primary/[0.04] text-primary flex min-h-14 w-full items-center justify-center gap-2 rounded-2xl border-2 border-dashed text-[13px] font-bold transition active:scale-[0.99]"
+          className="border-primary/35 bg-primary/[0.04] text-primary type-body flex min-h-14 w-full items-center justify-center gap-2 rounded-2xl border-2 border-dashed font-bold transition active:scale-[0.99]"
         >
           <Camera className="size-4" />
           Add your screenshot
@@ -230,7 +230,7 @@ export function TaskProof({
         onClick={() => void confirm()}
         disabled={!shot || phase === "confirming" || phase === "opening"}
         className={cn(
-          "border-border bg-card text-foreground flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl border text-[14px] font-bold transition active:scale-[0.99] disabled:opacity-50",
+          "border-border bg-card text-foreground flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl border text-sm font-bold transition active:scale-[0.99] disabled:opacity-50",
         )}
       >
         {phase === "confirming" ? (
@@ -248,7 +248,7 @@ export function TaskProof({
       </button>
 
       {error ? (
-        <p className="bg-destructive/10 text-destructive rounded-lg px-3 py-2 text-[12px]">
+        <p className="bg-destructive/10 text-destructive rounded-lg px-3 py-2 text-xs">
           {error}
         </p>
       ) : null}
@@ -256,7 +256,7 @@ export function TaskProof({
       <button
         type="button"
         onClick={onSkip}
-        className="text-muted-foreground hover:text-foreground mx-auto flex min-h-11 items-center text-[12.5px] font-semibold transition"
+        className="text-muted-foreground hover:text-foreground type-body mx-auto flex min-h-11 items-center font-semibold transition"
       >
         I&apos;ll finish this in a bit — show my QR
       </button>

@@ -60,7 +60,7 @@ export function JourneyRail({
               />
               <span
                 className={cn(
-                  "truncate text-[9px] leading-none",
+                  "type-meta truncate leading-none",
                   amber
                     ? "font-bold text-amber-800"
                     : current

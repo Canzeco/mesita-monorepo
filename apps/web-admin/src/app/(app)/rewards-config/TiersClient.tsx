@@ -138,7 +138,7 @@ function TierBox({
 
         {isVisits && (
           <>
-            <p className="text-muted-foreground pt-3 pb-0.5 text-[10px] font-bold tracking-[0.12em] uppercase">
+            <p className="text-muted-foreground pt-3 pb-0.5 type-meta font-bold tracking-[0.12em] uppercase">
               Class · who they are
             </p>
             {CLASS_KEYS.map((c) => (
@@ -156,7 +156,7 @@ function TierBox({
           </>
         )}
 
-        <p className="text-muted-foreground pt-3 pb-0.5 text-[10px] font-bold tracking-[0.12em] uppercase">
+        <p className="text-muted-foreground pt-3 pb-0.5 type-meta font-bold tracking-[0.12em] uppercase">
           Plan · what they pay
         </p>
         {PLAN_KEYS.map((k) => (
@@ -172,7 +172,7 @@ function TierBox({
           </BoxRow>
         ))}
 
-        <p className="text-muted-foreground pt-3 pb-0.5 text-[10px] font-bold tracking-[0.12em] uppercase">
+        <p className="text-muted-foreground pt-3 pb-0.5 type-meta font-bold tracking-[0.12em] uppercase">
           Actions · what they did
         </p>
         {(["story", "mesita", "google"] as const).map((k) => (
@@ -212,11 +212,11 @@ export function TiersClient() {
 
       {ladderError && (
         <div className="rounded-lg border border-red-300/70 bg-red-50 px-3 py-2.5">
-          <p className="flex items-center gap-1.5 text-[11px] font-bold tracking-[0.12em] text-red-900 uppercase">
+          <p className="flex items-center gap-1.5 type-label font-bold tracking-[0.12em] text-red-900 uppercase">
             <AlertTriangle className="h-3.5 w-3.5" />
             Cannot save
           </p>
-          <p className="mt-1 text-[12.5px] leading-snug text-red-900">
+          <p className="mt-1 type-body leading-snug text-red-900">
             {ladderError}
           </p>
         </div>
@@ -224,18 +224,18 @@ export function TiersClient() {
 
       {warnings.length > 0 && (
         <div className="rounded-lg border border-amber-300/70 bg-amber-50 px-3 py-2.5">
-          <p className="flex items-center gap-1.5 text-[11px] font-bold tracking-[0.12em] text-amber-900 uppercase">
+          <p className="flex items-center gap-1.5 type-label font-bold tracking-[0.12em] text-amber-900 uppercase">
             <AlertTriangle className="h-3.5 w-3.5" />
             Ladder check
           </p>
           <ul className="mt-1.5 space-y-1">
             {warnings.map((w) => (
-              <li key={w.key} className="text-[12.5px] leading-snug text-amber-900">
+              <li key={w.key} className="type-body leading-snug text-amber-900">
                 {w.message}
               </li>
             ))}
           </ul>
-          <p className="mt-2 text-[11px] text-amber-900/75">
+          <p className="mt-2 type-label text-amber-900/75">
             Reported, never auto-corrected — this is money, so the call is yours.
           </p>
         </div>
@@ -283,18 +283,18 @@ export function TiersClient() {
           Preview all visit totals
         </summary>
         <div className="overflow-x-auto px-4 pb-4">
-          <table className="w-full min-w-[720px] border-collapse text-[12.5px]">
+          <table className="w-full min-w-[720px] border-collapse type-body">
             <thead>
               <tr className="border-border border-b-2">
                 <th
                   scope="col"
-                  className="text-muted-foreground pb-2 text-left text-[10px] font-bold tracking-[0.12em] uppercase"
+                  className="text-muted-foreground pb-2 text-left type-meta font-bold tracking-[0.12em] uppercase"
                 >
                   Strategy
                 </th>
                 <th
                   scope="col"
-                  className="text-muted-foreground pb-2 text-left text-[10px] font-bold tracking-[0.12em] uppercase"
+                  className="text-muted-foreground pb-2 text-left type-meta font-bold tracking-[0.12em] uppercase"
                 >
                   Class · Plan
                 </th>
@@ -302,7 +302,7 @@ export function TiersClient() {
                   <th
                     key={a}
                     scope="col"
-                    className="text-muted-foreground pb-2 text-right text-[10px] font-bold tracking-[0.12em] uppercase"
+                    className="text-muted-foreground pb-2 text-right type-meta font-bold tracking-[0.12em] uppercase"
                   >
                     {PREVIEW_ACTION_LABEL[a]}
                   </th>
@@ -354,7 +354,7 @@ export function TiersClient() {
               )}
             </tbody>
           </table>
-          <p className="text-muted-foreground/80 mt-2 text-[11px] leading-snug">
+          <p className="text-muted-foreground/80 mt-2 type-label leading-snug">
             Base + that single action. A real bill stacks several, clamped to
             100%. Two adjacent rungs showing the same number are a dead rung —
             the higher one is paying nothing for the climb.
@@ -379,8 +379,8 @@ export function TiersClient() {
                 aria-pressed={active}
                 className={
                   active
-                    ? "bg-foreground text-background inline-flex h-9 items-center rounded-lg px-3.5 text-[13px] font-bold tabular-nums transition disabled:opacity-50"
-                    : "border-border text-muted-foreground hover:text-foreground hover:bg-muted inline-flex h-9 items-center rounded-lg border px-3.5 text-[13px] font-semibold tabular-nums transition disabled:opacity-50"
+                    ? "bg-foreground text-background inline-flex h-9 items-center rounded-lg px-3.5 type-body font-bold tabular-nums transition disabled:opacity-50"
+                    : "border-border text-muted-foreground hover:text-foreground hover:bg-muted inline-flex h-9 items-center rounded-lg border px-3.5 type-body font-semibold tabular-nums transition disabled:opacity-50"
                 }
               >
                 <Coins className="mr-1.5 h-3.5 w-3.5" />

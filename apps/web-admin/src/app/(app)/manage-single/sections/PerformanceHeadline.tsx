@@ -47,7 +47,7 @@ function Figure({
           makes a display value look loose. */}
       <p
         className={
-          "mt-2 text-[34px] leading-none font-semibold tracking-tight " +
+          "mt-2 text-4xl leading-none font-semibold tracking-tight " +
           (empty ? "text-muted-foreground" : "text-foreground")
         }
       >
@@ -93,7 +93,7 @@ function Step({
           </span>
         )}
       </span>
-      <span className="text-muted-foreground w-20 shrink-0 text-right text-[11px] sm:w-28 sm:text-xs">
+      <span className="text-muted-foreground w-20 shrink-0 text-right type-label sm:w-28 sm:text-xs">
         {note ?? ""}
       </span>
     </div>
@@ -112,10 +112,10 @@ export function PerformanceHeadline({ stats }: { stats: PlaceStats }) {
   return (
     <section className="border-border bg-card shadow-card rounded-2xl border p-5 sm:p-6">
       <div className="mb-5 flex items-baseline justify-between gap-3">
-        <h2 className="text-muted-foreground text-[11px] font-semibold tracking-[0.12em] uppercase">
+        <h2 className="text-muted-foreground type-label font-semibold tracking-[0.12em] uppercase">
           Is Mesita working here?
         </h2>
-        <span className="bg-muted text-muted-foreground rounded-full px-2.5 py-1 text-[11px]">
+        <span className="bg-muted text-muted-foreground rounded-full px-2.5 py-1 type-label">
           all time
         </span>
       </div>

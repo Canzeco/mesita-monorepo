@@ -70,7 +70,7 @@ export function InvitePinModal({
           </span>
           <div>
             <h2 className={SHEET_TITLE_CLASS}>Invitation PIN</h2>
-            <p className="text-muted-foreground text-[12px]">
+            <p className="text-muted-foreground text-xs">
               Ten digits. It names your class outright.
             </p>
           </div>
@@ -79,7 +79,7 @@ export function InvitePinModal({
         <section className="border-border bg-card rounded-2xl border p-4">
           <label
             htmlFor="invite-pin"
-            className="text-muted-foreground block text-[11px] font-medium"
+            className="text-muted-foreground type-label block font-medium"
           >
             Your PIN
           </label>
@@ -93,7 +93,7 @@ export function InvitePinModal({
             maxLength={PIN_LENGTH}
             className="border-border bg-muted/30 placeholder:text-muted-foreground/70 mt-1 h-12 w-full rounded-lg border px-5 text-center font-mono text-lg tracking-[0.3em] tabular-nums outline-none"
           />
-          <p className="text-muted-foreground mt-2 text-center text-[11px]">
+          <p className="text-muted-foreground type-label mt-2 text-center">
             {digits.length}/{PIN_LENGTH}
           </p>
 
@@ -112,7 +112,7 @@ export function InvitePinModal({
           </button>
         </section>
 
-        <p className="text-muted-foreground mt-3 text-center text-[11px] leading-snug">
+        <p className="text-muted-foreground type-label mt-3 text-center leading-snug">
           Invitations come from Mesita and its partners. A PIN works once.
         </p>
       </div>

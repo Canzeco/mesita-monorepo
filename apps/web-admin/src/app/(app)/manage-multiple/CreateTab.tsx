@@ -226,7 +226,7 @@ export function CreateTab({
                       </span>
                     )}
                     {r.status === "ok" && (
-                      <p className="text-muted-foreground text-[11px]">
+                      <p className="text-muted-foreground type-label">
                         {r.photoCount} photo{r.photoCount === 1 ? "" : "s"} ·{" "}
                         {r.enrichmentTriggered ? (
                           "enriching…"
@@ -238,7 +238,7 @@ export function CreateTab({
                       </p>
                     )}
                     {r.status === "error" && (
-                      <p className="text-destructive text-[11px]">{r.error}</p>
+                      <p className="text-destructive type-label">{r.error}</p>
                     )}
                   </div>
                 </li>

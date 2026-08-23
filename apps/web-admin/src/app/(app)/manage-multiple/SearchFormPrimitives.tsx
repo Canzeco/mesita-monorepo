@@ -48,11 +48,11 @@ export function ParamCard({
     <label
       className={`bg-card shadow-elev flex flex-col gap-1 rounded-2xl border px-5 py-4 transition focus-within:border-primary ${toneClasses}`}
     >
-      <span className="text-muted-foreground text-[10px] font-medium tracking-[0.14em] uppercase">
+      <span className="text-muted-foreground type-meta font-medium tracking-[0.14em] uppercase">
         {label}
       </span>
       <div className="flex items-center justify-center py-1">{children}</div>
-      <span className="text-muted-foreground text-center text-[11px]">
+      <span className="text-muted-foreground text-center type-label">
         {footer}
       </span>
     </label>
@@ -78,10 +78,10 @@ export function FilterCard({
       }
     >
       <div className="flex items-baseline justify-between gap-2">
-        <span className="text-muted-foreground text-[10px] font-medium tracking-[0.14em] uppercase">
+        <span className="text-muted-foreground type-meta font-medium tracking-[0.14em] uppercase">
           {label}
         </span>
-        <span className="text-muted-foreground/70 text-[11px]">{footer}</span>
+        <span className="text-muted-foreground/70 type-label">{footer}</span>
       </div>
       {children}
     </div>

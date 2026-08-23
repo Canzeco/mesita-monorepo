@@ -10,7 +10,7 @@ import { ALLOWED_RATES } from "./promos";
 
 export function SoonPill() {
   return (
-    <span className="border-border text-muted-foreground inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-bold tracking-[0.12em] uppercase">
+    <span className="border-border text-muted-foreground inline-flex items-center rounded-full border px-2 py-0.5 type-meta font-bold tracking-[0.12em] uppercase">
       Soon
     </span>
   );
@@ -42,7 +42,7 @@ export function RateSelect({
       <span
         role="presentation"
         title="The baseline rung — it adds nothing by definition"
-        className="border-border/70 text-muted-foreground bg-muted/50 inline-flex h-9 w-24 items-center justify-center rounded-lg border border-dashed text-[13px]"
+        className="border-border/70 text-muted-foreground bg-muted/50 inline-flex h-9 w-24 items-center justify-center rounded-lg border border-dashed type-body"
       >
         —
       </span>
@@ -54,7 +54,7 @@ export function RateSelect({
       disabled={disabled}
       onChange={(e) => onChange(Number(e.target.value))}
       aria-label={ariaLabel}
-      className="border-border bg-card focus:border-foreground h-9 w-24 rounded-lg border px-1.5 text-center text-[13px] font-semibold tabular-nums outline-none disabled:opacity-50"
+      className="border-border bg-card focus:border-foreground h-9 w-24 rounded-lg border px-1.5 text-center type-body font-semibold tabular-nums outline-none disabled:opacity-50"
     >
       {ALLOWED_RATES.map((r) => (
         <option key={r} value={r}>
@@ -80,7 +80,7 @@ export function BoxRow({
   return (
     <div className="border-border/60 flex items-center justify-between gap-4 border-b py-2 last:border-0">
       <div className="min-w-0">
-        <p className="text-foreground text-[13px] font-semibold">
+        <p className="text-foreground type-body font-semibold">
           {emoji ? (
             <span className="mr-1.5" aria-hidden>
               {emoji}
@@ -89,7 +89,7 @@ export function BoxRow({
           {label}
         </p>
         {hint ? (
-          <p className="text-muted-foreground truncate text-[11px]">{hint}</p>
+          <p className="text-muted-foreground truncate type-label">{hint}</p>
         ) : null}
       </div>
       <div className="flex shrink-0 items-center gap-2">{children}</div>
@@ -104,7 +104,7 @@ export function StrategyHeads({ names }: { names: readonly string[] }) {
       {names.map((n) => (
         <span
           key={n}
-          className="text-muted-foreground w-24 text-center text-[9.5px] font-bold tracking-[0.12em] uppercase"
+          className="text-muted-foreground w-24 text-center type-meta font-bold tracking-[0.12em] uppercase"
         >
           {n}
         </span>

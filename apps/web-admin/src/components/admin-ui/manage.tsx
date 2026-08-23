@@ -103,7 +103,7 @@ export function SectionCard({
 /** Uppercase micro-heading used to split a card into labelled groups. */
 export function GroupLabel({ children }: { children: React.ReactNode }) {
   return (
-    <p className="text-muted-foreground text-[11px] font-semibold tracking-[0.12em] uppercase">
+    <p className="text-muted-foreground type-label font-semibold tracking-[0.12em] uppercase">
       {children}
     </p>
   );
@@ -146,7 +146,7 @@ export function TextField({
   return (
     <label className="flex min-w-0 flex-col gap-1.5">
       <span className="flex min-h-4 items-center justify-between gap-2">
-        <span className="text-foreground/90 flex items-center gap-1.5 text-[13px] font-medium">
+        <span className="text-foreground/90 flex items-center gap-1.5 type-body font-medium">
           {icon}
           {label}
         </span>
@@ -219,7 +219,7 @@ export function PhoneField({
 
   return (
     <label className="flex flex-col gap-1.5">
-      <span className="text-foreground/90 flex min-h-4 items-center text-[13px] font-medium">
+      <span className="text-foreground/90 flex min-h-4 items-center type-body font-medium">
         {label}
       </span>
       <span
@@ -287,7 +287,7 @@ export function TextArea({
   return (
     <label className="flex flex-col gap-1.5">
       <span className="flex items-center justify-between gap-2">
-        <span className="text-foreground/80 text-[13px] font-medium">{label}</span>
+        <span className="text-foreground/80 type-body font-medium">{label}</span>
         {labelRight}
       </span>
       <textarea
@@ -318,7 +318,7 @@ export function SelectField({
 }) {
   return (
     <label className="flex flex-col gap-1.5">
-      <span className="text-foreground/80 text-[13px] font-medium">{label}</span>
+      <span className="text-foreground/80 type-body font-medium">{label}</span>
       <span className="relative block">
         <select
           value={value}
@@ -557,13 +557,13 @@ export function ReadField({
         <span
           className={
             boxed
-              ? "text-foreground/90 flex items-center gap-1.5 text-[13px] font-medium"
-              : "text-muted-foreground flex items-center gap-1.5 text-[11px] font-semibold tracking-[0.12em] uppercase"
+              ? "text-foreground/90 flex items-center gap-1.5 type-body font-medium"
+              : "text-muted-foreground flex items-center gap-1.5 type-label font-semibold tracking-[0.12em] uppercase"
           }
         >
           {label}
           {auto ? (
-            <span className="text-muted-foreground/70 inline-flex items-center gap-0.5 text-[10px] font-normal tracking-normal normal-case">
+            <span className="text-muted-foreground/70 inline-flex items-center gap-0.5 type-meta font-normal tracking-normal normal-case">
               <Lock className="h-3 w-3" />
               auto
             </span>
@@ -596,7 +596,7 @@ export function OpenLink({ href }: { href: string }) {
       href={url}
       {...(external ? { target: "_blank", rel: "noopener noreferrer" } : {})}
       onClick={(e) => e.stopPropagation()}
-      className="text-muted-foreground hover:text-foreground inline-flex items-center gap-0.5 text-[11px] font-medium transition"
+      className="text-muted-foreground hover:text-foreground inline-flex items-center gap-0.5 type-label font-medium transition"
     >
       Open
       <ExternalLink className="h-3 w-3" />

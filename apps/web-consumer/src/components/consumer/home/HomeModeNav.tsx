@@ -118,7 +118,7 @@ export function HomeModeNav() {
   return (
     <div className="border-border bg-background/90 sticky top-0 z-20 shrink-0 border-b backdrop-blur-xl">
       <div className="scrollbar-hide overflow-x-auto px-2 py-2.5">
-        <div className="grid w-max min-w-full grid-flow-col auto-cols-fr items-center gap-1">
+        <div className="grid w-max min-w-full auto-cols-fr grid-flow-col items-center gap-1">
           {TABS.map((tab) => {
             const { href, label, Icon, soon } = tab;
             const active = pathname === href || pathname.startsWith(`${href}/`);
@@ -178,7 +178,7 @@ function ComingSoon({ tab, onClose }: { tab: Tab; onClose: () => void }) {
       <span className="bg-primary/10 text-primary inline-flex h-14 w-14 items-center justify-center rounded-2xl">
         <Icon className="h-7 w-7" strokeWidth={2} />
       </span>
-      <span className="bg-primary/10 text-primary rounded-full px-2.5 py-0.5 text-[10px] font-bold tracking-[0.14em] uppercase">
+      <span className="bg-primary/10 text-primary type-meta rounded-full px-2.5 py-0.5 font-bold tracking-[0.14em] uppercase">
         Coming soon
       </span>
       <h2 className={SHEET_TITLE_CLASS}>{label}</h2>

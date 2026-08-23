@@ -9,13 +9,13 @@ import type { PlaceLite, QueryResult } from "@/lib/places-types";
 function RatingBadge({ place }: { place: PlaceLite }) {
   if (place.rating === null && place.userRatingCount === null) {
     return (
-      <span className="text-muted-foreground/70 inline-flex items-center gap-1 text-[11px]">
+      <span className="text-muted-foreground/70 inline-flex items-center gap-1 type-label">
         no Google rating yet
       </span>
     );
   }
   return (
-    <span className="text-muted-foreground inline-flex items-center gap-1 text-[11px]">
+    <span className="text-muted-foreground inline-flex items-center gap-1 type-label">
       <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
       <span className="text-foreground/80 font-medium tabular-nums">
         {place.rating === null ? "—" : place.rating.toFixed(1)}
@@ -138,7 +138,7 @@ export function QueryRow({
                           {p.displayName || "(no name)"}
                         </span>
                         {p.existsInMesita && (
-                          <span className="bg-secondary/15 text-secondary inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide">
+                          <span className="bg-secondary/15 text-secondary inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 type-meta type-eyebrow">
                             <CheckCircle2 className="h-3 w-3" />
                             In Mesita
                           </span>
@@ -150,7 +150,7 @@ export function QueryRow({
                       <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5">
                         <RatingBadge place={p} />
                         {p.existsInMesita && (p.createdAt || p.updatedAt) && (
-                          <p className="text-muted-foreground/80 truncate text-[11px]">
+                          <p className="text-muted-foreground/80 truncate type-label">
                             {p.createdAt && (
                               <>
                                 · added{" "}

@@ -1,7 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { CalendarCheck, Loader2, Lock, QrCode, ShoppingBag } from "lucide-react";
+import {
+  CalendarCheck,
+  Loader2,
+  Lock,
+  QrCode,
+  ShoppingBag,
+} from "lucide-react";
 
 import { ComingSoonModal } from "@/components/consumer/ComingSoonModal";
 import { ORDER_COMING_SOON } from "@/components/consumer/place-detail/place-actions-copy";
@@ -52,9 +58,8 @@ export function PlaceActionBar({
   const starting = startingId === place.id;
 
   const btn =
-    "inline-flex items-center justify-center gap-1.5 rounded-xl py-3 text-[13px] font-semibold whitespace-nowrap transition active:scale-[0.99] disabled:active:scale-100";
-  const outline =
-    "border-border bg-card text-foreground hover:bg-muted border";
+    "inline-flex items-center justify-center gap-1.5 rounded-xl py-3 type-body font-semibold whitespace-nowrap transition active:scale-[0.99] disabled:active:scale-100";
+  const outline = "border-border bg-card text-foreground hover:bg-muted border";
 
   return (
     <>
@@ -68,7 +73,7 @@ export function PlaceActionBar({
             room for a panel, but swallowing it would leave a tap that visibly
             did nothing — one line, above the row, in place. */}
         {error ? (
-          <p className="bg-destructive/10 text-destructive mb-2 rounded-lg px-3 py-1.5 text-[12px]">
+          <p className="bg-destructive/10 text-destructive mb-2 rounded-lg px-3 py-1.5 text-xs">
             {error}
           </p>
         ) : null}

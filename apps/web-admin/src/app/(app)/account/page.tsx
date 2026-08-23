@@ -23,13 +23,13 @@ export default async function AccountPage() {
       <div className="border-border bg-card mt-8 rounded-2xl border p-6">
         <dl className="space-y-4 text-sm">
           <div>
-            <dt className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
+            <dt className="text-muted-foreground type-eyebrow">
               Email
             </dt>
             <dd className="mt-1 font-medium">{user.email ?? "(no email on file)"}</dd>
           </div>
           <div>
-            <dt className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
+            <dt className="text-muted-foreground type-eyebrow">
               User id
             </dt>
             <dd className="mt-1 font-mono text-xs break-all">{user.id}</dd>

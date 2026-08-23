@@ -77,11 +77,11 @@ export function FavoriteTile({
               grows with it (an aspect-ratio box never shrinks below its
               content) instead of clipping a row. */}
           <div className="flex min-w-0 shrink-0 flex-col p-2.5">
-            <p className="font-display text-foreground truncate text-[15px] font-semibold tracking-tight">
+            <p className="font-display text-foreground truncate text-sm font-semibold tracking-tight">
               {place.name}
             </p>
             {subtitle && (
-              <p className="text-muted-foreground mt-0.5 flex items-center gap-1 text-[11.5px]">
+              <p className="text-muted-foreground mt-0.5 flex items-center gap-1 text-xs">
                 <Navigation className="h-3 w-3 shrink-0" />
                 <span className="truncate">{subtitle}</span>
               </p>
@@ -91,7 +91,7 @@ export function FavoriteTile({
                 an info-less tile just shows its name + location. */}
             <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 empty:mt-0">
               {openingLabel && (
-                <span className="inline-flex items-center gap-1 text-[11px] font-medium">
+                <span className="type-label inline-flex items-center gap-1 font-medium">
                   <span
                     className={cn(
                       "h-1.5 w-1.5 shrink-0 rounded-full",

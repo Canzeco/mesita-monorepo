@@ -54,7 +54,7 @@ export function ReviewsSummaryBox({ place }: { place: PlaceDetail }) {
         <div className="flex items-center gap-2">
           <MesitaSourceBadge variant="sm" />
           <p className="text-foreground text-sm font-semibold">Mesita</p>
-          <span className="text-muted-foreground ml-auto text-[11px]">
+          <span className="text-muted-foreground type-label ml-auto">
             {place.mesita_reviews.total} reviews
           </span>
         </div>
@@ -70,7 +70,7 @@ export function ReviewsSummaryBox({ place }: { place: PlaceDetail }) {
                 strokeWidth={0}
               />
             </div>
-            <span className="text-muted-foreground text-[9px] font-bold tracking-wider uppercase">
+            <span className="text-muted-foreground type-meta font-bold tracking-wider uppercase">
               Overall
             </span>
           </div>

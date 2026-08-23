@@ -31,7 +31,7 @@ export function ContactModal({
           </span>
           <div>
             <h2 className={SHEET_TITLE_CLASS}>Contact us</h2>
-            <p className="text-muted-foreground text-[12px]">
+            <p className="text-muted-foreground text-xs">
               We usually reply within a day
             </p>
           </div>
@@ -48,7 +48,7 @@ export function ContactModal({
               </IconCircle>
               <span className="min-w-0 flex-1">
                 <span className="block text-sm font-semibold">Email us</span>
-                <span className="text-muted-foreground block truncate text-[11px]">
+                <span className="text-muted-foreground type-label block truncate">
                   {SUPPORT_EMAIL}
                 </span>
               </span>
@@ -65,7 +65,7 @@ export function ContactModal({
               </IconCircle>
               <span className="min-w-0 flex-1">
                 <span className="block text-sm font-semibold">Get help</span>
-                <span className="text-muted-foreground block truncate text-[11px]">
+                <span className="text-muted-foreground type-label block truncate">
                   Report a problem or ask a question
                 </span>
               </span>
@@ -82,7 +82,7 @@ export function ContactModal({
               </IconCircle>
               <span className="min-w-0 flex-1">
                 <span className="block text-sm font-semibold">Instagram</span>
-                <span className="text-muted-foreground block truncate text-[11px]">
+                <span className="text-muted-foreground type-label block truncate">
                   @mesita.ai
                 </span>
               </span>

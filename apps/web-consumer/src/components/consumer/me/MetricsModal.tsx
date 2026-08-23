@@ -37,10 +37,7 @@ const TILES: Tile[] = [
   { key: "saved_cents", label: "Total saved", money: true },
 ];
 
-function formatTileValue(
-  metrics: ConsumerMetrics,
-  tile: Tile,
-): string {
+function formatTileValue(metrics: ConsumerMetrics, tile: Tile): string {
   if (tile.money) return formatCurrency(metrics[tile.key]);
   return String(metrics[tile.key]);
 }
@@ -89,7 +86,7 @@ export function MetricsModal({
             <h2 className="text-foreground text-lg leading-tight font-bold tracking-tight">
               Metrics
             </h2>
-            <p className="text-muted-foreground text-[12px]">
+            <p className="text-muted-foreground text-xs">
               Your Mesita, in numbers
             </p>
           </div>
@@ -102,13 +99,13 @@ export function MetricsModal({
               className="border-border/60 bg-muted/30 rounded-2xl border px-4 py-3.5"
             >
               {metrics ? (
-                <p className="text-foreground text-[22px] leading-none font-extrabold tracking-tight tabular-nums">
+                <p className="text-foreground text-xl leading-none font-extrabold tracking-tight tabular-nums">
                   {formatTileValue(metrics, tile)}
                 </p>
               ) : (
                 <div className="bg-muted h-[22px] w-14 animate-pulse rounded-md" />
               )}
-              <p className="text-muted-foreground/80 mt-1.5 text-[10px] font-semibold tracking-[0.12em] uppercase">
+              <p className="text-muted-foreground/80 type-meta mt-1.5 font-semibold tracking-[0.12em] uppercase">
                 {tile.label}
               </p>
             </div>

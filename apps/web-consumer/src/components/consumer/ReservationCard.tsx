@@ -53,7 +53,7 @@ export function ReservationCard({ r }: { r: ReservationItem }) {
             </h3>
             <span
               className={cn(
-                "inline-flex shrink-0 items-center gap-1 rounded-md border px-2 py-0.5 text-[10px] font-semibold",
+                "type-meta inline-flex shrink-0 items-center gap-1 rounded-md border px-2 py-0.5 font-semibold",
                 meta.pillClass,
               )}
             >
@@ -65,7 +65,7 @@ export function ReservationCard({ r }: { r: ReservationItem }) {
             </span>
           </div>
 
-          <div className="text-muted-foreground mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[12px]">
+          <div className="text-muted-foreground mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
             <span className="inline-flex items-center gap-1">
               <Calendar className="h-3 w-3" />
               {r.when}
@@ -88,7 +88,7 @@ export function ReservationCard({ r }: { r: ReservationItem }) {
       {r.statusNote && (
         <div
           className={cn(
-            "rounded-xl px-3 py-2 text-[12px] leading-snug",
+            "rounded-xl px-3 py-2 text-xs leading-snug",
             r.status === "booking"
               ? "bg-amber-50 text-amber-900 ring-1 ring-amber-400/30"
               : "bg-muted text-muted-foreground",
@@ -100,4 +100,3 @@ export function ReservationCard({ r }: { r: ReservationItem }) {
     </Link>
   );
 }
-

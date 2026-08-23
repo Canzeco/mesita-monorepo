@@ -72,18 +72,18 @@ export function ClassOriginSummary({
       </span>
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-1.5">
-          <span className="font-display text-[14px] leading-none font-bold tracking-tight">
+          <span className="font-display text-sm leading-none font-bold tracking-tight">
             {title}
           </span>
           <BadgeCheck className="text-muted-foreground h-4 w-4 shrink-0" />
         </div>
-        <p className="text-muted-foreground mt-1 text-[12px] leading-snug">
+        <p className="text-muted-foreground mt-1 text-xs leading-snug">
           {detail}
         </p>
         {/* Full muted ink, not /80: at 11px this is the smallest text on the
             sheet and the fade put it at 3.13:1. It carries product fact (the
             Story Bonus, how the invitation works), not decoration. */}
-        <p className="text-muted-foreground mt-0.5 text-[11px] leading-snug">
+        <p className="text-muted-foreground type-label mt-0.5 leading-snug">
           {note}
         </p>
       </div>

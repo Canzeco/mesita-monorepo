@@ -31,7 +31,7 @@ function PromosSoon() {
           Membership, strategy and the per-place reward grid are parked.
           Nothing is lost — the rates already saved stay exactly as they are.
         </p>
-        <span className="bg-muted text-muted-foreground mt-1 rounded-full px-2 py-0.5 text-[10px] font-bold tracking-wider uppercase">
+        <span className="bg-muted text-muted-foreground mt-1 rounded-full px-2 py-0.5 type-meta font-bold tracking-wider uppercase">
           Soon
         </span>
       </div>

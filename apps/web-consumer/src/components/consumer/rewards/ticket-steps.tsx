@@ -42,12 +42,12 @@ export function MoneyRow({
       <span className="text-muted-foreground min-w-0 text-xs">
         <span className="block truncate">{label}</span>
         {sub ? (
-          <span className="text-muted-foreground/80 block text-[10px] leading-snug">
+          <span className="text-muted-foreground/80 type-meta block leading-snug">
             {sub}
           </span>
         ) : null}
       </span>
-      <span className="text-foreground shrink-0 text-[13px] font-bold tabular-nums">
+      <span className="text-foreground type-body shrink-0 font-bold tabular-nums">
         {value}
       </span>
     </div>
@@ -152,14 +152,12 @@ export function StepBill({
 
         <label
           htmlFor="ticket-bill"
-          className="text-muted-foreground mt-3 block text-[10px] font-bold tracking-[0.12em] uppercase"
+          className="text-muted-foreground type-meta mt-3 block font-bold tracking-[0.12em] uppercase"
         >
           Bill total
         </label>
         <div className="mt-1 flex items-center gap-2">
-          <span className="text-muted-foreground text-[13px] font-bold">
-            MX$
-          </span>
+          <span className="text-muted-foreground type-body font-bold">MX$</span>
           <input
             id="ticket-bill"
             inputMode="decimal"
@@ -170,11 +168,11 @@ export function StepBill({
             className="border-border bg-background focus:border-primary min-h-11 min-w-0 flex-1 rounded-xl border px-3 text-sm font-bold tabular-nums outline-none"
           />
         </div>
-        <p className="text-muted-foreground/80 mt-1 text-[10px]">
+        <p className="text-muted-foreground/80 type-meta mt-1">
           The printed total, before your discount.
         </p>
 
-        <p className="text-muted-foreground mt-3 text-[10px] font-bold tracking-[0.12em] uppercase">
+        <p className="text-muted-foreground type-meta mt-3 font-bold tracking-[0.12em] uppercase">
           Tip
         </p>
         <div className="mt-1 grid grid-cols-4 gap-1.5">
@@ -194,7 +192,7 @@ export function StepBill({
                 )}
               >
                 {p}%
-                <span className="text-muted-foreground text-[10px] font-semibold tabular-nums">
+                <span className="text-muted-foreground type-meta font-semibold tabular-nums">
                   {formatCurrency(previewTipCents(subtotalCents, p))}
                 </span>
               </button>
@@ -216,7 +214,7 @@ export function StepBill({
         </div>
         {pct === null ? (
           <div className="mt-2 flex items-center gap-2">
-            <span className="text-muted-foreground text-[13px] font-bold">
+            <span className="text-muted-foreground type-body font-bold">
               MX$
             </span>
             <input
@@ -318,7 +316,7 @@ export function StepPay({
 
       <div className="border-border bg-card overflow-hidden rounded-2xl border">
         <div className="border-border bg-muted/40 border-b px-3.5 py-2">
-          <span className="text-muted-foreground text-[10px] font-bold tracking-[0.12em] uppercase">
+          <span className="text-muted-foreground type-meta font-bold tracking-[0.12em] uppercase">
             How you settle
           </span>
         </div>
@@ -337,7 +335,7 @@ export function StepPay({
           />
         </div>
         <div className="border-border bg-muted/40 border-y px-3.5 py-2">
-          <span className="text-muted-foreground text-[10px] font-bold tracking-[0.12em] uppercase">
+          <span className="text-muted-foreground type-meta font-bold tracking-[0.12em] uppercase">
             Your Yums
           </span>
         </div>
@@ -426,12 +424,12 @@ function PayMethodRow({
         <span className="text-foreground flex items-center gap-1.5 text-xs leading-tight font-bold">
           <span className="truncate">{label}</span>
           {soon ? (
-            <span className="bg-muted text-muted-foreground shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-bold tracking-wide uppercase">
+            <span className="bg-muted text-muted-foreground type-meta shrink-0 rounded-full px-1.5 py-0.5 font-bold tracking-wide uppercase">
               Soon
             </span>
           ) : null}
         </span>
-        <span className="text-muted-foreground mt-0.5 block truncate text-[10px] font-semibold">
+        <span className="text-muted-foreground type-meta mt-0.5 block truncate font-semibold">
           {sub}
         </span>
       </span>
@@ -512,10 +510,10 @@ export function StepResults({
         )}
       >
         <div className="flex items-center justify-between gap-3">
-          <p className="text-[10px] font-bold tracking-[0.14em] text-white/75 uppercase">
+          <p className="type-meta font-bold tracking-[0.14em] text-white/75 uppercase">
             Mesita Pass
           </p>
-          <span className="rounded-full bg-white/22 px-2 py-0.5 text-[10px] font-bold tracking-widest uppercase">
+          <span className="type-meta rounded-full bg-white/22 px-2 py-0.5 font-bold tracking-widest uppercase">
             {classLabel}
           </span>
         </div>
@@ -523,7 +521,7 @@ export function StepResults({
           {revealed ? (
             <>
               <PartyPopper className="size-7" />
-              <p className="font-display text-[22px] font-bold tabular-nums">
+              <p className="font-display text-xl font-bold tabular-nums">
                 {savedCents > 0
                   ? `You saved ${formatCurrency(savedCents)}`
                   : "Visit complete"}
@@ -598,10 +596,10 @@ export function Lane({
   return (
     <section className="border-border bg-card overflow-hidden rounded-2xl border">
       <div className="border-border bg-muted/40 flex items-baseline justify-between gap-2 border-b px-3 py-1.5">
-        <span className="text-muted-foreground text-[10px] font-bold tracking-[0.12em] uppercase">
+        <span className="text-muted-foreground type-meta font-bold tracking-[0.12em] uppercase">
           {title}
         </span>
-        <span className="text-muted-foreground text-[10px] font-semibold">
+        <span className="text-muted-foreground type-meta font-semibold">
           {note}
         </span>
       </div>
@@ -638,7 +636,7 @@ export function LaneChip({
         <span className="shrink-0 [&>svg]:size-3.5">{glyph}</span>
       ) : null}
       <span className="min-w-0">
-        <span className="text-foreground flex items-center gap-1 text-[10px] leading-tight font-bold">
+        <span className="text-foreground type-meta flex items-center gap-1 leading-tight font-bold">
           <span className="truncate">{label}</span>
           {done ? (
             <Check
@@ -648,7 +646,7 @@ export function LaneChip({
           ) : null}
         </span>
         {sub ? (
-          <span className="text-muted-foreground block truncate text-[10px] leading-tight">
+          <span className="text-muted-foreground type-meta block truncate leading-tight">
             {sub}
           </span>
         ) : null}

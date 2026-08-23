@@ -386,7 +386,7 @@ export function PromosSection({
         )}
 
         {(matrixFailed || (storedStrategy === null && member)) && (
-          <p className="text-muted-foreground mt-2.5 text-[11px]">
+          <p className="text-muted-foreground mt-2.5 type-label">
             {matrixFailed
               ? "Live rates unavailable — showing defaults."
               : "Current rates don't match a strategy — pick one to standardize."}
@@ -492,7 +492,7 @@ function LifecycleBanner({
     const warn = view.tone === "warn";
     return (
       <section className="border-border bg-card shadow-card rounded-2xl border px-5 py-3 sm:px-6">
-        <p className="flex flex-wrap items-baseline gap-x-2 gap-y-1 text-[13px]">
+        <p className="flex flex-wrap items-baseline gap-x-2 gap-y-1 type-body">
           <span
             aria-hidden
             className={cx(
@@ -574,7 +574,7 @@ function LifecycleBanner({
             <StepMarker n={i + 1} state={s.state} danger={forfeited} />
             <span
               className={cx(
-                "truncate text-[12.5px] leading-none",
+                "truncate type-body leading-none",
                 s.state === "current" || s.state === "blocked"
                   ? "text-foreground font-semibold"
                   : "text-muted-foreground font-medium",
@@ -599,7 +599,7 @@ function LifecycleBanner({
       {active && (
         <p
           className={cx(
-            "mt-2.5 text-[12px] leading-snug",
+            "mt-2.5 text-xs leading-snug",
             // `active` is blocked-or-current by construction; only forfeiture
             // earns destructive red.
             active.state === "blocked" && forfeited
@@ -636,7 +636,7 @@ function StepMarker({
   return (
     <span
       className={cx(
-        "inline-flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full border text-[10px] font-bold tabular-nums",
+        "inline-flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full border type-meta font-bold tabular-nums",
         state === "current" &&
           "border-amber-500 bg-amber-500/12 text-amber-800",
         state === "blocked" &&
@@ -709,7 +709,7 @@ function MembershipBox({
         {statusNote && (
           <p
             className={cx(
-              "rounded-xl px-3 py-2 text-[12px] leading-snug",
+              "rounded-xl px-3 py-2 text-xs leading-snug",
               statusNote.tone === "live" &&
                 "bg-emerald-500/10 text-emerald-800",
               statusNote.tone === "warn" && "bg-amber-500/10 text-amber-900",
@@ -724,12 +724,12 @@ function MembershipBox({
         <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
           <p className="font-display text-2xl leading-none font-semibold tracking-tight">
             {price}
-            <span className="text-muted-foreground text-[12px] font-normal">
+            <span className="text-muted-foreground text-xs font-normal">
               {" "}
               / year
             </span>
           </p>
-          <p className="text-muted-foreground text-[12.5px] leading-snug">
+          <p className="text-muted-foreground type-body leading-snug">
             Unlocks{" "}
             <span className="text-foreground font-semibold">Conservative</span>{" "}
             and{" "}
@@ -738,19 +738,19 @@ function MembershipBox({
           </p>
         </div>
 
-        <p className="text-muted-foreground text-[12px] leading-snug">
+        <p className="text-muted-foreground text-xs leading-snug">
           {nextLine}
         </p>
 
         <details open={rulesOpen} className="border-border group border-t">
-          <summary className="text-muted-foreground hover:text-foreground flex min-h-10 cursor-pointer list-none items-center gap-1.5 text-[12px] font-semibold transition [&::-webkit-details-marker]:hidden">
+          <summary className="text-muted-foreground hover:text-foreground flex min-h-10 cursor-pointer list-none items-center gap-1.5 text-xs font-semibold transition [&::-webkit-details-marker]:hidden">
             How it works
             <ChevronDown className="h-3.5 w-3.5 shrink-0 transition group-open:rotate-180" />
           </summary>
           {/* Activation lives in the lifecycle banner (Box 0) — only the
               strikes ladder and the admin-write note are unique here. */}
-          <div className="text-muted-foreground flex flex-col gap-2.5 pb-3 text-[12px] leading-snug">
-            <p className="text-[10px] font-bold tracking-[0.14em] uppercase">
+          <div className="text-muted-foreground flex flex-col gap-2.5 pb-3 text-xs leading-snug">
+            <p className="type-meta font-bold tracking-[0.14em] uppercase">
               If a guest is turned away
             </p>
             <ol className="flex flex-col gap-1">
@@ -758,7 +758,7 @@ function MembershipBox({
                 <li key={s.n} className="flex items-start gap-2">
                   <span
                     className={cx(
-                      "mt-px inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-bold",
+                      "mt-px inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full type-meta font-bold",
                       s.n === "3"
                         ? "bg-destructive/10 text-destructive"
                         : "bg-amber-500/15 text-amber-700",
@@ -781,7 +781,7 @@ function MembershipBox({
           <button
             type="button"
             onClick={onDropClick}
-            className="text-muted-foreground hover:text-destructive self-start text-[12px] font-semibold underline underline-offset-4 transition"
+            className="text-muted-foreground hover:text-destructive self-start text-xs font-semibold underline underline-offset-4 transition"
           >
             Drop membership
           </button>
@@ -837,7 +837,7 @@ function StrategyCard({
     >
       <ArtBand strategy={strategy} art={art} height="h-24">
         {selected && (
-          <span className="text-foreground absolute top-2 right-2 inline-flex items-center gap-1 rounded-full bg-white/90 px-2 py-0.5 text-[10px] font-bold tracking-wide uppercase shadow-card">
+          <span className="text-foreground absolute top-2 right-2 inline-flex items-center gap-1 rounded-full bg-white/90 px-2 py-0.5 type-meta font-bold tracking-wide uppercase shadow-card">
             {pending ? (
               <Loader2 className="h-3 w-3 animate-spin" />
             ) : (
@@ -877,14 +877,14 @@ function StrategyCard({
             Switch / Switch to Zero (member) · Current. */}
         <div className="mt-auto flex flex-col gap-1.5 pt-1">
           {cta === "current" ? (
-            <span className="border-border text-muted-foreground inline-flex h-11 w-full items-center justify-center gap-1.5 rounded-full border text-[12px] font-bold">
+            <span className="border-border text-muted-foreground inline-flex h-11 w-full items-center justify-center gap-1.5 rounded-full border text-xs font-bold">
               <Check className="h-3.5 w-3.5" />
               Current
             </span>
           ) : (
             <span
               className={cx(
-                "inline-flex h-11 w-full items-center justify-center rounded-full text-[12px] font-bold",
+                "inline-flex h-11 w-full items-center justify-center rounded-full text-xs font-bold",
                 paid
                   ? cx("bg-gradient-to-r text-white", art.cta)
                   : "border-border text-foreground/75 border",
@@ -899,7 +899,7 @@ function StrategyCard({
                     : "Switch to Zero"}
             </span>
           )}
-          <span className="text-muted-foreground group-hover:text-foreground text-center text-[10.5px] font-medium transition">
+          <span className="text-muted-foreground group-hover:text-foreground text-center type-label font-medium transition">
             See full rates & rules
           </span>
         </div>
@@ -969,12 +969,12 @@ function MeterStat({
   return (
     <div className="flex flex-col gap-1.5">
       <div className="flex items-baseline justify-between gap-2">
-        <span className="text-muted-foreground text-[10px] font-bold tracking-[0.14em] uppercase">
+        <span className="text-muted-foreground type-meta font-bold tracking-[0.14em] uppercase">
           {label}
         </span>
         <span
           className={cx(
-            "font-display truncate text-[15px] leading-none font-bold tracking-tight",
+            "font-display truncate text-sm leading-none font-bold tracking-tight",
             valueClass,
           )}
         >
@@ -992,7 +992,7 @@ function MeterStat({
           />
         ))}
       </div>
-      <p className="text-muted-foreground text-[11px] leading-snug">{note}</p>
+      <p className="text-muted-foreground type-label leading-snug">{note}</p>
     </div>
   );
 }
@@ -1100,7 +1100,7 @@ function ProductModal({
           <X className="h-4 w-4" />
         </button>
         {isCurrent && (
-          <span className="text-foreground absolute top-2.5 left-2.5 inline-flex items-center gap-1 rounded-full bg-white/90 px-2 py-0.5 text-[10px] font-bold tracking-wide uppercase shadow-card">
+          <span className="text-foreground absolute top-2.5 left-2.5 inline-flex items-center gap-1 rounded-full bg-white/90 px-2 py-0.5 type-meta font-bold tracking-wide uppercase shadow-card">
             <Check className="h-3 w-3" />
             Current
           </span>
@@ -1109,7 +1109,7 @@ function ProductModal({
 
       {/* Detail — everything the card abstracts away. */}
       <div className="flex flex-col gap-4 overflow-y-auto p-5">
-        <p className="text-muted-foreground text-[13px] leading-snug">
+        <p className="text-muted-foreground type-body leading-snug">
           {strategy.tagline}
         </p>
 
@@ -1154,13 +1154,13 @@ function ProductModal({
                 We ping your staff WhatsApp, then honoring the first guest check
                 at the bill makes you live.
               </Step>
-              <p className="text-muted-foreground text-[10px] leading-snug">Refusing a guest is a strike: 1 warning · 2 paused 30 days · 3 removed.</p>
+              <p className="text-muted-foreground type-meta leading-snug">Refusing a guest is a strike: 1 warning · 2 paused 30 days · 3 removed.</p>
             </div>
           </>
         ) : (
           <div className="flex flex-col gap-2">
             <ModalLabel>How it works</ModalLabel>
-            <p className="text-muted-foreground text-[12px] leading-snug">
+            <p className="text-muted-foreground text-xs leading-snug">
               {member
                 ? "Zero pauses discounts — membership stays active. Drop membership separately if you want to leave."
                 : "Non-members stay at Zero — no discounts. Join membership to unlock the paid strategies."}
@@ -1173,7 +1173,7 @@ function ProductModal({
             open with a busy primary; failures render here as an alert. */}
       <div className="border-border flex flex-col gap-2 border-t p-4">
         {error && (
-          <p role="alert" className="text-destructive text-[11px] font-medium">
+          <p role="alert" className="text-destructive type-label font-medium">
             {error}
           </p>
         )}
@@ -1183,7 +1183,7 @@ function ProductModal({
             disabled={isCurrent || busy}
             onClick={onConfirm}
             className={cx(
-              "inline-flex h-11 items-center justify-center gap-1.5 rounded-full px-5 text-[13px] font-bold transition disabled:opacity-70",
+              "inline-flex h-11 items-center justify-center gap-1.5 rounded-full px-5 type-body font-bold transition disabled:opacity-70",
               isCurrent
                 ? "border-border text-muted-foreground border"
                 : !member || paid
@@ -1203,7 +1203,7 @@ function ProductModal({
           </button>
         </div>
         {footerNote && (
-          <p className="text-muted-foreground text-[10px] leading-snug">
+          <p className="text-muted-foreground type-meta leading-snug">
             {footerNote}
           </p>
         )}
@@ -1214,7 +1214,7 @@ function ProductModal({
 
 function ModalLabel({ children }: { children: React.ReactNode }) {
   return (
-    <span className="text-muted-foreground text-[10px] font-bold tracking-[0.14em] uppercase">
+    <span className="text-muted-foreground type-meta font-bold tracking-[0.14em] uppercase">
       {children}
     </span>
   );
@@ -1232,15 +1232,15 @@ function Step({
 }) {
   return (
     <div className="flex items-start gap-3">
-      <span className="bg-foreground text-background mt-0.5 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[11px] font-bold tabular-nums">
+      <span className="bg-foreground text-background mt-0.5 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full type-label font-bold tabular-nums">
         {n}
       </span>
       <div className="flex flex-col">
-        <p className="text-foreground/90 text-[13px] leading-snug font-semibold">
+        <p className="text-foreground/90 type-body leading-snug font-semibold">
           {title}
         </p>
         {children && (
-          <p className="text-muted-foreground text-[11px] leading-snug">
+          <p className="text-muted-foreground type-label leading-snug">
             {children}
           </p>
         )}
@@ -1282,7 +1282,7 @@ function RewardsMatrix({
   };
   return (
     <div className="flex flex-col gap-1">
-      <div className="border-border/60 grid grid-cols-[minmax(0,1.4fr)_repeat(5,minmax(0,1fr))] overflow-hidden rounded-lg border text-[10.5px]">
+      <div className="border-border/60 grid grid-cols-[minmax(0,1.4fr)_repeat(5,minmax(0,1fr))] overflow-hidden rounded-lg border type-label">
         <span className="bg-muted/40 px-2 py-1.5" aria-hidden />
         {ACTION_KEYS.map((a) => (
           <span
@@ -1322,7 +1322,7 @@ function RewardsMatrix({
           </div>
         ))}
       </div>
-      <p className="text-muted-foreground/80 text-[10px] leading-snug">
+      <p className="text-muted-foreground/80 type-meta leading-snug">
         {ACTION_KEYS.map(
           (a, i) =>
             `${i > 0 ? " · " : ""}${ACTION_META[a].emoji} ${ACTION_META[a].name}`,
@@ -1460,11 +1460,11 @@ function Faq({
 }) {
   return (
     <details open={defaultOpen} className="group">
-      <summary className="hover:bg-muted/40 flex cursor-pointer list-none items-center justify-between gap-3 px-3.5 py-2.5 text-[12.5px] font-semibold transition [&::-webkit-details-marker]:hidden">
+      <summary className="hover:bg-muted/40 flex cursor-pointer list-none items-center justify-between gap-3 px-3.5 py-2.5 type-body font-semibold transition [&::-webkit-details-marker]:hidden">
         {q}
         <ChevronDown className="text-muted-foreground h-4 w-4 shrink-0 transition group-open:rotate-180" />
       </summary>
-      <div className="text-muted-foreground flex flex-col gap-2 px-3.5 pb-3.5 text-[12px] leading-relaxed">
+      <div className="text-muted-foreground flex flex-col gap-2 px-3.5 pb-3.5 text-xs leading-relaxed">
         {children}
       </div>
     </details>
@@ -1523,7 +1523,7 @@ function PremiumExamples({
           Current rates on a sample{" "}
           {formatMoney(EXAMPLE_BILL_MXN, place.currency)} ticket:
         </p>
-        <span className="text-muted-foreground text-[10px] font-bold tracking-wide uppercase">
+        <span className="text-muted-foreground type-meta font-bold tracking-wide uppercase">
           {strategy && strategy.id !== ZERO_STRATEGY_ID
             ? `${strategy.emoji} ${strategy.name}`
             : "Custom rates"}
@@ -1576,23 +1576,23 @@ function ExampleRow({
 
   return (
     <div className="flex items-baseline justify-between gap-3 px-3 py-2">
-      <span className="text-muted-foreground shrink-0 text-[11px] font-bold tracking-wide uppercase">
+      <span className="text-muted-foreground shrink-0 type-label font-bold tracking-wide uppercase">
         {visit}
       </span>
       {premiumRate == null ? (
-        <span className="text-muted-foreground text-[11px]">
+        <span className="text-muted-foreground type-label">
           No discount for this visit type.
         </span>
       ) : (
         <div className="text-right">
-          <p className="text-foreground/85 text-[12px]">
+          <p className="text-foreground/85 text-xs">
             Premium{" "}
             <span className="font-bold tabular-nums">{premiumRate}%</span> →
             pays{" "}
             <span className="font-bold">{formatMoney(pays, currency)}</span>,
             saves {formatMoney(saves, currency)}
           </p>
-          <p className="text-muted-foreground text-[11px]">
+          <p className="text-muted-foreground type-label">
             {freeRate == null
               ? "Standard gets no discount on this visit."
               : `Standard ${freeRate}% → saves ${formatMoney(freeSaves, currency)}`}
@@ -1619,10 +1619,10 @@ function DiscountCapPicker({
   return (
     <div className="border-border/60 mt-3 flex flex-wrap items-center justify-between gap-x-4 gap-y-2.5 rounded-xl border px-3.5 py-3">
       <div className="min-w-0">
-        <p className="text-foreground/90 text-[12px] font-semibold">
+        <p className="text-foreground/90 text-xs font-semibold">
           Discount cap
         </p>
-        <p className="text-muted-foreground text-[11px] leading-snug">
+        <p className="text-muted-foreground type-label leading-snug">
           Every discount applies to the first N pesos of the bill — separate
           from strategy.
         </p>
@@ -1641,7 +1641,7 @@ function DiscountCapPicker({
               onClick={() => onSelect(option)}
               aria-pressed={active}
               className={cx(
-                "inline-flex h-9 items-center rounded-lg px-3 text-[12.5px] tabular-nums transition disabled:opacity-50",
+                "inline-flex h-9 items-center rounded-lg px-3 type-body tabular-nums transition disabled:opacity-50",
                 active
                   ? "bg-foreground text-background font-bold"
                   : "border-border text-muted-foreground hover:text-foreground hover:bg-muted border font-semibold",
@@ -1670,7 +1670,7 @@ function MembershipStatusPill({ state }: { state: MembershipPillState }) {
   return (
     <span
       className={cx(
-        "inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[10px] font-bold tracking-wide uppercase",
+        "inline-flex items-center gap-1 rounded-md px-2 py-0.5 type-meta font-bold tracking-wide uppercase",
         state === "forfeited" && "bg-destructive/10 text-destructive",
         state === "paused" && "bg-amber-500/12 text-amber-800",
         liveish && "bg-emerald-500/12 text-emerald-700",

@@ -52,7 +52,7 @@ export function PlaceCategorySelect({
   if (loading) {
     return (
       <label className="flex flex-col gap-1.5">
-        <span className="text-foreground/90 text-[13px] font-medium">Category</span>
+        <span className="text-foreground/90 type-body font-medium">Category</span>
         <span className="text-muted-foreground flex h-10 items-center gap-1.5 text-xs">
           <Loader2 className="h-3.5 w-3.5 animate-spin" />
           Loading…
@@ -66,7 +66,7 @@ export function PlaceCategorySelect({
 
   return (
     <label className="flex flex-col gap-1.5">
-      <span className="text-foreground/90 text-[13px] font-medium">Category</span>
+      <span className="text-foreground/90 type-body font-medium">Category</span>
       <span className="relative block">
         <select
           value={value}

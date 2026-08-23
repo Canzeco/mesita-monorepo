@@ -32,7 +32,7 @@ function Section({
         {title}
       </h2>
       {hint && (
-        <p className="text-muted-foreground mt-1.5 max-w-3xl text-[13px] leading-relaxed">
+        <p className="text-muted-foreground mt-1.5 max-w-3xl type-body leading-relaxed">
           {hint}
         </p>
       )}
@@ -59,7 +59,7 @@ function Card({
       >
         {children}
       </div>
-      <p className="text-muted-foreground border-border bg-muted/40 border-t px-3 py-2 font-mono text-[11px]">
+      <p className="text-muted-foreground border-border bg-muted/40 border-t px-3 py-2 font-mono type-label">
         {label}
       </p>
     </div>
@@ -145,21 +145,21 @@ export default function BrandPage() {
                   className="border-border h-9 w-14 shrink-0 rounded-md border"
                   style={{ background: s.hex }}
                 />
-                <span className="w-10 shrink-0 font-mono text-[12px] font-semibold">
+                <span className="w-10 shrink-0 font-mono text-xs font-semibold">
                   {s.step}
                 </span>
-                <span className="text-muted-foreground w-20 shrink-0 font-mono text-[11px]">
+                <span className="text-muted-foreground w-20 shrink-0 font-mono type-label">
                   {s.hex}
                 </span>
-                <span className="text-muted-foreground hidden shrink-0 font-mono text-[11px] sm:inline">
+                <span className="text-muted-foreground hidden shrink-0 font-mono type-label sm:inline">
                   {s.oklch}
                 </span>
-                <span className="ml-auto shrink-0 text-right font-mono text-[11px]">
+                <span className="ml-auto shrink-0 text-right font-mono type-label">
                   <span className="text-muted-foreground">
                     {s.onWhite.toFixed(2)}:1
                   </span>
                   <span
-                    className={`ml-2 rounded px-1.5 py-0.5 text-[10px] font-semibold ${
+                    className={`ml-2 rounded px-1.5 py-0.5 type-meta font-semibold ${
                       aaNormal
                         ? "bg-emerald-100 text-emerald-800"
                         : aaLarge
@@ -178,13 +178,13 @@ export default function BrandPage() {
         <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
           {BRAND_ROLES.map((r) => (
             <div key={r.token} className="border-border rounded-xl border p-4">
-              <p className="font-mono text-[12px] font-semibold">{r.token}</p>
+              <p className="font-mono text-xs font-semibold">{r.token}</p>
               {r.ref && (
-                <p className="text-muted-foreground mt-0.5 font-mono text-[11px]">
+                <p className="text-muted-foreground mt-0.5 font-mono type-label">
                   → {r.ref}
                 </p>
               )}
-              <p className="text-muted-foreground mt-2 text-[12px] leading-relaxed">
+              <p className="text-muted-foreground mt-2 text-xs leading-relaxed">
                 {r.use}
               </p>
             </div>
@@ -192,22 +192,22 @@ export default function BrandPage() {
         </div>
 
         <div className="border-border mt-4 rounded-xl border p-4">
-          <p className="text-[13px] font-semibold">The rule that bites</p>
-          <p className="text-muted-foreground mt-1.5 text-[12.5px] leading-relaxed">
+          <p className="type-body font-semibold">The rule that bites</p>
+          <p className="text-muted-foreground mt-1.5 type-body leading-relaxed">
             Mesita Pink is 3.66:1 on white — AA for large text and UI
             components, <strong>not</strong> for body text. White on a pink
             button needs ≥16px semibold. Pink text on white at body size must
             use <code className="font-mono">--brand-pink-text</code>.
           </p>
           <div className="mt-3 flex flex-wrap items-center gap-3">
-            <span className="bg-primary rounded-lg px-3 py-2 text-[15px] font-semibold text-white">
+            <span className="bg-primary rounded-lg px-3 py-2 text-sm font-semibold text-white">
               Correct — 16px semibold
             </span>
-            <span className="bg-primary rounded-lg px-3 py-2 text-[11px] font-normal text-white opacity-90">
+            <span className="bg-primary rounded-lg px-3 py-2 type-label font-normal text-white opacity-90">
               Too small — fails AA
             </span>
             <span
-              className="text-[13px] font-medium"
+              className="type-body font-medium"
               style={{ color: "var(--brand-pink-text)" }}
             >
               Pink body text uses 600
@@ -223,13 +223,13 @@ export default function BrandPage() {
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div className="border-border overflow-hidden rounded-xl border">
             <div className="bg-pink-gradient h-24" />
-            <p className="text-muted-foreground border-border bg-muted/40 border-t px-3 py-2 font-mono text-[11px]">
+            <p className="text-muted-foreground border-border bg-muted/40 border-t px-3 py-2 font-mono type-label">
               --gradient-pink · .bg-pink-gradient · .btn-primary
             </p>
           </div>
           <div className="border-border overflow-hidden rounded-xl border">
             <div className="bg-brand h-24" />
-            <p className="text-muted-foreground border-border bg-muted/40 border-t px-3 py-2 font-mono text-[11px]">
+            <p className="text-muted-foreground border-border bg-muted/40 border-t px-3 py-2 font-mono type-label">
               --gradient-brand · .bg-brand (was --gradient-peacock)
             </p>
           </div>
@@ -242,10 +242,10 @@ export default function BrandPage() {
             <p className="font-display text-3xl font-semibold tracking-tight">
               Descubre, reserva
             </p>
-            <p className="text-muted-foreground mt-3 font-mono text-[11px]">
+            <p className="text-muted-foreground mt-3 font-mono type-label">
               {BRAND_TYPE.display.family} · --font-display
             </p>
-            <p className="text-muted-foreground mt-1 text-[12px]">
+            <p className="text-muted-foreground mt-1 text-xs">
               {BRAND_TYPE.display.use}
             </p>
           </div>
@@ -253,10 +253,10 @@ export default function BrandPage() {
             <p className="text-base">
               The quick brown fox jumps over the lazy dog.
             </p>
-            <p className="text-muted-foreground mt-3 font-mono text-[11px]">
+            <p className="text-muted-foreground mt-3 font-mono type-label">
               {BRAND_TYPE.body.family} · --font-body
             </p>
-            <p className="text-muted-foreground mt-1 text-[12px]">
+            <p className="text-muted-foreground mt-1 text-xs">
               {BRAND_TYPE.body.use}
             </p>
           </div>
@@ -267,7 +267,7 @@ export default function BrandPage() {
         title="Rules"
         hint={`Clear space: keep ${BRAND_GEOMETRY.clearSpace}× the mark's width free on every side. Minimum sizes: horizontal ${BRAND_GEOMETRY.minSize.horizontalPx}px wide, stacked ${BRAND_GEOMETRY.minSize.stackedPx}px, bare mark ${BRAND_GEOMETRY.minSize.markPx}px.`}
       >
-        <ul className="text-muted-foreground grid grid-cols-1 gap-2 text-[13px] leading-relaxed sm:grid-cols-2">
+        <ul className="text-muted-foreground grid grid-cols-1 gap-2 type-body leading-relaxed sm:grid-cols-2">
           {[
             "Don't rebuild the wordmark as live text — it's outlines so it can't reflow when Fraunces fails to load.",
             "Don't colour the mark and wordmark differently from each other.",

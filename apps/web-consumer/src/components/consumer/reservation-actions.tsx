@@ -132,7 +132,7 @@ export function ReservationActions({
           </span>
           <span className="text-sm font-semibold">View place</span>
         </span>
-        <span className="text-muted-foreground text-[12px]">
+        <span className="text-muted-foreground text-xs">
           Details, map, menu
         </span>
       </Link>
@@ -152,7 +152,7 @@ export function ReservationActions({
             </span>
             <span className="text-sm font-semibold">Reschedule</span>
           </span>
-          <span className="text-muted-foreground text-[12px]">
+          <span className="text-muted-foreground text-xs">
             We call the place again
           </span>
         </button>
@@ -185,13 +185,13 @@ export function ReservationActions({
             </span>
             <div className="min-w-0">
               <h2 className={SHEET_TITLE_CLASS}>Move your table</h2>
-              <p className="text-muted-foreground truncate text-[12px]">
+              <p className="text-muted-foreground truncate text-xs">
                 {r.placeName} · now {r.when}
               </p>
             </div>
           </div>
 
-          <p className="text-muted-foreground mt-3 text-[12.5px] leading-snug">
+          <p className="text-muted-foreground type-body mt-3 leading-snug">
             Pick a new slot and Mesita calls {r.placeName} again to confirm it.
             Your table isn&apos;t moved until they say yes.
           </p>
@@ -239,7 +239,7 @@ export function ReservationActions({
             <XCircle className="h-5 w-5" />
           </span>
           <h2 className={SHEET_TITLE_CLASS}>Cancel this reservation?</h2>
-          <p className="text-muted-foreground text-[13px] leading-relaxed">
+          <p className="text-muted-foreground type-body leading-relaxed">
             {r.placeName} · {r.when}. We&apos;ll stop calling and let the place
             know. You can always book again.
           </p>

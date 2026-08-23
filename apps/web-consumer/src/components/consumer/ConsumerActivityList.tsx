@@ -34,7 +34,7 @@ export function ConsumerActivityList({
                 />
               </div>
               <div className="min-w-0 flex-1">
-                <p className="text-foreground text-[13px] leading-snug">
+                <p className="text-foreground type-body leading-snug">
                   {a.handle && (
                     <strong className="font-semibold">{a.handle}</strong>
                   )}
@@ -46,7 +46,7 @@ export function ConsumerActivityList({
                     </strong>
                   )}
                 </p>
-                <p className="text-muted-foreground mt-0.5 text-[11px]">
+                <p className="text-muted-foreground type-label mt-0.5">
                   {a.when}
                 </p>
               </div>
@@ -55,7 +55,7 @@ export function ConsumerActivityList({
         })}
       </ul>
       {anonymisedNote ? (
-        <p className="text-muted-foreground inline-flex items-center justify-center gap-1.5 text-[11px]">
+        <p className="text-muted-foreground type-label inline-flex items-center justify-center gap-1.5">
           <Sparkles className="h-3 w-3" />
           Anonymised — handles, places, and amounts are shuffled.
         </p>

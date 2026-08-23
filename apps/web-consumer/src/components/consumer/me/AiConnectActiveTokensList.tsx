@@ -20,12 +20,12 @@ export function ActiveTokensList({
   return (
     <SettingsGroup>
       {loading && tokens.length === 0 ? (
-        <div className="text-muted-foreground flex items-center gap-2 px-4 py-3 text-[12px]">
+        <div className="text-muted-foreground flex items-center gap-2 px-4 py-3 text-xs">
           <Loader2 className="h-3.5 w-3.5 animate-spin" />
           Loading…
         </div>
       ) : tokens.length === 0 ? (
-        <p className="text-muted-foreground px-4 py-3 text-[12px]">
+        <p className="text-muted-foreground px-4 py-3 text-xs">
           No active tokens yet.
         </p>
       ) : (
@@ -40,7 +40,7 @@ export function ActiveTokensList({
                 <span className="block truncate text-sm font-semibold">
                   {t.label}
                 </span>
-                <span className="text-muted-foreground block truncate font-mono text-[11px]">
+                <span className="text-muted-foreground type-label block truncate font-mono">
                   {t.token_prefix}…
                 </span>
               </span>
