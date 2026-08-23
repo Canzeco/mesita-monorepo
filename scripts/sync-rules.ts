@@ -56,6 +56,32 @@ export const AGENTS_NOTICE =
 export const QUICKSTART_WORD_BUDGET = 700;
 export const DEFAULT_PACKAGE_WORD_BUDGET = 450;
 
+// ── Skill budgets (Development Rules §C) ────────────────────────────────────
+// `.claude/` is allowlisted wholesale (MD_ALLOW_DIRS below), so every file in
+// it was allowlisted and therefore never measured. That made the repo's single
+// largest knowledge file — .claude/skills/doctor/SKILL.md — the one surface the
+// budget law could not reach. A docs folder growing back under a different name
+// is still a docs folder.
+//
+// A skill is a PROCEDURE, not law: ordered steps, queries, thresholds, report
+// shapes. It legitimately runs longer than a package CLAUDE.md, so it gets its
+// own default rather than being crushed into 450.
+//
+// The budget is per SKILL DIRECTORY, summed over every tracked markdown file in
+// it. Budgeting SKILL.md alone would make the cure for an over-budget skill
+// "move half of it into a sibling reference.md" — accretion plus one more file.
+export const DEFAULT_SKILL_WORD_BUDGET = 1500;
+
+// Explicit ceilings, same rule as TARGETS: keyed by skill name, each naming why
+// it needs one. Raising a number here is a visible line in the diff, which is
+// the whole point — a budget nobody sees being raised is not a budget.
+export const SKILL_BUDGETS: Record<string, number> = {
+  // Nine audit scopes, each carrying its own queries, thresholds and report
+  // shape, plus the weekly Scope 9 run (MESITA-1214). Sized 2026-08-23 against
+  // the real file, not guessed.
+  doctor: 4350,
+};
+
 /** The one tokenizer, so every budget is measured the same way. */
 export function countWords(text: string): number {
   return text.trim().split(/\s+/).filter(Boolean).length;
@@ -81,6 +107,10 @@ export const MD_SCAN_GLOBS = ["*.md", "*.MD", "*.mdx", "*.mdc"];
 // is a second rule-layering mechanism that only ONE platform reads, so a rule
 // parked there is invisible to every other agent. Package rules belong in that
 // package's CLAUDE.md, which every platform loads through its own dialect.
+//
+// Allowlisted ≠ unmeasured: `.claude/skills/*` still owes a word budget
+// (SKILL_BUDGETS above). The allowlist decides what may exist, the budget
+// decides how big it may get.
 export const MD_ALLOW_DIRS = [".claude/", ".cursor/", ".codex/", ".github/"];
 
 const repoRoot = dirname(dirname(fromFileUrl(import.meta.url)));
@@ -158,6 +188,54 @@ export function budgetsFor(target: Target, text: string): BudgetCheck[] {
   const suffix = target.quickstart ? "/CLAUDE.md tail" : "/CLAUDE.md";
   const words = countWords(measured);
   return [{ label: `${target.label}${suffix}`, words, budget, over: words > budget }];
+}
+
+// ── Skills: which files a skill budget measures ─────────────────────────────
+// Project-local skills ONLY. gstack ships its skills as symlinks from a
+// separate repo (~/.claude/gstack); measuring those would budget files this
+// repo does not own and cannot rewrite. Two filters keep them out: the file
+// must be TRACKED here, and it must be a regular blob (git mode 100644/100755),
+// never a symlink (120000).
+export const SKILLS_DIR = ".claude/skills/";
+
+export type LsFile = { mode: string; path: string };
+
+/** Parse `git ls-files -s` output: `<mode> <sha> <stage>\t<path>`. */
+export function parseLsFiles(stdout: string): LsFile[] {
+  return stdout.split("\n").flatMap((line) => {
+    const tab = line.indexOf("\t");
+    if (tab === -1) return [];
+    const mode = line.slice(0, line.indexOf(" "));
+    const path = line.slice(tab + 1);
+    return path ? [{ mode, path }] : [];
+  });
+}
+
+/** `.claude/skills/<name>/<anything>.md` → `<name>`; anything else → null. */
+export function skillNameOf(path: string): string | null {
+  if (!path.startsWith(SKILLS_DIR)) return null;
+  const [name, ...rest] = path.slice(SKILLS_DIR.length).split("/");
+  return name && rest.length > 0 ? name : null;
+}
+
+/** Group a skill's tracked markdown under its name — one budget per skill. */
+export function groupSkillDocs(files: LsFile[]): Map<string, string[]> {
+  const bySkill = new Map<string, string[]>();
+  for (const { mode, path } of files) {
+    if (mode === "120000") continue; // symlinked in from another repo
+    const name = skillNameOf(path);
+    if (name === null) continue;
+    const paths = bySkill.get(name);
+    if (paths) paths.push(path);
+    else bySkill.set(name, [path]);
+  }
+  for (const paths of bySkill.values()) paths.sort();
+  return bySkill;
+}
+
+export function skillBudgetCheck(name: string, words: number): BudgetCheck {
+  const budget = SKILL_BUDGETS[name] ?? DEFAULT_SKILL_WORD_BUDGET;
+  return { label: `${SKILLS_DIR}${name}/`, words, budget, over: words > budget };
 }
 
 export function overBudgetMessage({ label, words, budget }: BudgetCheck): string {
@@ -259,14 +337,28 @@ async function main(): Promise<void> {
 
   try {
     const ls = new Deno.Command("git", {
-      args: ["ls-files", ...MD_SCAN_GLOBS],
+      // `-s` so the skill budgets can tell a real file from a symlink.
+      args: ["ls-files", "-s", ...MD_SCAN_GLOBS],
       cwd: repoRoot,
       stdout: "piped",
       stderr: "piped",
     });
     const out = await ls.output();
     if (out.success) {
-      const tracked = new TextDecoder().decode(out.stdout).split("\n").filter(Boolean);
+      const files = parseLsFiles(new TextDecoder().decode(out.stdout));
+      const tracked = files.map(({ path }) => path);
+
+      // Skills are allowlisted but not exempt: measured per directory.
+      for (const [name, paths] of groupSkillDocs(files)) {
+        let words = 0;
+        for (const p of paths) words += countWords(await Deno.readTextFile(join(repoRoot, p)));
+        const b = skillBudgetCheck(name, words);
+        if (b.over) {
+          console.error(overBudgetMessage(b));
+          failed++;
+        }
+      }
+
       const strays = findStrayMarkdown(tracked, buildAllowedFiles(TARGETS, repoRoot));
       for (const f of strays) {
         console.error(

@@ -16,14 +16,21 @@ import {
   buildAllowedFiles,
   countWords,
   DEFAULT_PACKAGE_WORD_BUDGET,
+  DEFAULT_SKILL_WORD_BUDGET,
   END,
   findMarkerSpan,
   findStrayMarkdown,
+  groupSkillDocs,
   MD_ALLOW_DIRS,
   MD_SCAN_GLOBS,
   overBudgetMessage,
+  parseLsFiles,
   QUICKSTART_WORD_BUDGET,
   rootTail,
+  SKILL_BUDGETS,
+  skillBudgetCheck,
+  skillNameOf,
+  SKILLS_DIR,
   START,
   TARGETS,
   type Target,
@@ -146,6 +153,108 @@ Deno.test("overBudgetMessage prescribes a rewrite, not a trim", () => {
   assertStringIncludes(msg, "900 words > 450");
   assertStringIncludes(msg, "rewrite it from scratch");
   assertStringIncludes(msg, "don't trim around the edges");
+});
+
+// ── Skill budgets — the surface `.claude/` used to hide from the ruler ───────
+
+Deno.test("parseLsFiles reads the mode and path off `git ls-files -s`", () => {
+  const files = parseLsFiles(
+    "100644 62a2a8b 0\t.claude/skills/doctor/SKILL.md\n" +
+      "120000 b8677c6 0\t.claude/skills/gstack-ship/SKILL.md\n" +
+      "\n",
+  );
+  assertEquals(files, [
+    { mode: "100644", path: ".claude/skills/doctor/SKILL.md" },
+    { mode: "120000", path: ".claude/skills/gstack-ship/SKILL.md" },
+  ]);
+});
+
+Deno.test("skillNameOf names only files INSIDE a skill directory", () => {
+  assertEquals(skillNameOf(`${SKILLS_DIR}doctor/SKILL.md`), "doctor");
+  assertEquals(skillNameOf(`${SKILLS_DIR}doctor/references/queries.md`), "doctor");
+  assertEquals(skillNameOf(`${SKILLS_DIR}loose.md`), null, "not in a skill dir");
+  assertEquals(skillNameOf(".claude/launch.json"), null);
+  assertEquals(skillNameOf("apps/web-admin/CLAUDE.md"), null);
+});
+
+Deno.test("groupSkillDocs budgets the whole skill DIRECTORY, not just SKILL.md", () => {
+  // Otherwise the cure for an over-budget SKILL.md is to move half of it into a
+  // sibling file — the same words, one more file, and the gate reports green.
+  const grouped = groupSkillDocs([
+    { mode: "100644", path: `${SKILLS_DIR}doctor/SKILL.md` },
+    { mode: "100644", path: `${SKILLS_DIR}doctor/reference.md` },
+    { mode: "100644", path: `${SKILLS_DIR}other/SKILL.md` },
+  ]);
+  assertEquals(grouped.get("doctor"), [
+    `${SKILLS_DIR}doctor/SKILL.md`,
+    `${SKILLS_DIR}doctor/reference.md`,
+  ]);
+  assertEquals(grouped.get("other")?.length, 1);
+});
+
+Deno.test("groupSkillDocs skips symlinks — gstack skills live in another repo", () => {
+  // ~/.claude/gstack is a separate checkout symlinked in. Budgeting it would
+  // measure files this repo neither owns nor can rewrite.
+  const grouped = groupSkillDocs([
+    { mode: "120000", path: `${SKILLS_DIR}ship/SKILL.md` },
+    { mode: "100644", path: `${SKILLS_DIR}doctor/SKILL.md` },
+  ]);
+  assertEquals([...grouped.keys()], ["doctor"]);
+});
+
+Deno.test("skillBudgetCheck defaults, overrides, and is inclusive at the limit", () => {
+  const [name, ceiling] = Object.entries(SKILL_BUDGETS)[0];
+  assertEquals(skillBudgetCheck("fresh-skill", DEFAULT_SKILL_WORD_BUDGET).over, false);
+  assertEquals(skillBudgetCheck("fresh-skill", DEFAULT_SKILL_WORD_BUDGET + 1).over, true);
+  assertEquals(skillBudgetCheck(name, ceiling).over, false, "at its own ceiling");
+  assertEquals(skillBudgetCheck(name, ceiling + 1).over, true);
+  assertEquals(skillBudgetCheck("doctor", 1).label, `${SKILLS_DIR}doctor/`);
+});
+
+/** Every skill this repo owns → its total tracked-markdown word count. */
+async function shippedSkills(): Promise<Map<string, number>> {
+  const root = join(repoRoot, ".claude", "skills");
+  const totals = new Map<string, number>();
+  for await (const entry of Deno.readDir(root)) {
+    // readDir does not follow symlinks: a symlinked-in gstack skill is neither
+    // isDirectory nor isFile, so it drops out here exactly as mode 120000 does.
+    if (!entry.isDirectory) continue;
+    totals.set(entry.name, await wordsUnder(join(root, entry.name)));
+  }
+  return totals;
+}
+
+async function wordsUnder(dir: string): Promise<number> {
+  let words = 0;
+  for await (const entry of Deno.readDir(dir)) {
+    const path = join(dir, entry.name);
+    if (entry.isDirectory) words += await wordsUnder(path);
+    else if (entry.isFile && /\.(md|MD|mdx|mdc)$/.test(entry.name)) {
+      words += countWords(await Deno.readTextFile(path));
+    }
+  }
+  return words;
+}
+
+Deno.test("every explicit skill ceiling is justified by a skill that needs it", async () => {
+  const shipped = await shippedSkills();
+  for (const [name, ceiling] of Object.entries(SKILL_BUDGETS)) {
+    const words = shipped.get(name);
+    assert(words !== undefined, `SKILL_BUDGETS names "${name}", which this repo does not ship`);
+    assert(
+      words > DEFAULT_SKILL_WORD_BUDGET,
+      `${name} carries an explicit ceiling of ${ceiling} but is only ${words} words — drop the override`,
+    );
+  }
+});
+
+Deno.test("every shipped skill is within budget", async () => {
+  const shipped = await shippedSkills();
+  assert(shipped.size > 0, "no project-local skill found — the budget would be measuring nothing");
+  for (const [name, words] of shipped) {
+    const b = skillBudgetCheck(name, words);
+    assert(!b.over, overBudgetMessage(b));
+  }
 });
 
 // ── Allowlist ────────────────────────────────────────────────────────────────
