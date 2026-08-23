@@ -6,7 +6,7 @@ export type ProfileResult = {
   established_year?: number | null;
   executive_chef?: string | null;
   editorial_summary?: string | null;
-  /** Canonical About — always English (Mesita core language). */
+  /** Canonical Profile Description — always English (Mesita core language). */
   description?: string | null;
   details?: Record<string, unknown> | null;
   popular_times?: unknown[] | null;
@@ -14,7 +14,7 @@ export type ProfileResult = {
 
 // Coerce an LLM-produced value to usable text: a string is trimmed; an array
 // of strings becomes paragraphs; a plain object's string values (a shape
-// gpt-4o-mini actually emits for the About, e.g. {intro, ambiente, cocina})
+// gpt-4o-mini actually emits for the description, e.g. {intro, ambiente, cocina})
 // become paragraphs too, one level deep. Anything else is dropped.
 // json_object mode only *describes* the schema — the model can and does
 // return off-type fields, and one bad field must never throw the stage.
@@ -38,12 +38,12 @@ export function asProfileText(v: unknown): string | null {
   return parts.length > 0 ? parts.join("\n\n") : null;
 }
 
-// Ensure the public About is readable paragraphs, not one mambo-jumbo block.
+// Ensure the Profile Description is readable paragraphs, not one mambo-jumbo block.
 // - Collapse runs of whitespace inside a paragraph.
 // - Normalize any mix of single/double newlines into blank-line breaks.
 // - If the model still returned one wall of text, split on sentence ends into
 //   ~2–4 sentence paragraphs (skips short blurbs that don't need splitting).
-export function formatAboutParagraphs(raw: string): string {
+export function formatDescriptionParagraphs(raw: string): string {
   const trimmed = raw.replace(/\r\n/g, "\n").trim();
   if (!trimmed) return "";
 
@@ -98,10 +98,10 @@ export function applyProfileToUpdate(
   if (chef) update.executive_chef = chef;
   const editorial = asProfileText(parsed.editorial_summary);
   if (editorial) update.editorial_summary = editorial;
-  // Canonical About — English only (MESITA-939). Spanish TMS later.
+  // Canonical Profile Description — English only (MESITA-939). Spanish TMS later.
   const description = asProfileText(parsed.description);
   if (description) {
-    update.description = formatAboutParagraphs(description).slice(0, ENRICH_DESCRIPTION_MAX);
+    update.description = formatDescriptionParagraphs(description).slice(0, ENRICH_DESCRIPTION_MAX);
   }
   if (parsed.details && typeof parsed.details === "object" && !Array.isArray(parsed.details)) {
     update.details = parsed.details;

@@ -13,7 +13,7 @@ export const ENRICH_FIELD_LIMITS = {
   description: {
     max: 2000,
     unit: "chars",
-    note: "About / description overwrite via the business Place editor (business-web-update-project). A freshly-enriched place can exceed this — see \"Description (Enricher synthesis)\".",
+    note: "Profile Description overwrite via the business Place editor (business-web-update-project). A freshly-enriched place can exceed this — see \"Description (Enricher synthesis)\".",
   },
   // The Enricher's own synthesis ceiling (enrich-synthesis-profile.ts) —
   // ENRICH_DESCRIPTION_MAX = 1,000-word target × 7. Not the same limit as the
@@ -25,7 +25,7 @@ export const ENRICH_FIELD_LIMITS = {
     note: "places.description as freshly written by an Enricher run, before any business-editor overwrite (7,000 = 1,000-word target × 7).",
   },
   // Place Synthesis blurb that OpenAI embeds (places.embedding_source_text) —
-  // NOT the human About. Enforced at word boundaries in place-embeddings.ts
+  // NOT the Profile Description. Enforced at word boundaries in place-embeddings.ts
   // (never a mid-word char slice).
   embeddingSourceText: {
     max: 60,

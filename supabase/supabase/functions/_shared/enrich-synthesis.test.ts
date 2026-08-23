@@ -5,14 +5,14 @@ import { assertEquals } from "jsr:@std/assert@1";
 import {
   applyProfileToUpdate,
   asProfileText,
-  formatAboutParagraphs,
+  formatDescriptionParagraphs,
   type ProfileResult,
 } from "./enrich-synthesis.ts";
 
 Deno.test("asProfileText: trims strings, joins arrays and string-valued objects, drops the rest", () => {
   assertEquals(asProfileText("  hola  "), "hola");
   assertEquals(asProfileText(["Para uno.", " Para dos. "]), "Para uno.\n\nPara dos.");
-  // gpt-4o-mini emits object-shaped Abouts under thin grounding — flatten them.
+  // gpt-4o-mini emits object-shaped descriptions under thin grounding — flatten them.
   assertEquals(
     asProfileText({ intro: "Un lugar.", ambiente: "Cálido." }),
     "Un lugar.\n\nCálido.",
@@ -106,19 +106,19 @@ Deno.test("applyProfileToUpdate: synthesis fills zone/city only when Google left
   assertEquals(update.city, "Monterrey"); // native kept
 });
 
-Deno.test("formatAboutParagraphs: keeps blank-line paragraphs, collapses inner whitespace", () => {
+Deno.test("formatDescriptionParagraphs: keeps blank-line paragraphs, collapses inner whitespace", () => {
   assertEquals(
-    formatAboutParagraphs("Para uno.\n\n  Para   dos.  "),
+    formatDescriptionParagraphs("Para uno.\n\n  Para   dos.  "),
     "Para uno.\n\nPara dos.",
   );
   // Single newlines also become paragraph breaks (models often omit the blank line).
   assertEquals(
-    formatAboutParagraphs("Line one.\nLine two."),
+    formatDescriptionParagraphs("Line one.\nLine two."),
     "Line one.\n\nLine two.",
   );
 });
 
-Deno.test("formatAboutParagraphs: splits a long wall of text into sentence packs", () => {
+Deno.test("formatDescriptionParagraphs: splits a long wall of text into sentence packs", () => {
   const wall =
     "Alpha is a warm neighborhood spot with wood tables and soft light. " +
     "The kitchen leans Mexican with a few Japanese touches. " +
@@ -126,14 +126,14 @@ Deno.test("formatAboutParagraphs: splits a long wall of text into sentence packs
     "Weekends fill early so reservations help. " +
     "The patio is quieter after nine. " +
     "Staff know the regulars by name.";
-  const out = formatAboutParagraphs(wall);
+  const out = formatDescriptionParagraphs(wall);
   const paras = out.split("\n\n");
   assertEquals(paras.length >= 2, true);
   assertEquals(paras.every((p) => p.length > 0), true);
   assertEquals(out.includes("\n\n"), true);
 });
 
-Deno.test("applyProfileToUpdate: wall-of-text About becomes multi-paragraph", () => {
+Deno.test("applyProfileToUpdate: wall-of-text description becomes multi-paragraph", () => {
   const update: Record<string, unknown> = {};
   const wall =
     "Alpha is a warm neighborhood spot with wood tables and soft light. " +

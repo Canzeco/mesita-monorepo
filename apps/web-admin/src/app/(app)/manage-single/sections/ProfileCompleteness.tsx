@@ -47,8 +47,8 @@ const CHECKS: readonly CompletenessCheck[] = [
     done: (p) => !!p.category,
   },
   {
-    label: "About",
-    hint: "Write the About (80+ characters)",
+    label: "Description",
+    hint: "Write the Description (80+ characters)",
     weight: 10,
     done: (p) => (p.description ?? "").trim().length >= 80,
   },

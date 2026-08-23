@@ -140,17 +140,6 @@ function MetaCard({
             </span>
           </span>
         </ReadField>
-        <ReadField label="Slug" boxed>
-          {place.slug ? (
-            <code className="min-w-0 truncate font-mono text-[11px]">
-              {place.slug}
-            </code>
-          ) : (
-            <span className="text-muted-foreground text-xs italic">
-              None — computed on the profiles view.
-            </span>
-          )}
-        </ReadField>
         <ReadField label="Created at" boxed>
           {place.created_at ? formatAbsoluteUtc(place.created_at) : "—"}
         </ReadField>
@@ -218,7 +207,7 @@ function parseEmbeddingVector(raw: AdminPlace["embedding"]): number[] | null {
 //
 // WHICH ENTITY IS VECTORIZED (Pato asked, MESITA-1161): the PLACE, and only
 // the place. `_shared/embeddings-vector.ts::placeEmbeddingFacts` builds the
-// source from name · category · zone/city · address · price level · About —
+// source from name · category · zone/city · address · price level · Description —
 // all `places` columns — and the vector lands on `places.embedding` beside
 // `embedding_source_text` / `embedding_source_hash`. The write goes through
 // the `profiles` view because that is the write door, NOT because a profile
@@ -227,7 +216,7 @@ function parseEmbeddingVector(raw: AdminPlace["embedding"]): number[] | null {
 // weekly and would poison a semantic index that answers "what is this place
 // like".
 //
-// NOTE: the Place Synthesis is NOT the About/description. About is the
+// NOTE: the Place Synthesis is NOT the Profile Description. The description is the
 // human-readable profile copy; the synthesis is a separate, super-concise text
 // purpose-built for semantic search. Written on create + on profile update.
 // Open by default; collapsible like Metadata.
