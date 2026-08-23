@@ -123,7 +123,7 @@ export const STRATEGIES: readonly Strategy[] = [
     //
     // These are EXACTLY the rates Dominant was retired with on 2026-08-09, so
     // any place still carrying them resurrects as Dominant instead of being
-    // coerced to Aggressive — which is why that coercion could be deleted.
+    // coerced to Aggressive — which is why that coercion is gone.
     tagline: "The floor lifted — nearly the top rate for everyone.",
     visibility: "Max",
     rates: {
@@ -160,17 +160,6 @@ export function snapDiscountCap(v: unknown): DiscountCapMxn {
 }
 
 
-/** Retired Dominant rate tuple (pre-2026-08-09). Migration remapped live rows
- * to Aggressive; this catch stays so any leftover row displays/pays as
- * Aggressive rather than falling through to the null/custom → Zero path
- * (MESITA-993 / engine D5). */
-export const RETIRED_DOMINANT_RATES: StrategyRates = {
-  welcome_free_rate: 40,
-  welcome_premium_rate: 50,
-  free_rate: 20,
-  premium_rate: 30,
-};
-
 function ratesMatch(a: StrategyRates, b: StrategyRates): boolean {
   return (
     a.welcome_free_rate === b.welcome_free_rate &&
@@ -183,13 +172,15 @@ function ratesMatch(a: StrategyRates, b: StrategyRates): boolean {
 // Which strategy a place's stored rates currently reflect. Matched on the four
 // rate columns (cap is independent, not part of identity). Returns null when
 // the rates match no preset (e.g. a retired 70) — so the UI shows a
-// neutral "custom" state. Leftover Dominant (40/50/20/30) coerces to
-// Aggressive (MESITA-993).
+// neutral "custom" state.
 // A fresh place (all nulls) matches Zero, which is correct.
+//
+// Dominant was restored 2026-08-21 on the SAME tuple it was retired with, so
+// the MESITA-993 coercion that displayed leftover Dominant rows as Aggressive
+// was DELETED rather than inverted: those rows now resolve to the strategy
+// they were always running. Leaving it would have been the expensive bug —
+// this console WRITES what it resolves, so a Dominant place opening it would
+// have been silently downgraded to Aggressive rates on the next save.
 export function strategyForPlace(rates: StrategyRates): StrategyId | null {
-  const match = STRATEGIES.find((s) => ratesMatch(s.rates, rates));
-  if (match) return match.id;
-  // D5 / MESITA-993: leftover Dominant rates display as Aggressive.
-  if (ratesMatch(rates, RETIRED_DOMINANT_RATES)) return "aggressive";
-  return null;
+  return STRATEGIES.find((s) => ratesMatch(s.rates, rates))?.id ?? null;
 }

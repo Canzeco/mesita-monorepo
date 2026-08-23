@@ -22,9 +22,11 @@
 // Cap is a SEPARATE per-place param (monthly_promo_cap); the config `cap`
 // is the platform fallback.
 //
-// A place's STRATEGY (zero/conservative/aggressive) is derived from its
-// v4 rate columns via strategyForRates. Dominant (40/50/20/30) coerces to
-// aggressive (D5) — never the silent-underpay-to-zero path.
+// A place's STRATEGY (zero/conservative/aggressive/dominant) is derived from
+// its v4 rate columns via strategyForRates. Dominant was restored 2026-08-21
+// on the same (40/50/20/30) tuple it was retired with, so the D5 coercion to
+// aggressive is gone — such a row resolves to dominant, its own preset.
+// Rates matching NO preset still fall to null → the zero rung.
 //
 // Segments v6 (2026-08-01) + Story gate v2 (MESITA-909) + doors rank flip
 // (MESITA-972): four classes — standard, influencer (Instagram ≥ 2,000
