@@ -18,7 +18,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { clampIntRange, corsPreflight, json, rejectUnlessMethods, readJsonOr } from "../_shared/http.ts";
 import { adminClient, anonClient, readAnonEnv, readEFEnv } from "../_shared/auth.ts";
-import { PLACE_PUBLIC_COLUMNS } from "../_shared/place-columns.ts";
+import { PLACE_CARD_COLUMNS } from "../_shared/place-columns.ts";
 import { withFamilyKeysList } from "../_shared/place-family-keys.ts";
 import { loadDiscoveryConfig } from "../_shared/discovery-config.ts";
 import { DISCOVERY_DEFAULTS } from "../_shared/discovery-config.ts";
@@ -72,9 +72,13 @@ Deno.serve(async (req) => {
     ? (await loadDiscoveryConfig(adminClient(efEnv.env))).filters
     : DISCOVERY_DEFAULTS.filters;
 
+  // MESITA-1283: list returns MANY places per request — the card projection
+  // (every public column except the five enrichment-filled jsonb ones), not
+  // the full single-place read. Nothing here reads those five; verified
+  // against discovery-filters.ts and this file before wiring.
   const base = supabase
     .from("profiles")
-    .select(PLACE_PUBLIC_COLUMNS);
+    .select(PLACE_CARD_COLUMNS);
 
   const { data, error } = await applyDiscoveryFilters(base, filters, {
     lat: null,

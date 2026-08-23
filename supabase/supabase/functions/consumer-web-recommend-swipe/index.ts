@@ -60,7 +60,7 @@ import { corsPreflight, json, readJsonOr, rejectUnlessMethods } from "../_shared
 import { adminClient, readEFEnv } from "../_shared/auth.ts";
 import { clampPositive, stripInternal } from "../_shared/place-pool-shape.ts";
 import type { PlaceRow } from "../_shared/place-pool-shape.ts";
-import { PLACE_PUBLIC_COLUMNS } from "../_shared/place-columns.ts";
+import { PLACE_CARD_COLUMNS } from "../_shared/place-columns.ts";
 import { discoveryRank } from "../_shared/discovery-blend.ts";
 import { loadDiscoveryConfig } from "../_shared/discovery-config.ts";
 import {
@@ -123,15 +123,21 @@ Deno.serve(async (req) => {
   };
 
   // The pool needs the promo columns the slotting lane reads, which
-  // PLACE_PUBLIC_COLUMNS already carries (they are stripped on the way out by
+  // PLACE_CARD_COLUMNS already carries (they are stripped on the way out by
   // stripInternal), plus the embedding for the Semantic signal.
+  //
+  // MESITA-1283: this pool feeds a deck of up to POOL_CAP places per
+  // request, not one — the card projection (every public column except the
+  // five enrichment-filled jsonb ones), not the full single-place read.
+  // Nothing in discoveryRank/discovery-filters.ts reads those five;
+  // verified against every discovery-*.ts file before wiring.
   //
   // The `ready` gate MESITA-1228 hardcoded here now lives in the Filters box
   // as `requireReady`, still defaulted ON — adopting a shipped gate at its
   // current value is the only migration that changes nothing on landing.
   const base = admin
     .from("profiles")
-    .select(`${PLACE_PUBLIC_COLUMNS}, ${DISCOVERY_EXTRA_COLUMNS}`)
+    .select(`${PLACE_CARD_COLUMNS}, ${DISCOVERY_EXTRA_COLUMNS}`)
     .eq("status", "active");
 
   const { data, error } = await applyDiscoveryFilters(base, cfg.filters, geo)
