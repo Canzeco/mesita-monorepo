@@ -157,8 +157,24 @@ const ROUTING_COLUMNS: readonly string[] = [
   "order_target",
 ];
 
+// Operating (MESITA-1239) — what Google says about the business itself.
+//
+// BUSINESS-ONLY on purpose, for the same reason as the routing columns above:
+// this is an OPERATOR fact, and its product consequence is deliberately
+// undecided. Flag, never withhold — putting it in the public payload invites a
+// consumer surface to gate on a third-party signal, which is precisely the
+// auto-unlisting the issue argued against. Listed stays the visibility gate.
+const OPERATING_COLUMNS: readonly string[] = [
+  "business_status",
+  "business_status_at",
+];
+
 // Business reads — includes `updated_at` so the business UI can show
 // "saved · 2 min ago" style affordances, plus the routing columns the
-// Settings rails edit.
-export const PLACE_BUSINESS_COLUMNS = [...COLUMNS, ...ROUTING_COLUMNS, "updated_at"]
-  .join(", ");
+// Settings rails edit and the Operating fact the Status box renders.
+export const PLACE_BUSINESS_COLUMNS = [
+  ...COLUMNS,
+  ...ROUTING_COLUMNS,
+  ...OPERATING_COLUMNS,
+  "updated_at",
+].join(", ");
