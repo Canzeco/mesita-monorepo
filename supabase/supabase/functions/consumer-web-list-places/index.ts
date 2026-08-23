@@ -46,6 +46,12 @@ Deno.serve(async (req) => {
   const { data, error } = await supabase
     .from("profiles")
     .select(PLACE_PUBLIC_COLUMNS)
+    // Same enrichment gate as Swipe (MESITA-1228). Map must not show a place
+    // whose pipeline has not landed 'ready' — a half-enriched card has no
+    // description, no images and no hours, which reads as a broken listing
+    // rather than a pending one. Applied as a predicate so the `limit` below
+    // fills with eligible rows instead of being spent on ineligible ones.
+    .eq("content_status", "ready")
     .order("created_at", { ascending: false })
     .limit(limit);
 

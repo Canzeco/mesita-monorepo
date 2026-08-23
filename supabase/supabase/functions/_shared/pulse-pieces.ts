@@ -54,8 +54,13 @@
 //
 // `enriched` is NOT a count of functions that worked. It is HOW FAR THE QUEUE
 // GOT: the index of the last good function, 0-9, where 0 is the CREATED floor.
-// That is what makes it gateable — Map and Swipe can ask for >= N only because
-// the queue is strictly linear.
+// The queue is strictly linear, so ">= N" is a MEANINGFUL question to ask of
+// it. It is not, today, a question anything can ask in SQL: this value is a
+// read-time fold over the run-event log, not a column, so it cannot appear in
+// a WHERE clause. Consumer visibility therefore gates on `content_status =
+// 'ready'` instead (MESITA-1228) — a real predicate, applied before the pool
+// cap. If MESITA-1249 materializes this meter onto the place, a finer-grained
+// ">= N" gate becomes possible; until then, do not promise one.
 //
 // THIS IS NOT THE TRIGGER MATRIX'S VOCABULARY. `enrich-triggers.ts` keys what a
 // run may BUY (purchase units); these are what an operator is told. Different
