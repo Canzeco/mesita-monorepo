@@ -28,11 +28,13 @@
 // the placeholder and are LIVE again — they feed Proximity. That is a strictly
 // better deck for a client already sending them, and a client that sends
 // nothing gets a neutral Proximity (1) rather than a penalty, so it is
-// unaffected. `radiusKm` stays discarded: this engine demotes distance, it does
-// not filter on it — a hard radius is the filter model MESITA-1183 tore down.
-// `randomness` also stays discarded, because randomness is now a SIGNAL whose
-// exponent the operator owns in admin Discovery; letting a client override an
-// operator's weight is how a config stops meaning anything.
+// unaffected. `radiusKm` and `randomness` stay discarded, for the same reason:
+// both are now OPERATOR policy, not client input. Randomness is a SIGNAL whose
+// exponent lives in admin Discovery, and a hard radius is a FILTER
+// (`filters.maxDistanceKm`, off by default) — letting a client override either
+// is how a config stops meaning anything. Note the radius is off by default
+// precisely because this engine prefers to DEMOTE distance through Proximity's
+// log curve rather than exclude on it.
 //
 // Local:  supabase functions serve consumer-web-recommend-swipe
 // Deploy: supabase functions deploy consumer-web-recommend-swipe
@@ -50,6 +52,7 @@ import {
   toPromotingFields,
   toSignalPlace,
 } from "../_shared/discovery-place.ts";
+import { applyDiscoveryFilters, trimToRadius } from "../_shared/discovery-filters.ts";
 
 const DEFAULT_LIMIT = 50;
 const MAX_LIMIT = 50;
@@ -83,23 +86,29 @@ Deno.serve(async (req) => {
 
   const admin = adminClient(env);
 
+  // The config is read BEFORE the pool, not after: filters are query
+  // PREDICATES (MESITA-1276). The pool is capped at POOL_CAP, so a filter
+  // applied after the fetch would thin the deck the guest receives instead of
+  // narrowing the catalog it was drawn from.
+  const cfg = await loadDiscoveryConfig(admin);
+  const geo = {
+    lat: typeof body.lat === "number" ? body.lat : null,
+    lng: typeof body.lng === "number" ? body.lng : null,
+  };
+
   // The pool needs the promo columns the slotting lane reads, which
   // PLACE_PUBLIC_COLUMNS already carries (they are stripped on the way out by
   // stripInternal), plus the embedding for the Semantic signal.
-  const { data, error } = await admin
+  //
+  // The `ready` gate MESITA-1228 hardcoded here now lives in the Filters box
+  // as `requireReady`, still defaulted ON — adopting a shipped gate at its
+  // current value is the only migration that changes nothing on landing.
+  const base = admin
     .from("profiles")
     .select(`${PLACE_PUBLIC_COLUMNS}, ${DISCOVERY_EXTRA_COLUMNS}`)
-    .eq("status", "active")
-    // The enrichment gate (MESITA-1228, the one part of MESITA-1172 that never
-    // shipped). It is a PREDICATE, not a post-filter: the pool is already
-    // capped at POOL_CAP, so filtering after the fetch would silently thin the
-    // deck instead of deepening it. `content_status` is the lifecycle column
-    // (queued | generating | ready | failed) and only the contents stage lands
-    // 'ready', so it answers "the pipeline finished" and distinguishes done
-    // from failed. The 0-9 `enrich_pulse` ordinal cannot do this job: it is a
-    // read-time fold over an event log, not a column, so it cannot appear in a
-    // WHERE clause until MESITA-1249 materializes it.
-    .eq("content_status", "ready")
+    .eq("status", "active");
+
+  const { data, error } = await applyDiscoveryFilters(base, cfg.filters, geo)
     .limit(POOL_CAP);
 
   if (error) {
@@ -107,26 +116,39 @@ Deno.serve(async (req) => {
     return json({ ok: false, error: error.message }, 502);
   }
 
-  const rows = (data ?? []) as unknown as PlaceRow[];
-  const cfg = await loadDiscoveryConfig(admin);
+  const admitted = (data ?? []) as unknown as PlaceRow[];
+  // Corner trim: the radius filter is a bounding BOX in the query, so this
+  // removes the rows the box admitted that fall outside the true circle. It
+  // only ever refines the predicate, never reaches past it.
+  const rows = trimToRadius(
+    admitted,
+    (r) => (r as unknown as Record<string, unknown>).lat as number | null,
+    (r) => (r as unknown as Record<string, unknown>).lng as number | null,
+    cfg.filters.maxDistanceKm,
+    geo,
+  );
 
   // Swipe carries no query and no category intent — the deck is the whole
   // catalog, ordered. Proximity is the only intent a swiping guest expresses,
   // so Category and Semantic abstain at NEUTRAL and drop out of the blend.
-  const ranked = discoveryRank(
-    rows,
-    (r) => toSignalPlace(r as unknown as Record<string, unknown>),
-    (r) => toPromotingFields(r as unknown as Record<string, unknown>),
-    {
-      lat: typeof body.lat === "number" ? body.lat : null,
-      lng: typeof body.lng === "number" ? body.lng : null,
-    },
-    cfg.weights,
-    cfg.slotting,
-  );
+  //
+  // `engines.swipe.ranked` is the operator's kill switch on the ranking brain.
+  // Off serves the pool in its own order — which is what this function did
+  // before MESITA-1196 — and the FILTERS still apply, because admission and
+  // ordering are different questions.
+  const ordered = cfg.engines.swipe.ranked
+    ? discoveryRank(
+      rows,
+      (r) => toSignalPlace(r as unknown as Record<string, unknown>),
+      (r) => toPromotingFields(r as unknown as Record<string, unknown>),
+      geo,
+      cfg.weights,
+      cfg.slotting,
+    ).map((r) => r.row)
+    : rows;
 
   // stripInternal also attaches computed `family_keys` (MESITA-679). Keep it.
-  const deck = ranked.slice(0, limit).map((r) => stripInternal(r.row));
+  const deck = ordered.slice(0, limit).map((r) => stripInternal(r));
   const embedded = rows.filter((r) =>
     (r as unknown as Record<string, unknown>).embedding != null
   ).length;
