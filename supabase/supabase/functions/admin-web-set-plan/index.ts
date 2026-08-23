@@ -51,6 +51,7 @@ import {
   effectiveRatesAfterPatch,
 } from "../_shared/partner-derivation.ts";
 import { logStrategySwitch } from "../_shared/strategy-switch-log.ts";
+import { type ProjectPatch, writePlace } from "../_shared/place-doc.ts";
 
 // public.membership — free | pro | ultra. `ultra` is legacy (no longer sold,
 // MESITA-541) but still grantable for the places that already carry it.
@@ -173,16 +174,18 @@ Deno.serve(async (req) => {
       currentListingType: row.listing_type as string,
     });
 
-    const { data: updated, error } = await admin
-      .from("projects")
-      .update(patch)
-      .eq("id", projectId)
-      .select("id")
-      .maybeSingle();
-    if (error) {
-      return json({ ok: false, error: `plan_update: ${error.message}` }, 500);
+    const updRes = await writePlace(admin, {
+      table: "projects",
+      mode: "update",
+      id: projectId,
+      patch: patch as ProjectPatch,
+      select: "id",
+      selectMode: "maybeSingle",
+    });
+    if (!updRes.ok) {
+      return json({ ok: false, error: `plan_update: ${updRes.error}` }, 500);
     }
-    if (!updated) {
+    if (!updRes.row) {
       return json({ ok: false, error: "Place not found" }, 404);
     }
 
@@ -242,16 +245,18 @@ Deno.serve(async (req) => {
     patch.first_ticket_honored_at = null;
   }
 
-  const { data: updated, error } = await admin
-    .from("projects")
-    .update(patch)
-    .eq("id", projectId)
-    .select("id")
-    .maybeSingle();
-  if (error) {
-    return json({ ok: false, error: `plan_update: ${error.message}` }, 500);
+  const updRes = await writePlace(admin, {
+    table: "projects",
+    mode: "update",
+    id: projectId,
+    patch: patch as ProjectPatch,
+    select: "id",
+    selectMode: "maybeSingle",
+  });
+  if (!updRes.ok) {
+    return json({ ok: false, error: `plan_update: ${updRes.error}` }, 500);
   }
-  if (!updated) {
+  if (!updRes.row) {
     return json({ ok: false, error: "Place not found" }, 404);
   }
 

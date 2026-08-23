@@ -34,6 +34,7 @@ import {
 } from "./embeddings-http.ts";
 import { loadModelsConfig } from "./models-config.ts";
 import { synthesizePlaceEmbeddingText } from "./place-embeddings.ts";
+import { writePlace } from "./place-doc.ts";
 
 export { rankByCosine, shouldEmbed } from "./embeddings-vector.ts";
 export { embedBatch, embedSingle, EMBEDDING_DIMS, DEFAULT_EMBEDDING_MODEL };
@@ -85,16 +86,18 @@ export async function embedAndPersistPlaces<T extends EmbeddablePlace>(
     await Promise.all(inputs.map(async (inp, i) => {
       const v = byIdx.get(i);
       if (!v || v.length !== EMBEDDING_DIMS) return;
-      const { error } = await admin
-        .from("profiles")
-        .update({
+      const writeRes = await writePlace(admin, {
+        table: "profiles",
+        mode: "update",
+        id: inp.id,
+        patch: {
           embedding: vectorLiteral(v),
           embedding_source_hash: inp.hash,
           embedding_source_text: inp.text,
-        })
-        .eq("id", inp.id);
-      if (error) {
-        console.error(`[${logPrefix}] embed write:`, error.message);
+        },
+      });
+      if (!writeRes.ok) {
+        console.error(`[${logPrefix}] embed write:`, writeRes.error);
         return;
       }
       out.set(inp.id, { embedding: v, hash: inp.hash, text: inp.text });

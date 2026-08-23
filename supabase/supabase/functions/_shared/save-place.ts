@@ -23,6 +23,7 @@
 // not grant plan, ownership, or a promo strategy.
 
 import { type SupabaseClient } from "jsr:@supabase/supabase-js@2";
+import { type PlacePatch, type ProjectRow, writePlace } from "./place-doc.ts";
 import { ensureUniqueSlug, slugify } from "./place-slug.ts";
 
 // The places-shaped profile from fetchGoogleBasics. Required spine:
@@ -126,15 +127,16 @@ export async function savePlaceData(
   const placeInsert = {
     ...placeRest,
     google_name: googleName,
-  };
-  const { data: placeRow, error: placeErr } = await admin
-    .from("places")
-    .insert(placeInsert)
-    .select("id")
-    .single();
-  if (placeErr || !placeRow) {
+  } as PlacePatch;
+  const placeRes = await writePlace(admin, {
+    table: "places",
+    mode: "insert",
+    patch: placeInsert,
+    select: "id",
+  });
+  if (!placeRes.ok || !placeRes.row) {
     // Race guard: a concurrent create won the unique index — report as dup.
-    if (placeErr?.code === "23505" && /google_place_id/.test(placeErr.message)) {
+    if (placeRes.ok === false && placeRes.code === "23505" && /google_place_id/.test(placeRes.error)) {
       const after = await admin
         .from("profiles")
         .select("id, slug, name, status, listing_type")
@@ -147,37 +149,42 @@ export async function savePlaceData(
       });
     }
     return fail(400, {
-      error: `place_insert: ${placeErr?.message ?? "no row"}`,
-      code: placeErr?.code ?? null,
+      error: `place_insert: ${placeRes.ok ? "no row" : placeRes.error}`,
+      code: placeRes.ok ? null : placeRes.code ?? null,
     });
   }
+  const placeRow = placeRes.row as { id: string };
 
   // ── 2) projects (entity, shared PK). content_status is caller-supplied. ──
-  const { data: projectRow, error: projectErr } = await admin
-    .from("projects")
-    .insert({
-      id: placeRow.id,
+  const projectRes = await writePlace(admin, {
+    table: "projects",
+    mode: "insert",
+    id: placeRow.id,
+    patch: {
       slug,
       status: "active",
       listing_type: listingType,
-      content_status: status,
-    })
-    .select("id, slug, status")
-    .single();
-  if (projectErr || !projectRow) {
+      content_status: status as ProjectRow["content_status"],
+    },
+    select: "id, slug, status",
+  });
+  if (!projectRes.ok || !projectRes.row) {
     // Compensate: drop the orphan place so a failed create leaves nothing.
-    await admin.from("places").delete().eq("id", placeRow.id);
-    if (projectErr?.code === "23505" && /\bslug\b/.test(projectErr.message)) {
+    await writePlace(admin, { table: "places", mode: "delete", id: placeRow.id });
+    if (
+      projectRes.ok === false && projectRes.code === "23505" && /\bslug\b/.test(projectRes.error)
+    ) {
       return fail(409, {
         code: "slug_already_taken",
         error: "A place with this URL slug already exists. Try again.",
       });
     }
     return fail(400, {
-      error: `project_insert: ${projectErr?.message ?? "no row"}`,
-      code: projectErr?.code ?? null,
+      error: `project_insert: ${projectRes.ok ? "no row" : projectRes.error}`,
+      code: projectRes.ok ? null : projectRes.code ?? null,
     });
   }
+  const projectRow = projectRes.row as { id: string; slug: string; status: string };
 
   return {
     ok: true,

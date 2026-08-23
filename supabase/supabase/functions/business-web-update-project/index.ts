@@ -18,6 +18,7 @@ import {
 } from "../_shared/auth.ts";
 import { isEmailish } from "../_shared/input.ts";
 import { PLACE_BUSINESS_COLUMNS } from "../_shared/place-columns.ts";
+import { type ProfilePatch, writePlace } from "../_shared/place-doc.ts";
 import { ENRICH_FIELD_LIMITS } from "../_shared/enrich-field-limits.ts";
 import { sanitizePlaceTags } from "../_shared/tags.ts";
 import { type PlaceHours, sanitiseHours } from "./project-hours.ts";
@@ -541,41 +542,42 @@ Deno.serve(async (req) => {
     APIFY_KEY,
   );
 
-  let { data: place, error: updateError } = await admin
-    .from("profiles")
-    .update(update)
-    .eq("id", projectId)
-    .select(PLACE_BUSINESS_COLUMNS)
-    .single();
+  let updRes = await writePlace(admin, {
+    table: "profiles",
+    mode: "update",
+    id: projectId,
+    patch: update as ProfilePatch,
+    select: PLACE_BUSINESS_COLUMNS,
+  });
 
   // Backward compatibility: in projects where category_label migration hasn't
   // landed (or schema cache is stale), retry the same update without
   // category_label so edits can still be saved.
   if (
-    updateError && isMissingCategoryLabelColumnError(updateError) &&
+    !updRes.ok && isMissingCategoryLabelColumnError({ message: updRes.error }) &&
     "category_label" in update
   ) {
     const retryUpdate = { ...update };
     delete retryUpdate.category_label;
-    const retry = await admin
-      .from("profiles")
-      .update(retryUpdate)
-      .eq("id", projectId)
-      .select(PLACE_BUSINESS_COLUMNS)
-      .single();
-    place = retry.data;
-    updateError = retry.error;
+    updRes = await writePlace(admin, {
+      table: "profiles",
+      mode: "update",
+      id: projectId,
+      patch: retryUpdate as ProfilePatch,
+      select: PLACE_BUSINESS_COLUMNS,
+    });
   }
-  if (updateError) {
+  if (!updRes.ok) {
     return json(
       {
         ok: false,
-        error: `place_update: ${updateError.message}`,
-        code: updateError.code ?? null,
+        error: `place_update: ${updRes.error}`,
+        code: updRes.code ?? null,
       },
       400,
     );
   }
+  const place = updRes.row;
 
   // ── The on_update row of the trigger matrix, honoured (MESITA-1188) ──────
   // Until now this row was decorative: it rendered two editable cells and
