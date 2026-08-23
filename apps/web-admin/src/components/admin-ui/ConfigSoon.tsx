@@ -10,6 +10,17 @@ import type { LucideIcon } from "lucide-react";
 // controls are DELETED from the markup, not hidden. A staged knob still costs
 // an operator the same attention as a live one, and a page of them is what
 // made this console exhausting to read.
+//
+// SOON AND STAGED ARE NOT SYNONYMS — the console owns both words, and each
+// names a different rendered state (MESITA-1224):
+//   • Soon    the surface has NO knobs. This component IS that state, so a
+//             page rendering it must say Soon in its copy too, never "staged":
+//             there is nothing on screen for the word to label.
+//   • staged  a knob that exists, saves, and nothing reads yet. It is rendered
+//             and it is LABELED — the Ojo section of `/general-config` wears a
+//             Staged badge over every control it still shows.
+// The rule the two share: an operator must never be shown a control without
+// being told whether anything answers it.
 export function ConfigSoon({
   Icon,
   title,

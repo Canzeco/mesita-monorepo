@@ -1,9 +1,8 @@
 import { Armchair } from "lucide-react";
 
 // One sidebar entry — "Visits". The LOCAL context: the guest is in the room
-// and THE TICKET carries the whole table moment. Sits between Reservations and
-// Orders because that is a guest's night — find a place, book it, sit down, or
-// order instead — with Promos pricing whatever happened.
+// and THE TICKET carries the whole table moment. Where it sits in the rail is
+// `CONFIGS_NAV`'s call, not this file's — see `(app)/configs-nav.ts`.
 //
 // What a visit PAYS is not configured here (the Promos grid), and neither is
 // who reads a proof (Ojo). This page is how the journey behaves.

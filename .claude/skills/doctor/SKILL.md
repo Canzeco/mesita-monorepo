@@ -187,23 +187,36 @@ The business-truth layer. These are the "and shit" checks — pairs of facts tha
 
 ## Scope 4 — Config enforcement ("unenforced config = bug") · P1
 
-For each admin config page, in the sidebar's product-flow order (`CONFIGS_NAV`
-in `apps/web-admin/src/components/Sidebar.tsx` is the list of record) —
-`admin` · `models` · `sourcing` · `atlas` · `enricher` · `verification` ·
-`ojo` · `rewards` (labeled **Promos**) · `memo` · `reservations`:
+The config page set is CODE-DEFINED: `CONFIGS_NAV` in
+`apps/web-admin/src/app/(app)/configs-nav.ts` is the list of record, already in
+the sidebar's product-flow order. **Read it at audit time and walk what it
+holds.** Never audit from a list re-typed into this file — every prose copy of
+that set drifted within two days of the MESITA-1175 rail rework, which is why
+this scope no longer carries one (MESITA-1225).
 
-Not config pages, do not audit as one: `/adea-config` and `/db-config` are
-`permanentRedirect` shims for renamed routes (→ enricher-config, manage-database).
-The `/aura-*` route tree is gone — Aura is a retired class, so a reference to it
-is stale doc, not a missing page. `agents_config` is EF-managed with no page yet.
+A route absent from `CONFIGS_NAV` is not a config page, so do not audit it as
+one, and do not report it as a missing page. Several are `permanentRedirect`
+shims: `/models-config`, `/verification-config` and `/ojo-config` fold into
+`/general-config` (MESITA-1175, MESITA-1178), `/adea-config` → `/enricher-config`
+and `/db-config` → `/manage-database` are renames. The `/aura-*` route tree is
+gone — Aura is a retired class, so a reference to it is stale doc, not a missing
+page. `memo_config` and `agents_config` are EF-managed with no page.
 `scoring_config` belonged to the deleted Lineup engine (MESITA-1048) — if it
 still has no reader, that is a 4.3 dead-knob finding, not a page to check.
 
 **Ojo is the one that must not be skipped.** Every `ojo_config` knob is live and
 editable while the engine is unbuilt (MESITA-1034), so it is the repo's largest
-standing block of deliberately-unenforced config. The rule is that a staged knob
-is *labeled* staged — check that the console still says so. A silently
-un-staged Ojo knob reads to an operator as a control that does something.
+standing block of deliberately-unenforced config. It renders as a section of
+`/general-config`, not a page of its own. The rule is that a staged knob is
+*labeled* staged — check that the console still says so. A silently un-staged
+Ojo knob reads to an operator as a control that does something.
+
+**Soon is not staged.** A page with no knobs at all renders `ConfigSoon` and
+says *Soon*; only a rendered-but-unread knob is *staged* (MESITA-1224). Visits
+and Orders are Soon today while `visits_config` / `orders_config` stay stored
+and their EFs stay deployed — an emptied page over a live blob is the intended
+state, not 4.2 skew. Report the mismatch only when the word and the screen
+disagree.
 
 4.1 **Blob exists and parses** in `app_config`, and validates against the TS schema the
     admin page and the consuming EFs expect (e.g. `promos_config` carries the **v11**

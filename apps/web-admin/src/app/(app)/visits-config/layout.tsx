@@ -10,7 +10,7 @@ export default function VisitsConfigLayout({
     <ConfigPageLayout
       eyebrow="Product · Visits"
       title="Visits Config"
-      description="THE TICKET is Mesita's money moment: the guest sits down, types the bill, picks a reward, does the task, shows the QR, pays, and the ticket validates itself. This page is how that journey behaves — the tip chips it offers, how fast each side polls, whether a screenshot is required, how many send-backs it tolerates, which pay rails are open, and when an abandoned ticket gives up. What a visit PAYS is Promos Config; who reads the proof is Ojo. The values here mirror the constants the apps ship today, so the page describes the product as it is — and every knob is STAGED until the apps read it."
+      description="THE TICKET is Mesita's money moment: the guest sits down, types the bill, picks a reward, does the task, shows the QR, pays, and the ticket validates itself. The apps run that journey on constants they ship themselves, so this page carries no knobs at all — it is Soon, not a wall of staged switches. The day THE TICKET reads its policy from here the controls come back; what each one means lives in Notion Docs › Visits. What a visit PAYS is Promos Config; who reads the proof is the Ojo section of General."
     >
       {children}
     </ConfigPageLayout>

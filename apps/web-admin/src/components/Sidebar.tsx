@@ -8,21 +8,14 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   Radar,
-  Settings2,
   ShieldCheck,
   UserRound,
 } from "lucide-react";
 import { MesitaLogo } from "@/components/brand/MesitaLogo";
 import { MesitaMark } from "@/components/brand/MesitaMark";
 import { BILLING_TEST_PARENT } from "@/app/(app)/billing-test/nav";
+import { CONFIGS_NAV } from "@/app/(app)/configs-nav";
 import { DB_PARENT } from "@/app/(app)/manage-database/nav";
-import { ENRICHER_PARENT } from "@/app/(app)/enricher-config/nav";
-import { FILTERS_PARENT } from "@/app/(app)/filters-config/nav";
-import { ORDERS_PARENT } from "@/app/(app)/orders-config/nav";
-import { RESERVATIONS_PARENT } from "@/app/(app)/reservations-config/nav";
-import { VISITS_PARENT } from "@/app/(app)/visits-config/nav";
-import { REWARDS_PARENT } from "@/app/(app)/rewards-config/nav";
-import { SOURCING_PARENT } from "@/app/(app)/sourcing-config/nav";
 import {
   parsePlaceId,
   TOOL_ROUTES,
@@ -60,8 +53,9 @@ type NavItem = {
 };
 
 // Labels never repeat their section heading — the heading already says
-// "Configurations", so the item is "Atlas", not "Atlas Config" (MESITA-1073).
-// Each label lives in its route's nav.ts; the Sidebar is their only consumer.
+// "Configurations", so the item is "Enrichment", not "Enricher Config"
+// (MESITA-1073). Each label lives in its route's nav.ts; the Sidebar and
+// `configs-nav.ts` are their only consumers.
 const PRIMARY_NAV: NavItem[] = [
   { href: "/account", label: "Account", Icon: UserRound },
 ];
@@ -82,26 +76,6 @@ const MANAGE_NAV: NavItem[] = [
   ...TOOL_ROUTES,
 ];
 
-// Configurations — ordered as the product flows, not alphabetically or by age.
-// Two lifecycles end to end, a place's then a guest's:
-//   platform  who operates the console, then which model everything runs on
-//   supply    a place's life: eligible to enter (Sourcing) → the pipeline that
-//             fills its profile (Enrichment; the profile SPEC is Notion Atlas
-//             Rules — nothing to configure, so no page) → how ownership gets
-//             sealed (Verification)
-//   demand    a guest's night: how they find a place (Discovery) → how they
-//             book it (Reservations) → the journey once they sit down (Visits,
-//             the local context) → or ordering without going at all (Orders,
-//             the remote one) → what either context pays them (Promos)
-//   proof     what happens after they leave: is the screenshot real (Ojo)
-//
-// Ojo trails everything because it reads a proof submitted AFTER the visit —
-// it is the last step of the last lifecycle. Visits, Orders and Ojo all run
-// ahead of what reads them: they save, nothing consumes them yet, and every
-// knob on those three pages is labeled STAGED.
-//
-// Memo is NOT a row here: Home › Chat is Memo, so its config lives inside
-// Filters Config › Chat rather than as a sibling of the surface it powers.
 // Access — who may enter the console at all. Its own group (Pato, 2026-08-21)
 // because it is not a policy blob: every other Configurations row tunes how
 // the PRODUCT behaves, while this one decides who gets to tune them. It sits
@@ -113,20 +87,6 @@ const MANAGE_NAV: NavItem[] = [
 // at the label.
 const ACCESS_NAV: NavItem[] = [
   { href: "/admin-config", label: "Admins", Icon: ShieldCheck },
-];
-
-const CONFIGURATIONS_NAV: NavItem[] = [
-  // General absorbed Models and Verification (MESITA-1175): a page whose whole
-  // content is three controls does not earn a rail row. Their routes survive
-  // as redirects; only the rows are gone.
-  { href: "/general-config", label: "General", Icon: Settings2 },
-  SOURCING_PARENT,
-  ENRICHER_PARENT,
-  FILTERS_PARENT,
-  VISITS_PARENT,
-  ORDERS_PARENT,
-  RESERVATIONS_PARENT,
-  REWARDS_PARENT,
 ];
 
 // Testing — operator tools that probe live systems rather than configure them.
@@ -143,12 +103,14 @@ const TESTING_NAV: NavItem[] = [
 const SIDEBAR_SECTIONS: {
   id: string;
   label: string | null;
-  items: NavItem[];
+  items: readonly NavItem[];
 }[] = [
   { id: "primary", label: null, items: PRIMARY_NAV },
   { id: "alerts", label: "Alerts", items: ALERTS_NAV },
   { id: "manage", label: "Manage", items: MANAGE_NAV },
-  { id: "configurations", label: "Configurations", items: CONFIGURATIONS_NAV },
+  // The Configurations rows are code-defined in `configs-nav.ts` — that module
+  // is the list of record, and this file only places it in the rail.
+  { id: "configurations", label: "Configurations", items: CONFIGS_NAV },
   { id: "access", label: "Access", items: ACCESS_NAV },
   { id: "testing", label: "Testing", items: TESTING_NAV },
 ];
