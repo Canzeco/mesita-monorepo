@@ -214,7 +214,7 @@ export const FAMILIES: Family[] = [
   },
 ];
 
-const ALL_FAMILY_KEYS: FamilyKey[] = FAMILIES.map((f) => f.key);
+export const ALL_FAMILY_KEYS: FamilyKey[] = FAMILIES.map((f) => f.key);
 
 type ChannelVerb = "search" | "add";
 

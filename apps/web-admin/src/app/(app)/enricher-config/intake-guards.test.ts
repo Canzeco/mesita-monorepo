@@ -43,6 +43,10 @@ describe("intakeSaveBlocked", () => {
 });
 
 describe("clampFunnel", () => {
+  it("leaves a legal chain alone", () => {
+    expect(clampFunnel(seed)).toEqual(seed);
+  });
+
   it("never lets analyze exceed collect, or gallery exceed analyzed", () => {
     const out = clampFunnel({
       ...seed,
@@ -55,5 +59,15 @@ describe("clampFunnel", () => {
     expect(out.analyzeGoogleImages).toBe(3);
     expect(out.analyzeInstagramImages).toBe(4);
     expect(out.saveTotalImages).toBe(7);
+  });
+
+  it("caps gallery at the DB max even when analyze is larger", () => {
+    const next = clampFunnel({
+      ...seed,
+      analyzeGoogleImages: 10,
+      analyzeInstagramImages: 10,
+      saveTotalImages: 99,
+    });
+    expect(next.saveTotalImages).toBe(10);
   });
 });
