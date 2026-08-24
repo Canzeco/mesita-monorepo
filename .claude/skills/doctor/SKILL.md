@@ -182,8 +182,6 @@ The business-truth layer. These are the "and shit" checks — pairs of facts tha
     not a finding.
     Severity: **P0** when a shipped surface already advertises the asserted value — the DB is
     breaking a promise the product has made to a guest. Otherwise P1.
-    Last full sweep: 2026-08-23, clean (8 data-only migrations, every live-checkable
-    assertion matched).
 
 ## Scope 4 — Config enforcement ("unenforced config = bug") · P1
 
@@ -192,12 +190,10 @@ from code, never from this file:** `CONFIGURATIONS_NAV` in
 `apps/web-admin/src/components/Sidebar.tsx` is the SoT, and it is exported for
 exactly this reason (MESITA-1225).
 
-The enumeration that used to sit here is deleted on purpose. Every prose copy of
-this list drifted within two days of the MESITA-1175 rail rework — this one had
-gone stale in both directions at once, naming `models`, `verification` and `ojo`
-as pages to audit when all three are redirects, and `atlas` and `memo` as pages
-that have never existed. A stale copy sends the doctor hunting phantoms while
-silently skipping rows that are really there, which is worse than no list.
+A prose copy of this list has gone stale every time one existed — in both
+directions at once, naming redirects as pages and pages that never existed. A
+stale copy sends the doctor hunting phantoms while silently skipping rows that
+are really there, which is worse than no list.
 
 Not config pages, do not audit as one: any route whose page body is a
 `permanentRedirect` shim — grep for it rather than trusting a list. Today that
