@@ -20,7 +20,7 @@ function Hero() {
             className="bg-primary inline-block h-1.5 w-1.5 rounded-full"
             aria-hidden
           />
-          In development · Launching in California — January 2027
+          In development · Launching in San Francisco — January 2027
         </Badge>
 
         <h1 className="font-display max-w-3xl text-4xl leading-[1.05] font-semibold tracking-tight md:text-6xl">

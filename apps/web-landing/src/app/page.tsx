@@ -19,7 +19,7 @@ import {
 //
 // The page IS the read: it assumes roughly ten minutes of attention and
 // nothing else, so the full project overview is the CTA rather than the
-// prerequisite. Written pre-launch (California, January 2027) — the status
+// prerequisite. Written pre-launch (San Francisco, January 2027) — the status
 // badge in the hero does the honesty work for every section below it, which
 // is what lets the money system appear in product voice without ever
 // claiming to be live.

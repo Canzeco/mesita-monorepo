@@ -32,8 +32,8 @@ function SuperCatalog() {
             The catalog is the moat
           </p>
           <h2 className="font-display max-w-xl text-3xl font-semibold tracking-tight md:text-4xl">
-            Every restaurant, café and bar in California — on Mesita the day it
-            opens.
+            Every restaurant, café and bar in San Francisco — on Mesita the day
+            it opens.
           </h2>
           <p className="text-muted-foreground max-w-xl text-base leading-relaxed">
             The catalog builds itself from Google and the open web, and the
