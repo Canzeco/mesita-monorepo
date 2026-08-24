@@ -20,7 +20,7 @@ function enforcedLiveCopy(): string {
   const live = CHANNELS.filter((c) => c.live);
   const pending = CHANNELS.filter((c) => !c.live);
   if (live.length === CHANNELS.length) {
-    return "Enforced live today: every floor and family above gates real search / add traffic.";
+    return "Enforced live today: every floor, family and region above gates real search / add traffic.";
   }
   if (live.length === 0) {
     return "No channels are marked enforced live yet.";
