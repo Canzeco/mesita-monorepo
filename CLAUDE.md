@@ -33,7 +33,7 @@
 | `apps/web-business` | Business console · business.mesita.ai (Next.js · Vercel) |
 | `apps/web-consumer` | Consumer app · consumer.mesita.ai (Next.js · Vercel) |
 | `apps/web-landing` | Marketing landing · mesita.ai (Next.js · Vercel) |
-| `apps/web-check` | Mesita Check, the staff ticket page · check.mesita.ai (Next.js · Vercel) — QRs encode `check.mesita.ai/<code>` |
+| `apps/web-check` | Mesita Validate, the staff ticket page · check.mesita.ai until MESITA-1116 (Next.js · Vercel) — QRs encode `check.mesita.ai/<code>` |
 | `apps/mobile-consumer` | Native consumer app (Expo SDK 57 · RN · NativeWind) |
 | `apps/mobile-business` | Native business app (Expo SDK 57 · **scaffold only**) |
 | `supabase` | DB · RLS · Edge Functions — source of truth (Supabase CLI · Deno) |

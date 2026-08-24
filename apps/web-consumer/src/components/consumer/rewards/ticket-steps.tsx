@@ -9,7 +9,6 @@
 import { useMemo, useState } from "react";
 import {
   Check,
-  CreditCard,
   Gift,
   Loader2,
   PartyPopper,
@@ -278,9 +277,9 @@ export function StepBill({
 }
 
 // ── Step 5 — Pay. Only reachable once the place approved: the last moment
-//    anything can change the amount. ONE live path (C2): the guest pays the
-//    place directly. Card-through-Mesita and Yums are STRUCTURALLY here and
-//    visibly coming — never tappable, never charged. ───────────────────────
+//    anything can change the amount. ONE live path: the guest pays the
+//    place directly. Card-through-Mesita is retired (MESITA-1114). Yums
+//    stays parked as coming-soon. ──────────────────────────────────────────
 export function StepPay({
   placeName,
   pct,
@@ -328,12 +327,6 @@ export function StepPay({
             label="At the register"
             sub="Cash or card, straight to the place"
             selected
-          />
-          <PayMethodRow
-            icon={<CreditCard className="text-muted-foreground size-4" />}
-            label="Card through Mesita"
-            sub="Charged to your saved card"
-            soon
           />
         </div>
         <div className="border-border bg-muted/40 border-y px-3.5 py-2">

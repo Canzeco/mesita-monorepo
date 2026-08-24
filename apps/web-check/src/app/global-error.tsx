@@ -30,7 +30,7 @@ export default function GlobalError({
       >
         <div style={{ maxWidth: "26rem", textAlign: "center" }}>
           <h1 style={{ fontSize: "1.25rem", fontWeight: 700, margin: 0 }}>
-            Mesita Check no pudo cargar
+            Mesita Validate no pudo cargar
           </h1>
           <p
             style={{

@@ -19,7 +19,7 @@ export default function NotFound() {
           Esta página no existe
         </h1>
         <p className="text-muted-foreground mt-2 text-sm leading-relaxed">
-          Mesita Check solo abre tickets escaneados desde la app del cliente. Si
+          Mesita Validate solo abre tickets escaneados desde la app del cliente. Si
           escribiste el código a mano, vuelve al inicio y captúralo de nuevo.
         </p>
         <Button asChild className="mt-5 w-full" size="lg">

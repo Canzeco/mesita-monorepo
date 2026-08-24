@@ -1033,7 +1033,7 @@ export function TicketScreen({ ticketId }: { ticketId: string }) {
             {waiting ? (
               <div className="border-border rounded-2xl border border-dashed p-3">
                 <p className="text-muted-foreground type-meta font-bold tracking-[0.12em] uppercase">
-                  Mesita Check · staff side
+                  Mesita Validate · staff side
                 </p>
                 <p className="text-muted-foreground mt-1 text-xs leading-snug">
                   {placeName} sees bill, tip, reward and proof at a glance —

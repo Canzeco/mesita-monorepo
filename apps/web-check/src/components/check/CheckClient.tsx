@@ -630,8 +630,7 @@ export function CheckClient({
           </p>
         ) : null}
 
-        {/* C2: scoped to THIS ticket — true today with cash at the register,
-            still true the day a card path ships. */}
+        {/* Pay at the place — Mesita never charges this ticket. Card-through-Mesita is retired (MESITA-1114). */}
         <p className="text-muted-foreground text-center text-[11px] leading-snug">
           Página oficial de verificación de Mesita. El cliente te paga a ti,
           directamente. Mesita no cobra este ticket.
