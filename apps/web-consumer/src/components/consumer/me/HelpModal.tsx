@@ -104,11 +104,11 @@ export function HelpModal({
           </span>
           <p className="text-muted-foreground type-body leading-relaxed">
             <span className="text-foreground font-semibold">
-              Actions beat your class.
+              Actions add on.
             </span>{" "}
-            A first visit, a Google review, or an Instagram story (with
-            Instagram connected) can pay more than your class rate. You always
-            keep your single best one, never a sum.
+            Welcome, Instagram Story, Google Review, and Mesita Review stack
+            on your class and plan — not pick-one. The bill clamps at 100% and
+            applies to the first cap-pesos.
           </p>
         </div>
 
@@ -119,7 +119,7 @@ export function HelpModal({
               Reward tiers
             </h3>
             <span className="text-muted-foreground type-label">
-              You keep your best one
+              They add together
             </span>
           </div>
           {REWARD_SEGMENTS.map((seg) => {

@@ -1,5 +1,11 @@
 import type { LucideIcon } from "lucide-react";
-import { DoorOpen, Instagram, Star, UtensilsCrossed } from "lucide-react";
+import {
+  DoorOpen,
+  Instagram,
+  Star,
+  Store,
+  UtensilsCrossed,
+} from "lucide-react";
 
 import {
   CLASS_FLOOR,
@@ -127,8 +133,38 @@ function standingForClass(quote: RewardQuote, key: ClassKey): number | null {
   return quote.ladder[source] ?? 0;
 }
 
-// Every class's standing rate at THIS place, in rank order, the guest's own
-// marked. v11 quotes Gold from the visits grid; the legacy ladder cannot.
+function classAdder(quote: RewardQuote, key: ClassKey): number | null {
+  if (quote.breakdown) return quote.breakdown.classes[key];
+  const standing = standingForClass(quote, key);
+  const floor = standingForClass(quote, CLASS_FLOOR.id);
+  if (standing == null || floor == null) return standing;
+  return standing - floor;
+}
+
+function premiumUplift(quote: RewardQuote): number | null {
+  if (quote.breakdown) return quote.breakdown.planUplift;
+  if (quote.ladder?.premium == null) return null;
+  const freeFloor = quote.ladder.standard;
+  if (freeFloor == null) return quote.ladder.premium;
+  return quote.ladder.premium - freeFloor;
+}
+
+// The bronze·free floor — named as its own rung so Base is never folded into
+// a class total on a v11 quote. Legacy quotes have no decomposition; skip.
+export function BaseRow({ quote }: { quote: RewardQuote }) {
+  if (!quote.breakdown) return null;
+  return (
+    <Row
+      icon={Store}
+      label="Base"
+      hint="Standing offer — every guest, every visit"
+      value={quote.breakdown.automatic}
+    />
+  );
+}
+
+// Class adders on v11 (Base is a separate row). Standing rates on the legacy
+// ladder, where Gold still cannot be quoted.
 export function ClassLadder({
   quote,
   classKey,
@@ -137,10 +173,13 @@ export function ClassLadder({
   classKey: ClassKey;
 }) {
   if (!quote.breakdown && !quote.ladder) return null;
+  const additive = Boolean(quote.breakdown);
   return (
     <div className="flex flex-col gap-1.5">
       {CLASS_ORDER.map((key) => {
-        const value = standingForClass(quote, key);
+        const value = additive
+          ? classAdder(quote, key)
+          : standingForClass(quote, key);
         return (
           <Row
             key={key}
@@ -148,8 +187,9 @@ export function ClassLadder({
             label={classProperLabel(key)}
             hint={value == null ? "Not priced here yet" : undefined}
             value={value}
+            plus={additive && (value ?? 0) > 0}
             mine={key === classKey}
-            muted={value == null}
+            muted={value == null || (additive && value === 0 && key !== classKey)}
           />
         );
       })}
@@ -157,14 +197,9 @@ export function ClassLadder({
   );
 }
 
-// The OTHER axis, and the reason this sheet now has two sections. Premium used
-// to sit in the ladder above as a rung between Influencer and Aura, which read
-// as "pay to outrank someone with reach" — the exact merge Classes v2 removes.
-//
-// The number is the `bronze·premium` cell and is labelled as such. It is the
-// only premium cell the payload carries, and deriving the others (silver on
-// Premium, diamond on Premium) would mean client-side arithmetic over rates
-// the till has never quoted — precisely the drift MESITA-1017 fixed.
+// Plan is its own axis: Free is the floor (no adder), Premium is the paid
+// uplift from `breakdown.planUplift`. Never print `ladder.premium` as that
+// adder — that cell is a standing bronze·premium rate, not a plan bonus.
 export function PlanRow({
   quote,
   plan,
@@ -172,55 +207,68 @@ export function PlanRow({
   quote: RewardQuote;
   plan: PlanKey;
 }) {
-  const value = quote.ladder?.premium;
-  if (value == null) return null;
+  const uplift = premiumUplift(quote);
+  if (uplift == null && !quote.breakdown) return null;
   return (
-    <Row
-      icon={PREMIUM_PLAN_ICON}
-      label="Premium"
-      hint={`On ${CLASS_FLOOR.label} · $${PREMIUM_PLAN_PRICE_MXN} MXN / mo`}
-      value={value}
-      mine={plan === "premium"}
-    />
+    <div className="flex flex-col gap-1.5">
+      <Row
+        icon={Star}
+        label="Free"
+        hint="No subscription"
+        value={0}
+        mine={plan === "free"}
+        muted={plan !== "free"}
+      />
+      <Row
+        icon={PREMIUM_PLAN_ICON}
+        label="Premium"
+        hint={`$${PREMIUM_PLAN_PRICE_MXN} MXN / mo`}
+        value={uplift ?? 0}
+        plus={(uplift ?? 0) > 0}
+        mine={plan === "premium"}
+        muted={plan !== "premium"}
+      />
+    </div>
   );
 }
 
-// The actions, priced. Welcome is a state of the visit rather than something
-// the guest picks, so it only appears while it's actually live — advertising
-// a spent welcome as "+0%" is worse than not showing it at all.
+// Every bonus the engine prices, in the same order as admin Tiers: Welcome,
+// Instagram Story, Google Review, Mesita Review. Zero is listed and faded —
+// hiding a rung makes the rate sheet lie about what exists.
 export function BonusList({ quote }: { quote: RewardQuote }) {
   const b = quote.bonuses;
   const rows = [
-    ...(quote.isFirstVisit && b.welcome > 0
-      ? [
-          {
-            icon: DoorOpen,
-            label: "Welcome visit",
-            hint: "Automatic on your first visit here",
-            value: b.welcome,
-          },
-        ]
-      : []),
     {
-      icon: UtensilsCrossed,
-      label: "Mesita review",
-      hint: "Rate it in the app — feeds its rating",
-      value: b.mesita > 0 ? b.mesita : null,
+      icon: DoorOpen,
+      label: "Welcome",
+      hint: quote.isFirstVisit
+        ? "Automatic on your first visit here"
+        : "First visit only",
+      value: b.welcome,
+      muted: b.welcome === 0,
     },
     {
       icon: Instagram,
-      label: "Instagram story",
+      label: "Instagram Story",
       hint: quote.storyEligible
         ? "Tag the place from your connected Instagram"
         : "Connect Instagram on Me to unlock",
-      value: b.story > 0 ? b.story : null,
-      muted: !quote.storyEligible,
+      value: b.story,
+      muted: b.story === 0 || !quote.storyEligible,
     },
     {
       icon: Star,
-      label: "Google review",
+      label: "Google Review",
       hint: "At the table, once per place",
-      value: b.google > 0 ? b.google : null,
+      value: b.google,
+      muted: b.google === 0,
+    },
+    {
+      icon: UtensilsCrossed,
+      label: "Mesita Review",
+      hint: "Rate it in the app — feeds its rating",
+      value: b.mesita,
+      muted: b.mesita === 0,
     },
   ];
 

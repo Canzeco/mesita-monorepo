@@ -47,7 +47,9 @@ export function ResolvedLedger({ cfg }: { cfg: PromosConfig }) {
   const b = cfg.visits.bonuses[p.strategy];
   const base = cfg.visits.base[p.strategy].bronze.free;
   const classAdds = cfg.visits.base[p.strategy][p.cls].free - base;
-  const planAdds = cfg.visits.base[p.strategy].bronze.premium - base;
+  const planAdds =
+    cfg.visits.base[p.strategy][p.cls].premium -
+    cfg.visits.base[p.strategy][p.cls].free;
 
   const terms: { label: string; value: number | null }[] = [
     { label: "Base", value: base },
@@ -61,8 +63,8 @@ export function ResolvedLedger({ cfg }: { cfg: PromosConfig }) {
     },
     { label: "Welcome", value: p.firstVisit ? b.welcome : null },
     { label: "Instagram Story", value: p.story ? b.story : null },
-    { label: "Mesita Review", value: p.mesita ? b.mesita : null },
     { label: "Google Review", value: p.google ? b.google : null },
+    { label: "Mesita Review", value: p.mesita ? b.mesita : null },
   ];
 
   const total = Math.min(
@@ -117,10 +119,10 @@ export function ResolvedLedger({ cfg }: { cfg: PromosConfig }) {
       <div className="mt-2 flex flex-wrap items-center gap-1.5">
         {(
           [
-            ["firstVisit", "First visit"],
-            ["story", "Story"],
-            ["mesita", "Mesita review"],
-            ["google", "Google review"],
+            ["firstVisit", "Welcome"],
+            ["story", "Instagram Story"],
+            ["google", "Google Review"],
+            ["mesita", "Mesita Review"],
           ] as const
         ).map(([key, label]) => (
           <button
