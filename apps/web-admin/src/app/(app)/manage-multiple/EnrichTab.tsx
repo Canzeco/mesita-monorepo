@@ -141,9 +141,9 @@ export function EnrichTab({ costSeed }: { costSeed: EnrichCostSeed | null }) {
       <p className="text-muted-foreground max-w-xl text-sm leading-relaxed">
         Paste place IDs (one per line) or upload a list. Each row queues the
         same re-enrich pipeline as the single-place control — the Enricher cron
-        runs async after trigger. Caps and models are the stored Enrichment
+        runs async after trigger. Caps and models are the stored Intake
         settings; the console for them is empty, and what each one means lives
-        in Notion Docs › Enrichment.
+        in Notion Docs › Intake.
       </p>
 
       <div className="border-border bg-card mt-8 rounded-2xl border p-6">
@@ -227,15 +227,15 @@ export function EnrichTab({ costSeed }: { costSeed: EnrichCostSeed | null }) {
               {projectIds.length} place{projectIds.length === 1 ? "" : "s"}
             </p>
             <p className="text-muted-foreground mt-1 text-xs leading-relaxed">
-              ~{money(estimate.perPlace)} / place at current Enrichment rates
-              {mode !== "full" ? " (scaled for lighter mode)" : ""}. Approximate
-              — not a bill. This estimate is the last calculator standing:
-              the box on the Enrichment page went with its knobs.
+              ~{money(estimate.perPlace)} / place at the current Intake
+              settings{mode !== "full" ? " (scaled for lighter mode)" : ""}.
+              Approximate — not a bill. This estimate is the last calculator
+              standing: the box on the Intake page went with its knobs.
             </p>
           </div>
         ) : costSeed === null ? (
           <p className="text-muted-foreground mt-5 text-xs">
-            Cost estimate unavailable — Enrichment settings failed to load. You
+            Cost estimate unavailable — Intake settings failed to load. You
             can still queue re-enrich.
           </p>
         ) : null}

@@ -11,8 +11,9 @@
 // Enricher Perplexity is NOT read from this blob — app_config's
 // atlas_perplexity_preset is the live search preset (enricher.perplexity here
 // is staged). The synthesis / vision quality tiers are atlas_* columns too, and
-// since 2026-08-23 no console edits any of the three: the Enrichment page is a
-// Soon page, so those three are whatever they were last saved as.
+// since 2026-08-23 no console edits any of the three: the Intake page (the old
+// Enrichment row) is a Soon page, so those three are whatever they were last
+// saved as.
 
 import type { LucideIcon } from "lucide-react";
 import { Database, Eye, Layers, MessagesSquare, Sparkles } from "lucide-react";

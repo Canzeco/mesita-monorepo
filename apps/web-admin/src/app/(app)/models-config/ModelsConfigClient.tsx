@@ -23,8 +23,8 @@ import {
 // SoT for app_config.models_config. supabase + memo are
 // edited here and read live by EFs (MESITA-941 loadModelsConfig). The Enricher
 // and embedding values are not edited anywhere: they are atlas_* columns and a
-// locked embedding id, and the Enrichment page that used to carry them is a
-// Soon page. Failed GET blocks Save (MESITA-737) — never persist DEFAULTS over
+// locked embedding id, and the Intake page that used to carry them is a Soon
+// page. Failed GET blocks Save (MESITA-737) — never persist DEFAULTS over
 // a live blob.
 
 function Select({

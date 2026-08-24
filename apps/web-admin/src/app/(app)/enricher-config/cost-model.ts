@@ -145,7 +145,7 @@ type CostEstimate = {
 // IG-post volumes, Links drives how many channels are searched, and Analysis
 // drives the vision calls (which zero out only when both analyze counts are 0).
 //
-// LABELS CARRY THE FUNCTION NUMBER (Docs › Enrichment §A), not a stage
+// LABELS CARRY THE FUNCTION NUMBER (Docs › Intake §A), not a stage
 // S-number. They held S1–S9 — the retired three-stage numbering — which put a
 // second ladder on the very page that states the queue is 0–9, and disagreed
 // with it: "S3 · link discovery" sat beside a Links box labelled 4. Several

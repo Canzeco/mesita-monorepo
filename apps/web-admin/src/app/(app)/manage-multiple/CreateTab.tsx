@@ -123,8 +123,8 @@ export function CreateTab({
         Paste Google Place IDs (one per line) or upload a CSV. Each create does
         the Google lookup and catalog listing, then hands off to the Enricher —
         deep Enricher research runs in the background. Caps, levels and photo
-        analysis run on the stored Enrichment settings; the console for them is
-        empty, and what each one means lives in Notion Docs › Enrichment.
+        analysis run on the stored Intake settings; the console for them is
+        empty, and what each one means lives in Notion Docs › Intake.
       </p>
 
       {/* Input */}
