@@ -7,20 +7,15 @@
 // signal is a code change in both packages — deliberately, because a signal
 // nobody wrote has nothing to score.
 //
-// FOUR BOXES, ONE PAGE (Pato, 2026-08-23: "Signals, Engines, Filters. BUT NOT
-// SUBPAGES. JUST ONE PAGE FOR ALL DISCOVERY. PERHAPS DIVIDE INTO BOXES."):
+// TWO BOXES, ONE PAGE (Pato, 2026-08-24: Signals · Engines. Forget Filters.):
 //
 //   SIGNALS   the six EARNED signals, each with one exponent. Signals compose
 //             as `s^w`, so this table is the whole ranking model an operator
-//             owns.
-//   SLOTTING  the BOUGHT lane, kept out of the blend on purpose. Money buys a
-//             deck POSITION, never a score (Pato, 2026-08-22 — the two-lane
-//             question §A left open). Promoting is not a signal and there is
-//             no row for it above.
-//   FILTERS   what may ENTER the pool. A SIGNAL DEMOTES, A FILTER EXCLUDES —
-//             that is the whole reason both boxes exist, and why a knob
-//             belongs to exactly one of them.
+//             owns. Promoting is not a row.
 //   ENGINES   which surfaces read any of it. Only a WIRED engine gets a knob.
+//
+// Slotting and operator filters still live on the blob so a whole-blob Save
+// cannot reset them. They have no knobs on this page.
 
 export const SIGNAL_KEYS = [
   "proximity",

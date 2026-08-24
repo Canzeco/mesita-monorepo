@@ -1,23 +1,18 @@
 "use client";
 
 import { useEffect, useMemo, useState, useTransition } from "react";
-import { Compass, Filter, Layers, Megaphone } from "lucide-react";
+import { Compass, Layers } from "lucide-react";
 import { ErrorNote } from "@/components/ErrorNote";
 import { formatShortDate } from "@/lib/format";
 import { Collapsible, SaveRow, SectionCard, Switch } from "@/components/admin-ui/config";
 import { getDiscoveryConfig, updateDiscoveryConfig } from "./actions";
 import {
   ENGINES,
-  MAX_DISTANCE_KM_MAX,
-  MIN_RATING_MAX,
   SIGNALS,
-  SLOT_MAX_EVERY_NTH,
-  SLOT_MIN_EVERY_NTH,
   WEIGHT_MAX,
   WEIGHT_MIN,
   weightMeaning,
   type DiscoveryConfig,
-  type DiscoveryFilters,
   type SignalKey,
   type WiredEngineKey,
 } from "./catalog";
@@ -90,22 +85,6 @@ export function DiscoveryConfigClient({
     setOk(false);
   };
 
-  const setSlotting = <K extends keyof DiscoveryConfig["slotting"]>(
-    key: K,
-    value: DiscoveryConfig["slotting"][K],
-  ) => {
-    setCfg((c) => ({ ...c, slotting: { ...c.slotting, [key]: value } }));
-    setOk(false);
-  };
-
-  const setFilter = <K extends keyof DiscoveryFilters>(
-    key: K,
-    value: DiscoveryFilters[K],
-  ) => {
-    setCfg((c) => ({ ...c, filters: { ...c.filters, [key]: value } }));
-    setOk(false);
-  };
-
   const setEngineRanked = (key: WiredEngineKey, ranked: boolean) => {
     setCfg((c) => ({ ...c, engines: { ...c.engines, [key]: { ranked } } }));
     setOk(false);
@@ -115,6 +94,8 @@ export function DiscoveryConfigClient({
     if (loadBlocked) return;
     setError(null);
     startTransition(async () => {
+      // Whole-blob write: slotting and filters stay on `cfg` even though this
+      // page no longer edits them, so a Save cannot reset the live predicates.
       const r = await updateDiscoveryConfig(cfg);
       if (r.ok) {
         setSaved(r.config);
@@ -217,119 +198,9 @@ export function DiscoveryConfigClient({
           <p className="text-muted-foreground type-label max-w-2xl leading-relaxed">
             Each signal scores 0–1 and enters as s^w, so a bigger exponent is
             harsher. Missing data abstains at 1 and drops out. Promoting is not
-            a row: money buys a slot below, never a score.
+            a row: money never buys a score.
           </p>
         </Collapsible>
-      </SectionCard>
-
-      <SectionCard
-        icon={<Megaphone className="text-secondary h-4 w-4" />}
-        title="Bought slots"
-        subtitle="Every Nth card is a paid seat. Rank itself is never for sale."
-        status={<Enforced on="Swipe" />}
-      >
-        <div className="mt-4 divide-border border-border divide-y rounded-xl border">
-          <div className="flex items-center justify-between gap-4 p-4">
-            <p className="text-sm font-medium leading-snug">Give promoting places slots</p>
-            <Switch
-              label="Give promoting places slots"
-              on={cfg.slotting.enabled}
-              pending={pending}
-              onClick={() => setSlotting("enabled", !cfg.slotting.enabled)}
-            />
-          </div>
-          <label className="flex items-center justify-between gap-4 p-4">
-            <span className="min-w-0">
-              <span className="block text-sm font-medium leading-snug">
-                Slot every N cards
-              </span>
-              <span className="text-muted-foreground type-label">
-                Floor {SLOT_MIN_EVERY_NTH}, so the top of the deck stays earned.
-              </span>
-            </span>
-            <input
-              type="number"
-              inputMode="numeric"
-              min={SLOT_MIN_EVERY_NTH}
-              max={SLOT_MAX_EVERY_NTH}
-              step={1}
-              value={cfg.slotting.everyNth}
-              disabled={pending || !cfg.slotting.enabled}
-              aria-label="Bought slot every N cards"
-              onChange={(e) => {
-                const raw = Number(e.target.value);
-                if (Number.isNaN(raw)) return;
-                setSlotting(
-                  "everyNth",
-                  Math.min(
-                    SLOT_MAX_EVERY_NTH,
-                    Math.max(SLOT_MIN_EVERY_NTH, Math.round(raw)),
-                  ),
-                );
-              }}
-              className={INPUT}
-            />
-          </label>
-        </div>
-      </SectionCard>
-
-      <SectionCard
-        icon={<Filter className="text-secondary h-4 w-4" />}
-        title="Filters"
-        subtitle="What may enter the pool. A signal demotes; a filter excludes."
-        status={<Enforced on="Swipe + Map" />}
-      >
-        <div className="mt-4 divide-border border-border divide-y rounded-xl border">
-          <div className="flex items-center justify-between gap-4 p-4">
-            <p className="text-sm font-medium leading-snug">Only fully enriched places</p>
-            <Switch
-              label="Only fully enriched places"
-              on={cfg.filters.requireReady}
-              pending={pending}
-              onClick={() => setFilter("requireReady", !cfg.filters.requireReady)}
-            />
-          </div>
-          <FilterNumber
-            label="Minimum Google rating"
-            hint="0 is off. Above 0 also drops unrated places."
-            value={cfg.filters.minRating}
-            min={0}
-            max={MIN_RATING_MAX}
-            step={0.1}
-            decimals
-            pending={pending}
-            onChange={(v) =>
-              setFilter(
-                "minRating",
-                Math.round(Math.min(MIN_RATING_MAX, Math.max(0, v)) * 10) / 10,
-              )
-            }
-          />
-          <FilterNumber
-            label="Minimum Google reviews"
-            hint="0 is off. Above 0 also drops places with no reviews."
-            value={cfg.filters.minReviews}
-            min={0}
-            step={1}
-            pending={pending}
-            onChange={(v) => setFilter("minReviews", Math.max(0, Math.round(v)))}
-          />
-          <FilterNumber
-            label="Hard radius (km)"
-            hint="0 is off. Swipe only — Map uses the viewport."
-            value={cfg.filters.maxDistanceKm}
-            min={0}
-            max={MAX_DISTANCE_KM_MAX}
-            step={1}
-            pending={pending}
-            onChange={(v) =>
-              setFilter(
-                "maxDistanceKm",
-                Math.min(MAX_DISTANCE_KM_MAX, Math.max(0, Math.round(v))),
-              )
-            }
-          />
-        </div>
       </SectionCard>
 
       <SectionCard
@@ -404,52 +275,5 @@ export function DiscoveryConfigClient({
         loadError={loadBlocked ? error : null}
       />
     </div>
-  );
-}
-
-function FilterNumber({
-  label,
-  hint,
-  value,
-  min,
-  max,
-  step,
-  decimals,
-  pending,
-  onChange,
-}: {
-  label: string;
-  hint: string;
-  value: number;
-  min: number;
-  max?: number;
-  step: number;
-  decimals?: boolean;
-  pending: boolean;
-  onChange: (v: number) => void;
-}) {
-  return (
-    <label className="flex items-center justify-between gap-4 p-4">
-      <span className="min-w-0">
-        <span className="block text-sm font-medium leading-snug">{label}</span>
-        <span className="text-muted-foreground type-label">{hint}</span>
-      </span>
-      <input
-        type="number"
-        inputMode={decimals ? "decimal" : "numeric"}
-        min={min}
-        max={max}
-        step={step}
-        value={value}
-        disabled={pending}
-        aria-label={label}
-        onChange={(e) => {
-          const raw = Number(e.target.value);
-          if (Number.isNaN(raw)) return;
-          onChange(raw);
-        }}
-        className={INPUT}
-      />
-    </label>
   );
 }
