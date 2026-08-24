@@ -1,14 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useState, useTransition } from "react";
 import { Layers, Star, Users } from "lucide-react";
-import { ErrorNote } from "@/components/ErrorNote";
 import { formatShortDate } from "@/lib/format";
-import { SaveRow, SectionCard, Switch } from "../enricher-config/atlas-ui";
-import {
-  getSourcingConfig,
-  updateSourcingConfig,
-} from "./actions";
+import { SectionCard, Switch } from "../enricher-config/atlas-ui";
 import {
   CHANNELS,
   FAMILIES,
@@ -30,85 +24,36 @@ function enforcedLiveCopy(): string {
   return `Enforced live today: ${live.map((c) => c.label).join(", ")}. The remaining channels (${pending.map((c) => c.label).join(", ")}) apply as their search / add paths are wired.`;
 }
 
-export function SourcingConfigClient({
-  initialConfig,
-  initialUpdatedAt,
-  loadError,
+// CONTROLLED. Intake owns the config and the one Save button on the page, so
+// this renders the matrix and nothing else — no state, no fetch, no save. It
+// stays in this folder because `catalog.ts` beside it is cited BY PATH from
+// web-consumer, mobile-consumer and `_shared/sourcing.ts` as the FAMILIES
+// authoring source; a folder with no page.tsx is just a module folder.
+export function SourcingChannels({
+  config: cfg,
+  onChange,
+  disabled: pending,
+  updatedAt,
 }: {
-  initialConfig: SourcingConfig;
-  initialUpdatedAt: string | null;
-  loadError: string | null;
+  config: SourcingConfig;
+  onChange: (next: SourcingConfig) => void;
+  disabled: boolean;
+  updatedAt: string | null;
 }) {
-  const [cfg, setCfg] = useState<SourcingConfig>(initialConfig);
-  const [saved, setSaved] = useState<SourcingConfig>(initialConfig);
-  const [pending, startTransition] = useTransition();
-  const [error, setError] = useState<string | null>(loadError);
-  const [loadBlocked, setLoadBlocked] = useState(!!loadError);
-  const [ok, setOk] = useState(false);
-  const [updatedAt, setUpdatedAt] = useState<string | null>(initialUpdatedAt);
-
-  // Re-fetch on mount so a client-side nav to the page shows the live row, not a
-  // stale server render. Success clears a failed-load Save block (MESITA-737).
-  useEffect(() => {
-    let active = true;
-    (async () => {
-      const r = await getSourcingConfig();
-      if (!active) return;
-      if (!r.ok) {
-        if (loadBlocked) setError(r.error);
-        return;
-      }
-      setCfg(r.config);
-      setSaved(r.config);
-      setUpdatedAt(r.updatedAt);
-      setError(null);
-      setLoadBlocked(false);
-    })();
-    return () => {
-      active = false;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- seed once on mount
-  }, []);
-
-  const dirty = useMemo(
-    () => JSON.stringify(cfg) !== JSON.stringify(saved),
-    [cfg, saved],
-  );
-
   const patch = <K extends keyof SourcingConfig[ChannelKey]>(
     channel: ChannelKey,
     key: K,
     value: SourcingConfig[ChannelKey][K],
   ) => {
-    setCfg((c) => ({ ...c, [channel]: { ...c[channel], [key]: value } }));
-    setOk(false);
+    onChange({ ...cfg, [channel]: { ...cfg[channel], [key]: value } });
   };
 
   const toggleFamily = (channel: ChannelKey, family: FamilyKey) => {
-    setCfg((c) => {
-      const has = c[channel].families.includes(family);
-      const families = has
-        ? c[channel].families.filter((f) => f !== family)
-        : [...c[channel].families, family];
-      return { ...c, [channel]: { ...c[channel], families } };
-    });
-    setOk(false);
-  };
-
-  const save = () => {
-    if (loadBlocked) return;
-    setError(null);
-    startTransition(async () => {
-      const r = await updateSourcingConfig(cfg);
-      if (r.ok) {
-        setSaved(r.config);
-        setCfg(r.config);
-        setUpdatedAt(r.updatedAt);
-        setOk(true);
-      } else {
-        setError(r.error);
-      }
-    });
+    const has = cfg[channel].families.includes(family);
+    const families = has
+      ? cfg[channel].families.filter((f) => f !== family)
+      : [...cfg[channel].families, family];
+    onChange({ ...cfg, [channel]: { ...cfg[channel], families } });
   };
 
   return (
@@ -257,15 +202,6 @@ export function SourcingConfigClient({
       <p className="text-muted-foreground mt-3 text-xs">
         {enforcedLiveCopy()} Hover a channel or family chip for details.
       </p>
-
-      <SaveRow
-        pending={pending}
-        dirty={dirty}
-        ok={ok}
-        onClick={save}
-        loadError={loadBlocked ? (error ?? "Failed to load Sourcing config") : null}
-      />
-      {error && <ErrorNote message={error} />}
     </SectionCard>
   );
 }
