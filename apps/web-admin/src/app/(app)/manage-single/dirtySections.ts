@@ -2,8 +2,7 @@
 export const DIRTY_SECTION_ORDER = [
   "place",
   "products",
-  // One key per Settings box, in box order (MESITA-1148): the Check PIN and
-  // Require-bill cards merged into Visits, so their two keys became this one.
+  // One key per Settings box, in box order (MESITA-1148).
   "visits",
   "orders",
   "reservations",

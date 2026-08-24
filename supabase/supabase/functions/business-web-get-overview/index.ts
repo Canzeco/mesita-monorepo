@@ -183,24 +183,20 @@ Deno.serve(async (req) => {
     : (requestedPlaceId && places.find((v) => (v as { id: string }).id === requestedPlaceId)) ||
         places[0];
 
-  // Staff check settings — the PIN (MESITA-823) and the require-bill switch
-  // (MESITA-898) — attached to the ACTIVE place only, and only for owners
-  // (super-admin path tags my_role=owner). Read straight off projects: the
-  // columns are deliberately NOT in profiles / PLACE_COLUMNS so no
-  // consumer- or viewer-facing payload can ever pick them up.
+  // Staff Check PIN (MESITA-823) — attached to the ACTIVE place only, and
+  // only for owners (super-admin path tags my_role=owner). Read straight
+  // off projects: the column is deliberately NOT in profiles / PLACE_COLUMNS
+  // so no consumer- or viewer-facing payload can ever pick it up. The bill
+  // is always required (MESITA-1095); there is no per-place switch.
   if (active && (active as { my_role?: string }).my_role === "owner") {
     const pinRow = await admin
       .from("projects")
-      .select("check_pin, check_require_bill")
+      .select("check_pin")
       .eq("id", (active as { id: string }).id)
       .maybeSingle();
     if (!pinRow.error) {
-      const row = pinRow.data as
-        | { check_pin: string | null; check_require_bill: boolean | null }
-        | null;
+      const row = pinRow.data as { check_pin: string | null } | null;
       (active as Record<string, unknown>).check_pin = row?.check_pin ?? null;
-      (active as Record<string, unknown>).check_require_bill =
-        row?.check_require_bill === true;
     }
   }
 

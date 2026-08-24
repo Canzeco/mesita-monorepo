@@ -298,9 +298,7 @@ export type ProjectRow = {
   promo_paused_until: string | null;
   plan_forfeited_at: string | null;
   check_pin: string | null;
-  check_require_bill: boolean;
   staff_pin: string | null;
-  require_bill: boolean;
   cfdi_rfc: string | null;
   cfdi_razon_social: string | null;
   cfdi_cp: string | null;
@@ -332,9 +330,7 @@ export const PROJECT_PATCH_KEYS = [
   "promo_paused_until",
   "plan_forfeited_at",
   "check_pin",
-  "check_require_bill",
   "staff_pin",
-  "require_bill",
   "cfdi_rfc",
   "cfdi_razon_social",
   "cfdi_cp",
@@ -552,7 +548,6 @@ export function validatePlacePatch(input: unknown): PlacePatchValidation {
 const PROJECT_NOTNULL_STRING_KEYS = new Set<string>(["slug", "currency"]);
 const PROJECT_BOOLEAN_KEYS = new Set<string>([
   "requires_story", "segmentation_basic_enabled", "segmentation_advanced_enabled",
-  "check_require_bill", "require_bill",
 ]);
 // projects_promo_rate_legal_values — {10,20,30,40,50}, null allowed.
 const PROJECT_RATE_KEYS = new Set<string>([

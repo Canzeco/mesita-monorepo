@@ -139,9 +139,8 @@ Deno.serve(async (req) => {
         // then demand a PIN for. Unknown resolves to "prompt".
         pinRequired: checkSettings.loadFailed || checkSettings.pin != null,
         offerRatePercent,
-        // MESITA-898: the place opted in to a mandatory bill — the page
-        // shows the subtotal step as required and holds the close.
-        billRequired: checkSettings.requireBill,
+        // MESITA-1095: the guest bill is always required.
+        billRequired: true,
       }),
       scanned_before: wasScanned,
     },
