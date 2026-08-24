@@ -169,6 +169,10 @@ export async function createMinimalPlace(opts: {
       primaryType: basicsRes.primaryType,
       rating: basicsRes.basics.google_stars_overall,
       reviewCount: basicsRes.basics.google_review_count,
+    }, {
+      lat: basicsRes.basics.lat,
+      lng: basicsRes.basics.lng,
+      country: basicsRes.basics.country,
     });
     if (!verdict.eligible) {
       return {

@@ -40,6 +40,7 @@ import {
 import {
   type ChannelKey,
   type ChannelPolicy,
+  applyPlacesAutocompleteRegion,
   evaluatePlaceForChannel,
   readChannelPolicy,
 } from "./sourcing.ts";
@@ -106,7 +107,7 @@ export async function suggestPlaces(
   // Fire Google + Mesita searches in parallel. Either can fail
   // independently; we merge whatever comes back.
   const [googleResult, mesitaResult] = await Promise.allSettled([
-    fetchGooglePredictions(input, sessionToken, apiKey, googleTypeFilter),
+    fetchGooglePredictions(input, sessionToken, apiKey, googleTypeFilter, sourcingPolicy),
     fetchMesitaPredictions(admin, input, callerUserId),
   ]);
 
@@ -177,6 +178,7 @@ async function fetchGooglePredictions(
   sessionToken: string,
   apiKey: string,
   typeFilter: GoogleTypeFilter,
+  policy: ChannelPolicy | null,
 ): Promise<{
   predictions: Prediction[];
   errorEnvelope?: Record<string, unknown>;
@@ -186,6 +188,7 @@ async function fetchGooglePredictions(
   }
 
   const body: Record<string, unknown> = { input, sessionToken };
+  if (policy) applyPlacesAutocompleteRegion(body, policy);
   if (typeFilter === "legacy") {
     // Legacy path (no sourcing channel): broad static hospitality filter.
     body.includedPrimaryTypes = [
@@ -369,11 +372,7 @@ async function filterPredictionsBySourcing(
 
   const signalsByPlaceId = new Map<
     string,
-    {
-      primaryType: string | null;
-      rating: number | null;
-      reviewCount: number | null;
-    }
+    NonNullable<Awaited<ReturnType<typeof fetchPlaceSignals>>>
   >();
   await Promise.all(
     googleOnly.map(async (p) => {
@@ -386,6 +385,10 @@ async function filterPredictionsBySourcing(
     if (p.status !== "not_in_mesita") return true;
     const sig = signalsByPlaceId.get(p.placeId);
     if (!sig) return false;
-    return evaluatePlaceForChannel(policy, sig).eligible;
+    return evaluatePlaceForChannel(policy, sig, {
+      lat: sig.lat,
+      lng: sig.lng,
+      country: sig.country,
+    }).eligible;
   });
 }

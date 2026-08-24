@@ -18,6 +18,11 @@ import {
   readEFEnv,
   requireSuperAdmin,
 } from "../_shared/auth.ts";
+import {
+  coerceRegion,
+  DEFAULT_REGION,
+  type RegionPolicy,
+} from "../_shared/sourcing.ts";
 
 // Keep these in lock-step with the admin catalog (Sourcing Config catalog.ts).
 const CHANNELS = new Set([
@@ -46,6 +51,7 @@ type ChannelPolicy = {
   families: string[];
   minRating: number;
   minReviews: number;
+  region: RegionPolicy;
 };
 
 // Coerce + clamp one channel's policy. Returns an error string on invalid input.
@@ -84,7 +90,16 @@ function normalizeChannel(
   }
   const minReviews = Math.min(Math.max(Math.floor(p.minReviews), 0), MAX_REVIEWS);
 
-  return { ok: true, value: { enabled: p.enabled, families, minRating, minReviews } };
+  return {
+    ok: true,
+    value: {
+      enabled: p.enabled,
+      families,
+      minRating,
+      minReviews,
+      region: coerceRegion(p.region, DEFAULT_REGION),
+    },
+  };
 }
 
 Deno.serve(async (req) => {
