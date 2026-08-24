@@ -17,17 +17,57 @@ import {
   type WiredEngineKey,
 } from "./catalog";
 
-/** The exponent step. Matches the two-decimal rounding in catalog.coerceConfig. */
+/** Matches the two-decimal rounding in catalog.coerceConfig. */
 const STEP = 0.05;
 
 const INPUT =
-  "border-border bg-card focus:border-foreground h-9 w-20 shrink-0 rounded-lg border px-3 text-right text-sm tabular-nums outline-none disabled:opacity-50";
+  "border-border bg-card focus:border-foreground h-8 w-16 shrink-0 rounded-lg border px-2 text-right text-sm tabular-nums outline-none disabled:opacity-50";
 
 function Enforced({ on }: { on: string }) {
   return (
     <span className="border-border bg-muted text-muted-foreground rounded-full border px-2 py-0.5 type-meta font-semibold tracking-wide uppercase">
       Enforced · {on}
     </span>
+  );
+}
+
+function ParamInput({
+  label,
+  value,
+  min,
+  max,
+  step,
+  disabled,
+  onChange,
+}: {
+  label: string;
+  value: number;
+  min: number;
+  max: number;
+  step: number;
+  disabled: boolean;
+  onChange: (n: number) => void;
+}) {
+  return (
+    <label className="flex items-center justify-between gap-2">
+      <span className="text-muted-foreground type-label font-mono">{label}</span>
+      <input
+        type="number"
+        inputMode="decimal"
+        min={min}
+        max={max}
+        step={step}
+        value={value}
+        disabled={disabled}
+        aria-label={label}
+        onChange={(e) => {
+          const raw = Number(e.target.value);
+          if (Number.isNaN(raw)) return;
+          onChange(raw);
+        }}
+        className={INPUT}
+      />
+    </label>
   );
 }
 
@@ -48,8 +88,6 @@ export function DiscoveryConfigClient({
   const [ok, setOk] = useState(false);
   const [updatedAt, setUpdatedAt] = useState<string | null>(initialUpdatedAt);
 
-  // Re-fetch on mount so a client-side nav shows the live row, not a stale
-  // server render. Success clears a failed-load Save block (MESITA-737).
   useEffect(() => {
     let active = true;
     (async () => {
@@ -85,6 +123,27 @@ export function DiscoveryConfigClient({
     setOk(false);
   };
 
+  const setParam = (
+    key: SignalKey,
+    field: string,
+    value: number,
+    min: number,
+    max: number,
+    step: number,
+  ) => {
+    const clamped = Math.min(max, Math.max(min, value));
+    const decimals = step >= 1 ? 0 : step >= 0.5 ? 1 : 2;
+    const rounded = Math.round(clamped * 10 ** decimals) / 10 ** decimals;
+    setCfg((c) => ({
+      ...c,
+      params: {
+        ...c.params,
+        [key]: { ...c.params[key], [field]: rounded },
+      },
+    }));
+    setOk(false);
+  };
+
   const setEngineRanked = (key: WiredEngineKey, ranked: boolean) => {
     setCfg((c) => ({ ...c, engines: { ...c.engines, [key]: { ranked } } }));
     setOk(false);
@@ -94,8 +153,6 @@ export function DiscoveryConfigClient({
     if (loadBlocked) return;
     setError(null);
     startTransition(async () => {
-      // Whole-blob write: slotting and filters stay on `cfg` even though this
-      // page no longer edits them, so a Save cannot reset the live predicates.
       const r = await updateDiscoveryConfig(cfg);
       if (r.ok) {
         setSaved(r.config);
@@ -117,7 +174,7 @@ export function DiscoveryConfigClient({
       <SectionCard
         icon={<Compass className="text-secondary h-4 w-4" />}
         title="Signals"
-        subtitle="Exponents on the earned blend. 0 is off. Ratios between rows are what matter."
+        subtitle="Six functions. Engine(signal(), …) reads these. One table for every hyperparameter."
         status={
           <div className="flex flex-col items-start gap-1 sm:items-end">
             <Enforced on="Swipe" />
@@ -130,12 +187,14 @@ export function DiscoveryConfigClient({
         }
       >
         <div className="mt-4 -mx-4 overflow-x-auto sm:mx-0">
-          <table className="w-full min-w-[28rem] border-separate border-spacing-0 px-4 sm:px-0">
+          <table className="w-full min-w-[56rem] border-separate border-spacing-0 px-4 sm:px-0">
             <thead>
               <tr className="text-muted-foreground text-left text-xs">
-                <th className="pb-2 pl-1 font-medium">Signal</th>
-                <th className="w-24 pb-2 text-right font-medium">Exponent</th>
-                <th className="w-40 pb-2 pr-1 font-medium">Effect</th>
+                <th className="w-28 pb-2 pl-1 font-medium">Function</th>
+                <th className="pb-2 font-medium">Input</th>
+                <th className="pb-2 font-medium">Process</th>
+                <th className="pb-2 font-medium">Output</th>
+                <th className="w-52 pb-2 pr-1 font-medium">Params</th>
               </tr>
             </thead>
             <tbody>
@@ -145,41 +204,49 @@ export function DiscoveryConfigClient({
                 return (
                   <tr
                     key={s.key}
-                    className="border-border/50 align-middle [&>td]:border-t [&>td]:py-2.5"
+                    className="border-border/50 align-top [&>td]:border-t [&>td]:py-3"
                   >
-                    <td className="pl-1 pr-4">
+                    <td className="pl-1 pr-3">
                       <div
-                        className={"text-sm font-semibold" + (off ? " opacity-50" : "")}
-                        title={s.reads}
+                        className={"font-mono text-sm font-semibold" + (off ? " opacity-50" : "")}
                       >
-                        {s.label}
+                        {s.fn}
                       </div>
                     </td>
-                    <td className="pr-4 text-right">
-                      <input
-                        type="number"
-                        inputMode="decimal"
-                        min={WEIGHT_MIN}
-                        max={WEIGHT_MAX}
-                        step={STEP}
-                        value={w}
-                        disabled={pending}
-                        aria-label={`${s.label} exponent`}
-                        onChange={(e) => {
-                          const raw = Number(e.target.value);
-                          if (Number.isNaN(raw)) return;
-                          setWeight(s.key, raw);
-                        }}
-                        className={INPUT + " w-full max-w-24"}
-                      />
+                    <td className="text-muted-foreground max-w-[12rem] pr-3 type-label leading-relaxed">
+                      {s.input}
                     </td>
-                    <td
-                      className={
-                        "pr-1 type-label " +
-                        (off ? "text-muted-foreground" : "text-foreground")
-                      }
-                    >
-                      {weightMeaning(w)}
+                    <td className="text-muted-foreground type-label max-w-[16rem] pr-3 font-mono leading-relaxed">
+                      {s.process}
+                    </td>
+                    <td className="text-muted-foreground max-w-[12rem] pr-3 type-label leading-relaxed">
+                      {s.output}
+                    </td>
+                    <td className="pr-1">
+                      <div className="flex flex-col gap-1.5">
+                        <ParamInput
+                          label="exponent"
+                          value={w}
+                          min={WEIGHT_MIN}
+                          max={WEIGHT_MAX}
+                          step={STEP}
+                          disabled={pending}
+                          onChange={(n) => setWeight(s.key, n)}
+                        />
+                        <span className="text-muted-foreground type-meta">{weightMeaning(w)}</span>
+                        {s.fields.map((f) => (
+                          <ParamInput
+                            key={f.key}
+                            label={f.label}
+                            value={cfg.params[s.key]?.[f.key] ?? 0}
+                            min={f.min}
+                            max={f.max}
+                            step={f.step}
+                            disabled={pending}
+                            onChange={(n) => setParam(s.key, f.key, n, f.min, f.max, f.step)}
+                          />
+                        ))}
+                      </div>
                     </td>
                   </tr>
                 );
@@ -190,15 +257,16 @@ export function DiscoveryConfigClient({
 
         {allOff ? (
           <p className="text-muted-foreground mt-3 type-label">
-            Every signal is off — the deck falls back to pool order.
+            Every exponent is 0 — the deck falls back to pool order.
           </p>
         ) : null}
 
-        <Collapsible summary="How exponents work">
+        <Collapsible summary="How the blend reads these">
           <p className="text-muted-foreground type-label max-w-2xl leading-relaxed">
-            Each signal scores 0–1 and enters as s^w, so a bigger exponent is
-            harsher. Missing data abstains at 1 and drops out. Promoting is not
-            a row: money never buys a score.
+            Each signal is a function: indexes in, one number in 0–1 out. The
+            engine multiplies s^exponent. Exponent 0 turns the function off.
+            Missing intent abstains at 1 and drops out. Promoting is not a
+            function here: money never buys a score.
           </p>
         </Collapsible>
       </SectionCard>
@@ -206,15 +274,18 @@ export function DiscoveryConfigClient({
       <SectionCard
         icon={<Layers className="text-secondary h-4 w-4" />}
         title="Engines"
-        subtitle="Surfaces that return places. Only a wired engine gets a ranking switch."
+        subtitle="Surfaces that call the signals. Only a wired engine has a param."
       >
         <div className="mt-4 -mx-4 overflow-x-auto sm:mx-0">
-          <table className="w-full min-w-[22rem] border-separate border-spacing-0 px-4 sm:px-0">
+          <table className="w-full min-w-[48rem] border-separate border-spacing-0 px-4 sm:px-0">
             <thead>
               <tr className="text-muted-foreground text-left text-xs">
-                <th className="pb-2 pl-1 font-medium">Engine</th>
-                <th className="w-24 pb-2 font-medium">State</th>
-                <th className="w-40 pb-2 pr-1 text-right font-medium">Ranked</th>
+                <th className="w-28 pb-2 pl-1 font-medium">Function</th>
+                <th className="w-20 pb-2 font-medium">State</th>
+                <th className="pb-2 font-medium">Input</th>
+                <th className="pb-2 font-medium">Process</th>
+                <th className="pb-2 font-medium">Output</th>
+                <th className="w-44 pb-2 pr-1 text-right font-medium">Params</th>
               </tr>
             </thead>
             <tbody>
@@ -223,26 +294,34 @@ export function DiscoveryConfigClient({
                 return (
                   <tr
                     key={e.key}
-                    title={e.what}
-                    className="border-border/50 align-middle [&>td]:border-t [&>td]:py-2.5"
+                    className="border-border/50 align-top [&>td]:border-t [&>td]:py-3"
                   >
-                    <td className="pl-1 pr-4">
+                    <td className="pl-1 pr-3">
                       <span
-                        className={"text-sm font-semibold" + (dim ? " opacity-50" : "")}
+                        className={"font-mono text-sm font-semibold" + (dim ? " opacity-50" : "")}
                       >
-                        {e.label}
+                        {e.fn}
                       </span>
                     </td>
-                    <td className="pr-4">
+                    <td className="pr-3">
                       <span className="text-muted-foreground type-meta font-semibold tracking-wide uppercase">
                         {e.state}
                       </span>
+                    </td>
+                    <td className="text-muted-foreground max-w-[10rem] pr-3 type-label leading-relaxed">
+                      {e.input}
+                    </td>
+                    <td className="text-muted-foreground max-w-[16rem] pr-3 type-label leading-relaxed">
+                      {e.process}
+                    </td>
+                    <td className="text-muted-foreground max-w-[10rem] pr-3 type-label leading-relaxed">
+                      {e.output}
                     </td>
                     <td className="pr-1">
                       {e.wired ? (
                         <div className="flex items-center justify-end gap-2">
                           <span className="text-muted-foreground type-label">
-                            {cfg.engines[e.wired].ranked ? "Signals" : "Pool"}
+                            ranked · {cfg.engines[e.wired].ranked ? "signals" : "pool"}
                           </span>
                           <Switch
                             label={`${e.label} reads the signals`}
@@ -255,7 +334,7 @@ export function DiscoveryConfigClient({
                         </div>
                       ) : (
                         <span className="text-muted-foreground block text-right type-label">
-                          Not wired
+                          None
                         </span>
                       )}
                     </td>
