@@ -15,26 +15,28 @@ const fraunces = Fraunces({
   axes: ["opsz"],
 });
 
+const DESCRIPTION =
+  "An AI-native platform for going out: discovery, AI reservations, commission-free pickup orders, rewards and payments in one app. In development — launching in California, January 2027.";
+
 export const metadata: Metadata = {
   metadataBase: new URL("https://mesita.ai"),
   title: {
-    default: "Mesita — descubre, reserva y paga menos",
+    default: "Mesita — where are we going tonight?",
     template: "%s · Mesita",
   },
-  description:
-    "Descubre, reserva y consigue descuentos reales en restaurantes, cafés, bares y antros. Hecho en Monterrey.",
+  description: DESCRIPTION,
   openGraph: {
-    title: "Mesita — descubre, reserva y paga menos",
-    description:
-      "Descubre, reserva y consigue descuentos reales en restaurantes, cafés y bares.",
+    title: "Mesita — where are we going tonight?",
+    description: DESCRIPTION,
     siteName: "Mesita",
-    locale: "es_MX",
+    locale: "en_US",
     type: "website",
+    url: "https://mesita.ai",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Mesita",
-    description: "Descubre. Reserva. Paga menos cada vez.",
+    title: "Mesita — where are we going tonight?",
+    description: DESCRIPTION,
   },
 };
 
@@ -45,7 +47,7 @@ export default function RootLayout({
 }>) {
   return (
     <html
-      lang="es"
+      lang="en"
       className={`${inter.variable} ${fraunces.variable} h-full antialiased`}
     >
       <body className="flex min-h-full flex-col">{children}</body>

@@ -2,13 +2,13 @@ import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { MesitaLogo } from "@/components/brand/MesitaLogo";
-import { BUSINESS_SIGNUP_URL, CONSUMER_URL } from "@/components/landing/urls";
+import { NOTIFY_URL, OVERVIEW_URL } from "@/components/landing/urls";
 
 const NAV_LINKS = [
-  { href: "#como-funciona", label: "Cómo funciona" },
-  { href: "#recompensas", label: "Recompensas" },
-  { href: "#premium", label: "Premium" },
-  { href: "#negocios", label: "Para negocios" },
+  { href: "#catalog", label: "Catalog" },
+  { href: "#agents", label: "Agents" },
+  { href: "#passport", label: "Passport" },
+  { href: "#money", label: "Money" },
 ];
 
 function Nav() {
@@ -36,13 +36,13 @@ function Nav() {
             variant="outline"
             className="hidden rounded-full sm:inline-flex"
           >
-            <Link href={BUSINESS_SIGNUP_URL}>Tengo un lugar</Link>
+            <a href={NOTIFY_URL}>Get notified</a>
           </Button>
           <Button asChild size="sm" className="rounded-full">
-            <Link href={CONSUMER_URL}>
-              Descargar app
+            <a href={OVERVIEW_URL}>
+              Read the overview
               <ArrowRight />
-            </Link>
+            </a>
           </Button>
         </div>
       </div>

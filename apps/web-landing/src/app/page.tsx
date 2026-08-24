@@ -1,57 +1,65 @@
 import {
-  AIReservations,
-  DiscoveryIntelligence,
-  FAQ,
-  FinalCTA,
+  CapitalCredits,
+  Close,
+  DiscoveryEngines,
   Footer,
-  ForBusinesses,
   Hero,
-  HowItWorks,
   Nav,
-  Premium,
-  ProofStrip,
-  Rewards,
+  OrderAgents,
+  PassportRewards,
+  Positioning,
+  ReservationAgents,
+  Revenue,
+  Summary,
+  SuperCatalog,
+  ThreeSides,
 } from "@/components/landing";
 
-// Landing page — single-source-of-truth marketing surface.
+// Landing page — the evaluator-facing pitch surface for mesita.ai.
 //
-// Spanish edition: natural Mexican Spanish throughout, with only a light
-// touch of English for genuine brand terms (Premium). The current hero
-// image is preserved. Renders at the site root (mesita.ai/).
+// The page IS the read: it assumes roughly ten minutes of attention and
+// nothing else, so the full project overview is the CTA rather than the
+// prerequisite. Written pre-launch (California, January 2027) — the status
+// badge in the hero does the honesty work for every section below it, which
+// is what lets the money system appear in product voice without ever
+// claiming to be live.
 //
-// Composition stays intentionally flat: one function per section, top to
-// bottom in page order.
+// Composition stays flat: one function per section, top to bottom.
 //
-//   1.  <Nav />                   Barra superior
-//   2.  <Hero />                  Titular + doble CTA + foto del producto
-//   3.  <ProofStrip />            "Toda la ciudad ya está adentro"
-//   4.  <HowItWorks />            Tu plan de hoy, en tres pasos
-//   5.  <DiscoveryIntelligence /> Muchas formas de explorar
-//   6.  <AIReservations />        Nunca vuelvas a llamar a un restaurante
-//   7.  <Rewards />               Paga menos solo por ir
-//   8.  <Premium />               Tres formas de entrar a Premium
-//   9.  <ForBusinesses />         El otro lado, superficie oscura
-//   10. <FAQ />                   Lo esencial, expandible
-//   11. <FinalCTA />              Tu plan de hoy, resuelto
-//   12. <Footer />               © Mesita 2026
+//   1.  <Nav />                 Sticky bar, anchors + overview CTA
+//   2.  <Hero />                Status, promise, photo with UI chips
+//   3.  <Summary />             The quotable paragraph, typographic
+//   4.  <ThreeSides />          Guests · partners · everyone else (~100:1)
+//   5.  <SuperCatalog />        The moat, with a card mid-enrichment
+//   6.  <DiscoveryEngines />    Eight doors, one intelligence
+//   7.  <ReservationAgents />   The wow: the agent phones the restaurant
+//   8.  <OrderAgents />         The economics: 0% against 25–30%
+//   9.  <PassportRewards />     Identity is what partners buy
+//   10. <CapitalCredits />      The money system, the page's one dark act
+//   11. <Revenue />             Three streams, three refusals
+//   12. <Positioning />         Demand · software · capital
+//   13. <Close />               Built-facts, status, dual CTA
+//   14. <Footer />
 //
-// Los precios detallados quedan fuera del sitio público por diseño — la
-// tabla de planes vive dentro de la consola de negocios.
+// Every number on the page is structural (100:1, 0% vs 25–30%, 100 → 110,
+// ~2:1). Currency figures stay off the public site by design.
 
 export default function Home() {
   return (
     <main className="bg-background min-h-screen">
       <Nav />
       <Hero />
-      <ProofStrip />
-      <HowItWorks />
-      <DiscoveryIntelligence />
-      <AIReservations />
-      <Rewards />
-      <Premium />
-      <ForBusinesses />
-      <FAQ />
-      <FinalCTA />
+      <Summary />
+      <ThreeSides />
+      <SuperCatalog />
+      <DiscoveryEngines />
+      <ReservationAgents />
+      <OrderAgents />
+      <PassportRewards />
+      <CapitalCredits />
+      <Revenue />
+      <Positioning />
+      <Close />
       <Footer />
     </main>
   );
