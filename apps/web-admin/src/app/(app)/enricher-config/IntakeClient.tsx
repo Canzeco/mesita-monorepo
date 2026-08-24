@@ -55,9 +55,10 @@ import {
 
 export type { IntakeSettings };
 
-// THE INTAKE PAGE. Five modules, Discovery-shaped: Sourcing · Create · Enrich
-// · Functions · Models. One page, no tabs. Functions are disclosure rows
-// inside the Functions card, not a second stack of cards.
+// THE INTAKE PAGE. Five modules, Discovery-shaped. Models sits FIRST (shared
+// spend, above even Sourcing), then Sourcing · Create · Enrich · Functions.
+// One page, no tabs. Functions are disclosure rows inside the Functions card,
+// not a second stack of cards.
 //
 // ONE SAVE over TWO write doors — app_config.sourcing_config through
 // admin-web-update-sourcing-config, and the atlas_* columns through
@@ -204,6 +205,70 @@ export function IntakeClient({
       <SectionStrip />
 
       <div className="space-y-6 pb-24">
+        <div id="s-models" className="scroll-mt-16">
+          <SectionCard
+            icon={<Gauge className="text-secondary h-4 w-4" />}
+            title="Models & cost"
+            subtitle="Each of these serves several functions, which is why none of them lives inside one. Embeddings is locked by design."
+            status={<Tag tone="solid">shared</Tag>}
+          >
+            <div className="mt-5">
+              <Fields>
+                <div className="border-border bg-background flex flex-col gap-2 rounded-xl border p-4">
+                  <span className="text-sm font-medium">Text model</span>
+                  <QualityPicker
+                    value={settings.synthesisQuality}
+                    onChange={(v) => patch({ synthesisQuality: v })}
+                  />
+                  <span className="text-muted-foreground type-label">
+                    9 · Description and the image-rank leg of 6
+                  </span>
+                </div>
+                <div className="border-border bg-background flex flex-col gap-2 rounded-xl border p-4">
+                  <span className="text-sm font-medium">Image model</span>
+                  <QualityPicker
+                    value={settings.visionQuality}
+                    onChange={(v) => patch({ visionQuality: v })}
+                  />
+                  <span className="text-muted-foreground type-label">
+                    6 · Images
+                  </span>
+                </div>
+                <SelectField
+                  label="Search model preset"
+                  hint="Agent X at 3 · Serp, Agent Y at 4 · Links"
+                  value={settings.perplexityPreset}
+                  options={PERPLEXITY_OPTIONS}
+                  onChange={(v) => patch({ perplexityPreset: v })}
+                  disabled={pending}
+                />
+                <NumberField
+                  icon={<Star className="text-muted-foreground h-4 w-4" />}
+                  label="Per-run cost cap (USD)"
+                  value={settings.perRunCostCapUsd}
+                  min={0}
+                  max={100}
+                  decimals
+                  onChange={(v) => patch({ perRunCostCapUsd: v })}
+                  disabled={pending}
+                />
+                <div className="border-border bg-background flex flex-col gap-2 rounded-xl border p-4">
+                  <span className="text-sm font-medium">Embeddings</span>
+                  <span className="text-sm">text-embedding-3-small</span>
+                  <span className="text-muted-foreground type-label">
+                    locked · 1536-d · swapping it re-embeds the catalog
+                  </span>
+                </div>
+              </Fields>
+              {settingsStamp && (
+                <p className="text-muted-foreground mt-4 text-xs">
+                  Intaker settings last changed {formatShortDate(settingsStamp)}
+                </p>
+              )}
+            </div>
+          </SectionCard>
+        </div>
+
         <div id="s-sourcing" className="scroll-mt-16">
           <SectionCard
             icon={<Layers className="text-secondary h-4 w-4" />}
@@ -701,70 +766,6 @@ export function IntakeClient({
                   stamps it.
                 </NoKnobs>
               </FunctionModule>
-            </div>
-          </SectionCard>
-        </div>
-
-        <div id="s-models" className="scroll-mt-16">
-          <SectionCard
-            icon={<Gauge className="text-secondary h-4 w-4" />}
-            title="Models & cost"
-            subtitle="Each of these serves several functions, which is why none of them lives inside one. Embeddings is locked by design."
-            status={<Tag tone="solid">shared</Tag>}
-          >
-            <div className="mt-5">
-              <Fields>
-                <div className="border-border bg-background flex flex-col gap-2 rounded-xl border p-4">
-                  <span className="text-sm font-medium">Text model</span>
-                  <QualityPicker
-                    value={settings.synthesisQuality}
-                    onChange={(v) => patch({ synthesisQuality: v })}
-                  />
-                  <span className="text-muted-foreground type-label">
-                    9 · Description and the image-rank leg of 6
-                  </span>
-                </div>
-                <div className="border-border bg-background flex flex-col gap-2 rounded-xl border p-4">
-                  <span className="text-sm font-medium">Image model</span>
-                  <QualityPicker
-                    value={settings.visionQuality}
-                    onChange={(v) => patch({ visionQuality: v })}
-                  />
-                  <span className="text-muted-foreground type-label">
-                    6 · Images
-                  </span>
-                </div>
-                <SelectField
-                  label="Search model preset"
-                  hint="Agent X at 3 · Serp, Agent Y at 4 · Links"
-                  value={settings.perplexityPreset}
-                  options={PERPLEXITY_OPTIONS}
-                  onChange={(v) => patch({ perplexityPreset: v })}
-                  disabled={pending}
-                />
-                <NumberField
-                  icon={<Star className="text-muted-foreground h-4 w-4" />}
-                  label="Per-run cost cap (USD)"
-                  value={settings.perRunCostCapUsd}
-                  min={0}
-                  max={100}
-                  decimals
-                  onChange={(v) => patch({ perRunCostCapUsd: v })}
-                  disabled={pending}
-                />
-                <div className="border-border bg-background flex flex-col gap-2 rounded-xl border p-4">
-                  <span className="text-sm font-medium">Embeddings</span>
-                  <span className="text-sm">text-embedding-3-small</span>
-                  <span className="text-muted-foreground type-label">
-                    locked · 1536-d · swapping it re-embeds the catalog
-                  </span>
-                </div>
-              </Fields>
-              {settingsStamp && (
-                <p className="text-muted-foreground mt-4 text-xs">
-                  Intaker settings last changed {formatShortDate(settingsStamp)}
-                </p>
-              )}
             </div>
           </SectionCard>
         </div>

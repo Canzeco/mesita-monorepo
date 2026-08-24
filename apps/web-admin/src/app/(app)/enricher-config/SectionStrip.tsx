@@ -6,11 +6,11 @@ import { useEffect, useState } from "react";
 // module scrolls away — it is a way back, not chrome. Function hashes still
 // work from Create/Enrich step chips; they are not repeated here.
 const LINKS: { id: string; label: string }[] = [
+  { id: "s-models", label: "Models" },
   { id: "s-sourcing", label: "Sourcing" },
   { id: "s-create", label: "Create" },
   { id: "s-enrich", label: "Enrich" },
   { id: "s-functions", label: "Functions" },
-  { id: "s-models", label: "Models" },
 ];
 
 export function SectionStrip() {
@@ -18,7 +18,7 @@ export function SectionStrip() {
   const [here, setHere] = useState<string | null>(null);
 
   useEffect(() => {
-    const first = document.getElementById("s-sourcing");
+    const first = document.getElementById("s-models");
     if (!first) return;
     const gate = new IntersectionObserver(
       ([e]) => setShown(!e.isIntersecting),

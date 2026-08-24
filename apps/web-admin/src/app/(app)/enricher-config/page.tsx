@@ -5,8 +5,8 @@ import { IntakeClient } from "./IntakeClient";
 import { type IntakeSettings } from "./funnel";
 
 // INTAKE — how a place gets into Mesita and becomes a profile, on one page.
-// Five modules in Pato's order (MESITA-1287): the sourcing gate · Create ·
-// Enrich · the twelve functions with their params · the shared models.
+// Five modules: shared models first (above Sourcing), then the gate · Create ·
+// Enrich · the twelve functions with their params.
 //
 // TWO READS, seeded server-side so the page renders with real values and no
 // spinner. Either can fail on its own: a failed half renders its own note and
