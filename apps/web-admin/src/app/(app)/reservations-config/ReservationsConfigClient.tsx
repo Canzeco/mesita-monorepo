@@ -353,16 +353,19 @@ export function ReservationsConfigClient({
           />
         </div>
 
+        {/* Editable whether test mode is on or off — stage the line, then
+            flip the switch. Save still requires E.164 while test mode is on. */}
         <label className="mt-3 flex flex-col gap-2">
-          <span className="text-sm font-medium">Test number</span>
+          <span className="text-sm font-semibold">Test number</span>
           <input
             type="tel"
             inputMode="tel"
-            placeholder="+52 444 549 9597"
+            autoComplete="tel"
+            placeholder="+524445499597"
             value={cfg.testCall.number}
-            disabled={pending || !cfg.testCall.enabled}
+            disabled={pending}
             onChange={(e) => patch({ testCall: { ...cfg.testCall, number: e.target.value } })}
-            className="border-border bg-card focus:border-foreground h-9 w-full max-w-sm rounded-lg border px-3 text-sm tabular-nums outline-none disabled:opacity-50"
+            className="border-border bg-background focus:border-foreground h-9 w-full max-w-sm rounded-lg border px-3 text-sm tabular-nums outline-none disabled:opacity-50"
           />
           {testInvalid ? (
             <span className="text-xs text-amber-600">
