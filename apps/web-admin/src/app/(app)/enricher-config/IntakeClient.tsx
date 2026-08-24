@@ -34,7 +34,9 @@ import { updateAtlasConfig, type PerplexityPreset } from "./actions";
 import {
   Fields,
   FlowPanel,
+  FunctionFamily,
   FunctionModule,
+  StepChips,
   KnobElsewhere,
   NoKnobs,
   SelectField,
@@ -399,14 +401,19 @@ export function IntakeClient({
           <SectionCard
             icon={<ListOrdered className="text-secondary h-4 w-4" />}
             title="The functions"
-            subtitle="In run order, each listed once. Pulse, Details and the semantic pair appear in both flows because they are the same function with two callers — printing them twice would invent a second ladder."
+            subtitle="Three families. Create is one function. Enrich is nine. Name and Summary are semantic — they have no number and enriched never counts them."
             status={<Tag tone="solid">12 modules · 15 knobs</Tag>}
           >
             <div className="mt-2">
+              <FunctionFamily
+                tone="create"
+                label="Create"
+                kicker="One function. Seed, then Pulse and Details inline. Summary and Name ride along."
+                note="Pulse, Details, Summary and Name are the same functions Enrich uses. They are not a second ladder."
+              >
               <FunctionModule
                 id="f-seed"
                 index="SEED"
-                flows="Create"
                 name="Seed"
                 blurb="Dedupe on the Google Place ID and mint the paired rows at category='undefined'."
                 knobs="no knobs"
@@ -420,7 +427,7 @@ export function IntakeClient({
               <FunctionModule
                 id="f-pulse"
                 index="1 · $"
-                flows="Create + Enrich"
+                flows="also Enrich"
                 name="Pulse"
                 blurb="One question: is this place still alive. Not the hours, not the address."
                 knobs="no knobs"
@@ -434,7 +441,7 @@ export function IntakeClient({
               <FunctionModule
                 id="f-details"
                 index="2 · $"
-                flows="Create + Enrich"
+                flows="also Enrich"
                 name="Details"
                 blurb="The Google spine: hours, address, geo, zone, city, timezone, price, phone, and the name."
                 knobs="no knobs"
@@ -445,11 +452,27 @@ export function IntakeClient({
                   editor — enrichment never touches it.
                 </NoKnobs>
               </FunctionModule>
+              </FunctionFamily>
 
+              <FunctionFamily
+                tone="enrich"
+                label="Enrich"
+                kicker="Nine functions, in order. 1 Pulse and 2 Details live in Create — they are the same functions."
+                note="1 Pulse · 2 Details · ◇ Summary · ◇ Name are shared. Jump the chips; do not look for a second copy."
+              >
+              <div className="pt-3 pb-1">
+                <StepChips
+                  steps={[
+                    { href: "#f-pulse", label: "1 Pulse" },
+                    { href: "#f-details", label: "2 Details" },
+                    { href: "#f-summary", label: "◇ Summary" },
+                    { href: "#f-name", label: "◇ Name" },
+                  ]}
+                />
+              </div>
               <FunctionModule
                 id="f-serp"
                 index="3 · $"
-                flows="Enrich"
                 name="Serp"
                 blurb="Agent X writes the editorial read that Links spends to recognise the place. Never a source of facts."
                 knobs="in Models"
@@ -464,7 +487,6 @@ export function IntakeClient({
               <FunctionModule
                 id="f-links"
                 index="4 · $$"
-                flows="Enrich"
                 name="Links"
                 blurb="Firecrawl gathers candidates per source, Agent Y picks one or none. Seed first, discover second."
                 knobs="5 knobs"
@@ -533,7 +555,6 @@ export function IntakeClient({
               <FunctionModule
                 id="f-social"
                 index="5 · $$"
-                flows="Enrich"
                 name="Social"
                 blurb="The Instagram and Facebook profiles — handle, followers, bio. It does not collect posts."
                 knobs="no knobs"
@@ -549,7 +570,6 @@ export function IntakeClient({
               <FunctionModule
                 id="f-images"
                 index="6 · $$"
-                flows="Enrich"
                 name="Images"
                 blurb="Collects images from Apify, then describes and ranks them. Largest cost driver here."
                 knobs="7 knobs"
@@ -670,7 +690,6 @@ export function IntakeClient({
               <FunctionModule
                 id="f-menu"
                 index="7"
-                flows="Enrich"
                 name="Menu"
                 blurb="Holds its slot so the number stays stable the day a real menu source lands."
                 knobs="no knobs"
@@ -685,7 +704,6 @@ export function IntakeClient({
               <FunctionModule
                 id="f-reviews"
                 index="8 · $$"
-                flows="Enrich"
                 name="Reviews"
                 blurb="The newest Google reviews — what 9 · Description grounds the Presentation on."
                 knobs="1 knob"
@@ -713,7 +731,6 @@ export function IntakeClient({
               <FunctionModule
                 id="f-description"
                 index="9 · $"
-                flows="Enrich"
                 name="Description"
                 blurb="Closes the queue. Makes the Presentation, then Category, then Tags, in that order."
                 knobs="in Models"
@@ -724,11 +741,17 @@ export function IntakeClient({
                   home.
                 </KnobElsewhere>
               </FunctionModule>
+              </FunctionFamily>
 
+              <FunctionFamily
+                tone="semantic"
+                label="Semantic"
+                kicker="No number. enriched never counts them. They run after Create and after Description."
+              >
               <FunctionModule
                 id="f-summary"
                 index="◇"
-                flows="Create + Enrich"
+                flows="both flows"
                 name="Summary"
                 blurb="The 60-word text the index reads — never the prose a guest reads."
                 knobs="locked"
@@ -743,7 +766,7 @@ export function IntakeClient({
               <FunctionModule
                 id="f-name"
                 index="◇"
-                flows="Create + Enrich"
+                flows="both flows"
                 name="Name"
                 blurb="The Mesita name as its own vector, so a search by name scores on the name."
                 knobs="not built"
@@ -754,6 +777,7 @@ export function IntakeClient({
                   stamps it.
                 </NoKnobs>
               </FunctionModule>
+              </FunctionFamily>
             </div>
           </SectionCard>
         </div>
