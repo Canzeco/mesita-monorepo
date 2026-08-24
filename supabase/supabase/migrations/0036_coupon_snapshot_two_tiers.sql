@@ -5,21 +5,33 @@
 -- collapsed to free/premium (0032), the coupon snapshot columns and the
 -- auto-issue trigger follow.
 
-alter table public.coupons
-  drop column if exists welcome_bronze_rate,
-  drop column if exists welcome_silver_rate,
-  drop column if exists welcome_gold_rate,
-  drop column if exists welcome_diamond_rate,
-  drop column if exists bronze_rate,
-  drop column if exists silver_rate,
-  drop column if exists gold_rate,
-  drop column if exists diamond_rate;
+-- Filename sort runs every 00NN file before every YYYYMMDD file. Prod applied
+-- 0036 after 20260531120003 created public.coupons. An empty volume hits this
+-- ALTER first and dies (MESITA-1278). Skip the table work when the relation
+-- is missing; 20260824221900 reapplies it once coupons exists.
+do $mesita_1278$
+begin
+  if to_regclass('public.coupons') is null then
+    return;
+  end if;
 
-alter table public.coupons
-  add column welcome_free_rate    smallint check (welcome_free_rate    is null or welcome_free_rate    in (10, 20, 50, 70)),
-  add column welcome_premium_rate smallint check (welcome_premium_rate is null or welcome_premium_rate in (10, 20, 50, 70)),
-  add column free_rate            smallint check (free_rate            is null or free_rate            in (10, 20, 50, 70)),
-  add column premium_rate         smallint check (premium_rate         is null or premium_rate         in (10, 20, 50, 70));
+  alter table public.coupons
+    drop column if exists welcome_bronze_rate,
+    drop column if exists welcome_silver_rate,
+    drop column if exists welcome_gold_rate,
+    drop column if exists welcome_diamond_rate,
+    drop column if exists bronze_rate,
+    drop column if exists silver_rate,
+    drop column if exists gold_rate,
+    drop column if exists diamond_rate;
+
+  alter table public.coupons
+    add column welcome_free_rate    smallint check (welcome_free_rate    is null or welcome_free_rate    in (10, 20, 50, 70)),
+    add column welcome_premium_rate smallint check (welcome_premium_rate is null or welcome_premium_rate in (10, 20, 50, 70)),
+    add column free_rate            smallint check (free_rate            is null or free_rate            in (10, 20, 50, 70)),
+    add column premium_rate         smallint check (premium_rate         is null or premium_rate         in (10, 20, 50, 70));
+end
+$mesita_1278$;
 
 -- Re-issue the auto-issue trigger against the new columns. Binding
 -- (after insert on saved_venues) is unchanged.
