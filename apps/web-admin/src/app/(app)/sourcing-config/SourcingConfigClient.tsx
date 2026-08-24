@@ -34,11 +34,14 @@ export function SourcingChannels({
   onChange,
   disabled: pending,
   updatedAt,
+  framed = true,
 }: {
   config: SourcingConfig;
   onChange: (next: SourcingConfig) => void;
   disabled: boolean;
   updatedAt: string | null;
+  /** False when a parent SectionCard already owns the chrome (Intake). */
+  framed?: boolean;
 }) {
   const patch = <K extends keyof SourcingConfig[ChannelKey]>(
     channel: ChannelKey,
@@ -56,19 +59,8 @@ export function SourcingChannels({
     onChange({ ...cfg, [channel]: { ...cfg[channel], families } });
   };
 
-  return (
-    <SectionCard
-      icon={<Layers className="text-secondary h-4 w-4" />}
-      title="Channels"
-      subtitle="Search = what may appear in that surface's searchbar (including Google places not yet in Mesita). Add = what may be onboarded as a Mesita place. Floors are Google rating / review counts; 0 = no floor."
-      status={
-        updatedAt ? (
-          <span className="text-muted-foreground text-xs">
-            Updated {formatShortDate(updatedAt)}
-          </span>
-        ) : null
-      }
-    >
+  const body = (
+    <>
       <div className="mt-5 -mx-4 overflow-x-auto sm:mx-0">
         <table className="w-full min-w-[680px] border-separate border-spacing-0 px-4 sm:px-0">
           <thead>
@@ -202,6 +194,25 @@ export function SourcingChannels({
       <p className="text-muted-foreground mt-3 text-xs">
         {enforcedLiveCopy()} Hover a channel or family chip for details.
       </p>
+    </>
+  );
+
+  if (!framed) return body;
+
+  return (
+    <SectionCard
+      icon={<Layers className="text-secondary h-4 w-4" />}
+      title="Channels"
+      subtitle="Search = what may appear in that surface's searchbar (including Google places not yet in Mesita). Add = what may be onboarded as a Mesita place. Floors are Google rating / review counts; 0 = no floor."
+      status={
+        updatedAt ? (
+          <span className="text-muted-foreground text-xs">
+            Updated {formatShortDate(updatedAt)}
+          </span>
+        ) : null
+      }
+    >
+      {body}
     </SectionCard>
   );
 }
