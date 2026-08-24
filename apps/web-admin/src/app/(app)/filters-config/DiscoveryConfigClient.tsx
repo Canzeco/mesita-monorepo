@@ -50,7 +50,7 @@ function ParamInput({
 }) {
   return (
     <label className="flex items-center justify-between gap-2">
-      <span className="text-muted-foreground font-mono text-[11px]">{label}</span>
+      <span className="text-muted-foreground type-label font-mono">{label}</span>
       <input
         type="number"
         inputMode="decimal"
@@ -216,7 +216,7 @@ export function DiscoveryConfigClient({
                     <td className="text-muted-foreground max-w-[12rem] pr-3 type-label leading-relaxed">
                       {s.input}
                     </td>
-                    <td className="text-muted-foreground max-w-[16rem] pr-3 font-mono text-[11px] leading-relaxed">
+                    <td className="text-muted-foreground type-label max-w-[16rem] pr-3 font-mono leading-relaxed">
                       {s.process}
                     </td>
                     <td className="text-muted-foreground max-w-[12rem] pr-3 type-label leading-relaxed">
