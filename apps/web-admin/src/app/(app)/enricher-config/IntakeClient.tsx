@@ -23,11 +23,7 @@ import {
 import { SourcingChannels } from "../sourcing-config/SourcingConfigClient";
 import { updateSourcingConfig } from "../sourcing-config/actions";
 import type { SourcingConfig } from "../sourcing-config/catalog";
-import {
-  updateAtlasConfig,
-  type PerplexityPreset,
-  type SynthesisQuality,
-} from "./actions";
+import { updateAtlasConfig, type PerplexityPreset } from "./actions";
 import {
   Band,
   Fields,
@@ -39,6 +35,14 @@ import {
   Tag,
 } from "./blocks";
 import { SectionStrip } from "./SectionStrip";
+import {
+  MAX_GOOGLE_COLLECT,
+  MAX_INSTAGRAM_COLLECT,
+  MAX_SAVE_IMAGES,
+  clampFunnel,
+  intakeSaveBlocked,
+  type IntakeSettings,
+} from "./intake-guards";
 
 // THE INTAKE PAGE. Five sections in Pato's order (MESITA-1287):
 //   1 Sourcing · 2 Create explained · 3 Enrich explained · 4 the functions · 5 Models
@@ -55,9 +59,6 @@ import { SectionStrip } from "./SectionStrip";
 // times: 2026-08-21 "delete the triggers shit", 2026-08-23 "Fuck this page",
 // 2026-08-23 "delete this stupid box"). Do not restore it as a fix.
 
-const MAX_GOOGLE_COLLECT = 10;
-const MAX_INSTAGRAM_COLLECT = 30;
-const MAX_SAVE_IMAGES = 10; // DB CHECK app_config_atlas_save_total_images_range
 const MAX_DISCOVERY_CANDIDATES = 10;
 
 const PERPLEXITY_OPTIONS: readonly { value: PerplexityPreset; label: string }[] =
@@ -68,66 +69,7 @@ const PERPLEXITY_OPTIONS: readonly { value: PerplexityPreset; label: string }[] 
     { value: "advanced-deep-research", label: "advanced-deep-research" },
   ];
 
-export type IntakeSettings = {
-  gatherGoogleImages: number;
-  gatherInstagramDepth: number;
-  gatherReviews: number;
-  imageVisionEnabled: boolean;
-  saveImagesToStorage: boolean;
-  saveTotalImages: number;
-  analyzeGoogleImages: number;
-  analyzeInstagramImages: number;
-  imageAnalysisPrompt: string;
-  imageSortingPrompt: string;
-  synthesisQuality: SynthesisQuality;
-  visionQuality: SynthesisQuality;
-  perplexityPreset: PerplexityPreset;
-  perRunCostCapUsd: number;
-  discoverWebsiteN: number;
-  discoverInstagramN: number;
-  discoverFacebookN: number;
-  discoverOpentableN: number;
-  discoverUbereatsN: number;
-};
-
-const clampN = (v: number, lo: number, hi: number) =>
-  Math.max(lo, Math.min(hi, Math.round(v)));
-
-/**
- * The image funnel is a chain, and the EF rejects a broken one with a 400, so
- * the page clamps downstream values instead of letting a save bounce:
- * analyze ≤ collect per source, and the gallery ≤ everything analyzed.
- */
-function clampFunnel(s: IntakeSettings): IntakeSettings {
-  const gatherGoogleImages = clampN(s.gatherGoogleImages, 1, MAX_GOOGLE_COLLECT);
-  const gatherInstagramDepth = clampN(
-    s.gatherInstagramDepth,
-    1,
-    MAX_INSTAGRAM_COLLECT,
-  );
-  const analyzeGoogleImages = clampN(
-    s.analyzeGoogleImages,
-    1,
-    gatherGoogleImages,
-  );
-  const analyzeInstagramImages = clampN(
-    s.analyzeInstagramImages,
-    1,
-    gatherInstagramDepth,
-  );
-  return {
-    ...s,
-    gatherGoogleImages,
-    gatherInstagramDepth,
-    analyzeGoogleImages,
-    analyzeInstagramImages,
-    saveTotalImages: clampN(
-      s.saveTotalImages,
-      1,
-      Math.min(MAX_SAVE_IMAGES, analyzeGoogleImages + analyzeInstagramImages),
-    ),
-  };
-}
+export type { IntakeSettings };
 
 export function IntakeClient({
   initialSourcing,
@@ -169,7 +111,7 @@ export function IntakeClient({
 
   // A failed GET must never let a save overwrite the live singleton with
   // defaults (MESITA-737) — the half that failed to load cannot be saved.
-  const blocked = sourcingLoadError ?? settingsLoadError;
+  const blocked = intakeSaveBlocked(sourcingLoadError, settingsLoadError);
 
   const dirtyNames = [
     sourcingDirty ? "Sourcing" : null,
