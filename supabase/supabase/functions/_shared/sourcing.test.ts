@@ -1,6 +1,9 @@
 import { assertEquals } from "jsr:@std/assert";
 import {
+  applyPlacesAutocompleteRegion,
+  applyPlacesTextSearchRegion,
   coerceChannelPolicy,
+  DEFAULT_REGION,
   evaluatePlaceForChannel,
   familiesForGoogleType,
   familyForGoogleType,
@@ -127,4 +130,145 @@ Deno.test("dual-family type is admitted by either family", () => {
   const nightClub = { primaryType: "night_club", rating: 4.8, reviewCount: 5000 };
   assertEquals(evaluatePlaceForChannel(restaurantsOnly, nightClub).eligible, false);
   assertEquals(evaluatePlaceForChannel(barsOnly, nightClub).eligible, true);
+});
+
+Deno.test("old blob without region keeps country-only MX bias", () => {
+  const policy = coerceChannelPolicy(
+    { enabled: true, families: ["restaurants"], minRating: 0, minReviews: 0 },
+    "admin_search",
+  );
+  assertEquals(policy.region, DEFAULT_REGION);
+});
+
+Deno.test("empty country turns region off", () => {
+  const policy = coerceChannelPolicy(
+    {
+      enabled: true,
+      families: ["restaurants"],
+      minRating: 0,
+      minReviews: 0,
+      region: { country: "", lat: 19.4, lng: -99.1, radiusKm: 10, restrict: false },
+    },
+    "admin_search",
+  );
+  const body: Record<string, unknown> = { textQuery: "tacos" };
+  applyPlacesTextSearchRegion(body, policy);
+  assertEquals(body.regionCode, undefined);
+  assertEquals("locationBias" in body, true);
+});
+
+const restaurant = { primaryType: "restaurant", rating: 4.5, reviewCount: 200 };
+
+Deno.test("restrict rejects a place outside the country", () => {
+  const policy = coerceChannelPolicy(
+    {
+      enabled: true,
+      families: ["restaurants"],
+      minRating: 0,
+      minReviews: 0,
+      region: { country: "MX", lat: 19.4326, lng: -99.1332, radiusKm: 0, restrict: true },
+    },
+    "consumer_add",
+  );
+  const verdict = evaluatePlaceForChannel(policy, restaurant, {
+    lat: 40.7,
+    lng: -74.0,
+    country: "US",
+  });
+  assertEquals(verdict.eligible, false);
+  if (!verdict.eligible) assertEquals(verdict.code, "outside_region");
+});
+
+Deno.test("restrict rejects a place outside the radius", () => {
+  const policy = coerceChannelPolicy(
+    {
+      enabled: true,
+      families: ["restaurants"],
+      minRating: 0,
+      minReviews: 0,
+      region: { country: "MX", lat: 19.4326, lng: -99.1332, radiusKm: 20, restrict: true },
+    },
+    "consumer_add",
+  );
+  const verdict = evaluatePlaceForChannel(policy, restaurant, {
+    lat: 25.6866,
+    lng: -100.3161,
+    country: "MX",
+  });
+  assertEquals(verdict.eligible, false);
+  if (!verdict.eligible) assertEquals(verdict.code, "outside_region");
+});
+
+Deno.test("bias does not reject an outsider after Google returns it", () => {
+  const policy = coerceChannelPolicy(
+    {
+      enabled: true,
+      families: ["restaurants"],
+      minRating: 0,
+      minReviews: 0,
+      region: { country: "MX", lat: 19.4326, lng: -99.1332, radiusKm: 20, restrict: false },
+    },
+    "consumer_add",
+  );
+  const verdict = evaluatePlaceForChannel(policy, restaurant, {
+    lat: 25.6866,
+    lng: -100.3161,
+    country: "MX",
+  });
+  assertEquals(verdict, { eligible: true });
+});
+
+Deno.test("Autocomplete gets includedRegionCodes and a circle bias", () => {
+  const policy = coerceChannelPolicy(
+    {
+      enabled: true,
+      families: ["restaurants"],
+      minRating: 0,
+      minReviews: 0,
+      region: { country: "MX", lat: 19.4326, lng: -99.1332, radiusKm: 12, restrict: false },
+    },
+    "consumer_search",
+  );
+  const body: Record<string, unknown> = { input: "taco" };
+  applyPlacesAutocompleteRegion(body, policy);
+  assertEquals(body.regionCode, "MX");
+  assertEquals(body.includedRegionCodes, ["MX"]);
+  assertEquals("locationBias" in body, true);
+  assertEquals("locationRestriction" in body, false);
+});
+
+Deno.test("Text Search restrict uses a rectangle, never a circle", () => {
+  const policy = coerceChannelPolicy(
+    {
+      enabled: true,
+      families: ["restaurants"],
+      minRating: 0,
+      minReviews: 0,
+      region: { country: "MX", lat: 19.4326, lng: -99.1332, radiusKm: 8, restrict: true },
+    },
+    "memo_search",
+  );
+  const body: Record<string, unknown> = { textQuery: "mezcal" };
+  applyPlacesTextSearchRegion(body, policy);
+  const restriction = body.locationRestriction as { rectangle?: unknown; circle?: unknown };
+  assertEquals(Boolean(restriction?.rectangle), true);
+  assertEquals(restriction?.circle, undefined);
+});
+
+Deno.test("Text Search bias over 50 km uses a rectangle", () => {
+  const policy = coerceChannelPolicy(
+    {
+      enabled: true,
+      families: ["restaurants"],
+      minRating: 0,
+      minReviews: 0,
+      region: { country: "MX", lat: 19.4326, lng: -99.1332, radiusKm: 80, restrict: false },
+    },
+    "admin_search",
+  );
+  const body: Record<string, unknown> = { textQuery: "taco" };
+  applyPlacesTextSearchRegion(body, policy);
+  const bias = body.locationBias as { rectangle?: unknown; circle?: unknown };
+  assertEquals(Boolean(bias?.rectangle), true);
+  assertEquals(bias?.circle, undefined);
 });
